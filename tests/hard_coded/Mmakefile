@@ -403,6 +403,7 @@ ORDINARY_PROGS = \
 	string_contains_char \
 	string_contains_match \
 	string_count_codepoints_ilseq \
+	string_find_char \
 	string_first_char \
 	string_fold_ilseq \
 	string_from_char_list_ilseq \

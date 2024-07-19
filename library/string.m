@@ -763,6 +763,42 @@
 :- pred unsafe_sub_string_search_start(string::in, string::in, int::in,
     int::out) is semidet.
 
+    % find_first_char(String, Char, Index):
+    %
+    % Find the first occurrence of the code point Char in String.
+    % On success, Index is the code unit offset of that code point.
+    %
+:- pred find_first_char(string::in, char::in, int::out) is semidet.
+
+    % find_first_char_start(String, Char, BeginAt, Index):
+    %
+    % Find the first occurrence of the code point Char in String,
+    % beginning from the code unit offset BeginAt in String.
+    % On success, Index is the code unit offset of that code point.
+    %
+    % Fails if BeginAt is out of range (negative, or greater than or equal
+    % to the length of String).
+    %
+:- pred find_first_char_start(string::in, char::in, int::in, int::out)
+    is semidet.
+
+    % unsafe_find_first_char_start(String, Char, BeginAt, Index):
+    %
+    % Same as find_first_char_start/4 but does not check that BeginAt
+    % is in range.
+    % WARNING: if BeginAt is either negative, or greater than length(String),
+    % then the behaviour is UNDEFINED. Use with care!
+    %
+:- pred unsafe_find_first_char_start(string::in, char::in, int::in, int::out)
+    is semidet.
+
+    % find_last_char(String, Char, Index):
+    %
+    % Find the last occurrence of the code point Char in String.
+    % On success, Index is the code unit offset of that code point.
+    %
+:- pred find_last_char(string::in, char::in, int::out) is semidet.
+
 %---------------------------------------------------------------------------%
 %
 % Appending strings.
@@ -3548,58 +3584,8 @@ contains_match_loop(P, String, Cur) :-
 
 %---------------------%
 
-:- pragma foreign_proc("C",
-    contains_char(Str::in, Ch::in),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-    char    buf[5];
-    size_t  len;
-    if (MR_is_ascii(Ch)) {
-        // Fast path.
-        // strchr always returns true when searching for NUL,
-        // but the NUL is not part of the string itself.
-        SUCCESS_INDICATOR = (Ch != '\\0') && (strchr(Str, Ch) != NULL);
-    } else {
-        len = MR_utf8_encode(buf, Ch);
-        buf[len] = '\\0';
-        SUCCESS_INDICATOR = (len > 0) && (strstr(Str, buf) != NULL);
-    }
-").
-:- pragma foreign_proc("C#",
-    contains_char(Str::in, Ch::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    if (Ch <= 0xffff) {
-        SUCCESS_INDICATOR = (Str.IndexOf((char) Ch) != -1);
-    } else {
-        string s = System.Char.ConvertFromUtf32(Ch);
-        SUCCESS_INDICATOR = Str.Contains(s);
-    }
-").
-:- pragma foreign_proc("Java",
-    contains_char(Str::in, Ch::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    // indexOf(int) handles supplementary characters correctly.
-    SUCCESS_INDICATOR = (Str.indexOf((int) Ch) != -1);
-").
-
-contains_char(String, Char) :-
-    contains_char_loop(String, Char, 0).
-
-:- pred contains_char_loop(string::in, char::in, int::in) is semidet.
-
-contains_char_loop(Str, Char, I) :-
-    unsafe_index_next_repl(Str, I, J, IndexChar, MaybeReplaced),
-    ( if
-        MaybeReplaced = not_replaced,
-        IndexChar = Char
-    then
-        true
-    else
-        contains_char_loop(Str, Char, J)
-    ).
+contains_char(Str, Char) :-
+    find_first_char(Str, Char, _).
 
 %---------------------%
 
@@ -3812,6 +3798,148 @@ unsafe_sub_string_search_start_loop(String, SubString, I, LastI,
     else
         unsafe_sub_string_search_start_loop(String, SubString, I + 1, LastI,
             SubLen, Index)
+    ).
+
+%---------------------%
+
+find_first_char(Str, Char, Index) :-
+    unsafe_find_first_char_start(Str, Char, 0, Index).
+
+find_first_char_start(Str, Char, BeginAt, Index) :-
+    ( if
+        (
+            BeginAt = 0
+        ;
+            BeginAt > 0,
+            BeginAt < string.count_code_units(Str)
+        )
+    then
+        unsafe_find_first_char_start(Str, Char, BeginAt, Index)
+    else
+        fail
+    ).
+
+:- pragma foreign_proc("C",
+    unsafe_find_first_char_start(Str::in, Ch::in, BeginAt::in, Index::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    char    *p = NULL;
+
+    if (MR_is_ascii(Ch)) {
+        // strchr will always find the null terminator, but the terminator
+        // is not part of the string.
+        if (Ch != '\\0') {
+            p = strchr(Str + BeginAt, Ch);
+        }
+    } else {
+        char    buf[5];
+        size_t  len;
+
+        len = MR_utf8_encode(buf, Ch);
+        if (len > 0) {
+            buf[len] = '\\0';
+            p = strstr(Str + BeginAt, buf);
+        }
+    }
+    if (p != NULL) {
+        SUCCESS_INDICATOR = MR_TRUE;
+        Index = (p - Str);
+    } else {
+        SUCCESS_INDICATOR = MR_FALSE;
+        Index = -1;
+    }
+").
+:- pragma foreign_proc("C#",
+    unsafe_find_first_char_start(Str::in, Ch::in, BeginAt::in, Index::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Ch <= 0xffff) {
+        Index = Str.IndexOf((char) Ch, BeginAt);
+    } else {
+        string s = System.Char.ConvertFromUtf32(Ch);
+        Index = Str.IndexOf(s, BeginAt, System.StringComparison.Ordinal);
+    }
+    SUCCESS_INDICATOR = (Index >= 0);
+").
+:- pragma foreign_proc("Java",
+    unsafe_find_first_char_start(Str::in, Ch::in, BeginAt::in, Index::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Index = Str.indexOf(Ch, BeginAt);
+    SUCCESS_INDICATOR = (Index >= 0);
+").
+
+%---------------------%
+
+find_last_char(Str, Char, Index) :-
+    % For C grades, find_last_char_2 only works for a single code unit.
+    % i.e. an ASCII character.
+    ( if
+        string.internal_string_encoding = utf8,
+        not char.is_ascii(Char)
+    then
+        find_last_char_loop(Str, Char, 0, string.count_code_units(Str), Index)
+    else
+        find_last_char_2(Str, Char, Index)
+    ).
+
+    % NOTE: the C implementation expects an ASCII character only.
+    %
+:- pred find_last_char_2(string::in, char::in, int::out) is semidet.
+
+:- pragma foreign_proc("C",
+    find_last_char_2(Str::in, Ch::in, Index::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    char *p = NULL;
+    // strchr will always find the null terminator, but the terminator
+    // is not part of the string.
+    if (Ch != '\\0') {
+        p = strrchr(Str, Ch);
+    }
+    if (p != NULL) {
+        SUCCESS_INDICATOR = MR_TRUE;
+        Index = (p - Str);
+    } else {
+        SUCCESS_INDICATOR = MR_FALSE;
+        Index = -1;
+    }
+").
+:- pragma foreign_proc("C#",
+    find_last_char_2(Str::in, Ch::in, Index::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    if (Ch <= 0xffff) {
+        Index = Str.LastIndexOf((char) Ch);
+    } else {
+        string s = System.Char.ConvertFromUtf32(Ch);
+        Index = Str.LastIndexOf(s, System.StringComparison.Ordinal);
+    }
+    SUCCESS_INDICATOR = (Index >= 0);
+").
+:- pragma foreign_proc("Java",
+    find_last_char_2(Str::in, Ch::in, Index::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Index = Str.lastIndexOf(Ch);
+    SUCCESS_INDICATOR = (Index >= 0);
+").
+
+    % Pre-condition: LowerIndex =< Index0
+    %
+:- pred find_last_char_loop(string::in, char::in, int::in, int::in, int::out)
+    is semidet.
+
+find_last_char_loop(Str, MatchChar, LowerIndex, Index0, MatchIndex) :-
+    string.unsafe_prev_index_repl(Str, Index0, Index1, Char, MaybeReplaced),
+    LowerIndex =< Index1,
+    ( if
+        MaybeReplaced = not_replaced,
+        MatchChar = Char
+    then
+        MatchIndex = Index1
+    else
+        find_last_char_loop(Str, MatchChar, LowerIndex, Index1, MatchIndex)
     ).
 
 %---------------------------------------------------------------------------%

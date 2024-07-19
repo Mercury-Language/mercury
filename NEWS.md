@@ -782,11 +782,14 @@ Changes to the Mercury standard library
     - func `between_code_points/3`
     - pred `between_code_points/4`
     - pred `check_well_formedness/2`
-    - pred `contains_match/2`
     - pred `code_point_offset/3`
     - pred `code_point_offset/4`
+    - pred `contains_match/2`
     - func `count_code_points/1`
     - pred `count_code_points/2`
+    - pred `find_first_char/3`
+    - pred `find_first_char_start/4`
+    - pred `find_last_char/3`
     - func `internal_string_encoding/0`
     - func `left_by_code_point/2`
     - pred `left_by_code_point/3`
@@ -794,6 +797,7 @@ Changes to the Mercury standard library
     - pred `right_by_code_point/3`
     - pred `split_by_code_point/3`
     - pred `split_by_code_point/4`
+    - pred `unsafe_find_first_char_start/4`
 
 * The following obsolete modes have been removed from the following predicates:
 

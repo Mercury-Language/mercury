@@ -1,0 +1,11 @@
+*   *   😀  A   B   😀  |   😀  A   B   
+0   1   2   4   5   6   8   9   11  12  
+
+find_first_char ==> index=4, char='A'
+find_first_char ==> index=2, char='😀'
+find_first_char failed
+
+find_last_char ==> index=11, char='A'
+find_last_char ==> index=9, char='😀'
+find_last_char failed
+
