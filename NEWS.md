@@ -67,15 +67,15 @@ Changes that may break compatibility
 * Some (undocumented) mmake variables in compiler-generated `.dv` files
   have been renamed:
   
-    program.cs          -> program.all_cs
-    program.os          -> program.all_os
-    program.pic_os      -> program.all_pic_os
-    program.javas       -> program.all_javas
-    program.css         -> program.all_css
+    program.cs          -> program.all_cs    
+    program.os          -> program.all_os    
+    program.pic_os      -> program.all_pic_os    
+    program.javas       -> program.all_javas    
+    program.css         -> program.all_css    
 
-    program.all_mhs     -> program.mhs_to_clean
-    program.all_mihs    -> program.mihs_to_clean
-    program.all_int0s   -> program.int3s_to_clean
+    program.all_mhs     -> program.mhs_to_clean    
+    program.all_mihs    -> program.mihs_to_clean    
+    program.all_int0s   -> program.int3s_to_clean    
 
 Changes to the Mercury standard library
 ---------------------------------------
@@ -1223,8 +1223,8 @@ Changes to the Mercury language
   between the digits forming the fraction part and the `e` or `E` that
   introduces the exponent part.
 
-* You can now use the escape sequence '\e' to refer to the ESC (escape)
-  character, just as you can use '\n' to refer to the newline character.
+* You can now use the escape sequence `'\e'` to refer to the ESC (escape)
+  character, just as you can use `'\n'` to refer to the newline character.
 
 Changes to the Mercury compiler
 -------------------------------
