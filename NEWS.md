@@ -1321,7 +1321,8 @@ Portability improvements
 ------------------------
 
 * We now support using the 64-bit (i.e. x64) version of Microsoft Visual C++
-  as a C compiler with Mercury. See README.MS-VisualC.md for further details.
+  as a C compiler with Mercury.
+  See [README.MS-VisualC.md](README.MS-VisualC.md) for further details.
 
 * We have updated the script `tools/configure_cross` to support
   cross-compiling using clang.
