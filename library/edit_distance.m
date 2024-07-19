@@ -231,7 +231,7 @@ find_edit_distance_ceiling(Params, SeqA, SeqB, MaybeCeiling, Cost) :-
         % both ItemMap{A,B} and Row{OneAgo,TwoAgo,Next}. In some cases,
         % this caused the construction of "did you mean" addendums to take
         % several seconds (much more time than than was needed by the *rest*
-        % of the compiler), which is is annoying.
+        % of the compiler), which is annoying.
         %
         % The two main of this slowdown are almost certainly
         %
