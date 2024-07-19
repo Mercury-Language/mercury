@@ -99,13 +99,12 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module string.
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
 unique_modes_check_module(ProgressStream, !ModuleInfo, Specs) :-
-    check_pred_modes(ProgressStream, check_unique_modes,
+    modecheck_all_preds_in_module(ProgressStream, check_unique_modes,
         may_change_called_proc, !ModuleInfo, _SafeToContinue, Specs).
 
 unique_modes_check_goal(Goal0, Goal, !ModeInfo) :-
@@ -341,9 +340,7 @@ unique_modes_check_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr,
         !ModeInfo) :-
     GoalExpr0 = plain_call(PredId, ProcId0, ArgVars, Builtin,
         MaybeUnifyContext, PredSymName),
-    PredNameString = sym_name_to_string(PredSymName),
-    CallString = "call " ++ PredNameString,
-    mode_checkpoint(enter, CallString, !ModeInfo),
+    mode_checkpoint_sn(enter, "call", PredSymName, !ModeInfo),
     mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
         !ModeInfo),
     unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo0, ProcId,
@@ -351,7 +348,7 @@ unique_modes_check_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr,
     GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin, MaybeUnifyContext,
         PredSymName),
     mode_info_unset_call_context(!ModeInfo),
-    mode_checkpoint(exit, "call", !ModeInfo).
+    mode_checkpoint_sn(exit, "call", PredSymName, !ModeInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -705,7 +702,7 @@ unique_modes_check_goal_disj(Goals0, GoalInfo0, GoalExpr, !ModeInfo) :-
 
         % Now just modecheck each disjunct in turn, and then
         % merge the resulting instmaps.
-        unique_modes_check_disj(Goals0, Determinism, NonLocals, Goals,
+        unique_modes_check_disj(Determinism, NonLocals, Goals0, Goals,
             InstMaps, !ModeInfo),
         make_arm_instmaps_for_goals(Goals, InstMaps, ArmInstMaps),
         instmap_merge(NonLocals, ArmInstMaps, merge_disj, !ModeInfo)
@@ -719,22 +716,21 @@ unique_modes_check_goal_disj(Goals0, GoalInfo0, GoalExpr, !ModeInfo) :-
     % original instmap before processing the next one. Collect up a list
     % of the resulting instmaps.
     %
-:- pred unique_modes_check_disj(list(hlds_goal)::in, determinism::in,
-    set_of_progvar::in, list(hlds_goal)::out, list(instmap)::out,
+:- pred unique_modes_check_disj(determinism::in, set_of_progvar::in,
+    list(hlds_goal)::in, list(hlds_goal)::out, list(instmap)::out,
     mode_info::in, mode_info::out) is det.
 
-unique_modes_check_disj([], _, _, [], [], !ModeInfo).
-unique_modes_check_disj([Goal0 | Goals0], DisjDetism, DisjNonLocals,
-        [Goal | Goals], [InstMap | InstMaps], !ModeInfo) :-
+unique_modes_check_disj(_, _, [], [], [], !ModeInfo).
+unique_modes_check_disj(DisjDetism, DisjNonLocals,
+        [Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps], !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     % If you modify this code, you may also need to modify
     % unique_modecheck_clause_disj or the code that calls it.
-
     prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals, !ModeInfo),
     unique_modes_check_goal(Goal0, Goal, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMap),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    unique_modes_check_disj(Goals0, DisjDetism, DisjNonLocals, Goals, InstMaps,
+    unique_modes_check_disj(DisjDetism, DisjNonLocals, Goals0, Goals, InstMaps,
         !ModeInfo).
 
 prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals, !ModeInfo) :-
@@ -743,7 +739,7 @@ prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals, !ModeInfo) :-
     Determinism = goal_info_get_determinism(GoalInfo0),
     determinism_components(Determinism, CanFail, _),
     ( if
-        % If the disjunction was model_nondet, then we already marked all the
+        % If the disjunction was model_non, then we already marked all the
         % non-locals as only being mostly-unique, so we don't need to do
         % anything special here...
         DisjMaxSolns \= at_most_many,
@@ -756,6 +752,9 @@ prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals, !ModeInfo) :-
     then
         mode_info_add_live_vars(DisjNonLocals, !ModeInfo),
         make_all_nondet_live_vars_mostly_uniq(!ModeInfo),
+        % XXX This call needs an explanation. Why are we removing DisjNonLocals
+        % as live vars when we added them just two calls ago? Can't we make
+        % DisjNonLocals mostly uniq in a more direct fashion?
         mode_info_remove_live_vars(DisjNonLocals, !ModeInfo)
     else
         true
@@ -1047,7 +1046,7 @@ unique_modes_check_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
             true
         ),
         Goals0 = [MainGoal0 | OrElseGoals0],
-        unique_modes_check_disj(Goals0, Determinism, NonLocals, Goals,
+        unique_modes_check_disj(Determinism, NonLocals, Goals0, Goals,
             InstMaps, !ModeInfo),
         (
             Goals = [MainGoal | OrElseGoals]

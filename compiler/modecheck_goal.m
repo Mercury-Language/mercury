@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2022 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -147,7 +147,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module string.
 :- import_module term_context.
 :- import_module uint.
 
@@ -257,9 +256,7 @@ modecheck_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     GoalExpr0 = plain_call(PredId, ProcId0, ArgVars0, _Builtin,
         MaybeCallUnifyContext, PredSymName),
 
-    PredNameString = sym_name_to_string(PredSymName),
-    CallString = "call " ++ PredNameString,
-    mode_checkpoint(enter, CallString, !ModeInfo),
+    mode_checkpoint_sn(enter, "call", PredSymName, !ModeInfo),
 
     mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
         !ModeInfo),
@@ -278,7 +275,7 @@ modecheck_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
         InstMap0, GoalExpr, !ModeInfo),
 
     mode_info_unset_call_context(!ModeInfo),
-    mode_checkpoint(exit, CallString, !ModeInfo).
+    mode_checkpoint_sn(exit, "call", PredSymName, !ModeInfo).
 
 %---------------------------------------------------------------------------%
 %

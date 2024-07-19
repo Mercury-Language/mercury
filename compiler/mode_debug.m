@@ -16,13 +16,17 @@
 :- module check_hlds.mode_debug.
 :- interface.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module check_hlds.mode_info.
 
     % Print a debugging message which includes the port, message string,
     % and the current instmap (but only if `--debug-modes' was enabled).
     %
-:- pred mode_checkpoint(port::in, string::in, mode_info::in, mode_info::out)
-    is det.
+:- pred mode_checkpoint(port::in, string::in,
+    mode_info::in, mode_info::out) is det.
+:- pred mode_checkpoint_sn(port::in, string::in, sym_name::in,
+    mode_info::in, mode_info::out) is det.
 
 :- type port
     --->    enter
@@ -66,66 +70,82 @@ mode_checkpoint(Port, Msg, !ModeInfo) :-
         DebugModes = no
     ;
         DebugModes = yes(DebugFlags),
+        do_mode_checkpoint(Port, Msg, DebugFlags, !ModeInfo)
+    ).
+
+mode_checkpoint_sn(Port, MsgA, SymName, !ModeInfo) :-
+    mode_info_get_debug_modes(!.ModeInfo, DebugModes),
+    (
+        DebugModes = no
+    ;
+        DebugModes = yes(DebugFlags),
+        Msg = MsgA ++ " " ++ sym_name_to_string(SymName),
+        do_mode_checkpoint(Port, Msg, DebugFlags, !ModeInfo)
+    ).
+
+:- pred do_mode_checkpoint(port::in, string::in, debug_flags::in,
+    mode_info::in, mode_info::out) is det.
+
+do_mode_checkpoint(Port, Msg, DebugFlags, !ModeInfo) :-
+    (
+        Port = enter,
+        PortStr = "Enter ",
+        Detail = yes
+    ;
+        Port = wakeup,
+        PortStr = "Wake ",
+        Detail = no
+    ;
+        Port = exit,
+        mode_info_get_errors(!.ModeInfo, Errors),
         (
-            Port = enter,
-            PortStr = "Enter ",
+            Errors = [],
+            PortStr = "Exit ",
             Detail = yes
         ;
-            Port = wakeup,
-            PortStr = "Wake ",
+            Errors = [_ | _],
+            PortStr = "Delay ",
             Detail = no
-        ;
-            Port = exit,
-            mode_info_get_errors(!.ModeInfo, Errors),
-            (
-                Errors = [],
-                PortStr = "Exit ",
-                Detail = yes
-            ;
-                Errors = [_ | _],
-                PortStr = "Delay ",
-                Detail = no
-            )
-        ),
-        DebugFlags = debug_flags(UniquePrefix, Verbose, Minimal, Statistics),
-        (
-            Detail = yes,
-            mode_info_get_instmap(!.ModeInfo, InstMap),
-            trace [io(!IO)] (
-                mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-                module_info_get_globals(ModuleInfo, Globals),
-                module_info_get_name(ModuleInfo, ModuleName),
-                get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
-                io.format(DebugStream, "%s%s%s:\n",
-                    [s(PortStr), s(UniquePrefix), s(Msg)], !IO),
-                maybe_report_stats(DebugStream, Statistics, !IO),
-                maybe_flush_output(DebugStream, Statistics, !IO),
-                ( if instmap_is_reachable(InstMap) then
-                    instmap_to_assoc_list(InstMap, NewInsts),
-                    mode_info_get_last_checkpoint_insts(!.ModeInfo,
-                        OldInstMap),
-                    mode_info_get_var_table(!.ModeInfo, VarTable),
-                    mode_info_get_instvarset(!.ModeInfo, InstVarSet),
-                    write_var_insts(DebugStream, VarTable, InstVarSet,
-                        OldInstMap, Verbose, Minimal, NewInsts, !IO)
-                else
-                    io.write_string(DebugStream, "\tUnreachable\n", !IO)
-                ),
-                io.write_string(DebugStream, "\n", !IO),
-                io.flush_output(DebugStream, !IO)
+        )
+    ),
+    DebugFlags = debug_flags(UniquePrefix, Verbose, Minimal, Statistics),
+    (
+        Detail = yes,
+        mode_info_get_instmap(!.ModeInfo, InstMap),
+        trace [io(!IO)] (
+            mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+            module_info_get_globals(ModuleInfo, Globals),
+            module_info_get_name(ModuleInfo, ModuleName),
+            get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+            io.format(DebugStream, "%s%s%s:\n",
+                [s(PortStr), s(UniquePrefix), s(Msg)], !IO),
+            maybe_report_stats(DebugStream, Statistics, !IO),
+            maybe_flush_output(DebugStream, Statistics, !IO),
+            ( if instmap_is_reachable(InstMap) then
+                instmap_to_assoc_list(InstMap, NewInsts),
+                mode_info_get_last_checkpoint_insts(!.ModeInfo,
+                    OldInstMap),
+                mode_info_get_var_table(!.ModeInfo, VarTable),
+                mode_info_get_instvarset(!.ModeInfo, InstVarSet),
+                write_var_insts(DebugStream, VarTable, InstVarSet,
+                    OldInstMap, Verbose, Minimal, NewInsts, !IO)
+            else
+                io.write_string(DebugStream, "\tUnreachable\n", !IO)
             ),
-            mode_info_set_last_checkpoint_insts(InstMap, !ModeInfo)
-        ;
-            Detail = no,
-            trace [io(!IO)] (
-                mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-                module_info_get_globals(ModuleInfo, Globals),
-                module_info_get_name(ModuleInfo, ModuleName),
-                get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
-                io.format(DebugStream, "%s%s%s:\n",
-                    [s(PortStr), s(UniquePrefix), s(Msg)], !IO),
-                io.flush_output(DebugStream, !IO)
-            )
+            io.write_string(DebugStream, "\n", !IO),
+            io.flush_output(DebugStream, !IO)
+        ),
+        mode_info_set_last_checkpoint_insts(InstMap, !ModeInfo)
+    ;
+        Detail = no,
+        trace [io(!IO)] (
+            mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+            module_info_get_globals(ModuleInfo, Globals),
+            module_info_get_name(ModuleInfo, ModuleName),
+            get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
+            io.format(DebugStream, "%s%s%s:\n",
+                [s(PortStr), s(UniquePrefix), s(Msg)], !IO),
+            io.flush_output(DebugStream, !IO)
         )
     ).
 

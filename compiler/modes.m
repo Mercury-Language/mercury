@@ -99,8 +99,9 @@
     % Mode-check or unique-mode-check the code of all the predicates
     % in a module.
     %
-:- pred check_pred_modes(io.text_output_stream::in, how_to_check_goal::in,
-    may_change_called_proc::in, module_info::in, module_info::out,
+:- pred modecheck_all_preds_in_module(io.text_output_stream::in,
+    how_to_check_goal::in, may_change_called_proc::in,
+    module_info::in, module_info::out,
     maybe_safe_to_continue::out, list(error_spec)::out) is det.
 
     % Mode-check the code for the given predicate in a given mode.
@@ -199,12 +200,12 @@
 %-----------------------------------------------------------------------------%
 
 modecheck_module(ProgressStream, !ModuleInfo, SafeToContinue, Specs) :-
-    check_pred_modes(ProgressStream, check_modes, may_change_called_proc,
-        !ModuleInfo, SafeToContinue, Specs).
+    modecheck_all_preds_in_module(ProgressStream, check_modes,
+        may_change_called_proc, !ModuleInfo, SafeToContinue, Specs).
 
 %-----------------------------------------------------------------------------%
 
-check_pred_modes(ProgressStream, WhatToCheck, MayChangeCalledProc,
+modecheck_all_preds_in_module(ProgressStream, WhatToCheck, MayChangeCalledProc,
         !ModuleInfo, SafeToContinue, !:Specs) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -386,7 +387,7 @@ delete_invalid_procs_from_pred(PredId, ProcMap, !ModuleInfo) :-
     %     We record a mode error for this mode of B, making that mode of B
     %     invalid in the sense of proc_info_is_valid_mode. However:
     %
-    %     (b1) Since B has marker_infer_modes, we don't add the B's mode error
+    %     (b1) Since B has marker_infer_modes, we don't add B's mode error
     %          to the list of mode errors we intend to print, because a later
     %          iteration in the fixpoint could cure the error (e.g. by
     %          inferring a new mode for a predicate C that B calls).
@@ -398,11 +399,11 @@ delete_invalid_procs_from_pred(PredId, ProcMap, !ModuleInfo) :-
     %
     %     While this situation would be extremely likely to change in the
     %     next iteration, I see no correctness argument that would guarantee
-    %     would guarantee this. We could thus arrive at a fixpoint in which
-    %     a valid procedure in A would contain a call to an invalid procedure
-    %     in B. Since we generate target language code for valid procedures
-    %     but obviously not for invalid procedures, we would be generating
-    %     a call to an undefined callee.
+    %     this. We could thus arrive at a fixpoint in which a valid procedure
+    %     in A would contain a call to an invalid procedure in B. Since
+    %     we generate target language code for valid procedures but obviously
+    %     not for invalid procedures, we would be generating a call to
+    %     an undefined callee.
     %
     %     (Note that modecheck_call.m *does* ensure that if a call has
     %     invalid_proc_id as its proc_id, then we *will* generate an error
@@ -1088,6 +1089,14 @@ modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, IsUnifyPred, Markers,
 do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, IsUnifyPred,
         Markers, PredId, ProcId, Body0, Body, HeadVars, InstMap0,
         ArgFinalInsts0, ArgFinalInsts, !ModeInfo) :-
+    % In the calltree of this predicate, we use CheckpointMsg
+    % as the message for several different kinds of checkpoints.
+    % The way we construct CheckpointMsg implies that involves the entire
+    % procedure body, but we also use it for disjuncts, and for switch arms.
+    % If and when we ever need to debug any of the code involved in their
+    % analysis, a good first step would be to make these qualitatively
+    % different checkpoints register *different messages*. Without that,
+    % the output of --debug-modes is likely to be far too confusing.
     string.format("procedure_%d_%d",
         [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))],
         CheckpointMsg),
