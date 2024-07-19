@@ -162,12 +162,13 @@ find_edit_distance(Params, SeqA, SeqB, Cost) :-
     find_edit_distance_ceiling(Params, SeqA, SeqB, no, Cost).
 
     % This version of find_edit_distance allows the caller to specify
-    % a cost ceiling, beyond which the cost does not matter (because
-    % it will be thrown away anyway). Once the minimum cost in a row
-    % exceeds the ceiling (if there is one), we stop computing further rows,
-    % because the cost can only increase from then on. In such cases,
-    % the cost we return will be inaccurate, but this is ok; since it will be
-    % beyond the ceiling, our caller told us it will throw it away.
+    % a cost ceiling, beyond which the cost does not matter (because the
+    % caller intends to throw away any edits whose cost is beyond the ceiling).
+    % Once the minimum cost in a row exceeds the ceiling (if there is one),
+    % we stop computing further rows, because the cost can only increase
+    % from then on. In such cases, the cost we return will be inaccurate,
+    % but this is ok; since it will be beyond the ceiling, our caller
+    % will throw the edit away.
     %
 :- pred find_edit_distance_ceiling(edit_params(T)::in,
     list(T)::in, list(T)::in, maybe(uint)::in, uint::out) is det.
@@ -231,17 +232,17 @@ find_edit_distance_ceiling(Params, SeqA, SeqB, MaybeCeiling, Cost) :-
         % both ItemMap{A,B} and Row{OneAgo,TwoAgo,Next}. In some cases,
         % this caused the construction of "did you mean" addendums to take
         % several seconds (much more time than than was needed by the *rest*
-        % of the compiler), which is annoying.
+        % of the compiler), which was annoying.
         %
-        % The two main of this slowdown are almost certainly
+        % The two main reasons of this slowdown were almost certainly
         %
         % - the logN factor in the complexity of pretty much all operations
         %   on maps, and
         %
-        % - the allocating of logN heap cells on every update of every element
+        % - the allocation of logN heap cells on every update of every element
         %   of every map.
         %
-        % We can fix the first cause by switching the representation of
+        % Our fix for the first cause is to switch the representation of
         % ItemMap{A,B} and Row{OneAgo,TwoAgo,Next} to arrays.
         % This also helps with the second cause, but we can do better still
         % by only ever using the *same* three arrays, meaning that we don't
