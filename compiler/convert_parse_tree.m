@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019-2021 The Mercury team.
+% Copyright (C) 2019-2021, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -36,8 +36,9 @@
 
     % The generic representation of all the different kinds of interface files.
     % The parser reads in each .intN file in this format, and then immediately
-    % converts it to its int-file-kind representation. The rest of the compiler
-    % uses the parse_tree_intN representation.
+    % converts it to its int-file-kind representation using the
+    % check_convert_parse_tree_int_to_intN predicates just below.
+    % The rest of the compiler uses the parse_tree_intN representation.
     %
 :- type parse_tree_int
     --->    parse_tree_int(
