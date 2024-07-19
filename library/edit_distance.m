@@ -161,6 +161,112 @@
 find_edit_distance(Params, SeqA, SeqB, Cost) :-
     find_edit_distance_ceiling(Params, SeqA, SeqB, no, Cost).
 
+%---------------------------------------------------------------------------%
+
+find_closest_seqs(Params, SourceSeq, TargetSeqs,
+        BestCost, HeadBestSeq, TailBestSeqs) :-
+    (
+        TargetSeqs = [],
+        unexpected($pred,
+            "Calling find_closest_seqs on an empty list of target sequences" ++
+            " does not make sense")
+    ;
+        TargetSeqs = [HeadTargetSeq | TailTargetSeqs],
+        find_edit_distance(Params, SourceSeq, HeadTargetSeq, HeadCost),
+        find_closest_seqs_loop(Params, SourceSeq, TailTargetSeqs,
+            HeadCost, BestCost, cord.singleton(HeadTargetSeq), BestSeqCord),
+        BestSeqList = cord.list(BestSeqCord),
+        list.det_head_tail(BestSeqList, HeadBestSeq, TailBestSeqs)
+    ).
+
+find_best_close_enough_seqs(Params, SourceSeq, TargetSeqs,
+        MaxCost, BestCost, HeadBestSeq, TailBestSeqs) :-
+    (
+        TargetSeqs = [],
+        unexpected($pred,
+            "Calling find_best_close_enough_seqs on an empty list" ++
+            " of target sequences does not make sense")
+    ;
+        TargetSeqs = [_ | _],
+        find_first_close_enough_seq(Params, SourceSeq, TargetSeqs,
+            MaxCost, FirstCost, FirstTargetSeq, RestTargetSeqs),
+        find_closest_seqs_loop(Params, SourceSeq, RestTargetSeqs,
+            FirstCost, BestCost, cord.singleton(FirstTargetSeq), BestSeqCord),
+        BestSeqList = cord.list(BestSeqCord),
+        list.det_head_tail(BestSeqList, HeadBestSeq, TailBestSeqs)
+    ).
+
+%---------------------------------------------------------------------------%
+
+find_closest_strings(Params, SourceStr, TargetStrs,
+        BestCost, HeadBestStr, TailBestStrs) :-
+    string.to_char_list(SourceStr, SourceCharSeq),
+    list.map(string.to_char_list, TargetStrs, TargetCharSeqs),
+    find_closest_seqs(Params, SourceCharSeq, TargetCharSeqs,
+        BestCost, HeadBestCharSeq, TailBestCharSeqs),
+    string.from_char_list(HeadBestCharSeq, HeadBestStr),
+    list.map(string.from_char_list, TailBestCharSeqs, TailBestStrs).
+
+find_best_close_enough_strings(Params, SourceStr, TargetStrs, MaxCost,
+        BestCost, HeadBestStr, TailBestStrs) :-
+    string.to_char_list(SourceStr, SourceCharSeq),
+    list.map(string.to_char_list, TargetStrs, TargetCharSeqs),
+    find_best_close_enough_seqs(Params, SourceCharSeq, TargetCharSeqs, MaxCost,
+        BestCost, HeadBestCharSeq, TailBestCharSeqs),
+    string.from_char_list(HeadBestCharSeq, HeadBestStr),
+    list.map(string.from_char_list, TailBestCharSeqs, TailBestStrs).
+
+%---------------------------------------------------------------------------%
+
+:- pred find_first_close_enough_seq(edit_params(T)::in, list(T)::in,
+    list(list(T))::in, uint::in, uint::out, list(T)::out, list(list(T))::out)
+    is semidet.
+
+find_first_close_enough_seq(Params, SourceSeq,
+        [HeadTargetSeq | TailTargetSeqs], MaxCost,
+        FirstCost, FirstTargetSeq, RestTargetSeqs) :-
+    find_edit_distance_ceiling(Params, SourceSeq, HeadTargetSeq,
+        yes(MaxCost), HeadCost),
+    ( if HeadCost =< MaxCost then
+        FirstCost = HeadCost,
+        FirstTargetSeq = HeadTargetSeq,
+        RestTargetSeqs = TailTargetSeqs
+    else
+        find_first_close_enough_seq(Params, SourceSeq, TailTargetSeqs, MaxCost,
+            FirstCost, FirstTargetSeq, RestTargetSeqs)
+    ).
+
+:- pred find_closest_seqs_loop(edit_params(T)::in, list(T)::in,
+    list(list(T))::in, uint::in, uint::out,
+    cord(list(T))::in, cord(list(T))::out) is det.
+
+find_closest_seqs_loop(_, _, [], !Cost, !CostSeqCord).
+find_closest_seqs_loop(Params, SourceSeq, [HeadTargetSeq | TailTargetSeqs],
+        !Cost, !CostSeqCord) :-
+    find_edit_distance_ceiling(Params, SourceSeq, HeadTargetSeq,
+        yes(!.Cost), HeadCost),
+    ( if HeadCost < !.Cost then
+        % Update the best known cost, ...
+        !:Cost = HeadCost,
+        % ... and throw away all the target sequences
+        % with the *old* best known cost.
+        !:CostSeqCord = cord.singleton(HeadTargetSeq),
+        find_closest_seqs_loop(Params, SourceSeq, TailTargetSeqs,
+            !Cost, !CostSeqCord)
+    else if HeadCost = !.Cost then
+        % Keep the best known cost the same, and add this target sequence
+        % to the list of target sequences at this cost.
+        cord.snoc(HeadTargetSeq, !CostSeqCord),
+        find_closest_seqs_loop(Params, SourceSeq, TailTargetSeqs,
+            !Cost, !CostSeqCord)
+    else
+        find_closest_seqs_loop(Params, SourceSeq, TailTargetSeqs,
+            !Cost, !CostSeqCord)
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
     % This version of find_edit_distance allows the caller to specify
     % a cost ceiling, beyond which the cost does not matter (because the
     % caller intends to throw away any edits whose cost is beyond the ceiling).
@@ -421,112 +527,6 @@ dump_columns(_, [], !IO).
 dump_columns(ColNum, [Value | Values], !IO) :-
     io.format("%2u: %3u, ", [u(ColNum), u(Value)], !IO),
     dump_columns(ColNum + 1u, Values, !IO).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-find_closest_seqs(Params, SourceSeq, TargetSeqs,
-        BestCost, HeadBestSeq, TailBestSeqs) :-
-    (
-        TargetSeqs = [],
-        unexpected($pred,
-            "Calling find_closest_seqs on an empty list of target sequences" ++
-            " does not make sense")
-    ;
-        TargetSeqs = [HeadTargetSeq | TailTargetSeqs],
-        find_edit_distance(Params, SourceSeq, HeadTargetSeq, HeadCost),
-        find_closest_seqs_loop(Params, SourceSeq, TailTargetSeqs,
-            HeadCost, BestCost, cord.singleton(HeadTargetSeq), BestSeqCord),
-        BestSeqList = cord.list(BestSeqCord),
-        list.det_head_tail(BestSeqList, HeadBestSeq, TailBestSeqs)
-    ).
-
-%---------------------%
-
-find_best_close_enough_seqs(Params, SourceSeq, TargetSeqs,
-        MaxCost, BestCost, HeadBestSeq, TailBestSeqs) :-
-    (
-        TargetSeqs = [],
-        unexpected($pred,
-            "Calling find_best_close_enough_seqs on an empty list" ++
-            " of target sequences does not make sense")
-    ;
-        TargetSeqs = [_ | _],
-        find_first_close_enough_seq(Params, SourceSeq, TargetSeqs,
-            MaxCost, FirstCost, FirstTargetSeq, RestTargetSeqs),
-        find_closest_seqs_loop(Params, SourceSeq, RestTargetSeqs,
-            FirstCost, BestCost, cord.singleton(FirstTargetSeq), BestSeqCord),
-        BestSeqList = cord.list(BestSeqCord),
-        list.det_head_tail(BestSeqList, HeadBestSeq, TailBestSeqs)
-    ).
-
-:- pred find_first_close_enough_seq(edit_params(T)::in, list(T)::in,
-    list(list(T))::in, uint::in, uint::out, list(T)::out, list(list(T))::out)
-    is semidet.
-
-find_first_close_enough_seq(Params, SourceSeq,
-        [HeadTargetSeq | TailTargetSeqs], MaxCost,
-        FirstCost, FirstTargetSeq, RestTargetSeqs) :-
-    find_edit_distance_ceiling(Params, SourceSeq, HeadTargetSeq,
-        yes(MaxCost), HeadCost),
-    ( if HeadCost =< MaxCost then
-        FirstCost = HeadCost,
-        FirstTargetSeq = HeadTargetSeq,
-        RestTargetSeqs = TailTargetSeqs
-    else
-        find_first_close_enough_seq(Params, SourceSeq, TailTargetSeqs, MaxCost,
-            FirstCost, FirstTargetSeq, RestTargetSeqs)
-    ).
-
-%---------------------%
-
-:- pred find_closest_seqs_loop(edit_params(T)::in, list(T)::in,
-    list(list(T))::in, uint::in, uint::out,
-    cord(list(T))::in, cord(list(T))::out) is det.
-
-find_closest_seqs_loop(_, _, [], !Cost, !CostSeqCord).
-find_closest_seqs_loop(Params, SourceSeq, [HeadTargetSeq | TailTargetSeqs],
-        !Cost, !CostSeqCord) :-
-    find_edit_distance_ceiling(Params, SourceSeq, HeadTargetSeq,
-        yes(!.Cost), HeadCost),
-    ( if HeadCost < !.Cost then
-        % Update the best known cost, ...
-        !:Cost = HeadCost,
-        % ... and throw away all the target sequences
-        % with the *old* best known cost.
-        !:CostSeqCord = cord.singleton(HeadTargetSeq),
-        find_closest_seqs_loop(Params, SourceSeq, TailTargetSeqs,
-            !Cost, !CostSeqCord)
-    else if HeadCost = !.Cost then
-        % Keep the best known cost the same, and add this target sequence
-        % to the list of target sequences at this cost.
-        cord.snoc(HeadTargetSeq, !CostSeqCord),
-        find_closest_seqs_loop(Params, SourceSeq, TailTargetSeqs,
-            !Cost, !CostSeqCord)
-    else
-        find_closest_seqs_loop(Params, SourceSeq, TailTargetSeqs,
-            !Cost, !CostSeqCord)
-    ).
-
-%---------------------------------------------------------------------------%
-
-find_closest_strings(Params, SourceStr, TargetStrs,
-        BestCost, HeadBestStr, TailBestStrs) :-
-    string.to_char_list(SourceStr, SourceCharSeq),
-    list.map(string.to_char_list, TargetStrs, TargetCharSeqs),
-    find_closest_seqs(Params, SourceCharSeq, TargetCharSeqs,
-        BestCost, HeadBestCharSeq, TailBestCharSeqs),
-    string.from_char_list(HeadBestCharSeq, HeadBestStr),
-    list.map(string.from_char_list, TailBestCharSeqs, TailBestStrs).
-
-find_best_close_enough_strings(Params, SourceStr, TargetStrs, MaxCost,
-        BestCost, HeadBestStr, TailBestStrs) :-
-    string.to_char_list(SourceStr, SourceCharSeq),
-    list.map(string.to_char_list, TargetStrs, TargetCharSeqs),
-    find_best_close_enough_seqs(Params, SourceCharSeq, TargetCharSeqs, MaxCost,
-        BestCost, HeadBestCharSeq, TailBestCharSeqs),
-    string.from_char_list(HeadBestCharSeq, HeadBestStr),
-    list.map(string.from_char_list, TailBestCharSeqs, TailBestStrs).
 
 %---------------------------------------------------------------------------%
 %
