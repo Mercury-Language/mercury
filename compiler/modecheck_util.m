@@ -1,15 +1,15 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2015, 2024 The Mercury team.
+% Copyright (C) 2015,2017-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: modecheck_util.m.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.modecheck_util.
 :- interface.
@@ -27,7 +27,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type extra_goals
     --->    no_extra_goals
@@ -63,7 +63,7 @@
     hlds_goal_info::in, list(prog_var)::in, list(prog_var)::in,
     instmap::in, hlds_goal_expr::out, mode_info::in, mode_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Create a unification between the two given variables.
     % The goal's mode and determinism information are not filled in.
@@ -71,7 +71,7 @@
 :- pred create_var_var_unification(prog_var::in, prog_var::in,
     mer_type::in, mode_info::in, hlds_goal::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Calculate the argument number offset that needs to be passed to
     % modecheck_var_list_is_live, modecheck_var_has_inst_list, and
@@ -113,7 +113,7 @@
     prog_var::in, mer_type::in, mer_inst::in,
     mode_info::in, mode_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_var_inst(mode_info::in, prog_var::in, mer_inst::out) is det.
 
@@ -141,7 +141,7 @@
 :- pred mode_info_remove_goals_live_vars(list(hlds_goal)::in,
     mode_info::in, mode_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % modecheck_functor_test(Var, ConsId, !ModeInfo):
     %
@@ -160,7 +160,7 @@
 :- pred modecheck_functors_test(prog_var::in, cons_id::in, list(cons_id)::in,
     mode_info::in, mode_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % compute_goal_instmap_delta(InstMap0, GoalExpr, !GoalInfo, !ModeInfo):
     %
@@ -172,7 +172,7 @@
     hlds_goal_info::in, hlds_goal_info::out, mode_info::in, mode_info::out)
     is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred mode_context_to_unify_context(mode_info::in, mode_context::in,
     unify_context::out) is det.
@@ -189,7 +189,7 @@
 :- pred get_constrained_inst_vars(module_info::in, list(mer_mode)::in,
     head_inst_vars::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given the switched on variable and the instmaps before the switch
     % and after a branch make sure that any information added by the
@@ -198,15 +198,15 @@
 :- pred fixup_instmap_switch_var(prog_var::in, instmap::in, instmap::in,
     hlds_goal::in, hlds_goal::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred normalise_inst(module_info::in, mer_type::in,
     mer_inst::in, mer_inst::out) is det.
 :- pred normalise_insts(module_info::in, list(mer_type)::in,
     list(mer_inst)::in, list(mer_inst)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -235,7 +235,7 @@
 :- import_module term.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 append_extra_goals(no_extra_goals, ExtraGoals, ExtraGoals).
 append_extra_goals(extra_goals(BeforeGoals, AfterGoals),
@@ -354,7 +354,7 @@ handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     handle_extra_goals_contexts(Goals0, Context, Goals).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 create_var_var_unification(Var0, Var, Type, ModeInfo, Goal) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -397,7 +397,7 @@ create_var_var_unification(Var0, Var, Type, ModeInfo, Goal) :-
         unexpected($pred, "unexpected GoalExpr0")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 compute_arg_offset(PredInfo, ArgOffset) :-
     pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
@@ -407,7 +407,7 @@ compute_arg_offset(PredInfo, ArgOffset) :-
     list.length(ArgTypes, CurrentArity),
     ArgOffset = PredFormArityInt - CurrentArity.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 modecheck_var_list_is_live_exact_match([], [], _ArgNum, !ModeInfo).
 modecheck_var_list_is_live_exact_match([_ | _], [], _, !ModeInfo) :-
@@ -475,7 +475,7 @@ modecheck_var_is_live_exact_match(Var, ExpectedIsLive, !ModeInfo) :-
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 modecheck_var_has_inst_list_exact_match(MatchWhat, Vars, Insts, ArgNum,
         Subst, !ModeInfo) :-
@@ -605,7 +605,7 @@ modecheck_introduced_type_info_var_has_inst_no_exact_match(Var, Type, Inst,
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred modecheck_head_inst_vars(match_what::in, list(prog_var)::in,
     inst_var_sub::in, mode_info::in, mode_info::out) is det.
@@ -645,7 +645,7 @@ modecheck_head_inst_var(HeadInstVars, InstVar, Subst, !Acc) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_var_inst(ModeInfo, Var, Inst) :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
@@ -655,7 +655,7 @@ get_var_inst(ModeInfo, Var, Inst) :-
     lookup_var_type(VarTable, Var, Type),
     normalise_inst(ModuleInfo, Type, Inst0, Inst).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 modecheck_set_var_inst(Var0, NewInst0, MaybeUInst, !ModeInfo) :-
     % Note that there are two versions of modecheck_set_var_inst,
@@ -808,7 +808,7 @@ modecheck_set_var_inst_call(Var0, InitialInst, FinalInst, Var, !ExtraGoals,
         Var = Var0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % If this was a call to an implied mode for that variable, then we need to
     % introduce a fresh variable.
@@ -885,7 +885,7 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mode_info_add_goals_live_vars(_ConjType, [], !ModeInfo).
 mode_info_add_goals_live_vars(ConjType, [Goal | Goals], !ModeInfo) :-
@@ -920,7 +920,7 @@ mode_info_remove_goals_live_vars([Goal | Goals], !ModeInfo) :-
     ),
     mode_info_remove_goals_live_vars(Goals, !ModeInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 modecheck_functor_test(Var, ConsId, !ModeInfo) :-
     % Figure out the arity of this constructor, _including_ any type-infos
@@ -959,7 +959,7 @@ cons_id_to_bound_inst(ModuleInfo, Type, ConsId) = BoundInst :-
     list.duplicate(ConsIdArity, free, ArgInsts),
     BoundInst = bound_functor(ConsId, ArgInsts).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 compute_goal_instmap_delta(InstMap0, GoalExpr, !GoalInfo, !ModeInfo) :-
     ( if GoalExpr = conj(_, []) then
@@ -977,7 +977,7 @@ compute_goal_instmap_delta(InstMap0, GoalExpr, !GoalInfo, !ModeInfo) :-
     ),
     goal_info_set_instmap_delta(InstMapDelta, !GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 mode_context_to_unify_context(ModeInfo, ModeContext, UnifyContext) :-
     (
@@ -998,7 +998,7 @@ mode_context_to_unify_context(ModeInfo, ModeContext, UnifyContext) :-
         unexpected($pred, "context not call or unify")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_live_vars([], [], []).
 get_live_vars([_ | _], [], _) :-
@@ -1015,7 +1015,7 @@ get_live_vars([Var | Vars], [IsLive | IsLives], LiveVars) :-
     ),
     get_live_vars(Vars, IsLives, LiveVars0).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type inst_expansions == set_tree234(inst_name).
 
@@ -1193,6 +1193,6 @@ normalise_insts(ModuleInfo, [Type | Types],
     normalise_inst(ModuleInfo, Type, Inst0, Inst),
     normalise_insts(ModuleInfo, Types, Insts0, Insts).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module check_hlds.modecheck_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2022, 2024 The Mercury team.
+% Copyright (C) 2014-2019,2021-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -238,7 +238,7 @@ modecheck_goal_unify(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     GoalExpr0 = unify(LHS0, RHS0, _UniMode, Unification0, UnifyContext),
     mode_checkpoint(enter, "unify", !ModeInfo),
     mode_info_set_call_context(call_context_unify(UnifyContext), !ModeInfo),
-    modecheck_unification(LHS0, RHS0, Unification0, UnifyContext, GoalInfo0,
+    modecheck_unify(LHS0, RHS0, Unification0, UnifyContext, GoalInfo0,
         GoalExpr, !ModeInfo),
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "unify", !ModeInfo).
