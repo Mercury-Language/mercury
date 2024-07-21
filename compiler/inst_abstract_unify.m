@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -425,8 +425,7 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
                 % XXX Failing here preserves the old behavior of this predicate
                 % for these cases, but I am not convinced it is the right thing
                 % to do.
-                % Why are we not handling defined_inst by looking it up?
-                % And why are we not aborting for inst_var?
+                % Why are we not aborting for inst_var?
                 fail
             )
         )
@@ -494,9 +493,7 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
                 % XXX Failing here preserves the old behavior of this predicate
                 % for these cases, but I am not convinced it is the right thing
                 % to do.
-                % Why are we not handling defined_inst by looking it up?
-                % Why are we not handling free/1 similarly to free/0?
-                % And why are we not aborting for inst_var?
+                % Why are we not aborting for inst_var?
                 fail
             )
         )
@@ -508,9 +505,7 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
         InstA = inst_var(_),
         % XXX Failing here preserves the old behavior of this predicate
         % for these cases, but I am not convinced it is the right thing to do.
-        % Why are we not handling defined_inst by looking it up?
-        % Why are we not handling free/1 similarly to free/0?
-        % And why are we not aborting for inst_var?
+        % Why are we not aborting for inst_var?
         fail
     ).
 
@@ -580,7 +575,13 @@ abstractly_unify_inst_functor_2(Type, Live, Real, InstA,
             Live = is_dead,
             ArgInsts = ArgInstsB
         ),
-        arg_insts_match_ctor_subtypes(!.ModuleInfo, Type, ConsIdB, ArgInsts),
+        ( if ConsIdB = du_data_ctor(DuCtorB) then
+            arg_insts_match_ho_inst_info_in_type(!.ModuleInfo, Type,
+                DuCtorB, ArgInsts)
+        else
+            % There are no arg types we can check against.
+            true
+        ),
         % XXX A better approximation of InstResults is probably possible.
         Inst = bound(unique, inst_test_no_results,
             [bound_functor(ConsIdB, ArgInsts)]),
@@ -632,8 +633,12 @@ abstractly_unify_inst_functor_2(Type, Live, Real, InstA,
             make_ground_inst_list(Live, Real, UniqA, ArgTypes,
                 ArgInstsB, ArgInsts0, Detism, !ModuleInfo)
         ),
-        propagate_ctor_subtypes_into_arg_insts(!.ModuleInfo, Type, ConsIdB,
-            ArgInsts0, ArgInsts),
+        ( if ConsIdB = du_data_ctor(DuCtorB) then
+            propagate_ho_inst_info_into_arg_insts(!.ModuleInfo, Type, DuCtorB,
+                ArgInsts0, ArgInsts)
+        else
+            ArgInsts = ArgInsts0
+        ),
         % XXX A better approximation of InstResults is probably possible.
         Inst = bound(UniqA, inst_test_no_results,
             [bound_functor(ConsIdB, ArgInsts)])
@@ -856,16 +861,11 @@ abstractly_unify_constrained_inst_vars(Type, Live, Real, InstVarsA, SubInstA,
 
 %---------------------------------------------------------------------------%
 
-:- pred arg_insts_match_ctor_subtypes(module_info::in, mer_type::in,
-    cons_id::in, list(mer_inst)::in) is semidet.
+:- pred arg_insts_match_ho_inst_info_in_type(module_info::in, mer_type::in,
+    du_ctor::in, list(mer_inst)::in) is semidet.
 
-arg_insts_match_ctor_subtypes(ModuleInfo, Type, ConsId, ArgInsts) :-
-    % XXX DU_CTOR
-    % We should insist that our ancestors pass us a du_ctor,
-    % not a cons_id, since for all cons_ids *other* than cons, this predicate
-    % has nothing to do.
+arg_insts_match_ho_inst_info_in_type(ModuleInfo, Type, DuCtor, ArgInsts) :-
     ( if
-        ConsId = du_data_ctor(DuCtor),
         type_to_ctor(Type, TypeCtor),
         get_cons_defn(ModuleInfo, TypeCtor, DuCtor, ConsDefn),
         ConsDefn = hlds_cons_defn(_, _, _, _,
@@ -877,20 +877,21 @@ arg_insts_match_ctor_subtypes(ModuleInfo, Type, ConsId, ArgInsts) :-
         % XXX Handle existentially quantified constructors.
         MaybeExistConstraints = no_exist_constraints
     then
-        arg_insts_match_ctor_subtypes_2(ModuleInfo, ConsArgs, ArgInsts)
+        arg_insts_match_ho_inst_info_in_type_loop(ModuleInfo,
+            ConsArgs, ArgInsts)
     else
         true
     ).
 
-:- pred arg_insts_match_ctor_subtypes_2(module_info::in,
+:- pred arg_insts_match_ho_inst_info_in_type_loop(module_info::in,
     list(constructor_arg)::in, list(mer_inst)::in) is semidet.
 
-arg_insts_match_ctor_subtypes_2(_, [], []).
-arg_insts_match_ctor_subtypes_2(_, [], [_ | _]) :-
+arg_insts_match_ho_inst_info_in_type_loop(_, [], []).
+arg_insts_match_ho_inst_info_in_type_loop(_, [], [_ | _]) :-
     unexpected($pred, "length mismatch").
-arg_insts_match_ctor_subtypes_2(_, [_ | _], []) :-
+arg_insts_match_ho_inst_info_in_type_loop(_, [_ | _], []) :-
     unexpected($pred, "length mismatch").
-arg_insts_match_ctor_subtypes_2(ModuleInfo,
+arg_insts_match_ho_inst_info_in_type_loop(ModuleInfo,
         [ConsArg | ConsArgs], [Inst | Insts]) :-
     ( if
         ( Inst = ground(_, InstHOInstInfo)
@@ -905,20 +906,15 @@ arg_insts_match_ctor_subtypes_2(ModuleInfo,
     else
         true
     ),
-    arg_insts_match_ctor_subtypes_2(ModuleInfo, ConsArgs, Insts).
+    arg_insts_match_ho_inst_info_in_type_loop(ModuleInfo, ConsArgs, Insts).
 
 %---------------------------------------------------------------------------%
 
-:- pred propagate_ctor_subtypes_into_arg_insts(module_info::in, mer_type::in,
-    cons_id::in, list(mer_inst)::in, list(mer_inst)::out) is det.
+:- pred propagate_ho_inst_info_into_arg_insts(module_info::in, mer_type::in,
+    du_ctor::in, list(mer_inst)::in, list(mer_inst)::out) is det.
 
-propagate_ctor_subtypes_into_arg_insts(ModuleInfo, Type, ConsId, !ArgInsts) :-
-    % XXX DU_CTOR
-    % We should insist that our ancestors pass us a du_ctor,
-    % not a cons_id, since for all cons_ids *other* than cons, this predicate
-    % has nothing to do.
+propagate_ho_inst_info_into_arg_insts(ModuleInfo, Type, DuCtor, !ArgInsts) :-
     ( if
-        ConsId = du_data_ctor(DuCtor),
         type_to_ctor(Type, TypeCtor),
         get_cons_defn(ModuleInfo, TypeCtor, DuCtor, ConsDefn),
         ConsDefn = hlds_cons_defn(_, _, _, _,
@@ -930,20 +926,20 @@ propagate_ctor_subtypes_into_arg_insts(ModuleInfo, Type, ConsId, !ArgInsts) :-
         % XXX Handle existentially quantified constructors.
         MaybeExistConstraints = no_exist_constraints
     then
-        propagate_ctor_subtypes_into_arg_insts_2(ConsArgs, !ArgInsts)
+        propagate_ho_inst_info_into_arg_insts_loop(ConsArgs, !ArgInsts)
     else
         true
     ).
 
-:- pred propagate_ctor_subtypes_into_arg_insts_2(list(constructor_arg)::in,
+:- pred propagate_ho_inst_info_into_arg_insts_loop(list(constructor_arg)::in,
     list(mer_inst)::in, list(mer_inst)::out) is det.
 
-propagate_ctor_subtypes_into_arg_insts_2([], [], []).
-propagate_ctor_subtypes_into_arg_insts_2([], [_ | _], _) :-
+propagate_ho_inst_info_into_arg_insts_loop([], [], []).
+propagate_ho_inst_info_into_arg_insts_loop([], [_ | _], _) :-
     unexpected($pred, "length mismatch").
-propagate_ctor_subtypes_into_arg_insts_2([_ | _], [], _) :-
+propagate_ho_inst_info_into_arg_insts_loop([_ | _], [], _) :-
     unexpected($pred, "length mismatch").
-propagate_ctor_subtypes_into_arg_insts_2([ConsArg | ConsArgs],
+propagate_ho_inst_info_into_arg_insts_loop([ConsArg | ConsArgs],
         [Inst0 | Insts0], [Inst | Insts]) :-
     ( if
         ConsArg ^ arg_type = higher_order_type(_, _, TypeHOInstInfo, _),
@@ -960,7 +956,7 @@ propagate_ctor_subtypes_into_arg_insts_2([ConsArg | ConsArgs],
     else
         Inst = Inst0
     ),
-    propagate_ctor_subtypes_into_arg_insts_2(ConsArgs, Insts0, Insts).
+    propagate_ho_inst_info_into_arg_insts_loop(ConsArgs, Insts0, Insts).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
