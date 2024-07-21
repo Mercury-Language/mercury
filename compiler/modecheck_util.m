@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,6 +62,14 @@
 :- pred handle_extra_goals(hlds_goal_expr::in, extra_goals::in,
     hlds_goal_info::in, list(prog_var)::in, list(prog_var)::in,
     instmap::in, hlds_goal_expr::out, mode_info::in, mode_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+
+    % Create a unification between the two given variables.
+    % The goal's mode and determinism information are not filled in.
+    %
+:- pred create_var_var_unification(prog_var::in, prog_var::in,
+    mer_type::in, mode_info::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -209,8 +217,9 @@
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_goal.
-:- import_module check_hlds.modecheck_unify.
+:- import_module check_hlds.polymorphism_goal.
 :- import_module check_hlds.type_util.
+:- import_module hlds.make_goal.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
@@ -344,6 +353,49 @@ handle_extra_goals_contexts([Goal0 | Goals0], Context, [Goal | Goals]) :-
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     handle_extra_goals_contexts(Goals0, Context, Goals).
+
+%-----------------------------------------------------------------------------%
+
+create_var_var_unification(Var0, Var, Type, ModeInfo, Goal) :-
+    Goal = hlds_goal(GoalExpr, GoalInfo),
+    mode_info_get_context(ModeInfo, Context),
+    mode_info_get_mode_context(ModeInfo, ModeContext),
+    mode_context_to_unify_context(ModeInfo, ModeContext, UnifyContext),
+    UnifyContext = unify_context(MainContext, SubContexts),
+
+    create_pure_atomic_complicated_unification(Var0, rhs_var(Var), Context,
+        MainContext, SubContexts, hlds_goal(GoalExpr0, GoalInfo0)),
+
+    % Compute the goal_info nonlocal vars for the newly created goal
+    % (excluding the type_info vars -- they are added below).
+    % N.B. This may overestimate the set of non-locals,
+    % but that shouldn't cause any problems.
+
+    set_of_var.list_to_set([Var0, Var], NonLocals),
+    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
+    goal_info_set_context(Context, GoalInfo1, GoalInfo2),
+
+    % Look up the map(tvar, type_info_locn) in the proc_info,
+    % since it is needed by polymorphism.unification_typeinfos.
+
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    mode_info_get_pred_id(ModeInfo, PredId),
+    mode_info_get_proc_id(ModeInfo, ProcId),
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+        _PredInfo, ProcInfo),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
+
+    % Call polymorphism.unification_typeinfos to add the appropriate
+    % type-info and type-class-info variables to the nonlocals
+    % and to the unification.
+
+    ( if GoalExpr0 = unify(X, Y, Mode, Unification0, FinalUnifyContext) then
+        unification_typeinfos_rtti_varmaps(Type, RttiVarMaps,
+            Unification0, Unification, GoalInfo2, GoalInfo),
+        GoalExpr = unify(X, Y, Mode, Unification, FinalUnifyContext)
+    else
+        unexpected($pred, "unexpected GoalExpr0")
+    ).
 
 %-----------------------------------------------------------------------------%
 
