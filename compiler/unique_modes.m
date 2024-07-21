@@ -59,16 +59,16 @@
 :- pred unique_modes_check_goal(hlds_goal::in, hlds_goal::out,
     mode_info::in, mode_info::out) is det.
 
+    % Prepare for checking a disjunct in a disjunction.
+    %
+:- pred unique_modes_prepare_for_disjunct(hlds_goal::in, determinism::in,
+    set_of_progvar::in, mode_info::in, mode_info::out) is det.
+
     % Make all nondet-live variables whose current inst
     % is `unique' become `mostly_unique'.
     %
 :- pred make_all_nondet_live_vars_mostly_uniq(mode_info::in, mode_info::out)
     is det.
-
-    % Prepare for checking a disjunct in a disjunction.
-    %
-:- pred prepare_for_disjunct(hlds_goal::in, determinism::in,
-    set_of_progvar::in, mode_info::in, mode_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -108,6 +108,8 @@ unique_modes_check_module(ProgressStream, !ModuleInfo, Specs) :-
     modecheck_all_preds_in_module(ProgressStream, check_unique_modes,
         may_change_called_proc, !ModuleInfo, _SafeToContinue, Specs).
 
+%---------------------------------------------------------------------------%
+
 unique_modes_check_goal(Goal0, Goal, !ModeInfo) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     Context = goal_info_get_context(GoalInfo0),
@@ -116,24 +118,9 @@ unique_modes_check_goal(Goal0, Goal, !ModeInfo) :-
     else
         mode_info_set_context(Context, !ModeInfo)
     ),
-    ( if goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) then
-        mode_info_get_in_dupl_for_switch(!.ModeInfo, InDuplForSwitch),
-        mode_info_set_in_dupl_for_switch(in_dupl_for_switch, !ModeInfo),
-        unique_modes_check_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo),
-        mode_info_set_in_dupl_for_switch(InDuplForSwitch, !ModeInfo)
-    else
-        unique_modes_check_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo)
-    ).
-
-:- pred unique_modes_check_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
-    hlds_goal::out, mode_info::in, mode_info::out) is det.
-:- pragma inline(pred(unique_modes_check_goal_2/5)).
-
-unique_modes_check_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     % Grab the original bag of nondet-live vars.
     mode_info_get_nondet_live_vars(!.ModeInfo, NondetLiveVars0),
-
     % If the goal is not nondet, then nothing is nondet-live, so reset the bag
     % of nondet-live vars to be empty.
     Detism = goal_info_get_determinism(GoalInfo0),
@@ -143,112 +130,25 @@ unique_modes_check_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo) :-
         mode_info_set_nondet_live_vars(bag.init, !ModeInfo)
     ),
 
-    unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo),
+    ( if goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) then
+        mode_info_get_in_dupl_for_switch(!.ModeInfo, InDuplForSwitch),
+        mode_info_set_in_dupl_for_switch(in_dupl_for_switch, !ModeInfo),
+        unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr,
+            !ModeInfo),
+        mode_info_set_in_dupl_for_switch(InDuplForSwitch, !ModeInfo)
+    else
+        unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo)
+    ),
+
     % Restore the original bag of nondet-live vars.
     mode_info_set_nondet_live_vars(NondetLiveVars0, !ModeInfo),
-
     % Grab the final instmap, compute the change in insts over this goal,
     % and save that instmap_delta in the goal_info.
     compute_goal_instmap_delta(InstMap0, GoalExpr, GoalInfo0, GoalInfo,
         !ModeInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-make_all_nondet_live_vars_mostly_uniq(ModeInfo0, ModeInfo) :-
-    mode_info_get_instmap(ModeInfo0, FullInstMap0),
-    ( if instmap_is_reachable(FullInstMap0) then
-        instmap_vars_list(FullInstMap0, AllVars),
-        select_nondet_live_vars(AllVars, ModeInfo0, NondetLiveVars),
-        make_var_list_mostly_uniq(NondetLiveVars, ModeInfo0, ModeInfo)
-    else
-        ModeInfo = ModeInfo0
-    ).
-
-:- pred select_live_vars(list(prog_var)::in, mode_info::in,
-    list(prog_var)::out) is det.
-
-select_live_vars([], _, []).
-select_live_vars([Var|Vars], ModeInfo, LiveVars) :-
-    ( if mode_info_var_is_live(ModeInfo, Var, is_live) then
-        select_live_vars(Vars, ModeInfo, LiveVars1),
-        LiveVars = [Var | LiveVars1]
-    else
-        select_live_vars(Vars, ModeInfo, LiveVars)
-    ).
-
-:- pred select_nondet_live_vars(list(prog_var)::in, mode_info::in,
-    list(prog_var)::out) is det.
-
-select_nondet_live_vars([], _, []).
-select_nondet_live_vars([Var|Vars], ModeInfo, NondetLiveVars) :-
-    ( if mode_info_var_is_nondet_live(ModeInfo, Var, is_live) then
-        select_nondet_live_vars(Vars, ModeInfo, NondetLiveVars1),
-        NondetLiveVars = [Var | NondetLiveVars1]
-    else
-        select_nondet_live_vars(Vars, ModeInfo, NondetLiveVars)
-    ).
-
-    % Given a list of variables, a delta instmap, and a mode_info, select all
-    % the variables whose inst changed in the delta instmap (other than
-    % changes which just add information, e.g. `ground -> bound(42)'.)
-    %
-:- pred select_changed_inst_vars(list(prog_var)::in, instmap_delta::in,
-    mode_info::in, list(prog_var)::out) is det.
-
-select_changed_inst_vars([], _DeltaInstMap, _ModeInfo, []).
-select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
-    mode_info_get_module_info(ModeInfo, ModuleInfo),
-    mode_info_get_instmap(ModeInfo, InstMap0),
-    instmap_lookup_var(InstMap0, Var, Inst0),
-    mode_info_get_var_table(ModeInfo, VarTable),
-    lookup_var_type(VarTable, Var, Type),
-    ( if
-        instmap_delta_is_reachable(DeltaInstMap),
-        instmap_delta_search_var(DeltaInstMap, Var, Inst),
-        not inst_matches_final(ModuleInfo, Type, Inst, Inst0)
-    then
-        select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo, ChangedVars1),
-        ChangedVars = [Var | ChangedVars1]
-    else
-        select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo, ChangedVars)
-    ).
-
-:- pred make_var_list_mostly_uniq(list(prog_var)::in,
-    mode_info::in, mode_info::out) is det.
-
-make_var_list_mostly_uniq([], !ModeInfo).
-make_var_list_mostly_uniq([Var | Vars], !ModeInfo) :-
-    make_var_mostly_uniq(Var, !ModeInfo),
-    make_var_list_mostly_uniq(Vars, !ModeInfo).
-
-:- pred make_var_mostly_uniq(prog_var::in,
-    mode_info::in, mode_info::out) is det.
-
-make_var_mostly_uniq(Var, !ModeInfo) :-
-    mode_info_get_instmap(!.ModeInfo, InstMap0),
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-    ( if
-        % Only variables which are `unique' need to be changed.
-        instmap_is_reachable(InstMap0),
-        instmap_vars_list(InstMap0, Vars),
-        list.member(Var, Vars),
-        instmap_lookup_var(InstMap0, Var, Inst0),
-        inst_expand(ModuleInfo0, Inst0, Inst1),
-        ( Inst1 = ground(unique, _)
-        ; Inst1 = bound(unique, _, _)
-        ; Inst1 = any(unique, _)
-        )
-    then
-        mode_info_get_var_table(!.ModeInfo, VarTable),
-        lookup_var_type(VarTable, Var, Type),
-        make_mostly_uniq_inst(Type, Inst0, Inst, ModuleInfo0, ModuleInfo),
-        mode_info_set_module_info(ModuleInfo, !ModeInfo),
-        instmap_set_var(Var, Inst, InstMap0, InstMap),
-        mode_info_set_instmap(InstMap, !ModeInfo)
-    else
-        true
-    ).
-
-%---------------------------------------------------------------------------%
+%---------------------%
 
 :- pred unique_modes_check_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
     hlds_goal_expr::out, mode_info::in, mode_info::out) is det.
@@ -563,33 +463,33 @@ unique_modes_check_goal_conj(ConjType, Goals0, GoalExpr, !ModeInfo) :-
     ;
         Goals0 = [_ | _],
         mode_info_add_goals_live_vars(ConjType, Goals0, !ModeInfo),
-        unique_modes_check_conj(ConjType, Goals0, Goals, !ModeInfo)
+        unique_modes_flatten_and_check_conj(ConjType, Goals0, Goals, !ModeInfo)
     ),
     GoalExpr = conj(ConjType, Goals),
     mode_checkpoint(exit, "conj", !ModeInfo).
 
-:- pred unique_modes_check_conj(conj_type::in,
+:- pred unique_modes_flatten_and_check_conj(conj_type::in,
     list(hlds_goal)::in, list(hlds_goal)::out, mode_info::in, mode_info::out)
     is det.
 
     % Just process each conjunct in turn. Note that we don't do any
     % reordering of conjuncts here, although we do flatten conjunctions.
     %
-unique_modes_check_conj(_ConjType, [], [], !ModeInfo).
-unique_modes_check_conj(ConjType, [Goal0 | Goals0], Goals, !ModeInfo) :-
+unique_modes_flatten_and_check_conj(_ConjType, [], [], !ModeInfo).
+unique_modes_flatten_and_check_conj(ConjType, [Goal0 | Goals0], Goals,
+        !ModeInfo) :-
     ( if Goal0 = hlds_goal(conj(ConjType, ConjGoals), _) then
         list.append(ConjGoals, Goals0, Goals1),
-        unique_modes_check_conj(ConjType, Goals1, Goals, !ModeInfo)
+        unique_modes_flatten_and_check_conj(ConjType, Goals1, Goals, !ModeInfo)
     else
-        unique_modes_check_conj_2(ConjType, Goal0, Goals0, Goals, !ModeInfo)
+        unique_modes_check_conj(ConjType, Goal0, Goals0, Goals, !ModeInfo)
     ).
 
-:- pred unique_modes_check_conj_2(conj_type::in,
+:- pred unique_modes_check_conj(conj_type::in,
     hlds_goal::in, list(hlds_goal)::in, list(hlds_goal)::out,
     mode_info::in, mode_info::out) is det.
 
-unique_modes_check_conj_2(ConjType, Goal0, Goals0, [Goal | Goals],
-        !ModeInfo) :-
+unique_modes_check_conj(ConjType, Goal0, Goals0, [Goal | Goals], !ModeInfo) :-
     NonLocals = goal_get_nonlocals(Goal0),
     mode_info_remove_live_vars(NonLocals, !ModeInfo),
     unique_modes_check_goal(Goal0, Goal, !ModeInfo),
@@ -601,7 +501,7 @@ unique_modes_check_conj_2(ConjType, Goal0, Goals0, [Goal | Goals],
         mode_info_remove_goals_live_vars(Goals0, !ModeInfo),
         Goals = []
     else
-        unique_modes_check_conj(ConjType, Goals0, Goals, !ModeInfo)
+        unique_modes_flatten_and_check_conj(ConjType, Goals0, Goals, !ModeInfo)
     ).
 
     % To unique-modecheck a parallel conjunction, we find the variables
@@ -703,7 +603,7 @@ unique_modes_check_goal_disj(Goals0, GoalInfo0, GoalExpr, !ModeInfo) :-
 
         % Now just modecheck each disjunct in turn, and then
         % merge the resulting instmaps.
-        unique_modes_check_disj(Determinism, NonLocals, Goals0, Goals,
+        unique_modes_check_disjuncts(Determinism, NonLocals, Goals0, Goals,
             InstMaps, !ModeInfo),
         make_arm_instmaps_for_goals(Goals, InstMaps, ArmInstMaps),
         instmap_merge(NonLocals, ArmInstMaps, merge_disj, !ModeInfo)
@@ -717,24 +617,26 @@ unique_modes_check_goal_disj(Goals0, GoalInfo0, GoalExpr, !ModeInfo) :-
     % original instmap before processing the next one. Collect up a list
     % of the resulting instmaps.
     %
-:- pred unique_modes_check_disj(determinism::in, set_of_progvar::in,
+:- pred unique_modes_check_disjuncts(determinism::in, set_of_progvar::in,
     list(hlds_goal)::in, list(hlds_goal)::out, list(instmap)::out,
     mode_info::in, mode_info::out) is det.
 
-unique_modes_check_disj(_, _, [], [], [], !ModeInfo).
-unique_modes_check_disj(DisjDetism, DisjNonLocals,
+unique_modes_check_disjuncts(_, _, [], [], [], !ModeInfo).
+unique_modes_check_disjuncts(DisjDetism, DisjNonLocals,
         [Goal0 | Goals0], [Goal | Goals], [InstMap | InstMaps], !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     % If you modify this code, you may also need to modify
     % unique_modecheck_clause_disj or the code that calls it.
-    prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals, !ModeInfo),
+    unique_modes_prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals,
+        !ModeInfo),
     unique_modes_check_goal(Goal0, Goal, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMap),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    unique_modes_check_disj(DisjDetism, DisjNonLocals, Goals0, Goals, InstMaps,
-        !ModeInfo).
+    unique_modes_check_disjuncts(DisjDetism, DisjNonLocals, Goals0, Goals,
+        InstMaps, !ModeInfo).
 
-prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals, !ModeInfo) :-
+unique_modes_prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals,
+        !ModeInfo) :-
     determinism_components(DisjDetism, _, DisjMaxSolns),
     Goal0 = hlds_goal(_, GoalInfo0),
     Determinism = goal_info_get_determinism(GoalInfo0),
@@ -778,18 +680,18 @@ unique_modes_check_goal_switch(Var, CanFail, Cases0, GoalInfo0, GoalExpr,
     ;
         Cases0 = [_ | _],
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        unique_modes_check_case_list(Cases0, Var, Cases, InstMaps, !ModeInfo),
+        unique_modes_check_cases(Cases0, Var, Cases, InstMaps, !ModeInfo),
         make_arm_instmaps_for_cases(Cases, InstMaps, ArmInstMaps),
         instmap_merge(NonLocals, ArmInstMaps, merge_disj, !ModeInfo)
     ),
     GoalExpr = switch(Var, CanFail, Cases),
     mode_checkpoint(exit, "switch", !ModeInfo).
 
-:- pred unique_modes_check_case_list(list(case)::in, prog_var::in,
+:- pred unique_modes_check_cases(list(case)::in, prog_var::in,
     list(case)::out, list(instmap)::out, mode_info::in, mode_info::out) is det.
 
-unique_modes_check_case_list([], _Var, [], [], !ModeInfo).
-unique_modes_check_case_list([Case0 | Cases0], Var, [Case | Cases],
+unique_modes_check_cases([], _Var, [], [], !ModeInfo).
+unique_modes_check_cases([Case0 | Cases0], Var, [Case | Cases],
         [InstMap | InstMaps], !ModeInfo) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
@@ -816,7 +718,7 @@ unique_modes_check_case_list([Case0 | Cases0], Var, [Case | Cases],
     Case = case(MainConsId, OtherConsIds, Goal),
 
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    unique_modes_check_case_list(Cases0, Var, Cases, InstMaps, !ModeInfo).
+    unique_modes_check_cases(Cases0, Var, Cases, InstMaps, !ModeInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -866,7 +768,7 @@ unique_modes_check_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0,
     CondDeltaInstMap0 = goal_info_get_instmap_delta(CondInfo0),
     select_changed_inst_vars(CondLiveVars, CondDeltaInstMap0, !.ModeInfo,
         ChangedVars),
-    make_var_list_mostly_uniq(ChangedVars, !ModeInfo),
+    make_vars_mostly_uniq(ChangedVars, !ModeInfo),
     mode_info_remove_live_vars(ElseVars, !ModeInfo),
 
     mode_info_add_live_vars(ThenVars, !ModeInfo),
@@ -911,7 +813,7 @@ unique_modes_check_goal_negation(SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
     set_of_var.to_sorted_list(NonLocals, NonLocalsList),
     select_live_vars(NonLocalsList, !.ModeInfo, LiveNonLocals),
-    make_var_list_mostly_uniq(LiveNonLocals, !ModeInfo),
+    make_vars_mostly_uniq(LiveNonLocals, !ModeInfo),
 
     % But nothing is forward-live for the negated goal, since if the goal
     % succeeds then execution will immediately backtrack. So we need to set
@@ -1047,7 +949,7 @@ unique_modes_check_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
             true
         ),
         Goals0 = [MainGoal0 | OrElseGoals0],
-        unique_modes_check_disj(Determinism, NonLocals, Goals0, Goals,
+        unique_modes_check_disjuncts(Determinism, NonLocals, Goals0, Goals,
             InstMaps, !ModeInfo),
         (
             Goals = [MainGoal | OrElseGoals]
@@ -1062,6 +964,109 @@ unique_modes_check_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
         MainGoal, OrElseGoals, OrElseInners),
     GoalExpr = shorthand(ShortHand),
     mode_checkpoint(exit, "atomic_goal", !ModeInfo).
+
+%---------------------------------------------------------------------------%
+
+:- pred make_vars_mostly_uniq(list(prog_var)::in,
+    mode_info::in, mode_info::out) is det.
+
+make_vars_mostly_uniq([], !ModeInfo).
+make_vars_mostly_uniq([Var | Vars], !ModeInfo) :-
+    make_var_mostly_uniq(Var, !ModeInfo),
+    make_vars_mostly_uniq(Vars, !ModeInfo).
+
+:- pred make_var_mostly_uniq(prog_var::in,
+    mode_info::in, mode_info::out) is det.
+
+make_var_mostly_uniq(Var, !ModeInfo) :-
+    mode_info_get_instmap(!.ModeInfo, InstMap0),
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+    ( if
+        % Only variables which are `unique' need to be changed.
+        instmap_is_reachable(InstMap0),
+        instmap_vars_list(InstMap0, Vars),
+        list.member(Var, Vars),
+        instmap_lookup_var(InstMap0, Var, Inst0),
+        inst_expand(ModuleInfo0, Inst0, Inst1),
+        ( Inst1 = ground(unique, _)
+        ; Inst1 = bound(unique, _, _)
+        ; Inst1 = any(unique, _)
+        )
+    then
+        mode_info_get_var_table(!.ModeInfo, VarTable),
+        lookup_var_type(VarTable, Var, Type),
+        make_mostly_uniq_inst(Type, Inst0, Inst, ModuleInfo0, ModuleInfo),
+        mode_info_set_module_info(ModuleInfo, !ModeInfo),
+        instmap_set_var(Var, Inst, InstMap0, InstMap),
+        mode_info_set_instmap(InstMap, !ModeInfo)
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred select_live_vars(list(prog_var)::in, mode_info::in,
+    list(prog_var)::out) is det.
+
+select_live_vars([], _, []).
+select_live_vars([Var|Vars], ModeInfo, LiveVars) :-
+    ( if mode_info_var_is_live(ModeInfo, Var, is_live) then
+        select_live_vars(Vars, ModeInfo, LiveVars1),
+        LiveVars = [Var | LiveVars1]
+    else
+        select_live_vars(Vars, ModeInfo, LiveVars)
+    ).
+
+%---------------------%
+
+    % Given a list of variables, a delta instmap, and a mode_info, select all
+    % the variables whose inst changed in the delta instmap (other than
+    % changes which just add information, e.g. `ground -> bound(42)'.)
+    %
+:- pred select_changed_inst_vars(list(prog_var)::in, instmap_delta::in,
+    mode_info::in, list(prog_var)::out) is det.
+
+select_changed_inst_vars([], _DeltaInstMap, _ModeInfo, []).
+select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    mode_info_get_instmap(ModeInfo, InstMap0),
+    instmap_lookup_var(InstMap0, Var, Inst0),
+    mode_info_get_var_table(ModeInfo, VarTable),
+    lookup_var_type(VarTable, Var, Type),
+    ( if
+        instmap_delta_is_reachable(DeltaInstMap),
+        instmap_delta_search_var(DeltaInstMap, Var, Inst),
+        not inst_matches_final(ModuleInfo, Type, Inst, Inst0)
+    then
+        select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo, ChangedVars1),
+        ChangedVars = [Var | ChangedVars1]
+    else
+        select_changed_inst_vars(Vars, DeltaInstMap, ModeInfo, ChangedVars)
+    ).
+
+%---------------------%
+
+make_all_nondet_live_vars_mostly_uniq(ModeInfo0, ModeInfo) :-
+    mode_info_get_instmap(ModeInfo0, FullInstMap0),
+    ( if instmap_is_reachable(FullInstMap0) then
+        instmap_vars_list(FullInstMap0, AllVars),
+        select_nondet_live_vars(AllVars, ModeInfo0, NondetLiveVars),
+        make_vars_mostly_uniq(NondetLiveVars, ModeInfo0, ModeInfo)
+    else
+        ModeInfo = ModeInfo0
+    ).
+
+:- pred select_nondet_live_vars(list(prog_var)::in, mode_info::in,
+    list(prog_var)::out) is det.
+
+select_nondet_live_vars([], _, []).
+select_nondet_live_vars([Var|Vars], ModeInfo, NondetLiveVars) :-
+    ( if mode_info_var_is_nondet_live(ModeInfo, Var, is_live) then
+        select_nondet_live_vars(Vars, ModeInfo, NondetLiveVars1),
+        NondetLiveVars = [Var | NondetLiveVars1]
+    else
+        select_nondet_live_vars(Vars, ModeInfo, NondetLiveVars)
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.unique_modes.
