@@ -164,27 +164,21 @@ modecheck_goal(Goal0, Goal, !ModeInfo) :-
     else
         mode_info_set_context(Context, !ModeInfo)
     ),
+    % Modecheck the goal, and then record the changes in the instantiation
+    % of the goal's vars in the delta_instmap in the goal_info.
+    mode_info_get_instmap(!.ModeInfo, InstMap0),
     ( if goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) then
         mode_info_get_in_dupl_for_switch(!.ModeInfo, InDuplForSwitch),
         mode_info_set_in_dupl_for_switch(in_dupl_for_switch, !ModeInfo),
-        modecheck_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo),
+        modecheck_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo),
         mode_info_set_in_dupl_for_switch(InDuplForSwitch, !ModeInfo)
     else
-        modecheck_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo)
-    ).
-
-:- pred modecheck_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
-    hlds_goal::out, mode_info::in, mode_info::out) is det.
-:- pragma inline(pred(modecheck_goal_2/5)).
-
-modecheck_goal_2(GoalExpr0, GoalInfo0, Goal, !ModeInfo) :-
-    % Modecheck the goal, and then store the changes in instantiation
-    % of the vars in the delta_instmap in the goal's goal_info.
-    mode_info_get_instmap(!.ModeInfo, InstMap0),
-    modecheck_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo),
+        modecheck_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo)
+    ),
     compute_goal_instmap_delta(InstMap0, GoalExpr, GoalInfo0, GoalInfo,
         !ModeInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
+
 
 modecheck_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     % XXX The predicates we call here should have their definitions
@@ -255,17 +249,13 @@ modecheck_goal_unify(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
 modecheck_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     GoalExpr0 = plain_call(PredId, ProcId0, ArgVars0, _Builtin,
         MaybeCallUnifyContext, PredSymName),
-
     mode_checkpoint_sn(enter, "call", PredSymName, !ModeInfo),
-
     mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
         !ModeInfo),
-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     MaybeKnownDeterminism = no,
     modecheck_call_pred(PredId, MaybeKnownDeterminism, ProcId0, ProcId,
         ArgVars0, ArgVars, GoalInfo0, ExtraGoals, !ModeInfo),
-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_pred_id(!.ModeInfo, CallerPredId),
     Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, ProcId),
@@ -273,7 +263,6 @@ modecheck_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
         PredSymName),
     handle_extra_goals(Call, ExtraGoals, GoalInfo0, ArgVars0, ArgVars,
         InstMap0, GoalExpr, !ModeInfo),
-
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint_sn(exit, "call", PredSymName, !ModeInfo).
 
