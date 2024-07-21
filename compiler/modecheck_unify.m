@@ -623,39 +623,10 @@ modecheck_unify_functor_std(X0, TypeOfX, ConsId0, IsExistConstruction,
     qualify_cons_id(ArgVars0, ConsId0, ConsId, InstConsId),
     InitInstOfY = bound(unique, inst_test_no_results,
         [bound_functor(InstConsId, InitInstsOfArgVars)]),
-    ( if
-        % The occur check: is the unification of the form X = f(..., X, ...)?
-        list.member(X, ArgVars0)
-    then
-        ( if inst_is_ground(ModuleInfo0, TypeOfX, InitInstOfX) then
-            % If X is ground, then we don't consider X = f(..., X, ...)
-            % to be a mode error, but it is a unification that can never
-            % succeed, and thus it is very unlikely to be what the programmer
-            % intended to write.
-            %
-            % We used to have the code
-            %   Warning = cannot_succeed_ground_occur_check(X, ConsId),
-            %   mode_info_warning(Warning, !ModeInfo)
-            % here. However, it diagnose occur check problems *only*
-            % if they took the form X = f(..., X, ...). This is because
-            % if the unintended occurrence of X on the right hand side
-            % has more than one function symbol above it, as in e.g.
-            % X = f(g(X)), then the compiler will transform it into
-            % superhomogeneous form as X = f(Y), Y = g(X), and the test
-            % list.member(X, ArgVars0) above will succeed for neither
-            % of those unifications.
-            %
-            % That code is now commented out because superhomogeneous.m
-            % now has code to a warning for occurs check violations that works
-            % regardless of the position of X inside the term that is
-            % unified with it.
-            modecheck_set_var_inst(X, not_reached, no, !ModeInfo),
-            GoalExpr = disj([])
-        else
-            % If X is not ground, then X = f(..., X, ...) is a mode error.
-            handle_var_functor_mode_error(X, InstConsId, ArgVars0,
-                InitInstOfX, InitInstsOfArgVars, [X], GoalExpr, !ModeInfo)
-        )
+    % The occur check: is the unification of the form X = f(..., X, ...)?
+    ( if list.member(X, ArgVars0) then
+        handle_occur_check_failure(X, TypeOfX, InitInstOfX, ArgVars0,
+            InitInstsOfArgVars, InstConsId, GoalExpr, !ModeInfo)
     else if
         % XXX We forbid the construction of partially instantiated
         % structures involving solver types. We would like to forbid all such
@@ -671,6 +642,7 @@ modecheck_unify_functor_std(X0, TypeOfX, ConsId0, IsExistConstruction,
             InstConsId, InitInstsOfArgVars, LiveArgs,
             UnifiedInst, Detism, ModuleInfo0, ModuleInfo1)
     then
+        % This is the standard path through this predicate.
         mode_info_set_module_info(ModuleInfo1, !ModeInfo),
         UnifyMode = unify_modes_li_lf_ri_rf(InitInstOfX, UnifiedInst,
             InitInstOfY, UnifiedInst),
@@ -991,6 +963,43 @@ make_complicated_sub_unify(Var0, Var, ExtraGoals0, !ModeInfo) :-
     ExtraGoals0 = extra_goals([], [ExtraGoal]).
 
 %---------------------%
+
+:- pred handle_occur_check_failure(prog_var::in, mer_type::in, mer_inst::in,
+    list(prog_var)::in, list(mer_inst)::in, cons_id::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out) is det.
+
+handle_occur_check_failure(X, TypeOfX, InitInstOfX, ArgVars0,
+        InitInstsOfArgVars, InstConsId, GoalExpr, !ModeInfo) :-
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+    ( if inst_is_ground(ModuleInfo0, TypeOfX, InitInstOfX) then
+        % If X is ground, then we don't consider X = f(..., X, ...)
+        % to be a mode error, but it is a unification that can never
+        % succeed, and thus it is very unlikely to be what the programmer
+        % intended to write.
+        %
+        % We used to have the code
+        %   Warning = cannot_succeed_ground_occur_check(X, ConsId),
+        %   mode_info_warning(Warning, !ModeInfo)
+        % here. However, it diagnose occur check problems *only*
+        % if they took the form X = f(..., X, ...). This is because
+        % if the unintended occurrence of X on the right hand side
+        % has more than one function symbol above it, as in e.g.
+        % X = f(g(X)), then the compiler will transform it into
+        % superhomogeneous form as X = f(Y), Y = g(X), and the test
+        % list.member(X, ArgVars0) above will succeed for neither
+        % of those unifications.
+        %
+        % That code is now commented out because superhomogeneous.m
+        % now has code to a warning for occurs check violations that works
+        % regardless of the position of X inside the term that is
+        % unified with it.
+        modecheck_set_var_inst(X, not_reached, no, !ModeInfo),
+        GoalExpr = disj([])
+    else
+        % If X is not ground, then X = f(..., X, ...) is a mode error.
+        handle_var_functor_mode_error(X, InstConsId, ArgVars0,
+            InitInstOfX, InitInstsOfArgVars, [X], GoalExpr, !ModeInfo)
+    ).
 
 :- pred handle_var_functor_mode_error(prog_var::in, cons_id::in,
     list(prog_var)::in, mer_inst::in, list(mer_inst)::in,
