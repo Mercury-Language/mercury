@@ -638,7 +638,7 @@ modecheck_unify_functor_std(X0, TypeOfX, ConsId0, IsExistConstruction,
         % with respect to solver types.
         not would_construct_partial_term_with_solver_type(ModuleInfo0,
             VarTable, ArgVars0, InitInstOfX, InitInstsOfArgVars),
-        abstractly_unify_inst_functor( TypeOfX, LiveX, real_unify, InitInstOfX,
+        abstractly_unify_inst_functor(TypeOfX, LiveX, real_unify, InitInstOfX,
             InstConsId, InitInstsOfArgVars, LiveArgs,
             UnifiedInst, Detism, ModuleInfo0, ModuleInfo1)
     then
