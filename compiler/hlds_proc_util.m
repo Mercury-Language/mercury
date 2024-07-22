@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023 The Mercury team.
+% Copyright (C) 2023-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -50,7 +50,8 @@
     % its declared determinism. If it has no declared determinism,
     % return proc_can_maybe_succeed.
     %
-:- pred proc_info_never_succeeds(proc_info::in, can_proc_succeed::out) is det.
+:- pred can_proc_info_ever_succeed(proc_info::in, can_proc_succeed::out)
+    is det.
 
 :- pred proc_info_arglives(module_info::in, proc_info::in,
     list(is_live)::out) is det.
@@ -175,7 +176,7 @@ proc_info_interface_determinism(ProcInfo, Determinism) :-
         MaybeDeterminism = yes(Determinism)
     ).
 
-proc_info_never_succeeds(ProcInfo, CanSucceed) :-
+can_proc_info_ever_succeed(ProcInfo, CanSucceed) :-
     proc_info_get_declared_determinism(ProcInfo, DeclaredDeterminism),
     (
         DeclaredDeterminism = no,

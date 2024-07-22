@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -65,6 +65,8 @@
     list(mer_mode)::in, list(mer_inst)::out) is det.
 :- pred mode_list_get_final_insts(module_info::in,
     list(mer_mode)::in, list(mer_inst)::out) is det.
+:- pred mode_list_get_initial_final_insts(module_info::in,
+    list(mer_mode)::in, list(mer_inst)::out, list(mer_inst)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -215,14 +217,23 @@ mode_get_final_inst(ModuleInfo, Mode) = Inst :-
     mode_get_insts(ModuleInfo, Mode, _, Inst).
 
 mode_list_get_initial_insts(_ModuleInfo, [], []).
-mode_list_get_initial_insts(ModuleInfo, [Mode | Modes], [Inst | Insts]) :-
-    mode_get_insts(ModuleInfo, Mode, Inst, _),
-    mode_list_get_initial_insts(ModuleInfo, Modes, Insts).
+mode_list_get_initial_insts(ModuleInfo, [Mode | Modes],
+        [InitInst | InitInsts]) :-
+    mode_get_insts(ModuleInfo, Mode, InitInst, _),
+    mode_list_get_initial_insts(ModuleInfo, Modes, InitInsts).
 
 mode_list_get_final_insts(_ModuleInfo, [], []).
-mode_list_get_final_insts(ModuleInfo, [Mode | Modes], [Inst | Insts]) :-
-    mode_get_insts(ModuleInfo, Mode, _, Inst),
-    mode_list_get_final_insts(ModuleInfo, Modes, Insts).
+mode_list_get_final_insts(ModuleInfo, [Mode | Modes],
+        [FinalInst | FinalInsts]) :-
+    mode_get_insts(ModuleInfo, Mode, _, FinalInst),
+    mode_list_get_final_insts(ModuleInfo, Modes, FinalInsts).
+
+mode_list_get_initial_final_insts(_ModuleInfo, [], [], []).
+mode_list_get_initial_final_insts(ModuleInfo, [Mode | Modes],
+        [InitInst | InitInsts], [FinalInst | FinalInsts]) :-
+    mode_get_insts(ModuleInfo, Mode, InitInst, FinalInst),
+    mode_list_get_initial_final_insts(ModuleInfo, Modes,
+        InitInsts, FinalInsts).
 
 %---------------------------------------------------------------------------%
 

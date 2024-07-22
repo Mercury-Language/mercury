@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2001, 2003-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -146,7 +146,7 @@ modecheck_call_pred(PredId, MaybeDetism, ProcId0, SelectedProcId,
             ProcArgModes0, ProcArgModes),
         mode_info_set_instvarset(InstVarSet, !ModeInfo),
         mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
-        modecheck_var_has_inst_list_no_exact_match(match_plain_call(PredId),
+        modecheck_vars_have_inst_list_no_exact_match(match_plain_call(PredId),
             ArgVars0, InitialInsts, ArgOffset, InstVarSub, !ModeInfo),
 
         modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0,
@@ -251,11 +251,11 @@ modecheck_find_matching_modes(PredId, ProcTable, ArgVars0, [ProcId | ProcIds],
     MatchWhat = match_plain_call(PredId),
     (
         ProcModeErrors = [],
-        modecheck_var_has_inst_list_no_exact_match(MatchWhat, ArgVars0,
+        modecheck_vars_have_inst_list_no_exact_match(MatchWhat, ArgVars0,
             InitialInsts, 0, InstVarSub, !ModeInfo)
     ;
         ProcModeErrors = [_ | _],
-        modecheck_var_has_inst_list_exact_match(MatchWhat, ArgVars0,
+        modecheck_vars_have_inst_list_exact_match(MatchWhat, ArgVars0,
             InitialInsts, 0, InstVarSub, !ModeInfo)
     ),
 
@@ -386,13 +386,13 @@ get_var_insts_and_lives(ModeInfo, [Var | Vars],
 modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0, ArgOffset,
         InstVarSub, ArgVars, ExtraGoals, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts0),
-    mode_list_get_final_insts(ModuleInfo, ProcArgModes, FinalInsts0),
+    mode_list_get_initial_final_insts(ModuleInfo, ProcArgModes,
+        InitialInsts0, FinalInsts0),
     inst_list_apply_substitution(InstVarSub, InitialInsts0, InitialInsts),
     inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
     modecheck_set_var_inst_list(ArgVars0, InitialInsts, FinalInsts,
         ArgOffset, ArgVars, ExtraGoals, !ModeInfo),
-    proc_info_never_succeeds(ProcInfo, CanSucceed),
+    can_proc_info_ever_succeed(ProcInfo, CanSucceed),
     (
         CanSucceed = proc_cannot_succeed,
         instmap.init_unreachable(Instmap),
@@ -577,7 +577,7 @@ modecheck_arg_list(MatchWhat, ArgOffset, Modes, ExtraGoals, Args0, Args,
     % and set their new final insts (introducing extra unifications for
     % implied modes, if necessary).
     mode_list_get_initial_insts(ModuleInfo0, Modes, InitialInsts),
-    modecheck_var_has_inst_list_no_exact_match(MatchWhat, Args0,
+    modecheck_vars_have_inst_list_no_exact_match(MatchWhat, Args0,
         InitialInsts, ArgOffset, InstVarSub, !ModeInfo),
     mode_list_get_final_insts(ModuleInfo0, Modes, FinalInsts0),
     inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
