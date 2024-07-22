@@ -107,6 +107,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
@@ -235,7 +236,9 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
             % pass hlds_abstract_type here is a special in-band signal
             % that the type is actually a builtin type.
             ( if compiler_generated_rtti_for_builtins(ModuleInfo) then
-                generate_unify_proc_body_builtin(SpecDefnInfo, X, Y,
+                TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
+                CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
+                generate_unify_proc_body_builtin(CtorCat, Context, X, Y,
                     Clause, !Info)
             else
                 unexpected($pred,
@@ -244,16 +247,21 @@ generate_unify_proc_body(SpecDefnInfo, X, Y, Clauses, !Info) :-
             Clauses = [Clause]
         ;
             TypeBody = hlds_eqv_type(EqvType),
-            EqvIsDummy = is_type_a_dummy(ModuleInfo, EqvType),
-            (
-                EqvIsDummy = is_dummy_type,
-                % Treat this type as if it were a dummy type itself.
-                generate_unify_proc_body_dummy(Context, X, Y,
-                    Clause, !Info)
-            ;
-                EqvIsDummy = is_not_dummy_type,
-                generate_unify_proc_body_eqv(Context, EqvType, X, Y,
-                    Clause, !Info)
+            ( if type_is_higher_order(EqvType) then
+                generate_unify_proc_body_builtin(ctor_cat_higher_order,
+                    Context, X, Y, Clause, !Info)
+            else
+                EqvIsDummy = is_type_a_dummy(ModuleInfo, EqvType),
+                (
+                    EqvIsDummy = is_dummy_type,
+                    % Treat this type as if it were a dummy type itself.
+                    generate_unify_proc_body_dummy(Context, X, Y,
+                        Clause, !Info)
+                ;
+                    EqvIsDummy = is_not_dummy_type,
+                    generate_unify_proc_body_eqv(Context, EqvType, X, Y,
+                        Clause, !Info)
+                )
             ),
             Clauses = [Clause]
         ;
@@ -383,14 +391,12 @@ generate_unify_proc_body_user(NonCanonical, X, Y, Context, Clause, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_unify_proc_body_builtin(spec_pred_defn_info::in,
-    prog_var::in, prog_var::in, clause::out,
+:- pred generate_unify_proc_body_builtin(type_ctor_category::in,
+    prog_context::in, prog_var::in, prog_var::in, clause::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_unify_proc_body_builtin(SpecDefnInfo, X, Y, Clause, !Info) :-
+generate_unify_proc_body_builtin(CtorCat, Context, X, Y, Clause, !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
-    TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
-    CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
     ArgVars = [X, Y],
 
     % can_generate_special_pred_clauses_for_type ensures the unexpected
@@ -448,7 +454,6 @@ generate_unify_proc_body_builtin(SpecDefnInfo, X, Y, Clause, !Info) :-
         ),
         unexpected($pred, "bad ctor category")
     ),
-    Context = SpecDefnInfo ^ spdi_context,
     build_simple_call(ModuleInfo, mercury_private_builtin_module,
         Name, ArgVars, Context, UnifyGoal),
     quantify_clause_body(all_modes, ArgVars, UnifyGoal, Context, Clause,
@@ -984,7 +989,9 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
             % pass hlds_abstract_type here is a special in-band signal
             % that the type is actually a builtin type.
             ( if compiler_generated_rtti_for_builtins(ModuleInfo) then
-                generate_compare_proc_body_builtin(SpecDefnInfo,
+                TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
+                CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
+                generate_compare_proc_body_builtin(CtorCat, Context,
                     Res, X, Y, Clause, !Info)
             else
                 unexpected($pred,
@@ -992,16 +999,21 @@ generate_compare_proc_body(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
             )
         ;
             TypeBody = hlds_eqv_type(EqvType),
-            EqvIsDummy = is_type_a_dummy(ModuleInfo, EqvType),
-            (
-                EqvIsDummy = is_dummy_type,
-                % Treat this type as if it were a dummy type itself.
-                generate_compare_proc_body_dummy(Context, Res, X, Y,
-                    Clause, !Info)
-            ;
-                EqvIsDummy = is_not_dummy_type,
-                generate_compare_proc_body_eqv(Context, EqvType,
-                    Res, X, Y, Clause, !Info)
+            ( if type_is_higher_order(EqvType) then
+                generate_compare_proc_body_builtin(ctor_cat_higher_order,
+                    Context, Res, X, Y, Clause, !Info)
+            else
+                EqvIsDummy = is_type_a_dummy(ModuleInfo, EqvType),
+                (
+                    EqvIsDummy = is_dummy_type,
+                    % Treat this type as if it were a dummy type itself.
+                    generate_compare_proc_body_dummy(Context, Res, X, Y,
+                        Clause, !Info)
+                ;
+                    EqvIsDummy = is_not_dummy_type,
+                    generate_compare_proc_body_eqv(Context, EqvType,
+                        Res, X, Y, Clause, !Info)
+                )
             )
         ;
             TypeBody = hlds_foreign_type(_),
@@ -1117,14 +1129,13 @@ generate_compare_proc_body_user(Context, NonCanonical, Res, X, Y,
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_compare_proc_body_builtin(spec_pred_defn_info::in,
-    prog_var::in, prog_var::in, prog_var::in, clause::out,
+:- pred generate_compare_proc_body_builtin(type_ctor_category::in,
+    prog_context::in, prog_var::in, prog_var::in, prog_var::in, clause::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_proc_body_builtin(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
+generate_compare_proc_body_builtin(CtorCat, Context, Res, X, Y, Clause,
+        !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
-    TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
-    CtorCat = classify_type_ctor(ModuleInfo, TypeCtor),
     ArgVars = [Res, X, Y],
 
     % can_generate_special_pred_clauses_for_type ensures the unexpected
@@ -1182,7 +1193,6 @@ generate_compare_proc_body_builtin(SpecDefnInfo, Res, X, Y, Clause, !Info) :-
         ),
         unexpected($pred, "bad ctor category")
     ),
-    Context = SpecDefnInfo ^ spdi_context,
     build_simple_call(ModuleInfo, mercury_private_builtin_module,
         Name, ArgVars, Context, CompareGoal),
     quantify_clause_body(all_modes, ArgVars, CompareGoal, Context, Clause,
