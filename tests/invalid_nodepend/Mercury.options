@@ -10,6 +10,7 @@ MCFLAGS-errors_1                += --no-halt-at-invalid-interface
 MCFLAGS-errors_2                += --no-halt-at-invalid-interface
 MCFLAGS-errors_2                += --verbose-error-messages
 MCFLAGS-errors_3                += --no-halt-at-invalid-interface
+MCFLAGS-exist_cons_repeated_tvar += --no-halt-at-invalid-interface
 MCFLAGS-external                += --no-halt-at-invalid-interface
 MCFLAGS-func_errors             += --no-halt-at-invalid-interface
 MCFLAGS-funcs_as_preds          += --no-halt-at-invalid-interface

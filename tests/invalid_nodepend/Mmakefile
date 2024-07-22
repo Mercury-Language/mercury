@@ -45,6 +45,7 @@ PROGS = \
 	errors_1 \
 	errors_2 \
 	errors_3 \
+	exist_cons_repeated_tvar \
 	external \
 	foreign_enum_import \
 	func_errors \

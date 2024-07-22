@@ -86,6 +86,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_scan.
 
+:- import_module bag.
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module require.
@@ -398,9 +399,29 @@ parse_maybe_exist_quant_constructor(ModuleName, VarSet, Ordinal, Term,
             MaybeExistQVars),
         (
             MaybeExistQVars = ok1(ExistQVars),
-            list.map(term.coerce_var, ExistQVars, ExistQTVars),
-            parse_constructor(ModuleName, VarSet, Ordinal, ExistQTVars,
-                SubTerm, MaybeConstructor)
+            ExistQVarsBag = bag.from_list(ExistQVars),
+            DuplicateExistQVars = bag.to_list_only_duplicates(ExistQVarsBag),
+            (
+                DuplicateExistQVars = [],
+                list.map(term.coerce_var, ExistQVars, ExistQTVars),
+                parse_constructor(ModuleName, VarSet, Ordinal, ExistQTVars,
+                    SubTerm, MaybeConstructor)
+            ;
+                DuplicateExistQVars = [_ | _],
+                list.map(varset.lookup_name(VarSet), DuplicateExistQVars,
+                    DuplicateExistQVarNames),
+                Pieces = [
+                    words("Error: a list of type variables being"),
+                    words("quantified may include each variable just once,"),
+                    words("but here,")] ++
+                    fixed_list_to_color_pieces(color_subject, "and", [],
+                        DuplicateExistQVarNames) ++
+                    [words(choose_number(DuplicateExistQVarNames, "is", "are"))] ++
+                    color_as_incorrect([words("repeated")]) ++ [suffix("."), nl],
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    get_term_context(VarsTerm), Pieces),
+                MaybeConstructor = error1([Spec])
+            )
         ;
             MaybeExistQVars = error1(Specs),
             MaybeConstructor = error1(Specs)
