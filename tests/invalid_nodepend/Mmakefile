@@ -71,6 +71,7 @@ PROGS = \
 	pragma_source_file \
 	predmode \
 	prog_io_erroneous \
+	quant_pred_repeated_tvar \
 	require_tailrec_invalid \
 	reserved \
 	reserved_type_name \

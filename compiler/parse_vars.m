@@ -33,14 +33,6 @@
 :- pred parse_possibly_repeated_vars(term(T)::in, varset(T)::in,
     cord(format_piece)::in, maybe1(list(var(T)))::out) is det.
 
-    % parse_vars(Term, VarSet, ContextPieces, MaybeVars):
-    %
-    % The same as parse_possibly_repeated_vars, but generate an error
-    % if a variable is in the list more than once.
-    %
-:- pred parse_vars(term(T)::in, varset(T)::in,
-    cord(format_piece)::in, maybe1(list(var(T)))::out) is det.
-
 :- type plain_state_vars(T)
     --->    plain_state_vars(
                 list(var(T)),   % plain variables
@@ -101,43 +93,6 @@ parse_possibly_repeated_vars(Term, VarSet, ContextPieces, MaybeVars) :-
             MaybeTailVars = ok1(TailVars)
         then
             MaybeVars = ok1([HeadVar | TailVars])
-        else
-            Specs = get_any_errors1(MaybeHeadVar) ++
-                get_any_errors1(MaybeTailVars),
-            MaybeVars = error1(Specs)
-        )
-    else
-        generate_unexpected_term_message(ContextPieces, VarSet,
-            "list of variables", Term, Spec),
-        MaybeVars = error1([Spec])
-    ).
-
-parse_vars(Term, VarSet, ContextPieces, MaybeVars) :-
-    ( if Term = functor(atom("[]"), [], _) then
-        MaybeVars = ok1([])
-    else if Term = functor(atom("[|]"), [HeadTerm, TailTerm], _) then
-        (
-            HeadTerm = variable(HeadVar0, _),
-            MaybeHeadVar = ok1(HeadVar0)
-        ;
-            HeadTerm = functor(_, _, _),
-            generate_unexpected_term_message(ContextPieces, VarSet,
-                "variable", HeadTerm, HeadSpec),
-            MaybeHeadVar = error1([HeadSpec])
-        ),
-        parse_vars(TailTerm, VarSet, ContextPieces, MaybeTailVars),
-        ( if
-            MaybeHeadVar = ok1(HeadVar),
-            MaybeTailVars = ok1(TailVars)
-        then
-            ( if list.member(HeadVar, TailVars) then
-                generate_repeated_var_msg(ContextPieces, VarSet,
-                    HeadTerm, Spec),
-                MaybeVars = error1([Spec])
-            else
-                Vars = [HeadVar | TailVars],
-                MaybeVars = ok1(Vars)
-            )
         else
             Specs = get_any_errors1(MaybeHeadVar) ++
                 get_any_errors1(MaybeTailVars),
