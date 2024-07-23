@@ -315,7 +315,7 @@ mlds_output_src_import(Opts, Stream, _Indent, Import, !IO) :-
     Import = mlds_import(ImportType, ModuleName0),
     (
         ImportType = user_visible_interface,
-        HeaderExt = ext_cur(ext_cur_mh)
+        HeaderExt = ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh)
     ;
         ImportType = compiler_visible_interface,
         HeaderExt = ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih)

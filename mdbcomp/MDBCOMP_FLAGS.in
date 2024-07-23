@@ -26,6 +26,7 @@
 --c-include-directory ../boehm_gc/include
 --c-include-directory ../runtime
 --c-include-directory ../library
+--c-include-directory ../library/Mercury/mhs
 --c-include-directory ../library/Mercury/mihs
 --csharp-flag -keyfile:../mercury.snk
 @CSHARP_DELAYSIGN_FLAG@

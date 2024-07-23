@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2017-2018 The Mercury Team.
+% Copyright (C) 2014-2024 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -888,7 +888,8 @@ make_foreign_import_header_code(Globals, FIMSpec, Include, !IO) :-
     FIMSpec = fim_spec(Lang, ModuleName),
     (
         Lang = lang_c,
-        module_name_to_search_file_name(Globals, $pred, ext_cur(ext_cur_mh),
+        module_name_to_search_file_name(Globals, $pred,
+            ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
             ModuleName, HeaderFileName),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(lang_c, foreign_decl_is_exported,

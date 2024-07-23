@@ -22,10 +22,13 @@
 --c-include-directory ../boehm_gc/include
 --c-include-directory ../runtime
 --c-include-directory ../library
+--c-include-directory ../library/Mercury/mhs
 --c-include-directory ../library/Mercury/mihs
 --c-include-directory ../browser
+--c-include-directory ../browser/Mercury/mhs
 --c-include-directory ../browser/Mercury/mihs
 --c-include-directory ../ssdb
+--c-include-directory ../ssdb/Mercury/mhs
 --c-include-directory ../ssdb/Mercury/mihs
 --c-include-directory ../trace
 --csharp-flag -keyfile:../mercury.snk

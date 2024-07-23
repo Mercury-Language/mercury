@@ -7,13 +7,17 @@
 --c-include-directory @WORKSPACE@/boehm_gc/include
 --c-include-directory @WORKSPACE@/runtime
 --c-include-directory @WORKSPACE@/library
+--c-include-directory @WORKSPACE@/library/Mercury/mhs
 --c-include-directory @WORKSPACE@/library/Mercury/mihs
 --c-include-directory @WORKSPACE@/mdbcomp
+--c-include-directory @WORKSPACE@/mdbcomp/Mercury/mhs
 --c-include-directory @WORKSPACE@/mdbcomp/Mercury/mihs
 --c-include-directory @WORKSPACE@/browser
+--c-include-directory @WORKSPACE@/browser/Mercury/mhs
 --c-include-directory @WORKSPACE@/browser/Mercury/mihs
 --c-include-directory @WORKSPACE@/trace
 --c-include-directory @WORKSPACE@/ssdb
+--c-include-directory @WORKSPACE@/ssdb/Mercury/mhs
 --c-include-directory @WORKSPACE@/ssdb/Mercury/mihs
 --linkage shared
 --csharp-flags -lib:@WORKSPACE@/library

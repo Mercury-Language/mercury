@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1996-2008, 2010-2011 The University of Melbourne.
-# Copyright (C) 2013, 2015, 2017, 2020, 2023 The Mercury team.
+# Copyright (C) 2013, 2015, 2017, 2020, 2023-2024 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -582,6 +582,7 @@ date3s_subdir=$(SUBDIR)date3s/
 optdates_subdir=$(SUBDIR)optdates/
 trans_opt_dates_subdir=$(SUBDIR)trans_opt_dates/
 useds_subdir=$(SUBDIR)useds/
+mhs_subdir=$(SUBDIR)mhs/
 mihs_subdir=$(SUBDIR)mihs/
 cs_subdir=$(SUBDIR)cs/
 dlls_subdir=$(SUBDIR)dlls/
@@ -619,6 +620,7 @@ date3s_subdir=
 optdates_subdir=
 trans_opt_dates_subdir=
 useds_subdir=
+mhs_subdir=
 mihs_subdir=
 cs_subdir=
 dlls_subdir=

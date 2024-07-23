@@ -205,6 +205,12 @@
             % differ, and they also use a different algorithm for converting
             % module names to file names.
 
+    ;       ext_cur_ngs_max_cur(ext_cur_ngs_max_cur)
+            % All extensions whose files can get put either into the current
+            % directory, or into a non-grade-specific subdirectory, with
+            % search being specified restricting the options to just the first
+            % alternative.
+
     ;       ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur)
             % All extensions whose files can get put either into the current
             % directory, or into a non-grade-specific subdirectory, or into
@@ -226,17 +232,13 @@
 % - a prefix, and the name of an option giving the rest of the extension.
 
 :- type ext_cur
-            % Compiler-generated C header file for a module that is intended
-            % for inclusion by user-written C source files.
-    --->    ext_cur_mh                          % ".mh"
-
             % These extensions are used not to create filenames, but to
             % create mmake target names. Some do refer to real files,
             % but they can (and some do) refer to these using extension
             % strings that can contain references to make variables.
             % Some of the other generated make targets are phony targets,
             % meaning that they never correspond to real files at all.
-    ;       ext_cur_pmt_all_int3s               % ".all_int3s"
+    --->    ext_cur_pmt_all_int3s               % ".all_int3s"
     ;       ext_cur_pmt_all_ints                % ".all_int3"
     ;       ext_cur_pmt_all_opts                % ".all_opts"
     ;       ext_cur_pmt_all_trans_opts          % ".all_trans_opts"
@@ -417,6 +419,11 @@
             % from the ones applicable to C and C# source files.
     --->    ext_cur_ngs_gs_java_java            % ".java"
     ;       ext_cur_ngs_gs_java_class.          % ".class"
+
+:- type ext_cur_ngs_max_cur
+            % Compiler-generated C header file for a module that is intended
+            % for inclusion by user-written C source files.
+    --->    ext_cur_ngs_max_cur_mh.             % ".mh"
 
 :- type ext_cur_ngs_gs_max_cur
             % Compiler-generated header file for a module that is intended
@@ -710,6 +717,10 @@ extension_to_string(Globals, Ext) = ExtStr :-
         ext_cur_ngs_gs_java_extension_dir(ExtCurNgsGsJava,
             ExtStr, _SubDirName)
     ;
+        Ext = ext_cur_ngs_max_cur(ExtCurNgsGsMaxCur),
+        ext_cur_ngs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
+            ExtStr, _SubDirName)
+    ;
         Ext = ext_cur_ngs_gs_max_cur(ExtCurNgsGsMaxCur),
         ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
             ExtStr, _SubDirName)
@@ -724,8 +735,7 @@ extension_to_string(Globals, Ext) = ExtStr :-
 :- pred ext_cur_extension(ext_cur::in, string::out) is det.
 
 ext_cur_extension(Ext, Str) :-
-    ( Ext = ext_cur_mh,                       Str = ".mh"
-    ; Ext = ext_cur_pmt_all_int3s,            Str = ".all_int3s"
+    ( Ext = ext_cur_pmt_all_int3s,            Str = ".all_int3s"
     ; Ext = ext_cur_pmt_all_ints,             Str = ".all_ints"
     ; Ext = ext_cur_pmt_all_opts,             Str = ".all_opts"
     ; Ext = ext_cur_pmt_all_trans_opts,       Str = ".all_trans_opts"
@@ -880,6 +890,12 @@ ext_cur_ngs_gs_java_extension_dir(Ext, Str, Dir) :-
     ; Ext = ext_cur_ngs_gs_java_class,  Str = ".class", Dir = "classes"
     ).
 
+:- pred ext_cur_ngs_max_cur_extension_dir(ext_cur_ngs_max_cur::in,
+    string::out, string::out) is det.
+
+ext_cur_ngs_max_cur_extension_dir(Ext, Str, Dir) :-
+    Ext = ext_cur_ngs_max_cur_mh, Str = ".mh", Dir = "mhs".
+
 :- pred ext_cur_ngs_gs_max_cur_extension_dir(ext_cur_ngs_gs_max_cur::in,
     string::out, string::out) is det.
 
@@ -912,6 +928,7 @@ module_name_to_base_file_name_no_ext(Ext, ModuleName) = BaseNameNoExt :-
         ; Ext = ext_cur_ngs(_)
         ; Ext = ext_cur_gs(_)
         ; Ext = ext_cur_ngs_gs(_)
+        ; Ext = ext_cur_ngs_max_cur(_)
         ; Ext = ext_cur_ngs_gs_max_cur(_)
         ; Ext = ext_cur_ngs_gs_max_ngs(_)
         ),
@@ -1163,6 +1180,30 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
         % paths that do not include it should call get_java_dir_path.
         get_java_dir_path(Globals, ExtCurNgsGsJava, DirNames0),
         DirNames = DirNames0 ++ ["jmercury"]
+    ;
+        Ext = ext_cur_ngs_max_cur(ExtCurNgsMaxCur),
+        (
+            Search = for_search,
+            % If we are searching for (rather than writing) a `.mh' file,
+            % use the plain file name. This is so that searches for files
+            % in installed libraries will work. `--c-include-directory' is set
+            % so that searches for files in the current directory will work.
+            DirNames = []
+        ;
+            Search = not_for_search,
+            globals.get_subdir_setting(Globals, SubdirSetting),
+            (
+                SubdirSetting = use_cur_dir,
+                DirNames = []
+            ;
+                ( SubdirSetting = use_cur_ngs_subdir
+                ; SubdirSetting = use_cur_ngs_gs_subdir
+                ),
+                ext_cur_ngs_max_cur_extension_dir(ExtCurNgsMaxCur,
+                    _ExtStr, SubDirName),
+                DirNames = make_ngs_dir_names(SubDirName)
+            )
+        )
     ;
         Ext = ext_cur_ngs_gs_max_cur(ExtCurNgsGsMaxCur),
         (

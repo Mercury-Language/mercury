@@ -1,7 +1,8 @@
 #-----------------------------------------------------------------------------#
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2007, 2010 The University of Melbourne.
+# Copyright (C) 1995-2010 The University of Melbourne.
+# Copyright (C) 2013, 2015-2016, 2022-2024 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -39,7 +40,7 @@ main_target: $(MAIN_TARGET)
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 
 MCFLAGS += --use-subdirs
-ALL_MGNUCFLAGS += -I. -I$(mihs_subdir).
+ALL_MGNUCFLAGS += -I. -I$(mhs_subdir). -I$(mihs_subdir).
 
 endif
 

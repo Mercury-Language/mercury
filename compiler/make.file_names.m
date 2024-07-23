@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023 The Mercury team.
+% Copyright (C) 2023-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -227,7 +227,7 @@ target_type_to_target_extension(Target, TargetExt) :-
             ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih))
     ;
         Target = module_target_c_header(header_mh),
-        TargetExt = extension(ext_cur(ext_cur_mh))
+        TargetExt = extension(ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh))
     ;
         Target = module_target_c_code,
         TargetExt = extension(ext_cur_ngs_gs(ext_cur_ngs_gs_target_c))

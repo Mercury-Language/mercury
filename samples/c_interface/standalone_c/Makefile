@@ -98,7 +98,8 @@ CFLAGS_FOR_GRADE = $(shell $(MMC) $(GRADEOPT) --output-grade-defines)
 # tell it where to search for C header files that are part of any Mercury
 # libraries we are using (including the standard library).
 #
-CFLAGS_FOR_INCLUDES = $(shell $(MMC) $(GRADEOPT) --output-c-include-dir-flags)
+CFLAGS_FOR_INCLUDES = $(shell $(MMC) $(GRADEOPT) --use-subdirs \
+	--output-c-include-dir-flags)
 
 # Gather together all the flags to pass to the C compiler.
 #

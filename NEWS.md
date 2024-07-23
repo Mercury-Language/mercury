@@ -58,6 +58,12 @@ Changes that may break compatibility
 
 * We have dropped support for the x86 (32-bit) version of Cygwin.
 
+* The `--use-subdirs` and `--use-grade-subdirs` options now cause `.mh` files
+  to be placed in a `Mercury/mhs` subdirectory instead of the current
+  directory. This reduces clutter in the current directory, but may require
+  additional options to be passed to the C compiler in order for it to find
+  those header files.
+
 * We have changed the meaning of `mmc --make name.cs`.
 
   The `mmc --make` target `name.cs` now means "build the .cs file
@@ -66,16 +72,16 @@ Changes that may break compatibility
 
 * Some (undocumented) mmake variables in compiler-generated `.dv` files
   have been renamed:
-  
-    program.cs          -> program.all_cs    
-    program.os          -> program.all_os    
-    program.pic_os      -> program.all_pic_os    
-    program.javas       -> program.all_javas    
-    program.css         -> program.all_css    
 
-    program.all_mhs     -> program.mhs_to_clean    
-    program.all_mihs    -> program.mihs_to_clean    
-    program.all_int0s   -> program.int3s_to_clean    
+    program.cs          -> program.all_cs
+    program.os          -> program.all_os
+    program.pic_os      -> program.all_pic_os
+    program.javas       -> program.all_javas
+    program.css         -> program.all_css
+
+    program.all_mhs     -> program.mhs_to_clean
+    program.all_mihs    -> program.mihs_to_clean
+    program.all_int0s   -> program.int3s_to_clean
 
 Changes to the Mercury standard library
 ---------------------------------------

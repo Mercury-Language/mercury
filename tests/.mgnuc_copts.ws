@@ -2,11 +2,15 @@
 -I@WORKSPACE@/boehm_gc/include
 -I@WORKSPACE@/runtime
 -I@WORKSPACE@/library
+-I@WORKSPACE@/library/Mercury/mhs
 -I@WORKSPACE@/library/Mercury/mihs
 -I@WORKSPACE@/mdbcomp
+-I@WORKSPACE@/mdbcomp/Mercury/mhs
 -I@WORKSPACE@/mdbcomp/Mercury/mihs
 -I@WORKSPACE@/browser
+-I@WORKSPACE@/browser/Mercury/mhs
 -I@WORKSPACE@/browser/Mercury/mihs
 -I@WORKSPACE@/trace
 -I@WORKSPACE@/ssdb
+-I@WORKSPACE@/ssdb/Mercury/mhs
 -I@WORKSPACE@/ssdb/Mercury/mihs

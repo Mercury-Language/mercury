@@ -2,8 +2,11 @@
 -I../boehm_gc/include
 -I../runtime
 -I../library
+-I../library/Mercury/mhs
 -I../library/Mercury/mihs
 -I../mdbcomp
+-I../mdbcomp/Mercury/mhs
 -I../mdbcomp/Mercury/mihs
 -I../browser
+-I../browser/Mercury/mhs
 -I../browser/Mercury/mihs

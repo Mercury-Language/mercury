@@ -713,7 +713,8 @@ construct_intermod_rules(Globals, ModuleName, LongDeps, AllDeps,
     % directly or indirectly.
     (
         Intermod = yes,
-        make_module_file_names_with_ext(Globals, ext_cur(ext_cur_mh),
+        make_module_file_names_with_ext(Globals,
+            ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
             set.to_sorted_list(AllDeps), AllDepsFileNames, !Cache, !IO),
         MmakeRuleMhDeps = mmake_simple_rule("machine_dependent_header_deps",
             mmake_rule_is_not_phony,
@@ -840,7 +841,8 @@ construct_c_header_rules(Globals, ModuleName, AllDeps,
     % `:- pragma foreign_import_module' declarations. In some grades the header
     % file won't actually be built (e.g. LLDS grades for modules not containing
     % `:- pragma export' declarations), but this rule won't do any harm.
-    make_module_file_name(Globals, $pred, ext_cur(ext_cur_mh),
+    make_module_file_name(Globals, $pred,
+        ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
         ModuleName, MhHeaderFileName, !Cache, !IO),
     make_module_file_name(Globals, $pred,
         ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih),
@@ -1025,7 +1027,7 @@ construct_foreign_import_rules(Globals, AugCompUnit, IntermodDeps,
             % .pic_o file. We need to include dependencies for the latter
             % otherwise invoking mmake with a <module>.pic_o target will break.
             ForeignImportTargets = one_or_more(ObjFileName, [PicObjFileName]),
-            ForeignImportExt = ext_cur(ext_cur_mh),
+            ForeignImportExt = ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
             gather_foreign_import_deps(Globals, ForeignImportExt,
                 ForeignImportTargets, ForeignImportedModuleNames,
                 MmakeRuleForeignImports, !Cache, !IO),
@@ -1704,7 +1706,8 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         ),
         % We use `.mh' files for both low and high level C backends.
         MhSources =
-            [string.format("$(%s.mods:%%=%%.mh)", [s(ModuleMakeVarName)])]
+            [string.format("$(%s.mods:%%=$(mhs_subdir)%%.mh)",
+                [s(ModuleMakeVarName)])]
     ;
         % We don't generate C header files for non-C backends.
         ( Target = target_csharp
@@ -1735,11 +1738,11 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % it contains header files for all the modules, as for `<module>.all_mihs'
     % above.
     MmakeVarMhsToClean = mmake_var_defn(ModuleMakeVarName ++ ".mhs_to_clean",
-        string.format("$(%s.mods:%%=%%.mh)",
+        string.format("$(%s.mods:%%=$(mhs_subdir)%%.mh)",
             [s(ModuleMakeVarName)])),
     % The deprecated old version of .mhs_to_clean.
     MmakeVarAllMhs = mmake_var_defn(ModuleMakeVarName ++ ".all_mhs",
-        string.format("$(%s.mods:%%=%%.mh)",
+        string.format("$(%s.mods:%%=$(mhs_subdir)%%.mh)",
             [s(ModuleMakeVarName)])),
 
     MmakeVarInts = mmake_var_defn_list(ModuleMakeVarName ++ ".ints",
@@ -2303,7 +2306,7 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
         "# The following is needed to support the `--use-subdirs' option.",
         "# We try using `$(LN_S)', but if that fails, then we just use",
         "# `$(INSTALL)'.",
-        "for ext in int int2 int3" ++
+        "for ext in mh int int2 int3" ++
             SpaceInt0Str ++ MaybeSpaceOptStr ++ MaybeSpaceTransOptStr ++
             MaybeSpaceDepStr ++ "; do \\",
         "\tdir=""$(INSTALL_INT_DIR)/Mercury/$${ext}s""; \\",

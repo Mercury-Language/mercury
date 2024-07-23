@@ -2936,12 +2936,15 @@ handle_directory_options(OpMode, !Globals) :-
             )
         )
     then
+        ToMhsSubdir = (func(Dir) = Dir/"Mercury"/"mhs"),
         globals.lookup_accumulating_option(!.Globals, c_include_directory,
             CIncludeDirs1),
+        MhsSubdir = ToMhsSubdir(dir.this_directory),
         MihsSubdir = ToMihsSubdir(dir.this_directory),
+        SearchLibMhsSubdirs = list.map(ToMhsSubdir, SearchLibFilesDirs),
         SearchLibMihsSubdirs = list.map(ToMihsSubdir, SearchLibFilesDirs),
-        SubdirCIncludeDirs = [dir.this_directory, MihsSubdir |
-            SearchLibMihsSubdirs ++ CIncludeDirs1],
+        SubdirCIncludeDirs = [dir.this_directory, MhsSubdir, MihsSubdir |
+            SearchLibMhsSubdirs ++ SearchLibMihsSubdirs ++ CIncludeDirs1],
         globals.set_option(c_include_directory,
             accumulating(SubdirCIncludeDirs), !Globals)
     else

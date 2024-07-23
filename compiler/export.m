@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -645,10 +645,11 @@ produce_header_file(ProgressStream, ModuleInfo, ForeignExportDecls,
         ModuleName, !IO) :-
     % We always produce a .mh file because with intermodule optimization
     % enabled, the .o file depends on all the .mh files of the imported
-    % modules. so we need to produce a .mh file even if it contains nothing.
+    % modules. So we need to produce a .mh file even if it contains nothing.
     module_info_get_globals(ModuleInfo, Globals),
-    module_name_to_file_name_create_dirs(Globals, $pred, ext_cur(ext_cur_mh),
-        ModuleName, FileName, !IO),
+    module_name_to_file_name_create_dirs(Globals, $pred,
+        ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh), ModuleName, FileName,
+        !IO),
     MaybeThisFileName = yes(FileName),
     TmpFileName = FileName ++ ".tmp",
     io.open_output(TmpFileName, Result, !IO),
