@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016 The Mercury team.
+% Copyright (C) 2016, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -41,7 +41,6 @@
     ;       wnhii_func_return_arg
     ;       wnhii_type_qual             % NYI
     ;       wnhii_supertype
-    ;       wnhii_eqv_type_defn_body
     ;       wnhii_solver_type_defn
     ;       wnhii_class_constraint
     ;       wnhii_mutable_decl          % NYI
@@ -926,9 +925,6 @@ no_ho_inst_allowed_desc(WNHII, Place, WhyNot) :-
         ;
             WNHII = wnhii_supertype,
             Place = "a supertype of a subtype"
-        ;
-            WNHII = wnhii_eqv_type_defn_body,
-            Place = "the definition of an equivalence type"
         ;
             WNHII = wnhii_solver_type_defn,
             Place = "the definition of a solver type"

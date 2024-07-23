@@ -879,8 +879,8 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeNameAndParams),
     % XXX Should pass more correct BodyContextPieces.
     BodyContextPieces = cord.init,
-    parse_type(no_allow_ho_inst_info(wnhii_eqv_type_defn_body), VarSet,
-        BodyContextPieces, BodyTerm, MaybeType),
+    parse_type(allow_ho_inst_info, VarSet, BodyContextPieces, BodyTerm,
+        MaybeType),
     ( if
         SolverSpecs = [],
         MaybeNameAndParams = ok2(Name, ParamTVars),

@@ -69,6 +69,7 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.inst_util.
+:- import_module check_hlds.modecheck_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_inst_mode.
@@ -608,7 +609,13 @@ abstractly_unify_inst_functor_2(Type, Live, Real, InstA,
         Inst = bound(Uniq, inst_test_no_results,
             [bound_functor(ConsIdB, ArgInsts)])
     ;
-        InstA = bound(UniqA, _InstResultsA, BoundFunctorsA),
+        InstA = bound(UniqA, _InstResultsA, BoundFunctorsA0),
+        ( if type_to_ctor(Type, TypeCtor) then
+            propagate_ho_inst_info_into_bound_insts(!.ModuleInfo, TypeCtor,
+                BoundFunctorsA0, BoundFunctorsA)
+        else
+            BoundFunctorsA = BoundFunctorsA0
+        ),
         (
             Live = is_live,
             abstractly_unify_bound_functor_list_lives(Type, Real,
@@ -917,6 +924,36 @@ arg_insts_match_ho_inst_info_in_type_loop(ModuleInfo,
 
 %---------------------------------------------------------------------------%
 
+:- pred propagate_ho_inst_info_into_bound_insts(module_info::in,
+    type_ctor::in, list(bound_functor)::in, list(bound_functor)::out) is det.
+
+propagate_ho_inst_info_into_bound_insts(_, _, [], []).
+propagate_ho_inst_info_into_bound_insts(ModuleInfo, TypeCtor,
+        [BoundFunctor0 | BoundFunctors0], [BoundFunctor | BoundFunctors]) :-
+    BoundFunctor0 = bound_functor(ConsId, ArgInsts0),
+    ( if
+        ConsId = du_data_ctor(DuCtor),
+        get_cons_defn(ModuleInfo, TypeCtor, DuCtor, ConsDefn),
+        ConsDefn = hlds_cons_defn(_, _, _, _,
+            MaybeExistConstraints, ConsArgTypes, _),
+        % Some builtin types have constructors with arguments that are not
+        % reflected in the constructor definition, and which return an
+        % empty list.
+        ConsArgTypes = [_ | _],
+        % XXX Handle existentially quantified constructors.
+        MaybeExistConstraints = no_exist_constraints
+    then
+        propagate_ho_inst_info_into_arg_insts_loop(ConsArgTypes,
+            ArgInsts0, ArgInsts),
+        BoundFunctor = bound_functor(ConsId, ArgInsts)
+    else
+        BoundFunctor = BoundFunctor0
+    ),
+    propagate_ho_inst_info_into_bound_insts(ModuleInfo, TypeCtor,
+        BoundFunctors0, BoundFunctors).
+
+%---------------------------------------------------------------------------%
+
 :- pred propagate_ho_inst_info_into_arg_insts(module_info::in, mer_type::in,
     du_ctor::in, list(mer_inst)::in, list(mer_inst)::out) is det.
 
@@ -925,15 +962,15 @@ propagate_ho_inst_info_into_arg_insts(ModuleInfo, Type, DuCtor, !ArgInsts) :-
         type_to_ctor(Type, TypeCtor),
         get_cons_defn(ModuleInfo, TypeCtor, DuCtor, ConsDefn),
         ConsDefn = hlds_cons_defn(_, _, _, _,
-            MaybeExistConstraints, ConsArgs, _),
+            MaybeExistConstraints, ConsArgTypes, _),
         % Some builtin types have constructors with arguments that are not
         % reflected in the constructor definition, and which return an
         % empty list.
-        ConsArgs = [_ | _],
+        ConsArgTypes = [_ | _],
         % XXX Handle existentially quantified constructors.
         MaybeExistConstraints = no_exist_constraints
     then
-        propagate_ho_inst_info_into_arg_insts_loop(ConsArgs, !ArgInsts)
+        propagate_ho_inst_info_into_arg_insts_loop(ConsArgTypes, !ArgInsts)
     else
         true
     ).
@@ -946,24 +983,10 @@ propagate_ho_inst_info_into_arg_insts_loop([], [_ | _], _) :-
     unexpected($pred, "length mismatch").
 propagate_ho_inst_info_into_arg_insts_loop([_ | _], [], _) :-
     unexpected($pred, "length mismatch").
-propagate_ho_inst_info_into_arg_insts_loop([ConsArg | ConsArgs],
+propagate_ho_inst_info_into_arg_insts_loop([ConsArgType | ConsArgTypes],
         [Inst0 | Insts0], [Inst | Insts]) :-
-    ( if
-        ConsArg ^ arg_type = higher_order_type(_, _, TypeHOInstInfo, _),
-        TypeHOInstInfo = higher_order(_),
-        (
-            Inst0 = ground(Uniq, _),
-            Inst1 = ground(Uniq, TypeHOInstInfo)
-        ;
-            Inst0 = any(Uniq, _),
-            Inst1 = any(Uniq, TypeHOInstInfo)
-        )
-    then
-        Inst = Inst1
-    else
-        Inst = Inst0
-    ),
-    propagate_ho_inst_info_into_arg_insts_loop(ConsArgs, Insts0, Insts).
+    propagate_type_ho_inst_info_into_inst(ConsArgType ^ arg_type, Inst0, Inst),
+    propagate_ho_inst_info_into_arg_insts_loop(ConsArgTypes, Insts0, Insts).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

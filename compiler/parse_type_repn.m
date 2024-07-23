@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2017-2021 The Mercury team.
+% Copyright (C) 2017-2021, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -188,10 +188,10 @@ parse_no_arg_type_repn(RepnStr, RepnArgs, RepnContext,
 parse_type_repn_eqv_to(VarSet, RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
     (
         RepnArgs = [RepnArg],
-        HOInstInfo = no_allow_ho_inst_info(wnhii_eqv_type_defn_body),
         ContextPieces = cord.from_list([words("In the second argument of"),
             quote("type_representation"), words("item:")]),
-        parse_type(HOInstInfo, VarSet, ContextPieces, RepnArg, MaybeEqvType),
+        parse_type(allow_ho_inst_info, VarSet, ContextPieces, RepnArg,
+            MaybeEqvType),
         (
             MaybeEqvType = ok1(EqvType),
             MaybeRepn = ok1(tcrepn_is_eqv_to(EqvType))

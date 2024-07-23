@@ -206,6 +206,11 @@
     list(mer_inst)::in, list(mer_inst)::out) is det.
 
 %---------------------------------------------------------------------------%
+
+:- pred propagate_type_ho_inst_info_into_inst(mer_type::in,
+    mer_inst::in, mer_inst::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -537,9 +542,11 @@ modecheck_var_has_inst_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
     % Apply the substitution computed while matching earlier arguments.
     inst_apply_substitution(!.Subst, Inst0, Inst),
     mode_info_get_instmap(!.ModeInfo, InstMap),
-    instmap_lookup_var(InstMap, Var, VarInst),
+    instmap_lookup_var(InstMap, Var, VarInst0),
     mode_info_get_var_table(!.ModeInfo, VarTable),
     lookup_var_type(VarTable, Var, Type),
+    propagate_type_ho_inst_info_into_inst_update_instmap(InstMap, Var, Type,
+        VarInst0, VarInst, !ModeInfo),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     ( if
         inst_matches_initial_no_implied_modes_sub(Type, VarInst, Inst,
@@ -568,9 +575,11 @@ modecheck_var_has_inst_no_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
     % Apply the substitution computed while matching earlier arguments.
     inst_apply_substitution(!.Subst, Inst0, Inst),
     mode_info_get_instmap(!.ModeInfo, InstMap),
-    instmap_lookup_var(InstMap, Var, VarInst),
+    instmap_lookup_var(InstMap, Var, VarInst0),
     mode_info_get_var_table(!.ModeInfo, VarTable),
     lookup_var_type(VarTable, Var, Type),
+    propagate_type_ho_inst_info_into_inst_update_instmap(InstMap, Var, Type,
+        VarInst0, VarInst, !ModeInfo),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     ( if
         inst_matches_initial_sub(Type, VarInst, Inst, ModuleInfo0, ModuleInfo,
@@ -1196,6 +1205,39 @@ normalise_insts(ModuleInfo, [Type | Types],
         [Inst0 | Insts0], [Inst | Insts]) :-
     normalise_inst(ModuleInfo, Type, Inst0, Inst),
     normalise_insts(ModuleInfo, Types, Insts0, Insts).
+
+%---------------------------------------------------------------------------%
+
+:- pred propagate_type_ho_inst_info_into_inst_update_instmap(instmap::in,
+    prog_var::in, mer_type::in, mer_inst::in, mer_inst::out,
+    mode_info::in, mode_info::out) is det.
+
+propagate_type_ho_inst_info_into_inst_update_instmap(InstMap0, Var, Type,
+        VarInst0, VarInst, !ModeInfo) :-
+    propagate_type_ho_inst_info_into_inst(Type, VarInst0, VarInst),
+    ( if private_builtin.pointer_equal(VarInst0, VarInst) then
+        true
+    else
+        instmap_set_var(Var, VarInst, InstMap0, InstMap),
+        mode_info_set_instmap(InstMap, !ModeInfo)
+    ).
+
+propagate_type_ho_inst_info_into_inst(Type, Inst0, Inst) :-
+    ( if
+        Type = higher_order_type(_, _, TypeHOInstInfo, _),
+        TypeHOInstInfo = higher_order(_),
+        (
+            Inst0 = ground(Uniq, _),
+            Inst1 = ground(Uniq, TypeHOInstInfo)
+        ;
+            Inst0 = any(Uniq, _),
+            Inst1 = any(Uniq, TypeHOInstInfo)
+        )
+    then
+        Inst = Inst1
+    else
+        Inst = Inst0
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.modecheck_util.
