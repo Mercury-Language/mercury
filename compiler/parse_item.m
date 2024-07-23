@@ -132,7 +132,6 @@
 :- import_module recompilation.version.
 
 :- import_module assoc_list.
-:- import_module bag.
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
@@ -492,10 +491,6 @@ parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
 :- type purity_attr
     --->    purity_attr(purity).
 
-:- type quantifier_type
-    --->    quant_type_exist
-    ;       quant_type_univ.
-
 :- type quant_constr_attr
     --->    qca_quant_vars(quantifier_type, term)
     ;       qca_constraint(quantifier_type, term).
@@ -527,59 +522,6 @@ parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
             words("of a list of variables."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
-    ).
-
-:- pred parse_and_check_quant_vars(cord(format_piece)::in, varset::in,
-    quantifier_type::in, term::in, maybe1(list(var))::out) is det.
-
-parse_and_check_quant_vars(InitContextPieces, VarSet, QuantType, VarsTerm,
-        MaybeVars) :-
-    % Both versions of VarContextPieces should be statically allocated terms.
-    (
-        QuantType = quant_type_exist,
-        VarsContextPieces = [lower_case_next_if_not_first,
-            words("In first argument of"), quote("some"), suffix(":"), nl]
-    ;
-        QuantType = quant_type_univ,
-        VarsContextPieces = [lower_case_next_if_not_first,
-            words("In first argument of"), quote("all"), suffix(":"), nl]
-    ),
-    ContextPieces = InitContextPieces ++ cord.from_list(VarsContextPieces),
-    parse_possibly_repeated_vars(VarsTerm, VarSet, ContextPieces, MaybeVars0),
-    (
-        MaybeVars0 = ok1(QuantVars),
-        QuantVarsBag = bag.from_list(QuantVars),
-        DuplicateQuantVars = bag.to_list_only_duplicates(QuantVarsBag),
-        (
-            DuplicateQuantVars = [],
-            MaybeVars = MaybeVars0
-        ;
-            DuplicateQuantVars = [_ | _],
-            list.map(varset.lookup_name(VarSet), DuplicateQuantVars,
-                DuplicateQuantVarNames),
-            (
-                QuantType = quant_type_exist,
-                QuantTypeDesc = "existentially"
-            ;
-                QuantType = quant_type_univ,
-                QuantTypeDesc = "universally"
-            ),
-            Pieces = [
-                words("Error: a list of variables being"),
-                words(QuantTypeDesc),
-                words("quantified may include each variable just once,"),
-                words("but here,")] ++
-                fixed_list_to_color_pieces(color_subject, "and", [],
-                    DuplicateQuantVarNames) ++
-                [words(choose_number(DuplicateQuantVarNames, "is", "are"))] ++
-                    color_as_incorrect([words("repeated")]) ++ [suffix("."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                get_term_context(VarsTerm), Pieces),
-            MaybeVars = error1([Spec])
-        )
-    ;
-        MaybeVars0 = error1(_),
-        MaybeVars = MaybeVars0
     ).
 
 :- pred parse_constraint_attr(module_name::in, varset::in,
@@ -1859,8 +1801,8 @@ get_class_context_and_inst_constraints_loop(ModuleName, VarSet,
         !ExistClassConstraints, !ExistInstConstraints) :-
     (
         QuantConstrAttr = qca_quant_vars(QuantType, VarsTerm),
-        parse_and_check_quant_vars(ContextPieces, VarSet, QuantType, VarsTerm,
-            MaybeVars),
+        parse_and_check_quant_vars(QuantType, type_var, ContextPieces,
+            VarSet, VarsTerm, MaybeVars),
         (
             MaybeVars = error1(VarsSpecs),
             !:Specs = VarsSpecs ++ !.Specs
@@ -1990,8 +1932,8 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
             QuantConstrAttrs = [QuantConstrAttr],
             QuantConstrAttr = qca_quant_vars(quant_type_univ, VarsTerm)
         then
-            parse_and_check_quant_vars(ContextPieces, VarSet, quant_type_univ,
-                VarsTerm, MaybeUnivVars)
+            parse_and_check_quant_vars(quant_type_univ, ordinary_var,
+                ContextPieces, VarSet, VarsTerm, MaybeUnivVars)
         else
             Form = ":- all [<vars>] " ++ Functor ++ " ( <disjunction> )",
             UnivVarsPieces =

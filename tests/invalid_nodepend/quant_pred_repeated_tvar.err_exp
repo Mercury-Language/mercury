@@ -1,33 +1,44 @@
-quant_pred_repeated_tvar.m:010: Error: a list of variables being universally
+quant_pred_repeated_tvar.m:010: In first argument of `all':
+quant_pred_repeated_tvar.m:010:   error: a list of type variables being
 quant_pred_repeated_tvar.m:010:   quantified may include each variable just
-quant_pred_repeated_tvar.m:010:   once, but here, [38;5;87mT[39;49m is [38;5;203mrepeated[39;49m.
-quant_pred_repeated_tvar.m:012: Error: a list of variables being universally
+quant_pred_repeated_tvar.m:010:   once, but here, [38;5;87mT[39;49m is [38;5;203mrepeated.[39;49m
+quant_pred_repeated_tvar.m:012: In first argument of `all':
+quant_pred_repeated_tvar.m:012:   error: a list of type variables being
 quant_pred_repeated_tvar.m:012:   quantified may include each variable just
-quant_pred_repeated_tvar.m:012:   once, but here, [38;5;87mT[39;49m and [38;5;87mU[39;49m are [38;5;203mrepeated[39;49m.
-quant_pred_repeated_tvar.m:014: Error: a list of variables being universally
+quant_pred_repeated_tvar.m:012:   once, but here, [38;5;87mT[39;49m and [38;5;87mU[39;49m are [38;5;203mrepeated.[39;49m
+quant_pred_repeated_tvar.m:014: In first argument of `all':
+quant_pred_repeated_tvar.m:014:   error: a list of type variables being
 quant_pred_repeated_tvar.m:014:   quantified may include each variable just
-quant_pred_repeated_tvar.m:014:   once, but here, [38;5;87mT,[39;49m [38;5;87mU[39;49m and [38;5;87mV[39;49m are [38;5;203mrepeated[39;49m.
-quant_pred_repeated_tvar.m:017: Error: a list of variables being existentially
+quant_pred_repeated_tvar.m:014:   once, but here, [38;5;87mT,[39;49m [38;5;87mU[39;49m and [38;5;87mV[39;49m are [38;5;203mrepeated.[39;49m
+quant_pred_repeated_tvar.m:017: In first argument of `some':
+quant_pred_repeated_tvar.m:017:   error: a list of type variables being
 quant_pred_repeated_tvar.m:017:   quantified may include each variable just
-quant_pred_repeated_tvar.m:017:   once, but here, [38;5;87mT[39;49m is [38;5;203mrepeated[39;49m.
-quant_pred_repeated_tvar.m:019: Error: a list of variables being existentially
+quant_pred_repeated_tvar.m:017:   once, but here, [38;5;87mT[39;49m is [38;5;203mrepeated.[39;49m
+quant_pred_repeated_tvar.m:019: In first argument of `some':
+quant_pred_repeated_tvar.m:019:   error: a list of type variables being
 quant_pred_repeated_tvar.m:019:   quantified may include each variable just
-quant_pred_repeated_tvar.m:019:   once, but here, [38;5;87mT[39;49m and [38;5;87mU[39;49m are [38;5;203mrepeated[39;49m.
-quant_pred_repeated_tvar.m:021: Error: a list of variables being universally
+quant_pred_repeated_tvar.m:019:   once, but here, [38;5;87mT[39;49m and [38;5;87mU[39;49m are [38;5;203mrepeated.[39;49m
+quant_pred_repeated_tvar.m:021: In first argument of `all':
+quant_pred_repeated_tvar.m:021:   error: a list of type variables being
 quant_pred_repeated_tvar.m:021:   quantified may include each variable just
-quant_pred_repeated_tvar.m:021:   once, but here, [38;5;87mT[39;49m is [38;5;203mrepeated[39;49m.
-quant_pred_repeated_tvar.m:023: Error: a list of variables being universally
+quant_pred_repeated_tvar.m:021:   once, but here, [38;5;87mT[39;49m is [38;5;203mrepeated.[39;49m
+quant_pred_repeated_tvar.m:023: In first argument of `all':
+quant_pred_repeated_tvar.m:023:   error: a list of type variables being
 quant_pred_repeated_tvar.m:023:   quantified may include each variable just
-quant_pred_repeated_tvar.m:023:   once, but here, [38;5;87mT[39;49m and [38;5;87mU[39;49m are [38;5;203mrepeated[39;49m.
-quant_pred_repeated_tvar.m:025: Error: a list of variables being existentially
+quant_pred_repeated_tvar.m:023:   once, but here, [38;5;87mT[39;49m and [38;5;87mU[39;49m are [38;5;203mrepeated.[39;49m
+quant_pred_repeated_tvar.m:025: In first argument of `some':
+quant_pred_repeated_tvar.m:025:   error: a list of type variables being
 quant_pred_repeated_tvar.m:025:   quantified may include each variable just
-quant_pred_repeated_tvar.m:025:   once, but here, [38;5;87mT[39;49m is [38;5;203mrepeated[39;49m.
-quant_pred_repeated_tvar.m:027: Error: a list of variables being existentially
+quant_pred_repeated_tvar.m:025:   once, but here, [38;5;87mT[39;49m is [38;5;203mrepeated.[39;49m
+quant_pred_repeated_tvar.m:027: In first argument of `some':
+quant_pred_repeated_tvar.m:027:   error: a list of type variables being
 quant_pred_repeated_tvar.m:027:   quantified may include each variable just
-quant_pred_repeated_tvar.m:027:   once, but here, [38;5;87mT[39;49m and [38;5;87mU[39;49m are [38;5;203mrepeated[39;49m.
-quant_pred_repeated_tvar.m:029: Error: a list of variables being existentially
+quant_pred_repeated_tvar.m:027:   once, but here, [38;5;87mT[39;49m and [38;5;87mU[39;49m are [38;5;203mrepeated.[39;49m
+quant_pred_repeated_tvar.m:029: In first argument of `all':
+quant_pred_repeated_tvar.m:029:   error: a list of type variables being
 quant_pred_repeated_tvar.m:029:   quantified may include each variable just
-quant_pred_repeated_tvar.m:029:   once, but here, [38;5;87mU[39;49m is [38;5;203mrepeated[39;49m.
-quant_pred_repeated_tvar.m:029: Error: a list of variables being universally
+quant_pred_repeated_tvar.m:029:   once, but here, [38;5;87mT[39;49m is [38;5;203mrepeated.[39;49m
+quant_pred_repeated_tvar.m:029: In first argument of `some':
+quant_pred_repeated_tvar.m:029:   error: a list of type variables being
 quant_pred_repeated_tvar.m:029:   quantified may include each variable just
-quant_pred_repeated_tvar.m:029:   once, but here, [38;5;87mT[39;49m is [38;5;203mrepeated[39;49m.
+quant_pred_repeated_tvar.m:029:   once, but here, [38;5;87mU[39;49m is [38;5;203mrepeated.[39;49m

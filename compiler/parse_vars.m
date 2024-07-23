@@ -24,6 +24,20 @@
 
 %---------------------------------------------------------------------------%
 
+:- type quantifier_type
+    --->    quant_type_exist
+    ;       quant_type_univ.
+
+:- type var_or_type_var
+    --->    ordinary_var
+    ;       type_var.
+
+:- pred parse_and_check_quant_vars(quantifier_type::in, var_or_type_var::in,
+    cord(format_piece)::in, varset::in, term::in, maybe1(list(var))::out)
+    is det.
+
+%---------------------------------------------------------------------------%
+
     % parse_possibly_repeated_vars(Term, VarSet, ContextPieces, MaybeVars):
     %
     % Parse Term as a list of quantified variables Vars. If successful,
@@ -70,6 +84,59 @@
 :- implementation.
 
 :- import_module parse_tree.parse_tree_out_term.
+
+:- import_module bag.
+
+%---------------------------------------------------------------------------%
+
+parse_and_check_quant_vars(QuantType, VarOrTypeVar, InitContextPieces,
+        VarSet, VarsTerm, MaybeVars) :-
+    % Both versions of VarContextPieces should be statically allocated terms.
+    (
+        QuantType = quant_type_exist,
+        VarsContextPieces = [lower_case_next_if_not_first,
+            words("In first argument of"), quote("some"), suffix(":"), nl]
+    ;
+        QuantType = quant_type_univ,
+        VarsContextPieces = [lower_case_next_if_not_first,
+            words("In first argument of"), quote("all"), suffix(":"), nl]
+    ),
+    ContextPieces = InitContextPieces ++ cord.from_list(VarsContextPieces),
+    parse_possibly_repeated_vars(VarsTerm, VarSet, ContextPieces, MaybeVars0),
+    (
+        MaybeVars0 = ok1(QuantVars),
+        QuantVarsBag = bag.from_list(QuantVars),
+        DuplicateQuantVars = bag.to_list_only_duplicates(QuantVarsBag),
+        (
+            DuplicateQuantVars = [],
+            MaybeVars = MaybeVars0
+        ;
+            DuplicateQuantVars = [_ | _],
+            list.map(varset.lookup_name(VarSet), DuplicateQuantVars,
+                DuplicateQuantVarNames),
+            (
+                VarOrTypeVar = ordinary_var,
+                Vars = "variables"
+            ;
+                VarOrTypeVar = type_var,
+                Vars = "type variables"
+            ),
+            Pieces = VarsContextPieces ++ [lower_case_next_if_not_first,
+                words("Error: a list of"), words(Vars),
+                words("being quantified may include each variable just once,"),
+                words("but here,")] ++
+                fixed_list_to_color_pieces(color_subject, "and", [],
+                    DuplicateQuantVarNames) ++
+                [words(choose_number(DuplicateQuantVarNames, "is", "are"))] ++
+                    color_as_incorrect([words("repeated.")]) ++ [nl],
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(VarsTerm), Pieces),
+            MaybeVars = error1([Spec])
+        )
+    ;
+        MaybeVars0 = error1(_),
+        MaybeVars = MaybeVars0
+    ).
 
 %---------------------------------------------------------------------------%
 

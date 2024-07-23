@@ -1,6 +1,8 @@
-exist_cons_repeated_tvar.m:010: Error: a list of type variables being
+exist_cons_repeated_tvar.m:010: In first argument of `some':
+exist_cons_repeated_tvar.m:010:   error: a list of type variables being
 exist_cons_repeated_tvar.m:010:   quantified may include each variable just
-exist_cons_repeated_tvar.m:010:   once, but here, [38;5;87mT[39;49m is [38;5;203mrepeated[39;49m.
-exist_cons_repeated_tvar.m:012: Error: a list of type variables being
+exist_cons_repeated_tvar.m:010:   once, but here, [38;5;87mT[39;49m is [38;5;203mrepeated.[39;49m
+exist_cons_repeated_tvar.m:012: In first argument of `some':
+exist_cons_repeated_tvar.m:012:   error: a list of type variables being
 exist_cons_repeated_tvar.m:012:   quantified may include each variable just
-exist_cons_repeated_tvar.m:012:   once, but here, [38;5;87mT[39;49m and [38;5;87mU[39;49m are [38;5;203mrepeated[39;49m.
+exist_cons_repeated_tvar.m:012:   once, but here, [38;5;87mT[39;49m and [38;5;87mU[39;49m are [38;5;203mrepeated.[39;49m

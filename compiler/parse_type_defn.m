@@ -86,7 +86,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_scan.
 
-:- import_module bag.
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module require.
@@ -393,35 +392,13 @@ parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet, CurOrdinal,
 parse_maybe_exist_quant_constructor(ModuleName, VarSet, Ordinal, Term,
         MaybeConstructor) :-
     ( if Term = term.functor(term.atom("some"), [VarsTerm, SubTerm], _) then
-        ContextPieces = cord.from_list([words("in first argument of"),
-            quote("some"), suffix(":")]),
-        parse_possibly_repeated_vars(VarsTerm, VarSet, ContextPieces,
-            MaybeExistQVars),
+        parse_and_check_quant_vars(quant_type_exist, type_var, cord.init,
+            VarSet, VarsTerm, MaybeExistQVars),
         (
             MaybeExistQVars = ok1(ExistQVars),
-            ExistQVarsBag = bag.from_list(ExistQVars),
-            DuplicateExistQVars = bag.to_list_only_duplicates(ExistQVarsBag),
-            (
-                DuplicateExistQVars = [],
-                list.map(term.coerce_var, ExistQVars, ExistQTVars),
-                parse_constructor(ModuleName, VarSet, Ordinal, ExistQTVars,
-                    SubTerm, MaybeConstructor)
-            ;
-                DuplicateExistQVars = [_ | _],
-                list.map(varset.lookup_name(VarSet), DuplicateExistQVars,
-                    DuplicateExistQVarNames),
-                Pieces = [
-                    words("Error: a list of type variables being"),
-                    words("quantified may include each variable just once,"),
-                    words("but here,")] ++
-                    fixed_list_to_color_pieces(color_subject, "and", [],
-                        DuplicateExistQVarNames) ++
-                    [words(choose_number(DuplicateExistQVarNames, "is", "are"))] ++
-                    color_as_incorrect([words("repeated")]) ++ [suffix("."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    get_term_context(VarsTerm), Pieces),
-                MaybeConstructor = error1([Spec])
-            )
+            list.map(term.coerce_var, ExistQVars, ExistQTVars),
+            parse_constructor(ModuleName, VarSet, Ordinal, ExistQTVars,
+                SubTerm, MaybeConstructor)
         ;
             MaybeExistQVars = error1(Specs),
             MaybeConstructor = error1(Specs)
