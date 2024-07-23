@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -321,15 +321,16 @@ inst_to_pieces(Info, MaybeInline, Inst, Suffix, Pieces, !Expansions) :-
         Inst = free,
         Pieces = [fixed("free") | Suffix]
     ;
-        Inst = bound(Uniq, _, BoundInsts),
+        Inst = bound(Uniq, _, BoundFunctors),
         BoundName = mercury_uniqueness_to_string(Uniq, "bound"),
         (
-            BoundInsts = [],
+            BoundFunctors = [],
             Pieces = [fixed(BoundName) | Suffix]
         ;
-            BoundInsts = [HeadBoundInst | TailBoundInsts],
-            bound_insts_to_pieces(Info, MaybeInline,
-                HeadBoundInst, TailBoundInsts, [], BoundPieces, !Expansions),
+            BoundFunctors = [HeadBoundFunctor | TailBoundFunctors],
+            bound_functors_to_pieces(Info, MaybeInline,
+                HeadBoundFunctor, TailBoundFunctors, [], BoundPieces,
+                !Expansions),
             (
                 MaybeInline = multi_line_pieces,
                 Pieces = [fixed(BoundName ++ "("), nl_indent_delta(1) |
@@ -422,23 +423,23 @@ insts_to_pieces(Info, MaybeInline, HeadInst, TailInsts, Suffix, Pieces,
 
 %---------------------------------------------------------------------------%
 
-:- pred bound_insts_to_pieces(inst_msg_info, maybe_inline_pieces,
-    bound_inst, list(bound_inst), list(format_piece), list(format_piece),
+:- pred bound_functors_to_pieces(inst_msg_info, maybe_inline_pieces,
+    bound_functor, list(bound_functor), list(format_piece), list(format_piece),
     expansions_info, expansions_info).
-:- mode bound_insts_to_pieces(in, in(multi_line_pieces),
+:- mode bound_functors_to_pieces(in, in(multi_line_pieces),
     in, in, in, out, in, out) is det.
-:- mode bound_insts_to_pieces(in, in(inline_pieces),
+:- mode bound_functors_to_pieces(in, in(inline_pieces),
     in, in, in, out, in, out) is det.
 
-bound_insts_to_pieces(Info, MaybeInline, HeadBoundInst, TailBoundInsts,
-        Suffix, Pieces, !Expansions) :-
+bound_functors_to_pieces(Info, MaybeInline,
+        HeadBoundFunctor, TailBoundFunctors, Suffix, Pieces, !Expansions) :-
     (
-        TailBoundInsts = [],
+        TailBoundFunctors = [],
         HeadSuffix = Suffix
     ;
-        TailBoundInsts = [HeadTailBoundInst | TailTailBoundInsts],
-        bound_insts_to_pieces(Info, MaybeInline,
-            HeadTailBoundInst, TailTailBoundInsts, Suffix, TailPieces,
+        TailBoundFunctors = [HeadTailBoundFunctor | TailTailBoundFunctors],
+        bound_functors_to_pieces(Info, MaybeInline,
+            HeadTailBoundFunctor, TailTailBoundFunctors, Suffix, TailPieces,
             !Expansions),
         (
             MaybeInline = multi_line_pieces,
@@ -449,7 +450,7 @@ bound_insts_to_pieces(Info, MaybeInline, HeadBoundInst, TailBoundInsts,
             HeadSuffix = [fixed(";") | TailPieces]
         )
     ),
-    HeadBoundInst = bound_functor(ConsId0, ArgInsts),
+    HeadBoundFunctor = bound_functor(ConsId0, ArgInsts),
     ( if
         ConsId0 = du_data_ctor(du_ctor(SymName, Arity, TypeCtor)),
         % The module names of the cons_ids are uniquely specified

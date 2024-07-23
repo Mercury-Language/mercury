@@ -46,8 +46,8 @@
 :- pred make_shared_inst(mer_type::in, mer_inst::in, mer_inst::out,
     module_info::in, module_info::out) is det.
 
-:- pred make_shared_bound_inst_list(mer_type::in, list(bound_inst)::in,
-    list(bound_inst)::out, module_info::in, module_info::out) is det.
+:- pred make_shared_bound_functors(mer_type::in, list(bound_functor)::in,
+    list(bound_functor)::out, module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -78,8 +78,8 @@
     % the code that would later traverse both those lists, and maybe some
     % other list of insts as well.
     %
-:- pred get_cons_id_arg_types_for_bound_inst(module_info::in, mer_type::in,
-    bound_inst::in, list(mer_type)::out) is det.
+:- pred get_cons_id_arg_types_for_bound_functor(module_info::in, mer_type::in,
+    bound_functor::in, list(mer_type)::out) is det.
 :- pred get_cons_id_arg_types_for_inst(module_info::in, mer_type::in,
     cons_id::in, list(mer_inst)::in, list(mer_type)::out) is det.
 
@@ -123,13 +123,13 @@ make_mostly_uniq_inst(Type, Inst0, Inst, !ModuleInfo) :-
         make_mostly_uniq(Uniq0, Uniq),
         Inst = any(Uniq, HOInstInfo)
     ;
-        Inst0 = bound(Uniq0, _InstResults0, BoundInsts0),
+        Inst0 = bound(Uniq0, _InstResults0, BoundFunctors0),
         % XXX could improve efficiency by avoiding recursion here
         make_mostly_uniq(Uniq0, Uniq),
-        make_mostly_uniq_bound_inst_list(Type, BoundInsts0, BoundInsts,
+        make_mostly_uniq_bound_functors(Type, BoundFunctors0, BoundFunctors,
             !ModuleInfo),
         % XXX A better approximation of InstResults is probably possible.
-        Inst = bound(Uniq, inst_test_no_results, BoundInsts)
+        Inst = bound(Uniq, inst_test_no_results, BoundFunctors)
     ;
         Inst0 = ground(Uniq0, PredInst),
         make_mostly_uniq(Uniq0, Uniq),
@@ -203,20 +203,21 @@ make_mostly_uniq(shared, shared).
 make_mostly_uniq(mostly_clobbered, mostly_clobbered).
 make_mostly_uniq(clobbered, clobbered).
 
-:- pred make_mostly_uniq_bound_inst_list(mer_type::in,
-    list(bound_inst)::in, list(bound_inst)::out,
+:- pred make_mostly_uniq_bound_functors(mer_type::in,
+    list(bound_functor)::in, list(bound_functor)::out,
     module_info::in, module_info::out) is det.
 
-make_mostly_uniq_bound_inst_list(_, [], [], !ModuleInfo).
-make_mostly_uniq_bound_inst_list(Type,
-        [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts], !ModuleInfo) :-
-    BoundInst0 = bound_functor(ConsId, ArgInsts0),
+make_mostly_uniq_bound_functors(_, [], [], !ModuleInfo).
+make_mostly_uniq_bound_functors(Type,
+        [BoundFunctor0 | BoundFunctors0], [BoundFunctor | BoundFunctors],
+        !ModuleInfo) :-
+    BoundFunctor0 = bound_functor(ConsId, ArgInsts0),
     get_cons_id_arg_types_for_inst(!.ModuleInfo, Type, ConsId, ArgInsts0,
         ArgTypes),
     make_mostly_uniq_inst_list(ArgTypes, ArgInsts0, ArgInsts, !ModuleInfo),
-    BoundInst = bound_functor(ConsId, ArgInsts),
-    make_mostly_uniq_bound_inst_list(Type,
-        BoundInsts0, BoundInsts, !ModuleInfo).
+    BoundFunctor = bound_functor(ConsId, ArgInsts),
+    make_mostly_uniq_bound_functors(Type,
+        BoundFunctors0, BoundFunctors, !ModuleInfo).
 
 :- pred make_mostly_uniq_inst_list(list(mer_type)::in,
     list(mer_inst)::in, list(mer_inst)::out,
@@ -257,7 +258,7 @@ make_shared_inst(Type, Inst0, Inst, !ModuleInfo) :-
         make_shared(Uniq0, Uniq),
         Inst = any(Uniq, HOInstInfo)
     ;
-        Inst0 = bound(Uniq0, InstResults0, BoundInsts0),
+        Inst0 = bound(Uniq0, InstResults0, BoundFunctors0),
         % XXX This code has a performance problem.
         %
         % The problem is that e.g. in a list of length N, you will have
@@ -278,14 +279,14 @@ make_shared_inst(Type, Inst0, Inst, !ModuleInfo) :-
         %
         % If Uniq0 = shared, then all the other cells below it should also be
         % shared as well, which means we should be able to avoid the call to
-        % make_shared_bound_inst_list below. However, for the kinds of goals
+        % make_shared_bound_functors below. However, for the kinds of goals
         % for which the call is a bottleneck, the goals resulting from the
         % construction of large ground terms, Uniq0 will in fact be `unique'.
 
         make_shared(Uniq0, Uniq),
-        make_shared_bound_inst_list(Type, BoundInsts0, BoundInsts,
+        make_shared_bound_functors(Type, BoundFunctors0, BoundFunctors,
             !ModuleInfo),
-        Inst = bound(Uniq, InstResults0, BoundInsts)
+        Inst = bound(Uniq, InstResults0, BoundFunctors)
     ;
         Inst0 = ground(Uniq0, PredInst),
         make_shared(Uniq0, Uniq),
@@ -356,15 +357,16 @@ make_shared(shared, shared).
 make_shared(mostly_clobbered, mostly_clobbered).
 make_shared(clobbered, clobbered).
 
-make_shared_bound_inst_list(_, [], [], !ModuleInfo).
-make_shared_bound_inst_list(Type, [BoundInst0 | BoundInsts0],
-        [BoundInst | BoundInsts], !ModuleInfo) :-
-    BoundInst0 = bound_functor(ConsId, ArgInsts0),
+make_shared_bound_functors(_, [], [], !ModuleInfo).
+make_shared_bound_functors(Type, [BoundFunctor0 | BoundFunctors0],
+        [BoundFunctor | BoundFunctors], !ModuleInfo) :-
+    BoundFunctor0 = bound_functor(ConsId, ArgInsts0),
     get_cons_id_arg_types_for_inst(!.ModuleInfo, Type, ConsId, ArgInsts0,
         ArgTypes),
     make_shared_inst_list(ArgTypes, ArgInsts0, ArgInsts, !ModuleInfo),
-    BoundInst = bound_functor(ConsId, ArgInsts),
-    make_shared_bound_inst_list(Type, BoundInsts0, BoundInsts, !ModuleInfo).
+    BoundFunctor = bound_functor(ConsId, ArgInsts),
+    make_shared_bound_functors(Type,
+        BoundFunctors0, BoundFunctors, !ModuleInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -377,8 +379,9 @@ pred_inst_info_default_func_mode(Arity) = PredInstInfo :-
 
 %---------------------------------------------------------------------------%
 
-get_cons_id_arg_types_for_bound_inst(ModuleInfo, Type, BoundInst, ArgTypes) :-
-    BoundInst = bound_functor(ConsId, ArgInsts),
+get_cons_id_arg_types_for_bound_functor(ModuleInfo, Type, BoundFunctor,
+        ArgTypes) :-
+    BoundFunctor = bound_functor(ConsId, ArgInsts),
     get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId,
         ArgInsts, ArgTypes).
 

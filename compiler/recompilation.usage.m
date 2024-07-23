@@ -981,8 +981,8 @@ find_items_used_by_inst(Inst, !Info) :-
             HOInstInfo = none_or_default_func
         )
     ;
-        Inst = bound(_, _, BoundInsts),
-        list.foldl(find_items_used_by_bound_inst, BoundInsts, !Info)
+        Inst = bound(_, _, BoundFunctors),
+        list.foldl(find_items_used_by_bound_functor, BoundFunctors, !Info)
     ;
         Inst = constrained_inst_vars(_, SubInst),
         find_items_used_by_inst(SubInst, !Info)
@@ -991,11 +991,11 @@ find_items_used_by_inst(Inst, !Info) :-
         find_items_used_by_inst_name(InstName, !Info)
     ).
 
-:- pred find_items_used_by_bound_inst(bound_inst::in,
+:- pred find_items_used_by_bound_functor(bound_functor::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-find_items_used_by_bound_inst(BoundInst, !Info) :-
-    BoundInst = bound_functor(ConsId, ArgInsts),
+find_items_used_by_bound_functor(BoundFunctor, !Info) :-
+    BoundFunctor = bound_functor(ConsId, ArgInsts),
     ( if ConsId = du_data_ctor(du_ctor(Name, Arity, _)) then
         record_used_functor(Name - Arity, !Info)
     else

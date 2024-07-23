@@ -330,7 +330,7 @@ inst_matches_initial_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
             fail
         )
     ;
-        InstA = bound(UniqA, InstResultsA, BoundInstsA),
+        InstA = bound(UniqA, InstResultsA, BoundFunctorsA),
         require_complete_switch [InstB]
         (
             InstB = free
@@ -338,14 +338,14 @@ inst_matches_initial_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
             InstB = ground(UniqB, none_or_default_func),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
-                Type, InstResultsA, BoundInstsA),
-            compare_bound_inst_list_uniq(!.Info ^ imi_module_info,
-                !.Info ^ imi_uniqueness_comparison, BoundInstsA, UniqB),
+            inst_results_bound_functor_list_is_ground_mt(
+                !.Info ^ imi_module_info, Type, InstResultsA, BoundFunctorsA),
+            compare_bound_functor_list_uniq(!.Info ^ imi_module_info,
+                !.Info ^ imi_uniqueness_comparison, BoundFunctorsA, UniqB),
             inst_contains_nondefault_func_mode_1(CalcSub, Type, InstA, no,
                 !Info)
         ;
-            InstB = bound(UniqB, _InstResultsB, BoundInstsB),
+            InstB = bound(UniqB, _InstResultsB, BoundFunctorsB),
             ( if
                 same_addr_insts(InstA, InstB),
                 InstResultsA = inst_test_results_fgtc
@@ -354,15 +354,15 @@ inst_matches_initial_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
             else
                 compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                     UniqA, UniqB),
-                bound_inst_list_matches_initial_mt(CalcSub, Type,
-                    BoundInstsA, BoundInstsB, !Info)
+                bound_functor_list_matches_initial_mt(CalcSub, Type,
+                    BoundFunctorsA, BoundFunctorsB, !Info)
             )
         ;
             InstB = any(UniqB, none_or_default_func),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            compare_bound_inst_list_uniq(!.Info ^ imi_module_info,
-                !.Info ^ imi_uniqueness_comparison, BoundInstsA, UniqB),
+            compare_bound_functor_list_uniq(!.Info ^ imi_module_info,
+                !.Info ^ imi_uniqueness_comparison, BoundFunctorsA, UniqB),
             inst_contains_nondefault_func_mode_1(CalcSub, Type, InstA, no,
                 !Info)
         ;
@@ -386,16 +386,16 @@ inst_matches_initial_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
             ho_inst_info_matches_initial(CalcSub, Type,
                 HOInstInfoA, HOInstInfoB, !Info)
         ;
-            InstB = bound(UniqB, _InstResultsB, BoundInstsB),
+            InstB = bound(UniqB, _InstResultsB, BoundFunctorsB),
             ModuleInfo = !.Info ^ imi_module_info,
             % We can check this case properly only if the type is a du type.
             type_is_du_type(ModuleInfo, Type),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            bound_inst_list_is_complete_for_type(ModuleInfo, set.init, Type,
-                BoundInstsB),
-            ground_matches_initial_bound_inst_list(CalcSub, UniqA, Type,
-                BoundInstsB, !Info)
+            bound_functor_list_is_complete_for_type(ModuleInfo, set.init, Type,
+                BoundFunctorsB),
+            ground_matches_initial_bound_functor_list(CalcSub, UniqA, Type,
+                BoundFunctorsB, !Info)
         ;
             InstB = any(UniqB, HOInstInfoB),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
@@ -428,21 +428,21 @@ inst_matches_initial_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
 %---------------------%
 
     % This predicate assumes that the check of
-    % `bound_inst_list_is_complete_for_type' is done by the caller.
+    % `bound_functor_list_is_complete_for_type' is done by the caller.
     %
-:- pred ground_matches_initial_bound_inst_list(calculate_sub::in,
-    uniqueness::in, mer_type::in, list(bound_inst)::in,
+:- pred ground_matches_initial_bound_functor_list(calculate_sub::in,
+    uniqueness::in, mer_type::in, list(bound_functor)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-ground_matches_initial_bound_inst_list(_, _, _, [], !Info).
-ground_matches_initial_bound_inst_list(CalcSub, Uniq, Type,
-        [BoundInst | BoundInsts], !Info) :-
-    get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
-        BoundInst, ArgTypes),
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+ground_matches_initial_bound_functor_list(_, _, _, [], !Info).
+ground_matches_initial_bound_functor_list(CalcSub, Uniq, Type,
+        [BoundFunctor | BoundFunctors], !Info) :-
+    get_cons_id_arg_types_for_bound_functor(!.Info ^ imi_module_info, Type,
+        BoundFunctor, ArgTypes),
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     ground_matches_initial_inst_list(CalcSub, Uniq, ArgTypes, ArgInsts, !Info),
-    ground_matches_initial_bound_inst_list(CalcSub, Uniq, Type, BoundInsts,
-        !Info).
+    ground_matches_initial_bound_functor_list(CalcSub, Uniq, Type,
+        BoundFunctors, !Info).
 
 :- pred ground_matches_initial_inst_list(calculate_sub::in, uniqueness::in,
     list(mer_type)::in, list(mer_inst)::in,
@@ -483,35 +483,36 @@ ho_inst_info_matches_initial(CalcSub, Type, HOInstInfoA, HOInstInfoB, !Info) :-
 
 %---------------------%
 
-:- pred compare_bound_inst_list_uniq(module_info::in,
+:- pred compare_bound_functor_list_uniq(module_info::in,
     uniqueness_comparison::in,
-    list(bound_inst)::in, uniqueness::in) is semidet.
+    list(bound_functor)::in, uniqueness::in) is semidet.
 
-compare_bound_inst_list_uniq(ModuleInfo, uc_match, BoundInsts, Uniq) :-
-    bound_inst_list_matches_uniq(ModuleInfo, Uniq, BoundInsts).
-compare_bound_inst_list_uniq(ModuleInfo, uc_instantiated, BoundInsts, Uniq) :-
-    uniq_matches_bound_inst_list(ModuleInfo, Uniq, BoundInsts).
+compare_bound_functor_list_uniq(ModuleInfo, uc_match, BoundFunctors, Uniq) :-
+    bound_functor_list_matches_uniq(ModuleInfo, Uniq, BoundFunctors).
+compare_bound_functor_list_uniq(ModuleInfo, uc_instantiated,
+        BoundFunctors, Uniq) :-
+    uniq_matches_bound_functor_list(ModuleInfo, Uniq, BoundFunctors).
 
-:- pred bound_inst_list_matches_uniq(module_info::in, uniqueness::in,
-    list(bound_inst)::in) is semidet.
+:- pred bound_functor_list_matches_uniq(module_info::in, uniqueness::in,
+    list(bound_functor)::in) is semidet.
 
-bound_inst_list_matches_uniq(ModuleInfo, Uniq, BoundInsts) :-
+bound_functor_list_matches_uniq(ModuleInfo, Uniq, BoundFunctors) :-
     ( if Uniq = unique then
-        bound_inst_list_is_unique(ModuleInfo, BoundInsts)
+        bound_functor_list_is_unique(ModuleInfo, BoundFunctors)
     else if Uniq = mostly_unique then
-        bound_inst_list_is_mostly_unique(ModuleInfo, BoundInsts)
+        bound_functor_list_is_mostly_unique(ModuleInfo, BoundFunctors)
     else
         true
     ).
 
-:- pred uniq_matches_bound_inst_list(module_info::in, uniqueness::in,
-    list(bound_inst)::in) is semidet.
+:- pred uniq_matches_bound_functor_list(module_info::in, uniqueness::in,
+    list(bound_functor)::in) is semidet.
 
-uniq_matches_bound_inst_list(ModuleInfo, Uniq, BoundInsts) :-
+uniq_matches_bound_functor_list(ModuleInfo, Uniq, BoundFunctors) :-
     ( if Uniq = shared then
-        bound_inst_list_is_not_partly_unique(ModuleInfo, BoundInsts)
+        bound_functor_list_is_not_partly_unique(ModuleInfo, BoundFunctors)
     else if Uniq = mostly_unique then
-        bound_inst_list_is_not_fully_unique(ModuleInfo, BoundInsts)
+        bound_functor_list_is_not_fully_unique(ModuleInfo, BoundFunctors)
     else
         true
     ).
@@ -522,33 +523,36 @@ uniq_matches_bound_inst_list(ModuleInfo, Uniq, BoundInsts) :-
     % functors in the second list. (If a bound(...) inst only specifies the
     % insts for some of the constructors of its type, then it implicitly means
     % that all other constructors must have all their arguments `not_reached'.)
-    % The code here makes use of the fact that the bound_inst lists are sorted.
+    % The code here makes use of the fact that the bound_functor lists
+    % are sorted.
     %
-:- pred bound_inst_list_matches_initial_mt(calculate_sub::in, mer_type::in,
-    list(bound_inst)::in, list(bound_inst)::in,
+:- pred bound_functor_list_matches_initial_mt(calculate_sub::in, mer_type::in,
+    list(bound_functor)::in, list(bound_functor)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-bound_inst_list_matches_initial_mt(_, _, [], _, !Info).
-bound_inst_list_matches_initial_mt(CalcSub, Type,
-        [BoundInstX | BoundInstXs], [BoundInstY | BoundInstYs], !Info) :-
-    BoundInstX = bound_functor(ConsIdX, ArgInstsX),
-    BoundInstY = bound_functor(ConsIdY, ArgInstsY),
+bound_functor_list_matches_initial_mt(_, _, [], _, !Info).
+bound_functor_list_matches_initial_mt(CalcSub, Type,
+        [BoundFunctorX | BoundFunctorXs], [BoundFunctorY | BoundFunctorYs],
+        !Info) :-
+    BoundFunctorX = bound_functor(ConsIdX, ArgInstsX),
+    BoundFunctorY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
-        get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
-            BoundInstX, Types),
+        get_cons_id_arg_types_for_bound_functor(!.Info ^ imi_module_info, Type,
+            BoundFunctorX, Types),
         inst_list_matches_initial_mt(CalcSub, Types, ArgInstsX, ArgInstsY,
             !Info),
-        bound_inst_list_matches_initial_mt(CalcSub, Type,
-            BoundInstXs, BoundInstYs, !Info)
+        bound_functor_list_matches_initial_mt(CalcSub, Type,
+            BoundFunctorXs, BoundFunctorYs, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
-        % ConsIdY does not occur in [BoundInstX | BoundInstXs].
-        % Hence [BoundInstX | BoundInstXs] implicitly specifies `not_reached'
-        % for the args of ConsIdY, and hence automatically matches_initial Y.
-        % We just need to check that [BoundInstX | BoundInstXs]
-        % matches_initial BoundInstsYs.
-        bound_inst_list_matches_initial_mt(CalcSub, Type,
-            [BoundInstX | BoundInstXs], BoundInstYs, !Info)
+        % ConsIdY does not occur in [BoundFunctorX | BoundFunctorXs].
+        % Hence [BoundFunctorX | BoundFunctorXs] implicitly specifies
+        % `not_reached' for the args of ConsIdY, and hence automatically
+        % matches_initial Y.
+        % We just need to check that [BoundFunctorX | BoundFunctorXs]
+        % matches_initial BoundFunctorsYs.
+        bound_functor_list_matches_initial_mt(CalcSub, Type,
+            [BoundFunctorX | BoundFunctorXs], BoundFunctorYs, !Info)
     ).
 
 :- pred inst_list_matches_initial_mt(calculate_sub::in, list(mer_type)::in,
@@ -646,21 +650,21 @@ inst_matches_final_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
                 HOInstInfoA, HOInstInfoB, !Info),
             unique_matches_final(UniqA, UniqB)
         ;
-            InstB = bound(UniqB, InstResultsB, BoundInstsB),
+            InstB = bound(UniqB, InstResultsB, BoundFunctorsB),
             ho_inst_info_matches_ground_1(CalcSub, Type, HOInstInfoA, !Info),
             unique_matches_final(UniqA, UniqB),
             ModuleInfo = !.Info ^ imi_module_info,
-            inst_results_bound_inst_list_is_ground_mt(ModuleInfo, Type,
-                InstResultsB, BoundInstsB),
-            uniq_matches_bound_inst_list(ModuleInfo, UniqA, BoundInstsB),
+            inst_results_bound_functor_list_is_ground_mt(ModuleInfo, Type,
+                InstResultsB, BoundFunctorsB),
+            uniq_matches_bound_functor_list(ModuleInfo, UniqA, BoundFunctorsB),
             inst_contains_nondefault_func_mode_1(CalcSub, Type, InstB, no,
                 !Info),
             (
                 % This check can succeed only if the type is known.
-                bound_inst_list_is_complete_for_type(ModuleInfo, set.init,
-                    Type, BoundInstsB)
+                bound_functor_list_is_complete_for_type(ModuleInfo, set.init,
+                    Type, BoundFunctorsB)
             ;
-                % XXX the check for bound_inst_list_is_complete_for_type
+                % XXX the check for bound_functor_list_is_complete_for_type
                 % makes the mode checker too conservative in the absence
                 % of alias tracking. Bypass the check if instructed.
                 GroundMatchesBound = !.Info ^ imi_ground_matches_bound,
@@ -682,32 +686,32 @@ inst_matches_final_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
             fail
         )
     ;
-        InstA = bound(UniqA, InstResultsA, BoundInstsA),
+        InstA = bound(UniqA, InstResultsA, BoundFunctorsA),
         require_complete_switch [InstB]
         (
             InstB = ground(UniqB, none_or_default_func),
             unique_matches_final(UniqA, UniqB),
-            inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
-                Type, InstResultsA, BoundInstsA),
-            bound_inst_list_matches_uniq(!.Info ^ imi_module_info, UniqB,
-                BoundInstsA),
+            inst_results_bound_functor_list_is_ground_mt(
+                !.Info ^ imi_module_info, Type, InstResultsA, BoundFunctorsA),
+            bound_functor_list_matches_uniq(!.Info ^ imi_module_info, UniqB,
+                BoundFunctorsA),
             inst_contains_nondefault_func_mode_1(CalcSub, Type, InstA, no,
                 !Info)
         ;
-            InstB = bound(UniqB, _InstResultsB, BoundInstsB),
+            InstB = bound(UniqB, _InstResultsB, BoundFunctorsB),
             unique_matches_final(UniqA, UniqB),
-            bound_inst_list_matches_final(CalcSub, Type,
-                BoundInstsA, BoundInstsB, !Info)
+            bound_functor_list_matches_final(CalcSub, Type,
+                BoundFunctorsA, BoundFunctorsB, !Info)
         ;
             InstB = any(UniqB, none_or_default_func),
             unique_matches_final(UniqA, UniqB),
-            bound_inst_list_matches_uniq(!.Info ^ imi_module_info, UniqB,
-                BoundInstsA),
+            bound_functor_list_matches_uniq(!.Info ^ imi_module_info, UniqB,
+                BoundFunctorsA),
             % We do not yet allow `free' to match `any'.
             % Among other things, changing this would break compare_inst
             % in modecheck_call.m.
-            inst_results_bound_inst_list_is_ground_or_any(
-                !.Info ^ imi_module_info, InstResultsA, BoundInstsA),
+            inst_results_bound_functor_list_is_ground_or_any(
+                !.Info ^ imi_module_info, InstResultsA, BoundFunctorsA),
             inst_contains_nondefault_func_mode_1(CalcSub, Type, InstA, no,
                 !Info)
         ;
@@ -799,33 +803,35 @@ ho_inst_info_matches_final(CalcSub, Type, HOInstInfoA, HOInstInfoB, !Info) :-
     % functors in the second list. (If a bound(...) inst only specifies
     % the insts for some of the constructors of its type, then it implicitly
     % means that all other constructors must have all their arguments
-    % `not_reached'.) The code here makes use of the fact that the bound_inst
+    % `not_reached'.) The code here makes use of the fact that the
+    % bound_functor
     % lists are sorted.
     %
-:- pred bound_inst_list_matches_final(calculate_sub::in, mer_type::in,
-    list(bound_inst)::in, list(bound_inst)::in,
+:- pred bound_functor_list_matches_final(calculate_sub::in, mer_type::in,
+    list(bound_functor)::in, list(bound_functor)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-bound_inst_list_matches_final(_, _, [], _, !Info).
-bound_inst_list_matches_final(CalcSub, Type,
-        [BoundInstX | BoundInstXs], [BoundInstY | BoundInstYs], !Info) :-
-    BoundInstX = bound_functor(ConsIdX, ArgInstsX),
-    BoundInstY = bound_functor(ConsIdY, ArgInstsY),
+bound_functor_list_matches_final(_, _, [], _, !Info).
+bound_functor_list_matches_final(CalcSub, Type,
+        [BoundFunctorX | BoundFunctorXs], [BoundFunctorY | BoundFunctorYs],
+        !Info) :-
+    BoundFunctorX = bound_functor(ConsIdX, ArgInstsX),
+    BoundFunctorY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
-        get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
-            BoundInstX, ArgTypes),
+        get_cons_id_arg_types_for_bound_functor(!.Info ^ imi_module_info, Type,
+            BoundFunctorX, ArgTypes),
         inst_list_matches_final(CalcSub, ArgTypes,
             ArgInstsX, ArgInstsY, !Info),
-        bound_inst_list_matches_final(CalcSub, Type,
-            BoundInstXs, BoundInstYs, !Info)
+        bound_functor_list_matches_final(CalcSub, Type,
+            BoundFunctorXs, BoundFunctorYs, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdY does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_final Y. We just
         % need to check that [X | Xs] matches_final Ys.
-        bound_inst_list_matches_final(CalcSub, Type,
-            [BoundInstX | BoundInstXs], BoundInstYs, !Info)
+        bound_functor_list_matches_final(CalcSub, Type,
+            [BoundFunctorX | BoundFunctorXs], BoundFunctorYs, !Info)
     ).
 
 :- pred inst_list_matches_final(calculate_sub::in, list(mer_type)::in,
@@ -888,14 +894,14 @@ inst_matches_binding_2(CalcSub, Type, InstA, InstB, !Info) :-
             ho_inst_info_matches_binding(!.Info ^ imi_module_info,
                 Type, HOInstInfoA, HOInstInfoB)
         ;
-            InstB = bound(_UniqB, InstResultsB, BoundInstsB),
-            inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
-                Type, InstResultsB, BoundInstsB),
+            InstB = bound(_UniqB, InstResultsB, BoundFunctorsB),
+            inst_results_bound_functor_list_is_ground_mt(
+                !.Info ^ imi_module_info, Type, InstResultsB, BoundFunctorsB),
             inst_contains_nondefault_func_mode_1(CalcSub, Type, InstB, no,
                 !Info),
             % We can only do this check if the type is known.
-            bound_inst_list_is_complete_for_type(!.Info ^ imi_module_info,
-                set.init, Type, BoundInstsB)
+            bound_functor_list_is_complete_for_type(!.Info ^ imi_module_info,
+                set.init, Type, BoundFunctorsB)
         ;
             InstB = any(UniqB, HOInstInfoB),
             maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqB,
@@ -912,7 +918,7 @@ inst_matches_binding_2(CalcSub, Type, InstA, InstB, !Info) :-
             fail
         )
     ;
-        InstA = bound(_UniqA, InstResultsA, BoundInstsA),
+        InstA = bound(_UniqA, InstResultsA, BoundFunctorsA),
         require_complete_switch [InstB]
         (
             InstB = any(UniqB, HOInstInfoB),
@@ -920,13 +926,13 @@ inst_matches_binding_2(CalcSub, Type, InstA, InstB, !Info) :-
                 HOInstInfoB, NextInstB),
             inst_matches_binding_mt(CalcSub, Type, InstA, NextInstB, !Info)
         ;
-            InstB = bound(_UniqB, _InstResultB, BoundInstsB),
-            bound_inst_list_matches_binding(CalcSub, Type,
-                BoundInstsA, BoundInstsB, !Info)
+            InstB = bound(_UniqB, _InstResultB, BoundFunctorsB),
+            bound_functor_list_matches_binding(CalcSub, Type,
+                BoundFunctorsA, BoundFunctorsB, !Info)
         ;
             InstB = ground(_UniqB, none_or_default_func),
-            inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
-                Type, InstResultsA, BoundInstsA),
+            inst_results_bound_functor_list_is_ground_mt(
+                !.Info ^ imi_module_info, Type, InstResultsA, BoundFunctorsA),
             inst_contains_nondefault_func_mode_1(CalcSub, Type, InstA, no,
                 !Info)
         ;
@@ -1019,33 +1025,35 @@ ho_inst_info_matches_binding(ModuleInfo, Type, HOInstInfoA, HOInstInfoB) :-
     % functors in the second list. (If a bound(...) inst only specifies
     % the insts for some of the constructors of its type, then it implicitly
     % means that all other constructors must have all their arguments
-    % `not_reached'.) The code here makes use of the fact that the bound_inst
+    % `not_reached'.) The code here makes use of the fact that the
+    % bound_functor
     % lists are sorted.
     %
-:- pred bound_inst_list_matches_binding(calculate_sub::in, mer_type::in,
-    list(bound_inst)::in, list(bound_inst)::in,
+:- pred bound_functor_list_matches_binding(calculate_sub::in, mer_type::in,
+    list(bound_functor)::in, list(bound_functor)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-bound_inst_list_matches_binding(_, _, [], _, !Info).
-bound_inst_list_matches_binding(CalcSub, Type,
-        [BoundInstX | BoundInstXs], [BoundInstY | BoundInstYs], !Info) :-
-    BoundInstX = bound_functor(ConsIdX, ArgInstsX),
-    BoundInstY = bound_functor(ConsIdY, ArgInstsY),
+bound_functor_list_matches_binding(_, _, [], _, !Info).
+bound_functor_list_matches_binding(CalcSub, Type,
+        [BoundFunctorX | BoundFunctorXs], [BoundFunctorY | BoundFunctorYs],
+        !Info) :-
+    BoundFunctorX = bound_functor(ConsIdX, ArgInstsX),
+    BoundFunctorY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
-        get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
-            BoundInstX, ArgTypes),
+        get_cons_id_arg_types_for_bound_functor(!.Info ^ imi_module_info, Type,
+            BoundFunctorX, ArgTypes),
         inst_list_matches_binding(CalcSub, ArgTypes,
             ArgInstsX, ArgInstsY, !Info),
-        bound_inst_list_matches_binding(CalcSub, Type,
-            BoundInstXs, BoundInstYs, !Info)
+        bound_functor_list_matches_binding(CalcSub, Type,
+            BoundFunctorXs, BoundFunctorYs, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdX does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_binding Y. We just
         % need to check that [X | Xs] matches_binding Ys.
-        bound_inst_list_matches_binding(CalcSub, Type,
-            [BoundInstX | BoundInstXs], BoundInstYs, !Info)
+        bound_functor_list_matches_binding(CalcSub, Type,
+            [BoundFunctorX | BoundFunctorXs], BoundFunctorYs, !Info)
     ).
 
 :- pred inst_list_matches_binding(calculate_sub::in, list(mer_type)::in,
@@ -1097,7 +1105,7 @@ inst_contains_nondefault_func_mode_2(CalcSub, Type, Inst, !.Expansions,
             ContainsNonstd = yes
         )
     ;
-        Inst = bound(_, InstResults, BoundInsts),
+        Inst = bound(_, InstResults, BoundFunctors),
         (
             InstResults = inst_test_results_fgtc,
             ContainsNonstd = no
@@ -1105,8 +1113,8 @@ inst_contains_nondefault_func_mode_2(CalcSub, Type, Inst, !.Expansions,
             ( InstResults = inst_test_results(_, _, _, _, _, _)
             ; InstResults = inst_test_no_results
             ),
-            bound_inst_list_contains_nondefault_func_mode(CalcSub, Type,
-                BoundInsts, !.Expansions, ContainsNonstd, !Info)
+            bound_functor_list_contains_nondefault_func_mode(CalcSub, Type,
+                BoundFunctors, !.Expansions, ContainsNonstd, !Info)
         )
     ;
         Inst = any(_, _),
@@ -1134,17 +1142,17 @@ inst_contains_nondefault_func_mode_2(CalcSub, Type, Inst, !.Expansions,
 
 %---------------------%
 
-:- pred bound_inst_list_contains_nondefault_func_mode(calculate_sub::in,
-    mer_type::in, list(bound_inst)::in, set(inst_name)::in, bool::out,
+:- pred bound_functor_list_contains_nondefault_func_mode(calculate_sub::in,
+    mer_type::in, list(bound_functor)::in, set(inst_name)::in, bool::out,
     inst_match_info::in, inst_match_info::out) is det.
 
-bound_inst_list_contains_nondefault_func_mode(_, _, [], _Expansions,
+bound_functor_list_contains_nondefault_func_mode(_, _, [], _Expansions,
         no, !Info).
-bound_inst_list_contains_nondefault_func_mode(CalcSub, Type,
-        [BoundInst | BoundInsts], Expansions, ContainsNonstd, !Info) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
-    get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
-        BoundInst, ArgTypes),
+bound_functor_list_contains_nondefault_func_mode(CalcSub, Type,
+        [BoundFunctor | BoundFunctors], Expansions, ContainsNonstd, !Info) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
+    get_cons_id_arg_types_for_bound_functor(!.Info ^ imi_module_info, Type,
+        BoundFunctor, ArgTypes),
     inst_list_contains_nondefault_func_mode(CalcSub, ArgTypes, ArgInsts,
         Expansions, HeadContainsNonstd, !Info),
     (
@@ -1152,8 +1160,8 @@ bound_inst_list_contains_nondefault_func_mode(CalcSub, Type,
         ContainsNonstd = yes
     ;
         HeadContainsNonstd = no,
-        bound_inst_list_contains_nondefault_func_mode(CalcSub, Type,
-            BoundInsts, Expansions, ContainsNonstd, !Info)
+        bound_functor_list_contains_nondefault_func_mode(CalcSub, Type,
+            BoundFunctors, Expansions, ContainsNonstd, !Info)
     ).
 
 :- pred inst_list_contains_nondefault_func_mode(calculate_sub::in,
@@ -1165,8 +1173,8 @@ inst_list_contains_nondefault_func_mode(_, [], [_ | _], _, _, !Info) :-
     unexpected($pred, "list length mismatch").
 inst_list_contains_nondefault_func_mode(_, [_ | _], [], _, _, !Info) :-
     unexpected($pred, "list length mismatch").
-inst_list_contains_nondefault_func_mode(CalcSub, [Type | Types], [Inst | Insts],
-        Expansions, ContainsNonstd, !Info) :-
+inst_list_contains_nondefault_func_mode(CalcSub,
+        [Type | Types], [Inst | Insts], Expansions, ContainsNonstd, !Info) :-
     inst_contains_nondefault_func_mode_2(CalcSub, Type, Inst,
         Expansions, HeadContainsNonstd, !Info),
     (
@@ -1559,48 +1567,48 @@ update_inst_var_sub_2(InstA, Type, InstVar, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-    % A list(bound_inst) is ``complete'' for a given type iff
+    % A list(bound_functor) is ``complete'' for a given type iff
     %
     % - it includes each functor of that type, and
     % - each argument of each functor is also ``complete'' for its type.
     %
-:- pred bound_inst_list_is_complete_for_type(module_info::in,
-    set(inst_name)::in, mer_type::in, list(bound_inst)::in) is semidet.
+:- pred bound_functor_list_is_complete_for_type(module_info::in,
+    set(inst_name)::in, mer_type::in, list(bound_functor)::in) is semidet.
 
-bound_inst_list_is_complete_for_type(ModuleInfo, Expansions, Type,
-        BoundInsts) :-
+bound_functor_list_is_complete_for_type(ModuleInfo, Expansions, Type,
+        BoundFunctors) :-
     % Is this a type for which cons_ids are recorded in the type_table?
     type_is_du_type(ModuleInfo, Type),
 
     all_du_ctor_arg_types(ModuleInfo, Type, NamesAritiesArgTypes0),
     list.sort(NamesAritiesArgTypes0, NamesAritiesArgTypes1),
-    bound_inst_list_is_complete_for_type_loop(ModuleInfo, Expansions,
-        BoundInsts, NamesAritiesArgTypes1, NamesAritiesArgTypes),
+    bound_functor_list_is_complete_for_type_loop(ModuleInfo, Expansions,
+        BoundFunctors, NamesAritiesArgTypes1, NamesAritiesArgTypes),
     % Each and every NamesAritiesArgTypes left over specifies
-    % a data in Type that BoundInsts did not cover.
+    % a data in Type that BoundFunctors did not cover.
     NamesAritiesArgTypes = [].
 
-:- pred bound_inst_list_is_complete_for_type_loop(module_info::in,
-    set(inst_name)::in, list(bound_inst)::in,
+:- pred bound_functor_list_is_complete_for_type_loop(module_info::in,
+    set(inst_name)::in, list(bound_functor)::in,
     list({string, arity, list(mer_type)})::in,
     list({string, arity, list(mer_type)})::out) is semidet.
 
-bound_inst_list_is_complete_for_type_loop(_ModuleInfo, _Expansions,
+bound_functor_list_is_complete_for_type_loop(_ModuleInfo, _Expansions,
         [], !NamesAritiesArgTypes).
-bound_inst_list_is_complete_for_type_loop(ModuleInfo, Expansions,
-        [BoundInst | BoundInsts], !NamesAritiesArgTypes) :-
-    BoundInst = bound_functor(InstConsId, ArgInsts),
+bound_functor_list_is_complete_for_type_loop(ModuleInfo, Expansions,
+        [BoundFunctor | BoundFunctors], !NamesAritiesArgTypes) :-
+    BoundFunctor = bound_functor(InstConsId, ArgInsts),
     InstConsId = du_data_ctor(InstDuCtor),
     InstDuCtor = du_ctor(InstSymName, InstArity, _InstTypeCtor),
-    % We are assuming here that BoundInst is sorted on cons_ids.
+    % We are assuming here that BoundFunctor is sorted on cons_ids.
     ( if
         !.NamesAritiesArgTypes = [NameArityArgTypes | !:NamesAritiesArgTypes],
         NameArityArgTypes = {unqualify_name(InstSymName), InstArity, ArgTypes},
         list.map(inst_is_complete_for_type(ModuleInfo, Expansions),
             ArgTypes, ArgInsts)
     then
-        bound_inst_list_is_complete_for_type_loop(ModuleInfo, Expansions,
-            BoundInsts, !NamesAritiesArgTypes)
+        bound_functor_list_is_complete_for_type_loop(ModuleInfo, Expansions,
+            BoundFunctors, !NamesAritiesArgTypes)
     else
         fail
     ).
@@ -1620,9 +1628,9 @@ inst_is_complete_for_type(ModuleInfo, Expansions, Type, Inst) :-
                 Type, ExpandedInst)
         )
     ;
-        Inst = bound(_, _, BoundInsts),
-        bound_inst_list_is_complete_for_type(ModuleInfo, Expansions,
-            Type, BoundInsts)
+        Inst = bound(_, _, BoundFunctors),
+        bound_functor_list_is_complete_for_type(ModuleInfo, Expansions,
+            Type, BoundFunctors)
     ;
         % XXX This switch was originally an if-then-else chain, with explicit
         % tests for defined_inst and bound, and the final else case being

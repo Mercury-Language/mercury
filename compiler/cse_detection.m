@@ -1201,8 +1201,8 @@ may_pull_lhs_inst_cons_id(CseInfo, VarInst, ConsId) :-
     ( if inst_is_not_partly_unique(ModuleInfo, VarInst) then
         true
     else
-        inst_is_bound_to_functors(ModuleInfo, VarInst, FunctorBoundInsts),
-        compute_may_pull_cons_id(ModuleInfo, FunctorBoundInsts, ConsId,
+        inst_is_bound_to_functors(ModuleInfo, VarInst, BoundFunctors),
+        compute_may_pull_cons_id(ModuleInfo, BoundFunctors, ConsId,
             MayPullConsId),
         MayPullConsId = may_pull_cons_id
     ).
@@ -1211,13 +1211,13 @@ may_pull_lhs_inst_cons_id(CseInfo, VarInst, ConsId) :-
     --->    may_pull_cons_id
     ;       may_not_pull_cons_id.
 
-:- pred compute_may_pull_cons_id(module_info::in, list(bound_inst)::in,
+:- pred compute_may_pull_cons_id(module_info::in, list(bound_functor)::in,
     cons_id::in, may_pull_cons_id::out) is det.
 
 compute_may_pull_cons_id(_ModuleInfo, [], _ConsId, may_not_pull_cons_id).
-compute_may_pull_cons_id(ModuleInfo, [BoundInst | BoundInsts],
+compute_may_pull_cons_id(ModuleInfo, [BoundFunctor | BoundFunctors],
         ConsId, MayPullConsId) :-
-    BoundInst = bound_functor(InstConsId, ArgInsts),
+    BoundFunctor = bound_functor(InstConsId, ArgInsts),
     ( if
         (
             ConsId = InstConsId
@@ -1240,7 +1240,8 @@ compute_may_pull_cons_id(ModuleInfo, [BoundInst | BoundInsts],
             MayPullConsId = may_not_pull_cons_id
         )
     else
-        compute_may_pull_cons_id(ModuleInfo, BoundInsts, ConsId, MayPullConsId)
+        compute_may_pull_cons_id(ModuleInfo, BoundFunctors,
+            ConsId, MayPullConsId)
     ).
 
 %---------------------------------------------------------------------------%

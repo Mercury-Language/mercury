@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2134,9 +2134,10 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
         type_to_ctor_det(VarType, VarTypeCtor),
         module_info_get_type_table(ModuleInfo, TypeTable),
         ( if
-            inst_is_bound_to_functors(ModuleInfo, VarInst, BoundInsts)
+            inst_is_bound_to_functors(ModuleInfo, VarInst, BoundFunctors)
         then
-            bound_insts_to_cons_ids(VarTypeCtor, BoundInsts, BoundConsIds),
+            bound_functors_to_cons_ids(VarTypeCtor,
+                BoundFunctors, BoundConsIds),
             list.sort_and_remove_dups(BoundConsIds, SortedBoundConsIds),
             set_tree234.sorted_list_to_set(SortedBoundConsIds,
                 BoundConsIdsSet),

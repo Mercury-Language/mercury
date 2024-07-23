@@ -223,7 +223,7 @@ mercury_format_structured_inst(Lang, InstVarSet, InclAddr, Indent,
         add_string("free", S, !U),
         add_string(Suffix, S, !U)
     ;
-        Inst = bound(Uniq, InstResults, BoundInsts),
+        Inst = bound(Uniq, InstResults, BoundFunctors),
         mercury_format_uniqueness(Uniq, "bound", S, !U),
         add_string("(\n", S, !U),
         (
@@ -245,8 +245,8 @@ mercury_format_structured_inst(Lang, InstVarSet, InclAddr, Indent,
             mercury_format_tabs(Indent + 1u, S, !U),
             add_string("[\n", S, !U)
         ),
-        mercury_format_structured_bound_insts(Lang, InstVarSet, InclAddr,
-            Indent + 1u, BoundInsts, S, !U),
+        mercury_format_structured_bound_functors(Lang, InstVarSet, InclAddr,
+            Indent + 1u, BoundFunctors, S, !U),
         (
             Lang = output_mercury
         ;
@@ -287,14 +287,14 @@ mercury_format_structured_inst(Lang, InstVarSet, InclAddr, Indent,
         add_string(Suffix, S, !U)
     ).
 
-:- pred mercury_format_structured_bound_insts(output_lang::in,
-    inst_varset::in, incl_addr::in, indent::in, list(bound_inst)::in,
+:- pred mercury_format_structured_bound_functors(output_lang::in,
+    inst_varset::in, incl_addr::in, indent::in, list(bound_functor)::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_format_structured_bound_insts(_, _, _, _, [], _, !U).
-mercury_format_structured_bound_insts(Lang, InstVarSet, InclAddr, Indent0,
-        [BoundInst | BoundInsts], S, !U) :-
-    BoundInst = bound_functor(ConsId, Args),
+mercury_format_structured_bound_functors(_, _, _, _, [], _, !U).
+mercury_format_structured_bound_functors(Lang, InstVarSet, InclAddr, Indent0,
+        [BoundFunctor | BoundFunctors], S, !U) :-
+    BoundFunctor = bound_functor(ConsId, Args),
     Indent1 = Indent0 + 1u,
     Indent2 = Indent1 + 1u,
     (
@@ -313,13 +313,13 @@ mercury_format_structured_bound_insts(Lang, InstVarSet, InclAddr, Indent0,
         add_string(")\n", S, !U)
     ),
     (
-        BoundInsts = []
+        BoundFunctors = []
     ;
-        BoundInsts = [_ | _],
+        BoundFunctors = [_ | _],
         mercury_format_tabs(Indent0, S, !U),
         add_string(";\n", S, !U),
-        mercury_format_structured_bound_insts(Lang, InstVarSet,
-            InclAddr, Indent0, BoundInsts, S, !U)
+        mercury_format_structured_bound_functors(Lang, InstVarSet,
+            InclAddr, Indent0, BoundFunctors, S, !U)
     ).
 
 :- pred get_inst_addr(mer_inst::in, int::out) is det.

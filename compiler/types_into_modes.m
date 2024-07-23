@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023 The Mercury team.
+% Copyright (C) 2023-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -398,21 +398,21 @@ acc_inst_vars_in_inst(Inst, !InstVars) :-
         Inst = defined_inst(InstName),
         acc_inst_vars_in_inst_name(InstName, !InstVars)
     ;
-        Inst = bound(_Uniq, InstResults, BoundInsts),
+        Inst = bound(_Uniq, InstResults, BoundFunctors),
         (
             InstResults = inst_test_results_fgtc
-            % There can be no inst variables in BoundInsts.
+            % There can be no inst variables in BoundFunctors.
         ;
             InstResults = inst_test_results(_, _, _, _InstVarResult, _, _),
             % Even with InstVarResult =
             %   inst_result_contains_inst_vars_known(_KnownInstVars),
             % Membership of an instvar in _KnownInstVars means that
-            % BoundInsts *may* contain that inst_var, not that it *does*,
+            % BoundFunctors *may* contain that inst_var, not that it *does*,
             % so we have to check whether it actually does.
-            acc_inst_vars_in_bound_insts(BoundInsts, !InstVars)
+            acc_inst_vars_in_bound_functors(BoundFunctors, !InstVars)
         ;
             InstResults = inst_test_no_results,
-            acc_inst_vars_in_bound_insts(BoundInsts, !InstVars)
+            acc_inst_vars_in_bound_functors(BoundFunctors, !InstVars)
         )
     ;
         ( Inst = ground(_Uniq, HOInstInfo)
@@ -459,14 +459,14 @@ acc_inst_vars_in_inst_name(InstName, !InstVars) :-
         InstName = typed_ground(_Uniq, _Type)
     ).
 
-:- pred acc_inst_vars_in_bound_insts(list(bound_inst)::in,
+:- pred acc_inst_vars_in_bound_functors(list(bound_functor)::in,
     set(inst_var)::in, set(inst_var)::out) is det.
 
-acc_inst_vars_in_bound_insts([], !InstVars).
-acc_inst_vars_in_bound_insts([BoundInst | BoundInsts], !InstVars) :-
-    BoundInst = bound_functor(_Functor, ArgInsts),
+acc_inst_vars_in_bound_functors([], !InstVars).
+acc_inst_vars_in_bound_functors([BoundFunctor | BoundFunctors], !InstVars) :-
+    BoundFunctor = bound_functor(_Functor, ArgInsts),
     acc_inst_vars_in_insts(ArgInsts, !InstVars),
-    acc_inst_vars_in_bound_insts(BoundInsts, !InstVars).
+    acc_inst_vars_in_bound_functors(BoundFunctors, !InstVars).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.types_into_modes.

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1995-1998, 2000-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -95,32 +95,32 @@
 :- pred inst_is_bound(module_info::in, mer_inst::in) is semidet.
 
 :- pred inst_is_bound_to_functors(module_info::in, mer_inst::in,
-    list(bound_inst)::out) is semidet.
+    list(bound_functor)::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 
-:- pred inst_results_bound_inst_list_is_ground(module_info::in,
-    mer_type::in, inst_test_results::in, list(bound_inst)::in) is semidet.
+:- pred inst_results_bound_functor_list_is_ground(module_info::in,
+    mer_type::in, inst_test_results::in, list(bound_functor)::in) is semidet.
 
-:- pred inst_results_bound_inst_list_is_ground_mt(module_info::in,
-    mer_type::in, inst_test_results::in, list(bound_inst)::in) is semidet.
+:- pred inst_results_bound_functor_list_is_ground_mt(module_info::in,
+    mer_type::in, inst_test_results::in, list(bound_functor)::in) is semidet.
 
-:- pred inst_results_bound_inst_list_is_ground_or_any(module_info::in,
-    inst_test_results::in, list(bound_inst)::in) is semidet.
+:- pred inst_results_bound_functor_list_is_ground_or_any(module_info::in,
+    inst_test_results::in, list(bound_functor)::in) is semidet.
 
-:- pred bound_inst_list_is_unique(module_info::in, list(bound_inst)::in)
+:- pred bound_functor_list_is_unique(module_info::in, list(bound_functor)::in)
     is semidet.
 
-:- pred bound_inst_list_is_mostly_unique(module_info::in, list(bound_inst)::in)
-    is semidet.
+:- pred bound_functor_list_is_mostly_unique(module_info::in,
+    list(bound_functor)::in) is semidet.
 
-:- pred bound_inst_list_is_not_partly_unique(module_info::in,
-    list(bound_inst)::in) is semidet.
+:- pred bound_functor_list_is_not_partly_unique(module_info::in,
+    list(bound_functor)::in) is semidet.
 
-:- pred bound_inst_list_is_not_fully_unique(module_info::in,
-    list(bound_inst)::in) is semidet.
+:- pred bound_functor_list_is_not_fully_unique(module_info::in,
+    list(bound_functor)::in) is semidet.
 
-:- pred bound_inst_list_is_free(module_info::in, list(bound_inst)::in)
+:- pred bound_functor_list_is_free(module_info::in, list(bound_functor)::in)
     is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -411,9 +411,9 @@ inst_is_ground_mt_2(ModuleInfo, Type, Inst, !Expansions) :-
         ; Inst = ground(_, _)
         )
     ;
-        Inst = bound(_, InstResults, BoundInsts),
-        inst_results_bound_inst_list_is_ground_mt_2(ModuleInfo, Type,
-            InstResults, BoundInsts, !Expansions)
+        Inst = bound(_, InstResults, BoundFunctors),
+        inst_results_bound_functor_list_is_ground_mt_2(ModuleInfo, Type,
+            InstResults, BoundFunctors, !Expansions)
     ;
         Inst = constrained_inst_vars(_, SubInst),
         inst_is_ground_mt_1(ModuleInfo, Type, SubInst, !Expansions)
@@ -446,9 +446,9 @@ inst_is_ground_or_any_2(ModuleInfo, Inst, !Expansions) :-
         ; Inst = not_reached
         )
     ;
-        Inst = bound(_, InstResults, BoundInsts),
-        inst_results_bound_inst_list_is_ground_or_any_2(ModuleInfo,
-            InstResults, BoundInsts, !Expansions)
+        Inst = bound(_, InstResults, BoundFunctors),
+        inst_results_bound_functor_list_is_ground_or_any_2(ModuleInfo,
+            InstResults, BoundFunctors, !Expansions)
     ;
         Inst = free,
         fail
@@ -494,7 +494,7 @@ inst_is_unique_2(ModuleInfo, Inst, !Expansions) :-
         ),
         fail
     ;
-        Inst = bound(unique, InstResults, BoundInsts),
+        Inst = bound(unique, InstResults, BoundFunctors),
         (
             InstResults = inst_test_results_fgtc,
             fail
@@ -502,7 +502,8 @@ inst_is_unique_2(ModuleInfo, Inst, !Expansions) :-
             ( InstResults = inst_test_no_results
             ; InstResults = inst_test_results(_, _, _, _, _, _)
             ),
-            bound_inst_list_is_unique_2(ModuleInfo, BoundInsts, !Expansions)
+            bound_functor_list_is_unique_2(ModuleInfo, BoundFunctors,
+                !Expansions)
         )
     ;
         Inst = inst_var(_),
@@ -543,7 +544,7 @@ inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
         ; Inst = any(mostly_unique, _)
         )
     ;
-        Inst = bound(unique, InstResults, BoundInsts),
+        Inst = bound(unique, InstResults, BoundFunctors),
         (
             InstResults = inst_test_results_fgtc,
             fail
@@ -551,7 +552,7 @@ inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
             ( InstResults = inst_test_no_results
             ; InstResults = inst_test_results(_, _, _, _, _, _)
             ),
-            bound_inst_list_is_mostly_unique_2(ModuleInfo, BoundInsts,
+            bound_functor_list_is_mostly_unique_2(ModuleInfo, BoundFunctors,
                 !Expansions)
         )
     ;
@@ -591,15 +592,15 @@ inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
         ; Inst = ground(shared, _)
         )
     ;
-        Inst = bound(shared, InstResult, BoundInsts),
+        Inst = bound(shared, InstResult, BoundFunctors),
         (
             InstResult = inst_test_results_fgtc
         ;
             ( InstResult = inst_test_no_results
             ; InstResult = inst_test_results(_, _, _, _, _, _)
             ),
-            bound_inst_list_is_not_partly_unique_2(ModuleInfo, BoundInsts,
-                !Expansions)
+            bound_functor_list_is_not_partly_unique_2(ModuleInfo,
+                BoundFunctors, !Expansions)
         )
     ;
         Inst = inst_var(_),
@@ -640,7 +641,7 @@ inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
         ; Inst = any(mostly_unique, _)
         )
     ;
-        Inst = bound(Uniq, InstResult, BoundInsts),
+        Inst = bound(Uniq, InstResult, BoundFunctors),
         ( Uniq = shared
         ; Uniq = mostly_unique
         ),
@@ -650,7 +651,7 @@ inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
             ( InstResult = inst_test_no_results
             ; InstResult = inst_test_results(_, _, _, _, _, _)
             ),
-            bound_inst_list_is_not_fully_unique_2(ModuleInfo, BoundInsts,
+            bound_functor_list_is_not_fully_unique_2(ModuleInfo, BoundFunctors,
                 !Expansions)
         )
     ;
@@ -796,8 +797,8 @@ inst_is_bound_to_functors(ModuleInfo, Inst, Functors) :-
 
 %-----------------------------------------------------------------------------%
 
-inst_results_bound_inst_list_is_ground(ModuleInfo, Type, InstResults,
-        BoundInsts) :-
+inst_results_bound_functor_list_is_ground(ModuleInfo, Type, InstResults,
+        BoundFunctors) :-
     require_complete_switch [InstResults]
     (
         InstResults = inst_test_results_fgtc
@@ -811,15 +812,15 @@ inst_results_bound_inst_list_is_ground(ModuleInfo, Type, InstResults,
             fail
         ;
             GroundnessResult = inst_result_groundness_unknown,
-            bound_inst_list_is_ground_mt(ModuleInfo, Type, BoundInsts)
+            bound_functor_list_is_ground_mt(ModuleInfo, Type, BoundFunctors)
         )
     ;
         InstResults = inst_test_no_results,
-        bound_inst_list_is_ground_mt(ModuleInfo, Type, BoundInsts)
+        bound_functor_list_is_ground_mt(ModuleInfo, Type, BoundFunctors)
     ).
 
-inst_results_bound_inst_list_is_ground_mt(ModuleInfo, Type, InstResults,
-        BoundInsts) :-
+inst_results_bound_functor_list_is_ground_mt(ModuleInfo, Type, InstResults,
+        BoundFunctors) :-
     require_complete_switch [InstResults]
     (
         InstResults = inst_test_results_fgtc
@@ -833,19 +834,19 @@ inst_results_bound_inst_list_is_ground_mt(ModuleInfo, Type, InstResults,
             fail
         ;
             GroundnessResult = inst_result_groundness_unknown,
-            bound_inst_list_is_ground_mt(ModuleInfo, Type, BoundInsts)
+            bound_functor_list_is_ground_mt(ModuleInfo, Type, BoundFunctors)
         )
     ;
         InstResults = inst_test_no_results,
-        bound_inst_list_is_ground_mt(ModuleInfo, Type, BoundInsts)
+        bound_functor_list_is_ground_mt(ModuleInfo, Type, BoundFunctors)
     ).
 
-:- pred inst_results_bound_inst_list_is_ground_mt_2(module_info::in,
-    mer_type::in, inst_test_results::in, list(bound_inst)::in,
+:- pred inst_results_bound_functor_list_is_ground_mt_2(module_info::in,
+    mer_type::in, inst_test_results::in, list(bound_functor)::in,
     set_tree234(mer_inst)::in, set_tree234(mer_inst)::out) is semidet.
 
-inst_results_bound_inst_list_is_ground_mt_2(ModuleInfo, Type, InstResults,
-        BoundInsts, !Expansions) :-
+inst_results_bound_functor_list_is_ground_mt_2(ModuleInfo, Type, InstResults,
+        BoundFunctors, !Expansions) :-
     require_complete_switch [InstResults]
     (
         InstResults = inst_test_results_fgtc
@@ -859,19 +860,19 @@ inst_results_bound_inst_list_is_ground_mt_2(ModuleInfo, Type, InstResults,
             fail
         ;
             GroundnessResult = inst_result_groundness_unknown,
-            bound_inst_list_is_ground_mt_2(ModuleInfo, Type, BoundInsts,
+            bound_functor_list_is_ground_mt_2(ModuleInfo, Type, BoundFunctors,
                 !Expansions)
         )
     ;
         InstResults = inst_test_no_results,
-        bound_inst_list_is_ground_mt_2(ModuleInfo, Type, BoundInsts,
+        bound_functor_list_is_ground_mt_2(ModuleInfo, Type, BoundFunctors,
             !Expansions)
     ).
 
 %-----------------------------------------------------------------------------%
 
-inst_results_bound_inst_list_is_ground_or_any(ModuleInfo, InstResults,
-        BoundInsts) :-
+inst_results_bound_functor_list_is_ground_or_any(ModuleInfo, InstResults,
+        BoundFunctors) :-
     require_complete_switch [InstResults]
     (
         InstResults = inst_test_results_fgtc
@@ -884,19 +885,19 @@ inst_results_bound_inst_list_is_ground_or_any(ModuleInfo, InstResults,
             ( GroundnessResult = inst_result_is_not_ground
             ; GroundnessResult = inst_result_groundness_unknown
             ),
-            bound_inst_list_is_ground_or_any(ModuleInfo, BoundInsts)
+            bound_functor_list_is_ground_or_any(ModuleInfo, BoundFunctors)
         )
     ;
         InstResults = inst_test_no_results,
-        bound_inst_list_is_ground_or_any(ModuleInfo, BoundInsts)
+        bound_functor_list_is_ground_or_any(ModuleInfo, BoundFunctors)
     ).
 
-:- pred inst_results_bound_inst_list_is_ground_or_any_2(module_info::in,
-    inst_test_results::in, list(bound_inst)::in,
+:- pred inst_results_bound_functor_list_is_ground_or_any_2(module_info::in,
+    inst_test_results::in, list(bound_functor)::in,
     set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
-inst_results_bound_inst_list_is_ground_or_any_2(ModuleInfo, InstResults,
-        BoundInsts, !Expansions) :-
+inst_results_bound_functor_list_is_ground_or_any_2(ModuleInfo, InstResults,
+        BoundFunctors, !Expansions) :-
     require_complete_switch [InstResults]
     (
         InstResults = inst_test_results_fgtc
@@ -910,135 +911,143 @@ inst_results_bound_inst_list_is_ground_or_any_2(ModuleInfo, InstResults,
             fail
         ;
             GroundnessResult = inst_result_groundness_unknown,
-            bound_inst_list_is_ground_or_any_2(ModuleInfo, BoundInsts,
+            bound_functor_list_is_ground_or_any_2(ModuleInfo, BoundFunctors,
                 !Expansions)
         )
     ;
         InstResults = inst_test_no_results,
-        bound_inst_list_is_ground_or_any_2(ModuleInfo, BoundInsts, !Expansions)
+        bound_functor_list_is_ground_or_any_2(ModuleInfo, BoundFunctors,
+            !Expansions)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred bound_inst_list_is_ground_mt(module_info::in, mer_type::in,
-    list(bound_inst)::in) is semidet.
+:- pred bound_functor_list_is_ground_mt(module_info::in, mer_type::in,
+    list(bound_functor)::in) is semidet.
 
-bound_inst_list_is_ground_mt(_, _, []).
-bound_inst_list_is_ground_mt(ModuleInfo, Type,
-        [BoundInst | BoundInsts]) :-
-    get_cons_id_arg_types_for_bound_inst(ModuleInfo, Type, BoundInst,
+bound_functor_list_is_ground_mt(_, _, []).
+bound_functor_list_is_ground_mt(ModuleInfo, Type,
+        [BoundFunctor | BoundFunctors]) :-
+    get_cons_id_arg_types_for_bound_functor(ModuleInfo, Type, BoundFunctor,
         ArgTypes),
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     inst_list_is_ground_mt(ModuleInfo, ArgTypes, ArgInsts),
-    bound_inst_list_is_ground_mt(ModuleInfo, Type, BoundInsts).
+    bound_functor_list_is_ground_mt(ModuleInfo, Type, BoundFunctors).
 
-:- pred bound_inst_list_is_ground_mt_2(module_info::in, mer_type::in,
-    list(bound_inst)::in,
+:- pred bound_functor_list_is_ground_mt_2(module_info::in, mer_type::in,
+    list(bound_functor)::in,
     set_tree234(mer_inst)::in, set_tree234(mer_inst)::out) is semidet.
 
-bound_inst_list_is_ground_mt_2(_, _, [], !Expansions).
-bound_inst_list_is_ground_mt_2(ModuleInfo, Type, [BoundInst | BoundInsts],
-        !Expansions) :-
-    get_cons_id_arg_types_for_bound_inst(ModuleInfo, Type, BoundInst,
+bound_functor_list_is_ground_mt_2(_, _, [], !Expansions).
+bound_functor_list_is_ground_mt_2(ModuleInfo, Type,
+        [BoundFunctor | BoundFunctors], !Expansions) :-
+    get_cons_id_arg_types_for_bound_functor(ModuleInfo, Type, BoundFunctor,
         ArgTypes),
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     inst_list_is_ground_mt_2(ModuleInfo, ArgTypes, ArgInsts, !Expansions),
-    bound_inst_list_is_ground_mt_2(ModuleInfo, Type, BoundInsts, !Expansions).
+    bound_functor_list_is_ground_mt_2(ModuleInfo, Type, BoundFunctors,
+        !Expansions).
 
-:- pred bound_inst_list_is_ground_or_any(module_info::in,
-    list(bound_inst)::in) is semidet.
+:- pred bound_functor_list_is_ground_or_any(module_info::in,
+    list(bound_functor)::in) is semidet.
 
-bound_inst_list_is_ground_or_any(_, []).
-bound_inst_list_is_ground_or_any(ModuleInfo, [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+bound_functor_list_is_ground_or_any(_, []).
+bound_functor_list_is_ground_or_any(ModuleInfo,
+        [BoundFunctor | BoundFunctors]) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     inst_list_is_ground_or_any(ModuleInfo, ArgInsts),
-    bound_inst_list_is_ground_or_any(ModuleInfo, BoundInsts).
+    bound_functor_list_is_ground_or_any(ModuleInfo, BoundFunctors).
 
-:- pred bound_inst_list_is_ground_or_any_2(module_info::in,
-    list(bound_inst)::in,
+:- pred bound_functor_list_is_ground_or_any_2(module_info::in,
+    list(bound_functor)::in,
     set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
-bound_inst_list_is_ground_or_any_2(_, [], !Expansions).
-bound_inst_list_is_ground_or_any_2(ModuleInfo, [BoundInst | BoundInsts],
-        !Expansions) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+bound_functor_list_is_ground_or_any_2(_, [], !Expansions).
+bound_functor_list_is_ground_or_any_2(ModuleInfo,
+        [BoundFunctor | BoundFunctors], !Expansions) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     inst_list_is_ground_or_any_2(ModuleInfo, ArgInsts, !Expansions),
-    bound_inst_list_is_ground_or_any_2(ModuleInfo, BoundInsts, !Expansions).
+    bound_functor_list_is_ground_or_any_2(ModuleInfo, BoundFunctors,
+        !Expansions).
 
-bound_inst_list_is_unique(_, []).
-bound_inst_list_is_unique(ModuleInfo, [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+bound_functor_list_is_unique(_, []).
+bound_functor_list_is_unique(ModuleInfo, [BoundFunctor | BoundFunctors]) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     inst_list_is_unique(ModuleInfo, ArgInsts),
-    bound_inst_list_is_unique(ModuleInfo, BoundInsts).
+    bound_functor_list_is_unique(ModuleInfo, BoundFunctors).
 
-:- pred bound_inst_list_is_unique_2(module_info::in, list(bound_inst)::in,
-    set(mer_inst)::in, set(mer_inst)::out) is semidet.
+:- pred bound_functor_list_is_unique_2(module_info::in,
+    list(bound_functor)::in, set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
-bound_inst_list_is_unique_2(_, [], !Expansions).
-bound_inst_list_is_unique_2(ModuleInfo, [BoundInst | BoundInsts],
+bound_functor_list_is_unique_2(_, [], !Expansions).
+bound_functor_list_is_unique_2(ModuleInfo, [BoundFunctor | BoundFunctors],
         !Expansions) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     inst_list_is_unique_2(ModuleInfo, ArgInsts, !Expansions),
-    bound_inst_list_is_unique_2(ModuleInfo, BoundInsts, !Expansions).
+    bound_functor_list_is_unique_2(ModuleInfo, BoundFunctors, !Expansions).
 
-bound_inst_list_is_mostly_unique(_, []).
-bound_inst_list_is_mostly_unique(ModuleInfo, [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+bound_functor_list_is_mostly_unique(_, []).
+bound_functor_list_is_mostly_unique(ModuleInfo,
+        [BoundFunctor | BoundFunctors]) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     inst_list_is_mostly_unique(ModuleInfo, ArgInsts),
-    bound_inst_list_is_mostly_unique(ModuleInfo, BoundInsts).
+    bound_functor_list_is_mostly_unique(ModuleInfo, BoundFunctors).
 
-:- pred bound_inst_list_is_mostly_unique_2(module_info::in,
-    list(bound_inst)::in,
+:- pred bound_functor_list_is_mostly_unique_2(module_info::in,
+    list(bound_functor)::in,
     set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
-bound_inst_list_is_mostly_unique_2(_, [], !Expansions).
-bound_inst_list_is_mostly_unique_2(ModuleInfo, [BoundInst | BoundInsts],
-        !Expansions) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+bound_functor_list_is_mostly_unique_2(_, [], !Expansions).
+bound_functor_list_is_mostly_unique_2(ModuleInfo,
+        [BoundFunctor | BoundFunctors], !Expansions) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     inst_list_is_mostly_unique_2(ModuleInfo, ArgInsts, !Expansions),
-    bound_inst_list_is_mostly_unique_2(ModuleInfo, BoundInsts, !Expansions).
+    bound_functor_list_is_mostly_unique_2(ModuleInfo,
+        BoundFunctors, !Expansions).
 
-bound_inst_list_is_not_partly_unique(_, []).
-bound_inst_list_is_not_partly_unique(ModuleInfo, [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+bound_functor_list_is_not_partly_unique(_, []).
+bound_functor_list_is_not_partly_unique(ModuleInfo,
+        [BoundFunctor | BoundFunctors]) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     inst_list_is_not_partly_unique(ModuleInfo, ArgInsts),
-    bound_inst_list_is_not_partly_unique(ModuleInfo, BoundInsts).
+    bound_functor_list_is_not_partly_unique(ModuleInfo, BoundFunctors).
 
-:- pred bound_inst_list_is_not_partly_unique_2(module_info::in,
-    list(bound_inst)::in,
+:- pred bound_functor_list_is_not_partly_unique_2(module_info::in,
+    list(bound_functor)::in,
     set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
-bound_inst_list_is_not_partly_unique_2(_, [], !Expansions).
-bound_inst_list_is_not_partly_unique_2(ModuleInfo, [BoundInst | BoundInsts],
-        !Expansions) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+bound_functor_list_is_not_partly_unique_2(_, [], !Expansions).
+bound_functor_list_is_not_partly_unique_2(ModuleInfo,
+        [BoundFunctor | BoundFunctors], !Expansions) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     inst_list_is_not_partly_unique_2(ModuleInfo, ArgInsts, !Expansions),
-    bound_inst_list_is_not_partly_unique_2(ModuleInfo, BoundInsts,
+    bound_functor_list_is_not_partly_unique_2(ModuleInfo, BoundFunctors,
         !Expansions).
 
-bound_inst_list_is_not_fully_unique(_, []).
-bound_inst_list_is_not_fully_unique(ModuleInfo, [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+bound_functor_list_is_not_fully_unique(_, []).
+bound_functor_list_is_not_fully_unique(ModuleInfo,
+        [BoundFunctor | BoundFunctors]) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     inst_list_is_not_fully_unique(ModuleInfo, ArgInsts),
-    bound_inst_list_is_not_fully_unique(ModuleInfo, BoundInsts).
+    bound_functor_list_is_not_fully_unique(ModuleInfo, BoundFunctors).
 
-:- pred bound_inst_list_is_not_fully_unique_2(module_info::in,
-    list(bound_inst)::in,
+:- pred bound_functor_list_is_not_fully_unique_2(module_info::in,
+    list(bound_functor)::in,
     set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
-bound_inst_list_is_not_fully_unique_2(_, [], !Expansions).
-bound_inst_list_is_not_fully_unique_2(ModuleInfo, [BoundInst | BoundInsts],
-        !Expansions) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+bound_functor_list_is_not_fully_unique_2(_, [], !Expansions).
+bound_functor_list_is_not_fully_unique_2(ModuleInfo,
+        [BoundFunctor | BoundFunctors], !Expansions) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     inst_list_is_not_fully_unique_2(ModuleInfo, ArgInsts, !Expansions),
-    bound_inst_list_is_not_fully_unique_2(ModuleInfo, BoundInsts,
+    bound_functor_list_is_not_fully_unique_2(ModuleInfo, BoundFunctors,
         !Expansions).
 
-bound_inst_list_is_free(_, []).
-bound_inst_list_is_free(ModuleInfo, [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+bound_functor_list_is_free(_, []).
+bound_functor_list_is_free(ModuleInfo, [BoundFunctor | BoundFunctors]) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     inst_list_is_free(ModuleInfo, ArgInsts),
-    bound_inst_list_is_free(ModuleInfo, BoundInsts).
+    bound_functor_list_is_free(ModuleInfo, BoundFunctors).
 
 %-----------------------------------------------------------------------------%
 
@@ -1227,32 +1236,32 @@ inst_contains_inst_name_2(ModuleInfo, InstName, Inst, Contains, !Expansions) :-
                 ( if set.contains(InstNameSet, InstName) then
                     % The Inst may contain InstName, and probably does,
                     % but verify it.
-                    bound_inst_list_contains_inst_name(ModuleInfo, InstName,
+                    bound_functor_list_contains_inst_name(ModuleInfo, InstName,
                         ArgInsts, Contains, !Expansions)
                 else
                     Contains = no
                 )
             ;
                 InstNamesResult = inst_result_contains_inst_names_unknown,
-                bound_inst_list_contains_inst_name(ModuleInfo, InstName,
+                bound_functor_list_contains_inst_name(ModuleInfo, InstName,
                     ArgInsts, Contains, !Expansions)
             )
         ;
             InstResults = inst_test_no_results,
-            bound_inst_list_contains_inst_name(ModuleInfo, InstName,
+            bound_functor_list_contains_inst_name(ModuleInfo, InstName,
                 ArgInsts, Contains, !Expansions)
         )
     ).
 
-:- pred bound_inst_list_contains_inst_name(module_info::in,
-    inst_name::in, list(bound_inst)::in, bool::out,
+:- pred bound_functor_list_contains_inst_name(module_info::in,
+    inst_name::in, list(bound_functor)::in, bool::out,
     inst_names::in, inst_names::out) is det.
 
-bound_inst_list_contains_inst_name(_ModuleInfo, _InstName, [],
+bound_functor_list_contains_inst_name(_ModuleInfo, _InstName, [],
         no, !Expansions).
-bound_inst_list_contains_inst_name(ModuleInfo, InstName,
-        [BoundInst | BoundInsts], Contains, !Expansions) :-
-    BoundInst = bound_functor(_Functor, ArgInsts),
+bound_functor_list_contains_inst_name(ModuleInfo, InstName,
+        [BoundFunctor | BoundFunctors], Contains, !Expansions) :-
+    BoundFunctor = bound_functor(_Functor, ArgInsts),
     inst_list_contains_inst_name(ModuleInfo, InstName, ArgInsts, Contains1,
         !Expansions),
     (
@@ -1260,7 +1269,8 @@ bound_inst_list_contains_inst_name(ModuleInfo, InstName,
         Contains = yes
     ;
         Contains1 = no,
-        bound_inst_list_contains_inst_name(ModuleInfo, InstName, BoundInsts,
+        bound_functor_list_contains_inst_name(ModuleInfo, InstName,
+        BoundFunctors,
             Contains, !Expansions)
     ).
 
@@ -1288,8 +1298,8 @@ maybe_any_to_bound(ModuleInfo, Type, Uniq, none_or_default_func, Inst) :-
     ( if type_constructors(ModuleInfo, Type, Constructors) then
         type_to_ctor_det(Type, TypeCtor),
         constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor,
-            Constructors, BoundInsts0),
-        list.sort_and_remove_dups(BoundInsts0, BoundInsts),
+            Constructors, BoundFunctors0),
+        list.sort_and_remove_dups(BoundFunctors0, BoundFunctors),
         % If all the constructors are constant, then Inst will be ground
         % and will not contain any.
         InstResult = inst_test_results(
@@ -1300,7 +1310,7 @@ maybe_any_to_bound(ModuleInfo, Type, Uniq, none_or_default_func, Inst) :-
             inst_result_contains_types_known(set.init),
             inst_result_type_ctor_propagated(TypeCtor)
         ),
-        Inst = bound(Uniq, InstResult, BoundInsts)
+        Inst = bound(Uniq, InstResult, BoundFunctors)
     else if type_may_contain_solver_type(ModuleInfo, Type) then
         % For a type for which constructors are not available (e.g. an
         % abstract type) and which may contain solver types, we fail, meaning
@@ -1353,7 +1363,7 @@ inst_contains_any_2(ModuleInfo, Inst, !.Expansions) = ContainsAny :-
         Inst = any(_, _),
         ContainsAny = yes
     ;
-        Inst = bound(_, InstResults, BoundInsts),
+        Inst = bound(_, InstResults, BoundFunctors),
         (
             InstResults = inst_test_results_fgtc,
             ContainsAny = no
@@ -1367,12 +1377,13 @@ inst_contains_any_2(ModuleInfo, Inst, !.Expansions) = ContainsAny :-
                 ContainsAny = yes
             ;
                 AnyResults = inst_result_contains_any_unknown,
-                ContainsAny = bound_inst_list_contains_any(ModuleInfo,
-                    BoundInsts, !.Expansions)
+                ContainsAny = bound_functor_list_contains_any(ModuleInfo,
+                    BoundFunctors, !.Expansions)
             )
         ;
             InstResults = inst_test_no_results,
-            ContainsAny = bound_inst_list_contains_any(ModuleInfo, BoundInsts,
+            ContainsAny = bound_functor_list_contains_any(ModuleInfo,
+            BoundFunctors,
                 !.Expansions)
         )
     ;
@@ -1413,13 +1424,13 @@ inst_list_contains_any(ModuleInfo, [Inst | Insts], Expansions) = ContainsAny :-
         ContainsAny = inst_list_contains_any(ModuleInfo, Insts, Expansions)
     ).
 
-:- func bound_inst_list_contains_any(module_info, list(bound_inst),
+:- func bound_functor_list_contains_any(module_info, list(bound_functor),
     set(inst_name)) = bool.
 
-bound_inst_list_contains_any(_ModuleInfo, [], _Expansions) = no.
-bound_inst_list_contains_any(ModuleInfo, [BoundInst | BoundInsts],
+bound_functor_list_contains_any(_ModuleInfo, [], _Expansions) = no.
+bound_functor_list_contains_any(ModuleInfo, [BoundFunctor | BoundFunctors],
         Expansions) = ContainsAny :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     HeadContainsAny =
         inst_list_contains_any(ModuleInfo, ArgInsts, Expansions),
     (
@@ -1427,8 +1438,8 @@ bound_inst_list_contains_any(ModuleInfo, [BoundInst | BoundInsts],
         ContainsAny = yes
     ;
         HeadContainsAny = no,
-        ContainsAny = bound_inst_list_contains_any(ModuleInfo, BoundInsts,
-            Expansions)
+        ContainsAny = bound_functor_list_contains_any(ModuleInfo,
+            BoundFunctors, Expansions)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1475,9 +1486,9 @@ inst_contains_higher_order_2(ModuleInfo, Inst, !.Expansions) = ContainsHO :-
         ),
         ContainsHO = ho_inst_info_contains_higher_order(HOInstInfo)
     ;
-        Inst = bound(_, _, BoundInsts),
-        ContainsHO = bound_inst_list_contains_higher_order(ModuleInfo,
-            BoundInsts, !.Expansions)
+        Inst = bound(_, _, BoundFunctors),
+        ContainsHO = bound_functor_list_contains_higher_order(ModuleInfo,
+            BoundFunctors, !.Expansions)
     ;
         Inst = inst_var(_),
         unexpected($pred, "uninstantiated inst parameter")
@@ -1519,13 +1530,14 @@ inst_list_contains_higher_order(ModuleInfo, [Inst | Insts], Expansions) =
             inst_list_contains_higher_order(ModuleInfo, Insts, Expansions)
     ).
 
-:- func bound_inst_list_contains_higher_order(module_info, list(bound_inst),
+:- func bound_functor_list_contains_higher_order(module_info,
+list(bound_functor),
     set(inst_name)) = bool.
 
-bound_inst_list_contains_higher_order(_ModuleInfo, [], _Expansions) = no.
-bound_inst_list_contains_higher_order(ModuleInfo, [BoundInst | BoundInsts],
-        Expansions) = ContainsHO :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+bound_functor_list_contains_higher_order(_ModuleInfo, [], _Expansions) = no.
+bound_functor_list_contains_higher_order(ModuleInfo,
+        [BoundFunctor | BoundFunctors], Expansions) = ContainsHO :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     HeadContainsHO =
         inst_list_contains_higher_order(ModuleInfo, ArgInsts, Expansions),
     (
@@ -1533,8 +1545,8 @@ bound_inst_list_contains_higher_order(ModuleInfo, [BoundInst | BoundInsts],
         ContainsHO = yes
     ;
         HeadContainsHO = no,
-        ContainsHO = bound_inst_list_contains_higher_order(ModuleInfo,
-            BoundInsts, Expansions)
+        ContainsHO = bound_functor_list_contains_higher_order(ModuleInfo,
+            BoundFunctors, Expansions)
     ).
 
 :- func ho_inst_info_contains_higher_order(ho_inst_info) = bool.

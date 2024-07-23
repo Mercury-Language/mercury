@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2017 The Mercury Team.
+% Copyright (C) 2017, 2024 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1007,7 +1007,7 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
     map.foldl2(
         ( pred(ConsId::in, Vs::in, C0::in, C::out, S0::in, S::out) is det :-
             ( if Inst = bound(_, _, BIs) then
-                ( if cons_id_in_bound_insts(ConsId, BIs, Insts) then
+                ( if cons_id_in_bound_functors(ConsId, BIs, Insts) then
                     assoc_list.from_corresponding_lists(Vs, Insts, VarInsts),
                     list.foldl2(
                         ( pred((V - I)::in, C1::in, C2::out,
@@ -1967,15 +1967,15 @@ add_imported_preds(ModuleInfo, SCCs0, SCCs) :-
         ), PredIds, ImportedPredIds),
     SCCs = SCCs0 ++ ImportedPredIds.
 
-:- pred cons_id_in_bound_insts(cons_id::in, list(bound_inst)::in,
+:- pred cons_id_in_bound_functors(cons_id::in, list(bound_functor)::in,
         list(mer_inst)::out) is semidet.
 
-cons_id_in_bound_insts(ConsId, [bound_functor(ConsId0, Insts0) | BIs],
+cons_id_in_bound_functors(ConsId, [bound_functor(ConsId0, Insts0) | BIs],
         Insts) :-
     ( if equivalent_cons_ids(ConsId0, ConsId) then
         Insts = Insts0
     else
-        cons_id_in_bound_insts(ConsId, BIs, Insts)
+        cons_id_in_bound_functors(ConsId, BIs, Insts)
     ).
 
 %------------------------------------------------------------------------%

@@ -636,11 +636,11 @@ modecheck_head_inst_var(HeadInstVars, InstVar, Subst, !Acc) :-
         Subst = constrained_inst_vars(SubstInstVars, SubstInst),
         set.member(InstVar, SubstInstVars),
         ( if
-            Inst = bound(Uniq, _, BoundInsts),
-            SubstInst = bound(SubstUniq, _, SubstBoundInsts)
+            Inst = bound(Uniq, _, BoundFunctors),
+            SubstInst = bound(SubstUniq, _, SubstBoundFunctors)
         then
             Uniq = SubstUniq,
-            BoundInsts = SubstBoundInsts
+            BoundFunctors = SubstBoundFunctors
         else
             Inst = SubstInst
         )
@@ -931,10 +931,10 @@ modecheck_functor_test(Var, ConsId, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_var_table(!.ModeInfo, VarTable),
     lookup_var_type(VarTable, Var, Type),
-    BoundInst = cons_id_to_bound_inst(ModuleInfo, Type, ConsId),
+    BoundFunctor = cons_id_to_bound_functor(ModuleInfo, Type, ConsId),
 
     % Record the fact that Var was bound to ConsId.
-    Inst = bound(unique, inst_test_no_results, [BoundInst]),
+    Inst = bound(unique, inst_test_no_results, [BoundFunctor]),
     modecheck_set_var_inst(Var, Inst, no, !ModeInfo).
 
 modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo) :-
@@ -943,24 +943,25 @@ modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_var_table(!.ModeInfo, VarTable),
     lookup_var_type(VarTable, Var, Type),
-    BoundInsts = list.map(cons_id_to_bound_inst(ModuleInfo, Type),
+    BoundFunctors = list.map(cons_id_to_bound_functor(ModuleInfo, Type),
         [MainConsId | OtherConsIds]),
 
     % Record the fact that Var was bound to MainConsId or one of the
     % OtherConsIds.
-    Inst = bound(unique, inst_test_no_results, BoundInsts),
+    Inst = bound(unique, inst_test_no_results, BoundFunctors),
     modecheck_set_var_inst(Var, Inst, no, !ModeInfo).
 
-:- func cons_id_to_bound_inst(module_info, mer_type, cons_id) = bound_inst.
+:- func cons_id_to_bound_functor(module_info, mer_type, cons_id)
+    = bound_functor.
 
-cons_id_to_bound_inst(ModuleInfo, Type, ConsId) = BoundInst :-
+cons_id_to_bound_functor(ModuleInfo, Type, ConsId) = BoundFunctor :-
     ( if ConsId = du_data_ctor(DuCtor) then
         ConsIdArity = du_ctor_adjusted_arity(ModuleInfo, Type, DuCtor)
     else
         ConsIdArity = cons_id_arity(ConsId)
     ),
     list.duplicate(ConsIdArity, free, ArgInsts),
-    BoundInst = bound_functor(ConsId, ArgInsts).
+    BoundFunctor = bound_functor(ConsId, ArgInsts).
 
 %---------------------------------------------------------------------------%
 
@@ -1045,7 +1046,7 @@ get_constrained_insts_in_inst(ModuleInfo, Inst, !Map, !Expansions) :-
         ; Inst = not_reached
         )
     ;
-        Inst = bound(_, InstResults, BoundInsts),
+        Inst = bound(_, InstResults, BoundFunctors),
         (
             InstResults = inst_test_results_fgtc
         ;
@@ -1057,13 +1058,13 @@ get_constrained_insts_in_inst(ModuleInfo, Inst, !Map, !Expansions) :-
             then
                 true
             else
-                list.foldl2(get_constrained_insts_in_bound_inst(ModuleInfo),
-                    BoundInsts, !Map, !Expansions)
+                list.foldl2(get_constrained_insts_in_bound_functor(ModuleInfo),
+                    BoundFunctors, !Map, !Expansions)
             )
         ;
             InstResults = inst_test_no_results,
-            list.foldl2(get_constrained_insts_in_bound_inst(ModuleInfo),
-                BoundInsts, !Map, !Expansions)
+            list.foldl2(get_constrained_insts_in_bound_functor(ModuleInfo),
+                BoundFunctors, !Map, !Expansions)
         )
     ;
         ( Inst = any(_, HOInstInfo)
@@ -1095,13 +1096,13 @@ get_constrained_insts_in_inst(ModuleInfo, Inst, !Map, !Expansions) :-
         unexpected($pred, "inst_var")
     ).
 
-:- pred get_constrained_insts_in_bound_inst(module_info::in, bound_inst::in,
+:- pred get_constrained_insts_in_bound_functor(module_info::in, bound_functor::in,
     head_inst_vars::in, head_inst_vars::out,
     inst_expansions::in, inst_expansions::out) is det.
 
-get_constrained_insts_in_bound_inst(ModuleInfo, BoundInst,
+get_constrained_insts_in_bound_functor(ModuleInfo, BoundFunctor,
         !Map, !Expansions) :-
-    BoundInst = bound_functor(_ConsId, Insts),
+    BoundFunctor = bound_functor(_ConsId, Insts),
     list.foldl2(get_constrained_insts_in_inst(ModuleInfo), Insts,
         !Map, !Expansions).
 

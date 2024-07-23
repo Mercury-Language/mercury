@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015, 2021-2023 The Mercury team.
+% Copyright (C) 2015, 2021-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -60,18 +60,19 @@
 :- pred propagate_unchecked_type_into_inst(module_info::in,
     mer_type::in, mer_inst::in, mer_inst::out) is det.
 
-    % This predicate has the same job as propagate_type_into_inst,
-    % restricted to cases where the input is 'bound(Uniq, Tests, BoundInsts)'.
-    % Each bound_inst in BoundInsts contains a cons_id. This predicate records,
-    % for each of those cons_ids, that the cons_id belongs to the given type,
-    % *if* in fact that cons_id is one of the function symbols of that type.
+    % This predicate has the same job as propagate_type_into_inst, restricted
+    % to cases where the input is 'bound(Uniq, Tests, BoundFunctors)'.
+    % Each bound_functor in BoundFunctors contains a cons_id. This predicate
+    % records, for each of those cons_ids, that the cons_id belongs to the
+    % given type, *if* in fact that cons_id is one of the function symbols
+    % of that type.
     %
     % NOTE: If insts were required to belong to just one explicitly specified
     % type, as they should be, this predicate would not be necessary.
     %
     % This predicate is exported for use by inst_user.m.
     %
-:- pred propagate_unchecked_type_into_bound_inst(module_info::in,
+:- pred propagate_unchecked_type_into_bound_functor(module_info::in,
     mer_type::in, mer_inst::in(mer_inst_is_bound), mer_inst::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -132,11 +133,11 @@
             % The inst is in the argument list of a lambda expression
             % whose nature (predicate or function, arity, and source location)
             % are specified by the arguments.
-    ;       ta_bound_inst(cons_id, tprop_context)
-            % The inst is in the argument list of a bound_inst for
+    ;       ta_bound_functor(cons_id, tprop_context)
+            % The inst is in the argument list of a bound_functor for
             % the data constructor, which itself occurs at the given context.
     ;       ta_tuple_inst(tprop_context)
-            % The inst is in the argument list of a bound_inst for a tuple,
+            % The inst is in the argument list of a bound_functor for a tuple,
             % which itself occurs at the given context.
     ;       ta_ho_inst(pred_or_func, pred_form_arity, tprop_context).
             % The inst is in the argument list of a higher order inst,
@@ -360,9 +361,9 @@ propagate_type_into_inst_eagerly(Info, Context, Type, Constructors,
                 Inst = ground(Uniq, higher_order(HigherOrderInstInfo))
             else
                 type_to_ctor_det(Type, TypeCtor),
-                constructors_to_bound_insts(ModuleInfo, Uniq, TypeCtor,
-                    Constructors, BoundInsts0),
-                list.sort_and_remove_dups(BoundInsts0, BoundInsts),
+                constructors_to_bound_functors(ModuleInfo, Uniq, TypeCtor,
+                    Constructors, BoundFunctors0),
+                list.sort_and_remove_dups(BoundFunctors0, BoundFunctors),
                 InstResults = inst_test_results(
                     inst_result_is_ground,
                     inst_result_does_not_contain_any,
@@ -371,7 +372,7 @@ propagate_type_into_inst_eagerly(Info, Context, Type, Constructors,
                     inst_result_contains_types_known(set.init),
                     inst_result_type_ctor_propagated(TypeCtor)
                 ),
-                Inst = bound(Uniq, InstResults, BoundInsts)
+                Inst = bound(Uniq, InstResults, BoundFunctors)
             )
         ;
             HOInstInfo0 = higher_order(PredInstInfo0),
@@ -410,8 +411,8 @@ propagate_type_into_inst_eagerly(Info, Context, Type, Constructors,
             else
                 type_to_ctor_det(Type, TypeCtor),
                 constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor,
-                    Constructors, BoundInsts0),
-                list.sort_and_remove_dups(BoundInsts0, BoundInsts),
+                    Constructors, BoundFunctors0),
+                list.sort_and_remove_dups(BoundFunctors0, BoundFunctors),
                 % Normally, Inst is not ground, and contains any.
                 % But if all the Ctors are constants, it is ground,
                 % and does not contain any.
@@ -423,7 +424,7 @@ propagate_type_into_inst_eagerly(Info, Context, Type, Constructors,
                     inst_result_contains_types_known(set.init),
                     inst_result_type_ctor_propagated(TypeCtor)
                 ),
-                Inst = bound(Uniq, InstResults, BoundInsts)
+                Inst = bound(Uniq, InstResults, BoundFunctors)
             )
         ;
             HOInstInfo0 = higher_order(PredInstInfo0),
@@ -449,8 +450,8 @@ propagate_type_into_inst_eagerly(Info, Context, Type, Constructors,
             Inst = any(Uniq, higher_order(PredInstInfo))
         )
     ;
-        Inst0 = bound(_Uniq, _InstResult, _BoundInsts0),
-        propagate_type_into_bound_inst(Info, Context,
+        Inst0 = bound(_Uniq, _InstResult, _BoundFunctors0),
+        propagate_type_into_bound_functor(Info, Context,
             Type, Inst0, Inst, !Cache, !Errors)
     ;
         Inst0 = not_reached,
@@ -573,8 +574,8 @@ propagate_type_into_inst_lazily(Info, Context, Type, Inst0, Inst,
             Inst = any(Uniq, higher_order(PredInstInfo))
         )
     ;
-        Inst0 = bound(_Uniq, _InstResult, _BoundInsts0),
-        propagate_type_into_bound_inst(Info, Context,
+        Inst0 = bound(_Uniq, _InstResult, _BoundFunctors0),
+        propagate_type_into_bound_functor(Info, Context,
             Type, Inst0, Inst, !Cache, !Errors)
     ;
         Inst0 = not_reached,
@@ -668,38 +669,39 @@ default_higher_order_func_inst(Info, Context, PredArgTypes, PredInstInfo,
 
 %---------------------------------------------------------------------------%
 
-propagate_unchecked_type_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
+propagate_unchecked_type_into_bound_functor(ModuleInfo, Type, Inst0, Inst) :-
     Info = base_info(ModuleInfo),
-    propagate_type_into_bound_inst(Info, unit, Type, Inst0, Inst,
+    propagate_type_into_bound_functor(Info, unit, Type, Inst0, Inst,
         map.init, _, unit, _).
 
-:- pred propagate_type_into_bound_inst(Info::in, Context::in,
+:- pred propagate_type_into_bound_functor(Info::in, Context::in,
     mer_type::in, mer_inst::in(mer_inst_is_bound), mer_inst::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
     <= tprop_record(Info, Context, Args, Errors).
-:- pragma type_spec(pred(propagate_type_into_bound_inst/9),
+:- pragma type_spec(pred(propagate_type_into_bound_functor/9),
     (Info = tprop_info, Context = tprop_context, Args = tprop_args,
     Errors = tprop_errors)).
-:- pragma type_spec(pred(propagate_type_into_bound_inst/9),
+:- pragma type_spec(pred(propagate_type_into_bound_functor/9),
     (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
-propagate_type_into_bound_inst(Info, Context, Type, Inst0, Inst,
+propagate_type_into_bound_functor(Info, Context, Type, Inst0, Inst,
         !Cache, !Errors) :-
-    Inst0 = bound(Uniq, InstResults0, BoundInsts0),
+    Inst0 = bound(Uniq, InstResults0, BoundFunctors0),
     % Test for the most frequent kinds of type_ctors first.
     (
         Type = builtin_type(BuiltinType),
         (
             BuiltinType = builtin_type_char,
-            % There is no need to sort BoundInsts; if BoundInsts0 is sorted,
-            % which it should be, then BoundInsts will be sorted too.
+            % There is no need to sort BoundFunctors; if BoundFunctors0
+            % is sorted, which it should be, then BoundFunctors will be
+            % sorted too.
             list.map_foldl(propagate_char_type(Context),
-                BoundInsts0, BoundInsts, !Errors),
+                BoundFunctors0, BoundFunctors, !Errors),
             % Tuples don't have a *conventional* type_ctor.
             % XXX Tuples?
             PropagatedResult = inst_result_no_type_ctor_propagated,
-            construct_new_bound_inst(Uniq, InstResults0, PropagatedResult,
-                BoundInsts, Inst)
+            construct_new_bound_functor(Uniq, InstResults0, PropagatedResult,
+                BoundFunctors, Inst)
         ;
             ( BuiltinType = builtin_type_int(_)
             ; BuiltinType = builtin_type_float
@@ -711,15 +713,15 @@ propagate_type_into_bound_inst(Info, Context, Type, Inst0, Inst,
         )
     ;
         Type = tuple_type(ArgTypes, _Kind),
-        % There is no need to sort BoundInsts; if BoundInsts0 is sorted,
-        % which it should be, then BoundInsts will be sorted too.
+        % There is no need to sort BoundFunctors; if BoundFunctors0 is sorted,
+        % which it should be, then BoundFunctors will be sorted too.
         list.map_foldl2(
             propagate_types_into_tuple(Info, Context, ArgTypes),
-            BoundInsts0, BoundInsts, !Cache, !Errors),
+            BoundFunctors0, BoundFunctors, !Cache, !Errors),
         % Tuples don't have a *conventional* type_ctor.
         PropagatedResult = inst_result_no_type_ctor_propagated,
-        construct_new_bound_inst(Uniq, InstResults0, PropagatedResult,
-            BoundInsts, Inst)
+        construct_new_bound_functor(Uniq, InstResults0, PropagatedResult,
+            BoundFunctors, Inst)
     ;
         ( Type = type_variable(_, _)
         ; Type = higher_order_type(_, _, _, _)
@@ -755,13 +757,13 @@ propagate_type_into_bound_inst(Info, Context, Type, Inst0, Inst,
                 map.from_corresponding_lists(TypeParams, ArgTypes, ArgSubst),
                 OoMConstructors = TypeBodyDu ^ du_type_ctors,
                 Constructors = one_or_more_to_list(OoMConstructors),
-                propagate_subst_type_ctor_into_bound_insts(Info, Context,
+                propagate_subst_type_ctor_into_bound_functors(Info, Context,
                     ArgSubst, TypeCtor, TypeModule, Constructors,
-                    BoundInsts0, BoundInsts1, !Cache, !Errors),
-                list.sort(BoundInsts1, BoundInsts),
+                    BoundFunctors0, BoundFunctors1, !Cache, !Errors),
+                list.sort(BoundFunctors1, BoundFunctors),
                 PropagatedResult = inst_result_type_ctor_propagated(TypeCtor),
-                construct_new_bound_inst(Uniq, InstResults0, PropagatedResult,
-                    BoundInsts, Inst)
+                construct_new_bound_functor(Uniq, InstResults0,
+                    PropagatedResult, BoundFunctors, Inst)
             )
         else
             % Type variables have no info to propagate into an inst.
@@ -771,21 +773,21 @@ propagate_type_into_bound_inst(Info, Context, Type, Inst0, Inst,
         )
     ;
         Type = kinded_type(KindedType, _Kind),
-        propagate_type_into_bound_inst(Info, Context, KindedType,
+        propagate_type_into_bound_functor(Info, Context, KindedType,
             Inst0, Inst, !Cache, !Errors)
     ).
 
-:- pred construct_new_bound_inst(uniqueness::in, inst_test_results::in,
-    inst_result_type_ctor_propagated::in, list(bound_inst)::in,
+:- pred construct_new_bound_functor(uniqueness::in, inst_test_results::in,
+    inst_result_type_ctor_propagated::in, list(bound_functor)::in,
     mer_inst::out) is det.
 
-construct_new_bound_inst(Uniq, InstResults0, PropagatedResult, BoundInsts,
-        Inst) :-
+construct_new_bound_functor(Uniq, InstResults0, PropagatedResult,
+        BoundFunctors, Inst) :-
     (
-        BoundInsts = [],
+        BoundFunctors = [],
         Inst = not_reached
     ;
-        BoundInsts = [_ | _],
+        BoundFunctors = [_ | _],
         (
             InstResults0 = inst_test_results_fgtc,
             InstResults = InstResults0
@@ -800,7 +802,7 @@ construct_new_bound_inst(Uniq, InstResults0, PropagatedResult, BoundInsts,
             InstResults0 = inst_test_results(GroundNessResult0,
                 ContainsAnyResult, _, _, _, _),
             % XXX I (zs) don't understand the predicate
-            % propagate_type_ctor_into_bound_inst
+            % propagate_type_ctor_into_bound_functor
             % well enough to figure out under what circumstances we could
             % keep the parts of InstResult0 we are clobbering here.
             InstResults = inst_test_results(GroundNessResult0,
@@ -808,17 +810,17 @@ construct_new_bound_inst(Uniq, InstResults0, PropagatedResult, BoundInsts,
                 inst_result_contains_inst_vars_unknown,
                 inst_result_contains_types_unknown, PropagatedResult)
         ),
-        % We shouldn't need to sort BoundInsts. The cons_ids in the
-        % bound_insts in the list should have been either all typed
+        % We shouldn't need to sort BoundFunctors. The cons_ids in the
+        % bound_functors in the list should have been either all typed
         % or all non-typed. If they were all typed, then pushing the
         % type_ctor into them should not have modified them. If they
         % were all non-typed, then pushing the same type_ctor into them all
         % should not have changed their order.
-        Inst = bound(Uniq, InstResults, BoundInsts)
+        Inst = bound(Uniq, InstResults, BoundFunctors)
     ).
 
 :- pred propagate_types_into_tuple(Info::in, Context::in,
-    list(mer_type)::in, bound_inst::in, bound_inst::out,
+    list(mer_type)::in, bound_functor::in, bound_functor::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
     <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(propagate_types_into_tuple/9),
@@ -828,8 +830,8 @@ construct_new_bound_inst(Uniq, InstResults0, PropagatedResult, BoundInsts,
     (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
 propagate_types_into_tuple(ModuleInfo, Context, TupleArgTypes,
-        BoundInst0, BoundInst, !Cache, !Errors) :-
-    BoundInst0 = bound_functor(Functor, ArgInsts0),
+        BoundFunctor0, BoundFunctor, !Cache, !Errors) :-
+    BoundFunctor0 = bound_functor(Functor, ArgInsts0),
     ( if
         ( Functor = tuple_cons(_)
         ; Functor = du_data_ctor(du_ctor(unqualified("{}"), _, _))
@@ -842,20 +844,20 @@ propagate_types_into_tuple(ModuleInfo, Context, TupleArgTypes,
         propagate_types_into_insts(ModuleInfo, Args, 1,
             TupleArgTypes, ArgInsts0, ArgInsts, !Cache, !Errors)
     else
-        % The bound_inst's arity does not match the tuple's arity, so leave it
-        % alone. This can only happen in a user defined bound_inst.
-        % A mode error should be reported if anything tries to match with
-        % the inst.
+        % The bound_functor's arity does not match the tuple's arity,
+        % so leave it alone. This can only happen in a user defined
+        % bound_functor. A mode error should be reported if anything
+        % tries to match with the inst.
         ArgInsts = ArgInsts0
     ),
-    BoundInst = bound_functor(Functor, ArgInsts).
+    BoundFunctor = bound_functor(Functor, ArgInsts).
 
-:- pred propagate_char_type(Context::in, bound_inst::in, bound_inst::out,
+:- pred propagate_char_type(Context::in, bound_functor::in, bound_functor::out,
     Errors::in, Errors::out) is det
     <= tprop_record(Info, Context, Args, Errors).
 
-propagate_char_type(Context, BoundInst0, BoundInst, !Errors) :-
-    BoundInst0 = bound_functor(ConsId0, ArgInsts0),
+propagate_char_type(Context, BoundFunctor0, BoundFunctor, !Errors) :-
+    BoundFunctor0 = bound_functor(ConsId0, ArgInsts0),
     ( if
         ConsId0 = du_data_ctor(du_ctor(unqualified(Name), 0, _)),
         string.to_char_list(Name, NameChars),
@@ -863,34 +865,34 @@ propagate_char_type(Context, BoundInst0, BoundInst, !Errors) :-
         ArgInsts0 = []
     then
         ConsId = char_const(NameChar),
-        BoundInst = bound_functor(ConsId, [])
+        BoundFunctor = bound_functor(ConsId, [])
     else
         report_missing_cons_id(Context, char_type_ctor, ConsId0, !Errors),
-        % The bound_inst is not a valid one for chars, so leave it alone.
-        % This can only happen in a user defined bound_inst.
+        % The bound_functor is not a valid one for chars, so leave it alone.
+        % This can only happen in a user defined bound_functor.
         % A mode error should be reported if anything tries to match with
         % the inst.
-        BoundInst = BoundInst0
+        BoundFunctor = BoundFunctor0
     ).
 
-:- pred propagate_subst_type_ctor_into_bound_insts(Info::in,
+:- pred propagate_subst_type_ctor_into_bound_functors(Info::in,
     Context::in, tsubst::in, type_ctor::in, module_name::in,
-    list(constructor)::in, list(bound_inst)::in, list(bound_inst)::out,
+    list(constructor)::in, list(bound_functor)::in, list(bound_functor)::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
     <= tprop_record(Info, Context, Args, Errors).
-:- pragma type_spec(pred(propagate_subst_type_ctor_into_bound_insts/12),
+:- pragma type_spec(pred(propagate_subst_type_ctor_into_bound_functors/12),
     (Info = tprop_info, Context = tprop_context, Args = tprop_args,
     Errors = tprop_errors)).
-:- pragma type_spec(pred(propagate_subst_type_ctor_into_bound_insts/12),
+:- pragma type_spec(pred(propagate_subst_type_ctor_into_bound_functors/12),
     (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
-propagate_subst_type_ctor_into_bound_insts(_, _, _, _, _, _, [], [],
+propagate_subst_type_ctor_into_bound_functors(_, _, _, _, _, _, [], [],
         !Cache, !Errors).
-propagate_subst_type_ctor_into_bound_insts(Info, Context, Subst,
+propagate_subst_type_ctor_into_bound_functors(Info, Context, Subst,
         TypeCtor, TypeModule, Constructors,
-        [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts],
+        [BoundFunctor0 | BoundFunctors0], [BoundFunctor | BoundFunctors],
         !Cache, !Errors) :-
-    BoundInst0 = bound_functor(ConsId0, ArgInsts0),
+    BoundFunctor0 = bound_functor(ConsId0, ArgInsts0),
     ( if ConsId0 = du_data_ctor(du_ctor(ConsSymName0, ConsArity, _)) then
         (
             ConsSymName0 = unqualified(ConsName),
@@ -909,24 +911,24 @@ propagate_subst_type_ctor_into_bound_insts(Info, Context, Subst,
             MatchingConstructor = ctor(_Ordinal, _MaybeExistConstraints,
                 _Name, CtorArgs, _Arity, _Ctxt),
             get_constructor_arg_types(CtorArgs, ArgTypes),
-            step_into_bound_inst(ConsId, Context, Args),
+            step_into_bound_functor(ConsId, Context, Args),
             propagate_subst_types_into_insts(Info, Args, 1, Subst,
                 ArgTypes, ArgInsts0, ArgInsts, !Cache, !Errors),
-            BoundInst = bound_functor(ConsId, ArgInsts)
+            BoundFunctor = bound_functor(ConsId, ArgInsts)
         else
             % The cons_id is not a valid constructor for the type,
             % so leave it alone. This can only happen in a user defined
-            % bound_inst. A mode error should be reported if anything
+            % bound_functor. A mode error should be reported if anything
             % tries to match with the inst.
             report_missing_cons_id(Context, TypeCtor, ConsId0, !Errors),
-            BoundInst = bound_functor(ConsId, ArgInsts0)
+            BoundFunctor = bound_functor(ConsId, ArgInsts0)
         )
     else
         report_missing_cons_id(Context, TypeCtor, ConsId0, !Errors),
-        BoundInst = bound_functor(ConsId0, ArgInsts0)
+        BoundFunctor = bound_functor(ConsId0, ArgInsts0)
     ),
-    propagate_subst_type_ctor_into_bound_insts(Info, Context, Subst,
-        TypeCtor, TypeModule, Constructors, BoundInsts0, BoundInsts,
+    propagate_subst_type_ctor_into_bound_functors(Info, Context, Subst,
+        TypeCtor, TypeModule, Constructors, BoundFunctors0, BoundFunctors,
         !Cache, !Errors).
 
     % Find the first constructor in the given list of constructors
@@ -1048,9 +1050,9 @@ where [
     func get_module_info(Info) = module_info,
 
         % Return a representation of the argument list inside
-        % the bound_inst of the given cons_id at the given context.
+        % the bound_functor of the given cons_id at the given context.
         %
-    pred step_into_bound_inst(cons_id::in, Context::in, Args::out) is det,
+    pred step_into_bound_functor(cons_id::in, Context::in, Args::out) is det,
 
         % Return a representation of the argument list inside
         % the tuple inst at the given context.
@@ -1139,7 +1141,7 @@ where [
     % with the exception of returning the module_info.
 :- instance tprop_record(base_info, unit, unit, unit) where [
     (get_module_info(base_info(ModuleInfo)) = ModuleInfo),
-    (step_into_bound_inst(_, _, unit)),
+    (step_into_bound_functor(_, _, unit)),
     (step_into_tuple_inst(_, unit)),
     (step_into_ho_inst(_, _, _, unit)),
     (args_slot_to_context(_, _, unit)),
@@ -1161,7 +1163,7 @@ where [
     where
 [
     (get_module_info(tprop_info(ModuleInfo, _, _)) = ModuleInfo),
-    pred(step_into_bound_inst/3) is do_step_into_bound_inst,
+    pred(step_into_bound_functor/3) is do_step_into_bound_functor,
     pred(step_into_tuple_inst/2) is do_step_into_tuple_inst,
     pred(step_into_ho_inst/4) is do_step_into_ho_inst,
     pred(args_slot_to_context/3) is do_args_slot_to_context,
@@ -1184,11 +1186,11 @@ where [
 
 %---------------------%
 
-:- pred do_step_into_bound_inst(cons_id::in,
+:- pred do_step_into_bound_functor(cons_id::in,
     tprop_context::in, tprop_args::out) is det.
 
-do_step_into_bound_inst(ConsId, Context, Args) :-
-    Args = ta_bound_inst(ConsId, Context).
+do_step_into_bound_functor(ConsId, Context, Args) :-
+    Args = ta_bound_functor(ConsId, Context).
 
 :- pred do_step_into_tuple_inst(tprop_context::in, tprop_args::out)
     is det.
@@ -1238,7 +1240,7 @@ are_we_already_inside_user_inst_expansion(LocnContext, SymNameArity)
             ),
             Inside = not_inside_user_inst
         ;
-            ( Args = ta_bound_inst(_, OuterContext)
+            ( Args = ta_bound_functor(_, OuterContext)
             ; Args = ta_tuple_inst(OuterContext)
             ; Args = ta_ho_inst(_, _, OuterContext)
             ),
@@ -1523,7 +1525,7 @@ tprop_context_to_pieces(TPropContext, Context, Pieces) :-
                 PredPieces ++ [suffix(":"), nl]
         ;
             (
-                Args = ta_bound_inst(ConsId, OuterTPropContext),
+                Args = ta_bound_functor(ConsId, OuterTPropContext),
                 InnerPieces =
                     [words("in the"), nth_fixed(ArgNum), words("argument of"),
                     unqual_cons_id_and_maybe_arity(ConsId), suffix(":"), nl]

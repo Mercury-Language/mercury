@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -327,19 +327,19 @@ match_corresponding_inst_lists_with_renaming(ModuleInfo, [A | As], [B | Bs],
     match_corresponding_inst_lists_with_renaming(ModuleInfo, As, Bs,
         !Renaming).
 
-:- pred match_corresponding_bound_inst_lists_with_renaming(module_info::in,
-    list(bound_inst)::in, list(bound_inst)::in,
+:- pred match_corresponding_bound_functor_lists_with_renaming(module_info::in,
+    list(bound_functor)::in, list(bound_functor)::in,
     inst_var_renaming::in, inst_var_renaming::out) is semidet.
 
-match_corresponding_bound_inst_lists_with_renaming(_, [], [], !Renaming).
-match_corresponding_bound_inst_lists_with_renaming(ModuleInfo,
+match_corresponding_bound_functor_lists_with_renaming(_, [], [], !Renaming).
+match_corresponding_bound_functor_lists_with_renaming(ModuleInfo,
         [A | As], [B | Bs], !Renaming) :-
     A = bound_functor(ConsId, ArgsA),
     B = bound_functor(ConsId, ArgsB),
     match_corresponding_inst_lists_with_renaming(ModuleInfo, ArgsA, ArgsB,
         map.init, Renaming0),
     merge_inst_var_renamings(Renaming0, !Renaming),
-    match_corresponding_bound_inst_lists_with_renaming(ModuleInfo, As, Bs,
+    match_corresponding_bound_functor_lists_with_renaming(ModuleInfo, As, Bs,
         !Renaming).
 
 :- pred match_insts_with_renaming(module_info::in, mer_inst::in, mer_inst::in,
@@ -365,10 +365,10 @@ match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
         match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,
             Renaming)
     ;
-        InstA = bound(Uniq, _, BoundInstsA),
-        InstB = bound(Uniq, _, BoundInstsB),
-        match_corresponding_bound_inst_lists_with_renaming(ModuleInfo,
-            BoundInstsA, BoundInstsB, map.init, Renaming)
+        InstA = bound(Uniq, _, BoundFunctorsA),
+        InstB = bound(Uniq, _, BoundFunctorsB),
+        match_corresponding_bound_functor_lists_with_renaming(ModuleInfo,
+            BoundFunctorsA, BoundFunctorsB, map.init, Renaming)
     ;
         InstA = inst_var(VarA),
         InstB = inst_var(VarB),

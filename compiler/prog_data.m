@@ -131,7 +131,7 @@
             % XXX I (zs) also strongly suspect that while post-typecheck.m.
             % may replace occurrences of cons(unqualified("{}"), ...) in a
             % procedure's body goal with tuple_cons(Arity), it won't replace
-            % similar occurrences in bound_insts in those procedures' mode
+            % similar occurrences in bound_functor in those procedures' mode
             % declarations.
 
     ;       closure_cons(shrouded_pred_proc_id)
@@ -1343,8 +1343,8 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 
     ;           free
 
-    ;           bound(uniqueness, inst_test_results, list(bound_inst))
-                % The list(bound_inst) must be sorted.
+    ;           bound(uniqueness, inst_test_results, list(bound_functor))
+                % The list(bound_functor) must be sorted.
 
     ;           defined_inst(inst_name)
                 % A defined_inst is possibly recursive inst whose value is
@@ -1547,7 +1547,7 @@ prog_constraint_get_arg_types(Constraint) = Constraint ^ constraint_arg_types.
 :- type inst_ctor
     --->    inst_ctor(sym_name, arity).
 
-:- type bound_inst
+:- type bound_functor
     --->    bound_functor(cons_id, list(mer_inst)).
 
 :- type inst_var_type

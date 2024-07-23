@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2021 The Mercury team.
+% Copyright (C) 2015-2021, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -302,11 +302,11 @@ check_mutable_inst(ModuleInfo, ModuleParams, Context, InstVarSet,
         check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet,
             ParentInsts, Inst, Uniq, !Specs)
     ;
-        Inst = bound(Uniq, _, BoundInsts),
+        Inst = bound(Uniq, _, BoundFunctors),
         check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet,
             ParentInsts, Inst, Uniq, !Specs),
-        check_mutable_bound_insts(ModuleInfo, ModuleParams, Context,
-            InstVarSet, ParentInsts, BoundInsts, !Specs)
+        check_mutable_bound_functors(ModuleInfo, ModuleParams, Context,
+            InstVarSet, ParentInsts, BoundFunctors, !Specs)
     ;
         Inst = defined_inst(InstName),
         (
@@ -406,20 +406,20 @@ check_mutable_inst(ModuleInfo, ModuleParams, Context, InstVarSet,
         unexpected($pred, "not_reached")
     ).
 
-:- pred check_mutable_bound_insts(module_info::in, module_params::in,
+:- pred check_mutable_bound_functors(module_info::in, module_params::in,
     prog_context::in, inst_varset::in,
-    list(inst_ctor)::in, list(bound_inst)::in,
+    list(inst_ctor)::in, list(bound_functor)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_mutable_bound_insts(_ModuleInfo, _ModuleParams, _Context,
+check_mutable_bound_functors(_ModuleInfo, _ModuleParams, _Context,
         _InstVarSet, _ParentInsts, [], !Specs).
-check_mutable_bound_insts(ModuleInfo, ModuleParams, Context,
-        InstVarSet, ParentInsts, [BoundInst | BoundInsts], !Specs) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+check_mutable_bound_functors(ModuleInfo, ModuleParams, Context,
+        InstVarSet, ParentInsts, [BoundFunctor | BoundFunctors], !Specs) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     check_mutable_insts(ModuleInfo, ModuleParams, Context, InstVarSet,
         ParentInsts, ArgInsts, !Specs),
-    check_mutable_bound_insts(ModuleInfo, ModuleParams, Context, InstVarSet,
-        ParentInsts, BoundInsts, !Specs).
+    check_mutable_bound_functors(ModuleInfo, ModuleParams, Context, InstVarSet,
+        ParentInsts, BoundFunctors, !Specs).
 
 :- pred check_mutable_insts(module_info::in, module_params::in,
     prog_context::in, inst_varset::in, list(inst_ctor)::in, list(mer_inst)::in,

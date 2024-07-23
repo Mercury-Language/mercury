@@ -408,9 +408,9 @@ mode_needs_direct_arg_in_out(ModuleInfo, DirectArgFunctors, FromInst, ToInst)
         ),
         IsDAIO = mode_is_not_daio
     ;
-        FromInst = bound(_FromUniq, _FromResults, FromBoundInsts),
-        some_bound_inst_has_direct_arg_free(ModuleInfo, DirectArgFunctors,
-            FromBoundInsts, FreeArgDirectArgFunctors),
+        FromInst = bound(_FromUniq, _FromResults, FromBoundFunctors),
+        some_bound_functor_has_direct_arg_free(ModuleInfo, DirectArgFunctors,
+            FromBoundFunctors, FreeArgDirectArgFunctors),
         (
             FreeArgDirectArgFunctors = [],
             IsDAIO = mode_is_not_daio
@@ -436,9 +436,9 @@ mode_needs_direct_arg_in_out(ModuleInfo, DirectArgFunctors, FromInst, ToInst)
                 ToInst = ground(_, _),
                 IsDAIO = mode_is_daio
             ;
-                ToInst = bound(_ToUniq, _ToResults, ToBoundInsts),
-                some_bound_inst_has_direct_arg_out(ModuleInfo,
-                    FreeArgDirectArgFunctors, ToBoundInsts,
+                ToInst = bound(_ToUniq, _ToResults, ToBoundFunctors),
+                some_bound_functor_has_direct_arg_out(ModuleInfo,
+                    FreeArgDirectArgFunctors, ToBoundFunctors,
                     SomeDirectArgIsBound, CanSeeAllArgModes),
                 (
                     CanSeeAllArgModes = cannot_see_all_arg_modes,
@@ -469,15 +469,15 @@ mode_needs_direct_arg_in_out(ModuleInfo, DirectArgFunctors, FromInst, ToInst)
         unexpected($pred, "unexpanded defined_inst")
     ).
 
-:- pred some_bound_inst_has_direct_arg_free(module_info::in,
-    list(sym_name)::in, list(bound_inst)::in, list(sym_name)::out) is det.
+:- pred some_bound_functor_has_direct_arg_free(module_info::in,
+    list(sym_name)::in, list(bound_functor)::in, list(sym_name)::out) is det.
 
-some_bound_inst_has_direct_arg_free(_, _, [], []).
-some_bound_inst_has_direct_arg_free(ModuleInfo, DirectArgFunctors,
-        [FromBoundInst | FromBoundInsts], !:FreeArgDirectArgFunctors) :-
-    some_bound_inst_has_direct_arg_free(ModuleInfo, DirectArgFunctors,
-        FromBoundInsts, !:FreeArgDirectArgFunctors),
-    FromBoundInst = bound_functor(ConsId, ArgInsts0),
+some_bound_functor_has_direct_arg_free(_, _, [], []).
+some_bound_functor_has_direct_arg_free(ModuleInfo, DirectArgFunctors,
+        [FromBoundFunctor | FromBoundFunctors], !:FreeArgDirectArgFunctors) :-
+    some_bound_functor_has_direct_arg_free(ModuleInfo, DirectArgFunctors,
+        FromBoundFunctors, !:FreeArgDirectArgFunctors),
+    FromBoundFunctor = bound_functor(ConsId, ArgInsts0),
     ( if
         ConsId = du_data_ctor(du_ctor(SymName, Arity, _TypeCtor)),
         Arity = 1,
@@ -500,18 +500,18 @@ some_bound_inst_has_direct_arg_free(ModuleInfo, DirectArgFunctors,
     --->    cannot_see_all_arg_modes
     ;       can_see_all_arg_modes.
 
-:- pred some_bound_inst_has_direct_arg_out(module_info::in,
-    list(sym_name)::in, list(bound_inst)::in,
+:- pred some_bound_functor_has_direct_arg_out(module_info::in,
+    list(sym_name)::in, list(bound_functor)::in,
     is_some_direct_arg_bound::out, can_see_all_arg_modes::out) is det.
 
-some_bound_inst_has_direct_arg_out(_, _, [],
+some_bound_functor_has_direct_arg_out(_, _, [],
         no_direct_arg_is_bound, can_see_all_arg_modes).
-some_bound_inst_has_direct_arg_out(ModuleInfo, FreeArgDirectArgFunctors,
-        [ToBoundInst | ToBoundInsts],
+some_bound_functor_has_direct_arg_out(ModuleInfo, FreeArgDirectArgFunctors,
+        [ToBoundFunctor | ToBoundFunctors],
         SomeDirectArgIsBound, CanSeeAllArgModes) :-
-    some_bound_inst_has_direct_arg_out(ModuleInfo, FreeArgDirectArgFunctors,
-        ToBoundInsts, TailSomeDirectArgIsBound, TailCanSeeAllArgModes),
-    ToBoundInst = bound_functor(ConsId, ArgInsts0),
+    some_bound_functor_has_direct_arg_out(ModuleInfo, FreeArgDirectArgFunctors,
+        ToBoundFunctors, TailSomeDirectArgIsBound, TailCanSeeAllArgModes),
+    ToBoundFunctor = bound_functor(ConsId, ArgInsts0),
     ( if
         ConsId = du_data_ctor(du_ctor(SymName, Arity, _TypeCtor)),
         Arity = 1,
@@ -838,13 +838,13 @@ daio_mode_to_mode_pair(ModuleInfo, Mode, ClobberedMode, CloneMode) :-
 clobber_daio_inst(ModuleInfo, Inst0) = ClobberedInst :-
     inst_expand_and_remove_constrained_inst_vars(ModuleInfo, Inst0, Inst),
     (
-        Inst = bound(_Uniq, TestResults, BoundInsts),
+        Inst = bound(_Uniq, TestResults, BoundFunctors),
         (
             TestResults = inst_test_results(_GroundNess, _ContainsAny,
                 _ContainsInstNames, _ContainsInstVars, _ContainsTypes,
                 _TypeCtorPropagated),
             % None of the above six categories can be affected by
-            % applying clobber_daio_bound_inst to BoundInsts.
+            % applying clobber_daio_bound_functor to BoundFunctors.
             % This goal, and the switch around it, is here in case
             % in the future we add a test that *can* be affected.
             ClobberedTestResults = TestResults
@@ -855,10 +855,10 @@ clobber_daio_inst(ModuleInfo, Inst0) = ClobberedInst :-
             TestResults = inst_test_results_fgtc,
             ClobberedTestResults = TestResults
         ),
-        ClobberedBoundInsts =
-            list.map(clobber_daio_bound_inst(ModuleInfo), BoundInsts),
+        ClobberedBoundFunctors =
+            list.map(clobber_daio_bound_functor(ModuleInfo), BoundFunctors),
         ClobberedInst = bound(clobbered, ClobberedTestResults,
-            ClobberedBoundInsts)
+            ClobberedBoundFunctors)
     ;
         ( Inst = free
         ; Inst = ground(_, _)
@@ -869,12 +869,12 @@ clobber_daio_inst(ModuleInfo, Inst0) = ClobberedInst :-
         unexpected($pred, "inst is not a daio inst")
     ).
 
-:- func clobber_daio_bound_inst(module_info, bound_inst) = bound_inst.
+:- func clobber_daio_bound_functor(module_info, bound_functor) = bound_functor.
 
-clobber_daio_bound_inst(ModuleInfo, BoundInst) = ClobberedBoundInst :-
-    BoundInst = bound_functor(ConsId, ArgInsts),
+clobber_daio_bound_functor(ModuleInfo, BoundFunctor) = ClobberedBoundFunctor :-
+    BoundFunctor = bound_functor(ConsId, ArgInsts),
     ClobberedArgInsts = list.map(clobber_daio_arg_inst(ModuleInfo), ArgInsts),
-    ClobberedBoundInst = bound_functor(ConsId, ClobberedArgInsts).
+    ClobberedBoundFunctor = bound_functor(ConsId, ClobberedArgInsts).
 
 :- func clobber_daio_arg_inst(module_info, mer_inst) = mer_inst.
 

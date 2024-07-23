@@ -1468,9 +1468,10 @@ limit_size_of_inst(Levels, Inst0, Inst) :-
                 limit_size_of_pred_inst_info(Levels, HOInstInfo0, HOInstInfo),
                 Inst = ground(Uniq, HOInstInfo)
             ;
-                Inst0 = bound(Uniq, TestResults, BoundInsts0),
-                limit_size_of_bound_insts(Levels - 1, BoundInsts0, BoundInsts),
-                Inst = bound(Uniq, TestResults, BoundInsts)
+                Inst0 = bound(Uniq, TestResults, BoundFunctors0),
+                limit_size_of_bound_functors(Levels - 1,
+                    BoundFunctors0, BoundFunctors),
+                Inst = bound(Uniq, TestResults, BoundFunctors)
             ;
                 Inst0 = constrained_inst_vars(Vars, SubInst0),
                 limit_size_of_inst(Levels - 1, SubInst0, SubInst),
@@ -1515,16 +1516,16 @@ limit_size_of_mode(Levels, Mode0, Mode) :-
         Mode = user_defined_mode(Name, ArgInsts)
     ).
 
-:- pred limit_size_of_bound_insts(int::in,
-    list(bound_inst)::in, list(bound_inst)::out) is det.
+:- pred limit_size_of_bound_functors(int::in,
+    list(bound_functor)::in, list(bound_functor)::out) is det.
 
-limit_size_of_bound_insts(_, [], []).
-limit_size_of_bound_insts(Levels,
-        [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts]) :-
-    BoundInst0 = bound_functor(ConsId, ArgInsts0),
+limit_size_of_bound_functors(_, [], []).
+limit_size_of_bound_functors(Levels,
+        [BoundFunctor0 | BoundFunctors0], [BoundFunctor | BoundFunctors]) :-
+    BoundFunctor0 = bound_functor(ConsId, ArgInsts0),
     list.map(limit_size_of_inst(Levels), ArgInsts0, ArgInsts),
-    BoundInst = bound_functor(ConsId, ArgInsts),
-    limit_size_of_bound_insts(Levels, BoundInsts0, BoundInsts).
+    BoundFunctor = bound_functor(ConsId, ArgInsts),
+    limit_size_of_bound_functors(Levels, BoundFunctors0, BoundFunctors).
 
 %---------------------------------------------------------------------------%
 %

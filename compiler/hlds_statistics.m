@@ -715,9 +715,9 @@ acc_inst_stats_in_inst(Inst, !Stats) :-
         !Stats ^ is_any := !.Stats ^ is_any + 1,
         acc_inst_stats_in_ho_inst_info(HOInstInfo, !Stats)
     ;
-        Inst = bound(_Uniq, _TestResults, BoundInsts),
+        Inst = bound(_Uniq, _TestResults, BoundFunctors),
         !Stats ^ is_bound := !.Stats ^ is_bound + 1,
-        list.foldl(acc_inst_stats_in_bound_inst, BoundInsts, !Stats)
+        list.foldl(acc_inst_stats_in_bound_functor, BoundFunctors, !Stats)
     ;
         Inst = ground(_Uniq, HOInstInfo),
         !Stats ^ is_ground := !.Stats ^ is_ground + 1,
@@ -737,11 +737,11 @@ acc_inst_stats_in_inst(Inst, !Stats) :-
         !Stats ^ is_defined := !.Stats ^ is_defined + 1
     ).
 
-:- pred acc_inst_stats_in_bound_inst(bound_inst::in,
+:- pred acc_inst_stats_in_bound_functor(bound_functor::in,
     inst_stats::in, inst_stats::out) is det.
 
-acc_inst_stats_in_bound_inst(BoundInst, !Stats) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+acc_inst_stats_in_bound_functor(BoundFunctor, !Stats) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     list.foldl(acc_inst_stats_in_inst, ArgInsts, !Stats).
 
 :- pred acc_inst_stats_in_ho_inst_info(ho_inst_info::in,

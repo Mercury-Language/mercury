@@ -153,18 +153,18 @@
 
 %---------------------------------------------------------------------------%
 
-    % Given a (list of) bound_insts, get the corresponding cons_ids.
+    % Given a (list of) bound_functors, get the corresponding cons_ids.
     % The type_ctor should be the type constructor of the variable
-    % the bound_insts are for.
+    % the bound_functors are for.
     %
-    % Note that it is entirely possible for two *different* bound_insts
+    % Note that it is entirely possible for two *different* bound_functors
     % in a bound/3 inst to refer to the *same* cons_id, because they can
     % specify different insts for the cons_id's arguments. Therefore the
-    % list returned from bound_insts_to_cons_ids may contain duplicates.
+    % list returned from bound_functors_to_cons_ids may contain duplicates.
     %
-:- pred bound_inst_to_cons_id(type_ctor::in, bound_inst::in,
+:- pred bound_functor_to_cons_id(type_ctor::in, bound_functor::in,
     cons_id::out) is det.
-:- pred bound_insts_to_cons_ids(type_ctor::in, list(bound_inst)::in,
+:- pred bound_functors_to_cons_ids(type_ctor::in, list(bound_functor)::in,
     list(cons_id)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -441,7 +441,7 @@ inst_apply_substitution(Subst, Inst0, Inst) :-
         ho_inst_info_apply_substitution(Subst, HOInstInfo0, HOInstInfo),
         Inst = any(Uniq, HOInstInfo)
     ;
-        Inst0 = bound(Uniq0, InstResults0, BoundInsts0),
+        Inst0 = bound(Uniq0, InstResults0, BoundFunctors0),
         (
             InstResults0 = inst_test_results_fgtc,
             % There is nothing to substitute.
@@ -456,17 +456,19 @@ inst_apply_substitution(Subst, Inst0, Inst) :-
             then
                 Inst = Inst0
             else
-                bound_insts_apply_substitution(Subst, BoundInsts0, BoundInsts),
+                bound_functors_apply_substitution(Subst,
+                    BoundFunctors0, BoundFunctors),
                 % The substitution can invalidate all existing test results.
                 % XXX depends on the applied ReplacementInsts.
-                Inst = bound(Uniq0, inst_test_no_results, BoundInsts)
+                Inst = bound(Uniq0, inst_test_no_results, BoundFunctors)
             )
         ;
             InstResults0 = inst_test_no_results,
-            bound_insts_apply_substitution(Subst, BoundInsts0, BoundInsts),
+            bound_functors_apply_substitution(Subst,
+                BoundFunctors0, BoundFunctors),
             % The substitution can invalidate all existing test results.
             % XXX depends on the applied ReplacementInsts.
-            Inst = bound(Uniq0, inst_test_no_results, BoundInsts)
+            Inst = bound(Uniq0, inst_test_no_results, BoundFunctors)
         )
     ;
         Inst0 = inst_var(Var),
@@ -533,16 +535,16 @@ inst_name_apply_substitution(Subst, InstName0, InstName) :-
         InstName = InstName0
     ).
 
-:- pred bound_insts_apply_substitution(inst_var_sub::in,
-    list(bound_inst)::in, list(bound_inst)::out) is det.
+:- pred bound_functors_apply_substitution(inst_var_sub::in,
+    list(bound_functor)::in, list(bound_functor)::out) is det.
 
-bound_insts_apply_substitution(_, [], []).
-bound_insts_apply_substitution(Subst,
-        [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts]) :-
-    BoundInst0 = bound_functor(Name, Args0),
+bound_functors_apply_substitution(_, [], []).
+bound_functors_apply_substitution(Subst,
+        [BoundFunctor0 | BoundFunctors0], [BoundFunctor | BoundFunctors]) :-
+    BoundFunctor0 = bound_functor(Name, Args0),
     inst_list_apply_substitution_2(Subst, Args0, Args),
-    BoundInst = bound_functor(Name, Args),
-    bound_insts_apply_substitution(Subst, BoundInsts0, BoundInsts).
+    BoundFunctor = bound_functor(Name, Args),
+    bound_functors_apply_substitution(Subst, BoundFunctors0, BoundFunctors).
 
 :- pred ho_inst_info_apply_substitution(inst_var_sub::in,
     ho_inst_info::in, ho_inst_info::out) is det.
@@ -627,7 +629,7 @@ rename_apart_inst_vars_in_inst(Renaming, Inst0, Inst) :-
         ),
         Inst = any(Uniq, HOInstInfo)
     ;
-        Inst0 = bound(Uniq0, InstResults0, BoundInsts0),
+        Inst0 = bound(Uniq0, InstResults0, BoundFunctors0),
         (
             InstResults0 = inst_test_results_fgtc,
             % There is nothing to substitute.
@@ -642,19 +644,19 @@ rename_apart_inst_vars_in_inst(Renaming, Inst0, Inst) :-
             then
                 Inst = Inst0
             else
-                list.map(rename_apart_inst_vars_in_bound_inst(Renaming),
-                    BoundInsts0, BoundInsts),
+                list.map(rename_apart_inst_vars_in_bound_functor(Renaming),
+                    BoundFunctors0, BoundFunctors),
                 % The substitution can invalidate all existing test results.
                 % XXX depends on the applied ReplacementInsts.
-                Inst = bound(Uniq0, inst_test_no_results, BoundInsts)
+                Inst = bound(Uniq0, inst_test_no_results, BoundFunctors)
             )
         ;
             InstResults0 = inst_test_no_results,
-            list.map(rename_apart_inst_vars_in_bound_inst(Renaming),
-                BoundInsts0, BoundInsts),
+            list.map(rename_apart_inst_vars_in_bound_functor(Renaming),
+                BoundFunctors0, BoundFunctors),
             % The substitution can invalidate all existing test results.
             % XXX depends on the applied ReplacementInsts.
-            Inst = bound(Uniq0, inst_test_no_results, BoundInsts)
+            Inst = bound(Uniq0, inst_test_no_results, BoundFunctors)
         )
     ;
         Inst0 = inst_var(Var0),
@@ -685,13 +687,14 @@ rename_apart_inst_vars_in_inst(Renaming, Inst0, Inst) :-
         )
     ).
 
-:- pred rename_apart_inst_vars_in_bound_inst(renaming(inst_var_type)::in,
-    bound_inst::in, bound_inst::out) is det.
+:- pred rename_apart_inst_vars_in_bound_functor(renaming(inst_var_type)::in,
+    bound_functor::in, bound_functor::out) is det.
 
-rename_apart_inst_vars_in_bound_inst(Renaming, BoundInst0, BoundInst) :-
-    BoundInst0 = bound_functor(ConsId, ArgInsts0),
+rename_apart_inst_vars_in_bound_functor(Renaming,
+        BoundFunctor0, BoundFunctor) :-
+    BoundFunctor0 = bound_functor(ConsId, ArgInsts0),
     list.map(rename_apart_inst_vars_in_inst(Renaming), ArgInsts0, ArgInsts),
-    BoundInst = bound_functor(ConsId, ArgInsts).
+    BoundFunctor = bound_functor(ConsId, ArgInsts).
 
 :- pred rename_apart_inst_vars_in_inst_name(renaming(inst_var_type)::in,
     inst_name::in, inst_name::out) is semidet.
@@ -741,7 +744,7 @@ inst_contains_unconstrained_var(Inst) :-
         ),
         inst_contains_unconstrained_var(SubInst)
     ;
-        Inst = bound(_Uniq, InstResults, BoundInsts),
+        Inst = bound(_Uniq, InstResults, BoundFunctors),
         (
             InstResults = inst_test_no_results
         ;
@@ -757,8 +760,8 @@ inst_contains_unconstrained_var(Inst) :-
             InstResults = inst_test_results_fgtc,
             fail
         ),
-        list.member(BoundInst, BoundInsts),
-        BoundInst = bound_functor(_ConsId, ArgInsts),
+        list.member(BoundFunctor, BoundFunctors),
+        BoundFunctor = bound_functor(_ConsId, ArgInsts),
         list.member(ArgInst, ArgInsts),
         inst_contains_unconstrained_var(ArgInst)
     ;
@@ -827,8 +830,8 @@ get_arg_insts(Inst, ConsId, Arity, ArgInsts) :-
         Inst = ground(Uniq, _PredInst),
         list.duplicate(Arity, ground(Uniq, none_or_default_func), ArgInsts)
     ;
-        Inst = bound(_Uniq, _InstResults, BoundInsts),
-        ( if get_arg_insts_2(BoundInsts, ConsId, ArgInsts0) then
+        Inst = bound(_Uniq, _InstResults, BoundFunctors),
+        ( if get_arg_insts_2(BoundFunctors, ConsId, ArgInsts0) then
             ArgInsts = ArgInsts0
         else
             % The code is unreachable.
@@ -863,23 +866,23 @@ get_arg_insts_det(Inst, ConsId, Arity, ArgInsts) :-
         unexpected($pred, "get_arg_insts failed")
     ).
 
-:- pred get_arg_insts_2(list(bound_inst)::in, cons_id::in, list(mer_inst)::out)
-    is semidet.
+:- pred get_arg_insts_2(list(bound_functor)::in, cons_id::in,
+    list(mer_inst)::out) is semidet.
 
-get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
+get_arg_insts_2([BoundFunctor | BoundFunctors], ConsId, ArgInsts) :-
     ( if
-        BoundInst = bound_functor(FunctorConsId, ArgInsts0),
+        BoundFunctor = bound_functor(FunctorConsId, ArgInsts0),
         equivalent_cons_ids(ConsId, FunctorConsId)
     then
         ArgInsts = ArgInsts0
     else
-        get_arg_insts_2(BoundInsts, ConsId, ArgInsts)
+        get_arg_insts_2(BoundFunctors, ConsId, ArgInsts)
     ).
 
 %---------------------------------------------------------------------------%
 
-bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId) :-
-    BoundInst = bound_functor(ConsId0, _ArgInsts),
+bound_functor_to_cons_id(TypeCtor, BoundFunctor, ConsId) :-
+    BoundFunctor = bound_functor(ConsId0, _ArgInsts),
     ( if ConsId0 = du_data_ctor(DuCtor0) then
         DuCtor0 = du_ctor(ConsIdSymName0, ConsIdArity, _ConsIdTypeCtor),
         % Insts don't (yet) have to say what type they are for,
@@ -904,11 +907,11 @@ bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId) :-
         ConsId = ConsId0
     ).
 
-bound_insts_to_cons_ids(_, [], []).
-bound_insts_to_cons_ids(TypeCtor, [BoundInst | BoundInsts],
+bound_functors_to_cons_ids(_, [], []).
+bound_functors_to_cons_ids(TypeCtor, [BoundFunctor | BoundFunctors],
         [ConsId | ConsIds]) :-
-    bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId),
-    bound_insts_to_cons_ids(TypeCtor, BoundInsts, ConsIds).
+    bound_functor_to_cons_id(TypeCtor, BoundFunctor, ConsId),
+    bound_functors_to_cons_ids(TypeCtor, BoundFunctors, ConsIds).
 
 %---------------------------------------------------------------------------%
 %
@@ -963,10 +966,10 @@ strip_module_names_from_inst(StripWhat, SetDefaultFunc, Inst0, Inst) :-
             HOInstInfo0, HOInstInfo),
         Inst = ground(Uniq, HOInstInfo)
     ;
-        Inst0 = bound(Uniq, InstResults, BoundInsts0),
-        strip_module_names_from_bound_inst_list(StripWhat, SetDefaultFunc,
-            BoundInsts0, BoundInsts),
-        Inst = bound(Uniq, InstResults, BoundInsts)
+        Inst0 = bound(Uniq, InstResults, BoundFunctors0),
+        strip_module_names_from_bound_functors(StripWhat, SetDefaultFunc,
+            BoundFunctors0, BoundFunctors),
+        Inst = bound(Uniq, InstResults, BoundFunctors)
     ;
         Inst0 = defined_inst(InstName0),
         strip_module_names_from_inst_name(StripWhat, SetDefaultFunc,
@@ -974,25 +977,25 @@ strip_module_names_from_inst(StripWhat, SetDefaultFunc, Inst0, Inst) :-
         Inst = defined_inst(InstName)
     ).
 
-:- pred strip_module_names_from_bound_inst_list(strip_what_module_names::in,
-    maybe_set_default_func::in, list(bound_inst)::in, list(bound_inst)::out)
-    is det.
+:- pred strip_module_names_from_bound_functors(strip_what_module_names::in,
+    maybe_set_default_func::in,
+    list(bound_functor)::in, list(bound_functor)::out) is det.
 
-strip_module_names_from_bound_inst_list(StripWhat, SetDefaultFunc,
+strip_module_names_from_bound_functors(StripWhat, SetDefaultFunc,
         Insts0, Insts) :-
-    list.map(strip_module_names_from_bound_inst(StripWhat, SetDefaultFunc),
+    list.map(strip_module_names_from_bound_functor(StripWhat, SetDefaultFunc),
         Insts0, Insts).
 
-:- pred strip_module_names_from_bound_inst(strip_what_module_names::in,
-    maybe_set_default_func::in, bound_inst::in, bound_inst::out) is det.
+:- pred strip_module_names_from_bound_functor(strip_what_module_names::in,
+    maybe_set_default_func::in, bound_functor::in, bound_functor::out) is det.
 
-strip_module_names_from_bound_inst(StripWhat, SetDefaultFunc,
-        BoundInst0, BoundInst) :-
-    BoundInst0 = bound_functor(ConsId0, Insts0),
+strip_module_names_from_bound_functor(StripWhat, SetDefaultFunc,
+        BoundFunctor0, BoundFunctor) :-
+    BoundFunctor0 = bound_functor(ConsId0, Insts0),
     strip_module_names_from_cons_id(StripWhat, ConsId0, ConsId),
     list.map(strip_module_names_from_inst(StripWhat, SetDefaultFunc),
         Insts0, Insts),
-    BoundInst = bound_functor(ConsId, Insts).
+    BoundFunctor = bound_functor(ConsId, Insts).
 
 :- pred strip_module_names_from_inst_name(strip_what_module_names::in,
     maybe_set_default_func::in, inst_name::in, inst_name::out) is det.
@@ -1113,28 +1116,28 @@ strip_typed_insts_from_inst(Inst0, Inst) :-
         strip_typed_insts_from_ho_inst_info(HOInstInfo0, HOInstInfo),
         Inst = ground(Uniq, HOInstInfo)
     ;
-        Inst0 = bound(Uniq, InstResults, BoundInsts0),
-        strip_typed_insts_from_bound_inst_list(BoundInsts0, BoundInsts),
-        Inst = bound(Uniq, InstResults, BoundInsts)
+        Inst0 = bound(Uniq, InstResults, BoundFunctors0),
+        strip_typed_insts_from_bound_functors(BoundFunctors0, BoundFunctors),
+        Inst = bound(Uniq, InstResults, BoundFunctors)
     ;
         Inst0 = defined_inst(InstName0),
         strip_typed_insts_from_inst_name(InstName0, InstName),
         Inst = defined_inst(InstName)
     ).
 
-:- pred strip_typed_insts_from_bound_inst_list(list(bound_inst)::in,
-    list(bound_inst)::out) is det.
+:- pred strip_typed_insts_from_bound_functors(list(bound_functor)::in,
+    list(bound_functor)::out) is det.
 
-strip_typed_insts_from_bound_inst_list(Insts0, Insts) :-
-    list.map(strip_typed_insts_from_bound_inst, Insts0, Insts).
+strip_typed_insts_from_bound_functors(Insts0, Insts) :-
+    list.map(strip_typed_insts_from_bound_functor, Insts0, Insts).
 
-:- pred strip_typed_insts_from_bound_inst(bound_inst::in,
-    bound_inst::out) is det.
+:- pred strip_typed_insts_from_bound_functor(bound_functor::in,
+    bound_functor::out) is det.
 
-strip_typed_insts_from_bound_inst(BoundInst0, BoundInst) :-
-    BoundInst0 = bound_functor(ConsId, Insts0),
+strip_typed_insts_from_bound_functor(BoundFunctor0, BoundFunctor) :-
+    BoundFunctor0 = bound_functor(ConsId, Insts0),
     list.map(strip_typed_insts_from_inst, Insts0, Insts),
-    BoundInst = bound_functor(ConsId, Insts).
+    BoundFunctor = bound_functor(ConsId, Insts).
 
 :- pred strip_typed_insts_from_inst_name(inst_name::in, inst_name::out)
     is det.
@@ -1236,7 +1239,7 @@ constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst) :-
             PredInstInfo0, PredInstInfo),
         Inst = any(Uniq, higher_order(PredInstInfo))
     ;
-        Inst0 = bound(Uniq, InstResults0, BoundInsts0),
+        Inst0 = bound(Uniq, InstResults0, BoundFunctors0),
         (
             InstResults0 = inst_test_results_fgtc,
             % There are no inst_vars to substitute.
@@ -1251,21 +1254,21 @@ constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst) :-
             then
                 Inst = Inst0
             else
-                list.map(constrain_inst_vars_in_bound_inst(InstConstraints),
-                    BoundInsts0, BoundInsts),
-                % The substitutions inside BoundInsts can invalidate
+                list.map(constrain_inst_vars_in_bound_functor(InstConstraints),
+                    BoundFunctors0, BoundFunctors),
+                % The substitutions inside BoundFunctors can invalidate
                 % any of the existing results.
                 % XXX can they?
-                Inst = bound(Uniq, inst_test_no_results, BoundInsts)
+                Inst = bound(Uniq, inst_test_no_results, BoundFunctors)
             )
         ;
             InstResults0 = inst_test_no_results,
-            list.map(constrain_inst_vars_in_bound_inst(InstConstraints),
-                BoundInsts0, BoundInsts),
-            % The substitutions inside BoundInsts can invalidate
+            list.map(constrain_inst_vars_in_bound_functor(InstConstraints),
+                BoundFunctors0, BoundFunctors),
+            % The substitutions inside BoundFunctors can invalidate
             % any of the existing results.
             % XXX can they?
-            Inst = bound(Uniq, inst_test_no_results, BoundInsts)
+            Inst = bound(Uniq, inst_test_no_results, BoundFunctors)
         )
     ;
         Inst0 = constrained_inst_vars(Vars0, SubInst0),
@@ -1292,14 +1295,15 @@ constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst) :-
         Inst = defined_inst(Name)
     ).
 
-:- pred constrain_inst_vars_in_bound_inst(inst_var_sub::in,
-    bound_inst::in, bound_inst::out) is det.
+:- pred constrain_inst_vars_in_bound_functor(inst_var_sub::in,
+    bound_functor::in, bound_functor::out) is det.
 
-constrain_inst_vars_in_bound_inst(InstConstraints, BoundInst0, BoundInst) :-
-    BoundInst0 = bound_functor(ConsId, ArgInsts0),
+constrain_inst_vars_in_bound_functor(InstConstraints,
+        BoundFunctor0, BoundFunctor) :-
+    BoundFunctor0 = bound_functor(ConsId, ArgInsts0),
     list.map(constrain_inst_vars_in_inst(InstConstraints),
         ArgInsts0, ArgInsts),
-    BoundInst = bound_functor(ConsId, ArgInsts).
+    BoundFunctor = bound_functor(ConsId, ArgInsts).
 
 :- pred constrain_inst_vars_in_pred_inst_info(inst_var_sub::in,
     pred_inst_info::in, pred_inst_info::out) is det.
@@ -1409,7 +1413,7 @@ gather_inconsistent_constrained_inst_vars_in_inst(Inst,
         ; Inst = not_reached
         )
     ;
-        Inst = bound(_, InstResults, BoundInsts),
+        Inst = bound(_, InstResults, BoundFunctors),
         (
             InstResults = inst_test_results_fgtc
         ;
@@ -1423,13 +1427,13 @@ gather_inconsistent_constrained_inst_vars_in_inst(Inst,
             else
                 list.foldl2(
                     gather_inconsistent_constrained_inst_vars_in_bound_args,
-                    BoundInsts, !InconsistentVars, !Sub)
+                    BoundFunctors, !InconsistentVars, !Sub)
             )
         ;
             InstResults = inst_test_no_results,
             list.foldl2(
                 gather_inconsistent_constrained_inst_vars_in_bound_args,
-                BoundInsts, !InconsistentVars, !Sub)
+                BoundFunctors, !InconsistentVars, !Sub)
         )
     ;
         ( Inst = ground(_, HOInstInfo)
@@ -1463,12 +1467,12 @@ gather_inconsistent_constrained_inst_vars_in_inst(Inst,
     ).
 
 :- pred gather_inconsistent_constrained_inst_vars_in_bound_args(
-    bound_inst::in, set(inst_var)::in, set(inst_var)::out,
+    bound_functor::in, set(inst_var)::in, set(inst_var)::out,
     inst_var_sub::in, inst_var_sub::out) is det.
 
-gather_inconsistent_constrained_inst_vars_in_bound_args(BoundInst,
+gather_inconsistent_constrained_inst_vars_in_bound_args(BoundFunctor,
         !InconsistentVars, !Sub) :-
-    BoundInst = bound_functor(_, ArgInsts),
+    BoundFunctor = bound_functor(_, ArgInsts),
     gather_inconsistent_constrained_inst_vars_in_insts(ArgInsts,
         !InconsistentVars, !Sub).
 

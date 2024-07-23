@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016 The Mercury team.
+% Copyright (C) 2016, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -325,17 +325,17 @@ parse_inst_atom_functor(AllowConstrainedInstVar, VarSet, ContextPieces,
             ;
                 CompoundInstKind = kcik_bound(DisjTerm),
                 % XXX Should update ContextPieces.
-                parse_bound_inst_list(AllowConstrainedInstVar, VarSet,
+                parse_bound_functor_list(AllowConstrainedInstVar, VarSet,
                     ContextPieces, DisjTerm, shared, MaybeInst)
             ;
                 CompoundInstKind = kcik_unique(DisjTerm),
                 % XXX Should update ContextPieces.
-                parse_bound_inst_list(AllowConstrainedInstVar, VarSet,
+                parse_bound_functor_list(AllowConstrainedInstVar, VarSet,
                     ContextPieces, DisjTerm, unique, MaybeInst)
             ;
                 CompoundInstKind = kcik_mostly_unique(DisjTerm),
                 % XXX Should update ContextPieces.
-                parse_bound_inst_list(AllowConstrainedInstVar, VarSet,
+                parse_bound_functor_list(AllowConstrainedInstVar, VarSet,
                     ContextPieces, DisjTerm, mostly_unique, MaybeInst)
             ;
                 CompoundInstKind = kcik_constrained(VarTerm, SubInstTerm),
@@ -738,26 +738,26 @@ parse_higher_order_inst(AllowConstrainedInstVar, VarSet, ContextPieces,
         MaybeInst = error1([Spec])
     ).
 
-:- pred parse_bound_inst_list(allow_constrained_inst_var::in, varset::in,
+:- pred parse_bound_functor_list(allow_constrained_inst_var::in, varset::in,
     cord(format_piece)::in, term::in, uniqueness::in,
     maybe1(mer_inst)::out) is det.
 
-parse_bound_inst_list(AllowConstrainedInstVar, VarSet, ContextPieces,
+parse_bound_functor_list(AllowConstrainedInstVar, VarSet, ContextPieces,
         DisjunctionTerm, Uniqueness, MaybeInst) :-
     disjunction_to_list(DisjunctionTerm, DisjunctTerms),
-    parse_bound_insts(AllowConstrainedInstVar, VarSet, ContextPieces,
-        DisjunctTerms, MaybeBoundInsts),
+    parse_bound_functors(AllowConstrainedInstVar, VarSet, ContextPieces,
+        DisjunctTerms, MaybeBoundFunctors),
     (
-        MaybeBoundInsts = error1(Specs),
+        MaybeBoundFunctors = error1(Specs),
         MaybeInst = error1(Specs)
     ;
-        MaybeBoundInsts = ok1(BoundInsts),
-        list.sort(BoundInsts, SortedBoundInsts),
+        MaybeBoundFunctors = ok1(BoundFunctors),
+        list.sort(BoundFunctors, SortedBoundFunctors),
         ( if
             % Does the list specify the same functor twice?
-            SortedBoundInsts = [FirstBoundInst | LaterBoundInsts],
-            find_duplicate_cons_id_bound_insts(FirstBoundInst, LaterBoundInsts,
-                Duplicates0),
+            SortedBoundFunctors = [FirstBoundFunctor | LaterBoundFunctors],
+            find_duplicate_cons_id_bound_functors(FirstBoundFunctor,
+                LaterBoundFunctors, Duplicates0),
             list.sort_and_remove_dups(Duplicates0, Duplicates),
             Duplicates = [_ | _]
         then
@@ -771,17 +771,18 @@ parse_bound_inst_list(AllowConstrainedInstVar, VarSet, ContextPieces,
                 get_term_context(DisjunctionTerm), Pieces),
             MaybeInst = error1([Spec])
         else
-            Inst = bound(Uniqueness, inst_test_no_results, SortedBoundInsts),
+            Inst = bound(Uniqueness, inst_test_no_results,
+                SortedBoundFunctors),
             MaybeInst = ok1(Inst)
         )
     ).
 
-:- pred find_duplicate_cons_id_bound_insts(bound_inst::in,
-    list(bound_inst)::in, list(format_piece)::out) is det.
+:- pred find_duplicate_cons_id_bound_functors(bound_functor::in,
+    list(bound_functor)::in, list(format_piece)::out) is det.
 
-find_duplicate_cons_id_bound_insts(_Prev, [], []).
-find_duplicate_cons_id_bound_insts(Prev, [Cur | Next], Duplicates) :-
-    find_duplicate_cons_id_bound_insts(Cur, Next, DuplicatesTail),
+find_duplicate_cons_id_bound_functors(_Prev, [], []).
+find_duplicate_cons_id_bound_functors(Prev, [Cur | Next], Duplicates) :-
+    find_duplicate_cons_id_bound_functors(Cur, Next, DuplicatesTail),
     Prev = bound_functor(PrevConsId, _),
     Cur = bound_functor(CurConsId, _),
     ( if PrevConsId = CurConsId then
@@ -791,34 +792,34 @@ find_duplicate_cons_id_bound_insts(Prev, [Cur | Next], Duplicates) :-
         Duplicates = DuplicatesTail
     ).
 
-:- pred parse_bound_insts(allow_constrained_inst_var::in, varset::in,
+:- pred parse_bound_functors(allow_constrained_inst_var::in, varset::in,
     cord(format_piece)::in, list(term)::in,
-    maybe1(list(bound_inst))::out) is det.
+    maybe1(list(bound_functor))::out) is det.
 
-parse_bound_insts(_, _, _, [], ok1([])).
-parse_bound_insts(AllowConstrainedInstVar, VarSet, ContextPieces,
-        [Term | Terms], MaybeBoundInsts) :-
+parse_bound_functors(_, _, _, [], ok1([])).
+parse_bound_functors(AllowConstrainedInstVar, VarSet, ContextPieces,
+        [Term | Terms], MaybeBoundFunctors) :-
     % XXX Should update ContextPieces.
-    parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces,
-        Term, MaybeHeadBoundInst),
-    parse_bound_insts(AllowConstrainedInstVar, VarSet, ContextPieces,
-        Terms, MaybeTailBoundInsts),
+    parse_bound_functor(AllowConstrainedInstVar, VarSet, ContextPieces,
+        Term, MaybeHeadBoundFunctor),
+    parse_bound_functors(AllowConstrainedInstVar, VarSet, ContextPieces,
+        Terms, MaybeTailBoundFunctors),
     ( if
-        MaybeHeadBoundInst = ok1(HeadBoundInst),
-        MaybeTailBoundInsts = ok1(TailBoundInsts)
+        MaybeHeadBoundFunctor = ok1(HeadBoundFunctor),
+        MaybeTailBoundFunctors = ok1(TailBoundFunctors)
     then
-        MaybeBoundInsts = ok1([HeadBoundInst | TailBoundInsts])
+        MaybeBoundFunctors = ok1([HeadBoundFunctor | TailBoundFunctors])
     else
-        Specs = get_any_errors1(MaybeHeadBoundInst)
-            ++ get_any_errors1(MaybeTailBoundInsts),
-        MaybeBoundInsts = error1(Specs)
+        Specs = get_any_errors1(MaybeHeadBoundFunctor)
+            ++ get_any_errors1(MaybeTailBoundFunctors),
+        MaybeBoundFunctors = error1(Specs)
     ).
 
-:- pred parse_bound_inst(allow_constrained_inst_var::in, varset::in,
-    cord(format_piece)::in, term::in, maybe1(bound_inst)::out) is det.
+:- pred parse_bound_functor(allow_constrained_inst_var::in, varset::in,
+    cord(format_piece)::in, term::in, maybe1(bound_functor)::out) is det.
 
-parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
-        MaybeBoundInst) :-
+parse_bound_functor(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
+        MaybeBoundFunctor) :-
     (
         Term = term.variable(_, Context),
         TermStr = describe_error_term(VarSet, Term),
@@ -828,7 +829,7 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
             color_as_incorrect([words("is not a bound inst.")]) ++
             [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        MaybeBoundInst = error1([Spec])
+        MaybeBoundFunctor = error1([Spec])
     ;
         Term = term.functor(Functor, _ArgTerms0, Context),
         require_complete_switch [Functor]
@@ -845,14 +846,14 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
                     list.length(ArgTerms1, Arity),
                     ConsId = du_data_ctor(du_ctor(SymName, Arity,
                         cons_id_dummy_type_ctor)),
-                    MaybeBoundInst = ok1(bound_functor(ConsId, ArgInsts))
+                    MaybeBoundFunctor = ok1(bound_functor(ConsId, ArgInsts))
                 ;
                     MaybeArgInsts = error1(Specs),
-                    MaybeBoundInst = error1(Specs)
+                    MaybeBoundFunctor = error1(Specs)
                 )
             ;
                 MaybeFunctor = error2(Specs),
-                MaybeBoundInst = error1(Specs)
+                MaybeBoundFunctor = error1(Specs)
             )
         ;
             Functor = term.implementation_defined(_),
@@ -870,7 +871,7 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
                     [words("may not be a used as a bound inst.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            MaybeBoundInst = error1([Spec])
+            MaybeBoundFunctor = error1([Spec])
         ;
             Functor = term.integer(Base, Integer, Signedness, Size),
 %           expect(unify(ArgTerms0, []), $pred,
@@ -879,11 +880,11 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
                 MaybeConsId),
             (
                 MaybeConsId = ok1(ConsId),
-                BoundInst = bound_functor(ConsId, []),
-                MaybeBoundInst = ok1(BoundInst)
+                BoundFunctor = bound_functor(ConsId, []),
+                MaybeBoundFunctor = ok1(BoundFunctor)
             ;
                 MaybeConsId = error1(Specs),
-                MaybeBoundInst = error1(Specs)
+                MaybeBoundFunctor = error1(Specs)
             )
         ;
             (
@@ -897,8 +898,8 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
 %                   "parse_simple_term has given a string arguments"),
                 ConsId = string_const(Str)
             ),
-            BoundInst = bound_functor(ConsId, []),
-            MaybeBoundInst = ok1(BoundInst)
+            BoundFunctor = bound_functor(ConsId, []),
+            MaybeBoundFunctor = ok1(BoundFunctor)
         )
     ).
 

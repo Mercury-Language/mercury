@@ -1298,7 +1298,7 @@ qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs) :-
         ),
         Inst = Inst0
     ;
-        Inst0 = bound(Uniq, InstResults0, BoundInsts0),
+        Inst0 = bound(Uniq, InstResults0, BoundFunctors0),
         (
             ( InstResults0 = inst_test_results_fgtc
             ; InstResults0 = inst_test_no_results
@@ -1308,9 +1308,9 @@ qualify_inst(InInt, ErrorContext, Inst0, Inst, !Info, !Specs) :-
             unexpected($pred, "compiler generated inst not expected")
         ),
         % XXX We could pass a more specific error context.
-        qualify_bound_insts(InInt, ErrorContext, BoundInsts0, BoundInsts,
-            !Info, !Specs),
-        Inst = bound(Uniq, InstResults0, BoundInsts)
+        qualify_bound_functors(InInt, ErrorContext,
+            BoundFunctors0, BoundFunctors, !Info, !Specs),
+        Inst = bound(Uniq, InstResults0, BoundFunctors)
     ;
         Inst0 = ground(Uniq, HOInstInfo0),
         % XXX We could pass a more specific error context.
@@ -1400,28 +1400,29 @@ qualify_inst_name(InInt, ErrorContext, InstName0, InstName,
         unexpected($pred, "unexpected compiler generated inst_name")
     ).
 
-:- pred qualify_bound_insts(mq_in_interface::in, mq_error_context::in,
-    list(bound_inst)::in, list(bound_inst)::out, mq_info::in, mq_info::out,
+:- pred qualify_bound_functors(mq_in_interface::in, mq_error_context::in,
+    list(bound_functor)::in, list(bound_functor)::out,
+    mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_bound_insts(_InInt, _ErrorContext, [], [], !Info, !Specs).
-qualify_bound_insts(InInt, ErrorContext,
-        [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts],
+qualify_bound_functors(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_bound_functors(InInt, ErrorContext,
+        [BoundFunctor0 | BoundFunctors0], [BoundFunctor | BoundFunctors],
         !Info, !Specs) :-
-    qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
+    qualify_bound_functor(InInt, ErrorContext, BoundFunctor0, BoundFunctor,
         !Info, !Specs),
-    qualify_bound_insts(InInt, ErrorContext, BoundInsts0, BoundInsts,
+    qualify_bound_functors(InInt, ErrorContext, BoundFunctors0, BoundFunctors,
         !Info, !Specs).
 
     % Qualify an inst of the form bound(functor(...)).
     %
-:- pred qualify_bound_inst(mq_in_interface::in, mq_error_context::in,
-    bound_inst::in, bound_inst::out, mq_info::in, mq_info::out,
+:- pred qualify_bound_functor(mq_in_interface::in, mq_error_context::in,
+    bound_functor::in, bound_functor::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
+qualify_bound_functor(InInt, ErrorContext, BoundFunctor0, BoundFunctor,
         !Info, !Specs) :-
-    BoundInst0 = bound_functor(ConsId, Insts0),
+    BoundFunctor0 = bound_functor(ConsId, Insts0),
     (
         ConsId = du_data_ctor(du_ctor(Name, Arity, _)),
         Id = recomp_item_name(Name, Arity),
@@ -1448,7 +1449,7 @@ qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
         )
     ),
     qualify_inst_list(InInt, ErrorContext, Insts0, Insts, !Info, !Specs),
-    BoundInst = bound_functor(ConsId, Insts).
+    BoundFunctor = bound_functor(ConsId, Insts).
 
 %---------------------------------------------------------------------------%
 %

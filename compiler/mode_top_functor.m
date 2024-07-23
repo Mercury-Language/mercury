@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -139,8 +139,11 @@ get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
         Inst = ground(Uniq, _PredInst),
         ArgInst = ground(Uniq, none_or_default_func)
     ;
-        Inst = bound(_Uniq, _InstResult, List),
-        ( if get_single_arg_inst_in_bound_insts(List, ConsId, ArgInst0) then
+        Inst = bound(_Uniq, _InstResult, BoundFunctors),
+        ( if
+            get_single_arg_inst_in_bound_functors(BoundFunctors, ConsId,
+                ArgInst0)
+        then
             ArgInst = ArgInst0
         else
             % The code is unreachable.
@@ -160,20 +163,20 @@ get_single_arg_inst(ModuleInfo, Inst, ConsId, ArgInst) :-
         get_single_arg_inst(ModuleInfo, InsideInst, ConsId, ArgInst)
     ).
 
-:- pred get_single_arg_inst_in_bound_insts(list(bound_inst)::in, cons_id::in,
-    mer_inst::out) is semidet.
+:- pred get_single_arg_inst_in_bound_functors(list(bound_functor)::in,
+    cons_id::in, mer_inst::out) is semidet.
 
-get_single_arg_inst_in_bound_insts([BoundInst | BoundInsts], ConsId,
+get_single_arg_inst_in_bound_functors([BoundFunctor | BoundFunctors], ConsId,
         ArgInst) :-
     ( if
-        BoundInst = bound_functor(InstConsId, [ArgInst0]),
+        BoundFunctor = bound_functor(InstConsId, [ArgInst0]),
         % The cons_ids for types and insts can differ in the type_ctor field
         % so we must ignore them.
         equivalent_cons_ids(ConsId, InstConsId)
     then
         ArgInst = ArgInst0
     else
-        get_single_arg_inst_in_bound_insts(BoundInsts, ConsId, ArgInst)
+        get_single_arg_inst_in_bound_functors(BoundFunctors, ConsId, ArgInst)
     ).
 
 modes_to_top_functor_modes(_ModuleInfo, [], [], []).

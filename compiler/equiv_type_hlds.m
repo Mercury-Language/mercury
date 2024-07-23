@@ -1074,7 +1074,7 @@ type_may_occur_in_inst(Inst) = MayOccur :-
                         MayOccur = OldMayOccur
                     ;
                         Found = no,
-                        MayOccur = type_may_occur_in_bound_insts(BoundInsts),
+                        MayOccur = type_may_occur_in_bound_functors(BoundInsts),
                         impure record_inst_may_occur(Inst, MayOccur)
                     )
                 )
@@ -1088,12 +1088,12 @@ type_may_occur_in_inst(Inst) = MayOccur :-
     % Return true if any type may occur inside any of the given bound insts.
     %
     % The logic here should be a conservative approximation of the code
-    % of replace_in_bound_insts.
+    % of replace_in_bound_functors.
     %
-:- func type_may_occur_in_bound_insts(list(bound_inst)) = bool.
+:- func type_may_occur_in_bound_functors(list(bound_functor)) = bool.
 
-type_may_occur_in_bound_insts([]) = no.
-type_may_occur_in_bound_insts([BoundInst | BoundInsts]) = MayOccur :-
+type_may_occur_in_bound_functors([]) = no.
+type_may_occur_in_bound_functors([BoundInst | BoundInsts]) = MayOccur :-
     BoundInst = bound_functor(_, Insts),
     MayOccurInInsts = type_may_occur_in_insts(Insts),
     (
@@ -1101,7 +1101,7 @@ type_may_occur_in_bound_insts([BoundInst | BoundInsts]) = MayOccur :-
         MayOccur = yes
     ;
         MayOccurInInsts = no,
-        MayOccur = type_may_occur_in_bound_insts(BoundInsts)
+        MayOccur = type_may_occur_in_bound_functors(BoundInsts)
     ).
 
     % Return true if any type may occur inside any of the given insts.
@@ -1277,7 +1277,7 @@ replace_in_inst_2(TypeEqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
             Inst = Inst0
         ;
             NeedReplace = yes(InstResults),
-            replace_in_bound_insts(TypeEqvMap, BoundInsts0, BoundInsts,
+            replace_in_bound_functors(TypeEqvMap, BoundInsts0, BoundInsts,
                 Changed, !TVarSet, !Cache),
             % We could try to figure out the set of type_ctors in BoundInsts,
             % but that info may never be needed again.
@@ -1406,17 +1406,17 @@ replace_in_inst_name(TypeEqvMap, InstName0, InstName, Changed,
         )
     ).
 
-:- pred replace_in_bound_insts(type_eqv_map::in, list(bound_inst)::in,
-    list(bound_inst)::out, maybe_changed::out, tvarset::in, tvarset::out,
+:- pred replace_in_bound_functors(type_eqv_map::in, list(bound_functor)::in,
+    list(bound_functor)::out, maybe_changed::out, tvarset::in, tvarset::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_bound_insts(_EqvMap, [], [], unchanged, !TVarSet, !Cache).
-replace_in_bound_insts(TypeEqvMap,
+replace_in_bound_functors(_EqvMap, [], [], unchanged, !TVarSet, !Cache).
+replace_in_bound_functors(TypeEqvMap,
         List0 @ [bound_functor(ConsId, Insts0) | BoundInsts0],
         List, Changed, !TVarSet, !Cache) :-
     replace_in_insts(TypeEqvMap, Insts0, Insts, InstsChanged,
         !TVarSet, !Cache),
-    replace_in_bound_insts(TypeEqvMap, BoundInsts0, BoundInsts,
+    replace_in_bound_functors(TypeEqvMap, BoundInsts0, BoundInsts,
         BoundInstsChanged, !TVarSet, !Cache),
     ( if InstsChanged = unchanged, BoundInstsChanged = unchanged then
         Changed = unchanged,

@@ -662,10 +662,10 @@ mer_inst_to_xml(InstVarSet, Inst) = Xml :-
         Inst = free,
         Xml = elem("free", [], [])
     ;
-        Inst = bound(U, _, BoundInsts),
+        Inst = bound(U, _, BoundFunctors),
         XmlUniq = uniqueness_to_xml(U),
-        XmlInsts = xml_list("bound_insts", bound_inst_to_xml(InstVarSet),
-            BoundInsts),
+        XmlInsts = xml_list("bound_functors", bound_functor_to_xml(InstVarSet),
+            BoundFunctors),
         Xml = elem("bound", [], [XmlUniq, XmlInsts])
     ;
         Inst = ground(U, _),
@@ -710,9 +710,9 @@ inst_name_to_xml(_, typed_inst(_, _)) = nyi("typed_inst").
 
 uniqueness_to_xml(U) = tagged_string("uniqueness", string(U)).
 
-:- func bound_inst_to_xml(inst_varset, bound_inst) = xml.
+:- func bound_functor_to_xml(inst_varset, bound_functor) = xml.
 
-bound_inst_to_xml(InstVarSet, bound_functor(ConsId, Insts)) = Xml :-
+bound_functor_to_xml(InstVarSet, bound_functor(ConsId, Insts)) = Xml :-
     XmlCons = cons_id_to_xml(ConsId),
     XmlInsts = xml_list("insts", mer_inst_to_xml(InstVarSet), Insts),
     Xml = elem("bound_functor", [], [XmlCons, XmlInsts]).

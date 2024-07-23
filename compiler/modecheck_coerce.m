@@ -223,9 +223,9 @@ modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, ConsExistQTVars,
         InstX = any(_, _),
         unexpected($pred, "any inst")
     ;
-        InstX = bound(_UniqX, _InstResultsX, _BoundInstsX),
-        modecheck_coerce_from_bound_make_bound_inst(ModuleInfo, TVarSet, LiveX,
-            ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
+        InstX = bound(_UniqX, _InstResultsX, _BoundFunctorsX),
+        modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet,
+            LiveX, ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
             InstX, Result)
     ;
         InstX = ground(UniqX, HOInstInfoX),
@@ -351,18 +351,18 @@ is_user_inst(InstName) :-
     % inst. This predicate tries to create the `bound(...)' result inst,
     % if the conversion is valid.
     %
-:- pred modecheck_coerce_from_bound_make_bound_inst(module_info::in,
+:- pred modecheck_coerce_from_bound_make_bound_functor(module_info::in,
     tvarset::in, is_live::in, existq_tvars::in, rev_term_path::in,
     mer_type::in, mer_type::in, expanded_insts::in,
     mer_inst::in(mer_inst_is_bound), maybe_coerce_error(mer_inst)::out) is det.
 
-modecheck_coerce_from_bound_make_bound_inst(ModuleInfo, TVarSet, LiveX,
+modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
         ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
         InstX, Result) :-
-    InstX = bound(UniqX, _InstResultsX, BoundInstsX),
+    InstX = bound(UniqX, _InstResultsX, BoundFunctorsX),
     modecheck_coerce_from_bound_make_bound_functors(ModuleInfo, TVarSet, LiveX,
         ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
-        BoundInstsX, BoundInstsY, BadConsIdErrors, [], DeeperErrors),
+        BoundFunctorsX, BoundFunctorsY, BadConsIdErrors, [], DeeperErrors),
     (
         BadConsIdErrors = [],
         (
@@ -377,7 +377,7 @@ modecheck_coerce_from_bound_make_bound_inst(ModuleInfo, TVarSet, LiveX,
                 inst_result_contains_types_unknown,
                 inst_result_no_type_ctor_propagated
             ),
-            InstY = bound(UniqY, InstResults, BoundInstsY),
+            InstY = bound(UniqY, InstResults, BoundFunctorsY),
             Result = ok1(InstY)
         ;
             DeeperErrors = [_ | _],
@@ -386,7 +386,7 @@ modecheck_coerce_from_bound_make_bound_inst(ModuleInfo, TVarSet, LiveX,
     ;
         BadConsIdErrors = [HeadBadConsIdError | TailBadConsIdErrors],
         % We report both
-        % - the invalid functors in BoundInstsX (ConsIdError), and
+        % - the invalid functors in BoundFunctorsX (ConsIdError), and
         % - any errors found deeper in the inst tree (DeeperErrors).
         list.reverse(RevTermPath0, TermPath),
         Reason = cons_id_errors(InstX,
@@ -398,57 +398,58 @@ modecheck_coerce_from_bound_make_bound_inst(ModuleInfo, TVarSet, LiveX,
 :- pred modecheck_coerce_from_bound_make_bound_functors(module_info::in,
     tvarset::in, is_live::in, existq_tvars::in, rev_term_path::in,
     mer_type::in, mer_type::in, expanded_insts::in,
-    list(bound_inst)::in, list(bound_inst)::out,
-    list(bound_inst_cons_id_error)::out,
+    list(bound_functor)::in, list(bound_functor)::out,
+    list(bound_functor_cons_id_error)::out,
     list(coerce_error)::in, list(coerce_error)::out) is det.
 
 modecheck_coerce_from_bound_make_bound_functors(ModuleInfo, TVarSet, LiveX,
         ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
-        BoundInstsX, BoundInstsY, BadConsIdErrors, !Errors) :-
+        BoundFunctorsX, BoundFunctorsY, BadConsIdErrors, !Errors) :-
     (
-        BoundInstsX = [],
-        BoundInstsY = [],
+        BoundFunctorsX = [],
+        BoundFunctorsY = [],
         BadConsIdErrors = []
     ;
-        BoundInstsX = [HeadBoundInstX | TailBoundInstsX],
+        BoundFunctorsX = [HeadBoundFunctorX | TailBoundFunctorsX],
         modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet,
             LiveX, ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
-            HeadBoundInstX, MaybeHeadBoundInstY, !Errors),
+            HeadBoundFunctorX, MaybeHeadBoundFunctorY, !Errors),
         % Check remaining functors in this `bound()' inst so that we can
         % report multiple invalid functors together.
         modecheck_coerce_from_bound_make_bound_functors(ModuleInfo, TVarSet,
             LiveX, ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
-            TailBoundInstsX, TailBoundInstsY, TailBadConsIdErrors, !Errors),
+            TailBoundFunctorsX, TailBoundFunctorsY, TailBadConsIdErrors,
+            !Errors),
         (
-            MaybeHeadBoundInstY = bioe_ok(HeadBoundInstY),
-            BoundInstsY = [HeadBoundInstY | TailBoundInstsY],
+            MaybeHeadBoundFunctorY = bfoe_ok(HeadBoundFunctorY),
+            BoundFunctorsY = [HeadBoundFunctorY | TailBoundFunctorsY],
             BadConsIdErrors = TailBadConsIdErrors
         ;
-            MaybeHeadBoundInstY = bioe_cons_id_error(HeadBadConsIdError),
-            BoundInstsY = TailBoundInstsY,
+            MaybeHeadBoundFunctorY = bfoe_cons_id_error(HeadBadConsIdError),
+            BoundFunctorsY = TailBoundFunctorsY,
             BadConsIdErrors = [HeadBadConsIdError | TailBadConsIdErrors]
         ;
-            MaybeHeadBoundInstY = bioe_other_error,
-            BoundInstsY = TailBoundInstsY,
+            MaybeHeadBoundFunctorY = bfoe_other_error,
+            BoundFunctorsY = TailBoundFunctorsY,
             BadConsIdErrors = TailBadConsIdErrors
         )
     ).
 
-:- type bound_inst_or_error
-    --->    bioe_ok(bound_inst)
-    ;       bioe_cons_id_error(bound_inst_cons_id_error)
-    ;       bioe_other_error.    % error kept separately
+:- type bound_functor_or_error
+    --->    bfoe_ok(bound_functor)
+    ;       bfoe_cons_id_error(bound_functor_cons_id_error)
+    ;       bfoe_other_error.    % error kept separately
 
 :- pred modecheck_coerce_from_bound_make_bound_functor(module_info::in,
     tvarset::in, is_live::in, existq_tvars::in, rev_term_path::in,
     mer_type::in, mer_type::in, expanded_insts::in,
-    bound_inst::in, bound_inst_or_error::out,
+    bound_functor::in, bound_functor_or_error::out,
     list(coerce_error)::in, list(coerce_error)::out) is det.
 
 modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
         ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
-        BoundInstX, MaybeBoundInstY, !Errors) :-
-    BoundInstX = bound_functor(ConsIdX, ArgInstsX),
+        BoundFunctorX, MaybeBoundFunctorY, !Errors) :-
+    BoundFunctorX = bound_functor(ConsIdX, ArgInstsX),
     (
         ( ConsIdX = du_data_ctor(_)
         ; ConsIdX = tuple_cons(_)
@@ -459,15 +460,17 @@ modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
         ),
         ( if existq_tvars_contains(ConsExistQTVars, TypeX) then
             % TypeX is an existential type. We can assume that TypeX = TypeY,
-            % so BoundInstX is acceptable for the result term as well.
+            % so BoundFunctorX is acceptable for the result term as well.
             % The only thing we do is to remove uniqueness in the result inst
             % if the input remains live (might not be strictly necessary).
-            copy_bound_inst_for_coerce_result(LiveX, BoundInstX, BoundInstY),
-            MaybeBoundInstY = bioe_ok(BoundInstY)
+            copy_bound_functor_for_coerce_result(LiveX,
+                BoundFunctorX, BoundFunctorY),
+            MaybeBoundFunctorY = bfoe_ok(BoundFunctorY)
         else
             modecheck_coerce_from_bound_make_bound_functor_not_existq(
                 ModuleInfo, TVarSet, LiveX, RevTermPath0, TypeX, TypeY,
-                ExpandedInsts0, ConsIdX, ArgInstsX, MaybeBoundInstY, !Errors)
+                ExpandedInsts0, ConsIdX, ArgInstsX, MaybeBoundFunctorY,
+                !Errors)
         )
     ;
         ( ConsIdX = closure_cons(_)
@@ -498,12 +501,12 @@ modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
     module_info::in, tvarset::in, is_live::in, rev_term_path::in,
     mer_type::in, mer_type::in, expanded_insts::in,
     cons_id::in(supported_cons_id), list(mer_inst)::in,
-    bound_inst_or_error::out, list(coerce_error)::in, list(coerce_error)::out)
-    is det.
+    bound_functor_or_error::out,
+    list(coerce_error)::in, list(coerce_error)::out) is det.
 
 modecheck_coerce_from_bound_make_bound_functor_not_existq(ModuleInfo, TVarSet,
         LiveX, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
-        ConsIdX, ArgInstsX0, MaybeBoundInstY, !Errors) :-
+        ConsIdX, ArgInstsX0, MaybeBoundFunctorY, !Errors) :-
     % The user may have provided an inst that does not make sense for the type.
     % The compiler *should* check for that elsewhere, in types_into_modes.m,
     % but neither wangp nor I (zs) are confident that it guarantees catching
@@ -538,25 +541,26 @@ modecheck_coerce_from_bound_make_bound_functor_not_existq(ModuleInfo, TVarSet,
                     ErrorsY = [],
                     % Add back the insts for type_infos and type_class_infos
                     % that were separated out.
-                    BoundInstY = bound_functor(ConsIdY,
+                    BoundFunctorY = bound_functor(ConsIdY,
                         ExtraArgsInsts ++ OkArgInstsY),
-                    MaybeBoundInstY = bioe_ok(BoundInstY)
+                    MaybeBoundFunctorY = bfoe_ok(BoundFunctorY)
                 ;
                     ErrorsY = [_ | _],
                     !:Errors = ErrorsY ++ !.Errors,
-                    MaybeBoundInstY = bioe_other_error
+                    MaybeBoundFunctorY = bfoe_other_error
                 )
             else
                 ConsIdError = bad_cons_id_input_inst_arity(ConsIdX,
                     NumArgInstsX, Arity),
-                MaybeBoundInstY = bioe_cons_id_error(ConsIdError)
+                MaybeBoundFunctorY = bfoe_cons_id_error(ConsIdError)
             )
         ;
             GetConsArgsResult = bad_cons_id_for_input_type,
-            MaybeBoundInstY = bioe_cons_id_error(bad_cons_id_input(ConsIdX))
+            MaybeBoundFunctorY = bfoe_cons_id_error(bad_cons_id_input(ConsIdX))
         ;
             GetConsArgsResult = bad_cons_id_for_result_type,
-            MaybeBoundInstY = bioe_cons_id_error(bad_cons_id_result(ConsIdY))
+            MaybeBoundFunctorY =
+                bfoe_cons_id_error(bad_cons_id_result(ConsIdY))
         )
     ;
         ( ConsIdX = some_int_const(_)
@@ -569,10 +573,10 @@ modecheck_coerce_from_bound_make_bound_functor_not_existq(ModuleInfo, TVarSet,
                 "coercion between different builtin types"),
             expect(unify(ArgInstsX0, []), $pred,
                 "bound functor literal has arguments"),
-            BoundInstY = bound_functor(ConsIdX, ArgInstsX0),
-            MaybeBoundInstY = bioe_ok(BoundInstY)
+            BoundFunctorY = bound_functor(ConsIdX, ArgInstsX0),
+            MaybeBoundFunctorY = bfoe_ok(BoundFunctorY)
         else
-            MaybeBoundInstY = bioe_cons_id_error(bad_cons_id_input(ConsIdX))
+            MaybeBoundFunctorY = bfoe_cons_id_error(bad_cons_id_input(ConsIdX))
         )
     ).
 
@@ -805,24 +809,24 @@ modecheck_coerce_from_ground_make_inst_for_subtype(ModuleInfo, TVarSet,
         TypeX \= TypeY,
         set.insert_new(TypeX, SeenTypes0, SeenTypes1)
     then
-        modecheck_coerce_from_ground_make_bound_inst(ModuleInfo, TVarSet,
+        modecheck_coerce_from_ground_make_bound_functor(ModuleInfo, TVarSet,
             LiveX, UniqX, SeenTypes1, TypeX, TypeY, InstY)
     else
         UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
         InstY = ground(UniqY, none_or_default_func)
     ).
 
-:- pred modecheck_coerce_from_ground_make_bound_inst(module_info::in,
+:- pred modecheck_coerce_from_ground_make_bound_functor(module_info::in,
     tvarset::in, is_live::in, uniqueness::in, set(mer_type)::in,
     mer_type::in, mer_type::in, mer_inst::out) is det.
 
-modecheck_coerce_from_ground_make_bound_inst(ModuleInfo, TVarSet,
+modecheck_coerce_from_ground_make_bound_functor(ModuleInfo, TVarSet,
         LiveX, UniqX, SeenTypes, TypeX, TypeY, InstY) :-
     ( if type_constructors(ModuleInfo, TypeX, CtorsX) then
         list.map(
             modecheck_coerce_from_ground_make_bound_functor(ModuleInfo,
                 TVarSet, LiveX, UniqX, SeenTypes, TypeX, TypeY),
-            CtorsX, BoundInstsY),
+            CtorsX, BoundFunctorsY),
         UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
         % XXX A better approximation of InstResults is probably possible.
         InstResults = inst_test_results(
@@ -833,17 +837,17 @@ modecheck_coerce_from_ground_make_bound_inst(ModuleInfo, TVarSet,
             inst_result_contains_types_unknown,
             inst_result_no_type_ctor_propagated
         ),
-        InstY = bound(UniqY, InstResults, BoundInstsY)
+        InstY = bound(UniqY, InstResults, BoundFunctorsY)
     else
         unexpected($pred, "missing constructors")
     ).
 
 :- pred modecheck_coerce_from_ground_make_bound_functor(module_info::in,
     tvarset::in, is_live::in, uniqueness::in, set(mer_type)::in,
-    mer_type::in, mer_type::in, constructor::in, bound_inst::out) is det.
+    mer_type::in, mer_type::in, constructor::in, bound_functor::out) is det.
 
 modecheck_coerce_from_ground_make_bound_functor(ModuleInfo, TVarSet,
-        LiveX, UniqX, SeenTypes, _TypeX, TypeY, CtorX, BoundInstY) :-
+        LiveX, UniqX, SeenTypes, _TypeX, TypeY, CtorX, BoundFunctorY) :-
     CtorX = ctor(_OrdinalX, _MaybeExistConstraintsX, CtorNameX, CtorArgsX,
         CtorArity, _ContextX),
 
@@ -875,7 +879,7 @@ modecheck_coerce_from_ground_make_bound_functor(ModuleInfo, TVarSet,
         ArgTypesX, ArgTypesY, ArgInstsY),
 
     ConsIdY = du_data_ctor(DuCtorY),
-    BoundInstY = bound_functor(ConsIdY, ArgInstsY).
+    BoundFunctorY = bound_functor(ConsIdY, ArgInstsY).
 
 %---------------------------------------------------------------------------%
 
@@ -961,13 +965,13 @@ existq_tvars_contains(ExistQTVars, Type) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred copy_bound_inst_for_coerce_result(is_live::in,
-    bound_inst::in, bound_inst::out) is det.
+:- pred copy_bound_functor_for_coerce_result(is_live::in,
+    bound_functor::in, bound_functor::out) is det.
 
-copy_bound_inst_for_coerce_result(LiveX, BoundInstX, BoundInstY) :-
-    BoundInstX = bound_functor(ConsId, ArgInstsX),
+copy_bound_functor_for_coerce_result(LiveX, BoundFunctorX, BoundFunctorY) :-
+    BoundFunctorX = bound_functor(ConsId, ArgInstsX),
     list.map(copy_inst_for_coerce_result(LiveX), ArgInstsX, ArgInstsY),
-    BoundInstY = bound_functor(ConsId, ArgInstsY).
+    BoundFunctorY = bound_functor(ConsId, ArgInstsY).
 
 :- pred copy_inst_for_coerce_result(is_live::in, mer_inst::in, mer_inst::out)
     is det.
@@ -978,11 +982,11 @@ copy_inst_for_coerce_result(LiveX, InstX, InstY) :-
         UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
         InstY = ground(UniqY, HOInstInfo)
     ;
-        InstX = bound(UniqX, InstResults, BoundInstsX),
+        InstX = bound(UniqX, InstResults, BoundFunctorsX),
         UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
-        list.map(copy_bound_inst_for_coerce_result(LiveX),
-            BoundInstsX, BoundInstsY),
-        InstY = bound(UniqY, InstResults, BoundInstsY)
+        list.map(copy_bound_functor_for_coerce_result(LiveX),
+            BoundFunctorsX, BoundFunctorsY),
+        InstY = bound(UniqY, InstResults, BoundFunctorsY)
     ;
         InstX = defined_inst(InstName),
         InstY = defined_inst(InstName)

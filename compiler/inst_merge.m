@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -247,7 +247,7 @@ inst_merge(Type, InstA, InstB, InstAB, !ModuleInfo) :-
     % does not work as a cache: actually doing merging the insts is likely
     % to be faster (and maybe *much* faster) than looking them up
     % in the merge_inst_table. And in such cases, the table is not needed
-    % for termination either. Since the skeleton of the bound_inst list
+    % for termination either. Since the skeleton of the bound_functor list
     % does not contain any inst_names, any recursion has to be in the list
     % elements, and will be caught and handled there.
     ( if
@@ -479,8 +479,8 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
             merge_uniq(UniqA, UniqB, Uniq),
             InstAB = any(Uniq, HOInstInfo)
         ;
-            InstB = bound(UniqB, InstResultsB, BoundInstsB),
-            inst_merge_bound_ground(Type, UniqB, InstResultsB, BoundInstsB,
+            InstB = bound(UniqB, InstResultsB, BoundFunctorsB),
+            inst_merge_bound_ground(Type, UniqB, InstResultsB, BoundFunctorsB,
                 UniqA, InstAB, !ModuleInfo),
             not inst_contains_nondefault_func_mode(!.ModuleInfo, Type, InstB)
         )
@@ -506,54 +506,54 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
             merge_uniq(UniqA, UniqB, Uniq),
             InstAB = any(Uniq, HOInstInfo)
         ;
-            InstB = bound(UniqB, InstResultsB, BoundInstsB),
-            merge_uniq_bound(!.ModuleInfo, UniqA, UniqB, BoundInstsB, Uniq),
+            InstB = bound(UniqB, InstResultsB, BoundFunctorsB),
+            merge_uniq_bound(!.ModuleInfo, UniqA, UniqB, BoundFunctorsB, Uniq),
             % We do not yet allow merge of any with free, except for
             % clobbered anys.
             ( if ( Uniq = clobbered ; Uniq = mostly_clobbered ) then
                 true
             else
                 % XXX We will lose any nondefault higher-order info in
-                % BoundInstsB. We should at least check that there isn't any
+                % BoundFunctorsB. We should at least check that there isn't any
                 % such info, as the result may be treated as default.
-                inst_results_bound_inst_list_is_ground_or_any(!.ModuleInfo,
-                    InstResultsB, BoundInstsB)
+                inst_results_bound_functor_list_is_ground_or_any(!.ModuleInfo,
+                    InstResultsB, BoundFunctorsB)
             ),
             InstAB = any(Uniq, none_or_default_func)
         )
     ;
-        InstA = bound(UniqA, InstResultsA, BoundInstsA),
+        InstA = bound(UniqA, InstResultsA, BoundFunctorsA),
         require_complete_switch [InstB]
         (
             InstB = free,
             fail
         ;
             InstB = ground(UniqB, _),
-            inst_merge_bound_ground(Type, UniqA, InstResultsA, BoundInstsA,
+            inst_merge_bound_ground(Type, UniqA, InstResultsA, BoundFunctorsA,
                 UniqB, InstAB, !ModuleInfo),
             not inst_contains_nondefault_func_mode(!.ModuleInfo, Type, InstA)
         ;
             InstB = any(UniqB, _),
-            merge_uniq_bound(!.ModuleInfo, UniqB, UniqA, BoundInstsA, Uniq),
+            merge_uniq_bound(!.ModuleInfo, UniqB, UniqA, BoundFunctorsA, Uniq),
             % We do not yet allow merge of any with free, except
             % for clobbered anys.
             ( if ( Uniq = clobbered ; Uniq = mostly_clobbered ) then
                 true
             else
                 % XXX We will lose any nondefault higher-order info in
-                % BoundInstsA. We should at least check that there isn't any
+                % BoundFunctorsA. We should at least check that there isn't any
                 % such info, as the result may be treated as default.
-                inst_results_bound_inst_list_is_ground_or_any(!.ModuleInfo,
-                    InstResultsA, BoundInstsA)
+                inst_results_bound_functor_list_is_ground_or_any(!.ModuleInfo,
+                    InstResultsA, BoundFunctorsA)
             ),
             InstAB = any(Uniq, none_or_default_func)
         ;
-            InstB = bound(UniqB, _InstResultsB, BoundInstsB),
+            InstB = bound(UniqB, _InstResultsB, BoundFunctorsB),
             merge_uniq(UniqA, UniqB, Uniq),
-            bound_inst_list_merge(Type, BoundInstsA, BoundInstsB, BoundInstsAB,
-                !ModuleInfo),
+            bound_functor_list_merge(Type, BoundFunctorsA, BoundFunctorsB,
+                BoundFunctorsAB, !ModuleInfo),
             % XXX A better approximation of InstResults is probably possible.
-            InstAB = bound(Uniq, inst_test_no_results, BoundInstsAB)
+            InstAB = bound(Uniq, inst_test_no_results, BoundFunctorsAB)
         )
     ).
 
@@ -597,29 +597,29 @@ merge_ho_inst_info(Type, HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo) :-
         HOInstInfo = none_or_default_func
     ).
 
-    % merge_uniq_bound(UniqA, UniqB, BoundInstsB, ModuleInfo, Uniq) succeeds
+    % merge_uniq_bound(UniqA, UniqB, BoundFunctorsB, ModuleInfo, Uniq) succeeds
     % iff Uniq is the result of merging.
     %
 :- pred merge_uniq_bound(module_info::in, uniqueness::in, uniqueness::in,
-    list(bound_inst)::in, uniqueness::out) is det.
+    list(bound_functor)::in, uniqueness::out) is det.
 
-merge_uniq_bound(ModuleInfo, UniqA, UniqB, BoundInstsB, Uniq) :-
+merge_uniq_bound(ModuleInfo, UniqA, UniqB, BoundFunctorsB, Uniq) :-
     merge_uniq(UniqA, UniqB, Uniq0),
     set.init(Expansions0),
-    merge_bound_inst_list_uniq(ModuleInfo, BoundInstsB, Uniq0,
+    merge_bound_functor_list_uniq(ModuleInfo, BoundFunctorsB, Uniq0,
         Expansions0, _Expansions, Uniq).
 
-:- pred merge_bound_inst_list_uniq(module_info::in, list(bound_inst)::in,
+:- pred merge_bound_functor_list_uniq(module_info::in, list(bound_functor)::in,
     uniqueness::in, set(inst_name)::in, set(inst_name)::out,
     uniqueness::out) is det.
 
-merge_bound_inst_list_uniq(_, [], Uniq, !Expansions, Uniq).
-merge_bound_inst_list_uniq(ModuleInfo, [BoundInst | BoundInsts], Uniq0,
-        !Expansions, Uniq) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
+merge_bound_functor_list_uniq(_, [], Uniq, !Expansions, Uniq).
+merge_bound_functor_list_uniq(ModuleInfo, [BoundFunctor | BoundFunctors],
+        Uniq0, !Expansions, Uniq) :-
+    BoundFunctor = bound_functor(_ConsId, ArgInsts),
     merge_inst_list_uniq(ModuleInfo, ArgInsts, Uniq0, !Expansions, Uniq1),
-    merge_bound_inst_list_uniq(ModuleInfo, BoundInsts, Uniq1,
-        !Expansions, Uniq).
+    merge_bound_functor_list_uniq(ModuleInfo, BoundFunctors,
+        Uniq1, !Expansions, Uniq).
 
 :- pred merge_inst_list_uniq(module_info::in, list(mer_inst)::in,
     uniqueness::in, set(inst_name)::in, set(inst_name)::out, uniqueness::out)
@@ -645,9 +645,9 @@ merge_inst_uniq(ModuleInfo, InstA, UniqB, !Expansions, Uniq) :-
         ),
         merge_uniq(UniqA, UniqB, Uniq)
     ;
-        InstA = bound(UniqA, _InstResultsA, BoundInstsA),
+        InstA = bound(UniqA, _InstResultsA, BoundFunctorsA),
         merge_uniq(UniqA, UniqB, Uniq0),
-        merge_bound_inst_list_uniq(ModuleInfo, BoundInstsA, Uniq0,
+        merge_bound_functor_list_uniq(ModuleInfo, BoundFunctorsA, Uniq0,
             !Expansions, Uniq)
     ;
         InstA = defined_inst(InstName),
@@ -669,27 +669,27 @@ merge_inst_uniq(ModuleInfo, InstA, UniqB, !Expansions, Uniq) :-
 %---------------------------------------------------------------------------%
 
 :- pred inst_merge_bound_ground(mer_type::in, uniqueness::in,
-    inst_test_results::in, list(bound_inst)::in, uniqueness::in, mer_inst::out,
-    module_info::in, module_info::out) is semidet.
+    inst_test_results::in, list(bound_functor)::in, uniqueness::in,
+    mer_inst::out, module_info::in, module_info::out) is semidet.
 
-inst_merge_bound_ground(Type, UniqA, InstResultsA, BoundInstsA, UniqB,
+inst_merge_bound_ground(Type, UniqA, InstResultsA, BoundFunctorsA, UniqB,
         Result, !ModuleInfo) :-
     ( if
-        inst_results_bound_inst_list_is_ground(!.ModuleInfo, Type,
-            InstResultsA, BoundInstsA)
+        inst_results_bound_functor_list_is_ground(!.ModuleInfo, Type,
+            InstResultsA, BoundFunctorsA)
     then
-        merge_uniq_bound(!.ModuleInfo, UniqB, UniqA, BoundInstsA, Uniq),
+        merge_uniq_bound(!.ModuleInfo, UniqB, UniqA, BoundFunctorsA, Uniq),
         Result = ground(Uniq, none_or_default_func)
     else
-        inst_results_bound_inst_list_is_ground_or_any(!.ModuleInfo,
-            InstResultsA, BoundInstsA),
+        inst_results_bound_functor_list_is_ground_or_any(!.ModuleInfo,
+            InstResultsA, BoundFunctorsA),
         % If we know the type, we can give a more accurate result than
         % just "any".
         ( if type_constructors(!.ModuleInfo, Type, Constructors) then
             type_to_ctor_det(Type, TypeCtor),
-            constructors_to_bound_insts(!.ModuleInfo, UniqB, TypeCtor,
-                Constructors, BoundInstsB0),
-            list.sort_and_remove_dups(BoundInstsB0, BoundInstsB),
+            constructors_to_bound_functors(!.ModuleInfo, UniqB, TypeCtor,
+                Constructors, BoundFunctorsB0),
+            list.sort_and_remove_dups(BoundFunctorsB0, BoundFunctorsB),
             InstResultsB = inst_test_results(
                 inst_result_is_ground,
                 inst_result_does_not_contain_any,
@@ -698,11 +698,11 @@ inst_merge_bound_ground(Type, UniqA, InstResultsA, BoundInstsA, UniqB,
                 inst_result_contains_types_known(set.init),
                 inst_result_type_ctor_propagated(TypeCtor)
             ),
-            InstA = bound(UniqA, InstResultsA, BoundInstsA),
-            InstB = bound(UniqB, InstResultsB, BoundInstsB),
+            InstA = bound(UniqA, InstResultsA, BoundFunctorsA),
+            InstB = bound(UniqB, InstResultsB, BoundFunctorsB),
             inst_merge_4(Type, InstA, InstB, Result, !ModuleInfo)
         else
-            merge_uniq_bound(!.ModuleInfo, UniqB, UniqA, BoundInstsA, Uniq),
+            merge_uniq_bound(!.ModuleInfo, UniqB, UniqA, BoundFunctorsA, Uniq),
             Result = any(Uniq, none_or_default_func)
         )
     ).
@@ -719,49 +719,50 @@ inst_list_merge([Type | Types], [ArgInstA | ArgInstsA], [ArgInstB | ArgInstsB],
     inst_merge(Type, ArgInstA, ArgInstB, ArgInstAB, !ModuleInfo),
     inst_list_merge(Types, ArgInstsA, ArgInstsB, ArgInstsAB, !ModuleInfo).
 
-    % bound_inst_list_merge(Type, BoundInstsA, BoundInstsB, BoundInsts,
-    %   !ModuleInfo):
+    % bound_functor_list_merge(Type, BoundFunctorsA, BoundFunctorsB,
+    %   BoundFunctors, !ModuleInfo):
     %
-    % The two input lists BoundInstsA and BoundInstsB must already be sorted.
-    % Here we perform a sorted merge operation,
-    % so that the functors of the output list BoundInsts are the union
-    % of the functors of the input lists BoundInstsA and BoundInstsB.
+    % The two input lists BoundFunctorsA and BoundFunctorsB must already
+    % be sorted. Here we perform a sorted merge operation, so that
+    % the functors of the output list BoundFunctors are the union of the
+    % functors of the input lists BoundFunctorsA and BoundFunctorsB.
     %
-:- pred bound_inst_list_merge(mer_type::in,
-    list(bound_inst)::in, list(bound_inst)::in, list(bound_inst)::out,
+:- pred bound_functor_list_merge(mer_type::in,
+    list(bound_functor)::in, list(bound_functor)::in, list(bound_functor)::out,
     module_info::in, module_info::out) is semidet.
 
-bound_inst_list_merge(Type, BoundInstsA, BoundInstsB, BoundInstsAB,
+bound_functor_list_merge(Type, BoundFunctorsA, BoundFunctorsB, BoundFunctorsAB,
         !ModuleInfo) :-
     (
-        BoundInstsA = [],
-        BoundInstsAB = BoundInstsB
+        BoundFunctorsA = [],
+        BoundFunctorsAB = BoundFunctorsB
     ;
-        BoundInstsA = [_ | _],
-        BoundInstsB = [],
-        BoundInstsAB = BoundInstsA
+        BoundFunctorsA = [_ | _],
+        BoundFunctorsB = [],
+        BoundFunctorsAB = BoundFunctorsA
     ;
-        BoundInstsA = [BoundInstA | BoundInstsTailA],
-        BoundInstsB = [BoundInstB | BoundInstsTailB],
-        BoundInstA = bound_functor(ConsIdA, ArgInstsA),
-        BoundInstB = bound_functor(ConsIdB, ArgInstsB),
+        BoundFunctorsA = [BoundFunctorA | BoundFunctorsTailA],
+        BoundFunctorsB = [BoundFunctorB | BoundFunctorsTailB],
+        BoundFunctorA = bound_functor(ConsIdA, ArgInstsA),
+        BoundFunctorB = bound_functor(ConsIdB, ArgInstsB),
         ( if equivalent_cons_ids(ConsIdA, ConsIdB) then
-            get_cons_id_arg_types_for_bound_inst(!.ModuleInfo, Type,
-                BoundInstA, Types),
+            get_cons_id_arg_types_for_bound_functor(!.ModuleInfo, Type,
+                BoundFunctorA, Types),
             inst_list_merge(Types, ArgInstsA, ArgInstsB, ArgInstsAB,
                 !ModuleInfo),
-            BoundInst = bound_functor(ConsIdA, ArgInstsAB),
-            bound_inst_list_merge(Type, BoundInstsTailA, BoundInstsTailB,
-                BoundInstsABTail, !ModuleInfo),
-            BoundInstsAB = [BoundInst | BoundInstsABTail]
+            BoundFunctor = bound_functor(ConsIdA, ArgInstsAB),
+            bound_functor_list_merge(Type,
+                BoundFunctorsTailA, BoundFunctorsTailB,
+                BoundFunctorsABTail, !ModuleInfo),
+            BoundFunctorsAB = [BoundFunctor | BoundFunctorsABTail]
         else if compare(<, ConsIdA, ConsIdB) then
-            bound_inst_list_merge(Type, BoundInstsTailA, BoundInstsB,
-                BoundInstsABTail, !ModuleInfo),
-            BoundInstsAB = [BoundInstA | BoundInstsABTail]
+            bound_functor_list_merge(Type, BoundFunctorsTailA, BoundFunctorsB,
+                BoundFunctorsABTail, !ModuleInfo),
+            BoundFunctorsAB = [BoundFunctorA | BoundFunctorsABTail]
         else
-            bound_inst_list_merge(Type, BoundInstsA, BoundInstsTailB,
-                BoundInstsABTail, !ModuleInfo),
-            BoundInstsAB = [BoundInstB | BoundInstsABTail]
+            bound_functor_list_merge(Type, BoundFunctorsA, BoundFunctorsTailB,
+                BoundFunctorsABTail, !ModuleInfo),
+            BoundFunctorsAB = [BoundFunctorB | BoundFunctorsABTail]
         )
     ).
 

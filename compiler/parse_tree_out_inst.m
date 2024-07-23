@@ -175,10 +175,10 @@ mercury_format_inst(Lang, InstVarSet, Inst, S, !U) :-
         Inst = free,
         add_string("free", S, !U)
     ;
-        Inst = bound(Uniq, _, BoundInsts),
+        Inst = bound(Uniq, _, BoundFunctors),
         mercury_format_uniqueness(Uniq, "bound", S, !U),
         add_string("(", S, !U),
-        mercury_format_bound_insts(Lang, InstVarSet, BoundInsts, S, !U),
+        mercury_format_bound_functors(Lang, InstVarSet, BoundFunctors, S, !U),
         add_string(")", S, !U)
     ;
         Inst = ground(Uniq, HOInstInfo),
@@ -205,13 +205,13 @@ mercury_format_inst(Lang, InstVarSet, Inst, S, !U) :-
         add_string("not_reached", S, !U)
     ).
 
-:- pred mercury_format_bound_insts(output_lang::in,  inst_varset::in,
-    list(bound_inst)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_bound_functors(output_lang::in,  inst_varset::in,
+    list(bound_functor)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_format_bound_insts(_, _, [], _S, !U).
-mercury_format_bound_insts(Lang, InstVarSet, [BoundInst | BoundInsts],
+mercury_format_bound_functors(_, _, [], _S, !U).
+mercury_format_bound_functors(Lang, InstVarSet, [BoundFunctor | BoundFunctors],
         S, !U) :-
-    BoundInst = bound_functor(ConsId, Args),
+    BoundFunctor = bound_functor(ConsId, Args),
     (
         Args = [],
         mercury_format_cons_id(Lang, needs_brackets, ConsId, S, !U)
@@ -223,11 +223,11 @@ mercury_format_bound_insts(Lang, InstVarSet, [BoundInst | BoundInsts],
         add_string(")", S, !U)
     ),
     (
-        BoundInsts = []
+        BoundFunctors = []
     ;
-        BoundInsts = [_ | _],
+        BoundFunctors = [_ | _],
         add_string(" ; ", S, !U),
-        mercury_format_bound_insts(Lang, InstVarSet, BoundInsts, S, !U)
+        mercury_format_bound_functors(Lang, InstVarSet, BoundFunctors, S, !U)
     ).
 
 %---------------------------------------------------------------------------%

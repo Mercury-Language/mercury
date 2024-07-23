@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015-2016 The Mercury team.
+% Copyright (C) 2015-2016, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1063,7 +1063,7 @@ can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
         CanFail, CasesMissing, Cases, UnreachableCaseGoals) :-
     ( if inst_is_bound_to_functors(ModuleInfo, VarInst0, Functors) then
         type_to_ctor_det(VarType, TypeCtor),
-        bound_insts_to_cons_ids(TypeCtor, Functors, ConsIds),
+        bound_functors_to_cons_ids(TypeCtor, Functors, ConsIds),
         set_tree234.list_to_set(ConsIds, ConsIdSet),
         delete_unreachable_cases(Cases0, ConsIdSet,
             Cases, UnreachableCaseGoals),

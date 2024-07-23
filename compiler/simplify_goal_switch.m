@@ -63,10 +63,10 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
     simplify_info_get_module_info(!.Info, ModuleInfo0),
     instmap_lookup_var(InstMap0, Var, VarInst),
     simplify_info_get_var_table(!.Info, VarTable),
-    ( if inst_is_bound_to_functors(ModuleInfo0, VarInst, BoundInsts) then
+    ( if inst_is_bound_to_functors(ModuleInfo0, VarInst, BoundFunctors) then
         lookup_var_type(VarTable, Var, VarType),
         type_to_ctor_det(VarType, VarTypeCtor),
-        bound_insts_to_cons_ids(VarTypeCtor, BoundInsts, ConsIds),
+        bound_functors_to_cons_ids(VarTypeCtor, BoundFunctors, ConsIds),
         list.sort_and_remove_dups(ConsIds, SortedConsIds),
         set_tree234.sorted_list_to_set(ConsIds, ConsIdSet),
         delete_unreachable_cases(Cases0, ConsIdSet,

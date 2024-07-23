@@ -240,15 +240,16 @@ inst_to_term_with_context(Lang, Context, Inst, InstTerm) :-
         Inst = free,
         InstTerm = make_atom(Context, "free")
     ;
-        Inst = bound(Uniq, InstResults, BoundInsts),
-        bound_insts_to_term(Lang, Context, BoundInsts, BoundInstsTerm),
+        Inst = bound(Uniq, InstResults, BoundFunctors),
+        bound_functors_to_term(Lang, Context, BoundFunctors,
+            BoundFunctorsTerm),
         (
             Lang = output_mercury,
-            ArgTerms = [BoundInstsTerm]
+            ArgTerms = [BoundFunctorsTerm]
         ;
             Lang = output_debug,
             ResultsTerm = inst_test_results_to_term(Context, InstResults),
-            ArgTerms = [ResultsTerm, BoundInstsTerm]
+            ArgTerms = [ResultsTerm, BoundFunctorsTerm]
         ),
         construct_qualified_term_with_context(
             unqualified(inst_uniqueness(Uniq, "bound")),
@@ -306,17 +307,17 @@ inst_to_limited_size_term_with_context(Lang, Context, Inst, InstTerm,
         InstTerm = make_atom(Context, "free"),
         !:SizeLeft = !.SizeLeft - 1
     ;
-        Inst = bound(Uniq, InstResults, BoundInsts),
-        bound_insts_to_limited_size_term(Lang, Context,
-            BoundInsts, BoundInstsTerm, !SizeLeft),
+        Inst = bound(Uniq, InstResults, BoundFunctors),
+        bound_functors_to_limited_size_term(Lang, Context,
+            BoundFunctors, BoundFunctorsTerm, !SizeLeft),
         (
             Lang = output_mercury,
-            ArgTerms = [BoundInstsTerm]
+            ArgTerms = [BoundFunctorsTerm]
         ;
             Lang = output_debug,
             ResultsTerm = inst_test_results_to_term(Context, InstResults),
             !:SizeLeft = !.SizeLeft - 1,
-            ArgTerms = [ResultsTerm, BoundInstsTerm]
+            ArgTerms = [ResultsTerm, BoundFunctorsTerm]
         ),
         construct_qualified_term_with_context(
             unqualified(inst_uniqueness(Uniq, "bound")),
@@ -884,65 +885,66 @@ inst_uniqueness(mostly_clobbered, _) = "mostly_clobbered".
 
 %---------------------%
 
-:- pred bound_insts_to_term(output_lang::in, prog_context::in,
-    list(bound_inst)::in, prog_term::out) is det.
+:- pred bound_functors_to_term(output_lang::in, prog_context::in,
+    list(bound_functor)::in, prog_term::out) is det.
 
-bound_insts_to_term(_, Context, [], Term) :-
+bound_functors_to_term(_, Context, [], Term) :-
     % This shouldn't happen, but when it does, the problem is a LOT easier
     % to debug if there is a HLDS dump you can read.
     Term = term.functor(term.atom("EMPTY_BOUND_INSTS"), [], Context).
-bound_insts_to_term(Lang, Context, [BoundInst | BoundInsts], Term) :-
-    bound_insts_to_term_lag(Lang, Context, BoundInst, BoundInsts, Term).
+bound_functors_to_term(Lang, Context, [BoundFunctor | BoundFunctors], Term) :-
+    bound_functors_to_term_lag(Lang, Context, BoundFunctor,
+        BoundFunctors, Term).
 
-:- pred bound_insts_to_term_lag(output_lang::in, prog_context::in,
-    bound_inst::in, list(bound_inst)::in, prog_term::out) is det.
+:- pred bound_functors_to_term_lag(output_lang::in, prog_context::in,
+    bound_functor::in, list(bound_functor)::in, prog_term::out) is det.
 
-bound_insts_to_term_lag(Lang, Context, BoundInst, BoundInsts, Term) :-
-    BoundInst = bound_functor(ConsId, ArgInsts),
+bound_functors_to_term_lag(Lang, Context, BoundFunctor, BoundFunctors, Term) :-
+    BoundFunctor = bound_functor(ConsId, ArgInsts),
     list.map(inst_to_term_with_context(Lang, Context), ArgInsts, ArgInstTerms),
     cons_id_and_args_to_term_full(ConsId, ArgInstTerms, FirstTerm),
     (
-        BoundInsts = [],
+        BoundFunctors = [],
         Term = FirstTerm
     ;
-        BoundInsts = [HeadBoundInst | TailBoundInsts],
-        bound_insts_to_term_lag(Lang, Context,
-            HeadBoundInst, TailBoundInsts, SecondTerm),
+        BoundFunctors = [HeadBoundFunctor | TailBoundFunctors],
+        bound_functors_to_term_lag(Lang, Context,
+            HeadBoundFunctor, TailBoundFunctors, SecondTerm),
         construct_qualified_term_with_context(unqualified(";"),
             [FirstTerm, SecondTerm], Context, Term)
     ).
 
 %---------------------%
 
-:- pred bound_insts_to_limited_size_term(output_lang::in, prog_context::in,
-    list(bound_inst)::in, prog_term::out, int::in, int::out) is det.
+:- pred bound_functors_to_limited_size_term(output_lang::in, prog_context::in,
+    list(bound_functor)::in, prog_term::out, int::in, int::out) is det.
 
-bound_insts_to_limited_size_term(_, Context, [], Term, !SizeLeft) :-
+bound_functors_to_limited_size_term(_, Context, [], Term, !SizeLeft) :-
     % This shouldn't happen, but when it does, the problem is a LOT easier
     % to debug if there is a HLDS dump you can read.
     Term = term.functor(term.atom("EMPTY_BOUND_INSTS"), [], Context).
-bound_insts_to_limited_size_term(Lang, Context, [BoundInst | BoundInsts],
-        Term, !SizeLeft) :-
-    bound_insts_to_limited_size_term_lag(Lang, Context, BoundInst, BoundInsts,
-        Term, !SizeLeft).
+bound_functors_to_limited_size_term(Lang, Context,
+        [BoundFunctor | BoundFunctors], Term, !SizeLeft) :-
+    bound_functors_to_limited_size_term_lag(Lang, Context,
+        BoundFunctor, BoundFunctors, Term, !SizeLeft).
 
-:- pred bound_insts_to_limited_size_term_lag(output_lang::in, prog_context::in,
-    bound_inst::in, list(bound_inst)::in, prog_term::out,
-    int::in, int::out) is det.
+:- pred bound_functors_to_limited_size_term_lag(output_lang::in,
+    prog_context::in, bound_functor::in, list(bound_functor)::in,
+    prog_term::out, int::in, int::out) is det.
 
-bound_insts_to_limited_size_term_lag(Lang, Context, BoundInst, BoundInsts,
-        Term, !SizeLeft) :-
-    BoundInst = bound_functor(ConsId, ArgInsts),
+bound_functors_to_limited_size_term_lag(Lang, Context,
+        BoundFunctor, BoundFunctors, Term, !SizeLeft) :-
+    BoundFunctor = bound_functor(ConsId, ArgInsts),
     insts_to_limited_size_terms_with_context(Lang, Context,
         ArgInsts, ArgInstTerms, !SizeLeft),
     cons_id_and_args_to_term_full(ConsId, ArgInstTerms, FirstTerm),
     (
-        BoundInsts = [],
+        BoundFunctors = [],
         Term = FirstTerm
     ;
-        BoundInsts = [HeadBoundInst | TailBoundInsts],
-        bound_insts_to_limited_size_term_lag(Lang, Context,
-            HeadBoundInst, TailBoundInsts, SecondTerm, !SizeLeft),
+        BoundFunctors = [HeadBoundFunctor | TailBoundFunctors],
+        bound_functors_to_limited_size_term_lag(Lang, Context,
+            HeadBoundFunctor, TailBoundFunctors, SecondTerm, !SizeLeft),
         construct_qualified_term_with_context(unqualified(";"),
             [FirstTerm, SecondTerm], Context, Term)
     ).

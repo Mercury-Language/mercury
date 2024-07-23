@@ -1054,9 +1054,10 @@ mer_inst_used_modules(Visibility, Inst, !UsedModules) :-
         ),
         ho_inst_info_used_modules(Visibility, HOInstInfo, !UsedModules)
     ;
-        Inst = bound(_, _InstResults, BoundInsts),
-        % Anything appearing in InstResults should also appear in BoundInsts.
-        list.foldl(bound_inst_info_used_modules(Visibility), BoundInsts,
+        Inst = bound(_, _InstResults, BoundFunctors),
+        % Anything appearing in InstResults should also appear
+        % in BoundFunctors.
+        list.foldl(bound_functor_info_used_modules(Visibility), BoundFunctors,
             !UsedModules)
     ;
         Inst = constrained_inst_vars(_InstVars, SubInst),
@@ -1068,10 +1069,10 @@ mer_inst_used_modules(Visibility, Inst, !UsedModules) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred bound_inst_info_used_modules(item_visibility::in, bound_inst::in,
+:- pred bound_functor_info_used_modules(item_visibility::in, bound_functor::in,
     used_modules::in, used_modules::out) is det.
 
-bound_inst_info_used_modules(Visibility, BoundFunctor, !UsedModules) :-
+bound_functor_info_used_modules(Visibility, BoundFunctor, !UsedModules) :-
     BoundFunctor = bound_functor(ConsId, Insts),
     cons_id_used_modules(Visibility, ConsId, !UsedModules),
     list.foldl(mer_inst_used_modules(Visibility), Insts, !UsedModules).

@@ -26,9 +26,9 @@
 %
 % TODO
 % The code in this module checks only that the cons_ids in the sequence of
-% bound_inst at the *top level* match the function symbols of a type.
-% It does not check whether any bound_insts that may appear among the
-% arguments of the cons_ids in those bound_insts match the function symbols
+% bound_functor at the *top level* match the function symbols of a type.
+% It does not check whether any bound_functors that may appear among the
+% arguments of the cons_ids in those bound_functors match the function symbols
 % of the applicable argument types. For example, given the types
 %
 % :- type f
@@ -260,7 +260,7 @@ check_inst_defn_has_matching_type(WarnInstsWithoutMatchingType,
         IFTC0, Context, Status),
     InstBody = eqv_inst(Inst),
     (
-        Inst = bound(_, _, BoundInsts),
+        Inst = bound(_, _, BoundFunctors),
         (
             IFTC0 = iftc_applicable_declared(ForTypeCtor0),
             ForTypeCtor0 = type_ctor(ForTypeCtorSymName, ForTypeCtorArity),
@@ -296,7 +296,7 @@ check_inst_defn_has_matching_type(WarnInstsWithoutMatchingType,
                 IFTC = iftc_applicable_error_unknown_type
             ;
                 MaybeForTypeKind = yes(ForTypeKind),
-                check_for_type_bound_insts(ForTypeKind, BoundInsts,
+                check_for_type_bound_functors(ForTypeKind, BoundFunctors,
                     cord.init, MismatchesCord),
                 Mismatches = cord.list(MismatchesCord),
                 maybe_issue_type_match_error(WarnInstsWithoutMatchingType,
@@ -308,8 +308,8 @@ check_inst_defn_has_matching_type(WarnInstsWithoutMatchingType,
                 IFTC, Context, Status)
         ;
             IFTC0 = iftc_applicable_not_known,
-            get_possible_types_for_bound_insts(FunctorsToTypesMap,
-                BoundInsts, all_typeable_functors, TypeableFunctors,
+            get_possible_types_for_bound_functors(FunctorsToTypesMap,
+                BoundFunctors, all_typeable_functors, TypeableFunctors,
                 [], PossibleTypeSets),
             (
                 TypeableFunctors = some_untypeable_functors,
@@ -320,7 +320,7 @@ check_inst_defn_has_matching_type(WarnInstsWithoutMatchingType,
                 PossibleTypes = set.to_sorted_list(PossibleTypesSet),
                 maybe_issue_no_matching_types_warning(
                     WarnInstsWithoutMatchingType, InstCtor, InstDefn0,
-                    BoundInsts, PossibleTypes, PossibleTypeSets, !Specs),
+                    BoundFunctors, PossibleTypes, PossibleTypeSets, !Specs),
                 list.map(type_defn_or_builtin_to_type_ctor, PossibleTypes,
                     PossibleTypeCtors),
                 IFTC = iftc_applicable_known(PossibleTypeCtors),
@@ -445,14 +445,14 @@ type_defn_or_builtin_to_type_ctor(TypeDefnOrBuiltin, TypeCtor) :-
                 possible_near_miss_cons_ids     :: list(format_piece)
             ).
 
-:- pred check_for_type_bound_insts(for_type_kind::in,
-    list(bound_inst)::in,
+:- pred check_for_type_bound_functors(for_type_kind::in,
+    list(bound_functor)::in,
     cord(cons_mismatch)::in, cord(cons_mismatch)::out) is det.
 
-check_for_type_bound_insts(_ForTypeKind, [], !RevMismatches).
-check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
+check_for_type_bound_functors(_ForTypeKind, [], !RevMismatches).
+check_for_type_bound_functors(ForTypeKind, [BoundFunctor | BoundFunctors],
         !Mismatches) :-
-    BoundInst = bound_functor(ConsId, _),
+    BoundFunctor = bound_functor(ConsId, _),
     (
         ConsId = du_data_ctor(DuCtor),
         DuCtor = du_ctor(ConsSymName, ConsArity, ConsIdTypeCtor),
@@ -570,7 +570,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
         ),
         cord.snoc(simple_miss(ConsId), !Mismatches)
     ),
-    check_for_type_bound_insts(ForTypeKind, BoundInsts, !Mismatches).
+    check_for_type_bound_functors(ForTypeKind, BoundFunctors, !Mismatches).
 
 :- pred find_ctors_with_given_name(string::in, list(constructor)::in,
     list(arity)::out) is det.
@@ -629,16 +629,17 @@ make_cons_id_component(TypeCtor, SymName, Arity) =
     ;       type_builtin(builtin_type)
     ;       type_tuple(arity).
 
-:- pred get_possible_types_for_bound_insts(functors_to_types_map::in,
-    list(bound_inst)::in, typeable_functors::in, typeable_functors::out,
+:- pred get_possible_types_for_bound_functors(functors_to_types_map::in,
+    list(bound_functor)::in, typeable_functors::in, typeable_functors::out,
     list(set(type_defn_or_builtin))::in, list(set(type_defn_or_builtin))::out)
     is det.
 
-get_possible_types_for_bound_insts(_FunctorsToTypesMap, [],
+get_possible_types_for_bound_functors(_FunctorsToTypesMap, [],
         !TypeableFunctors, !PossibleTypeSets).
-get_possible_types_for_bound_insts(FunctorsToTypesMap,
-        [BoundInst | BoundInsts], !TypeableFunctors, !PossibleTypeSets) :-
-    get_possible_types_for_bound_inst(FunctorsToTypesMap, BoundInst,
+get_possible_types_for_bound_functors(FunctorsToTypesMap,
+        [BoundFunctor | BoundFunctors],
+        !TypeableFunctors, !PossibleTypeSets) :-
+    get_possible_types_for_bound_functor(FunctorsToTypesMap, BoundFunctor,
         MaybePossibleTypes),
     (
         MaybePossibleTypes = no,
@@ -648,18 +649,19 @@ get_possible_types_for_bound_insts(FunctorsToTypesMap,
         PossibleTypeSet = set.list_to_set(PossibleTypes),
         !:PossibleTypeSets = [PossibleTypeSet | !.PossibleTypeSets]
     ),
-    get_possible_types_for_bound_insts(FunctorsToTypesMap,
-        BoundInsts, !TypeableFunctors, !PossibleTypeSets).
+    get_possible_types_for_bound_functors(FunctorsToTypesMap,
+        BoundFunctors, !TypeableFunctors, !PossibleTypeSets).
 
     % Return the types that match the cons_id in the given bound inst.
     % We don't bother checking for types for certain cons_ids such as
     % predicate signatures and cons_ids that are only used internally.
     %
-:- pred get_possible_types_for_bound_inst(functors_to_types_map::in,
-    bound_inst::in, maybe(list(type_defn_or_builtin))::out) is det.
+:- pred get_possible_types_for_bound_functor(functors_to_types_map::in,
+    bound_functor::in, maybe(list(type_defn_or_builtin))::out) is det.
 
-get_possible_types_for_bound_inst(FunctorsToTypesMap, BoundInst, MaybeTypes) :-
-    BoundInst = bound_functor(ConsId, _),
+get_possible_types_for_bound_functor(FunctorsToTypesMap, BoundFunctor,
+        MaybeTypes) :-
+    BoundFunctor = bound_functor(ConsId, _),
     (
         ConsId = du_data_ctor(du_ctor(SymName, Arity, _)),
         Name = unqualify_name(SymName),
@@ -963,12 +965,12 @@ project_if_several(near_miss_cons_mismatch(_, IfSeveral)) = IfSeveral.
 
 :- pred maybe_issue_no_matching_types_warning(bool::in,
     inst_ctor::in, hlds_inst_defn::in,
-    list(bound_inst)::in, list(type_defn_or_builtin)::in,
+    list(bound_functor)::in, list(type_defn_or_builtin)::in,
     list(set(type_defn_or_builtin))::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 maybe_issue_no_matching_types_warning(WarnInstsWithoutMatchingType,
-        InstCtor, InstDefn, BoundInsts,
+        InstCtor, InstDefn, BoundFunctors,
         PossibleTypes, PossibleTypeSets, !Specs) :-
     InstStatus = InstDefn ^ inst_status,
     DefinedInThisModule = inst_status_defined_in_this_module(InstStatus),
@@ -986,7 +988,7 @@ maybe_issue_no_matching_types_warning(WarnInstsWithoutMatchingType,
 
             AllPossibleTypesSet = set.union_list(PossibleTypeSets),
             set.to_sorted_list(AllPossibleTypesSet, AllPossibleTypes),
-            list.map(diagnose_mismatches_from_type(BoundInsts),
+            list.map(diagnose_mismatches_from_type(BoundFunctors),
                 AllPossibleTypes, MismatchesFromPossibleTypes),
             list.sort(MismatchesFromPossibleTypes,
                 SortedMismatchesFromPossibleTypes),
@@ -1072,10 +1074,10 @@ maybe_issue_no_matching_types_warning(WarnInstsWithoutMatchingType,
                 mft_pieces              :: list(format_piece)
             ).
 
-:- pred diagnose_mismatches_from_type(list(bound_inst)::in,
+:- pred diagnose_mismatches_from_type(list(bound_functor)::in,
     type_defn_or_builtin::in, mismatch_from_type::out) is det.
 
-diagnose_mismatches_from_type(BoundInsts, TypeDefnOrBuiltin,
+diagnose_mismatches_from_type(BoundFunctors, TypeDefnOrBuiltin,
         MismatchFromType) :-
     (
         TypeDefnOrBuiltin = type_user(TypeCtorAndDefn),
@@ -1085,7 +1087,7 @@ diagnose_mismatches_from_type(BoundInsts, TypeDefnOrBuiltin,
             TypeDefnBody = hlds_du_type(TypeBodyDu),
             TypeBodyDu = type_body_du(Constructors, _, _, _, _),
             find_mismatches_from_user(one_or_more_to_list(Constructors), 1,
-                BoundInsts, 0, NumMismatches, cord.init, MismatchPiecesCord)
+                BoundFunctors, 0, NumMismatches, cord.init, MismatchPiecesCord)
         ;
             ( TypeDefnBody = hlds_eqv_type(_)
             ; TypeDefnBody = hlds_foreign_type(_)
@@ -1096,11 +1098,11 @@ diagnose_mismatches_from_type(BoundInsts, TypeDefnOrBuiltin,
         )
     ;
         TypeDefnOrBuiltin = type_builtin(BuiltinType),
-        find_mismatches_from_builtin(BuiltinType, 1, BoundInsts,
+        find_mismatches_from_builtin(BuiltinType, 1, BoundFunctors,
             0, NumMismatches, cord.init, MismatchPiecesCord)
     ;
         TypeDefnOrBuiltin = type_tuple(TupleArity),
-        find_mismatches_from_tuple(TupleArity, 1, BoundInsts,
+        find_mismatches_from_tuple(TupleArity, 1, BoundFunctors,
             0, NumMismatches, cord.init, MismatchPiecesCord)
     ),
     MismatchPieces = cord.list(MismatchPiecesCord),
@@ -1110,14 +1112,14 @@ diagnose_mismatches_from_type(BoundInsts, TypeDefnOrBuiltin,
 %---------------------%
 
 :- pred find_mismatches_from_user(list(constructor)::in, int::in,
-    list(bound_inst)::in, int::in, int::out,
+    list(bound_functor)::in, int::in, int::out,
     cord(format_piece)::in, cord(format_piece)::out) is det.
 
 find_mismatches_from_user(_Ctors, _CurNum,
         [], !NumMismatches, !PiecesCord).
 find_mismatches_from_user(Ctors, CurNum,
-        [BoundInst | BoundInsts], !NumMismatches, !PiecesCord) :-
-    BoundInst = bound_functor(ConsId, _SubInsts),
+        [BoundFunctor | BoundFunctors], !NumMismatches, !PiecesCord) :-
+    BoundFunctor = bound_functor(ConsId, _SubInsts),
     ( if ConsId = du_data_ctor(du_ctor(SymName, Arity, _)) then
         FunctorName = unqualify_name(SymName),
         ( if some_ctor_matches_exactly(Ctors, FunctorName, Arity) then
@@ -1126,17 +1128,18 @@ find_mismatches_from_user(Ctors, CurNum,
             find_matching_name_wrong_arities(Ctors, FunctorName, Arity,
                 set.init, ExpectedArities),
             ( if set.is_empty(ExpectedArities) then
-                record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+                record_mismatch(CurNum, BoundFunctor,
+                    !NumMismatches, !PiecesCord)
             else
                 record_arity_mismatch(CurNum, FunctorName, Arity,
                     ExpectedArities, !NumMismatches, !PiecesCord)
             )
         )
     else
-        record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+        record_mismatch(CurNum, BoundFunctor, !NumMismatches, !PiecesCord)
     ),
     find_mismatches_from_user(Ctors, CurNum + 1,
-        BoundInsts, !NumMismatches, !PiecesCord).
+        BoundFunctors, !NumMismatches, !PiecesCord).
 
 :- pred some_ctor_matches_exactly(list(constructor)::in, string::in, int::in)
     is semidet.
@@ -1178,14 +1181,14 @@ find_matching_name_wrong_arities([Ctor | Ctors], FunctorName, FunctorArity,
 %---------------------%
 
 :- pred find_mismatches_from_builtin(builtin_type::in, int::in,
-    list(bound_inst)::in, int::in, int::out,
+    list(bound_functor)::in, int::in, int::out,
     cord(format_piece)::in, cord(format_piece)::out) is det.
 
 find_mismatches_from_builtin(_ExpectedBuiltinType, _CurNum,
         [], !NumMismatches, !PiecesCord).
 find_mismatches_from_builtin(ExpectedBuiltinType, CurNum,
-        [BoundInst | BoundInsts], !NumMismatches, !PiecesCord) :-
-    BoundInst = bound_functor(ConsId, _SubInsts),
+        [BoundFunctor | BoundFunctors], !NumMismatches, !PiecesCord) :-
+    BoundFunctor = bound_functor(ConsId, _SubInsts),
     (
         ExpectedBuiltinType = builtin_type_int(IntType),
         ( if
@@ -1194,14 +1197,14 @@ find_mismatches_from_builtin(ExpectedBuiltinType, CurNum,
         then
             true
         else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+            record_mismatch(CurNum, BoundFunctor, !NumMismatches, !PiecesCord)
         )
     ;
         ExpectedBuiltinType = builtin_type_float,
         ( if ConsId = float_const(_) then
             true
         else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+            record_mismatch(CurNum, BoundFunctor, !NumMismatches, !PiecesCord)
         )
     ;
         ExpectedBuiltinType = builtin_type_char,
@@ -1214,41 +1217,41 @@ find_mismatches_from_builtin(ExpectedBuiltinType, CurNum,
         then
             true
         else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+            record_mismatch(CurNum, BoundFunctor, !NumMismatches, !PiecesCord)
         )
     ;
         ExpectedBuiltinType = builtin_type_string,
         ( if ConsId = string_const(_) then
             true
         else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+            record_mismatch(CurNum, BoundFunctor, !NumMismatches, !PiecesCord)
         )
     ),
     find_mismatches_from_builtin(ExpectedBuiltinType, CurNum + 1,
-        BoundInsts, !NumMismatches, !PiecesCord).
+        BoundFunctors, !NumMismatches, !PiecesCord).
 
 %---------------------%
 
-:- pred find_mismatches_from_tuple(int::in, int::in, list(bound_inst)::in,
+:- pred find_mismatches_from_tuple(int::in, int::in, list(bound_functor)::in,
     int::in, int::out,
     cord(format_piece)::in, cord(format_piece)::out) is det.
 
 find_mismatches_from_tuple(_ExpectedArity, _CurNum,
         [], !NumMismatches, !PiecesCord).
 find_mismatches_from_tuple(ExpectedArity, CurNum,
-        [BoundInst | BoundInsts], !NumMismatches, !PiecesCord) :-
-    BoundInst = bound_functor(ConsId, _SubInsts),
+        [BoundFunctor | BoundFunctors], !NumMismatches, !PiecesCord) :-
+    BoundFunctor = bound_functor(ConsId, _SubInsts),
     ( if ConsId = tuple_cons(ActualArity) then
         ( if ActualArity = ExpectedArity then
             true
         else
-            record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+            record_mismatch(CurNum, BoundFunctor, !NumMismatches, !PiecesCord)
         )
     else
-        record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord)
+        record_mismatch(CurNum, BoundFunctor, !NumMismatches, !PiecesCord)
     ),
     find_mismatches_from_tuple(ExpectedArity, CurNum + 1,
-        BoundInsts, !NumMismatches, !PiecesCord).
+        BoundFunctors, !NumMismatches, !PiecesCord).
 
 %---------------------%
 
@@ -1274,12 +1277,12 @@ record_arity_mismatch(CurNum, FunctorName, ActualArity, ExpectedAritiesSet,
         [nl],
     !:PiecesCord = !.PiecesCord ++ cord.from_list(Pieces).
 
-:- pred record_mismatch(int::in, bound_inst::in, int::in, int::out,
+:- pred record_mismatch(int::in, bound_functor::in, int::in, int::out,
     cord(format_piece)::in, cord(format_piece)::out) is det.
 
-record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord) :-
+record_mismatch(CurNum, BoundFunctor, !NumMismatches, !PiecesCord) :-
     !:NumMismatches = !.NumMismatches + 1,
-    BoundInst = bound_functor(ConsId, SubInsts),
+    BoundFunctor = bound_functor(ConsId, SubInsts),
     ConsIdStr = mercury_cons_id_to_string(output_mercury,
         does_not_need_brackets, ConsId),
     list.length(SubInsts, NumSubInsts),
@@ -1330,11 +1333,11 @@ take_while_same_num_mismatches(Num, [Mismatch | Mismatches], Taken) :-
     list(format_piece)::out) is det.
 
 create_pieces_for_one_mismatch(Mismatch, Pieces) :-
-    Mismatch = mismatch_from_type(_, TypeDefnOrBuiltin, BoundInstPieces),
+    Mismatch = mismatch_from_type(_, TypeDefnOrBuiltin, BoundFunctorPieces),
     Pieces = [words("The closest match is"),
         fixed(type_defn_or_builtin_to_string(TypeDefnOrBuiltin)), suffix(","),
         words("for which the top level mismatches are the following."), nl]
-        ++ BoundInstPieces.
+        ++ BoundFunctorPieces.
 
 :- pred create_pieces_for_all_mismatches(list(mismatch_from_type)::in, int::in,
     list(format_piece)::out) is det.
@@ -1342,11 +1345,11 @@ create_pieces_for_one_mismatch(Mismatch, Pieces) :-
 create_pieces_for_all_mismatches([], _Cur, []).
 create_pieces_for_all_mismatches([Mismatch | Mismatches], Cur, Pieces) :-
     create_pieces_for_all_mismatches(Mismatches, Cur + 1, TailPieces),
-    Mismatch = mismatch_from_type(_, TypeDefnOrBuiltin, BoundInstPieces),
+    Mismatch = mismatch_from_type(_, TypeDefnOrBuiltin, BoundFunctorPieces),
     Pieces = [words("The"), nth_fixed(Cur), words("match is"),
         fixed(type_defn_or_builtin_to_string(TypeDefnOrBuiltin)), suffix(","),
         words("for which the top level mismatches are the following."), nl]
-        ++ BoundInstPieces ++ TailPieces.
+        ++ BoundFunctorPieces ++ TailPieces.
 
 :- func type_defn_or_builtin_to_string(type_defn_or_builtin) = string.
 

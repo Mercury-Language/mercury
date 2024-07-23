@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -121,7 +121,7 @@ pretest_user_inst_defn(ModuleInfo, InstCtor, InstDefn0, UserInstTable0,
             TypeCtorArity = 0
         then
             Type = defined_type(TypeCtorSymName, [], kind_star),
-            propagate_unchecked_type_into_bound_inst(ModuleInfo, Type,
+            propagate_unchecked_type_into_bound_functor(ModuleInfo, Type,
                 Inst1, Inst)
         else
             Inst = Inst1
@@ -198,8 +198,8 @@ pretest_inst(Inst0, Inst, UserInstTable0, Groundness, ContainsAny,
         ContainsTypes = inst_result_contains_types_unknown,
         Inst = Inst0
     ;
-        Inst0 = bound(Uniq, _TestResults0, BoundInsts0),
-        pretest_bound_insts(BoundInsts0, BoundInsts, UserInstTable0,
+        Inst0 = bound(Uniq, _TestResults0, BoundFunctors0),
+        pretest_bound_functors(BoundFunctors0, BoundFunctors, UserInstTable0,
             inst_result_is_ground, Groundness,
             inst_result_does_not_contain_any, ContainsAny,
             inst_result_contains_inst_names_known(set.init), ContainsInstNames,
@@ -209,11 +209,11 @@ pretest_inst(Inst0, Inst, UserInstTable0, Groundness, ContainsAny,
         TestResults = inst_test_results(Groundness,
             ContainsAny, ContainsInstNames, ContainsInstVars,
             ContainsTypes, inst_result_no_type_ctor_propagated),
-        Inst = bound(Uniq, TestResults, BoundInsts)
+        Inst = bound(Uniq, TestResults, BoundFunctors)
     ).
 
-:- pred pretest_bound_insts(list(bound_inst)::in, list(bound_inst)::out,
-    map(inst_ctor, hlds_inst_defn)::in,
+:- pred pretest_bound_functors(list(bound_functor)::in,
+    list(bound_functor)::out, map(inst_ctor, hlds_inst_defn)::in,
     inst_result_groundness::in, inst_result_groundness::out,
     inst_result_contains_any::in, inst_result_contains_any::out,
     inst_result_contains_inst_names::in, inst_result_contains_inst_names::out,
@@ -222,23 +222,23 @@ pretest_inst(Inst0, Inst, UserInstTable0, Groundness, ContainsAny,
     map(inst_ctor, maybe_user_inst)::in, map(inst_ctor, maybe_user_inst)::out)
     is det.
 
-pretest_bound_insts([], [], _UserInstTable0,
+pretest_bound_functors([], [], _UserInstTable0,
         !Groundness, !ContainsAny, !ContainsInstNames, !ContainsInstVars,
         !ContainsTypes, !MaybeInstDefnsMap).
-pretest_bound_insts([BoundInst0 | BoundInsts0], [BoundInst | BoundInsts],
-        UserInstTable0,
+pretest_bound_functors([BoundFunctor0 | BoundFunctors0],
+        [BoundFunctor | BoundFunctors], UserInstTable0,
         !Groundness, !ContainsAny, !ContainsInstNames, !ContainsInstVars,
         !ContainsTypes, !MaybeInstDefnsMap) :-
-    BoundInst0 = bound_functor(ConsId, ArgInsts0),
-    pretest_bound_inst_args(ArgInsts0, ArgInsts, UserInstTable0,
+    BoundFunctor0 = bound_functor(ConsId, ArgInsts0),
+    pretest_bound_functor_args(ArgInsts0, ArgInsts, UserInstTable0,
         !Groundness, !ContainsAny, !ContainsInstNames, !ContainsInstVars,
         !ContainsTypes, !MaybeInstDefnsMap),
-    BoundInst = bound_functor(ConsId, ArgInsts),
-    pretest_bound_insts(BoundInsts0, BoundInsts, UserInstTable0,
+    BoundFunctor = bound_functor(ConsId, ArgInsts),
+    pretest_bound_functors(BoundFunctors0, BoundFunctors, UserInstTable0,
         !Groundness, !ContainsAny, !ContainsInstNames, !ContainsInstVars,
         !ContainsTypes, !MaybeInstDefnsMap).
 
-:- pred pretest_bound_inst_args(list(mer_inst)::in, list(mer_inst)::out,
+:- pred pretest_bound_functor_args(list(mer_inst)::in, list(mer_inst)::out,
     map(inst_ctor, hlds_inst_defn)::in,
     inst_result_groundness::in, inst_result_groundness::out,
     inst_result_contains_any::in, inst_result_contains_any::out,
@@ -248,10 +248,10 @@ pretest_bound_insts([BoundInst0 | BoundInsts0], [BoundInst | BoundInsts],
     map(inst_ctor, maybe_user_inst)::in, map(inst_ctor, maybe_user_inst)::out)
     is det.
 
-pretest_bound_inst_args([], [], _UserInstTable0,
+pretest_bound_functor_args([], [], _UserInstTable0,
         !Groundness, !ContainsAny, !ContainsInstNames, !ContainsInstVars,
         !ContainsTypes, !MaybeInstDefnsMap).
-pretest_bound_inst_args([ArgInst0 | ArgInsts0], [ArgInst | ArgInsts],
+pretest_bound_functor_args([ArgInst0 | ArgInsts0], [ArgInst | ArgInsts],
         UserInstTable0,
         !Groundness, !ContainsAny, !ContainsInstNames, !ContainsInstVars,
         !ContainsTypes, !MaybeInstDefnsMap) :-
@@ -265,7 +265,7 @@ pretest_bound_inst_args([ArgInst0 | ArgInsts0], [ArgInst | ArgInsts],
     combine_contains_inst_vars_results(ArgContainsInstVars,
         !ContainsInstVars),
     combine_contains_types_results(ArgContainsTypes, !ContainsTypes),
-    pretest_bound_inst_args(ArgInsts0, ArgInsts, UserInstTable0,
+    pretest_bound_functor_args(ArgInsts0, ArgInsts, UserInstTable0,
         !Groundness, !ContainsAny, !ContainsInstNames, !ContainsInstVars,
         !ContainsTypes, !MaybeInstDefnsMap).
 

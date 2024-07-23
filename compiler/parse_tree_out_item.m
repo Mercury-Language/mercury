@@ -785,16 +785,16 @@ mercury_format_item_inst_defn(Info, S, ItemInstDefn, !U) :-
         ( if
             % Can we print the inst using the syntax that resembles
             % type definitions?
-            Inst = bound(Uniq, _, BoundInsts),
+            Inst = bound(Uniq, _, BoundFunctors),
             Uniq = shared,
-            bound_inst_cons_ids_are_all_simple(BoundInsts, SimpleBIs),
+            bound_functor_cons_ids_are_all_simple(BoundFunctors, SimpleBIs),
             SimpleBIs = [HeadSimpleBI | TailSimpleBIs]
         then
             % Yes, so use that syntax, which is more readable, partly
             % because it has less clutter, and partly because it can be
             % formatted to have meaningful indentation.
             add_string("\n", S, !U),
-            format_bound_inst_being_defined(S, Lang, InstVarSet,
+            format_bound_functor_being_defined(S, Lang, InstVarSet,
                 "    --->    ", HeadSimpleBI, TailSimpleBIs, !U)
         else
             % No, so fall back to the less readable but more general syntax.
@@ -819,21 +819,21 @@ is_builtin_inst_name(InstVarSet, unqualified(Name), Args0) :-
     MaybeInst = ok1(Inst),
     Inst \= defined_inst(user_inst(_, _)).
 
-:- type simple_bound_inst
+:- type simple_bound_functor
     --->    simple_bound_functor(string, list(mer_inst)).
 
-:- pred bound_inst_cons_ids_are_all_simple(list(bound_inst)::in,
-    list(simple_bound_inst)::out) is semidet.
+:- pred bound_functor_cons_ids_are_all_simple(list(bound_functor)::in,
+    list(simple_bound_functor)::out) is semidet.
 
-bound_inst_cons_ids_are_all_simple([], []).
-bound_inst_cons_ids_are_all_simple([HeadBI | TailBIs],
+bound_functor_cons_ids_are_all_simple([], []).
+bound_functor_cons_ids_are_all_simple([HeadBI | TailBIs],
         [HeadSimpleBI | TailSimpleBIs])  :-
     HeadBI = bound_functor(ConsId, ArgInsts),
     ConsId = du_data_ctor(du_ctor(SymName, _, _)),
     sym_name_is_simple(SymName),
     SimpleName = sym_name_to_string(SymName),
     HeadSimpleBI = simple_bound_functor(SimpleName, ArgInsts),
-    bound_inst_cons_ids_are_all_simple(TailBIs, TailSimpleBIs).
+    bound_functor_cons_ids_are_all_simple(TailBIs, TailSimpleBIs).
 
 :- pred sym_name_is_simple(sym_name::in) is semidet.
 
@@ -849,12 +849,12 @@ name_is_simple(Name) :-
     char.is_lower(HeadChar),
     all_true(char.is_alnum_or_underscore, TailChars).
 
-:- pred format_bound_inst_being_defined(S::in,
+:- pred format_bound_functor_being_defined(S::in,
     output_lang::in, inst_varset::in, string::in,
-    simple_bound_inst::in, list(simple_bound_inst)::in,
+    simple_bound_functor::in, list(simple_bound_functor)::in,
     U::di, U::uo) is det <= pt_output(S, U).
 
-format_bound_inst_being_defined(S, Lang, InstVarSet, ArrowOrSemi,
+format_bound_functor_being_defined(S, Lang, InstVarSet, ArrowOrSemi,
         HeadBI, TailBIs, !U) :-
     HeadBI = simple_bound_functor(Name, ArgInsts),
     string.format("%s%s", [s(ArrowOrSemi), s(Name)], InitStr),
@@ -873,7 +873,7 @@ format_bound_inst_being_defined(S, Lang, InstVarSet, ArrowOrSemi,
     ;
         TailBIs = [HeadTailBI | TailTailBIs],
         add_string("\n", S, !U),
-        format_bound_inst_being_defined(S, Lang, InstVarSet,
+        format_bound_functor_being_defined(S, Lang, InstVarSet,
             "    ;       ", HeadTailBI, TailTailBIs, !U)
     ).
 

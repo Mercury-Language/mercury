@@ -216,20 +216,20 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
                 InstB = free,
                 fail
             ;
-                InstB = bound(UniqB, InstResultsB, BoundInstsB),
+                InstB = bound(UniqB, InstResultsB, BoundFunctorsB),
                 unify_uniq(is_live, Real, detism_det, unique, UniqB, Uniq),
                 % Since both are live, we must disallow free-free unifications.
-                inst_results_bound_inst_list_is_ground_or_any(!.ModuleInfo,
-                    InstResultsB, BoundInstsB),
+                inst_results_bound_functor_list_is_ground_or_any(!.ModuleInfo,
+                    InstResultsB, BoundFunctorsB),
                 % Since both are live, we must make the result shared
                 % (unless it was already shared).
                 ( if ( UniqB = unique ; UniqB = mostly_unique ) then
-                    make_shared_bound_inst_list(Type, BoundInstsB, BoundInsts,
-                        !ModuleInfo)
+                    make_shared_bound_functors(Type,
+                        BoundFunctorsB, BoundFunctors, !ModuleInfo)
                 else
-                    BoundInsts = BoundInstsB
+                    BoundFunctors = BoundFunctorsB
                 ),
-                Inst = bound(Uniq, InstResultsB, BoundInsts),
+                Inst = bound(Uniq, InstResultsB, BoundFunctors),
                 Detism = detism_det
             ;
                 InstB = ground(UniqB, HOInstInfoB),
@@ -261,7 +261,7 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
             Detism = detism_det
         )
     ;
-        InstA = bound(UniqA, InstResultsA, BoundInstsA),
+        InstA = bound(UniqA, InstResultsA, BoundFunctorsA),
         require_complete_switch [InstB]
         (
             InstB = not_reached,
@@ -273,25 +273,26 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
                 Live = is_live,
                 unify_uniq(Live, Real, detism_det, unique, UniqA, Uniq),
                 % Since both are live, we must disallow free-free unifications.
-                inst_results_bound_inst_list_is_ground_or_any(!.ModuleInfo,
-                    InstResultsA, BoundInstsA),
-                make_shared_bound_inst_list(Type, BoundInstsA, BoundInsts,
+                inst_results_bound_functor_list_is_ground_or_any(!.ModuleInfo,
+                    InstResultsA, BoundFunctorsA),
+                make_shared_bound_functors(Type, BoundFunctorsA, BoundFunctors,
                     !ModuleInfo)
             ;
                 Live = is_dead,
                 % Why the different argument order different to the call above?
                 unify_uniq(Live, Real, detism_det, UniqA, unique, Uniq),
-                BoundInsts = BoundInstsA
+                BoundFunctors = BoundFunctorsA
             ),
-            Inst = bound(Uniq, InstResultsA, BoundInsts),
+            Inst = bound(Uniq, InstResultsA, BoundFunctors),
             Detism = detism_det
         ;
-            InstB = bound(UniqB, _InstResultsB, BoundInstsB),
-            abstractly_unify_bound_inst_list(Type, Live, Real,
-                BoundInstsA, BoundInstsB, BoundInsts, Detism, !ModuleInfo),
+            InstB = bound(UniqB, _InstResultsB, BoundFunctorsB),
+            abstractly_unify_bound_functor_list(Type, Live, Real,
+                BoundFunctorsA, BoundFunctorsB, BoundFunctors,
+                Detism, !ModuleInfo),
             unify_uniq(Live, Real, Detism, UniqA, UniqB, Uniq),
             % XXX A better approximation of InstResults is probably possible.
-            Inst = bound(Uniq, inst_test_no_results, BoundInsts)
+            Inst = bound(Uniq, inst_test_no_results, BoundFunctors)
         ;
             InstB = ground(UniqB, _),
             unify_uniq(Live, Real, detism_semi, UniqA, UniqB, Uniq),
@@ -311,26 +312,26 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
                     ( GroundnessResultA = inst_result_is_not_ground
                     ; GroundnessResultA = inst_result_groundness_unknown
                     ),
-                    make_ground_bound_inst_list(Type, Live, Real, UniqB,
-                        BoundInstsA, BoundInsts, Detism1, !ModuleInfo),
+                    make_ground_bound_functor_list(Type, Live, Real, UniqB,
+                        BoundFunctorsA, BoundFunctors, Detism1, !ModuleInfo),
                     InstResults = inst_test_results(inst_result_is_ground,
                         inst_result_does_not_contain_any,
                         inst_result_contains_inst_names_unknown,
                         inst_result_contains_inst_vars_unknown,
                         ContainsTypes, MaybeTypeCtorPropagated),
-                    Inst = bound(Uniq, InstResults, BoundInsts)
+                    Inst = bound(Uniq, InstResults, BoundFunctors)
                 )
             ;
                 InstResultsA = inst_test_no_results,
-                make_ground_bound_inst_list(Type, Live, Real, UniqB,
-                    BoundInstsA, BoundInsts, Detism1, !ModuleInfo),
+                make_ground_bound_functor_list(Type, Live, Real, UniqB,
+                    BoundFunctorsA, BoundFunctors, Detism1, !ModuleInfo),
                 InstResults = inst_test_results(inst_result_is_ground,
                     inst_result_does_not_contain_any,
                     inst_result_contains_inst_names_unknown,
                     inst_result_contains_inst_vars_unknown,
                     inst_result_contains_types_unknown,
                     inst_result_no_type_ctor_propagated),
-                Inst = bound(Uniq, InstResults, BoundInsts)
+                Inst = bound(Uniq, InstResults, BoundFunctors)
             ),
             det_par_conjunction_detism(Detism1, detism_semi, Detism)
         ;
@@ -338,10 +339,10 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
             allow_unify_bound_any(Real),
             unify_uniq(Live, Real, detism_semi, UniqA, UniqB, Uniq),
             % XXX Should this is_live be Live?
-            make_any_bound_inst_list(Type, is_live, Real, UniqB,
-                BoundInstsA, BoundInsts, Detism1, !ModuleInfo),
+            make_any_bound_functor_list(Type, is_live, Real, UniqB,
+                BoundFunctorsA, BoundFunctors, Detism1, !ModuleInfo),
             % XXX A better approximation of InstResults is probably possible.
-            Inst = bound(Uniq, inst_test_no_results, BoundInsts),
+            Inst = bound(Uniq, inst_test_no_results, BoundFunctors),
             det_par_conjunction_detism(Detism1, detism_semi, Detism)
         ;
             InstB = constrained_inst_vars(InstVarsB, SubInstB),
@@ -382,12 +383,12 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
                 Inst = ground(Uniq, HOInstInfoA),
                 Detism = detism_det
             ;
-                InstB = bound(UniqB, InstResultsB, BoundInstsB),
+                InstB = bound(UniqB, InstResultsB, BoundFunctorsB),
                 % If Live = is_live, should we check `Real = fake_unify'?
                 unify_uniq(Live, Real, detism_semi, UniqA, UniqB, Uniq),
-                make_ground_bound_inst_list(Type, Live, Real, UniqA,
-                    BoundInstsB, BoundInsts, Detism1, !ModuleInfo),
-                Inst = bound(Uniq, InstResultsB, BoundInsts),
+                make_ground_bound_functor_list(Type, Live, Real, UniqA,
+                    BoundFunctorsB, BoundFunctors, Detism1, !ModuleInfo),
+                Inst = bound(Uniq, InstResultsB, BoundFunctors),
                 det_par_conjunction_detism(Detism1, detism_semi, Detism)
             ;
                 InstB = ground(UniqB, _HOInstInfoB),
@@ -454,14 +455,14 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
                 Inst = any(Uniq, HOInstInfoA),
                 Detism = detism_det
             ;
-                InstB = bound(UniqB, _InstResultsB, BoundInstsB),
+                InstB = bound(UniqB, _InstResultsB, BoundFunctorsB),
                 % XXX If Live = is_live, should we test `Real = fake_unify'?
                 unify_uniq(Live, Real, detism_semi, UniqA, UniqB, Uniq),
-                make_any_bound_inst_list(Type, Live, Real, UniqA,
-                    BoundInstsB, BoundInsts, Detism1, !ModuleInfo),
+                make_any_bound_functor_list(Type, Live, Real, UniqA,
+                    BoundFunctorsB, BoundFunctors, Detism1, !ModuleInfo),
                 % XXX A better approximation of InstResults is probably
                 % possible.
-                Inst = bound(Uniq, inst_test_no_results, BoundInsts),
+                Inst = bound(Uniq, inst_test_no_results, BoundFunctors),
                 det_par_conjunction_detism(Detism1, detism_semi, Detism)
             ;
                 InstB = ground(UniqB, _HOInstInfoB),
@@ -607,19 +608,21 @@ abstractly_unify_inst_functor_2(Type, Live, Real, InstA,
         Inst = bound(Uniq, inst_test_no_results,
             [bound_functor(ConsIdB, ArgInsts)])
     ;
-        InstA = bound(UniqA, _InstResultsA, BoundInstsA),
+        InstA = bound(UniqA, _InstResultsA, BoundFunctorsA),
         (
             Live = is_live,
-            abstractly_unify_bound_inst_list_lives(Type, Real, BoundInstsA,
-                ConsIdB, ArgInstsB, ArgLives, BoundInsts, Detism, !ModuleInfo)
+            abstractly_unify_bound_functor_list_lives(Type, Real,
+                BoundFunctorsA, ConsIdB, ArgInstsB, ArgLives, BoundFunctors,
+                Detism, !ModuleInfo)
         ;
             Live = is_dead,
-            BoundInstsB = [bound_functor(ConsIdB, ArgInstsB)],
-            abstractly_unify_bound_inst_list(Type, is_dead, Real,
-                BoundInstsA, BoundInstsB, BoundInsts, Detism, !ModuleInfo)
+            BoundFunctorsB = [bound_functor(ConsIdB, ArgInstsB)],
+            abstractly_unify_bound_functor_list(Type, is_dead, Real,
+                BoundFunctorsA, BoundFunctorsB, BoundFunctors,
+                Detism, !ModuleInfo)
         ),
         % XXX A better approximation of InstResults is probably possible.
-        Inst = bound(UniqA, inst_test_no_results, BoundInsts)
+        Inst = bound(UniqA, inst_test_no_results, BoundFunctors)
     ;
         InstA = ground(UniqA, _),
         get_cons_id_arg_types_for_inst(!.ModuleInfo, Type,
@@ -706,43 +709,44 @@ maybe_make_shared_inst_list(Types, Insts0, Lives, Insts, !ModuleInfo) :-
 %---------------------------------------------------------------------------%
 
     % This code performs abstract unification of two bound(...) insts.
-    % The lists of bound_inst are guaranteed to be sorted. The algorithm
-    % for abstractly unifying two lists of bound_insts is basically a sorted
+    % The lists of bound_functor are guaranteed to be sorted. The algorithm
+    % for abstractly unifying two lists of bound_functors is basically a sorted
     % merge operation. If the head elements of both lists specify the same
     % function symbol, we try to unify their argument insts. If all those
-    % unifications succeed, we put the resulting bound_inst in the output;
+    % unifications succeed, we put the resulting bound_functor in the output;
     % if one doesn't, the whole thing fails. If a function symbol occurs
     % in only one of the two input lists, it is *not* added to the output list.
     %
     % One way of looking at this code is that it simulates mode and determinism
     % checking of the goal for the unification predicate for the type.
     %
-:- pred abstractly_unify_bound_inst_list(mer_type::in,
+:- pred abstractly_unify_bound_functor_list(mer_type::in,
     is_live::in, unify_is_real::in,
-    list(bound_inst)::in, list(bound_inst)::in, list(bound_inst)::out,
+    list(bound_functor)::in, list(bound_functor)::in, list(bound_functor)::out,
     determinism::out, module_info::in, module_info::out) is semidet.
 
-abstractly_unify_bound_inst_list(Type, Live, Real, BoundInstsA, BoundInstsB,
-        BoundInsts, Detism, !ModuleInfo) :-
-    ( if ( BoundInstsA = [] ; BoundInstsB = [] ) then
+abstractly_unify_bound_functor_list(Type, Live, Real,
+        BoundFunctorsA, BoundFunctorsB, BoundFunctors, Detism, !ModuleInfo) :-
+    ( if ( BoundFunctorsA = [] ; BoundFunctorsB = [] ) then
         % This probably shouldn't happen. If we get here, it means that
         % a previous goal had determinism `failure' or `erroneous',
         % but we should have optimized away the rest of the conjunction
         % after that goal.
 
-        BoundInsts = [],
+        BoundFunctors = [],
         Detism = detism_erroneous
     else
-        abstractly_unify_bound_inst_list_2(Type, Live, Real,
-            BoundInstsA, BoundInstsB, BoundInsts, Detism0, !ModuleInfo),
+        abstractly_unify_bound_functor_list_2(Type, Live, Real,
+            BoundFunctorsA, BoundFunctorsB, BoundFunctors,
+            Detism0, !ModuleInfo),
 
         % If there are multiple alternatives for either of the inputs,
         % or the constructor of the single alternative for each input
         % doesn't match, then the unification can fail, so adjust the
         % determinism.
         ( if
-            BoundInstsA = [bound_functor(ConsIdA, _)],
-            BoundInstsB = [bound_functor(ConsIdB, _)],
+            BoundFunctorsA = [bound_functor(ConsIdA, _)],
+            BoundFunctorsB = [bound_functor(ConsIdB, _)],
             equivalent_cons_ids(ConsIdA, ConsIdB)
         then
             Detism = Detism0
@@ -752,72 +756,75 @@ abstractly_unify_bound_inst_list(Type, Live, Real, BoundInstsA, BoundInstsB,
         )
     ).
 
-:- pred abstractly_unify_bound_inst_list_2(mer_type::in,
-    is_live::in, unify_is_real::in, list(bound_inst)::in, list(bound_inst)::in,
-    list(bound_inst)::out, determinism::out,
-    module_info::in, module_info::out) is semidet.
+:- pred abstractly_unify_bound_functor_list_2(mer_type::in,
+    is_live::in, unify_is_real::in,
+    list(bound_functor)::in, list(bound_functor)::in, list(bound_functor)::out,
+    determinism::out, module_info::in, module_info::out) is semidet.
 
-abstractly_unify_bound_inst_list_2(_, _, _, [], [], [], detism_erroneous,
+abstractly_unify_bound_functor_list_2(_, _, _, [], [], [], detism_erroneous,
         !ModuleInfo).
-abstractly_unify_bound_inst_list_2(_, _, _, [], [_ | _], [], detism_failure,
+abstractly_unify_bound_functor_list_2(_, _, _, [], [_ | _], [], detism_failure,
         !ModuleInfo).
-abstractly_unify_bound_inst_list_2(_, _, _, [_ | _], [], [], detism_failure,
+abstractly_unify_bound_functor_list_2(_, _, _, [_ | _], [], [], detism_failure,
         !ModuleInfo).
-abstractly_unify_bound_inst_list_2(Type, Live, Real,
-        [BoundInstA | BoundInstsA], [BoundInstB | BoundInstsB],
-        BoundInsts, Detism, !ModuleInfo) :-
-    BoundInstA = bound_functor(ConsIdA, ArgInstsA),
-    BoundInstB = bound_functor(ConsIdB, ArgInstsB),
+abstractly_unify_bound_functor_list_2(Type, Live, Real,
+        [BoundFunctorA | BoundFunctorsA], [BoundFunctorB | BoundFunctorsB],
+        BoundFunctors, Detism, !ModuleInfo) :-
+    BoundFunctorA = bound_functor(ConsIdA, ArgInstsA),
+    BoundFunctorB = bound_functor(ConsIdB, ArgInstsB),
     ( if equivalent_cons_ids(ConsIdA, ConsIdB) then
         get_cons_id_arg_types_for_inst(!.ModuleInfo, Type, ConsIdA, ArgInstsA,
             ArgTypes),
         abstractly_unify_inst_list(ArgTypes, Live, Real, ArgInstsA, ArgInstsB,
             ArgInsts, Detism1, !ModuleInfo),
-        abstractly_unify_bound_inst_list_2(Type, Live, Real,
-            BoundInstsA, BoundInstsB,
-            BoundInstsTail, Detism2, !ModuleInfo),
+        abstractly_unify_bound_functor_list_2(Type, Live, Real,
+            BoundFunctorsA, BoundFunctorsB,
+            BoundFunctorsTail, Detism2, !ModuleInfo),
 
-        % If the unification of the two bound_insts is guaranteed to fail,
+        % If the unification of the two bound_functors is guaranteed to fail,
         % don't include the cons_id in the list.
         ( if determinism_components(Detism1, _, at_most_zero) then
-            BoundInsts = BoundInstsTail
+            BoundFunctors = BoundFunctorsTail
         else
-            BoundInsts = [bound_functor(ConsIdA, ArgInsts) | BoundInstsTail]
+            BoundFunctors =
+                [bound_functor(ConsIdA, ArgInsts) | BoundFunctorsTail]
         ),
         det_switch_detism(Detism1, Detism2, Detism)
     else
         ( if compare(<, ConsIdA, ConsIdB) then
-            abstractly_unify_bound_inst_list_2(Type, Live, Real,
-                BoundInstsA, [BoundInstB | BoundInstsB], BoundInsts,
-                Detism1, !ModuleInfo)
+            abstractly_unify_bound_functor_list_2(Type, Live, Real,
+                BoundFunctorsA, [BoundFunctorB | BoundFunctorsB],
+                BoundFunctors, Detism1, !ModuleInfo)
         else
-            abstractly_unify_bound_inst_list_2(Type, Live, Real,
-                [BoundInstA | BoundInstsA], BoundInstsB, BoundInsts,
-                Detism1, !ModuleInfo)
+            abstractly_unify_bound_functor_list_2(Type, Live, Real,
+                [BoundFunctorA | BoundFunctorsA], BoundFunctorsB,
+                BoundFunctors, Detism1, !ModuleInfo)
         ),
         det_switch_detism(Detism1, detism_failure, Detism)
     ).
 
-:- pred abstractly_unify_bound_inst_list_lives(mer_type::in, unify_is_real::in,
-    list(bound_inst)::in, cons_id::in, list(mer_inst)::in, list(is_live)::in,
-    list(bound_inst)::out, determinism::out,
+:- pred abstractly_unify_bound_functor_list_lives(mer_type::in,
+    unify_is_real::in, list(bound_functor)::in, cons_id::in,
+    list(mer_inst)::in, list(is_live)::in,
+    list(bound_functor)::out, determinism::out,
     module_info::in, module_info::out) is semidet.
 
-abstractly_unify_bound_inst_list_lives(_, _, [], _, _, _,
+abstractly_unify_bound_functor_list_lives(_, _, [], _, _, _,
         [], detism_failure, !ModuleInfo).
-abstractly_unify_bound_inst_list_lives(Type, Real, [BoundInstA | BoundInstsA],
-        ConsIdB, ArgInstsB, LivesB, BoundInsts, Detism, !ModuleInfo) :-
-    BoundInstA = bound_functor(ConsIdA, ArgInstsA),
+abstractly_unify_bound_functor_list_lives(Type, Real,
+        [BoundFunctorA | BoundFunctorsA], ConsIdB, ArgInstsB, LivesB,
+        BoundFunctors, Detism, !ModuleInfo) :-
+    BoundFunctorA = bound_functor(ConsIdA, ArgInstsA),
     ( if equivalent_cons_ids(ConsIdA, ConsIdB) then
         % XXX ArgTypes seems to be a invariant of this loop.
         get_cons_id_arg_types_for_inst(!.ModuleInfo, Type, ConsIdB, ArgInstsB,
             ArgTypes),
         abstractly_unify_inst_list_lives(ArgTypes, Real, ArgInstsA, ArgInstsB,
             LivesB, ArgInsts, Detism, !ModuleInfo),
-        BoundInsts = [bound_functor(ConsIdA, ArgInsts)]
+        BoundFunctors = [bound_functor(ConsIdA, ArgInsts)]
     else
-        abstractly_unify_bound_inst_list_lives(Type, Real, BoundInstsA,
-            ConsIdB, ArgInstsB, LivesB, BoundInsts, Detism, !ModuleInfo)
+        abstractly_unify_bound_functor_list_lives(Type, Real, BoundFunctorsA,
+            ConsIdB, ArgInstsB, LivesB, BoundFunctors, Detism, !ModuleInfo)
     ).
 
 :- pred abstractly_unify_inst_list_lives(list(mer_type)::in, unify_is_real::in,
@@ -1159,11 +1166,11 @@ make_ground_inst(Type, Live, Real, Uniq1, Inst0, Inst, Detism, !ModuleInfo) :-
         Inst = ground(Uniq, none_or_default_func),
         Detism = detism_det
     ;
-        Inst0 = bound(Uniq0, InstResults0, BoundInsts0),
+        Inst0 = bound(Uniq0, InstResults0, BoundFunctors0),
         unify_uniq(Live, Real, detism_semi, Uniq0, Uniq1, Uniq),
-        make_ground_bound_inst_list(Type, Live, Real, Uniq1,
-            BoundInsts0, BoundInsts, Detism1, !ModuleInfo),
-        Inst = bound(Uniq, InstResults0, BoundInsts),
+        make_ground_bound_functor_list(Type, Live, Real, Uniq1,
+            BoundFunctors0, BoundFunctors, Detism1, !ModuleInfo),
+        Inst = bound(Uniq, InstResults0, BoundFunctors),
         det_par_conjunction_detism(Detism1, detism_semi, Detism)
     ;
         Inst0 = ground(Uniq0, HOInstInfo),
@@ -1236,23 +1243,23 @@ make_ground_inst(Type, Live, Real, Uniq1, Inst0, Inst, Detism, !ModuleInfo) :-
         )
     ).
 
-:- pred make_ground_bound_inst_list(mer_type::in,
+:- pred make_ground_bound_functor_list(mer_type::in,
     is_live::in, unify_is_real::in,
-    uniqueness::in, list(bound_inst)::in, list(bound_inst)::out,
+    uniqueness::in, list(bound_functor)::in, list(bound_functor)::out,
     determinism::out, module_info::in, module_info::out) is semidet.
 
-make_ground_bound_inst_list(_, _, _, _, [], [], detism_det, !ModuleInfo).
-make_ground_bound_inst_list(Type, Live, Real, Uniq,
-            [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts],
+make_ground_bound_functor_list(_, _, _, _, [], [], detism_det, !ModuleInfo).
+make_ground_bound_functor_list(Type, Live, Real, Uniq,
+            [BoundFunctor0 | BoundFunctors0], [BoundFunctor | BoundFunctors],
             Detism, !ModuleInfo) :-
-    BoundInst0 = bound_functor(ConsId, ArgInsts0),
+    BoundFunctor0 = bound_functor(ConsId, ArgInsts0),
     get_cons_id_arg_types_for_inst(!.ModuleInfo, Type, ConsId, ArgInsts0,
         ArgTypes),
     make_ground_inst_list(Live, Real, Uniq, ArgTypes, ArgInsts0, ArgInsts,
         Detism1, !ModuleInfo),
-    BoundInst = bound_functor(ConsId, ArgInsts),
-    make_ground_bound_inst_list(Type, Live, Real, Uniq,
-        BoundInsts0, BoundInsts, Detism2, !ModuleInfo),
+    BoundFunctor = bound_functor(ConsId, ArgInsts),
+    make_ground_bound_functor_list(Type, Live, Real, Uniq,
+        BoundFunctors0, BoundFunctors, Detism2, !ModuleInfo),
     det_par_conjunction_detism(Detism1, Detism2, Detism).
 
 %---------------------------------------------------------------------------%
@@ -1281,13 +1288,13 @@ make_any_inst(Type, Live, Real, Uniq1, Inst0, Inst, Detism, !ModuleInfo) :-
         Inst = any(Uniq, none_or_default_func),
         Detism = detism_det
     ;
-        Inst0 = bound(Uniq0, _InstResults0, BoundInsts0),
+        Inst0 = bound(Uniq0, _InstResults0, BoundFunctors0),
         allow_unify_bound_any(Real),
         unify_uniq(Live, Real, detism_semi, Uniq0, Uniq1, Uniq),
-        make_any_bound_inst_list(Type, Live, Real, Uniq1,
-            BoundInsts0, BoundInsts, Detism1, !ModuleInfo),
+        make_any_bound_functor_list(Type, Live, Real, Uniq1,
+            BoundFunctors0, BoundFunctors, Detism1, !ModuleInfo),
         % XXX A better approximation of InstResults is probably possible.
-        Inst = bound(Uniq, inst_test_no_results, BoundInsts),
+        Inst = bound(Uniq, inst_test_no_results, BoundFunctors),
         det_par_conjunction_detism(Detism1, detism_semi, Detism)
     ;
         Inst0 = ground(Uniq0, PredInst),
@@ -1355,22 +1362,23 @@ make_any_inst(Type, Live, Real, Uniq1, Inst0, Inst, Detism, !ModuleInfo) :-
         )
     ).
 
-:- pred make_any_bound_inst_list(mer_type::in, is_live::in, unify_is_real::in,
-    uniqueness::in, list(bound_inst)::in,
-    list(bound_inst)::out, determinism::out,
+:- pred make_any_bound_functor_list(mer_type::in, is_live::in,
+    unify_is_real::in, uniqueness::in, list(bound_functor)::in,
+    list(bound_functor)::out, determinism::out,
     module_info::in, module_info::out) is semidet.
 
-make_any_bound_inst_list(_, _, _, _, [], [], detism_det, !ModuleInfo).
-make_any_bound_inst_list(Type, Live, Real, Uniq, [BoundInst0 | BoundInsts0],
-        [BoundInst | BoundInsts], Detism, !ModuleInfo) :-
-    BoundInst0 = bound_functor(ConsId, ArgInsts0),
+make_any_bound_functor_list(_, _, _, _, [], [], detism_det, !ModuleInfo).
+make_any_bound_functor_list(Type, Live, Real, Uniq, [BoundFunctor0 |
+BoundFunctors0],
+        [BoundFunctor | BoundFunctors], Detism, !ModuleInfo) :-
+    BoundFunctor0 = bound_functor(ConsId, ArgInsts0),
     get_cons_id_arg_types_for_inst(!.ModuleInfo, Type, ConsId, ArgInsts0,
         ArgTypes),
     make_any_inst_list(Live, Real, Uniq, ArgTypes, ArgInsts0, ArgInsts,
         Detism1, !ModuleInfo),
-    BoundInst = bound_functor(ConsId, ArgInsts),
-    make_any_bound_inst_list(Type, Live, Real, Uniq, BoundInsts0,
-        BoundInsts, Detism2, !ModuleInfo),
+    BoundFunctor = bound_functor(ConsId, ArgInsts),
+    make_any_bound_functor_list(Type, Live, Real, Uniq, BoundFunctors0,
+        BoundFunctors, Detism2, !ModuleInfo),
     det_par_conjunction_detism(Detism1, Detism2, Detism).
 
 :- pred make_any_inst_list(is_live::in, unify_is_real::in, uniqueness::in,

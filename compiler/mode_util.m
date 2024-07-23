@@ -121,24 +121,24 @@
 
 %---------------------------------------------------------------------------%
 %
-% Constructing bound_insts.
+% Constructing bound_functors.
 %
 
-    % Convert a list of constructors to a list of bound_insts where the
+    % Convert a list of constructors to a list of bound_functors where the
     % arguments are `ground'.
     %
-    % NOTE: the list(bound_inst) is not sorted and may contain duplicates.
+    % NOTE: the list(bound_functor) is not sorted and may contain duplicates.
     %
-:- pred constructors_to_bound_insts(module_info::in, uniqueness::in,
-    type_ctor::in, list(constructor)::in, list(bound_inst)::out) is det.
+:- pred constructors_to_bound_functors(module_info::in, uniqueness::in,
+    type_ctor::in, list(constructor)::in, list(bound_functor)::out) is det.
 
-    % Convert a list of constructors to a list of bound_insts where the
+    % Convert a list of constructors to a list of bound_functors where the
     % arguments are `any'.
     %
-    % NOTE: the list(bound_inst) is not sorted and may contain duplicates.
+    % NOTE: the list(bound_functor) is not sorted and may contain duplicates.
     %
 :- pred constructors_to_bound_any_insts(module_info::in, uniqueness::in,
-    type_ctor::in, list(constructor)::in, list(bound_inst)::out) is det.
+    type_ctor::in, list(constructor)::in, list(bound_functor)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -320,30 +320,30 @@ get_arg_lives(ModuleInfo, [Mode | Modes], [IsLive | IsLives]) :-
 
 %---------------------------------------------------------------------------%
 
-constructors_to_bound_insts(ModuleInfo, Uniq, TypeCtor, Constructors,
-        BoundInsts) :-
-    constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
-        Constructors, ground(Uniq, none_or_default_func), BoundInsts).
+constructors_to_bound_functors(ModuleInfo, Uniq, TypeCtor, Constructors,
+        BoundFunctors) :-
+    constructors_to_bound_functors_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
+        Constructors, ground(Uniq, none_or_default_func), BoundFunctors).
 
 constructors_to_bound_any_insts(ModuleInfo, Uniq, TypeCtor, Constructors,
-        BoundInsts) :-
-    constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
-        Constructors, any(Uniq, none_or_default_func), BoundInsts).
+        BoundFunctors) :-
+    constructors_to_bound_functors_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
+        Constructors, any(Uniq, none_or_default_func), BoundFunctors).
 
-:- pred constructors_to_bound_insts_loop_over_ctors(module_info::in,
+:- pred constructors_to_bound_functors_loop_over_ctors(module_info::in,
     uniqueness::in, type_ctor::in, list(constructor)::in, mer_inst::in,
-    list(bound_inst)::out) is det.
+    list(bound_functor)::out) is det.
 
-constructors_to_bound_insts_loop_over_ctors(_, _, _, [], _, []).
-constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
-        [Ctor | Ctors], ArgInst, [BoundInst | BoundInsts]) :-
+constructors_to_bound_functors_loop_over_ctors(_, _, _, [], _, []).
+constructors_to_bound_functors_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
+        [Ctor | Ctors], ArgInst, [BoundFunctor | BoundFunctors]) :-
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, Name, Args, _Arity, _Ctxt),
     ctor_arg_list_to_inst_list(Args, ArgInst, Insts),
     list.length(Insts, Arity),
     DuCtor = du_ctor(Name, Arity, TypeCtor),
-    BoundInst = bound_functor(du_data_ctor(DuCtor), Insts),
-    constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
-        Ctors, ArgInst, BoundInsts).
+    BoundFunctor = bound_functor(du_data_ctor(DuCtor), Insts),
+    constructors_to_bound_functors_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
+        Ctors, ArgInst, BoundFunctors).
 
 :- pred ctor_arg_list_to_inst_list(list(constructor_arg)::in, mer_inst::in,
     list(mer_inst)::out) is det.

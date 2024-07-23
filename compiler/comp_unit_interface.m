@@ -3534,8 +3534,8 @@ accumulate_modules_in_inst(Inst, !MaybeUnqual, !ModuleNames) :-
         ; Inst = any(_Uniq, _HOInstInfo)
         )
     ;
-        Inst = bound(_Uniq, _InstTestsResults, BoundInsts),
-        accumulate_modules_in_bound_insts(BoundInsts,
+        Inst = bound(_Uniq, _InstTestsResults, BoundFunctors),
+        accumulate_modules_in_bound_functors(BoundFunctors,
             !MaybeUnqual, !ModuleNames)
     ;
         Inst = constrained_inst_vars(_InstVars, ArgInst),
@@ -3578,22 +3578,25 @@ accumulate_modules_in_inst_name(InstName, !MaybeUnqual, !ModuleNames) :-
             !MaybeUnqual, !ModuleNames)
     ).
 
-:- pred accumulate_modules_in_bound_insts(list(bound_inst)::in,
+:- pred accumulate_modules_in_bound_functors(list(bound_functor)::in,
     maybe_unqual_symnames::in, maybe_unqual_symnames::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_modules_in_bound_insts([], !MaybeUnqual, !ModuleNames).
-accumulate_modules_in_bound_insts([BoundInst | BoundInsts],
+accumulate_modules_in_bound_functors([], !MaybeUnqual, !ModuleNames).
+accumulate_modules_in_bound_functors([BoundFunctor | BoundFunctors],
         !MaybeUnqual, !ModuleNames) :-
-    accumulate_modules_in_bound_inst(BoundInst, !MaybeUnqual, !ModuleNames),
-    accumulate_modules_in_bound_insts(BoundInsts, !MaybeUnqual, !ModuleNames).
+    accumulate_modules_in_bound_functor(BoundFunctor,
+        !MaybeUnqual, !ModuleNames),
+    accumulate_modules_in_bound_functors(BoundFunctors,
+        !MaybeUnqual, !ModuleNames).
 
-:- pred accumulate_modules_in_bound_inst(bound_inst::in,
+:- pred accumulate_modules_in_bound_functor(bound_functor::in,
     maybe_unqual_symnames::in, maybe_unqual_symnames::out,
     set(module_name)::in, set(module_name)::out) is det.
 
-accumulate_modules_in_bound_inst(BoundInst, !MaybeUnqual, !ModuleNames) :-
-    BoundInst = bound_functor(ConsId, ArgInsts),
+accumulate_modules_in_bound_functor(BoundFunctor,
+        !MaybeUnqual, !ModuleNames) :-
+    BoundFunctor = bound_functor(ConsId, ArgInsts),
     ( if ConsId = du_data_ctor(du_ctor(SymName, _ConsArity, TypeCtor)) then
         accumulate_module(SymName, !MaybeUnqual, !ModuleNames),
         TypeCtor = type_ctor(TypeCtorSymName, _Arity),

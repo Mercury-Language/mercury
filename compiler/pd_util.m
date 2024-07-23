@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2012 University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -883,11 +883,11 @@ inst_MSG_2(ModuleInfo, Expansions, Type, InstA, InstB, Inst) :-
         % XXX Not checking uniqueness seems wrong.
         Inst = InstB
     ;
-        InstA = bound(_, _, BoundInstsA),
-        InstB = bound(UniqB, _, BoundInstsB),
+        InstA = bound(_, _, BoundFunctorsA),
+        InstB = bound(UniqB, _, BoundFunctorsB),
         % XXX Ignoring UniqA seems wrong.
-        bound_inst_list_MSG(ModuleInfo, Expansions, UniqB, Type,
-            BoundInstsA, BoundInstsB, BoundInstsB, Inst)
+        bound_functor_list_MSG(ModuleInfo, Expansions, UniqB, Type,
+            BoundFunctorsA, BoundFunctorsB, BoundFunctorsB, Inst)
     ;
         InstA = any(_, _),
         InstB = any(_, _),
@@ -903,7 +903,7 @@ inst_list_MSG(ModuleInfo, Expansions, [Type | Types],
     inst_MSG_1(ModuleInfo, Expansions, Type, ArgA, ArgB, Arg),
     inst_list_MSG(ModuleInfo, Expansions, Types, ArgsA, ArgsB, Args).
 
-    % bound_inst_list_MSG(Xs, Ys, ModuleInfo, Zs):
+    % bound_functor_list_MSG(Xs, Ys, ModuleInfo, Zs):
     % XXX That argument is quite out-of-date.
     %
     % The two input lists Xs and Ys must already be sorted.
@@ -914,12 +914,12 @@ inst_list_MSG(ModuleInfo, Expansions, [Type | Types],
     % the msg operation could introduce mode errors.
     % Otherwise, the take the msg of the argument insts.
     %
-:- pred bound_inst_list_MSG(module_info::in, expansions::in, uniqueness::in,
-    mer_type::in, list(bound_inst)::in, list(bound_inst)::in,
-    list(bound_inst)::in, mer_inst::out) is semidet.
+:- pred bound_functor_list_MSG(module_info::in, expansions::in, uniqueness::in,
+    mer_type::in, list(bound_functor)::in, list(bound_functor)::in,
+    list(bound_functor)::in, mer_inst::out) is semidet.
 
-bound_inst_list_MSG(ModuleInfo, Expansions, Uniq, Type, Xs, Ys,
-        BoundInsts, Inst) :-
+bound_functor_list_MSG(ModuleInfo, Expansions, Uniq, Type, Xs, Ys,
+        BoundFunctors, Inst) :-
     ( if
         Xs = [],
         Ys = []
@@ -931,12 +931,12 @@ bound_inst_list_MSG(ModuleInfo, Expansions, Uniq, Type, Xs, Ys,
         X = bound_functor(ConsId, ArgInstsX),
         Y = bound_functor(ConsId, ArgInstsY)
     then
-        get_cons_id_arg_types_for_bound_inst(ModuleInfo, Type, X, ArgTypes),
+        get_cons_id_arg_types_for_bound_functor(ModuleInfo, Type, X, ArgTypes),
         inst_list_MSG(ModuleInfo, Expansions, ArgTypes, ArgInstsX, ArgInstsY,
             ArgInsts),
         Z = bound_functor(ConsId, ArgInsts),
-        bound_inst_list_MSG(ModuleInfo, Expansions, Uniq, Type, Xs1, Ys1,
-            BoundInsts, Inst1),
+        bound_functor_list_MSG(ModuleInfo, Expansions, Uniq, Type, Xs1, Ys1,
+            BoundFunctors, Inst1),
         ( if Inst1 = bound(Uniq, _, Zs) then
             Inst = bound(Uniq, inst_test_no_results, [Z | Zs])
         else
@@ -946,17 +946,17 @@ bound_inst_list_MSG(ModuleInfo, Expansions, Uniq, Type, Xs, Ys,
         % Check that it is OK to round off the uniqueness information.
         (
             Uniq = shared,
-            NewInst = bound(shared, inst_test_no_results, BoundInsts),
+            NewInst = bound(shared, inst_test_no_results, BoundFunctors),
             inst_is_ground(ModuleInfo, Type, NewInst),
             inst_is_not_partly_unique(ModuleInfo, NewInst)
         ;
             Uniq = unique,
-            NewInst = bound(unique, inst_test_no_results, BoundInsts),
+            NewInst = bound(unique, inst_test_no_results, BoundFunctors),
             inst_is_unique(ModuleInfo, NewInst)
         ),
         not (
             inst_contains_nondefault_func_mode(ModuleInfo, Type,
-                bound(shared, inst_test_no_results, BoundInsts))
+                bound(shared, inst_test_no_results, BoundFunctors))
         ),
         Inst = ground(Uniq, none_or_default_func)
     ).
@@ -992,19 +992,20 @@ inst_size_2(ModuleInfo, !.Expansions, Inst, Size) :-
             inst_size_2(ModuleInfo, !.Expansions, SubInst, Size)
         )
     ;
-        Inst = bound(_, _, BoundInsts),
-        bound_inst_size(ModuleInfo, !.Expansions, BoundInsts, 1, Size)
+        Inst = bound(_, _, BoundFunctors),
+        bound_functor_size(ModuleInfo, !.Expansions, BoundFunctors, 1, Size)
     ).
 
-:- pred bound_inst_size(module_info::in, set(inst_name)::in,
-    list(bound_inst)::in, int::in, int::out) is det.
+:- pred bound_functor_size(module_info::in, set(inst_name)::in,
+    list(bound_functor)::in, int::in, int::out) is det.
 
-bound_inst_size(_, _, [], !Size).
-bound_inst_size(ModuleInfo, Expansions, [BoundInst | BoundInsts], !Size) :-
-    BoundInst = bound_functor(_, ArgInsts),
+bound_functor_size(_, _, [], !Size).
+bound_functor_size(ModuleInfo, Expansions, [BoundFunctor | BoundFunctors],
+        !Size) :-
+    BoundFunctor = bound_functor(_, ArgInsts),
     inst_list_size(ModuleInfo, Expansions, ArgInsts, !Size),
     !:Size = !.Size + 1,
-    bound_inst_size(ModuleInfo, Expansions, BoundInsts, !Size).
+    bound_functor_size(ModuleInfo, Expansions, BoundFunctors, !Size).
 
 inst_list_size(ModuleInfo, Insts, Size) :-
     set.init(Expansions),

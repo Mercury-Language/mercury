@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2012 The University of Melbourne.
-% Copyright (C) 2015, 2018 The Mercury team.
+% Copyright (C) 2015, 2018, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -396,10 +396,10 @@ add_arg_regs_in_inst(ModuleInfo, Seen0, Type, Inst0, Inst) :-
         ),
         Inst = any(Uniq, higher_order(PredInstInfo))
     ;
-        Inst0 = bound(Uniq, InstResults, BoundInsts0),
-        list.map(add_arg_regs_in_bound_inst(ModuleInfo, Seen0, Type),
-            BoundInsts0, BoundInsts),
-        Inst = bound(Uniq, InstResults, BoundInsts)
+        Inst0 = bound(Uniq, InstResults, BoundFunctors0),
+        list.map(add_arg_regs_in_bound_functor(ModuleInfo, Seen0, Type),
+            BoundFunctors0, BoundFunctors),
+        Inst = bound(Uniq, InstResults, BoundFunctors)
     ;
         Inst0 = constrained_inst_vars(InstVarSet, SpecInst0),
         add_arg_regs_in_inst(ModuleInfo, Seen0, Type, SpecInst0, SpecInst),
@@ -445,11 +445,12 @@ add_arg_regs_in_pred_inst_info(ModuleInfo, Seen, ArgTypes, PredInstInfo0,
     ArgRegInfo = arg_reg_types(ArgRegs),
     PredInstInfo = pred_inst_info(PredOrFunc, Modes, ArgRegInfo, Detism).
 
-:- pred add_arg_regs_in_bound_inst(module_info::in, set(inst_name)::in,
-    mer_type::in, bound_inst::in, bound_inst::out) is det.
+:- pred add_arg_regs_in_bound_functor(module_info::in, set(inst_name)::in,
+    mer_type::in, bound_functor::in, bound_functor::out) is det.
 
-add_arg_regs_in_bound_inst(ModuleInfo, Seen, Type, BoundInst0, BoundInst) :-
-    BoundInst0 = bound_functor(ConsId, ArgInsts0),
+add_arg_regs_in_bound_functor(ModuleInfo, Seen, Type,
+        BoundFunctor0, BoundFunctor) :-
+    BoundFunctor0 = bound_functor(ConsId, ArgInsts0),
     ( if ConsId = du_data_ctor(DuCtor) then
         ( if
             get_du_ctor_non_existential_arg_types(ModuleInfo, Type,
@@ -475,7 +476,7 @@ add_arg_regs_in_bound_inst(ModuleInfo, Seen, Type, BoundInst0, BoundInst) :-
     else
         ArgInsts = ArgInsts0
     ),
-    BoundInst = bound_functor(ConsId, ArgInsts).
+    BoundFunctor = bound_functor(ConsId, ArgInsts).
 
 :- pred ho_arg_reg_for_type(mer_type::in, ho_arg_reg::out) is det.
 
@@ -935,10 +936,10 @@ update_construct_goal_instmap_delta(ModuleInfo, CellVar, ConsId, Args,
 
 rebuild_cell_inst(ModuleInfo, InstMap, ConsId, Args, Inst0, Inst) :-
     (
-        Inst0 = bound(Uniq, InstResults, BoundInsts0),
-        list.map(rebuild_cell_bound_inst(InstMap, ConsId, Args),
-            BoundInsts0, BoundInsts),
-        Inst = bound(Uniq, InstResults, BoundInsts)
+        Inst0 = bound(Uniq, InstResults, BoundFunctors0),
+        list.map(rebuild_cell_bound_functor(InstMap, ConsId, Args),
+            BoundFunctors0, BoundFunctors),
+        Inst = bound(Uniq, InstResults, BoundFunctors)
     ;
         (
             Inst0 = ground(Uniq, higher_order(PredInstInfo0))
@@ -986,23 +987,23 @@ rebuild_cell_inst(ModuleInfo, InstMap, ConsId, Args, Inst0, Inst) :-
         unexpected($pred, "inst_var")
     ).
 
-:- pred rebuild_cell_bound_inst(instmap::in, cons_id::in, list(prog_var)::in,
-    bound_inst::in, bound_inst::out) is det.
+:- pred rebuild_cell_bound_functor(instmap::in, cons_id::in,
+    list(prog_var)::in, bound_functor::in, bound_functor::out) is det.
 
-rebuild_cell_bound_inst(InstMap, ConsId, Args, Inst0, Inst) :-
+rebuild_cell_bound_functor(InstMap, ConsId, Args, Inst0, Inst) :-
     Inst0 = bound_functor(BoundConsId, ArgInsts0),
     ( if equivalent_cons_ids(ConsId, BoundConsId) then
-        list.map_corresponding(rebuild_cell_bound_inst_arg(InstMap),
+        list.map_corresponding(rebuild_cell_bound_functor_arg(InstMap),
             Args, ArgInsts0, ArgInsts),
         Inst = bound_functor(BoundConsId, ArgInsts)
     else
         Inst = Inst0
     ).
 
-:- pred rebuild_cell_bound_inst_arg(instmap::in, prog_var::in,
+:- pred rebuild_cell_bound_functor_arg(instmap::in, prog_var::in,
     mer_inst::in, mer_inst::out) is det.
 
-rebuild_cell_bound_inst_arg(InstMap, Var, ArgInst0, ArgInst) :-
+rebuild_cell_bound_functor_arg(InstMap, Var, ArgInst0, ArgInst) :-
     instmap_lookup_var(InstMap, Var, VarInst),
     % To cope with LCO.
     ( if VarInst = free_inst then

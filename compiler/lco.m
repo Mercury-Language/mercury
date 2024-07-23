@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2015, 2017 The Mercury team.
+% Copyright (C) 2015, 2017, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1347,8 +1347,8 @@ update_construct_args(Subst, HighLevelData, VarType, IsDummyType,
             FinalInst = ground_inst
         ;
             HighLevelData = yes,
-            BoundInst = bound_inst_with_free_arg(ConsId, ArgNum),
-            FinalInst = bound(shared, inst_test_no_results, [BoundInst]),
+            BoundFunctor = bound_functor_with_free_arg(ConsId, ArgNum),
+            FinalInst = bound(shared, inst_test_no_results, [BoundFunctor]),
             % We didn't do this when we initially created the variable.
             lookup_var_entry(!.VarTable, AddrVar, AddrVarEntry0),
             AddrVarEntry0 = vte(AddrVarName, _, _),
@@ -1366,9 +1366,9 @@ update_construct_args(Subst, HighLevelData, VarType, IsDummyType,
         AddrArgs = AddrArgsTail
     ).
 
-:- func bound_inst_with_free_arg(cons_id, int) = bound_inst.
+:- func bound_functor_with_free_arg(cons_id, int) = bound_functor.
 
-bound_inst_with_free_arg(ConsId, FreeArg) = Inst :-
+bound_functor_with_free_arg(ConsId, FreeArg) = Inst :-
     Arity = cons_id_arity(ConsId),
     list.duplicate(Arity, ground_inst, ArgInsts0),
     list.det_replace_nth(ArgInsts0, FreeArg, free_inst, ArgInsts),
@@ -1555,8 +1555,9 @@ make_addr_vars(ModuleInfo, NextOutArgNum,
                 % partially instantiated structure. The structure has one
                 % argument left unfilled.
                 AddrVarTypeIsDummy = is_type_a_dummy(ModuleInfo, AddrVarType),
-                BoundInst = bound_inst_with_free_arg(ConsId, ArgNum),
-                InitialInst = bound(shared, inst_test_no_results, [BoundInst]),
+                BoundFunctor = bound_functor_with_free_arg(ConsId, ArgNum),
+                InitialInst =
+                    bound(shared, inst_test_no_results, [BoundFunctor]),
                 Mode = from_to_mode(InitialInst, ground_inst)
             ),
             AddrVarEntry = vte(AddrVarName, AddrVarType, AddrVarTypeIsDummy),

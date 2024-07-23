@@ -315,10 +315,10 @@
 :- type coerce_error_reason
     --->    input_inst_not_ground(mer_inst)
     ;       cons_id_errors(mer_inst,
-                bound_inst_cons_id_error, list(bound_inst_cons_id_error))
+                bound_functor_cons_id_error, list(bound_functor_cons_id_error))
     ;       has_inst_expect_upcast(mer_inst).
 
-:- type bound_inst_cons_id_error
+:- type bound_functor_cons_id_error
     --->    bad_cons_id_input(cons_id)
             % The cons_id does not exist in the input type.
     ;       bad_cons_id_input_inst_arity(cons_id, arity, arity)
@@ -1646,7 +1646,7 @@ mode_error_coerce_error_to_spec(ModeInfo, Errors) = Spec :-
             color_as_correct([words("ground")]) ++ [words("inst."), nl]
     ;
         Reason = cons_id_errors(_Inst, HeadConsError, TailConsErrors),
-        classify_bound_inst_cons_id_errors([HeadConsError | TailConsErrors],
+        classify_bound_functor_cons_id_errors([HeadConsError | TailConsErrors],
             set.init, InputBadConsIdSet,
             set.init, InputBadInstArityConsIdSet,
             set.init, ResultBadConsIdSet),
@@ -1772,14 +1772,15 @@ make_term_path_piece(Step) = Pieces :-
     Pieces = ArgPieces ++ [words("of function symbol"),
         unqual_cons_id_and_maybe_arity(ConsId), suffix(":"), nl].
 
-:- pred classify_bound_inst_cons_id_errors(list(bound_inst_cons_id_error)::in,
+:- pred classify_bound_functor_cons_id_errors(
+    list(bound_functor_cons_id_error)::in,
     set(cons_id)::in, set(cons_id)::out,
     set({cons_id, arity, arity})::in, set({cons_id, arity, arity})::out,
     set(cons_id)::in, set(cons_id)::out) is det.
 
-classify_bound_inst_cons_id_errors([],
+classify_bound_functor_cons_id_errors([],
         !InputBadConsIds, !InputBadInstArityConsIds, !ResultBadConsIds).
-classify_bound_inst_cons_id_errors([Error | Errors],
+classify_bound_functor_cons_id_errors([Error | Errors],
         !InputBadConsIds, !InputBadInstArityConsIds, !ResultBadConsIds) :-
     (
         Error = bad_cons_id_input(ConsId),
@@ -1792,7 +1793,7 @@ classify_bound_inst_cons_id_errors([Error | Errors],
         Error = bad_cons_id_result(ConsId),
         set.insert(ConsId, !ResultBadConsIds)
     ),
-    classify_bound_inst_cons_id_errors(Errors,
+    classify_bound_functor_cons_id_errors(Errors,
         !InputBadConsIds, !InputBadInstArityConsIds, !ResultBadConsIds).
 
 :- func report_bad_arity_pieces({cons_id, arity, arity}) = list(format_piece).
