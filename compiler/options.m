@@ -4692,7 +4692,7 @@ options_help_verbosity(Stream, !IO) :-
         "\tFind all the reasons why a module needs to be recompiled,",
         "\tnot just the first. Implies `--verbose-recompilation'.",
         "--output-compile-error-lines <n>",
-        "--no-output-compile-error-lines>",
+        "--no-output-compile-error-lines",
         "\tWith `--make', output the first <n> lines of the `.err'",
         "\tfile after compiling a module (default: 15).",
         "\tSpecifying --no-output-compile-error-lines removes the limit.",
