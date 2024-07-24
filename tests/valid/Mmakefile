@@ -248,6 +248,7 @@ OTHER_PROGS = \
 	nasty_func_test \
 	neg_erroneous \
 	negation_in_dupl_for_switch \
+	new_getopt_io \
 	no_warn_format_imports \
 	no_warn_obsolete \
 	no_warn_unresolved_poly \
