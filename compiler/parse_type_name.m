@@ -43,7 +43,6 @@
     ;       wnhii_supertype
     ;       wnhii_solver_type_defn
     ;       wnhii_class_constraint
-    ;       wnhii_mutable_decl          % NYI
     ;       wnhii_user_struct_sharing
     ;       wnhii_ctgc_type_selector
     ;       wnhii_pragma_struct_sharing
@@ -904,9 +903,6 @@ no_ho_inst_allowed_desc(WNHII, Place, WhyNot) :-
         ;
             WNHII = wnhii_type_qual,
             Place = "a type used for type qualification"
-        ;
-            WNHII = wnhii_mutable_decl,
-            Place = "a mutable declaration"
         ),
         WhyNot = wna_nyi
     ;
