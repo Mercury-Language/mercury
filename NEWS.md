@@ -73,15 +73,15 @@ Changes that may break compatibility
 * Some (undocumented) mmake variables in compiler-generated `.dv` files
   have been renamed:
 
-    program.cs          -> program.all_cs
-    program.os          -> program.all_os
-    program.pic_os      -> program.all_pic_os
-    program.javas       -> program.all_javas
-    program.css         -> program.all_css
+        program.cs          -> program.all_cs
+        program.os          -> program.all_os
+        program.pic_os      -> program.all_pic_os
+        program.javas       -> program.all_javas
+        program.css         -> program.all_css
 
-    program.all_mhs     -> program.mhs_to_clean
-    program.all_mihs    -> program.mihs_to_clean
-    program.all_int0s   -> program.int3s_to_clean
+        program.all_mhs     -> program.mhs_to_clean
+        program.all_mihs    -> program.mihs_to_clean
+        program.all_int0s   -> program.int3s_to_clean
 
 Changes to the Mercury standard library
 ---------------------------------------
