@@ -2047,8 +2047,6 @@ type_diff_pieces(ContextPieces, ExistQTVars, ActualType0, ExpectedType0)
                 ActualInstInfo, ActualPurity),
             ExpectedType = higher_order_type(ExpectedPorF, ExpectedArgTypes,
                 ExpectedInstInfo, ExpectedPurity),
-            % There is only one lambda_eval_method, so that field
-            % cannot contain a difference.
             DiffPiecesPrime = higher_order_diff_pieces(ContextPieces,
                 ExistQTVars, ActualPorF, ExpectedPorF,
                 ActualArgTypes, ExpectedArgTypes,
@@ -2174,14 +2172,6 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                 ActualArgModes, _ActualRegInfo, ActualDetism),
             ExpectedPredInstInfo = pred_inst_info(ExpectedHOPorF,
                 ExpectedArgModes, _ExpectedRegInfo, ExpectedDetism),
-            list.length(ActualArgTypes, ActualNumArgTypes),
-            list.length(ExpectedArgTypes, ExpectedNumArgTypes),
-            % This is guaranteed by the failure of the
-            % "ActualArgTypes \= ExpectedNumArgTypes" test above.
-            expect(unify(ActualNumArgTypes, ExpectedNumArgTypes), $pred,
-                "ActualNumArgTypes != ExpectedNumArgTypes"),
-            list.length(ActualArgModes, ActualNumArgModes),
-            list.length(ExpectedArgModes, ExpectedNumArgModes),
             ( if ActualHOPorF = ActualPorF then
                 true
             else
@@ -2208,6 +2198,10 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                 add_to_diff_pieces(ContextPieces,
                     ExpPredFuncTypeModeCausePieces, !DiffPieces)
             ),
+            list.length(ActualArgTypes, ActualNumArgTypes),
+            list.length(ExpectedArgTypes, ExpectedNumArgTypes),
+            list.length(ActualArgModes, ActualNumArgModes),
+            list.length(ExpectedArgModes, ExpectedNumArgModes),
             ( if ActualNumArgTypes = ActualNumArgModes then
                 true
             else
