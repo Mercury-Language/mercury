@@ -212,34 +212,31 @@ report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
     type_assign_get_var_types(TypeAssign1, VarTypes1),
     vartypes_vars(VarTypes1, Vars1),
     AllTypeAssigns = [TypeAssign1, TypeAssign2 | TypeAssigns3plus],
-    VarAssignPiecesList = list.map(
+    VarAssignPiecesList0 = list.map(
         var_ambiguity_to_pieces(VarSet, InstVarSet, AllTypeAssigns), Vars1),
+    list.filter(list.is_non_empty, VarAssignPiecesList0, VarAssignPiecesList),
     (
         VarAssignPiecesList = [],
-        VarAmbiguityPieces = [],
-        VerboseComponents = [],
-        WarningMsgs = too_much_overloading_to_msgs(ClauseContext, Context,
+        Msgs = too_much_overloading_to_msgs(ClauseContext, Context,
             OverloadedSymbolMap, no)
     ;
         VarAssignPiecesList = [_ | TailVarAssignPiecesList],
         list.condense(VarAssignPiecesList, VarAssignPieces),
         (
             TailVarAssignPiecesList = [],
-            AmguityIntro = "The following variable has an ambiguous type:"
+            AmbiguityIntro = "The following variable has an ambiguous type:"
         ;
             TailVarAssignPiecesList = [_ | _],
-            AmguityIntro = "The following variables have ambiguous types:"
+            AmbiguityIntro = "The following variables have ambiguous types:"
         ),
-        VarAmbiguityPieces = [words(AmguityIntro), nl | VarAssignPieces],
+        AlwaysPieces = InClauseForPieces ++ ErrorPieces ++
+            [words(AmbiguityIntro), nl | VarAssignPieces],
         VerboseComponents =
             [verbose_only(verbose_once, add_qualifiers_reminder)],
-        WarningMsgs = []
+        Msg = simple_msg(Context, [always(AlwaysPieces) | VerboseComponents]),
+        Msgs = [Msg]
     ),
-
-    AlwaysPieces = InClauseForPieces ++ ErrorPieces ++ VarAmbiguityPieces,
-    MainMsg = simple_msg(Context, [always(AlwaysPieces) | VerboseComponents]),
-    Spec = error_spec($pred, severity_error, phase_type_check,
-        [MainMsg | WarningMsgs]).
+    Spec = error_spec($pred, severity_error, phase_type_check, Msgs).
 
 :- func add_qualifiers_reminder = list(format_piece).
 

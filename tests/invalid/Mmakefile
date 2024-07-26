@@ -68,6 +68,7 @@ BORING_SINGLEMODULE_PROGS = \
 	arg_permutation \
 	arith_wrong_module \
 	assert_in_interface \
+	bad_ambiguity_msg \
 	bad_consider_used \
 	bad_detism \
 	bad_fact_table_data \
