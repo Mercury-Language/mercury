@@ -1146,9 +1146,16 @@ typecheck_unification(UnifyContext, Context, GoalId, LHSVar, RHS0, RHS,
             !TypeAssignSet, !Info),
         RHS = RHS0
     ;
-        RHS0 = rhs_functor(Functor, _ExistConstraints, ArgVars),
-        typecheck_unify_var_functor(UnifyContext, Context, LHSVar,
-            Functor, ArgVars, GoalId, !TypeAssignSet, !Info),
+        RHS0 = rhs_functor(ConsId, _ExistConstraints, ArgVars),
+        ( if
+            cons_id_must_be_builtin_type(ConsId, BuiltinType, BuiltinTypeName)
+        then
+            typecheck_unify_var_functor_builtin(UnifyContext, Context, LHSVar,
+                ConsId, BuiltinType, BuiltinTypeName, !TypeAssignSet, !Info)
+        else
+            typecheck_unify_var_functor_std(UnifyContext, Context, LHSVar,
+                ConsId, ArgVars, GoalId, !TypeAssignSet, !Info)
+        ),
         perform_context_reduction(Context, !TypeAssignSet, !Info),
         RHS = RHS0
     ;
@@ -1162,6 +1169,8 @@ typecheck_unification(UnifyContext, Context, GoalId, LHSVar, RHS0, RHS,
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             NonLocals, VarsModes, Det, Goal)
     ).
+
+%---------------------%
 
 :- pred typecheck_unify_var_var(unify_context::in, prog_context::in,
     prog_var::in, prog_var::in,
@@ -1183,10 +1192,12 @@ typecheck_unify_var_var(UnifyContext, Context, X, Y,
         TypeAssignSet = TypeAssignSet1
     ).
 
-:- pred cons_id_must_be_builtin_type(cons_id::in, mer_type::out, string::out)
-    is semidet.
+%---------------------%
 
-cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) :-
+:- pred cons_id_must_be_builtin_type(cons_id::in, builtin_type::out,
+    string::out) is semidet.
+
+cons_id_must_be_builtin_type(ConsId, BuiltinType, BuiltinTypeName) :-
     (
         ConsId = some_int_const(IntConst),
         BuiltinType = builtin_type_int(type_of_int_const(IntConst)),
@@ -1199,25 +1210,114 @@ cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) :-
         ConsId = string_const(_),
         BuiltinTypeName = "string",
         BuiltinType = builtin_type_string
-    ),
-    ConsType = builtin_type(BuiltinType).
+    ).
 
-:- pred typecheck_unify_var_functor(unify_context::in, prog_context::in,
+:- pred typecheck_unify_var_functor_builtin(unify_context::in,
+    prog_context::in, prog_var::in, cons_id::in, builtin_type::in, string::in,
+    type_assign_set::in, type_assign_set::out,
+    typecheck_info::in, typecheck_info::out) is det.
+
+typecheck_unify_var_functor_builtin(UnifyContext, Context, LHSVar, ConsId,
+        BuiltinType, BuiltinTypeName, TypeAssignSet0, TypeAssignSet, !Info) :-
+    ( if BuiltinType = builtin_type_int(int_type_int) then
+        typecheck_info_add_nosuffix_integer_var(LHSVar, !Info)
+    else
+        true
+    ),
+    ConsType = builtin_type(BuiltinType),
+    list.foldl(
+        type_assign_check_functor_type_builtin(ConsType, LHSVar),
+        TypeAssignSet0, [], TypeAssignSet1),
+    (
+        TypeAssignSet1 = [_ | _],
+        TypeAssignSet = TypeAssignSet1
+    ;
+        TypeAssignSet1 = [],
+        % If we encountered an error, continue checking with the
+        % original type assign set.
+        TypeAssignSet = TypeAssignSet0,
+        (
+            TypeAssignSet0 = []
+            % The error did not originate here, so generating an error
+            % message here would be misleading.
+        ;
+            TypeAssignSet0 = [_ | _],
+            varset.init(ConsTypeVarSet),
+            ConsTypeInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
+                empty_hlds_constraints, source_builtin_type(BuiltinTypeName)),
+            ConsIdSpec = report_error_unify_var_functor_result(!.Info,
+                UnifyContext, Context, LHSVar, [ConsTypeInfo],
+                ConsId, 0, TypeAssignSet0),
+            typecheck_info_add_error(ConsIdSpec, !Info)
+        )
+    ).
+
+:- pred typecheck_unify_var_functor_std(unify_context::in, prog_context::in,
     prog_var::in, cons_id::in, list(prog_var)::in, goal_id::in,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
+typecheck_unify_var_functor_std(UnifyContext, Context, LHSVar, ConsId, ArgVars,
         GoalId, TypeAssignSet0, TypeAssignSet, !Info) :-
-    ( if cons_id_must_be_builtin_type(ConsId, ConsType, BuiltinTypeName) then
-        ( if ConsType = builtin_type(builtin_type_int(int_type_int)) then
-            typecheck_info_add_nosuffix_integer_var(Var, !Info)
+    % Get the list of possible constructors that match this functor/arity.
+    % If there aren't any, report an undefined constructor error.
+    list.length(ArgVars, Arity),
+    typecheck_info_get_ctor_list(!.Info, ConsId, Arity, GoalId,
+        ConsTypeInfos, ConsErrors),
+    (
+        ConsTypeInfos = [],
+        typecheck_info_get_error_clause_context(!.Info, ClauseContext),
+        TypeAssignSet = TypeAssignSet0,
+        GoalContext = type_error_in_unify(UnifyContext),
+        Spec = report_error_undef_cons(ClauseContext, GoalContext,
+            Context, ConsErrors, ConsId),
+        typecheck_info_add_error(Spec, !Info)
+    ;
+        (
+            ConsTypeInfos = [_]
+        ;
+            ConsTypeInfos = [_, _ | _],
+            Sources =
+                list.map(project_cons_type_info_source, ConsTypeInfos),
+            Symbol = overloaded_func(ConsId, Sources),
+            typecheck_info_add_overloaded_symbol(Symbol, Context, !Info)
+        ),
+
+        % Produce the ConsTypeAssignSet, which is essentially the
+        % cross-product of the ConsTypeInfos and the TypeAssignSet0.
+        get_cons_type_assigns_for_cons_defns(ConsTypeInfos, TypeAssignSet0,
+            [], ConsTypeAssignSet),
+        ( if
+            ConsTypeAssignSet = [],
+            TypeAssignSet0 = [_ | _]
+        then
+            % This should never happen, since undefined ctors
+            % should be caught by the check just above.
+            unexpected($pred, "undefined cons?")
         else
             true
         ),
-        list.foldl(
-            type_assign_check_functor_type_builtin(ConsType, Var),
-            TypeAssignSet0, [], TypeAssignSet1),
+
+        % Check that the type of the functor matches the type of the
+        % variable.
+        typecheck_var_functor_types(LHSVar, ConsTypeAssignSet,
+            [], ArgsTypeAssignSet),
+        ( if
+            ArgsTypeAssignSet = [],
+            ConsTypeAssignSet = [_ | _]
+        then
+            ConsIdSpec = report_error_unify_var_functor_result(!.Info,
+                UnifyContext, Context, LHSVar, ConsTypeInfos, ConsId, Arity,
+                TypeAssignSet0),
+            typecheck_info_add_error(ConsIdSpec, !Info)
+        else
+            true
+        ),
+
+        % Check that the type of the arguments of the functor matches
+        % their expected type for this functor.
+        typecheck_functor_arg_types(!.Info, ArgVars, ArgsTypeAssignSet,
+            [], TypeAssignSet1),
         (
             TypeAssignSet1 = [_ | _],
             TypeAssignSet = TypeAssignSet1
@@ -1227,100 +1327,15 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
             % original type assign set.
             TypeAssignSet = TypeAssignSet0,
             (
-                TypeAssignSet0 = []
+                ArgsTypeAssignSet = []
                 % The error did not originate here, so generating an error
                 % message here would be misleading.
             ;
-                TypeAssignSet0 = [_ | _],
-                varset.init(ConsTypeVarSet),
-                ConsTypeInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
-                    empty_hlds_constraints,
-                    source_builtin_type(BuiltinTypeName)),
-                ConsIdSpec = report_error_unify_var_functor_result(!.Info,
-                    UnifyContext, Context, Var, [ConsTypeInfo],
-                    ConsId, 0, TypeAssignSet0),
-                typecheck_info_add_error(ConsIdSpec, !Info)
-            )
-        )
-    else
-        % Get the list of possible constructors that match this functor/arity.
-        % If there aren't any, report an undefined constructor error.
-        list.length(ArgVars, Arity),
-        typecheck_info_get_ctor_list(!.Info, ConsId, Arity, GoalId,
-            ConsTypeInfos, ConsErrors),
-        (
-            ConsTypeInfos = [],
-            typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-            TypeAssignSet = TypeAssignSet0,
-            GoalContext = type_error_in_unify(UnifyContext),
-            Spec = report_error_undef_cons(ClauseContext, GoalContext,
-                Context, ConsErrors, ConsId),
-            typecheck_info_add_error(Spec, !Info)
-        ;
-            (
-                ConsTypeInfos = [_]
-            ;
-                ConsTypeInfos = [_, _ | _],
-                Sources =
-                    list.map(project_cons_type_info_source, ConsTypeInfos),
-                Symbol = overloaded_func(ConsId, Sources),
-                typecheck_info_add_overloaded_symbol(Symbol, Context, !Info)
-            ),
-
-            % Produce the ConsTypeAssignSet, which is essentially the
-            % cross-product of the ConsTypeInfos and the TypeAssignSet0.
-            get_cons_type_assigns_for_cons_defns(ConsTypeInfos, TypeAssignSet0,
-                [], ConsTypeAssignSet),
-            ( if
-                ConsTypeAssignSet = [],
-                TypeAssignSet0 = [_ | _]
-            then
-                % This should never happen, since undefined ctors
-                % should be caught by the check just above.
-                unexpected($pred, "undefined cons?")
-            else
-                true
-            ),
-
-            % Check that the type of the functor matches the type of the
-            % variable.
-            typecheck_var_functor_types(Var, ConsTypeAssignSet,
-                [], ArgsTypeAssignSet),
-            ( if
-                ArgsTypeAssignSet = [],
-                ConsTypeAssignSet = [_ | _]
-            then
-                ConsIdSpec = report_error_unify_var_functor_result(!.Info,
-                    UnifyContext, Context, Var, ConsTypeInfos, ConsId, Arity,
-                    TypeAssignSet0),
-                typecheck_info_add_error(ConsIdSpec, !Info)
-            else
-                true
-            ),
-
-            % Check that the type of the arguments of the functor matches
-            % their expected type for this functor.
-            typecheck_functor_arg_types(!.Info, ArgVars, ArgsTypeAssignSet,
-                [], TypeAssignSet1),
-            (
-                TypeAssignSet1 = [_ | _],
-                TypeAssignSet = TypeAssignSet1
-            ;
-                TypeAssignSet1 = [],
-                % If we encountered an error, continue checking with the
-                % original type assign set.
-                TypeAssignSet = TypeAssignSet0,
-                (
-                    ArgsTypeAssignSet = []
-                    % The error did not originate here, so generating an error
-                    % message here would be misleading.
-                ;
-                    ArgsTypeAssignSet = [_ | _],
-                    ArgSpec = report_error_unify_var_functor_args(!.Info,
-                        UnifyContext, Context, Var, ConsTypeInfos,
-                        ConsId, ArgVars, ArgsTypeAssignSet),
-                    typecheck_info_add_error(ArgSpec, !Info)
-                )
+                ArgsTypeAssignSet = [_ | _],
+                ArgSpec = report_error_unify_var_functor_args(!.Info,
+                    UnifyContext, Context, LHSVar, ConsTypeInfos,
+                    ConsId, ArgVars, ArgsTypeAssignSet),
+                typecheck_info_add_error(ArgSpec, !Info)
             )
         )
     ).
@@ -2622,7 +2637,9 @@ check_coerce_constraint_if_ready(TypeTable, Coercion0, Action, !TypeAssign) :-
                     FromType, ToType, TypeAssign0, TypeAssign1)
             then
                 type_assign_get_type_bindings(TypeAssign1, TypeBindings1),
-                ( if is_same_type_after_subst(TypeBindings1, FromType, ToType) then
+                ( if
+                    is_same_type_after_subst(TypeBindings1, FromType, ToType)
+                then
                     Coercion = coerce_constraint(FromType, ToType,
                         Context, FromVar, satisfied_but_redundant),
                     Action = keep(Coercion)
@@ -2685,31 +2702,66 @@ coerce_constraint_is_satisfied(Coercion) :-
     %
 :- pred builtin_atomic_type(cons_id::in, string::out) is semidet.
 
-builtin_atomic_type(some_int_const(IntConst), TypeName) :-
-    TypeName = type_name_of_int_const(IntConst).
-builtin_atomic_type(float_const(_), "float").
-builtin_atomic_type(char_const(_), "character").
-builtin_atomic_type(string_const(_), "string").
-builtin_atomic_type(du_data_ctor(du_ctor(unqualified(String), 0, _)),
-        "character") :-
-    % We are before post-typecheck, so character constants have not yet been
-    % converted to char_consts.
-    %
-    % XXX The parser should have a separate term.functor representation
-    % for character constants, which should be converted to char_consts
-    % during the term to item translation.
-    string.char_to_string(_, String).
-builtin_atomic_type(impl_defined_const(IDCKind), Type) :-
+builtin_atomic_type(ConsId, TypeName) :-
+    require_complete_switch [ConsId]
     (
-        ( IDCKind = idc_file
-        ; IDCKind = idc_module
-        ; IDCKind = idc_pred
-        ; IDCKind = idc_grade
-        ),
-        Type = "string"
+        ConsId = some_int_const(IntConst),
+        TypeName = type_name_of_int_const(IntConst)
     ;
-        IDCKind = idc_line,
-        Type = "int"
+        ConsId = float_const(_),
+        TypeName = "float"
+    ;
+        ConsId = char_const(_),
+        TypeName = "character"
+    ;
+        ConsId = string_const(_),
+        TypeName = "string"
+    ;
+        ConsId = du_data_ctor(DuCtor),
+        DuCtor = du_ctor(SymName, Arity, _TypeCtor),
+        % We are before post-typecheck, so character constants have
+        % not yet been converted to char_consts.
+        %
+        % XXX The parser should have a separate term.functor representation
+        % for character constants, which should be converted to char_consts
+        % during the term to item translation.
+        ( if
+            SymName = unqualified(String),
+            string.char_to_string(_, String),
+            Arity = 0
+        then
+            TypeName = "character"
+        else
+            fail
+        )
+    ;
+        ConsId = impl_defined_const(IDCKind),
+        (
+            ( IDCKind = idc_file
+            ; IDCKind = idc_module
+            ; IDCKind = idc_pred
+            ; IDCKind = idc_grade
+            ),
+            TypeName = "string"
+        ;
+            IDCKind = idc_line,
+            TypeName = "int"
+        )
+    ;
+        ( ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = closure_cons(_)
+        ; ConsId = deep_profiling_proc_layout(_)
+        ; ConsId = ground_term_const(_, _)
+        ; ConsId = table_io_entry_desc(_)
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = tuple_cons(_)
+        ; ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = type_info_const(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = typeclass_info_const(_)
+        ),
+        fail
     ).
 
     % builtin_pred_type(Info, ConsId, Arity, GoalId, PredConsInfoList):
