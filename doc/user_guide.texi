@@ -7122,7 +7122,7 @@ not just the first.  Implies @samp{--verbose-recompilation}.
 @findex --output-compile-error-lines
 @findex --make
 With @samp{--make}, output the first @var{n} lines of the @samp{.err}
-file after compiling a module (default: 15).
+file after compiling a module (default: 100).
 Specifying --no-output-compile-error-lines removes the limit.
 
 @sp 1

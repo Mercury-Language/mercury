@@ -1268,6 +1268,8 @@ Changes to the Mercury compiler
   that tells the compiler to generate warnings for type conversions
   from one type to the same type. This option is enabled by default.
 
+* We have raised the default value of `--output-compile-error-lines` to 100.
+
 * We have added a new option `--reverse-error-order` that tells the compiler
   to output error messages for higher line numbers before error messages
   for lower line numbers.
