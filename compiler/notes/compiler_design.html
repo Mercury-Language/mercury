@@ -1009,8 +1009,8 @@ The type checker consists of several modules.
     including managing the type inference process,
     and handling stubs.
     <li>
-    typecheck.m handles the type checking
-    of predicate and function definitions,
+    typecheck.m
+    handles the top level type checking of predicate and function definitions,
     including overloading resolution and module name resolution,
     and almost fully qualifies all predicate and functor names.
     It sets the map(var, type) field in the pred_info.
@@ -1020,6 +1020,15 @@ The type checker consists of several modules.
     and so it is done later on
     (in purity.m for overloaded predicate calls,
     and in resolve_unify_functor.m for function calls).
+    <li>
+    typecheck_unify_var_functor.m does typechecking
+    Jof unifications of the form X = f(Y1, ..., Yn).
+    <li>
+    typecheck_coerce.m typecheck coerce goals.
+    <li>
+    typecheck_clauses.m typechecks all other kinds of goals.
+    <li>
+    typecheck_util.m contains utility predicates.
     <li>
     type_assign.m and typecheck_info.m define
     the main data structures used by typechecking.
