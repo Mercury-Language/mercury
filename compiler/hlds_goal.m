@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1567,7 +1568,7 @@
             % for this goal.
 
     ;       feature_will_not_call_mm_tabled
-            % This goal will never call a procedure that is evaluted using
+            % This goal will never call a procedure that is evaluated using
             % minimal model tabling. It is safe for the code generator to omit
             % the pneg context wrappers when generating code for this goal.
 
