@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2009, 2011 The University of Melbourne.
+% Copyright (C) 2013-2016, 2018-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -56,7 +57,7 @@
     list(item_pred_decl_info)::out) is det.
 
     % Define the auxiliary predicates declared above. It is the caller's
-    % resposibility to call this predicate only if the solver type is defined
+    % responsibility to call this predicate only if the solver type is defined
     % in this module, since we don't want them to be doubly defined
     % both in this module and in the module that defines the solver type.
     %
