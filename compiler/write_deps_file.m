@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2008-2011 The University of Melbourne.
+% Copyright (C) 2008-2012 The University of Melbourne.
 % Copyright (C) 2013-2017, 2019-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
@@ -57,7 +57,7 @@
     --->    trans_opt_deps_from_order(set(module_name))
     ;       trans_opt_deps_from_d_file(set(module_name)).
 
-    % write_dependency_file(ProgressStream, Globals, BurdenedAugCompUnit,
+    % write_d_file(ProgressStream, Globals, BurdenedAugCompUnit,
     %   MaybeIntermodDeps, AllDeps, MaybeInclTransOptRule, !IO):
     %
     % Write out the per-module makefile dependencies (`.d') file for the
@@ -79,7 +79,7 @@
     % I am pretty sure that the original author (fjh) does not know anymore
     % either :-(
     %
-:- pred write_dependency_file(io.text_output_stream::in,
+:- pred write_d_file(io.text_output_stream::in,
     globals::in, burdened_aug_comp_unit::in,
     maybe_intermod_deps::in, set(module_name)::in,
     maybe_include_trans_opt_rule::in, io::di, io::uo) is det.
@@ -177,21 +177,21 @@
 
 %---------------------------------------------------------------------------%
 
-write_dependency_file(ProgressStream, Globals, BurdenedAugCompUnit,
+write_d_file(ProgressStream, Globals, BurdenedAugCompUnit,
         IntermodDeps, AllDeps, MaybeInclTransOptRule, !IO) :-
     map.init(Cache0),
-    write_dependency_file_fn_cache(ProgressStream, Globals,
+    write_d_file_fn_cache(ProgressStream, Globals,
         BurdenedAugCompUnit, IntermodDeps, AllDeps, MaybeInclTransOptRule,
         Cache0, _Cache, !IO).
 
-:- pred write_dependency_file_fn_cache(io.text_output_stream::in,
+:- pred write_d_file_fn_cache(io.text_output_stream::in,
     globals::in, burdened_aug_comp_unit::in,
     maybe_intermod_deps::in, set(module_name)::in,
     maybe_include_trans_opt_rule::in,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-write_dependency_file_fn_cache(ProgressStream, Globals, BurdenedAugCompUnit,
+write_d_file_fn_cache(ProgressStream, Globals, BurdenedAugCompUnit,
         IntermodDeps, AllDeps, MaybeInclTransOptRule, !Cache, !IO) :-
     % To avoid problems with concurrent updates of `.d' files during
     % parallel makes, we first create the file with a temporary name,
@@ -232,7 +232,8 @@ write_dependency_file_fn_cache(ProgressStream, Globals, BurdenedAugCompUnit,
             Result = ok(DepStream),
             generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
                 AllDeps, MaybeInclTransOptRule, MmakeFile, !Cache, !IO),
-            write_mmakefile(DepStream, MmakeFile, !IO),
+            MmakeFileStr = mmakefile_to_string(MmakeFile),
+            io.write_string(DepStream, MmakeFileStr, !IO),
             io.close_output(DepStream, !IO),
 
             io.file.rename_file(TmpDependencyFileName, DependencyFileName,
@@ -1446,7 +1447,7 @@ generate_dependencies_write_d_file(ProgressStream, Globals,
     ( if set.is_empty(FatalErrors) then
         init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit),
         BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
-        write_dependency_file_fn_cache(ProgressStream, Globals,
+        write_d_file_fn_cache(ProgressStream, Globals,
             BurdenedAugCompUnit, IntermodDeps, IndirectOptDeps,
             MaybeInclTransOptRule, !Cache, !IO)
     else
@@ -1486,7 +1487,8 @@ generate_dependencies_write_dv_file(ProgressStream, Globals,
         map.init(Cache0),
         generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
             MmakeFile, Cache0, _Cache, !IO),
-        write_mmakefile(DvStream, MmakeFile, !IO),
+        MmakeFileStr = mmakefile_to_string(MmakeFile),
+        io.write_string(DvStream, MmakeFileStr, !IO),
         io.close_output(DvStream, !IO),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
     ;
@@ -1751,9 +1753,8 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         string.format("$(%s.mods:%%=$(int2s_subdir)%%.int2)",
             [s(ModuleMakeVarName)])]),
     % `.int0' files are only generated for modules with submodules.
-    % XXX ... or at least they should be. Currently we end up generating
-    % .int0 files for nested submodules that don't have any children.
-    % (We do the correct thing for separate submodules.)
+    % XXX Once, we also generated .int0 files for nested submodules that
+    % don't have any children, but this bug seems to have been fixed.
     MmakeVarInt0s = mmake_var_defn(ModuleMakeVarName ++ ".int0s",
         string.format("$(%s.parent_mods:%%=$(int0s_subdir)%%.int0)",
             [s(ModuleMakeVarName)])),
@@ -1847,6 +1848,14 @@ select_ok_modules(DepsMap, [ModuleName | ModuleNames0], ModuleNames) :-
         ModuleNames = ModuleNamesTail
     ).
 
+:- pred compare_module_names(module_name::in, module_name::in,
+    comparison_result::out) is det.
+
+compare_module_names(Sym1, Sym2, Result) :-
+    Str1 = sym_name_to_string(Sym1),
+    Str2 = sym_name_to_string(Sym2),
+    compare(Result, Str1, Str2).
+
 %---------------------%
 
     % get_fact_table_file_names(DepsMap, Modules, ExtraLinkObjs):
@@ -1896,7 +1905,8 @@ generate_dependencies_write_dep_file(ProgressStream, Globals,
         DepResult = ok(DepStream),
         generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
             MmakeFile, !IO),
-        write_mmakefile(DepStream, MmakeFile, !IO),
+        MmakeFileStr = mmakefile_to_string(MmakeFile),
+        io.write_string(DepStream, MmakeFileStr, !IO),
         io.close_output(DepStream, !IO),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
     ;
@@ -2672,16 +2682,6 @@ get_opt_deps(Globals, BuildOptFiles, IntermodDirs, Ext,
 
 %---------------------------------------------------------------------------%
 
-:- pred compare_module_names(module_name::in, module_name::in,
-    comparison_result::out) is det.
-
-compare_module_names(Sym1, Sym2, Result) :-
-    Str1 = sym_name_to_string(Sym1),
-    Str2 = sym_name_to_string(Sym2),
-    compare(Result, Str1, Str2).
-
-%---------------------------------------------------------------------------%
-
 :- type module_file_name_cache == map(ext, map(module_name, file_name)).
 
 :- pred make_module_file_name_group_with_ext(globals::in, string::in,
@@ -2756,8 +2756,7 @@ make_module_file_names_with_ext(Globals, Ext, Modules, FileNames,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-make_module_file_name(Globals, From, Ext, ModuleName, FileName,
-        !Cache, !IO) :-
+make_module_file_name(Globals, From, Ext, ModuleName, FileName, !Cache, !IO) :-
     % We cache result of the translation, in order to save on
     % temporary string construction.
     % See the analysis of gathered statistics below for why we use the cache
@@ -2804,7 +2803,7 @@ make_module_file_name(Globals, From, Ext, ModuleName, FileName,
 % Its job is to gather statistics about
 %
 % - how many times we try to translate filenames with each extension, and
-% - what the hit rates of the cache is for each extension.
+% - what the hit rate of the cache is for each extension.
 %
 % The data gathered here, written out by record_write_deps_file_cache_stats,
 % can be summarized by tools/write_deps_file_stats.

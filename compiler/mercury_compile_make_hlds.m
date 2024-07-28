@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022 The Mercury Team.
+% Copyright (C) 2022-2024 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -225,7 +225,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
             MaybeDFileTransOptDeps = no,
             MaybeInclTransOptRule = do_not_include_trans_opt_rule
         ),
-        write_dependency_file(ProgressStream, Globals, BurdenedAugCompUnit,
+        write_d_file(ProgressStream, Globals, BurdenedAugCompUnit,
             no_intermod_deps, AllDeps, MaybeInclTransOptRule, !IO),
         globals.lookup_bool_option(Globals,
             generate_mmc_make_module_dependencies, OutputMMCMakeDeps),

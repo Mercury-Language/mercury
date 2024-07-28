@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016 The Mercury team.
+% Copyright (C) 2017,2019-2020,2022-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,7 +20,6 @@
 :- interface.
 
 :- import_module cord.
-:- import_module io.
 :- import_module list.
 :- import_module one_or_more.
 
@@ -39,8 +38,7 @@
 
 :- func mmake_entry_to_fragment(mmake_entry) = mmake_fragment.
 
-:- pred write_mmakefile(io.text_output_stream::in, mmakefile::in,
-    io::di, io::uo) is det.
+:- func mmakefile_to_string(mmakefile) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -285,6 +283,7 @@
 
 :- import_module int.
 :- import_module string.
+:- import_module string.builder.
 
 %---------------------------------------------------------------------------%
 
@@ -310,120 +309,118 @@ mmake_entry_to_fragment(Entry) = mmf_entry(Entry).
 
 %---------------------------------------------------------------------------%
 
-:- type maybe_write_mmake_comments
-    --->    do_not_write_mmake_comments
-    ;       write_mmake_comments.
+:- type maybe_add_mmake_comments
+    --->    do_not_add_mmake_comments
+    ;       add_mmake_comments.
 
-write_mmakefile(OutStream, !.MmakeFile, !IO) :-
+mmakefile_to_string(MmakeFile) = MmakeFileStr :-
+    SB0 = string.builder.init,
     cord.foldl_pred(
-        write_mmake_fragment(OutStream, write_mmake_comments),
-        !.MmakeFile, !IO).
+        append_mmake_fragment(add_mmake_comments),
+        MmakeFile, SB0, SB),
+    MmakeFileStr = string.builder.to_string(SB).
 
-:- pred write_mmake_fragments(io.text_output_stream::in,
-    maybe_write_mmake_comments::in,
-    list(mmake_fragment)::in, io::di, io::uo) is det.
+:- pred append_mmake_fragments(maybe_add_mmake_comments::in,
+    list(mmake_fragment)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_mmake_fragments(_OutStream, _WriteComments, [], !IO).
-write_mmake_fragments(OutStream, WriteComments,
-        [MmakeFragment | MmakeFragments], !IO) :-
-    write_mmake_fragment(OutStream, WriteComments, MmakeFragment, !IO),
-    write_mmake_fragments(OutStream, WriteComments, MmakeFragments, !IO).
+append_mmake_fragments(__WriteComments, [], !SB).
+append_mmake_fragments(WriteComments, [MmakeFragment | MmakeFragments], !SB) :-
+    append_mmake_fragment(WriteComments, MmakeFragment, !SB),
+    append_mmake_fragments(WriteComments, MmakeFragments, !SB).
 
-:- pred write_mmake_fragment(io.text_output_stream::in,
-    maybe_write_mmake_comments::in, mmake_fragment::in, io::di, io::uo) is det.
+:- pred append_mmake_fragment(maybe_add_mmake_comments::in,
+    mmake_fragment::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_mmake_fragment(OutStream, WriteComments, MmakeFragment, !IO) :-
+append_mmake_fragment(WriteComments, MmakeFragment, !SB) :-
     (
         MmakeFragment = mmf_entry(Entry),
-        write_mmake_entry(OutStream, WriteComments,
-            Entry, !IO)
+        append_mmake_entry(WriteComments, Entry, !SB)
     ;
         MmakeFragment = mmf_conditional_entry(Cond, ThenEntry, ElseEntry),
-        write_mmake_condition(OutStream, Cond, !IO),
-        io.write_string(OutStream, "\n", !IO),
-        write_mmake_entry(OutStream, WriteComments, ThenEntry, !IO),
-        io.write_string(OutStream, "else\n", !IO),
-        io.write_string(OutStream, "\n", !IO),
-        write_mmake_entry(OutStream, WriteComments, ElseEntry, !IO),
-        io.write_string(OutStream, "endif # conditional fragment\n\n", !IO)
+        append_mmake_condition(Cond, !SB),
+        append_string("\n", !SB),
+        append_mmake_entry(WriteComments, ThenEntry, !SB),
+        append_string("else\n\n", !SB),
+        append_mmake_entry(WriteComments, ElseEntry, !SB),
+        append_string("endif # conditional fragment\n\n", !SB)
     ;
         MmakeFragment = mmf_conditional_fragments(Cond,
             ThenFragments, ElseFragments),
-        write_mmake_condition(OutStream, Cond, !IO),
-        io.write_string(OutStream, "\n", !IO),
-        write_mmake_fragments(OutStream, WriteComments, ThenFragments, !IO),
+        append_mmake_condition(Cond, !SB),
+        append_string("\n", !SB),
+        append_mmake_fragments(WriteComments, ThenFragments, !SB),
         (
             ElseFragments = []
         ;
             ElseFragments = [_ | _],
-            io.write_string(OutStream, "else\n", !IO),
-            io.write_string(OutStream, "\n", !IO),
-            write_mmake_fragments(OutStream, WriteComments, ElseFragments, !IO)
+            append_string("else\n\n", !SB),
+            append_mmake_fragments(WriteComments, ElseFragments, !SB)
         ),
-        io.write_string(OutStream, "endif # conditional fragment\n\n", !IO)
+        append_string("endif # conditional fragment\n\n", !SB)
     ).
 
-:- pred write_mmake_condition(io.text_output_stream::in,
-    mmake_condition::in, io::di, io::uo) is det.
+:- pred append_mmake_condition(mmake_condition::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_mmake_condition(OutStream, Cond, !IO) :-
+append_mmake_condition(Cond, !SB) :-
     (
         Cond = mmake_cond_grade_has_component(GradeComponent),
-        io.format(OutStream, "ifeq ($(findstring %s,$(GRADE)),%s)\n",
-            [s(GradeComponent), s(GradeComponent)], !IO)
+        string.builder.format("ifeq ($(findstring %s,$(GRADE)),%s)\n",
+            [s(GradeComponent), s(GradeComponent)], !SB)
 %   ;
 %       Cond = mmake_cond_not_grade_has_component(GradeComponent),
-%       io.format(OutStream, "ifneq ($(findstring %s,$(GRADE)),%s)\n",
-%           [s(GradeComponent), s(GradeComponent)], !IO)
+%       string.builder.format("ifneq ($(findstring %s,$(GRADE)),%s)\n",
+%           [s(GradeComponent), s(GradeComponent)], !SB)
     ;
         Cond = mmake_cond_strings_equal(StrA, StrB),
-        io.format(OutStream, "ifeq (%s,%s)\n", [s(StrA), s(StrB)], !IO)
+        string.builder.format("ifeq (%s,%s)\n", [s(StrA), s(StrB)], !SB)
     ;
         Cond = mmake_cond_strings_not_equal(StrA, StrB),
-        io.format(OutStream, "ifneq (%s,%s)\n", [s(StrA), s(StrB)], !IO)
+        string.builder.format("ifneq (%s,%s)\n", [s(StrA), s(StrB)], !SB)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_mmake_entry(io.text_output_stream::in,
-    maybe_write_mmake_comments::in, mmake_entry::in, io::di, io::uo) is det.
+:- pred append_mmake_entry(maybe_add_mmake_comments::in, mmake_entry::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_mmake_entry(OutStream, _WriteComments, MmakeEntry, !IO) :-
+append_mmake_entry(_WriteComments, MmakeEntry, !SB) :-
     (
         MmakeEntry = mmake_start_comment(Contents, ModuleName, SourceFile,
             Version, FullArch),
-        io.format(OutStream, "# vim: ts=8 sw=8 noexpandtab ft=make\n\n",
-            [], !IO),
-        io.format(OutStream, "# Automatically generated %s for\n",
-            [s(Contents)], !IO),
-        io.format(OutStream, "# module `%s' in source file `%s'.\n",
-            [s(ModuleName), s(SourceFile)], !IO),
-        io.format(OutStream, "# Generated by Mercury compiler version %s\n",
-            [s(Version)], !IO),
-        io.format(OutStream, "# configured for %s.\n",
-            [s(FullArch)], !IO)
+        string.builder.format("# vim: ts=8 sw=8 noexpandtab ft=make\n\n",
+            [], !SB),
+        string.builder.format("# Automatically generated %s for\n",
+            [s(Contents)], !SB),
+        string.builder.format("# module `%s' in source file `%s'.\n",
+            [s(ModuleName), s(SourceFile)], !SB),
+        string.builder.format("# Generated by Mercury compiler version %s\n",
+            [s(Version)], !SB),
+        string.builder.format("# configured for %s.\n",
+            [s(FullArch)], !SB)
     ;
         MmakeEntry = mmake_block_comment(CommentLines),
-        list.foldl(write_block_comment_line(OutStream), CommentLines, !IO)
+        list.foldl(append_block_comment_line, CommentLines, !SB)
     ;
         MmakeEntry = mmake_var_defn(VarName, Value),
-        io.format(OutStream, "%s = %s\n",
-            [s(VarName), s(Value)], !IO)
+        string.builder.format("%s = %s\n", [s(VarName), s(Value)], !SB)
     ;
         MmakeEntry = mmake_var_defn_list(VarName, Values),
         (
             Values = [],
-            io.format(OutStream, "%s =\n", [s(VarName)], !IO)
+            string.builder.format("%s =\n", [s(VarName)], !SB)
         ;
             Values = [HeadValue | TailValues],
             (
                 TailValues = [],
-                io.format(OutStream, "%s = %s\n",
-                    [s(VarName), s(HeadValue)], !IO)
+                string.builder.format("%s = %s\n",
+                    [s(VarName), s(HeadValue)], !SB)
             ;
                 TailValues = [_ | _],
-                io.format(OutStream, "%s = \\\n", [s(VarName)], !IO),
-                write_mmake_var_values(OutStream, HeadValue, TailValues, !IO)
+                string.builder.format("%s = \\\n", [s(VarName)], !SB),
+                append_mmake_var_values(HeadValue, TailValues, !SB)
             )
         )
     ;
@@ -435,26 +432,26 @@ write_mmake_entry(OutStream, _WriteComments, MmakeEntry, !IO) :-
                 _, SourceFiles, Actions)
         ),
 
-        write_rule_name(OutStream, RuleName, !IO),
+        append_rule_name(RuleName, !SB),
 
         (
             MmakeEntry = mmake_simple_rule(_, _, TargetFile, _, _),
-            maybe_write_phony_rule(OutStream, IsPhony, [TargetFile], !IO),
-            write_mmake_file_name(OutStream, TargetFile, !IO)
+            maybe_append_phony_rule(IsPhony, [TargetFile], !SB),
+            append_mmake_file_name(TargetFile, !SB)
         ;
             MmakeEntry = mmake_flat_rule(_, _,
                 one_or_more(HeadTargetFile, TailTargetFiles), _, _),
-            maybe_write_phony_rule(OutStream, IsPhony,
-                [HeadTargetFile | TailTargetFiles], !IO),
-            write_mmake_file_names_horizontal(OutStream,
-                HeadTargetFile, TailTargetFiles, !IO)
+            maybe_append_phony_rule(IsPhony,
+                [HeadTargetFile | TailTargetFiles], !SB),
+            append_mmake_file_names_horizontal(
+                HeadTargetFile, TailTargetFiles, !SB)
         ),
         (
             SourceFiles = [],
-            io.write_string(OutStream, " :", !IO)
+            append_string(" :", !SB)
         ;
             SourceFiles = [HeadSourceFile | TailSourceFiles],
-            io.write_string(OutStream, " : ", !IO),
+            append_string(" : ", !SB),
             ( if
                 (
                     % Always write trans_opt_deps vertically as the list needs
@@ -464,16 +461,16 @@ write_mmake_entry(OutStream, _WriteComments, MmakeEntry, !IO) :-
                     1 + list.length(TailSourceFiles) > max_horizontal
                 )
             then
-                io.write_string(OutStream, "\\\n", !IO),
-                write_mmake_file_names_vertical(OutStream,
-                    HeadSourceFile, TailSourceFiles, !IO)
+                append_string("\\\n", !SB),
+                append_mmake_file_names_vertical(
+                    HeadSourceFile, TailSourceFiles, !SB)
             else
-                write_mmake_file_names_horizontal(OutStream,
-                    HeadSourceFile, TailSourceFiles, !IO)
+                append_mmake_file_names_horizontal(
+                    HeadSourceFile, TailSourceFiles, !SB)
             )
         ),
-        io.nl(OutStream, !IO),
-        write_mmake_actions(OutStream, Actions, !IO)
+        append_string("\n", !SB),
+        append_mmake_actions(Actions, !SB)
     ;
         (
             MmakeEntry = mmake_deep_rule(RuleName, IsPhony, _,
@@ -483,63 +480,63 @@ write_mmake_entry(OutStream, _WriteComments, MmakeEntry, !IO) :-
                 SourceGroups, Actions)
         ),
 
-        write_rule_name(OutStream, RuleName, !IO),
+        append_rule_name(RuleName, !SB),
         (
             MmakeEntry = mmake_deep_rule(_, _, _, _, _)
         ;
             MmakeEntry = mmake_general_rule(_, _, TargetGroups0, _, _),
-            maybe_write_group_names(OutStream, "target",
-                one_or_more_to_list(TargetGroups0), !IO)
+            maybe_append_group_names("target",
+                one_or_more_to_list(TargetGroups0), !SB)
         ),
-        maybe_write_group_names(OutStream, "source", SourceGroups, !IO),
+        maybe_append_group_names("source", SourceGroups, !SB),
 
         (
             MmakeEntry = mmake_deep_rule(_, _, TargetFile, _, _),
-            maybe_write_phony_rule(OutStream, IsPhony, [TargetFile], !IO),
-            write_mmake_file_name(OutStream, TargetFile, !IO)
+            maybe_append_phony_rule(IsPhony, [TargetFile], !SB),
+            append_mmake_file_name(TargetFile, !SB)
         ;
             MmakeEntry = mmake_general_rule(_, _, TargetGroups, _, _),
-            maybe_write_phony_rule(OutStream, IsPhony,
-                file_name_groups_files(TargetGroups), !IO),
+            maybe_append_phony_rule(IsPhony,
+                file_name_groups_files(TargetGroups), !SB),
             TargetGroups = one_or_more(HeadTargetGroup, TailTargetGroups),
-            write_mmake_file_name_groups_horizontal(OutStream,
-                HeadTargetGroup, TailTargetGroups, !IO)
+            append_mmake_file_name_groups_horizontal(
+                HeadTargetGroup, TailTargetGroups, !SB)
         ),
 
         (
             SourceGroups = [],
-            io.write_string(OutStream, " :", !IO)
+            append_string(" :", !SB)
         ;
             SourceGroups = [HeadSourceGroup | TailSourceGroups],
-            io.write_string(OutStream, " : \\\n", !IO),
-            write_mmake_file_name_groups_vertical(OutStream,
-                HeadSourceGroup, TailSourceGroups, !IO)
+            append_string(" : \\\n", !SB),
+            append_mmake_file_name_groups_vertical(
+                HeadSourceGroup, TailSourceGroups, !SB)
         ),
-        io.nl(OutStream, !IO),
+        append_string("\n", !SB),
 
-        write_mmake_actions(OutStream, Actions, !IO)
+        append_mmake_actions(Actions, !SB)
     ),
     % Provide visual separation from the next entry.
-    io.nl(OutStream, !IO).
+    append_string("\n", !SB).
 
 %---------------------%
 
-:- pred write_block_comment_line(io.text_output_stream::in, string::in,
-    io::di, io::uo) is det.
+:- pred append_block_comment_line(string::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_block_comment_line(OutStream, Comment, !IO) :-
-    io.format(OutStream, "# %s\n", [s(Comment)], !IO).
+append_block_comment_line(Comment, !SB) :-
+    string.builder.format("# %s\n", [s(Comment)], !SB).
 
-:- pred maybe_write_group_names(io.text_output_stream::in, string::in,
-    list(mmake_file_name_group)::in, io::di, io::uo) is det.
+:- pred maybe_append_group_names(string::in, list(mmake_file_name_group)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-maybe_write_group_names(OutStream, TargetOrSource, Groups, !IO) :-
+maybe_append_group_names(TargetOrSource, Groups, !SB) :-
     ( if all_group_names_are_empty(Groups) then
         % There are no group names to write out.
         true
     else
-        io.format(OutStream, "# %s group names:\n", [s(TargetOrSource)], !IO),
-        list.foldl(write_group_name(OutStream), Groups, !IO)
+        string.builder.format("# %s group names:\n", [s(TargetOrSource)], !SB),
+        list.foldl(append_group_name, Groups, !SB)
     ).
 
 :- pred all_group_names_are_empty(list(mmake_file_name_group)::in) is semidet.
@@ -550,17 +547,17 @@ all_group_names_are_empty([Group | Groups]) :-
     GroupName = "",
     all_group_names_are_empty(Groups).
 
-:- pred write_group_name(io.text_output_stream::in, mmake_file_name_group::in,
-    io::di, io::uo) is det.
+:- pred append_group_name(mmake_file_name_group::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_group_name(OutStream, Group, !IO) :-
+append_group_name(Group, !SB) :-
     Group = mmake_file_name_group(GroupName0, _),
     ( if GroupName0 = "" then
         GroupName = "(unnamed)"
     else
         GroupName = GroupName0
     ),
-    io.format(OutStream, "#   %s\n", [s(GroupName)], !IO).
+    string.builder.format("#   %s\n", [s(GroupName)], !SB).
 
 :- func max_horizontal = int.
 
@@ -568,43 +565,43 @@ max_horizontal = 1.
 
 %---------------------%
 
-:- pred write_mmake_var_values(io.text_output_stream::in,
-    string::in, list(string)::in, io::di, io::uo) is det.
+:- pred append_mmake_var_values(string::in, list(string)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_mmake_var_values(OutStream, HeadValue, TailValues, !IO) :-
+append_mmake_var_values(HeadValue, TailValues, !SB) :-
     (
         TailValues = [],
-        io.format(OutStream, "\t%s\n", [s(HeadValue)], !IO)
+        string.builder.format("\t%s\n", [s(HeadValue)], !SB)
     ;
         TailValues = [HeadTailValue | TailTailValues],
-        io.format(OutStream, "\t%s \\\n", [s(HeadValue)], !IO),
-        write_mmake_var_values(OutStream, HeadTailValue, TailTailValues, !IO)
+        string.builder.format("\t%s \\\n", [s(HeadValue)], !SB),
+        append_mmake_var_values(HeadTailValue, TailTailValues, !SB)
     ).
 
 %---------------------%
 
-:- pred maybe_write_phony_rule(io.text_output_stream::in,
-    is_mmake_rule_phony::in, list(string)::in, io::di, io::uo) is det.
+:- pred maybe_append_phony_rule(is_mmake_rule_phony::in, list(string)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-maybe_write_phony_rule(OutStream, IsPhony, FileNames, !IO) :-
+maybe_append_phony_rule(IsPhony, FileNames, !SB) :-
     (
         IsPhony = mmake_rule_is_not_phony
     ;
         IsPhony = mmake_rule_is_phony,
         FileNamesStr = string.join_list(" ", FileNames),
-        io.format(OutStream, ".PHONY: %s\n", [s(FileNamesStr)], !IO)
+        string.builder.format(".PHONY: %s\n", [s(FileNamesStr)], !SB)
     ).
 
 %---------------------%
 
-:- pred write_rule_name(io.text_output_stream::in, string::in,
-    io::di, io::uo) is det.
+:- pred append_rule_name(string::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_rule_name(OutStream, RuleName, !IO) :-
+append_rule_name(RuleName, !SB) :-
     ( if RuleName = "" then
         true
     else
-        io.format(OutStream, "# RULE %s\n", [s(RuleName)], !IO)
+        string.builder.format("# RULE %s\n", [s(RuleName)], !SB)
     ).
 
 %---------------------%
@@ -619,20 +616,19 @@ write_rule_name(OutStream, RuleName, !IO) :-
     % the last file name written out. This will be on the same line
     % as the initial position.
     %
-:- pred write_mmake_file_name_groups_horizontal(io.text_output_stream::in,
+:- pred append_mmake_file_name_groups_horizontal(
     mmake_file_name_group::in, list(mmake_file_name_group)::in,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_mmake_file_name_groups_horizontal(OutStream,
-        FileNameGroup, FileNameGroups, !IO) :-
-    write_mmake_file_name_group_horizontal(OutStream, FileNameGroup, !IO),
+append_mmake_file_name_groups_horizontal(FileNameGroup, FileNameGroups, !SB) :-
+    append_mmake_file_name_group_horizontal(FileNameGroup, !SB),
     (
         FileNameGroups = []
     ;
         FileNameGroups = [HeadFileNameGroup | TailFileNameGroups],
-        io.write_string(OutStream, " ", !IO),
-        write_mmake_file_name_groups_horizontal(OutStream,
-            HeadFileNameGroup, TailFileNameGroups, !IO)
+        append_string(" ", !SB),
+        append_mmake_file_name_groups_horizontal(HeadFileNameGroup,
+            TailFileNameGroups, !SB)
     ).
 
     % Write out a list of file name groups with each file name being written
@@ -645,21 +641,21 @@ write_mmake_file_name_groups_horizontal(OutStream,
     % The final position of the cursor will be at the end of the line
     % containing the last file name written out.
     %
-:- pred write_mmake_file_name_groups_vertical(io.text_output_stream::in,
+:- pred append_mmake_file_name_groups_vertical(
     mmake_file_name_group::in, list(mmake_file_name_group)::in,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_mmake_file_name_groups_vertical(OutStream,
-        FileNameGroup, FileNameGroups, !IO) :-
-    write_mmake_file_name_group_vertical(OutStream, FileNameGroup, !IO),
+append_mmake_file_name_groups_vertical(
+        FileNameGroup, FileNameGroups, !SB) :-
+    append_mmake_file_name_group_vertical(FileNameGroup, !SB),
     (
         FileNameGroups = []
     ;
         FileNameGroups = [HeadFileNameGroup | TailFileNameGroups],
-        io.write_string(OutStream, " \\\n", !IO),
-        io.write_string(OutStream, "\t\\\n", !IO),
-        write_mmake_file_name_groups_vertical(OutStream,
-            HeadFileNameGroup, TailFileNameGroups, !IO)
+        append_string(" \\\n", !SB),
+        append_string("\t\\\n", !SB),
+        append_mmake_file_name_groups_vertical(HeadFileNameGroup,
+            TailFileNameGroups, !SB)
     ).
 
     % Write out a list of file names with each file name being written after
@@ -672,13 +668,13 @@ write_mmake_file_name_groups_vertical(OutStream,
     % the last file name written out. This will be on the same line
     % as the initial position.
     %
-:- pred write_mmake_file_name_group_horizontal(io.text_output_stream::in,
-    mmake_file_name_group::in, io::di, io::uo) is det.
+:- pred append_mmake_file_name_group_horizontal(mmake_file_name_group::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_mmake_file_name_group_horizontal(OutStream, FileNameGroup, !IO) :-
+append_mmake_file_name_group_horizontal(FileNameGroup, !SB) :-
     FileNameGroup = mmake_file_name_group(_GroupName,
         one_or_more(FileName, FileNames)),
-    write_mmake_file_names_horizontal(OutStream, FileName, FileNames, !IO).
+    append_mmake_file_names_horizontal(FileName, FileNames, !SB).
 
     % Write out a list of file names with each file name being written below
     % the previous one.
@@ -689,13 +685,13 @@ write_mmake_file_name_group_horizontal(OutStream, FileNameGroup, !IO) :-
     % The final position of the cursor will be at the end of the line
     % containing the last file name written out.
     %
-:- pred write_mmake_file_name_group_vertical(io.text_output_stream::in,
-    mmake_file_name_group::in, io::di, io::uo) is det.
+:- pred append_mmake_file_name_group_vertical(mmake_file_name_group::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_mmake_file_name_group_vertical(OutStream, FileNameGroup, !IO) :-
+append_mmake_file_name_group_vertical(FileNameGroup, !SB) :-
     FileNameGroup = mmake_file_name_group(_GroupName,
         one_or_more(FileName, FileNames)),
-    write_mmake_file_names_vertical(OutStream, FileName, FileNames, !IO).
+    append_mmake_file_names_vertical(FileName, FileNames, !SB).
 
 %---------------------%
 
@@ -709,18 +705,18 @@ write_mmake_file_name_group_vertical(OutStream, FileNameGroup, !IO) :-
     % the last file name written out. This will be on the same line
     % as the initial position.
     %
-:- pred write_mmake_file_names_horizontal(io.text_output_stream::in,
-    mmake_file_name::in, list(mmake_file_name)::in, io::di, io::uo) is det.
+:- pred append_mmake_file_names_horizontal(
+    mmake_file_name::in, list(mmake_file_name)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_mmake_file_names_horizontal(OutStream, FileName, FileNames, !IO) :-
-    write_mmake_file_name(OutStream, FileName, !IO),
+append_mmake_file_names_horizontal(FileName, FileNames, !SB) :-
+    append_mmake_file_name(FileName, !SB),
     (
         FileNames = []
     ;
         FileNames = [HeadFileName | TailFileNames],
-        io.write_string(OutStream, " ", !IO),
-        write_mmake_file_names_horizontal(OutStream,
-            HeadFileName, TailFileNames, !IO)
+        append_string(" ", !SB),
+        append_mmake_file_names_horizontal(HeadFileName, TailFileNames, !SB)
     ).
 
     % Write out a list of file names with each file name being written below
@@ -732,38 +728,39 @@ write_mmake_file_names_horizontal(OutStream, FileName, FileNames, !IO) :-
     % The final position of the cursor will be at the end of the line
     % containing the last file name written out.
     %
-:- pred write_mmake_file_names_vertical(io.text_output_stream::in,
-    mmake_file_name::in, list(mmake_file_name)::in, io::di, io::uo) is det.
+:- pred append_mmake_file_names_vertical(
+    mmake_file_name::in, list(mmake_file_name)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_mmake_file_names_vertical(OutStream, FileName, FileNames, !IO) :-
-    io.write_string(OutStream, "\t\t", !IO),
-    write_mmake_file_name(OutStream, FileName, !IO),
+append_mmake_file_names_vertical(FileName, FileNames, !SB) :-
+    append_string("\t\t", !SB),
+    append_mmake_file_name(FileName, !SB),
     (
         FileNames = []
     ;
         FileNames = [HeadFileName | TailFileNames],
-        io.write_string(OutStream, " \\\n", !IO),
-        write_mmake_file_names_vertical(OutStream,
-            HeadFileName, TailFileNames, !IO)
+        append_string(" \\\n", !SB),
+        append_mmake_file_names_vertical(
+            HeadFileName, TailFileNames, !SB)
     ).
 
 %---------------------%
 
-:- pred write_mmake_file_name(io.text_output_stream::in,
-    mmake_file_name::in, io::di, io::uo) is det.
+:- pred append_mmake_file_name(mmake_file_name::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_mmake_file_name(OutStream, FileName, !IO) :-
-    io.write_string(OutStream, FileName, !IO).
+append_mmake_file_name(FileName, !SB) :-
+    append_string(FileName, !SB).
 
 %---------------------%
 
-:- pred write_mmake_actions(io.text_output_stream::in,
-    list(mmake_action)::in, io::di, io::uo) is det.
+:- pred append_mmake_actions(list(mmake_action)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_mmake_actions(_OutStream, [], !IO).
-write_mmake_actions(OutStream, [Action | Actions], !IO) :-
-    io.format(OutStream, "\t%s\n", [s(Action)], !IO),
-    write_mmake_actions(OutStream, Actions, !IO).
+append_mmake_actions([], !SB).
+append_mmake_actions([Action | Actions], !SB) :-
+    string.builder.format("\t%s\n", [s(Action)], !SB),
+    append_mmake_actions(Actions, !SB).
 
 %---------------------------------------------------------------------------%
 
