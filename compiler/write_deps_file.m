@@ -24,7 +24,6 @@
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_deps_graph.
 
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module set.
@@ -124,10 +123,14 @@
 
 %---------------------------------------------------------------------------%
 
+:- type maybe_look_for_src
+    --->    do_not_look_for_src
+    ;       look_for_src.
+
     % For each dependency, search intermod_directories for a file with
     % the given extension, filtering out those for which the search fails.
-    % If --use-opt-files is set, only look for `.opt' files,
-    % not `.m' files.
+    % With do_not_look_for_src, only look for files with the given extension,
+    % not source files.
     % XXX This won't find nested submodules.
     % XXX Use `mmc --make' if that matters.
     %
@@ -136,7 +139,7 @@
     % which is derived from the dependency graph between modules,
     % and not just the modules' names.
     %
-:- pred get_opt_deps(globals::in, bool::in, list(string)::in,
+:- pred get_ext_opt_deps(globals::in, maybe_look_for_src::in, list(string)::in,
     ext::in, list(module_name)::in, list(module_name)::out,
     io::di, io::uo) is det.
 
@@ -161,6 +164,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.source_file_map.
 
+:- import_module bool.
 :- import_module cord.
 :- import_module digraph.
 :- import_module dir.
@@ -749,18 +753,20 @@ construct_intermod_rules(Globals, ModuleName, LongDeps, AllDeps,
         globals.lookup_bool_option(Globals, use_trans_opt_files,
             UseTransOpt),
 
-        bool.not(UseTransOpt, BuildOptFiles),
+        ( UseTransOpt = no,  LookForSrc = look_for_src
+        ; UseTransOpt = yes, LookForSrc = do_not_look_for_src
+        ),
         BaseDeps = [ModuleName | set.to_sorted_list(LongDeps)],
         ( if
             ( TransOpt = yes
             ; UseTransOpt = yes
             )
         then
-            get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs,
+            get_plain_trans_opt_deps(Globals, LookForSrc, IntermodDirs,
                 BaseDeps, OptDeps, TransOptDeps1, !Cache, !IO),
             MaybeTransOptDeps1 = yes(TransOptDeps1)
         else
-            get_opt_deps(Globals, BuildOptFiles, IntermodDirs,
+            get_ext_opt_deps(Globals, LookForSrc, IntermodDirs,
                 ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
                 BaseDeps, OptDeps, !IO),
             MaybeTransOptDeps1 = no
@@ -2580,30 +2586,31 @@ get_source_file(DepsMap, ModuleName, FileName) :-
 
 %---------------------------------------------------------------------------%
 
-    % get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs, Deps,
+    % get_plain_trans_opt_deps(Globals, LookForSrc, IntermodDirs, Deps,
     %   OptDeps, TransOptDeps, !Cache, !IO):
     %
     % For each dependency, search intermod_directories for a .m file.
     % If it exists, add it to both output lists. Otherwise, if a .opt
     % file exists, add it to the OptDeps list, and if a .trans_opt
     % file exists, add it to the TransOptDeps list.
-    % If --use-opt-files is set, don't look for `.m' files, since we are
-    % not building `.opt' files, only using those which are available.
+    % With do_not_look_for_src, don't look for `.m' files (since we are
+    % not building `.opt' files, only using those which are available).
     % XXX This won't find nested submodules.
     % XXX Use `mmc --make' if that matters.
     %
-:- pred get_both_opt_deps(globals::in, bool::in, list(string)::in,
-    list(module_name)::in, list(module_name)::out, list(module_name)::out,
+:- pred get_plain_trans_opt_deps(globals::in, maybe_look_for_src::in,
+    list(string)::in, list(module_name)::in,
+    list(module_name)::out, list(module_name)::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-get_both_opt_deps(_, _, _, [], [], [], !Cache, !IO).
-get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs, [Dep | Deps],
+get_plain_trans_opt_deps(_, _, _, [], [], [], !Cache, !IO).
+get_plain_trans_opt_deps(Globals, LookForSrc, IntermodDirs, [Dep | Deps],
         !:OptDeps, !:TransOptDeps, !Cache, !IO) :-
-    get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs, Deps,
+    get_plain_trans_opt_deps(Globals, LookForSrc, IntermodDirs, Deps,
         !:OptDeps, !:TransOptDeps, !Cache, !IO),
     (
-        BuildOptFiles = yes,
+        LookForSrc = look_for_src,
         search_for_module_source(IntermodDirs, Dep, MaybeFileName, !IO),
         (
             MaybeFileName = ok(_),
@@ -2615,7 +2622,7 @@ get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs, [Dep | Deps],
             Found = no
         )
     ;
-        BuildOptFiles = no,
+        LookForSrc = do_not_look_for_src,
         Found = no
     ),
     (
@@ -2645,13 +2652,13 @@ get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs, [Dep | Deps],
         Found = yes
     ).
 
-get_opt_deps(_, _, _, _, [], [], !IO).
-get_opt_deps(Globals, BuildOptFiles, IntermodDirs, Ext,
+get_ext_opt_deps(_, _, _, _, [], [], !IO).
+get_ext_opt_deps(Globals, LookForSrc, IntermodDirs, Ext,
         [Dep | Deps], !:OptDeps, !IO) :-
-    get_opt_deps(Globals, BuildOptFiles, IntermodDirs, Ext,
+    get_ext_opt_deps(Globals, LookForSrc, IntermodDirs, Ext,
         Deps, !:OptDeps, !IO),
     (
-        BuildOptFiles = yes,
+        LookForSrc = look_for_src,
         search_for_module_source(IntermodDirs, Dep, Result1, !IO),
         (
             Result1 = ok(_),
@@ -2662,13 +2669,12 @@ get_opt_deps(Globals, BuildOptFiles, IntermodDirs, Ext,
             Found = no
         )
     ;
-        BuildOptFiles = no,
+        LookForSrc = do_not_look_for_src,
         Found = no
     ),
     (
         Found = no,
-        module_name_to_search_file_name(Globals, $pred,
-            Ext, Dep, OptName),
+        module_name_to_search_file_name(Globals, $pred, Ext, Dep, OptName),
         search_for_file(IntermodDirs, OptName, MaybeOptDir, !IO),
         (
             MaybeOptDir = ok(_),

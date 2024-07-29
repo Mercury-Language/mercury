@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2017, 2019, 2020-2023 The Mercury team.
+% Copyright (C) 2015-2017, 2019-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -397,7 +397,7 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
         list.condense(TransOptDepsOrdering1, TransOptDepsOrdering),
         globals.lookup_accumulating_option(Globals, intermod_directories,
             IntermodDirs),
-        get_opt_deps(Globals, yes, IntermodDirs,
+        get_ext_opt_deps(Globals, look_for_src, IntermodDirs,
             ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
             TransOptDepsOrdering, TransOptOrder, !IO),
         (
