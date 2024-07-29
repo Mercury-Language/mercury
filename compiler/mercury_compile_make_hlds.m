@@ -37,13 +37,9 @@
 :- import_module list.
 :- import_module maybe.
 
-:- type maybe_write_d_file
-    --->    do_not_write_d_file
-    ;       write_d_file.
-
 :- pred make_hlds_pass(io.text_output_stream::in, io.text_output_stream::in,
     globals::in, op_mode_augment::in, op_mode_invoked_by_mmc_make::in,
-    maybe_write_d_file::in, module_baggage::in, aug_compilation_unit::in,
+    module_baggage::in, aug_compilation_unit::in,
     module_info::out, qual_info::out, maybe(module_timestamp_map)::out,
     bool::out, bool::out, bool::out,
     dump_info::in, dump_info::out, list(error_spec)::in, list(error_spec)::out,
@@ -91,28 +87,47 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+:- type maybe_write_d_file
+    --->    do_not_write_d_file
+    ;       write_d_file.
+
 make_hlds_pass(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, InvokedByMMCMake, WriteDFile0, Baggage0, AugCompUnit0,
+        OpModeAugment, InvokedByMMCMake, Baggage0, AugCompUnit0,
         HLDS0, QualInfo, MaybeTimestampMap, UndefTypes, UndefModes,
         PreHLDSErrors, !DumpInfo, !Specs, !HaveReadModuleMaps, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, verbose, Verbose),
-
-    ( if
-        % Don't write the `.d' file when making the `.opt' file because
-        % we can't work out the full transitive implementation dependencies.
-        ( InvokedByMMCMake = op_mode_invoked_by_mmc_make
-        ; OpModeAugment = opmau_make_plain_opt
-        )
-    then
-        WriteDFile = do_not_write_d_file
-    else
-        WriteDFile = WriteDFile0
-    ),
-
     ParseTreeModuleSrc = AugCompUnit0 ^ acu_module_src,
     maybe_warn_about_stdlib_shadowing(Globals, ParseTreeModuleSrc, !Specs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+
+    (
+        ( OpModeAugment = opmau_typecheck_only
+        ; OpModeAugment = opmau_errorcheck_only
+        ),
+        % If we are only typechecking or error checking, then we should not
+        % modify any files; this includes writing to .d files.
+        WriteDFile = do_not_write_d_file
+    ;
+        OpModeAugment = opmau_make_plain_opt,
+        % Don't write the `.d' file when making the `.opt' file because
+        % we can't work out the full transitive implementation dependencies.
+        WriteDFile = do_not_write_d_file
+    ;
+        ( OpModeAugment = opmau_make_trans_opt
+        ; OpModeAugment = opmau_generate_code(_)
+        % XXX I (zs) think we should insist on do_not_write_d_file for these.
+        ; OpModeAugment = opmau_make_analysis_registry
+        ; OpModeAugment = opmau_make_xml_documentation
+        ),
+        (
+            InvokedByMMCMake = op_mode_invoked_by_mmc_make,
+            WriteDFile = do_not_write_d_file
+        ;
+            InvokedByMMCMake = op_mode_not_invoked_by_mmc_make,
+            WriteDFile = write_d_file
+        )
+    ),
     (
         WriteDFile = do_not_write_d_file,
         MaybeDFileTransOptDeps = no

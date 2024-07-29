@@ -2025,37 +2025,21 @@ process_augmented_module(ProgressStream, ErrorStream, Globals0,
         FindTimestampFiles, ExtraObjFiles, !DumpInfo, !Specs,
         !HaveParseTreeMaps, !IO) :-
     (
-        ( OpModeAugment = opmau_typecheck_only
-        ; OpModeAugment = opmau_errorcheck_only
-        ),
-        Globals = Globals0,
-        % If we are only typechecking or error checking, then we should not
-        % modify any files; this includes writing to .d files.
-        WriteDFile = do_not_write_d_file
-    ;
-        OpModeAugment = opmau_make_trans_opt,
-        disable_warning_options(Globals0, Globals),
-        WriteDFile = write_d_file
-    ;
-        OpModeAugment = opmau_generate_code(_),
-        Globals = Globals0,
-        WriteDFile = write_d_file
-    ;
-        OpModeAugment = opmau_make_plain_opt,
-        disable_warning_options(Globals0, Globals),
-        % Don't write the `.d' file when making the `.opt' file because
-        % we can't work out the full transitive implementation dependencies.
-        WriteDFile = do_not_write_d_file
-    ;
         ( OpModeAugment = opmau_make_analysis_registry
         ; OpModeAugment = opmau_make_xml_documentation
+        ; OpModeAugment = opmau_typecheck_only
+        ; OpModeAugment = opmau_errorcheck_only
+        ; OpModeAugment = opmau_generate_code(_)
         ),
-        Globals = Globals0,
-        % XXX I (zs) think we should assign do_not_write_d_file for these.
-        WriteDFile = write_d_file
+        Globals = Globals0
+    ;
+        ( OpModeAugment = opmau_make_plain_opt
+        ; OpModeAugment = opmau_make_trans_opt
+        ),
+        disable_warning_options(Globals0, Globals)
     ),
     make_hlds_pass(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, InvokedByMmcMake, WriteDFile, Baggage, AugCompUnit,
+        OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit,
         HLDS1, QualInfo, MaybeTimestampMap, UndefTypes, UndefModes,
         PreHLDSErrors, !DumpInfo, !Specs, !HaveParseTreeMaps, !IO),
     frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo,
