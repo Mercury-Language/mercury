@@ -1,9 +1,9 @@
 # vim: ts=4 sw=4 expandtab
 
-MCFLAGS-dep_par_11d         = --intermod-opt
+MCFLAGS-dep_par_11d         += --intermod-opt
 
-MCFLAGS-dg_fib              = --parallel --distance-granularity 10
-MCFLAGS-dg_fib_func         = --parallel --distance-granularity 10
+MCFLAGS-dg_fib              += --parallel --distance-granularity 10
+MCFLAGS-dg_fib_func         += --parallel --distance-granularity 10
 
 # With --intermod-opt, the call to impure_wait will be optimized away.
-MCFLAGS-impure_wait         = --intermod-opt -O3
+MCFLAGS-impure_wait         += --intermod-opt -O3

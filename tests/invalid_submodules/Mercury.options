@@ -4,11 +4,11 @@
 # (in most cases reporting diagnostics when writing the `.opt' file).
 # For those tests, we just disable inter-module optimization.
 
-MCFLAGS-exported_unify3         = --no-intermodule-optimization
-MCFLAGS-import_in_parent        = --no-intermodule-optimization \
+MCFLAGS-exported_unify3         += --no-intermodule-optimization
+MCFLAGS-import_in_parent        += --no-intermodule-optimization \
                                     --warn-unused-imports
-MCFLAGS-import_in_parent.sub    = --no-intermodule-optimization
-MCFLAGS-missing_parent_import   = --no-intermodule-optimization
-MCFLAGS-subtype_submodule       = --no-intermodule-optimization
-MCFLAGS-undef_mod_qual          = --no-intermodule-optimization
-MCFLAGS-unresolved_overloading  = --no-intermodule-optimization
+MCFLAGS-import_in_parent.sub    += --no-intermodule-optimization
+MCFLAGS-missing_parent_import   += --no-intermodule-optimization
+MCFLAGS-subtype_submodule       += --no-intermodule-optimization
+MCFLAGS-undef_mod_qual          += --no-intermodule-optimization
+MCFLAGS-unresolved_overloading  += --no-intermodule-optimization

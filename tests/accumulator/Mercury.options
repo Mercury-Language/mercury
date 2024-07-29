@@ -1,1 +1,1 @@
-MCFLAGS-ite = --infer-modes
+MCFLAGS-ite += --infer-modes
