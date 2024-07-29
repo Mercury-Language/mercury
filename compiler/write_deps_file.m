@@ -342,14 +342,19 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
     map.foldl(AccPublicChildren, InclMap, set.init, PublicChildren),
     (
         IntermodDeps = no_intermod_deps,
-        map.keys_as_set(ParseTreeModuleSrc ^ ptms_import_use_map, LongDeps0),
+        map.keys_as_set(ParseTreeModuleSrc ^ ptms_import_use_map, DirectDeps0),
         IndirectIntSpecs = AugCompUnit ^ acu_indirect_int2s,
-        map.keys_as_set(IndirectIntSpecs, IndirectDeps)
+        map.keys_as_set(IndirectIntSpecs, IndirectDeps0)
     ;
-        IntermodDeps = intermod_deps(IntDeps, ImpDeps, IndirectDeps, _FIMDeps,
+        IntermodDeps = intermod_deps(IntDeps, ImpDeps, IndirectDeps0, _FIMDeps,
             _TransOptDeps),
-        set.union(IntDeps, ImpDeps, LongDeps0)
+        set.union(IntDeps, ImpDeps, DirectDeps0)
     ),
+
+    set.delete(ModuleName, DirectDeps0, DirectDeps),
+    set.difference(IndirectDeps0, DirectDeps, IndirectDeps1),
+    set.delete(ModuleName, IndirectDeps1, IndirectDeps),
+
     get_fact_tables(ParseTreeModuleSrc, FactTableFileNamesSet),
     get_foreign_include_file_infos(ParseTreeModuleSrc, ForeignIncludeFiles),
 
@@ -359,11 +364,6 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
         ModuleNameString, SourceFileName, Version, FullArch),
 
     module_name_to_make_var_name(ModuleName, ModuleMakeVarName),
-
-    set.delete(ModuleName, LongDeps0, LongDeps),
-    ShortDeps0 = IndirectDeps,
-    set.difference(ShortDeps0, LongDeps, ShortDeps1),
-    set.delete(ModuleName, ShortDeps1, ShortDeps),
 
     make_module_file_name(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_trans),
@@ -402,7 +402,7 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
         ModuleName, Int0FileName, !Cache, !IO),
 
     construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
-        Ancestors, LongDeps, ShortDeps, PublicChildren, Int0FileName,
+        Ancestors, DirectDeps, IndirectDeps, PublicChildren, Int0FileName,
         OptDateFileName, TransOptDateFileName, ForeignIncludeFiles,
         CDateFileName, JavaDateFileName, ErrFileName,
         FactTableSourceGroups, MmakeRuleDateFileDeps, !Cache, !IO),
@@ -410,7 +410,7 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
     construct_build_nested_children_first_rule(Globals,
         ModuleName, MaybeTopModule, MmakeRulesNestedDeps, !Cache, !IO),
 
-    construct_intermod_rules(Globals, ModuleName, LongDeps, AllDeps,
+    construct_intermod_rules(Globals, ModuleName, DirectDeps, AllDeps,
         ErrFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
         ObjFileName, MmakeRulesIntermod, !Cache, !IO),
 
@@ -431,7 +431,7 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
         ext_cur_ngs(ext_cur_ngs_int_date_int0),
         ModuleName, Date0FileName, !Cache, !IO),
     construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
-        Date0FileName, DateFileName, Ancestors, LongDeps, ShortDeps,
+        Date0FileName, DateFileName, Ancestors, DirectDeps, IndirectDeps,
         MmakeRulesParentDates, !Cache, !IO),
 
     construct_foreign_import_rules(Globals, AugCompUnit, IntermodDeps,
@@ -519,7 +519,7 @@ construct_trans_opt_deps_rule(Globals, MaybeInclTransOptRule, IntermodDeps,
             % of date, so the user will need to explicitly regenerate
             % dependencies.
             %
-            % Note: we used to take the intersection with LongDeps (in the
+            % Note: we used to take the intersection with DirectDeps (in the
             % caller), but this case was not separated from the previous case
             % and it greatly reduces the set of dependencies, so I'm not sure
             % if it was intentional. --pw
@@ -603,7 +603,7 @@ construct_fact_tables_entries(ModuleMakeVarName, SourceFileName, ObjFileName,
     io::di, io::uo) is det.
 
 construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
-        Ancestors, LongDeps, ShortDeps, PublicChildren, Int0FileName,
+        Ancestors, DirectDeps, IndirectDeps, PublicChildren, Int0FileName,
         OptDateFileName, TransOptDateFileName, ForeignIncludeFilesSet,
         CDateFileName, JavaDateFileName, ErrFileName,
         FactTableSourceGroups, MmakeRuleDateFileDeps, !Cache, !IO) :-
@@ -629,11 +629,11 @@ construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
         "ancestors", ext_cur_ngs(ext_cur_ngs_int_int0),
         Ancestors, AncestorSourceGroups, !Cache, !IO),
     make_module_file_name_group_with_ext(Globals,
-        "long deps", ext_cur_ngs(ext_cur_ngs_int_int1),
-        LongDeps, LongDepsSourceGroups, !Cache, !IO),
+        "direct deps", ext_cur_ngs(ext_cur_ngs_int_int1),
+        DirectDeps, DirectDepsSourceGroups, !Cache, !IO),
     make_module_file_name_group_with_ext(Globals,
-        "short deps", ext_cur_ngs(ext_cur_ngs_int_int2),
-        ShortDeps, ShortDepsSourceGroups, !Cache, !IO),
+        "indirect deps", ext_cur_ngs(ext_cur_ngs_int_int2),
+        IndirectDeps, IndirectDepsSourceGroups, !Cache, !IO),
     make_module_file_name_group_with_ext(Globals,
         "type_repn self dep", ext_cur_ngs(ext_cur_ngs_int_int1),
         set.make_singleton_set(ModuleName), TypeRepnSelfDepGroups,
@@ -652,7 +652,7 @@ construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
         make_file_name_group("foreign imports", ForeignImportFileNames),
     SourceGroups = SourceFileNameGroup ++
         Int0FileNameGroups ++ AncestorSourceGroups ++
-        LongDepsSourceGroups ++ ShortDepsSourceGroups ++
+        DirectDepsSourceGroups ++ IndirectDepsSourceGroups ++
         TypeRepnSelfDepGroups ++ TypeRepnAncestorsDepGroups ++
         ForeignImportFileNameGroup ++ FactTableSourceGroups,
     MmakeRuleDateFileDeps = mmake_general_rule("date_file_deps",
@@ -702,7 +702,7 @@ construct_build_nested_children_first_rule(Globals, ModuleName, MaybeTopModule,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-construct_intermod_rules(Globals, ModuleName, LongDeps, AllDeps,
+construct_intermod_rules(Globals, ModuleName, DirectDeps, AllDeps,
         ErrFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
         ObjFileName, MmakeRulesIntermod, !Cache, !IO) :-
     % XXX Note that currently, due to a design problem, handle_option.m
@@ -756,7 +756,7 @@ construct_intermod_rules(Globals, ModuleName, LongDeps, AllDeps,
         ( UseTransOpt = no,  LookForSrc = look_for_src
         ; UseTransOpt = yes, LookForSrc = do_not_look_for_src
         ),
-        BaseDeps = [ModuleName | set.to_sorted_list(LongDeps)],
+        BaseDeps = [ModuleName | set.to_sorted_list(DirectDeps)],
         ( if
             ( TransOpt = yes
             ; UseTransOpt = yes
@@ -918,7 +918,7 @@ construct_module_dep_fragment(Globals, ModuleName, CFileName,
     io::di, io::uo) is det.
 
 construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
-        Date0FileName, DateFileName, Ancestors, LongDeps, ShortDeps,
+        Date0FileName, DateFileName, Ancestors, DirectDeps, IndirectDeps,
         MmakeRulesParentDates, !Cache, !IO) :-
     make_module_file_names_with_ext(Globals,
         ext_cur_ngs(ext_cur_ngs_int_date_int12),
@@ -928,10 +928,11 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
         set.to_sorted_list(Ancestors), AncestorInt0FileNames, !Cache, !IO),
     make_module_file_names_with_ext(Globals,
         ext_cur_ngs(ext_cur_ngs_int_int3),
-        set.to_sorted_list(LongDeps), LongDepInt3FileNames, !Cache, !IO),
+        set.to_sorted_list(DirectDeps), DirectDepInt3FileNames, !Cache, !IO),
     make_module_file_names_with_ext(Globals,
         ext_cur_ngs(ext_cur_ngs_int_int3),
-        set.to_sorted_list(ShortDeps), ShortDepInt3FileNames, !Cache, !IO),
+        set.to_sorted_list(IndirectDeps), IndirectDepInt3FileNames,
+        !Cache, !IO),
 
     MmakeRuleParentDates = mmake_general_rule("self_and_parent_date_deps",
         mmake_rule_is_not_phony,
@@ -942,8 +943,9 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
             []),
         [make_singleton_file_name_group("source", SourceFileName)] ++
             make_file_name_group("ancestor int0", AncestorInt0FileNames) ++
-            make_file_name_group("long dep int3s", LongDepInt3FileNames) ++
-            make_file_name_group("short dep int3s", ShortDepInt3FileNames),
+            make_file_name_group("direct dep int3s", DirectDepInt3FileNames) ++
+            make_file_name_group("indirect dep int3s",
+                IndirectDepInt3FileNames),
         []),
     make_module_file_names_with_ext(Globals,
         ext_cur_ngs(ext_cur_ngs_int_date_int0),
@@ -955,8 +957,9 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
                 one_or_more(Date0FileName, AncestorDate0FileNames)),
             []),
         [make_singleton_file_name_group("source", SourceFileName)] ++
-            make_file_name_group("long dep int3s", LongDepInt3FileNames) ++
-            make_file_name_group("short dep int3s", ShortDepInt3FileNames),
+            make_file_name_group("direct dep int3s", DirectDepInt3FileNames) ++
+            make_file_name_group("indirect dep int3s",
+                IndirectDepInt3FileNames),
         []),
     MmakeRulesParentDates = [MmakeRuleParentDates, MmakeRuleParentDate0s].
 
