@@ -1427,9 +1427,8 @@ generate_dependencies_write_d_file(ProgressStream, Globals,
     get_dependencies_from_graph(TransOptDepsGraph, ModuleName, TransOptDeps0),
     set.delete(ModuleName, TransOptDeps0, TransOptDeps),
 
-    % XXX The way IndirectOptDeps is computed seems to have have nothing to do
-    % with foreign_import_module declarations. This seems to me (zs) to be
-    % a BUG.
+    % XXX The way IndirectOptDeps is computed seems to have nothing to do with
+    % foreign_import_module declarations. This seems to me (zs) to be a BUG.
     StdDeps = std_deps(DirectDeps, IndirectDeps, IndirectOptDeps,
         trans_opt_deps(TransOptDeps)),
 
