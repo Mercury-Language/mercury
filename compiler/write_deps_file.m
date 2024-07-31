@@ -28,6 +28,8 @@
 :- import_module list.
 :- import_module set.
 
+%---------------------------------------------------------------------------%
+
 :- type std_deps
     --->    std_deps(
                 sd_direct_deps      :: set(module_name),
@@ -47,6 +49,8 @@
             ).
 
 :- func construct_std_deps(globals, burdened_aug_comp_unit) = std_deps.
+
+%---------------------------------------------------------------------------%
 
 :- type maybe_include_trans_opt_rule
     --->    do_not_include_trans_opt_rule
@@ -72,7 +76,7 @@
     % modules. MaybeInclTransOptRule controls whether to include a
     % trans_opt_deps rule in the file, and if so, what the rule should say.
     %
-    % XXX The StdSeps allows generate_dependencies_write_d_file
+    % XXX The StdDeps allows generate_dependencies_write_d_file
     % to supply some information derived from the overall dependency graph
     % that is intended to override the values of some of the fields in
     % BurdenedAugCompUnit. These used to be passed in a ModuleAndImports
@@ -304,6 +308,81 @@ gather_fim_specs_in_parse_tree_plain_opt(ParseTreePlainOpt, !FIMSpecs) :-
 
 %---------------------------------------------------------------------------%
 
+:- type intermod_deps
+    --->    intermod_deps(
+                maybe_intermod_mh_deps,
+                maybe_opt_file_deps
+            ).
+
+:- type maybe_intermod_mh_deps
+    --->    no_intermod_mh_deps
+    ;       intermod_mh_deps(set(module_name)).
+
+:- type maybe_opt_file_deps
+    --->    no_opt_file_deps
+    ;       opt_file_deps(
+                ofd_plain_opt_modules   :: list(module_name),
+                ofd_trans_opt_modules   :: maybe(list(module_name))
+            ).
+
+:- pred construct_intermod_deps(globals::in, parse_tree_module_src::in,
+    std_deps::in, set(module_name)::in, intermod_deps::out,
+    module_file_name_cache::in, module_file_name_cache::out,
+    io::di, io::uo) is det.
+
+construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, AllDeps,
+        IntermodDeps, !Cache, !IO) :-
+    % XXX Note that currently, due to a design problem, handle_options.m
+    % *always* sets use_opt_files to no.
+    globals.lookup_bool_option(Globals, use_opt_files, UsePlainOpt),
+    globals.lookup_bool_option(Globals, intermodule_optimization, Intermod),
+    (
+        Intermod = yes,
+        % If intermodule_optimization is enabled, then all the .mh files
+        % must exist, because it is possible that the .c file imports them
+        % directly or indirectly.
+        MaybeMhDeps = intermod_mh_deps(AllDeps)
+    ;
+        Intermod = no,
+        MaybeMhDeps = no_intermod_mh_deps
+    ),
+    ( if
+        ( Intermod = yes
+        ; UsePlainOpt = yes
+        )
+    then
+        globals.lookup_bool_option(Globals, use_trans_opt_files, UseTransOpt),
+        globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
+        globals.lookup_accumulating_option(Globals, intermod_directories,
+            IntermodDirs),
+        ( UseTransOpt = no,  LookForSrc = look_for_src
+        ; UseTransOpt = yes, LookForSrc = do_not_look_for_src
+        ),
+        StdDeps = std_deps(DirectDeps, _, _, _),
+        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+            BaseDeps = [ModuleName | set.to_sorted_list(DirectDeps)],
+        ( if
+            ( TransOpt = yes
+            ; UseTransOpt = yes
+            )
+        then
+            get_plain_trans_opt_deps(Globals, LookForSrc, IntermodDirs,
+                BaseDeps, PlainOptDeps, TransOptDeps, !Cache, !IO),
+            MaybeTransOptDeps = yes(TransOptDeps)
+        else
+            get_ext_opt_deps(Globals, LookForSrc, IntermodDirs,
+                ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+                BaseDeps, PlainOptDeps, !IO),
+            MaybeTransOptDeps = no
+        ),
+        MaybeOptFileDeps = opt_file_deps(PlainOptDeps, MaybeTransOptDeps)
+    else
+        MaybeOptFileDeps = no_opt_file_deps
+    ),
+    IntermodDeps = intermod_deps(MaybeMhDeps, MaybeOptFileDeps).
+
+%---------------------------------------------------------------------------%
+
 write_d_file(ProgressStream, Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
         MaybeInclTransOptRule, !IO) :-
     map.init(Cache0),
@@ -355,8 +434,11 @@ write_d_file_fn_cache(ProgressStream, Globals, BurdenedAugCompUnit,
             report_error(ProgressStream, Message, !IO)
         ;
             Result = ok(DepStream),
-            generate_d_file(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
-                MaybeInclTransOptRule, MmakeFile, !Cache, !IO),
+            construct_intermod_deps(Globals, ParseTreeModuleSrc,
+                StdDeps, AllDeps, IntermodDeps, !Cache, !IO),
+            generate_d_file(Globals, BurdenedAugCompUnit, StdDeps,
+                IntermodDeps, AllDeps, MaybeInclTransOptRule, MmakeFile,
+                !Cache, !IO),
             MmakeFileStr = mmakefile_to_string(MmakeFile),
             io.write_string(DepStream, MmakeFileStr, !IO),
             io.close_output(DepStream, !IO),
@@ -427,11 +509,12 @@ write_d_file_fn_cache(ProgressStream, Globals, BurdenedAugCompUnit,
     % are required by --use-mmc-make.
     %
 :- pred generate_d_file(globals::in, burdened_aug_comp_unit::in, std_deps::in,
+    intermod_deps::in,
     set(module_name)::in, maybe_include_trans_opt_rule::in, mmakefile::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-generate_d_file(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
+generate_d_file(Globals, BurdenedAugCompUnit, StdDeps, IntermodDeps, AllDeps,
         MaybeInclTransOptRule, !:MmakeFile, !Cache, !IO) :-
     BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
     SourceFileName = Baggage ^ mb_source_file_name,
@@ -523,9 +606,9 @@ generate_d_file(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
     construct_build_nested_children_first_rule(Globals,
         ModuleName, MaybeTopModule, MmakeRulesNestedDeps, !Cache, !IO),
 
-    construct_intermod_rules(Globals, ModuleName, DirectDeps, AllDeps,
-        ErrFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
-        ObjFileName, MmakeRulesIntermod, !Cache, !IO),
+    construct_intermod_rules(Globals, IntermodDeps, ErrFileName,
+        TransOptDateFileName, CDateFileName, JavaDateFileName, ObjFileName,
+        MmakeRulesIntermod, !Cache, !IO),
 
     make_module_file_name(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
@@ -809,29 +892,18 @@ construct_build_nested_children_first_rule(Globals, ModuleName, MaybeTopModule,
 
 %---------------------%
 
-:- pred construct_intermod_rules(globals::in, module_name::in,
-    set(module_name)::in, set(module_name)::in,
+:- pred construct_intermod_rules(globals::in, intermod_deps::in,
     string::in, string::in, string::in, string::in, string::in,
     list(mmake_entry)::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-construct_intermod_rules(Globals, ModuleName, DirectDeps, AllDeps,
-        ErrFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
-        ObjFileName, MmakeRulesIntermod, !Cache, !IO) :-
-    % XXX Note that currently, due to a design problem, handle_option.m
-    % *always* sets use_opt_files to no.
-    globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
-    globals.lookup_bool_option(Globals, intermodule_optimization,
-        Intermod),
-    globals.lookup_accumulating_option(Globals, intermod_directories,
-        IntermodDirs),
-
-    % If intermodule_optimization is enabled, then all the .mh files
-    % must exist, because it is possible that the .c file imports them
-    % directly or indirectly.
+construct_intermod_rules(Globals, IntermodDeps, ErrFileName,
+        TransOptDateFileName, CDateFileName, JavaDateFileName, ObjFileName,
+        MmakeRulesIntermod, !Cache, !IO) :-
+    IntermodDeps = intermod_deps(MaybeMhDeps, MaybeOptFileDeps),
     (
-        Intermod = yes,
+        MaybeMhDeps = intermod_mh_deps(AllDeps),
         make_module_file_names_with_ext(Globals,
             ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
             set.to_sorted_list(AllDeps), AllDepsFileNames, !Cache, !IO),
@@ -842,16 +914,11 @@ construct_intermod_rules(Globals, ModuleName, DirectDeps, AllDeps,
             []),
         MmakeRulesMhDeps = [MmakeRuleMhDeps]
     ;
-        Intermod = no,
+        MaybeMhDeps = no_intermod_mh_deps,
         MmakeRulesMhDeps = []
     ),
-    ( if
-        ( Intermod = yes
-        ; UseOptFiles = yes
-        )
-    then
-        Targets = one_or_more(TransOptDateFileName,
-            [ErrFileName, CDateFileName, JavaDateFileName]),
+    (
+        MaybeOptFileDeps = opt_file_deps(PlainOptDeps, MaybeTransOptDeps),
 
         % The target (e.g. C) file only depends on the .opt files from the
         % current directory, so that inter-module optimization works when
@@ -863,49 +930,30 @@ construct_intermod_rules(Globals, ModuleName, DirectDeps, AllDeps,
         %
         % XXX The code here doesn't correctly handle dependencies
         % on `.int' and `.int2' files needed by the `.opt' files.
-        globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
-        globals.lookup_bool_option(Globals, use_trans_opt_files,
-            UseTransOpt),
-
-        ( UseTransOpt = no,  LookForSrc = look_for_src
-        ; UseTransOpt = yes, LookForSrc = do_not_look_for_src
-        ),
-        BaseDeps = [ModuleName | set.to_sorted_list(DirectDeps)],
-        ( if
-            ( TransOpt = yes
-            ; UseTransOpt = yes
-            )
-        then
-            get_plain_trans_opt_deps(Globals, LookForSrc, IntermodDirs,
-                BaseDeps, OptDeps, TransOptDeps1, !Cache, !IO),
-            MaybeTransOptDeps1 = yes(TransOptDeps1)
-        else
-            get_ext_opt_deps(Globals, LookForSrc, IntermodDirs,
-                ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
-                BaseDeps, OptDeps, !IO),
-            MaybeTransOptDeps1 = no
-        ),
-
-        OptInt0Deps = set.union_list(list.map(get_ancestors_set, OptDeps)),
+        Targets = one_or_more(TransOptDateFileName,
+            [ErrFileName, CDateFileName, JavaDateFileName]),
+        PlainOptInt0Deps =
+            set.union_list(list.map(get_ancestors_set, PlainOptDeps)),
         make_module_file_names_with_ext(Globals,
             ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
-            OptDeps, OptDepsFileNames, !Cache, !IO),
+            PlainOptDeps, PlainOptDepsFileNames, !Cache, !IO),
         make_module_file_names_with_ext(Globals,
-            ext_cur_ngs(ext_cur_ngs_int_int0), set.to_sorted_list(OptInt0Deps),
-            OptInt0DepsFileNames, !Cache, !IO),
+            ext_cur_ngs(ext_cur_ngs_int_int0),
+            set.to_sorted_list(PlainOptInt0Deps), PlainOptInt0DepsFileNames,
+            !Cache, !IO),
         MmakeRuleDateOptInt0Deps = mmake_flat_rule("dates_on_opts_and_int0s",
             mmake_rule_is_not_phony,
             Targets,
-            OptDepsFileNames ++ OptInt0DepsFileNames,
+            PlainOptDepsFileNames ++ PlainOptInt0DepsFileNames,
             []),
 
         (
-            MaybeTransOptDeps1 = yes(TransOptDeps2),
+            MaybeTransOptDeps = yes(TransOptDeps),
             ErrDateTargets = one_or_more(ErrFileName,
                 [CDateFileName, JavaDateFileName]),
             make_module_file_names_with_ext(Globals,
                 ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
-                TransOptDeps2, TransOptDepsOptFileNames, !Cache, !IO),
+                TransOptDeps, TransOptDepsOptFileNames, !Cache, !IO),
             MmakeRuleTransOptOpts = mmake_flat_rule("dates_on_trans_opts",
                 mmake_rule_is_not_phony,
                 ErrDateTargets,
@@ -914,10 +962,11 @@ construct_intermod_rules(Globals, ModuleName, DirectDeps, AllDeps,
             MmakeRulesIntermod = MmakeRulesMhDeps ++
                 [MmakeRuleDateOptInt0Deps, MmakeRuleTransOptOpts]
         ;
-            MaybeTransOptDeps1 = no,
+            MaybeTransOptDeps = no,
             MmakeRulesIntermod = MmakeRulesMhDeps ++ [MmakeRuleDateOptInt0Deps]
         )
-    else
+    ;
+        MaybeOptFileDeps = no_opt_file_deps,
         MmakeRulesIntermod = MmakeRulesMhDeps
     ).
 
@@ -1399,8 +1448,7 @@ generate_dependencies_write_d_file(ProgressStream, Globals,
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
 
     % Look up the interface/implementation/indirect dependencies
-    % for this module from the respective dependency graphs,
-    % and save them in the module_and_imports structure.
+    % for this module from the respective dependency graphs.
 
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
@@ -1427,8 +1475,9 @@ generate_dependencies_write_d_file(ProgressStream, Globals,
     get_dependencies_from_graph(TransOptDepsGraph, ModuleName, TransOptDeps0),
     set.delete(ModuleName, TransOptDeps0, TransOptDeps),
 
-    % XXX The way IndirectOptDeps is computed seems to have nothing to do with
-    % foreign_import_module declarations. This seems to me (zs) to be a BUG.
+    % XXX DFILE The way IndirectOptDeps is computed seems to have nothing
+    % to do with foreign_import_module declarations. This seems to me (zs)
+    % to be a BUG.
     StdDeps = std_deps(DirectDeps, IndirectDeps, IndirectOptDeps,
         trans_opt_deps(TransOptDeps)),
 
@@ -1449,7 +1498,7 @@ generate_dependencies_write_d_file(ProgressStream, Globals,
     TransOptRuleInfo = trans_opt_deps_from_order(TransOptOrder),
     MaybeInclTransOptRule = include_trans_opt_rule(TransOptRuleInfo),
 
-    % XXX Note that even if a fatal error occurred for one of the files
+    % XXX DFILE Note that even if a fatal error occurred for one of the files
     % that the current Module depends on, a .d file is still produced,
     % even though it probably contains incorrect information.
     ModuleErrors = Baggage ^ mb_errors,
@@ -1457,6 +1506,9 @@ generate_dependencies_write_d_file(ProgressStream, Globals,
     ( if set.is_empty(FatalErrors) then
         init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit),
         BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
+        % XXX DFILE The way IndirectOptDeps is computed seems to have nothing
+        % to do with the way the write_d_file predicate's corresponding
+        % argument is computed. This seems to me (zs) to be a BUG.
         write_d_file_fn_cache(ProgressStream, Globals,
             BurdenedAugCompUnit, StdDeps, IndirectOptDeps,
             MaybeInclTransOptRule, !Cache, !IO)
