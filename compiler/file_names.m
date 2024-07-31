@@ -300,17 +300,6 @@
             % a NON-grade-specific extension? If *anything* in a .module_dep
             % file can *ever* be grade dependent, this should be a
             % grade-specific extension.
-    ;       ext_cur_ngs_misc_err_date           % ".err_date"
-            % XXX DODGY If you recompile a module in a different grade,
-            % the contents of the .err file may change, for example
-            % because one grade satisfies the requirements of a
-            % require_feature_set declaration and the other does not.
-            % To me (zs), this argues in favor of .err_date files
-            % belonging in a grade-specific directory. The fact that
-            % it would obviously be harder to people to find them there
-            % is not relevant, since people shouldn't *have* to find
-            % .err_date files.
-            % XXX zs and juliensf agree on this.
     ;       ext_cur_ngs_misc_prof.              % ".prof"
             % XXX DODGY Given that different profiling grades generate
             % different profiles (specifically, they produce different subsets
@@ -409,6 +398,7 @@
     ;       ext_cur_ngs_gs_an_ds_status         % ".analysis_status"
 
             % Misc extensions.
+    ;       ext_cur_ngs_gs_misc_err_date        % ".err_date"
     ;       ext_cur_ngs_gs_misc_used            % ".used"
     ;       ext_cur_ngs_gs_misc_track_flags.    % ".track_flags"
 
@@ -793,7 +783,6 @@ ext_cur_ngs_extension_dir(Ext, Str, Dir) :-
     ; Ext = ext_cur_ngs_mf_dep,         Str = ".dep",       Dir = "deps"
     ; Ext = ext_cur_ngs_misc_module_dep,
                                         Str = ".module_dep",Dir = "module_deps"
-    ; Ext = ext_cur_ngs_misc_err_date,  Str = ".err_date",  Dir = "err_dates"
     ; Ext = ext_cur_ngs_misc_prof,      Str = ".prof",      Dir = "profs"
     ).
 
@@ -876,6 +865,8 @@ ext_cur_ngs_gs_extension_dir(Globals, Ext, Str, Dir) :-
         Str = ".analysis_date",   Dir = "analysis_dates"
     ; Ext = ext_cur_ngs_gs_an_ds_status,
         Str = ".analysis_status", Dir = "analysis_statuss"
+    ; Ext = ext_cur_ngs_gs_misc_err_date,
+        Str = ".err_date",  Dir = "err_dates"
     ; Ext = ext_cur_ngs_gs_misc_used,
         Str = ".used",        Dir = "useds"
     ; Ext = ext_cur_ngs_gs_misc_track_flags,

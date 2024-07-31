@@ -263,7 +263,7 @@ date_file_extension(ModuleTargetType, Ext) :-
         % We need a timestamp file for `.err' files because errors are written
         % to the `.err' file even when writing interfaces. The timestamp
         % is only updated when compiling to target code.
-        Ext = ext_cur_ngs(ext_cur_ngs_misc_err_date)
+        Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_misc_err_date)
     ;
         ModuleTargetType = module_target_int0,
         Ext = ext_cur_ngs(ext_cur_ngs_int_date_int0)
