@@ -275,7 +275,8 @@ setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
 open_module_error_stream(ProgressStream, Globals, ModuleName, MaybeErrorStream,
         !Info, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur(ext_cur_user_err), ModuleName, ErrorFileName, !IO),
+        ext_cur_ngs_gs_err(ext_cur_ngs_gs_err_err), ModuleName, ErrorFileName,
+        !IO),
     ErrorFileModules0 = make_info_get_error_file_modules(!.Info),
     ( if set.contains(ErrorFileModules0, ModuleName) then
         % Write the output to a temporary file first, to allow us to print

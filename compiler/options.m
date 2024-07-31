@@ -1143,6 +1143,7 @@
     ;       options_search_directories
     ;       setting_only_use_subdirs
     ;       setting_only_use_grade_subdirs
+    ;       error_files_in_subdir
     ;       std_int_file_not_written_msgs
     ;       search_directories
     ;       intermod_directories
@@ -2132,6 +2133,7 @@ optdef(oc_buildsys, config_file,                        maybe_string(yes(""))).
 optdef(oc_buildsys, options_search_directories,         accumulating(["."])).
 optdef(oc_buildsys, setting_only_use_subdirs,           bool(no)).
 optdef(oc_buildsys, setting_only_use_grade_subdirs,     bool(no)).
+optdef(oc_buildsys, error_files_in_subdir,              bool(no)).
 optdef(oc_buildsys, std_int_file_not_written_msgs,      bool(no)).
 optdef(oc_buildsys, search_directories,                 accumulating(["."])).
 optdef(oc_buildsys, intermod_directories,               accumulating([])).
@@ -3304,6 +3306,7 @@ long_table("config-file",          config_file).
 long_table("options-search-directory", options_search_directories).
 long_table("use-subdirs",          setting_only_use_subdirs).
 long_table("use-grade-subdirs",    setting_only_use_grade_subdirs).
+long_table("error-files-in-subdir", error_files_in_subdir).
 long_table("std-int-file-not-written-msgs",
                     std_int_file_not_written_msgs).
 long_table("search-directory",     search_directories).
@@ -7015,6 +7018,10 @@ options_help_build_system(Stream, !IO) :-
         "\tthe current directory.",
         "\t`--use-grade-subdirs' does not work with Mmake (it does",
         "\twork with `mmc --make').",
+        "--error-files-in-subdir",
+        "\tThis option causes `mmc --make' to put .err files into the",
+        "\t`Mercury' subdirectory instead of the current directory.",
+        "\t(This option has no effect on Mmake.)",
 % This is used to eliminate the need for a .int_err_exp file for the
 % -use-subdir case for every test in the tests/invalid_make_int directory.
 %       "--std-int-file-not-written-msgs",

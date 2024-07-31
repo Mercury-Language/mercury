@@ -197,7 +197,7 @@ target_type_to_target_extension(Target, TargetExt) :-
         TargetExt = source
     ;
         Target = module_target_errors,
-        TargetExt = extension(ext_cur(ext_cur_user_err))
+        TargetExt = extension(ext_cur_ngs_gs_err(ext_cur_ngs_gs_err_err))
     ;
         Target = module_target_int0,
         TargetExt = extension(ext_cur_ngs(ext_cur_ngs_int_int0))
@@ -263,7 +263,7 @@ date_file_extension(ModuleTargetType, Ext) :-
         % We need a timestamp file for `.err' files because errors are written
         % to the `.err' file even when writing interfaces. The timestamp
         % is only updated when compiling to target code.
-        Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_misc_err_date)
+        Ext = ext_cur_ngs_gs_err(ext_cur_ngs_gs_err_err)
     ;
         ModuleTargetType = module_target_int0,
         Ext = ext_cur_ngs(ext_cur_ngs_int_date_int0)

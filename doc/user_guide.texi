@@ -10642,6 +10642,19 @@ current directory.
 work with @samp{mmc --make}).
 
 @sp 1
+@item --error-files-in-subdir
+@findex --error-files-in-subdir
+@cindex File names
+@cindex Directories
+@cindex Subdirectories
+@cindex @file{Mercury} subdirectory
+Make @samp{mmc --make} to put @samp{.err} files
+(containing compiler error messages)
+into the @samp{Mercury} subdirectory,
+rather than into the current directory.
+@samp{--error-files-in-subdir} has no effect on Mmake.
+
+@sp 1
 @item --order-make-by-timestamp
 @findex --order-make-by-timestamp
 Make @samp{mmc --make} compile more recently modified source files first.

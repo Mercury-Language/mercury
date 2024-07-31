@@ -64,6 +64,9 @@ Changes that may break compatibility
   additional options to be passed to the C compiler in order for it to find
   those header files.
 
+* We have added the option `--error-files-in-subdir` to place `.err` files
+  under the `Mercury` subdirectory when using `mmc --make`.
+
 * We have changed the meaning of `mmc --make name.cs`.
 
   The `mmc --make` target `name.cs` now means "build the .cs file
