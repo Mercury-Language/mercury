@@ -16,9 +16,9 @@
 :- module check_hlds.mode_debug.
 :- interface.
 
+:- import_module check_hlds.mode_info.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module check_hlds.mode_info.
 
     % Print a debugging message which includes the port, message string,
     % and the current instmap (but only if `--debug-modes' was enabled).
