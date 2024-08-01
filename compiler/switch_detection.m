@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015-2016, 2024 The Mercury team.
+% Copyright (C) 2015-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: switch_detection.m.
 % Main authors: fjh, zs.
@@ -14,7 +14,7 @@
 % same input variable with different function symbols, replace (part of)
 % the disjunction with a switch.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.switch_detection.
 :- interface.
@@ -29,7 +29,7 @@
 :- import_module io.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type switch_detect_info.
 
@@ -41,7 +41,7 @@
 :- pred detect_switches_in_proc(switch_detect_info::in,
     proc_info::in, proc_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type found_deconstruct
     --->    did_find_deconstruct
@@ -73,8 +73,8 @@
     hlds_goal::in, hlds_goal::out, Result::in, Result::out,
     Info::in, Info::out, found_deconstruct::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -112,7 +112,7 @@
 :- import_module term_subst.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type allow_multi_arm
     --->    allow_multi_arm
@@ -141,7 +141,7 @@ init_switch_detect_info(ModuleInfo) = Info :-
     lookup_allow_multi_arm(ModuleInfo, AllowMulti),
     Info = switch_detect_info(ModuleInfo, AllowMulti).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 detect_switches_in_module(ProgressStream, !ModuleInfo) :-
     % Traverse the module structure, calling detect_switches_in_goal
@@ -247,7 +247,7 @@ detect_switches_in_proc(Info, !ProcInfo) :-
         DeletedCallCallees0, DeletedCallCallees),
     proc_info_set_deleted_call_callees(DeletedCallCallees, !ProcInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type local_switch_detect_info
     --->    local_switch_detect_info(
@@ -465,7 +465,7 @@ detect_switches_in_orelse(InstMap, [Goal0 | Goals0], [Goal | Goals],
     detect_switches_in_goal(InstMap, no, Goal0, Goal, !LocalInfo),
     detect_switches_in_orelse(InstMap, Goals0, Goals, !LocalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type case_arm
     --->    single_cons_id_arm(cons_id, hlds_goal)
@@ -693,7 +693,7 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
     ),
     CasesTable = cases_table(CasesMap, ConflictConsIds).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % A disjunction is a candidate for conversion to a switch on cs_var
     % if the conditions that is_candidate_switch tests for are satisfied.
@@ -1089,7 +1089,7 @@ can_candidate_switch_fail(ModuleInfo, VarType, VarInst0, Cases0,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred select_best_candidate_switch(list(candidate_switch)::in,
     candidate_switch::in, candidate_switch::out) is det.
@@ -1107,7 +1107,7 @@ select_best_candidate_switch([Candidate | Candidates], !BestCandidate) :-
     ),
     select_best_candidate_switch(Candidates, !BestCandidate).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % partition_disj(LocalInfo, Var, Disjuncts, GoalInfo,
     %   Left, Cases, !LocalInfo):
@@ -1155,7 +1155,7 @@ partition_disj(Var, Disjuncts0, GoalInfo, Left, Cases, !LocalInfo) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred expand_sub_disjs(local_switch_detect_info::in, prog_var::in,
     list(hlds_goal)::in, cases_table::in, cases_table::out) is semidet.
@@ -1257,7 +1257,7 @@ create_expanded_conjunction(Unifies, LaterGoals, GoalInfo, Disjunct, Goal) :-
     ),
     Goal = hlds_goal(conj(plain_conj, Conjuncts), GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred partition_disj_trial(local_switch_detect_info::in, prog_var::in,
     list(hlds_goal)::in,
@@ -1325,7 +1325,7 @@ find_bind_var_for_switch_in_deconstruct(SwitchVar, GoalExpr0, GoalInfo0, Goals,
         Goals = [Goal]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 find_bind_var(Var, ProcessUnify, !Goal, !Result, !Info, FoundDeconstruct) :-
     map.init(Subst),
@@ -1495,7 +1495,7 @@ conj_find_bind_var(Var, ProcessUnify, [HeadGoal0 | TailGoals0], Goals,
         Goals = [HeadGoal | TailGoals0]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred cases_to_switch(candidate_switch::in, instmap::in,
     hlds_goal_expr::out,
@@ -1580,6 +1580,6 @@ count_covered_cons_ids([Case | Cases]) = CaseCount + CasesCount :-
     CaseCount = 1 + list.length(OtherConsIds),
     CasesCount = count_covered_cons_ids(Cases).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module check_hlds.switch_detection.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
