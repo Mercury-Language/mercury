@@ -63,6 +63,7 @@
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.generate_mmakefile_fragments.
 :- import_module parse_tree.grab_modules.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.module_qual.mq_info.

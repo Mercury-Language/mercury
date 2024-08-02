@@ -121,7 +121,6 @@
 :- include_module deps_map.
 :- include_module equiv_type.
 :- include_module file_names.
-:- include_module generate_dep_d_files.
 :- include_module get_dependencies.
 :- include_module grab_modules.
 :- include_module module_baggage.
@@ -132,8 +131,13 @@
 :- include_module read_modules.
 :- include_module source_file_map.
 :- include_module split_parse_tree_src.
-:- include_module write_deps_file.
 :- include_module write_module_interface_files.
+
+% Constructing .d, .dv and .dep files.
+:- include_module generate_dep_d_files.
+:- include_module generate_mmakefile_fragments.
+:- include_module make_module_file_names.
+:- include_module write_deps_file.
 
 % Java and C# related utilities.
 :- include_module java_names.

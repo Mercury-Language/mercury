@@ -561,7 +561,11 @@ if the only change to a module is a reordering of some declarations
 check_module_interface.m checks whether a module exports anything.
 <li>
 generate_dep_d_files.m generates the information from which
-write_deps_file.m writes out Makefile fragments.
+generate_mmakefile_fragments.m constructs Makefile fragments
+that write_deps_file.m then writes out.
+<li>
+make_module_file_names.m constructs the filenames
+that go into those mmakefile fragments.
 <li>
 module_baggage.m contains the module_baggage type,
 the types of its components, and utility predicates.
