@@ -121,6 +121,9 @@
 
     % Generate the contents of a program's .dep file.
     %
+    % XXX Why does this predicate not take an in/out pair of filename caches
+    % as arguments?
+    %
 :- pred generate_dep_file(globals::in, file_name::in, module_name::in,
     deps_map::in, mmakefile::out, io::di, io::uo) is det.
 

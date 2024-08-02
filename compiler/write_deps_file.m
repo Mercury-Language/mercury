@@ -15,11 +15,9 @@
 :- interface.
 
 :- import_module libs.
-:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.deps_map.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.generate_mmakefile_fragments.
 :- import_module parse_tree.module_baggage.
@@ -83,20 +81,6 @@
     deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
     deps_graph::in, list(module_name)::in, io::di, io::uo) is det.
 
-    % Write out the `.dv' file, using the information collected in the
-    % deps_map data structure.
-    %
-:- pred generate_dependencies_write_dv_file(io.text_output_stream::in,
-    globals::in, file_name::in, module_name::in, deps_map::in,
-    io::di, io::uo) is det.
-
-    % Write out the `.dep' file, using the information collected in the
-    % deps_map data structure.
-    %
-:- pred generate_dependencies_write_dep_file(io.text_output_stream::in,
-    globals::in, file_name::in, module_name::in, deps_map::in,
-    io::di, io::uo) is det.
-
 %---------------------------------------------------------------------------%
 
 :- type maybe_look_for_src
@@ -124,6 +108,7 @@
 
 :- implementation.
 
+:- import_module libs.file_util.
 :- import_module libs.mmakefiles.
 :- import_module libs.options.
 :- import_module parse_tree.find_module.        % XXX undesirable dependency
@@ -328,33 +313,52 @@ construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, AllDeps,
 write_d_file(ProgressStream, Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
         MaybeInclTransOptRule, !IO) :-
     map.init(Cache0),
-    write_d_file_fn_cache(ProgressStream, Globals, BurdenedAugCompUnit,
-        StdDeps, AllDeps, MaybeInclTransOptRule, Cache0, _Cache, !IO).
+    generate_d_file_fragment(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
+        MaybeInclTransOptRule, FileNameD, FileContentsStrD,
+        Cache0, _Cache, !IO),
+    write_out_d_file(ProgressStream, Globals, FileNameD,
+        FileContentsStrD, !IO).
 
-:- pred write_d_file_fn_cache(io.text_output_stream::in, globals::in,
-    burdened_aug_comp_unit::in, std_deps::in, set(module_name)::in,
-    maybe_include_trans_opt_rule::in,
+:- pred generate_d_file_fragment(globals::in, burdened_aug_comp_unit::in,
+    std_deps::in, set(module_name)::in, maybe_include_trans_opt_rule::in,
+    file_name::out, string::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-write_d_file_fn_cache(ProgressStream, Globals, BurdenedAugCompUnit,
-        StdDeps, AllDeps, MaybeInclTransOptRule, !Cache, !IO) :-
-    % To avoid problems with concurrent updates of `.d' files during
-    % parallel makes, we first create the file with a temporary name,
-    % and then rename it to the desired name when we have finished.
+generate_d_file_fragment(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
+        MaybeInclTransOptRule, FileNameD, FileContentsStrD, !Cache, !IO) :-
     BurdenedAugCompUnit = burdened_aug_comp_unit(_, AugCompUnit),
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs(ext_cur_ngs_mf_d), ModuleName, DependencyFileName, !IO),
-    io.file.make_temp_file(dir.dirname(DependencyFileName), "tmp_d", "",
-        TmpDependencyFileNameRes, !IO),
+        ext_cur_ngs(ext_cur_ngs_mf_d), ModuleName, FileNameD, !IO),
+
+    construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, AllDeps,
+        IntermodDeps, !Cache, !IO),
+    generate_d_file(Globals, BurdenedAugCompUnit, StdDeps,
+        IntermodDeps, AllDeps, MaybeInclTransOptRule, MmakeFileD, !Cache, !IO),
+    FileContentsStrD = mmakefile_to_string(MmakeFileD).
+
+:- pred write_out_d_file(io.text_output_stream::in, globals::in,
+    file_name::in, string::in, io::di, io::uo) is det.
+
+write_out_d_file(ProgressStream, Globals, FileNameD, FileContentsStrD, !IO) :-
+    % To avoid problems with concurrent updates of `.d' files during
+    % parallel makes, we first create the file with a temporary name,
+    % and then rename it to the desired name when we have finished.
+    % XXX I (zs) think that if two mmake actions both update the same .d file,
+    % then having them executed in parallel is itself a bug, and that bug
+    % should be fixed, instead of being accommodated, as we do here.
+    % Therefore I think that this predicate should be deleted,
+    % and its uses replaced by calls to write_string_to_file.
+    io.file.make_temp_file(dir.dirname(FileNameD), "tmp_d", "",
+        TmpFileNameDResult, !IO),
     (
-        TmpDependencyFileNameRes = error(Error),
+        TmpFileNameDResult = error(Error),
         Message = "Could not create temporary file: " ++ error_message(Error),
         report_error(ProgressStream, Message, !IO)
     ;
-        TmpDependencyFileNameRes = ok(TmpDependencyFileName),
+        TmpFileNameDResult = ok(TmpFileNameD),
         globals.lookup_bool_option(Globals, verbose, Verbose),
         (
             Verbose = no
@@ -362,36 +366,30 @@ write_d_file_fn_cache(ProgressStream, Globals, BurdenedAugCompUnit,
             Verbose = yes,
             io.format(ProgressStream,
                 "%% Writing auto-dependency file `%s'...",
-                [s(DependencyFileName)], !IO),
+                [s(FileNameD)], !IO),
             io.flush_output(ProgressStream, !IO)
         ),
-        io.open_output(TmpDependencyFileName, Result, !IO),
+        io.open_output(TmpFileNameD, Result, !IO),
         (
             Result = error(IOError),
             maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
             maybe_flush_output(ProgressStream, Verbose, !IO),
             io.error_message(IOError, IOErrorMessage),
             string.format("error opening temporary file `%s' for output: %s",
-                [s(TmpDependencyFileName), s(IOErrorMessage)], Message),
+                [s(TmpFileNameD), s(IOErrorMessage)], Message),
             report_error(ProgressStream, Message, !IO)
         ;
             Result = ok(DepStream),
-            construct_intermod_deps(Globals, ParseTreeModuleSrc,
-                StdDeps, AllDeps, IntermodDeps, !Cache, !IO),
-            generate_d_file(Globals, BurdenedAugCompUnit, StdDeps,
-                IntermodDeps, AllDeps, MaybeInclTransOptRule, MmakeFile,
-                !Cache, !IO),
-            MmakeFileStr = mmakefile_to_string(MmakeFile),
-            io.write_string(DepStream, MmakeFileStr, !IO),
+            io.write_string(DepStream, FileContentsStrD, !IO),
             io.close_output(DepStream, !IO),
 
-            io.file.rename_file(TmpDependencyFileName, DependencyFileName,
+            io.file.rename_file(TmpFileNameD, FileNameD,
                 FirstRenameResult, !IO),
             (
                 FirstRenameResult = error(_),
                 % On some systems, we need to remove the existing file first,
                 % if any. So try again that way.
-                io.file.remove_file(DependencyFileName, RemoveResult, !IO),
+                io.file.remove_file(FileNameD, RemoveResult, !IO),
                 (
                     RemoveResult = error(Error4),
                     maybe_write_string(ProgressStream, Verbose,
@@ -399,12 +397,12 @@ write_d_file_fn_cache(ProgressStream, Globals, BurdenedAugCompUnit,
                     maybe_flush_output(ProgressStream, Verbose, !IO),
                     io.error_message(Error4, ErrorMsg),
                     string.format("can't remove file `%s': %s",
-                        [s(DependencyFileName), s(ErrorMsg)], Message),
+                        [s(FileNameD), s(ErrorMsg)], Message),
                     report_error(ProgressStream, Message, !IO)
                 ;
                     RemoveResult = ok,
-                    io.file.rename_file(TmpDependencyFileName,
-                        DependencyFileName, SecondRenameResult, !IO),
+                    io.file.rename_file(TmpFileNameD,
+                        FileNameD, SecondRenameResult, !IO),
                     (
                         SecondRenameResult = error(Error5),
                         maybe_write_string(ProgressStream, Verbose,
@@ -412,7 +410,7 @@ write_d_file_fn_cache(ProgressStream, Globals, BurdenedAugCompUnit,
                         maybe_flush_output(ProgressStream, Verbose, !IO),
                         io.error_message(Error5, ErrorMsg),
                         string.format("can't rename file `%s' as `%s': %s",
-                            [s(TmpDependencyFileName), s(DependencyFileName),
+                            [s(TmpFileNameD), s(FileNameD),
                             s(ErrorMsg)], Message),
                         report_error(ProgressStream, Message, !IO)
                     ;
@@ -534,11 +532,14 @@ generate_dependencies_write_d_file(ProgressStream, Globals,
         init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit),
         BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
         % XXX DFILE The way IndirectOptDeps is computed seems to have nothing
-        % to do with the way the write_d_file predicate's corresponding
-        % argument is computed. This seems to me (zs) to be a BUG.
-        write_d_file_fn_cache(ProgressStream, Globals,
-            BurdenedAugCompUnit, StdDeps, IndirectOptDeps,
-            MaybeInclTransOptRule, !Cache, !IO)
+        % to do with the way the generate_d_file_fragment predicate's
+        % corresponding argument is computed. This seems to me (zs)
+        % to be a BUG.
+        generate_d_file_fragment(Globals, BurdenedAugCompUnit,
+            StdDeps, IndirectOptDeps, MaybeInclTransOptRule,
+            FileNameD, FileContentsStrD, !Cache, !IO),
+        write_out_d_file(ProgressStream, Globals, FileNameD,
+            FileContentsStrD, !IO)
     else
         true
     ).
@@ -558,65 +559,6 @@ get_dependencies_from_graph(DepsGraph, ModuleName, Dependencies) :-
         set.list_to_set(DependenciesList, Dependencies)
     else
         set.init(Dependencies)
-    ).
-
-%---------------------------------------------------------------------------%
-
-generate_dependencies_write_dv_file(ProgressStream, Globals,
-        SourceFileName, ModuleName, DepsMap, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs(ext_cur_ngs_mf_dv), ModuleName, DvFileName, !IO),
-    string.format("%% Creating auto-dependency file `%s'...\n",
-        [s(DvFileName)], CreatingMsg),
-    maybe_write_string(ProgressStream, Verbose, CreatingMsg, !IO),
-    io.open_output(DvFileName, DvResult, !IO),
-    (
-        DvResult = ok(DvStream),
-        map.init(Cache0),
-        generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
-            MmakeFile, Cache0, _Cache, !IO),
-        MmakeFileStr = mmakefile_to_string(MmakeFile),
-        io.write_string(DvStream, MmakeFileStr, !IO),
-        io.close_output(DvStream, !IO),
-        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
-    ;
-        DvResult = error(IOError),
-        maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
-        maybe_flush_output(ProgressStream, Verbose, !IO),
-        io.error_message(IOError, IOErrorMessage),
-        string.format("error opening file `%s' for output: %s",
-            [s(DvFileName), s(IOErrorMessage)], DepMessage),
-        report_error(ProgressStream, DepMessage, !IO)
-    ).
-
-%---------------------------------------------------------------------------%
-
-generate_dependencies_write_dep_file(ProgressStream, Globals,
-        SourceFileName, ModuleName, DepsMap, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs(ext_cur_ngs_mf_dep), ModuleName, DepFileName, !IO),
-    string.format("%% Creating auto-dependency file `%s'...\n",
-        [s(DepFileName)], CreatingMsg),
-    maybe_write_string(ProgressStream, Verbose, CreatingMsg, !IO),
-    io.open_output(DepFileName, DepResult, !IO),
-    (
-        DepResult = ok(DepStream),
-        generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
-            MmakeFile, !IO),
-        MmakeFileStr = mmakefile_to_string(MmakeFile),
-        io.write_string(DepStream, MmakeFileStr, !IO),
-        io.close_output(DepStream, !IO),
-        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
-    ;
-        DepResult = error(IOError),
-        maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
-        maybe_flush_output(ProgressStream, Verbose, !IO),
-        io.error_message(IOError, IOErrorMessage),
-        string.format("error opening file `%s' for output: %s",
-            [s(DepFileName), s(IOErrorMessage)], DepMessage),
-        report_error(ProgressStream, DepMessage, !IO)
     ).
 
 %---------------------------------------------------------------------------%

@@ -32,6 +32,19 @@
 
 %---------------------------------------------------------------------------%
 
+    % write_string_to_file(ProgressStream, Globals, FileNameMsg,
+    %   FileName, FileContentsStr, Succeeded, !IO)
+    %
+    % Write FileContentsStr to FileName. If the verbose option is enabled
+    % in Globals, then print progress messages as we go along. The initial
+    % progress message will start with FileNameMsg.
+    %
+:- pred write_string_to_file(io.text_output_stream::in, globals::in,
+    string::in, file_name::in, string::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
     % Write to a given filename, giving appropriate status messages
     % and error messages if the file cannot be opened.
     %
@@ -127,6 +140,32 @@
 :- import_module io.file.
 :- import_module string.
 :- import_module univ.
+
+%---------------------------------------------------------------------------%
+
+write_string_to_file(ProgressStream, Globals, FileNameMsg,
+        FileName, FileContentsStr, Succeeded, !IO) :-
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    string.format("%% %s `%s'...\n", [s(FileNameMsg), s(FileName)],
+        CreatingMsg),
+    maybe_write_string(ProgressStream, Verbose, CreatingMsg, !IO),
+    io.open_output(FileName, OpenFileResult, !IO),
+    (
+        OpenFileResult = ok(FileStream),
+        io.write_string(FileStream, FileContentsStr, !IO),
+        io.close_output(FileStream, !IO),
+        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
+        Succeeded = succeeded
+    ;
+        OpenFileResult = error(IOError),
+        maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
+        maybe_flush_output(ProgressStream, Verbose, !IO),
+        io.error_message(IOError, IOErrorMessage),
+        string.format("error opening file `%s' for output: %s",
+            [s(FileName), s(IOErrorMessage)], ErrorMessage),
+        report_error(ProgressStream, ErrorMessage, !IO),
+        Succeeded = did_not_succeed
+    ).
 
 %---------------------------------------------------------------------------%
 

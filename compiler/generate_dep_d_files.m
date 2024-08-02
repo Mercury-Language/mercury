@@ -100,10 +100,12 @@
 
 :- implementation.
 
+:- import_module libs.mmakefiles.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.generate_mmakefile_fragments.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
@@ -245,10 +247,26 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
         ;
             Mode = output_all_program_dot_dx_files,
             SourceFileName = Baggage ^ mb_source_file_name,
-            generate_dependencies_write_dv_file(ProgressStream,
-                Globals, SourceFileName, ModuleName, DepsMap, !IO),
-            generate_dependencies_write_dep_file(ProgressStream,
-                Globals, SourceFileName, ModuleName, DepsMap, !IO),
+
+            map.init(Cache0),
+            generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
+                MmakeFileDv, Cache0, _Cache, !IO),
+            generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
+                MmakeFileDep, !IO),
+            MmakeFileStrDv = mmakefile_to_string(MmakeFileDv),
+            MmakeFileStrDep = mmakefile_to_string(MmakeFileDep),
+
+            module_name_to_file_name_create_dirs(Globals, $pred,
+                ext_cur_ngs(ext_cur_ngs_mf_dv), ModuleName, FileNameDv, !IO),
+            module_name_to_file_name_create_dirs(Globals, $pred,
+                ext_cur_ngs(ext_cur_ngs_mf_dep), ModuleName, FileNameDep, !IO),
+
+            write_string_to_file(ProgressStream, Globals,
+                "Writing auto-dependency file", FileNameDv, MmakeFileStrDv,
+                _SucceededDv, !IO),
+            write_string_to_file(ProgressStream, Globals,
+                "Writing auto-dependency file", FileNameDep, MmakeFileStrDep,
+                _SucceededDep, !IO),
 
             % For Java, the main target is actually a shell script
             % which will set CLASSPATH appropriately, and then invoke java
