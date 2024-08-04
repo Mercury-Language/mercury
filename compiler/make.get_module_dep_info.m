@@ -156,7 +156,7 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
         ModuleName, !:MaybeModuleDepInfo, !Info, !IO) :-
     globals.lookup_accumulating_option(Globals, search_directories,
         SearchDirs),
-    ModuleDepExt = ext_cur_ngs(ext_cur_ngs_misc_module_dep),
+    ModuleDepExt = ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep),
     module_name_to_file_name(Globals, $pred, ModuleDepExt,
         ModuleName, DepFileName),
     get_file_timestamp(SearchDirs, DepFileName, MaybeDepFileTimestamp,
@@ -310,7 +310,8 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
 find_and_read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
         SearchDirs, ModuleName, !Info, !IO) :-
     module_name_to_search_file_name(Globals, $pred,
-        ext_cur_ngs(ext_cur_ngs_misc_module_dep), ModuleName, DepFileName),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep),
+        ModuleName, DepFileName),
     search_for_file_returning_dir_and_contents(SearchDirs, DepFileName,
         MaybeDirAndContents, !IO),
     (
@@ -730,7 +731,8 @@ cleanup_module_dep_files(ProgressStream, Globals, ModuleNames, !Info, !IO) :-
 
 cleanup_module_dep_file(ProgressStream, Globals, ModuleName, !Info, !IO) :-
     remove_module_file_for_make(ProgressStream, Globals, verbose_make,
-        ModuleName, ext_cur_ngs(ext_cur_ngs_misc_module_dep), !Info, !IO).
+        ModuleName, ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep),
+        !Info, !IO).
 
 :- pred maybe_write_importing_module(io.text_output_stream::in,
     module_name::in, maybe(import_or_include)::in, io::di, io::uo) is det.

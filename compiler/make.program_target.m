@@ -1735,7 +1735,7 @@ install_ints_and_headers(ProgressStream, Globals, SubdirLinkSucceeded,
         ExtExtDirs = [{ext_cur_ngs(ext_cur_ngs_int_int1), "ints"},
             {ext_cur_ngs(ext_cur_ngs_int_int2), "int2s"},
             {ext_cur_ngs(ext_cur_ngs_int_int3), "int3s"},
-            {ext_cur_ngs(ext_cur_ngs_misc_module_dep), "module_deps"}
+            {ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep), "module_deps"}
             | ExtExtDirs1],
         globals.lookup_string_option(Globals, install_prefix, Prefix),
         LibDir = Prefix/"lib"/"mercury",
@@ -2449,7 +2449,7 @@ make_module_realclean(ProgressStream, Globals, ModuleName, !Info, !IO) :-
             very_verbose, ModuleName),
         Targets, !Info, !IO),
     remove_module_file_for_make(ProgressStream, Globals, very_verbose,
-        ModuleName, ext_cur_ngs(ext_cur_ngs_misc_module_dep),
+        ModuleName, ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep),
         !Info, !IO),
     remove_module_file_for_make(ProgressStream, Globals, very_verbose,
         ModuleName, ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_imdg),
