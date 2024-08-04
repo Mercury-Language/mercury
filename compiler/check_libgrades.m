@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2009 The University of Melbourne.
-% Copyright (C) 2015-2016, 2019 The Mercury team.
+% Copyright (C) 2015-2016, 2019-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -182,8 +182,7 @@ can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO) :-
         io.error_message(ReadError, ReadErrorMsg),
         Pieces = [words("Error:"), fixed(MerStdLibDir), suffix(":"), nl,
             words(ReadErrorMsg), suffix("."), nl],
-        Spec = no_ctxt_spec($pred, severity_error,
-            phase_options, Pieces),
+        Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
         MaybeMerStdLibDir = error1([Spec])
     ).
 
@@ -461,8 +460,7 @@ check_library_is_installed(Target, GradeDirName, MercuryLibDirs, InitFileDirs,
         Pieces = [fixed(ProgName), suffix(":"), words("error:"),
             words("the library"), quote(LibName), words("cannot be found"),
             words("in grade"), quote(GradeDirName), suffix("."), nl],
-        Spec = no_ctxt_spec($pred, severity_error,
-            phase_check_libs, Pieces),
+        Spec = no_ctxt_spec($pred, severity_error, phase_check_libs, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
