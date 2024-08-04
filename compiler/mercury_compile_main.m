@@ -2054,8 +2054,8 @@ process_augmented_module(ProgressStream, ErrorStream, Globals0,
     then
         globals.lookup_bool_option(Globals, verbose, Verbose),
         globals.lookup_bool_option(Globals, statistics, Stats),
-        maybe_write_dependency_graph(ProgressStream, ErrorStream,
-            Verbose, Stats, HLDS20, HLDS21, !IO),
+        maybe_write_dependency_graph(ProgressStream, Stats,
+            HLDS20, HLDS21, !IO),
         (
             OpModeAugment = opmau_typecheck_only,
             ExtraObjFiles = []
@@ -2145,33 +2145,21 @@ disable_warning_options(Globals0, Globals) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_write_dependency_graph(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_write_dependency_graph(io.text_output_stream::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_write_dependency_graph(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, !IO) :-
+maybe_write_dependency_graph(ProgressStream, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, show_dependency_graph, ShowDepGraph),
     (
         ShowDepGraph = yes,
-        maybe_write_string(ProgressStream, Verbose,
-            "% Writing dependency graph...", !IO),
+        dependency_graph_to_string(DepGraphStr, !HLDS),
         module_info_get_name(!.HLDS, ModuleName),
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur(ext_cur_user_depgraph), ModuleName, DepGraphFileName, !IO),
-        io.open_output(DepGraphFileName, OpenResult, !IO),
-        (
-            OpenResult = ok(FileStream),
-            write_dependency_graph(FileStream, !HLDS, !IO),
-            io.close_output(FileStream, !IO),
-            maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
-        ;
-            OpenResult = error(IOError),
-            ErrorMsg = "unable to write dependency graph: " ++
-                io.error_message(IOError),
-            report_error(ErrorStream, ErrorMsg, !IO)
-        ),
+        write_string_to_file(ProgressStream, Globals,
+            "Writing dependency graph", DepGraphFileName, DepGraphStr,
+            _Succeeded, !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
         ShowDepGraph = no
@@ -2233,10 +2221,8 @@ prepare_for_intermodule_analysis(ProgressStream, Globals,
 after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
         MaybeTopModule, FindTimestampFiles, MaybeTimestampMap, !.HLDS,
         ExtraObjFiles, !Specs, !DumpInfo, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
-    maybe_output_prof_call_graph(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, !IO),
+    maybe_output_prof_call_graph(ProgressStream, Stats, !HLDS, !IO),
     middle_pass(ProgressStream, ErrorStream, !HLDS, !DumpInfo, !Specs, !IO),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals.get_target(Globals, Target),
@@ -2380,12 +2366,10 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
     % Outputs the file <module_name>.prof, which contains the static
     % call graph in terms of label names, if the profiling flag is enabled.
     %
-:- pred maybe_output_prof_call_graph(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_output_prof_call_graph(io.text_output_stream::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_output_prof_call_graph(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, !IO) :-
+maybe_output_prof_call_graph(ProgressStream, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
     globals.lookup_bool_option(Globals, profile_time, ProfileTime),
@@ -2394,24 +2378,13 @@ maybe_output_prof_call_graph(ProgressStream, ErrorStream, Verbose, Stats,
         ; ProfileTime = yes
         )
     then
-        maybe_write_string(ProgressStream, Verbose,
-            "% Outputting profiling call graph...", !IO),
-        maybe_flush_output(ProgressStream, Verbose, !IO),
         module_info_get_name(!.HLDS, ModuleName),
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs(ext_cur_ngs_misc_prof), ModuleName, ProfFileName, !IO),
-        io.open_output(ProfFileName, Res, !IO),
-        (
-            Res = ok(FileStream),
-            write_prof_dependency_graph(FileStream, !HLDS, !IO),
-            io.close_output(FileStream, !IO)
-        ;
-            Res = error(IOError),
-            ErrorMsg = "unable to write profiling static call graph: " ++
-                io.error_message(IOError),
-            report_error(ErrorStream, ErrorMsg, !IO)
-        ),
-        maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
+        prof_dependency_graph_to_string(DepGraphStr, !HLDS),
+        write_string_to_file(ProgressStream, Globals,
+            "Writing profiling call graph", ProfFileName, DepGraphStr,
+            _Succeeded, !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     else
         true

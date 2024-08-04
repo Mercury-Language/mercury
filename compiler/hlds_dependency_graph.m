@@ -30,7 +30,6 @@
 :- import_module libs.
 :- import_module libs.dependency_graph.
 
-:- import_module io.
 :- import_module list.
 :- import_module set.
 
@@ -118,22 +117,22 @@
 
 %---------------------------------------------------------------------------%
 
-    % Output a form of the static call graph to a file, in a format suitable
+    % Return a form of the static call graph as a string, in a format suitable
     % for use in .dependency_info files. After the heading, the format of
     % each line is
     %
     %   CallerModeDecl \t CalleeModeDecl
     %
-:- pred write_dependency_graph(io.text_output_stream::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred dependency_graph_to_string(string::out,
+    module_info::in, module_info::out) is det.
 
-    % Output a form of the static call graph to a file for use by the profiler.
+    % Return a form of the static call graph as a file for use by the profiler.
     % There is no heading, and the format of each line is
     %
     %   CallerLabel \t CalleeLabel
     %
-:- pred write_prof_dependency_graph(io.text_output_stream::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred prof_dependency_graph_to_string(string::out,
+    module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -161,6 +160,8 @@
 :- import_module multi_map.
 :- import_module pair.
 :- import_module std_util.
+:- import_module string.
+:- import_module string.builder.
 :- import_module term.
 :- import_module varset.
 
@@ -627,24 +628,23 @@ proc_is_exported(ModuleInfo, PredProcId) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred write_dependency_ordering(io.text_output_stream::in, module_info::in,
-    int::in, list(list(pred_proc_id))::in, io::di, io::uo) is det.
-:- pragma consider_used(pred(write_dependency_ordering/6)).
+:- pred append_sccs(module_info::in,
+    int::in, list(list(pred_proc_id))::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+:- pragma consider_used(pred(append_sccs/5)).
 
-write_dependency_ordering(Stream, _ModuleInfo, _CurSCCNum, [], !IO) :-
-    io.write_string(Stream, "\n", !IO).
-write_dependency_ordering(Stream, ModuleInfo, CurSCCNum, [SCC | SCCs], !IO) :-
-    io.write_string(Stream, "% SCC ", !IO),
-    io.write_int(Stream, CurSCCNum, !IO),
-    io.write_string(Stream, "\n", !IO),
-    write_scc(Stream, ModuleInfo, SCC, !IO),
-    write_dependency_ordering(Stream, ModuleInfo, CurSCCNum + 1, SCCs, !IO).
+append_sccs(_ModuleInfo, _CurSCCNum, [], !SB) :-
+    append_string("\n", !SB).
+append_sccs(ModuleInfo, CurSCCNum, [SCC | SCCs], !SB) :-
+    string.builder.format("%% SCC %d\n", [i(CurSCCNum)], !SB),
+    append_scc(ModuleInfo, SCC, !SB),
+    append_sccs(ModuleInfo, CurSCCNum + 1, SCCs, !SB).
 
-:- pred write_scc(io.text_output_stream::in, module_info::in,
-    list(pred_proc_id)::in, io::di, io::uo) is det.
+:- pred append_scc(module_info::in, list(pred_proc_id)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_scc(_Stream, _ModuleInfo, [], !IO).
-write_scc(Stream, ModuleInfo, [PredProcId | PredProcIds], !IO) :-
+append_scc(_ModuleInfo, [], !SB).
+append_scc(ModuleInfo, [PredProcId | PredProcIds], !SB) :-
     PredProcId = proc(PredId, ProcId),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     Name = pred_info_name(PredInfo),
@@ -652,64 +652,75 @@ write_scc(Stream, ModuleInfo, [PredProcId | PredProcIds], !IO) :-
     proc_info_get_argmodes(ProcInfo, Modes),
     varset.init(ModeVarSet),
 
-    io.write_string(Stream, "% ", !IO),
-    mercury_output_pred_mode_subdecl(Stream, output_mercury, ModeVarSet,
-        unqualified(Name), Modes, Det, !IO),
-    io.write_string(Stream, "\n", !IO),
-    write_scc(Stream, ModuleInfo, PredProcIds, !IO).
+    MaybeWithInst = maybe.no,
+    append_string("% ", !SB),
+    mercury_format_pred_or_func_mode_subdecl(output_mercury, ModeVarSet,
+        unqualified(Name), Modes, MaybeWithInst, Det,
+        string.builder.handle, !SB),
+    append_string("\n", !SB),
+    append_scc(ModuleInfo, PredProcIds, !SB).
 
 %---------------------------------------------------------------------------%
 
-write_dependency_graph(Stream, !ModuleInfo, !IO) :-
+dependency_graph_to_string(DepGraphStr, !ModuleInfo) :-
     module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
-    io.write_string(Stream, "% Dependency graph\n", !IO),
-    io.write_string(Stream, "\n\n% Dependency ordering\n", !IO),
-    digraph.traverse(dependency_info_get_graph(DepInfo),
-        write_empty_node(Stream),
-        write_dep_graph_link(Stream, !.ModuleInfo),
-        !IO).
+    some [!SB] (
+        !:SB = string.builder.init,
+        append_string("% Dependency graph\n", !SB),
+        append_string("\n\n% Dependency ordering\n", !SB),
+        digraph.traverse(dependency_info_get_graph(DepInfo),
+            append_empty_node,
+            append_dep_graph_link(!.ModuleInfo),
+            !SB),
+        DepGraphStr = string.builder.to_string(!.SB)
+    ).
 
-write_prof_dependency_graph(Stream, !ModuleInfo, !IO) :-
+prof_dependency_graph_to_string(DepGraphStr, !ModuleInfo) :-
     module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
-    digraph.traverse(dependency_info_get_graph(DepInfo),
-        write_empty_node(Stream),
-        write_prof_dep_graph_link(Stream, !.ModuleInfo),
-        !IO).
+    some [!SB] (
+        !:SB = string.builder.init,
+        digraph.traverse(dependency_info_get_graph(DepInfo),
+            append_empty_node,
+            append_prof_dep_graph_link(!.ModuleInfo),
+            !SB),
+        DepGraphStr = string.builder.to_string(!.SB)
+    ).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_empty_node(io.text_output_stream::in, pred_proc_id::in,
-    io::di, io::uo) is det.
+:- pred append_empty_node(pred_proc_id::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_empty_node(_, _, !IO).
+append_empty_node(_, !SB).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_prof_dep_graph_link(io.text_output_stream::in, module_info::in,
-    pred_proc_id::in, pred_proc_id::in, io::di, io::uo) is det.
+:- pred append_prof_dep_graph_link(module_info::in,
+    pred_proc_id::in, pred_proc_id::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_prof_dep_graph_link(Stream, ModuleInfo, Parent, Child, !IO) :-
+append_prof_dep_graph_link(ModuleInfo, Parent, Child, !SB) :-
     Parent = proc(PPredId, PProcId),    % Caller
     Child = proc(CPredId, CProcId),     % Callee
-    output_label_dependency(Stream, ModuleInfo, PPredId, PProcId, !IO),
-    io.write_string(Stream, "\t", !IO),
-    output_label_dependency(Stream, ModuleInfo, CPredId, CProcId, !IO),
-    io.write_string(Stream, "\n", !IO).
+    append_label_dependency(ModuleInfo, PPredId, PProcId, !SB),
+    append_string("\t", !SB),
+    append_label_dependency(ModuleInfo, CPredId, CProcId, !SB),
+    append_string("\n", !SB).
 
     % Print out the label corresponding to the given pred_id and proc_id.
     %
-:- pred output_label_dependency(io.text_output_stream::in, module_info::in,
-    pred_id::in, proc_id::in, io::di, io::uo) is det.
+:- pred append_label_dependency(module_info::in, pred_id::in, proc_id::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-output_label_dependency(Stream, ModuleInfo, PredId, ProcId, !IO) :-
+append_label_dependency(ModuleInfo, PredId, ProcId, !SB) :-
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
-    io.write_string(Stream,
-        proc_label_to_c_string(add_label_prefix, ProcLabel), !IO).
+    append_string(proc_label_to_c_string(add_label_prefix, ProcLabel), !SB).
 
-:- pred write_dep_graph_link(io.text_output_stream::in, module_info::in,
-    pred_proc_id::in, pred_proc_id::in, io::di, io::uo) is det.
+:- pred append_dep_graph_link(module_info::in,
+    pred_proc_id::in, pred_proc_id::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_dep_graph_link(Stream, ModuleInfo, Parent, Child, !IO) :-
+append_dep_graph_link(ModuleInfo, Parent, Child, !SB) :-
     Parent = proc(PPredId, PProcId),    % Caller
     Child = proc(CPredId, CProcId),     % Callee
     module_info_pred_proc_info(ModuleInfo, PPredId, PProcId,
@@ -723,12 +734,15 @@ write_dep_graph_link(Stream, ModuleInfo, Parent, Child, !IO) :-
     proc_info_get_declared_determinism(CProcInfo, CDet),
     proc_info_get_argmodes(CProcInfo, CModes),
     varset.init(ModeVarSet),
-    mercury_output_pred_mode_subdecl(Stream, output_mercury, ModeVarSet,
-        unqualified(PName), PModes, PDet, !IO),
-    io.write_string(Stream, " -> ", !IO),
-    mercury_output_pred_mode_subdecl(Stream, output_mercury, ModeVarSet,
-        unqualified(CName), CModes, CDet, !IO),
-    io.write_string(Stream, "\n", !IO).
+    MaybeWithInst = maybe.no,
+    mercury_format_pred_or_func_mode_subdecl(output_mercury, ModeVarSet,
+        unqualified(PName), PModes, MaybeWithInst, PDet,
+        string.builder.handle, !SB),
+    append_string(" -> ", !SB),
+    mercury_format_pred_or_func_mode_subdecl(output_mercury, ModeVarSet,
+        unqualified(CName), CModes, MaybeWithInst, CDet,
+        string.builder.handle, !SB),
+    append_string("\n", !SB).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_dependency_graph.
