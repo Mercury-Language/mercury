@@ -42,10 +42,10 @@ DECLARATIVE_PROGS =		\
 	func_call		\
 	gcf			\
 	higher_order		\
-	ho2			\
-	ho3			\
-	ho4			\
-	ho5			\
+	ho_2			\
+	ho_3			\
+	ho_4			\
+	ho_5			\
 	ignore			\
 	if_then_else		\
 	inadmissible		\
@@ -69,7 +69,7 @@ DECLARATIVE_PROGS =		\
 	queens			\
 	remember_modes		\
 	resume			\
-	revise			\
+	revise_1		\
 	revise_2		\
 	small			\
 	special_term_dep	\
@@ -353,24 +353,24 @@ higher_order.out: higher_order higher_order.inp
 	$(MDB) ./higher_order < higher_order.inp > higher_order.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
-ho2.out: ho2 ho2.inp
-	$(MDB) ./ho2 < ho2.inp > ho2.out 2>&1 \
+ho_2.out: ho_2 ho_2.inp
+	$(MDB) ./ho_2 < ho_2.inp > ho_2.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
-ho3.out: ho3 ho3.inp
-	$(MDB) ./ho3 < ho3.inp > ho3.out 2>&1 \
+ho_3.out: ho_3 ho_3.inp
+	$(MDB) ./ho_3 < ho_3.inp > ho_3.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
-ho4.out: ho4 ho4.inp
-	$(MDB) ./ho4 < ho4.inp > ho4.out 2>&1 \
+ho_4.out: ho_4 ho_4.inp
+	$(MDB) ./ho_4 < ho_4.inp > ho_4.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.
-ho5.out: ho5 ho5.inp
-	$(MDB_STD) ./ho5 < ho5.inp 2>&1 | \
+ho_5.out: ho_5 ho_5.inp
+	$(MDB_STD) ./ho_5 < ho_5.inp 2>&1 | \
 		sed -e 's/exception.m:[0-9]*/exception.m:NNNN/g' \
-		> ho5.out 2>&1 \
+		> ho_5.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 if_then_else.out: if_then_else if_then_else.inp
@@ -503,8 +503,8 @@ resume.out: resume resume.inp
 	$(MDB_STD) ./resume < resume.inp > resume.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
-revise.out: revise revise.inp
-	$(MDB) ./revise < revise.inp > revise.out 2>&1 \
+revise_1.out: revise_1 revise_1.inp
+	$(MDB) ./revise_1 < revise_1.inp > revise_1.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 revise_2.out: revise_2 revise_2.inp

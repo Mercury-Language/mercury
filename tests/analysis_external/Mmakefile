@@ -15,19 +15,19 @@ override EXTRA_MCFLAGS := $(patsubst --transitive-%,,$(EXTRA_MCFLAGS))
 
 ifdef WORKSPACE_HAS_SUBDIRS
 TESTS = \
-	ext-nodepend \
-	ext2-nodepend
+	ext_1-nodepend \
+	ext_2-nodepend
 else
 TESTS = 
 endif
 
 include ../Mmake.common
 
-ext.runtest:
-	MC=$(MC) ./ext_runtest.sh
+ext_1.runtest:
+	MC=$(MC) ./ext_1_runtest.sh
 
-ext2.runtest:
-	MC=$(MC) ./ext2_runtest.sh
+ext_2.runtest:
+	MC=$(MC) ./ext_2_runtest.sh
 
 realclean_local: realclean_analysis_external
 

@@ -2,11 +2,11 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module trust_2.
+:- module trust_helper_2.
 
 :- interface.
 
-:- import_module trust_1.
+:- import_module trust_helper_1.
 
 :- pred concat(w::in, w::in, w::out) is cc_multi.
 

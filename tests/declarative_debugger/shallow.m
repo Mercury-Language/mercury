@@ -9,7 +9,7 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module shallow_2.
+:- import_module shallow_helper_1.
 
 main(!IO) :-
     test(p("t1", 5), P1),

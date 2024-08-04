@@ -12,8 +12,8 @@
 
 :- implementation.
 
-:- import_module trust_1.
-:- import_module trust_2.
+:- import_module trust_helper_1.
+:- import_module trust_helper_2.
 
 main(!IO) :-
     dostuff(w(S), R),

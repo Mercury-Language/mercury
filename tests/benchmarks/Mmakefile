@@ -18,8 +18,8 @@ MAYBE_J1 =
 PROGS = \
 	cqueens \
 	crypt \
-	deriv \
-	deriv2 \
+	deriv_1 \
+	deriv_2 \
 	nrev \
 	poly \
 	primes \

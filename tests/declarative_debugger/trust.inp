@@ -2,20 +2,20 @@ register --quiet
 untrust 0
 context none
 echo on
-trust trust_1.
+trust trust_helper_1.
 trusted
 untrust 1
 trusted
-trust trust_2
+trust trust_helper_2
 trust trust.
 0
 trusted
-trust trust_2
+trust trust_helper_2
 trusted
 untrust 2
-trust trust_1
+trust trust_helper_1
 trust no_such_module
-trust trust_2.
+trust trust_helper_2.
 trust std lib
 trust standard library
 trusted

@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module shallow_2.
+:- module shallow_helper_1.
 :- interface.
 
 :- pred p(string::in, int::in, int::out) is det.
@@ -10,7 +10,7 @@
 :- pred r(string::in, int::in, int::out) is det.
 
 :- implementation.
-:- import_module shallow_3.
+:- import_module shallow_helper_2.
 
 p(S, M, N) :-
     ( if pp(S, 1, M) then
@@ -43,7 +43,7 @@ r(S, M, N) :-
         N = 0
     ).
 
-% shallow_3 defines:
+% shallow_helper_2 defines:
 %
 % :- pred a(string::in, int::in, int::out) is multi.
 %

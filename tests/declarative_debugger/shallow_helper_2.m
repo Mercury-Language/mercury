@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module shallow_3.
+:- module shallow_helper_2.
 :- interface.
 
 :- pred a(string::in, int::in, int::out) is multi.

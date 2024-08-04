@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module revise.
+:- module revise_1.
 :- interface.
 :- import_module io.
 
@@ -33,4 +33,3 @@ s --> [].
 a --> [].
 b --> [].
 c --> :=("bar").
-

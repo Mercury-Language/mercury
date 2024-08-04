@@ -11,7 +11,7 @@
 %
 %   symbolic derivatives
 
-:- module deriv2.
+:- module deriv_2.
 
 :- interface.
 

@@ -2,16 +2,16 @@
 mdb> mdb> mdb> Contexts will not be printed.
 mdb> echo on
 Command echo enabled.
-mdb> trust trust_1.
-Trusting pred trust_1.w_cmp/3
+mdb> trust trust_helper_1.
+Trusting pred trust_helper_1.w_cmp/3
 mdb> trusted
 Trusted objects:
-1: predicate trust_1.w_cmp/3
+1: predicate trust_helper_1.w_cmp/3
 mdb> untrust 1
 mdb> trusted
 There are no trusted modules, predicates or functions.
-mdb> trust trust_2
-Trusting module trust_2
+mdb> trust trust_helper_2
+Trusting module trust_helper_2
 mdb> trust trust.
 Ambiguous predicate or function specification. The matches are:
 0: pred trust.main/2
@@ -21,21 +21,21 @@ Which predicate or function do you want to trust (0-1 or *)? 0
 Trusting pred trust.main/2
 mdb> trusted
 Trusted objects:
-2: module trust_2
+2: module trust_helper_2
 3: predicate trust.main/2
-mdb> trust trust_2
-Trusting module trust_2
+mdb> trust trust_helper_2
+Trusting module trust_helper_2
 mdb> trusted
 Trusted objects:
-2: module trust_2
+2: module trust_helper_2
 3: predicate trust.main/2
 mdb> untrust 2
-mdb> trust trust_1
-Trusting module trust_1
+mdb> trust trust_helper_1
+Trusting module trust_helper_1
 mdb> trust no_such_module
 mdb: there is no such module, predicate or function.
-mdb> trust trust_2.
-Trusting pred trust_2.concat/3
+mdb> trust trust_helper_2.
+Trusting pred trust_helper_2.concat/3
 mdb> trust std lib
 Trusting the Mercury standard library
 mdb> trust standard library
@@ -43,14 +43,14 @@ Trusting the Mercury standard library
 mdb> trusted
 Trusted objects:
 3: predicate trust.main/2
-4: module trust_1
-5: predicate trust_2.concat/3
+4: module trust_helper_1
+5: predicate trust_helper_2.concat/3
 6: the Mercury standard library
 mdb> untrust 3
 mdb> trusted
 Trusted objects:
-4: module trust_1
-5: predicate trust_2.concat/3
+4: module trust_helper_1
+5: predicate trust_helper_2.concat/3
 6: the Mercury standard library
 mdb> untrust 3
 mdb: no such trusted object

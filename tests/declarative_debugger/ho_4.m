@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module ho4.
+:- module ho_4.
 :- interface.
 :- import_module io.
 

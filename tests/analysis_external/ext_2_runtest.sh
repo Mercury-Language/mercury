@@ -10,13 +10,9 @@ set -x
 
 rm -rf Mercury
 
-$MMCMAKE ext.analyse --analysis-repeat 0 || failed
+$MMCMAKE ext_2.analyse --analysis-repeat 0 || failed
 
-check_result ext 'exception.*foo'
-check_result ext 'structure_reuse.*foo'
-check_result ext 'structure_sharing.*foo'
-check_result ext 'trail.*foo'
-check_result ext 'unused_args.*foo'
+check_result ext_2 'mm_tabling.*foo'
 check_statuses 'optimal.'
 check_no_requests
 

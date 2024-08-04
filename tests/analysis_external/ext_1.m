@@ -2,9 +2,11 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% Same as ext.m but tests trail usage analysis separately.
+% Analysis results should be written out for exported `:- pragma external*'
+% predicates. Importing modules don't care how those procedures are
+% implemented, so results should exist.
 
-:- module ext2.
+:- module ext_1.
 :- interface.
 
 :- pred foo(t::in, t::out) is det.
