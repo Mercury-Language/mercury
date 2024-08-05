@@ -9,12 +9,12 @@ MAYBE_J1 =
 #-----------------------------------------------------------------------------#
 
 TRAIL_PROGS =			\
-	func_trail_test		\
+	func_trail_test_1	\
 	func_trail_test_2	\
 	test_trail_reset	\
 	tr_reset_bug		\
-	tu_test1		\
-	tu_test2
+	tu_test_1		\
+	tu_test_2
 
 ifeq "$(findstring tr,$(GRADE))" ""
 	PROGS =

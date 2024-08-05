@@ -33,7 +33,7 @@ ORDINARY_PROGS = \
 	fundeps_5 \
 	fundeps_6 \
 	fundeps_7 \
-	ground_constraint \
+	ground_constraint_1 \
 	ground_constraint_2 \
 	ho_map \
 	implied_instance \
@@ -41,7 +41,7 @@ ORDINARY_PROGS = \
 	implied_instance_multi_constraint \
 	implied_instance_poly \
 	impure_methods \
-	inference_test \
+	inference_test_1 \
 	inference_test_2 \
 	instance_clauses \
 	instance_unconstrained_tvar \
@@ -62,18 +62,18 @@ ORDINARY_PROGS = \
 	record_syntax \
 	reordered_existential_constraint \
 	submodule_consistency \
-	superclass_bug \
-	superclass_bug2 \
-	superclass_bug3 \
+	superclass_bug_1 \
+	superclass_bug_2 \
+	superclass_bug_3 \
 	superclass_call \
 	test_default_func_mode \
 	tuple_instance \
 	type_spec \
-	typeclass_exist_method \
+	typeclass_exist_method_1 \
 	typeclass_exist_method_2 \
-	typeclass_order_bug \
-	typeclass_order_bug2 \
-	typeclass_order_bug3 \
+	typeclass_order_bug_1 \
+	typeclass_order_bug_2 \
+	typeclass_order_bug_3 \
 	typeclass_test_5 \
 	typeclass_test_6 \
 	unbound_tvar \

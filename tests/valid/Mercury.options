@@ -21,8 +21,8 @@ GRADEFLAGS-semi_fail_in_non_ite += $(GRADEFLAGS_TRAIL)
 GRADEFLAGS-agc_graph            += --gc accurate
 GRADEFLAGS-agc_ho_pred          += --gc accurate
 GRADEFLAGS-agc_ite              += --gc accurate
-GRADEFLAGS-agc_unbound_typevars += --gc accurate
-GRADEFLAGS-agc_unbound_typevars2 += --gc accurate
+GRADEFLAGS-agc_unbound_typevars_1 += --gc accurate
+GRADEFLAGS-agc_unbound_typevars_2 += --gc accurate
 GRADEFLAGS-agc_unused_in        += --gc accurate
 
 # The bug that this test looks for exists only in MLDS grades without any gc.
@@ -68,8 +68,8 @@ MCFLAGS-fzn_debug_abort         += --trace rep
 # XXX we should pass --ssdb-trace deep or --ss-debug to gh89
 # but that currently doesn't work in non ssdb grades.
 MCFLAGS-gh89 += --intermodule-optimization -O3 --no-warn-missing-opt-files
-MCFLAGS-higher_order            += --no-warn-det-decls-too-lax
-MCFLAGS-higher_order4           += -O3
+MCFLAGS-higher_order_1          += --no-warn-det-decls-too-lax
+MCFLAGS-higher_order_4          += -O3
 MCFLAGS-higher_order_implied_mode += -O-1
 MCFLAGS-ho_and_type_spec_bug    += -O4
 MCFLAGS-ho_and_type_spec_bug2   += -O3 --no-inlining
@@ -82,9 +82,9 @@ MCFLAGS-liveness_disagree       += --grade asm_fast.gc.decldebug.stseg
 MCFLAGS-liveness_ite            += --no-intermodule-optimization --grade none \
                                     --trace shallow
 MCFLAGS-livevals_seq            += -O5 --opt-space
-MCFLAGS-livevars_shallow        += --no-intermodule-optimization --grade none \
+MCFLAGS-livevars_shallow_1      += --no-intermodule-optimization --grade none \
                                     --trace shallow
-MCFLAGS-livevars_shallow2       += --no-intermodule-optimization --grade none \
+MCFLAGS-livevars_shallow_2      += --no-intermodule-optimization --grade none \
                                     --trace shallow
 MCFLAGS-lco_term                += --optimize-constructor-last-call
 CFLAGS-loop_in_disj             += $(CFLAGS_FOR_NO_INFINITE_RECURSION)
@@ -103,7 +103,8 @@ MCFLAGS-mode_syntax             += --no-warn-det-decls-too-lax \
 CFLAGS-mode_syntax              += $(CFLAGS_FOR_NO_INFINITE_RECURSION)
 MCFLAGS-mostly_uniq_mode_inf    += --infer-all
 MCFLAGS-mostly_uniq_neg         += --no-warn-singleton-vars
-MCFLAGS-mpj6                    += --infer-all
+MCFLAGS-mpj_6                   += --infer-all
+MCFLAGS-mpj_7                   += --infer-all
 MCFLAGS-mutual_tailrec_outputs  += --inline-linear-tail-rec-sccs
 MCFLAGS-neg_erroneous           += -O3
 MCFLAGS-negation_in_dupl_for_switch += --halt-at-warn
@@ -124,18 +125,18 @@ MCFLAGS-require_tailrec_3       += -O0 --optimise-tailcalls \
 MCFLAGS-reuse_static            += --ctgc --deforestation
 MCFLAGS-reuse_static2           += --structure-reuse --loop-invariants
 MCFLAGS-sharing_exist           += --ctgc --structure-sharing-widening 1
-MCFLAGS-sharing_loop            += --ctgc --structure-sharing-widening 8
-MCFLAGS-sharing_loop2           += --ctgc --structure-sharing-widening 10
-MCFLAGS-sharing_loop3           += --ctgc --structure-sharing-widening 10
-MCFLAGS-simplify_bug2           += -O3
-MCFLAGS-simplify_bug            += -O-1
-MCFLAGS-solver_type_bug         += --halt-at-warn
+MCFLAGS-sharing_loop_1          += --ctgc --structure-sharing-widening 8
+MCFLAGS-sharing_loop_2          += --ctgc --structure-sharing-widening 10
+MCFLAGS-sharing_loop_3          += --ctgc --structure-sharing-widening 10
+MCFLAGS-simplify_bug_1          += -O-1
+MCFLAGS-simplify_bug_2          += -O3
+MCFLAGS-solver_type_bug_1       += --halt-at-warn
 MCFLAGS-solv                    += --halt-at-warn
 MCFLAGS-some_singleton          += --halt-at-warn
 MCFLAGS-spurious_purity_warning += --halt-at-warn
 MCFLAGS-stack_opt_simplify      += --optimize-saved-vars \
                                     --no-warn-det-decls-too-lax
-MCFLAGS-state_var_mode_bug      += --no-warn-singleton-vars
+MCFLAGS-state_var_mode_bug_1    += --no-warn-singleton-vars
 MCFLAGS-table_no_attr           += --structure-sharing
 MCFLAGS-tci_spec_varmap         += --deforestation --type-specialisation
 MCFLAGS-time_yaowl              += --allow-stubs

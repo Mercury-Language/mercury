@@ -1,2 +1,0 @@
-Uncaught Mercury exception:
-Software Error: detected infinite recursion in pred tc_memo.tc/2

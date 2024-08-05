@@ -96,18 +96,18 @@ SIMPLE_LOOP_PROGS = \
 	loopcheck \
 	loopcheck_nondet \
 	tc_loop \
-	tc_memo \
-	tc_memo2
+	tc_memo_1 \
+	tc_memo_2
 
 MAYBE_MINIMAL_NONLOOP_PROGS = \
 	combine \
 	completed_consumer_in_solutions \
 	consumer_in_commit \
 	consumer_in_solutions \
-	coup \
-	coup2 \
-	coup3 \
-	coup4 \
+	coup_1 \
+	coup_2 \
+	coup_3 \
+	coup_4 \
 	coup_det_frame \
 	coup_no_commit \
 	coup_non_tabled_frame \
@@ -116,13 +116,13 @@ MAYBE_MINIMAL_NONLOOP_PROGS = \
 	repeat \
 	rotate \
 	rotate2 \
-	seq \
-	seq2 \
-	seq3 \
-	seq4 \
+	seq_1 \
+	seq_2 \
+	seq_3 \
+	seq_4 \
 	sg \
-	tc_minimal \
-	tc_minimal2
+	tc_minimal_1 \
+	tc_minimal_2
 
 # Minimal model tests don't yet work in own stack (mmos) grades.
 # Since in most cases the symptom of failure is an infinite loop,
@@ -208,7 +208,7 @@ tc_loop.out: tc_loop
 		rm -f $@.tmp; \
 	fi
 
-tc_memo.out: tc_memo
+tc_memo_1.out: tc_memo_1
 	if ./$< > $@.tmp 2>&1; then \
 		grep . $@.tmp; \
 		exit 1; \
@@ -220,7 +220,7 @@ tc_memo.out: tc_memo
 		rm -f $@.tmp; \
 	fi
 
-tc_memo2.out: tc_memo2
+tc_memo_2.out: tc_memo_2
 	if ./$< > $@.tmp 2>&1; then \
 		grep . $@.tmp; \
 		exit 1; \

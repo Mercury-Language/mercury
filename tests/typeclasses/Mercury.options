@@ -8,10 +8,10 @@ MCFLAGS-complicated_constraint      += --no-inlining \
 MCFLAGS-existential_type_classes    += --infer-all
 MCFLAGS-extra_typeinfo              += --optimize-higher-order \
     --no-type-specialization --body-typeinfo-liveness
-MCFLAGS-inference_test              += --infer-all
+MCFLAGS-inference_test_1            += --infer-all
 MCFLAGS-inference_test_2            += --infer-all
 MCFLAGS-intermod_typeclass_bug      += --intermodule-optimization
-MCFLAGS-intermod_typeclass_bug2     += --intermodule-optimization
+MCFLAGS-intermod_typeclass_bug_helper_1 += --intermodule-optimization
 MCFLAGS-lambda_multi_constraint_same_tvar += --infer-all
 MCFLAGS-no_fundep_infer             += --infer-all
 

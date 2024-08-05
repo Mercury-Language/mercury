@@ -16,8 +16,8 @@ AGC_PROGS = \
 	agc_graph \
 	agc_ho_pred \
 	agc_ite \
-	agc_unbound_typevars \
-	agc_unbound_typevars2 \
+	agc_unbound_typevars_1 \
+	agc_unbound_typevars_2 \
 	agc_unused_in
 
 C_INTERFACE_PROGS =
@@ -31,12 +31,12 @@ CONSTRAINT_TYPECHECK_PROGS = \
 	ambiguity_stress_test
 
 CTGC_PROGS = \
-	reuse_static \
-	reuse_static2 \
+	reuse_static_1 \
+	reuse_static_2 \
 	sharing_exist \
-	sharing_loop \
-	sharing_loop2 \
-	sharing_loop3 \
+	sharing_loop_1 \
+	sharing_loop_2 \
+	sharing_loop_3 \
 	table_no_attr
 
 DEEP_PROF_CAPABLE_PROGS = \
@@ -47,8 +47,8 @@ LLDS_PROGS = \
 	fzn_debug_abort \
 	liveness_disagree \
 	liveness_ite \
-	livevars_shallow \
-	livevars_shallow2
+	livevars_shallow_1 \
+	livevars_shallow_2
 
 # bug50 and bug50_full are compiled with --trace deep,
 # and that is not compatible with --decl-debug.
@@ -80,7 +80,7 @@ TYPECLASS_PROGS = \
 	complex_constraint \
 	exists_bug \
 	exists_dummy \
-	exists_fundeps \
+	exists_fundeps_1 \
 	exists_fundeps_2 \
 	exists_fundeps_3 \
 	flatten_conj_bug \
@@ -93,10 +93,10 @@ TYPECLASS_PROGS = \
 	instance_typequal \
 	instance_unconstrained_tvar \
 	logged_stream \
-	mpj2 \
-	mpj5 \
-	mpj6 \
-	mpj7 \
+	mpj_2 \
+	mpj_5 \
+	mpj_6 \
+	mpj_7 \
 	repeated_class_constraint \
 	string_format_in_instance \
 	superclass_bug \
@@ -187,11 +187,11 @@ OTHER_PROGS = \
 	github_50 \
 	hawkins_switch_bug \
 	headvar_not_found \
-	higher_order \
-	higher_order2 \
-	higher_order3 \
-	higher_order4 \
-	higher_order5 \
+	higher_order_1 \
+	higher_order_2 \
+	higher_order_3 \
+	higher_order_4 \
+	higher_order_5 \
 	higher_order_implied_mode \
 	ho_and_type_spec_bug \
 	ho_and_type_spec_bug2 \
@@ -211,8 +211,8 @@ OTHER_PROGS = \
 	instmap_generic_failure \
 	int_imp_test \
 	lambda_inference\
-	lambda_instmap_bug \
-	lambda_instmap_bug2 \
+	lambda_instmap_bug_1 \
+	lambda_instmap_bug_2 \
 	lambda_output \
 	lambda_quant \
 	lambda_quant_bug \
@@ -242,7 +242,7 @@ OTHER_PROGS = \
 	mostly_uniq_bug \
 	mostly_uniq_mode_inf \
 	mostly_uniq_neg \
-	multidet_prune1 \
+	multidet_prune \
 	multidet_test \
 	mutual_tailrec_outputs \
 	nasty_func_test \
@@ -261,7 +261,7 @@ OTHER_PROGS = \
 	promise_ex \
 	qualified_cons_id \
 	quantifier_warning \
-	record_syntax_bug \
+	record_syntax_bug_1 \
 	record_syntax_bug_2 \
 	record_syntax_bug_3 \
 	record_syntax_bug_4 \
@@ -275,30 +275,30 @@ OTHER_PROGS = \
 	required_var \
 	semidet_disj \
 	shape_type \
-	simplify_bug \
-	simplify_bug2 \
+	simplify_bug_1 \
+	simplify_bug_2 \
 	size_prof_ho_bug \
 	soln_context \
-	solver_type_bug \
+	solver_type_bug_1 \
 	some_singleton \
 	some_switch \
 	spurious_purity_warning \
 	stack_alloc \
 	stack_opt_simplify \
 	state_var_bug \
-	state_var_mode_bug \
-	state_var_mode_bug2 \
+	state_var_mode_bug_1 \
+	state_var_mode_bug_2 \
 	static \
 	subtype_basic \
 	subtype_switch \
-	switch_detection_bug \
-	switch_detection_bug2 \
+	switch_detection_bug_1 \
+	switch_detection_bug_2 \
 	switches \
 	table_aux_preds_erlang \
 	tabled_for_io \
 	tabled_io \
 	trace_goal_reorder \
-	tricky_assert2 \
+	tricky_assert \
 	tricky_ite \
 	tuple_eqv \
 	two_pragma_c_codes \
@@ -315,7 +315,7 @@ OTHER_PROGS = \
 	uniq_unify \
 	unknown_warning \
 	unreachable_code \
-	unused_args_test2 \
+	unused_args_test \
 	vn_float \
 	wrapper_arg_lvals \
 	zero_arity
@@ -337,7 +337,7 @@ OTHER_PROGS = \
 # language rules:
 #
 #	field_detism
-#	ho_func_call
+#	ho_func_call_1
 #
 # The following test case checked for a problem with the varsets attached
 # to mutables. It only ever worked in the presence of automatic solver
