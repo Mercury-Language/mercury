@@ -13,7 +13,7 @@
 :- interface.
 
 :- import_module int.
-:- import_module intermod_type2.
+:- import_module intermod_type_helper_1.
 :- import_module io.
 :- import_module list.
 :- import_module pair.

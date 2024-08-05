@@ -18,8 +18,8 @@ ORDINARY_PROGS = \
 	array_gen \
 	array_primitives \
 	array_sort \
-	array_test \
-	array_test2 \
+	array_test_1 \
+	array_test_2 \
 	array_unify_compare \
 	bag_various \
 	bidirectional \
@@ -87,30 +87,30 @@ ORDINARY_PROGS = \
 	contains_char \
 	contravariance_bug \
 	contravariance_poly \
-	curry \
-	curry2 \
+	curry_1 \
+	curry_2 \
 	cut_test \
-	cycles \
-	cycles2 \
+	cycles_1 \
+	cycles_2 \
 	deconstruct_arg \
 	deep_copy \
 	deep_copy_bug \
 	deep_copy_exist \
 	deforest_cc_bug \
-	delay_partial_test \
-	delay_partial_test2 \
-	dense_lookup_switch \
-	dense_lookup_switch2 \
-	dense_lookup_switch3 \
-	dense_lookup_switch4 \
-	dense_lookup_switch_non \
-	dense_lookup_switch_non2 \
+	delay_partial_test_1 \
+	delay_partial_test_2 \
+	dense_lookup_switch_1 \
+	dense_lookup_switch_2 \
+	dense_lookup_switch_3 \
+	dense_lookup_switch_4 \
+	dense_lookup_switch_non_1 \
+	dense_lookup_switch_non_2 \
 	det_in_semidet_cntxt \
 	digraph_tc \
 	dir_fold \
-	direct_arg_partial_inst \
-	direct_arg_partial_inst2 \
-	direct_arg_tags \
+	direct_arg_partial_inst_1 \
+	direct_arg_partial_inst_2 \
+	direct_arg_tags_1 \
 	direct_arg_tags_2 \
 	disjs_in_switch \
 	division_test \
@@ -141,7 +141,7 @@ ORDINARY_PROGS = \
 	existential_type_switch_opt \
 	existential_types_test \
 	expand \
-	export_test \
+	export_test_1 \
 	failure_unify \
 	field_syntax \
 	finalise_decl \
@@ -155,7 +155,7 @@ ORDINARY_PROGS = \
 	float_rounding_bug \
 	fold_days \
 	fold_tests \
-	follow_code_bug \
+	follow_code_bug_1 \
 	follow_code_bug_2 \
 	foreign_and_mercury \
 	foreign_code_before_proc \
@@ -163,9 +163,9 @@ ORDINARY_PROGS = \
 	foreign_enum_switch \
 	foreign_import_module \
 	foreign_name_mutable \
-	foreign_type \
-	foreign_type2 \
-	foreign_type3 \
+	foreign_type_1 \
+	foreign_type_2 \
+	foreign_type_3 \
 	frameopt_pragma_redirect \
 	free_free_mode \
 	from_ground_term_bug \
@@ -184,9 +184,9 @@ ORDINARY_PROGS = \
 	func_and_pred \
 	func_ctor_ambig \
 	func_test \
-	functor_ho_inst \
+	functor_ho_inst_1 \
 	functor_ho_inst_2 \
-	functor_ho_inst_excp \
+	functor_ho_inst_excp_1 \
 	functor_ho_inst_excp_2 \
 	functor_ho_inst_float_reg \
 	getopt_maybe_option \
@@ -203,14 +203,14 @@ ORDINARY_PROGS = \
 	heap_ref_mask_tag \
 	higher_order_func_test \
 	higher_order_mutable \
-	higher_order_syntax \
-	higher_order_syntax2 \
+	higher_order_syntax_1 \
+	higher_order_syntax_2 \
 	higher_order_type_manip \
 	ho_float_reg \
 	ho_func_default_inst \
 	ho_func_reg \
-	ho_order \
-	ho_order2 \
+	ho_order_1 \
+	ho_order_2 \
 	ho_solns \
 	ho_univ_to_type \
 	if_then_else_expr_state_var \
@@ -256,7 +256,7 @@ ORDINARY_PROGS = \
 	lco_mday_bug_1 \
 	lco_mday_bug_2 \
 	lco_no_inline \
-	lco_pack_args \
+	lco_pack_args_1 \
 	lco_pack_args_2 \
 	lco_pack_args_3 \
 	lexer_bigint \
@@ -271,10 +271,10 @@ ORDINARY_PROGS = \
 	lookup_switch_simple_cond \
 	lookup_switch_simple_non \
 	lookup_switch_simple_opt \
-	loop_inv_test \
-	loop_inv_test1 \
-	loop_inv_test3 \
-	loop_inv_test4 \
+	loop_inv_test_1 \
+	loop_inv_test_2 \
+	loop_inv_test_3 \
+	loop_inv_test_4 \
 	map_fold \
 	map_select_test \
 	mapped_module \
@@ -315,8 +315,8 @@ ORDINARY_PROGS = \
 	parse_number_from_string \
 	partial_inst_float \
 	ppc_bug \
-	pprint_test \
-	pprint_test2 \
+	pprint_test_1 \
+	pprint_test_2 \
 	pragma_c_code \
 	pragma_export \
 	pragma_foreign_export \
@@ -340,8 +340,8 @@ ORDINARY_PROGS = \
 	qual_adv_test \
 	qual_basic_test \
 	qual_is_test \
-	quantifier \
-	quantifier2 \
+	quantifier_1 \
+	quantifier_2 \
 	quoting_bug_test \
 	ra_list_test \
 	rational_test \
@@ -417,17 +417,17 @@ ORDINARY_PROGS = \
 	string_prev_index_ilseq \
 	string_set_char \
 	string_set_char_ilseq \
-	string_split \
+	string_split_1 \
 	string_split_2 \
 	string_string \
 	string_strip \
 	string_sub_string_search \
 	string_substring \
 	string_suffix_bug \
-	string_switch \
-	string_switch2 \
-	string_switch3 \
-	string_switch4 \
+	string_switch_1 \
+	string_switch_2 \
+	string_switch_3 \
+	string_switch_4 \
 	string_to_float_overflow \
 	string_various \
 	string_well_formed \
@@ -452,9 +452,9 @@ ORDINARY_PROGS = \
 	test_bitsets \
 	test_builder_format \
 	test_char_digits \
-	test_cord \
-	test_cord2 \
-	test_cord3 \
+	test_cord_1 \
+	test_cord_2 \
+	test_cord_3 \
 	test_imported_no_tag \
 	test_infinity \
 	test_int_hash \
@@ -480,8 +480,8 @@ ORDINARY_PROGS = \
 	transform_value \
 	transitive_inst_type \
 	trigraphs \
-	tuple_test \
-	tuple_test2 \
+	tuple_test_1 \
+	tuple_test_2 \
 	type_ctor_desc \
 	type_ctor_desc_manip \
 	type_info_const_inst \
@@ -535,8 +535,8 @@ ORDINARY_PROGS = \
 	write_binary_uint8 \
 	write_binary_utf8 \
 	write_float_special \
-	write_reg1 \
-	write_reg2 \
+	write_reg_1 \
+	write_reg_2 \
 	write_xml \
 	xmlable_test \
 	zinc_pack_bug
@@ -580,11 +580,11 @@ else
 endif
 
 RANDOM_PROGS = \
-	random1 \
-	random2 \
-	random3 \
-	random_shuffle \
-	random_shuffle2
+	random_1 \
+	random_2 \
+	random_3 \
+	random_shuffle_1 \
+	random_shuffle_2
 
 # Some tests only link in trailing grades.
 ifeq "$(filter tr%,$(GRADE))" ""
@@ -619,7 +619,7 @@ ifeq "$(findstring debug,$(GRADE))" ""
 	ifeq "$(filter csharp% java%,$(GRADE))" ""
 		CTGC_PROGS_2 = \
 			bad_direct_reuse \
-			bad_indirect_reuse2 \
+			bad_indirect_reuse_2 \
 			pack_args_reuse \
 			reuse_array \
 			reuse_double \
@@ -630,8 +630,8 @@ ifeq "$(findstring debug,$(GRADE))" ""
 	endif
 	CTGC_PROGS = \
 		$(CTGC_PROGS_2) \
-		bad_indirect_reuse2b \
-		bad_indirect_reuse3 \
+		bad_indirect_reuse_3 \
+		bad_indirect_reuse_4 \
 		sharing_comb \
 		uncond_reuse_bad
 else
@@ -647,7 +647,7 @@ ifeq "$(findstring debug,$(GRADE))$(findstring deep,$(GRADE))" ""
 		big_array_from_list \
 		hash_table_test \
 		lco_reorder \
-		version_hash_table_test2
+		version_hash_table_test_2
 else
 	BIG_DATA_PROGS =
 endif
@@ -725,19 +725,19 @@ endif
 
 # These tests require the implementation to support closure layouts
 CLOSURE_LAYOUT_PROGS = \
-	copy_pred \
+	copy_pred_1 \
 	copy_pred_2
 
 # We do not pass the following tests at all:
 #
-# XXX export_test2
+# XXX export_test_2
 #     Fails in hl* grades. I think this never passed.
 #
 # XXX float_consistency:
 #     floats in Mercury aren't consistent -- see the comments at the
 #     top of library/float.m.
 #
-# XXX loop_inv_test0, loop_inv_test2:
+# XXX loop_inv_extra_test_1, loop_inv_extra_test_2:
 #     These test cases test some more sophisticated cases of loop invariant
 #     optimization which our current loop_inv pass is not capable of
 #     optimizing.
@@ -755,6 +755,10 @@ CLOSURE_LAYOUT_PROGS = \
 #
 # XXX bug441
 # XXX test_generic_ref
+
+# NOTE: bad_indirect_reuse_1 exists, but is not currently listed anywhere.
+# I (zs) have no idea whether it was ever enabled, or whether it would have
+# ever passed.
 
 # The following tests are passed only in some grades.
 
@@ -862,7 +866,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		user_defined_equality \
 		version_array_test \
 		version_hash_table_delete \
-		version_hash_table_test \
+		version_hash_table_test_1 \
 		write_binary
 else
 	NON_PROFDEEP_PROGS =
@@ -1075,10 +1079,10 @@ init_excp.out: init_excp
 		rm -f $@.tmp; \
 	fi
 
-# functor_ho_inst_excp.out is expected to throw an exception or cause
+# functor_ho_inst_excp_1.out is expected to throw an exception or cause
 # a runtime abort
-functor_ho_inst_excp.out: functor_ho_inst_excp
-	if MERCURY_SUPPRESS_STACK_TRACE=yes ./functor_ho_inst_excp \
+functor_ho_inst_excp_1.out: functor_ho_inst_excp_1
+	if MERCURY_SUPPRESS_STACK_TRACE=yes ./functor_ho_inst_excp_1 \
 			> $@.tmp 2>&1; \
 	then \
 		grep  . $@.tmp; \

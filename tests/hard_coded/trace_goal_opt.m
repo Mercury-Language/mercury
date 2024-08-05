@@ -13,7 +13,7 @@
 
 :- implementation.
 
-:- import_module trace_goal_opt_2.
+:- import_module trace_goal_opt_helper_1.
 
 main(!IO) :-
     % We do not meet the conditions of the trace goal in this predicate

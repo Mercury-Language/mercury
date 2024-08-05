@@ -16,7 +16,7 @@ ORDINARY_PROGS = \
 	array_test			\
 	base_string_to_int_test		\
 	base_string_to_integer		\
-	commit_bug			\
+	commit_bug_1			\
 	commit_bug_2			\
 	complex_failure			\
 	det_complicated_unify		\
@@ -46,7 +46,7 @@ ORDINARY_PROGS = \
 	mu				\
 	nasty_nondet			\
 	nondet_disj			\
-	nondet_ite			\
+	nondet_ite_1			\
 	nondet_ite_2			\
 	nondet_ite_3			\
 	nondet_ite_4			\
@@ -66,11 +66,11 @@ ORDINARY_PROGS = \
 	string_foldl_substring		\
 	string_foldr_substring		\
 	string_format_special_floats	\
-	string_format_test		\
+	string_format_test_1		\
 	string_format_test_2		\
 	string_format_test_3		\
 	string_replace			\
-	string_test			\
+	string_test_1			\
 	string_test_2			\
 	string_to_float			\
 	test_parsing_utils		\

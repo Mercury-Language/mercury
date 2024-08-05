@@ -11,7 +11,7 @@ MCFLAGS-ho_spec_branch_bug              += --optimize-higher-order
 # The intermod_type test is a regression test for a bug that occurred only
 # when intermodule optimization was enabled.
 MCFLAGS-intermod_type                   += --intermodule-optimization
-MCFLAGS-intermod_type2                  += --intermodule-optimization
+MCFLAGS-intermod_type_helper_1          += --intermodule-optimization
 
 # In grade `none' with options `-O1 --opt-space' on kryten
 # (a sparc-sun-solaris2.5 system), string_test needs to be linked
@@ -22,7 +22,7 @@ MCFLAGS-intermod_type2                  += --intermodule-optimization
 # compile with debugging information, it is very difficult to debug.
 # It is much easier to just work around it this way rather than
 # tracking it down.
-MLFLAGS-string_test                     += --no-strip
+MLFLAGS-string_test_1                   += --no-strip
 
 # If the compiler is built in a deep profiling grade then attempting to
 # compile these tests with `--warn-known-bad-format-call' will abort since the

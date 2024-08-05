@@ -3,10 +3,10 @@
 MCFLAGS-allow_stubs             += --allow-stubs --no-warn-stubs --infer-all
 MCFLAGS-any_call_hoist_bug          += --loop-invariants
 MCFLAGS-bad_direct_reuse            += --ctgc
-MCFLAGS-bad_indirect_reuse          += --ctgc --no-common-struct
-MCFLAGS-bad_indirect_reuse2         += --ctgc --no-common-struct
-MCFLAGS-bad_indirect_reuse2b        += --ctgc --no-common-struct
-MCFLAGS-bad_indirect_reuse3         += --ctgc --no-common-struct
+MCFLAGS-bad_indirect_reuse_1        += --ctgc --no-common-struct
+MCFLAGS-bad_indirect_reuse_2        += --ctgc --no-common-struct
+MCFLAGS-bad_indirect_reuse_3        += --ctgc --no-common-struct
+MCFLAGS-bad_indirect_reuse_4        += --ctgc --no-common-struct
 MCFLAGS-big_array_from_list         += --optimize-tailcalls
 MCFLAGS-bigtest                     += --intermodule-optimization -O3
 MCFLAGS-boyer                       += --infer-all
@@ -28,8 +28,8 @@ MCFLAGS-constraint          += --constraint-propagation --enable-termination
 MCFLAGS-constraint_order    += --constraint-propagation --enable-termination
 MCFLAGS-coerce_opt                  += --intermodule-optimization
 MCFLAGS-deforest_cc_bug             += --deforestation
-MCFLAGS-delay_partial_test          += --delay-partial-instantiations
-MCFLAGS-delay_partial_test2         += --delay-partial-instantiations
+MCFLAGS-delay_partial_test_1        += --delay-partial-instantiations
+MCFLAGS-delay_partial_test_2        += --delay-partial-instantiations
 MCFLAGS-ground_terms                += --from-ground-term-threshold=2
 MCFLAGS-impl_defn_literals          += --no-warn-simple-code
 
@@ -40,8 +40,8 @@ MCFLAGS-foreign_enum_mod            += --intermodule-optimization
 MCFLAGS-foreign_enum_mod_helper_1   += --intermodule-optimization
 MCFLAGS-from_ground_term_bug        += --from-ground-term-threshold=4
 MCFLAGS-func_test                   += --infer-all
-MCFLAGS-ho_order                    += --optimize-higher-order
-MCFLAGS-ho_order2                   += --optimize-higher-order
+MCFLAGS-ho_order_1                  += --optimize-higher-order
+MCFLAGS-ho_order_2                  += --optimize-higher-order
 MCFLAGS-ho_float_reg                += --no-warn-overlapping-scopes
 MCFLAGS-no_fully_strict             += --no-fully-strict
 MCFLAGS-one_member                  += -O5
@@ -67,7 +67,7 @@ MCFLAGS-lco_double                  += --optimize-constructor-last-call
 MCFLAGS-lco_mday_bug_1              += --optimize-constructor-last-call
 MCFLAGS-lco_mday_bug_2              += --optimize-constructor-last-call
 MCFLAGS-lco_no_inline   += --optimize-constructor-last-call --no-inline-builtins
-MCFLAGS-lco_pack_args               += --optimize-constructor-last-call
+MCFLAGS-lco_pack_args_1             += --optimize-constructor-last-call
 MCFLAGS-lco_pack_args_2             += --optimize-constructor-last-call
 MCFLAGS-lco_pack_args_3             += --optimize-constructor-last-call
 MCFLAGS-lco_reorder                 += --optimize-constructor-last-call
@@ -104,42 +104,41 @@ MCFLAGS-intermod_unused_args +=  \
 MCFLAGS-intermod_unused_args_helper_1 += \
     --no-intermodule-optimization --intermodule-analysis --optimise-unused-args
 
-MCFLAGS-loop_inv_test               += --loop-invariants --trace-optimized
-MCFLAGS-loop_inv_test0              += --loop-invariants --trace-optimized
-MCFLAGS-loop_inv_test1              += --loop-invariants --trace-optimized
-MCFLAGS-loop_inv_test2              += --loop-invariants --trace-optimized
-MCFLAGS-loop_inv_test3              += --loop-invariants
-MCFLAGS-loop_inv_test4              += --loop-invariants
+MCFLAGS-loop_inv_extra_test_1       += --loop-invariants --trace-optimized
+MCFLAGS-loop_inv_extra_test_2       += --loop-invariants --trace-optimized
+MCFLAGS-loop_inv_test_1             += --loop-invariants --trace-optimized
+MCFLAGS-loop_inv_test_2             += --loop-invariants --trace-optimized
+MCFLAGS-loop_inv_test_3             += --loop-invariants
+MCFLAGS-loop_inv_test_4             += --loop-invariants
 MCFLAGS-prince_frameopt             += --intermodule-optimization -O5
 MCFLAGS-prince_frameopt_helper_1    += --intermodule-optimization -O5
 MCFLAGS-prince_frameopt_helper_1.prince_frameopt_helper_2 += \
                                     --intermodule-optimization -O5
 
-# Compile string_switch with trie, hash and binary search switches
+# Compile string_switch_1 with trie, hash and binary search switches
 # all effectively disabled, to test the basic indexing algorithm.
-# Compile string_switch2 with only trie switches allowed.
-# Compile string_switch3 with only hash switches allowed.
-# Compile string_switch4 with only binary search switches allowed.
-#
-# Compile space.m with only trie hashes allowed as well, since it has
-# a predicate (figure_key) that is a useful test for string trie lookup
-# switches.
-MCFLAGS-string_switch +=   \
+# Compile string_switch_2 with only trie switches allowed.
+# Compile string_switch_3 with only hash switches allowed.
+# Compile string_switch_4 with only binary search switches allowed.
+MCFLAGS-string_switch_1 +=   \
     --string-trie-switch-size=100 \
     --string-hash-switch-size=100 \
     --string-binary-switch-size=100
-MCFLAGS-string_switch2 +=   \
+MCFLAGS-string_switch_2 +=   \
     --string-trie-switch-size=1 \
     --string-hash-switch-size=100 \
     --string-binary-switch-size=100
-MCFLAGS-string_switch3 +=   \
+MCFLAGS-string_switch_3 +=   \
     --string-trie-switch-size=100 \
     --string-hash-switch-size=1 \
     --string-binary-switch-size=100
-MCFLAGS-string_switch4 +=   \
+MCFLAGS-string_switch_4 +=   \
     --string-trie-switch-size=100 \
     --string-hash-switch-size=100 \
     --string-binary-switch-size=1
+# Compile space.m with only trie hashes allowed as well, since it has
+# a predicate (figure_key) that is a useful test for string trie lookup
+# switches.
 MCFLAGS-space +=   \
     --string-trie-switch-size=1 \
     --string-hash-switch-size=100 \
