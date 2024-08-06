@@ -218,7 +218,7 @@ we're in the GUD buffer)."
        ;; Extract the frame position from the marker.
        gud-last-frame
        (cons (substring gud-marker-acc (match-beginning 1) (match-end 1))
-	     (string-to-int (substring gud-marker-acc
+	     (string-to-number (substring gud-marker-acc
 				       (match-beginning 2)
 				       (match-end 2))))
 
@@ -446,7 +446,7 @@ available with older versions of GDB."
 	  (setq gud-last-frame
 		(cons
 		 (substring gud-marker-acc (match-beginning 3) (match-end 3))
-		 (string-to-int 
+		 (string-to-number 
 		  (substring gud-marker-acc (match-beginning 4) (match-end 4))))))
 	 ;; System V Release 4.0 quite often clumps two lines together
 	 ((string-match "^\\(BREAKPOINT\\|STEPPED\\) process [0-9]+ function [^ ]+ in \\(.+\\)\n\\([0-9]+\\):" 
@@ -456,7 +456,7 @@ available with older versions of GDB."
 	  (setq gud-last-frame
 		(cons
 		 gud-sdb-lastfile
-		 (string-to-int 
+		 (string-to-number 
 		  (substring gud-marker-acc (match-beginning 3) (match-end 3))))))
 	 ;; System V Release 4.0 
 	 ((string-match "^\\(BREAKPOINT\\|STEPPED\\) process [0-9]+ function [^ ]+ in \\(.+\\)\n"
@@ -468,7 +468,7 @@ available with older versions of GDB."
 	       (setq gud-last-frame
 		     (cons
 		      gud-sdb-lastfile
-		      (string-to-int 
+		      (string-to-number 
 		       (substring gud-marker-acc (match-beginning 1) (match-end 1))))))
 	 (t 
 	  (setq gud-sdb-lastfile nil)))
@@ -580,7 +580,7 @@ containing the executable being debugged.")
       (setq gud-last-frame
 	    (cons
 	     (substring gud-marker-acc (match-beginning 2) (match-end 2))
-	     (string-to-int 
+	     (string-to-number 
 	      (substring gud-marker-acc (match-beginning 1) (match-end 1))))
 	    start (match-end 0)))
 
@@ -628,7 +628,7 @@ containing the executable being debugged.")
        ;; Extract the frame position from the marker.
        gud-last-frame
        (cons (substring gud-marker-acc (match-beginning 1) (match-end 1))
-	     (string-to-int (substring gud-marker-acc
+	     (string-to-number (substring gud-marker-acc
 				       (match-beginning 2)
 				       (match-end 2))))
 
@@ -741,7 +741,7 @@ a better solution in 6.1 upwards.")
 		      (cons
 		       (substring
 			result (match-beginning 1) (match-end 1))
-		       (string-to-int 
+		       (string-to-number 
 			(substring
 			 result (match-beginning 2) (match-end 2)))))))
 	  result)
@@ -753,7 +753,7 @@ a better solution in 6.1 upwards.")
 		(setq gud-last-frame
 		      (cons
 		       file
-		       (string-to-int 
+		       (string-to-number 
 			(substring
 			 result (match-beginning 1) (match-end 1)))))))
 	  (setq result (substring result 0 (match-beginning 0))))))
@@ -886,7 +886,7 @@ containing the executable being debugged.")
 			      result)
                 (string-match "[^: \t]+:[ \t]+\\([^:]+\\): [^:]+: \\([0-9]+\\):"
                               result))
-            (let ((line (string-to-int
+            (let ((line (string-to-number
                          (substring result (match-beginning 2) (match-end 2))))
                   (file (gud-xdb-file-name
                          (substring result (match-beginning 1) (match-end 1)))))
@@ -978,7 +978,7 @@ directories if your program contains sources from more than one directory."
        ;; Extract the frame position from the marker.
        gud-last-frame
        (cons (substring gud-marker-acc (match-beginning 1) (match-end 1))
-	     (string-to-int (substring gud-marker-acc
+	     (string-to-number (substring gud-marker-acc
 				       (match-beginning 2)
 				       (match-end 2))))
 
@@ -1160,11 +1160,11 @@ containing the executable being debugged.")
                     (abs-caller-file
 	              (setq gud-last-frame
                         (cons (find-file-noselect abs-caller-file)
-                               (string-to-int caller-line))))
+                               (string-to-number caller-line))))
                     (abs-file
 	              (setq gud-last-frame
                         (cons (find-file-noselect abs-file)
-                               (string-to-int line))))))))
+                               (string-to-number line))))))))
 	  (if (or (string-match
 		    ;; match pred without caller context
 	            (concat nums-regexp "\\(" event-regexp "pred" proc-regexp
@@ -1188,7 +1188,7 @@ containing the executable being debugged.")
 		    (if abs-file
 			(setq gud-last-frame
 			      (cons (find-file-noselect abs-file)
-				    (string-to-int line)))))))))))
+				    (string-to-number line)))))))))))
     string))
 
 (defun gud-mdb-new-keymap (map name)
