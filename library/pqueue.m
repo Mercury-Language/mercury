@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995, 1997, 1999, 2003-2007, 2009 The University of
 % Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
