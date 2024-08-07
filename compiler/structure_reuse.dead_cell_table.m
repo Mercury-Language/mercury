@@ -43,8 +43,8 @@
     % Succeeds if the given program point is listed in the table. Return
     % the associated reuse_condition.
     %
-:- func dead_cell_table_search(program_point, dead_cell_table)
-    = reuse_condition is semidet.
+:- pred dead_cell_table_search(program_point::in, dead_cell_table::in,
+    reuse_condition::out) is semidet.
 
     % Add a program point and its associated reuse_condition to the table.
     %
@@ -79,7 +79,7 @@ dead_cell_table_init = map.init.
 dead_cell_table_is_empty(Table) :-
     map.is_empty(Table).
 
-dead_cell_table_search(PP, Table) = ReuseCond :-
+dead_cell_table_search(PP, Table, ReuseCond) :-
     map.search(Table, PP, ReuseCond).
 
 dead_cell_table_set(PP, RC, !Table) :-

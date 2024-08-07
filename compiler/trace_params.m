@@ -237,11 +237,11 @@ char_is_comma(',').
     is semidet.
 
 convert_item_name(String, Names) :-
-    ( if convert_port_name(String) = PortName then
+    ( if convert_port_name(String, PortName) then
         Names = [suppress_port(PortName)]
-    else if convert_port_class_name(String) = PortNames then
+    else if convert_port_class_name(String, PortNames) then
         list.map(wrap_port, PortNames, Names)
-    else if convert_other_name(String) = OtherName then
+    else if convert_other_name(String, OtherName) then
         Names = [OtherName]
     else
         fail
@@ -251,7 +251,7 @@ convert_item_name(String, Names) :-
 
 wrap_port(Port, suppress_port(Port)).
 
-:- func convert_port_name(string) = trace_port is semidet.
+:- pred convert_port_name(string::in, trace_port::out) is semidet.
 
     % The call port cannot be disabled, because its layout structure is
     % referred to implicitly by the redo command in mdb.
@@ -259,49 +259,50 @@ wrap_port(Port, suppress_port(Port)).
     % The exception port cannot be disabled, because it is never put into
     % compiler-generated code in the first place; such events are created
     % on the fly by library/exception.m.
-% convert_port_name("call") = port_call.
-convert_port_name("exit") = port_exit.
-convert_port_name("fail") = port_fail.
-convert_port_name("redo") = port_redo.
-% convert_port_name("excp") = port_exception.
-convert_port_name("exception") = port_exception.
-convert_port_name("cond") = port_ite_cond.
-convert_port_name("ite_cond") = port_ite_cond.
-convert_port_name("then") = port_ite_then.
-convert_port_name("ite_then") = port_ite_then.
-convert_port_name("else") = port_ite_else.
-convert_port_name("ite_else") = port_ite_else.
-convert_port_name("nege") = port_neg_enter.
-convert_port_name("neg_enter") = port_neg_enter.
-convert_port_name("negs") = port_neg_success.
-convert_port_name("neg_success") = port_neg_success.
-convert_port_name("negf") = port_neg_failure.
-convert_port_name("neg_failure") = port_neg_failure.
-convert_port_name("swtc") = port_switch.
-convert_port_name("switch") = port_switch.
-convert_port_name("disj_first") = port_disj_first.
-convert_port_name("disj_later") = port_disj_later.
-convert_port_name("tail") = port_tailrec_call.
-convert_port_name("user") = port_user.
+% convert_port_name("call", port_call).
+convert_port_name("exit", port_exit).
+convert_port_name("fail", port_fail).
+convert_port_name("redo", port_redo).
+% convert_port_name("excp", port_exception).
+convert_port_name("exception", port_exception).
+convert_port_name("cond", port_ite_cond).
+convert_port_name("ite_cond", port_ite_cond).
+convert_port_name("then", port_ite_then).
+convert_port_name("ite_then", port_ite_then).
+convert_port_name("else", port_ite_else).
+convert_port_name("ite_else", port_ite_else).
+convert_port_name("nege", port_neg_enter).
+convert_port_name("neg_enter", port_neg_enter).
+convert_port_name("negs", port_neg_success).
+convert_port_name("neg_success", port_neg_success).
+convert_port_name("negf", port_neg_failure).
+convert_port_name("neg_failure", port_neg_failure).
+convert_port_name("swtc", port_switch).
+convert_port_name("switch", port_switch).
+convert_port_name("disj_first", port_disj_first).
+convert_port_name("disj_later", port_disj_later).
+convert_port_name("tail", port_tailrec_call).
+convert_port_name("user", port_user).
 
-:- func convert_port_class_name(string) = list(trace_port) is semidet.
+:- pred convert_port_class_name(string::in, list(trace_port)::out) is semidet.
 
-convert_port_class_name("interface") =
-    [port_call, port_exit, port_redo, port_fail, port_exception].
-convert_port_class_name("internal") =
-    [port_ite_then, port_ite_else, port_switch,
-    port_disj_first, port_disj_later].
-convert_port_class_name("context") =
-    [port_ite_cond, port_neg_enter, port_neg_success, port_neg_failure].
+convert_port_class_name("interface", Ports) :-
+    Ports = [port_call, port_exit, port_redo, port_fail, port_exception].
+convert_port_class_name("internal", Ports) :-
+    Ports = [port_ite_then, port_ite_else, port_switch,
+        port_disj_first, port_disj_later].
+convert_port_class_name("context", Ports) :-
+    Ports = [port_ite_cond, port_neg_enter, port_neg_success,
+        port_neg_failure].
 
-:- func convert_other_name(string) = trace_suppress_item is semidet.
+:- pred convert_other_name(string::in, trace_suppress_item::out) is semidet.
 
-convert_other_name("return") = suppress_return_info.
-convert_other_name("return_info") = suppress_return_info.
-convert_other_name("names") = suppress_all_var_names.
-convert_other_name("all_var_names") = suppress_all_var_names.
-convert_other_name("bodies") = suppress_proc_body_reps.
-convert_other_name("proc_body_reps") = suppress_proc_body_reps.
+convert_other_name("return", suppress_return_info).
+convert_other_name("return_info", suppress_return_info).
+convert_other_name("names", suppress_all_var_names).
+convert_other_name("all_var_names", suppress_all_var_names).
+convert_other_name("bodies", suppress_proc_body_reps).
+convert_other_name("proc_body_reps", suppress_proc_body_reps).
 
 default_trace_suppress = set.init.
 

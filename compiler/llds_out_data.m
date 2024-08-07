@@ -61,7 +61,7 @@
 
     % Convert an lval to a string description of that lval.
     %
-:- func lval_to_string(lval) = string is semidet.
+:- pred lval_to_string(lval::in, string::out) is semidet.
 
     % Convert a register to a string description of that register.
     %
@@ -612,19 +612,44 @@ llds_type_to_string(Type) = Str :-
         Type = lt_code_ptr,             Str = "MR_Code *"
     ).
 
-lval_to_string(Lval) = Str :-
+lval_to_string(Lval, Str) :-
+    require_switch_arms_det [Lval]
     (
         Lval = reg(RegType, RegNum),
         Str = reg_to_string(RegType, RegNum)
     ;
-        Lval = framevar(N),
-        Str = "MR_fv(" ++ int_to_string(N) ++ ")"
+        Lval = succip,
+        Str = "succip"
+    ;
+        Lval = maxfr,
+        Str = "maxfr"
+    ;
+        Lval = curfr,
+        Str = "curfr"
+    ;
+        Lval = hp,
+        Str = "hp"
+    ;
+        Lval = sp,
+        Str = "sp"
+    ;
+        Lval = parent_sp,
+        Str = "parent_sp"
+    ;
+        Lval = temp(RegType, N),
+        ( RegType = reg_r, RegTypeStr = "r"
+        ; RegType = reg_f, RegTypeStr = "f"
+        ),
+        string.format("temp(%s, %d)", [s(RegTypeStr), i(N)], Str)
     ;
         Lval = stackvar(N),
         Str = "MR_sv(" ++ int_to_string(N) ++ ")"
     ;
         Lval = parent_stackvar(N),
         Str = "MR_parent_sv(" ++ int_to_string(N) ++ ")"
+    ;
+        Lval = framevar(N),
+        Str = "MR_fv(" ++ int_to_string(N) ++ ")"
     ;
         Lval = double_stackvar(Type, N),
         (

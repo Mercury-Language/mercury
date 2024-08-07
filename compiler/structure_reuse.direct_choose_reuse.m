@@ -605,7 +605,7 @@ compute_match_table_with_continuation(Background, DeadCellTable,
 
             ProgramPoint = program_point_init(GoalInfo),
             ( if
-                Condition = dead_cell_table_search(ProgramPoint, DeadCellTable)
+                dead_cell_table_search(ProgramPoint, DeadCellTable, Condition)
             then
                 ReuseAs = reuse_as_init_with_one_condition(Condition),
                 DeconstructionSpec = deconstruction_spec_init(Var,
@@ -954,7 +954,7 @@ verify_match(Background, NewVar, NewCons, NewArgs, PP, !Match) :-
         % one code path but not another.
         list.map(compute_reuse_type(Background, NewVar, NewCons, NewArgs),
             DeconSpecs, ReuseTypes),
-        ReuseType = glb_reuse_types(ReuseTypes) % Can Fail.
+        glb_reuse_types(ReuseTypes, ReuseType) % Can Fail.
     then
         ConSpec = con(PP, ReuseType),
         match_add_construction(ConSpec, !Match)
@@ -1085,14 +1085,16 @@ cons_has_normal_fields(ModuleInfo, ConsId) :-
         unexpected($pred, "unusual cons_id")
     ).
 
-:- func glb_reuse_types(list(reuse_type)) = reuse_type is semidet.
+:- pred glb_reuse_types(list(reuse_type)::in, reuse_type::out) is semidet.
 
-glb_reuse_types([First|Rest]) =
-    list.foldl(glb_reuse_types_2, Rest, First).
+glb_reuse_types([HeadReuse | TailReuse], ReuseGLB) :-
+    ReuseGLB0 = HeadReuse,
+    list.foldl(glb_reuse_types_2, TailReuse, ReuseGLB0, ReuseGLB).
 
-:- func glb_reuse_types_2(reuse_type, reuse_type) = reuse_type.
+:- pred glb_reuse_types_2(reuse_type::in, reuse_type::in, reuse_type::out)
+    is det.
 
-glb_reuse_types_2(R1, R2) = R :-
+glb_reuse_types_2(R1, R2, R) :-
     R1 = reuse_type(SameCons1, Fields1, V1),
     R2 = reuse_type(SameCons2, Fields2, V2),
     R = reuse_type(SameCons1 `and` SameCons2, Fields1 `ands` Fields2,
@@ -1528,8 +1530,8 @@ check_for_cell_caching_in_unification(DeadCellTable, !Unification,
         !GoalInfo) :-
     ( if
         !.Unification = deconstruct(Var, ConsId, Args, ArgModes, CanFail, _),
-        Condition = dead_cell_table_search(program_point_init(!.GoalInfo),
-            DeadCellTable),
+        dead_cell_table_search(program_point_init(!.GoalInfo),
+            DeadCellTable, Condition),
         not reuse_condition_is_conditional(Condition)
     then
         !:Unification = deconstruct(Var, ConsId, Args, ArgModes, CanFail,

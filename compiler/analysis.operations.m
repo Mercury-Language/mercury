@@ -926,21 +926,23 @@ replace_result_in_list(FuncInfo, Call, Answer, Status, Results0, Results) :-
     func_id, FuncInfo, Call) = set(module_name)
     <= call_pattern(FuncInfo, Call).
 
-imdg_dependent_modules(ModuleMap, AnalysisName, FuncId, FuncInfo, Call) =
+imdg_dependent_modules(ModuleMap, AnalysisName, FuncId, FuncInfo, Call)
+        = ModuleNameSet :-
     ( if
         map.search(ModuleMap, AnalysisName, FuncAnalysisMap),
         map.search(FuncAnalysisMap, FuncId, IMDGEntries)
     then
-        set.list_to_set(list.filter_map(arc_module_name(FuncInfo, Call),
-            IMDGEntries))
+        list.filter_map(arc_module_name(FuncInfo, Call),
+            IMDGEntries, ModuleNames),
+        set.list_to_set(ModuleNames, ModuleNameSet)
     else
-        set.init
+        set.init(ModuleNameSet)
     ).
 
-:- func arc_module_name(FuncInfo, Call, imdg_arc) = module_name is semidet
-    <= call_pattern(FuncInfo, Call).
+:- pred arc_module_name(FuncInfo::in, Call::in, imdg_arc::in, module_name::out)
+    is semidet <= call_pattern(FuncInfo, Call).
 
-arc_module_name(FuncInfo, CallA, imdg_arc(CallB0, ModuleName)) = ModuleName :-
+arc_module_name(FuncInfo, CallA, imdg_arc(CallB0, ModuleName), ModuleName) :-
     det_univ_to_type(univ(CallB0), CallB),
     equivalent(FuncInfo, CallA, CallB).
 

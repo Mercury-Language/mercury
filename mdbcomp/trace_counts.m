@@ -628,7 +628,7 @@ parse_path_port_line(Line, PathPort, LineNumber, ExecCount, NumTests) :-
         Words = [Word1, LineNumberStr | Rest],
         ( if string_to_trace_port(Word1, Port) then
             PathPortPrime = port_only(Port)
-        else if Path = string_to_goal_path(Word1) then
+        else if string_to_goal_path(Word1, Path) then
             PathPortPrime = path_only(Path)
         else
             fail
@@ -643,7 +643,7 @@ parse_path_port_line(Line, PathPort, LineNumber, ExecCount, NumTests) :-
     else
         Words = [PortStr, PathStr, LineNumberStr | Rest],
         string_to_trace_port(PortStr, Port),
-        Path = string_to_goal_path(PathStr),
+        string_to_goal_path(PathStr, Path),
         PathPort = port_and_path(Port, Path),
         string.to_int(LineNumberStr, LineNumber),
         parse_path_port_line_rest(Rest, ExecCount, NumTests)
@@ -774,9 +774,9 @@ read_trace_counts_list_stream(ShowProgress, FileType0, TraceCounts0,
         Result = list_ok(FileType0, TraceCounts0)
     ).
 
-:- func string_to_goal_path(string) = reverse_goal_path is semidet.
+:- pred string_to_goal_path(string::in, reverse_goal_path::out) is semidet.
 
-string_to_goal_path(String) = Path :-
+string_to_goal_path(String, Path) :-
     string.prefix(String, "<"),
     string.suffix(String, ">"),
     string.length(String, Length),

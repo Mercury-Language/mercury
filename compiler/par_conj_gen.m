@@ -464,8 +464,8 @@ generate_lc_spawn_off(Goal, LCVar, LCSVar, UseParentStack, Code, !CI, !CLD) :-
 copy_slots_to_child_stack(FrameSize, LCVarLocn, LCSVarLocn, StackSlots,
         CodeStr) :-
     ( if
-        LCVarNamePrime = lval_to_string(LCVarLocn),
-        LCSVarNamePrime = lval_to_string(LCSVarLocn)
+        lval_to_string(LCVarLocn, LCVarNamePrime),
+        lval_to_string(LCSVarLocn, LCSVarNamePrime)
     then
         LCVarName = LCVarNamePrime,
         LCSVarName = LCSVarNamePrime
@@ -486,7 +486,7 @@ copy_slots_to_child_stack(FrameSize, LCVarLocn, LCSVarLocn, StackSlots,
     string::out) is det.
 
 copy_one_slot_to_child_stack(LCVarName, LCSVarName, StackSlot, CopyStr) :-
-    ( if StackSlotName = lval_to_string(StackSlot) then
+    ( if lval_to_string(StackSlot, StackSlotName) then
         ( if StackSlot = stackvar(N) then
             CopyStr = string.format("\tMR_lc_worker_sv(%s, %s, %d) = %s;\n",
                 [s(LCVarName), s(LCSVarName), i(N), s(StackSlotName)])

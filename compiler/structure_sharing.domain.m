@@ -92,7 +92,7 @@
 
     % Return the size of the sharing set. Fail when sharing is top.
     %
-:- func sharing_as_size(sharing_as) = int is semidet.
+:- pred sharing_as_size(sharing_as::in, int::out) is semidet.
 
     % Return a short description of the sharing information.
     %
@@ -363,8 +363,8 @@ sharing_as_top_sharing_accumulate(Msg, SharingAs) = TopSharing :-
 
 sharing_as_is_top(sharing_as_top(_)).
 
-sharing_as_size(sharing_as_bottom) = 0.
-sharing_as_size(sharing_as_real_as(SharingSet)) = sharing_set_size(SharingSet).
+sharing_as_size(sharing_as_bottom, 0).
+sharing_as_size(sharing_as_real_as(SharingSet), sharing_set_size(SharingSet)).
 
 sharing_as_short_description(sharing_as_bottom) = "b".
 sharing_as_short_description(sharing_as_top(_)) = "t".

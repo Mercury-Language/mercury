@@ -916,13 +916,14 @@ to_structure_reuse_domain(ReuseAs) = ReuseDomain :-
 :- func to_structure_reuse_conditions(reuse_conditions) =
     structure_reuse_conditions.
 
-to_structure_reuse_conditions(ReuseConditions) =
-    list.filter_map(to_structure_reuse_condition, ReuseConditions).
+to_structure_reuse_conditions(ReuseConditions) = StructureReuseCondition :-
+    list.filter_map(to_structure_reuse_condition,
+        ReuseConditions, StructureReuseCondition).
 
-:- func to_structure_reuse_condition(reuse_condition) =
-    structure_reuse_condition is semidet.
+:- pred to_structure_reuse_condition(reuse_condition::in,
+    structure_reuse_condition::out) is semidet.
 
-to_structure_reuse_condition(Condition) = StructureReuseCondition :-
+to_structure_reuse_condition(Condition, StructureReuseCondition) :-
     Condition = condition(DeadNodes, LiveNodes, SharingAs),
     StructureReuseCondition = structure_reuse_condition(DeadNodes, LiveNodes,
         to_structure_sharing_domain(SharingAs)).

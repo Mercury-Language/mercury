@@ -146,7 +146,7 @@ live_region_analysis_proc(ModuleInfo, RptaInfoTable, LVBeforeTable,
     else
         % This test is just a cautious check.
         ( if
-            RptaInfo = rpta_info_table_search_rpta_info(PPId, RptaInfoTable)
+            rpta_info_table_search_rpta_info(RptaInfoTable, PPId, RptaInfo)
         then
             % Compute region sets.
             RptaInfo = rpta_info(Graph, _ALpha),

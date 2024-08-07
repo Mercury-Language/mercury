@@ -505,9 +505,7 @@ lookup_rpta_info(PPId, InfoTable, !FPtable, RptaInfo, Init) :-
         Init = bool.no
     else
         % ... second look up among already recorded rpta_info.
-        ( if
-            RptaInfo0 = rpta_info_table_search_rpta_info(PPId, InfoTable)
-        then
+        ( if rpta_info_table_search_rpta_info(InfoTable, PPId, RptaInfo0) then
             RptaInfo = RptaInfo0,
             Init = bool.no
         else
@@ -1049,7 +1047,7 @@ rpta_fixpoint_table_new_rpta_info(PPId, RptaInfo, !Table) :-
 :- func wrapped_init(rpta_info_table, pred_proc_id) = rpta_info.
 
 wrapped_init(InfoTable, PPId) = Entry :-
-    ( if Entry0 = rpta_info_table_search_rpta_info(PPId, InfoTable) then
+    ( if rpta_info_table_search_rpta_info(InfoTable, PPId, Entry0) then
         Entry = Entry0
     else
         % The information we are looking for should be there after the

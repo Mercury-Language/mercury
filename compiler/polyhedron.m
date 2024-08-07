@@ -464,7 +464,7 @@ add_sigma_constraints(Sigmas, !Constraints) :-
 
 add_last_constraints(!.Constraints, VarMaps) = !:Constraints :-
     Keys = get_keys_from_maps(VarMaps),
-    NewLastConstraints = set.filter_map(make_last_constraint(VarMaps), Keys),
+    set.filter_map(make_last_constraint(VarMaps), Keys, NewLastConstraints),
     list.append(set.to_sorted_list(NewLastConstraints), !Constraints).
 
     % Return the set of keys in the given list of maps.
@@ -477,9 +477,10 @@ get_keys_from_maps(Maps) = list.foldl(get_keys_from_map, Maps, set.init).
 
 get_keys_from_map(Map, KeySet) = set.insert_list(KeySet, map.keys(Map)).
 
-:- func make_last_constraint(var_maps, lp_var) = lp_constraint is semidet.
+:- pred make_last_constraint(var_maps::in, lp_var::in, lp_constraint::out)
+    is semidet.
 
-make_last_constraint(VarMaps, OriginalVar) = Constraint :-
+make_last_constraint(VarMaps, OriginalVar, Constraint) :-
     list.foldl(make_last_terms(OriginalVar), VarMaps, [], LastTerms),
     AllTerms = [OriginalVar - one | LastTerms],
     Constraint = construct_constraint(AllTerms, lp_eq, zero).

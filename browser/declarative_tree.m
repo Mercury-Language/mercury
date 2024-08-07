@@ -102,7 +102,7 @@
     <= annotated_trace(S, R).
 
 exit_node_decl_atom(Store, ExitNode) = DeclAtom :-
-    ExitAtom = get_trace_exit_atom(ExitNode),
+    get_trace_exit_atom(ExitNode, ExitAtom),
     CallId = ExitNode ^ exit_call,
     call_node_from_id(Store, CallId, Call),
     CallIoSeq = Call ^ call_io_seq_num,
@@ -118,7 +118,7 @@ exit_node_decl_atom(Store, ExitNode) = DeclAtom :-
 
 call_node_decl_atom(Store, CallId) = DeclAtom :-
     call_node_from_id(Store, CallId, CallNode),
-    CallAtom = get_trace_call_atom(CallNode),
+    get_trace_call_atom(CallNode, CallAtom),
     DeclAtom = init_decl_atom(CallAtom).
 
 :- pred get_edt_node_initial_atom(S::in, R::in, init_decl_atom::out)
@@ -280,7 +280,7 @@ trace_children(wrap(Store), dynamic(Ref), Children) :-
         stratum_children(Store, PrecId, CallId, [], Children)
     ;
         Node = node_exit(PrecId, CallId, _, _, _, _, _, _),
-        Atom = get_trace_exit_atom(Node),
+        get_trace_exit_atom(Node, Atom),
         not_at_depth_limit(Store, CallId),
         ( if missing_answer_special_case(Atom) then
             stratum_children(Store, PrecId, CallId, [], Children)
@@ -863,7 +863,7 @@ trace_dependency_special_case(Store, ProcDefnRep, Ref, StartLoc,
         % that created them.
 
         exit_node_from_id(Store, Ref, ExitNode),
-        ExitAtom = get_trace_exit_atom(ExitNode),
+        get_trace_exit_atom(ExitNode, ExitAtom),
         ExitAtom = atom(_, Args),
         list.det_index1(Args, ArgNum, TryResultArgInfo),
         TryResultArgInfo = arg_info(_, _, yes(TryResultRep)),
@@ -945,9 +945,9 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
     det_edt_return_node_from_id(Store, Ref, Node),
     (
         Node = node_exit(_, CallId, _, _, _, _, _, _),
-        ExitAtom = get_trace_exit_atom(Node),
+        get_trace_exit_atom(Node, ExitAtom),
         call_node_from_id(Store, CallId, CallNode),
-        CallAtom = get_trace_call_atom(CallNode),
+        get_trace_call_atom(CallNode, CallAtom),
         ( if trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) then
             find_chain_start_inside(Store, CallId, CallNode,
                 ArgPos, ChainStart)
@@ -963,7 +963,7 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
     ;
         Node = node_fail(_, CallId, _, _, _, _),
         call_node_from_id(Store, CallId, CallNode),
-        CallAtom = get_trace_call_atom(CallNode),
+        get_trace_call_atom(CallNode, CallAtom),
         ( if trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) then
             find_chain_start_inside(Store, CallId, CallNode,
                 ArgPos, ChainStart)
@@ -973,7 +973,7 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
     ;
         Node = node_excp(_, CallId, _, _, _, _, _),
         call_node_from_id(Store, CallId, CallNode),
-        CallAtom = get_trace_call_atom(CallNode),
+        get_trace_call_atom(CallNode, CallAtom),
         % XXX We do not yet handle tracking of the exception value.
         ( if trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) then
             find_chain_start_inside(Store, CallId, CallNode,
@@ -989,7 +989,7 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
 
 find_chain_start_inside(Store, CallId, CallNode, ArgPos, ChainStart) :-
     CallPrecId = CallNode ^ call_preceding,
-    CallAtom = get_trace_call_atom(CallNode),
+    get_trace_call_atom(CallNode, CallAtom),
     CallPathStr = get_goal_path_from_maybe_label(CallNode ^ call_return_label),
     rev_goal_path_from_string_det(CallPathStr, CallPath),
     StartLoc = parent_goal(CallId, CallNode),
@@ -1007,7 +1007,7 @@ find_chain_start_inside(Store, CallId, CallNode, ArgPos, ChainStart) :-
 
 find_chain_start_outside(CallNode, ExitNode, ArgPos, ChainStart) :-
     StartLoc = cur_goal,
-    ExitAtom = get_trace_exit_atom(ExitNode),
+    get_trace_exit_atom(ExitNode, ExitAtom),
     absolute_arg_num(ArgPos, ExitAtom, ArgNum),
     TotalArgs = length(ExitAtom ^ atom_args),
     StartId = ExitNode ^ exit_preceding,
@@ -1389,7 +1389,7 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
         ( if
             ContourHeadNode = node_call(_, _, _, _, _, _,
                 MaybeReturnLabel, _, _, _),
-            Atom = get_trace_call_atom(ContourHeadNode),
+            get_trace_call_atom(ContourHeadNode, Atom),
             CallPathStr = get_goal_path_from_maybe_label( MaybeReturnLabel),
             rev_goal_path_from_string_det(CallPathStr, CallPath),
             CallPath = EndPath
@@ -1458,7 +1458,7 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
     else
         (
             Contour = [ContourHeadId - ContourHeadNode | ContourTail],
-            ( if Atom = get_trace_exit_atom(ContourHeadNode) then
+            ( if get_trace_exit_atom(ContourHeadNode, Atom) then
                 ( if
                     ( if
                         atomic_goal_identifiable(AtomicGoal) =
@@ -1858,7 +1858,7 @@ trace_atom_subterm_is_ground(atom(_, Args), ArgPos, _) :-
 trace_arg_pos_to_user_arg_num(wrap(Store), dynamic(Ref), ArgPos) = ArgNum :-
     get_edt_call_node(Store, Ref, CallId),
     call_node_from_id(Store, CallId, Call),
-    Atom = get_trace_call_atom(Call),
+    get_trace_call_atom(Call, Atom),
     user_arg_num(ArgPos, Atom, ArgNum).
 
 :- pred calls_arguments_are_all_ground(S::in, R::in) is semidet

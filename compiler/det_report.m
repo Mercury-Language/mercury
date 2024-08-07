@@ -171,6 +171,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_type_util.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_misc.
@@ -235,7 +236,7 @@ check_determinism_of_proc(ProgressStream, PredProcId, !ModuleInfo, !Specs) :-
         PredInfo, ProcInfo, !Specs),
     check_determinism_for_eval_method(ProcInfo, !Specs),
     check_determinism_if_pred_is_main(PredInfo, ProcInfo, !Specs),
-    check_for_multisoln_func(!.ModuleInfo, PredProcId, PredInfo, ProcInfo,
+    check_function_semantics(!.ModuleInfo, PredProcId, PredInfo, ProcInfo,
         !Specs),
     check_io_state_proc_detism(!.ModuleInfo, PredProcId, PredInfo, ProcInfo,
         !Specs),
@@ -271,7 +272,7 @@ check_determinism_of_imported_proc(ProgressStream, ModuleInfo, PredProcId,
             [s(PredStr)], !IO)
     ),
 
-    check_for_multisoln_func(ModuleInfo, PredProcId, PredInfo, ProcInfo,
+    check_function_semantics(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         !Specs),
     check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         !Specs).
@@ -701,53 +702,90 @@ check_determinism_if_pred_is_main(PredInfo, ProcInfo, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred check_for_multisoln_func(module_info::in, pred_proc_id::in,
+:- pred check_function_semantics(module_info::in, pred_proc_id::in,
     pred_info::in, proc_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_multisoln_func(ModuleInfo, PredProcId, PredInfo, ProcInfo, !Specs) :-
-    proc_info_get_inferred_determinism(ProcInfo, InferredDetism),
-
-    % Functions can only have more than one solution if it is a non-standard
-    % mode. Otherwise, they would not be referentially transparent.
-    % (Nondeterministic "functions" like C's `rand()' function are not
-    % allowed.)
+check_function_semantics(ModuleInfo, PredProcId, PredInfo, ProcInfo, !Specs) :-
+    % Is this procedure the primary mode of a function?
+    % (Primary mode meaning "all arguments other than the return value
+    % being input".)
     ( if
-        % If it is a mode for a function...
         pred_info_is_pred_or_func(PredInfo) = pf_function,
-        % ... that can succeed more than once ...
-        determinism_components(InferredDetism, _CanFail, NumSolns),
-        NumSolns \= at_most_zero,
-        NumSolns \= at_most_one,
-        % ... but for which all the arguments are input ...
         proc_info_get_argmodes(ProcInfo, PredArgModes),
         pred_info_get_arg_types(PredInfo, PredArgTypes),
-        pred_args_to_func_args(PredArgTypes, FuncArgTypes, _FuncResultType),
+        pred_args_to_func_args(PredArgTypes, FuncArgTypes, FuncResultType),
         pred_args_to_func_args(PredArgModes, FuncArgModes, _FuncResultMode),
         all_modes_are_fully_input(ModuleInfo, FuncArgTypes, FuncArgModes)
     then
-        % ... then it is an error.
-        proc_info_get_context(ProcInfo, FuncContext),
-        proc_info_get_inst_varset(ProcInfo, InstVarSet),
-        PredProcId = proc(PredId, _ProcId),
-        PredModePieces = describe_one_pred_name_mode(ModuleInfo,
-            output_mercury, InstVarSet, no, should_not_module_qualify, [],
-            PredId, PredArgModes),
-        InferredDetismStr = mercury_det_to_string(InferredDetism),
-        MainPieces = [words("Error: invalid determinism for")] ++
-            color_as_subject(PredModePieces ++ [suffix(":")]) ++ [nl,
-            words("the primary mode of a function cannot be")] ++
-            color_as_incorrect([quote((InferredDetismStr)), suffix(".")]) ++
-            [nl],
-        VerbosePieces = func_primary_mode_det_msg,
-        Spec = error_spec($pred, severity_error, phase_detism_check,
-            [simple_msg(FuncContext,
-                [always(MainPieces),
-                verbose_only(verbose_once, VerbosePieces)])]),
-        !:Specs = [Spec | !.Specs]
+        proc_info_get_inferred_determinism(ProcInfo, InferredDetism),
+        determinism_components(InferredDetism, CanFail, NumSolns),
+        (
+            ( NumSolns = at_most_zero
+            ; NumSolns = at_most_one
+            )
+        ;
+            ( NumSolns = at_most_many
+            ; NumSolns = at_most_many_cc
+            ),
+            % Having a function that can succeed more than once
+            % in its primary mode violates referential transparency.
+            % This is because if you see two calls to the function
+            % with the same input arguments, you can't be sure that
+            % they represent the same value. This can happen in C
+            % with e.g. the `rand()' function; we don't want to allow it
+            % in Mercury.
+            MultiSolnSpec = report_multisoln_func(ModuleInfo, PredProcId,
+                ProcInfo, PredArgModes, InferredDetism),
+            !:Specs = [MultiSolnSpec | !.Specs]
+        ),
+        (
+            CanFail = cannot_fail
+        ;
+            CanFail = can_fail,
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.lookup_bool_option(Globals, warn_can_fail_function,
+                WarnCanFailFunction),
+            pred_info_get_status(PredInfo, PredStatus),
+            pred_info_get_origin(PredInfo, Origin),
+            ( if
+                WarnCanFailFunction = yes,
+                pred_status_defined_in_this_module(PredStatus) = yes,
+                Origin = origin_user(_)
+            then
+                CanFailSpec = report_can_fail_func(ModuleInfo, PredProcId,
+                    PredInfo, ProcInfo, FuncResultType, InferredDetism),
+                !:Specs = [CanFailSpec | !.Specs]
+            else
+                true
+            )
+        )
     else
         true
     ).
+
+:- func report_multisoln_func(module_info, pred_proc_id, proc_info,
+    list(mer_mode), determinism) = error_spec.
+
+report_multisoln_func(ModuleInfo, PredProcId, ProcInfo, PredArgModes,
+        InferredDetism) = Spec :-
+    proc_info_get_context(ProcInfo, FuncContext),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
+    PredProcId = proc(PredId, _ProcId),
+    PredModePieces = describe_one_pred_name_mode(ModuleInfo,
+        output_mercury, InstVarSet, no, should_not_module_qualify, [],
+        PredId, PredArgModes),
+    InferredDetismStr = mercury_det_to_string(InferredDetism),
+    MainPieces = [words("Error: invalid determinism for")] ++
+        color_as_subject(PredModePieces ++ [suffix(":")]) ++ [nl,
+        words("the primary mode of a function cannot be")] ++
+        color_as_incorrect([quote((InferredDetismStr)), suffix(".")]) ++
+        [nl],
+    VerbosePieces = func_primary_mode_det_msg,
+    Spec = error_spec($pred, severity_error, phase_detism_check,
+        [simple_msg(FuncContext,
+            [always(MainPieces),
+            verbose_only(verbose_once, VerbosePieces)])]).
 
 :- func func_primary_mode_det_msg = list(format_piece).
 
@@ -759,6 +797,44 @@ func_primary_mode_det_msg = [words("In Mercury,"),
     words("arguments would break referential transparency.)"),
     words("Most likely, this procedure should be a predicate,"),
     words("not a function."), nl].
+
+:- func report_can_fail_func(module_info, pred_proc_id, pred_info, proc_info,
+    mer_type, determinism) = error_spec.
+
+report_can_fail_func(ModuleInfo, PredProcId, PredInfo, ProcInfo, ResultType0,
+        InferredDetism) = Spec :-
+    proc_info_get_context(ProcInfo, FuncContext),
+    PredProcId = proc(PredId, _ProcId),
+    PredNamePieces = describe_unqual_pred_name(ModuleInfo, PredId),
+    determinism_components(InferredDetism, _, MaxSolns),
+    determinism_components(ProposedDetism, cannot_fail, MaxSolns),
+    InferredDetismStr = mercury_det_to_string(InferredDetism),
+    ProposedDetismStr = mercury_det_to_string(ProposedDetism),
+    pred_info_get_typevarset(PredInfo, TypeVarSet),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
+    strip_module_names_from_type(strip_all_module_names, set_default_func,
+        ResultType0, ResultType),
+    % Even if the predicate has existentially quantified type variables,
+    % we don't want to print them in this message.
+    ExistQTVars = [],
+    ResultTypePieces = type_to_pieces(TypeVarSet, InstVarSet,
+        print_name_only, add_quotes, ExistQTVars, ResultType),
+    NewResultType =
+        defined_type(unqualified("maybe"), [ResultType], kind_star),
+    NewResultTypePieces = type_to_pieces(TypeVarSet, InstVarSet,
+        print_name_only, add_quotes, ExistQTVars, NewResultType),
+    Pieces = [words("Warning: the primary mode of the")] ++
+        % NOTE PredNamePieces will start with "function".
+        color_as_subject(PredNamePieces) ++
+        color_as_incorrect([words("can fail."), nl]) ++
+        [words("Consider turning this"),
+        words(InferredDetismStr), words("function"),
+        words("either into a"), words(InferredDetismStr), words("predicate,"),
+        words("or into a"), words(ProposedDetismStr), words("function"),
+        words("by changing the return type from")] ++ ResultTypePieces ++
+        [words("to")] ++ NewResultTypePieces ++ [suffix("."), nl],
+    Spec = spec($pred, severity_warning, phase_detism_check,
+        FuncContext, Pieces).
 
 %---------------------------------------------------------------------------%
 

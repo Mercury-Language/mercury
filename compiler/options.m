@@ -254,6 +254,7 @@
     ;       inform_ignored_pragma_errors
     ;       inform_generated_type_spec_pragmas
     ;       warn_redundant_coerce
+    ;       warn_can_fail_function
 
     % Verbosity options
     ;       verbose
@@ -1376,6 +1377,7 @@ optdef(oc_warn, print_error_spec_id,                    bool(no)).
 optdef(oc_warn, inform_ignored_pragma_errors,           bool(no)).
 optdef(oc_warn, inform_generated_type_spec_pragmas,     bool(no)).
 optdef(oc_warn, warn_redundant_coerce,                  bool(yes)).
+optdef(oc_warn, warn_can_fail_function,                 bool(no)).
 
     % Verbosity options.
 
@@ -2358,6 +2360,7 @@ long_table("inform-ignored-pragma-errors",
 long_table("inform-generated-type-spec-pragmas",
                                         inform_generated_type_spec_pragmas).
 long_table("warn-redundant-coerce",     warn_redundant_coerce).
+long_table("warn-can-fail-function",    warn_can_fail_function).
 
 % verbosity options
 long_table("verbose",                  verbose).
@@ -4276,7 +4279,8 @@ style_warning_options = [
     warn_state_var_shadowing,
     warn_unneeded_mode_specific_clause,
     inform_suboptimal_packing,
-    warn_redundant_coerce
+    warn_redundant_coerce,
+    warn_can_fail_function
 ].
 
 non_style_warning_options = [
@@ -4666,7 +4670,9 @@ options_help_warning(Stream, !IO) :-
 %       "\tthe compiler generates to implement a type_spec_constrained_pred"
 %       "\tpragma.",
         "--no-warn-redundant-coerce",
-        "\tDo not warn about redundant type conversions."
+        "\tDo not warn about redundant type conversions.",
+        "---warn-can-fail-funcion",
+        "\tWarn about functions that can fail."
     ], !IO).
 
 :- pred options_help_verbosity(io.text_output_stream::in,

@@ -1292,6 +1292,15 @@ Changes to the Mercury compiler
   that should be moved with them, and will warn about any unwanted coupling
   the move would create between the old module and the new.
 
+* We have added a new option `--warn-can-fail-function'. If the user specifies
+  this option, the compiler will generate a warning for every function
+  whose primary mode (which means the mode in which all its arguments
+  are input) can fail without generating a return value.
+
+  This option is for people who prefer that all functions be total,
+  and that functions that compute a value only in some circumstances
+  (i.e. partial functions) be expressed as predicates instead.
+
 * The deprecated option `--trail-segments` has been deleted and the grade
   component `trseg` is no longer accepted as a synonym for `tr`.
 

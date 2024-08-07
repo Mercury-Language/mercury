@@ -467,16 +467,16 @@ candidate_headvars_of_proc(ModuleInfo, PredProcId @ proc(PredId, ProcId),
     proc_info_get_var_table(ProcInfo, VarTable),
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_argmodes(ProcInfo, ArgModes),
-    CandidateHeadVars = list.filter_map_corresponding(
+    list.filter_map_corresponding(
         candidate_headvars_of_proc_2(ModuleInfo, PredProcId, VarTable),
-        HeadVars, ArgModes).
+        HeadVars, ArgModes, CandidateHeadVars).
 
-:- func candidate_headvars_of_proc_2(module_info, pred_proc_id, var_table,
-    prog_var, mer_mode)
-    = pair(string, candidate_headvar_origins) is semidet.
+:- pred candidate_headvars_of_proc_2(module_info::in, pred_proc_id::in,
+    var_table::in, prog_var::in, mer_mode::in,
+    pair(string, candidate_headvar_origins)::out) is semidet.
 
 candidate_headvars_of_proc_2(ModuleInfo, PredProcId, VarTable,
-        HeadVar, ArgMode) = (Name - Origins) :-
+        HeadVar, ArgMode, Name - Origins) :-
     % We only tuple input arguments.
     mode_is_input(ModuleInfo, ArgMode),
     % Don't touch introduced typeinfo arguments.

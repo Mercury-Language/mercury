@@ -267,13 +267,13 @@
                 ideal_depth :: int
             ).
 
-:- func get_trace_exit_atom(trace_node(R)) = trace_atom.
-:- mode get_trace_exit_atom(in(trace_node_exit)) = out is det.
-:- mode get_trace_exit_atom(in) = out is semidet.
+:- pred get_trace_exit_atom(trace_node(R), trace_atom).
+:- mode get_trace_exit_atom(in(trace_node_exit), out) is det.
+:- mode get_trace_exit_atom(in, out) is semidet.
 
-:- func get_trace_call_atom(trace_node(R)) = trace_atom.
-:- mode get_trace_call_atom(in(trace_node_call)) = out is det.
-:- mode get_trace_call_atom(in) = out is semidet.
+:- pred get_trace_call_atom(trace_node(R), trace_atom).
+:- mode get_trace_call_atom(in(trace_node_call), out) is det.
+:- mode get_trace_call_atom(in, out) is semidet.
 
     % get_pred_attributes(ProcLabel, Module, Name, Arity, PredOrFunc).
     % Return the predicate/function attributes common to both UCI and
@@ -467,12 +467,13 @@
 
 %---------------------------------------------------------------------------%
 
-get_trace_exit_atom(node_exit(_, _, _, AtomArgs, _, Label, _, _)) = Atom :-
+get_trace_exit_atom(Node, Atom) :-
+    Node = node_exit(_, _, _, AtomArgs, _, Label, _, _),
     ProcLayout = get_proc_layout_from_label_layout(Label),
     Atom = atom(ProcLayout, AtomArgs).
 
-get_trace_call_atom(node_call(_, _, AtomArgs, _, _, _, _, Label, _, _))
-        = Atom :-
+get_trace_call_atom(Node, Atom) :-
+    Node = node_call(_, _, AtomArgs, _, _, _, _, Label, _, _),
     ProcLayout = get_proc_layout_from_label_layout(Label),
     Atom = atom(ProcLayout, AtomArgs).
 

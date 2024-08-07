@@ -7063,6 +7063,11 @@ Do not warn about redundant type conversions,
 i.e.@: when the type of a @samp{coerce} expression
 is the same as the argument type.
 
+@sp 1
+@item --warn-can-fail-function
+@findex --warn-can-fail-function
+Warn about functions that can fail.
+
 @end table
 
 @node Verbosity options

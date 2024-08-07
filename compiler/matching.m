@@ -426,8 +426,8 @@ maximal_matching(BenefitNodes, Graph) = Matching :-
     matching::in, matching::out) is det.
 
 maximize_matching(BenefitNodes, Graph, !Matching) :-
-    ( if Path = find_augmenting_path(BenefitNodes, Graph, !.Matching) then
-        !:Matching = update_matches(Path, !.Matching),
+    ( if find_augmenting_path(BenefitNodes, Graph, !.Matching, Path) then
+        update_matches(Path, !Matching),
         disable_warning [suspicious_recursion] (
             maximize_matching(BenefitNodes, Graph, !Matching)
         )
@@ -435,24 +435,24 @@ maximize_matching(BenefitNodes, Graph, !Matching) :-
         true
     ).
 
-:- func update_matches(edge_list, matching) = matching.
+:- pred update_matches(edge_list::in, matching::in, matching::out) is det.
 
-update_matches([], Matching0) = Matching0.
-update_matches([BenefitNode - CostNode | Path], Matching0) = Matching :-
+update_matches([], !Matching).
+update_matches([BenefitNode - CostNode | Path], Matching0, Matching) :-
     Matching0 = matching(CostToBenefitMap0, BenefitToCostMap0),
     map.set(CostNode, BenefitNode, CostToBenefitMap0, CostToBenefitMap1),
     map.set(BenefitNode, CostNode, BenefitToCostMap0, BenefitToCostMap1),
     Matching1 = matching(CostToBenefitMap1, BenefitToCostMap1),
-    Matching = update_matches(Path, Matching1).
+    update_matches(Path, Matching1, Matching).
 
-:- func find_augmenting_path(list(benefit_node), stack_slot_graph, matching)
-    = edge_list is semidet.
+:- pred find_augmenting_path(list(benefit_node)::in, stack_slot_graph::in,
+    matching::in, edge_list::out) is semidet.
 
-find_augmenting_path(BenefitNodes, Graph, Matching) = Path :-
+find_augmenting_path(BenefitNodes, Graph, Matching, Path) :-
     Matching = matching(_, MatchingBenefitToCost),
     UnMatchedBenefitNodes = get_unmatched_benefit_nodes(BenefitNodes,
         MatchingBenefitToCost),
-    Path = find_first_path_bf(UnMatchedBenefitNodes, Graph, Matching).
+    find_first_path_bf(UnMatchedBenefitNodes, Graph, Matching, Path).
 
 %-----------------------------------------------------------------------------%
 
@@ -471,12 +471,12 @@ find_augmenting_path(BenefitNodes, Graph, Matching) = Path :-
     % reachable from there. If one is unmatched return the path, otherwise add
     % these nodes to the queue if they haven't been visited before.
     %
-:- func find_first_path_bf(list(benefit_node), stack_slot_graph, matching)
-    = edge_list is semidet.
+:- pred find_first_path_bf(list(benefit_node)::in, stack_slot_graph::in,
+    matching::in, edge_list::out) is semidet.
 
-find_first_path_bf(BenefitNodes, Graph, Matching) = Path :-
+find_first_path_bf(BenefitNodes, Graph, Matching, Path) :-
     Queue = initial_queue(BenefitNodes, queue.init),
-    Path = augpath_bf(Queue, BenefitNodes, Graph, Matching).
+    augpath_bf(Queue, BenefitNodes, Graph, Matching, Path).
 
 :- func initial_queue(list(benefit_node), queue(benefit_node_and_edge_list))
     = queue(benefit_node_and_edge_list).
@@ -486,10 +486,11 @@ initial_queue([N | Ns], Q0) = Q :-
     Q1 = queue.put(Q0, benefit_node_and_edge_list(N, [])),
     Q = initial_queue(Ns, Q1).
 
-:- func augpath_bf(queue(benefit_node_and_edge_list), list(benefit_node),
-    stack_slot_graph, matching) = edge_list is semidet.
+:- pred augpath_bf(queue(benefit_node_and_edge_list)::in,
+    list(benefit_node)::in, stack_slot_graph::in, matching::in, edge_list::out)
+    is semidet.
 
-augpath_bf(Queue0, Seen0, Graph, Matching) = Path :-
+augpath_bf(Queue0, Seen0, Graph, Matching, Path) :-
     queue.get(NodePath, Queue0, Queue1),
     NodePath = benefit_node_and_edge_list(BenefitNode, Path0),
     Graph = stack_slot_graph(_, BenefitToCostsMap),
@@ -497,24 +498,24 @@ augpath_bf(Queue0, Seen0, Graph, Matching) = Path :-
     Matching = matching(CostToBenefitMap, _),
     CostMatches = map_adjs_to_matched_cost(
         set.to_sorted_list(AdjCostNodes), CostToBenefitMap),
-    ( if find_unmatched_cost(CostMatches) = UnmatchedCostNode then
+    ( if find_unmatched_cost(CostMatches, UnmatchedCostNode) then
         Path = [BenefitNode - UnmatchedCostNode | Path0]
     else
         add_alternates(CostMatches, Seen0, Seen, BenefitNode, Path0,
             Queue1, Queue2),
-        Path = augpath_bf(Queue2, Seen, Graph, Matching)
+        augpath_bf(Queue2, Seen, Graph, Matching, Path)
     ).
 
-:- func find_unmatched_cost(assoc_list(cost_node, maybe(benefit_node)))
-    = cost_node is semidet.
+:- pred find_unmatched_cost(assoc_list(cost_node, maybe(benefit_node))::in,
+    cost_node::out) is semidet.
 
-find_unmatched_cost([CostNode - MaybeBenefitNode | Matches]) = Unmatched :-
+find_unmatched_cost([CostNode - MaybeBenefitNode | Matches], Unmatched) :-
     (
         MaybeBenefitNode = no,
         Unmatched = CostNode
     ;
         MaybeBenefitNode = yes(_),
-        Unmatched = find_unmatched_cost(Matches)
+        find_unmatched_cost(Matches, Unmatched)
     ).
 
     % For each node CostNode adjacent to BenefitNode, we have determined

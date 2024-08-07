@@ -31,8 +31,8 @@
 
 :- func rpta_info_table_init = rpta_info_table.
 
-:- func rpta_info_table_search_rpta_info(pred_proc_id, rpta_info_table)
-    = rpta_info is semidet.
+:- pred rpta_info_table_search_rpta_info(rpta_info_table::in,
+    pred_proc_id::in, rpta_info::out) is semidet.
 
 :- pred rpta_info_table_set_rpta_info(pred_proc_id::in, rpta_info::in,
     rpta_info_table::in, rpta_info_table::out) is det.
@@ -80,11 +80,11 @@
 
 rpta_info_table_init = map.init.
 
-rpta_info_table_search_rpta_info(PredProcId, Table) = RptaInfo :-
-    Table ^ elem(PredProcId) = RptaInfo.
+rpta_info_table_search_rpta_info(Table, PredProcId, RptaInfo) :-
+    map.search(Table, PredProcId, RptaInfo).
 
 rpta_info_table_set_rpta_info(PredProcId, RptaInfo, !Table) :-
-    !Table ^ elem(PredProcId) := RptaInfo.
+    map.set(PredProcId, RptaInfo, !Table).
 
 rpta_info_init(ProcInfo) = RptaInfo :-
     proc_info_get_var_table(ProcInfo, VarTable),
