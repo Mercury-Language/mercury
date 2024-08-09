@@ -225,7 +225,7 @@ update_new(J, Data, "update failed") :-
     some [K, V] (
         list.member(K - V, Data),
         not (
-            injection.update(J, K, V, NewJ),
+            injection.update(K, V, J, NewJ),
             validate_injection(NewJ)
         )
     ).
@@ -309,42 +309,42 @@ values_test(J, Data, "values did not match") :-
 :- pred insert_fail(test_inj::in, int::in, int::in, string::out) is semidet.
 
 insert_fail(J, K, V, "succeeded with duplicate") :-
-    injection.insert(J, K, V, _).
+    injection.insert(K, V, J, _).
 
 :- pred insert_throw(test_inj::in, int::in, int::in, string::out) is semidet.
 
 insert_throw(J, K, V, "succeeded with duplicate") :-
-    injection.det_insert(J, K, V, NewJ),
+    injection.det_insert(K, V, J, NewJ),
     validate_injection(NewJ).
 
 :- pred update_fail(test_inj::in, int::in, int::in, string::out) is semidet.
 
 update_fail(J, K, V, "wrongly succeeded") :-
-    injection.update(J, K, V, _).
+    injection.update(K, V, J, _).
 
 :- pred update_throw(test_inj::in, int::in, int::in, string::out) is semidet.
 
 update_throw(J, K, V, "wrongly succeeded") :-
-    injection.det_update(J, K, V, NewJ),
+    injection.det_update(K, V, J, NewJ),
     validate_injection(NewJ).
 
 :- pred set_succeed(test_inj::in, int::in, int::in, string::out) is semidet.
 
 set_succeed(J, K, V, "failed with valid value") :-
     not (
-        injection.set(J, K, V, NewJ),
+        injection.set(K, V, J, NewJ),
         validate_injection(NewJ)
     ).
 
 :- pred set_fail(test_inj::in, int::in, int::in, string::out) is semidet.
 
 set_fail(J, K, V, "succeeded with duplicate value") :-
-    injection.set(J, K, V, _).
+    injection.set(K, V, J, _).
 
 :- pred set_throw(test_inj::in, int::in, int::in, string::out) is semidet.
 
 set_throw(J, K, V, "succeeded with duplicate value") :-
-    injection.det_set(J, K, V, NewJ),
+    injection.det_set(K, V, J, NewJ),
     validate_injection(NewJ).
 
 :- pred delete_key_test(test_inj::in, int::in, string::out) is semidet.

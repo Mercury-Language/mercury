@@ -48,6 +48,10 @@ Changes that may break compatibility
 * The `digraph_key` type in the `digraph` module is now an instance of
   the `uenum` typeclass, not the `enum` typeclass.
 
+* Six predicates in the `injection` module, `det_insert/4`, `det_set/4`,
+  `det_update/4`, `insert/4`, `set/4` and `update/4`, have had the order
+  of their arguments changed.
+
 * The character sequences `<<u` and `>>u` are now recognized as single tokens.
   (They are the names of new versions of the left and right shift operators
   that expect the shift amount to be specified by an unsigned integer;
@@ -290,6 +294,17 @@ Changes to the Mercury standard library
     - pred `int_hash/2`
     - pred `string_hash/2`
     - pred `uint_hash/2`
+
+### Changes to the `injection` module
+
+* The following predicates have had the order of their arguments changed:
+
+    - pred `det_insert/4`
+    - pred `det_set/4`
+    - pred `det_update/4`
+    - pred `insert/4`
+    - pred `set/4`
+    - pred `update/4`
 
 ### Changes to the `int` module
 

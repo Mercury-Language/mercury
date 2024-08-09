@@ -65,7 +65,6 @@
     %
 :- func reverse_search(injection(K, V), V) = K is semidet.
 % NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(reverse_search/2), [reverse_search/3]).
-% XXX ARG_ORDER
 :- pred reverse_search(injection(K, V)::in, K::out, V::in) is semidet.
 
     % Combined forward/reverse search.
@@ -110,16 +109,15 @@
     %
 :- func insert(injection(K, V), K, V) = injection(K, V) is semidet.
 % NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(insert/3), [insert/4]).
-% XXX STATEVAR
-:- pred insert(injection(K, V)::in, K::in, V::in, injection(K, V)::out)
+:- pred insert(K::in, V::in, injection(K, V)::in, injection(K, V)::out)
     is semidet.
 
     % As above but throws an exception if the key or the value already
     % exists.
     %
 :- func det_insert(injection(K, V), K, V) = injection(K, V).
-:- pred det_insert(injection(K, V)::in, K::in, V::in,
-    injection(K, V)::out) is det.
+:- pred det_insert(K::in, V::in, injection(K, V)::in, injection(K, V)::out)
+    is det.
 
     % Update the value associated with a given key. Fails if the key
     % does not already exist, or if the value is already associated
@@ -127,16 +125,15 @@
     %
 :- func update(injection(K, V), K, V) = injection(K, V) is semidet.
 % NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(update/3), [update/4]).
-% XXX STATEVAR
-:- pred update(injection(K, V)::in, K::in, V::in, injection(K, V)::out)
+:- pred update(K::in, V::in, injection(K, V)::in, injection(K, V)::out)
     is semidet.
 
     % As above, but throws an exception if the key does not already exist,
     % or if the value is already associated with a key.
     %
 :- func det_update(injection(K, V), K, V) = injection(K, V).
-:- pred det_update(injection(K, V)::in, K::in, V::in,
-    injection(K, V)::out) is det.
+:- pred det_update(K::in, V::in, injection(K, V)::in, injection(K, V)::out)
+    is det.
 
     % Sets the value associated with a given key, regardless of whether
     % the key exists already or not. Fails if the value is already
@@ -144,16 +141,15 @@
     %
 :- func set(injection(K, V), K, V) = injection(K, V) is semidet.
 % NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(set/3), [set/4]).
-% XXX STATEVAR
-:- pred set(injection(K, V)::in, K::in, V::in, injection(K, V)::out)
+:- pred set(K::in, V::in, injection(K, V)::in, injection(K, V)::out)
     is semidet.
 
     % As above, but throws an exception if the value is already associated
     % with a key that is different from the given key.
     %
 :- func det_set(injection(K, V), K, V) = injection(K, V).
-:- pred det_set(injection(K, V)::in, K::in, V::in,
-    injection(K, V)::out) is det.
+:- pred det_set(K::in, V::in, injection(K, V)::in, injection(K, V)::out)
+    is det.
 
     % Insert key-value pairs from an assoc_list into the given injection.
     % Fails if any of the individual inserts would fail.
@@ -387,45 +383,45 @@ contains_value(injection(_, R), V) :-
     map.contains(R, V).
 
 insert(Injection0, K, V) = Injection :-
-    insert(Injection0, K, V, Injection).
+    insert(K, V, Injection0, Injection).
 
-insert(Injection0, K, V, Injection) :-
+insert(K, V, Injection0, Injection) :-
     Injection0 = injection(Forward0, Reverse0),
     map.insert(K, V, Forward0, Forward),
     map.insert(V, K, Reverse0, Reverse),
     Injection = injection(Forward, Reverse).
 
 det_insert(Injection0, K, V) = Injection :-
-    det_insert(Injection0, K, V, Injection).
+    det_insert(K, V, Injection0, Injection).
 
-det_insert(Injection0, K, V, Injection) :-
+det_insert(K, V, Injection0, Injection) :-
     Injection0 = injection(Forward0, Reverse0),
     map.det_insert(K, V, Forward0, Forward),
     map.det_insert(V, K, Reverse0, Reverse),
     Injection = injection(Forward, Reverse).
 
 update(Injection0, K, V) = Injection :-
-    update(Injection0, K, V, Injection).
+    update(K, V, Injection0, Injection).
 
-update(Injection0, K, V, Injection) :-
+update(K, V, Injection0, Injection) :-
     Injection0 = injection(Forward0, Reverse0),
     map.update(K, V, Forward0, Forward),
     map.insert(V, K, Reverse0, Reverse),
     Injection = injection(Forward, Reverse).
 
 det_update(Injection0, K, V) = Injection :-
-    det_update(Injection0, K, V, Injection).
+    det_update(K, V, Injection0, Injection).
 
-det_update(Injection0, K, V, Injection) :-
+det_update(K, V, Injection0, Injection) :-
     Injection0 = injection(Forward0, Reverse0),
     map.det_update(K, V, Forward0, Forward),
     map.det_insert(V, K, Reverse0, Reverse),
     Injection = injection(Forward, Reverse).
 
 set(Injection0, K, V) = Injection :-
-    set(Injection0, K, V, Injection).
+    set(K, V, Injection0, Injection).
 
-set(Injection0, K, V, Injection) :-
+set(K, V, Injection0, Injection) :-
     Injection0 = injection(Forward0, Reverse0),
     injection.set_2(K, V, Forward0, Forward, Reverse0, Reverse),
     Injection = injection(Forward, Reverse).
@@ -443,9 +439,9 @@ set_2(K, V, !F, !R) :-
     ).
 
 det_set(Injection0, K, V) = Injection :-
-    det_set(Injection0, K, V, Injection).
+    det_set(K, V, Injection0, Injection).
 
-det_set(Injection0, K, V, Injection) :-
+det_set(K, V, Injection0, Injection) :-
     Injection0 = injection(Forward0, Reverse0),
     injection.det_set_2(K, V, Forward0, Forward, Reverse0, Reverse),
     Injection = injection(Forward, Reverse).
