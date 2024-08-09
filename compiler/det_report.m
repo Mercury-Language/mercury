@@ -748,10 +748,12 @@ check_function_semantics(ModuleInfo, PredProcId, PredInfo, ProcInfo, !Specs) :-
                 WarnCanFailFunction),
             pred_info_get_status(PredInfo, PredStatus),
             pred_info_get_origin(PredInfo, Origin),
+            pred_info_get_obsolete_in_favour_of(PredInfo, MaybeObsolete),
             ( if
                 WarnCanFailFunction = yes,
                 pred_status_defined_in_this_module(PredStatus) = yes,
-                Origin = origin_user(_)
+                Origin = origin_user(_),
+                MaybeObsolete = no
             then
                 CanFailSpec = report_can_fail_func(ModuleInfo, PredProcId,
                     PredInfo, ProcInfo, FuncResultType, InferredDetism),

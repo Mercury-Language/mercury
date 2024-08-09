@@ -3436,6 +3436,8 @@ long_table("wne-2024-02-21",
                                     compiler_sufficiently_recent).
 long_table("escape-2024-04-28",
                                     compiler_sufficiently_recent).
+long_table("can-fail-function-obsolete-2024-08-10",
+                                    compiler_sufficiently_recent).
 long_table("experiment",           experiment).
 long_table("experiment1",          experiment1).
 long_table("experiment2",          experiment2).
