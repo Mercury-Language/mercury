@@ -326,6 +326,11 @@
     % is expected. Fail if there is no matching pred. Abort if there are
     % multiple matching preds.
     %
+    % XXX Actually, most of this predicate deals with resolving overloading
+    % (i.e. it does the job of the resolve_pred_overloading predicate above).
+    % Having its name give no hint about this fact seems to me (zs)
+    % to be a problem.
+    %
 :- pred find_matching_pred_id(module_info::in, pred_or_func::in, sym_name::in,
     list(pred_id)::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
     external_type_params::in,
@@ -382,7 +387,10 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module int.
 :- import_module multi_map.
+:- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -1180,7 +1188,7 @@ resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
 
 find_matching_pred_id(ModuleInfo, PredOrFunc, SymName, PredIds,
         TVarSet, ExistQTVars, ArgTypes, ExternalTypeParams,
-        MaybeConstraintSearch, Context, ThePredId, ThePredSymName, Specs) :-
+        MaybeConstraintSearch, Context, ChosenPredId, ChosenSymName, Specs) :-
     find_matching_pred_ids(ModuleInfo, TVarSet, ExistQTVars,
         ArgTypes, ExternalTypeParams, MaybeConstraintSearch, Context,
         PredIds, MatchingPredIdsInfos),
@@ -1189,15 +1197,70 @@ find_matching_pred_id(ModuleInfo, PredOrFunc, SymName, PredIds,
         fail
     ;
         MatchingPredIdsInfos =
-            [ThePredId - ThePredInfo | TailMatchingPredIdsInfos],
+            [HeadMatchingPredIdsInfo | TailMatchingPredIdsInfos],
         % We have found a matching predicate or function.
-        pred_info_get_sym_name(ThePredInfo, ThePredSymName),
         % Was there was more than one matching predicate/function?
         (
             TailMatchingPredIdsInfos = [],
+            HeadMatchingPredIdsInfo = ChosenPredId - ChosenPredInfo,
+            pred_info_get_sym_name(ChosenPredInfo, ChosenSymName),
             Specs = []
         ;
             TailMatchingPredIdsInfos = [_ | _],
+            % There is more than one matching predicate or function,
+            % and we have to resolve the ambiguity.
+            %
+            % We used to resolve it in the simplest way possible,
+            % by picking the first entry in MatchingPredIdsInfos.
+            % However, in some rare cases, this can (and has) lead to
+            % compiler aborts. The abort scenario was as follows.
+            %
+            % - There is a call in library/uint.m from det_from_int
+            %   to the from_int/2 predicate. For a long time, this call
+            %   was unambiguous.
+            %
+            % - We change the from_int method of the enum typeclass from
+            %   being a semidet function to being a semidet predicate.
+            %   Since the uint module imports the enum module, this makes
+            %   the call to from_int/2 in det_from_int ambiguous.
+            %
+            % - The compiler resolved the overloadinging by picking
+            %   enum.from_int.
+            %
+            % - Polymorphism went to look up the class constraints
+            %   required for calls to enum.from_int. Since det_from_int
+            %   has no class constraints whatsoever, the lookup failed,
+            %   which led immediately to a compiler abort.
+            %
+            % This is the reason for why we prefer to pick from
+            % MatchingPredIdsInfos the match (or one of the matches)
+            % with the least number of class constraints. To avoid
+            % possible similar complications related to existential types,
+            % we prefer their absence as well.
+            %
+            % Note that what we *actually* would prefer to do would be
+            % to pick the match that has the least number of class constraints
+            % *that the call's context cannot satisfy*. However, our caller
+            % does not give us either the caller's constraint map, or any way
+            % to recreate that map.
+            %
+            % XXX Should we refuse to pick any match that has *any*
+            % typeclass constraints at all, even if that means failing?
+            % The abort scenario above could happen for any such match.
+            classify_preds_by_class_context(MatchingPredIdsInfos,
+                map.init, NoExistMap, map.init, ExistMap),
+            ( if map.min_key(NoExistMap, MinKey) then
+                one_or_more_map.lookup(NoExistMap, MinKey, MinSNAsPredIds)
+            else if map.min_key(ExistMap, MinKey) then
+                one_or_more_map.lookup(ExistMap, MinKey, MinSNAsPredIds)
+            else
+                unexpected($pred, "all matches disappeared")
+            ),
+            % This sort gets the lexicographically smallest sym_name
+            % to the front.
+            one_or_more.sort(MinSNAsPredIds, SortedMinSNAsPredIds),
+            SortedMinSNAsPredIds = one_or_more(ChosenSNA - ChosenPredId, _),
+            ChosenSNA = sym_name_arity(ChosenSymName, _ChosenArity),
             GetPredDesc =
                 ( func(_ - PI) = Piece :-
                     pred_info_get_sym_name(PI, SN),
@@ -1205,7 +1268,8 @@ find_matching_pred_id(ModuleInfo, PredOrFunc, SymName, PredIds,
                     SNA = sym_name_arity(SN, UserArityInt),
                     Piece = qual_sym_name_arity(SNA)
                 ),
-            PredDescPieces = list.map(GetPredDesc, MatchingPredIdsInfos),
+            PredDescPieces0 = list.map(GetPredDesc, MatchingPredIdsInfos),
+            list.sort(PredDescPieces0, PredDescPieces),
             % XXX None of color_hint, color_inconsistent or color_correct
             % fit the predicate descriptions we list here, but color_hint
             % is probably the least misleading.
@@ -1220,9 +1284,12 @@ find_matching_pred_id(ModuleInfo, PredOrFunc, SymName, PredIds,
                 words("You need to use an explicit module qualifier"),
                 words("to select the one you intend to refer to."), nl,
                 words("Proceeding on the assumption that"),
-                words("the intended match is the first."),
-                words("If this assumption is incorrect, other error messages"),
-                words("may be reported for this predicate or function"),
+                words("the intended match is")] ++
+                color_as_subject([qual_sym_name_arity(ChosenSNA),
+                    suffix(".")]) ++
+                [words("If this assumption is incorrect,"),
+                words("other error messages may be reported"),
+                words("for this predicate or function"),
                 words("solely because of this wrong assumption."), nl],
             % In the frequent case (for us, at least) where the ambiguity
             % is caused by moving a predicate from one module of the standard
@@ -1297,6 +1364,34 @@ univ_constraints_match([ProvenConstraint | ProvenConstraints],
     CalleeConstraint = constraint(ClassName, CalleeArgTypes),
     list.length(CalleeArgTypes, Arity),
     univ_constraints_match(ProvenConstraints, CalleeConstraints).
+
+%---------------------%
+
+:- pred classify_preds_by_class_context(assoc_list(pred_id, pred_info)::in,
+    one_or_more_map(int, pair(sym_name_arity, pred_id))::in,
+    one_or_more_map(int, pair(sym_name_arity, pred_id))::out,
+    one_or_more_map(int, pair(sym_name_arity, pred_id))::in,
+    one_or_more_map(int, pair(sym_name_arity, pred_id))::out) is det.
+
+classify_preds_by_class_context([], !NoExistMap, !ExistMap).
+classify_preds_by_class_context([PredId - PredInfo | PredIdsInfos],
+        !NoExistMap, !ExistMap) :-
+    pred_info_get_exist_quant_tvars(PredInfo, ExistQTVars),
+    pred_info_get_class_context(PredInfo, Constraints),
+    Constraints = univ_exist_constraints(UnivConstraints, ExistConstraints),
+    NumConstraints =
+        list.length(UnivConstraints) + list.length(ExistConstraints),
+    pred_info_get_sym_name(PredInfo, SymName),
+    user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
+    SNA = sym_name_arity(SymName, UserArityInt),
+    (
+        ExistQTVars = [],
+        one_or_more_map.add(NumConstraints, SNA - PredId, !NoExistMap)
+    ;
+        ExistQTVars = [_ | _],
+        one_or_more_map.add(NumConstraints, SNA - PredId, !ExistMap)
+    ),
+    classify_preds_by_class_context(PredIdsInfos, !NoExistMap, !ExistMap).
 
 %---------------------%
 

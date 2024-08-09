@@ -668,7 +668,7 @@ create_var(var(V), var_supply(V0), var_supply(V)) :-
 
 :- instance enum(var(_)) where [
     func(to_int/1) is term.var_to_int,
-    func(from_int/1) is term.unsafe_int_to_var
+    pred(from_int/2) is term.unsafe_int_to_var
 ].
 
 :- instance uenum(var(_)) where [
@@ -678,9 +678,9 @@ create_var(var(V), var_supply(V0), var_supply(V)) :-
 
     % Cast an integer to a var(T), subverting type checking.
     %
-:- func unsafe_int_to_var(int) = var(T).
+:- pred unsafe_int_to_var(int::in, var(T)::out) is det.
 
-unsafe_int_to_var(VarNum) = var(VarNum).
+unsafe_int_to_var(VarNum, var(VarNum)).
 
 var_to_int(var(VarNum)) = VarNum.
 var_to_int(var(VarNum), VarNum).

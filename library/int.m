@@ -533,7 +533,7 @@
 
 :- instance enum(int) where [
     to_int(X) = X,
-    from_int(X) = X
+    from_int(X, X)
 ].
 
 :- instance uenum(int) where [

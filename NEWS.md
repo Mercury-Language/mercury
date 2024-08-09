@@ -37,6 +37,10 @@ Changes that may break compatibility
   The old contents of the `mercury_term_parser` module is still available as
   `extras/old_library_modules/old_mercury_term_parser`.
 
+* The `enum/1 typeclass` has been modified by having its `from_int` method
+  changed from a semidet function of arity one (plus the return value)
+  to a semidet predicate of arity two.
+
 * The `sparse_bitset`, `fat_sparse_bitset` and `tree_bitset` modules
   now require the items in those sets to be instances of the `uenum` typeclass,
   not the `enum` typeclass.
@@ -227,12 +231,19 @@ Changes to the Mercury standard library
 
 ### Changes to the `enum` module
 
+* The following typeclass has been modified:
+
+    - The `enum/1` typeclass has had its `from_int` method changed from a
+      semidet function of arity one (plus the return value) to a semidet
+      predicate of arity two.
+
 * The following typeclass has been added:
 
     - typeclass `uenum/1`
 
-* The following function has been added:
+* The following functions have been added:
 
+    - func `from_int/1`                 (replaces class method; born obsolete)
     - func `det_from_uint/1`
 
 ### Changes to the `fat_sparse_bitset` module

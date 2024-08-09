@@ -28,7 +28,7 @@
 
 :- instance enum(xvar(_)) where [
     to_int(xvar(I)) = I,
-    from_int(I) = xvar(I)
+    from_int(I, xvar(I))
 ].
 
 main(!IO) :-

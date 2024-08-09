@@ -245,6 +245,7 @@ BORING_SINGLEMODULE_PROGS = \
 	oisu_check_add_pragma_errors \
 	oisu_check_semantic_errors \
 	one_member \
+	overload_resolution_preference \
 	overloading \
 	polymorphic_unification \
 	pragma_c_code_dup_var \

@@ -253,7 +253,29 @@
 ").
 
 det_from_int(I) = U :-
-    ( if from_int(I, UPrime) then
+    % XXX If we omit the module qualification from the call to from_int,
+    % then the compiler
+    %
+    % - generates a warning message about unresolved polymorphism,
+    %   because the call could be either to uint.from_int OR to enum.from_int,
+    %   and then
+    %
+    % - aborts with the following internal error
+    %
+    %   Software Error: predicate
+    %   `hlds.hlds_class.lookup_hlds_constraint_list'/5: Unexpected: not found
+    %
+    % That abort seems to be caused by attempting to look up the typeclass
+    % constraint applicable to enum.from_int in the typeclass constraint map
+    % of this clause, which (not surprisingly) is empty.
+    %
+    % A nasty addition to the above problem is that normally, we save all
+    % error and warning messages to print them all at once. However, the
+    % compiler abort occurs before that point, so the warning about the
+    % issue that causes the abort is prevented by the abort itself :-(
+    % The warning gets to be printed only if the compiler is invoked with -v,
+    % which is something that most users probably won't think of.
+    ( if uint.from_int(I, UPrime) then
         U = UPrime
     else
         error($pred, "cannot convert int to uint")

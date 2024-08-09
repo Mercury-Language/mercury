@@ -40,7 +40,7 @@
     %
 :- typeclass enum(T) where [
     func to_int(T) = int,
-    func from_int(int) = T is semidet
+    pred from_int(int::in, T::out) is semidet
 ].
 
     % This is another version of the above typeclass, which maps
@@ -55,6 +55,13 @@
     pred from_uint(uint::in, T::out) is semidet
 ].
 
+    % The from_int method of the enum typeclass used to be a semidet function.
+    % This function is here to provide backwards compatibility, for a limited
+    % time, for code that uses that old method.
+    %
+:- func from_int(int) = T is semidet <= enum(T).
+:- pragma obsolete(func(from_int/1)).
+
     % det_from_int(I) returns the result of from_int(I), but throws an
     % exception if from_int fails.
     %
@@ -68,8 +75,11 @@
 
 :- import_module require.
 
+from_int(I) = X :-
+    from_int(I, X).
+
 det_from_int(I) = X :-
-    ( if X0 = from_int(I) then
+    ( if from_int(I, X0) then
         X = X0
     else
         unexpected($pred, "from_int failed")

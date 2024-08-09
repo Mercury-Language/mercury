@@ -422,7 +422,7 @@
 
 :- instance enum(character) where [
     func(to_int/1) is char.to_int,
-    func(from_int/1) is char.from_int_func
+    pred(from_int/2) is char.from_int
 ].
 
 :- instance uenum(character) where [
@@ -536,23 +536,13 @@ to_int(C) = N :-
 from_int(Int, Char) :-
     to_int(Char, Int).
 
-    % We don't export this function since we don't want to encourage people
-    % to use semidet functions, but the enum typeclass is ancient, and one
-    % of its two methods is a semidet function. Its implementation therefore
-    % must also be a semidet function.
-    %
-:- func from_int_func(int::in) = (char::out) is semidet.
-
-from_int_func(Int) = Char :-
-    from_int(Int, Char).
-
 %---------------------%
 
 det_from_int(Int) = Char :-
     det_from_int(Int, Char).
 
 det_from_int(Int, Char) :-
-    ( if from_int(Int, CharPrime) then
+    ( if char.from_int(Int, CharPrime) then
         Char = CharPrime
     else
         unexpected($pred, "conversion failed")

@@ -32,9 +32,9 @@
     to_int(one) = 1,
     to_int(two) = 2,
     to_int(three) = 3,
-    from_int(1) = one,
-    from_int(2) = two,
-    from_int(3) = three
+    from_int(1, one),
+    from_int(2, two),
+    from_int(3, three)
 ].
 
 :- type fruit

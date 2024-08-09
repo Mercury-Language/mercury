@@ -90,16 +90,18 @@
     ]).
 
 :- instance enum(bool) where [
-    to_int(Bool) = bool_to_int(Bool),
-    from_int(bool_to_int(Bool)) = Bool
+    to_int(Bool) = Int :-
+        bool_to_int(Bool, Int),
+    from_int(Int, Bool) :-
+        bool_to_int(Bool, Int)
 ].
 
-:- func bool_to_int(bool) = int.
-:- mode bool_to_int(in) = out is det.
-:- mode bool_to_int(out) = in is semidet.
+:- pred bool_to_int(bool, int).
+:- mode bool_to_int(in, out) is det.
+:- mode bool_to_int(out, in) is semidet.
 
-bool_to_int(no) = 0.
-bool_to_int(yes) = 1.
+bool_to_int(no, 0).
+bool_to_int(yes, 1).
 
 %---------------------------------------------------------------------------%
 

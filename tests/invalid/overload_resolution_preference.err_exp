@@ -1,0 +1,13 @@
+overload_resolution_preference.m:028: Error: [38;5;203munresolved overloading[39;49m for
+overload_resolution_preference.m:028:   predicate [38;5;87m`from_int'.[39;49m The matches are
+overload_resolution_preference.m:028:     [38;5;226m`enum.from_int'/2,[39;49m
+overload_resolution_preference.m:028:     [38;5;226m`uint.from_int'/2.[39;49m
+overload_resolution_preference.m:028:   You need to use an explicit module
+overload_resolution_preference.m:028:   qualifier to select the one you intend
+overload_resolution_preference.m:028:   to refer to.
+overload_resolution_preference.m:028:   Proceeding on the assumption that the
+overload_resolution_preference.m:028:   intended match is [38;5;87m`uint.from_int'/2.[39;49m If
+overload_resolution_preference.m:028:   this assumption is incorrect, other
+overload_resolution_preference.m:028:   error messages may be reported for this
+overload_resolution_preference.m:028:   predicate or function solely because of
+overload_resolution_preference.m:028:   this wrong assumption.
