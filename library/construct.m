@@ -1269,7 +1269,7 @@ construct_tuple(Args) = Univ :-
 
 construct_tuple_2(Args, ArgTypeDescs, Arity, Univ) :-
     list.map(type_desc_to_type_info, ArgTypeDescs, ArgTypeInfos),
-    rtti_implementation.construct_tuple_2(Args, ArgTypeInfos, Arity, Univ).
+    Univ = rtti_implementation.construct_tuple_2(Args, ArgTypeInfos, Arity).
 
 %---------------------------------------------------------------------------%
 :- end_module construct.
