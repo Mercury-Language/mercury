@@ -556,7 +556,7 @@ deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
     ).
 
 deconstruct_du(Term, NonCanon, FunctorNumber, Arity, Arguments) :-
-    ( if _ = construct.num_functors(type_of(Term)) then
+    ( if construct.num_functors(type_of(Term), _) then
         (
             NonCanon = do_not_allow,
             deconstruct_dna(Term, _, FunctorNumber, Arity, Arguments)

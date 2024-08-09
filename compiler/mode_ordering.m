@@ -516,7 +516,7 @@ mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
             goal_info_get_need_visible_vars(GI, NeedVisVars),
             list.foldl(
                 ( pred(V::in, !.R1::in, !:R1::out) is det :-
-                    ( if Index1 = map.search(ProdMap, V) then
+                    ( if map.search(ProdMap, V, Index1) then
                         digraph.add_vertex(Index1, Key1, !R1),
                         digraph.add_edge(Key1, Key0, !R1)
                     else
@@ -525,7 +525,7 @@ mode_order_conj(ForwardGoalPathMap, Goals0, Goals) :-
                 ), set_of_var.to_sorted_list(ConsumingVars), !R),
             list.foldl(
                 ( pred(V::in, !.R2::in, !:R2::out) is det :-
-                    ( if Index2 = map.search(MakeVisMap, V) then
+                    ( if map.search(MakeVisMap, V, Index2) then
                         digraph.add_vertex(Index2, Key2, !R2),
                         digraph.add_edge(Key2, Key0, !R2)
                     else

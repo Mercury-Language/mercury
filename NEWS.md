@@ -91,6 +91,11 @@ Changes to the Mercury standard library
 
 ### Changes to the `array` module
 
+* The following predicates have been added:
+
+    - pred `semidet_least_index/2`
+    - pred `semidet_greatest_index/2`
+
 * The following predicates have been removed:
 
     - pred `random_permutation/4`
@@ -126,6 +131,8 @@ Changes to the Mercury standard library
 
 * The following predicates have been added:
 
+    - pred `num_bytes/2`
+    - pred `from_string/2`
     - pred `read_bitmap/6`
     - pred `read_bitmap/7`
     - pred `read_bitmap_range/8`
@@ -157,6 +164,15 @@ Changes to the Mercury standard library
 * The following function has been marked obsolete:
 
     - func `char_to_doc/1`   (replacement: `pretty_printer.char_to_doc`/1)
+
+### Changes to the `construct` module
+
+* The following predicates have been added:
+
+    - pred `num_functors/2`
+    - pred `get_functor_ordinal/3`
+    - pred `get_functor_lex/3`
+    - pred `construct/4`
 
 ### Changes to the `cord` module
 
@@ -569,6 +585,8 @@ Changes to the Mercury standard library
 
 * The following predicates have been added:
 
+    - pred `max_key/2`
+    - pred `min_key/2`
     - pred `compose_maps/3`
     - pred `sorted_keys_match/2`
 
@@ -1099,8 +1117,10 @@ Changes to the Mercury standard library
 
 ### Changes to the `tree234` module
 
-* The following predicate has been added:
+* The following predicates have been added:
 
+    - pred `max_key/2`
+    - pred `min_key/2`
     - pred `sorted_keys_match/2`
 
 * The following function has been marked obsolete:
@@ -1113,6 +1133,14 @@ Changes to the Mercury standard library
 * The following obsolete predicate has been removed:
 
     - pred `empty/1`
+
+### Changes to the `type_desc` module
+
+* The following predicates have been added:
+
+    - pred `make_type/3`
+    - pred `pseudo_type_ctor/2`
+    - pred `pseudo_type_args/2`
 
 ### Changes to the `uint` module
 

@@ -83,6 +83,7 @@
     % Fail if the map does not contain that key.
     %
 :- func search(map(K, V), K) = V is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(search/2), [search/3]).
 :- pred search(map(K, V)::in, K::in, V::out) is semidet.
 
     % Return the value associated with the given key in the map.
@@ -129,6 +130,8 @@
     % Return the largest key in the map, if there is one.
     %
 :- func max_key(map(K, V)) = K is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(max_key/1), [max_key/2]).
+:- pred max_key(map(K, V)::in, K::out) is semidet.
 
     % As above, but throw an exception if there is no largest key.
     %
@@ -137,6 +140,8 @@
     % Return the smallest key in the map, if there is one.
     %
 :- func min_key(map(K,V)) = K is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(min_key/1), [min_key/2]).
+:- pred min_key(map(K, V)::in, K::out) is semidet.
 
     % As above, but throw an exception if there is no smallest key.
     %
@@ -151,6 +156,7 @@
     % Fail if the key already exists.
     %
 :- func insert(map(K, V), K, V) = map(K, V) is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(insert/3), [insert/4]).
 :- pred insert(K::in, V::in, map(K, V)::in, map(K, V)::out) is semidet.
 
     % Insert a new key and corresponding value into a map.
@@ -193,6 +199,7 @@
     % Fail if the key doesn't already exist.
     %
 :- func update(map(K, V), K, V) = map(K, V) is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(update/3), [update/4]).
 :- pred update(K::in, V::in, map(K, V)::in, map(K, V)::out) is semidet.
 
     % Update the value corresponding to a given key
@@ -267,6 +274,7 @@
     % Map ^ elem(Key) = search(Map, Key).
     %
 :- func elem(K, map(K, V)) = V is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(elem/2), [search/3]).
 
     % Map ^ det_elem(Key) = lookup(Map, Key).
     %
@@ -1375,20 +1383,28 @@ upper_bound_lookup(Map, SearchK, K, V) :-
 
 %---------------------------------------------------------------------------%
 
-max_key(M) = tree234.max_key(M).
+max_key(Map) = Key :-
+    map.max_key(Map, Key).
 
-det_max_key(M) =
-    ( if K = map.max_key(M) then
-        K
+max_key(Map, Key) :-
+    tree234.max_key(Map, Key).
+
+det_max_key(Map) =
+    ( if map.max_key(Map, Key) then
+        Key
     else
         unexpected($pred, "map.max_key failed")
     ).
 
-min_key(M) = tree234.min_key(M).
+min_key(Map) = Key :-
+    map.min_key(Map, Key).
 
-det_min_key(M) =
-    ( if K = map.min_key(M) then
-        K
+min_key(Map, Key) :-
+    tree234.min_key(Map, Key).
+
+det_min_key(Map) =
+    ( if map.min_key(Map, Key) then
+        Key
     else
         unexpected($pred, "map.min_key failed")
     ).

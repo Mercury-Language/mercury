@@ -419,7 +419,7 @@ update_goal(PredEnv, ConstraintMap, ForwardGoalPathMap, !Goal, Errors) :-
 
     list.map(list.filter_map(pred_constraint_info),
         AmbigDisjuncts, AmbigPredDatas),
-    AmbigPredData = list.filter_map(list.head, AmbigPredDatas),
+    list.filter_map(list.head, AmbigPredDatas, AmbigPredData),
     PredData = DefinitePredData ++ AmbigPredData,
     list.foldl(apply_pred_data_to_goal(ForwardGoalPathMap), PredData, !Goal).
 
@@ -2078,7 +2078,8 @@ merge_type_constraints2(A, B, Result) :-
     error_msg::out) is semidet.
 
 diagnose_ambig_pred_error(PredEnv, Conjunctions, Msg) :-
-    conj_constraint_get_context(head(Conjunctions), Context),
+    head(Conjunctions, HeadConjunct),
+    conj_constraint_get_context(HeadConjunct, Context),
     list.filter_map(pred_constraint_info, Conjunctions, AmbigPredData),
     not list.all_same(assoc_list.values(AmbigPredData)),
     list.map(ambig_pred_error_message(PredEnv), AmbigPredData, Components),

@@ -99,9 +99,9 @@ main(!IO) :-
 :- pred test_type(type_desc::in, io::di, io::uo) is det.
 
 test_type(Type, !IO) :-
-    ( NumFunctors = num_functors(Type) ->
+    ( if num_functors(Type, NumFunctors) then
         list.foldl(test_functor(Type), 0 .. NumFunctors - 1, !IO)
-    ;
+    else
         io.write_string("failed\n", !IO)
     ),
     io.write_string("----\n", !IO).
@@ -114,7 +114,7 @@ test_functor(Type, FunctorNumber, !IO) :-
         ArgUnivs = list.map(int_univ, 1 .. Arity),
         ( if
             find_functor(Type, Name, Arity, FunctorNumber, _),
-            Univ = construct(Type, FunctorNumber, ArgUnivs)
+            construct(Type, FunctorNumber, ArgUnivs, Univ)
         then
             io.write(Univ, !IO),
             io.nl(!IO)

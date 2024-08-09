@@ -156,6 +156,7 @@
 :- func search(hash_table(K, V), K) = V.
 :- mode search(hash_table_ui, in) = out is semidet.
 % :- mode search(in, in, out) is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(search/2), [search/3]).
 
 :- pred search(hash_table(K, V), K, V).
 :- mode search(hash_table_ui, in, out) is semidet.

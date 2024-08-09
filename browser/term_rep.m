@@ -142,7 +142,7 @@ field_pos(FieldName, Term, Pos) :-
         Value = univ_value(Univ),
         deconstruct(Value, include_details_cc, Functor, Arity, _Args),
         Type = type_of(Value),
-        ( if NumFunctors = num_functors(Type) then
+        ( if num_functors(Type, NumFunctors) then
             find_functor(1, NumFunctors, Type, Functor, Arity,
                 MaybeFunctorNum)
         else

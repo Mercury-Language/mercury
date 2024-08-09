@@ -22,7 +22,7 @@ main(!IO) :-
     X = 4,
     type_to_univ(X, Univ0),
     type_to_univ(Univ0, Univ),
-    univ_to_term(Univ, Term),
+    univ_to_term(Univ, Term : term),
     io.write_line(Term, !IO),
     varset.init(VarSet),
     write_term(VarSet, Term, !IO),

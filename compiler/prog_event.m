@@ -750,7 +750,7 @@ convert_terms_to_attrs(EventName, FileName, AttrNameMap,
         map.lookup(AttrTypeMap, AttrName, AttrType),
         SynthCallTerm = event_attr_synth_call_term(FuncAttrName, ArgAttrNames),
         ( if
-            FuncAttrInfo = map.search(AttrNameMap, FuncAttrName),
+            map.search(AttrNameMap, FuncAttrName, FuncAttrInfo),
             FuncAttrNum = FuncAttrInfo ^ attr_info_number,
             list.map(map.search(AttrNameMap), ArgAttrNames, ArgAttrInfos)
         then

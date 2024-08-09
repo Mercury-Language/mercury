@@ -534,7 +534,13 @@ typedef   MR_Word MR_ROBDD_NODE_TYPE;
         leader_to_eqvclass(
             map.foldl(
                 ( func(V, VsA, M) =
-                    ( if Vs = VsA `intersect` (MapB ^ elem(V)) then
+                    ( if
+                        % I (zs) have no idea what X is supposed to represent,
+                        % which is why I don't know of a good name for this
+                        % variable.
+                        map.search(MapB, V, X),
+                        Vs = VsA `intersect` X
+                    then
                         ( if is_empty(Vs) then
                             M
                         else
@@ -989,8 +995,10 @@ merge_imp_res_2(EntailedVarsA, EntailedVarsB, imps(ImpsA), imps(ImpsB)) =
     Keys = list.merge_and_remove_dups(KeysA, KeysB),
     Imps = list.foldl(
         ( func(V, M) = M ^ elem(V) := VsA `intersection` VsB :-
-            VsA = ( if VsA0 = ImpsA ^ elem(V) then VsA0 else EntailedVarsA ),
-            VsB = ( if VsB0 = ImpsB ^ elem(V) then VsB0 else EntailedVarsB )
+            VsA =
+                ( if map.search(ImpsA, V, VsA0) then VsA0 else EntailedVarsA ),
+            VsB =
+                ( if map.search(ImpsB, V, VsB0) then VsB0 else EntailedVarsB )
         ), Keys, map.init).
 
 :- func implication_result_to_imp_vars(implication_result(T)) = imp_vars(T).
@@ -1139,7 +1147,7 @@ restrict_true_false_vars_2(TrueVars0, FalseVars0, R0, R, Seen0, Seen) :-
     ).
 
 squeeze_equiv(equiv_vars(LeaderMap), R0) =
-    ( if Max = map.max_key(LeaderMap) then
+    ( if map.max_key(LeaderMap, Max) then
         restrict_filter(
             ( pred(V::in) is semidet :-
                 map.search(LeaderMap, V, L) => L = V
@@ -1186,7 +1194,7 @@ add_equivalences_2([], _, R, R, !Cache).
 add_equivalences_2([Var - LeaderVar | Vs], Trues, R0, R, !Cache) :-
     ( if R0 = zero then
         R = zero
-    else if R1 = !.Cache ^ elem(R0) then
+    else if map.search(!.Cache, R0, R1) then
         R = R1
     else if R0 = one then
         R = make_equiv_2([Var - LeaderVar | Vs], Trues),
@@ -1268,33 +1276,33 @@ remove_implications(ImpRes, R0) = R :-
     vars(T)::in, robdd(T)::in, robdd(T)::out,
     robdd_cache(T)::in, robdd_cache(T)::out) is det.
 
-remove_implications_2(ImpRes, True, False, R0, R) -->
-    ( if { is_terminal(R0) } then
-        { R = R0 }
-    else if { True `contains` R0 ^ value } then
-        remove_implications_2(ImpRes, True, False, R0 ^ tr, R)
-    else if { False `contains` R0 ^ value } then
-        remove_implications_2(ImpRes, True, False, R0 ^ fa, R)
-    else if R1 =^ elem(R0) then
-        { R = R1 }
+remove_implications_2(ImpRes, True, False, R0, R, !Cache) :-
+    ( if is_terminal(R0) then
+        R = R0
+    else if True `contains` R0 ^ value then
+        remove_implications_2(ImpRes, True, False, R0 ^ tr, R, !Cache)
+    else if False `contains` R0 ^ value then
+        remove_implications_2(ImpRes, True, False, R0 ^ fa, R, !Cache)
+    else if map.search(!.Cache, R0, R1) then
+        R = R1
     else
-        { TrueT = True `union` ImpRes ^ imps ^ get(R0 ^ value) },
-        { FalseT = False `union` ImpRes ^ dis_imps ^ get(R0 ^ value) },
-        remove_implications_2(ImpRes, TrueT, FalseT, R0 ^ tr, RT),
+        TrueT = True `union` ImpRes ^ imps ^ get(R0 ^ value),
+        FalseT = False `union` ImpRes ^ dis_imps ^ get(R0 ^ value),
+        remove_implications_2(ImpRes, TrueT, FalseT, R0 ^ tr, RT, !Cache),
 
-        { TrueF = True `union` ImpRes ^ rev_dis_imps ^ get(R0 ^ value)},
-        { FalseF = False `union` ImpRes ^ rev_imps ^ get(R0 ^ value) },
-        remove_implications_2(ImpRes, TrueF, FalseF, R0 ^ fa, RF),
+        TrueF = True `union` ImpRes ^ rev_dis_imps ^ get(R0 ^ value),
+        FalseF = False `union` ImpRes ^ rev_imps ^ get(R0 ^ value),
+        remove_implications_2(ImpRes, TrueF, FalseF, R0 ^ fa, RF, !Cache),
 
-        { R = make_node(R0 ^ value, RT, RF) },
-        ^ elem(R0) := R
+        R = make_node(R0 ^ value, RT, RF),
+        map.set(R0, R, !Cache)
     ).
 
 :- func get(var(T), imp_map(T)) = vars(T).
 
 get(K, IM) =
-    ( if Vs = IM ^ elem(K) then
-        % In case Vs doesn't already contain K
+    ( if map.search(IM, K, Vs) then
+        % In case, Vs doesn't already contain K.
         Vs `insert` K
     else
         init

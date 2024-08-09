@@ -433,7 +433,7 @@ var_table_from_rev_sorted_assoc_list(RevAssocList, VarTable) :-
 :- pred var_table_map_to_var_table(var_table_map::in, var_table::out) is det.
 
 var_table_map_to_var_table(VarTableMap, VarTable) :-
-    ( if map.max_key(VarTableMap) = MaxVar then
+    ( if map.max_key(VarTableMap, MaxVar) then
         NextAllocVarNum = var_to_int(MaxVar) + 1
     else
         NextAllocVarNum = 1

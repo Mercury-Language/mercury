@@ -18,6 +18,5 @@
 main(!IO) :-
     queue.init(Q1),
     queue.put(1, Q1, _Q2),
-    term_conversion.type_to_term(Q1, Term3),
-    term.generic_term(Term3),
+    term_conversion.type_to_term(Q1, Term3 : term),
     io.write_line(Term3, !IO).

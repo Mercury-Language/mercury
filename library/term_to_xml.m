@@ -1079,7 +1079,7 @@ write_xml_element_univ(Stream, NonCanon, MakeElement, IndentLevel, Univ,
 :- pred is_discriminated_union(type_desc::in, int::out) is semidet.
 
 is_discriminated_union(TypeDesc, NumFunctors) :-
-    NumFunctors = num_functors(TypeDesc),
+    num_functors(TypeDesc, NumFunctors),
     NumFunctors > -1.
 
 :- pred is_array(type_desc::in, pseudo_type_desc::out) is semidet.
@@ -1398,7 +1398,7 @@ can_generate_dtd_2(embed_dtd, ElementMapping, TypeDesc)
 can_generate_dtd_for_types(_, [], _, _) = ok.
 can_generate_dtd_for_types(MakeElement, [PseudoTypeDesc | PseudoTypeDescs],
         Done, ElementsSoFar) = Result :-
-    ( if TypeDesc = ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) then
+    ( if ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc, TypeDesc) then
         ( if
             ( is_discriminated_union(TypeDesc, _)
             ; is_array(TypeDesc, _)
@@ -1621,7 +1621,10 @@ write_dtd_entries(Stream, MakeElement, TypeDesc, [Element | Elements],
                 Braces = yes
             ;
                 Tail = [],
-                ( if num_functors(Head) > 1 then
+                ( if
+                    num_functors(Head, HeadNumFunctors),
+                    HeadNumFunctors > 1
+                then
                     Braces = no
                 else
                     Braces = yes

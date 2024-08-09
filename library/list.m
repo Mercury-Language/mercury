@@ -82,6 +82,7 @@
     % failing if List is empty.
     %
 :- func head(list(T)) = T is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(head/1), [head/2]).
 :- pred head(list(T)::in, T::out) is semidet.
 
     % det_head(List) returns the first element of List,
@@ -94,6 +95,7 @@
     % except the first), failing if List is empty.
     %
 :- func tail(list(T)) = list(T) is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(tail/1), [tail/2]).
 :- pred tail(list(T)::in, list(T)::out) is semidet.
 
     % det_tail(List) returns the tail of List,

@@ -65,11 +65,13 @@
     % Search the bimap for the value corresponding to a given key.
     %
 :- func forward_search(bimap(K, V), K) = V is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(forward_search/2), [forward_search/3]).
 :- pred forward_search(bimap(K, V)::in, K::in, V::out) is semidet.
 
     % Search the bimap for the key corresponding to the given value.
     %
 :- func reverse_search(bimap(K, V), V) = K is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(reverse_search/2), [reverse_search/3]).
 :- pred reverse_search(bimap(K, V)::in, K::out, V::in) is semidet.
 
     % Look up the value in the bimap corresponding to the given key.
@@ -106,6 +108,7 @@
     % Fails if either the key or value already exists.
     %
 :- func insert(bimap(K, V), K, V) = bimap(K, V) is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(insert/3), [insert/4]).
 :- pred insert(K::in, V::in, bimap(K, V)::in, bimap(K, V)::out)
     is semidet.
 
@@ -143,6 +146,7 @@
     %
 :- func insert_from_assoc_list(assoc_list(K, V), bimap(K, V)) =
     bimap(K, V) is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(insert_from_assoc_list/2), [insert_from_assoc_list/3]).
 :- pred insert_from_assoc_list(assoc_list(K, V)::in,
     bimap(K, V)::in, bimap(K, V)::out) is semidet.
 
@@ -227,6 +231,7 @@
     % multiple times in the association list.
     %
 :- func from_assoc_list(assoc_list(K, V)) = bimap(K, V) is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(from_assoc_list/1), [from_assoc_list/2]).
 :- pred from_assoc_list(assoc_list(K, V)::in, bimap(K, V)::out)
     is semidet.
 
@@ -242,6 +247,8 @@
     %
 :- func from_corresponding_lists(list(K), list(V)) = bimap(K, V)
     is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(from_corresponding_lists/2),
+% NOTE_TO_IMPLEMENTORS CFF     [from_corresponding_lists/3]).
 :- pred from_corresponding_lists(list(K)::in, list(V)::in,
     bimap(K, V)::out) is semidet.
 

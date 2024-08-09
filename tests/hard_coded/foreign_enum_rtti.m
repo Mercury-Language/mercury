@@ -72,7 +72,7 @@ check_deconstruct(Data, !IO) :-
     io::di, io::uo) is det.
 
 check_construct(TypeDesc, LexFunctorNum, !IO) :-
-    ( if Univ = construct(TypeDesc, LexFunctorNum, []) then
+    ( if construct(TypeDesc, LexFunctorNum, [], Univ) then
         io.write_string("    ", !IO),
         io.write_line(Univ, !IO)
     else

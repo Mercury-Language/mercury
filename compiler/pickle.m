@@ -318,7 +318,7 @@ unpickle_2(Unpicklers, Handle, TypeDesc, Univ, !State) :-
                 Univ = construct_tuple(ArgUnivs)
             ;
                 IsTuple = no,
-                ( if Univ0 = construct(TypeDesc, N, ArgUnivs) then
+                ( if construct(TypeDesc, N, ArgUnivs, Univ0) then
                     Univ = Univ0
                 else
                     unexpected($pred, "unable to construct")

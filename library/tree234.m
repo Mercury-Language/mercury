@@ -84,8 +84,12 @@
     is det.
 
 :- func max_key(tree234(K, V)) = K is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(max_key/1), [max_key/2]).
+:- pred max_key(tree234(K, V)::in, K::out) is semidet.
 
 :- func min_key(tree234(K, V)) = K is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(min_key/1), [min_key/2]).
+:- pred min_key(tree234(K, V)::in, K::out) is semidet.
 
 %---------------------%
 
@@ -1458,22 +1462,28 @@ upper_bound_lookup(T, SearchK, K, V) :-
 %---------------------------------------------------------------------------%
 
 max_key(T0) = MaxKey :-
+    max_key(T0, MaxKey).
+
+max_key(T0, MaxKey) :-
     ( T0 = two(NodeMaxKey, _, _, NodeMaxSubtree)
     ; T0 = three(_, _, NodeMaxKey, _, _, _, NodeMaxSubtree)
     ; T0 = four(_, _, _, _, NodeMaxKey, _, _, _, _, NodeMaxSubtree)
     ),
-    ( if MaxSubtreeKey = tree234.max_key(NodeMaxSubtree) then
+    ( if tree234.max_key(NodeMaxSubtree, MaxSubtreeKey) then
         MaxKey = MaxSubtreeKey
     else
         MaxKey = NodeMaxKey
     ).
 
 min_key(T0) = MinKey :-
+    min_key(T0, MinKey).
+
+min_key(T0, MinKey) :-
     ( T0 = two(NodeMinKey, _, NodeMinSubtree, _)
     ; T0 = three(NodeMinKey, _, _, _, NodeMinSubtree, _, _)
     ; T0 = four(NodeMinKey, _, _, _, _, _, NodeMinSubtree, _, _, _)
     ),
-    ( if MinSubtreeKey = tree234.min_key(NodeMinSubtree) then
+    ( if tree234.min_key(NodeMinSubtree, MinSubtreeKey) then
         MinKey = MinSubtreeKey
     else
         MinKey = NodeMinKey

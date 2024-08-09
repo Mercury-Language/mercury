@@ -37,7 +37,7 @@ mdb> finish
 mdb> dd -d 3 -n 7
 p(2, 4, 64)
 Valid? no
-q(lambda_hoho__m_28(4), 4, 64)
+q(lambda_ho_2_m_28(4), 4, 64)
 Valid? yes
 Found incorrect contour:
 q(lambda_ho_2_m_28(4), 4, 64)

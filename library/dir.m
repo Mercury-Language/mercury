@@ -89,6 +89,7 @@
     % if that does not change the meaning of PathName.
     %
 :- func basename(string) = string is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(basename/1), [basename/2]).
 :- pred basename(string::in, string::out) is semidet.
 
     % As above, but throws an exception instead of failing.
@@ -552,6 +553,9 @@ split_name_dotnet(_, "", "") :-
 %---------------------------------------------------------------------------%
 
 basename(FileName) = BaseName :-
+    basename(FileName, BaseName).
+
+basename(FileName, BaseName) :-
     FileNameChars = canonicalize_path_chars(string.to_char_list(FileName)),
     not dir.is_root_directory(FileNameChars),
     not (
@@ -570,10 +574,8 @@ basename(FileName) = BaseName :-
         BaseName = FileName
     ).
 
-basename(S, dir.basename(S)).
-
 det_basename(FileName) =
-    ( if BaseName = dir.basename(FileName) then
+    ( if dir.basename(FileName, BaseName) then
         BaseName
     else
         unexpected($pred, "given directory is root directory")

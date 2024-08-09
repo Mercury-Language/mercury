@@ -101,6 +101,7 @@
     % Fail if there is no entry for the key.
     %
 :- func search(version_hash_table(K, V), K) = V is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(search/2), [search/3]).
 :- pred search(version_hash_table(K, V)::in, K::in, V::out) is semidet.
 
     % Lookup the value associated with the given key.

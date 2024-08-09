@@ -106,6 +106,10 @@
 :- func num_bytes(bitmap) = num_bytes.
 % :- mode num_bytes(bitmap_ui) = out is semidet.
 :- mode num_bytes(in) = out is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(num_bytes/1), [num_bytes/2]).
+:- pred num_bytes(bitmap, num_bytes).
+% :- mode num_bytes(bitmap_ui, out) is semidet.
+:- mode num_bytes(in, out) is semidet.
 
     % As above, but throw an exception if the bitmap has a partial final byte.
     %
@@ -454,6 +458,9 @@
     %
 :- func from_string(string) = bitmap.
 :- mode from_string(in) = bitmap_uo is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(from_string/1), [from_string/2]).
+:- pred from_string(string, bitmap).
+:- mode from_string(in, bitmap_uo) is semidet.
 
     % As above, but throws an exception instead of failing.
     %
@@ -660,12 +667,15 @@ num_bits(_) = _ :-
 %---------------------------------------------------------------------------%
 
 num_bytes(BM) = Bytes :-
+    num_bytes(BM, Bytes).
+
+num_bytes(BM, Bytes) :-
     NumBits = num_bits(BM),
     NumBits `unchecked_rem` bits_per_byte = 0,
     Bytes = NumBits `unchecked_quotient` bits_per_byte.
 
 det_num_bytes(BM) = Bytes :-
-    ( if Bytes0 = num_bytes(BM) then
+    ( if num_bytes(BM, Bytes0) then
         Bytes = Bytes0
     else
         throw_bitmap_error(
@@ -1856,6 +1866,9 @@ to_string_chars(Index, BM, !Chars) :-
     ).
 
 from_string(Str) = BM :-
+    from_string(Str, BM).
+
+from_string(Str, BM) :-
     string.unsafe_index_next(Str, 0, Start, '<'),
     string.unsafe_index(Str, Start, Char),
     char.is_digit(Char),
@@ -1872,7 +1885,7 @@ from_string(Str) = BM :-
     ).
 
 det_from_string(Str) =
-    ( if BM = from_string(Str) then
+    ( if from_string(Str, BM) then
         BM
     else
         unexpected($pred, "bitmap.from_string failed")

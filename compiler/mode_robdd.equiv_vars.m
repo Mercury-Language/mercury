@@ -162,7 +162,8 @@ vars_are_equivalent(EQVars, VA, VB) :-
 vars_are_not_equivalent(EQVars, VA, VB) :-
     not vars_are_equivalent(EQVars, VA, VB).
 
-leader(Var, EQVars) = EQVars ^ leader_map ^ elem(Var).
+leader(Var, EQVars) = Result :-
+    map.search(EQVars ^ leader_map, Var, Result).
 
 det_leader(Var, EQVars) = ( L = EQVars ^ leader(Var) -> L ; Var).
 
@@ -174,33 +175,35 @@ det_leader(Var, EQVars) = ( L = EQVars ^ leader(Var) -> L ; Var).
 empty(equiv_vars(LM)) :- is_empty(LM).
 
 equiv_vars(MA) * equiv_vars(MB) = equiv_vars(M) :-
-    M1 = map.foldl(func(Var, LeaderA, M0) =
-        ( LeaderB = M0 ^ elem(Var) ->
-            ( compare(<, LeaderA, LeaderB) ->
-                M0 ^ elem(LeaderB) := LeaderA
-            ; compare(<, LeaderB, LeaderA) ->
-                M0 ^ elem(LeaderA) := LeaderB
+    M1 = map.foldl(
+        ( func(Var, LeaderA, M0) =
+            ( map.search(M0, Var, LeaderB) ->
+                ( compare(<, LeaderA, LeaderB) ->
+                    M0 ^ elem(LeaderB) := LeaderA
+                ; compare(<, LeaderB, LeaderA) ->
+                    M0 ^ elem(LeaderA) := LeaderB
+                ;
+                    M0
+                )
             ;
-                M0
+                M0 ^ elem(Var) := LeaderA
             )
-        ;
-            M0 ^ elem(Var) := LeaderA
-        ),
-        MA, MB),
+        ), MA, MB),
     M = normalise_leader_map(M1).
 
 :- func normalise_leader_map(leader_map(T)) = leader_map(T).
 
 normalise_leader_map(Map) =
-    map.foldl(func(Var, Leader, M0) =
-        ( Leader = Var ->
-            M0
-        ; LeaderLeader = M0 ^ elem(Leader) ->
-            M0 ^ elem(Var) := LeaderLeader
-        ;
-            ( M0 ^ elem(Var) := Leader ) ^ elem(Leader) := Leader
-        ),
-        Map, map.init).
+    map.foldl(
+        ( func(Var, Leader, M0) =
+            ( Leader = Var ->
+                M0
+            ; map.search(M0, Leader, LeaderLeader) ->
+                M0 ^ elem(Var) := LeaderLeader
+            ;
+                ( M0 ^ elem(Var) := Leader ) ^ elem(Leader) := Leader
+            )
+        ), Map, map.init).
 
 EA + EB = E :-
     VarsA = map.keys_as_set(EA ^ leader_map),

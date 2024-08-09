@@ -173,7 +173,7 @@ try_term_to_univ_2(Term, Type, Context, Result) :-
             (
                 ArgsResult = ok(ArgValues),
                 ( if
-                    Value = construct.construct(Type, FunctorNumber, ArgValues)
+                    construct.construct(Type, FunctorNumber, ArgValues, Value)
                 then
                     Result = ok(Value)
                 else
@@ -272,7 +272,8 @@ term_to_univ_special_case(ModuleName, TypeCtorName, TypeArgs, Term,
         TypeArgs = [],
         % Bitmaps are represented as hex strings.
         Term = functor(string(String), [], _),
-        type_to_univ(bitmap.from_string(String), Univ),
+        bitmap.from_string(String, BitMap),
+        type_to_univ(BitMap, Univ),
         Result = ok(Univ)
     ;
         ModuleName = "array",
@@ -443,7 +444,7 @@ univ_to_term(Univ) = Term :-
 univ_to_term(Univ, Term) :-
     Context = term_context.dummy_context,
     Type = univ_type(Univ),
-    ( if construct.num_functors(Type) = _ then
+    ( if construct.num_functors(Type, _) then
         deconstruct(univ_value(Univ), canonicalize, FunctorString,
             _FunctorArity, FunctorArgs),
         univ_list_to_term_list(FunctorArgs, TermArgs),

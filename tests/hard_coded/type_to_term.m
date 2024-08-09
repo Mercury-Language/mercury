@@ -187,9 +187,9 @@ main(!IO) :-
 
     % Ttest handling of bitmaps.
     %
-    ( if Bitmap0 = bitmap.from_string("<24:10AFBD>") then
+    ( if bitmap.from_string("<24:10AFBD>", Bitmap0) then
         Bitmap = Bitmap0
-       else
+    else
         error("bitmap.from_string/1 failed")
     ),
     type_to_term(Bitmap, BitmapTerm : term(generic)),
@@ -212,7 +212,7 @@ main(!IO) :-
     io.write_string("Type: ", !IO),
     ( if term_to_type(TypeDescTerm, TypeDescValue : type_desc) then
        io.write(TypeDescValue, !IO)
-      else
+    else
        io.write_string("<<term_to_type/2 failed>> (as expected)", !IO)
     ),
     io.nl(!IO),

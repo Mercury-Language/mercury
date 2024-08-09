@@ -63,6 +63,8 @@
     %
 :- func ground_pseudo_type_desc_to_type_desc(pseudo_type_desc) = type_desc
     is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(ground_pseudo_type_desc_to_type_desc/1),
+% NOTE_TO_IMPLEMENTORS CFF     [ground_pseudo_type_desc_to_type_desc/2]).
 :- pred ground_pseudo_type_desc_to_type_desc(pseudo_type_desc::in,
     type_desc::out) is semidet.
 
@@ -146,16 +148,21 @@
     %   pseudo_type_ctor_and_args(Type, TypeCtor, _).
     %
 :- func pseudo_type_ctor(pseudo_type_desc) = type_ctor_desc is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(pseudo_type_ctor/1), [pseudo_type_ctor/2]).
+:- pred pseudo_type_ctor(pseudo_type_desc::in, type_ctor_desc::out) is semidet.
 
     % type_args(Type) = TypeArgs :-
     %   type_ctor_and_args(Type, _, TypeArgs).
     %
 :- func type_args(type_desc) = list(type_desc).
 
-    % pseudo_type_args(Type) = TypeArgs :-
+    % pseudo_type_args(Type, TypeArgs) :-
     %   pseudo_type_ctor_and_args(Type, _, TypeArgs).
     %
 :- func pseudo_type_args(pseudo_type_desc) = list(pseudo_type_desc) is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(pseudo_type_args/1), [pseudo_type_args/2]).
+:- pred pseudo_type_args(pseudo_type_desc::in, list(pseudo_type_desc)::out)
+    is semidet.
 
     % type_ctor_name(TypeCtor) returns the name of specified type constructor.
     % (e.g. type_ctor_name(type_ctor(type_of([2,3]))) = "list").
@@ -183,6 +190,7 @@
     string::out, string::out, int::out) is det.
 
     % make_type(TypeCtor, TypeArgs) = Type:
+    % make_type(TypeCtor, TypeArgs, Type):
     %
     % True iff Type is a type constructed by applying the type constructor
     % TypeCtor to the type arguments TypeArgs.
@@ -192,12 +200,16 @@
     % if the length of TypeArgs is not the same as the arity of TypeCtor.
     % The reverse mode returns a type constructor and its argument types,
     % given a type_desc; the type constructor returned may be an equivalence
-    % type (and hence this reverse mode of make_type/2 may be more useful
+    % type (and hence this reverse mode of make_type may be more useful
     % for some purposes than the type_ctor/1 function).
     %
 :- func make_type(type_ctor_desc, list(type_desc)) = type_desc.
 :- mode make_type(in, in) = out is semidet.
 :- mode make_type(out, out) = in is cc_multi.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(make_type/2), [make_type/3]).
+:- pred make_type(type_ctor_desc, list(type_desc), type_desc).
+:- mode make_type(in, in, out) is semidet.
+:- mode make_type(out, out, in) is cc_multi.
 
     % det_make_type(TypeCtor, TypeArgs):
     %
@@ -406,7 +418,7 @@ det_ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
     TypeInfo = TypeInfo_for_T;
 
     // We used to collapse equivalences for efficiency here, but that is not
-    // always desirable, due to the reverse mode of make_type/2, and efficiency
+    // always desirable, due to the reverse mode of make_type/3, and efficiency
     // of type_infos probably isn't very important anyway.
 #if 0
     MR_save_transient_registers();
@@ -571,8 +583,6 @@ pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtorDesc, ArgPseudoTypeDescs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma no_determinism_warning(func(pseudo_type_ctor/1)).
-
 :- pragma foreign_proc("C",
     type_ctor(TypeInfo::in) = (TypeCtor::out),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
@@ -594,8 +604,13 @@ type_ctor(TypeDesc) = TypeCtorDesc :-
     TypeCtorInfo = rtti_implementation.get_type_ctor_info(TypeInfo),
     make_type_ctor_desc(TypeInfo, TypeCtorInfo, TypeCtorDesc).
 
+pseudo_type_ctor(PseudoTypeInfo) = TypeCtor :-
+    pseudo_type_ctor(PseudoTypeInfo, TypeCtor).
+
+:- pragma no_determinism_warning(pred(pseudo_type_ctor/2)).
+
 :- pragma foreign_proc("C",
-    pseudo_type_ctor(PseudoTypeInfo::in) = (TypeCtor::out),
+    pseudo_type_ctor(PseudoTypeInfo::in, TypeCtor::out),
     [will_not_call_mercury, thread_safe, promise_pure, will_not_modify_trail],
 "{
     MR_TypeCtorInfo     type_ctor_info;
@@ -617,8 +632,8 @@ type_ctor(TypeDesc) = TypeCtorDesc :-
     }
 }").
 
-pseudo_type_ctor(_) = _ :-
-    private_builtin.sorry("pseudo_type_ctor/1").
+pseudo_type_ctor(_, _) :-
+    private_builtin.sorry("pseudo_type_ctor/2").
 
 %---------------------------------------------------------------------------%
 
@@ -626,6 +641,9 @@ type_args(Type) = ArgTypes :-
     type_ctor_and_args(Type, _TypeCtor, ArgTypes).
 
 pseudo_type_args(PseudoType) = ArgPseudoTypes :-
+    pseudo_type_args(PseudoType, ArgPseudoTypes).
+
+pseudo_type_args(PseudoType, ArgPseudoTypes) :-
     pseudo_type_ctor_and_args(PseudoType, _TypeCtor, ArgPseudoTypes).
 
 type_ctor_name(TypeCtor) = Name :-
@@ -799,21 +817,19 @@ type_ctor_desc_to_type_ctor_info(TypeCtorDesc, TypeCtorInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma promise_equivalent_clauses(func(make_type/2)).
-:- pragma no_determinism_warning(func(make_type/2)).
+make_type(TypeCtorDesc, ArgTypes) = TypeDesc :-
+    make_type(TypeCtorDesc, ArgTypes, TypeDesc).
 
-make_type(_TypeCtorDesc::in, _ArgTypes::in) = (_TypeDesc::out) :-
-    private_builtin.sorry("make_type(in, in) = out").
-make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
-    private_builtin.sorry("make_type(out, out) = in").
+:- pragma promise_equivalent_clauses(pred(make_type/3)).
+:- pragma no_determinism_warning(pred(make_type/3)).
 
-% This is the forwards mode of make_type/2: given a type constructor and
+% This is the forwards mode of make_type/3: given a type constructor and
 % a list of argument types, check that the length of the argument types
 % matches the arity of the type constructor, and if so, use the type
 % constructor to construct a new type with the specified arguments.
 
 :- pragma foreign_proc("C",
-    make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
+    make_type(TypeCtorDesc::in, ArgTypes::in, TypeDesc::out),
     [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
 "{
     MR_TypeCtorDesc type_ctor_desc;
@@ -848,7 +864,7 @@ make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
 }").
 
 :- pragma foreign_proc("C#",
-    make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
+    make_type(TypeCtorDesc::in, ArgTypes::in, TypeDesc::out),
     [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail,
         may_not_duplicate],
 "{
@@ -875,7 +891,7 @@ make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
 }").
 
 :- pragma foreign_proc("Java",
-    make_type(TypeCtorDesc::in, ArgTypes::in) = (TypeDesc::out),
+    make_type(TypeCtorDesc::in, ArgTypes::in, TypeDesc::out),
     [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail,
         may_not_duplicate],
 "{
@@ -900,11 +916,11 @@ make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
     }
 }").
 
-% This is the reverse mode of make_type: given a type,
+% This is the reverse mode of make_type/3: given a type,
 % split it up into a type constructor and a list of arguments.
 
 :- pragma foreign_proc("C",
-    make_type(TypeCtorDesc::out, ArgTypes::out) = (TypeDesc::in),
+    make_type(TypeCtorDesc::out, ArgTypes::out, TypeDesc::in),
     [promise_pure, will_not_call_mercury, thread_safe, will_not_modify_trail],
 "{
     MR_TypeCtorDesc type_ctor_desc;
@@ -919,11 +935,16 @@ make_type(_TypeCtorDesc::out, _ArgTypes::out) = (_TypeDesc::in) :-
     MR_restore_transient_registers();
 }").
 
+make_type(_TypeCtorDesc::in, _ArgTypes::in, _TypeDesc::out) :-
+    private_builtin.sorry("make_type(in, in, out)").
+make_type(_TypeCtorDesc::out, _ArgTypes::out, _TypeDesc::in) :-
+    private_builtin.sorry("make_type(out, out, in)").
+
 det_make_type(TypeCtor, ArgTypes) = Type :-
-    ( if make_type(TypeCtor, ArgTypes) = NewType then
+    ( if make_type(TypeCtor, ArgTypes, NewType) then
         Type = NewType
     else
-        error($pred, "make_type/2 failed (wrong arity)")
+        error($pred, "make_type/3 failed (wrong arity)")
     ).
 
 %---------------------------------------------------------------------------%

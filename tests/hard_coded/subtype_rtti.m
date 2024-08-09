@@ -192,8 +192,8 @@ test(Term, !IO) :-
             print_value("functor ord", FunctorOrdinal, !IO),
 
             ( if
-                construct.get_functor_lex(TypeDesc, FunctorOrdinal) =
-                    FunctorLexB
+                construct.get_functor_lex(TypeDesc, FunctorOrdinal,
+                    FunctorLexB)
             then
                 io.write_string("construct.get_functor_lex\n", !IO),
                 print_value("functor lex", FunctorLexB, !IO)
@@ -204,7 +204,7 @@ test(Term, !IO) :-
             io.write_string("construct.get_functor_ordinal failed\n", !IO)
         ),
 
-        ( if construct.num_functors(TypeDesc) = NumFunctors then
+        ( if construct.num_functors(TypeDesc, NumFunctors) then
             io.write_string("construct.num_functors\n", !IO),
             print_value("num functors", NumFunctors, !IO)
         else
@@ -235,7 +235,7 @@ test(Term, !IO) :-
             io.write_string("construct.find_functor failed\n", !IO)
         ),
 
-        ( if construct.construct(TypeDesc, FunctorLex, Args) = Univ then
+        ( if construct.construct(TypeDesc, FunctorLex, Args, Univ) then
             io.write_string("construct.construct\n\t", !IO),
             io.print_line(Univ, !IO),
             ( if univ_to_type(Univ, Term) then

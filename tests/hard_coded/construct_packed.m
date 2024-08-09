@@ -270,7 +270,7 @@ make_term(TypeDesc, Functor, ArgUnivs) = TermUniv :-
     list.length(ArgUnivs, Arity),
     ( if
         find_functor(TypeDesc, Functor, Arity, Lex, _ArgTypeDescs),
-        construct(TypeDesc, Lex, ArgUnivs) = TermUnivPrime
+        construct(TypeDesc, Lex, ArgUnivs, TermUnivPrime)
     then
         TermUniv = TermUnivPrime
     else

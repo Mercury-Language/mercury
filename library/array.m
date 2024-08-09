@@ -313,6 +313,10 @@
 :- func semidet_least_index(array(T)) = int.
 %:- mode semidet_least_index(array_ui) = out is semidet.
 :- mode semidet_least_index(in) = out is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(semidet_least_index/1), [semidet_least_index/2]).
+:- pred semidet_least_index(array(T), int).
+%:- mode semidet_least_index(array_ui, out) is semidet.
+:- mode semidet_least_index(in, out) is semidet.
 
     % det_least_index returns the lower bound of the array.
     % Throws an exception if the array is empty.
@@ -327,6 +331,10 @@
 :- func semidet_greatest_index(array(T)) = int.
 %:- mode semidet_greatest_index(array_ui) = out is semidet.
 :- mode semidet_greatest_index(in) = out is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(semidet_greatest_index/1), [semidet_greatest_index/2]).
+:- pred semidet_greatest_index(array(T), int).
+%:- mode semidet_greatest_index(array_ui, out) is semidet.
+:- mode semidet_greatest_index(in, out) is semidet.
 
     % det_greatest_index returns the upper bound of the array.
     % Throws an exception if the array is empty.
@@ -1965,6 +1973,9 @@ max(A) = N :-
 %---------------------%
 
 semidet_least_index(A) = Index :-
+    semidet_least_index(A, Index).
+
+semidet_least_index(A, Index) :-
     ( if array.is_empty(A) then
         fail
     else
@@ -1979,6 +1990,9 @@ det_least_index(A) = Index :-
     ).
 
 semidet_greatest_index(A) = Index :-
+    semidet_greatest_index(A, Index).
+
+semidet_greatest_index(A, Index) :-
     ( if array.is_empty(A) then
         fail
     else

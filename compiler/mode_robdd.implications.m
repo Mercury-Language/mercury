@@ -318,7 +318,7 @@ propagate_implications_into_equivalences(Changed, EQVars0, EQVars,
         {Changed, EQVars, Imps, RevImps} = foldl(
         ( func(V, IVs, {C0, E0, I0, R0}) = {C, E, I, R} :-
             ( if
-                RVs = R0 ^ elem(V),
+                map.search(R0, V, RVs),
                 EVs = IVs `intersect` RVs,
                 is_non_empty(EVs)
             then
@@ -363,7 +363,7 @@ add_equalities_to_imp_vars(EQVars, ImpVars) =
 :- func entry(var(T), imp_map(T)) = vars(T).
 
 entry(V, M) =
-    ( if Vs = M ^ elem(V) then
+    ( if map.search(M, V, Vs) then
         Vs
     else
         init
@@ -381,7 +381,7 @@ entry(V, M) =
 :- func 'new_relation :='(var(T), imp_map(T), var(T)) = imp_map(T).
 
 'new_relation :='(VA, M, VB) =
-    ( if Vs = M ^ elem(VA) then
+    ( if map.search(M, VA, Vs) then
         M ^ elem(VA) := Vs `insert` VB
     else
         M ^ elem(VA) := make_singleton_set(VB)
@@ -391,7 +391,7 @@ entry(V, M) =
         is semidet.
 
 'maybe_new_relation :='(VA, M0, VB) = M :-
-    ( if Vs = M0 ^ elem(VA) then
+    ( if map.search(M0, VA, Vs) then
         \+ ( Vs `contains` VB ),
         M = M0 ^ elem(VA) := Vs `insert` VB
     else
@@ -434,7 +434,7 @@ IMA `imp_map_difference` IMB =
         IMA
     else
         map.foldl(func(V, VsB, M) =
-            ( if VsA = M ^ elem(V) then
+            ( if map.search(M, V, VsA) then
                 M ^ entry(V) := VsA `difference` VsB
             else
                 M

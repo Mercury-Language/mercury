@@ -20,13 +20,13 @@
     --->    dummy.
 
 main(!IO) :-
-    ( if DummyVal1 = construct.construct(type_of(_:dummy), 0, []) then
+    ( if construct.construct(type_of(_:dummy), 0, [], DummyVal1) then
         io.write(DummyVal1, !IO)
     else
         io.write_string("Unable to construct type.", !IO)
     ),
     io.nl(!IO),
-    ( if DummyVal2 = construct.construct(type_of(_:dummy), 1, []) then
+    ( if construct.construct(type_of(_:dummy), 1, [], DummyVal2) then
         io.write(DummyVal2, !IO)
     else
         io.write_string("Unable to construct type.", !IO)

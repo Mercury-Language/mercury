@@ -655,8 +655,8 @@ make_enum_maps(EnumFunctor, !OrdinalMap, !NameMap, !ValueEqualsOrdinal) :-
 
 is_enum_value_map_indexable(OrdinalMap, AllValueEqualsOrdinal) :-
     AllValueEqualsOrdinal = yes,
-    map.min_key(OrdinalMap) = 0u32,
-    map.max_key(OrdinalMap) = MaxOrdinal,
+    map.min_key(OrdinalMap, 0u32),
+    map.max_key(OrdinalMap, MaxOrdinal),
     map.count(OrdinalMap, Count),
     uint32.from_int(Count - 1, MaxOrdinal).
 
@@ -1078,8 +1078,8 @@ make_du_name_ordered_table(DuFunctor, !NameTable) :-
 :- pred is_ptag_table_indexable(map(ptag, sectag_table)::in) is semidet.
 
 is_ptag_table_indexable(PtagTable) :-
-    map.min_key(PtagTable) = ptag(0u8),
-    map.max_key(PtagTable) = ptag(MaxPtagUint8),
+    map.min_key(PtagTable, ptag(0u8)),
+    map.max_key(PtagTable, ptag(MaxPtagUint8)),
     map.count(PtagTable, Count),
     uint8.from_int(Count - 1, MaxPtagUint8).
 
@@ -1146,8 +1146,8 @@ compute_du_ptag_layout_flags(SectagTable, Flags) :-
 
 is_sectag_table_indexable(SectagTable) :-
     SectagTable = sectag_table(_Locn, _NumSectagBits, NumSharers, SectagMap),
-    map.min_key(SectagMap) = 0u,
-    map.max_key(SectagMap) = MaxSectag,
+    map.min_key(SectagMap, 0u),
+    map.max_key(SectagMap, MaxSectag),
     map.count(SectagMap, Count),
     uint.from_int(Count - 1, MaxSectag),
     uint32.from_int(Count, NumSharers).

@@ -575,7 +575,7 @@ solve_assgts(SCs, Assgts, Bs0, Bs) :-
 
 solve_assgt(SCs, (X `assign` V), Bs0, Bs) :-
     % XXX
-    ( if Bs0 ^ elem(X) = V0 then
+    ( if map.search(Bs0, X, V0) then
         ( if V = V0  then
             true
         else
@@ -727,14 +727,13 @@ solve_complex_cstrt(SCs, X, V, disj_of_assgts(Assgtss), Bs0, Bs) :-
 :- func var_consequents(prop_graph, mcvar, bool) = assgts.
 
 var_consequents(prop_graph(YesPG, _NoPG), X, yes) =
-    ( if YesPG ^ elem(X) = Assgts then
+    ( if multi_map.search(YesPG, X, Assgts) then
         Assgts
     else
         []
     ).
-
 var_consequents(prop_graph(_YesPG, NoPG), X, no) =
-    ( if NoPG  ^ elem(X) = Assgts then
+    ( if multi_map.search(NoPG, X, Assgts) then
         Assgts
     else
         []
@@ -748,7 +747,7 @@ var_consequents(prop_graph(_YesPG, NoPG), X, no) =
 :- func var_complex_cstrts(complex_cstrt_map, mcvar) = complex_cstrts.
 
 var_complex_cstrts(ComplexCstrtMap, X) =
-    ( if ComplexCstrtMap ^ elem(X) = CmplxCstrts then
+    ( if map.search(ComplexCstrtMap, X, CmplxCstrts) then
         CmplxCstrts
     else
         []
@@ -792,7 +791,7 @@ solve_var(SCs, X, Bs0, Bs) :-
 all_no(_,  []).
 all_no(Bs, [X | Xs]) :-
     % XXX
-    Bs ^ elem(X) = no,
+    map.search(Bs, X, no),
     all_no(Bs, Xs).
 
 %-----------------------------------------------------------------------------%

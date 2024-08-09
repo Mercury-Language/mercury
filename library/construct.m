@@ -32,7 +32,8 @@
 :- type functor_number_ordinal == int.
 :- type functor_number_lex == int.
 
-    % num_functors(Type).
+    % num_functors(Type) = NumFunctors.
+    % num_functors(Type, NumFunctors).
     %
     % Returns the number of different functors for the top-level
     % type constructor of the type specified by Type.
@@ -43,6 +44,8 @@
     % only succeed for types for which num_functors/1 succeeds.
     %
 :- func num_functors(type_desc) = int is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(num_functors/1), [num_functors/2]).
+:- pred num_functors(type_desc::in, int::out) is semidet.
 
 :- func det_num_functors(type_desc) = int.
 
@@ -71,6 +74,7 @@
     list(maybe(string))::out) is semidet.
 
     % get_functor_ordinal(Type, I) = Ordinal.
+    % get_functor_ordinal(Type, I, Ordinal).
     %
     % Returns Ordinal, where Ordinal is the position in declaration order
     % for the specified type of the function symbol that is in position I
@@ -79,10 +83,12 @@
     %
 :- func get_functor_ordinal(type_desc, functor_number_lex) =
     functor_number_ordinal is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(get_functor_ordinal/2), [get_functor_ordinal/3]).
 :- pred get_functor_ordinal(type_desc::in, functor_number_lex::in,
     functor_number_ordinal::out) is semidet.
 
     % get_functor_lex(Type, Ordinal) = I.
+    % get_functor_lex(Type, Ordinal, I).
     %
     % Returns I, where I is the position in lexicographic order for the
     % specified type of the function symbol that is in position Ordinal
@@ -91,6 +97,9 @@
     %
 :- func get_functor_lex(type_desc, functor_number_ordinal) =
     functor_number_lex is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(get_functor_lex/2), [get_functor_lex/3]).
+:- pred get_functor_lex(type_desc::in, functor_number_ordinal::in,
+    functor_number_lex::out) is semidet.
 
     % find_functor(Type, FunctorName, Arity, FunctorNumber, ArgTypes).
     %
@@ -102,6 +111,7 @@
     functor_number_lex::out, list(type_desc)::out) is semidet.
 
     % construct(Type, I, Args) = Term.
+    % construct(Type, I, Args, Term).
     %
     % Returns a term of the type specified by Type whose functor
     % is functor number I of the type given by Type, and whose
@@ -112,6 +122,9 @@
     % the expected argument types of that functor.
     %
 :- func construct(type_desc, functor_number_lex, list(univ)) = univ is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(construct/3), [construct/4]).
+:- pred construct(type_desc::in, functor_number_lex::in, list(univ)::in,
+    univ::out) is semidet.
 
     % construct_tuple(Args) = Term.
     %
@@ -138,8 +151,13 @@
 
 ").
 
+%---------------------------------------------------------------------------%
+
+num_functors(TypeDesc) = NumFunctors :-
+    num_functors(TypeDesc, NumFunctors).
+
 :- pragma foreign_proc("C",
-    num_functors(TypeInfo::in) = (Functors::out),
+    num_functors(TypeInfo::in, Functors::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
     MR_save_transient_registers();
@@ -148,16 +166,20 @@
     SUCCESS_INDICATOR = (Functors >= 0);
 }").
 
-num_functors(TypeDesc) = NumFunctors :-
+num_functors(TypeDesc, NumFunctors) :-
     type_desc_to_type_info(TypeDesc, TypeInfo),
     rtti_implementation.type_info_num_functors(TypeInfo, NumFunctors).
 
+%---------------------%
+
 det_num_functors(TypeInfo) =
-    ( if N = num_functors(TypeInfo) then
+    ( if num_functors(TypeInfo, N) then
         N
     else
         unexpected($pred, "type does not have functors")
     ).
+
+%---------------------%
 
 get_functor(TypeDesc, FunctorNumber, FunctorName, Arity, PseudoTypeInfoList) :-
     get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
@@ -168,6 +190,8 @@ get_functor_with_names(TypeDesc, I, Functor, Arity,
     get_functor_with_names_internal(TypeDesc, I, Functor, Arity,
         PseudoTypeInfoList, ArgNameList0),
     ArgNameList = map(null_to_no, ArgNameList0).
+
+%---------------------%
 
 :- pred get_functor_internal(type_desc::in, int::in, string::out,
     int::out, list(pseudo_type_desc)::out) is semidet.
@@ -230,6 +254,8 @@ get_functor_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
     }
     SUCCESS_INDICATOR = success;
 }").
+
+%---------------------%
 
 :- pred get_functor_with_names_internal(type_desc::in, int::in,
     string::out, int::out, list(pseudo_type_desc)::out, list(string)::out)
@@ -305,9 +331,13 @@ get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
     SUCCESS_INDICATOR = success;
 }").
 
+%---------------------%
+
 :- func null_to_no(string) = maybe(string).
 
 null_to_no(S) = ( if null(S) then no else yes(S) ).
+
+%---------------------%
 
 :- pred null(string::in) is semidet.
 
@@ -331,6 +361,8 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 "
     SUCCESS_INDICATOR = (S == null);
 ").
+
+%---------------------%
 
 get_functor_ordinal(TypeDesc, FunctorNumber) = Ordinal :-
     get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal).
@@ -366,13 +398,18 @@ get_functor_ordinal(TypeDesc, FunctorNumber, Ordinal) :-
     SUCCESS_INDICATOR = success;
 }").
 
+%---------------------%
+
 get_functor_lex(TypeDesc, Ordinal) = FunctorNumber :-
+    get_functor_lex(TypeDesc, Ordinal, FunctorNumber).
+
+get_functor_lex(TypeDesc, Ordinal, FunctorNumber) :-
     type_desc_to_type_info(TypeDesc, TypeInfo),
     rtti_implementation.type_info_get_functor_lex(TypeInfo, Ordinal,
         FunctorNumber).
 
 :- pragma foreign_proc("C",
-    get_functor_lex(TypeDesc::in, Ordinal::in) = (FunctorNumber::out),
+    get_functor_lex(TypeDesc::in, Ordinal::in, FunctorNumber::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
     MR_TypeInfo         type_info;
@@ -401,8 +438,10 @@ get_functor_lex(TypeDesc, Ordinal) = FunctorNumber :-
     }
 }").
 
+%---------------------%
+
 find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes) :-
-    N = construct.num_functors(Type),
+    construct.num_functors(Type, N),
     find_functor_2(Type, Functor, Arity, N, FunctorNumber, ArgTypes).
 
 :- pred find_functor_2(type_desc::in, string::in, int::in,
@@ -418,6 +457,8 @@ find_functor_2(TypeInfo, Functor, Arity, Num0, FunctorNumber, ArgTypes) :-
     else
         find_functor_2(TypeInfo, Functor, Arity, Num, FunctorNumber, ArgTypes)
     ).
+
+%---------------------%
 
 :- pragma foreign_decl("C",
 "
@@ -444,7 +485,6 @@ extern MR_Unsigned  ML_copy_tagword_args(MR_Word *arg_list_ptr,
                         const MR_Word ptag,
                         const MR_DuFunctorDesc *functor_desc);
 ").
-
 
 :- pragma foreign_code("C",
 "
@@ -512,7 +552,8 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
                 // This is a double-precision floating point argument
                 // that takes two words.
                 if (locn->MR_arg_offset < 0) {
-                    MR_fatal_error(""construct(): double word arg in tagword"");
+                    MR_fatal_error(
+                        ""construct(): double word arg in tagword"");
                 }
   #ifdef MR_BOXED_FLOAT
                 MR_memcpy(
@@ -526,7 +567,8 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
             case -2:
                 // This is an int64 argument that takes two words.
                 if (locn->MR_arg_offset < 0) {
-                    MR_fatal_error(""construct(): double word arg in tagword"");
+                    MR_fatal_error(
+                        ""construct(): double word arg in tagword"");
                 }
   #ifdef MR_BOXED_INT64S
                 MR_memcpy(
@@ -540,7 +582,8 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
             case -3:
                 // This is a uint64 argument that takes two words.
                 if (locn->MR_arg_offset < 0) {
-                    MR_fatal_error(""construct(): double word arg in tagword"");
+                    MR_fatal_error(
+                        ""construct(): double word arg in tagword"");
                 }
   #ifdef MR_BOXED_INT64S
                 MR_memcpy(
@@ -607,9 +650,11 @@ ML_copy_memory_cell_args(MR_Word *arg_list_ptr, MR_Word *new_data_ptr,
                         MR_field(ptag, new_data, 0)
                             |= (bits_to_or << locn->MR_arg_shift);
                     } else if (locn->MR_arg_offset < 0) {
-                        MR_fatal_error(""construct(): unknown negative offset"");
+                        MR_fatal_error(
+                            ""construct(): unknown negative offset"");
                     } else {
-                        MR_field(ptag, new_data, sectag01 + locn->MR_arg_offset)
+                        MR_field(ptag, new_data,
+                                sectag01 + locn->MR_arg_offset)
                             |= (bits_to_or << locn->MR_arg_shift);
                     }
                 } else {
@@ -716,9 +761,19 @@ ML_copy_tagword_args(MR_Word *arg_list_ptr, const MR_Word ptag,
 }
 ").
 
-:- pragma no_inline(func(construct/3)).
+%---------------------------------------------------------------------------%
+
+construct(TypeDesc, Index, Args) = Term :-
+    construct(TypeDesc, Index, Args, Term).
+
+:- pragma no_inline(pred(construct/4)).
+
+construct(TypeDesc, Index, Args, Term) :-
+    type_desc_to_type_info(TypeDesc, TypeInfo),
+    Term = rtti_implementation.construct(TypeInfo, Index, Args).
+
 :- pragma foreign_proc("C",
-    construct(TypeDesc::in, FunctorNumber::in, ArgList::in) = (Term::out),
+    construct(TypeDesc::in, FunctorNumber::in, ArgList::in, Term::out),
     [will_not_call_mercury, thread_safe, promise_pure],
 "{
     MR_TypeInfo         type_info;
@@ -874,7 +929,8 @@ ML_copy_tagword_args(MR_Word *arg_list_ptr, const MR_Word ptag,
                 }
 
                 if (! MR_list_is_empty(arg_list)) {
-                    MR_fatal_error(""excess arguments in construct.construct"");
+                    MR_fatal_error(
+                        ""excess arguments in construct.construct"");
                 }
             }
             break;
@@ -1159,17 +1215,17 @@ ML_copy_tagword_args(MR_Word *arg_list_ptr, const MR_Word ptag,
     SUCCESS_INDICATOR = success;
 }").
 
-construct(TypeDesc, Index, Args) = Term :-
-    type_desc_to_type_info(TypeDesc, TypeInfo),
-    Term = rtti_implementation.construct(TypeInfo, Index, Args).
+%---------------------%
 
-construct_tuple(Args) =
-    construct_tuple_2(Args, list.map(univ_type, Args), list.length(Args)).
+construct_tuple(Args) = Univ :-
+    construct_tuple_2(Args, list.map(univ_type, Args), list.length(Args),
+        Univ).
 
-:- func construct_tuple_2(list(univ), list(type_desc), int) = univ.
+:- pred construct_tuple_2(list(univ)::in, list(type_desc)::in, int::in,
+    univ::out) is det.
 
 :- pragma foreign_proc("C",
-    construct_tuple_2(Args::in, ArgTypes::in, Arity::in) = (Term::out),
+    construct_tuple_2(Args::in, ArgTypes::in, Arity::in, Univ::out),
     [will_not_call_mercury, thread_safe, promise_pure, may_not_duplicate],
 "{
     MR_TypeInfo type_info;
@@ -1208,12 +1264,12 @@ construct_tuple(Args) =
     }
 
     // Create a univ.
-    MR_new_univ_on_hp(Term, type_info, new_data);
+    MR_new_univ_on_hp(Univ, type_info, new_data);
 }").
 
-construct_tuple_2(Args, ArgTypeDescs, Arity) = Term :-
+construct_tuple_2(Args, ArgTypeDescs, Arity, Univ) :-
     list.map(type_desc_to_type_info, ArgTypeDescs, ArgTypeInfos),
-    Term = rtti_implementation.construct_tuple_2(Args, ArgTypeInfos, Arity).
+    rtti_implementation.construct_tuple_2(Args, ArgTypeInfos, Arity, Univ).
 
 %---------------------------------------------------------------------------%
 :- end_module construct.

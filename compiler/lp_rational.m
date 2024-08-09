@@ -1356,7 +1356,7 @@ get_cell(Tableau, Row, Col) = Cell :-
     else
         true
     ),
-    ( if Cell0 = Tableau ^ cells ^ elem(Row - Col) then
+    ( if map.search(Tableau ^ cells, Row - Col, Cell0) then
         Cell = Cell0
     else
         Cell = zero
@@ -1863,7 +1863,7 @@ separate_vectors(Matrix, Var, Pos, Neg, Zero, NumZeros) :-
     int::in, int::out) is det.
 
 classify_vector(Var, Vector0, !Pos, !Neg, !Zero, !Num) :-
-    ( if Coefficient = Vector0 ^ terms ^ elem(Var) then
+    ( if map.search(Vector0 ^ terms, Var, Coefficient) then
         Vector0 = vector(Label, Terms0, Const0),
         normalize_vector(Var, Terms0, Terms, Const0, Const),
         Vector1 = vector(Label, Terms, Const),

@@ -102,6 +102,7 @@
     % A field access version of search.
     %
 :- func kv_list(K, V) ^ elem(K) = V is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(elem/2), [search/3]).
 
     % A field access version of lookup.
     %

@@ -162,9 +162,9 @@ test_expand_du(T, !IO) :-
 
 test_polymorphism(!IO) :-
     io.write_string("TESTING POLYMORPHISM\n", !IO),
-    test_all(poly_two(3), !IO),
+    test_all(poly_two(3) : poly(list(float), int), !IO),
     test_all(poly_three(3.33, 4, poly_one(9.11)), !IO),
-    test_all(poly_one([2399.3]), !IO),
+    test_all(poly_one([2399.3]) : poly(list(float), int), !IO),
 
     io.nl(!IO).
 

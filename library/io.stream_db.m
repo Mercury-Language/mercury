@@ -118,6 +118,9 @@
     % stream, otherwise fail.
     %
 :- func get_io_stream_info(stream_db, T) = maybe_stream_info is semidet.
+% NOTE_TO_IMPLEMENTORS CFF :- pragma obsolete(func(get_io_stream_info/2), [get_io_stream_info/3]).
+:- pred get_io_stream_info(stream_db::in, T::in, maybe_stream_info::out)
+    is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -309,6 +312,9 @@ get_maybe_stream_info(StreamDb, Stream) = Info :-
 %---------------------%
 
 get_io_stream_info(StreamDB, Stream) = StreamInfo :-
+    get_io_stream_info(StreamDB, Stream, StreamInfo).
+
+get_io_stream_info(StreamDB, Stream, StreamInfo) :-
     ( if dynamic_cast(Stream, text_input_stream(IOStream0)) then
         IOStream = IOStream0
     else if dynamic_cast(Stream, text_output_stream(IOStream0)) then

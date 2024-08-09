@@ -386,7 +386,7 @@ test_construct(TypeInfo, FunctorName, Args, !IO) :-
     list.length(Args, Arity),
     find_functor(TypeInfo, FunctorName, Arity, FunctorNumber),
     io.format("About to construct %s/%d\n", [s(FunctorName), i(Arity)], !IO),
-    ( if Constructed = construct.construct(TypeInfo, FunctorNumber, Args) then
+    ( if construct.construct(TypeInfo, FunctorNumber, Args, Constructed) then
         io.print(Constructed, !IO),
         io.nl(!IO)
     else

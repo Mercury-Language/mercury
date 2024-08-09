@@ -232,7 +232,7 @@ main(!IO) :-
 
     io.write_string("-- from_string\n", !IO),
     String = to_string(A0),
-    ( if Bstring = bitmap.from_string(String) then
+    ( if bitmap.from_string(String, Bstring) then
         io.write_line(Bstring, !IO)
     else
         io.write_string("error\n", !IO)

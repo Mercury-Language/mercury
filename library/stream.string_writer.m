@@ -884,7 +884,7 @@ do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
             TypeCtorModuleName = "io",
             ( if
                 impure get_stream_db_with_locking(StreamDB),
-                StreamInfo = get_io_stream_info(StreamDB, univ_value(Univ))
+                get_io_stream_info(StreamDB, univ_value(Univ), StreamInfo)
             then
                 type_to_univ(StreamInfo, StreamInfoUniv),
                 do_write_univ_prio(Stream, NonCanon, StreamInfoUniv, Priority,
