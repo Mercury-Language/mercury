@@ -736,8 +736,8 @@ replace_in_int_for_opt_spec(ModuleName, TypeEqvMap, InstEqvMap,
 
 replace_in_parse_tree_int0(ModuleName, TypeEqvMap, InstEqvMap,
         OrigParseTreeInt0, ParseTreeInt0, !RecompInfo, !UsedModules, !Specs) :-
-    MaybeRecordInt = dont_record_sym_name_use,
-    MaybeRecordImp = dont_record_sym_name_use,
+    MaybeRecordInt = do_not_record_sym_name_use,
+    MaybeRecordImp = do_not_record_sym_name_use,
     OrigParseTreeInt0 = parse_tree_int0(IntModuleName, IntModuleNameContext,
         MaybeVersionNumbers, InclMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
@@ -804,8 +804,8 @@ replace_in_parse_tree_int0(ModuleName, TypeEqvMap, InstEqvMap,
 
 replace_in_parse_tree_int1(ModuleName, TypeEqvMap, InstEqvMap,
         OrigParseTreeInt1, ParseTreeInt1, !RecompInfo, !UsedModules, !Specs) :-
-    MaybeRecordInt = dont_record_sym_name_use,
-    MaybeRecordImp = dont_record_sym_name_use,
+    MaybeRecordInt = do_not_record_sym_name_use,
+    MaybeRecordImp = do_not_record_sym_name_use,
     OrigParseTreeInt1 = parse_tree_int1(IntModuleName, IntModuleNameContext,
         MaybeVersionNumbers, InclMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
@@ -862,8 +862,8 @@ replace_in_parse_tree_int1(ModuleName, TypeEqvMap, InstEqvMap,
 
 replace_in_parse_tree_int2(ModuleName, TypeEqvMap, InstEqvMap,
         OrigParseTreeInt2, ParseTreeInt2, !RecompInfo, !UsedModules, !Specs) :-
-    MaybeRecordInt = dont_record_sym_name_use,
-    MaybeRecordImp = dont_record_sym_name_use,
+    MaybeRecordInt = do_not_record_sym_name_use,
+    MaybeRecordImp = do_not_record_sym_name_use,
     OrigParseTreeInt2 = parse_tree_int2(IntModuleName, IntModuleNameContext,
         MaybeVersionNumbers, InclMap, ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap0, InstCtorCheckedMap0, ModeCtorCheckedMap0,
@@ -904,7 +904,7 @@ replace_in_parse_tree_int2(ModuleName, TypeEqvMap, InstEqvMap,
 replace_in_parse_tree_plain_opt(ModuleName, TypeEqvMap, InstEqvMap,
         OrigParseTreePlainOpt, ParseTreePlainOpt,
         !RecompInfo, !UsedModules, !Specs) :-
-    MaybeRecord = dont_record_sym_name_use,
+    MaybeRecord = do_not_record_sym_name_use,
     OrigParseTreePlainOpt = parse_tree_plain_opt(
         OptModuleName, OptModuleNameContext,
         UsedModuleNames, FIMSpecs, TypeDefns0, ForeignEnums,
@@ -959,7 +959,7 @@ replace_in_parse_tree_trans_opt(_ModuleName, _TypeEqvMap, _InstEqvMap,
 %---------------------------------------------------------------------------%
 
 :- type maybe_record_sym_name_use
-    --->    dont_record_sym_name_use
+    --->    do_not_record_sym_name_use
     ;       record_sym_name_use(item_visibility).
 
 %---------------------------------------------------------------------------%
@@ -1241,7 +1241,7 @@ replace_in_type_repn_eqv(TypeEqvMap, Info0, Info, !Specs) :-
         Context, SeqNum),
     list.length(ArgTypeVars, Arity),
     TypeCtor = type_ctor(SymName, Arity),
-    replace_in_type_maybe_record_use_2(dont_record_sym_name_use, TypeEqvMap,
+    replace_in_type_maybe_record_use_2(do_not_record_sym_name_use, TypeEqvMap,
         [], Type0, Type, _Changed, Circ, TVarSet0, TVarSet,
         no_eqv_expand_info, _, used_modules_init, _),
     set.to_sorted_list(Circ, CircTypes),
@@ -1755,7 +1755,7 @@ replace_in_event_attr(TypeEqvMap, Attr0, Attr,
     Attr0 = event_attribute(AttrNum, AttrName, AttrType0, AttrMode,
         MaybeSynthCall),
     TVarSet0 = varset.init,
-    replace_in_type_maybe_record_use(dont_record_sym_name_use, TypeEqvMap,
+    replace_in_type_maybe_record_use(do_not_record_sym_name_use, TypeEqvMap,
         AttrType0, AttrType, _Changed, TVarSet0, _TVarSet,
         no_eqv_expand_info, _EquivTypeInfo, !UsedModules),
     Attr = event_attribute(AttrNum, AttrName, AttrType, AttrMode,
@@ -1942,7 +1942,7 @@ replace_in_type_defn_solver(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor,
 
 replace_in_type_report_circular_eqvs(TypeEqvMap, TVarSet0, Context,
         Type0, Type, Changed, !Specs) :-
-    replace_in_type_maybe_record_use_2(dont_record_sym_name_use,
+    replace_in_type_maybe_record_use_2(do_not_record_sym_name_use,
         TypeEqvMap, [], Type0, Type, Changed, Circ,
         TVarSet0, _TVarSet, no_eqv_expand_info, _, used_modules_init, _),
     set.to_sorted_list(Circ, CircTypes),
@@ -1956,7 +1956,7 @@ replace_in_type_report_circular_eqvs(TypeEqvMap, TVarSet0, Context,
     ).
 
 replace_in_type(TypeEqvMap, Type0, Type, Changed, !TVarSet, !EquivTypeInfo) :-
-    replace_in_type_maybe_record_use_2(dont_record_sym_name_use,
+    replace_in_type_maybe_record_use_2(do_not_record_sym_name_use,
         TypeEqvMap, [], Type0, Type, Changed, _Circ, !TVarSet,
         !EquivTypeInfo, used_modules_init, _).
 
@@ -2115,7 +2115,7 @@ replace_type_ctor(MaybeRecord, TypeEqvMap, TypeCtorsAlreadyExpanded, Type0,
 %---------------------------------------------------------------------------%
 
 replace_in_type_list(TypeEqvMap, !Types, Changed, !TVarSet, !EquivTypeInfo) :-
-    replace_in_type_list_location(dont_record_sym_name_use, TypeEqvMap,
+    replace_in_type_list_location(do_not_record_sym_name_use, TypeEqvMap,
         !Types, Changed, !TVarSet, !EquivTypeInfo, used_modules_init, _).
 
 :- pred replace_in_type_list_location(maybe_record_sym_name_use::in,
@@ -2227,7 +2227,7 @@ replace_in_constraint_store(MaybeRecord, TypeEqvMap, InstEqvMap,
 
 replace_in_univ_exist_constraints(TypeEqvMap, Cs0, Cs,
         !TVarSet, !EquivTypeInfo) :-
-    replace_in_univ_exist_constraints_location(dont_record_sym_name_use,
+    replace_in_univ_exist_constraints_location(do_not_record_sym_name_use,
         TypeEqvMap, Cs0, Cs, !TVarSet, !EquivTypeInfo, used_modules_init, _).
 
 :- pred replace_in_univ_exist_constraints_location(
@@ -2247,7 +2247,7 @@ replace_in_univ_exist_constraints_location(MaybeRecord, TypeEqvMap, Cs0, Cs,
 
 replace_in_prog_constraint_list(TypeEqvMap,
         !Constraints, !TVarSet, !EquivTypeInfo) :-
-    replace_in_prog_constraint_list_location(dont_record_sym_name_use,
+    replace_in_prog_constraint_list_location(do_not_record_sym_name_use,
         TypeEqvMap, !Constraints,
         !TVarSet, !EquivTypeInfo, used_modules_init, _).
 
@@ -2417,7 +2417,7 @@ replace_in_tvar_substs(MaybeRecord, TypeEqvMap,
 %---------------------------------------------------------------------------%
 
 replace_in_ctors(TypeEqvMap, !Ctors, !TVarSet, !EquivTypeInfo) :-
-    replace_in_ctors_location(dont_record_sym_name_use, TypeEqvMap,
+    replace_in_ctors_location(do_not_record_sym_name_use, TypeEqvMap,
         !Ctors, !TVarSet, !EquivTypeInfo, used_modules_init, _).
 
 :- pred replace_in_ctors_location(maybe_record_sym_name_use::in,
@@ -2925,7 +2925,7 @@ replace_in_unit_selector(MaybeRecord, TypeEqvMap, TVarSet, Sel0, Sel,
 
 maybe_record_type_ctor_sym_name_use(MaybeRecord, TypeCtor, !UsedModules) :-
     (
-        MaybeRecord = dont_record_sym_name_use
+        MaybeRecord = do_not_record_sym_name_use
     ;
         MaybeRecord = record_sym_name_use(Visibility),
         TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),

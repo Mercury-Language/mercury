@@ -188,7 +188,7 @@
 :- import_module varset.
 
 :- type maybe_require_module_decl
-    --->    dont_require_module_decl
+    --->    do_not_require_module_decl
     ;       require_module_decl.
 
 :- type missing_section_start_warning
@@ -207,7 +207,7 @@ peek_at_file(FileStream, SourceFileName0, DefaultModuleName,
         LineContext0 = line_context(1, 0),
         LinePosn0 = line_posn(0),
         parse_first_module_decl(FileString, FileStringLen,
-            dont_require_module_decl, DefaultModuleName,
+            do_not_require_module_decl, DefaultModuleName,
             DefaultExpectationContexts, ModuleDeclPresent,
             may_change_source_file_name, SourceFileName0, _SourceFileName,
             SeqNumCounter0, _SeqNumCounter,
@@ -819,7 +819,7 @@ parse_src_file(!.SourceFileName, FileString, FileStringLen,
         % We handle the first module declaration specially. Read the
         % documentation on parse_first_module_decl for the reason.
         parse_first_module_decl(FileString, FileStringLen,
-            dont_require_module_decl, DefaultModuleName,
+            do_not_require_module_decl, DefaultModuleName,
             DefaultExpectationContexts, ModuleDeclPresent,
             may_change_source_file_name, !SourceFileName,
             !SeqNumCounter, !LineContext, !LinePosn),

@@ -116,7 +116,7 @@
 
 :- type allow_multi_arm
     --->    allow_multi_arm
-    ;       dont_allow_multi_arm.
+    ;       do_not_allow_multi_arm.
 
 :- type switch_detect_info
     --->    switch_detect_info(
@@ -134,7 +134,7 @@ lookup_allow_multi_arm(ModuleInfo, AllowMulti) :-
         AllowMulti = allow_multi_arm
     ;
         Allow = no,
-        AllowMulti = dont_allow_multi_arm
+        AllowMulti = do_not_allow_multi_arm
     ).
 
 init_switch_detect_info(ModuleInfo) = Info :-

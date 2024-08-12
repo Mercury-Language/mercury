@@ -160,7 +160,7 @@ make_pred_or_func_name(DefiningModule, PredOrFunc, DeclaringModule,
 
     DeclaringModuleName = sym_name_mangle(DeclaringModule),
     DefiningModuleName = sym_name_mangle(DefiningModule),
-    ( if dont_module_qualify_name(Name0, Arity) then
+    ( if should_not_module_qualify_name(Name0, Arity) then
         LabelName0 = Name0
     else
         LabelName0 = qualify_name(DeclaringModuleName, Name0)
@@ -191,9 +191,9 @@ make_pred_or_func_name(DefiningModule, PredOrFunc, DeclaringModule,
     % Define the conditions for which labels are printed
     % without module qualification.
     %
-:- pred dont_module_qualify_name(string::in, arity::in) is semidet.
+:- pred should_not_module_qualify_name(string::in, arity::in) is semidet.
 
-dont_module_qualify_name(Name, Arity) :-
+should_not_module_qualify_name(Name, Arity) :-
     (
         Name = "main",
         Arity = 2

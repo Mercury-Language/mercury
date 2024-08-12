@@ -39,7 +39,7 @@
 :- func lookup_line_numbers(globals, option) = maybe_set_line_numbers.
 
 :- type maybe_set_line_numbers
-    --->    dont_set_line_numbers
+    --->    do_not_set_line_numbers
     ;       set_line_numbers.
 
     % maybe_set_line_num(Stream, MaybeSetLineNumbers, FileName, LineNum, !IO):
@@ -348,7 +348,7 @@ lookup_line_numbers(Globals, Option) = MaybeSetLineNumbers :-
     globals.lookup_bool_option(Globals, Option, OptionValue),
     (
         OptionValue = no,
-        MaybeSetLineNumbers = dont_set_line_numbers
+        MaybeSetLineNumbers = do_not_set_line_numbers
     ;
         OptionValue = yes,
         MaybeSetLineNumbers = set_line_numbers
@@ -361,7 +361,7 @@ maybe_set_line_num(Stream, MaybeSetLineNumbers, File, Line, !IO) :-
         MaybeSetLineNumbers = set_line_numbers,
         always_set_line_num(Stream, File, Line, !IO)
     ;
-        MaybeSetLineNumbers = dont_set_line_numbers
+        MaybeSetLineNumbers = do_not_set_line_numbers
     ).
 
 %---------------------%
@@ -393,7 +393,7 @@ maybe_reset_line_num(Stream, MaybeSetLineNumbers, MaybeFileName, !IO) :-
         MaybeSetLineNumbers = set_line_numbers,
         always_reset_line_num(Stream, MaybeFileName, !IO)
     ;
-        MaybeSetLineNumbers = dont_set_line_numbers
+        MaybeSetLineNumbers = do_not_set_line_numbers
     ).
 
 %---------------------%

@@ -150,12 +150,12 @@ optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
                 CheckedNondetTailCallInfo =
                     check_nondet_tailcalls(_, !:LabelNumCounter)
             ;
-                CheckedNondetTailCallInfo = dont_check_nondet_tailcalls,
+                CheckedNondetTailCallInfo = do_not_check_nondet_tailcalls,
                 unexpected($pred, "lost the next label number")
             )
         ;
             CheckedNondetTailCall = do_not_opt_checked_nondet_tailcalls,
-            CheckedNondetTailCallInfo0 = dont_check_nondet_tailcalls,
+            CheckedNondetTailCallInfo0 = do_not_check_nondet_tailcalls,
             jump_opt_instr_list(!.Instrs, comment(""), JumpOptInfo,
                 CheckedNondetTailCallInfo0, _, cord.init, InstrsCord)
         ),
@@ -279,7 +279,7 @@ jump_opt_build_forkmap([llds_instr(Uinstr, _Comment) | Instrs], SdprocMap,
             % Instrs0.
 
 :- type maybe_check_nondet_tailcalls
-    --->    dont_check_nondet_tailcalls
+    --->    do_not_check_nondet_tailcalls
     ;       check_nondet_tailcalls(proc_label, counter).
 
     % Optimize the given instruction list by eliminating unnecessary jumps.

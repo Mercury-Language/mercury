@@ -220,14 +220,15 @@
     % N.B. This reads a module given the MODULE name. If you want to read
     % a module given the FILE name, use `read_module_src_from_file'.
     %
-    % If ReadModuleAndTimestamps is always_read_module(dont_return_timestamp),
-    % return `no' in the MaybeTimestamp field of HaveModule.
+    % If ReadModuleAndTimestamps is
+    % always_read_module(do_not_return_timestamp), return `no' in the
+    % MaybeTimestamp field of HaveModule.
     %
     % If ReadModuleAndTimestamps is always_read_module(do_return_timestamp),
     % attempt to return the modification time of the file in the MaybeTimestamp
     % field of HaveModule.
     %
-    % If ReadModuleAndTimestamps is dont_read_module_if_match(OldTimeStamp),
+    % If ReadModuleAndTimestamps is do_not_read_module_if_match(OldTimeStamp),
     % then
     %
     % - if the timestamp of that file is exactly OldTimestamp, then
@@ -587,7 +588,7 @@ search_module_name_timestamp_if_needed(HPTM, ModuleName, ReturnTimestamp,
     ;
         Source0 = was_constructed,
         (
-            ReturnTimestamp = dont_return_timestamp,
+            ReturnTimestamp = do_not_return_timestamp,
             Source = Source0
         ;
             ReturnTimestamp = do_return_timestamp,
@@ -970,7 +971,7 @@ actually_read_module_int3(Globals, FileNameAndStream,
 
 actually_read_module_plain_opt(_Globals, FileNameAndStream, DefaultModuleName,
         MaybeParseTreePlainOpt, Errors, !IO) :-
-    ReadModuleAndTimestamps = always_read_module(dont_return_timestamp),
+    ReadModuleAndTimestamps = always_read_module(do_not_return_timestamp),
     do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
         ReadFileResult, !IO),
     (
@@ -989,7 +990,7 @@ actually_read_module_plain_opt(_Globals, FileNameAndStream, DefaultModuleName,
 
 actually_read_module_trans_opt(_Globals, FileNameAndStream, DefaultModuleName,
         MaybeParseTreeTransOpt, Errors, !IO) :-
-    ReadModuleAndTimestamps = always_read_module(dont_return_timestamp),
+    ReadModuleAndTimestamps = always_read_module(do_not_return_timestamp),
     do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
         ReadFileResult, !IO),
     (
@@ -1070,7 +1071,7 @@ do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
     FileNameAndStream = path_name_and_stream(FileName, FileStream),
     (
         ( ReadModuleAndTimestamps = always_read_module(do_return_timestamp)
-        ; ReadModuleAndTimestamps = dont_read_module_if_match(_)
+        ; ReadModuleAndTimestamps = do_not_read_module_if_match(_)
         ),
         io.file.file_modification_time(FileName, TimestampResult, !IO),
         (
@@ -1082,11 +1083,11 @@ do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
             MaybeModuleTimestampRes = yes(error(IOError))
         )
     ;
-        ReadModuleAndTimestamps = always_read_module(dont_return_timestamp),
+        ReadModuleAndTimestamps = always_read_module(do_not_return_timestamp),
         MaybeModuleTimestampRes = no
     ),
     ( if
-        ReadModuleAndTimestamps = dont_read_module_if_match(OldTimestamp),
+        ReadModuleAndTimestamps = do_not_read_module_if_match(OldTimestamp),
         MaybeModuleTimestampRes = yes(ok(OldTimestamp))
     then
         % XXX Currently smart recompilation won't work
@@ -1484,7 +1485,7 @@ return_timestamp_if_needed(ReturnTimestamp, MaybeTimestamp0, MaybeTimestamp) :-
             MaybeTimestamp = MaybeTimestamp0
         )
     ;
-        ReturnTimestamp = dont_return_timestamp,
+        ReturnTimestamp = do_not_return_timestamp,
         MaybeTimestamp = no
     ).
 

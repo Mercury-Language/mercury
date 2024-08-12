@@ -1276,7 +1276,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
     ;
         OpModeArgs = opma_convert_to_mercury,
         read_module_or_file(ProgressStream, Globals0, Globals, FileOrModule,
-            dont_return_timestamp, HaveReadSrc, !HaveParseTreeMaps, !IO),
+            do_not_return_timestamp, HaveReadSrc, !HaveParseTreeMaps, !IO),
         (
             HaveReadSrc = have_not_read_module(_FileName, Errors)
         ;
@@ -1507,7 +1507,7 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
         InterfaceFile, FileOrModule, SpecLists, !HaveParseTreeMaps, !IO) :-
     (
         InterfaceFile = omif_int3,
-        ReturnTimestamp = dont_return_timestamp
+        ReturnTimestamp = do_not_return_timestamp
     ;
         InterfaceFile = omif_int0,
         globals.lookup_bool_option(Globals0, generate_item_version_numbers,
@@ -1579,7 +1579,7 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
 
 :- func version_numbers_return_timestamp(bool) = maybe_return_timestamp.
 
-version_numbers_return_timestamp(no) = dont_return_timestamp.
+version_numbers_return_timestamp(no) = do_not_return_timestamp.
 version_numbers_return_timestamp(yes) = do_return_timestamp.
 
 %---------------------%

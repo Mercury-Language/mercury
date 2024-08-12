@@ -449,7 +449,7 @@ no_allow_constrained_inst_var_result(ContextPieces, Why, VarSet, Term)
     ;
         Why = wnciv_type_and_mode,
         % XXX This *is* allowed in *some* cases.
-        % XXX Add an argument to dont_constrain_inst_vars.
+        % XXX Add an argument to do_not_constrain_inst_vars.
         Place = "in a mode annotation on a type"
     ;
         Why = wnciv_solver_type_inst,

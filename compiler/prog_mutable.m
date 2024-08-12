@@ -343,7 +343,7 @@ declare_mutable_aux_preds_for_int0(ModuleName, ItemMutable)
         declare_nonconstant_get_set_preds(ModuleName, MutableName, Type, Inst,
             AttachToIO, Context, _InitSetPredName,
             GetPredDecl, SetPredDecl, IOPredDecls),
-        % _AttachToIO = mutable_dont_attach_to_io_state => IOPredDecls = []
+        % _AttachToIO = mutable_do_not_attach_to_io_state => IOPredDecls = []
         PublicAuxPredDecls = [GetPredDecl, SetPredDecl | IOPredDecls]
     ).
 
@@ -408,7 +408,7 @@ declare_and_define_mutable_aux_preds(ModuleParams, TargetParams, ItemMutable,
         % after we have computed the input it needs.
         do_we_need_pre_init_lock_unlock(Lang, Local, PreInit, LockUnlock),
         (
-            PreInit = dont_need_pre_init_pred,
+            PreInit = do_not_need_pre_init_pred,
             PreInitPredDecls = [],
             PreInitForeignProcs = [],
             MaybeCallPreInitExpr = maybe.no
@@ -424,7 +424,7 @@ declare_and_define_mutable_aux_preds(ModuleParams, TargetParams, ItemMutable,
             MaybeCallPreInitExpr = yes(CallPreInitExpr)
         ),
         (
-            LockUnlock = dont_need_lock_unlock_preds,
+            LockUnlock = do_not_need_lock_unlock_preds,
             LockUnlockPredDecls = [],
             LockUnlockForeignProcs = [],
             MaybeLockUnlockExprs = maybe.no
@@ -468,11 +468,11 @@ declare_and_define_mutable_aux_preds(ModuleParams, TargetParams, ItemMutable,
         GetSetForeignProcs ++ UnsafeGetSetForeignProcs.
 
 :- type need_pre_init_pred
-    --->    dont_need_pre_init_pred
+    --->    do_not_need_pre_init_pred
     ;       need_pre_init_pred.
 
 :- type need_lock_unlock_preds
-    --->    dont_need_lock_unlock_preds
+    --->    do_not_need_lock_unlock_preds
     ;       need_lock_unlock_preds.
 
 :- pred do_we_need_pre_init_lock_unlock(foreign_language::in,
@@ -491,13 +491,13 @@ do_we_need_pre_init_lock_unlock(Lang, Local, PreInit, LockUnlock) :-
             PreInit = need_pre_init_pred
         ;
             Local = mutable_is_not_thread_local(_),
-            PreInit = dont_need_pre_init_pred
+            PreInit = do_not_need_pre_init_pred
         ),
-        LockUnlock = dont_need_lock_unlock_preds
+        LockUnlock = do_not_need_lock_unlock_preds
     ;
         Lang = lang_java,
-        PreInit = dont_need_pre_init_pred,
-        LockUnlock = dont_need_lock_unlock_preds
+        PreInit = do_not_need_pre_init_pred,
+        LockUnlock = do_not_need_lock_unlock_preds
     ).
 
 %---------------------------------------------------------------------------%
@@ -874,7 +874,7 @@ declare_nonconstant_get_set_preds(ModuleName, MutableName, Type, Inst,
         [SetArg], purity_impure,
         mutable_pred_std_set, Context, SetPredDecl),
     (
-        AttachToIO = mutable_dont_attach_to_io_state,
+        AttachToIO = mutable_do_not_attach_to_io_state,
         IOPredDecls = []
     ;
         AttachToIO = mutable_attach_to_io_state,
@@ -935,7 +935,7 @@ define_nonconstant_get_set_preds(ModuleName, TargetParams, MutableName,
             Context, item_no_seq_num)
     ),
     (
-        AttachToIO = mutable_dont_attach_to_io_state,
+        AttachToIO = mutable_do_not_attach_to_io_state,
         ClauseInfos = [StdGetClauseInfo, StdSetClauseInfo]
     ;
         AttachToIO = mutable_attach_to_io_state,

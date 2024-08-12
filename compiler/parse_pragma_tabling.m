@@ -592,7 +592,8 @@ update_tabling_attributes([Context - Attr | ContextAttrs],
     ;
         Attr = attr_statistics,
         ( if
-            !.Attributes ^ table_attr_statistics = table_dont_gather_statistics
+            !.Attributes ^ table_attr_statistics =
+                table_do_not_gather_statistics
         then
             !Attributes ^ table_attr_statistics := table_gather_statistics
         else
@@ -601,7 +602,7 @@ update_tabling_attributes([Context - Attr | ContextAttrs],
     ;
         Attr = attr_allow_reset,
         ( if
-            !.Attributes ^ table_attr_allow_reset = table_dont_allow_reset
+            !.Attributes ^ table_attr_allow_reset = table_do_not_allow_reset
         then
             !Attributes ^ table_attr_allow_reset := table_allow_reset
         else

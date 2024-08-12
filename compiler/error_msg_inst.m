@@ -29,7 +29,7 @@
 %---------------------------------------------------------------------------%
 
 :- type maybe_expand_named_insts
-    --->    dont_expand_named_insts
+    --->    do_not_expand_named_insts
     ;       expand_named_insts.
 
 :- type user_or_developer
@@ -495,7 +495,7 @@ inst_name_to_pieces(Info, MaybeInline, InstName, Suffix, Pieces,
             % in a back-to-front order, which means that if a named inst
             % occurs in EqvInst more than once, it will be the *last*
             % occurrence, not the first, which will be expanded.
-            NameInfo = Info ^ imi_named_insts := dont_expand_named_insts,
+            NameInfo = Info ^ imi_named_insts := do_not_expand_named_insts,
             ModuleInfo = Info ^ imi_module_info,
             module_info_get_inst_table(ModuleInfo, InstTable),
             inst_table_get_user_insts(InstTable, UserInstTable),
@@ -514,7 +514,7 @@ inst_name_to_pieces(Info, MaybeInline, InstName, Suffix, Pieces,
                 NamedNamePieces = [words("named inst") | NamePieces],
                 ExpandInsts = Info ^ imi_named_insts,
                 (
-                    ExpandInsts = dont_expand_named_insts,
+                    ExpandInsts = do_not_expand_named_insts,
                     Pieces = NamePieces ++ Suffix
                 ;
                     ExpandInsts = expand_named_insts,
@@ -649,7 +649,7 @@ inst_name_to_pieces(Info, MaybeInline, InstName, Suffix, Pieces,
                 EqvInstName = user_inst(EqvSymName, EqvArgInsts),
                 is_unknown_or_missing_user_inst_name(EqvInstName)
             then
-                NameInfo = Info ^ imi_named_insts := dont_expand_named_insts,
+                NameInfo = Info ^ imi_named_insts := do_not_expand_named_insts,
                 sym_name_to_min_qual_string(Info, EqvSymName, EqvSymNameStr),
                 name_and_arg_insts_to_pieces(NameInfo, MaybeInline,
                     EqvSymNameStr, EqvArgInsts, Suffix, Pieces,

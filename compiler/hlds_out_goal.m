@@ -2298,10 +2298,11 @@ format_goal_scope(!.InfoGoal, Indent, Follow, GoalExpr, !State) :-
         format_indent2(Indent, !State),
         string.builder.append_string("% commit(force_pruning)\n", !State)
     ;
-        Reason = commit(dont_force_pruning),
+        Reason = commit(do_not_force_pruning),
         string.builder.append_string("(\n", !State),
         format_indent2(Indent, !State),
-        string.builder.append_string("% commit(dont_force_pruning)\n", !State)
+        string.builder.append_string("% commit(do_not_force_pruning)\n",
+            !State)
     ;
         Reason = from_ground_term(Var, Kind),
         VarNameSrc = !.InfoGoal ^ hoig_var_name_src,

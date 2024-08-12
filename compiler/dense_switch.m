@@ -105,7 +105,7 @@ tagged_case_list_is_dense_switch(CI, VarType, TaggedCases,
             DetDensity = switch_density(NumValues, TypeRange),
             DetDensity > ReqDensity
         then
-            NeedRangeCheck = dont_need_range_check,
+            NeedRangeCheck = do_not_need_range_check,
             FirstVal = TypeMin,
             LastVal = TypeMax
         else
@@ -115,7 +115,7 @@ tagged_case_list_is_dense_switch(CI, VarType, TaggedCases,
         )
     ;
         CanFail = cannot_fail,
-        NeedRangeCheck = dont_need_range_check,
+        NeedRangeCheck = do_not_need_range_check,
         FirstVal = LowerLimit,
         LastVal = UpperLimit
     ),
@@ -145,7 +145,7 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
                 IndexRval, const(llconst_int(LastFirstValDifference))),
             RangeCheckCode, !CI, !CLD)
     ;
-        NeedRangeCheck = dont_need_range_check,
+        NeedRangeCheck = do_not_need_range_check,
         RangeCheckCode = empty
     ),
 

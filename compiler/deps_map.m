@@ -439,7 +439,7 @@ read_src_file_for_dependency_info(ProgressStream, Globals, Search, ModuleName,
     % may work on incorrect data.
     read_module_src(ProgressStream, Globals, rrm_get_deps,
         ignore_errors, Search, ModuleName, ExpectationContexts,
-        always_read_module(dont_return_timestamp), HaveReadModuleSrc, !IO),
+        always_read_module(do_not_return_timestamp), HaveReadModuleSrc, !IO),
     (
         HaveReadModuleSrc = have_module(SourceFileName, ParseTreeSrc, Source),
         Source = was_read(MaybeTimestamp, ReadModuleErrors),

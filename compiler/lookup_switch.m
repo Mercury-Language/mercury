@@ -520,7 +520,7 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel,
             IndexRval, const(llconst_int(Difference))),
         fail_if_rval_is_false(CmpRval, RangeCheckCode, !CI, CLD0, CLD)
     ;
-        NeedRangeCheck = dont_need_range_check,
+        NeedRangeCheck = do_not_need_range_check,
         RangeCheckCode = empty,
         CLD = CLD0
     ),
@@ -557,8 +557,8 @@ generate_simple_int_lookup_switch(IndexRval, StartVal, EndVal, CaseValues,
         generate_bitvec_test(IndexRval, CaseValues, StartVal, EndVal,
             CheckBitVecCode, !CI, !CLD)
     ;
-        ( NeedBitVecCheck = dont_need_bit_vec_check_no_gaps
-        ; NeedBitVecCheck = dont_need_bit_vec_check_with_gaps
+        ( NeedBitVecCheck = do_not_need_bit_vec_check_no_gaps
+        ; NeedBitVecCheck = do_not_need_bit_vec_check_with_gaps
         ),
         CheckBitVecCode = empty
     ),

@@ -619,7 +619,7 @@ det_infer_goal_known_pruning(Goal0, Goal, InstMap0, !.SolnContext,
         % A commit is needed - we must introduce an explicit `commit' so that
         % the code generator knows to insert the appropriate code for pruning.
         goal_info_set_determinism(FinalInternalDetism, GoalInfo0, InnerInfo),
-        GoalExpr = scope(commit(dont_force_pruning),
+        GoalExpr = scope(commit(do_not_force_pruning),
             hlds_goal(GoalExpr1, InnerInfo))
     else
         % Either no commit is needed, or a `scope' is already present.

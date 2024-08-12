@@ -483,7 +483,7 @@ invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
         ProblemPieces, !Specs) :-
     named_parents_to_pieces(ParentInsts, ParentPieces),
     InstPieces = error_msg_inst(ModuleInfo, InstVarSet,
-        dont_expand_named_insts, uod_user, quote_short_inst, [], [],
+        do_not_expand_named_insts, uod_user, quote_short_inst, [], [],
         [nl_indent_delta(1)], [nl_indent_delta(-1)], Inst),
     Pieces = [words("Error:") | ParentPieces] ++
         [words("the inst")] ++ color_as_subject(InstPieces) ++

@@ -64,31 +64,31 @@
 %---------------------------------------------------------------------------%
 
 :- type maybe_need_tabling
-    --->    dont_need_tabling
+    --->    do_not_need_tabling
     ;       do_need_tabling.
 
 :- type maybe_need_tabling_statistics
-    --->    dont_need_tabling_statistics
+    --->    do_not_need_tabling_statistics
     ;       do_need_tabling_statistics.
 
 :- type maybe_need_stm
-    --->    dont_need_stm
+    --->    do_not_need_stm
     ;       do_need_stm.
 
 :- type maybe_need_exception
-    --->    dont_need_exception
+    --->    do_not_need_exception
     ;       do_need_exception.
 
 :- type maybe_need_string_format
-    --->    dont_need_string_format
+    --->    do_not_need_string_format
     ;       do_need_string_format.
 
 :- type maybe_need_stream_format
-    --->    dont_need_stream_format
+    --->    do_not_need_stream_format
     ;       do_need_stream_format.
 
 :- type maybe_need_io
-    --->    dont_need_io
+    --->    do_not_need_io
     ;       do_need_io.
 
     % A representation of which builtin modules a set of items
@@ -224,21 +224,21 @@ get_implicit_avail_needs_in_aug_compilation_unit(Globals, AugCompUnit,
 %---------------------------------------------------------------------------%
 
 init_implicit_avail_needs = ImplicitAvailNeeds :-
-    ImplicitAvailNeeds = implicit_avail_needs(dont_need_tabling,
-        dont_need_tabling_statistics, dont_need_stm, dont_need_exception,
-        dont_need_string_format, dont_need_stream_format, dont_need_io).
+    ImplicitAvailNeeds = implicit_avail_needs(do_not_need_tabling,
+        do_not_need_tabling_statistics, do_not_need_stm, do_not_need_exception,
+        do_not_need_string_format, do_not_need_stream_format, do_not_need_io).
 
 %---------------------------------------------------------------------------%
 
 combine_implicit_needs(ImplicitNeedsList, ImplicitNeeds) :-
     combine_implicit_needs_acc(ImplicitNeedsList,
-        dont_need_tabling, NeedTabling,
-        dont_need_tabling_statistics, NeedTablingStatistics,
-        dont_need_stm, NeedStm,
-        dont_need_exception, NeedException,
-        dont_need_string_format, NeedStringFormat,
-        dont_need_stream_format, NeedStreamFormat,
-        dont_need_io, NeedIO),
+        do_not_need_tabling, NeedTabling,
+        do_not_need_tabling_statistics, NeedTablingStatistics,
+        do_not_need_stm, NeedStm,
+        do_not_need_exception, NeedException,
+        do_not_need_string_format, NeedStringFormat,
+        do_not_need_stream_format, NeedStreamFormat,
+        do_not_need_io, NeedIO),
     ImplicitNeeds = implicit_avail_needs(NeedTabling, NeedTablingStatistics,
         NeedStm, NeedException, NeedStringFormat, NeedStreamFormat, NeedIO).
 
@@ -264,43 +264,43 @@ combine_implicit_needs_acc([Head | Tail], !NeedTabling,
     % to replace this sequence of seven switches with a *single* bitwise OR
     % operation. Check whether this is the case.
     (
-        NeedTabling = dont_need_tabling
+        NeedTabling = do_not_need_tabling
     ;
         NeedTabling = do_need_tabling,
         !:NeedTabling = do_need_tabling
     ),
     (
-        NeedTablingStatistics = dont_need_tabling_statistics
+        NeedTablingStatistics = do_not_need_tabling_statistics
     ;
         NeedTablingStatistics = do_need_tabling_statistics,
         !:NeedTablingStatistics = do_need_tabling_statistics
     ),
     (
-        NeedStm = dont_need_stm
+        NeedStm = do_not_need_stm
     ;
         NeedStm = do_need_stm,
         !:NeedStm = do_need_stm
     ),
     (
-        NeedException = dont_need_exception
+        NeedException = do_not_need_exception
     ;
         NeedException = do_need_exception,
         !:NeedException = do_need_exception
     ),
     (
-        NeedStringFormat = dont_need_string_format
+        NeedStringFormat = do_not_need_string_format
     ;
         NeedStringFormat = do_need_string_format,
         !:NeedStringFormat = do_need_string_format
     ),
     (
-        NeedStreamFormat = dont_need_stream_format
+        NeedStreamFormat = do_not_need_stream_format
     ;
         NeedStreamFormat = do_need_stream_format,
         !:NeedStreamFormat = do_need_stream_format
     ),
     (
-        NeedIO = dont_need_io
+        NeedIO = do_not_need_io
     ;
         NeedIO = do_need_io,
         !:NeedIO = do_need_io
@@ -644,7 +644,7 @@ acc_implicit_avail_needs_in_impl_pragma(ImplPragma,
                 !ImplicitAvailNeeds ^ ian_tabling_statistics
                     := do_need_tabling_statistics
             ;
-                StatsAttr = table_dont_gather_statistics
+                StatsAttr = table_do_not_gather_statistics
             )
         )
     ;
@@ -912,11 +912,12 @@ compute_implicit_avail_needs(Globals, ImplicitAvailNeeds,
             ItemsNeedTablingStatistics = do_need_tabling_statistics,
             set.insert(mercury_table_statistics_module, !ImplicitlyUsedModules)
         ;
-            ItemsNeedTablingStatistics = dont_need_tabling_statistics
+            ItemsNeedTablingStatistics = do_not_need_tabling_statistics
         )
     ;
-        ItemsNeedTabling = dont_need_tabling,
-        expect(unify(ItemsNeedTablingStatistics, dont_need_tabling_statistics),
+        ItemsNeedTabling = do_not_need_tabling,
+        expect(
+            unify(ItemsNeedTablingStatistics, do_not_need_tabling_statistics),
             $pred, "tabling statistics without tabling"),
         ( if
             % These forms of tabling cannot ask for statistics.
@@ -941,32 +942,32 @@ compute_implicit_avail_needs(Globals, ImplicitAvailNeeds,
         set.insert(mercury_exception_module, !ImplicitlyUsedModules),
         set.insert(mercury_univ_module, !ImplicitlyUsedModules)
     ;
-        ItemsNeedSTM = dont_need_stm
+        ItemsNeedSTM = do_not_need_stm
     ),
     (
         ItemsNeedException = do_need_exception,
         set.insert(mercury_exception_module, !ImplicitlyUsedModules)
     ;
-        ItemsNeedException = dont_need_exception
+        ItemsNeedException = do_not_need_exception
     ),
     (
         ItemsNeedStringFormat = do_need_string_format,
         set.insert(mercury_string_format_module, !ImplicitlyUsedModules),
         set.insert(mercury_string_parse_util_module, !ImplicitlyUsedModules)
     ;
-        ItemsNeedStringFormat = dont_need_string_format
+        ItemsNeedStringFormat = do_not_need_string_format
     ),
     (
         ItemsNeedStreamFormat = do_need_stream_format,
         set.insert(mercury_stream_module, !ImplicitlyUsedModules)
     ;
-        ItemsNeedStreamFormat = dont_need_stream_format
+        ItemsNeedStreamFormat = do_not_need_stream_format
     ),
     (
         ItemsNeedIO = do_need_io,
         set.insert(mercury_io_module, !ImplicitlyUsedModules)
     ;
-        ItemsNeedIO = dont_need_io
+        ItemsNeedIO = do_not_need_io
     ),
     globals.lookup_bool_option(Globals, profile_deep, Deep),
     (

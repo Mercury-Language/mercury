@@ -181,7 +181,7 @@ build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
     % Read in the top-level file (to figure out its module name).
     FileNameDotM = FileName ++ ".m",
     read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
-        rrm_file, do_not_search, always_read_module(dont_return_timestamp),
+        rrm_file, do_not_search, always_read_module(do_not_return_timestamp),
         HaveReadModuleSrc, !IO),
     (
         HaveReadModuleSrc = have_module(_FN, ParseTreeSrc, Source),

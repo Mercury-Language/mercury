@@ -191,7 +191,7 @@ output_tabling_info_struct(Info, Stream, TablingInfoStruct, !DeclSet, !IO) :-
     ),
 
     (
-        Stats = table_dont_gather_statistics
+        Stats = table_do_not_gather_statistics
     ;
         Stats = table_gather_statistics,
         output_table_step_stats(Info, Stream,
@@ -234,7 +234,7 @@ output_tabling_info_struct(Info, Stream, TablingInfoStruct, !DeclSet, !IO) :-
     ),
     io.write_string(Stream, "},\n", !IO),
     (
-        Stats = table_dont_gather_statistics,
+        Stats = table_do_not_gather_statistics,
         io.write_string(Stream, "{{{\n", !IO),
         io.write_string(Stream, "0,\n", !IO),
         io.write_string(Stream, "0,\n", !IO),

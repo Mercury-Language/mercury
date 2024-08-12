@@ -511,7 +511,9 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, !Info) :-
         SingleVars = []
     ;
         SingleVars = [HeadSV | TailSVs],
-        ( if goal_info_has_feature(GoalInfo, feature_dont_warn_singleton) then
+        ( if
+            goal_info_has_feature(GoalInfo, feature_do_not_warn_singleton)
+        then
             true
         else
             ( if goal_info_has_feature(GoalInfo, feature_from_head) then

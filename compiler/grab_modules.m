@@ -1199,8 +1199,12 @@ maybe_record_interface_timestamp(ModuleName, IntFileKind, RecompAvail,
 
 do_we_need_timestamps(Baggage, MaybeReturnTimestamp) :-
     MaybeTimestampMap = Baggage ^ mb_maybe_timestamp_map,
-    ( MaybeTimestampMap = yes(_), MaybeReturnTimestamp = do_return_timestamp
-    ; MaybeTimestampMap = no,     MaybeReturnTimestamp = dont_return_timestamp
+    (
+        MaybeTimestampMap = yes(_),
+        MaybeReturnTimestamp = do_return_timestamp
+    ;
+        MaybeTimestampMap = no,
+        MaybeReturnTimestamp = do_not_return_timestamp
     ).
 
 :- pred module_baggage_add_grabbed_file(module_name::in, grabbed_file::in,

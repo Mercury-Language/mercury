@@ -468,7 +468,7 @@ check_attribute_fit(VarSet, OnlyLangMap, MaybeTrailed, MaybeConst, MaybeIO,
             MaybeConst = no,
             (
                 MaybeIO = no,
-                IO = mutable_dont_attach_to_io_state
+                IO = mutable_do_not_attach_to_io_state
             ;
                 MaybeIO = yes(_ - unit),
                 IO = mutable_attach_to_io_state
@@ -554,7 +554,7 @@ default_mutable_attributes =
     mutable_var_attributes(
         map.init,
         mutable_is_not_constant(
-            mutable_dont_attach_to_io_state,
+            mutable_do_not_attach_to_io_state,
             mutable_is_not_thread_local(mutable_trailed)
         )
     ).

@@ -584,16 +584,16 @@ decide_what_term_errors_to_report(ModuleInfo, SCC, Errors,
     % This predicate preprocesses each predicate and sets the termination
     % property if possible. This is done as follows.
     %
-    % Set the termination to yes if:
-    % - there is a terminates pragma defined for the predicate.
+    % Set the termination to cannot_loop if:
+    % - there is a terminates pragma defined for the predicate;
     % - there is a `check_termination' pragma defined for the predicate,
     %   and it is imported, and the compiler is not currently generating
-    %   the intermodule optimization file.
+    %   the intermodule optimization file; or
     % - the predicate is a builtin predicate or is compiler generated (This
     %   also sets the termination constant and UsedArgs).
     %
-    % Set the termination to dont_know if:
-    % - there is a `does_not_terminate' pragma defined for this predicate.
+    % Set the termination to can_loop if:
+    % - there is a `does_not_terminate' pragma defined for this predicate; or
     % - the predicate is imported and there is no other source of
     %   information about it (termination_info pragmas, terminates pragmas,
     %   check_termination pragmas, builtin/compiler generated).
@@ -617,9 +617,9 @@ term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
     pred_info_get_markers(PredInfo0, Markers),
     ProcIds = pred_info_all_procids(PredInfo0),
     ( if
-        % It is possible for compiler generated/mercury builtin
-        % predicates to be imported or locally defined, so they
-        % must be covered here, separately.
+        % It is possible for compiler generated/mercury builtin predicates
+        % to be imported or locally defined, so they must be covered here,
+        % separately.
         set_compiler_gen_terminates(!.ModuleInfo, PredInfo0, ProcIds, PredId,
             ProcTable0, ProcTable1)
     then

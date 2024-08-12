@@ -623,7 +623,7 @@ table_gen_transform_proc(TabledMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         % Since we don't actually create a call table for I/O tabled
         % procedures, the value of MaybeSpecMethod doesn't really matter.
         MaybeSpecMethod = msm_all_same(arg_value),
-        Statistics = table_dont_gather_statistics,
+        Statistics = table_do_not_gather_statistics,
         MaybeSizeLimit = no
     ;
         ( TabledMethod = tabled_loop_check
@@ -3942,7 +3942,7 @@ get_back_arg_string(TableInfo) = BackArgStr :-
 
 stats_ref(Statistics, Kind) = MaybeStatsRef :-
     (
-        Statistics = table_dont_gather_statistics,
+        Statistics = table_do_not_gather_statistics,
         MaybeStatsRef = no
     ;
         Statistics = table_gather_statistics,

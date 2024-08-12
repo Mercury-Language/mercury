@@ -2517,7 +2517,7 @@ classify_src_items_imp([Item | Items],
                     !ImplicitAvailNeeds ^ ian_tabling_statistics
                         := do_need_tabling_statistics
                 ;
-                    StatsAttr = table_dont_gather_statistics
+                    StatsAttr = table_do_not_gather_statistics
                 )
             )
         ;

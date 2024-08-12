@@ -315,7 +315,7 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
             determinism_components(InnerDetism, IfThenElseCanFail,
                 at_most_many),
             goal_info_set_determinism(InnerDetism, GoalInfo1, InnerInfo),
-            GoalExpr = scope(commit(dont_force_pruning),
+            GoalExpr = scope(commit(do_not_force_pruning),
                 hlds_goal(IfThenElseExpr, InnerInfo))
         else
             GoalExpr = IfThenElseExpr

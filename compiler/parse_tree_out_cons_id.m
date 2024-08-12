@@ -240,43 +240,43 @@ mercury_format_cons_id(Lang, NeedsBrackets, ConsId, S, !U) :-
 %---------------------------------------------------------------------------%
 
 maybe_quoted_cons_id_and_arity_to_string(ConsId) =
-    cons_id_and_arity_to_string_maybe_quoted(dont_mangle_cons,
-        quote_cons, dont_strip_qual, ConsId).
+    cons_id_and_arity_to_string_maybe_quoted(do_not_mangle_cons,
+        quote_cons, do_not_strip_qual, ConsId).
 
 cons_id_and_arity_to_string(ConsId) =
     cons_id_and_arity_to_string_maybe_quoted(mangle_cons,
-        dont_quote_cons, dont_strip_qual, ConsId).
+        do_not_quote_cons, do_not_strip_qual, ConsId).
 
 unqual_cons_id_and_arity_to_string(ConsId) =
     cons_id_and_arity_to_string_maybe_quoted(mangle_cons,
-        dont_quote_cons, strip_qual, ConsId).
+        do_not_quote_cons, strip_qual, ConsId).
 
 %---------------------%
 
 maybe_quoted_du_ctor_and_arity_to_string(DuCtor) =
-    du_ctor_and_arity_to_string_maybe_quoted(dont_mangle_cons,
-        quote_cons, dont_strip_qual, DuCtor).
+    du_ctor_and_arity_to_string_maybe_quoted(do_not_mangle_cons,
+        quote_cons, do_not_strip_qual, DuCtor).
 
 du_ctor_and_arity_to_string(DuCtor) =
     du_ctor_and_arity_to_string_maybe_quoted(mangle_cons,
-        dont_quote_cons, dont_strip_qual, DuCtor).
+        do_not_quote_cons, do_not_strip_qual, DuCtor).
 
 unqual_du_ctor_and_arity_to_string(DuCtor) =
     du_ctor_and_arity_to_string_maybe_quoted(mangle_cons,
-        dont_quote_cons, strip_qual, DuCtor).
+        do_not_quote_cons, strip_qual, DuCtor).
 
 %---------------------%
 
 :- type maybe_quote_cons
-    --->    dont_quote_cons
+    --->    do_not_quote_cons
     ;       quote_cons.
 
 :- type maybe_mangle_cons
-    --->    dont_mangle_cons
+    --->    do_not_mangle_cons
     ;       mangle_cons.
 
 :- type maybe_strip_qual
-    --->    dont_strip_qual
+    --->    do_not_strip_qual
     ;       strip_qual.
 
 :- func cons_id_and_arity_to_string_maybe_quoted(maybe_mangle_cons,
@@ -306,7 +306,7 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, StripQual,
     ;
         ConsId = impl_defined_const(IDCKind),
         (
-            QuoteCons = dont_quote_cons,
+            QuoteCons = do_not_quote_cons,
             String = impl_defined_const_kind_to_str(IDCKind)
         ;
             QuoteCons = quote_cons,
@@ -368,14 +368,14 @@ du_ctor_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons,
         StripQual, DuCtor) = String :-
     DuCtor = du_ctor(SymName, Arity, _TypeCtor),
     (
-        StripQual = dont_strip_qual,
+        StripQual = do_not_strip_qual,
         SymNameString0 = sym_name_to_string(SymName)
     ;
         StripQual = strip_qual,
         SymNameString0 = unqualify_name(SymName)
     ),
     (
-        MangleCons = dont_mangle_cons,
+        MangleCons = do_not_mangle_cons,
         SymNameString = SymNameString0
     ;
         MangleCons = mangle_cons,
@@ -398,7 +398,7 @@ du_ctor_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons,
     ),
     string.int_to_string(Arity, ArityString),
     (
-        QuoteCons = dont_quote_cons,
+        QuoteCons = do_not_quote_cons,
         String = SymNameString ++ "/" ++ ArityString
     ;
         QuoteCons = quote_cons,

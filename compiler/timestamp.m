@@ -20,15 +20,15 @@
 
     % For use by predicates that do or do not return timestamps, as requested.
 :- type maybe_return_timestamp
-    --->    do_return_timestamp
-    ;       dont_return_timestamp.
+    --->    do_not_return_timestamp
+    ;       do_return_timestamp.
 
     % For use by predicates that already have a record of what a file's
     % contents were at a particular point in time.
 :- type read_module_and_timestamps
     --->    always_read_module(maybe_return_timestamp)
             % Read the file regardless of its timestamp.
-    ;       dont_read_module_if_match(timestamp).
+    ;       do_not_read_module_if_match(timestamp).
             % If the file's timestamp matches the one given here, don't read
             % the file; just return its timestamp (which is this timestamp).
 

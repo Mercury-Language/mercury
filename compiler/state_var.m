@@ -1236,7 +1236,7 @@ make_copy_goal(FromVar, ToVar, CopyGoal) :-
 
     create_pure_atomic_complicated_unification(ToVar, rhs_var(FromVar),
         dummy_context, umc_implicit("state variable"), [], CopyGoal0),
-    goal_add_features([feature_dont_warn_singleton, feature_state_var_copy],
+    goal_add_features([feature_do_not_warn_singleton, feature_state_var_copy],
         CopyGoal0, CopyGoal).
 
 %-----------------------------------------------------------------------------%

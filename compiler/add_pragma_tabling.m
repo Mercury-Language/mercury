@@ -175,7 +175,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
                     Context, StatsPieces),
                 !:Specs = [StatsSpec | !.Specs]
             ;
-                Statistics = table_dont_gather_statistics
+                Statistics = table_do_not_gather_statistics
             ),
             (
                 AllowReset = table_allow_reset,
@@ -191,7 +191,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
                     Context, ResetPieces),
                 !:Specs = [ResetSpec | !.Specs]
             ;
-                AllowReset = table_dont_allow_reset
+                AllowReset = table_do_not_allow_reset
             )
         )
     ;
@@ -472,8 +472,8 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
             ;
                 MaybeAttributes = no,
                 Strictness = cts_all_strict,
-                Statistics = table_dont_gather_statistics,
-                AllowReset = table_dont_allow_reset
+                Statistics = table_do_not_gather_statistics,
+                AllowReset = table_do_not_allow_reset
             ),
             (
                 Strictness = cts_specified(MaybeArgMethods, _HiddenArgMethod),
@@ -522,7 +522,7 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
                     Context, IsTablingSupported, ItemMercuryStatus, PredStatus,
                     !ProcTable, !ModuleInfo, !QualInfo, !Specs)
             ;
-                Statistics = table_dont_gather_statistics
+                Statistics = table_do_not_gather_statistics
             ),
             (
                 AllowReset = table_allow_reset,
@@ -531,7 +531,7 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
                     Context, IsTablingSupported, ItemMercuryStatus, PredStatus,
                     !ProcTable, !ModuleInfo, !QualInfo, !Specs)
             ;
-                AllowReset = table_dont_allow_reset
+                AllowReset = table_do_not_allow_reset
             )
         )
     ;

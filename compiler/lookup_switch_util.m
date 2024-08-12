@@ -87,17 +87,17 @@
             % The first solution, and all the later solutions.
 
 :- type need_range_check
-    --->    need_range_check
-    ;       dont_need_range_check.
+    --->    do_not_need_range_check
+    ;       need_range_check.
 
-    % dont_need_bit_vec_check_with_gaps should be used if the
+    % do_not_need_bit_vec_check_with_gaps should be used if the
     % generated lookup table is expected to contain dummy rows.
-    % Otherwise, dont_need_bit_vec_check_no_gaps should be used.
+    % Otherwise, do_not_need_bit_vec_check_no_gaps should be used.
     %
 :- type need_bit_vec_check
-    --->    need_bit_vec_check
-    ;       dont_need_bit_vec_check_no_gaps
-    ;       dont_need_bit_vec_check_with_gaps.
+    --->    do_not_need_bit_vec_check_no_gaps
+    ;       do_not_need_bit_vec_check_with_gaps
+    ;       need_bit_vec_check.
 
 :- pred filter_out_failing_cases_if_needed(code_model::in,
     list(tagged_case)::in, list(tagged_case)::out,
@@ -292,7 +292,7 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
             DetDensity = switch_density(NumValues, TypeRange),
             DetDensity > ReqDensity
         then
-            NeedRangeCheck = dont_need_range_check,
+            NeedRangeCheck = do_not_need_range_check,
             NeedBitVecCheck = need_bit_vec_check,
             FirstVal = TypeMin,
             LastVal = TypeMax
@@ -302,7 +302,7 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
             % We will need to perform the bitvector test if the lookup table
             % is going to contain any gaps.
             ( if NumValues = Range then
-                NeedBitVecCheck = dont_need_bit_vec_check_no_gaps
+                NeedBitVecCheck = do_not_need_bit_vec_check_no_gaps
             else
                 NeedBitVecCheck = need_bit_vec_check
             ),
@@ -313,13 +313,13 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
         SwitchCanFail = cannot_fail,
         % The cannot_fail guarantees that the values that are in range
         % but are not covered by any of the cases won't actually be reached.
-        NeedRangeCheck = dont_need_range_check,
+        NeedRangeCheck = do_not_need_range_check,
         % There may be gaps in the lookup table if switching on a variable of
         % a subtype which does not use some values in the range.
         ( if NumValues = Range then
-            NeedBitVecCheck = dont_need_bit_vec_check_no_gaps
+            NeedBitVecCheck = do_not_need_bit_vec_check_no_gaps
         else
-            NeedBitVecCheck = dont_need_bit_vec_check_with_gaps
+            NeedBitVecCheck = do_not_need_bit_vec_check_with_gaps
         ),
         FirstVal = LowerLimit,
         LastVal = UpperLimit

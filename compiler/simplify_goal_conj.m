@@ -110,7 +110,7 @@ simplify_goal_plain_conj(Goals0, GoalExpr, GoalInfo0, GoalInfo,
             determinism_components(InnerDetism, CanFail, at_most_many),
             goal_info_set_determinism(InnerDetism, GoalInfo0, InnerInfo),
             InnerGoal = hlds_goal(conj(plain_conj, Goals), InnerInfo),
-            GoalExpr = scope(commit(dont_force_pruning), InnerGoal),
+            GoalExpr = scope(commit(do_not_force_pruning), InnerGoal),
             % We may have deleted goals that contain what could be the
             % last references to variables. This may require adjustments
             % to the nonlocals sets of not only this goal, but of the other

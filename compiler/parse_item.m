@@ -1129,7 +1129,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                     ),
                 parse_types_and_maybe_modes(
                     constrain_some_inst_vars(InstConstraints),
-                    dont_require_tm_mode, wnhii_pred_arg, VarSet,
+                    do_not_require_tm_mode, wnhii_pred_arg, VarSet,
                     ArgContextFunc, ArgTerms, 1, TypeAndMaybeModeList,
                     [], TMSpecs),
                 PredTypeContext = get_term_context(PredTypeTerm),
@@ -1248,14 +1248,14 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDetism, IsInClass, Context,
                         ),
                     parse_types_and_maybe_modes(
                         constrain_some_inst_vars(InstConstraints),
-                        dont_require_tm_mode, wnhii_func_arg,
+                        do_not_require_tm_mode, wnhii_func_arg,
                         VarSet, ArgContextFunc, ArgTerms, 1,
                         ArgTypesAndMaybeModes, [], ArgTMSpecs),
                     RetContextPieces = ContextPieces ++
                         cord.from_list([words("in the return value:"), nl]),
                     parse_type_and_maybe_mode(
                         constrain_some_inst_vars(InstConstraints),
-                        dont_require_tm_mode, wnhii_func_return_arg,
+                        do_not_require_tm_mode, wnhii_func_return_arg,
                         VarSet, RetContextPieces, ReturnTerm,
                         MaybeRetTypeAndMaybeMode),
                     ( if

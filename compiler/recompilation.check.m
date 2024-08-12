@@ -268,7 +268,7 @@ should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
         ModuleName = !.Info ^ rci_module_name,
         read_module_src(ProgressStream, Globals, rrm_std,
             do_not_ignore_errors, do_search, ModuleName, [],
-            dont_read_module_if_match(RecordedTimestamp), HaveReadSrc, !IO),
+            do_not_read_module_if_match(RecordedTimestamp), HaveReadSrc, !IO),
         (
             HaveReadSrc = have_not_read_module(FileName, Errors),
             % If we did not read the source file because its timestamp
@@ -522,7 +522,7 @@ check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
         Recorded = bool.no,
         cim_read_module_intN(ProgressStream, Globals,
             rrm_std, do_not_ignore_errors, do_search,
-            ImportedModuleName, dont_read_module_if_match(RecordedTimestamp),
+            ImportedModuleName, do_not_read_module_if_match(RecordedTimestamp),
             HaveReadModuleIntN, !IO)
     ),
     (

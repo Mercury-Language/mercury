@@ -1355,13 +1355,13 @@ mercury_format_pragma_tabled(Tabled, S, !U) :-
                 Stats = table_gather_statistics,
                 !:Strs = ["statistics" | !.Strs]
             ;
-                Stats = table_dont_gather_statistics
+                Stats = table_do_not_gather_statistics
             ),
             (
                 AllowReset = table_allow_reset,
                 !:Strs = ["allow_reset" | !.Strs]
             ;
-                AllowReset = table_dont_allow_reset
+                AllowReset = table_do_not_allow_reset
             ),
             (
                 WarnForIgnore = table_attr_ignore_with_warning

@@ -612,8 +612,8 @@
     ;       not_removable.
 
 :- type force_pruning
-    --->    force_pruning
-    ;       dont_force_pruning.
+    --->    do_not_force_pruning
+    ;       force_pruning.
 
 :- type trace_mutable_var_hlds
     --->    trace_mutable_var_hlds(
@@ -1507,7 +1507,7 @@
             % to be bound to a given constant, then the second variable
             % should be set to the corresponding local tag value.
 
-    ;       feature_dont_warn_singleton
+    ;       feature_do_not_warn_singleton
             % Don't warn about singletons in this goal. Intended to be used
             % by the state variable transformation, for situations such as the
             % following:

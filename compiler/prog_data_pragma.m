@@ -90,12 +90,12 @@
 :- func default_memo_table_attributes = table_attributes.
 
 :- type table_attr_statistics
-    --->    table_gather_statistics
-    ;       table_dont_gather_statistics.
+    --->    table_do_not_gather_statistics
+    ;       table_gather_statistics.
 
 :- type table_attr_allow_reset
-    --->    table_allow_reset
-    ;       table_dont_allow_reset.
+    --->    table_do_not_allow_reset
+    ;       table_allow_reset.
 
     % If the current backend cannot implement the requested form of tabling,
     % and is therefore forced to ignore it, should the compiler generate
@@ -172,8 +172,8 @@
 :- implementation.
 
 default_memo_table_attributes =
-    table_attributes(cts_all_strict, no, table_dont_gather_statistics,
-        table_dont_allow_reset, table_attr_ignore_with_warning).
+    table_attributes(cts_all_strict, no, table_do_not_gather_statistics,
+        table_do_not_allow_reset, table_attr_ignore_with_warning).
 
 tabled_eval_method_to_table_type(EvalMethod) = TableTypeStr :-
     (

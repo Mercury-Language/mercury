@@ -66,11 +66,11 @@
 %---------------------%
 
 :- type maybe_constrain_inst_vars
-    --->    dont_constrain_inst_vars
+    --->    do_not_constrain_inst_vars
     ;       constrain_some_inst_vars(inst_var_sub).
 
 :- type maybe_require_tm_mode
-    --->    dont_require_tm_mode
+    --->    do_not_require_tm_mode
     ;       require_tm_mode.
 
 :- type arg_context_func == (func(int) = cord(format_piece)).
@@ -428,13 +428,13 @@ parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
         % XXX We pass require_tm_mode to the predicates that parse
         % the arguments, but should we *require* this for functions?
         ArgContextFunc = arg_context_pieces(ContextPieces, pf_function),
-        parse_types_and_maybe_modes(dont_constrain_inst_vars, require_tm_mode,
-            wnhii_func_arg, VarSet, ArgContextFunc, ArgTerms, 1,
-            ArgTypeAndMaybeModes, [], ArgTMSpecs),
+        parse_types_and_maybe_modes(do_not_constrain_inst_vars,
+            require_tm_mode, wnhii_func_arg, VarSet, ArgContextFunc,
+            ArgTerms, 1, ArgTypeAndMaybeModes, [], ArgTMSpecs),
         RetContextPieces = ContextPieces ++ cord.from_list([
             words("in the return value of higher-order function type:"),
             nl]),
-        parse_type_and_maybe_mode(dont_constrain_inst_vars, require_tm_mode,
+        parse_type_and_maybe_mode(do_not_constrain_inst_vars, require_tm_mode,
             wnhii_func_return_arg, VarSet, RetContextPieces,
             RetTerm, MaybeRetTypeAndMaybeMode),
         parse_ho_type_and_inst_2(VarSet, ContextPieces, Purity,
@@ -444,9 +444,9 @@ parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
         BeforeIsTerm = term.functor(term.atom("pred"), ArgTerms, _)
     then
         ArgContextFunc = arg_context_pieces(ContextPieces, pf_predicate),
-        parse_types_and_maybe_modes(dont_constrain_inst_vars, require_tm_mode,
-            wnhii_pred_arg, VarSet, ArgContextFunc, ArgTerms, 1,
-            ArgTypeAndMaybeModes, [], ArgTMSpecs),
+        parse_types_and_maybe_modes(do_not_constrain_inst_vars,
+            require_tm_mode, wnhii_pred_arg, VarSet, ArgContextFunc,
+            ArgTerms, 1, ArgTypeAndMaybeModes, [], ArgTMSpecs),
         parse_ho_type_and_inst_2(VarSet, ContextPieces, Purity,
             ArgTypeAndMaybeModes, ArgTMSpecs, no, MaybeDetism, MaybeType)
     else
@@ -652,7 +652,7 @@ parse_type_and_maybe_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
                 MaybeMode = error1(ModeSpecs)
             )
         ;
-            MaybeInstConstraints = dont_constrain_inst_vars,
+            MaybeInstConstraints = do_not_constrain_inst_vars,
             parse_mode(no_allow_constrained_inst_var(wnciv_type_and_mode),
                 VarSet, ContextPieces, ModeTerm, MaybeMode)
         ),
@@ -703,7 +703,7 @@ parse_type_and_maybe_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
                 get_term_context(Term), MissingPieces),
             MaybeTypeAndMode = error1([MissingSpec])
         ;
-            MaybeRequireMode = dont_require_tm_mode,
+            MaybeRequireMode = do_not_require_tm_mode,
             parse_type(no_allow_ho_inst_info(Why), VarSet, ContextPieces, Term,
                 MaybeType),
             (

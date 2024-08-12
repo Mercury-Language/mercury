@@ -583,10 +583,10 @@ loop_over_any_nested_scopes(Reason0, Reason, Goal0, Goal) :-
             Reason1 = commit(ForcePruning1)
         then
             ( if
-                ForcePruning0 = dont_force_pruning,
-                ForcePruning1 = dont_force_pruning
+                ForcePruning0 = do_not_force_pruning,
+                ForcePruning1 = do_not_force_pruning
             then
-                ForcePruning2 = dont_force_pruning
+                ForcePruning2 = do_not_force_pruning
             else
                 ForcePruning2 = force_pruning
             ),

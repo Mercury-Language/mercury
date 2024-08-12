@@ -469,14 +469,14 @@ format_table_struct_info(ModuleInfo, PredProcId - TableStructInfo,
         Stats = table_gather_statistics,
         string.builder.append_string("% gather statistics\n", !State)
     ;
-        Stats = table_dont_gather_statistics,
+        Stats = table_do_not_gather_statistics,
         string.builder.append_string("% do not gather statistics\n", !State)
     ),
     (
         AllowReset = table_allow_reset,
         string.builder.append_string("% allow reset\n", !State)
     ;
-        AllowReset = table_dont_allow_reset,
+        AllowReset = table_do_not_allow_reset,
         string.builder.append_string("% do not allow reset\n", !State)
     ),
     (

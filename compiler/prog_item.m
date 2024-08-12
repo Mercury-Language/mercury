@@ -1722,7 +1722,7 @@
     % Indicates if a mutable is attached to the I/O state or not.
     %
 :- type mutable_attach_to_io_state
-    --->    mutable_dont_attach_to_io_state
+    --->    mutable_do_not_attach_to_io_state
     ;       mutable_attach_to_io_state.
 
     % Indicates if a mutable is constant or not.
@@ -1747,7 +1747,7 @@
 
 :- type mutable_maybe_constant
     --->    mutable_is_constant
-            % implies mutable_dont_attach_to_io_state
+            % implies mutable_do_not_attach_to_io_state
             % implies mutable_untrailed
             % implies mutable_not_thread_local
     ;       mutable_is_not_constant(

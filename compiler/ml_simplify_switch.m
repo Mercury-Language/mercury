@@ -218,13 +218,13 @@ maybe_eliminate_default(Range, Cases, Default, ReqDensity,
         NoDefaultDensity = switch_density(NumCases, TypeRange),
         NoDefaultDensity > ReqDensity
     then
-        NeedRangeCheck = dont_need_range_check,
+        NeedRangeCheck = do_not_need_range_check,
         FirstVal = Min,
         LastVal = Max
     else
         (
             Default = default_is_unreachable,
-            NeedRangeCheck = dont_need_range_check
+            NeedRangeCheck = do_not_need_range_check
         ;
             ( Default = default_do_nothing
             ; Default = default_case(_)
@@ -338,7 +338,7 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
         DoSwitch = ml_stmt_if_then_else(InRange, SwitchBody, Else, Context),
         Stmts = [StartComment, DoSwitch, EndLabelStmt, EndComment]
     ;
-        NeedRangeCheck = dont_need_range_check,
+        NeedRangeCheck = do_not_need_range_check,
         Stmts =
             [StartComment, DoJump | CasesCode] ++
             DefaultStmts ++
