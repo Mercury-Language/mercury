@@ -19,7 +19,7 @@
 
 :- import_module list.
 :- import_module int.
-:- import_module shallow2.
+:- import_module shallow_helper_1.
 
 main(!IO) :-
     ( if data(Data), queen(Data, Out) then

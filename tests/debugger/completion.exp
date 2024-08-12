@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred completion.main/2-0 (det) completion.m:17
+       1:      1  1 CALL pred completion.main/2-0 (det) completion.m:23
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -59,59 +59,86 @@ mdb: there is no such variable.
 mdb> 
 stack                stack_default_limit  stack_regs
 stack --detailed 
-   0       1       1    1 pred completion.main/2-0 (det) (completion.m:17) (empty)
+   0       1       1    1 pred completion.main/2-0 (det) (completion.m:23) (empty)
 mdb> 
-completion            completion.sub2       
-completion.sub1       completion.sub2.sub3  
-completion.sub1       completion.sub2       completion.sub2.sub3
-procedures completion.sub1
-List of procedures in module `completion.sub1'
-func completion.sub1.z1/0-0 (det)
-pred completion.sub1.zp/1-0 (det)
+completion
+completion.completion_helper_1
+completion.completion_helper_2
+completion.completion_helper_2.completion_helper_3
+completion.completion_helper_1
+completion.completion_helper_2
+completion.completion_helper_2.completion_helper_3
+procedures completion.completion_helper_1
+List of procedures in module `completion.completion_helper_1'
+func completion.completion_helper_1.z1/0-0 (det)
+pred completion.completion_helper_1.zp/1-0 (det)
 mdb> 
 format        format_param  
 format_param  --flat  lines 10
 mdb> unalias excp 
 Alias `excp' removed.
 mdb> b zabc3 
- 0: + stop  interface func completion.sub2.sub3.zabc3/0-0 (det)
+ 0: + stop  interface func completion.completion_helper_2.completion_helper_3.zabc3/0-0 (det)
 mdb> 
-func*completion.            func*completion.sub2.
-func*completion.sub1.       func*completion.sub2.sub3.
+func*completion.
+func*completion.completion_helper_1.
+func*completion.completion_helper_2.
+func*completion.completion_helper_2.completion_helper_3.
 func*completion.z   func*completion.zz  
 b func*completion.z
  1: + stop  interface func completion.z/0-0 (det)
 mdb> 
-completion.                completion.sub1.m:15
-completion.m:17            completion.sub1.m:17
-completion.m:18            completion.sub2.
-completion.m:21            completion.sub2.m:15
-completion.m:24            completion.sub2.sub3.
-completion.sub1.           completion.sub2.sub3.m:13
-completion.sub1.           completion.sub2.m:15
-completion.sub1.m:15       completion.sub2.sub3.
-completion.sub1.m:17       completion.sub2.sub3.m:13
-completion.sub2.           
-completion.sub1.m:15  completion.sub1.z1    
-completion.sub1.m:17  completion.sub1.zp    
-b completion.sub1.z1
- 2: + stop  interface func completion.sub1.z1/0-0 (det)
+completion.
+completion.completion_helper_1.
+completion.completion_helper_1.m:15
+completion.completion_helper_1.m:17
+completion.completion_helper_2.
+completion.completion_helper_2.completion_helper_3.
+completion.completion_helper_2.completion_helper_3.m:13
+completion.completion_helper_2.m:15
+completion.m:23
+completion.m:24
+completion.m:27
+completion.m:30
+completion.completion_helper_1.
+completion.completion_helper_1.m:15
+completion.completion_helper_1.m:17
+completion.completion_helper_2.
+completion.completion_helper_2.completion_helper_3.
+completion.completion_helper_2.completion_helper_3.m:13
+completion.completion_helper_2.m:15
+completion.completion_helper_1.m:15  completion.completion_helper_1.z1
+completion.completion_helper_1.m:17  completion.completion_helper_1.zp
+b completion.completion_helper_1.z1
+ 2: + stop  interface func completion.completion_helper_1.z1/0-0 (det)
 mdb> 
-completion.                completion.sub1.m:15
-completion.m:17            completion.sub1.m:17
-completion.m:18            completion.sub2.
-completion.m:21            completion.sub2.m:15
-completion.m:24            completion.sub2.sub3.
-completion.sub1.           completion.sub2.sub3.m:13
-completion.sub1.           completion.sub2.m:15
-completion.sub1.m:15       completion.sub2.sub3.
-completion.sub1.m:17       completion.sub2.sub3.m:13
-completion.sub2.           
-completion.sub2.           completion.sub2.sub3.
-completion.sub2.m:15       completion.sub2.sub3.m:13
-completion.sub2.sub3.m:13   completion.sub2.sub3.zabc3
-b completion.sub2.sub3.zabc3 
- 3: + stop  interface func completion.sub2.sub3.zabc3/0-0 (det)
+completion.
+completion.completion_helper_1.
+completion.completion_helper_1.m:15
+completion.completion_helper_1.m:17
+completion.completion_helper_2.
+completion.completion_helper_2.completion_helper_3.
+completion.completion_helper_2.completion_helper_3.m:13
+completion.completion_helper_2.m:15
+completion.m:23
+completion.m:24
+completion.m:27
+completion.m:30
+completion.completion_helper_1.
+completion.completion_helper_1.m:15
+completion.completion_helper_1.m:17
+completion.completion_helper_2.
+completion.completion_helper_2.completion_helper_3.
+completion.completion_helper_2.completion_helper_3.m:13
+completion.completion_helper_2.m:15
+completion.completion_helper_2.
+completion.completion_helper_2.completion_helper_3.
+completion.completion_helper_2.completion_helper_3.m:13
+completion.completion_helper_2.m:15
+completion.completion_helper_2.completion_helper_3.m:13
+completion.completion_helper_2.completion_helper_3.zabc3
+b completion.completion_helper_2.completion_helper_3.zabc3 
+ 3: + stop  interface func completion.completion_helper_2.completion_helper_3.zabc3/0-0 (det)
 mdb> 
 2d                  2dice               2document_category
 2dd                 2diff               2down
@@ -119,6 +146,6 @@ mdb>
 2delete             2document           
 2debug_vars  2delete      
 2delete 
- 2: E stop  interface func completion.sub1.z1/0-0 (det)
+ 2: E stop  interface func completion.completion_helper_1.z1/0-0 (det)
 mdb> c
 ok

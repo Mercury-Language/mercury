@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module poly_io_retry2.
+:- module poly_io_retry_2.
 
 :- interface.
 

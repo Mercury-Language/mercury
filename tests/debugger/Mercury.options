@@ -14,8 +14,8 @@ MCFLAGS-label_layout            += --opt-space
 
 MCFLAGS-io_tab_goto             += --trace-table-io-all
 MCFLAGS-no_inline_builtins      += --no-inline-builtins
-MCFLAGS-poly_io_retry           += --trace-table-io-all
-MCFLAGS-poly_io_retry2          += --trace-table-io-all
+MCFLAGS-poly_io_retry_1         += --trace-table-io-all
+MCFLAGS-poly_io_retry_2         += --trace-table-io-all
 MCFLAGS-print_io_actions        += --trace-table-io-all
 MCFLAGS-queens_rep              += --trace rep
 MCFLAGS-scripts                 += --trace rep
@@ -45,13 +45,13 @@ MCFLAGS-uci                     += -O2 --compare-specialization 2
 # asm_fast.gc.debug.tr.
 MCFLAGS-uci_index      += --compare-specialization 2 --intermodule-optimization
 
-MCFLAGS-user_event              += --event-set-file-name user_event_spec
+MCFLAGS-user_event_1            += --event-set-file-name user_event_spec
+MCFLAGS-user_event_2            += --event-set-file-name user_event_spec_2
 MCFLAGS-user_event_shallow      += --event-set-file-name user_event_spec \
                                     --trace shallow -O2
 MCFLAGS-user_event_shallow_exported += \
                                     --event-set-file-name user_event_spec_3 \
                                     --trace shallow
-MCFLAGS-user_event_2            += --event-set-file-name user_event_spec_2
 MCFLAGS-synth_attr              += --event-set-file-name synth_attr_spec
 MCFLAGS-synth_attr_impure       += --event-set-file-name synth_attr_impure_spec
 

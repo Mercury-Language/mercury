@@ -173,7 +173,7 @@ MCFLAGS-type_qual               += --infer-all --from-ground-term-threshold=4
 MCFLAGS-type_spec               += --user-guided-type-specialization
 MCFLAGS-existential_types_test      += --infer-all
 MCFLAGS-existential_float           += --infer-all
-MCFLAGS-user_defined_equality       += --infer-all
+MCFLAGS-user_defined_equality_1     += --infer-all
 MCFLAGS-parse                       += --trace rep
 MCFLAGS-unused_float_box_test       += --infer-all
 

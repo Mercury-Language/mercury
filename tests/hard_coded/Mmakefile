@@ -523,7 +523,7 @@ ORDINARY_PROGS = \
 	unusual_name_mutable \
 	uo_regression1 \
 	user_compare \
-	user_defined_equality2 \
+	user_defined_equality_2 \
 	utf8_io \
 	value_enum \
 	word_aligned_pointer \
@@ -863,7 +863,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		try_syntax_6 \
 		try_syntax_7 \
 		uint_arith \
-		user_defined_equality \
+		user_defined_equality_1 \
 		version_array_test \
 		version_hash_table_delete \
 		version_hash_table_test_1 \

@@ -6,7 +6,7 @@
 % unifications on enums and compound types correctly.
 % (Version 0.4 of the compiler failed this test.)
 
-:- module det_complicated_unify.
+:- module det_complicated_unify_1.
 :- interface.
 :- import_module io.
 

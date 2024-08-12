@@ -6,11 +6,11 @@ Contexts will be printed before, on the same line.
 mdb> context
 Contexts are printed before, on the same line.
 mdb> step
-       2:      2  2 CALL shallow2.m:17 pred shallow2.safe/1-0 (semidet)
+       2:      2  2 CALL shallow_helper_1.m:17 pred shallow_helper_1.safe/1-0 (semidet)
 mdb> print *
        HeadVar__1             	[1, 2, 3, 4, 5]
 mdb> stack
-   0       pred shallow2.safe/1-0 (semidet) (shallow2.m:17)
+   0       pred shallow_helper_1.safe/1-0 (semidet) (shallow_helper_1.m:17)
    1       pred shallow.queen/2-0 (nondet)
    2       pred shallow.main/2-0 (cc_multi) (shallow.m:25)
 mdb> c -S

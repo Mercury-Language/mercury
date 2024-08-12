@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module shallow2.
+:- module shallow_helper_1.
 
 :- interface.
 

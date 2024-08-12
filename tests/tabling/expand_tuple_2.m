@@ -5,7 +5,7 @@
 %
 % The test is a modified version of expand_tuple.
 
-:- module expand_tuple2.
+:- module expand_tuple_2.
 
 :- interface.
 

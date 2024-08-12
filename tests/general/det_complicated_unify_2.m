@@ -7,7 +7,7 @@
 % Version 0.4 of the compiler failed this test, as did some versions of
 % an optimization in unify_proc.generate_du_unify_clauses.
 
-:- module det_complicated_unify2.
+:- module det_complicated_unify_2.
 :- interface.
 :- import_module io.
 

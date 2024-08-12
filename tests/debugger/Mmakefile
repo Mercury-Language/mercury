@@ -54,8 +54,8 @@ NONRETRY_PROGS = \
 	mutrec				\
 	mutrec_higher_order		\
 	pack				\
-	poly_io_retry			\
-	poly_io_retry2			\
+	poly_io_retry_1			\
+	poly_io_retry_2			\
 	polymorphic_ground_term		\
 	polymorphic_output		\
 	print_goal			\
@@ -70,7 +70,7 @@ NONRETRY_PROGS = \
 	synth_attr_impure		\
 	type_desc_test			\
 	uci_index			\
-	user_event			\
+	user_event_1			\
 	user_event_2
 
 TABLING_PROGS = \
@@ -331,13 +331,13 @@ deeply_nested_typeinfo.out: deeply_nested_typeinfo deeply_nested_typeinfo.inp
 double_print.out: double_print double_print.inp
 	$(MDB_STD) ./double_print < double_print.inp > double_print.out 2>&1
 
-poly_io_retry.out: poly_io_retry poly_io_retry.inp
-	$(MDB_STD) ./poly_io_retry < poly_io_retry.inp \
-		> poly_io_retry.out 2>&1
+poly_io_retry_1.out: poly_io_retry_1 poly_io_retry_1.inp
+	$(MDB_STD) ./poly_io_retry_1 < poly_io_retry_1.inp \
+		> poly_io_retry_1.out 2>&1
 
-poly_io_retry2.out: poly_io_retry2 poly_io_retry2.inp
-	$(MDB_STD) ./poly_io_retry2 < poly_io_retry2.inp \
-		> poly_io_retry2.out 2>&1
+poly_io_retry_2.out: poly_io_retry_2 poly_io_retry_2.inp
+	$(MDB_STD) ./poly_io_retry_2 < poly_io_retry_2.inp \
+		> poly_io_retry_2.out 2>&1
 
 # The exception_cmd, exception_vars and loopcheck tests
 # are supposed to return a non-zero exit status, since they exit by throwing
@@ -654,8 +654,9 @@ synth_attr_impure.out: synth_attr_impure synth_attr_impure.inp \
 	$(MDB_STD) ./synth_attr_impure < synth_attr_impure.inp \
 		> synth_attr_impure.out 2>&1
 
-user_event.out: user_event user_event.inp user_event_spec
-	$(MDB_STD) ./user_event < user_event.inp 2>&1 > user_event.out 2>&1
+user_event_1.out: user_event_1 user_event_1.inp user_event_spec
+	$(MDB_STD) ./user_event_1 < user_event_1.inp \
+		> user_event_1.out 2>&1
 
 user_event_2.out: user_event_2 user_event_2.inp user_event_spec_2
 	$(MDB_STD) ./user_event_2 < user_event_2.inp \

@@ -12,7 +12,7 @@
 % The switch must be in the condition of the if-then-else, and the
 % test unification must follow it.
 
-:- module liveness2.
+:- module liveness_2.
 
 :- interface.
 

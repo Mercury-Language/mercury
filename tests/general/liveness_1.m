@@ -11,7 +11,7 @@
 % then the compiler assumes that they have become automagically live, and
 % so just assumes they are in some random register.)
 
-:- module liveness.
+:- module liveness_1.
 :- interface.
 :- import_module io.
 
@@ -78,23 +78,29 @@ p3(X) :-
     t(Y3, Z, X).
 
 :- pred q(int::out) is det.
+
 q(2).
 
 :- pred r(int::out) is det.
+
 r(3).
 
 :- pred s(int::in, int::out) is det.
+
 s(X, Y4) :-
     Y4 = X + 10.
 
 :- pred t(int::in, int::in, int::out) is det.
+
 t(X, Y5, Z) :-
     Z = X * 100 + Y5.
 
 :- pred u(int::in, int::in, int::in, int::in, int::in) is semidet.
+
 u(A, B, C, D, E) :-
     Sum = A + B + C + D + E,
     Sum > 200.
 
 :- pred v(bool::out) is det.
+
 v(yes).

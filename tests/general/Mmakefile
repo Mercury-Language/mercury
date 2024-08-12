@@ -19,12 +19,12 @@ ORDINARY_PROGS = \
 	commit_bug_1			\
 	commit_bug_2			\
 	complex_failure			\
-	det_complicated_unify		\
+	det_complicated_unify_1		\
 	determinism_inlining		\
 	disj_disj			\
 	do_while			\
-	double_error			\
-	double_error2			\
+	double_error_1			\
+	double_error_2			\
 	duplicate_label			\
 	fail_detism			\
 	float_roundtrip			\
@@ -37,8 +37,8 @@ ORDINARY_PROGS = \
 	intermod_type			\
 	io_foldl			\
 	io_regression			\
-	liveness			\
-	liveness2			\
+	liveness_1			\
+	liveness_2			\
 	map_equal			\
 	mode_inf			\
 	mode_inf_bug			\

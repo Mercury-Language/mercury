@@ -8,7 +8,7 @@
 % specialization of unifications involving no-tag types with user-defined
 % equality.
 
-:- module user_defined_equality2.
+:- module user_defined_equality_2.
 :- interface.
 :- import_module io.
 

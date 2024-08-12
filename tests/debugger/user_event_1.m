@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module user_event.
+:- module user_event_1.
 
 :- interface.
 

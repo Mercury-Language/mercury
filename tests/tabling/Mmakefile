@@ -14,8 +14,8 @@ SIMPLE_NONLOOP_PROGS = \
 	expand_bitmap \
 	expand_float \
 	expand_poly \
-	expand_tuple \
-	expand_tuple2 \
+	expand_tuple_1 \
+	expand_tuple_2 \
 	fast_loose \
 	fib \
 	fib_float \

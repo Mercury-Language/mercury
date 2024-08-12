@@ -16,7 +16,7 @@
 % is not propagated across MR_call_engine properly. (It should work fine
 % with the default --special-preds.)
 
-:- module user_defined_equality.
+:- module user_defined_equality_1.
 :- interface.
 :- import_module io.
 

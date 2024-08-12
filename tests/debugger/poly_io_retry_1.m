@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module poly_io_retry.
+:- module poly_io_retry_1.
 
 :- interface.
 
@@ -16,7 +16,7 @@
 :- import_module list.
 
 main(!IO) :-
-    polycall(poly_io_retry.write_int(1), !IO),
+    polycall(poly_io_retry_1.write_int(1), !IO),
     A = array([0]),
     polycall(array_update, A, B),
     io.write(B, !IO),
@@ -33,11 +33,10 @@ polycall(P, !S) :- P(!S).
 
 array_update(!A) :- !:A = !.A ^ elem(0) := 1.
 
-:- pred poly_io_retry.write_int(int::in, io::di, io::uo)
-    is det.
+:- pred write_int(int::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
-    poly_io_retry.write_int(N::in, IO0::di, IO::uo),
+    write_int(N::in, IO0::di, IO::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "{
     printf(""%d\\n"", (int) N);

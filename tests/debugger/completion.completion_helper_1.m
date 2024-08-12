@@ -2,12 +2,16 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module completion.sub2.sub3.
+:- module completion.completion_helper_1.
 
 :- interface.
 
-:- func zabc3 = int.
+:- func z1 = int.
+
+:- pred zp(int::out) is det.
 
 :- implementation.
 
-zabc3 = 3.
+z1 = 1.
+
+zp(1).

@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module double_error.
+:- module double_error_1.
 
 :- interface.
 

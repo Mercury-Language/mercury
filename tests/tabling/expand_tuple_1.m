@@ -8,7 +8,7 @@
 % The test is the same as expand_poly -- it needs to be done separately
 % because if too many tests are run at once the program runs out of memory.
 
-:- module expand_tuple.
+:- module expand_tuple_1.
 
 :- interface.
 
