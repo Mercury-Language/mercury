@@ -1369,11 +1369,15 @@ write_unification(InfoGoal, Indent, Unification, !State) :-
         ModeStr = mercury_unify_mode_to_string(InstVarSet, Mode),
         string.builder.format("%s%% %s, mode: %s\n",
             [s(IndentStr), s(CanFailStr), s(ModeStr)], !State),
-
-        TypeInfoVarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
-            TypeInfoVars),
-        string.builder.format("%s%% type-info vars: %s\n",
-            [s(IndentStr), s(TypeInfoVarsStr)], !State)
+        (
+            TypeInfoVars = []
+        ;
+            TypeInfoVars = [_ | _],
+            TypeInfoVarsStr = mercury_vars_to_string_src(VarNameSrc,
+                VarNamePrint, TypeInfoVars),
+            string.builder.format("%s%% type-info vars: %s\n",
+                [s(IndentStr), s(TypeInfoVarsStr)], !State)
+        )
     ).
 
 :- pred format_functor_and_submodes(hlds_out_info_goal::in,

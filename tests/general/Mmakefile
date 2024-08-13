@@ -20,6 +20,7 @@ ORDINARY_PROGS = \
 	commit_bug_2			\
 	complex_failure			\
 	det_complicated_unify_1		\
+	det_complicated_unify_2		\
 	determinism_inlining		\
 	disj_disj			\
 	do_while			\

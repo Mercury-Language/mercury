@@ -336,8 +336,8 @@ modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
             else
                 unexpected($pred, "bad cast")
             ),
-            Mode1 = in_mode,
-            Mode2 = out_mode,
+            is_in_mode(Mode1, _Mode1ArgInsts),
+            is_out_mode(Mode2, _Mode2ArgInsts),
             instmap_lookup_var(InstMap, Arg1, Inst1),
             Inst1 = bound(Unique, _, [bound_functor(ConsId, [])]),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),

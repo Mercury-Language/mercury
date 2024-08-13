@@ -62,6 +62,13 @@
 
 %---------------------------------------------------------------------------%
 
+:- pred is_in_mode(mer_mode::in, list(mer_inst)::out) is semidet.
+:- pred is_out_mode(mer_mode::in, list(mer_inst)::out) is semidet.
+
+:- pred is_std_mode(mer_mode::in, string::out, list(mer_inst)::out) is semidet.
+
+%---------------------------------------------------------------------------%
+
     % inst_lists_to_mode_list(InitialInsts, FinalInsts, Modes):
     %
     % Given two lists of corresponding initial and final insts, return
@@ -249,10 +256,12 @@
 
 in_mode(in_mode).
 in_mode = make_std_mode("in", []).
+
 in_mode(I) = make_std_mode("in", [I]).
 
 out_mode(out_mode).
 out_mode = make_std_mode("out", []).
+
 out_mode(I) = make_std_mode("out", [I]).
 
 di_mode(di_mode).
@@ -281,12 +290,25 @@ clobbered_inst = ground(clobbered, none_or_default_func).
 mostly_clobbered_inst = ground(mostly_clobbered, none_or_default_func).
 any_inst = any(shared, none_or_default_func).
 
-make_std_mode(Name, Args, make_std_mode(Name, Args)).
+make_std_mode(Name, ArgInsts, make_std_mode(Name, ArgInsts)).
 
-make_std_mode(Name, Args) = Mode :-
-    MercuryBuiltin = mercury_public_builtin_module,
-    QualifiedName = qualified(MercuryBuiltin, Name),
-    Mode = user_defined_mode(QualifiedName, Args).
+make_std_mode(Name, ArgInsts) = Mode :-
+    ModeSymName = qualified(mercury_public_builtin_module, Name),
+    Mode = user_defined_mode(ModeSymName, ArgInsts).
+
+%---------------------------------------------------------------------------%
+
+is_in_mode(Mode, ArgInsts) :-
+    is_std_mode(Mode, Name, ArgInsts),
+    Name = "in".
+
+is_out_mode(Mode, ArgInsts) :-
+    is_std_mode(Mode, Name, ArgInsts),
+    Name = "out".
+
+is_std_mode(Mode, Name, ArgInsts) :-
+    Mode = user_defined_mode(ModeSymName, ArgInsts),
+    ModeSymName = qualified(mercury_public_builtin_module, Name).
 
 %---------------------------------------------------------------------------%
 
