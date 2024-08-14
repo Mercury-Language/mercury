@@ -71,6 +71,20 @@
     %
 :- pred get_install_name_option(globals::in, string::in, string::out) is det.
 
+    % get_std_grade_specific_install_dir(Globals, GradeDir,
+    %   GradeSpecificPathName):
+    %
+    % Return the full pathname of the grade-specific install directory,
+    % i.e. the directory in which grade-specific files should be installed.
+    %
+    % The GradeDir argument should be computed by calling
+    % grade_directory_component(Globals, GradeDir). We take it as an argument
+    % instead of computing it inside this predicate because our caller
+    % is likely to have made that call already for other purposes.
+    %
+:- pred get_std_grade_specific_install_lib_dir(globals::in, string::in,
+    string::out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- pred maybe_report_stats(io.text_output_stream::in, bool::in,
@@ -295,23 +309,31 @@ cannot_open_file_for_input(FileName, Error) =
 
 %---------------------------------------------------------------------------%
 
-% Changes to the following predicate may require similar changes to
-% make.program_target.install_library_grade_files/9.
-
 get_install_name_option(Globals, OutputFileName, InstallNameOpt) :-
     globals.lookup_string_option(Globals, shlib_linker_install_name_flag,
         InstallNameFlag),
     globals.lookup_string_option(Globals, shlib_linker_install_name_path,
         InstallNamePath0),
     ( if InstallNamePath0 = "" then
-        globals.lookup_string_option(Globals, install_prefix, InstallPrefix),
         grade_directory_component(Globals, GradeDir),
-        InstallNamePath = InstallPrefix / "lib" / "mercury" / "lib" / GradeDir
+        get_std_grade_specific_install_lib_dir(Globals, GradeDir,
+            InstallNamePath)
     else
         InstallNamePath = InstallNamePath0
     ),
     InstallNameOpt = InstallNameFlag ++
         quote_shell_cmd_arg(InstallNamePath) / OutputFileName.
+
+get_std_grade_specific_install_lib_dir(Globals, GradeDir, InstallNamePath) :-
+    % NOTE The naming scheme for grade-specific directories in
+    % *installed* copies of a library is quite different from the
+    % naming schemes of grade-specific directories in workspaces.
+    % This difference seems to me (zs) to be both unnecessary and undesirable,
+    % since (a) it effectvely doubles the amount of code required to handle
+    % the names of such directories, and (b) it makes the system much
+    % harder to understand than necessary.
+    globals.lookup_string_option(Globals, install_prefix, InstallPrefix),
+    InstallNamePath = InstallPrefix / "lib" / "mercury" / "lib" / GradeDir.
 
 %---------------------------------------------------------------------------%
 

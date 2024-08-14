@@ -1332,11 +1332,12 @@ make_ngs_dir_names(SubDirName) = NgsSubDirNames :-
 make_gs_dir_names(Globals, SubDirName) = GsSubDirNames :-
     grade_directory_component(Globals, Grade),
     globals.lookup_string_option(Globals, target_arch, TargetArch),
-    % The extra "Mercury" is needed so we can use `--intermod-directory
-    % Mercury/<grade>/<target_arch>' and `--c-include
-    % Mercury/<grade>/<target_arch>' to find the local `.opt' and `.mih'
-    % files without messing up the search for the files for installed
-    % libraries.
+    % The extra "Mercury" is needed so we can use
+    % `--intermod-directory Mercury/<grade>/<target_arch>' and
+    % `--c-include Mercury/<grade>/<target_arch>'
+    % to find the local `.opt' and `.mih' files without messing up
+    % the search for the files for installed libraries.
+    % XXX This seems ... suboptimal to me (zs).
     GsSubDirNames = ["Mercury", Grade, TargetArch, "Mercury", SubDirName].
 
 %---------------------------------------------------------------------------%

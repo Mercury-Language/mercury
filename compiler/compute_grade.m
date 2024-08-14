@@ -73,6 +73,7 @@
 
 :- import_module libs.compiler_util.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
 :- import_module getopt.
@@ -454,29 +455,16 @@ grade_directory_component(Globals, Grade) :-
     % We used to strip out the `.picreg' part of the grade,
     % while we still had it.
 
-compute_grade(Globals, Grade) :-
+compute_grade(Globals, GradeStr) :-
     globals.get_options(Globals, Options),
     compute_grade_components(Options, Components),
     (
         Components = [],
-        Grade = "none"
+        GradeStr = "none"
     ;
         Components = [_ | _],
-        construct_string(Components, Grade)
-    ).
-
-:- pred construct_string(list(pair(grade_component, string))::in, string::out)
-    is det.
-
-construct_string([], "").
-construct_string([_ - Bit | Bits], Grade) :-
-    (
-        Bits = [_ | _],
-        construct_string(Bits, Grade0),
-        string.append_list([Bit, ".", Grade0], Grade)
-    ;
-        Bits = [],
-        Grade = Bit
+        ComponentNames = assoc_list.values(Components),
+        GradeStr = string.join_list(".", ComponentNames)
     ).
 
 :- pred compute_grade_components(option_table::in,
@@ -511,6 +499,9 @@ compute_grade_components(Options, GradeComponents) :-
             ;
                 MaybeTargets = no
             ),
+            % NOTE We return Comp alongside name, even though our caller
+            % ignores it, because we want solutions to sort grade components
+            % on Comp, not on Name.
             CompData = Comp - Name
         ), GradeComponents).
 

@@ -759,9 +759,9 @@ rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
     make_info_set_command_line_targets(CmdLineTargets, !Info),
     (
         Succeeded = succeeded,
-        FileTimestamps2 = make_info_get_file_timestamps(!.Info),
+        FileTimestamps0 = make_info_get_file_timestamps(!.Info),
         map.delete(FullMainModuleLinkedFileName,
-            FileTimestamps2, FileTimestamps),
+            FileTimestamps0, FileTimestamps),
         make_info_set_file_timestamps(FileTimestamps, !Info)
         % There is no module_target_type for the linked target,
         % so mki_target_file_timestamps should not contain anything
@@ -858,7 +858,7 @@ make_java_files(ProgressStream, Globals, MainModuleName, ObjModules,
         % it probably won't) so clear out all the timestamps which might be
         % affected.
         Timestamps0 = make_info_get_file_timestamps(!.Info),
-        map.foldl(do_not_reinsert_java_class_timestamps, Timestamps0,
+        map.foldl(reinsert_timestamps_for_non_class_files, Timestamps0,
             map.init, Timestamps),
         make_info_set_file_timestamps(Timestamps, !Info),
         % For simplicity, clear out all target file timestamps.
@@ -935,11 +935,12 @@ build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded,
             HeadJavaFile, TailJavaFiles),
         Succeeded, !IO).
 
-:- pred do_not_reinsert_java_class_timestamps(string::in,
+:- pred reinsert_timestamps_for_non_class_files(string::in,
     maybe_error(timestamp)::in,
     file_timestamps::in, file_timestamps::out) is det.
 
-do_not_reinsert_java_class_timestamps(FileName, MaybeTimestamp, !Timestamps) :-
+reinsert_timestamps_for_non_class_files(FileName, MaybeTimestamp,
+        !Timestamps) :-
     ( if string.suffix(FileName, ".class") then
         true
     else
@@ -1384,7 +1385,7 @@ build_analysis_files_1(ProgressStream, Globals, MainModuleName, AllModules,
     get_target_modules(ProgressStream, Globals,
         module_target_analysis_registry, AllModules, TargetModules0,
         !Info, !IO),
-    get_reverse_ordered_modules(
+    get_bottom_up_ordered_modules(
         make_info_get_maybe_module_dep_info_map(!.Info),
         TargetModules0, TargetModules1),
     % Filter out the non-local modules so we don't try to reanalyse them.
@@ -1482,16 +1483,16 @@ get_non_nested_target_modules(ProgressStream, Globals, ModuleName,
 
 %---------------------------------------------------------------------------%
 
-    % Return a list of modules in reverse order of their dependencies, i.e.
-    % the list is the module dependency graph from bottom-up. Mutually
+    % Return a list of modules in reverse order of their dependencies,
+    % i.e. the list is the module dependency graph from bottom-up. Mutually
     % dependent modules (modules which form a clique in the dependency graph)
     % are returned adjacent in the list in arbitrary order.
     %
-:- pred get_reverse_ordered_modules(
+:- pred get_bottom_up_ordered_modules(
     map(module_name, maybe_module_dep_info)::in,
     list(module_name)::in, list(module_name)::out) is det.
 
-get_reverse_ordered_modules(ModuleDeps, Modules0, Modules) :-
+get_bottom_up_ordered_modules(ModuleDeps, Modules0, Modules) :-
     list.foldl2(
         add_module_relations(lookup_module_dep_info_in_maybe_map(ModuleDeps)),
         Modules0, digraph.init, _IntDepsGraph, digraph.init, ImpDepsGraph),
@@ -1918,9 +1919,6 @@ install_library_grade_2(ProgressStream, Globals, LinkSucceeded0,
     % Install the `.a', `.so', `.jar', `.opt' and `.mih' files for
     % the current grade.
     %
-    % NOTE: changes here may require changes to
-    %       file_util.get_install_name_option/4.
-    %
 :- pred install_library_grade_files(io.text_output_stream::in, globals::in,
     maybe_succeeded::in, string::in, module_name::in, list(module_name)::in,
     maybe_succeeded::out, make_info::in, make_info::out,
@@ -1930,32 +1928,32 @@ install_library_grade_files(ProgressStream, Globals, LinkSucceeded0, GradeDir,
         ModuleName, AllModules, Succeeded, !Info, !IO) :-
     make_grade_install_dirs(ProgressStream, Globals, GradeDir,
         DirResult, LinkSucceeded1, !IO),
+    % TODO {ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep), "module_deps"}
     LinkSucceeded = LinkSucceeded0 `and` LinkSucceeded1,
     (
         DirResult = succeeded,
-        linked_target_file_name(Globals, ModuleName, static_library,
-            LibFileName, !IO),
-        linked_target_file_name(Globals, ModuleName, shared_library,
-            SharedLibFileName, !IO),
-        linked_target_file_name(Globals, ModuleName, csharp_library,
-            DllFileName, !IO),
-        linked_target_file_name(Globals, ModuleName, java_archive,
-            JarFileName, !IO),
-
-        globals.lookup_string_option(Globals, install_prefix, Prefix),
-
-        ( if string.prefix(GradeDir, "csharp") then
-            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/GradeDir,
+        globals.get_target(Globals, Target),
+        get_std_grade_specific_install_lib_dir(Globals, GradeDir, GradeLibDir),
+        (
+            Target = target_csharp,
+            linked_target_file_name(Globals, ModuleName, csharp_library,
+                DllFileName, !IO),
             install_file(ProgressStream, Globals, DllFileName, GradeLibDir,
                 LibsSucceeded, !IO),
             InitSucceeded = succeeded
-        else if string.prefix(GradeDir, "java") then
-            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/GradeDir,
+        ;
+            Target = target_java,
+            linked_target_file_name(Globals, ModuleName, java_archive,
+                JarFileName, !IO),
             install_file(ProgressStream, Globals, JarFileName, GradeLibDir,
                 LibsSucceeded, !IO),
             InitSucceeded = succeeded
-        else
-            GradeLibDir = Prefix/"lib"/"mercury"/"lib"/GradeDir,
+        ;
+            Target = target_c,
+            linked_target_file_name(Globals, ModuleName, static_library,
+                LibFileName, !IO),
+            linked_target_file_name(Globals, ModuleName, shared_library,
+                SharedLibFileName, !IO),
             maybe_install_library_file(ProgressStream, Globals, "static",
                 LibFileName, GradeLibDir, LibSucceeded0, !IO),
             ( if LibFileName = SharedLibFileName then
@@ -1987,6 +1985,8 @@ install_library_grade_files(ProgressStream, Globals, LinkSucceeded0, GradeDir,
 
 install_grade_init(ProgressStream, Globals, GradeDir, ModuleName,
         Succeeded, !IO) :-
+    % XXX Should we generalize get_std_grade_specific_install_lib_dir
+    % to include this s/lib/modules/ version?
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     GradeModulesDir = Prefix / "lib" / "mercury" / "modules" / GradeDir,
     module_name_to_file_name(Globals, $pred, ext_cur_gs(ext_cur_gs_lib_init),
@@ -2100,16 +2100,15 @@ maybe_install_library_file(ProgressStream, Globals, Linkage,
             Succeeded0, !IO),
 
         % We need to update the archive index after we copy a .a file to
-        % the installation directory because the linkers on some OSs
+        % the installation directory, because the linkers on some OSs
         % complain if we don't.
         ( if
             Linkage = "static",
             Succeeded0 = succeeded
         then
-            % Since mmc --make uses --use-subdirs the above FileName will
+            % Since mmc --make uses --use-subdirs, the above FileName will
             % be directory qualified. We don't care about the build
             % directory here so we strip that qualification off.
-
             BaseFileName = dir.det_basename(FileName),
             generate_archive_index(ProgressStream, Globals, BaseFileName,
                 InstallDir, Succeeded, !IO)
@@ -2124,7 +2123,6 @@ maybe_install_library_file(ProgressStream, Globals, Linkage,
     file_name::in, dir_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 install_file(ProgressStream, Globals, FileName, InstallDir, Succeeded, !IO) :-
-    % XXX MAKE_STREAM
     verbose_make_four_part_msg(Globals, "Installing file", FileName,
         "in", InstallDir, InstallMsg),
     maybe_write_msg(ProgressStream, InstallMsg, !IO),
@@ -2180,7 +2178,7 @@ make_grade_install_dirs(ProgressStream, Globals, Grade,
     GradeModuleSubdir = LibDir/"modules"/Grade,
     make_directory(GradeModuleSubdir, Result3, !IO),
 
-    Results0 = [Result1, Result2, Result3],
+    Results123 = [Result1, Result2, Result3],
 
     make_install_symlink(Globals, GradeIncSubdir, "mih", LinkResult0, !IO),
     list.map_foldl(make_install_symlink(Globals, GradeIntsSubdir),
@@ -2188,14 +2186,16 @@ make_grade_install_dirs(ProgressStream, Globals, Grade,
     LinkResult = and_list([LinkResult0 | LinkResults]),
     (
         LinkResult = succeeded,
-        Results = Results0
+        Results = Results123
     ;
         LinkResult = did_not_succeed,
+        % XXX Why do we create these directories *only* when
+        % LinkResult = did_not_succeed?
         make_directory(GradeIncSubdir/"mihs", Result4, !IO),
         make_directory(GradeIntsSubdir/"opts", Result5, !IO),
         make_directory(GradeIntsSubdir/"trans_opts", Result6, !IO),
         make_directory(GradeIntsSubdir/"analyses", Result7, !IO),
-        Results = [Result4, Result5, Result6, Result7 | Results0]
+        Results = Results123 ++ [Result4, Result5, Result6, Result7]
     ),
     print_mkdir_errors(ProgressStream, Results, Result, !IO).
 
@@ -2209,9 +2209,12 @@ print_mkdir_errors(ProgressStream, [Result | Results], Succeeded, !IO) :-
         print_mkdir_errors(ProgressStream, Results, Succeeded, !IO)
     ;
         Result = error(Error),
+        ErrorMsg = io.error_message(Error),
+        % XXX Error does not identify the directory. This should be fixed,
+        % *if* we ever see this error message actually being triggered.
         io.format(ProgressStream,
-            "Error creating installation directories: %s\n",
-            [s(io.error_message(Error))], !IO),
+            "Error creating installation directory: %s\n",
+            [s(ErrorMsg)], !IO),
         print_mkdir_errors(ProgressStream, Results, _, !IO),
         Succeeded = did_not_succeed
     ).
@@ -2320,14 +2323,14 @@ make_main_module_realclean(ProgressStream, Globals, ModuleName, !Info, !IO) :-
         java_archive
     ],
     list.map2_foldl(linked_target_file_name_full_curdir(Globals, ModuleName),
-        LinkedTargetTypes, FileNames, ThisDirFileNames, !IO),
+        LinkedTargetTypes, FileNames, CurDirFileNames, !IO),
     % Remove the symlinks created for `--use-grade-subdirs'.
     % XXX This symlink should not be necessary anymore for `mmc --make'.
     module_name_to_file_name_full_curdir(Globals, $pred,
         ext_cur_gs(ext_cur_gs_lib_init), ModuleName,
-        FullInitFileName, ThisDirInitFileName),
-    FilesToRemove = FileNames ++ ThisDirFileNames ++
-        [FullInitFileName, ThisDirInitFileName],
+        FullInitFileName, CurDirInitFileName),
+    FilesToRemove = FileNames ++ CurDirFileNames ++
+        [FullInitFileName, CurDirInitFileName],
     list.foldl2(remove_file_for_make(ProgressStream, Globals, very_verbose),
         FilesToRemove, !Info, !IO),
     remove_init_files(ProgressStream, Globals, very_verbose, ModuleName,
