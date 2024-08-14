@@ -73,7 +73,7 @@ MR_OUTLINE_DEFN(
 
 MR_OUTLINE_DEFN(
     void
-    MR_atomic_sub_int(volatile MR_Integer *addr, MR_Integer x)
+    MR_atomic_sub_int(volatile _Atomic MR_Integer *addr, MR_Integer x)
 ,
     {
         MR_ATOMIC_SUB_INT_BODY;
@@ -109,7 +109,7 @@ MR_OUTLINE_DEFN(
 
 MR_OUTLINE_DEFN(
     MR_bool
-    MR_atomic_dec_and_is_zero_int(volatile MR_Integer *addr)
+    MR_atomic_dec_and_is_zero_int(volatile _Atomic MR_Integer *addr)
 ,
     {
         MR_ATOMIC_DEC_AND_IS_ZERO_INT_BODY;
@@ -118,7 +118,7 @@ MR_OUTLINE_DEFN(
 
 MR_OUTLINE_DEFN(
     MR_bool
-    MR_atomic_dec_and_is_zero_uint(volatile MR_Unsigned *addr)
+    MR_atomic_dec_and_is_zero_uint(volatile _Atomic MR_Unsigned *addr)
 ,
     {
         MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY;
