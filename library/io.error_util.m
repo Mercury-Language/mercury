@@ -1,6 +1,7 @@
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023 The Mercury team.
+% Copyright (C) 2023-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -17,6 +18,7 @@
 :- func no_error = system_error.
 
     % is_error(Error, MessagePrefix, MaybeIOError, !IO):
+    %
     % Returns `yes(IOError)' if Error indicates an error (not success).
     %
 :- pred is_error(system_error::in, string::in, maybe(io.error)::out,
@@ -24,6 +26,7 @@
 
     % is_error_maybe_win32(Error, IsWin32Error, MessagePrefix, MaybeIOError,
     %   !IO):
+    %
     % Same as is_error except that IsWin32Error is `yes' if Error originates
     % from a Win32 system error code, `no' otherwise.
     %
@@ -38,6 +41,7 @@
 
     % make_io_error_from_maybe_win32_error(Error, IsWin32Error, Prefix,
     %   IOError, !IO):
+    %
     % Helper to call either make_io_error_from_system_error_impl or
     % make_io_error_from_windows_error_impl.
     %
