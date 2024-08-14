@@ -923,6 +923,7 @@
 
     ;       simple_test(
                 % X = Y where the type of X and Y is an atomic type and
+                % they are both ground.
                 %
                 % In HLDS dumps, simple tests are written as `X == Y'.
 
