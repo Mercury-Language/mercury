@@ -201,6 +201,7 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
 
             % Check for the case where the module name doesn't match the
             % source file name (e.g. parse.m contains module mdb.parse).
+            % (XXX I (zs) do not see how this code does that.)
             % Get the correct source file name from the module dependency file,
             % then check whether the module dependency file is up to date.
             map.lookup(make_info_get_maybe_module_dep_info_map(!.Info),
@@ -490,104 +491,83 @@ error_and_maybe_rebuilding_msg(RebuildModuleDeps, ModuleDepsFile,
 
 try_to_write_module_dep_files_for_top_module(ProgressStream, Globals,
         ModuleName, !Info, !IO) :-
-    open_module_error_stream(ProgressStream, Globals, ModuleName,
-        MaybeErrorStream, !Info, !IO),
+    % XXX Why ask for the timestamp if we then ignore it?
+    % NOTE: Asking for a timestamp and then ignoring it *could* make sense
+    % if we recorded HaveReadSrc in a have_parse_tree_map, because
+    % it would make the timestamp available for a later lookup,
+    % However, we do not record HaveReadSrc in a have_parse_tree_map.
+    read_module_src(ProgressStream, Globals, rrm_get_deps,
+        do_not_ignore_errors, do_not_search, ModuleName, [],
+        always_read_module(do_return_timestamp), HaveReadSrc, !IO),
     (
-        MaybeErrorStream = es_ok(MESI, ErrorStream),
-        % Both cannot_write_module_dep_files and
-        % write_module_dep_files_for_source_file call
-        % close_module_error_stream_handle_errors,
-        % but factoring that call out of the latter would be non-trivial,
-        % and is better left for when we replace the whole redirect/unredirect
-        % machinery with the use of explicit streams.
-        % XXX Why ask for the timestamp if we then ignore it?
-        % NOTE: Asking for a timestamp and then ignoring it *could* make sense
-        % if we recorded HaveReadSrc in a have_parse_tree_map, because
-        % it would make the timestamp available for a later lookup,
-        % However, we do not record HaveReadSrc in a have_parse_tree_map.
-        read_module_src(ProgressStream, Globals, rrm_get_deps,
-            do_not_ignore_errors, do_not_search, ModuleName, [],
-            always_read_module(do_return_timestamp), HaveReadSrc, !IO),
-        % XXX If execution will follow a path on which we call
-        % cannot_write_module_dep_files, then as its almost-last act,
-        % cannot_write_module_dep_files will delete Module.err.
-        % Since that is a possibility, why write to ModuleName.err
-        % *unconditionally*?
-        (
-            HaveReadSrc = have_module(SourceFileName, ParseTreeSrc, Source),
-            Source = was_read(MaybeTimestamp, ReadModuleErrors),
-            Fatal = ReadModuleErrors ^ rm_fatal_errors,
-            NonFatal = ReadModuleErrors ^ rm_nonfatal_errors,
-            ( if set.is_non_empty(Fatal) then
-                DisplayErrorReadingFile = yes,
-                cannot_write_module_dep_files(Globals,
-                    ProgressStream, MESI, ErrorStream, SourceFileName,
-                    ModuleName, ReadModuleErrors, DisplayErrorReadingFile,
-                    !Info, !IO)
-            else if set.contains(NonFatal, rme_unexpected_module_name) then
-                % If the source file does not contain the expected module,
-                % then do not make the .module_dep file; it would leave
-                % a .module_dep file for the wrong module lying around,
-                % which the user needs to delete manually.
-                DisplayErrorReadingFile = no,
-                cannot_write_module_dep_files(Globals,
-                    ProgressStream, MESI, ErrorStream, SourceFileName,
-                    ModuleName, ReadModuleErrors, DisplayErrorReadingFile,
-                    !Info, !IO)
-            else
+        HaveReadSrc = have_module(SourceFileName, ParseTreeSrc, Source),
+        Source = was_read(MaybeTimestamp, ReadModuleErrors),
+        Fatal = ReadModuleErrors ^ rm_fatal_errors,
+        NonFatal = ReadModuleErrors ^ rm_nonfatal_errors,
+        ( if set.is_non_empty(Fatal) then
+            report_cannot_read_src_to_generate_module_dep(ProgressStream,
+                SourceFileName, ModuleName, !.Info, !IO),
+            cannot_write_module_dep_files(Globals, ProgressStream,
+                ModuleName, ReadModuleErrors, !Info, !IO)
+        else if set.contains(NonFatal, rme_unexpected_module_name) then
+            % If the source file does not contain the expected module,
+            % then do not make the .module_dep file; it would leave
+            % a .module_dep file for the wrong module lying around,
+            % which the user would need to delete manually.
+            cannot_write_module_dep_files(Globals, ProgressStream,
+                ModuleName, ReadModuleErrors, !Info, !IO)
+        else
+            open_module_error_stream(ProgressStream, Globals, ModuleName,
+                MaybeErrorStream, !Info, !IO),
+            (
+                MaybeErrorStream = es_ok(MESI, ErrorStream),
                 write_module_dep_files_for_source_file(Globals,
                     ProgressStream, MESI, ErrorStream, SourceFileName,
                     ModuleName, ReadModuleErrors, MaybeTimestamp,
                     ParseTreeSrc, !Info, !IO)
+            ;
+                MaybeErrorStream = es_error_already_reported
             )
-        ;
-            HaveReadSrc = have_not_read_module(SourceFileName,
-                ReadModuleErrors),
-            FatalErrorSpecs0 = ReadModuleErrors ^ rm_fatal_error_specs,
-            NonFatalErrorSpecs0 = ReadModuleErrors ^ rm_nonfatal_error_specs,
-            write_error_specs(ErrorStream, Globals,
-                FatalErrorSpecs0 ++ NonFatalErrorSpecs0, !IO),
-
-            DisplayErrorReadingFile = yes,
-            cannot_write_module_dep_files(Globals,
-                ProgressStream, MESI, ErrorStream, SourceFileName, ModuleName,
-                ReadModuleErrors, DisplayErrorReadingFile, !Info, !IO)
         )
     ;
-        MaybeErrorStream = es_error_already_reported
+        HaveReadSrc = have_not_read_module(SourceFileName,
+            ReadModuleErrors0),
+        report_cannot_read_src_to_generate_module_dep(ProgressStream,
+            SourceFileName, ModuleName, !.Info, !IO),
+        % I (zs) do not understand why we ignore warning specs, since
+        % there shouldn't be any if we couldn't read the module.
+        % It is probably a hangover from the days before we separated out
+        % warnings from errors, but without some test cases targeting
+        % this kind of error, I cannot know for certain that removing
+        % the next line does not have any effect.
+        ReadModuleErrors = ReadModuleErrors0 ^ rm_warning_specs := [],
+        cannot_write_module_dep_files(Globals, ProgressStream,
+            ModuleName, ReadModuleErrors, !Info, !IO)
     ).
 
-:- pred cannot_write_module_dep_files(globals::in,
-    io.text_output_stream::in,
-    module_error_stream_info::in, io.text_output_stream::in,
-    file_name::in, module_name::in, read_module_errors::in, bool::in,
+:- pred report_cannot_read_src_to_generate_module_dep(
+    io.text_output_stream::in, file_name::in, module_name::in,
+    make_info::in, io::di, io::uo) is det.
+
+report_cannot_read_src_to_generate_module_dep(ProgressStream, SourceFileName,
+        ModuleName, Info, !IO) :-
+    io.format(ProgressStream,
+        "** Error reading file `%s' to generate dependencies.\n",
+        [s(SourceFileName)], !IO),
+    maybe_write_importing_module(ProgressStream, ModuleName,
+        make_info_get_importing_module(Info), !IO).
+
+:- pred cannot_write_module_dep_files(globals::in, io.text_output_stream::in,
+    module_name::in, read_module_errors::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-cannot_write_module_dep_files(Globals, ProgressStream, MESI, ErrorStream,
-        SourceFileName, ModuleName, ReadModuleErrors,
-        DisplayErrorReadingFile, !Info, !IO) :-
+cannot_write_module_dep_files(Globals, ProgressStream, ModuleName,
+        ReadModuleErrors, !Info, !IO) :-
     Specs0 = get_read_module_specs(ReadModuleErrors),
-    write_error_specs(ErrorStream, Globals, Specs0, !IO),
-    (
-        DisplayErrorReadingFile = yes,
-        io.format(ProgressStream,
-            "** Error reading file `%s' to generate dependencies.\n",
-            [s(SourceFileName)], !IO),
-        maybe_write_importing_module(ProgressStream, ModuleName,
-            make_info_get_importing_module(!.Info), !IO)
-    ;
-        DisplayErrorReadingFile = no
-    ),
-
-    % Display the contents of the `.err' file, then remove it
-    % so we don't leave `.err' files lying around for nonexistent modules.
-    globals.set_option(output_compile_error_lines, maybe_int(no),
-        Globals, UnredirectGlobals),
-    close_module_error_stream_handle_errors(ProgressStream, UnredirectGlobals,
-        ModuleName, MESI, ErrorStream, !Info, !IO),
-    module_name_to_file_name(Globals, $pred,
-        ext_cur_ngs_gs_err(ext_cur_ngs_gs_err_err), ModuleName, ErrFileName),
-    io.file.remove_file(ErrFileName, _, !IO),
+    % XXX ProgressStream may not be stdout.
+    with_locked_stdout(!.Info,
+        write_error_specs(ProgressStream, Globals, Specs0),
+        !IO),
 
     ModuleDepMap0 = make_info_get_maybe_module_dep_info_map(!.Info),
     % XXX Could this be map.det_update?
