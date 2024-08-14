@@ -1160,7 +1160,7 @@ make_directory_or_check_exists(DirName, Result, !IO) :-
     is det.
 
 check_dir_accessibility(DirName, Result, !IO) :-
-    % Check whether we can read and write the directory.
+    % Check whether we can read, write and search the directory.
     io.file.check_file_accessibility(DirName, [read, write, execute],
         Result, !IO).
 
