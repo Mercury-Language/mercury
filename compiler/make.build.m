@@ -209,8 +209,8 @@
 :- import_module libs.file_util.
 :- import_module libs.handle_options.
 :- import_module libs.process_util.
+:- import_module make.library_install.
 :- import_module make.module_target.    % XXX undesirable dependency.
-:- import_module make.program_target.   % XXX undesirable dependency.
 :- import_module make.top_level.        % XXX undesirable dependency.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.

@@ -255,7 +255,11 @@ make.track_flags.m keeps a database that records
 which options were used to compile each module.
 <li>
 make.program_target.m handles whole program `mmc --make' targets,
-including executables, libraries and cleanup.
+including executables.
+<li>
+make.library_install.m handles `mmc --make' targets for installing libraries.
+<li>
+make.clean.m handles `mmc --make' targets for cleanup.
 <li>
 make.module_target.m handles targets built by a compilation action
 associated with a single module, for example making interface files.

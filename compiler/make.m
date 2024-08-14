@@ -30,11 +30,13 @@
 :- implementation.
 
 :- include_module check_up_to_date.
+:- include_module clean.
 :- include_module dependencies.
 :- include_module deps_set.
 :- include_module file_names.
 :- include_module find_local_modules.
 :- include_module hash.
+:- include_module library_install.
 :- include_module make_info.
 :- include_module module_target.
 :- include_module program_target.
