@@ -28,12 +28,18 @@
 
 %---------------------------------------------------------------------------%
 
+    % install_library(ProgressStream, Globals, MainModuleName, Succeeded,
+    %   !Info, !IO)
+    %
 :- pred install_library(io.text_output_stream::in, globals::in,
     module_name::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % install_library_grade(LinkSucceeded0, ModuleName, AllModules,
+    % install_library_grade(LinkSucceeded0, MainModuleName, AllModuleNames,
     %   ProgressStream, Globals, Grade, Succeeded, !Info, !IO)
+    %
+    % NOTE The unusual argument order is required by the fact that
+    % make.build.m calls this pred through foldl2_maybe_stop_at_error_loop.
     %
 :- pred install_library_grade(maybe_succeeded::in,
     module_name::in, list(module_name)::in, io.text_output_stream::in,
@@ -86,8 +92,8 @@
 install_library(ProgressStream, Globals, MainModuleName, Succeeded,
         !Info, !IO) :-
     find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
-        DepsSucceeded, AllModules0, !Info, !IO),
-    AllModules = set.to_sorted_list(AllModules0),
+        DepsSucceeded, AllModuleNames0, !Info, !IO),
+    AllModuleNames = set.to_sorted_list(AllModuleNames0),
     make_install_dirs(ProgressStream, Globals,
         DirSucceeded, LinkSucceeded, !IO),
     ( if
@@ -96,13 +102,13 @@ install_library(ProgressStream, Globals, MainModuleName, Succeeded,
     then
         list.map_foldl2(
             install_ints_and_headers(ProgressStream, Globals, LinkSucceeded),
-            AllModules, IntsSucceeded, !Info, !IO),
+            AllModuleNames, IntsSucceeded, !Info, !IO),
         install_extra_headers(ProgressStream, Globals,
             ExtraHdrsSucceeded, !IO),
 
         grade_directory_component(Globals, Grade),
         install_library_grade_files(ProgressStream, Globals, LinkSucceeded,
-            Grade, MainModuleName, AllModules, GradeSucceeded, !Info, !IO),
+            Grade, MainModuleName, AllModuleNames, GradeSucceeded, !Info, !IO),
         ( if
             and_list([ExtraHdrsSucceeded | IntsSucceeded]) = succeeded,
             GradeSucceeded = succeeded
@@ -112,7 +118,7 @@ install_library(ProgressStream, Globals, MainModuleName, Succeeded,
             globals.lookup_accumulating_option(Globals, libgrades, LibGrades0),
             LibGrades = list.delete_all(LibGrades0, Grade),
             foldl2_install_library_grades(KeepGoing,
-                LinkSucceeded, MainModuleName, AllModules,
+                LinkSucceeded, MainModuleName, AllModuleNames,
                 ProgressStream, Globals, LibGrades, Succeeded, !Info, !IO)
         else
             Succeeded = did_not_succeed
@@ -160,10 +166,10 @@ install_ints_and_headers(ProgressStream, Globals, SubdirLinkSucceeded,
             {ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep), "module_deps"}
             | ExtExtDirs1],
         globals.lookup_string_option(Globals, install_prefix, Prefix),
-        LibDir = Prefix/"lib"/"mercury",
+        LibDir = Prefix / "lib" / "mercury",
         list.map_foldl(
             install_subdir_file(ProgressStream, Globals, SubdirLinkSucceeded,
-                LibDir/"ints", ModuleName),
+                LibDir / "ints", ModuleName),
             ExtExtDirs, Results, !IO),
 
         globals.get_target(Globals, Target),
@@ -181,12 +187,12 @@ install_ints_and_headers(ProgressStream, Globals, SubdirLinkSucceeded,
             module_name_to_file_name(Globals, $pred,
                 ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
                 ModuleName, FileName),
-            install_file(ProgressStream, Globals, FileName, LibDir/"inc",
+            install_file(ProgressStream, Globals, FileName, LibDir / "inc",
                 HeaderSucceeded1, !IO),
 
             % This is needed so that the file will be found in Mmake's VPATH.
             install_subdir_file(ProgressStream, Globals, SubdirLinkSucceeded,
-                LibDir/"ints", ModuleName,
+                LibDir / "ints", ModuleName,
                 {ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh), "mhs"},
                 HeaderSucceeded2, !IO),
 
@@ -224,7 +230,9 @@ install_extra_header(ProgressStream, Globals, IncDir, FileName,
         InstallSucceeded, !IO),
     !:Succeeded = !.Succeeded `and` InstallSucceeded.
 
-install_library_grade(LinkSucceeded0, ModuleName, AllModules,
+%---------------------------------------------------------------------------%
+
+install_library_grade(LinkSucceeded0, MainModuleName, AllModuleNames,
         ProgressStream, Globals, Grade, Succeeded, !Info, !IO) :-
     % Only remove grade-dependent files after installing if
     % --use-grade-subdirs is not specified by the user.
@@ -286,6 +294,11 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules,
         % of the last one, none of them can never be referred to again.
         % It is not clear whether keeping all non-grade-dependent files'
         % statuses in the map makes paying this cost worthwhile.
+        %
+        % XXX One obvious solution to this problem would be to
+        % - convert StatusMap0 to an assoc list;
+        % - delete all grade dependent files' entries from this assoc list;
+        % - then construct a new version hash table from the result.
         StatusMap0 = make_info_get_dep_file_status_map(!.Info),
         version_hash_table.fold(remove_target_file_if_grade_dependent,
             StatusMap0, StatusMap0, StatusMap),
@@ -304,10 +317,10 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules,
         setup_checking_for_interrupt(Cookie, !IO),
         call_in_forked_process(
             install_library_grade_2(ProgressStream, LibGlobals, LinkSucceeded0,
-                ModuleName, AllModules, !.Info, CleanAfter),
+                MainModuleName, AllModuleNames, !.Info, CleanAfter),
             Succeeded0, !IO),
         Cleanup = maybe_make_grade_clean(ProgressStream, LibGlobals,
-            CleanAfter, ModuleName, AllModules),
+            CleanAfter, MainModuleName, AllModuleNames),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
             Succeeded0, Succeeded, !Info, !IO)
     ).
@@ -317,18 +330,19 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules,
     bool::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 install_library_grade_2(ProgressStream, Globals, LinkSucceeded0,
-        ModuleName, AllModules, Info0, CleanAfter, Succeeded, !IO) :-
+        MainModuleName, AllModuleNames, Info0, CleanAfter, Succeeded, !IO) :-
     make_misc_target(ProgressStream, Globals,
-        ModuleName - misc_target_build_library, LibSucceeded,
+        MainModuleName - misc_target_build_library, LibSucceeded,
         Info0, Info1, [], Specs, !IO),
     (
         LibSucceeded = succeeded,
         % `GradeDir' differs from `Grade' in that it is in canonical form.
         grade_directory_component(Globals, GradeDir),
         install_library_grade_files(ProgressStream, Globals, LinkSucceeded0,
-            GradeDir, ModuleName, AllModules, Succeeded, Info1, Info2, !IO),
+            GradeDir, MainModuleName, AllModuleNames, Succeeded,
+            Info1, Info2, !IO),
         maybe_make_grade_clean(ProgressStream, Globals, CleanAfter,
-            ModuleName, AllModules, Info2, _Info, !IO)
+            MainModuleName, AllModuleNames, Info2, _Info, !IO)
     ;
         LibSucceeded = did_not_succeed,
         % XXX MAKE_STREAM
@@ -346,7 +360,7 @@ install_library_grade_2(ProgressStream, Globals, LinkSucceeded0,
     io::di, io::uo) is det.
 
 install_library_grade_files(ProgressStream, Globals, LinkSucceeded0, GradeDir,
-        ModuleName, AllModules, Succeeded, !Info, !IO) :-
+        MainModuleName, AllModuleNames, Succeeded, !Info, !IO) :-
     make_grade_install_dirs(ProgressStream, Globals, GradeDir,
         DirResult, LinkSucceeded1, !IO),
     % TODO {ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep), "module_deps"}
@@ -357,23 +371,23 @@ install_library_grade_files(ProgressStream, Globals, LinkSucceeded0, GradeDir,
         get_std_grade_specific_install_lib_dir(Globals, GradeDir, GradeLibDir),
         (
             Target = target_csharp,
-            linked_target_file_name(Globals, ModuleName, csharp_library,
+            linked_target_file_name(Globals, MainModuleName, csharp_library,
                 DllFileName, !IO),
             install_file(ProgressStream, Globals, DllFileName, GradeLibDir,
                 LibsSucceeded, !IO),
             InitSucceeded = succeeded
         ;
             Target = target_java,
-            linked_target_file_name(Globals, ModuleName, java_archive,
+            linked_target_file_name(Globals, MainModuleName, java_archive,
                 JarFileName, !IO),
             install_file(ProgressStream, Globals, JarFileName, GradeLibDir,
                 LibsSucceeded, !IO),
             InitSucceeded = succeeded
         ;
             Target = target_c,
-            linked_target_file_name(Globals, ModuleName, static_library,
+            linked_target_file_name(Globals, MainModuleName, static_library,
                 LibFileName, !IO),
-            linked_target_file_name(Globals, ModuleName, shared_library,
+            linked_target_file_name(Globals, MainModuleName, shared_library,
                 SharedLibFileName, !IO),
             maybe_install_library_file(ProgressStream, Globals, "static",
                 LibFileName, GradeLibDir, LibSucceeded0, !IO),
@@ -384,14 +398,14 @@ install_library_grade_files(ProgressStream, Globals, LinkSucceeded0, GradeDir,
                     SharedLibFileName, GradeLibDir, SharedLibSucceeded, !IO),
                 LibsSucceeded = LibSucceeded0 `and` SharedLibSucceeded
             ),
-            install_grade_init(ProgressStream, Globals, GradeDir, ModuleName,
-                InitSucceeded, !IO)
+            install_grade_init(ProgressStream, Globals, GradeDir,
+                MainModuleName, InitSucceeded, !IO)
         ),
 
         list.map_foldl2(
             install_grade_ints_and_headers(ProgressStream, Globals,
                 LinkSucceeded, GradeDir),
-            AllModules, IntsHeadersSucceeded, !Info, !IO),
+            AllModuleNames, IntsHeadersSucceeded, !Info, !IO),
         Succeeded = and_list(
             [LibsSucceeded, InitSucceeded | IntsHeadersSucceeded])
     ;
@@ -404,14 +418,14 @@ install_library_grade_files(ProgressStream, Globals, LinkSucceeded0, GradeDir,
 :- pred install_grade_init(io.text_output_stream::in, globals::in,
     string::in, module_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-install_grade_init(ProgressStream, Globals, GradeDir, ModuleName,
+install_grade_init(ProgressStream, Globals, GradeDir, MainModuleName,
         Succeeded, !IO) :-
     % XXX Should we generalize get_std_grade_specific_install_lib_dir
     % to include this s/lib/modules/ version?
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     GradeModulesDir = Prefix / "lib" / "mercury" / "modules" / GradeDir,
     module_name_to_file_name(Globals, $pred, ext_cur_gs(ext_cur_gs_lib_init),
-        ModuleName, InitFileName),
+        MainModuleName, InitFileName),
     install_file(ProgressStream, Globals, InitFileName, GradeModulesDir,
         Succeeded, !IO).
 
@@ -428,7 +442,7 @@ install_grade_ints_and_headers(ProgressStream, Globals, LinkSucceeded,
     (
         MaybeModuleDepInfo = some_module_dep_info(_ModuleDepInfo),
         globals.lookup_string_option(Globals, install_prefix, Prefix),
-        LibDir = Prefix/"lib"/"mercury",
+        LibDir = Prefix / "lib" / "mercury",
 
         globals.get_target(Globals, Target),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
@@ -436,14 +450,14 @@ install_grade_ints_and_headers(ProgressStream, Globals, LinkSucceeded,
             Target = target_c,
             HighLevelCode = yes
         then
-            GradeIncDir = LibDir/"lib"/GradeDir/"inc",
+            GradeIncDir = LibDir / "lib" / GradeDir / "inc",
             install_subdir_file(ProgressStream, Globals, LinkSucceeded,
                 GradeIncDir, ModuleName,
                 {ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih), "mihs"},
                 HeaderSucceeded1, !IO),
 
             % This is needed so that the file will be found in Mmake's VPATH.
-            IntDir = LibDir/"ints",
+            IntDir = LibDir / "ints",
             install_subdir_file(ProgressStream, Globals, LinkSucceeded,
                 IntDir, ModuleName,
                 {ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih), "mihs"},
@@ -453,7 +467,7 @@ install_grade_ints_and_headers(ProgressStream, Globals, LinkSucceeded,
             HeaderSucceeded = succeeded
         ),
 
-        GradeIntDir = LibDir/"ints"/GradeDir,
+        GradeIntDir = LibDir / "ints" / GradeDir,
         globals.get_any_intermod(Globals, AnyIntermod),
         (
             AnyIntermod = yes,
@@ -502,7 +516,7 @@ install_subdir_file(ProgressStream, Globals, SubdirLinkSucceeded, InstallDir,
     (
         SubdirLinkSucceeded = did_not_succeed,
         install_file(ProgressStream, Globals, FileName,
-            InstallDir/"Mercury"/ExtDir, Succeeded2, !IO),
+            InstallDir / "Mercury" / ExtDir, Succeeded2, !IO),
         Succeeded = Succeeded1 `and` Succeeded2
     ;
         SubdirLinkSucceeded = succeeded,
@@ -553,72 +567,73 @@ install_file(ProgressStream, Globals, FileName, InstallDir, Succeeded, !IO) :-
 :- pred make_install_dirs(io.text_output_stream::in, globals::in,
     maybe_succeeded::out, maybe_succeeded::out, io::di, io::uo) is det.
 
-make_install_dirs(ProgressStream, Globals, Result, LinkResult, !IO) :-
+make_install_dirs(ProgressStream, Globals, DirSucceeded, LinkSucceeded, !IO) :-
     globals.lookup_string_option(Globals, install_prefix, Prefix),
-    LibDir = Prefix/"lib"/"mercury",
-    make_directory(LibDir/"inc", Result1, !IO),
-    make_directory(LibDir/"modules", Result2, !IO),
+    LibDir = Prefix / "lib" / "mercury",
+    make_directory(LibDir / "inc", DirSucceeded1, !IO),
+    make_directory(LibDir / "modules", DirSucceeded2, !IO),
 
-    IntsSubdir = LibDir/"ints"/"Mercury",
-    make_directory(IntsSubdir, Result3, !IO),
-    Results0 = [Result1, Result2, Result3],
+    IntsSubdir = LibDir / "ints" / "Mercury",
+    make_directory(IntsSubdir, DirSucceeded3, !IO),
+    DirSucceeded123 = [DirSucceeded1, DirSucceeded2, DirSucceeded3],
 
     Subdirs = ["int0", "int", "int2", "int3", "opt", "trans_opt",
         "mh", "mih", "module_dep"],
     list.map_foldl(make_install_symlink(Globals, IntsSubdir), Subdirs,
-        LinkResults, !IO),
-    LinkResult = and_list(LinkResults),
+        LinkSucceededSubdirs, !IO),
+    LinkSucceeded = and_list(LinkSucceededSubdirs),
     (
-        LinkResult = succeeded,
-        Results = Results0
+        LinkSucceeded = succeeded,
+        DirSucceededList = DirSucceeded123
     ;
-        LinkResult = did_not_succeed,
+        LinkSucceeded = did_not_succeed,
         list.map_foldl(
-            ( pred(Ext::in, MkDirResult::out, !.IO::di, !:IO::uo) is det:-
-                make_directory(IntsSubdir/(Ext ++ "s"), MkDirResult, !IO)
-            ), Subdirs, MkDirResults, !IO),
-        Results = Results0 ++ MkDirResults
+            ( pred(Ext::in, MkDirSucceeded::out, !.IO::di, !:IO::uo) is det:-
+                make_directory(IntsSubdir / (Ext ++ "s"), MkDirSucceeded, !IO)
+            ), Subdirs, MkDirSucceededList, !IO),
+        DirSucceededList = DirSucceeded123 ++ MkDirSucceededList
     ),
-    print_mkdir_errors(ProgressStream, Results, Result, !IO).
+    print_mkdir_errors(ProgressStream, DirSucceededList, DirSucceeded, !IO).
 
 :- pred make_grade_install_dirs(io.text_output_stream::in, globals::in,
     string::in, maybe_succeeded::out, maybe_succeeded::out,
     io::di, io::uo) is det.
 
 make_grade_install_dirs(ProgressStream, Globals, Grade,
-        Result, LinkResult, !IO) :-
+        DirSucceeded, LinkSucceeded, !IO) :-
     globals.lookup_string_option(Globals, install_prefix, Prefix),
-    LibDir = Prefix/"lib"/"mercury",
+    LibDir = Prefix / "lib" / "mercury",
 
-    GradeIntsSubdir = LibDir/"ints"/Grade/"Mercury",
-    make_directory(GradeIntsSubdir, Result1, !IO),
+    GradeIntsSubdir = LibDir / "ints" / Grade / "Mercury",
+    make_directory(GradeIntsSubdir, DirSucceeded1, !IO),
 
-    GradeIncSubdir = LibDir/"lib"/Grade/"inc"/"Mercury",
-    make_directory(GradeIncSubdir, Result2, !IO),
+    GradeIncSubdir = LibDir / "lib" / Grade / "inc" / "Mercury",
+    make_directory(GradeIncSubdir, DirSucceeded2, !IO),
 
-    GradeModuleSubdir = LibDir/"modules"/Grade,
-    make_directory(GradeModuleSubdir, Result3, !IO),
+    GradeModuleSubdir = LibDir / "modules" / Grade,
+    make_directory(GradeModuleSubdir, DirSucceeded3, !IO),
 
-    Results123 = [Result1, Result2, Result3],
+    DirSucceeded123 = [DirSucceeded1, DirSucceeded2, DirSucceeded3],
 
-    make_install_symlink(Globals, GradeIncSubdir, "mih", LinkResult0, !IO),
+    make_install_symlink(Globals, GradeIncSubdir, "mih", LinkSucceeded0, !IO),
     list.map_foldl(make_install_symlink(Globals, GradeIntsSubdir),
-        ["opt", "trans_opt", "analysis"], LinkResults, !IO),
-    LinkResult = and_list([LinkResult0 | LinkResults]),
+        ["opt", "trans_opt", "analysis"], LinkSucceededList, !IO),
+    LinkSucceeded = and_list([LinkSucceeded0 | LinkSucceededList]),
     (
-        LinkResult = succeeded,
-        Results = Results123
+        LinkSucceeded = succeeded,
+        DirSucceededList = DirSucceeded123
     ;
-        LinkResult = did_not_succeed,
+        LinkSucceeded = did_not_succeed,
         % XXX Why do we create these directories *only* when
         % LinkResult = did_not_succeed?
-        make_directory(GradeIncSubdir/"mihs", Result4, !IO),
-        make_directory(GradeIntsSubdir/"opts", Result5, !IO),
-        make_directory(GradeIntsSubdir/"trans_opts", Result6, !IO),
-        make_directory(GradeIntsSubdir/"analyses", Result7, !IO),
-        Results = Results123 ++ [Result4, Result5, Result6, Result7]
+        make_directory(GradeIncSubdir / "mihs", DirSucceeded4, !IO),
+        make_directory(GradeIntsSubdir / "opts", DirSucceeded5, !IO),
+        make_directory(GradeIntsSubdir / "trans_opts", DirSucceeded6, !IO),
+        make_directory(GradeIntsSubdir / "analyses", DirSucceeded7, !IO),
+        DirSucceededList = DirSucceeded123 ++
+            [DirSucceeded4, DirSucceeded5, DirSucceeded6, DirSucceeded7]
     ),
-    print_mkdir_errors(ProgressStream, Results, Result, !IO).
+    print_mkdir_errors(ProgressStream, DirSucceededList, DirSucceeded, !IO).
 
 :- pred print_mkdir_errors(io.text_output_stream::in, list(io.res)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
@@ -644,7 +659,7 @@ print_mkdir_errors(ProgressStream, [Result | Results], Succeeded, !IO) :-
     maybe_succeeded::out, io::di, io::uo) is det.
 
 make_install_symlink(Globals, Subdir, Ext, Succeeded, !IO) :-
-    LinkName = Subdir/(Ext ++ "s"),
+    LinkName = Subdir / (Ext ++ "s"),
     maybe_make_symlink(Globals, "..", LinkName, Succeeded, !IO).
 
     % Generate (or update) the index for an archive file,
@@ -681,6 +696,8 @@ generate_archive_index(ProgressStream, Globals, FileName, InstallDir,
 remove_target_file_if_grade_dependent(File, _Status, !StatusMap) :-
     ( if
         File = dep_target(target_file(_, TargetType)),
+        % XXX Why are we deleting arch-dependent target types
+        % that are NOT grade dependent?
         target_is_grade_or_arch_dependent(TargetType)
     then
         version_hash_table.delete(File, !StatusMap)
