@@ -75,6 +75,14 @@
 :- pred maybe_make_symlink(globals::in, file_name::in, file_name::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
+    % definitely_make_symlink(TargetFile, LinkName, Result, !IO):
+    %
+    % Attempt to make LinkName a symlink pointing to LinkTarget.
+    % Assumes that the caller has checked that `--use-symlinks' is set.
+    %
+:- pred definitely_make_symlink(file_name::in, file_name::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
+
     % make_symlink_or_copy_file(Globals, ProgressStream, LinkTarget, LinkName,
     %   Succeeded, !IO):
     %
@@ -287,13 +295,16 @@ maybe_make_symlink(Globals, LinkTarget, LinkName, Result, !IO) :-
     globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
     (
         UseSymLinks = yes,
-        io.file.remove_file_recursively(LinkName, _, !IO),
-        io.file.make_symlink(LinkTarget, LinkName, LinkResult, !IO),
-        Result = ( if LinkResult = ok then succeeded else did_not_succeed )
+        definitely_make_symlink(LinkTarget, LinkName, Result, !IO)
     ;
         UseSymLinks = no,
         Result = did_not_succeed
     ).
+
+definitely_make_symlink(LinkTarget, LinkName, Result, !IO) :-
+    io.file.remove_file_recursively(LinkName, _, !IO),
+    io.file.make_symlink(LinkTarget, LinkName, LinkResult, !IO),
+    Result = ( if LinkResult = ok then succeeded else did_not_succeed ).
 
 make_symlink_or_copy_file(Globals, ProgressStream,
         SourceFileName, DestinationFileName, Succeeded, !IO) :-

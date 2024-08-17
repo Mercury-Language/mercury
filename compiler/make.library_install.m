@@ -622,11 +622,19 @@ make_install_dirs(ProgressStream, Globals, DirSucceeded, LinkSucceeded, !IO) :-
     make_directory(IntsSubdir, DirSucceeded3, !IO),
     DirSucceeded123 = [DirSucceeded1, DirSucceeded2, DirSucceeded3],
 
-    Subdirs = ["int0", "int", "int2", "int3", "opt", "trans_opt",
-        "mh", "mih", "module_dep"],
-    list.map_foldl(make_install_symlink(Globals, IntsSubdir), Subdirs,
-        LinkSucceededSubdirs, !IO),
-    LinkSucceeded = and_list(LinkSucceededSubdirs),
+    Subdirs = ["int0s", "ints", "int2s", "int3s", "opts", "trans_opts",
+        "mhs", "mihs", "module_deps"],
+
+    globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
+    (
+        UseSymLinks = yes,
+        list.map_foldl(make_symlink_to_parent_dir(IntsSubdir), Subdirs,
+            LinkSucceededSubdirs, !IO),
+        LinkSucceeded = and_list(LinkSucceededSubdirs)
+    ;
+        UseSymLinks = no,
+        LinkSucceeded = did_not_succeed
+    ),
     (
         LinkSucceeded = succeeded,
         DirSucceededList = DirSucceeded123
@@ -646,10 +654,10 @@ make_install_dirs(ProgressStream, Globals, DirSucceeded, LinkSucceeded, !IO) :-
         % would fail is the use_symlinks option being set to "no", then this
         % is fine. However, this is NOT the only possible reason.
         list.map_foldl(
-            ( pred(Ext::in, MkDirSucceeded::out, !.IO::di, !:IO::uo) is det:-
-                make_directory(IntsSubdir / (Ext ++ "s"), MkDirSucceeded, !IO)
-            ), Subdirs, MkDirSucceededList, !IO),
-        DirSucceededList = DirSucceeded123 ++ MkDirSucceededList
+            ( pred(ExtDir::in, ExtSucceeded::out, !.IO::di, !:IO::uo) is det:-
+                make_directory(IntsSubdir / ExtDir, ExtSucceeded, !IO)
+            ), Subdirs, ExtDirSucceededList, !IO),
+        DirSucceededList = DirSucceeded123 ++ ExtDirSucceededList
     ),
     print_mkdir_errors(ProgressStream, DirSucceededList, DirSucceeded, !IO).
 
@@ -675,10 +683,18 @@ make_grade_install_dirs(ProgressStream, Globals, Grade,
 
     DirSucceeded123 = [DirSucceeded1, DirSucceeded2, DirSucceeded3],
 
-    make_install_symlink(Globals, GradeIncSubdir, "mih", LinkSucceeded0, !IO),
-    list.map_foldl(make_install_symlink(Globals, GradeIntsSubdir),
-        ["opt", "trans_opt", "analysis"], LinkSucceededList, !IO),
-    LinkSucceeded = and_list([LinkSucceeded0 | LinkSucceededList]),
+    globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
+    (
+        UseSymLinks = yes,
+        make_symlink_to_parent_dir(GradeIncSubdir, "mihs",
+            LinkSucceeded0, !IO),
+        list.map_foldl(make_symlink_to_parent_dir(GradeIntsSubdir),
+            ["opts", "trans_opts", "analyses"], LinkSucceededList, !IO),
+        LinkSucceeded = and_list([LinkSucceeded0 | LinkSucceededList])
+    ;
+        UseSymLinks = no,
+        LinkSucceeded = did_not_succeed
+    ),
     (
         LinkSucceeded = succeeded,
         DirSucceededList = DirSucceeded123
@@ -697,20 +713,19 @@ make_grade_install_dirs(ProgressStream, Globals, Grade,
 
 %---------------------%
 
-:- pred make_install_symlink(globals::in, string::in, string::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
-
-make_install_symlink(Globals, Subdir, Ext, Succeeded, !IO) :-
-    % XXX MAKE_DIRNAMES We have moved away from the old policy
-    % of *always* constructing directory names by adding a
-    LinkName = Subdir / (Ext ++ "s"),
     % XXX BAD_SYMLINK This upward-pointing symlink makes it impossible
     % back up a Mercury install directory using scp. This is because
     % scp treats symlinks not as symlinks, but as the file or directory
     % they point to, and copies that (in this case) directory.
     % That directory will of contain this same symlink, and scp gets
     % trapped, always copying the files in between in an infinite loop.
-    maybe_make_symlink(Globals, "..", LinkName, Succeeded, !IO).
+    %
+:- pred make_symlink_to_parent_dir(string::in, string::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
+
+make_symlink_to_parent_dir(Subdir, ExtDirName, Succeeded, !IO) :-
+    LinkName = Subdir / ExtDirName,
+    definitely_make_symlink("..", LinkName, Succeeded, !IO).
 
 %---------------------%
 
