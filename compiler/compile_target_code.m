@@ -1131,41 +1131,42 @@ make_library_init_file(Globals, ProgressStream, MainModuleName, AllModules,
         ext_cur_gs(ext_cur_gs_lib_init), MainModuleName,
         FullInitFileName, CurDirInitFileName, !IO),
     TmpFullInitFileName = FullInitFileName ++ ".tmp",
-    io.open_output(TmpFullInitFileName, InitFileRes, !IO),
+    io.open_output(TmpFullInitFileName, TmpInitFileOpenResult, !IO),
     (
-        InitFileRes = ok(InitFileStream),
+        TmpInitFileOpenResult = ok(TmpInitFileStream),
         list.map(
             module_name_to_file_name(Globals, $pred,
                 ext_cur_ngs_gs(ext_cur_ngs_gs_target_c)),
             AllModules, AllTargetFilesList),
-        invoke_mkinit(Globals, ProgressStream, InitFileStream,
+        invoke_mkinit(Globals, ProgressStream, TmpInitFileStream,
             cmd_verbose_commands, MkInit, " -k ", AllTargetFilesList,
-            MkInitSucceeded, !IO),
+            TmpMkInitSucceeded0, !IO),
         (
-            MkInitSucceeded = succeeded,
+            TmpMkInitSucceeded0 = succeeded,
             globals.lookup_maybe_string_option(Globals, extra_init_command,
                 MaybeInitFileCommand),
             (
                 MaybeInitFileCommand = yes(InitFileCommand),
                 make_all_module_command(InitFileCommand,
-                    MainModuleName, AllModules, CommandString, !IO),
-                invoke_system_command(Globals, ProgressStream, InitFileStream,
-                    cmd_verbose_commands, CommandString, Succeeded0, !IO)
+                    MainModuleName, AllModules, CommandStr, !IO),
+                invoke_system_command(Globals, ProgressStream,
+                    TmpInitFileStream, cmd_verbose_commands, CommandStr,
+                    TmpMkInitSucceeded, !IO)
             ;
                 MaybeInitFileCommand = no,
-                Succeeded0 = succeeded
+                TmpMkInitSucceeded = succeeded
             )
         ;
-            MkInitSucceeded = did_not_succeed,
-            Succeeded0 = did_not_succeed
+            TmpMkInitSucceeded0 = did_not_succeed,
+            TmpMkInitSucceeded = did_not_succeed
         ),
 
-        io.close_output(InitFileStream, !IO),
+        io.close_output(TmpInitFileStream, !IO),
         copy_dot_tmp_to_base_file_return_succeeded(ProgressStream, Globals,
-            FullInitFileName, Succeeded1, !IO),
-        Succeeded2 = Succeeded0 `and` Succeeded1,
+            FullInitFileName, CopyTmpSucceeded, !IO),
+        MkInitSucceded = TmpMkInitSucceeded `and` CopyTmpSucceeded,
         (
-            Succeeded2 = succeeded,
+            MkInitSucceded = succeeded,
             % Symlink or copy the .init files to the user's directory
             % if --use-grade-subdirs is enabled.
             ( if FullInitFileName = CurDirInitFileName then
@@ -1178,11 +1179,11 @@ make_library_init_file(Globals, ProgressStream, MainModuleName, AllModules,
                     FullInitFileName, CurDirInitFileName, Succeeded, !IO)
             )
         ;
-            Succeeded2 = did_not_succeed,
+            MkInitSucceded = did_not_succeed,
             Succeeded  = did_not_succeed
         )
     ;
-        InitFileRes = error(Error),
+        TmpInitFileOpenResult = error(Error),
         io.progname_base("mercury_compile", ProgName, !IO),
         ErrorMsg = io.error_message(Error),
         io.format(ProgressStream, "%s: can't open `%s' for output: %s\n",
