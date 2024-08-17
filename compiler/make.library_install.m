@@ -325,6 +325,23 @@ install_library_grade(LinkSucceeded0, MainModuleName, AllModuleNames,
             Succeeded0, Succeeded, !Info, !IO)
     ).
 
+:- pred remove_target_file_if_grade_dependent(dependency_file::in,
+    dependency_status::in,
+    version_hash_table(dependency_file, dependency_status)::in,
+    version_hash_table(dependency_file, dependency_status)::out) is det.
+
+remove_target_file_if_grade_dependent(File, _Status, !StatusMap) :-
+    ( if
+        File = dep_target(target_file(_, TargetType)),
+        % XXX Why are we deleting arch-dependent target types
+        % that are NOT grade dependent?
+        target_is_grade_or_arch_dependent(TargetType)
+    then
+        version_hash_table.delete(File, !StatusMap)
+    else
+        true
+    ).
+
 :- pred install_library_grade_2(io.text_output_stream::in, globals::in,
     maybe_succeeded::in, module_name::in, list(module_name)::in, make_info::in,
     bool::in, maybe_succeeded::out, io::di, io::uo) is det.
@@ -554,6 +571,32 @@ maybe_install_library_file(ProgressStream, Globals, Linkage,
         Succeeded = succeeded
     ).
 
+    % Generate (or update) the index for an archive file,
+    % i.e. run ranlib on a .a file.
+    %
+:- pred generate_archive_index(io.text_output_stream::in, globals::in,
+    file_name::in, dir_name::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+generate_archive_index(ProgressStream, Globals, FileName, InstallDir,
+        Succeeded, !IO) :-
+    verbose_make_four_part_msg(Globals, "Generating archive index for file",
+         FileName, "in", InstallDir, InstallMsg),
+    maybe_write_msg(ProgressStream, InstallMsg, !IO),
+    globals.lookup_string_option(Globals, ranlib_command, RanLibCommand),
+    globals.lookup_string_option(Globals, ranlib_flags, RanLibFlags),
+    % XXX What is the point of using more than one space?
+    Command = string.join_list("    ", [
+        quote_shell_cmd_arg(RanLibCommand),
+        RanLibFlags,
+        quote_shell_cmd_arg(InstallDir / FileName)
+    ]),
+    % XXX MAKE_STREAM
+    CmdOutputStream = ProgressStream,
+    invoke_system_command(Globals, ProgressStream,
+        CmdOutputStream, cmd_verbose, Command, Succeeded, !IO).
+
+%---------------------------------------------------------------------------%
+
 :- pred install_file(io.text_output_stream::in, globals::in,
     file_name::in, dir_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
@@ -563,6 +606,8 @@ install_file(ProgressStream, Globals, FileName, InstallDir, Succeeded, !IO) :-
     maybe_write_msg(ProgressStream, InstallMsg, !IO),
     copy_file_to_directory(Globals, ProgressStream, FileName,
         InstallDir, Succeeded, !IO).
+
+%---------------------------------------------------------------------------%
 
 :- pred make_install_dirs(io.text_output_stream::in, globals::in,
     maybe_succeeded::out, maybe_succeeded::out, io::di, io::uo) is det.
@@ -587,6 +632,19 @@ make_install_dirs(ProgressStream, Globals, DirSucceeded, LinkSucceeded, !IO) :-
         DirSucceededList = DirSucceeded123
     ;
         LinkSucceeded = did_not_succeed,
+        % XXX This code does the right thing ONLY if either all elements
+        % of LinkSucceededSubdirs are "succeeded", or if all elements
+        % of LinkSucceededSubdirs are "did_not_succeeded".
+        %
+        % If some elements are "succeeded" and some are "did_not_succeeded",
+        % then this code will attempt to make a directory with a name
+        % that is already occupied by a symlink that was constructed just
+        % above, fail with a misleading error message, and the final value
+        % of DirSucceeded will be wrong.
+        %
+        % If we assume that the only possible reason for why making a symlink
+        % would fail is the use_symlinks option being set to "no", then this
+        % is fine. However, this is NOT the only possible reason.
         list.map_foldl(
             ( pred(Ext::in, MkDirSucceeded::out, !.IO::di, !:IO::uo) is det:-
                 make_directory(IntsSubdir / (Ext ++ "s"), MkDirSucceeded, !IO)
@@ -594,6 +652,8 @@ make_install_dirs(ProgressStream, Globals, DirSucceeded, LinkSucceeded, !IO) :-
         DirSucceededList = DirSucceeded123 ++ MkDirSucceededList
     ),
     print_mkdir_errors(ProgressStream, DirSucceededList, DirSucceeded, !IO).
+
+%---------------------%
 
 :- pred make_grade_install_dirs(io.text_output_stream::in, globals::in,
     string::in, maybe_succeeded::out, maybe_succeeded::out,
@@ -624,8 +684,8 @@ make_grade_install_dirs(ProgressStream, Globals, Grade,
         DirSucceededList = DirSucceeded123
     ;
         LinkSucceeded = did_not_succeed,
-        % XXX Why do we create these directories *only* when
-        % LinkResult = did_not_succeed?
+        % XXX The XXX in the corresponding position in make_install_dirs
+        % above applies here as well.
         make_directory(GradeIncSubdir / "mihs", DirSucceeded4, !IO),
         make_directory(GradeIntsSubdir / "opts", DirSucceeded5, !IO),
         make_directory(GradeIntsSubdir / "trans_opts", DirSucceeded6, !IO),
@@ -634,6 +694,25 @@ make_grade_install_dirs(ProgressStream, Globals, Grade,
             [DirSucceeded4, DirSucceeded5, DirSucceeded6, DirSucceeded7]
     ),
     print_mkdir_errors(ProgressStream, DirSucceededList, DirSucceeded, !IO).
+
+%---------------------%
+
+:- pred make_install_symlink(globals::in, string::in, string::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
+
+make_install_symlink(Globals, Subdir, Ext, Succeeded, !IO) :-
+    % XXX MAKE_DIRNAMES We have moved away from the old policy
+    % of *always* constructing directory names by adding a
+    LinkName = Subdir / (Ext ++ "s"),
+    % XXX BAD_SYMLINK This upward-pointing symlink makes it impossible
+    % back up a Mercury install directory using scp. This is because
+    % scp treats symlinks not as symlinks, but as the file or directory
+    % they point to, and copies that (in this case) directory.
+    % That directory will of contain this same symlink, and scp gets
+    % trapped, always copying the files in between in an infinite loop.
+    maybe_make_symlink(Globals, "..", LinkName, Succeeded, !IO).
+
+%---------------------%
 
 :- pred print_mkdir_errors(io.text_output_stream::in, list(io.res)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
@@ -653,56 +732,6 @@ print_mkdir_errors(ProgressStream, [Result | Results], Succeeded, !IO) :-
             [s(ErrorMsg)], !IO),
         print_mkdir_errors(ProgressStream, Results, _, !IO),
         Succeeded = did_not_succeed
-    ).
-
-:- pred make_install_symlink(globals::in, string::in, string::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
-
-make_install_symlink(Globals, Subdir, Ext, Succeeded, !IO) :-
-    LinkName = Subdir / (Ext ++ "s"),
-    maybe_make_symlink(Globals, "..", LinkName, Succeeded, !IO).
-
-    % Generate (or update) the index for an archive file,
-    % i.e. run ranlib on a .a file.
-    %
-:- pred generate_archive_index(io.text_output_stream::in, globals::in,
-    file_name::in, dir_name::in, maybe_succeeded::out, io::di, io::uo) is det.
-
-generate_archive_index(ProgressStream, Globals, FileName, InstallDir,
-        Succeeded, !IO) :-
-    verbose_make_four_part_msg(Globals, "Generating archive index for file",
-         FileName, "in", InstallDir, InstallMsg),
-    maybe_write_msg(ProgressStream, InstallMsg, !IO),
-    globals.lookup_string_option(Globals, ranlib_command, RanLibCommand),
-    globals.lookup_string_option(Globals, ranlib_flags, RanLibFlags),
-    % XXX What is the point of using more than one space?
-    Command = string.join_list("    ", [
-        quote_shell_cmd_arg(RanLibCommand),
-        RanLibFlags,
-        quote_shell_cmd_arg(InstallDir / FileName)
-    ]),
-    % XXX MAKE_STREAM
-    CmdOutputStream = ProgressStream,
-    invoke_system_command(Globals, ProgressStream,
-        CmdOutputStream, cmd_verbose, Command, Succeeded, !IO).
-
-%---------------------%
-
-:- pred remove_target_file_if_grade_dependent(dependency_file::in,
-    dependency_status::in,
-    version_hash_table(dependency_file, dependency_status)::in,
-    version_hash_table(dependency_file, dependency_status)::out) is det.
-
-remove_target_file_if_grade_dependent(File, _Status, !StatusMap) :-
-    ( if
-        File = dep_target(target_file(_, TargetType)),
-        % XXX Why are we deleting arch-dependent target types
-        % that are NOT grade dependent?
-        target_is_grade_or_arch_dependent(TargetType)
-    then
-        version_hash_table.delete(File, !StatusMap)
-    else
-        true
     ).
 
 %---------------------------------------------------------------------------%
