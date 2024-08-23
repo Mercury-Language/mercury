@@ -49,6 +49,7 @@
 :- implementation.
 
 :- import_module make.get_module_dep_info.
+:- import_module make.util.
 :- import_module parse_tree.
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.prog_data_foreign.
@@ -241,17 +242,15 @@ acc_module_index_trans_deps(ProgressStream, Globals, KeepGoing,
     find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
         WhichDeps, ProcessModulesWhere, Globals,
         HeadModuleIndex, HeadSucceeded, !ModuleIndexSet, !Info, !IO),
-    ( if
-        ( HeadSucceeded = succeeded
-        ; KeepGoing = do_keep_going
-        )
-    then
-        !:Succeeded = !.Succeeded `and` HeadSucceeded,
+    should_we_stop_or_continue(KeepGoing, HeadSucceeded, StopOrContinue,
+        !Succeeded),
+    (
+        StopOrContinue = soc_stop
+    ;
+        StopOrContinue = soc_continue,
         acc_module_index_trans_deps(ProgressStream, Globals, KeepGoing,
             WhichDeps, ProcessModulesWhere,
             TailModuleIndexes, !Succeeded, !ModuleIndexSet, !Info, !IO)
-    else
-        !:Succeeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%

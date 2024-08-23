@@ -20,6 +20,7 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.maybe_util.
 :- import_module libs.options.
 :- import_module make.make_info.
 :- import_module mdbcomp.
@@ -73,6 +74,15 @@
 %---------------------------------------------------------------------------%
 
 :- pred target_is_grade_or_arch_dependent(module_target_type::in) is semidet.
+
+%---------------------------------------------------------------------------%
+
+:- type stop_or_continue
+    --->    soc_stop
+    ;       soc_continue.
+
+:- pred should_we_stop_or_continue(maybe_keep_going::in, maybe_succeeded::in,
+    stop_or_continue::out, maybe_succeeded::in, maybe_succeeded::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -300,6 +310,25 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_fact_table_object(_, _)
         ),
         IsDependent = yes
+    ).
+
+%---------------------------------------------------------------------------%
+
+should_we_stop_or_continue(KeepGoing, JobSucceeded, StopOrContinue,
+        !Succeeded) :-
+    (
+        JobSucceeded = succeeded,
+        StopOrContinue = soc_continue
+    ;
+        JobSucceeded = did_not_succeed,
+        !:Succeeded = did_not_succeed,
+        (
+            KeepGoing = do_not_keep_going,
+            StopOrContinue = soc_stop
+        ;
+            KeepGoing = do_keep_going,
+            StopOrContinue = soc_continue
+        )
     ).
 
 %---------------------------------------------------------------------------%

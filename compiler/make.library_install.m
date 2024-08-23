@@ -252,17 +252,15 @@ make_and_install_library_grades(KeepGoing, ProgressStream, Globals,
         !Succeeded, !Info, !IO) :-
     make_and_install_library_grade(ProgressStream, Globals, NgsLibDirMap,
         MainModuleName, AllModuleNames, Grade, GradeSucceeded, !Info, !IO),
-    ( if
-        ( GradeSucceeded = succeeded
-        ; KeepGoing = do_keep_going
-        )
-    then
-        !:Succeeded = !.Succeeded `and` GradeSucceeded,
+    should_we_stop_or_continue(KeepGoing, GradeSucceeded, StopOrContinue,
+        !Succeeded),
+    (
+        StopOrContinue = soc_stop
+    ;
+        StopOrContinue = soc_continue,
         make_and_install_library_grades(KeepGoing, ProgressStream, Globals,
             NgsLibDirMap, MainModuleName, AllModuleNames, Grades,
             !Succeeded, !Info, !IO)
-    else
-        !:Succeeded = did_not_succeed
     ).
 
 :- pred make_and_install_library_grade( io.text_output_stream::in, globals::in,

@@ -211,13 +211,12 @@ find_direct_prereqs_of_nested_module_targets(ProgressStream, KeepGoing,
         Globals, TargetType, ModuleIndex, HeadSucceeded, HeadPrereqs,
         !Info, !IO),
     deps_set_union(HeadPrereqs, !Prereqs),
-    ( if
-        HeadSucceeded = did_not_succeed,
-        KeepGoing = do_not_keep_going
-    then
-        !:Succeeded = did_not_succeed
-    else
-        !:Succeeded = !.Succeeded `and` HeadSucceeded,
+    should_we_stop_or_continue(KeepGoing, HeadSucceeded, StopOrContinue,
+        !Succeeded),
+    (
+        StopOrContinue = soc_stop
+    ;
+        StopOrContinue = soc_continue,
         find_direct_prereqs_of_nested_module_targets(ProgressStream, KeepGoing,
             Globals, TargetType, ModuleIndexes, !Succeeded, !Prereqs,
             !Info, !IO)
@@ -241,7 +240,8 @@ find_direct_prereqs_of_module_target(ProgressStream, KeepGoing, Globals,
         TargetType = module_target_int3,
         PrereqSpecs = [self(module_target_source)],
         find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, PrereqSpecs, Succeeded, Prereqs, !Info, !IO)
+            ModuleIndex, PrereqSpecs, Prereqs, succeeded, Succeeded,
+            !Info, !IO)
     ;
         ( TargetType = module_target_int0
         ; TargetType = module_target_int1
@@ -254,7 +254,8 @@ find_direct_prereqs_of_module_target(ProgressStream, KeepGoing, Globals,
             indirect_imports_intermod(module_target_int3)
         ],
         find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, PrereqSpecs, Succeeded, Prereqs, !Info, !IO)
+            ModuleIndex, PrereqSpecs, Prereqs, succeeded, Succeeded,
+            !Info, !IO)
     ;
         ( TargetType = module_target_c_code
         ; TargetType = module_target_c_header(_)
@@ -266,7 +267,8 @@ find_direct_prereqs_of_module_target(ProgressStream, KeepGoing, Globals,
         % XXX MDNEW Get intermod, pass as extra arg in the returned deps.
         % XXX MDNEW Same for direct and indirect deps, and ancestors.
         find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, PrereqSpecs, Succeeded, Prereqs, !Info, !IO)
+            ModuleIndex, PrereqSpecs, Prereqs, succeeded, Succeeded,
+            !Info, !IO)
     ;
         TargetType = module_target_java_class_code,
         PrereqSpec = self(module_target_java_code),
@@ -303,7 +305,8 @@ find_direct_prereqs_of_module_target(ProgressStream, KeepGoing, Globals,
             PrereqSpecs = [PrereqSpecSelf, PrereqSpecMh]
         ),
         find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, PrereqSpecs, Succeeded, Prereqs, !Info, !IO)
+            ModuleIndex, PrereqSpecs, Prereqs, succeeded, Succeeded,
+            !Info, !IO)
     ;
         ( TargetType = module_target_opt
         ; TargetType = module_target_xml_doc
@@ -313,7 +316,8 @@ find_direct_prereqs_of_module_target(ProgressStream, KeepGoing, Globals,
             anc0_dir1_indir2_non_intermod
         ],
         find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, PrereqSpecs, Succeeded, Prereqs, !Info, !IO)
+            ModuleIndex, PrereqSpecs, Prereqs, succeeded, Succeeded,
+            !Info, !IO)
     ;
         TargetType = module_target_analysis_registry,
         PrereqSpecs = [
@@ -324,7 +328,8 @@ find_direct_prereqs_of_module_target(ProgressStream, KeepGoing, Globals,
             intermod_imports(module_target_opt)
         ],
         find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, PrereqSpecs, Succeeded, Prereqs, !Info, !IO)
+            ModuleIndex, PrereqSpecs, Prereqs, succeeded, Succeeded,
+            !Info, !IO)
     ).
 
 :- func target_to_module_target_code(compilation_target, pic)
@@ -440,27 +445,27 @@ compiled_code_dependencies(Globals, PrereqSpecs) :-
 
 :- pred find_prereqs_from_specs(io.text_output_stream::in,
     maybe_keep_going::in, globals::in, module_index::in, list(prereq_spec)::in,
-    maybe_succeeded::out, deps_set(dependency_file_index)::out,
+    deps_set(dependency_file_index)::out,
+    maybe_succeeded::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-find_prereqs_from_specs(_, _, _, _, [], succeeded, deps_set_init, !Info, !IO).
+find_prereqs_from_specs(_, _, _, _, [], deps_set_init, !Succeeded, !Info, !IO).
 find_prereqs_from_specs(ProgressStream, KeepGoing, Globals, ModuleIndex,
-        [HeadPrereqSpec | TailPrereqSpecs], Succeeded, DepFileIndexSet,
-        !Info, !IO) :-
+        [HeadPrereqSpec | TailPrereqSpecs], DepFileIndexSet,
+        !Succeeded, !Info, !IO) :-
     find_prereqs_from_spec(ProgressStream, KeepGoing, Globals,
         ModuleIndex, HeadPrereqSpec, HeadSucceeded, HeadDepFileIndexSet,
         !Info, !IO),
-    ( if
-        HeadSucceeded = did_not_succeed,
-        KeepGoing = do_not_keep_going
-    then
-        Succeeded = did_not_succeed,
+    should_we_stop_or_continue(KeepGoing, HeadSucceeded, StopOrContinue,
+        !Succeeded),
+    (
+        StopOrContinue = soc_stop,
         DepFileIndexSet = HeadDepFileIndexSet
-    else
+    ;
+        StopOrContinue = soc_continue,
         find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, TailPrereqSpecs, TailSucceeded, TailDepFileIndexSet,
-            !Info, !IO),
-        Succeeded = HeadSucceeded `and` TailSucceeded,
+            ModuleIndex, TailPrereqSpecs, TailDepFileIndexSet,
+            !Succeeded, !Info, !IO),
         deps_set_union(HeadDepFileIndexSet, TailDepFileIndexSet,
             DepFileIndexSet)
     ).
@@ -555,8 +560,8 @@ find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, ModuleIndex,
 %           Result0 = deps_result(Succeeded, DepFileIndexSet)
 %       else
             find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
-                ModuleIndex, SubPrereqSpecs, Succeeded, DepFileIndexSet,
-                !Info, !IO),
+                ModuleIndex, SubPrereqSpecs, DepFileIndexSet,
+                succeeded, Succeeded, !Info, !IO),
 %           Result = deps_result(Succeeded, DepFileIndexSet),
 %           add_to_anc0_dir1_indir2_non_intermod_cache(ModuleIndex, Result,
 %               !Info)
@@ -597,8 +602,8 @@ find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, ModuleIndex,
             Result0 = deps_result(Succeeded, DepFileIndexSet)
         else
             find_prereqs_from_specs(ProgressStream, KeepGoing, Globals,
-                ModuleIndex, SubPrereqSpecs, Succeeded, DepFileIndexSet,
-                !Info, !IO),
+                ModuleIndex, SubPrereqSpecs, DepFileIndexSet,
+                succeeded, Succeeded, !Info, !IO),
             Result = deps_result(Succeeded, DepFileIndexSet),
             add_to_anc0_dir1_indir2_intermod_cache(ModuleIndex, Result, !Info)
         ),
@@ -1026,22 +1031,21 @@ acc_module_index_if_for_lang_in_set(LangSet, FIMSpec, !DepsSet, !Info) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports(ProgressStream,
-        KeepGoing, Globals, ModuleIndex, Succeeded, DepFileIndexSet,
+        KeepGoing, Globals, ModuleIndex, !:Succeeded, DepFileIndexSet,
         !Info, !IO) :-
     get_ancestors_of_intermod_imports(ProgressStream, KeepGoing, Globals,
         ModuleIndex, Succeeded1, Modules1, !Info, !IO),
-    ( if
-        Succeeded1 = did_not_succeed,
-        KeepGoing = do_not_keep_going
-    then
-        Succeeded = did_not_succeed,
+    should_we_stop_or_continue(KeepGoing, Succeeded1, StopOrContinue,
+        succeeded, !:Succeeded),
+    (
+        StopOrContinue = soc_stop,
         DepFileIndexSet = deps_set_init
-    else
+    ;
+        StopOrContinue = soc_continue,
         ModuleList1 = deps_set_to_sorted_list(Modules1),
         fold_prereq_spec_over_modules(ProgressStream, KeepGoing, Globals,
             anc0_dir1_indir2_intermod, ModuleList1,
-            succeeded, Succeeded2, deps_set_init, DepFileIndexSet, !Info, !IO),
-        Succeeded = Succeeded1 `and` Succeeded2
+            !Succeeded, deps_set_init, DepFileIndexSet, !Info, !IO)
     ).
 
 :- pred get_ancestors_of_intermod_imports(io.text_output_stream::in,
@@ -1053,18 +1057,17 @@ get_ancestors_of_intermod_imports(ProgressStream, KeepGoing, Globals,
         ModuleIndex, Succeeded, ModuleIndexSet, !Info, !IO) :-
     get_intermod_imports(ProgressStream, KeepGoing, Globals, ModuleIndex,
         Succeeded1, Modules1, !Info, !IO),
-    ( if
-        Succeeded1 = did_not_succeed,
-        KeepGoing = do_not_keep_going
-    then
-        Succeeded = did_not_succeed,
+    should_we_stop_or_continue(KeepGoing, Succeeded1, StopOrContinue,
+        succeeded, Succeeded),
+    (
+        StopOrContinue = soc_stop,
         ModuleIndexSet = deps_set_init
-    else
+    ;
+        StopOrContinue = soc_continue,
         ModuleList1 = deps_set_to_sorted_list(Modules1),
         list.map_foldl(index_get_ancestors,
             ModuleList1, AncestorModuleIndexSets, !Info),
-        ModuleIndexSet = deps_set_union_list(AncestorModuleIndexSets),
-        Succeeded = Succeeded1
+        ModuleIndexSet = deps_set_union_list(AncestorModuleIndexSets)
     ).
 
 :- pred index_get_ancestors(module_index::in, deps_set(module_index)::out,
@@ -1205,13 +1208,12 @@ fold_find_modules_over_modules(ProgressStream, KeepGoing, Globals, FindModules,
     FindModules(ProgressStream, KeepGoing, Globals, MI,
         HeadSucceeded, HeadModuleIndexSet, !Info, !IO),
     deps_set_union(HeadModuleIndexSet, !ModuleIndexSet),
-    ( if
-        HeadSucceeded = did_not_succeed,
-        KeepGoing = do_not_keep_going
-    then
-        !:Succeeded = did_not_succeed
-    else
-        !:Succeeded = !.Succeeded `and` HeadSucceeded,
+    should_we_stop_or_continue(KeepGoing, HeadSucceeded, StopOrContinue,
+        !Succeeded),
+    (
+        StopOrContinue = soc_stop
+    ;
+        StopOrContinue = soc_continue,
         fold_find_modules_over_modules(ProgressStream, KeepGoing, Globals,
             FindModules, MIs, !Succeeded, !ModuleIndexSet, !Info, !IO)
     ).
@@ -1241,13 +1243,12 @@ fold_prereq_spec_over_modules(ProgressStream, KeepGoing, Globals, PrereqSpec,
     find_prereqs_from_spec(ProgressStream, KeepGoing, Globals, MI, PrereqSpec,
         HeadSucceeded, HeadDepFileIndexSet, !Info, !IO),
     deps_set_union(HeadDepFileIndexSet, !DepFileIndexSet),
-    ( if
-        HeadSucceeded = did_not_succeed,
-        KeepGoing = do_not_keep_going
-    then
-        !:Succeeded = did_not_succeed
-    else
-        !:Succeeded = !.Succeeded `and` HeadSucceeded,
+    should_we_stop_or_continue(KeepGoing, HeadSucceeded, StopOrContinue,
+        !Succeeded),
+    (
+        StopOrContinue = soc_stop
+    ;
+        StopOrContinue = soc_continue,
         fold_prereq_spec_over_modules(ProgressStream, KeepGoing, Globals,
             PrereqSpec, MIs, !Succeeded, !DepFileIndexSet, !Info, !IO)
     ).

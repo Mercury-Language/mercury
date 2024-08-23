@@ -199,6 +199,7 @@
 :- import_module libs.process_util.
 :- import_module make.module_target.    % XXX undesirable dependency.
 :- import_module make.top_level.        % XXX undesirable dependency.
+:- import_module make.util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
 
@@ -472,16 +473,14 @@ foldl2_maybe_stop_at_error_loop(_KeepGoing, _P, _ProgressStream, _Globals,
 foldl2_maybe_stop_at_error_loop(KeepGoing, P, ProgressStream, Globals,
         [Target | Targets], !Succeeded, !Info, !IO) :-
     P(ProgressStream, Globals, Target, NewSucceeded, !Info, !IO),
-    ( if
-        ( NewSucceeded = succeeded
-        ; KeepGoing = do_keep_going
-        )
-    then
-        !:Succeeded = !.Succeeded `and` NewSucceeded,
+    should_we_stop_or_continue(KeepGoing, NewSucceeded, StopOrContinue,
+        !Succeeded),
+    (
+        StopOrContinue = soc_stop
+    ;
+        StopOrContinue = soc_continue,
         foldl2_maybe_stop_at_error_loop(KeepGoing, P, ProgressStream, Globals,
             Targets, !Succeeded, !Info, !IO)
-    else
-        !:Succeeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%
