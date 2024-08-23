@@ -389,13 +389,12 @@ make_install_file_command(Globals, FileName, InstallDir) = Command :-
         FileInstallCmd = install_cmd_cp,
         InstallCmd = "cp"
     ),
-    Command = string.join_list("   ", list.map(quote_shell_cmd_arg,
+    Command = string.join_list(" ", list.map(quote_shell_cmd_arg,
         [InstallCmd, FileName, InstallDir])).
 
 %---------------------------------------------------------------------------%
 
 open_temp_output_with_naming_scheme(Dir, Prefix, Suffix, Result, !IO) :-
-    % XXX Both open_temp_output and io.make_temp_file are ambiguous.
     io.file.make_temp_file(Dir, Prefix, Suffix, TempFileResult, !IO),
     open_temp_file(TempFileResult, Result, !IO).
 

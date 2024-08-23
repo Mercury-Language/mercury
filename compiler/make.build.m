@@ -111,8 +111,9 @@
 
 %---------------------------------------------------------------------------%
 %
-% Versions of foldl which stop if the supplied predicate returns
-% Succeeded = `no' for any element of the list.
+% Versions of foldl which stop if (a) the supplied predicate returns
+% Succeeded = `did_not_succeed' for any element of the list, and
+% (b) KeepGoing = do_not_keep_going.
 %
 
     % foldl2_pred_with_status(Globals, T, Succeeded, !Info).
@@ -131,19 +132,6 @@
     %
 :- pred foldl2_make_module_targets(maybe_keep_going::in, list(string)::in,
     io.text_output_stream::in, globals::in, list(dependency_file)::in,
-    maybe_succeeded::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
-
-    % foldl2_install_library_grades(KeepGoing, LinkSucceeded, MainModuleName,
-    %   AllModules, ProgressStream, Globals, LibGrades, Succeeded, !Info, !IO):
-    %
-    % Invoke install_library_grade(LinkSucceeded, MainModuleName, AllModules,
-    % ...) on each grade in LibGrades, stopping at errors unless KeepGoing =
-    % do_keep_going.
-    %
-:- pred foldl2_install_library_grades(maybe_keep_going::in,
-    maybe_succeeded::in, module_name::in, list(module_name)::in,
-    io.text_output_stream::in, globals::in, list(string)::in,
     maybe_succeeded::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
@@ -209,7 +197,6 @@
 :- import_module libs.file_util.
 :- import_module libs.handle_options.
 :- import_module libs.process_util.
-:- import_module make.library_install.
 :- import_module make.module_target.    % XXX undesirable dependency.
 :- import_module make.top_level.        % XXX undesirable dependency.
 :- import_module parse_tree.file_names.
@@ -467,13 +454,6 @@ foldl2_make_module_targets(KeepGoing, ExtraOptions, ProgressStream, Globals,
     foldl2_maybe_stop_at_error_loop(KeepGoing,
         make_module_target(ExtraOptions),
         ProgressStream, Globals, Targets, succeeded, Succeeded, !Info, !IO).
-
-foldl2_install_library_grades(KeepGoing, LinkSucceeded,
-        MainModuleName, AllModules, ProgressStream, Globals,
-        LibGrades, Succeeded, !Info, !IO) :-
-    foldl2_maybe_stop_at_error_loop(KeepGoing,
-        install_library_grade(LinkSucceeded, MainModuleName, AllModules),
-        ProgressStream, Globals, LibGrades, succeeded, Succeeded, !Info, !IO).
 
 foldl2_make_top_targets(KeepGoing, ProgressStream, Globals, Targets,
         Succeeded, !Info, !IO) :-

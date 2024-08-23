@@ -24,7 +24,6 @@
 :- import_module mdbcomp.sym_name.
 
 :- import_module io.
-:- import_module list.
 
 %---------------------------------------------------------------------------%
 
@@ -35,24 +34,11 @@
     module_name::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % install_library_grade(LinkSucceeded0, MainModuleName, AllModuleNames,
-    %   ProgressStream, Globals, Grade, Succeeded, !Info, !IO)
-    %
-    % NOTE The unusual argument order is required by the fact that
-    % make.build.m calls this pred through foldl2_maybe_stop_at_error_loop.
-    %
-:- pred install_library_grade(maybe_succeeded::in,
-    module_name::in, list(module_name)::in, io.text_output_stream::in,
-    globals::in, string::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module backend_libs.
-:- import_module backend_libs.compile_target_code.
 :- import_module libs.compute_grade.
 :- import_module libs.copy_util.
 :- import_module libs.file_util.
@@ -62,7 +48,6 @@
 :- import_module libs.shell_util.
 :- import_module libs.system_cmds.
 :- import_module libs.timestamp.
-:- import_module make.build.
 :- import_module make.clean.
 :- import_module make.find_local_modules.
 :- import_module make.get_module_dep_info.
@@ -81,6 +66,8 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module getopt.
+:- import_module list.
+:- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -89,50 +76,49 @@
 
 %---------------------------------------------------------------------------%
 
-install_library(ProgressStream, Globals, MainModuleName, Succeeded,
+install_library(ProgressStream, Globals, MainModuleName, !:Succeeded,
         !Info, !IO) :-
     find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
         DepsSucceeded, AllModuleNames0, !Info, !IO),
     AllModuleNames = set.to_sorted_list(AllModuleNames0),
     make_install_dirs(ProgressStream, Globals,
-        DirSucceeded, LinkSucceeded, !IO),
+        DirSucceeded, NgsLibDirMap, !IO),
     ( if
         DepsSucceeded = succeeded,
         DirSucceeded = succeeded
     then
-        list.map_foldl2(
-            install_ints_and_headers(ProgressStream, Globals, LinkSucceeded),
-            AllModuleNames, IntsSucceeded, !Info, !IO),
-        install_extra_headers(ProgressStream, Globals,
-            ExtraHdrsSucceeded, !IO),
+        list.foldl3(
+            install_ints_and_headers_for_module(ProgressStream, Globals,
+                NgsLibDirMap),
+            AllModuleNames, succeeded, !:Succeeded, !Info, !IO),
+        install_extra_headers(ProgressStream, Globals, !Succeeded, !IO),
 
-        grade_directory_component(Globals, Grade),
-        install_library_grade_files(ProgressStream, Globals, LinkSucceeded,
-            Grade, MainModuleName, AllModuleNames, GradeSucceeded, !Info, !IO),
-        ( if
-            and_list([ExtraHdrsSucceeded | IntsSucceeded]) = succeeded,
-            GradeSucceeded = succeeded
-        then
+        grade_directory_component(Globals, CurGrade),
+        install_library_grade_files(ProgressStream, Globals, NgsLibDirMap,
+            CurGrade, MainModuleName, AllModuleNames, !Succeeded, !Info, !IO),
+        (
+            !.Succeeded = succeeded,
             KeepGoing = make_info_get_keep_going(!.Info),
             % XXX With Mmake, LIBGRADES is target-specific.
             globals.lookup_accumulating_option(Globals, libgrades, LibGrades0),
-            LibGrades = list.delete_all(LibGrades0, Grade),
-            foldl2_install_library_grades(KeepGoing,
-                LinkSucceeded, MainModuleName, AllModuleNames,
-                ProgressStream, Globals, LibGrades, Succeeded, !Info, !IO)
-        else
-            Succeeded = did_not_succeed
+            LibGrades = list.delete_all(LibGrades0, CurGrade),
+            make_and_install_library_grades(KeepGoing, ProgressStream, Globals,
+                NgsLibDirMap, MainModuleName, AllModuleNames, LibGrades,
+                !Succeeded, !Info, !IO)
+        ;
+            !.Succeeded = did_not_succeed
         )
     else
-        Succeeded = did_not_succeed
+        !:Succeeded = did_not_succeed
     ).
 
-:- pred install_ints_and_headers(io.text_output_stream::in, globals::in,
-    maybe_succeeded::in, module_name::in, maybe_succeeded::out,
+:- pred install_ints_and_headers_for_module(io.text_output_stream::in,
+    globals::in, libdir_map::in, module_name::in,
+    maybe_succeeded::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-install_ints_and_headers(ProgressStream, Globals, SubdirLinkSucceeded,
-        ModuleName, Succeeded, !Info, !IO) :-
+install_ints_and_headers_for_module(ProgressStream, Globals, NgsLibDirMap,
+        ModuleName, !Succeeded, !Info, !IO) :-
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
@@ -146,6 +132,7 @@ install_ints_and_headers(ProgressStream, Globals, SubdirLinkSucceeded,
         % find the `.int0' file.
         module_dep_info_get_children(ModuleDepInfo, Children),
         ( if set.is_empty(Children) then
+            % There won't be any .int0 files to install.
             ExtExtDirs0 = []
         else
             ExtExtDirs0 = [{ext_cur_ngs(ext_cur_ngs_int_int0), "int0s"}]
@@ -153,72 +140,66 @@ install_ints_and_headers(ProgressStream, Globals, SubdirLinkSucceeded,
         globals.get_any_intermod(Globals, AnyIntermod),
         (
             AnyIntermod = yes,
-            ExtExtDirs1 =
-                [{ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
-                "opts"} | ExtExtDirs0]
+            ExtOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+            ExtExtDirs1 = [{ExtOpt, "opts"} | ExtExtDirs0]
         ;
             AnyIntermod = no,
             ExtExtDirs1 = ExtExtDirs0
         ),
-        ExtExtDirs = [{ext_cur_ngs(ext_cur_ngs_int_int1), "ints"},
+        ExtExtDirs =
+            [{ext_cur_ngs(ext_cur_ngs_int_int1), "ints"},
             {ext_cur_ngs(ext_cur_ngs_int_int2), "int2s"},
             {ext_cur_ngs(ext_cur_ngs_int_int3), "int3s"},
             {ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep), "module_deps"}
             | ExtExtDirs1],
         globals.lookup_string_option(Globals, install_prefix, Prefix),
         LibDir = Prefix / "lib" / "mercury",
-        list.map_foldl(
-            install_subdir_file(ProgressStream, Globals, SubdirLinkSucceeded,
+        list.foldl2(
+            install_subdir_file(ProgressStream, Globals, NgsLibDirMap,
                 LibDir / "ints", ModuleName),
-            ExtExtDirs, Results, !IO),
+            ExtExtDirs, !Succeeded, !IO),
 
         globals.get_target(Globals, Target),
         (
+            Target = target_c,
             % `.mh' files are (were) only generated for modules containing
             % `:- pragma foreign_export' declarations.
             % But `.mh' files are expected by Mmake so always generate them,
             % otherwise there is trouble using libraries installed by
             % `mmc --make' with Mmake.
             % XXX If we ever phase out mmake we could revert this behaviour.
-            Target = target_c,
             % XXX Should we test
             % ModuleDepInfo ^ contains_foreign_export
             %   = contains_foreign_export?
-            module_name_to_file_name(Globals, $pred,
-                ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
+            ExtMh = ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
+            module_name_to_file_name(Globals, $pred, ExtMh,
                 ModuleName, FileName),
             install_file(ProgressStream, Globals, FileName, LibDir / "inc",
-                HeaderSucceeded1, !IO),
+                !Succeeded, !IO),
 
             % This is needed so that the file will be found in Mmake's VPATH.
-            install_subdir_file(ProgressStream, Globals, SubdirLinkSucceeded,
-                LibDir / "ints", ModuleName,
-                {ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh), "mhs"},
-                HeaderSucceeded2, !IO),
-
-            HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
+            install_subdir_file(ProgressStream, Globals, NgsLibDirMap,
+                LibDir / "ints", ModuleName, {ExtMh, "mhs"}, !Succeeded, !IO)
         ;
             ( Target = target_java
             ; Target = target_csharp
-            ),
-            HeaderSucceeded = succeeded
-        ),
-        Succeeded = and_list([HeaderSucceeded | Results])
+            )
+        )
     ;
         MaybeModuleDepInfo = no_module_dep_info,
-        Succeeded = did_not_succeed
+        !:Succeeded = did_not_succeed
     ).
 
 :- pred install_extra_headers(io.text_output_stream::in, globals::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-install_extra_headers(ProgressStream, Globals, ExtraHdrsSucceeded, !IO) :-
+install_extra_headers(ProgressStream, Globals, !Succeeded, !IO) :-
     globals.lookup_accumulating_option(Globals, extra_library_header,
         ExtraHdrs),
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     IncDir = Prefix / "lib" / "mercury" / "inc",
     list.foldl2(install_extra_header(ProgressStream, Globals, IncDir),
-        ExtraHdrs, succeeded, ExtraHdrsSucceeded, !IO).
+        ExtraHdrs, !Succeeded, !IO).
 
 :- pred install_extra_header(io.text_output_stream::in, globals::in,
     dir_name::in, string::in, maybe_succeeded::in, maybe_succeeded::out,
@@ -226,24 +207,83 @@ install_extra_headers(ProgressStream, Globals, ExtraHdrsSucceeded, !IO) :-
 
 install_extra_header(ProgressStream, Globals, IncDir, FileName,
         !Succeeded, !IO) :-
-    install_file(ProgressStream, Globals, FileName, IncDir,
-        InstallSucceeded, !IO),
-    !:Succeeded = !.Succeeded `and` InstallSucceeded.
+    install_file(ProgressStream, Globals, FileName, IncDir, !Succeeded, !IO).
 
 %---------------------------------------------------------------------------%
 
-install_library_grade(LinkSucceeded0, MainModuleName, AllModuleNames,
-        ProgressStream, Globals, Grade, Succeeded, !Info, !IO) :-
+    % Map from the directory name associated with a given extension
+    % (such as "int0s" for .int0 files, or "analyses" for .analysis files)
+    % to the pathnames of the one or two directories we have created to store
+    % files with that extension.
+    %
+    % We use libdir_maps for extensions whose files are installed using
+    % install_subdir_file. Extensions whose files are installed directly
+    % with install_file will not appear in maps of this type.
+    %
+:- type libdir_map == map(string, libdir_info).
+
+:- type libdir_info
+    --->    install_to_cur_ngs(dir_name, dir_name)
+            % Install files to both the cur directory (the first argument) and
+            % the non-grade-specific or ngs directory (the second argument).
+            %
+            % For non-grade-specific extensions, the first directory is
+            % the one where the installed file is intended to be found by
+            % --no-use-subdirs compiler invocations, while the second is for
+            % --use-subdirs compiler invocations.
+            %
+            % For grade-specific extensions, we use the same setup.
+            % I (zs) am not sure why, but my guess is documented in the
+            % big comment in make_grade_install_dirs.
+    ;       install_to_cur_only(dir_name).
+            % Install files only to the specified directory.
+            % This will be the cur directory, and the ngs directory
+            % will be a symlink to the cur directory.
+
+:- pred make_and_install_library_grades(maybe_keep_going::in,
+    io.text_output_stream::in, globals::in, libdir_map::in,
+    module_name::in, list(module_name)::in, list(string)::in,
+    maybe_succeeded::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+make_and_install_library_grades(_, _, _, _, _, _, [], !Succeeded, !Info, !IO).
+make_and_install_library_grades(KeepGoing, ProgressStream, Globals,
+        NgsLibDirMap, MainModuleName, AllModuleNames, [Grade | Grades],
+        !Succeeded, !Info, !IO) :-
+    make_and_install_library_grade(ProgressStream, Globals, NgsLibDirMap,
+        MainModuleName, AllModuleNames, Grade, GradeSucceeded, !Info, !IO),
+    ( if
+        ( GradeSucceeded = succeeded
+        ; KeepGoing = do_keep_going
+        )
+    then
+        !:Succeeded = !.Succeeded `and` GradeSucceeded,
+        make_and_install_library_grades(KeepGoing, ProgressStream, Globals,
+            NgsLibDirMap, MainModuleName, AllModuleNames, Grades,
+            !Succeeded, !Info, !IO)
+    else
+        !:Succeeded = did_not_succeed
+    ).
+
+:- pred make_and_install_library_grade( io.text_output_stream::in, globals::in,
+    libdir_map::in, module_name::in, list(module_name)::in,
+    string::in, maybe_succeeded::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
+
+make_and_install_library_grade(ProgressStream, Globals, NgsLibDirMap,
+        MainModuleName, AllModuleNames, Grade, Succeeded, !Info, !IO) :-
     % Only remove grade-dependent files after installing if
     % --use-grade-subdirs is not specified by the user.
-    globals.get_subdir_setting(Globals, SubdirSetting),
+    globals.get_subdir_setting(Globals, SubDirSetting),
     (
-        ( SubdirSetting = use_cur_dir
-        ; SubdirSetting = use_cur_ngs_subdir
+        ( SubDirSetting = use_cur_dir
+        ; SubDirSetting = use_cur_ngs_subdir
         ),
+        % XXX CleanAfter = remove_grade_dependent_files
         CleanAfter = yes
     ;
-        SubdirSetting = use_cur_ngs_gs_subdir,
+        SubDirSetting = use_cur_ngs_gs_subdir,
+        % XXX CleanAfter = do_not_remove_grade_dependent_files
         CleanAfter = no
     ),
 
@@ -316,8 +356,9 @@ install_library_grade(LinkSucceeded0, MainModuleName, AllModuleNames,
         globals.lookup_bool_option(LibGlobals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
         call_in_forked_process(
-            install_library_grade_2(ProgressStream, LibGlobals, LinkSucceeded0,
-                MainModuleName, AllModuleNames, !.Info, CleanAfter),
+            make_and_install_library_grade_2(ProgressStream, LibGlobals,
+                NgsLibDirMap, MainModuleName, AllModuleNames,
+                !.Info, CleanAfter),
             Succeeded0, !IO),
         Cleanup = maybe_make_grade_clean(ProgressStream, LibGlobals,
             CleanAfter, MainModuleName, AllModuleNames),
@@ -342,24 +383,24 @@ remove_target_file_if_grade_dependent(File, _Status, !StatusMap) :-
         true
     ).
 
-:- pred install_library_grade_2(io.text_output_stream::in, globals::in,
-    maybe_succeeded::in, module_name::in, list(module_name)::in, make_info::in,
-    bool::in, maybe_succeeded::out, io::di, io::uo) is det.
+:- pred make_and_install_library_grade_2(io.text_output_stream::in,
+    globals::in, libdir_map::in, module_name::in, list(module_name)::in,
+    make_info::in, bool::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-install_library_grade_2(ProgressStream, Globals, LinkSucceeded0,
-        MainModuleName, AllModuleNames, Info0, CleanAfter, Succeeded, !IO) :-
+make_and_install_library_grade_2(ProgressStream, Globals, NgsLibDirMap,
+        MainModuleName, AllModuleNames, !.Info, CleanAfter, Succeeded, !IO) :-
     make_misc_target(ProgressStream, Globals,
         MainModuleName - misc_target_build_library, LibSucceeded,
-        Info0, Info1, [], Specs, !IO),
+        !Info, [], Specs, !IO),
     (
         LibSucceeded = succeeded,
         % `GradeDir' differs from `Grade' in that it is in canonical form.
         grade_directory_component(Globals, GradeDir),
-        install_library_grade_files(ProgressStream, Globals, LinkSucceeded0,
-            GradeDir, MainModuleName, AllModuleNames, Succeeded,
-            Info1, Info2, !IO),
+        install_library_grade_files(ProgressStream, Globals, NgsLibDirMap,
+            GradeDir, MainModuleName, AllModuleNames,
+            succeeded, Succeeded, !Info, !IO),
         maybe_make_grade_clean(ProgressStream, Globals, CleanAfter,
-            MainModuleName, AllModuleNames, Info2, _Info, !IO)
+            MainModuleName, AllModuleNames, !.Info, _Info, !IO)
     ;
         LibSucceeded = did_not_succeed,
         % XXX MAKE_STREAM
@@ -371,72 +412,75 @@ install_library_grade_2(ProgressStream, Globals, LinkSucceeded0,
     % Install the `.a', `.so', `.jar', `.opt' and `.mih' files for
     % the current grade.
     %
+    % XXX document the others ...
+    %
 :- pred install_library_grade_files(io.text_output_stream::in, globals::in,
-    maybe_succeeded::in, string::in, module_name::in, list(module_name)::in,
-    maybe_succeeded::out, make_info::in, make_info::out,
+    libdir_map::in, string::in, module_name::in, list(module_name)::in,
+    maybe_succeeded::in, maybe_succeeded::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-install_library_grade_files(ProgressStream, Globals, LinkSucceeded0, GradeDir,
-        MainModuleName, AllModuleNames, Succeeded, !Info, !IO) :-
+install_library_grade_files(ProgressStream, Globals, NgsLibDirMap, GradeDir,
+        MainModuleName, AllModuleNames, !Succeeded, !Info, !IO) :-
     make_grade_install_dirs(ProgressStream, Globals, GradeDir,
-        DirResult, LinkSucceeded1, !IO),
+        DirResult, GsLibDirMap, !IO),
     % TODO {ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep), "module_deps"}
-    LinkSucceeded = LinkSucceeded0 `and` LinkSucceeded1,
     (
         DirResult = succeeded,
         globals.get_target(Globals, Target),
         get_std_grade_specific_install_lib_dir(Globals, GradeDir, GradeLibDir),
         (
             Target = target_csharp,
-            linked_target_file_name(Globals, MainModuleName, csharp_library,
-                DllFileName, !IO),
+            ExtDll = ext_cur_gs(ext_cur_gs_lib_dll),
+            module_name_to_file_name_create_dirs(Globals, $pred, ExtDll,
+                MainModuleName, DllFileName, !IO),
             install_file(ProgressStream, Globals, DllFileName, GradeLibDir,
-                LibsSucceeded, !IO),
-            InitSucceeded = succeeded
+                !Succeeded, !IO)
         ;
             Target = target_java,
-            linked_target_file_name(Globals, MainModuleName, java_archive,
-                JarFileName, !IO),
+            ExtJar = ext_cur_gs(ext_cur_gs_lib_jar),
+            module_name_to_file_name_create_dirs(Globals, $pred, ExtJar,
+                MainModuleName, JarFileName, !IO),
             install_file(ProgressStream, Globals, JarFileName, GradeLibDir,
-                LibsSucceeded, !IO),
-            InitSucceeded = succeeded
+                !Succeeded, !IO)
         ;
             Target = target_c,
-            linked_target_file_name(Globals, MainModuleName, static_library,
-                LibFileName, !IO),
-            linked_target_file_name(Globals, MainModuleName, shared_library,
-                SharedLibFileName, !IO),
-            maybe_install_library_file(ProgressStream, Globals, "static",
-                LibFileName, GradeLibDir, LibSucceeded0, !IO),
-            ( if LibFileName = SharedLibFileName then
-                LibsSucceeded = LibSucceeded0
+            ExtA =  ext_cur_gs(ext_cur_gs_lib_lib_opt),
+            ExtSo = ext_cur_gs(ext_cur_gs_lib_sh_lib_opt),
+            module_name_to_lib_file_name_create_dirs(Globals, $pred,
+                "lib", ExtA, MainModuleName, StaticLibFileName, !IO),
+            module_name_to_lib_file_name_create_dirs(Globals, $pred,
+                "lib", ExtSo, MainModuleName, SharedLibFileName, !IO),
+            maybe_install_static_or_dynamic_archive(ProgressStream,
+                Globals, "static", StaticLibFileName, GradeLibDir,
+                !Succeeded, !IO),
+            ( if StaticLibFileName = SharedLibFileName then
+                true
             else
-                maybe_install_library_file(ProgressStream, Globals, "shared",
-                    SharedLibFileName, GradeLibDir, SharedLibSucceeded, !IO),
-                LibsSucceeded = LibSucceeded0 `and` SharedLibSucceeded
+                maybe_install_static_or_dynamic_archive(ProgressStream,
+                    Globals, "shared", SharedLibFileName, GradeLibDir,
+                    !Succeeded, !IO)
             ),
             install_grade_init(ProgressStream, Globals, GradeDir,
-                MainModuleName, InitSucceeded, !IO)
+                MainModuleName, !Succeeded, !IO)
         ),
 
-        list.map_foldl2(
+        list.foldl3(
             install_grade_ints_and_headers(ProgressStream, Globals,
-                LinkSucceeded, GradeDir),
-            AllModuleNames, IntsHeadersSucceeded, !Info, !IO),
-        Succeeded = and_list(
-            [LibsSucceeded, InitSucceeded | IntsHeadersSucceeded])
+                NgsLibDirMap, GsLibDirMap, GradeDir),
+            AllModuleNames, !Succeeded, !Info, !IO)
     ;
         DirResult = did_not_succeed,
-        Succeeded = did_not_succeed
+        !:Succeeded = did_not_succeed
     ).
 
     % Install the `.init' file for the current grade.
     %
 :- pred install_grade_init(io.text_output_stream::in, globals::in,
-    string::in, module_name::in, maybe_succeeded::out, io::di, io::uo) is det.
+    string::in, module_name::in, maybe_succeeded::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
 install_grade_init(ProgressStream, Globals, GradeDir, MainModuleName,
-        Succeeded, !IO) :-
+        !Succeeded, !IO) :-
     % XXX Should we generalize get_std_grade_specific_install_lib_dir
     % to include this s/lib/modules/ version?
     globals.lookup_string_option(Globals, install_prefix, Prefix),
@@ -444,23 +488,30 @@ install_grade_init(ProgressStream, Globals, GradeDir, MainModuleName,
     module_name_to_file_name(Globals, $pred, ext_cur_gs(ext_cur_gs_lib_init),
         MainModuleName, InitFileName),
     install_file(ProgressStream, Globals, InitFileName, GradeModulesDir,
-        Succeeded, !IO).
+        !Succeeded, !IO).
 
     % Install the `.opt', `.analysis' and `.mih' files for the current grade.
     %
 :- pred install_grade_ints_and_headers(io.text_output_stream::in, globals::in,
-    maybe_succeeded::in, string::in, module_name::in, maybe_succeeded::out,
+    libdir_map::in, libdir_map::in, string::in, module_name::in,
+    maybe_succeeded::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-install_grade_ints_and_headers(ProgressStream, Globals, LinkSucceeded,
-        GradeDir, ModuleName, Succeeded, !Info, !IO) :-
+install_grade_ints_and_headers(ProgressStream, Globals,
+        NgsLibDirMap, GsLibDirMap, GradeDir, ModuleName,
+        !Succeeded, !Info, !IO) :-
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(_ModuleDepInfo),
+
         globals.lookup_string_option(Globals, install_prefix, Prefix),
         LibDir = Prefix / "lib" / "mercury",
 
+        % NOTE Before our ancestor install_library_grade_files gets invoked,
+        % the grade-specific components of Globals, including Target and
+        % HighLevelCode, will have been set up to reflect the grade
+        % that we are installing.
         globals.get_target(Globals, Target),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         ( if
@@ -468,285 +519,362 @@ install_grade_ints_and_headers(ProgressStream, Globals, LinkSucceeded,
             HighLevelCode = yes
         then
             GradeIncDir = LibDir / "lib" / GradeDir / "inc",
-            install_subdir_file(ProgressStream, Globals, LinkSucceeded,
-                GradeIncDir, ModuleName,
-                {ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih), "mihs"},
-                HeaderSucceeded1, !IO),
+            ExtMih = ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih),
+            install_subdir_file(ProgressStream, Globals, GsLibDirMap,
+                GradeIncDir, ModuleName, {ExtMih, "mihs"}, !Succeeded, !IO),
 
             % This is needed so that the file will be found in Mmake's VPATH.
-            IntDir = LibDir / "ints",
-            install_subdir_file(ProgressStream, Globals, LinkSucceeded,
-                IntDir, ModuleName,
-                {ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih), "mihs"},
-                HeaderSucceeded2, !IO),
-            HeaderSucceeded = HeaderSucceeded1 `and` HeaderSucceeded2
+            %
+            % XXX BUG Why are we installing to a NON-GRADE-SPECIFIC directory
+            % in a predicate that does installs of GRADE-SPECIFIC files?
+            % Any installs done by this code for one grade will be overwritten
+            % by the install done by the next grade.
+            IntsDir = LibDir / "ints",
+            install_subdir_file(ProgressStream, Globals, NgsLibDirMap,
+                IntsDir, ModuleName, {ExtMih, "mihs"}, !Succeeded, !IO)
         else
-            HeaderSucceeded = succeeded
+            true
         ),
 
-        GradeIntDir = LibDir / "ints" / GradeDir,
+        GradeIntsDir = LibDir / "ints" / GradeDir,
         globals.get_any_intermod(Globals, AnyIntermod),
         (
             AnyIntermod = yes,
-            install_subdir_file(ProgressStream, Globals, LinkSucceeded,
-                GradeIntDir, ModuleName,
-                {ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
-                    "opts"},
-                OptSucceeded, !IO)
+            ExtOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+            install_subdir_file(ProgressStream, Globals, GsLibDirMap,
+                GradeIntsDir, ModuleName, {ExtOpt, "opts"}, !Succeeded, !IO)
         ;
-            AnyIntermod = no,
-            OptSucceeded = succeeded
+            AnyIntermod = no
         ),
         globals.lookup_bool_option(Globals, intermodule_analysis,
             IntermodAnalysis),
         (
             IntermodAnalysis = yes,
-            install_subdir_file(ProgressStream, Globals, LinkSucceeded,
-                GradeIntDir, ModuleName,
-                {ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_analysis),
-                    "analyses"},
-                IntermodAnalysisSucceeded, !IO)
+            ExtAn = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_analysis),
+            install_subdir_file(ProgressStream, Globals, GsLibDirMap,
+                GradeIntsDir, ModuleName, {ExtAn, "analyses"}, !Succeeded, !IO)
         ;
-            IntermodAnalysis = no,
-            IntermodAnalysisSucceeded = succeeded
-        ),
-        Succeeded = HeaderSucceeded `and` OptSucceeded `and`
-            IntermodAnalysisSucceeded
+            IntermodAnalysis = no
+        )
     ;
         MaybeModuleDepInfo = no_module_dep_info,
-        Succeeded = did_not_succeed
+        !:Succeeded = did_not_succeed
     ).
+
+%---------------------------------------------------------------------------%
 
     % Install a file in the given directory, and in directory/Mercury/exts
     % if the symlinks for the subdirectories couldn't be created
     % (e.g. on Windows).
     %
+    % XXX Rename and redocument.
+    %
+    % TODO: have our callers compute ExtDir from Ext
+    %
+    % TODO: delete the InstallDir argument after a week or two of usage
+    % *without* an assertion failure.
+    %
 :- pred install_subdir_file(io.text_output_stream::in, globals::in,
-    maybe_succeeded::in, dir_name::in, module_name::in, {ext, string}::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+    libdir_map::in, dir_name::in, module_name::in, {ext, string}::in,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-install_subdir_file(ProgressStream, Globals, SubdirLinkSucceeded, InstallDir,
-        ModuleName, {Ext, ExtDir}, Succeeded, !IO) :-
+install_subdir_file(ProgressStream, Globals, LibDirMap, InstallDir,
+        ModuleName, {Ext, ExtDir}, !Succeeded, !IO) :-
+    % NOTE The calls to install_file will use any directory name components
+    % of FileName to *find* the file to install, but the name of the
+    % installed file will include *only* the base name of FileName.
     module_name_to_file_name(Globals, $pred, Ext, ModuleName, FileName),
-    install_file(ProgressStream, Globals, FileName, InstallDir,
-        Succeeded1, !IO),
+    map.lookup(LibDirMap, ExtDir, InstallTo),
     (
-        SubdirLinkSucceeded = did_not_succeed,
-        install_file(ProgressStream, Globals, FileName,
-            InstallDir / "Mercury" / ExtDir, Succeeded2, !IO),
-        Succeeded = Succeeded1 `and` Succeeded2
+        InstallTo = install_to_cur_only(CurDir),
+        expect(unify(InstallDir, CurDir), $pred, "InstallDir != CurDir"),
+        install_file(ProgressStream, Globals, FileName, CurDir,
+            !Succeeded, !IO)
     ;
-        SubdirLinkSucceeded = succeeded,
-        Succeeded = Succeeded1
+        InstallTo = install_to_cur_ngs(CurDir, NgsDir),
+        expect(unify(InstallDir, CurDir), $pred, "InstallDir != CurDir"),
+        install_file(ProgressStream, Globals, FileName, CurDir,
+            !Succeeded, !IO),
+        expect(unify(InstallDir / "Mercury" / ExtDir, NgsDir), $pred,
+            "InstallDir != NgsDir"),
+        install_file(ProgressStream, Globals, FileName, NgsDir,
+            !Succeeded, !IO)
     ).
 
-:- pred maybe_install_library_file(io.text_output_stream::in, globals::in,
-    string::in, file_name::in, dir_name::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+%---------------------%
 
-maybe_install_library_file(ProgressStream, Globals, Linkage,
-        FileName, InstallDir, Succeeded, !IO) :-
+:- pred maybe_install_static_or_dynamic_archive(io.text_output_stream::in,
+    globals::in, string::in, file_name::in, dir_name::in,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+maybe_install_static_or_dynamic_archive(ProgressStream, Globals, Linkage,
+        FileName, InstallDir, !Succeeded, !IO) :-
     globals.lookup_accumulating_option(Globals, lib_linkages, LibLinkages),
     ( if list.member(Linkage, LibLinkages) then
         install_file(ProgressStream, Globals, FileName, InstallDir,
-            Succeeded0, !IO),
+            succeeded, InstallSucceeded0, !IO),
 
-        % We need to update the archive index after we copy a .a file to
-        % the installation directory, because the linkers on some OSs
-        % complain if we don't.
+        % We need to update the archive index after we copy it to the
+        % installation directory, because the linkers on some OSs complain
+        % if we don't.
         ( if
             Linkage = "static",
-            Succeeded0 = succeeded
+            InstallSucceeded0 = succeeded
         then
-            % Since mmc --make uses --use-subdirs, the above FileName will
-            % be directory qualified. We don't care about the build
-            % directory here so we strip that qualification off.
             BaseFileName = dir.det_basename(FileName),
-            generate_archive_index(ProgressStream, Globals, BaseFileName,
-                InstallDir, Succeeded, !IO)
+            InstalledFileName = InstallDir / BaseFileName,
+            generate_archive_index(ProgressStream, Globals, InstalledFileName,
+                RanlibSucceeded, !IO),
+            !:Succeeded = !.Succeeded `and` RanlibSucceeded
         else
-            Succeeded = Succeeded0
+            !:Succeeded = !.Succeeded `and` InstallSucceeded0
         )
     else
-        Succeeded = succeeded
+        true
     ).
 
     % Generate (or update) the index for an archive file,
     % i.e. run ranlib on a .a file.
     %
 :- pred generate_archive_index(io.text_output_stream::in, globals::in,
-    file_name::in, dir_name::in, maybe_succeeded::out, io::di, io::uo) is det.
+    file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-generate_archive_index(ProgressStream, Globals, FileName, InstallDir,
-        Succeeded, !IO) :-
-    verbose_make_four_part_msg(Globals, "Generating archive index for file",
-         FileName, "in", InstallDir, InstallMsg),
+generate_archive_index(ProgressStream, Globals, FileName, Succeeded, !IO) :-
+    verbose_make_two_part_msg(Globals, "Generating archive index for",
+         FileName, InstallMsg),
     maybe_write_msg(ProgressStream, InstallMsg, !IO),
     globals.lookup_string_option(Globals, ranlib_command, RanLibCommand),
     globals.lookup_string_option(Globals, ranlib_flags, RanLibFlags),
-    % XXX What is the point of using more than one space?
+    % XXX Why are we executing Command if RanLibCommand is the empty string?
+    % juliensf says: "Technically a bug, but with the current configuration
+    % script and set of OSs we support, it shouldn't ever happen except by
+    % someone manually editing a configuration file. (That's likely to break
+    % their Mercury installation ...)"
     Command = string.join_list("    ", [
+        % Note that it is possible, though not likely, that the ranlib_command
+        % option might be set to a command name that requires quoting. juliensf
+        % says: "The C compiler toolchains and binutils let users specify
+        % suffixes that are included in the executable names -- this is
+        % usually use in cross compiler toolchains."
         quote_shell_cmd_arg(RanLibCommand),
         RanLibFlags,
-        quote_shell_cmd_arg(InstallDir / FileName)
+        quote_shell_cmd_arg(FileName)
     ]),
     % XXX MAKE_STREAM
     CmdOutputStream = ProgressStream,
     invoke_system_command(Globals, ProgressStream,
         CmdOutputStream, cmd_verbose, Command, Succeeded, !IO).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 :- pred install_file(io.text_output_stream::in, globals::in,
-    file_name::in, dir_name::in, maybe_succeeded::out, io::di, io::uo) is det.
+    file_name::in, dir_name::in, maybe_succeeded::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
-install_file(ProgressStream, Globals, FileName, InstallDir, Succeeded, !IO) :-
+install_file(ProgressStream, Globals, FileName, InstallDir, !Succeeded, !IO) :-
     verbose_make_four_part_msg(Globals, "Installing file", FileName,
         "in", InstallDir, InstallMsg),
     maybe_write_msg(ProgressStream, InstallMsg, !IO),
     copy_file_to_directory(Globals, ProgressStream, FileName,
-        InstallDir, Succeeded, !IO).
+        InstallDir, CopySucceeded, !IO),
+    !:Succeeded = !.Succeeded `and` CopySucceeded.
 
 %---------------------------------------------------------------------------%
 
 :- pred make_install_dirs(io.text_output_stream::in, globals::in,
-    maybe_succeeded::out, maybe_succeeded::out, io::di, io::uo) is det.
+    maybe_succeeded::out, libdir_map::out, io::di, io::uo) is det.
 
-make_install_dirs(ProgressStream, Globals, DirSucceeded, LinkSucceeded, !IO) :-
+make_install_dirs(ProgressStream, Globals, !:DirSucceeded,
+        !:NgsLibDirMap, !IO) :-
+    !:DirSucceeded = succeeded,
+    map.init(!:NgsLibDirMap),
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     LibDir = Prefix / "lib" / "mercury",
-    make_directory(LibDir / "inc", DirSucceeded1, !IO),
-    make_directory(LibDir / "modules", DirSucceeded2, !IO),
+    make_nonext_dir(ProgressStream, LibDir / "inc", !DirSucceeded, !IO),
+    make_nonext_dir(ProgressStream, LibDir / "modules", !DirSucceeded, !IO),
 
-    IntsSubdir = LibDir / "ints" / "Mercury",
-    make_directory(IntsSubdir, DirSucceeded3, !IO),
-    DirSucceeded123 = [DirSucceeded1, DirSucceeded2, DirSucceeded3],
+    IntsSubDir = LibDir / "ints",
+    make_nonext_dir(ProgressStream, IntsSubDir / "Mercury",
+        !DirSucceeded, !IO),
 
-    Subdirs = ["int0s", "ints", "int2s", "int3s", "opts", "trans_opts",
+    % XXX BUG TRANSOPT This module never installs any trans_opts files,
+    % so trans_opts directories seem unnecessary. juliensf says:
+    % "probably there in anticipation of mmc --make supporting --trans-opt,
+    % but that has never happened."
+    SubDirs = ["int0s", "ints", "int2s", "int3s", "opts", "trans_opts",
         "mhs", "mihs", "module_deps"],
 
     globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
     (
         UseSymLinks = yes,
-        list.map_foldl(make_symlink_to_parent_dir(IntsSubdir), Subdirs,
-            LinkSucceededSubdirs, !IO),
-        LinkSucceeded = and_list(LinkSucceededSubdirs)
+        % NOTE The point of using symlinks here is to save some space
+        % in the install directory. We want install non-grade-specific files
+        % into e.g. *both*
+        %
+        %   LibDir / "ints"
+        %       for compiler invocations with --no-use-subdirs
+        %
+        % *and* into
+        %
+        %   LibDir / "ints" / "Mercury" / ExtDir
+        %       for compiler invocations with --use-subdirs
+        %
+        % where ExtDir is the extension-specific directory name, such as
+        % "int0s".
+        %
+        % By making the latter pathname a symlink to the former, a single
+        % copy will be found by both kinds of compiler invocations.
+        %
+        % XXX Another way to accomplish the same goal would be to copy
+        % e.g. .int0 files to LibDir / "ints" / "Mercury" / "int0s", and
+        % add a symlink to that file to LibDir / "ints". The main benefit of
+        % that approach would be the avoidance of the upward-pointing symlink,
+        % which makes it impossibe to back up install directories using scp.
+        % A minor benefit is the avoidance of the need to traverse a symlink
+        % during --use-subdirs compiler invocations, with a corresponding new
+        % minor cost being the introduction of the need to traverse a symlink
+        % during --no-use-subdirs compiler invocations.
+        list.foldl3(
+            make_ngs_dir_symlink_to_cur(ProgressStream, IntsSubDir),
+            SubDirs, !DirSucceeded, !NgsLibDirMap, !IO)
     ;
         UseSymLinks = no,
-        LinkSucceeded = did_not_succeed
-    ),
-    (
-        LinkSucceeded = succeeded,
-        DirSucceededList = DirSucceeded123
-    ;
-        LinkSucceeded = did_not_succeed,
-        % XXX This code does the right thing ONLY if either all elements
-        % of LinkSucceededSubdirs are "succeeded", or if all elements
-        % of LinkSucceededSubdirs are "did_not_succeeded".
-        %
-        % If some elements are "succeeded" and some are "did_not_succeeded",
-        % then this code will attempt to make a directory with a name
-        % that is already occupied by a symlink that was constructed just
-        % above, fail with a misleading error message, and the final value
-        % of DirSucceeded will be wrong.
-        %
-        % If we assume that the only possible reason for why making a symlink
-        % would fail is the use_symlinks option being set to "no", then this
-        % is fine. However, this is NOT the only possible reason.
-        list.map_foldl(
-            ( pred(ExtDir::in, ExtSucceeded::out, !.IO::di, !:IO::uo) is det:-
-                make_directory(IntsSubdir / ExtDir, ExtSucceeded, !IO)
-            ), Subdirs, ExtDirSucceededList, !IO),
-        DirSucceededList = DirSucceeded123 ++ ExtDirSucceededList
-    ),
-    print_mkdir_errors(ProgressStream, DirSucceededList, DirSucceeded, !IO).
+        list.foldl3(
+            make_ngs_dir(ProgressStream, IntsSubDir),
+            SubDirs, !DirSucceeded, !NgsLibDirMap, !IO)
+    ).
 
 %---------------------%
 
 :- pred make_grade_install_dirs(io.text_output_stream::in, globals::in,
-    string::in, maybe_succeeded::out, maybe_succeeded::out,
+    string::in, maybe_succeeded::out, libdir_map::out,
     io::di, io::uo) is det.
 
 make_grade_install_dirs(ProgressStream, Globals, Grade,
-        DirSucceeded, LinkSucceeded, !IO) :-
+        !:DirSucceeded, !:GsLibDirMap, !IO) :-
+    !:DirSucceeded = succeeded,
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     LibDir = Prefix / "lib" / "mercury",
 
-    GradeIntsSubdir = LibDir / "ints" / Grade / "Mercury",
-    make_directory(GradeIntsSubdir, DirSucceeded1, !IO),
+    % XXX Why LibDir / "lib" / Grade / "inc", and not LibDir / "inc" / Grade?
+    GradeIncSubDir = LibDir / "lib" / Grade / "inc",
+    GradeIntsSubDir = LibDir / "ints" / Grade,
+    GradeModuleSubDir = LibDir / "modules" / Grade,
 
-    GradeIncSubdir = LibDir / "lib" / Grade / "inc" / "Mercury",
-    make_directory(GradeIncSubdir, DirSucceeded2, !IO),
+    make_nonext_dir(ProgressStream, GradeIncSubDir / "Mercury",
+        !DirSucceeded, !IO),
+    make_nonext_dir(ProgressStream, GradeIntsSubDir / "Mercury",
+        !DirSucceeded, !IO),
+    make_nonext_dir(ProgressStream, GradeModuleSubDir, !DirSucceeded, !IO),
 
-    GradeModuleSubdir = LibDir / "modules" / Grade,
-    make_directory(GradeModuleSubdir, DirSucceeded3, !IO),
-
-    DirSucceeded123 = [DirSucceeded1, DirSucceeded2, DirSucceeded3],
+    map.init(!:GsLibDirMap),
 
     globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
     (
         UseSymLinks = yes,
-        make_symlink_to_parent_dir(GradeIncSubdir, "mihs",
-            LinkSucceeded0, !IO),
-        list.map_foldl(make_symlink_to_parent_dir(GradeIntsSubdir),
-            ["opts", "trans_opts", "analyses"], LinkSucceededList, !IO),
-        LinkSucceeded = and_list([LinkSucceeded0 | LinkSucceededList])
+        % XXX This code seems strange, because code using mmc --make
+        % with --use-grade-subdirs should look for grade-specific files *only*
+        % in LibDir / "ints" / Grade / "Mercury" / ExtDir, and *never*
+        % in LibDir / "ints" / Grade.
+        %
+        % I (zs) can think of two possible reasons for using symlinks here.
+        % One is that the original author of this code for creating the
+        % directories for grade-specific files reused the code for
+        % non-grade-specific files, even though it was not designed for this
+        % purpose. The other is that this reuse also made the grade-specific
+        % install directories sort-of isomorphic to the non-grade-specific
+        % install directories, which allows code NOT using either mmc --make
+        % or --use-grade-subdirs to use the same VPATH mechanism to look
+        % inside both, just by specifying the appropriate starting path name
+        % for each. (The "sort-of" is there because the non-grade-specific
+        % install directories *contain* the grade-specific ones.)
+        make_ngs_dir_symlink_to_cur(ProgressStream, GradeIncSubDir, "mihs",
+            !DirSucceeded, !GsLibDirMap, !IO),
+        % XXX BUG TRANSOPT This module never installs any trans_opts files,
+        % so trans_opts directories seem unnecessary.
+        list.foldl3(
+            make_ngs_dir_symlink_to_cur(ProgressStream, GradeIntsSubDir),
+            ["opts", "trans_opts", "analyses"],
+            !DirSucceeded, !GsLibDirMap, !IO)
     ;
         UseSymLinks = no,
-        LinkSucceeded = did_not_succeed
-    ),
-    (
-        LinkSucceeded = succeeded,
-        DirSucceededList = DirSucceeded123
-    ;
-        LinkSucceeded = did_not_succeed,
-        % XXX The XXX in the corresponding position in make_install_dirs
-        % above applies here as well.
-        make_directory(GradeIncSubdir / "mihs", DirSucceeded4, !IO),
-        make_directory(GradeIntsSubdir / "opts", DirSucceeded5, !IO),
-        make_directory(GradeIntsSubdir / "trans_opts", DirSucceeded6, !IO),
-        make_directory(GradeIntsSubdir / "analyses", DirSucceeded7, !IO),
-        DirSucceededList = DirSucceeded123 ++
-            [DirSucceeded4, DirSucceeded5, DirSucceeded6, DirSucceeded7]
-    ),
-    print_mkdir_errors(ProgressStream, DirSucceededList, DirSucceeded, !IO).
+        make_ngs_dir(ProgressStream, GradeIncSubDir, "mihs",
+            !DirSucceeded, !GsLibDirMap, !IO),
+        make_ngs_dir(ProgressStream, GradeIntsSubDir, "opts",
+            !DirSucceeded, !GsLibDirMap, !IO),
+        % XXX BUG TRANSOPT This module never installs any trans_opts files,
+        % so trans_opts directories seem unnecessary.
+        make_ngs_dir(ProgressStream, GradeIntsSubDir, "trans_opts",
+            !DirSucceeded, !GsLibDirMap, !IO),
+        make_ngs_dir(ProgressStream, GradeIntsSubDir, "analyses",
+            !DirSucceeded, !GsLibDirMap, !IO)
+    ).
 
 %---------------------%
+
+:- pred make_nonext_dir(io.text_output_stream::in, dir_name::in,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+make_nonext_dir(ProgressStream, DirName, !Succeeded, !IO) :-
+    make_directory(DirName, IOResult, !IO),
+    print_any_error(ProgressStream, DirName, IOResult, !Succeeded, !IO).
+
+:- pred make_ngs_dir(io.text_output_stream::in, dir_name::in, file_name::in,
+    maybe_succeeded::in, maybe_succeeded::out,
+    libdir_map::in, libdir_map::out, io::di, io::uo) is det.
+
+make_ngs_dir(ProgressStream, CurDir, ExtDirName,
+        !Succeeded, !LibDirMap, !IO) :-
+    NgsDir = CurDir / "Mercury" / ExtDirName,
+    make_directory(NgsDir, IOResult, !IO),
+    print_any_error(ProgressStream, NgsDir, IOResult, !Succeeded, !IO),
+    map.det_insert(ExtDirName, install_to_cur_ngs(CurDir, NgsDir), !LibDirMap).
 
     % XXX BAD_SYMLINK This upward-pointing symlink makes it impossible
-    % back up a Mercury install directory using scp. This is because
+    % to back up a Mercury install directory using scp. This is because
     % scp treats symlinks not as symlinks, but as the file or directory
     % they point to, and copies that (in this case) directory.
-    % That directory will of contain this same symlink, and scp gets
-    % trapped, always copying the files in between in an infinite loop.
+    % That directory will of course contain this same symlink, and scp gets
+    % trapped, always copying the files in between in an infinite loop,
+    % which ends only when it has completely filled up the target filesystem.
     %
-:- pred make_symlink_to_parent_dir(string::in, string::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+:- pred make_ngs_dir_symlink_to_cur(io.text_output_stream::in,
+    dir_name::in, file_name::in, maybe_succeeded::in, maybe_succeeded::out,
+    libdir_map::in, libdir_map::out, io::di, io::uo) is det.
 
-make_symlink_to_parent_dir(Subdir, ExtDirName, Succeeded, !IO) :-
-    LinkName = Subdir / ExtDirName,
-    definitely_make_symlink("..", LinkName, Succeeded, !IO).
+make_ngs_dir_symlink_to_cur(ProgressStream, CurDir, ExtDirName,
+        !Succeeded, !LibDirMap, !IO) :-
+    NgsDir = CurDir / "Mercury" / ExtDirName,
+    definitely_make_symlink("..", NgsDir, LinkSucceeded, !IO),
+    (
+        LinkSucceeded = succeeded,
+        % If CurDir / "Mercury" / ExtDirName is a symlink to "..", then
+        % it points to CurDir.
+        LibDirInfo = install_to_cur_only(CurDir),
+        map.det_insert(ExtDirName, LibDirInfo, !LibDirMap)
+    ;
+        LinkSucceeded = did_not_succeed,
+        % We don't print an error message if making the *symlink* fails;
+        % we only print one if making a *directory* fails.
+        make_ngs_dir(ProgressStream, CurDir, ExtDirName,
+            !Succeeded, !LibDirMap, !IO)
+    ).
 
 %---------------------%
 
-:- pred print_mkdir_errors(io.text_output_stream::in, list(io.res)::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+:- pred print_any_error(io.text_output_stream::in, dir_name::in, io.res::in,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-print_mkdir_errors(_ProgressStream, [], succeeded, !IO).
-print_mkdir_errors(ProgressStream, [Result | Results], Succeeded, !IO) :-
+print_any_error(ProgressStream, DirName, Result, !Succeeded, !IO) :-
     (
-        Result = ok,
-        print_mkdir_errors(ProgressStream, Results, Succeeded, !IO)
+        Result = ok
     ;
         Result = error(Error),
         ErrorMsg = io.error_message(Error),
-        % XXX Error does not identify the directory. This should be fixed,
-        % *if* we ever see this error message actually being triggered.
         io.format(ProgressStream,
-            "Error creating installation directory: %s\n",
-            [s(ErrorMsg)], !IO),
-        print_mkdir_errors(ProgressStream, Results, _, !IO),
-        Succeeded = did_not_succeed
+            "Error creating installation directory %s: %s\n",
+            [s(DirName), s(ErrorMsg)], !IO),
+        !:Succeeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%

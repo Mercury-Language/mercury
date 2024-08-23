@@ -107,6 +107,7 @@
 :- import_module dir.
 :- import_module int.
 :- import_module io.error_util.
+:- import_module list.
 :- import_module maybe.
 :- import_module require.   % Required by non-C grades.
 :- import_module string.
@@ -130,8 +131,10 @@ copy_file_to_file_name(Globals, ProgressStream, SourceFile, DestinationFile,
             Succeeded = succeeded
         ;
             Res = error(Error),
-            report_error(ProgressStream,
-                "Could not copy file:  " ++ error_message(Error), !IO),
+            string.format("could not copy %s to %s: %s.",
+                [s(SourceFile), s(DestinationFile),
+                s(io.error_message(Error))], Msg),
+            report_error(ProgressStream, Msg, !IO),
             Succeeded = did_not_succeed
         )
     ).
@@ -157,13 +160,16 @@ copy_file_to_directory(Globals, ProgressStream, SourceFile, DestinationDir,
                 Succeeded = succeeded
             ;
                 Res = error(Error),
-                report_error(ProgressStream,
-                    "Could not copy file:  " ++ error_message(Error), !IO),
+                string.format("could not copy %s to %s: %.s",
+                    [s(SourceFile), s(DestinationFile),
+                    s(io.error_message(Error))], Msg),
+                report_error(ProgressStream, Msg, !IO),
                 Succeeded = did_not_succeed
             )
         else
-            report_error(ProgressStream,
-                "Could not copy file: source is a root directory.", !IO),
+            string.format("could not copy %s: it is a root directory.",
+                [s(SourceFile)], Msg),
+            report_error(ProgressStream, Msg, !IO),
             Succeeded = did_not_succeed
         )
     ).
@@ -396,8 +402,8 @@ copy_bytes_chunk(Source, Destination, Res, !IO) :-
     %
     % With this arrangement, the maximum number of stack frames needed to
     % process a file of size N is N/1000 + 1000, the former being the number of
-    % frames of copy_bytes_chunk predicate, the latter being the max number of
-    % frames of the copy_bytes_inner predicate.
+    % frames of the copy_bytes_chunk predicate, the latter being the max
+    % number of frames of the copy_bytes_inner predicate.
     %
     ChunkSize = 1000,
     copy_bytes_inner(ChunkSize, Source, Destination, InnerRes, !IO),

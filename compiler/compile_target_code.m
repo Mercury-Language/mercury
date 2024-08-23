@@ -114,9 +114,6 @@
     linked_target_type::in, module_name::in, list(string)::in,
     list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
-:- pred linked_target_file_name(globals::in, module_name::in,
-    linked_target_type::in, file_name::out, io::di, io::uo) is det.
-
 :- pred linked_target_file_name_full_curdir(globals::in, module_name::in,
     linked_target_type::in, file_name::out, file_name::out,
     io::di, io::uo) is det.
@@ -1622,40 +1619,6 @@ link(Globals, ProgressStream, LinkTargetType, ModuleName, ObjectsList,
     ;
         LinkSucceeded = did_not_succeed,
         Succeeded = did_not_succeed
-    ).
-
-linked_target_file_name(Globals, ModuleName, TargetType, FileName, !IO) :-
-    (
-        % Java archives and Java executables get the same filename.
-        % XXX Then why make the distinction in linked_target_type?
-        (
-            TargetType = executable,
-            Ext = ext_cur_gs(ext_cur_gs_exec_exec_opt)
-        ;
-            TargetType = csharp_executable,
-            Ext = ext_cur_gs(ext_cur_gs_exec_exe)
-        ;
-            TargetType = csharp_library,
-            Ext = ext_cur_gs(ext_cur_gs_lib_dll)
-        ;
-            TargetType = java_archive,
-            Ext = ext_cur_gs(ext_cur_gs_lib_jar)
-        ;
-            TargetType = java_executable,
-            Ext = ext_cur_gs(ext_cur_gs_lib_jar)
-        ),
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            Ext, ModuleName, FileName, !IO)
-    ;
-        (
-            TargetType = static_library,
-            Ext = ext_cur_gs(ext_cur_gs_lib_lib_opt)
-        ;
-            TargetType = shared_library,
-            Ext = ext_cur_gs(ext_cur_gs_lib_sh_lib_opt)
-        ),
-        module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
-            Ext, ModuleName, FileName, !IO)
     ).
 
 linked_target_file_name_full_curdir(Globals, ModuleName, TargetType,
