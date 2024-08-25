@@ -473,17 +473,14 @@ foldl2_maybe_stop_at_error_loop(KeepGoing, P, ProgressStream, Globals,
 
 foldl2_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts,
         ProgressStream, Globals, Targets, Succeeded, !Info, !IO) :-
-    globals.lookup_int_option(Globals, jobs, Jobs),
-    ( if
-        Jobs > 1,
-        process_util.can_fork,
-        have_job_ctl_ipc
-    then
+    should_we_use_parallel_fold(Globals, Targets, UseParallel, !IO),
+    (
+        UseParallel = yes({NumJobs, JobCtl}),
         % First pass.
         MakeTarget = make_module_target(ExtraOpts),
-        foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs,
-            MakeTarget, ProgressStream, Globals, Targets, Succeeded0,
-            !Info, !IO),
+        foldl2_maybe_stop_at_error_parallel_processes(KeepGoing,
+            NumJobs, JobCtl, MakeTarget, ProgressStream, Globals, Targets,
+            Succeeded0, !Info, !IO),
         % Second pass (sequential).
         (
             Succeeded0 = succeeded,
@@ -497,7 +494,8 @@ foldl2_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts,
             Succeeded0 = did_not_succeed,
             Succeeded = did_not_succeed
         )
-    else
+    ;
+        UseParallel = no,
         foldl2_make_module_targets(KeepGoing, ExtraOpts,
             ProgressStream, Globals, Targets, Succeeded, !Info, !IO)
     ).
@@ -509,37 +507,54 @@ foldl2_make_module_targets_maybe_parallel_build2(KeepGoing, ExtraOpts,
 
 %---------------------%
 
+:- pred should_we_use_parallel_fold(globals::in, list(T)::in,
+    maybe({int, job_ctl})::out, io::di, io::uo) is det.
+
+should_we_use_parallel_fold(Globals, Targets, UseParallel, !IO) :-
+    globals.lookup_int_option(Globals, jobs, NumJobs),
+    ( if
+        NumJobs > 1,
+        process_util.can_fork,
+        have_job_ctl_ipc
+    then
+        TotalTasks = list.length(Targets),
+        create_job_ctl(TotalTasks, MaybeJobCtl, !IO),
+        (
+            MaybeJobCtl = no,
+            UseParallel = no
+        ;
+            MaybeJobCtl = yes(JobCtl),
+            UseParallel = yes({NumJobs, JobCtl})
+        )
+    else
+        UseParallel = no
+    ).
+
+%---------------------%
+
 :- pred foldl2_maybe_stop_at_error_parallel_processes(maybe_keep_going::in,
-    int::in,
+    int::in, job_ctl::in,
     foldl2_pred_with_status(T, make_info, io)::in(foldl2_pred_with_status),
     io.text_output_stream::in, globals::in, list(T)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, Jobs, MakeTarget,
-        ProgressStream, Globals, Targets, Succeeded, !Info, !IO) :-
-    TotalTasks = list.length(Targets),
-    create_job_ctl(TotalTasks, MaybeJobCtl, !IO),
-    (
-        MaybeJobCtl = yes(JobCtl),
-        make_info_set_maybe_stdout_lock(yes(JobCtl), !Info),
-        list.foldl2(
-            start_worker_process(ProgressStream, Globals, KeepGoing,
-                MakeTarget, Targets, JobCtl, !.Info),
-            2 .. Jobs, [], Pids, !IO),
-        globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-        setup_checking_for_interrupt(Cookie, !IO),
-        worker_loop(ProgressStream, Globals, KeepGoing, MakeTarget, Targets,
-            JobCtl, succeeded, Succeeded0, !Info, !IO),
-        Cleanup = worker_loop_signal_cleanup(JobCtl, Pids),
-        teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
-            Succeeded0, Succeeded1, !Info, !IO),
-        list.foldl2(reap_worker_process, Pids, Succeeded1, Succeeded, !IO),
-        make_info_set_maybe_stdout_lock(no, !Info),
-        destroy_job_ctl(JobCtl, !IO)
-    ;
-        MaybeJobCtl = no,
-        Succeeded = did_not_succeed
-    ).
+foldl2_maybe_stop_at_error_parallel_processes(KeepGoing, NumJobs, JobCtl,
+        MakeTarget, ProgressStream, Globals, Targets, Succeeded, !Info, !IO) :-
+    make_info_set_maybe_stdout_lock(yes(JobCtl), !Info),
+    list.foldl2(
+        start_worker_process(ProgressStream, Globals, KeepGoing,
+            MakeTarget, Targets, JobCtl, !.Info),
+        2 .. NumJobs, [], Pids, !IO),
+    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+    setup_checking_for_interrupt(Cookie, !IO),
+    worker_loop(ProgressStream, Globals, KeepGoing, MakeTarget, Targets,
+        JobCtl, succeeded, Succeeded0, !Info, !IO),
+    Cleanup = worker_loop_signal_cleanup(JobCtl, Pids),
+    teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
+        Succeeded0, Succeeded1, !Info, !IO),
+    list.foldl2(reap_worker_process, Pids, Succeeded1, Succeeded, !IO),
+    make_info_set_maybe_stdout_lock(no, !Info),
+    destroy_job_ctl(JobCtl, !IO).
 
 %---------------------%
 
