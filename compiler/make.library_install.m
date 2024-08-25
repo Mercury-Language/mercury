@@ -277,11 +277,9 @@ make_and_install_library_grade(ProgressStream, Globals, NgsLibDirMap,
         ( SubDirSetting = use_cur_dir
         ; SubDirSetting = use_cur_ngs_subdir
         ),
-        % XXX CleanAfter = remove_grade_dependent_files
         CleanAfter = yes
     ;
         SubDirSetting = use_cur_ngs_gs_subdir,
-        % XXX CleanAfter = do_not_remove_grade_dependent_files
         CleanAfter = no
     ),
 
@@ -695,11 +693,7 @@ make_install_dirs(ProgressStream, Globals, !:DirSucceeded,
     make_nonext_dir(ProgressStream, IntsSubDir / "Mercury",
         !DirSucceeded, !IO),
 
-    % XXX BUG TRANSOPT This module never installs any trans_opts files,
-    % so trans_opts directories seem unnecessary. juliensf says:
-    % "probably there in anticipation of mmc --make supporting --trans-opt,
-    % but that has never happened."
-    SubDirs = ["int0s", "ints", "int2s", "int3s", "opts", "trans_opts",
+    SubDirs = ["int0s", "ints", "int2s", "int3s", "opts",
         "mhs", "mihs", "module_deps"],
 
     globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
@@ -788,21 +782,15 @@ make_grade_install_dirs(ProgressStream, Globals, Grade,
         % install directories *contain* the grade-specific ones.)
         make_ngs_dir_symlink_to_cur(ProgressStream, GradeIncSubDir, "mihs",
             !DirSucceeded, !GsLibDirMap, !IO),
-        % XXX BUG TRANSOPT This module never installs any trans_opts files,
-        % so trans_opts directories seem unnecessary.
         list.foldl3(
             make_ngs_dir_symlink_to_cur(ProgressStream, GradeIntsSubDir),
-            ["opts", "trans_opts", "analyses"],
+            ["opts", "analyses"],
             !DirSucceeded, !GsLibDirMap, !IO)
     ;
         UseSymLinks = no,
         make_ngs_dir(ProgressStream, GradeIncSubDir, "mihs",
             !DirSucceeded, !GsLibDirMap, !IO),
         make_ngs_dir(ProgressStream, GradeIntsSubDir, "opts",
-            !DirSucceeded, !GsLibDirMap, !IO),
-        % XXX BUG TRANSOPT This module never installs any trans_opts files,
-        % so trans_opts directories seem unnecessary.
-        make_ngs_dir(ProgressStream, GradeIntsSubDir, "trans_opts",
             !DirSucceeded, !GsLibDirMap, !IO),
         make_ngs_dir(ProgressStream, GradeIntsSubDir, "analyses",
             !DirSucceeded, !GsLibDirMap, !IO)
@@ -835,6 +823,9 @@ make_ngs_dir(ProgressStream, CurDir, ExtDirName,
     % That directory will of course contain this same symlink, and scp gets
     % trapped, always copying the files in between in an infinite loop,
     % which ends only when it has completely filled up the target filesystem.
+    %
+    % Another minor problem is that "diff -R" will refuse to traverse
+    % symlinks to ".." when comparing e.g. two install directories.
     %
 :- pred make_ngs_dir_symlink_to_cur(io.text_output_stream::in,
     dir_name::in, file_name::in, maybe_succeeded::in, maybe_succeeded::out,
