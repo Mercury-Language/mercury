@@ -37,8 +37,9 @@
     list(string)::in, list(string)::in, list(file_name)::in,
     io::di, io::uo) is det.
 
-:- pred make_top_target(io.text_output_stream::in, globals::in,
-    top_target_file::in, maybe_succeeded::out,
+:- pred make_top_targets(io.text_output_stream::in, globals::in,
+    maybe_keep_going::in, list(top_target_file)::in,
+    maybe_succeeded::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -50,13 +51,13 @@
 :- import_module backend_libs.compile_target_code.
 :- import_module libs.options.
 :- import_module libs.timestamp.
-:- import_module make.build.
 :- import_module make.deps_set.
 :- import_module make.hash.
 :- import_module make.module_target.
 :- import_module make.program_target.
 :- import_module make.timestamp.
 :- import_module make.track_flags.
+:- import_module make.util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
@@ -127,8 +128,8 @@ make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
 
         % Build the targets, stopping on any errors if `--keep-going'
         % was not set.
-        foldl2_make_top_targets(KeepGoing, ProgressStream, Globals,
-            ClassifiedTargets, Succeeded, MakeInfo0, _MakeInfo, !IO),
+        make_top_targets(ProgressStream, Globals, KeepGoing, ClassifiedTargets,
+            succeeded, Succeeded, MakeInfo0, _MakeInfo, !IO),
         maybe_set_exit_status(Succeeded, !IO)
     ).
 
@@ -204,6 +205,26 @@ report_target_with_dir_component(ProgName, Target) = Spec :-
     Spec = no_ctxt_spec($pred, severity_error, phase_make_target, Pieces).
 
 %---------------------%
+
+make_top_targets(_ProgressStream, _Globals, _KeepGoing, [],
+        !Succeeded, !Info, !IO).
+make_top_targets(ProgressStream, Globals, KeepGoing, [Target | Targets],
+        !Succeeded, !Info, !IO) :-
+    make_top_target(ProgressStream, Globals, Target, TargetSucceeded,
+        !Info, !IO),
+    should_we_stop_or_continue(KeepGoing, TargetSucceeded, StopOrContinue,
+        !Succeeded),
+    (
+        StopOrContinue = soc_stop
+    ;
+        StopOrContinue = soc_continue,
+        make_top_targets(ProgressStream, Globals, KeepGoing, Targets,
+            !Succeeded, !Info, !IO)
+    ).
+
+:- pred make_top_target(io.text_output_stream::in, globals::in,
+    top_target_file::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_top_target(ProgressStream, Globals, Target, Succeeded, !Info, !IO) :-
     Target = top_target_file(ModuleName, TargetType),
