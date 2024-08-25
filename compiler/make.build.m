@@ -135,17 +135,6 @@
     maybe_succeeded::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-    % foldl2_make_top_targets(KeepGoing, ProgressStream, ProgressStream,
-    %   Globals, TopTargets, Succeeded, !Info, !IO).
-    %
-    % Invoke make_top_target on each element of TopTargets, stopping at errors
-    % unless KeepGoing = do_keep_going.
-    %
-:- pred foldl2_make_top_targets(maybe_keep_going::in,
-    io.text_output_stream::in, globals::in, list(top_target_file)::in,
-    maybe_succeeded::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
-
 %---------------------------------------------------------------------------%
 
     % foldl2_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts,
@@ -198,7 +187,6 @@
 :- import_module libs.handle_options.
 :- import_module libs.process_util.
 :- import_module make.module_target.    % XXX undesirable dependency.
-:- import_module make.top_level.        % XXX undesirable dependency.
 :- import_module make.util.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
@@ -456,11 +444,6 @@ foldl2_make_module_targets(KeepGoing, ExtraOptions, ProgressStream, Globals,
         make_module_target(ExtraOptions),
         ProgressStream, Globals, Targets, succeeded, Succeeded, !Info, !IO).
 
-foldl2_make_top_targets(KeepGoing, ProgressStream, Globals, Targets,
-        Succeeded, !Info, !IO) :-
-    foldl2_maybe_stop_at_error_loop(KeepGoing, make_top_target,
-        ProgressStream, Globals, Targets, succeeded, Succeeded, !Info, !IO).
-
 %---------------------%
 
 :- pred foldl2_maybe_stop_at_error_loop(maybe_keep_going::in,
@@ -649,189 +632,6 @@ reap_worker_process(Pid, !Succeeded, !IO) :-
 %
 % Shared memory IPC for parallel workers.
 %
-
-:- pragma foreign_decl("C", "
-typedef struct MC_JobCtl MC_JobCtl;
-").
-
-:- pragma foreign_decl("C", local,
-"
-#ifdef MR_HAVE_SYS_MMAN_H
-  #include <sys/mman.h>
-
-  // Just in case.
-  #if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
-    #define MAP_ANONYMOUS MAP_ANON
-  #endif
-#endif
-
-#ifdef MAP_ANONYMOUS
-  // Darwin 5.x and FreeBSD do not implement process-shared POSIX mutexes.
-  // Use System V semaphores instead. As System V semaphores seem to be more
-  // widely supported we may consider using them exclusively or in preference
-  // to POSIX mutexes in the future.
-  #if !defined(__APPLE__) && !defined(__FreeBSD__) && \
-        defined(MR_HAVE_PTHREAD_H) && \
-        defined(MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED)
-    #include <pthread.h>
-
-    #define MC_HAVE_JOBCTL_IPC 1
-  #elif defined(MR_HAVE_SYS_SEM_H)
-    #include <sys/sem.h>
-
-    #define MC_USE_SYSV_SEMAPHORE 1
-    #define MC_HAVE_JOBCTL_IPC 1
-  #endif
-#endif
-
-#ifdef MC_HAVE_JOBCTL_IPC
-
-typedef enum MC_TaskStatus MC_TaskStatus;
-
-enum MC_TaskStatus {
-    TASK_NEW,       // task not yet attempted
-    TASK_ACCEPTED,  // someone is working on this task
-    TASK_DONE,      // task successfully completed
-    TASK_ERROR      // error occurred when working on the task
-};
-
-// This structure is placed in shared memory.
-struct MC_JobCtl {
-    // Static data.
-    MR_Integer      jc_total_tasks;
-
-    // Dynamic data.  The mutex protects the rest.
-  #ifdef MC_USE_SYSV_SEMAPHORE
-    int             jc_semid;
-  #else
-    pthread_mutex_t jc_mutex;
-  #endif
-    MR_bool         jc_abort;
-    MC_TaskStatus   jc_tasks[MR_VARIABLE_SIZED];
-};
-
-#define MC_JOB_CTL_SIZE(N)  (sizeof(MC_JobCtl) + (N) * sizeof(MC_TaskStatus))
-
-static MC_JobCtl *  MC_create_job_ctl(MR_Integer total_tasks);
-static void         MC_lock_job_ctl(MC_JobCtl *job_ctl);
-static void         MC_unlock_job_ctl(MC_JobCtl *job_ctl);
-
-#endif // MC_HAVE_JOBCTL_IPC
-").
-
-:- pragma foreign_code("C", "
-
-#ifdef MC_HAVE_JOBCTL_IPC
-
-static MC_JobCtl *
-MC_create_job_ctl(MR_Integer total_tasks)
-{
-    size_t              size;
-    MC_JobCtl           *job_ctl;
-    MR_Integer          i;
-
-    size = MC_JOB_CTL_SIZE(total_tasks);
-
-    // Create the shared memory segment.
-    job_ctl = mmap(NULL, size, PROT_READ | PROT_WRITE,
-        MAP_ANONYMOUS | MAP_SHARED, -1, 0);
-    if (job_ctl == (void *) -1) {
-        perror(""MC_create_job_ctl: mmap"");
-        return NULL;
-    }
-
-#ifdef MC_USE_SYSV_SEMAPHORE
-    {
-        struct sembuf sb;
-
-        job_ctl->jc_semid = semget(IPC_PRIVATE, 1, 0600);
-        if (job_ctl->jc_semid == -1) {
-            perror(""MC_create_sem: semget"");
-            munmap(job_ctl, size);
-            return NULL;
-        }
-
-        sb.sem_num = 0;
-        sb.sem_op = 1;
-        sb.sem_flg = 0;
-        if (semop(job_ctl->jc_semid, &sb, 1) == -1) {
-            perror(""MC_create_sem: semop"");
-            semctl(job_ctl->jc_semid, 0, IPC_RMID);
-            munmap(job_ctl, size);
-            return NULL;
-        }
-    }
-#else
-    {
-        pthread_mutexattr_t mutex_attr;
-
-        pthread_mutexattr_init(&mutex_attr);
-        if (pthread_mutexattr_setpshared(&mutex_attr, PTHREAD_PROCESS_SHARED)
-            != 0)
-        {
-            perror(""MC_create_job_ctl: pthread_mutexattr_setpshared"");
-            pthread_mutexattr_destroy(&mutex_attr);
-            munmap(job_ctl, size);
-            return NULL;
-        }
-
-        if (pthread_mutex_init(&job_ctl->jc_mutex, &mutex_attr) != 0) {
-            perror(""MC_create_job_ctl: sem_init"");
-            pthread_mutexattr_destroy(&mutex_attr);
-            munmap(job_ctl, size);
-            return NULL;
-        }
-
-        pthread_mutexattr_destroy(&mutex_attr);
-    }
-#endif
-
-    job_ctl->jc_total_tasks = total_tasks;
-    job_ctl->jc_abort = MR_FALSE;
-    for (i = 0; i < total_tasks; i++) {
-        job_ctl->jc_tasks[i] = TASK_NEW;
-    }
-
-    return job_ctl;
-}
-
-static void
-MC_lock_job_ctl(MC_JobCtl *job_ctl)
-{
-#ifdef MC_USE_SYSV_SEMAPHORE
-    struct sembuf sb;
-
-    sb.sem_num = 0;
-    sb.sem_op = -1;
-    sb.sem_flg = 0;
-    if (semop(job_ctl->jc_semid, &sb, 1) == -1) {
-        perror(""MC_lock_job_ctl: semop"");
-    }
-#else
-    pthread_mutex_lock(&job_ctl->jc_mutex);
-#endif
-}
-
-static void
-MC_unlock_job_ctl(MC_JobCtl *job_ctl)
-{
-#ifdef MC_USE_SYSV_SEMAPHORE
-    struct sembuf sb;
-
-    sb.sem_num = 0;
-    sb.sem_op = 1;
-    sb.sem_flg = 0;
-    if (semop(job_ctl->jc_semid, &sb, 1) == -1) {
-        perror(""MC_unlock_job_ctl: semop"");
-    }
-#else
-    pthread_mutex_unlock(&job_ctl->jc_mutex);
-#endif
-}
-
-#endif // MC_HAVE_JOBCTL_IPC
-").
-
 :- type job_ctl.
 :- pragma foreign_type("C", job_ctl, "MC_JobCtl *").
 :- pragma foreign_type("C#", job_ctl, "object").                % stub
@@ -1048,6 +848,195 @@ with_locked_stdout(Info, Pred, !IO) :-
         MaybeLock = no,
         Pred(!IO)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_decl("C",
+"
+typedef struct MC_JobCtl MC_JobCtl;
+").
+
+%---------------------%
+
+:- pragma foreign_decl("C", local,
+"
+#ifdef MR_HAVE_SYS_MMAN_H
+  #include <sys/mman.h>
+
+  // Just in case.
+  #if !defined(MAP_ANONYMOUS) && defined(MAP_ANON)
+    #define MAP_ANONYMOUS MAP_ANON
+  #endif
+#endif
+
+#ifdef MAP_ANONYMOUS
+  // Darwin 5.x and FreeBSD do not implement process-shared POSIX mutexes.
+  // Use System V semaphores instead. As System V semaphores seem to be more
+  // widely supported we may consider using them exclusively or in preference
+  // to POSIX mutexes in the future.
+  #if !defined(__APPLE__) && !defined(__FreeBSD__) && \
+        defined(MR_HAVE_PTHREAD_H) && \
+        defined(MR_HAVE_PTHREAD_MUTEXATTR_SETPSHARED)
+    #include <pthread.h>
+
+    #define MC_HAVE_JOBCTL_IPC 1
+  #elif defined(MR_HAVE_SYS_SEM_H)
+    #include <sys/sem.h>
+
+    #define MC_USE_SYSV_SEMAPHORE 1
+    #define MC_HAVE_JOBCTL_IPC 1
+  #endif
+#endif
+
+#ifdef MC_HAVE_JOBCTL_IPC
+
+typedef enum MC_TaskStatus MC_TaskStatus;
+
+enum MC_TaskStatus {
+    TASK_NEW,       // task not yet attempted
+    TASK_ACCEPTED,  // someone is working on this task
+    TASK_DONE,      // task successfully completed
+    TASK_ERROR      // error occurred when working on the task
+};
+
+// This structure is placed in shared memory.
+struct MC_JobCtl {
+    // Static data.
+    MR_Integer      jc_total_tasks;
+
+    // Dynamic data.  The mutex protects the rest.
+  #ifdef MC_USE_SYSV_SEMAPHORE
+    int             jc_semid;
+  #else
+    pthread_mutex_t jc_mutex;
+  #endif
+    MR_bool         jc_abort;
+    MC_TaskStatus   jc_tasks[MR_VARIABLE_SIZED];
+};
+
+#define MC_JOB_CTL_SIZE(N)  (sizeof(MC_JobCtl) + (N) * sizeof(MC_TaskStatus))
+
+static MC_JobCtl *  MC_create_job_ctl(MR_Integer total_tasks);
+static void         MC_lock_job_ctl(MC_JobCtl *job_ctl);
+static void         MC_unlock_job_ctl(MC_JobCtl *job_ctl);
+
+#endif // MC_HAVE_JOBCTL_IPC
+").
+
+%---------------------%
+
+:- pragma foreign_code("C",
+"
+#ifdef MC_HAVE_JOBCTL_IPC
+
+static MC_JobCtl *
+MC_create_job_ctl(MR_Integer total_tasks)
+{
+    size_t              size;
+    MC_JobCtl           *job_ctl;
+    MR_Integer          i;
+
+    size = MC_JOB_CTL_SIZE(total_tasks);
+
+    // Create the shared memory segment.
+    job_ctl = mmap(NULL, size, PROT_READ | PROT_WRITE,
+        MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    if (job_ctl == (void *) -1) {
+        perror(""MC_create_job_ctl: mmap"");
+        return NULL;
+    }
+
+#ifdef MC_USE_SYSV_SEMAPHORE
+    {
+        struct sembuf sb;
+
+        job_ctl->jc_semid = semget(IPC_PRIVATE, 1, 0600);
+        if (job_ctl->jc_semid == -1) {
+            perror(""MC_create_sem: semget"");
+            munmap(job_ctl, size);
+            return NULL;
+        }
+
+        sb.sem_num = 0;
+        sb.sem_op = 1;
+        sb.sem_flg = 0;
+        if (semop(job_ctl->jc_semid, &sb, 1) == -1) {
+            perror(""MC_create_sem: semop"");
+            semctl(job_ctl->jc_semid, 0, IPC_RMID);
+            munmap(job_ctl, size);
+            return NULL;
+        }
+    }
+#else
+    {
+        pthread_mutexattr_t mutex_attr;
+
+        pthread_mutexattr_init(&mutex_attr);
+        if (pthread_mutexattr_setpshared(&mutex_attr, PTHREAD_PROCESS_SHARED)
+            != 0)
+        {
+            perror(""MC_create_job_ctl: pthread_mutexattr_setpshared"");
+            pthread_mutexattr_destroy(&mutex_attr);
+            munmap(job_ctl, size);
+            return NULL;
+        }
+
+        if (pthread_mutex_init(&job_ctl->jc_mutex, &mutex_attr) != 0) {
+            perror(""MC_create_job_ctl: sem_init"");
+            pthread_mutexattr_destroy(&mutex_attr);
+            munmap(job_ctl, size);
+            return NULL;
+        }
+
+        pthread_mutexattr_destroy(&mutex_attr);
+    }
+#endif
+
+    job_ctl->jc_total_tasks = total_tasks;
+    job_ctl->jc_abort = MR_FALSE;
+    for (i = 0; i < total_tasks; i++) {
+        job_ctl->jc_tasks[i] = TASK_NEW;
+    }
+
+    return job_ctl;
+}
+
+static void
+MC_lock_job_ctl(MC_JobCtl *job_ctl)
+{
+#ifdef MC_USE_SYSV_SEMAPHORE
+    struct sembuf sb;
+
+    sb.sem_num = 0;
+    sb.sem_op = -1;
+    sb.sem_flg = 0;
+    if (semop(job_ctl->jc_semid, &sb, 1) == -1) {
+        perror(""MC_lock_job_ctl: semop"");
+    }
+#else
+    pthread_mutex_lock(&job_ctl->jc_mutex);
+#endif
+}
+
+static void
+MC_unlock_job_ctl(MC_JobCtl *job_ctl)
+{
+#ifdef MC_USE_SYSV_SEMAPHORE
+    struct sembuf sb;
+
+    sb.sem_num = 0;
+    sb.sem_op = 1;
+    sb.sem_flg = 0;
+    if (semop(job_ctl->jc_semid, &sb, 1) == -1) {
+        perror(""MC_unlock_job_ctl: semop"");
+    }
+#else
+    pthread_mutex_unlock(&job_ctl->jc_mutex);
+#endif
+}
+
+#endif // MC_HAVE_JOBCTL_IPC
+").
 
 %---------------------------------------------------------------------------%
 :- end_module make.build.
