@@ -1180,10 +1180,6 @@ convert_color_spec_option(OptionName, OptionValue) = MaybeMaybeColorSpec :-
 :- func is_string_a_color_spec(string) = is_color_result.
 
 is_string_a_color_spec(Str) = Result :-
-    % XXX COLOR
-    % After we test for 8-bit colors, we can test for 24-bit colors as well,
-    % looking for a format such as as "rgb-R-G-B", where each of R, G and B
-    % would be integers between 0 and 255.
     ( if standard_color_name(Str, Color) then
         Result = is_color(Color)
     else if string.remove_prefix("#", Str, StrAfterHash) then
