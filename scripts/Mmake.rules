@@ -471,6 +471,8 @@ install_grade_dirs: #install_lib_dirs
 	-test -d $(INSTALL_GRADE_MODULE_DIR) || \
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_MODULE_DIR)
 	# The following is needed to support the `--use-subdirs' option.
+	# XXX Why? Grade-specific directories should not need *additional*
+	# non-grade-specific subdirs.
 	-test -d $(INSTALL_GRADE_INC_DIR)/Mercury || \
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_DIR)/Mercury
 	-test -d $(INSTALL_GRADE_INT_DIR)/Mercury || \
