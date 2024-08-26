@@ -634,9 +634,9 @@ make_init_obj_file_check_result(ProgressStream, NoLinkObjsGlobals,
     (
         InitObjectResult = yes(InitObject),
         % We may need to update the timestamp of the `_init.o' file.
-        FileTimestamps0 = make_info_get_file_timestamps(!.Info),
-        map.delete(InitObject, FileTimestamps0, FileTimestamps1),
-        make_info_set_file_timestamps(FileTimestamps1, !Info),
+        FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
+        map.delete(InitObject, FileTimestampMap0, FileTimestampMap1),
+        make_info_set_file_timestamp_map(FileTimestampMap1, !Info),
         % There is no module_target_type for the `_init.o' file,
         % so mki_target_file_timestamps should not contain anything
         % that needs to be invalidated.
@@ -745,10 +745,10 @@ rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
     make_info_set_command_line_targets(CmdLineTargets, !Info),
     (
         Succeeded = succeeded,
-        FileTimestamps0 = make_info_get_file_timestamps(!.Info),
+        FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
         map.delete(FullMainModuleLinkedFileName,
-            FileTimestamps0, FileTimestamps),
-        make_info_set_file_timestamps(FileTimestamps, !Info)
+            FileTimestampMap0, FileTimestampMap),
+        make_info_set_file_timestamp_map(FileTimestampMap, !Info)
         % There is no module_target_type for the linked target,
         % so mki_target_file_timestamps should not contain anything
         % that needs to be invalidated.
@@ -843,12 +843,12 @@ make_java_files(ProgressStream, Globals, MainModuleName, ObjModules,
         % javac might write more `.class' files than we anticipated (though
         % it probably won't) so clear out all the timestamps which might be
         % affected.
-        Timestamps0 = make_info_get_file_timestamps(!.Info),
-        map.foldl(reinsert_timestamps_for_non_class_files, Timestamps0,
-            map.init, Timestamps),
-        make_info_set_file_timestamps(Timestamps, !Info),
+        TimestampMap0 = make_info_get_file_timestamp_map(!.Info),
+        map.foldl(reinsert_timestamps_for_non_class_files, TimestampMap0,
+            map.init, TimestampMap),
+        make_info_set_file_timestamp_map(TimestampMap, !Info),
         % For simplicity, clear out all target file timestamps.
-        make_info_set_target_file_timestamps(init_target_file_timestamps,
+        make_info_set_target_file_timestamp_map(init_target_file_timestamp_map,
             !Info)
     ).
 
@@ -923,14 +923,14 @@ build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded,
 
 :- pred reinsert_timestamps_for_non_class_files(string::in,
     maybe_error(timestamp)::in,
-    file_timestamps::in, file_timestamps::out) is det.
+    file_timestamp_map::in, file_timestamp_map::out) is det.
 
 reinsert_timestamps_for_non_class_files(FileName, MaybeTimestamp,
-        !Timestamps) :-
+        !TimestampMap) :-
     ( if string.suffix(FileName, ".class") then
         true
     else
-        map.det_insert(FileName, MaybeTimestamp, !Timestamps)
+        map.det_insert(FileName, MaybeTimestamp, !TimestampMap)
     ).
 
 %---------------------------------------------------------------------------%

@@ -262,11 +262,12 @@ remove_file_for_make(ProgressStream, Globals, VerboseOption, FileName,
         "Removing", FileName, RemovingMsg),
     maybe_write_msg(ProgressStream, RemovingMsg, !IO),
     io.file.remove_file_recursively(FileName, _, !IO),
-    FileTimestamps0 = make_info_get_file_timestamps(!.Info),
-    map.delete(FileName, FileTimestamps0, FileTimestamps),
-    make_info_set_file_timestamps(FileTimestamps, !Info),
+    FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
+    map.delete(FileName, FileTimestampMap0, FileTimestampMap),
+    make_info_set_file_timestamp_map(FileTimestampMap, !Info),
     % For simplicity, clear out all target file timestamps.
-    make_info_set_target_file_timestamps(init_target_file_timestamps, !Info).
+    make_info_set_target_file_timestamp_map(init_target_file_timestamp_map,
+        !Info).
 
 %---------------------------------------------------------------------------%
 

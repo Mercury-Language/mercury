@@ -30,7 +30,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- func init_target_file_timestamps = target_file_timestamps.
+:- func init_target_file_timestamp_map = target_file_timestamp_map.
 
     % Find the timestamp for the given dependency file.
     %
@@ -84,7 +84,7 @@
 
 %---------------------------------------------------------------------------%
 
-init_target_file_timestamps =
+init_target_file_timestamp_map =
     version_hash_table.unsafe_init_default(target_file_hash).
 
 %---------------------------------------------------------------------------%
@@ -131,9 +131,10 @@ get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
         % target_file first, before looking up the timestamp for that file.
         % XXX Wouldn't the search be even faster if, instead of the module's
         % name, our caller gave us its module_index?
-        TargetFileTimestamps0 = make_info_get_target_file_timestamps(!.Info),
+        TargetFileTimestampMap0 =
+            make_info_get_target_file_timestamp_map(!.Info),
         ( if
-            version_hash_table.search(TargetFileTimestamps0, TargetFile,
+            version_hash_table.search(TargetFileTimestampMap0, TargetFile,
                 Timestamp)
         then
             trace [compile_time(flag("target_timestamp_cache")), io(!TIO)] (
@@ -149,11 +150,11 @@ get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
                 Search, TargetFile, FileName, MaybeTimestamp, !Info, !IO),
             (
                 MaybeTimestamp = ok(Timestamp),
-                TargetFileTimestamps1 =
-                    make_info_get_target_file_timestamps(!.Info),
+                TargetFileTimestampMap1 =
+                    make_info_get_target_file_timestamp_map(!.Info),
                 version_hash_table.det_insert(TargetFile, Timestamp,
-                    TargetFileTimestamps1, TargetFileTimestamps),
-                make_info_set_target_file_timestamps(TargetFileTimestamps,
+                    TargetFileTimestampMap1, TargetFileTimestampMap),
+                make_info_set_target_file_timestamp_map(TargetFileTimestampMap,
                     !Info)
             ;
                 MaybeTimestamp = error(_)
@@ -206,8 +207,8 @@ verify_cached_target_file_timestamp(ProgressStream, Globals, Search,
 get_target_timestamp_analysis_registry(ProgressStream, Globals, Search,
         TargetFile, FileName, MaybeTimestamp, !Info, !IO) :-
     TargetFile = target_file(ModuleName, _TargetType),
-    FileTimestamps0 = make_info_get_file_timestamps(!.Info),
-    ( if map.search(FileTimestamps0, FileName, MaybeTimestamp0) then
+    FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
+    ( if map.search(FileTimestampMap0, FileName, MaybeTimestamp0) then
         MaybeTimestamp = MaybeTimestamp0
     else
         do_read_module_overall_status(mmc, Globals, ModuleName, Status, !IO),
@@ -221,8 +222,8 @@ get_target_timestamp_analysis_registry(ProgressStream, Globals, Search,
             Status = invalid,
             MaybeTimestamp = error("invalid module"),
             map.det_insert(FileName, MaybeTimestamp,
-                FileTimestamps0, FileTimestamps),
-            make_info_set_file_timestamps(FileTimestamps, !Info)
+                FileTimestampMap0, FileTimestampMap),
+            make_info_set_file_timestamp_map(FileTimestampMap, !Info)
         )
     ).
 
@@ -260,9 +261,10 @@ get_target_timestamp_uncached(ProgressStream, Globals, Search,
             ModuleDir \= dir.this_directory
         then
             MaybeTimestamp = ok(oldest_timestamp),
-            FileTimestamps0 = make_info_get_file_timestamps(!.Info),
-            map.set(FileName, MaybeTimestamp, FileTimestamps0, FileTimestamps),
-            make_info_set_file_timestamps(FileTimestamps, !Info)
+            FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
+            map.set(FileName, MaybeTimestamp,
+                FileTimestampMap0, FileTimestampMap),
+            make_info_set_file_timestamp_map(FileTimestampMap, !Info)
         else
             MaybeTimestamp = MaybeTimestamp0
         )
@@ -274,10 +276,11 @@ get_target_timestamp_uncached(ProgressStream, Globals, Search,
     list(dir_name)::out) is det.
 
 get_search_directories(Globals, TargetType, SearchDirs) :-
-    MaybeOpt = get_search_option_for_file_type(TargetType),
+    MaybeOption = get_search_option_for_file_type(TargetType),
     (
-        MaybeOpt = yes(SearchDirOpt),
-        globals.lookup_accumulating_option(Globals, SearchDirOpt, SearchDirs0),
+        MaybeOption = yes(SearchDirOption),
+        globals.lookup_accumulating_option(Globals, SearchDirOption,
+            SearchDirs0),
         % Make sure the current directory is searched for C headers
         % and libraries.
         ( if list.member(dir.this_directory, SearchDirs0) then
@@ -286,7 +289,7 @@ get_search_directories(Globals, TargetType, SearchDirs) :-
             SearchDirs = [dir.this_directory | SearchDirs0]
         )
     ;
-        MaybeOpt = no,
+        MaybeOption = no,
         SearchDirs = [dir.this_directory]
     ).
 
@@ -326,8 +329,8 @@ get_search_option_for_file_type(ModuleTargetType) = MaybeSearchOption :-
 %---------------------------------------------------------------------------%
 
 get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
-    FileTimestamps0 = make_info_get_file_timestamps(!.Info),
-    ( if map.search(FileTimestamps0, FileName, MaybeTimestamp0) then
+    FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
+    ( if map.search(FileTimestampMap0, FileName, MaybeTimestamp0) then
         MaybeTimestamp = MaybeTimestamp0
     else
         search_for_file_mod_time(SearchDirs, FileName, SearchResult, !IO),
@@ -336,8 +339,8 @@ get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
             Timestamp = time_t_to_timestamp(TimeT),
             MaybeTimestamp = ok(Timestamp),
             map.det_insert(FileName, MaybeTimestamp,
-                FileTimestamps0, FileTimestamps),
-            make_info_set_file_timestamps(FileTimestamps, !Info)
+                FileTimestampMap0, FileTimestampMap),
+            make_info_set_file_timestamp_map(FileTimestampMap, !Info)
         ;
             SearchResult = error(_SearchError),
             % XXX MAKE We should not ignore _SearchError.

@@ -732,16 +732,16 @@ record_made_target_given_make_lhs_files(ProgressStream, Globals,
             $pred, not_for_search),
         DatedLhsTargetFiles, DatedLhsFileNames, !Info, !IO),
 
-    some [!FileTimestamps] (
-        !:FileTimestamps = make_info_get_file_timestamps(!.Info),
+    some [!FileTimestampMap] (
+        !:FileTimestampMap = make_info_get_file_timestamp_map(!.Info),
         list.foldl(delete_timestamp(ProgressStream, Globals),
-            DatelessLhsFileNames, !FileTimestamps),
+            DatelessLhsFileNames, !FileTimestampMap),
         list.foldl(delete_timestamp(ProgressStream, Globals),
-            DatedLhsFileNames, !FileTimestamps),
+            DatedLhsFileNames, !FileTimestampMap),
         list.foldl(delete_timestamp(ProgressStream, Globals),
-            LhsDateFiles, !FileTimestamps),
+            LhsDateFiles, !FileTimestampMap),
         list.foldl(delete_timestamp(ProgressStream, Globals),
-            LhsForeignCodeFileNames, !FileTimestamps),
+            LhsForeignCodeFileNames, !FileTimestampMap),
 
         % When an .analysis file is made, that potentially invalidates other
         % .analysis files so we have to delete their timestamps. The exact list
@@ -751,19 +751,19 @@ record_made_target_given_make_lhs_files(ProgressStream, Globals,
         ( if TargetFile = target_file(_, module_target_analysis_registry) then
             map.foldl(
                 delete_analysis_registry_timestamps(ProgressStream, Globals),
-                !.FileTimestamps, !FileTimestamps)
+                !.FileTimestampMap, !FileTimestampMap)
         else
             true
         ),
-        make_info_set_file_timestamps(!.FileTimestamps, !Info)
+        make_info_set_file_timestamp_map(!.FileTimestampMap, !Info)
     ),
 
-    TargetFileTimestamps0 = make_info_get_target_file_timestamps(!.Info),
+    TargetFileTimestampMap0 = make_info_get_target_file_timestamp_map(!.Info),
     list.foldl(version_hash_table.delete, DatelessLhsTargetFiles,
-        TargetFileTimestamps0, TargetFileTimestamps1),
+        TargetFileTimestampMap0, TargetFileTimestampMap1),
     list.foldl(version_hash_table.delete, DatedLhsTargetFiles,
-        TargetFileTimestamps1, TargetFileTimestamps),
-    make_info_set_target_file_timestamps(TargetFileTimestamps, !Info).
+        TargetFileTimestampMap1, TargetFileTimestampMap),
+    make_info_set_target_file_timestamp_map(TargetFileTimestampMap, !Info).
 
 :- pred update_target_status(dependency_status::in, target_file::in,
     make_info::in, make_info::out) is det.
@@ -776,27 +776,27 @@ update_target_status(TargetStatus, TargetFile, !Info) :-
 
 :- pred delete_analysis_registry_timestamps(io.text_output_stream::in,
     globals::in, string::in, maybe_error(timestamp)::in,
-    file_timestamps::in, file_timestamps::out) is det.
+    file_timestamp_map::in, file_timestamp_map::out) is det.
 
 delete_analysis_registry_timestamps(ProgressStream, Globals, FileName, _,
-        !Timestamps) :-
+        !TimestampMap) :-
     ( if string.suffix(FileName, ".analysis") then
-        delete_timestamp(ProgressStream, Globals, FileName, !Timestamps)
+        delete_timestamp(ProgressStream, Globals, FileName, !TimestampMap)
     else
         true
     ).
 
 :- pred delete_timestamp(io.text_output_stream::in, globals::in, string::in,
-    file_timestamps::in, file_timestamps::out) is det.
+    file_timestamp_map::in, file_timestamp_map::out) is det.
 
-delete_timestamp(ProgressStream, Globals, TouchedFile, !Timestamps) :-
+delete_timestamp(ProgressStream, Globals, TouchedFile, !TimestampMap) :-
     trace [io(!IO)] (
         debug_make_msg(Globals,
             string.format("Deleting timestamp for %s\n", [s(TouchedFile)]),
             DebugMsg),
         maybe_write_msg(ProgressStream, DebugMsg, !IO)
     ),
-    map.delete(TouchedFile, !Timestamps).
+    map.delete(TouchedFile, !TimestampMap).
 
 %---------------------------------------------------------------------------%
 

@@ -51,9 +51,10 @@
 
 %---------------------%
 
-:- type file_timestamps == map(string, maybe_error(timestamp)).
+:- type file_timestamp_map == map(string, maybe_error(timestamp)).
 
-:- type target_file_timestamps == version_hash_table(target_file, timestamp).
+:- type target_file_timestamp_map ==
+    version_hash_table(target_file, timestamp).
 
 %---------------------%
 
@@ -216,7 +217,7 @@
 
 :- func init_make_info(options_variables, list(string), maybe_keep_going,
     list(string), list(string), set(top_target_file), int,
-    target_file_timestamps, module_index_map, dependency_file_index_map,
+    target_file_timestamp_map, module_index_map, dependency_file_index_map,
     dep_file_status_map) = make_info.
 
 :- func make_info_get_options_variables(make_info) = options_variables.
@@ -230,9 +231,9 @@
 :- func make_info_get_reanalysis_passes(make_info) = int.
 :- func make_info_get_maybe_module_dep_info_map(make_info) =
     map(module_name, maybe_module_dep_info).
-:- func make_info_get_file_timestamps(make_info) = file_timestamps.
-:- func make_info_get_target_file_timestamps(make_info) =
-    target_file_timestamps.
+:- func make_info_get_file_timestamp_map(make_info) = file_timestamp_map.
+:- func make_info_get_target_file_timestamp_map(make_info) =
+    target_file_timestamp_map.
 :- func make_info_get_module_index_map(make_info) = module_index_map.
 :- func make_info_get_dep_file_index_map(make_info) =
     dependency_file_index_map.
@@ -268,9 +269,9 @@
 :- pred make_info_set_maybe_module_dep_info_map(
     map(module_name, maybe_module_dep_info)::in,
     make_info::in, make_info::out) is det.
-:- pred make_info_set_file_timestamps(file_timestamps::in,
+:- pred make_info_set_file_timestamp_map(file_timestamp_map::in,
     make_info::in, make_info::out) is det.
-:- pred make_info_set_target_file_timestamps(target_file_timestamps::in,
+:- pred make_info_set_target_file_timestamp_map(target_file_timestamp_map::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_module_index_map(module_index_map::in,
     make_info::in, make_info::out) is det.
@@ -376,11 +377,11 @@
                 % following map for a target_file that needs to be invalidated.
                 % If that is difficult, it is simplest to reset the
                 % mki_target_file_timestamps map.
-                mki_file_timestamps     :: file_timestamps,
+                mki_file_timestamp_map  :: file_timestamp_map,
 
                 % A map of last known timestamps for the file that corresponds
                 % to a target_file.
-                mki_target_file_timestamps :: target_file_timestamps,
+                mki_target_file_timestamp_map :: target_file_timestamp_map,
 
                 % The mapping between module_names and indices.
                 mki_module_index_map    :: module_index_map,
@@ -507,10 +508,10 @@ make_info_get_reanalysis_passes(Info) = X :-
     X = Info ^ mki_reanalysis_passes.
 make_info_get_maybe_module_dep_info_map(Info) = X :-
     X = Info ^ mki_maybe_module_dep_info_map.
-make_info_get_file_timestamps(Info) = X :-
-    X = Info ^ mki_file_timestamps.
-make_info_get_target_file_timestamps(Info) = X :-
-    X = Info ^ mki_target_file_timestamps.
+make_info_get_file_timestamp_map(Info) = X :-
+    X = Info ^ mki_file_timestamp_map.
+make_info_get_target_file_timestamp_map(Info) = X :-
+    X = Info ^ mki_target_file_timestamp_map.
 make_info_get_module_index_map(Info) = X :-
     X = Info ^ mki_module_index_map.
 make_info_get_dep_file_index_map(Info) = X :-
@@ -552,10 +553,10 @@ make_info_set_reanalysis_passes(X, !Info) :-
     !Info ^ mki_reanalysis_passes := X.
 make_info_set_maybe_module_dep_info_map(X, !Info) :-
     !Info ^ mki_maybe_module_dep_info_map := X.
-make_info_set_file_timestamps(X, !Info) :-
-    !Info ^ mki_file_timestamps := X.
-make_info_set_target_file_timestamps(X, !Info) :-
-    !Info ^ mki_target_file_timestamps := X.
+make_info_set_file_timestamp_map(X, !Info) :-
+    !Info ^ mki_file_timestamp_map := X.
+make_info_set_target_file_timestamp_map(X, !Info) :-
+    !Info ^ mki_target_file_timestamp_map := X.
 make_info_set_module_index_map(X, !Info) :-
     !Info ^ mki_module_index_map := X.
 make_info_set_dep_file_index_map(X, !Info) :-

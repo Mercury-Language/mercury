@@ -123,7 +123,7 @@ make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
 
         MakeInfo0 = init_make_info(OptionsVariables, DetectedGradeFlags,
             KeepGoing, EnvVarArgs, OptionArgs, ClassifiedTargetSet,
-            AnalysisRepeat, init_target_file_timestamps, ModuleIndexMap,
+            AnalysisRepeat, init_target_file_timestamp_map, ModuleIndexMap,
             DepIndexMap, DepStatusMap),
 
         % Build the targets, stopping on any errors if `--keep-going'

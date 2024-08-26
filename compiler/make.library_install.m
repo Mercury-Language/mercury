@@ -344,7 +344,7 @@ make_and_install_library_grade(ProgressStream, Globals, NgsLibDirMap,
 
         % Reset the target file timestamp cache, as the information it contains
         % is not valid for the changed grade and grade-subdir setting.
-        make_info_set_target_file_timestamps(init_target_file_timestamps,
+        make_info_set_target_file_timestamp_map(init_target_file_timestamp_map,
             !Info),
 
         % Building the library in the new grade is done in a separate process
