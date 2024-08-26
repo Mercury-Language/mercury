@@ -2458,11 +2458,11 @@ do_timestamps_match(FileNameA, FileNameB, SameTimestamp, !IO) :-
 
 shared_libraries_supported(Globals, Supported) :-
     % XXX This seems to be the standard way to check whether shared libraries
-    % are supported but it's not very nice.
+    % are supported, but it is not very nice.
     globals.lookup_string_option(Globals, library_extension, LibExt),
     globals.lookup_string_option(Globals, shared_library_extension,
         SharedLibExt),
-    Supported = (if LibExt \= SharedLibExt then yes else no).
+    Supported = (if LibExt = SharedLibExt then no else yes).
 
 :- pred get_linker_output_option(globals::in,
     linked_target_type::in(c_exe_or_shared_lib), string::out) is det.
