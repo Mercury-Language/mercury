@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2001-2008, 2010-2011 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018-2019, 2022, 2024 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // Deep profiling module
@@ -228,7 +228,7 @@ MR_deep_profile_update_special_history(void)
 }
 
 void
-MR_deep_profile_update_closure_history()
+MR_deep_profile_update_closure_history(void)
 {
     if (MR_deep_prof_search_len < MR_MAX_CLOSURE_LIST_LENGTH) {
         MR_closure_search_lengths[MR_deep_prof_search_len]++;
@@ -236,7 +236,7 @@ MR_deep_profile_update_closure_history()
 }
 
 void
-MR_deep_profile_update_method_history()
+MR_deep_profile_update_method_history(void)
 {
     if (MR_deep_prof_search_len < MR_MAX_CLOSURE_LIST_LENGTH) {
         MR_method_search_lengths[MR_deep_prof_search_len]++;

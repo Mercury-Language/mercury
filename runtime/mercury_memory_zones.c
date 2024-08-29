@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2000, 2002-2007, 2010-2012 The University of Melbourne.
-// Copyright (C) 2013-2016, 2018 The Mercury team.
+// Copyright (C) 2013-2016, 2018, 2022, 2024 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module defines the MR_MemoryZone data structure and operations
@@ -343,7 +343,7 @@ static MR_MemoryZone * MR_THREADSAFE_VOLATILE used_memory_zones = NULL;
 #endif
 
 void
-MR_init_zones()
+MR_init_zones(void)
 {
 #ifdef  MR_THREAD_SAFE
     pthread_mutex_init(&memory_zones_lock, MR_MUTEX_ATTR);
@@ -359,7 +359,7 @@ MR_init_zones()
 }
 
 static void
-MR_init_offsets()
+MR_init_offsets(void)
 {
     int     i;
     size_t  fake_reg_offset;
