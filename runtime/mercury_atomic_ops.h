@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2021, 2024 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_atomic.h - defines atomic operations and other primitives used by
@@ -124,16 +124,24 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_int(
 MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
                                 volatile MR_Unsigned *addr);
 
-// For information about GCC's builtins for atomic operations see:
-// http://gcc.gnu.org/onlinedocs/gcc-4.2.4/gcc/Atomic-Builtins.html
-
 ////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
 
-#if (defined(MR_CLANG) || (MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1))) && \
-    !defined(MR_AVOID_COMPILER_INTRINSICS)
-
+#if (MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1))
     // gcc 4.1 and above have builtin atomic operations.
+    //
+    // For information about GCC's builtins for atomic operations see:
+    // http://gcc.gnu.org/onlinedocs/gcc-4.2.4/gcc/Atomic-Builtins.html
+    //
+    // Note that the __sync builtins are now considered legacy.
+    // In the future, we should replace their use with __atomic builtins.
+    #define MR_HAVE_SYNC_BUILTINS
+#elif defined(MR_CLANG)
+    // We assume any clang version in use has __sync builtins.
+    #define MR_HAVE_SYNC_BUILTINS
+#endif
+
+#if defined(MR_HAVE_SYNC_BUILTINS) && !defined(MR_AVOID_COMPILER_INTRINSICS)
 
     #define MR_COMPARE_AND_SWAP_WORD_BODY                                   \
         do {                                                                \
@@ -189,8 +197,7 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
 
 ////////////////////////////////////////////////////////////////////////////
 
-#if (MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)) &&           \
-    !defined(MR_AVOID_COMPILER_INTRINSICS)
+#if defined(MR_HAVE_SYNC_BUILTINS) && !defined(MR_AVOID_COMPILER_INTRINSICS)
 
     #define MR_ATOMIC_ADD_AND_FETCH_WORD_BODY                               \
         do {                                                                \
@@ -334,7 +341,7 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
                 );                                                          \
         } while (0)
 
-#elif MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)
+#elif defined(MR_HAVE_SYNC_BUILTINS)
 
     #define MR_ATOMIC_SUB_INT_BODY                                          \
         do {                                                                \
@@ -503,7 +510,7 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
     #define MR_ATOMIC_DEC_AND_IS_ZERO_UINT_BODY                         \
         MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY
 
-#elif MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)
+#elif defined(MR_HAVE_SYNC_BUILTINS)
 
     #define MR_ATOMIC_DEC_AND_IS_ZERO_WORD_BODY                             \
         do {                                                                \
@@ -569,7 +576,7 @@ MR_EXTERN_INLINE MR_bool    MR_atomic_dec_and_is_zero_uint(
             __asm__ __volatile__("mfence");                                 \
         } while (0)
 
-#elif defined(MR_CLANG) || MR_GNUC > 4 || (MR_GNUC == 4 && __GNUC_MINOR__ >= 1)
+#elif defined(MR_HAVE_SYNC_BUILTINS)
 
     // Our memory fences are better than GCC's. GCC only implements a full
     // fence.
