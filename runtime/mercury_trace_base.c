@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2008, 2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018, 2022-2023 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2022-2024 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_trace_base.c implements the interface between the main part
@@ -588,7 +588,7 @@ MR_trace_write_label_exec_counts_for_file(FILE *fp,
 }
 
 void
-MR_trace_name_count_port_ensure_init()
+MR_trace_name_count_port_ensure_init(void)
 {
     static MR_bool  done = MR_FALSE;
 
