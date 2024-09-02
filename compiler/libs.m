@@ -38,6 +38,7 @@
 :- include_module file_util.
 :- include_module graph_colour.
 :- include_module indent.
+:- include_module lines_builder.
 :- include_module md5.
 :- include_module pickle.
 :- include_module va_map.
