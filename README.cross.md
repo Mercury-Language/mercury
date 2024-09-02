@@ -15,6 +15,7 @@ The following targets are currently supported using clang:
   * FreeBSD x86-64
   * macOS x86-64
   * macOS AArch64 (ARM64)
+  * Linux AArch64 (ARM64)
 
 Furthermore, instead of transferring the Mercury installation to the target
 system and running it there, you can augment the cross-compiled installation

@@ -2,7 +2,7 @@
 # vim: ft=sh ts=4 sw=4 et
 #---------------------------------------------------------------------------#
 # Copyright (C) 2012 The University of Melbourne.
-# Copyright (C) 2014, 2018, 2021-2022 The Mercury team.
+# Copyright (C) 2014, 2018, 2021-2024 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -97,7 +97,7 @@ case "$cc_type:$host" in
         mercury_cv_gcc_model_reg=yes
         mercury_cv_cannot_use_structure_assignment=yes
         ;;
-    gcc:aarch64-linux-gnu | gcc:aarch64-linux-musl)
+    gcc:aarch64-*linux-gnu | gcc:aarch64-*linux-musl)
         # Taken from the config.cache file after running configure -C
         # - in a Debian 10 arm64 environment (for glibc)
         # - in a Alpine Linux aarch64 environment (for musl)
@@ -114,11 +114,14 @@ case "$cc_type:$host" in
         mercury_cv_gcc_model_reg=yes
         mercury_cv_cannot_use_structure_assignment=no
         ;;
-    clang:x86_64-*freebsd* | clang:x86_64-*darwin* | clang:aarch64-*darwin*)
+    clang:x86_64-*freebsd* | clang:x86_64-*darwin* | clang:aarch64-*darwin* |\
+        clang:aarch64-*linux-gnu | clang:aarch64-*linux-musl)
         # Taken from the config.cache file after running configure -C
         # - in a FreeBSD 13.0 x86-64 environment
         # - in a macOS 10.14 x86-64 environment
         # - in a macOS 12.4 aarch64 environment
+        # - in a Debian 12 arm64 environment (for glibc)
+        # - in a Alpine Linux aarch64 environment (for musl)
         mercury_cv_cc_type=clang
         mercury_cv_siginfo_t=yes
         mercury_cv_pc_access=no
