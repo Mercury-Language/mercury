@@ -150,7 +150,7 @@ install_ints_and_headers_for_module(ProgressStream, Globals, NgsLibDirMap,
             [{ext_cur_ngs(ext_cur_ngs_int_int1), "ints"},
             {ext_cur_ngs(ext_cur_ngs_int_int2), "int2s"},
             {ext_cur_ngs(ext_cur_ngs_int_int3), "int3s"},
-            {ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep), "module_deps"}
+            {ext_cur_ngs(ext_cur_ngs_misc_module_dep), "module_deps"}
             | ExtExtDirs1],
         globals.lookup_string_option(Globals, install_prefix, Prefix),
         LibDir = Prefix / "lib" / "mercury",

@@ -197,7 +197,7 @@ make_module_realclean(ProgressStream, Globals, ModuleName, !Info, !IO) :-
             very_verbose, ModuleName),
         Targets, !Info, !IO),
     remove_module_file_for_make(ProgressStream, Globals, very_verbose,
-        ModuleName, ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep),
+        ModuleName, ext_cur_ngs(ext_cur_ngs_misc_module_dep),
         !Info, !IO),
     remove_module_file_for_make(ProgressStream, Globals, very_verbose,
         ModuleName, ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_imdg),
