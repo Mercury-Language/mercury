@@ -1,0 +1,563 @@
+<!--
+vim: ts=4 sw=4 expandtab ft=html
+-->
+
+<html>
+<head>
+<title>The directory structure of installed Mercury libraries</title>
+</head>
+
+<body>
+
+<h1>Introduction</h1>
+
+<p>
+Both "mmake" and "mmc --make" have mechanisms
+for installing a library to a target given directory.
+The name of this target directory is often called the <em>install prefix</em>,
+because the full pathname of all the installed files
+will include this name as a prefix.
+
+<p>
+The install process will copy files with the following suffixes
+to subdirectories of the install target directory.
+(In the rest of this document,
+we will refer to this list as the "library suffix list".)
+
+<p>
+<ul>
+<li>
+.int0
+<li>
+.int
+<li>
+.int2
+<li>
+.int3
+<li>
+.opt
+<li>
+.module_dep
+<li>
+.analysis
+<li>
+.mh     (for C grades)
+<li>
+.mih    (for C grades)
+<li>
+.init   (for C grades)
+<li>
+.a      (for C grades, if --library-extension is .a)
+<li>
+.so     (for C grades, if --shared-library-extension is .so)
+<li>
+.dll    (for C# grades)
+<li>
+.jar    (for Java grades)
+</ul>
+
+<p>
+This document is intended to describe where (i.e. in which directories)
+files with each of the above suffixes are, or should be, installed.
+Specifically,
+<p>
+<ul>
+<li>
+where they <em>are</em> installed, by Mercury system versions
+before 2024 september 15, and
+<li>
+where they <em>should be</em> installed,
+in a simplified and rationalized system
+that I (zs) think we should switch to.
+</ul>
+
+<p>
+The rest of this document will identify these two "scenarios"
+as LEGACY and PROPOSED respectively.
+
+<p>
+But before we can get to either of those,
+we need some background on where these files are stored in workspaces.
+
+<h1>The directory structure of Mercury workspaces</h1>
+
+<p>
+When the Mercury project started,
+we always stored all compiler-generated files,
+including all files with a suffix in the library suffix list,
+in the directory that stored the Mercury source files they were derived from.
+We refer to this directory as the "current directory",
+since that the logical place to have your current directory (in the Unix sense)
+when working on that code.
+
+<p>
+As the number of modules in e.g. the compiler directory grew,
+the number of files in the current directory became a problem.
+One problem was simply aesthetics:
+the output of "ls" in the current directory contained lots of "clutter".
+Another problem was more serious.
+Some of the Unix systems we used then
+had algorithms for filename lookups
+whose complexity was linear in the number of entries in a directory.
+This meant that the runtimes of tasks such as
+generating the .int3 file for each module in the directory
+was half-quadratic in the number of modules:
+for each of N modules, the task of looking up that module's directory entry
+had to scan at least N/2 other directory entries.
+
+<h2>--use-subdirs</h2>
+
+<p>
+We implemented the --use-subdirs option to solve both problems.
+(The second problem has since gone away, since pretty much
+all modern versions of Unix, and other OSs,
+have file lookup algorithms whose complexity is logarithmic
+in the number of entries in the directory,
+achieved by using data structures such as B-trees.
+The first problem still remains.)
+When --use-subdirs is specified,
+the compiler still puts the kinds of files that are
+explicitly intended to be looked at by the programmer,
+such .err files and HLDS/MLDS dumps,
+into the current directory,
+but it puts all other kinds of files into another directory.
+
+<p>
+The compiler associates with each extension
+an <em>extension directory name</em>.
+the extension itself by deleting the initial dot and adding a final "s";
+for example, for the .int3 extension,
+the extension directory name is "int3s".
+There are exceptions:
+for the .class extension,
+the extension directory name is "classes".
+The final "s" is intended to denote the plural form of the extension.
+This is because with --use-subdirs,
+the compiler stores all files with the .class extension
+in the directory named "Mercury/classes".
+
+<p>
+The general rule is:
+if ExtDir is the extension directory name for the extension .Ext,
+then for a module whose fully qualified module name is Fqmn,
+the compiler will put its .Ext file into "Mercury/ExtDir/Fqmn.Ext".
+
+<p>
+This scheme works well if you do all your work in the same grade.
+If you want to work on the same code in two or more different grades,
+e.g. because you want to switch to a debug grade to hunt down a bug,
+or if you want to switch back to the original grade
+once you have found the bug,
+you have a problem:
+you have to nuke the Mercury directory and rebuild it from scratch
+every time you want to switch grade.
+This takes a nontrivial amount of time,
+and therefore usually takes you any out of any "flow" state you had.
+The --use-subdirs option does not help with this problem at all.
+
+<h2>--use-grade-subdirs</h2>
+
+<p>
+We therefore added another option, --use-grade-subdirs, to solve this problem.
+
+<p>
+There are only three legal combinations of the settings of these options:
+<p>
+<ul>
+<li>
+--no-use-subdirs and --no-use-grade-subdirs
+(globals.m calls this combination use_cur_dir.)
+<li>
+--use-subdirs and --no-use-grade-subdirs
+(globals.m calls this combination use_cur_ngs_dir.)
+<li>
+--use-subdirs and --use-grade-subdirs
+(globals.m calls this combination use_cur_ngs_gs_dir.)
+</ul>
+
+<p>
+The fourth, illegal combination, --no-use-subdirs and --use-grade-subdirs,
+is actually unreachable, because
+--use-grade-subdirs implicitly implies --use-subdirs.
+
+<p>
+We classify extensions into two sets: grade-independent and grade-dependent.
+
+<p>
+For the grade-independent extensions,
+the compiler puts their files
+
+<p>
+<ul>
+<li>
+into . (the current directory),
+with --no-use-subdirs, or
+<li>
+into Mercury/ExtDir
+with --use-subdirs
+</ul>
+
+<p>
+LEGACY
+For the grade-dependent extensions,
+the compiler puts their files
+
+<p>
+<ul>
+<li>
+into . (the current directory),
+with --no-use-subdirs, or
+<li>
+into Mercury/ExtDir
+with --use-subdirs but --no-use-grade-subdirs, or
+<li>
+into Mercury/Grade/TargetArch/Mercury/ExtDir
+with --use-subdirs and --use-grade-subdirs,
+</ul>
+
+<p>
+where Grade is a canonical representation of the grade
+and TargetArch is a canonical representation of the target ISA
+(instruction set architecture),
+with both being in a form that is suitable as a directory name component.
+
+<p>
+Note that while some kinds of files with grade-dependent extensions,
+such as .so, are dependent on the target ISA,
+files with other grade-dependent extensions, such as .mih, are <em>NOT</em>,
+so including the TargetArch component in their path names is overkill.
+
+<p>
+PROPOSED
+For the grade-dependent extensions,
+the compiler should put their files
+<p>
+<ul>
+<li>
+into . (the current directory),
+with --no-use-subdirs, or
+<li>
+into MercurySystem/ExtDir
+with --use-subdirs but --no-use-grade-subdirs, or
+<li>
+into MercurySystem/ExtDir/Grade
+with --use-subdirs and --use-grade-subdirs,
+if files with the extension are not ISA specific
+<li>
+into MercurySystem/ExtDir/Grade/TargetArch
+with --use-subdirs and --use-grade-subdirs,
+if files with the extension are ISA specific
+</ul>
+
+<p>
+The point of using "MercurySystem" instead of "Mercury"
+is to allow LEGACY and PROPOSED directory structures to coexist
+for the transition period.
+After that period is over, we can go back to using just "Mercury".
+
+<h1>The directory structure of installed libraries</h1>
+
+<p>
+<dl>
+
+<!--
+Does any know any html tag that works as <pre>,
+but applies the current indent?
+-->
+<dt>
+.int0
+<dd>
+<pre>
+        LEGACY
+        Prefix/lib/mercury/ints
+        Prefix/lib/mercury/ints/Mercury/int0s
+
+        PROPOSED
+        Prefix/MercurySystem/int0s
+</pre>
+<dt>
+.int
+<dd>
+<pre>
+        LEGACY
+        Prefix/lib/mercury/ints
+        Prefix/lib/mercury/ints/Mercury/ints
+
+        PROPOSED
+        Prefix/MercurySystem/ints
+</pre>
+<dt>
+.int2
+<dd>
+<pre>
+        LEGACY
+        Prefix/lib/mercury/ints
+        Prefix/lib/mercury/ints/Mercury/int2s
+
+        PROPOSED
+        Prefix/MercurySystem/int2s
+</pre>
+<dt>
+.int3
+<dd>
+<pre>
+        LEGACY
+        Prefix/lib/mercury/ints
+        Prefix/lib/mercury/ints/Mercury/int3s
+
+        PROPOSED
+        Prefix/MercurySystem/int3s
+</pre>
+
+<dt>
+.opt
+<dd>
+<pre>
+        LEGACY
+        Prefix/lib/mercury/ints
+        Prefix/lib/mercury/ints/Mercury/opts
+        Prefix/lib/mercury/ints/Grade
+        Prefix/lib/mercury/ints/Grade/Mercury/opts
+
+        PROPOSED
+        Prefix/MercurySystem/opts/Grade
+</pre>
+<p>
+NOTE: LEGACY installs .opt files, which are grade-specific,
+to non-grade-specific directories. The non-grade-specific directory
+will end up with the .opt file for the default grade. If this directory
+is before the grade-specific directory in the search path, searches in
+non-default grades may nevertheless find the .opt file for the default grade.
+<p>
+
+<dt>
+.module_dep
+<dd>
+<pre>
+        LEGACY
+        Prefix/lib/mercury/ints
+        Prefix/lib/mercury/ints/Mercury/module_deps
+
+        PROPOSED
+        Prefix/MercurySystem/module_deps/Grade
+</pre>
+
+<dt>
+.analysis
+<dd>
+<pre>
+        LEGACY
+        Prefix/lib/mercury/ints/Grade
+        Prefix/lib/mercury/ints/Grade/Mercury/analyses
+
+        PROPOSED
+        Prefix/MercurySystem/analyses/Grade
+</pre>
+
+<dt>
+.mh
+<dd>
+<pre>
+        LEGACY
+        Prefix/lib/mercury/inc
+        Prefix/lib/mercury/ints
+        Prefix/lib/mercury/ints/Mercury/mhs
+
+        PROPOSED
+        Prefix/lib/mercury/inc           (possibly, for backward compatibility)
+        Prefix/MercurySystem/mhs
+</pre>
+
+<dt>
+.mih
+<dd>
+<pre>
+        LEGACY
+        Prefix/lib/mercury/lib/Grade/inc
+        Prefix/lib/mercury/lib/Grade/inc/Mercury/mihs
+        Prefix/lib/mercury/lib/ints
+        Prefix/lib/mercury/lib/ints/Mercury/mihs
+
+        PROPOSED
+        Prefix/lib/mercury/inc/Grade/inc (possibly, for backward compatibility)
+        Prefix/MercurySystem/mihs/Grade
+</pre>
+<p>
+NOTE: LEGACY installs .mih files, which are grade-specific,
+to non-grade-specific directories. The non-grade-specific directory
+will end up with the .mih file for the grade that is installed last.
+(The install process differs between .opt and .mih files.)
+If the non-grade-specific directory is before the grade-specific directory
+in the search path, searches in not-installed-last grades may nevertheless
+find the .opt file for the installed-last grade.
+<p>
+
+<dt>
+.init
+<dd>
+<pre>
+        LEGACY
+        Prefix/lib/mercury/modules/Grade
+
+        PROPOSED
+        Prefix/MercurySystem/inits/Grade
+</pre>
+
+<dt>
+.a and .so
+<dd>
+<pre>
+        LEGACY
+        Prefix/lib/mercury/lib/Grade
+
+        PROPOSED
+        Prefix/MercurySystem/lib/Grade/TargetArch
+</pre>
+
+<dt>
+.dll
+<dd>
+<pre>
+        LEGACY
+        Prefix/lib/mercury/lib/Grade
+
+        PROPOSED
+        Prefix/MercurySystem/lib/Grade/TargetArch
+</pre>
+
+<dt>
+.jar
+<dd>
+<pre>
+        LEGACY
+        Prefix/lib/mercury/lib/Grade
+
+        PROPOSED
+        Prefix/MercurySystem/lib/Grade
+</pre>
+
+</dl>
+
+<h1>The principles of the PROPOSED directory structure</h1>
+
+<p>
+The principles governing the PROPOSED directory structure are the following.
+
+<p>
+<ul>
+<li>
+Each installed file should occur in the install library structure just once.
+(For backward compatibility,
+we may want to make an exception for .mh and .mih files,
+but the rest of this discussion assumes that we don't.)
+<li>
+The relative path from Prefix to the installed location
+of the file Fqmn.Ext in an installed library
+should be the same as the relative path from .
+(the current directory in a workspace)
+to the location of Fqmn.Ext in (or under) that same directory,
+assuming a workspace with --use-grade-subdirs.
+<li>
+The first directory name component after MercurySystem
+would dictate the structure of the subtree rooted at that directory.
+The structure would be one of
+    <ul>
+    <li>
+    containing only plain files
+    (all of which are non-grade-specific);
+    <li>
+    containing only subdirectories that identify grades,
+    each of which contains only plain files
+    (all of which are grade-specific but not architecture-specific); or
+    <li>
+    containing only subdirectories that identify grades,
+    each of which contains only subdirectories that identify architectures,
+    each of which contains only plain files
+    (all of which are both grade-specific and architecture-specific).
+    </ul>
+<li>
+As a consequence of the above,
+no directory in the installed library would contain
+both directories and plain (non-directory) files.
+<li>
+As a consequence of the above,
+the installed library would contain no symbolic links,
+and especially no symbolic links that point to an ancestor directory :-(
+</ul>
+
+Based on the above, it should be possible to use a single new mmc option,
+an accumulating option named something like --mercury-library-dir,
+that can take as arguments the names of
+<em>both</em> installed libraries
+<em>and</em> other directories in the current workspace.
+<p>
+For any directory Dir named as such an argument,
+when looking for Fqmn.Ext, mmc would search
+    <ul>
+    <li>
+    Dir/MercurySystem/ExtDir/Grade
+    <li>
+    Dir/MercurySystem/ExtDir
+    <li>
+    Dir
+    </ul>
+in that order if .Ext files are grade-specific but not architecture-specific,
+while it would search
+    <ul>
+    <li>
+    Dir/MercurySystem/ExtDir
+    <li>
+    Dir
+    </ul>
+in that order if .Ext files are not grade-specific.
+(mmc never searches for architecture-specific files.)
+
+As a possible optimization, we could have a variant of this option,
+named maybe --workspace-library-dir,
+that is specialized for the use case where
+
+<ul>
+<li>
+the named directory is another directory in the same workspace, and
+<li>
+the named directory and the current directory use the same settings
+for --use-subdirs and --use-grade-subdirs.
+</ul>
+
+This option variant would not do any search.
+Instead of searching in e.g.
+    <ul>
+    <li>
+    Dir/MercurySystem/ExtDir/Grade
+    <li>
+    Dir/MercurySystem/ExtDir
+    <li>
+    Dir
+    </ul>
+it would simply look at the one entry on that list
+that corresponds to the current settings
+of the --use-subdirs and --use-grade-subdirs options.
+This would make mmc slightly faster.
+However, the increased speed may be too small
+to be worth both
+
+<p>
+<ul>
+<li>
+the risk to users of them specifying this option
+even when the assumptions it needs are not satisfied, and
+<li>
+the cost to us of developing a mechanism that
+integrates this with the base option.
+(A command line that contains 
+both --mercury-library-dir and --workspace-library-dir options
+in some interleaved order
+would require those directories to be searched in that order,
+which means that the two options would need to maintain
+a <em>common</em> list of directories,
+even though different elements of that list
+would be need to be treated differently.)
+</ul>
+
+</body>
+</html>
