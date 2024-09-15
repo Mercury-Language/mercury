@@ -853,7 +853,9 @@ check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         is_detism_ok_for_io(ActualDetism) = no,
         (
             MaybeDeclaredDetism = no,
-            DetismToReport = ActualDetism
+            BadDetismPieces = [words("the inferred determinism")] ++
+                color_as_incorrect(
+                    [quote(determinism_to_string(ActualDetism))])
         ;
             MaybeDeclaredDetism = yes(DeclaredDetism),
             DeclaredDetismOk = is_detism_ok_for_io(DeclaredDetism),
@@ -872,7 +874,8 @@ check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
                 % This is what we report here. If the actual and declared
                 % determinisms differ, that is a *different* problem,
                 % which would get its own separate error message.
-                DetismToReport = DeclaredDetism
+                BadDetismPieces = color_as_incorrect(
+                    [quote(determinism_to_string(DeclaredDetism))])
             )
         )
     then
@@ -893,15 +896,13 @@ check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         ProcColonPieces = describe_one_proc_name_mode(ModuleInfo,
             output_mercury, yes(color_subject), ShouldModuleQual,
             [suffix(":")], PredProcId),
-        % We used to print the second sentence (actually, only its first half)
-        % if verbose error messages were enabled, but anyone who makes this
-        % error will probably need that extra help, so don't make them
-        % ask for it with -E.
-        BadDetismPieces0 = [quote(determinism_to_string(DetismToReport))],
-        BadDetismPieces = color_as_incorrect(BadDetismPieces0),
         GoodDetismPieces = color_as_correct([quote("det"), suffix(",")]) ++
             color_as_correct([quote("cc_multi")]) ++ [words("and")] ++
             color_as_correct([quote("erroneous"), suffix(",")]),
+        % We used to print the second sentence (actually, only its first half)
+        % only if verbose error messages were enabled, but anyone who makes
+        % this error will probably need that extra help, so now we don't
+        % make them ask for it with -E.
         Pieces = [words("In")] ++ ProcColonPieces ++ [nl,
             words("error:")] ++ BadDetismPieces ++
             [words("is not a valid determinism"),
