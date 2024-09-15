@@ -516,6 +516,9 @@ fixed_extension_target_type(ExtStr, TargetType) :-
             ),
             ModuleTarget = module_target_java_code
         ;
+            % We should s/classs/classes/ here, but this requires
+            % documentation and announcement, as well as updating all existing
+            % references to the old spelling in the Mercury system.
             ( ExtStr = ".all_classs"
             ; ExtStr = ".classs"
             ),
@@ -531,6 +534,9 @@ fixed_extension_target_type(ExtStr, TargetType) :-
             ),
             ModuleTarget = module_target_xml_doc
         ;
+            % We should s/analysiss/analyses/ here, but this requires
+            % documentation and announcement, as well as updating all existing
+            % references to the old spelling in the Mercury system.
             ( ExtStr = ".all_analysiss"
             ; ExtStr = ".analysiss"
             ),
