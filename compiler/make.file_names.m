@@ -101,8 +101,8 @@ module_maybe_nested_target_file_to_file_name(ProgressStream,
         Globals, From, ForSearch, TargetFile, FileName, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     ( if TargetType = module_target_source then
-        % In some cases the module name won't match the file name
-        % (module mdb.parse might be in parse.m or mdb.m), so we need to
+        % In some cases, the module name won't match the file name
+        % (e.g. module mdb.parse might be in parse.m or mdb.m), so we need to
         % look up the file name here.
         get_maybe_module_dep_info(ProgressStream, Globals,
             ModuleName, MaybeModuleDepInfo, !Info, !IO),

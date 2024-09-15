@@ -158,9 +158,9 @@ get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
                     !Info)
             ;
                 MaybeTimestamp = error(_)
-                % Do not record errors. These would usually be due to files not
-                % yet made, and the result would have to be updated once the
-                % file is made.
+                % Do not record errors. These would usually be due to files
+                % not yet made, and the result would have to be updated
+                % once the file *is* made.
             )
         )
     ).
