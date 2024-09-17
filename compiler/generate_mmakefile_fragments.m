@@ -1589,17 +1589,17 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
         ExeFileName, JarFileName, LibFileName, SharedLibFileName,
         !MmakeFile, !IO),
     generate_dep_file_init_targets(Globals, ModuleName, ModuleMakeVarName,
-        InitCFileName, InitFileName, DepFileName, DvFileName, !MmakeFile, !IO),
-    generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
+        InitCFileName, InitFileName, DepFileName, DvFileName, !MmakeFile),
+    generate_dep_file_install_targets(ModuleName, DepsMap,
         ModuleMakeVarName, MmcMakeDeps, Intermod, TransOpt,
         MaybeModuleDepsVarPair, MaybeOptsVarPair, MaybeTransOptsVarPair,
-        !MmakeFile, !IO),
-    generate_dep_file_collective_targets(Globals, ModuleName,
-        ModuleMakeVarName, !MmakeFile, !IO),
-    generate_dep_file_clean_targets(Globals, ModuleName, ModuleMakeVarName,
+        !MmakeFile),
+    generate_dep_file_collective_targets(ModuleName, ModuleMakeVarName,
+        !MmakeFile),
+    generate_dep_file_clean_targets(ModuleName, ModuleMakeVarName,
         ExeFileName, InitCFileName, InitObjFileName, InitPicObjFileName,
         InitFileName, LibFileName, SharedLibFileName, JarFileName,
-        DepFileName, DvFileName, !MmakeFile, !IO).
+        DepFileName, DvFileName, !MmakeFile).
 
 :- pred generate_dep_file_exec_library_targets(globals::in,
     module_name::in, string::in, string::in, string::in,
@@ -1758,12 +1758,10 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
 
 :- pred generate_dep_file_init_targets(globals::in,
     module_name::in, string::in, string::in, string::in,
-    string::out, string::out,
-    mmakefile::in, mmakefile::out, io::di, io::uo) is det.
+    string::out, string::out, mmakefile::in, mmakefile::out) is det.
 
 generate_dep_file_init_targets(Globals, ModuleName, ModuleMakeVarName,
-        InitCFileName, InitFileName, DepFileName, DvFileName,
-        !MmakeFile, !IO) :-
+        InitCFileName, InitFileName, DepFileName, DvFileName, !MmakeFile) :-
     module_name_to_file_name(Globals, $pred,
         ext_cur_ngs(ext_cur_ngs_mf_dep), ModuleName, DepFileName),
     module_name_to_file_name(Globals, $pred,
@@ -1813,15 +1811,15 @@ generate_dep_file_init_targets(Globals, ModuleName, ModuleMakeVarName,
 
 :- type maybe_mmake_var == pair(list(string), string).
 
-:- pred generate_dep_file_install_targets(globals::in, module_name::in,
+:- pred generate_dep_file_install_targets(module_name::in,
     deps_map::in, string::in, bool::in, bool::in, bool::in,
     maybe_mmake_var::in, maybe_mmake_var::in, maybe_mmake_var::in,
-    mmakefile::in, mmakefile::out, io::di, io::uo) is det.
+    mmakefile::in, mmakefile::out) is det.
 
-generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
+generate_dep_file_install_targets(ModuleName, DepsMap,
         ModuleMakeVarName, MmcMakeDeps, Intermod, TransOpt,
         MaybeModuleDepsVarPair, MaybeOptsVarPair, MaybeTransOptsVarPair,
-        !MmakeFile, !IO) :-
+        !MmakeFile) :-
     % XXX  Note that we install the `.opt' and `.trans_opt' files
     % in two places: in the `lib/$(GRADE)/opts' directory, so
     % that mmc will find them, and also in the `ints' directory,
@@ -1831,20 +1829,13 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
     MaybeTransOptsVarPair = MaybeTransOptsVar - MaybeTransOptsVarSpace,
     MaybeModuleDepsVarPair = MaybeModuleDepsVar - MaybeModuleDepsVarSpace,
 
-    % XXX The following calls to module_name_to_lib_file_name could
-    % be replaced by simpler code.
-    module_name_to_lib_file_name(Globals, $pred, "lib",
-        ext_cur(ext_cur_pmt_install_ints),
-        ModuleName, LibInstallIntsTargetName),
-    module_name_to_lib_file_name(Globals, $pred, "lib",
-        ext_cur(ext_cur_pmt_install_opts),
-        ModuleName, LibInstallOptsTargetName),
-    module_name_to_lib_file_name(Globals, $pred, "lib",
-        ext_cur(ext_cur_pmt_install_hdrs),
-        ModuleName, LibInstallHdrsTargetName),
-    module_name_to_lib_file_name(Globals, $pred, "lib",
-        ext_cur(ext_cur_pmt_install_grade_hdrs),
-        ModuleName, LibInstallGradeHdrsTargetName),
+    ModuleNameStr = sym_name_to_string(ModuleName),
+    LibModuleNameStr = "lib" ++ ModuleNameStr,
+
+    LibInstallIntsTargetName = LibModuleNameStr ++ ".install_ints",
+    LibInstallOptsTargetName = LibModuleNameStr ++ ".install_opts",
+    LibInstallHdrsTargetName = LibModuleNameStr ++ ".install_hdrs",
+    LibInstallGradeHdrsTargetName = LibModuleNameStr ++ ".install_grade_hdrs",
 
     ModuleMakeVarNameInts = "$(" ++ ModuleMakeVarName ++ ".ints)",
     ModuleMakeVarNameInt3s = "$(" ++ ModuleMakeVarName ++ ".int3s)",
@@ -2045,59 +2036,55 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
     add_mmake_fragment(MmakeFragmentLibInstallHdrs, !MmakeFile),
     add_mmake_fragment(MmakeFragmentLibInstallGradeHdrs, !MmakeFile).
 
-:- pred generate_dep_file_collective_targets(globals::in,
-    module_name::in, string::in,
-    mmakefile::in, mmakefile::out, io::di, io::uo) is det.
+:- pred generate_dep_file_collective_targets(module_name::in, string::in,
+    mmakefile::in, mmakefile::out) is det.
 
-generate_dep_file_collective_targets(Globals, ModuleName,
-        ModuleMakeVarName, !MmakeFile, !IO) :-
-    list.map_foldl(
-        generate_dep_file_collective_target(Globals, ModuleName,
+generate_dep_file_collective_targets(ModuleName, ModuleMakeVarName,
+        !MmakeFile) :-
+    ModuleNameStr = sym_name_to_string(ModuleName),
+    list.map(
+        generate_dep_file_collective_target(ModuleNameStr,
             ModuleMakeVarName),
-        [{ext_cur(ext_cur_pmt_check), ".errs"},
-        {ext_cur(ext_cur_pmt_ints), ".dates"},
-        {ext_cur(ext_cur_pmt_int3s), ".date3s"},
-        {ext_cur(ext_cur_pmt_opts), ".optdates"},
-        {ext_cur(ext_cur_pmt_trans_opts), ".trans_opt_dates"},
-        {ext_cur(ext_cur_pmt_javas), ".all_javas"},
-        {ext_cur(ext_cur_pmt_classes), ".classes"},
-        {ext_cur(ext_cur_pmt_all_ints), ".dates"},
-        {ext_cur(ext_cur_pmt_all_int3s), ".date3s"},
-        {ext_cur(ext_cur_pmt_all_opts), ".optdates"},
-        {ext_cur(ext_cur_pmt_all_trans_opts), ".trans_opt_dates"}],
-        MmakeRules, !IO),
+        [{".check", ".errs"},
+        {".ints", ".dates"},
+        {".int3s", ".date3s"},
+        {".opts", ".optdates"},
+        {".trans_opts", ".trans_opt_dates"},
+        {".javas", ".all_javas"},
+        {".classes", ".classes"},
+        {".all_ints", ".dates"},
+        {".all_int3s", ".date3s"},
+        {".all_opts", ".optdates"},
+        {".all_trans_opts", ".trans_opt_dates"}],
+        MmakeRules),
     add_mmake_entries(MmakeRules, !MmakeFile).
 
-:- pred generate_dep_file_collective_target(globals::in,
-    module_name::in, string::in, {ext, string}::in,
-    mmake_entry::out, io::di, io::uo) is det.
+:- pred generate_dep_file_collective_target(string::in, string::in,
+    {string, string}::in, mmake_entry::out) is det.
 
-generate_dep_file_collective_target(Globals, ModuleName, ModuleMakeVarName,
-        {Ext, VarExtension}, MmakeRule, !IO) :-
-    module_name_to_file_name(Globals, $pred, Ext, ModuleName, TargetName),
+generate_dep_file_collective_target(ModuleNameStr, ModuleMakeVarName,
+        {ExtStr, VarExtension}, MmakeRule) :-
+    TargetName = ModuleNameStr ++ ExtStr,
     Source = string.format("$(%s%s)", [s(ModuleMakeVarName), s(VarExtension)]),
-    ExtStr = extension_to_string(Globals, Ext),
     MmakeRule = mmake_simple_rule(
         "collective_target_" ++ ExtStr ++ VarExtension, mmake_rule_is_phony,
         TargetName, [Source], []).
 
-:- pred generate_dep_file_clean_targets(globals::in,
-    module_name::in, string::in, string::in, string::in,
+:- pred generate_dep_file_clean_targets(module_name::in, string::in,
     string::in, string::in, string::in, string::in, string::in, string::in,
-    string::in, string::in,
-    mmakefile::in, mmakefile::out, io::di, io::uo) is det.
+    string::in, string::in, string::in, string::in,
+    mmakefile::in, mmakefile::out) is det.
 
-generate_dep_file_clean_targets(Globals, ModuleName, ModuleMakeVarName,
+generate_dep_file_clean_targets(ModuleName, ModuleMakeVarName,
         ExeFileName, InitCFileName, InitObjFileName, InitPicObjFileName,
         InitFileName, LibFileName, SharedLibFileName, JarFileName,
-        DepFileName, DvFileName, !MmakeFile, !IO) :-
+        DepFileName, DvFileName, !MmakeFile) :-
     % If you change the clean targets below, please also update the
     % documentation in doc/user_guide.texi.
 
-    module_name_to_file_name(Globals, $pred, ext_cur(ext_cur_pmt_clean),
-        ModuleName, CleanTargetName),
-    module_name_to_file_name(Globals, $pred, ext_cur(ext_cur_pmt_realclean),
-        ModuleName, RealCleanTargetName),
+    ModuleNameStr = sym_name_to_string(ModuleName),
+    CleanTargetName = ModuleNameStr ++ ".clean",
+    RealCleanTargetName = ModuleNameStr ++ ".realclean",
 
     % XXX Put these into a logical order.
     % XXX Why not clean up C# files?

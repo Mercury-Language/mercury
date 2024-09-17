@@ -238,34 +238,9 @@
 % - a prefix, and the name of an option giving the rest of the extension.
 
 :- type ext_cur
-            % These extensions are used not to create filenames, but to
-            % create mmake target names. Some do refer to real files,
-            % but they can (and some do) refer to these using extension
-            % strings that can contain references to make variables.
-            % Some of the other generated make targets are phony targets,
-            % meaning that they never correspond to real files at all.
-    --->    ext_cur_pmt_all_int3s               % ".all_int3s"
-    ;       ext_cur_pmt_all_ints                % ".all_int3"
-    ;       ext_cur_pmt_all_opts                % ".all_opts"
-    ;       ext_cur_pmt_all_trans_opts          % ".all_trans_opts"
-    ;       ext_cur_pmt_check                   % ".check"
-    ;       ext_cur_pmt_classes                 % ".classes"
-    ;       ext_cur_pmt_clean                   % ".clean"
-    ;       ext_cur_pmt_depend                  % ".depend"
-    ;       ext_cur_pmt_install_grade_hdrs      % ".install_grade_hdrs"
-    ;       ext_cur_pmt_install_hdrs            % ".install_hdrs"
-    ;       ext_cur_pmt_install_ints            % ".install_ints"
-    ;       ext_cur_pmt_install_opts            % ".install_opts"
-    ;       ext_cur_pmt_int3s                   % ".int3s"
-    ;       ext_cur_pmt_ints                    % ".ints"
-    ;       ext_cur_pmt_javas                   % ".javas"
-    ;       ext_cur_pmt_opts                    % ".opts"
-    ;       ext_cur_pmt_realclean               % ".realclean"
-    ;       ext_cur_pmt_trans_opts              % ".trans_opts"
-
             % Compiler-generated files that are intended to be read
             % by the programmer.
-    ;       ext_cur_user_defn_ext               % ".defn_extents"
+    --->    ext_cur_user_defn_ext               % ".defn_extents"
     ;       ext_cur_user_defn_lc                % ".defn_line_counts"
     ;       ext_cur_user_defns                  % ".defns"
     ;       ext_cur_user_depgraph               % ".dependency_graph"
@@ -306,11 +281,35 @@
             % file can *ever* be grade dependent, this should be a
             % grade-specific extension.
     ;       ext_cur_ngs_misc_prof.              % ".prof"
-            % XXX DODGY Given that different profiling grades generate
-            % different profiles (specifically, they produce different subsets
-            % of the whole set of kinds of info that the non-deep profiler can
-            % generate), shouldn't this be a grade-specific extension?
-            % XXX zs and juliensf agree on this.
+            % Despite the extension name, .prof files do not actually contain
+            % profiling information. Instead, they contain a description of
+            % a given module's call graph, with the intention being that
+            % the user gives a list of the .prof files of all the modules
+            % in the program to the mprof program, allowing mprof to build up
+            % the call graph of the entire program.
+            %
+            % XXX This extension should be renamed. In a post to m-rev on
+            % 2024 Aug 10, Julien suggested some possible replacements:
+            % .callgraph, .staticcg, .stcg and .scg. I (zs) think that
+            % the name should include a reference to profiling as well.
+            % Finding a name that is short *as well as* descriptive
+            % is not easy.
+            %
+            % A module's call graph in general depends on the target language.
+            % This is because a predicate may have a definition that is
+            % Mercury clauses for some target languages and a foreign proc
+            % for some other target languages, and the Mercury clauses
+            % will in general include calls that the foreign proc does not.
+            % However, we support mprof only when targeting C, so the only
+            % grade differences that count are differences between *C* grades.
+            %
+            % We support foreign_procs for C that are specific to either
+            % the LLDS or the MLDS backend, but this capabiity is intended
+            % only for Mercury developers; it is neither documented nor
+            % intended for use by for anyone else. Given that fact,
+            % the contents of .prof files will be the same for all grades
+            % for all programs by non-Mercury-developers, so it is ok
+            % to classify them as effectively a non-grade-specific files.
 
 :- type ext_cur_gs
             % Executables generated for a whole program.
@@ -356,7 +355,7 @@
             % Timestamp files showing when their corresponding .*opt files
             % were last checked.
     --->    ext_cur_ngs_gs_opt_date_plain       % ".optdate"
-    ;       ext_cur_ngs_gs_opt_date_trans       % ".trace_opt_date"
+    ;       ext_cur_ngs_gs_opt_date_trans       % ".trans_opt_date"
 
             % C and C# source files generated by the Mercury compiler.
     ;       ext_cur_ngs_gs_target_c             % ".c"
@@ -737,25 +736,7 @@ extension_to_string(Globals, Ext) = ExtStr :-
 :- pred ext_cur_extension(ext_cur::in, string::out) is det.
 
 ext_cur_extension(Ext, Str) :-
-    ( Ext = ext_cur_pmt_all_int3s,            Str = ".all_int3s"
-    ; Ext = ext_cur_pmt_all_ints,             Str = ".all_ints"
-    ; Ext = ext_cur_pmt_all_opts,             Str = ".all_opts"
-    ; Ext = ext_cur_pmt_all_trans_opts,       Str = ".all_trans_opts"
-    ; Ext = ext_cur_pmt_check,                Str = ".check"
-    ; Ext = ext_cur_pmt_classes,              Str = ".classes"
-    ; Ext = ext_cur_pmt_clean,                Str = ".clean"
-    ; Ext = ext_cur_pmt_depend,               Str = ".depend"
-    ; Ext = ext_cur_pmt_install_grade_hdrs,   Str = ".install_grade_hdrs"
-    ; Ext = ext_cur_pmt_install_hdrs,         Str = ".install_hdrs"
-    ; Ext = ext_cur_pmt_install_ints,         Str = ".install_ints"
-    ; Ext = ext_cur_pmt_install_opts,         Str = ".install_opts"
-    ; Ext = ext_cur_pmt_int3s,                Str = ".int3s"
-    ; Ext = ext_cur_pmt_ints,                 Str = ".ints"
-    ; Ext = ext_cur_pmt_javas,                Str = ".javas"
-    ; Ext = ext_cur_pmt_opts,                 Str = ".opts"
-    ; Ext = ext_cur_pmt_realclean,            Str = ".realclean"
-    ; Ext = ext_cur_pmt_trans_opts,           Str = ".trans_opts"
-    ; Ext = ext_cur_user_defn_ext,            Str = ".defn_extents"
+    ( Ext = ext_cur_user_defn_ext,            Str = ".defn_extents"
     ; Ext = ext_cur_user_defn_lc,             Str = ".defn_line_counts"
     ; Ext = ext_cur_user_defns,               Str = ".defns"
     ; Ext = ext_cur_user_depgraph,            Str = ".dependency_graph"
