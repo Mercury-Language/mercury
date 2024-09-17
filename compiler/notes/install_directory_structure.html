@@ -559,5 +559,74 @@ even though different elements of that list
 would be need to be treated differently.)
 </ul>
 
+<h1>System components that know the structure of install directories</h1>
+
+The Mercury system components that
+know about the structure of library install directories,
+and which therefore must be updated if that structure ever changes,
+are the following.
+Most concern installs via mmake,
+but the last one concerns installs via mmc --make.
+
+<p>
+<dl>
+<dd>
+scripts/Mmake.rules
+<dt>
+This file contains most of the rules
+that install a library that has been built in a workspace
+into a chosen target directory (also called the prefix directory above).
+Specifically, these are all the <em>static</em> rules for library installs.
+As of 2024 Sep 16, these rules are in the last section of the file.
+<p>
+<dd>
+scripts/Mmake.vars.in
+<dt>
+The make entries in scripts/Mmake.rules
+refer to (and depend on) the values of make variables
+whose definitions are here.
+As of 2024 Sep 16, these rules are towards the end of this file,
+but not at the very end.
+<p>
+<dd>
+compiler/generate_mmakefile_fragments.m
+<dt>
+While script/Mmake.rules contains
+all the <em>static</em> rules for library installs,
+this file contains the code to generate
+the <em>dynamic</em> make rules for library installs.
+Being dynamic allows these rules to be specialized
+for the individual needs of a given library.
+The relevant code is in the generate_dep_file_install_targets predicate.
+<p>
+<dd>
+Mmakefile
+<dt>
+The Mmakefile in the top directory of each workspace
+contains some of the code to install the Mercury system itself.
+This requires installing several libraries (some in Mercury, some not)
+as well as several executables.
+As of 2024 Sep 16, these rules are in the second last section of the file.
+<p>
+<dd>
+*/Mmakefile
+<dt>
+The Mmakefiles in the top-level subdirectories of each Mercury workspace
+contain the rest of the code to install the Mercury system itself.
+These files define the targets that the top level Mmakefile invokes.
+<p>
+XXX INSTALL Many of these files contain
+almost-duplicate copies of the same entries.
+It should be possible to factor out their commonalities.
+<p>
+<dd>
+compiler/make.library_install.m
+<dt>
+This module contains all the code that installs libraries for mmc --make.
+</dl>
+
+<p>
+XXX INSTALL There may be other files, such as bindist/bindist.Makefile.in.
+
 </body>
 </html>
