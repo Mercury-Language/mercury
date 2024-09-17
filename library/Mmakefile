@@ -399,7 +399,7 @@ endif
 # java/runtime/*. So we set up a symbolic link to help javac find the way to
 # the sources.
 .PHONY: copy_java_runtime_files
-.PHONY: install_mer_rt
+.PHONY: install_mer_java_rt
 
 ifeq ("$(findstring java,$(GRADE))","java")
 
@@ -407,7 +407,7 @@ copy_java_runtime_files:
 	test -d jmercury || mkdir jmercury
 	test -d jmercury/runtime || cp -r ../java/runtime jmercury
 
-install_mer_rt: $(RT_LIB_NAME).jar
+install_mer_java_rt: $(RT_LIB_NAME).jar
 	mkdir -p $(INSTALL_PREFIX)/lib/mercury/lib/$(GRADE)
 	cp $(RT_LIB_NAME).jar $(INSTALL_PREFIX)/lib/mercury/lib/$(GRADE)
 
@@ -415,7 +415,7 @@ else
 
 copy_java_runtime_files:
 
-install_mer_rt:
+install_mer_java_rt:
 
 endif
 
@@ -601,7 +601,7 @@ else	#ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 install_mercury: install_library
 
 .PHONY: install_library
-install_library: install_mer_rt lib$(STD_LIB_NAME).install
+install_library: install_mer_java_rt lib$(STD_LIB_NAME).install
 
 endif	#ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 

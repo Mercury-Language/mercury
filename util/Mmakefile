@@ -71,7 +71,7 @@ tags_file_exists:
 
 .PHONY: install
 install: $(PROGFILENAMES)
-	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
 	cp `vpath_find $(PROGFILENAMES)` $(INSTALL_BINDIR)
 
 .PHONY: uninstall

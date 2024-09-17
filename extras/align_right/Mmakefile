@@ -17,7 +17,7 @@ default_target:	$(PROGRAM_NAME)
 
 .PHONY: install
 install:
-	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
 	cp $(PROGRAM_NAME) $(INSTALL_BINDIR)
 
 .PHONY: depend

@@ -10,7 +10,7 @@ MAIN_TARGET = all
 
 # We need to use a grade with trailing.
 # The following causes the compiler to attempt to use the default grade
-# with trail segments enabled.  It won't work unless the trseg variant
+# with trail segments enabled. It won't work unless the trseg variant
 # of the default grade is also installed.
 #
 GRADEFLAGS += --use-trail

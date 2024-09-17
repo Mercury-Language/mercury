@@ -30,7 +30,7 @@ PROGS = $(PROGS0) $(C_ONLY_PROGS)
 
 # These tests only work if the workspace was compiled with `--use-subdirs'.
 ifneq ($(origin WORKSPACE),undefined)
-    ifeq ($(shell [ -d $(WORKSPACE)/library/Mercury ] || echo cannot_run),cannot_run)
+    ifeq ($(shell test -d $(WORKSPACE)/library/Mercury || echo cannot_run),cannot_run)
 	PROGS =
     endif
 endif

@@ -7,10 +7,9 @@
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
 
-# Mmake.common - this is the part of the makefiles
-# for building the Mercury implementation that is shared
-# between all the subdirectories.  It also contains all
-# the parameters that might need to be modified when installing
+# Mmake.common - this is the part of the makefiles for building the Mercury
+# implementation that is shared between all the subdirectories. It also
+# contains all the parameters that might need to be modified when installing
 # Mercury on a new machine.
 
 # These parameters should all be determined automatically by `configure'.
@@ -68,7 +67,7 @@ USE_DLLS		= @USE_DLLS@
 CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
 
 # Specify EXT_FOR_PIC_OBJECTS as `pic_o' if any special $(PIC) flags are
-# required (see above), and as `o' otherwise.  This is used to ensure that
+# required (see above), and as `o' otherwise. This is used to ensure that
 # we don't bother to build the .pic_o files if $(PIC) is null, since we can
 # just reuse the .o files.
 EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
@@ -159,7 +158,7 @@ FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_MERC_GRADELESS_LIB_DIR)
 # By default, GRADESTRING is defined as the result of invoking
 # `mmc --output-grade-string' with $(GRADE) and $(GRADEFLAGS).
 # But when installing the standard library, the compiler will not yet
-# have been installed.  So we need to define GRADESTRING here, in a way
+# have been installed. So we need to define GRADESTRING here, in a way
 # that doesn't require invoking mmc.
 #
 # Note that the definition below does _not_ include GRADEFLAGS.
@@ -287,7 +286,7 @@ HAVE_GETOPT=@HAVE_GETOPT@
 include $(MERCURY_DIR)/Mercury.options
 
 $(MERCURY_DIR)/Mercury.options:
-	@if [ ! -f $(MERCURY_DIR)/Mercury.options ]; then \
+	@if test ! -f $(MERCURY_DIR)/Mercury.options ; then \
  		touch $(MERCURY_DIR)/Mercury.options; \
 	fi
 

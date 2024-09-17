@@ -1,15 +1,13 @@
-# This Mmakefile is for building the gears example on MacOS 10.3 and
-# 10.4.  To build the examples in place, ie. without having installed
-# the GLUT and OpenGL bindings, set the environment variable
-# DYLD_LIBRARY_PATH to point to paths where the bindings were built.
-# e.g.
+# This Mmakefile is for building the gears example on MacOS 10.3 and 10.4.
+# To build the examples in place, ie. without having installed the GLUT
+# and OpenGL bindings, set the environment variable DYLD_LIBRARY_PATH
+# to point to paths where the bindings were built, e.g.
 #
 # export DYLD_LIBRARY_PATH=../../mercury_glut:../../mercury_opengl
 
 MAIN_TARGET = maze 
 
-# Specify the location of the `mercury_opengl' and `mercury_glut'
-# packages.
+# Specify the location of the `mercury_opengl' and `mercury_glut' packages.
 MERCURY_OPENGL_DIR = ../../mercury_opengl
 MERCURY_GLUT_DIR = ../../mercury_glut
 

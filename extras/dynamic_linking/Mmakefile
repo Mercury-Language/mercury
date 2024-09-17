@@ -60,9 +60,9 @@ dl.depend dl_test.depend dl_test2.depend: sources
 sources: dl.m name_mangle.m
 
 BROWSER_DIR = $(shell \
-	if [ -d ../../browser ]; then \
+	if test -d ../../browser ; then \
 		echo ../../browser; \
-	elif [ -d ../../../mercury/browser ]; then \
+	elif test -d ../../../mercury/browser ; then \
 		echo ../../../mercury/browser; \
 	else \
 		echo none; \

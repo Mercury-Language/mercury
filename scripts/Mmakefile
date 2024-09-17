@@ -167,12 +167,12 @@ install: install_mmake install_scripts install_config \
 
 .PHONY: install_dirs
 install_dirs:
-	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
-	[ -d $(INSTALL_LIBDIR)/mmake ] || mkdir -p $(INSTALL_LIBDIR)/mmake
-	[ -d $(INSTALL_LIBDIR)/mdb ] || mkdir -p $(INSTALL_LIBDIR)/mdb
-	[ -d $(INSTALL_CONF_DIR) ] || mkdir -p $(INSTALL_CONF_DIR)
-	[ -d $(INSTALL_ELISP_DIR) ] || mkdir -p $(INSTALL_ELISP_DIR)
-	[ -d $(INSTALL_RECONF_DIR)/scripts ] || \
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
+	test -d $(INSTALL_LIBDIR)/mmake || mkdir -p $(INSTALL_LIBDIR)/mmake
+	test -d $(INSTALL_LIBDIR)/mdb || mkdir -p $(INSTALL_LIBDIR)/mdb
+	test -d $(INSTALL_CONF_DIR) || mkdir -p $(INSTALL_CONF_DIR)
+	test -d $(INSTALL_ELISP_DIR) || mkdir -p $(INSTALL_ELISP_DIR)
+	test -d $(INSTALL_RECONF_DIR)/scripts || \
 		mkdir -p $(INSTALL_RECONF_DIR)/scripts
 
 .PHONY: install_mmake

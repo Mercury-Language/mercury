@@ -450,14 +450,14 @@ install: install_headers install_lib
 
 .PHONY: install_dirs
 install_dirs:
-	-[ -d $(INSTALL_INC_DIR)/machdeps ] || \
+	-test -d $(INSTALL_INC_DIR)/machdeps || \
 		mkdir -p $(INSTALL_INC_DIR)/machdeps
-	-[ -d $(INSTALL_MODULE_DIR) ] || mkdir -p $(INSTALL_MODULE_DIR)
-	-[ -d $(INSTALL_GRADE_MODULE_DIR) ] || \
+	-test -d $(INSTALL_MODULE_DIR) || mkdir -p $(INSTALL_MODULE_DIR)
+	-test -d $(INSTALL_GRADE_MODULE_DIR) || \
 		mkdir -p $(INSTALL_GRADE_MODULE_DIR)
-	-[ -d $(INSTALL_MERC_LIB_DIR) ] || mkdir -p $(INSTALL_MERC_LIB_DIR)
-	-[ -d $(INSTALL_CONF_DIR) ] || mkdir -p $(INSTALL_CONF_DIR)
-	-[ -d $(INSTALL_RECONF_DIR)/runtime ] || \
+	-test -d $(INSTALL_MERC_LIB_DIR) || mkdir -p $(INSTALL_MERC_LIB_DIR)
+	-test -d $(INSTALL_CONF_DIR) || mkdir -p $(INSTALL_CONF_DIR)
+	-test -d $(INSTALL_RECONF_DIR)/runtime || \
 		mkdir -p $(INSTALL_RECONF_DIR)/runtime
 
 ifneq "$(filter csharp% java%,$(GRADE))" ""

@@ -50,7 +50,7 @@ LINK_STATIC = yes
 include $(WORKSPACE)/Mmake.workspace
 
 # Some tests only work if the workspace was compiled with `--use-subdirs'.
-ifneq ($(shell [ -d $(WORKSPACE)/library/Mercury ] || echo no_subdir),no_subdir)
+ifneq ($(shell test -d $(WORKSPACE)/library/Mercury || echo no_subdir),no_subdir)
 WORKSPACE_HAS_SUBDIRS = true
 endif
 
@@ -118,7 +118,7 @@ $(TESTS_DIR)/Mmake.params: ;
 # to print out the contents, because that precedes each line of output with
 # the filename, which is helpful when running a parallel make.
 %.out: %
-	{ [ -f $*.inp ] && cat $*.inp; } | ./$< > $@ 2>&1 || \
+	{ test -f $*.inp && cat $*.inp; } | ./$< > $@ 2>&1 || \
 		{ grep . $@ /dev/null; exit 1; }
 
 # DIFF_WO stands for "diff with opts". We define it to allow the actions

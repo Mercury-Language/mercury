@@ -17,7 +17,7 @@ depend:	doit.depend dots.depend
 
 .PHONY: install
 install:
-	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
 	cp monte $(INSTALL_BINDIR)
 
 .PHONY: check

@@ -258,13 +258,13 @@ install_dirs:
 # archive containing its class files, 'mercury_compiler.jar', but
 # *not* the generated wrapper script 'mercury_compile' from this directory.
 # The latter will set the CLASSPATH variable relative to this directory and
-# won't work when moved to the installation directory.  Instead we use the
+# won't work when moved to the installation directory. Instead we use the
 # version of the wrapper script from the scripts directory and leave the
 # one here alone.
 #
 # Similarly, for compilers built in the C# grade we need to install the
 # executable assembly, 'mercury_compile.exe', but *not* the generated
-# wrapper script 'mercury_compile' from this directory.  As with the Java grade,
+# wrapper script 'mercury_compile' from this directory. As with the Java grade,
 # we use the version of the wrapper script from the scripts directory.
 # XXX This covers Mono but not actual .NET; in the latter case we don't need
 # a wrapper script at all.

@@ -16,7 +16,7 @@ default_target:	error
 
 .PHONY: install
 install:
-	[ -d $(INSTALL_BINDIR) ] || mkdir -p $(INSTALL_BINDIR)
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
 	cp error $(INSTALL_BINDIR)
 
 .PHONY: depend

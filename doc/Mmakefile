@@ -134,10 +134,9 @@ mercury.info: mercury.info.in ../VERSION
 
 #-----------------------------------------------------------------------------#
 
-	# Currently `mmake all' does not build the PostScript, PDF or
-	# plain-text versions of the documentation.  Nor does it build the
-	# formatted versions of the man pages.
-	# But it might make sense to add them.
+# Currently `mmake all' does not build the PostScript, PDF or plain-text
+# versions of the documentation. Nor does it build the formatted versions
+# of the man pages. But it might make sense to add them.
 .PHONY: all
 all: $(INFOPAGES) $(DVI) $(HTML) manpages $(MDB_DOC)
 #all: ps pdf text formatted_manpages
@@ -323,21 +322,21 @@ install: install_info install_html install_dvi install_manpages \
 
 .PHONY: install_dirs
 install_dirs:
-	-[ -d $(INSTALL_INFO_DIR) ] || mkdir -p $(INSTALL_INFO_DIR)
-	-[ -d $(INSTALL_HTML_DIR) ] || mkdir -p $(INSTALL_HTML_DIR)
-	-[ -d $(INSTALL_DVI_DIR) ] || mkdir -p $(INSTALL_DVI_DIR)
-	-[ -d $(INSTALL_TEXT_DIR) ] || mkdir -p $(INSTALL_TEXT_DIR)
-	-[ -d $(INSTALL_PS_DIR) ] || mkdir -p $(INSTALL_PS_DIR)
-	-[ -d $(INSTALL_PDF_DIR) ] || mkdir -p $(INSTALL_PDF_DIR)
-	-[ -d $(INSTALL_MAN_DIR)/man1 ] || \
+	-test -d $(INSTALL_INFO_DIR) || mkdir -p $(INSTALL_INFO_DIR)
+	-test -d $(INSTALL_HTML_DIR) || mkdir -p $(INSTALL_HTML_DIR)
+	-test -d $(INSTALL_DVI_DIR) || mkdir -p $(INSTALL_DVI_DIR)
+	-test -d $(INSTALL_TEXT_DIR) || mkdir -p $(INSTALL_TEXT_DIR)
+	-test -d $(INSTALL_PS_DIR) || mkdir -p $(INSTALL_PS_DIR)
+	-test -d $(INSTALL_PDF_DIR) || mkdir -p $(INSTALL_PDF_DIR)
+	-test -d $(INSTALL_MAN_DIR)/man1 || \
 		mkdir -p $(INSTALL_MAN_DIR)/man1
-	-[ -d $(INSTALL_MDB_DOC_DIR) ] || mkdir -p $(INSTALL_MDB_DOC_DIR)
+	-test -d $(INSTALL_MDB_DOC_DIR) || mkdir -p $(INSTALL_MDB_DOC_DIR)
 
 .PHONY: install_info
 install_info: $(INFOPAGES) install_dirs
 	-cp *.info *.info-* $(INSTALL_INFO_DIR)
 	# Update the .../info/dir file.
-	-if [ -x "$(INSTALL_INFO)" ]; then				\
+	-if test -x "$(INSTALL_INFO)" ; then				\
 		$(INSTALL_INFO) $(INSTALL_INFO_DIR)/mercury.info;	\
 	fi
 
@@ -391,10 +390,10 @@ uninstall:
 
 .PHONY: install_webpage
 install_webpage: library-chapters.texi_pp split_html ps pdf
-	-[ -d $(INSTALL_WEBPAGE_DIR) ] || mkdir -p $(INSTALL_WEBPAGE_DIR)
+	-test -d $(INSTALL_WEBPAGE_DIR) || mkdir -p $(INSTALL_WEBPAGE_DIR)
 	( \
 		. ../VERSION; \
-		if [ "$$VERSION" = DEV ]; then \
+		if test "$$VERSION" = DEV ; then \
 			echo "Set the version before you build the website"; \
 			exit 1; \
 		fi; \

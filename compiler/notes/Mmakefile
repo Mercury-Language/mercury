@@ -72,15 +72,14 @@ weblint: $(DOCS_HTML)
 	done
 
 # This install is for installing the Mercury webpage, which goes to
-# a different directory (supplied by the environment variable
-# INSTALL_WEBDIR).
+# a different directory (supplied by the environment variable INSTALL_WEBDIR).
 # Currently the webpage and this documentation on it is installed by
 # a different method. A copy if the repository is checked out on the
 # webserver and linked to.
 
 .PHONY: install
 install: $(DOCS_ALL)
-	[ -d $(INSTALL_WEB_SUBDIR) ] || mkdir -p $(INSTALL_WEB_SUBDIR)
+	test -d $(INSTALL_WEB_SUBDIR) || mkdir -p $(INSTALL_WEB_SUBDIR)
 	cp $(DOCS_ALL) $(INSTALL_WEB_SUBDIR)
 
 clean_local:
