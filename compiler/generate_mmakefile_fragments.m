@@ -1050,7 +1050,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         ModuleNameString, SourceFileName, Version, FullArch),
 
     map.keys(DepsMap, Modules0),
-    select_ok_modules(DepsMap, Modules0, Modules1),
+    select_no_fatal_error_modules(DepsMap, Modules0, Modules1),
     list.sort(compare_module_names, Modules1, Modules),
 
     module_name_to_make_var_name(ModuleName, ModuleMakeVarName),
@@ -1060,13 +1060,87 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     MmakeVarModuleMs = mmake_var_defn_list(ModuleMakeVarName ++ ".ms",
         list.map(add_suffix(".m"), SourceFiles)),
 
-    MmakeVarModuleErrs = mmake_var_defn_list(ModuleMakeVarName ++ ".errs",
-        list.map(add_suffix(".err"), SourceFiles)),
-
     MmakeVarModuleDepErrs = mmake_var_defn_list(
         ModuleMakeVarName ++ ".dep_errs",
         list.map(add_suffix(".dep_err"), SourceFiles)),
 
+    MmakeVarModuleErrs = mmake_var_defn_list(ModuleMakeVarName ++ ".errs",
+        list.map(add_suffix(".err"), SourceFiles)),
+
+    StartFragments = list.map(mmake_entry_to_fragment,
+        [MmakeStartComment, MmakeVarModuleMs,
+        MmakeVarModuleDepErrs, MmakeVarModuleErrs]),
+
+    % The call to generate_dv_file_define_mod_misc_vars must come *before*
+    % any calls that generate rules that refer to the make variables
+    % it defines, which effectively means it must be first.
+    % (None of the other predicates called in this block of code define
+    % any variables used by any other such predicate.)
+    generate_dv_file_define_mod_misc_vars(Globals, DepsMap, Modules,
+        ModuleMakeVarName, ModMiscFragments, !Cache, !IO),
+    generate_dv_file_define_intn_vars(ModuleMakeVarName, IntnFragments),
+    generate_dv_file_define_opt_vars(ModuleMakeVarName, OptFragments),
+    generate_dv_file_define_c_vars(Globals, DepsMap, Modules,
+        ModuleMakeVarName, CFragments, !Cache, !IO),
+    generate_dv_file_define_java_vars(ModuleMakeVarName, JavaFragments),
+    generate_dv_file_define_csharp_vars(ModuleMakeVarName, CsharpFragments),
+    generate_dv_file_define_smart_recomp_vars(ModuleMakeVarName,
+        SmartRecompFragments),
+
+    MmakeFile =
+        cord.from_list(StartFragments) ++
+        cord.from_list(ModMiscFragments) ++
+        cord.from_list(IntnFragments) ++
+        cord.from_list(OptFragments) ++
+        cord.from_list(CFragments) ++
+        cord.from_list(JavaFragments) ++
+        cord.from_list(CsharpFragments) ++
+        cord.from_list(SmartRecompFragments).
+
+%---------------------%
+
+:- pred select_no_fatal_error_modules(deps_map::in,
+    list(module_name)::in, list(module_name)::out) is det.
+
+select_no_fatal_error_modules(_, [], []).
+select_no_fatal_error_modules(DepsMap, [ModuleName | ModuleNames0],
+        ModuleNames) :-
+    select_no_fatal_error_modules(DepsMap, ModuleNames0, ModuleNamesTail),
+    map.lookup(DepsMap, ModuleName, deps(_, _, BurdenedModule)),
+    Baggage = BurdenedModule ^ bm_baggage,
+    ModuleErrors = Baggage ^ mb_errors,
+    FatalErrors = ModuleErrors ^ rm_fatal_errors,
+    ( if set.is_empty(FatalErrors) then
+        ModuleNames = [ModuleName | ModuleNamesTail]
+    else
+        ModuleNames = ModuleNamesTail
+    ).
+
+:- pred compare_module_names(module_name::in, module_name::in,
+    comparison_result::out) is det.
+
+compare_module_names(Sym1, Sym2, Result) :-
+    Str1 = sym_name_to_string(Sym1),
+    Str2 = sym_name_to_string(Sym2),
+    compare(Result, Str1, Str2).
+
+%---------------------------------------------------------------------------%
+
+:- pred generate_dv_file_define_mod_misc_vars(globals::in, deps_map::in,
+    list(module_name)::in, string::in, list(mmake_fragment)::out,
+    module_file_name_cache::in, module_file_name_cache::out,
+    io::di, io::uo) is det.
+
+generate_dv_file_define_mod_misc_vars(Globals, DepsMap, Modules,
+        ModuleMakeVarName, ModMiscFragments, !Cache, !IO) :-
+    % XXX Given that
+    % - we are generating rules for mmake, and
+    % - mmake has no support for --use-grade-subdirs,
+    % the "gs" part of "ext_cur_gs_exec_noext" will never be called upon.
+    % This means that this call is effectively equivalent to
+    %
+    %   ModulesSourceFileNames = list.map(sym_name_to_string, Modules)
+    % And semantically, sym_name_to_string is *what we want* here.
     make_module_file_names_with_ext(Globals,
         ext_cur_gs(ext_cur_gs_exec_noext),
         Modules, ModulesSourceFileNames, !Cache, !IO),
@@ -1083,6 +1157,8 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         ),
     list.filter(HasSubmodules, Modules, ModulesWithSubModules),
 
+    % XXX The comment on the other call to make_module_file_names_with_ext
+    % above applies here as well.
     make_module_file_names_with_ext(Globals,
         ext_cur_gs(ext_cur_gs_exec_noext),
         ModulesWithSubModules, ModulesWithSubModulesSourceFileNames,
@@ -1090,6 +1166,149 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     MmakeVarModuleParentMods = mmake_var_defn_list(
         ModuleMakeVarName ++ ".parent_mods",
         ModulesWithSubModulesSourceFileNames),
+
+    MmakeVarDs = mmake_var_defn(ModuleMakeVarName ++ ".ds",
+        string.format("$(%s.mods:%%=$(ds_subdir)%%.d)",
+            [s(ModuleMakeVarName)])),
+
+    ModuleDepFileExtStr = extension_to_string(Globals,
+        ext_cur_ngs(ext_cur_ngs_misc_module_dep)),
+    MmakeVarModuleDeps = mmake_var_defn(ModuleMakeVarName ++ ".module_deps",
+        string.format("$(%s.mods:%%=$(module_deps_subdir)%%%s)",
+            [s(ModuleMakeVarName), s(ModuleDepFileExtStr)])),
+
+    MmakeVarProfs = mmake_var_defn(ModuleMakeVarName ++ ".profs",
+        string.format("$(%s.mods:%%=%%.prof)",
+            [s(ModuleMakeVarName)])),
+
+    ModMiscFragments = list.map(mmake_entry_to_fragment,
+        [MmakeVarModuleMods, MmakeVarModuleParentMods,
+        MmakeVarDs, MmakeVarModuleDeps, MmakeVarProfs]).
+
+%---------------------%
+
+:- pred generate_dv_file_define_intn_vars(string::in,
+    list(mmake_fragment)::out) is det.
+
+generate_dv_file_define_intn_vars(ModuleMakeVarName, IntnFragments) :-
+    MmakeVarInts = mmake_var_defn_list(ModuleMakeVarName ++ ".ints",
+        [string.format("$(%s.mods:%%=$(ints_subdir)%%.int)",
+            [s(ModuleMakeVarName)]),
+        string.format("$(%s.mods:%%=$(int2s_subdir)%%.int2)",
+            [s(ModuleMakeVarName)])]),
+    % `.int0' files are only generated for modules with submodules.
+    % XXX Once, we also generated .int0 files for nested submodules that
+    % don't have any children, but this bug seems to have been fixed.
+    MmakeVarInt0s = mmake_var_defn(ModuleMakeVarName ++ ".int0s",
+        string.format("$(%s.parent_mods:%%=$(int0s_subdir)%%.int0)",
+            [s(ModuleMakeVarName)])),
+    % XXX The `<module>.int0s_to_clean' variable is like `<module>.int0s'
+    % except that it contains .int0 files for all modules, regardless of
+    % whether they should have been created or not. It is used by the rule for
+    % `mmake realclean' to ensure that we clean up all the .int0 files,
+    % including the ones that were accidentally created by the bug described
+    % above.
+    MmakeVarInt0sToClean = mmake_var_defn(
+        ModuleMakeVarName ++ ".int0s_to_clean",
+        string.format("$(%s.mods:%%=$(int0s_subdir)%%.int0)",
+            [s(ModuleMakeVarName)])),
+    % The deprecated old version of .int0s_to_clean.
+    MmakeVarAllInt0s = mmake_var_defn(ModuleMakeVarName ++ ".all_int0s",
+        string.format("$(%s.mods:%%=$(int0s_subdir)%%.int0)",
+            [s(ModuleMakeVarName)])),
+    MmakeVarInt3s = mmake_var_defn(ModuleMakeVarName ++ ".int3s",
+        string.format("$(%s.mods:%%=$(int3s_subdir)%%.int3)",
+            [s(ModuleMakeVarName)])),
+
+    MmakeVarDates = mmake_var_defn(ModuleMakeVarName ++ ".dates",
+        string.format("$(%s.mods:%%=$(dates_subdir)%%.date)",
+            [s(ModuleMakeVarName)])),
+    MmakeVarDate0s = mmake_var_defn(ModuleMakeVarName ++ ".date0s",
+        string.format("$(%s.mods:%%=$(date0s_subdir)%%.date0)",
+            [s(ModuleMakeVarName)])),
+    MmakeVarDate3s = mmake_var_defn(ModuleMakeVarName ++ ".date3s",
+        string.format("$(%s.mods:%%=$(date3s_subdir)%%.date3)",
+            [s(ModuleMakeVarName)])),
+
+    IntnFragments = list.map(mmake_entry_to_fragment,
+        [MmakeVarInts,
+        MmakeVarInt0s, MmakeVarInt0sToClean, MmakeVarAllInt0s,
+        MmakeVarInt3s,
+        MmakeVarDates, MmakeVarDate0s, MmakeVarDate3s]).
+
+%---------------------%
+
+:- pred generate_dv_file_define_opt_vars(string::in,
+    list(mmake_fragment)::out) is det.
+
+generate_dv_file_define_opt_vars(ModuleMakeVarName, OptFragments) :-
+    MmakeVarAllOpts = mmake_var_defn(ModuleMakeVarName ++ ".all_opts",
+        string.format("$(%s.mods:%%=$(opts_subdir)%%.opt)",
+            [s(ModuleMakeVarName)])),
+    % The deprecated old version of .all_opts.
+    MmakeVarOpts = mmake_var_defn(ModuleMakeVarName ++ ".opts",
+        string.format("$(%s.mods:%%=$(opts_subdir)%%.opt)",
+            [s(ModuleMakeVarName)])),
+    MmakeVarAllTransOpts = mmake_var_defn(
+        ModuleMakeVarName ++ ".all_trans_opts",
+        string.format("$(%s.mods:%%=$(trans_opts_subdir)%%.trans_opt)",
+            [s(ModuleMakeVarName)])),
+    % The deprecated old version of .all_trans_opts.
+    MmakeVarTransOpts = mmake_var_defn(ModuleMakeVarName ++ ".trans_opts",
+        string.format("$(%s.mods:%%=$(trans_opts_subdir)%%.trans_opt)",
+            [s(ModuleMakeVarName)])),
+
+    MmakeVarOptDates = mmake_var_defn(ModuleMakeVarName ++ ".optdates",
+        string.format("$(%s.mods:%%=$(optdates_subdir)%%.optdate)",
+            [s(ModuleMakeVarName)])),
+    MmakeVarTransOptDates =
+        mmake_var_defn(ModuleMakeVarName ++ ".trans_opt_dates",
+            string.format(
+                "$(%s.mods:%%=$(trans_opt_dates_subdir)%%.trans_opt_date)",
+                [s(ModuleMakeVarName)])),
+
+    OptFragments = list.map(mmake_entry_to_fragment,
+        [MmakeVarAllOpts, MmakeVarOpts,
+        MmakeVarAllTransOpts, MmakeVarTransOpts,
+        MmakeVarOptDates, MmakeVarTransOptDates]).
+
+%---------------------%
+
+:- pred generate_dv_file_define_c_vars(globals::in, deps_map::in,
+    list(module_name)::in, string::in, list(mmake_fragment)::out,
+    module_file_name_cache::in, module_file_name_cache::out,
+    io::di, io::uo) is det.
+
+generate_dv_file_define_c_vars(Globals, DepsMap, Modules, ModuleMakeVarName,
+        CFragments, !Cache, !IO) :-
+    MmakeVarAllCs = mmake_var_defn(ModuleMakeVarName ++ ".all_cs",
+        string.format("$(%s.mods:%%=$(cs_subdir)%%.c)",
+            [s(ModuleMakeVarName)])),
+    MmakeVarInitCs = mmake_var_defn(ModuleMakeVarName ++ ".init_cs",
+        string.format("$(%s.mods:%%=$(cs_subdir)%%.c)",
+            [s(ModuleMakeVarName)])),
+    MmakeVarCDates = mmake_var_defn(ModuleMakeVarName ++ ".c_dates",
+        string.format("$(%s.mods:%%=$(c_dates_subdir)%%.c_date)",
+            [s(ModuleMakeVarName)])),
+
+    get_fact_table_file_names(DepsMap, Modules, FactTableFileNames),
+    list.map(
+        fact_table_file_name(Globals, $pred,
+            ext_cur_ngs_gs(ext_cur_ngs_gs_obj_dollar_o)),
+        FactTableFileNames, FactTableFileNamesOs),
+    list.map(
+        fact_table_file_name(Globals, $pred,
+            ext_cur_ngs_gs(ext_cur_ngs_gs_obj_dollar_efpo)),
+        FactTableFileNames, FactTableFileNamesPicOs),
+
+    MmakeVarAllOs = mmake_var_defn_list(ModuleMakeVarName ++ ".all_os",
+        [string.format("$(%s.mods:%%=$(os_subdir)%%.$O)",
+            [s(ModuleMakeVarName)]) |
+        FactTableFileNamesOs]),
+    MmakeVarAllPicOs = mmake_var_defn_list(ModuleMakeVarName ++ ".all_pic_os",
+        [string.format("$(%s.mods:%%=$(os_subdir)%%.$(EXT_FOR_PIC_OBJECTS))",
+            [s(ModuleMakeVarName)]) |
+        FactTableFileNamesPicOs]),
 
     globals.get_target(Globals, Target),
     (
@@ -1126,105 +1345,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     MmakeVarForeignFileNames =
         mmake_var_defn_list(ModuleMakeVarName ++ ".foreign_cs",
             ForeignFileNames),
-
-    get_fact_table_file_names(DepsMap, Modules, FactTableFileNames),
-    list.map(
-        fact_table_file_name(Globals, $pred,
-            ext_cur_ngs_gs(ext_cur_ngs_gs_obj_dollar_o)),
-        FactTableFileNames, FactTableFileNamesOs),
-    list.map(
-        fact_table_file_name(Globals, $pred,
-            ext_cur_ngs_gs(ext_cur_ngs_gs_obj_dollar_efpo)),
-        FactTableFileNames, FactTableFileNamesPicOs),
-
-    % The dlls that contain the foreign_code.
-    MmakeVarForeignDlls = mmake_var_defn(ModuleMakeVarName ++ ".foreign_dlls",
-        string.format("$(%s.foreign:%%=$(dlls_subdir)%%.dll)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarInitCs = mmake_var_defn(ModuleMakeVarName ++ ".init_cs",
-        string.format("$(%s.mods:%%=$(cs_subdir)%%.c)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarAllCs = mmake_var_defn(ModuleMakeVarName ++ ".all_cs",
-        string.format("$(%s.mods:%%=$(cs_subdir)%%.c)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarDlls = mmake_var_defn(ModuleMakeVarName ++ ".dlls",
-        string.format("$(%s.mods:%%=$(dlls_subdir)%%.dll)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarAllOs = mmake_var_defn_list(ModuleMakeVarName ++ ".all_os",
-        [string.format("$(%s.mods:%%=$(os_subdir)%%.$O)",
-            [s(ModuleMakeVarName)]) |
-        FactTableFileNamesOs]),
-    MmakeVarAllPicOs = mmake_var_defn_list(ModuleMakeVarName ++ ".all_pic_os",
-        [string.format("$(%s.mods:%%=$(os_subdir)%%.$(EXT_FOR_PIC_OBJECTS))",
-            [s(ModuleMakeVarName)]) |
-        FactTableFileNamesPicOs]),
-    MmakeVarUseds = mmake_var_defn(ModuleMakeVarName ++ ".useds",
-        string.format("$(%s.mods:%%=$(useds_subdir)%%.used)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarAllJavas = mmake_var_defn(ModuleMakeVarName ++ ".all_javas",
-        string.format("$(%s.mods:%%=$(javas_subdir)%%.java)",
-            [s(ModuleMakeVarName)])),
-
-    % The Java compiler creates a .class file for each class within the
-    % original .java file. The filenames of all these can be matched with
-    % `module\$*.class', hence the "\\$$*.class" below.
-    % If no such files exist, Make will use the pattern verbatim,
-    % so we enclose the pattern in a `wildcard' function to prevent this.
-    %
-    % Evaluating the .classes variable can be slow, so we make its definition
-    % conditional on the grade.
-    MmakeVarClassesJava = mmake_var_defn_list(ModuleMakeVarName ++ ".classes",
-        [string.format("$(%s.mods:%%=$(classes_subdir)%%.class)",
-            [s(ModuleMakeVarName)]),
-        string.format(
-            "$(wildcard $(%s.mods:%%=$(classes_subdir)%%\\$$*.class))",
-            [s(ModuleMakeVarName)])]),
-    MmakeVarClassesNonJava = mmake_var_defn(ModuleMakeVarName ++ ".classes",
-        ""),
-    MmakeFragmentVarClasses = mmf_conditional_entry(
-        mmake_cond_grade_has_component("java"),
-        MmakeVarClassesJava, MmakeVarClassesNonJava),
-
-    % XXX Probably not needed, since we don't support building C# executables
-    % using mmake.
-    MmakeVarAllCss = mmake_var_defn(ModuleMakeVarName ++ ".all_css",
-        string.format("$(%s.mods:%%=$(css_subdir)%%.cs)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarDates = mmake_var_defn(ModuleMakeVarName ++ ".dates",
-        string.format("$(%s.mods:%%=$(dates_subdir)%%.date)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarDate0s = mmake_var_defn(ModuleMakeVarName ++ ".date0s",
-        string.format("$(%s.mods:%%=$(date0s_subdir)%%.date0)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarDate3s = mmake_var_defn(ModuleMakeVarName ++ ".date3s",
-        string.format("$(%s.mods:%%=$(date3s_subdir)%%.date3)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarOptDates = mmake_var_defn(ModuleMakeVarName ++ ".optdates",
-        string.format("$(%s.mods:%%=$(optdates_subdir)%%.optdate)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarTransOptDates =
-        mmake_var_defn(ModuleMakeVarName ++ ".trans_opt_dates",
-            string.format(
-                "$(%s.mods:%%=$(trans_opt_dates_subdir)%%.trans_opt_date)",
-                [s(ModuleMakeVarName)])),
-    MmakeVarCDates = mmake_var_defn(ModuleMakeVarName ++ ".c_dates",
-        string.format("$(%s.mods:%%=$(c_dates_subdir)%%.c_date)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarJavaDates = mmake_var_defn(ModuleMakeVarName ++ ".java_dates",
-        string.format("$(%s.mods:%%=$(java_dates_subdir)%%.java_date)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarCsDates = mmake_var_defn(ModuleMakeVarName ++ ".cs_dates",
-        string.format("$(%s.mods:%%=$(cs_dates_subdir)%%.cs_date)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarDs = mmake_var_defn(ModuleMakeVarName ++ ".ds",
-        string.format("$(%s.mods:%%=$(ds_subdir)%%.d)",
-            [s(ModuleMakeVarName)])),
-
-    ModuleDepFileExtStr = extension_to_string(Globals,
-        ext_cur_ngs(ext_cur_ngs_misc_module_dep)),
-    MmakeVarModuleDeps = mmake_var_defn(ModuleMakeVarName ++ ".module_deps",
-        string.format("$(%s.mods:%%=$(module_deps_subdir)%%%s)",
-            [s(ModuleMakeVarName), s(ModuleDepFileExtStr)])),
 
     (
         Target = target_c,
@@ -1281,116 +1401,13 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         string.format("$(%s.mods:%%=$(mhs_subdir)%%.mh)",
             [s(ModuleMakeVarName)])),
 
-    MmakeVarInts = mmake_var_defn_list(ModuleMakeVarName ++ ".ints",
-        [string.format("$(%s.mods:%%=$(ints_subdir)%%.int)",
-            [s(ModuleMakeVarName)]),
-        string.format("$(%s.mods:%%=$(int2s_subdir)%%.int2)",
-            [s(ModuleMakeVarName)])]),
-    % `.int0' files are only generated for modules with submodules.
-    % XXX Once, we also generated .int0 files for nested submodules that
-    % don't have any children, but this bug seems to have been fixed.
-    MmakeVarInt0s = mmake_var_defn(ModuleMakeVarName ++ ".int0s",
-        string.format("$(%s.parent_mods:%%=$(int0s_subdir)%%.int0)",
-            [s(ModuleMakeVarName)])),
-    % XXX The `<module>.int0s_to_clean' variable is like `<module>.int0s'
-    % except that it contains .int0 files for all modules, regardless of
-    % whether they should have been created or not. It is used by the rule for
-    % `mmake realclean' to ensure that we clean up all the .int0 files,
-    % including the ones that were accidentally created by the bug described
-    % above.
-    MmakeVarInt0sToClean = mmake_var_defn(
-        ModuleMakeVarName ++ ".int0s_to_clean",
-        string.format("$(%s.mods:%%=$(int0s_subdir)%%.int0)",
-            [s(ModuleMakeVarName)])),
-    % The deprecated old version of .int0s_to_clean.
-    MmakeVarAllInt0s = mmake_var_defn(ModuleMakeVarName ++ ".all_int0s",
-        string.format("$(%s.mods:%%=$(int0s_subdir)%%.int0)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarInt3s = mmake_var_defn(ModuleMakeVarName ++ ".int3s",
-        string.format("$(%s.mods:%%=$(int3s_subdir)%%.int3)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarAllOpts = mmake_var_defn(ModuleMakeVarName ++ ".all_opts",
-        string.format("$(%s.mods:%%=$(opts_subdir)%%.opt)",
-            [s(ModuleMakeVarName)])),
-    % The deprecated old version of .all_opts.
-    MmakeVarOpts = mmake_var_defn(ModuleMakeVarName ++ ".opts",
-        string.format("$(%s.mods:%%=$(opts_subdir)%%.opt)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarAllTransOpts = mmake_var_defn(
-        ModuleMakeVarName ++ ".all_trans_opts",
-        string.format("$(%s.mods:%%=$(trans_opts_subdir)%%.trans_opt)",
-            [s(ModuleMakeVarName)])),
-    % The deprecated old version of .all_opts.
-    MmakeVarTransOpts = mmake_var_defn(ModuleMakeVarName ++ ".trans_opts",
-        string.format("$(%s.mods:%%=$(trans_opts_subdir)%%.trans_opt)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarAnalysiss = mmake_var_defn(ModuleMakeVarName ++ ".analyses",
-        string.format("$(%s.mods:%%=$(analyses_subdir)%%.analysis)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarRequests = mmake_var_defn(ModuleMakeVarName ++ ".requests",
-        string.format("$(%s.mods:%%=$(requests_subdir)%%.request)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarImdgs = mmake_var_defn(ModuleMakeVarName ++ ".imdgs",
-        string.format("$(%s.mods:%%=$(imdgs_subdir)%%.imdg)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarProfs = mmake_var_defn(ModuleMakeVarName ++ ".profs",
-        string.format("$(%s.mods:%%=%%.prof)",
-            [s(ModuleMakeVarName)])),
-
-    MmakeFragmentsA = list.map(mmake_entry_to_fragment,
-        [MmakeStartComment, MmakeVarModuleMs,
-        MmakeVarModuleDepErrs, MmakeVarModuleErrs,
-        MmakeVarModuleMods, MmakeVarModuleParentMods,
-        MmakeVarForeignModules, MmakeVarForeignFileNames, MmakeVarForeignDlls,
-        MmakeVarInitCs, MmakeVarAllCs, MmakeVarDlls,
+    CFragments = list.map(mmake_entry_to_fragment,
+        [MmakeVarAllCs, MmakeVarInitCs, MmakeVarCDates,
         MmakeVarAllOs, MmakeVarAllPicOs,
-        MmakeVarUseds,
-        MmakeVarAllJavas]),
-    MmakeFragmentsB = list.map(mmake_entry_to_fragment,
-        [MmakeVarAllCss,
-        MmakeVarDates, MmakeVarDate0s, MmakeVarDate3s,
-        MmakeVarOptDates, MmakeVarTransOptDates,
-        MmakeVarCDates, MmakeVarJavaDates, MmakeVarCsDates,
-        MmakeVarDs, MmakeVarModuleDeps, MmakeVarMihs,
-        MmakeVarMhs,
+        MmakeVarForeignModules, MmakeVarForeignFileNames,
+        MmakeVarMihs, MmakeVarMhs,
         MmakeVarMihsToClean, MmakeVarAllMihs,
-        MmakeVarMhsToClean, MmakeVarAllMhs,
-        MmakeVarInts, MmakeVarInt0s, MmakeVarInt0sToClean, MmakeVarAllInt0s,
-        MmakeVarInt3s,
-        MmakeVarAllOpts, MmakeVarOpts, MmakeVarAllTransOpts, MmakeVarTransOpts,
-        MmakeVarAnalysiss, MmakeVarRequests, MmakeVarImdgs, MmakeVarProfs]),
-    MmakeFile =
-        cord.from_list(MmakeFragmentsA) ++
-        cord.singleton(MmakeFragmentVarClasses) ++
-        cord.from_list(MmakeFragmentsB).
-
-%---------------------%
-
-:- pred select_ok_modules(deps_map::in, list(module_name)::in,
-    list(module_name)::out) is det.
-
-select_ok_modules(_, [], []).
-select_ok_modules(DepsMap, [ModuleName | ModuleNames0], ModuleNames) :-
-    select_ok_modules(DepsMap, ModuleNames0, ModuleNamesTail),
-    map.lookup(DepsMap, ModuleName, deps(_, _, BurdenedModule)),
-    Baggage = BurdenedModule ^ bm_baggage,
-    ModuleErrors = Baggage ^ mb_errors,
-    FatalErrors = ModuleErrors ^ rm_fatal_errors,
-    ( if set.is_empty(FatalErrors) then
-        ModuleNames = [ModuleName | ModuleNamesTail]
-    else
-        ModuleNames = ModuleNamesTail
-    ).
-
-:- pred compare_module_names(module_name::in, module_name::in,
-    comparison_result::out) is det.
-
-compare_module_names(Sym1, Sym2, Result) :-
-    Str1 = sym_name_to_string(Sym1),
-    Str2 = sym_name_to_string(Sym2),
-    compare(Result, Str1, Str2).
-
-%---------------------%
+        MmakeVarMhsToClean, MmakeVarAllMhs]).
 
     % get_fact_table_file_names(DepsMap, Modules, ExtraLinkObjs):
     %
@@ -1404,17 +1421,17 @@ compare_module_names(Sym1, Sym2, Result) :-
 get_fact_table_file_names(DepsMap, Modules, FactTableFileNames) :-
     % It is possible, though very unlikely, that two or more modules
     % depend on the same fact table.
-    get_fact_table_file_names(DepsMap, Modules,
+    acc_fact_table_file_names(DepsMap, Modules,
         set.init, FactTableFileNamesSet),
     set.to_sorted_list(FactTableFileNamesSet, FactTableFileNames).
 
     % Gather file names of fact tables.
     %
-:- pred get_fact_table_file_names(deps_map::in, list(module_name)::in,
+:- pred acc_fact_table_file_names(deps_map::in, list(module_name)::in,
     set(file_name)::in, set(file_name)::out) is det.
 
-get_fact_table_file_names(_DepsMap, [], !FactTableFileNames).
-get_fact_table_file_names(DepsMap, [Module | Modules], !FactTableFileNames) :-
+acc_fact_table_file_names(_DepsMap, [], !FactTableFileNames).
+acc_fact_table_file_names(DepsMap, [Module | Modules], !FactTableFileNames) :-
     map.lookup(DepsMap, Module, deps(_, _, BurdenedModule)),
     ParseTreeModuleSrc = BurdenedModule ^ bm_module,
     get_fact_tables(ParseTreeModuleSrc, FactTableFileNames),
@@ -1422,7 +1439,101 @@ get_fact_table_file_names(DepsMap, [Module | Modules], !FactTableFileNames) :-
     % NOTE: currently none of the backends support foreign code
     % in a non target language.
     set.union(FactTableFileNames, !FactTableFileNames),
-    get_fact_table_file_names(DepsMap, Modules, !FactTableFileNames).
+    acc_fact_table_file_names(DepsMap, Modules, !FactTableFileNames).
+
+%---------------------%
+
+    % XXX Maybe not needed. We don't support building Java executables
+    % using mmake, but the support for building Java executables via
+    % mmc --make relies on *some* parts of what we generate here.
+    % It would be nice if it was documented *which* parts are needed,
+    % and which were added in the hope of future support that never
+    % actually materialized.
+    %
+:- pred generate_dv_file_define_java_vars(string::in,
+    list(mmake_fragment)::out) is det.
+
+generate_dv_file_define_java_vars(ModuleMakeVarName, JavaFragments) :-
+    MmakeVarAllJavas = mmake_var_defn(ModuleMakeVarName ++ ".all_javas",
+        string.format("$(%s.mods:%%=$(javas_subdir)%%.java)",
+            [s(ModuleMakeVarName)])),
+    MmakeVarJavaDates = mmake_var_defn(ModuleMakeVarName ++ ".java_dates",
+        string.format("$(%s.mods:%%=$(java_dates_subdir)%%.java_date)",
+            [s(ModuleMakeVarName)])),
+    % The Java compiler creates a .class file for each class within the
+    % original .java file. The filenames of all these can be matched with
+    % `module\$*.class', hence the "\\$$*.class" below.
+    % If no such files exist, Make will use the pattern verbatim,
+    % so we enclose the pattern in a `wildcard' function to prevent this.
+    %
+    % Evaluating the .classes variable can be slow, so we make its definition
+    % conditional on the grade.
+    MmakeVarClassesJava = mmake_var_defn_list(ModuleMakeVarName ++ ".classes",
+        [string.format("$(%s.mods:%%=$(classes_subdir)%%.class)",
+            [s(ModuleMakeVarName)]),
+        string.format(
+            "$(wildcard $(%s.mods:%%=$(classes_subdir)%%\\$$*.class))",
+            [s(ModuleMakeVarName)])]),
+    MmakeVarClassesNonJava = mmake_var_defn(ModuleMakeVarName ++ ".classes",
+        ""),
+    MmakeFragmentVarClasses = mmf_conditional_entry(
+        mmake_cond_grade_has_component("java"),
+        MmakeVarClassesJava, MmakeVarClassesNonJava),
+
+    JavaFragments =
+        [mmake_entry_to_fragment(MmakeVarAllJavas),
+        mmake_entry_to_fragment(MmakeVarJavaDates),
+        MmakeFragmentVarClasses].
+
+%---------------------%
+
+    % XXX Probably not needed, since we don't support building C# executables
+    % using mmake.
+    %
+:- pred generate_dv_file_define_csharp_vars(string::in,
+    list(mmake_fragment)::out) is det.
+
+generate_dv_file_define_csharp_vars(ModuleMakeVarName, CsharpFragments) :-
+    MmakeVarAllCss = mmake_var_defn(ModuleMakeVarName ++ ".all_css",
+        string.format("$(%s.mods:%%=$(css_subdir)%%.cs)",
+            [s(ModuleMakeVarName)])),
+    MmakeVarCsDates = mmake_var_defn(ModuleMakeVarName ++ ".cs_dates",
+        string.format("$(%s.mods:%%=$(cs_dates_subdir)%%.cs_date)",
+            [s(ModuleMakeVarName)])),
+    MmakeVarDlls = mmake_var_defn(ModuleMakeVarName ++ ".dlls",
+        string.format("$(%s.mods:%%=$(dlls_subdir)%%.dll)",
+            [s(ModuleMakeVarName)])),
+    % The dlls that contain the foreign_code.
+    MmakeVarForeignDlls = mmake_var_defn(ModuleMakeVarName ++ ".foreign_dlls",
+        string.format("$(%s.foreign:%%=$(dlls_subdir)%%.dll)",
+            [s(ModuleMakeVarName)])),
+
+%---------------------%
+
+    CsharpFragments = list.map(mmake_entry_to_fragment,
+        [MmakeVarAllCss, MmakeVarCsDates,
+        MmakeVarDlls, MmakeVarForeignDlls]).
+
+:- pred generate_dv_file_define_smart_recomp_vars(string::in,
+    list(mmake_fragment)::out) is det.
+
+generate_dv_file_define_smart_recomp_vars(ModuleMakeVarName,
+        SmartRecompFragments) :-
+    MmakeVarUseds = mmake_var_defn(ModuleMakeVarName ++ ".useds",
+        string.format("$(%s.mods:%%=$(useds_subdir)%%.used)",
+            [s(ModuleMakeVarName)])),
+    MmakeVarAnalysiss = mmake_var_defn(ModuleMakeVarName ++ ".analyses",
+        string.format("$(%s.mods:%%=$(analyses_subdir)%%.analysis)",
+            [s(ModuleMakeVarName)])),
+    MmakeVarRequests = mmake_var_defn(ModuleMakeVarName ++ ".requests",
+        string.format("$(%s.mods:%%=$(requests_subdir)%%.request)",
+            [s(ModuleMakeVarName)])),
+    MmakeVarImdgs = mmake_var_defn(ModuleMakeVarName ++ ".imdgs",
+        string.format("$(%s.mods:%%=$(imdgs_subdir)%%.imdg)",
+            [s(ModuleMakeVarName)])),
+
+    SmartRecompFragments = list.map(mmake_entry_to_fragment,
+        [MmakeVarUseds, MmakeVarAnalysiss, MmakeVarRequests, MmakeVarImdgs]).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
