@@ -5913,7 +5913,8 @@ To build your program with deep profiling enabled (for @samp{mdprof}),
 pass the @samp{--deep-profiling} option to @samp{mmc},
 @samp{mgnuc} and @samp{ml}.
 @item
-To build your program with threadscope profiling enabled (for @samp{threadscope}).
+To build your program with threadscope profiling enabled
+(for @samp{threadscope}).
 pass the @samp{--parallel} and @samp{--threadscope} options to @samp{mmc},
 @samp{mgnuc} and @samp{ml}.
 @end itemize
@@ -8634,7 +8635,8 @@ they are followed by descriptions of those options.
 @cindex Target options
 
 @table @asis
-@c @item @code{--target c} (grades: none, reg, jump, fast, asm_jump, asm_fast, hlc)
+@c @item @code{--target c}
+@c (grades: none, reg, jump, fast, asm_jump, asm_fast, hlc)
 @item @code{--target c} (grades: none, reg, asm_fast, hlc)
 @itemx @code{--csharp}, @code{--target csharp} (grades: csharp)
 @itemx @code{--java}, @code{--target java} (grades: java)
@@ -10802,21 +10804,22 @@ which may currently only be processed for automatic parallelism.
 @c @item --par-loop-control
 @c @findex --par-loop-control
 @c Enable the loop control transformation for parallel conjunctions.
-@c This causes right-recursive parallel conjunctions to use fewer contexts while
-@c maintaining parallelism.
+@c This causes right-recursive parallel conjunctions
+@c to use fewer contexts while c maintaining parallelism.
 @c This transformation is under development, when it is ready it will
 @c probably be enabled by default.
 @c
 @c @sp 1
 @c @item --no-par-loop-control-preserve-tail-recursion
 @c @findex --no-par-loop-control-preserve-tail-recursion
-@c Do not attempt to preserve tail recursion in the loop control transformation.
+@c Do not attempt to preserve tail recursion
+@c in the loop control transformation.
 @c This option causes all code spawned off using loop control to access its
 @c parent stack frame through the parent stack pointer.
-@c Rather than copying (parts) of the stack frame into the child's stack frame and
-@c reading it from there.
-@c This allows us to compare the cost of copying the stack frame with the cost of
-@c non tail recursive code.
+@c Rather than copying (parts) of the stack frame into the child's stack frame
+@c and reading it from there.
+@c This allows us to compare the cost of copying the stack frame
+@c with the cost of non tail recursive code.
 @c It is intended for developers only.
 
 @end table
@@ -11010,10 +11013,10 @@ grade.
 @c @sp 1
 @c @item --num-contexts-per-lc-per-thread @var{num}
 @c @findex --num-contexts-per-lc-per-thread (runtime option)
-@c Tells the runtime system to use @var{num} contexts per POSIX thread to handle
-@c each loop controlled loop.
-@c This only has an effect if the executable was built in a low-level C parallel
-@c grade.
+@c Tells the runtime system to use @var{num} contexts per POSIX thread
+@c to handle each loop controlled loop.
+@c This only has an effect if the executable
+@c was built in a low-level C parallel c grade.
 @c
 @c @sp 1
 @c @item --runtime-granularity-wsdeque-length-factor @var{factor}
@@ -11048,7 +11051,8 @@ This only has an effect if the executable was built in a parallel low-level C
 grade.
 This is disabled by default but may be enabled by default in the future.
 @c In case this is enabled by default the following comment is relevant.
-@c This is disabled by default unless @samp{-P @var{num}} is not specified and the
+@c This is disabled by default
+@c unless @samp{-P @var{num}} is not specified and the
 @c runtime system is able to detect the number of processors enabled by the
 @c operating system.
 
@@ -11300,7 +11304,8 @@ rather than to standard output.
 @itemx --mdb-err @var{filename}
 @findex -e (runtime option)
 @findex --mdb-err (runtime option)
-Print debugger error messages to the file or device specified by @var{filename},
+Print debugger error messages
+to the file or device specified by @var{filename},
 rather than to standard error.
 
 @sp 1
@@ -11407,7 +11412,8 @@ Documented alongside the @samp{--trace-count} option.
 @item --trace-count-summary-max @var{N}
 @findex --trace-count-summary-max (runtime option)
 If @env{MERCURY_OPTIONS} includes both
-the @samp{--trace-count option} (or one of the other options that imply @samp{--trace-count})
+the @samp{--trace-count option}
+(or one of the other options that imply @samp{--trace-count})
 and the @samp{--trace-count-summary-file @var{basename}} option,
 then the generated program will put the generated trace counts
 either in @var{basename} (if it does not exist),
@@ -12052,7 +12058,8 @@ Note that the address of the stack base should be word aligned as
 some garbage collectors rely upon this.
 (This is why the type of the dummy variable in the above example is
 @code{void *}.)
-If the value of @var{stackbottom} is @code{NULL} then the collector will attempt
+If the value of @var{stackbottom} is @code{NULL},
+then the collector will attempt
 to determine the address of the base of the stack itself.
 Note that modifying the argument vector, @var{argv}, after the Mercury runtime
 has been initialised will result in undefined behaviour since the runtime
