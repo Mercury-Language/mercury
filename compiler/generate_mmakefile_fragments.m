@@ -1077,7 +1077,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % (None of the other predicates called in this block of code define
     % any variables used by any other such predicate.)
     generate_dv_file_define_mod_misc_vars(Globals, DepsMap, Modules,
-        ModuleMakeVarName, ModMiscFragments, !Cache, !IO),
+        ModuleMakeVarName, ModMiscFragments),
     generate_dv_file_define_intn_vars(ModuleMakeVarName, IntnFragments),
     generate_dv_file_define_opt_vars(ModuleMakeVarName, OptFragments),
     generate_dv_file_define_c_vars(Globals, DepsMap, Modules,
@@ -1127,25 +1127,13 @@ compare_module_names(Sym1, Sym2, Result) :-
 %---------------------------------------------------------------------------%
 
 :- pred generate_dv_file_define_mod_misc_vars(globals::in, deps_map::in,
-    list(module_name)::in, string::in, list(mmake_fragment)::out,
-    module_file_name_cache::in, module_file_name_cache::out,
-    io::di, io::uo) is det.
+    list(module_name)::in, string::in, list(mmake_fragment)::out) is det.
 
 generate_dv_file_define_mod_misc_vars(Globals, DepsMap, Modules,
-        ModuleMakeVarName, ModMiscFragments, !Cache, !IO) :-
-    % XXX Given that
-    % - we are generating rules for mmake, and
-    % - mmake has no support for --use-grade-subdirs,
-    % the "gs" part of "ext_cur_gs_exec_noext" will never be called upon.
-    % This means that this call is effectively equivalent to
-    %
-    %   ModulesSourceFileNames = list.map(sym_name_to_string, Modules)
-    % And semantically, sym_name_to_string is *what we want* here.
-    make_module_file_names_with_ext(Globals,
-        ext_cur_gs(ext_cur_gs_exec_noext),
-        Modules, ModulesSourceFileNames, !Cache, !IO),
+        ModuleMakeVarName, ModMiscFragments) :-
+    ModuleNameStrs = list.map(sym_name_to_string, Modules),
     MmakeVarModuleMods = mmake_var_defn_list(ModuleMakeVarName ++ ".mods",
-        ModulesSourceFileNames),
+        ModuleNameStrs),
 
     % The modules for which we need to generate .int0 files.
     HasSubmodules =
@@ -1155,17 +1143,13 @@ generate_dv_file_define_mod_misc_vars(Globals, DepsMap, Modules,
             IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
             not map.is_empty(IncludeMap)
         ),
-    list.filter(HasSubmodules, Modules, ModulesWithSubModules),
+    list.filter(HasSubmodules, Modules, ModulesWithSubmodules),
 
-    % XXX The comment on the other call to make_module_file_names_with_ext
-    % above applies here as well.
-    make_module_file_names_with_ext(Globals,
-        ext_cur_gs(ext_cur_gs_exec_noext),
-        ModulesWithSubModules, ModulesWithSubModulesSourceFileNames,
-        !Cache, !IO),
+    ModuleWithSubmodulesNameStrs =
+        list.map(sym_name_to_string, ModulesWithSubmodules),
     MmakeVarModuleParentMods = mmake_var_defn_list(
         ModuleMakeVarName ++ ".parent_mods",
-        ModulesWithSubModulesSourceFileNames),
+        ModuleWithSubmodulesNameStrs),
 
     MmakeVarDs = mmake_var_defn(ModuleMakeVarName ++ ".ds",
         string.format("$(%s.mods:%%=$(ds_subdir)%%.d)",
@@ -1712,17 +1696,17 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
 
     ModuleMakeVarNameInts = "$(" ++ ModuleMakeVarName ++ ".ints)",
     ModuleMakeVarNameInt3s = "$(" ++ ModuleMakeVarName ++ ".int3s)",
-    AllIntSources = [ModuleMakeVarNameInts, ModuleMakeVarNameInt3s] ++
+    IntsOptsInitVars = [ModuleMakeVarNameInts, ModuleMakeVarNameInt3s] ++
         MaybeOptsVar ++ MaybeTransOptsVar ++ [InitFileName],
     MmakeRuleLibTargetJava = mmake_simple_rule("lib_target_java",
         mmake_rule_is_phony,
         LibTargetName,
-        [JarFileName | AllIntSources],
+        [JarFileName | IntsOptsInitVars],
         []),
     MmakeRuleLibTargetNonJava = mmake_simple_rule("lib_target_non_java",
         mmake_rule_is_phony,
         LibTargetName,
-        [LibFileName, SharedLibFileName | AllIntSources],
+        [LibFileName, SharedLibFileName | IntsOptsInitVars],
         []),
     MmakeFragmentLibTarget = mmf_conditional_entry(
         mmake_cond_grade_has_component("java"),
