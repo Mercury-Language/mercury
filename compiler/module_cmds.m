@@ -732,21 +732,23 @@ get_env_classpath(Classpath, !IO) :-
 
 create_launcher_shell_script(ProgressStream, Globals, MainModuleName, Pred,
         Succeeded, !IO) :-
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_gas(ext_cur_gas_exec_noext), MainModuleName, FileName, !IO),
+    Ext = ext_cur_gas(ext_cur_gas_exec_noext),
+    module_name_to_file_name_create_dirs(Globals, $pred, Ext,
+        MainModuleName, LauncherFileName, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(ProgressStream, Verbose,
-        "% Generating shell script `" ++ FileName ++ "'...\n", !IO),
+        "% Generating shell script `" ++ LauncherFileName ++ "'...\n", !IO),
 
     % Remove symlink in the way, if any.
-    io.file.remove_file(FileName, _, !IO),
-    io.open_output(FileName, OpenResult, !IO),
+    io.file.remove_file(LauncherFileName, _, !IO),
+    io.open_output(LauncherFileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),
         Pred(Stream, !IO),
         io.close_output(Stream, !IO),
-        io.call_system.call_system("chmod a+x " ++ FileName, ChmodResult, !IO),
+        io.call_system.call_system("chmod a+x " ++ LauncherFileName,
+            ChmodResult, !IO),
         (
             ChmodResult = ok(Status),
             ( if Status = 0 then

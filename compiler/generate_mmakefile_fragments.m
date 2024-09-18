@@ -1669,10 +1669,7 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
         mmake_cond_grade_has_component("java"),
         MmakeRuleExecutableJava, MmakeRuleExecutableNonJava),
 
-    % XXX EXT This call uses ext_cur_gs_exec_noext for a LIBRARY,
-    % not an EXECUTABLE.
-    module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
-        ext_cur_gas(ext_cur_gas_exec_noext), ModuleName, LibTargetName, !IO),
+    LibTargetName = "lib" ++ sym_name_to_string(ModuleName),
     % XXX Doing _create_dirs for a $A seems strange.
     module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
         ext_cur_gas(ext_cur_gas_lib_dollar_a), ModuleName, LibFileName, !IO),
