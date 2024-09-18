@@ -111,8 +111,24 @@
 %   "Mercury/<grade>/<arch>/Mercury/<X>s" for some string X.
 %   (See the comment in make_gs_dir_names for the rationale for this scheme.)
 %
-% Some Java extensions are an exception; they include an extra "jmercury"
-% component in the path.
+% (Some Java extensions are an exception; they include an extra "jmercury"
+% component in the path.)
+%
+% Note that while some grade-specific files are also architecture-specific
+% (i.e. their contents depend on the instruction set architecture (ISA)
+% of the target platform), some are not. Our current LEGACY directory structure
+% places both of these kinds of files into a directory whose name includes
+% an <arch> component specifying the architecture. The PROPOSED structure
+% we intend to replace it however makes a distintction between
+%
+% - a subdirectory that stores grade-specific files that are NOT
+%   architecture-specific, and
+% - a subdirectory that stores files that are both grade-specific
+%   and architecture-specific.
+%
+% We include "gs" in the names of extensions whose files are grade-specific
+% but not architecture-specific, while we use "gas" in the names of extensions
+% whose files are both grade-specific and architecture-specific.
 %
 % There are several approaches we can use to decide which directory the files
 % using an extension should be put into. The main ones are the following.
@@ -149,8 +165,10 @@
 % translate those extensions with not_for_search.)
 %
 % In the function symbols below,
-% - the "gs" suffix stands for the use of a grade-specific directory, while
-% - the "ngs" suffix stands for the use of a non-grade-specific directory.
+% - "ngs" stands for the use of a non-grade-specific directory;
+% - "gs" stands for the use of a grade-specific but not
+%   architecture-specific directory; and
+% - "gas" stands for the use of a grade-and-architecture-specific directory.
 %
 % NOTE The current decisions on what algorithm we use to decide the directory
 % we use to store the files of any given extension were made when the code
@@ -193,10 +211,21 @@
             % All extensions whose files can get put either into the current
             % directory, or into a grade-specific subdirectory.
 
+    ;       ext_cur_gas(ext_cur_gas)
+            % All extensions whose files can get put either into the current
+            % directory, or into a grade-and-architecture-specific
+            % subdirectory.
+
     ;       ext_cur_ngs_gs(ext_cur_ngs_gs)
             % All extensions whose files can get put either into the current
             % directory, or into a non-grade-specific subdirectory, or into
             % a grade-specific subdirectory, with search being irrelevant.
+
+    ;       ext_cur_ngs_gas(ext_cur_ngs_gas)
+            % All extensions whose files can get put either into the current
+            % directory, or into a non-grade-specific subdirectory, or into
+            % a grade-and-architecture-specific subdirectory,
+            % with search being irrelevant.
 
     ;       ext_cur_ngs_gs_err(ext_cur_ngs_gs_err)
             % Like the ext_cur_ngs_gs category, but whether or not .err files
@@ -312,6 +341,10 @@
             % to classify them as effectively a non-grade-specific files.
 
 :- type ext_cur_gs
+    --->    ext_cur_gs_lib_init                 % ".init"
+    ;       ext_cur_gs_lib_jar.                 % ".jar"
+
+:- type ext_cur_gas
             % Executables generated for a whole program.
             %
             % Most of these extensions are intended to name real files,
@@ -321,35 +354,33 @@
             % option, *all* executables and libraries *should* be put
             % into a grade subdir if that option is specified, not just some.
             % They should then be copied or linked to the current directory.
-    --->    ext_cur_gs_exec_noext               % ""
+    --->    ext_cur_gas_exec_noext              % ""
             % XXX While an empty extension *usually means we are building
             % the name of an executable, it can also mean we are building
             % the name of a phony Mmakefile target for a library, such as
             % libmer_std in the library directory.
 
-    ;       ext_cur_gs_exec_exe                 % ".exe"
-    ;       ext_cur_gs_exec_bat                 % ".bat"
-    ;       ext_cur_gs_exec_exec_opt            % executable_file_extension
+    ;       ext_cur_gas_exec_exe                % ".exe"
+    ;       ext_cur_gas_exec_bat                % ".bat"
+    ;       ext_cur_gas_exec_exec_opt           % executable_file_extension
 
             % Libraries, which may be statically or dynamically linked,
             % generated for a set of modules.
             %
             % Most of these extensions are intended to name real files,
             % but some are intended to name mmake targets.
-    ;       ext_cur_gs_lib_dollar_efsl          % ".(EXT_FOR_SHARED_LIB)"
-%   ;       ext_cur_gs_lib_lib                  % ".lib"
-%   ;       ext_cur_gs_lib_so                   % ".so"
-            % NOTE Neither ext_cur_gs_lib_lib nor ext_cur_gs_lib_so are
+    ;       ext_cur_gas_lib_dollar_efsl         % ".(EXT_FOR_SHARED_LIB)"
+%   ;       ext_cur_gas_lib_lib                 % ".lib"
+%   ;       ext_cur_gas_lib_so                  % ".so"
+            % NOTE Neither ext_cur_gas_lib_lib nor ext_cur_gas_lib_so are
             % ever referred to by that name. All references to files with
-            % those extensions use ext_cur_gs_lib_lib_opt and
-            % ext_cur_gs_lib_sh_lib_opt.
-    ;       ext_cur_gs_lib_dollar_a             % ".$A"
-    ;       ext_cur_gs_lib_archive              % ".a"
-    ;       ext_cur_gs_lib_dll                  % ".dll"
-    ;       ext_cur_gs_lib_init                 % ".init"
-    ;       ext_cur_gs_lib_jar                  % ".jar"
-    ;       ext_cur_gs_lib_lib_opt              % library_extension
-    ;       ext_cur_gs_lib_sh_lib_opt.          % shared_library_extension
+            % those extensions use ext_cur_gas_lib_lib_opt and
+            % ext_cur_gas_lib_sh_lib_opt.
+    ;       ext_cur_gas_lib_dollar_a            % ".$A"
+    ;       ext_cur_gas_lib_archive             % ".a"
+    ;       ext_cur_gas_lib_dll                 % ".dll"
+    ;       ext_cur_gas_lib_lib_opt             % library_extension
+    ;       ext_cur_gas_lib_sh_lib_opt.         % shared_library_extension
 
 :- type ext_cur_ngs_gs
             % Timestamp files showing when their corresponding .*opt files
@@ -375,26 +406,6 @@
             % the runtime system.
     ;       ext_cur_ngs_gs_init_c               % ".init_c"
 
-            % Object files generated for C source files generated for a module
-            % by the Mercury compiler.
-    ;       ext_cur_ngs_gs_obj_dollar_o         % ".$O"
-    ;       ext_cur_ngs_gs_obj_dollar_efpo      % ".$(EXT_FOR_PIC_OBJECTS)"
-    ;       ext_cur_ngs_gs_obj_o                % ".o"
-    ;       ext_cur_ngs_gs_obj_pic_o            % ".pic_o"
-    ;       ext_cur_ngs_gs_obj_obj_opt          % object_file_extension option
-    ;       ext_cur_ngs_gs_obj_pic_obj_opt  % pic_object_file_extension option
-
-            % Object files associated not with a module but with
-            % a whole program, containing the code needed to initialize
-            % various tables for the runtime system.
-    ;       ext_cur_ngs_gs_init_obj_dollar_o    % ".init.$O"
-    ;       ext_cur_ngs_gs_init_obj_o           % ".init.c"
-    ;       ext_cur_ngs_gs_init_obj_pic_o       % ".init.pic_o"
-    ;       ext_cur_ngs_gs_init_obj_obj_opt
-                                        % "_init" ++ object_file_extension
-    ;       ext_cur_ngs_gs_init_obj_pic_obj_opt
-                                        % "_init" ++ pic_object_file_extension
-
             % Compiler-generated files that are part of the incomplete
             % attempt at an intermodule analysis and optimization framework
             % in analysis.m and its clients.
@@ -405,6 +416,27 @@
     ;       ext_cur_ngs_gs_misc_err_date        % ".err_date"
     ;       ext_cur_ngs_gs_misc_used            % ".used"
     ;       ext_cur_ngs_gs_misc_track_flags.    % ".track_flags"
+
+:- type ext_cur_ngs_gas
+            % Object files generated for C source files generated for a module
+            % by the Mercury compiler.
+    --->    ext_cur_ngs_gas_obj_dollar_o        % ".$O"
+    ;       ext_cur_ngs_gas_obj_dollar_efpo     % ".$(EXT_FOR_PIC_OBJECTS)"
+    ;       ext_cur_ngs_gas_obj_o               % ".o"
+    ;       ext_cur_ngs_gas_obj_pic_o           % ".pic_o"
+    ;       ext_cur_ngs_gas_obj_obj_opt         % object_file_extension option
+    ;       ext_cur_ngs_gas_obj_pic_obj_opt  % pic_object_file_extension option
+
+            % Object files associated not with a module but with
+            % a whole program, containing the code needed to initialize
+            % various tables for the runtime system.
+    ;       ext_cur_ngs_gas_init_obj_dollar_o   % ".init.$O"
+    ;       ext_cur_ngs_gas_init_obj_o          % ".init.c"
+    ;       ext_cur_ngs_gas_init_obj_pic_o      % ".init.pic_o"
+    ;       ext_cur_ngs_gas_init_obj_obj_opt
+                                        % "_init" ++ object_file_extension
+    ;       ext_cur_ngs_gas_init_obj_pic_obj_opt.
+                                        % "_init" ++ pic_object_file_extension
 
 :- type ext_cur_ngs_gs_err
     --->    ext_cur_ngs_gs_err_err.             % ".err"
@@ -704,10 +736,16 @@ extension_to_string(Globals, Ext) = ExtStr :-
         ext_cur_ngs_extension_dir(ExtCurNgs, ExtStr, _SubDirName)
     ;
         Ext = ext_cur_gs(ExtCurGs),
-        ext_cur_gs_extension_dir(Globals, ExtCurGs, ExtStr, _SubDirName)
+        ext_cur_gs_extension_dir(ExtCurGs, ExtStr, _SubDirName)
+    ;
+        Ext = ext_cur_gas(ExtCurGas),
+        ext_cur_gas_extension_dir(Globals, ExtCurGas, ExtStr, _SubDirName)
     ;
         Ext = ext_cur_ngs_gs(ExtCurNgsGs),
-        ext_cur_ngs_gs_extension_dir(Globals, ExtCurNgsGs,
+        ext_cur_ngs_gs_extension_dir(ExtCurNgsGs, ExtStr, _SubDirName)
+    ;
+        Ext = ext_cur_ngs_gas(ExtCurNgsGas),
+        ext_cur_ngs_gas_extension_dir(Globals, ExtCurNgsGas,
             ExtStr, _SubDirName)
     ;
         Ext = ext_cur_ngs_gs_err(ExtCurNgsGsErr),
@@ -778,38 +816,44 @@ ext_cur_ngs_extension_dir(Ext, Str, Dir) :-
     ; Ext = ext_cur_ngs_misc_prof,      Str = ".prof",      Dir = "profs"
     ).
 
-:- pred ext_cur_gs_extension_dir(globals::in, ext_cur_gs::in,
+:- pred ext_cur_gs_extension_dir(ext_cur_gs::in,
     string::out, string::out) is det.
 
-ext_cur_gs_extension_dir(Globals, Ext, Str, Dir) :-
+ext_cur_gs_extension_dir(Ext, Str, Dir) :-
+    ( Ext = ext_cur_gs_lib_init,        Str = ".init",  Dir = "inits"
+    ; Ext = ext_cur_gs_lib_jar,         Str = ".jar",   Dir = "lib"
+    ).
+
+:- pred ext_cur_gas_extension_dir(globals::in, ext_cur_gas::in,
+    string::out, string::out) is det.
+
+ext_cur_gas_extension_dir(Globals, Ext, Str, Dir) :-
     % Launcher scripts go in the `bin' subdirectory.
-    ( Ext = ext_cur_gs_exec_noext,      Str = "",       Dir = "bin"
-    ; Ext = ext_cur_gs_exec_exe,        Str = ".exe",   Dir = "bin"
-    ; Ext = ext_cur_gs_exec_bat,        Str = ".bat",   Dir = "bin"
-    ; Ext = ext_cur_gs_exec_exec_opt,
+    ( Ext = ext_cur_gas_exec_noext,     Str = "",       Dir = "bin"
+    ; Ext = ext_cur_gas_exec_exe,       Str = ".exe",   Dir = "bin"
+    ; Ext = ext_cur_gas_exec_bat,       Str = ".bat",   Dir = "bin"
+    ; Ext = ext_cur_gas_exec_exec_opt,
         globals.lookup_string_option(Globals, executable_file_extension, Str),
         Dir = "bin"
-    ; Ext = ext_cur_gs_lib_dollar_efsl,
+    ; Ext = ext_cur_gas_lib_dollar_efsl,
         Str = ".$(EXT_FOR_SHARED_LIB)", Dir = "lib"
-%   ; Ext = ext_cur_gs_lib_lib,         Str = ".lib",   Dir = "lib"
-%   ; Ext = ext_cur_gs_lib_so,          Str = ".so",    Dir = "lib"
-    ; Ext = ext_cur_gs_lib_dollar_a,    Str = ".$A",    Dir = "lib"
-    ; Ext = ext_cur_gs_lib_archive,     Str = ".a",     Dir = "lib"
-    ; Ext = ext_cur_gs_lib_dll,         Str = ".dll",   Dir = "lib"
-    ; Ext = ext_cur_gs_lib_init,        Str = ".init",  Dir = "inits"
-    ; Ext = ext_cur_gs_lib_jar,         Str = ".jar",   Dir = "lib"
-    ; Ext = ext_cur_gs_lib_lib_opt,
+%   ; Ext = ext_cur_gas_lib_lib,        Str = ".lib",   Dir = "lib"
+%   ; Ext = ext_cur_gas_lib_so,         Str = ".so",    Dir = "lib"
+    ; Ext = ext_cur_gas_lib_dollar_a,   Str = ".$A",    Dir = "lib"
+    ; Ext = ext_cur_gas_lib_archive,    Str = ".a",     Dir = "lib"
+    ; Ext = ext_cur_gas_lib_dll,        Str = ".dll",   Dir = "lib"
+    ; Ext = ext_cur_gas_lib_lib_opt,
         globals.lookup_string_option(Globals, library_extension, Str),
         Dir = "lib"
-    ; Ext = ext_cur_gs_lib_sh_lib_opt,
+    ; Ext = ext_cur_gas_lib_sh_lib_opt,
         globals.lookup_string_option(Globals, shared_library_extension, Str),
         Dir = "lib"
     ).
 
-:- pred ext_cur_ngs_gs_extension_dir(globals::in, ext_cur_ngs_gs::in,
+:- pred ext_cur_ngs_gs_extension_dir(ext_cur_ngs_gs::in,
     string::out, string::out) is det.
 
-ext_cur_ngs_gs_extension_dir(Globals, Ext, Str, Dir) :-
+ext_cur_ngs_gs_extension_dir(Ext, Str, Dir) :-
     ( Ext = ext_cur_ngs_gs_opt_date_plain,
         Str = ".optdate", Dir = "optdates"
     ; Ext = ext_cur_ngs_gs_opt_date_trans,
@@ -824,35 +868,8 @@ ext_cur_ngs_gs_extension_dir(Globals, Ext, Str, Dir) :-
         Str = ".java_date", Dir = "java_dates"
     % The deviation from the "delete initial dot, add final 's'" rule
     % is intentional.
-    ; Ext = ext_cur_ngs_gs_obj_dollar_o,        Str = ".$O",        Dir = "os"
-    % The deviation from the "delete initial dot, add final 's'" rule
-    % is intentional.
-    ; Ext = ext_cur_ngs_gs_obj_dollar_efpo,
-        Str = ".$(EXT_FOR_PIC_OBJECTS)", Dir = "os"
-    ; Ext = ext_cur_ngs_gs_obj_o,               Str = ".o",         Dir = "os"
-    % The deviation from the "delete initial dot, add final 's'" rule
-    % is intentional.
-    ; Ext = ext_cur_ngs_gs_obj_pic_o,           Str = ".pic_o",     Dir = "os"
-    ; Ext = ext_cur_ngs_gs_obj_obj_opt,
-        globals.lookup_string_option(Globals, object_file_extension, Str),
-        Dir = "os"
-    ; Ext = ext_cur_ngs_gs_obj_pic_obj_opt,
-        globals.lookup_string_option(Globals, pic_object_file_extension, Str),
-        Dir = "os"
-    % The next four deviations from the "delete initial dot, add final 's'"
-    % rule are intentional.
     ; Ext = ext_cur_ngs_gs_init_c,              Str = "_init.c",    Dir = "cs"
-    ; Ext = ext_cur_ngs_gs_init_obj_dollar_o,   Str = "_init.$O",   Dir = "os"
-    ; Ext = ext_cur_ngs_gs_init_obj_o,          Str = "_init.o",    Dir = "os"
-    ; Ext = ext_cur_ngs_gs_init_obj_pic_o,      Str = "_init.pic_o", Dir = "os"
-    ; Ext = ext_cur_ngs_gs_init_obj_obj_opt,
-        globals.lookup_string_option(Globals, object_file_extension, Str0),
-        Str = "_init" ++ Str0,
-        Dir = "os"
-    ; Ext = ext_cur_ngs_gs_init_obj_pic_obj_opt,
-        globals.lookup_string_option(Globals, pic_object_file_extension, Str0),
-        Str = "_init" ++ Str0,
-        Dir = "os"
+
     ; Ext = ext_cur_ngs_gs_an_ds_date,
         Str = ".analysis_date",   Dir = "analysis_dates"
     ; Ext = ext_cur_ngs_gs_an_ds_status,
@@ -864,6 +881,32 @@ ext_cur_ngs_gs_extension_dir(Globals, Ext, Str, Dir) :-
     ; Ext = ext_cur_ngs_gs_misc_track_flags,
         Str = ".track_flags", Dir = "track_flags"
     ).
+
+:- pred ext_cur_ngs_gas_extension_dir(globals::in, ext_cur_ngs_gas::in,
+    string::out, string::out) is det.
+
+ext_cur_ngs_gas_extension_dir(Globals, Ext, Str, Dir) :-
+    % The following deviations from the "delete initial dot, add final 's'"
+    % rule are intentional.
+    ( Ext = ext_cur_ngs_gas_obj_dollar_o,       Str = ".$O"
+    ; Ext = ext_cur_ngs_gas_obj_dollar_efpo,    Str = ".$(EXT_FOR_PIC_OBJECTS)"
+    ; Ext = ext_cur_ngs_gas_obj_o,              Str = ".o"
+    ; Ext = ext_cur_ngs_gas_obj_pic_o,          Str = ".pic_o"
+    ; Ext = ext_cur_ngs_gas_obj_obj_opt,
+        globals.lookup_string_option(Globals, object_file_extension, Str)
+    ; Ext = ext_cur_ngs_gas_obj_pic_obj_opt,
+        globals.lookup_string_option(Globals, pic_object_file_extension, Str)
+    ; Ext = ext_cur_ngs_gas_init_obj_dollar_o,  Str = "_init.$O"
+    ; Ext = ext_cur_ngs_gas_init_obj_o,         Str = "_init.o"
+    ; Ext = ext_cur_ngs_gas_init_obj_pic_o,     Str = "_init.pic_o"
+    ; Ext = ext_cur_ngs_gas_init_obj_obj_opt,
+        globals.lookup_string_option(Globals, object_file_extension, Str0),
+        Str = "_init" ++ Str0
+    ; Ext = ext_cur_ngs_gas_init_obj_pic_obj_opt,
+        globals.lookup_string_option(Globals, pic_object_file_extension, Str0),
+        Str = "_init" ++ Str0
+    ),
+    Dir = "os".
 
 :- pred ext_cur_ngs_gs_err_extension_dir(ext_cur_ngs_gs_err::in,
     string::out, string::out) is det.
@@ -916,7 +959,9 @@ module_name_to_base_file_name_no_ext(Ext, ModuleName) = BaseNameNoExt :-
         ( Ext = ext_cur(_)
         ; Ext = ext_cur_ngs(_)
         ; Ext = ext_cur_gs(_)
+        ; Ext = ext_cur_gas(_)
         ; Ext = ext_cur_ngs_gs(_)
+        ; Ext = ext_cur_ngs_gas(_)
         ; Ext = ext_cur_ngs_gs_err(_)
         ; Ext = ext_cur_ngs_max_cur(_)
         ; Ext = ext_cur_ngs_gs_max_cur(_)
@@ -1124,7 +1169,7 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
             ; SubdirSetting = use_cur_ngs_gs_subdir
             ),
             ext_cur_ngs_extension_dir(ExtCurNgs, _ExtStr, SubDirName),
-            DirNames = make_ngs_dir_names(SubDirName)
+            make_ngs_dir_names(SubDirName, DirNames)
         )
     ;
         Ext = ext_cur_gs(ExtCurGs),
@@ -1139,8 +1184,24 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
             DirNames = []
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
-            ext_cur_gs_extension_dir(Globals, ExtCurGs, _ExtStr, SubDirName),
-            DirNames = make_gs_dir_names(Globals, SubDirName)
+            ext_cur_gs_extension_dir(ExtCurGs, _ExtStr, SubDirName),
+            make_gs_dir_names(Globals, SubDirName, DirNames)
+        )
+    ;
+        Ext = ext_cur_gas(ExtCurGas),
+        % Executables and library files go in the current directory
+        % only with --no-use-grade-subdirs; with --use-grade-subdirs,
+        % they go in a grade subdir.
+        globals.get_subdir_setting(Globals, SubdirSetting),
+        (
+            ( SubdirSetting = use_cur_dir
+            ; SubdirSetting = use_cur_ngs_subdir
+            ),
+            DirNames = []
+        ;
+            SubdirSetting = use_cur_ngs_gs_subdir,
+            ext_cur_gas_extension_dir(Globals, ExtCurGas, _ExtStr, SubDirName),
+            make_gas_dir_names(Globals, SubDirName, DirNames)
         )
     ;
         Ext = ext_cur_ngs_gs(ExtCurNgsGs),
@@ -1150,14 +1211,29 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
             DirNames = []
         ;
             SubdirSetting = use_cur_ngs_subdir,
-            ext_cur_ngs_gs_extension_dir(Globals, ExtCurNgsGs,
-                _ExtStr, SubDirName),
-            DirNames = make_ngs_dir_names(SubDirName)
+            ext_cur_ngs_gs_extension_dir(ExtCurNgsGs, _ExtStr, SubDirName),
+            make_ngs_dir_names(SubDirName, DirNames)
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
-            ext_cur_ngs_gs_extension_dir(Globals, ExtCurNgsGs,
+            ext_cur_ngs_gs_extension_dir(ExtCurNgsGs, _ExtStr, SubDirName),
+            make_gs_dir_names(Globals, SubDirName, DirNames)
+        )
+    ;
+        Ext = ext_cur_ngs_gas(ExtCurNgsGas),
+        globals.get_subdir_setting(Globals, SubdirSetting),
+        (
+            SubdirSetting = use_cur_dir,
+            DirNames = []
+        ;
+            SubdirSetting = use_cur_ngs_subdir,
+            ext_cur_ngs_gas_extension_dir(Globals, ExtCurNgsGas,
                 _ExtStr, SubDirName),
-            DirNames = make_gs_dir_names(Globals, SubDirName)
+            make_ngs_dir_names(SubDirName, DirNames)
+        ;
+            SubdirSetting = use_cur_ngs_gs_subdir,
+            ext_cur_ngs_gas_extension_dir(Globals, ExtCurNgsGas,
+                _ExtStr, SubDirName),
+            make_gas_dir_names(Globals, SubDirName, DirNames)
         )
     ;
         Ext = ext_cur_ngs_gs_err(ExtCurNgsGsErr),
@@ -1176,12 +1252,12 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
                 SubdirSetting = use_cur_ngs_subdir,
                 ext_cur_ngs_gs_err_extension_dir(ExtCurNgsGsErr,
                     _ExtStr, SubDirName),
-                DirNames = make_ngs_dir_names(SubDirName)
+                make_ngs_dir_names(SubDirName, DirNames)
             ;
                 SubdirSetting = use_cur_ngs_gs_subdir,
                 ext_cur_ngs_gs_err_extension_dir(ExtCurNgsGsErr,
                     _ExtStr, SubDirName),
-                DirNames = make_gs_dir_names(Globals, SubDirName)
+                make_gs_dir_names(Globals, SubDirName, DirNames)
             )
         )
     ;
@@ -1216,7 +1292,7 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
                 ),
                 ext_cur_ngs_max_cur_extension_dir(ExtCurNgsMaxCur,
                     _ExtStr, SubDirName),
-                DirNames = make_ngs_dir_names(SubDirName)
+                make_ngs_dir_names(SubDirName, DirNames)
             )
         )
     ;
@@ -1238,12 +1314,12 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
                 SubdirSetting = use_cur_ngs_subdir,
                 ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
                     _ExtStr, SubDirName),
-                DirNames = make_ngs_dir_names(SubDirName)
+                make_ngs_dir_names(SubDirName, DirNames)
             ;
                 SubdirSetting = use_cur_ngs_gs_subdir,
                 ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
                     _ExtStr, SubDirName),
-                DirNames = make_gs_dir_names(Globals, SubDirName)
+                make_gs_dir_names(Globals, SubDirName, DirNames)
             )
         )
     ;
@@ -1256,17 +1332,17 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
             SubdirSetting = use_cur_ngs_subdir,
             ext_cur_ngs_gs_max_ngs_extension_dir(ExtCurNgsGsMaxNgs,
                 _ExtStr, SubDirName),
-            DirNames = make_ngs_dir_names(SubDirName)
+            make_ngs_dir_names(SubDirName, DirNames)
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
             ext_cur_ngs_gs_max_ngs_extension_dir(ExtCurNgsGsMaxNgs,
                 _ExtStr, SubDirName),
             (
                 Search = for_search,
-                DirNames = make_ngs_dir_names(SubDirName)
+                make_ngs_dir_names(SubDirName, DirNames)
             ;
                 Search = not_for_search,
-                DirNames = make_gs_dir_names(Globals, SubDirName)
+                make_gs_dir_names(Globals, SubDirName, DirNames)
             )
         )
     ).
@@ -1279,10 +1355,10 @@ analysis_cache_dir_name(Globals, DirName) :-
         ( SubdirSetting = use_cur_dir
         ; SubdirSetting = use_cur_ngs_subdir
         ),
-        DirComponents = make_ngs_dir_names("analysis_cache")
+        make_ngs_dir_names("analysis_cache", DirComponents)
     ;
         SubdirSetting = use_cur_ngs_gs_subdir,
-        DirComponents = make_gs_dir_names(Globals, "analysis_cache")
+        make_gs_dir_names(Globals, "analysis_cache", DirComponents)
     ),
     DirName = dir.relative_path_name_from_components(DirComponents).
 
@@ -1292,14 +1368,15 @@ analysis_cache_dir_name(Globals, DirName) :-
 % grade-specific directory whose last component is the given string.
 %
 
-:- func make_ngs_dir_names(dir_name) = list(dir_name).
+:- pred make_ngs_dir_names(dir_name::in, list(dir_name)::out) is det.
 
-make_ngs_dir_names(SubDirName) = NgsSubDirNames :-
+make_ngs_dir_names(SubDirName, NgsSubDirNames) :-
     NgsSubDirNames = ["Mercury", SubDirName].
 
-:- func make_gs_dir_names(globals, dir_name) = list(dir_name).
+:- pred make_gs_dir_names(globals::in, dir_name::in,
+    list(dir_name)::out) is det.
 
-make_gs_dir_names(Globals, SubDirName) = GsSubDirNames :-
+make_gs_dir_names(Globals, SubDirName, GsSubDirNames) :-
     grade_directory_component(Globals, Grade),
     globals.lookup_string_option(Globals, target_arch, TargetArch),
     % The extra "Mercury" is needed so we can use
@@ -1309,6 +1386,13 @@ make_gs_dir_names(Globals, SubDirName) = GsSubDirNames :-
     % the search for the files for installed libraries.
     % XXX This seems ... suboptimal to me (zs).
     GsSubDirNames = ["Mercury", Grade, TargetArch, "Mercury", SubDirName].
+
+:- pred make_gas_dir_names(globals::in, dir_name::in,
+    list(dir_name)::out) is det.
+
+make_gas_dir_names(Globals, SubDirName, GasSubDirNames) :-
+    % This is temporary.
+    make_gs_dir_names(Globals, SubDirName, GasSubDirNames).
 
 %---------------------------------------------------------------------------%
 
@@ -1431,12 +1515,12 @@ get_java_dir_path(Globals, ExtCurNgsGsJava, DirNames) :-
         SubdirSetting = use_cur_ngs_subdir,
         ext_cur_ngs_gs_java_extension_dir(ExtCurNgsGsJava,
             _ExtStr, SubDirName),
-        DirNames = make_ngs_dir_names(SubDirName)
+        make_ngs_dir_names(SubDirName, DirNames)
     ;
         SubdirSetting = use_cur_ngs_gs_subdir,
         ext_cur_ngs_gs_java_extension_dir(ExtCurNgsGsJava,
             _ExtStr, SubDirName),
-        DirNames = make_gs_dir_names(Globals, SubDirName)
+        make_gs_dir_names(Globals, SubDirName, DirNames)
     ).
 
 %---------------------------------------------------------------------------%

@@ -245,9 +245,9 @@ remove_init_files(ProgressStream, Globals, Verbose, ModuleName, !Info, !IO) :-
     remove_module_file_for_make(ProgressStream, Globals, Verbose, ModuleName,
         ext_cur_ngs_gs(ext_cur_ngs_gs_init_c), !Info, !IO),
     remove_module_file_for_make(ProgressStream, Globals, Verbose, ModuleName,
-        ext_cur_ngs_gs(ext_cur_ngs_gs_init_obj_obj_opt), !Info, !IO),
+        ext_cur_ngs_gas(ext_cur_ngs_gas_init_obj_obj_opt), !Info, !IO),
     remove_module_file_for_make(ProgressStream, Globals, Verbose, ModuleName,
-        ext_cur_ngs_gs(ext_cur_ngs_gs_init_obj_pic_obj_opt), !Info, !IO).
+        ext_cur_ngs_gas(ext_cur_ngs_gas_init_obj_pic_obj_opt), !Info, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module make.clean.

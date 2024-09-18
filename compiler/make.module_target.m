@@ -472,7 +472,7 @@ build_target_2(ProgressStream, ErrorStream, Globals, Task, ModuleName,
         Task = fact_table_code_to_object_code(PIC, FactTableFileName),
         get_object_extension(Globals, PIC, ObjExt),
         get_fact_table_foreign_code_file(Globals, do_create_dirs,
-            ext_cur_ngs_gs(ObjExt),
+            ext_cur_ngs_gas(ObjExt),
             FactTableFileName, FactTableForeignCode, !IO),
         % Run the compilation in a child process, so it can be killed
         % if an interrupt arrives.
@@ -577,7 +577,7 @@ cleanup_files(ProgressStream, Globals, MaybeArgFileName, MakeLhsFiles,
 
 %---------------------------------------------------------------------------%
 
-:- pred get_object_extension(globals::in, pic::in, ext_cur_ngs_gs::out) is det.
+:- pred get_object_extension(globals::in, pic::in, ext_cur_ngs_gas::out) is det.
 
 get_object_extension(Globals, PIC, ExtObj) :-
     globals.get_target(Globals, CompilationTarget),
@@ -896,7 +896,7 @@ find_lhs_files_of_task(ProgressStream, Globals, TargetFile, Task, MakeLhsFiles,
         Task = fact_table_code_to_object_code(PIC, FactTableName),
         get_object_extension(Globals, PIC, ObjExt),
         fact_table_file_name_return_dirs(Globals, $pred,
-            ext_cur_ngs_gs(ObjExt), FactTableName,
+            ext_cur_ngs_gas(ObjExt), FactTableName,
             FactTableDirs, FactTableObjectFileName),
         create_any_dirs_on_path(FactTableDirs, !IO),
         % Fact table object files (.o or .pic_o) don't have date files.
@@ -1061,7 +1061,7 @@ get_any_fact_table_object_code_files(Globals, PIC, ModuleDepInfo,
         module_dep_info_get_fact_tables(ModuleDepInfo, FactTableFiles),
         list.map_foldl(
             get_fact_table_foreign_code_file(Globals, do_not_create_dirs,
-                ext_cur_ngs_gs(ObjExt)),
+                ext_cur_ngs_gas(ObjExt)),
             set.to_sorted_list(FactTableFiles), FactTableForeignFiles, !IO),
         ForeignFiles = FactTableForeignFiles
     ;

@@ -2310,7 +2310,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                         get_object_code_type(Globals, TargetType, PIC),
                         maybe_pic_object_file_extension(PIC, ObjExt, _),
                         module_name_to_file_name_create_dirs(Globals, $pred,
-                            ext_cur_ngs_gs(ObjExt), ModuleName, O_File, !IO),
+                            ext_cur_ngs_gas(ObjExt), ModuleName, O_File, !IO),
                         do_compile_c_file(Globals, ProgressStream, PIC,
                             C_File, O_File, Succeeded, !IO),
                         maybe_set_exit_status(Succeeded, !IO)

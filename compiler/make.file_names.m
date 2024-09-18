@@ -244,14 +244,14 @@ target_type_to_target_extension(Target, TargetExt) :-
     ;
         Target = module_target_object_code(PIC),
         maybe_pic_object_file_extension(PIC, ObjExt, _),
-        TargetExt = extension(ext_cur_ngs_gs(ObjExt))
+        TargetExt = extension(ext_cur_ngs_gas(ObjExt))
     ;
         Target = module_target_xml_doc,
         TargetExt = extension(ext_cur(ext_cur_user_xml))
     ;
         Target = module_target_fact_table_object(PIC, FactFile),
         maybe_pic_object_file_extension(PIC, ObjExt, _),
-        Ext = ext_cur_ngs_gs(ObjExt),
+        Ext = ext_cur_ngs_gas(ObjExt),
         TargetExt = fact_table_obj(Ext, FactFile)
     ).
 

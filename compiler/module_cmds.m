@@ -733,7 +733,7 @@ get_env_classpath(Classpath, !IO) :-
 create_launcher_shell_script(ProgressStream, Globals, MainModuleName, Pred,
         Succeeded, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_gs(ext_cur_gs_exec_noext), MainModuleName, FileName, !IO),
+        ext_cur_gas(ext_cur_gas_exec_noext), MainModuleName, FileName, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(ProgressStream, Verbose,
@@ -772,7 +772,7 @@ create_launcher_shell_script(ProgressStream, Globals, MainModuleName, Pred,
 create_launcher_batch_file(ProgressStream, Globals, MainModuleName, Pred,
         Succeeded, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_gs(ext_cur_gs_exec_bat), MainModuleName, FileName, !IO),
+        ext_cur_gas(ext_cur_gas_exec_bat), MainModuleName, FileName, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(ProgressStream, Verbose,

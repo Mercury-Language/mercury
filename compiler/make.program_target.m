@@ -712,7 +712,7 @@ rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
     (
         CompilationTarget = target_c,
         maybe_pic_object_file_extension(PIC, ObjExt, _),
-        Ext = ext_cur_ngs_gs(ObjExt)
+        Ext = ext_cur_ngs_gas(ObjExt)
     ;
         CompilationTarget = target_csharp,
         % There is no separate object code step.

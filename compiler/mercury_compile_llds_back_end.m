@@ -938,7 +938,7 @@ llds_c_to_obj(Globals, ProgressStream, ModuleName, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName, C_File),
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gs(ObjExt), ModuleName, O_File, !IO),
+        ext_cur_ngs_gas(ObjExt), ModuleName, O_File, !IO),
     compile_target_code.do_compile_c_file(Globals, ProgressStream,
         PIC, C_File, O_File, Succeeded, !IO).
 
@@ -953,7 +953,7 @@ compile_fact_table_file(Globals, ProgressStream, BaseName, O_FileName,
     % XXX EXT
     C_FileName = BaseName ++ ".c",
     O_FileName = BaseName ++ extension_to_string(Globals,
-        ext_cur_ngs_gs(ExtObj)),
+        ext_cur_ngs_gas(ExtObj)),
     compile_target_code.do_compile_c_file(Globals, ProgressStream,
         PIC, C_FileName, O_FileName, Succeeded, !IO).
 
