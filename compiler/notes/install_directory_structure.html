@@ -49,8 +49,14 @@ we will refer to this list as the "library suffix list".)
 <li>
 .a      (for C grades, if --library-extension is .a)
 <li>
+.lib    (for C grades, if --library-extension is .lib)
+<li>
 .so     (for C grades, if --shared-library-extension is .so)
 <li>
+.dylib  (for C grades, if --shared-library-extension is .dylib)
+<li>
+<!-- .dll would also be for shared libs on Windows in C grades if
+we ever support them -->
 .dll    (for C# grades)
 <li>
 .jar    (for Java grades)
@@ -64,7 +70,7 @@ Specifically,
 <ul>
 <li>
 where they <em>are</em> installed, by Mercury system versions
-before 2024 september 15, and
+before 2024 September 15, and
 <li>
 where they <em>should be</em> installed,
 in a simplified and rationalized system
@@ -404,7 +410,7 @@ find the .opt file for the installed-last grade.
 </pre>
 
 <dt>
-.a and .so
+.a, .dylib, .lib and .so
 <dd>
 <pre>
         LEGACY
