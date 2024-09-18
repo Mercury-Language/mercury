@@ -36,6 +36,10 @@ we will refer to this list as the "library suffix list".)
 .int3
 <li>
 .opt
+<!--
+<li>
+.trans_opt
+-->
 <li>
 .module_dep
 <li>
@@ -47,20 +51,17 @@ we will refer to this list as the "library suffix list".)
 <li>
 .init   (for C grades)
 <li>
-.a      (for C grades, if --library-extension is .a)
+.LE     (for C grades, if --library-extension is .LE)
 <li>
-.lib    (for C grades, if --library-extension is .lib)
+.SLE    (for C grades, if --shared-library-extension is .SLE)
 <li>
-.so     (for C grades, if --shared-library-extension is .so)
-<li>
-.dylib  (for C grades, if --shared-library-extension is .dylib)
-<li>
-<!-- .dll would also be for shared libs on Windows in C grades if
-we ever support them -->
 .dll    (for C# grades)
 <li>
 .jar    (for Java grades)
 </ul>
+
+Note that common values of --library-extension include .a and .lib, while
+common values of --shared-library-extension include .so, .dylib and .dll.
 
 <p>
 This document is intended to describe where (i.e. in which directories)
@@ -229,7 +230,7 @@ with both being in a form that is suitable as a directory name component.
 
 <p>
 Note that while some kinds of files with grade-dependent extensions,
-such as .so, are dependent on the target ISA,
+such as .o, are dependent on the target ISA,
 files with other grade-dependent extensions, such as .mih, are <em>NOT</em>,
 so including the TargetArch component in their path names is overkill.
 
@@ -336,6 +337,19 @@ is before the grade-specific directory in the search path, searches in
 non-default grades may nevertheless find the .opt file for the default grade.
 <p>
 
+<!--
+<dt>
+.trans_opt
+<dd>
+<pre>
+        LEGACY
+        ?
+
+        PROPOSED
+        ?
+</pre>
+-->
+
 <dt>
 .module_dep
 <dd>
@@ -410,7 +424,7 @@ find the .opt file for the installed-last grade.
 </pre>
 
 <dt>
-.a, .dylib, .lib and .so
+.LE and .SLE
 <dd>
 <pre>
         LEGACY
