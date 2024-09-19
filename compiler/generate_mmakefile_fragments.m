@@ -1297,45 +1297,15 @@ generate_dv_file_define_c_vars(Globals, DepsMap, Modules, ModuleMakeVarName,
             [s(ModuleMakeVarName)]) |
         FactTableFileNamesPicOs]),
 
-    globals.get_target(Globals, Target),
-    (
-        ( Target = target_c
-        ; Target = target_csharp
-        ; Target = target_java
-        ),
-        ForeignModulesAndExts = []
-    ),
-    ForeignModules = list.map((func({A, _C}) = A), ForeignModulesAndExts),
-
-    make_module_file_names_with_ext(Globals,
-        ext_cur_gas(ext_cur_gas_exec_noext),
-        ForeignModules, ForeignModulesFileNames, !Cache, !IO),
+    % This used to be (the equivalent of):
+    % generate_dv_file_define_c_foreign_vars(Globals, ModuleMakeVarName,
+    %   [MmakeVarForeignModules, MmakeVarForeignFileNames], !Cache, !IO).
     MmakeVarForeignModules =
-        mmake_var_defn_list(ModuleMakeVarName ++ ".foreign",
-            ForeignModulesFileNames),
-
-    MakeFileName =
-        ( pred({M, NE}::in, F::out, FP::out, IO0::di, IO::uo) is det :-
-            % XXX LEGACY
-            module_name_to_file_name_create_dirs(Globals, $pred, NE,
-                M, F0, FP0, IO0, IO),
-            F = "$(os_subdir)" ++ F0,
-            FP = "$(os_subdir)" ++ FP0
-        ),
-    list.map2_foldl(MakeFileName, ForeignModulesAndExts,
-        ForeignFileNames, _ForeignFileNamesProposed, !IO),
-
-    % .foreign_cs are the source files which have had foreign code placed
-    % in them.
-    % XXX This rule looks wrong: why are we looking for (a) stuff with an
-    % unknown suffix in (b) the os_subdir, when we (c) refer to it
-    % using a make variable whose name ends in "_cs"?
-    % Of course, since ForeignModulesAndExts is always [] with our current
-    % set of target languages, this does not matter.
+        mmake_var_defn_list(ModuleMakeVarName ++ ".foreign", []),
     MmakeVarForeignFileNames =
-        mmake_var_defn_list(ModuleMakeVarName ++ ".foreign_cs",
-            ForeignFileNames),
+        mmake_var_defn_list(ModuleMakeVarName ++ ".foreign_cs", []),
 
+    globals.get_target(Globals, Target),
     (
         Target = target_c,
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
@@ -1430,6 +1400,59 @@ acc_fact_table_file_names(DepsMap, [Module | Modules], !FactTableFileNames) :-
     % in a non target language.
     set.union(FactTableFileNames, !FactTableFileNames),
     acc_fact_table_file_names(DepsMap, Modules, !FactTableFileNames).
+
+%---------------------%
+
+    % This predicate is unused, because it lost its purpose when we deleted
+    % the Erlang backend.
+    %
+:- pred generate_dv_file_define_c_foreign_vars(globals::in, string::in,
+    list(mmake_entry)::out,
+    module_file_name_cache::in, module_file_name_cache::out,
+    io::di, io::uo) is det.
+:- pragma consider_used(pred(generate_dv_file_define_c_foreign_vars/7)).
+
+generate_dv_file_define_c_foreign_vars(Globals, ModuleMakeVarName,
+        MmakeEntries, !Cache, !IO) :-
+    globals.get_target(Globals, Target),
+    (
+        ( Target = target_c
+        ; Target = target_csharp
+        ; Target = target_java
+        ),
+        ForeignModulesAndExts = []
+    ),
+    ForeignModules = list.map((func({A, _C}) = A), ForeignModulesAndExts),
+
+    make_module_file_names_with_ext(Globals,
+        ext_cur_gas(ext_cur_gas_exec_noext),
+        ForeignModules, ForeignModulesFileNames, !Cache, !IO),
+    MmakeVarForeignModules =
+        mmake_var_defn_list(ModuleMakeVarName ++ ".foreign",
+            ForeignModulesFileNames),
+
+    MakeFileName =
+        ( pred({M, NE}::in, F::out, FP::out, IO0::di, IO::uo) is det :-
+            % XXX LEGACY
+            module_name_to_file_name_create_dirs(Globals, $pred, NE,
+                M, F0, FP0, IO0, IO),
+            F = "$(os_subdir)" ++ F0,
+            FP = "$(os_subdir)" ++ FP0
+        ),
+    list.map2_foldl(MakeFileName, ForeignModulesAndExts,
+        ForeignFileNames, _ForeignFileNamesProposed, !IO),
+
+    % .foreign_cs are the source files which have had foreign code placed
+    % in them.
+    % XXX This rule looks wrong: why are we looking for (a) stuff with an
+    % unknown suffix in (b) the os_subdir, when we (c) refer to it
+    % using a make variable whose name ends in "_cs"?
+    % Of course, since ForeignModulesAndExts is always [] with our current
+    % set of target languages, this does not matter.
+    MmakeVarForeignFileNames =
+        mmake_var_defn_list(ModuleMakeVarName ++ ".foreign_cs",
+            ForeignFileNames),
+    MmakeEntries = [MmakeVarForeignModules, MmakeVarForeignFileNames].
 
 %---------------------%
 
