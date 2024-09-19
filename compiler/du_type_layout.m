@@ -4517,9 +4517,8 @@ maybe_show_type_repns(ModuleInfo, TypeCtorsTypeDefns, !IO) :-
         ),
 
         module_info_get_name(ModuleInfo, ModuleName),
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur(ext_cur_user_type_repns),
-            ModuleName, TypeRepnFileName, !IO),
+        module_name_to_cur_dir_file_name(ext_cur_user_type_repns,
+            ModuleName, TypeRepnFileName),
         io.open_output(TypeRepnFileName, TypeRepnFileResult, !IO),
         (
             TypeRepnFileResult = ok(TypeRepnStream),

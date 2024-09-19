@@ -157,8 +157,9 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
     globals.lookup_accumulating_option(Globals, search_directories,
         SearchDirs),
     ModuleDepExt = ext_cur_ngs(ext_cur_ngs_misc_module_dep),
+    % XXX LEGACY
     module_name_to_file_name(Globals, $pred, ModuleDepExt,
-        ModuleName, DepFileName),
+        ModuleName, DepFileName, _DepFileNameProposed),
     get_file_timestamp(SearchDirs, DepFileName, MaybeDepFileTimestamp,
         !Info, !IO),
     (
@@ -310,8 +311,10 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
 
 find_and_read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
         SearchDirs, ModuleName, !Info, !IO) :-
+    % XXX LEGACY
     module_name_to_search_file_name(Globals, $pred,
-        ext_cur_ngs(ext_cur_ngs_misc_module_dep), ModuleName, DepFileName),
+        ext_cur_ngs(ext_cur_ngs_misc_module_dep), ModuleName,
+        DepFileName, _DepFileNameProposed),
     search_for_file_returning_dir_and_contents(SearchDirs, DepFileName,
         MaybeDirAndContents, !IO),
     (
@@ -601,8 +604,9 @@ write_module_dep_files_for_source_file(Globals, ProgressStream,
     % while we have the contents of the module. The `int3' file
     % does not depend on anything else.
     MadeTarget = target_file(ModuleName, module_target_int3),
+    % XXX LEGACY
     module_target_file_to_file_name(Globals, $pred,
-        MadeTarget, MadeTargetFileName, !IO),
+        MadeTarget, MadeTargetFileName, _MadeTargetFileNameProposed, !IO),
 
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     % We already know FatalReadError is empty.

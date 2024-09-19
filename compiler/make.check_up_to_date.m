@@ -533,8 +533,9 @@ get_dependency_file_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
             % so are also up-to-date.
             ModuleTarget = module_target(module_target_source),
             TopTargetFile = top_target_file(ModuleName, ModuleTarget),
+            % XXX LEGACY
             module_target_file_to_file_name(Globals, $pred, Target,
-                TargetFileName, !IO),
+                TargetFileName, _TargetFileNameProposed, !IO),
             maybe_warn_up_to_date_target_msg(Globals, TopTargetFile,
                 TargetFileName, !Info, UpToDateMsg),
             maybe_write_msg(ProgressStream, UpToDateMsg, !IO),
@@ -609,8 +610,9 @@ get_dependency_file_status_main_path(ProgressStream, Globals,
         % it would be an unnecessary LARGE cost in execution time.
         MaybeTargetFileName = no
     else
+        % XXX LEGACY
         module_target_file_to_file_name(Globals, $pred,
-            Target, TargetFileName, !IO),
+            Target, TargetFileName, _TargetFileNameProposed, !IO),
         MaybeTargetFileName = yes(TargetFileName),
         get_maybe_module_dep_info(ProgressStream, Globals, ModuleName,
             MaybeModuleDepInfo, !Info, !IO),
@@ -678,7 +680,9 @@ get_dependency_file_name(Globals, Tuple0, Tuple, !IO) :-
         MaybeTargetFileName = yes(TargetFileName)
     ;
         MaybeTargetFileName = no,
-        dependency_file_to_file_name(Globals, Dep, TargetFileName, !IO)
+        % XXX LEGACY
+        dependency_file_to_file_name(Globals, Dep,
+            TargetFileName, _TargetFileNameProposed, !IO)
     ),
     Tuple = dependency_status_known_file(Dep, TargetFileName, Status).
 

@@ -125,8 +125,9 @@
 
 mmc_module_name_to_read_file_name(Globals, Ext,
         ModuleName, MaybeFileName, !IO) :-
+    % XXX LEGACY
     module_name_to_search_file_name(Globals, $pred, Ext,
-        ModuleName, FileName0),
+        ModuleName, FileName0, _FileName0Proposed),
     globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
     search_for_file(Dirs, FileName0, MaybeFileName, !IO).
 
@@ -135,8 +136,9 @@ mmc_module_name_to_read_file_name(Globals, Ext,
 
 mmc_module_name_to_write_file_name(Globals, Ext,
         ModuleName, FileName, !IO) :-
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred, Ext,
-        ModuleName, FileName, !IO).
+        ModuleName, FileName, _FileNameProposed, !IO).
 
 module_name_func_id(ModuleInfo, proc(PredId, ProcId), PredModule, FuncId) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),

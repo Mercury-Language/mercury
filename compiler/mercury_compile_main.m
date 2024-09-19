@@ -816,7 +816,9 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, OptionVariables, !IO) :-
         io.print_line(StdOutStream, CSC_Type, !IO)
     ;
         OpModeQuery = opmq_output_java_class_dir,
-        get_java_dir_path(Globals, ext_cur_ngs_gs_java_class, ClassDirNames),
+        % XXX LEGACY
+        get_java_dir_path(Globals, ext_cur_ngs_gs_java_class,
+            ClassDirNames, _ClassDirNamesProposed),
         ClassDirName = dir.relative_path_name_from_components(ClassDirNames),
         io.print_line(StdOutStream, ClassDirName, !IO)
     ;
@@ -1287,8 +1289,8 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
                 true
             else
                 ModuleName = ParseTreeSrc ^ pts_module_name,
-                module_name_to_file_name_create_dirs(Globals, $pred,
-                    ext_cur(ext_cur_user_ugly), ModuleName, UglyFileName, !IO),
+                module_name_to_cur_dir_file_name(ext_cur_user_ugly,
+                    ModuleName, UglyFileName),
                 output_parse_tree_src(ProgressStream, Globals, UglyFileName,
                     ParseTreeSrc, _Succeeded, !IO)
             )
@@ -1668,9 +1670,10 @@ find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
 usual_find_target_files(Globals, TargetExt,
         ModuleName, TargetFiles, !IO) :-
     % XXX Should we check the generated header files?
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred, TargetExt,
-        ModuleName, FileName, !IO),
-    TargetFiles = [FileName].
+        ModuleName, TargetFileName, _TargetFileNameProposed, !IO),
+    TargetFiles = [TargetFileName].
 
 :- pred find_timestamp_files(globals::in,
     find_timestamp_file_names::out(find_timestamp_file_names)) is det.
@@ -1695,9 +1698,10 @@ find_timestamp_files(Globals, FindTimestampFiles) :-
 
 find_timestamp_files_2(Globals, TimestampExt,
         ModuleName, TimestampFiles, !IO) :-
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred, TimestampExt,
-        ModuleName, FileName, !IO),
-    TimestampFiles = [FileName].
+        ModuleName, TimestampFileName, _TimestampFileNameProposed, !IO),
+    TimestampFiles = [TimestampFileName].
 
 %---------------------------------------------------------------------------%
 
@@ -2155,8 +2159,8 @@ maybe_write_dependency_graph(ProgressStream, Stats, !HLDS, !IO) :-
         ShowDepGraph = yes,
         dependency_graph_to_string(DepGraphStr, !HLDS),
         module_info_get_name(!.HLDS, ModuleName),
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur(ext_cur_user_depgraph), ModuleName, DepGraphFileName, !IO),
+        module_name_to_cur_dir_file_name(ext_cur_user_depgraph, ModuleName,
+            DepGraphFileName),
         write_string_to_file(ProgressStream, Globals,
             "Writing dependency graph", DepGraphFileName, DepGraphStr,
             _Succeeded, !IO),
@@ -2233,8 +2237,10 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
     % `.used' file is written.
 
     module_info_get_name(!.HLDS, ModuleName),
+    % XXX LEGACY
     module_name_to_file_name(Globals, $pred,
-        ext_cur_ngs_gs(ext_cur_ngs_gs_misc_used), ModuleName, UsageFileName),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_misc_used), ModuleName,
+        UsageFileName, _UsageFileNameProposed),
     io.file.remove_file(UsageFileName, _, !IO),
 
     FrontEndErrors =
@@ -2267,9 +2273,10 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                     Succeeded = did_not_succeed
                 ;
                     TargetCodeSucceeded = succeeded,
+                    % XXX LEGACY
                     module_name_to_file_name(Globals, $pred,
                         ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
-                        ModuleName, JavaFile),
+                        ModuleName, JavaFile, _JavaFileProposed),
                     compile_java_files(Globals, ProgressStream,
                         JavaFile, [], Succeeded, !IO),
                     maybe_set_exit_status(Succeeded, !IO)
@@ -2303,14 +2310,17 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                     ;
                         TargetCodeSucceeded = succeeded,
                         % XXX EXT Why not _create_dirs?
+                        % XXX LEGACY
                         module_name_to_file_name(Globals, $pred,
                             ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
-                            ModuleName, C_File),
+                            ModuleName, C_File, _C_FileProposed),
                         get_linked_target_type(Globals, TargetType),
                         get_object_code_type(Globals, TargetType, PIC),
                         maybe_pic_object_file_extension(PIC, ObjExt, _),
+                        % XXX LEGACY
                         module_name_to_file_name_create_dirs(Globals, $pred,
-                            ext_cur_ngs_gas(ObjExt), ModuleName, O_File, !IO),
+                            ext_cur_ngs_gas(ObjExt), ModuleName,
+                            O_File, _O_FileProposed, !IO),
                         do_compile_c_file(Globals, ProgressStream, PIC,
                             C_File, O_File, Succeeded, !IO),
                         maybe_set_exit_status(Succeeded, !IO)
@@ -2379,8 +2389,10 @@ maybe_output_prof_call_graph(ProgressStream, Stats, !HLDS, !IO) :-
         )
     then
         module_info_get_name(!.HLDS, ModuleName),
+        % XXX LEGACY
         module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur_ngs(ext_cur_ngs_misc_prof), ModuleName, ProfFileName, !IO),
+            ext_cur_ngs(ext_cur_ngs_misc_prof), ModuleName,
+            ProfFileName, _ProfFileNameProposed, !IO),
         prof_dependency_graph_to_string(DepGraphStr, !HLDS),
         write_string_to_file(ProgressStream, Globals,
             "Writing profiling call graph", ProfFileName, DepGraphStr,

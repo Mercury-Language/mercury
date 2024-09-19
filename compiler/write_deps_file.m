@@ -330,8 +330,10 @@ generate_d_file_fragment(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
     BurdenedAugCompUnit = burdened_aug_comp_unit(_, AugCompUnit),
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs(ext_cur_ngs_mf_d), ModuleName, FileNameD, !IO),
+        ext_cur_ngs(ext_cur_ngs_mf_d), ModuleName,
+        FileNameD, _FileNameDProposed, !IO),
 
     construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, AllDeps,
         IntermodDeps, !Cache, !IO),
@@ -651,7 +653,9 @@ get_ext_opt_deps(Globals, LookForSrc, IntermodDirs, Ext,
     ),
     (
         Found = no,
-        module_name_to_search_file_name(Globals, $pred, Ext, Dep, OptName),
+        % XXX LEGACY
+        module_name_to_search_file_name(Globals, $pred, Ext, Dep,
+            OptName, _OptNameProposed),
         search_for_file(IntermodDirs, OptName, MaybeOptDir, !IO),
         (
             MaybeOptDir = ok(_),

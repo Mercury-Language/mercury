@@ -174,8 +174,9 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
         DebugMake = no
     ;
         DebugMake = yes,
-        set.map_fold(dependency_file_to_file_name(Globals),
-            Prereqs, PrereqFileNames, !IO),
+        % XXX LEGACY
+        set.map2_fold(dependency_file_to_file_name(Globals),
+            Prereqs, PrereqFileNames, _PrereqFileNamesProposed, !IO),
         WriteFileName =
             ( pred(FN::in, SIO0::di, SIO::uo) is det :-
                 io.format(ProgressStream, "\t%s\n", [s(FN)], SIO0, SIO)
@@ -188,8 +189,9 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
             ToDelete = []
         ;
             ToDelete = [_ | _],
-            list.map_foldl(dependency_file_to_file_name(Globals),
-                ToDelete, ToDeleteFileNames, !IO),
+            % XXX LEGACY
+            list.map2_foldl(dependency_file_to_file_name(Globals),
+                ToDelete, ToDeleteFileNames, _ToDeleteFileNamesProposed, !IO),
             io.write_string(ProgressStream, "after deleting:\n", !IO),
             list.foldl(WriteFileName, ToDeleteFileNames, !IO)
         ),

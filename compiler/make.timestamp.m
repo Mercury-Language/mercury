@@ -121,8 +121,10 @@ get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
     TargetFile = target_file(ModuleName, TargetType),
     ( if TargetType = module_target_analysis_registry then
         ForSearch = maybe_search_to_maybe_for_search(Search),
+        % XXX LEGACY
         module_target_to_maybe_for_search_file_name(Globals, $pred,
-            ForSearch, TargetType, ModuleName, FileName, !IO),
+            ForSearch, TargetType, ModuleName,
+            FileName, _FileNameProposed, !IO),
         get_target_timestamp_analysis_registry(ProgressStream, Globals,
             Search, TargetFile, FileName, MaybeTimestamp, !Info, !IO)
     else
@@ -144,8 +146,10 @@ get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
             MaybeTimestamp = ok(Timestamp)
         else
             ForSearch = maybe_search_to_maybe_for_search(Search),
+            % XXX LEGACY
             module_maybe_nested_target_file_to_file_name(ProgressStream,
-                Globals, $pred, ForSearch, TargetFile, FileName, !Info, !IO),
+                Globals, $pred, ForSearch, TargetFile,
+                FileName, _FileNameProposed, !Info, !IO),
             get_target_timestamp_uncached(ProgressStream, Globals,
                 Search, TargetFile, FileName, MaybeTimestamp, !Info, !IO),
             (
@@ -172,8 +176,10 @@ get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
 verify_cached_target_file_timestamp(ProgressStream, Globals, Search,
         TargetFile, CachedTimestamp, !Info, !IO) :-
     ForSearch = maybe_search_to_maybe_for_search(Search),
+    % XXX LEGACY
     module_maybe_nested_target_file_to_file_name(ProgressStream,
-        Globals, $pred, ForSearch, TargetFile, FileName, !Info, !IO),
+        Globals, $pred, ForSearch, TargetFile, FileName, _FileNameProposed,
+        !Info, !IO),
     get_target_timestamp_uncached(ProgressStream, Globals,
         Search, TargetFile, FileName, MaybeFileTimestamp, !Info, !IO),
     (

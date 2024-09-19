@@ -888,9 +888,10 @@ make_foreign_import_header_code(Globals, FIMSpec, Include, !IO) :-
     FIMSpec = fim_spec(Lang, ModuleName),
     (
         Lang = lang_c,
+        % XXX LEGACY
         module_name_to_search_file_name(Globals, $pred,
             ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
-            ModuleName, HeaderFileName),
+            ModuleName, HeaderFileName, _HeaderFileNameProposed),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(lang_c, foreign_decl_is_exported,
             floi_literal(IncludeString), dummy_context)
@@ -935,10 +936,13 @@ llds_c_to_obj(Globals, ProgressStream, ModuleName, Succeeded, !IO) :-
     get_object_code_type(Globals, LinkedTargetType, PIC),
     maybe_pic_object_file_extension(PIC, ObjExt, _),
     % XXX Why not _create_dirs?
+    % XXX LEGACY
     module_name_to_file_name(Globals, $pred,
-        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName, C_File),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName,
+        C_File, _C_FileProposed),
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gas(ObjExt), ModuleName, O_File, !IO),
+        ext_cur_ngs_gas(ObjExt), ModuleName,
+        O_File, _O_FileProposed, !IO),
     compile_target_code.do_compile_c_file(Globals, ProgressStream,
         PIC, C_File, O_File, Succeeded, !IO).
 

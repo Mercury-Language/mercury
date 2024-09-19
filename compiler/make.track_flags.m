@@ -141,9 +141,10 @@ make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals,
             !:LastHash = last_hash(AllOptionArgs, Hash)
         ),
 
+    % XXX LEGACY
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs_gs(ext_cur_ngs_gs_misc_track_flags),
-            ModuleName, HashFileName, !IO),
+            ModuleName, HashFileName, _HashFileNameProposed, !IO),
         compare_hash_file(ProgressStream, Globals, HashFileName,
             Hash, Same, !IO),
         (

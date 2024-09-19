@@ -172,8 +172,9 @@ install_ints_and_headers_for_module(ProgressStream, Globals, NgsLibDirMap,
             % ModuleDepInfo ^ contains_foreign_export
             %   = contains_foreign_export?
             ExtMh = ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
+            % XXX LEGACY
             module_name_to_file_name(Globals, $pred, ExtMh,
-                ModuleName, FileName),
+                ModuleName, FileName, _FileNameProposed),
             install_file(ProgressStream, Globals, FileName, LibDir / "inc",
                 !Succeeded, !IO),
 
@@ -427,25 +428,30 @@ install_library_grade_files(ProgressStream, Globals, NgsLibDirMap, GradeDir,
         (
             Target = target_csharp,
             ExtDll = ext_cur_gas(ext_cur_gas_lib_dll),
+            % XXX LEGACY
             module_name_to_file_name_create_dirs(Globals, $pred, ExtDll,
-                MainModuleName, DllFileName, !IO),
+                MainModuleName, DllFileName, _DllFileNameProposed, !IO),
             install_file(ProgressStream, Globals, DllFileName, GradeLibDir,
                 !Succeeded, !IO)
         ;
             Target = target_java,
             ExtJar = ext_cur_gs(ext_cur_gs_lib_jar),
+            % XXX LEGACY
             module_name_to_file_name_create_dirs(Globals, $pred, ExtJar,
-                MainModuleName, JarFileName, !IO),
+                MainModuleName, JarFileName, _JarFileNameProposed, !IO),
             install_file(ProgressStream, Globals, JarFileName, GradeLibDir,
                 !Succeeded, !IO)
         ;
             Target = target_c,
             ExtA =  ext_cur_gas(ext_cur_gas_lib_lib_opt),
             ExtSo = ext_cur_gas(ext_cur_gas_lib_sh_lib_opt),
+            % XXX LEGACY
             module_name_to_lib_file_name_create_dirs(Globals, $pred,
-                "lib", ExtA, MainModuleName, StaticLibFileName, !IO),
+                "lib", ExtA, MainModuleName,
+                StaticLibFileName, _StaticLibFileNameProposed, !IO),
             module_name_to_lib_file_name_create_dirs(Globals, $pred,
-                "lib", ExtSo, MainModuleName, SharedLibFileName, !IO),
+                "lib", ExtSo, MainModuleName,
+                SharedLibFileName, _SharedLibFileNameProposed, !IO),
             maybe_install_static_or_dynamic_archive(ProgressStream,
                 Globals, "static", StaticLibFileName, GradeLibDir,
                 !Succeeded, !IO),
@@ -481,8 +487,9 @@ install_grade_init(ProgressStream, Globals, GradeDir, MainModuleName,
     % to include this s/lib/modules/ version?
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     GradeModulesDir = Prefix / "lib" / "mercury" / "modules" / GradeDir,
+    % XXX LEGACY
     module_name_to_file_name(Globals, $pred, ext_cur_gs(ext_cur_gs_lib_init),
-        MainModuleName, InitFileName),
+        MainModuleName, InitFileName, _InitFileNameProposed),
     install_file(ProgressStream, Globals, InitFileName, GradeModulesDir,
         !Succeeded, !IO).
 
@@ -579,7 +586,9 @@ install_subdir_file(ProgressStream, Globals, LibDirMap, InstallDir,
     % NOTE The calls to install_file will use any directory name components
     % of FileName to *find* the file to install, but the name of the
     % installed file will include *only* the base name of FileName.
-    module_name_to_file_name(Globals, $pred, Ext, ModuleName, FileName),
+    % XXX LEGACY
+    module_name_to_file_name(Globals, $pred, Ext, ModuleName,
+        FileName, _FileNameProposed),
     map.lookup(LibDirMap, ExtDir, InstallTo),
     (
         InstallTo = install_to_cur_only(CurDir),

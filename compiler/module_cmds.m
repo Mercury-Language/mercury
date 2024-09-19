@@ -357,9 +357,10 @@ make_symlink_or_copy_file(Globals, ProgressStream,
 %-----------------------------------------------------------------------------%
 
 touch_module_ext_datestamp(Globals, ProgressStream, ModuleName, Ext,
-    Succeeded, !IO) :-
+        Succeeded, !IO) :-
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred, Ext,
-        ModuleName, FileName, !IO),
+        ModuleName, FileName, _FileNameProposed, !IO),
     touch_file_datestamp(Globals, ProgressStream, FileName, Succeeded, !IO).
 
 touch_file_datestamp(Globals, ProgressStream, FileName, Succeeded, !IO) :-
@@ -397,8 +398,9 @@ maybe_set_exit_status(did_not_succeed, !IO) :-
 
 create_java_shell_script(ProgressStream, Globals, MainModuleName,
         Succeeded, !IO) :-
+    % XXX LEGACY
     module_name_to_file_name(Globals, $pred, ext_cur_gs(ext_cur_gs_lib_jar),
-        MainModuleName, JarFileName),
+        MainModuleName, JarFileName, _JarFileNameProposed),
     get_target_env_type(Globals, TargetEnvType),
     (
         ( TargetEnvType = env_type_posix
@@ -588,7 +590,9 @@ get_mercury_std_libs_for_java(Globals, !:StdLibs) :-
 
 list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
         ListClassFiles, !IO) :-
-    get_java_dir_path(Globals, ext_cur_ngs_gs_java_class, ClassSubDirPath),
+    % XXX LEGACY
+    get_java_dir_path(Globals, ext_cur_ngs_gs_java_class,
+        ClassSubDirPath, _ClassSubDirPathProposed),
     ClassSubDir = dir.relative_path_name_from_components(ClassSubDirPath),
 
     list.filter_map(make_nested_class_prefix, MainClassFiles,
@@ -625,7 +629,9 @@ list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,
     ).
 
 list_class_files_for_jar_mmake(Globals, ClassFiles, ListClassFiles) :-
-    get_java_dir_path(Globals, ext_cur_ngs_gs_java_class, ClassSubDirPath),
+    % XXX LEGACY
+    get_java_dir_path(Globals, ext_cur_ngs_gs_java_class,
+        ClassSubDirPath, _ClassSubDirPathProposed),
     (
         ClassSubDirPath = [],
         ListClassFiles = ClassFiles
@@ -733,8 +739,9 @@ get_env_classpath(Classpath, !IO) :-
 create_launcher_shell_script(ProgressStream, Globals, MainModuleName, Pred,
         Succeeded, !IO) :-
     Ext = ext_cur_gas(ext_cur_gas_exec_noext),
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred, Ext,
-        MainModuleName, LauncherFileName, !IO),
+        MainModuleName, LauncherFileName, _LauncherFileNameProposed, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(ProgressStream, Verbose,
@@ -773,8 +780,10 @@ create_launcher_shell_script(ProgressStream, Globals, MainModuleName, Pred,
 
 create_launcher_batch_file(ProgressStream, Globals, MainModuleName, Pred,
         Succeeded, !IO) :-
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_gas(ext_cur_gas_exec_bat), MainModuleName, FileName, !IO),
+        ext_cur_gas(ext_cur_gas_exec_bat), MainModuleName,
+        FileName, _FileNameProposed, !IO),
 
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(ProgressStream, Verbose,

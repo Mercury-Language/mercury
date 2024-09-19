@@ -199,8 +199,9 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
     % target type/compilation task pairs are those that occur in the
     % predicate that does that computation, get_compilation_task_and_options.
     TargetFile = target_file(ModuleName, TargetType),
+    % XXX LEGACY
     module_target_file_to_file_name(Globals, $pred,
-        TargetFile, TargetFileName, !IO),
+        TargetFile, TargetFileName, _TargetFileNameProposed, !IO),
     CompilationTaskAndOptions = task_and_options(CompilationTaskType, _),
     find_lhs_files_of_task(ProgressStream, Globals, TargetFile,
         CompilationTaskType, MakeLhsFiles, !Info, !IO),
@@ -494,16 +495,18 @@ build_object_code(ProgressStream, ErrorStream, Globals, Target, PIC,
             Succeeded, !IO)
     ;
         Target = target_java,
+        % XXX LEGACY
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
-            ModuleName, JavaFile, !IO),
+            ModuleName, JavaFile, _JavaFileProposed, !IO),
         compile_java_files(Globals, ProgressStream, JavaFile, [],
             Succeeded, !IO)
     ;
         Target = target_csharp,
+        % XXX LEGACY
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs),
-            ModuleName, CsharpFile, !IO),
+            ModuleName, CsharpFile, _CsharpFileProposed, !IO),
         compile_target_code.link(Globals, ProgressStream, csharp_library,
             ModuleName, [CsharpFile], Specs, Succeeded, !IO),
         % XXX MAKE This predicate, build_object_code, is invoked only as the
@@ -723,14 +726,17 @@ record_made_target_given_make_lhs_files(ProgressStream, Globals,
     list.foldl(update_target_status(TargetStatus),
         DatedLhsTargetFiles, !Info),
 
-    list.map_foldl2(
+    % XXX LEGACY
+    list.map2_foldl2(
         module_maybe_nested_target_file_to_file_name(ProgressStream, Globals,
             $pred, not_for_search),
-        DatelessLhsTargetFiles, DatelessLhsFileNames, !Info, !IO),
-    list.map_foldl2(
+        DatelessLhsTargetFiles,
+        DatelessLhsFileNames, _DatelessLhsFileNamesProposed, !Info, !IO),
+    list.map2_foldl2(
         module_maybe_nested_target_file_to_file_name(ProgressStream, Globals,
             $pred, not_for_search),
-        DatedLhsTargetFiles, DatedLhsFileNames, !Info, !IO),
+        DatedLhsTargetFiles,
+        DatedLhsFileNames, _DatedLhsFileNamesProposed, !Info, !IO),
 
     some [!FileTimestampMap] (
         !:FileTimestampMap = make_info_get_file_timestamp_map(!.Info),
@@ -895,9 +901,11 @@ find_lhs_files_of_task(ProgressStream, Globals, TargetFile, Task, MakeLhsFiles,
     ;
         Task = fact_table_code_to_object_code(PIC, FactTableName),
         get_object_extension(Globals, PIC, ObjExt),
+        % XXX LEGACY
         fact_table_file_name_return_dirs(Globals, $pred,
             ext_cur_ngs_gas(ObjExt), FactTableName,
-            FactTableDirs, FactTableObjectFileName),
+            FactTableDirs, _FactTableDirsProposed,
+            FactTableObjectFileName, _FactTableObjectFileNameProposed),
         create_any_dirs_on_path(FactTableDirs, !IO),
         % Fact table object files (.o or .pic_o) don't have date files.
         % XXX MAKE double inclusion in first and last fields
@@ -1035,8 +1043,9 @@ split_dateless_dated_target_files(Globals,
     LhsTargetFile = target_file(ModuleName, TargetType),
     ( if date_file_extension(TargetType, DateFileExt) then
         !:DatedLhsTargetFiles = [LhsTargetFile | !.DatedLhsTargetFiles],
+        % XXX LEGACY
         module_name_to_file_name(Globals, $pred, DateFileExt,
-            ModuleName, LhsDateFileName),
+            ModuleName, LhsDateFileName, _LhsDateFileNamePropoposed),
         !:LhsDateFileNames = [LhsDateFileName | !.LhsDateFileNames]
     else
         !:DatelessLhsTargetFiles = [LhsTargetFile | !.DatelessLhsTargetFiles]
@@ -1077,12 +1086,16 @@ get_any_fact_table_object_code_files(Globals, PIC, ModuleDepInfo,
 get_fact_table_foreign_code_file(Globals, Mkdir, ObjExt,
         FactTableFileName, ForeignCodeFile, !IO) :-
     % XXX EXT Neither of these calls should be needed.
+    % XXX LEGACY
     fact_table_file_name_return_dirs(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), FactTableFileName,
-        FactTableDirsC, FactTableCFileName),
+        FactTableDirsC, _FactTableDirsCProposed,
+        FactTableCFileName, _FactTableCFileNameProposed),
     maybe_create_any_dirs_on_path(Mkdir, FactTableDirsC, !IO),
+    % XXX LEGACY
     fact_table_file_name_return_dirs(Globals, $pred, ObjExt, FactTableFileName,
-        FactTableDirsO, FactTableObjFileName),
+        FactTableDirsO, _FactTableDirsOProposed,
+        FactTableObjFileName, _FactTableObjFileNameProposed),
     maybe_create_any_dirs_on_path(Mkdir, FactTableDirsO, !IO),
     ForeignCodeFile =
         foreign_code_file(lang_c, FactTableCFileName, FactTableObjFileName).

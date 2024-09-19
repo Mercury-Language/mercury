@@ -635,10 +635,11 @@ report_file_not_written(Globals, PrefixPieces, ModuleName,
     % We use write_error_spec to print the message the interface file or
     % files not being written in order to wrap the message if it is
     % longer than the line length.
+    % XXX LEGACY
     module_name_to_file_name(Globals, $pred,
-        ExtA, ModuleName, IntAFileName),
+        ExtA, ModuleName, IntAFileName, _IntAFileNameProposed),
     module_name_to_file_name(Globals, $pred,
-        ExtDate, ModuleName, DateFileName),
+        ExtDate, ModuleName, DateFileName, _DateFileNameProposed),
     StdIntAFileName = standardize_filename_if_asked(Globals, IntAFileName),
     (
         MaybeExtB = no,
@@ -646,8 +647,9 @@ report_file_not_written(Globals, PrefixPieces, ModuleName,
         ToRemoveFileNames = [IntAFileName, DateFileName]
     ;
         MaybeExtB = yes(ExtB),
+        % XXX LEGACY
         module_name_to_file_name(Globals, $pred,
-            ExtB, ModuleName, IntBFileName),
+            ExtB, ModuleName, IntBFileName, _IntBFileNameProposed),
         StdIntBFileName = standardize_filename_if_asked(Globals, IntBFileName),
         NotWrittenPieces = [quote(StdIntAFileName), words("and"),
             quote(StdIntBFileName), words("not written."), nl],

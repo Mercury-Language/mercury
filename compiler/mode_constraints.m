@@ -199,13 +199,11 @@ mc_process_module(ProgressStream, !ModuleInfo, !IO) :-
 
 dump_abstract_constraints(ModuleInfo, ConstraintVarSet, ModeConstraints,
         !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur(ext_cur_user_mode_constr), ModuleName, FileName, !IO),
-    OutputFile = FileName,
+    module_name_to_cur_dir_file_name(ext_cur_user_mode_constr, ModuleName,
+        FileName),
 
-    io.open_output(OutputFile, OpenResult, !IO),
+    io.open_output(FileName, OpenResult, !IO),
     (
         OpenResult = ok(FileStream),
         pretty_print_pred_constraints_map(FileStream, ModuleInfo,

@@ -121,11 +121,12 @@ make_main_module_realclean(ProgressStream, Globals, ModuleName, !Info, !IO) :-
         LinkedTargetTypes, FileNames, CurDirFileNames, !IO),
     % Remove the symlinks created for `--use-grade-subdirs'.
     % XXX This symlink should not be necessary anymore for `mmc --make'.
+    % XXX LEGACY
     module_name_to_file_name_full_curdir(Globals, $pred,
         ext_cur_gs(ext_cur_gs_lib_init), ModuleName,
-        FullInitFileName, CurDirInitFileName),
+        FullInitFileNameLegacy, FullInitFileNameProposed, CurDirInitFileName),
     FilesToRemove = FileNames ++ CurDirFileNames ++
-        [FullInitFileName, CurDirInitFileName],
+        [FullInitFileNameLegacy, FullInitFileNameProposed, CurDirInitFileName],
     list.foldl2(remove_file_for_make(ProgressStream, Globals, very_verbose),
         FilesToRemove, !Info, !IO),
     remove_init_files(ProgressStream, Globals, very_verbose, ModuleName,
@@ -212,11 +213,15 @@ make_module_realclean(ProgressStream, Globals, ModuleName, !Info, !IO) :-
     string::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
 remove_fact_table_c_file(ProgressStream, Globals, FactTableFile, !Info, !IO) :-
+    % XXX LEGACY
     fact_table_file_name_return_dirs(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
-        FactTableFile, _FactTableDirs, FactTableCFile),
+        FactTableFile, _FactTableDirsLegacy, _FactTableDirsProposed,
+        FactTableCFileLegacy, FactTableCFileProposed),
     remove_file_for_make(ProgressStream, Globals, very_verbose,
-        FactTableCFile, !Info, !IO).
+        FactTableCFileLegacy, !Info, !IO),
+    remove_file_for_make(ProgressStream, Globals, very_verbose,
+        FactTableCFileProposed, !Info, !IO).
 
 :- pred remove_object_and_assembler_files(io.text_output_stream::in,
     globals::in, module_name::in, pic::in, list(file_name)::in,

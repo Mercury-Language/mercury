@@ -763,6 +763,10 @@ Changes to the Mercury standard library
 
 ### Changes to the `set` module
 
+* The following predicate has been added:
+
+    - pred `map2_fold/6`
+
 * The following obsolete predicates and function have been removed:
 
     - pred `empty/1`

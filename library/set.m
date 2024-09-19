@@ -348,12 +348,12 @@
 :- mode map(in(pred(in, out) is multi), in, out) is multi.
 :- mode map(in(pred(in, out) is nondet), in, out) is nondet.
 
-    % map_fold(P, S0, S, A0, A) :-
-    %   L0 = to_sorted_list(S0),
-    %   list.map_foldl(P, L0, L, A0, A),
-    %   S = list_to_set(L).
+    % map_fold(P, S, T, !A) :-
+    %   SL = to_sorted_list(S),
+    %   list.map_foldl(P, SL, TL, !A),
+    %   T = list_to_set(TL).
     %
-:- pred map_fold(pred(T1, T2, T3, T3), set(T1), set(T2), T3, T3).
+:- pred map_fold(pred(S, T, A, A), set(S), set(T), A, A).
 :- mode map_fold(in(pred(in, out, in, out) is det), in, out, in, out) is det.
 :- mode map_fold(in(pred(in, out, mdi, muo) is det), in, out, mdi, muo) is det.
 :- mode map_fold(in(pred(in, out, di, uo) is det), in, out, di, uo) is det.
@@ -362,6 +362,26 @@
 :- mode map_fold(in(pred(in, out, mdi, muo) is semidet), in, out,
     mdi, muo) is semidet.
 :- mode map_fold(in(pred(in, out, di, uo) is semidet), in, out,
+    di, uo) is semidet.
+
+    % map2_fold(P, S, UT, !A) :-
+    %   SL = to_sorted_list(S),
+    %   list.map2_foldl(P, SL, TL, UL, !A),
+    %   T = list_to_set(TL),
+    %   U = list_to_set(UL).
+    %
+:- pred map2_fold(pred(S, T, U, A, A), set(S), set(T), set(U), A, A).
+:- mode map2_fold(in(pred(in, out, out, in, out) is det), in, out, out,
+    in, out) is det.
+:- mode map2_fold(in(pred(in, out, out, mdi, muo) is det), in, out, out,
+    mdi, muo) is det.
+:- mode map2_fold(in(pred(in, out, out, di, uo) is det), in, out, out,
+    di, uo) is det.
+:- mode map2_fold(in(pred(in, out, out, in, out) is semidet), in, out, out,
+    in, out) is semidet.
+:- mode map2_fold(in(pred(in, out, out, mdi, muo) is semidet), in, out, out,
+    mdi, muo) is semidet.
+:- mode map2_fold(in(pred(in, out, out, di, uo) is semidet), in, out, out,
     di, uo) is semidet.
 
     % fold(F, S, A) =
@@ -826,10 +846,16 @@ map(P, S1, S2) :-
     list.map(P, L1, L2),
     set.list_to_set(L2, S2).
 
-map_fold(P, S0, S, A0, A) :-
-    L0 = set.to_sorted_list(S0),
-    list.map_foldl(P, L0, L, A0, A),
-    S = set.list_to_set(L).
+map_fold(P, S, T, !A) :-
+    SL = set.to_sorted_list(S),
+    list.map_foldl(P, SL, TL, !A),
+    T = set.list_to_set(TL).
+
+map2_fold(P, S, T, U, !A) :-
+    SL = set.to_sorted_list(S),
+    list.map2_foldl(P, SL, TL, UL, !A),
+    T = set.list_to_set(TL),
+    U = set.list_to_set(UL).
 
 fold(F, S, A) =
     set.foldl(F, S, A).

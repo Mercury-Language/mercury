@@ -647,9 +647,10 @@ produce_header_file(ProgressStream, ModuleInfo, ForeignExportDecls,
     % enabled, the .o file depends on all the .mh files of the imported
     % modules. So we need to produce a .mh file even if it contains nothing.
     module_info_get_globals(ModuleInfo, Globals),
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh), ModuleName, FileName,
-        !IO),
+        ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh), ModuleName,
+        FileName, _FileNameProposed, !IO),
     MaybeThisFileName = yes(FileName),
     TmpFileName = FileName ++ ".tmp",
     io.open_output(TmpFileName, Result, !IO),

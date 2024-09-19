@@ -145,7 +145,9 @@ make_module_file_name(Globals, From, Ext, ModuleName, FileName, !Cache, !IO) :-
             ] (
                 record_cache_miss(Ext, !TIO)
             ),
-            module_name_to_file_name(Globals, From, Ext, ModuleName, FileName),
+            % XXX LEGACY
+            module_name_to_file_name(Globals, From, Ext, ModuleName,
+                FileName, _FileNameProposed),
             map.det_insert(ModuleName, FileName, ExtMap0, ExtMap),
             map.det_update(Ext, ExtMap, !Cache)
         )
@@ -157,7 +159,9 @@ make_module_file_name(Globals, From, Ext, ModuleName, FileName, !Cache, !IO) :-
         ] (
             record_cache_miss(Ext, !TIO)
         ),
-        module_name_to_file_name(Globals, From, Ext, ModuleName, FileName),
+        % XXX LEGACY
+        module_name_to_file_name(Globals, From, Ext, ModuleName,
+            FileName, _FileNameProposed),
         ExtMap = map.singleton(ModuleName, FileName),
         map.det_insert(Ext, ExtMap, !Cache)
     ).

@@ -93,10 +93,9 @@
 %-----------------------------------------------------------------------------%
 
 xml_documentation(ProgressStream, ModuleInfo, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur(ext_cur_user_xml), ModuleName, FileName, !IO),
+    module_name_to_cur_dir_file_name(ext_cur_user_xml, ModuleName,
+        XmlFileName),
 
     lookup_module_source_file(ModuleName, MaybeSrcFileName, !IO),
     (
@@ -110,15 +109,16 @@ xml_documentation(ProgressStream, ModuleInfo, !IO) :-
             % and get the comment from there.
             ModuleComment = get_comment_forwards(Comments, 1),
 
-            io.open_output(FileName, OpenResult, !IO),
+            io.open_output(XmlFileName, XmlOpenResult, !IO),
             (
-                OpenResult = ok(Stream),
+                XmlOpenResult = ok(XmlStream),
                 MIXmlDoc = module_info_xml_doc(Comments, ModuleComment,
                     ModuleInfo),
-                write_xml_doc(Stream, MIXmlDoc, !IO)
+                write_xml_doc(XmlStream, MIXmlDoc, !IO)
             ;
-                OpenResult = error(Err),
-                report_unable_to_open_file(ProgressStream, FileName, Err, !IO)
+                XmlOpenResult = error(Err),
+                report_unable_to_open_file(ProgressStream, XmlFileName,
+                    Err, !IO)
             )
         ;
             SrcResult = error(SrcErr),

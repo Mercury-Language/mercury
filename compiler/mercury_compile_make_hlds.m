@@ -389,29 +389,31 @@ maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
     (
         TransOpt = yes,
         globals.lookup_bool_option(Globals, verbose, Verbose),
-        module_name_to_file_name(Globals, $pred,
-            ext_cur_ngs(ext_cur_ngs_mf_d), ModuleName, DependencyFileName),
+        % XXX LEGACY
+        module_name_to_file_name(Globals, $pred, ext_cur_ngs(ext_cur_ngs_mf_d),
+            ModuleName, DFileName, _DFileNameProposed),
         (
             Verbose = yes,
             io.format(ProgressStream,
                 "%% Reading auto-dependency file `%s'...",
-                [s(DependencyFileName)], !IO)
+                [s(DFileName)], !IO)
         ;
             Verbose = no
         ),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        io.open_input(DependencyFileName, DepFileOpenResult, !IO),
+        io.open_input(DFileName, DFileOpenResult, !IO),
         (
-            DepFileOpenResult = ok(DepFileInStream),
+            DFileOpenResult = ok(DFileInStream),
+            % XXX LEGACY
             module_name_to_file_name(Globals, $pred,
-                ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_trans),
-                ModuleName, TransOptDateFileName),
+                ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_trans), ModuleName,
+                TransOptDateFileName, _TransOptDateFileNameProposed),
             SearchPattern = TransOptDateFileName ++ " :",
-            read_dependency_file_find_start(DepFileInStream, SearchPattern,
+            read_dependency_file_find_start(DFileInStream, SearchPattern,
                 FindResult, !IO),
             (
                 FindResult = yes,
-                read_dependency_file_get_modules(DepFileInStream,
+                read_dependency_file_get_modules(DFileInStream,
                     TransOptDeps, !IO),
                 MaybeDFileTransOptDeps = yes(TransOptDeps)
             ;
@@ -419,15 +421,15 @@ maybe_read_d_file_for_trans_opt_deps(ProgressStream, ErrorStream, Globals,
                 % error reading .d file
                 MaybeDFileTransOptDeps = no
             ),
-            io.close_input(DepFileInStream, !IO),
+            io.close_input(DFileInStream, !IO),
             maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
         ;
-            DepFileOpenResult = error(IOError),
+            DFileOpenResult = error(IOError),
             maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
             maybe_flush_output(ProgressStream, Verbose, !IO),
             io.error_message(IOError, IOErrorMessage),
             string.format("error opening file `%s for input: %s",
-                [s(DependencyFileName), s(IOErrorMessage)], Message),
+                [s(DFileName), s(IOErrorMessage)], Message),
             report_error(ErrorStream, Message, !IO),
             MaybeDFileTransOptDeps = no
         )
@@ -623,17 +625,8 @@ make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet, MQInfo,
         "% Converting parse tree to hlds...\n", !IO),
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    module_name_to_file_name_return_dirs(Globals, $pred,
-        ext_cur(ext_cur_user_hlds_dump), ModuleName, DumpDirs,
-        DumpBaseFileName),
-    % XXX An algorithm that delayed creating DumpDirs until the actual
-    % creation of the first HLDS dump would be more efficient in the usual case
-    % where the command line arguments don't call for any HLDS dumps,
-    % since we wouldn't have to create any directories at all.
-    % On the other hand, most of the time, if you want a HLDS dump,
-    % you are a developer who is running the compiler in a debug grade,
-    % so the extra cost will be lost in the noise.
-    create_any_dirs_on_path(DumpDirs, !IO),
+    module_name_to_cur_dir_file_name(ext_cur_user_hlds_dump,
+        ModuleName, DumpBaseFileName),
     parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
         MQInfo, TypeEqvMap, UsedModules, QualInfo,
         FoundInvalidType, FoundInvalidInstOrMode, !:HLDS, MakeSpecs),
@@ -671,16 +664,16 @@ maybe_write_definitions(ProgressStream, ErrorStream, Verbose, Stats,
         maybe_write_string(ProgressStream, Verbose,
             "% Writing definitions...", !IO),
         module_info_get_name(HLDS, ModuleName),
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur(ext_cur_user_defns), ModuleName, FileName, !IO),
-        io.open_output(FileName, Res, !IO),
+        module_name_to_cur_dir_file_name(ext_cur_user_defns,
+            ModuleName, DefnsFileName),
+        io.open_output(DefnsFileName, DefnsFileNameOpenResult, !IO),
         (
-            Res = ok(FileStream),
-            hlds.hlds_defns.write_hlds_defns(FileStream, HLDS, !IO),
-            io.close_output(FileStream, !IO),
+            DefnsFileNameOpenResult = ok(DefnsFileStream),
+            write_hlds_defns(DefnsFileStream, HLDS, !IO),
+            io.close_output(DefnsFileStream, !IO),
             maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
         ;
-            Res = error(IOError),
+            DefnsFileNameOpenResult = error(IOError),
             ErrorMsg = "unable to write definitions: " ++
                 io.error_message(IOError),
             report_error(ErrorStream, ErrorMsg, !IO)
@@ -704,16 +697,16 @@ maybe_write_definition_line_counts(ProgressStream, ErrorStream, Verbose, Stats,
         maybe_write_string(ProgressStream, Verbose,
             "% Writing definition line counts...", !IO),
         module_info_get_name(HLDS, ModuleName),
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur(ext_cur_user_defn_lc), ModuleName, FileName, !IO),
-        io.open_output(FileName, Res, !IO),
+        module_name_to_cur_dir_file_name(ext_cur_user_defn_lc,
+            ModuleName, LcFileName),
+        io.open_output(LcFileName, LcFileNameOpenResult, !IO),
         (
-            Res = ok(FileStream),
-            hlds.hlds_defns.write_hlds_defn_line_counts(FileStream, HLDS, !IO),
-            io.close_output(FileStream, !IO),
+            LcFileNameOpenResult = ok(LcFileStream),
+            write_hlds_defn_line_counts(LcFileStream, HLDS, !IO),
+            io.close_output(LcFileStream, !IO),
             maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
         ;
-            Res = error(IOError),
+            LcFileNameOpenResult = error(IOError),
             ErrorMsg = "unable to write definition line counts: " ++
                 io.error_message(IOError),
             report_error(ErrorStream, ErrorMsg, !IO)
@@ -736,16 +729,16 @@ maybe_write_definition_extents(ProgressStream, ErrorStream, Verbose, Stats,
         maybe_write_string(ProgressStream, Verbose,
             "% Writing definition extents...", !IO),
         module_info_get_name(HLDS, ModuleName),
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur(ext_cur_user_defn_ext), ModuleName, FileName, !IO),
-        io.open_output(FileName, Res, !IO),
+        module_name_to_cur_dir_file_name(ext_cur_user_defn_ext, ModuleName,
+            DefnFileName),
+        io.open_output(DefnFileName, DefnFileNameOpenResult, !IO),
         (
-            Res = ok(FileStream),
-            hlds.hlds_defns.write_hlds_defn_extents(FileStream, HLDS, !IO),
-            io.close_output(FileStream, !IO),
+            DefnFileNameOpenResult = ok(DefnFileStream),
+            write_hlds_defn_extents(DefnFileStream, HLDS, !IO),
+            io.close_output(DefnFileStream, !IO),
             maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
         ;
-            Res = error(IOError),
+            DefnFileNameOpenResult = error(IOError),
             ErrorMsg = "unable to write definition extents: " ++
                 io.error_message(IOError),
             report_error(ErrorStream, ErrorMsg, !IO)

@@ -132,9 +132,10 @@ output_c_mlds(ProgressStream, MLDS, Globals, TargetOrDump, Suffix,
 output_c_file_opts(ProgressStream, MLDS, Opts, Suffix, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
-        ModuleName, SourceFileName0, !IO),
+        ModuleName, SourceFileName0, _SourceFileNameProposed0, !IO),
     SourceFileName = SourceFileName0 ++ Suffix,
     Indent = 0u,
     output_to_file_stream(ProgressStream, Globals, SourceFileName,
@@ -152,9 +153,10 @@ output_c_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
     % changed.
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih),
-        ModuleName, MihFileName, !IO),
+        ModuleName, MihFileName, _MihFileNameProposed, !IO),
     HeaderFileName = MihFileName ++ Suffix,
     TmpHeaderFileName = HeaderFileName ++ ".tmp",
     globals.lookup_bool_option(Globals, line_numbers_for_c_headers,
@@ -180,8 +182,8 @@ output_c_dump_preds(ProgressStream, MLDS, Globals, TargetOrDump, Suffix,
     ModuleName = mlds_get_module_name(MLDS),
     module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
     Opts = init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump),
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur(ext_cur_user_mlds_dump), ModuleName, DumpBaseName, !IO),
+    module_name_to_cur_dir_file_name(ext_cur_user_mlds_dump, ModuleName,
+        DumpBaseName),
     DumpFileName = DumpBaseName ++ Suffix,
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     ProcDefns = MLDS ^ mlds_proc_defns,
@@ -332,9 +334,10 @@ mlds_output_src_import(Opts, Stream, _Indent, Import, !IO) :-
     ),
 
     Globals = Opts ^ m2co_all_globals,
+    % XXX LEGACY
     module_name_to_search_file_name(Globals, $pred,
-        HeaderExt, ModuleName, HeaderFile),
-    io.format(Stream, "#include \"%s\"\n", [s(HeaderFile)], !IO).
+        HeaderExt, ModuleName, HeaderFileName, _HeaderFileNameProposed),
+    io.format(Stream, "#include \"%s\"\n", [s(HeaderFileName)], !IO).
 
     % Generate the `.c' file.
     %

@@ -1276,14 +1276,17 @@ generate_dv_file_define_c_vars(Globals, DepsMap, Modules, ModuleMakeVarName,
             [s(ModuleMakeVarName)])),
 
     get_fact_table_file_names(DepsMap, Modules, FactTableFileNames),
-    list.map(
+    % XXX LEGACY
+    list.map2(
         fact_table_file_name(Globals, $pred,
             ext_cur_ngs_gas(ext_cur_ngs_gas_obj_dollar_o)),
-        FactTableFileNames, FactTableFileNamesOs),
-    list.map(
+        FactTableFileNames,
+        FactTableFileNamesOs, _FactTableFileNamesOsProposed),
+    list.map2(
         fact_table_file_name(Globals, $pred,
             ext_cur_ngs_gas(ext_cur_ngs_gas_obj_dollar_efpo)),
-        FactTableFileNames, FactTableFileNamesPicOs),
+        FactTableFileNames,
+        FactTableFileNamesPicOs, _FactTableFileNamesPicOsProposed),
 
     MmakeVarAllOs = mmake_var_defn_list(ModuleMakeVarName ++ ".all_os",
         [string.format("$(%s.mods:%%=$(os_subdir)%%.$O)",
@@ -1312,12 +1315,15 @@ generate_dv_file_define_c_vars(Globals, DepsMap, Modules, ModuleMakeVarName,
             ForeignModulesFileNames),
 
     MakeFileName =
-        ( pred({M, NE}::in, F::out, IO0::di, IO::uo) is det :-
+        ( pred({M, NE}::in, F::out, FP::out, IO0::di, IO::uo) is det :-
+            % XXX LEGACY
             module_name_to_file_name_create_dirs(Globals, $pred, NE,
-                M, F0, IO0, IO),
-            F = "$(os_subdir)" ++ F0
+                M, F0, FP0, IO0, IO),
+            F = "$(os_subdir)" ++ F0,
+            FP = "$(os_subdir)" ++ FP0
         ),
-    list.map_foldl(MakeFileName, ForeignModulesAndExts, ForeignFileNames, !IO),
+    list.map2_foldl(MakeFileName, ForeignModulesAndExts,
+        ForeignFileNames, _ForeignFileNamesProposed, !IO),
 
     % .foreign_cs are the source files which have had foreign code placed
     % in them.
@@ -1532,16 +1538,19 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
 
     module_name_to_make_var_name(ModuleName, ModuleMakeVarName),
 
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_gs(ext_cur_gs_lib_init), ModuleName, InitFileName, !IO),
+        ext_cur_gs(ext_cur_gs_lib_init), ModuleName,
+        InitFileName, _InitFileNameProposed, !IO),
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gs(ext_cur_ngs_gs_init_c), ModuleName, InitCFileName, !IO),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_init_c), ModuleName,
+        InitCFileName, _InitCFileNameProposed, !IO),
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gas(ext_cur_ngs_gas_init_obj_dollar_o),
-        ModuleName, InitObjFileName, !IO),
+        ext_cur_ngs_gas(ext_cur_ngs_gas_init_obj_dollar_o), ModuleName,
+        InitObjFileName, _InitObjFileNameProposed, !IO),
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gas(ext_cur_ngs_gas_init_obj_pic_o),
-        ModuleName, InitPicObjFileName, !IO),
+        ext_cur_ngs_gas(ext_cur_ngs_gas_init_obj_pic_o), ModuleName,
+        InitPicObjFileName, _InitPicObjFileNameProposed, !IO),
 
     globals.lookup_bool_option(Globals, generate_mmc_make_module_dependencies,
         MmcMakeDeps),
@@ -1586,7 +1595,7 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
     generate_dep_file_exec_library_targets(Globals, ModuleName,
         ModuleMakeVarName, InitFileName, InitObjFileName,
         MaybeOptsVar, MaybeTransOptsVar,
-        ExeFileName, JarFileName, LibFileName, SharedLibFileName,
+        ExeFileName, JarFileName, StaticLibFileName, SharedLibFileName,
         !MmakeFile, !IO),
     generate_dep_file_init_targets(Globals, ModuleName, ModuleMakeVarName,
         InitCFileName, InitFileName, DepFileName, DvFileName, !MmakeFile),
@@ -1598,7 +1607,7 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
         !MmakeFile),
     generate_dep_file_clean_targets(ModuleName, ModuleMakeVarName,
         ExeFileName, InitCFileName, InitObjFileName, InitPicObjFileName,
-        InitFileName, LibFileName, SharedLibFileName, JarFileName,
+        InitFileName, StaticLibFileName, SharedLibFileName, JarFileName,
         DepFileName, DvFileName, !MmakeFile).
 
 :- pred generate_dep_file_exec_library_targets(globals::in,
@@ -1610,10 +1619,12 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
 generate_dep_file_exec_library_targets(Globals, ModuleName,
         ModuleMakeVarName, InitFileName, InitObjFileName,
         MaybeOptsVar, MaybeTransOptsVar,
-        ExeFileName, JarFileName, LibFileName, SharedLibFileName,
+        ExeFileName, JarFileName, StaticLibFileName, SharedLibFileName,
         !MmakeFile, !IO) :-
+    % XXX LEGACY
     module_name_to_file_name(Globals, $pred,
-        ext_cur_gas(ext_cur_gas_exec_noext), ModuleName, ExeFileName),
+        ext_cur_gas(ext_cur_gas_exec_noext), ModuleName,
+        ExeFileName, _ExeFileNameProposed),
     MmakeRuleExtForExe = mmake_simple_rule("ext_for_exe",
         mmake_rule_is_phony,
         ExeFileName,
@@ -1671,13 +1682,16 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
 
     LibTargetName = "lib" ++ sym_name_to_string(ModuleName),
     % XXX Doing _create_dirs for a $A seems strange.
+    % XXX LEGACY
     module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
-        ext_cur_gas(ext_cur_gas_lib_dollar_a), ModuleName, LibFileName, !IO),
+        ext_cur_gas(ext_cur_gas_lib_dollar_a), ModuleName,
+        StaticLibFileName, _StaticLibFileNameProposed, !IO),
     module_name_to_lib_file_name_create_dirs(Globals, $pred, "lib",
-        ext_cur_gas(ext_cur_gas_lib_dollar_efsl),
-        ModuleName, SharedLibFileName, !IO),
+        ext_cur_gas(ext_cur_gas_lib_dollar_efsl), ModuleName,
+        SharedLibFileName, _SharedLibFileNameProposed, !IO),
     module_name_to_file_name(Globals, $pred,
-        ext_cur_gs(ext_cur_gs_lib_jar), ModuleName, JarFileName),
+        ext_cur_gs(ext_cur_gs_lib_jar), ModuleName,
+        JarFileName, _JarFileNameProposed),
 
     % Set up the installed name for shared libraries.
 
@@ -1703,7 +1717,7 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
     MmakeRuleLibTargetNonJava = mmake_simple_rule("lib_target_non_java",
         mmake_rule_is_phony,
         LibTargetName,
-        [LibFileName, SharedLibFileName | IntsOptsInitVars],
+        [StaticLibFileName, SharedLibFileName | IntsOptsInitVars],
         []),
     MmakeFragmentLibTarget = mmf_conditional_entry(
         mmake_cond_grade_has_component("java"),
@@ -1725,15 +1739,15 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
         mmake_cond_strings_not_equal("$(EXT_FOR_SHARED_LIB)", "$(A)"),
         [mmf_entry(MmakeRuleSharedLib)], []),
 
-    LibAction1 = "rm -f " ++ LibFileName,
+    LibAction1 = "rm -f " ++ StaticLibFileName,
     LibAction2Line1 =
-        "$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)" ++ LibFileName ++
+        "$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)" ++ StaticLibFileName ++
             " " ++ ModuleMakeVarNameOs ++ " \\",
     LibAction2Line2 = "\t" ++ All_MLObjs,
-    LibAction3 = "$(RANLIB) $(ALL_RANLIBFLAGS) " ++ LibFileName,
+    LibAction3 = "$(RANLIB) $(ALL_RANLIBFLAGS) " ++ StaticLibFileName,
     MmakeRuleLib = mmake_simple_rule("lib",
         mmake_rule_is_not_phony,
-        LibFileName,
+        StaticLibFileName,
         [ModuleMakeVarNameOs, All_MLObjs],
         [LibAction1, LibAction2Line1, LibAction2Line2, LibAction3]),
 
@@ -1759,10 +1773,13 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
 
 generate_dep_file_init_targets(Globals, ModuleName, ModuleMakeVarName,
         InitCFileName, InitFileName, DepFileName, DvFileName, !MmakeFile) :-
+    % XXX LEGACY
     module_name_to_file_name(Globals, $pred,
-        ext_cur_ngs(ext_cur_ngs_mf_dep), ModuleName, DepFileName),
+        ext_cur_ngs(ext_cur_ngs_mf_dep), ModuleName,
+        DepFileName, _DepFileNameProposed),
     module_name_to_file_name(Globals, $pred,
-        ext_cur_ngs(ext_cur_ngs_mf_dv), ModuleName, DvFileName),
+        ext_cur_ngs(ext_cur_ngs_mf_dv), ModuleName,
+        DvFileName, _DvFileNameProposed),
 
     ModuleMakeVarNameCs = "$(" ++ ModuleMakeVarName ++ ".all_cs)",
     InitAction1 = "echo > " ++ InitFileName,
@@ -2074,7 +2091,7 @@ generate_dep_file_collective_target(ModuleNameStr, ModuleMakeVarName,
 
 generate_dep_file_clean_targets(ModuleName, ModuleMakeVarName,
         ExeFileName, InitCFileName, InitObjFileName, InitPicObjFileName,
-        InitFileName, LibFileName, SharedLibFileName, JarFileName,
+        InitFileName, StaticLibFileName, SharedLibFileName, JarFileName,
         DepFileName, DvFileName, !MmakeFile) :-
     % If you change the clean targets below, please also update the
     % documentation in doc/user_guide.texi.
@@ -2110,7 +2127,8 @@ generate_dep_file_clean_targets(ModuleName, ModuleMakeVarName,
         ".ds", ".module_deps", ".mhs_to_clean", ".mihs_to_clean", ".dlls",
         ".foreign_dlls", ".classes"],
     RealCleanFiles = [ExeFileName ++ "$(EXT_FOR_EXE) ", InitFileName,
-        LibFileName, SharedLibFileName, JarFileName, DepFileName, DvFileName],
+        StaticLibFileName, SharedLibFileName, JarFileName,
+        DepFileName, DvFileName],
     MmakeRulesRealClean =
         % XXX Why is the first rule not phony?
         [mmake_simple_rule("realclean_local", mmake_rule_is_not_phony,

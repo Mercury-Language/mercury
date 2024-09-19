@@ -33,7 +33,7 @@
 %
 
 :- pred dependency_file_to_file_name(globals::in, dependency_file::in,
-    string::out, io::di, io::uo) is det.
+    file_name::out, file_name::out, io::di, io::uo) is det.
 
     % module_maybe_nested_target_file_to_file_name(ProgressStream,
     %   Globals, From, Search, TargetFile, FileName, !IO):
@@ -50,19 +50,19 @@
     %
 :- pred module_maybe_nested_target_file_to_file_name(io.text_output_stream::in,
     globals::in, string::in, maybe_for_search::in,
-    target_file::in, file_name::out,
+    target_file::in, file_name::out, file_name::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Return the file name for the given target_file. The I/O state pair
     % may be needed to find this file name.
     %
 :- pred module_target_file_to_file_name(globals::in, string::in,
-    target_file::in, string::out, io::di, io::uo) is det.
+    target_file::in, file_name::out, file_name::out, io::di, io::uo) is det.
 :- pred module_target_to_maybe_for_search_file_name(globals::in, string::in,
     maybe_for_search::in, module_target_type::in,
-    module_name::in, file_name::out, io::di, io::uo) is det.
+    module_name::in, file_name::out, file_name::out, io::di, io::uo) is det.
 :- pred module_target_to_file_name(globals::in, string::in,
-    module_target_type::in, module_name::in, file_name::out,
+    module_target_type::in, module_name::in, file_name::out, file_name::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -88,17 +88,21 @@
 
 %---------------------------------------------------------------------------%
 
-dependency_file_to_file_name(Globals, DepFile, FileName, !IO) :-
+dependency_file_to_file_name(Globals, DepFile,
+        FileNameLegacy, FileNameProposed, !IO) :-
     (
         DepFile = dep_target(TargetFile),
         module_target_file_to_file_name(Globals, $pred,
-            TargetFile, FileName, !IO)
+            TargetFile, FileNameLegacy, FileNameProposed, !IO)
     ;
-        DepFile = dep_file(FileName)
+        DepFile = dep_file(FileName),
+        FileNameLegacy = FileName,
+        FileNameProposed = FileName
     ).
 
 module_maybe_nested_target_file_to_file_name(ProgressStream,
-        Globals, From, ForSearch, TargetFile, FileName, !Info, !IO) :-
+        Globals, From, ForSearch, TargetFile, FileNameLegacy, FileNameProposed,
+        !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     ( if TargetType = module_target_source then
         % In some cases, the module name won't match the file name
@@ -114,63 +118,72 @@ module_maybe_nested_target_file_to_file_name(ProgressStream,
             % Something has gone wrong generating the dependencies,
             % so just take a punt (which probably won't work).
             module_name_to_source_file_name(ModuleName, FileName, !IO)
-        )
+        ),
+        FileNameLegacy = FileName,
+        FileNameProposed = FileName
     else
         module_target_to_maybe_for_search_file_name(Globals, From, ForSearch,
-            TargetType, ModuleName, FileName, !IO)
+            TargetType, ModuleName, FileNameLegacy, FileNameProposed, !IO)
     ).
 
-module_target_file_to_file_name(Globals, From, TargetFile, FileName, !IO) :-
+module_target_file_to_file_name(Globals, From, TargetFile,
+        FileNameLegacy, FileNameProposed, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     module_target_to_file_name(Globals, From, TargetType, ModuleName,
-        FileName, !IO).
+        FileNameLegacy, FileNameProposed, !IO).
 
 module_target_to_maybe_for_search_file_name(Globals, From, ForSearch,
-        TargetType, ModuleName, FileName, !IO) :-
+        TargetType, ModuleName, FileNameLegacy, FileNameProposed, !IO) :-
     (
         ForSearch = not_for_search,
         module_target_to_file_name(Globals, From,
-            TargetType, ModuleName, FileName, !IO)
+            TargetType, ModuleName, FileNameLegacy, FileNameProposed, !IO)
     ;
         ForSearch = for_search,
         module_target_to_search_file_name(Globals, From,
-            TargetType, ModuleName, FileName, !IO)
+            TargetType, ModuleName, FileNameLegacy, FileNameProposed, !IO)
     ).
 
 module_target_to_file_name(Globals, From, TargetType, ModuleName,
-        FileName, !IO) :-
+        FileNameLegacy, FileNameProposed, !IO) :-
     target_type_to_target_extension(TargetType, TargetExt),
     (
         TargetExt = source,
-        module_name_to_source_file_name(ModuleName, FileName, !IO)
+        module_name_to_source_file_name(ModuleName, FileName, !IO),
+        FileNameLegacy = FileName,
+        FileNameProposed = FileName
     ;
         TargetExt = extension(Ext),
-        module_name_to_file_name(Globals, From, Ext,
-            ModuleName, FileName)
+        module_name_to_file_name(Globals, From, Ext, ModuleName,
+            FileNameLegacy, FileNameProposed)
     ;
-        TargetExt = fact_table_obj(Ext, FactFile),
-        fact_table_file_name(Globals, $pred, Ext, FactFile, FileName)
+        TargetExt = fact_table_obj(Ext, FactTableFileName),
+        fact_table_file_name(Globals, $pred, Ext, FactTableFileName,
+            FileNameLegacy, FileNameProposed)
     ).
 
 :- pred module_target_to_search_file_name(globals::in, string::in,
-    module_target_type::in,
-    module_name::in, file_name::out, io::di, io::uo) is det.
+    module_target_type::in, module_name::in, file_name::out, file_name::out,
+    io::di, io::uo) is det.
 
 module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
-        FileName, !IO) :-
+        FileNameLegacy, FileNameProposed, !IO) :-
     target_type_to_target_extension(TargetType, TargetExt),
     (
         TargetExt = source,
         % XXX This call ignores the implicit for_search setting.
-        module_name_to_source_file_name(ModuleName, FileName, !IO)
+        module_name_to_source_file_name(ModuleName, FileName, !IO),
+        FileNameLegacy = FileName,
+        FileNameProposed = FileName
     ;
         TargetExt = extension(Ext),
         module_name_to_search_file_name(Globals, From, Ext,
-            ModuleName, FileName)
+            ModuleName, FileNameLegacy, FileNameProposed)
     ;
-        TargetExt = fact_table_obj(Ext, FactFile),
+        TargetExt = fact_table_obj(Ext, FactTableFileName),
         % XXX This call ignores the implicit for_search setting.
-        fact_table_file_name(Globals, $pred, Ext, FactFile, FileName)
+        fact_table_file_name(Globals, $pred, Ext, FactTableFileName,
+            FileNameLegacy, FileNameProposed)
     ).
 
 %---------------------------------------------------------------------------%

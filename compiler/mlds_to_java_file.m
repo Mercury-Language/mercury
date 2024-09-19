@@ -129,9 +129,10 @@ output_java_mlds(ProgressStream, ModuleInfo, MLDS, Succeeded, !IO) :-
     % that is why we don't call mercury_module_name_to_mlds here.
     module_info_get_globals(ModuleInfo, Globals),
     ModuleName = mlds_get_module_name(MLDS),
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
-        ModuleName, JavaSourceFileName, !IO),
+        ModuleName, JavaSourceFileName, _JavaSourceFileNameProposed, !IO),
     output_to_file_stream(ProgressStream, Globals, JavaSourceFileName,
         output_java_src_file(ModuleInfo, MLDS), Succeeded, !IO).
 

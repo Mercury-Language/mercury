@@ -524,19 +524,21 @@
     % targets that do not have corresponding files, e.g. `<foo>.clean'.
     %
 :- pred module_name_to_file_name_return_dirs(globals::in,
-    string::in, ext::in, module_name::in, list(dir_name)::out,
-    file_name::out) is det.
-:- pred module_name_to_file_name(globals::in,
-    string::in, ext::in, module_name::in, file_name::out) is det.
-:- pred module_name_to_file_name_full_curdir(globals::in,
     string::in, ext::in, module_name::in,
+    list(dir_name)::out, list(dir_name)::out,
     file_name::out, file_name::out) is det.
+:- pred module_name_to_file_name(globals::in,
+    string::in, ext::in, module_name::in, file_name::out, file_name::out)
+    is det.
+:- pred module_name_to_file_name_full_curdir(globals::in,
+    string::in, ext::in, module_name::in, file_name::out, file_name::out,
+    file_name::out) is det.
 :- pred module_name_to_file_name_create_dirs(globals::in,
-    string::in, ext::in, module_name::in, file_name::out,
-    io::di, io::uo) is det.
-:- pred module_name_to_file_name_full_curdir_create_dirs(globals::in,
     string::in, ext::in, module_name::in, file_name::out, file_name::out,
     io::di, io::uo) is det.
+:- pred module_name_to_file_name_full_curdir_create_dirs(globals::in,
+    string::in, ext::in, module_name::in, file_name::out,
+    file_name::out, file_name::out, io::di, io::uo) is det.
 
     % module_name_to_search_file_name(Globals, From, Ext, Module, FileName):
     %
@@ -560,7 +562,7 @@
     % which would be used when writing or removing the `.mih' file.
     %
 :- pred module_name_to_search_file_name(globals::in, string::in,
-    ext::in, module_name::in, file_name::out) is det.
+    ext::in, module_name::in, file_name::out, file_name::out) is det.
 
     % module_name_to_lib_file_name_return_dirs(Globals, From, Prefix, Ext,
     %   Module, DirNames, FileName):
@@ -573,19 +575,27 @@
     % Used for creating library names, e.g. `lib<foo>.$A' and `lib<foo>.so'.
     %
 :- pred module_name_to_lib_file_name_return_dirs(globals::in, string::in,
-    string::in, ext::in, module_name::in, list(dir_name)::out, file_name::out)
-    is det.
+    string::in, ext::in, module_name::in,
+    list(dir_name)::out, list(dir_name)::out,
+    file_name::out, file_name::out) is det.
 :- pred module_name_to_lib_file_name(globals::in, string::in,
-    string::in, ext::in, module_name::in, file_name::out) is det.
+    string::in, ext::in, module_name::in,
+    file_name::out, file_name::out) is det.
 :- pred module_name_to_lib_file_name_full_curdir(globals::in, string::in,
-    string::in, ext::in, module_name::in, file_name::out, file_name::out)
-    is det.
+    string::in, ext::in, module_name::in, file_name::out, file_name::out,
+    file_name::out) is det.
 :- pred module_name_to_lib_file_name_create_dirs(globals::in, string::in,
-    string::in, ext::in, module_name::in, file_name::out,
+    string::in, ext::in, module_name::in, file_name::out,file_name::out,
     io::di, io::uo) is det.
 :- pred module_name_to_lib_file_name_full_curdir_create_dirs(globals::in,
     string::in, string::in, ext::in, module_name::in,
-    file_name::out, file_name::out, io::di, io::uo) is det.
+    file_name::out, file_name::out, file_name::out, io::di, io::uo) is det.
+
+    % A special case for the simplest kind of extensions, the extensions
+    % for the files that are always put into the current directory.
+    %
+:- pred module_name_to_cur_dir_file_name(ext_cur::in, module_name::in,
+    file_name::out) is det.
 
     % fact_table_file_name(Globals, Ext, FactTableFileName,
     %   FullPathName):
@@ -598,9 +608,10 @@
     % (with create_any_dirs_on_path below), or not, as they wish.
     %
 :- pred fact_table_file_name(globals::in, string::in,
-    ext::in, file_name::in, file_name::out) is det.
+    ext::in, file_name::in, file_name::out, file_name::out) is det.
 :- pred fact_table_file_name_return_dirs(globals::in, string::in,
-    ext::in, file_name::in, list(dir_name)::out, file_name::out) is det.
+    ext::in, file_name::in, list(dir_name)::out, list(dir_name)::out,
+    file_name::out, file_name::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -608,9 +619,9 @@
     % with the given extension should be put.
     %
 :- pred ext_to_dir_path(globals::in, maybe_for_search::in, ext::in,
-    list(dir_name)::out) is det.
+    list(dir_name)::out, list(dir_name)::out) is det.
 
-:- pred analysis_cache_dir_name(globals::in, string::out) is det.
+:- pred analysis_cache_dir_name(globals::in, string::out, string::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -678,7 +689,7 @@
     % Return the name of the directory containing Java `.class' files.
     %
 :- pred get_java_dir_path(globals::in, ext_cur_ngs_gs_java::in,
-    list(dir_name)::out) is det.
+    list(dir_name)::out, list(dir_name)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1029,85 +1040,136 @@ module_name_to_source_file_name(ModuleName, SourceFileName, !IO) :-
 %---------------------------------------------------------------------------%
 
 module_name_to_file_name_return_dirs(Globals, From, Ext,
-        ModuleName, DirNames, FullFileName) :-
+        ModuleName, DirNamesLegacy, DirNamesProposed,
+        FullFileNameLegacy, FullFileNameProposed) :-
     module_name_to_file_name_ext(Globals, From, not_for_search, no,
-        Ext, ModuleName, DirNames, CurDirFileName),
-    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
+        Ext, ModuleName, DirNamesLegacy, DirNamesProposed, CurDirFileName),
+    FullFileNameLegacy =
+        glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
+    FullFileNameProposed =
+        glue_dir_names_base_name(DirNamesProposed, CurDirFileName).
 
 module_name_to_file_name(Globals, From, Ext,
-        ModuleName, FullFileName) :-
+        ModuleName, FullFileNameLegacy, FullFileNameProposed) :-
     module_name_to_file_name_ext(Globals, From, not_for_search,
-        yes(do_not_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
-    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
+        yes(do_not_create_dirs), Ext, ModuleName,
+        DirNamesLegacy, DirNamesProposed, CurDirFileName),
+    FullFileNameLegacy =
+        glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
+    FullFileNameProposed =
+        glue_dir_names_base_name(DirNamesProposed, CurDirFileName).
 
 module_name_to_file_name_full_curdir(Globals, From, Ext,
-        ModuleName, FullFileName, CurDirFileName) :-
+        ModuleName, FullFileNameLegacy, FullFileNameProposed,
+        CurDirFileName) :-
     module_name_to_file_name_ext(Globals, From, not_for_search,
-        yes(do_not_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
-    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
+        yes(do_not_create_dirs), Ext, ModuleName,
+        DirNamesLegacy, DirNamesProposed, CurDirFileName),
+    FullFileNameLegacy =
+        glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
+    FullFileNameProposed =
+        glue_dir_names_base_name(DirNamesProposed, CurDirFileName).
 
 module_name_to_file_name_create_dirs(Globals, From, Ext,
-        ModuleName, FullFileName, !IO) :-
+        ModuleName, FullFileNameLegacy, FullFileNameProposed, !IO) :-
     module_name_to_file_name_ext(Globals, From, not_for_search,
-        yes(do_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
-    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
-    create_any_dirs_on_path(DirNames, !IO).
+        yes(do_create_dirs), Ext, ModuleName, DirNamesLegacy, DirNamesProposed,
+        CurDirFileName),
+    FullFileNameLegacy =
+        glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
+    FullFileNameProposed =
+        glue_dir_names_base_name(DirNamesProposed, CurDirFileName),
+    create_any_dirs_on_path(DirNamesLegacy, !IO).
+    % XXX LEGACY create_any_dirs_on_path(DirNamesProposed, !IO).
 
 module_name_to_file_name_full_curdir_create_dirs(Globals, From, Ext,
-        ModuleName, FullFileName, CurDirFileName, !IO) :-
+        ModuleName, FullFileNameLegacy, FullFileNameProposed,
+        CurDirFileName, !IO) :-
     module_name_to_file_name_ext(Globals, From, not_for_search,
-        yes(do_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
-    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
-    create_any_dirs_on_path(DirNames, !IO).
+        yes(do_create_dirs), Ext, ModuleName, DirNamesLegacy, DirNamesProposed,
+        CurDirFileName),
+    FullFileNameLegacy =
+        glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
+    FullFileNameProposed =
+        glue_dir_names_base_name(DirNamesProposed, CurDirFileName),
+    create_any_dirs_on_path(DirNamesLegacy, !IO).
+    % XXX LEGACY create_any_dirs_on_path(DirNamesProposed, !IO).
 
 %---------------------%
 
 module_name_to_search_file_name(Globals, From, Ext,
-        ModuleName, FullFileName) :-
+        ModuleName, FullFileNameLegacy, FullFileNameProposed) :-
     module_name_to_file_name_ext(Globals, From, for_search,
-        yes(do_not_create_dirs), Ext, ModuleName, DirNames, CurDirFileName),
-    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
+        yes(do_not_create_dirs), Ext, ModuleName,
+        DirNamesLegacy, DirNamesProposed, CurDirFileName),
+    FullFileNameLegacy =
+        glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
+    FullFileNameProposed =
+        glue_dir_names_base_name(DirNamesProposed, CurDirFileName).
 
 %---------------------%
 
 module_name_to_lib_file_name_return_dirs(Globals, From, Prefix, Ext,
-        ModuleName, DirNames, FullFileName) :-
+        ModuleName, DirNamesLegacy, DirNamesProposed,
+        FullFileNameLegacy, FullFileNameProposed) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
     module_name_to_file_name_ext(Globals, From, not_for_search,
-        no, Ext, FakeModuleName, DirNames, CurDirFileName),
-    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
+        no, Ext, FakeModuleName, DirNamesLegacy, DirNamesProposed,
+        CurDirFileName),
+    FullFileNameLegacy =
+        glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
+    FullFileNameProposed =
+        glue_dir_names_base_name(DirNamesProposed, CurDirFileName).
 
 module_name_to_lib_file_name(Globals, From, Prefix, Ext,
-        ModuleName, FullFileName) :-
+        ModuleName, FullFileNameLegacy, FullFileNameProposed) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
     module_name_to_file_name_ext(Globals, From, not_for_search,
         yes(do_not_create_dirs), Ext, FakeModuleName,
-        DirNames, CurDirFileName),
-    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
+        DirNamesLegacy, DirNamesProposed, CurDirFileName),
+    FullFileNameLegacy =
+        glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
+    FullFileNameProposed =
+        glue_dir_names_base_name(DirNamesProposed, CurDirFileName).
 
 module_name_to_lib_file_name_full_curdir(Globals, From, Prefix, Ext,
-        ModuleName, FullFileName, CurDirFileName) :-
+        ModuleName, FullFileNameLegacy, FullFileNameProposed,
+        CurDirFileName) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
     module_name_to_file_name_ext(Globals, From, not_for_search,
         yes(do_not_create_dirs), Ext, FakeModuleName,
-        DirNames, CurDirFileName),
-    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
+        DirNamesLegacy, DirNamesProposed, CurDirFileName),
+    FullFileNameLegacy =
+        glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
+    FullFileNameProposed =
+        glue_dir_names_base_name(DirNamesProposed, CurDirFileName).
 
 module_name_to_lib_file_name_create_dirs(Globals, From, Prefix, Ext,
-        ModuleName, FullFileName, !IO) :-
+        ModuleName, FullFileNameLegacy, FullFileNameProposed, !IO) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
     module_name_to_file_name_ext(Globals, From, not_for_search,
-        yes(do_create_dirs), Ext, FakeModuleName, DirNames, CurDirFileName),
-    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
-    create_any_dirs_on_path(DirNames, !IO).
+        yes(do_create_dirs), Ext, FakeModuleName,
+        DirNamesLegacy, DirNamesProposed, CurDirFileName),
+    FullFileNameLegacy =
+        glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
+    FullFileNameProposed =
+        glue_dir_names_base_name(DirNamesProposed, CurDirFileName),
+    create_any_dirs_on_path(DirNamesLegacy, !IO).
+    % XXX LEGACY create_any_dirs_on_path(DirNamesProposed, !IO).
 
 module_name_to_lib_file_name_full_curdir_create_dirs(Globals, From, Prefix,
-        Ext, ModuleName, FullFileName, CurDirFileName, !IO) :-
+        Ext, ModuleName, FullFileNameLegacy, FullFileNameProposed,
+        CurDirFileName, !IO) :-
     FakeModuleName = make_fake_module_name(Prefix, ModuleName),
     module_name_to_file_name_ext(Globals, From, not_for_search,
-        yes(do_create_dirs), Ext, FakeModuleName, DirNames, CurDirFileName),
-    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
-    create_any_dirs_on_path(DirNames, !IO).
+        yes(do_create_dirs), Ext, FakeModuleName,
+        DirNamesLegacy, DirNamesProposed, CurDirFileName),
+    FullFileNameLegacy =
+        glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
+    FullFileNameProposed =
+        glue_dir_names_base_name(DirNamesProposed, CurDirFileName),
+    create_any_dirs_on_path(DirNamesLegacy, !IO).
+    % XXX LEGACY create_any_dirs_on_path(DirNamesProposed, !IO).
 
 :- func make_fake_module_name(string, module_name) = module_name.
 
@@ -1118,58 +1180,74 @@ make_fake_module_name(Prefix, ModuleName) = FakeModuleName :-
 
 %---------------------%
 
+module_name_to_cur_dir_file_name(ExtCur, ModuleName, CurDirFileName) :-
+    BaseNameNoExt = module_name_to_base_file_name_no_ext_non_java(ModuleName),
+    ext_cur_extension(ExtCur, ExtStr),
+    CurDirFileName = BaseNameNoExt ++ ExtStr.
+
+%---------------------%
+
 fact_table_file_name(Globals, From, Ext,
-        FactTableFileName, FullFileName) :-
+        FactTableFileName, FullFileNameLegacy, FullFileNameProposed) :-
     fact_table_file_name_return_dirs(Globals, From, Ext,
-        FactTableFileName, _DirNames, FullFileName).
+        FactTableFileName, _DirNamesLegacy, _DirNamesProposed,
+        FullFileNameLegacy, FullFileNameProposed).
 
 fact_table_file_name_return_dirs(Globals, From, Ext,
-        FactTableFileName, DirNames, FullFileName) :-
+        FactTableFileName, DirNamesLegacy, DirNamesProposed,
+        FullFileNameLegacy, FullFileNameProposed) :-
     FakeModuleName = unqualified(FactTableFileName),
-    module_name_to_file_name_ext(Globals, From, not_for_search,
-        no, Ext, FakeModuleName, DirNames, CurDirFileName),
-    FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName).
+    module_name_to_file_name_ext(Globals, From, not_for_search, no, Ext,
+        FakeModuleName, DirNamesLegacy, DirNamesProposed, CurDirFileName),
+    FullFileNameLegacy =
+        glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
+    FullFileNameProposed =
+        glue_dir_names_base_name(DirNamesProposed, CurDirFileName).
 
 %---------------------------------------------------------------------------%
 
 :- pred module_name_to_file_name_ext(globals::in, string::in,
     maybe_for_search::in, maybe(maybe_create_dirs)::in, ext::in,
-    module_name::in, list(dir_name)::out, file_name::out) is det.
+    module_name::in, list(dir_name)::out, list(dir_name)::out,
+    file_name::out) is det.
 
 module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
-        ModuleName, DirNames, CurDirFileName) :-
-    ext_to_dir_path(Globals, Search, Ext, DirNames),
+        ModuleName, DirNamesLegacy, DirNamesProposed, CurDirFileName) :-
+    ext_to_dir_path(Globals, Search, Ext, DirNamesLegacy, DirNamesProposed),
     BaseNameNoExt = module_name_to_base_file_name_no_ext(Ext, ModuleName),
     ExtStr = extension_to_string(Globals, Ext),
     CurDirFileName = BaseNameNoExt ++ ExtStr,
     trace [compile_time(flag("file_name_translations")),
         runtime(env("FILE_NAME_TRANSLATIONS")), io(!TIO)]
     (
-        FullFileName = glue_dir_names_base_name(DirNames, CurDirFileName),
+        FullFileName =
+            glue_dir_names_base_name(DirNamesProposed, CurDirFileName),
         record_translation(From, Search, StatOnlyMkdir,
             Ext, ModuleName, FullFileName, !TIO)
     ).
 
-:- pragma inline(pred(ext_to_dir_path/4)).
+:- pragma inline(pred(ext_to_dir_path/5)).
 
-ext_to_dir_path(Globals, Search, Ext, DirNames) :-
+ext_to_dir_path(Globals, Search, Ext, DirNamesLegacy, DirNamesProposed) :-
     (
         Ext = ext_cur(_ExtCur),
         % Output files intended for use by the user, and phony Mmake target
         % names go in the current directory, and so do .mh files,
-        DirNames = []
+        DirNamesLegacy = [],
+        DirNamesProposed = []
     ;
         Ext = ext_cur_ngs(ExtCurNgs),
         globals.get_subdir_setting(Globals, SubdirSetting),
         (
             SubdirSetting = use_cur_dir,
-            DirNames = []
+            DirNamesLegacy = [],
+            DirNamesProposed = []
         ;
             ( SubdirSetting = use_cur_ngs_subdir
             ; SubdirSetting = use_cur_ngs_gs_subdir
             ),
             ext_cur_ngs_extension_dir(ExtCurNgs, _ExtStr, SubDirName),
-            make_ngs_dir_names(SubDirName, DirNames)
+            make_ngs_dir_names(SubDirName, DirNamesLegacy, DirNamesProposed)
         )
     ;
         Ext = ext_cur_gs(ExtCurGs),
@@ -1181,11 +1259,13 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
             ( SubdirSetting = use_cur_dir
             ; SubdirSetting = use_cur_ngs_subdir
             ),
-            DirNames = []
+            DirNamesLegacy = [],
+            DirNamesProposed = []
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
             ext_cur_gs_extension_dir(ExtCurGs, _ExtStr, SubDirName),
-            make_gs_dir_names(Globals, SubDirName, DirNames)
+            make_gs_dir_names(Globals, SubDirName,
+                DirNamesLegacy, DirNamesProposed)
         )
     ;
         Ext = ext_cur_gas(ExtCurGas),
@@ -1197,43 +1277,49 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
             ( SubdirSetting = use_cur_dir
             ; SubdirSetting = use_cur_ngs_subdir
             ),
-            DirNames = []
+            DirNamesLegacy = [],
+            DirNamesProposed = []
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
             ext_cur_gas_extension_dir(Globals, ExtCurGas, _ExtStr, SubDirName),
-            make_gas_dir_names(Globals, SubDirName, DirNames)
+            make_gas_dir_names(Globals, SubDirName,
+                DirNamesLegacy, DirNamesProposed)
         )
     ;
         Ext = ext_cur_ngs_gs(ExtCurNgsGs),
         globals.get_subdir_setting(Globals, SubdirSetting),
         (
             SubdirSetting = use_cur_dir,
-            DirNames = []
+            DirNamesLegacy = [],
+            DirNamesProposed = []
         ;
             SubdirSetting = use_cur_ngs_subdir,
             ext_cur_ngs_gs_extension_dir(ExtCurNgsGs, _ExtStr, SubDirName),
-            make_ngs_dir_names(SubDirName, DirNames)
+            make_ngs_dir_names(SubDirName, DirNamesLegacy, DirNamesProposed)
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
             ext_cur_ngs_gs_extension_dir(ExtCurNgsGs, _ExtStr, SubDirName),
-            make_gs_dir_names(Globals, SubDirName, DirNames)
+            make_gs_dir_names(Globals, SubDirName,
+                DirNamesLegacy, DirNamesProposed)
         )
     ;
         Ext = ext_cur_ngs_gas(ExtCurNgsGas),
         globals.get_subdir_setting(Globals, SubdirSetting),
         (
             SubdirSetting = use_cur_dir,
-            DirNames = []
+            DirNamesLegacy = [],
+            DirNamesProposed = []
         ;
             SubdirSetting = use_cur_ngs_subdir,
             ext_cur_ngs_gas_extension_dir(Globals, ExtCurNgsGas,
                 _ExtStr, SubDirName),
-            make_ngs_dir_names(SubDirName, DirNames)
+            make_ngs_dir_names(SubDirName, DirNamesLegacy, DirNamesProposed)
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
             ext_cur_ngs_gas_extension_dir(Globals, ExtCurNgsGas,
                 _ExtStr, SubDirName),
-            make_gas_dir_names(Globals, SubDirName, DirNames)
+            make_gas_dir_names(Globals, SubDirName,
+                DirNamesLegacy, DirNamesProposed)
         )
     ;
         Ext = ext_cur_ngs_gs_err(ExtCurNgsGsErr),
@@ -1241,23 +1327,27 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
             ErrorFilesInSubdir),
         (
             ErrorFilesInSubdir = no,
-            DirNames = []
+            DirNamesLegacy = [],
+            DirNamesProposed = []
         ;
             ErrorFilesInSubdir = yes,
             globals.get_subdir_setting(Globals, SubdirSetting),
             (
                 SubdirSetting = use_cur_dir,
-                DirNames = []
+                DirNamesLegacy = [],
+                DirNamesProposed = []
             ;
                 SubdirSetting = use_cur_ngs_subdir,
                 ext_cur_ngs_gs_err_extension_dir(ExtCurNgsGsErr,
                     _ExtStr, SubDirName),
-                make_ngs_dir_names(SubDirName, DirNames)
+                make_ngs_dir_names(SubDirName,
+                    DirNamesLegacy, DirNamesProposed)
             ;
                 SubdirSetting = use_cur_ngs_gs_subdir,
                 ext_cur_ngs_gs_err_extension_dir(ExtCurNgsGsErr,
                     _ExtStr, SubDirName),
-                make_gs_dir_names(Globals, SubDirName, DirNames)
+                make_gs_dir_names(Globals, SubDirName,
+                    DirNamesLegacy, DirNamesProposed)
             )
         )
     ;
@@ -1269,8 +1359,10 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
         % will do that). Code that needs directory paths that include
         % "jmercury" should call our ancestors; code that needs directory
         % paths that do not include it should call get_java_dir_path.
-        get_java_dir_path(Globals, ExtCurNgsGsJava, DirNames0),
-        DirNames = DirNames0 ++ ["jmercury"]
+        get_java_dir_path(Globals, ExtCurNgsGsJava,
+            DirNamesLegacy0, DirNamesProposed0),
+        DirNamesLegacy = DirNamesLegacy0 ++ ["jmercury"],
+        DirNamesProposed = DirNamesProposed0 ++ ["jmercury"]
     ;
         Ext = ext_cur_ngs_max_cur(ExtCurNgsMaxCur),
         (
@@ -1279,20 +1371,23 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
             % use the plain file name. This is so that searches for files
             % in installed libraries will work. `--c-include-directory' is set
             % so that searches for files in the current directory will work.
-            DirNames = []
+            DirNamesLegacy = [],
+            DirNamesProposed = []
         ;
             Search = not_for_search,
             globals.get_subdir_setting(Globals, SubdirSetting),
             (
                 SubdirSetting = use_cur_dir,
-                DirNames = []
+                DirNamesLegacy = [],
+                DirNamesProposed = []
             ;
                 ( SubdirSetting = use_cur_ngs_subdir
                 ; SubdirSetting = use_cur_ngs_gs_subdir
                 ),
                 ext_cur_ngs_max_cur_extension_dir(ExtCurNgsMaxCur,
                     _ExtStr, SubDirName),
-                make_ngs_dir_names(SubDirName, DirNames)
+                make_ngs_dir_names(SubDirName,
+                    DirNamesLegacy, DirNamesProposed)
             )
         )
     ;
@@ -1303,23 +1398,27 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
             % use the plain file name. This is so that searches for files
             % in installed libraries will work. `--c-include-directory' is set
             % so that searches for files in the current directory will work.
-            DirNames = []
+            DirNamesLegacy = [],
+            DirNamesProposed = []
         ;
             Search = not_for_search,
             globals.get_subdir_setting(Globals, SubdirSetting),
             (
                 SubdirSetting = use_cur_dir,
-                DirNames = []
+                DirNamesLegacy = [],
+                DirNamesProposed = []
             ;
                 SubdirSetting = use_cur_ngs_subdir,
                 ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
                     _ExtStr, SubDirName),
-                make_ngs_dir_names(SubDirName, DirNames)
+                make_ngs_dir_names(SubDirName,
+                    DirNamesLegacy, DirNamesProposed)
             ;
                 SubdirSetting = use_cur_ngs_gs_subdir,
                 ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
                     _ExtStr, SubDirName),
-                make_gs_dir_names(Globals, SubDirName, DirNames)
+                make_gs_dir_names(Globals, SubDirName,
+                    DirNamesLegacy, DirNamesProposed)
             )
         )
     ;
@@ -1327,40 +1426,48 @@ ext_to_dir_path(Globals, Search, Ext, DirNames) :-
         globals.get_subdir_setting(Globals, SubdirSetting),
         (
             SubdirSetting = use_cur_dir,
-            DirNames = []
+            DirNamesLegacy = [],
+            DirNamesProposed = []
         ;
             SubdirSetting = use_cur_ngs_subdir,
             ext_cur_ngs_gs_max_ngs_extension_dir(ExtCurNgsGsMaxNgs,
                 _ExtStr, SubDirName),
-            make_ngs_dir_names(SubDirName, DirNames)
+            make_ngs_dir_names(SubDirName, DirNamesLegacy, DirNamesProposed)
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
             ext_cur_ngs_gs_max_ngs_extension_dir(ExtCurNgsGsMaxNgs,
                 _ExtStr, SubDirName),
             (
                 Search = for_search,
-                make_ngs_dir_names(SubDirName, DirNames)
+                make_ngs_dir_names(SubDirName,
+                    DirNamesLegacy, DirNamesProposed)
             ;
                 Search = not_for_search,
-                make_gs_dir_names(Globals, SubDirName, DirNames)
+                make_gs_dir_names(Globals, SubDirName,
+                    DirNamesLegacy, DirNamesProposed)
             )
         )
     ).
 
 %---------------------------------------------------------------------------%
 
-analysis_cache_dir_name(Globals, DirName) :-
+analysis_cache_dir_name(Globals, DirNameLegacy, DirNameProposed) :-
     globals.get_subdir_setting(Globals, SubdirSetting),
     (
         ( SubdirSetting = use_cur_dir
         ; SubdirSetting = use_cur_ngs_subdir
         ),
-        make_ngs_dir_names("analysis_cache", DirComponents)
+        make_ngs_dir_names("analysis_cache",
+            DirComponentsLegacy, DirComponentsProposed)
     ;
         SubdirSetting = use_cur_ngs_gs_subdir,
-        make_gs_dir_names(Globals, "analysis_cache", DirComponents)
+        make_gs_dir_names(Globals, "analysis_cache",
+            DirComponentsLegacy, DirComponentsProposed)
     ),
-    DirName = dir.relative_path_name_from_components(DirComponents).
+    DirNameLegacy =
+        dir.relative_path_name_from_components(DirComponentsLegacy),
+    DirNameProposed =
+        dir.relative_path_name_from_components(DirComponentsProposed).
 
 %---------------------------------------------------------------------------%
 %
@@ -1368,15 +1475,18 @@ analysis_cache_dir_name(Globals, DirName) :-
 % grade-specific directory whose last component is the given string.
 %
 
-:- pred make_ngs_dir_names(dir_name::in, list(dir_name)::out) is det.
+:- pred make_ngs_dir_names(dir_name::in,
+    list(dir_name)::out, list(dir_name)::out) is det.
 
-make_ngs_dir_names(SubDirName, NgsSubDirNames) :-
-    NgsSubDirNames = ["Mercury", SubDirName].
+make_ngs_dir_names(SubDirName, NgsSubDirNamesLegacy, NgsSubDirNamesProposed) :-
+    NgsSubDirNamesLegacy = ["Mercury", SubDirName],
+    NgsSubDirNamesProposed = ["MercurySystem", SubDirName].
 
 :- pred make_gs_dir_names(globals::in, dir_name::in,
-    list(dir_name)::out) is det.
+    list(dir_name)::out, list(dir_name)::out) is det.
 
-make_gs_dir_names(Globals, SubDirName, GsSubDirNames) :-
+make_gs_dir_names(Globals, SubDirName,
+        GsSubDirNamesLegacy, GsSubDirNamesProposed) :-
     grade_directory_component(Globals, Grade),
     globals.lookup_string_option(Globals, target_arch, TargetArch),
     % The extra "Mercury" is needed so we can use
@@ -1385,14 +1495,22 @@ make_gs_dir_names(Globals, SubDirName, GsSubDirNames) :-
     % to find the local `.opt' and `.mih' files without messing up
     % the search for the files for installed libraries.
     % XXX This seems ... suboptimal to me (zs).
-    GsSubDirNames = ["Mercury", Grade, TargetArch, "Mercury", SubDirName].
+    GsSubDirNamesLegacy =
+        ["Mercury", Grade, TargetArch, "Mercury", SubDirName],
+    GsSubDirNamesProposed =
+        ["MercurySystem", SubDirName, Grade].
 
 :- pred make_gas_dir_names(globals::in, dir_name::in,
-    list(dir_name)::out) is det.
+    list(dir_name)::out, list(dir_name)::out) is det.
 
-make_gas_dir_names(Globals, SubDirName, GasSubDirNames) :-
-    % This is temporary.
-    make_gs_dir_names(Globals, SubDirName, GasSubDirNames).
+make_gas_dir_names(Globals, SubDirName,
+        GasSubDirNamesLegacy, GasSubDirNamesProposed) :-
+    grade_directory_component(Globals, Grade),
+    globals.lookup_string_option(Globals, target_arch, TargetArch),
+    GasSubDirNamesLegacy =
+        ["Mercury", Grade, TargetArch, "Mercury", SubDirName],
+    GasSubDirNamesProposed =
+        ["MercurySystem", SubDirName, Grade, TargetArch].
 
 %---------------------------------------------------------------------------%
 
@@ -1506,21 +1624,24 @@ module_name_to_make_var_name(ModuleName, MakeVarName) :-
 
 %---------------------------------------------------------------------------%
 
-get_java_dir_path(Globals, ExtCurNgsGsJava, DirNames) :-
+get_java_dir_path(Globals, ExtCurNgsGsJava,
+        DirNamesLegacy, DirNamesProposed) :-
     globals.get_subdir_setting(Globals, SubdirSetting),
     (
         SubdirSetting = use_cur_dir,
-        DirNames = []
+        DirNamesLegacy = [],
+        DirNamesProposed = []
     ;
         SubdirSetting = use_cur_ngs_subdir,
         ext_cur_ngs_gs_java_extension_dir(ExtCurNgsGsJava,
             _ExtStr, SubDirName),
-        make_ngs_dir_names(SubDirName, DirNames)
+        make_ngs_dir_names(SubDirName, DirNamesLegacy, DirNamesProposed)
     ;
         SubdirSetting = use_cur_ngs_gs_subdir,
         ext_cur_ngs_gs_java_extension_dir(ExtCurNgsGsJava,
             _ExtStr, SubDirName),
-        make_gs_dir_names(Globals, SubDirName, DirNames)
+        make_gs_dir_names(Globals, SubDirName,
+            DirNamesLegacy, DirNamesProposed)
     ).
 
 %---------------------------------------------------------------------------%

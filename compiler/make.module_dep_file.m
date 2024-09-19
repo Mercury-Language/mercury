@@ -133,9 +133,10 @@ write_module_dep_file(ProgressStream, Globals, BurdenedModule0, !IO) :-
 do_write_module_dep_file(ProgressStream, Globals, BurdenedModule, !IO) :-
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs(ext_cur_ngs_misc_module_dep),
-        ModuleName, ProgDepFile, !IO),
+        ModuleName, ProgDepFile, _ProgDepFileProposed, !IO),
     io.open_output(ProgDepFile, ProgDepResult, !IO),
     (
         ProgDepResult = ok(ProgDepStream),

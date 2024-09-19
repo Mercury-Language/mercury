@@ -256,10 +256,13 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
             MmakeFileStrDv = mmakefile_to_string(MmakeFileDv),
             MmakeFileStrDep = mmakefile_to_string(MmakeFileDep),
 
+            % XXX LEGACY
             module_name_to_file_name_create_dirs(Globals, $pred,
-                ext_cur_ngs(ext_cur_ngs_mf_dv), ModuleName, FileNameDv, !IO),
+                ext_cur_ngs(ext_cur_ngs_mf_dv), ModuleName,
+                FileNameDv, _FileNameDvProposed, !IO),
             module_name_to_file_name_create_dirs(Globals, $pred,
-                ext_cur_ngs(ext_cur_ngs_mf_dep), ModuleName, FileNameDep, !IO),
+                ext_cur_ngs(ext_cur_ngs_mf_dep), ModuleName,
+                FileNameDep, _FileNameDepProposed, !IO),
 
             write_string_to_file(ProgressStream, Globals,
                 "Writing auto-dependency file", FileNameDv, MmakeFileStrDv,
@@ -300,7 +303,7 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
             ImpDepsOrdering =
                 digraph.return_sccs_in_from_to_order(ImpDepsGraph),
             output_module_order(ProgressStream, Globals, ModuleName,
-                ext_cur(ext_cur_user_order), ImpDepsOrdering, !IO)
+                ext_cur_user_order, ImpDepsOrdering, !IO)
         ;
             OutputOrder = no
         ),
@@ -406,7 +409,7 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
         (
             OutputOrder = yes,
             output_module_order(ProgressStream, Globals, ModuleName,
-                ext_cur(ext_cur_user_order_to), TransOptDepsOrdering0, !IO)
+                ext_cur_user_order_to, TransOptDepsOrdering0, !IO)
         ;
             OutputOrder = no
         ),
@@ -628,25 +631,26 @@ maybe_output_imports_graph(ProgressStream, Globals, ModuleName,
     globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         ImportsGraph = yes,
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur(ext_cur_user_imports_graph), ModuleName, FileName, !IO),
+        module_name_to_cur_dir_file_name(ext_cur_user_imports_graph,
+            ModuleName, ImportsGraphFileName),
         (
             Verbose = no
         ;
             Verbose = yes,
             io.format(ProgressStream,
                 "%% Creating imports graph file `%s'...",
-                [s(FileName)], !IO)
+                [s(ImportsGraphFileName)], !IO)
         ),
-        io.open_output(FileName, ImpResult, !IO),
+        io.open_output(ImportsGraphFileName, ImportsGraphOpenResult, !IO),
         (
-            ImpResult = ok(ImpStream),
+            ImportsGraphOpenResult = ok(ImportsGraphStream),
             Deps0 = list.foldl(filter_imports_graph,
                 digraph.to_assoc_list(IntDepsGraph), digraph.init),
             Deps = list.foldl(filter_imports_graph,
                 digraph.to_assoc_list(ImpDepsGraph), Deps0),
-            write_graph(ImpStream, "imports", sym_name_to_node_id, Deps, !IO),
-            io.close_output(ImpStream, !IO),
+            write_graph(ImportsGraphStream, "imports",
+                sym_name_to_node_id, Deps, !IO),
+            io.close_output(ImportsGraphStream, !IO),
             (
                 Verbose = no
             ;
@@ -654,7 +658,7 @@ maybe_output_imports_graph(ProgressStream, Globals, ModuleName,
                 io.write_string(ProgressStream, " done.\n", !IO)
             )
         ;
-            ImpResult = error(IOError),
+            ImportsGraphOpenResult = error(IOError),
             (
                 Verbose = no
             ;
@@ -664,7 +668,7 @@ maybe_output_imports_graph(ProgressStream, Globals, ModuleName,
             ),
             io.error_message(IOError, IOErrorMessage),
             string.format("error opening file `%s' for output: %s\n",
-                [s(FileName), s(IOErrorMessage)], ImpMessage),
+                [s(ImportsGraphFileName), s(IOErrorMessage)], ImpMessage),
             report_error(ProgressStream, ImpMessage, !IO)
         )
     ;
@@ -732,13 +736,12 @@ sym_name_to_node_id(SymName) =
 %---------------------------------------------------------------------------%
 
 :- pred output_module_order(io.text_output_stream::in, globals::in,
-    module_name::in, ext::in, list(set(module_name))::in,
+    module_name::in, ext_cur::in, list(set(module_name))::in,
     io::di, io::uo) is det.
 
-output_module_order(ProgressStream, Globals, ModuleName, Ext,
+output_module_order(ProgressStream, Globals, ModuleName, ExtCur,
         DepsOrdering, !IO) :-
-    module_name_to_file_name_create_dirs(Globals, $pred, Ext,
-        ModuleName, OrdFileName, !IO),
+    module_name_to_cur_dir_file_name(ExtCur, ModuleName, OrdFileName),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     string.format("%% Creating module order file `%s'...",
         [s(OrdFileName)], CreatingMsg),

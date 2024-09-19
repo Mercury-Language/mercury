@@ -1248,13 +1248,15 @@ read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
             % XXX CLEANUP We should either pass SearchDirs to
             % module_name_to_search_file_name, or get it to give SearchDirs
             % to us.
+            % XXX LEGACY
             module_name_to_search_file_name(Globals, $pred, Ext,
-                ModuleName, FileName),
+                ModuleName, FileName, _FileNameProposed),
             globals.lookup_accumulating_option(Globals, SearchOpt, SearchDirs)
         ;
             Search = do_not_search,
+            % XXX LEGACY
             module_name_to_file_name(Globals, $pred, Ext,
-                ModuleName, FileName),
+                ModuleName, FileName, _FileNameProposed),
             SearchDirs = [dir.this_directory]
         )
     ),

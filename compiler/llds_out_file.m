@@ -118,8 +118,10 @@
 
 output_llds(ProgressStream, Globals, CFile, Succeeded, !IO) :-
     ModuleName = CFile ^ cfile_modulename,
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName, FileName, !IO),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName,
+        FileName, _FileNameProposed, !IO),
     output_to_file_stream(ProgressStream, Globals, FileName,
         output_llds_2(Globals, CFile), Succeeded, !IO).
 

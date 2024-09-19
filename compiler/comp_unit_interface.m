@@ -3651,8 +3651,9 @@ accumulate_module(SymName, !MaybeUnqual, !ModuleNames) :-
 construct_int_file_name(Globals, ModuleName, IntFileKind, ExtraSuffix,
         IntFileName, !IO) :-
     int_file_kind_to_extension(IntFileKind, _ExtStr, Ext),
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred, Ext,
-        ModuleName, IntFileName0, !IO),
+        ModuleName, IntFileName0, _IntFileNameProposed0, !IO),
     IntFileName = IntFileName0 ++ ExtraSuffix.
 
 %---------------------------------------------------------------------------%

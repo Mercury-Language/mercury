@@ -693,7 +693,7 @@ post_link_maybe_warn_linked_target_up_to_date(ProgressStream,
 
 rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
         MainModuleName, FileType, FullMainModuleLinkedFileName,
-        AllModulesList, ObjModules, InitObjects, LinkObjects,
+        AllModulesList, ObjModules, InitObjectFileNames, LinkObjectFileNames,
         CompilationTarget, PIC, Succeeded, !Info, !IO) :-
     maybe_making_filename_msg(NoLinkObjsGlobals,
         FullMainModuleLinkedFileName, MakingMsg),
@@ -706,8 +706,8 @@ rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
     list.map_foldl2(
         get_module_foreign_object_files(ProgressStream, NoLinkObjsGlobals,
             PIC),
-        AllModulesList, ForeignObjectFileLists, !Info, !IO),
-    ForeignObjects = list.condense(ForeignObjectFileLists),
+        AllModulesList, ForeignObjectFileNameLists, !Info, !IO),
+    ForeignObjectFileNames = list.condense(ForeignObjectFileNameLists),
 
     (
         CompilationTarget = target_c,
@@ -721,12 +721,14 @@ rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
         CompilationTarget = target_java,
         Ext = ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_class)
     ),
-    list.map(module_name_to_file_name(NoLinkObjsGlobals, $pred, Ext),
-        ObjModules, ObjList),
+    % XXX LEGACY
+    list.map2(module_name_to_file_name(NoLinkObjsGlobals, $pred, Ext),
+        ObjModules, ModuleObjFileNames, _ModuleObjFileNamesProposed),
 
-    % LinkObjects may contain `.a' files which must come
+    % LinkObjectFileNames may contain `.a' files which must come
     % after all the object files on the linker command line.
-    AllObjects = InitObjects ++ ObjList ++ ForeignObjects ++ LinkObjects,
+    AllObjects = InitObjectFileNames ++ ModuleObjFileNames ++
+        ForeignObjectFileNames ++ LinkObjectFileNames,
     (
         ( CompilationTarget = target_c
         ; CompilationTarget = target_java
@@ -891,10 +893,11 @@ build_java_files(ProgressStream, Globals, MainModuleName, ModuleNames,
     verbose_make_one_part_msg(Globals, "Making Java class files", MakingMsg),
     maybe_write_msg(ProgressStream, MakingMsg, !IO),
     % XXX FILE_NAMES
-    list.map_foldl(
+    % XXX LEGACY
+    list.map2_foldl(
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)),
-        ModuleNames, JavaFiles, !IO),
+        ModuleNames, JavaFiles, _JavaFilesProposed, !IO),
     % We redirect errors to a file named after the main module.
     open_module_error_stream(ProgressStream, Globals, MainModuleName,
         MaybeErrorStream, !Info, !IO),
@@ -1305,7 +1308,8 @@ should_we_use_analysis_cache_dir(ProgressStream, Globals, Info,
     maybe_succeeded::out, string::out, io::di, io::uo) is det.
 
 create_analysis_cache_dir(ProgressStream, Globals, Succeeded, CacheDir, !IO) :-
-    analysis_cache_dir_name(Globals, CacheDir),
+    % XXX LEGACY
+    analysis_cache_dir_name(Globals, CacheDir, _CacheDirProposed),
     verbose_make_two_part_msg(Globals, "Creating", CacheDir, CreatingMsg),
     maybe_write_msg(ProgressStream, CreatingMsg, !IO),
     dir.make_directory(CacheDir, MakeRes, !IO),

@@ -82,14 +82,14 @@
 :- pred fact_table_check_args(module_info::in, prog_context::in,
     pred_id::in, pred_info::in, fact_table_arg_check_result::out) is det.
 
-    % fact_table_compile_facts(ProgressStream, ModuleInfo, FileName, Context,
-    %   GenInfo, HeaderCode, PrimaryProcId, !PredInfo, !Specs, !IO):
+    % fact_table_compile_facts(ProgressStream, ModuleInfo, FactTableFileName,
+    %   Context, GenInfo, HeaderCode, PrimaryProcId, !PredInfo, !Specs, !IO):
     %
-    % Compile the fact table in FileName for PredInfo into a separate .c file.
-    % Return error specs for any errors discovered while processing the
-    % contents of FileName, such as syntax errors (such as found fact for
-    % wrong predicate, found fact with wrong number of arguments, found fact
-    % in function form when expecting fact for predicate), type errors
+    % Compile the fact table in FactFileName for PredInfo into a separate .c
+    % file. Return error specs for any errors discovered while processing the
+    % contents of FactTableFileName, such as syntax errors (such as found fact
+    % for wrong predicate, found fact with wrong number of arguments, found
+    % fact in function form when expecting fact for predicate), type errors
     % (expected int, found float) and mode errors (expected int,
     % found variable).
     %
@@ -589,15 +589,16 @@ fill_in_fact_arg_infos([FactTableMode | FactTableModes],
 
 %---------------------------------------------------------------------------%
 
-fact_table_compile_facts(ProgressStream, ModuleInfo, FileName, Context,
-        GenInfo, HeaderCode, PrimaryProcId, !PredInfo, !Specs, !IO) :-
+fact_table_compile_facts(ProgressStream, ModuleInfo, FactTableFileName,
+        Context, GenInfo, HeaderCode, PrimaryProcId, !PredInfo, !Specs, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
-    io.open_input(FileName, FileResult, !IO),
+    io.open_input(FactTableFileName, FactTableFileResult, !IO),
     (
-        FileResult = ok(FileStream),
+        FactTableFileResult = ok(FactTableFileStream),
+        % XXX LEGACY
         fact_table_file_name_return_dirs(Globals, $pred,
-            ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
-            FileName, Dirs, OutputFileName),
+            ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), FactTableFileName,
+            Dirs, _DirsProposed, OutputFileName, _OutFileNameProposed),
         create_any_dirs_on_path(Dirs, !IO),
         io.open_output(OutputFileName, OpenResult, !IO),
         (
@@ -609,7 +610,7 @@ fact_table_compile_facts(ProgressStream, ModuleInfo, FileName, Context,
             get_maybe_progress_output_stream(ModuleInfo, ProgressStream,
                 MaybeProgressStream),
             compile_fact_table_in_file(MaybeProgressStream,
-                FileStream, FileName, OutputStream,
+                FactTableFileStream, FactTableFileName, OutputStream,
                 FactTableSize, ModuleInfo, PredSymName, GenInfo,
                 HeaderCode, PrimaryProcId, MaybeDataFileName,
                 !PredInfo, !Specs, !IO),
@@ -623,16 +624,16 @@ fact_table_compile_facts(ProgressStream, ModuleInfo, FileName, Context,
             )
         ;
             OpenResult = error(Error),
-            add_file_open_error(yes(Context), FileName, "output", Error,
-                !Specs, !IO),
+            add_file_open_error(yes(Context), FactTableFileName, "output",
+                Error, !Specs, !IO),
             HeaderCode = "",
             PrimaryProcId = invalid_proc_id
         ),
-        io.close_input(FileStream, !IO)
+        io.close_input(FactTableFileStream, !IO)
     ;
-        FileResult = error(Error),
-        add_file_open_error(yes(Context), FileName, "input", Error,
-            !Specs, !IO),
+        FactTableFileResult = error(Error),
+        add_file_open_error(yes(Context), FactTableFileName, "input",
+            Error, !Specs, !IO),
         HeaderCode = "",
         PrimaryProcId = invalid_proc_id
     ).

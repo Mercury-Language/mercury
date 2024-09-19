@@ -297,11 +297,15 @@
 % Any changes there may also require changes here, and vice versa.
 
 compile_c_file(Globals, ProgressStream, PIC, ModuleName, Succeeded, !IO) :-
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName, C_File, !IO),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName,
+        C_File, _C_FileProposed, !IO),
     maybe_pic_object_file_extension(PIC, ExtObj, _),
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gas(ExtObj), ModuleName, O_File, !IO),
+        ext_cur_ngs_gas(ExtObj), ModuleName,
+        O_File, _O_FileProposed, !IO),
     do_compile_c_file(Globals, ProgressStream, PIC, C_File, O_File,
         Succeeded, !IO).
 
@@ -956,8 +960,11 @@ compile_java_files(Globals, ProgressStream, HeadJavaFile, TailJavaFiles,
         TargetDebugOpt = ""
     ),
 
-    get_java_dir_path(Globals, ext_cur_ngs_gs_java_java, SourceDirPath),
-    get_java_dir_path(Globals, ext_cur_ngs_gs_java_class, DestDirPath),
+    % XXX LEGACY
+    get_java_dir_path(Globals, ext_cur_ngs_gs_java_java,
+        SourceDirPath, _SourceDirPathProposed),
+    get_java_dir_path(Globals, ext_cur_ngs_gs_java_class,
+        DestDirPath, _DestDirPathProposed),
     (
         SourceDirPath = [],
         expect(unify(DestDirPath, []), $pred, "DestDirPath != []"),
@@ -1074,8 +1081,10 @@ compile_csharp_file(Globals, ProgressStream, ModuleDepInfo,
     ReferencedDlls = referenced_dlls(ModuleName, IntImpForeignDeps),
     list.map(
         ( pred(Mod::in, Result::out) is det :-
+            % XXX LEGACY
             module_name_to_file_name(Globals, $pred,
-                ext_cur_gas(ext_cur_gas_lib_dll), Mod, FileName),
+                ext_cur_gas(ext_cur_gas_lib_dll), Mod,
+                FileName, _FileNameProposed),
             Result = [Prefix, FileName, " "]
         ), set.to_sorted_list(ReferencedDlls), ReferencedDllsList),
     ReferencedDllsStr = string.append_list(
@@ -1124,19 +1133,21 @@ referenced_dlls(Module, DepModules0) = Modules :-
 make_library_init_file(Globals, ProgressStream, MainModuleName, AllModules,
         Succeeded, !IO) :-
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
+    % XXX LEGACY
     module_name_to_file_name_full_curdir_create_dirs(Globals, $pred,
         ext_cur_gs(ext_cur_gs_lib_init), MainModuleName,
-        FullInitFileName, CurDirInitFileName, !IO),
+        FullInitFileName, _FullInitFileNameProposed, CurDirInitFileName, !IO),
     TmpFullInitFileName = FullInitFileName ++ ".tmp",
     io.open_output(TmpFullInitFileName, TmpInitFileOpenResult, !IO),
     (
         TmpInitFileOpenResult = ok(TmpInitFileStream),
-        list.map(
+        list.map2(
+            % XXX LEGACY
             module_name_to_file_name(Globals, $pred,
                 ext_cur_ngs_gs(ext_cur_ngs_gs_target_c)),
-            AllModules, AllTargetFilesList),
+                AllModules, AllTargetCFilesList, _AllTargetCFilesListProposed),
         invoke_mkinit(Globals, ProgressStream, TmpInitFileStream,
-            cmd_verbose_commands, MkInit, " -k ", AllTargetFilesList,
+            cmd_verbose_commands, MkInit, " -k ", AllTargetCFilesList,
             TmpMkInitSucceeded0, !IO),
         (
             TmpMkInitSucceeded0 = succeeded,
@@ -1276,8 +1287,10 @@ do_make_init_obj_file(Globals, ProgressStream, MustCompile,
     get_object_code_type(Globals, executable, PIC),
     maybe_pic_object_file_extension(PIC, _, ExtInitObj),
 
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gas(ExtInitObj), ModuleName, InitObjFileName, !IO),
+        ext_cur_ngs_gas(ExtInitObj), ModuleName,
+        InitObjFileName, _InitObjFileNameProposed, !IO),
     CompileCInitFile =
         ( pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
             do_compile_c_file(Globals, ProgressStream, PIC,
@@ -1302,12 +1315,14 @@ make_init_target_file(Globals, ProgressStream, MkInit,
 
     compute_grade(Globals, Grade),
 
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred, InitTargetOtherExt,
-        ModuleName, InitTargetFileName, !IO),
+        ModuleName, InitTargetFileName, _InitTargetFileNameProposed, !IO),
 
-    list.map(
+    list.map2(
+        % XXX LEGACY
         module_name_to_file_name(Globals, $pred, TargetOtherExt),
-        ModuleNames, TargetFileNameList),
+        ModuleNames, TargetFileNameList, _TargetFileNameListProposed),
 
     globals.lookup_accumulating_option(Globals, init_file_directories,
         InitFileDirsList),
@@ -1642,8 +1657,10 @@ linked_target_file_name_full_curdir(Globals, ModuleName, TargetType,
             TargetType = java_executable,
             Ext = ext_cur_gs(ext_cur_gs_lib_jar)
         ),
+        % XXX LEGACY
         module_name_to_file_name_full_curdir_create_dirs(Globals, $pred,
-            Ext, ModuleName, FullFileName, CurDirFileName, !IO)
+            Ext, ModuleName, FullFileName, _FullFileNameProposed,
+            CurDirFileName, !IO)
     ;
         (
             TargetType = static_library,
@@ -1652,8 +1669,10 @@ linked_target_file_name_full_curdir(Globals, ModuleName, TargetType,
             TargetType = shared_library,
             Ext = ext_cur_gas(ext_cur_gas_lib_sh_lib_opt)
         ),
+        % XXX LEGACY
         module_name_to_lib_file_name_full_curdir_create_dirs(Globals, $pred,
-            "lib", Ext, ModuleName, FullFileName, CurDirFileName, !IO)
+            "lib", Ext, ModuleName, FullFileName, _FullFileNameProposed,
+            CurDirFileName, !IO)
     ).
 
 :- pred get_launcher_script_extension(globals::in, ext::out) is det.
@@ -2411,8 +2430,10 @@ post_link_maybe_make_symlink_or_copy(Globals, ProgressStream,
             )
         then
             get_launcher_script_extension(Globals, ScriptExt),
+            % XXX LEGACY
             module_name_to_file_name_full_curdir(Globals, $pred, ScriptExt,
-                ModuleName, FullLauncherName, CurDirLauncherName),
+                ModuleName, FullLauncherName, _FullLauncherNameProposed,
+                CurDirLauncherName),
 
             do_timestamps_match(FullLauncherName, CurDirLauncherName,
                 DoLauncherTimestampsMatch, !IO),
@@ -2565,9 +2586,10 @@ get_link_opts_for_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
         % If we are linking statically with Mercury libraries,
         % pass the absolute pathname of the `.a' file for the library.
         file_name_to_module_name(LibName, LibModuleName),
+        % XXX LEGACY
         module_name_to_lib_file_name_full_curdir(Globals, $pred, "lib",
             ext_cur_gas(ext_cur_gas_lib_lib_opt), LibModuleName,
-            _FullLibFileName, LibFileName),
+            _FullLibFileName, _FullLibFileNameProposed, LibFileName),
         search_for_file_returning_dir(MercuryLibDirs,
             LibFileName, MaybeDirName, !IO),
         (
@@ -2970,10 +2992,10 @@ join_quoted_string_list(Strings, Prefix, Suffix, Separator, Result) :-
     join_string_list(map(quote_shell_cmd_arg, Strings), Prefix, Suffix,
         Separator, Result).
 
-    % join_module_list(Globals, ModuleNames, Extension, Result, !IO):
+    % join_module_list(Globals, Extension, FileNames, ExtFileNames, !IO):
     %
-    % The list of strings `Result' is computed from the list of strings
-    % `ModuleNames', by removing any directory paths, and converting the
+    % The list of strings `ExtFileNames' is computed from the list of strings
+    % `FileNames', by removing any directory paths, and converting the
     % strings to file names and then back, adding the specified Extension.
     % (This conversion ensures that we follow the usual file naming
     % conventions.)
@@ -2983,10 +3005,12 @@ join_quoted_string_list(Strings, Prefix, Suffix, Separator, Result) :-
 
 join_module_list(_Globals, _Ext, [], [], !IO).
 join_module_list(Globals, Ext,
-        [Module | Modules], [FileName | FileNames], !IO) :-
-    file_name_to_module_name(dir.det_basename(Module), ModuleName),
-    module_name_to_file_name(Globals, $pred, Ext, ModuleName, FileName),
-    join_module_list(Globals, Ext, Modules, FileNames, !IO).
+        [FileName | FileNames], [ExtFileName | ExtFileNames], !IO) :-
+    file_name_to_module_name(dir.det_basename(FileName), ModuleName),
+    % XXX LEGACY
+    module_name_to_file_name(Globals, $pred, Ext, ModuleName,
+        ExtFileName, _ExtFileNameProposed),
+    join_module_list(Globals, Ext, FileNames, ExtFileNames, !IO).
 
 %---------------------------------------------------------------------------%
 

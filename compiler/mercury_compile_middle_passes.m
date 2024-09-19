@@ -455,8 +455,9 @@ output_trans_opt_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
 
     module_info_get_name(!.HLDS, ModuleName),
     TransOptExt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred, TransOptExt,
-        ModuleName, TransOptFileName, !IO),
+        ModuleName, TransOptFileName, _TransOptFileNameProposed, !IO),
 
     io.read_named_file_as_string(TransOptFileName, ReadFileResult, !IO),
     (

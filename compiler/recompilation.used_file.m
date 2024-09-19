@@ -254,18 +254,20 @@ write_usage_file(ProgressStream, ModuleInfo, UsedFileContents, !IO) :-
         "% Writing recompilation compilation dependency information\n", !IO),
 
     module_info_get_name(ModuleInfo, ModuleName),
+    % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gs(ext_cur_ngs_gs_misc_used), ModuleName, FileName, !IO),
-    io.open_output(FileName, FileResult, !IO),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_misc_used), ModuleName,
+        UsedFileName, _UsedFileNameProposed, !IO),
+    io.open_output(UsedFileName, UsedFileOpenResult, !IO),
     (
-        FileResult = ok(FileStream),
-        write_usage_file_to_stream(FileStream, UsedFileContents, !IO),
-        io.close_output(FileStream, !IO)
+        UsedFileOpenResult = ok(UsedFileStream),
+        write_usage_file_to_stream(UsedFileStream, UsedFileContents, !IO),
+        io.close_output(UsedFileStream, !IO)
     ;
-        FileResult = error(IOError),
+        UsedFileOpenResult = error(IOError),
         io.error_message(IOError, IOErrorMessage),
         io.format(ProgressStream, "\nError opening `%s' for output: %s.\n",
-            [s(FileName), s(IOErrorMessage)], !IO),
+            [s(UsedFileName), s(IOErrorMessage)], !IO),
         io.set_exit_status(1, !IO)
     ).
 
@@ -641,9 +643,10 @@ module_name_and_used_items_to_string(UsedFileContents,
 %---------------------------------------------------------------------------%
 
 read_used_file_for_module(Globals, ModuleName, ReadUsedFileResult, !IO) :-
+    % XXX LEGACY
     module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_misc_used),
-        ModuleName, UsedFileName),
+        ModuleName, UsedFileName, _UsedFileNameProposed),
     io.read_named_file_as_string(UsedFileName, MaybeUsedFileString, !IO),
     (
         MaybeUsedFileString = ok(UsedFileString),

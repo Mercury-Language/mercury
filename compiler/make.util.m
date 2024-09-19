@@ -235,10 +235,13 @@ remove_make_target_file(ProgressStream, Globals, From, VerboseOption, Target,
 
 remove_make_target_file_by_name(ProgressStream, Globals, From, VerboseOption,
         ModuleName, TargetType, !Info, !IO) :-
+    % XXX LEGACY
     module_target_to_file_name(Globals, From, TargetType,
-        ModuleName, FileName, !IO),
-    remove_file_for_make(ProgressStream, Globals, VerboseOption, FileName,
-        !Info, !IO),
+        ModuleName, FileNameLegacy, FileNameProposed, !IO),
+    remove_file_for_make(ProgressStream, Globals, VerboseOption,
+        FileNameLegacy, !Info, !IO),
+    remove_file_for_make(ProgressStream, Globals, VerboseOption,
+        FileNameProposed, !Info, !IO),
     ( if date_file_extension(TargetType, TimestampExt) then
         remove_module_file_for_make(ProgressStream, Globals, VerboseOption,
             ModuleName, TimestampExt, !Info, !IO)
@@ -250,9 +253,13 @@ remove_make_target_file_by_name(ProgressStream, Globals, From, VerboseOption,
 
 remove_module_file_for_make(ProgressStream, Globals, VerboseOption,
         ModuleName, Ext, !Info, !IO) :-
-    module_name_to_file_name(Globals, $pred, Ext, ModuleName, FileName),
+    % XXX LEGACY
+    module_name_to_file_name(Globals, $pred, Ext, ModuleName,
+        FileNameLegacy, FileNameProposed),
     remove_file_for_make(ProgressStream, Globals, VerboseOption,
-        FileName, !Info, !IO).
+        FileNameLegacy, !Info, !IO),
+    remove_file_for_make(ProgressStream, Globals, VerboseOption,
+        FileNameProposed, !Info, !IO).
 
 %---------------------%
 
