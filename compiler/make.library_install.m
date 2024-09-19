@@ -419,10 +419,10 @@ make_and_install_library_grade_2(ProgressStream, Globals, NgsLibDirMap,
 install_library_grade_files(ProgressStream, Globals, NgsLibDirMap, GradeDir,
         MainModuleName, AllModuleNames, !Succeeded, !Info, !IO) :-
     make_grade_install_dirs(ProgressStream, Globals, GradeDir,
-        DirResult, GsLibDirMap, !IO),
+        DirSucceeded, GsLibDirMap, !IO),
     % TODO {ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep), "module_deps"}
     (
-        DirResult = succeeded,
+        DirSucceeded = succeeded,
         globals.get_target(Globals, Target),
         get_std_grade_specific_install_lib_dir(Globals, GradeDir, GradeLibDir),
         (
@@ -471,7 +471,7 @@ install_library_grade_files(ProgressStream, Globals, NgsLibDirMap, GradeDir,
                 NgsLibDirMap, GsLibDirMap, GradeDir),
             AllModuleNames, !Succeeded, !Info, !IO)
     ;
-        DirResult = did_not_succeed,
+        DirSucceeded = did_not_succeed,
         !:Succeeded = did_not_succeed
     ).
 
@@ -751,16 +751,15 @@ make_install_dirs(ProgressStream, Globals, !:DirSucceeded,
     string::in, maybe_succeeded::out, libdir_map::out,
     io::di, io::uo) is det.
 
-make_grade_install_dirs(ProgressStream, Globals, Grade,
+make_grade_install_dirs(ProgressStream, Globals, GradeDir,
         !:DirSucceeded, !:GsLibDirMap, !IO) :-
     !:DirSucceeded = succeeded,
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     LibDir = Prefix / "lib" / "mercury",
 
-    % XXX Why LibDir / "lib" / Grade / "inc", and not LibDir / "inc" / Grade?
-    GradeIncSubDir = LibDir / "lib" / Grade / "inc",
-    GradeIntsSubDir = LibDir / "ints" / Grade,
-    GradeModuleSubDir = LibDir / "modules" / Grade,
+    GradeIncSubDir = LibDir / "lib" / GradeDir / "inc",
+    GradeIntsSubDir = LibDir / "ints" / GradeDir,
+    GradeModuleSubDir = LibDir / "modules" / GradeDir,
 
     make_nonext_dir(ProgressStream, GradeIncSubDir / "Mercury",
         !DirSucceeded, !IO),
@@ -775,8 +774,8 @@ make_grade_install_dirs(ProgressStream, Globals, Grade,
         UseSymLinks = yes,
         % XXX This code seems strange, because code using mmc --make
         % with --use-grade-subdirs should look for grade-specific files *only*
-        % in LibDir / "ints" / Grade / "Mercury" / ExtDir, and *never*
-        % in LibDir / "ints" / Grade.
+        % in LibDir / "ints" / GradeDir / "Mercury" / ExtDir, and *never*
+        % in LibDir / "ints" / GradeDir.
         %
         % I (zs) can think of two possible reasons for using symlinks here.
         % One is that the original author of this code for creating the
