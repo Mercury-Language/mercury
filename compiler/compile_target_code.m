@@ -3018,9 +3018,9 @@ make_all_module_command(Command0, MainModule, AllModules, Command, !IO) :-
     % Pass the main module first.
     list.map_foldl(module_name_to_source_file_name,
         [MainModule | list.delete_all(AllModules, MainModule)],
-        ModuleNameStrings, !IO),
+        ModuleSrcFileNames, !IO),
     Command = string.join_list(" ",
-        list.map(quote_shell_cmd_arg, [Command0 | ModuleNameStrings])).
+        list.map(quote_shell_cmd_arg, [Command0 | ModuleSrcFileNames])).
 
 %---------------------------------------------------------------------------%
 
