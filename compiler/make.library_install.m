@@ -81,44 +81,48 @@ install_library(ProgressStream, Globals, MainModuleName, !:Succeeded,
     find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
         DepsSucceeded, AllModuleNames0, !Info, !IO),
     AllModuleNames = set.to_sorted_list(AllModuleNames0),
-    make_install_dirs(ProgressStream, Globals,
-        DirSucceeded, NgsLibDirMap, !IO),
-    ( if
+    (
         DepsSucceeded = succeeded,
-        DirSucceeded = succeeded
-    then
-        list.foldl3(
-            install_ints_and_headers_for_module(ProgressStream, Globals,
-                NgsLibDirMap),
-            AllModuleNames, succeeded, !:Succeeded, !Info, !IO),
-        install_extra_headers(ProgressStream, Globals, !Succeeded, !IO),
-
-        grade_directory_component(Globals, CurGrade),
-        install_library_grade_files(ProgressStream, Globals, NgsLibDirMap,
-            CurGrade, MainModuleName, AllModuleNames, !Succeeded, !Info, !IO),
-        (
-            !.Succeeded = succeeded,
-            KeepGoing = make_info_get_keep_going(!.Info),
-            % XXX With Mmake, LIBGRADES is target-specific.
-            globals.lookup_accumulating_option(Globals, libgrades, LibGrades0),
-            LibGrades = list.delete_all(LibGrades0, CurGrade),
-            make_and_install_library_grades(KeepGoing, ProgressStream, Globals,
-                NgsLibDirMap, MainModuleName, AllModuleNames, LibGrades,
-                !Succeeded, !Info, !IO)
-        ;
-            !.Succeeded = did_not_succeed
-        )
-    else
+        install_library_non_grade_specific_files(ProgressStream, Globals,
+            AllModuleNames, NgsLibDirMap, !:Succeeded, !Info, !IO),
+        install_library_grade_specific_files_for_all_libgrades(ProgressStream,
+            Globals, NgsLibDirMap, MainModuleName, AllModuleNames,
+            !Succeeded, !Info, !IO)
+    ;
+        DepsSucceeded = did_not_succeed,
         !:Succeeded = did_not_succeed
     ).
 
-:- pred install_ints_and_headers_for_module(io.text_output_stream::in,
+:- pred install_library_non_grade_specific_files(io.text_output_stream::in,
+    globals::in, list(module_name)::in, libdir_map::out, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+install_library_non_grade_specific_files(ProgressStream, Globals,
+        AllModuleNames, NgsLibDirMap, !:Succeeded, !Info, !IO) :-
+    make_install_dirs(ProgressStream, Globals,
+        DirSucceeded, NgsLibDirMap, !IO),
+    (
+        DirSucceeded = succeeded,
+        % Note that install_ints_and_headers_for_module actually installs
+        % some grade-specific files in non-grade-specific directories.
+        list.foldl3(
+            legacy_install_ints_and_headers_for_module(ProgressStream, Globals,
+                NgsLibDirMap),
+            AllModuleNames, succeeded, !:Succeeded, !Info, !IO),
+
+        legacy_install_extra_headers(ProgressStream, Globals, !Succeeded, !IO)
+    ;
+        DirSucceeded = did_not_succeed,
+        !:Succeeded = did_not_succeed
+    ).
+
+:- pred legacy_install_ints_and_headers_for_module(io.text_output_stream::in,
     globals::in, libdir_map::in, module_name::in,
     maybe_succeeded::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-install_ints_and_headers_for_module(ProgressStream, Globals, NgsLibDirMap,
-        ModuleName, !Succeeded, !Info, !IO) :-
+legacy_install_ints_and_headers_for_module(ProgressStream, Globals,
+        NgsLibDirMap, ModuleName, !Succeeded, !Info, !IO) :-
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
@@ -191,86 +195,84 @@ install_ints_and_headers_for_module(ProgressStream, Globals, NgsLibDirMap,
         !:Succeeded = did_not_succeed
     ).
 
-:- pred install_extra_headers(io.text_output_stream::in, globals::in,
+:- pred legacy_install_extra_headers(io.text_output_stream::in, globals::in,
     maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-install_extra_headers(ProgressStream, Globals, !Succeeded, !IO) :-
+legacy_install_extra_headers(ProgressStream, Globals, !Succeeded, !IO) :-
     globals.lookup_accumulating_option(Globals, extra_library_header,
         ExtraHdrs),
     globals.lookup_string_option(Globals, install_prefix, Prefix),
     IncDir = Prefix / "lib" / "mercury" / "inc",
-    list.foldl2(install_extra_header(ProgressStream, Globals, IncDir),
+    list.foldl2(install_file_to(ProgressStream, Globals, IncDir),
         ExtraHdrs, !Succeeded, !IO).
-
-:- pred install_extra_header(io.text_output_stream::in, globals::in,
-    dir_name::in, string::in, maybe_succeeded::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
-
-install_extra_header(ProgressStream, Globals, IncDir, FileName,
-        !Succeeded, !IO) :-
-    install_file(ProgressStream, Globals, FileName, IncDir, !Succeeded, !IO).
 
 %---------------------------------------------------------------------------%
 
-    % Map from the directory name associated with a given extension
-    % (such as "int0s" for .int0 files, or "analyses" for .analysis files)
-    % to the pathnames of the one or two directories we have created to store
-    % files with that extension.
-    %
-    % We use libdir_maps for extensions whose files are installed using
-    % install_subdir_file. Extensions whose files are installed directly
-    % with install_file will not appear in maps of this type.
-    %
-:- type libdir_map == map(string, libdir_info).
+:- pred install_library_grade_specific_files_for_all_libgrades(
+    io.text_output_stream::in, globals::in, libdir_map::in,
+    module_name::in, list(module_name)::in,
+    maybe_succeeded::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-:- type libdir_info
-    --->    install_to_cur_ngs(dir_name, dir_name)
-            % Install files to both the cur directory (the first argument) and
-            % the non-grade-specific or ngs directory (the second argument).
-            %
-            % For non-grade-specific extensions, the first directory is
-            % the one where the installed file is intended to be found by
-            % --no-use-subdirs compiler invocations, while the second is for
-            % --use-subdirs compiler invocations.
-            %
-            % For grade-specific extensions, we use the same setup.
-            % I (zs) am not sure why, but my guess is documented in the
-            % big comment in make_grade_install_dirs.
-    ;       install_to_cur_only(dir_name).
-            % Install files only to the specified directory.
-            % This will be the cur directory, and the ngs directory
-            % will be a symlink to the cur directory.
+install_library_grade_specific_files_for_all_libgrades(ProgressStream,
+        Globals, NgsLibDirMap, MainModuleName, AllModuleNames,
+        !Succeeded, !Info, !IO) :-
+    grade_directory_component(Globals, CurGrade),
+    % XXX With Mmake, LIBGRADES is target-specific; with this code in
+    % mmc --make, it isn't.
+    globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
+    NonCurLibGrades = list.delete_all(LibGrades, CurGrade),
 
-:- pred make_and_install_library_grades(maybe_keep_going::in,
+    % The library is already built in the current grade; we just need to
+    % install it. For all other grades, we must build the library first
+    % in that grade before we can install it.
+    legacy_install_library_grade_files(ProgressStream, Globals, NgsLibDirMap,
+        CurGrade, MainModuleName, AllModuleNames, !Succeeded, !Info, !IO),
+    KeepGoing = make_info_get_keep_going(!.Info),
+    setup_make_and_install_library_grades(KeepGoing, ProgressStream,
+        Globals, NgsLibDirMap, MainModuleName, AllModuleNames,
+        NonCurLibGrades, !Succeeded, !Info, !IO).
+
+:- pred setup_make_and_install_library_grades(maybe_keep_going::in,
     io.text_output_stream::in, globals::in, libdir_map::in,
     module_name::in, list(module_name)::in, list(string)::in,
     maybe_succeeded::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_and_install_library_grades(_, _, _, _, _, _, [], !Succeeded, !Info, !IO).
-make_and_install_library_grades(KeepGoing, ProgressStream, Globals,
+setup_make_and_install_library_grades(_, _, _, _, _, _, [],
+        !Succeeded, !Info, !IO).
+setup_make_and_install_library_grades(KeepGoing, ProgressStream, Globals,
         NgsLibDirMap, MainModuleName, AllModuleNames, [Grade | Grades],
         !Succeeded, !Info, !IO) :-
-    make_and_install_library_grade(ProgressStream, Globals, NgsLibDirMap,
-        MainModuleName, AllModuleNames, Grade, GradeSucceeded, !Info, !IO),
-    should_we_stop_or_continue(KeepGoing, GradeSucceeded, StopOrContinue,
+    should_we_stop_or_continue(KeepGoing, !.Succeeded, StopOrContinue,
         !Succeeded),
     (
         StopOrContinue = soc_stop
     ;
         StopOrContinue = soc_continue,
-        make_and_install_library_grades(KeepGoing, ProgressStream, Globals,
-            NgsLibDirMap, MainModuleName, AllModuleNames, Grades,
+        setup_make_and_install_library_grade(ProgressStream, Globals,
+            NgsLibDirMap, MainModuleName, AllModuleNames, Grade,
+            !Succeeded, !Info, !IO),
+        setup_make_and_install_library_grades(KeepGoing, ProgressStream,
+            Globals, NgsLibDirMap, MainModuleName, AllModuleNames, Grades,
             !Succeeded, !Info, !IO)
     ).
 
-:- pred make_and_install_library_grade( io.text_output_stream::in, globals::in,
-    libdir_map::in, module_name::in, list(module_name)::in,
-    string::in, maybe_succeeded::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    % This predicate sets things up for
+    %
+    % - first making the library in the given grade,
+    % - and then installing that library,
+    %
+    % and then invokes make_and_install_library_grade to actually do
+    % both of those actions.
+    %.
+:- pred setup_make_and_install_library_grade( io.text_output_stream::in,
+    globals::in, libdir_map::in, module_name::in, list(module_name)::in,
+    string::in, maybe_succeeded::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_and_install_library_grade(ProgressStream, Globals, NgsLibDirMap,
-        MainModuleName, AllModuleNames, Grade, Succeeded, !Info, !IO) :-
+setup_make_and_install_library_grade(ProgressStream, Globals, NgsLibDirMap,
+        MainModuleName, AllModuleNames, Grade, !Succeeded, !Info, !IO) :-
     % Only remove grade-dependent files after installing if
     % --use-grade-subdirs is not specified by the user.
     globals.get_subdir_setting(Globals, SubDirSetting),
@@ -311,7 +313,7 @@ make_and_install_library_grade(ProgressStream, Globals, NgsLibDirMap,
     (
         OptionsSpecs = [_ | _],
         usage_errors(ProgressStream, Globals, OptionsSpecs, !IO),
-        Succeeded = did_not_succeed
+        !:Succeeded = did_not_succeed
     ;
         OptionsSpecs = [],
 
@@ -348,19 +350,20 @@ make_and_install_library_grade(ProgressStream, Globals, NgsLibDirMap,
         make_info_set_target_file_timestamp_map(init_target_file_timestamp_map,
             !Info),
 
-        % Building the library in the new grade is done in a separate process
+        % We build the library in the new grade in a separate process
         % to make it easier to stop and clean up on an interrupt.
         globals.lookup_bool_option(LibGlobals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
         call_in_forked_process(
-            make_and_install_library_grade_2(ProgressStream, LibGlobals,
+            make_and_install_library_grade(ProgressStream, LibGlobals,
                 NgsLibDirMap, MainModuleName, AllModuleNames,
                 !.Info, CleanAfter),
             Succeeded0, !IO),
-        Cleanup = maybe_make_grade_clean(ProgressStream, LibGlobals,
+        CleanupPred = maybe_make_grade_clean(ProgressStream, LibGlobals,
             CleanAfter, MainModuleName, AllModuleNames),
-        teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
-            Succeeded0, Succeeded, !Info, !IO)
+        teardown_checking_for_interrupt(VeryVerbose, Cookie, CleanupPred,
+            Succeeded0, Succeeded1, !Info, !IO),
+        !:Succeeded = !.Succeeded `and` Succeeded1
     ).
 
 :- pred remove_target_file_if_grade_dependent(dependency_file::in,
@@ -380,21 +383,22 @@ remove_target_file_if_grade_dependent(File, _Status, !StatusMap) :-
         true
     ).
 
-:- pred make_and_install_library_grade_2(io.text_output_stream::in,
+:- pred make_and_install_library_grade(io.text_output_stream::in,
     globals::in, libdir_map::in, module_name::in, list(module_name)::in,
     make_info::in, bool::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-make_and_install_library_grade_2(ProgressStream, Globals, NgsLibDirMap,
+make_and_install_library_grade(ProgressStream, Globals, NgsLibDirMap,
         MainModuleName, AllModuleNames, !.Info, CleanAfter, Succeeded, !IO) :-
+    % This is the "make" part ...
     make_misc_target(ProgressStream, Globals,
         MainModuleName - misc_target_build_library, LibSucceeded,
         !Info, [], Specs, !IO),
     (
         LibSucceeded = succeeded,
-        % `GradeDir' differs from `Grade' in that it is in canonical form.
+        % ... and this is the "install" part.
         grade_directory_component(Globals, GradeDir),
-        install_library_grade_files(ProgressStream, Globals, NgsLibDirMap,
-            GradeDir, MainModuleName, AllModuleNames,
+        legacy_install_library_grade_files(ProgressStream, Globals,
+            NgsLibDirMap, GradeDir, MainModuleName, AllModuleNames,
             succeeded, Succeeded, !Info, !IO),
         maybe_make_grade_clean(ProgressStream, Globals, CleanAfter,
             MainModuleName, AllModuleNames, !.Info, _Info, !IO)
@@ -411,16 +415,19 @@ make_and_install_library_grade_2(ProgressStream, Globals, NgsLibDirMap,
     %
     % XXX document the others ...
     %
-:- pred install_library_grade_files(io.text_output_stream::in, globals::in,
-    libdir_map::in, string::in, module_name::in, list(module_name)::in,
-    maybe_succeeded::in, maybe_succeeded::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred legacy_install_library_grade_files(io.text_output_stream::in,
+    globals::in, libdir_map::in, string::in,
+    module_name::in, list(module_name)::in,
+    maybe_succeeded::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-install_library_grade_files(ProgressStream, Globals, NgsLibDirMap, GradeDir,
-        MainModuleName, AllModuleNames, !Succeeded, !Info, !IO) :-
+legacy_install_library_grade_files(ProgressStream, Globals, NgsLibDirMap,
+        GradeDir, MainModuleName, AllModuleNames, !Succeeded, !Info, !IO) :-
+    % This creates *some* of the directories into which we install
+    % grade-specific files, but not all; some are created by the calls
+    % to module_name_to_file_name_create_dirs below.
     make_grade_install_dirs(ProgressStream, Globals, GradeDir,
         DirSucceeded, GsLibDirMap, !IO),
-    % TODO {ext_cur_ngs_gs(ext_cur_ngs_gs_misc_module_dep), "module_deps"}
     (
         DirSucceeded = succeeded,
         globals.get_target(Globals, Target),
@@ -672,6 +679,15 @@ generate_archive_index(ProgressStream, Globals, FileName, Succeeded, !IO) :-
 
 %---------------------%
 
+:- pred install_file_to(io.text_output_stream::in, globals::in,
+    dir_name::in, file_name::in, maybe_succeeded::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
+
+install_file_to(ProgressStream, Globals, InstallDir, FileName,
+        !Succeeded, !IO) :-
+    install_file(ProgressStream, Globals, FileName, InstallDir,
+        !Succeeded, !IO).
+
 :- pred install_file(io.text_output_stream::in, globals::in,
     file_name::in, dir_name::in, maybe_succeeded::in, maybe_succeeded::out,
     io::di, io::uo) is det.
@@ -803,6 +819,37 @@ make_grade_install_dirs(ProgressStream, Globals, GradeDir,
         make_ngs_dir(ProgressStream, GradeIntsSubDir, "analyses",
             !DirSucceeded, !GsLibDirMap, !IO)
     ).
+
+%---------------------%
+
+    % Map from the directory name associated with a given extension
+    % (such as "int0s" for .int0 files, or "analyses" for .analysis files)
+    % to the pathnames of the one or two directories we have created to store
+    % files with that extension.
+    %
+    % We use libdir_maps for extensions whose files are installed using
+    % install_subdir_file. Extensions whose files are installed directly
+    % with install_file will not appear in maps of this type.
+    %
+:- type libdir_map == map(string, libdir_info).
+
+:- type libdir_info
+    --->    install_to_cur_ngs(dir_name, dir_name)
+            % Install files to both the cur directory (the first argument) and
+            % the non-grade-specific or ngs directory (the second argument).
+            %
+            % For non-grade-specific extensions, the first directory is
+            % the one where the installed file is intended to be found by
+            % --no-use-subdirs compiler invocations, while the second is for
+            % --use-subdirs compiler invocations.
+            %
+            % For grade-specific extensions, we use the same setup.
+            % I (zs) am not sure why, but my guess is documented in the
+            % big comment in make_grade_install_dirs.
+    ;       install_to_cur_only(dir_name).
+            % Install files only to the specified directory.
+            % This will be the cur directory, and the ngs directory
+            % will be a symlink to the cur directory.
 
 %---------------------%
 

@@ -408,7 +408,7 @@ handle_parsed_module_dep_file(ProgressStream, Globals, SearchDirs, ModuleName,
             find_and_read_module_dep_file(ProgressStream, Globals,
                 do_not_rebuild_module_deps, SearchDirs),
             NestedSubModules, !Info, !IO),
-        ( if some_bad_module_dependency(!.Info, NestedSubModules) then
+        ( if some_module_has_dep_info(!.Info, NestedSubModules) then
             Result = error("error in nested submodules")
         else
             Result = ok
@@ -419,14 +419,6 @@ handle_parsed_module_dep_file(ProgressStream, Globals, SearchDirs, ModuleName,
     ).
 
 %---------------------------------------------------------------------------%
-
-:- pred some_bad_module_dependency(make_info::in, list(module_name)::in)
-    is semidet.
-
-some_bad_module_dependency(Info, ModuleNames) :-
-    list.member(ModuleName, ModuleNames),
-    map.search(make_info_get_maybe_module_dep_info_map(Info), ModuleName,
-        no_module_dep_info).
 
 :- pred check_regular_file_exists(file_name::in, maybe_error::out,
     io::di, io::uo) is det.
@@ -457,6 +449,17 @@ check_regular_file_exists(FileName, FileExists, !IO) :-
     ;
         ResFileType = error(Error),
         FileExists = error(FileName ++ ": " ++ io.error_message(Error))
+    ).
+
+:- pred some_module_has_dep_info(make_info::in, list(module_name)::in)
+    is semidet.
+
+some_module_has_dep_info(Info, ModuleNames) :-
+    some [ModuleName] (
+        list.member(ModuleName, ModuleNames),
+        map.search(make_info_get_maybe_module_dep_info_map(Info),
+            ModuleName, MaybeModuleDepInfo),
+        MaybeModuleDepInfo = no_module_dep_info
     ).
 
 %---------------------------------------------------------------------------%
