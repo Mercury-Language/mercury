@@ -374,9 +374,7 @@ setup_make_and_install_library_grade(ProgressStream, Globals, NgsLibDirMap,
 remove_target_file_if_grade_dependent(File, _Status, !StatusMap) :-
     ( if
         File = dep_target(target_file(_, TargetType)),
-        % XXX Why are we deleting arch-dependent target types
-        % that are NOT grade dependent?
-        target_is_grade_or_arch_dependent(TargetType)
+        is_target_grade_dependent(TargetType) = grade_dependent
     then
         version_hash_table.delete(File, !StatusMap)
     else

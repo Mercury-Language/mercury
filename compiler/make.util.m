@@ -73,7 +73,17 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred target_is_grade_or_arch_dependent(module_target_type::in) is semidet.
+:- type maybe_grade_dependent
+    --->    not_grade_dependent
+    ;       grade_dependent.
+
+    % Test whether targets of a given type are grade-dependent or not.
+    % NOTE: some grade-dependent target types are also dependent on the
+    % ISA (instruction set architecture) of the target machine, while
+    % some are not. However, grade-independent target types are never
+    % architecture-dependent.
+    %
+:- func is_target_grade_dependent(module_target_type) = maybe_grade_dependent.
 
 %---------------------------------------------------------------------------%
 
@@ -288,12 +298,7 @@ make_dependency_list(ModuleNames, TargetType) =
 
 %---------------------------------------------------------------------------%
 
-target_is_grade_or_arch_dependent(Target) :-
-    is_target_grade_or_arch_dependent(Target) = yes.
-
-:- func is_target_grade_or_arch_dependent(module_target_type) = bool.
-
-is_target_grade_or_arch_dependent(Target) = IsDependent :-
+is_target_grade_dependent(Target) = IsDependent :-
     (
         ( Target = module_target_source
         ; Target = module_target_errors
@@ -304,7 +309,7 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_c_header(header_mh)
         ; Target = module_target_xml_doc
         ),
-        IsDependent = no
+        IsDependent = not_grade_dependent
     ;
         ( Target = module_target_opt
         ; Target = module_target_analysis_registry
@@ -317,7 +322,7 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_object_code(_)
         ; Target = module_target_fact_table_object(_, _)
         ),
-        IsDependent = yes
+        IsDependent = grade_dependent
     ).
 
 %---------------------------------------------------------------------------%
