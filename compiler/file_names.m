@@ -119,7 +119,7 @@
 % of the target platform), some are not. Our current LEGACY directory structure
 % places both of these kinds of files into a directory whose name includes
 % an <arch> component specifying the architecture. The PROPOSED structure
-% we intend to replace it however makes a distintction between
+% we intend to replace it however makes a distinction between
 %
 % - a subdirectory that stores grade-specific files that are NOT
 %   architecture-specific, and
@@ -181,7 +181,7 @@
 %
 % - we should have a "flag day" when we flip the switch from the storing
 %   extensions in their old, sometimes-chosen-by accident directories
-%   to storing them in their new, deliberartely chosen directories.
+%   to storing them in their new, deliberately chosen directories.
 
 :- type ext
 %   --->    ext_src
