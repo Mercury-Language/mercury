@@ -320,35 +320,28 @@ legacy_install_extra_headers(ProgressStream, Globals, !Succeeded, !IO) :-
 
 proposed_install_library_non_grade_specific_files(ProgressStream, Globals,
         AllModuleNames, !:Succeeded, !Info, !IO) :-
-    !:Succeeded = succeeded,
     gather_module_dep_infos(ProgressStream, Globals, AllModuleNames,
-        cord.init, ModulesWithChildrenCord,
-        cord.init, ModulesWithoutDepInfoCord, !Info, !IO),
-    ModulesWithoutDepInfo = cord.list(ModulesWithoutDepInfoCord),
+        ModulesWithChildren, DepInfoSucceded, !Info, !IO),
     (
-        ModulesWithoutDepInfo = [_ | _],
-        % XXX The LEGACY install process does not print an error message
-        % for this error. The PROPOSED process should, but what should
-        % the message say?
+        DepInfoSucceded = did_not_succeed,
         !:Succeeded = did_not_succeed
     ;
-        ModulesWithoutDepInfo = [],
+        DepInfoSucceded = succeeded,
+        !:Succeeded = succeeded,
 
         globals.lookup_string_option(Globals, install_prefix, Prefix0),
         Prefix = Prefix0 / "MercurySystem",
 
-        dir.make_directory(Prefix, PrefixResult, !IO),
+        make_dir_handle_any_error(ProgressStream, Prefix,
+            MakePrefixDirSucceeded, !IO),
         (
-            PrefixResult = error(IOError),
-            print_mkdir_error(ProgressStream, Prefix, IOError,
-                !:Succeeded, !IO)
+            MakePrefixDirSucceeded = did_not_succeed
         ;
-            PrefixResult = ok,
-            ModulesWithChildren = cord.list(ModulesWithChildrenCord),
-            ExtInt0 = ext_cur_ngs(ext_cur_ngs_int_int0),
-            ExtInt1 = ext_cur_ngs(ext_cur_ngs_int_int1),
-            ExtInt2 = ext_cur_ngs(ext_cur_ngs_int_int2),
-            ExtInt3 = ext_cur_ngs(ext_cur_ngs_int_int3),
+            MakePrefixDirSucceeded = succeeded,
+            ExtInt0 = ext_cur_ngs(ext_cur_ngs_int_int0) : ext_cur_ngs_ns,
+            ExtInt1 = ext_cur_ngs(ext_cur_ngs_int_int1) : ext_cur_ngs_ns,
+            ExtInt2 = ext_cur_ngs(ext_cur_ngs_int_int2) : ext_cur_ngs_ns,
+            ExtInt3 = ext_cur_ngs(ext_cur_ngs_int_int3) : ext_cur_ngs_ns,
             proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
                 ExtInt0, ModulesWithChildren, !Succeeded, !IO),
             proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
@@ -395,6 +388,12 @@ proposed_install_library_non_grade_specific_files(ProgressStream, Globals,
                 ExtMh = ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
                 proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
                     ExtMh, AllModuleNames, !Succeeded, !IO)
+
+                % XXX PROPOSED We should do something equivalent to
+                % legacy_install_extra_headers, but where should we
+                % install them to? And should we install .mh files there
+                % as well, or *instead of*, the install done we do
+                % just above?
             ;
                 ( Target = target_java
                 ; Target = target_csharp
@@ -402,6 +401,8 @@ proposed_install_library_non_grade_specific_files(ProgressStream, Globals,
             )
         )
     ).
+
+%---------------------%
 
 :- type ext_cur_ngs_ns =< ext
     --->    ext_cur_ngs(ext_cur_ngs)
@@ -422,22 +423,15 @@ proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
     ),
 
     InstallDir = Prefix / ExtDirName,
-    dir.make_directory(InstallDir, InstallDirResult, !IO),
+    make_dir_handle_any_error(ProgressStream, InstallDir,
+        MakeInstallDirSucceeded, !IO),
     (
-        InstallDirResult = error(IOError),
-        print_mkdir_error(ProgressStream, InstallDir, IOError,
-            !:Succeeded, !IO)
+        MakeInstallDirSucceeded = did_not_succeed
     ;
-        InstallDirResult = ok,
+        MakeInstallDirSucceeded = succeeded,
         GenExt = coerce(Ext),
-        ModuleNameToFileName =
-            ( pred(MN::in, FN::out) is det :-
-                % XXX LEGACY For a transition period, we are copying from
-                % workspaces that have the LEGACY directory structure.
-                module_name_to_file_name(Globals, $pred, GenExt,
-                    MN, FN, _FNProposed)
-            ),
-        list.map(ModuleNameToFileName, ModuleNames, FileNames),
+        list.map(module_name_to_workspace_file_name(Globals, GenExt),
+            ModuleNames, FileNames),
         install_files_to(ProgressStream, Globals, InstallDir,
             FileNames, !Succeeded, !IO)
     ).
@@ -692,7 +686,7 @@ legacy_install_library_grade_specific_files_for_grade(ProgressStream,
         get_std_grade_specific_install_lib_dir(Globals, GradeDir, GradeLibDir),
         (
             Target = target_csharp,
-            ExtDll = ext_cur_gas(ext_cur_gas_lib_dll),
+            ExtDll = ext_cur_gs(ext_cur_gs_lib_cil_dll),
             % XXX LEGACY
             module_name_to_file_name_create_dirs(Globals, $pred, ExtDll,
                 MainModuleName, DllFileName, _DllFileNameProposed, !IO),
@@ -907,9 +901,213 @@ legacy_install_grade_ints_and_headers(ProgressStream, Globals,
     maybe_succeeded::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-proposed_install_library_grade_specific_files_for_grade(_ProgressStream,
-        _Globals, _GradeDir, _MainModuleName, _AllModuleNames,
-        !Succeeded, !Info, !IO).
+proposed_install_library_grade_specific_files_for_grade(ProgressStream,
+        Globals, Grade, MainModuleName, AllModuleNames,
+        !Succeeded, !Info, !IO) :-
+    gather_module_dep_infos(ProgressStream, Globals, AllModuleNames,
+        _ModulesWithChildren, Succeeded, !Info, !IO),
+    (
+        Succeeded = did_not_succeed,
+        !:Succeeded = did_not_succeed
+    ;
+        Succeeded = succeeded,
+
+        globals.lookup_string_option(Globals, install_prefix, Prefix0),
+        Prefix = Prefix0 / "MercurySystem",
+
+        % This file type *is* be grade-specific, and should be listed
+        % as such.
+        ExtMD = ext_cur_ngs(ext_cur_ngs_misc_module_dep),
+        proposed_install_all_gs_files(ProgressStream, Globals, Prefix, Grade,
+            ExtMD, AllModuleNames, !Succeeded, !IO),
+
+        globals.get_any_intermod(Globals, AnyIntermod),
+        (
+            AnyIntermod = no
+        ;
+            AnyIntermod = yes,
+            ExtOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+            proposed_install_all_gs_files(ProgressStream, Globals,
+                Prefix, Grade, ExtOpt, AllModuleNames, !Succeeded, !IO)
+        ),
+
+        globals.lookup_bool_option(Globals, intermodule_analysis,
+            IntermodAnalysis),
+        (
+            IntermodAnalysis = no
+        ;
+            IntermodAnalysis = yes,
+            ExtAn = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_analysis),
+            proposed_install_all_gs_files(ProgressStream, Globals,
+                Prefix, Grade, ExtAn, AllModuleNames, !Succeeded, !IO)
+        ),
+
+        globals.get_target(Globals, Target),
+        (
+            Target = target_c,
+            proposed_install_library_grade_specific_files_for_grade_c(
+                ProgressStream, Globals, Prefix, Grade,
+                MainModuleName, AllModuleNames, !Succeeded, !Info, !IO)
+        ;
+            Target = target_java,
+            proposed_install_library_grade_specific_files_for_grade_java(
+                ProgressStream, Globals, Prefix, Grade,
+                MainModuleName, AllModuleNames, !Succeeded, !Info, !IO)
+        ;
+            Target = target_csharp,
+            proposed_install_library_grade_specific_files_for_grade_csharp(
+                ProgressStream, Globals, Prefix, Grade,
+                MainModuleName, AllModuleNames, !Succeeded, !Info, !IO)
+        )
+    ).
+
+:- pred proposed_install_library_grade_specific_files_for_grade_c(
+    io.text_output_stream::in, globals::in, string::in, string::in,
+    module_name::in, list(module_name)::in,
+    maybe_succeeded::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+proposed_install_library_grade_specific_files_for_grade_c(ProgressStream,
+        Globals, Prefix, Grade, MainModuleName, AllModuleNames,
+        !Succeeded, !Info, !IO) :-
+    ExtInit = ext_cur_gs(ext_cur_gs_lib_init),
+    proposed_install_all_gs_files(ProgressStream, Globals, Prefix, Grade,
+        ExtInit, [MainModuleName], !Succeeded, !IO),
+
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    (
+        HighLevelCode = no
+    ;
+        HighLevelCode = yes,
+        ExtMih = ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih),
+        proposed_install_all_gs_files(ProgressStream, Globals, Prefix, Grade,
+            ExtMih, AllModuleNames, !Succeeded, !IO)
+    ),
+
+    ExtA =  ext_cur_gas_lib_lib_opt,
+    ExtSo = ext_cur_gas_lib_sh_lib_opt,
+    GenExtA =  ext_cur_gas(ExtA),
+    GenExtSo = ext_cur_gas(ExtSo),
+    module_name_to_workspace_lib_file_name(Globals, "lib", GenExtA,
+        MainModuleName, StaticLibFileName),
+    module_name_to_workspace_lib_file_name(Globals, "lib", GenExtSo,
+        MainModuleName, SharedLibFileName),
+    ext_cur_gas_extension_dir(Globals, ExtA,  _, StaticDirName),
+    ext_cur_gas_extension_dir(Globals, ExtSo, _, SharedDirName),
+    globals.lookup_string_option(Globals, target_arch, TargetArch),
+    StaticInstallDir = Prefix / StaticDirName / Grade / TargetArch,
+    SharedInstallDir = Prefix / SharedDirName / Grade / TargetArch,
+
+    make_dir_handle_any_error(ProgressStream, StaticInstallDir,
+        MakeStaticInstallDirSucceeded, !IO),
+    (
+        MakeStaticInstallDirSucceeded = did_not_succeed
+    ;
+        MakeStaticInstallDirSucceeded = succeeded,
+        proposed_maybe_install_static_or_dynamic_archive(ProgressStream,
+            Globals, "static", StaticInstallDir, StaticLibFileName,
+            !Succeeded, !IO),
+        ( if StaticLibFileName = SharedLibFileName then
+            true
+        else
+            ( if StaticInstallDir = SharedInstallDir then
+                MakeSharedInstallDirSucceeded = succeeded
+            else
+                make_dir_handle_any_error(ProgressStream, SharedInstallDir,
+                    MakeSharedInstallDirSucceeded, !IO)
+            ),
+            (
+                MakeSharedInstallDirSucceeded = did_not_succeed
+            ;
+                MakeSharedInstallDirSucceeded = succeeded,
+                proposed_maybe_install_static_or_dynamic_archive(
+                    ProgressStream, Globals, "shared",
+                    SharedInstallDir, SharedLibFileName, !Succeeded, !IO)
+            )
+        )
+    ).
+
+:- pred proposed_install_library_grade_specific_files_for_grade_java(
+    io.text_output_stream::in, globals::in, string::in, string::in,
+    module_name::in, list(module_name)::in,
+    maybe_succeeded::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+proposed_install_library_grade_specific_files_for_grade_java(ProgressStream,
+        Globals, Prefix, Grade, MainModuleName, _AllModuleNames,
+        !Succeeded, !Info, !IO) :-
+    ExtJar = ext_cur_gs_lib_jar,
+    GenExtJar = ext_cur_gs(ExtJar),
+    module_name_to_workspace_file_name(Globals, GenExtJar,
+        MainModuleName, JarFileName),
+    ext_cur_gs_extension_dir(ExtJar, _, JarDirName),
+    JarInstallDir = Prefix / JarDirName / Grade,
+    install_file_to(ProgressStream, Globals, JarInstallDir, JarFileName,
+        !Succeeded, !IO).
+
+:- pred proposed_install_library_grade_specific_files_for_grade_csharp(
+    io.text_output_stream::in, globals::in, string::in, string::in,
+    module_name::in, list(module_name)::in,
+    maybe_succeeded::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+proposed_install_library_grade_specific_files_for_grade_csharp(ProgressStream,
+        Globals, Prefix, Grade, MainModuleName, _AllModuleNames,
+        !Succeeded, !Info, !IO) :-
+    ExtCilDll = ext_cur_gs_lib_cil_dll,
+    GenExtCilDll = ext_cur_gs(ExtCilDll),
+    module_name_to_workspace_file_name(Globals, GenExtCilDll,
+        MainModuleName, CilDllFileName),
+    ext_cur_gs_extension_dir(ExtCilDll, _, CilDllDirName),
+    CilDllInstallDir = Prefix / CilDllDirName / Grade,
+    install_file_to(ProgressStream, Globals, CilDllInstallDir, CilDllFileName,
+        !Succeeded, !IO).
+
+%---------------------%
+
+:- type ext_cur_gs_ns =< ext
+    --->    ext_cur_ngs(ext_cur_ngs)
+    ;       ext_cur_gs(ext_cur_gs)
+    ;       ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur)
+    ;       ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs).
+
+:- pred proposed_install_all_gs_files(io.text_output_stream::in, globals::in,
+    string::in, string::in, ext_cur_gs_ns::in, list(module_name)::in,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+proposed_install_all_gs_files(ProgressStream, Globals, Prefix, Grade,
+        Ext, ModuleNames, !Succeeded, !IO) :-
+    (
+        Ext = ext_cur_ngs(ExtNgs),
+        ext_cur_ngs_extension_dir(ExtNgs, _, ExtDirName)
+    ;
+        Ext = ext_cur_gs(ExtGs),
+        ext_cur_gs_extension_dir(ExtGs, _, ExtDirName)
+    ;
+        Ext = ext_cur_ngs_gs_max_cur(ExtNgsGsMaxCur),
+        ext_cur_ngs_gs_max_cur_extension_dir(ExtNgsGsMaxCur, _, ExtDirName)
+    ;
+        Ext = ext_cur_ngs_gs_max_ngs(ExtNgsGsMaxNgs),
+        ext_cur_ngs_gs_max_ngs_extension_dir(ExtNgsGsMaxNgs, _, ExtDirName)
+    ),
+
+    InstallDir = Prefix / ExtDirName / Grade,
+    % XXX We can rely on the Prefix directory having been built
+    % the install of the non-grade-specific files of the current grade.
+    % Would this be more efficient if done by two calls make_single_directory,
+    % adding ExtDirName and Grade respectively?
+    make_dir_handle_any_error(ProgressStream, InstallDir,
+        MakeInstallDirSucceeded, !IO),
+    (
+        MakeInstallDirSucceeded = did_not_succeed
+    ;
+        MakeInstallDirSucceeded = succeeded,
+        GenExt = coerce(Ext),
+        list.map(module_name_to_workspace_file_name(Globals, GenExt),
+            ModuleNames, FileNames),
+        install_files_to(ProgressStream, Globals, InstallDir,
+            FileNames, !Succeeded, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 % Utility predicates.
@@ -1083,14 +1281,37 @@ legacy_make_ngs_dir_symlink_to_cur(ProgressStream, CurDir, ExtDirName,
 %
 
 :- pred gather_module_dep_infos(io.text_output_stream::in, globals::in,
+    list(module_name)::in, list(module_name)::out, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+gather_module_dep_infos(ProgressStream, Globals, AllModuleNames,
+        ModulesWithChildren, Succeeded, !Info, !IO) :-
+    gather_module_dep_infos_loop(ProgressStream, Globals, AllModuleNames,
+        cord.init, ModulesWithChildrenCord,
+        cord.init, ModulesWithoutDepInfoCord, !Info, !IO),
+    ModulesWithChildren = cord.list(ModulesWithChildrenCord),
+    ModulesWithoutDepInfo = cord.list(ModulesWithoutDepInfoCord),
+    (
+        ModulesWithoutDepInfo = [],
+        Succeeded = succeeded
+    ;
+        ModulesWithoutDepInfo = [_ | _],
+        % XXX The LEGACY install process does not print an error message
+        % for this error. The PROPOSED process should, but what should
+        % the message say?
+        Succeeded = did_not_succeed
+    ).
+
+:- pred gather_module_dep_infos_loop(io.text_output_stream::in, globals::in,
     list(module_name)::in,
     cord(module_name)::in, cord(module_name)::out,
     cord(module_name)::in, cord(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-gather_module_dep_infos(_ProgressStream, _Globals, [],
+gather_module_dep_infos_loop(_ProgressStream, _Globals, [],
         !ModulesWithChildren, !ModulesWithoutDepInfo, !Info, !IO).
-gather_module_dep_infos(ProgressStream, Globals, [ModuleName | ModuleNames],
+gather_module_dep_infos_loop(ProgressStream, Globals,
+        [ModuleName | ModuleNames],
         !ModulesWithChildren, !ModulesWithoutDepInfo, !Info, !IO) :-
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
@@ -1106,8 +1327,42 @@ gather_module_dep_infos(ProgressStream, Globals, [ModuleName | ModuleNames],
             true
         )
     ),
-    gather_module_dep_infos(ProgressStream, Globals, ModuleNames,
+    gather_module_dep_infos_loop(ProgressStream, Globals, ModuleNames,
         !ModulesWithChildren, !ModulesWithoutDepInfo, !Info, !IO).
+
+%---------------------%
+
+:- pred proposed_maybe_install_static_or_dynamic_archive(
+    io.text_output_stream::in, globals::in, string::in,
+    dir_name::in, file_name::in, maybe_succeeded::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
+
+proposed_maybe_install_static_or_dynamic_archive(ProgressStream, Globals,
+        Linkage, InstallDir, FileName, !Succeeded, !IO) :-
+    globals.lookup_accumulating_option(Globals, lib_linkages, LibLinkages),
+    ( if list.member(Linkage, LibLinkages) then
+        install_file_to(ProgressStream, Globals, InstallDir, FileName,
+            succeeded, InstallSucceeded0, !IO),
+        % We need to update the archive index after we copy it to the
+        % installation directory, because the linkers on some OSs complain
+        % if we don't.
+        ( if
+            Linkage = "static",
+            InstallSucceeded0 = succeeded
+        then
+            BaseFileName = dir.det_basename(FileName),
+            InstalledFileName = InstallDir / BaseFileName,
+            generate_archive_index(ProgressStream, Globals, InstalledFileName,
+                RanlibSucceeded, !IO),
+            !:Succeeded = !.Succeeded `and` RanlibSucceeded
+        else
+            !:Succeeded = !.Succeeded `and` InstallSucceeded0
+        )
+    else
+        true
+    ).
+
+%---------------------%
 
 :- pred install_files_to(io.text_output_stream::in, globals::in,
     dir_name::in, list(file_name)::in,
@@ -1142,6 +1397,41 @@ install_files_to(ProgressStream, Globals, InstallDir, FileNames,
     %   a challenge to format in a readable but still non-misleading way.
     list.foldl2(install_file_to(ProgressStream, Globals, InstallDir),
         FileNames, !Succeeded, !IO).
+
+%---------------------%
+
+    % Look up the filename under which the given module's file with the given
+    % extension is stored in the current workspace.
+    %
+:- pred module_name_to_workspace_file_name(globals::in,
+    ext::in, module_name::in, file_name::out) is det.
+
+module_name_to_workspace_file_name(Globals, Ext, ModuleName, FileName) :-
+    % XXX LEGACY For a transition period, we are copying from
+    % workspaces that have the LEGACY directory structure.
+    %
+    % Switching over will require
+    %
+    % - either a "flag day", where you do a realclean of your workspace,
+    %   switch to a compiler install that uses the PROPOSED structure
+    %   for workspaces as well as for installs, and rebuilding, or
+    % - switching from a workspace that uses --no-use-subdirs, in which
+    %   the LEGACY and PROPOSED schemes both store all files in the same
+    %   directory (the current directory).
+    module_name_to_file_name(Globals, $pred, Ext, ModuleName,
+        FileName, _FileNameProposed).
+
+    % This is the library version of module_name_to_workspace_file_name.
+    %
+:- pred module_name_to_workspace_lib_file_name(globals::in, string::in,
+    ext::in, module_name::in, file_name::out) is det.
+
+module_name_to_workspace_lib_file_name(Globals, LibPrefix, Ext,
+        MainModuleName, LibFileName) :-
+    % XXX LEGACY The comment in module_name_to_workspace_file_name
+    % applies here as well.
+    module_name_to_lib_file_name(Globals, $pred, LibPrefix, Ext,
+        MainModuleName, LibFileName, _LibFileNameProposed).
 
 %---------------------------------------------------------------------------%
 %
@@ -1222,6 +1512,14 @@ remove_target_file_if_grade_dependent(File, _Status, !StatusMap) :-
     ).
 
 %---------------------%
+
+:- pred make_dir_handle_any_error(io.text_output_stream::in, dir_name::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
+
+make_dir_handle_any_error(ProgressStream, DirName, Succeeded, !IO) :-
+    dir.make_directory(DirName, MakeDirResult, !IO),
+    print_any_mkdir_error(ProgressStream, DirName, MakeDirResult,
+        succeeded, Succeeded, !IO).
 
 :- pred print_any_mkdir_error(io.text_output_stream::in, dir_name::in,
     io.res::in, maybe_succeeded::in, maybe_succeeded::out,

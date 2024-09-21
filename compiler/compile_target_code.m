@@ -1083,7 +1083,7 @@ compile_csharp_file(Globals, ProgressStream, ModuleDepInfo,
         ( pred(Mod::in, Result::out) is det :-
             % XXX LEGACY
             module_name_to_file_name(Globals, $pred,
-                ext_cur_gas(ext_cur_gas_lib_dll), Mod,
+                ext_cur_gs(ext_cur_gs_lib_cil_dll), Mod,
                 FileName, _FileNameProposed),
             Result = [Prefix, FileName, " "]
         ), set.to_sorted_list(ReferencedDlls), ReferencedDllsList),
@@ -1649,7 +1649,7 @@ linked_target_file_name_full_curdir(Globals, ModuleName, TargetType,
             Ext = ext_cur_gas(ext_cur_gas_exec_exe)
         ;
             TargetType = csharp_library,
-            Ext = ext_cur_gas(ext_cur_gas_lib_dll)
+            Ext = ext_cur_gs(ext_cur_gs_lib_cil_dll)
         ;
             TargetType = java_archive,
             Ext = ext_cur_gs(ext_cur_gs_lib_jar)
@@ -2015,7 +2015,7 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             ( TargetType = csharp_executable
             ; TargetType = csharp_library
             ),
-            LibExt = ext_cur_gas(ext_cur_gas_lib_dll),
+            LibExt = ext_cur_gs(ext_cur_gs_lib_cil_dll),
             MercuryOrCsharpLinkage = "csharp"
         ),
         grade_directory_component(Globals, GradeDir),

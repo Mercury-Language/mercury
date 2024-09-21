@@ -342,7 +342,15 @@
 
 :- type ext_cur_gs
     --->    ext_cur_gs_lib_init                 % ".init"
-    ;       ext_cur_gs_lib_jar.                 % ".jar"
+    ;       ext_cur_gs_lib_jar                  % ".jar"
+            % ext_cur_gs_lib_cil_dll applies to .dll files constructed by
+            % C# compilers that are told to generate CIL code. CIL, also
+            % called MS-IL, is the "Common Intermediate Language" of the
+            % .NET platform. Just as .jar files contain Java bytecodes
+            % that are not target-specific, .dll files contain CIL bytecodes
+            % that are also not target-specific. They are both bytecodes
+            % for a *virtual* machine; they are not for any *real* machine.
+    ;       ext_cur_gs_lib_cil_dll.            % ".dll"
 
 :- type ext_cur_gas
             % Executables generated for a whole program.
@@ -378,7 +386,6 @@
             % ext_cur_gas_lib_sh_lib_opt.
     ;       ext_cur_gas_lib_dollar_a            % ".$A"
     ;       ext_cur_gas_lib_archive             % ".a"
-    ;       ext_cur_gas_lib_dll                 % ".dll"
     ;       ext_cur_gas_lib_lib_opt             % library_extension
     ;       ext_cur_gas_lib_sh_lib_opt.         % shared_library_extension
 
@@ -475,7 +482,15 @@
 
 :- pred ext_cur_ngs_extension_dir(ext_cur_ngs::in,
     string::out, string::out) is det.
+:- pred ext_cur_gs_extension_dir(ext_cur_gs::in,
+    string::out, string::out) is det.
+:- pred ext_cur_gas_extension_dir(globals::in, ext_cur_gas::in,
+    string::out, string::out) is det.
 :- pred ext_cur_ngs_max_cur_extension_dir(ext_cur_ngs_max_cur::in,
+    string::out, string::out) is det.
+:- pred ext_cur_ngs_gs_max_cur_extension_dir(ext_cur_ngs_gs_max_cur::in,
+    string::out, string::out) is det.
+:- pred ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs::in,
     string::out, string::out) is det.
 
 %---------------------%
@@ -826,16 +841,11 @@ ext_cur_ngs_extension_dir(Ext, Str, Dir) :-
     ; Ext = ext_cur_ngs_misc_prof,      Str = ".prof",      Dir = "profs"
     ).
 
-:- pred ext_cur_gs_extension_dir(ext_cur_gs::in,
-    string::out, string::out) is det.
-
 ext_cur_gs_extension_dir(Ext, Str, Dir) :-
     ( Ext = ext_cur_gs_lib_init,        Str = ".init",  Dir = "inits"
     ; Ext = ext_cur_gs_lib_jar,         Str = ".jar",   Dir = "lib"
+    ; Ext = ext_cur_gs_lib_cil_dll,     Str = ".dll",   Dir = "lib"
     ).
-
-:- pred ext_cur_gas_extension_dir(globals::in, ext_cur_gas::in,
-    string::out, string::out) is det.
 
 ext_cur_gas_extension_dir(Globals, Ext, Str, Dir) :-
     % Launcher scripts go in the `bin' subdirectory.
@@ -851,7 +861,6 @@ ext_cur_gas_extension_dir(Globals, Ext, Str, Dir) :-
 %   ; Ext = ext_cur_gas_lib_so,         Str = ".so",    Dir = "lib"
     ; Ext = ext_cur_gas_lib_dollar_a,   Str = ".$A",    Dir = "lib"
     ; Ext = ext_cur_gas_lib_archive,    Str = ".a",     Dir = "lib"
-    ; Ext = ext_cur_gas_lib_dll,        Str = ".dll",   Dir = "lib"
     ; Ext = ext_cur_gas_lib_lib_opt,
         globals.lookup_string_option(Globals, library_extension, Str),
         Dir = "lib"
@@ -935,14 +944,8 @@ ext_cur_ngs_gs_java_extension_dir(Ext, Str, Dir) :-
 ext_cur_ngs_max_cur_extension_dir(Ext, Str, Dir) :-
     Ext = ext_cur_ngs_max_cur_mh, Str = ".mh", Dir = "mhs".
 
-:- pred ext_cur_ngs_gs_max_cur_extension_dir(ext_cur_ngs_gs_max_cur::in,
-    string::out, string::out) is det.
-
 ext_cur_ngs_gs_max_cur_extension_dir(Ext, Str, Dir) :-
     Ext = ext_cur_ngs_gs_max_cur_mih, Str = ".mih", Dir = "mihs".
-
-:- pred ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs::in,
-    string::out, string::out) is det.
 
 ext_cur_ngs_gs_max_ngs_extension_dir(Ext, Str, Dir) :-
     ( Ext = ext_cur_ngs_gs_max_ngs_opt_plain,

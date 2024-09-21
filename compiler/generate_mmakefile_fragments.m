@@ -893,7 +893,7 @@ construct_subdir_short_rules(Globals, ModuleName,
             ext_cur_ngs_gas(ext_cur_ngs_gas_obj_pic_o),
             ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
             ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_class),
-            ext_cur_gas(ext_cur_gas_lib_dll)],
+            ext_cur_gs(ext_cur_gs_lib_cil_dll)],
         list.map_foldl2(
             construct_subdirs_shorthand_rule(Globals, ModuleName),
             SubDirShorthandOtherExts, MmakeRulesSubDirShorthand, !Cache, !IO)
