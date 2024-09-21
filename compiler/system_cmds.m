@@ -204,12 +204,16 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream,
 
     ( if
         MaybeProcessOutput = yes(ProcessOutput),
+        % We can't process the output in TmpFile if we could not *create*
+        % TmpFile.
+        TmpFileResult = ok(_),
         % We can't do bash style redirection on .NET.
         not use_dotnet
     then
         io.file.make_temp_file(ProcessedTmpFileResult, !IO),
         (
             ProcessedTmpFileResult = ok(ProcessedTmpFile),
+            MaybeProcessedTmpFile = ProcessedTmpFile,
 
             % XXX we should get rid of use_win32
             ( if use_win32 then
@@ -232,7 +236,7 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream,
                 PrintCommand = yes,
                 io.format(ProgressStream,
                     "%% Invoking system command `%s'...\n",
-                        [s(ProcessOutputRedirected)], !IO),
+                    [s(ProcessOutputRedirected)], !IO),
                 io.flush_output(ProgressStream, !IO)
             ;
                 PrintCommand = no
@@ -271,28 +275,50 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream,
             ProcessTmpErrorMsg = io.error_message(ProcessTmpError),
             report_error(ProgressStream, ProcessTmpErrorMsg, !IO),
             ProcessOutputSucceeded = did_not_succeed,
-            ProcessedTmpFile = ""
+            MaybeProcessedTmpFile = TmpFile
         )
     else
         ProcessOutputSucceeded = succeeded,
-        ProcessedTmpFile = TmpFile
+        MaybeProcessedTmpFile = TmpFile
     ),
     Succeeded = CommandSucceeded `and` ProcessOutputSucceeded,
 
-    % Write the output to the error stream.
+    % Write the output, if it exists, to the error stream.
 
-    % XXX Why do we try to do this EVEN WHEN the code above had not Succeeded?
-    io.read_named_file_as_string(ProcessedTmpFile, TmpFileRes, !IO),
+    % XXX Why do we try to do this EVEN WHEN the code above
+    % had not Succeeded?
+    % Answer: the user needs to see the output of Command most precisely when
+    % Command had *not* succeeded. However, if the failure occurs
+    % - when we try to create TmpFile
+    % - when we try to create ProcessedTmpFile,
+    % - during the execution of the filter command,
+    % then the user does not need to know the details of that failure.
+    %
+    % In the case of the first failure above, there is nothing useful
+    % we can print. In the case of the second and third failures,
+    % there *is* something useful we can print: the contents of TmpFile.
     (
-        TmpFileRes = ok(TmpFileString),
-        io.write_string(CmdOutputStream, TmpFileString, !IO)
+        TmpFileResult = ok(_),
+        % MaybeProcessedTmpFile should be ProcessedTmpFile if our caller
+        % asked for filtering, and the filtering was successful. Otherwise,
+        % it should be TmpFile. In either case, if and when we get here,
+        % then MaybeProcessedTmpFile should definitely exist.
+        io.read_named_file_as_string(MaybeProcessedTmpFile,
+            MaybeProcessedTmpFileResult, !IO),
+        (
+            MaybeProcessedTmpFileResult = ok(MaybeProcessedTmpFileStr),
+            io.write_string(CmdOutputStream, MaybeProcessedTmpFileStr, !IO)
+        ;
+            MaybeProcessedTmpFileResult = error(MaybeProcessedTmpFileError),
+            report_error(ProgressStream,
+                "error opening command output: " ++
+                io.error_message(MaybeProcessedTmpFileError),
+                !IO)
+        ),
+        io.file.remove_file(MaybeProcessedTmpFile, _, !IO)
     ;
-        TmpFileRes = error(TmpFileError),
-        report_error(ProgressStream,
-            "error opening command output: " ++ io.error_message(TmpFileError),
-            !IO)
+        TmpFileResult = error(_)
     ),
-    io.file.remove_file(ProcessedTmpFile, _, !IO),
     io.set_exit_status(OldStatus, !IO).
 
 %-----------------------------------------------------------------------------%

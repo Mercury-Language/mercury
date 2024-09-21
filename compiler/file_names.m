@@ -473,6 +473,11 @@
 
 :- func extension_to_string(globals, ext) = string.
 
+:- pred ext_cur_ngs_extension_dir(ext_cur_ngs::in,
+    string::out, string::out) is det.
+:- pred ext_cur_ngs_max_cur_extension_dir(ext_cur_ngs_max_cur::in,
+    string::out, string::out) is det.
+
 %---------------------%
 
 :- func module_name_to_base_file_name_no_ext(ext, module_name) = file_name.
@@ -803,9 +808,6 @@ ext_cur_extension(Ext, Str) :-
     ; Ext = ext_cur_user_xml,                 Str = ".xml"
     ).
 
-:- pred ext_cur_ngs_extension_dir(ext_cur_ngs::in,
-    string::out, string::out) is det.
-
 ext_cur_ngs_extension_dir(Ext, Str, Dir) :-
     ( Ext = ext_cur_ngs_int_int0,       Str = ".int0",      Dir = "int0s"
     ; Ext = ext_cur_ngs_int_int1,       Str = ".int",       Dir = "ints"
@@ -814,10 +816,7 @@ ext_cur_ngs_extension_dir(Ext, Str, Dir) :-
     ; Ext = ext_cur_ngs_int_date_int0,  Str = ".date0",     Dir = "date0s"
     ; Ext = ext_cur_ngs_int_date_int12, Str = ".date",      Dir = "dates"
     ; Ext = ext_cur_ngs_int_date_int3,  Str = ".date3",     Dir = "date3s"
-    ).
-
-ext_cur_ngs_extension_dir(Ext, Str, Dir) :-
-    ( Ext = ext_cur_ngs_mf_d,           Str = ".d",         Dir = "ds"
+    ; Ext = ext_cur_ngs_mf_d,           Str = ".d",         Dir = "ds"
     % The next deviation below from the "delete initial dot, add final 's'"
     % rule is intentional, though I (zs) don't know the full reason.
     ; Ext = ext_cur_ngs_mf_dv,          Str = ".dv",        Dir = "deps"
@@ -932,9 +931,6 @@ ext_cur_ngs_gs_java_extension_dir(Ext, Str, Dir) :-
     ( Ext = ext_cur_ngs_gs_java_java,   Str = ".java",  Dir = "javas"
     ; Ext = ext_cur_ngs_gs_java_class,  Str = ".class", Dir = "classes"
     ).
-
-:- pred ext_cur_ngs_max_cur_extension_dir(ext_cur_ngs_max_cur::in,
-    string::out, string::out) is det.
 
 ext_cur_ngs_max_cur_extension_dir(Ext, Str, Dir) :-
     Ext = ext_cur_ngs_max_cur_mh, Str = ".mh", Dir = "mhs".

@@ -64,6 +64,7 @@
 :- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module dir.
 :- import_module getopt.
 :- import_module list.
@@ -317,8 +318,129 @@ legacy_install_extra_headers(ProgressStream, Globals, !Succeeded, !IO) :-
     list(module_name)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-proposed_install_library_non_grade_specific_files(_ProgressStream, _Globals,
-        _AllModuleNames, succeeded, !Info, !IO).
+proposed_install_library_non_grade_specific_files(ProgressStream, Globals,
+        AllModuleNames, !:Succeeded, !Info, !IO) :-
+    !:Succeeded = succeeded,
+    gather_module_dep_infos(ProgressStream, Globals, AllModuleNames,
+        cord.init, ModulesWithChildrenCord,
+        cord.init, ModulesWithoutDepInfoCord, !Info, !IO),
+    ModulesWithoutDepInfo = cord.list(ModulesWithoutDepInfoCord),
+    (
+        ModulesWithoutDepInfo = [_ | _],
+        % XXX The LEGACY install process does not print an error message
+        % for this error. The PROPOSED process should, but what should
+        % the message say?
+        !:Succeeded = did_not_succeed
+    ;
+        ModulesWithoutDepInfo = [],
+
+        globals.lookup_string_option(Globals, install_prefix, Prefix0),
+        Prefix = Prefix0 / "MercurySystem",
+
+        dir.make_directory(Prefix, PrefixResult, !IO),
+        (
+            PrefixResult = error(IOError),
+            print_mkdir_error(ProgressStream, Prefix, IOError,
+                !:Succeeded, !IO)
+        ;
+            PrefixResult = ok,
+            ModulesWithChildren = cord.list(ModulesWithChildrenCord),
+            ExtInt0 = ext_cur_ngs(ext_cur_ngs_int_int0),
+            ExtInt1 = ext_cur_ngs(ext_cur_ngs_int_int1),
+            ExtInt2 = ext_cur_ngs(ext_cur_ngs_int_int2),
+            ExtInt3 = ext_cur_ngs(ext_cur_ngs_int_int3),
+            proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
+                ExtInt0, ModulesWithChildren, !Succeeded, !IO),
+            proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
+                ExtInt1, AllModuleNames, !Succeeded, !IO),
+            proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
+                ExtInt2, AllModuleNames, !Succeeded, !IO),
+            proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
+                ExtInt3, AllModuleNames, !Succeeded, !IO),
+
+            % XXX There is a potential problem here. We install .mh files,
+            % which are not-grade-specific beyond being C-specific, if
+            % the *current* grade targets C. However, if
+            %
+            % - the current grade targets a language *other than C*, but
+            % - some other libgrade *does target C*,
+            %
+            % then no .mh file will get installed.
+            %
+            % We could avoid this by making .mh files grade-specific
+            % (which, in a way, they are), but that would be inconvenient
+            % for users, since #include statements for these .mh files
+            % in their handwritten C code would have to be steered *somehow*
+            % to the directory containing that .mh file *some* installed
+            % C grade. That may, or may not, be the current grade, but
+            % having to keep track of *two* grades, not one, in the build
+            % infrastructure would be annoying.
+            %
+            % The right solution is probably
+            %
+            % - to wrap a "do this only if not already done" wrapper around
+            %   this code,
+            % - to put that wrapped code in a separate predicate,
+            % - and invoke that predicate both here and in the code that
+            %   installs the grade-specific files.
+            globals.get_target(Globals, Target),
+            (
+                Target = target_c,
+                % Once upon a time, we generated `.mh' files only for modules
+                % containing `:- pragma foreign_export' declarations.
+                % (See ModuleDepInfo ^ contains_foreign_export.)
+                % But `.mh' files are expected by Mmake, so now we always
+                % generate them. If we didn't, mmake would have trouble
+                % when using libraries installed by `mmc --make'.
+                ExtMh = ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
+                proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
+                    ExtMh, AllModuleNames, !Succeeded, !IO)
+            ;
+                ( Target = target_java
+                ; Target = target_csharp
+                )
+            )
+        )
+    ).
+
+:- type ext_cur_ngs_ns =< ext
+    --->    ext_cur_ngs(ext_cur_ngs)
+    ;       ext_cur_ngs_max_cur(ext_cur_ngs_max_cur).
+
+:- pred proposed_install_all_ngs_files(io.text_output_stream::in, globals::in,
+    string::in, ext_cur_ngs_ns::in, list(module_name)::in,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
+        Ext, ModuleNames, !Succeeded, !IO) :-
+    (
+        Ext = ext_cur_ngs(ExtNgs),
+        ext_cur_ngs_extension_dir(ExtNgs, _, ExtDirName)
+    ;
+        Ext = ext_cur_ngs_max_cur(ExtMaxCur),
+        ext_cur_ngs_max_cur_extension_dir(ExtMaxCur, _, ExtDirName)
+    ),
+
+    InstallDir = Prefix / ExtDirName,
+    dir.make_directory(InstallDir, InstallDirResult, !IO),
+    (
+        InstallDirResult = error(IOError),
+        print_mkdir_error(ProgressStream, InstallDir, IOError,
+            !:Succeeded, !IO)
+    ;
+        InstallDirResult = ok,
+        GenExt = coerce(Ext),
+        ModuleNameToFileName =
+            ( pred(MN::in, FN::out) is det :-
+                % XXX LEGACY For a transition period, we are copying from
+                % workspaces that have the LEGACY directory structure.
+                module_name_to_file_name(Globals, $pred, GenExt,
+                    MN, FN, _FNProposed)
+            ),
+        list.map(ModuleNameToFileName, ModuleNames, FileNames),
+        install_files_to(ProgressStream, Globals, InstallDir,
+            FileNames, !Succeeded, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -909,7 +1031,7 @@ legacy_maybe_install_static_or_dynamic_archive(ProgressStream, Globals,
 
 legacy_make_nonext_dir(ProgressStream, DirName, !Succeeded, !IO) :-
     make_directory(DirName, IOResult, !IO),
-    print_any_error(ProgressStream, DirName, IOResult, !Succeeded, !IO).
+    print_any_mkdir_error(ProgressStream, DirName, IOResult, !Succeeded, !IO).
 
 :- pred legacy_make_ngs_dir(io.text_output_stream::in,
     dir_name::in, file_name::in, maybe_succeeded::in, maybe_succeeded::out,
@@ -919,7 +1041,7 @@ legacy_make_ngs_dir(ProgressStream, CurDir, ExtDirName,
         !Succeeded, !LibDirMap, !IO) :-
     NgsDir = CurDir / "Mercury" / ExtDirName,
     make_directory(NgsDir, IOResult, !IO),
-    print_any_error(ProgressStream, NgsDir, IOResult, !Succeeded, !IO),
+    print_any_mkdir_error(ProgressStream, NgsDir, IOResult, !Succeeded, !IO),
     map.det_insert(ExtDirName, install_to_cur_ngs(CurDir, NgsDir), !LibDirMap).
 
     % XXX BAD_SYMLINK This upward-pointing symlink makes it impossible
@@ -954,6 +1076,72 @@ legacy_make_ngs_dir_symlink_to_cur(ProgressStream, CurDir, ExtDirName,
         legacy_make_ngs_dir(ProgressStream, CurDir, ExtDirName,
             !Succeeded, !LibDirMap, !IO)
     ).
+
+%---------------------------------------------------------------------------%
+%
+% Utility predicates for use with the PROPOSED install directory structure.
+%
+
+:- pred gather_module_dep_infos(io.text_output_stream::in, globals::in,
+    list(module_name)::in,
+    cord(module_name)::in, cord(module_name)::out,
+    cord(module_name)::in, cord(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+gather_module_dep_infos(_ProgressStream, _Globals, [],
+        !ModulesWithChildren, !ModulesWithoutDepInfo, !Info, !IO).
+gather_module_dep_infos(ProgressStream, Globals, [ModuleName | ModuleNames],
+        !ModulesWithChildren, !ModulesWithoutDepInfo, !Info, !IO) :-
+    get_maybe_module_dep_info(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
+    (
+        MaybeModuleDepInfo = no_module_dep_info,
+        cord.snoc(ModuleName, !ModulesWithoutDepInfo)
+    ;
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+        module_dep_info_get_children(ModuleDepInfo, Children),
+        ( if set.is_non_empty(Children) then
+            cord.snoc(ModuleName, !ModulesWithChildren)
+        else
+            true
+        )
+    ),
+    gather_module_dep_infos(ProgressStream, Globals, ModuleNames,
+        !ModulesWithChildren, !ModulesWithoutDepInfo, !Info, !IO).
+
+:- pred install_files_to(io.text_output_stream::in, globals::in,
+    dir_name::in, list(file_name)::in,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+install_files_to(ProgressStream, Globals, InstallDir, FileNames,
+        !Succeeded, !IO) :-
+    % XXX This code copies files to InstallDir one at a time.
+    % With install_method_external_cmd, this will incur all the overhead
+    % of invoke_system_command N times, where N is the number of module
+    % names in ModuleNames. That overhead will include
+    %
+    % - the creation of a shell process,
+    % - the creation of the process that does the copying (e.g. cp)
+    % - the creation, reading and removal of a temp file
+    %   for storing the output of the process that does the copying.
+    %
+    % It would be more efficient if we invoked a *single* shell command
+    % to copy *all* FileNames to InstallDir.
+    %
+    % There are two potential flaws in this plan.
+    %
+    % - If FileNames is long enough, the length of the copy command
+    %   string may exceed OS limits. We can work around such limits by
+    %   using xargs-style chunking.
+    %
+    % - When would we print the "Installing <filename>" progress message?
+    %   The answer does not matter in the absence of errors, but in their
+    %   presence, the only non-misleading option is to print a single
+    %   "Installing <filename1> <filename2> ..." message just as
+    %   we are about to install a chunk of filenames. That would be
+    %   a challenge to format in a readable but still non-misleading way.
+    list.foldl2(install_file_to(ProgressStream, Globals, InstallDir),
+        FileNames, !Succeeded, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -1035,20 +1223,27 @@ remove_target_file_if_grade_dependent(File, _Status, !StatusMap) :-
 
 %---------------------%
 
-:- pred print_any_error(io.text_output_stream::in, dir_name::in, io.res::in,
-    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
+:- pred print_any_mkdir_error(io.text_output_stream::in, dir_name::in,
+    io.res::in, maybe_succeeded::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
-print_any_error(ProgressStream, DirName, Result, !Succeeded, !IO) :-
+print_any_mkdir_error(ProgressStream, DirName, Result, !Succeeded, !IO) :-
     (
         Result = ok
     ;
         Result = error(Error),
-        ErrorMsg = io.error_message(Error),
-        io.format(ProgressStream,
-            "Error creating installation directory %s: %s\n",
-            [s(DirName), s(ErrorMsg)], !IO),
-        !:Succeeded = did_not_succeed
+        print_mkdir_error(ProgressStream, DirName, Error, !:Succeeded, !IO)
     ).
+
+:- pred print_mkdir_error(io.text_output_stream::in, dir_name::in,
+    io.error::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+print_mkdir_error(ProgressStream, DirName, Error, !:Succeeded, !IO) :-
+    ErrorMsg = io.error_message(Error),
+    io.format(ProgressStream,
+        "Error creating installation directory %s: %s\n",
+        [s(DirName), s(ErrorMsg)], !IO),
+    !:Succeeded = did_not_succeed.
 
 %---------------------------------------------------------------------------%
 :- end_module make.library_install.
