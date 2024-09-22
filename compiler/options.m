@@ -2551,6 +2551,7 @@ long_table("show-developer-type-representations",
         show_developer_type_repns).
 long_table("show-dependency-graph",    show_dependency_graph).
 long_table("show-pred-movability",     show_pred_movability).
+long_table("show-pred-moveability",    show_pred_movability).
 long_table("imports-graph",            imports_graph).
 long_table("trans-opt-deps-spec",      trans_opt_deps_spec).
 long_table("dump-trace-counts",        dump_trace_counts).
