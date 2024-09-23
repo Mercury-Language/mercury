@@ -137,6 +137,7 @@
 :- include_module generate_dep_d_files.
 :- include_module generate_mmakefile_fragments.
 :- include_module make_module_file_names.
+:- include_module opt_deps_spec.
 :- include_module write_deps_file.
 
 % Java and C# related utilities.
