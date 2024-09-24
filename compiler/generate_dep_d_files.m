@@ -134,7 +134,7 @@
 generate_dep_file_for_module(ProgressStream, Globals, ModuleName,
         DepsMap, Specs, !IO) :-
     map.init(DepsMap0),
-    generate_dot_dx_files(ProgressStream, Globals,
+    maybe_generate_dot_dx_files(ProgressStream, Globals,
         output_all_program_dot_dx_files, do_not_search,
         ModuleName, DepsMap0, DepsMap, Specs, !IO).
 
@@ -142,7 +142,7 @@ generate_dep_file_for_file(ProgressStream, Globals, FileName,
         DepsMap, Specs, !IO) :-
     build_initial_deps_map_for_file(ProgressStream, Globals, FileName,
         ModuleName, DepsMap0, InitialSpecs, !IO),
-    generate_dot_dx_files(ProgressStream, Globals,
+    maybe_generate_dot_dx_files(ProgressStream, Globals,
         output_all_program_dot_dx_files, do_not_search,
         ModuleName, DepsMap0, DepsMap, LaterSpecs, !IO),
     Specs = InitialSpecs ++ LaterSpecs.
@@ -150,15 +150,17 @@ generate_dep_file_for_file(ProgressStream, Globals, FileName,
 generate_d_file_for_module(ProgressStream, Globals, ModuleName,
         DepsMap, Specs, !IO) :-
     map.init(DepsMap0),
-    generate_dot_dx_files(ProgressStream, Globals, output_module_dot_d_file,
-        do_search, ModuleName, DepsMap0, DepsMap, Specs, !IO).
+    maybe_generate_dot_dx_files(ProgressStream, Globals,
+        output_module_dot_d_file, do_search,
+        ModuleName, DepsMap0, DepsMap, Specs, !IO).
 
 generate_d_file_for_file(ProgressStream, Globals, FileName,
         DepsMap, Specs, !IO) :-
     build_initial_deps_map_for_file(ProgressStream, Globals, FileName,
         ModuleName, DepsMap0, InitialSpecs, !IO),
-    generate_dot_dx_files(ProgressStream, Globals, output_module_dot_d_file,
-        do_search, ModuleName, DepsMap0, DepsMap, LaterSpecs, !IO),
+    maybe_generate_dot_dx_files(ProgressStream, Globals,
+        output_module_dot_d_file, do_search,
+        ModuleName, DepsMap0, DepsMap, LaterSpecs, !IO),
     Specs = InitialSpecs ++ LaterSpecs.
 
 %---------------------------------------------------------------------------%
@@ -203,17 +205,34 @@ build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
             % Output the program's .dep and .dv files, and the .d file
             % of every module in the program.
 
-:- pred generate_dot_dx_files(io.text_output_stream::in, globals::in,
+:- pred maybe_generate_dot_dx_files(io.text_output_stream::in, globals::in,
     which_dot_dx_files::in, maybe_search::in, module_name::in,
     deps_map::in, deps_map::out, list(error_spec)::out, io::di, io::uo) is det.
 
-generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
+maybe_generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
         DepsMap0, DepsMap, !:Specs, !IO) :-
     % First, build up a map of the dependencies.
     generate_deps_map(ProgressStream, Globals, Search, ModuleName,
         ReadModules, UnreadModules, DepsMap0, DepsMap, [], !:Specs, !IO),
     warn_about_any_unread_modules_with_read_ancestors(ReadModules,
         UnreadModules, !Specs),
+
+    trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
+        io(!TIO)]
+    (
+        io.format(ProgressStream, "generate_dot_dx_files for %s\n",
+            [s(sym_name_to_string(ModuleName))], !TIO),
+
+        set_tree234.to_sorted_list(ReadModules, ReadModuleList),
+        set_tree234.to_sorted_list(UnreadModules, UnreadModuleList),
+        ReadStrs = list.map(sym_name_to_string, ReadModuleList),
+        UnreadStrs = list.map(sym_name_to_string, UnreadModuleList),
+
+        io.write_string(ProgressStream, "ReadModules\n", !TIO),
+        io.write_line(ProgressStream, ReadStrs, !TIO),
+        io.write_string(ProgressStream, "UnreadModules\n", !TIO),
+        io.write_line(ProgressStream, UnreadStrs, !TIO)
+    ),
 
     % Check whether we could read the main `.m' file.
     map.lookup(DepsMap, ModuleName, ModuleDep),
@@ -239,101 +258,13 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
             Mode = output_module_dot_d_file
         ;
             Mode = output_all_program_dot_dx_files,
-            SourceFileName = Baggage ^ mb_source_file_name,
-
-            map.init(Cache0),
-            generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
-                MmakeFileDv, Cache0, _Cache, !IO),
-            generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
-                MmakeFileDep, !IO),
-            MmakeFileStrDv = mmakefile_to_string(MmakeFileDv),
-            MmakeFileStrDep = mmakefile_to_string(MmakeFileDep),
-
-            % XXX LEGACY
-            module_name_to_file_name_create_dirs(Globals, $pred,
-                ext_cur_ngs(ext_cur_ngs_mf_dv), ModuleName,
-                FileNameDv, _FileNameDvProposed, !IO),
-            module_name_to_file_name_create_dirs(Globals, $pred,
-                ext_cur_ngs(ext_cur_ngs_mf_dep), ModuleName,
-                FileNameDep, _FileNameDepProposed, !IO),
-
-            write_string_to_file(ProgressStream, Globals,
-                "Writing auto-dependency file", FileNameDv, MmakeFileStrDv,
-                _SucceededDv, !IO),
-            write_string_to_file(ProgressStream, Globals,
-                "Writing auto-dependency file", FileNameDep, MmakeFileStrDep,
-                _SucceededDep, !IO),
-
-            % For Java, the main target is actually a shell script
-            % which will set CLASSPATH appropriately, and then invoke java
-            % on the appropriate .class file. Rather than generating
-            % an Mmake rule to build this file when it is needed,
-            % we just generate this file at "mmake depend" time, since
-            % that is simpler and probably more efficient anyway.
-            globals.get_target(Globals, Target),
-            (
-                Target = target_java,
-                create_java_shell_script(ProgressStream, Globals, ModuleName,
-                    _Succeeded, !IO)
-            ;
-                ( Target = target_c
-                ; Target = target_csharp
-                )
-            )
+            generate_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
+                Baggage, !IO)
         ),
-
-        % Compute the interface deps graph and the implementation deps graph
-        % from the deps map.
-        digraph.init(IntDepsGraph0),
-        digraph.init(ImpDepsGraph0),
-        map.values(DepsMap, DepsList),
-        deps_list_to_deps_graph(DepsMap, DepsList, BurdenedModules,
-            IntDepsGraph0, IntDepsGraph, ImpDepsGraph0, ImpDepsGraph),
-        maybe_output_imports_graph(ProgressStream, Globals, ModuleName,
-            IntDepsGraph, ImpDepsGraph, !IO),
-
-        trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
-            io(!TIO)]
-        (
-            io.format(ProgressStream, "generate_dot_dx_files for %s\n",
-                [s(sym_name_to_string(ModuleName))], !TIO),
-
-            set_tree234.to_sorted_list(ReadModules, ReadModuleList),
-            set_tree234.to_sorted_list(UnreadModules, UnreadModuleList),
-            ReadStrs = list.map(sym_name_to_string, ReadModuleList),
-            UnreadStrs = list.map(sym_name_to_string, UnreadModuleList),
-
-            io.write_string(ProgressStream, "ReadModules\n", !TIO),
-            io.write_line(ProgressStream, ReadStrs, !TIO),
-            io.write_string(ProgressStream, "UnreadModules\n", !TIO),
-            io.write_line(ProgressStream, UnreadStrs, !TIO),
-
-            digraph.to_assoc_list(IntDepsGraph, IntDepsAL),
-            io.write_string(ProgressStream, "IntDepsAL:\n", !TIO),
-            list.foldl(io.write_line(ProgressStream), IntDepsAL, !TIO),
-
-            digraph.to_assoc_list(ImpDepsGraph, ImpDepsAL),
-            io.write_string(ProgressStream, "ImpDepsAL:\n", !TIO),
-            list.foldl(io.write_line(ProgressStream), ImpDepsAL, !TIO)
-        ),
-
-        compute_opt_trans_opt_deps_graph(ProgressStream, Globals, ModuleName,
-            ImpDepsGraph, IndirectOptDepsGraph,
-            TransOptDepsGraph, TransOptDepsOrdering, !Specs, !IO),
-
-        % Compute the indirect dependencies: they are equal to the composition
-        % of the implementation dependencies with the transitive closure of the
-        % implementation dependencies. (We used to take the transitive closure
-        % of the interface dependencies, but we now include implementation
-        % details in the interface files).
-        digraph.tc(ImpDepsGraph, TransImpDepsGraph),
-        digraph.compose(ImpDepsGraph, TransImpDepsGraph, IndirectDepsGraph),
-
-        globals.lookup_accumulating_option(Globals, intermod_directories,
-            IntermodDirs),
-        get_ext_opt_deps(Globals, look_for_src, IntermodDirs,
-            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
-            TransOptDepsOrdering, TransOptOrder, !IO),
+        compute_deps_for_d_files(ProgressStream, Globals, ModuleName, DepsMap,
+            IntDepsGraph, ImpDepsGraph,
+            IndirectDepsGraph, IndirectOptDepsGraph,
+            TransOptDepsGraph, TransOptOrder, BurdenedModules, !Specs, !IO),
         (
             Mode = output_module_dot_d_file,
             DFilesToWrite = [BurdenedModule]
@@ -346,6 +277,108 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
             IndirectDepsGraph, IndirectOptDepsGraph,
             TransOptDepsGraph, TransOptOrder, !IO)
     ).
+
+:- pred generate_dep_dv_files(io.text_output_stream::in, globals::in,
+    module_name::in, deps_map::in, module_baggage::in, io::di, io::uo) is det.
+
+generate_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
+        Baggage, !IO) :-
+    % First, build up a map of the dependencies.
+    SourceFileName = Baggage ^ mb_source_file_name,
+
+    map.init(Cache0),
+    generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
+        MmakeFileDv, Cache0, _Cache, !IO),
+    generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
+        MmakeFileDep, !IO),
+    MmakeFileStrDv = mmakefile_to_string(MmakeFileDv),
+    MmakeFileStrDep = mmakefile_to_string(MmakeFileDep),
+
+    % XXX LEGACY
+    module_name_to_file_name_create_dirs(Globals, $pred,
+        ext_cur_ngs(ext_cur_ngs_mf_dv), ModuleName,
+        FileNameDv, _FileNameDvProposed, !IO),
+    module_name_to_file_name_create_dirs(Globals, $pred,
+        ext_cur_ngs(ext_cur_ngs_mf_dep), ModuleName,
+        FileNameDep, _FileNameDepProposed, !IO),
+
+    write_string_to_file(ProgressStream, Globals,
+        "Writing auto-dependency file", FileNameDv, MmakeFileStrDv,
+        _SucceededDv, !IO),
+    write_string_to_file(ProgressStream, Globals,
+        "Writing auto-dependency file", FileNameDep, MmakeFileStrDep,
+        _SucceededDep, !IO),
+
+    % For Java, the main target is actually a shell script
+    % which will set CLASSPATH appropriately, and then invoke java
+    % on the appropriate .class file. Rather than generating
+    % an Mmake rule to build this file when it is needed,
+    % we just generate this file at "mmake depend" time, since
+    % that is simpler and probably more efficient anyway.
+    globals.get_target(Globals, Target),
+    (
+        Target = target_java,
+        create_java_shell_script(ProgressStream, Globals, ModuleName,
+            _Succeeded, !IO)
+    ;
+        ( Target = target_c
+        ; Target = target_csharp
+        )
+    ).
+
+:- pred compute_deps_for_d_files(io.text_output_stream::in, globals::in,
+    module_name::in, deps_map::in,
+    digraph(module_name)::out, digraph(module_name)::out,
+    digraph(module_name)::out, digraph(module_name)::out,
+    digraph(module_name)::out, list(module_name)::out,
+    list(burdened_module)::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
+
+compute_deps_for_d_files(ProgressStream, Globals, ModuleName, DepsMap,
+        IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
+        TransOptDepsGraph, TransOptOrder, BurdenedModules, !Specs, !IO) :-
+    % Compute the interface deps graph and the implementation deps graph
+    % from the deps map.
+    digraph.init(IntDepsGraph0),
+    digraph.init(ImpDepsGraph0),
+    map.values(DepsMap, DepsList),
+    deps_list_to_deps_graph(DepsMap, DepsList, BurdenedModules,
+        IntDepsGraph0, IntDepsGraph, ImpDepsGraph0, ImpDepsGraph),
+    maybe_output_imports_graph(ProgressStream, Globals, ModuleName,
+        IntDepsGraph, ImpDepsGraph, !IO),
+
+    trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
+        io(!TIO)]
+    (
+        io.format(ProgressStream, "compute_deps_for_d_files for %s\n",
+            [s(sym_name_to_string(ModuleName))], !TIO),
+
+        digraph.to_assoc_list(IntDepsGraph, IntDepsAL),
+        io.write_string(ProgressStream, "IntDepsAL:\n", !TIO),
+        list.foldl(io.write_line(ProgressStream), IntDepsAL, !TIO),
+
+        digraph.to_assoc_list(ImpDepsGraph, ImpDepsAL),
+        io.write_string(ProgressStream, "ImpDepsAL:\n", !TIO),
+        list.foldl(io.write_line(ProgressStream), ImpDepsAL, !TIO)
+    ),
+
+    compute_opt_trans_opt_deps_graph(ProgressStream, Globals, ModuleName,
+        ImpDepsGraph, IndirectOptDepsGraph,
+        TransOptDepsGraph, TransOptDepsOrdering, !Specs, !IO),
+
+    % Compute the indirect dependencies: they are equal to the composition
+    % of the implementation dependencies with the transitive closure of the
+    % implementation dependencies. (We used to take the transitive closure
+    % of the interface dependencies, but we now include implementation
+    % details in the interface files).
+    digraph.tc(ImpDepsGraph, TransImpDepsGraph),
+    digraph.compose(ImpDepsGraph, TransImpDepsGraph, IndirectDepsGraph),
+
+    globals.lookup_accumulating_option(Globals, intermod_directories,
+        IntermodDirs),
+    ExtTransOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
+    get_ext_opt_deps(Globals, look_for_src, IntermodDirs, ExtTransOpt,
+        TransOptDepsOrdering, TransOptOrder, !IO).
 
     % Construct a pair of dependency graphs (the interface dependencies
     % and the implementation dependencies) for all the modules in the program.
