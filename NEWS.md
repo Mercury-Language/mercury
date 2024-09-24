@@ -1397,7 +1397,7 @@ Changes to the Mercury debugger
 Changes to the Mercury implementation
 -------------------------------------
 
-* We have upgraded the bundled Boehm GC to v8.2.4 and libatomic_ops to v7.8.0.
+* We have upgraded the bundled Boehm GC to v8.2.8 and libatomic_ops to v7.8.2.
 
 Portability improvements
 ------------------------
