@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1994-2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018, 2020-2023 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2020-2024 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // file: mercury_wrapper.c
@@ -545,10 +545,6 @@ mercury_runtime_init(int argc, char **argv)
 
     MR_setup_signals();
 
-#ifdef MR_BOEHM_GC
-    // Disable GC during startup, when little or no garbage is created.
-    GC_disable();
-#endif
 #ifdef MR_CONSERVATIVE_GC
     MR_init_conservative_GC();
 #endif
@@ -672,9 +668,8 @@ mercury_runtime_init(int argc, char **argv)
 #endif // ! 0
 
 #ifdef MR_BOEHM_GC
-    // We keep GC disabled during startup. Enable it now unless forced off.
-    if (! MR_gc_disable) {
-        GC_enable();
+    if (MR_gc_disable) {
+        GC_disable();
     }
 #endif
 
