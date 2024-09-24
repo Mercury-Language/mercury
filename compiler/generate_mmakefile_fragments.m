@@ -1882,7 +1882,7 @@ generate_dep_file_install_targets(ModuleName, DepsMap,
         ModuleMakeVarName, MmcMakeDeps, Intermod, TransOpt,
         MaybeModuleDepsVarPair, MaybeOptsVarPair, MaybeTransOptsVarPair,
         !MmakeFile) :-
-    % XXX  Note that we install the `.opt' and `.trans_opt' files
+    % XXX LEGACY Note that we install the `.opt' and `.trans_opt' files
     % in two places: in the `lib/$(GRADE)/opts' directory, so
     % that mmc will find them, and also in the `ints' directory,
     % so that Mmake will find them. That is not ideal, but it works.
@@ -1947,13 +1947,7 @@ generate_dep_file_install_targets(ModuleName, DepsMap,
         ModuleMakeVarNameInts ++ " " ++ ModuleMakeVarNameInt3s ++ " " ++
         MaybeModuleVarNameInt0sSpace ++ MaybeOptsVarSpace ++
         MaybeTransOptsVarSpace ++ MaybeModuleDepsVarSpace ++ """",
-
-    MmakeRuleLibInstallInts = mmake_simple_rule("lib_install_ints",
-        mmake_rule_is_phony,
-        LibInstallIntsTargetName,
-        [ModuleMakeVarNameInts, ModuleMakeVarNameInt3s] ++
-            MaybeModuleVarNameInt0s ++ MaybeOptsVar ++ MaybeTransOptsVar ++
-            MaybeModuleDepsVar ++ ["install_lib_dirs"],
+    LibInstallIntsFilesActionsLegacy =
         ["files=" ++ LibInstallIntsFiles ++ "; \\",
         "for file in $$files; do \\",
         "\ttarget=""$(INSTALL_INT_DIR)/`basename $$file`""; \\",
@@ -1977,7 +1971,15 @@ generate_dep_file_install_targets(ModuleName, DepsMap,
         "\t\t$(INSTALL_MKDIR) ""$$dir""; } && \\",
         "\t\t$(INSTALL) ""$(INSTALL_INT_DIR)""/*.$$ext ""$$dir""; \\",
         "\t} || exit 1; \\",
-        "done"]),
+        "done"],
+    LibInstallIntsFilesActions = LibInstallIntsFilesActionsLegacy,
+    MmakeRuleLibInstallInts = mmake_simple_rule("lib_install_ints",
+        mmake_rule_is_phony,
+        LibInstallIntsTargetName,
+        [ModuleMakeVarNameInts, ModuleMakeVarNameInt3s] ++
+            MaybeModuleVarNameInt0s ++ MaybeOptsVar ++ MaybeTransOptsVar ++
+            MaybeModuleDepsVar ++ ["install_lib_dirs"],
+        LibInstallIntsFilesActions),
 
     ( if
         Intermod = no,
@@ -1990,7 +1992,7 @@ generate_dep_file_install_targets(ModuleName, DepsMap,
             ["install_grade_dirs"],
         LibInstallOptsFiles =
             """" ++ MaybeOptsVarSpace ++ MaybeTransOptsVarSpace ++ """",
-        LibInstallOptsActions =
+        LibInstallOptsActionsLegacy =
             ["files=" ++ LibInstallOptsFiles ++ "; \\",
             "for file in $$files; do \\",
             "\ttarget=""$(INSTALL_GRADE_INT_DIR)/`basename $$file`"";\\",
@@ -2014,7 +2016,8 @@ generate_dep_file_install_targets(ModuleName, DepsMap,
             "\t\t$(INSTALL) ""$(INSTALL_GRADE_INT_DIR)""/*.$$ext \\",
             "\t\t\t""$$dir""; \\",
             "\t} || exit 1; \\",
-            "done"]
+            "done"],
+        LibInstallOptsActions = LibInstallOptsActionsLegacy
     ),
     MmakeRuleLibInstallOpts = mmake_simple_rule("lib_install_opts",
         mmake_rule_is_phony,
@@ -2038,15 +2041,18 @@ generate_dep_file_install_targets(ModuleName, DepsMap,
         LibInstallHdrsTargetName,
         [ModuleMakeVarNameMhs, "install_lib_dirs"],
         [silent_noop_action]),
+    LibInstallHdrsMhsActionsLegacy =
+        ["for hdr in " ++ ModuleMakeVarNameMhs ++ "; do \\",
+        "\t$(INSTALL) $$hdr $(INSTALL_INT_DIR); \\",
+        "\t$(INSTALL) $$hdr $(INSTALL_INC_DIR); \\",
+        "done"],
+    LibInstallHdrsMhsActions = LibInstallHdrsMhsActionsLegacy,
     MmakeRuleLibInstallHdrsMhs = mmake_simple_rule("install_lib_hdrs_mhs",
         mmake_rule_is_phony,
         LibInstallHdrsTargetName,
         [ModuleMakeVarNameMhs, "install_lib_dirs"],
-        ["for hdr in " ++ ModuleMakeVarNameMhs ++ "; do \\",
-        "\t$(INSTALL) $$hdr $(INSTALL_INT_DIR); \\",
-        "\t$(INSTALL) $$hdr $(INSTALL_INC_DIR); \\",
-        "done"]),
-    MmakeFragmentLibInstallHdrs = mmf_conditional_entry(
+        LibInstallHdrsMhsActions),
+    MmakeFragmentLibInstallHdrsMaybeMhs = mmf_conditional_entry(
         mmake_cond_strings_equal(ModuleMakeVarNameMhs, ""),
         MmakeRuleLibInstallHdrsNoMhs,
         MmakeRuleLibInstallHdrsMhs),
@@ -2059,11 +2065,7 @@ generate_dep_file_install_targets(ModuleName, DepsMap,
         LibInstallGradeHdrsTargetName,
         [ModuleMakeVarNameMihs, "install_grade_dirs"],
         [silent_noop_action]),
-    MmakeRuleLibInstallGradeHdrsMihs = mmake_simple_rule(
-        "install_grade_hdrs_mihs",
-        mmake_rule_is_phony,
-        LibInstallGradeHdrsTargetName,
-        [ModuleMakeVarNameMihs, "install_grade_dirs"],
+    LibInstallGradeHdrsMihsActionsLegacy =
         ["for hdr in " ++ ModuleMakeVarNameMihs ++ "; do \\",
         "\t$(INSTALL) $$hdr $(INSTALL_INT_DIR); \\",
         "\t$(INSTALL) $$hdr $(INSTALL_GRADE_INC_DIR); \\",
@@ -2087,16 +2089,23 @@ generate_dep_file_install_targets(ModuleName, DepsMap,
         "\t} && \\",
         "\t$(INSTALL) $(INSTALL_GRADE_INC_DIR)/*.mih \\",
         "\t\t$(INSTALL_INT_DIR); \\",
-        "} || exit 1"]),
-    MmakeFragmentLibInstallGradeHdrs = mmf_conditional_entry(
+        "} || exit 1"],
+    LibInstallGradeHdrsMihsActions = LibInstallGradeHdrsMihsActionsLegacy,
+    MmakeRuleLibInstallGradeHdrsMihs = mmake_simple_rule(
+        "install_grade_hdrs_mihs",
+        mmake_rule_is_phony,
+        LibInstallGradeHdrsTargetName,
+        [ModuleMakeVarNameMihs, "install_grade_dirs"],
+        LibInstallGradeHdrsMihsActions),
+    MmakeFragmentLibInstallGradeHdrsMaybeMihs = mmf_conditional_entry(
         mmake_cond_strings_equal(ModuleMakeVarNameMihs, ""),
         MmakeRuleLibInstallGradeHdrsNoMihs,
         MmakeRuleLibInstallGradeHdrsMihs),
 
     add_mmake_entry(MmakeRuleLibInstallInts, !MmakeFile),
     add_mmake_entry(MmakeRuleLibInstallOpts, !MmakeFile),
-    add_mmake_fragment(MmakeFragmentLibInstallHdrs, !MmakeFile),
-    add_mmake_fragment(MmakeFragmentLibInstallGradeHdrs, !MmakeFile).
+    add_mmake_fragment(MmakeFragmentLibInstallHdrsMaybeMhs, !MmakeFile),
+    add_mmake_fragment(MmakeFragmentLibInstallGradeHdrsMaybeMihs, !MmakeFile).
 
 :- pred generate_dep_file_collective_targets(module_name::in, string::in,
     mmakefile::in, mmakefile::out) is det.
