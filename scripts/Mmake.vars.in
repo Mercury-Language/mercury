@@ -569,6 +569,7 @@ ds_subdir=$(SUBDIR)ds/
 module_deps_subdir=$(SUBDIR)module_deps/
 int0s_subdir=$(SUBDIR)int0s/
 ints_subdir=$(SUBDIR)ints/
+int1s_subdir=$(SUBDIR)int1s/
 int2s_subdir=$(SUBDIR)int2s/
 int3s_subdir=$(SUBDIR)int3s/
 opts_subdir=$(SUBDIR)opts/
@@ -607,6 +608,7 @@ ds_subdir=
 module_deps_subdir=
 int0s_subdir=
 ints_subdir=
+int1s_subdir=
 int2s_subdir=
 int3s_subdir=
 opts_subdir=
@@ -693,8 +695,8 @@ endif
 
 ifeq ($(DESTDIR),)
     # DESTDIR is the empty string, DESTDIR_AND_SLASH must therefore be empty.
-    # Otherwise the slash can change a relative path into an absolute one; or
-    # on Windows, it can create an invalid path name.
+    # Otherwise, the slash can change a relative path into an absolute one;
+    # or (on Windows) it can create an invalid path name.
     DESTDIR_AND_SLASH =
 else
     # We cannot append paths like this in Windows, but we don't think anyone
