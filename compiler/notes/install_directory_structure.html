@@ -262,8 +262,12 @@ is to allow LEGACY and PROPOSED directory structures to coexist
 for the transition period.
 After that period is over, we can go back to using just "Mercury".
 
-<h1>The directory structure of installed libraries</h1>
+<h1>Where files of various kinds are installed</h1>
 
+<p>
+The following shows, for each kind of file we install for a library,
+where those files are installed
+both in the LEGACY and in the PROPOSED install directory structures.
 <p>
 <dl>
 
@@ -291,7 +295,7 @@ but applies the current indent?
         Prefix/lib/mercury/ints/Mercury/ints
 
         PROPOSED
-        Prefix/MercurySystem/ints
+        Prefix/MercurySystem/int1s
 </pre>
 <dt>
 .int2
@@ -442,7 +446,7 @@ find the .opt file for the installed-last grade.
         Prefix/lib/mercury/lib/Grade
 
         PROPOSED
-        Prefix/MercurySystem/lib/Grade/TargetArch
+        Prefix/MercurySystem/lib/Grade
 </pre>
 
 <dt>
@@ -454,6 +458,42 @@ find the .opt file for the installed-last grade.
 
         PROPOSED
         Prefix/MercurySystem/lib/Grade
+</pre>
+
+</dl>
+
+<h1>The PROPOSED directory structure of installed libraries</h1>
+
+<p>
+The following shows the overall structure of a library install directory
+under the PROPOSED rules.
+This table uses <em>main_module</em> to refer to the top module of the library,
+and <em>moduleN</em> to refer to any module of the library,
+whether it is the top module or not.
+As above, LE and SLE stand for the values of the
+--library-extension and --shared-library-extension options.
+<p>
+<pre>
+// non-grade-specific files
+Prefix/MercurySystem/int0s/         moduleN.int0
+Prefix/MercurySystem/int1s/         moduleN.int
+Prefix/MercurySystem/int2s/         moduleN.int2
+Prefix/MercurySystem/int3s/         moduleN.int3
+Prefix/MercurySystem/mhs/           moduleN.mh
+
+// grade-specific but not architecture-specific files
+Prefix/MercurySystem/opts/          Grade/moduleN.opt
+Prefix/MercurySystem/module_deps/   Grade/moduleN.module_dep
+Prefix/MercurySystem/analyses/      Grade/moduleN.analysis
+Prefix/MercurySystem/mihs/          Grade/moduleN.mih
+
+Prefix/MercurySystem/inits/         Grade/main_module.init
+Prefix/MercurySystem/lib/           Grade/main_module.jar
+Prefix/MercurySystem/lib/           Grade/main_module.dll
+
+// grade-specific and architecture-specific files
+Prefix/MercurySystem/lib/           Grade/TargetArch/main_module.LE
+Prefix/MercurySystem/lib/           Grade/TargetArch/main_module.SLE
 </pre>
 
 </dl>
