@@ -483,6 +483,7 @@ Prefix/MercurySystem/mhs/           moduleN.mh
 
 // grade-specific but not architecture-specific files
 Prefix/MercurySystem/opts/          Grade/moduleN.opt
+Prefix/MercurySystem/trans_opts/    Grade/moduleN.trans_opt
 Prefix/MercurySystem/module_deps/   Grade/moduleN.module_dep
 Prefix/MercurySystem/analyses/      Grade/moduleN.analysis
 Prefix/MercurySystem/mihs/          Grade/moduleN.mih
@@ -617,6 +618,17 @@ which means that the two options would need to maintain
 a <em>common</em> list of directories,
 even though different elements of that list
 would be need to be treated differently.)
+<p>
+A simple way to do this would be for
+the --workspace-library-dir option to be a special option
+that adds its argument to both
+the list maintained by --mercury-library-dir
+and to a second, separate list.
+After getopt has done its job, we would convert the second list to a set.
+Thereafer, we would search the --mercury-library-dir list almost as usual,
+with the one difference being that
+we would treat any entry on that list that is also in this set
+as being an argument of --workspace-library-dir.
 </ul>
 
 <h1>System components that know the structure of install directories</h1>
@@ -690,3 +702,178 @@ XXX INSTALL There may be other files, such as bindist/bindist.Makefile.in.
 
 </body>
 </html>
+
+<h1>The structure of the LEGACY mmake library install targets</h1>
+
+The following description specifies,
+for each mmake target, the following info:
+<p>
+
+<ul>
+<li>
+The name of the target, with "%" standing in for the name of the library.
+This is the first item on the first line.
+<li>
+The location of the rule: either the standard Mmake.rules file,
+or the .dep file generated for the library
+(and therefore named after its main module).
+This is the second item on the first line.
+<li>
+The job done by the actions of the rule.
+This is within angle brackeys on the second line.
+<li>
+The list of prerequisites of the target
+that are also part of the install system.
+The prereqs that require a file to be built
+before we try to install it are not shown.
+<li>
+For the few rules whose actions explicitly call mmake recursively
+we show the (install-related) targets of those recursive invocations.
+</ul>
+
+<p>
+Note: some of the targets install mainly or exclusively grade-specific files,
+but their names do not contain the word "grade".
+The structure description below
+extends those names with extra text containing that word,
+with the extensions being dtsinguished by being inside square brackets.
+<p>
+
+<pre>
+lib%.install                        (scripts/Mmake.rules)
+    <top level install target; installs all ngs and gs files>
+    prereq  lib%.install_ints
+    prereq  lib%.install_hdrs
+    prereq  lib%.install_library[_grade_files]
+
+    invokes lib%.install_grades
+
+lib%.install_grade_init             (scripts/Mmake.rules)
+    <installs main module .init file to gs dir>
+    prereq  install_grade_dirs      (which invokes only mkdir)
+
+lib%.install_library[_grade_files]  (scripts/Mmake.rules)
+    <installs main module .a/.so file to gs dir>
+    prereq  install_grade_dirs      (which invokes only mkdir)
+    prereq  lib%.install_grade_hdrs
+    prereq  lib%.install_[grade]_opts
+    prereq  lib%.install_grade_init
+
+lib%.install_grades                 (scripts/Mmake.rules)
+    <installs all grade-specific files for all libgrades>
+    no prereqs here; all prereqs are on the invoker, lib%.install
+
+    invokes lib%.install_library[_grade_files] FOR EACH LIBGRADE
+
+lib%.install_ints                   (main_module.dep)
+    <installs all .int*, .*opt, .module_dep files to ngs dir>
+    prereq  install_lib_dirs        (which invokes only mkdir)
+
+lib%.install_hdrs                   (main_module.dep)
+    <installs all .mh files to ngs dir (if target is C)>
+    XXX We never install them if current grade is NOT C
+    prereq  install_lib_dirs        (which invokes only mkdir)
+
+lib%.install_[grade]_opts           (main_module.dep)
+    <installs all .*opt files to gs dir>
+    prereq  install_grade_dirs      (which invokes only mkdir)
+
+lib%.install_grade_hdrs             (main_module.dep)
+    <installs all .*mih files to gs dir>
+    prereq  install_grade_dirs      (which invokes only mkdir)
+</pre>
+
+<h1>The structure of the PROPOSED mmake library install targets</h1>
+
+The PROPOSED structure of mmake rules
+is much simpler than the LEGACY structure.
+It would consist of only three mmake targets:
+
+<p>
+<pre>
+lib%.install_all_files
+lib%.install_ngs_pgs_files
+lib%.install_gs_gas_files
+</pre>
+
+<p>
+The job of the first one would be
+<ul>
+<li>
+to invoke lib%.install_ngs_pgs_files once, and
+<li>
+to invoke lib%.install_gs_gas_files for each install grade.
+</ul>
+
+<p>
+The last two rules
+divide the set of files to be installed into four categories.
+<ul>
+<li>
+The non-grade-specific file category
+consists of .int0, .int, .int2 and .int3 files.
+<li>
+The pseudo-grade-specific file category consists of .mh files.
+These files are not grade-specific,
+but they can be installed <em>only</em>
+when the library is built in a grade that targets C.
+So their install <em>time</em> is grade-specific,
+though their install <em>target directory</em> is not.
+<li>
+The grade-specific file category consists of
+.mih, .opt, .trans_opt, .module_dep, .analysis,
+.init, .jar and .dll files.
+<li>
+The grade-and-architecture-specific file category
+consists of .LE and .SLE files,
+whose suffixes are given by the values of the
+--library-extension and --shared-library-extension options.
+</ul>
+
+<p>
+Since we support the use of mmake only in grades that target C,
+the library will initially be built in such a grade,
+which means that we can install pgs files as well as ngs files in that state.
+
+<p>
+The code of the first rule could include code
+that tests the target language of each library grade,
+and invokes mmc --make instead of a recursive mmake
+if that language is Java or C#.
+This would enable users to include Java and/or C# grades
+in the list of grades in which to install a library.
+This is a capability that, as far as I (zs) know, does not currently exist.
+
+<p>
+The proposed three mmake targets,
+lib%.install_all_files, lib%.install_ngs_pgs_files
+and lib%.install_gs_gas_files,
+would all be in the library's main module's .dep file.
+This would have two main advantages.
+The first concerns only Mercury developers;
+the second concerns mostly Mercury users.
+<p>
+
+<ul>
+<li>
+With the LEGACY structure,
+any update that affects both a target in Mmake.rules
+and in the compiler-generated main_module.dep file
+has to contend with the fact that
+updating the Mmake.rules file and the compiler
+does <em>not</em> automatically update any previously-generated .dep file,
+and that an mmake invocation that uses both an updated Mmake.rules file
+and a non-updated .dep file will probably generate
+strange and hard-to-reproduce errors.
+With the PROPOSED rules for all targets being in the same file,
+such problems cannot happen.
+<li>
+The targets being in the same file,
+and there being only three of them,
+their actions should also be easier to read and to understand,
+for any Mercury programmer who wants to understand them.
+This should be especially so because the code of the rules
+would be specialized for the actual setup of the library,
+in that e.g. there would be no targets or actions for installing .opt files
+if --intermodule-optimization is not specified for the library.
+</ul>
