@@ -524,22 +524,22 @@ would dictate the structure of the subtree rooted at that directory.
 The structure would be one of
     <ul>
     <li>
-    containing only plain files
+    containing only regular files
     (all of which are non-grade-specific);
     <li>
     containing only subdirectories that identify grades,
-    each of which contains only plain files
+    each of which contains only regular files
     (all of which are grade-specific but not architecture-specific); or
     <li>
     containing only subdirectories that identify grades,
     each of which contains only subdirectories that identify architectures,
-    each of which contains only plain files
+    each of which contains only regular files
     (all of which are both grade-specific and architecture-specific).
     </ul>
 <li>
 As a consequence of the above,
 no directory in the installed library would contain
-both directories and plain (non-directory) files.
+both directories and regular (non-directory) files.
 <li>
 As a consequence of the above,
 the installed library would contain no symbolic links,
@@ -625,7 +625,7 @@ that adds its argument to both
 the list maintained by --mercury-library-dir
 and to a second, separate list.
 After getopt has done its job, we would convert the second list to a set.
-Thereafer, we would search the --mercury-library-dir list almost as usual,
+Thereafter, we would search the --mercury-library-dir list almost as usual,
 with the one difference being that
 we would treat any entry on that list that is also in this set
 as being an argument of --workspace-library-dir.
@@ -720,7 +720,7 @@ or the .dep file generated for the library
 This is the second item on the first line.
 <li>
 The job done by the actions of the rule.
-This is within angle brackeys on the second line.
+This is within angle brackets on the second line.
 <li>
 The list of prerequisites of the target
 that are also part of the install system.
@@ -736,7 +736,7 @@ Note: some of the targets install mainly or exclusively grade-specific files,
 but their names do not contain the word "grade".
 The structure description below
 extends those names with extra text containing that word,
-with the extensions being dtsinguished by being inside square brackets.
+with the extensions being distinguished by being inside square brackets.
 <p>
 
 <pre>
