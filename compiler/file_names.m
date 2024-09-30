@@ -309,7 +309,7 @@
             % a NON-grade-specific extension? If *anything* in a .module_dep
             % file can *ever* be grade dependent, this should be a
             % grade-specific extension.
-    ;       ext_cur_ngs_misc_prof.              % ".prof"
+    ;       ext_cur_ngs_misc_call_graph_for_prof.   % ".prof"
             % Despite the extension name, .prof files do not actually contain
             % profiling information. Instead, they contain a description of
             % a given module's call graph, with the intention being that
@@ -322,7 +322,10 @@
             % .callgraph, .staticcg, .stcg and .scg. I (zs) think that
             % the name should include a reference to profiling as well.
             % Finding a name that is short *as well as* descriptive
-            % is not easy.
+            % is not easy. I (zs) updated the internal name of the extension;
+            % the user-facing extension, and the name of the directory
+            % in which files with that extension are stored, still await
+            % renaming.
             %
             % A module's call graph in general depends on the target language.
             % This is because a predicate may have a definition that is
@@ -838,7 +841,8 @@ ext_cur_ngs_extension_dir(Ext, Str, Dir) :-
     ; Ext = ext_cur_ngs_mf_dep,         Str = ".dep",       Dir = "deps"
     ; Ext = ext_cur_ngs_misc_module_dep,
                                         Str = ".module_dep",Dir = "module_deps"
-    ; Ext = ext_cur_ngs_misc_prof,      Str = ".prof",      Dir = "profs"
+    ; Ext = ext_cur_ngs_misc_call_graph_for_prof,
+                                        Str = ".prof",      Dir = "profs"
     ).
 
 ext_cur_gs_extension_dir(Ext, Str, Dir) :-

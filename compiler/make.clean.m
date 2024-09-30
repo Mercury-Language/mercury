@@ -154,7 +154,8 @@ make_module_clean(ProgressStream, Globals, ModuleName, !Info, !IO) :-
     remove_module_file_for_make(ProgressStream, Globals, very_verbose,
         ModuleName, ext_cur_ngs_gs(ext_cur_ngs_gs_misc_used), !Info, !IO),
     remove_module_file_for_make(ProgressStream, Globals, very_verbose,
-        ModuleName, ext_cur_ngs(ext_cur_ngs_misc_prof), !Info, !IO),
+        ModuleName, ext_cur_ngs(ext_cur_ngs_misc_call_graph_for_prof),
+        !Info, !IO),
 
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),

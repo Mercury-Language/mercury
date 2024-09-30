@@ -2391,7 +2391,7 @@ maybe_output_prof_call_graph(ProgressStream, Stats, !HLDS, !IO) :-
         module_info_get_name(!.HLDS, ModuleName),
         % XXX LEGACY
         module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur_ngs(ext_cur_ngs_misc_prof), ModuleName,
+            ext_cur_ngs(ext_cur_ngs_misc_call_graph_for_prof), ModuleName,
             ProfFileName, _ProfFileNameProposed, !IO),
         prof_dependency_graph_to_string(DepGraphStr, !HLDS),
         write_string_to_file(ProgressStream, Globals,
