@@ -2,5 +2,7 @@ magicbox.m:038: Error: the determinism declaration for [38;5;87m`arguments_hand
 magicbox.m:038:   [38;5;87muo, out)[39;49m [38;5;203mis not satisfied.[39;49m
 magicbox.m:038:   Declared [38;5;40m`cc_multi',[39;49m inferred [38;5;203m`cc_nondet'.[39;49m
 magicbox.m:038:   The reasons for the difference are the following.
+magicbox.m:055: 
 magicbox.m:055:   This call to [38;5;87m`string.to_int'(in, out)[39;49m [38;5;203mcan fail.[39;49m
+magicbox.m:061: 
 magicbox.m:061:   This call to [38;5;87m`string.to_int'(in, out)[39;49m [38;5;203mcan fail.[39;49m

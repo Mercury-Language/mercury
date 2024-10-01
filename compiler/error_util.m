@@ -91,6 +91,10 @@
 
 %---------------------------------------------------------------------------%
 
+:- func start_each_msg_with_blank_line(list(error_msg)) = list(error_msg).
+
+%---------------------------------------------------------------------------%
+
     % Delete all the given error_specs, which are supposed to have been
     % gathered during the process that generates the contents of an interface
     % file, if halt_at_invalid_interface is not set.
@@ -164,6 +168,9 @@ does_msg_print_anything(Globals, Msg) = Prints :-
         ; Msg = no_ctxt_msg(_)
         ),
         Prints = yes
+    ;
+        Msg = blank_msg(_),
+        Prints = no
     ;
         ( Msg = simple_msg(_, MsgComponents)
         ; Msg = error_msg(_, _, _, MsgComponents)
@@ -385,6 +392,14 @@ contains_errors_or_warnings_treated_as_errors_opt_table(OptionTable, Specs)
             Halt = no
         )
     ).
+
+%---------------------------------------------------------------------------%
+
+start_each_msg_with_blank_line([]) = [].
+start_each_msg_with_blank_line([HeadMsg0 | TailMsgs0]) = Msgs :-
+    extract_msg_maybe_context(HeadMsg0, MaybeContext),
+    TailMsgs = start_each_msg_with_blank_line(TailMsgs0),
+    Msgs = [blank_msg(MaybeContext), HeadMsg0 | TailMsgs].
 
 %---------------------------------------------------------------------------%
 

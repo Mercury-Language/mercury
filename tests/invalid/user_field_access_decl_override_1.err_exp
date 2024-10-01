@@ -11,6 +11,7 @@ user_field_access_decl_override_1.m:025:   [38;5;203msatisfied.[39;49m
 user_field_access_decl_override_1.m:025:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 user_field_access_decl_override_1.m:025:   The reason for the difference is the
 user_field_access_decl_override_1.m:025:   following.
+user_field_access_decl_override_1.m:030: 
 user_field_access_decl_override_1.m:030:   In unification of [38;5;87m`X'[39;49m and [38;5;87m`f1(Foo)'[39;49m:
 user_field_access_decl_override_1.m:030:   this call to
 user_field_access_decl_override_1.m:030:   [38;5;87m`user_field_access_decl_override_1.f1'(in)[39;49m
@@ -21,6 +22,7 @@ user_field_access_decl_override_1.m:032:   [38;5;203msatisfied.[39;49m
 user_field_access_decl_override_1.m:032:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 user_field_access_decl_override_1.m:032:   The reason for the difference is the
 user_field_access_decl_override_1.m:032:   following.
+user_field_access_decl_override_1.m:037: 
 user_field_access_decl_override_1.m:037:   In unification of
 user_field_access_decl_override_1.m:037:   [38;5;87m`STATE_VARIABLE_Foo'[39;49m and [38;5;87m`'f1[39;49m
 user_field_access_decl_override_1.m:037:   [38;5;87m:='(STATE_VARIABLE_Foo_0, X)'[39;49m:

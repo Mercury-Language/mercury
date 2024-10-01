@@ -413,6 +413,7 @@
 :- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.parse_tree_out_sym_name.
@@ -2044,8 +2045,11 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
                     Indent, Components),
                 LaterHead = error_msg(MaybeLaterContext, always_treat_as_first,
                     Indent, Components)
+            ;
+                LaterHead0 = blank_msg(MaybeLaterContext),
+                LaterHead = blank_msg(MaybeLaterContext)
             ),
-            LaterMsgs = [LaterHead | LaterTail]
+            LaterMsgs = start_each_msg_with_blank_line([LaterHead | LaterTail])
         ),
         Spec = error_spec($pred, severity_error,
             phase_mode_check(report_in_any_mode), [InitMsg | LaterMsgs])

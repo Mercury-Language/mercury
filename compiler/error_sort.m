@@ -51,7 +51,6 @@
 :- implementation.
 
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module cord.
@@ -176,6 +175,11 @@ remove_conditionals_in_msg(OptionTable, Msg0, Msg) :-
         ;
             Msg0 = error_msg(MaybeContext, TreatAsFirst, ExtraIndent,
                 Components0)
+        ;
+            Msg0 = blank_msg(MaybeContext),
+            TreatAsFirst = always_treat_as_first,
+            ExtraIndent = 0u,
+            Components0 = [always([blank_line])]
         ),
         list.foldl(remove_conditionals_in_msg_component(OptionTable),
             Components0, cord.init, ComponentCord),
@@ -328,8 +332,8 @@ sort_error_msgs(Msgs0, Msgs) :-
     comparison_result::out) is det.
 
 compare_error_msgs(ReverseErrorOrder, MsgA, MsgB, Result) :-
-    MaybeContextA = project_msg_context(MsgA),
-    MaybeContextB = project_msg_context(MsgB),
+    extract_msg_maybe_context(MsgA, MaybeContextA),
+    extract_msg_maybe_context(MsgB, MaybeContextB),
     % The context comparison makes sense only if both Msgs have a context.
     % If one or both Msgs lack a context, then go on to compare the components.
     ( if
@@ -374,22 +378,6 @@ compare_error_msgs(ReverseErrorOrder, MsgA, MsgB, Result) :-
         )
     ).
 
-:- func project_msg_context(error_msg) = maybe(prog_context).
-
-project_msg_context(Msg) = MaybeContext :-
-    (
-        Msg = msg(Context, _),
-        MaybeContext = yes(Context)
-    ;
-        Msg = no_ctxt_msg(_),
-        MaybeContext = no
-    ;
-        Msg = simple_msg(Context, _),
-        MaybeContext = yes(Context)
-    ;
-        Msg = error_msg(MaybeContext, _, _, _)
-    ).
-
 :- func project_msg_components(error_msg) = list(error_msg_component).
 
 project_msg_components(Msg) = Components :-
@@ -402,6 +390,9 @@ project_msg_components(Msg) = Components :-
         Msg = simple_msg(_, Components)
     ;
         Msg = error_msg(_, _, _, Components)
+    ;
+        Msg = blank_msg(_),
+        Components = [always([blank_line])]
     ).
 
 %---------------------------------------------------------------------------%

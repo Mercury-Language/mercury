@@ -308,17 +308,7 @@ do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
             Msgs = Msgs1
         ;
             Msgs1 = [HeadMsg | _],
-            (
-                ( HeadMsg = msg(HeadContext, _Pieces)
-                ; HeadMsg = simple_msg(HeadContext, _)
-                ),
-                MaybeHeadContext = yes(HeadContext)
-            ;
-                HeadMsg = no_ctxt_msg(_),
-                MaybeHeadContext = no
-            ;
-                HeadMsg = error_msg(MaybeHeadContext, _, _, _)
-            ),
+            extract_msg_maybe_context(HeadMsg, MaybeHeadContext),
             IdMsg = error_msg(MaybeHeadContext, treat_based_on_posn, 0u,
                 [always([words("error_spec id:"), fixed(Id), nl])]),
             Msgs = Msgs1 ++ [IdMsg]
@@ -414,6 +404,11 @@ collect_msgs(OptionTable, LimitErrorContextsMap, [Msg | Msgs], !.First,
     ;
         Msg = error_msg(MaybeContext, TreatAsFirst, ExtraIndent, Components),
         Indent = ExtraIndent * indent2_increment
+    ;
+        Msg = blank_msg(MaybeContext),
+        Components = [always([blank_line])],
+        TreatAsFirst = treat_based_on_posn,
+        Indent = 0u
     ),
     (
         TreatAsFirst = always_treat_as_first,

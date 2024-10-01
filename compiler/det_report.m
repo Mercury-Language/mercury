@@ -172,6 +172,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_type_util.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_misc.
@@ -383,7 +384,7 @@ check_for_too_tight_or_loose_declared_determinism(PredProcId,
                 "Error", "is not satisfied", ReasonPieces,
                 DeclaredDetism, InferredDetism, ReportMsg),
             ReportSpec = error_spec($pred, severity_error, phase_detism_check,
-                [ReportMsg | DetailMsgs]),
+                [ReportMsg | start_each_msg_with_blank_line(DetailMsgs)]),
             !:Specs = [ReportSpec | !.Specs]
         )
     ).

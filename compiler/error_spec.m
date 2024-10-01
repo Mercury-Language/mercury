@@ -256,6 +256,9 @@
                 error_treat_as_first    :: maybe_always_treat_as_first,
                 error_extra_indent      :: uint,
                 error_components        :: list(error_msg_component)
+            )
+    ;       blank_msg(
+                blank_context           :: maybe(prog_context)
             ).
 
 :- type verbose_always_or_once
@@ -581,6 +584,9 @@
 
 %---------------------------------------------------------------------------%
 
+:- pred extract_msg_maybe_context(error_msg::in, maybe(prog_context)::out)
+    is det.
+
 :- pred extract_spec_phase(error_spec::in, error_phase::out) is det.
 
 :- pred extract_spec_msgs(globals::in, error_spec::in,
@@ -878,6 +884,21 @@ add_suffix_if_nonempty(BasePieces, SuffixPieces) = Pieces :-
 
 %---------------------------------------------------------------------------%
 
+extract_msg_maybe_context(Msg, MaybeContext) :-
+    (
+        Msg = no_ctxt_msg(_),
+        MaybeContext = no
+    ;
+        ( Msg = msg(Context, _)
+        ; Msg = simple_msg(Context, _)
+        ),
+        MaybeContext = yes(Context)
+    ;
+        ( Msg = error_msg(MaybeContext, _, _, _)
+        ; Msg = blank_msg(MaybeContext)
+        )
+    ).
+
 extract_spec_phase(Spec, Phase) :-
     (
         Spec = error_spec(_, _, Phase, _)
@@ -946,21 +967,12 @@ accumulate_contexts(Spec, !Contexts) :-
     set(prog_context)::in, set(prog_context)::out) is det.
 
 accumulate_contexts_in_msg(Msg, !Contexts) :-
+    extract_msg_maybe_context(Msg, MaybeContext),
     (
-        Msg = no_ctxt_msg(_)
+        MaybeContext = no
     ;
-        ( Msg = msg(Context, _)
-        ; Msg = simple_msg(Context, _)
-        ),
+        MaybeContext = yes(Context),
         set.insert(Context, !Contexts)
-    ;
-        Msg = error_msg(MaybeContext, _, _, _),
-        (
-            MaybeContext = no
-        ;
-            MaybeContext = yes(Context),
-            set.insert(Context, !Contexts)
-        )
     ).
 
 %---------------------------------------------------------------------------%
