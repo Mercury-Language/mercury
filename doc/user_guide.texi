@@ -1563,9 +1563,9 @@ The @samp{d} or @samp{stack} command will display the call stack.
 The @samp{quit} command will exit the debugger.
 
 That should be enough to get you started.
-But if you have GNU Emacs installed, you should strongly
-consider using the Emacs interface to @samp{mdb} --- see
-the following section.
+But if you are a GNU Emacs user,
+you should strongly consider using the Emacs interface to @samp{mdb} ---
+see the following section.
 
 For more information about the available commands,
 use the @samp{?} or @samp{help} command, or see @ref{Debugger commands}.
@@ -1575,22 +1575,25 @@ use the @samp{?} or @samp{help} command, or see @ref{Debugger commands}.
 @cindex GNU Emacs
 @cindex Emacs
 
-As well as the command-line debugger, mdb, there is also an Emacs
-interface to this debugger.  Note that the Emacs interface only
-works with GNU Emacs, not with XEmacs.
+As well as the command-line debugger, mdb,
+there is also an Emacs interface to this debugger.
+Note that the Emacs interface only works with GNU Emacs, not with XEmacs.
 
-With the Emacs interface, the debugger will display your source code
-as you trace through it, marking the line that is currently being
-executed, and allowing you to easily set breakpoints on particular
-lines in your source code.  You can have separate windows for
-the debugger prompt, the source code being executed, and for
-the output of the program being executed.
+With the Emacs interface,
+the debugger will display your source code as you trace through it,
+marking the line that is currently being executed,
+and allowing you to easily set breakpoints
+on particular lines in your source code.
+You can have separate windows for the debugger prompt,
+the source code being executed,
+and for the output of the program being executed.
 In addition, most of the mdb commands are accessible via menus.
 
-To start the Emacs interface, you first need to put the following
-text in the file @file{.emacs} in your home directory,
-replacing ``/usr/local/mercury-1.0'' with the directory
-that your Mercury implementation was installed in.
+To start the Emacs interface,
+you first need to put the following text
+in the @file{.emacs} file in your home directory,
+replacing ``/usr/local/mercury-1.0''
+with the directory that your Mercury implementation was installed in:
 
 @example
 (setq load-path (cons (expand-file-name
@@ -1602,8 +1605,8 @@ that your Mercury implementation was installed in.
 Build your program with debugging enabled, as described
 in @ref{Quick overview} or @ref{Preparing a program for debugging}.
 Then start up Emacs, e.g.@: using the command @samp{emacs},
-and type @kbd{M-x mdb @key{RET}}. Emacs will then prompt you for
-the mdb command to invoke
+and type @kbd{M-x mdb @key{RET}}.
+Emacs will then prompt you for the mdb command to invoke
 
 @example
 Run mdb (like this): mdb
@@ -1618,23 +1621,24 @@ Run mdb (like this): mdb ./hello arg1 arg2 @dots{}
 @end example
 
 Emacs will then create several ``buffers'': one for the debugger prompt,
-one for the input and output of the program being executed, and one or more
-for the source files.  By default, Emacs will split the display into two
-parts, called ``windows'', so that two of these buffers will be visible.
+one for the input and output of the program being executed,
+and one or more for the source files.
+By default, Emacs will split the display into two parts, called ``windows'',
+so that two of these buffers will be visible.
 You can use the command @kbd{C-x o} to switch between windows,
-and you can use the command @kbd{C-x 2} to split a window into two
-windows.  You can use the ``Buffers'' menu to select which buffer is
-displayed in each window.
+and you can use the command @kbd{C-x 2} to split a window into two windows.
+You can use the ``Buffers'' menu
+to select which buffer is displayed in each window.
 
 If you are using X-Windows, then it is a good idea
-to set the Emacs variable @samp{pop-up-frames} to @samp{t}
-before starting mdb, since this will cause each buffer to be
-displayed in a new ``frame'' (i.e.@: a new X window).
-You can set this variable interactively using the
-@samp{set-variable} command, i.e.@:
-@kbd{M-x set-variable @key{RET} pop-up-frames @key{RET} t @key{RET}}.
-Or you can put @samp{(setq pop-up-frames t)} in the @file{.emacs}
-file in your home directory.
+to set the Emacs variable @samp{pop-up-frames} to @samp{t} before starting mdb,
+since this will cause each buffer
+to be displayed in a new ``frame'' (i.e.@: a new X window).
+You can set this variable interactively
+using the @samp{set-variable} command,
+i.e.@: @kbd{M-x set-variable @key{RET} pop-up-frames @key{RET} t @key{RET}}.
+Or you can put @samp{(setq pop-up-frames t)}
+in the @file{.emacs} file in your home directory.
 
 For more information on buffers, windows, and frames,
 see the Emacs documentation.
@@ -1660,36 +1664,39 @@ to set it interactively, or you can put a command like
 @noindent
 in your @file{.emacs} file.
 
-At each trace event, the debugger will search for the
-source file corresponding to that event, first in the
-same directory as the program, and then in the directories
-specified by the @samp{gud-mdb-directories} variable.
-It will display the source file, with the line number
-corresponding to that trace event marked by
-an arrow (@samp{=>}) at the start of the line.
+At each trace event,
+the debugger will search for the source file corresponding to that event,
+first in the same directory as the program,
+and then in the directories specified
+by the @samp{gud-mdb-directories} variable.
+It will display the source file,
+with the line number corresponding to that trace event
+marked by an arrow (@samp{=>}) at the start of the line.
 
-Several of the debugger features can be accessed by moving
-the cursor to the relevant part of the source code and then
-selecting a command from the menu.
-You can set a break point on a line by moving the cursor to the
-appropriate line in your source code (e.g.@: with the arrow keys,
-or by clicking the mouse there), and then selecting
-the ``Set breakpoint on line'' command from the ``Breakpoints''
-sub-menu of the ``MDB'' menu.  You can set a breakpoint on
-a procedure by moving the cursor over the procedure name
-and then selecting the ``Set breakpoint on procedure''
-command from the same menu.  And you can display the value of
-a variable by moving the cursor over the variable name
-and then selecting the ``Print variable'' command from the
-``Data browsing'' sub-menu of the ``MDB'' menu.
+Several of the debugger features can be accessed
+by moving the cursor to the relevant part of the source code
+and then selecting a command from the menu.
+You can set a break point on a line
+by moving the cursor to the appropriate line in your source code
+(e.g.@: with the arrow keys,
+or by clicking the mouse there), and then
+selecting the ``Set breakpoint on line'' command
+from the ``Breakpoints'' sub-menu of the ``MDB'' menu.
+You can set a breakpoint on a procedure
+by moving the cursor over the procedure name and then
+selecting the ``Set breakpoint on procedure'' command from the same menu.
+And you can display the value of a variable
+by moving the cursor over the variable name and then
+selecting the ``Print variable'' command
+from the ``Data browsing'' sub-menu of the ``MDB'' menu.
 Most of the menu commands also have keyboard short-cuts,
 which are displayed on the menu.
 
 Note that @samp{mdb}'s @samp{context} and @samp{user_event_context} commands
-should not be used if you are using the Emacs interface, otherwise the Emacs
-interface won't be able to parse the file names and line numbers that
-@samp{mdb} outputs, and so it won't be able to highlight the correct location
-in the source code.
+should not be used if you are using the Emacs interface,
+otherwise the Emacs interface
+won't be able to parse the file names and line numbers that @samp{mdb} outputs,
+and so it won't be able to highlight the correct location in the source code.
 
 @node Tracing of Mercury programs
 @section Tracing of Mercury programs
