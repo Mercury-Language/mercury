@@ -1394,6 +1394,9 @@ Changes to the Mercury debugger
 * The `dump` command has a new option: `dump -p Var` will dump the value
   of the given variable in a prettyprinted form.
 
+* The `stack` command now identifies cliques by drawing boxes next to them
+  on the left hand side of the screen.
+
 Changes to the Mercury implementation
 -------------------------------------
 

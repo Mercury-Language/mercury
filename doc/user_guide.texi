@@ -3238,7 +3238,7 @@ The default value is 100;
 the special value 0 asks for all the lines to be printed.
 @sp 1
 By default, this command will look for cliques of mutually recursive ancestors.
-It will identify them as such in the output,
+It will draw boxes next to them to identify them as such in the output,
 and it will print at most 10 lines from any clique.
 The @samp{-c} option can be used to specify
 the maximum number of lines to print for a clique,

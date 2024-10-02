@@ -46,19 +46,6 @@ extern  void    MR_dump_stack(MR_Code *success_pointer,
                     MR_Word *det_stack_pointer, MR_Word *current_frame,
                     MR_bool include_trace_data);
 
-// MR_dump_stack_from_layout
-//
-// This function does the same job and makes the same assumptions
-// as MR_dump_stack, but instead of the succip, it takes the label
-// layout of the current point in the current procedure as input.
-// It also takes a parameter that tells it where to put the stack dump
-// and flags that say whether to include execution trace data and/or
-// line numbers. If limit is nonzero, dumps at most limit frames.
-//
-// If the entire wanted part of the stack was printed successfully,
-// the return value is NULL; otherwise, it is a string indicating
-// why the dump was cut short.
-
 typedef struct {
     // The min_level and max_level fields give the range of call levels
     // covered by this dump record. The frame_count field gives the number
@@ -72,6 +59,13 @@ typedef struct {
     // recursive calls.
     //
     // If include_trace_data is TRUE, frame_count should be 1.
+    //
+    // If the clique frame marker field is non-NULL, then it points to
+    // a short (two-character) string that indicates whether the call or calls
+    // denoted by this structure is inside a clique or not, and if it is,
+    // then whether it the first call in the clique, the last call in the
+    // clique, or neither. Note that the string will be UTF-8 encoded, and
+    // will often contain non-ASCII characters.
 
     const MR_ProcLayout     *MR_sdi_proc_layout;
     MR_Level                MR_sdi_min_level;
@@ -80,6 +74,7 @@ typedef struct {
     const char              *MR_sdi_filename;
     int                     MR_sdi_linenumber;
     MR_bool                 MR_sdi_context_mismatch;
+    const char              *MR_sdi_clique_frame_marker;
 
     // These fields are meaningful only if include_trace_data is TRUE.
     MR_Word                 *MR_sdi_base_sp;
@@ -90,6 +85,19 @@ typedef struct {
 typedef void        (*MR_PrintStackRecord)(FILE *fp,
                         MR_bool include_trace_data,
                         const MR_StackFrameDumpInfo *frame_dump_info);
+
+// MR_dump_stack_from_layout
+//
+// This function does the same job and makes the same assumptions
+// as MR_dump_stack, but instead of the succip, it takes the label
+// layout of the current point in the current procedure as input.
+// It also takes a parameter that tells it where to put the stack dump
+// and flags that say whether to include execution trace data and/or
+// line numbers. If limit is nonzero, dumps at most limit frames.
+//
+// If the entire wanted part of the stack was printed successfully,
+// the return value is NULL; otherwise, it is a string indicating
+// why the dump was cut short.
 
 extern  const char  *MR_dump_stack_from_layout(FILE *fp,
                         const MR_LabelLayout *label_layout,

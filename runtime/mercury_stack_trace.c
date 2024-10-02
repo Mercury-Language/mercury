@@ -123,6 +123,7 @@ static  int         MR_dump_stack_record_frame(FILE *fp,
                         const MR_LabelLayout *label_layout,
                         MR_Word *base_sp, MR_Word *base_curfr,
                         MR_Unsigned reused_frames,
+                        const char *clique_frame_bytes_ptr,
                         MR_PrintStackRecord print_stack_record,
                         MR_bool at_line_limit);
 static  void        MR_dump_stack_record_flush(FILE *fp,
@@ -273,7 +274,7 @@ MR_dump_stack_from_layout(FILE *fp, const MR_LabelLayout *label_layout,
         } else if (result == MR_STEP_ERROR_AFTER) {
             (void) MR_dump_stack_record_frame(fp, &params, &dump_info,
                 prev_label_layout, old_trace_sp, old_trace_curfr,
-                reused_frames, print_stack_record, MR_FALSE);
+                reused_frames, NULL, print_stack_record, MR_FALSE);
 
             MR_dump_stack_record_flush(fp, &params, &dump_info,
                 print_stack_record);
@@ -282,7 +283,7 @@ MR_dump_stack_from_layout(FILE *fp, const MR_LabelLayout *label_layout,
             lines_dumped_so_far += MR_dump_stack_record_frame(fp,
                 &params, &dump_info, prev_label_layout,
                 old_trace_sp, old_trace_curfr,
-                reused_frames, print_stack_record,
+                reused_frames, NULL, print_stack_record,
                 lines_dumped_so_far >= line_limit);
         }
 
@@ -320,12 +321,18 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
     int                     proc_table_next;
     MR_Unsigned             reused_frames;
     MR_FrameLimit           level;
-    MR_SpecLineLimit        lines_dumped_so_far = 0;
+    MR_SpecLineLimit        lines_dumped_so_far;
     MR_Clique               *cliques_first;
     MR_Clique               *cliques_last;
     MR_Clique               *cl;
     MR_FrameLimit           rec_first_level;
     MR_FrameLimit           rec_last_level;
+    const char              *MR_CLIQUE_FRAME_TOP =     "\342\224\214 "; // ┌
+    const char              *MR_CLIQUE_FRAME_MIDDLE =  "\342\224\202 "; // │
+    const char              *MR_CLIQUE_FRAME_BOTTOM =  "\342\224\224 "; // └
+    const char              *MR_CLIQUE_FRAME_SNIP =    "\342\224\206 "; // ┆
+    const char              *MR_CLIQUE_FRAME_OUTSIDE = "  ";
+    const char              *clique_frame_bytes_ptr;
 
     if (clique_line_limit == 0) {
         clique_line_limit = MR_UINT_LEAST32_MAX;
@@ -362,8 +369,8 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
         }
 
         proc_layout = cur_label_layout->MR_sll_entry;
-        prev_label_layout = cur_label_layout;
 
+        prev_label_layout = cur_label_layout;
         old_trace_sp    = stack_trace_sp;
         old_trace_curfr = stack_trace_curfr;
 
@@ -381,8 +388,7 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
         }
 
         walked_stack[walked_stack_next].ste_proc_layout = proc_layout;
-        walked_stack[walked_stack_next].ste_label_layout =
-            prev_label_layout;
+        walked_stack[walked_stack_next].ste_label_layout = prev_label_layout;
         walked_stack[walked_stack_next].ste_trace_sp = old_trace_sp;
         walked_stack[walked_stack_next].ste_trace_curfr = old_trace_curfr;
         walked_stack[walked_stack_next].ste_reused_frames = reused_frames;
@@ -398,6 +404,8 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
     params.sdp_include_contexts = include_contexts;
     MR_init_stack_dump_info(&dump_info);
 
+    lines_dumped_so_far = 0;
+    // The next block of code dumps the stack when we DO NOT detect cliques.
     if (!detect_cliques) {
         for (level = 0; level < walked_stack_next; level++) {
             if (lines_dumped_so_far >= line_limit) {
@@ -410,8 +418,8 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
                 &params, &dump_info, walked_stack[level].ste_label_layout,
                 walked_stack[level].ste_trace_sp,
                 walked_stack[level].ste_trace_curfr,
-                walked_stack[level].ste_reused_frames, print_stack_record,
-                lines_dumped_so_far >= line_limit);
+                walked_stack[level].ste_reused_frames, NULL,
+                print_stack_record, lines_dumped_so_far >= line_limit);
         }
         MR_dump_stack_record_flush(fp, &params, &dump_info,
             print_stack_record);
@@ -419,6 +427,8 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
         MR_free(walked_stack);
         return problem;
     }
+
+    // The rest of this function dumps the stack when we DO detect cliques.
 
     proc_table = MR_malloc(walked_stack_next * sizeof(MR_ProcTableEntry));
     proc_table_next = 0;
@@ -461,12 +471,8 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
         rec_last_level = level;
         level++;
 
-        // XXX For higher order predicates like list.map, we should pretend
-        // that we have not seen them before.
-
         slot = MR_find_proc_in_proc_table(proc_table, proc_table_next,
             proc_layout, &parent, &side);
-
         if (MR_PROC_LAYOUT_HAS_EXEC_TRACE(proc_layout)) {
             has_higher_order_arg = MR_proc_has_higher_order_arg(proc_layout);
         } else {
@@ -483,10 +489,9 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
             // Either we have not seen this procedure before, or we are
             // pretending that we have not seen it before.
             //
-            // The reason for such pretense is that we don't want calls
-            // to e.g. list.map in different places in the program
-            // to collapse every call between those places into a single
-            // clique.
+            // The reason for such pretense is that we don't want calls to
+            // e.g. list.map in different places in the program to collapse
+            // every call between those places into a single clique.
 
             slot = proc_table_next;
             proc_table[slot].pte_proc_layout =
@@ -585,16 +590,22 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
                 &params, &dump_info, walked_stack[level].ste_label_layout,
                 walked_stack[level].ste_trace_sp,
                 walked_stack[level].ste_trace_curfr,
-                walked_stack[level].ste_reused_frames, print_stack_record,
-                lines_dumped_so_far >= line_limit);
+                // The stack frame contains some cliques, which means that
+                // all its lines have space for the boxes. Add the same amount
+                // of padding, to make the columns of in-clique and
+                // not-in-clique calls line up.
+                walked_stack[level].ste_reused_frames, MR_CLIQUE_FRAME_OUTSIDE,
+                print_stack_record, lines_dumped_so_far >= line_limit);
         }
         MR_dump_stack_record_flush(fp, &params, &dump_info,
             print_stack_record);
 
-        fprintf(fp, "<mutually recursive set of stack frames start>\n");
+        clique_frame_bytes_ptr = MR_CLIQUE_FRAME_TOP;
         lines_dumped_before_clique = lines_dumped_so_far;
         for (; level <= cl->cl_last_level; level++) {
             if (lines_dumped_so_far >= line_limit) {
+                dump_info.sdi_prev_frame_dump_info.MR_sdi_clique_frame_marker =
+                    MR_CLIQUE_FRAME_SNIP;
                 MR_dump_stack_record_flush(fp, &params, &dump_info,
                     print_stack_record);
                 fprintf(fp, "<more stack frames snipped>\n");
@@ -605,6 +616,8 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
             if (lines_dumped_so_far - lines_dumped_before_clique
                 >= clique_line_limit)
             {
+                dump_info.sdi_prev_frame_dump_info.MR_sdi_clique_frame_marker =
+                    MR_CLIQUE_FRAME_SNIP;
                 MR_dump_stack_record_flush(fp, &params, &dump_info,
                     print_stack_record);
                 fprintf(fp, "<more stack frames in clique snipped>\n");
@@ -617,16 +630,28 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
                 &params, &dump_info, walked_stack[level].ste_label_layout,
                 walked_stack[level].ste_trace_sp,
                 walked_stack[level].ste_trace_curfr,
-                walked_stack[level].ste_reused_frames, print_stack_record,
+                walked_stack[level].ste_reused_frames,
+                clique_frame_bytes_ptr, print_stack_record,
                 lines_dumped_so_far >= line_limit);
+            clique_frame_bytes_ptr = MR_CLIQUE_FRAME_MIDDLE;
         }
+        dump_info.sdi_prev_frame_dump_info.MR_sdi_clique_frame_marker =
+            MR_CLIQUE_FRAME_BOTTOM;
         MR_dump_stack_record_flush(fp, &params, &dump_info,
             print_stack_record);
-        fprintf(fp, "<mutually recursive set of stack frames end>\n");
+    }
+
+    if (cliques_first != NULL) {
+        // See the comment on the first reference to MR_CLIQUE_FRAME_OUTSIDE.
+        clique_frame_bytes_ptr = MR_CLIQUE_FRAME_OUTSIDE;
+    } else {
+        clique_frame_bytes_ptr = NULL;
     }
 
     for (; level < walked_stack_next; level++) {
         if (lines_dumped_so_far >= line_limit) {
+            dump_info.sdi_prev_frame_dump_info.MR_sdi_clique_frame_marker =
+                clique_frame_bytes_ptr;
             MR_dump_stack_record_flush(fp, &params, &dump_info,
                 print_stack_record);
             fprintf(fp, "<more stack frames snipped>\n");
@@ -638,11 +663,11 @@ MR_dump_stack_from_layout_clique(FILE *fp, const MR_LabelLayout *label_layout,
             &params, &dump_info, walked_stack[level].ste_label_layout,
             walked_stack[level].ste_trace_sp,
             walked_stack[level].ste_trace_curfr,
-            walked_stack[level].ste_reused_frames, print_stack_record,
+            walked_stack[level].ste_reused_frames,
+            clique_frame_bytes_ptr, print_stack_record,
             lines_dumped_so_far >= line_limit);
     }
-    MR_dump_stack_record_flush(fp, &params, &dump_info,
-        print_stack_record);
+    MR_dump_stack_record_flush(fp, &params, &dump_info, print_stack_record);
 
     if (stopped) {
         fprintf(fp, "<more stack frames snipped>\n");
@@ -1742,6 +1767,7 @@ static int
 MR_dump_stack_record_frame(FILE *fp, MR_StackDumpParams *params,
     MR_StackDumpInfo *dump_info, const MR_LabelLayout *label_layout,
     MR_Word *base_sp, MR_Word *base_curfr, MR_Unsigned reused_frames,
+    const char *clique_frame_bytes_ptr,
     MR_PrintStackRecord print_stack_record, MR_bool at_line_limit)
 {
     const MR_ProcLayout     *proc_layout;
@@ -1785,6 +1811,8 @@ MR_dump_stack_record_frame(FILE *fp, MR_StackDumpParams *params,
         dump_info->sdi_prev_frame_dump_info.MR_sdi_filename = filename;
         dump_info->sdi_prev_frame_dump_info.MR_sdi_linenumber = linenumber;
         dump_info->sdi_prev_frame_dump_info.MR_sdi_context_mismatch = MR_FALSE;
+        dump_info->sdi_prev_frame_dump_info.MR_sdi_clique_frame_marker =
+            clique_frame_bytes_ptr;
 
         dump_info->sdi_prev_frame_dump_info.MR_sdi_base_sp = base_sp;
         dump_info->sdi_prev_frame_dump_info.MR_sdi_base_curfr = base_curfr;
@@ -1833,10 +1861,13 @@ MR_dump_stack_record_print(FILE *fp, MR_bool include_trace_data,
     fprintf(fp, "%4" MR_INTEGER_LENGTH_MODIFIER "d ",
         frame_dump_info->MR_sdi_min_level);
 
+    if (frame_dump_info->MR_sdi_clique_frame_marker != NULL) {
+        fprintf(fp, "%s", frame_dump_info->MR_sdi_clique_frame_marker);
+    }
+
     // If we are printing trace data, we need all the horizontal room
     // we can get, and there will not be any repeated lines, so we do not
     // reserve space for the repeat counts.
-
     if (! include_trace_data) {
         if (num_levels > 1) {
             if (num_levels != frame_dump_info->MR_sdi_num_frames) {
@@ -1865,10 +1896,10 @@ MR_dump_stack_record_print(FILE *fp, MR_bool include_trace_data,
     }
 
     if (include_trace_data) {
-        if (MR_strdiff(frame_dump_info->MR_sdi_goal_path, "")) {
-            fprintf(fp, " %s", frame_dump_info->MR_sdi_goal_path);
-        } else {
+        if (MR_streq(frame_dump_info->MR_sdi_goal_path, "")) {
             fprintf(fp, " (empty)");
+        } else {
+            fprintf(fp, " %s", frame_dump_info->MR_sdi_goal_path);
         }
     }
 
