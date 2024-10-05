@@ -728,6 +728,12 @@ Changes to the Mercury standard library
     - pred `write_doc_formatted/3`
     - pred `write_doc_formatted/4`
 
+### Changes to the `prolog` module
+
+* The following predicate has been deleted:
+
+    - pred `is/2`
+
 ### New `ra_list` module
 
 * This new module contains operations on random access lists.

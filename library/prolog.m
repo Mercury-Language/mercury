@@ -36,10 +36,6 @@
 :- pred T =\= T.            % In Mercury, just use \=
 :- mode in =\= in is semidet.
 
-:- pred is(T, T) is det.    % In Mercury, just use =
-:- mode is(uo, di) is det.
-:- mode is(out, in) is det.
-
 %---------------------------------------------------------------------------%
 %
 % Prolog term comparison operators.
@@ -157,8 +153,6 @@
 
 '=\\='(X, Y) :-
     X \= Y.
-
-is(X, X).
 
 '=='(X, X).
 '\\=='(X, Y) :-

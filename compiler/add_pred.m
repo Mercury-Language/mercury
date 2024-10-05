@@ -349,30 +349,16 @@ check_for_modeless_predmode_decl(PredStatus, PredOrFunc,
         % is defined in this module.
         pred_status_defined_in_this_module(PredStatus) = yes
     then
-        % The declaration of "is" looks like this:
-        %   :- pred is(T, T) is det.
-        % We can't just delete "is det" part, because if we do,
-        % the compiler will think that the predicate name "is"
-        % is introducing a determinism, which yields a syntax error.
-        % We also cannot add the argument modes, since "is" has both
-        % unique and non-unique modes.
-        ( if
-            PredSymName = qualified(PredModuleName, "is"),
-            maybe_remove_stdlib_wrapper(PredModuleName, unqualified("prolog"))
-        then
-            true
-        else
-            list.length(ArgTypes, PredFormArity),
-            SNA = sym_name_arity(PredSymName, PredFormArity),
-            Pieces = [words("Error: predicate")] ++
-                color_as_subject([unqual_sym_name_arity(SNA)]) ++
-                [words("declares a determinism")] ++
-                color_as_incorrect([words("without declaring"),
-                    words("the modes of its arguments.")]) ++
-                [nl],
-            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
-        )
+        list.length(ArgTypes, PredFormArity),
+        SNA = sym_name_arity(PredSymName, PredFormArity),
+        Pieces = [words("Error: predicate")] ++
+            color_as_subject([unqual_sym_name_arity(SNA)]) ++
+            [words("declares a determinism")] ++
+            color_as_incorrect([words("without declaring"),
+                words("the modes of its arguments.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        !:Specs = [Spec | !.Specs]
     else
         true
     ).
