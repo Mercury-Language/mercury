@@ -23,12 +23,15 @@
 #include "mercury_deep_profiling.h"
 #include "mercury_deep_profiling_hand.h"
 #include "mercury_file.h"
+#include "mercury_runtime_util.h"
+#include "mercury_wrapper.h"
 
 #ifdef MR_DEEP_PROFILING
 
 #include <stdio.h>
 #include <stdint.h>
 #include <errno.h>
+#include <time.h>
 
 #ifdef  MR_EXEC_TRACE
 MR_bool MR_disable_deep_profiling_in_debugger = MR_FALSE;
@@ -249,7 +252,9 @@ MR_deep_profile_update_method_history(void)
 
 // Functions for writing out the data at the end of the execution.
 
-static  void    MR_deep_data_output_error(const char *msg, const char *file);
+static  void    MR_deep_data_output_error(const char *msg,
+                    const char *bad_filename, const char *data_filename,
+                    const char *procrep_filename);
 static  void    MR_write_out_profiling_tree_check_unwritten(FILE *check_fp);
 
 static  void    MR_write_out_deep_id_string(FILE *fp);
@@ -366,6 +371,8 @@ static  FILE        *debug_fp;
 #define MR_MDPROF_DATA_FILENAME     "Deep.data"
 #define MR_MDPROF_PROCREP_FILENAME  "Deep.procrep"
 
+#define MR_FILENAME_BUF_LEN     1024
+
 void
 MR_write_out_profiling_tree(void)
 {
@@ -377,22 +384,66 @@ MR_write_out_profiling_tree(void)
     unsigned                num_call_seqs;
     int64_t                 table_sizes_offset;
     char                    errbuf[MR_STRERROR_BUF_SIZE];
+    const char              *prog_name;
+    char                    date_name[MR_FILENAME_BUF_LEN];
+    static char             data_filename[MR_FILENAME_BUF_LEN];
+    static char             procrep_filename[MR_FILENAME_BUF_LEN];
+    time_t                  seconds_since_epoch;
+    struct tm               *tm;
 
 #ifdef MR_DEEP_PROFILING_STATISTICS
     int                     i;
 #endif
 
-    deep_fp = fopen(MR_MDPROF_DATA_FILENAME, "wb+");
+    if (MR_progname_is_known) {
+        // Put the profiling output into the current directory.
+        prog_name = MR_get_program_basename(MR_progname);
+        // XXX WINDOWS If prog_name is not an acceptable part of a file name,
+        // we should probably fall back to "Deep", or to "unknown".
+    } else {
+        // Should this be "unknown_program", or just "unknown"?
+        prog_name = "Deep";
+    }
+
+    strncpy(data_filename, prog_name, MR_FILENAME_BUF_LEN);
+    strncpy(procrep_filename, prog_name, MR_FILENAME_BUF_LEN);
+
+    tm = NULL;
+    seconds_since_epoch = time(NULL);
+    if (seconds_since_epoch > 0) {
+        tm = localtime(&seconds_since_epoch);
+        if (tm != NULL) {
+            // XXX Is there a way to format this data+time that
+            // - more readily identifies each component,
+            // - but does not use characters that may not occur
+            //   in filenames, such as '/', and (on Windows) ':', and
+            // - also does not use characters that would cause problems
+            //   in shell commands?
+            snprintf(date_name, MR_FILENAME_BUF_LEN,
+                "_on_%04d-%02d-%02d_at_%02d-%02d-%02d",
+                tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
+                tm->tm_hour, tm->tm_min, tm->tm_sec);
+            strncat(data_filename, date_name, MR_FILENAME_BUF_LEN);
+            strncat(procrep_filename, date_name, MR_FILENAME_BUF_LEN);
+        }
+    }
+
+    strncat(data_filename, ".data", MR_FILENAME_BUF_LEN);
+    strncat(procrep_filename, ".procrep", MR_FILENAME_BUF_LEN);
+
+    // XXX WINDOWS data_filename may not be ASCII.
+    deep_fp = fopen(data_filename, "wb+");
     if (deep_fp == NULL) {
         MR_fatal_error("cannot open `%s' for writing: %s",
-            MR_MDPROF_DATA_FILENAME,
+            data_filename,
             MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
-    procrep_fp = fopen(MR_MDPROF_PROCREP_FILENAME, "wb+");
+    // XXX WINDOWS procrep_filename may not be ASCII.
+    procrep_fp = fopen(procrep_filename, "wb+");
     if (procrep_fp == NULL) {
         MR_fatal_error("cannot open `%s' for writing: %s",
-            MR_MDPROF_PROCREP_FILENAME,
+            procrep_filename,
             MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
@@ -414,7 +465,7 @@ MR_write_out_profiling_tree(void)
     table_sizes_offset = MR_ftell(deep_fp);
     if (table_sizes_offset == -1) {
         MR_deep_data_output_error("ftell failed for ",
-            MR_MDPROF_DATA_FILENAME);
+            data_filename, data_filename, procrep_filename);
     }
     MR_write_fixed_size_int(deep_fp, 0);
     MR_write_fixed_size_int(deep_fp, 0);
@@ -468,7 +519,7 @@ MR_write_out_profiling_tree(void)
 
     if (MR_fseek(deep_fp, table_sizes_offset, SEEK_SET) != 0) {
         MR_deep_data_output_error("cannot seek to header of",
-            MR_MDPROF_DATA_FILENAME);
+            data_filename, data_filename, procrep_filename);
     }
 
     MR_write_fixed_size_int(deep_fp, MR_call_site_dynamic_table->last_id);
@@ -477,13 +528,14 @@ MR_write_out_profiling_tree(void)
     MR_write_fixed_size_int(deep_fp, MR_proc_layout_table->last_id);
 
     if (fclose(deep_fp) != 0) {
-        MR_deep_data_output_error("cannot close", MR_MDPROF_DATA_FILENAME);
+        MR_deep_data_output_error("cannot close",
+            data_filename, data_filename, procrep_filename);
     }
 
     putc(MR_no_more_modules, procrep_fp);
     if (fclose(procrep_fp) != 0) {
         MR_deep_data_output_error("cannot close",
-            MR_MDPROF_PROCREP_FILENAME);
+            procrep_filename, data_filename, procrep_filename);
     }
 
 #ifdef MR_DEEP_PROFILING_STATISTICS
@@ -656,7 +708,8 @@ MR_write_out_profiling_tree(void)
 }
 
 static void
-MR_deep_data_output_error(const char *op, const char *filename)
+MR_deep_data_output_error(const char *op, const char *filename,
+    const char *data_filename, const char *procrep_filename)
 {
     char    errbuf[MR_STRERROR_BUF_SIZE];
 
@@ -667,15 +720,17 @@ MR_deep_data_output_error(const char *op, const char *filename)
     // misunderstandings about that, and may also cure a disk-full condition,
     // if the close failure was caused by that.
 
-    if (remove(MR_MDPROF_DATA_FILENAME) != 0) {
+    // WINDOWS: _wremove?
+    if (remove(data_filename) != 0) {
         MR_warning("cannot remove %s: %s",
-            MR_MDPROF_DATA_FILENAME,
+            data_filename,
             MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
-    if (remove(MR_MDPROF_PROCREP_FILENAME) != 0) {
+    // WINDOWS: _wremove?
+    if (remove(procrep_filename) != 0) {
         MR_warning("cannot remove %s: %s",
-            MR_MDPROF_PROCREP_FILENAME,
+            procrep_filename,
             MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
@@ -1827,7 +1882,7 @@ MR_write_out_profiling_tree_check_unwritten(FILE *check_fp)
     }
 
     if (any_unwritten > 0) {
-        MR_fatal_error("UNWRITTEN nodes: Deep.data file corrupted\n");
+        MR_fatal_error("UNWRITTEN nodes: deep profiling data corrupted\n");
     }
 }
 
