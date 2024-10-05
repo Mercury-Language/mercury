@@ -106,6 +106,8 @@ ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 # as well as *across* the blocks. The two copies within each block
 # differ only by a @. I (zs) don't why that is, but it was done intentionally.
 
+MMAKE_USE_SUBDIRS_EXPLICIT ?= no
+
 # NEARLY-IDENTICAL BLOCK 1
 $(deps_subdir)%.dep $(deps_subdir)%.dv:
 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $* > $(*F).dep_err 2>&1
@@ -114,14 +116,12 @@ ifeq ($(MMAKE_USE_SUBDIRS_EXPLICIT),yes)
 	-mkdir -p $(classes_subdir) \
 		Mercury/dates Mercury/date0s Mercury/date3s \
 		Mercury/optdates Mercury/trans_opt_dates \
-		Mercury/c_dates \
-		Mercury/s_dates Mercury/pic_s_dates
+		Mercury/c_dates
 else
 	@-mkdir -p $(classes_subdir) \
 		Mercury/dates Mercury/date0s Mercury/date3s \
 		Mercury/optdates Mercury/trans_opt_dates \
-		Mercury/c_dates \
-		Mercury/s_dates Mercury/pic_s_dates
+		Mercury/c_dates
 endif
 endif
 
@@ -134,14 +134,12 @@ ifeq ($(MMAKE_USE_SUBDIRS_EXPLICIT),yes)
 	-mkdir -p $(classes_subdir) \
 		Mercury/dates Mercury/date0s Mercury/date3s \
 		Mercury/optdates Mercury/trans_opt_dates \
-		Mercury/c_dates \
-		Mercury/s_dates Mercury/pic_s_dates
+		Mercury/c_dates
 else
 	@-mkdir -p $(classes_subdir) \
 		Mercury/dates Mercury/date0s Mercury/date3s \
 		Mercury/optdates Mercury/trans_opt_dates \
-		Mercury/c_dates \
-		Mercury/s_dates Mercury/pic_s_dates
+		Mercury/c_dates
 endif
 endif
 
@@ -154,14 +152,12 @@ ifeq ($(MMAKE_USE_SUBDIRS_EXPLICIT),yes)
 	-mkdir -p $(classes_subdir) \
 		Mercury/dates Mercury/date0s Mercury/date3s \
 		Mercury/optdates Mercury/trans_opt_dates \
-		Mercury/c_dates \
-		Mercury/s_dates Mercury/pic_s_dates
+		Mercury/c_dates
 else
 	@-mkdir -p $(classes_subdir) \
 		Mercury/dates Mercury/date0s Mercury/date3s \
 		Mercury/optdates Mercury/trans_opt_dates \
-		Mercury/c_dates \
-		Mercury/s_dates Mercury/pic_s_dates
+		Mercury/c_dates
 endif
 endif
 
@@ -425,7 +421,7 @@ lib%.install_grades:
 		fi; \
 	done && \
 	{ mv -f $(deps_subdir)$*.dep $(deps_subdir)$*.dv \
-		*.a *.so tmp_dir || true; } && \
+		*.$A *.$(EXT_FOR_SHARED_LIB) tmp_dir || true; } && \
 	for grade in $(ALL_LIBGRADES); do \
 		if test "$$grade" != "$(GRADE)"; then \
 			$(MMAKE) GRADE=$$grade $*.depend || \
@@ -438,7 +434,7 @@ lib%.install_grades:
 				fi; \
 			done; \
 			rm -f $(deps_subdir)$*.dep $(deps_subdir)$*.dv \
-				*.a *.so; \
+				*.$A *.$(EXT_FOR_SHARED_LIB); \
 		fi; \
 	done && \
 	for file in x $$grade_files; do \

@@ -1,0 +1,79 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# vim: sw=4 ts=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 2024 The Mercury team.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+usage="usage: mmake_grade_test {llc,hlc,c,java,csharp} grade"
+if test "$#" = 2
+then
+    test_name="$1"
+    grade="$2"
+    case "${test_name}" in
+        llc)
+            case "${grade}" in
+                hl*|java*|csharp*)
+                    exit 1;
+                    ;;
+                *)
+                    exit 0;
+                    ;;
+            esac
+            ;;
+
+        hlc)
+            case "${grade}" in
+                hl*)
+                    exit 0;
+                    ;;
+                *)
+                    exit 1;
+                    ;;
+            esac
+            ;;
+
+        c)
+            case "${grade}" in
+                java*|csharp*)
+                    exit 1;
+                    ;;
+                *)
+                    exit 0;
+                    ;;
+            esac
+            ;;
+
+        java)
+            case "${grade}" in
+                java*)
+                    exit 0;
+                    ;;
+                *)
+                    exit 1;
+                    ;;
+            esac
+            ;;
+
+        csharp)
+            case "${grade}" in
+                csharp*)
+                    exit 0;
+                    ;;
+                *)
+                    exit 1;
+                    ;;
+            esac
+            ;;
+
+        *)
+            echo "${usage}"
+            exit 2
+            ;;
+    esac
+else
+    echo "${usage}"
+    exit 2
+fi

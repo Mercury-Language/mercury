@@ -1,0 +1,26 @@
+#!/bin/sh
+#---------------------------------------------------------------------------#
+# vim: sw=4 ts=4 expandtab ft=sh
+#---------------------------------------------------------------------------#
+# Copyright (C) 2024 The Mercury team.
+# This file may only be copied under the terms of the GNU General
+# Public License - see the file COPYING in the Mercury distribution.
+#---------------------------------------------------------------------------#
+
+for t in llc hlc c java csharp
+do
+    echo
+    echo === test ${t} ===
+    echo
+
+    for g in asm_fast.gc none.gc hlc.gc hlc.gc.tr java csharp
+    do
+        if mmake_grade_test $t $g
+        then
+            result="success"
+        else
+            result=""
+        fi
+        echo "grade ${g}: ${result}"
+    done
+done

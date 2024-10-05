@@ -107,7 +107,7 @@ MERCURY_MAIN_MODULES =
 
 ALL_MC_BUILD_FILES0 =	$(MERCURY_MAIN_MODULES) \
 			$(MERCURY_MAIN_MODULES:%=lib%.$A) \
-			$(MERCURY_MAIN_MODULES:%=lib%.so) \
+			$(MERCURY_MAIN_MODULES:%=lib%.$(EXT_FOR_SHARED_LIB)) \
 			$(MERCURY_MAIN_MODULES:%=%.clean) \
 			$(MERCURY_MAIN_MODULES:%=%.realclean) \
 			$(MERCURY_MAIN_MODULES:%=%.depend) \
@@ -283,8 +283,7 @@ LIB_JAVACFLAGS	=
 # it should be able to run Java bytecode files.
 JAVA_INTERPRETER = @JAVA_INTERPRETER@
 
-# JAR is the command line Java archive tool;
-# it should generate .jar files.
+# JAR is the command line Java archive tool; it should generate .jar files.
 JAR		= @JAR@
 JAR_CREATE_FLAGS = cf
 
@@ -554,11 +553,11 @@ maybe-base-JAVACFLAGS-undefined =
 # for each of these extensions.
 GRADE_SUBDIR_EXTS = \
 	mih optdate trans_opt trans_opt_date c c_date java java_date \
-	class dll s s_date pic_s pic_s_date o pic_o
+	class dll o pic_o
 GRADE_SUBDIR_MVEXTS = \
 	mihs optdates trans_opts trans_opt_dates all_cs c_dates \
 	all_javas java_dates \
-	classs dlls ss s_dates pic_ss pic_s_dates all_os all_pic_os
+	classes dlls all_os all_pic_os
 
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 

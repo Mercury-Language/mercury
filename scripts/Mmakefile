@@ -16,7 +16,11 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
+# NOTE: mmake_grade_test_test is not in any of the lists below, because
+# it does not need to be configured, and is never installed.
+
 NONCONF_SH_SCRIPTS = \
+	mmake_grade_test \
 	mprof_merge_runs \
 	mtc \
 	vpath_find
@@ -44,8 +48,6 @@ CONF_BATCH_FILES = \
 	mprof.bat
 
 CONF_SCRIPTS = $(CONF_SH_SCRIPTS) $(CONF_BATCH_FILES)
-
-NONCONF_SCRIPTS = $(NONCONF_SH_SCRIPTS)
 
 # SCRIPTS is the list all scripts, regardless of whether they need to be
 # installed or not.

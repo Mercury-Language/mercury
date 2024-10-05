@@ -667,7 +667,7 @@ construct_c_header_rules(Globals, ModuleName, AllDeps,
     % The `.module_dep' file is made as a side effect of
     % creating the `.c' or `.java' file.
     % XXX What about C#?
-    % (See the main comment on generate_d_file above.
+    % (See the main comment on generate_d_file above).
     %
 :- pred construct_module_dep_fragment(globals::in, module_name::in,
     string::in, mmake_fragment::out,
@@ -1175,11 +1175,21 @@ generate_dv_file_define_mod_misc_vars(Globals, DepsMap, Modules,
     list(mmake_fragment)::out) is det.
 
 generate_dv_file_define_intn_vars(ModuleMakeVarName, IntnFragments) :-
+    MmakeVarInt1s = mmake_var_defn_list(ModuleMakeVarName ++ ".int1s",
+        [string.format("$(%s.mods:%%=$(int1s_subdir)%%.int)",
+            [s(ModuleMakeVarName)])]),
+    MmakeVarInt2s = mmake_var_defn_list(ModuleMakeVarName ++ ".int2s",
+        [string.format("$(%s.mods:%%=$(int2s_subdir)%%.int2)",
+            [s(ModuleMakeVarName)])]),
     MmakeVarInts = mmake_var_defn_list(ModuleMakeVarName ++ ".ints",
+        % This is intentionally ints_subdir, not int1s_subdir.
         [string.format("$(%s.mods:%%=$(ints_subdir)%%.int)",
             [s(ModuleMakeVarName)]),
         string.format("$(%s.mods:%%=$(int2s_subdir)%%.int2)",
             [s(ModuleMakeVarName)])]),
+    MmakeVarInt3s = mmake_var_defn(ModuleMakeVarName ++ ".int3s",
+        string.format("$(%s.mods:%%=$(int3s_subdir)%%.int3)",
+            [s(ModuleMakeVarName)])),
     % `.int0' files are only generated for modules with submodules.
     % XXX Once, we also generated .int0 files for nested submodules that
     % don't have any children, but this bug seems to have been fixed.
@@ -1200,9 +1210,6 @@ generate_dv_file_define_intn_vars(ModuleMakeVarName, IntnFragments) :-
     MmakeVarAllInt0s = mmake_var_defn(ModuleMakeVarName ++ ".all_int0s",
         string.format("$(%s.mods:%%=$(int0s_subdir)%%.int0)",
             [s(ModuleMakeVarName)])),
-    MmakeVarInt3s = mmake_var_defn(ModuleMakeVarName ++ ".int3s",
-        string.format("$(%s.mods:%%=$(int3s_subdir)%%.int3)",
-            [s(ModuleMakeVarName)])),
 
     MmakeVarDates = mmake_var_defn(ModuleMakeVarName ++ ".dates",
         string.format("$(%s.mods:%%=$(dates_subdir)%%.date)",
@@ -1215,7 +1222,7 @@ generate_dv_file_define_intn_vars(ModuleMakeVarName, IntnFragments) :-
             [s(ModuleMakeVarName)])),
 
     IntnFragments = list.map(mmake_entry_to_fragment,
-        [MmakeVarInts,
+        [MmakeVarInt1s, MmakeVarInt2s, MmakeVarInts,
         MmakeVarInt0s, MmakeVarInt0sToClean, MmakeVarAllInt0s,
         MmakeVarInt3s,
         MmakeVarDates, MmakeVarDate0s, MmakeVarDate3s]).
@@ -1663,16 +1670,20 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
         !MmakeFile, !IO),
     generate_dep_file_init_targets(Globals, ModuleName, ModuleMakeVarName,
         InitCFileName, InitFileName, DepFileName, DvFileName, !MmakeFile),
-    generate_dep_file_install_targets(ModuleName, DepsMap,
+    generate_dep_file_install_targets_legacy(ModuleName, DepsMap,
         ModuleMakeVarName, MmcMakeDeps, Intermod, TransOpt,
         MaybeModuleDepsVarPair, MaybeOptsVarPair, MaybeTransOptsVarPair,
         !MmakeFile),
+    generate_dep_file_install_targets_proposed(Globals, DepsMap, ModuleName,
+        ModuleMakeVarName, MmcMakeDeps, Intermod, TransOpt, !MmakeFile),
     generate_dep_file_collective_targets(ModuleName, ModuleMakeVarName,
         !MmakeFile),
     generate_dep_file_clean_targets(ModuleName, ModuleMakeVarName,
         ExeFileName, InitCFileName, InitObjFileName, InitPicObjFileName,
         InitFileName, StaticLibFileName, SharedLibFileName, JarFileName,
         DepFileName, DvFileName, !MmakeFile).
+
+%---------------------%
 
 :- pred generate_dep_file_exec_library_targets(globals::in,
     module_name::in, string::in, string::in, string::in,
@@ -1815,6 +1826,8 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
     add_mmake_fragment(MmakeFragmentSharedLib, !MmakeFile),
     add_mmake_entries([MmakeRuleLib, MmakeRuleJar], !MmakeFile).
 
+%---------------------%
+
 :- pred generate_dep_file_init_targets(globals::in,
     module_name::in, string::in, string::in, string::in,
     string::out, string::out, mmakefile::in, mmakefile::out) is det.
@@ -1871,14 +1884,16 @@ generate_dep_file_init_targets(Globals, ModuleName, ModuleMakeVarName,
         [MmakeRuleInitFile, MmakeRuleForceInitCFile, MmakeRuleInitCFile],
         !MmakeFile).
 
+%---------------------%
+
 :- type maybe_mmake_var == pair(list(string), string).
 
-:- pred generate_dep_file_install_targets(module_name::in,
+:- pred generate_dep_file_install_targets_legacy(module_name::in,
     deps_map::in, string::in, bool::in, bool::in, bool::in,
     maybe_mmake_var::in, maybe_mmake_var::in, maybe_mmake_var::in,
     mmakefile::in, mmakefile::out) is det.
 
-generate_dep_file_install_targets(ModuleName, DepsMap,
+generate_dep_file_install_targets_legacy(ModuleName, DepsMap,
         ModuleMakeVarName, MmcMakeDeps, Intermod, TransOpt,
         MaybeModuleDepsVarPair, MaybeOptsVarPair, MaybeTransOptsVarPair,
         !MmakeFile) :-
@@ -2107,6 +2122,273 @@ generate_dep_file_install_targets(ModuleName, DepsMap,
     add_mmake_fragment(MmakeFragmentLibInstallHdrsMaybeMhs, !MmakeFile),
     add_mmake_fragment(MmakeFragmentLibInstallGradeHdrsMaybeMihs, !MmakeFile).
 
+:- pred generate_dep_file_install_targets_proposed(globals::in, deps_map::in,
+    module_name::in, string::in, bool::in, bool::in, bool::in,
+    mmakefile::in, mmakefile::out) is det.
+
+generate_dep_file_install_targets_proposed(Globals, DepsMap,
+        MainModuleName, ModuleMVN, MmcMakeDeps, Intermod, TransOpt,
+        !MmakeFile) :-
+    MainModuleNameStr = sym_name_to_string(MainModuleName),
+    LibModuleNameStr = "lib" ++ MainModuleNameStr,
+    generate_dep_file_install_targets_proposed_ngs_pgs(DepsMap,
+        ModuleMVN, LibModuleNameStr, NgsPgsTarget, MmakeRuleLibInstallNgsPgs),
+    generate_dep_file_install_targets_proposed_gs_gas_c(Globals,
+        MainModuleName, LibModuleNameStr, ModuleMVN,
+        MmcMakeDeps, Intermod, TransOpt, GsGasTarget,
+        MmakeRuleLibInstallGsGas),
+    generate_dep_file_install_all_files(MainModuleNameStr, LibModuleNameStr,
+        NgsPgsTarget, GsGasTarget, MmakeRuleLibInstallAll),
+    add_mmake_entry(MmakeRuleLibInstallAll, !MmakeFile),
+    add_mmake_entry(MmakeRuleLibInstallNgsPgs, !MmakeFile),
+    add_mmake_entry(MmakeRuleLibInstallGsGas, !MmakeFile).
+
+:- pred generate_dep_file_install_targets_proposed_ngs_pgs(deps_map::in,
+    string::in, string::in, string::out, mmake_entry::out) is det.
+
+generate_dep_file_install_targets_proposed_ngs_pgs(DepsMap,
+        ModuleMVN, LibModuleNameStr, LibNgsPgsInstallTargetName,
+        MmakeRuleLibInstallNgsPgs) :-
+    LibNgsPgsInstallTargetName = LibModuleNameStr ++ ".install_ngs_pgs_files",
+
+    string.format("$(%s.int0s)", [s(ModuleMVN)], Int0sMVN),
+    % string.format("$(%s.int1s)", [s(ModuleMVN)], Int1sMVN),
+    % string.format("$(%s.int2s)", [s(ModuleMVN)], Int2sMVN),
+    string.format("$(%s.ints)",  [s(ModuleMVN)], Int12sMVN),
+    string.format("$(%s.int3s)", [s(ModuleMVN)], Int3sMVN),
+    string.format("$(%s.mhs)",   [s(ModuleMVN)], MhsMVN),
+
+    ( if some_module_in_deps_map_has_a_submodule(DepsMap) then
+        MaybeInt0sMVN = [Int0sMVN],
+        ActionsInt0 = proposed_action_lines(Int0sMVN, "int0s")
+    else
+        MaybeInt0sMVN = [],
+        ActionsInt0 = []
+    ),
+
+    % ActionsInt1 = proposed_action_lines(Int1sMVN, "int1s"),
+    % ActionsInt2 = proposed_action_lines(Int2sMVN, "int2s"),
+    ActionsInt12 = proposed_action_lines(Int12sMVN, "ints"),
+    ActionsInt3 =  proposed_action_lines(Int3sMVN, "int3s"),
+    ActionsMh =    proposed_action_lines(MhsMVN,   "mhs"),
+
+    NgsPgsInstallActions =
+        % ActionsInt1 ++ ActionsInt2
+        ActionsInt0 ++ ActionsInt12 ++ ActionsInt3 ++ ActionsMh,
+    MmakeRuleLibInstallNgsPgs = mmake_simple_rule("install_ngs_pgs_files",
+        mmake_rule_is_phony,
+        LibNgsPgsInstallTargetName,
+        % Int1sMVN, Int2sMVN
+        MaybeInt0sMVN ++ [Int12sMVN, Int3sMVN, MhsMVN],
+        NgsPgsInstallActions).
+
+:- pred generate_dep_file_install_targets_proposed_gs_gas_c(globals::in,
+    module_name::in, string::in, string::in, bool::in, bool::in, bool::in,
+    string::out, mmake_entry::out) is det.
+
+generate_dep_file_install_targets_proposed_gs_gas_c(Globals, MainModuleName,
+        LibModuleNameStr, ModuleMVN, MmcMakeDeps, Intermod, TransOpt,
+        LibGsGasInstallTargetName, MmakeRuleLibInstallGsGas) :-
+    LibGsGasInstallTargetName = LibModuleNameStr ++ ".install_gs_gas_files_c",
+
+    string.format("$(%s.module_deps)", [s(ModuleMVN)], ModuleDepsMVN),
+    string.format("$(%s.opts)",        [s(ModuleMVN)], PlainOptsMVN),
+    string.format("$(%s.trans_opt)",   [s(ModuleMVN)], TransOptsMVN),
+    string.format("$(%s.mihs)",        [s(ModuleMVN)], MihsMVN),
+
+    ActionsMDs0 =       proposed_gs_action_lines(ModuleDepsMVN, "module_deps"),
+    ActionsPlainOpts0 = proposed_gs_action_lines(PlainOptsMVN,  "opts"),
+    ActionsTransOpts0 = proposed_gs_action_lines(TransOptsMVN,  "trans_opts"),
+
+    ActionsMihs  = proposed_cond_gs_action_lines("hlc",    MihsMVN,  "mihs"),
+
+    ExtInit = ext_cur_gs(ext_cur_gs_lib_init),
+    ExtA    = ext_cur_gas(ext_cur_gas_lib_dollar_a),
+    ExtSo   = ext_cur_gas(ext_cur_gas_lib_dollar_efsl),
+    module_name_to_file_name(Globals, $pred, ExtInit, MainModuleName, _, Init),
+    module_name_to_lib_file_name(Globals, $pred, "lib", ExtA,
+        MainModuleName, _, A),
+    module_name_to_lib_file_name(Globals, $pred, "lib", ExtSo,
+        MainModuleName, _, So),
+    ActionsInits = proposed_cond_gs_action_lines("hlc", Init,  "inits"),
+    ActionsAsSos = proposed_cond_gas_action_lines("c",  A ++ " " ++ So, "lib"),
+
+    (
+        MmcMakeDeps = no,
+        MaybeModuleDepsMVN = [],
+        ActionsMDs = []
+    ;
+        MmcMakeDeps = yes,
+        MaybeModuleDepsMVN = [ModuleDepsMVN],
+        ActionsMDs = ActionsMDs0
+    ),
+    (
+        Intermod = no,
+        MaybePlainOptsMVN = [],
+        ActionsPlainOpts = []
+    ;
+        Intermod = yes,
+        MaybePlainOptsMVN = [PlainOptsMVN],
+        ActionsPlainOpts = ActionsPlainOpts0
+    ),
+    (
+        TransOpt = no,
+        MaybeTransOptsMVN = [],
+        ActionsTransOpts = []
+    ;
+        TransOpt = yes,
+        MaybeTransOptsMVN = [TransOptsMVN],
+        ActionsTransOpts = ActionsTransOpts0
+    ),
+
+    GsGasInstallActions =
+        ActionsMDs ++ ActionsPlainOpts ++ ActionsTransOpts ++
+        ActionsMihs ++ ActionsInits ++ ActionsAsSos,
+    MmakeRuleLibInstallGsGas = mmake_simple_rule("install_gs_gas_files",
+        mmake_rule_is_phony,
+        LibGsGasInstallTargetName,
+        MaybeModuleDepsMVN ++ MaybePlainOptsMVN ++ MaybeTransOptsMVN ++
+        [MihsMVN, Init, A, So],
+        GsGasInstallActions).
+
+:- pred generate_dep_file_install_all_files(string::in, string::in,
+    string::in, string::in, mmake_entry::out) is det.
+
+generate_dep_file_install_all_files(MainModuleNameStr, LibModuleNameStr,
+        NgsPgsTarget, GsGasTarget, MmakeRuleLibInstallAll) :-
+    LibAllInstallTargetName = LibModuleNameStr ++ ".install_all_files",
+    DependTarget = MainModuleNameStr ++ ".depend",
+
+    ActionsSave =
+        ["rm -rf tmp_dir && \\",
+        "mkdir tmp_dir && \\",
+        "rm -rf tmp_dir && \\",
+        "mkdir tmp_dir && \\",
+        "grade_files=\"$(foreach e,$(GRADE_SUBDIR_MVEXTS)," ++
+            "$(" ++ MainModuleNameStr ++ ".$(e)))\" && \\",
+        "for file in x $$grade_files; do \\",
+        "\tif test \"$$file\" != x; then \\",
+        "\t\tmv -f $$file tmp_dir > /dev/null 2>&1; \\",
+        "\t\ttrue; \\",
+        "\tfi; \\",
+        "done && \\",
+        "{ mv -f $(deps_subdir)$*.dep $(deps_subdir)$*.dv" ++
+            " *.$A *.$(EXT_FOR_SHARED_LIB) \\",
+        "\ttmp_dir || true; } && \\"],
+
+    ActionsGsGas =
+        ["for grade in $(ALL_LIBGRADES); do \\",
+        "\tif test \"$$grade\" != \"$(GRADE)\"; then \\",
+        "\t\tif mmake_grade_test c \"$$grade\"; then \\",
+        "\t\t\t$(MMAKE) GRADE=$$grade " ++ DependTarget ++ " || \\",
+        "\t\t\t\texit 1; \\",
+        "\t\t\t$(MMAKE) GRADE=$$grade " ++ GsGasTarget ++ " || \\",
+        "\t\t\t\texit 1; \\",
+        "\t\t\tfor file in x $$grade_files; do \\",
+        "\t\t\t\tif test \"$$file\" != x; then \\",
+        "\t\t\t\t\trm -f $$file; \\",
+        "\t\t\t\tfi; \\",
+        "\t\t\tdone; \\",
+        "\t\t\trm -f $(deps_subdir)$*.dep $(deps_subdir)$*.dv" ++
+            " *.$A *.$(EXT_FOR_SHARED_LIB); \\",
+        "\t\telse \\",
+        "\t\t\techo non-C installs for " ++ MainModuleNameStr ++ " NYI; \\",
+        "\t\tfi; \\",
+        "\tfi; \\",
+        "done && \\"],
+
+    ActionsUndoSave =
+        ["for file in x $$grade_files; do \\",
+        "\tif test \"$$file\" != x; then \\",
+        "\t\tmv -f tmp_dir/`basename $$file` $$file > /dev/null 2>&1; \\",
+        "\t\ttrue; \\",
+        "\tfi; \\",
+        "done && \\",
+        "{ mv -f tmp_dir/*.dep tmp_dir/*.dv $(deps_subdir).; \\",
+        "\tmv -f tmp_dir/* .; rmdir tmp_dir; true; }"],
+
+    MmakeRuleLibInstallAll = mmake_simple_rule("install__all_files",
+        mmake_rule_is_phony,
+        LibAllInstallTargetName,
+        [NgsPgsTarget],
+        ActionsSave ++ ActionsGsGas ++ ActionsUndoSave).
+
+:- pred some_module_in_deps_map_has_a_submodule(deps_map::in) is semidet.
+
+some_module_in_deps_map_has_a_submodule(DepsMap) :-
+    some [BurdenedModule] (
+        map.member(DepsMap, _, deps(_, _, BurdenedModule)),
+        ParseTreeModuleSrc = BurdenedModule ^ bm_module,
+        IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
+        not map.is_empty(IncludeMap)
+    ).
+
+:- func proposed_gs_action_lines(string, string) = list(string).
+
+proposed_gs_action_lines(MmakeVarName, ExtDir) =
+    proposed_action_lines(MmakeVarName, ExtDir ++ "/$(GRADESTRING)").
+
+:- func proposed_action_lines(string, string) = list(string).
+
+proposed_action_lines(MmakeVarName, ExtDir) =
+    proposed_action_lines_prefix_suffix(MmakeVarName, ExtDir, "", "").
+
+:- func proposed_cond_gs_action_lines(string, string, string) = list(string).
+
+proposed_cond_gs_action_lines(CondName, MmakeVarName, ExtDir) =
+    proposed_cond_action_lines(CondName, MmakeVarName,
+        ExtDir ++ "/$(GRADESTRING)").
+
+:- func proposed_cond_gas_action_lines(string, string, string) = list(string).
+
+proposed_cond_gas_action_lines(CondName, MmakeVarName, ExtDir) =
+    proposed_cond_action_lines(CondName, MmakeVarName,
+        ExtDir ++ "/$(GRADESTRING)/$(FULLARCH)").
+
+:- func proposed_cond_action_lines(string, string, string) = list(string).
+
+proposed_cond_action_lines(CondName, MmakeVarName, RelativePath) = Lines :-
+    string.format("if mmake_grade_test %s $(GRADE); then \\",
+        [s(CondName)], StartLine),
+    MidLines = proposed_action_lines_prefix_suffix(MmakeVarName, RelativePath,
+        "\t", " ; \\"),
+    string.format("fi", [], EndLine),
+    Lines = [StartLine] ++ MidLines ++ [EndLine].
+
+:- func proposed_action_lines_prefix_suffix(string, string, string, string)
+    = list(string).
+
+proposed_action_lines_prefix_suffix(MmakeVarName, RelativePath, Prefix, Suffix)
+        = Lines :-
+    string.format(
+        "%s$(INSTALL_MKDIR) $(INSTALL_PREFIX)/MercurySystem/%s && \\",
+        [s(Prefix), s(RelativePath)], Line1),
+    % XXX This is the place to insert code to print progress reports.
+    % That code could be
+    %
+    %   echo Installing $(MmakeVarName)
+    %
+    % (which could generate very LONG lines), or
+    %
+    %   foreach f in $(MmakeVarName); do echo ${f}; done
+    %
+    % (which could generate very MANY lines), or something more sophisticated.
+    % That could something that computes how many files there are in
+    % $(MmakeVarName), and if this number exceeds a threshold, gets the
+    % first and last filenames, and prints something like
+    %
+    %   Installing 527 files from aaabb.int3 to xyzzy.int3
+    %
+    % XXX The mmake action line we generate will look short, but after
+    % the expansion of MmakeVarName, it will probably be long enough
+    % for the limits on the lengths of command lines to be a concern.
+    string.format(
+        "%s$(INSTALL) %s $(INSTALL_PREFIX)/MercurySystem/%s%s",
+        [s(Prefix), s(MmakeVarName), s(RelativePath), s(Suffix)], Line2),
+    Lines = [Line1, Line2].
+
+%---------------------%
+
 :- pred generate_dep_file_collective_targets(module_name::in, string::in,
     mmakefile::in, mmakefile::out) is det.
 
@@ -2114,7 +2396,7 @@ generate_dep_file_collective_targets(ModuleName, ModuleMakeVarName,
         !MmakeFile) :-
     ModuleNameStr = sym_name_to_string(ModuleName),
     list.map(
-        generate_dep_file_collective_target(ModuleNameStr,
+        construct_dep_file_collective_target_rule(ModuleNameStr,
             ModuleMakeVarName),
         [{".check", ".errs"},
         {".ints", ".dates"},
@@ -2130,16 +2412,18 @@ generate_dep_file_collective_targets(ModuleName, ModuleMakeVarName,
         MmakeRules),
     add_mmake_entries(MmakeRules, !MmakeFile).
 
-:- pred generate_dep_file_collective_target(string::in, string::in,
+:- pred construct_dep_file_collective_target_rule(string::in, string::in,
     {string, string}::in, mmake_entry::out) is det.
 
-generate_dep_file_collective_target(ModuleNameStr, ModuleMakeVarName,
+construct_dep_file_collective_target_rule(ModuleNameStr, ModuleMakeVarName,
         {ExtStr, VarExtension}, MmakeRule) :-
     TargetName = ModuleNameStr ++ ExtStr,
     Source = string.format("$(%s%s)", [s(ModuleMakeVarName), s(VarExtension)]),
     MmakeRule = mmake_simple_rule(
         "collective_target_" ++ ExtStr ++ VarExtension, mmake_rule_is_phony,
         TargetName, [Source], []).
+
+%---------------------%
 
 :- pred generate_dep_file_clean_targets(module_name::in, string::in,
     string::in, string::in, string::in, string::in, string::in, string::in,

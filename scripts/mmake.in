@@ -36,14 +36,12 @@ Options:
 Help="${Help}
     --mercury-standard-library-directory <directory>
     --mercury-stdlib-dir <directory>:
-        The directory containing the installed Mercury standard
-        library.
+        The directory containing the installed Mercury standard library.
     --no-mercury-standard-library-directory, --no-mercury-stdlib-dir:
         Don't use an installed Mercury standard library.
     -s, --save-makefile:
         Save the generated makefile to \`Mmake.makefile'.
-        This is useful for tracking down syntax errors in
-        your Mmake file.
+        This is useful for tracking down syntax errors in your Mmakefile.
     -f <filename>, --file <filename>:
         Use the specified file as the Mmake file.
     -v, --verbose:
@@ -52,8 +50,8 @@ Help="${Help}
         Normally Mmake will warn about variables which are used
         but not defined. This option disables that warning.
         (The warning is never enabled when doing \`mmake clean'
-        or \`mmake depend' or the like, to avoid spurious
-        warnings when the dependencies have not yet been made.)
+        or \`mmake depend' or the like, to avoid spurious warnings
+        when the dependencies have not yet been made.)
     -h, --help:
         Print this usage message.
 Targets:
