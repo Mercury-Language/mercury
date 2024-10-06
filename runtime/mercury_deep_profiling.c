@@ -24,6 +24,7 @@
 #include "mercury_deep_profiling_hand.h"
 #include "mercury_file.h"
 #include "mercury_runtime_util.h"
+#include "mercury_string.h"
 #include "mercury_wrapper.h"
 
 #ifdef MR_DEEP_PROFILING
@@ -431,16 +432,22 @@ MR_write_out_profiling_tree(void)
     strncat(data_filename, ".data", MR_FILENAME_BUF_LEN);
     strncat(procrep_filename, ".procrep", MR_FILENAME_BUF_LEN);
 
-    // XXX WINDOWS data_filename may not be ASCII.
-    deep_fp = fopen(data_filename, "wb+");
+    #if defined(MR_WIN32) && !defined(MR_CYGWIN)
+        deep_fp = _wfopen(MR_utf8_to_wide(data_filename), L"wb+");
+    #else
+        deep_fp = fopen(data_filename, "wb+");
+    #endif
     if (deep_fp == NULL) {
         MR_fatal_error("cannot open `%s' for writing: %s",
             data_filename,
             MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
-    // XXX WINDOWS procrep_filename may not be ASCII.
-    procrep_fp = fopen(procrep_filename, "wb+");
+    #if defined(MR_WIN32) && !defined(MR_CYGWIN)
+        procrep_fp = _wfopen(MR_utf8_to_wide(procrep_filename), L"wb+");
+    #else
+        procrep_fp = fopen(procrep_filename, "wb+");
+    #endif
     if (procrep_fp == NULL) {
         MR_fatal_error("cannot open `%s' for writing: %s",
             procrep_filename,
@@ -720,15 +727,25 @@ MR_deep_data_output_error(const char *op, const char *filename,
     // misunderstandings about that, and may also cure a disk-full condition,
     // if the close failure was caused by that.
 
-    // WINDOWS: _wremove?
-    if (remove(data_filename) != 0) {
+    int remove_data_result =
+    #if defined(MR_WIN32) && !defined(MR_CYGWIN)
+        _wremove(MR_utf8_to_wide(data_filename));
+    #else
+        remove(data_filename);
+    #endif
+    if (remove_data_result != 0) {
         MR_warning("cannot remove %s: %s",
             data_filename,
             MR_strerror(errno, errbuf, sizeof(errbuf)));
     }
 
-    // WINDOWS: _wremove?
-    if (remove(procrep_filename) != 0) {
+    int remove_procrep_result =
+    #if defined(MR_WIN32) && !defined(MR_CYGWIN)
+        _wremove(MR_utf8_to_wide(procrep_filename));
+    #else
+        remove(procrep_filename);
+    #endif
+    if (remove_procrep_result != 0) {
         MR_warning("cannot remove %s: %s",
             procrep_filename,
             MR_strerror(errno, errbuf, sizeof(errbuf)));
