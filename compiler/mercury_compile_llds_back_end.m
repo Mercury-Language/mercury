@@ -890,7 +890,7 @@ make_foreign_import_header_code(Globals, FIMSpec, Include, !IO) :-
         Lang = lang_c,
         % XXX LEGACY
         module_name_to_search_file_name(Globals, $pred,
-            ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
+            ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh),
             ModuleName, HeaderFileName, _HeaderFileNameProposed),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
         Include = foreign_decl_code(lang_c, foreign_decl_is_exported,

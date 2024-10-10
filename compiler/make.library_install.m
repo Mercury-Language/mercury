@@ -274,7 +274,7 @@ legacy_install_ints_and_headers_for_module(ProgressStream, Globals,
             % XXX Should we test
             % ModuleDepInfo ^ contains_foreign_export
             %   = contains_foreign_export?
-            ExtMh = ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
+            ExtMh = ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh),
             % XXX LEGACY
             module_name_to_file_name(Globals, $pred, ExtMh,
                 ModuleName, FileName, _FileNameProposed),
@@ -385,7 +385,7 @@ proposed_install_library_non_grade_specific_files(ProgressStream, Globals,
                 % But `.mh' files are expected by Mmake, so now we always
                 % generate them. If we didn't, mmake would have trouble
                 % when using libraries installed by `mmc --make'.
-                ExtMh = ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
+                ExtMh = ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh),
                 proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
                     ExtMh, AllModuleNames, !Succeeded, !IO)
 
@@ -406,7 +406,7 @@ proposed_install_library_non_grade_specific_files(ProgressStream, Globals,
 
 :- type ext_cur_ngs_ns =< ext
     --->    ext_cur_ngs(ext_cur_ngs)
-    ;       ext_cur_ngs_max_cur(ext_cur_ngs_max_cur).
+    ;       ext_cur_pgs_max_cur(ext_cur_pgs_max_cur).
 
 :- pred proposed_install_all_ngs_files(io.text_output_stream::in, globals::in,
     string::in, ext_cur_ngs_ns::in, list(module_name)::in,
@@ -418,8 +418,8 @@ proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
         Ext = ext_cur_ngs(ExtNgs),
         ext_cur_ngs_extension_dir(ExtNgs, _, ExtDirName)
     ;
-        Ext = ext_cur_ngs_max_cur(ExtMaxCur),
-        ext_cur_ngs_max_cur_extension_dir(ExtMaxCur, _, ExtDirName)
+        Ext = ext_cur_pgs_max_cur(ExtPgsMaxCur),
+        ext_cur_pgs_max_cur_extension_dir(ExtPgsMaxCur, _, ExtDirName)
     ),
 
     InstallDir = Prefix / ExtDirName,

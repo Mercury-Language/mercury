@@ -649,7 +649,7 @@ produce_header_file(ProgressStream, ModuleInfo, ForeignExportDecls,
     module_info_get_globals(ModuleInfo, Globals),
     % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh), ModuleName,
+        ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh), ModuleName,
         FileName, _FileNameProposed, !IO),
     MaybeThisFileName = yes(FileName),
     TmpFileName = FileName ++ ".tmp",

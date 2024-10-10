@@ -543,7 +543,7 @@ construct_intermod_rules(Globals, IntermodDeps, ErrFileName,
     (
         MaybeMhDeps = intermod_mh_deps(AllDeps),
         make_module_file_names_with_ext(Globals,
-            ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
+            ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh),
             set.to_sorted_list(AllDeps), AllDepsFileNames, !Cache, !IO),
         MmakeRuleMhDeps = mmake_simple_rule("machine_dependent_header_deps",
             mmake_rule_is_not_phony,
@@ -650,7 +650,7 @@ construct_c_header_rules(Globals, ModuleName, AllDeps,
     % file won't actually be built (e.g. LLDS grades for modules not containing
     % `:- pragma export' declarations), but this rule won't do any harm.
     make_module_file_name(Globals, $pred,
-        ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
+        ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh),
         ModuleName, MhHeaderFileName, !Cache, !IO),
     make_module_file_name(Globals, $pred,
         ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih),
@@ -792,7 +792,7 @@ construct_foreign_import_rules(Globals, ParseTreeModuleSrc,
             % .pic_o file. We need to include dependencies for the latter
             % otherwise invoking mmake with a <module>.pic_o target will break.
             ForeignImportTargets = one_or_more(ObjFileName, [PicObjFileName]),
-            ForeignImportExt = ext_cur_ngs_max_cur(ext_cur_ngs_max_cur_mh),
+            ForeignImportExt = ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh),
             gather_foreign_import_deps(Globals, ForeignImportExt,
                 ForeignImportTargets, ForeignImportedModuleNames,
                 MmakeRuleForeignImports, !Cache, !IO),
