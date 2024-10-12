@@ -119,9 +119,9 @@ maybe_detect_stdlib_grades(OptionTable, Variables,
         set.init(StdlibGrades),
         MaybeStdlibGrades = ok1(StdlibGrades)
     ),
+    set.to_sorted_list(StdlibGrades, StdlibGradeList),
     GradeToOpts = (func(Grade) = ["--libgrade", Grade]),
-    StdlibGradeOptionPairs =
-        list.map(GradeToOpts, set.to_sorted_list(StdlibGrades)),
+    StdlibGradeOptionPairs = list.map(GradeToOpts, StdlibGradeList),
     list.condense(StdlibGradeOptionPairs, StdlibGradeOpts).
 
 find_mercury_stdlib(OptionTable, Variables, MaybeMerStdLibDir, !IO) :-
@@ -207,7 +207,7 @@ do_detect_libgrades(StdLibDir, Grades, !IO) :-
     ).
 
     % Test for the presence of an installed grade by looking for mer_std.init.
-    % This works for all grades except the C# and Java grades.
+    % This works for C grades, but not for C# or Java grades.
     %
 :- pred do_detect_libgrade_using_init_file(string::in, string::in,
     io.file_type::in, bool::out, set(string)::in, set(string)::out,
@@ -241,7 +241,7 @@ do_detect_libgrade_using_init_file(DirName, GradeFileName,
     Continue = yes.
 
     % Test for the presence of installed Java and C# grades by looking for
-    % the standard library JAR or assembly respectively.
+    % the standard library's .jar or .dll file respectively.
     %
 :- pred do_detect_libgrade_using_lib_file(string::in, string::in,
     io.file_type::in, bool::out, set(string)::in, set(string)::out,
