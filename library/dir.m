@@ -1499,10 +1499,10 @@ foldl2_process_dir(Params, Pred, DirName, SymLinkParent, ParentIds0,
         check_for_symlink_loop(DirName, SymLinkParent, ParentIds0,
             MaybeLoop, !IO)
     else
-        MaybeLoop = is_not_loop(ParentIds0)
+        MaybeLoop = scr_ok(ParentIds0)
     ),
     (
-        MaybeLoop = is_not_loop(ParentIds),
+        MaybeLoop = scr_ok(ParentIds),
         dir.open(DirName, OpenResult, !IO),
         (
             OpenResult = mfe_ok(DirStream),
@@ -1536,9 +1536,9 @@ foldl2_process_dir(Params, Pred, DirName, SymLinkParent, ParentIds0,
             !:RevErrors = [Error | !.RevErrors]
         )
     ;
-        MaybeLoop = is_loop
+        MaybeLoop = scr_loop
     ;
-        MaybeLoop = is_error(Error),
+        MaybeLoop = scr_error(Error),
         !:RevErrors = [Error | !.RevErrors]
     ).
 
@@ -1650,17 +1650,17 @@ foldl2_process_dir_entries(Params, Pred, DirName, DirStream, SymLinkParent,
         )
     ).
 
-:- type maybe_loop
-    --->    is_not_loop(list(file_id))
-    ;       is_loop
-    ;       is_error(file_error).
+:- type symlink_check_result
+    --->    scr_ok(list(file_id))
+    ;       scr_loop
+    ;       scr_error(file_error).
 
     % Check whether we have seen this directory before in this branch of the
     % directory tree. This only works if the system can provide a unique
     % identifier for each file. Returns `ok(DetectedLoop : bool)' on success.
     %
 :- pred check_for_symlink_loop(string::in, is_parent_symlink::in,
-    list(file_id)::in, maybe_loop::out, io::di, io::uo) is det.
+    list(file_id)::in, symlink_check_result::out, io::di, io::uo) is det.
 
 check_for_symlink_loop(DirName, SymLinkParent, ParentIds0, MaybeLoop, !IO) :-
     ( if io.file.have_symlinks then
@@ -1671,19 +1671,19 @@ check_for_symlink_loop(DirName, SymLinkParent, ParentIds0, MaybeLoop, !IO) :-
                 SymLinkParent = parent_is_symlink,
                 list.member(Id, ParentIds0)
             then
-                MaybeLoop = is_loop
+                MaybeLoop = scr_loop
             else
                 ParentIds = [Id | ParentIds0],
-                MaybeLoop = is_not_loop(ParentIds)
+                MaybeLoop = scr_ok(ParentIds)
             )
         ;
             IdResult = error(Error),
-            MaybeLoop = is_error(file_error(DirName, file_get_id, Error))
+            MaybeLoop = scr_error(file_error(DirName, file_get_id, Error))
         )
     else
         % There is no point in updating the list of parent ids,
         % since we will never need them.
-        MaybeLoop = is_not_loop(ParentIds0)
+        MaybeLoop = scr_ok(ParentIds0)
     ).
 
 :- pragma foreign_decl("C", local,
