@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2024 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_engine.h - definitions for the Mercury runtime engine.
@@ -131,7 +131,7 @@ extern  MR_bool MR_debugflag[];
 // debug version of that file.
 //
 // MR_deep_prof_std_name_flag, if set, causes the runtime, whenever it is
-// generating a deep profilng data file, to use the names Deep.data and
+// generating a deep profiling data file, to use the names Deep.data and
 // Deep.procrep. The default is to include both the name of the executable
 // and the date/time of the program's execution in the filename.
 //
