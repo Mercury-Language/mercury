@@ -1404,14 +1404,17 @@ Changes to the Mercury debugger
   on the left hand side of the screen.
 
 Changes to the Mercury deep profiler
--------------------------------
+------------------------------------
 
-* Programs that have been compiled in a deep profiling grade will now
-  put profiling data in files whose names contain both the name of the program
-  being profiled, and the date and time of the profiling run. So instead
-  of Deep.data and Deep.procrep, the output will go into files whose names
-  have the form <prog>_on_<date>_at_<time>.data and
-  <prog>_on_<date>_at_<time>.procrep.
+* Programs that have been compiled in a deep profiling grade will now,
+  by default, put profiling data in files whose names contain both the name
+  of the program being profiled, and the date and time of the profiling run.
+  The file names will have the form `<prog>_on_<date>_at_<time>.data` and
+  `<prog>_on_<date>_at_<time>.procrep`.
+
+  To get the old behaviour, pass the runtime option `--deep-std-name` via the
+  `MERCURY_OPTIONS` environment variable. This will put the profiling data
+  in files named `Deep.data` and `Deep.procrep`.
 
 Changes to the Mercury implementation
 -------------------------------------
