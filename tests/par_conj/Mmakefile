@@ -114,7 +114,7 @@ $(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
 # Exercise multiple Mercury engines in lowlevel grades.
 ENGINES :=
 ifeq "$(filter hl% java% csharp%,$(GRADE))" ""
-	ENGINES := MERCURY_OPTIONS=-P2
+	ENGINES := MERCURY_OPTIONS="-P2 --deep-std-name"
 endif
 
 %.out: %
@@ -127,7 +127,8 @@ ifeq "$(filter hl% java% csharp%,$(GRADE))" ""
 # Repeat the test a few times in increase the chances of getting a deadlock.
 threads_hang.out: threads_hang
 	for i in 1 2 3 4 5 6 7 8 9 10 ; do \
-		MERCURY_OPTIONS=-P10 ./threads_hang 2>&1 > threads_hang.out ||\
+		MERCURY_OPTIONS=-"P10 --deep-std-name" \
+			./threads_hang 2>&1 > threads_hang.out || \
 			{ echo 'failed' > threads_hang.out; break; } \
 	done
 
@@ -135,7 +136,7 @@ threads_hang.out: threads_hang
 # threads to see the bug.
 spawn_many.out: spawn_many
 	ulimit -s 256 && \
-		MERCURY_OPTIONS="-P2 \
+		MERCURY_OPTIONS="-P2 --deep-std-name \
 			--detstack-size 32 \
 			--small-detstack-size 32 \
 			--nondetstack-size 16 \
@@ -143,19 +144,21 @@ spawn_many.out: spawn_many
 		./spawn_many 2>&1 > spawn_many.out || \
 		{ grep . $@ /dev/null; exit 1; }
 
-# Run pathological_right_recursion with large stacks (so that this fit in the
+# Run pathological_right_recursion with large stacks, so that this fit in the
 # stack and so it hits the ulimit earlier.
+# XXX I, zs, don't understand the above comment.
 pathological_right_recursion.out: pathological_right_recursion
 	ulimit -m 1048576 && \
 	ulimit -v 1048576 && \
-	MERCURY_OPTIONS="-P2 \
+	MERCURY_OPTIONS="-P2 --deep-std-name \
 		--detstack-size 65536 \
 		--small-detstack-size 65536" \
-	./pathological_right_recursion 2>&1 > pathological_right_recursion.out || \
+	./pathological_right_recursion 2>&1 \
+		> pathological_right_recursion.out || \
 	{ grep . $@ /dev/null; exit 1; }
 
 impure_wait.out: impure_wait
-	MERCURY_OPTIONS="--thread-pinning" \
+	MERCURY_OPTIONS="--thread-pinning --deep-std-name" \
 	./impure_wait 2>&1 > impure_wait.out || \
 	{ grep . $@ /dev/null; exit 1; }
 

@@ -396,41 +396,43 @@ MR_write_out_profiling_tree(void)
     int                     i;
 #endif
 
-    if (MR_progname_is_known) {
-        // Put the profiling output into the current directory.
-        prog_name = MR_get_program_basename(MR_progname);
-        // XXX WINDOWS If prog_name is not an acceptable part of a file name,
-        // we should probably fall back to "Deep", or to "unknown".
+    if (MR_deep_prof_std_name_flag) {
+        strncpy(data_filename, "Deep.data", MR_FILENAME_BUF_LEN);
+        strncpy(procrep_filename, "Deep.procrep", MR_FILENAME_BUF_LEN);
     } else {
-        // Should this be "unknown_program", or just "unknown"?
-        prog_name = "Deep";
-    }
-
-    strncpy(data_filename, prog_name, MR_FILENAME_BUF_LEN);
-    strncpy(procrep_filename, prog_name, MR_FILENAME_BUF_LEN);
-
-    tm = NULL;
-    seconds_since_epoch = time(NULL);
-    if (seconds_since_epoch > 0) {
-        tm = localtime(&seconds_since_epoch);
-        if (tm != NULL) {
-            // XXX Is there a way to format this data+time that
-            // - more readily identifies each component,
-            // - but does not use characters that may not occur
-            //   in filenames, such as '/', and (on Windows) ':', and
-            // - also does not use characters that would cause problems
-            //   in shell commands?
-            snprintf(date_name, MR_FILENAME_BUF_LEN,
-                "_on_%04d-%02d-%02d_at_%02d-%02d-%02d",
-                tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
-                tm->tm_hour, tm->tm_min, tm->tm_sec);
-            strncat(data_filename, date_name, MR_FILENAME_BUF_LEN);
-            strncat(procrep_filename, date_name, MR_FILENAME_BUF_LEN);
+        if (MR_progname_is_known) {
+            // We use the program's base name instead of its full path name
+            // because we want to put the profiling output into the
+            // current directory.
+            prog_name = MR_get_program_basename(MR_progname);
+            // XXX WINDOWS If prog_name is not an acceptable part of a
+            // file name, we should probably fall back to "Deep",
+            // or to "unknown".
+        } else {
+            // Should this be "unknown_program", or just "unknown"?
+            prog_name = "Deep";
         }
-    }
 
-    strncat(data_filename, ".data", MR_FILENAME_BUF_LEN);
-    strncat(procrep_filename, ".procrep", MR_FILENAME_BUF_LEN);
+        strncpy(data_filename, prog_name, MR_FILENAME_BUF_LEN);
+        strncpy(procrep_filename, prog_name, MR_FILENAME_BUF_LEN);
+
+        tm = NULL;
+        seconds_since_epoch = time(NULL);
+        if (seconds_since_epoch > 0) {
+            tm = localtime(&seconds_since_epoch);
+            if (tm != NULL) {
+                snprintf(date_name, MR_FILENAME_BUF_LEN,
+                    "_on_%04d-%02d-%02d_at_%02d-%02d-%02d",
+                    tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
+                    tm->tm_hour, tm->tm_min, tm->tm_sec);
+                strncat(data_filename, date_name, MR_FILENAME_BUF_LEN);
+                strncat(procrep_filename, date_name, MR_FILENAME_BUF_LEN);
+            }
+        }
+
+        strncat(data_filename, ".data", MR_FILENAME_BUF_LEN);
+        strncat(procrep_filename, ".procrep", MR_FILENAME_BUF_LEN);
+    }
 
     #if defined(MR_WIN32) && !defined(MR_CYGWIN)
         deep_fp = _wfopen(MR_utf8_to_wide(data_filename), L"wb+");

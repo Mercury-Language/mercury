@@ -1151,7 +1151,8 @@ runtime_opt.out: runtime_opt runtime_opt.inp
 	( \
 		cat runtime_opt.inp | while read option; do \
 			echo "Option \`$$option':"; \
-			MERCURY_OPTIONS="$$option" ./runtime_opt 2>&1 || true; \
+			MERCURY_OPTIONS="$$option --deep-std-name" \
+				./runtime_opt 2>&1 || true; \
 			echo ""; \
 		done \
 	) > runtime_opt.out 2>&1

@@ -11456,7 +11456,7 @@ The default maximum value of @var{N} is 20.
 
 @c @sp 1
 @c @item --deep-procrep-file
-@c #findex --deep-procrep-file
+@c @findex --deep-procrep-file
 @c This option, which is meaningful only in deep profiling grades,
 @c asks that every Deep.data file being generated should be accompanied by
 @c a Deep.procrep file that contains a representation of the program that
@@ -11466,13 +11466,24 @@ The default maximum value of @var{N} is 20.
 
 @c @sp 1
 @c @item --deep-random-write=@var{N}
-@c #findex --deep-random-write=@var{N}
+@c @findex --deep-random-write=@var{N}
 @c This option, which is meaningful only in deep profiling grades,
 @c asks that Deep.data files (and Deep.procrep files) should be generated
 @c only if by processes whose process id is evenly divisible by @var{N}.
 @c This documentation is commented out because it is only for use by the
 @c bootcheck script (to reduce the time taken for a bootcheck while still
 @c testing the code writing out deep profiling data).
+
+@sp 1
+@item --deep-std-name
+@findex --deep-std-name
+This option, which is meaningful only in deep profiling grades,
+asks deep profiling data to be stored
+in files named @code{Deep.data} and @code{Deep.procrep}.
+The default is that the runtime system puts such data
+into files whose names follow the pattern
+@code{@var{progname}_on_@var{date}_at_@var{time}.data} and
+@code{@var{progname}_on_@var{date}_at_@var{time}.procrep} respectively.
 
 @sp 1
 @item --boehm-gc-free-space-divisor @var{N}

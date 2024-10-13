@@ -59,8 +59,9 @@ extern  MR_bool MR_debugflag[];
 #define MR_DEBUG_SLOTS_FLAG             20
 #define MR_DEEP_PROF_DEBUG_FILE_FLAG    21
 #define MR_STACK_EXTEND_FLAG            22
-#define MR_DETAILFLAG                   23
-#define MR_MAXFLAG                      24
+#define MR_DEEP_PROF_STD_NAME_FLAG      23
+#define MR_DETAILFLAG                   24
+#define MR_MAXFLAG                      25
 // MR_DETAILFLAG should be the last real flag
 
 // The macros control different kinds of low level debugging messages.
@@ -126,8 +127,13 @@ extern  MR_bool MR_debugflag[];
 // stack frames of procedures compiled with debugging.
 //
 // MR_deep_prof_debug_file_flag, if set, causes the runtime, whenever it is
-// generating a Deep.data file, to also generate a human-readable Deep.debug
-// file.
+// generating a deep profiling .data file, to also generate a human-readable
+// debug version of that file.
+//
+// MR_deep_prof_std_name_flag, if set, causes the runtime, whenever it is
+// generating a deep profilng data file, to use the names Deep.data and
+// Deep.procrep. The default is to include both the name of the executable
+// and the date/time of the program's execution in the filename.
 //
 // MR_stack_extend_debug controls whether the runtime prints diagnostics
 // whenever it extends a stack.
@@ -155,6 +161,8 @@ extern  MR_bool MR_debugflag[];
 #define MR_debug_slots_flag             MR_debugflag[MR_DEBUG_SLOTS_FLAG]
 #define MR_deep_prof_debug_file_flag    MR_debugflag[                   \
                                             MR_DEEP_PROF_DEBUG_FILE_FLAG]
+#define MR_deep_prof_std_name_flag      MR_debugflag[                   \
+                                            MR_DEEP_PROF_STD_NAME_FLAG]
 #define MR_stack_extend_debug           MR_debugflag[MR_STACK_EXTEND_FLAG]
 #define MR_detaildebug                  MR_debugflag[MR_DETAILFLAG]
 

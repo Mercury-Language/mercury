@@ -752,6 +752,12 @@ then
     export MERCURY_OPTIONS
 fi
 
+# Always use the filenames "Deep.data" and "Deep.procrep" to store
+# the output of the deep profiler. By default, we include both
+# the executable and the date and time of the profilinh run in the filenames,
+# but that makes it harder to clean up those files after each bootcheck.
+MERCURY_OPTIONS="${MERCURY_OPTIONS} --deep-std-name"
+
 if ${deep_debug}
 then
     MERCURY_OPTIONS="${MERCURY_OPTIONS} --deep-debug-file"

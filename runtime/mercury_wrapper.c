@@ -1264,6 +1264,7 @@ enum MR_long_option {
     MR_DEBUG_THREADS_OPT,
     MR_DEEP_PROF_DEBUG_FILE_OPT,
     MR_DEEP_PROF_RANDOM_WRITE,
+    MR_DEEP_PROF_STD_NAME,
     MR_DEEP_PROF_LOG_FILE_OPT,
     MR_DEEP_PROF_LOG_PROG_OPT,
     MR_TABLING_STATISTICS_OPT,
@@ -1349,9 +1350,10 @@ struct MR_option MR_long_opts[] = {
         1, 0, MR_GEN_NONDETSTACK_REDZONE_SIZE_KWORDS },
     { "max-engines",                    1, 0, MR_MAX_ENGINES },
     { "max-contexts-per-thread",        1, 0, MR_MAX_CONTEXTS_PER_THREAD },
-    { "num-contexts-per-lc-per-thread", 1, 0, MR_NUM_CONTEXTS_PER_LC_PER_THREAD },
-    { "runtime-granularity-wsdeque-length-factor", 1, 0,
-        MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR },
+    { "num-contexts-per-lc-per-thread",
+        1, 0, MR_NUM_CONTEXTS_PER_LC_PER_THREAD },
+    { "runtime-granularity-wsdeque-length-factor",
+        1, 0, MR_RUNTIME_GRANULAITY_WSDEQUE_LENGTH_FACTOR },
     { "thread-pinning",                 0, 0, MR_THREAD_PINNING },
     { "profile-parallel-execution",     0, 0, MR_PROFILE_PARALLEL_EXECUTION },
     { "threadscope-use-tsc",            0, 0, MR_THREADSCOPE_USE_TSC },
@@ -1369,6 +1371,7 @@ struct MR_option MR_long_opts[] = {
     // The --deep-random-write option is only for use by tools/bootcheck.
     // It is deliberately not documented.
     { "deep-random-write",              1, 0, MR_DEEP_PROF_RANDOM_WRITE },
+    { "deep-std-name",                  0, 0, MR_DEEP_PROF_STD_NAME },
     { "deep-log-file",                  1, 0, MR_DEEP_PROF_LOG_FILE_OPT },
     { "deep-log-prog",                  1, 0, MR_DEEP_PROF_LOG_PROG_OPT },
     { "tabling-statistics",             0, 0, MR_TABLING_STATISTICS_OPT },
@@ -1894,6 +1897,10 @@ MR_process_options(int argc, char **argv)
                 if (sscanf(MR_optarg, "%u", &MR_deep_prof_random_write) != 1) {
                     MR_usage();
                 }
+                break;
+
+            case MR_DEEP_PROF_STD_NAME:
+                MR_deep_prof_std_name_flag = MR_TRUE;
                 break;
 
             case MR_DEEP_PROF_LOG_FILE_OPT:

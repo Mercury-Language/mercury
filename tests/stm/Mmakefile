@@ -112,7 +112,7 @@ endif
 # Exercise multiple Mercury engines in lowlevel grades.
 ENGINES :=
 ifeq "$(filter hl% java% csharp%,$(GRADE))" ""
-	ENGINES := MERCURY_OPTIONS=-P8
+	ENGINES := MERCURY_OPTIONS="-P8 --deep-std-name"
 endif
 
 %.out: %
