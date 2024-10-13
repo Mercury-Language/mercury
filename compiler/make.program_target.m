@@ -1080,14 +1080,23 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
             Succeeded = did_not_succeed
         )
     ;
-        TargetType = misc_target_install_library,
+        ( TargetType = misc_target_install_library
+        ; TargetType = misc_target_install_library_gs_gas
+        ),
         make_misc_target(ProgressStream, Globals,
             MainModuleName - misc_target_build_library, LibSucceeded,
             !Info, !Specs, !IO),
         (
             LibSucceeded = succeeded,
-            install_library(ProgressStream, Globals,
-                MainModuleName, Succeeded, !Info, !IO)
+            (
+                TargetType = misc_target_install_library,
+                install_library(ProgressStream, Globals,
+                    MainModuleName, Succeeded, !Info, !IO)
+            ;
+                TargetType = misc_target_install_library_gs_gas,
+                install_library_gs_gas(ProgressStream, Globals,
+                    MainModuleName, Succeeded, !Info, !IO)
+            )
         ;
             LibSucceeded = did_not_succeed,
             Succeeded = did_not_succeed

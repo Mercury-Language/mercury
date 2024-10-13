@@ -332,7 +332,8 @@
     ;       ltk_executable
     ;       ltk_static_library
     ;       ltk_shared_library
-    ;       ltk_library_install.
+    ;       ltk_library_install
+    ;       ltk_library_install_gs_gas.
 
 %---------------------------------------------------------------------------%
 

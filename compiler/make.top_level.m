@@ -331,6 +331,9 @@ classify_target_2(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
             ;
                 LinkedTargetKind = ltk_library_install,
                 TargetType = misc_target(misc_target_install_library)
+            ;
+                LinkedTargetKind = ltk_library_install_gs_gas,
+                TargetType = misc_target(misc_target_install_library_gs_gas)
             ),
             string.remove_prefix("lib", ModuleNameStr0, ModuleNameStr)
         )

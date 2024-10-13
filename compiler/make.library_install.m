@@ -28,9 +28,47 @@
 %---------------------------------------------------------------------------%
 
     % install_library(ProgressStream, Globals, MainModuleName, Succeeded,
-    %   !Info, !IO)
+    %   !Info, !IO):
+    %
+    % Install
+    %
+    % - all non-grade-specific (and if applicable, pseudo-grade-specific) files
+    %   for the current grade, all of which we presume have been built already,
+    %   and
+    %
+    % - all grade-specific files for all library grades, which we presume
+    %   to have been built already *only* for the current grade.
+    %
+    % The installs are *always* done to the destinations required by the
+    % LEGACY install directory structure, and are *also* done to the PROPOSED
+    % install directory structure *if* the --experiment4 option is given.
     %
 :- pred install_library(io.text_output_stream::in, globals::in,
+    module_name::in, maybe_succeeded::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+    % install_library_gs_gas(ProgressStream, Globals, MainModuleName,
+    %   Succeeded, !Info, !IO):
+    %
+    % Install
+    %
+    % - all grade-specific files for the current grade, which we presume
+    %   to have been built already.
+    %
+    % This target is designed to be used by the code that does PROPOSED
+    % library installs for mmake. When that code installs a library,
+    % it needs to be able to install the grade-specific files of *all*
+    % libgrades, including the ones that mmake does not support (the Java
+    % and C# grades). The relevant mmake rules are constructed by code in
+    % generate_mmakefile_fragments.m, and they are then put into the .dep file
+    % of the main module of the library,
+    %
+    % Installs are *always* done to the destinations required by the
+    % PROPOSED install directory structure. This is because the mmake target
+    % that this predicate implements is used *only* by code that assumes
+    % that structure.
+    %
+:- pred install_library_gs_gas(io.text_output_stream::in, globals::in,
     module_name::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -81,8 +119,8 @@
 install_library(ProgressStream, Globals, MainModuleName, !:Succeeded,
         !Info, !IO) :-
     find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
-        DepsSucceeded, AllModuleNames0, !Info, !IO),
-    AllModuleNames = set.to_sorted_list(AllModuleNames0),
+        DepsSucceeded, AllModuleNamesSet, !Info, !IO),
+    set.to_sorted_list(AllModuleNamesSet, AllModuleNames),
     (
         DepsSucceeded = succeeded,
         install_library_non_grade_specific_files(ProgressStream, Globals,
@@ -90,6 +128,22 @@ install_library(ProgressStream, Globals, MainModuleName, !:Succeeded,
         install_library_grade_specific_files_for_all_libgrades(ProgressStream,
             Globals, NgsLibDirMap, MainModuleName, AllModuleNames,
             !Succeeded, !Info, !IO)
+    ;
+        DepsSucceeded = did_not_succeed,
+        !:Succeeded = did_not_succeed
+    ).
+
+install_library_gs_gas(ProgressStream, Globals, MainModuleName, !:Succeeded,
+        !Info, !IO) :-
+    find_reachable_local_modules(ProgressStream, Globals, MainModuleName,
+        DepsSucceeded, AllModuleNamesSet, !Info, !IO),
+    set.to_sorted_list(AllModuleNamesSet, AllModuleNames),
+    (
+        DepsSucceeded = succeeded,
+        grade_directory_component(Globals, CurGrade),
+        proposed_install_library_grade_specific_files_for_grade(ProgressStream,
+            Globals, CurGrade, MainModuleName, AllModuleNames,
+            succeeded, !:Succeeded, !Info, !IO)
     ;
         DepsSucceeded = did_not_succeed,
         !:Succeeded = did_not_succeed
@@ -452,18 +506,18 @@ proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
 install_library_grade_specific_files_for_all_libgrades(ProgressStream,
         Globals, NgsLibDirMap, MainModuleName, AllModuleNames,
         !Succeeded, !Info, !IO) :-
+    % The library is already built in the current grade; we just need to
+    % install it. For all other grades, we must build the library first
+    % in that grade before we can install it.
     grade_directory_component(Globals, CurGrade),
+    install_library_grade_specific_files_for_grade(ProgressStream, Globals,
+        NgsLibDirMap, CurGrade, MainModuleName, AllModuleNames,
+        !Succeeded, !Info, !IO),
+
     % XXX With Mmake, LIBGRADES is target-specific; with this code in
     % mmc --make, it isn't.
     globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
     NonCurLibGrades = list.delete_all(LibGrades, CurGrade),
-
-    % The library is already built in the current grade; we just need to
-    % install it. For all other grades, we must build the library first
-    % in that grade before we can install it.
-    install_library_grade_specific_files_for_grade(ProgressStream, Globals,
-        NgsLibDirMap, CurGrade, MainModuleName, AllModuleNames,
-        !Succeeded, !Info, !IO),
     KeepGoing = make_info_get_keep_going(!.Info),
     setup_make_and_install_grade_specific_files_for_grades(ProgressStream,
         KeepGoing, Globals, NgsLibDirMap, MainModuleName, AllModuleNames,
@@ -1042,8 +1096,15 @@ proposed_install_library_grade_specific_files_for_grade_java(ProgressStream,
         MainModuleName, JarFileName),
     ext_cur_gs_extension_dir(ExtJar, _, JarDirName),
     JarInstallDir = Prefix / JarDirName / Grade,
-    install_file_to(ProgressStream, Globals, JarInstallDir, JarFileName,
-        !Succeeded, !IO).
+    make_dir_handle_any_error(ProgressStream, JarInstallDir,
+        MakeJarInstallDirSucceeded, !IO),
+    (
+        MakeJarInstallDirSucceeded = did_not_succeed
+    ;
+        MakeJarInstallDirSucceeded = succeeded,
+        install_file_to(ProgressStream, Globals, JarInstallDir, JarFileName,
+            !Succeeded, !IO)
+    ).
 
 :- pred proposed_install_library_grade_specific_files_for_grade_csharp(
     io.text_output_stream::in, globals::in, string::in, string::in,
@@ -1060,8 +1121,15 @@ proposed_install_library_grade_specific_files_for_grade_csharp(ProgressStream,
         MainModuleName, CilDllFileName),
     ext_cur_gs_extension_dir(ExtCilDll, _, CilDllDirName),
     CilDllInstallDir = Prefix / CilDllDirName / Grade,
-    install_file_to(ProgressStream, Globals, CilDllInstallDir, CilDllFileName,
-        !Succeeded, !IO).
+    make_dir_handle_any_error(ProgressStream, CilDllInstallDir,
+        MakeCilDllInstallDirSucceeded, !IO),
+    (
+        MakeCilDllInstallDirSucceeded = did_not_succeed
+    ;
+        MakeCilDllInstallDirSucceeded = succeeded,
+        install_file_to(ProgressStream, Globals, CilDllInstallDir,
+            CilDllFileName, !Succeeded, !IO)
+    ).
 
 %---------------------%
 

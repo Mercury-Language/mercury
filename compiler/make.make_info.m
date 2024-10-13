@@ -164,6 +164,19 @@
     ;       misc_target_build_analyses
     ;       misc_target_build_library
     ;       misc_target_install_library
+            % misc_target_install_library installs
+            %
+            % - non-grade-specific files for the current grade and
+            % - grade-specific files for all libgrades,
+            %
+            % - for the LEGACY directory structure always, and
+            % - for the PROPOSED directory structure with --experiment4.
+    ;       misc_target_install_library_gs_gas
+            % misc_target_install_library_gs_gas installs
+            %
+            % - grade-specific files for the current grade,
+            %
+            % - for the PROPOSED directory structure.
     ;       misc_target_build_xml_docs.
 
 :- type compilation_task_type

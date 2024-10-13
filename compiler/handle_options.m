@@ -707,6 +707,8 @@ check_linked_target_extensions(OptionTable, !:LinkExtMap, !Specs) :-
 
     map.det_insert(".install",
         linked_target_ext_info("", ltk_library_install), !LinkExtMap),
+    map.det_insert(".install_gs_gas",
+        linked_target_ext_info("", ltk_library_install_gs_gas), !LinkExtMap),
 
     record_linked_target_extension(ObjExt,
         "the --object-file-extension option",
