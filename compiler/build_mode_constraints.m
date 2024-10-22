@@ -496,8 +496,9 @@ add_goal_expr_constraints(ModuleInfo, ProgVarSet, PredId, GoalExpr,
             )
         )
     ;
-        GoalExpr = switch(_, _, _),
-        unexpected($pred, "switch")
+        GoalExpr = switch(_, _, _)
+        % unify_proc.m can generate switches before this pass.
+        % unexpected($pred, "switch")
     ;
         GoalExpr = unify(LHSvar, RHS, _Mode, _Kind, _UnifyContext),
         prog_var_at_path(ProgVarSet, PredId, LHSvar, GoalId,

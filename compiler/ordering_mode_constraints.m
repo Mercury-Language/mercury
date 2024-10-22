@@ -375,8 +375,9 @@ goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings, Goal0, Goal) :-
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(_, _, _),
-        % We haven't yet even tried to turn disjunctions into switches.
-        unexpected($pred, "switch")
+        % unify_proc.m can generate switches before this pass.
+        % unexpected($pred, "switch")
+        GoalExpr = GoalExpr0
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         goal_reordering(ContainingGoalMap, PredId, VarMap, Bindings,

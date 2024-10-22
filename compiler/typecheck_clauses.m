@@ -533,9 +533,9 @@ typecheck_goal_list([Goal0 | Goals0], [Goal | Goals], Context,
 typecheck_case_list([], [], _, !TypeAssignSet, !Info).
 typecheck_case_list([Case0 | Cases0], [Case | Cases], Context,
         !TypeAssignSet, !Info) :-
-    Case0 = case(MainCondId, OtherConsIds, Goal0),
+    Case0 = case(MainConsId, OtherConsIds, Goal0),
     typecheck_goal(Goal0, Goal, Context, !TypeAssignSet, !Info),
-    Case = case(MainCondId, OtherConsIds, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
     typecheck_case_list(Cases0, Cases, Context, !TypeAssignSet, !Info).
 
 %---------------------------------------------------------------------------%

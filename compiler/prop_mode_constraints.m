@@ -330,8 +330,9 @@ ensure_unique_arguments_in_goal(!Goal, !SeenSoFar, !VarSet, !VarTypes) :-
                     Args, !:GoalExpr, !GoalInfo)
             )
         ;
-            !.GoalExpr = switch(_SwitchVar, _CanFail, _Cases0),
-            unexpected($pred, "switch")
+            !.GoalExpr = switch(_SwitchVar, _CanFail, _Cases0)
+            % unify_proc.m can generate switches before this pass.
+            % unexpected($pred, "switch")
         ;
             !.GoalExpr = unify(_, _, _, _, _)
         ;
