@@ -926,15 +926,15 @@ build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded,
         Succeeded, !IO).
 
 :- pred reinsert_timestamps_for_non_class_files(string::in,
-    maybe_error(timestamp)::in,
+    {list(dir_name), maybe_error(timestamp)}::in,
     file_timestamp_map::in, file_timestamp_map::out) is det.
 
-reinsert_timestamps_for_non_class_files(FileName, MaybeTimestamp,
+reinsert_timestamps_for_non_class_files(FileName, DirNamesMaybeTimestamp,
         !TimestampMap) :-
     ( if string.suffix(FileName, ".class") then
         true
     else
-        map.det_insert(FileName, MaybeTimestamp, !TimestampMap)
+        map.det_insert(FileName, DirNamesMaybeTimestamp, !TimestampMap)
     ).
 
 %---------------------------------------------------------------------------%

@@ -51,7 +51,8 @@
 
 %---------------------%
 
-:- type file_timestamp_map == map(string, maybe_error(timestamp)).
+:- type file_timestamp_map ==
+    map(string, {list(dir_name), maybe_error(timestamp)}).
 
 :- type target_file_timestamp_map ==
     version_hash_table(target_file, timestamp).

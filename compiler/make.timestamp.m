@@ -39,7 +39,8 @@
     dependency_file::in, maybe_error(timestamp)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % get_target_timestamp(Globals, Search, TargetFile, Timestamp)
+    % get_target_timestamp(ProgressStream, Globals, Search,
+    %   TargetFile, Timestamp, !Info, !IO)
     %
     % Find the timestamp for the given target file.
     % `Search' should be `do_search' if the file could be part of an
@@ -54,12 +55,9 @@
     %
     % Find the timestamp of the first file matching the given
     % file name in one of the search directories. We return the list of
-    % directories we search in SearchDirs, but *only* if we actually did
-    % a search; if we got MaybeTimestamp from the cache, we return
-    % SearchDirs = [] instead.
-    %
-    % XXX SEARCH_ERROR We should be able to do better than that,
-    % if needed; I (zs) don't know (yet) whether it is needed.
+    % directories we search in SearchDirs, or, if we got MaybeTimestamp
+    % from the cache, we return the list of directories we searched
+    % when the cache entry was created.
     %
 :- pred get_file_timestamp(search_which_dirs::in,
     file_name::in, list(dir_name)::out, maybe_error(timestamp)::out,
@@ -223,8 +221,8 @@ get_target_timestamp_analysis_registry(ProgressStream, Globals, Search,
         TargetFile, FileName, MaybeTimestamp, !Info, !IO) :-
     TargetFile = target_file(ModuleName, _TargetType),
     FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
-    ( if map.search(FileTimestampMap0, FileName, MaybeTimestamp0) then
-        MaybeTimestamp = MaybeTimestamp0
+    ( if map.search(FileTimestampMap0, FileName, MapValue) then
+        MapValue = {_SearchDirs, MaybeTimestamp}
     else
         do_read_module_overall_status(mmc, Globals, ModuleName, Status, !IO),
         (
@@ -236,7 +234,7 @@ get_target_timestamp_analysis_registry(ProgressStream, Globals, Search,
         ;
             Status = invalid,
             MaybeTimestamp = error("invalid module"),
-            map.det_insert(FileName, MaybeTimestamp,
+            map.det_insert(FileName, {[], MaybeTimestamp},
                 FileTimestampMap0, FileTimestampMap),
             make_info_set_file_timestamp_map(FileTimestampMap, !Info)
         )
@@ -258,7 +256,7 @@ get_target_timestamp_uncached(ProgressStream, Globals, Search,
         SearchWhichDirs = search_cur_dir
     ),
     get_file_timestamp(SearchWhichDirs, FileName,
-        _SearchDirs, MaybeTimestamp0, !Info, !IO),
+        SearchDirs, MaybeTimestamp0, !Info, !IO),
     ( if
         MaybeTimestamp0 = error(_),
         ( TargetType = module_target_opt
@@ -278,7 +276,7 @@ get_target_timestamp_uncached(ProgressStream, Globals, Search,
         then
             MaybeTimestamp = ok(oldest_timestamp),
             FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
-            map.set(FileName, MaybeTimestamp,
+            map.set(FileName, {SearchDirs, MaybeTimestamp},
                 FileTimestampMap0, FileTimestampMap),
             make_info_set_file_timestamp_map(FileTimestampMap, !Info)
         else
@@ -368,9 +366,8 @@ get_search_option_for_file_type(ModuleTargetType, MaybeSearchOption) :-
 get_file_timestamp(SearchWhichDirs, FileName,
         SearchDirs, MaybeTimestamp, !Info, !IO) :-
     FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
-    ( if map.search(FileTimestampMap0, FileName, MaybeTimestamp0) then
-        SearchDirs = [],
-        MaybeTimestamp = MaybeTimestamp0
+    ( if map.search(FileTimestampMap0, FileName, MapValue) then
+        MapValue = {SearchDirs, MaybeTimestamp}
     else
         search_for_file_mod_time(SearchWhichDirs, FileName,
             SearchDirs, SearchResult, !IO),
@@ -378,7 +375,7 @@ get_file_timestamp(SearchWhichDirs, FileName,
             SearchResult = ok(TimeT),
             Timestamp = time_t_to_timestamp(TimeT),
             MaybeTimestamp = ok(Timestamp),
-            map.det_insert(FileName, MaybeTimestamp,
+            map.det_insert(FileName, {SearchDirs, MaybeTimestamp},
                 FileTimestampMap0, FileTimestampMap),
             make_info_set_file_timestamp_map(FileTimestampMap, !Info)
         ;

@@ -781,7 +781,7 @@ update_target_status(TargetStatus, TargetFile, !Info) :-
     make_info_set_dep_file_status_map(DepStatusMap, !Info).
 
 :- pred delete_analysis_registry_timestamps(io.text_output_stream::in,
-    globals::in, string::in, maybe_error(timestamp)::in,
+    globals::in, string::in, {list(dir_name), maybe_error(timestamp)}::in,
     file_timestamp_map::in, file_timestamp_map::out) is det.
 
 delete_analysis_registry_timestamps(ProgressStream, Globals, FileName, _,
