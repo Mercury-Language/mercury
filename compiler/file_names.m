@@ -175,7 +175,7 @@
 %
 % In the function symbols below,
 % - "ngs" stands for the use of a non-grade-specific directory;
-% - "pgs" stands for the use of a pseuo-grade-specific directory;
+% - "pgs" stands for the use of a pseudo-grade-specific directory;
 % - "gs" stands for the use of a grade-specific but not
 %   architecture-specific directory; and
 % - "gas" stands for the use of a grade-and-architecture-specific directory.
