@@ -144,7 +144,6 @@
 
 :- implementation.
 
-:- import_module libs.compute_grade.
 :- import_module libs.options.
 :- import_module libs.shell_util.
 
@@ -315,7 +314,7 @@ get_install_name_option(Globals, OutputFileName, InstallNameOpt) :-
     globals.lookup_string_option(Globals, shlib_linker_install_name_path,
         InstallNamePath0),
     ( if InstallNamePath0 = "" then
-        grade_directory_component(Globals, GradeDir),
+        globals.get_grade_dir(Globals, GradeDir),
         get_std_grade_specific_install_lib_dir(Globals, GradeDir,
             InstallNamePath)
     else

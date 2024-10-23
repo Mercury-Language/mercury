@@ -56,10 +56,6 @@
 :- pred convert_grade_option(string::in, option_table::in, option_table::out)
     is semidet.
 
-    % Produce the grade component of grade-specific installation directories.
-    %
-:- pred grade_directory_component(globals::in, string::out) is det.
-
 %---------------------------------------------------------------------------%
 
     % Given the current set of options, figure out which grade to use.
@@ -450,10 +446,7 @@ add_option_list(CompOpts, Opts0, Opts) :-
             map.set(Option, Data, Opts1, Opts2)
         ), CompOpts, Opts0, Opts).
 
-grade_directory_component(Globals, Grade) :-
-    compute_grade(Globals, Grade).
-    % We used to strip out the `.picreg' part of the grade,
-    % while we still had it.
+%---------------------------------------------------------------------------%
 
 compute_grade(Globals, GradeStr) :-
     globals.get_options(Globals, Options),

@@ -77,7 +77,6 @@
 
 :- implementation.
 
-:- import_module libs.compute_grade.
 :- import_module libs.copy_util.
 :- import_module libs.file_util.
 :- import_module libs.handle_options.
@@ -140,7 +139,7 @@ install_library_gs_gas(ProgressStream, Globals, MainModuleName, !:Succeeded,
     set.to_sorted_list(AllModuleNamesSet, AllModuleNames),
     (
         DepsSucceeded = succeeded,
-        grade_directory_component(Globals, CurGrade),
+        globals.get_grade_dir(Globals, CurGrade),
         proposed_install_library_grade_specific_files_for_grade(ProgressStream,
             Globals, CurGrade, MainModuleName, AllModuleNames,
             succeeded, !:Succeeded, !Info, !IO)
@@ -509,7 +508,7 @@ install_library_grade_specific_files_for_all_libgrades(ProgressStream,
     % The library is already built in the current grade; we just need to
     % install it. For all other grades, we must build the library first
     % in that grade before we can install it.
-    grade_directory_component(Globals, CurGrade),
+    globals.get_grade_dir(Globals, CurGrade),
     install_library_grade_specific_files_for_grade(ProgressStream, Globals,
         NgsLibDirMap, CurGrade, MainModuleName, AllModuleNames,
         !Succeeded, !Info, !IO),
@@ -673,7 +672,7 @@ make_and_install_grade_specific_files_for_grades(ProgressStream, Globals,
     (
         LibSucceeded = succeeded,
         % ... and this is the "install" part.
-        grade_directory_component(Globals, GradeDir),
+        globals.get_grade_dir(Globals, GradeDir),
         install_library_grade_specific_files_for_grade(ProgressStream, Globals,
             NgsLibDirMap, GradeDir, MainModuleName, AllModuleNames,
             succeeded, Succeeded, !Info, !IO),

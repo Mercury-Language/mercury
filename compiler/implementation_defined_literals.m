@@ -36,7 +36,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_goal.
 :- import_module libs.
-:- import_module libs.compute_grade.
+:- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
@@ -227,7 +227,7 @@ make_impl_defined_literal(Var, IDCKind, Context, Info, Goal) :-
     ;
         IDCKind = idc_grade,
         module_info_get_globals(ModuleInfo, Globals),
-        grade_directory_component(Globals, Grade),
+        globals.get_grade_dir(Globals, Grade),
         make_string_const_construction(Context, Var, Grade, Goal)
     ).
 

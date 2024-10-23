@@ -58,7 +58,6 @@
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.passes_aux.
 :- import_module libs.check_libgrades.
-:- import_module libs.compute_grade.
 :- import_module libs.file_util.
 :- import_module libs.handle_options.
 :- import_module libs.maybe_util.
@@ -842,7 +841,7 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, OptionVariables, !IO) :-
         OpModeQuery = opmq_output_grade_string,
         % When Mmake asks for the grade, it really wants the directory
         % component to use. This is consistent with scripts/canonical_grade.
-        grade_directory_component(Globals, Grade),
+        globals.get_grade_dir(Globals, Grade),
         io.print_line(StdOutStream, Grade, !IO)
     ;
         OpModeQuery = opmq_output_libgrades,

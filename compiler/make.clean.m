@@ -56,7 +56,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
-:- import_module libs.compute_grade.
 :- import_module libs.file_util.
 :- import_module make.get_module_dep_info.
 :- import_module make.util.
@@ -89,7 +88,7 @@ maybe_make_grade_clean(ProgressStream, Globals, Clean, ModuleName, AllModules,
 
 make_grade_clean(ProgressStream, Globals, ModuleName, AllModules,
         !Info, !IO) :-
-    grade_directory_component(Globals, Grade),
+    globals.get_grade_dir(Globals, Grade),
     % XXX MAKE_EXTRA_PERIOD
     string.format("Cleaning up grade-dependent files for `%s' in grade %s.",
         [s(escaped_sym_name_to_string(ModuleName)), s(Grade)], Part1),

@@ -399,51 +399,56 @@
 %
 
 :- pred globals_init(option_table::in, option_table::in, opt_tuple::in,
-    op_mode::in, compilation_target::in, word_size::in, gc_method::in,
-    termination_norm::in, termination_norm::in,
-    trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
-    may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
-    subdir_setting::in, reuse_strategy::in, maybe(feedback_info)::in,
+    op_mode::in, maybe(feedback_info)::in, file_install_cmd::in,
+    trace_suppress_items::in, reuse_strategy::in,
+    limit_error_contexts_map::in, linked_target_ext_info_map::in,
+    c_compiler_type::in, csharp_compiler_type::in,
+    compilation_target::in, subdir_setting::in,
+    word_size::in, gc_method::in, termination_norm::in, termination_norm::in,
+    trace_level::in, ssdb_trace_level::in, may_be_thread_safe::in,
     env_type::in, env_type::in, env_type::in, install_method::in,
-    file_install_cmd::in, limit_error_contexts_map::in,
-    linked_target_ext_info_map::in, globals::out) is det.
+    globals::out) is det.
 
 :- pred get_default_options(globals::in, option_table::out) is det.
 :- pred get_options(globals::in, option_table::out) is det.
 :- pred get_opt_tuple(globals::in, opt_tuple::out) is det.
 :- pred get_op_mode(globals::in, op_mode::out) is det.
+:- pred get_maybe_feedback_info(globals::in,
+    maybe(feedback_info)::out) is det.
+:- pred get_file_install_cmd(globals::in, file_install_cmd::out) is det.
+:- pred get_trace_suppress(globals::in, trace_suppress_items::out) is det.
+:- pred get_reuse_strategy(globals::in, reuse_strategy::out) is det.
+:- pred get_limit_error_contexts_map(globals::in,
+    limit_error_contexts_map::out) is det.
+:- pred get_linked_target_ext_map(globals::in,
+    linked_target_ext_info_map::out) is det.
+:- pred get_grade_dir(globals::in, string::out) is det.
+:- pred get_c_compiler_type(globals::in, c_compiler_type::out) is det.
+:- pred get_csharp_compiler_type(globals::in, csharp_compiler_type::out)
+    is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
+:- pred get_subdir_setting(globals::in, subdir_setting::out) is det.
 :- pred get_word_size(globals::in, word_size::out) is det.
 :- pred get_gc_method(globals::in, gc_method::out) is det.
 :- pred get_termination_norm(globals::in, termination_norm::out) is det.
 :- pred get_termination2_norm(globals::in, termination_norm::out) is det.
 :- pred get_trace_level(globals::in, trace_level::out) is det.
-:- pred get_trace_suppress(globals::in, trace_suppress_items::out) is det.
 :- pred get_ssdb_trace_level(globals::in, ssdb_trace_level::out) is det.
 :- pred get_maybe_thread_safe(globals::in, may_be_thread_safe::out) is det.
-:- pred get_c_compiler_type(globals::in, c_compiler_type::out) is det.
-:- pred get_csharp_compiler_type(globals::in, csharp_compiler_type::out)
-    is det.
-:- pred get_subdir_setting(globals::in, subdir_setting::out) is det.
-:- pred get_reuse_strategy(globals::in, reuse_strategy::out) is det.
-:- pred get_maybe_feedback_info(globals::in, maybe(feedback_info)::out) is det.
 :- pred get_host_env_type(globals::in, env_type::out) is det.
 :- pred get_system_env_type(globals::in, env_type::out) is det.
 :- pred get_target_env_type(globals::in, env_type::out) is det.
 :- pred get_install_method(globals::in, install_method::out) is det.
-:- pred get_file_install_cmd(globals::in, file_install_cmd::out) is det.
-:- pred get_limit_error_contexts_map(globals::in,
-    limit_error_contexts_map::out) is det.
-:- pred get_linked_target_ext_map(globals::in,
-    linked_target_ext_info_map::out) is det.
-:- pred get_backend_foreign_languages(globals::in,
-    list(foreign_language)::out) is det.
 
-:- pred set_option(option::in, option_data::in, globals::in, globals::out)
-    is det.
+%---------------------%
+
 :- pred set_options(option_table::in, globals::in, globals::out) is det.
 :- pred set_opt_tuple(opt_tuple::in, globals::in, globals::out) is det.
 :- pred set_op_mode(op_mode::in, globals::in, globals::out) is det.
+:- pred set_maybe_feedback_info(maybe(feedback_info)::in,
+    globals::in, globals::out) is det.
+:- pred set_file_install_cmd(file_install_cmd::in,
+    globals::in, globals::out) is det.
 :- pred set_subdir_setting(subdir_setting::in,
     globals::in, globals::out) is det.
 :- pred set_word_size(word_size::in, globals::in, globals::out) is det.
@@ -452,10 +457,16 @@
 :- pred set_trace_level_none(globals::in, globals::out) is det.
 :- pred set_ssdb_trace_level(ssdb_trace_level::in,
     globals::in, globals::out) is det.
-:- pred set_maybe_feedback_info(maybe(feedback_info)::in,
-    globals::in, globals::out) is det.
-:- pred set_file_install_cmd(file_install_cmd::in,
-    globals::in, globals::out) is det.
+
+%---------------------%
+
+:- pred get_backend_foreign_languages(globals::in,
+    list(foreign_language)::out) is det.
+
+:- pred set_option(option::in, option_data::in, globals::in, globals::out)
+    is det.
+
+%---------------------%
 
 :- pred lookup_option(globals::in, option::in, option_data::out) is det.
 
@@ -556,6 +567,7 @@
 
 :- implementation.
 
+:- import_module libs.compute_grade.
 :- import_module parse_tree.write_error_spec.
 
 :- import_module char.
@@ -1283,6 +1295,16 @@ report_why_not_color(Source, Value, WhyNot) = Spec :-
 
 %---------------------------------------------------------------------------%
 
+:- type read_only_globals
+    --->    read_only_globals(
+                rog_trace_suppress_items        :: trace_suppress_items,
+                rog_reuse_strategy              :: reuse_strategy,
+                rog_limit_error_contexts_map    :: limit_error_contexts_map,
+                rog_linked_target_ext_map       :: linked_target_ext_info_map,
+                rog_grade_dir                   :: string,
+                rog_c_compiler_type             :: c_compiler_type
+            ).
+
 :- type globals
     --->    globals(
                 % The default option table, with all options having their
@@ -1294,15 +1316,14 @@ report_why_not_color(Source, Value, WhyNot) = Spec :-
                 % etc) have overridden the affected options' default values.
                 g_options                   :: option_table,
 
+                % The writeable fields that each require a full word.
                 g_opt_tuple                 :: opt_tuple,
                 g_op_mode                   :: op_mode,
-                g_trace_suppress_items      :: trace_suppress_items,
-                g_reuse_strategy            :: reuse_strategy,
                 g_maybe_feedback            :: maybe(feedback_info),
                 g_file_install_cmd          :: file_install_cmd,
-                g_limit_error_contexts_map  :: limit_error_contexts_map,
-                g_linked_target_ext_map     :: linked_target_ext_info_map,
-                g_c_compiler_type           :: c_compiler_type,
+
+                % The readonly fields that each require a full word.
+                g_read_only                 :: read_only_globals,
 
                 % The sub-word-sized arguments, clustered together
                 % to allow them to be packed together.
@@ -1323,45 +1344,104 @@ report_why_not_color(Source, Value, WhyNot) = Spec :-
             ).
 
 globals_init(DefaultOptions, Options, OptTuple, OpMode,
-        Target, WordSize, GC_Method, TerminationNorm, Termination2Norm,
-        TraceLevel, TraceSuppress, SSTraceLevel, MaybeThreadSafe,
-        C_CompilerType, CSharp_CompilerType, SubdirSetting,
-        ReuseStrategy, MaybeFeedback, HostEnvType, SystemEnvType,
-        TargetEnvType, InstallMethod, FileInstallCmd, LimitErrorContextsMap,
-        LinkedTargetExtInfoMap, Globals) :-
-    Globals = globals(DefaultOptions, Options, OptTuple, OpMode, TraceSuppress,
-        ReuseStrategy, MaybeFeedback, FileInstallCmd, LimitErrorContextsMap,
-        LinkedTargetExtInfoMap, C_CompilerType, CSharp_CompilerType,
-        Target, SubdirSetting, WordSize, GC_Method,
-        TerminationNorm, Termination2Norm, TraceLevel, SSTraceLevel,
-        MaybeThreadSafe, HostEnvType, SystemEnvType, TargetEnvType,
-        InstallMethod).
+        MaybeFeedback, FileInstallCmd, TraceSuppress, ReuseStrategy,
+        LimitErrorContextsMap, LinkedTargetExtInfoMap,
+        C_CompilerType, CSharp_CompilerType, Target, SubdirSetting,
+        WordSize, GC_Method, TerminationNorm, Termination2Norm,
+        TraceLevel, SSTraceLevel, MaybeThreadSafe,
+        HostEnvType, SystemEnvType, TargetEnvType, InstallMethod, Globals) :-
+    ReadOnlyGlobals0 = read_only_globals(TraceSuppress, ReuseStrategy,
+         LimitErrorContextsMap, LinkedTargetExtInfoMap, "", C_CompilerType),
+    Globals0 = globals(DefaultOptions, Options, OptTuple, OpMode,
+        MaybeFeedback, FileInstallCmd, ReadOnlyGlobals0,
+        CSharp_CompilerType, Target, SubdirSetting,
+        WordSize, GC_Method, TerminationNorm, Termination2Norm,
+        TraceLevel, SSTraceLevel, MaybeThreadSafe,
+        HostEnvType, SystemEnvType, TargetEnvType, InstallMethod),
+    compute_grade(Globals0, GradeDir),
+    % We used to strip out any `.picreg' part from GradeDir,
+    % while we still had it.
+    Globals = Globals0 ^ g_read_only ^ rog_grade_dir := GradeDir.
 
-get_default_options(Globals, Globals ^ g_default_options).
-get_options(Globals, Globals ^ g_options).
-get_opt_tuple(Globals, Globals ^ g_opt_tuple).
-get_op_mode(Globals, Globals ^ g_op_mode).
-get_target(Globals, Globals ^ g_target).
-get_word_size(Globals, Globals ^ g_word_size).
-get_gc_method(Globals, Globals ^ g_gc_method).
-get_termination_norm(Globals, Globals ^ g_termination_norm).
-get_termination2_norm(Globals, Globals ^ g_termination2_norm).
-get_trace_level(Globals, Globals ^ g_trace_level).
-get_trace_suppress(Globals, Globals ^ g_trace_suppress_items).
-get_ssdb_trace_level(Globals, Globals ^ g_ssdb_trace_level).
-get_maybe_thread_safe(Globals, Globals ^ g_may_be_thread_safe).
-get_c_compiler_type(Globals, Globals ^ g_c_compiler_type).
-get_csharp_compiler_type(Globals, Globals ^ g_csharp_compiler_type).
-get_subdir_setting(Globals, Globals ^ g_subdir_setting).
-get_reuse_strategy(Globals, Globals ^ g_reuse_strategy).
-get_maybe_feedback_info(Globals, Globals ^ g_maybe_feedback).
-get_host_env_type(Globals, Globals ^ g_host_env_type).
-get_system_env_type(Globals, Globals ^ g_system_env_type).
-get_target_env_type(Globals, Globals ^ g_target_env_type).
-get_install_method(Globals, Globals ^ g_install_method).
-get_file_install_cmd(Globals, Globals ^ g_file_install_cmd).
-get_limit_error_contexts_map(Globals, Globals ^ g_limit_error_contexts_map).
-get_linked_target_ext_map(Globals, Globals ^ g_linked_target_ext_map).
+%---------------------%
+
+get_default_options(Globals, X) :-
+    X = Globals ^ g_default_options.
+get_options(Globals, X) :-
+    X = Globals ^ g_options.
+get_opt_tuple(Globals, X) :-
+    X = Globals ^ g_opt_tuple.
+get_op_mode(Globals, X) :-
+    X = Globals ^ g_op_mode.
+get_maybe_feedback_info(Globals, X) :-
+    X = Globals ^ g_maybe_feedback.
+get_file_install_cmd(Globals, X) :-
+    X = Globals ^ g_file_install_cmd.
+get_trace_suppress(Globals, X) :-
+    X = Globals ^ g_read_only ^ rog_trace_suppress_items.
+get_reuse_strategy(Globals, X) :-
+    X = Globals ^ g_read_only ^ rog_reuse_strategy.
+get_limit_error_contexts_map(Globals, X) :-
+    X = Globals ^ g_read_only ^ rog_limit_error_contexts_map.
+get_linked_target_ext_map(Globals, X) :-
+    X = Globals ^ g_read_only ^ rog_linked_target_ext_map.
+get_grade_dir(Globals, X) :-
+    X = Globals ^ g_read_only ^ rog_grade_dir.
+get_c_compiler_type(Globals, X) :-
+    X = Globals ^ g_read_only ^ rog_c_compiler_type.
+get_csharp_compiler_type(Globals, X) :-
+    X = Globals ^ g_csharp_compiler_type.
+get_target(Globals, X) :-
+    X = Globals ^ g_target.
+get_subdir_setting(Globals, X) :-
+    X = Globals ^ g_subdir_setting.
+get_word_size(Globals, X) :-
+    X = Globals ^ g_word_size.
+get_gc_method(Globals, X) :-
+    X = Globals ^ g_gc_method.
+get_termination_norm(Globals, X) :-
+    X = Globals ^ g_termination_norm.
+get_termination2_norm(Globals, X) :-
+    X = Globals ^ g_termination2_norm.
+get_trace_level(Globals, X) :-
+    X = Globals ^ g_trace_level.
+get_ssdb_trace_level(Globals, X) :-
+    X = Globals ^ g_ssdb_trace_level.
+get_maybe_thread_safe(Globals, X) :-
+    X = Globals ^ g_may_be_thread_safe.
+get_host_env_type(Globals, X) :-
+    X = Globals ^ g_host_env_type.
+get_system_env_type(Globals, X) :-
+    X = Globals ^ g_system_env_type.
+get_target_env_type(Globals, X) :-
+    X = Globals ^ g_target_env_type.
+get_install_method(Globals, X) :-
+    X = Globals ^ g_install_method.
+
+set_options(Options, !Globals) :-
+    !Globals ^ g_options := Options.
+set_opt_tuple(OptTuple, !Globals) :-
+    !Globals ^ g_opt_tuple := OptTuple.
+set_op_mode(OpMode, !Globals) :-
+    !Globals ^ g_op_mode := OpMode.
+set_maybe_feedback_info(MaybeFeedback, !Globals) :-
+    !Globals ^ g_maybe_feedback := MaybeFeedback.
+set_file_install_cmd(FileInstallCmd, !Globals) :-
+    !Globals ^ g_file_install_cmd := FileInstallCmd.
+set_subdir_setting(X, !Globals) :-
+    !Globals ^ g_subdir_setting := X.
+set_word_size(WordSize, !Globals) :-
+    !Globals ^ g_word_size := WordSize.
+set_gc_method(GC_Method, !Globals) :-
+    !Globals ^ g_gc_method := GC_Method.
+set_trace_level(TraceLevel, !Globals) :-
+    !Globals ^ g_trace_level := TraceLevel.
+set_trace_level_none(!Globals) :-
+    !Globals ^ g_trace_level := trace_level_none.
+set_ssdb_trace_level(SSTraceLevel, !Globals) :-
+    !Globals ^ g_ssdb_trace_level := SSTraceLevel.
+
+%---------------------------------------------------------------------------%
 
 get_backend_foreign_languages(Globals, ForeignLangs) :-
     lookup_accumulating_option(Globals, backend_foreign_languages, LangStrs),
@@ -1371,38 +1451,6 @@ set_option(Option, OptionData, !Globals) :-
     get_options(!.Globals, OptionTable0),
     map.set(Option, OptionData, OptionTable0, OptionTable),
     set_options(OptionTable, !Globals).
-
-set_options(Options, !Globals) :-
-    !Globals ^ g_options := Options.
-
-set_opt_tuple(OptTuple, !Globals) :-
-    !Globals ^ g_opt_tuple := OptTuple.
-
-set_op_mode(OpMode, !Globals) :-
-    !Globals ^ g_op_mode := OpMode.
-
-set_subdir_setting(X, !Globals) :-
-    !Globals ^ g_subdir_setting := X.
-
-set_word_size(WordSize, !Globals) :-
-    !Globals ^ g_word_size := WordSize.
-
-set_gc_method(GC_Method, !Globals) :-
-    !Globals ^ g_gc_method := GC_Method.
-
-set_trace_level(TraceLevel, !Globals) :-
-    !Globals ^ g_trace_level := TraceLevel.
-set_trace_level_none(!Globals) :-
-    !Globals ^ g_trace_level := trace_level_none.
-
-set_ssdb_trace_level(SSTraceLevel, !Globals) :-
-    !Globals ^ g_ssdb_trace_level := SSTraceLevel.
-
-set_maybe_feedback_info(MaybeFeedback, !Globals) :-
-    !Globals ^ g_maybe_feedback := MaybeFeedback.
-
-set_file_install_cmd(FileInstallCmd, !Globals) :-
-    !Globals ^ g_file_install_cmd := FileInstallCmd.
 
 %---------------------------------------------------------------------------%
 

@@ -174,7 +174,6 @@
 
 :- implementation.
 
-:- import_module libs.compute_grade.    % for grade_directory_component
 :- import_module libs.copy_util.
 :- import_module libs.options.
 :- import_module parse_tree.java_names.
@@ -570,7 +569,7 @@ get_mercury_std_libs_for_java(Globals, !:StdLibs) :-
         mercury_standard_library_directory, MaybeStdlibDir),
     (
         MaybeStdlibDir = yes(StdLibDir),
-        grade_directory_component(Globals, GradeDir),
+        globals.get_grade_dir(Globals, GradeDir),
         % Source-to-source debugging libraries.
         globals.lookup_bool_option(Globals, link_ssdb_libs,
             SourceDebug),

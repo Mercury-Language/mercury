@@ -1254,7 +1254,7 @@ do_make_init_obj_file(Globals, ProgressStream, MustCompile,
         ModuleName, ModuleNames, Result, !IO) :-
     globals.lookup_maybe_string_option(Globals,
         mercury_standard_library_directory, MaybeStdLibDir),
-    grade_directory_component(Globals, GradeDir),
+    globals.get_grade_dir(Globals, GradeDir),
     (
         MaybeStdLibDir = yes(StdLibDir),
         ToGradeInit = (func(File) = StdLibDir / "modules" / GradeDir / File),
@@ -2018,7 +2018,7 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             LibExt = ext_cur_gs(ext_cur_gs_lib_cil_dll),
             MercuryOrCsharpLinkage = "csharp"
         ),
-        grade_directory_component(Globals, GradeDir),
+        globals.get_grade_dir(Globals, GradeDir),
 
         % GC libraries.
         % We always compile with hgc since it's home-grown and very small.
@@ -2185,7 +2185,7 @@ link_lib_args(Globals, TargetType, StdLibDir, GradeDir, Ext,
 get_link_opts_for_libraries(Globals, MaybeLinkLibraries, Specs, !IO) :-
     globals.lookup_accumulating_option(Globals, mercury_library_directories,
         MercuryLibDirs0),
-    grade_directory_component(Globals, GradeDir),
+    globals.get_grade_dir(Globals, GradeDir),
     MercuryLibDirs = list.map((func(LibDir) = LibDir/"lib"/GradeDir),
         MercuryLibDirs0),
     globals.lookup_accumulating_option(Globals, link_libraries,
@@ -3117,7 +3117,7 @@ make_standalone_int_body(Globals, ProgressStream, BaseName, !IO) :-
         TraceInitFiles0),
     globals.lookup_maybe_string_option(Globals,
         mercury_standard_library_directory, MaybeStdLibDir),
-    grade_directory_component(Globals, GradeDir),
+    globals.get_grade_dir(Globals, GradeDir),
     (
         MaybeStdLibDir = yes(StdLibDir),
         InitFiles2 = [

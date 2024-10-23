@@ -948,13 +948,12 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     % the value of that field, and we *have* to do this because
     % the code between here and there *can* update the values of
     % the options from which the subdir setting is computed.
-    globals_init(DefaultOptionTable, OptionTable0, !.OptTuple, OpMode, Target,
-        WordSize, GC_Method, TermNorm, Term2Norm,
-        TraceLevel, TraceSuppress, SSTraceLevel,
-        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType, use_cur_dir,
-        ReuseStrategy, MaybeFeedbackInfo,
-        HostEnvType, SystemEnvType, TargetEnvType, InstallMethod,
-        FileInstallCmd, LimitErrorContextsMap, LinkExtMap, !:Globals),
+    globals_init(DefaultOptionTable, OptionTable0, !.OptTuple, OpMode,
+        MaybeFeedbackInfo, FileInstallCmd, TraceSuppress, ReuseStrategy,
+        LimitErrorContextsMap, LinkExtMap, C_CompilerType, CSharp_CompilerType,
+        Target, use_cur_dir, WordSize, GC_Method, TermNorm, Term2Norm,
+        TraceLevel, SSTraceLevel, MaybeThreadSafe,
+        HostEnvType, SystemEnvType, TargetEnvType, InstallMethod, !:Globals),
 
     globals.lookup_bool_option(!.Globals, experiment2, Experiment2),
     (
@@ -2785,7 +2784,7 @@ handle_directory_options(OpMode, !Globals) :-
     % options.m because they are grade dependent.
     globals.lookup_accumulating_option(!.Globals,
         mercury_library_directories, MercuryLibDirs),
-    grade_directory_component(!.Globals, GradeString),
+    globals.get_grade_dir(!.Globals, GradeString),
     (
         MercuryLibDirs = [_ | _],
         ExtraLinkLibDirs = list.map(

@@ -64,7 +64,6 @@
 
 :- implementation.
 
-:- import_module libs.compute_grade.
 :- import_module libs.file_util.
 :- import_module parse_tree.find_module.
 
@@ -307,7 +306,7 @@ maybe_check_libraries_are_installed(Globals, Specs, !IO) :-
         % so we can make sure that we use any cached result only if its
         % actually applicable.
         globals.get_target(Globals, Target),
-        grade_directory_component(Globals, GradeDirName),
+        globals.get_grade_dir(Globals, GradeDirName),
         globals.lookup_accumulating_option(Globals,
             mercury_library_directories, MercuryLibDirs),
         globals.lookup_accumulating_option(Globals, init_file_directories,

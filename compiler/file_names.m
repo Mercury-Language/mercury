@@ -747,7 +747,6 @@
 
 :- implementation.
 
-:- import_module libs.compute_grade.
 :- import_module libs.options.
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.source_file_map.
@@ -1500,7 +1499,7 @@ make_ngs_dir_names(SubDirName, NgsSubDirNamesLegacy, NgsSubDirNamesProposed) :-
 
 make_gs_dir_names(Globals, SubDirName,
         GsSubDirNamesLegacy, GsSubDirNamesProposed) :-
-    grade_directory_component(Globals, Grade),
+    globals.get_grade_dir(Globals, Grade),
     globals.lookup_string_option(Globals, target_arch, TargetArch),
     % The extra "Mercury" is needed so we can use
     % `--intermod-directory Mercury/<grade>/<target_arch>' and
@@ -1518,7 +1517,7 @@ make_gs_dir_names(Globals, SubDirName,
 
 make_gas_dir_names(Globals, SubDirName,
         GasSubDirNamesLegacy, GasSubDirNamesProposed) :-
-    grade_directory_component(Globals, Grade),
+    globals.get_grade_dir(Globals, Grade),
     globals.lookup_string_option(Globals, target_arch, TargetArch),
     GasSubDirNamesLegacy =
         ["Mercury", Grade, TargetArch, "Mercury", SubDirName],
