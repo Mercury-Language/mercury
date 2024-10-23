@@ -20,6 +20,7 @@
 
 :- import_module libs.
 :- import_module libs.file_util.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
@@ -37,14 +38,15 @@
 :- func options_variables_init(environment_var_map) = options_variables.
 
     % read_options_files_named_in_options_file_option(ProgressStream,
-    %   OptionSearchDirs, OptionsFiles, Variables, Specs, UndefSpecs, !IO):
+    %   OptionTable, Variables, Specs, UndefSpecs, !IO):
     %
     % Given OptionSearchDirs, the value of the options_search_directories
-    % option, and OptionsFiles, the value of the options_files option,
-    % look up and read all the files named in OptionsFiles in OptionSearchDirs.
-    % Construct a database of variable name/value pairs from the make variable
-    % assignments in those files (and the other files they may include, either
-    % directly or indirectly) and return it as Variables.
+    % option in OptionTable, and OptionsFiles, the value of the options_files
+    % option, look up and read all the files named in OptionsFiles in
+    % OptionSearchDirs. Construct a database of variable name/value pairs
+    % from the make variable assignments in those files (and the other files
+    % they may include, either directly or indirectly) and return it
+    % as Variables.
     %
     % We return two lists of error specs. The first list consists of errors,
     % which should be printed unconditionally. The second list consists
@@ -52,12 +54,11 @@
     % warn_undefined_options_variables is set.
     %
 :- pred read_options_files_named_in_options_file_option(
-    io.text_output_stream::in, list(string)::in,
-    list(string)::in, options_variables::out,
+    io.text_output_stream::in, option_table::in, options_variables::out,
     list(error_spec)::out, list(error_spec)::out, io::di, io::uo) is det.
 
-    % read_named_options_file(ProgressStream, OptionsPathName, !Variables,
-    %   Specs, UndefSpecs, !IO) :-
+    % read_named_options_file(ProgressStream, OptionsPathName,
+    %   !Variables, Specs, UndefSpecs, !IO) :-
     %
     % Read the given options file, without searching
     % --options-search-directories, updating the database of make variable
@@ -68,8 +69,8 @@
     % of warnings, which should be printed only if the option
     % warn_undefined_options_variables is set.
     %
-:- pred read_named_options_file(io.text_output_stream::in, file_name::in,
-    options_variables::in, options_variables::out,
+:- pred read_named_options_file(io.text_output_stream::in,
+    file_name::in, options_variables::in, options_variables::out,
     list(error_spec)::out, list(error_spec)::out, io::di, io::uo) is det.
 
     % read_args_file(ProgressStream, OptionsFile, MaybeMCFlags,
@@ -91,8 +92,8 @@
     % in mercury_compile_main.m.
     %
 :- pred read_args_file(io.text_output_stream::in, file_name::in,
-    maybe(list(string))::out, list(error_spec)::out, list(error_spec)::out,
-    io::di, io::uo) is det.
+    maybe(list(string))::out,
+    list(error_spec)::out, list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -151,6 +152,7 @@
 :- import_module bool.
 :- import_module char.
 :- import_module dir.
+:- import_module getopt.
 :- import_module int.
 :- import_module io.environment.
 :- import_module map.
@@ -194,34 +196,36 @@ options_variables_init(EnvVarMap) = Variables :-
 
 %---------------------------------------------------------------------------%
 
-read_options_files_named_in_options_file_option(ProgressStream,
-        OptionSearchDirs, OptionsFiles, Variables, Specs, UndefSpecs, !IO) :-
+read_options_files_named_in_options_file_option(ProgressStream, OptionTable,
+        Variables, Specs, UndefSpecs, !IO) :-
+    getopt.lookup_accumulating_option(OptionTable, options_files,
+        OptionsFiles),
     io.environment.get_environment_var_map(EnvVarMap, !IO),
     Variables0 = options_variables_init(EnvVarMap),
     list.foldl5(
-        read_options_file_set_params(ProgressStream, OptionSearchDirs),
+        read_options_file_set_params(ProgressStream, OptionTable),
         OptionsFiles, Variables0, Variables,
         [], IOSpecs, [], ParseSpecs, [], UndefSpecs, !IO),
     Specs = IOSpecs ++ ParseSpecs.
 
 :- pred read_options_file_set_params(io.text_output_stream::in,
-    list(string)::in, string::in,
+    option_table::in, string::in,
     options_variables::in, options_variables::out,
     list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-read_options_file_set_params(ProgressStream, OptionSearchDirs, OptionsFile,
+read_options_file_set_params(ProgressStream, OptionTable, OptionsFile,
         !Variables, !IOSpecs, !ParseSpecs, !UndefSpecs, !IO) :-
     MaybeDirName = no,
     ( if OptionsFile = "Mercury.options" then
-        MaybeSearch = no_search,
+        SearchWhichDirs = search_cur_dir,
         IsOptionsFileOptional = options_file_need_not_exist
     else
-        MaybeSearch = search(OptionSearchDirs),
+        SearchWhichDirs = search_options_file_dirs(OptionTable),
         IsOptionsFileOptional = options_file_must_exist
     ),
-    SearchInfo = search_info(ProgressStream, MaybeDirName, MaybeSearch),
+    SearchInfo = search_info(ProgressStream, MaybeDirName, SearchWhichDirs),
     read_options_file_params(SearchInfo, pre_stack_base, IsOptionsFileOptional,
         OptionsFile, !Variables, !IOSpecs, !ParseSpecs, !UndefSpecs, !IO).
 
@@ -229,7 +233,7 @@ read_options_file_set_params(ProgressStream, OptionSearchDirs, OptionsFile,
 
 read_named_options_file(ProgressStream, OptionsPathName,
         !Variables, Specs, UndefSpecs, !IO) :-
-    SearchInfo = search_info(ProgressStream, no, no_search),
+    SearchInfo = search_info(ProgressStream, no, search_cur_dir),
     read_options_file_params(SearchInfo, pre_stack_base,
         options_file_must_exist, OptionsPathName, !Variables,
         [], IOSpecs, [], ParseSpecs, [], UndefSpecs, !IO),
@@ -241,8 +245,8 @@ read_args_file(ProgressStream, OptionsFile, MaybeMCFlags,
         Specs, UndefSpecs, !IO) :-
     io.environment.get_environment_var_map(EnvVarMap, !IO),
     Variables0 = options_variables_init(EnvVarMap),
-    read_named_options_file(ProgressStream, OptionsFile, Variables0, Variables,
-        Specs0, UndefSpecs, !IO),
+    read_named_options_file(ProgressStream, OptionsFile,
+        Variables0, Variables, Specs0, UndefSpecs, !IO),
     % Ignore settings in the environment -- the parent mmc process
     % will have included those in the file.
     NoEnvVariables = Variables ^ ov_env := map.init,
@@ -275,16 +279,11 @@ read_args_file(ProgressStream, OptionsFile, MaybeMCFlags,
 
 %---------------------------------------------------------------------------%
 
-:- type search
-    --->    search(list(dir_name))
-            % This should be the value of options_search_directories.
-    ;       no_search.
-
 :- type search_info
     --->    search_info(
-                si_progress_stream  :: io.text_output_stream,
-                si_maybe_dir_name   :: maybe(dir_name),
-                si_search           :: search
+                si_progress_stream      :: io.text_output_stream,
+                si_maybe_dir_name       :: maybe(dir_name),
+                si_search_which_dirs    :: search_which_tail_dirs
             ).
 
 :- type is_options_file_optional
@@ -331,7 +330,7 @@ read_args_file(ProgressStream, OptionsFile, MaybeMCFlags,
 read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
         OptionsPathName, !Variables,
         !IOSpecs, !ParseSpecs, !UndefSpecs, !IO) :-
-    SearchInfo = search_info(ProgressStream, MaybeDirName, Search),
+    SearchInfo = search_info(ProgressStream, MaybeDirName, SearchWhichDirs0),
     % Reading the options file is an activity that is not specific
     % to any module, so it cannot go to a module-specific debug output file.
     % This is why we direct any debugging output we generate to ProgressStream,
@@ -366,12 +365,6 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
             io.format(ProgressStream, "Searching for options file %s... ",
                 [s(OptionsPathName)], !TIO)
         ),
-        (
-            Search = search(SearchDirs)
-        ;
-            Search = no_search,
-            SearchDirs = [dir.this_directory]
-        ),
         % XXX There are four distinct paths through this if-then-else.
         % The first, second and fourth of these set FileToFind to a file name
         % that has no dir name component (the first and second because
@@ -388,24 +381,26 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
                 % but since absolute path names occur rarely, restructuring
                 % this code to avoid that "search" is not worthwhile.
                 FileToFind = OptionsFile,
-                Dirs = [OptionsDir]
+                SearchWhichDirs = search_this_dir(OptionsDir)
             else
                 (
                     MaybeDirName = yes(DirName),
-                    Dirs = [DirName/OptionsDir | SearchDirs],
+                    RelOptionsDir = DirName / OptionsDir,
+                    SearchWhichDirs =
+                        search_this_dir_and(RelOptionsDir, SearchWhichDirs0),
                     FileToFind = OptionsFile
                 ;
                     MaybeDirName = no,
-                    Dirs = SearchDirs,
+                    SearchWhichDirs = coerce(SearchWhichDirs0),
                     FileToFind = OptionsPathName
                 )
             )
         else
-            Dirs = SearchDirs,
+            SearchWhichDirs = coerce(SearchWhichDirs0),
             FileToFind = OptionsPathName
         ),
-        search_for_file_returning_dir_and_stream(Dirs, FileToFind,
-            MaybeDirAndStream, !IO),
+        search_for_file_returning_dir_and_stream(SearchWhichDirs, FileToFind,
+            SearchDirs, MaybeDirAndStream, !IO),
         (
             MaybeDirAndStream =
                 ok(path_name_and_stream(FoundDir, FoundStream)),
@@ -441,7 +436,7 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
             ),
             (
                 IsOptionsFileOptional = options_file_must_exist,
-                ( if Dirs = [SingleDir] then
+                ( if SearchDirs = [SingleDir] then
                     ( if SingleDir = dir.this_directory then
                         ErrorFile = FileToFind
                     else

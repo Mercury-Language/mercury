@@ -2749,15 +2749,17 @@ handle_directory_options(OpMode, !Globals) :-
         % Add `-L' and `-R' options for the location of the GC libraries.
         globals.lookup_accumulating_option(!.Globals,
             link_library_directories, LinkLibDirs0),
+        % XXX LEGACY
         globals.set_option(link_library_directories,
-            accumulating([StdLibDir/"lib" | LinkLibDirs0]), !Globals),
+            accumulating([StdLibDir / "lib" | LinkLibDirs0]), !Globals),
 
         (
             DefaultRuntimeLibraryDirs = bool.yes,
             globals.lookup_accumulating_option(!.Globals,
                 runtime_link_library_directories, Rpath0),
+            % XXX LEGACY
             globals.set_option(runtime_link_library_directories,
-                accumulating([StdLibDir/"lib" | Rpath0]), !Globals)
+                accumulating([StdLibDir / "lib" | Rpath0]), !Globals)
         ;
             DefaultRuntimeLibraryDirs = bool.no
         )
@@ -2771,9 +2773,10 @@ handle_directory_options(OpMode, !Globals) :-
         mercury_configuration_directory, MaybeConfDir),
     (
         MaybeConfDir = yes(ConfDir),
-        globals.lookup_accumulating_option(!.Globals, c_include_directory,
+        globals.lookup_accumulating_option(!.Globals, c_include_directories,
             CIncludeDirs0),
-        globals.set_option(c_include_directory,
+        % XXX LEGACY
+        globals.set_option(c_include_directories,
             accumulating([ConfDir/"conf" | CIncludeDirs0]), !Globals)
     ;
         MaybeConfDir = no
@@ -2801,6 +2804,7 @@ handle_directory_options(OpMode, !Globals) :-
             DefaultRuntimeLibraryDirs = bool.yes,
             globals.lookup_accumulating_option(!.Globals,
                 runtime_link_library_directories, Rpath),
+            % XXX LEGACY
             globals.set_option(runtime_link_library_directories,
                 accumulating(Rpath ++ ExtraLinkLibDirs), !Globals)
         ;
@@ -2811,9 +2815,10 @@ handle_directory_options(OpMode, !Globals) :-
             ( func(MercuryLibDir) =
                 MercuryLibDir/"lib"/GradeString/"inc"
             ), MercuryLibDirs),
-        globals.lookup_accumulating_option(!.Globals, c_include_directory,
+        globals.lookup_accumulating_option(!.Globals, c_include_directories,
             CIncludeDirs),
-        globals.set_option(c_include_directory,
+        % XXX LEGACY
+        globals.set_option(c_include_directories,
             accumulating(ExtraIncludeDirs ++ CIncludeDirs), !Globals),
 
         ExtraIntermodDirs = list.map(
@@ -2833,6 +2838,7 @@ handle_directory_options(OpMode, !Globals) :-
 
         globals.lookup_accumulating_option(!.Globals,
             init_file_directories, InitDirs1),
+        % XXX LEGACY
         globals.set_option(init_file_directories,
             accumulating(InitDirs1 ++ ExtraInitDirs), !Globals)
     ;
@@ -2850,6 +2856,7 @@ handle_directory_options(OpMode, !Globals) :-
             intermod_directories, IntermodDirs1),
         globals.lookup_accumulating_option(!.Globals,
             search_directories, SearchDirs),
+        % XXX LEGACY
         globals.set_option(intermod_directories,
             accumulating(IntermodDirs1 ++ SearchDirs), !Globals)
     ;
@@ -2884,6 +2891,7 @@ handle_directory_options(OpMode, !Globals) :-
         UseGradeSubdirs = bool.no,
         IntermodDirs3 = SearchLibFilesDirs ++ IntermodDirs2
     ),
+    % XXX LEGACY
     globals.set_option(intermod_directories,
         accumulating(IntermodDirs3), !Globals),
 
@@ -2897,12 +2905,12 @@ handle_directory_options(OpMode, !Globals) :-
         % `Mercury/<grade>/<target_arch>/Mercury/lib' for libraries and
         % `Mercury/<grade>/<target_arch>/Mercury/inits' for init files,
         % for each directory listed with --search-library-files-directory.
-        ToGradeLibDir = (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"lib"),
+        ToGradeLibDir = (func(Dir) = ToGradeSubdir(Dir) / "Mercury" / "lib"),
         SearchGradeLibDirs = list.map(ToGradeLibDir, SearchLibFilesDirs),
         LinkLibDirs = SearchGradeLibDirs ++ LinkLibDirs2,
 
         ToGradeInitDir =
-            (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"inits"),
+            (func(Dir) = ToGradeSubdir(Dir) / "Mercury" / "inits"),
         SearchGradeInitDirs = list.map(ToGradeInitDir, SearchLibFilesDirs),
         InitDirs = SearchGradeInitDirs ++ InitDirs2
     ;
@@ -2910,6 +2918,7 @@ handle_directory_options(OpMode, !Globals) :-
         LinkLibDirs = SearchLibFilesDirs ++ LinkLibDirs2,
         InitDirs = SearchLibFilesDirs ++ InitDirs2
     ),
+    % XXX LEGACY
     globals.set_option(link_library_directories,
         accumulating(LinkLibDirs), !Globals),
     globals.set_option(init_file_directories,
@@ -2938,7 +2947,7 @@ handle_directory_options(OpMode, !Globals) :-
         )
     then
         ToMhsSubdir = (func(Dir) = Dir/"Mercury"/"mhs"),
-        globals.lookup_accumulating_option(!.Globals, c_include_directory,
+        globals.lookup_accumulating_option(!.Globals, c_include_directories,
             CIncludeDirs1),
         MhsSubdir = ToMhsSubdir(dir.this_directory),
         MihsSubdir = ToMihsSubdir(dir.this_directory),
@@ -2946,7 +2955,8 @@ handle_directory_options(OpMode, !Globals) :-
         SearchLibMihsSubdirs = list.map(ToMihsSubdir, SearchLibFilesDirs),
         SubdirCIncludeDirs = [dir.this_directory, MhsSubdir, MihsSubdir |
             SearchLibMhsSubdirs ++ SearchLibMihsSubdirs ++ CIncludeDirs1],
-        globals.set_option(c_include_directory,
+        % XXX LEGACY
+        globals.set_option(c_include_directories,
             accumulating(SubdirCIncludeDirs), !Globals)
     else
         true

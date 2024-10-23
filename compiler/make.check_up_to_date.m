@@ -191,6 +191,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.find_module.
 :- import_module parse_tree.module_dep_info.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
@@ -250,11 +251,11 @@ must_or_should_we_rebuild_lhs(ProgressStream, Globals,
             ForceReanalysis = no,
             % Compare the oldest of the timestamps of the lhs files
             % with the timestamps of the rhs.
-            GetLocalTimestamps = get_file_timestamp([dir.this_directory]),
-            list.map_foldl2(GetLocalTimestamps,
-                LhsDateFileNames, LhsDateFileTimestamps, !Info, !IO),
-            list.map_foldl2(GetLocalTimestamps,
-                LhsForeignCodeFileNames, LhsForeignCodeFileTimestamps,
+            GetLocalTimestamps = get_file_timestamp(search_cur_dir),
+            list.map2_foldl2(GetLocalTimestamps,
+                LhsDateFileNames, _, LhsDateFileTimestamps, !Info, !IO),
+            list.map2_foldl2(GetLocalTimestamps,
+                LhsForeignCodeFileNames, _, LhsForeignCodeFileTimestamps,
                 !Info, !IO),
             AllLhsTimestamps = DatelessLhsFileTimestamps ++
                 LhsDateFileTimestamps ++ LhsForeignCodeFileTimestamps,

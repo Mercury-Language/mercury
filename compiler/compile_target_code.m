@@ -847,7 +847,7 @@ gather_c_grade_defines(Globals, GradeDefines) :-
 :- pred gather_c_include_dir_flags(globals::in, string::out) is det.
 
 gather_c_include_dir_flags(Globals, InclOpt) :-
-    globals.lookup_accumulating_option(Globals, c_include_directory,
+    globals.lookup_accumulating_option(Globals, c_include_directories,
         C_Incl_Dirs),
     InclOpt = string.append_list(list.condense(list.map(
         (func(C_INCL) = ["-I", quote_shell_cmd_arg(C_INCL), " "]),
@@ -2183,14 +2183,9 @@ link_lib_args(Globals, TargetType, StdLibDir, GradeDir, Ext,
     list(error_spec)::out, io::di, io::uo) is det.
 
 get_link_opts_for_libraries(Globals, MaybeLinkLibraries, Specs, !IO) :-
-    globals.lookup_accumulating_option(Globals, mercury_library_directories,
-        MercuryLibDirs0),
-    globals.get_grade_dir(Globals, GradeDir),
-    MercuryLibDirs = list.map((func(LibDir) = LibDir/"lib"/GradeDir),
-        MercuryLibDirs0),
     globals.lookup_accumulating_option(Globals, link_libraries,
         LinkLibrariesList0),
-    list.map2_foldl2(get_link_opts_for_library(Globals, MercuryLibDirs),
+    list.map2_foldl2(get_link_opts_for_library(Globals),
         LinkLibrariesList0, LinkLibrariesList, SpecsList,
         succeeded, LibrariesSucceeded, !IO),
     list.condense(SpecsList, Specs),
@@ -2541,11 +2536,11 @@ reserve_stack_size_flags(Globals) = Flags :-
 
 %---------------------------------------------------------------------------%
 
-:- pred get_link_opts_for_library(globals::in, list(dir_name)::in, string::in,
-    string::out, list(error_spec)::out,
-    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
+:- pred get_link_opts_for_library(globals::in, string::in, string::out,
+    list(error_spec)::out, maybe_succeeded::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
-get_link_opts_for_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
+get_link_opts_for_library(Globals, LibName, LinkerOpt,
         !:Specs, !Succeeded, !IO) :-
     !:Specs = [],
     globals.get_target(Globals, Target),
@@ -2590,8 +2585,8 @@ get_link_opts_for_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
         module_name_to_lib_file_name_full_curdir(Globals, $pred, "lib",
             ext_cur_gas(ext_cur_gas_lib_lib_opt), LibModuleName,
             _FullLibFileName, _FullLibFileNameProposed, LibFileName),
-        search_for_file_returning_dir(MercuryLibDirs,
-            LibFileName, MaybeDirName, !IO),
+        search_for_file_returning_dir(search_mercury_library_dirs(Globals),
+            LibFileName, _SearchDirs, MaybeDirName, !IO),
         (
             MaybeDirName = ok(DirName),
             LinkerOpt = DirName/LibFileName
@@ -2599,6 +2594,7 @@ get_link_opts_for_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
             MaybeDirName = error(Error),
             LinkerOpt = "",
             Pieces = [words(Error), suffix("."), nl],
+            % XXX SEARCH_ERROR _SearchDirs
             Spec = no_ctxt_spec($pred, severity_error,
                 phase_find_files(LibFileName), Pieces),
             !:Specs = [Spec],

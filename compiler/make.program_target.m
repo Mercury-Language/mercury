@@ -79,6 +79,7 @@
 :- import_module make.timestamp.
 :- import_module make.util.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.find_module.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.module_deps_graph.
@@ -314,8 +315,8 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
 
         linked_target_file_name_full_curdir(Globals, MainModuleName, FileType,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName, !IO),
-        get_file_timestamp([dir.this_directory], FullMainModuleLinkedFileName,
-            MaybeTimestamp, !Info, !IO),
+        get_file_timestamp(search_cur_dir, FullMainModuleLinkedFileName,
+            _SearchDirs, MaybeTimestamp, !Info, !IO),
         (
             MaybeTimestamp = error(_),
             MaybeOldestLhsTimestamp = some_lhs_file_is_missing
@@ -582,8 +583,8 @@ build_linked_target_2(ProgressStream, Globals0, MainModuleName, FileType,
     ),
     BuildDepsSucceeded = InitObjSucceeded `and` ExtraObjSucceeded,
 
-    list.map_foldl2(get_file_timestamp([dir.this_directory]),
-        ObjectsToCheck, ExtraObjectTimestamps, !Info, !IO),
+    list.map2_foldl2(get_file_timestamp(search_cur_dir),
+        ObjectsToCheck, _SearchDirs, ExtraObjectTimestamps, !Info, !IO),
     % XXX We pass BuildDepsSucceeded here, but BuildDepsSucceeded being
     % did_not_succeed does not prevent LhsResult being can_rebuild_lhs(_).
     % This means that we can go on to attempt to (re)build the target

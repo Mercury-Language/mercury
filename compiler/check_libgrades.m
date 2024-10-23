@@ -307,13 +307,13 @@ maybe_check_libraries_are_installed(Globals, Specs, !IO) :-
         % actually applicable.
         globals.get_target(Globals, Target),
         globals.get_grade_dir(Globals, GradeDirName),
+        globals.lookup_maybe_string_option(Globals,
+            mercury_standard_library_directory, MaybeStdLibDir),
         globals.lookup_accumulating_option(Globals,
             mercury_library_directories, MercuryLibDirs),
         globals.lookup_accumulating_option(Globals, init_file_directories,
             InitFileDirs),
         globals.lookup_accumulating_option(Globals, mercury_libraries, Libs),
-        globals.lookup_maybe_string_option(Globals,
-            mercury_standard_library_directory, MaybeStdLibDir),
 
         get_has_check_libraries_been_done(Cache0, !IO),
         ( if
@@ -329,8 +329,7 @@ maybe_check_libraries_are_installed(Globals, Specs, !IO) :-
         then
             Specs = CacheSpecs
         else
-            check_libraries_are_installed(Target, GradeDirName, MaybeStdLibDir,
-                MercuryLibDirs, InitFileDirs, Libs, Specs, !IO),
+            check_libraries_are_installed(Globals, Libs, Specs, !IO),
             Cache = check_libraries_done(Target, GradeDirName, MaybeStdLibDir,
                 MercuryLibDirs, InitFileDirs, Libs, Specs),
             set_has_check_libraries_been_done(Cache, !IO)
@@ -340,19 +339,13 @@ maybe_check_libraries_are_installed(Globals, Specs, !IO) :-
         Specs = []
     ).
 
-:- pred check_libraries_are_installed(compilation_target::in, string::in,
-    maybe(string)::in, list(string)::in, list(string)::in, list(string)::in,
+:- pred check_libraries_are_installed(globals::in, list(string)::in,
     list(error_spec)::out, io::di, io::uo) is det.
 
-check_libraries_are_installed(Target, GradeDirName, MaybeStdLibDir,
-        MercuryLibDirs, InitFileDirs, Libs, !:Specs, !IO) :-
+check_libraries_are_installed(Globals, Libs, !:Specs, !IO) :-
     !:Specs = [],
-    check_stdlib_is_installed(Target, GradeDirName, MaybeStdLibDir,
-        !Specs, !IO),
-    list.foldl2(
-        check_library_is_installed(Target, GradeDirName,
-            MercuryLibDirs, InitFileDirs),
-        Libs, !Specs, !IO).
+    check_stdlib_is_installed(Globals, !Specs, !IO),
+    list.foldl2(check_library_is_installed(Globals), Libs, !Specs, !IO).
 
 :- type check_libraries_maybe_done
     --->    check_libraries_not_done
@@ -378,13 +371,19 @@ check_libraries_are_installed(Target, GradeDirName, MaybeStdLibDir,
 
 %---------------------------------------------------------------------------%
 
-:- pred check_stdlib_is_installed(compilation_target::in, string::in,
-    maybe(string)::in, list(error_spec)::in, list(error_spec)::out,
-    io::di, io::uo) is det.
+:- pred check_stdlib_is_installed(globals::in,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-check_stdlib_is_installed(Target, GradeDirName, MaybeStdLibDir, !Specs, !IO) :-
+check_stdlib_is_installed(Globals, !Specs, !IO) :-
+    % NOTE If you modify the code of this predicate to look at
+    % any new component of Globals, then you have to include that component
+    % in the key of the cache.
+    globals.lookup_maybe_string_option(Globals,
+        mercury_standard_library_directory, MaybeStdLibDir),
     (
         MaybeStdLibDir = yes(StdLibDir),
+        globals.get_target(Globals, Target),
+        globals.get_grade_dir(Globals, GradeDirName),
         (
             Target = target_c,
             % In C grades, check for the presence of mer_std.init in the
@@ -421,12 +420,15 @@ check_stdlib_is_installed(Target, GradeDirName, MaybeStdLibDir, !Specs, !IO) :-
         MaybeStdLibDir = no
     ).
 
-:- pred check_library_is_installed(compilation_target::in, string::in,
-    list(string)::in, list(string)::in, string::in,
+:- pred check_library_is_installed(globals::in, string::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-check_library_is_installed(Target, GradeDirName, MercuryLibDirs, InitFileDirs,
-        LibName, !Specs, !IO) :-
+check_library_is_installed(Globals, LibName, !Specs, !IO) :-
+    % NOTE If you modify the code of this predicate to look at
+    % any new component of Globals, then you have to include that component
+    % in the key of the cache.
+    globals.get_target(Globals, Target),
+    globals.get_options(Globals, OptionTable),
     (
         % In C grades, check for the presence of a library by seeing
         % if its .init files exists.
@@ -435,7 +437,7 @@ check_library_is_installed(Target, GradeDirName, MercuryLibDirs, InitFileDirs,
         % NOTE: we don't look up the value of the option init_files here
         % because that may include .init files other than those associated with
         % any libraries.
-        SearchDirs = InitFileDirs
+        SearchWhichDirs = search_init_file_dirs(OptionTable)
     ;
         (
             % In Java grades, check for the presence of the JAR for library.
@@ -446,16 +448,17 @@ check_library_is_installed(Target, GradeDirName, MercuryLibDirs, InitFileDirs,
             Target = target_csharp,
             TestFileName = LibName ++ ".dll"
         ),
-        SearchDirs = list.map(
-            (func(LibDir) = LibDir / "lib" / GradeDirName),
-            MercuryLibDirs)
+        SearchWhichDirs = search_mercury_library_dirs(Globals)
     ),
-    search_for_file_returning_dir(SearchDirs, TestFileName, MaybeDirName, !IO),
+    search_for_file_returning_dir(SearchWhichDirs, TestFileName,
+        _SearchDirs, MaybeDirName, !IO),
     (
         MaybeDirName = ok(_)
     ;
         MaybeDirName = error(_),
         io.progname_base("mercury_compile", ProgName, !IO),
+        globals.get_grade_dir(Globals, GradeDirName),
+        % XXX SEARCH_ERROR TestFileName, _SearchDirs
         Pieces = [fixed(ProgName), suffix(":"), words("error:"),
             words("the library"), quote(LibName), words("cannot be found"),
             words("in grade"), quote(GradeDirName), suffix("."), nl],

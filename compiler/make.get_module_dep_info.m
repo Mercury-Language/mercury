@@ -154,14 +154,13 @@ maybe_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
 
 do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
         ModuleName, !:MaybeModuleDepInfo, !Info, !IO) :-
-    globals.lookup_accumulating_option(Globals, search_directories,
-        SearchDirs),
     ModuleDepExt = ext_cur_ngs(ext_cur_ngs_misc_module_dep),
     % XXX LEGACY
     module_name_to_file_name(Globals, $pred, ModuleDepExt,
         ModuleName, DepFileName, _DepFileNameProposed),
-    get_file_timestamp(SearchDirs, DepFileName, MaybeDepFileTimestamp,
-        !Info, !IO),
+    globals.get_options(Globals, OptionTable),
+    get_file_timestamp(search_normal_dirs(OptionTable), DepFileName,
+        SearchDirs, MaybeDepFileTimestamp, !Info, !IO),
     (
         MaybeDepFileTimestamp = ok(DepFileTimestamp),
         % We can't just use
@@ -171,8 +170,8 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
         % will fail if the module name doesn't match the file name, but
         % that case is handled below.
         module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
-        get_file_timestamp([dir.this_directory], SourceFileName,
-            MaybeSourceFileTimestamp, !Info, !IO),
+        get_file_timestamp(search_cur_dir, SourceFileName,
+            _SearchCurDirs, MaybeSourceFileTimestamp, !Info, !IO),
         (
             MaybeSourceFileTimestamp = ok(SourceFileTimestamp),
             ( if
@@ -189,7 +188,7 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
                 % file would have a later timestamp than the .module_dep file,
                 % though, so the other branch would be taken.
                 find_and_read_module_dep_file(ProgressStream, Globals,
-                    RebuildModuleDeps, [dir.this_directory], ModuleName,
+                    RebuildModuleDeps, search_cur_dir, ModuleName,
                     !Info, !IO)
             else
                 try_to_write_module_dep_files_for_top_module(ProgressStream,
@@ -198,7 +197,8 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
         ;
             MaybeSourceFileTimestamp = error(_),
             find_and_read_module_dep_file(ProgressStream, Globals,
-                RebuildModuleDeps, SearchDirs, ModuleName, !Info, !IO),
+                RebuildModuleDeps, search_normal_dirs(OptionTable),
+                ModuleName, !Info, !IO),
 
             % Check for the case where the module name doesn't match the
             % source file name (e.g. parse.m contains module mdb.parse).
@@ -215,8 +215,8 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
             then
                 module_dep_info_get_source_file_name(ModuleDepInfo0,
                     SourceFileName1),
-                get_file_timestamp([dir.this_directory], SourceFileName1,
-                    MaybeSourceFileTimestamp1, !Info, !IO),
+                get_file_timestamp(search_cur_dir, SourceFileName1,
+                    _SearchCurDirs1, MaybeSourceFileTimestamp1, !Info, !IO),
                 (
                     MaybeSourceFileTimestamp1 = ok(SourceFileTimestamp1),
                     ( if
@@ -306,17 +306,17 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
 %---------------------------------------------------------------------------%
 
 :- pred find_and_read_module_dep_file(io.text_output_stream::in, globals::in,
-    maybe_rebuild_module_deps::in, list(dir_name)::in, module_name::in,
+    maybe_rebuild_module_deps::in, search_which_dirs::in, module_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_and_read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
-        SearchDirs, ModuleName, !Info, !IO) :-
+        SearchWhichDirs, ModuleName, !Info, !IO) :-
     % XXX LEGACY
-    module_name_to_search_file_name(Globals, $pred,
-        ext_cur_ngs(ext_cur_ngs_misc_module_dep), ModuleName,
+    ExtDep = ext_cur_ngs(ext_cur_ngs_misc_module_dep),
+    module_name_to_search_file_name(Globals, $pred, ExtDep, ModuleName,
         DepFileName, _DepFileNameProposed),
-    search_for_file_returning_dir_and_contents(SearchDirs, DepFileName,
-        MaybeDirAndContents, !IO),
+    search_for_file_returning_dir_and_contents(SearchWhichDirs,
+        DepFileName, _SearchDirs, MaybeDirAndContents, !IO),
     (
         MaybeDirAndContents = ok(DirAndContents),
         DirAndContents = dir_name_and_contents(DepFileDir, DepFileContents),
@@ -325,7 +325,7 @@ find_and_read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
         (
             ParseResult = ok1(ModuleSummary),
             handle_parsed_module_dep_file(ProgressStream, Globals,
-                SearchDirs, ModuleName, DepFileDir, DepFileName,
+                SearchWhichDirs, ModuleName, DepFileDir, DepFileName,
                 ModuleSummary, Result, !Info, !IO)
         ;
             ParseResult = error1(ParseErrorMsg),
@@ -366,12 +366,13 @@ find_and_read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
     ).
 
 :- pred handle_parsed_module_dep_file(io.text_output_stream::in, globals::in,
-    list(dir_name)::in, module_name::in, dir_name::in, file_name::in,
+    search_which_dirs::in, module_name::in, dir_name::in, file_name::in,
     module_dep_summary::in, maybe_error::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-handle_parsed_module_dep_file(ProgressStream, Globals, SearchDirs, ModuleName,
-        DepFileDir, DepFileName, ModuleSummary, Result, !Info, !IO) :-
+handle_parsed_module_dep_file(ProgressStream, Globals, SearchWhichDirs,
+        ModuleName, DepFileDir, DepFileName, ModuleSummary, Result,
+        !Info, !IO) :-
     ModuleDepInfo = module_dep_info_summary(ModuleSummary),
     MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
 
@@ -406,7 +407,7 @@ handle_parsed_module_dep_file(ProgressStream, Globals, SearchDirs, ModuleName,
             get_nested_children_list_of_top_module(MaybeTopModule),
         list.foldl2(
             find_and_read_module_dep_file(ProgressStream, Globals,
-                do_not_rebuild_module_deps, SearchDirs),
+                do_not_rebuild_module_deps, SearchWhichDirs),
             NestedSubModules, !Info, !IO),
         ( if some_module_has_dep_info(!.Info, NestedSubModules) then
             Result = error("error in nested submodules")

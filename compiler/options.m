@@ -983,7 +983,7 @@
     ;       cc
     ;       cflags
     ;       quoted_cflag
-    ;       c_include_directory
+    ;       c_include_directories
     ;       ansi_c
 
     % Flags for specific C compilers.
@@ -1954,7 +1954,7 @@ optdef(oc_target_comp, target_debug,                    bool(no)).
 optdef(oc_target_comp, cc,                              string("gcc")).
     % The `mmc' script will override the default with a value
     % determined at configuration time.
-optdef(oc_target_comp, c_include_directory,             accumulating([])).
+optdef(oc_target_comp, c_include_directories,           accumulating([])).
     % The `mmc' script will override the default with a value
     % determined at configuration time.
 optdef(oc_target_comp, ansi_c,                          bool(yes)).
@@ -3121,8 +3121,8 @@ long_table("c-optimize",           optopt_c_optimize).
 % more carefully. Perhaps target_debug could imply C debug if the target is C.
 % However for the moment they are just synonyms.
 long_table("c-debug",              target_debug).
-long_table("c-include-directory",  c_include_directory).
-long_table("c-include-dir",        c_include_directory).
+long_table("c-include-directory",  c_include_directories).
+long_table("c-include-dir",        c_include_directories).
 long_table("ansi-c",               ansi_c).
 long_table("cflags",               cflags).
 long_table("cflag",                quoted_cflag).
@@ -4336,7 +4336,7 @@ option_table_add_mercury_library_directory(Dir, !OptionTable) :-
     % handle_options.m after we know the grade.
     list.foldl(append_to_accumulating_option, [
         search_directories          - dir.make_path_name(Dir, "ints"),
-        c_include_directory         - dir.make_path_name(Dir, "inc"),
+        c_include_directories       - dir.make_path_name(Dir, "inc"),
         mercury_library_directories - Dir
     ], !OptionTable).
 
@@ -4345,7 +4345,7 @@ option_table_add_search_library_files_directory(Dir, !OptionTable) :-
     % after we know the grade.
     list.foldl(append_to_accumulating_option, [
         search_directories          - Dir,
-        c_include_directory         - Dir,
+        c_include_directories       - Dir,
         search_library_files_directories - Dir
     ], !OptionTable).
 

@@ -99,9 +99,8 @@
     % which is derived from the dependency graph between modules,
     % and not just the modules' names.
     %
-:- pred get_ext_opt_deps(globals::in, maybe_look_for_src::in, list(string)::in,
-    ext::in, list(module_name)::in, list(module_name)::out,
-    io::di, io::uo) is det.
+:- pred get_ext_opt_deps(globals::in, maybe_look_for_src::in, ext::in,
+    list(module_name)::in, list(module_name)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -114,6 +113,7 @@
 :- import_module parse_tree.find_module.        % XXX undesirable dependency
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.make_module_file_names.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -280,8 +280,6 @@ construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, AllDeps,
     then
         globals.lookup_bool_option(Globals, use_trans_opt_files, UseTransOpt),
         globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
-        globals.lookup_accumulating_option(Globals, intermod_directories,
-            IntermodDirs),
         ( UseTransOpt = no,  LookForSrc = look_for_src
         ; UseTransOpt = yes, LookForSrc = do_not_look_for_src
         ),
@@ -293,12 +291,12 @@ construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, AllDeps,
             ; UseTransOpt = yes
             )
         then
-            get_plain_trans_opt_deps(Globals, LookForSrc, IntermodDirs,
+            get_plain_trans_opt_deps(Globals, LookForSrc,
                 BaseDeps, PlainOptDeps, TransOptDeps, !Cache, !IO),
             MaybeTransOptDeps = yes(TransOptDeps)
         else
-            get_ext_opt_deps(Globals, LookForSrc, IntermodDirs,
-                ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+            ExtOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+            get_ext_opt_deps(Globals, LookForSrc, ExtOpt,
                 BaseDeps, PlainOptDeps, !IO),
             MaybeTransOptDeps = no
         ),
@@ -578,49 +576,51 @@ get_dependencies_from_graph(DepsGraph, ModuleName, Dependencies) :-
     % XXX Use `mmc --make' if that matters.
     %
 :- pred get_plain_trans_opt_deps(globals::in, maybe_look_for_src::in,
-    list(string)::in, list(module_name)::in,
-    list(module_name)::out, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out, list(module_name)::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-get_plain_trans_opt_deps(_, _, _, [], [], [], !Cache, !IO).
-get_plain_trans_opt_deps(Globals, LookForSrc, IntermodDirs, [Dep | Deps],
+get_plain_trans_opt_deps(_, _, [], [], [], !Cache, !IO).
+get_plain_trans_opt_deps(Globals, LookForSrc, [Dep | Deps],
         !:OptDeps, !:TransOptDeps, !Cache, !IO) :-
-    get_plain_trans_opt_deps(Globals, LookForSrc, IntermodDirs, Deps,
+    get_plain_trans_opt_deps(Globals, LookForSrc, Deps,
         !:OptDeps, !:TransOptDeps, !Cache, !IO),
+    globals.get_options(Globals, OptionTable),
     (
         LookForSrc = look_for_src,
-        search_for_module_source(IntermodDirs, Dep, MaybeFileName, !IO),
+        search_for_module_source(search_intermod_dirs(OptionTable), Dep,
+            _SearchDirsLook, MaybeFileName, !IO),
         (
             MaybeFileName = ok(_),
             !:OptDeps = [Dep | !.OptDeps],
             !:TransOptDeps = [Dep | !.TransOptDeps],
-            Found = yes
+            Found = found
         ;
             MaybeFileName = error(_),
-            Found = no
+            Found = not_found
         )
     ;
         LookForSrc = do_not_look_for_src,
-        Found = no
+        Found = not_found
     ),
     (
-        Found = no,
-        make_module_file_name(Globals, $pred,
-            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
-            Dep, OptName, !Cache, !IO),
-        search_for_file_returning_dir(IntermodDirs, OptName, MaybeOptDir, !IO),
+        Found = not_found,
+        ExtOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+        make_module_file_name(Globals, $pred, ExtOpt, Dep, OptName,
+            !Cache, !IO),
+        search_for_file_returning_dir(search_intermod_dirs(OptionTable),
+            OptName, _SearchDirsNotFoundOpt, MaybeOptDir, !IO),
         (
             MaybeOptDir = ok(_),
             !:OptDeps = [Dep | !.OptDeps]
         ;
             MaybeOptDir = error(_)
         ),
-        make_module_file_name(Globals, $pred,
-            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
-            Dep, TransOptName, !Cache, !IO),
-        search_for_file_returning_dir(IntermodDirs, TransOptName,
-            MaybeTransOptDir, !IO),
+        ExtTransOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
+        make_module_file_name(Globals, $pred, ExtTransOpt, Dep, TransOptName,
+            !Cache, !IO),
+        search_for_file_returning_dir(search_intermod_dirs(OptionTable),
+            TransOptName, _SearchDirsNotFoundTransOpt, MaybeTransOptDir, !IO),
         (
             MaybeTransOptDir = ok(_),
             !:TransOptDeps = [Dep | !.TransOptDeps]
@@ -628,17 +628,17 @@ get_plain_trans_opt_deps(Globals, LookForSrc, IntermodDirs, [Dep | Deps],
             MaybeTransOptDir = error(_)
         )
     ;
-        Found = yes
+        Found = found
     ).
 
-get_ext_opt_deps(_, _, _, _, [], [], !IO).
-get_ext_opt_deps(Globals, LookForSrc, IntermodDirs, Ext,
-        [Dep | Deps], !:OptDeps, !IO) :-
-    get_ext_opt_deps(Globals, LookForSrc, IntermodDirs, Ext,
-        Deps, !:OptDeps, !IO),
+get_ext_opt_deps(_, _, _, [], [], !IO).
+get_ext_opt_deps(Globals, LookForSrc, Ext, [Dep | Deps], !:OptDeps, !IO) :-
+    get_ext_opt_deps(Globals, LookForSrc, Ext, Deps, !:OptDeps, !IO),
+    globals.get_options(Globals, OptionTable),
     (
         LookForSrc = look_for_src,
-        search_for_module_source(IntermodDirs, Dep, Result1, !IO),
+        search_for_module_source(search_intermod_dirs(OptionTable), Dep,
+            _SearchDirsLook, Result1, !IO),
         (
             Result1 = ok(_),
             !:OptDeps = [Dep | !.OptDeps],
@@ -656,7 +656,8 @@ get_ext_opt_deps(Globals, LookForSrc, IntermodDirs, Ext,
         % XXX LEGACY
         module_name_to_search_file_name(Globals, $pred, Ext, Dep,
             OptName, _OptNameProposed),
-        search_for_file(IntermodDirs, OptName, MaybeOptDir, !IO),
+        search_for_file(search_intermod_dirs(OptionTable), OptName,
+            _SearchDirsNotFound, MaybeOptDir, !IO),
         (
             MaybeOptDir = ok(_),
             !:OptDeps = [Dep | !.OptDeps]

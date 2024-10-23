@@ -444,12 +444,8 @@ process_options_std(ProgressStream, ErrorStream, DefaultOptionTable,
         Result = opr_failure(Specs)
     ;
         MaybeError = no,
-        getopt.lookup_accumulating_option(ArgsOptionTable,
-            options_search_directories, OptionSearchDirectories),
-        getopt.lookup_accumulating_option(ArgsOptionTable,
-            options_files, OptionsFiles),
         read_options_files_named_in_options_file_option(ProgressStream,
-            OptionSearchDirectories, OptionsFiles, OptionsVariables0,
+            ArgsOptionTable, OptionsVariables0,
             OptFileNonUndefSpecs, OptFileUndefSpecs, !IO),
         getopt.lookup_bool_option(ArgsOptionTable,
             warn_undefined_options_variables, WarnUndef),

@@ -428,11 +428,11 @@ read_module_src(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors,
         Search, ModuleName, ExpectationContexts, ReadModuleAndTimestamps,
         HaveModule, !IO) :-
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
-        ModuleName, fk_src, FileName0, ReadDoneMsg, SearchDirs, !IO),
+        ModuleName, fk_src, FileName0, ReadDoneMsg, SearchWhichDirs, !IO),
     % For `.m' files, we need to deal with the case where the module name
     % does not match the file name.
-    search_for_module_source_and_stream(SearchDirs, ModuleName,
-        MaybeFileNameAndStream, !IO),
+    search_for_module_source_and_stream(SearchWhichDirs, ModuleName,
+        _SearchDirs, MaybeFileNameAndStream, !IO),
     (
         MaybeFileNameAndStream = ok(FileNameAndStream),
         actually_read_module_src(Globals, FileNameAndStream, ModuleName,
@@ -477,9 +477,9 @@ read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
         ReadReasonMsg, Search, ReadModuleAndTimestamps, HaveModule, !IO) :-
     read_module_begin_from_file(ProgressStream, Globals, ReadReasonMsg, Search,
         FileName, FileNameDotM, DefaultModuleName,
-        ReadDoneMsg, SearchDirs, !IO),
-    search_for_file_and_stream(SearchDirs, FileNameDotM,
-        MaybeFileNameAndStream, !IO),
+        ReadDoneMsg, SearchWhichDirs, !IO),
+    search_for_file_and_stream(SearchWhichDirs, FileNameDotM,
+        _SearchDirs, MaybeFileNameAndStream, !IO),
     (
         MaybeFileNameAndStream = ok(FileNameAndStream),
         actually_read_module_src(Globals, FileNameAndStream,
@@ -1133,20 +1133,21 @@ do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
     % and an open input stream reading from that file. Closing that stream
     % is the caller's responsibility.
     %
-:- pred search_for_file_and_stream_or_error(list(dir_name)::in, file_name::in,
-    maybe_file_and_stream::out, io::di, io::uo) is det.
+:- pred search_for_file_and_stream_or_error(search_which_dirs::in,
+    file_name::in, maybe_file_and_stream::out, io::di, io::uo) is det.
 
-search_for_file_and_stream_or_error(SearchDirs, FileName0,
+search_for_file_and_stream_or_error(SearchWhichDirs, FileName0,
         MaybeFileNameAndStream, !IO) :-
     % NB. Consider using search_for_file_returning_dir_and_stream,
     % which does not canonicalise the path, and is therefore more efficient.
-    search_for_file_and_stream(SearchDirs, FileName0,
-        RawMaybeFileNameAndStream, !IO),
+    search_for_file_and_stream(SearchWhichDirs, FileName0,
+        _SearchDirs, RawMaybeFileNameAndStream, !IO),
     (
         RawMaybeFileNameAndStream = ok(FileNameAndStream),
         MaybeFileNameAndStream = mfas_ok(FileNameAndStream)
     ;
         RawMaybeFileNameAndStream = error(ErrorMsg),
+        % XXX SEARCH_ERROR _SearchDirs
         io_error_to_read_module_errors(frme_could_not_find_file,
             phase_find_files(FileName0), ErrorMsg, Errors, !IO),
         MaybeFileNameAndStream = mfas_error(Errors)
@@ -1188,12 +1189,12 @@ get_default_module_name_for_file(FileName, FileNameDotM,
 
 :- pred read_module_begin_from_file(io.text_output_stream::in, globals::in,
     read_reason_msg::in, maybe_search::in, file_name::in, file_name::in,
-    module_name::out, read_done_msg::out, list(string)::out,
+    module_name::out, read_done_msg::out, search_which_dirs::out,
     io::di, io::uo) is det.
 
 read_module_begin_from_file(ProgressStream, Globals, ReadReasonMsg, Search,
         FileName, FileNameDotM, DefaultModuleName, ReadDoneMsg,
-        SearchDirs, !IO) :-
+        SearchWhichDirs, !IO) :-
     % XXX Do not assume that the name of FileNameDotM guarantees
     % that the string it holds ends in ".m".
     get_default_module_name_for_file(FileName, FileNameDotM,
@@ -1202,22 +1203,23 @@ read_module_begin_from_file(ProgressStream, Globals, ReadReasonMsg, Search,
     % with read_module_begin.
     (
         Search = do_search,
-        globals.lookup_accumulating_option(Globals, search_directories,
-            SearchDirs)
+        globals.get_options(Globals, OptionTable),
+        SearchWhichDirs = search_normal_dirs(OptionTable)
     ;
         Search = do_not_search,
-        SearchDirs = [dir.this_directory]
+        SearchWhichDirs = search_cur_dir
     ),
     output_read_reason_msg(ProgressStream, Globals, ReadReasonMsg,
         FileNameDotM, ReadDoneMsg, !IO).
 
 :- pred read_module_begin(io.text_output_stream::in, globals::in,
     read_reason_msg::in, maybe_search::in, module_name::in, file_kind::in,
-    file_name::out, read_done_msg::out, list(string)::out,
+    file_name::out, read_done_msg::out, search_which_dirs::out,
     io::di, io::uo) is det.
 
 read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
-        ModuleName, FileKind, FileName, ReadDoneMsg, SearchDirs, !IO) :-
+        ModuleName, FileKind, FileName, ReadDoneMsg, SearchWhichDirs, !IO) :-
+    globals.get_options(Globals, OptionTable),
     (
         FileKind = fk_src,
         % For the call to module_name_to_source_file_name, the value of Search
@@ -1225,21 +1227,20 @@ read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         module_name_to_source_file_name(ModuleName, FileName, !IO),
         (
             Search = do_search,
-            globals.lookup_accumulating_option(Globals, search_directories,
-                SearchDirs)
+            SearchWhichDirs = search_normal_dirs(OptionTable)
         ;
             Search = do_not_search,
-            SearchDirs = [dir.this_directory]
+            SearchWhichDirs = search_cur_dir
         )
     ;
         (
             FileKind = fk_int(IntFileKind),
             int_file_kind_to_extension(IntFileKind, _ExtStr, Ext),
-            SearchOpt = search_directories
+            SearchWhichDirs0 = search_normal_dirs(OptionTable)
         ;
             FileKind = fk_opt(OptFileKind),
             opt_file_kind_to_extension(OptFileKind, _ExtStr, Ext),
-            SearchOpt = intermod_directories
+            SearchWhichDirs0 = search_intermod_dirs(OptionTable)
         ),
         % The rest of this predicate should be kept in sync
         % with read_module_begin_from_file.
@@ -1251,13 +1252,13 @@ read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
             % XXX LEGACY
             module_name_to_search_file_name(Globals, $pred, Ext,
                 ModuleName, FileName, _FileNameProposed),
-            globals.lookup_accumulating_option(Globals, SearchOpt, SearchDirs)
+            SearchWhichDirs = SearchWhichDirs0
         ;
             Search = do_not_search,
             % XXX LEGACY
             module_name_to_file_name(Globals, $pred, Ext,
                 ModuleName, FileName, _FileNameProposed),
-            SearchDirs = [dir.this_directory]
+            SearchWhichDirs = search_cur_dir
         )
     ),
     output_read_reason_msg(ProgressStream, Globals, ReadReasonMsg,

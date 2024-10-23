@@ -23,6 +23,7 @@
 :- import_module make.make_info.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.find_module.
 
 :- import_module io.
 :- import_module list.
@@ -48,12 +49,21 @@
     maybe_search::in, target_file::in, maybe_error(timestamp)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % Find the timestamp of the first file matching the given
-    % file name in one of the given directories.
+    % get_file_timestamp(SearchWhichDirs, FileName,
+    %   SearchDirs, MaybeTimestamp, !Info, !IO):
     %
-:- pred get_file_timestamp(list(dir_name)::in, file_name::in,
-    maybe_error(timestamp)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    % Find the timestamp of the first file matching the given
+    % file name in one of the search directories. We return the list of
+    % directories we search in SearchDirs, but *only* if we actually did
+    % a search; if we got MaybeTimestamp from the cache, we return
+    % SearchDirs = [] instead.
+    %
+    % XXX SEARCH_ERROR We should be able to do better than that,
+    % if needed; I (zs) don't know (yet) whether it is needed.
+    %
+:- pred get_file_timestamp(search_which_dirs::in,
+    file_name::in, list(dir_name)::out, maybe_error(timestamp)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -71,7 +81,6 @@
 :- import_module make.hash.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.find_module.
 :- import_module parse_tree.module_dep_info.
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
@@ -93,8 +102,8 @@ get_dependency_timestamp(ProgressStream, Globals, DependencyFile,
         MaybeTimestamp, !Info, !IO) :-
     (
         DependencyFile = dep_file(FileName),
-        SearchDirs = [dir.this_directory],
-        get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO)
+        get_file_timestamp(search_cur_dir, FileName,
+            _SearchDirs, MaybeTimestamp, !Info, !IO)
     ;
         DependencyFile = dep_target(Target),
         get_target_timestamp(ProgressStream, Globals, do_search, Target,
@@ -243,12 +252,13 @@ get_target_timestamp_uncached(ProgressStream, Globals, Search,
     TargetFile = target_file(ModuleName, TargetType),
     (
         Search = do_search,
-        get_search_directories(Globals, TargetType, SearchDirs)
+        get_search_directories(Globals, TargetType, SearchWhichDirs)
     ;
         Search = do_not_search,
-        SearchDirs = [dir.this_directory]
+        SearchWhichDirs = search_cur_dir
     ),
-    get_file_timestamp(SearchDirs, FileName, MaybeTimestamp0, !Info, !IO),
+    get_file_timestamp(SearchWhichDirs, FileName,
+        _SearchDirs, MaybeTimestamp0, !Info, !IO),
     ( if
         MaybeTimestamp0 = error(_),
         ( TargetType = module_target_opt
@@ -279,29 +289,50 @@ get_target_timestamp_uncached(ProgressStream, Globals, Search,
     ).
 
 :- pred get_search_directories(globals::in, module_target_type::in,
-    list(dir_name)::out) is det.
+    search_which_dirs::out) is det.
 
-get_search_directories(Globals, TargetType, SearchDirs) :-
-    MaybeOption = get_search_option_for_file_type(TargetType),
+get_search_directories(Globals, TargetType, SearchWhichDirs) :-
+    get_search_option_for_file_type(TargetType, MaybeOption),
     (
         MaybeOption = yes(SearchDirOption),
-        globals.lookup_accumulating_option(Globals, SearchDirOption,
-            SearchDirs0),
-        % Make sure the current directory is searched for C headers
-        % and libraries.
+        globals.get_options(Globals, OptionTable),
+        (
+            SearchDirOption = search_directories,
+            globals.lookup_accumulating_option(Globals, search_directories,
+                SearchDirs0),
+            SearchWhichDirs0 = search_normal_dirs(OptionTable)
+        ;
+            SearchDirOption = intermod_directories,
+            globals.lookup_accumulating_option(Globals, intermod_directories,
+                SearchDirs0),
+            SearchWhichDirs0 = search_intermod_dirs(OptionTable)
+        ;
+            SearchDirOption = c_include_directories,
+            globals.lookup_accumulating_option(Globals, c_include_directories,
+                SearchDirs0),
+            SearchWhichDirs0 = search_c_include_dirs(OptionTable)
+        ),
+        % Make sure the current directory is searched.
         ( if list.member(dir.this_directory, SearchDirs0) then
-            SearchDirs = SearchDirs0
+            SearchWhichDirs = coerce(SearchWhichDirs0)
         else
-            SearchDirs = [dir.this_directory | SearchDirs0]
+            SearchWhichDirs =
+                search_this_dir_and(dir.this_directory, SearchWhichDirs0)
         )
     ;
         MaybeOption = no,
-        SearchDirs = [dir.this_directory]
+        SearchWhichDirs = search_cur_dir
     ).
 
-:- func get_search_option_for_file_type(module_target_type) = maybe(option).
+:- type search_option =< option
+    --->    c_include_directories
+    ;       search_directories
+    ;       intermod_directories.
 
-get_search_option_for_file_type(ModuleTargetType) = MaybeSearchOption :-
+:- pred get_search_option_for_file_type(module_target_type::in,
+    maybe(search_option)::out) is det.
+
+get_search_option_for_file_type(ModuleTargetType, MaybeSearchOption) :-
     (
         ( ModuleTargetType = module_target_source
         ; ModuleTargetType = module_target_errors
@@ -329,17 +360,20 @@ get_search_option_for_file_type(ModuleTargetType) = MaybeSearchOption :-
         MaybeSearchOption = yes(intermod_directories)
     ;
         ModuleTargetType = module_target_c_header(_),
-        MaybeSearchOption = yes(c_include_directory)
+        MaybeSearchOption = yes(c_include_directories)
     ).
 
 %---------------------------------------------------------------------------%
 
-get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
+get_file_timestamp(SearchWhichDirs, FileName,
+        SearchDirs, MaybeTimestamp, !Info, !IO) :-
     FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
     ( if map.search(FileTimestampMap0, FileName, MaybeTimestamp0) then
+        SearchDirs = [],
         MaybeTimestamp = MaybeTimestamp0
     else
-        search_for_file_mod_time(SearchDirs, FileName, SearchResult, !IO),
+        search_for_file_mod_time(SearchWhichDirs, FileName,
+            SearchDirs, SearchResult, !IO),
         (
             SearchResult = ok(TimeT),
             Timestamp = time_t_to_timestamp(TimeT),

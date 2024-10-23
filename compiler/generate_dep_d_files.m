@@ -374,10 +374,8 @@ compute_deps_for_d_files(ProgressStream, Globals, ModuleName, DepsMap,
     digraph.tc(ImpDepsGraph, TransImpDepsGraph),
     digraph.compose(ImpDepsGraph, TransImpDepsGraph, IndirectDepsGraph),
 
-    globals.lookup_accumulating_option(Globals, intermod_directories,
-        IntermodDirs),
     ExtTransOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
-    get_ext_opt_deps(Globals, look_for_src, IntermodDirs, ExtTransOpt,
+    get_ext_opt_deps(Globals, look_for_src, ExtTransOpt,
         TransOptDepsOrdering, TransOptOrder, !IO).
 
     % Construct a pair of dependency graphs (the interface dependencies

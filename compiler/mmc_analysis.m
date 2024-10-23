@@ -128,8 +128,9 @@ mmc_module_name_to_read_file_name(Globals, Ext,
     % XXX LEGACY
     module_name_to_search_file_name(Globals, $pred, Ext,
         ModuleName, FileName0, _FileName0Proposed),
-    globals.lookup_accumulating_option(Globals, intermod_directories, Dirs),
-    search_for_file(Dirs, FileName0, MaybeFileName, !IO).
+    globals.get_options(Globals, OptionTable),
+    search_for_file(search_intermod_dirs(OptionTable), FileName0,
+        _SearchDirs, MaybeFileName, !IO).
 
 :- pred mmc_module_name_to_write_file_name(globals::in,
     ext::in, module_name::in, string::out, io::di, io::uo) is det.
