@@ -647,10 +647,8 @@ generate_unify_proc_body_du(SpecDefnInfo, CtorRepns, X, Y, Clauses, !Info) :-
         % is a kind of packed word operation.
         PackedOps = used_some_packed_word_ops
     else
-        list.map_foldl(generate_du_unify_case(SpecDefnInfo, UCOptions, X, Y),
-            CtorRepns, Disjuncts, !Info),
-        goal_info_init(Context, GoalInfo),
-        Goal0 = hlds_goal(disj(Disjuncts), GoalInfo),
+        generate_du_unify_cases(SpecDefnInfo, UCOptions, X, Y, CtorRepns,
+            Goal0, !Info),
         maybe_wrap_with_pretest_equality(Context, X, Y, no,
             Goal0, Goal, !Info),
         PackedOps = !.Info ^ upi_packed_ops
@@ -673,12 +671,10 @@ generate_unify_proc_body_du(SpecDefnInfo, CtorRepns, X, Y, Clauses, !Info) :-
         NonPackedUCOptions = UCOptions ^ uco_packed_unify_compare :=
             do_not_allow_packed_unify_compare,
         !Info ^ upi_packed_ops := used_no_packed_word_ops,
-        list.map_foldl(
-            generate_du_unify_case(SpecDefnInfo, NonPackedUCOptions, X, Y),
-            CtorRepns, NonPackedDisjuncts, !Info),
+        generate_du_unify_cases(SpecDefnInfo, NonPackedUCOptions, X, Y,
+            CtorRepns, NonPackedGoal0, !Info),
         expect(unify(!.Info ^ upi_packed_ops, used_no_packed_word_ops), $pred,
             "packed word ops show up after being disabled"),
-        NonPackedGoal0 = hlds_goal(disj(NonPackedDisjuncts), GoalInfo),
         maybe_wrap_with_pretest_equality(Context, X, Y, no,
             NonPackedGoal0, NonPackedGoal, !Info),
         quantify_clause_body(unify_non_in_in_modes, [X, Y], NonPackedGoal,
@@ -689,12 +685,47 @@ generate_unify_proc_body_du(SpecDefnInfo, CtorRepns, X, Y, Clauses, !Info) :-
         Clauses = [InInClause, NonInInClause]
     ).
 
-:- pred generate_du_unify_case(spec_pred_defn_info::in,
-    uc_options::in, prog_var::in, prog_var::in,
-    constructor_repn::in, hlds_goal::out,
+:- pred generate_du_unify_cases(spec_pred_defn_info::in, uc_options::in,
+    prog_var::in, prog_var::in, list(constructor_repn)::in, hlds_goal::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_du_unify_case(SpecDefnInfo, UCOptions, X, Y, CtorRepn, Goal, !Info) :-
+generate_du_unify_cases(SpecDefnInfo, UCOptions, X, Y, CtorRepns,
+        SwitchGoal, !Info) :-
+    list.foldl3(generate_du_unify_case(SpecDefnInfo, UCOptions, X, Y),
+        CtorRepns, [], IntEqConsIds, [], NonIntEqCases, !Info),
+    list.sort(IntEqConsIds, SortedIntEqConsIds),
+    Context = SpecDefnInfo ^ spdi_context,
+    goal_info_init(Context, GoalInfo),
+    (
+        SortedIntEqConsIds = [],
+        Cases = NonIntEqCases
+    ;
+        SortedIntEqConsIds = [HeadIntEqConsId | TailIntEqConsIds],
+        unify_proc_info_new_var("CastX", int_type, CastX, !Info),
+        unify_proc_info_new_var("CastY", int_type, CastY, !Info),
+        generate_cast(unsafe_type_cast, X, CastX, Context, CastXGoal0),
+        generate_cast(unsafe_type_cast, Y, CastY, Context, CastYGoal0),
+        goal_add_feature(feature_keep_constant_binding,
+            CastXGoal0, CastXGoal),
+        goal_add_feature(feature_keep_constant_binding,
+            CastYGoal0, CastYGoal),
+        create_pure_atomic_complicated_unification(CastY, rhs_var(CastX),
+            Context, umc_explicit, [], GoalUnifyCastXY),
+        GoalList = [CastXGoal, CastYGoal, GoalUnifyCastXY],
+        conj_list_to_goal(GoalList, GoalInfo, Goal),
+        IntEqCase = case(HeadIntEqConsId, TailIntEqConsIds, Goal),
+        Cases = [IntEqCase | NonIntEqCases]
+    ),
+    list.sort(Cases, SortedCases),
+    SwitchGoal = hlds_goal(switch(X, cannot_fail, SortedCases), GoalInfo).
+
+:- pred generate_du_unify_case(spec_pred_defn_info::in, uc_options::in,
+    prog_var::in, prog_var::in, constructor_repn::in,
+    list(cons_id)::in, list(cons_id)::out, list(case)::in, list(case)::out,
+    unify_proc_info::in, unify_proc_info::out) is det.
+
+generate_du_unify_case(SpecDefnInfo, UCOptions, X, Y, CtorRepn,
+        !IntEqConsIds, !Cases, !Info) :-
     CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, FunctorName,
         ConsTag, CtorArgRepns, FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
@@ -710,32 +741,17 @@ generate_du_unify_case(SpecDefnInfo, UCOptions, X, Y, CtorRepn, Goal, !Info) :-
     ( if
         (
             CtorArgRepns = [],
-            UCOptions ^ uco_constants_as_ints = compare_constants_as_ints,
-            % There are no arguments to compare.
-            RHSVars = []
+            UCOptions ^ uco_constants_as_ints = compare_constants_as_ints
         ;
             CtorArgRepns = [_ | _],
             ConsTag = local_args_tag(_),
             UCOptions ^ uco_packed_unify_compare = allow_packed_unify_compare,
             % There are arguments to compare, but they are stored
             % in the same word as the ptag and the sectag (if any).
-            make_fresh_vars(GiveVarsTypes, "_Arg", CtorArgRepns, RHSVars,
-                !Info),
             !Info ^ upi_packed_ops := used_some_packed_word_ops
         )
     then
-        RHS = rhs_functor(FunctorConsId, is_not_exist_constr, RHSVars),
-        create_pure_atomic_complicated_unification(X, RHS, Context,
-            umc_explicit, [], GoalUnifyX),
-        unify_proc_info_new_var("CastX", int_type, CastX, !Info),
-        unify_proc_info_new_var("CastY", int_type, CastY, !Info),
-        generate_cast(unsafe_type_cast, X, CastX, Context, CastXGoal0),
-        generate_cast(unsafe_type_cast, Y, CastY, Context, CastYGoal0),
-        goal_add_feature(feature_keep_constant_binding, CastXGoal0, CastXGoal),
-        goal_add_feature(feature_keep_constant_binding, CastYGoal0, CastYGoal),
-        create_pure_atomic_complicated_unification(CastY, rhs_var(CastX),
-            Context, umc_explicit, [], GoalUnifyY),
-        GoalList = [GoalUnifyX, CastXGoal, CastYGoal, GoalUnifyY]
+        !:IntEqConsIds = [FunctorConsId | !.IntEqConsIds]
     else
         MaybePackableArgsLocn = compute_maybe_packable_args_locn(ConsTag),
         unify_proc_info_get_module_info(!.Info, ModuleInfo),
@@ -755,10 +771,12 @@ generate_du_unify_case(SpecDefnInfo, UCOptions, X, Y, CtorRepn, Goal, !Info) :-
             umc_explicit, [], GoalUnifyX),
         create_pure_atomic_complicated_unification(Y, RHSY, Context,
             umc_explicit, [], GoalUnifyY),
-        GoalList = [GoalUnifyX, GoalUnifyY | UnifyArgsGoals]
-    ),
-    goal_info_init(Context, GoalInfo),
-    conj_list_to_goal(GoalList, GoalInfo, Goal).
+        GoalList = [GoalUnifyX, GoalUnifyY | UnifyArgsGoals],
+        goal_info_init(Context, GoalInfo),
+        conj_list_to_goal(GoalList, GoalInfo, Goal),
+        Case = case(FunctorConsId, [], Goal),
+        !:Cases = [Case | !.Cases]
+    ).
 
 :- pred generate_arg_unify_goals(uc_params::in,
     mer_type::in, prog_var::in, prog_var::in,
@@ -2943,25 +2961,6 @@ make_ptag_and_cell_offset_args(ArgNum, Ptag, CellOffset, Context, Args, Goals,
     Goals = [MakePtagGoal, MakeCellOffsetGoal].
 
 %---------------------%
-
-:- pred make_fresh_vars(maybe_give_vars_types::in, string::in,
-    list(constructor_arg_repn)::in, list(prog_var)::out,
-    unify_proc_info::in, unify_proc_info::out) is det.
-
-make_fresh_vars(GiveVarsTypes, Prefix, CtorArgRepns, Vars, !Info) :-
-    make_fresh_vars_loop(GiveVarsTypes, Prefix, 1, CtorArgRepns, Vars, !Info).
-
-:- pred make_fresh_vars_loop(maybe_give_vars_types::in,
-    string::in, int::in, list(constructor_arg_repn)::in, list(prog_var)::out,
-    unify_proc_info::in, unify_proc_info::out) is det.
-
-make_fresh_vars_loop(_GiveVarsTypes, _Prefix, _ArgNum, [], [], !Info).
-make_fresh_vars_loop(GiveVarsTypes, Prefix, ArgNum,
-        [CtorArgRepn | CtorArgRepns], [Var | Vars], !Info) :-
-    make_fresh_var(GiveVarsTypes, Prefix, ArgNum,
-        CtorArgRepn ^ car_type, Var, !Info),
-    make_fresh_vars_loop(GiveVarsTypes, Prefix, ArgNum + 1,
-        CtorArgRepns, Vars, !Info).
 
 :- pred make_fresh_var(maybe_give_vars_types::in, string::in, int::in,
     mer_type::in, prog_var::out,
