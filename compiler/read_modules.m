@@ -392,6 +392,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.find_module.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_module.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.source_file_map.
@@ -1164,10 +1165,10 @@ get_default_module_name_for_file(FileName, FileNameDotM,
     ),
     have_source_file_map(HaveMap, !IO),
     (
-        HaveMap = no,
+        HaveMap = not_found,
         file_name_to_module_name(BaseFileName, DefaultModuleName)
     ;
-        HaveMap = yes,
+        HaveMap = found,
         lookup_source_file_module(FileNameDotM, MaybeModuleName, !IO),
         (
             MaybeModuleName = yes(DefaultModuleName)

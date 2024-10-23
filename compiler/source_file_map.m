@@ -26,8 +26,8 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.maybe_error.
 
-:- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
@@ -58,9 +58,9 @@
 % Part 3: testing for the presence of a Mercury.modules file.
 %
 
-    % Return `yes' if there is a valid Mercury.modules file.
+    % Return `found' if there is a valid Mercury.modules file.
     %
-:- pred have_source_file_map(bool::out, io::di, io::uo) is det.
+:- pred have_source_file_map(maybe_found::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -94,9 +94,9 @@
 
 :- implementation.
 
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.find_module.
-:- import_module parse_tree.maybe_error.
+:- import_module parse_tree.parse_module.   % for peek_at_file
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.write_error_spec.
 
@@ -129,8 +129,6 @@ default_module_name_for_file(FileName, DefaultModuleName) :-
 %
 
 write_source_file_map(ProgressStream, Globals, FileNames, !IO) :-
-    % XXX We print error messages to stderr, because there is no appropriate
-    % module name we can give to globals.get_error_output_stream.
     ModulesFileName = modules_file_name,
     io.open_output(ModulesFileName, MapFileResult, !IO),
     (
@@ -155,7 +153,7 @@ write_source_file_map(ProgressStream, Globals, FileNames, !IO) :-
 
 write_source_file_map_line(ProgressStream, MapFileStream, Globals,
         FileName, SeenModules0, SeenModules, !IO) :-
-    find_module_name(FileName, MaybeModuleName, !IO),
+    find_name_of_module_in_file(FileName, MaybeModuleName, !IO),
     (
         MaybeModuleName = ok1(ModuleName),
         ( if
@@ -196,6 +194,41 @@ write_source_file_map_line(ProgressStream, MapFileStream, Globals,
         SeenModules = SeenModules0
     ).
 
+    % find_name_of_module_in_file(FileName, MaybeModuleName, !IO):
+    %
+    % Read the first item from the given file to find the module name.
+    %
+:- pred find_name_of_module_in_file(file_name::in, maybe1(module_name)::out,
+    io::di, io::uo) is det.
+
+find_name_of_module_in_file(FileName, MaybeModuleName, !IO) :-
+    io.open_input(FileName, OpenRes, !IO),
+    (
+        OpenRes = ok(FileStream),
+        ( if string.remove_suffix(FileName, ".m", PartialFileName0) then
+            PartialFileName = PartialFileName0
+        else
+            PartialFileName = FileName
+        ),
+        ( if dir.basename(PartialFileName, BaseName0) then
+            BaseName = BaseName0
+        else
+            BaseName = ""
+        ),
+        file_name_to_module_name(BaseName, DefaultModuleName),
+        peek_at_file(FileStream, FileName, DefaultModuleName,
+            MaybeModuleName, !IO),
+        io.close_input(FileStream, !IO)
+    ;
+        OpenRes = error(Error),
+        ErrorMsg = io.error_message(Error),
+        io.progname_base("mercury_compile", Progname, !IO),
+        Pieces = [fixed(Progname), suffix(":"), words("error opening"),
+            quote(FileName), suffix(":"), words(ErrorMsg), suffix("."), nl],
+        Spec = no_ctxt_spec($pred, severity_error, phase_read_files, Pieces),
+        MaybeModuleName = error1([Spec])
+    ).
+
 %---------------------------------------------------------------------------%
 %
 % Part 3.
@@ -204,9 +237,9 @@ write_source_file_map_line(ProgressStream, MapFileStream, Globals,
 have_source_file_map(HaveMap, !IO) :-
     get_source_file_map(SourceFileMap, !IO),
     ( if bimap.is_empty(SourceFileMap) then
-        HaveMap = no
+        HaveMap = not_found
     else
-        HaveMap = yes
+        HaveMap = found
     ).
 
 %---------------------------------------------------------------------------%

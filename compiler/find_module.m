@@ -20,7 +20,6 @@
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.maybe_error.
 
 :- import_module io.
 :- import_module list.
@@ -166,21 +165,12 @@
     module_name::in, list(dir_name)::out,
     maybe_error(path_name_and_stream)::out, io::di, io::uo) is det.
 
-    % find_module_name(FileName, MaybeModuleName, !IO):
-    %
-    % Read the first item from the given file to find the module name.
-    %
-:- pred find_module_name(file_name::in, maybe1(module_name)::out,
-    io::di, io::uo) is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.parse_module.        % for peek_at_file
 
 :- import_module dir.
 :- import_module getopt.
@@ -491,36 +481,6 @@ compute_search_dirs(SearchWhich, Dirs) :-
             mercury_library_directories, LibDirs),
         globals.get_grade_dir(Globals, GradeDir),
         Dirs = list.map((func(LibDir) = LibDir / "lib" / GradeDir), LibDirs)
-    ).
-
-%---------------------------------------------------------------------------%
-
-find_module_name(FileName, MaybeModuleName, !IO) :-
-    io.open_input(FileName, OpenRes, !IO),
-    (
-        OpenRes = ok(FileStream),
-        ( if string.remove_suffix(FileName, ".m", PartialFileName0) then
-            PartialFileName = PartialFileName0
-        else
-            PartialFileName = FileName
-        ),
-        ( if dir.basename(PartialFileName, BaseName0) then
-            BaseName = BaseName0
-        else
-            BaseName = ""
-        ),
-        file_name_to_module_name(BaseName, DefaultModuleName),
-        peek_at_file(FileStream, FileName, DefaultModuleName,
-            MaybeModuleName, !IO),
-        io.close_input(FileStream, !IO)
-    ;
-        OpenRes = error(Error),
-        ErrorMsg = io.error_message(Error),
-        io.progname_base("mercury_compile", Progname, !IO),
-        Pieces = [fixed(Progname), suffix(":"), words("error opening"),
-            quote(FileName), suffix(":"), words(ErrorMsg), suffix("."), nl],
-        Spec = no_ctxt_spec($pred, severity_error, phase_read_files, Pieces),
-        MaybeModuleName = error1([Spec])
     ).
 
 %---------------------------------------------------------------------------%

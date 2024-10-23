@@ -134,6 +134,7 @@
 
 :- import_module libs.options.
 :- import_module parse_tree.get_dependencies.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
@@ -901,7 +902,7 @@ construct_subdir_short_rules(Globals, ModuleName,
 
 %---------------------%
 
-:- pred construct_any_needed_pattern_rules(bool::in,
+:- pred construct_any_needed_pattern_rules(maybe_found::in,
     module_name::in, module_name::in, string::in,
     string::in, string::in, string::in,
     string::in, string::in, string::in, string::in,
@@ -916,10 +917,10 @@ construct_any_needed_pattern_rules(HaveMap,
     % `--smart-recompilation' doesn't work if the file name is passed
     % and the module name doesn't match the file name.
     (
-        HaveMap = yes,
+        HaveMap = found,
         module_name_to_file_name_stem(SourceFileModuleName, ModuleArg)
     ;
-        HaveMap = no,
+        HaveMap = not_found,
         ModuleArg = SourceFileName
     ),
     ( if SourceFileName = default_source_file_name(ModuleName) then
