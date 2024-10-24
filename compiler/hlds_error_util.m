@@ -338,7 +338,6 @@ describe_several_pred_names(ModuleInfo, MaybeColor, ShouldModuleQualify,
 
 describe_one_proc_name(ModuleInfo, MaybeColor, ShouldModuleQualify,
         PredProcId) = Pieces :-
-    % ZZZ
     SuffixPieces = [],
     PredProcId = proc(PredId, ProcId),
     PredPieces = describe_one_pred_name(ModuleInfo, MaybeColor,
