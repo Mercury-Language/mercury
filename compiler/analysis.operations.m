@@ -1229,7 +1229,7 @@ write_analysis_files(ProgressStream, Compiler, ModuleInfo, ImportedModules0,
         Specs = [],
         update_analysis_registry(ModuleInfo, !Info, !IO),
 
-        % The current module was just compiled so we set its status to the
+        % The current module was just compiled, so we set its status to the
         % lub of all the new analysis results generated.
         ModuleStatus = lub_result_statuses(!.Info ^ new_analysis_results),
         ModuleStatusMap0 = !.Info ^ module_status_map,
@@ -1266,11 +1266,13 @@ write_analysis_files(ProgressStream, Compiler, ModuleInfo, ImportedModules0,
         set.fold(maybe_write_module_imdg(!.Info, Globals),
             LocalImportedModules, !IO),
 
-        % Touch a timestamp file to indicate the last time that this module was
-        % analysed.
-        module_name_to_write_file_name(Compiler, Globals,
-            ext_cur_ngs_gs(ext_cur_ngs_gs_an_ds_date), ThisModule,
-            TimestampFileName, !IO),
+        % Touch a timestamp file to indicate the last time that
+        % this module was analysed.
+        % XXX A grep for this extension shows that the compiler
+        % never actually even tries to look at the files we write here.
+        ExtDate = ext_cur_ngs_gs(ext_cur_ngs_gs_an_ds_date),
+        module_name_to_write_file_name(Compiler, Globals, ExtDate,
+            ThisModule, TimestampFileName, !IO),
         touch_file_datestamp(Globals, ProgressStream, TimestampFileName,
             _Succeeded, !IO)
     ).

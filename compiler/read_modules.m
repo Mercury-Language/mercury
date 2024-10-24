@@ -1247,9 +1247,9 @@ read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         % with read_module_begin_from_file.
         (
             Search = do_search,
-            % XXX CLEANUP We should either pass SearchDirs to
-            % module_name_to_search_file_name, or get it to give SearchDirs
-            % to us.
+            % XXX CLEANUP We should either pass SearchWhichDirs to
+            % module_name_to_search_file_name, or get it to give
+            % SearchWhichDirs to us.
             % XXX LEGACY
             module_name_to_search_file_name(Globals, $pred, Ext,
                 ModuleName, FileName, _FileNameProposed),

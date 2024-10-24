@@ -306,8 +306,8 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
 %---------------------------------------------------------------------------%
 
 :- pred find_and_read_module_dep_file(io.text_output_stream::in, globals::in,
-    maybe_rebuild_module_deps::in, search_which_dirs::in, module_name::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    maybe_rebuild_module_deps::in, search_which_dirs::in(search_normal_or_cur),
+    module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_and_read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
         SearchWhichDirs, ModuleName, !Info, !IO) :-
@@ -366,9 +366,9 @@ find_and_read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
     ).
 
 :- pred handle_parsed_module_dep_file(io.text_output_stream::in, globals::in,
-    search_which_dirs::in, module_name::in, dir_name::in, file_name::in,
-    module_dep_summary::in, maybe_error::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    search_which_dirs::in(search_normal_or_cur),
+    module_name::in, dir_name::in, file_name::in, module_dep_summary::in,
+    maybe_error::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
 handle_parsed_module_dep_file(ProgressStream, Globals, SearchWhichDirs,
         ModuleName, DepFileDir, DepFileName, ModuleSummary, Result,

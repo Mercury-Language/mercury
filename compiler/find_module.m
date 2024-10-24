@@ -66,6 +66,10 @@
     ;       search_options_file_dirs(option_table)
     ;       search_mercury_library_dirs(globals).
 
+:- inst search_normal_or_cur for search_which_dirs/0
+    --->    search_cur_dir
+    ;       search_normal_dirs(ground).
+
 %---------------------%
 
     % search_for_file(SearchWhichDirs, FileName,

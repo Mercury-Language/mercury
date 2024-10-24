@@ -553,6 +553,9 @@
     % The second, the "curdir" filename will always be in the current
     % directory.
     %
+    % The versions whose names include only "curdir" (without a "full")
+    % return only the filename in the current directory.
+    %
     % Note that these predicates are also used to create some "phony" Makefile
     % targets that do not have corresponding files, e.g. `<foo>.clean'.
     %
@@ -563,6 +566,8 @@
 :- pred module_name_to_file_name(globals::in,
     string::in, ext::in, module_name::in, file_name::out, file_name::out)
     is det.
+:- pred module_name_to_file_name_curdir(globals::in,
+    string::in, ext::in, module_name::in, file_name::out) is det.
 :- pred module_name_to_file_name_full_curdir(globals::in,
     string::in, ext::in, module_name::in, file_name::out, file_name::out,
     file_name::out) is det.
@@ -1070,6 +1075,12 @@ module_name_to_file_name(Globals, From, Ext,
         glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
     FullFileNameProposed =
         glue_dir_names_base_name(DirNamesProposed, CurDirFileName).
+
+module_name_to_file_name_curdir(Globals, From, Ext,
+        ModuleName, CurDirFileName) :-
+    module_name_to_file_name_ext(Globals, From, not_for_search,
+        yes(do_not_create_dirs), Ext, ModuleName,
+        _DirNamesLegacy, _DirNamesProposed, CurDirFileName).
 
 module_name_to_file_name_full_curdir(Globals, From, Ext,
         ModuleName, FullFileNameLegacy, FullFileNameProposed,
