@@ -1052,7 +1052,10 @@ bound_functor_list_is_free(ModuleInfo, [BoundFunctor | BoundFunctors]) :-
 %-----------------------------------------------------------------------------%
 
 inst_list_is_ground(_, [], []).
-% ZZZ length mismatch
+inst_list_is_ground(_, [], [_ | _]) :-
+    unexpected($pred, "length mismatch").
+inst_list_is_ground(_, [_ | _], []) :-
+    unexpected($pred, "length mismatch").
 inst_list_is_ground(ModuleInfo, [Type | Types], [Inst | Insts]) :-
     inst_is_ground(ModuleInfo, Type, Inst),
     inst_list_is_ground(ModuleInfo, Types, Insts).
@@ -1061,6 +1064,10 @@ inst_list_is_ground(ModuleInfo, [Type | Types], [Inst | Insts]) :-
     list(mer_inst)::in) is semidet.
 
 inst_list_is_ground_mt(_, [], []).
+inst_list_is_ground_mt(_, [], [_ | _]) :-
+    unexpected($pred, "length mismatch").
+inst_list_is_ground_mt(_, [_ | _], []) :-
+    unexpected($pred, "length mismatch").
 inst_list_is_ground_mt(ModuleInfo, [Type | Types], [Inst | Insts]) :-
     inst_is_ground_mt(ModuleInfo, Type, Inst),
     inst_list_is_ground_mt(ModuleInfo, Types, Insts).
@@ -1150,17 +1157,35 @@ inst_list_is_free(ModuleInfo, [Inst | Insts]) :-
     inst_list_is_free(ModuleInfo, Insts).
 
 inst_list_is_ground_or_dead(_, [], [], []).
-inst_list_is_ground_or_dead(ModuleInfo,
-        [Live | Lives], [Type | Types], [Inst | Insts]) :-
-    (
-        Live = is_live,
-        inst_is_ground(ModuleInfo, Type, Inst)
-    ;
-        Live = is_dead
-    ),
-    inst_list_is_ground_or_dead(ModuleInfo, Lives, Types, Insts).
+inst_list_is_ground_or_dead(ModuleInfo, Lives, Types, Insts) :-
+    ( if
+        Lives = [HeadLive | TailLives],
+        Types = [HeadType | TailTypes],
+        Insts = [HeadInst | TailInsts]
+    then
+        (
+            HeadLive = is_live,
+            inst_is_ground(ModuleInfo, HeadType, HeadInst)
+        ;
+            HeadLive = is_dead
+        ),
+        inst_list_is_ground_or_dead(ModuleInfo,
+            TailLives, TailTypes, TailInsts)
+    else if
+        Lives = [],
+        Types = [],
+        Insts = []
+    then
+        true
+    else
+        unexpected($pred, "length mismatch")
+    ).
 
 inst_list_is_ground_or_any_or_dead(_, [], []).
+inst_list_is_ground_or_any_or_dead(_, [], [_ | _]) :-
+    unexpected($pred, "length mismatch").
+inst_list_is_ground_or_any_or_dead(_, [_ | _], []) :-
+    unexpected($pred, "length mismatch").
 inst_list_is_ground_or_any_or_dead(ModuleInfo,
         [Live | Lives], [Inst | Insts]) :-
     (
