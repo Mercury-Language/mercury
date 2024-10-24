@@ -250,7 +250,7 @@ get_target_timestamp_uncached(ProgressStream, Globals, Search,
     TargetFile = target_file(ModuleName, TargetType),
     (
         Search = do_search,
-        get_search_directories(Globals, TargetType, SearchWhichDirs)
+        search_which_dirs_for_target_type(Globals, TargetType, SearchWhichDirs)
     ;
         Search = do_not_search,
         SearchWhichDirs = search_cur_dir
@@ -286,51 +286,12 @@ get_target_timestamp_uncached(ProgressStream, Globals, Search,
         MaybeTimestamp = MaybeTimestamp0
     ).
 
-:- pred get_search_directories(globals::in, module_target_type::in,
+:- pred search_which_dirs_for_target_type(globals::in, module_target_type::in,
     search_which_dirs::out) is det.
 
-get_search_directories(Globals, TargetType, SearchWhichDirs) :-
-    get_search_option_for_file_type(TargetType, MaybeOption),
-    (
-        MaybeOption = yes(SearchDirOption),
-        globals.get_options(Globals, OptionTable),
-        (
-            SearchDirOption = search_directories,
-            globals.lookup_accumulating_option(Globals, search_directories,
-                SearchDirs0),
-            SearchWhichDirs0 = search_normal_dirs(OptionTable)
-        ;
-            SearchDirOption = intermod_directories,
-            globals.lookup_accumulating_option(Globals, intermod_directories,
-                SearchDirs0),
-            SearchWhichDirs0 = search_intermod_dirs(OptionTable)
-        ;
-            SearchDirOption = c_include_directories,
-            globals.lookup_accumulating_option(Globals, c_include_directories,
-                SearchDirs0),
-            SearchWhichDirs0 = search_c_include_dirs(OptionTable)
-        ),
-        % Make sure the current directory is searched.
-        ( if list.member(dir.this_directory, SearchDirs0) then
-            SearchWhichDirs = coerce(SearchWhichDirs0)
-        else
-            SearchWhichDirs =
-                search_this_dir_and(dir.this_directory, SearchWhichDirs0)
-        )
-    ;
-        MaybeOption = no,
-        SearchWhichDirs = search_cur_dir
-    ).
-
-:- type search_option =< option
-    --->    c_include_directories
-    ;       search_directories
-    ;       intermod_directories.
-
-:- pred get_search_option_for_file_type(module_target_type::in,
-    maybe(search_option)::out) is det.
-
-get_search_option_for_file_type(ModuleTargetType, MaybeSearchOption) :-
+search_which_dirs_for_target_type(Globals, ModuleTargetType,
+        SearchWhichDirs) :-
+    globals.get_options(Globals, OptionTable),
     (
         ( ModuleTargetType = module_target_source
         ; ModuleTargetType = module_target_errors
@@ -343,22 +304,45 @@ get_search_option_for_file_type(ModuleTargetType, MaybeSearchOption) :-
         ; ModuleTargetType = module_target_fact_table_object(_, _)
         ; ModuleTargetType = module_target_xml_doc
         ),
-        MaybeSearchOption = no
+        SearchWhichDirs = search_cur_dir
     ;
         ( ModuleTargetType = module_target_int0
         ; ModuleTargetType = module_target_int1
         ; ModuleTargetType = module_target_int2
         ; ModuleTargetType = module_target_int3
         ),
-        MaybeSearchOption = yes(search_directories)
+        globals.lookup_accumulating_option(Globals, search_directories,
+            SearchDirs0),
+        SearchWhichDirs0 = search_normal_dirs(OptionTable),
+        ensure_cur_dir_is_searched(SearchDirs0,
+            SearchWhichDirs0, SearchWhichDirs)
     ;
         ( ModuleTargetType = module_target_opt
         ; ModuleTargetType = module_target_analysis_registry
         ),
-        MaybeSearchOption = yes(intermod_directories)
+        globals.lookup_accumulating_option(Globals, intermod_directories,
+            SearchDirs0),
+        SearchWhichDirs0 = search_intermod_dirs(OptionTable),
+        ensure_cur_dir_is_searched(SearchDirs0,
+            SearchWhichDirs0, SearchWhichDirs)
     ;
         ModuleTargetType = module_target_c_header(_),
-        MaybeSearchOption = yes(c_include_directories)
+        globals.lookup_accumulating_option(Globals, c_include_directories,
+            SearchDirs0),
+        SearchWhichDirs0 = search_c_include_dirs(OptionTable),
+        ensure_cur_dir_is_searched(SearchDirs0,
+            SearchWhichDirs0, SearchWhichDirs)
+    ).
+
+:- pred ensure_cur_dir_is_searched(list(dir_name)::in,
+    search_which_tail_dirs::in, search_which_dirs::out) is det.
+
+ensure_cur_dir_is_searched(SearchDirs0, SearchWhichDirs0, SearchWhichDirs) :-
+    CurDir = dir.this_directory,
+    ( if list.member(CurDir, SearchDirs0) then
+        SearchWhichDirs = coerce(SearchWhichDirs0)
+    else
+        SearchWhichDirs = search_this_dir_and(CurDir, SearchWhichDirs0)
     ).
 
 %---------------------------------------------------------------------------%
@@ -381,6 +365,7 @@ get_file_timestamp(SearchWhichDirs, FileName,
         ;
             SearchResult = error(_SearchError),
             % XXX MAKE We should not ignore _SearchError.
+            % XXX SEARCH_ERROR SearchDirs
             string.format("file `%s' not found", [s(FileName)], NotFoundMsg),
             MaybeTimestamp = error(NotFoundMsg)
         )
