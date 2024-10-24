@@ -1577,8 +1577,8 @@ generate_compare_proc_body_du_quad(SpecDefnInfo, UCOptions, CtorRepns,
         CtorRepns = [CtorRepn],
         % If the type has only one data constructor, then the data constructors
         % of X and Y cannot be different.
-        generate_compare_case(SpecDefnInfo, UCOptions,
-            cons_ids_known_to_match, CtorRepn, R, X, Y, Goal, !Info)
+        generate_compare_goal(SpecDefnInfo, UCOptions,
+            cons_ids_known_to_match, CtorRepn, R, X, Y, _ConsId, Goal, !Info)
     ;
         CtorRepns = [_, _ | _],
         Context = SpecDefnInfo ^ spdi_context,
@@ -1642,8 +1642,9 @@ generate_compare_du_quad_outer_switch_arms(SpecDefnInfo, UCOptions,
     ( if CtorArity = 0 then
         EqGoal = ReturnEq
     else
-        generate_compare_case(SpecDefnInfo, UCOptions,
-            cons_ids_not_known_to_match, CtorRepn, R, X, Y, EqGoal, !Info)
+        generate_compare_goal(SpecDefnInfo, UCOptions,
+            cons_ids_not_known_to_match, CtorRepn, R, X, Y,
+            _ConsId, EqGoal, !Info)
     ),
     EqCase = case(CtorRepnConsId, [], EqGoal),
 
@@ -1781,8 +1782,19 @@ generate_compare_proc_body_du_linear(SpecDefnInfo, UCOptions, CtorRepns,
         umc_explicit, [], ReturnResultGoal),
 
     generate_compare_du_linear_cases(SpecDefnInfo, UCOptions, CtorRepns,
-        R, X, Y, Cases, !Info),
-    CasesGoal = hlds_goal(disj(Cases), GoalInfo),
+        R, X, Y, [], EqConsIds, [], NonEqCases, !Info),
+    list.sort(EqConsIds, SortedEqConsIds),
+    (
+        SortedEqConsIds = [],
+        Cases = NonEqCases
+    ;
+        SortedEqConsIds = [HeadEqConsId | TailEqConsIds],
+        generate_return_equal(R, Context, EqGoal),
+        EqCase = case(HeadEqConsId, TailEqConsIds, EqGoal),
+        Cases = [EqCase | NonEqCases]
+    ),
+    list.sort(Cases, SortedCases),
+    CasesGoal = hlds_goal(switch(X, cannot_fail, SortedCases), GoalInfo),
 
     build_simple_call(ModuleInfo, mercury_private_builtin_module,
         "compare_error", [], Context, AbortGoal),
@@ -1837,16 +1849,29 @@ generate_compare_proc_body_du_linear(SpecDefnInfo, UCOptions, CtorRepns,
 :- pred generate_compare_du_linear_cases(spec_pred_defn_info::in,
     uc_options::in, list(constructor_repn)::in,
     prog_var::in, prog_var::in, prog_var::in,
-    list(hlds_goal)::out, unify_proc_info::in, unify_proc_info::out) is det.
+    list(cons_id)::in, list(cons_id)::out, list(case)::in, list(case)::out,
+    unify_proc_info::in, unify_proc_info::out) is det.
 
 generate_compare_du_linear_cases(_SpecDefnInfo, _UCOptions,
-        [], _R, _X, _Y, [], !Info).
+        [], _R, _X, _Y, !EqConsIds, !Cases, !Info).
 generate_compare_du_linear_cases(SpecDefnInfo, UCOptions,
-        [CtorRepn | CtorRepns], R, X, Y, [Case | Cases], !Info) :-
-    generate_compare_case(SpecDefnInfo, UCOptions, cons_ids_known_to_match,
-        CtorRepn, R, X, Y, Case, !Info),
+        [CtorRepn | CtorRepns], R, X, Y, !EqConsIds, !Cases, !Info) :-
+    CtorRepn = ctor_repn(_Ordinal, _MaybeExistConstraints, FunctorName,
+        _ConsTag, ArgRepns, FunctorArity, _Ctxt),
+    (
+        ArgRepns = [],
+        TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
+        ConsId = du_data_ctor(du_ctor(FunctorName, FunctorArity, TypeCtor)),
+        !:EqConsIds = [ConsId | !.EqConsIds]
+    ;
+        ArgRepns = [_ | _],
+        generate_compare_goal(SpecDefnInfo, UCOptions, cons_ids_known_to_match,
+            CtorRepn, R, X, Y, ConsId, Goal, !Info),
+        Case = case(ConsId, [], Goal),
+        !:Cases = [Case | !.Cases]
+    ),
     generate_compare_du_linear_cases(SpecDefnInfo, UCOptions,
-        CtorRepns, R, X, Y, Cases, !Info).
+        CtorRepns, R, X, Y, !EqConsIds, !Cases, !Info).
 
 %---------------------%
 
@@ -1854,13 +1879,13 @@ generate_compare_du_linear_cases(SpecDefnInfo, UCOptions,
     --->    cons_ids_not_known_to_match
     ;       cons_ids_known_to_match.
 
-:- pred generate_compare_case(spec_pred_defn_info::in,
+:- pred generate_compare_goal(spec_pred_defn_info::in,
     uc_options::in, cons_ids_match::in, constructor_repn::in,
-    prog_var::in, prog_var::in, prog_var::in,
-    hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
+    prog_var::in, prog_var::in, prog_var::in, cons_id::out, hlds_goal::out,
+    unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_case(SpecDefnInfo, UCOptions, ConsIdsMatch, CtorRepn,
-        R, X, Y, Case, !Info) :-
+generate_compare_goal(SpecDefnInfo, UCOptions, ConsIdsMatch, CtorRepn,
+        R, X, Y, FunctorConsId, Goal, !Info) :-
     CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, FunctorName,
         ConsTag, ArgRepns, FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
@@ -1919,7 +1944,7 @@ generate_compare_case(SpecDefnInfo, UCOptions, ConsIdsMatch, CtorRepn,
     ),
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
-    conj_list_to_goal(GoalList, GoalInfo, Case).
+    conj_list_to_goal(GoalList, GoalInfo, Goal).
 
 %---------------------%
 
