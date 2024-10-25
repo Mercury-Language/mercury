@@ -589,13 +589,21 @@
 
 :- pred extract_spec_phase(error_spec::in, error_phase::out) is det.
 
-:- pred extract_spec_msgs(globals::in, error_spec::in,
-    list(error_msg)::out) is det.
-:- pred extract_spec_msgs_opt_table(option_table::in, error_spec::in,
-    list(error_msg)::out) is det.
-
 :- pred accumulate_contexts(error_spec::in,
     set(prog_context)::in, set(prog_context)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- pred extract_spec_msgs_and_id(globals::in, error_spec::in,
+    list(error_msg)::out, string::out) is det.
+:- pred extract_spec_msgs_and_id_opt_table(option_table::in, error_spec::in,
+    list(error_msg)::out, string::out) is det.
+
+:- pred extract_spec_msgs_and_maybe_add_id(globals::in, error_spec::in,
+    list(error_msg)::out) is det.
+
+:- pred maybe_add_error_spec_id(option_table::in, string::in,
+    list(error_msg)::in, list(error_msg)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -910,46 +918,6 @@ extract_spec_phase(Spec, Phase) :-
         Spec = conditional_spec(_, _, _, _, Phase, _)
     ).
 
-extract_spec_msgs(Globals, Spec, Msgs) :-
-    (
-        Spec = error_spec(_Id, _Severity, _Phase, Msgs)
-    ;
-        Spec = spec(_Id, _Severity, _Phase, Context, Pieces),
-        Msgs = [msg(Context, Pieces)]
-    ;
-        Spec = no_ctxt_spec(_Id, _Severity, _Phase, Pieces),
-        Msgs = [no_ctxt_msg(Pieces)]
-    ;
-        Spec = conditional_spec(_Id, Option, MatchValue, _Severity, _Phase,
-            Msgs0),
-        globals.lookup_bool_option(Globals, Option, Value),
-        ( if Value = MatchValue then
-            Msgs = Msgs0
-        else
-            Msgs = []
-        )
-    ).
-
-extract_spec_msgs_opt_table(OptionTable, Spec, Msgs) :-
-    (
-        Spec = error_spec(_Id, _Severity, _Phase, Msgs)
-    ;
-        Spec = spec(_Id, _Severity, _Phase, Context, Pieces),
-        Msgs = [msg(Context, Pieces)]
-    ;
-        Spec = no_ctxt_spec(_Id, _Severity, _Phase, Pieces),
-        Msgs = [no_ctxt_msg(Pieces)]
-    ;
-        Spec = conditional_spec(_Id, Option, MatchValue, _Severity, _Phase,
-            Msgs0),
-        getopt.lookup_bool_option(OptionTable, Option, Value),
-        ( if Value = MatchValue then
-            Msgs = Msgs0
-        else
-            Msgs = []
-        )
-    ).
-
 accumulate_contexts(Spec, !Contexts) :-
     (
         ( Spec = error_spec(_, _, _, Msgs)
@@ -973,6 +941,76 @@ accumulate_contexts_in_msg(Msg, !Contexts) :-
     ;
         MaybeContext = yes(Context),
         set.insert(Context, !Contexts)
+    ).
+
+%---------------------------------------------------------------------------%
+
+extract_spec_msgs_and_id(Globals, Spec, Msgs, Id) :-
+    (
+        Spec = error_spec(Id, _Severity, _Phase, Msgs)
+    ;
+        Spec = spec(Id, _Severity, _Phase, Context, Pieces),
+        Msgs = [msg(Context, Pieces)]
+    ;
+        Spec = no_ctxt_spec(Id, _Severity, _Phase, Pieces),
+        Msgs = [no_ctxt_msg(Pieces)]
+    ;
+        Spec = conditional_spec(Id, Option, MatchValue, _Severity, _Phase,
+            Msgs0),
+        globals.lookup_bool_option(Globals, Option, Value),
+        ( if Value = MatchValue then
+            Msgs = Msgs0
+        else
+            Msgs = []
+        )
+    ).
+
+extract_spec_msgs_and_id_opt_table(OptionTable, Spec, Msgs, Id) :-
+    (
+        Spec = error_spec(Id, _Severity, _Phase, Msgs)
+    ;
+        Spec = spec(Id, _Severity, _Phase, Context, Pieces),
+        Msgs = [msg(Context, Pieces)]
+    ;
+        Spec = no_ctxt_spec(Id, _Severity, _Phase, Pieces),
+        Msgs = [no_ctxt_msg(Pieces)]
+    ;
+        Spec = conditional_spec(Id, Option, MatchValue, _Severity, _Phase,
+            Msgs0),
+        getopt.lookup_bool_option(OptionTable, Option, Value),
+        ( if Value = MatchValue then
+            Msgs = Msgs0
+        else
+            Msgs = []
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+extract_spec_msgs_and_maybe_add_id(Globals, Spec, Msgs) :-
+    extract_spec_msgs_and_id(Globals, Spec, Msgs0, Id),
+    globals.get_options(Globals, OptionTable),
+    maybe_add_error_spec_id(OptionTable, Id, Msgs0, Msgs).
+
+maybe_add_error_spec_id(OptionTable, Id, Msgs0, Msgs) :-
+    getopt.lookup_bool_option(OptionTable, print_error_spec_id, PrintId),
+    (
+        PrintId = no,
+        Msgs = Msgs0
+    ;
+        PrintId = yes,
+        (
+            Msgs0 = [],
+            % Don't add a pred id message to an empty list of messages,
+            % since there is nothing to identify.
+            Msgs = Msgs0
+        ;
+            Msgs0 = [HeadMsg | _],
+            extract_msg_maybe_context(HeadMsg, MaybeHeadContext),
+            IdMsg = error_msg(MaybeHeadContext, treat_based_on_posn, 0u,
+                [always([words("error_spec id:"), fixed(Id), nl])]),
+            Msgs = Msgs0 ++ [IdMsg]
+        )
     ).
 
 %---------------------------------------------------------------------------%

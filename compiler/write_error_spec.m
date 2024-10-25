@@ -295,26 +295,7 @@ do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
             Msgs1 = []
         )
     ),
-    getopt.lookup_bool_option(OptionTable, print_error_spec_id, PrintId),
-    (
-        PrintId = no,
-        Msgs = Msgs1
-    ;
-        PrintId = yes,
-        (
-            Msgs1 = [],
-            % Don't add a pred id message to an empty list of messages,
-            % since there is nothing to identify.
-            Msgs = Msgs1
-        ;
-            Msgs1 = [HeadMsg | _],
-            extract_msg_maybe_context(HeadMsg, MaybeHeadContext),
-            IdMsg = error_msg(MaybeHeadContext, treat_based_on_posn, 0u,
-                [always([words("error_spec id:"), fixed(Id), nl])]),
-            Msgs = Msgs1 ++ [IdMsg]
-        )
-    ),
-
+    maybe_add_error_spec_id(OptionTable, Id, Msgs1, Msgs),
     collect_msgs(OptionTable, LimitErrorContextsMap, Msgs, treat_as_first,
         cord.init, AllMsgsCord, do_not_print_spec, MaybePrintSpec,
         !.AlreadyPrintedVerbose, UpdatedAlreadyPrintedVerbose, !IO),

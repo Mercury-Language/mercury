@@ -229,8 +229,8 @@ remove_conditionals_in_msg_component(OptionTable, Component, !ComponentCord) :-
     error_spec::in, error_spec::in, comparison_result::out) is det.
 
 compare_error_specs(OptionTable, ReverseErrorOrder, SpecA, SpecB, Result) :-
-    extract_spec_msgs_opt_table(OptionTable, SpecA, MsgsA),
-    extract_spec_msgs_opt_table(OptionTable, SpecB, MsgsB),
+    extract_spec_msgs_and_id_opt_table(OptionTable, SpecA, MsgsA, _IdA),
+    extract_spec_msgs_and_id_opt_table(OptionTable, SpecB, MsgsB, _IdB),
     compare_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, MsgsResult),
     (
         MsgsResult = (=),

@@ -229,7 +229,8 @@ write_used_file_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
             Context, AllPieces)
     ;
         UsedFileError = uf_unreadable_used_items(UsedItemSpecs),
-        list.map(extract_spec_msgs(Globals), UsedItemSpecs, MsgsList),
+        list.map(extract_spec_msgs_and_maybe_add_id(Globals),
+            UsedItemSpecs, MsgsList),
         list.condense(MsgsList, Msgs),
         % MaybeContext = find_first_context_in_msgs(Msgs),
         Spec = error_spec($pred, severity_informational, phase_read_files,

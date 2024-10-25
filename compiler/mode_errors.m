@@ -895,7 +895,7 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
             PredMultiModeError),
         mode_info_get_module_info(ModeInfo, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
-        extract_spec_msgs(Globals, SubSpec0, SubMsgs),
+        extract_spec_msgs_and_maybe_add_id(Globals, SubSpec0, SubMsgs),
         MultiModeMsgs = ConnectMsgs ++ SubMsgs
     ),
     AllMsgs = MainMsgs ++ UniqMsgs ++ MultiModeMsgs,
@@ -1514,7 +1514,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
     mode_info_set_mode_context(ModeContext, !ModeInfo),
 
     SubSpec0 = mode_error_to_spec(!.ModeInfo, ModeError),
-    extract_spec_msgs(Globals, SubSpec0, SubMsgs),
+    extract_spec_msgs_and_maybe_add_id(Globals, SubSpec0, SubMsgs),
 
     globals.lookup_bool_option(Globals, debug_modes, DebugModes),
     (
@@ -2022,7 +2022,8 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
         mode_info_set_var_table(CalleeVarTable, !ModeInfo),
         CalleeModeErrorSpec0 = mode_error_to_spec(!.ModeInfo, CalleeModeError),
         module_info_get_globals(ModuleInfo, Globals),
-        extract_spec_msgs(Globals, CalleeModeErrorSpec0, LaterMsgs0),
+        extract_spec_msgs_and_maybe_add_id(Globals,
+            CalleeModeErrorSpec0, LaterMsgs0),
         (
             LaterMsgs0 = [],
             LaterMsgs = []
