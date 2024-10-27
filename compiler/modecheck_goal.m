@@ -190,12 +190,11 @@ modecheck_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
         GoalExpr0 = plain_call(_, _, _, _, _, _),
         modecheck_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo)
     ;
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        modecheck_goal_foreign_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo)
+    ;
         GoalExpr0 = generic_call(_, _, _, _, _),
         modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo)
-    ;
-        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
-        modecheck_goal_call_foreign_proc(GoalExpr0, GoalInfo0, GoalExpr,
-            !ModeInfo)
     ;
         GoalExpr0 = conj(ConjType, Goals),
         modecheck_goal_conj(ConjType, Goals, GoalInfo0, GoalExpr, !ModeInfo)
@@ -232,8 +231,10 @@ modecheck_goal_unify(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     GoalExpr0 = unify(LHS0, RHS0, _UniMode, Unification0, UnifyContext),
     mode_checkpoint(enter, "unify", !ModeInfo),
     mode_info_set_call_context(call_context_unify(UnifyContext), !ModeInfo),
+
     modecheck_unify(LHS0, RHS0, Unification0, UnifyContext, GoalInfo0,
         GoalExpr, !ModeInfo),
+
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "unify", !ModeInfo).
 
@@ -250,21 +251,62 @@ modecheck_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     GoalExpr0 = plain_call(PredId, ProcId0, ArgVars0, _Builtin,
         MaybeCallUnifyContext, PredSymName),
     mode_checkpoint_sn(enter, "call", PredSymName, !ModeInfo),
-    mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
-        !ModeInfo),
+    CallId = mode_call_plain(PredId),
+    mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
+
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     MaybeKnownDeterminism = no,
-    modecheck_call_pred(PredId, MaybeKnownDeterminism, ProcId0, ProcId,
-        ArgVars0, ArgVars, GoalInfo0, ExtraGoals, !ModeInfo),
+    modecheck_plain_or_foreign_call(PredId, MaybeKnownDeterminism,
+        ProcId0, ProcId, ArgVars0, ArgVars, GoalInfo0, ExtraGoals, !ModeInfo),
+
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_pred_id(!.ModeInfo, CallerPredId),
     Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, ProcId),
-    Call = plain_call(PredId, ProcId, ArgVars, Builtin, MaybeCallUnifyContext,
-        PredSymName),
-    handle_extra_goals(Call, ExtraGoals, GoalInfo0, ArgVars0, ArgVars,
+
+    GoalExpr1 = plain_call(PredId, ProcId, ArgVars, Builtin,
+        MaybeCallUnifyContext, PredSymName),
+    handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, ArgVars0, ArgVars,
         InstMap0, GoalExpr, !ModeInfo),
+
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint_sn(exit, "call", PredSymName, !ModeInfo).
+
+%---------------------------------------------------------------------------%
+%
+% Modecheck foreign_proc goals.
+%
+
+:- pred modecheck_goal_foreign_call(
+    hlds_goal_expr::in(goal_expr_foreign_proc),
+    hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_goal_foreign_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
+    % To modecheck a foreign_proc, we just modecheck the proc for
+    % which it is the goal.
+    GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId0,
+        Args0, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
+    mode_checkpoint(enter, "foreign_proc", !ModeInfo),
+    CallId = mode_call_plain(PredId),
+    mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
+
+    mode_info_get_instmap(!.ModeInfo, InstMap0),
+    DeterminismKnown = no,
+    ArgVars0 = list.map(foreign_arg_var, Args0),
+    modecheck_plain_or_foreign_call(PredId, DeterminismKnown, ProcId0, ProcId,
+        ArgVars0, ArgVars, GoalInfo0, ExtraGoals, !ModeInfo),
+
+    % zs: The assignment to Pragma looks wrong: instead of Args0,
+    % I think we should use Args after the following call:
+    % replace_foreign_arg_vars(Args0, ArgVars, Args)
+    % or is there some reason why Args0 and Args would be the same?
+    GoalExpr1 = call_foreign_proc(Attributes, PredId, ProcId,
+        Args0, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
+    handle_extra_goals(GoalExpr1, ExtraGoals, GoalInfo0, ArgVars0, ArgVars,
+        InstMap0, GoalExpr, !ModeInfo),
+
+    mode_info_unset_call_context(!ModeInfo),
+    mode_checkpoint(exit, "foreign_proc", !ModeInfo).
 
 %---------------------------------------------------------------------------%
 %
@@ -278,13 +320,12 @@ modecheck_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
 modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     GoalExpr0 = generic_call(GenericCall, Args0, Modes0, _MaybeArgRegs,
         _Detism),
-
     mode_checkpoint(enter, "generic_call", !ModeInfo),
-    mode_info_get_instmap(!.ModeInfo, InstMap0),
-
     hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
     CallId = mode_call_generic(GenericCallId),
     mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
+
+    mode_info_get_instmap(!.ModeInfo, InstMap0),
     (
         GenericCall = higher_order(PredVar, _, PredOrFunc, _),
         modecheck_higher_order_call(GenericCallId, PredOrFunc, PredVar,
@@ -372,43 +413,6 @@ modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
 
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "generic_call", !ModeInfo).
-
-%---------------------------------------------------------------------------%
-%
-% Modecheck foreign_proc goals.
-%
-
-:- pred modecheck_goal_call_foreign_proc(
-    hlds_goal_expr::in(goal_expr_foreign_proc),
-    hlds_goal_info::in, hlds_goal_expr::out,
-    mode_info::in, mode_info::out) is det.
-
-modecheck_goal_call_foreign_proc(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
-    % To modecheck a foreign_proc, we just modecheck the proc for
-    % which it is the goal.
-    GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId0,
-        Args0, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
-
-    mode_checkpoint(enter, "foreign_proc", !ModeInfo),
-    mode_info_get_instmap(!.ModeInfo, InstMap0),
-    DeterminismKnown = no,
-    mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
-        !ModeInfo),
-    ArgVars0 = list.map(foreign_arg_var, Args0),
-    modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,
-        ArgVars0, ArgVars, GoalInfo0, ExtraGoals, !ModeInfo),
-
-    % zs: The assignment to Pragma looks wrong: instead of Args0,
-    % I think we should use Args after the following call:
-    % replace_foreign_arg_vars(Args0, ArgVars, Args)
-    % or is there some reason why Args0 and Args would be the same?
-    Pragma = call_foreign_proc(Attributes, PredId, ProcId, Args0, ExtraArgs,
-        MaybeTraceRuntimeCond, PragmaCode),
-    handle_extra_goals(Pragma, ExtraGoals, GoalInfo0, ArgVars0, ArgVars,
-        InstMap0, GoalExpr, !ModeInfo),
-
-    mode_info_unset_call_context(!ModeInfo),
-    mode_checkpoint(exit, "foreign_proc", !ModeInfo).
 
 %---------------------------------------------------------------------------%
 %

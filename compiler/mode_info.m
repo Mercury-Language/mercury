@@ -1201,10 +1201,11 @@ mode_info_unlock_vars(Reason, Vars, !ModeInfo) :-
 
 %---------------------------------------------------------------------------%
 
-mode_info_error(Vars, ModeError, !ModeInfo) :-
+mode_info_error(WaitingVars, ModeError, !ModeInfo) :-
     mode_info_get_context(!.ModeInfo, Context),
     mode_info_get_mode_context(!.ModeInfo, ModeContext),
-    ModeErrorInfo = mode_error_info(Vars, ModeError, Context, ModeContext),
+    ModeErrorInfo =
+        mode_error_info(WaitingVars, ModeError, Context, ModeContext),
     mode_info_add_error(ModeErrorInfo, !ModeInfo).
 
 mode_info_add_error(ModeErrorInfo, !ModeInfo) :-

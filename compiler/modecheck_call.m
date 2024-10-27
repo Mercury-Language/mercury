@@ -38,7 +38,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred modecheck_call_pred(pred_id::in, maybe(determinism)::in,
+:- pred modecheck_plain_or_foreign_call(pred_id::in, maybe(determinism)::in,
     proc_id::in, proc_id::out, list(prog_var)::in, list(prog_var)::out,
     hlds_goal_info::in, extra_goals::out, mode_info::in, mode_info::out)
     is det.
@@ -83,7 +83,7 @@
 
 %---------------------------------------------------------------------------%
 
-modecheck_call_pred(PredId, MaybeDetism, ProcId0, SelectedProcId,
+modecheck_plain_or_foreign_call(PredId, MaybeDetism, ProcId0, SelectedProcId,
         ArgVars0, ArgVars, _GoalInfo, ExtraGoals, !ModeInfo) :-
     mode_info_get_may_change_called_proc(!.ModeInfo, MayChangeCalledProc),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
@@ -115,9 +115,8 @@ modecheck_call_pred(PredId, MaybeDetism, ProcId0, SelectedProcId,
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         expect(unify(PredOrFunc, pf_predicate), $pred,
             "function with no mode, not even the default"),
-        mode_info_error(WaitingVars,
-            mode_error_callee_pred_has_no_mode_decl(PredId),
-            !ModeInfo),
+        ModeError = mode_error_callee_pred_has_no_mode_decl(PredId),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo),
         SelectedProcId = invalid_proc_id,
         ArgVars = ArgVars0,
         ExtraGoals = no_extra_goals

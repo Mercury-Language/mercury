@@ -100,11 +100,11 @@ modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo) :-
             mode_info_add_error(Error, !ModeInfo)
         ;
             TailDelayedGoals = [_ | _],
-            get_all_waiting_vars(DelayedGoals, Vars),
+            get_all_waiting_vars(DelayedGoals, WaitingVars),
             OoMDelayedGoals = one_or_more(HeadDelayedGoal, TailDelayedGoals),
             ModeError = mode_error_unschedulable_conjuncts(OoMDelayedGoals,
                 conj_floundered),
-            mode_info_error(Vars, ModeError, !ModeInfo)
+            mode_info_error(WaitingVars, ModeError, !ModeInfo)
         )
     ).
 

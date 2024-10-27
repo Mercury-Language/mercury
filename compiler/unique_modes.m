@@ -165,12 +165,12 @@ unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
         unique_modes_check_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr,
             !ModeInfo)
     ;
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
+        unique_modes_check_goal_foreign_call(GoalExpr0, GoalInfo0,
+            GoalExpr, !ModeInfo)
+    ;
         GoalExpr0 = generic_call(_, _, _, _, _),
         unique_modes_check_goal_generic_call(GoalExpr0, GoalExpr, !ModeInfo)
-    ;
-        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
-        unique_modes_check_goal_call_foreign_proc(GoalExpr0, GoalInfo0,
-            GoalExpr, !ModeInfo)
     ;
         GoalExpr0 = conj(GoalType0, Goals0),
         unique_modes_check_goal_conj(GoalType0, Goals0, GoalExpr, !ModeInfo)
@@ -225,8 +225,10 @@ unique_modes_check_goal_unify(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     GoalExpr0 = unify(LHS0, RHS0, _UniModes0, Unification0, UnifyContext),
     mode_checkpoint(enter, "unify", !ModeInfo),
     mode_info_set_call_context(call_context_unify(UnifyContext), !ModeInfo),
+
     modecheck_unify(LHS0, RHS0, Unification0, UnifyContext, GoalInfo0,
         GoalExpr, !ModeInfo),
+
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "unify", !ModeInfo).
 
@@ -244,12 +246,40 @@ unique_modes_check_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr,
     mode_checkpoint_sn(enter, "call", PredSymName, !ModeInfo),
     mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
         !ModeInfo),
-    unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo0, ProcId,
-        !ModeInfo),
+
+    unique_modes_check_plain_or_foreign_call(PredId, ProcId0, ArgVars,
+        GoalInfo0, ProcId, !ModeInfo),
     GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin, MaybeUnifyContext,
         PredSymName),
+
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint_sn(exit, "call", PredSymName, !ModeInfo).
+
+%---------------------------------------------------------------------------%
+
+:- pred unique_modes_check_goal_foreign_call(
+    hlds_goal_expr::in(goal_expr_foreign_proc),
+    hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out) is det.
+
+unique_modes_check_goal_foreign_call(GoalExpr0, GoalInfo0, GoalExpr,
+        !ModeInfo) :-
+    GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId0,
+        Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
+    % To modecheck a pragma_c_code, we just modecheck the proc for
+    % which it is the goal.
+    mode_checkpoint(enter, "foreign_proc", !ModeInfo),
+    mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
+        !ModeInfo),
+
+    ArgVars = list.map(foreign_arg_var, Args),
+    unique_modes_check_plain_or_foreign_call(PredId, ProcId0, ArgVars,
+        GoalInfo0, ProcId, !ModeInfo),
+    GoalExpr = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
+        MaybeTraceRuntimeCond, PragmaCode),
+
+    mode_info_unset_call_context(!ModeInfo),
+    mode_checkpoint(exit, "foreign_proc", !ModeInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -264,6 +294,7 @@ unique_modes_check_goal_generic_call(GoalExpr0, GoalExpr, !ModeInfo) :-
     hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
     CallId = mode_call_generic(GenericCallId),
     mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
+
     ( if determinism_components(Detism, _, at_most_zero) then
         CanProcSucceed = proc_cannot_succeed
     else
@@ -289,43 +320,21 @@ unique_modes_check_goal_generic_call(GoalExpr0, GoalExpr, !ModeInfo) :-
     unique_modes_check_call_modes(match_higher_order_call(GenericCallId),
         ArgVars, ArgModes, ArgOffset, Detism, CanProcSucceed, !ModeInfo),
     GoalExpr = GoalExpr0,
+
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "generic_call", !ModeInfo).
-
-%---------------------------------------------------------------------------%
-
-:- pred unique_modes_check_goal_call_foreign_proc(
-    hlds_goal_expr::in(goal_expr_foreign_proc),
-    hlds_goal_info::in, hlds_goal_expr::out,
-    mode_info::in, mode_info::out) is det.
-
-unique_modes_check_goal_call_foreign_proc(GoalExpr0, GoalInfo0, GoalExpr,
-        !ModeInfo) :-
-    GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId0,
-        Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
-    % To modecheck a pragma_c_code, we just modecheck the proc for
-    % which it is the goal.
-    mode_checkpoint(enter, "foreign_proc", !ModeInfo),
-    mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
-        !ModeInfo),
-    ArgVars = list.map(foreign_arg_var, Args),
-    unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo0, ProcId,
-        !ModeInfo),
-    GoalExpr = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-        MaybeTraceRuntimeCond, PragmaCode),
-    mode_info_unset_call_context(!ModeInfo),
-    mode_checkpoint(exit, "foreign_proc", !ModeInfo).
 
 %---------------------------------------------------------------------------%
 %
 % Utility predicates for more than one kind of atomic goal.
 %
 
-:- pred unique_modes_check_call(pred_id::in, proc_id::in, list(prog_var)::in,
-    hlds_goal_info::in, proc_id::out, mode_info::in, mode_info::out) is det.
+:- pred unique_modes_check_plain_or_foreign_call(pred_id::in, proc_id::in,
+    list(prog_var)::in, hlds_goal_info::in, proc_id::out,
+    mode_info::in, mode_info::out) is det.
 
-unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
-        !ModeInfo) :-
+unique_modes_check_plain_or_foreign_call(PredId, ProcId0, ArgVars, GoalInfo,
+        ProcId, !ModeInfo) :-
     % Set the error list to empty for use below
     % (saving the old error list and instmap in variables).
     mode_info_get_errors(!.ModeInfo, OldErrors),
@@ -342,19 +351,18 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
     can_proc_info_ever_succeed(ProcInfo, CanSucceed),
     unique_modes_check_call_modes(match_plain_call(PredId), ArgVars,
         ProcArgModes0, ArgOffset, InterfaceDeterminism, CanSucceed, !ModeInfo),
-    look_up_proc_mode_errors(!.ModeInfo, PredId, ProcId0, ModeErrors),
+    look_up_proc_mode_errors(!.ModeInfo, PredId, ProcId0, CalleeModeErrors),
     (
-        ModeErrors = [_ | _],
+        CalleeModeErrors = [_ | _],
         % Mode error in callee for this mode.
         WaitingVars = set_of_var.list_to_set(ArgVars),
         mode_info_get_instmap(!.ModeInfo, InstMap),
         instmap_lookup_vars(InstMap, ArgVars, ArgInsts),
-        mode_info_error(WaitingVars,
-            mode_error_in_callee(ArgVars, ArgInsts, PredId, ProcId0,
-                ModeErrors),
-            !ModeInfo)
+        ModeError = mode_error_in_callee(ArgVars, ArgInsts, PredId, ProcId0,
+            CalleeModeErrors),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ;
-        ModeErrors = []
+        CalleeModeErrors = []
     ),
 
     % See whether or not that worked (and restore the old error list).
@@ -387,8 +395,9 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
             % uniqueness should not affect determinism.
             mode_info_set_instmap(InstMap0, !ModeInfo),
             proc_info_get_inferred_determinism(ProcInfo, Determinism),
-            modecheck_call_pred(PredId, yes(Determinism), ProcId0, ProcId,
-                ArgVars, NewArgVars, GoalInfo, ExtraGoals, !ModeInfo),
+            modecheck_plain_or_foreign_call(PredId, yes(Determinism),
+                ProcId0, ProcId, ArgVars, NewArgVars, GoalInfo, ExtraGoals,
+                !ModeInfo),
 
             ( if
                 NewArgVars = ArgVars,
@@ -429,8 +438,8 @@ unique_modes_check_call_modes(MatchWhat, ArgVars, ProcArgModes, ArgOffset,
     then
         true
     else
-        % This shouldn't happen, since modes.m should do all the handling
-        % of implied modes.
+        % This shouldn't happen, since the NON-unique mode analysis pass
+        % should do all the handling of implied modes.
         unexpected($pred, "call to implied mode?")
     ),
     (
