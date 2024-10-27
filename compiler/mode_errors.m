@@ -426,7 +426,7 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module multi_map.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -1014,44 +1014,56 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
         ),
         unexpected($pred, "invalid context")
     ),
-    ( if NumExtra > 0 then
-        % The callee's argument list contains extra typeinfo and/or
-        % typeclass_info arguments added by polymorphism.m. Usually,
-        % these extra arguments are all already ground, which means that
-        % they cannot be insufficiently instantiated. And since users cannot
-        % require them to have any inst more specific than ground, they
-        % cannot be the cause of any mode errors. This is why we do not
-        % report their instantiations.
-        %
-        % In the unusual case that some extra variable is *not* ground,
-        % they *could* possibly be the cause of a mode error, so we *do* list
-        % their instantiation states, but we do so separately, in an effort
-        % to avoid confusing users.
-        list.det_split_list(NumExtra, Vars, ExtraVars, UserVars),
-        UserVarInstPieces = arg_inst_mismatch_pieces(ModeInfo, [],
-            PredOrFunc, InstMap, UserVars),
-        ( if
-            var_insts_are_all_ground(ModuleInfo, VarTable, InstMap, ExtraVars)
-        then
-            VarListInstPieces = UserVarInstPieces
-        else
-            ExtraArgPieces = [words("the compiler-generated")],
-            ExtraVarInstPieces = arg_inst_mismatch_pieces(ModeInfo,
-                ExtraArgPieces, pf_predicate, InstMap, ExtraVars),
-            VarListInstPieces =  ExtraVarInstPieces ++ UserVarInstPieces
-        )
-    else
-        VarListInstPieces = arg_inst_mismatch_pieces(ModeInfo, [],
-            PredOrFunc, InstMap, Vars)
+    mode_info_get_var_table(ModeInfo, VarTable),
+    construct_argnum_var_type_inst_tuples(VarTable, InstMap, 1,
+        Vars, ArgTuples),
+    find_satisfied_initial_insts_in_procs(ModuleInfo, ArgTuples,
+        ProcInitialInsts, 1, map.init, OkOrNotMap),
+    map.foldl(is_any_extra_arg_bad(NumExtra), OkOrNotMap,
+        all_extra_args_good, SomeExtraIsBad),
+    (
+        SomeExtraIsBad = all_extra_args_good,
+        ArgNumMinus = NumExtra,
+        report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap,
+            PredOrFunc, NumExtra, ArgNumMinus, ArgTuples,
+            ArgNamePieceListsToPrint0, MaybeReturnValueNamePieces,
+            BadArgPieces),
+        list.det_drop(NumExtra,
+            ArgNamePieceListsToPrint0, ArgNamePieceListsToPrint1)
+    ;
+        SomeExtraIsBad = some_extra_arg_is_bad,
+        ArgNumMinus = 0,
+        report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap,
+            PredOrFunc, NumExtra, ArgNumMinus, ArgTuples,
+            ArgNamePieceListsToPrint1, MaybeReturnValueNamePieces,
+            BadArgPieces)
     ),
+    (
+        MaybeReturnValueNamePieces = no,
+        ArgNamePieceListsToPrint = ArgNamePieceListsToPrint1
+    ;
+        MaybeReturnValueNamePieces = yes(ReturnValueNamePieces),
+        ArgNamePieceListsToPrint = ArgNamePieceListsToPrint1 ++
+            [ReturnValueNamePieces]
+    ),
+    % Use "insts" and "do not match" when we have two or more *entities*
+    % (meaning arguments *and* return values), but use "arguments"
+    % only if we have two actual arguments (which are *not* return values).
+    InstOrInsts = choose_number(ArgNamePieceListsToPrint, "inst", "insts"),
+    DoesOrDo = choose_number(ArgNamePieceListsToPrint, "does", "do"),
+    ArgOrArgs = choose_number(ArgNamePieceListsToPrint1,
+        "argument", "arguments"),
+    ArgsNoMatchPieces = [words("the"), words(InstOrInsts),
+        words("of"), words(ArgOrArgs)] ++
+        pieces_list_to_pieces("and", ArgNamePieceListsToPrint) ++
+        color_as_incorrect([words(DoesOrDo), words("not match")]),
+
     % Note that MatchWhat *almost* duplicates the information contained in
     % ModeContext, which we process above. However, despite the call to
     % unexpected above for mode_context_unify, this predicate *can* get called
     % for errors discovered during unifications (whose processing presumably
     % did not set the mode context), and we want to generate an error message
     % that does not generate confusing wording in this eventuality.
-    NoMatchPieces = [words("which")] ++
-        color_as_incorrect([words("does not match")]),
     (
         MatchWhat = match_plain_call(PredId),
         some [PredInfo, PFSymNameArity] (
@@ -1060,14 +1072,19 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
             CallIdStr = pf_sym_name_pred_form_arity_to_string(PFSymNameArity),
             pred_info_get_proc_table(PredInfo, ProcTable)
         ),
-        ( if map.count(ProcTable) > 1 then
-            MatchWhatPieces =
-                [words("any of the modes for"),
-                words(CallIdStr), suffix("."), nl]
-        else
+        map.count(ProcTable, NumProcs),
+        ( if NumProcs = 1 then
             MatchWhatPieces =
                 [words("the only mode of"),
                 words(CallIdStr), suffix("."), nl]
+        else if NumProcs = 2 then
+            MatchWhatPieces =
+                [words("either of the two modes of"),
+                words(CallIdStr), suffix("."), nl]
+        else
+            MatchWhatPieces =
+                [words("any of the"), int_name(NumProcs), words("modes"),
+                words("for"), words(CallIdStr), suffix("."), nl]
         )
     ;
         MatchWhat = match_higher_order_call(GenericCallId),
@@ -1082,104 +1099,18 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
     ;
         MatchWhat = match_cast,
         MatchWhatPieces =
-            [words("the input mode required for event values being cast."), nl]
+            [words("the input mode required for values being cast."), nl]
     ;
         MatchWhat = match_unify,
         MatchWhatPieces =
             [words("the input mode required for unifications."), nl]
     ),
-    mode_info_get_var_table(ModeInfo, VarTable),
-    construct_argnum_var_type_inst_tuples(VarTable, InstMap, 1,
-        Vars, ArgTuples),
-    find_satisfied_initial_insts_in_procs(ModuleInfo, ArgTuples,
-        ProcInitialInsts, 0, map.init, ArgNumMatchedProcs),
-    % XXX If ArgTuples has length 1, which happens reasonably often,
-    % the information reported by BadArgPieces will exactly duplicate
-    % the information reported by NoMatchPieces, just with different wording.
-    % The same is true if BadArgPieces has a component for every var in Vars.
-    % In such cases, we should include just one of the two in Pieces.
-    % But which one? One consideration: BadArgPieces actually names
-    % the arguments.
-    report_any_never_matching_args(ModeInfo, ArgNumMatchedProcs, NumExtra,
-        ArgTuples, BadArgPieces),
-    Pieces = PrefixPieces ++ VarListInstPieces ++
-        NoMatchPieces ++ MatchWhatPieces ++ BadArgPieces,
+
+    Pieces = PrefixPieces ++ ArgsNoMatchPieces ++ MatchWhatPieces ++
+        [nl_indent_delta(1)] ++ BadArgPieces ++ [nl_indent_delta(-1)],
     Phase = phase_mode_check(report_in_any_mode),
     mode_info_get_context(ModeInfo, Context),
     Spec = spec($pred, severity_error, Phase, Context, Pieces).
-
-:- pred var_insts_are_all_ground(module_info::in, var_table::in, instmap::in,
-    list(prog_var)::in) is semidet.
-
-var_insts_are_all_ground(_, _, _, []).
-var_insts_are_all_ground(ModuleInfo, VarTable, InstMap, [Var | Vars]) :-
-    lookup_var_type(VarTable, Var, VarType),
-    instmap_lookup_var(InstMap, Var, VarInst),
-    inst_is_ground(ModuleInfo, VarType, VarInst),
-    var_insts_are_all_ground(ModuleInfo, VarTable, InstMap, Vars).
-
-:- func arg_inst_mismatch_pieces(mode_info, list(format_piece),
-    pred_or_func, instmap, list(prog_var)) = list(format_piece).
-
-arg_inst_mismatch_pieces(ModeInfo, CompGenPieces, PredOrFunc, InstMap, Vars)
-        = Pieces :-
-    (
-        Vars = [],
-        Pieces = []
-    ;
-        Vars = [HeadVar | TailVars],
-        mode_info_get_var_table(ModeInfo, VarTable),
-        instmap_lookup_vars(InstMap, Vars, Insts),
-        (
-            PredOrFunc = pf_predicate,
-            HeadVarPiece = var_in_table_to_quote_piece(VarTable, HeadVar),
-            TailVarPieces = list.map(var_in_table_to_quote_piece(VarTable),
-                TailVars),
-            (
-                TailVars = [],
-                Pieces = CompGenPieces ++ [words("argument")] ++
-                    color_as_subject([HeadVarPiece]) ++
-                    [words("has the following inst:"), nl_indent_delta(1)] ++
-                    inst_list_to_sep_lines(ModeInfo, Insts)
-                % inst_list_to_sep_lines does nl_indent_delta(-1).
-            ;
-                TailVars = [_ | _],
-                Pieces = CompGenPieces ++ [words("arguments")] ++
-                    piece_list_to_color_pieces(color_subject, "and", [],
-                        [HeadVarPiece | TailVarPieces]) ++
-                    [words("have the following insts:"), nl_indent_delta(1)] ++
-                    inst_list_to_sep_lines(ModeInfo, Insts)
-                % inst_list_to_sep_lines does nl_indent_delta(-1).
-            )
-        ;
-            PredOrFunc = pf_function,
-            list.det_split_last(Vars, ArgVars, ReturnVar),
-            ReturnVarName = mercury_var_to_name_only(VarTable, ReturnVar),
-            ReturnVarPieces = [words("return value"), quote(ReturnVarName)],
-            (
-                ArgVars = [],
-                % Ignore CompGenPieces, since the result arg of a function
-                % will never be compiler generated.
-                Pieces = [words("the")] ++
-                    color_as_subject(ReturnVarPieces) ++
-                    [words("has the following inst:"), nl_indent_delta(1)] ++
-                    inst_list_to_sep_lines(ModeInfo, Insts)
-                % inst_list_to_sep_lines does nl_indent_delta(-1).
-            ;
-                ArgVars = [_ | _],
-                ArgVarPieces = list.map(var_in_table_to_quote_piece(VarTable),
-                    ArgVars),
-                Pieces = CompGenPieces ++
-                    [words(choose_number(ArgVars, "argument", "arguments"))] ++
-                    piece_strict_list_to_color_pieces(color_subject, [],
-                        ArgVarPieces) ++
-                    [words("and the")] ++ color_as_subject(ReturnVarPieces) ++
-                    [words("have the following insts:"), nl_indent_delta(1)] ++
-                    inst_list_to_sep_lines(ModeInfo, Insts)
-                % inst_list_to_sep_lines does nl_indent_delta(-1).
-            )
-        )
-    ).
 
 :- type argnum_var_type_inst
     --->    argnum_var_type_inst(int, prog_var, mer_type, mer_inst).
@@ -1198,76 +1129,162 @@ construct_argnum_var_type_inst_tuples(VarTable, InstMap, ArgNum,
 
 %---------------------%
 
+:- type ok_or_not
+    --->    oon_ok
+    ;       oon_not_ok.
+
+:- type ok_or_not_map == map(int, arg_ok_or_not_map).
+:- type arg_ok_or_not_map == one_or_more_map(ok_or_not, int).
+
 :- pred find_satisfied_initial_insts_in_procs(module_info::in,
     list(argnum_var_type_inst)::in, list(list(mer_inst))::in, int::in,
-    multi_map(int, int)::in, multi_map(int, int)::out) is det.
+    ok_or_not_map::in, ok_or_not_map::out) is det.
 
 find_satisfied_initial_insts_in_procs(_ModuleInfo, _ArgTuples,
-        [], _ProcNum, !ArgNumMatchedProcs).
+        [], _ProcNum, !OkOrNotMap).
 find_satisfied_initial_insts_in_procs(ModuleInfo, ArgTuples,
-        [Proc | Procs], ProcNum, !ArgNumMatchedProcs) :-
+        [Proc | Procs], ProcNum, !OkOrNotMap) :-
     find_satisfied_initial_insts_in_proc(ModuleInfo, ArgTuples, Proc,
-        ProcNum, !ArgNumMatchedProcs),
+        ProcNum, !OkOrNotMap),
     find_satisfied_initial_insts_in_procs(ModuleInfo, ArgTuples,
-        Procs, ProcNum + 1, !ArgNumMatchedProcs).
+        Procs, ProcNum + 1, !OkOrNotMap).
 
 :- pred find_satisfied_initial_insts_in_proc(module_info::in,
     list(argnum_var_type_inst)::in, list(mer_inst)::in, int::in,
-    multi_map(int, int)::in, multi_map(int, int)::out) is det.
+    ok_or_not_map::in, ok_or_not_map::out) is det.
 
 find_satisfied_initial_insts_in_proc(_ModuleInfo, [], [],
-        _ProcNum, !ArgNumMatchedProcs).
+        _ProcNum, !OkOrNotMap).
 find_satisfied_initial_insts_in_proc(_ModuleInfo, [], [_ | _],
-        _ProcNum, !ArgNumMatchedProcs) :-
+        _ProcNum, !OkOrNotMap) :-
     unexpected($pred, "length mismatch").
 find_satisfied_initial_insts_in_proc(_ModuleInfo, [_ | _], [],
-        _ProcNum, !ArgNumMatchedProcs) :-
+        _ProcNum, !OkOrNotMap) :-
     unexpected($pred, "length mismatch").
 find_satisfied_initial_insts_in_proc(ModuleInfo,
         [ArgTuple | ArgTuples], [ProcInitialInst | ProcInitialInsts],
-        ProcNum, !ArgNumMatchedProcs) :-
+        ProcNum, !OkOrNotMap) :-
     ArgTuple = argnum_var_type_inst(ArgNum, _Var, VarType, VarInst),
     ( if
         inst_matches_initial_sub(VarType, VarInst, ProcInitialInst,
             ModuleInfo, _UpdatedModuleInfo, map.init, _Subst)
     then
-        multi_map.add(ArgNum, ProcNum, !ArgNumMatchedProcs)
+        OkOrNot = oon_ok
     else
-        true
+        OkOrNot = oon_not_ok
     ),
+    record_ok_or_not_proc_num(OkOrNot, ArgNum, ProcNum, !OkOrNotMap),
     find_satisfied_initial_insts_in_proc(ModuleInfo,
-        ArgTuples, ProcInitialInsts, ProcNum, !ArgNumMatchedProcs).
+        ArgTuples, ProcInitialInsts, ProcNum, !OkOrNotMap).
+
+:- pred record_ok_or_not_proc_num(ok_or_not::in, int::in, int::in,
+    ok_or_not_map::in, ok_or_not_map::out) is det.
+
+record_ok_or_not_proc_num(OkOrNot, ArgNum, ProcNum, !OkOrNotMap) :-
+    ( if map.search(!.OkOrNotMap, ArgNum, ArgOkOrNotMap0) then
+        one_or_more_map.add(OkOrNot, ProcNum, ArgOkOrNotMap0, ArgOkOrNotMap),
+        map.det_update(ArgNum, ArgOkOrNotMap, !OkOrNotMap)
+    else
+        one_or_more_map.add(OkOrNot, ProcNum,
+            one_or_more_map.init, ArgOkOrNotMap),
+        map.det_insert(ArgNum, ArgOkOrNotMap, !OkOrNotMap)
+    ).
 
 %---------------------%
 
-:- pred report_any_never_matching_args(mode_info::in,
-    multi_map(int, int)::in, int::in, list(argnum_var_type_inst)::in,
+:- type maybe_some_extra_arg_is_bad
+    --->    all_extra_args_good
+    ;       some_extra_arg_is_bad.
+
+:- pred is_any_extra_arg_bad(int::in, int::in, arg_ok_or_not_map::in,
+    maybe_some_extra_arg_is_bad::in, maybe_some_extra_arg_is_bad::out) is det.
+
+is_any_extra_arg_bad(NumExtra, ArgNum, ArgOkOrNotMap, !SomeExtraIsBad) :-
+    ( if map.search(ArgOkOrNotMap, oon_not_ok, _OkProcNums) then
+        ( if ArgNum =< NumExtra then
+            !:SomeExtraIsBad = some_extra_arg_is_bad
+        else
+            true
+        )
+    else
+        true
+    ).
+
+%---------------------%
+
+:- pred report_all_possibly_mismatched_args(mode_info::in, ok_or_not_map::in,
+    pred_or_func::in, int::in, int::in, list(argnum_var_type_inst)::in,
+    list(list(format_piece))::out, maybe(list(format_piece))::out,
     list(format_piece)::out) is det.
 
-report_any_never_matching_args(_ModeInfo, _ArgNumMatchedProcs, _NumExtra,
-        [], []).
-report_any_never_matching_args(ModeInfo, ArgNumMatchedProcs, NumExtra,
-        [ArgTuple | ArgTuples], BadArgPieces) :-
-    report_any_never_matching_args(ModeInfo, ArgNumMatchedProcs, NumExtra,
-        ArgTuples, BadArgPiecesTail),
+report_all_possibly_mismatched_args(_, _, _, _, _, [], [], no, []).
+report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap,
+        PredOrFunc, NumExtra, ArgNumMinus, [ArgTuple | ArgTuples],
+        ArgNamePiecesList, MaybeReturnValueNamePieces, BadArgPieces) :-
     ArgTuple = argnum_var_type_inst(ArgNum, Var, _VarType, VarInst),
-    ( if map.search(ArgNumMatchedProcs, ArgNum, _) then
-        BadArgPieces = BadArgPiecesTail
+    mode_info_get_var_table(ModeInfo, VarTable),
+    VarNamePiece = var_in_table_to_quote_piece(VarTable, Var),
+    ( if
+        PredOrFunc = pf_function,
+        ArgTuples = []
+    then
+        ReturnValueNamePieces = [words("the")] ++
+            color_as_subject([words("return value"), VarNamePiece]),
+        MaybeReturnValueNamePieces = yes(ReturnValueNamePieces),
+        ArgNamePiecesList = [],
+        TailBadArgPieces = [],
+        ArgNumCommaPieces = [words("return value")]
     else
+        report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap,
+            PredOrFunc, NumExtra, ArgNumMinus, ArgTuples,
+            TailVarNamePiecesList, MaybeReturnValueNamePieces,
+            TailBadArgPieces),
+        HeadVarNamePieces = color_as_subject([VarNamePiece]),
+        ArgNamePiecesList = [HeadVarNamePieces | TailVarNamePiecesList],
+        ArgNumCommaPieces = [nth_fixed(ArgNum - NumExtra), words("argument,")]
+    ),
+
+    map.lookup(OkOrNotMap, ArgNum, ArgOkOrNotMap),
+    ( if map.search(ArgOkOrNotMap, oon_not_ok, OoMBadProcNums) then
         ( if ArgNum =< NumExtra then
-            ArgNumPieces = [words("compiler-generated"), nth_fixed(ArgNum),
-                words("argument")]
+            % An argument added by the polymorphism transformation cannot be
+            % a function result.
+            ArgNumNamePieces = [words("The inst of the compiler-generated"),
+                nth_fixed(ArgNum), words("argument,")] ++
+                color_as_subject([VarNamePiece]) ++ [suffix(",")]
         else
-            ArgNumPieces = [nth_fixed(ArgNum - NumExtra), words("argument")]
+            ArgNumNamePieces = [words("The inst of the")] ++
+                ArgNumCommaPieces ++
+                color_as_subject([VarNamePiece]) ++ [suffix(",")]
         ),
-        VarName = mercury_var_to_name_only(VarTable, Var),
-        ArgNumVarPieces = [words("The")] ++
-            color_as_subject(ArgNumPieces ++ [quote(VarName)]),
-        % XXX We should consider generating the diff between VarInst
-        % and the expected initial inst of the corresponding arg mode
-        % in each vector of expected modes. This would require extending
-        % the argnum_var_type_inst structure to include those initial insts.
+        WhichIsPieces = [words("which is")] ++
+            color_as_incorrect(report_inst(ModeInfo, quote_short_inst,
+                [suffix(",")], [nl_indent_delta(1)],
+                [suffix(","), nl_indent_delta(-1)], VarInst)),
+        ( if map.search(ArgOkOrNotMap, oon_ok, _) then
+            BadProcNums = one_or_more_to_list(OoMBadProcNums),
+            list.sort(BadProcNums, SortedBadProcNums),
+            NthBadProcNums = list.map(nth_fixed_str, SortedBadProcNums),
+            DoesNotMatchWhatPieces = [words("the inst required by"),
+                words("some of the modes of the callee, namely the")] ++
+                fixed_list_to_pieces("and", NthBadProcNums) ++
+                [words(choose_number(NthBadProcNums, "mode.", "modes."))]
+        else
+            one_or_more.length(OoMBadProcNums, NumBadProcNums),
+            ( if NumBadProcNums = 1 then
+                DoesNotMatchWhatPieces = [words("the required inst.")]
+            else
+                DoesNotMatchWhatPieces = [words("any of the required insts.")]
+            )
+        ),
         mode_info_get_module_info(ModeInfo, ModuleInfo),
+        % XXX Instead of reporting this hint, we should *check* here
+        % whether this *is* the cause of the mismatch.
+        %
+        % - If the answer is yes, we should say that this IS the cause
+        %   of the problem, instead of saying that it MAY BE the cause.
+        %
+        % - If the answer is no, we should say nothing.
         ( if inst_contains_higher_order(ModuleInfo, VarInst) then
             HOPieces = [words("(For higher order insts like this,"),
                 words("the mismatch is sometimes caused by"),
@@ -1276,21 +1293,13 @@ report_any_never_matching_args(ModeInfo, ArgNumMatchedProcs, NumExtra,
         else
             HOPieces = []
         ),
-        mode_info_get_var_table(ModeInfo, VarTable),
-        % XXX Most of the situations for which are generating diagnostics
-        % here has just one expected mode for each argument, so the wording
-        % "any of those modes" here is wrong. But should the fix for this
-        % include special-casing the handling of casts and events,
-        % where the expected mode is universal for all their uses,
-        % and maybe for unifications?
-        BadArgPieces = ArgNumVarPieces ++
-            [words("has inst")] ++
-            color_as_incorrect(report_inst(ModeInfo, quote_short_inst,
-                [suffix(",")], [nl_indent_delta(1)],
-                [suffix(","), nl_indent_delta(-1)], VarInst)) ++
-            [words("which does not match any of those modes."), nl] ++
-            HOPieces ++
-            BadArgPiecesTail
+        DoesNotMatchPieces = [words("does not match")] ++
+            DoesNotMatchWhatPieces ++ [nl],
+        HeadBadArgPieces = [blank_line] ++ ArgNumNamePieces ++
+            WhichIsPieces ++ DoesNotMatchPieces ++ HOPieces,
+        BadArgPieces = HeadBadArgPieces ++ TailBadArgPieces
+    else
+        BadArgPieces = TailBadArgPieces
     ).
 
 %---------------------------------------------------------------------------%
@@ -1982,16 +1991,20 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
         VarPiece = var_in_table_to_quote_piece(VarTable, Var),
         MainPieces = [words("mode error: argument")] ++
             color_as_subject([VarPiece]) ++
-            [words("has the following inst:"), nl_indent_delta(1)]
+            [words("has the following inst:")]
     ;
         Vars = [_, _ | _],
         VarPieces = list.map(var_in_table_to_quote_piece(VarTable), Vars),
         MainPieces = [words("mode error: arguments")] ++
             piece_list_to_color_pieces(color_subject, "and", [], VarPieces) ++
-            [words("have the following insts:"), nl_indent_delta(1)]
+            [words("have the following insts:")]
     ),
-    NoMatchPieces = inst_list_to_sep_lines(!.ModeInfo, Insts) ++
-        [words("which does not match any of the valid modes for")],
+    list.det_head_tail(Insts, HeadInst, TailInsts),
+    NoMatchPieces =
+        [nl_indent_delta(1)] ++
+        inst_list_to_sep_lines(!.ModeInfo, HeadInst, TailInsts) ++
+        [nl_indent_delta(-1),
+        words("which does not match any of the valid modes for")],
 
     CalleePredIdPieces = describe_qual_pred_name(ModuleInfo, CalleePredId),
     VerboseCalleePieces = [words("the callee"),
@@ -2380,20 +2393,18 @@ report_inst_in_branch_detail(ModeInfo, IntroPieces, MaybeColor, Inst)
 
 %------------%
 
-:- func inst_list_to_sep_lines(mode_info, list(mer_inst))
+:- func inst_list_to_sep_lines(mode_info, mer_inst, list(mer_inst))
     = list(format_piece).
 
-inst_list_to_sep_lines(_ModeInfo, []) = [].
-inst_list_to_sep_lines(ModeInfo, [Inst | Insts]) = Pieces :-
+inst_list_to_sep_lines(ModeInfo, Inst1, Insts2plus) = Pieces :-
     (
-        Insts = [],
-        Pieces = report_inst(ModeInfo, fixed_short_inst, [], [], [], Inst) ++
-            [nl_indent_delta(-1)]
+        Insts2plus = [],
+        Pieces = report_inst(ModeInfo, fixed_short_inst, [], [], [], Inst1)
     ;
-        Insts = [_ | _],
+        Insts2plus = [Inst2 | Insts3plus],
         HeadPieces = report_inst(ModeInfo, fixed_short_inst, [suffix(",")],
-            [], [suffix(",")], Inst) ++ [nl],
-        TailPieces = inst_list_to_sep_lines(ModeInfo, Insts),
+            [], [suffix(",")], Inst1) ++ [nl],
+        TailPieces = inst_list_to_sep_lines(ModeInfo, Inst2, Insts3plus),
         Pieces = HeadPieces ++ TailPieces
     ).
 

@@ -4,18 +4,34 @@ ho_default_func_1.m:037:   messages indicate possible causes of this error.
 ho_default_func_1.m:037: 
 ho_default_func_1.m:037:   In clause for `baz(in, out)':
 ho_default_func_1.m:037:   in call to function `univ.univ'/1:
-ho_default_func_1.m:037:   mode error: argument [38;5;87m`V_7'[39;49m and the [38;5;87mreturn value[39;49m
-ho_default_func_1.m:037:   [38;5;87m`V_6'[39;49m have the following insts:
-ho_default_func_1.m:037:     /* unique */ (func(out) = in is det),
-ho_default_func_1.m:037:     free
-ho_default_func_1.m:037:   which [38;5;203mdoes not match[39;49m any of the modes for function
-ho_default_func_1.m:037:   `univ.univ'/1.
+ho_default_func_1.m:037:   mode error: the insts of argument [38;5;87m`V_7'[39;49m and the
+ho_default_func_1.m:037:   [38;5;87mreturn value `V_6'[39;49m [38;5;203mdo not match[39;49m any of the three
+ho_default_func_1.m:037:   modes for function `univ.univ'/1.
+ho_default_func_1.m:037: 
+ho_default_func_1.m:037:     The inst of the first argument, [38;5;87m`V_7'[39;49m, which is
+ho_default_func_1.m:037:     [38;5;203m`/* unique */ (func(out) = in is det)',[39;49m does not
+ho_default_func_1.m:037:     match the inst required by some of the modes of
+ho_default_func_1.m:037:     the callee, namely the first and second modes.
+ho_default_func_1.m:037:     (For higher order insts like this, the mismatch is
+ho_default_func_1.m:037:     sometimes caused by the arity of the predicate or
+ho_default_func_1.m:037:     function being different in the inst than in the
+ho_default_func_1.m:037:     type.)
+ho_default_func_1.m:037: 
+ho_default_func_1.m:037:     The inst of the return value [38;5;87m`V_6'[39;49m, which is
+ho_default_func_1.m:037:     [38;5;203m`free',[39;49m does not match the inst required by some
+ho_default_func_1.m:037:     of the modes of the callee, namely the third mode.
 ho_default_func_1.m:037: 
 ho_default_func_1.m:037:   In clause for `baz(in, out)':
 ho_default_func_1.m:037:   in call to predicate `univ.univ_to_type'/2:
-ho_default_func_1.m:037:   mode error: arguments [38;5;87m`V_6'[39;49m and [38;5;87m`Y0'[39;49m have the
-ho_default_func_1.m:037:   following insts:
-ho_default_func_1.m:037:     free,
-ho_default_func_1.m:037:     free
-ho_default_func_1.m:037:   which [38;5;203mdoes not match[39;49m any of the modes for predicate
+ho_default_func_1.m:037:   mode error: the insts of arguments [38;5;87m`V_6'[39;49m and [38;5;87m`Y0'[39;49m [38;5;203mdo[39;49m
+ho_default_func_1.m:037:   [38;5;203mnot match[39;49m any of the three modes for predicate
 ho_default_func_1.m:037:   `univ.univ_to_type'/2.
+ho_default_func_1.m:037: 
+ho_default_func_1.m:037:     The inst of the first argument, [38;5;87m`V_6'[39;49m, which is
+ho_default_func_1.m:037:     [38;5;203m`free',[39;49m does not match the inst required by some
+ho_default_func_1.m:037:     of the modes of the callee, namely the first mode.
+ho_default_func_1.m:037: 
+ho_default_func_1.m:037:     The inst of the second argument, [38;5;87m`Y0'[39;49m, which is
+ho_default_func_1.m:037:     [38;5;203m`free',[39;49m does not match the inst required by some
+ho_default_func_1.m:037:     of the modes of the callee, namely the second and
+ho_default_func_1.m:037:     third modes.

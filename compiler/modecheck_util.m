@@ -238,7 +238,6 @@
 :- import_module set.
 :- import_module set_tree234.
 :- import_module term.
-:- import_module unit.
 
 %---------------------------------------------------------------------------%
 
@@ -486,13 +485,13 @@ modecheck_vars_have_inst_list_exact_match(MatchWhat, Vars, Insts, ArgNum,
         Subst, !ModeInfo) :-
     modecheck_vars_have_inst_list_exact_match_2(Vars, Insts, ArgNum,
         map.init, Subst, !ModeInfo),
-    modecheck_head_inst_vars(MatchWhat, Vars, Subst, !ModeInfo).
+    modecheck_head_inst_vars(MatchWhat, Vars, Insts, Subst, !ModeInfo).
 
 modecheck_vars_have_inst_list_no_exact_match(MatchWhat, Vars, Insts, ArgNum,
         Subst, !ModeInfo) :-
     modecheck_vars_have_inst_list_no_exact_match_2(Vars, Insts, ArgNum,
         map.init, Subst, !ModeInfo),
-    modecheck_head_inst_vars(MatchWhat, Vars, Subst, !ModeInfo).
+    modecheck_head_inst_vars(MatchWhat, Vars, Insts, Subst, !ModeInfo).
 
 :- pred modecheck_vars_have_inst_list_exact_match_2(list(prog_var)::in,
     list(mer_inst)::in, int::in, inst_var_sub::in, inst_var_sub::out,
@@ -620,38 +619,48 @@ modecheck_introduced_type_info_var_has_inst_no_exact_match(Var, Type, Inst,
 %---------------------------------------------------------------------------%
 
 :- pred modecheck_head_inst_vars(match_what::in, list(prog_var)::in,
-    inst_var_sub::in, mode_info::in, mode_info::out) is det.
+    list(mer_inst)::in, inst_var_sub::in,
+    mode_info::in, mode_info::out) is det.
 
-modecheck_head_inst_vars(MatchWhat, Vars, InstVarSub, !ModeInfo) :-
+modecheck_head_inst_vars(MatchWhat, Vars, Insts, InstVarSub, !ModeInfo) :-
     mode_info_get_head_inst_vars(!.ModeInfo, HeadInstVars),
-    ( if
-        map.foldl(modecheck_head_inst_var(HeadInstVars), InstVarSub, unit, _)
-    then
+    map.foldl(modecheck_head_inst_var(HeadInstVars), InstVarSub,
+        set.init, BadInstVars),
+    ( if set.is_empty(BadInstVars) then
         true
     else
         mode_info_get_instmap(!.ModeInfo, InstMap),
         WaitingVars = set_of_var.list_to_set(Vars),
-        ModeError = mode_error_no_matching_mode(MatchWhat, InstMap, Vars, []),
+        % XXX Include BadInstVars in the error message, because without this
+        % info, we cannot generate understandable diagnostics.
+        ModeError =
+            mode_error_no_matching_mode(MatchWhat, InstMap, Vars, [Insts]),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
 :- pred modecheck_head_inst_var(inst_var_sub::in, inst_var::in, mer_inst::in,
-    unit::in, unit::out) is semidet.
+    set(inst_var)::in, set(inst_var)::out) is det.
 
-modecheck_head_inst_var(HeadInstVars, InstVar, Subst, !Acc) :-
+modecheck_head_inst_var(HeadInstVars, InstVar, Subst, !BadInstVars) :-
     ( if map.search(HeadInstVars, InstVar, Inst) then
         % Subst should not change the constraint. However, the two insts
         % may have different information about inst test results.
-        Subst = constrained_inst_vars(SubstInstVars, SubstInst),
-        set.member(InstVar, SubstInstVars),
         ( if
-            Inst = bound(Uniq, _, BoundFunctors),
-            SubstInst = bound(SubstUniq, _, SubstBoundFunctors)
+            Subst = constrained_inst_vars(SubstInstVars, SubstInst),
+            set.member(InstVar, SubstInstVars),
+            ( if
+                Inst = bound(Uniq, _, BoundFunctors),
+                SubstInst = bound(SubstUniq, _, SubstBoundFunctors)
+            then
+                Uniq = SubstUniq,
+                BoundFunctors = SubstBoundFunctors
+            else
+                Inst = SubstInst
+            )
         then
-            Uniq = SubstUniq,
-            BoundFunctors = SubstBoundFunctors
+            true
         else
-            Inst = SubstInst
+            set.insert(InstVar, !BadInstVars)
         )
     else
         true

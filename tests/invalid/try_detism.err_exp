@@ -11,19 +11,15 @@ try_detism.m:022:   [38;5;203mrequires all solutions.[39;49m
 try_detism.m:023:   Unification of [38;5;87m`X'[39;49m and [38;5;87m`V_17'[39;49m [38;5;203mcan fail.[39;49m
 try_detism.m:022: In clause for `p(out, di, uo)':
 try_detism.m:022:   in call to predicate `exception.try_io'/4:
-try_detism.m:022:   mode error: arguments [38;5;87m`TryLambda',[39;49m [38;5;87m`TryResult',[39;49m
-try_detism.m:022:   [38;5;87m`STATE_VARIABLE_IO_10'[39;49m and [38;5;87m`TryIOOutput'[39;49m have the following
-try_detism.m:022:   insts:
-try_detism.m:022:     /* unique */ (pred(out, di, uo) is semidet),
-try_detism.m:022:     free,
-try_detism.m:022:     unique,
-try_detism.m:022:     free
-try_detism.m:022:   which [38;5;203mdoes not match[39;49m any of the modes for predicate
+try_detism.m:022:   mode error: the insts of arguments [38;5;87m`TryLambda'[39;49m, [38;5;87m[39;49m
+try_detism.m:022:   [38;5;87m`TryResult'[39;49m, [38;5;87m`STATE_VARIABLE_IO_10'[39;49m and [38;5;87m`TryIOOutput'[39;49m [38;5;203mdo[39;49m
+try_detism.m:022:   [38;5;203mnot match[39;49m either of the two modes of predicate
 try_detism.m:022:   `exception.try_io'/4.
-try_detism.m:022:   The [38;5;87mfirst argument `TryLambda'[39;49m has inst
-try_detism.m:022:     [38;5;203m/* unique */ (pred(out, di, uo) is semidet),[39;49m
-try_detism.m:022:   which does not match any of those modes.
-try_detism.m:022:   (For higher order insts like this, the mismatch is
-try_detism.m:022:   sometimes caused by the arity of the predicate or function
-try_detism.m:022:   being different in the inst than in the type.)
+try_detism.m:022: 
+try_detism.m:022:     The inst of the first argument, [38;5;87m`TryLambda'[39;49m, which is
+try_detism.m:022:       [38;5;203m/* unique */ (pred(out, di, uo) is semidet),[39;49m
+try_detism.m:022:     does not match any of the required insts.
+try_detism.m:022:     (For higher order insts like this, the mismatch is
+try_detism.m:022:     sometimes caused by the arity of the predicate or
+try_detism.m:022:     function being different in the inst than in the type.)
 For more information, recompile with `-E'.

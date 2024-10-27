@@ -1,11 +1,17 @@
 state_vars_test_1.m:018: In clause for `p(in, out)':
 state_vars_test_1.m:018:   in call to function `int.+'/2:
-state_vars_test_1.m:018:   mode error: arguments [38;5;87m`STATE_VARIABLE_X_0',[39;49m [38;5;87m`V_7'[39;49m
-state_vars_test_1.m:018:   and the [38;5;87mreturn value `STATE_VARIABLE_X'[39;49m have the
-state_vars_test_1.m:018:   following insts:
-state_vars_test_1.m:018:     ground,
-state_vars_test_1.m:018:     free,
-state_vars_test_1.m:018:     free
-state_vars_test_1.m:018:   which [38;5;203mdoes not match[39;49m any of the modes for function
-state_vars_test_1.m:018:   `int.+'/2.
+state_vars_test_1.m:018:   mode error: the insts of arguments
+state_vars_test_1.m:018:   [38;5;87m`STATE_VARIABLE_X_0'[39;49m, [38;5;87m`V_7'[39;49m and the [38;5;87mreturn value[39;49m
+state_vars_test_1.m:018:   [38;5;87m`STATE_VARIABLE_X'[39;49m [38;5;203mdo not match[39;49m any of the three
+state_vars_test_1.m:018:   modes for function `int.+'/2.
+state_vars_test_1.m:018: 
+state_vars_test_1.m:018:     The inst of the second argument, [38;5;87m`V_7'[39;49m, which is
+state_vars_test_1.m:018:     [38;5;203m`free',[39;49m does not match the inst required by some
+state_vars_test_1.m:018:     of the modes of the callee, namely the first and
+state_vars_test_1.m:018:     second modes.
+state_vars_test_1.m:018: 
+state_vars_test_1.m:018:     The inst of the return value [38;5;87m`STATE_VARIABLE_X'[39;49m,
+state_vars_test_1.m:018:     which is [38;5;203m`free',[39;49m does not match the inst required
+state_vars_test_1.m:018:     by some of the modes of the callee, namely the
+state_vars_test_1.m:018:     second and third modes.
 For more information, recompile with `-E'.

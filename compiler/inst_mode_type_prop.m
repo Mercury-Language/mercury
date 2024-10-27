@@ -1463,7 +1463,7 @@ do_report_wrong_arity_ho_inst(TPropInfo, TPropContext, Type, ArgTypes,
         [words("cannot describe the instantiation state of a value"),
         words("of the higher-order type"), nl_indent_delta(1)] ++
         color_as_correct(TypePieces ++ [suffix(",")]) ++ [nl_indent_delta(-1),
-        words("because they have different arities,"),
+        words("because they have different arities."),
         words("The higher order type has")] ++
         color_as_correct([int_name(TypeArity)]) ++ [words("arguments"),
         words("while the higher order inst has")] ++

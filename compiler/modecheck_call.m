@@ -152,9 +152,9 @@ modecheck_call_pred(PredId, MaybeDetism, ProcId0, SelectedProcId,
         modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0,
             ArgOffset, InstVarSub, ArgVars, ExtraGoals, !ModeInfo)
     else
-        % Set the current error list to empty (and save the old one in
+        % Set the current error list to empty (after saving the old one in
         % `OldErrors'). This is so the test for `Errors = []' in
-        % find_matching_modes will work.
+        % modecheck_find_matching_modes will work.
         mode_info_get_errors(!.ModeInfo, OldErrors),
         mode_info_set_errors([], !ModeInfo),
 

@@ -1040,6 +1040,9 @@ add_word_to_cord(Word, !Lower, !WordsCord) :-
                 % explicitly listed at all the appropriate points,
                 %
                 % The list should contain at least one ssc_string element.
+                % However, it should not contain two *consecutive* ssc_str
+                % elements; instead, it should contain one ssc_str containing
+                % their concatenation.
                 list(ssc_unit),
 
                 % The number of blank lines to print after the paragraph.
@@ -1696,7 +1699,12 @@ get_later_words(Avail, [SSCUnit | SSCUnits0], CurLen, FinalLen,
         LineEndReset1 = LineEndReset0,
         string.count_code_points(Str, StrLen),
         NextLen = CurLen + StrLen,
-        ( if append_to_current_line(Avail, CurLen, NextLen) then
+        % Add Str to the current line only if there is space on there
+        % for any suffix string that wasn't merged into Str due to
+        % some color changes between them.
+        AnySuffixLen = peek_and_find_len_of_next_suffix(SSCUnits0),
+        CheckLen = NextLen + AnySuffixLen,
+        ( if append_to_current_line(Avail, CurLen, CheckLen) then
             cord.snoc(Str, LineStrs0, LineStrs1),
             get_later_words(Avail, SSCUnits0, NextLen, FinalLen,
                 LineStrs1, LineStrs, RestSSCUnits, !ColorStack,
@@ -1783,6 +1791,7 @@ append_to_current_line(Avail, CurLen, NextLen) :-
     % If the given list of SSCUnits starts with a color_end, then
     % process all the color_ends adjacent to it, and return the remaining
     % scc_inits and the updated color stack. Otherwise, fail.
+    %
 :- pred merge_adjacent_color_ends(list(ssc_unit)::in, color_stack::in,
     maybe({list(ssc_unit), color_stack})::out) is det.
 
@@ -1868,6 +1877,22 @@ peek_and_find_len_of_next_word([SSCUnit | SSCUnits]) = Len :-
         SSCUnit = ssc_color(_),
         % The color change itself consumes zero columns.
         Len = peek_and_find_len_of_next_word(SSCUnits)
+    ).
+
+:- func peek_and_find_len_of_next_suffix(list(ssc_unit)) = int.
+
+peek_and_find_len_of_next_suffix([]) = 0.
+peek_and_find_len_of_next_suffix([SSCUnit | SSCUnits]) = Len :-
+    (
+        SSCUnit = ssc_str(Str),
+        string.count_code_points(Str, Len)
+    ;
+        SSCUnit = ssc_space,
+        Len = 0
+    ;
+        SSCUnit = ssc_color(_),
+        % The color change itself consumes zero columns.
+        Len = peek_and_find_len_of_next_suffix(SSCUnits)
     ).
 
 :- func top_color_of_stack(color_stack) = color.
