@@ -594,7 +594,7 @@ modecheck_case_list(MultiModeErrorMap0, Var, [Case0 | Cases0], [Case | Cases],
 
     % Record the fact that Var was bound to ConsId in the instmap
     % before processing this case.
-    modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
+    modecheck_record_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
 
     % Modecheck this case (if it is reachable).
     mode_info_get_instmap(!.ModeInfo, InstMap1),

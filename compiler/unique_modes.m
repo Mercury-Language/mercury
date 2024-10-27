@@ -417,11 +417,11 @@ unique_modes_check_call_modes(MatchWhat, ArgVars, ProcArgModes, ArgOffset,
         Determinism, CanProcSucceed, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
-    modecheck_vars_have_inst_list_no_exact_match(MatchWhat,
+    modecheck_vars_have_insts_no_exact_match(MatchWhat,
         ArgVars, InitialInsts, ArgOffset, InstVarSub, !ModeInfo),
     mode_list_get_final_insts(ModuleInfo, ProcArgModes, FinalInsts0),
     inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
-    modecheck_set_var_inst_list(ArgVars, InitialInsts, FinalInsts,
+    modecheck_set_var_insts(ArgVars, InitialInsts, FinalInsts,
         ArgOffset, NewArgVars, ExtraGoals, !ModeInfo),
     ( if
         NewArgVars = ArgVars,
@@ -701,7 +701,7 @@ unique_modes_check_cases([Case0 | Cases0], Var, [Case | Cases],
 
     % Update the instmap to reflect the binding of Var to MainConsId or
     % one of the OtherConsIds before processing this case.
-    modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
+    modecheck_record_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
 
     mode_info_get_instmap(!.ModeInfo, InstMap1),
     ( if instmap_is_reachable(InstMap1) then

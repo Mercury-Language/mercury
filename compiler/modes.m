@@ -1409,7 +1409,7 @@ modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     mode_info_set_instmap(InstMap0, !ModeInfo),
 
-    modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
+    modecheck_record_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
 
     % Modecheck this case (if it is reachable).
     mode_info_get_instmap(!.ModeInfo, InstMap1),
@@ -1463,7 +1463,7 @@ unique_modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0,
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     mode_info_set_instmap(InstMap0, !ModeInfo),
 
-    modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
+    modecheck_record_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
 
     mode_info_get_instmap(!.ModeInfo, InstMap1),
     ( if instmap_is_reachable(InstMap1) then

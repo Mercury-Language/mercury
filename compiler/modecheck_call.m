@@ -133,7 +133,7 @@ modecheck_call_pred(PredId, MaybeDetism, ProcId0, SelectedProcId,
         % Check that `ArgsVars0' have livenesses which match the
         % expected livenesses.
         proc_info_arglives(ModuleInfo, ProcInfo, ProcArgLives0),
-        modecheck_var_list_is_live_no_exact_match(ArgVars0, ProcArgLives0,
+        modecheck_vars_are_live_no_exact_match(ArgVars0, ProcArgLives0,
             ArgOffset, !ModeInfo),
 
         % Check that `ArgsVars0' have insts which match the expected
@@ -146,7 +146,7 @@ modecheck_call_pred(PredId, MaybeDetism, ProcId0, SelectedProcId,
             ProcArgModes0, ProcArgModes),
         mode_info_set_instvarset(InstVarSet, !ModeInfo),
         mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
-        modecheck_vars_have_inst_list_no_exact_match(match_plain_call(PredId),
+        modecheck_vars_have_insts_no_exact_match(match_plain_call(PredId),
             ArgVars0, InitialInsts, ArgOffset, InstVarSub, !ModeInfo),
 
         modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0,
@@ -231,7 +231,7 @@ modecheck_find_matching_modes(PredId, ProcTable, ArgVars0, [ProcId | ProcIds],
     proc_info_arglives(ModuleInfo, ProcInfo, ProcArgLives0),
 
     % Check whether the livenesses of the args matches their expected liveness.
-    modecheck_var_list_is_live_no_exact_match(ArgVars0, ProcArgLives0, 0,
+    modecheck_vars_are_live_no_exact_match(ArgVars0, ProcArgLives0, 0,
         !ModeInfo),
 
     % Check whether the insts of the args matches their expected initial insts.
@@ -251,11 +251,11 @@ modecheck_find_matching_modes(PredId, ProcTable, ArgVars0, [ProcId | ProcIds],
     MatchWhat = match_plain_call(PredId),
     (
         ProcModeErrors = [],
-        modecheck_vars_have_inst_list_no_exact_match(MatchWhat, ArgVars0,
+        modecheck_vars_have_insts_no_exact_match(MatchWhat, ArgVars0,
             InitialInsts, 0, InstVarSub, !ModeInfo)
     ;
         ProcModeErrors = [_ | _],
-        modecheck_vars_have_inst_list_exact_match(MatchWhat, ArgVars0,
+        modecheck_vars_have_insts_exact_match(MatchWhat, ArgVars0,
             InitialInsts, 0, InstVarSub, !ModeInfo)
     ),
 
@@ -306,6 +306,7 @@ no_matching_modes(PredId, ArgVars, ProcInitialInsts, MaybeDetism, WaitingVars,
         NewProcId = invalid_proc_id,    % dummy value
         mode_info_get_instmap(!.ModeInfo, InstMap),
         mode_info_set_call_arg_context(0, !ModeInfo),
+        % ZZZ
         ModeError = mode_error_no_matching_mode(match_plain_call(PredId),
             InstMap, ArgVars, ProcInitialInsts),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
@@ -390,7 +391,7 @@ modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0, ArgOffset,
         InitialInsts0, FinalInsts0),
     inst_list_apply_substitution(InstVarSub, InitialInsts0, InitialInsts),
     inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
-    modecheck_set_var_inst_list(ArgVars0, InitialInsts, FinalInsts,
+    modecheck_set_var_insts(ArgVars0, InitialInsts, FinalInsts,
         ArgOffset, ArgVars, ExtraGoals, !ModeInfo),
     can_proc_info_ever_succeed(ProcInfo, CanSucceed),
     (
@@ -570,18 +571,18 @@ modecheck_arg_list(MatchWhat, ArgOffset, Modes, ExtraGoals, Args0, Args,
     % Check that `Args0' have livenesses which match the expected livenesses.
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     get_arg_lives(ModuleInfo0, Modes, ExpectedArgLives),
-    modecheck_var_list_is_live_no_exact_match(Args0, ExpectedArgLives,
+    modecheck_vars_are_live_no_exact_match(Args0, ExpectedArgLives,
         ArgOffset, !ModeInfo),
 
     % Check that `Args0' have insts which match the expected initial insts,
     % and set their new final insts (introducing extra unifications for
     % implied modes, if necessary).
     mode_list_get_initial_insts(ModuleInfo0, Modes, InitialInsts),
-    modecheck_vars_have_inst_list_no_exact_match(MatchWhat, Args0,
+    modecheck_vars_have_insts_no_exact_match(MatchWhat, Args0,
         InitialInsts, ArgOffset, InstVarSub, !ModeInfo),
     mode_list_get_final_insts(ModuleInfo0, Modes, FinalInsts0),
     inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
-    modecheck_set_var_inst_list(Args0, InitialInsts, FinalInsts,
+    modecheck_set_var_insts(Args0, InitialInsts, FinalInsts,
         ArgOffset, Args, ExtraGoals, !ModeInfo).
 
 %---------------------------------------------------------------------------%
