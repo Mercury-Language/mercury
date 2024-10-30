@@ -26,6 +26,7 @@
 
 :- import_module list.
 :- import_module maybe.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 
@@ -73,24 +74,50 @@
 
 %---------------------------------------------------------------------------%
 
-    % Calculate the argument number offset that needs to be passed to
-    % modecheck_vars_are_live, modecheck_vars_have_insts_*, and
-    % modecheck_set_var_insts. This offset number is calculated so that
-    % real arguments get positive argument numbers and type_info arguments
-    % get argument numbers less than or equal to 0.
+    % The polymophism pass can add type_info and/or typeclass_info arguments
+    % to predicates' argument vectors before arguments visible to users.
+    % Since it would be confusing to refer to e.g. the second user-visible
+    % argument as "argument 5" in a diagnostic message just because
+    % polymophism added three arguments, we need a way to get references
+    % to argument numbers right.
     %
-    % XXX This predicate needs a better name.
+    % Values of this type, computed by one of the three functions below,
+    % specify the offset we need to apply to get from actual positions
+    % in the argument vector on the one hand to the argument numbers
+    % we should use in diagnostics on the other hand. The actual definition
+    % of this type, which is not exported, is a wrapper around an integer
+    % which is -N if a predicate has N compiler-generated arguments.
     %
-:- pred compute_arg_offset(pred_info::in, int::out) is det.
+    % The predicates that use values of this type all iterate on all the
+    % arguments in an argument vector. They all increment the number inside
+    % the wrapper as they go, and they do so *before* processing an argument.
+    % This way, if a predicate has (say) three compiler-generated arguments,
+    % then compute_pred_modecheck_arg_offset will return a wrapper around -3,
+    % the compiler-generated arguments will be processed with their argument
+    % numbers being -2, -1 and 0, and the user-visible arguments will have
+    % their numbers start at 1, as intended.
+    %
+    % The intention is that diagnostics simply omit from their text any
+    % argument numbers that are negative or zero.
+    %
+:- type modecheck_arg_offset.
+
+:- func compute_pred_modecheck_arg_offset(pred_info) = modecheck_arg_offset.
+:- func higher_order_modecheck_arg_offset = modecheck_arg_offset.
+:- func unify_method_event_cast_modecheck_arg_offset = modecheck_arg_offset.
+
+%---------------------------------------------------------------------------%
 
     % Given a list of variables and a list of expected liveness, ensure
     % that the inst of each variable satisfies the corresponding expected
     % liveness. See below for the difference between the two variants.
     %
-:- pred modecheck_vars_are_live_exact_match(list(prog_var)::in,
-    list(is_live)::in, int::in, mode_info::in, mode_info::out) is det.
-:- pred modecheck_vars_are_live_no_exact_match(list(prog_var)::in,
-    list(is_live)::in, int::in, mode_info::in, mode_info::out) is det.
+:- pred modecheck_vars_are_live_exact_match(modecheck_arg_offset::in,
+    list(prog_var)::in, list(is_live)::in,
+    mode_info::in, mode_info::out) is det.
+:- pred modecheck_vars_are_live_no_exact_match(modecheck_arg_offset::in,
+    list(prog_var)::in, list(is_live)::in,
+    mode_info::in, mode_info::out) is det.
 
     % Given a list of variables and a list of initial insts, ensure that
     % the inst of each variable matches the corresponding initial inst.
@@ -99,10 +126,12 @@
     % (using inst_matches_initial).
     %
 :- pred modecheck_vars_have_insts_exact_match(match_what::in,
-    list(prog_var)::in, list(mer_inst)::in, int::in, inst_var_sub::out,
+    modecheck_arg_offset::in, list(prog_var)::in, list(mer_inst)::in,
+    inst_var_sub::out, set(inst_var)::out,
     mode_info::in, mode_info::out) is det.
 :- pred modecheck_vars_have_insts_no_exact_match(match_what::in,
-    list(prog_var)::in, list(mer_inst)::in, int::in, inst_var_sub::out,
+    modecheck_arg_offset::in, list(prog_var)::in, list(mer_inst)::in,
+    inst_var_sub::out, set(inst_var)::out,
     mode_info::in, mode_info::out) is det.
 
     % This is a special-cased, cut-down version of
@@ -131,8 +160,9 @@
 :- pred modecheck_set_var_inst(prog_var::in, mer_inst::in, maybe(mer_inst)::in,
     mode_info::in, mode_info::out) is det.
 
-:- pred modecheck_set_var_insts(list(prog_var)::in, list(mer_inst)::in,
-    list(mer_inst)::in, int::in, list(prog_var)::out, extra_goals::out,
+:- pred modecheck_set_var_insts(modecheck_arg_offset::in, list(prog_var)::in,
+    list(mer_inst)::in, list(mer_inst)::in,
+    list(prog_var)::out, extra_goals::out,
     mode_info::in, mode_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -243,7 +273,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module set.
 :- import_module set_tree234.
 :- import_module term.
 
@@ -413,39 +442,51 @@ create_var_var_unification(Var0, Var, Type, ModeInfo, Goal) :-
 
 %---------------------------------------------------------------------------%
 
-compute_arg_offset(PredInfo, ArgOffset) :-
+:- type modecheck_arg_offset
+    --->    modecheck_arg_offset(int).
+
+compute_pred_modecheck_arg_offset(PredInfo) = ArgOffset :-
     pred_info_get_orig_arity(PredInfo, pred_form_arity(PredFormArityInt)),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     % Note that this is not num_extra_args; it does the subtraction
     % in the *other* direction.
     list.length(ArgTypes, CurrentArity),
-    ArgOffset = PredFormArityInt - CurrentArity.
+    ArgOffset = modecheck_arg_offset(PredFormArityInt - CurrentArity).
+
+higher_order_modecheck_arg_offset = modecheck_arg_offset(1).
+
+unify_method_event_cast_modecheck_arg_offset = modecheck_arg_offset(0).
 
 %---------------------------------------------------------------------------%
 
-modecheck_vars_are_live_exact_match([], [], _ArgNum, !ModeInfo).
-modecheck_vars_are_live_exact_match([_ | _], [], _, !ModeInfo) :-
+modecheck_vars_are_live_exact_match(_, [], [], !ModeInfo).
+modecheck_vars_are_live_exact_match(_, [_ | _], [], !ModeInfo) :-
     unexpected($pred, "length mismatch").
-modecheck_vars_are_live_exact_match([], [_ | _], _, !ModeInfo) :-
+modecheck_vars_are_live_exact_match(_, [], [_ | _], !ModeInfo) :-
     unexpected($pred, "length mismatch").
-modecheck_vars_are_live_exact_match([Var | Vars], [IsLive | IsLives],
-        ArgNum0, !ModeInfo) :-
+modecheck_vars_are_live_exact_match(ArgOffset0,
+        [Var | Vars], [IsLive | IsLives], !ModeInfo) :-
+    ArgOffset0 = modecheck_arg_offset(ArgNum0),
     ArgNum = ArgNum0 + 1,
+    ArgOffset = modecheck_arg_offset(ArgNum),
     mode_info_set_call_arg_context(ArgNum, !ModeInfo),
     modecheck_var_is_live_exact_match(Var, IsLive, !ModeInfo),
-    modecheck_vars_are_live_exact_match(Vars, IsLives, ArgNum, !ModeInfo).
+    modecheck_vars_are_live_exact_match(ArgOffset, Vars, IsLives, !ModeInfo).
 
-modecheck_vars_are_live_no_exact_match([], [], _ArgNum, !ModeInfo).
-modecheck_vars_are_live_no_exact_match([_ | _], [], _, !ModeInfo) :-
+modecheck_vars_are_live_no_exact_match(_, [], [], !ModeInfo).
+modecheck_vars_are_live_no_exact_match(_, [_ | _], [], !ModeInfo) :-
     unexpected($pred, "length mismatch").
-modecheck_vars_are_live_no_exact_match([], [_ | _], _, !ModeInfo) :-
+modecheck_vars_are_live_no_exact_match(_, [], [_ | _], !ModeInfo) :-
     unexpected($pred, "length mismatch").
-modecheck_vars_are_live_no_exact_match([Var | Vars], [IsLive | IsLives],
-        ArgNum0, !ModeInfo) :-
+modecheck_vars_are_live_no_exact_match(ArgOffset0,
+        [Var | Vars], [IsLive | IsLives], !ModeInfo) :-
+    ArgOffset0 = modecheck_arg_offset(ArgNum0),
     ArgNum = ArgNum0 + 1,
+    ArgOffset = modecheck_arg_offset(ArgNum),
     mode_info_set_call_arg_context(ArgNum, !ModeInfo),
     modecheck_var_is_live_no_exact_match(Var, IsLive, !ModeInfo),
-    modecheck_vars_are_live_no_exact_match(Vars, IsLives, ArgNum, !ModeInfo).
+    modecheck_vars_are_live_no_exact_match(ArgOffset, Vars, IsLives,
+        !ModeInfo).
 
 %---------------------%
 %
@@ -492,17 +533,21 @@ modecheck_var_is_live_exact_match(Var, ExpectedIsLive, !ModeInfo) :-
 
 %---------------------------------------------------------------------------%
 
-modecheck_vars_have_insts_exact_match(MatchWhat, Vars, Insts, ArgNum,
-        Subst, !ModeInfo) :-
-    modecheck_vars_have_insts_exact_match_loop(Vars, Insts, ArgNum,
-        map.init, Subst, !ModeInfo),
-    modecheck_head_inst_vars(MatchWhat, Vars, Insts, Subst, !ModeInfo).
+modecheck_vars_have_insts_exact_match(MatchWhat, ArgOffset,
+        Vars, ReqInitialInsts, Subst, BoundInstVars, !ModeInfo) :-
+    ArgOffset = modecheck_arg_offset(ArgNum),
+    modecheck_vars_have_insts_exact_match_loop(Vars, ReqInitialInsts,
+        ArgNum, map.init, Subst, !ModeInfo),
+    modecheck_find_bound_head_inst_vars(MatchWhat, eon_exact, Vars,
+        ReqInitialInsts, Subst, BoundInstVars, !ModeInfo).
 
-modecheck_vars_have_insts_no_exact_match(MatchWhat, Vars, Insts, ArgNum,
-        Subst, !ModeInfo) :-
-    modecheck_vars_have_insts_no_exact_match_loop(Vars, Insts, ArgNum,
-        map.init, Subst, !ModeInfo),
-    modecheck_head_inst_vars(MatchWhat, Vars, Insts, Subst, !ModeInfo).
+modecheck_vars_have_insts_no_exact_match(MatchWhat, ArgOffset,
+        Vars, ReqInitialInsts, Subst, BoundInstVars, !ModeInfo) :-
+    ArgOffset = modecheck_arg_offset(ArgNum),
+    modecheck_vars_have_insts_no_exact_match_loop(Vars, ReqInitialInsts,
+        ArgNum, map.init, Subst, !ModeInfo),
+    modecheck_find_bound_head_inst_vars(MatchWhat, eon_not_exact, Vars,
+        ReqInitialInsts, Subst, BoundInstVars, !ModeInfo).
 
 %---------------------%
 
@@ -518,12 +563,12 @@ modecheck_vars_have_insts_exact_match_loop([_ | _], [],
 modecheck_vars_have_insts_exact_match_loop([], [_ | _],
         _, !Subst, !ModeInfo) :-
     unexpected($pred, "length mismatch").
-modecheck_vars_have_insts_exact_match_loop([Var | Vars], [Inst | Insts],
-        ArgNum0, !Subst, !ModeInfo) :-
+modecheck_vars_have_insts_exact_match_loop([Var | Vars],
+        [ReqInitialInst | ReqInitialInsts], ArgNum0, !Subst, !ModeInfo) :-
     ArgNum = ArgNum0 + 1,
     mode_info_set_call_arg_context(ArgNum, !ModeInfo),
-    modecheck_var_has_inst_exact_match(Var, Inst, !Subst, !ModeInfo),
-    modecheck_vars_have_insts_exact_match_loop(Vars, Insts,
+    modecheck_var_has_inst_exact_match(Var, ReqInitialInst, !Subst, !ModeInfo),
+    modecheck_vars_have_insts_exact_match_loop(Vars, ReqInitialInsts,
         ArgNum, !Subst, !ModeInfo).
 
 :- pred modecheck_vars_have_insts_no_exact_match_loop(list(prog_var)::in,
@@ -538,12 +583,14 @@ modecheck_vars_have_insts_no_exact_match_loop([_ | _], [],
 modecheck_vars_have_insts_no_exact_match_loop([], [_ | _],
         _, !Subst, !ModeInfo) :-
     unexpected($pred, "length mismatch").
-modecheck_vars_have_insts_no_exact_match_loop([Var | Vars], [Inst | Insts],
+modecheck_vars_have_insts_no_exact_match_loop([Var | Vars],
+        [ReqInitialInst | ReqInitialInsts],
         ArgNum0, !Subst, !ModeInfo) :-
     ArgNum = ArgNum0 + 1,
     mode_info_set_call_arg_context(ArgNum, !ModeInfo),
-    modecheck_var_has_inst_no_exact_match(Var, Inst, !Subst, !ModeInfo),
-    modecheck_vars_have_insts_no_exact_match_loop(Vars, Insts,
+    modecheck_var_has_inst_no_exact_match(Var, ReqInitialInst,
+        !Subst, !ModeInfo),
+    modecheck_vars_have_insts_no_exact_match_loop(Vars, ReqInitialInsts,
         ArgNum, !Subst, !ModeInfo).
 
 %---------------------%
@@ -552,9 +599,9 @@ modecheck_vars_have_insts_no_exact_match_loop([Var | Vars], [Inst | Insts],
     inst_var_sub::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_var_has_inst_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
+modecheck_var_has_inst_exact_match(Var, ReqInitialInst0, !Subst, !ModeInfo) :-
     % Apply the substitution computed while matching earlier arguments.
-    inst_apply_substitution(!.Subst, Inst0, Inst),
+    inst_apply_substitution(!.Subst, ReqInitialInst0, ReqInitialInst),
     mode_info_get_instmap(!.ModeInfo, InstMap),
     instmap_lookup_var(InstMap, Var, VarInst0),
     mode_info_get_var_table(!.ModeInfo, VarTable),
@@ -563,7 +610,41 @@ modecheck_var_has_inst_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
         VarInst0, VarInst, !ModeInfo),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     ( if
-        inst_matches_initial_no_implied_modes_sub(Type, VarInst, Inst,
+        inst_matches_initial_no_implied_modes_sub(Type, VarInst,
+            ReqInitialInst, ModuleInfo0, ModuleInfo, !Subst)
+    then
+        mode_info_set_module_info(ModuleInfo, !ModeInfo)
+    else
+        mode_info_get_pred_var_multimode_error_map(!.ModeInfo,
+            MultiModeErrorMap),
+        ( if map.search(MultiModeErrorMap, Var, MultiModeError) then
+            MaybeMultiModeError = yes(MultiModeError)
+        else
+            MaybeMultiModeError = no
+        ),
+        WaitingVars = set_of_var.make_singleton(Var),
+        ModeError = mode_error_var_is_not_sufficiently_instantiated(Var,
+            VarInst, ReqInitialInst, MaybeMultiModeError),
+        mode_info_error(WaitingVars, ModeError, !ModeInfo)
+    ).
+
+:- pred modecheck_var_has_inst_no_exact_match(prog_var::in, mer_inst::in,
+    inst_var_sub::in, inst_var_sub::out,
+    mode_info::in, mode_info::out) is det.
+
+modecheck_var_has_inst_no_exact_match(Var, ReqInitialInst0,
+        !Subst, !ModeInfo) :-
+    % Apply the substitution computed while matching earlier arguments.
+    inst_apply_substitution(!.Subst, ReqInitialInst0, ReqInitialInst),
+    mode_info_get_instmap(!.ModeInfo, InstMap),
+    instmap_lookup_var(InstMap, Var, VarInst0),
+    mode_info_get_var_table(!.ModeInfo, VarTable),
+    lookup_var_type(VarTable, Var, Type),
+    propagate_type_ho_inst_info_into_inst_update_instmap(InstMap, Var, Type,
+        VarInst0, VarInst, !ModeInfo),
+    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
+    ( if
+        inst_matches_initial_sub(Type, VarInst, ReqInitialInst,
             ModuleInfo0, ModuleInfo, !Subst)
     then
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
@@ -577,88 +658,56 @@ modecheck_var_has_inst_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
         ),
         WaitingVars = set_of_var.make_singleton(Var),
         ModeError = mode_error_var_is_not_sufficiently_instantiated(Var,
-            VarInst, Inst, MaybeMultiModeError),
-        mode_info_error(WaitingVars, ModeError, !ModeInfo)
-    ).
-
-:- pred modecheck_var_has_inst_no_exact_match(prog_var::in, mer_inst::in,
-    inst_var_sub::in, inst_var_sub::out,
-    mode_info::in, mode_info::out) is det.
-
-modecheck_var_has_inst_no_exact_match(Var, Inst0, !Subst, !ModeInfo) :-
-    % Apply the substitution computed while matching earlier arguments.
-    inst_apply_substitution(!.Subst, Inst0, Inst),
-    mode_info_get_instmap(!.ModeInfo, InstMap),
-    instmap_lookup_var(InstMap, Var, VarInst0),
-    mode_info_get_var_table(!.ModeInfo, VarTable),
-    lookup_var_type(VarTable, Var, Type),
-    propagate_type_ho_inst_info_into_inst_update_instmap(InstMap, Var, Type,
-        VarInst0, VarInst, !ModeInfo),
-    mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-    ( if
-        inst_matches_initial_sub(Type, VarInst, Inst, ModuleInfo0, ModuleInfo,
-            !Subst)
-    then
-        mode_info_set_module_info(ModuleInfo, !ModeInfo)
-    else
-        mode_info_get_pred_var_multimode_error_map(!.ModeInfo,
-            MultiModeErrorMap),
-        ( if map.search(MultiModeErrorMap, Var, MultiModeError) then
-            MaybeMultiModeError = yes(MultiModeError)
-        else
-            MaybeMultiModeError = no
-        ),
-        WaitingVars = set_of_var.make_singleton(Var),
-        ModeError = mode_error_var_is_not_sufficiently_instantiated(Var,
-            VarInst, Inst, MaybeMultiModeError),
+            VarInst, ReqInitialInst, MaybeMultiModeError),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
 %---------------------%
 
-modecheck_introduced_type_info_var_has_inst_no_exact_match(Var, Type, Inst,
-        !ModeInfo) :-
+modecheck_introduced_type_info_var_has_inst_no_exact_match(Var, Type,
+        ReqInitialInst, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap),
     instmap_lookup_var(InstMap, Var, VarInst),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     ( if
-        inst_matches_initial_sub(Type, VarInst, Inst, ModuleInfo0, ModuleInfo,
-            map.init, _Subst)
+        inst_matches_initial_sub(Type, VarInst, ReqInitialInst,
+            ModuleInfo0, ModuleInfo, map.init, _Subst)
     then
         mode_info_set_module_info(ModuleInfo, !ModeInfo)
     else
         WaitingVars = set_of_var.make_singleton(Var),
         ModeError = mode_error_var_is_not_sufficiently_instantiated(Var,
-            VarInst, Inst, no),
+            VarInst, ReqInitialInst, no),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
 %---------------------%
 
-:- pred modecheck_head_inst_vars(match_what::in, list(prog_var)::in,
-    list(mer_inst)::in, inst_var_sub::in,
-    mode_info::in, mode_info::out) is det.
+:- pred modecheck_find_bound_head_inst_vars(match_what::in, exact_or_not::in,
+    list(prog_var)::in, list(mer_inst)::in,  inst_var_sub::in,
+    set(inst_var)::out, mode_info::in, mode_info::out) is det.
 
-modecheck_head_inst_vars(MatchWhat, Vars, Insts, InstVarSub, !ModeInfo) :-
+modecheck_find_bound_head_inst_vars(MatchWhat, ExactOrNot,
+        Vars, ReqInitialInsts, InstVarSub, BoundInstVars, !ModeInfo) :-
     mode_info_get_head_inst_vars(!.ModeInfo, HeadInstVars),
-    map.foldl(modecheck_head_inst_var(HeadInstVars), InstVarSub,
-        set.init, BadInstVars),
-    ( if set.is_empty(BadInstVars) then
+    map.foldl(modecheck_acc_bound_head_inst_var(HeadInstVars), InstVarSub,
+        set.init, BoundInstVars),
+    ( if set.is_empty(BoundInstVars) then
         true
     else
         mode_info_get_instmap(!.ModeInfo, InstMap),
         WaitingVars = set_of_var.list_to_set(Vars),
-        % XXX Include BadInstVars in the error message, because without this
-        % info, we cannot generate understandable diagnostics.
-        ModeError =
-            mode_error_no_matching_mode(MatchWhat, InstMap, Vars, [Insts]),
+        Mismatch = mode_mismatch(ExactOrNot, ReqInitialInsts, BoundInstVars),
+        ModeError = mode_error_no_matching_mode(MatchWhat, InstMap, Vars,
+            Mismatch, []),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
-:- pred modecheck_head_inst_var(inst_var_sub::in, inst_var::in, mer_inst::in,
-    set(inst_var)::in, set(inst_var)::out) is det.
+:- pred modecheck_acc_bound_head_inst_var(inst_var_sub::in,
+    inst_var::in, mer_inst::in, set(inst_var)::in, set(inst_var)::out) is det.
 
-modecheck_head_inst_var(HeadInstVars, InstVar, Subst, !BadInstVars) :-
+modecheck_acc_bound_head_inst_var(HeadInstVars, InstVar, Subst,
+        !BoundInstVars) :-
     ( if map.search(HeadInstVars, InstVar, Inst) then
         % Subst should not change the constraint. However, the two insts
         % may have different information about inst test results.
@@ -677,7 +726,7 @@ modecheck_head_inst_var(HeadInstVars, InstVar, Subst, !BadInstVars) :-
         then
             true
         else
-            set.insert(InstVar, !BadInstVars)
+            set.insert(InstVar, !BoundInstVars)
         )
     else
         true
@@ -797,29 +846,31 @@ modecheck_set_var_inst(Var0, NewInst0, MaybeUInst, !ModeInfo) :-
 
 %---------------------------------------------------------------------------%
 
-modecheck_set_var_insts(Vars0, InitialInsts, FinalInsts, ArgOffset,
+modecheck_set_var_insts(ArgOffset, Vars0, InitialInsts, FinalInsts,
         Vars, ExtraGoals, !ModeInfo) :-
-    modecheck_set_var_insts_loop(Vars0, InitialInsts, FinalInsts,
-        ArgOffset, Vars, no_extra_goals, ExtraGoals, !ModeInfo).
+    modecheck_set_var_insts_loop(ArgOffset, Vars0, InitialInsts, FinalInsts,
+        Vars, no_extra_goals, ExtraGoals, !ModeInfo).
 
-:- pred modecheck_set_var_insts_loop(list(prog_var)::in, list(mer_inst)::in,
-    list(mer_inst)::in, int::in, list(prog_var)::out,
-    extra_goals::in, extra_goals::out, mode_info::in, mode_info::out)
-    is det.
+:- pred modecheck_set_var_insts_loop(modecheck_arg_offset::in,
+    list(prog_var)::in, list(mer_inst)::in, list(mer_inst)::in,
+    list(prog_var)::out, extra_goals::in, extra_goals::out,
+    mode_info::in, mode_info::out) is det.
 
-modecheck_set_var_insts_loop(Vars0, InitialInsts, FinalInsts, ArgNum0,
+modecheck_set_var_insts_loop(ArgOffset0, Vars0, InitialInsts, FinalInsts,
         Vars, !ExtraGoals, !ModeInfo) :-
     ( if
         Vars0 = [HeadVar0 | TailVars0],
         InitialInsts = [HeadInitialInst | TailInitialInsts],
         FinalInsts = [HeadFinalInst | TailFinalInsts]
     then
+        ArgOffset0 = modecheck_arg_offset(ArgNum0),
         ArgNum = ArgNum0 + 1,
+        ArgOffset = modecheck_arg_offset(ArgNum),
         mode_info_set_call_arg_context(ArgNum, !ModeInfo),
         modecheck_set_var_inst_call(HeadVar0, HeadInitialInst, HeadFinalInst,
             HeadVar, !ExtraGoals, !ModeInfo),
-        modecheck_set_var_insts_loop(TailVars0,
-            TailInitialInsts, TailFinalInsts, ArgNum, TailVars,
+        modecheck_set_var_insts_loop(ArgOffset, TailVars0,
+            TailInitialInsts, TailFinalInsts, TailVars,
             !ExtraGoals, !ModeInfo),
         Vars = [HeadVar | TailVars]
     else if
@@ -1140,8 +1191,8 @@ get_constrained_insts_in_inst(ModuleInfo, Inst, !Map, !Expansions) :-
         unexpected($pred, "inst_var")
     ).
 
-:- pred get_constrained_insts_in_bound_functor(module_info::in, bound_functor::in,
-    head_inst_vars::in, head_inst_vars::out,
+:- pred get_constrained_insts_in_bound_functor(module_info::in,
+    bound_functor::in, head_inst_vars::in, head_inst_vars::out,
     inst_expansions::in, inst_expansions::out) is det.
 
 get_constrained_insts_in_bound_functor(ModuleInfo, BoundFunctor,

@@ -401,9 +401,9 @@ modecheck_complicated_unify(X, Y, Type, InitInstX, InitInstY, UnifiedInst,
             ExpectedInsts),
         mode_info_set_call_context(call_context_unify(UnifyContext),
             !ModeInfo),
-        InitialArgNum = 0,
-        modecheck_vars_have_insts_no_exact_match(match_unify,
-            UnifyTypeInfoVars, ExpectedInsts, InitialArgNum, _InstVarSub,
+        ArgOffset = unify_method_event_cast_modecheck_arg_offset,
+        modecheck_vars_have_insts_no_exact_match(match_unify, ArgOffset,
+            UnifyTypeInfoVars, ExpectedInsts, _InstVarSub, _BadInstVars,
             !ModeInfo),
         % We can ignore _InstVarSub since type_info variables
         % should not have variable insts.

@@ -36,6 +36,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module one_or_more.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 
@@ -121,18 +122,25 @@
             % provide one, the compiler will.
 
     ;       mode_error_no_matching_mode(match_what, instmap, list(prog_var),
-                list(list(mer_inst)))
-            % Call to a predicate with an insufficiently instantiated variable
-            % (for preds with >1 mode).
+                mode_mismatch, list(mode_mismatch))
+            % A call with one or more insufficiently instantiated variables.
+            % The call may be to a declared or inferred predicate or function,
+            % or to a higher order variable. Or it may be a call-like goal,
+            % such as an event or a cast. The first argument specifies which
+            % it is.
             %
-            % The secord argument gives the argument vars of the call,
-            % and lookup them in the instmap gives their insts at the time
+            % The third argument gives the argument vars of the call.
+            % Looking them up in the instmap gives their insts at the time
             % of the call.
             %
-            % If the third argument is a nonempty list, then every member
-            % of that list gives the list of the required initial insts
-            % of the argument vars.
-            % XXX And if it is empty?
+            % For calls the predicates or functions with more than one mode,
+            % the fourth argument gives the list of the required initial insts
+            % of the argument vars in the first mode, and the fifth argument
+            % does the same for the later modes.
+            %
+            % For other kinds of calls, the fourth argument gives the list
+            % of the required initial insts, and the fifth argument will be
+            % the empty list.
             %
             % All the lists of insts must have exactly one inst for
             % each var in the list of vars.
@@ -225,11 +233,11 @@
             % that have inst `any', but is not marked impure.
 
 :- type higher_order_mismatch_info
-    --->    mismatch_not_higher_order_type
-    ;       mismatch_no_higher_order_inst_info
-    ;       mismatch_pred_vs_func(pred_or_func)
+    --->    ho_mismatch_not_higher_order_type
+    ;       ho_mismatch_no_higher_order_inst_info
+    ;       ho_mismatch_pred_vs_func(pred_or_func)
             % actual PorF (expected is in enclosing term)
-    ;       mismatch_on_arity(user_arity).
+    ;       ho_mismatch_on_arity(user_arity).
             % actual arity (expected is in enclosing term)
 
 :- type match_what
@@ -238,6 +246,36 @@
     ;       match_unify
     ;       match_cast
     ;       match_event.
+
+:- type exact_or_not
+    --->    eon_not_exact
+    ;       eon_exact.
+
+:- type mode_mismatch
+    --->    mode_mismatch(
+                exact_or_not,
+                % We check whether the current insts of the actual arguments
+                % of a call match the required initial insts of the format
+                % arguments of the callee by invoking either
+                % modecheck_vars_are_live_no_exact_match (the usual case) or
+                % modecheck_vars_are_live_exact_match.
+                % This argument records which, with the intention being
+                % that we can specialize find_satisfied_initial_insts_in_proc
+                % to repeat the test that lead to the error *exactly*.
+                % XXX We do not yet do this, so this field is unused.
+
+                list(mer_inst),
+                % The required initial insts of the formal arguments.
+
+                set(inst_var)
+                % If this set is not empty, then the actual arguments of the
+                % call *do* match the required initial insts of the format
+                % arguments, but the match binds the given set of inst_vars.
+                % This is not allowed, because it would make the caller unable
+                % to do its job if one or more of the given inst vars
+                % has a value that is incompatible with the one that this
+                % call binds it to.
+            ).
 
 %---------------------%
 
@@ -429,7 +467,6 @@
 :- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module string.builder.
 :- import_module term.
@@ -521,9 +558,9 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
             PredId)
     ;
         ModeError = mode_error_no_matching_mode(MatchWhat, InstMap, ArgVars,
-            ProcInitialInsts),
+            ModeMismatch, ModeMismatches),
         Spec = mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat,
-            InstMap, ArgVars, ProcInitialInsts)
+            InstMap, ArgVars, ModeMismatch, ModeMismatches)
     ;
         ModeError = mode_error_bad_higher_order_inst(Var, Inst,
             ExpectedPredOrFunc, ExpectedUserArity, Mismatch),
@@ -969,10 +1006,10 @@ mode_error_callee_pred_has_no_mode_decl_to_spec(ModeInfo, PredId) = Spec :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_no_matching_mode_to_spec(mode_info, match_what, instmap,
-    list(prog_var), list(list(mer_inst))) = error_spec.
+    list(prog_var), mode_mismatch, list(mode_mismatch)) = error_spec.
 
 mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
-        ProcInitialInsts) = Spec :-
+        HeadMismatch, TailMismatches) = Spec :-
     PrefixPieces = mode_info_context_preamble(ModeInfo) ++
         [words("mode error:")],
     mode_info_get_mode_context(ModeInfo, ModeContext),
@@ -1018,7 +1055,7 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
     construct_argnum_var_type_inst_tuples(VarTable, InstMap, 1,
         Vars, ArgTuples),
     find_satisfied_initial_insts_in_procs(ModuleInfo, ArgTuples,
-        ProcInitialInsts, 1, map.init, OkOrNotMap),
+        [HeadMismatch | TailMismatches], 1, map.init, OkOrNotMap),
     map.foldl(is_any_extra_arg_bad(NumExtra), OkOrNotMap,
         all_extra_args_good, SomeExtraIsBad),
     (
@@ -1106,8 +1143,24 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
             [words("the input mode required for unifications."), nl]
     ),
 
+    mode_info_get_instvarset(ModeInfo, InstVarSet),
+    report_bound_inst_vars(InstVarSet, [HeadMismatch | TailMismatches], 1,
+        BoundInstVarPieces0),
+    (
+        BoundInstVarPieces0 = [],
+        BoundInstVarPieces = []
+    ;
+        BoundInstVarPieces0 = [_ | _],
+        % XXX Should this addeddum be in a verbose_once message?
+        BoundInstVarPieces = BoundInstVarPieces0 ++
+            [words("(If a call binds an inst variable, then"),
+            words("the caller loses the generality promised by"),
+            words("its own mode declaration."), nl]
+    ),
+
     Pieces = PrefixPieces ++ ArgsNoMatchPieces ++ MatchWhatPieces ++
-        [nl_indent_delta(1)] ++ BadArgPieces ++ [nl_indent_delta(-1)],
+        [nl_indent_delta(1)] ++ BadArgPieces ++ [nl_indent_delta(-1)] ++
+        BoundInstVarPieces,
     Phase = phase_mode_check(report_in_any_mode),
     mode_info_get_context(ModeInfo, Context),
     Spec = spec($pred, severity_error, Phase, Context, Pieces).
@@ -1137,17 +1190,19 @@ construct_argnum_var_type_inst_tuples(VarTable, InstMap, ArgNum,
 :- type arg_ok_or_not_map == one_or_more_map(ok_or_not, int).
 
 :- pred find_satisfied_initial_insts_in_procs(module_info::in,
-    list(argnum_var_type_inst)::in, list(list(mer_inst))::in, int::in,
+    list(argnum_var_type_inst)::in, list(mode_mismatch)::in, int::in,
     ok_or_not_map::in, ok_or_not_map::out) is det.
 
 find_satisfied_initial_insts_in_procs(_ModuleInfo, _ArgTuples,
         [], _ProcNum, !OkOrNotMap).
 find_satisfied_initial_insts_in_procs(ModuleInfo, ArgTuples,
-        [Proc | Procs], ProcNum, !OkOrNotMap) :-
-    find_satisfied_initial_insts_in_proc(ModuleInfo, ArgTuples, Proc,
-        ProcNum, !OkOrNotMap),
+        [ProcMismatch | ProcMismatches], ProcNum, !OkOrNotMap) :-
+    ProcMismatch = mode_mismatch(_ExactOrNot, ProcReqInitialInsts,
+        _BoundInstVars),
+    find_satisfied_initial_insts_in_proc(ModuleInfo, ArgTuples,
+        ProcReqInitialInsts, ProcNum, !OkOrNotMap),
     find_satisfied_initial_insts_in_procs(ModuleInfo, ArgTuples,
-        Procs, ProcNum + 1, !OkOrNotMap).
+        ProcMismatches, ProcNum + 1, !OkOrNotMap).
 
 :- pred find_satisfied_initial_insts_in_proc(module_info::in,
     list(argnum_var_type_inst)::in, list(mer_inst)::in, int::in,
@@ -1302,6 +1357,34 @@ report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap,
         BadArgPieces = TailBadArgPieces
     ).
 
+:- pred report_bound_inst_vars(inst_varset::in, list(mode_mismatch)::in,
+    int::in, list(format_piece)::out) is det.
+
+report_bound_inst_vars(_, [], _, []).
+report_bound_inst_vars(InstVarSet, [Mismatch | Mismatches], ProcNum, Pieces) :-
+    report_bound_inst_vars(InstVarSet, Mismatches, ProcNum + 1, TailPieces),
+    Mismatch = mode_mismatch(_, _, BoundInstVars),
+    ( if set.is_empty(BoundInstVars) then
+        Pieces = TailPieces
+    else
+        ( if ProcNum = 1, Mismatches = [] then
+            TheProcPieces = [words("The mode")]
+        else
+            TheProcPieces = [words("The"), nth_fixed(ProcNum), words("mode")]
+        ),
+        set.map(varset.lookup_name(InstVarSet),
+            BoundInstVars, BoundInstVarNames),
+        set.to_sorted_list(BoundInstVarNames, SortedBoundInstVarNames),
+        VarOrVars = choose_number(SortedBoundInstVarNames,
+            "variable", "variables"),
+        InstVarNamePieces = quote_list_to_color_pieces(color_subject,
+            "and", [suffix(".")], SortedBoundInstVarNames),
+        HeadPieces = TheProcPieces ++ [words("does not match"),
+            words("because it binds the inst"), words(VarOrVars)] ++
+            InstVarNamePieces ++ [nl],
+        Pieces = HeadPieces ++ TailPieces
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- func mode_error_bad_higher_order_inst_to_spec(mode_info, prog_var, mer_inst,
@@ -1322,12 +1405,12 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
     ExpPieces0 = [words(ExpPFStr), words("of"), ExpArityPiece, suffix(",")],
     ExpPieces = color_as_correct(ExpPieces0),
     (
-        Mismatch = mismatch_not_higher_order_type,
+        Mismatch = ho_mismatch_not_higher_order_type,
         ActPieces =
             [words("but the type of")] ++ PredVarNamePieces ++ [words("is")] ++
             color_as_incorrect([words("not a higher order type.")]) ++ [nl]
     ;
-        Mismatch = mismatch_no_higher_order_inst_info,
+        Mismatch = ho_mismatch_no_higher_order_inst_info,
         ( if PredVarInst = free then
             FreeVarPieces = [words("free variable.")],
             ActPieces = [words("but")] ++ PredVarNamePieces ++
@@ -1381,12 +1464,12 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
                 suffix("."), nl]
         )
     ;
-        Mismatch = mismatch_pred_vs_func(ActualPredOrFunc),
+        Mismatch = ho_mismatch_pred_vs_func(ActualPredOrFunc),
         ActPFStr = pred_or_func_to_full_str(ActualPredOrFunc),
         ActPieces = [words("but")] ++ PredVarNamePieces ++ [words("is a")] ++
             color_as_incorrect([words(ActPFStr), words("variable.")]) ++ [nl]
     ;
-        Mismatch = mismatch_on_arity(ActualUserArity),
+        Mismatch = ho_mismatch_on_arity(ActualUserArity),
         ActualUserArity = user_arity(ActUserArityInt),
         ActArityPiece = fixed("arity " ++ int_name_str(ActUserArityInt)),
         ActPieces = [words("but")] ++ PredVarNamePieces ++ [words("has")] ++

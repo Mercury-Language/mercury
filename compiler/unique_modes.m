@@ -302,23 +302,23 @@ unique_modes_check_goal_generic_call(GoalExpr0, GoalExpr, !ModeInfo) :-
     ),
     (
         GenericCall = higher_order(_, _, _, _),
-        ArgOffset = 1
+        ArgOffset = higher_order_modecheck_arg_offset
     ;
         % Class method calls are introduced by the compiler
         % and should be mode correct.
         GenericCall = class_method(_, _, _, _),
-        ArgOffset = 0
+        ArgOffset = unify_method_event_cast_modecheck_arg_offset
     ;
         GenericCall = event_call(_),
-        ArgOffset = 0
+        ArgOffset = unify_method_event_cast_modecheck_arg_offset
     ;
         % Casts are introduced by the compiler and should be mode correct.
         % Coercions are mode checked.
         GenericCall = cast(_),
-        ArgOffset = 0
+        ArgOffset = unify_method_event_cast_modecheck_arg_offset
     ),
     unique_modes_check_call_modes(match_higher_order_call(GenericCallId),
-        ArgVars, ArgModes, ArgOffset, Detism, CanProcSucceed, !ModeInfo),
+        ArgOffset, ArgVars, ArgModes, Detism, CanProcSucceed, !ModeInfo),
     GoalExpr = GoalExpr0,
 
     mode_info_unset_call_context(!ModeInfo),
@@ -345,12 +345,12 @@ unique_modes_check_plain_or_foreign_call(PredId, ProcId0, ArgVars, GoalInfo,
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId0,
         PredInfo, ProcInfo),
-    compute_arg_offset(PredInfo, ArgOffset),
+    ArgOffset = compute_pred_modecheck_arg_offset(PredInfo),
     proc_info_get_argmodes(ProcInfo, ProcArgModes0),
     proc_info_interface_determinism(ProcInfo, InterfaceDeterminism),
     can_proc_info_ever_succeed(ProcInfo, CanSucceed),
-    unique_modes_check_call_modes(match_plain_call(PredId), ArgVars,
-        ProcArgModes0, ArgOffset, InterfaceDeterminism, CanSucceed, !ModeInfo),
+    unique_modes_check_call_modes(match_plain_call(PredId), ArgOffset,
+        ArgVars, ProcArgModes0, InterfaceDeterminism, CanSucceed, !ModeInfo),
     look_up_proc_mode_errors(!.ModeInfo, PredId, ProcId0, CalleeModeErrors),
     (
         CalleeModeErrors = [_ | _],
@@ -418,20 +418,20 @@ unique_modes_check_plain_or_foreign_call(PredId, ProcId0, ArgVars, GoalInfo,
     % arguments of the call, and then check for each argument if the variable
     % is nondet-live and the required initial inst was unique.
     %
-:- pred unique_modes_check_call_modes(match_what::in,
-    list(prog_var)::in, list(mer_mode)::in, int::in, determinism::in,
+:- pred unique_modes_check_call_modes(match_what::in, modecheck_arg_offset::in,
+    list(prog_var)::in, list(mer_mode)::in, determinism::in,
     can_proc_succeed::in, mode_info::in, mode_info::out) is det.
 
-unique_modes_check_call_modes(MatchWhat, ArgVars, ProcArgModes, ArgOffset,
+unique_modes_check_call_modes(MatchWhat, ArgOffset, ArgVars, ProcArgModes,
         Determinism, CanProcSucceed, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
-    modecheck_vars_have_insts_no_exact_match(MatchWhat,
-        ArgVars, InitialInsts, ArgOffset, InstVarSub, !ModeInfo),
+    modecheck_vars_have_insts_no_exact_match(MatchWhat, ArgOffset,
+        ArgVars, InitialInsts, InstVarSub, _BadInstVars, !ModeInfo),
     mode_list_get_final_insts(ModuleInfo, ProcArgModes, FinalInsts0),
     inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
-    modecheck_set_var_insts(ArgVars, InitialInsts, FinalInsts,
-        ArgOffset, NewArgVars, ExtraGoals, !ModeInfo),
+    modecheck_set_var_insts(ArgOffset, ArgVars, InitialInsts, FinalInsts,
+        NewArgVars, ExtraGoals, !ModeInfo),
     ( if
         NewArgVars = ArgVars,
         ExtraGoals = no_extra_goals

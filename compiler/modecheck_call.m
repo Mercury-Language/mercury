@@ -102,12 +102,13 @@ modecheck_plain_or_foreign_call(PredId, MaybeDetism, ProcId0, SelectedProcId,
         ProcIds = pred_info_all_procids(PredInfo)
     ),
 
-    compute_arg_offset(PredInfo, ArgOffset),
+    ArgOffset = compute_pred_modecheck_arg_offset(PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     mode_info_get_instmap(!.ModeInfo, InstMap),
+    % In order to give better diagnostics, we handle the cases where there
+    % are zero or one modes for the called predicate specially.
+    % XXX Then we should have a switch on ProcIds.
     ( if
-        % In order to give better diagnostics, we handle the cases where there
-        % are zero or one modes for the called predicate specially.
         ProcIds = [],
         not check_marker(Markers, marker_infer_modes)
     then
@@ -132,8 +133,8 @@ modecheck_plain_or_foreign_call(PredId, MaybeDetism, ProcId0, SelectedProcId,
         % Check that `ArgsVars0' have livenesses which match the
         % expected livenesses.
         proc_info_arglives(ModuleInfo, ProcInfo, ProcArgLives0),
-        modecheck_vars_are_live_no_exact_match(ArgVars0, ProcArgLives0,
-            ArgOffset, !ModeInfo),
+        modecheck_vars_are_live_no_exact_match(ArgOffset,
+            ArgVars0, ProcArgLives0, !ModeInfo),
 
         % Check that `ArgsVars0' have insts which match the expected
         % initial insts, and set their new final insts (introducing
@@ -145,26 +146,26 @@ modecheck_plain_or_foreign_call(PredId, MaybeDetism, ProcId0, SelectedProcId,
             ProcArgModes0, ProcArgModes),
         mode_info_set_instvarset(InstVarSet, !ModeInfo),
         mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
-        modecheck_vars_have_insts_no_exact_match(match_plain_call(PredId),
-            ArgVars0, InitialInsts, ArgOffset, InstVarSub, !ModeInfo),
+        MatchWhat = match_plain_call(PredId),
+        modecheck_vars_have_insts_no_exact_match(MatchWhat, ArgOffset,
+            ArgVars0, InitialInsts, InstVarSub, _BoundInstVars, !ModeInfo),
 
-        modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0,
-            ArgOffset, InstVarSub, ArgVars, ExtraGoals, !ModeInfo)
+        modecheck_end_of_call(ProcInfo, ArgOffset, ProcArgModes, ArgVars0,
+            InstVarSub, ArgVars, ExtraGoals, !ModeInfo)
     else
-        % Set the current error list to empty (after saving the old one in
-        % `OldErrors'). This is so the test for `Errors = []' in
-        % modecheck_find_matching_modes will work.
+        % We save and restore the error list in order to allow
+        % modecheck_find_matching_modes to use that field of !ModeInfo
+        % for its own purposes.
         mode_info_get_errors(!.ModeInfo, OldErrors),
-        mode_info_set_errors([], !ModeInfo),
-
         set_of_var.init(WaitingVars0),
-        modecheck_find_matching_modes(PredId, ProcTable, ArgVars0, ProcIds,
-            [], RevMatchingProcModes, [], RevProcInitialInsts,
+        modecheck_find_matching_modes(PredId, ProcTable, ArgOffset,
+            ArgVars0, ProcIds, [], RevMatchingProcModes, [], RevMismatches,
             WaitingVars0, WaitingVars1, !ModeInfo),
+        mode_info_set_errors(OldErrors, !ModeInfo),
         (
             RevMatchingProcModes = [],
-            list.reverse(RevProcInitialInsts, ProcInitialInsts),
-            no_matching_modes(PredId, ArgVars0, ProcInitialInsts,
+            list.reverse(RevMismatches, Mismatches),
+            no_matching_modes(PredId, ArgVars0, Mismatches,
                 MaybeDetism, WaitingVars1, SelectedProcId, !ModeInfo),
             ArgVars = ArgVars0,
             ExtraGoals = no_extra_goals
@@ -178,8 +179,9 @@ modecheck_plain_or_foreign_call(PredId, MaybeDetism, ProcId0, SelectedProcId,
                 CalleeModeErrors),
             (
                 CalleeModeErrors = [],
-                modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0,
-                    ArgOffset, InstVarSub, ArgVars, ExtraGoals, !ModeInfo)
+                modecheck_end_of_call(ProcInfo, ArgOffset,
+                    ProcArgModes, ArgVars0, InstVarSub, ArgVars,
+                    ExtraGoals, !ModeInfo)
             ;
                 CalleeModeErrors = [_ | _],
                 % Mode error in callee for this mode.
@@ -192,29 +194,28 @@ modecheck_plain_or_foreign_call(PredId, MaybeDetism, ProcId0, SelectedProcId,
                     PredId, SelectedProcId, CalleeModeErrors),
                 mode_info_error(WaitingVars, ModeError, !ModeInfo)
             )
-        ),
-
-        % Restore the error list, appending any new error(s).
-        mode_info_get_errors(!.ModeInfo, NewErrors),
-        list.append(OldErrors, NewErrors, Errors),
-        mode_info_set_errors(Errors, !ModeInfo)
+        )
     ).
 
 %---------------------%
 
 :- pred modecheck_find_matching_modes(pred_id::in, proc_table::in,
-    list(prog_var)::in, list(proc_id)::in,
+    modecheck_arg_offset::in, list(prog_var)::in, list(proc_id)::in,
     list(proc_mode)::in, list(proc_mode)::out,
-    list(list(mer_inst))::in, list(list(mer_inst))::out,
+    list(mode_mismatch)::in, list(mode_mismatch)::out,
     set_of_progvar::in, set_of_progvar::out,
     mode_info::in, mode_info::out) is det.
 
-modecheck_find_matching_modes(_PredId, _ProcTable, _ArgVars, [],
-        !RevMatchingProcModes, !RevProcInitialInsts,
-        !WaitingVars, !ModeInfo).
-modecheck_find_matching_modes(PredId, ProcTable, ArgVars0, [ProcId | ProcIds],
-        !RevMatchingProcModes, !RevProcInitialInsts,
+modecheck_find_matching_modes(_PredId, _ProcTable, _ArgOffset, _ArgVars,
+        [], !RevMatchingProcModes, !RevMismatches, !WaitingVars, !ModeInfo).
+modecheck_find_matching_modes(PredId, ProcTable, ArgOffset, ArgVars0,
+        [ProcId | ProcIds], !RevMatchingProcModes, !RevMismatches,
         !WaitingVars, !ModeInfo) :-
+    % Clear the errors field of !ModeInfo so that we can check below
+    % whether this procedure is a match. Our caller has already saved
+    % the old contents of this field.
+    mode_info_set_errors([], !ModeInfo),
+
     % Find the initial insts and the final livenesses of the arguments
     % for this mode of the called pred.
     map.lookup(ProcTable, ProcId, ProcInfo),
@@ -223,16 +224,19 @@ modecheck_find_matching_modes(PredId, ProcTable, ArgVars0, [ProcId | ProcIds],
     mode_info_get_instvarset(!.ModeInfo, InstVarSet0),
     rename_apart_inst_vars(InstVarSet0, ProcInstVarSet, InstVarSet,
         ProcArgModes0, ProcArgModes),
-    % This adds the renamed-apart inst variables from ProcInstVarSet
-    % *permanently* to the inst_varset of 
+    % This adds the renamed-apart inst variables from the ProcInstVarSet of
+    % the callee *permanently* to the inst_varset of the current procedure,
+    % the caller.
     mode_info_set_instvarset(InstVarSet, !ModeInfo),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     proc_info_arglives(ModuleInfo, ProcInfo, ProcArgLives0),
 
     % Check whether the livenesses of the args matches their expected liveness.
-    modecheck_vars_are_live_no_exact_match(ArgVars0, ProcArgLives0, 0,
+    modecheck_vars_are_live_no_exact_match(ArgOffset, ArgVars0, ProcArgLives0,
         !ModeInfo),
 
+    MatchWhat = match_plain_call(PredId),
+    mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
     % Check whether the insts of the args matches their expected initial insts.
     %
     % If we are doing mode inference for the called procedure, and the
@@ -243,30 +247,32 @@ modecheck_find_matching_modes(PredId, ProcTable, ArgVars0, [ProcId | ProcIds],
     % Would it be better to always require an exact match when doing mode
     % inference, to ensure that we add new inferred modes rather than using
     % implied modes?
-
-    mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
-    !:RevProcInitialInsts = [InitialInsts | !.RevProcInitialInsts],
     look_up_proc_mode_errors(!.ModeInfo, PredId, ProcId, ProcModeErrors),
-    MatchWhat = match_plain_call(PredId),
     (
         ProcModeErrors = [],
-        modecheck_vars_have_insts_no_exact_match(MatchWhat, ArgVars0,
-            InitialInsts, 0, InstVarSub, !ModeInfo)
+        ExactOrNot = eon_not_exact,
+        modecheck_vars_have_insts_no_exact_match(MatchWhat, ArgOffset,
+            ArgVars0, InitialInsts, InstVarSub, BoundInstVars, !ModeInfo)
     ;
         ProcModeErrors = [_ | _],
-        modecheck_vars_have_insts_exact_match(MatchWhat, ArgVars0,
-            InitialInsts, 0, InstVarSub, !ModeInfo)
+        ExactOrNot = eon_exact,
+        modecheck_vars_have_insts_exact_match(MatchWhat, ArgOffset,
+            ArgVars0, InitialInsts, InstVarSub, BoundInstVars, !ModeInfo)
     ),
 
     % If we got an error, reset the error list and save the list of vars
     % to wait on. Otherwise, insert the proc_id in the list of matching
     % proc_ids.
+    % XXX Should we include Errors in mo Mismatch?
     mode_info_get_errors(!.ModeInfo, Errors),
     (
         Errors = [FirstError | _],
-        mode_info_set_errors([], !ModeInfo),
+        % NOTE The waiting vars and mismatches we collect here are used ONLY
+        % if we find no matching modes.
         FirstError = mode_error_info(ErrorWaitingVars, _, _, _),
-        set_of_var.union(ErrorWaitingVars, !WaitingVars)
+        set_of_var.union(ErrorWaitingVars, !WaitingVars),
+        Mismatch = mode_mismatch(ExactOrNot, InitialInsts, BoundInstVars),
+        !:RevMismatches = [Mismatch | !.RevMismatches]
     ;
         Errors = [],
         NewMatchingProcMode = proc_mode(ProcId, InstVarSub, ProcArgModes),
@@ -274,16 +280,17 @@ modecheck_find_matching_modes(PredId, ProcTable, ArgVars0, [ProcId | ProcIds],
     ),
 
     % Keep trying with the other modes for the called pred.
-    modecheck_find_matching_modes(PredId, ProcTable, ArgVars0, ProcIds,
-        !RevMatchingProcModes, !RevProcInitialInsts, !WaitingVars, !ModeInfo).
+    modecheck_find_matching_modes(PredId, ProcTable, ArgOffset,
+        ArgVars0, ProcIds, !RevMatchingProcModes, !RevMismatches,
+        !WaitingVars, !ModeInfo).
 
 %---------------------%
 
 :- pred no_matching_modes(pred_id::in, list(prog_var)::in,
-    list(list(mer_inst))::in, maybe(determinism)::in, set_of_progvar::in,
+    list(mode_mismatch)::in, maybe(determinism)::in, set_of_progvar::in,
     proc_id::out, mode_info::in, mode_info::out) is det.
 
-no_matching_modes(PredId, ArgVars, ProcInitialInsts, MaybeDetism, WaitingVars,
+no_matching_modes(PredId, ArgVars, Mismatches, MaybeDetism, WaitingVars,
         NewProcId, !ModeInfo) :-
     % There were no matching modes.
     % If we are inferring modes for this called predicate, then
@@ -305,9 +312,10 @@ no_matching_modes(PredId, ArgVars, ProcInitialInsts, MaybeDetism, WaitingVars,
         NewProcId = invalid_proc_id,    % dummy value
         mode_info_get_instmap(!.ModeInfo, InstMap),
         mode_info_set_call_arg_context(0, !ModeInfo),
-        % ZZZ
-        ModeError = mode_error_no_matching_mode(match_plain_call(PredId),
-            InstMap, ArgVars, ProcInitialInsts),
+        list.det_head_tail(Mismatches, HeadMismatch, TailMismatches),
+        MatchWhat = match_plain_call(PredId),
+        ModeError = mode_error_no_matching_mode(MatchWhat, InstMap, ArgVars,
+            HeadMismatch, TailMismatches),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
@@ -379,19 +387,20 @@ get_var_insts_and_lives(ModeInfo, [Var | Vars],
 
 %---------------------%
 
-:- pred modecheck_end_of_call(proc_info::in, list(mer_mode)::in,
-    list(prog_var)::in, int::in, inst_var_sub::in, list(prog_var)::out,
-    extra_goals::out, mode_info::in, mode_info::out) is det.
+:- pred modecheck_end_of_call(proc_info::in, modecheck_arg_offset::in,
+    list(mer_mode)::in, list(prog_var)::in, inst_var_sub::in,
+    list(prog_var)::out, extra_goals::out,
+    mode_info::in, mode_info::out) is det.
 
-modecheck_end_of_call(ProcInfo, ProcArgModes, ArgVars0, ArgOffset,
+modecheck_end_of_call(ProcInfo, ArgOffset, ProcArgModes, ArgVars0,
         InstVarSub, ArgVars, ExtraGoals, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_list_get_initial_final_insts(ModuleInfo, ProcArgModes,
         InitialInsts0, FinalInsts0),
     inst_list_apply_substitution(InstVarSub, InitialInsts0, InitialInsts),
     inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
-    modecheck_set_var_insts(ArgVars0, InitialInsts, FinalInsts,
-        ArgOffset, ArgVars, ExtraGoals, !ModeInfo),
+    modecheck_set_var_insts(ArgOffset, ArgVars0, InitialInsts, FinalInsts,
+        ArgVars, ExtraGoals, !ModeInfo),
     can_proc_info_ever_succeed(ProcInfo, CanSucceed),
     (
         CanSucceed = proc_cannot_succeed,
@@ -437,7 +446,7 @@ modecheck_higher_order_call(GenericCallId, PredOrFunc, PredVar,
         else
             Modes = Modes0,
             Detism = Detism0,
-            ArgOffset = 1,
+            ArgOffset = higher_order_modecheck_arg_offset,
             modecheck_arg_list(match_higher_order_call(GenericCallId),
                 ArgOffset, Modes, ExtraGoals, ArgVars0, ArgVars, !ModeInfo),
             ( if determinism_components(Detism, _, at_most_zero) then
@@ -461,24 +470,25 @@ modecheck_higher_order_call(GenericCallId, PredOrFunc, PredVar,
         ExtraGoals = no_extra_goals
     ).
 
-:- type higher_order_match
+:- type maybe_higher_order_match
     --->    higher_order_match(pred_inst_info)
     ;       higher_order_mismatch(higher_order_mismatch_info).
 
 :- pred get_higher_order_inst_match(mode_info::in, pred_or_func::in,
     prog_var::in, mer_inst::in, user_arity::in,
-    higher_order_match::out) is det.
+    maybe_higher_order_match::out) is det.
 
 get_higher_order_inst_match(ModeInfo, ExpectedPredOrFunc, PredVar, PredVarInst,
-        ExpectedUserArity, Match) :-
+        ExpectedUserArity, MaybeMatch) :-
     ( if
         ( PredVarInst = ground(_Uniq, HOInstInfo)
         ; PredVarInst = any(_Uniq, HOInstInfo)
         )
     then
         (
-            HOInstInfo = higher_order(PredInstInfo0),
-            Match0 = higher_order_match(PredInstInfo0)
+            HOInstInfo = higher_order(PredInstInfo),
+            check_for_pf_arity_mismatch(ExpectedPredOrFunc, ExpectedUserArity,
+                PredInstInfo, MaybeMatch)
         ;
             % If PredVarInst has no higher-order inst information,
             % then look for higher-order inst information in the type.
@@ -493,58 +503,62 @@ get_higher_order_inst_match(ModeInfo, ExpectedPredOrFunc, PredVar, PredVarInst,
                     TypeHOInstInfo, _Purity)
             then
                 (
-                    TypeHOInstInfo = higher_order(PredInstInfo0),
-                    PredInstInfo0 = pred_inst_info(TypeHOPredOrFunc, _, _, _),
+                    TypeHOInstInfo = higher_order(PredInstInfo),
+                    PredInstInfo = pred_inst_info(TypeHOPredOrFunc, _, _, _),
                     expect(unify(TypePredOrFunc, TypeHOPredOrFunc), $pred,
                         "TypePredOrFunc != TypeHOPredOrFunc"),
-                    Match0 = higher_order_match(PredInstInfo0)
+                    check_for_pf_arity_mismatch(ExpectedPredOrFunc,
+                        ExpectedUserArity, PredInstInfo, MaybeMatch)
                 ;
                     TypeHOInstInfo = none_or_default_func,
                     (
                         TypePredOrFunc = pf_function,
                         list.length(ArgTypes, NumArgs),
-                        PredInstInfo0 =
+                        PredInstInfo =
                             pred_inst_info_default_func_mode(NumArgs),
-                        Match0 = higher_order_match(PredInstInfo0)
+                        check_for_pf_arity_mismatch(ExpectedPredOrFunc,
+                            ExpectedUserArity, PredInstInfo, MaybeMatch)
                     ;
                         TypePredOrFunc = pf_predicate,
-                        Mismatch0 = mismatch_no_higher_order_inst_info,
-                        Match0 = higher_order_mismatch(Mismatch0)
+                        HOMismatch0 = ho_mismatch_no_higher_order_inst_info,
+                        MaybeMatch = higher_order_mismatch(HOMismatch0)
                     )
                 )
             else
-                Match0 = higher_order_mismatch(mismatch_not_higher_order_type)
-            )
-        ),
-        (
-            Match0 = higher_order_mismatch(Mismatch),
-            Match = higher_order_mismatch(Mismatch)
-        ;
-            Match0 = higher_order_match(PredInstInfo),
-            PredInstInfo = pred_inst_info(ActualPredOrFunc, Modes, _, _),
-            ( if ExpectedPredOrFunc = ActualPredOrFunc then
-                ActualPredFormArity = arg_list_arity(Modes),
-                user_arity_pred_form_arity(ActualPredOrFunc,
-                    ActualUserArity, ActualPredFormArity),
-                ( if ExpectedUserArity = ActualUserArity then
-                    Match = higher_order_match(PredInstInfo)
-                else
-                    Mismatch = mismatch_on_arity(ActualUserArity),
-                    Match = higher_order_mismatch(Mismatch)
-                )
-            else
-                Mismatch = mismatch_pred_vs_func(ActualPredOrFunc),
-                Match = higher_order_mismatch(Mismatch)
+                HOMismatch0 = ho_mismatch_not_higher_order_type,
+                MaybeMatch = higher_order_mismatch(HOMismatch0)
             )
         )
     else
-        Match = higher_order_mismatch(mismatch_no_higher_order_inst_info)
+        MaybeMatch =
+            higher_order_mismatch(ho_mismatch_no_higher_order_inst_info)
+    ).
+
+:- pred check_for_pf_arity_mismatch(pred_or_func::in, user_arity::in,
+    pred_inst_info::in, maybe_higher_order_match::out) is det.
+
+check_for_pf_arity_mismatch(ExpectedPredOrFunc, ExpectedUserArity,
+        PredInstInfo, MaybeMatch) :-
+    PredInstInfo = pred_inst_info(ActualPredOrFunc, Modes, _, _),
+    ( if ExpectedPredOrFunc = ActualPredOrFunc then
+        ActualPredFormArity = arg_list_arity(Modes),
+        user_arity_pred_form_arity(ActualPredOrFunc,
+            ActualUserArity, ActualPredFormArity),
+        ( if ExpectedUserArity = ActualUserArity then
+            MaybeMatch = higher_order_match(PredInstInfo)
+        else
+            HOMismatch = ho_mismatch_on_arity(ActualUserArity),
+            MaybeMatch = higher_order_mismatch(HOMismatch)
+        )
+    else
+        HOMismatch = ho_mismatch_pred_vs_func(ActualPredOrFunc),
+        MaybeMatch = higher_order_mismatch(HOMismatch)
     ).
 
 %---------------------------------------------------------------------------%
 
 modecheck_event_call(Modes, Args0, Args, !ModeInfo) :-
-    ArgOffset = 0,
+    ArgOffset = unify_method_event_cast_modecheck_arg_offset,
     modecheck_arg_list(match_event, ArgOffset, Modes, ExtraGoals,
         Args0, Args, !ModeInfo),
     expect(unify(ExtraGoals, no_extra_goals), $pred, "ExtraGoals").
@@ -554,35 +568,41 @@ modecheck_event_call(Modes, Args0, Args, !ModeInfo) :-
 modecheck_builtin_cast(Modes, Args0, Args, Det, ExtraGoals, !ModeInfo) :-
     Det = detism_det,
     % These should always be mode correct.
-    ArgOffset = 0,
+    ArgOffset = unify_method_event_cast_modecheck_arg_offset,
     modecheck_arg_list(match_cast, ArgOffset, Modes, ExtraGoals,
         Args0, Args, !ModeInfo).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred modecheck_arg_list(match_what::in, int::in, list(mer_mode)::in,
-    extra_goals::out, list(prog_var)::in, list(prog_var)::out,
-    mode_info::in, mode_info::out) is det.
+    % Modecheck the arguments of
+    %
+    % - higher order calls,
+    % - events, and
+    % - casts.
+    %
+:- pred modecheck_arg_list(match_what::in, modecheck_arg_offset::in,
+    list(mer_mode)::in, extra_goals::out, list(prog_var)::in,
+    list(prog_var)::out, mode_info::in, mode_info::out) is det.
 
 modecheck_arg_list(MatchWhat, ArgOffset, Modes, ExtraGoals, Args0, Args,
         !ModeInfo) :-
     % Check that `Args0' have livenesses which match the expected livenesses.
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     get_arg_lives(ModuleInfo0, Modes, ExpectedArgLives),
-    modecheck_vars_are_live_no_exact_match(Args0, ExpectedArgLives,
-        ArgOffset, !ModeInfo),
+    modecheck_vars_are_live_no_exact_match(ArgOffset, Args0, ExpectedArgLives,
+        !ModeInfo),
 
     % Check that `Args0' have insts which match the expected initial insts,
     % and set their new final insts (introducing extra unifications for
     % implied modes, if necessary).
     mode_list_get_initial_insts(ModuleInfo0, Modes, InitialInsts),
-    modecheck_vars_have_insts_no_exact_match(MatchWhat, Args0,
-        InitialInsts, ArgOffset, InstVarSub, !ModeInfo),
+    modecheck_vars_have_insts_no_exact_match(MatchWhat, ArgOffset,
+        Args0, InitialInsts, InstVarSub, _BoundInstVars, !ModeInfo),
     mode_list_get_final_insts(ModuleInfo0, Modes, FinalInsts0),
     inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
-    modecheck_set_var_insts(Args0, InitialInsts, FinalInsts,
-        ArgOffset, Args, ExtraGoals, !ModeInfo).
+    modecheck_set_var_insts(ArgOffset, Args0, InitialInsts, FinalInsts,
+        Args, ExtraGoals, !ModeInfo).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.modecheck_call.
