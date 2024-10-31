@@ -255,13 +255,13 @@
     --->    mode_mismatch(
                 exact_or_not,
                 % We check whether the current insts of the actual arguments
-                % of a call match the required initial insts of the format
+                % of a call match the required initial insts of the formal
                 % arguments of the callee by invoking either
                 % modecheck_vars_are_live_no_exact_match (the usual case) or
                 % modecheck_vars_are_live_exact_match.
                 % This argument records which, with the intention being
                 % that we can specialize find_satisfied_initial_insts_in_proc
-                % to repeat the test that lead to the error *exactly*.
+                % to repeat the test that led to the error *exactly*.
                 % XXX We do not yet do this, so this field is unused.
 
                 list(mer_inst),
@@ -269,7 +269,7 @@
 
                 set(inst_var)
                 % If this set is not empty, then the actual arguments of the
-                % call *do* match the required initial insts of the format
+                % call *do* match the required initial insts of the formal
                 % arguments, but the match binds the given set of inst_vars.
                 % This is not allowed, because it would make the caller unable
                 % to do its job if one or more of the given inst vars
@@ -1155,7 +1155,7 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
         BoundInstVarPieces = BoundInstVarPieces0 ++
             [words("(If a call binds an inst variable, then"),
             words("the caller loses the generality promised by"),
-            words("its own mode declaration."), nl]
+            words("its own mode declaration.)"), nl]
     ),
 
     Pieces = PrefixPieces ++ ArgsNoMatchPieces ++ MatchWhatPieces ++
