@@ -22,7 +22,7 @@ constrained_poly_insts_2.m:049:   The mode does not match because it binds the
 constrained_poly_insts_2.m:049:   inst variable [38;5;87m`I'.[39;49m
 constrained_poly_insts_2.m:049:   (If a call binds an inst variable, then the
 constrained_poly_insts_2.m:049:   caller loses the generality promised by its
-constrained_poly_insts_2.m:049:   own mode declaration.
+constrained_poly_insts_2.m:049:   own mode declaration.)
 constrained_poly_insts_2.m:054: In clause for `p2((pred(in((I =< ground))) is
 constrained_poly_insts_2.m:054:   det), in((J =<
 constrained_poly_insts_2.m:054:   constrained_poly_insts_2.apple)))':
@@ -35,7 +35,7 @@ constrained_poly_insts_2.m:054:   The mode does not match because it binds the
 constrained_poly_insts_2.m:054:   inst variable [38;5;87m`I'.[39;49m
 constrained_poly_insts_2.m:054:   (If a call binds an inst variable, then the
 constrained_poly_insts_2.m:054:   caller loses the generality promised by its
-constrained_poly_insts_2.m:054:   own mode declaration.
+constrained_poly_insts_2.m:054:   own mode declaration.)
 constrained_poly_insts_2.m:059: In clause for `p3((pred(in((I =<
 constrained_poly_insts_2.m:059:   constrained_poly_insts_2.apple))) is det),
 constrained_poly_insts_2.m:059:   in(constrained_poly_insts_2.orange))':
@@ -66,7 +66,7 @@ constrained_poly_insts_2.m:064:   The mode does not match because it binds the
 constrained_poly_insts_2.m:064:   inst variable [38;5;87m`I'.[39;49m
 constrained_poly_insts_2.m:064:   (If a call binds an inst variable, then the
 constrained_poly_insts_2.m:064:   caller loses the generality promised by its
-constrained_poly_insts_2.m:064:   own mode declaration.
+constrained_poly_insts_2.m:064:   own mode declaration.)
 constrained_poly_insts_2.m:069: In clause for `p5((pred(in((I =<
 constrained_poly_insts_2.m:069:   constrained_poly_insts_2.apple))) is det),
 constrained_poly_insts_2.m:069:   in(constrained_poly_insts_2.apple))':
@@ -79,4 +79,4 @@ constrained_poly_insts_2.m:069:   The mode does not match because it binds the
 constrained_poly_insts_2.m:069:   inst variable [38;5;87m`I'.[39;49m
 constrained_poly_insts_2.m:069:   (If a call binds an inst variable, then the
 constrained_poly_insts_2.m:069:   caller loses the generality promised by its
-constrained_poly_insts_2.m:069:   own mode declaration.
+constrained_poly_insts_2.m:069:   own mode declaration.)
