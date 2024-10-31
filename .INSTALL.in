@@ -140,8 +140,10 @@ make install
 #          grades corresponding to the `--debug' and `--high-level-code'
 #          options).
 #
-#          The option --disable-nogc-grades prevents the installation
-#          of grades without garbage collection.
+#          The option --enable-nogc-grades causes the installation
+#          of grades without garbage collection.  These are not generally
+#          useful as most programs compiled using them will quickly run out
+#          of memory.
 #
 #          The option --disable-prof-grades prevents the installation
 #          of grades that support profiling.
