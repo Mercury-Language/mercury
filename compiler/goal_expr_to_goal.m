@@ -38,10 +38,9 @@
     %
     % - expand references to state variables.
     %
-:- pred transform_parse_tree_goal_to_hlds(loc_kind::in, goal::in,
-    prog_var_renaming::in, hlds_goal::out,
-    svar_state::in, svar_state::out, svar_store::in, svar_store::out,
-    prog_varset::in, prog_varset::out,
+:- pred transform_parse_tree_goal_to_hlds(loc_kind::in, prog_var_renaming::in,
+    goal::in, hlds_goal::out, svar_state::in, svar_state::out,
+    svar_store::in, svar_store::out, prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -90,7 +89,7 @@
 
 %-----------------------------------------------------------------------------%
 
-transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     (
         (
@@ -104,38 +103,38 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
     ;
         Goal = unify_expr(_, _, _, _),
-        transform_parse_tree_goal_to_hlds_unify(LocKind, Goal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_unify(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Goal = call_expr(_, _, _, _),
-        transform_parse_tree_goal_to_hlds_call(LocKind, Goal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_call(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Goal = conj_expr(_, _, _),
-        transform_parse_tree_goal_to_hlds_conj(LocKind, Goal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_conj(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Goal = par_conj_expr(_, _, _),
-        transform_parse_tree_goal_to_hlds_par_conj(LocKind, Goal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_par_conj(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Goal = disj_expr(_, _, _, _),
-        transform_parse_tree_goal_to_hlds_disj(LocKind, Goal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_disj(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Goal = if_then_else_expr(_, _, _, _, _, _),
-        transform_parse_tree_goal_to_hlds_ite(LocKind, Goal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_ite(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Goal = not_expr(_, _),
-        transform_parse_tree_goal_to_hlds_not(LocKind, Goal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_not(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Goal = implies_expr(Context, P, Q),
@@ -143,18 +142,18 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         TransformedGoal =
             not_expr(Context,
                 conj_expr(Context, P, [not_expr(Context, Q)])),
-        transform_parse_tree_goal_to_hlds(LocKind, TransformedGoal,
-            Renaming, HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+            TransformedGoal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Goal = equivalent_expr(_, _, _),
-        transform_parse_tree_goal_to_hlds_equivalent(LocKind, Goal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_equivalent(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Goal = quant_expr(_, _, _, _, _),
-        transform_parse_tree_goal_to_hlds_quant(LocKind, Goal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_quant(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         (
@@ -164,8 +163,8 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
             Goal = require_detism_expr(Context, Detism, SubGoal),
             Reason = require_detism(Detism)
         ),
-        transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
-            HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+            SubGoal, HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         GoalExpr = scope(Reason, HLDSSubGoal),
         goal_info_init(Context, GoalInfo),
@@ -183,8 +182,8 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
                 PODVar0, Var, !SVarState, !VarSet, !Specs),
             Reason = require_switch_arms_detism(Var, Detism)
         ),
-        transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
-            HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+            SubGoal, HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         GoalExpr = scope(Reason, HLDSSubGoal),
         goal_info_init(Context, GoalInfo),
@@ -203,8 +202,8 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
                 Vars, StateVars, DotSVars, ColonSVars, SubGoal),
             PromiseKind = equivalent_solution_sets_arbitrary
         ),
-        transform_promise_eqv_goal(LocKind, Vars, StateVars,
-            DotSVars, ColonSVars, Context, Renaming, PromiseVars,
+        transform_promise_eqv_goal(LocKind, Renaming, Vars, StateVars,
+            DotSVars, ColonSVars, Context, PromiseVars,
             SubGoal, HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
         Reason = promise_solutions(PromiseVars, PromiseKind),
@@ -213,28 +212,28 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
         HLDSGoal = hlds_goal(GoalExpr, GoalInfo)
     ;
         Goal = try_expr(_, _, _, _, _, _, _),
-        transform_parse_tree_goal_to_hlds_try(LocKind, Goal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_try(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Goal = atomic_expr(_, _, _, _, _, _),
-        transform_parse_tree_goal_to_hlds_atomic(LocKind, Goal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_atomic(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Goal = disable_warnings_expr(_, _, _, _),
-        transform_parse_tree_goal_to_hlds_disable_warnings(LocKind, Goal,
-            Renaming, HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_disable_warnings(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Goal = trace_expr(_, _, _, _, _, _),
-        transform_parse_tree_goal_to_hlds_trace(LocKind, Goal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_trace(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         Goal = event_expr(_, _, _),
-        transform_parse_tree_goal_to_hlds_event(LocKind, Goal, Renaming,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds_event(LocKind, Renaming,
+            Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ).
 
@@ -244,14 +243,14 @@ transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
     --->    unify_expr(ground, ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_unify(loc_kind::in,
-    goal::in(goal_unify_expr), prog_var_renaming::in, hlds_goal::out,
+    prog_var_renaming::in, goal::in(goal_unify_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_unify/16)).
 
-transform_parse_tree_goal_to_hlds_unify(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds_unify(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     Goal = unify_expr(Context, TermA0, TermB0, Purity),
     rename_vars_in_term(need_not_rename, Renaming, TermA0, TermA),
@@ -285,120 +284,168 @@ transform_parse_tree_goal_to_hlds_unify(LocKind, Goal, Renaming, HLDSGoal,
     --->    call_expr(ground, ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_call(loc_kind::in,
-    goal::in(goal_call_expr), prog_var_renaming::in, hlds_goal::out,
+    prog_var_renaming::in, goal::in(goal_call_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_call/16)).
 
-transform_parse_tree_goal_to_hlds_call(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds_call(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     Goal = call_expr(Context, SymName, ArgTerms0, Purity),
     expand_bang_state_pairs_in_terms(ArgTerms0, ArgTerms1),
     ( if
-        SymName = unqualified("\\="),
-        ArgTerms1 = [LHSTerm, RHSTerm]
-    then
-        % `LHS \= RHS' is defined as `not (LHS = RHS)'
-        TransformedGoal = not_expr(Context,
-            unify_expr(Context, LHSTerm, RHSTerm, Purity)),
-        transform_parse_tree_goal_to_hlds(LocKind, TransformedGoal,
-            Renaming, HLDSGoal, !SVarState, !SVarStore, !VarSet,
-            !ModuleInfo, !QualInfo, !Specs)
-    else if
-        % check for a state var record assignment:
-        % !Var ^ field := Value
-        SymName = unqualified(":="),
-        ArgTerms1 = [LHSTerm0, RHSTerm0],
-        LHSTerm0 = functor(atom("^"), [StateVar0, Remainder],
-            FieldListContext),
-        StateVar0 = functor(atom("!"), StateVarNameTerms, StateVarContext),
-        StateVarNameTerms = [variable(_, _)]
-    then
-        % !Var ^ field := Value is defined as
-        % !:Var = !.Var ^ field := Value.
-        LHSTerm = functor(atom("!:"), StateVarNameTerms, StateVarContext),
-        StateVar = functor(atom("!."), StateVarNameTerms, StateVarContext),
-        FieldList = functor(atom("^"), [StateVar, Remainder],
-            FieldListContext),
-        RHSTerm = functor(atom(":="), [FieldList, RHSTerm0], Context),
-        TransformedGoal = unify_expr(Context, LHSTerm, RHSTerm, Purity),
-        transform_parse_tree_goal_to_hlds(LocKind, TransformedGoal,
-            Renaming, HLDSGoal, !SVarState, !SVarStore, !VarSet,
-            !ModuleInfo, !QualInfo, !Specs)
-    else if
-        % check for a DCG field access goal:
-        % get: Field =^ field
-        % set: ^ field := Field
-        SymName = unqualified(Operator),
-        ( Operator = "=^", AccessType = get
-        ; Operator = ":=", AccessType = set
+        SymName = unqualified(Name),
+        ( Name = "\\="
+        ; Name = ":="
+        ; Name = "=^"
         )
     then
-        rename_vars_in_term_list(need_not_rename, Renaming,
-            ArgTerms1, ArgTerms),
-        transform_dcg_record_syntax(LocKind, AccessType, ArgTerms, Context,
-            HLDSGoal, !SVarState, !SVarStore, !VarSet,
-            !ModuleInfo, !QualInfo, !Specs)
+        (
+            Name = "\\=",
+            ( if ArgTerms1 = [LHSTerm, RHSTerm] then
+                % `LHS \= RHS' is defined as `not (LHS = RHS)'
+                TransformedGoal = not_expr(Context,
+                    unify_expr(Context, LHSTerm, RHSTerm, Purity)),
+                transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+                    TransformedGoal, HLDSGoal, !SVarState, !SVarStore,
+                    !VarSet, !ModuleInfo, !QualInfo, !Specs)
+            else
+                transform_parse_tree_goal_to_hlds_call_std(Context, Renaming,
+                    SymName, ArgTerms1, Purity, HLDSGoal,
+                    !SVarState, !SVarStore, !VarSet,
+                    !ModuleInfo, !QualInfo, !Specs)
+            )
+        ;
+            Name = ":=",
+            ( if
+                ArgTerms1 = [LHSTerm0, RHSTerm0],
+                LHSTerm0 = functor(atom("^"), [StateVar0, Remainder],
+                    FieldListContext),
+                StateVar0 = functor(atom("!"), StateVarNameTerms,
+                    StateVarContext),
+                StateVarNameTerms = [variable(_, _)]
+            then
+                % This is a state var field assignment:
+                % !Var ^ field := Value,
+                % which is defined as
+                % !:Var = !.Var ^ field := Value.
+                transform_state_var_field_assign(LocKind, Renaming, Purity,
+                    RHSTerm0, StateVarNameTerms, Remainder,
+                    FieldListContext, StateVarContext, Context,
+                    HLDSGoal, !SVarState, !SVarStore, !VarSet,
+                    !ModuleInfo, !QualInfo, !Specs)
+            else
+                % This is a DCG field assignment goal: ^ field := Field
+                transform_dcg_record_syntax(LocKind, Renaming, set,
+                    ArgTerms1, Context, HLDSGoal, !SVarState, !SVarStore,
+                    !VarSet, !ModuleInfo, !QualInfo, !Specs)
+            )
+        ;
+            Name = "=^",
+            % This is a DCG field access goal: Field =^ field
+            transform_dcg_record_syntax(LocKind, Renaming, get,
+                ArgTerms1, Context, HLDSGoal, !SVarState, !SVarStore,
+                !VarSet, !ModuleInfo, !QualInfo, !Specs)
+        )
     else
-        rename_vars_in_term_list(need_not_rename, Renaming,
-            ArgTerms1, ArgTerms),
-        make_fresh_arg_vars_subst_svars(ArgTerms, HeadVars, HeadVarsArgTerms,
-            !VarSet, !SVarState, !Specs),
-        PredFormArity = arg_list_arity(ArgTerms),
-        ( if
-            % Check for a higher-order call,
-            % i.e. a call to either call/N or ''/N.
-            ( SymName = unqualified("call")
-            ; SymName = unqualified("")
-            ),
-            HeadVars = [PredVar | RealHeadVars]
-        then
-            % Initialize some fields to junk.
-            Modes = [],
-            MaybeArgRegs = arg_reg_types_unset,
-            Det = detism_erroneous,
-            GenericCall = higher_order(PredVar, Purity, pf_predicate,
-                PredFormArity),
-            GoalExpr = generic_call(GenericCall, RealHeadVars, Modes,
-                MaybeArgRegs, Det),
-            hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
-            CallId = generic_call_id(GenericCallId)
-        else
-            % Initialize some fields to junk.
-            PredId = invalid_pred_id,
-            ModeId = invalid_proc_id,
-            MaybeUnifyContext = no,
-            GoalExpr = plain_call(PredId, ModeId, HeadVars, not_builtin,
-                MaybeUnifyContext, SymName),
-            PFSymNameArity =
-                pf_sym_name_arity(pf_predicate, SymName, PredFormArity),
-            CallId = plain_call_id(PFSymNameArity)
-        ),
-        goal_info_init_context_purity(Context, Purity, GoalInfo),
-        HLDSGoal0 = hlds_goal(GoalExpr, GoalInfo),
-        user_arity_pred_form_arity(pf_predicate, UserArity, PredFormArity),
-        record_called_pred_or_func(pf_predicate, SymName, UserArity,
-            !QualInfo),
-        insert_arg_unifications(HeadVarsArgTerms, Context,
-            ac_call(CallId), HLDSGoal0, HLDSGoal, !SVarState, !SVarStore,
+        transform_parse_tree_goal_to_hlds_call_std(Context, Renaming,
+            SymName, ArgTerms1, Purity, HLDSGoal, !SVarState, !SVarStore,
             !VarSet, !ModuleInfo, !QualInfo, !Specs)
     ),
     svar_finish_atomic_goal(LocKind, !SVarState).
 
-:- pred transform_dcg_record_syntax(loc_kind::in, field_access_type::in,
-    list(prog_term)::in, prog_context::in, hlds_goal::out,
+:- pred transform_parse_tree_goal_to_hlds_call_std(prog_context::in,
+    prog_var_renaming::in, sym_name::in, list(prog_term)::in, purity::in,
+    hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
+:- pragma inline(pred(transform_parse_tree_goal_to_hlds_call_std/18)).
 
-transform_dcg_record_syntax(LocKind, AccessType, ArgTerms0, Context, HLDSGoal,
-        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
+transform_parse_tree_goal_to_hlds_call_std(Context, Renaming,
+        SymName, ArgTerms1, Purity, HLDSGoal, !SVarState, !SVarStore,
+        !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
+    rename_vars_in_term_list(need_not_rename, Renaming, ArgTerms1, ArgTerms),
+    make_fresh_arg_vars_subst_svars(ArgTerms, HeadVars, HeadVarsArgTerms,
+        !VarSet, !SVarState, !Specs),
+    PredFormArity = arg_list_arity(ArgTerms),
+    ( if
+        % Check for a higher-order call,
+        % i.e. a call to either call/N or ''/N.
+        ( SymName = unqualified("call")
+        ; SymName = unqualified("")
+        ),
+        HeadVars = [PredVar | RealHeadVars]
+    then
+        % Initialize some fields to junk.
+        Modes = [],
+        MaybeArgRegs = arg_reg_types_unset,
+        Det = detism_erroneous,
+        GenericCall = higher_order(PredVar, Purity, pf_predicate,
+            PredFormArity),
+        GoalExpr = generic_call(GenericCall, RealHeadVars, Modes,
+            MaybeArgRegs, Det),
+        hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
+        CallId = generic_call_id(GenericCallId)
+    else
+        % Initialize some fields to junk.
+        PredId = invalid_pred_id,
+        ModeId = invalid_proc_id,
+        MaybeUnifyContext = no,
+        GoalExpr = plain_call(PredId, ModeId, HeadVars, not_builtin,
+            MaybeUnifyContext, SymName),
+        PFSymNameArity =
+            pf_sym_name_arity(pf_predicate, SymName, PredFormArity),
+        CallId = plain_call_id(PFSymNameArity)
+    ),
+    goal_info_init_context_purity(Context, Purity, GoalInfo),
+    HLDSGoal0 = hlds_goal(GoalExpr, GoalInfo),
+    user_arity_pred_form_arity(pf_predicate, UserArity, PredFormArity),
+    record_called_pred_or_func(pf_predicate, SymName, UserArity,
+        !QualInfo),
+    insert_arg_unifications(HeadVarsArgTerms, Context,
+        ac_call(CallId), HLDSGoal0, HLDSGoal, !SVarState, !SVarStore,
+        !VarSet, !ModuleInfo, !QualInfo, !Specs).
+
+:- pred transform_state_var_field_assign(loc_kind::in, prog_var_renaming::in,
+    purity::in, prog_term::in, list(prog_term)::in, prog_term::in,
+    prog_context::in, prog_context::in, prog_context::in, hlds_goal::out,
+    svar_state::in, svar_state::out, svar_store::in, svar_store::out,
+    prog_varset::in, prog_varset::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+transform_state_var_field_assign(LocKind, Renaming, Purity, RHSTerm0,
+        StateVarNameTerms, Remainder, FieldListContext, StateVarContext,
+        Context, HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        !ModuleInfo, !QualInfo, !Specs) :-
+    LHSTerm = functor(atom("!:"), StateVarNameTerms, StateVarContext),
+    StateVar = functor(atom("!."), StateVarNameTerms, StateVarContext),
+    FieldList = functor(atom("^"), [StateVar, Remainder],
+        FieldListContext),
+    RHSTerm = functor(atom(":="), [FieldList, RHSTerm0], Context),
+    TransformedGoal = unify_expr(Context, LHSTerm, RHSTerm, Purity),
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+        TransformedGoal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        !ModuleInfo, !QualInfo, !Specs).
+
+:- pred transform_dcg_record_syntax(loc_kind::in, prog_var_renaming::in,
+    field_access_type::in, list(prog_term)::in, prog_context::in,
+    hlds_goal::out, svar_state::in, svar_state::out,
+    svar_store::in, svar_store::out, prog_varset::in, prog_varset::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+transform_dcg_record_syntax(LocKind, Renaming, AccessType, ArgTerms0, Context,
+        HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        !ModuleInfo, !QualInfo, !Specs) :-
+    rename_vars_in_term_list(need_not_rename, Renaming, ArgTerms0, ArgTerms1),
     goal_info_init(Context, GoalInfo),
     ( if
-        ArgTerms0 = [LHSTerm, RHSTerm, TermInputTerm, TermOutputTerm],
+        ArgTerms1 = [LHSTerm, RHSTerm, TermInputTerm, TermOutputTerm],
         (
             AccessType = get,
             FieldNameTerm = RHSTerm,
@@ -423,12 +470,12 @@ transform_dcg_record_syntax(LocKind, AccessType, ArgTerms0, Context, HLDSGoal,
         ;
             MaybeFieldNames = error1(FieldNamesSpecs),
             !:Specs = FieldNamesSpecs ++ !.Specs,
-            invalid_goal("^", ArgTerms0, GoalInfo, HLDSGoal, !VarSet,
+            invalid_goal("^", ArgTerms1, GoalInfo, HLDSGoal, !VarSet,
                 !SVarState, !Specs),
             qual_info_set_found_syntax_error(yes, !QualInfo)
         )
     else
-        invalid_goal("^", ArgTerms0, GoalInfo, HLDSGoal, !VarSet, !SVarState,
+        invalid_goal("^", ArgTerms1, GoalInfo, HLDSGoal, !VarSet, !SVarState,
             !Specs),
         qual_info_set_found_syntax_error(yes, !QualInfo),
         (
@@ -442,7 +489,7 @@ transform_dcg_record_syntax(LocKind, AccessType, ArgTerms0, Context, HLDSGoal,
         ;
             AccessType = set,
             ( if
-                ArgTerms0 = [LHSTerm, _RHSTerm, _In, _Out],
+                ArgTerms1 = [LHSTerm, _RHSTerm, _In, _Out],
                 not (
                     LHSTerm = term.functor(term.atom("^"), [_], _)
                 )
@@ -572,21 +619,21 @@ dcg_field_error_context_pieces(AccessType) = ContextPieces :-
     --->    conj_expr(ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_conj(loc_kind::in,
-    goal::in(goal_conj_expr), prog_var_renaming::in, hlds_goal::out,
+    prog_var_renaming::in, goal::in(goal_conj_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_conj/16)).
 
-transform_parse_tree_goal_to_hlds_conj(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds_conj(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     Goal = conj_expr(Context, ConjunctA, ConjunctsB),
-    accumulate_plain_or_par_conjunct(LocKind, plain_conj, Renaming,
+    accumulate_plain_or_par_conjunct(LocKind, Renaming, plain_conj,
         ConjunctA, cord.init, HLDSConjunctsCordA,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     list.foldl7(
-        accumulate_plain_or_par_conjunct(LocKind, plain_conj, Renaming),
+        accumulate_plain_or_par_conjunct(LocKind, Renaming, plain_conj),
         ConjunctsB, HLDSConjunctsCordA, HLDSConjunctsCord,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     HLDSConjuncts = cord.list(HLDSConjunctsCord),
@@ -599,21 +646,21 @@ transform_parse_tree_goal_to_hlds_conj(LocKind, Goal, Renaming, HLDSGoal,
     --->    par_conj_expr(ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_par_conj(loc_kind::in,
-    goal::in(goal_par_conj_expr), prog_var_renaming::in, hlds_goal::out,
+    prog_var_renaming::in, goal::in(goal_par_conj_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_par_conj/16)).
 
-transform_parse_tree_goal_to_hlds_par_conj(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds_par_conj(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     Goal = par_conj_expr(Context, ConjunctA, ConjunctsB),
-    accumulate_plain_or_par_conjunct(LocKind, parallel_conj, Renaming,
+    accumulate_plain_or_par_conjunct(LocKind, Renaming, parallel_conj,
         ConjunctA, cord.init, HLDSConjunctsCordA,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     list.foldl7(
-        accumulate_plain_or_par_conjunct(LocKind, parallel_conj, Renaming),
+        accumulate_plain_or_par_conjunct(LocKind, Renaming, parallel_conj),
         ConjunctsB, HLDSConjunctsCordA, HLDSConjunctsCord,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     HLDSConjuncts = cord.list(HLDSConjunctsCord),
@@ -622,23 +669,23 @@ transform_parse_tree_goal_to_hlds_par_conj(LocKind, Goal, Renaming, HLDSGoal,
 
 %----------------------------------------------------------------------------%
 
-    % accumulate_plain_or_par_conjunct(LocKind, PlainOrPar Renaming,
+    % accumulate_plain_or_par_conjunct(LocKind, Renaming, PlainOrPar,
     %   Goal, !HLDSConjunctsCord, ...):
     %
     % Goal is a tree of conjuncts. Flatten it into a list (applying Renaming),
     % and append the result to the end of !HLDSConjunctsCord.
     %
-:- pred accumulate_plain_or_par_conjunct(loc_kind::in, conj_type::in,
-    prog_var_renaming::in, goal::in, cord(hlds_goal)::in, cord(hlds_goal)::out,
+:- pred accumulate_plain_or_par_conjunct(loc_kind::in, prog_var_renaming::in,
+    conj_type::in, goal::in, cord(hlds_goal)::in, cord(hlds_goal)::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-accumulate_plain_or_par_conjunct(LocKind, ConjType, Renaming,
+accumulate_plain_or_par_conjunct(LocKind, Renaming, ConjType,
         Goal, !HLDSConjunctsCord, !SVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     HLDSGoal = hlds_goal(HLDSGoalExpr, _),
     ( if HLDSGoalExpr = conj(ConjType, HLDSConjuncts) then
@@ -654,14 +701,14 @@ accumulate_plain_or_par_conjunct(LocKind, ConjType, Renaming,
     --->    disj_expr(ground, ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_disj(loc_kind::in,
-    goal::in(goal_disj_expr), prog_var_renaming::in, hlds_goal::out,
+    prog_var_renaming::in, goal::in(goal_disj_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_disj/16)).
 
-transform_parse_tree_goal_to_hlds_disj(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds_disj(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     Goal = disj_expr(Context, Disjunct1, Disjunct2, Disjuncts3plus),
     SVarStateBefore = !.SVarState,
@@ -691,7 +738,7 @@ transform_parse_tree_goal_to_hlds_disj(LocKind, Goal, Renaming, HLDSGoal,
 
 accumulate_disjunct(LocKind, Renaming, SVarStateBefore, Goal,
         !RevDisjStates, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming, Goal, HLDSGoal,
         SVarStateBefore, SVarStateAfterDisjunct,
         !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     DisjState = hlds_goal_svar_state(HLDSGoal, SVarStateAfterDisjunct),
@@ -703,14 +750,14 @@ accumulate_disjunct(LocKind, Renaming, SVarStateBefore, Goal,
     --->    if_then_else_expr(ground, ground, ground, ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_ite(loc_kind::in,
-    goal::in(goal_ite_expr), prog_var_renaming::in, hlds_goal::out,
+    prog_var_renaming::in, goal::in(goal_ite_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_ite/16)).
 
-transform_parse_tree_goal_to_hlds_ite(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds_ite(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     Goal = if_then_else_expr(Context, Vars0, StateVars0, Cond, Then, Else),
     BeforeSVarState = !.SVarState,
@@ -718,17 +765,17 @@ transform_parse_tree_goal_to_hlds_ite(LocKind, Goal, Renaming, HLDSGoal,
     rename_var_list(need_not_rename, Renaming, StateVars0, StateVars),
     svar_prepare_for_local_state_vars(Context, !.VarSet, StateVars,
         BeforeSVarState, BeforeCondSVarState, !Specs),
-    transform_parse_tree_goal_to_hlds(LocKind, Cond, Renaming, HLDSCond,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming, Cond, HLDSCond,
         BeforeCondSVarState, AfterCondSVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs),
-    transform_parse_tree_goal_to_hlds(LocKind, Then, Renaming, HLDSThen0,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming, Then, HLDSThen0,
         AfterCondSVarState, AfterThenSVarState0, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs),
     module_info_get_globals(!.ModuleInfo, Globals),
     module_info_get_name(!.ModuleInfo, ModuleName),
     svar_finish_local_state_vars(Globals, ModuleName, StateVars,
         BeforeSVarState, AfterThenSVarState0, AfterThenSVarState),
-    transform_parse_tree_goal_to_hlds(LocKind, Else, Renaming, HLDSElse0,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming, Else, HLDSElse0,
         BeforeSVarState, AfterElseSVarState, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs),
     svar_finish_if_then_else(Globals, ModuleName, LocKind, Context, StateVars,
@@ -745,18 +792,18 @@ transform_parse_tree_goal_to_hlds_ite(LocKind, Goal, Renaming, HLDSGoal,
     --->    not_expr(ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_not(loc_kind::in,
-    goal::in(goal_not_expr), prog_var_renaming::in, hlds_goal::out,
+    prog_var_renaming::in, goal::in(goal_not_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_not/16)).
 
-transform_parse_tree_goal_to_hlds_not(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds_not(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     Goal = not_expr(Context, SubGoal),
     BeforeOutsideState = !.SVarState,
-    transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming, HLDSSubGoal,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming, SubGoal, HLDSSubGoal,
         !.SVarState, _, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     !:SVarState = BeforeOutsideState,
     GoalExpr = negation(HLDSSubGoal),
@@ -769,14 +816,14 @@ transform_parse_tree_goal_to_hlds_not(LocKind, Goal, Renaming, HLDSGoal,
     --->    equivalent_expr(ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_equivalent(loc_kind::in,
-    goal::in(goal_equivalent_expr), prog_var_renaming::in, hlds_goal::out,
+    prog_var_renaming::in, goal::in(goal_equivalent_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_equivalent/16)).
 
-transform_parse_tree_goal_to_hlds_equivalent(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds_equivalent(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     Goal = equivalent_expr(Context, SubGoalA, SubGoalB),
     % `P <=> Q' is defined as `(P => Q), (Q => P)',
@@ -784,11 +831,11 @@ transform_parse_tree_goal_to_hlds_equivalent(LocKind, Goal, Renaming, HLDSGoal,
     % lest the duplication of the goals concerned affect the implicit
     % quantification of the variables inside them.
     SVarStateBefore = !.SVarState,
-    transform_parse_tree_goal_to_hlds(LocKind, SubGoalA, Renaming,
-        HLDSSubGoalA, !SVarState, !SVarStore, !VarSet,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+        SubGoalA, HLDSSubGoalA, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
-    transform_parse_tree_goal_to_hlds(LocKind, SubGoalB, Renaming,
-        HLDSSubGoalB, !.SVarState, _, !SVarStore, !VarSet,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+        SubGoalB, HLDSSubGoalB, !.SVarState, _, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
     !:SVarState = SVarStateBefore,
     GoalExpr = shorthand(bi_implication(HLDSSubGoalA, HLDSSubGoalB)),
@@ -801,14 +848,14 @@ transform_parse_tree_goal_to_hlds_equivalent(LocKind, Goal, Renaming, HLDSGoal,
     --->    quant_expr(ground, ground, ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_quant(loc_kind::in,
-    goal::in(goal_quant_expr), prog_var_renaming::in, hlds_goal::out,
+    prog_var_renaming::in, goal::in(goal_quant_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_quant/16)).
 
-transform_parse_tree_goal_to_hlds_quant(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds_quant(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     Goal = quant_expr(QuantType, VarsKind, Context, Vars0, SubGoal),
     (
@@ -823,16 +870,16 @@ transform_parse_tree_goal_to_hlds_quant(LocKind, Goal, Renaming, HLDSGoal,
             not_expr(Context,
                 quant_expr(quant_some, VarsKind, Context, Vars0,
                     not_expr(Context, SubGoal))),
-        transform_parse_tree_goal_to_hlds(LocKind, TransformedGoal,
-            Renaming, HLDSGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+            TransformedGoal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ;
         QuantType = quant_some,
         rename_var_list(need_not_rename, Renaming, Vars0, Vars),
         (
             VarsKind = quant_ordinary_vars,
-            transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
-                HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
+            transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+                SubGoal, HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
             Reason = exist_quant(Vars, user_quant)
         ;
@@ -841,8 +888,9 @@ transform_parse_tree_goal_to_hlds_quant(LocKind, Goal, Renaming, HLDSGoal,
             StateVars = Vars,
             svar_prepare_for_local_state_vars(Context, !.VarSet, StateVars,
                 BeforeOutsideSVarState, BeforeInsideSVarState, !Specs),
-            transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
-                HLDSSubGoal, BeforeInsideSVarState, AfterInsideSVarState,
+            transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+                SubGoal, HLDSSubGoal,
+                BeforeInsideSVarState, AfterInsideSVarState,
                 !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
             module_info_get_globals(!.ModuleInfo, Globals),
             module_info_get_name(!.ModuleInfo, ModuleName),
@@ -863,14 +911,14 @@ transform_parse_tree_goal_to_hlds_quant(LocKind, Goal, Renaming, HLDSGoal,
     --->    try_expr(ground, ground, ground, ground, ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_try(loc_kind::in,
-    goal::in(goal_try_expr), prog_var_renaming::in, hlds_goal::out,
+    prog_var_renaming::in, goal::in(goal_try_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_try/16)).
 
-transform_parse_tree_goal_to_hlds_try(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds_try(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     Goal = try_expr(Context, MaybeIO0, SubGoal0, Then0, MaybeElse0,
         Catches0, MaybeCatchAny0),
@@ -879,9 +927,10 @@ transform_parse_tree_goal_to_hlds_try(LocKind, Goal, Renaming, HLDSGoal,
         (
             MaybeElse0 = no,
             rename_var(need_not_rename, Renaming, IOStateVar0, IOStateVar),
-            transform_try_expr_with_io(LocKind, IOStateVar0, IOStateVar,
-                SubGoal0, Then0, Catches0, MaybeCatchAny0, Context,
-                Renaming, HLDSGoal, !SVarState, !SVarStore,
+            transform_try_expr_with_io(LocKind, Renaming,
+                IOStateVar0, IOStateVar, SubGoal0, Then0,
+                Catches0, MaybeCatchAny0, Context, HLDSGoal,
+                !SVarState, !SVarStore,
                 !VarSet, !ModuleInfo, !QualInfo, !Specs)
         ;
             MaybeElse0 = yes(_),
@@ -897,8 +946,8 @@ transform_parse_tree_goal_to_hlds_try(LocKind, Goal, Renaming, HLDSGoal,
         )
     ;
         MaybeIO0 = no,
-        transform_try_expr_without_io(LocKind, SubGoal0, Then0, MaybeElse0,
-            Catches0, MaybeCatchAny0, Context, Renaming, HLDSGoal,
+        transform_try_expr_without_io(LocKind, Renaming, SubGoal0, Then0,
+            MaybeElse0, Catches0, MaybeCatchAny0, Context, HLDSGoal,
             !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ).
@@ -925,16 +974,16 @@ transform_parse_tree_goal_to_hlds_try(LocKind, Goal, Renaming, HLDSGoal,
     % Goal, before entering Then. The variable will be used in the later
     % post-transformation.
     %
-:- pred transform_try_expr_with_io(loc_kind::in, svar::in, svar::in,
-    goal::in, goal::in, list(catch_expr)::in, maybe(catch_any_expr)::in,
-    prog_context::in, prog_var_renaming::in, hlds_goal::out,
+:- pred transform_try_expr_with_io(loc_kind::in, prog_var_renaming::in,
+    svar::in, svar::in, goal::in, goal::in, list(catch_expr)::in,
+    maybe(catch_any_expr)::in, prog_context::in, hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
-        Then0, Catches0, MaybeCatchAny0, Context, Renaming, TryGoal,
+transform_try_expr_with_io(LocKind, Renaming, IOStateVarUnrenamed, IOStateVar,
+        Goal0, Then0, Catches0, MaybeCatchAny0, Context, TryGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     varset.new_named_var("TryResult", ResultVar, !VarSet),
     varset.new_var(ExcpVar, !VarSet),
@@ -948,8 +997,8 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
     % Make the call to magic_exception_result.
     CallMagicGoal = call_expr(Context, magic_exception_result_sym_name,
         [ResultVarTerm], purity_pure),
-    transform_parse_tree_goal_to_hlds(LocKind, CallMagicGoal, Renaming,
-        HLDSCallMagicGoal, !SVarState, !SVarStore, !VarSet,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+        CallMagicGoal, HLDSCallMagicGoal, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
 
     % Get the variable for !.IO before the (eventual) try_io call.
@@ -963,9 +1012,9 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
         ResultVarTerm,
         exception_functor("succeeded", NullTupleTerm, Context),
         purity_pure),
-    transform_parse_tree_goal_to_hlds(LocKind, ResultIsSucceededUnifyGoal,
-        Renaming, HLDSResultIsSucceededUnifyGoal, !SVarState, !SVarStore,
-        !VarSet, !ModuleInfo, !QualInfo, !Specs),
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+        ResultIsSucceededUnifyGoal, HLDSResultIsSucceededUnifyGoal,
+        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
     % Build "some [] ( !:IO = !.IO, Goal )".
     %
@@ -978,8 +1027,8 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
         purity_pure),
     ScopedGoal = quant_expr(quant_some, quant_ordinary_vars, Context, [],
         conj_expr(Context, IOUnify, [Goal0])),
-    transform_parse_tree_goal_to_hlds(LocKind, ScopedGoal, Renaming,
-        HLDSScopedGoal, !SVarState, !SVarStore, !VarSet,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+        ScopedGoal, HLDSScopedGoal, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
 
     % Remember the variable for !.IO after the (eventual) try_io Goal.
@@ -989,8 +1038,8 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
     % Build "some [] ( Then )".
     ScopedThenGoal = quant_expr(quant_some, quant_ordinary_vars, Context, [],
         Then0),
-    transform_parse_tree_goal_to_hlds(LocKind, ScopedThenGoal, Renaming,
-        HLDSScopedThenGoal, !SVarState, !SVarStore, !VarSet,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+        ScopedThenGoal, HLDSScopedThenGoal, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
 
     % Build:
@@ -1009,9 +1058,9 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
     % Build the disjunct for "TryResult = exception(Excp), ...".
     make_exception_handling_disjunct(ResultVarTerm, ExcpVarTerm, Catches0,
         MaybeCatchAny0, Context, ResultIsExceptionDisjunctGoal),
-    transform_parse_tree_goal_to_hlds(LocKind, ResultIsExceptionDisjunctGoal,
-        Renaming, HLDSResultIsExceptionDisjunctGoal, !SVarState, !SVarStore,
-        !VarSet, !ModuleInfo, !QualInfo, !Specs),
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+        ResultIsExceptionDisjunctGoal, HLDSResultIsExceptionDisjunctGoal,
+        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
     SVarStateAfterResultIsExceptionDisjunct = !.SVarState,
 
@@ -1064,16 +1113,16 @@ transform_try_expr_with_io(LocKind, IOStateVarUnrenamed, IOStateVar, Goal0,
     %       ExcpHandling
     %   )
     %
-:- pred transform_try_expr_without_io(loc_kind::in, goal::in, goal::in,
-    maybe(goal)::in, list(catch_expr)::in, maybe(catch_any_expr)::in,
-    prog_context::in, prog_var_renaming::in, hlds_goal::out,
+:- pred transform_try_expr_without_io(loc_kind::in, prog_var_renaming::in,
+    goal::in, goal::in, maybe(goal)::in, list(catch_expr)::in,
+    maybe(catch_any_expr)::in, prog_context::in, hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-transform_try_expr_without_io(LocKind, SubGoal, ThenGoal, MaybeElseGoal,
-        Catches, MaybeCatchAny, Context, Renaming, TryGoal,
+transform_try_expr_without_io(LocKind, Renaming, SubGoal, ThenGoal,
+        MaybeElseGoal, Catches, MaybeCatchAny, Context, TryGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     varset.new_named_var("TryResult", ResultVar, !VarSet),
     varset.new_var(ExcpVar, !VarSet),
@@ -1124,9 +1173,9 @@ transform_try_expr_without_io(LocKind, SubGoal, ThenGoal, MaybeElseGoal,
                 []
             )]
         ),
-    transform_parse_tree_goal_to_hlds(LocKind, CallMagicThenDisjunctionGoal,
-        Renaming, HLDSCallMagicThenDisjunctionGoal, !SVarState, !SVarStore,
-        !VarSet, !ModuleInfo, !QualInfo, !Specs),
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+        CallMagicThenDisjunctionGoal, HLDSCallMagicThenDisjunctionGoal,
+        !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
     ShortHand = try_goal(no, ResultVar, HLDSCallMagicThenDisjunctionGoal),
     GoalExpr = shorthand(ShortHand),
@@ -1207,14 +1256,14 @@ exception_functor(Atom, Arg, Context) = Term :-
     --->    atomic_expr(ground, ground, ground, ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_atomic(loc_kind::in,
-    goal::in(goal_atomic_expr), prog_var_renaming::in, hlds_goal::out,
+    prog_var_renaming::in, goal::in(goal_atomic_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_atomic/16)).
 
-transform_parse_tree_goal_to_hlds_atomic(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds_atomic(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     Goal = atomic_expr(Context, Outer0, Inner0, MaybeOutputVars0,
         MainGoal, OrElseGoals),
@@ -1254,12 +1303,12 @@ transform_parse_tree_goal_to_hlds_atomic(LocKind, Goal, Renaming, HLDSGoal,
         MaybeInnerScopeInfo = no
     ),
     BeforeDisjSVarState = !.SVarState,
-    transform_parse_tree_goal_to_hlds(LocKind, MainGoal, Renaming,
-        HLDSMainGoal0, BeforeDisjSVarState, AfterMainSVarState,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+        MainGoal, HLDSMainGoal0, BeforeDisjSVarState, AfterMainSVarState,
         !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     MainDisjState =
         hlds_goal_svar_state(HLDSMainGoal0, AfterMainSVarState),
-    transform_orelse_goals(LocKind, OrElseGoals, Renaming,
+    transform_orelse_goals(LocKind, Renaming, OrElseGoals,
         OrElseDisjStates, BeforeDisjSVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),
     AllDisjStates = [MainDisjState | OrElseDisjStates],
@@ -1310,23 +1359,23 @@ transform_parse_tree_goal_to_hlds_atomic(LocKind, Goal, Renaming, HLDSGoal,
             print_name_and_num, TVarSet, InstVarSet, 0u, "\n", HLDSGoal, !IO)
     ).
 
-:- pred transform_orelse_goals(loc_kind::in, list(goal)::in,
-    prog_var_renaming::in, list(hlds_goal_svar_state)::out,
+:- pred transform_orelse_goals(loc_kind::in, prog_var_renaming::in,
+    list(goal)::in, list(hlds_goal_svar_state)::out,
     svar_state::in, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-transform_orelse_goals(_, [], _, [], _SVarStateBefore, !SVarState,
+transform_orelse_goals(_, _, [], [], _SVarStateBefore, !SVarState,
         !VarSet, !ModuleInfo, !QualInfo, !Specs).
-transform_orelse_goals(LocKind, [Goal | Goals], Renaming,
+transform_orelse_goals(LocKind, Renaming, [Goal | Goals],
         [DisjState | DisjStates], SVarStateBefore, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming, Goal, HLDSGoal,
         SVarStateBefore, SVarStateAfterDisjunct, !SVarStore,
         !VarSet, !ModuleInfo, !QualInfo, !Specs),
     DisjState = hlds_goal_svar_state(HLDSGoal, SVarStateAfterDisjunct),
-    transform_orelse_goals(LocKind, Goals, Renaming, DisjStates,
+    transform_orelse_goals(LocKind, Renaming, Goals, DisjStates,
         SVarStateBefore, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
 %----------------------------------------------------------------------------%
@@ -1335,16 +1384,16 @@ transform_orelse_goals(LocKind, [Goal | Goals], Renaming,
     --->    disable_warnings_expr(ground, ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_disable_warnings(loc_kind::in,
-    goal::in(goal_disable_warnings_expr), prog_var_renaming::in,
-    hlds_goal::out,
+    prog_var_renaming::in,
+    goal::in(goal_disable_warnings_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_disable_warnings/16)).
 
-transform_parse_tree_goal_to_hlds_disable_warnings(LocKind, Goal,
-        Renaming, HLDSGoal, !SVarState, !SVarStore, !VarSet,
+transform_parse_tree_goal_to_hlds_disable_warnings(LocKind, Renaming,
+        Goal, HLDSGoal, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs) :-
     Goal = disable_warnings_expr(Context, HeadWarning, TailWarnings,
         SubGoal),
@@ -1360,8 +1409,8 @@ transform_parse_tree_goal_to_hlds_disable_warnings(LocKind, Goal,
             bool(no), Globals0, Globals1),
         module_info_set_globals(Globals1, !ModuleInfo),
 
-        transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
-            HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+            SubGoal, HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs),
 
         module_info_get_globals(!.ModuleInfo, Globals2),
@@ -1369,8 +1418,8 @@ transform_parse_tree_goal_to_hlds_disable_warnings(LocKind, Goal,
             bool(WarnOccursCheck0), Globals2, Globals3),
         module_info_set_globals(Globals3, !ModuleInfo)
     else
-        transform_parse_tree_goal_to_hlds(LocKind, SubGoal, Renaming,
-            HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
+        transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+            SubGoal, HLDSSubGoal, !SVarState, !SVarStore, !VarSet,
             !ModuleInfo, !QualInfo, !Specs)
     ),
     GoalExpr = scope(disable_warnings(HeadWarning, TailWarnings), HLDSSubGoal),
@@ -1383,23 +1432,23 @@ transform_parse_tree_goal_to_hlds_disable_warnings(LocKind, Goal,
     --->    trace_expr(ground, ground, ground, ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_trace(loc_kind::in,
-    goal::in(goal_trace_expr), prog_var_renaming::in, hlds_goal::out,
+    prog_var_renaming::in, goal::in(goal_trace_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_trace/16)).
 
-transform_parse_tree_goal_to_hlds_trace(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds_trace(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     Goal = trace_expr(Context, MaybeCompileTime, MaybeRunTime, MaybeIO0,
         Mutables0, SubGoal0),
-    list.map4(extract_trace_mutable_var(Context, !.VarSet, Renaming),
+    list.map4(extract_trace_mutable_var(Context, Renaming, !.VarSet),
         Mutables0, MutableHLDSs, MutableStateVars,
         MutableGetGoals, MutableSetGoals),
     (
         MaybeIO0 = yes(IOStateVar0),
-        extract_trace_io_var(Context, !.VarSet, Renaming,
+        extract_trace_io_var(Context, Renaming, !.VarSet,
             IOStateVar0, IOStateVar, IOStateVarName, IOGetGoal, IOSetGoal),
         MaybeIOHLDS = yes(IOStateVarName),
         StateVars = [IOStateVar | MutableStateVars],
@@ -1416,8 +1465,8 @@ transform_parse_tree_goal_to_hlds_trace(LocKind, Goal, Renaming, HLDSGoal,
     BeforeSVarState = !.SVarState,
     svar_prepare_for_local_state_vars(Context, !.VarSet, StateVars,
         BeforeSVarState, BeforeInsideSVarState, !Specs),
-    transform_parse_tree_goal_to_hlds(LocKind, SubGoal1, Renaming,
-        HLDSSubGoal, BeforeInsideSVarState, AfterInsideSVarState,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming,
+        SubGoal1, HLDSSubGoal, BeforeInsideSVarState, AfterInsideSVarState,
         !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     module_info_get_globals(!.ModuleInfo, Globals),
     module_info_get_name(!.ModuleInfo, ModuleName),
@@ -1432,11 +1481,11 @@ transform_parse_tree_goal_to_hlds_trace(LocKind, Goal, Renaming, HLDSGoal,
     goal_info_init(Context, GoalInfo),
     HLDSGoal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred extract_trace_mutable_var(prog_context::in, prog_varset::in,
-    prog_var_renaming::in, trace_mutable_var::in, trace_mutable_var_hlds::out,
+:- pred extract_trace_mutable_var(prog_context::in, prog_var_renaming::in,
+    prog_varset::in, trace_mutable_var::in, trace_mutable_var_hlds::out,
     prog_var::out, goal::out, goal::out) is det.
 
-extract_trace_mutable_var(Context, VarSet, Renaming, Mutable, MutableHLDS,
+extract_trace_mutable_var(Context, Renaming, VarSet, Mutable, MutableHLDS,
         StateVar, GetGoal, SetGoal) :-
     Mutable = trace_mutable_var(MutableName, StateVar0),
     rename_var(need_not_rename, Renaming, StateVar0, StateVar),
@@ -1455,11 +1504,11 @@ extract_trace_mutable_var(Context, VarSet, Renaming, Mutable, MutableHLDS,
     GetGoal = call_expr(Context, GetPredName, [SetVar], GetPurity),
     SetGoal = call_expr(Context, SetPredName, [UseVar], SetPurity).
 
-:- pred extract_trace_io_var(prog_context::in, prog_varset::in,
-    prog_var_renaming::in, prog_var::in, prog_var::out, string::out,
+:- pred extract_trace_io_var(prog_context::in, prog_var_renaming::in,
+    prog_varset::in, prog_var::in, prog_var::out, string::out,
     goal::out, goal::out) is det.
 
-extract_trace_io_var(Context, VarSet, Renaming, StateVar0, StateVar,
+extract_trace_io_var(Context, Renaming, VarSet, StateVar0, StateVar,
         StateVarName, GetGoal, SetGoal) :-
     rename_var(need_not_rename, Renaming, StateVar0, StateVar),
     varset.lookup_name(VarSet, StateVar, StateVarName),
@@ -1483,14 +1532,14 @@ extract_trace_io_var(Context, VarSet, Renaming, StateVar0, StateVar,
     --->    event_expr(ground, ground, ground).
 
 :- pred transform_parse_tree_goal_to_hlds_event(loc_kind::in,
-    goal::in(goal_event_expr), prog_var_renaming::in, hlds_goal::out,
+    prog_var_renaming::in, goal::in(goal_event_expr), hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 :- pragma inline(pred(transform_parse_tree_goal_to_hlds_event/16)).
 
-transform_parse_tree_goal_to_hlds_event(LocKind, Goal, Renaming, HLDSGoal,
+transform_parse_tree_goal_to_hlds_event(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     Goal = event_expr(Context, EventName, ArgTerms0),
     expand_bang_state_pairs_in_terms(ArgTerms0, ArgTerms1),
@@ -1533,18 +1582,18 @@ rename_and_maybe_expand_dot_var(Context, MustRename, Renaming, PODVar0, Var,
 
 %----------------------------------------------------------------------------%
 
-:- pred transform_promise_eqv_goal(loc_kind::in,
+:- pred transform_promise_eqv_goal(loc_kind::in, prog_var_renaming::in,
     list(prog_var)::in, list(prog_var)::in,
     list(prog_var)::in, list(prog_var)::in,
-    prog_context::in, prog_var_renaming::in, list(prog_var)::out,
+    prog_context::in, list(prog_var)::out,
     goal::in, hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-transform_promise_eqv_goal(LocKind, Vars0, StateVars0, DotSVars0, ColonSVars0,
-        Context, Renaming, QuantVars, Goal, HLDSGoal,
+transform_promise_eqv_goal(LocKind, Renaming, Vars0, StateVars0,
+        DotSVars0, ColonSVars0, Context, QuantVars, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
     rename_var_list(need_not_rename, Renaming, Vars0, Vars),
     rename_var_list(need_not_rename, Renaming, StateVars0, StateVars1),
@@ -1554,7 +1603,7 @@ transform_promise_eqv_goal(LocKind, Vars0, StateVars0, DotSVars0, ColonSVars0,
         !VarSet, !SVarState, !Specs),
     list.map_foldl3(lookup_dot_state_var(Context), DotSVars1, DotSVars,
         !VarSet, !SVarState, !Specs),
-    transform_parse_tree_goal_to_hlds(LocKind, Goal, Renaming, HLDSGoal,
+    transform_parse_tree_goal_to_hlds(LocKind, Renaming, Goal, HLDSGoal,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
     list.map_foldl3(lookup_dot_state_var(Context), StateVars1, NewStateVars,
         !VarSet, !SVarState, !Specs),

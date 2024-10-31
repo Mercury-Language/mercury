@@ -1118,10 +1118,10 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                 BeforeSVarState = !.SVarState,
                 svar_prepare_for_local_state_vars(Context, !.VarSet, StateVars,
                     BeforeSVarState, BeforeInsideSVarState, !Specs),
-                map.init(EmptySubst),
 
+                map.init(EmptyRenaming),
                 transform_parse_tree_goal_to_hlds(loc_inside_atomic_goal,
-                    CondParseTree, EmptySubst, CondGoal,
+                    EmptyRenaming, CondParseTree, CondGoal,
                     BeforeInsideSVarState, AfterCondInsideSVarState,
                     !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
@@ -2134,9 +2134,9 @@ build_lambda_expression(LHSVar, UnificationPurity,
                 !SVarState, !SVarStore, !VarSet,
                 !ModuleInfo, !QualInfo, !Specs),
 
-            map.init(Substitution),
-            transform_parse_tree_goal_to_hlds(loc_whole_goal, BodyGoal,
-                Substitution, Body, !SVarState, !SVarStore,
+            map.init(EmptyRenaming),
+            transform_parse_tree_goal_to_hlds(loc_whole_goal, EmptyRenaming,
+                BodyGoal, Body, !SVarState, !SVarStore,
                 !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
             % Create the unifications that need to come after the body of the
