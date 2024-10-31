@@ -224,6 +224,7 @@ BORING_SINGLEMODULE_PROGS = \
 	mixed_up_streams \
 	mode_decl_in_wrong_section \
 	mode_error_arg_number \
+	mode_error_arg_number_ho \
 	mode_inf \
 	modes_erroneous \
 	mostly_uniq_1 \

@@ -1,0 +1,24 @@
+mode_error_arg_number_ho.m:038: In clause for `test1(out)':
+mode_error_arg_number_ho.m:038:   in argument 3 (i.e. argument 2 of the called
+mode_error_arg_number_ho.m:038:   predicate) of higher-order predicate call:
+mode_error_arg_number_ho.m:038:   mode error: variable [38;5;87m`A1'[39;49m has
+mode_error_arg_number_ho.m:038:   instantiatedness [38;5;203m`free',[39;49m
+mode_error_arg_number_ho.m:038:   expected instantiatedness was [38;5;40m`ground'.[39;49m
+mode_error_arg_number_ho.m:045: In clause for `test2(out)':
+mode_error_arg_number_ho.m:045:   in argument 3 (i.e. argument 2 of the called
+mode_error_arg_number_ho.m:045:   predicate) of higher-order predicate call:
+mode_error_arg_number_ho.m:045:   mode error: variable [38;5;87m`B1'[39;49m has
+mode_error_arg_number_ho.m:045:   instantiatedness [38;5;203m`free',[39;49m
+mode_error_arg_number_ho.m:045:   expected instantiatedness was [38;5;40m`ground'.[39;49m
+mode_error_arg_number_ho.m:052: In clause for `test3(out)':
+mode_error_arg_number_ho.m:052:   in argument 3 (i.e. argument 2 of the called
+mode_error_arg_number_ho.m:052:   function) of higher-order function call:
+mode_error_arg_number_ho.m:052:   mode error: variable [38;5;87m`C1'[39;49m has
+mode_error_arg_number_ho.m:052:   instantiatedness [38;5;203m`free',[39;49m
+mode_error_arg_number_ho.m:052:   expected instantiatedness was [38;5;40m`ground'.[39;49m
+mode_error_arg_number_ho.m:059: In clause for `test4(out)':
+mode_error_arg_number_ho.m:059:   in argument 3 (i.e. argument 2 of the called
+mode_error_arg_number_ho.m:059:   function) of higher-order function call:
+mode_error_arg_number_ho.m:059:   mode error: variable [38;5;87m`D1'[39;49m has
+mode_error_arg_number_ho.m:059:   instantiatedness [38;5;203m`free',[39;49m
+mode_error_arg_number_ho.m:059:   expected instantiatedness was [38;5;40m`ground'.[39;49m
