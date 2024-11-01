@@ -177,8 +177,8 @@
     % When a higher order call uses either P(A, B, C) or C = F(A, B) syntax,
     % we normally identify the call as being to "the predicate P" or to
     % "the function F". However, there is a category of errors for which
-    % this is inappropriate: when the error is calling a function-values
-    % variable as if it were a  predicate, and vice versa. In such cases,
+    % this is inappropriate: when the error is calling a function-valued
+    % variable as if it were a predicate, and vice versa. In such cases,
     % we don't want the description of the error's context to say e.g.
     % "in the call to the predicate P", and the description of the error
     % itself to say "P is a function, but should be a predicate".
