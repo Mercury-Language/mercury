@@ -332,6 +332,8 @@
             % next component. There is no effect if the next component
             % does not exist or does not start with an upper case letter.
 
+    ;       upper_case_next
+
     ;       treat_next_as_first
             % For the purpose of the test done by lower_case_next_if_not_first,
             % treat the next component as the first, even if it isn't.

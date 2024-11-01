@@ -189,11 +189,12 @@
     --->    do_not_print_ho_var_name
     ;       print_ho_var_name.
 
-:- func call_id_to_string(maybe_print_ho_var_name, call_id) = string.
+:- func call_id_to_pieces(maybe_print_ho_var_name, call_id) =
+    list(format_piece).
 
-    % generic_call_to_string(PrintHoVarName, VarNameSrc, GenericCall) = Str:
+    % generic_call_to_pieces(PrintHoVarName, VarNameSrc, GenericCall) = Pieces:
     %
-    % Return a description of GenericCall as Str.
+    % Return a description of GenericCall as Pieces.
     %
     % For a description of the semantics of PrintHoVarName, see the
     % definition of its type above.
@@ -204,15 +205,15 @@
     % we construct var_tables, since it actually constructs var_tables),
     % and during mode and determinism analysis, which do use var_tables.
     %
-:- func generic_call_to_string(maybe_print_ho_var_name, var_name_source,
-    generic_call) = string.
+:- func generic_call_to_pieces(maybe_print_ho_var_name, var_name_source,
+    generic_call) = list(format_piece).
 
     % This variant of generic_call_to_string returns a string that
     % specifically describes the *callee* of the call, not the call
     % as a whole.
     %
-:- func generic_callee_to_string(maybe_print_ho_var_name, var_name_source,
-    generic_call) = string.
+:- func generic_callee_to_pieces(maybe_print_ho_var_name, var_name_source,
+    generic_call) = list(format_piece).
 
 :- func cast_type_to_string(cast_kind) = string.
 
@@ -221,8 +222,8 @@
     % predicate is a type class method implementation; if so, we omit the
     % "call to" part, since the user didn't write any explicit call.
     %
-:- func call_arg_id_to_string(maybe_print_ho_var_name, call_id, int,
-    pred_markers) = string.
+:- func call_arg_id_to_pieces(maybe_print_ho_var_name, call_id, int,
+    pred_markers) = list(format_piece).
 
 %---------------------------------------------------------------------------%
 
@@ -422,9 +423,9 @@ unify_main_context_to_pieces(!First, MainContext, LastContextWord, !Pieces) :-
         % markers to empty here. (Anyway the worst possible consequence
         % is slightly sub-optimal text for an error message.)
         init_markers(Markers),
-        ArgIdStr = call_arg_id_to_string(print_ho_var_name, CallId,
+        ArgIdPieces = call_arg_id_to_pieces(print_ho_var_name, CallId,
             ArgNum, Markers),
-        !:Pieces = !.Pieces ++ [words(ArgIdStr), suffix(":"), nl]
+        !:Pieces = !.Pieces ++ ArgIdPieces ++ [suffix(":"), nl]
     ;
         MainContext = umc_implicit(Source),
         LastContextWord = lcw_none,
@@ -557,89 +558,86 @@ context_to_brief_string(Context) = Str :-
 % Write out ids of calls.
 %
 
-call_id_to_string(_PrintHoVarName, plain_call_id(PFSNA)) =
-    pf_sym_name_pred_form_arity_to_string(PFSNA).
-call_id_to_string(PrintHoVarName, generic_call_id(VarNameSrc, GenericCall)) =
-    generic_call_to_string(PrintHoVarName, VarNameSrc, GenericCall).
+call_id_to_pieces(_PrintHoVarName, plain_call_id(PFSNA)) =
+    [qual_pf_sym_name_pred_form_arity(PFSNA)].
+call_id_to_pieces(PrintHoVarName, generic_call_id(VarNameSrc, GenericCall)) =
+    generic_call_to_pieces(PrintHoVarName, VarNameSrc, GenericCall).
 
-generic_call_to_string(PrintHoVarName, VarNameSrc, GenericCall) = Str :-
+generic_call_to_pieces(PrintHoVarName, VarNameSrc, GenericCall) = Pieces :-
     (
         GenericCall = higher_order(Var, Purity, PredOrFunc, _, Syntax),
         (
             Syntax = hos_var,
             (
                 PrintHoVarName = do_not_print_ho_var_name,
-                PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
-                string.format("the higher order %s call",
-                    [s(PredOrFuncStr)], Str)
+                Pieces = [words("the higher order"), p_or_f(PredOrFunc),
+                    words("call")]
             ;
                 PrintHoVarName = print_ho_var_name,
-                PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
                 lookup_var_name_in_source(VarNameSrc, Var, VarName),
-                string.format("the higher order call to the %s variable `%s'",
-                    [s(PredOrFuncStr), s(VarName)], Str)
+                Pieces = [words("the higher order call to the"),
+                    p_or_f(PredOrFunc), words("variable"), quote(VarName)]
             )
         ;
             Syntax = hos_call_or_apply,
             (
                 PredOrFunc = pf_predicate,
-                Str = "the call to the `call' builtin predicate"
+                Pieces = [words("the call to the"), quote("call"),
+                    words("builtin predicate")]
             ;
                 PredOrFunc = pf_function,
-                string.format(
-                    "the call to the `%s' builtin function",
-                    [s(apply_func_name(Purity))], Str)
+                ApplyFuncName = apply_func_name(Purity),
+                Pieces = [words("the call to the"), quote(ApplyFuncName),
+                    words("builtin function")]
             )
         )
     ;
         GenericCall = class_method(_TCI, _MethodNum, _ClassId, MethodId),
-        Str = pf_sym_name_pred_form_arity_to_string(MethodId)
+        Pieces = [qual_pf_sym_name_pred_form_arity(MethodId)]
     ;
         GenericCall = event_call(EventName),
-        string.format("event %s", [s(EventName)], Str)
+        Pieces = [words("event"), words(EventName)]
     ;
         GenericCall = cast(CastType),
-        Str = cast_type_to_string(CastType)
+        Pieces = [words(cast_type_to_string(CastType))]
     ).
 
-generic_callee_to_string(PrintHoVarName, VarNameSrc, GenericCall) = Str :-
+generic_callee_to_pieces(PrintHoVarName, VarNameSrc, GenericCall) = Pieces :-
     (
         GenericCall = higher_order(Var, Purity, PredOrFunc, _, Syntax),
         (
             Syntax = hos_var,
             (
                 PrintHoVarName = do_not_print_ho_var_name,
-                PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
-                string.format("the higher order %s variable",
-                    [s(PredOrFuncStr)], Str)
+                Pieces = [words("the higher order"), p_or_f(PredOrFunc),
+                    words("variable")]
             ;
                 PrintHoVarName = print_ho_var_name,
-                PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
                 lookup_var_name_in_source(VarNameSrc, Var, VarName),
-                string.format("the higher order %s variable `%s'",
-                    [s(PredOrFuncStr), s(VarName)], Str)
+                Pieces = [words("the higher order"), p_or_f(PredOrFunc),
+                    words("variable"), quote(VarName)]
             )
         ;
             Syntax = hos_call_or_apply,
             (
                 PredOrFunc = pf_predicate,
-                Str = "the predicate argument of the `call' builtin predicate"
+                Pieces = [words("the predicate argument of the"),
+                    quote("call"), words("builtin predicate")]
             ;
                 PredOrFunc = pf_function,
-                string.format(
-                    "the function argument of the `%s' builtin function",
-                    [s(apply_func_name(Purity))], Str)
+                Pieces = [words("the function argument of the"),
+                    quote(apply_func_name(Purity)), words("builtin function")]
             )
         )
     ;
         GenericCall = class_method(_TCI, _MethodNum, _ClassId, MethodId),
-        Str = pf_sym_name_pred_form_arity_to_string(MethodId)
+        Pieces = [qual_pf_sym_name_pred_form_arity(MethodId)]
     ;
         GenericCall = event_call(EventName),
-        string.format("event %s", [s(EventName)], Str)
+        Pieces = [words("event"), words(EventName)]
     ;
         GenericCall = cast(CastType),
-        Str = cast_type_to_string(CastType)
+        Pieces = [words(cast_type_to_string(CastType))]
     ).
 
 :- func apply_func_name(purity) = string.
@@ -654,9 +652,7 @@ cast_type_to_string(equiv_type_cast) = "equiv_type_cast".
 cast_type_to_string(exists_cast) = "exists_cast".
 cast_type_to_string(subtype_coerce) = "coerce expression".
 
-call_arg_id_to_string(PrintHoVarName, CallId, ArgNum, PredMarkers) = Str :-
-    % ZZZ reorder the two if-then-elses
-    % ZZZ return format_pieces
+call_arg_id_to_pieces(PrintHoVarName, CallId, ArgNum, PredMarkers) = Pieces :-
     ( if ArgNum =< 0 then
         % Argument numbers that are less than or equal to zero
         % are used for the type_info and typeclass_info arguments
@@ -665,9 +661,9 @@ call_arg_id_to_string(PrintHoVarName, CallId, ArgNum, PredMarkers) = Str :-
         % when we just don't have any information about which argument it is.
         % For both of these, we just say "in call to"
         % rather than "in argument N of call to".
-        Str1 = ""
+        ArgNumPieces = []
     else
-        Str1 = arg_number_to_string(CallId, ArgNum) ++ " of "
+        ArgNumPieces = arg_number_to_pieces(CallId, ArgNum) ++ [words("of")]
     ),
     ( if
         (
@@ -686,15 +682,16 @@ call_arg_id_to_string(PrintHoVarName, CallId, ArgNum, PredMarkers) = Str :-
             check_marker(PredMarkers, marker_named_class_instance_method)
         )
     then
-        Str2 = Str1
+        CallToPieces = []
     else
-        Str2 = Str1 ++ "call to "
+        CallToPieces = [words("call to")]
     ),
-    Str = Str2 ++ call_id_to_string(PrintHoVarName, CallId).
+    CallIdPieces = call_id_to_pieces(PrintHoVarName, CallId),
+    Pieces = ArgNumPieces ++ CallToPieces ++ CallIdPieces.
 
-:- func arg_number_to_string(call_id, int) = string.
+:- func arg_number_to_pieces(call_id, int) = list(format_piece).
 
-arg_number_to_string(CallId, ArgNum) = Str :-
+arg_number_to_pieces(CallId, ArgNum) = Pieces :-
     (
         CallId = plain_call_id(PFSymNameArity),
         PFSymNameArity = pf_sym_name_arity(PredOrFunc, _, PredFormArity),
@@ -703,9 +700,9 @@ arg_number_to_string(CallId, ArgNum) = Str :-
             PredOrFunc = pf_function,
             Arity = ArgNum
         then
-            Str = "the return value"
+            Pieces = [words("the return value")]
         else
-            Str = "argument " ++ int_to_string(ArgNum)
+            Pieces = [words("argument"), int_fixed(ArgNum)]
         )
     ;
         CallId = generic_call_id(_VarNameSrc, GenericCall),
@@ -717,19 +714,19 @@ arg_number_to_string(CallId, ArgNum) = Str :-
                 PredOrFunc = pf_function,
                 ArgNum = PredFormArityInt
             then
-                Str = "the return value"
+                Pieces = [words("the return value")]
             else
                 (
                     Syntax = hos_var,
                     ( if ArgNum = 1 then
-                        PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
-                        string.format("the %s term", [s(PredOrFuncStr)], Str)
+                        Pieces = [words("the"), p_or_f(PredOrFunc),
+                            words("term")]
                     else
-                        Str = "argument " ++ int_to_string(ArgNum - 1)
+                        Pieces = [words("argument"), int_fixed(ArgNum - 1)]
                     )
                 ;
                     Syntax = hos_call_or_apply,
-                    Str = "argument " ++ int_to_string(ArgNum)
+                    Pieces = [words("argument"), int_fixed(ArgNum)]
                 )
             )
         ;
@@ -740,13 +737,13 @@ arg_number_to_string(CallId, ArgNum) = Str :-
             ; GenericCall = cast(equiv_type_cast)
             ; GenericCall = cast(exists_cast)
             ),
-            Str = "argument " ++ int_to_string(ArgNum)
+            Pieces = [words("argument"), int_fixed(ArgNum)]
         ;
             GenericCall = cast(subtype_coerce),
             ( if ArgNum = 2 then
-                Str = "the result"
+                Pieces = [words("the result")]
             else
-                Str = "the argument"
+                Pieces = [words("the argument")]
             )
         )
     ).

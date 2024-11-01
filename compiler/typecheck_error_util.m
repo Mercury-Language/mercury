@@ -226,9 +226,9 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                     CallId = generic_call_id(vns_varset(VarSet), GenericCall)
                 ),
                 PredMarkers = ClauseContext ^ tecc_pred_markers,
-                CalleeStr = call_arg_id_to_string(do_not_print_ho_var_name,
+                CalleePieces = call_arg_id_to_pieces(do_not_print_ho_var_name,
                     CallId, ArgNum, PredMarkers),
-                Pieces = [words("in"), words(CalleeStr), suffix(":"), nl]
+                Pieces = [words("in")] ++ CalleePieces ++ [suffix(":"), nl]
             ;
                 ArgVectorKind = arg_vector_foreign_proc_call(_PredId),
                 % During typechecking, call_foreign_proc goals can occur
@@ -339,9 +339,9 @@ arg_vector_kind_to_pieces(ClauseContext, ArgVectorKind) = Pieces :-
             CallId = generic_call_id(vns_varset(VarSet), GenericCall)
         ),
         PredMarkers = ClauseContext ^ tecc_pred_markers,
-        CalleeStr = call_arg_id_to_string(do_not_print_ho_var_name, CallId,
+        CalleePieces = call_arg_id_to_pieces(do_not_print_ho_var_name, CallId,
             -1, PredMarkers),
-        Pieces = [words("in"), words(CalleeStr), suffix(":"), nl]
+        Pieces = [words("in")] ++ CalleePieces ++ [suffix(":"), nl]
     ;
         ArgVectorKind = arg_vector_foreign_proc_call(_PredId),
         unexpected($pred, "arg_vector_foreign_proc_call")

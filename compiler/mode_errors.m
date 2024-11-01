@@ -1129,10 +1129,10 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
     ;
         MatchWhat = match_higher_order_call(GenericCall),
         VarNameSrc = vns_var_table(VarTable),
-        WhatStr = generic_callee_to_string(print_ho_var_name,
+        CalleePieces = generic_callee_to_pieces(print_ho_var_name,
             VarNameSrc, GenericCall),
         MatchWhatPieces =
-            [words("the mode of"), words(WhatStr), suffix("."), nl]
+            [words("the mode of")] ++ CalleePieces ++ [suffix("."), nl]
     ;
         MatchWhat = match_event,
         MatchWhatPieces =
@@ -2688,14 +2688,14 @@ mode_context_to_pieces(ModeInfo, ModeContext, Markers) = Pieces :-
     (
         ModeContext = mode_context_call_arg(ModeCallId, ArgNum),
         CallId = mode_call_id_to_call_id(ModeInfo, ModeCallId),
-        CalleeStr = call_arg_id_to_string(print_ho_var_name, CallId,
+        CalleePieces = call_arg_id_to_pieces(print_ho_var_name, CallId,
             ArgNum, Markers),
-        Pieces = [words("in"), words(CalleeStr), suffix(":"), nl]
+        Pieces = [words("in")] ++ CalleePieces ++ [suffix(":"), nl]
     ;
         ModeContext = mode_context_call(ModeCallId),
         CallId = mode_call_id_to_call_id(ModeInfo, ModeCallId),
-        CalleeStr = call_id_to_string(print_ho_var_name, CallId),
-        Pieces = [words("in"), words(CalleeStr), suffix(":"), nl]
+        CalleePieces = call_id_to_pieces(print_ho_var_name, CallId),
+        Pieces = [words("in")] ++ CalleePieces ++ [suffix(":"), nl]
     ;
         ModeContext = mode_context_unify(UnifyContext, _Side),
         unify_context_first_to_pieces(is_not_first, _, UnifyContext,

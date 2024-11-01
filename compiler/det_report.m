@@ -1121,9 +1121,9 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         Context = goal_info_get_context(GoalInfo),
         det_info_get_var_table(!.DetInfo, VarTable),
         VarNameSrc = vns_var_table(VarTable),
-        GenericCallStr = generic_call_to_string(print_ho_var_name,
+        GenericCallPieces = generic_call_to_pieces(print_ho_var_name,
             VarNameSrc, GenericCall),
-        GoalPieces = color_as_subject([words((GenericCallStr))]),
+        GoalPieces = color_as_subject(GenericCallPieces),
         det_diagnose_primitive_goal(Desired, Actual, ProblemPieces),
         Pieces = GoalPieces ++ ProblemPieces,
         MsgGroups = [error_msg_group(msg(Context, Pieces), [])]
@@ -2594,10 +2594,9 @@ failing_context_description(ModuleInfo, VarTable, FailingContext) = Msg :-
     ;
         FailingGoal = generic_call_goal(GenericCall),
         VarNameSrc = vns_var_table(VarTable),
-        GenericCallStr0 =
-            generic_call_to_string(print_ho_var_name, VarNameSrc, GenericCall),
-        GenericCallStr = capitalize_first(GenericCallStr0),
-        Pieces = color_as_subject([words(GenericCallStr)]) ++
+        GenericCallPieces =
+            generic_call_to_pieces(print_ho_var_name, VarNameSrc, GenericCall),
+        Pieces = color_as_subject([upper_case_next | GenericCallPieces]) ++
             color_as_incorrect([words("can fail.")]) ++ [nl]
     ;
         FailingGoal = negated_goal,

@@ -726,21 +726,22 @@ convert_pieces_to_lines(ColorDb, MaybeMaxWidth, ContextStr, TreatAsFirst,
 
 convert_pieces_to_words(ColorDb, Pieces, Words) :-
     WordsCord0 = cord.init,
-    convert_pieces_to_words_acc(ColorDb, first_in_msg, do_not_lower_next,
+    convert_pieces_to_words_acc(ColorDb, first_in_msg, do_not_change_case_next,
         Pieces, WordsCord0, WordsCord),
     Words = cord.list(WordsCord).
 
-:- type maybe_lower_next
-    --->    do_not_lower_next
-    ;       do_lower_next.
+:- type maybe_change_case_next
+    --->    do_not_change_case_next
+    ;       do_lower_case_next
+    ;       do_upper_case_next.
 
 :- pred convert_pieces_to_words_acc(color_db::in, maybe_first_in_msg::in,
-    maybe_lower_next::in, list(format_piece)::in,
+    maybe_change_case_next::in, list(format_piece)::in,
     cord(word)::in, cord(word)::out) is det.
 
 convert_pieces_to_words_acc(_, _, _, [], !WordsCord).
-convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
-        !WordsCord) :-
+convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.CaseChange,
+        [Piece | Pieces], !WordsCord) :-
     (
         ( Piece = invis_order_default_start(_, _)
         ; Piece = invis_order_default_end(_, _)
@@ -762,7 +763,7 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
                 true
             )
         ),
-        break_into_words(WordsStr, !Lower, !WordsCord)
+        break_into_words(WordsStr, !CaseChange, !WordsCord)
     ;
         Piece = words_quote(WordsStr),
         trace [compile_time(flag("check_words_pieces"))] (
@@ -779,7 +780,7 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
                 true
             )
         ),
-        break_into_words(add_quotes(WordsStr), !Lower, !WordsCord)
+        break_into_words(add_quotes(WordsStr), !CaseChange, !WordsCord)
     ;
         (
             Piece = fixed(Word),
@@ -815,7 +816,7 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
             Piece = pragma_decl(PragmaName),
             PlainWord = add_quotes(":- pragma " ++ PragmaName)
         ),
-        add_word_to_cord(word_text(plain(PlainWord)), !Lower, !WordsCord)
+        add_word_to_cord(word_text(plain(PlainWord)), !CaseChange, !WordsCord)
     ;
         (
             Piece = qual_top_ctor_of_type(Type),
@@ -852,7 +853,7 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
         ),
         SymNameAndArity = sym_name_arity(SymName, Arity),
         Word = sym_name_arity_to_word(SymNameAndArity),
-        add_word_to_cord(word_text(plain(Word)), !Lower, !WordsCord)
+        add_word_to_cord(word_text(plain(Word)), !CaseChange, !WordsCord)
     ;
         (
             Piece = qual_sym_name(SymName)
@@ -861,11 +862,11 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
             SymName = unqualified(unqualify_name(SymName0))
         ),
         Word = sym_name_to_word(SymName),
-        add_word_to_cord(word_text(plain(Word)), !Lower, !WordsCord)
+        add_word_to_cord(word_text(plain(Word)), !CaseChange, !WordsCord)
     ;
         Piece = name_arity(NameAndArity),
         Word = name_arity_to_word(NameAndArity),
-        add_word_to_cord(word_text(plain(Word)), !Lower, !WordsCord)
+        add_word_to_cord(word_text(plain(Word)), !CaseChange, !WordsCord)
     ;
         (
             Piece = qual_sym_name_arity(SymNameAndArity)
@@ -876,7 +877,7 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
             SymNameAndArity = sym_name_arity(SymName, Arity)
         ),
         Word = sym_name_arity_to_word(SymNameAndArity),
-        add_word_to_cord(word_text(plain(Word)), !Lower, !WordsCord)
+        add_word_to_cord(word_text(plain(Word)), !CaseChange, !WordsCord)
     ;
         (
             Piece = qual_cons_id_and_maybe_arity(ConsId0),
@@ -886,7 +887,7 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
             strip_module_qualifier_from_cons_id(ConsId0, ConsId)
         ),
         Word = maybe_quoted_cons_id_and_arity_to_string(ConsId),
-        add_word_to_cord(word_text(plain(Word)), !Lower, !WordsCord)
+        add_word_to_cord(word_text(plain(Word)), !CaseChange, !WordsCord)
     ;
         (
             Piece = qual_pf_sym_name_pred_form_arity(PFSymNameArity)
@@ -897,7 +898,7 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
             PFSymNameArity = pf_sym_name_arity(PF, SymName, PredFormArity)
         ),
         WordsStr = pf_sym_name_pred_form_arity_to_string(PFSymNameArity),
-        break_into_words(WordsStr, !Lower, !WordsCord)
+        break_into_words(WordsStr, !CaseChange, !WordsCord)
     ;
         (
             Piece = qual_pf_sym_name_user_arity(PFSymNameArity)
@@ -908,21 +909,24 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
             PFSymNameArity = pred_pf_name_arity(PF, SymName, UserArity)
         ),
         WordsStr = pf_sym_name_user_arity_to_string(PFSymNameArity),
-        break_into_words(WordsStr, !Lower, !WordsCord)
+        break_into_words(WordsStr, !CaseChange, !WordsCord)
     ;
         Piece = prefix(Word),
-        add_word_to_cord(word_text(prefix(Word)), !Lower, !WordsCord)
+        add_word_to_cord(word_text(prefix(Word)), !CaseChange, !WordsCord)
     ;
         Piece = suffix(Word),
-        add_word_to_cord(word_text(suffix(Word)), !Lower, !WordsCord)
+        add_word_to_cord(word_text(suffix(Word)), !CaseChange, !WordsCord)
     ;
         Piece = lower_case_next_if_not_first,
         (
             FirstInMsg = first_in_msg
         ;
             FirstInMsg = not_first_in_msg,
-            !:Lower = do_lower_next
+            !:CaseChange = do_lower_case_next
         )
+    ;
+        Piece = upper_case_next,
+        !:CaseChange = do_upper_case_next
     ;
         (
             Piece = nl,
@@ -940,7 +944,7 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
             Piece = maybe_nl_dec_right_paren(RP, RPWordKind),
             Newline = maybe_nl_dec_rp(RP, RPWordKind)
         ),
-        add_word_to_cord(word_nl(Newline), !Lower, !WordsCord)
+        add_word_to_cord(word_nl(Newline), !CaseChange, !WordsCord)
     ;
         Piece = not_for_general_use_start_color(ColorName),
         lookup_color_in_db(ColorDb, ColorName, MaybeColorSpec),
@@ -949,7 +953,7 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
         ;
             MaybeColorSpec = yes(ColorSpec),
             add_word_to_cord(word_color(color_start(ColorSpec)),
-                !Lower, !WordsCord)
+                !CaseChange, !WordsCord)
         )
     ;
         Piece = not_for_general_use_end_color(ColorName),
@@ -958,11 +962,11 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
             MaybeColorSpec = no
         ;
             MaybeColorSpec = yes(_ColorSpec),
-            add_word_to_cord(word_color(color_end), !Lower, !WordsCord)
+            add_word_to_cord(word_color(color_end), !CaseChange, !WordsCord)
         )
     ),
     update_first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg),
-    convert_pieces_to_words_acc(ColorDb, TailFirstInMsg, !.Lower, Pieces,
+    convert_pieces_to_words_acc(ColorDb, TailFirstInMsg, !.CaseChange, Pieces,
         !WordsCord).
 
 :- pred lookup_color_in_db(color_db::in, color_name::in,
@@ -992,40 +996,59 @@ lookup_color_in_db(ColorDb, ColorName, MaybeColorSpec) :-
         )
     ).
 
-:- pred add_word_to_cord(word::in, maybe_lower_next::in, maybe_lower_next::out,
+:- pred add_word_to_cord(word::in,
+    maybe_change_case_next::in, maybe_change_case_next::out,
     cord(word)::in, cord(word)::out) is det.
 
-add_word_to_cord(Word, !Lower, !WordsCord) :-
+add_word_to_cord(Word, !CaseChange, !WordsCord) :-
     (
-        !.Lower = do_not_lower_next,
-        % Leave !Lower as it is.
+        !.CaseChange = do_not_change_case_next,
+        % Leave !CaseChange as it is.
         cord.snoc(Word, !WordsCord)
     ;
-        !.Lower = do_lower_next,
+        ( !.CaseChange = do_lower_case_next
+        ; !.CaseChange = do_upper_case_next
+        ),
         (
             Word = word_text(Text),
             (
-                Text = plain(Str),
-                LoweredText = plain(uncapitalize_first(Str))
+                !.CaseChange = do_lower_case_next,
+                (
+                    Text = plain(Str),
+                    ChangedText = plain(uncapitalize_first(Str))
+                ;
+                    Text = prefix(Str),
+                    ChangedText = prefix(uncapitalize_first(Str))
+                ;
+                    Text = suffix(Str),
+                    ChangedText = suffix(uncapitalize_first(Str))
+                )
             ;
-                Text = prefix(Str),
-                LoweredText = prefix(uncapitalize_first(Str))
-            ;
-                Text = suffix(Str),
-                LoweredText = suffix(uncapitalize_first(Str))
+                !.CaseChange = do_upper_case_next,
+                (
+                    Text = plain(Str),
+                    ChangedText = plain(capitalize_first(Str))
+                ;
+                    Text = prefix(Str),
+                    ChangedText = prefix(capitalize_first(Str))
+                ;
+                    Text = suffix(Str),
+                    ChangedText = suffix(capitalize_first(Str))
+                )
             ),
-            LoweredWord = word_text(LoweredText),
-            % We have lowered the next word; do not lower the word
+            ChangedWord = word_text(ChangedText),
+            % We have changed the case of the next word; do not change the word
             % *after* the next unless asked to so by another piece.
-            !:Lower = do_not_lower_next
+            !:CaseChange = do_not_change_case_next
         ;
             ( Word = word_color(_)
             ; Word = word_nl(_)
             ),
-            LoweredWord = Word
-            % We have not yet lowered the next word, so keep !Lower as it is.
+            ChangedWord = Word
+            % We have not yet lowered the next word, so keep !CaseChange
+            % as it is.
         ),
-        cord.snoc(LoweredWord, !WordsCord)
+        cord.snoc(ChangedWord, !WordsCord)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1360,22 +1383,22 @@ add_paragraph(Para, !Paras) :-
     ).
 
 :- pred break_into_words(string::in,
-    maybe_lower_next::in, maybe_lower_next::out,
+    maybe_change_case_next::in, maybe_change_case_next::out,
     cord(word)::in, cord(word)::out) is det.
 
-break_into_words(String, !Lower, !WordsCord) :-
-    break_into_words_from(String, 0, !Lower, !WordsCord).
+break_into_words(String, !CaseChange, !WordsCord) :-
+    break_into_words_from(String, 0, !CaseChange, !WordsCord).
 
 :- pred break_into_words_from(string::in, int::in,
-    maybe_lower_next::in, maybe_lower_next::out,
+    maybe_change_case_next::in, maybe_change_case_next::out,
     cord(word)::in, cord(word)::out) is det.
 
-break_into_words_from(String, Cur, !Lower, !WordsCord) :-
+break_into_words_from(String, Cur, !CaseChange, !WordsCord) :-
     ( if find_word_start(String, Cur, Start) then
         find_word_end(String, Start, End),
         string.between(String, Start, End, WordStr),
-        add_word_to_cord(word_text(plain(WordStr)), !Lower, !WordsCord),
-        break_into_words_from(String, End, !Lower, !WordsCord)
+        add_word_to_cord(word_text(plain(WordStr)), !CaseChange, !WordsCord),
+        break_into_words_from(String, End, !CaseChange, !WordsCord)
     else
         true
     ).
@@ -2317,6 +2340,7 @@ update_first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg) :-
         TailFirstInMsg = first_in_msg
     ;
         ( Piece = lower_case_next_if_not_first
+        ; Piece = upper_case_next
         ; Piece = nl
         ; Piece = nl_indent_delta(_)
         ; Piece = not_for_general_use_start_color(_)
