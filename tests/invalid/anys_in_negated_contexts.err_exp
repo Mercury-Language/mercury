@@ -24,7 +24,7 @@ anys_in_negated_contexts.m:082:   written
 anys_in_negated_contexts.m:082:   `any_func(Args) = Result is det :- ...'.
 anys_in_negated_contexts.m:083: 
 anys_in_negated_contexts.m:083:   In clause for `bad_lambda(in)':
-anys_in_negated_contexts.m:083:   in argument 1 (i.e. the predicate term) of
-anys_in_negated_contexts.m:083:   higher-order predicate call:
+anys_in_negated_contexts.m:083:   in the predicate term of the higher order
+anys_in_negated_contexts.m:083:   call to the predicate variable `P':
 anys_in_negated_contexts.m:083:   mode error: context requires a [38;5;40mpredicate of[39;49m
 anys_in_negated_contexts.m:083:   [38;5;40marity one,[39;49m but [38;5;87m`P'[39;49m is a [38;5;203mfree variable.[39;49m

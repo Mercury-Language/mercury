@@ -649,7 +649,7 @@ indirect_reuse_analyse_generic_call(BaseInfo, GenDetails, CallArgs, Modes,
     ModuleInfo = BaseInfo ^ irb_module_info,
     ProcInfo = BaseInfo ^ irb_proc_info,
     (
-        ( GenDetails = higher_order(_, _, _, _)
+        ( GenDetails = higher_order(_, _, _, _, _)
         ; GenDetails = class_method(_, _, _, _)
         ),
         proc_info_get_var_table(ProcInfo, CallerVarTable),

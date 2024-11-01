@@ -876,7 +876,7 @@ goal_expr_find_subgoal_nonlocals(GoalExpr, SubGoalNonLocals) :-
         GoalExpr = generic_call(GenericCall, ArgVars, _Modes, _MaybeArgRegs,
             _Detism),
         (
-            GenericCall = higher_order(HOVar, _Purity, _Kind, _Arity),
+            GenericCall = higher_order(HOVar, _Purity, _Kind, _Arity, _Syntax),
             SubGoalNonLocals = set_of_var.list_to_set([HOVar | ArgVars])
         ;
             GenericCall = class_method(MethodVar, _MethodNum, _MethodClassId,

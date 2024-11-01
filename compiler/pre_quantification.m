@@ -190,7 +190,8 @@ build_vars_to_zones_in_goal(CurZone, Goal, !TraceCounter, !VarsToZones) :-
             _RegTypes, _Detism),
         record_vars_in_zone(CurZone, ArgVars, !VarsToZones),
         (
-            GenericCall = higher_order(ClosureVar, _Purity, _CallKind, _Arity),
+            GenericCall = higher_order(ClosureVar, _Purity, _CallKind, _Arity,
+                _Syntax),
             record_var_in_zone(CurZone, ClosureVar, !VarsToZones)
         ;
             GenericCall = class_method(TypeClassInfoVar, _MethodNum,

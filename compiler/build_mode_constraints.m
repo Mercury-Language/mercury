@@ -470,7 +470,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarSet, PredId, GoalExpr,
         % XXX Need to do something here.
         (
             % XXX Need to do something here.
-            Details = higher_order(_, _, _, _),
+            Details = higher_order(_, _, _, _, _),
             sorry($pred, "higher_order generic_call")
         ;
             % XXX Need to do something here.

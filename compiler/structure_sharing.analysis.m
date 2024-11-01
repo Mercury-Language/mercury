@@ -767,7 +767,7 @@ lookup_sharing(ModuleInfo, SharingTable, PPId, !FixpointTable, SharingAs,
 analyse_generic_call(ModuleInfo, ProcInfo, GenDetails, CallArgs, Modes,
         GoalInfo, !SharingAs) :-
     (
-        ( GenDetails = higher_order(_, _, _, _)
+        ( GenDetails = higher_order(_, _, _, _, _)
         ; GenDetails = class_method(_, _, _, _)
         ),
         proc_info_get_var_table(ProcInfo, CallerVarTable),

@@ -45,8 +45,8 @@ purity_nonsense_2.m:026:   in argument 1 of functor `\\+/1':
 purity_nonsense_2.m:026:   in argument 1 of functor `semipure/1':
 purity_nonsense_2.m:026:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`semi'/0.[39;49m
 purity_nonsense_2.m:032: In clause for predicate `e14'/1:
-purity_nonsense_2.m:032:   in argument 1 (i.e. the predicate term) of impure
-purity_nonsense_2.m:032:   higher-order predicate call:
+purity_nonsense_2.m:032:   in argument 1 of the call to the `call' builtin
+purity_nonsense_2.m:032:   predicate:
 purity_nonsense_2.m:032:   type error: [38;5;87mvariable `P'[39;49m has type
 purity_nonsense_2.m:032:     [38;5;203mpred;[39;49m
 purity_nonsense_2.m:032:   expected type was

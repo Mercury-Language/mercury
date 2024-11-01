@@ -474,7 +474,7 @@ initial_r_regs(CodeModel, FirstInRegR, FirstOutRegR) :-
 generic_call_arg_reg_types(ModuleInfo, GenericCall, ArgVars,
         MaybeArgRegs, ArgRegTypes) :-
     (
-        GenericCall = higher_order(_, _, _, _),
+        GenericCall = higher_order(_, _, _, _, _),
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, use_float_registers, UseFloatRegs),
         (

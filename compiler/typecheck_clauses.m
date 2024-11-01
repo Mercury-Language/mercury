@@ -381,13 +381,12 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
         GoalExpr0 = generic_call(GenericCall, ArgVars, _Modes, _MaybeArgRegs,
             _Detism),
         (
-            GenericCall = higher_order(PredVar, Purity, _, _),
+            GenericCall = higher_order(PredVar, Purity, _, _, _),
             trace [compiletime(flag("type_checkpoint")), io(!IO)] (
                 type_checkpoint("higher-order call", !.Info, VarSet,
                     !.TypeAssignSet, !IO)
             ),
-            hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
-            typecheck_higher_order_call(GenericCallId, Context,
+            typecheck_higher_order_call(GenericCall, Context,
                 PredVar, Purity, ArgVars, !TypeAssignSet, !Info)
         ;
             GenericCall = class_method(_, _, _, _),
@@ -686,16 +685,17 @@ get_overloaded_pred_arg_types(PredTable, ClassTable, GoalId,
 
 %---------------------------------------------------------------------------%
 
-:- pred typecheck_higher_order_call(generic_call_id::in, prog_context::in,
+:- pred typecheck_higher_order_call(generic_call::in, prog_context::in,
     prog_var::in, purity::in, list(prog_var)::in,
     type_assign_set::in, type_assign_set::out,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_higher_order_call(GenericCallId, Context, PredVar, Purity, ArgVars,
+typecheck_higher_order_call(GenericCall, Context, PredVar, Purity, ArgVars,
         !TypeAssignSet, !Info) :-
     list.length(ArgVars, Arity),
     higher_order_pred_type(Purity, Arity, TypeVarSet, PredVarType, ArgTypes),
-    VarVectorKind = var_vector_args(arg_vector_generic_call(GenericCallId)),
+    ArgVectorKind = arg_vector_generic_call(GenericCall),
+    VarVectorKind = var_vector_args(ArgVectorKind),
     % The class context is empty because higher-order predicates
     % are always monomorphic. Similarly for ExistQVars.
     ExistQVars = [],

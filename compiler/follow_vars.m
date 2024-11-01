@@ -258,7 +258,7 @@ find_follow_vars_in_goal_expr(ModuleInfo, VarTable, GoalExpr0, GoalExpr,
             GenericCall = cast(_)
             % Casts are generated inline.
         ;
-            ( GenericCall = higher_order(_, _, _, _)
+            ( GenericCall = higher_order(_, _, _, _, _)
             ; GenericCall = class_method(_, _, _, _)
             ; GenericCall = event_call(_)
             ),

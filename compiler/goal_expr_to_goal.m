@@ -375,8 +375,8 @@ transform_parse_tree_goal_to_hlds_call_std(Context, Renaming,
     ( if
         % Check for a higher-order call,
         % i.e. a call to either call/N or ''/N.
-        ( SymName = unqualified("call")
-        ; SymName = unqualified("")
+        ( SymName = unqualified("call"), Syntax = hos_call_or_apply
+        ; SymName = unqualified(""), Syntax = hos_var
         ),
         HeadVars = [PredVar | RealHeadVars]
     then
@@ -385,11 +385,10 @@ transform_parse_tree_goal_to_hlds_call_std(Context, Renaming,
         MaybeArgRegs = arg_reg_types_unset,
         Det = detism_erroneous,
         GenericCall = higher_order(PredVar, Purity, pf_predicate,
-            PredFormArity),
+            PredFormArity, Syntax),
         GoalExpr = generic_call(GenericCall, RealHeadVars, Modes,
             MaybeArgRegs, Det),
-        hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
-        CallId = generic_call_id(GenericCallId)
+        CallId = generic_call_id(vns_varset(!.VarSet), GenericCall)
     else
         % Initialize some fields to junk.
         PredId = invalid_pred_id,
@@ -1554,7 +1553,7 @@ transform_parse_tree_goal_to_hlds_event(LocKind, Renaming, Goal, HLDSGoal,
         detism_det),
     goal_info_init(Context, GoalInfo),
     HLDSGoal0 = hlds_goal(GoalExpr0, GoalInfo),
-    CallId = generic_call_id(gcid_event_call(EventName)),
+    CallId = generic_call_id(vns_varset(!.VarSet), event_call(EventName)),
     insert_arg_unifications(HeadVarsArgTerms, Context, ac_call(CallId),
         HLDSGoal0, HLDSGoal, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs),

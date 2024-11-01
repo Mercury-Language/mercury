@@ -1366,7 +1366,7 @@ goal_constraints_2(GoalId, NonLocals, Vars, CanSucceed, GoalExpr0, GoalExpr,
             _Det),
         % Note: `_Modes' is invalid for higher-order calls at this point.
         (
-            GenericCall = higher_order(Var, _, _, _),
+            GenericCall = higher_order(Var, _, _, _, _),
             generic_call_constrain_var(Var, GoalId, !Constraint, !GCInfo),
 
             % Record that the argument vars need to be constrained

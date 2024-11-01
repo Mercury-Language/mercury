@@ -570,7 +570,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
             GoalExpr = generic_call(GenericCall, Args, _, _, _),
             ArgsRep = map(var_to_var_rep(Info), Args),
             (
-                GenericCall = higher_order(PredVar, _, _, _),
+                GenericCall = higher_order(PredVar, _, _, _, _),
                 PredVarRep = var_to_var_rep(Info, PredVar),
                 AtomicGoalRep = higher_order_call_rep(PredVarRep, ArgsRep)
             ;

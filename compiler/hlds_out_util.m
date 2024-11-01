@@ -174,9 +174,45 @@
 
 %---------------------------------------------------------------------------%
 
-:- func call_id_to_string(call_id) = string.
+    % When a higher order call uses either P(A, B, C) or C = F(A, B) syntax,
+    % we normally identify the call as being to "the predicate P" or to
+    % "the function F". However, there is a category of errors for which
+    % this is inappropriate: when the error is calling a function-values
+    % variable as if it were a  predicate, and vice versa. In such cases,
+    % we don't want the description of the error's context to say e.g.
+    % "in the call to the predicate P", and the description of the error
+    % itself to say "P is a function, but should be a predicate".
+    % Code that wants to report such errors should call the functions below
+    % with do_not_print_ho_var_name; pretty much all other callers should
+    % pass print_ho_var_name.
+:- type maybe_print_ho_var_name
+    --->    do_not_print_ho_var_name
+    ;       print_ho_var_name.
 
-:- func generic_call_id_to_string(generic_call_id) = string.
+:- func call_id_to_string(maybe_print_ho_var_name, call_id) = string.
+
+    % generic_call_to_string(PrintHoVarName, VarNameSrc, GenericCall) = Str:
+    %
+    % Return a description of GenericCall as Str.
+    %
+    % For a description of the semantics of PrintHoVarName, see the
+    % definition of its type above.
+    %
+    % We use VarNameSrc for describing the callee of higher order calls.
+    % The type of this argument is var_name_source because we use this
+    % function both during the type analysis pass (which occurs before
+    % we construct var_tables, since it actually constructs var_tables),
+    % and during mode and determinism analysis, which do use var_tables.
+    %
+:- func generic_call_to_string(maybe_print_ho_var_name, var_name_source,
+    generic_call) = string.
+
+    % This variant of generic_call_to_string returns a string that
+    % specifically describes the *callee* of the call, not the call
+    % as a whole.
+    %
+:- func generic_callee_to_string(maybe_print_ho_var_name, var_name_source,
+    generic_call) = string.
 
 :- func cast_type_to_string(cast_kind) = string.
 
@@ -185,7 +221,8 @@
     % predicate is a type class method implementation; if so, we omit the
     % "call to" part, since the user didn't write any explicit call.
     %
-:- func call_arg_id_to_string(call_id, int, pred_markers) = string.
+:- func call_arg_id_to_string(maybe_print_ho_var_name, call_id, int,
+    pred_markers) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -268,7 +305,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_inst.
-:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_item.  % undesirable dependency
@@ -386,7 +422,8 @@ unify_main_context_to_pieces(!First, MainContext, LastContextWord, !Pieces) :-
         % markers to empty here. (Anyway the worst possible consequence
         % is slightly sub-optimal text for an error message.)
         init_markers(Markers),
-        ArgIdStr = call_arg_id_to_string(CallId, ArgNum, Markers),
+        ArgIdStr = call_arg_id_to_string(print_ho_var_name, CallId,
+            ArgNum, Markers),
         !:Pieces = !.Pieces ++ [words(ArgIdStr), suffix(":"), nl]
     ;
         MainContext = umc_implicit(Source),
@@ -520,20 +557,96 @@ context_to_brief_string(Context) = Str :-
 % Write out ids of calls.
 %
 
-call_id_to_string(plain_call_id(PFSNA)) =
+call_id_to_string(_PrintHoVarName, plain_call_id(PFSNA)) =
     pf_sym_name_pred_form_arity_to_string(PFSNA).
-call_id_to_string(generic_call_id(GenericCallId)) =
-    generic_call_id_to_string(GenericCallId).
+call_id_to_string(PrintHoVarName, generic_call_id(VarNameSrc, GenericCall)) =
+    generic_call_to_string(PrintHoVarName, VarNameSrc, GenericCall).
 
-generic_call_id_to_string(gcid_higher_order(Purity, PredOrFunc, _)) =
-    purity_prefix_to_string(Purity) ++ "higher-order "
-    ++ pred_or_func_to_full_str(PredOrFunc) ++ " call".
-generic_call_id_to_string(gcid_class_method(_ClassId, MethodId)) =
-    pf_sym_name_pred_form_arity_to_string(MethodId).
-generic_call_id_to_string(gcid_event_call(EventName)) =
-    "event " ++ EventName.
-generic_call_id_to_string(gcid_cast(CastType)) =
-    cast_type_to_string(CastType).
+generic_call_to_string(PrintHoVarName, VarNameSrc, GenericCall) = Str :-
+    (
+        GenericCall = higher_order(Var, Purity, PredOrFunc, _, Syntax),
+        (
+            Syntax = hos_var,
+            (
+                PrintHoVarName = do_not_print_ho_var_name,
+                PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
+                string.format("the higher order %s call",
+                    [s(PredOrFuncStr)], Str)
+            ;
+                PrintHoVarName = print_ho_var_name,
+                PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
+                lookup_var_name_in_source(VarNameSrc, Var, VarName),
+                string.format("the higher order call to the %s variable `%s'",
+                    [s(PredOrFuncStr), s(VarName)], Str)
+            )
+        ;
+            Syntax = hos_call_or_apply,
+            (
+                PredOrFunc = pf_predicate,
+                Str = "the call to the `call' builtin predicate"
+            ;
+                PredOrFunc = pf_function,
+                string.format(
+                    "the call to the `%s' builtin function",
+                    [s(apply_func_name(Purity))], Str)
+            )
+        )
+    ;
+        GenericCall = class_method(_TCI, _MethodNum, _ClassId, MethodId),
+        Str = pf_sym_name_pred_form_arity_to_string(MethodId)
+    ;
+        GenericCall = event_call(EventName),
+        string.format("event %s", [s(EventName)], Str)
+    ;
+        GenericCall = cast(CastType),
+        Str = cast_type_to_string(CastType)
+    ).
+
+generic_callee_to_string(PrintHoVarName, VarNameSrc, GenericCall) = Str :-
+    (
+        GenericCall = higher_order(Var, Purity, PredOrFunc, _, Syntax),
+        (
+            Syntax = hos_var,
+            (
+                PrintHoVarName = do_not_print_ho_var_name,
+                PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
+                string.format("the higher order %s variable",
+                    [s(PredOrFuncStr)], Str)
+            ;
+                PrintHoVarName = print_ho_var_name,
+                PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
+                lookup_var_name_in_source(VarNameSrc, Var, VarName),
+                string.format("the higher order %s variable `%s'",
+                    [s(PredOrFuncStr), s(VarName)], Str)
+            )
+        ;
+            Syntax = hos_call_or_apply,
+            (
+                PredOrFunc = pf_predicate,
+                Str = "the predicate argument of the `call' builtin predicate"
+            ;
+                PredOrFunc = pf_function,
+                string.format(
+                    "the function argument of the `%s' builtin function",
+                    [s(apply_func_name(Purity))], Str)
+            )
+        )
+    ;
+        GenericCall = class_method(_TCI, _MethodNum, _ClassId, MethodId),
+        Str = pf_sym_name_pred_form_arity_to_string(MethodId)
+    ;
+        GenericCall = event_call(EventName),
+        string.format("event %s", [s(EventName)], Str)
+    ;
+        GenericCall = cast(CastType),
+        Str = cast_type_to_string(CastType)
+    ).
+
+:- func apply_func_name(purity) = string.
+
+apply_func_name(purity_pure) = "apply".
+apply_func_name(purity_semipure) = "semipure_apply".
+apply_func_name(purity_impure) = "impure_apply".
 
 cast_type_to_string(unsafe_type_cast) = "unsafe_type_cast".
 cast_type_to_string(unsafe_type_inst_cast) = "unsafe_type_inst_cast".
@@ -541,14 +654,15 @@ cast_type_to_string(equiv_type_cast) = "equiv_type_cast".
 cast_type_to_string(exists_cast) = "exists_cast".
 cast_type_to_string(subtype_coerce) = "coerce expression".
 
-call_arg_id_to_string(CallId, ArgNum, PredMarkers) = Str :-
+call_arg_id_to_string(PrintHoVarName, CallId, ArgNum, PredMarkers) = Str :-
+    % ZZZ reorder the two if-then-elses
+    % ZZZ return format_pieces
     ( if ArgNum =< 0 then
         % Argument numbers that are less than or equal to zero
         % are used for the type_info and typeclass_info arguments
         % that are introduced by polymorphism.m.
-        % I think argument number equal to zero might also be used
-        % in some other cases when we just don't have any information
-        % about which argument it is.
+        % I think argument zero might also be used in some other cases
+        % when we just don't have any information about which argument it is.
         % For both of these, we just say "in call to"
         % rather than "in argument N of call to".
         Str1 = ""
@@ -561,8 +675,8 @@ call_arg_id_to_string(CallId, ArgNum, PredMarkers) = Str :-
             % `class_method' does not need the "call to"
             % prefix ("in call to higher-order call" is redundant,
             % it's much better to just say "in higher-order call").
-            CallId = generic_call_id(GenericCallId),
-            not GenericCallId = gcid_class_method(_, _)
+            CallId = generic_call_id(_, GenericCallId),
+            not GenericCallId = class_method(_, _, _, _)
         ;
             % For calls from type class instance implementations
             % that were defined using the named syntax rather
@@ -576,7 +690,7 @@ call_arg_id_to_string(CallId, ArgNum, PredMarkers) = Str :-
     else
         Str2 = Str1 ++ "call to "
     ),
-    Str = Str2 ++ call_id_to_string(CallId).
+    Str = Str2 ++ call_id_to_string(PrintHoVarName, CallId).
 
 :- func arg_number_to_string(call_id, int) = string.
 
@@ -594,10 +708,10 @@ arg_number_to_string(CallId, ArgNum) = Str :-
             Str = "argument " ++ int_to_string(ArgNum)
         )
     ;
-        CallId = generic_call_id(GenericCallId),
+        CallId = generic_call_id(_VarNameSrc, GenericCall),
         (
-            GenericCallId = gcid_higher_order(_Purity, PredOrFunc,
-                PredFormArity),
+            GenericCall = higher_order(_Var, _Purity, PredOrFunc,
+                PredFormArity, Syntax),
             PredFormArity = pred_form_arity(PredFormArityInt),
             ( if
                 PredOrFunc = pf_function,
@@ -605,29 +719,30 @@ arg_number_to_string(CallId, ArgNum) = Str :-
             then
                 Str = "the return value"
             else
-                % Make error messages for higher-order calls
-                % such as `P(A, B)' clearer.
-                Main = "argument " ++ int_to_string(ArgNum),
-                PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
-                ( if ArgNum = 1 then
-                    Expl = "the " ++ PredOrFuncStr ++ " term"
-                else
-                    Expl = "argument " ++ int_to_string(ArgNum - 1)
-                        ++ " of the called " ++ PredOrFuncStr
-                ),
-                Str = Main ++ " (i.e. " ++ Expl ++ ")"
+                (
+                    Syntax = hos_var,
+                    ( if ArgNum = 1 then
+                        PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
+                        string.format("the %s term", [s(PredOrFuncStr)], Str)
+                    else
+                        Str = "argument " ++ int_to_string(ArgNum - 1)
+                    )
+                ;
+                    Syntax = hos_call_or_apply,
+                    Str = "argument " ++ int_to_string(ArgNum)
+                )
             )
         ;
-            ( GenericCallId = gcid_class_method(_, _)
-            ; GenericCallId = gcid_event_call(_)
-            ; GenericCallId = gcid_cast(unsafe_type_cast)
-            ; GenericCallId = gcid_cast(unsafe_type_inst_cast)
-            ; GenericCallId = gcid_cast(equiv_type_cast)
-            ; GenericCallId = gcid_cast(exists_cast)
+            ( GenericCall = class_method(_, _, _, _)
+            ; GenericCall = event_call(_)
+            ; GenericCall = cast(unsafe_type_cast)
+            ; GenericCall = cast(unsafe_type_inst_cast)
+            ; GenericCall = cast(equiv_type_cast)
+            ; GenericCall = cast(exists_cast)
             ),
             Str = "argument " ++ int_to_string(ArgNum)
         ;
-            GenericCallId = gcid_cast(subtype_coerce),
+            GenericCall = cast(subtype_coerce),
             ( if ArgNum = 2 then
                 Str = "the result"
             else

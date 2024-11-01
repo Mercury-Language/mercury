@@ -321,15 +321,14 @@ modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     GoalExpr0 = generic_call(GenericCall, Args0, Modes0, _MaybeArgRegs,
         _Detism),
     mode_checkpoint(enter, "generic_call", !ModeInfo),
-    hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
-    CallId = mode_call_generic(GenericCallId),
+    CallId = mode_call_generic(GenericCall),
     mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
 
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     (
-        GenericCall = higher_order(PredVar, _, PredOrFunc, _),
-        modecheck_higher_order_call(GenericCallId, PredOrFunc, PredVar,
-            Args0, Args, Modes, Det, ExtraGoals, !ModeInfo),
+        GenericCall = higher_order(PredVar, _, _, _, _),
+        modecheck_higher_order_call(GenericCall, Args0, Args, Modes,
+            Det, ExtraGoals, !ModeInfo),
         GoalExpr1 =
             generic_call(GenericCall, Args, Modes, arg_reg_types_unset, Det),
         AllArgs0 = [PredVar | Args0],

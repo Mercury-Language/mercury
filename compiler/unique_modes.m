@@ -291,8 +291,7 @@ unique_modes_check_goal_generic_call(GoalExpr0, GoalExpr, !ModeInfo) :-
     GoalExpr0 = generic_call(GenericCall, ArgVars, ArgModes,
         _MaybeRegTypes, Detism),
     mode_checkpoint(enter, "generic_call", !ModeInfo),
-    hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
-    CallId = mode_call_generic(GenericCallId),
+    CallId = mode_call_generic(GenericCall),
     mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
 
     ( if determinism_components(Detism, _, at_most_zero) then
@@ -301,7 +300,7 @@ unique_modes_check_goal_generic_call(GoalExpr0, GoalExpr, !ModeInfo) :-
         CanProcSucceed = proc_can_maybe_succeed
     ),
     (
-        GenericCall = higher_order(_, _, _, _),
+        GenericCall = higher_order(_, _, _, _, _),
         ArgOffset = higher_order_modecheck_arg_offset
     ;
         % Class method calls are introduced by the compiler
@@ -317,7 +316,7 @@ unique_modes_check_goal_generic_call(GoalExpr0, GoalExpr, !ModeInfo) :-
         GenericCall = cast(_),
         ArgOffset = unify_method_event_cast_modecheck_arg_offset
     ),
-    unique_modes_check_call_modes(match_higher_order_call(GenericCallId),
+    unique_modes_check_call_modes(match_higher_order_call(GenericCall),
         ArgOffset, ArgVars, ArgModes, Detism, CanProcSucceed, !ModeInfo),
     GoalExpr = GoalExpr0,
 

@@ -681,7 +681,8 @@ insert_reg_wrappers_goal_2(Goal0, Goal, !InstMap, !Info, !Specs) :-
         GoalExpr0 = generic_call(GenericCall, Args0, Modes0, _MaybeArgRegs0,
             Determinism),
         (
-            GenericCall = higher_order(CallVar, _Purity, _PredOrFunc, _Arity),
+            GenericCall = higher_order(CallVar, _Purity, _PredOrFunc, _Arity,
+                _Syntax),
             Context = goal_info_get_context(GoalInfo0),
             insert_reg_wrappers_higher_order_call(CallVar, Args0, Args, Modes,
                 ArgsRegs, WrapGoals, !.InstMap, Context, !Info, !Specs),
@@ -1619,7 +1620,12 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     % XXX What does that mean?
     CallVar = OrigVar,
     OrigVarPredInstInfo = pred_inst_info(_, ArgModes, _, Determinism),
-    GenericCall = higher_order(CallVar, Purity, PredOrFunc, PredFormArity),
+    % Since we use the value of Syntax only when generating error messages,
+    % but the code we construct here should be correct, the value we assign
+    % here does not matter.
+    Syntax = hos_var,
+    GenericCall = higher_order(CallVar, Purity, PredOrFunc, PredFormArity,
+        Syntax),
     CallGoalExpr = generic_call(GenericCall, CallVars, ArgModes,
         arg_reg_types(InnerArgRegs), Determinism),
     CallNonLocals = set_of_var.list_to_set([CallVar | CallVars]),

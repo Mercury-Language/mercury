@@ -869,7 +869,7 @@ hlds_goal_used_modules(Goal, !UsedModules) :-
             record_sym_name_module_as_used(visibility_private, MethodName,
                 !UsedModules)
         ;
-            ( Call = higher_order(_, _, _, _)
+            ( Call = higher_order(_, _, _, _, _)
             ; Call = event_call(_)
             ; Call = cast(_)
             )

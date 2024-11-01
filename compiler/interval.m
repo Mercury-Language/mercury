@@ -308,7 +308,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             require_in_regs(InputArgs, !IntervalInfo),
             require_access(InputArgs, !IntervalInfo)
         ;
-            ( GenericCall = higher_order(_, _, _, _)
+            ( GenericCall = higher_order(_, _, _, _, _)
             ; GenericCall = class_method(_, _, _, _)
             ; GenericCall = event_call(_)
             ),
@@ -986,7 +986,7 @@ record_decisions_in_goal(MaybeFeature, InsertMap, Goal0, Goal,
             GenericCall = cast(_),
             MustHaveMap = no
         ;
-            ( GenericCall = higher_order(_, _, _, _)
+            ( GenericCall = higher_order(_, _, _, _, _)
             ; GenericCall = class_method(_, _, _, _)
             ; GenericCall = event_call(_)
             ),

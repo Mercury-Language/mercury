@@ -1101,7 +1101,7 @@ count_load_stores_in_goal(Goal, CountInfo, !CountState) :-
         OutputArgs = OutputArgsR ++ OutputArgsF,
 
         (
-            ( GenericCall = higher_order(_, _, _, _)
+            ( GenericCall = higher_order(_, _, _, _, _)
             ; GenericCall = class_method(_, _, _, _)
             ; GenericCall = event_call(_)
             ),

@@ -47,6 +47,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 :- import_module transform_hlds.
 :- import_module transform_hlds.term_constr_main_types.
@@ -166,7 +167,13 @@
 
 :- type call_id
     --->    plain_call_id(pf_sym_name_arity)
-    ;       generic_call_id(generic_call_id).
+            % The call is a plain call, and the argument specifies the callee.
+    ;       generic_call_id(var_name_source, generic_call).
+            % The call is a generic call, specified by the second argument.
+            % If it is a higher order call, then the second argument will
+            % specify the variable holding the identity of the callee.
+            % The var_name_source is needed to convert this variable
+            % to a printable name in diagnotics.
 
 :- type generic_call_id
     --->    gcid_higher_order(purity, pred_or_func, pred_form_arity)

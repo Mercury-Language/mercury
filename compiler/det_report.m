@@ -183,6 +183,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.write_error_spec.
 
 :- import_module assoc_list.
@@ -1118,9 +1119,11 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
     ;
         GoalExpr = generic_call(GenericCall, _, _, _, _),
         Context = goal_info_get_context(GoalInfo),
-        hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
-        GenericCallIdStr = generic_call_id_to_string(GenericCallId),
-        GoalPieces = color_as_subject([words((GenericCallIdStr))]),
+        det_info_get_var_table(!.DetInfo, VarTable),
+        VarNameSrc = vns_var_table(VarTable),
+        GenericCallStr = generic_call_to_string(print_ho_var_name,
+            VarNameSrc, GenericCall),
+        GoalPieces = color_as_subject([words((GenericCallStr))]),
         det_diagnose_primitive_goal(Desired, Actual, ProblemPieces),
         Pieces = GoalPieces ++ ProblemPieces,
         MsgGroups = [error_msg_group(msg(Context, Pieces), [])]
@@ -2590,10 +2593,11 @@ failing_context_description(ModuleInfo, VarTable, FailingContext) = Msg :-
             color_as_incorrect([words("can fail.")]) ++ [nl]
     ;
         FailingGoal = generic_call_goal(GenericCall),
-        hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
-        GenericCallIdStr0 = generic_call_id_to_string(GenericCallId),
-        GenericCallIdStr = capitalize_first(GenericCallIdStr0),
-        Pieces = color_as_subject([words(GenericCallIdStr)]) ++
+        VarNameSrc = vns_var_table(VarTable),
+        GenericCallStr0 =
+            generic_call_to_string(print_ho_var_name, VarNameSrc, GenericCall),
+        GenericCallStr = capitalize_first(GenericCallStr0),
+        Pieces = color_as_subject([words(GenericCallStr)]) ++
             color_as_incorrect([words("can fail.")]) ++ [nl]
     ;
         FailingGoal = negated_goal,

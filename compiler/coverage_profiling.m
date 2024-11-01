@@ -243,7 +243,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
         ;
             GoalExpr0 = generic_call(GenericCall, _, _, _, _),
             (
-                ( GenericCall = higher_order(_, _, _, _)
+                ( GenericCall = higher_order(_, _, _, _, _)
                 ; GenericCall = class_method(_, _, _, _)
                 ),
                 GathersCoverageAfter = yes
@@ -904,7 +904,7 @@ coverage_prof_first_pass(CPOptions, Goal0, Goal, PortCountsCoverageAfterBefore,
     ;
         GoalExpr0 = generic_call(GenericCall, _, _, _, _),
         (
-            ( GenericCall = higher_order(_, _, _, _)
+            ( GenericCall = higher_order(_, _, _, _, _)
             ; GenericCall = class_method(_, _, _, _)
             ),
             Trivial0 = goal_is_nontrivial,

@@ -339,7 +339,7 @@ check_goal_for_mm_tabling(SCC, VarTable, Goal, Result, MaybeAnalysisStatus,
         GoalExpr = generic_call(Details, _Args, _ArgModes, _, _),
         (
             % XXX We should use any results from closure analysis here.
-            Details = higher_order(_Var, _, _, _),
+            Details = higher_order(_Var, _, _, _, _),
             Result  = mm_tabled_may_call
         ;
             Details = class_method(_, _, _, _),
@@ -632,7 +632,7 @@ mm_tabling_annotate_goal_2(VarTable, !GoalExpr, Status, !ModuleInfo) :-
         !.GoalExpr = generic_call(GenericCall, _Args, _Modes, _, _Detism),
         (
             % XXX We should use any results from closure analysis here.
-            GenericCall = higher_order(_Var, _, _, _),
+            GenericCall = higher_order(_Var, _, _, _, _),
             Status = mm_tabled_may_call
         ;
             GenericCall = class_method(_, _, _, _),

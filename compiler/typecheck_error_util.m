@@ -34,7 +34,7 @@
     --->    arg_vector_clause_head
     ;       arg_vector_plain_call_pred_id(pred_id)
     ;       arg_vector_plain_pred_call(sym_name_pred_form_arity)
-    ;       arg_vector_generic_call(generic_call_id)
+    ;       arg_vector_generic_call(generic_call)
     ;       arg_vector_foreign_proc_call(pred_id)
     ;       arg_vector_event(string).
 
@@ -114,6 +114,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_type_unify.
+:- import_module parse_tree.var_db.
 
 :- import_module map.
 :- import_module require.
@@ -220,13 +221,14 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                     pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity),
                     CallId = plain_call_id(PFSymNameArity)
                 ;
-                    ArgVectorKind = arg_vector_generic_call(GenericId),
-                    CallId = generic_call_id(GenericId)
+                    ArgVectorKind = arg_vector_generic_call(GenericCall),
+                    VarSet = ClauseContext ^ tecc_varset,
+                    CallId = generic_call_id(vns_varset(VarSet), GenericCall)
                 ),
                 PredMarkers = ClauseContext ^ tecc_pred_markers,
-                Pieces = [words("in"),
-                    words(call_arg_id_to_string(CallId, ArgNum, PredMarkers)),
-                    suffix(":"), nl]
+                CalleeStr = call_arg_id_to_string(do_not_print_ho_var_name,
+                    CallId, ArgNum, PredMarkers),
+                Pieces = [words("in"), words(CalleeStr), suffix(":"), nl]
             ;
                 ArgVectorKind = arg_vector_foreign_proc_call(_PredId),
                 % During typechecking, call_foreign_proc goals can occur
@@ -332,13 +334,14 @@ arg_vector_kind_to_pieces(ClauseContext, ArgVectorKind) = Pieces :-
             pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity),
             CallId = plain_call_id(PFSymNameArity)
         ;
-            ArgVectorKind = arg_vector_generic_call(GenericId),
-            CallId = generic_call_id(GenericId)
+            ArgVectorKind = arg_vector_generic_call(GenericCall),
+            VarSet = ClauseContext ^ tecc_varset,
+            CallId = generic_call_id(vns_varset(VarSet), GenericCall)
         ),
         PredMarkers = ClauseContext ^ tecc_pred_markers,
-        Pieces = [words("in"),
-            words(call_arg_id_to_string(CallId, -1, PredMarkers)),
-            suffix(":"), nl]
+        CalleeStr = call_arg_id_to_string(do_not_print_ho_var_name, CallId,
+            -1, PredMarkers),
+        Pieces = [words("in"), words(CalleeStr), suffix(":"), nl]
     ;
         ArgVectorKind = arg_vector_foreign_proc_call(_PredId),
         unexpected($pred, "arg_vector_foreign_proc_call")

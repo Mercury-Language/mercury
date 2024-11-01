@@ -114,7 +114,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % XXX For typeclass method calls, we do some unnecessary
     % boxing/unboxing of the arguments.
     (
-        GenericCall = higher_order(_, _, _, _),
+        GenericCall = higher_order(_, _, _, _, _),
         ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism,
             Context, LocalVarDefns, FuncDefns, Stmts, !Info)
     ;
@@ -133,7 +133,7 @@ ml_gen_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
     ).
 
 :- inst main_generic_call for generic_call/0
-    --->    higher_order(ground, ground, ground, ground)
+    --->    higher_order(ground, ground, ground, ground, ground)
     ;       class_method(ground, ground, ground, ground).
 
 :- pred ml_gen_main_generic_call(generic_call::in(main_generic_call),
@@ -182,7 +182,8 @@ ml_gen_main_generic_call(GenericCall, ArgVars, ArgModes, Determinism, Context,
 
     % Compute the function address.
     (
-        GenericCall = higher_order(ClosureVar, _Purity, _PredOrFunc, _Arity),
+        GenericCall = higher_order(ClosureVar, _Purity, _PredOrFunc, _Arity,
+            _Syntax),
         ml_gen_var_direct(!.Info, ClosureVar, ClosureLval),
         FieldId = ml_field_offset(ml_const(mlconst_int(1))),
         % XXX are these types right?

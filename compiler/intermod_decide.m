@@ -426,7 +426,7 @@ gather_entities_to_opt_export_in_goal_expr(GoalExpr, MayOptExportPred,
     ;
         GoalExpr = generic_call(CallType, _, _, _, _),
         (
-            CallType = higher_order(_, _, _, _),
+            CallType = higher_order(_, _, _, _, _),
             MayOptExportPred = may_opt_export_pred
         ;
             CallType = class_method(_, _, _, _),

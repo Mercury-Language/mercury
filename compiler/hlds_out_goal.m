@@ -1661,7 +1661,7 @@ format_goal_generic_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     IndentStr = indent2_string(Indent),
     % XXX We should print more info here.
     (
-        GenericCall = higher_order(PredVar, Purity, PredOrFunc, _),
+        GenericCall = higher_order(PredVar, Purity, PredOrFunc, _, _),
         PurityPrefix = purity_prefix_to_string(Purity),
         (
             PredOrFunc = pf_predicate,

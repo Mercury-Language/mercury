@@ -430,7 +430,7 @@ check_goal_for_trail_mods(SCC, VarTable, Goal, Result, MaybeAnalysisStatus,
         GoalExpr = generic_call(Details, _Args, _ArgModes, _, _),
         (
             % XXX Use results of closure analysis to handle this.
-            Details = higher_order(_Var, _, _, _),
+            Details = higher_order(_Var, _, _, _, _),
             Result = trail_may_modify,
             MaybeAnalysisStatus = yes(optimal)
         ;
@@ -958,7 +958,7 @@ trail_annotate_goal_2(VarTable, GoalInfo, !GoalExpr, Status, !ModuleInfo) :-
         % XXX We should use any results from closure analysis here.
         !.GoalExpr = generic_call(GenericCall, _, _, _, _),
         (
-            GenericCall = higher_order(_, _, _, _),
+            GenericCall = higher_order(_, _, _, _, _),
             Status = trail_may_modify
         ;
             GenericCall = class_method(_, _, _, _),

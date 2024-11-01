@@ -1,17 +1,17 @@
 ho_any_inst.m:052: In clause for `cond0(in, out)':
-ho_any_inst.m:052:   in higher-order predicate call:
+ho_any_inst.m:052:   in the call to the `call' builtin predicate:
 ho_any_inst.m:052:   scope error: attempt to bind a non-local variable inside
 ho_any_inst.m:052:   the condition of an if-then-else.
 ho_any_inst.m:052:   Variable [38;5;87m`P'[39;49m has instantiatedness [38;5;203m`(any_pred is semidet)',[39;49m
 ho_any_inst.m:052:   expected instantiatedness was [38;5;40m`(pred is semidet)'.[39;49m
 ho_any_inst.m:060: In clause for `neg0(in)':
-ho_any_inst.m:060:   in higher-order predicate call:
+ho_any_inst.m:060:   in the call to the `call' builtin predicate:
 ho_any_inst.m:060:   scope error: attempt to bind a non-local variable inside a
 ho_any_inst.m:060:   negation.
 ho_any_inst.m:060:   Variable [38;5;87m`P'[39;49m has instantiatedness [38;5;203m`(any_pred is semidet)',[39;49m
 ho_any_inst.m:060:   expected instantiatedness was [38;5;40m`(pred is semidet)'.[39;49m
 ho_any_inst.m:064: In clause for `cond1(in, out)':
-ho_any_inst.m:064:   in higher-order predicate call:
+ho_any_inst.m:064:   in the call to the `call' builtin predicate:
 ho_any_inst.m:064:   scope error: attempt to bind a non-local variable inside
 ho_any_inst.m:064:   the condition of an if-then-else.
 ho_any_inst.m:064:   Variable [38;5;87m`P'[39;49m has instantiatedness
@@ -19,7 +19,7 @@ ho_any_inst.m:064:   [38;5;203m`(any_pred(in(any)) is semidet)',[39;49m
 ho_any_inst.m:064:   expected instantiatedness was
 ho_any_inst.m:064:   [38;5;40m`(pred(in(any)) is semidet)'.[39;49m
 ho_any_inst.m:072: In clause for `neg1(in)':
-ho_any_inst.m:072:   in higher-order predicate call:
+ho_any_inst.m:072:   in the call to the `call' builtin predicate:
 ho_any_inst.m:072:   scope error: attempt to bind a non-local variable inside a
 ho_any_inst.m:072:   negation.
 ho_any_inst.m:072:   Variable [38;5;87m`P'[39;49m has instantiatedness

@@ -690,7 +690,7 @@ compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo, Purity, ContainsTrace,
             _MaybeArgRegs, _Det),
         GoalExpr = GoalExpr0,
         (
-            GenericCall0 = higher_order(_, Purity, _, _)
+            GenericCall0 = higher_order(_, Purity, _, _, _)
         ;
             GenericCall0 = class_method(_, _, _, _),
             Purity = purity_pure                        % XXX this is wrong!

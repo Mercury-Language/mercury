@@ -482,7 +482,7 @@ will_flush(BeforeAfter, GoalExpr) = WillFlush :-
         ;
             BeforeAfter = after,
             (
-                ( GenericCall = higher_order(_, _, _, _)
+                ( GenericCall = higher_order(_, _, _, _, _)
                 ; GenericCall = class_method(_, _, _, _)
                 ),
                 WillFlush = yes

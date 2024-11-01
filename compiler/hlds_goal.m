@@ -695,8 +695,21 @@
                 % call/N (pred) or apply/N (func)
                 ho_call_kind    :: pred_or_func,
 
-                % number of arguments (including the higher-order term)
-                ho_call_arity   :: pred_form_arity
+                % The number of arguments (including the higher-order term)
+                ho_call_arity   :: pred_form_arity,
+
+                % If this higher order call occurs in the source code,
+                % was it written as using a variable as the predicate or
+                % function name (using the syntax P(A, B, C) for predicate
+                % calls or C = F(A, B) for functions), or was it written
+                % using the builtin operations call(P, A, B, C) or
+                % C = apply(F, A, B)? We use this information to decide
+                % whether to refer to e.g. as being argument 1, or argument 2.
+                %
+                % If this higher order call does not occur in the source
+                % code, then the value of this field does not matter, since
+                % it *should* be constructed free of any errors.
+                ho_syntax       :: higher_order_syntax
             )
 
     ;       class_method(
@@ -722,6 +735,10 @@
                 % assigns `Input' to `Output', performing a cast of this kind.
                 cast_kind       :: cast_kind
             ).
+
+:- type higher_order_syntax
+    --->    hos_call_or_apply   % call(Pred, A, B, C) or apply(Func, A, B, C)
+    ;       hos_var.            % Pred(A, B, C)       or Func(A, B, C)
 
     % The various kinds of casts that we can do.
     %
@@ -1950,7 +1967,7 @@ make_foreign_args(Vars, NamesModesBoxes, Types, Args) :-
 
 generic_call_to_id(GenericCall, GenericCallId) :-
     (
-        GenericCall = higher_order(_, Purity, PorF, PredFormArity),
+        GenericCall = higher_order(_, Purity, PorF, PredFormArity, _),
         GenericCallId = gcid_higher_order(Purity, PorF, PredFormArity)
     ;
         GenericCall = class_method(_, _, ClassId, MethodId),
@@ -1965,7 +1982,7 @@ generic_call_to_id(GenericCall, GenericCallId) :-
 
 generic_call_pred_or_func(GenericCall) = PredOrFunc :-
     (
-        GenericCall = higher_order(_, _, PredOrFunc, _)
+        GenericCall = higher_order(_, _, PredOrFunc, _, _)
     ;
         GenericCall = class_method(_, _, _, PFSymNameArity),
         PFSymNameArity = pf_sym_name_arity(PredOrFunc, _, _)
@@ -3005,9 +3022,9 @@ rename_var_in_unify(Must, Subn, Unify0, Unify) :-
 
 rename_generic_call(Must, Subn, Call0, Call) :-
     (
-        Call0 = higher_order(Var0, Purity, PredOrFunc, Arity),
+        Call0 = higher_order(Var0, Purity, PredOrFunc, Arity, Syntax),
         rename_var(Must, Subn, Var0, Var),
-        Call = higher_order(Var, Purity, PredOrFunc, Arity)
+        Call = higher_order(Var, Purity, PredOrFunc, Arity, Syntax)
     ;
         Call0 = class_method(Var0, Method, ClassId, MethodId),
         rename_var(Must, Subn, Var0, Var),

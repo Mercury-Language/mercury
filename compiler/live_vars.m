@@ -215,7 +215,7 @@ build_live_sets_in_goal_expr(AllocData, ResumeVars0,
             GenericCall = cast(_),
             GoalInfo = GoalInfo0
         ;
-            ( GenericCall = higher_order(_, _, _, _)
+            ( GenericCall = higher_order(_, _, _, _, _)
             ; GenericCall = class_method(_, _, _, _)
             ; GenericCall = event_call(_)
             ),

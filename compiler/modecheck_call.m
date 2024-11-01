@@ -28,8 +28,6 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
-:- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -43,8 +41,12 @@
     hlds_goal_info::in, extra_goals::out, mode_info::in, mode_info::out)
     is det.
 
-:- pred modecheck_higher_order_call(generic_call_id::in, pred_or_func::in,
-    prog_var::in, list(prog_var)::in, list(prog_var)::out, list(mer_mode)::out,
+:- inst generic_call_higher_order for generic_call/0
+    --->    higher_order(ground, ground, ground, ground, ground).
+
+:- pred modecheck_higher_order_call(
+    generic_call::in(generic_call_higher_order),
+    list(prog_var)::in, list(prog_var)::out, list(mer_mode)::out,
     determinism::out, extra_goals::out, mode_info::in, mode_info::out) is det.
 
 :- pred modecheck_event_call(list(mer_mode)::in,
@@ -70,6 +72,8 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.instmap.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.prog_util.
@@ -412,8 +416,9 @@ modecheck_end_of_call(ProcInfo, ArgOffset, ProcArgModes, ArgVars0,
 
 %---------------------------------------------------------------------------%
 
-modecheck_higher_order_call(GenericCallId, PredOrFunc, PredVar,
-        ArgVars0, ArgVars, Modes, Detism, ExtraGoals, !ModeInfo) :-
+modecheck_higher_order_call(GenericCall, ArgVars0, ArgVars, Modes,
+        Detism, ExtraGoals, !ModeInfo) :-
+    GenericCall = higher_order(PredVar, _, PredOrFunc, _, _),
     % First, check that `PredVar' has a higher-order inst,
     % with the right pred_or_func and the appropriate arity.
     mode_info_get_instmap(!.ModeInfo, InstMap0),
@@ -447,7 +452,7 @@ modecheck_higher_order_call(GenericCallId, PredOrFunc, PredVar,
             Modes = Modes0,
             Detism = Detism0,
             ArgOffset = higher_order_modecheck_arg_offset,
-            modecheck_arg_list(match_higher_order_call(GenericCallId),
+            modecheck_arg_list(match_higher_order_call(GenericCall),
                 ArgOffset, Modes, ExtraGoals, ArgVars0, ArgVars, !ModeInfo),
             ( if determinism_components(Detism, _, at_most_zero) then
                 instmap.init_unreachable(Instmap),

@@ -367,7 +367,7 @@ describe_plain_call(VarTable, SymName, ArgVars) = Desc :-
 describe_generic_call(VarTable, GCall, ArgVars) = Desc :-
     ArgsStr = describe_args(VarTable, ArgVars),
     (
-        GCall = higher_order(Var, _, _, _),
+        GCall = higher_order(Var, _, _, _, _),
         string.format("%s%s",
             [s(describe_var(VarTable, Var)), s(ArgsStr)], Desc)
     ;

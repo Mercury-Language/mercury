@@ -415,7 +415,7 @@ describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
         ),
         Pieces = [words("the call to") | CallPieces]
     ;
-        GoalExpr = generic_call(higher_order(_, _, _, _), _, _, _, _),
+        GoalExpr = generic_call(higher_order(_, _, _, _, _), _, _, _, _),
         Pieces = [words("a higher-order call here")]
     ;
         ( GoalExpr = generic_call(event_call(_), _, _, _, _)

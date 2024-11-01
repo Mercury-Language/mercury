@@ -186,7 +186,7 @@ generate_generic_call(OuterCodeModel, GenericCall, ArgVars, Modes,
     % address. Also, live_vars.m assumes that casts do not require live
     % variables to be saved to the stack.
     (
-        ( GenericCall = higher_order(_, _, _, _)
+        ( GenericCall = higher_order(_, _, _, _, _)
         ; GenericCall = class_method(_, _, _, _)
         ),
         generate_main_generic_call(OuterCodeModel, GenericCall, ArgVars, Modes,
@@ -394,7 +394,7 @@ extra_livevals_from(Reg, FirstInput, ExtraLiveVals) :-
 generic_call_info(Globals, GenericCall, NumInputArgsR, NumInputArgsF,
         CodeAddr, SpecifierArgInfos, FirstImmediateInputReg, HoCallVariant) :-
     (
-        GenericCall = higher_order(PredVar, _, _, _),
+        GenericCall = higher_order(PredVar, _, _, _, _),
         Reg = reg(reg_r, 1),
         SpecifierArgInfos = [PredVar - arg_info(Reg, top_in)],
         globals.lookup_int_option(Globals,
@@ -463,7 +463,7 @@ generic_call_info(Globals, GenericCall, NumInputArgsR, NumInputArgsF,
     list(prog_var)::in, list(prog_var)::in,
     llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-generic_call_nonvar_setup(higher_order(_, _, _, _), HoCallVariant,
+generic_call_nonvar_setup(higher_order(_, _, _, _, _), HoCallVariant,
         InVarsR, InVarsF, Code, !CLD) :-
     (
         HoCallVariant = ho_call_known_num,

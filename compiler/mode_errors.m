@@ -242,7 +242,7 @@
 
 :- type match_what
     --->    match_plain_call(pred_id)
-    ;       match_higher_order_call(generic_call_id)
+    ;       match_higher_order_call(generic_call)
     ;       match_unify
     ;       match_cast
     ;       match_event.
@@ -439,6 +439,7 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.modecheck_util.
 :- import_module hlds.error_msg_inst.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_module.
@@ -1015,17 +1016,19 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
     mode_info_get_mode_context(ModeInfo, ModeContext),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     (
-        ModeContext = mode_context_call(ModeCallId, _),
+        ( ModeContext = mode_context_call_arg(ModeCallId, _)
+        ; ModeContext = mode_context_call(ModeCallId)
+        ),
         (
-            ModeCallId = mode_call_generic(GenericCallId0),
+            ModeCallId = mode_call_generic(GenericCall0),
             (
-                GenericCallId0 = gcid_higher_order(_, PredOrFunc, _)
+                GenericCall0 = higher_order(_, _, PredOrFunc, _, _)
             ;
-                GenericCallId0 = gcid_class_method(_, PFSymNameArity),
+                GenericCall0 = class_method(_, _, _, PFSymNameArity),
                 PFSymNameArity = pf_sym_name_arity(PredOrFunc, _, _)
             ;
-                ( GenericCallId0 = gcid_event_call(_)
-                ; GenericCallId0 = gcid_cast(_)
+                ( GenericCall0 = event_call(_)
+                ; GenericCall0 = cast(_)
                 ),
                 PredOrFunc = pf_predicate
             ),
@@ -1124,11 +1127,12 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
                 words("for"), words(CallIdStr), suffix("."), nl]
         )
     ;
-        MatchWhat = match_higher_order_call(GenericCallId),
-        WhatStr = generic_call_id_to_string(GenericCallId),
+        MatchWhat = match_higher_order_call(GenericCall),
+        VarNameSrc = vns_var_table(VarTable),
+        WhatStr = generic_callee_to_string(print_ho_var_name,
+            VarNameSrc, GenericCall),
         MatchWhatPieces =
-            [words("the mode of this"),
-            words(WhatStr), suffix("."), nl]
+            [words("the mode of"), words(WhatStr), suffix("."), nl]
     ;
         MatchWhat = match_event,
         MatchWhatPieces =
@@ -2645,8 +2649,7 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_pred_id(ModeInfo, PredId),
     mode_info_get_proc_id(ModeInfo, ProcId),
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-        PredInfo, ProcInfo),
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     pred_info_get_origin(PredInfo, PredOrigin),
     ( if
         PredOrigin = origin_user(OriginUser),
@@ -2683,25 +2686,23 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
 
 mode_context_to_pieces(ModeInfo, ModeContext, Markers) = Pieces :-
     (
-        ModeContext = mode_context_not_call_or_unify,
-        Pieces = []
+        ModeContext = mode_context_call_arg(ModeCallId, ArgNum),
+        CallId = mode_call_id_to_call_id(ModeInfo, ModeCallId),
+        CalleeStr = call_arg_id_to_string(print_ho_var_name, CallId,
+            ArgNum, Markers),
+        Pieces = [words("in"), words(CalleeStr), suffix(":"), nl]
     ;
-        ModeContext = mode_context_call(ModeCallId, ArgNum),
-        (
-            ModeCallId = mode_call_plain(PredId),
-            mode_info_get_pf_sym_name_arity(ModeInfo, PredId, PFSymNameArity),
-            CallId = plain_call_id(PFSymNameArity)
-        ;
-            ModeCallId = mode_call_generic(GenericCallId),
-            CallId = generic_call_id(GenericCallId)
-        ),
-        Pieces = [words("in"),
-            words(call_arg_id_to_string(CallId, ArgNum, Markers)),
-            suffix(":"), nl]
+        ModeContext = mode_context_call(ModeCallId),
+        CallId = mode_call_id_to_call_id(ModeInfo, ModeCallId),
+        CalleeStr = call_id_to_string(print_ho_var_name, CallId),
+        Pieces = [words("in"), words(CalleeStr), suffix(":"), nl]
     ;
         ModeContext = mode_context_unify(UnifyContext, _Side),
         unify_context_first_to_pieces(is_not_first, _, UnifyContext,
             _LastContextWord, [], Pieces)
+    ;
+        ModeContext = mode_context_not_call_or_unify,
+        Pieces = []
     ).
 
 %---------------------------------------------------------------------------%

@@ -181,7 +181,7 @@ accumulate_proc_stats_in_goal(Goal, !UsedVars, !Stats) :-
         GoalExpr = generic_call(CallKind, ArgVars, _, _, _),
         set_tree234.insert_list(ArgVars, !UsedVars),
         (
-            CallKind = higher_order(HOVar, _, _, _),
+            CallKind = higher_order(HOVar, _, _, _, _),
             set_tree234.insert(HOVar, !UsedVars),
             !Stats ^ ps_ho_calls := !.Stats ^ ps_ho_calls + 1
         ;

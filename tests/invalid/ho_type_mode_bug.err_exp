@@ -14,8 +14,8 @@ ho_type_mode_bug.m:029:   messages indicate possible causes of this error.
 ho_type_mode_bug.m:029: 
 ho_type_mode_bug.m:028:   In clause for `my_foldl2((pred(in, in, out) is det),
 ho_type_mode_bug.m:028:   in, in, out, di, uo)':
-ho_type_mode_bug.m:028:   in argument 1 (i.e. the predicate term) of
-ho_type_mode_bug.m:028:   higher-order predicate call:
+ho_type_mode_bug.m:028:   in argument 1 of the call to the `call' builtin
+ho_type_mode_bug.m:028:   predicate:
 ho_type_mode_bug.m:028:   mode error: context requires a [38;5;40mpredicate of[39;49m
 ho_type_mode_bug.m:028:   [38;5;40marity five,[39;49m but [38;5;87m`P'[39;49m has [38;5;203marity three.[39;49m
 ho_type_mode_bug.m:029: 
@@ -64,8 +64,8 @@ ho_type_mode_bug.m:029:   messages indicate possible causes of this error.
 ho_type_mode_bug.m:029: 
 ho_type_mode_bug.m:028:   In clause for `my_foldl2((pred(in, in, out) is det),
 ho_type_mode_bug.m:028:   in, in, out, in, out)':
-ho_type_mode_bug.m:028:   in argument 1 (i.e. the predicate term) of
-ho_type_mode_bug.m:028:   higher-order predicate call:
+ho_type_mode_bug.m:028:   in argument 1 of the call to the `call' builtin
+ho_type_mode_bug.m:028:   predicate:
 ho_type_mode_bug.m:028:   mode error: context requires a [38;5;40mpredicate of[39;49m
 ho_type_mode_bug.m:028:   [38;5;40marity five,[39;49m but [38;5;87m`P'[39;49m has [38;5;203marity three.[39;49m
 ho_type_mode_bug.m:029: 

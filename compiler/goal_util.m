@@ -762,7 +762,7 @@ rhs_goal_vars_acc(RHS, !Set) :-
         goal_vars_acc(Goal, !Set)
     ).
 
-generic_call_vars(higher_order(Var, _, _, _), [Var]).
+generic_call_vars(higher_order(Var, _, _, _, _), [Var]).
 generic_call_vars(class_method(Var, _, _, _), [Var]).
 generic_call_vars(event_call(_), []).
 generic_call_vars(cast(_), []).

@@ -5,8 +5,8 @@ ho_unique_error.m:011:   determinisms for such predicates are [38;5;40m`det',[
 ho_unique_error.m:011:   and [38;5;40m`erroneous',[39;49m since the I/O state can be neither
 ho_unique_error.m:011:   duplicated nor destroyed.
 ho_unique_error.m:016: In clause for `call_ho(di, uo)':
-ho_unique_error.m:016:   in argument 3 (i.e. argument 2 of the called
-ho_unique_error.m:016:   predicate) of higher-order predicate call:
+ho_unique_error.m:016:   in argument 3 of the call to the `call' builtin
+ho_unique_error.m:016:   predicate:
 ho_unique_error.m:016:   mode error: variable [38;5;87m`STATE_VARIABLE_IO_0'[39;49m has
 ho_unique_error.m:016:   instantiatedness [38;5;203m`mostly_unique',[39;49m
 ho_unique_error.m:016:   expected instantiatedness was [38;5;40m`unique'.[39;49m

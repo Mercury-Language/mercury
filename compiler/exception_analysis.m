@@ -511,7 +511,7 @@ check_goal_for_exceptions_generic_call(VarTable, Details, Args, GoalInfo,
     globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
     (
-        Details = higher_order(Var, _, _,  _),
+        Details = higher_order(Var, _, _, _,  _),
         ClosureValueMap = goal_info_get_higher_order_value_map(GoalInfo),
         ( if map.search(ClosureValueMap, Var, ClosureValues) then
             get_closures_exception_status(IntermodAnalysis, ClosureValues,

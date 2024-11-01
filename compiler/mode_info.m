@@ -46,16 +46,39 @@
 
     % XXX `side' is not used
 :- type mode_context
-    --->    mode_context_call(
+    --->    mode_context_call_arg(
+                % The error involves one specific argument of a call.
+
+                % The id of the callee.
                 mode_call_id,
 
                 % Argument number (offset so that the real arguments
                 % start at number 1 whereas the type_info arguments
                 % have numbers <= 0).
+                %
+                % For higher order calls, the higher order term
+                % (i.e. the predicate or function) is argument number 1,
+                % and its arguments are numbers 2 and up, regardless
+                % of whether the source code used syntax such as
+                % call(P, A, B, C) or C = apply(F, A, B), for which these
+                % argument numbers are right, or syntax syntax such as
+                % P(A, B, C) or C = F(A, B), for which these numbers are
+                % off by one. The code of arg_number_to_string in
+                % hlds_code_util.m compensates for this off-by-one error.
                 int
             )
+    ;       mode_context_call(
+                % The error relates to a call as a whole, and is not specific
+                % (or at least not *necessarily* specific) to any one argument
+                % of the call.
+
+                % The id of the callee.
+                mode_call_id
+            )
     ;       mode_context_unify(
-                % original source of the unification
+                % The error is in a unification.
+
+                % The original source of the unification.
                 unify_context,
 
                 % LHS or RHS
@@ -77,7 +100,7 @@
 
 :- type mode_call_id
     --->    mode_call_plain(pred_id)
-    ;       mode_call_generic(generic_call_id).
+    ;       mode_call_generic(generic_call).
 
 :- type var_lock_reason
     --->    var_lock_negation
@@ -1063,7 +1086,7 @@ mode_info_set_call_context(CallContext, !MI) :-
         mode_info_set_mode_context(mode_context_unify(UnifyContext, left), !MI)
     ;
         CallContext = call_context_call(CallId),
-        mode_info_set_mode_context(mode_context_call(CallId, 0), !MI)
+        mode_info_set_mode_context(mode_context_call_arg(CallId, 0), !MI)
     ).
 
 mode_info_unset_call_context(!MI) :-
@@ -1072,8 +1095,10 @@ mode_info_unset_call_context(!MI) :-
 mode_info_set_call_arg_context(ArgNum, !ModeInfo) :-
     mode_info_get_mode_context(!.ModeInfo, ModeContext0),
     (
-        ModeContext0 = mode_context_call(CallId, _),
-        mode_info_set_mode_context(mode_context_call(CallId, ArgNum),
+        ( ModeContext0 = mode_context_call(CallId)
+        ; ModeContext0 = mode_context_call_arg(CallId, _)
+        ),
+        mode_info_set_mode_context(mode_context_call_arg(CallId, ArgNum),
             !ModeInfo)
     ;
         ModeContext0 = mode_context_unify(_UnifyContext, _Side)

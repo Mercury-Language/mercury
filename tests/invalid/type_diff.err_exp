@@ -27,8 +27,7 @@ type_diff.m:039:   in the first argument of type constructor `list':
 type_diff.m:039:     [38;5;203marity mismatch[39;49m for type constructor `tx': expected [38;5;171mtwo[39;49m
 type_diff.m:039:     [38;5;171marguments,[39;49m got [38;5;171mone.[39;49m
 type_diff.m:071: In clause for predicate `p2'/4:
-type_diff.m:071:   in argument 1 (i.e. the predicate term) of higher-order
-type_diff.m:071:   predicate call:
+type_diff.m:071:   in the predicate term of the higher order predicate call:
 type_diff.m:071:   type error: [38;5;87mvariable `Pred'[39;49m has type
 type_diff.m:071:     [38;5;203mimpure pred(int :: in, int :: in, int :: out) is det;[39;49m
 type_diff.m:071:   expected type was
@@ -36,8 +35,7 @@ type_diff.m:071:     [38;5;40mpred(V_1, V_2, V_3).[39;49m
 type_diff.m:071:   [38;5;203mPurity mismatch:[39;49m expected a [38;5;171mpure predicate,[39;49m got an [38;5;171mimpure[39;49m
 type_diff.m:071:   [38;5;171mpredicate.[39;49m
 type_diff.m:073: In clause for predicate `p2'/4:
-type_diff.m:073:   in argument 1 (i.e. the predicate term) of impure
-type_diff.m:073:   higher-order predicate call:
+type_diff.m:073:   in the predicate term of the higher order predicate call:
 type_diff.m:073:   type error: [38;5;87mvariable `Pred'[39;49m has type
 type_diff.m:073:     [38;5;203mimpure pred(int :: in, int :: in, int :: out) is det;[39;49m
 type_diff.m:073:   expected type was
@@ -45,8 +43,7 @@ type_diff.m:073:     [38;5;40mimpure pred(V_4, V_5).[39;49m
 type_diff.m:073:   [38;5;203mArity mismatch[39;49m for the predicate: expected [38;5;171mtwo arguments,[39;49m
 type_diff.m:073:   got [38;5;171mthree.[39;49m
 type_diff.m:074: In clause for predicate `p2'/4:
-type_diff.m:074:   in argument 1 (i.e. the predicate term) of impure
-type_diff.m:074:   higher-order predicate call:
+type_diff.m:074:   in the predicate term of the higher order predicate call:
 type_diff.m:074:   type error: [38;5;87mvariable `Pred'[39;49m has type
 type_diff.m:074:     [38;5;203mimpure pred(int :: in, int :: in, int :: out) is det;[39;49m
 type_diff.m:074:   expected type was
@@ -122,8 +119,7 @@ type_diff.m:087:     [38;5;203mfunc(int, int) = int,[39;49m
 type_diff.m:087:   expected type was
 type_diff.m:087:     [38;5;40mfunc(V_13, V_14, V_15) = V_16.[39;49m
 type_diff.m:088: In clause for predicate `p2'/4:
-type_diff.m:088:   in argument 1 (i.e. the predicate term) of impure
-type_diff.m:088:   higher-order predicate call:
+type_diff.m:088:   in the predicate term of the higher order predicate call:
 type_diff.m:088:   type error: [38;5;87mvariable `Func'[39;49m has type
 type_diff.m:088:     [38;5;203mfunc(int, int) = int;[39;49m
 type_diff.m:088:   expected type was

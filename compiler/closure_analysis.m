@@ -230,7 +230,7 @@ closure_analyse_goal(ModuleInfo, VarTable, Goal0, Goal, !ClosureInfo) :-
         % in 'GCallArgs' so we need to include in the set of input argument
         % separately.
         (
-            GenericDetails = higher_order(CalledClosure0, _, _, _),
+            GenericDetails = higher_order(CalledClosure0, _, _, _, _),
             set_of_var.insert(CalledClosure0, InputArgs0, InputArgs)
         ;
             ( GenericDetails = class_method(_, _, _, _)

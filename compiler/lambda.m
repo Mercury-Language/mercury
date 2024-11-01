@@ -756,7 +756,7 @@ find_used_vars_in_goal(Goal, !VarUses) :-
     ;
         GoalExpr = generic_call(GenericCall, ArgVars, _, _, _),
         (
-            GenericCall = higher_order(Var, _, _, _),
+            GenericCall = higher_order(Var, _, _, _, _),
             mark_var_as_used(Var, !VarUses)
         ;
             GenericCall = class_method(Var, _, _, _),

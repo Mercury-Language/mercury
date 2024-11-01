@@ -50,7 +50,8 @@ det_errors_cc.m:051:   [38;5;87mNegated goal[39;49m [38;5;203mcan fail.[39;4
 det_errors_cc.m:056: Error: call to predicate [38;5;87m`det_errors_cc.p3'/2[39;49m with
 det_errors_cc.m:056:   determinism `cc_nondet' [38;5;203moccurs in a context which[39;49m
 det_errors_cc.m:056:   [38;5;203mrequires all solutions.[39;49m
-det_errors_cc.m:058:   [38;5;87mHigher-order predicate call[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:058:   [38;5;87mThe higher order call to the predicate variable `P'[39;49m [38;5;203mcan[39;49m
+det_errors_cc.m:058:   [38;5;203mfail.[39;49m
 det_errors_cc.m:063: Error: call to predicate [38;5;87m`det_errors_cc.p1'/2[39;49m with
 det_errors_cc.m:063:   determinism `cc_nondet' [38;5;203moccurs in a context which[39;49m
 det_errors_cc.m:063:   [38;5;203mrequires all solutions.[39;49m

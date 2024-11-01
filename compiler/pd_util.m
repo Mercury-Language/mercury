@@ -1158,8 +1158,8 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals], !ONRenaming) :-
 
 match_generic_call(GenericCallA, GenericCallB) :-
     (
-        GenericCallA = higher_order(_, Purity, PredOrFunc, Arity),
-        GenericCallB = higher_order(_, Purity, PredOrFunc, Arity)
+        GenericCallA = higher_order(_, Purity, PredOrFunc, Arity, _),
+        GenericCallB = higher_order(_, Purity, PredOrFunc, Arity, _)
     ;
         GenericCallA = class_method(_, MethodNum, ClassId, CallId),
         GenericCallB = class_method(_, MethodNum, ClassId, CallId)

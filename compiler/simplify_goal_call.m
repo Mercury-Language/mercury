@@ -234,7 +234,7 @@ simplify_goal_generic_call(GoalExpr0, GoalExpr, GoalInfo, GoalInfo,
     % of the input arguments.
     GoalExpr0 = generic_call(GenericCall, Args, Modes, _, Det),
     (
-        GenericCall = higher_order(Closure, Purity, _, _),
+        GenericCall = higher_order(Closure, Purity, _, _, _),
         ( if
             simplify_do_warn_or_opt_duplicate_calls(!.Info, OptDuplicateCalls)
         then

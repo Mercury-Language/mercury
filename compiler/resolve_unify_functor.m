@@ -92,10 +92,22 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
             % impure_apply/N and semipure_apply/N?
             % (XXX FIXME We should use nicer syntax for impure apply/N.)
             SymName0 = unqualified(ApplyName),
-            ( ApplyName = "apply", Purity = purity_pure
-            ; ApplyName = "", Purity = purity_pure
-            ; ApplyName = "impure_apply", Purity = purity_impure
-            ; ApplyName = "semipure_apply", Purity = purity_semipure
+            (
+                ApplyName = "",
+                Purity = purity_pure,
+                Syntax = hos_var
+            ;
+                ApplyName = "apply",
+                Purity = purity_pure,
+                Syntax = hos_call_or_apply
+            ;
+                ApplyName = "impure_apply",
+                Purity = purity_impure,
+                Syntax = hos_call_or_apply
+            ;
+                ApplyName = "semipure_apply",
+                Purity = purity_semipure,
+                Syntax = hos_call_or_apply
             ),
             Arity >= 1,
             ArgVars0 = [FuncVar | FuncArgVars]
@@ -106,12 +118,13 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
             % with `call(F, A, B, C, X)'.
             ArgVars = FuncArgVars ++ [X0],
             Modes = [],
-            Det = detism_erroneous,
+            Detism = detism_erroneous,
             user_arity_pred_form_arity(pf_function,
                 user_arity(Arity), PredFormArity),
-            Generic = higher_order(FuncVar, Purity, pf_function, PredFormArity),
-            HOCall = generic_call(Generic, ArgVars, Modes,
-                arg_reg_types_unset, Det),
+            GenericCall = higher_order(FuncVar, Purity, pf_function,
+                PredFormArity, Syntax),
+            HOCall = generic_call(GenericCall, ArgVars, Modes,
+                arg_reg_types_unset, Detism),
             Goal = hlds_goal(HOCall, GoalInfo0),
             IsPlainUnify = is_not_plain_unify,
             Specs = []

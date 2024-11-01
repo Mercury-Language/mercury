@@ -72,7 +72,7 @@
 
 %---------------------------------------------------------------------------%
 
-construct_closure(PredId, ProcId, Var, Args, GoalInfo, Code, !CI, !CLD) :-
+construct_closure(PredId, ProcId, Var, ArgVars, GoalInfo, Code, !CI, !CLD) :-
     get_module_info(!.CI, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_proc_table(PredInfo, Procs),
@@ -106,10 +106,12 @@ construct_closure(PredId, ProcId, Var, Args, GoalInfo, Code, !CI, !CLD) :-
     CodeModel = proc_info_interface_code_model(ProcInfo),
     proc_info_get_headvars(ProcInfo, ProcHeadVars),
     ( if
-        Args = [CallPred | CallArgs],
-        ProcHeadVars = [ProcPred | ProcArgs],
-        ProcInfoGoal = hlds_goal(generic_call(higher_order(ProcPred, _, _, _),
-            ProcArgs, _, _, CallDeterminism), _GoalInfo),
+        ArgVars = [CallPredVar | CallArgVars],
+        ProcHeadVars = [HOVar | ProcArgVars],
+        ProcInfoGoal = hlds_goal(GoalExpr, _GoalInfo),
+        GoalExpr = generic_call(GenericCall, ProcArgVars, _, _,
+            CallDeterminism),
+        GenericCall = higher_order(HOVar, _, _, _, _),
         determinism_to_code_model(CallDeterminism, CallCodeModel),
         % Check that the code models are compatible. Note that det is not
         % compatible with semidet, and semidet is not compatible with nondet,
@@ -133,53 +135,54 @@ construct_closure(PredId, ProcId, Var, Args, GoalInfo, Code, !CI, !CLD) :-
         UseFloatRegs = no
     then
         (
-            CallArgs = [],
+            CallArgVars = [],
             % If there are no new arguments, we can just use the old closure.
-            assign_var_to_var(Var, CallPred, !CLD),
+            assign_var_to_var(Var, CallPredVar, !CLD),
             Code = empty
         ;
-            CallArgs = [_ | _],
-            generate_new_closure_from_old(Var, CallPred, CallArgs, GoalInfo,
-                Code, !CI, !CLD)
+            CallArgVars = [_ | _],
+            generate_new_closure_from_old(Var, CallPredVar, CallArgVars,
+                GoalInfo, Code, !CI, !CLD)
         )
     else
         generate_closure_from_scratch(ModuleInfo, PredId, ProcId,
-            PredInfo, ProcInfo, Var, Args, GoalInfo, Code, !CI, !CLD)
+            PredInfo, ProcInfo, Var, ArgVars, GoalInfo, Code, !CI, !CLD)
     ).
 
 :- pred generate_new_closure_from_old(prog_var::in,
     prog_var::in, list(prog_var)::in, hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_new_closure_from_old(Var, CallPred, CallArgs, GoalInfo, Code,
+generate_new_closure_from_old(Var, CallPredVar, CallArgVars, GoalInfo, Code,
         !CI, !CLD) :-
     get_next_label(LoopStart, !CI),
     get_next_label(LoopTest, !CI),
     acquire_reg(reg_r, LoopCounter, !CLD),
-    acquire_reg(reg_r, NumOldArgs, !CLD),
+    acquire_reg(reg_r, NumOldArgVars, !CLD),
     acquire_reg(reg_r, NewClosure, !CLD),
     Zero = const(llconst_int(0)),
     One = const(llconst_int(1)),
     Two = const(llconst_int(2)),
     Three = const(llconst_int(3)),
-    list.length(CallArgs, NumNewArgs),
-    NumNewArgs_Rval = const(llconst_int(NumNewArgs)),
-    NumNewArgsPlusThree = NumNewArgs + 3,
-    NumNewArgsPlusThree_Rval = const(llconst_int(NumNewArgsPlusThree)),
-    produce_variable(CallPred, OldClosureCode, OldClosure, !CLD),
+    list.length(CallArgVars, NumNewArgVars),
+    NumNewArgVars_Rval = const(llconst_int(NumNewArgVars)),
+    NumNewArgVarsPlusThree = NumNewArgVars + 3,
+    NumNewArgVarsPlusThree_Rval = const(llconst_int(NumNewArgVarsPlusThree)),
+    produce_variable(CallPredVar, OldClosureCode, OldClosure, !CLD),
     Context = goal_info_get_context(GoalInfo),
-    maybe_add_alloc_site_info(Context, "closure", NumNewArgsPlusThree,
+    maybe_add_alloc_site_info(Context, "closure", NumNewArgVarsPlusThree,
         MaybeAllocId, !CI),
     % The new closure contains a pointer to the old closure.
     NewClosureMayUseAtomic = may_not_use_atomic_alloc,
     NewClosureCode = from_list([
         llds_instr(comment("build new closure from old closure"), ""),
         llds_instr(
-            assign(NumOldArgs, lval(field(yes(ptag(0u8)), OldClosure, Two))),
+            assign(NumOldArgVars,
+                lval(field(yes(ptag(0u8)), OldClosure, Two))),
             "get number of arguments"),
         llds_instr(incr_hp(NewClosure, no, no,
-            binop(int_arith(int_type_int, ao_add), lval(NumOldArgs),
-                NumNewArgsPlusThree_Rval),
+            binop(int_arith(int_type_int, ao_add), lval(NumOldArgVars),
+                NumNewArgVarsPlusThree_Rval),
             MaybeAllocId, NewClosureMayUseAtomic, no, no_llds_reuse),
             "allocate new closure"),
         llds_instr(assign(field(yes(ptag(0u8)), lval(NewClosure), Zero),
@@ -189,13 +192,13 @@ generate_new_closure_from_old(Var, CallPred, CallArgs, GoalInfo, Code,
             lval(field(yes(ptag(0u8)), OldClosure, One))),
             "set closure code pointer"),
         llds_instr(assign(field(yes(ptag(0u8)), lval(NewClosure), Two),
-            binop(int_arith(int_type_int, ao_add), lval(NumOldArgs),
-                NumNewArgs_Rval)),
+            binop(int_arith(int_type_int, ao_add), lval(NumOldArgVars),
+                NumNewArgVars_Rval)),
             "set new number of arguments"),
         llds_instr(
-            assign(NumOldArgs,
+            assign(NumOldArgVars,
                 binop(int_arith(int_type_int, ao_add),
-                    lval(NumOldArgs), Three)),
+                    lval(NumOldArgVars), Three)),
             "set up loop limit"),
         llds_instr(assign(LoopCounter, Three),
             "initialize loop counter"),
@@ -219,17 +222,17 @@ generate_new_closure_from_old(Var, CallPred, CallArgs, GoalInfo, Code,
             "do we have more old arguments to copy? nofulljump"),
         llds_instr(
             if_val(binop(int_cmp(int_type_int, lt),
-                lval(LoopCounter), lval(NumOldArgs)),
+                lval(LoopCounter), lval(NumOldArgVars)),
                 code_label(LoopStart)),
             "repeat the loop?")
     ]),
-    generate_extra_closure_args(CallArgs, LoopCounter, NewClosure,
-        ExtraArgsCode, !.CI, !CLD),
+    generate_extra_closure_args(CallArgVars, LoopCounter, NewClosure,
+        ExtraArgVarsCode, !.CI, !CLD),
     release_reg(LoopCounter, !CLD),
-    release_reg(NumOldArgs, !CLD),
+    release_reg(NumOldArgVars, !CLD),
     release_reg(NewClosure, !CLD),
     assign_lval_to_var(Var, NewClosure, AssignCode, !.CI, !CLD),
-    Code = OldClosureCode ++ NewClosureCode ++ ExtraArgsCode ++ AssignCode.
+    Code = OldClosureCode ++ NewClosureCode ++ ExtraArgVarsCode ++ AssignCode.
 
 :- pred generate_closure_from_scratch(module_info::in,
     pred_id::in, proc_id::in, pred_info::in, proc_info::in,
@@ -237,7 +240,7 @@ generate_new_closure_from_old(Var, CallPred, CallArgs, GoalInfo, Code,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_closure_from_scratch(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
-        Var, Args, GoalInfo, Code, !CI, !CLD) :-
+        Var, ArgVars, GoalInfo, Code, !CI, !CLD) :-
     CodeAddr = make_proc_entry_label(!.CI, ModuleInfo, PredId, ProcId,
         for_closure),
     ProcLabel = extract_proc_label_from_code_addr(CodeAddr),
@@ -266,7 +269,7 @@ generate_closure_from_scratch(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo,
     proc_info_arg_info(ProcInfo, ArgInfo),
     get_var_table(!.CI, VarTable),
     get_may_use_atomic_alloc(!.CI, MayUseAtomic0),
-    generate_pred_args(!.CI, VarTable, Args, ArgInfo, ArgsR, ArgsF,
+    generate_pred_args(!.CI, VarTable, ArgVars, ArgInfo, ArgsR, ArgsF,
         MayUseAtomic0, MayUseAtomic),
     list.length(ArgsR, NumArgsR),
     list.length(ArgsF, NumArgsF),

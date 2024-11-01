@@ -257,7 +257,7 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
         GoalExpr0 = generic_call(GenericCall, Args, _, _, _),
         % Check whether this call could be specialized.
         (
-            GenericCall = higher_order(Var, _, _, _),
+            GenericCall = higher_order(Var, _, _, _, _),
             maybe_specialize_higher_order_call(Var, Args, Goal0, Goal, !Info)
         ;
             GenericCall = class_method(Var, Method, _, _),

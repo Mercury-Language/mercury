@@ -1060,7 +1060,7 @@ deep_prof_transform_goal(Goal0, Goal, AddedImpurity, !DeepInfo) :-
     ;
         GoalExpr0 = generic_call(GenericCall, _, _, _, _),
         (
-            ( GenericCall = higher_order(_, _, _, _)
+            ( GenericCall = higher_order(_, _, _, _, _)
             ; GenericCall = class_method(_, _, _, _)
             ),
             deep_prof_wrap_call(Goal1, Goal, !DeepInfo),
@@ -1326,7 +1326,7 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
     ;
         CallKind = call_class_generic(Generic),
         (
-            Generic = higher_order(ClosureVar, _, _, _),
+            Generic = higher_order(ClosureVar, _, _, _, _),
             generate_deep_det_call(ModuleInfo, "prepare_for_ho_call", 2,
                 [SiteNumVar, ClosureVar], [], PrepareGoal),
             CallSite = higher_order_call(FileName, LineNumber, GoalPath)

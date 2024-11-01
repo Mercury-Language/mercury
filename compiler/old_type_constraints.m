@@ -815,7 +815,7 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     list.map_foldl(get_var_type, Vars, ArgTVars, !TCInfo),
     ArgTypes = list.map(tvar_to_type, ArgTVars),
     (
-        Details = higher_order(CallVar, Purity, PredOrFunc, _),
+        Details = higher_order(CallVar, Purity, PredOrFunc, _, _),
         HOType = higher_order_type(PredOrFunc, ArgTypes, none_or_default_func,
             Purity),
         variable_assignment_constraint(Context, CallVar, HOType, !TCInfo)

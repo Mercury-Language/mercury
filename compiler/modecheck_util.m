@@ -209,6 +209,8 @@
 :- pred mode_context_to_unify_context(mode_info::in, mode_context::in,
     unify_context::out) is det.
 
+:- func mode_call_id_to_call_id(mode_info, mode_call_id) = call_id.
+
 %---------------------------------------------------------------------------%
 
     % Given a list of variables, and a list of livenesses,
@@ -267,6 +269,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
 :- import_module bool.
@@ -454,6 +457,19 @@ compute_pred_modecheck_arg_offset(PredInfo) = ArgOffset :-
     ArgOffset = modecheck_arg_offset(PredFormArityInt - CurrentArity).
 
 higher_order_modecheck_arg_offset = modecheck_arg_offset(1).
+    % This return value makes the initial argument "argument 2".
+    % This is because the first implementation of higher order calls
+    % used the "call(P, A, B, C)" syntax Mercury inherited from Prolog;
+    % both the P(A, B, C) syntax, and functions themselves, came later.
+    % And when checking the types or modes of higher order calls,
+    % we check the types/modes of A, B and C *against* the type/mode info
+    % we have in P; we treat P as the source of what is expected, not as
+    % something to be *compared* to the expected.
+    %
+    % The arg_number_to_string function in hlds_out_util.m deduct 1
+    % from argument numbers for calls that use P(A, B, C) syntax, while
+    % leaving argument numbers unchanged for calls using call(P, A, B, C)
+    % syntax.
 
 unify_method_event_cast_modecheck_arg_offset = modecheck_arg_offset(0).
 
@@ -700,6 +716,20 @@ modecheck_find_bound_head_inst_vars(MatchWhat, ExactOrNot,
         Mismatch = mode_mismatch(ExactOrNot, ReqInitialInsts, BoundInstVars),
         ModeError = mode_error_no_matching_mode(MatchWhat, InstMap, Vars,
             Mismatch, []),
+        % XXX Ugly code like this should not be needed; contexts of all kinds
+        % should be passed around *separately* from the mode_info.
+        mode_info_get_mode_context(!.ModeInfo, ModeContext0),
+        (
+            ( ModeContext0 = mode_context_call_arg(CallId, _)
+            ; ModeContext0 = mode_context_call(CallId)
+            ),
+            mode_info_set_mode_context(mode_context_call(CallId), !ModeInfo)
+        ;
+            ( ModeContext0 = mode_context_unify(_, _)
+            ; ModeContext0 = mode_context_not_call_or_unify
+            ),
+            unexpected($pred, "context says we are not in a call")
+        ),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 
@@ -1082,19 +1112,26 @@ mode_context_to_unify_context(ModeInfo, ModeContext, UnifyContext) :-
     (
         ModeContext = mode_context_unify(UnifyContext, _)
     ;
-        ModeContext = mode_context_call(ModeCallId, Arg),
-        (
-            ModeCallId = mode_call_plain(PredId),
-            mode_info_get_pf_sym_name_arity(ModeInfo, PredId, PFSymNameArity),
-            CallId = plain_call_id(PFSymNameArity)
-        ;
-            ModeCallId = mode_call_generic(GenericCallId),
-            CallId = generic_call_id(GenericCallId)
-        ),
+        ModeContext = mode_context_call_arg(ModeCallId, Arg),
+        CallId = mode_call_id_to_call_id(ModeInfo, ModeCallId),
         UnifyContext = unify_context(umc_call(CallId, Arg), [])
+    ;
+        ModeContext = mode_context_call(_),
+        unexpected($pred, "context is *all* of a call")
     ;
         ModeContext = mode_context_not_call_or_unify,
         unexpected($pred, "context not call or unify")
+    ).
+
+mode_call_id_to_call_id(ModeInfo, ModeCallId) = CallId :-
+    (
+        ModeCallId = mode_call_plain(PredId),
+        mode_info_get_pf_sym_name_arity(ModeInfo, PredId, PFSymNameArity),
+        CallId = plain_call_id(PFSymNameArity)
+    ;
+        ModeCallId = mode_call_generic(GenericCall),
+        mode_info_get_var_table(ModeInfo, VarTable),
+        CallId = generic_call_id(vns_var_table(VarTable), GenericCall)
     ).
 
 %---------------------------------------------------------------------------%

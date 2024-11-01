@@ -1,6 +1,6 @@
 impure_pred_t1_fixed.m:029: In clause for predicate `main'/2:
-impure_pred_t1_fixed.m:029:   in argument 1 (i.e. the predicate term) of
-impure_pred_t1_fixed.m:029:   higher-order predicate call:
+impure_pred_t1_fixed.m:029:   in the predicate term of the higher order
+impure_pred_t1_fixed.m:029:   predicate call:
 impure_pred_t1_fixed.m:029:   type error: [38;5;87mvariable `X'[39;49m has type
 impure_pred_t1_fixed.m:029:     [38;5;203mimpure pred(int, int);[39;49m
 impure_pred_t1_fixed.m:029:   expected type was

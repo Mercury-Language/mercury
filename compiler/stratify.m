@@ -380,7 +380,7 @@ higher_order_check_goal(Goal, Negated, WholeScc, ThisPredProcId,
         ( if
             Negated = yes,
             HighOrderLoops = yes,
-            ( GenericCall = higher_order(_, _, _, _), Msg = "higher order"
+            ( GenericCall = higher_order(_, _, _, _, _), Msg = "higher order"
             ; GenericCall = class_method(_, _, _, _), Msg = "class method"
             )
         then
