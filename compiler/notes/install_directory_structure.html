@@ -60,6 +60,7 @@ we will refer to this list as the "library suffix list".)
 .jar    (for Java grades)
 </ul>
 
+<p>
 Note that common values of --library-extension include .a and .lib, while
 common values of --shared-library-extension include .so, .dylib and .dll.
 
@@ -94,11 +95,13 @@ we always stored all compiler-generated files,
 including all files with a suffix in the library suffix list,
 in the directory that stored the Mercury source files they were derived from.
 We refer to this directory as the "current directory",
-since that the logical place to have your current directory (in the Unix sense)
-when working on that code.
+since that is the logical place to have as your current directory
+(in the Unix sense) when working on that code.
 
 <p>
 As the number of modules in e.g. the compiler directory grew,
+and as the number of files with different suffixes
+associated with a given module also grew,
 the number of files in the current directory became a problem.
 One problem was simply aesthetics:
 the output of "ls" in the current directory contained lots of "clutter".
@@ -109,10 +112,11 @@ whose complexity was linear in the number of entries in a directory.
 This meant that the runtimes of tasks such as
 generating the .int3 file for each module in the directory
 was half-quadratic in the number of modules:
-for each of N modules, the task of looking up that module's directory entry
-had to scan at least N/2 other directory entries.
+for each of N modules, each of which had M associated files,
+the task of looking up that module's directory entry
+had to scan (on average) at least (N/2)*M other directory entries.
 
-<h2>--use-subdirs</h2>
+<h2>The --use-subdirs option</h2>
 
 <p>
 We implemented the --use-subdirs option to solve both problems.
@@ -132,16 +136,20 @@ but it puts all other kinds of files into another directory.
 <p>
 The compiler associates with each extension
 an <em>extension directory name</em>.
-the extension itself by deleting the initial dot and adding a final "s";
-for example, for the .int3 extension,
+It originally created this nam from the extension itself,
+by deleting the initial dot and adding a final "s".
+For example, for the .int3 extension,
 the extension directory name is "int3s".
-There are exceptions:
-for the .class extension,
-the extension directory name is "classes".
 The final "s" is intended to denote the plural form of the extension.
 This is because with --use-subdirs,
-the compiler stores all files with the .class extension
-in the directory named "Mercury/classes".
+the compiler stores all files with e.g. the .int3 extension
+in the directory named "Mercury/int3s".
+
+<p>
+We have since created some exceptions from the above rule.
+For example, for the .class extension,
+the extension directory name is "classes",
+replacing the old, ugly ".classs" (sic).
 
 <p>
 The general rule is:
@@ -162,7 +170,7 @@ This takes a nontrivial amount of time,
 and therefore usually takes you any out of any "flow" state you had.
 The --use-subdirs option does not help with this problem at all.
 
-<h2>--use-grade-subdirs</h2>
+<h2>The --use-grade-subdirs option</h2>
 
 <p>
 We therefore added another option, --use-grade-subdirs, to solve this problem.
@@ -188,10 +196,18 @@ is actually unreachable, because
 --use-grade-subdirs implicitly implies --use-subdirs.
 
 <p>
-We classify extensions into two sets: grade-independent and grade-dependent.
+We classify extensions into two sets:
+<ul>
+<li> the <em>non-grade-specific</em> extensions,
+which are grade-independent, and
+<li> the <em>grade-specific</em> extensions,
+which are grade-dependent.
+</ul>
+We usually abbreviate these two classes
+as <em>ngs</em> and <em>gs</em> respectively.
 
 <p>
-For the grade-independent extensions,
+For the non-grade-specific extensions,
 the compiler puts their files
 
 <p>
@@ -206,7 +222,7 @@ with --use-subdirs
 
 <p>
 LEGACY
-For the grade-dependent extensions,
+For the grade-specific extensions,
 the compiler puts their files
 
 <p>
@@ -229,14 +245,14 @@ and TargetArch is a canonical representation of the target ISA
 with both being in a form that is suitable as a directory name component.
 
 <p>
-Note that while some kinds of files with grade-dependent extensions,
+Note that while some kinds of files with grade-specific extensions,
 such as .o, are dependent on the target ISA,
-files with other grade-dependent extensions, such as .mih, are <em>NOT</em>,
+files with other grade-specific extensions, such as .mih, are <em>NOT</em>,
 so including the TargetArch component in their path names is overkill.
 
 <p>
 PROPOSED
-For the grade-dependent extensions,
+For the grade-specific extensions,
 the compiler should put their files
 <p>
 <ul>
@@ -262,6 +278,15 @@ is to allow LEGACY and PROPOSED directory structures to coexist
 for the transition period.
 After that period is over, we can go back to using just "Mercury".
 
+<p>
+Note that to prepare for the implementation of the PROPOSED install structure,
+compiler/file_names.m makes a distinction
+between non-architecture-specific and architecture-specific extensions.
+It redefines the term grade-specific (<em>gs</em>)
+to refer to <em>only</em> the former,
+and introduces the term grade-and-architecture-specific (<em>gas</em>)
+to refer to the latter.
+
 <h1>Where files of various kinds are installed</h1>
 
 <p>
@@ -272,7 +297,7 @@ both in the LEGACY and in the PROPOSED install directory structures.
 <dl>
 
 <!--
-Does any know any html tag that works as <pre>,
+Does anyone know any html tag that works as <pre>,
 but applies the current indent?
 -->
 <dt>
@@ -414,6 +439,10 @@ will end up with the .mih file for the grade that is installed last.
 If the non-grade-specific directory is before the grade-specific directory
 in the search path, searches in not-installed-last grades may nevertheless
 find the .opt file for the installed-last grade.
+
+<p>
+Note that the install locations marked as "possible" for backward compatibility
+are not yet implemented.
 <p>
 
 <dt>
@@ -540,6 +569,16 @@ The structure would be one of
 As a consequence of the above,
 no directory in the installed library would contain
 both directories and regular (non-directory) files.
+<p>
+XXX The above structure violates this for Prefix/MercurySystem/lib/Grade,
+since it would contain both e.g. main_module.dll, a regular file,
+and TargetArch, a directory.
+<p>
+XXX Should we replace Grade/TargetArch with e.g. Grade:TargetArch?
+Or should we install .jar and .dll files to
+Prefix/MercurySystem/jars/Grade/main_module.jar and
+Prefix/MercurySystem/dlls/Grade/main_module.dll respectively?
+The latter solution seems cleaner.
 <li>
 As a consequence of the above,
 the installed library would contain no symbolic links,
@@ -552,7 +591,7 @@ that can take as arguments the names of
 <em>both</em> installed libraries
 <em>and</em> other directories in the current workspace.
 <p>
-For any directory Dir named as such an argument,
+For any directory Dir named in such an argument,
 when looking for Fqmn.Ext, mmc would search
     <ul>
     <li>
