@@ -364,8 +364,9 @@ construct_trans_opt_deps_rule(Globals, MaybeInclTransOptRule, StdDeps,
         ),
         % Note that maybe_read_dependency_file searches for
         % this exact pattern.
+        % XXX LEGACY
         make_module_file_names_with_ext(Globals,
-            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_trans),
             set.to_sorted_list(TransOptDeps), TransOptDepsFileNames,
             !Cache, !IO),
         MmakeRuleTransOpt = mmake_simple_rule("trans_opt_deps",
@@ -573,8 +574,9 @@ construct_intermod_rules(Globals, IntermodDeps, ErrFileName,
             [ErrFileName, CDateFileName, JavaDateFileName]),
         PlainOptInt0Deps =
             set.union_list(list.map(get_ancestors_set, PlainOptDeps)),
+        % XXX LEGACY
         make_module_file_names_with_ext(Globals,
-            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
             PlainOptDeps, PlainOptDepsFileNames, !Cache, !IO),
         make_module_file_names_with_ext(Globals,
             ext_cur_ngs(ext_cur_ngs_int_int0),
@@ -590,8 +592,10 @@ construct_intermod_rules(Globals, IntermodDeps, ErrFileName,
             MaybeTransOptDeps = yes(TransOptDeps),
             ErrDateTargets = one_or_more(ErrFileName,
                 [CDateFileName, JavaDateFileName]),
+            % XXX LEGACY
             make_module_file_names_with_ext(Globals,
-                ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
+                ext_cur_ngs_gs_max_ngs(
+                    ext_cur_ngs_gs_max_ngs_legacy_opt_trans),
                 TransOptDeps, TransOptDepsOptFileNames, !Cache, !IO),
             MmakeRuleTransOptOpts = mmake_flat_rule("dates_on_trans_opts",
                 mmake_rule_is_not_phony,
@@ -843,11 +847,13 @@ construct_install_shadow_rules(Globals, ModuleName,
         ModuleName, Int2FileName, !Cache, !IO),
     make_module_file_name(Globals, $pred, ext_cur_ngs(ext_cur_ngs_int_int3),
         ModuleName, Int3FileName, !Cache, !IO),
+    % XXX LEGACY
     make_module_file_name(Globals, $pred,
-        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
         ModuleName, OptFileName, !Cache, !IO),
+    % XXX LEGACY
     make_module_file_name(Globals, $pred,
-        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
+        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_trans),
         ModuleName, TransOptFileName, !Cache, !IO),
 
     MmakeRulesInstallShadows = [

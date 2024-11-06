@@ -295,7 +295,9 @@ construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, AllDeps,
                 BaseDeps, PlainOptDeps, TransOptDeps, !Cache, !IO),
             MaybeTransOptDeps = yes(TransOptDeps)
         else
-            ExtOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+            % XXX LEGACY
+            ExtOpt = ext_cur_ngs_gs_max_ngs(
+                ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
             get_ext_opt_deps(Globals, LookForSrc, ExtOpt,
                 BaseDeps, PlainOptDeps, !IO),
             MaybeTransOptDeps = no
@@ -605,7 +607,9 @@ get_plain_trans_opt_deps(Globals, LookForSrc, [Dep | Deps],
     ),
     (
         Found = not_found,
-        ExtOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+        % XXX LEGACY
+        ExtOpt =
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
         make_module_file_name(Globals, $pred, ExtOpt, Dep, OptName,
             !Cache, !IO),
         search_for_file_returning_dir(search_intermod_dirs(OptionTable),
@@ -616,7 +620,9 @@ get_plain_trans_opt_deps(Globals, LookForSrc, [Dep | Deps],
         ;
             MaybeOptDir = error(_)
         ),
-        ExtTransOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
+        % XXX LEGACY
+        ExtTransOpt =
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_trans),
         make_module_file_name(Globals, $pred, ExtTransOpt, Dep, TransOptName,
             !Cache, !IO),
         search_for_file_returning_dir(search_intermod_dirs(OptionTable),

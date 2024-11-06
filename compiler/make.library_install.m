@@ -296,7 +296,9 @@ legacy_install_ints_and_headers_for_module(ProgressStream, Globals,
         globals.get_any_intermod(Globals, AnyIntermod),
         (
             AnyIntermod = yes,
-            ExtOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+            % XXX LEGACY
+            ExtOpt = ext_cur_ngs_gs_max_ngs(
+                ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
             ExtExtDirs1 = [{ExtOpt, "opts"} | ExtExtDirs0]
         ;
             AnyIntermod = no,
@@ -921,7 +923,9 @@ legacy_install_grade_ints_and_headers(ProgressStream, Globals,
         globals.get_any_intermod(Globals, AnyIntermod),
         (
             AnyIntermod = yes,
-            ExtOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+            % XXX LEGACY
+            ExtOpt = ext_cur_ngs_gs_max_ngs(
+                ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
             legacy_install_subdir_file(ProgressStream, Globals, GsLibDirMap,
                 GradeIntsDir, ModuleName, {ExtOpt, "opts"}, !Succeeded, !IO)
         ;
@@ -979,7 +983,7 @@ proposed_install_library_grade_specific_files_for_grade(ProgressStream,
             AnyIntermod = no
         ;
             AnyIntermod = yes,
-            ExtOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+            ExtOpt = ext_cur_ngs_gs(ext_cur_ngs_gs_proposed_opt_plain),
             proposed_install_all_gs_files(ProgressStream, Globals,
                 Prefix, Grade, ExtOpt, AllModuleNames, !Succeeded, !IO)
         ),
@@ -1137,6 +1141,7 @@ proposed_install_library_grade_specific_files_for_grade_csharp(ProgressStream,
 :- type ext_cur_gs_ns =< ext
     --->    ext_cur_ngs(ext_cur_ngs)
     ;       ext_cur_gs(ext_cur_gs)
+    ;       ext_cur_ngs_gs(ext_cur_ngs_gs)
     ;       ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur)
     ;       ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs).
 
@@ -1152,6 +1157,9 @@ proposed_install_all_gs_files(ProgressStream, Globals, Prefix, Grade,
     ;
         Ext = ext_cur_gs(ExtGs),
         ext_cur_gs_extension_dir(ExtGs, _, _, ExtDirName)
+    ;
+        Ext = ext_cur_ngs_gs(ExtNgsGs),
+        ext_cur_ngs_gs_extension_dir(ExtNgsGs, _, ExtDirName)
     ;
         Ext = ext_cur_ngs_gs_max_cur(ExtNgsGsMaxCur),
         ext_cur_ngs_gs_max_cur_extension_dir(ExtNgsGsMaxCur, _, ExtDirName)

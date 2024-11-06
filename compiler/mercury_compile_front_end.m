@@ -514,8 +514,8 @@ frontend_pass_after_typecheck(ProgressStream, ErrorStream, OpModeAugment,
 create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
         Globals, !HLDS, !DumpInfo, !Specs, !IO) :-
     module_info_get_name(!.HLDS, ModuleName),
-    OptExt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
     % XXX LEGACY
+    OptExt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
     module_name_to_file_name_create_dirs(Globals, $pred, OptExt,
         ModuleName, OptFileName, _OptFileNameProposed, !IO),
 
@@ -659,7 +659,8 @@ mark_entities_in_opt_file_as_opt_exported(ProgressStream, IntermodAnalysis,
             UseOptFiles = yes,
             module_info_get_name(!.HLDS, ModuleName),
             % XXX LEGACY
-            ExtOpt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+            ExtOpt = ext_cur_ngs_gs_max_ngs(
+                ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
             module_name_to_search_file_name(Globals, $pred, ExtOpt,
                 ModuleName, OptFileName, _OptFileNameProposed),
             globals.get_options(Globals, OptionTable),

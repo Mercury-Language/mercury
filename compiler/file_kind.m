@@ -76,9 +76,11 @@ int_file_kind_to_extension(ifk_int3,
     ".int3", ext_cur_ngs(ext_cur_ngs_int_int3)).
 
 opt_file_kind_to_extension(ofk_opt, ".opt",
-    ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain)).
+    % XXX LEGACY
+    ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain)).
 opt_file_kind_to_extension(ofk_trans_opt, ".trans_opt",
-    ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans)).
+    % XXX LEGACY
+    ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_trans)).
 
 extension_to_file_kind(ExtStr, FileKind) :-
     (

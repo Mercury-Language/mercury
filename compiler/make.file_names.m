@@ -225,8 +225,9 @@ target_type_to_target_extension(Target, TargetExt) :-
         TargetExt = extension(ext_cur_ngs(ext_cur_ngs_int_int3))
     ;
         Target = module_target_opt,
+        % XXX LEGACY
         TargetExt = extension(
-            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain))
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain))
     ;
         Target = module_target_analysis_registry,
         TargetExt = extension(
