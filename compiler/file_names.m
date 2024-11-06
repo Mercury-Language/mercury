@@ -496,7 +496,7 @@
 :- pred ext_cur_ngs_extension_dir(ext_cur_ngs::in,
     string::out, string::out) is det.
 :- pred ext_cur_gs_extension_dir(ext_cur_gs::in,
-    string::out, string::out) is det.
+    string::out, string::out, string::out) is det.
 :- pred ext_cur_gas_extension_dir(globals::in, ext_cur_gas::in,
     string::out, string::out) is det.
 :- pred ext_cur_pgs_max_cur_extension_dir(ext_cur_pgs_max_cur::in,
@@ -784,7 +784,8 @@ extension_to_string(Globals, Ext) = ExtStr :-
         ext_cur_ngs_extension_dir(ExtCurNgs, ExtStr, _SubDirName)
     ;
         Ext = ext_cur_gs(ExtCurGs),
-        ext_cur_gs_extension_dir(ExtCurGs, ExtStr, _SubDirName)
+        ext_cur_gs_extension_dir(ExtCurGs, ExtStr,
+            _LegacySubDirName, _ProposedSubDirName)
     ;
         Ext = ext_cur_gas(ExtCurGas),
         ext_cur_gas_extension_dir(Globals, ExtCurGas, ExtStr, _SubDirName)
@@ -859,10 +860,13 @@ ext_cur_ngs_extension_dir(Ext, Str, Dir) :-
                                         Str = ".prof",      Dir = "profs"
     ).
 
-ext_cur_gs_extension_dir(Ext, Str, Dir) :-
-    ( Ext = ext_cur_gs_lib_init,        Str = ".init",  Dir = "inits"
-    ; Ext = ext_cur_gs_lib_jar,         Str = ".jar",   Dir = "lib"
-    ; Ext = ext_cur_gs_lib_cil_dll,     Str = ".dll",   Dir = "lib"
+ext_cur_gs_extension_dir(Ext, Str, LegacyDir, ProposedDir) :-
+    ( Ext = ext_cur_gs_lib_init,
+        Str = ".init",  LegacyDir = "inits", ProposedDir = "inits"
+    ; Ext = ext_cur_gs_lib_jar,
+        Str = ".jar",   LegacyDir = "lib",   ProposedDir = "jars"
+    ; Ext = ext_cur_gs_lib_cil_dll,
+        Str = ".dll",   LegacyDir = "lib",   ProposedDir = "dlls"
     ).
 
 ext_cur_gas_extension_dir(Globals, Ext, Str, Dir) :-
@@ -1286,9 +1290,12 @@ ext_to_dir_path(Globals, Search, Ext, DirNamesLegacy, DirNamesProposed) :-
             DirNamesProposed = []
         ;
             SubdirSetting = use_cur_ngs_gs_subdir,
-            ext_cur_gs_extension_dir(ExtCurGs, _ExtStr, SubDirName),
-            make_gs_dir_names(Globals, SubDirName,
-                DirNamesLegacy, DirNamesProposed)
+            ext_cur_gs_extension_dir(ExtCurGs, _ExtStr,
+                LegacySubDirName, ProposedSubDirName),
+            make_gs_dir_names(Globals, LegacySubDirName,
+                DirNamesLegacy, _DirNamesProposed),
+            make_gs_dir_names(Globals, ProposedSubDirName,
+                _DirNamesLegacy, DirNamesProposed)
         )
     ;
         Ext = ext_cur_gas(ExtCurGas),
@@ -1507,6 +1514,7 @@ make_ngs_dir_names(SubDirName, NgsSubDirNamesLegacy, NgsSubDirNamesProposed) :-
 
 :- pred make_gs_dir_names(globals::in, dir_name::in,
     list(dir_name)::out, list(dir_name)::out) is det.
+:- pragma inline(pred(make_gs_dir_names/4)).
 
 make_gs_dir_names(Globals, SubDirName,
         GsSubDirNamesLegacy, GsSubDirNamesProposed) :-

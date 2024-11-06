@@ -1093,8 +1093,9 @@ proposed_install_library_grade_specific_files_for_grade_java(ProgressStream,
     GenExtJar = ext_cur_gs(ExtJar),
     module_name_to_workspace_file_name(Globals, GenExtJar,
         MainModuleName, JarFileName),
-    ext_cur_gs_extension_dir(ExtJar, _, JarDirName),
-    JarInstallDir = Prefix / JarDirName / Grade,
+    ext_cur_gs_extension_dir(ExtJar, _,
+        _LegacyJarDirName, ProposedJarDirName),
+    JarInstallDir = Prefix / ProposedJarDirName / Grade,
     make_dir_handle_any_error(ProgressStream, JarInstallDir,
         MakeJarInstallDirSucceeded, !IO),
     (
@@ -1118,8 +1119,9 @@ proposed_install_library_grade_specific_files_for_grade_csharp(ProgressStream,
     GenExtCilDll = ext_cur_gs(ExtCilDll),
     module_name_to_workspace_file_name(Globals, GenExtCilDll,
         MainModuleName, CilDllFileName),
-    ext_cur_gs_extension_dir(ExtCilDll, _, CilDllDirName),
-    CilDllInstallDir = Prefix / CilDllDirName / Grade,
+    ext_cur_gs_extension_dir(ExtCilDll, _,
+        _LegacyCilDllDirName, ProposedCilDllDirName),
+    CilDllInstallDir = Prefix / ProposedCilDllDirName / Grade,
     make_dir_handle_any_error(ProgressStream, CilDllInstallDir,
         MakeCilDllInstallDirSucceeded, !IO),
     (
@@ -1149,7 +1151,7 @@ proposed_install_all_gs_files(ProgressStream, Globals, Prefix, Grade,
         ext_cur_ngs_extension_dir(ExtNgs, _, ExtDirName)
     ;
         Ext = ext_cur_gs(ExtGs),
-        ext_cur_gs_extension_dir(ExtGs, _, ExtDirName)
+        ext_cur_gs_extension_dir(ExtGs, _, _, ExtDirName)
     ;
         Ext = ext_cur_ngs_gs_max_cur(ExtNgsGsMaxCur),
         ext_cur_ngs_gs_max_cur_extension_dir(ExtNgsGsMaxCur, _, ExtDirName)
