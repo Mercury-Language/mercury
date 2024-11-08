@@ -78,7 +78,7 @@
     % - check that its goal is a disjunction and that each arm of the
     %   disjunction has at most one call, and otherwise has only unifications.
     %
-:- pred check_promise_ex_decl(prog_vars::in, promise_type::in, goal::in,
+:- pred check_promise_ex_decl(list(prog_var)::in, promise_type::in, goal::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
     % Warn about suspicious things in the bodies of foreign_code pragmas.

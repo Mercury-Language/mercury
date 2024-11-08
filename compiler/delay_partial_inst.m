@@ -189,7 +189,7 @@
     %
 :- type construct_map == map(prog_var, canon_vars_map).
 
-:- type canon_vars_map == map(cons_id, prog_vars).
+:- type canon_vars_map == map(cons_id, list(prog_var)).
 
 %-----------------------------------------------------------------------------%
 
@@ -522,7 +522,7 @@ delay_partial_inst_in_partial_construct(GoalInfo0, Unify, Goal,
     % Mark the procedure as changed.
     !DelayInfo ^ dpi_changed := yes.
 
-:- pred create_canonical_variables(prog_vars::in, prog_vars::out,
+:- pred create_canonical_variables(list(prog_var)::in, list(prog_var)::out,
     delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
 
 create_canonical_variables(OrigVars, CanonVars, !DelayInfo) :-
@@ -532,7 +532,7 @@ create_canonical_variables(OrigVars, CanonVars, !DelayInfo) :-
     rename_var_list(must_rename, Renaming, OrigVars, CanonVars),
     !DelayInfo ^ dpi_var_table := VarTable.
 
-:- pred add_to_construct_map(prog_var::in, cons_id::in, prog_vars::in,
+:- pred add_to_construct_map(prog_var::in, cons_id::in, list(prog_var)::in,
     construct_map::in, construct_map::out) is det.
 
 add_to_construct_map(Var, ConsId, CanonVars, !ConstructMap) :-
@@ -658,7 +658,7 @@ delay_partial_inst_in_complicated_unify(Goal0, LHS, RHS0, Unify, Goal,
     ).
 
 :- pred get_sole_cons_id_and_canon_vars(construct_map::in, prog_var::in,
-    cons_id::out, prog_vars::out) is semidet.
+    cons_id::out, list(prog_var)::out) is semidet.
 
 get_sole_cons_id_and_canon_vars(ConstructMap, Var, ConsId, CanonVars) :-
     map.search(ConstructMap, Var, CanonVarsMap),

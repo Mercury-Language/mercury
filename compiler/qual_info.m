@@ -81,14 +81,14 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred make_atomic_unification(prog_var::in, unify_rhs::in, prog_context::in,
-    unify_main_context::in, unify_sub_contexts::in, purity::in, hlds_goal::out,
-    qual_info::in, qual_info::out) is det.
+    unify_main_context::in, list(unify_sub_context)::in, purity::in,
+    hlds_goal::out, qual_info::in, qual_info::out) is det.
 
     % As above, except with default purity pure.
     %
 :- pred make_atomic_unification(prog_var::in, unify_rhs::in, prog_context::in,
-    unify_main_context::in, unify_sub_contexts::in, hlds_goal::out,
-    qual_info::in, qual_info::out) is det.
+    unify_main_context::in, list(unify_sub_context)::in,
+    hlds_goal::out, qual_info::in, qual_info::out) is det.
 
 :- pred record_called_pred_or_func(pred_or_func::in, sym_name::in,
     user_arity::in, qual_info::in, qual_info::out) is det.

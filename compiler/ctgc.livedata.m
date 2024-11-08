@@ -41,8 +41,8 @@
     % of live variables or data structures.
     %
 :- func livedata_init = livedata.   % Which assumes that nothing is live.
-:- func livedata_init_from_vars(live_vars) = livedata.
-:- func livedata_init_from_datastructs(live_datastructs) = livedata.
+:- func livedata_init_from_vars(list(live_var)) = livedata.
+:- func livedata_init_from_datastructs(list(live_datastruct)) = livedata.
 :- func livedata_init_as_top = livedata.
 
     % Verify whether the liveness set is bottom resp. top.
@@ -76,7 +76,7 @@
 :- func livedata_init_at_goal(module_info, var_table, hlds_goal_info,
     sharing_as) = livedata.
 
-:- func livedata_add_liveness(module_info, proc_info, live_datastructs,
+:- func livedata_add_liveness(module_info, proc_info, list(live_datastruct),
     sharing_as, livedata) = livedata.
 
 :- pred nodes_are_not_live(module_info::in, var_table::in,
@@ -205,7 +205,8 @@ livedata_project(ProgVars, LiveData) = ProjectedLiveData :-
         )
     ).
 
-:- pred list_contains_datastruct_var(prog_vars::in, datastruct::in) is semidet.
+:- pred list_contains_datastruct_var(list(prog_var)::in, datastruct::in)
+    is semidet.
 
 list_contains_datastruct_var(ProgVars, Datastruct) :-
     list.member(Datastruct ^ sc_var, ProgVars).
@@ -259,7 +260,7 @@ livedata_init_at_goal(ModuleInfo, VarTable, GoalInfo, SharingAs) = LiveData :-
     % port over.  However, its caller always passes the empty set for the
     % LIVE_0 argument which would make a lot of code unnecessary.
     %
-:- func livedata_init_at_goal_2(module_info, var_table, live_vars,
+:- func livedata_init_at_goal_2(module_info, var_table, list(live_var),
     structure_sharing) = livedata.
 
 livedata_init_at_goal_2(ModuleInfo, VarTable, Lu, SharingPairs) = LiveData :-

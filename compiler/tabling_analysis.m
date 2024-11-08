@@ -408,7 +408,7 @@ check_goals_for_mm_tabling(SCC, VarTable, Goals, Result, MaybeAnalysisStatus,
 
 %----------------------------------------------------------------------------%
 
-:- pred check_call_for_mm_tabling(pred_proc_id::in, prog_vars::in,
+:- pred check_call_for_mm_tabling(pred_proc_id::in, list(prog_var)::in,
     scc::in, var_table::in, mm_tabling_status::out,
     maybe(analysis_status)::out, module_info::in, module_info::out) is det.
 
@@ -525,7 +525,8 @@ get_mm_tabling_status_from_attributes(Attributes) =
     % Additional code for handling calls.
     %
 :- pred check_call_for_mm_tabling_calls(module_info::in, var_table::in,
-    pred_proc_id::in, prog_vars::in, maybe(proc_mm_tabling_info)::out) is det.
+    pred_proc_id::in, list(prog_var)::in, maybe(proc_mm_tabling_info)::out)
+    is det.
 
 check_call_for_mm_tabling_calls(ModuleInfo, _VarTable, PPId, _CallArgs,
         MaybeProcTablingInfo) :-

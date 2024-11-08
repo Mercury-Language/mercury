@@ -641,8 +641,8 @@ indirect_reuse_analyse_plain_call(BaseInfo, !Goal, !IrInfo) :-
     update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo).
 
 :- pred indirect_reuse_analyse_generic_call(ir_background_info::in,
-    generic_call::in, prog_vars::in, list(mer_mode)::in, hlds_goal_info::in,
-    ir_analysis_info::in, ir_analysis_info::out) is det.
+    generic_call::in, list(prog_var)::in, list(mer_mode)::in,
+    hlds_goal_info::in, ir_analysis_info::in, ir_analysis_info::out) is det.
 
 indirect_reuse_analyse_generic_call(BaseInfo, GenDetails, CallArgs, Modes,
         GoalInfo, !IrInfo) :-
@@ -747,7 +747,7 @@ update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo) :-
     --->    callee_has_no_reuses
     ;       callee_has_only_unconditional_reuse
     ;       current_sharing_is_top
-    ;       reuse_is_unsafe(prog_vars)
+    ;       reuse_is_unsafe(list(prog_var))
     ;       reuse_is_unconditional
     ;       reuse_is_conditional.
 
@@ -755,7 +755,7 @@ update_sharing_as(BaseInfo, OldSharing, NewSharing, !IrInfo) :-
     % reuse version of another procedure.
     %
 :- pred verify_indirect_reuse(ir_background_info::in, pred_proc_id::in,
-    list(int)::in, prog_vars::in, conditional_reuse_handling::in,
+    list(int)::in, list(prog_var)::in, conditional_reuse_handling::in,
     hlds_goal_info::in, hlds_goal_info::out,
     ir_analysis_info::in, ir_analysis_info::out) is det.
 
@@ -827,7 +827,7 @@ verify_indirect_reuse(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
     ).
 
 :- pred verify_indirect_reuse_conditional(ir_background_info::in,
-    pred_proc_id::in, no_clobber_args::in, prog_vars::in, reuse_as::in,
+    pred_proc_id::in, no_clobber_args::in, list(prog_var)::in, reuse_as::in,
     hlds_goal_info::in, hlds_goal_info::out, ir_analysis_info::in,
     ir_analysis_info::out) is det.
 
@@ -920,7 +920,8 @@ verify_indirect_reuse_conditional(BaseInfo, CalleePPId, NoClobbers, CalleeArgs,
     %
 :- pred verify_indirect_reuse_for_call(ir_background_info::in,
     ir_analysis_info::in, hlds_goal_info::in, pred_proc_id::in,
-    list(prog_var)::in, reuse_as::in, reuse_as::out, prog_vars::out) is det.
+    list(prog_var)::in, reuse_as::in, reuse_as::out, list(prog_var)::out)
+    is det.
 
 verify_indirect_reuse_for_call(BaseInfo, IrInfo, GoalInfo, CalleePPId,
         CalleeArgs, FormalReuseAs, NewReuseAs, NotDeadVars) :-
@@ -1077,7 +1078,7 @@ verify_indirect_reuse_reason_to_string(VarTable, Reason) = Str :-
 
 %---------------------------------------------------------------------------%
 
-:- pred get_var_indices(prog_vars::in, prog_vars::in, int::in,
+:- pred get_var_indices(list(prog_var)::in, list(prog_var)::in, int::in,
     list(int)::out) is det.
 
 get_var_indices(_, [], _, []).

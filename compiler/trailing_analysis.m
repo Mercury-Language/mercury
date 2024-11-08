@@ -676,7 +676,7 @@ combine_maybe_trail_analysis_status(MaybeStatusA, MaybeStatusB, MaybeStatus) :-
     % Check the trailing status of a call.
     %
 :- pred trail_check_call(module_info::in, var_table::in,
-    pred_proc_id::in, prog_vars::in, trailing_status::out) is det.
+    pred_proc_id::in, list(prog_var)::in, trailing_status::out) is det.
 
 trail_check_call(ModuleInfo, VarTable, PPId, Args, Result) :-
     trail_check_call_2(ModuleInfo, VarTable, PPId, Args, MaybeResult),
@@ -689,8 +689,8 @@ trail_check_call(ModuleInfo, VarTable, PPId, Args, Result) :-
         Result = trail_may_modify
     ).
 
-:- pred trail_check_call_2(module_info::in, var_table::in,
-    pred_proc_id::in, prog_vars::in, maybe(proc_trailing_info)::out) is det.
+:- pred trail_check_call_2(module_info::in, var_table::in, pred_proc_id::in,
+    list(prog_var)::in, maybe(proc_trailing_info)::out) is det.
 
 trail_check_call_2(ModuleInfo, VarTable, PPId, Args, MaybeResult) :-
     module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo, ProcInfo),
@@ -720,7 +720,8 @@ trail_check_call_2(ModuleInfo, VarTable, PPId, Args, MaybeResult) :-
         MaybeResult = no
     ).
 
-:- func trail_check_vars(module_info, var_table, prog_vars) = trailing_status.
+:- func trail_check_vars(module_info, var_table, list(prog_var))
+    = trailing_status.
 
 trail_check_vars(ModuleInfo, VarTable, Vars) = Result :-
     lookup_var_types(VarTable, Vars, Types),

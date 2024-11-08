@@ -98,7 +98,7 @@
     pred_id::in, proc_id::in, module_info::in, module_info::out) is det.
 
 :- type pess_info
-    --->    pess_info(prog_vars, prog_context).
+    --->    pess_info(list(prog_var), prog_context).
             % short for promise_equivalent_solution_sets_info
 
     % det_infer_goal(Goal0, Goal, InstMap0, SolnContext,

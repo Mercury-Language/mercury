@@ -71,7 +71,7 @@
                 classdefn_supers            :: list(prog_constraint),
 
                 % Functional dependencies.
-                classdefn_fundeps           :: hlds_class_fundeps,
+                classdefn_fundeps           :: list(hlds_class_fundep),
 
                 % All ancestors which have fundeps on them.
                 classdefn_fundep_ancestors  :: list(prog_constraint),
@@ -109,7 +109,6 @@
     % typeclass parameters must be distinct variables, and using
     % argument positions is more efficient.
     %
-:- type hlds_class_fundeps == list(hlds_class_fundep).
 :- type hlds_class_fundep
     --->    fundep(
                 domain      :: set(hlds_class_argpos),

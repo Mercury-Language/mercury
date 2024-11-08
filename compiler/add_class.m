@@ -236,8 +236,8 @@ convert_vars_to_arg_posns(ProgTVars, HLDSTVars, ArgPosnsSet) :-
         list.map(list.det_index1_of_first_occurrence(ProgTVars), HLDSTVars),
     set.list_to_set(ArgPosns, ArgPosnsSet).
 
-:- pred class_fundeps_are_identical(hlds_class_fundeps::in,
-    hlds_class_fundeps::in) is semidet.
+:- pred class_fundeps_are_identical(list(hlds_class_fundep)::in,
+    list(hlds_class_fundep)::in) is semidet.
 
 class_fundeps_are_identical(OldFunDeps, FunDeps) :-
     % Allow for the functional dependencies to be in a different order.

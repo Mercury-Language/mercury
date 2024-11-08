@@ -367,8 +367,8 @@ do_class_improvement_2(ClassTable, ExternalTypeParams, RedundantConstraints,
     % pair of constraints from the list.
     %
 :- pred do_class_improvement_by_pairs(list(hlds_constraint)::in,
-    hlds_class_fundeps::in, external_type_params::in, tsubst::in, tsubst::out,
-    bool::in, bool::out) is det.
+    list(hlds_class_fundep)::in, external_type_params::in,
+    tsubst::in, tsubst::out, bool::in, bool::out) is det.
 
 do_class_improvement_by_pairs([], _, _, !Bindings, !Changed).
 do_class_improvement_by_pairs([Constraint | Constraints], FunDeps,
@@ -379,7 +379,7 @@ do_class_improvement_by_pairs([Constraint | Constraints], FunDeps,
         !Bindings, !Changed).
 
 :- pred do_class_improvement_by_pairs_2(hlds_constraint::in,
-    list(hlds_constraint)::in, hlds_class_fundeps::in,
+    list(hlds_constraint)::in, list(hlds_class_fundep)::in,
     external_type_params::in, tsubst::in, tsubst::out, bool::in, bool::out)
     is det.
 
@@ -395,8 +395,8 @@ do_class_improvement_by_pairs_2(Constraint, [HeadConstraint | TailConstraints],
     % constraints, using each fundep in turn.
     %
 :- pred do_class_improvement_pair(hlds_constraint::in, hlds_constraint::in,
-    hlds_class_fundeps::in, external_type_params::in, tsubst::in, tsubst::out,
-    bool::in, bool::out) is det.
+    list(hlds_class_fundep)::in, external_type_params::in,
+    tsubst::in, tsubst::out, bool::in, bool::out) is det.
 
 do_class_improvement_pair(_, _, [], _, !Bindings, !Changed).
 do_class_improvement_pair(ConstraintA, ConstraintB, [FunDep | FunDeps],
@@ -462,9 +462,9 @@ do_instance_improvement_2(ClassTable, InstanceTable, ExternalTypeParams,
         InstanceDefns, !TVarSet, !Bindings, !Changed).
 
 :- pred do_instance_improvement_3(list(hlds_constraint)::in,
-    hlds_class_fundeps::in, external_type_params::in, hlds_instance_defn::in,
-    tvarset::in, tvarset::out, tsubst::in, tsubst::out,
-    bool::in, bool::out) is det.
+    list(hlds_class_fundep)::in, external_type_params::in,
+    hlds_instance_defn::in, tvarset::in, tvarset::out,
+    tsubst::in, tsubst::out, bool::in, bool::out) is det.
 
 do_instance_improvement_3(Constraints, FunDeps, ExternalTypeParams,
         InstanceDefn, !TVarSet, !Bindings, !Changed) :-
@@ -484,9 +484,9 @@ do_instance_improvement_3(Constraints, FunDeps, ExternalTypeParams,
         Changed0 = no
     ).
 
-:- pred do_instance_improvement_4(hlds_class_fundeps::in, list(mer_type)::in,
-    external_type_params::in, hlds_constraint::in, tsubst::in, tsubst::out,
-    bool::in, bool::out) is det.
+:- pred do_instance_improvement_4(list(hlds_class_fundep)::in,
+    list(mer_type)::in, external_type_params::in, hlds_constraint::in,
+    tsubst::in, tsubst::out, bool::in, bool::out) is det.
 
 do_instance_improvement_4(FunDeps, InstanceTypes, ExternalTypeParams,
         Constraint, !Bindings, !Changed) :-

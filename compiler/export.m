@@ -28,6 +28,7 @@
 :- import_module parse_tree.prog_foreign.
 
 :- import_module io.
+:- import_module list.
 
 %-----------------------------------------------------------------------------%
 
@@ -36,15 +37,15 @@
     % `pragma foreign_export' declaration, which is used to allow a call to
     % be made to a Mercury procedure from the foreign language.
     %
-:- pred get_foreign_export_decls(module_info::in, foreign_export_decls::out)
-    is det.
+:- pred get_foreign_export_decls(module_info::in,
+    foreign_export_decls::out) is det.
 
     % From the module_info, get a list of foreign_export_defns, each of which
     % is a string containing the foreign code for defining a foreign function
     % named in a `pragma foreign_export' decl.
     %
-:- pred get_foreign_export_defns(module_info::in, foreign_export_defns::out)
-    is det.
+:- pred get_foreign_export_defns(module_info::in,
+    list(foreign_export_defn)::out) is det.
 
     % Produce an interface file containing declarations for the exported
     % foreign functions (if required in this foreign language).
@@ -114,7 +115,6 @@
 :- import_module int.
 :- import_module io.file.
 :- import_module library.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.

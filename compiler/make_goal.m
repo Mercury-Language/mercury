@@ -49,13 +49,13 @@
     % output.
     %
 :- pred create_atomic_complicated_unification(prog_var::in, unify_rhs::in,
-    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     purity::in, hlds_goal::out) is det.
 
     % As above, but with default purity pure.
     %
 :- pred create_pure_atomic_complicated_unification(prog_var::in, unify_rhs::in,
-    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     hlds_goal::out) is det.
 
 :- pred make_complicated_unify_assigns(list(prog_var)::in, list(prog_var)::in,
@@ -69,13 +69,15 @@
     % ground_inst. The resulting goal has all its fields filled in.
     %
 :- pred make_simple_assign(prog_var::in, prog_var::in,
-    unify_main_context::in, unify_sub_contexts::in, hlds_goal::out) is det.
+    unify_main_context::in, list(unify_sub_context)::in,
+    hlds_goal::out) is det.
 
     % Create the hlds_goal for a unification that tests the equality of two
     % values of atomic types. The resulting goal has all its fields filled in.
     %
 :- pred make_simple_test(prog_var::in, prog_var::in,
-    unify_main_context::in, unify_sub_contexts::in, hlds_goal::out) is det.
+    unify_main_context::in, list(unify_sub_context)::in,
+    hlds_goal::out) is det.
 
     % Produce a goal to construct a given constant. These predicates all
     % fill in the non-locals, instmap_delta and determinism fields of the

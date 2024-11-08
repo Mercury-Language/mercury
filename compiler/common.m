@@ -319,13 +319,12 @@
     % cons_ids from different type constructors.
 
 :- type struct_map == map(type_ctor, cons_id_map).
-:- type cons_id_map == map(cons_id, structures).
+:- type cons_id_map == map(cons_id, list(structure)).
 
     % Given a unification X = f(Y1, ... Yn), we record its availability for
     % reuse by creating structure(X, [Y1, ... Yn]), and putting it at the
     % front of the list of structures for the entry for f and X's type_ctor.
 
-:- type structures == list(structure).
 :- type structure
     --->    structure(prog_var, list(prog_var)).
 
@@ -972,8 +971,8 @@ lookup_var_type_ctor(Info, Var) = TypeCtor :-
 
 %---------------------------------------------------------------------------%
 
-:- pred find_matching_cell_construct(structures::in, eqvclass(prog_var)::in,
-    list(partition_id)::in, structure::out) is semidet.
+:- pred find_matching_cell_construct(list(structure)::in,
+    eqvclass(prog_var)::in, list(partition_id)::in, structure::out) is semidet.
 
 find_matching_cell_construct([Struct | Structs], VarEqv, ArgVarIds, Match) :-
     Struct = structure(_Var, Vars),
@@ -983,8 +982,8 @@ find_matching_cell_construct([Struct | Structs], VarEqv, ArgVarIds, Match) :-
         find_matching_cell_construct(Structs, VarEqv, ArgVarIds, Match)
     ).
 
-:- pred find_matching_cell_deconstruct(structures::in, eqvclass(prog_var)::in,
-    partition_id::in, structure::out) is semidet.
+:- pred find_matching_cell_deconstruct(list(structure)::in,
+    eqvclass(prog_var)::in, partition_id::in, structure::out) is semidet.
 
 find_matching_cell_deconstruct([Struct | Structs], VarEqv, VarId, Match) :-
     Struct = structure(Var, _Vars),

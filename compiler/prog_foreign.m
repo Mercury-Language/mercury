@@ -57,8 +57,6 @@
                 fbody_context       :: prog_context
             ).
 
-:- type foreign_export_defns == list(foreign_export_defn).
-
 :- type foreign_export_defn
     --->    foreign_export_defn(
                 % The code for `pragma foreign_export' is generated directly

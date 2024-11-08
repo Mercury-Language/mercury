@@ -149,7 +149,7 @@
                 % via a `.opt' or `.trans_opt' file, we set these during
                 % the initial pass, for procedures in the module we are
                 % analysing, pass 1 sets it.
-                t2i_head_vars           :: size_vars,
+                t2i_head_vars           :: list(size_var),
 
                 % Arg size info. imported from another module via a
                 % `.opt' or `.trans_opt' file. Pass 0 needs to convert these

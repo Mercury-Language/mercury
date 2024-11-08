@@ -42,7 +42,6 @@
     % the body of the called procedure.
     %
 :- type reuse_condition.
-:- type reuse_conditions == list(reuse_condition).
 
     % Abstract representation for a set of reuse conditions.
     %
@@ -128,7 +127,7 @@
     % actual types, and the type-variables occurring in those types.
     %
 :- pred reuse_as_rename_using_module_info(module_info::in,
-    pred_proc_id::in, prog_vars::in, list(mer_type)::in, tvarset::in,
+    pred_proc_id::in, list(prog_var)::in, list(mer_type)::in, tvarset::in,
     external_type_params::in, reuse_as::in, reuse_as::out) is det.
 
     % Given a variable and type variable mapping, rename the reuses
@@ -171,7 +170,8 @@
     % least one conditional reuse condition.
     %
 :- func reuse_as_from_called_procedure_to_local_reuse_as(module_info,
-    proc_info, prog_vars, live_datastructs, sharing_as, reuse_as) = reuse_as.
+    proc_info, list(prog_var), list(live_datastruct), sharing_as, reuse_as)
+    = reuse_as.
 
     % Taking into account the live data and static variables, check if the
     % reuse conditions expressed by reuse_as are all satisfied, hence making
@@ -180,8 +180,8 @@
     % variables which caused one of the conditions to be violated.
     %
 :- pred reuse_as_satisfied(module_info::in, proc_info::in, livedata::in,
-    sharing_as::in, prog_vars::in, reuse_as::in, reuse_satisfied_result::out)
-    is det.
+    sharing_as::in, list(prog_var)::in, reuse_as::in,
+    reuse_satisfied_result::out) is det.
 
 :- type reuse_satisfied_result
     --->    reuse_possible
@@ -297,11 +297,11 @@
     ;       condition(
                 % Description of the datastructures pointing to the memory
                 % that can be reused within a procedure.
-                reuseable_nodes     ::  dead_datastructs,
+                reuseable_nodes         ::  set(dead_datastruct),
 
                 % Set of (headvar-related) datastructures that are
                 % inherently live at the place where the reuse is decided.
-                local_use_headvars  ::  live_datastructs,
+                local_use_headvars      ::  list(live_datastruct),
 
                 % Description of the (headvar-related) structure sharing
                 % that exists at the place where the reuse is decided.
@@ -320,7 +320,7 @@
             % Semantically equivalent to "conditional(Cs)" where every C in
             % Cs is "always".
 
-    ;       conditional(reuse_conditions).
+    ;       conditional(list(reuse_condition)).
             % no_reuse < unconditional < conditional(List)
             % = element representing the collection of reuse conditions
             % collected for the reuses detected so far.
@@ -390,10 +390,10 @@ reuse_condition_rename(MapVar, TypeSubst, Condition, RenamedCondition):-
         RenamedCondition = always
     ;
         Condition = condition(DeadNodes, InUseNodes, LocalSharing),
-        RenamedDeadNodes = set.map(rename_datastruct(MapVar, TypeSubst),
-            DeadNodes),
-        RenamedInUseNodes = list.map(rename_datastruct(MapVar, TypeSubst),
-            InUseNodes),
+        set.map(rename_datastruct(MapVar, TypeSubst),
+            DeadNodes, RenamedDeadNodes),
+        list.map(rename_datastruct(MapVar, TypeSubst),
+            InUseNodes, RenamedInUseNodes),
         sharing_as_rename(MapVar, TypeSubst, LocalSharing,
             RenamedLocalSharing),
         RenamedCondition = condition(RenamedDeadNodes, RenamedInUseNodes,
@@ -427,7 +427,7 @@ reuse_condition_subsumed_by(ModuleInfo, ProcInfo, Cond1, Cond2) :-
     ).
 
 :- pred reuse_condition_subsumed_by_list(module_info::in, proc_info::in,
-    reuse_condition::in, reuse_conditions::in) is semidet.
+    reuse_condition::in, list(reuse_condition)::in) is semidet.
 
 reuse_condition_subsumed_by_list(ModuleInfo, ProcInfo, Cond, [Cond1|Rest]) :-
     (
@@ -437,7 +437,7 @@ reuse_condition_subsumed_by_list(ModuleInfo, ProcInfo, Cond, [Cond1|Rest]) :-
     ).
 
 :- pred reuse_conditions_subsume_reuse_condition(module_info::in,
-    proc_info::in, reuse_conditions::in, reuse_condition::in) is semidet.
+    proc_info::in, list(reuse_condition)::in, reuse_condition::in) is semidet.
 
 reuse_conditions_subsume_reuse_condition(ModuleInfo, ProcInfo, Conds, Cond):-
     reuse_condition_subsumed_by_list(ModuleInfo, ProcInfo, Cond, Conds).
@@ -553,7 +553,8 @@ reuse_as_add_unconditional(!ReuseAs) :-
     ).
 
 :- pred reuse_conditions_add_condition(module_info::in, proc_info::in,
-    reuse_condition::in, reuse_conditions::in, reuse_conditions::out) is det.
+    reuse_condition::in,
+    list(reuse_condition)::in, list(reuse_condition)::out) is det.
 
 reuse_conditions_add_condition(ModuleInfo, ProcInfo, Condition, !Conds):-
     ( if
@@ -566,7 +567,8 @@ reuse_conditions_add_condition(ModuleInfo, ProcInfo, Condition, !Conds):-
     ).
 
 :- pred reuse_conditions_add_conditions(module_info::in, proc_info::in,
-    reuse_conditions::in, reuse_conditions::in, reuse_conditions::out) is det.
+    list(reuse_condition)::in, list(reuse_condition)::in,
+    list(reuse_condition)::out) is det.
 
 reuse_conditions_add_conditions(ModuleInfo, ProcInfo, NewConds, !Conds):-
     (
@@ -627,8 +629,8 @@ reuse_as_from_called_procedure_to_local_reuse_as(ModuleInfo, ProcInfo,
     ).
 
 :- func reuse_condition_from_called_proc_to_local_condition(module_info,
-    proc_info, prog_vars, live_datastructs, sharing_as, reuse_condition) =
-    reuse_condition.
+    proc_info, list(prog_var), list(live_datastruct), sharing_as,
+    reuse_condition) = reuse_condition.
 
 reuse_condition_from_called_proc_to_local_condition(ModuleInfo, ProcInfo,
         HeadVars, LuData, SharingAs, CalledCondition) = LocalCondition :-
@@ -705,7 +707,7 @@ reuse_as_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
     ).
 
 :- pred reuse_as_satisfied_2(module_info::in, proc_info::in, livedata::in,
-    sharing_as::in, prog_vars::in, reuse_conditions::in,
+    sharing_as::in, list(prog_var)::in, list(reuse_condition)::in,
     reuse_satisfied_result::out) is det.
 
 reuse_as_satisfied_2(_, _, _, _, _, [], reuse_possible).
@@ -749,7 +751,7 @@ reuse_as_satisfied_2(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
     ).
 
 :- pred aliases_between_reuse_nodes(module_info::in, proc_info::in,
-    sharing_as::in, list(reuse_condition)::in, prog_vars::out) is det.
+    sharing_as::in, list(reuse_condition)::in, list(prog_var)::out) is det.
 
 aliases_between_reuse_nodes(ModuleInfo, ProcInfo, SharingAs, Conditions,
         AliasedVars) :-
@@ -820,7 +822,7 @@ collect_aliased_vars(DataA - DataB, !Vars) :-
 %---------------------------------------------------------------------------%
 
 :- pred reuse_condition_satisfied(module_info::in, proc_info::in,
-    livedata::in, sharing_as::in, prog_vars::in, reuse_condition::in,
+    livedata::in, sharing_as::in, list(prog_var)::in, reuse_condition::in,
     reuse_satisfied_result::out) is det.
 
 reuse_condition_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs,
@@ -885,8 +887,8 @@ from_structure_reuse_domain(ReuseDomain) = ReuseAs :-
             from_public_reuse_conditions(PublicReuseConditions))
     ).
 
-:- func from_public_reuse_conditions(structure_reuse_conditions) =
-    reuse_conditions.
+:- func from_public_reuse_conditions(list(structure_reuse_condition)) =
+    list(reuse_condition).
 
 from_public_reuse_conditions(PublicReuseConditions) =
     list.map(from_public_reuse_condition, PublicReuseConditions).
@@ -913,8 +915,8 @@ to_structure_reuse_domain(ReuseAs) = ReuseDomain :-
             to_structure_reuse_conditions(ReuseConditions))
     ).
 
-:- func to_structure_reuse_conditions(reuse_conditions) =
-    structure_reuse_conditions.
+:- func to_structure_reuse_conditions(list(reuse_condition)) =
+    list(structure_reuse_condition).
 
 to_structure_reuse_conditions(ReuseConditions) = StructureReuseCondition :-
     list.filter_map(to_structure_reuse_condition,

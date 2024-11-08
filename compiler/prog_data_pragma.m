@@ -351,23 +351,18 @@ tabled_eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 :- interface.
 
 :- type dead_var == prog_var.
-:- type dead_vars == list(dead_var).
 :- type dead_datastruct == datastruct.
 :- type dead_datastructs == set(dead_datastruct).
 :- type live_var == prog_var.
-:- type live_vars == list(prog_var).
 :- type set_of_live_var == set_of_progvar.
 :- type live_datastruct == datastruct.
-:- type live_datastructs == list(live_datastruct).
 
     % This is the public representation of the type "reuse_as".
     %
 :- type structure_reuse_domain
     --->    has_no_reuse
     ;       has_only_unconditional_reuse
-    ;       has_conditional_reuse(structure_reuse_conditions).
-
-:- type structure_reuse_conditions == list(structure_reuse_condition).
+    ;       has_conditional_reuse(list(structure_reuse_condition)).
 
     % A structure reuse condition specifies all the information needed to
     % verify whether some memory cells can safely be considered as dead at
@@ -384,7 +379,7 @@ tabled_eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 :- type structure_reuse_condition
     --->    structure_reuse_condition(
                 dead_nodes          :: dead_datastructs,
-                local_use_nodes     :: live_datastructs,
+                local_use_nodes     :: list(live_datastruct),
                 local_sharing       :: structure_sharing_domain
             ).
 

@@ -1667,7 +1667,7 @@ is_added_by_polymorphism(ModuleInfo, {PredId, _}) :-
     ;       some_ho_args_not_ground(list(prog_var)).
 
 :- pred match_modes_by_higher_order_insts(module_info::in,
-    proc_mode_error_map::in, var_table::in, instmap::in, prog_vars::in,
+    proc_mode_error_map::in, var_table::in, instmap::in, list(prog_var)::in,
     pred_id::in, match_modes_result::out) is det.
 
 match_modes_by_higher_order_insts(ModuleInfo, ProcModeErrorMap, VarTable,
@@ -1729,7 +1729,7 @@ match_modes_by_higher_order_insts_loop(ModuleInfo, VarTable, InstMap,
     ;       ho_insts_do_not_match.
 
 :- pred match_mode_by_higher_order_insts(module_info::in,
-    var_table::in, instmap::in, prog_vars::in, list(mer_mode)::in,
+    var_table::in, instmap::in, list(prog_var)::in, list(mer_mode)::in,
     list(prog_var)::out, match_mode_result::out) is det.
 
 match_mode_by_higher_order_insts(_ModuleInfo, _VarTable, _InstMap,

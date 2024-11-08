@@ -1510,7 +1510,7 @@ is_concrete_or_imported_instance_defn(InstanceDefn) :-
     ).
 
 :- pred check_coverage_for_instance_defns(module_info::in, class_id::in,
-    list(hlds_instance_defn)::in, hlds_class_fundeps::in,
+    list(hlds_instance_defn)::in, list(hlds_class_fundep)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_coverage_for_instance_defns(_, _, [], _, !Specs).
@@ -1548,7 +1548,7 @@ check_coverage_for_instance_defn(ModuleInfo, ClassId, InstanceDefn, FunDep,
     % Check the consistency of each (unordered) pair of instances.
     %
 :- pred check_consistency(class_id::in, hlds_class_defn::in,
-    list(hlds_instance_defn)::in, hlds_class_fundeps::in,
+    list(hlds_instance_defn)::in, list(hlds_class_fundep)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_consistency(_, _, [], _, !Specs).
@@ -1560,7 +1560,8 @@ check_consistency(ClassId, ClassDefn, [Instance | Instances], FunDeps,
         !Specs).
 
 :- pred check_consistency_pair(class_id::in, hlds_class_defn::in,
-    hlds_class_fundeps::in, hlds_instance_defn::in, hlds_instance_defn::in,
+    list(hlds_class_fundep)::in,
+    hlds_instance_defn::in, hlds_instance_defn::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_consistency_pair(ClassId, ClassDefn, FunDeps, InstanceA, InstanceB,
@@ -1911,7 +1912,6 @@ get_unbound_tvars(ModuleInfo, TVarSet, RootTVars, AllTVars, Constraints,
     UnboundTVarsSet = set.difference(list_to_set(AllTVars), FunDepsClosure),
     UnboundTVars = set.to_sorted_list(UnboundTVarsSet).
 
-:- type induced_fundeps == list(induced_fundep).
 :- type induced_fundep
     --->    induced_fundep(
                 domain      :: set(tvar),
@@ -1962,7 +1962,7 @@ acc_induced_fundeps_for_constraint(ClassTable, TVarSet, Constraint,
     ).
 
 :- pred induced_fundeps_3(class_table::in, prog_constraint::in,
-    induced_fundeps::in, induced_fundeps::out) is det.
+    list(induced_fundep)::in, list(induced_fundep)::out) is det.
 
 induced_fundeps_3(ClassTable, Constraint, !FunDeps) :-
     Constraint = constraint(ClassName, ClassArgs),

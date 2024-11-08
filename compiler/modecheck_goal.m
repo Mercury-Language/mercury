@@ -1528,7 +1528,7 @@ modecheck_orelse_list(MultiModeErrorMap0, [Goal0 | Goals0], [Goal | Goals],
     % we need to check that the programmer has recognised the possibility
     % and placed the if-then-else in a promise_<purity> scope.
     %
-:- pred check_no_inst_any_vars(negated_context_desc::in, prog_vars::in,
+:- pred check_no_inst_any_vars(negated_context_desc::in, list(prog_var)::in,
     instmap::in, instmap::in, mode_info::in, mode_info::out) is det.
 
 check_no_inst_any_vars(_, [], _, _, !ModeInfo).

@@ -2228,8 +2228,6 @@
 
 %---------------------%
 
-:- type mlds_exported_enums == list(mlds_exported_enum).
-
 :- type mlds_exported_enum
     --->    mlds_exported_enum(
                 exported_enum_lang      :: foreign_language,

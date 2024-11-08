@@ -66,7 +66,7 @@
     % in terms of the formal arguments of the called procedure to the context
     % of the actual arguments.
     %
-:- func get_variable_renaming(module_info, pred_proc_id, prog_vars) =
+:- func get_variable_renaming(module_info, pred_proc_id, list(prog_var)) =
     prog_var_renaming.
 
     % get_type_substitution(ModuleInfo, PPId, ActualTypes,

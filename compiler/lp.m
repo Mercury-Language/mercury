@@ -53,8 +53,6 @@
     ;       op_eq   % equal
     ;       op_ge.  % greater than or equal
 
-:- type equations == list(equation).
-
 :- type objective == list(coeff).
 
 :- type direction
@@ -79,7 +77,7 @@
     % objective function is unbounded by the constraints), or
     % `satisfiable(ObjVal, MapFromObjVarsToVals)'.
     %
-:- pred lp_solve(equations::in, direction::in, objective::in, varset::in,
+:- pred lp_solve(list(equation)::in, direction::in, objective::in, varset::in,
     list(var)::in, lp.result::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -243,7 +241,7 @@ construct_art_objective([V | Vs], [V - (1.0) | Rest]) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred standardize_equations(equations::in, equations::out,
+:- pred standardize_equations(list(equation)::in, list(equation)::out,
     lp_info::in, lp_info::out) is det.
 
 standardize_equations(!Eqns, !Info) :-
@@ -364,7 +362,7 @@ expand_urs_vars([Var - Coeff | Rest], Vars, !Coeffs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred collect_vars(equations::in, objective::in, set(var)::out) is det.
+:- pred collect_vars(list(equation)::in, objective::in, set(var)::out) is det.
 
 collect_vars(Eqns, Obj, Vars) :-
     GetVar =
@@ -390,8 +388,8 @@ number_vars([Var | Vars], N, !VarNums) :-
     map.det_insert(Var, N, !VarNums),
     number_vars(Vars, N + 1, !VarNums).
 
-:- pred insert_equations(equations::in, int::in, int::in, map(var, int)::in,
-    tableau::in, tableau::out) is det.
+:- pred insert_equations(list(equation)::in, int::in, int::in,
+    map(var, int)::in, tableau::in, tableau::out) is det.
 
 insert_equations([], _, _, _, !Tableau).
 insert_equations([Eqn | Eqns], Row, ConstCol, VarNums, !Tableau) :-

@@ -105,9 +105,9 @@
     %   * vars(SharingOut) is a subset of Vars.
     %   * vars(SharingIn minus SharingOut) union Vars = emptyset.
     %
-:- pred sharing_as_project(prog_vars::in,
+:- pred sharing_as_project(list(prog_var)::in,
     sharing_as::in, sharing_as::out) is det.
-:- func sharing_as_project(prog_vars, sharing_as) = sharing_as.
+:- func sharing_as_project(list(prog_var), sharing_as) = sharing_as.
 :- pred sharing_as_project_set(set(prog_var)::in,
     sharing_as::in, sharing_as::out) is det.
 
@@ -130,7 +130,7 @@
     % The type variables set in the actual context must also be specified.
     %
 :- pred sharing_as_rename_using_module_info(module_info::in,
-    pred_proc_id::in, prog_vars::in, list(mer_type)::in, tvarset::in,
+    pred_proc_id::in, list(prog_var)::in, list(mer_type)::in, tvarset::in,
     external_type_params::in, sharing_as::in, sharing_as::out) is det.
 
     % One of the cornerstone operations of using the program analysis system
@@ -262,7 +262,7 @@
     % sharing information.
     %
 :- pred lookup_sharing_and_comb(module_info::in, pred_info::in, proc_info::in,
-    sharing_as_table::in, pred_id::in, proc_id::in, prog_vars::in,
+    sharing_as_table::in, pred_id::in, proc_id::in, list(prog_var)::in,
     sharing_as::in, sharing_as::out) is det.
 
     % Lookup the sharing information in the sharing table, or if it is not
@@ -386,7 +386,7 @@ sharing_as_project(ListVars, !SharingAs) :-
 sharing_as_project(ListVars, SharingAs) = NewSharingAs :-
     sharing_as_project(ListVars, SharingAs, NewSharingAs).
 
-:- pred sharing_as_project_with_type(projection_type::in, prog_vars::in,
+:- pred sharing_as_project_with_type(projection_type::in, list(prog_var)::in,
     sharing_as::in, sharing_as::out) is det.
 
 sharing_as_project_with_type(ProjectionType, ListVars, !SharingAs) :-
@@ -546,7 +546,7 @@ is_introduced_typeinfo_arg(VarTable, Var) :-
     lookup_var_type(VarTable, Var, Type),
     is_introduced_type_info_type(Type).
 
-:- pred number_args(prog_vars::in, list(pair(int, prog_var))::out) is det.
+:- pred number_args(list(prog_var)::in, list(pair(int, prog_var))::out) is det.
 
 number_args(Args, NumberedArgs) :-
     NumberArg =
@@ -1080,7 +1080,7 @@ wrap(SharingSet, SharingAs) :-
 wrap(SharingSet) = SharingAs :-
     wrap(SharingSet, SharingAs).
 
-:- pred sharing_set_project(projection_type::in, prog_vars::in,
+:- pred sharing_set_project(projection_type::in, list(prog_var)::in,
     sharing_set::in, sharing_set::out) is det.
 
 sharing_set_project(ProjectionType, Vars, SharingSet0, SharingSet) :-
@@ -1098,7 +1098,7 @@ sharing_set_project(ProjectionType, Vars, SharingSet0, SharingSet) :-
     map.foldl(project_and_update_sharing_set(ProjectionType, Vars),
         Map, sharing_set_init, SharingSet).
 
-:- pred project_and_update_sharing_set(projection_type::in, prog_vars::in,
+:- pred project_and_update_sharing_set(projection_type::in, list(prog_var)::in,
     prog_var::in, selector_sharing_set::in, sharing_set::in, sharing_set::out)
     is det.
 
@@ -1750,7 +1750,7 @@ selector_sharing_set_is_empty(selector_sharing_set(0, _Map)).
 
 selector_sharing_set_size(selector_sharing_set(Size, _)) = Size.
 
-:- pred selector_sharing_set_project(projection_type::in, prog_vars::in,
+:- pred selector_sharing_set_project(projection_type::in, list(prog_var)::in,
     selector_sharing_set::in, selector_sharing_set::out) is det.
 
 selector_sharing_set_project(ProjectionType, Vars,
@@ -1759,7 +1759,7 @@ selector_sharing_set_project(ProjectionType, Vars,
     map.foldl(selector_sharing_set_project_2(ProjectionType, Vars),
         Map0, selector_sharing_set_init, SelSharingSet).
 
-:- pred selector_sharing_set_project_2(projection_type::in, prog_vars::in,
+:- pred selector_sharing_set_project_2(projection_type::in, list(prog_var)::in,
     selector::in, data_set::in, selector_sharing_set::in,
     selector_sharing_set::out) is det.
 
@@ -2012,7 +2012,7 @@ data_set_is_empty(datastructures(0, _Set)).
 
 data_set_size(datastructures(Size, _)) = Size.
 
-:- pred data_set_project(projection_type::in, prog_vars::in,
+:- pred data_set_project(projection_type::in, list(prog_var)::in,
     data_set::in, data_set::out) is det.
 
 data_set_project(ProjectionType, Vars, !DataSet) :-
@@ -2023,7 +2023,7 @@ data_set_project(ProjectionType, Vars, !DataSet) :-
 
 data_set_rename(Dict, Subst, !DataSet) :-
     !.DataSet = datastructures(_Size, Datastructs0),
-    Datastructs = set.map(rename_datastruct(Dict, Subst), Datastructs0),
+    set.map(rename_datastruct(Dict, Subst), Datastructs0, Datastructs),
     !:DataSet = datastructures(set.count(Datastructs), Datastructs).
 
 :- pred data_set_termshift(module_info::in, var_table::in, data_set::in,
@@ -2122,7 +2122,7 @@ data_set_add_datastruct(ModuleInfo, VarTable, Data, !Datastructs) :-
         set.insert(Data, !Datastructs)
     ).
 
-:- pred data_set_project_test(projection_type::in, prog_vars::in,
+:- pred data_set_project_test(projection_type::in, list(prog_var)::in,
     datastruct::in) is semidet.
 
 data_set_project_test(ProjectionType, Vars, Data) :-

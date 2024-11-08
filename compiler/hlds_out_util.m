@@ -435,7 +435,7 @@ unify_main_context_to_pieces(!First, MainContext, LastContextWord, !Pieces) :-
     ).
 
 :- pred unify_sub_contexts_to_pieces(is_first::in, is_first::out,
-    unify_sub_contexts::in, last_context_word::in, last_context_word::out,
+    list(unify_sub_context)::in, last_context_word::in, last_context_word::out,
     list(format_piece)::in, list(format_piece)::out) is det.
 
 unify_sub_contexts_to_pieces(!First, [], !LastContextWord, !Pieces).
@@ -458,8 +458,8 @@ unify_sub_contexts_to_pieces(!First, [SubContext | SubContexts],
             !LastContextWord, !Pieces)
     ).
 
-:- pred contexts_describe_list_element(unify_sub_contexts::in,
-    int::in, int::out, unify_sub_contexts::out) is semidet.
+:- pred contexts_describe_list_element(list(unify_sub_context)::in,
+    int::in, int::out, list(unify_sub_context)::out) is semidet.
 
 contexts_describe_list_element([SubContext | SubContexts],
         NumElementsBefore, ElementNum, AfterContexts) :-

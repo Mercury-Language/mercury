@@ -316,7 +316,8 @@ propagate_conj(Constraints, Goals0, Goals, !Info) :-
     % Annotate each conjunct with the variables it produces.
     %
 :- pred annotate_conj_output_vars(module_info::in, var_table::in, instmap::in,
-    list(hlds_goal)::in, annotated_conj::in, annotated_conj::out) is det.
+    list(hlds_goal)::in,
+    list(annotated_conjunct)::in, list(annotated_conjunct)::out) is det.
 
 annotate_conj_output_vars(_, _, _, [], !RevAnnotatedGoals).
 annotate_conj_output_vars(ModuleInfo, VarTable, InstMap0, [Goal | Goals],
@@ -372,11 +373,9 @@ annotate_conj_output_vars(ModuleInfo, VarTable, InstMap0, [Goal | Goals],
 
 %-----------------------------------------------------------------------------%
 
-    % A conjunction in which each conjunct is annotated with the set of
+    % A conjunct in a conjunction that we annotate with the set of
     % variables whose instantiatedness it changes.
     %
-:- type annotated_conj == list(annotated_conjunct).
-
 :- type annotated_conjunct
     --->    annotated_conjunct(
                 hlds_goal,
@@ -418,17 +417,17 @@ annotate_conj_output_vars(ModuleInfo, VarTable, InstMap0, [Goal | Goals],
                 list(hlds_goal)
             ).
 
-    % Conjunction annotated with constraining goals.
+    % A conjunct annotated with constraining goals.
     %
-:- type constrained_conj == list(constrained_goal).
 :- type constrained_goal
     --->    constrained_goal(hlds_goal, list(constraint)).
 
     % Pass backwards over the conjunction, annotating each conjunct
     % with the constraints that should be pushed into it.
     %
-:- pred annotate_conj_constraints(module_info::in, annotated_conj::in,
-    list(constraint)::in, constrained_conj::in, constrained_conj::out,
+:- pred annotate_conj_constraints(module_info::in,
+    list(annotated_conjunct)::in, list(constraint)::in,
+    list(constrained_goal)::in, list(constrained_goal)::out,
     constraint_info::in, constraint_info::out) is det.
 
 annotate_conj_constraints(_, [], Constraints0,
@@ -689,7 +688,7 @@ can_reorder_constraints(EarlierConstraint, Constraint) :-
 
     % Push the constraints into each conjunct.
     %
-:- pred propagate_conj_constraints(constrained_conj::in,
+:- pred propagate_conj_constraints(list(constrained_goal)::in,
     cord(hlds_goal)::in, cord(hlds_goal)::out,
     constraint_info::in, constraint_info::out) is det.
 

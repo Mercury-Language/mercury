@@ -817,7 +817,7 @@ instmap_changed_vars(ModuleInfo, VarTable, InstMapA, InstMapB, ChangedVars) :-
         InstMapA, InstMapB, ChangedVars).
 
 :- pred instmap_changed_vars_loop(module_info::in, var_table::in,
-    prog_vars::in, instmap::in, instmap::in, set_of_progvar::out) is det.
+    list(prog_var)::in, instmap::in, instmap::in, set_of_progvar::out) is det.
 
 instmap_changed_vars_loop(_ModuleInfo, _VarTable, [],
         _InstMapA, _InstMapB, ChangedVars) :-

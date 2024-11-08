@@ -219,7 +219,7 @@ background_info_init(Strategy, ModuleInfo, ProcInfo) = Background :-
                 decon_var       :: dead_var,
                 decon_pp        :: program_point,
                 decon_cons_id   :: cons_id,
-                decon_args      :: prog_vars,
+                decon_args      :: list(prog_var),
                 decon_conds     :: reuse_as
             ).
 
@@ -278,7 +278,7 @@ background_info_init(Strategy, ModuleInfo, ProcInfo) = Background :-
     % Initialise a deconstruction_spec.
     %
 :- func deconstruction_spec_init(dead_var, program_point, cons_id,
-    prog_vars, reuse_as) = deconstruction_spec.
+    list(prog_var), reuse_as) = deconstruction_spec.
 
 deconstruction_spec_init(Var, PP, ConsId, Args, Cond)
     = decon(Var, PP, ConsId, Args, Cond).
@@ -728,7 +728,7 @@ process_possible_common_dead_vars(Background, Cont, DisjTables,
         ExtraTables = []
     ).
 
-:- func common_vars(list(match_table)) = dead_vars.
+:- func common_vars(list(match_table)) = list(dead_var).
 
 common_vars(Tables) = CommonVars :-
     (
@@ -740,7 +740,7 @@ common_vars(Tables) = CommonVars :-
         CommonVars = []
     ).
 
-:- func common_var_with_list(match_table, prog_vars) = dead_vars.
+:- func common_var_with_list(match_table, list(prog_var)) = list(dead_var).
 
 common_var_with_list(Table, List0) = List :-
     map.keys(Table, Keys),
@@ -944,7 +944,7 @@ gamma_value = 1.
 beta_value = 1.
 
 :- pred verify_match(background_info::in, prog_var::in, cons_id::in,
-    prog_vars::in, program_point::in, match::in, match::out) is det.
+    list(prog_var)::in, program_point::in, match::in, match::out) is det.
 
 verify_match(Background, NewVar, NewCons, NewArgs, PP, !Match) :-
     DeconSpecs = !.Match ^ decon_specs,
@@ -973,7 +973,7 @@ verify_match(Background, NewVar, NewCons, NewArgs, PP, !Match) :-
     % deconstructed dead data structure.
     %
 :- pred compute_reuse_type(background_info::in, prog_var::in, cons_id::in,
-    prog_vars::in, deconstruction_spec::in, reuse_type::out) is semidet.
+    list(prog_var)::in, deconstruction_spec::in, reuse_type::out) is semidet.
 
 compute_reuse_type(Background, _NewVar, NewCons, NewCellArgs, DeconSpec,
         ReuseType) :-
@@ -1149,7 +1149,7 @@ has_secondary_tag(ModuleInfo, ConsId, SecondaryTag) :-
     % correct value stored in it.  To do this correctly we
     % need to know whether each cell has a secondary tag field.
     %
-:- func already_correct_fields(bool, prog_vars, bool, prog_vars) =
+:- func already_correct_fields(bool, list(prog_var), bool, list(prog_var)) =
     list(needs_update).
 
 already_correct_fields(ExplicitSecTagC, CurrentCellVars, ExplicitSecTagR,
@@ -1161,7 +1161,7 @@ already_correct_fields(ExplicitSecTagC, CurrentCellVars, ExplicitSecTagR,
     NeedsUpdate = list.duplicate(LengthC - LengthB, needs_update),
     ReuseFields = NeedsNoUpdate ++ NeedsUpdate.
 
-:- func already_correct_fields_2(bool, prog_vars, bool, prog_vars)
+:- func already_correct_fields_2(bool, list(prog_var), bool, list(prog_var))
     = list(needs_update).
 
 already_correct_fields_2(yes, CurrentCellVars, yes, ReuseCellVars)

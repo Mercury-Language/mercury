@@ -142,9 +142,9 @@
     % of polyhedra in which the variables listed have been eliminated
     % from each polyhedron.
     %
-:- func project_all(lp_varset, lp_vars, polyhedra) = polyhedra.
+:- func project_all(lp_varset, list(lp_var), polyhedra) = polyhedra.
 
-:- pred project_polyhedron(lp_varset::in, lp_vars::in,
+:- pred project_polyhedron(lp_varset::in, list(lp_var)::in,
     polyhedron::in, polyhedron::out) is det.
 
     % XXX It might be nicer to think of this as relabelling the axes.
@@ -153,7 +153,7 @@
     % easy to do (at the moment) as the polyhedra are represented as
     % constraints anyway.
     %
-:- func substitute_vars(lp_vars, lp_vars, polyhedron) = polyhedron.
+:- func substitute_vars(list(lp_var), list(lp_var), polyhedron) = polyhedron.
 :- func substitute_vars(map(lp_var, lp_var), polyhedron) = polyhedron.
 
     % polyhedron.zero_vars(Set, Polyhedron0) = Polyhedron <=>
@@ -302,14 +302,10 @@ convex_union(VarSet, MaybeMaxSize, eqns(ConstraintsA),
 
 :- type var_map == map(lp_var, lp_var).
 
-:- type var_maps == list(var_map).
-
     % We introduce sigma variables into the constraints as
     % part of the transformation (See the above papers for details).
     %
 :- type sigma_var == lp_var.
-
-:- type sigma_vars == list(sigma_var).
 
 :- type polyhedra_info
     --->    polyhedra_info(
@@ -318,10 +314,10 @@ convex_union(VarSet, MaybeMaxSize, eqns(ConstraintsA),
                 % variables introduced by the transformation.
                 % A variable that occurs in more than one polyhedron
                 % is mapped to a separate temporary variable for each one.
-                var_maps        :: var_maps,
+                var_maps        :: list(var_map),
 
                 % The sigma variables introduced by the transformation.
-                sigmas          :: sigma_vars,
+                sigmas          :: list(sigma_var),
 
                 % The varset the variables are allocated. The temporary
                 % and sigma variables need to be allocated from this as well
@@ -444,7 +440,7 @@ change_var(!Term, !VarMap, !VarSet) :-
         !:Term = !.Var - Coefficient
     ).
 
-:- pred add_sigma_constraints(sigma_vars::in,
+:- pred add_sigma_constraints(list(sigma_var)::in,
     lp_constraint_conj::in, lp_constraint_conj::out) is det.
 
 add_sigma_constraints(Sigmas, !Constraints) :-
@@ -459,7 +455,7 @@ add_sigma_constraints(Sigmas, !Constraints) :-
     % Add a constraint specifying that each variable is the sum of the
     % temporary variables to which it has been mapped.
     %
-:- func add_last_constraints(lp_constraint_conj, var_maps)
+:- func add_last_constraints(lp_constraint_conj, list(var_map))
     = lp_constraint_conj.
 
 add_last_constraints(!.Constraints, VarMaps) = !:Constraints :-
@@ -469,7 +465,7 @@ add_last_constraints(!.Constraints, VarMaps) = !:Constraints :-
 
     % Return the set of keys in the given list of maps.
     %
-:- func get_keys_from_maps(var_maps) = set(lp_var).
+:- func get_keys_from_maps(list(var_map)) = set(lp_var).
 
 get_keys_from_maps(Maps) = list.foldl(get_keys_from_map, Maps, set.init).
 
@@ -477,7 +473,7 @@ get_keys_from_maps(Maps) = list.foldl(get_keys_from_map, Maps, set.init).
 
 get_keys_from_map(Map, KeySet) = set.insert_list(KeySet, map.keys(Map)).
 
-:- pred make_last_constraint(var_maps::in, lp_var::in, lp_constraint::out)
+:- pred make_last_constraint(list(var_map)::in, lp_var::in, lp_constraint::out)
     is semidet.
 
 make_last_constraint(VarMaps, OriginalVar, Constraint) :-
@@ -485,8 +481,8 @@ make_last_constraint(VarMaps, OriginalVar, Constraint) :-
     AllTerms = [OriginalVar - one | LastTerms],
     Constraint = construct_constraint(AllTerms, lp_eq, zero).
 
-:- pred make_last_terms(lp_var::in, var_map::in, lp_terms::in, lp_terms::out)
-    is semidet.
+:- pred make_last_terms(lp_var::in, var_map::in,
+    list(lp_term)::in, list(lp_term)::out) is semidet.
 
 make_last_terms(OriginalVar, VarMap, !Terms) :-
     map.search(VarMap, OriginalVar, NewVar),

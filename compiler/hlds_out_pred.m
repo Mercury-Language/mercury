@@ -1286,7 +1286,7 @@ format_untuple_info(VarTable, VarNamePrint, UntupleInfo, !State) :-
         UntupleMap, !State).
 
 :- pred format_untuple_info_loop(var_table::in, var_name_print::in,
-    prog_var::in, prog_vars::in,
+    prog_var::in, list(prog_var)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
 format_untuple_info_loop(VarTable, VarNamePrint,

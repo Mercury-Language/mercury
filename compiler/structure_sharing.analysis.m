@@ -761,7 +761,7 @@ lookup_sharing(ModuleInfo, SharingTable, PPId, !FixpointTable, SharingAs,
     ).
 
 :- pred analyse_generic_call(module_info::in, proc_info::in, generic_call::in,
-    prog_vars::in, list(mer_mode)::in, hlds_goal_info::in, sharing_as::in,
+    list(prog_var)::in, list(mer_mode)::in, hlds_goal_info::in, sharing_as::in,
     sharing_as::out) is det.
 
 analyse_generic_call(ModuleInfo, ProcInfo, GenDetails, CallArgs, Modes,

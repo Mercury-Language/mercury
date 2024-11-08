@@ -741,7 +741,7 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
     % in the case where the type has user-defined equality.
     %
 :- pred special_pred_id_to_termination(special_pred_id::in,
-    prog_vars::in, arg_size_info::out, termination_info::out) is det.
+    list(prog_var)::in, arg_size_info::out, termination_info::out) is det.
 
 special_pred_id_to_termination(SpecialPredId, HeadVars, ArgSize,
         Termination) :-

@@ -530,7 +530,7 @@ build_abstract_conj(Conjuncts, AbstractGoal, !Info) :-
 % Additional predicates for abstracting calls.
 %
 
-:- pred build_abstract_call(pred_proc_id::in, size_vars::in,
+:- pred build_abstract_call(pred_proc_id::in, list(size_var)::in,
     hlds_goal_info::in, abstract_goal::out,
     tti_traversal_info::in, tti_traversal_info::out) is det.
 
@@ -547,8 +547,8 @@ build_abstract_call(CalleePPId, CallerArgs, GoalInfo, AbstractGoal, !Info) :-
     % If the call is potentially recursive, we construct an abstract call
     % to represent it - see term_constr_data.m for details.
     %
-:- pred build_recursive_call(pred_proc_id::in, size_vars::in, prog_context::in,
-    abstract_goal::out,
+:- pred build_recursive_call(pred_proc_id::in, list(size_var)::in,
+    prog_context::in, abstract_goal::out,
     tti_traversal_info::in, tti_traversal_info::out) is det.
 
 build_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal, !Info) :-
@@ -572,7 +572,7 @@ build_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal, !Info) :-
     % analysis then we also need to check that the termination status of the
     % callee procedure.
     %
-:- pred build_non_recursive_call(pred_proc_id::in, size_vars::in,
+:- pred build_non_recursive_call(pred_proc_id::in, list(size_var)::in,
     prog_context::in, abstract_goal::out,
     tti_traversal_info::in, tti_traversal_info::out) is det.
 
@@ -890,7 +890,7 @@ build_abstract_unification(Unification, AbstractGoal, !Info) :-
     % |U| - |V| = |f|. (|X| is the size_var corresponding to X).
     %
 :- pred build_abstract_decon_or_con_unify(prog_var::in, cons_id::in,
-    prog_vars::in, list(unify_mode)::in, lp_constraint_conj::out,
+    list(prog_var)::in, list(unify_mode)::in, lp_constraint_conj::out,
     tti_traversal_info::in, tti_traversal_info::out) is det.
 
 build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
@@ -953,7 +953,8 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
     ).
 
 :- pred accumulate_nonzero_arg_coeffs(size_var_map::in, set(size_var)::in,
-    lp_coefficient::in, prog_var::in, lp_terms::in, lp_terms::out) is det.
+    lp_coefficient::in, prog_var::in, list(lp_term)::in, list(lp_term)::out)
+    is det.
 
 accumulate_nonzero_arg_coeffs(SizeVarMap, Zeros, Coeff, Var, !Terms) :-
     SizeVar = prog_var_to_size_var(SizeVarMap, Var),
@@ -1042,7 +1043,8 @@ build_goal_from_unify(Constraints) = term_primitive(Polyhedron, [], []) :-
     % Partition the variables of a goal into a set of local variables
     % and a set of non-local variables.
     %
-:- pred partition_vars(hlds_goal::in, prog_vars::out, prog_vars::out) is det.
+:- pred partition_vars(hlds_goal::in,
+    list(prog_var)::out, list(prog_var)::out) is det.
 
 partition_vars(hlds_goal(GoalExpr, GoalInfo), Locals, NonLocals) :-
     NonLocals0 = goal_info_get_nonlocals(GoalInfo),
@@ -1064,7 +1066,7 @@ partition_vars(hlds_goal(GoalExpr, GoalInfo), Locals, NonLocals) :-
     % of a procedure may not occur in the body (this typically occurs
     % with typeinfos).
     %
-:- pred allocate_sizevars(prog_vars::in, hlds_goal::in, size_var_map::out,
+:- pred allocate_sizevars(list(prog_var)::in, hlds_goal::in, size_var_map::out,
     size_varset::in, size_varset::out) is det.
 
 allocate_sizevars(HeadProgVars, Goal, SizeVarMap, !SizeVarset) :-
@@ -1083,7 +1085,7 @@ fill_var_to_sizevar_map(Goal, !SizeVarset, SizeVarMap) :-
     % Fix the map in case some variables that are present only
     % in the head of a procedure were missed.
     %
-:- pred possibly_fix_sizevar_map(prog_vars::in, size_varset::in,
+:- pred possibly_fix_sizevar_map(list(prog_var)::in, size_varset::in,
     size_varset::out, size_var_map::in, size_var_map::out) is det.
 
 possibly_fix_sizevar_map([], !SizeVarset, !SizeVarMap).

@@ -92,8 +92,6 @@
                  ii_change_flag     :: bool
             ).
 
-:- type iteration_infos == list(iteration_info).
-
 do_fixpoint_calculation(Options, SCC, Iteration, [], !ModuleInfo) :-
     AbstractSCC = get_abstract_scc(!.ModuleInfo, SCC),
 
@@ -135,7 +133,7 @@ do_fixpoint_calculation(Options, SCC, Iteration, [], !ModuleInfo) :-
         )
     ).
 
-:- func or_flags(iteration_infos) = bool.
+:- func or_flags(list(iteration_info)) = bool.
 
 or_flags([]) = no.
 or_flags([Info | Infos]) = bool.or(Info ^ ii_change_flag, or_flags(Infos)).
@@ -151,7 +149,7 @@ update_size_info(Info, !ModuleInfo) :-
 
 :- pred term_iterate_over_abstract_proc(module_info::in, fixpoint_options::in,
     int::in, abstract_proc::in,
-    iteration_infos::in, iteration_infos::out) is det.
+    list(iteration_info)::in, list(iteration_info)::out) is det.
 
 term_iterate_over_abstract_proc(ModuleInfo, Options, Iteration, Proc,
         !IterationInfo) :-
@@ -347,7 +345,7 @@ term_traverse_abstract_goal(Info, Goal, !Polyhedron) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred post_process_abstract_goal(size_vars::in, fixpoint_info::in,
+:- pred post_process_abstract_goal(list(size_var)::in, fixpoint_info::in,
     polyhedron::in, polyhedron::in, polyhedron::out) is det.
 
 post_process_abstract_goal(Locals, Info, GoalPolyhedron0, !Polyhedron) :-
@@ -370,7 +368,8 @@ post_process_abstract_goal(Locals, Info, GoalPolyhedron0, !Polyhedron) :-
     %  ((((empty \/ A ) \/ B ) \/ C ) \/ D)
     %
 :- pred term_traverse_abstract_disj_linearly(list(abstract_goal)::in,
-    size_vars::in, fixpoint_info::in, polyhedron::in, polyhedron::out) is det.
+    list(size_var)::in, fixpoint_info::in,
+    polyhedron::in, polyhedron::out) is det.
 
 term_traverse_abstract_disj_linearly(Goals, Locals, Info, !Polyhedron) :-
     list.foldl(term_traverse_abstract_disj_linearly_2(Info, Locals),
@@ -378,7 +377,8 @@ term_traverse_abstract_disj_linearly(Goals, Locals, Info, !Polyhedron) :-
     polyhedron.intersection(ConvexUnion, !Polyhedron).
 
 :- pred term_traverse_abstract_disj_linearly_2(fixpoint_info::in,
-    size_vars::in, abstract_goal::in, polyhedron::in, polyhedron::out) is det.
+    list(size_var)::in, abstract_goal::in,
+    polyhedron::in, polyhedron::out) is det.
 
 term_traverse_abstract_disj_linearly_2(Info, Locals, Goal, !Polyhedron) :-
     SizeVarSet = Info ^ tcfi_varset,
@@ -393,7 +393,7 @@ term_traverse_abstract_disj_linearly_2(Info, Locals, Goal, !Polyhedron) :-
     % XXX This code is currently unused.
     %
 :- pred term_traverse_abstract_disj_pairwise(list(abstract_goal)::in,
-    size_vars::in, fixpoint_info::in, polyhedron::in, polyhedron::out) is det.
+    list(size_var)::in, fixpoint_info::in, polyhedron::in, polyhedron::out) is det.
 :- pragma consider_used(pred(term_traverse_abstract_disj_pairwise/5)).
 
 term_traverse_abstract_disj_pairwise(Goals, Locals, Info, !Polyhedron) :-

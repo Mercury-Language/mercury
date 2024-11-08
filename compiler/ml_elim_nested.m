@@ -2508,15 +2508,9 @@ gen_save_and_restore_of_stack_chain_var(Id, Context, SaveStmt, RestoreStmt) :-
 
 %---------------------------------------------------------------------------%
 
-%
-% The elim_info type holds information that we use or accumulate
-% as we traverse through the function body.
-%
-
-    % The lists of local variables for each of the containing functions,
-    % innermost first.
-:- type outervars == list(list(mlds_local_var_defn)).
-
+    % The elim_info type holds information that we use or accumulate
+    % as we traverse through the function body.
+    %
 :- type elim_info
     --->    elim_info(
                 % The lists of local variables for each of the containing
@@ -2525,7 +2519,7 @@ gen_save_and_restore_of_stack_chain_var(Id, Context, SaveStmt, RestoreStmt) :-
                 % It would be needed if we want to handle arbitrary nesting.
                 % Currently we assume that any variables can safely be hoisted
                 % to the outermost function, so this field is not needed.
-                % outer_vars                    :: outervars,
+                % outer_vars                :: list(list(mlds_local_var_defn)),
 
                 % The nested function definitions that we must hoist out.
                 ei_nested_funcs                 :: cord(mlds_function_defn),
@@ -2538,12 +2532,12 @@ gen_save_and_restore_of_stack_chain_var(Id, Context, SaveStmt, RestoreStmt) :-
                 ei_env_type_name                :: mlds_env_id,
 
                 % Type of the introduced environment struct pointer.
-                % This is stored here as a cache; currently we always
+                % We store this here as a cache; currently we always
                 % compute it from the value of the ei_env_type_name field.
                 ei_env_ptr_type_name            :: mlds_type,
 
-                % A counter used to number the local variables
-                % used to save the stack chain.
+                % A counter we use to number the local variables
+                % that we use to save the stack chain.
                 ei_saved_stack_chain_counter    :: counter
             ).
 

@@ -421,9 +421,10 @@ set_generated_terminates(ModuleInfo, SpecialPredId, [ProcId | ProcIds],
     % XXX argument size constraints for unify predicates for types
     % with user-defined equality may not be correct.
     %
-:- pred special_pred_id_to_termination(special_pred_id::in, prog_vars::in,
+:- pred special_pred_id_to_termination(special_pred_id::in, list(prog_var)::in,
     module_info::in, var_table::in, constr_arg_size_info::out,
-    constr_termination_info::out, size_var_map::out, size_vars::out) is det.
+    constr_termination_info::out, size_var_map::out, list(size_var)::out)
+    is det.
 
 special_pred_id_to_termination(SpecialPredId, HeadProgVars, ModuleInfo,
         VarTable, ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars) :-
@@ -475,7 +476,7 @@ special_pred_id_to_termination(SpecialPredId, HeadProgVars, ModuleInfo,
     %
 :- pred make_spec_pred_constr_term_info(list(prog_var)::in, module_info::in,
     var_table::in, constr_arg_size_info::out, constr_termination_info::out,
-    size_var_map::out, size_vars::out) is det.
+    size_var_map::out, list(size_var)::out) is det.
 
 make_spec_pred_constr_term_info(HeadProgVars, ModuleInfo, VarTable,
         ArgSize, Termination, SizeVarMap, HeadSizeVars) :-
@@ -526,7 +527,7 @@ set_builtin_terminates(ModuleInfo, PredInfo, PredId, [ProcId | ProcIds],
     map.det_update(ProcId, ProcInfo, !ProcTable),
     set_builtin_terminates(ModuleInfo, PredInfo, PredId, ProcIds, !ProcTable).
 
-:- func process_no_type_info_builtin(string, prog_vars, size_var_map)
+:- func process_no_type_info_builtin(string, list(prog_var), size_var_map)
     = lp_constraint_conj.
 
 process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-

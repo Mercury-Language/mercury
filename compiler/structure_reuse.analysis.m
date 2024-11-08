@@ -770,9 +770,9 @@ annotate_in_use_information(ModuleInfo, !ProcInfo) :-
     --->    structure_reuse_answer_no_reuse
     ;       structure_reuse_answer_unconditional
     ;       structure_reuse_answer_conditional(
-                srac_vars   :: prog_vars,
+                srac_vars   :: list(prog_var),
                 srac_types  :: list(mer_type),
-                srac_conds  :: structure_reuse_conditions
+                srac_conds  :: list(structure_reuse_condition)
                 % We cannot keep this as a reuse_as. When the analysis answers
                 % are loaded, we don't have enough information to rename the
                 % variables in the .analysis answer to the correct variables

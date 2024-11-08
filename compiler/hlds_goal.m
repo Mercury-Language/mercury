@@ -1064,8 +1064,6 @@
                 int         % The argument number (first arg == 1).
             ).
 
-:- type unify_sub_contexts == list(unify_sub_context).
-
     % A call_unify_context is used for unifications that get turned into
     % calls to out-of-line unification predicates, and functions. It records
     % which part of the original source code the unification (which may be

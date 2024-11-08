@@ -1714,8 +1714,8 @@ map_arg_to_new_future(HeadVars, FutureArg, !FutureMap, !VarTable) :-
     map.det_insert(HeadVar, FutureVar, !FutureMap).
 
 :- pred replace_head_vars(module_info::in, future_map::in,
-    prog_vars::in, prog_vars::out, list(mer_mode)::in, list(mer_mode)::out)
-    is det.
+    list(prog_var)::in, list(prog_var)::out,
+    list(mer_mode)::in, list(mer_mode)::out) is det.
 
 replace_head_vars(_ModuleInfo, _FutureMap, [], [], [], []).
 replace_head_vars(_, _, [_ | _], _, [], _) :-
@@ -2217,7 +2217,7 @@ replace_args_with_futures([H | T], Var0, Var) :-
         replace_args_with_futures(T, Var0, Var)
     ).
 
-:- pred number_future_args(arg_pos::in, prog_vars::in, list(prog_var)::in,
+:- pred number_future_args(arg_pos::in, list(prog_var)::in, list(prog_var)::in,
     list(arg_pos)::in, list(arg_pos)::out) is det.
 
 number_future_args(_, [], _, RevAcc, reverse(RevAcc)).

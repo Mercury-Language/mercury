@@ -50,7 +50,7 @@
     ;       ac_functor(            % The arguments in a functor.
                 cons_id,
                 unify_main_context,
-                unify_sub_contexts
+                list(unify_sub_context)
             ).
 
     % A variable and a term it is to be unified with.
@@ -98,9 +98,9 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred unravel_unification(prog_term::in, prog_term::in, prog_context::in,
-    unify_main_context::in, unify_sub_contexts::in, purity::in, hlds_goal::out,
-    svar_state::in, svar_state::out, svar_store::in, svar_store::out,
-    prog_varset::in, prog_varset::out,
+    unify_main_context::in, list(unify_sub_context)::in, purity::in,
+    hlds_goal::out, svar_state::in, svar_state::out,
+    svar_store::in, svar_store::out, prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -558,7 +558,7 @@ do_arg_unification(XVar, YTerm, Context, ArgContext, Order, ArgNum,
 %-----------------------------------------------------------------------------%
 
 :- pred do_unravel_unification(prog_term::in, prog_term::in,
-    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     purity::in, goal_order::in, expansion::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
@@ -575,7 +575,7 @@ do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred do_unravel_var_unification(prog_var::in, prog_term::in,
-    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     purity::in, goal_order::in, expansion::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
@@ -591,7 +591,7 @@ do_unravel_var_unification(LHSVar, RHS0, Context, MainContext, SubContext,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred classify_unravel_unification(prog_term::in, prog_term::in,
-    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     purity::in, goal_order::in, ancestor_var_map::in, expansion::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
@@ -653,7 +653,7 @@ classify_unravel_unification(XTerm, YTerm, Context, MainContext, SubContext,
     ).
 
 :- pred classify_unravel_var_unification(prog_var::in, prog_term::in,
-    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     purity::in, goal_order::in, ancestor_var_map::in, expansion::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
@@ -692,7 +692,7 @@ classify_unravel_var_unification(XVar, YTerm, Context, MainContext, SubContext,
     %
 :- pred unravel_var_functor_unification(prog_var::in, term.const::in,
     list(prog_term)::in, term.context::in,
-    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     purity::in, goal_order::in, ancestor_var_map::in, expansion::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
@@ -757,7 +757,7 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
 
 :- pred build_var_cons_id_unification(prog_var::in, cons_id::in,
     list(prog_term)::in, term.context::in, prog_context::in,
-    unify_main_context::in, unify_sub_contexts::in, purity::in,
+    unify_main_context::in, list(unify_sub_context)::in, purity::in,
     ancestor_var_map::in, expansion::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
@@ -955,7 +955,7 @@ parse_ordinary_cons_id(VarSet, Functor, ArgTerms, Context, ConsId, !Specs) :-
     %
 :- pred maybe_unravel_special_var_functor_unification(prog_var::in,
     string::in, list(prog_term)::in, term.context::in,
-    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     purity::in, goal_order::in, expansion::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out, module_info::in, module_info::out,
@@ -1407,7 +1407,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
     ;       lambda_body_dcg.
 
 :- pred parse_lambda_expr(prog_var::in, purity::in,
-    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     prog_term::in, maybe({lambda_body_kind, prog_term})::in, expansion::out,
     svar_state::in, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
@@ -2003,7 +2003,7 @@ parse_lambda_detism(VarSet, DetismTerm, MaybeDetism) :-
             ).
 
 :- pred build_lambda_expression(prog_var::in, purity::in,
-    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     lambda_head::in, maybe1(goal)::in, expansion::out,
     svar_state::in, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
@@ -2314,7 +2314,7 @@ qualify_lambda_arg_modes(InInt, [LambdaArg0 | LambdaArgs0],
 %-----------------------------------------------------------------------------%
 
 :- pred arg_context_to_unify_context(arg_context::in, int::in,
-    unify_main_context::out, unify_sub_contexts::out) is det.
+    unify_main_context::out, list(unify_sub_context)::out) is det.
 
 arg_context_to_unify_context(ArgContext, ArgNum, MainContext, SubContexts) :-
     (

@@ -45,9 +45,9 @@
     %   Term = Term0 ^ module_info := V_3.
     %
 :- pred expand_set_field_function_call(prog_context::in,
-    unify_main_context::in, unify_sub_contexts::in, field_list::in,
+    unify_main_context::in, list(unify_sub_context)::in, field_list::in,
     prog_var::in, prog_var::in, prog_var::in, cons_id::out,
-    pair(cons_id, unify_sub_contexts)::out, hlds_goal::out,
+    pair(cons_id, list(unify_sub_context))::out, hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -66,9 +66,9 @@
     %   ModuleName = V_2 ^ module_name.
     %
 :- pred expand_dcg_field_extraction_goal(prog_context::in,
-    unify_main_context::in, unify_sub_contexts::in, field_list::in,
+    unify_main_context::in, list(unify_sub_context)::in, field_list::in,
     prog_var::in, prog_var::in, prog_var::in, cons_id::out,
-    pair(cons_id, unify_sub_contexts)::out, hlds_goal::out,
+    pair(cons_id, list(unify_sub_context))::out, hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -85,9 +85,9 @@
     %   ModuleName = V_2 ^ module_name.
     %
 :- pred expand_get_field_function_call(prog_context::in,
-    unify_main_context::in, unify_sub_contexts::in, field_list::in,
+    unify_main_context::in, list(unify_sub_context)::in, field_list::in,
     prog_var::in, prog_var::in, purity::in, cons_id::out,
-    pair(cons_id, unify_sub_contexts)::out, hlds_goal::out,
+    pair(cons_id, list(unify_sub_context))::out, hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -126,9 +126,9 @@ expand_set_field_function_call(Context, MainContext, SubContext0, FieldNames,
     conj_list_to_goal(Goals, GoalInfo, Goal).
 
 :- pred expand_set_field_function_call_2(prog_context::in,
-    unify_main_context::in, unify_sub_contexts::in, field_list::in,
+    unify_main_context::in, list(unify_sub_context)::in, field_list::in,
     prog_var::in, prog_var::in, prog_var::in, cons_id::out,
-    pair(cons_id, unify_sub_contexts)::out, list(hlds_goal)::out,
+    pair(cons_id, list(unify_sub_context))::out, list(hlds_goal)::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -214,9 +214,9 @@ expand_get_field_function_call(Context, MainContext, SubContext0, FieldNames,
     conj_list_to_goal(Goals, GoalInfo, Goal).
 
 :- pred expand_get_field_function_call_2(prog_context::in,
-    unify_main_context::in, unify_sub_contexts::in, field_list::in,
+    unify_main_context::in, list(unify_sub_context)::in, field_list::in,
     prog_var::in, prog_var::in, purity::in, cons_id::out,
-    pair(cons_id, unify_sub_contexts)::out, list(hlds_goal)::out,
+    pair(cons_id, list(unify_sub_context))::out, list(hlds_goal)::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -265,7 +265,7 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
     svar_goal_to_conj_list(Conj, Goals, !SVarStore).
 
 :- pred construct_field_access_function_call(field_access_type::in,
-    prog_context::in, unify_main_context::in, unify_sub_contexts::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     sym_name::in, prog_var::in, list(prog_var)::in, purity::in,
     cons_id::out, hlds_goal::out, qual_info::in, qual_info::out) is det.
 

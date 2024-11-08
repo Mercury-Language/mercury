@@ -227,7 +227,7 @@ determine_dead_deconstructions_2_disj_goal(Background, SharingBeforeDisj,
         Background ^ dbgi_proc_info, !.SharingAs, GoalSharing).
 
 :- pred determine_dead_deconstructions_generic_call(module_info::in,
-    proc_info::in, generic_call::in, prog_vars::in, list(mer_mode)::in,
+    proc_info::in, generic_call::in, list(prog_var)::in, list(mer_mode)::in,
     hlds_goal_info::in, sharing_as::in, sharing_as::out) is det.
 
 determine_dead_deconstructions_generic_call(ModuleInfo, ProcInfo,

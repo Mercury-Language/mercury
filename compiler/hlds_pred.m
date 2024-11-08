@@ -181,8 +181,6 @@
     ;       gcid_event_call(string)
     ;       gcid_cast(cast_kind).
 
-:- type pred_proc_list == list(pred_proc_id).
-
 %---------------------------------------------------------------------------%
 
 :- type implementation_language
@@ -2239,7 +2237,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
 
 :- type untuple_proc_info
     --->    untuple_proc_info(
-                map(prog_var, prog_vars)
+                map(prog_var, list(prog_var))
             ).
 
 :- type detism_decl
@@ -2576,10 +2574,10 @@ marker_list_to_markers(Markers, MarkerSet) :-
     proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_get_imported_structure_sharing(proc_info::in,
-    prog_vars::out, list(mer_type)::out, structure_sharing_domain::out)
+    list(prog_var)::out, list(mer_type)::out, structure_sharing_domain::out)
     is semidet.
 
-:- pred proc_info_set_imported_structure_sharing(prog_vars::in,
+:- pred proc_info_set_imported_structure_sharing(list(prog_var)::in,
     list(mer_type)::in, structure_sharing_domain::in, proc_info::in,
     proc_info::out) is det.
 
@@ -2593,10 +2591,10 @@ marker_list_to_markers(Markers, MarkerSet) :-
     proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_get_imported_structure_reuse(proc_info::in,
-    prog_vars::out, list(mer_type)::out, structure_reuse_domain::out)
+    list(prog_var)::out, list(mer_type)::out, structure_reuse_domain::out)
     is semidet.
 
-:- pred proc_info_set_imported_structure_reuse(prog_vars::in,
+:- pred proc_info_set_imported_structure_reuse(list(prog_var)::in,
     list(mer_type)::in, structure_reuse_domain::in,
     proc_info::in, proc_info::out) is det.
 
@@ -2928,7 +2926,7 @@ marker_list_to_markers(Markers, MarkerSet) :-
     --->    imported_sharing(
                 % The list of head variables in which terms the imported
                 % sharing is expressed.
-                s_headvars        :: prog_vars,
+                s_headvars        :: list(prog_var),
 
                 % The types of the head variables.
                 s_types           :: list(mer_type),
@@ -2957,7 +2955,7 @@ structure_sharing_info_init = structure_sharing_info(no, no).
     --->    imported_reuse(
                 % The list of headvars in which terms the imported reuse
                 % information is expressed.
-                r_headvars        :: prog_vars,
+                r_headvars        :: list(prog_var),
 
                 % The types of the headvars.
                 r_types           :: list(mer_type),

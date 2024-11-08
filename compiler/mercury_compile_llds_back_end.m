@@ -817,7 +817,7 @@ llds_output_pass(ProgressStream, OpModeCodeGen, HLDS,
 
                 % Info about stuff exported to C:
                 foreign_export_decls,
-                foreign_export_defns
+                list(foreign_export_defn)
             ).
 
     % Gather together the information from the HLDS, given the foreign

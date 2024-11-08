@@ -137,11 +137,9 @@
     % to some measure) of a program variable.
     %
 :- type size_var    == lp_var.
-:- type size_vars   == list(size_var).
 :- type size_varset == lp_varset.
 
 :- type size_term  == lp_term.
-:- type size_terms == lp_terms.
 
     % A map between prog_vars and their corresponding size_vars.
     %
@@ -246,11 +244,11 @@
     % directly to that in the HLDS because of various transformations
     % performed on the AR.
     %
-:- type local_vars == size_vars.
-:- type nonlocal_vars == size_vars.
+:- type local_vars ==    list(size_var).
+:- type nonlocal_vars == list(size_var).
 
-:- type call_vars == size_vars.
-:- type head_vars == size_vars.
+:- type call_vars == list(size_var).
+:- type head_vars == list(size_var).
 
     % `zero_vars' are those variables in a procedure that have
     % zero size type (as defined in term_norm.m).

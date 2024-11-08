@@ -414,7 +414,8 @@ solve_equations(Paths, PPIds, Result) :-
     ).
 
 :- pred convert_equations(list(term_path_info)::in, varset::out,
-    lp.equations::out, objective::out, map(pred_proc_id, var)::out) is semidet.
+    list(lp.equation)::out, objective::out, map(pred_proc_id, var)::out)
+    is semidet.
 
 convert_equations(Paths, Varset, Equations, Objective, PPVars) :-
     varset.init(Varset0),

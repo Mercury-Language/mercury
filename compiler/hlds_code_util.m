@@ -266,7 +266,7 @@ get_procedure_matching_declmodes_with_renaming_2(ModuleInfo, [Proc | Procs],
         Modes, MatchingProcId) :-
     Proc = ProcId - ProcInfo,
     proc_info_declared_argmodes(ProcInfo, ArgModes),
-    ( if mode_list_matches_with_renaming(Modes, ArgModes, ModuleInfo) then
+    ( if mode_list_matches_with_renaming(ModuleInfo, Modes, ArgModes) then
         MatchingProcId = ProcId
     else
         get_procedure_matching_declmodes_with_renaming_2(ModuleInfo, Procs,
@@ -274,34 +274,31 @@ get_procedure_matching_declmodes_with_renaming_2(ModuleInfo, [Proc | Procs],
     ).
 
 :- type inst_var_renaming == map(inst_var, inst_var).
-:- type inst_var_renamings == list(inst_var_renaming).
 
     % Succeeds if two lists of modes match allowing for a renaming
     % of inst variables between the two lists.
     %
-:- pred mode_list_matches_with_renaming(list(mer_mode)::in,
-    list(mer_mode)::in, module_info::in) is semidet.
+:- pred mode_list_matches_with_renaming(module_info::in,
+    list(mer_mode)::in, list(mer_mode)::in) is semidet.
 
-mode_list_matches_with_renaming(ModesA, ModesB, ModuleInfo) :-
-    mode_list_matches_with_renaming(ModesA, ModesB, _, ModuleInfo).
+mode_list_matches_with_renaming(ModuleInfo, ModesA, ModesB) :-
+    mode_list_matches_with_renaming(ModuleInfo, ModesA, ModesB, _).
 
-:- pred mode_list_matches_with_renaming(list(mer_mode)::in,
-    list(mer_mode)::in, inst_var_renaming::out, module_info::in)
-    is semidet.
+:- pred mode_list_matches_with_renaming(module_info::in, list(mer_mode)::in,
+    list(mer_mode)::in, inst_var_renaming::out) is semidet.
 
-mode_list_matches_with_renaming(ModesA, ModesB, Renaming, ModuleInfo) :-
-    mode_list_matches_with_renaming_2(ModesA, ModesB, [], Renamings,
-        ModuleInfo),
+mode_list_matches_with_renaming(ModuleInfo, ModesA, ModesB, Renaming) :-
+    mode_list_matches_with_renaming_2(ModuleInfo, ModesA, ModesB,
+        [], Renamings),
     list.foldl(merge_inst_var_renamings, Renamings, map.init, Renaming).
 
-:- pred mode_list_matches_with_renaming_2(
+:- pred mode_list_matches_with_renaming_2(module_info::in,
     list(mer_mode)::in, list(mer_mode)::in,
-    inst_var_renamings::in, inst_var_renamings::out,
-    module_info::in) is semidet.
+    list(inst_var_renaming)::in, list(inst_var_renaming)::out) is semidet.
 
-mode_list_matches_with_renaming_2([], [], !Renaming, _).
-mode_list_matches_with_renaming_2([ModeA | ModesA], [ModeB | ModesB],
-        !Substs, ModuleInfo) :-
+mode_list_matches_with_renaming_2(_, [], [], !Renaming).
+mode_list_matches_with_renaming_2(ModuleInfo,
+        [ModeA | ModesA], [ModeB | ModesB], !Substs) :-
     % We use mode_get_insts_semidet instead of mode_get_insts to avoid
     % aborting if there are undefined modes. (Undefined modes get
     % reported later).
@@ -313,7 +310,7 @@ mode_list_matches_with_renaming_2([ModeA | ModesA], [ModeB | ModesB],
     match_insts_with_renaming(ModuleInfo, InstAFinal, InstBFinal,
         FinalSubst),
     list.append([InitialSubst, FinalSubst], !Substs),
-    mode_list_matches_with_renaming_2(ModesA, ModesB, !Substs, ModuleInfo).
+    mode_list_matches_with_renaming_2(ModuleInfo, ModesA, ModesB, !Substs).
 
 :- pred match_corresponding_inst_lists_with_renaming(module_info::in,
     list(mer_inst)::in, list(mer_inst)::in,
@@ -419,7 +416,7 @@ match_ho_inst_infos_with_renaming(ModuleInfo, HOInstInfoA, HOInstInfoB,
         HOInstInfoB = higher_order(PredInstInfoB),
         PredInstInfoA = pred_inst_info(PredOrFunc, ModesA, _, Detism),
         PredInstInfoB = pred_inst_info(PredOrFunc, ModesB, _, Detism),
-        mode_list_matches_with_renaming(ModesA, ModesB, Renaming, ModuleInfo)
+        mode_list_matches_with_renaming(ModuleInfo, ModesA, ModesB, Renaming)
     ).
 
 :- pred match_inst_names_with_renaming(module_info::in,

@@ -175,7 +175,7 @@
 :- pred clauses_info_init(pred_or_func::in, clause_init_types::in,
     clause_item_numbers::in, clauses_info::out) is det.
 
-:- pred clauses_info_init_for_assertion(prog_vars::in, clauses_info::out)
+:- pred clauses_info_init_for_assertion(list(prog_var)::in, clauses_info::out)
     is det.
 
 :- pred clauses_info_get_varset(clauses_info::in, prog_varset::out) is det.

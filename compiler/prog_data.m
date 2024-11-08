@@ -1842,7 +1842,6 @@ best_purity(purity_impure, purity_impure) = purity_impure.
 :- type prog_substitution == substitution(prog_var_type).
 :- type prog_var_renaming == map(prog_var, prog_var).
 :- type prog_term   == term(prog_var_type).
-:- type prog_vars   == list(prog_var).
 
     % What to print when printing variable names.
     % You can get the effect of printing variable numbers only

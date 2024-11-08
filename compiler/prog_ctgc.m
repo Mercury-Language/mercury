@@ -49,7 +49,8 @@
 
 :- func parse_structure_reuse_condition(term(T)) = structure_reuse_condition.
 
-:- func parse_structure_reuse_conditions(term(T)) = structure_reuse_conditions.
+:- func parse_structure_reuse_conditions(term(T))
+    = list(structure_reuse_condition).
 
 :- func parse_structure_reuse_domain(term(T)) = structure_reuse_domain.
 
@@ -94,9 +95,6 @@
 :- pred rename_datastruct(map(prog_var, prog_var)::in, tsubst::in,
     datastruct::in, datastruct::out) is det.
 
-:- func rename_datastruct(map(prog_var, prog_var), tsubst, datastruct)
-    = datastruct.
-
 :- pred rename_structure_sharing_pair(map(prog_var, prog_var)::in,
     tsubst::in, structure_sharing_pair::in, structure_sharing_pair::out)
     is det.
@@ -117,8 +115,8 @@
     structure_reuse_condition::out) is det.
 
 :- pred rename_structure_reuse_conditions(map(prog_var, prog_var)::in,
-    tsubst::in, structure_reuse_conditions::in,
-    structure_reuse_conditions::out) is det.
+    tsubst::in, list(structure_reuse_condition)::in,
+    list(structure_reuse_condition)::out) is det.
 
 :- pred rename_structure_reuse_domain(map(prog_var, prog_var)::in,
     tsubst::in, structure_reuse_domain::in,
@@ -751,9 +749,6 @@ rename_datastruct(Dict, Subst, !Data) :-
     rename_selector(Subst, Sel0, Sel),
     !:Data = selected_cel(Var, Sel).
 
-rename_datastruct(Dict, Subst, Data0) = Data :-
-    rename_datastruct(Dict, Subst, Data0, Data).
-
 rename_structure_sharing_pair(Dict, TypeSubst, !Pair) :-
     !.Pair = D1 - D2,
     rename_datastruct(Dict, TypeSubst, D1, Da),
@@ -809,8 +804,8 @@ rename_user_annotated_sharing(HeadVars, NewHeadVars, NewTypes,
 rename_structure_reuse_condition(Dict, TypeSubst,
         structure_reuse_condition(DeadNodes, LiveNodes, Sharing),
         structure_reuse_condition(RenDeadNodes, RenLiveNodes, RenSharing)) :-
-    RenDeadNodes = set.map(rename_datastruct(Dict, TypeSubst), DeadNodes),
-    RenLiveNodes = list.map(rename_datastruct(Dict, TypeSubst), LiveNodes),
+    set.map(rename_datastruct(Dict, TypeSubst), DeadNodes, RenDeadNodes),
+    list.map(rename_datastruct(Dict, TypeSubst), LiveNodes, RenLiveNodes),
     rename_structure_sharing_domain(Dict, TypeSubst, Sharing, RenSharing).
 
 rename_structure_reuse_conditions(Dict, TypeSubst, Conds, RenConds) :-
