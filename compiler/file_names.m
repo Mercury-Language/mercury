@@ -20,8 +20,10 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.find_module.
 
 :- import_module io.
 :- import_module list.
@@ -494,7 +496,96 @@
             % in analysis.m and its clients.
     ;       ext_cur_ngs_gs_max_ngs_an_analysis  % ".analysis"
     ;       ext_cur_ngs_gs_max_ngs_an_imdg      % ".imdg"
+            % "imdg" stands for "InterModule Dependency Graph".
     ;       ext_cur_ngs_gs_max_ngs_an_request.  % ".request"
+
+%---------------------%
+
+:- inst ext_int for ext/0
+    --->    ext_cur_ngs(ext_int_0123).
+
+:- inst ext_int_0123 for ext_cur_ngs/0
+    --->    ext_cur_ngs_int_int0
+    ;       ext_cur_ngs_int_int1
+    ;       ext_cur_ngs_int_int2
+    ;       ext_cur_ngs_int_int3.
+
+:- inst ext_int_md for ext/0
+    --->    ext_cur_ngs(ext_int_0123_md).
+
+:- inst ext_int_0123_md for ext_cur_ngs/0
+    --->    ext_cur_ngs_int_int0
+    ;       ext_cur_ngs_int_int1
+    ;       ext_cur_ngs_int_int2
+    ;       ext_cur_ngs_int_int3
+    ;       ext_cur_ngs_misc_module_dep.
+
+:- inst ext_opt for ext/0
+    --->    ext_cur_ngs_gs_max_ngs(ext_max_opt_pt)
+    ;       ext_cur_ngs_gs(ext_opt_pt).
+
+:- inst ext_max_opt_pt for ext_cur_ngs_gs_max_ngs/0
+    --->    ext_cur_ngs_gs_max_ngs_legacy_opt_plain
+    ;       ext_cur_ngs_gs_max_ngs_legacy_opt_trans.
+
+:- inst ext_opt_pt for ext_cur_ngs_gs/0
+    --->    ext_cur_ngs_gs_proposed_opt_plain
+    ;       ext_cur_ngs_gs_proposed_opt_trans.
+
+:- inst ext_analysis for ext/0
+    --->    ext_cur_ngs_gs_max_ngs(ext_analysis_rai)
+    ;       ext_cur_ngs_gs(ext_analysis_sd).
+
+:- inst ext_analysis_rai for ext_cur_ngs_gs_max_ngs/0
+    --->    ext_cur_ngs_gs_max_ngs_an_request
+    ;       ext_cur_ngs_gs_max_ngs_an_imdg
+    ;       ext_cur_ngs_gs_max_ngs_an_analysis.
+
+:- inst ext_analysis_sd for ext_cur_ngs_gs/0
+    --->    ext_cur_ngs_gs_an_ds_status
+    ;       ext_cur_ngs_gs_an_ds_date.
+
+    % The "mt" is short for make target, because ext_mt describes
+    % the set of extensions that target_type_to_target_extension can return.
+:- inst ext_mt for ext/0
+    --->    ext_cur(mt_ext_cur)
+    ;       ext_cur_ngs(mt_ext_cur_ngs)
+    ;       ext_cur_ngs_gs(mt_ext_cur_ngs_gs)
+    ;       ext_cur_ngs_gs_err(mt_ext_cur_ngs_gs_err)
+    ;       ext_cur_ngs_gas(mt_ext_cur_ngs_gas)
+    ;       ext_cur_ngs_gs_max_ngs(mt_ext_cur_ngs_gs_max_ngs)
+    ;       ext_cur_ngs_gs_max_cur(mt_ext_cur_ngs_gs_max_cur)
+    ;       ext_cur_ngs_gs_java(mt_ext_cur_ngs_gs_java)
+    ;       ext_cur_pgs_max_cur(mt_ext_cur_pgs_max_cur).
+
+:- inst mt_ext_cur for ext_cur/0
+    --->    ext_cur_user_xml.
+:- inst mt_ext_cur_ngs for ext_cur_ngs/0
+    --->    ext_cur_ngs_int_int0
+    ;       ext_cur_ngs_int_int1
+    ;       ext_cur_ngs_int_int2
+    ;       ext_cur_ngs_int_int3.
+:- inst mt_ext_cur_ngs_gs for ext_cur_ngs_gs/0
+    --->    ext_cur_ngs_gs_target_c
+    ;       ext_cur_ngs_gs_target_cs
+    ;       ext_cur_ngs_gs_misc_track_flags.
+:- inst mt_ext_cur_ngs_gs_err for ext_cur_ngs_gs_err/0
+    --->    ext_cur_ngs_gs_err_err.
+:- inst mt_ext_cur_ngs_gs_java for ext_cur_ngs_gs_java/0
+    --->    ext_cur_ngs_gs_java_java
+    ;       ext_cur_ngs_gs_java_class.
+:- inst mt_ext_cur_ngs_gs_max_ngs for ext_cur_ngs_gs_max_ngs/0
+    --->    ext_cur_ngs_gs_max_ngs_legacy_opt_plain
+    ;       ext_cur_ngs_gs_max_ngs_an_analysis.
+:- inst mt_ext_cur_ngs_gs_max_cur for ext_cur_ngs_gs_max_cur/0
+    --->    ext_cur_ngs_gs_max_cur_mih.
+:- inst mt_ext_cur_pgs_max_cur for ext_cur_pgs_max_cur/0
+    --->    ext_cur_pgs_max_cur_mh.
+:- inst mt_ext_cur_ngs_gas for ext_cur_ngs_gas/0
+    --->    ext_cur_ngs_gas_obj_obj_opt
+    ;       ext_cur_ngs_gas_obj_pic_obj_opt.
+
+%---------------------%
 
 :- func extension_to_string(globals, ext) = string.
 
@@ -585,29 +676,100 @@
     string::in, ext::in, module_name::in, file_name::out,
     file_name::out, file_name::out, io::di, io::uo) is det.
 
-    % module_name_to_search_file_name(Globals, From, Ext, Module, FileName):
+%---------------------------------------------------------------------------%
+
+:- type search_which_dirs
+    --->    search_cur_dir
+    ;       search_cur_dir_and(search_which_tail_dirs)
+    ;       search_this_dir(dir_name)
+    ;       search_this_dir_and(dir_name, search_which_tail_dirs)
+    ;       search_normal_dirs(option_table)
+    ;       search_intermod_dirs(option_table)
+    ;       search_init_file_dirs(option_table)
+    ;       search_c_include_dirs(option_table)
+    ;       search_options_file_dirs(option_table)
+    ;       search_mercury_library_dirs(globals)
+    ;       search_dirs_for_ext.
+
+    % This type differs from search_which_dirs by
     %
-    % As module_name_to_file_name, but for a file which might be
-    % in an installed library, not the current directory. There are no
-    % variants with _return_dirs or _create_dirs suffixes, because
-    % there is no point in creating the directories you are trying to search;
-    % if you have to create a directory, it won't contain the file
+    % - not including search_{cur,this}_dir_and, thus limiting
+    %   recursion to one level, and
+    %
+    % - by not including the search kinds that we do not actually use
+    %   as an (either an actual or potential) tail search kind
+    %   in search_{cur,this}_dir_and.
+    %
+:- type search_which_tail_dirs =< search_which_dirs
+    --->    search_cur_dir
+    ;       search_normal_dirs(option_table)
+    ;       search_intermod_dirs(option_table)
+    ;       search_c_include_dirs(option_table)
+    ;       search_options_file_dirs(option_table).
+
+:- inst search_cur_or_normal for search_which_dirs/0
+    --->    search_cur_dir
+    ;       search_normal_dirs(ground).
+
+:- inst search_cur_or_intermod for search_which_dirs/0
+    --->    search_cur_dir
+    ;       search_intermod_dirs(ground).
+
+:- inst search_intermod for search_which_dirs/0
+    --->    search_intermod_dirs(ground).
+
+:- inst search_ext for search_which_dirs/0
+    --->    search_dirs_for_ext.
+
+%---------------------%
+
+    % module_name_to_search_file_name(Globals, From, Ext, ModuleName,
+    %   SearchWhichDirs, SearchAuthDirs,
+    %   FullFileNameLegacy, FullFileNameProposed):
+    %
+    % This predicate is a version of module_name_to_file_name whose job is
+    % to return a file name (relative path) that we should *search for*
+    % in a given list of directories, rather than the file name where the
+    % Ext file for ModuleName definitely *should be*. This is why you should
+    % use module_name_to_file_name if you want the file name that you should
+    % write the file's contents to, or the file name you want to delete
+    % as part of the "clean" or "realclean" mmake or mmc --make targets.
+    % You should use this predicate if you want to read a file that may be
+    % in a different source directory in a workspace, or in an installed
+    % library.
+    %
+    % There are no variants with _return_dirs or _create_dirs suffixes,
+    % because there is no point in creating the directories you are trying
+    % to search; if you have to create a directory, it won't contain the file
     % you are looking for.
     %
-    % With `--use-grade-subdirs', the current directory's `.mih' files are in
-    % `Mercury/<grade>/<arch>/Mercury/mihs', and those for installed libraries
-    % are in `<prefix>/lib/mercury/lib/<grade>/<arch>/inc/Mercury/mihs'.
+    % The SearchWhichDirs argument should specify the list of directories
+    % you want to search for the file name returned by this predicate.
+    % There are rules about which extensions can be searched for in what
+    % list of directories, because it does not make sense to e.g. search for
+    % files with extensions other than .init in the directories specified
+    % by the --init-file-directories option. The modes of this predicate
+    % check that the insts (and therefore the values) of Ext and
+    % SearchWhichDirs are compatible; if they are not compatible,
+    % the call will get an intentional mode error.
     %
-    % handle_options.m sets up the `--c-include-directory' options so that
-    % the name `<module>.mih' should be used in a context which requires
-    % searching for the `.mih files, for example in a C file.
+    % If the values of Ext and SearchWhichDirs *are* compatible, this
+    % predicate will return in SearchAuthDirs a "search authorization".
+    % All the predicates in find_module.m that do the searches for the
+    % returned filenames insist on their callers providing them with one.
     %
-    % module_name_to_file_name would return
-    % `Mercury/<grade>/<arch>/Mercury/mihs/<module>.mihs',
-    % which would be used when writing or removing the `.mih' file.
-    %
-:- pred module_name_to_search_file_name(globals::in, string::in,
-    ext::in, module_name::in, file_name::out, file_name::out) is det.
+:- pred module_name_to_search_file_name(globals, string, ext, module_name,
+    search_which_dirs, search_auth_dirs, file_name, file_name).
+:- mode module_name_to_search_file_name(in, in,
+    in(ext_int_md), in, in(search_cur_or_normal), out, out, out) is det.
+:- mode module_name_to_search_file_name(in, in,
+    in(ext_opt), in, in(search_cur_or_intermod), out, out, out) is det.
+:- mode module_name_to_search_file_name(in, in,
+    in(ext_analysis), in, in(search_intermod), out, out, out) is det.
+:- mode module_name_to_search_file_name(in, in,
+    in(ext_mt), in, in(search_ext), out, out, out) is det.
+
+%---------------------------------------------------------------------------%
 
     % module_name_to_lib_file_name_return_dirs(Globals, From, Prefix, Ext,
     %   Module, DirNames, FileName):
@@ -759,7 +921,6 @@
 
 :- implementation.
 
-:- import_module libs.options.
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.source_file_map.
 
@@ -1132,15 +1293,141 @@ module_name_to_file_name_full_curdir_create_dirs(Globals, From, Ext,
 
 %---------------------%
 
-module_name_to_search_file_name(Globals, From, Ext,
-        ModuleName, FullFileNameLegacy, FullFileNameProposed) :-
+module_name_to_search_file_name(Globals, From, Ext, ModuleName,
+        SearchWhichDirs, SearchAuthDirs,
+        FullFileNameLegacy, FullFileNameProposed) :-
     module_name_to_file_name_ext(Globals, From, for_search,
         yes(do_not_create_dirs), Ext, ModuleName,
         DirNamesLegacy, DirNamesProposed, CurDirFileName),
     FullFileNameLegacy =
         glue_dir_names_base_name(DirNamesLegacy, CurDirFileName),
     FullFileNameProposed =
-        glue_dir_names_base_name(DirNamesProposed, CurDirFileName).
+        glue_dir_names_base_name(DirNamesProposed, CurDirFileName),
+
+    % This nested switch on SearchWhichDirs and Ext intentionally covers
+    % *only* the combinations of their values that we want to allow,
+    % as expressed by the several modes of this predicate.
+    (
+        SearchWhichDirs = search_cur_dir,
+        (
+            Ext = ext_cur_ngs(ExtCurNgs),
+            ( ExtCurNgs = ext_cur_ngs_int_int0
+            ; ExtCurNgs = ext_cur_ngs_int_int1
+            ; ExtCurNgs = ext_cur_ngs_int_int2
+            ; ExtCurNgs = ext_cur_ngs_int_int3
+            ; ExtCurNgs = ext_cur_ngs_misc_module_dep
+            ),
+            SearchAuthDirs = search_auth_cur_dir
+        ;
+            Ext = ext_cur_ngs_gs_max_ngs(ExtCurNgsGsMaxCur),
+            ( ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_legacy_opt_plain
+            ; ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_legacy_opt_trans
+            ),
+            SearchAuthDirs = search_auth_cur_dir
+        ;
+            Ext = ext_cur_ngs_gs(ExtCurNgsGs),
+            ( ExtCurNgsGs = ext_cur_ngs_gs_proposed_opt_plain
+            ; ExtCurNgsGs = ext_cur_ngs_gs_proposed_opt_trans
+            ),
+            SearchAuthDirs = search_auth_cur_dir
+        )
+    ;
+        SearchWhichDirs = search_normal_dirs(OptionTable),
+        (
+            Ext = ext_cur_ngs(ExtCurNgs),
+            ( ExtCurNgs = ext_cur_ngs_int_int0
+            ; ExtCurNgs = ext_cur_ngs_int_int1
+            ; ExtCurNgs = ext_cur_ngs_int_int2
+            ; ExtCurNgs = ext_cur_ngs_int_int3
+            ; ExtCurNgs = ext_cur_ngs_misc_module_dep
+            ),
+            SearchAuthDirs = search_auth_private(
+                private_auth_normal_dirs(OptionTable))
+        )
+    ;
+        SearchWhichDirs = search_intermod_dirs(OptionTable),
+        (
+            Ext = ext_cur_ngs_gs_max_ngs(ExtCurNgsGsMaxCur),
+            ( ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_legacy_opt_plain
+            ; ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_legacy_opt_trans
+            ; ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_an_request
+            ; ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_an_imdg
+            ; ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_an_analysis
+            ),
+            SearchAuthDirs = search_auth_private(
+                private_auth_intermod_dirs(OptionTable))
+        ;
+            Ext = ext_cur_ngs_gs(ExtCurNgsGs),
+            ( ExtCurNgsGs = ext_cur_ngs_gs_proposed_opt_plain
+            ; ExtCurNgsGs = ext_cur_ngs_gs_proposed_opt_trans
+            ; ExtCurNgsGs = ext_cur_ngs_gs_an_ds_status
+            ; ExtCurNgsGs = ext_cur_ngs_gs_an_ds_date
+            ),
+            SearchAuthDirs = search_auth_private(
+                private_auth_intermod_dirs(OptionTable))
+        )
+    ;
+        SearchWhichDirs = search_dirs_for_ext,
+        (
+            Ext = ext_cur(ExtCur),
+            ExtCur = ext_cur_user_xml,
+            SearchAuthDirs = search_auth_cur_dir
+        ;
+            Ext = ext_cur_ngs(ExtCurNgs),
+            ( ExtCurNgs = ext_cur_ngs_int_int0
+            ; ExtCurNgs = ext_cur_ngs_int_int1
+            ; ExtCurNgs = ext_cur_ngs_int_int2
+            ; ExtCurNgs = ext_cur_ngs_int_int3
+            ; ExtCurNgs = ext_cur_ngs_misc_module_dep
+            ),
+            globals.get_options(Globals, OptionTable),
+            SearchAuthDirs = search_auth_private(
+                private_auth_normal_dirs(OptionTable))
+        ;
+            Ext = ext_cur_ngs_gs(ExtCurNgsGs),
+            ( ExtCurNgsGs = ext_cur_ngs_gs_target_c
+            ; ExtCurNgsGs = ext_cur_ngs_gs_target_cs
+            ; ExtCurNgsGs = ext_cur_ngs_gs_misc_track_flags
+            ),
+            SearchAuthDirs = search_auth_cur_dir
+        ;
+            Ext = ext_cur_ngs_gs_err(ExtCurNgsGsErr),
+            ExtCurNgsGsErr = ext_cur_ngs_gs_err_err,
+            SearchAuthDirs = search_auth_cur_dir
+        ;
+            Ext = ext_cur_ngs_gs_java(ExtCurNgsGsJava),
+            ( ExtCurNgsGsJava = ext_cur_ngs_gs_java_java
+            ; ExtCurNgsGsJava = ext_cur_ngs_gs_java_class
+            ),
+            SearchAuthDirs = search_auth_cur_dir
+        ;
+            Ext = ext_cur_ngs_gs_max_ngs(ExtCurNgsGsMaxNgs),
+            ( ExtCurNgsGsMaxNgs = ext_cur_ngs_gs_max_ngs_legacy_opt_plain
+            ; ExtCurNgsGsMaxNgs = ext_cur_ngs_gs_max_ngs_an_analysis
+            ),
+            globals.get_options(Globals, OptionTable),
+            SearchAuthDirs = search_auth_cur_dir_and(
+                search_auth_private(private_auth_intermod_dirs(OptionTable)))
+        ;
+            Ext = ext_cur_ngs_gs_max_cur(ExtCurNgsGsMaxCur),
+            ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_cur_mih,
+            globals.get_options(Globals, OptionTable),
+            SearchAuthDirs = search_auth_cur_dir_and(
+                search_auth_private(private_auth_c_include_dirs(OptionTable)))
+        ;
+            Ext = ext_cur_pgs_max_cur(ExtCurPgsMaxCur),
+            ExtCurPgsMaxCur = ext_cur_pgs_max_cur_mh,
+            globals.get_options(Globals, OptionTable),
+            SearchAuthDirs = search_auth_cur_dir_and(
+                search_auth_private(private_auth_c_include_dirs(OptionTable)))
+        ;
+            Ext = ext_cur_ngs_gas(ExtCurNgsGas),
+            ( ExtCurNgsGas = ext_cur_ngs_gas_obj_obj_opt
+            ; ExtCurNgsGas = ext_cur_ngs_gas_obj_pic_obj_opt
+            ),
+            SearchAuthDirs = search_auth_cur_dir
+        )
+    ).
 
 %---------------------%
 

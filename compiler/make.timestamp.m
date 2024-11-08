@@ -22,7 +22,6 @@
 :- import_module libs.timestamp.
 :- import_module make.make_info.
 :- import_module parse_tree.
-:- import_module parse_tree.file_names.
 :- import_module parse_tree.find_module.
 
 :- import_module io.
@@ -33,24 +32,38 @@
 
 :- func init_target_file_timestamp_map = target_file_timestamp_map.
 
+%---------------------------------------------------------------------------%
+
     % Find the timestamp for the given dependency file.
     %
 :- pred get_dependency_timestamp(io.text_output_stream::in, globals::in,
     dependency_file::in, maybe_error(timestamp)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % get_target_timestamp(ProgressStream, Globals, Search,
-    %   TargetFile, Timestamp, !Info, !IO)
+%---------------------------------------------------------------------------%
+
+    % get_target_timestamp(ProgressStream, Globals, TargetFile,
+    %   MaybeTimestamp, !Info, !IO):
     %
-    % Find the timestamp for the given target file.
-    % `Search' should be `do_search' if the file could be part of an
-    % installed library.
+    % Return the timestamp for TargetFile, if it exists.
     %
 :- pred get_target_timestamp(io.text_output_stream::in, globals::in,
-    maybe_search::in, target_file::in, maybe_error(timestamp)::out,
+    target_file::in, maybe_error(timestamp)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % get_file_timestamp(SearchWhichDirs, FileName,
+    % get_target_timestamp_search(ProgressStream, Globals, TargetFile,
+    %   MaybeTimestamp, !Info, !IO):
+    %
+    % Search for TargetFile in the places where its target type indicates
+    % it should be searched for, and return its timestamp if it exists.
+    %
+:- pred get_target_timestamp_search(io.text_output_stream::in, globals::in,
+    target_file::in, maybe_error(timestamp)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+    % get_file_timestamp(SearchAuthDirs, FileName,
     %   SearchDirs, MaybeTimestamp, !Info, !IO):
     %
     % Find the timestamp of the first file matching the given
@@ -59,8 +72,8 @@
     % from the cache, we return the list of directories we searched
     % when the cache entry was created.
     %
-:- pred get_file_timestamp(search_which_dirs::in,
-    file_name::in, list(dir_name)::out, maybe_error(timestamp)::out,
+:- pred get_file_timestamp(search_auth_dirs::in, file_name::in,
+    list(dir_name)::out, maybe_error(timestamp)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -71,9 +84,6 @@
 :- import_module analysis.
 :- import_module analysis.framework.
 :- import_module analysis.operations.
-:- import_module backend_libs.
-:- import_module backend_libs.compile_target_code.
-:- import_module libs.options.
 :- import_module make.file_names.
 :- import_module make.get_module_dep_info.
 :- import_module make.hash.
@@ -100,11 +110,11 @@ get_dependency_timestamp(ProgressStream, Globals, DependencyFile,
         MaybeTimestamp, !Info, !IO) :-
     (
         DependencyFile = dep_file(FileName),
-        get_file_timestamp(search_cur_dir, FileName,
+        get_file_timestamp(search_auth_cur_dir, FileName,
             _SearchDirs, MaybeTimestamp, !Info, !IO)
     ;
         DependencyFile = dep_target(Target),
-        get_target_timestamp(ProgressStream, Globals, do_search, Target,
+        get_target_timestamp_search(ProgressStream, Globals, Target,
             MaybeTimestamp0, !Info, !IO),
         ( if
             Target = target_file(_, module_target_c_header(header_mih)),
@@ -123,76 +133,144 @@ get_dependency_timestamp(ProgressStream, Globals, DependencyFile,
 
 %---------------------------------------------------------------------------%
 
-get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
-        MaybeTimestamp, !Info, !IO) :-
+get_target_timestamp(ProgressStream, Globals, TargetFile, MaybeTimestamp,
+        !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     ( if TargetType = module_target_analysis_registry then
-        ForSearch = maybe_search_to_maybe_for_search(Search),
         % XXX LEGACY
-        module_target_to_maybe_for_search_file_name(Globals, $pred,
-            ForSearch, TargetType, ModuleName,
-            FileName, _FileNameProposed, !IO),
+        module_target_to_file_name(Globals, $pred,
+            TargetType, ModuleName, FileName, _FileNameProposed, !IO),
         get_target_timestamp_analysis_registry(ProgressStream, Globals,
-            Search, TargetFile, FileName, MaybeTimestamp, !Info, !IO)
+            TargetFile, FileName, MaybeTimestamp, !Info, !IO)
     else
-        % This path is hit very frequently, so it is worth caching timestamps
-        % by target_file. It avoids having to compute a file name for a
-        % target_file first, before looking up the timestamp for that file.
-        % XXX Wouldn't the search be even faster if, instead of the module's
-        % name, our caller gave us its module_index?
-        TargetFileTimestampMap0 =
-            make_info_get_target_file_timestamp_map(!.Info),
-        ( if
-            version_hash_table.search(TargetFileTimestampMap0, TargetFile,
-                Timestamp)
-        then
+        ( if is_timestamp_in_cache(!.Info, TargetFile, Timestamp) then
             trace [compile_time(flag("target_timestamp_cache")), io(!TIO)] (
-                verify_cached_target_file_timestamp(ProgressStream, Globals,
-                    Search, TargetFile, Timestamp, !.Info, _Info, !TIO)
+                verify_cached_target_file_timestamp(ProgressStream,
+                    Globals, TargetFile, Timestamp, !.Info, _Info, !TIO)
             ),
             MaybeTimestamp = ok(Timestamp)
         else
-            ForSearch = maybe_search_to_maybe_for_search(Search),
             % XXX LEGACY
             module_maybe_nested_target_file_to_file_name(ProgressStream,
-                Globals, $pred, ForSearch, TargetFile,
+                Globals, $pred, TargetFile,
                 FileName, _FileNameProposed, !Info, !IO),
             get_target_timestamp_uncached(ProgressStream, Globals,
-                Search, TargetFile, FileName, MaybeTimestamp, !Info, !IO),
-            (
-                MaybeTimestamp = ok(Timestamp),
-                TargetFileTimestampMap1 =
-                    make_info_get_target_file_timestamp_map(!.Info),
-                version_hash_table.det_insert(TargetFile, Timestamp,
-                    TargetFileTimestampMap1, TargetFileTimestampMap),
-                make_info_set_target_file_timestamp_map(TargetFileTimestampMap,
-                    !Info)
-            ;
-                MaybeTimestamp = error(_)
-                % Do not record errors. These would usually be due to files
-                % not yet made, and the result would have to be updated
-                % once the file *is* made.
-            )
+                ModuleName, TargetType, FileName, MaybeTimestamp, !Info, !IO),
+            record_timestamp_if_ok(TargetFile, MaybeTimestamp, !Info)
         )
     ).
 
+get_target_timestamp_search(ProgressStream, Globals, TargetFile,
+        MaybeTimestamp, !Info, !IO) :-
+    TargetFile = target_file(ModuleName, TargetType),
+    ( if TargetType = module_target_analysis_registry then
+        % XXX LEGACY
+        module_target_to_search_file_name(Globals, $pred,
+            TargetType, ModuleName, SearchAuthDirs,
+            FileName, _FileNameProposed, !IO),
+        get_target_timestamp_analysis_registry_search(ProgressStream, Globals,
+            SearchAuthDirs, TargetFile, FileName, MaybeTimestamp, !Info, !IO)
+    else
+        ( if is_timestamp_in_cache(!.Info, TargetFile, Timestamp) then
+            trace [compile_time(flag("target_timestamp_cache")), io(!TIO)] (
+                verify_cached_target_file_timestamp_search(ProgressStream,
+                    Globals, TargetFile, Timestamp, !.Info, _Info, !TIO)
+            ),
+            MaybeTimestamp = ok(Timestamp)
+        else
+            % XXX LEGACY
+            module_maybe_nested_target_file_to_search_file_name(ProgressStream,
+                Globals, $pred, TargetFile, SearchAuthDirs,
+                FileName, _FileNameProposed, !Info, !IO),
+            get_target_timestamp_uncached_search(ProgressStream, Globals,
+                ModuleName, TargetType, FileName, SearchAuthDirs,
+                MaybeTimestamp, !Info, !IO),
+            record_timestamp_if_ok(TargetFile, MaybeTimestamp, !Info)
+        )
+    ).
+
+%---------------%
+
+    % The code points we are called from are hit very frequently, so it is
+    % worth caching timestamps by target_file. It avoids having to compute
+    % a file name for a target_file first, before looking up its timestamp.
+    % XXX Wouldn't the search be even faster if, instead of the module's
+    % name, our caller gave us its module_index?
+    %
+:- pred is_timestamp_in_cache(make_info::in, target_file::in,
+    timestamp::out) is semidet.
+
+is_timestamp_in_cache(Info0, TargetFile, Timestamp) :-
+    Cache0 = make_info_get_target_file_timestamp_map(Info0),
+    version_hash_table.search(Cache0, TargetFile, Timestamp).
+
+:- pred record_timestamp_if_ok(target_file::in, maybe_error(timestamp)::in,
+    make_info::in, make_info::out) is det.
+
+record_timestamp_if_ok(TargetFile, MaybeTimestamp, !Info) :-
+    (
+        MaybeTimestamp = ok(Timestamp),
+        TargetFileTimestampMap0 =
+            make_info_get_target_file_timestamp_map(!.Info),
+        version_hash_table.det_insert(TargetFile, Timestamp,
+            TargetFileTimestampMap0, TargetFileTimestampMap),
+        make_info_set_target_file_timestamp_map(TargetFileTimestampMap, !Info)
+    ;
+        MaybeTimestamp = error(_)
+        % Do not record errors. These would usually be due to files
+        % not yet made, and the result would have to be updated
+        % once the file *is* made.
+    ).
+
+%---------------%
+
 :- pred verify_cached_target_file_timestamp(io.text_output_stream::in,
-    globals::in, maybe_search::in, target_file::in, timestamp::in,
+    globals::in, target_file::in, timestamp::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-verify_cached_target_file_timestamp(ProgressStream, Globals, Search,
+verify_cached_target_file_timestamp(ProgressStream, Globals,
         TargetFile, CachedTimestamp, !Info, !IO) :-
-    ForSearch = maybe_search_to_maybe_for_search(Search),
+    TargetFile = target_file(ModuleName, TargetType),
     % XXX LEGACY
     module_maybe_nested_target_file_to_file_name(ProgressStream,
-        Globals, $pred, ForSearch, TargetFile, FileName, _FileNameProposed,
-        !Info, !IO),
+        Globals, $pred, TargetFile, FileName, _FileNameProposed, !Info, !IO),
     get_target_timestamp_uncached(ProgressStream, Globals,
-        Search, TargetFile, FileName, MaybeFileTimestamp, !Info, !IO),
+        ModuleName, TargetType, FileName, MaybeFileTimestamp, !Info, !IO),
+    abort_for_any_verification_failure(CachedTimestamp,
+        MaybeFileTimestamp, !Info).
+
+:- pred verify_cached_target_file_timestamp_search(io.text_output_stream::in,
+    globals::in, target_file::in, timestamp::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+verify_cached_target_file_timestamp_search(ProgressStream, Globals,
+        TargetFile, CachedTimestamp, !Info, !IO) :-
+    TargetFile = target_file(ModuleName, TargetType),
+    % XXX LEGACY
+    module_maybe_nested_target_file_to_search_file_name(ProgressStream,
+        Globals, $pred, TargetFile, SearchAuthDirs,
+        FileName, _FileNameProposed, !Info, !IO),
+    get_target_timestamp_uncached_search(ProgressStream, Globals,
+        ModuleName, TargetType, FileName, SearchAuthDirs,
+        MaybeFileTimestamp, !Info, !IO),
+    abort_for_any_verification_failure(CachedTimestamp,
+        MaybeFileTimestamp, !Info).
+
+%---------------%
+
+    % We take a in,out pair of make_info args because we don't want calls
+    % to this predicate to be deleted as det code that computes nothing.
+    %
+:- pred abort_for_any_verification_failure(timestamp::in,
+    maybe_error(timestamp)::in, make_info::in, make_info::out) is det.
+:- pragma no_inline(pred(abort_for_any_verification_failure/4)).
+
+abort_for_any_verification_failure(CachedTimestamp, MaybeFileTimestamp,
+        Info0, Info) :-
     (
         MaybeFileTimestamp = ok(FileTimestamp),
         ( if CachedTimestamp = FileTimestamp then
-            true
+            Info = Info0
         else
             string.format(
                 "target file timestamp differs: %s (cached) vs %s (actual)",
@@ -208,18 +286,19 @@ verify_cached_target_file_timestamp(ProgressStream, Globals, Search,
         unexpected($pred, Msg)
     ).
 
+%---------------%
+
     % Special treatment for `.analysis' files. If the corresponding
     % `.analysis_status' file says the `.analysis' file is invalid,
     % then we treat it as out of date.
     %
 :- pred get_target_timestamp_analysis_registry(io.text_output_stream::in,
-    globals::in, maybe_search::in, target_file::in, file_name::in,
-    maybe_error(timestamp)::out,
+    globals::in, target_file::in, file_name::in, maybe_error(timestamp)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_target_timestamp_analysis_registry(ProgressStream, Globals, Search,
+get_target_timestamp_analysis_registry(ProgressStream, Globals,
         TargetFile, FileName, MaybeTimestamp, !Info, !IO) :-
-    TargetFile = target_file(ModuleName, _TargetType),
+    TargetFile = target_file(ModuleName, TargetType),
     FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
     ( if map.search(FileTimestampMap0, FileName, MapValue) then
         MapValue = {_SearchDirs, MaybeTimestamp}
@@ -229,8 +308,8 @@ get_target_timestamp_analysis_registry(ProgressStream, Globals, Search,
             ( Status = optimal
             ; Status = suboptimal
             ),
-            get_target_timestamp_uncached(ProgressStream, Globals, Search,
-                TargetFile, FileName, MaybeTimestamp, !Info, !IO)
+            get_target_timestamp_uncached(ProgressStream, Globals,
+                ModuleName, TargetType, FileName, MaybeTimestamp, !Info, !IO)
         ;
             Status = invalid,
             MaybeTimestamp = error("invalid module"),
@@ -240,38 +319,90 @@ get_target_timestamp_analysis_registry(ProgressStream, Globals, Search,
         )
     ).
 
+:- pred get_target_timestamp_analysis_registry_search(
+    io.text_output_stream::in, globals::in, search_auth_dirs::in,
+    target_file::in, file_name::in, maybe_error(timestamp)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+get_target_timestamp_analysis_registry_search(ProgressStream, Globals,
+        SearchAuthDirs, TargetFile, FileName, MaybeTimestamp, !Info, !IO) :-
+    TargetFile = target_file(ModuleName, TargetType),
+    FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
+    ( if map.search(FileTimestampMap0, FileName, MapValue) then
+        MapValue = {_SearchDirs, MaybeTimestamp}
+    else
+        do_read_module_overall_status(mmc, Globals, ModuleName, Status, !IO),
+        (
+            ( Status = optimal
+            ; Status = suboptimal
+            ),
+            get_target_timestamp_uncached_search(ProgressStream, Globals,
+                ModuleName, TargetType, FileName, SearchAuthDirs,
+                MaybeTimestamp, !Info, !IO)
+        ;
+            Status = invalid,
+            MaybeTimestamp = error("invalid module"),
+            map.det_insert(FileName, {[], MaybeTimestamp},
+                FileTimestampMap0, FileTimestampMap),
+            make_info_set_file_timestamp_map(FileTimestampMap, !Info)
+        )
+    ).
+
+%---------------%
+
 :- pred get_target_timestamp_uncached(io.text_output_stream::in,
-    globals::in, maybe_search::in, target_file::in, file_name::in,
+    globals::in, module_name::in, module_target_type::in, file_name::in,
     maybe_error(timestamp)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_target_timestamp_uncached(ProgressStream, Globals, Search,
-        TargetFile, FileName, MaybeTimestamp, !Info, !IO) :-
-    TargetFile = target_file(ModuleName, TargetType),
-    (
-        Search = do_search,
-        search_which_dirs_for_target_type(Globals, TargetType, SearchWhichDirs)
-    ;
-        Search = do_not_search,
-        SearchWhichDirs = search_cur_dir
-    ),
-    get_file_timestamp(SearchWhichDirs, FileName,
+get_target_timestamp_uncached(ProgressStream, Globals,
+        ModuleName, TargetType, FileName, MaybeTimestamp, !Info, !IO) :-
+    SearchAuthDirs = search_auth_cur_dir,
+    get_file_timestamp(SearchAuthDirs, FileName,
         SearchDirs, MaybeTimestamp0, !Info, !IO),
+    get_target_timestamp_handle_any_errors(ProgressStream, Globals,
+        ModuleName, TargetType, FileName, SearchDirs,
+        MaybeTimestamp0, MaybeTimestamp, !Info, !IO).
+
+:- pred get_target_timestamp_uncached_search(io.text_output_stream::in,
+    globals::in, module_name::in, module_target_type::in, file_name::in,
+    search_auth_dirs::in, maybe_error(timestamp)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+get_target_timestamp_uncached_search(ProgressStream, Globals,
+        ModuleName, TargetType, FileName, SearchAuthDirs, MaybeTimestamp,
+        !Info, !IO) :-
+    get_file_timestamp(SearchAuthDirs, FileName,
+        SearchDirs, MaybeTimestamp0, !Info, !IO),
+    get_target_timestamp_handle_any_errors(ProgressStream, Globals,
+        ModuleName, TargetType, FileName, SearchDirs,
+        MaybeTimestamp0, MaybeTimestamp, !Info, !IO).
+
+    % If a `.opt' file in another directory doesn't exist, it just means
+    % that a library wasn't compiled with `--intermodule-optimization'.
+    % Similarly for `.analysis' files.
+    %
+:- pred get_target_timestamp_handle_any_errors(io.text_output_stream::in,
+    globals::in, module_name::in, module_target_type::in, file_name::in,
+    list(dir_name)::in,
+    maybe_error(timestamp)::in, maybe_error(timestamp)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+get_target_timestamp_handle_any_errors(ProgressStream, Globals,
+        ModuleName, TargetType, FileName, SearchDirs,
+        MaybeTimestamp0, MaybeTimestamp, !Info, !IO) :-
     ( if
         MaybeTimestamp0 = error(_),
         ( TargetType = module_target_opt
         ; TargetType = module_target_analysis_registry
         )
     then
-        % If a `.opt' file in another directory doesn't exist,
-        % it just means that a library wasn't compiled with
-        % `--intermodule-optimization'.
-        % Similarly for `.analysis' files.
         get_maybe_module_dep_info(ProgressStream, Globals,
             ModuleName, MaybeModuleDepInfo, !Info, !IO),
         ( if
             MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
             module_dep_info_get_source_file_dir(ModuleDepInfo, ModuleDir),
+            % NOTE This test can't succeed for the non-search caller.
             ModuleDir \= dir.this_directory
         then
             MaybeTimestamp = ok(oldest_timestamp),
@@ -286,74 +417,15 @@ get_target_timestamp_uncached(ProgressStream, Globals, Search,
         MaybeTimestamp = MaybeTimestamp0
     ).
 
-:- pred search_which_dirs_for_target_type(globals::in, module_target_type::in,
-    search_which_dirs::out) is det.
-
-search_which_dirs_for_target_type(Globals, ModuleTargetType,
-        SearchWhichDirs) :-
-    globals.get_options(Globals, OptionTable),
-    (
-        ( ModuleTargetType = module_target_source
-        ; ModuleTargetType = module_target_errors
-        ; ModuleTargetType = module_target_track_flags
-        ; ModuleTargetType = module_target_c_code
-        ; ModuleTargetType = module_target_csharp_code
-        ; ModuleTargetType = module_target_java_code
-        ; ModuleTargetType = module_target_java_class_code
-        ; ModuleTargetType = module_target_object_code(_)
-        ; ModuleTargetType = module_target_fact_table_object(_, _)
-        ; ModuleTargetType = module_target_xml_doc
-        ),
-        SearchWhichDirs = search_cur_dir
-    ;
-        ( ModuleTargetType = module_target_int0
-        ; ModuleTargetType = module_target_int1
-        ; ModuleTargetType = module_target_int2
-        ; ModuleTargetType = module_target_int3
-        ),
-        globals.lookup_accumulating_option(Globals, search_directories,
-            SearchDirs0),
-        SearchWhichDirs0 = search_normal_dirs(OptionTable),
-        ensure_cur_dir_is_searched(SearchDirs0,
-            SearchWhichDirs0, SearchWhichDirs)
-    ;
-        ( ModuleTargetType = module_target_opt
-        ; ModuleTargetType = module_target_analysis_registry
-        ),
-        globals.lookup_accumulating_option(Globals, intermod_directories,
-            SearchDirs0),
-        SearchWhichDirs0 = search_intermod_dirs(OptionTable),
-        ensure_cur_dir_is_searched(SearchDirs0,
-            SearchWhichDirs0, SearchWhichDirs)
-    ;
-        ModuleTargetType = module_target_c_header(_),
-        globals.lookup_accumulating_option(Globals, c_include_directories,
-            SearchDirs0),
-        SearchWhichDirs0 = search_c_include_dirs(OptionTable),
-        ensure_cur_dir_is_searched(SearchDirs0,
-            SearchWhichDirs0, SearchWhichDirs)
-    ).
-
-:- pred ensure_cur_dir_is_searched(list(dir_name)::in,
-    search_which_tail_dirs::in, search_which_dirs::out) is det.
-
-ensure_cur_dir_is_searched(SearchDirs0, SearchWhichDirs0, SearchWhichDirs) :-
-    CurDir = dir.this_directory,
-    ( if list.member(CurDir, SearchDirs0) then
-        SearchWhichDirs = coerce(SearchWhichDirs0)
-    else
-        SearchWhichDirs = search_this_dir_and(CurDir, SearchWhichDirs0)
-    ).
-
 %---------------------------------------------------------------------------%
 
-get_file_timestamp(SearchWhichDirs, FileName,
+get_file_timestamp(SearchAuthDirs, FileName,
         SearchDirs, MaybeTimestamp, !Info, !IO) :-
     FileTimestampMap0 = make_info_get_file_timestamp_map(!.Info),
     ( if map.search(FileTimestampMap0, FileName, MapValue) then
         MapValue = {SearchDirs, MaybeTimestamp}
     else
-        search_for_file_mod_time(SearchWhichDirs, FileName,
+        search_for_file_mod_time(SearchAuthDirs, FileName,
             SearchDirs, SearchResult, !IO),
         (
             SearchResult = ok(TimeT),

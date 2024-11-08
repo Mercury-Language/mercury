@@ -297,6 +297,13 @@ classify_target_2(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
         get_linked_target_ext_map(Globals, LinkedtargetExtMap),
         map.search(LinkedtargetExtMap, ExtStr, LinkedTargetExtInfo),
         LinkedTargetExtInfo = linked_target_ext_info(_, LinkedTargetKind),
+        % target_type_to_maybe_target_extension and this part of
+        % classify_target_2 in make.top_level.m represent the same relationship
+        % between targets and suffixes, but in different directions, and for
+        % slightly different sets of targets. (For example, there is no
+        % extension that generates module_target_fact_table_object as a
+        % target.) Where they talk about the same targets, their codes
+        % should be kept in sync.
         (
             (
                 LinkedTargetKind = ltk_object_file,

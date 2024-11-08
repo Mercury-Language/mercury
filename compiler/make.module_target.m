@@ -729,12 +729,12 @@ record_made_target_given_make_lhs_files(ProgressStream, Globals,
     % XXX LEGACY
     list.map2_foldl2(
         module_maybe_nested_target_file_to_file_name(ProgressStream, Globals,
-            $pred, not_for_search),
+            $pred),
         DatelessLhsTargetFiles,
         DatelessLhsFileNames, _DatelessLhsFileNamesProposed, !Info, !IO),
     list.map2_foldl2(
         module_maybe_nested_target_file_to_file_name(ProgressStream, Globals,
-            $pred, not_for_search),
+            $pred),
         DatedLhsTargetFiles,
         DatedLhsFileNames, _DatedLhsFileNamesProposed, !Info, !IO),
 

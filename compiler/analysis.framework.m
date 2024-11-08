@@ -43,19 +43,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- inst analysis_ext for ext/0
-    --->    ext_cur_ngs_gs(analysis_ext_sd)
-    ;       ext_cur_ngs_gs_max_ngs(analysis_ext_rai).
-
-:- inst analysis_ext_sd for ext_cur_ngs_gs/0
-    --->    ext_cur_ngs_gs_an_ds_status 
-    ;       ext_cur_ngs_gs_an_ds_date.
-
-:- inst analysis_ext_rai for ext_cur_ngs_gs_max_ngs/0
-    --->    ext_cur_ngs_gs_max_ngs_an_request
-    ;       ext_cur_ngs_gs_max_ngs_an_analysis
-    ;       ext_cur_ngs_gs_max_ngs_an_imdg.
-
     % The intention is that eventually any compiler can use this library
     % via .NET by defining an instance of this type class.
 :- typeclass compiler(Compiler) where [
@@ -71,14 +58,14 @@
         %   ModuleName, MaybeFileName, !IO)
         %
     pred module_name_to_read_file_name(Compiler::in, globals::in,
-        ext::in(analysis_ext), module_name::in, maybe_error(string)::out,
+        ext::in(ext_analysis), module_name::in, maybe_error(string)::out,
         io::di, io::uo) is det,
 
         % module_name_to_write_file_name(Compiler, Globals, Ext,
         %   ModuleName, FileName, !IO)
         %
     pred module_name_to_write_file_name(Compiler::in, globals::in,
-        ext::in(analysis_ext), module_name::in, string::out,
+        ext::in(ext_analysis), module_name::in, string::out,
         io::di, io::uo) is det
 ].
 

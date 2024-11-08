@@ -437,7 +437,7 @@ check_library_is_installed(Globals, LibName, !Specs, !IO) :-
         % NOTE: we don't look up the value of the option init_files here
         % because that may include .init files other than those associated with
         % any libraries.
-        SearchWhichDirs = search_init_file_dirs(OptionTable)
+        SearchAuthDirs = get_search_auth_init_file_dirs(OptionTable)
     ;
         (
             % In Java grades, check for the presence of the JAR for library.
@@ -448,9 +448,9 @@ check_library_is_installed(Globals, LibName, !Specs, !IO) :-
             Target = target_csharp,
             TestFileName = LibName ++ ".dll"
         ),
-        SearchWhichDirs = search_mercury_library_dirs(Globals)
+        SearchAuthDirs = get_search_auth_mercury_library_dirs(Globals)
     ),
-    search_for_file_returning_dir(SearchWhichDirs, TestFileName,
+    search_for_file_returning_dir(SearchAuthDirs, TestFileName,
         _SearchDirs, MaybeDirName, !IO),
     (
         MaybeDirName = ok(_)

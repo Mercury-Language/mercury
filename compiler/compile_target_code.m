@@ -168,6 +168,13 @@
 
 %---------------------------------------------------------------------------%
 
+:- inst ext_cur_ngs_gas_obj for ext_cur_ngs_gas/0
+    --->    ext_cur_ngs_gas_obj_obj_opt
+    ;       ext_cur_ngs_gas_obj_pic_obj_opt.
+:- inst ext_cur_ngs_gas_init_obj for ext_cur_ngs_gas/0
+    --->    ext_cur_ngs_gas_init_obj_obj_opt
+    ;       ext_cur_ngs_gas_init_obj_pic_obj_opt.
+
     % maybe_pic_object_file_extension(PIC, ExtObj, ExtInitObj):
     %
     % ExtObj is the extension which should be used on object files
@@ -181,7 +188,8 @@
     % the same way as the other extensions we return.
     %
 :- pred maybe_pic_object_file_extension(pic::in,
-    ext_cur_ngs_gas::out, ext_cur_ngs_gas::out) is det.
+    ext_cur_ngs_gas::out(ext_cur_ngs_gas_obj),
+    ext_cur_ngs_gas::out(ext_cur_ngs_gas_init_obj)) is det.
 
     % This predicate is sort-of the converse of pic_object_file_extension.
     % It tests whether the given extension string is an object file extension
@@ -2585,8 +2593,9 @@ get_link_opts_for_library(Globals, LibName, LinkerOpt,
         module_name_to_lib_file_name_full_curdir(Globals, $pred, "lib",
             ext_cur_gas(ext_cur_gas_lib_lib_opt), LibModuleName,
             _FullLibFileName, _FullLibFileNameProposed, LibFileName),
-        search_for_file_returning_dir(search_mercury_library_dirs(Globals),
-            LibFileName, _SearchDirs, MaybeDirName, !IO),
+        SearchAuthDirs = get_search_auth_mercury_library_dirs(Globals),
+        search_for_file_returning_dir(SearchAuthDirs, LibFileName,
+            _SearchDirs, MaybeDirName, !IO),
         (
             MaybeDirName = ok(DirName),
             LinkerOpt = DirName/LibFileName
@@ -3023,11 +3032,11 @@ make_all_module_command(Command0, MainModule, AllModules, Command, !IO) :-
 maybe_pic_object_file_extension(PIC, ExtObj, ExtInitObj) :-
     (
         PIC = non_pic,
-        ExtObj = ext_cur_ngs_gas_obj_obj_opt,
+        ExtObj =     ext_cur_ngs_gas_obj_obj_opt,
         ExtInitObj = ext_cur_ngs_gas_init_obj_obj_opt
     ;
         PIC = pic,
-        ExtObj = ext_cur_ngs_gas_obj_pic_obj_opt,
+        ExtObj =     ext_cur_ngs_gas_obj_pic_obj_opt,
         ExtInitObj = ext_cur_ngs_gas_init_obj_pic_obj_opt
     ).
 

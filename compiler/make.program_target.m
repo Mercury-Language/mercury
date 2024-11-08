@@ -315,7 +315,7 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
 
         linked_target_file_name_full_curdir(Globals, MainModuleName, FileType,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName, !IO),
-        get_file_timestamp(search_cur_dir, FullMainModuleLinkedFileName,
+        get_file_timestamp(search_auth_cur_dir, FullMainModuleLinkedFileName,
             _SearchDirs, MaybeTimestamp, !Info, !IO),
         (
             MaybeTimestamp = error(_),
@@ -396,10 +396,9 @@ order_target_modules(ProgressStream, Globals, Modules, OrderedModules,
 
 pair_module_with_timestamp(ProgressStream, Globals, Module,
         Timestamp - Module, !Info, !IO) :-
-    Search = do_not_search,
     Target = target_file(Module, module_target_source),
-    get_target_timestamp(ProgressStream, Globals, Search, Target,
-        MaybeTimestamp, !Info, !IO),
+    get_target_timestamp(ProgressStream, Globals, Target, MaybeTimestamp,
+        !Info, !IO),
     (
         MaybeTimestamp = ok(Timestamp)
     ;
@@ -583,7 +582,7 @@ build_linked_target_2(ProgressStream, Globals0, MainModuleName, FileType,
     ),
     BuildDepsSucceeded = InitObjSucceeded `and` ExtraObjSucceeded,
 
-    list.map2_foldl2(get_file_timestamp(search_cur_dir),
+    list.map2_foldl2(get_file_timestamp(search_auth_cur_dir),
         ObjectsToCheck, _SearchDirs, ExtraObjectTimestamps, !Info, !IO),
     % XXX We pass BuildDepsSucceeded here, but BuildDepsSucceeded being
     % did_not_succeed does not prevent LhsResult being can_rebuild_lhs(_).
@@ -870,9 +869,9 @@ out_of_date_java_modules(ProgressStream, Globals, ObjModules, OutOfDateModules,
             ModuleNames, OutOfDateModules0, !Info, !IO),
         JavaTarget = target_file(ModuleName, module_target_java_code),
         ClassTarget = target_file(ModuleName, module_target_java_class_code),
-        get_target_timestamp(ProgressStream, Globals, do_not_search,
+        get_target_timestamp(ProgressStream, Globals,
             JavaTarget, MaybeJavaTimestamp, !Info, !IO),
-        get_target_timestamp(ProgressStream, Globals, do_not_search,
+        get_target_timestamp(ProgressStream, Globals,
             ClassTarget, MaybeClassTimestamp, !Info, !IO),
         ( if
             MaybeJavaTimestamp = ok(JavaTimestamp),

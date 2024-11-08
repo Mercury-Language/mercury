@@ -159,7 +159,8 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
     module_name_to_file_name(Globals, $pred, ModuleDepExt,
         ModuleName, DepFileName, _DepFileNameProposed),
     globals.get_options(Globals, OptionTable),
-    get_file_timestamp(search_normal_dirs(OptionTable), DepFileName,
+    SearchAuthDirs = get_search_auth_normal_dirs(OptionTable),
+    get_file_timestamp(SearchAuthDirs, DepFileName,
         SearchDirs, MaybeDepFileTimestamp, !Info, !IO),
     (
         MaybeDepFileTimestamp = ok(DepFileTimestamp),
@@ -170,8 +171,8 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
         % will fail if the module name doesn't match the file name, but
         % that case is handled below.
         module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
-        get_file_timestamp(search_cur_dir, SourceFileName,
-            _SearchCurDirs, MaybeSourceFileTimestamp, !Info, !IO),
+        get_file_timestamp(search_auth_cur_dir, SourceFileName,
+            _SearchDirs, MaybeSourceFileTimestamp, !Info, !IO),
         (
             MaybeSourceFileTimestamp = ok(SourceFileTimestamp),
             ( if
@@ -215,7 +216,7 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
             then
                 module_dep_info_get_source_file_name(ModuleDepInfo0,
                     SourceFileName1),
-                get_file_timestamp(search_cur_dir, SourceFileName1,
+                get_file_timestamp(search_auth_cur_dir, SourceFileName1,
                     _SearchCurDirs1, MaybeSourceFileTimestamp1, !Info, !IO),
                 (
                     MaybeSourceFileTimestamp1 = ok(SourceFileTimestamp1),
@@ -306,16 +307,16 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
 %---------------------------------------------------------------------------%
 
 :- pred find_and_read_module_dep_file(io.text_output_stream::in, globals::in,
-    maybe_rebuild_module_deps::in, search_which_dirs::in(search_normal_or_cur),
+    maybe_rebuild_module_deps::in, search_which_dirs::in(search_cur_or_normal),
     module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_and_read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
         SearchWhichDirs, ModuleName, !Info, !IO) :-
-    % XXX LEGACY
     ExtDep = ext_cur_ngs(ext_cur_ngs_misc_module_dep),
+    % XXX LEGACY
     module_name_to_search_file_name(Globals, $pred, ExtDep, ModuleName,
-        DepFileName, _DepFileNameProposed),
-    search_for_file_returning_dir_and_contents(SearchWhichDirs,
+        SearchWhichDirs, SearchAuthDirs, DepFileName, _DepFileNameProposed),
+    search_for_file_returning_dir_and_contents(SearchAuthDirs,
         DepFileName, _SearchDirs, MaybeDirAndContents, !IO),
     (
         MaybeDirAndContents = ok(DirAndContents),
@@ -366,7 +367,7 @@ find_and_read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
     ).
 
 :- pred handle_parsed_module_dep_file(io.text_output_stream::in, globals::in,
-    search_which_dirs::in(search_normal_or_cur),
+    search_which_dirs::in(search_cur_or_normal),
     module_name::in, dir_name::in, file_name::in, module_dep_summary::in,
     maybe_error::out, make_info::in, make_info::out, io::di, io::uo) is det.
 

@@ -219,13 +219,13 @@ read_options_file_set_params(ProgressStream, OptionTable, OptionsFile,
         !Variables, !IOSpecs, !ParseSpecs, !UndefSpecs, !IO) :-
     MaybeDirName = no,
     ( if OptionsFile = "Mercury.options" then
-        SearchWhichDirs = search_cur_dir,
+        SearchAuthDirs = search_auth_cur_dir,
         IsOptionsFileOptional = options_file_need_not_exist
     else
-        SearchWhichDirs = search_options_file_dirs(OptionTable),
+        SearchAuthDirs = get_search_auth_options_file_dirs(OptionTable),
         IsOptionsFileOptional = options_file_must_exist
     ),
-    SearchInfo = search_info(ProgressStream, MaybeDirName, SearchWhichDirs),
+    SearchInfo = search_info(ProgressStream, MaybeDirName, SearchAuthDirs),
     read_options_file_params(SearchInfo, pre_stack_base, IsOptionsFileOptional,
         OptionsFile, !Variables, !IOSpecs, !ParseSpecs, !UndefSpecs, !IO).
 
@@ -233,7 +233,7 @@ read_options_file_set_params(ProgressStream, OptionTable, OptionsFile,
 
 read_named_options_file(ProgressStream, OptionsPathName,
         !Variables, Specs, UndefSpecs, !IO) :-
-    SearchInfo = search_info(ProgressStream, no, search_cur_dir),
+    SearchInfo = search_info(ProgressStream, no, search_auth_cur_dir),
     read_options_file_params(SearchInfo, pre_stack_base,
         options_file_must_exist, OptionsPathName, !Variables,
         [], IOSpecs, [], ParseSpecs, [], UndefSpecs, !IO),
@@ -283,7 +283,7 @@ read_args_file(ProgressStream, OptionsFile, MaybeMCFlags,
     --->    search_info(
                 si_progress_stream      :: io.text_output_stream,
                 si_maybe_dir_name       :: maybe(dir_name),
-                si_search_which_dirs    :: search_which_tail_dirs
+                si_search_which_dirs    :: search_auth_tail_dirs
             ).
 
 :- type is_options_file_optional
@@ -330,7 +330,7 @@ read_args_file(ProgressStream, OptionsFile, MaybeMCFlags,
 read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
         OptionsPathName, !Variables,
         !IOSpecs, !ParseSpecs, !UndefSpecs, !IO) :-
-    SearchInfo = search_info(ProgressStream, MaybeDirName, SearchWhichDirs0),
+    SearchInfo = search_info(ProgressStream, MaybeDirName, SearchAuthDirs0),
     % Reading the options file is an activity that is not specific
     % to any module, so it cannot go to a module-specific debug output file.
     % This is why we direct any debugging output we generate to ProgressStream,
@@ -381,25 +381,25 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
                 % but since absolute path names occur rarely, restructuring
                 % this code to avoid that "search" is not worthwhile.
                 FileToFind = OptionsFile,
-                SearchWhichDirs = search_this_dir(OptionsDir)
+                SearchAuthDirs = search_auth_this_dir(OptionsDir)
             else
                 (
                     MaybeDirName = yes(DirName),
                     RelOptionsDir = DirName / OptionsDir,
-                    SearchWhichDirs =
-                        search_this_dir_and(RelOptionsDir, SearchWhichDirs0),
+                    SearchAuthDirs = search_auth_this_dir_and(RelOptionsDir,
+                        SearchAuthDirs0),
                     FileToFind = OptionsFile
                 ;
                     MaybeDirName = no,
-                    SearchWhichDirs = coerce(SearchWhichDirs0),
+                    SearchAuthDirs = coerce(SearchAuthDirs0),
                     FileToFind = OptionsPathName
                 )
             )
         else
-            SearchWhichDirs = coerce(SearchWhichDirs0),
+            SearchAuthDirs = coerce(SearchAuthDirs0),
             FileToFind = OptionsPathName
         ),
-        search_for_file_returning_dir_and_stream(SearchWhichDirs, FileToFind,
+        search_for_file_returning_dir_and_stream(SearchAuthDirs, FileToFind,
             SearchDirs, MaybeDirAndStream, !IO),
         (
             MaybeDirAndStream =

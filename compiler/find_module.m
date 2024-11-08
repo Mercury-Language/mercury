@@ -43,36 +43,77 @@
 
 %---------------------%
 
-:- type search_which_dirs
-    --->    search_cur_dir
-    ;       search_this_dir(dir_name)
-    ;       search_this_dir_and(dir_name, search_which_tail_dirs)
-    ;       search_normal_dirs(option_table)
-    ;       search_intermod_dirs(option_table)
-    ;       search_init_file_dirs(option_table)
-    ;       search_c_include_dirs(option_table)
-    ;       search_options_file_dirs(option_table)
-    ;       search_mercury_library_dirs(globals).
+    % The search_auth_dirs type represents a "search authorization",
+    % in the sense that it says "it makes sense to search for the associated
+    % file name in the directories it specifies".
+    %
+    % Searching in the current directory, and in a user-specified directory,
+    % requires no special permission, so the first four values of this type
+    % (modulo the tail dirs) can be constructed by code in any compiler module.
+    % The private ones should be constructed *only*
+    %
+    % - by the module_name_to_search_file_name predicate in file_names.m,
+    %   which checks the compatbility between the file's extension and the
+    %   specification of the directories to be searched, and
+    %
+    % - by the get_search_auth_* functions below. Note that ascertaining
+    %   whether their callers pair them sensibly with the file names
+    %   to be searched for requires inspecting each one separately.
+    %
+    % Any file name reported by "grep -l private_auth *.m" *other than*
+    % file_names.m and find_module.m represents a violation of this rule.
+    %
+    % The *point* of such authorizations is to centralize the lookup
+    % of options representing lists of directories to search in this module,
+    % and specifically in the compute_search_dirs predicate. This
+    % centralization makes it feasible to replace the existing set of options,
+    % which require users to specify more than one directory in e.g. an
+    % installed library (e.g. both the non-grade-specific and the
+    % grade-specific location containing files with the same extension),
+    % with a new set of options that do not require such duplication.
+:- type search_auth_dirs
+    --->    search_auth_cur_dir
+    ;       search_auth_cur_dir_and(search_auth_tail_dirs)
+    ;       search_auth_this_dir(dir_name)
+    ;       search_auth_this_dir_and(dir_name, search_auth_tail_dirs)
+    ;       search_auth_private(search_auth_private_dirs).
 
-    % This type differs from search_which_dirs by not including
-    % search_this_dir_and, thus limiting recursion to one level.
-:- type search_which_tail_dirs =< search_which_dirs
-    --->    search_cur_dir
-    ;       search_this_dir(dir_name)
-    ;       search_normal_dirs(option_table)
-    ;       search_intermod_dirs(option_table)
-    ;       search_init_file_dirs(option_table)
-    ;       search_c_include_dirs(option_table)
-    ;       search_options_file_dirs(option_table)
-    ;       search_mercury_library_dirs(globals).
+:- type search_auth_private_dirs
+    --->    private_auth_normal_dirs(option_table)
+    ;       private_auth_intermod_dirs(option_table)
+    ;       private_auth_init_file_dirs(option_table)
+    ;       private_auth_c_include_dirs(option_table)
+    ;       private_auth_options_file_dirs(option_table)
+    ;       private_auth_mercury_library_dirs(globals).
 
-:- inst search_normal_or_cur for search_which_dirs/0
-    --->    search_cur_dir
-    ;       search_normal_dirs(ground).
+    % search_which_tail_dirs/search_auth_private_tail_dirs together
+    % differ from search_auth_dirs/search_auth_private_dirs the same way
+    % as search_which_tail_dirs differs from search_which_dirs.
+    %
+:- type search_auth_tail_dirs =< search_auth_dirs
+    --->    search_auth_cur_dir
+    ;       search_auth_private(search_auth_private_tail_dirs).
+
+:- type search_auth_private_tail_dirs =< search_auth_private_dirs
+    --->    private_auth_normal_dirs(option_table)
+    ;       private_auth_intermod_dirs(option_table)
+    ;       private_auth_c_include_dirs(option_table)
+    ;       private_auth_options_file_dirs(option_table).
+
+:- func get_search_auth_normal_dirs(option_table)
+    = search_auth_dirs.
+:- func get_search_auth_intermod_dirs(option_table)
+    = search_auth_dirs.
+:- func get_search_auth_options_file_dirs(option_table)
+    = search_auth_tail_dirs.
+:- func get_search_auth_init_file_dirs(option_table)
+    = search_auth_dirs.
+:- func get_search_auth_mercury_library_dirs(globals)
+    = search_auth_dirs.
 
 %---------------------%
 
-    % search_for_file(SearchWhichDirs, FileName,
+    % search_for_file(SearchAuthDirs, FileName,
     %   SearchDirs, MaybeFilePathName, !IO):
     %
     % Search the specified directories for FileName. If found,
@@ -82,10 +123,10 @@
     % NB. Consider using search_for_file_returning_dir, which does not
     % canonicalise the path, and is therefore more efficient.
     %
-:- pred search_for_file(search_which_dirs::in, file_name::in,
+:- pred search_for_file(search_auth_dirs::in, file_name::in,
     list(dir_name)::out, maybe_error(file_name)::out, io::di, io::uo) is det.
 
-    % search_for_file_and_stream(SearchWhichDirs, FileName,
+    % search_for_file_and_stream(SearchAuthDirs, FileName,
     %   SearchDirs, MaybeFilePathNameAndStream, !IO):
     %
     % Search the specified directories for FileName. If found,
@@ -96,22 +137,22 @@
     % NB. Consider using search_for_file_returning_dir_and_stream,
     % which does not canonicalise the path, and is therefore more efficient.
     %
-:- pred search_for_file_and_stream(search_which_dirs::in, file_name::in,
+:- pred search_for_file_and_stream(search_auth_dirs::in, file_name::in,
     list(dir_name)::out, maybe_error(path_name_and_stream)::out,
     io::di, io::uo) is det.
 
 %---------------------%
 
-    % search_for_file_returning_dir(SearchWhichDirs, FileName,
+    % search_for_file_returning_dir(SearchAuthDirs, FileName,
     %   SearchDirs, MaybeDirName, !IO):
     %
     % Search the specified directories for FileName. If found,
     % return the name of the directory in which the file was found.
     %
-:- pred search_for_file_returning_dir(search_which_dirs::in, file_name::in,
+:- pred search_for_file_returning_dir(search_auth_dirs::in, file_name::in,
     list(dir_name)::out, maybe_error(dir_name)::out, io::di, io::uo) is det.
 
-    % search_for_file_returning_dir_and_stream(SearchWhichDirs, FileName,
+    % search_for_file_returning_dir_and_stream(SearchAuthDirs, FileName,
     %   SearchDirs, MaybeDirNameAndStream, !IO):
     %
     % Search the specified directory for FileName. If found,
@@ -119,53 +160,53 @@
     % and an open input stream reading from that file. Closing that stream
     % is the caller's responsibility.
     %
-:- pred search_for_file_returning_dir_and_stream(search_which_dirs::in,
+:- pred search_for_file_returning_dir_and_stream(search_auth_dirs::in,
     file_name::in, list(dir_name)::out,
     maybe_error(path_name_and_stream)::out, io::di, io::uo) is det.
 
-    % search_for_file_returning_dir_and_contents(SearchWhichDirs, FileName,
+    % search_for_file_returning_dir_and_contents(SearchAuthDirs, FileName,
     %   SearchDirs, MaybeDirNameAndContents, !IO):
     %
     % Search the specified directories for FileName. If found,
     % return the name of the directory in which the file was found,
     % and the contents of the file as a string.
     %
-:- pred search_for_file_returning_dir_and_contents(search_which_dirs::in,
+:- pred search_for_file_returning_dir_and_contents(search_auth_dirs::in,
     file_name::in, list(dir_name)::out,
     maybe_error(dir_name_and_contents)::out, io::di, io::uo) is det.
 
 %---------------------%
 
-    % search_for_file_mod_time(SearchWhichDirs, FileName,
+    % search_for_file_mod_time(SearchAuthDirs, FileName,
     %   SearchDirs, MaybeModTime, !IO)
     %
     % Search the specified directories for FileName. If found,
     % return the last modification time of the file that was found.
     % Do NOT open the file for reading.
     %
-:- pred search_for_file_mod_time(search_which_dirs::in, file_name::in,
+:- pred search_for_file_mod_time(search_auth_dirs::in, file_name::in,
     list(dir_name)::out, maybe_error(time_t)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-    % search_for_module_source(SearchWhichDirs, ModuleName,
+    % search_for_module_source(SearchAuthDirs, ModuleName,
     %   SearchDirs, FoundSourceFile, !IO):
     %
     % Search the specified directories for the source code of ModuleName.
     % If found, return the (relative or absolute) path name of the
     % source file that contains the module.
     %
-:- pred search_for_module_source(search_which_dirs::in, module_name::in,
+:- pred search_for_module_source(search_auth_dirs::in, module_name::in,
     list(dir_name)::out, maybe_error(file_name)::out, io::di, io::uo) is det.
 
-    % search_for_module_source_and_stream(SearchWhichDirs, ModuleName,
+    % search_for_module_source_and_stream(SearchAuthDirs, ModuleName,
     %   SearchDirs, FoundSourceFileNameAndStream, !IO):
     %
     % As search_for_module_source, but if we find the file, then return
     % not just its path name, but also an open stream reading from it.
     % Closing that stream is the caller's responsibility.
     %
-:- pred search_for_module_source_and_stream(search_which_dirs::in,
+:- pred search_for_module_source_and_stream(search_auth_dirs::in,
     module_name::in, list(dir_name)::out,
     maybe_error(path_name_and_stream)::out, io::di, io::uo) is det.
 
@@ -183,9 +224,26 @@
 
 %---------------------------------------------------------------------------%
 
-search_for_file(SearchWhichDirs, FileName,
+get_search_auth_normal_dirs(OptionTable) =
+    search_auth_private(private_auth_normal_dirs(OptionTable)).
+
+get_search_auth_intermod_dirs(OptionTable) =
+    search_auth_private(private_auth_intermod_dirs(OptionTable)).
+
+get_search_auth_options_file_dirs(OptionTable) =
+    search_auth_private(private_auth_options_file_dirs(OptionTable)).
+
+get_search_auth_init_file_dirs(OptionTable) =
+    search_auth_private(private_auth_init_file_dirs(OptionTable)).
+
+get_search_auth_mercury_library_dirs(Globals) =
+    search_auth_private(private_auth_mercury_library_dirs(Globals)).
+
+%---------------------------------------------------------------------------%
+
+search_for_file(SearchAuthDirs, FileName,
         SearchDirs, MaybeFilePathName, !IO) :-
-    search_for_file_and_stream(SearchWhichDirs, FileName,
+    search_for_file_and_stream(SearchAuthDirs, FileName,
         SearchDirs, MaybeFilePathNameAndStream, !IO),
     (
         MaybeFilePathNameAndStream =
@@ -197,9 +255,9 @@ search_for_file(SearchWhichDirs, FileName,
         MaybeFilePathName = error(Msg)
     ).
 
-search_for_file_and_stream(SearchWhichDirs, FileName,
+search_for_file_and_stream(SearchAuthDirs, FileName,
         SearchDirs, MaybeFilePathNameAndStream, !IO) :-
-    compute_search_dirs(SearchWhichDirs, SearchDirs),
+    compute_search_dirs(SearchAuthDirs, SearchDirs),
     search_for_file_and_stream_loop(SearchDirs, SearchDirs, FileName,
         MaybeFilePathNameAndStream, !IO).
 
@@ -237,9 +295,9 @@ search_for_file_and_stream_loop(AllDirs, Dirs, FileName,
 
 %---------------------%
 
-search_for_file_returning_dir(SearchWhichDirs, FileName,
+search_for_file_returning_dir(SearchAuthDirs, FileName,
         SearchDirs, MaybeDirPathName, !IO) :-
-    search_for_file_returning_dir_and_stream(SearchWhichDirs, FileName,
+    search_for_file_returning_dir_and_stream(SearchAuthDirs, FileName,
         SearchDirs, MaybeDirPathNameAndStream, !IO),
     (
         MaybeDirPathNameAndStream =
@@ -251,9 +309,9 @@ search_for_file_returning_dir(SearchWhichDirs, FileName,
         MaybeDirPathName = error(Msg)
     ).
 
-search_for_file_returning_dir_and_stream(SearchWhichDirs, FileName,
+search_for_file_returning_dir_and_stream(SearchAuthDirs, FileName,
         SearchDirs, MaybeDirPathNameAndStream, !IO) :-
-    compute_search_dirs(SearchWhichDirs, SearchDirs),
+    compute_search_dirs(SearchAuthDirs, SearchDirs),
     search_for_file_returning_dir_and_stream_loop(SearchDirs, SearchDirs,
         FileName, MaybeDirPathNameAndStream, !IO).
 
@@ -284,9 +342,9 @@ search_for_file_returning_dir_and_stream_loop(AllDirs, Dirs, FileName,
 
 %---------------------%
 
-search_for_file_returning_dir_and_contents(SearchWhichDirs, FileName,
+search_for_file_returning_dir_and_contents(SearchAuthDirs, FileName,
         SearchDirs, MaybeDirPathNameAndContents, !IO) :-
-    compute_search_dirs(SearchWhichDirs, SearchDirs),
+    compute_search_dirs(SearchAuthDirs, SearchDirs),
     search_for_file_returning_dir_and_contents_loop(SearchDirs, SearchDirs,
         FileName, MaybeDirPathNameAndContents, !IO).
 
@@ -318,8 +376,8 @@ search_for_file_returning_dir_and_contents_loop(AllDirs, Dirs, FileName,
 
 %---------------------%
 
-search_for_file_mod_time(SearchWhichDirs, FileName, SearchDirs, Result, !IO) :-
-    compute_search_dirs(SearchWhichDirs, SearchDirs),
+search_for_file_mod_time(SearchAuthDirs, FileName, SearchDirs, Result, !IO) :-
+    compute_search_dirs(SearchAuthDirs, SearchDirs),
     search_for_file_mod_time_loop(SearchDirs, SearchDirs, FileName,
         Result, !IO).
 
@@ -382,9 +440,9 @@ make_path_name_noncanon(Dir, FileName, PathName) :-
 
 %---------------------------------------------------------------------------%
 
-search_for_module_source(SearchWhichDirs, ModuleName,
+search_for_module_source(SearchAuthDirs, ModuleName,
         SearchDirs, MaybeFileName, !IO) :-
-    search_for_module_source_and_stream(SearchWhichDirs, ModuleName,
+    search_for_module_source_and_stream(SearchAuthDirs, ModuleName,
         SearchDirs, MaybeFileNameAndStream, !IO),
     (
         MaybeFileNameAndStream =
@@ -396,10 +454,10 @@ search_for_module_source(SearchWhichDirs, ModuleName,
         MaybeFileName = error(Msg)
     ).
 
-search_for_module_source_and_stream(SearchWhichDirs, ModuleName,
+search_for_module_source_and_stream(SearchAuthDirs, ModuleName,
         SearchDirs, MaybeFileNameAndStream, !IO) :-
     module_name_to_source_file_name(ModuleName, FileName0, !IO),
-    search_for_file_and_stream(SearchWhichDirs, FileName0,
+    search_for_file_and_stream(SearchAuthDirs, FileName0,
         SearchDirs, MaybeFileNameAndStream0, !IO),
     (
         MaybeFileNameAndStream0 = ok(_),
@@ -432,9 +490,9 @@ find_source_error(ModuleName, Dirs, MaybeBetterMatch) = Msg :-
 
 %---------------------------------------------------------------------------%
 
-:- pred compute_search_dirs(search_which_dirs::in, list(dir_name)::out) is det.
+:- pred compute_search_dirs(search_auth_dirs::in, list(dir_name)::out) is det.
 
-compute_search_dirs(SearchWhich, Dirs) :-
+compute_search_dirs(SearchAuthDirs, Dirs) :-
     % NOTE This code operates on the option settings set up by
     % handle_directory_options in handle_options.m, and by the predicates
     % option_table_add_mercury_library_directory and
@@ -448,43 +506,61 @@ compute_search_dirs(SearchWhich, Dirs) :-
     % of this module to do its test, or, failing that, it will also need
     % to be updated to use the PROPOSED structure.
     (
-        SearchWhich = search_cur_dir,
-        dir.this_directory(CurDir),
-        Dirs = [CurDir]
-    ;
-        SearchWhich = search_this_dir(Dir),
+        SearchAuthDirs = search_auth_cur_dir,
+        dir.this_directory(Dir),
         Dirs = [Dir]
     ;
-        SearchWhich = search_this_dir_and(Dir, TailSearchWhich),
-        compute_search_dirs(coerce(TailSearchWhich), TailDirs),
-        Dirs = [Dir | TailDirs]
+        SearchAuthDirs = search_auth_this_dir(Dir),
+        Dirs = [Dir]
     ;
-        SearchWhich = search_normal_dirs(OptionTable),
-        getopt.lookup_accumulating_option(OptionTable,
-            search_directories, Dirs)
+        (
+            SearchAuthDirs = search_auth_cur_dir_and(TailSearchAuthDirs),
+            dir.this_directory(Dir)
+        ;
+            SearchAuthDirs = search_auth_this_dir_and(Dir, TailSearchAuthDirs)
+        ),
+        compute_search_dirs(coerce(TailSearchAuthDirs), TailDirs0),
+        % XXX We could replace this with just Dirs = TailDirs0.
+        % The question is: should Dir always precede TailDirs0,
+        % or should it be in the position given by TailSearchAuthDirs?
+        % Most of the time, Dir will be at the start of TailDirs0,
+        % so this may not matter, but I (zs) don't know whether
+        % we can rely on that.
+        ( if list.delete_first(TailDirs0, Dir, TailDirs) then
+            Dirs = [Dir | TailDirs]
+        else
+            Dirs = [Dir | TailDirs0]
+        )
     ;
-        SearchWhich = search_intermod_dirs(OptionTable),
-        getopt.lookup_accumulating_option(OptionTable,
-            intermod_directories, Dirs)
-    ;
-        SearchWhich = search_init_file_dirs(OptionTable),
-        getopt.lookup_accumulating_option(OptionTable,
-            init_file_directories, Dirs)
-    ;
-        SearchWhich = search_c_include_dirs(OptionTable),
-        getopt.lookup_accumulating_option(OptionTable,
-            c_include_directories, Dirs)
-    ;
-        SearchWhich = search_options_file_dirs(OptionTable),
-        getopt.lookup_accumulating_option(OptionTable,
-            options_search_directories, Dirs)
-    ;
-        SearchWhich = search_mercury_library_dirs(Globals),
-        globals.get_options(Globals, OptionTable),
-        getopt.lookup_accumulating_option(OptionTable,
-            mercury_library_directories, LibDirs),
-        globals.get_grade_dir(Globals, GradeDir),
-        Dirs = list.map((func(LibDir) = LibDir / "lib" / GradeDir), LibDirs)
+        SearchAuthDirs = search_auth_private(SearchAuthPrivateDirs),
+        (
+            SearchAuthPrivateDirs = private_auth_normal_dirs(OptionTable),
+            getopt.lookup_accumulating_option(OptionTable,
+                search_directories, Dirs)
+        ;
+            SearchAuthPrivateDirs = private_auth_intermod_dirs(OptionTable),
+            getopt.lookup_accumulating_option(OptionTable,
+                intermod_directories, Dirs)
+        ;
+            SearchAuthPrivateDirs = private_auth_init_file_dirs(OptionTable),
+            getopt.lookup_accumulating_option(OptionTable,
+                init_file_directories, Dirs)
+        ;
+            SearchAuthPrivateDirs = private_auth_c_include_dirs(OptionTable),
+            getopt.lookup_accumulating_option(OptionTable,
+                c_include_directories, Dirs)
+        ;
+            SearchAuthPrivateDirs = private_auth_options_file_dirs(OptionTable),
+            getopt.lookup_accumulating_option(OptionTable,
+                options_search_directories, Dirs)
+        ;
+            SearchAuthPrivateDirs = private_auth_mercury_library_dirs(Globals),
+            globals.get_options(Globals, OptionTable),
+            getopt.lookup_accumulating_option(OptionTable,
+                mercury_library_directories, LibDirs),
+            globals.get_grade_dir(Globals, GradeDir),
+            Dirs = list.map((func(LibDir) = LibDir / "lib" / GradeDir), LibDirs)
+        )
     ).
 
 %---------------------------------------------------------------------------%

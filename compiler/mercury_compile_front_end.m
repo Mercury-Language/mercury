@@ -657,14 +657,16 @@ mark_entities_in_opt_file_as_opt_exported(ProgressStream, IntermodAnalysis,
         globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
         (
             UseOptFiles = yes,
+            globals.get_options(Globals, OptionTable),
+            SearchWhichDir = search_intermod_dirs(OptionTable),
             module_info_get_name(!.HLDS, ModuleName),
             % XXX LEGACY
             ExtOpt = ext_cur_ngs_gs_max_ngs(
                 ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
-            module_name_to_search_file_name(Globals, $pred, ExtOpt,
-                ModuleName, OptFileName, _OptFileNameProposed),
-            globals.get_options(Globals, OptionTable),
-            search_for_file_returning_dir(search_intermod_dirs(OptionTable),
+            module_name_to_search_file_name(Globals, $pred, ExtOpt, ModuleName,
+                SearchWhichDir, SearchAuthDir,
+                OptFileName, _OptFileNameProposed),
+            search_for_file_returning_dir(SearchAuthDir,
                 OptFileName, _SearchDirs, MaybeDir, !IO),
             (
                 MaybeDir = ok(_),

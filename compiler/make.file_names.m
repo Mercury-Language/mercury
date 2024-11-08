@@ -24,6 +24,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
+:- import_module parse_tree.find_module.
 
 :- import_module io.
 
@@ -35,35 +36,69 @@
 :- pred dependency_file_to_file_name(globals::in, dependency_file::in,
     file_name::out, file_name::out, io::di, io::uo) is det.
 
-    % module_maybe_nested_target_file_to_file_name(ProgressStream,
-    %   Globals, From, Search, TargetFile, FileName, !IO):
+    % module_maybe_nested_target_file_to_file_name(ProgressStream, Globals,
+    %   From, TargetFile, FileNameLegacy, FileNameProposed, !Info, !IO):
     %
-    % Compute a file name for the given target file.
+    % Return the file name for the given target file.
     %
-    % This predicate uses the same algorithm as module_target_file_to_file_name
-    % for almost all target types. The one exception is module_target_source,
-    % for which it tries to get the filename from the module's module_dep_info
+    % This predicate does the same job as the module_target_file_to_file_name
+    % predicate below for all target types except module_target_source.
+    % For that, it tries to get the filename from the module's module_dep_info
     % structure, if it exists. We need this exception because, in the case of
     % a source file containing nested submodules, the filename computed
     % for module_target_source by module_target_file_to_file_name will be
     % correct ONLY for the top module in the file.
     %
 :- pred module_maybe_nested_target_file_to_file_name(io.text_output_stream::in,
-    globals::in, string::in, maybe_for_search::in,
-    target_file::in, file_name::out, file_name::out,
+    globals::in, string::in, target_file::in, file_name::out, file_name::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % Return the file name for the given target_file. The I/O state pair
-    % may be needed to find this file name.
+    % module_maybe_nested_target_file_to_search_file_name(ProgressStream,
+    %   Globals, From, TargetFile, SearchAuthDirs,
+    %   FileNameLegacy, FileNameProposed, !Info, !IO):
+    %
+    % This predicate does the same job as the module_target_to_search_file_name
+    % predicate below for all target types except module_target_source.
+    % The reason for the exception, and the way we handle it is the same
+    % as for the module_maybe_nested_target_file_to_file_name predicate above,
+    % with the addition that SearchAuthDirs will authorize the search
+    % of only the current directory.
+    %
+:- pred module_maybe_nested_target_file_to_search_file_name(
+    io.text_output_stream::in, globals::in, string::in, target_file::in,
+    search_auth_dirs::out, file_name::out, file_name::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+    % module_target_file_to_file_name(Globals, From, TargetFile,
+    %   FileNameLegacy, FileNameProposed, !IO):
+    %
+    % Return the file name for TargetFile. The I/O state pair may be needed
+    % to find this file name.
     %
 :- pred module_target_file_to_file_name(globals::in, string::in,
     target_file::in, file_name::out, file_name::out, io::di, io::uo) is det.
-:- pred module_target_to_maybe_for_search_file_name(globals::in, string::in,
-    maybe_for_search::in, module_target_type::in,
-    module_name::in, file_name::out, file_name::out, io::di, io::uo) is det.
+
+    % module_target_to_file_name(Globals, From, TargetType, ModuleName,
+    %   FileNameLegacy, FileNameProposed, !IO):
+    %
+    % This predicate does the same job as module_target_file_to_file_name,
+    % but instead of a target_file, it takes its two components as input.
+    %
 :- pred module_target_to_file_name(globals::in, string::in,
     module_target_type::in, module_name::in, file_name::out, file_name::out,
     io::di, io::uo) is det.
+
+    % module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
+    %   SearchAuthDirs, FileNameLegacy, FileNameProposed, !IO):
+    %
+    % This predicate returns the file name (a relative path) to search for
+    % when looking for the TargetType file of ModuleName. It also returns
+    % the search authorization to be given to the predicate that will
+    % actually perform the search.
+    %
+:- pred module_target_to_search_file_name(globals::in, string::in,
+    module_target_type::in, module_name::in, search_auth_dirs::out,
+    file_name::out, file_name::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -100,30 +135,54 @@ dependency_file_to_file_name(Globals, DepFile,
         FileNameProposed = FileName
     ).
 
-module_maybe_nested_target_file_to_file_name(ProgressStream,
-        Globals, From, ForSearch, TargetFile, FileNameLegacy, FileNameProposed,
-        !Info, !IO) :-
+module_maybe_nested_target_file_to_file_name(ProgressStream, Globals,
+        From, TargetFile, FileNameLegacy, FileNameProposed, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     ( if TargetType = module_target_source then
-        % In some cases, the module name won't match the file name
-        % (e.g. module mdb.parse might be in parse.m or mdb.m), so we need to
-        % look up the file name here.
-        get_maybe_module_dep_info(ProgressStream, Globals,
-            ModuleName, MaybeModuleDepInfo, !Info, !IO),
-        (
-            MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-            module_dep_info_get_source_file_name(ModuleDepInfo, FileName)
-        ;
-            MaybeModuleDepInfo = no_module_dep_info,
-            % Something has gone wrong generating the dependencies,
-            % so just take a punt (which probably won't work).
-            module_name_to_source_file_name(ModuleName, FileName, !IO)
-        ),
+        module_maybe_nested_source_file_name(ProgressStream, Globals,
+            ModuleName, FileName, !Info, !IO),
         FileNameLegacy = FileName,
         FileNameProposed = FileName
     else
-        module_target_to_maybe_for_search_file_name(Globals, From, ForSearch,
+        module_target_to_file_name(Globals, From,
             TargetType, ModuleName, FileNameLegacy, FileNameProposed, !IO)
+    ).
+
+module_maybe_nested_target_file_to_search_file_name(ProgressStream, Globals,
+        From, TargetFile, SearchAuthDirs, FileNameLegacy, FileNameProposed,
+        !Info, !IO) :-
+    TargetFile = target_file(ModuleName, TargetType),
+    ( if TargetType = module_target_source then
+        module_maybe_nested_source_file_name(ProgressStream, Globals,
+            ModuleName, FileName, !Info, !IO),
+        SearchAuthDirs = search_auth_cur_dir,
+        FileNameLegacy = FileName,
+        FileNameProposed = FileName
+    else
+        module_target_to_search_file_name(Globals, From,
+            TargetType, ModuleName, SearchAuthDirs,
+            FileNameLegacy, FileNameProposed, !IO)
+    ).
+
+:- pred module_maybe_nested_source_file_name(io.text_output_stream::in,
+    globals::in, module_name::in, file_name::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+module_maybe_nested_source_file_name(ProgressStream, Globals, ModuleName,
+        FileName, !Info, !IO) :-
+    % In some cases, the module name won't match the file name
+    % (e.g. module mdb.parse might be in parse.m or mdb.m), so we need to
+    % look up the file name here.
+    get_maybe_module_dep_info(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
+    (
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+        module_dep_info_get_source_file_name(ModuleDepInfo, FileName)
+    ;
+        MaybeModuleDepInfo = no_module_dep_info,
+        % Something has gone wrong generating the dependencies,
+        % so just take a punt (which probably won't work).
+        module_name_to_source_file_name(ModuleName, FileName, !IO)
     ).
 
 module_target_file_to_file_name(Globals, From, TargetFile,
@@ -132,55 +191,42 @@ module_target_file_to_file_name(Globals, From, TargetFile,
     module_target_to_file_name(Globals, From, TargetType, ModuleName,
         FileNameLegacy, FileNameProposed, !IO).
 
-module_target_to_maybe_for_search_file_name(Globals, From, ForSearch,
-        TargetType, ModuleName, FileNameLegacy, FileNameProposed, !IO) :-
-    (
-        ForSearch = not_for_search,
-        module_target_to_file_name(Globals, From,
-            TargetType, ModuleName, FileNameLegacy, FileNameProposed, !IO)
-    ;
-        ForSearch = for_search,
-        module_target_to_search_file_name(Globals, From,
-            TargetType, ModuleName, FileNameLegacy, FileNameProposed, !IO)
-    ).
-
 module_target_to_file_name(Globals, From, TargetType, ModuleName,
         FileNameLegacy, FileNameProposed, !IO) :-
-    target_type_to_target_extension(TargetType, TargetExt),
+    target_type_to_maybe_target_extension(TargetType, TargetMaybeExt),
     (
-        TargetExt = source,
+        TargetMaybeExt = source,
         module_name_to_source_file_name(ModuleName, FileName, !IO),
         FileNameLegacy = FileName,
         FileNameProposed = FileName
     ;
-        TargetExt = extension(Ext),
+        TargetMaybeExt = extension(Ext),
         module_name_to_file_name(Globals, From, Ext, ModuleName,
             FileNameLegacy, FileNameProposed)
     ;
-        TargetExt = fact_table_obj(Ext, FactTableFileName),
+        TargetMaybeExt = fact_table_obj(Ext, FactTableFileName),
         fact_table_file_name(Globals, $pred, Ext, FactTableFileName,
             FileNameLegacy, FileNameProposed)
     ).
 
-:- pred module_target_to_search_file_name(globals::in, string::in,
-    module_target_type::in, module_name::in, file_name::out, file_name::out,
-    io::di, io::uo) is det.
-
 module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
-        FileNameLegacy, FileNameProposed, !IO) :-
-    target_type_to_target_extension(TargetType, TargetExt),
+        SearchAuthDirs, FileNameLegacy, FileNameProposed, !IO) :-
+    target_type_to_maybe_target_extension(TargetType, TargetExt),
     (
         TargetExt = source,
         % XXX This call ignores the implicit for_search setting.
         module_name_to_source_file_name(ModuleName, FileName, !IO),
+        SearchAuthDirs = search_auth_cur_dir,
         FileNameLegacy = FileName,
         FileNameProposed = FileName
     ;
         TargetExt = extension(Ext),
-        module_name_to_search_file_name(Globals, From, Ext,
-            ModuleName, FileNameLegacy, FileNameProposed)
+        SearchWhichDirs = search_dirs_for_ext,
+        module_name_to_search_file_name(Globals, From, Ext, ModuleName,
+            SearchWhichDirs, SearchAuthDirs, FileNameLegacy, FileNameProposed)
     ;
         TargetExt = fact_table_obj(Ext, FactTableFileName),
+        SearchAuthDirs = search_auth_cur_dir,
         % XXX This call ignores the implicit for_search setting.
         fact_table_file_name(Globals, $pred, Ext, FactTableFileName,
             FileNameLegacy, FileNameProposed)
@@ -188,16 +234,21 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
 
 %---------------------------------------------------------------------------%
 
-:- type target_extension
+:- type maybe_target_extension
     --->    source
     ;       extension(ext)
     ;       fact_table_obj(ext, string).
 
-:- pred target_type_to_target_extension(module_target_type::in,
-    target_extension::out) is det.
+:- inst maybe_target_ext for maybe_target_extension/0
+    --->    source
+    ;       extension(ext_mt)
+    ;       fact_table_obj(ground, ground).
 
-target_type_to_target_extension(Target, TargetExt) :-
-    % target_type_to_extension and part of the implementation of
+:- pred target_type_to_maybe_target_extension(module_target_type::in,
+    maybe_target_extension::out(maybe_target_ext)) is det.
+
+target_type_to_maybe_target_extension(Target, TargetExt) :-
+    % target_type_to_maybe_target_extension and part of the implementation of
     % classify_target_2 in make.top_level.m represent the same relationship
     % between targets and suffixes, but in different directions, and for
     % slightly different sets of targets. (For example, there is no extension

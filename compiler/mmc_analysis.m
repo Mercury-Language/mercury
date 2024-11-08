@@ -120,20 +120,21 @@
 ].
 
 :- pred mmc_module_name_to_read_file_name(globals::in,
-    ext::in(analysis_ext), module_name::in, maybe_error(string)::out,
+    ext::in(ext_analysis), module_name::in, maybe_error(string)::out,
     io::di, io::uo) is det.
 
 mmc_module_name_to_read_file_name(Globals, Ext,
         ModuleName, MaybeFileName, !IO) :-
     % XXX LEGACY
-    module_name_to_search_file_name(Globals, $pred, Ext,
-        ModuleName, FileName0, _FileName0Proposed),
     globals.get_options(Globals, OptionTable),
-    search_for_file(search_intermod_dirs(OptionTable), FileName0,
+    SearchWhichDirs = search_intermod_dirs(OptionTable),
+    module_name_to_search_file_name(Globals, $pred, Ext, ModuleName,
+        SearchWhichDirs, SearchAuthDirs, FileName0, _FileName0Proposed),
+    search_for_file(SearchAuthDirs, FileName0,
         _SearchDirs, MaybeFileName, !IO).
 
 :- pred mmc_module_name_to_write_file_name(globals::in,
-    ext::in(analysis_ext), module_name::in, string::out,
+    ext::in(ext_analysis), module_name::in, string::out,
     io::di, io::uo) is det.
 
 mmc_module_name_to_write_file_name(Globals, Ext,

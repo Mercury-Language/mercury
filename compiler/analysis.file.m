@@ -782,7 +782,7 @@ try_parse_module_name(Term, ModuleName) :-
 %---------------------%
 
 :- pred find_and_read_analysis_file(Compiler::in, globals::in,
-    parse_entry(T)::in(parse_entry), ext::in(analysis_ext), module_name::in,
+    parse_entry(T)::in(parse_entry), ext::in(ext_analysis), module_name::in,
     T::in, T::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det <= compiler(Compiler).
 
@@ -944,7 +944,7 @@ func_id_to_string(FuncId) = String :-
 
 :- pred find_and_write_analysis_file(Compiler::in, globals::in,
     maybe_add_dot_temp::in, write_entry(T)::in(write_entry),
-    ext::in(analysis_ext), module_name::in, module_analysis_map(T)::in,
+    ext::in(ext_analysis), module_name::in, module_analysis_map(T)::in,
     string::out, io::di, io::uo) is det <= compiler(Compiler).
 
 find_and_write_analysis_file(Compiler, Globals, ToTmp, WriteEntry,

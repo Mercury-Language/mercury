@@ -190,7 +190,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.file_names.
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.module_dep_info.
 :- import_module transform_hlds.
@@ -215,10 +214,10 @@ must_or_should_we_rebuild_lhs(ProgressStream, Globals,
     MakeLhsFiles = make_lhs_files(DatelessLhsTargetFiles,
         DatedLhsTargetFiles, LhsDateFileNames, LhsForeignCodeFileNames),
     list.map_foldl2(
-        get_target_timestamp(ProgressStream, Globals, do_not_search),
+        get_target_timestamp(ProgressStream, Globals),
         DatelessLhsTargetFiles, DatelessLhsFileTimestamps, !Info, !IO),
     list.map_foldl2(
-        get_target_timestamp(ProgressStream, Globals, do_not_search),
+        get_target_timestamp(ProgressStream, Globals),
         DatedLhsTargetFiles, DatedLhsFileTimestamps, !Info, !IO),
     ( if
         ( list.member(error(_), DatelessLhsFileTimestamps)
@@ -251,7 +250,7 @@ must_or_should_we_rebuild_lhs(ProgressStream, Globals,
             ForceReanalysis = no,
             % Compare the oldest of the timestamps of the lhs files
             % with the timestamps of the rhs.
-            GetLocalTimestamps = get_file_timestamp(search_cur_dir),
+            GetLocalTimestamps = get_file_timestamp(search_auth_cur_dir),
             list.map2_foldl2(GetLocalTimestamps,
                 LhsDateFileNames, _, LhsDateFileTimestamps, !Info, !IO),
             list.map2_foldl2(GetLocalTimestamps,
@@ -532,11 +531,11 @@ get_dependency_file_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
             % Source files are always up-to-date.
             % .track_flags should already have been made, if required,
             % so are also up-to-date.
-            ModuleTarget = module_target(module_target_source),
-            TopTargetFile = top_target_file(ModuleName, ModuleTarget),
             % XXX LEGACY
             module_target_file_to_file_name(Globals, $pred, Target,
                 TargetFileName, _TargetFileNameProposed, !IO),
+            ModuleTarget = module_target(module_target_source),
+            TopTargetFile = top_target_file(ModuleName, ModuleTarget),
             maybe_warn_up_to_date_target_msg(Globals, TopTargetFile,
                 TargetFileName, !Info, UpToDateMsg),
             maybe_write_msg(ProgressStream, UpToDateMsg, !IO),
@@ -631,7 +630,7 @@ get_dependency_file_status_main_path(ProgressStream, Globals,
                 % up-to-date if they exist.
                 % XXX Presumably this code treats any code in another directory
                 % as if it were in a library.
-                get_target_timestamp(ProgressStream, Globals, do_search,
+                get_target_timestamp_search(ProgressStream, Globals,
                     Target, MaybeTimestamp, !Info, !IO),
                 (
                     MaybeTimestamp = ok(_),

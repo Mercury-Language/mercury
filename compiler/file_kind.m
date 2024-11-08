@@ -50,9 +50,9 @@
 
 :- pred file_kind_to_extension(file_kind::in, string::out) is det.
 :- pred int_file_kind_to_extension(int_file_kind::in,
-    string::out, ext::out) is det.
+    string::out, ext::out(ext_int)) is det.
 :- pred opt_file_kind_to_extension(opt_file_kind::in,
-    string::out, ext::out) is det.
+    string::out, ext::out(ext_opt)) is det.
 
 :- pred extension_to_file_kind(string::in, file_kind::out) is semidet.
 
