@@ -4,7 +4,6 @@
 --generate-mmc-deps
 --no-libgrade
 --no-shlib-linker-use-install-name
---no-warn-inferred-erroneous
 -I../library
 --c-include-directory ../boehm_gc
 --c-include-directory ../boehm_gc/include

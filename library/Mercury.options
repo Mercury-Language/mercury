@@ -84,3 +84,9 @@ MCFLAGS-pprint                  += --no-warn-implicit-stream-calls
 MCFLAGS-prolog                  += --no-warn-implicit-stream-calls
 MCFLAGS-term_io                 += --no-warn-implicit-stream-calls
 
+MCFLAGS-benchmarking            += --no-warn-inferred-erroneous
+MCFLAGS-deconstruct             += --no-warn-inferred-erroneous
+MCFLAGS-io.error_util           += --no-warn-inferred-erroneous
+MCFLAGS-io                      += --no-warn-inferred-erroneous
+MCFLAGS-profiling_builtin       += --no-warn-inferred-erroneous
+MCFLAGS-table_builtin           += --no-warn-inferred-erroneous

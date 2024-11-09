@@ -1,6 +1,5 @@
 @BOOTSTRAP_MC_ARGS@
 @STANDARD_MCFLAGS@
---no-warn-inferred-erroneous
 -I../library
 --c-include-directory ../boehm_gc
 --c-include-directory ../boehm_gc/include

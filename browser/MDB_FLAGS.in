@@ -1,7 +1,6 @@
 @BOOTSTRAP_MC_ARGS@
 @STANDARD_MCFLAGS@
 --no-shlib-linker-use-install-name
---no-warn-inferred-erroneous
 --force-disable-tracing
 --force-disable-ssdebug
 --no-libgrade

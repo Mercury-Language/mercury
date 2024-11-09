@@ -5,7 +5,6 @@
 --generate-mmc-deps
 --no-libgrade
 --no-shlib-linker-use-install-name
---no-warn-inferred-erroneous
 -I../browser
 -I../mdbcomp
 -I../library

@@ -1,6 +1,5 @@
 @BOOTSTRAP_MC_ARGS@
 @STANDARD_MCFLAGS@
---no-warn-inferred-erroneous
 -I../ssdb
 -I../browser
 -I../mdbcomp

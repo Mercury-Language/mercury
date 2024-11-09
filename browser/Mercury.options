@@ -26,6 +26,9 @@ MCFLAGS-mdb.interactive_query       += --no-optimize-constructor-last-call
 MCFLAGS-mdb.parse                   += --no-optimize-constructor-last-call
 MCFLAGS-mdb.sized_pretty            += --no-optimize-constructor-last-call
 
+MCFLAGS-mdb.name_mangle             += --no-warn-inferred-erroneous
+MCFLAGS-mdb.interactive_query       += --no-warn-inferred-erroneous
+
 # XXX This line is needed so that `mmake --use-mmc-make libmer_browser'
 # passes `-lmer_mdbcomp' to `mmc --make' in the MLLIBS variable.
 LIBRARIES-mer_browser                   = mer_mdbcomp
