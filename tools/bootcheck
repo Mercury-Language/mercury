@@ -834,6 +834,7 @@ then
         echo linking stage 2... 1>&2
         cd "${stage2dir}"
         ${LN_S} "${root}"/RESERVED_MACRO_NAMES .
+        ${LN_S} "${root}"/STANDARD_MCFLAGS .
 
         mkdir compiler
         cd compiler
