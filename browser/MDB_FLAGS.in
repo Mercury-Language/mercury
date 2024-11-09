@@ -2,8 +2,6 @@
 @STANDARD_MCFLAGS@
 --no-shlib-linker-use-install-name
 --no-warn-inferred-erroneous
---warn-dead-preds
---warn-implicit-stream-calls
 --force-disable-tracing
 --force-disable-ssdebug
 --no-libgrade

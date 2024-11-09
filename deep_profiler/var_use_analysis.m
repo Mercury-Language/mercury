@@ -866,12 +866,6 @@ call_var_first_use(AtomicGoal, BoundVars, RevGoalPath, StaticInfo,
         FoundFirstUse = have_not_found_first_use
     ).
 
-:- pred consume_ho_arg(atomic_goal_rep::in(atomic_goal_rep_call),
-    var_rep::in, float::out) is semidet.
-
-consume_ho_arg(higher_order_call_rep(Var, _), Var, 0.0).
-consume_ho_arg(method_call_rep(Var, _, _), Var, 0.0).
-
 :- pred call_args_first_use(list(var_rep)::in, float::in,
     var_first_use_static_info::in(var_first_use_static_info),
     cost_and_callees::in, list(float)::out) is det.
@@ -1863,6 +1857,7 @@ intermodule_var_use_should_follow_csd(VarUseOptions, CSDPtr) :-
 
 :- pred intermodule_var_use_should_follow_pd(var_use_options::in,
     proc_dynamic_ptr::in) is semidet.
+:- pragma consider_used(pred(intermodule_var_use_should_follow_pd/2)).
 
 intermodule_var_use_should_follow_pd(VarUseOptions, PDPtr) :-
     FollowCall = VarUseOptions ^ vuo_intermodule_var_use,

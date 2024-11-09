@@ -473,11 +473,6 @@ defaults(ipar_speedup_threshold,            string("1.01")).
 defaults(ipar_speedup_alg,                  string("overlap")).
 defaults(ipar_alg_for_finding_best_par,     string("complete-branches(1000)")).
 
-:- pred construct_measure(string::in, stat_measure::out) is semidet.
-
-construct_measure("mean",   stat_mean).
-construct_measure("median", stat_median).
-
 :- pred post_process_options(string::in,
     option_table(option)::in, option_table(option)::out,
     io::di, io::uo) is det.
@@ -695,18 +690,6 @@ parse_parallelise_dep_conjs_string(yes, "naive",
     parallelise_dep_conjs(estimate_speedup_naively)).
 parse_parallelise_dep_conjs_string(yes, "overlap",
     parallelise_dep_conjs(estimate_speedup_by_overlap)).
-
-    % Adjust command line options when one option implies other options.
-    %
-:- pred option_implies(option::in, option::in, bool::in,
-    option_table(option)::in, option_table(option)::out) is det.
-
-option_implies(Option, ImpliedOption, ImpliedValue, !Options) :-
-    ( if lookup_bool_option(!.Options, Option, yes) then
-        set_option(ImpliedOption, bool(ImpliedValue), !Options)
-    else
-        true
-    ).
 
     % Set the value of an option in the option table.
     %

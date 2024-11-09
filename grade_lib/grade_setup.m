@@ -393,7 +393,8 @@ setup_requirements(SolverVarMap, Requirements) :-
     ;
         BadRequirements = [_ | _],
         trace [io(!IO)] (
-            io.write(BadRequirements, !IO)
+            io.output_stream(OutStream, !IO),
+            io.write(OutStream, BadRequirements, !IO)
         ),
         unexpected($pred, "some bad requirements")
     ).

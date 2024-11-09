@@ -1175,8 +1175,11 @@ after_count_sum_after_count(sum_after_unknown, after_unknown).
 after_count_sum_after_count(sum_after_zero, after_zero).
 after_count_sum_after_count(sum_after_known(C), after_coverage(C)).
 
+    % XXX This predicate is not used.
+    %
 :- pred before_count_from_either_source(coverage_before::in,
     coverage_before::in, coverage_before::out) is det.
+:- pragma consider_used(pred(before_count_from_either_source/3)).
 
 before_count_from_either_source(BeforeA, BeforeB, Before) :-
     (
@@ -1223,8 +1226,11 @@ before_count_from_either_source(BeforeA, BeforeB, Before) :-
         )
     ).
 
+    % XXX This predicate is not used.
+    %
 :- pred before_count_from_either_source_sum(sum_coverage_before::in,
     coverage_before::in, coverage_before::out) is det.
+:- pragma consider_used(pred(before_count_from_either_source_sum/3)).
 
 before_count_from_either_source_sum(BeforeA0, BeforeB, Before) :-
     before_count_sum_before_count(BeforeA0, BeforeA),
@@ -1290,8 +1296,11 @@ sum_after_coverage(After, !SumAfter) :-
         !.SumAfter = sum_after_unknown
     ).
 
+    % XXX This predicate is not used.
+    %
 :- pred before_count_sum_before_count(sum_coverage_before::in,
     coverage_before::out) is det.
+:- pragma consider_used(pred(before_count_sum_before_count/2)).
 
 before_count_sum_before_count(sum_before_unknown, before_unknown).
 before_count_sum_before_count(sum_before_known(Num), before_coverage(Num)).

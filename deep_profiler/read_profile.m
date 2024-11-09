@@ -147,45 +147,6 @@ deep_id_prefix = "Mercury deep profiler data version ".
 
 acceptable_version(8).
 
-    % Strip the directory paths off the given string.
-    %
-    % basename("/bin/ls") = "ls"
-    %
-:- func basename(string) = string.
-
-basename(Path) = Base :-
-    string.to_char_list(Path, PathChars),
-    basename_chars(PathChars, MaybeBaseChars),
-    (
-        MaybeBaseChars = no,
-        BaseChars = PathChars
-    ;
-        MaybeBaseChars = yes(BaseChars)
-    ),
-    string.from_char_list(BaseChars, Base).
-
-:- pred basename_chars(list(char)::in, maybe(list(char))::out) is det.
-
-basename_chars([], no).
-basename_chars([Char | Chars], MaybeChars) :-
-    basename_chars(Chars, MaybeTailChars),
-    (
-        MaybeTailChars = yes(_),
-        MaybeChars = MaybeTailChars
-    ;
-        MaybeTailChars = no,
-        ( if path_separator(Char) then
-            MaybeChars = yes(Chars)
-        else
-            MaybeChars = no
-        )
-    ).
-
-:- pred path_separator(char::in) is semidet.
-
-path_separator('/').
-path_separator('\\').
-
 :- pred maybe_init_deep(string::in, int::in, int::in, int::in, int::in,
     int::in, int::in, int::in, int::in, int::in, int::in,
     maybe_error(initial_deep)::out) is det.
@@ -1548,13 +1509,9 @@ make_cssptr(CSSI) = call_site_static_ptr(CSSI).
 make_pdptr(PDI) = proc_dynamic_ptr(PDI).
 make_psptr(PSI) = proc_static_ptr(PSI).
 
-:- func make_dummy_csdptr = call_site_dynamic_ptr.
-:- func make_dummy_cssptr = call_site_static_ptr.
 :- func make_dummy_pdptr = proc_dynamic_ptr.
 :- func make_dummy_psptr = proc_static_ptr.
 
-make_dummy_csdptr = call_site_dynamic_ptr(-1).
-make_dummy_cssptr = call_site_static_ptr(-1).
 make_dummy_pdptr = proc_dynamic_ptr(-1).
 make_dummy_psptr = proc_static_ptr(-1).
 

@@ -60,9 +60,11 @@ main(!IO) :-
 
     solutions(generate_all_tests, GradeStructures),
     list.length(GradeStructures, NumGradeStructures),
-    io.format("There are %d grade structures to test.\n",
+    io.output_stream(OutStream, !IO),
+    io.format(OutStream, "There are %d grade structures to test.\n",
         [i(NumGradeStructures)], !IO),
-    list.foldl2(check_grade_struct(SolverInfo0), GradeStructures, 0, _, !IO).
+    list.foldl2(check_grade_struct(OutStream, SolverInfo0),
+        GradeStructures, 0, _, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -270,21 +272,22 @@ generate_grade_var_merc_float(grade_var_merc_float_is_unboxed_c_float).
 
 %---------------------------------------------------------------------------%
 
-:- pred check_grade_struct(solver_info::in, grade_structure::in,
-    int::in, int::out, io::di, io::uo) is det.
+:- pred check_grade_struct(io.text_output_stream::in, solver_info::in,
+    grade_structure::in, int::in, int::out, io::di, io::uo) is det.
 
-check_grade_struct(SolverInfo0, GradeStructure, !N, !IO) :-
+check_grade_struct(OutStream, SolverInfo0, GradeStructure, !N, !IO) :-
     GradeStr = grade_structure_to_grade_string(grade_string_user,
         GradeStructure),
     !:N = !.N + 1,
-    io.format( "TEST %d: grade struct %s\n", [i(!.N), s(GradeStr)], !IO),
+    io.format(OutStream, "TEST %d: grade struct %s\n",
+        [i(!.N), s(GradeStr)], !IO),
 
     MaybeSpecSuccMap = grade_string_to_succ_soln(GradeStr),
     (
         MaybeSpecSuccMap = error(HeadErrorMsg, TailErrorMsgs),
         CombinedErrorMsg =
             string.join_list(", ", [HeadErrorMsg | TailErrorMsgs]),
-        io.format("ERROR: cannot convert to succ soln: %s\n",
+        io.format(OutStream, "ERROR: cannot convert to succ soln: %s\n",
             [s(CombinedErrorMsg)], !IO)
     ;
         MaybeSpecSuccMap = ok(SpecSuccMap),
@@ -297,7 +300,7 @@ check_grade_struct(SolverInfo0, GradeStructure, !N, !IO) :-
             Soln = soln_failure(_),
             FailureStr0 = soln_to_str(" ", Soln),
             string.replace_all(FailureStr0, "\n", " ", FailureStr),
-            io.format("ERROR: cannot solve succ soln\n%s\n",
+            io.format(OutStream, "ERROR: cannot solve succ soln\n%s\n",
                 [s(FailureStr)], !IO)
         ;
             Soln = soln_success(StdSuccMap),
@@ -309,12 +312,12 @@ check_grade_struct(SolverInfo0, GradeStructure, !N, !IO) :-
                 StdGradeStr =
                     grade_structure_to_grade_string(grade_string_user,
                         StdGradeStructure),
-                io.format("ERROR: round trip does not match: %s\n",
+                io.format(OutStream, "ERROR: round trip does not match: %s\n",
                     [s(StdGradeStr)], !IO),
-                io.write(GradeStructure, !IO),
-                io.nl(!IO),
-                io.write(StdGradeStructure, !IO),
-                io.nl(!IO)
+                io.write(OutStream, GradeStructure, !IO),
+                io.nl(OutStream, !IO),
+                io.write(OutStream, StdGradeStructure, !IO),
+                io.nl(OutStream, !IO)
             )
         )
     ).

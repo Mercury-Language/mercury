@@ -310,10 +310,11 @@ process_addr_pair_2(InputStream, Dynamic, !DynamicCallGraph,
 
     % process_library_callgraph(LibraryATSort, LibPredMap, !IO):
     %
-    % XXX
+    % XXX Either use and document this predicate, or delete it.
     %
 :- pred process_library_callgraph(list(string)::out, map(string, unit)::out,
     io::di, io::uo) is det.
+:- pragma consider_used(pred(process_library_callgraph/4)).
 
 process_library_callgraph(LibraryATSort, LibPredMap, !IO) :-
     globals.io_lookup_string_option(libraryfile, LibFile, !IO),

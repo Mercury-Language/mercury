@@ -373,11 +373,6 @@ contour_file_name(DataFileName) = ContourFileName :-
         error("Couldn't remove suffix from deep file name: " ++ DataFileName)
     ).
 
-:- pred count_quanta(int::in, call_site_dynamic::in, int::in, int::out) is det.
-
-count_quanta(_N, CSD, Quanta0, Quanta) :-
-    Quanta = Quanta0 + quanta(CSD ^ csd_own_prof).
-
 :- func initialize_module_data(list(proc_static_ptr)) = module_data.
 
 initialize_module_data(PSPtrs) =

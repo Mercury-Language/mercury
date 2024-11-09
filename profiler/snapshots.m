@@ -557,7 +557,10 @@ percentage(N, Total) = 100.0 * float(N) / float(Total).
 
 min_percentage_major = 0.1.
 
+    % XXX Either use and document this function, or delete it.
+    %
 :- func min_percentage_minor = float.
+:- pragma consider_used(func(min_percentage_minor/0)).
 
 min_percentage_minor = 0.05.
 

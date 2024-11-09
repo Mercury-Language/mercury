@@ -268,6 +268,7 @@ test_server(Pref, Deep, Options, !IO) :-
 
 :- pred test_cliques(int::in, int::in, option_table::in, preferences::in,
     deep::in, io::di, io::uo) is cc_multi.
+:- pragma consider_used(pred(test_cliques/7)).
 
 test_cliques(Cur, Max, Options, Pref, Deep, !IO) :-
     ( if Cur =< Max then
@@ -280,6 +281,7 @@ test_cliques(Cur, Max, Options, Pref, Deep, !IO) :-
 
 :- pred test_procs(int::in, int::in, option_table::in, preferences::in,
     deep::in, io::di, io::uo) is cc_multi.
+:- pragma consider_used(pred(test_procs/7)).
 
 test_procs(Cur, Max, Options, Pref, Deep, !IO) :-
     ( if Cur =< Max then
@@ -324,11 +326,6 @@ test_recursion_types_histogram(Pref, Deep, Options, !IO) :-
         try_exec(deep_cmd_recursion_types_frequency, Pref, Deep, HTML),
         write_test_html(Options, "recursion_types_histogram", 1, HTML, !IO)
     ).
-
-:- func progrep_error = maybe_error(prog_rep).
-
-progrep_error =
-    error("No Program Representation available when using mdprof_test").
 
 :- pred write_test_html(option_table::in, string::in, int::in, string::in,
     io::di, io::uo) is det.

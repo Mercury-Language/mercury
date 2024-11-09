@@ -906,6 +906,7 @@ Cost0 / Denom = Cost :-
     ).
 
 :- func cost_by_weight(float, cost) = cost.
+:- pragma consider_used(func(cost_by_weight/2)).
 
 cost_by_weight(Weight, cost_total(Total)) =
     cost_total(Total * Weight).
@@ -1214,6 +1215,7 @@ pem_get_future_dead_time(pem_additional(Left, _, _, _, _, RightDeadTime)) =
     % time.
     %
 :- func pem_get_par_overheads(parallel_exec_metrics_internal) = float.
+:- pragma consider_used(func(pem_get_par_overheads/1)).
 
 pem_get_par_overheads(pem_left_most(Seq, Par, _)) = Par - Seq.
 pem_get_par_overheads(pem_additional(Left, _, _, Seq, Par, _)) =

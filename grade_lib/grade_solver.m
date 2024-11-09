@@ -287,7 +287,7 @@ propagate_to_fixpoint(Requirements0, Requirements, !SolverVarMap,
     propagate_pass(Requirements0, [], RevRequirements1, !SolverVarMap,
         not_changed, Changed, have_not_found_failure, FoundFailure),
     list.reverse(RevRequirements1, Requirements1),
-    trace [compile_time(flag("debug_solver")), io(!IO)]
+    trace [compile_time(flag("debug_solver")), io(!TIO)]
     (
         (
             FoundFailure = have_not_found_failure,
@@ -298,11 +298,13 @@ propagate_to_fixpoint(Requirements0, Requirements, !SolverVarMap,
         ),
         list.length(Requirements0, NumReqs0),
         list.length(Requirements1, NumReqs1),
-        io.format("\nAFTER PROPAGATE PASS %d, #reqs %d -> %d%s\n",
+        SolverVarMapStr = solver_var_map_to_str("    ", !.SolverVarMap),
+        io.stderr_stream(StdErr, !TIO),
+        io.format(StdErr, "\nAFTER PROPAGATE PASS %d, #reqs %d -> %d%s\n",
             [i(NumPasses0), i(NumReqs0), i(NumReqs1), s(FoundFailureSuffix)],
-            !IO),
-        io.write_string(solver_var_map_to_str("    ", !.SolverVarMap), !IO),
-        io.nl(!IO)
+            !TIO),
+        io.write_string(StdErr, SolverVarMapStr, !TIO),
+        io.nl(StdErr, !TIO)
     ),
     (
         FoundFailure = found_failure,
@@ -343,10 +345,11 @@ propagate_pass([Requirement | Requirements], !RevRequirements,
         !SolverVarMap, !Changed, !FoundFailure) :-
     Requirement = requirement(ReqId, ReqDesc,
         IfVarId, IfValueId, ThenVarId, ReqThenValueIds),
-    trace [compile_time(flag("debug_solver")), io(!IO)] (
+    trace [compile_time(flag("debug_solver")), io(!TIO)] (
         ReqId = requirement_id(ReqIdNum0),
-        io.format("Considering Req %d (%s)\n",
-            [i(ReqIdNum0), s(ReqDesc)], !IO)
+        io.stderr_stream(StdErr, !TIO),
+        io.format(StdErr, "Considering Req %d (%s)\n",
+            [i(ReqIdNum0), s(ReqDesc)], !TIO)
     ),
 
     % The requirement represents the implication:
@@ -370,15 +373,16 @@ propagate_pass([Requirement | Requirements], !RevRequirements,
                 restrict_possibilities_to(ReqThenValueIds, ReqAppl,
                     0, ThenCntPoss, ThenValues0, ThenValues),
                 ( if ThenCntPoss < ThenCntPoss0 then
-                    trace [compile_time(flag("debug_solver")), io(!IO)] (
+                    trace [compile_time(flag("debug_solver")), io(!TIO)] (
                         ReqId = requirement_id(ReqIdNum),
                         ThenVarName = string.string(ThenVarId),
                         ThenValueNames0 = list_poss_values(ThenValues0),
                         ThenValueNames = list_poss_values(ThenValues),
-                        io.format("Req %d (%s) updates then_var %s\n",
-                            [i(ReqIdNum), s(ReqDesc), s(ThenVarName)], !IO),
-                        io.format("  %s -> %s\n\n",
-                            [s(ThenValueNames0), s(ThenValueNames)], !IO)
+                        io.stderr_stream(StdErr, !TIO),
+                        io.format(StdErr, "Req %d (%s) updates then_var %s\n",
+                            [i(ReqIdNum), s(ReqDesc), s(ThenVarName)], !TIO),
+                        io.format(StdErr, "  %s -> %s\n\n",
+                            [s(ThenValueNames0), s(ThenValueNames)], !TIO)
                     ),
                     ThenVar = solver_var(ThenCntAll, ThenCntPoss, ThenValues),
                     map.det_update(ThenVarId, ThenVar, !SolverVarMap),
@@ -392,15 +396,18 @@ propagate_pass([Requirement | Requirements], !RevRequirements,
                     % The condition (ThenVarId in ReqThenValueIds)
                     % already held, so nothing has changed.
 
-                    trace [compile_time(flag("debug_solver")), io(!IO)] (
+                    trace [compile_time(flag("debug_solver")), io(!TIO)] (
                         ReqId = requirement_id(ReqIdNum),
                         ThenVarName = string.string(ThenVarId),
                         ThenValueNames0 = list_poss_values(ThenValues0),
                         ThenValueNames = list_poss_values(ThenValues),
-                        io.format("Req %d (%s) pre-holds for then_var %s\n",
-                            [i(ReqIdNum), s(ReqDesc), s(ThenVarName)], !IO),
-                        io.format("  %s -> %s\n\n",
-                            [s(ThenValueNames0), s(ThenValueNames)], !IO)
+                        io.stderr_stream(StdErr, !TIO),
+                        io.format(StdErr,
+                            "Req %d (%s) pre-holds for then_var %s\n",
+                            [i(ReqIdNum), s(ReqDesc), s(ThenVarName)], !TIO),
+                        io.format(StdErr,
+                            "  %s -> %s\n\n",
+                            [s(ThenValueNames0), s(ThenValueNames)], !TIO)
                     )
                 )
             else
@@ -415,15 +422,16 @@ propagate_pass([Requirement | Requirements], !RevRequirements,
             IfCntPoss = IfCntPoss0 - 1,
             ReqAppl = requirement_application(ReqId, ReqDesc, delete_if_value),
             set_value_to_not_possible(IfValueId, ReqAppl, IfValues0, IfValues),
-            trace [compile_time(flag("debug_solver")), io(!IO)] (
+            trace [compile_time(flag("debug_solver")), io(!TIO)] (
                 ReqId = requirement_id(ReqIdNum),
                 IfVarName = string.string(IfVarId),
                 IfValueNames0 = list_poss_values(IfValues0),
                 IfValueNames = list_poss_values(IfValues),
-                io.format("Req %d (%s) updates if_var %s\n",
-                    [i(ReqIdNum), s(ReqDesc), s(IfVarName)], !IO),
-                io.format("  %s -> %s\n\n",
-                    [s(IfValueNames0), s(IfValueNames)], !IO)
+                io.stderr_stream(StdErr, !TIO),
+                io.format(StdErr, "Req %d (%s) updates if_var %s\n",
+                    [i(ReqIdNum), s(ReqDesc), s(IfVarName)], !TIO),
+                io.format(StdErr, "  %s -> %s\n\n",
+                    [s(IfValueNames0), s(IfValueNames)], !TIO)
             ),
             IfVar = solver_var(IfCntAll, IfCntPoss, IfValues),
             map.det_update(IfVarId, IfVar, !SolverVarMap),
@@ -437,12 +445,13 @@ propagate_pass([Requirement | Requirements], !RevRequirements,
     else
         % We already know that (IfVarId = IfValueId) is false.
         % Since false implies anything, the requirement is already met.
-        trace [compile_time(flag("debug_solver")), io(!IO)] (
+        trace [compile_time(flag("debug_solver")), io(!TIO)] (
             ReqId = requirement_id(ReqIdNum),
             IfVarName = string.string(IfVarId),
             IfValueName = string.string(IfValueId),
-            io.format("Deleting Req %d (%s): %s is not %s\n\n",
-                [i(ReqIdNum), s(ReqDesc), s(IfVarName), s(IfValueName)], !IO)
+            io.stderr_stream(StdErr, !TIO),
+            io.format(StdErr, "Deleting Req %d (%s): %s is not %s\n\n",
+                [i(ReqIdNum), s(ReqDesc), s(IfVarName), s(IfValueName)], !TIO)
         ),
         KeepReq = no
     ),
@@ -592,7 +601,8 @@ find_first_possible_value_and_commit(VarId, [Value0 | Values0],
         trace [compile_time(flag("debug_solver")), io(!TIO)] (
             solver_var_name(VarName, VarId),
             solver_var_value_name(ValueName, ValueId),
-            io.format("\nLABELING sets %s to %s\n",
+            io.stderr_stream(StdErr, !TIO),
+            io.format(StdErr, "\nLABELING sets %s to %s\n",
                 [s(VarName), s(ValueName)], !TIO)
         ),
         Value = Value0,

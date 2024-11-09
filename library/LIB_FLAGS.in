@@ -10,7 +10,6 @@
 --profile-optimized
 --strict-sequential
 --trace minimum
---warn-dead-predicates
 --c-include-directory ../boehm_gc
 --c-include-directory ../boehm_gc/include
 --c-include-directory ../runtime

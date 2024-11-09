@@ -1,7 +1,6 @@
 @BOOTSTRAP_MC_ARGS@
 @STANDARD_MCFLAGS@
 --no-warn-inferred-erroneous
---warn-implicit-stream-calls
 -I../ssdb
 -I../browser
 -I../mdbcomp

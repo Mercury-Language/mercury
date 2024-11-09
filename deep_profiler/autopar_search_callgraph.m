@@ -618,9 +618,12 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
         )
     ).
 
+%---------------------------------------------------------------------------%
+
 :- pred build_candidate_par_conjunction_maps(string_proc_label::in,
     var_name_table::in, candidate_par_conjunction(pard_goal_detail)::in,
     candidate_par_conjunctions::in, candidate_par_conjunctions::out) is det.
+:- pragma consider_used(pred(build_candidate_par_conjunction_maps/5)).
 
 build_candidate_par_conjunction_maps(ProcLabel, VarNameTable, Candidate,
         !Map) :-
@@ -643,6 +646,7 @@ build_candidate_par_conjunction_maps(ProcLabel, VarNameTable, Candidate,
 
 :- pred pardgoal_consumed_vars_accum(pard_goal_detail::in,
     set(var_rep)::in, set(var_rep)::out) is det.
+:- pragma consider_used(pred(pardgoal_consumed_vars_accum/3)).
 
 pardgoal_consumed_vars_accum(Goal, !Vars) :-
     RefedVars = Goal ^ goal_annotation ^ pgd_inst_map_info ^ im_consumed_vars,

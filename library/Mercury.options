@@ -77,3 +77,10 @@ MCFLAGS-thread.semaphore        += --no-local-thread-engine-base
 # Work around a warning for termination analysis of the user defined equality
 # and comparison code for lazy values.
 MCFLAGS-lazy                    += --no-warn-non-term-special-preds
+
+MCFLAGS-benchmarking            += --no-warn-implicit-stream-calls
+MCFLAGS-io                      += --no-warn-implicit-stream-calls
+MCFLAGS-pprint                  += --no-warn-implicit-stream-calls
+MCFLAGS-prolog                  += --no-warn-implicit-stream-calls
+MCFLAGS-term_io                 += --no-warn-implicit-stream-calls
+

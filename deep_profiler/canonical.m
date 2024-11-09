@@ -10,7 +10,7 @@
 % Authors: conway, zs.
 %
 % This module contains code for recursively merging sets of ProcDynamic and
-% CallSiteDynamic nodes.
+% CallSiteDynamic nodes. However, it has never been completed.
 %
 %---------------------------------------------------------------------------%
 

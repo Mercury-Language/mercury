@@ -44,7 +44,6 @@
 :- import_module var_use_analysis.
 
 :- import_module assoc_list.
-:- import_module digraph.
 :- import_module float.
 :- import_module int.
 :- import_module lazy.
@@ -349,18 +348,6 @@ calculate_dependent_parallel_cost_production(Info,
         (SeqProdTime - !.PrevSeqConsumeTime) + SignalCost,
     !:PrevSeqConsumeTime = SeqProdTime,
     !:PrevParConsumeTime = ParProdTime.
-
-    % Abstract code for querying a graph for a goal dependency.
-    %
-:- pred graph_do_lookup(
-    pred(digraph(int), digraph_key(int), set(digraph_key(int)))::
-        in(pred(in, in, out) is det),
-    digraph(int)::in, int::in, set(int)::out) is det.
-
-graph_do_lookup(Lookup, Graph, GoalNum, Deps) :-
-    Lookup(Graph, lookup_key(Graph, GoalNum), DepsKeys),
-    Deps = set.list_to_set(map(lookup_vertex(Graph),
-        set.to_sorted_list(DepsKeys))).
 
     % foldl(get_productions_map(Goals, 0,0, _, Vars, _, map.init, Map).
     %

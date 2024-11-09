@@ -5,6 +5,8 @@
 --no-halt-at-warn-make-opt
 --no-infer-all
 --no-mercury-stdlib-dir
+--warn-dead-preds
+--warn-implicit-stream-calls
 --warn-inconsistent-pred-order-clauses
 --warn-insts-with-functors-without-type
 --warn-known-bad-format-calls

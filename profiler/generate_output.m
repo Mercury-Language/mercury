@@ -123,10 +123,11 @@ process_prof_node(ProfNode, Prof, !OutputProf) :-
 
     % generate_output_for_cycle(ProfNode, Prof, !OutputProf):
     %
-    % XXX
+    % XXX Either use and document this predicate, or delete it.
     %
 :- pred generate_output_for_cycle(prof_node::in, prof::in,
     profiling::in, profiling::out) is det.
+:- pragma consider_used(pred(generate_output_for_cycle/4)).
 
 generate_output_for_cycle(ProfNode, Prof, !OutputProf) :-
     prof_get_entire(Prof, Scale, _Units, IntTotalCounts, _, _, _CycleMap),

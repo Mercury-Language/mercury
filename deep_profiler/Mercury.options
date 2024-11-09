@@ -14,6 +14,8 @@ MCFLAGS-read_profile            += --trace minimum
 
 MCFLAGS-mdprof_fb               += --no-warn-nothing-exported
 
+MCFLAGS-canonical               += --no-warn-dead-preds
+
 # Uncomment this to debug the automatic parallelism code.
 # MCFLAGS-branch_and_bound += \
 #   --trace-flag=debug_branch_and_bound

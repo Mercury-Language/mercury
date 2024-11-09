@@ -115,6 +115,10 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Values of this type record whether ssdb debugging was enabled or not
+    % before a call to pause_debugging, so that resume_debugging can restore
+    % the condition before the pause.
+    %
 :- type debugging_paused.
 
     % These low-level predicates allow you to suspend the debugger temporarily.
@@ -180,11 +184,18 @@
     % be represented by zero so the SSDB port code will correctly do nothing
     % until after the library is initialised.
     %
+    % XXX The state of the debugger should include not just this enabled vs
+    % disabled flag, but also the input and output streams to use.
+    % This type should therefore be called something else. However, the current
+    % code of the Java foreign_proc for get_debugger_state_safer below
+    % depends on this name.
+    %
 :- type debugger_state
     --->    debugger_off
     ;       debugger_on.
 
-:- type debugging_paused == debugger_state.
+:- type debugging_paused
+    --->    debugging_paused(debugger_state).
 
 :- type stack_frame
     --->    stack_frame(
@@ -342,6 +353,11 @@ init_list_params = list_params(new_list_path, 2).
 
 %-----------------------------------------------------------------------------%
 
+    % zs: someone who knows more than me about how this module operates
+    % should change how this module handles I/O streams. Instead of saving,
+    % updating and restoring the current *implicit* input and output streams,
+    % this module should pass around streams *explicitly*. When that is done,
+    % we can stop specifying --no-warn-implicit-stream-calls for this module.
 :- mutable(tty_in, io.text_input_stream, io.stdin_stream,
     ground, [untrailed, attach_to_io_state]).
 :- mutable(tty_out, io.text_output_stream, io.stdout_stream,
@@ -430,17 +446,21 @@ maybe_add_source_commands(FileName, !IO) :-
         Res = error(_)
     ).
 
+    % Cope with non-standard ways of entering Mercury code in Java grades.
+    %
 :- pred get_debugger_state_safer(debugger_state::out, io::di, io::uo)
     is det.
 
 get_debugger_state_safer(DebuggerState, !IO) :-
+    % XXX The absence of this call in Java grades (due to the foreign_proc
+    % below) is what requires --no-warn-dead-preds to be specified for this
+    % module.
     get_debugger_state(DebuggerState, !IO).
 
 :- pragma foreign_proc("Java",
     get_debugger_state_safer(DebuggerState::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
-    // Cope with non-standard ways of entering Mercury code.
     // If init_debugger_state was called in a thread that is not a parent of
     // the current thread, the current thread would inherit a value of null
     // in thread-local mutable debugger_state.
@@ -996,19 +1016,6 @@ stack_pop(!IO) :-
         Stack = [_ | StackTail],
         set_shadow_stack(StackTail, !IO),
         set_shadow_stack_depth(Depth - 1, !IO)
-    ).
-
-:- pred top_of_stack_tracing_level(ssdb_tracing_level::out, io::di, io::uo)
-    is det.
-
-top_of_stack_tracing_level(Level, !IO) :-
-    get_shadow_stack(Stack, !IO),
-    (
-        Stack = [],
-        Level = deep
-    ;
-        Stack = [Top | _],
-        Level = Top ^ sf_tracing_level
     ).
 
     % Update the sf_list_var_value field of the top shadow stack element.
@@ -3495,20 +3502,22 @@ nonnegative_int(S, N) :-
 %-----------------------------------------------------------------------------%
 
 pause_debugging(Paused, !IO) :-
-    get_debugger_state_safer(Paused, !IO),
+    get_debugger_state_safer(PausedOnOrOff, !IO),
     (
-        Paused = debugger_off
+        PausedOnOrOff = debugger_off
     ;
-        Paused = debugger_on,
+        PausedOnOrOff = debugger_on,
         set_debugger_state(debugger_off, !IO)
-    ).
+    ),
+    Paused = debugging_paused(PausedOnOrOff).
 
 resume_debugging(Paused, !IO) :-
+    Paused = debugging_paused(PausedOnOrOff),
     (
-        Paused = debugger_on,
+        PausedOnOrOff = debugger_on,
         set_debugger_state(debugger_on, !IO)
     ;
-        Paused = debugger_off
+        PausedOnOrOff = debugger_off
     ).
 
 enable_debugging(!IO) :-

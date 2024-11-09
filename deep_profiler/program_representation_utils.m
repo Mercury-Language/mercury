@@ -844,10 +844,6 @@ indent(N) =
         cord.singleton("  ") ++ indent(N - 1)
     ).
 
-:- func nl_indent(int) = cord(string).
-
-nl_indent(N) = nl ++ indent(N).
-
 :- func nl = cord(string).
 
 nl = cord.singleton("\n").

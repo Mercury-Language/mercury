@@ -883,14 +883,14 @@ full_parallelisation_metrics_cost(FullMetrics) = Cost :-
     Cost = FullMetrics ^ pem_par_time +
         parallel_exec_metrics_get_overheads(FullMetrics) * 2.0.
 
-:- func full_parallelisation_cost(full_parallelisation) = float.
-
-full_parallelisation_cost(FullParallelisation) = Cost :-
-    FullMetrics = FullParallelisation ^ fp_par_exec_metrics,
-    Cost = full_parallelisation_metrics_cost(FullMetrics).
+% :- func full_parallelisation_cost(full_parallelisation) = float.
+%
+% full_parallelisation_cost(FullParallelisation) = Cost :-
+%     FullMetrics = FullParallelisation ^ fp_par_exec_metrics,
+%     Cost = full_parallelisation_metrics_cost(FullMetrics).
 
 %---------------------------------------------------------------------------%
-
+%
 % XXX
 % :- semipure pred add_goals_into_first_par_conj(
 %     bnb_state(full_parallelisation)::in,
@@ -936,29 +936,29 @@ full_parallelisation_cost(FullParallelisation) = Cost :-
 %     ;
 %         true
 %     ).
-
+%
 %---------------------------------------------------------------------------%
-
-:- pred add_one_goal_into_first_par_conj(incomplete_parallelisation::in,
-    incomplete_parallelisation::out) is det.
-
-add_one_goal_into_first_par_conj(!Parallelisation) :-
-    FirstGoal0 = !.Parallelisation ^ ip_first_par_goal,
-    FirstGoal = FirstGoal0 - 1,
-    !Parallelisation ^ ip_first_par_goal := FirstGoal,
-    !Parallelisation ^ ip_maybe_goals_before_cost := no,
-    !Parallelisation ^ ip_maybe_par_cost_data := no.
-
-:- pred add_one_goal_into_last_par_conj(incomplete_parallelisation::in,
-    incomplete_parallelisation::out) is det.
-
-add_one_goal_into_last_par_conj(!Parallelisation) :-
-    LastGoal0 = !.Parallelisation ^ ip_last_par_goal,
-    LastGoal = LastGoal0 + 1,
-    !Parallelisation ^ ip_last_par_goal := LastGoal,
-    !Parallelisation ^ ip_maybe_goals_after_cost := no,
-    !Parallelisation ^ ip_maybe_par_cost_data := no.
-
+%
+% :- pred add_one_goal_into_first_par_conj(incomplete_parallelisation::in,
+%     incomplete_parallelisation::out) is det.
+%
+% add_one_goal_into_first_par_conj(!Parallelisation) :-
+%     FirstGoal0 = !.Parallelisation ^ ip_first_par_goal,
+%     FirstGoal = FirstGoal0 - 1,
+%     !Parallelisation ^ ip_first_par_goal := FirstGoal,
+%     !Parallelisation ^ ip_maybe_goals_before_cost := no,
+%     !Parallelisation ^ ip_maybe_par_cost_data := no.
+%
+% :- pred add_one_goal_into_last_par_conj(incomplete_parallelisation::in,
+%     incomplete_parallelisation::out) is det.
+%
+% add_one_goal_into_last_par_conj(!Parallelisation) :-
+%     LastGoal0 = !.Parallelisation ^ ip_last_par_goal,
+%     LastGoal = LastGoal0 + 1,
+%     !Parallelisation ^ ip_last_par_goal := LastGoal,
+%     !Parallelisation ^ ip_maybe_goals_after_cost := no,
+%     !Parallelisation ^ ip_maybe_par_cost_data := no.
+%
 %---------------------------------------------------------------------------%
 
 :- pred foldl_sub_array(pred(int, T, A, A), array(T), int, int, A, A).

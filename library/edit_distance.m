@@ -284,7 +284,8 @@ find_edit_distance_ceiling(Params, SeqA, SeqB, MaybeCeiling, Cost) :-
     % is included at the bottom of this module in a big comment. It has been
     % reformatted to follow *our* code style for C (though the code is in C++).
     trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
-        io.format("\nfind_edit_distance(%s, %s)\n",
+        io.output_stream(CurStream, !IO),
+        io.format(CurStream, "\nfind_edit_distance(%s, %s)\n",
             [s(string.string(SeqA)), s(string.string(SeqB))], !IO)
     ),
 
@@ -389,7 +390,8 @@ init_delete_cost_row(DeleteCost, ColNum, MaxColNum, Row) :-
 build_rows(Params, LenA, LenB, ItemMapA, ItemMapB, MaybeCeiling,
         RowNum, RowTwoAgo0, RowOneAgo0, RowSpare, FinalRow) :-
     trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
-        dump_row(RowNum, RowOneAgo0, !IO)
+        io.output_stream(CurStream, !IO),
+        dump_row(CurStream, RowNum, RowOneAgo0, !IO)
     ),
     ( if RowNum < LenB then
         RowNext0 = RowSpare,
@@ -458,7 +460,8 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
         ( if CurAJ = CurBI then
             MinCost = DiagCost,
             trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
-                io.format("nc = %u; ", [u(MinCost)], !IO)
+                io.output_stream(CurStream, !IO),
+                io.format(CurStream, "nc = %u; ", [u(MinCost)], !IO)
             )
         else
             ReplacementCostFunc = Params ^ cost_of_replace,
@@ -483,14 +486,16 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
                 TransposeCost = TransDiagCost + Params ^ cost_of_transpose,
                 MinCost = min(MinCost0, TransposeCost),
                 trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
-                     io.format("i%u d%u r%u t%u = %u; ",
+                    io.output_stream(CurStream, !IO),
+                    io.format(CurStream, "i%u d%u r%u t%u = %u; ",
                         [u(InsertCost), u(DeleteCost), u(ReplacementCost),
                         u(TransposeCost), u(MinCost)], !IO)
                 )
             else
                 MinCost = MinCost0,
                 trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
-                    io.format("i%u d%u r%u = %u; ",
+                    io.output_stream(CurStream, !IO),
+                    io.format(CurStream, "i%u d%u r%u = %u; ",
                         [u(InsertCost), u(DeleteCost), u(ReplacementCost),
                         u(MinCost)], !IO)
                 )
@@ -506,27 +511,30 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
             RowNum, J + 1u, !RowTwoAgo, !RowOneAgo, !RowNext, !MinCostInRow)
     else
         trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
-            io.nl(!IO)
+            io.output_stream(CurStream, !IO),
+            io.nl(CurStream, !IO)
         )
     ).
 
 %---------------------%
 
-:- pred dump_row(uint::in, array(uint)::in, io::di, io::uo) is det.
+:- pred dump_row(io.text_output_stream::in, uint::in, array(uint)::in,
+    io::di, io::uo) is det.
 
-dump_row(RowNum, RowMap, !IO) :-
-    io.format("row #%2u: [", [u(RowNum)], !IO),
+dump_row(OutStream, RowNum, RowMap, !IO) :-
+    io.format(OutStream, "row #%2u: [", [u(RowNum)], !IO),
     array.to_list(RowMap, RowAL),
-    dump_columns(0u, RowAL, !IO),
-    io.write_string("]\n", !IO),
-    io.flush_output(!IO).
+    dump_columns(OutStream, 0u, RowAL, !IO),
+    io.write_string(OutStream, "]\n", !IO),
+    io.flush_output(OutStream, !IO).
 
-:- pred dump_columns(uint::in, list(uint)::in, io::di, io::uo) is det.
+:- pred dump_columns(io.text_output_stream::in, uint::in, list(uint)::in,
+    io::di, io::uo) is det.
 
-dump_columns(_, [], !IO).
-dump_columns(ColNum, [Value | Values], !IO) :-
-    io.format("%2u: %3u, ", [u(ColNum), u(Value)], !IO),
-    dump_columns(ColNum + 1u, Values, !IO).
+dump_columns(_, _, [], !IO).
+dump_columns(OutStream, ColNum, [Value | Values], !IO) :-
+    io.format(OutStream, "%2u: %3u, ", [u(ColNum), u(Value)], !IO),
+    dump_columns(OutStream, ColNum + 1u, Values, !IO).
 
 %---------------------------------------------------------------------------%
 %

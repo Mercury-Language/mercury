@@ -58,19 +58,21 @@ main(!IO) :-
     process_arguments(Args, cord.init, BadArgLinesCord,
         SolverInfo0, SolverInfo1),
     BadArgLines = cord.list(BadArgLinesCord),
+    io.output_stream(OutStream, !IO),
     (
         BadArgLines = [_ | _],
-        io.write_string("unrecognized arguments:\n", !IO),
-        list.foldl(io.write_string, BadArgLines, !IO)
+        io.write_string(OutStream, "unrecognized arguments:\n", !IO),
+        list.foldl(io.write_string(OutStream), BadArgLines, !IO)
     ;
         BadArgLines = [],
         trace [compile_time(flag("debug_choose_grade")), io(!TIO)] (
-            io.write_string("AFTER SETUP\n", !TIO),
+            io.write_string(OutStream, "AFTER SETUP\n", !TIO),
             SolverVarMap1 = SolverInfo1 ^ si_solver_var_map,
-            io.write_string(solver_var_map_to_str("    ", SolverVarMap1), !TIO)
+            SolverVarMapStr = solver_var_map_to_str("    ", SolverVarMap1),
+            io.write_string(OutStream, SolverVarMapStr, !TIO)
         ),
         solve_absolute(SolverInfo1, _SolveCounts, Soln),
-        io.write_string(soln_to_str("", Soln), !IO),
+        io.write_string(OutStream, soln_to_str("", Soln), !IO),
         (
             Soln = soln_failure(_)
         ;
@@ -79,7 +81,7 @@ main(!IO) :-
             GradeStructure = grade_vars_to_grade_structure(GradeVars),
             GradeStr = grade_structure_to_grade_string(
                 grade_string_link_check, GradeStructure),
-            io.format("GRADE %s\n", [s(GradeStr)], !IO)
+            io.format(OutStream, "GRADE %s\n", [s(GradeStr)], !IO)
         )
     ).
 
