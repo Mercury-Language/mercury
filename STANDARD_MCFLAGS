@@ -1,0 +1,16 @@
+--halt-at-warn
+--no-allow-ho-insts-as-modes
+--no-detect-libgrades
+--no-halt-at-warn-make-int
+--no-halt-at-warn-make-opt
+--no-infer-all
+--no-mercury-stdlib-dir
+--warn-inconsistent-pred-order-clauses
+--warn-insts-with-functors-without-type
+--warn-known-bad-format-calls
+--warn-non-contiguous-clauses
+--warn-non-contiguous-foreign-procs
+--warn-potentially-ambiguous-pragma
+--warn-suspicious-foreign-code
+--warn-unknown-format-calls
+--warn-unused-imports

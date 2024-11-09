@@ -1,26 +1,11 @@
 @BOOTSTRAP_MC_ARGS@
---no-infer-all
---warn-known-bad-format-calls
---warn-unknown-format-calls
---warn-non-contiguous-clauses
---warn-non-contiguous-foreign-procs
---warn-inconsistent-pred-order-clauses
---warn-unused-imports
---warn-insts-with-functors-without-type
---warn-suspicious-foreign-code
---warn-implicit-stream-calls
---warn-potentially-ambiguous-pragma
---halt-at-warn
---no-halt-at-warn-make-int
---no-halt-at-warn-make-opt
---no-warn-inferred-erroneous
---no-allow-ho-insts-as-modes
---no-mercury-stdlib-dir
---no-detect-libgrades
---generate-mmc-deps
+@STANDARD_MCFLAGS@
 --force-disable-ssdebug
+--generate-mmc-deps
 --no-libgrade
 --no-shlib-linker-use-install-name
+--no-warn-inferred-erroneous
+--warn-implicit-stream-calls
 -I../library
 --c-include-directory ../boehm_gc
 --c-include-directory ../boehm_gc/include

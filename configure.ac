@@ -5441,6 +5441,13 @@ TESTS_MDB_DOC="`pwd`"/doc/mdb_doc
 AC_SUBST(TESTS_MDB_INIT_DIR)
 AC_SUBST(TESTS_MDB_DOC)
 
+#-----------------------------------------------------------------------------#
+
+STANDARD_MCFLAGS="`cat STANDARD_MCFLAGS`"
+AC_SUBST(STANDARD_MCFLAGS)
+
+#-----------------------------------------------------------------------------#
+
 conf_h_copy="$TMPDIR"/mercury_conf.h.$$
 trap "rm -f $conf_h_copy" 0 1 2 3 13 15
 if test -f runtime/mercury_conf.h
