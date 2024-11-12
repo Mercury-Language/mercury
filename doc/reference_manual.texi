@@ -8295,7 +8295,24 @@ The reason for the restriction is simple:
 without it, how can one decide whether
 the argument of @samp{f2} is universally or existentially quantified?
 
-The other restriction is that every existentially quantified type variable
+A second restriction is that
+the list of type variables
+listed in the existential type quantifier before the data constructor
+may contain any type variable at most once.
+The same requirement applies to the
+list of type variables listed as arguments of the type constructor,
+whether the data constructors of that type
+have existential types or not.
+The type @samp{t34} violates both these restrictions:
+
+@example
+:- type t34(A, B, A)
+    --->    f3(A, B)
+    ;       some [C, D, D] f4(C, D).
+@end example
+
+The third and final restriction is that
+every existentially quantified type variable
 must occur
 @itemize
 @item either in one of the argument types of the data constructor,
@@ -8304,9 +8321,9 @@ in the range of a functional dependency.
 @end itemize
 
 @noindent
-This means that the type @samp{t3} in
+This means that the type @samp{t5} in
 @example
-:- type t3
+:- type t5
     --->    some [T1, T2] f5(T1) => xable(T1, T2).
 @end example
 @noindent
