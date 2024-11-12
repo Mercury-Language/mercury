@@ -1381,26 +1381,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     ),
     globals.set_opt_tuple(!.OptTuple, !Globals),
     postprocess_options_libgrades(!Globals, !Specs),
-    globals_init_mutables(!.Globals, !IO),
-
-    globals.lookup_bool_option(!.Globals, setting_only_use_subdirs,
-        UseSubdirs),
-    (
-        UseSubdirs = no,
-        SubdirSetting = use_cur_dir
-    ;
-        UseSubdirs = yes,
-        globals.lookup_bool_option(!.Globals, setting_only_use_grade_subdirs,
-            UseGradeSubdirs),
-        (
-            UseGradeSubdirs = no,
-            SubdirSetting = use_cur_ngs_subdir
-        ;
-            UseGradeSubdirs = yes,
-            SubdirSetting = use_cur_ngs_gs_subdir
-        )
-    ),
-    globals.set_subdir_setting(SubdirSetting, !Globals).
+    globals_init_mutables(!.Globals, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -2683,30 +2664,53 @@ maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
     %   link_library_directories
     %   use_subdirs
     %
+    % Other globals field updated:
+    %   subdir_setting
+    %
 :- pred handle_directory_options(op_mode::in, globals::in, globals::out)
     is det.
 
 handle_directory_options(OpMode, !Globals) :-
     globals.lookup_bool_option(!.Globals, setting_only_use_grade_subdirs,
         UseGradeSubdirs),
-
-    % This is needed for library installation (the library grades
-    % are built using `--use-grade-subdirs', and assume that
-    % the interface files were built using `--use-subdirs').
-    ( if
-        (
-            OpMode = opm_top_make
-        ;
-            OpMode = opm_top_args(_, InvokedByMMCMake),
-            InvokedByMMCMake = op_mode_invoked_by_mmc_make
-        ;
-            UseGradeSubdirs = bool.yes
+    (
+        UseGradeSubdirs = yes,
+        UseSubdirs = bool.yes,
+        globals.set_option(setting_only_use_subdirs, bool(UseSubdirs),
+            !Globals),
+        SubdirSetting = use_cur_ngs_gs_subdir
+    ;
+        UseGradeSubdirs = no,
+        % This is needed for library installation (the library grades
+        % are built using `--use-grade-subdirs', and assume that
+        % the interface files were built using `--use-subdirs').
+        % XXX I (zs) don't understand the above comment (which I moved,
+        % but did not write).
+        ( if
+            (
+                OpMode = opm_top_make
+            ;
+                OpMode = opm_top_args(_, InvokedByMMCMake),
+                InvokedByMMCMake = op_mode_invoked_by_mmc_make
+            )
+        then
+            UseSubdirs = bool.yes,
+            globals.set_option(setting_only_use_subdirs, bool(UseSubdirs),
+                !Globals),
+            SubdirSetting = use_cur_ngs_subdir
+        else
+            globals.lookup_bool_option(!.Globals, setting_only_use_subdirs,
+                UseSubdirs),
+            (
+                UseSubdirs = yes,
+                SubdirSetting = use_cur_ngs_subdir
+            ;
+                UseSubdirs = no,
+                SubdirSetting = use_cur_dir
+            )
         )
-    then
-        globals.set_option(setting_only_use_subdirs, bool(yes), !Globals)
-    else
-        true
     ),
+    globals.set_subdir_setting(SubdirSetting, !Globals),
 
     % We only perform the library grade install check if we are
     % building a linked target using mmc --make or if we are building
@@ -2928,8 +2932,6 @@ handle_directory_options(OpMode, !Globals) :-
     % module_name_to_file_name uses the plain header name, so we need to
     % add the full path to the header files in the current directory,
     % and any directories listed with --search-library-files-directory.
-    globals.lookup_bool_option(!.Globals, setting_only_use_subdirs,
-        UseSubdirs),
     ( if
         (
             UseGradeSubdirs = bool.yes,
