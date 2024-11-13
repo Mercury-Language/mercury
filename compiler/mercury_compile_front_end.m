@@ -657,8 +657,7 @@ mark_entities_in_opt_file_as_opt_exported(ProgressStream, IntermodAnalysis,
         globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
         (
             UseOptFiles = yes,
-            globals.get_options(Globals, OptionTable),
-            SearchWhichDir = search_intermod_dirs(OptionTable),
+            SearchWhichDir = search_intermod_dirs,
             module_info_get_name(!.HLDS, ModuleName),
             % XXX LEGACY
             ExtOpt = ext_cur_ngs_gs_max_ngs(

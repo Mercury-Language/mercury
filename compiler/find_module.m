@@ -79,10 +79,10 @@
     ;       search_auth_private(search_auth_private_dirs).
 
 :- type search_auth_private_dirs
-    --->    private_auth_normal_dirs(option_table)
-    ;       private_auth_intermod_dirs(option_table)
+    --->    private_auth_normal_dirs(normal_ext, globals)
+    ;       private_auth_intermod_dirs(intermod_ext, globals)
     ;       private_auth_init_file_dirs(option_table)
-    ;       private_auth_c_include_dirs(option_table)
+    ;       private_auth_c_include_dirs(c_incl_ext, globals)
     ;       private_auth_options_file_dirs(option_table)
     ;       private_auth_mercury_library_dirs(globals).
 
@@ -95,14 +95,14 @@
     ;       search_auth_private(search_auth_private_tail_dirs).
 
 :- type search_auth_private_tail_dirs =< search_auth_private_dirs
-    --->    private_auth_normal_dirs(option_table)
-    ;       private_auth_intermod_dirs(option_table)
-    ;       private_auth_c_include_dirs(option_table)
+    --->    private_auth_normal_dirs(normal_ext, globals)
+    ;       private_auth_intermod_dirs(intermod_ext, globals)
+    ;       private_auth_c_include_dirs(c_incl_ext, globals)
     ;       private_auth_options_file_dirs(option_table).
 
-:- func get_search_auth_normal_dirs(option_table)
+:- func get_search_auth_normal_dirs(normal_ext, globals)
     = search_auth_dirs.
-:- func get_search_auth_intermod_dirs(option_table)
+:- func get_search_auth_intermod_dirs(intermod_ext, globals)
     = search_auth_dirs.
 :- func get_search_auth_options_file_dirs(option_table)
     = search_auth_tail_dirs.
@@ -219,16 +219,17 @@
 
 :- import_module dir.
 :- import_module getopt.
+:- import_module map.
 :- import_module io.file.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
-get_search_auth_normal_dirs(OptionTable) =
-    search_auth_private(private_auth_normal_dirs(OptionTable)).
+get_search_auth_normal_dirs(NormalExt, Globals) =
+    search_auth_private(private_auth_normal_dirs(NormalExt, Globals)).
 
-get_search_auth_intermod_dirs(OptionTable) =
-    search_auth_private(private_auth_intermod_dirs(OptionTable)).
+get_search_auth_intermod_dirs(IntermodExt, Globals) =
+    search_auth_private(private_auth_intermod_dirs(IntermodExt, Globals)).
 
 get_search_auth_options_file_dirs(OptionTable) =
     search_auth_private(private_auth_options_file_dirs(OptionTable)).
@@ -533,24 +534,43 @@ compute_search_dirs(SearchAuthDirs, Dirs) :-
         )
     ;
         SearchAuthDirs = search_auth_private(SearchAuthPrivateDirs),
+        % XXX Once there is agreement on how we replace --intermod-directories,
+        % I (zs) will implement that approach for the other search directory
+        % options as well.
         (
-            SearchAuthPrivateDirs = private_auth_normal_dirs(OptionTable),
-            getopt.lookup_accumulating_option(OptionTable,
+            SearchAuthPrivateDirs =
+                private_auth_normal_dirs(_NormalExt, Globals),
+            globals.lookup_accumulating_option(Globals,
                 search_directories, Dirs)
         ;
-            SearchAuthPrivateDirs = private_auth_intermod_dirs(OptionTable),
-            getopt.lookup_accumulating_option(OptionTable,
-                intermod_directories, Dirs)
+            SearchAuthPrivateDirs =
+                private_auth_intermod_dirs(IntermodExt, Globals),
+            globals.get_ext_dirs_maps(Globals, ExtDirsMaps),
+            ExtDirsMaps = ext_dirs_maps(IntermodDirsMap),
+            map.lookup(IntermodDirsMap, IntermodExt, ProposedDirs),
+            globals.lookup_accumulating_option(Globals,
+                intermod_directories, LegacyDirs),
+            % The switchover from the LEGACY library install structure
+            % to its PROPOSED version will also be a period of switchover
+            % from the old options specifying search dirs to the new options.
+            % Given a program P that uses library L1, which in turn uses
+            % library L2, is to switch over P first,  then L1, then L2,
+            % with the general rule being if entity (program or library) E1
+            % uses entity E2, then we switch over E1 first. The value we
+            % assign to Dirs is designed to work for this approach.
+            Dirs = ProposedDirs ++ LegacyDirs
         ;
             SearchAuthPrivateDirs = private_auth_init_file_dirs(OptionTable),
             getopt.lookup_accumulating_option(OptionTable,
                 init_file_directories, Dirs)
         ;
-            SearchAuthPrivateDirs = private_auth_c_include_dirs(OptionTable),
-            getopt.lookup_accumulating_option(OptionTable,
+            SearchAuthPrivateDirs =
+                private_auth_c_include_dirs(_CInclExt, Globals),
+            globals.lookup_accumulating_option(Globals,
                 c_include_directories, Dirs)
         ;
-            SearchAuthPrivateDirs = private_auth_options_file_dirs(OptionTable),
+            SearchAuthPrivateDirs =
+                private_auth_options_file_dirs(OptionTable),
             getopt.lookup_accumulating_option(OptionTable,
                 options_search_directories, Dirs)
         ;
@@ -559,7 +579,8 @@ compute_search_dirs(SearchAuthDirs, Dirs) :-
             getopt.lookup_accumulating_option(OptionTable,
                 mercury_library_directories, LibDirs),
             globals.get_grade_dir(Globals, GradeDir),
-            Dirs = list.map((func(LibDir) = LibDir / "lib" / GradeDir), LibDirs)
+            Dirs =
+                list.map((func(LibDir) = LibDir / "lib" / GradeDir), LibDirs)
         )
     ).
 

@@ -70,11 +70,13 @@
 :- import_module analysis.operations.
 :- import_module libs.compiler_util.
 :- import_module libs.compute_grade.
+:- import_module libs.file_util.
 :- import_module libs.op_mode.
 :- import_module libs.optimization_options.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.write_error_spec.
 
@@ -2791,12 +2793,12 @@ handle_directory_options(OpMode, !Globals) :-
     % options.m because they are grade dependent.
     globals.lookup_accumulating_option(!.Globals,
         mercury_library_directories, MercuryLibDirs),
-    globals.get_grade_dir(!.Globals, GradeString),
+    globals.get_grade_dir(!.Globals, Grade),
     (
         MercuryLibDirs = [_ | _],
         ExtraLinkLibDirs = list.map(
             ( func(MercuryLibDir) =
-                MercuryLibDir/"lib"/GradeString
+                MercuryLibDir/"lib"/Grade
             ), MercuryLibDirs),
 
         globals.lookup_accumulating_option(!.Globals,
@@ -2817,7 +2819,7 @@ handle_directory_options(OpMode, !Globals) :-
 
         ExtraIncludeDirs = list.map(
             ( func(MercuryLibDir) =
-                MercuryLibDir/"lib"/GradeString/"inc"
+                MercuryLibDir/"lib"/Grade/"inc"
             ), MercuryLibDirs),
         globals.lookup_accumulating_option(!.Globals, c_include_directories,
             CIncludeDirs),
@@ -2828,7 +2830,7 @@ handle_directory_options(OpMode, !Globals) :-
         ExtraIntermodDirs = list.map(
             ( func(MercuryLibDir) =
                 dir.make_path_name(MercuryLibDir,
-                    dir.make_path_name("ints", GradeString))
+                    dir.make_path_name("ints", Grade))
             ), MercuryLibDirs),
         globals.lookup_accumulating_option(!.Globals,
             intermod_directories, IntermodDirs0),
@@ -2837,7 +2839,7 @@ handle_directory_options(OpMode, !Globals) :-
 
         ExtraInitDirs = list.map(
             ( func(MercuryLibDir) =
-                MercuryLibDir / "modules" / GradeString
+                MercuryLibDir / "modules" / Grade
             ), MercuryLibDirs),
 
         globals.lookup_accumulating_option(!.Globals,
@@ -2853,9 +2855,9 @@ handle_directory_options(OpMode, !Globals) :-
     % search directories to the list of directories to search for
     % .opt files.
     globals.lookup_bool_option(!.Globals,
-        use_search_directories_for_intermod, UseSearchDirs),
+        use_search_directories_for_intermod, UseSearchDirsForIntermod),
     (
-        UseSearchDirs = bool.yes,
+        UseSearchDirsForIntermod = bool.yes,
         globals.lookup_accumulating_option(!.Globals,
             intermod_directories, IntermodDirs1),
         globals.lookup_accumulating_option(!.Globals,
@@ -2864,7 +2866,7 @@ handle_directory_options(OpMode, !Globals) :-
         globals.set_option(intermod_directories,
             accumulating(IntermodDirs1 ++ SearchDirs), !Globals)
     ;
-        UseSearchDirs = bool.no
+        UseSearchDirsForIntermod = bool.no
     ),
 
     globals.lookup_accumulating_option(!.Globals,
@@ -2872,7 +2874,7 @@ handle_directory_options(OpMode, !Globals) :-
     globals.lookup_accumulating_option(!.Globals,
         intermod_directories, IntermodDirs2),
     globals.lookup_string_option(!.Globals, target_arch, TargetArch),
-    ToGradeSubdir = (func(Dir) = Dir/"Mercury"/GradeString/TargetArch),
+    ToGradeSubdir = (func(Dir) = Dir/"Mercury"/Grade/TargetArch),
     (
         UseGradeSubdirs = bool.yes,
         % With `--use-grade-subdirs', `.opt', `.trans_opt' and
@@ -2883,7 +2885,7 @@ handle_directory_options(OpMode, !Globals) :-
         % for installed files work, so we need to add
         % `--intermod-directory Mercury/<grade>/<target_arch>'
         % to find the `.opt' files in the current directory.
-        GradeSubdir = "Mercury"/GradeString/TargetArch,
+        GradeSubdir = "Mercury"/Grade/TargetArch,
 
         % Directories listed with --search-library-files-directories need
         % to be treated in the same way as the current directory.
@@ -2962,7 +2964,95 @@ handle_directory_options(OpMode, !Globals) :-
             accumulating(SubdirCIncludeDirs), !Globals)
     else
         true
-    ).
+    ),
+
+    globals.lookup_accumulating_option(!.Globals,
+        intermod_dirs_same_subdir_setting, IntermodSame),
+    globals.lookup_accumulating_option(!.Globals,
+        intermod_dirs_indep_subdir_setting, IntermodIndep),
+    globals.lookup_accumulating_option(!.Globals,
+        intermod_dirs_installed_library, IntermodInstalled),
+    some [!IntermodDirsMap] (
+        map.init(!:IntermodDirsMap),
+
+        ext_cur_ngs_gs_extension_dir(
+            ext_cur_ngs_gs_proposed_opt_plain, _, ExtDirPlainOpt),
+        ext_cur_ngs_gs_extension_dir(
+            ext_cur_ngs_gs_proposed_opt_trans, _, ExtDirTransOpt),
+        ext_cur_ngs_gs_extension_dir(
+            ext_cur_ngs_gs_an_ds_date, _, ExtDirDate),
+        ext_cur_ngs_gs_extension_dir(
+            ext_cur_ngs_gs_an_ds_status, _, ExtDirStatus),
+        ext_cur_ngs_gs_max_ngs_extension_dir(
+            ext_cur_ngs_gs_max_ngs_an_analysis, _, ExtDirAnalysis),
+        ext_cur_ngs_gs_max_ngs_extension_dir(
+            ext_cur_ngs_gs_max_ngs_an_imdg, _, ExtDirImdg),
+        ext_cur_ngs_gs_max_ngs_extension_dir(
+            ext_cur_ngs_gs_max_ngs_an_request, _, ExtDirRequest),
+
+        make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirPlainOpt,
+            IntermodSame, IntermodIndep, IntermodInstalled, IntermodPlainOpt),
+        make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirTransOpt,
+            IntermodSame, IntermodIndep, IntermodInstalled, IntermodTransOpt),
+        make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirDate,
+            IntermodSame, IntermodIndep, IntermodInstalled, IntermodDate),
+        make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirStatus,
+            IntermodSame, IntermodIndep, IntermodInstalled, IntermodStatus),
+        make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirAnalysis,
+            IntermodSame, IntermodIndep, IntermodInstalled, IntermodAnalysis),
+        make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirImdg,
+            IntermodSame, IntermodIndep, IntermodInstalled, IntermodImdg),
+        make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirRequest,
+            IntermodSame, IntermodIndep, IntermodInstalled, IntermodRequest),
+
+        map.det_insert(ie_opt_plain, IntermodPlainOpt, !IntermodDirsMap),
+        map.det_insert(ie_opt_trans, IntermodTransOpt, !IntermodDirsMap),
+        map.det_insert(ie_an_ds_date, IntermodDate, !IntermodDirsMap),
+        map.det_insert(ie_an_ds_status, IntermodStatus, !IntermodDirsMap),
+        map.det_insert(ie_an_analysis, IntermodAnalysis, !IntermodDirsMap),
+        map.det_insert(ie_an_imdg, IntermodImdg, !IntermodDirsMap),
+        map.det_insert(ie_an_request, IntermodRequest, !IntermodDirsMap),
+
+        IntermodSrc = IntermodSame ++ IntermodIndep ++ IntermodInstalled,
+        map.det_insert(ie_src, IntermodSrc, !IntermodDirsMap),
+
+        ExtDirsMaps = ext_dirs_maps(!.IntermodDirsMap)
+    ),
+    globals.set_ext_dirs_maps(ExtDirsMaps, !Globals).
+
+:- pred make_proposed_search_path_gs(subdir_setting::in, dir_name::in,
+    dir_name::in,
+    list(dir_name)::in, list(dir_name)::in, list(dir_name)::in,
+    list(dir_name)::out) is det.
+
+make_proposed_search_path_gs(SubdirSetting, Grade, ExtSubDir,
+        SearchDirsSame, SearchDirsIndep, SearchDirsInstall, Dirs) :-
+    % First, we search SearchDirsSame, which should be the workspace
+    % directories that are guaranteed to share the same subdir_setting
+    % as the current workspace directory. In each of these directories,
+    % we use SubdirSetting to select the one right subdir.
+    list.map(
+        make_selected_proposed_dir_name_gs(SubdirSetting, Grade, ExtSubDir),
+        SearchDirsSame, DirsSame),
+    % Second, we search SearchDirsIndep, which should be the workspace
+    % directories whose subdir_setting is independent of the subdir_setting
+    % of this workspace directory. In these places, we have to search all three
+    % of the subdirs where that independent subdir_setting can put the values
+    % of this extension, searching them in the order grade-specific,
+    % non-grade-specific, and then the current directory ("current" in this
+    % case meaning one of the directories in SearchDirsIndep).
+    list.map(
+        make_all_proposed_dir_names_gs(Grade, ExtSubDir),
+        SearchDirsIndep, DirsListIndep),
+    % Third, we search SearchDirsInstall, which should be a list of library
+    % install directories. In install directories, we look only in the
+    % grade-specific subdir.
+    list.map(
+        make_selected_proposed_dir_name_gs(use_cur_ngs_gs_subdir, Grade,
+            ExtSubDir),
+        SearchDirsInstall, DirsInstall),
+    list.condense(DirsListIndep, DirsIndep),
+    Dirs = DirsSame ++ DirsIndep ++ DirsInstall.
 
 %---------------------%
 

@@ -158,8 +158,7 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
     % XXX LEGACY
     module_name_to_file_name(Globals, $pred, ModuleDepExt,
         ModuleName, DepFileName, _DepFileNameProposed),
-    globals.get_options(Globals, OptionTable),
-    SearchAuthDirs = get_search_auth_normal_dirs(OptionTable),
+    SearchAuthDirs = get_search_auth_normal_dirs(ne_module_dep, Globals),
     get_file_timestamp(SearchAuthDirs, DepFileName,
         SearchDirs, MaybeDepFileTimestamp, !Info, !IO),
     (
@@ -198,8 +197,7 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
         ;
             MaybeSourceFileTimestamp = error(_),
             find_and_read_module_dep_file(ProgressStream, Globals,
-                RebuildModuleDeps, search_normal_dirs(OptionTable),
-                ModuleName, !Info, !IO),
+                RebuildModuleDeps, search_normal_dirs, ModuleName, !Info, !IO),
 
             % Check for the case where the module name doesn't match the
             % source file name (e.g. parse.m contains module mdb.parse).

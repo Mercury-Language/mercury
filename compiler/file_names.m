@@ -683,10 +683,10 @@
     ;       search_cur_dir_and(search_which_tail_dirs)
     ;       search_this_dir(dir_name)
     ;       search_this_dir_and(dir_name, search_which_tail_dirs)
-    ;       search_normal_dirs(option_table)
-    ;       search_intermod_dirs(option_table)
+    ;       search_normal_dirs
+    ;       search_intermod_dirs
     ;       search_init_file_dirs(option_table)
-    ;       search_c_include_dirs(option_table)
+    ;       search_c_include_dirs
     ;       search_options_file_dirs(option_table)
     ;       search_mercury_library_dirs(globals)
     ;       search_dirs_for_ext.
@@ -702,21 +702,21 @@
     %
 :- type search_which_tail_dirs =< search_which_dirs
     --->    search_cur_dir
-    ;       search_normal_dirs(option_table)
-    ;       search_intermod_dirs(option_table)
-    ;       search_c_include_dirs(option_table)
+    ;       search_normal_dirs
+    ;       search_intermod_dirs
+    ;       search_c_include_dirs
     ;       search_options_file_dirs(option_table).
 
 :- inst search_cur_or_normal for search_which_dirs/0
     --->    search_cur_dir
-    ;       search_normal_dirs(ground).
+    ;       search_normal_dirs.
 
 :- inst search_cur_or_intermod for search_which_dirs/0
     --->    search_cur_dir
-    ;       search_intermod_dirs(ground).
+    ;       search_intermod_dirs.
 
 :- inst search_intermod for search_which_dirs/0
-    --->    search_intermod_dirs(ground).
+    --->    search_intermod_dirs.
 
 :- inst search_ext for search_which_dirs/0
     --->    search_dirs_for_ext.
@@ -829,6 +829,38 @@
     list(dir_name)::out, list(dir_name)::out) is det.
 
 :- pred analysis_cache_dir_name(globals::in, string::out, string::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % make_selected_proposed_dir_name_gs(SubdirSetting, Grade, ExtSubDir,
+    %   PrefixDir, Dir):
+    %
+    % The caller should pass us
+    %
+    % - SubdirSetting, the value of globals.get_subdir_setting;
+    % - Grade, the value of globals.get_grade_dir;
+    % - ExtSubDir, the subdir name in which the files of a given extension,
+    %   which should be grade-specific but not architecture-specific,
+    %   should be stored, and
+    % - PrefixDir, the name of either a workspace directory or an install
+    %   directory,
+    %
+    % We will then return in Dir the name of the directory within PrefixDir
+    % that contains files of that extension with SubdirSetting.
+    %
+:- pred make_selected_proposed_dir_name_gs(subdir_setting::in, dir_name::in,
+    dir_name::in, dir_name::in, dir_name::out) is det.
+
+    % make_all_proposed_dir_names_gs(Grade, ExtSubDir, PrefixDir, Dirs):
+    %
+    % The meanings of the input arguments are the same as for
+    % make_selected_proposed_dir_name_gs. But instead of returning the one
+    % directory name selected by a given value of SubdirSetting, return
+    % the dir names for all three possible values of SubdirSetting, with the
+    % order being grade-specific dir, non-grade-specific dir, and current dir.
+    %
+:- pred make_all_proposed_dir_names_gs(dir_name::in,
+    dir_name::in, dir_name::in, list(dir_name)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1332,40 +1364,51 @@ module_name_to_search_file_name(Globals, From, Ext, ModuleName,
             SearchAuthDirs = search_auth_cur_dir
         )
     ;
-        SearchWhichDirs = search_normal_dirs(OptionTable),
+        SearchWhichDirs = search_normal_dirs,
         (
             Ext = ext_cur_ngs(ExtCurNgs),
-            ( ExtCurNgs = ext_cur_ngs_int_int0
-            ; ExtCurNgs = ext_cur_ngs_int_int1
-            ; ExtCurNgs = ext_cur_ngs_int_int2
-            ; ExtCurNgs = ext_cur_ngs_int_int3
-            ; ExtCurNgs = ext_cur_ngs_misc_module_dep
-            ),
+            ext_cur_ngs_to_normal_ext(ExtCurNgs, NormalExt),
             SearchAuthDirs = search_auth_private(
-                private_auth_normal_dirs(OptionTable))
+                private_auth_normal_dirs(NormalExt, Globals))
         )
     ;
-        SearchWhichDirs = search_intermod_dirs(OptionTable),
+        SearchWhichDirs = search_intermod_dirs,
         (
             Ext = ext_cur_ngs_gs_max_ngs(ExtCurNgsGsMaxCur),
-            ( ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_legacy_opt_plain
-            ; ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_legacy_opt_trans
-            ; ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_an_request
-            ; ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_an_imdg
-            ; ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_an_analysis
-            ),
-            SearchAuthDirs = search_auth_private(
-                private_auth_intermod_dirs(OptionTable))
+            (
+                ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_legacy_opt_plain,
+                IntermodExt = ie_opt_plain
+            ;
+                ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_legacy_opt_trans,
+                IntermodExt = ie_opt_trans
+            ;
+                ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_an_request,
+                IntermodExt = ie_an_request
+            ;
+                ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_an_imdg,
+                IntermodExt = ie_an_imdg
+            ;
+                ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_an_analysis,
+                IntermodExt = ie_an_analysis
+            )
         ;
             Ext = ext_cur_ngs_gs(ExtCurNgsGs),
-            ( ExtCurNgsGs = ext_cur_ngs_gs_proposed_opt_plain
-            ; ExtCurNgsGs = ext_cur_ngs_gs_proposed_opt_trans
-            ; ExtCurNgsGs = ext_cur_ngs_gs_an_ds_status
-            ; ExtCurNgsGs = ext_cur_ngs_gs_an_ds_date
-            ),
-            SearchAuthDirs = search_auth_private(
-                private_auth_intermod_dirs(OptionTable))
-        )
+            (
+                ExtCurNgsGs = ext_cur_ngs_gs_proposed_opt_plain,
+                IntermodExt = ie_opt_plain
+            ;
+                ExtCurNgsGs = ext_cur_ngs_gs_proposed_opt_trans,
+                IntermodExt = ie_opt_trans
+            ;
+                ExtCurNgsGs = ext_cur_ngs_gs_an_ds_status,
+                IntermodExt = ie_an_ds_status
+            ;
+                ExtCurNgsGs = ext_cur_ngs_gs_an_ds_date,
+                IntermodExt = ie_an_ds_date
+            )
+        ),
+        SearchAuthDirs = search_auth_private(
+            private_auth_intermod_dirs(IntermodExt, Globals))
     ;
         SearchWhichDirs = search_dirs_for_ext,
         (
@@ -1374,15 +1417,9 @@ module_name_to_search_file_name(Globals, From, Ext, ModuleName,
             SearchAuthDirs = search_auth_cur_dir
         ;
             Ext = ext_cur_ngs(ExtCurNgs),
-            ( ExtCurNgs = ext_cur_ngs_int_int0
-            ; ExtCurNgs = ext_cur_ngs_int_int1
-            ; ExtCurNgs = ext_cur_ngs_int_int2
-            ; ExtCurNgs = ext_cur_ngs_int_int3
-            ; ExtCurNgs = ext_cur_ngs_misc_module_dep
-            ),
-            globals.get_options(Globals, OptionTable),
+            ext_cur_ngs_to_normal_ext(ExtCurNgs, NormalExt),
             SearchAuthDirs = search_auth_private(
-                private_auth_normal_dirs(OptionTable))
+                private_auth_normal_dirs(NormalExt, Globals))
         ;
             Ext = ext_cur_ngs_gs(ExtCurNgsGs),
             ( ExtCurNgsGs = ext_cur_ngs_gs_target_c
@@ -1402,24 +1439,28 @@ module_name_to_search_file_name(Globals, From, Ext, ModuleName,
             SearchAuthDirs = search_auth_cur_dir
         ;
             Ext = ext_cur_ngs_gs_max_ngs(ExtCurNgsGsMaxNgs),
-            ( ExtCurNgsGsMaxNgs = ext_cur_ngs_gs_max_ngs_legacy_opt_plain
-            ; ExtCurNgsGsMaxNgs = ext_cur_ngs_gs_max_ngs_an_analysis
+            (
+                ExtCurNgsGsMaxNgs = ext_cur_ngs_gs_max_ngs_legacy_opt_plain,
+                IntermodExt = ie_opt_plain
+            ;
+                ExtCurNgsGsMaxNgs = ext_cur_ngs_gs_max_ngs_an_analysis,
+                IntermodExt = ie_an_analysis
             ),
-            globals.get_options(Globals, OptionTable),
-            SearchAuthDirs = search_auth_cur_dir_and(
-                search_auth_private(private_auth_intermod_dirs(OptionTable)))
+            PrivateDirs = private_auth_intermod_dirs(IntermodExt, Globals),
+            SearchAuthDirs =
+                search_auth_cur_dir_and(search_auth_private(PrivateDirs))
         ;
             Ext = ext_cur_ngs_gs_max_cur(ExtCurNgsGsMaxCur),
             ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_cur_mih,
-            globals.get_options(Globals, OptionTable),
-            SearchAuthDirs = search_auth_cur_dir_and(
-                search_auth_private(private_auth_c_include_dirs(OptionTable)))
+            CInclDirs = private_auth_c_include_dirs(cie_mih, Globals),
+            SearchAuthDirs =
+                search_auth_cur_dir_and(search_auth_private(CInclDirs))
         ;
             Ext = ext_cur_pgs_max_cur(ExtCurPgsMaxCur),
             ExtCurPgsMaxCur = ext_cur_pgs_max_cur_mh,
-            globals.get_options(Globals, OptionTable),
-            SearchAuthDirs = search_auth_cur_dir_and(
-                search_auth_private(private_auth_c_include_dirs(OptionTable)))
+            CInclDirs = private_auth_c_include_dirs(cie_mh, Globals),
+            SearchAuthDirs =
+                search_auth_cur_dir_and(search_auth_private(CInclDirs))
         ;
             Ext = ext_cur_ngs_gas(ExtCurNgsGas),
             ( ExtCurNgsGas = ext_cur_ngs_gas_obj_obj_opt
@@ -1427,6 +1468,24 @@ module_name_to_search_file_name(Globals, From, Ext, ModuleName,
             ),
             SearchAuthDirs = search_auth_cur_dir
         )
+    ).
+
+:- inst ext_cur_ngs_search for ext_cur_ngs/0
+    --->    ext_cur_ngs_int_int0
+    ;       ext_cur_ngs_int_int1
+    ;       ext_cur_ngs_int_int2
+    ;       ext_cur_ngs_int_int3
+    ;       ext_cur_ngs_misc_module_dep.
+
+:- pred ext_cur_ngs_to_normal_ext(ext_cur_ngs::in(ext_cur_ngs_search),
+    normal_ext::out) is det.
+
+ext_cur_ngs_to_normal_ext(ExtCurNgs, NormalExt) :-
+    ( ExtCurNgs = ext_cur_ngs_int_int0,         NormalExt = ne_int0
+    ; ExtCurNgs = ext_cur_ngs_int_int1,         NormalExt = ne_int1
+    ; ExtCurNgs = ext_cur_ngs_int_int2,         NormalExt = ne_int2
+    ; ExtCurNgs = ext_cur_ngs_int_int3,         NormalExt = ne_int3
+    ; ExtCurNgs = ext_cur_ngs_misc_module_dep,  NormalExt = ne_module_dep
     ).
 
 %---------------------%
@@ -1837,6 +1896,30 @@ make_gas_dir_names(Globals, SubDirName,
         ["Mercury", Grade, TargetArch, "Mercury", SubDirName],
     GasSubDirNamesProposed =
         ["MercurySystem", SubDirName, Grade, TargetArch].
+
+%---------------------%
+
+make_selected_proposed_dir_name_gs(SubdirSetting, Grade, ExtSubDir, PrefixDir,
+        Dir) :-
+    (
+        SubdirSetting = use_cur_dir,
+        Dir = PrefixDir
+    ;
+        SubdirSetting = use_cur_ngs_subdir,
+        Dir = PrefixDir / "MercurySystem" / ExtSubDir
+    ;
+        SubdirSetting = use_cur_ngs_gs_subdir,
+        Dir = PrefixDir / "MercurySystem" / ExtSubDir / Grade
+    ).
+
+make_all_proposed_dir_names_gs(Grade, ExtSubDir, PrefixDir, Dirs) :-
+    make_selected_proposed_dir_name_gs(use_cur_ngs_gs_subdir, Grade, ExtSubDir,
+        PrefixDir, GsDir),
+    make_selected_proposed_dir_name_gs(use_cur_ngs_subdir, Grade, ExtSubDir,
+        PrefixDir, NgsDir),
+    make_selected_proposed_dir_name_gs(use_cur_dir, Grade, ExtSubDir,
+        PrefixDir, CurDir),
+    Dirs = [GsDir, NgsDir, CurDir].
 
 %---------------------------------------------------------------------------%
 

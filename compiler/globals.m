@@ -21,6 +21,7 @@
 :- module libs.globals.
 :- interface.
 
+:- import_module libs.file_util.
 :- import_module libs.op_mode.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
@@ -293,6 +294,59 @@
 
 %---------------------%
 
+    % Map each extension in the dirs_ext type to the list of directories
+    % we should search
+:- type ext_dirs_maps
+    --->    ext_dirs_maps(
+                % XXX add normal and c_incl maps after there is agreement
+                % on the overall approach.
+                edm_intermod        :: ext_intermod_dirs_map
+            ).
+
+:- type ext_intermod_dirs_map == map(intermod_ext, list(dir_name)).
+
+:- type dirs_ext
+    --->    ne_int0
+    ;       ne_int1
+    ;       ne_int2
+    ;       ne_int3
+    ;       ne_module_dep
+    ;       ne_src
+    ;       ie_opt_plain
+    ;       ie_opt_trans
+    ;       ie_an_ds_date
+    ;       ie_an_ds_status
+    ;       ie_an_analysis
+    ;       ie_an_imdg
+    ;       ie_an_request
+    ;       ie_src          % XXX This option should not exist.
+    ;       cie_mh
+    ;       cie_mih.
+
+:- type normal_ext =< dirs_ext
+    --->    ne_int0
+    ;       ne_int1
+    ;       ne_int2
+    ;       ne_int3
+    ;       ne_module_dep
+    ;       ne_src.
+
+:- type intermod_ext =< dirs_ext
+    --->    ie_opt_plain
+    ;       ie_opt_trans
+    ;       ie_an_ds_date
+    ;       ie_an_ds_status
+    ;       ie_an_analysis
+    ;       ie_an_imdg
+    ;       ie_an_request
+    ;       ie_src.         % XXX This option should not exist.
+
+:- type c_incl_ext =< dirs_ext
+    --->    cie_mh
+    ;       cie_mih.
+
+%---------------------%
+
 :- pred convert_target(string::in, compilation_target::out) is semidet.
 :- pred convert_foreign_language(string::in, foreign_language::out) is semidet.
 :- pred convert_gc_method(string::in, gc_method::out) is semidet.
@@ -416,6 +470,7 @@
 :- pred get_maybe_feedback_info(globals::in,
     maybe(feedback_info)::out) is det.
 :- pred get_file_install_cmd(globals::in, file_install_cmd::out) is det.
+:- pred get_ext_dirs_maps(globals::in, ext_dirs_maps::out) is det.
 :- pred get_trace_suppress(globals::in, trace_suppress_items::out) is det.
 :- pred get_reuse_strategy(globals::in, reuse_strategy::out) is det.
 :- pred get_limit_error_contexts_map(globals::in,
@@ -448,6 +503,8 @@
 :- pred set_maybe_feedback_info(maybe(feedback_info)::in,
     globals::in, globals::out) is det.
 :- pred set_file_install_cmd(file_install_cmd::in,
+    globals::in, globals::out) is det.
+:- pred set_ext_dirs_maps(ext_dirs_maps::in,
     globals::in, globals::out) is det.
 :- pred set_subdir_setting(subdir_setting::in,
     globals::in, globals::out) is det.
@@ -1321,6 +1378,7 @@ report_why_not_color(Source, Value, WhyNot) = Spec :-
                 g_op_mode                   :: op_mode,
                 g_maybe_feedback            :: maybe(feedback_info),
                 g_file_install_cmd          :: file_install_cmd,
+                g_ext_dirs_maps             :: ext_dirs_maps,
 
                 % The readonly fields that each require a full word.
                 g_read_only                 :: read_only_globals,
@@ -1350,10 +1408,11 @@ globals_init(DefaultOptions, Options, OptTuple, OpMode,
         WordSize, GC_Method, TerminationNorm, Termination2Norm,
         TraceLevel, SSTraceLevel, MaybeThreadSafe,
         HostEnvType, SystemEnvType, TargetEnvType, InstallMethod, Globals) :-
+    ExtDirsMaps0 = ext_dirs_maps(map.init),
     ReadOnlyGlobals0 = read_only_globals(TraceSuppress, ReuseStrategy,
          LimitErrorContextsMap, LinkedTargetExtInfoMap, "", C_CompilerType),
     Globals0 = globals(DefaultOptions, Options, OptTuple, OpMode,
-        MaybeFeedback, FileInstallCmd, ReadOnlyGlobals0,
+        MaybeFeedback, FileInstallCmd, ExtDirsMaps0, ReadOnlyGlobals0,
         CSharp_CompilerType, Target, SubdirSetting,
         WordSize, GC_Method, TerminationNorm, Termination2Norm,
         TraceLevel, SSTraceLevel, MaybeThreadSafe,
@@ -1377,6 +1436,8 @@ get_maybe_feedback_info(Globals, X) :-
     X = Globals ^ g_maybe_feedback.
 get_file_install_cmd(Globals, X) :-
     X = Globals ^ g_file_install_cmd.
+get_ext_dirs_maps(Globals, X) :-
+    X = Globals ^ g_ext_dirs_maps.
 get_trace_suppress(Globals, X) :-
     X = Globals ^ g_read_only ^ rog_trace_suppress_items.
 get_reuse_strategy(Globals, X) :-
@@ -1418,28 +1479,30 @@ get_target_env_type(Globals, X) :-
 get_install_method(Globals, X) :-
     X = Globals ^ g_install_method.
 
-set_options(Options, !Globals) :-
-    !Globals ^ g_options := Options.
-set_opt_tuple(OptTuple, !Globals) :-
-    !Globals ^ g_opt_tuple := OptTuple.
-set_op_mode(OpMode, !Globals) :-
-    !Globals ^ g_op_mode := OpMode.
-set_maybe_feedback_info(MaybeFeedback, !Globals) :-
-    !Globals ^ g_maybe_feedback := MaybeFeedback.
-set_file_install_cmd(FileInstallCmd, !Globals) :-
-    !Globals ^ g_file_install_cmd := FileInstallCmd.
+set_options(X, !Globals) :-
+    !Globals ^ g_options := X.
+set_opt_tuple(X, !Globals) :-
+    !Globals ^ g_opt_tuple := X.
+set_op_mode(X, !Globals) :-
+    !Globals ^ g_op_mode := X.
+set_maybe_feedback_info(X, !Globals) :-
+    !Globals ^ g_maybe_feedback := X.
+set_file_install_cmd(X, !Globals) :-
+    !Globals ^ g_file_install_cmd := X.
+set_ext_dirs_maps(X, !Globals) :-
+    !Globals ^ g_ext_dirs_maps := X.
 set_subdir_setting(X, !Globals) :-
     !Globals ^ g_subdir_setting := X.
-set_word_size(WordSize, !Globals) :-
-    !Globals ^ g_word_size := WordSize.
-set_gc_method(GC_Method, !Globals) :-
-    !Globals ^ g_gc_method := GC_Method.
-set_trace_level(TraceLevel, !Globals) :-
-    !Globals ^ g_trace_level := TraceLevel.
+set_word_size(X, !Globals) :-
+    !Globals ^ g_word_size := X.
+set_gc_method(X, !Globals) :-
+    !Globals ^ g_gc_method := X.
+set_trace_level(X, !Globals) :-
+    !Globals ^ g_trace_level := X.
 set_trace_level_none(!Globals) :-
     !Globals ^ g_trace_level := trace_level_none.
-set_ssdb_trace_level(SSTraceLevel, !Globals) :-
-    !Globals ^ g_ssdb_trace_level := SSTraceLevel.
+set_ssdb_trace_level(X, !Globals) :-
+    !Globals ^ g_ssdb_trace_level := X.
 
 %---------------------------------------------------------------------------%
 

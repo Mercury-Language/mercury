@@ -50,7 +50,6 @@
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.find_module.
@@ -125,9 +124,8 @@
 
 mmc_module_name_to_read_file_name(Globals, Ext,
         ModuleName, MaybeFileName, !IO) :-
+    SearchWhichDirs = search_intermod_dirs,
     % XXX LEGACY
-    globals.get_options(Globals, OptionTable),
-    SearchWhichDirs = search_intermod_dirs(OptionTable),
     module_name_to_search_file_name(Globals, $pred, Ext, ModuleName,
         SearchWhichDirs, SearchAuthDirs, FileName0, _FileName0Proposed),
     search_for_file(SearchAuthDirs, FileName0,
