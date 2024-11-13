@@ -8278,7 +8278,7 @@ process_list(cons(Head, Tail)) = [show(Head) | process_list(Tail)].
 There are some restrictions on the forms that
 existentially typed data constructors can take.
 
-One restriction is that no type variable may be quantified
+The first restriction is that no type variable may be quantified
 both universally, by being listed as an argument of the type constructor,
 and existentially, by being listed in the existential type quantifier
 before the data constructor.
@@ -8292,17 +8292,21 @@ The type @samp{t12} violates this restriction:
 
 @noindent
 The reason for the restriction is simple:
-without it, how can one decide whether
-the argument of @samp{f2} is universally or existentially quantified?
+the reference of @samp{T} in the @samp{f2} data constructor
+being simultaneously inside the scope of more than quantification
+can mislead readers who see one of the quantifications,
+and stop looking for the other.
+The simplest way to avoid such confusion
+is to require the programmer to avoid having one quantification shadow another.
 
-A second restriction is that
-the list of type variables
-listed in the existential type quantifier before the data constructor
-may contain any type variable at most once.
-The same requirement applies to the
-list of type variables listed as arguments of the type constructor,
-whether the data constructors of that type
-have existential types or not.
+The second restriction is that
+type variables listed
+in the existential type quantifier before the data constructor
+cannot be repeated.
+Type variables in the argument list of the type constructor
+also cannot be repeated,
+whether or not the data constructors of that type
+have existential types.
 The type @samp{t34} violates both these restrictions:
 
 @example
