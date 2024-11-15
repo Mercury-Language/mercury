@@ -45,31 +45,6 @@
     maybe4(list(prog_var), list(prog_var), goal, list(warning_spec))::out,
     prog_varset::in, prog_varset::out) is det.
 
-    % Functions to construct error messages. Exported to parse_dcg_goal.m,
-    % to allow DCG and non-DCG clauses to generate identical error messages
-    % in analogous situations.
-    %
-:- func should_have_one_goal_prefix(cord(format_piece),
-    term.context, string) = error_spec.
-:- func should_have_two_terms_infix(cord(format_piece),
-    term.context, string) = error_spec.
-:- func should_have_two_goals_infix(cord(format_piece),
-    term.context, string) = error_spec.
-:- func should_have_one_x_one_goal_prefix(cord(format_piece),
-    term.context, string, string) = error_spec.
-
-    % apply_purity_marker_to_maybe_goal(GoalTerm, Purity,
-    %   MaybeGoal0, MaybeGoal):
-    %
-    % Given a GoalTerm which has a purity annotation for Purity in front of it,
-    % which has been parsed as MaybeGoal0, mark the Goal0 in MaybeGoal0
-    % as having the given purity, if it is a goal to which purity annotations
-    % are applicable.
-    %
-:- pred apply_purity_marker_to_maybe_goal(term::in, purity::in,
-    maybe2(goal, list(warning_spec))::in,
-    maybe2(goal, list(warning_spec))::out) is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -77,6 +52,7 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.parse_goal_util.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
@@ -1673,143 +1649,6 @@ parse_goal_equal(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
         Spec = should_have_two_terms_infix(ContextPieces, Context, "="),
         MaybeGoal = error2([Spec])
     ).
-
-%---------------------------------------------------------------------------%
-
-:- func should_have_no_args(cord(format_piece),
-    term.context, string) = error_spec.
-
-should_have_no_args(ContextPieces, Context, Functor) = Spec :-
-    Pieces = cord.list(ContextPieces) ++
-        [lower_case_next_if_not_first, words("Error:")] ++
-        color_as_subject([quote(Functor)]) ++
-        color_as_incorrect([words("should have no arguments.")]) ++
-        [nl],
-    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
-
-should_have_one_goal_prefix(ContextPieces, Context, Functor) = Spec :-
-    Pieces = cord.list(ContextPieces) ++
-        [lower_case_next_if_not_first, words("Error:"),
-        words("the prefix operator")] ++
-        color_as_subject([quote(Functor)]) ++
-        color_as_incorrect([words("should precede a single goal.")]) ++
-        [nl],
-    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
-
-should_have_two_terms_infix(ContextPieces, Context, Functor) = Spec :-
-    Pieces = cord.list(ContextPieces) ++
-        [lower_case_next_if_not_first, words("Error:"),
-        words("the infix operator")] ++
-        color_as_subject([quote(Functor)]) ++
-        color_as_incorrect([words("should have two terms as arguments.")]) ++
-        [nl],
-    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
-
-should_have_two_goals_infix(ContextPieces, Context, Functor) = Spec :-
-    Pieces = cord.list(ContextPieces) ++
-        [lower_case_next_if_not_first, words("Error:"),
-        words("the infix operator")] ++
-        color_as_subject([quote(Functor)]) ++
-        color_as_incorrect([words("should have two goals as arguments.")]) ++
-        [nl],
-    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
-
-should_have_one_x_one_goal_prefix(ContextPieces, Context, X, Functor) = Spec :-
-    Pieces = cord.list(ContextPieces) ++
-        [lower_case_next_if_not_first, words("Error:"),
-        words("the binary prefix operator")] ++
-        color_as_subject([quote(Functor)]) ++
-        color_as_incorrect([words("should precede"), words(X),
-            words("and a goal.")]) ++
-        [nl],
-    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
-
-:- func should_have_one_call_prefix(cord(format_piece),
-    term.context, string) = error_spec.
-
-should_have_one_call_prefix(ContextPieces, Context, Functor) = Spec :-
-    Pieces = cord.list(ContextPieces) ++
-        [lower_case_next_if_not_first, words("Error:"),
-        words("the prefix operator")] ++
-        color_as_subject([quote(Functor)]) ++
-        color_as_incorrect([words("should precede a call.")]) ++
-        [nl],
-    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
-
-%---------------------------------------------------------------------------%
-
-apply_purity_marker_to_maybe_goal(GoalTerm, Purity, MaybeGoal0, MaybeGoal) :-
-    (
-        MaybeGoal0 = ok2(Goal0, WarningSpecs0),
-        (
-            Goal0 = call_expr(Context, Pred, Args, Purity0),
-            (
-                Purity0 = purity_pure,
-                Goal = call_expr(Context, Pred, Args, Purity)
-            ;
-                ( Purity0 = purity_semipure
-                ; Purity0 = purity_impure
-                ),
-                Goal = bad_purity_goal(GoalTerm, Context, Purity)
-            )
-        ;
-            Goal0 = unify_expr(Context, ProgTerm1, ProgTerm2, Purity0),
-            (
-                Purity0 = purity_pure,
-                Goal = unify_expr(Context, ProgTerm1, ProgTerm2, Purity)
-            ;
-                ( Purity0 = purity_semipure
-                ; Purity0 = purity_impure
-                ),
-                Goal = bad_purity_goal(GoalTerm, Context, Purity)
-            )
-        ;
-            ( Goal0 = conj_expr(_, _, _)
-            ; Goal0 = par_conj_expr(_, _, _)
-            ; Goal0 = true_expr(_)
-            ; Goal0 = disj_expr(_, _, _, _)
-            ; Goal0 = fail_expr(_)
-            ; Goal0 = quant_expr(_, _, _, _, _)
-            ; Goal0 = promise_purity_expr(_, _, _)
-            ; Goal0 = promise_equivalent_solutions_expr(_, _, _, _, _, _)
-            ; Goal0 = promise_equivalent_solution_sets_expr(_, _, _, _, _, _)
-            ; Goal0 = promise_equivalent_solution_arbitrary_expr(_, _, _,
-                _, _, _)
-            ; Goal0 = require_detism_expr(_, _, _)
-            ; Goal0 = require_complete_switch_expr(_, _, _)
-            ; Goal0 = require_switch_arms_detism_expr(_, _, _, _)
-            ; Goal0 = disable_warnings_expr(_, _, _, _)
-            ; Goal0 = trace_expr(_, _, _, _, _, _)
-            ; Goal0 = atomic_expr(_, _, _, _, _, _)
-            ; Goal0 = try_expr(_, _, _, _, _, _, _)
-            ; Goal0 = implies_expr(_, _, _)
-            ; Goal0 = equivalent_expr(_, _, _)
-            ; Goal0 = not_expr(_, _)
-            ; Goal0 = if_then_else_expr(_, _, _, _, _, _)
-            ; Goal0 = event_expr(_, _, _)
-            ),
-            Goal = bad_purity_goal(GoalTerm, get_goal_context(Goal0), Purity)
-        ),
-        MaybeGoal = ok2(Goal, WarningSpecs0)
-    ;
-        MaybeGoal0 = error2(Specs),
-        MaybeGoal = error2(Specs)
-    ).
-
-    % bad_purity_goal(BadGoal, Purity):
-    %
-    % Given G, a term representing a goal that a semipure and impure prefix
-    % is applied to even though such prefixes do not apply to it, return
-    % the least-bad goal as the goal in that term. We return a predicate call
-    % for which typechecking should print a descriptive error message.
-    %
-:- func bad_purity_goal(term, term.context, purity) = goal.
-
-bad_purity_goal(GoalTerm0, Context, Purity) = Goal :-
-    term.coerce(GoalTerm0, GoalTerm),
-    purity_name(Purity, PurityString),
-    Goal = call_expr(Context, unqualified(PurityString), [GoalTerm],
-        purity_pure).
 
 %---------------------------------------------------------------------------%
 

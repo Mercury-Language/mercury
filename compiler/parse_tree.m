@@ -49,6 +49,7 @@
    :- include_module parse_vars.
 
    :- include_module find_module.
+   :- include_module parse_goal_util.
    :- include_module parse_types.
    :- include_module parse_util.
 

@@ -55,6 +55,7 @@
 
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.parse_goal.
+:- import_module parse_tree.parse_goal_util.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_util.
