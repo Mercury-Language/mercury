@@ -59,14 +59,13 @@
 # OTHER_PROGS:
 #   All the other test cases.
 
-# The agc.* tests don't work in --high-level-code grades,
-# except hl*.agc*, because they require grade-specific header
-# files to be installed.
+# The AGC_PROGS tests don't work in --high-level-code grades, except hl*.agc*,
+# because they require grade-specific header files to be installed.
 ifeq "$(findstring hl,$(GRADE))$(findstring .agc,$(GRADE))" "hl"
 	PROGS1 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
 else
-	# The agc.* tests don't work in the java or csharp grades.
-	# The agc.* tests also don't work in minimal model grades,
+	# The AGC_PROGS tests don't work in the java or csharp grades.
+	# The AGC_PROGS tests also don't work in minimal model grades,
 	# because the collector doesn't scan the copied areas of the stacks.
 	ifneq "$(filter java% csharp%,$(GRADE))$(findstring mm,$(GRADE))" ""
 		PROGS1 = $(TYPECLASS_PROGS) $(OTHER_PROGS)
@@ -132,28 +131,38 @@ endif
 
 # `mmc --make' doesn't expect subdirectories to appear in targets.
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+CS_SUBDIR =
+CSS_SUBDIR =
+JAVAs_SUBDIR =
+
 OS_SUBDIR =
 DLLS_SUBDIR =
 CLASSES_SUBDIR =
 else
+CS_SUBDIR = $(cs_subdir)
+CSS_SUBDIR = $(css_subdir)
+JAVAs_SUBDIR = $(javas_subdir)
+
 OS_SUBDIR = $(os_subdir)
 DLLS_SUBDIR = $(dlls_subdir)
 CLASSES_SUBDIR = $(classes_subdir)
 endif
 
 ifeq ($(findstring csharp,$(GRADE)),csharp)
-	# XXX Setting TARGET_OBJ_EXT to "cs" DOES NOT WORK.
-	# This is because the default interpretation of make targets
-	# of the form <modulename.cs> is not "build the .cs target file
-	# for the named module", but "build all the .c target files
-	# for the named module".
+	TARGET_SRC_EXT = cs
+	TARGET_SRC_SUBDIR = $(CSS_SUBDIR)
+	# XXX Why do we expect .cs files to be stored in $(DLLS_SUBDIR)?
 	TARGET_OBJ_EXT = cs
 	TARGET_OBJ_SUBDIR = $(DLLS_SUBDIR)
 else
 ifeq ($(findstring java,$(GRADE)),java)
+	TARGET_SRC_EXT = java
+	TARGET_SRC_SUBDIR = $(JAVAS_SUBDIR)
 	TARGET_OBJ_EXT = class
 	TARGET_OBJ_SUBDIR = $(CLASSES_SUBDIR)
 else
+	TARGET_SRC_EXT = c
+	TARGET_SRC_SUBDIR = $(CS_SUBDIR)
 	TARGET_OBJ_EXT = $(O)
 	TARGET_OBJ_SUBDIR = $(OS_SUBDIR)
 endif
@@ -181,8 +190,6 @@ include ../Mmake.common
 # Module-specific options should go in Mercury.options so they can be found
 # by `mmc --make'.
 include Mercury.options
-
-# $(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
 
 $(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
 
