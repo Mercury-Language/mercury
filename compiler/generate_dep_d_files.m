@@ -60,47 +60,28 @@
 
 %---------------------------------------------------------------------------%
 
-    % generate_dep_file_for_module(ProgressStream, Globals, ModuleName,
+    % generate_dep_file_for_module(ProgressStream, Globals, FileOrModule,
     %   Specs, !IO):
     %
     % Generate the per-program makefile dependencies file (`.dep' file)
-    % for a program whose top-level module is `ModuleName'. This involves
-    % first transitively reading in all imported or ancestor modules.
-    % While we are at it, we also save the per-module makefile dependency files
-    % (`.d' files) for all those modules. Return any errors and/or warnings
-    % to be printed in Specs.
+    % for the program whose top-level module is specified by FileOrModule.
+    % This involves first transitively reading in all imported or ancestor
+    % modules. While we are at it, we also save the per-module makefile
+    % dependency files (`.d' files) for all those modules. Return any errors
+    % and/or warnings to be printed in Specs.
     %
-:- pred generate_dep_file_for_module(io.text_output_stream::in, globals::in,
-    module_name::in, deps_map::out, list(error_spec)::out,
+:- pred generate_dep_file(io.text_output_stream::in, globals::in,
+    file_or_module::in, deps_map::out, list(error_spec)::out,
     io::di, io::uo) is det.
 
-    % generate_dep_file_for_file(ProgressStream, Globals, FileName,
-    %   Specs, !IO):
-    %
-    % Same as generate_dep_file_for_module, but takes a file name
-    % instead of a module name.
-    %
-:- pred generate_dep_file_for_file(io.text_output_stream::in, globals::in,
-    file_name::in, deps_map::out, list(error_spec)::out,
-    io::di, io::uo) is det.
-
-    % generate_d_file_for_module(ProgressStream, Globals, ModuleName,
+    % generate_d_file_for_module(ProgressStream, Globals, FIleOrModule
     %   Specs, !IO):
     %
     % Generate the per-module makefile dependency file ('.d' file)
     % for the given module.
     %
-:- pred generate_d_file_for_module(io.text_output_stream::in, globals::in,
-    module_name::in, deps_map::out, list(error_spec)::out,
-    io::di, io::uo) is det.
-
-    % generate_d_file_for_file(ProgressStream, Globals, FileName, Specs, !IO):
-    %
-    % Same as generate_d_file_for_module, but takes a file name
-    % instead of a module name.
-    %
-:- pred generate_d_file_for_file(io.text_output_stream::in, globals::in,
-    file_name::in, deps_map::out, list(error_spec)::out,
+:- pred generate_d_file(io.text_output_stream::in, globals::in,
+    file_or_module::in, deps_map::out, list(error_spec)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -143,7 +124,6 @@
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.read_modules.
 :- import_module parse_tree.warn_unread_modules.
 :- import_module parse_tree.write_deps_file.
 
@@ -161,69 +141,17 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_dep_file_for_module(ProgressStream, Globals, ModuleName,
+generate_dep_file(ProgressStream, Globals, FileOrModule,
         DepsMap, Specs, !IO) :-
-    map.init(DepsMap0),
     maybe_generate_dot_dx_files(ProgressStream, Globals,
         output_all_program_dot_dx_files, do_not_search,
-        ModuleName, DepsMap0, DepsMap, Specs, !IO).
+        FileOrModule, DepsMap, Specs, !IO).
 
-generate_dep_file_for_file(ProgressStream, Globals, FileName,
+generate_d_file(ProgressStream, Globals, FileOrModule,
         DepsMap, Specs, !IO) :-
-    build_initial_deps_map_for_file(ProgressStream, Globals, FileName,
-        ModuleName, DepsMap0, InitialSpecs, !IO),
-    maybe_generate_dot_dx_files(ProgressStream, Globals,
-        output_all_program_dot_dx_files, do_not_search,
-        ModuleName, DepsMap0, DepsMap, LaterSpecs, !IO),
-    Specs = InitialSpecs ++ LaterSpecs.
-
-generate_d_file_for_module(ProgressStream, Globals, ModuleName,
-        DepsMap, Specs, !IO) :-
-    map.init(DepsMap0),
     maybe_generate_dot_dx_files(ProgressStream, Globals,
         output_module_dot_d_file, do_search,
-        ModuleName, DepsMap0, DepsMap, Specs, !IO).
-
-generate_d_file_for_file(ProgressStream, Globals, FileName,
-        DepsMap, Specs, !IO) :-
-    build_initial_deps_map_for_file(ProgressStream, Globals, FileName,
-        ModuleName, DepsMap0, InitialSpecs, !IO),
-    maybe_generate_dot_dx_files(ProgressStream, Globals,
-        output_module_dot_d_file, do_search,
-        ModuleName, DepsMap0, DepsMap, LaterSpecs, !IO),
-    Specs = InitialSpecs ++ LaterSpecs.
-
-%---------------------------------------------------------------------------%
-
-:- pred build_initial_deps_map_for_file(io.text_output_stream::in, globals::in,
-    file_name::in, module_name::out, deps_map::out, list(error_spec)::out,
-    io::di, io::uo) is det.
-
-build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
-        DepsMap, Specs, !IO) :-
-    % Read in the top-level file (to figure out its module name).
-    FileNameDotM = FileName ++ ".m",
-    read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
-        rrm_file, do_not_search, always_read_module(do_not_return_timestamp),
-        HaveReadModuleSrc, !IO),
-    (
-        HaveReadModuleSrc = have_module(_FN, ParseTreeSrc, Source),
-        Source = was_read(MaybeTimestamp, ReadModuleErrors),
-        ParseTreeSrc = parse_tree_src(ModuleName, _, _),
-        parse_tree_src_to_burdened_module_list(Globals, FileNameDotM,
-            ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
-            Specs, BurdenedModules)
-    ;
-        HaveReadModuleSrc = have_not_read_module(_, ReadModuleErrors),
-        get_default_module_name_for_file(FileName, FileNameDotM,
-            ModuleName, !IO),
-        % XXX Caller should not need this info.
-        Specs = get_read_module_specs(ReadModuleErrors),
-        BurdenedModules = []
-    ),
-    map.init(DepsMap0),
-    list.foldl(insert_into_deps_map(non_dummy_burdened_module),
-        BurdenedModules, DepsMap0, DepsMap).
+        FileOrModule, DepsMap, Specs, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -236,14 +164,15 @@ build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
             % of every module in the program.
 
 :- pred maybe_generate_dot_dx_files(io.text_output_stream::in, globals::in,
-    which_dot_dx_files::in, maybe_search::in, module_name::in,
-    deps_map::in, deps_map::out, list(error_spec)::out, io::di, io::uo) is det.
+    which_dot_dx_files::in, maybe_search::in, file_or_module::in,
+    deps_map::out, list(error_spec)::out, io::di, io::uo) is det.
 
-maybe_generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
-        DepsMap0, DepsMap, !:Specs, !IO) :-
+maybe_generate_dot_dx_files(ProgressStream, Globals, Mode, Search,
+        FileOrModule, DepsMap, !:Specs, !IO) :-
     % First, build up a map of the dependencies.
-    generate_deps_map(ProgressStream, Globals, Search, ModuleName,
-        ReadModules, UnreadModules, DepsMap0, DepsMap, [], !:Specs, !IO),
+    generate_deps_map(ProgressStream, Globals, Search,
+        FileOrModule, ModuleName, ReadModules, UnreadModules, DepsMap,
+        !:Specs, !IO),
     warn_about_any_unread_modules_with_read_ancestors(ReadModules,
         UnreadModules, !Specs),
 

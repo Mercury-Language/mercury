@@ -1235,15 +1235,8 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
 
     (
         OpModeArgs = opma_generate_dependencies(MaybeMakeInts),
-        (
-            FileOrModule = fm_file(FileName),
-            generate_dep_file_for_file(ProgressStream, Globals0, FileName,
-                DepsMap, DepSpecs, !IO)
-        ;
-            FileOrModule = fm_module(ModuleName),
-            generate_dep_file_for_module(ProgressStream, Globals0, ModuleName,
-                DepsMap, DepSpecs, !IO)
-        ),
+        generate_dep_file(ProgressStream, Globals0, FileOrModule,
+            DepsMap, DepSpecs, !IO),
         ( if
             MaybeMakeInts = do_make_ints,
             contains_errors(Globals0, DepSpecs) = no
@@ -1258,15 +1251,8 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         ExtraObjFiles = []
     ;
         OpModeArgs = opma_generate_dependency_file,
-        (
-            FileOrModule = fm_file(FileName),
-            generate_d_file_for_file(ProgressStream, Globals0, FileName,
-                _DepsMap, DepSpecs, !IO)
-        ;
-            FileOrModule = fm_module(ModuleName),
-            generate_d_file_for_module(ProgressStream, Globals0, ModuleName,
-                _DepsMap, DepSpecs, !IO)
-        ),
+        generate_d_file(ProgressStream, Globals0, FileOrModule,
+            _DepsMap, DepSpecs, !IO),
         SpecsList = [DepSpecs],
         ModulesToLink = [],
         ExtraObjFiles = []
@@ -1826,10 +1812,6 @@ maybe_report_cmd_line(OutStream, Report, OptionArgs, Args, !IO) :-
     ).
 
 %---------------------%
-
-:- type file_or_module
-    --->    fm_file(file_name)
-    ;       fm_module(module_name).
 
 :- func string_to_file_or_module(string) = file_or_module.
 

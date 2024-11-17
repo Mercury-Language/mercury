@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module libs.
+:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -64,35 +65,14 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_deps_map(io.text_output_stream::in, globals::in,
-    maybe_search::in, module_name::in,
-    set_tree234(module_name)::out, set_tree234(module_name)::out,
-    deps_map::in, deps_map::out, list(error_spec)::in, list(error_spec)::out,
-    io::di, io::uo) is det.
+:- type file_or_module
+    --->    fm_file(file_name)
+    ;       fm_module(module_name).
 
-    % Insert a new entry into the deps_map. If the module already occurred
-    % in the deps_map, then we just replace the old entry (presumed to be
-    % a dummy entry) with the new one.
-    %
-    % This can only occur for submodules which have been imported before
-    % their parent module was imported: before reading a module and
-    % inserting it into the deps map, we check if it was already there,
-    % but when we read in the module, we try to insert not just that module
-    % but also all the nested submodules inside that module. If a submodule
-    % was previously imported, then it may already have an entry in the
-    % deps_map. However, unless the submodule is defined both as a separate
-    % submodule and also as a nested submodule, the previous entry will be
-    % a dummy entry that we inserted after trying to read the source file
-    % and failing.
-    %
-    % Note that the case where a module is defined as both a separate
-    % submodule and also as a nested submodule is caught by
-    % split_into_compilation_units_perform_checks.
-    %
-    % XXX This shouldn't need to be exported.
-    %
-:- pred insert_into_deps_map(maybe_dummy_burdened_module::in,
-    burdened_module::in, deps_map::in, deps_map::out) is det.
+:- pred generate_deps_map(io.text_output_stream::in, globals::in,
+    maybe_search::in, file_or_module::in, module_name::out,
+    set_tree234(module_name)::out, set_tree234(module_name)::out,
+    deps_map::out, list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -133,15 +113,58 @@ get_submodule_kind(ModuleName, DepsMap) = Kind :-
 
 %---------------------------------------------------------------------------%
 
-generate_deps_map(ProgressStream, Globals, Search, ModuleName,
-        !:ReadModules, !:UnreadModules, !DepsMap, !Specs, !IO) :-
+generate_deps_map(ProgressStream, Globals, Search, FileOrModule, ModuleName,
+        !:ReadModules, !:UnreadModules, !:DepsMap, !:Specs, !IO) :-
     SeenModules0 = set_tree234.init,
+    (
+        FileOrModule = fm_module(ModuleName),
+        map.init(!:DepsMap),
+        !:Specs = []
+    ;
+        FileOrModule = fm_file(FileName),
+        build_initial_deps_map_for_file(ProgressStream, Globals,
+            FileName, ModuleName, !:DepsMap, !:Specs, !IO)
+    ),
     ModuleExpectationContexts0 = map.singleton(ModuleName, []),
     !:ReadModules = set_tree234.init,
     !:UnreadModules = set_tree234.init,
     generate_deps_map_loop(ProgressStream, Globals, Search, SeenModules0,
         ModuleExpectationContexts0, !ReadModules, !UnreadModules,
         !DepsMap, !Specs, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- pred build_initial_deps_map_for_file(io.text_output_stream::in, globals::in,
+    file_name::in, module_name::out, deps_map::out, list(error_spec)::out,
+    io::di, io::uo) is det.
+
+build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
+        DepsMap, Specs, !IO) :-
+    % Read in the top-level file (to figure out its module name).
+    FileNameDotM = FileName ++ ".m",
+    read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
+        rrm_file, do_not_search, always_read_module(do_not_return_timestamp),
+        HaveReadModuleSrc, !IO),
+    (
+        HaveReadModuleSrc = have_module(_FN, ParseTreeSrc, Source),
+        Source = was_read(MaybeTimestamp, ReadModuleErrors),
+        ParseTreeSrc = parse_tree_src(ModuleName, _, _),
+        parse_tree_src_to_burdened_module_list(Globals, FileNameDotM,
+            ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
+            Specs, BurdenedModules)
+    ;
+        HaveReadModuleSrc = have_not_read_module(_, ReadModuleErrors),
+        get_default_module_name_for_file(FileName, FileNameDotM,
+            ModuleName, !IO),
+        % XXX Caller should not need this info.
+        Specs = get_read_module_specs(ReadModuleErrors),
+        BurdenedModules = []
+    ),
+    map.init(DepsMap0),
+    list.foldl(insert_into_deps_map(non_dummy_burdened_module),
+        BurdenedModules, DepsMap0, DepsMap).
+
+%---------------------------------------------------------------------------%
 
     % Values of this type map each module name to the list of contexts
     % that mention it, and thus establish an expectation that a module
@@ -407,6 +430,28 @@ lookup_or_find_dependency_info_for_module(ProgressStream, Globals, Search,
             MaybeDeps = no
         )
     ).
+
+    % Insert a new entry into the deps_map. If the module already occurred
+    % in the deps_map, then we just replace the old entry (presumed to be
+    % a dummy entry) with the new one.
+    %
+    % This can only occur for submodules which have been imported before
+    % their parent module was imported: before reading a module and
+    % inserting it into the deps map, we check if it was already there,
+    % but when we read in the module, we try to insert not just that module
+    % but also all the nested submodules inside that module. If a submodule
+    % was previously imported, then it may already have an entry in the
+    % deps_map. However, unless the submodule is defined both as a separate
+    % submodule and also as a nested submodule, the previous entry will be
+    % a dummy entry that we inserted after trying to read the source file
+    % and failing.
+    %
+    % Note that the case where a module is defined as both a separate
+    % submodule and also as a nested submodule is caught by
+    % split_into_compilation_units_perform_checks.
+    %
+:- pred insert_into_deps_map(maybe_dummy_burdened_module::in,
+    burdened_module::in, deps_map::in, deps_map::out) is det.
 
 insert_into_deps_map(MaybeDummy, BurdenedModule, !DepsMap) :-
     ParseTreeModuleSrc = BurdenedModule ^ bm_module,
