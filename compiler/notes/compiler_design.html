@@ -574,6 +574,12 @@ for generate_dep_d_files.m.
 make_module_file_names.m constructs the filenames
 that go into those mmakefile fragments.
 <li>
+output_imports_graph.m outputs the imports graph if asked to do so.
+<li>
+warn_unread_modules.m checks for a symptom
+of an easy-to-make bug in hand-written Mmakefiles,
+and generates a warning if it finds that symptom.
+<li>
 module_baggage.m contains the module_baggage type,
 the types of its components, and utility predicates.
 <li>
