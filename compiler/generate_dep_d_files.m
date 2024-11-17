@@ -124,7 +124,6 @@
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.warn_unread_modules.
 :- import_module parse_tree.write_deps_file.
 
 :- import_module bool.
@@ -134,7 +133,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set_tree234.
 :- import_module string.
 :- import_module term_context.
 
@@ -171,27 +169,7 @@ maybe_generate_dot_dx_files(ProgressStream, Globals, Mode, Search,
         FileOrModule, DepsMap, !:Specs, !IO) :-
     % First, build up a map of the dependencies.
     generate_deps_map(ProgressStream, Globals, Search,
-        FileOrModule, ModuleName, ReadModules, UnreadModules, DepsMap,
-        !:Specs, !IO),
-    warn_about_any_unread_modules_with_read_ancestors(ReadModules,
-        UnreadModules, !Specs),
-
-    trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
-        io(!TIO)]
-    (
-        io.format(ProgressStream, "generate_dot_dx_files for %s\n",
-            [s(sym_name_to_string(ModuleName))], !TIO),
-
-        set_tree234.to_sorted_list(ReadModules, ReadModuleList),
-        set_tree234.to_sorted_list(UnreadModules, UnreadModuleList),
-        ReadStrs = list.map(sym_name_to_string, ReadModuleList),
-        UnreadStrs = list.map(sym_name_to_string, UnreadModuleList),
-
-        io.write_string(ProgressStream, "ReadModules\n", !TIO),
-        io.write_line(ProgressStream, ReadStrs, !TIO),
-        io.write_string(ProgressStream, "UnreadModules\n", !TIO),
-        io.write_line(ProgressStream, UnreadStrs, !TIO)
-    ),
+        FileOrModule, ModuleName, DepsMap, !:Specs, !IO),
 
     % Check whether we could read the main `.m' file.
     map.lookup(DepsMap, ModuleName, ModuleDep),

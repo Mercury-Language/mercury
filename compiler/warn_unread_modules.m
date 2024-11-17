@@ -30,18 +30,11 @@
 
 %---------------------------------------------------------------------------%
 
-warn_about_any_unread_modules_with_read_ancestors(ReadModules, UnreadModules0,
+warn_about_any_unread_modules_with_read_ancestors(ReadModules, UnreadModules,
         !Specs) :-
-    % When module mod_a.mod_b is nested inside mod_a.m, the source file
-    % containing module mod_a, then it is possible for an attempt to read
-    % mod_a.mod_b.m to fail (since module mod_a.mod_b is not there),
-    % but for the module to be later found by reading mod_a.m.
-    % This would result in mod_a.mod_b being included in both
-    % ReadModules and UnreadModules0.
-    set_tree234.difference(UnreadModules0, ReadModules, UnreadModules),
     set_tree234.to_sorted_list(UnreadModules, UnreadModuleList),
     find_read_ancestors_of_unread_modules(ReadModules, UnreadModuleList,
-        set_tree234.init, Parents, set_tree234.init, Ancestors, 
+        set_tree234.init, Parents, set_tree234.init, Ancestors,
         set_tree234.init, BadUnreads),
     set_tree234.to_sorted_list(BadUnreads, BadUnreadList),
     (

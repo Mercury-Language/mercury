@@ -30,7 +30,6 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
-:- import_module set_tree234.
 
 % This is the data structure we use to record the dependencies.
 % We keep a map from module name to information about the module.
@@ -71,7 +70,6 @@
 
 :- pred generate_deps_map(io.text_output_stream::in, globals::in,
     maybe_search::in, file_or_module::in, module_name::out,
-    set_tree234(module_name)::out, set_tree234(module_name)::out,
     deps_map::out, list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -83,10 +81,12 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
+:- import_module parse_tree.warn_unread_modules.
 
 :- import_module cord.
 :- import_module maybe.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module string.
 :- import_module term_context.
 
@@ -114,7 +114,7 @@ get_submodule_kind(ModuleName, DepsMap) = Kind :-
 %---------------------------------------------------------------------------%
 
 generate_deps_map(ProgressStream, Globals, Search, FileOrModule, ModuleName,
-        !:ReadModules, !:UnreadModules, !:DepsMap, !:Specs, !IO) :-
+        !:DepsMap, !:Specs, !IO) :-
     SeenModules0 = set_tree234.init,
     (
         FileOrModule = fm_module(ModuleName),
@@ -126,11 +126,38 @@ generate_deps_map(ProgressStream, Globals, Search, FileOrModule, ModuleName,
             FileName, ModuleName, !:DepsMap, !:Specs, !IO)
     ),
     ModuleExpectationContexts0 = map.singleton(ModuleName, []),
-    !:ReadModules = set_tree234.init,
-    !:UnreadModules = set_tree234.init,
+    ReadModules0 = set_tree234.init,
+    UnreadModules0 = set_tree234.init,
     generate_deps_map_loop(ProgressStream, Globals, Search, SeenModules0,
-        ModuleExpectationContexts0, !ReadModules, !UnreadModules,
-        !DepsMap, !Specs, !IO).
+        ModuleExpectationContexts0,
+        ReadModules0, ReadModules, UnreadModules0, UnreadModules1,
+        !DepsMap, !Specs, !IO),
+    % When module mod_a.mod_b is nested inside mod_a.m, the source file
+    % containing module mod_a, then it is possible for an attempt to read
+    % mod_a.mod_b.m to fail (since module mod_a.mod_b is not there),
+    % but for the module to be later found by reading mod_a.m.
+    % This would result in mod_a.mod_b being included in both
+    % ReadModules and UnreadModules1.
+    set_tree234.difference(UnreadModules1, ReadModules, UnreadModules),
+
+    trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
+        io(!TIO)]
+    (
+        io.format(ProgressStream, "generate_dot_dx_files for %s\n",
+            [s(sym_name_to_string(ModuleName))], !TIO),
+
+        set_tree234.to_sorted_list(UnreadModules, UnreadModuleList),
+        set_tree234.to_sorted_list(ReadModules, ReadModuleList),
+        ReadStrs = list.map(sym_name_to_string, ReadModuleList),
+        UnreadStrs = list.map(sym_name_to_string, UnreadModuleList),
+
+        io.write_string(ProgressStream, "ReadModules\n", !TIO),
+        io.write_line(ProgressStream, ReadStrs, !TIO),
+        io.write_string(ProgressStream, "UnreadModules\n", !TIO),
+        io.write_line(ProgressStream, UnreadStrs, !TIO)
+    ),
+    warn_about_any_unread_modules_with_read_ancestors(ReadModules,
+        UnreadModules, !Specs).
 
 %---------------------------------------------------------------------------%
 
