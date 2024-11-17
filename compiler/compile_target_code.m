@@ -2793,9 +2793,9 @@ create_csharp_exe_or_lib(Globals, ProgressStream, LinkTargetType,
         CLI \= "",
         TargetEnvType = env_type_posix
     then
+        construct_cli_shell_script(Globals, FullOutputFileName, ContentStr),
         create_launcher_shell_script(ProgressStream, Globals, MainModuleName,
-            write_cli_shell_script(Globals, FullOutputFileName),
-            Succeeded, !IO)
+            ContentStr, Succeeded, !IO)
     else
         Succeeded = Succeeded0
     ).
@@ -2844,23 +2844,23 @@ csharp_file_name(EnvType, CSharpCompiler, FileName0) = FileName :-
 convert_to_windows_path_format(FileName) =
     string.replace_all(FileName, "/", "\\\\").
 
-:- pred write_cli_shell_script(globals::in, string::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred construct_cli_shell_script(globals::in, string::in,
+    string::out) is det.
 
-write_cli_shell_script(Globals, ExeFileName, Stream, !IO) :-
+construct_cli_shell_script(Globals, ExeFileName, ContentStr) :-
     globals.lookup_string_option(Globals, cli_interpreter, CLI),
     globals.lookup_accumulating_option(Globals, link_library_directories,
         LinkLibraryDirectoriesList),
     join_quoted_string_list(LinkLibraryDirectoriesList, "", "",
         ":", LinkLibraryDirectories),
-    list.foldl(io.write_string(Stream), [
+    ContentStr = string.append_list([
         "#!/bin/sh\n",
         "DIR=${0%/*}\n",
         "MONO_PATH=$MONO_PATH:", LinkLibraryDirectories, "\n",
         "export MONO_PATH\n",
         "CLI_INTERPRETER=${CLI_INTERPRETER:-", CLI, "}\n",
         "exec \"$CLI_INTERPRETER\" \"$DIR/", ExeFileName, "\" \"$@\"\n"
-    ], !IO).
+    ]).
 
 %---------------------------------------------------------------------------%
 %

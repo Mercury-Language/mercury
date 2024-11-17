@@ -160,14 +160,12 @@
 %-----------------------------------------------------------------------------%
 
 :- pred create_launcher_shell_script(io.text_output_stream::in,
-    globals::in, module_name::in,
-    pred(io.text_output_stream, io, io)::in(pred(in, di, uo) is det),
-    maybe_succeeded::out, io::di, io::uo) is det.
+    globals::in, module_name::in, string::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
 :- pred create_launcher_batch_file(io.text_output_stream::in,
-    globals::in, module_name::in,
-    pred(io.text_output_stream, io, io)::in(pred(in, di, uo) is det),
-    maybe_succeeded::out, io::di, io::uo) is det.
+    globals::in, module_name::in, string::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -405,30 +403,34 @@ create_java_shell_script(ProgressStream, Globals, MainModuleName,
         ( TargetEnvType = env_type_posix
         ; TargetEnvType = env_type_cygwin
         ),
+        io.environment.get_environment_var("MERCURY_STAGE2_LAUNCHER_BASE",
+            MaybeStage2Base, !IO),
+        construct_java_shell_script(Globals, MaybeStage2Base,
+            MainModuleName, JarFileName, ContentStr),
         create_launcher_shell_script(ProgressStream, Globals, MainModuleName,
-            write_java_shell_script(Globals, MainModuleName, JarFileName),
-            Succeeded, !IO)
+            ContentStr, Succeeded, !IO)
     ;
         TargetEnvType = env_type_msys,
+        construct_java_msys_shell_script(Globals, MainModuleName, JarFileName,
+            ContentStr),
         create_launcher_shell_script(ProgressStream, Globals, MainModuleName,
-            write_java_msys_shell_script(Globals, MainModuleName, JarFileName),
-            Succeeded, !IO)
+            ContentStr, Succeeded, !IO)
     ;
         % XXX should create a .ps1 file on PowerShell.
         ( TargetEnvType = env_type_win_cmd
         ; TargetEnvType = env_type_powershell
         ),
+        construct_java_batch_file(Globals, MainModuleName, JarFileName,
+            ContentStr),
         create_launcher_batch_file(ProgressStream, Globals, MainModuleName,
-            write_java_batch_file(Globals, MainModuleName, JarFileName),
-            Succeeded, !IO)
+            ContentStr, Succeeded, !IO)
     ).
 
-:- pred write_java_shell_script(globals::in, module_name::in,
-    file_name::in, io.text_output_stream::in, io::di, io::uo) is det.
+:- pred construct_java_shell_script(globals::in, maybe(string)::in,
+    module_name::in, file_name::in, string::out) is det.
 
-write_java_shell_script(Globals, MainModuleName, JarFileName, Stream, !IO) :-
-    io.environment.get_environment_var("MERCURY_STAGE2_LAUNCHER_BASE",
-        MaybeStage2Base, !IO),
+construct_java_shell_script(Globals, MaybeStage2Base,
+        MainModuleName, JarFileName, ContentStr) :-
     (
         MaybeStage2Base = no,
         get_mercury_std_libs_for_java(Globals, MercuryStdLibs)
@@ -454,7 +456,7 @@ write_java_shell_script(Globals, MainModuleName, JarFileName, Stream, !IO) :-
     globals.lookup_string_option(Globals, java_interpreter, Java),
     mangle_sym_name_for_java(MainModuleName, module_qual, ".", ClassName),
 
-    io.write_strings(Stream, [
+    ContentStr = string.append_list([
         "#!/bin/sh\n",
         "DIR=${0%/*}\n",
         "DIR=$( cd \"${DIR}\" && pwd -P )\n",
@@ -468,7 +470,7 @@ write_java_shell_script(Globals, MainModuleName, JarFileName, Stream, !IO) :-
         "MERCURY_JAVA_OPTIONS=${MERCURY_JAVA_OPTIONS:-'", RuntimeOpts, "'}\n",
         "exec \"$MERCURY_JAVA\" $MERCURY_JAVA_OPTIONS jmercury.", ClassName,
             " \"$@\"\n"
-    ], !IO).
+    ]).
 
     % For the MSYS version of the Java launcher script, there are a few
     % differences:
@@ -487,11 +489,11 @@ write_java_shell_script(Globals, MainModuleName, JarFileName, Stream, !IO) :-
     %
     % XXX TODO: handle MERCURY_STAGE2_LAUNCHER_BASE for this case.
     %
-:- pred write_java_msys_shell_script(globals::in, module_name::in,
-    file_name::in, io.text_output_stream::in, io::di, io::uo) is det.
+:- pred construct_java_msys_shell_script(globals::in, module_name::in,
+    file_name::in, string::out) is det.
 
-write_java_msys_shell_script(Globals, MainModuleName, JarFileName, Stream,
-        !IO) :-
+construct_java_msys_shell_script(Globals, MainModuleName, JarFileName,
+        ContentStr) :-
     get_mercury_std_libs_for_java(Globals, MercuryStdLibs),
     globals.lookup_accumulating_option(Globals, java_classpath,
         UserClasspath),
@@ -510,7 +512,7 @@ write_java_msys_shell_script(Globals, MainModuleName, JarFileName, Stream,
     globals.lookup_string_option(Globals, java_interpreter, Java),
     mangle_sym_name_for_java(MainModuleName, module_qual, ".", ClassName),
 
-    io.write_strings(Stream, [
+    ContentStr = string.append_list([
         "#!/bin/sh\n",
         "DIR=${0%/*}\n",
         "DIR=$( cd \"${DIR}\" && pwd -W )\n",
@@ -520,7 +522,7 @@ write_java_msys_shell_script(Globals, MainModuleName, JarFileName, Stream,
         "MERCURY_JAVA_OPTIONS=${MERCURY_JAVA_OPTIONS:-'", RuntimeOpts, "'}\n",
         "exec \"$MERCURY_JAVA\" $MERCURY_JAVA_OPTIONS jmercury.", ClassName,
             " \"$@\"\n"
-    ], !IO).
+    ]).
 
 :- func escape_single_quotes_for_shell_script(string) = string.
 
@@ -531,10 +533,10 @@ escape_single_quotes_for_shell_script(S) =
         S
     ).
 
-:- pred write_java_batch_file(globals::in, module_name::in, file_name::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred construct_java_batch_file(globals::in, module_name::in, file_name::in,
+    string::out) is det.
 
-write_java_batch_file(Globals, MainModuleName, JarFileName, Stream, !IO) :-
+construct_java_batch_file(Globals, MainModuleName, JarFileName, ContentStr) :-
     get_mercury_std_libs_for_java(Globals, MercuryStdLibs),
     globals.lookup_accumulating_option(Globals, java_classpath,
         UserClasspath),
@@ -550,7 +552,7 @@ write_java_batch_file(Globals, MainModuleName, JarFileName, Stream, !IO) :-
     globals.lookup_string_option(Globals, java_interpreter, Java),
     mangle_sym_name_for_java(MainModuleName, module_qual, ".", ClassName),
 
-    io.write_strings(Stream, [
+    ContentStr = string.append_list([
         "@echo off\n",
         "rem Automatically generated by the Mercury compiler.\n",
         "setlocal enableextensions\n",
@@ -559,7 +561,7 @@ write_java_batch_file(Globals, MainModuleName, JarFileName, Stream, !IO) :-
         "if not defined MERCURY_JAVA_OPTIONS set MERCURY_JAVA_OPTIONS=",
             RuntimeOpts, "\n",
         Java, " %MERCURY_JAVA_OPTIONS% jmercury.", ClassName, " %*\n"
-    ], !IO).
+    ]).
 
 get_mercury_std_libs_for_java(Globals, !:StdLibs) :-
     % NOTE: changes here may require changes to get_mercury_std_libs.
@@ -735,8 +737,8 @@ get_env_classpath(Classpath, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-create_launcher_shell_script(ProgressStream, Globals, MainModuleName, Pred,
-        Succeeded, !IO) :-
+create_launcher_shell_script(ProgressStream, Globals, MainModuleName,
+        ContentStr, Succeeded, !IO) :-
     Ext = ext_cur_gas(ext_cur_gas_exec_noext),
     % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred, Ext,
@@ -751,7 +753,7 @@ create_launcher_shell_script(ProgressStream, Globals, MainModuleName, Pred,
     io.open_output(LauncherFileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),
-        Pred(Stream, !IO),
+        io.write_string(Stream, ContentStr, !IO),
         io.close_output(Stream, !IO),
         io.call_system.call_system("chmod a+x " ++ LauncherFileName,
             ChmodResult, !IO),
@@ -777,8 +779,8 @@ create_launcher_shell_script(ProgressStream, Globals, MainModuleName, Pred,
 
 %-----------------------------------------------------------------------------%
 
-create_launcher_batch_file(ProgressStream, Globals, MainModuleName, Pred,
-        Succeeded, !IO) :-
+create_launcher_batch_file(ProgressStream, Globals, MainModuleName,
+        ContentStr, Succeeded, !IO) :-
     % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_gas(ext_cur_gas_exec_bat), MainModuleName,
@@ -793,7 +795,7 @@ create_launcher_batch_file(ProgressStream, Globals, MainModuleName, Pred,
     io.open_output(FileName, OpenResult, !IO),
     (
         OpenResult = ok(Stream),
-        Pred(Stream, !IO),
+        io.write_string(Stream, ContentStr, !IO),
         io.close_output(Stream, !IO),
         Succeeded = succeeded
     ;
