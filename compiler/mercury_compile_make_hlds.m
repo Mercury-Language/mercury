@@ -143,7 +143,6 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
             Globals, ModuleName, MaybeDFileTransOptDeps, !IO)
     ),
 
-    % Errors in .opt and .trans_opt files result in software errors.
     maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
         OpModeAugment, Verbose, MaybeDFileTransOptDeps, IntermodError,
         Baggage0, Baggage1, AugCompUnit0, AugCompUnit1,
@@ -241,9 +240,8 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
             MaybeDFileTransOptDeps = no,
             MaybeInclTransOptRule = do_not_include_trans_opt_rule
         ),
-        StdDeps = construct_std_deps(Globals, BurdenedAugCompUnit),
-        write_d_file(ProgressStream, Globals, BurdenedAugCompUnit,
-            StdDeps, AllDeps, MaybeInclTransOptRule, !IO),
+        write_d_file(ProgressStream, Globals, BurdenedAugCompUnit, AllDeps,
+            MaybeInclTransOptRule, !IO),
         globals.lookup_bool_option(Globals,
             generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
         (

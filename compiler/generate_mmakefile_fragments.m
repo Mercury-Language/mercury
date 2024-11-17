@@ -53,6 +53,27 @@
                 set(module_name)
             ).
 
+%---------------------%
+
+:- type intermod_deps
+    --->    intermod_deps(
+                maybe_intermod_mh_deps,
+                maybe_opt_file_deps
+            ).
+
+:- type maybe_intermod_mh_deps
+    --->    no_intermod_mh_deps
+    ;       intermod_mh_deps.
+
+:- type maybe_opt_file_deps
+    --->    no_opt_file_deps
+    ;       opt_file_deps(
+                ofd_plain_opt_modules   :: list(module_name),
+                ofd_trans_opt_modules   :: maybe(list(module_name))
+            ).
+
+%---------------------%
+
 :- type maybe_include_trans_opt_rule
     --->    do_not_include_trans_opt_rule
     ;       include_trans_opt_rule(trans_opt_rule_info).
@@ -68,25 +89,9 @@
 
 %---------------------------------------------------------------------------%
 
-:- type intermod_deps
-    --->    intermod_deps(
-                maybe_intermod_mh_deps,
-                maybe_opt_file_deps
-            ).
-
-:- type maybe_intermod_mh_deps
-    --->    no_intermod_mh_deps
-    ;       intermod_mh_deps(set(module_name)).
-
-:- type maybe_opt_file_deps
-    --->    no_opt_file_deps
-    ;       opt_file_deps(
-                ofd_plain_opt_modules   :: list(module_name),
-                ofd_trans_opt_modules   :: maybe(list(module_name))
-            ).
-
-%---------------------------------------------------------------------------%
-
+    % generate_d_file(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
+    %   MaybeInclTransOptRule, !:MmakeFile, !Cache, !IO):
+    %
     % Generate the contents of the module's .d file.
     %
     % The mmake rules we construct treat C differently from Java and C#.
@@ -106,10 +111,20 @@
     % apparently there is no documentation of *which* mmake rules for Java
     % are required by --use-mmc-make.
     %
+    % XXX The StdDeps argument allows generate_dependencies_write_d_file
+    % to supply some information derived from the overall dependency graph
+    % that is intended to override the values of some of the fields in
+    % BurdenedAugCompUnit. These used to be passed in a ModuleAndImports
+    % argument itself (the predecessor of BurdenedAugCompUnit), but they
+    % do not actually belong there, since the overridden fields are
+    % supposed to be *solely* from the main module in BurdenedAugCompUnit.
+    % As to *why* this overriding is desirable, I (zs) don't know, and
+    % I am pretty sure that the original author (fjh) does not know anymore
+    % either :-(
+    %
 :- pred generate_d_file(globals::in, burdened_aug_comp_unit::in, std_deps::in,
-    intermod_deps::in,
-    set(module_name)::in, maybe_include_trans_opt_rule::in, mmakefile::out,
-    module_file_name_cache::in, module_file_name_cache::out,
+    intermod_deps::in, set(module_name)::in, maybe_include_trans_opt_rule::in,
+    mmakefile::out, module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
     % Generate the contents of a program's .dv file.
@@ -246,7 +261,7 @@ generate_d_file(Globals, BurdenedAugCompUnit, StdDeps, IntermodDeps, AllDeps,
     construct_build_nested_children_first_rule(Globals,
         ModuleName, MaybeTopModule, MmakeRulesNestedDeps, !Cache, !IO),
 
-    construct_intermod_rules(Globals, IntermodDeps, ErrFileName,
+    construct_intermod_rules(Globals, IntermodDeps, AllDeps, ErrFileName,
         TransOptDateFileName, CDateFileName, JavaDateFileName, ObjFileName,
         MmakeRulesIntermod, !Cache, !IO),
 
@@ -530,20 +545,21 @@ construct_build_nested_children_first_rule(Globals, ModuleName, MaybeTopModule,
             NestedOtherExts, MmakeRulesNestedDeps, !Cache, !IO)
     ).
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
-:- pred construct_intermod_rules(globals::in, intermod_deps::in,
+:- pred construct_intermod_rules(globals::in,
+    intermod_deps::in, set(module_name)::in,
     string::in, string::in, string::in, string::in, string::in,
     list(mmake_entry)::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-construct_intermod_rules(Globals, IntermodDeps, ErrFileName,
-        TransOptDateFileName, CDateFileName, JavaDateFileName, ObjFileName,
-        MmakeRulesIntermod, !Cache, !IO) :-
+construct_intermod_rules(Globals, IntermodDeps, AllDeps,
+        ErrFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
+        ObjFileName, MmakeRulesIntermod, !Cache, !IO) :-
     IntermodDeps = intermod_deps(MaybeMhDeps, MaybeOptFileDeps),
     (
-        MaybeMhDeps = intermod_mh_deps(AllDeps),
+        MaybeMhDeps = intermod_mh_deps,
         make_module_file_names_with_ext(Globals,
             ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh),
             set.to_sorted_list(AllDeps), AllDepsFileNames, !Cache, !IO),
