@@ -319,6 +319,7 @@
     ;       ie_an_analysis
     ;       ie_an_imdg
     ;       ie_an_request
+    ;       ie_src          % XXX This option should not exist.
     ;       cie_mh
     ;       cie_mih.
 
@@ -337,7 +338,8 @@
     ;       ie_an_ds_status
     ;       ie_an_analysis
     ;       ie_an_imdg
-    ;       ie_an_request.
+    ;       ie_an_request
+    ;       ie_src.         % XXX This option should not exist.
 
 :- type c_incl_ext =< dirs_ext
     --->    cie_mh

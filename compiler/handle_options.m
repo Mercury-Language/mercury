@@ -3013,6 +3013,9 @@ handle_directory_options(OpMode, !Globals) :-
         map.det_insert(ie_an_imdg, IntermodImdg, !IntermodDirsMap),
         map.det_insert(ie_an_request, IntermodRequest, !IntermodDirsMap),
 
+        IntermodSrc = IntermodSame ++ IntermodIndep ++ IntermodInstalled,
+        map.det_insert(ie_src, IntermodSrc, !IntermodDirsMap),
+
         ExtDirsMaps = ext_dirs_maps(!.IntermodDirsMap)
     ),
     globals.set_ext_dirs_maps(ExtDirsMaps, !Globals).

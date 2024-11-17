@@ -94,19 +94,4 @@ $(dates_subdir)user_eq_pred_nested_helper_1.date: \
 
 include ../valid/Mmake.valid.common
 
-# We want to force the creation of the .opt file for opt_det_warn_helper_1
-# *before* we compile the opt_det_warn module itself to target code.
-# (Both opt_det_warn and opt_det_warn_helper_1 have --intermodule-optimization
-# specified for them by Mercury.options, so mmake *should* automatically
-# handle this dependency, but XXX it does not.)
-#
-# This rule does NOT work to enforce this dependency:
-#
-# $(TARGET_SRC_SUBDIR)opt_det_warn.$(TARGET_SRC_EXT): \
-# 	$(opts_subdir)opt_det_warn_helper_1.opt
-#
-# The following rule does (though it looks strange).
-opt_det_warn.int: \
-	$(opts_subdir)opt_det_warn_helper_1.opt
-
 clean_local:

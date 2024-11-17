@@ -153,13 +153,6 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-# For the reason behind this rule, see the similar rule for the opt_det_warn
-# test case in tests/valid_seq.
-inst_with_no_type.int: \
-        $(opts_subdir)inst_with_no_type_helper_1.opt
-
-#-----------------------------------------------------------------------------#
-
 clean_local:	clean_err clean_res
 
 clean_err:

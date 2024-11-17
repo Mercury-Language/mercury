@@ -83,11 +83,14 @@
 
 %---------------------------------------------------------------------------%
 
-    % get_ext_opt_deps(Globals, Ext, ModuleNames, !:OptDeps, !IO):
-    %
-    % For each module in ModuleNames, search intermod_directories
-    % for a file with the given extension, filtering out those for which
-    % the search fails.
+:- type maybe_look_for_src
+    --->    do_not_look_for_src
+    ;       look_for_src.
+
+    % For each dependency, search intermod_directories for a file with
+    % the given extension, filtering out those for which the search fails.
+    % With do_not_look_for_src, only look for files with the given extension,
+    % not source files.
     % XXX This won't find nested submodules.
     % XXX Use `mmc --make' if that matters.
     %
@@ -96,7 +99,7 @@
     % which is derived from the dependency graph between modules,
     % and not just the modules' names.
     %
-:- pred get_ext_opt_deps(globals::in, ext::in(ext_opt),
+:- pred get_ext_opt_deps(globals::in, maybe_look_for_src::in, ext::in(ext_opt),
     list(module_name)::in, list(module_name)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -110,6 +113,7 @@
 :- import_module parse_tree.find_module.        % XXX undesirable dependency
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.make_module_file_names.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -276,6 +280,9 @@ construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, AllDeps,
     then
         globals.lookup_bool_option(Globals, use_trans_opt_files, UseTransOpt),
         globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
+        ( UseTransOpt = no,  LookForSrc = look_for_src
+        ; UseTransOpt = yes, LookForSrc = do_not_look_for_src
+        ),
         StdDeps = std_deps(DirectDeps, _, _, _),
         ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
         BaseDeps = [ModuleName | set.to_sorted_list(DirectDeps)],
@@ -284,14 +291,15 @@ construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, AllDeps,
             ; UseTransOpt = yes
             )
         then
-            get_plain_trans_opt_deps(Globals, BaseDeps,
-                PlainOptDeps, TransOptDeps, !Cache, !IO),
+            get_plain_trans_opt_deps(Globals, LookForSrc,
+                BaseDeps, PlainOptDeps, TransOptDeps, !Cache, !IO),
             MaybeTransOptDeps = yes(TransOptDeps)
         else
             % XXX LEGACY
             ExtOpt = ext_cur_ngs_gs_max_ngs(
                 ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
-            get_ext_opt_deps(Globals, ExtOpt, BaseDeps, PlainOptDeps, !IO),
+            get_ext_opt_deps(Globals, LookForSrc, ExtOpt,
+                BaseDeps, PlainOptDeps, !IO),
             MaybeTransOptDeps = no
         ),
         MaybeOptFileDeps = opt_file_deps(PlainOptDeps, MaybeTransOptDeps)
@@ -569,61 +577,116 @@ get_dependencies_from_graph(DepsGraph, ModuleName, Dependencies) :-
     % XXX This won't find nested submodules.
     % XXX Use `mmc --make' if that matters.
     %
-:- pred get_plain_trans_opt_deps(globals::in,
+:- pred get_plain_trans_opt_deps(globals::in, maybe_look_for_src::in,
     list(module_name)::in, list(module_name)::out, list(module_name)::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-get_plain_trans_opt_deps(_, [], [], [], !Cache, !IO).
-get_plain_trans_opt_deps(Globals, [ModuleName | ModuleNames],
+get_plain_trans_opt_deps(_, _, [], [], [], !Cache, !IO).
+get_plain_trans_opt_deps(Globals, LookForSrc, [ModuleName | ModuleNames],
         !:OptDeps, !:TransOptDeps, !Cache, !IO) :-
-    get_plain_trans_opt_deps(Globals, ModuleNames,
+    get_plain_trans_opt_deps(Globals, LookForSrc, ModuleNames,
         !:OptDeps, !:TransOptDeps, !Cache, !IO),
-    % XXX LEGACY
-    ExtOpt =
-        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
-    make_module_file_name(Globals, $pred, ExtOpt,
-        ModuleName, OptName, !Cache, !IO),
-    SearchAuthDirsPlainOpt =
-        get_search_auth_intermod_dirs(ie_opt_plain, Globals),
-    search_for_file_returning_dir(SearchAuthDirsPlainOpt,
-        OptName, _SearchDirsNotFoundOpt, MaybeOptDir, !IO),
     (
-        MaybeOptDir = ok(_),
-        !:OptDeps = [ModuleName | !.OptDeps]
+        LookForSrc = look_for_src,
+        SearchAuthDirsSrc = get_search_auth_intermod_dirs(ie_src, Globals),
+        search_for_module_source(SearchAuthDirsSrc,
+            ModuleName, _SearchDirsLook, MaybeFileName, !IO),
+        (
+            MaybeFileName = ok(_),
+            !:OptDeps = [ModuleName | !.OptDeps],
+            !:TransOptDeps = [ModuleName | !.TransOptDeps],
+            Found = found
+        ;
+            MaybeFileName = error(_),
+            Found = not_found
+        )
     ;
-        MaybeOptDir = error(_)
+        LookForSrc = do_not_look_for_src,
+        Found = not_found
     ),
-    % XXX LEGACY
-    ExtTransOpt =
-        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_trans),
-    make_module_file_name(Globals, $pred, ExtTransOpt,
-        ModuleName, TransOptName, !Cache, !IO),
-    SearchAuthDirsTransOpt =
-        get_search_auth_intermod_dirs(ie_opt_trans, Globals),
-    search_for_file_returning_dir(SearchAuthDirsTransOpt,
-        TransOptName, _SearchDirsNotFoundTransOpt, MaybeTransOptDir, !IO),
     (
-        MaybeTransOptDir = ok(_),
-        !:TransOptDeps = [ModuleName | !.TransOptDeps]
+        Found = not_found,
+        % XXX LEGACY
+        ExtOpt =
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
+        make_module_file_name(Globals, $pred, ExtOpt,
+            ModuleName, OptName, !Cache, !IO),
+        SearchAuthDirsPlainOpt =
+            get_search_auth_intermod_dirs(ie_opt_plain, Globals),
+        search_for_file_returning_dir(SearchAuthDirsPlainOpt,
+            OptName, _SearchDirsNotFoundOpt, MaybeOptDir, !IO),
+        (
+            MaybeOptDir = ok(_),
+            !:OptDeps = [ModuleName | !.OptDeps]
+        ;
+            MaybeOptDir = error(_)
+        ),
+        % XXX LEGACY
+        ExtTransOpt =
+            ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_trans),
+        make_module_file_name(Globals, $pred, ExtTransOpt,
+            ModuleName, TransOptName, !Cache, !IO),
+        SearchAuthDirsTransOpt =
+            get_search_auth_intermod_dirs(ie_opt_trans, Globals),
+        search_for_file_returning_dir(SearchAuthDirsTransOpt,
+            TransOptName, _SearchDirsNotFoundTransOpt, MaybeTransOptDir, !IO),
+        (
+            MaybeTransOptDir = ok(_),
+            !:TransOptDeps = [ModuleName | !.TransOptDeps]
+        ;
+            MaybeTransOptDir = error(_)
+        )
     ;
-        MaybeTransOptDir = error(_)
+        Found = found
     ).
 
-get_ext_opt_deps(_, _, [], [], !IO).
-get_ext_opt_deps(Globals, Ext, [ModuleName | ModuleNames], !:OptDeps, !IO) :-
-    get_ext_opt_deps(Globals, Ext, ModuleNames, !:OptDeps, !IO),
-    SearchWhichDirsExt = search_intermod_dirs,
-    % XXX LEGACY
-    module_name_to_search_file_name(Globals, $pred, Ext, ModuleName,
-        SearchWhichDirsExt, SearchAuthDirsExt, OptName, _OptNameProposed),
-    search_for_file(SearchAuthDirsExt, OptName,
-        _SearchDirsNotFound, MaybeOptDir, !IO),
+get_ext_opt_deps(_, _, _, [], [], !IO).
+get_ext_opt_deps(Globals, LookForSrc, Ext, [ModuleName | ModuleNames],
+        !:OptDeps, !IO) :-
+    get_ext_opt_deps(Globals, LookForSrc, Ext, ModuleNames, !:OptDeps, !IO),
     (
-        MaybeOptDir = ok(_),
-        !:OptDeps = [ModuleName | !.OptDeps]
+        LookForSrc = look_for_src,
+        % XXX Why are we looking for *source* files in intermod_dirs?
+        % Neither of our caller call sites that pass look_for_src
+        % have any documentation of their reasons, and the documentation
+        % of --intermod-directory says:
+        %
+        % "Append dir to the list of directories to be search for .opt files".
+        %
+        % XXX It should mention .trans_opt files as well, since we do
+        % search for them in the same places.
+        SearchAuthDirsSrc = get_search_auth_intermod_dirs(ie_src, Globals),
+        search_for_module_source(SearchAuthDirsSrc, ModuleName,
+            _SearchDirsLook, Result1, !IO),
+        (
+            Result1 = ok(_),
+            !:OptDeps = [ModuleName | !.OptDeps],
+            Found = yes
+        ;
+            Result1 = error(_),
+            Found = no
+        )
     ;
-        MaybeOptDir = error(_)
+        LookForSrc = do_not_look_for_src,
+        Found = no
+    ),
+    (
+        Found = no,
+        SearchWhichDirsExt = search_intermod_dirs,
+        % XXX LEGACY
+        module_name_to_search_file_name(Globals, $pred, Ext, ModuleName,
+            SearchWhichDirsExt, SearchAuthDirsExt, OptName, _OptNameProposed),
+        search_for_file(SearchAuthDirsExt, OptName,
+            _SearchDirsNotFound, MaybeOptDir, !IO),
+        (
+            MaybeOptDir = ok(_),
+            !:OptDeps = [ModuleName | !.OptDeps]
+        ;
+            MaybeOptDir = error(_)
+        )
+    ;
+        Found = yes
     ).
 
 %---------------------------------------------------------------------------%
