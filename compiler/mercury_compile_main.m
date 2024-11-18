@@ -1235,8 +1235,8 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
 
     (
         OpModeArgs = opma_generate_dependencies(MaybeMakeInts),
-        generate_dep_file(ProgressStream, Globals0, FileOrModule,
-            DepsMap, DepSpecs, !IO),
+        generate_and_write_dep_file_gendep(ProgressStream, Globals0,
+            FileOrModule, DepsMap, DepSpecs, !IO),
         ( if
             MaybeMakeInts = do_make_ints,
             contains_errors(Globals0, DepSpecs) = no
@@ -1251,8 +1251,8 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         ExtraObjFiles = []
     ;
         OpModeArgs = opma_generate_dependency_file,
-        generate_d_file(ProgressStream, Globals0, FileOrModule,
-            _DepsMap, DepSpecs, !IO),
+        generate_and_write_d_file_gendep(ProgressStream, Globals0,
+            FileOrModule, _DepsMap, DepSpecs, !IO),
         SpecsList = [DepSpecs],
         ModulesToLink = [],
         ExtraObjFiles = []

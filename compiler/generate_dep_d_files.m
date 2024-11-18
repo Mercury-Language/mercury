@@ -60,8 +60,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % generate_dep_file_for_module(ProgressStream, Globals, FileOrModule,
-    %   Specs, !IO):
+    % generate_and_write_dep_file_gendep(ProgressStream, Globals,
+    %   FileOrModule, DepsMap, Specs, !IO):
     %
     % Generate the per-program makefile dependencies file (`.dep' file)
     % for the program whose top-level module is specified by FileOrModule.
@@ -70,18 +70,18 @@
     % dependency files (`.d' files) for all those modules. Return any errors
     % and/or warnings to be printed in Specs.
     %
-:- pred generate_dep_file(io.text_output_stream::in, globals::in,
-    file_or_module::in, deps_map::out, list(error_spec)::out,
+:- pred generate_and_write_dep_file_gendep(io.text_output_stream::in,
+    globals::in, file_or_module::in, deps_map::out, list(error_spec)::out,
     io::di, io::uo) is det.
 
-    % generate_d_file_for_module(ProgressStream, Globals, FIleOrModule
-    %   Specs, !IO):
+    % generate_and_write_d_file_gendep(ProgressStream, Globals, FIleOrModule,
+    %   DepsMap, Specs, !IO):
     %
     % Generate the per-module makefile dependency file ('.d' file)
     % for the given module.
     %
-:- pred generate_d_file(io.text_output_stream::in, globals::in,
-    file_or_module::in, deps_map::out, list(error_spec)::out,
+:- pred generate_and_write_d_file_gendep(io.text_output_stream::in,
+    globals::in, file_or_module::in, deps_map::out, list(error_spec)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -91,13 +91,13 @@
     % using two separate algorithms that compute different results
     % is a old bug.
     %
-:- pred generate_d_file_fragment(globals::in, burdened_aug_comp_unit::in,
+:- pred generate_d_mmakefile_contents(globals::in, burdened_aug_comp_unit::in,
     std_deps::in, set(module_name)::in, maybe_include_trans_opt_rule::in,
     file_name::out, string::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-:- func construct_std_deps(globals, burdened_aug_comp_unit) = std_deps.
+:- func construct_std_deps_hlds(globals, burdened_aug_comp_unit) = std_deps.
 
 :- pred construct_intermod_deps(globals::in, parse_tree_module_src::in,
     std_deps::in, intermod_deps::out,
@@ -139,7 +139,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_dep_file(ProgressStream, Globals, FileOrModule,
+generate_and_write_dep_file_gendep(ProgressStream, Globals, FileOrModule,
         DepsMap, !:Specs, !IO) :-
     generate_deps_map(ProgressStream, Globals, do_not_search,
         FileOrModule, ModuleName, DepsMap, !:Specs, !IO),
@@ -152,15 +152,15 @@ generate_dep_file(ProgressStream, Globals, FileOrModule,
     ;
         MaybeBurdenedModule = ok1(BurdenedModule),
         BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
-        generate_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
-            Baggage, !IO),
-        compute_deps_for_d_files(ProgressStream, Globals, ModuleName, DepsMap,
-            DepGraphs, BurdenedModules, !Specs, !IO),
+        generate_and_write_dep_dv_files(ProgressStream, Globals, ModuleName,
+            DepsMap, Baggage, !IO),
+        compute_deps_for_d_files_gendep(ProgressStream, Globals, ModuleName,
+            DepsMap, DepGraphs, BurdenedModules, !Specs, !IO),
         generate_dependencies_write_d_files(ProgressStream, Globals,
             BurdenedModules, DepGraphs, !IO)
     ).
 
-generate_d_file(ProgressStream, Globals, FileOrModule,
+generate_and_write_d_file_gendep(ProgressStream, Globals, FileOrModule,
         DepsMap, !:Specs, !IO) :-
     generate_deps_map(ProgressStream, Globals, do_search,
         FileOrModule, ModuleName, DepsMap, !:Specs, !IO),
@@ -172,8 +172,8 @@ generate_d_file(ProgressStream, Globals, FileOrModule,
         !:Specs = FatalErrorSpecs ++ !.Specs
     ;
         MaybeBurdenedModule = ok1(BurdenedModule),
-        compute_deps_for_d_files(ProgressStream, Globals, ModuleName, DepsMap,
-            DepGraphs, _BurdenedModules, !Specs, !IO),
+        compute_deps_for_d_files_gendep(ProgressStream, Globals, ModuleName,
+            DepsMap, DepGraphs, _BurdenedModules, !Specs, !IO),
         generate_dependencies_write_d_files(ProgressStream, Globals,
             [BurdenedModule], DepGraphs, !IO)
     ).
@@ -206,18 +206,18 @@ do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_dep_dv_files(io.text_output_stream::in, globals::in,
+:- pred generate_and_write_dep_dv_files(io.text_output_stream::in, globals::in,
     module_name::in, deps_map::in, module_baggage::in, io::di, io::uo) is det.
 
-generate_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
+generate_and_write_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
         Baggage, !IO) :-
     % First, build up a map of the dependencies.
     SourceFileName = Baggage ^ mb_source_file_name,
 
     map.init(Cache0),
-    generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
+    generate_dv_mmakefile(Globals, SourceFileName, ModuleName, DepsMap,
         MmakeFileDv, Cache0, _Cache, !IO),
-    generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
+    generate_dep_mmakefile(Globals, SourceFileName, ModuleName, DepsMap,
         MmakeFileDep, !IO),
     MmakeFileStrDv = mmakefile_to_string(MmakeFileDv),
     MmakeFileStrDep = mmakefile_to_string(MmakeFileDep),
@@ -256,12 +256,12 @@ generate_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
 
 %---------------------------------------------------------------------------%
 
-:- pred compute_deps_for_d_files(io.text_output_stream::in, globals::in,
+:- pred compute_deps_for_d_files_gendep(io.text_output_stream::in, globals::in,
     module_name::in, deps_map::in, dep_graphs::out,
     list(burdened_module)::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-compute_deps_for_d_files(ProgressStream, Globals, ModuleName, DepsMap,
+compute_deps_for_d_files_gendep(ProgressStream, Globals, ModuleName, DepsMap,
         DepGraphs, BurdenedModules, !Specs, !IO) :-
     % Compute the interface deps graph and the implementation deps graph
     % from the deps map.
@@ -344,7 +344,7 @@ lookup_burdened_module_in_deps_map(DepsMap, ModuleName) = ModuleDepInfo :-
 
 %---------------------------------------------------------------------------%
 
-generate_d_file_fragment(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
+generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
         MaybeInclTransOptRule, FileNameD, FileContentsStrD, !Cache, !IO) :-
     BurdenedAugCompUnit = burdened_aug_comp_unit(_, AugCompUnit),
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
@@ -355,13 +355,13 @@ generate_d_file_fragment(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
         FileNameD, _FileNameDProposed, !IO),
     construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, IntermodDeps,
         !Cache, !IO),
-    generate_d_file(Globals, BurdenedAugCompUnit, StdDeps, IntermodDeps,
+    generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, IntermodDeps,
         AllDeps, MaybeInclTransOptRule, MmakeFileD, !Cache, !IO),
     FileContentsStrD = mmakefile_to_string(MmakeFileD).
 
 %---------------------------------------------------------------------------%
 
-construct_std_deps(Globals, BurdenedAugCompUnit) = StdDeps :-
+construct_std_deps_hlds(Globals, BurdenedAugCompUnit) = StdDeps :-
     BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
     SourceFileModuleName = Baggage ^ mb_source_file_module_name,
     AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,

@@ -89,8 +89,9 @@
 
 %---------------------------------------------------------------------------%
 
-    % generate_d_file(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
-    %   MaybeInclTransOptRule, !:MmakeFile, !Cache, !IO):
+    % generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps,
+    %   IntermodDeps, AllDeps, MaybeInclTransOptRule, !:MmakeFile,
+    %   !Cache, !IO):
     %
     % Generate the contents of the module's .d file.
     %
@@ -122,14 +123,15 @@
     % I am pretty sure that the original author (fjh) does not know anymore
     % either :-(
     %
-:- pred generate_d_file(globals::in, burdened_aug_comp_unit::in, std_deps::in,
-    intermod_deps::in, set(module_name)::in, maybe_include_trans_opt_rule::in,
-    mmakefile::out, module_file_name_cache::in, module_file_name_cache::out,
+:- pred generate_d_mmakefile(globals::in, burdened_aug_comp_unit::in,
+    std_deps::in, intermod_deps::in, set(module_name)::in,
+    maybe_include_trans_opt_rule::in, mmakefile::out,
+    module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
     % Generate the contents of a program's .dv file.
     %
-:- pred generate_dv_file(globals::in, file_name::in, module_name::in,
+:- pred generate_dv_mmakefile(globals::in, file_name::in, module_name::in,
     deps_map::in, mmakefile::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
@@ -139,7 +141,7 @@
     % XXX Why does this predicate not take an in/out pair of filename caches
     % as arguments?
     %
-:- pred generate_dep_file(globals::in, file_name::in, module_name::in,
+:- pred generate_dep_mmakefile(globals::in, file_name::in, module_name::in,
     deps_map::in, mmakefile::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -169,8 +171,8 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_d_file(Globals, BurdenedAugCompUnit, StdDeps, IntermodDeps, AllDeps,
-        MaybeInclTransOptRule, !:MmakeFile, !Cache, !IO) :-
+generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, IntermodDeps,
+        AllDeps, MaybeInclTransOptRule, !:MmakeFile, !Cache, !IO) :-
     BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
     SourceFileName = Baggage ^ mb_source_file_name,
     SourceFileModuleName = Baggage ^ mb_source_file_module_name,
@@ -1065,7 +1067,7 @@ construct_subdirs_shorthand_rule(Globals, ModuleName, Ext,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
+generate_dv_mmakefile(Globals, SourceFileName, ModuleName, DepsMap,
         MmakeFile, !Cache, !IO) :-
     ModuleNameString = sym_name_to_string(ModuleName),
     library.version(Version, FullArch),
@@ -1581,7 +1583,7 @@ generate_dv_file_define_smart_recomp_vars(ModuleMakeVarName,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
+generate_dep_mmakefile(Globals, SourceFileName, ModuleName, DepsMap,
         !:MmakeFile, !IO) :-
     ModuleNameString = sym_name_to_string(ModuleName),
     library.version(Version, FullArch),

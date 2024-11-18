@@ -240,8 +240,8 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
             MaybeDFileTransOptDeps = no,
             MaybeInclTransOptRule = do_not_include_trans_opt_rule
         ),
-        write_d_file(ProgressStream, Globals, BurdenedAugCompUnit, AllDeps,
-            MaybeInclTransOptRule, !IO),
+        generate_and_write_d_file_hlds(ProgressStream, Globals,
+            BurdenedAugCompUnit, AllDeps, MaybeInclTransOptRule, !IO),
         globals.lookup_bool_option(Globals,
             generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
         (

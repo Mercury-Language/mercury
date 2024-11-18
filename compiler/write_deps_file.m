@@ -39,7 +39,7 @@
     % modules. MaybeInclTransOptRule controls whether to include a
     % trans_opt_deps rule in the file, and if so, what the rule should say.
     %
-:- pred write_d_file(io.text_output_stream::in, globals::in,
+:- pred generate_and_write_d_file_hlds(io.text_output_stream::in, globals::in,
     burdened_aug_comp_unit::in, set(module_name)::in,
     maybe_include_trans_opt_rule::in, io::di, io::uo) is det.
 
@@ -100,15 +100,15 @@
 
 %---------------------------------------------------------------------------%
 
-write_d_file(ProgressStream, Globals, BurdenedAugCompUnit, AllDeps,
-        MaybeInclTransOptRule, !IO) :-
+generate_and_write_d_file_hlds(ProgressStream, Globals, BurdenedAugCompUnit,
+        AllDeps, MaybeInclTransOptRule, !IO) :-
     map.init(Cache0),
-    StdDeps = construct_std_deps(Globals, BurdenedAugCompUnit),
-    generate_d_file_fragment(Globals, BurdenedAugCompUnit, StdDeps,
+    StdDeps = construct_std_deps_hlds(Globals, BurdenedAugCompUnit),
+    generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, StdDeps,
         AllDeps, MaybeInclTransOptRule, FileNameD, FileContentsStrD,
         Cache0, _Cache, !IO),
-    write_out_d_file(ProgressStream, Globals, FileNameD,
-        FileContentsStrD, !IO).
+    write_out_d_file(ProgressStream, Globals,
+        FileNameD, FileContentsStrD, !IO).
 
 :- pred write_out_d_file(io.text_output_stream::in, globals::in,
     file_name::in, string::in, io::di, io::uo) is det.
@@ -224,8 +224,7 @@ generate_dependencies_write_d_files_loop(ProgressStream, Globals,
     io::di, io::uo) is det.
 
 generate_dependencies_write_d_file(ProgressStream, Globals,
-        BurdenedModule, DepGraphs,
-        !Cache, !IO) :-
+        BurdenedModule, DepGraphs, !Cache, !IO) :-
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
     DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph, IndirectDepsGraph,
         IndirectOptDepsGraph, TransOptDepsGraph, FullTransOptOrder),
@@ -264,21 +263,10 @@ generate_dependencies_write_d_file(ProgressStream, Globals,
     StdDeps = std_deps(DirectDeps, IndirectDeps, IndirectOptDeps,
         trans_opt_deps(TransOptDeps)),
 
-    % Compute the maximum allowable trans-opt dependencies for this module.
-    % To avoid the possibility of cycles, each module is only allowed to depend
-    % on modules that occur after it in FullTransOptOrder.
-    NotThisModule =
-        ( pred(OtherModule::in) is semidet :-
-            ModuleName \= OtherModule
-        ),
-    list.drop_while(NotThisModule, FullTransOptOrder, TailTransOptOrder),
-    ( if TailTransOptOrder = [_ | TransOptOrderList] then
-        % The module was found in the list.
-        set.list_to_set(TransOptOrderList, TransOptOrder)
-    else
-        set.init(TransOptOrder)
-    ),
-    TransOptRuleInfo = trans_opt_deps_from_order(TransOptOrder),
+    compute_allowable_trans_opt_deps(ModuleName,
+        FullTransOptOrder, TransOptOrder),
+    set.list_to_set(TransOptOrder, TransOptOrderSet),
+    TransOptRuleInfo = trans_opt_deps_from_order(TransOptOrderSet),
     MaybeInclTransOptRule = include_trans_opt_rule(TransOptRuleInfo),
 
     % XXX DFILE Note that even if a fatal error occurred for one of the files
@@ -293,11 +281,11 @@ generate_dependencies_write_d_file(ProgressStream, Globals,
         % to do with the way the generate_d_file_fragment predicate's
         % corresponding argument is computed. This seems to me (zs)
         % to be a BUG.
-        generate_d_file_fragment(Globals, BurdenedAugCompUnit,
+        generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit,
             StdDeps, IndirectOptDeps, MaybeInclTransOptRule,
             FileNameD, FileContentsStrD, !Cache, !IO),
-        write_out_d_file(ProgressStream, Globals, FileNameD,
-            FileContentsStrD, !IO)
+        write_out_d_file(ProgressStream, Globals,
+            FileNameD, FileContentsStrD, !IO)
     else
         true
     ).
@@ -317,6 +305,23 @@ get_dependencies_from_graph(DepsGraph, ModuleName, Dependencies) :-
         set.list_to_set(DependenciesList, Dependencies)
     else
         set.init(Dependencies)
+    ).
+
+    % Compute the maximum allowable trans-opt dependencies for this module.
+    % To avoid the possibility of cycles, each module is allowed to depend
+    % only on modules that occur after it in FullTransOptOrder.
+    %
+:- pred compute_allowable_trans_opt_deps(module_name::in,
+    list(module_name)::in, list(module_name)::out) is det.
+
+compute_allowable_trans_opt_deps(_ModuleName, [], []).
+compute_allowable_trans_opt_deps(ModuleName,
+        [HeadModuleName | TailModuleNames], TransOptOrder) :-
+    ( if HeadModuleName = ModuleName then
+        TransOptOrder = TailModuleNames
+    else
+        compute_allowable_trans_opt_deps(ModuleName, TailModuleNames,
+            TransOptOrder)
     ).
 
 %---------------------------------------------------------------------------%
