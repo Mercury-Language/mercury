@@ -9,33 +9,10 @@
 % File: generate_dep_d_files.m.
 % Original author: fjh (when this code was in modules.m)
 %
-% This module figures out the what-depends-on-what information from which
+% This module is a subcontractor to write_deps_file.m. Its job
+% is to figure out the what-depends-on-what information from which
 % generate_mmake_fragments.m generate mmake rules that write_deps_file.m
 % then writes out to .dep, .dv and .d files.
-%
-% We generate one .dep and one .dv file for each program, with those files
-% being named prog.dep and prog.dv (if the name of the program is "prog").
-% We generate one .d file for each module in the program, with the file
-% being named mod.d (if the name of the module is "mod").
-%
-% The .dv file contains the definitions of all the mmake variable definitions
-% relating to the program, while the .dep file contains all the rules
-% relating to the program. The reason for this split is that we want mmake
-% to glue all these mmakefile fragments together in the following order:
-%
-% - the program's .dv file
-% - the Mmakefile in the current directory
-% - the .d files of the program's modules
-% - the program's .dep file
-% - the standard Mmake.rules file
-%
-% This arrangement gives the Mmakefile access to the values of the
-% variables defined in the program's .dv file, for example as lists
-% of files on which a target depends. On the other hand, by including
-% the automatically generated .dep file *after* the Mmakefile, we allow
-% the rules in the .dep file to refer to variables defined in the Mmakefile
-% (Usually the rules allow, but do not require, the Mmakefile to define
-% these variables.)
 %
 %---------------------------------------------------------------------------%
 
@@ -54,34 +31,26 @@
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.prog_item.
 
+:- import_module digraph.
 :- import_module io.
 :- import_module list.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
 
-    % generate_and_write_dep_file_gendep(ProgressStream, Globals,
-    %   FileOrModule, DepsMap, Specs, !IO):
-    %
-    % Generate the per-program makefile dependencies file (`.dep' file)
-    % for the program whose top-level module is specified by FileOrModule.
-    % This involves first transitively reading in all imported or ancestor
-    % modules. While we are at it, we also save the per-module makefile
-    % dependency files (`.d' files) for all those modules. Return any errors
-    % and/or warnings to be printed in Specs.
-    %
-:- pred generate_and_write_dep_file_gendep(io.text_output_stream::in,
-    globals::in, file_or_module::in, deps_map::out, list(error_spec)::out,
-    io::di, io::uo) is det.
+:- type dep_graphs
+    --->    dep_graphs(
+                int_deps_graph          :: digraph(module_name),
+                imp_deps_graph          :: digraph(module_name),
+                indirect_deps_graph     :: digraph(module_name),
+                indirect_opt_deps_graph :: digraph(module_name),
+                trans_opt_deps_graph    :: digraph(module_name),
+                trans_opt_order         :: list(module_name)
+            ).
 
-    % generate_and_write_d_file_gendep(ProgressStream, Globals, FIleOrModule,
-    %   DepsMap, Specs, !IO):
-    %
-    % Generate the per-module makefile dependency file ('.d' file)
-    % for the given module.
-    %
-:- pred generate_and_write_d_file_gendep(io.text_output_stream::in,
-    globals::in, file_or_module::in, deps_map::out, list(error_spec)::out,
+:- pred compute_deps_for_d_files_gendep(io.text_output_stream::in, globals::in,
+    module_name::in, deps_map::in, dep_graphs::out,
+    list(burdened_module)::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -116,7 +85,6 @@
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.maybe_error.
-:- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.module_deps_graph.
 :- import_module parse_tree.opt_deps_spec.
@@ -124,142 +92,17 @@
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.write_deps_file.
 
 :- import_module bool.
 :- import_module cord.
-:- import_module digraph.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
-:- import_module require.
 :- import_module string.
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-
-generate_and_write_dep_file_gendep(ProgressStream, Globals, FileOrModule,
-        DepsMap, !:Specs, !IO) :-
-    generate_deps_map(ProgressStream, Globals, do_not_search,
-        FileOrModule, ModuleName, DepsMap, !:Specs, !IO),
-    do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule),
-    (
-        MaybeBurdenedModule = error1(FatalErrorSpecs),
-        % The error_specs in FatalErrorSpecs may already be in !.Specs,
-        % but even if we add them again here, they will be printed just once.
-        !:Specs = FatalErrorSpecs ++ !.Specs
-    ;
-        MaybeBurdenedModule = ok1(BurdenedModule),
-        BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
-        generate_and_write_dep_dv_files(ProgressStream, Globals, ModuleName,
-            DepsMap, Baggage, !IO),
-        compute_deps_for_d_files_gendep(ProgressStream, Globals, ModuleName,
-            DepsMap, DepGraphs, BurdenedModules, !Specs, !IO),
-        generate_dependencies_write_d_files(ProgressStream, Globals,
-            BurdenedModules, DepGraphs, !IO)
-    ).
-
-generate_and_write_d_file_gendep(ProgressStream, Globals, FileOrModule,
-        DepsMap, !:Specs, !IO) :-
-    generate_deps_map(ProgressStream, Globals, do_search,
-        FileOrModule, ModuleName, DepsMap, !:Specs, !IO),
-    do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule),
-    (
-        MaybeBurdenedModule = error1(FatalErrorSpecs),
-        % The error_specs in FatalErrorSpecs may already be in !.Specs,
-        % but even if we add them again here, they will be printed just once.
-        !:Specs = FatalErrorSpecs ++ !.Specs
-    ;
-        MaybeBurdenedModule = ok1(BurdenedModule),
-        compute_deps_for_d_files_gendep(ProgressStream, Globals, ModuleName,
-            DepsMap, DepGraphs, _BurdenedModules, !Specs, !IO),
-        generate_dependencies_write_d_files(ProgressStream, Globals,
-            [BurdenedModule], DepGraphs, !IO)
-    ).
-
-    % Check whether we could read the main `.m' file.
-    %
-:- pred do_we_have_a_valid_module_dep(deps_map::in, module_name::in,
-    maybe1(burdened_module)::out) is det.
-
-do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule) :-
-    map.lookup(DepsMap, ModuleName, ModuleDep),
-    ModuleDep = deps(_, _, BurdenedModule),
-    BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
-    Errors = Baggage ^ mb_errors,
-    FatalErrors = Errors ^ rm_fatal_errors,
-    ( if set.is_non_empty(FatalErrors) then
-        FatalErrorSpecs = Errors ^ rm_fatal_error_specs,
-        (
-            FatalErrorSpecs = [],
-            string.format("FatalErrorSpecs = [], with FatalErrors = %s\n",
-                [s(string.string(FatalErrors))], UnexpectedMsg),
-            unexpected($pred, UnexpectedMsg)
-        ;
-            FatalErrorSpecs = [_ | _],
-            MaybeBurdenedModule = error1(FatalErrorSpecs)
-        )
-    else
-        MaybeBurdenedModule = ok1(BurdenedModule)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred generate_and_write_dep_dv_files(io.text_output_stream::in, globals::in,
-    module_name::in, deps_map::in, module_baggage::in, io::di, io::uo) is det.
-
-generate_and_write_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
-        Baggage, !IO) :-
-    % First, build up a map of the dependencies.
-    SourceFileName = Baggage ^ mb_source_file_name,
-
-    map.init(Cache0),
-    generate_dv_mmakefile(Globals, SourceFileName, ModuleName, DepsMap,
-        MmakeFileDv, Cache0, _Cache, !IO),
-    generate_dep_mmakefile(Globals, SourceFileName, ModuleName, DepsMap,
-        MmakeFileDep, !IO),
-    MmakeFileStrDv = mmakefile_to_string(MmakeFileDv),
-    MmakeFileStrDep = mmakefile_to_string(MmakeFileDep),
-
-    % XXX LEGACY
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs(ext_cur_ngs_mf_dv), ModuleName,
-        FileNameDv, _FileNameDvProposed, !IO),
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs(ext_cur_ngs_mf_dep), ModuleName,
-        FileNameDep, _FileNameDepProposed, !IO),
-
-    write_string_to_file(ProgressStream, Globals,
-        "Writing auto-dependency file", FileNameDv, MmakeFileStrDv,
-        _SucceededDv, !IO),
-    write_string_to_file(ProgressStream, Globals,
-        "Writing auto-dependency file", FileNameDep, MmakeFileStrDep,
-        _SucceededDep, !IO),
-
-    % For Java, the main target is actually a shell script
-    % which will set CLASSPATH appropriately, and then invoke java
-    % on the appropriate .class file. Rather than generating
-    % an Mmake rule to build this file when it is needed,
-    % we just generate this file at "mmake depend" time, since
-    % that is simpler and probably more efficient anyway.
-    globals.get_target(Globals, Target),
-    (
-        Target = target_java,
-        create_java_shell_script(ProgressStream, Globals, ModuleName,
-            _Succeeded, !IO)
-    ;
-        ( Target = target_c
-        ; Target = target_csharp
-        )
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred compute_deps_for_d_files_gendep(io.text_output_stream::in, globals::in,
-    module_name::in, deps_map::in, dep_graphs::out,
-    list(burdened_module)::out, list(error_spec)::in, list(error_spec)::out,
-    io::di, io::uo) is det.
 
 compute_deps_for_d_files_gendep(ProgressStream, Globals, ModuleName, DepsMap,
         DepGraphs, BurdenedModules, !Specs, !IO) :-
