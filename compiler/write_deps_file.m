@@ -20,8 +20,8 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.generate_mmakefile_fragments.
 :- import_module parse_tree.module_baggage.
-:- import_module parse_tree.module_deps_graph.
 
+:- import_module digraph.
 :- import_module io.
 :- import_module list.
 :- import_module set.
@@ -43,29 +43,36 @@
     burdened_aug_comp_unit::in, set(module_name)::in,
     maybe_include_trans_opt_rule::in, io::di, io::uo) is det.
 
+:- type dep_graphs
+    --->    dep_graphs(
+                int_deps_graph          :: digraph(module_name),
+                imp_deps_graph          :: digraph(module_name),
+                indirect_deps_graph     :: digraph(module_name),
+                indirect_opt_deps_graph :: digraph(module_name),
+                trans_opt_deps_graph    :: digraph(module_name),
+                trans_opt_order         :: list(module_name)
+            ).
+
     % generate_dependencies_write_d_files(ProgressStream, Globals,
-    %   BurdenedModules, IntDepsGraph, ImplDepsGraph,
-    %   IndirectDepsGraph, IndirectOptDepsGraph,
-    %   TransOptDepsGraph, TransOptOrder, !IO):
+    %   BurdenedModules, DepGraphs, !IO):
     %
     % This predicate writes out the .d files for all the modules in the
     % BurdenedModules list.
+    %
     % IntDepsGraph gives the interface dependency graph.
     % ImplDepsGraph gives the implementation dependency graph.
     % IndirectDepsGraph gives the indirect dependency graph
     % (this includes dependencies on `*.int2' files).
     % IndirectOptDepsGraph gives the indirect optimization dependencies
     % (this includes dependencies via `.opt' and `.trans_opt' files).
-    %
     % TransOptDepsGraph gives the trans-opt dependency graph for the
     % purpose of making `.trans_opt' files.
     % TransOptOrder gives the ordering that is used to determine
     % which other modules the .trans_opt files may depend on.
     %
 :- pred generate_dependencies_write_d_files(io.text_output_stream::in,
-    globals::in, list(burdened_module)::in,
-    deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
-    deps_graph::in, list(module_name)::in, io::di, io::uo) is det.
+    globals::in, list(burdened_module)::in, dep_graphs::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -77,13 +84,13 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.generate_dep_d_files.
 :- import_module parse_tree.make_module_file_names.
+:- import_module parse_tree.module_deps_graph.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 
 :- import_module bool.
-:- import_module digraph.
 :- import_module dir.
 :- import_module io.file.
 :- import_module map.
@@ -193,48 +200,35 @@ write_out_d_file(ProgressStream, Globals, FileNameD, FileContentsStrD, !IO) :-
 %---------------------------------------------------------------------------%
 
 generate_dependencies_write_d_files(ProgressStream,
-        Globals, BurdenedModules, IntDepsGraph, ImpDepsGraph,
-        IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptOrder, !IO) :-
+        Globals, BurdenedModules, DepGraphs, !IO) :-
     map.init(Cache0),
     generate_dependencies_write_d_files_loop(ProgressStream,
-        Globals, BurdenedModules, IntDepsGraph, ImpDepsGraph,
-        IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptOrder, Cache0, _Cache, !IO).
+        Globals, BurdenedModules, DepGraphs, Cache0, _Cache, !IO).
 
 :- pred generate_dependencies_write_d_files_loop(io.text_output_stream::in,
-    globals::in, list(burdened_module)::in,
-    deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
-    deps_graph::in, list(module_name)::in,
+    globals::in, list(burdened_module)::in, dep_graphs::in,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-generate_dependencies_write_d_files_loop(_, _, [], _, _, _, _, _, _,
-        !Cache, !IO).
+generate_dependencies_write_d_files_loop(_, _, [], _, !Cache, !IO).
 generate_dependencies_write_d_files_loop(ProgressStream, Globals,
-        [BurdenedModule | BurdenedModules],
-        IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptOrder, !Cache, !IO) :-
+        [BurdenedModule | BurdenedModules], DepGraphs, !Cache, !IO) :-
     generate_dependencies_write_d_file(ProgressStream, Globals,
-        BurdenedModule, IntDepsGraph, ImpDepsGraph,
-        IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptOrder, !Cache, !IO),
+        BurdenedModule, DepGraphs, !Cache, !IO),
     generate_dependencies_write_d_files_loop(ProgressStream, Globals,
-        BurdenedModules, IntDepsGraph, ImpDepsGraph,
-        IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptOrder, !Cache, !IO).
+        BurdenedModules, DepGraphs, !Cache, !IO).
 
 :- pred generate_dependencies_write_d_file(io.text_output_stream::in,
-    globals::in, burdened_module::in, deps_graph::in, deps_graph::in,
-    deps_graph::in, deps_graph::in, deps_graph::in, list(module_name)::in,
+    globals::in, burdened_module::in, dep_graphs::in,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
 generate_dependencies_write_d_file(ProgressStream, Globals,
-        BurdenedModule, IntDepsGraph, ImpDepsGraph,
-        IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, FullTransOptOrder, !Cache, !IO) :-
+        BurdenedModule, DepGraphs,
+        !Cache, !IO) :-
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
+    DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph, IndirectDepsGraph,
+        IndirectOptDepsGraph, TransOptDepsGraph, FullTransOptOrder),
 
     % Look up the interface/implementation/indirect dependencies
     % for this module from the respective dependency graphs.

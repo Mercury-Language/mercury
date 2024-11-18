@@ -155,13 +155,9 @@ generate_dep_file(ProgressStream, Globals, FileOrModule,
         generate_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
             Baggage, !IO),
         compute_deps_for_d_files(ProgressStream, Globals, ModuleName, DepsMap,
-            IntDepsGraph, ImpDepsGraph,
-            IndirectDepsGraph, IndirectOptDepsGraph,
-            TransOptDepsGraph, TransOptOrder, BurdenedModules, !Specs, !IO),
+            DepGraphs, BurdenedModules, !Specs, !IO),
         generate_dependencies_write_d_files(ProgressStream, Globals,
-            BurdenedModules, IntDepsGraph, ImpDepsGraph,
-            IndirectDepsGraph, IndirectOptDepsGraph,
-            TransOptDepsGraph, TransOptOrder, !IO)
+            BurdenedModules, DepGraphs, !IO)
     ).
 
 generate_d_file(ProgressStream, Globals, FileOrModule,
@@ -177,13 +173,9 @@ generate_d_file(ProgressStream, Globals, FileOrModule,
     ;
         MaybeBurdenedModule = ok1(BurdenedModule),
         compute_deps_for_d_files(ProgressStream, Globals, ModuleName, DepsMap,
-            IntDepsGraph, ImpDepsGraph,
-            IndirectDepsGraph, IndirectOptDepsGraph,
-            TransOptDepsGraph, TransOptOrder, _BurdenedModules, !Specs, !IO),
+            DepGraphs, _BurdenedModules, !Specs, !IO),
         generate_dependencies_write_d_files(ProgressStream, Globals,
-            [BurdenedModule], IntDepsGraph, ImpDepsGraph,
-            IndirectDepsGraph, IndirectOptDepsGraph,
-            TransOptDepsGraph, TransOptOrder, !IO)
+            [BurdenedModule], DepGraphs, !IO)
     ).
 
     % Check whether we could read the main `.m' file.
@@ -262,17 +254,15 @@ generate_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
         )
     ).
 
+%---------------------------------------------------------------------------%
+
 :- pred compute_deps_for_d_files(io.text_output_stream::in, globals::in,
-    module_name::in, deps_map::in,
-    digraph(module_name)::out, digraph(module_name)::out,
-    digraph(module_name)::out, digraph(module_name)::out,
-    digraph(module_name)::out, list(module_name)::out,
+    module_name::in, deps_map::in, dep_graphs::out,
     list(burdened_module)::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
 compute_deps_for_d_files(ProgressStream, Globals, ModuleName, DepsMap,
-        IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptOrder, BurdenedModules, !Specs, !IO) :-
+        DepGraphs, BurdenedModules, !Specs, !IO) :-
     % Compute the interface deps graph and the implementation deps graph
     % from the deps map.
     digraph.init(IntDepsGraph0),
@@ -314,7 +304,10 @@ compute_deps_for_d_files(ProgressStream, Globals, ModuleName, DepsMap,
     ExtTransOpt =
         ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_trans),
     get_ext_opt_deps(Globals, look_for_src, ExtTransOpt,
-        TransOptDepsOrdering, TransOptOrder, !IO).
+        TransOptDepsOrdering, TransOptOrder, !IO),
+
+    DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph, IndirectDepsGraph,
+        IndirectOptDepsGraph, TransOptDepsGraph, TransOptOrder).
 
     % Construct a pair of dependency graphs (the interface dependencies
     % and the implementation dependencies) for all the modules in the program.
