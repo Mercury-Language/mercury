@@ -200,9 +200,8 @@ generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, IntermodDeps,
             )
         ),
     map.foldl(AccPublicChildren, InclMap, set.init, PublicChildren),
-    % XXX Ignoring _MaybeTransOptDeps seems to me (zs) to be a BUG.
     StdDeps = std_deps(DirectDeps0, IndirectDeps0,
-        ForeignImportedModuleNamesSet, _MaybeTransOptDeps),
+        ForeignImportedModuleNamesSet, MaybeTransOptDeps),
 
     set.delete(ModuleName, DirectDeps0, DirectDeps),
     set.difference(IndirectDeps0, DirectDeps, IndirectDeps1),
@@ -221,8 +220,9 @@ generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, IntermodDeps,
     make_module_file_name(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_trans),
         ModuleName, TransOptDateFileName, !Cache, !IO),
-    construct_trans_opt_deps_rule(Globals, MaybeInclTransOptRule, StdDeps,
-        TransOptDateFileName, MmakeRulesTransOpt, !Cache, !IO),
+    construct_trans_opt_deps_rule(Globals, MaybeInclTransOptRule,
+        MaybeTransOptDeps, TransOptDateFileName, MmakeRulesTransOpt,
+        !Cache, !IO),
 
     construct_fact_tables_entries(ModuleMakeVarName,
         SourceFileName, ObjFileName, FactTableFileNamesSet,
@@ -328,13 +328,14 @@ generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, IntermodDeps,
 %---------------------%
 
 :- pred construct_trans_opt_deps_rule(globals::in,
-    maybe_include_trans_opt_rule::in, std_deps::in,
+    maybe_include_trans_opt_rule::in, maybe_trans_opt_deps::in,
     string::in, list(mmake_entry)::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-construct_trans_opt_deps_rule(Globals, MaybeInclTransOptRule, StdDeps,
-        TransOptDateFileName, MmakeRulesTransOpt, !Cache, !IO) :-
+construct_trans_opt_deps_rule(Globals, MaybeInclTransOptRule,
+        MaybeTransOptDeps0, TransOptDateFileName, MmakeRulesTransOpt,
+        !Cache, !IO) :-
     (
         MaybeInclTransOptRule = include_trans_opt_rule(TransOptRuleInfo),
         % There are two cases when we will write a trans_opt_deps rule.
@@ -352,7 +353,6 @@ construct_trans_opt_deps_rule(Globals, MaybeInclTransOptRule, StdDeps,
             % We take the intersection of TransOptOrder and TransOptDeps0
             % to eliminate any circularities that might arise in the
             % trans_opt_deps rules if we were to use TransOptDeps0 as-is.
-            StdDeps = std_deps(_, _, _, MaybeTransOptDeps0),
             (
                 MaybeTransOptDeps0 = trans_opt_deps(TransOptDeps0),
                 set.intersect(TransOptOrder, TransOptDeps0, TransOptDeps)
