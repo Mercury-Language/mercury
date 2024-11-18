@@ -54,24 +54,61 @@
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
+%
+% XXX The d_file_deps type should be documented. The problem is that
+% it is not at all clear what the meanings of the fields *are*.
+%
+% The fields started out life as three separate input arguments
+% to a long-ago predecessor of the generate_d_mmakefile_contents predicate
+% (which started out in the now-deleted modules.m file, and has been
+% repackaged, moved and renamed several times since). Those predecessors
+% have always been called in two separate kinds of contexts:
+%
+% - when the compiler is invoked with "mmc --generate-dependencies",
+%   or (more rarely) with "mmc --generate-dependency-file", and
+%
+% - when the compiler is auto-updating the .d file of a module that
+%   it has build a HLDS for, usually for semantic analysis followed
+%   by target code generation.
+%
+% This module and write_deps_file.m refer to the first context as the
+% "gendep" context, and the second as the "hlds" context. Predicates
+% and functions that are specific to one context should have the context name
+% at or near the end of the their name.
+%
+% The issue is that these contexts have long computed the data that is
+% now in the fields of the d_file_deps structure using two completely
+% separate algorithms in these two contexts. It is far from clear whether
+% there is *any* justification for this difference, and if there is,
+% whether it is any good.
+%
 
-    % XXX This predicate should NOT take StdDeps as input; it should
-    % compute StdDeps itself. Having our two callers construct StdDeps
-    % using two separate algorithms that compute different results
-    % is a old bug.
-    %
+:- type d_file_deps
+    --->    d_file_deps(
+                std_deps,
+                set(module_name),
+                maybe_include_trans_opt_rule
+            ).
+
 :- pred generate_d_mmakefile_contents(globals::in, burdened_aug_comp_unit::in,
-    std_deps::in, set(module_name)::in, maybe_include_trans_opt_rule::in,
-    file_name::out, string::out,
+    d_file_deps::in, file_name::out, string::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
+%---------------------------------------------------------------------------%
+
+    % This function computes the whole d_file_deps structure for the gendep
+    % context.
+    %
+:- func construct_d_file_deps_gendep(globals, dep_graphs,
+    parse_tree_module_src) = d_file_deps.
+
+    % This function computes the std_deps field of the d_file_deps structure
+    % in the hlds context described above. Our caller gets the contents
+    % it puts into the other two fields from the code that constructs
+    % the HLDS.
+    %
 :- func construct_std_deps_hlds(globals, burdened_aug_comp_unit) = std_deps.
-
-:- pred construct_intermod_deps(globals::in, parse_tree_module_src::in,
-    std_deps::in, intermod_deps::out,
-    module_file_name_cache::in, module_file_name_cache::out,
-    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -98,6 +135,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module sparse_bitset.
 :- import_module string.
 :- import_module term_context.
 
@@ -187,8 +225,9 @@ lookup_burdened_module_in_deps_map(DepsMap, ModuleName) = ModuleDepInfo :-
 
 %---------------------------------------------------------------------------%
 
-generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
-        MaybeInclTransOptRule, FileNameD, FileContentsStrD, !Cache, !IO) :-
+generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
+        FileNameD, FileContentsStrD, !Cache, !IO) :-
+    DFileDeps = d_file_deps(StdDeps, AllDeps, MaybeInclTransOptRule),
     BurdenedAugCompUnit = burdened_aug_comp_unit(_, AugCompUnit),
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
@@ -201,6 +240,89 @@ generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
     generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, IntermodDeps,
         AllDeps, MaybeInclTransOptRule, MmakeFileD, !Cache, !IO),
     FileContentsStrD = mmakefile_to_string(MmakeFileD).
+
+%---------------------------------------------------------------------------%
+
+construct_d_file_deps_gendep(Globals, DepGraphs, ParseTreeModuleSrc)
+        = DFileDeps :-
+   DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph, IndirectDepsGraph,
+        IndirectOptDepsGraph, TransOptDepsGraph, FullTransOptOrder),
+
+    % Look up the interface/implementation/indirect dependencies
+    % for this module from the respective dependency graphs.
+
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+    get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
+        IndirectOptDeps),
+
+    globals.lookup_bool_option(Globals, intermodule_optimization,
+        Intermod),
+    (
+        Intermod = yes,
+        % Be conservative with inter-module optimization -- assume a
+        % module depends on the `.int', `.int2' and `.opt' files
+        % for all transitively imported modules.
+        DirectDeps = IndirectOptDeps,
+        IndirectDeps = IndirectOptDeps
+    ;
+        Intermod = no,
+        get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDeps),
+        get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDeps),
+        set.union(IntDeps, ImpDeps, DirectDeps),
+        get_dependencies_from_graph(IndirectDepsGraph, ModuleName,
+            IndirectDeps)
+    ),
+
+    get_dependencies_from_graph(TransOptDepsGraph, ModuleName, TransOptDeps0),
+    set.delete(ModuleName, TransOptDeps0, TransOptDeps),
+
+    % XXX DFILE The way IndirectOptDeps is computed seems to have nothing
+    % to do with foreign_import_module declarations. This seems to me (zs)
+    % to be a BUG.
+    StdDeps = std_deps(DirectDeps, IndirectDeps, IndirectOptDeps,
+        trans_opt_deps(TransOptDeps)),
+
+    compute_allowable_trans_opt_deps(ModuleName,
+        FullTransOptOrder, TransOptOrder),
+    set.list_to_set(TransOptOrder, TransOptOrderSet),
+    TransOptRuleInfo = trans_opt_deps_from_order(TransOptOrderSet),
+    MaybeInclTransOptRule = include_trans_opt_rule(TransOptRuleInfo),
+
+    DFileDeps = d_file_deps(StdDeps, IndirectOptDeps, MaybeInclTransOptRule).
+
+:- pred get_dependencies_from_graph(deps_graph::in, module_name::in,
+    set(module_name)::out) is det.
+
+get_dependencies_from_graph(DepsGraph, ModuleName, Dependencies) :-
+    ( if digraph.search_key(DepsGraph, ModuleName, ModuleKey) then
+        digraph.lookup_key_set_from(DepsGraph, ModuleKey, DepsKeysSet),
+        AddKeyDep =
+            ( pred(Key::in, Deps0::in, Deps::out) is det :-
+                digraph.lookup_vertex(DepsGraph, Key, Dep),
+                Deps = [Dep | Deps0]
+            ),
+        sparse_bitset.foldr(AddKeyDep, DepsKeysSet, [], DependenciesList),
+        set.list_to_set(DependenciesList, Dependencies)
+    else
+        set.init(Dependencies)
+    ).
+
+    % Compute the maximum allowable trans-opt dependencies for this module.
+    % To avoid the possibility of cycles, each module is allowed to depend
+    % only on modules that occur after it in FullTransOptOrder.
+    %
+:- pred compute_allowable_trans_opt_deps(module_name::in,
+    list(module_name)::in, list(module_name)::out) is det.
+
+compute_allowable_trans_opt_deps(_ModuleName, [], []).
+compute_allowable_trans_opt_deps(ModuleName,
+        [HeadModuleName | TailModuleNames], TransOptOrder) :-
+    ( if HeadModuleName = ModuleName then
+        TransOptOrder = TailModuleNames
+    else
+        compute_allowable_trans_opt_deps(ModuleName, TailModuleNames,
+            TransOptOrder)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -322,6 +444,11 @@ gather_fim_specs_in_parse_tree_plain_opt(ParseTreePlainOpt, !FIMSpecs) :-
     set.union(ParseTreePlainOpt ^ ptpo_fims, !FIMSpecs).
 
 %---------------------------------------------------------------------------%
+
+:- pred construct_intermod_deps(globals::in, parse_tree_module_src::in,
+    std_deps::in, intermod_deps::out,
+    module_file_name_cache::in, module_file_name_cache::out,
+    io::di, io::uo) is det.
 
 construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, IntermodDeps,
         !Cache, !IO) :-

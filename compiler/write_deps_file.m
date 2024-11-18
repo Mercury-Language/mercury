@@ -111,20 +111,15 @@
 :- import_module parse_tree.make_module_file_names.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.module_deps_graph.
 :- import_module parse_tree.parse_error.
-:- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
 
 :- import_module bool.
-:- import_module digraph.
 :- import_module dir.
 :- import_module io.file.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module sparse_bitset.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -250,9 +245,9 @@ generate_and_write_d_file_hlds(ProgressStream, Globals, BurdenedAugCompUnit,
         AllDeps, MaybeInclTransOptRule, !IO) :-
     map.init(Cache0),
     StdDeps = construct_std_deps_hlds(Globals, BurdenedAugCompUnit),
-    generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, StdDeps,
-        AllDeps, MaybeInclTransOptRule, FileNameD, FileContentsStrD,
-        Cache0, _Cache, !IO),
+    DFileDeps = d_file_deps(StdDeps, AllDeps, MaybeInclTransOptRule),
+    generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
+        FileNameD, FileContentsStrD, Cache0, _Cache, !IO),
     write_out_d_file(ProgressStream, Globals,
         FileNameD, FileContentsStrD, !IO).
 
@@ -306,49 +301,6 @@ generate_and_write_d_file_gendep_depgraphs_loop(ProgressStream, Globals,
 generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
         BurdenedModule, DepGraphs, !Cache, !IO) :-
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
-    DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph, IndirectDepsGraph,
-        IndirectOptDepsGraph, TransOptDepsGraph, FullTransOptOrder),
-
-    % Look up the interface/implementation/indirect dependencies
-    % for this module from the respective dependency graphs.
-
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
-        IndirectOptDeps),
-
-    globals.lookup_bool_option(Globals, intermodule_optimization,
-        Intermod),
-    (
-        Intermod = yes,
-        % Be conservative with inter-module optimization -- assume a
-        % module depends on the `.int', `.int2' and `.opt' files
-        % for all transitively imported modules.
-        DirectDeps = IndirectOptDeps,
-        IndirectDeps = IndirectOptDeps
-    ;
-        Intermod = no,
-        get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDeps),
-        get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDeps),
-        set.union(IntDeps, ImpDeps, DirectDeps),
-        get_dependencies_from_graph(IndirectDepsGraph, ModuleName,
-            IndirectDeps)
-    ),
-
-    get_dependencies_from_graph(TransOptDepsGraph, ModuleName, TransOptDeps0),
-    set.delete(ModuleName, TransOptDeps0, TransOptDeps),
-
-    % XXX DFILE The way IndirectOptDeps is computed seems to have nothing
-    % to do with foreign_import_module declarations. This seems to me (zs)
-    % to be a BUG.
-    StdDeps = std_deps(DirectDeps, IndirectDeps, IndirectOptDeps,
-        trans_opt_deps(TransOptDeps)),
-
-    compute_allowable_trans_opt_deps(ModuleName,
-        FullTransOptOrder, TransOptOrder),
-    set.list_to_set(TransOptOrder, TransOptOrderSet),
-    TransOptRuleInfo = trans_opt_deps_from_order(TransOptOrderSet),
-    MaybeInclTransOptRule = include_trans_opt_rule(TransOptRuleInfo),
-
     % XXX DFILE Note that even if a fatal error occurred for one of the files
     % that the current Module depends on, a .d file is still produced,
     % even though it probably contains incorrect information.
@@ -357,51 +309,18 @@ generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
     ( if set.is_empty(FatalErrors) then
         init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit),
         BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
+        DFileDeps = construct_d_file_deps_gendep(Globals, DepGraphs,
+            ParseTreeModuleSrc),
         % XXX DFILE The way IndirectOptDeps is computed seems to have nothing
         % to do with the way the generate_d_file_fragment predicate's
         % corresponding argument is computed. This seems to me (zs)
         % to be a BUG.
         generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit,
-            StdDeps, IndirectOptDeps, MaybeInclTransOptRule,
-            FileNameD, FileContentsStrD, !Cache, !IO),
+            DFileDeps, FileNameD, FileContentsStrD, !Cache, !IO),
         write_out_d_file(ProgressStream, Globals,
             FileNameD, FileContentsStrD, !IO)
     else
         true
-    ).
-
-:- pred get_dependencies_from_graph(deps_graph::in, module_name::in,
-    set(module_name)::out) is det.
-
-get_dependencies_from_graph(DepsGraph, ModuleName, Dependencies) :-
-    ( if digraph.search_key(DepsGraph, ModuleName, ModuleKey) then
-        digraph.lookup_key_set_from(DepsGraph, ModuleKey, DepsKeysSet),
-        AddKeyDep =
-            ( pred(Key::in, Deps0::in, Deps::out) is det :-
-                digraph.lookup_vertex(DepsGraph, Key, Dep),
-                Deps = [Dep | Deps0]
-            ),
-        sparse_bitset.foldr(AddKeyDep, DepsKeysSet, [], DependenciesList),
-        set.list_to_set(DependenciesList, Dependencies)
-    else
-        set.init(Dependencies)
-    ).
-
-    % Compute the maximum allowable trans-opt dependencies for this module.
-    % To avoid the possibility of cycles, each module is allowed to depend
-    % only on modules that occur after it in FullTransOptOrder.
-    %
-:- pred compute_allowable_trans_opt_deps(module_name::in,
-    list(module_name)::in, list(module_name)::out) is det.
-
-compute_allowable_trans_opt_deps(_ModuleName, [], []).
-compute_allowable_trans_opt_deps(ModuleName,
-        [HeadModuleName | TailModuleNames], TransOptOrder) :-
-    ( if HeadModuleName = ModuleName then
-        TransOptOrder = TailModuleNames
-    else
-        compute_allowable_trans_opt_deps(ModuleName, TailModuleNames,
-            TransOptOrder)
     ).
 
 %---------------------------------------------------------------------------%
