@@ -140,38 +140,58 @@
 %---------------------------------------------------------------------------%
 
 generate_dep_file(ProgressStream, Globals, FileOrModule,
-        DepsMap, Specs, !IO) :-
-    maybe_generate_dot_dx_files(ProgressStream, Globals,
-        output_all_program_dot_dx_files, do_not_search,
-        FileOrModule, DepsMap, Specs, !IO).
+        DepsMap, !:Specs, !IO) :-
+    generate_deps_map(ProgressStream, Globals, do_not_search,
+        FileOrModule, ModuleName, DepsMap, !:Specs, !IO),
+    do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule),
+    (
+        MaybeBurdenedModule = error1(FatalErrorSpecs),
+        % The error_specs in FatalErrorSpecs may already be in !.Specs,
+        % but even if we add them again here, they will be printed just once.
+        !:Specs = FatalErrorSpecs ++ !.Specs
+    ;
+        MaybeBurdenedModule = ok1(BurdenedModule),
+        BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
+        generate_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
+            Baggage, !IO),
+        compute_deps_for_d_files(ProgressStream, Globals, ModuleName, DepsMap,
+            IntDepsGraph, ImpDepsGraph,
+            IndirectDepsGraph, IndirectOptDepsGraph,
+            TransOptDepsGraph, TransOptOrder, BurdenedModules, !Specs, !IO),
+        generate_dependencies_write_d_files(ProgressStream, Globals,
+            BurdenedModules, IntDepsGraph, ImpDepsGraph,
+            IndirectDepsGraph, IndirectOptDepsGraph,
+            TransOptDepsGraph, TransOptOrder, !IO)
+    ).
 
 generate_d_file(ProgressStream, Globals, FileOrModule,
-        DepsMap, Specs, !IO) :-
-    maybe_generate_dot_dx_files(ProgressStream, Globals,
-        output_module_dot_d_file, do_search,
-        FileOrModule, DepsMap, Specs, !IO).
-
-%---------------------------------------------------------------------------%
-
-:- type which_dot_dx_files
-    --->    output_module_dot_d_file
-            % Output the given module's .d file.
-    ;       output_all_program_dot_dx_files.
-            % The given module is (or should be!) the main module of a program.
-            % Output the program's .dep and .dv files, and the .d file
-            % of every module in the program.
-
-:- pred maybe_generate_dot_dx_files(io.text_output_stream::in, globals::in,
-    which_dot_dx_files::in, maybe_search::in, file_or_module::in,
-    deps_map::out, list(error_spec)::out, io::di, io::uo) is det.
-
-maybe_generate_dot_dx_files(ProgressStream, Globals, Mode, Search,
-        FileOrModule, DepsMap, !:Specs, !IO) :-
-    % First, build up a map of the dependencies.
-    generate_deps_map(ProgressStream, Globals, Search,
+        DepsMap, !:Specs, !IO) :-
+    generate_deps_map(ProgressStream, Globals, do_search,
         FileOrModule, ModuleName, DepsMap, !:Specs, !IO),
+    do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule),
+    (
+        MaybeBurdenedModule = error1(FatalErrorSpecs),
+        % The error_specs in FatalErrorSpecs may already be in !.Specs,
+        % but even if we add them again here, they will be printed just once.
+        !:Specs = FatalErrorSpecs ++ !.Specs
+    ;
+        MaybeBurdenedModule = ok1(BurdenedModule),
+        compute_deps_for_d_files(ProgressStream, Globals, ModuleName, DepsMap,
+            IntDepsGraph, ImpDepsGraph,
+            IndirectDepsGraph, IndirectOptDepsGraph,
+            TransOptDepsGraph, TransOptOrder, _BurdenedModules, !Specs, !IO),
+        generate_dependencies_write_d_files(ProgressStream, Globals,
+            [BurdenedModule], IntDepsGraph, ImpDepsGraph,
+            IndirectDepsGraph, IndirectOptDepsGraph,
+            TransOptDepsGraph, TransOptOrder, !IO)
+    ).
 
     % Check whether we could read the main `.m' file.
+    %
+:- pred do_we_have_a_valid_module_dep(deps_map::in, module_name::in,
+    maybe1(burdened_module)::out) is det.
+
+do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule) :-
     map.lookup(DepsMap, ModuleName, ModuleDep),
     ModuleDep = deps(_, _, BurdenedModule),
     BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
@@ -186,34 +206,13 @@ maybe_generate_dot_dx_files(ProgressStream, Globals, Mode, Search,
             unexpected($pred, UnexpectedMsg)
         ;
             FatalErrorSpecs = [_ | _],
-            % The error_specs in FatalErrorSpecs may already be in !.Specs,
-            % but even if they are, they will be printed just once.
-            !:Specs = FatalErrorSpecs ++ !.Specs
+            MaybeBurdenedModule = error1(FatalErrorSpecs)
         )
     else
-        (
-            Mode = output_module_dot_d_file
-        ;
-            Mode = output_all_program_dot_dx_files,
-            generate_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
-                Baggage, !IO)
-        ),
-        compute_deps_for_d_files(ProgressStream, Globals, ModuleName, DepsMap,
-            IntDepsGraph, ImpDepsGraph,
-            IndirectDepsGraph, IndirectOptDepsGraph,
-            TransOptDepsGraph, TransOptOrder, BurdenedModules, !Specs, !IO),
-        (
-            Mode = output_module_dot_d_file,
-            DFilesToWrite = [BurdenedModule]
-        ;
-            Mode = output_all_program_dot_dx_files,
-            DFilesToWrite = BurdenedModules
-        ),
-        generate_dependencies_write_d_files(ProgressStream, Globals,
-            DFilesToWrite, IntDepsGraph, ImpDepsGraph,
-            IndirectDepsGraph, IndirectOptDepsGraph,
-            TransOptDepsGraph, TransOptOrder, !IO)
+        MaybeBurdenedModule = ok1(BurdenedModule)
     ).
+
+%---------------------------------------------------------------------------%
 
 :- pred generate_dep_dv_files(io.text_output_stream::in, globals::in,
     module_name::in, deps_map::in, module_baggage::in, io::di, io::uo) is det.
