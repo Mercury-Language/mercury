@@ -38,6 +38,19 @@
 
 %---------------------------------------------------------------------------%
 
+    % XXX This "documentation" should be made significantly more detailed.
+    %
+    % The int_deps_graph field gives the interface dependency graph.
+    % The imp_deps_graph field gives the implementation dependency graph.
+    % The indirect_deps_graph field gives the indirect dependency graph
+    % (this includes dependencies on `*.int2' files).
+    % The indirect_opt_deps_graph field gives the indirect optimization
+    % dependencies (this includes dependencies via `.opt' and `.trans_opt'
+    % files).
+    % The trans_opt_deps_graph field gives the trans-opt dependency graph
+    % for the purpose of making `.trans_opt' files.
+    % The trans_opt_order field gives the ordering that is used to determine
+    % which other modules the .trans_opt files may depend on.
 :- type dep_graphs
     --->    dep_graphs(
                 int_deps_graph          :: digraph(module_name),

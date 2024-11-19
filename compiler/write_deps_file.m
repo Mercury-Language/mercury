@@ -83,8 +83,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % write_d_file(ProgressStream, Globals, BurdenedAugCompUnit,
-    %   AllDeps, MaybeInclTransOptRule, !IO):
+    % generate_and_write_d_file_hlds(ProgressStream, Globals,
+    %   BurdenedAugCompUnit, AllDeps, MaybeInclTransOptRule, !IO):
     %
     % Write out the per-module makefile dependencies (`.d') file for the
     % specified module. AllDeps is the set of all module names which the
@@ -258,17 +258,6 @@ generate_and_write_d_file_hlds(ProgressStream, Globals, BurdenedAugCompUnit,
     %
     % This predicate writes out the .d files for all the modules in the
     % BurdenedModules list.
-    %
-    % IntDepsGraph gives the interface dependency graph.
-    % ImplDepsGraph gives the implementation dependency graph.
-    % IndirectDepsGraph gives the indirect dependency graph
-    % (this includes dependencies on `*.int2' files).
-    % IndirectOptDepsGraph gives the indirect optimization dependencies
-    % (this includes dependencies via `.opt' and `.trans_opt' files).
-    % TransOptDepsGraph gives the trans-opt dependency graph for the
-    % purpose of making `.trans_opt' files.
-    % TransOptOrder gives the ordering that is used to determine
-    % which other modules the .trans_opt files may depend on.
     %
 :- pred generate_and_write_d_file_gendep_depgraphs(io.text_output_stream::in,
     globals::in, list(burdened_module)::in, dep_graphs::in,
