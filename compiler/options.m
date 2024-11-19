@@ -1149,9 +1149,15 @@
     ;       search_directories
     ;       intermod_directories
     ;       use_search_directories_for_intermod
+    ;       normal_dirs_same_subdir_setting
+    ;       normal_dirs_indep_subdir_setting
+    ;       normal_dirs_installed_library
     ;       intermod_dirs_same_subdir_setting
     ;       intermod_dirs_indep_subdir_setting
     ;       intermod_dirs_installed_library
+    ;       c_incl_dirs_same_subdir_setting
+    ;       c_incl_dirs_indep_subdir_setting
+    ;       c_incl_dirs_installed_library
     ;       libgrade_install_check
     ;       order_make_by_timestamp
     ;       show_make_times
@@ -2143,9 +2149,15 @@ optdef(oc_buildsys, std_int_file_not_written_msgs,      bool(no)).
 optdef(oc_buildsys, search_directories,                 accumulating(["."])).
 optdef(oc_buildsys, intermod_directories,               accumulating([])).
 optdef(oc_buildsys, use_search_directories_for_intermod, bool(yes)).
+optdef(oc_buildsys, normal_dirs_same_subdir_setting,    accumulating([])).
+optdef(oc_buildsys, normal_dirs_indep_subdir_setting,   accumulating([])).
+optdef(oc_buildsys, normal_dirs_installed_library,      accumulating([])).
 optdef(oc_buildsys, intermod_dirs_same_subdir_setting,  accumulating([])).
 optdef(oc_buildsys, intermod_dirs_indep_subdir_setting, accumulating([])).
 optdef(oc_buildsys, intermod_dirs_installed_library,    accumulating([])).
+optdef(oc_buildsys, c_incl_dirs_same_subdir_setting,    accumulating([])).
+optdef(oc_buildsys, c_incl_dirs_indep_subdir_setting,   accumulating([])).
+optdef(oc_buildsys, c_incl_dirs_installed_library,      accumulating([])).
 optdef(oc_buildsys, libgrade_install_check,             bool(yes)).
 optdef(oc_buildsys, order_make_by_timestamp,            bool(no)).
 optdef(oc_buildsys, show_make_times,                    bool(no)).
@@ -3324,19 +3336,25 @@ long_table("intermod-directory",   intermod_directories).
 long_table("use-search-directories-for-intermod",
                     use_search_directories_for_intermod).
 % XXX the next three option names are tentative
+long_table("normal-dirs-same",      normal_dirs_same_subdir_setting).
+long_table("normal-dirs_indep",     normal_dirs_indep_subdir_setting).
+long_table("normal-dirs-installed-lib", normal_dirs_installed_library).
 long_table("intermod-dirs-same",    intermod_dirs_same_subdir_setting).
 long_table("intermod-dirs_indep",   intermod_dirs_indep_subdir_setting).
 long_table("intermod-dirs-installed-lib", intermod_dirs_installed_library).
+long_table("c_incl-dirs-same",      c_incl_dirs_same_subdir_setting).
+long_table("c_incl-dirs_indep",     c_incl_dirs_indep_subdir_setting).
+long_table("c_incl-dirs-installed-lib", c_incl_dirs_installed_library).
 long_table("libgrade-install-check", libgrade_install_check).
 long_table("order-make-by-timestamp", order_make_by_timestamp).
-long_table("show-make-times",      show_make_times).
-long_table("extra-lib-header",     extra_library_header).
-long_table("extra-library-header", extra_library_header).
+long_table("show-make-times",       show_make_times).
+long_table("extra-lib-header",      extra_library_header).
+long_table("extra-library-header",  extra_library_header).
 long_table("restricted-command-line", restricted_command_line).
-long_table("env-type",                env_type).
-long_table("host-env-type",           host_env_type).
-long_table("system-env-type",         system_env_type).
-long_table("target-env-type",         target_env_type).
+long_table("env-type",              env_type).
+long_table("host-env-type",         host_env_type).
+long_table("system-env-type",       system_env_type).
+long_table("target-env-type",       target_env_type).
 
 % misc options
 long_table("typecheck-ambiguity-warn-limit",

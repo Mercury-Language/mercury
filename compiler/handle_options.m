@@ -2967,13 +2967,58 @@ handle_directory_options(OpMode, !Globals) :-
     ),
 
     globals.lookup_accumulating_option(!.Globals,
+        normal_dirs_same_subdir_setting, NormalSame),
+    globals.lookup_accumulating_option(!.Globals,
+        normal_dirs_indep_subdir_setting, NormalIndep),
+    globals.lookup_accumulating_option(!.Globals,
+        normal_dirs_installed_library, NormalInstalled),
+
+    globals.lookup_accumulating_option(!.Globals,
         intermod_dirs_same_subdir_setting, IntermodSame),
     globals.lookup_accumulating_option(!.Globals,
         intermod_dirs_indep_subdir_setting, IntermodIndep),
     globals.lookup_accumulating_option(!.Globals,
         intermod_dirs_installed_library, IntermodInstalled),
-    some [!IntermodDirsMap] (
+
+    globals.lookup_accumulating_option(!.Globals,
+        c_incl_dirs_same_subdir_setting, CInclSame),
+    globals.lookup_accumulating_option(!.Globals,
+        c_incl_dirs_indep_subdir_setting, CInclIndep),
+    globals.lookup_accumulating_option(!.Globals,
+        c_incl_dirs_installed_library, CInclInstalled),
+
+    some [!NormalDirsMap, !IntermodDirsMap, !CInclDirsMap] (
+        map.init(!:NormalDirsMap),
         map.init(!:IntermodDirsMap),
+        map.init(!:CInclDirsMap),
+
+        ext_cur_ngs_extension_dir(ext_cur_ngs_int_int0, _, ExtDirInt0),
+        ext_cur_ngs_extension_dir(ext_cur_ngs_int_int1, _, ExtDirInt1),
+        ext_cur_ngs_extension_dir(ext_cur_ngs_int_int2, _, ExtDirInt2),
+        ext_cur_ngs_extension_dir(ext_cur_ngs_int_int3, _, ExtDirInt3),
+        ext_cur_ngs_extension_dir(
+            ext_cur_ngs_misc_module_dep, _, ExtDirModuleDep),
+
+        make_proposed_search_path_ngs(SubdirSetting, ExtDirInt0,
+            NormalSame, NormalIndep, NormalInstalled, NormalInt0),
+        make_proposed_search_path_ngs(SubdirSetting, ExtDirInt1,
+            NormalSame, NormalIndep, NormalInstalled, NormalInt1),
+        make_proposed_search_path_ngs(SubdirSetting, ExtDirInt2,
+            NormalSame, NormalIndep, NormalInstalled, NormalInt2),
+        make_proposed_search_path_ngs(SubdirSetting, ExtDirInt3,
+            NormalSame, NormalIndep, NormalInstalled, NormalInt3),
+        make_proposed_search_path_ngs(SubdirSetting, ExtDirModuleDep,
+            NormalSame, NormalIndep, NormalInstalled, NormalModuleDep),
+
+        map.det_insert(ne_int0, NormalInt0, !NormalDirsMap),
+        map.det_insert(ne_int1, NormalInt1, !NormalDirsMap),
+        map.det_insert(ne_int2, NormalInt2, !NormalDirsMap),
+        map.det_insert(ne_int3, NormalInt3, !NormalDirsMap),
+        map.det_insert(ne_module_dep, NormalModuleDep, !NormalDirsMap),
+
+        % XXX We should not look for .m files in installed libraries.
+        NormalSrc = NormalSame ++ NormalIndep ++ NormalInstalled,
+        map.det_insert(ne_src, NormalSrc, !NormalDirsMap),
 
         ext_cur_ngs_gs_extension_dir(
             ext_cur_ngs_gs_proposed_opt_plain, _, ExtDirPlainOpt),
@@ -3013,12 +3058,29 @@ handle_directory_options(OpMode, !Globals) :-
         map.det_insert(ie_an_imdg, IntermodImdg, !IntermodDirsMap),
         map.det_insert(ie_an_request, IntermodRequest, !IntermodDirsMap),
 
+        % XXX We should not look for .m files in installed libraries.
         IntermodSrc = IntermodSame ++ IntermodIndep ++ IntermodInstalled,
         map.det_insert(ie_src, IntermodSrc, !IntermodDirsMap),
 
-        ExtDirsMaps = ext_dirs_maps(!.IntermodDirsMap)
+        ext_cur_pgs_max_cur_extension_dir(
+            ext_cur_pgs_max_cur_mh, _, ExtDirMh),
+        ext_cur_ngs_gs_max_cur_extension_dir(
+            ext_cur_ngs_gs_max_cur_mih, _, ExtDirMih),
+
+        make_proposed_search_path_ngs(SubdirSetting, ExtDirMh,
+            CInclSame, CInclIndep, CInclInstalled, CInclMh),
+        make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirMih,
+            CInclSame, CInclIndep, CInclInstalled, CInclMih),
+
+        map.det_insert(cie_mh, CInclMh, !CInclDirsMap),
+        map.det_insert(cie_mih, CInclMih, !CInclDirsMap),
+
+        ExtDirsMaps =
+            ext_dirs_maps(!.NormalDirsMap, !.IntermodDirsMap, !.CInclDirsMap)
     ),
     globals.set_ext_dirs_maps(ExtDirsMaps, !Globals).
+
+%---------------------%
 
 :- pred make_proposed_search_path_gs(subdir_setting::in, dir_name::in,
     dir_name::in,
@@ -3050,6 +3112,29 @@ make_proposed_search_path_gs(SubdirSetting, Grade, ExtSubDir,
     list.map(
         make_selected_proposed_dir_name_gs(use_cur_ngs_gs_subdir, Grade,
             ExtSubDir),
+        SearchDirsInstall, DirsInstall),
+    list.condense(DirsListIndep, DirsIndep),
+    Dirs = DirsSame ++ DirsIndep ++ DirsInstall.
+
+:- pred make_proposed_search_path_ngs(subdir_setting::in, dir_name::in,
+    list(dir_name)::in, list(dir_name)::in, list(dir_name)::in,
+    list(dir_name)::out) is det.
+
+make_proposed_search_path_ngs(SubdirSetting, ExtSubDir,
+        SearchDirsSame, SearchDirsIndep, SearchDirsInstall, Dirs) :-
+    % We follow the search principles as make_proposed_search_path_gs above,
+    % with the difference that we never search any grade-specific directories,
+    % since the files we are searching for are not grade specific.
+    list.map(
+        make_selected_proposed_dir_name_ngs(SubdirSetting, ExtSubDir),
+        SearchDirsSame, DirsSame),
+    list.map(
+        make_all_proposed_dir_names_ngs(ExtSubDir),
+        SearchDirsIndep, DirsListIndep),
+    % Note that whether we pass use_cur_ngs_gs_subdir or use_cur_ngs_subdir
+    % here does not matter; we will get the same result either way.
+    list.map(
+        make_selected_proposed_dir_name_ngs(use_cur_ngs_gs_subdir, ExtSubDir),
         SearchDirsInstall, DirsInstall),
     list.condense(DirsListIndep, DirsIndep),
     Dirs = DirsSame ++ DirsIndep ++ DirsInstall.

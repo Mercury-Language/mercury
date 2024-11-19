@@ -534,53 +534,62 @@ compute_search_dirs(SearchAuthDirs, Dirs) :-
         )
     ;
         SearchAuthDirs = search_auth_private(SearchAuthPrivateDirs),
-        % XXX Once there is agreement on how we replace --intermod-directories,
-        % I (zs) will implement that approach for the other search directory
-        % options as well.
+        % The switchover from the LEGACY library install structure
+        % to its PROPOSED version will also be a period of switchover
+        % from the old options specifying search dirs to the new options.
+        % Given a program P that uses library L1, which in turn uses
+        % library L2, is to switch over P first,  then L1, then L2,
+        % with the general rule being if entity (program or library) E1
+        % uses entity E2, then we switch over E1 first. The value we
+        % assign to Dirs is designed to work for this approach.
         (
             SearchAuthPrivateDirs =
-                private_auth_normal_dirs(_NormalExt, Globals),
+                private_auth_normal_dirs(NormalExt, Globals),
+            globals.get_ext_dirs_maps(Globals, ExtDirsMaps),
+            NormalDirsMap = ExtDirsMaps ^ edm_normal,
+            map.lookup(NormalDirsMap, NormalExt, ProposedDirs),
             globals.lookup_accumulating_option(Globals,
-                search_directories, Dirs)
+                search_directories, LegacyDirs),
+            Dirs = ProposedDirs ++ LegacyDirs
         ;
             SearchAuthPrivateDirs =
                 private_auth_intermod_dirs(IntermodExt, Globals),
             globals.get_ext_dirs_maps(Globals, ExtDirsMaps),
-            ExtDirsMaps = ext_dirs_maps(IntermodDirsMap),
+            IntermodDirsMap = ExtDirsMaps ^ edm_intermod,
             map.lookup(IntermodDirsMap, IntermodExt, ProposedDirs),
             globals.lookup_accumulating_option(Globals,
                 intermod_directories, LegacyDirs),
-            % The switchover from the LEGACY library install structure
-            % to its PROPOSED version will also be a period of switchover
-            % from the old options specifying search dirs to the new options.
-            % Given a program P that uses library L1, which in turn uses
-            % library L2, is to switch over P first,  then L1, then L2,
-            % with the general rule being if entity (program or library) E1
-            % uses entity E2, then we switch over E1 first. The value we
-            % assign to Dirs is designed to work for this approach.
             Dirs = ProposedDirs ++ LegacyDirs
         ;
             SearchAuthPrivateDirs = private_auth_init_file_dirs(OptionTable),
             getopt.lookup_accumulating_option(OptionTable,
-                init_file_directories, Dirs)
+                init_file_directories, LegacyDirs),
+            Dirs = LegacyDirs % TODO
         ;
             SearchAuthPrivateDirs =
-                private_auth_c_include_dirs(_CInclExt, Globals),
+                private_auth_c_include_dirs(CInclExt, Globals),
+            globals.get_ext_dirs_maps(Globals, ExtDirsMaps),
+            CInclDirsMap = ExtDirsMaps ^ edm_c_incl,
+            map.lookup(CInclDirsMap, CInclExt, ProposedDirs),
             globals.lookup_accumulating_option(Globals,
-                c_include_directories, Dirs)
+                c_include_directories, LegacyDirs),
+            Dirs = ProposedDirs ++ LegacyDirs
         ;
             SearchAuthPrivateDirs =
                 private_auth_options_file_dirs(OptionTable),
+            % Since options files are never installed, the difference
+            % between the Proposed vs Legacy library install directory
+            % structures does not affect this kind of lookup.
             getopt.lookup_accumulating_option(OptionTable,
                 options_search_directories, Dirs)
         ;
             SearchAuthPrivateDirs = private_auth_mercury_library_dirs(Globals),
-            globals.get_options(Globals, OptionTable),
-            getopt.lookup_accumulating_option(OptionTable,
-                mercury_library_directories, LibDirs),
             globals.get_grade_dir(Globals, GradeDir),
-            Dirs =
-                list.map((func(LibDir) = LibDir / "lib" / GradeDir), LibDirs)
+            globals.lookup_accumulating_option(Globals,
+                mercury_library_directories, LibDirs),
+            LegacyDirs =
+                list.map((func(LibDir) = LibDir / "lib" / GradeDir), LibDirs),
+            Dirs = LegacyDirs % TODO
         )
     ).
 

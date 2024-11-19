@@ -298,12 +298,14 @@
     % we should search
 :- type ext_dirs_maps
     --->    ext_dirs_maps(
-                % XXX add normal and c_incl maps after there is agreement
-                % on the overall approach.
-                edm_intermod        :: ext_intermod_dirs_map
+                edm_normal          :: ext_normal_dirs_map,
+                edm_intermod        :: ext_intermod_dirs_map,
+                edm_c_incl          :: ext_c_incl_dirs_map
             ).
 
+:- type ext_normal_dirs_map == map(normal_ext, list(dir_name)).
 :- type ext_intermod_dirs_map == map(intermod_ext, list(dir_name)).
+:- type ext_c_incl_dirs_map == map(c_incl_ext, list(dir_name)).
 
 :- type dirs_ext
     --->    ne_int0
@@ -1408,7 +1410,7 @@ globals_init(DefaultOptions, Options, OptTuple, OpMode,
         WordSize, GC_Method, TerminationNorm, Termination2Norm,
         TraceLevel, SSTraceLevel, MaybeThreadSafe,
         HostEnvType, SystemEnvType, TargetEnvType, InstallMethod, Globals) :-
-    ExtDirsMaps0 = ext_dirs_maps(map.init),
+    ExtDirsMaps0 = ext_dirs_maps(map.init, map.init, map.init),
     ReadOnlyGlobals0 = read_only_globals(TraceSuppress, ReuseStrategy,
          LimitErrorContextsMap, LinkedTargetExtInfoMap, "", C_CompilerType),
     Globals0 = globals(DefaultOptions, Options, OptTuple, OpMode,

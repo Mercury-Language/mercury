@@ -864,6 +864,25 @@
 
 %---------------------------------------------------------------------------%
 
+    % make_selected_proposed_dir_name_ngs(SubdirSetting, ExtSubDir,
+    %   PrefixDir, Dir):
+    %
+    % This predicate does the same job as make_selected_proposed_dir_name_gs,
+    % but for non-grade-specific extensions.
+    %
+:- pred make_selected_proposed_dir_name_ngs(subdir_setting::in, dir_name::in,
+    dir_name::in, dir_name::out) is det.
+
+    % make_all_proposed_dir_names_ngs(ExtSubDir, PrefixDir, Dirs):
+    %
+    % This predicate does the same job as make_all_proposed_dir_names_gs,
+    % but for non-grade-specific extensions.
+    %
+:- pred make_all_proposed_dir_names_ngs(dir_name::in, dir_name::in,
+    list(dir_name)::out) is det.
+
+%---------------------------------------------------------------------------%
+
     % If the proper place for a file is in a subdirectory (e.g. Mercury/css),
     % but the subdirectory does not exist, which in this case may mean either
     %
@@ -1920,6 +1939,27 @@ make_all_proposed_dir_names_gs(Grade, ExtSubDir, PrefixDir, Dirs) :-
     make_selected_proposed_dir_name_gs(use_cur_dir, Grade, ExtSubDir,
         PrefixDir, CurDir),
     Dirs = [GsDir, NgsDir, CurDir].
+
+%---------------------------------------------------------------------------%
+
+make_selected_proposed_dir_name_ngs(SubdirSetting, ExtSubDir, PrefixDir,
+        Dir) :-
+    (
+        SubdirSetting = use_cur_dir,
+        Dir = PrefixDir
+    ;
+        ( SubdirSetting = use_cur_ngs_subdir
+        ; SubdirSetting = use_cur_ngs_gs_subdir
+        ),
+        Dir = PrefixDir / "MercurySystem" / ExtSubDir
+    ).
+
+make_all_proposed_dir_names_ngs(ExtSubDir, PrefixDir, Dirs) :-
+    make_selected_proposed_dir_name_ngs(use_cur_ngs_subdir, ExtSubDir,
+        PrefixDir, NgsDir),
+    make_selected_proposed_dir_name_ngs(use_cur_dir, ExtSubDir,
+        PrefixDir, CurDir),
+    Dirs = [NgsDir, CurDir].
 
 %---------------------------------------------------------------------------%
 
