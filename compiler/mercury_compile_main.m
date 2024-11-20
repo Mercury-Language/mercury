@@ -570,15 +570,17 @@ process_options_std_config_file(ProgressStream, FlagsArgsOptionTable,
             % XXX Record _StdLibGrades in the final globals structure.
             % XXX Or even better, do this call only when we have finished
             % *all* option processing, and have the *final* globals structure.
-            maybe_detect_stdlib_grades(FlagsArgsOptionTable, OptionsVariables,
-                _MaybeStdLibGrades, DetectedGradeFlags, !IO),
-            % maybe_detect_stdlib_grades does this lookup, but it returns
-            % any error in MaybeConfigMerStdLibDir (as part of
-            % _MaybeStdLibGrades) only if that error is relevant,
-            % i.e. if we cannot get the location of the Mercury standard
-            % library from the mercury_standard_library_directory option.
-            % Including such irrelevant errors in Specs preserves old behavior,
-            % though I (zs) do not understand the reason for that behavior.
+            maybe_libgrade_opts_for_detected_stdlib_grades(
+                FlagsArgsOptionTable, OptionsVariables, DetectedGradeFlags,
+                !IO),
+            % maybe_libgrade_opts_for_detected_stdlib_grades does this lookup,
+            % but only if --mercury-stdlib-dir is NOT specified. Because of
+            % that, it is simpler to repeat the call here than to try to
+            % optimize it away.
+            % XXX I (zs) think that checking whether this call returns any
+            % errors would be a good idea even if --mercury-stdlib-dir IS
+            % specified, because it would force any reported problems to be
+            % found and fixed up front.
             lookup_mercury_stdlib_dir(OptionsVariables,
                 MaybeConfigMerStdLibDir),
             Specs = Specs0 ++ get_any_errors1(MaybeConfigMerStdLibDir)
@@ -846,14 +848,13 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, OptionVariables, !IO) :-
     ;
         OpModeQuery = opmq_output_stdlib_grades,
         globals.get_options(Globals, OptionTable),
-        find_mercury_stdlib(OptionTable, OptionVariables,
-            MaybeMerStdLibDir, !IO),
+        detect_stdlib_grades(OptionTable, OptionVariables,
+            MaybeStdlibGrades, !IO),
         (
-            MaybeMerStdLibDir = ok1(MerStdLibDir),
-            do_detect_libgrades(MerStdLibDir, StdlibGrades, !IO),
+            MaybeStdlibGrades = ok1(StdlibGrades),
             set.fold(io.print_line(StdOutStream), StdlibGrades, !IO)
         ;
-            MaybeMerStdLibDir = error1(Specs),
+            MaybeStdlibGrades = error1(Specs),
             write_error_specs(ErrorStream, Globals, Specs, !IO)
         )
     ;
