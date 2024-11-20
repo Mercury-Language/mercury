@@ -35,6 +35,15 @@
 :- import_module set.
 
 %---------------------------------------------------------------------------%
+%
+% These predicates answer the question: given the specified location
+% of the Mercury standard library, in which grades is the Mercury standard
+% library installed there?
+%
+% The location may be specified by either the value of the
+% mercury_standard_library_directory option, or by the value of the
+% MERCURY_STDLIB_DIR environment variable.
+%
 
 :- pred maybe_detect_stdlib_grades(option_table::in, options_variables::in,
     maybe1(set(string))::out, list(string)::out, io::di, io::uo) is det.
@@ -51,6 +60,38 @@
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
+%
+% This predicate answers two questions, the first of which is related to
+% but nevertheless quite different from the question above: given the
+% specified location of the Mercury standard library, is the Mercury standard
+% library installed there *in the grade given by the value of Globals*?
+%
+% The location may be specified *only* by the value of the
+% mercury_standard_library_directory option.
+%
+% The second question is totally unrelated: are the libraries named by the
+% mercury_libraries option installed in the grade given by Globals in the
+% directories named by the mercury_library_directories and
+% init_file_directories options?
+%
+
+% XXX The difference with respect to the specification of the location
+% of the Mercury standard library means that *if* --mercury-stdlib-dir
+% is not explicitly set, then it is possible for
+%
+% - mmc --output-stdlib-grades to print the set of grades available in
+%   the directory named by MERCURY_STDLIB_DIR, which may be nonempty, while
+%
+% - the check called for by --libgrade-install-check (which is enabled
+%   by default) reports no errors, even though the grade specified by Globals,
+%   whatever it is, is not known to be installed in any known directory
+%   (since there are none).
+%
+% Note that as far as I (zs) can tell, mmc does not actually need
+% to know anything about installed grades; that info is needed only by
+% the tools (e.g. ml) that process the *output* of mmc. Therefore neither
+% of the two apparently-conflicting approaches above is intrinsically better
+% for mmc itself.
 
     % If --libgrade-install-check is enabled, then check that all Mercury
     % libraries required by the target are installed in the selected grade.
@@ -138,9 +179,6 @@ find_mercury_stdlib(OptionTable, Variables, MaybeMerStdLibDir, !IO) :-
         (
             MaybeConfigMerStdLibDir = ok1(MerStdLibDirs),
             (
-                MerStdLibDirs = [MerStdLibDir],
-                can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO)
-            ;
                 MerStdLibDirs = [],
                 Pieces = [words("Error: the location of the directory"),
                     words("that holds the Mercury standard library"),
@@ -152,6 +190,9 @@ find_mercury_stdlib(OptionTable, Variables, MaybeMerStdLibDir, !IO) :-
                 Spec = no_ctxt_spec($pred, severity_error,
                     phase_options, Pieces),
                 MaybeMerStdLibDir = error1([Spec])
+            ;
+                MerStdLibDirs = [MerStdLibDir],
+                can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO)
             ;
                 MerStdLibDirs = [_, _ | _],
                 Pieces = [words("Error: the definition of the"),
@@ -186,6 +227,7 @@ can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO) :-
     ).
 
 do_detect_libgrades(StdLibDir, Grades, !IO) :-
+    % XXX LEGACY
     ModulesDir = StdLibDir / "modules",
     dir.foldl2(do_detect_libgrade_using_init_file, ModulesDir,
         set.init, MaybeGrades0, !IO),
@@ -216,6 +258,7 @@ do_detect_libgrade_using_init_file(DirName, GradeFileName,
         GradeFileType, Continue, !Grades, !IO) :-
     (
         GradeFileType = directory,
+        % XXX LEGACY
         InitFile = DirName / GradeFileName / "mer_std.init",
         io.file.check_file_accessibility(InitFile, [read], Result, !IO),
         (
@@ -298,55 +341,26 @@ report_detected_libgrade(Stream, Grade, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_check_libraries_are_installed(Globals, Specs, !IO) :-
-    globals.lookup_bool_option(Globals, libgrade_install_check, LibgradeCheck),
-    (
-        LibgradeCheck = yes,
-        % Get all the components of Globals that are inputs to our job,
-        % so we can make sure that we use any cached result only if its
-        % actually applicable.
-        globals.get_target(Globals, Target),
-        globals.get_grade_dir(Globals, GradeDirName),
-        globals.lookup_maybe_string_option(Globals,
-            mercury_standard_library_directory, MaybeStdLibDir),
-        globals.lookup_accumulating_option(Globals,
-            mercury_library_directories, MercuryLibDirs),
-        globals.lookup_accumulating_option(Globals, init_file_directories,
-            InitFileDirs),
-        globals.lookup_accumulating_option(Globals, mercury_libraries, Libs),
+    % This mutable is a cache that records whether the job of
+    % maybe_check_libraries_are_installed has already been done
+    % for a given set of parameters.
+    %
+    % I (zs) think that this cache is useful mostly when mmc --make
+    % needs to compile more than one module. Those compilations are
+    % almost always done with the same parameters, and so
+    %
+    % - there is no point in repeating the test, since the same inputs
+    %   are guaranteed to yield the same outputs, while
+    %
+    % - there is point in avoiding tests when this can be done safely,
+    %   because the file operations does by the test are expensive.
+    %
+:- mutable(has_check_libraries_been_done, check_libraries_maybe_done,
+    check_libraries_not_done, ground,
+    [untrailed, attach_to_io_state, thread_local]).
 
-        get_has_check_libraries_been_done(Cache0, !IO),
-        ( if
-            Cache0 = check_libraries_done(CacheTarget, CacheGradeDirName,
-                CacheMaybeStdLibDir, CacheMercuryLibDirs, CacheInitFileDirs,
-                CacheLibs, CacheSpecs),
-            Target = CacheTarget,
-            GradeDirName = CacheGradeDirName,
-            MaybeStdLibDir = CacheMaybeStdLibDir,
-            MercuryLibDirs = CacheMercuryLibDirs,
-            InitFileDirs = CacheInitFileDirs,
-            Libs = CacheLibs
-        then
-            Specs = CacheSpecs
-        else
-            check_libraries_are_installed(Globals, Libs, Specs, !IO),
-            Cache = check_libraries_done(Target, GradeDirName, MaybeStdLibDir,
-                MercuryLibDirs, InitFileDirs, Libs, Specs),
-            set_has_check_libraries_been_done(Cache, !IO)
-        )
-    ;
-        LibgradeCheck = no,
-        Specs = []
-    ).
-
-:- pred check_libraries_are_installed(globals::in, list(string)::in,
-    list(error_spec)::out, io::di, io::uo) is det.
-
-check_libraries_are_installed(Globals, Libs, !:Specs, !IO) :-
-    !:Specs = [],
-    check_stdlib_is_installed(Globals, !Specs, !IO),
-    list.foldl2(check_library_is_installed(Globals), Libs, !Specs, !IO).
-
+    % This is the type of the values in that cache.
+    %
 :- type check_libraries_maybe_done
     --->    check_libraries_not_done
             % We have not yet called check_libraries_are_installed.
@@ -365,25 +379,69 @@ check_libraries_are_installed(Globals, Libs, !:Specs, !IO) :-
                 list(error_spec)
             ).
 
-:- mutable(has_check_libraries_been_done, check_libraries_maybe_done,
-    check_libraries_not_done, ground,
-    [untrailed, attach_to_io_state, thread_local]).
+maybe_check_libraries_are_installed(Globals, Specs, !IO) :-
+    globals.lookup_bool_option(Globals, libgrade_install_check, LibgradeCheck),
+    (
+        LibgradeCheck = yes,
+        % Get all the components of Globals that are inputs to our job,
+        % so we can make sure that we use any cached result only if its
+        % actually applicable.
+        globals.get_target(Globals, Target),
+        globals.get_grade_dir(Globals, GradeDirName),
+        globals.lookup_maybe_string_option(Globals,
+            mercury_standard_library_directory, MaybeStdLibDir),
+        globals.lookup_accumulating_option(Globals,
+            mercury_library_directories, MercuryLibDirs),
+        globals.lookup_accumulating_option(Globals, init_file_directories,
+            InitFileDirs),
+        globals.lookup_accumulating_option(Globals, mercury_libraries,
+            NamedLibs),
+
+        get_has_check_libraries_been_done(Cache0, !IO),
+        ( if
+            Cache0 = check_libraries_done(CacheTarget, CacheGradeDirName,
+                CacheMaybeStdLibDir, CacheMercuryLibDirs, CacheInitFileDirs,
+                CacheLibs, CacheSpecs),
+            Target = CacheTarget,
+            GradeDirName = CacheGradeDirName,
+            MaybeStdLibDir = CacheMaybeStdLibDir,
+            MercuryLibDirs = CacheMercuryLibDirs,
+            InitFileDirs = CacheInitFileDirs,
+            NamedLibs = CacheLibs
+        then
+            Specs = CacheSpecs
+        else
+            check_stdlib_is_installed(Globals, Specs0, !IO),
+            check_named_libraries_are_installed(Globals, NamedLibs,
+                Specs0, Specs, !IO),
+            Cache = check_libraries_done(Target, GradeDirName, MaybeStdLibDir,
+                MercuryLibDirs, InitFileDirs, NamedLibs, Specs),
+            set_has_check_libraries_been_done(Cache, !IO)
+        )
+    ;
+        LibgradeCheck = no,
+        Specs = []
+    ).
 
 %---------------------------------------------------------------------------%
 
+    % Part 1 of the maybe_check_libraries_are_installed test:
+    % is the Mercury standard library installed?
+    %
 :- pred check_stdlib_is_installed(globals::in,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(error_spec)::out, io::di, io::uo) is det.
 
-check_stdlib_is_installed(Globals, !Specs, !IO) :-
-    % NOTE If you modify the code of this predicate to look at
-    % any new component of Globals, then you have to include that component
-    % in the key of the cache.
+check_stdlib_is_installed(Globals, Specs, !IO) :-
+    % NOTE If you modify the code of this predicate to look at any new
+    % component of Globals, *or* at a new environment variable, then
+    % you have to include its value in the key of the cache.
     globals.lookup_maybe_string_option(Globals,
         mercury_standard_library_directory, MaybeStdLibDir),
     (
         MaybeStdLibDir = yes(StdLibDir),
         globals.get_target(Globals, Target),
         globals.get_grade_dir(Globals, GradeDirName),
+        % XXX LEGACY
         (
             Target = target_c,
             % In C grades, check for the presence of mer_std.init in the
@@ -405,7 +463,8 @@ check_stdlib_is_installed(Globals, !Specs, !IO) :-
         io.open_input(StdLibCheckFile, StdLibCheckFileResult, !IO),
         (
             StdLibCheckFileResult = ok(StdLibCheckFileStream),
-            io.close_input(StdLibCheckFileStream, !IO)
+            io.close_input(StdLibCheckFileStream, !IO),
+            Specs = []
         ;
             StdLibCheckFileResult = error(_),
             io.progname_base("mercury_compile", ProgName, !IO),
@@ -414,16 +473,31 @@ check_stdlib_is_installed(Globals, !Specs, !IO) :-
                 words("in grade"), quote(GradeDirName), suffix("."), nl],
             Spec = no_ctxt_spec($pred, severity_error,
                 phase_check_libs, Pieces),
-            !:Specs = [Spec | !.Specs]
+            Specs = [Spec]
         )
     ;
-        MaybeStdLibDir = no
+        MaybeStdLibDir = no,
+        Specs = []
     ).
 
-:- pred check_library_is_installed(globals::in, string::in,
+%---------------------------------------------------------------------------%
+
+    % Part 2 of the maybe_check_libraries_are_installed test:
+    % are libraries named in the --mercury-libraries option installed?
+    %
+:- pred check_named_libraries_are_installed(globals::in, list(string)::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-check_library_is_installed(Globals, LibName, !Specs, !IO) :-
+check_named_libraries_are_installed(_, [], !Specs, !IO).
+check_named_libraries_are_installed(Globals, [LibName | LibNames],
+        !Specs, !IO) :-
+    check_named_library_is_installed(Globals, LibName, !Specs, !IO),
+    check_named_libraries_are_installed(Globals, LibNames, !Specs, !IO).
+
+:- pred check_named_library_is_installed(globals::in, string::in,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+check_named_library_is_installed(Globals, LibName, !Specs, !IO) :-
     % NOTE If you modify the code of this predicate to look at
     % any new component of Globals, then you have to include that component
     % in the key of the cache.
