@@ -895,7 +895,8 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, FileNamesFromStdin, DetectedGradeFlags,
         OptionVariables, EnvVarArgs, OptionArgs, Args,
         !HaveParseTreeMaps, !Specs, !IO) :-
-    maybe_check_libraries_are_installed(Globals, LibgradeCheckSpecs, !IO),
+    maybe_check_libraries_are_installed(Globals, OptionVariables,
+        LibgradeCheckSpecs, !IO),
     io.stderr_stream(StdErr, !IO),
     (
         LibgradeCheckSpecs = [],

@@ -40,9 +40,26 @@
 % of the Mercury standard library, in which grades is the Mercury standard
 % library installed there?
 %
-% The location may be specified by either the value of the
-% mercury_standard_library_directory option, or by the value of the
-% MERCURY_STDLIB_DIR environment variable.
+% The location of the Mercury standard library may be specified by
+%
+% - the value of the mercury_standard_library_directory option,
+% - the value of the MERCURY_STDLIB_DIR make variable in an options file, or
+% - the value of the MERCURY_STDLIB_DIR environment variable.
+%
+% The above is the priority order of the sources. The second and third are
+% both handled by options_file.m.
+%
+% Note that mmc does not actually need to know anything about installed
+% grades; that info is needed only by the tools (e.g. ml) that process
+% the *output* of mmc. The only parts of the system that now has hardcoded
+% in it the list of installed stdlib grades are Mercury.config and the
+% Mmake.vars file, which is automatically included in the makefiles
+% constructed by mmake. Those hardcoded lists are set by the configure script,
+% and are static data afterward, until the next invocation of configure.
+%
+% Since commit ab20c86, the Mercury compiler uses these predicates
+% to get this information dynamically. This allows additional library
+% grades to be installed without reconfiguration.
 %
 
 :- pred maybe_libgrade_opts_for_detected_stdlib_grades(option_table::in,
@@ -57,10 +74,8 @@
 % This predicate answers two questions, the first of which is related to
 % but nevertheless quite different from the question above: given the
 % specified location of the Mercury standard library, is the Mercury standard
-% library installed there *in the grade given by the value of Globals*?
-%
-% The location may be specified *only* by the value of the
-% mercury_standard_library_directory option.
+% library installed there *in the grade given by the user*, which is now
+% in Globals*?
 %
 % The second question is totally unrelated: are the libraries named by the
 % mercury_libraries option installed in the grade given by Globals in the
@@ -68,30 +83,12 @@
 % init_file_directories options?
 %
 
-% XXX The difference with respect to the specification of the location
-% of the Mercury standard library means that *if* --mercury-stdlib-dir
-% is not explicitly set, then it is possible for
-%
-% - mmc --output-stdlib-grades to print the set of grades available in
-%   the directory named by MERCURY_STDLIB_DIR, which may be nonempty, while
-%
-% - the check called for by --libgrade-install-check (which is enabled
-%   by default) reports no errors, even though the grade specified by Globals,
-%   whatever it is, is not known to be installed in any known directory
-%   (since there are none).
-%
-% Note that as far as I (zs) can tell, mmc does not actually need
-% to know anything about installed grades; that info is needed only by
-% the tools (e.g. ml) that process the *output* of mmc. Therefore neither
-% of the two apparently-conflicting approaches above is intrinsically better
-% for mmc itself.
-
     % If --libgrade-install-check is enabled, then check that all Mercury
     % libraries required by the target are installed in the selected grade.
     % Always succeeds if --libgrade-install-check is *not* enabled.
     %
-:- pred maybe_check_libraries_are_installed(globals::in, list(error_spec)::out,
-    io::di, io::uo) is det.
+:- pred maybe_check_libraries_are_installed(globals::in, options_variables::in,
+    list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -131,7 +128,7 @@ maybe_libgrade_opts_for_detected_stdlib_grades(OptionTable, Variables,
         StdlibGradeOpts = []
     ).
 
-detect_stdlib_grades(OptionTable, Variables, MaybeStdlibGrades, !IO) :-
+detect_stdlib_grades(OptionTable, OptionsVariables, MaybeStdlibGrades, !IO) :-
     % Enable the compile-time trace flag "debug-detect-libgrades" to enable
     % debugging messages for library grade detection in the very verbose
     % output.
@@ -141,7 +138,11 @@ detect_stdlib_grades(OptionTable, Variables, MaybeStdlibGrades, !IO) :-
         maybe_write_string(StdOut, Verbose,
             "% Detecting library grades ...\n", !TIO)
     ),
-    find_mercury_stdlib(OptionTable, Variables, MaybeMerStdLibDir, !IO),
+    getopt.lookup_maybe_string_option(OptionTable,
+        mercury_standard_library_directory, MaybeOptionsLibDir),
+    lookup_mercury_stdlib_dir(OptionsVariables, MaybeOptFileStdLibDirs),
+    find_mercury_stdlib(MaybeOptionsLibDir, MaybeOptFileStdLibDirs,
+        MaybeMerStdLibDir, !IO),
     (
         MaybeMerStdLibDir = ok1(MerStdLibDir),
         trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
@@ -161,59 +162,6 @@ detect_stdlib_grades(OptionTable, Variables, MaybeStdlibGrades, !IO) :-
             maybe_write_string(StdOut, Verbose, "% failed.\n", !TIO)
         ),
         MaybeStdlibGrades = error1(Specs)
-    ).
-
-    % Where is the Mercury standard library?
-    %
-    % NOTE: A standard library directory specified on the command line
-    % overrides one set using the MERCURY_STDLIB_DIR variable.
-    %
-:- pred find_mercury_stdlib(option_table::in, options_variables::in,
-    maybe1(string)::out, io::di, io::uo) is det.
-
-find_mercury_stdlib(OptionTable, Variables, MaybeMerStdLibDir, !IO) :-
-    ( if
-        % Was the standard library directory set on the command line?
-        getopt.lookup_maybe_string_option(OptionTable,
-            mercury_standard_library_directory, MaybeStdLibDir),
-        MaybeStdLibDir = yes(MerStdLibDir)
-    then
-        can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO)
-    else
-        % Was the standard library directory set using the
-        % MERCURY_STDLIB_DIR variable?
-        lookup_mercury_stdlib_dir(Variables, MaybeConfigMerStdLibDir),
-        (
-            MaybeConfigMerStdLibDir = ok1(MerStdLibDirs),
-            (
-                MerStdLibDirs = [],
-                Pieces = [words("Error: the location of the directory"),
-                    words("that holds the Mercury standard library"),
-                    words("is not specified either by the value of any"),
-                    quote("--mercury-stdlib-dir"), words("option"),
-                    words("to the compiler, nor by any definition of the"),
-                    quote("MERCURY_STDLIB_DIR"), words("variable in the"),
-                    quote("Mercury.config"), words("file."), nl],
-                Spec = no_ctxt_spec($pred, severity_error,
-                    phase_options, Pieces),
-                MaybeMerStdLibDir = error1([Spec])
-            ;
-                MerStdLibDirs = [MerStdLibDir],
-                can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO)
-            ;
-                MerStdLibDirs = [_, _ | _],
-                Pieces = [words("Error: the definition of the"),
-                    quote("MERCURY_STDLIB_DIR"), words("variable in the"),
-                    quote("Mercury.config"), words("file"),
-                    words("contains more than one string."), nl],
-                Spec = no_ctxt_spec($pred, severity_error,
-                    phase_options, Pieces),
-                MaybeMerStdLibDir = error1([Spec])
-            )
-        ;
-            MaybeConfigMerStdLibDir = error1(Specs),
-            MaybeMerStdLibDir = error1(Specs)
-        )
     ).
 
 :- pred can_you_read_dir(string::in, maybe1(string)::out, io::di, io::uo)
@@ -363,7 +311,7 @@ report_detected_libgrade(Stream, Grade, !IO) :-
     %   are guaranteed to yield the same outputs, while
     %
     % - there is point in avoiding tests when this can be done safely,
-    %   because the file operations does by the test are expensive.
+    %   because the file operations done by the test are expensive.
     %
 :- mutable(has_check_libraries_been_done, check_libraries_maybe_done,
     check_libraries_not_done, ground,
@@ -378,18 +326,24 @@ report_detected_libgrade(Stream, Grade, !IO) :-
                 % We have called check_libraries_are_installed with these
                 % values of Target, GradeDirName, MaybeStdLibDir,
                 % MercuryLibDirs, InitFileDirs and Libs ...
-                compilation_target,     % Target
-                string,                 % GradeDirName
-                maybe(string),          % MaybeStdLibDir
-                list(string),           % MercuryLibDirs
-                list(string),           % InitFileDirs
-                list(string),           % Libs
+                check_libraries_inputs,
 
                 % ... and result was this.
                 list(error_spec)
             ).
 
-maybe_check_libraries_are_installed(Globals, Specs, !IO) :-
+:- type check_libraries_inputs
+    --->    check_libraries_inputs(
+                cli_target              :: compilation_target,
+                cli_grade_dir_name      :: string,
+                cli_options_stdlib_dirs :: maybe(string),
+                cli_optfile_stdlib_dirs :: maybe1(list(dir_name)),
+                cli_mercury_lib_dirs    :: list(string),
+                cli_init_file_dirs      :: list(string),
+                cli_named_libs          :: list(string)
+            ).
+
+maybe_check_libraries_are_installed(Globals, OptionsVariables, Specs, !IO) :-
     globals.lookup_bool_option(Globals, libgrade_install_check, LibgradeCheck),
     (
         LibgradeCheck = yes,
@@ -400,32 +354,27 @@ maybe_check_libraries_are_installed(Globals, Specs, !IO) :-
         globals.get_grade_dir(Globals, GradeDirName),
         globals.lookup_maybe_string_option(Globals,
             mercury_standard_library_directory, MaybeStdLibDir),
+        lookup_mercury_stdlib_dir(OptionsVariables, MaybeConfigMerStdLibDir),
         globals.lookup_accumulating_option(Globals,
             mercury_library_directories, MercuryLibDirs),
         globals.lookup_accumulating_option(Globals, init_file_directories,
             InitFileDirs),
         globals.lookup_accumulating_option(Globals, mercury_libraries,
             NamedLibs),
+        Inputs = check_libraries_inputs(Target, GradeDirName, MaybeStdLibDir,
+            MaybeConfigMerStdLibDir, MercuryLibDirs, InitFileDirs, NamedLibs),
 
         get_has_check_libraries_been_done(Cache0, !IO),
         ( if
-            Cache0 = check_libraries_done(CacheTarget, CacheGradeDirName,
-                CacheMaybeStdLibDir, CacheMercuryLibDirs, CacheInitFileDirs,
-                CacheLibs, CacheSpecs),
-            Target = CacheTarget,
-            GradeDirName = CacheGradeDirName,
-            MaybeStdLibDir = CacheMaybeStdLibDir,
-            MercuryLibDirs = CacheMercuryLibDirs,
-            InitFileDirs = CacheInitFileDirs,
-            NamedLibs = CacheLibs
+            Cache0 = check_libraries_done(CacheInputs, CacheSpecs),
+            Inputs = CacheInputs
         then
             Specs = CacheSpecs
         else
-            check_stdlib_is_installed(Globals, Specs0, !IO),
-            check_named_libraries_are_installed(Globals, NamedLibs,
+            check_stdlib_is_installed(Inputs, Specs0, !IO),
+            check_named_libraries_are_installed(Globals, Inputs, NamedLibs,
                 Specs0, Specs, !IO),
-            Cache = check_libraries_done(Target, GradeDirName, MaybeStdLibDir,
-                MercuryLibDirs, InitFileDirs, NamedLibs, Specs),
+            Cache = check_libraries_done(Inputs, Specs),
             set_has_check_libraries_been_done(Cache, !IO)
         )
     ;
@@ -438,19 +387,18 @@ maybe_check_libraries_are_installed(Globals, Specs, !IO) :-
     % Part 1 of the maybe_check_libraries_are_installed test:
     % is the Mercury standard library installed?
     %
-:- pred check_stdlib_is_installed(globals::in,
+:- pred check_stdlib_is_installed(check_libraries_inputs::in,
     list(error_spec)::out, io::di, io::uo) is det.
 
-check_stdlib_is_installed(Globals, Specs, !IO) :-
-    % NOTE If you modify the code of this predicate to look at any new
-    % component of Globals, *or* at a new environment variable, then
-    % you have to include its value in the key of the cache.
-    globals.lookup_maybe_string_option(Globals,
-        mercury_standard_library_directory, MaybeStdLibDir),
+check_stdlib_is_installed(Inputs, Specs, !IO) :-
+    MaybeOptionsStdLibDir = Inputs ^ cli_options_stdlib_dirs,
+    MaybeOptFileStdLibDir = Inputs ^ cli_optfile_stdlib_dirs,
+    find_mercury_stdlib(MaybeOptionsStdLibDir, MaybeOptFileStdLibDir,
+        MaybeMerStdLibDir, !IO),
     (
-        MaybeStdLibDir = yes(StdLibDir),
-        globals.get_target(Globals, Target),
-        globals.get_grade_dir(Globals, GradeDirName),
+        MaybeMerStdLibDir = ok1(StdLibDir),
+        Target = Inputs ^ cli_target,
+        GradeDirName = Inputs ^ cli_grade_dir_name,
         % XXX LEGACY
         (
             Target = target_c,
@@ -486,31 +434,43 @@ check_stdlib_is_installed(Globals, Specs, !IO) :-
             Specs = [Spec]
         )
     ;
-        MaybeStdLibDir = no,
-        Specs = []
+        MaybeMerStdLibDir = error1(Specs)
     ).
 
 %---------------------------------------------------------------------------%
 
     % Part 2 of the maybe_check_libraries_are_installed test:
-    % are libraries named in the --mercury-libraries option installed?
+    % are libraries named in the mercury_libraries option installed?
     %
-:- pred check_named_libraries_are_installed(globals::in, list(string)::in,
+:- pred check_named_libraries_are_installed(globals::in,
+    check_libraries_inputs::in, list(string)::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-check_named_libraries_are_installed(_, [], !Specs, !IO).
-check_named_libraries_are_installed(Globals, [LibName | LibNames],
+check_named_libraries_are_installed(_, _, [], !Specs, !IO).
+check_named_libraries_are_installed(Globals, Inputs, [LibName | LibNames],
         !Specs, !IO) :-
-    check_named_library_is_installed(Globals, LibName, !Specs, !IO),
-    check_named_libraries_are_installed(Globals, LibNames, !Specs, !IO).
+    check_named_library_is_installed(Globals, Inputs, LibName,
+        !Specs, !IO),
+    check_named_libraries_are_installed(Globals, Inputs, LibNames,
+        !Specs, !IO).
 
-:- pred check_named_library_is_installed(globals::in, string::in,
+:- pred check_named_library_is_installed(globals::in,
+    check_libraries_inputs::in, string::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-check_named_library_is_installed(Globals, LibName, !Specs, !IO) :-
-    % NOTE If you modify the code of this predicate to look at
-    % any new component of Globals, then you have to include that component
-    % in the key of the cache.
+check_named_library_is_installed(Globals, Inputs, LibName, !Specs, !IO) :-
+    % NOTE This predicate must not use Globals for any purpose except
+    % getting search authorizations. For every other purpose, we should get
+    % our ancestor maybe_check_libraries_are_installed to look things up,
+    % and pass us the looked-up value in Inputs. This is needed to ensure
+    % that we don't use cached check results inappropriately.
+    %
+    % XXX We should probably include the options whose use is implied
+    % in our search authorizations in the check_libraries_inputs structure
+    % as well. However, the absence of the options used to search LEGACY
+    % install directories have not been missed for a long time. On the
+    % other hand, we should include the options used to search PROPOSED
+    % install directories should be added only when we start using them.
     globals.get_target(Globals, Target),
     globals.get_options(Globals, OptionTable),
     (
@@ -541,13 +501,67 @@ check_named_library_is_installed(Globals, LibName, !Specs, !IO) :-
     ;
         MaybeDirName = error(_),
         io.progname_base("mercury_compile", ProgName, !IO),
-        globals.get_grade_dir(Globals, GradeDirName),
+        GradeDirName = Inputs ^ cli_grade_dir_name,
         % XXX SEARCH_ERROR TestFileName, _SearchDirs
         Pieces = [fixed(ProgName), suffix(":"), words("error:"),
             words("the library"), quote(LibName), words("cannot be found"),
             words("in grade"), quote(GradeDirName), suffix("."), nl],
         Spec = no_ctxt_spec($pred, severity_error, phase_check_libs, Pieces),
         !:Specs = [Spec | !.Specs]
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+    % Where is the Mercury standard library?
+    %
+    % NOTE: A standard library directory specified on the command line
+    % overrides one set using the MERCURY_STDLIB_DIR variable.
+    %
+:- pred find_mercury_stdlib(maybe(string)::in, maybe1(list(dir_name))::in,
+    maybe1(string)::out, io::di, io::uo) is det.
+
+find_mercury_stdlib(MaybeOptionsStdLibDir, MaybeOptFileMerStdLibDir,
+        MaybeMerStdLibDir, !IO) :-
+    % Was the standard library directory set on the command line?
+    (
+        MaybeOptionsStdLibDir = yes(MerStdLibDir),
+        can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO)
+    ;
+        MaybeOptionsStdLibDir = no,
+        % Was the standard library directory set using the
+        % MERCURY_STDLIB_DIR variable?
+        (
+            MaybeOptFileMerStdLibDir = ok1(MerStdLibDirs),
+            (
+                MerStdLibDirs = [],
+                Pieces = [words("Error: the location of the directory"),
+                    words("that holds the Mercury standard library"),
+                    words("is not specified either by the value of any"),
+                    quote("--mercury-stdlib-dir"), words("option"),
+                    words("to the compiler, nor by any definition of the"),
+                    quote("MERCURY_STDLIB_DIR"), words("variable in the"),
+                    quote("Mercury.config"), words("file."), nl],
+                Spec = no_ctxt_spec($pred, severity_error,
+                    phase_options, Pieces),
+                MaybeMerStdLibDir = error1([Spec])
+            ;
+                MerStdLibDirs = [MerStdLibDir],
+                can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO)
+            ;
+                MerStdLibDirs = [_, _ | _],
+                Pieces = [words("Error: the definition of the"),
+                    quote("MERCURY_STDLIB_DIR"), words("variable in the"),
+                    quote("Mercury.config"), words("file"),
+                    words("contains more than one string."), nl],
+                Spec = no_ctxt_spec($pred, severity_error,
+                    phase_options, Pieces),
+                MaybeMerStdLibDir = error1([Spec])
+            )
+        ;
+            MaybeOptFileMerStdLibDir = error1(Specs),
+            MaybeMerStdLibDir = error1(Specs)
+        )
     ).
 
 %---------------------------------------------------------------------------%

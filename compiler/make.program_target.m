@@ -131,7 +131,9 @@ make_linked_target(ProgressStream, Globals, LinkedTargetFile,
     then
         LinkedTargetSucceeded = succeeded
     else
-        maybe_check_libraries_are_installed(Globals, LibgradeCheckSpecs, !IO),
+        OptionsVariables = make_info_get_options_variables(!.Info),
+        maybe_check_libraries_are_installed(Globals, OptionsVariables,
+            LibgradeCheckSpecs, !IO),
         (
             LibgradeCheckSpecs = [],
             maybe_with_analysis_cache_dir_3(ProgressStream, Globals,
