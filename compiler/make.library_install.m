@@ -588,7 +588,8 @@ setup_make_and_install_grade_specific_files_for_grade(ProgressStream, Globals,
     verbose_make_two_part_msg(Globals, "Installing grade", Grade, InstallMsg),
     maybe_write_msg(ProgressStream, InstallMsg, !IO),
 
-    lookup_mmc_options(make_info_get_options_variables(!.Info), MaybeMCFlags),
+    EnvOptFileVariables = make_info_get_env_optfile_variables(!.Info),
+    lookup_mmc_options(EnvOptFileVariables, MaybeMCFlags),
     (
         MaybeMCFlags = ok1(MCFlags),
         get_default_options(Globals, DefaultOptionTable),

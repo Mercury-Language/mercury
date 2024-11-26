@@ -47,13 +47,13 @@
 
     % setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
     %   InvokedByMmcMake, ModuleName, DetectedGradeFlags,
-    %   OptionVariables, EnvVarArgs, OptionArgs, ExtraOptions, MayBuild,
+    %   EnvOptFileVariables, EnvVarArgs, OptionArgs, ExtraOptions, MayBuild,
     %   !Info, !IO):
     %
     % Set up for building some compiler-generated file for ModuleName,
     % Return, in MayBuild, the full argument list for that compiler invocation,
-    % containing module-specific options from OptionVariables and OptionArgs,
-    % and including ExtraOptions, adding `--use-subdirs' and
+    % containing module-specific options from EnvOptFileVariables and
+    % OptionArgs, and including ExtraOptions, adding `--use-subdirs' and
     % `--invoked-by-mmc-make' to the option list. (The latter presumably
     % dependent on the value of the second arg).
     %
@@ -68,7 +68,7 @@
     %
 :- pred setup_for_build_with_module_options(io.text_output_stream::in,
     option_table(option)::in, maybe_invoked_by_mmc_make::in,
-    module_name::in, list(string)::in, options_variables::in,
+    module_name::in, list(string)::in, env_optfile_variables::in,
     list(string)::in, list(string)::in, list(string)::in,
     may_build::out, io::di, io::uo) is det.
 
@@ -203,9 +203,9 @@
 %---------------------------------------------------------------------------%
 
 setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
-        InvokedByMmcMake, ModuleName, DetectedGradeFlags, OptionVariables,
+        InvokedByMmcMake, ModuleName, DetectedGradeFlags, EnvOptFileVariables,
         EnvVarArgs, OptionArgs, ExtraOptions, MayBuild, !IO) :-
-    lookup_mmc_module_options(OptionVariables, ModuleName,
+    lookup_mmc_module_options(EnvOptFileVariables, ModuleName,
         MaybeModuleOptionArgs),
     (
         MaybeModuleOptionArgs = error1(LookupSpecs),

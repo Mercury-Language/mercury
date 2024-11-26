@@ -33,7 +33,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred make_process_compiler_args(io.text_output_stream::in, globals::in,
-    list(string)::in, options_variables::in,
+    list(string)::in, env_optfile_variables::in,
     list(string)::in, list(string)::in, list(file_name)::in,
     io::di, io::uo) is det.
 
@@ -79,9 +79,9 @@
 %---------------------------------------------------------------------------%
 
 make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
-        OptionsVariables, EnvVarArgs, OptionArgs, Targets0, !IO) :-
+        EnvOptFileVariables, EnvVarArgs, OptionArgs, Targets0, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
-    get_main_target_if_needed(ProgName, OptionsVariables,
+    get_main_target_if_needed(ProgName, EnvOptFileVariables,
         Targets0, MaybeTargets0),
     report_any_absolute_targets(ProgName, MaybeTargets0, MaybeTargets),
     (
@@ -121,7 +121,7 @@ make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
             ClassifiedTargets),
         ClassifiedTargetSet = set.list_to_set(ClassifiedTargets),
 
-        MakeInfo0 = init_make_info(OptionsVariables, DetectedGradeFlags,
+        MakeInfo0 = init_make_info(EnvOptFileVariables, DetectedGradeFlags,
             KeepGoing, EnvVarArgs, OptionArgs, ClassifiedTargetSet,
             AnalysisRepeat, init_target_file_timestamp_map, ModuleIndexMap,
             DepIndexMap, DepStatusMap),
@@ -135,16 +135,17 @@ make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
 
 %---------------------%
 
-:- pred get_main_target_if_needed(string::in, options_variables::in,
+:- pred get_main_target_if_needed(string::in, env_optfile_variables::in,
     list(string)::in, maybe1(list(string))::out) is det.
 
-get_main_target_if_needed(ProgName, Variables, Targets0, MaybeTargets) :-
+get_main_target_if_needed(ProgName, EnvOptFileVariables, Targets0,
+        MaybeTargets) :-
     (
         Targets0 = [_ | _],
         MaybeTargets = ok1(Targets0)
     ;
         Targets0 = [],
-        lookup_main_target(Variables, MaybeMainTargets),
+        lookup_main_target(EnvOptFileVariables, MaybeMainTargets),
         (
             MaybeMainTargets = ok1(MainTargets),
             (

@@ -63,10 +63,10 @@
 %
 
 :- pred maybe_libgrade_opts_for_detected_stdlib_grades(option_table::in,
-    options_variables::in,
+    env_optfile_variables::in,
     list(string)::out, io::di, io::uo) is det.
 
-:- pred detect_stdlib_grades(option_table::in, options_variables::in,
+:- pred detect_stdlib_grades(option_table::in, env_optfile_variables::in,
     maybe1(set(string))::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -87,8 +87,8 @@
     % libraries required by the target are installed in the selected grade.
     % Always succeeds if --libgrade-install-check is *not* enabled.
     %
-:- pred maybe_check_libraries_are_installed(globals::in, options_variables::in,
-    list(error_spec)::out, io::di, io::uo) is det.
+:- pred maybe_check_libraries_are_installed(globals::in,
+    env_optfile_variables::in, list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -128,7 +128,8 @@ maybe_libgrade_opts_for_detected_stdlib_grades(OptionTable, Variables,
         StdlibGradeOpts = []
     ).
 
-detect_stdlib_grades(OptionTable, OptionsVariables, MaybeStdlibGrades, !IO) :-
+detect_stdlib_grades(OptionTable, EnvOptFileVariables,
+        MaybeStdlibGrades, !IO) :-
     % Enable the compile-time trace flag "debug-detect-libgrades" to enable
     % debugging messages for library grade detection in the very verbose
     % output.
@@ -140,7 +141,7 @@ detect_stdlib_grades(OptionTable, OptionsVariables, MaybeStdlibGrades, !IO) :-
     ),
     getopt.lookup_maybe_string_option(OptionTable,
         mercury_standard_library_directory, MaybeOptionsLibDir),
-    lookup_mercury_stdlib_dir(OptionsVariables, MaybeOptFileStdLibDirs),
+    lookup_mercury_stdlib_dir(EnvOptFileVariables, MaybeOptFileStdLibDirs),
     find_mercury_stdlib(MaybeOptionsLibDir, MaybeOptFileStdLibDirs,
         MaybeMerStdLibDir, !IO),
     (
@@ -343,7 +344,8 @@ report_detected_libgrade(Stream, Grade, !IO) :-
                 cli_named_libs          :: list(string)
             ).
 
-maybe_check_libraries_are_installed(Globals, OptionsVariables, Specs, !IO) :-
+maybe_check_libraries_are_installed(Globals, EnvOptFileVariables,
+        Specs, !IO) :-
     globals.lookup_bool_option(Globals, libgrade_install_check, LibgradeCheck),
     (
         LibgradeCheck = yes,
@@ -354,7 +356,8 @@ maybe_check_libraries_are_installed(Globals, OptionsVariables, Specs, !IO) :-
         globals.get_grade_dir(Globals, GradeDirName),
         globals.lookup_maybe_string_option(Globals,
             mercury_standard_library_directory, MaybeStdLibDir),
-        lookup_mercury_stdlib_dir(OptionsVariables, MaybeConfigMerStdLibDir),
+        lookup_mercury_stdlib_dir(EnvOptFileVariables,
+            MaybeConfigMerStdLibDir),
         globals.lookup_accumulating_option(Globals,
             mercury_library_directories, MercuryLibDirs),
         globals.lookup_accumulating_option(Globals, init_file_directories,

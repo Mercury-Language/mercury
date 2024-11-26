@@ -118,7 +118,7 @@ foldl3_make_track_flags_for_modules_loop(ErrorStream, ProgressStream,
 
 make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals,
         ModuleName, Succeeded, !LastHash, !Info, !IO) :-
-    lookup_mmc_module_options(make_info_get_options_variables(!.Info),
+    lookup_mmc_module_options(make_info_get_env_optfile_variables(!.Info),
         ModuleName, MaybeModuleOptionArgs),
     (
         MaybeModuleOptionArgs = ok1(ModuleOptionArgs),
@@ -141,7 +141,7 @@ make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals,
             !:LastHash = last_hash(AllOptionArgs, Hash)
         ),
 
-    % XXX LEGACY
+        % XXX LEGACY
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs_gs(ext_cur_ngs_gs_misc_track_flags),
             ModuleName, HashFileName, _HashFileNameProposed, !IO),
