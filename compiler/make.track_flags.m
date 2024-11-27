@@ -67,8 +67,9 @@
 
 :- type last_hash
     --->    last_hash(
-                lh_options  :: list(string),
-                lh_hash     :: string
+                lh_maybe_stdlib_dirs    :: maybe1(list(string)),
+                lh_options              :: list(string),
+                lh_hash                 :: string
             ).
 
 make_track_flags_files(ErrorStream, ProgressStream, Globals, ModuleName,
@@ -77,7 +78,7 @@ make_track_flags_files(ErrorStream, ProgressStream, Globals, ModuleName,
         Succeeded0, ModuleNames, !Info, !IO),
     (
         Succeeded0 = succeeded,
-        DummyLastHash = last_hash([], ""),
+        DummyLastHash = last_hash(error1([]), [], ""),
         foldl3_make_track_flags_for_modules_loop(ErrorStream, ProgressStream,
             Globals, set.to_sorted_list(ModuleNames),
             Succeeded, DummyLastHash, _LastHash, !Info, !IO)
@@ -118,8 +119,10 @@ foldl3_make_track_flags_for_modules_loop(ErrorStream, ProgressStream,
 
 make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals,
         ModuleName, Succeeded, !LastHash, !Info, !IO) :-
-    lookup_mmc_module_options(make_info_get_env_optfile_variables(!.Info),
-        ModuleName, MaybeModuleOptionArgs),
+    EnvOptFileVariables = make_info_get_env_optfile_variables(!.Info),
+    lookup_mmc_module_options(EnvOptFileVariables, ModuleName,
+        MaybeModuleOptionArgs),
+    lookup_mercury_stdlib_dir(EnvOptFileVariables, MaybeStdLibDirs),
     (
         MaybeModuleOptionArgs = ok1(ModuleOptionArgs),
         DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
@@ -132,13 +135,15 @@ make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals,
         % so we can easily avoid running handle_options and stringifying and
         % hashing the option table, all of which can contribute to an annoying
         % delay when mmc --make starts.
-        ( if !.LastHash = last_hash(AllOptionArgs, HashPrime) then
+        ( if
+            !.LastHash = last_hash(MaybeStdLibDirs, AllOptionArgs, HashPrime)
+        then
             Hash = HashPrime
         else
             get_default_options(Globals, DefaultOptionTable),
             option_table_hash(ProgressStream, DefaultOptionTable,
-                AllOptionArgs, Hash, !IO),
-            !:LastHash = last_hash(AllOptionArgs, Hash)
+                MaybeStdLibDirs, AllOptionArgs, Hash, !IO),
+            !:LastHash = last_hash(MaybeStdLibDirs, AllOptionArgs, Hash)
         ),
 
         % XXX LEGACY
@@ -170,10 +175,11 @@ make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals,
 %---------------------------------------------------------------------------%
 
 :- pred option_table_hash(io.text_output_stream::in, option_table::in,
-    list(string)::in, string::out, io::di, io::uo) is det.
+    maybe1(list(string))::in, list(string)::in, string::out,
+    io::di, io::uo) is det.
 
-option_table_hash(ProgressStream, DefaultOptionTable, AllOptionArgs,
-        Hash, !IO) :-
+option_table_hash(ProgressStream, DefaultOptionTable, MaybeStdLibDirs,
+        AllOptionArgs, Hash, !IO) :-
     % This code is part of the --track-flags implementation. We hash the
     % options in the updated globals because they include module-specific
     % options. The hash is then compared with the hash stored in the
@@ -236,8 +242,8 @@ option_table_hash(ProgressStream, DefaultOptionTable, AllOptionArgs,
     % updates on mutables (e.g. for disabling smart recompilation)
     % whose effects persist *beyond* the processing of a given module.
     %
-    handle_given_options(ProgressStream, DefaultOptionTable, AllOptionArgs,
-        _, _, OptionsErrors, AllOptionArgsGlobals, !IO),
+    handle_given_options(ProgressStream, DefaultOptionTable, MaybeStdLibDirs,
+        AllOptionArgs, _, _, OptionsErrors, AllOptionArgsGlobals, !IO),
     (
         OptionsErrors = []
     ;

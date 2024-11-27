@@ -685,11 +685,14 @@
     ;       search_this_dir_and(dir_name, search_which_tail_dirs)
     ;       search_normal_dirs
     ;       search_intermod_dirs
-    ;       search_init_file_dirs(option_table)
     ;       search_c_include_dirs
     ;       search_options_file_dirs(option_table)
-    ;       search_mercury_library_dirs(globals)
     ;       search_dirs_for_ext.
+    % The following two function symbols are never used, because
+    % the code that used to use them now gets their auth versions
+    % directly using functions exported by find_module.m.
+    % ;       search_init_file_dirs(option_table)
+    % ;       search_mercury_library_dirs(globals)
 
     % This type differs from search_which_dirs by
     %
@@ -832,21 +835,47 @@
 
 %---------------------------------------------------------------------------%
 
-    % make_selected_proposed_dir_name_gs(SubdirSetting, Grade, ExtSubDir,
-    %   PrefixDir, Dir):
+    % make_selected_proposed_dir_name_gas(SubdirSetting, Grade, TargetArch,
+    %   ExtSubDir, PrefixDir, Dir):
     %
     % The caller should pass us
     %
     % - SubdirSetting, the value of globals.get_subdir_setting;
     % - Grade, the value of globals.get_grade_dir;
+    % - TargetArch, the value of the target_arch option,
     % - ExtSubDir, the subdir name in which the files of a given extension,
-    %   which should be grade-specific but not architecture-specific,
+    %   which should be grade-specific and architecture-specific,
     %   should be stored, and
     % - PrefixDir, the name of either a workspace directory or an install
     %   directory,
     %
     % We will then return in Dir the name of the directory within PrefixDir
     % that contains files of that extension with SubdirSetting.
+    %
+:- pred make_selected_proposed_dir_name_gas(subdir_setting::in, dir_name::in,
+    dir_name::in, dir_name::in, dir_name::in, dir_name::out) is det.
+
+    % make_all_proposed_dir_names_gas(Grade, TargetArch, ExtSubDir,
+    %   PrefixDir, Dirs):
+    %
+    % The meanings of the input arguments are the same as for
+    % make_selected_proposed_dir_name_gas. But instead of returning the one
+    % directory name selected by a given value of SubdirSetting, return
+    % the dir names for all three possible values of SubdirSetting, with the
+    % order being grade-specific dir, non-grade-specific dir, and current dir.
+    %
+:- pred make_all_proposed_dir_names_gas(dir_name::in, dir_name::in,
+    dir_name::in, dir_name::in, list(dir_name)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % make_selected_proposed_dir_name_gs(SubdirSetting, Grade, ExtSubDir,
+    %   PrefixDir, Dir):
+    %
+    % The meanings of the input arguments are the same as for
+    % make_selected_proposed_dir_name_gas, but we do not take the TargetArch
+    % argument, and ExtSubDir should be the name of a subdir name containing
+    % files which are grade-specific but not architecture-specific.
     %
 :- pred make_selected_proposed_dir_name_gs(subdir_setting::in, dir_name::in,
     dir_name::in, dir_name::in, dir_name::out) is det.
@@ -1917,6 +1946,31 @@ make_gas_dir_names(Globals, SubDirName,
         ["MercurySystem", SubDirName, Grade, TargetArch].
 
 %---------------------%
+
+make_selected_proposed_dir_name_gas(SubdirSetting, Grade, TargetArch,
+        ExtSubDir, PrefixDir, Dir) :-
+    (
+        SubdirSetting = use_cur_dir,
+        Dir = PrefixDir
+    ;
+        SubdirSetting = use_cur_ngs_subdir,
+        Dir = PrefixDir / "MercurySystem" / ExtSubDir
+    ;
+        SubdirSetting = use_cur_ngs_gs_subdir,
+        Dir = PrefixDir / "MercurySystem" / ExtSubDir / Grade / TargetArch
+    ).
+
+make_all_proposed_dir_names_gas(Grade, TargetArch, ExtSubDir,
+        PrefixDir, Dirs) :-
+    make_selected_proposed_dir_name_gas(use_cur_ngs_gs_subdir, Grade,
+        TargetArch, ExtSubDir, PrefixDir, GsDir),
+    make_selected_proposed_dir_name_gas(use_cur_ngs_subdir, Grade,
+        TargetArch, ExtSubDir, PrefixDir, NgsDir),
+    make_selected_proposed_dir_name_gas(use_cur_dir, Grade,
+        TargetArch, ExtSubDir, PrefixDir, CurDir),
+    Dirs = [GsDir, NgsDir, CurDir].
+
+%---------------------------------------------------------------------------%
 
 make_selected_proposed_dir_name_gs(SubdirSetting, Grade, ExtSubDir, PrefixDir,
         Dir) :-

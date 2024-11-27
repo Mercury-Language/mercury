@@ -1158,6 +1158,10 @@
     ;       c_incl_dirs_same_subdir_setting
     ;       c_incl_dirs_indep_subdir_setting
     ;       c_incl_dirs_installed_library
+    ;       mer_lib_dirs_same_subdir_setting
+    ;       mer_lib_dirs_indep_subdir_setting
+    ;       mer_lib_dirs_installed_library
+    ;       chosen_stdlib_dir
     ;       libgrade_install_check
     ;       order_make_by_timestamp
     ;       show_make_times
@@ -2158,6 +2162,10 @@ optdef(oc_buildsys, intermod_dirs_installed_library,    accumulating([])).
 optdef(oc_buildsys, c_incl_dirs_same_subdir_setting,    accumulating([])).
 optdef(oc_buildsys, c_incl_dirs_indep_subdir_setting,   accumulating([])).
 optdef(oc_buildsys, c_incl_dirs_installed_library,      accumulating([])).
+optdef(oc_buildsys, mer_lib_dirs_same_subdir_setting,   accumulating([])).
+optdef(oc_buildsys, mer_lib_dirs_indep_subdir_setting,  accumulating([])).
+optdef(oc_buildsys, mer_lib_dirs_installed_library,     accumulating([])).
+optdef(oc_buildsys, chosen_stdlib_dir,                  maybe_string(no)).
 optdef(oc_buildsys, libgrade_install_check,             bool(yes)).
 optdef(oc_buildsys, order_make_by_timestamp,            bool(no)).
 optdef(oc_buildsys, show_make_times,                    bool(no)).
@@ -3335,16 +3343,18 @@ long_table("search-directory",     search_directories).
 long_table("intermod-directory",   intermod_directories).
 long_table("use-search-directories-for-intermod",
                     use_search_directories_for_intermod).
-% XXX the next three option names are tentative
 long_table("normal-dirs-same",      normal_dirs_same_subdir_setting).
 long_table("normal-dirs_indep",     normal_dirs_indep_subdir_setting).
 long_table("normal-dirs-installed-lib", normal_dirs_installed_library).
 long_table("intermod-dirs-same",    intermod_dirs_same_subdir_setting).
 long_table("intermod-dirs_indep",   intermod_dirs_indep_subdir_setting).
 long_table("intermod-dirs-installed-lib", intermod_dirs_installed_library).
-long_table("c_incl-dirs-same",      c_incl_dirs_same_subdir_setting).
-long_table("c_incl-dirs_indep",     c_incl_dirs_indep_subdir_setting).
-long_table("c_incl-dirs-installed-lib", c_incl_dirs_installed_library).
+long_table("c-incl-dirs-same",      c_incl_dirs_same_subdir_setting).
+long_table("c-incl-dirs_indep",     c_incl_dirs_indep_subdir_setting).
+long_table("c-incl-dirs-installed-lib", c_incl_dirs_installed_library).
+long_table("mer-lib-dirs-same",     mer_lib_dirs_same_subdir_setting).
+long_table("mer-lib-dirs_indep",    mer_lib_dirs_indep_subdir_setting).
+long_table("mer-lib-dirs-installed-lib", mer_lib_dirs_installed_library).
 long_table("libgrade-install-check", libgrade_install_check).
 long_table("order-make-by-timestamp", order_make_by_timestamp).
 long_table("show-make-times",       show_make_times).
@@ -7050,9 +7060,21 @@ options_help_build_system(Stream, !IO) :-
         "\tof directories to search for `.opt' files - use only the",
         "\tdirectories given by `--intermod-directory'.",
 % XXX document these options *after* we agree on their semantics.
-% intermod_dirs_same_subdir_setting
-% intermod_dirs_indep_subdir_setting
-% intermod_dirs_installed_library
+% normal-dirs-same
+% normal-dirs_indep
+% normal-dirs-installed-lib
+% intermod-dirs-same
+% intermod-dirs_indep
+% intermod-dirs-installed-lib
+% c-incl-dirs-same
+% c-incl-dirs_indep
+% c-incl-dirs-installed-lib
+% mer-lib-dirs-same
+% mer-lib-dirs_indep
+% mer-lib-dirs-installed-lib
+%
+% This option for internal use only.
+% chosen_stdlib_dir
         "--use-subdirs",
         "\tGenerate intermediate files in a `Mercury' subdirectory,",
         "\trather than generating them in the current directory.",

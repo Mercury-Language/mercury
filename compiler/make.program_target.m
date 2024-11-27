@@ -131,9 +131,7 @@ make_linked_target(ProgressStream, Globals, LinkedTargetFile,
     then
         LinkedTargetSucceeded = succeeded
     else
-        EnvOptFileVariables = make_info_get_env_optfile_variables(!.Info),
-        maybe_check_libraries_are_installed(Globals, EnvOptFileVariables,
-            LibgradeCheckSpecs, !IO),
+        maybe_check_libraries_are_installed(Globals, LibgradeCheckSpecs, !IO),
         (
             LibgradeCheckSpecs = [],
             maybe_with_analysis_cache_dir_3(ProgressStream, Globals,

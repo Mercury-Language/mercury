@@ -229,8 +229,11 @@ setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
         AllOptionArgs = InvokedByMake ++ DetectedGradeFlags ++
             ModuleOptionArgs ++ EnvVarArgs ++ OptionArgs ++
             ExtraOptions ++ UseSubdirs,
-        handle_given_options(ProgressStream, DefaultOptionTable, AllOptionArgs,
-            _, _, OptionSpecs, BuildGlobals, !IO),
+        lookup_mercury_stdlib_dir(EnvOptFileVariables,
+            MaybeEnvOptFileStdLibDirs),
+        handle_given_options(ProgressStream, DefaultOptionTable,
+            MaybeEnvOptFileStdLibDirs, AllOptionArgs, _, _,
+            OptionSpecs, BuildGlobals, !IO),
         (
             OptionSpecs = [_ | _],
             MayBuild = may_not_build(OptionSpecs)

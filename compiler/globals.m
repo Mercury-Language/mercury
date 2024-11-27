@@ -294,38 +294,24 @@
 
 %---------------------%
 
-    % Map each extension in the dirs_ext type to the list of directories
-    % we should search
+    % Map each extension in the normal_ext, intermod_ext, c_incl_ext and
+    % lib_ext types to the list of directories we should search.
 :- type ext_dirs_maps
     --->    ext_dirs_maps(
                 edm_normal          :: ext_normal_dirs_map,
                 edm_intermod        :: ext_intermod_dirs_map,
-                edm_c_incl          :: ext_c_incl_dirs_map
+                edm_c_incl          :: ext_c_incl_dirs_map,
+                edm_lib             :: ext_lib_dirs_map,
+                edm_stdlib          :: ext_stdlib_dirs_map
             ).
 
 :- type ext_normal_dirs_map == map(normal_ext, list(dir_name)).
 :- type ext_intermod_dirs_map == map(intermod_ext, list(dir_name)).
 :- type ext_c_incl_dirs_map == map(c_incl_ext, list(dir_name)).
+:- type ext_lib_dirs_map == map(lib_ext, list(dir_name)).
+:- type ext_stdlib_dirs_map == map(stdlib_ext, list(dir_name)).
 
-:- type dirs_ext
-    --->    ne_int0
-    ;       ne_int1
-    ;       ne_int2
-    ;       ne_int3
-    ;       ne_module_dep
-    ;       ne_src
-    ;       ie_opt_plain
-    ;       ie_opt_trans
-    ;       ie_an_ds_date
-    ;       ie_an_ds_status
-    ;       ie_an_analysis
-    ;       ie_an_imdg
-    ;       ie_an_request
-    ;       ie_src          % XXX This option should not exist.
-    ;       cie_mh
-    ;       cie_mih.
-
-:- type normal_ext =< dirs_ext
+:- type normal_ext
     --->    ne_int0
     ;       ne_int1
     ;       ne_int2
@@ -333,7 +319,7 @@
     ;       ne_module_dep
     ;       ne_src.
 
-:- type intermod_ext =< dirs_ext
+:- type intermod_ext
     --->    ie_opt_plain
     ;       ie_opt_trans
     ;       ie_an_ds_date
@@ -343,9 +329,17 @@
     ;       ie_an_request
     ;       ie_src.         % XXX This option should not exist.
 
-:- type c_incl_ext =< dirs_ext
+:- type c_incl_ext
     --->    cie_mh
     ;       cie_mih.
+
+:- type lib_ext
+    --->    le_a.
+
+:- type stdlib_ext
+    --->    sle_init
+    ;       sle_jar
+    ;       sle_dll.
 
 %---------------------%
 
@@ -1410,7 +1404,8 @@ globals_init(DefaultOptions, Options, OptTuple, OpMode,
         WordSize, GC_Method, TerminationNorm, Termination2Norm,
         TraceLevel, SSTraceLevel, MaybeThreadSafe,
         HostEnvType, SystemEnvType, TargetEnvType, InstallMethod, Globals) :-
-    ExtDirsMaps0 = ext_dirs_maps(map.init, map.init, map.init),
+    ExtDirsMaps0 = ext_dirs_maps(map.init, map.init, map.init,
+        map.init, map.init),
     ReadOnlyGlobals0 = read_only_globals(TraceSuppress, ReuseStrategy,
          LimitErrorContextsMap, LinkedTargetExtInfoMap, "", C_CompilerType),
     Globals0 = globals(DefaultOptions, Options, OptTuple, OpMode,

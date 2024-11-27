@@ -22,6 +22,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
+:- import_module parse_tree.maybe_error.
 
 :- import_module io.
 :- import_module list.
@@ -35,11 +36,13 @@
     globals::out, io::di, io::uo) is det.
 
     % handle_given_options(ProgressStream, DefaultOptionTable,
-    %   Args, OptionArgs, NonOptionArgs, Specs, Globals, !IO).
+    %   EnvOptFileVariables, Args, OptionArgs, NonOptionArgs,
+    %   Specs, Globals, !IO).
     %
 :- pred handle_given_options(io.text_output_stream::in, option_table::in,
-    list(string)::in, list(string)::out, list(string)::out,
-    list(error_spec)::out, globals::out, io::di, io::uo) is det.
+    maybe1(list(string))::in, list(string)::in,
+    list(string)::out, list(string)::out, list(error_spec)::out, globals::out,
+    io::di, io::uo) is det.
 
     % Display the compiler version.
     %
@@ -77,7 +80,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
@@ -99,11 +101,18 @@ generate_default_globals(ProgressStream, DefaultOptionTable0,
         DefaultGlobals, !IO) :-
     map.set(default_globals, bool(yes),
         DefaultOptionTable0, DefaultOptionTable),
-    handle_given_options(ProgressStream, DefaultOptionTable, [], _, _, _,
-        DefaultGlobals, !IO).
+    % This value of MaybeEnvOptFileMerStdLibDir will cause the value of
+    % the chosen_stdlib_dir option to be set to "no", while also avoiding
+    % an error message being generated for that fact. The value of that
+    % option will be filled in for real when we create the real,
+    % nondefault globals.
+    MaybeEnvOptFileMerStdLibDir = error1([]),
+    handle_given_options(ProgressStream, DefaultOptionTable,
+        MaybeEnvOptFileMerStdLibDir, [], _, _, _, DefaultGlobals, !IO).
 
 handle_given_options(ProgressStream, DefaultOptionTable,
-        Args0, OptionArgs, Args, Specs, !:Globals, !IO) :-
+        MaybeEnvOptFileMerStdLibDir, Args0, OptionArgs, Args,
+        Specs, !:Globals, !IO) :-
     trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
         io.write_string(ProgressStream, "\noriginal arguments\n", !TIO),
         dump_arguments(ProgressStream, Args0, !TIO)
@@ -118,7 +127,8 @@ handle_given_options(ProgressStream, DefaultOptionTable,
         dump_arguments(ProgressStream, Args, !TIO)
     ),
     convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
-        MaybeError, OptionTable, OptOptions, Specs, !:Globals, !IO),
+        MaybeError, OptionTable, OptOptions, MaybeEnvOptFileMerStdLibDir,
+        Specs, !:Globals, !IO),
     (
         Specs = [_ | _]
         % Do NOT set the exit status. This predicate may be called before all
@@ -179,11 +189,12 @@ dump_arguments(ProgressStream, [Arg | Args], !IO) :-
     %
 :- pred convert_option_table_result_to_globals(io.text_output_stream::in,
     option_table::in, maybe(option_error(option))::in, option_table::in,
-    cord(optimization_option)::in,
+    cord(optimization_option)::in, maybe1(list(string))::in,
     list(error_spec)::out, globals::out, io::di, io::uo) is det.
 
 convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
-        MaybeError, OptionTable0, OptOptionsCord, !:Specs, Globals, !IO) :-
+        MaybeError, OptionTable0, OptOptionsCord, MaybeEnvOptFileMerStdLibDir,
+        !:Specs, Globals, !IO) :-
     (
         MaybeError = yes(Error),
         ErrorMessage = option_error_to_string(Error),
@@ -235,10 +246,10 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
             )
         then
             convert_options_to_globals(ProgressStream,
-                DefaultOptionTable, OptionTable, OptTuple, OpMode, Target,
-                WordSize, GC_Method, TermNorm, Term2Norm,
-                TraceLevel, TraceSuppress, SSTraceLevel, MaybeThreadSafe,
-                C_CompilerType, CSharp_CompilerType,
+                DefaultOptionTable, OptionTable, MaybeEnvOptFileMerStdLibDir,
+                OptTuple, OpMode, Target, WordSize, GC_Method,
+                TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
+                MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
                 ReuseStrategy, MaybeFeedbackInfo,
                 HostEnvType, SystemEnvType, TargetEnvType,
                 LimitErrorContextsMap, LinkExtMap, !Specs, Globals, !IO)
@@ -869,9 +880,9 @@ check_color_option_values(!OptionTable, !Specs, !IO) :-
     % termination analyser (the old and the new) has its own norm setting.
     %
 :- pred convert_options_to_globals(io.text_output_stream::in,
-    option_table::in, option_table::in, opt_tuple::in, op_mode::in,
-    compilation_target::in, word_size::in, gc_method::in,
-    termination_norm::in, termination_norm::in,
+    option_table::in, option_table::in, maybe1(list(string))::in,
+    opt_tuple::in, op_mode::in, compilation_target::in, word_size::in,
+    gc_method::in, termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
     reuse_strategy::in, maybe(feedback_info)::in,
@@ -881,7 +892,8 @@ check_color_option_values(!OptionTable, !Specs, !IO) :-
     globals::out, io::di, io::uo) is det.
 
 convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
-        !.OptTuple, OpMode, Target, WordSize, GC_Method, TermNorm, Term2Norm,
+        MaybeEnvOptFileMerStdLibDir, !.OptTuple, OpMode, Target,
+        WordSize, GC_Method, TermNorm, Term2Norm,
         TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
@@ -1018,7 +1030,8 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     handle_option_to_option_implications(OpMode, !Globals),
     maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO),
 
-    handle_directory_options(OpMode, !Globals),
+    handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
+        !Globals, !Specs),
     handle_target_compile_link_symlink_options(!Globals),
     handle_compiler_developer_options(!Globals, !IO),
     handle_compare_specialization(!Globals),
@@ -2659,6 +2672,7 @@ maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
 
     % Options updated:
     %   c_include_directory
+    %   chosen_stdlib_dir
     %   default_runtime_library_directory
     %   init_file_directories
     %   intermod_directories
@@ -2666,13 +2680,16 @@ maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
     %   link_library_directories
     %   use_subdirs
     %
-    % Other globals field updated:
+    % Other globals fields updated:
     %   subdir_setting
+    %   ext_dirs_maps
     %
-:- pred handle_directory_options(op_mode::in, globals::in, globals::out)
+:- pred handle_directory_options(op_mode::in, maybe1(list(string))::in,
+    globals::in, globals::out, list(error_spec)::in, list(error_spec)::out)
     is det.
 
-handle_directory_options(OpMode, !Globals) :-
+handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
+        !Globals, !Specs) :-
     globals.lookup_bool_option(!.Globals, setting_only_use_grade_subdirs,
         UseGradeSubdirs),
     (
@@ -2966,6 +2983,84 @@ handle_directory_options(OpMode, !Globals) :-
         true
     ),
 
+    % Was the standard library directory set on the command line?
+    globals.lookup_maybe_string_option(!.Globals,
+        mercury_standard_library_directory, MaybeOptionsStdLibDir),
+    (
+        MaybeOptionsStdLibDir = yes(ChosenStdLibDir),
+        MaybeChosenStdLibDir = yes(ChosenStdLibDir),
+        MerStdLibDirs = [ChosenStdLibDir]
+    ;
+        MaybeOptionsStdLibDir = no,
+        % Was the standard library directory set using the
+        % MERCURY_STDLIB_DIR variable in either the environment
+        % or in an options_file?
+        (
+            MaybeEnvOptFileMerStdLibDir = ok1(EnvOptFileMerStdLibDirs),
+            (
+                EnvOptFileMerStdLibDirs = [],
+                MaybeChosenStdLibDir = no,
+                MerStdLibDirs = [],
+                % XXX The commented-out code is the original form of
+                % this error message, when it was in check_libgrades.m.
+%               Pieces = [words("Error: the location of the directory"),
+%                   words("that holds the Mercury standard library"),
+%                   words("is not specified either by the value of any"),
+%                   quote("--mercury-stdlib-dir"), words("option"),
+%                   words("to the compiler, nor by any definition of the"),
+%                   quote("MERCURY_STDLIB_DIR"), words("variable in the"),
+%                   quote("Mercury.config"), words("file."), nl],
+                Pieces = [words("Error: the location of the directory"),
+                    words("that holds the Mercury standard library"),
+                    words("is not specified"), nl,
+
+                    words("either by an"), quote("--mercury-stdlib-dir"),
+                        words("option,"), nl,
+                    words("or by an environment variable named"),
+                        quote("MERCURY_STDLIB_DIR"), suffix(","), nl,
+                    words("or by a make variable named"),
+                        quote("MERCURY_STDLIB_DIR"),
+                        words("in any specified options file, such as"),
+                        quote("Mercury.config"), suffix("."), nl],
+                Spec = no_ctxt_spec($pred, severity_error,
+                    phase_options, Pieces),
+                !:Specs = [Spec | !.Specs]
+            ;
+                EnvOptFileMerStdLibDirs = [ChosenStdLibDir],
+                MaybeChosenStdLibDir = yes(ChosenStdLibDir),
+                MerStdLibDirs = [ChosenStdLibDir]
+            ;
+                EnvOptFileMerStdLibDirs = [_, _ | _],
+                MaybeChosenStdLibDir = no,
+                MerStdLibDirs = [],
+                % XXX The commented-out code is the original form of
+                % this error message, when it was in check_libgrades.m.
+%               Pieces = [words("Error: the definition of the"),
+%                   quote("MERCURY_STDLIB_DIR"), words("variable in the"),
+%                   quote("Mercury.config"), words("file"),
+%                   words("contains more than one string."), nl],
+                % Note: we can be more precise about where MERCURY_STDLIB_DIR
+                % came from only if we start recording the origin points of
+                % the entries in the env_optfile_variables structure.
+                Pieces = [words("Error: the definition of the"),
+                    quote("MERCURY_STDLIB_DIR"), words("variable,"),
+                    words("either in the environment"),
+                    words("or in a specified options file,"),
+                    words("contains more than one string."), nl],
+                Spec = no_ctxt_spec($pred, severity_error,
+                    phase_options, Pieces),
+                !:Specs = [Spec | !.Specs]
+            )
+        ;
+            MaybeEnvOptFileMerStdLibDir = error1(EnvOptFileSpecs),
+            MaybeChosenStdLibDir = no,
+            MerStdLibDirs = [],
+            !:Specs = EnvOptFileSpecs ++ !.Specs
+        )
+    ),
+    globals.set_option(chosen_stdlib_dir, maybe_string(MaybeChosenStdLibDir),
+        !Globals),
+
     globals.lookup_accumulating_option(!.Globals,
         normal_dirs_same_subdir_setting, NormalSame),
     globals.lookup_accumulating_option(!.Globals,
@@ -2987,10 +3082,21 @@ handle_directory_options(OpMode, !Globals) :-
     globals.lookup_accumulating_option(!.Globals,
         c_incl_dirs_installed_library, CInclInstalled),
 
-    some [!NormalDirsMap, !IntermodDirsMap, !CInclDirsMap] (
+    globals.lookup_accumulating_option(!.Globals,
+        mer_lib_dirs_same_subdir_setting, MerLibSame),
+    globals.lookup_accumulating_option(!.Globals,
+        mer_lib_dirs_indep_subdir_setting, MerLibIndep),
+    globals.lookup_accumulating_option(!.Globals,
+        mer_lib_dirs_installed_library, MerLibInstalled),
+
+    some [!NormalDirsMap, !IntermodDirsMap, !CInclDirsMap,
+        !LibDirsMap, !StdLibDirsMap]
+    (
         map.init(!:NormalDirsMap),
         map.init(!:IntermodDirsMap),
         map.init(!:CInclDirsMap),
+        map.init(!:LibDirsMap),
+        map.init(!:StdLibDirsMap),
 
         ext_cur_ngs_extension_dir(ext_cur_ngs_int_int0, _, ExtDirInt0),
         ext_cur_ngs_extension_dir(ext_cur_ngs_int_int1, _, ExtDirInt1),
@@ -2998,7 +3104,6 @@ handle_directory_options(OpMode, !Globals) :-
         ext_cur_ngs_extension_dir(ext_cur_ngs_int_int3, _, ExtDirInt3),
         ext_cur_ngs_extension_dir(
             ext_cur_ngs_misc_module_dep, _, ExtDirModuleDep),
-
         make_proposed_search_path_ngs(SubdirSetting, ExtDirInt0,
             NormalSame, NormalIndep, NormalInstalled, NormalInt0),
         make_proposed_search_path_ngs(SubdirSetting, ExtDirInt1,
@@ -3009,13 +3114,11 @@ handle_directory_options(OpMode, !Globals) :-
             NormalSame, NormalIndep, NormalInstalled, NormalInt3),
         make_proposed_search_path_ngs(SubdirSetting, ExtDirModuleDep,
             NormalSame, NormalIndep, NormalInstalled, NormalModuleDep),
-
         map.det_insert(ne_int0, NormalInt0, !NormalDirsMap),
         map.det_insert(ne_int1, NormalInt1, !NormalDirsMap),
         map.det_insert(ne_int2, NormalInt2, !NormalDirsMap),
         map.det_insert(ne_int3, NormalInt3, !NormalDirsMap),
         map.det_insert(ne_module_dep, NormalModuleDep, !NormalDirsMap),
-
         % XXX We should not look for .m files in installed libraries.
         NormalSrc = NormalSame ++ NormalIndep ++ NormalInstalled,
         map.det_insert(ne_src, NormalSrc, !NormalDirsMap),
@@ -3034,7 +3137,6 @@ handle_directory_options(OpMode, !Globals) :-
             ext_cur_ngs_gs_max_ngs_an_imdg, _, ExtDirImdg),
         ext_cur_ngs_gs_max_ngs_extension_dir(
             ext_cur_ngs_gs_max_ngs_an_request, _, ExtDirRequest),
-
         make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirPlainOpt,
             IntermodSame, IntermodIndep, IntermodInstalled, IntermodPlainOpt),
         make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirTransOpt,
@@ -3049,7 +3151,6 @@ handle_directory_options(OpMode, !Globals) :-
             IntermodSame, IntermodIndep, IntermodInstalled, IntermodImdg),
         make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirRequest,
             IntermodSame, IntermodIndep, IntermodInstalled, IntermodRequest),
-
         map.det_insert(ie_opt_plain, IntermodPlainOpt, !IntermodDirsMap),
         map.det_insert(ie_opt_trans, IntermodTransOpt, !IntermodDirsMap),
         map.det_insert(ie_an_ds_date, IntermodDate, !IntermodDirsMap),
@@ -3057,7 +3158,6 @@ handle_directory_options(OpMode, !Globals) :-
         map.det_insert(ie_an_analysis, IntermodAnalysis, !IntermodDirsMap),
         map.det_insert(ie_an_imdg, IntermodImdg, !IntermodDirsMap),
         map.det_insert(ie_an_request, IntermodRequest, !IntermodDirsMap),
-
         % XXX We should not look for .m files in installed libraries.
         IntermodSrc = IntermodSame ++ IntermodIndep ++ IntermodInstalled,
         map.det_insert(ie_src, IntermodSrc, !IntermodDirsMap),
@@ -3066,35 +3166,53 @@ handle_directory_options(OpMode, !Globals) :-
             ext_cur_pgs_max_cur_mh, _, ExtDirMh),
         ext_cur_ngs_gs_max_cur_extension_dir(
             ext_cur_ngs_gs_max_cur_mih, _, ExtDirMih),
-
         make_proposed_search_path_ngs(SubdirSetting, ExtDirMh,
             CInclSame, CInclIndep, CInclInstalled, CInclMh),
         make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirMih,
             CInclSame, CInclIndep, CInclInstalled, CInclMih),
-
         map.det_insert(cie_mh, CInclMh, !CInclDirsMap),
         map.det_insert(cie_mih, CInclMih, !CInclDirsMap),
 
-        ExtDirsMaps =
-            ext_dirs_maps(!.NormalDirsMap, !.IntermodDirsMap, !.CInclDirsMap)
+        ext_cur_gas_extension_dir(!.Globals, ext_cur_gas_lib_lib_opt, _,
+            ExtDirA),
+        make_proposed_search_path_gas(SubdirSetting, Grade, TargetArch,
+            ExtDirA, MerLibSame, MerLibIndep, MerLibInstalled, LibA),
+        map.det_insert(le_a, LibA, !LibDirsMap),
+
+        ext_cur_gs_extension_dir(ext_cur_gs_lib_init, _, _, ExtDirInit),
+        ext_cur_gs_extension_dir(ext_cur_gs_lib_jar, _, _, ExtDirJar),
+        ext_cur_gs_extension_dir(ext_cur_gs_lib_cil_dll, _, _, ExtDirDll),
+        make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirInit,
+            [], [], MerStdLibDirs, LibInit),
+        make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirJar,
+            [], [], MerStdLibDirs, LibJar),
+        make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirDll,
+            [], [], MerStdLibDirs, LibDll),
+        map.det_insert(sle_init, LibInit, !StdLibDirsMap),
+        map.det_insert(sle_jar, LibJar, !StdLibDirsMap),
+        map.det_insert(sle_dll, LibDll, !StdLibDirsMap),
+
+        ExtDirsMaps = ext_dirs_maps(!.NormalDirsMap, !.IntermodDirsMap,
+            !.CInclDirsMap, !.LibDirsMap, !.StdLibDirsMap)
     ),
     globals.set_ext_dirs_maps(ExtDirsMaps, !Globals).
 
 %---------------------%
 
-:- pred make_proposed_search_path_gs(subdir_setting::in, dir_name::in,
-    dir_name::in,
+:- pred make_proposed_search_path_gas(subdir_setting::in, dir_name::in,
+    dir_name::in, dir_name::in,
     list(dir_name)::in, list(dir_name)::in, list(dir_name)::in,
     list(dir_name)::out) is det.
 
-make_proposed_search_path_gs(SubdirSetting, Grade, ExtSubDir,
+make_proposed_search_path_gas(SubdirSetting, Grade, TargetArch, ExtSubDir,
         SearchDirsSame, SearchDirsIndep, SearchDirsInstall, Dirs) :-
     % First, we search SearchDirsSame, which should be the workspace
     % directories that are guaranteed to share the same subdir_setting
     % as the current workspace directory. In each of these directories,
     % we use SubdirSetting to select the one right subdir.
     list.map(
-        make_selected_proposed_dir_name_gs(SubdirSetting, Grade, ExtSubDir),
+        make_selected_proposed_dir_name_gas(SubdirSetting, Grade,
+            TargetArch, ExtSubDir),
         SearchDirsSame, DirsSame),
     % Second, we search SearchDirsIndep, which should be the workspace
     % directories whose subdir_setting is independent of the subdir_setting
@@ -3104,11 +3222,34 @@ make_proposed_search_path_gs(SubdirSetting, Grade, ExtSubDir,
     % non-grade-specific, and then the current directory ("current" in this
     % case meaning one of the directories in SearchDirsIndep).
     list.map(
-        make_all_proposed_dir_names_gs(Grade, ExtSubDir),
+        make_all_proposed_dir_names_gas(Grade, TargetArch, ExtSubDir),
         SearchDirsIndep, DirsListIndep),
     % Third, we search SearchDirsInstall, which should be a list of library
     % install directories. In install directories, we look only in the
     % grade-specific subdir.
+    list.map(
+        make_selected_proposed_dir_name_gas(use_cur_ngs_gs_subdir, Grade,
+            TargetArch, ExtSubDir),
+        SearchDirsInstall, DirsInstall),
+    list.condense(DirsListIndep, DirsIndep),
+    Dirs = DirsSame ++ DirsIndep ++ DirsInstall.
+
+:- pred make_proposed_search_path_gs(subdir_setting::in, dir_name::in,
+    dir_name::in,
+    list(dir_name)::in, list(dir_name)::in, list(dir_name)::in,
+    list(dir_name)::out) is det.
+
+make_proposed_search_path_gs(SubdirSetting, Grade, ExtSubDir,
+        SearchDirsSame, SearchDirsIndep, SearchDirsInstall, Dirs) :-
+    % We follow the search principles as make_proposed_search_path_gas above,
+    % with the exception that the grade-specific directories are
+    % not architecture-specific.
+    list.map(
+        make_selected_proposed_dir_name_gs(SubdirSetting, Grade, ExtSubDir),
+        SearchDirsSame, DirsSame),
+    list.map(
+        make_all_proposed_dir_names_gs(Grade, ExtSubDir),
+        SearchDirsIndep, DirsListIndep),
     list.map(
         make_selected_proposed_dir_name_gs(use_cur_ngs_gs_subdir, Grade,
             ExtSubDir),
@@ -3122,7 +3263,7 @@ make_proposed_search_path_gs(SubdirSetting, Grade, ExtSubDir,
 
 make_proposed_search_path_ngs(SubdirSetting, ExtSubDir,
         SearchDirsSame, SearchDirsIndep, SearchDirsInstall, Dirs) :-
-    % We follow the search principles as make_proposed_search_path_gs above,
+    % We follow the search principles as make_proposed_search_path_gas above,
     % with the difference that we never search any grade-specific directories,
     % since the files we are searching for are not grade specific.
     list.map(

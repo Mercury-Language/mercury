@@ -35,7 +35,8 @@
 
 :- type env_optfile_variables.
 
-:- func env_optfile_variables_init(environment_var_map) = env_optfile_variables.
+:- func env_optfile_variables_init(environment_var_map)
+    = env_optfile_variables.
 
     % read_options_files_named_in_options_file_option(ProgressStream,
     %   OptionTable, Variables, Specs, UndefSpecs, !IO):

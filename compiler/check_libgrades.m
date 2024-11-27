@@ -24,8 +24,6 @@
 
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module make.
-:- import_module make.options_file.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
@@ -63,11 +61,10 @@
 %
 
 :- pred maybe_libgrade_opts_for_detected_stdlib_grades(option_table::in,
-    env_optfile_variables::in,
     list(string)::out, io::di, io::uo) is det.
 
-:- pred detect_stdlib_grades(option_table::in, env_optfile_variables::in,
-    maybe1(set(string))::out, io::di, io::uo) is det.
+:- pred detect_stdlib_grades(option_table::in, maybe1(set(string))::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -87,8 +84,8 @@
     % libraries required by the target are installed in the selected grade.
     % Always succeeds if --libgrade-install-check is *not* enabled.
     %
-:- pred maybe_check_libraries_are_installed(globals::in,
-    env_optfile_variables::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred maybe_check_libraries_are_installed(globals::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -107,12 +104,12 @@
 
 %---------------------------------------------------------------------------%
 
-maybe_libgrade_opts_for_detected_stdlib_grades(OptionTable, Variables,
+maybe_libgrade_opts_for_detected_stdlib_grades(OptionTable,
         StdlibGradeOpts, !IO) :-
     getopt.lookup_bool_option(OptionTable, detect_libgrades, Detect),
     (
         Detect = yes,
-        detect_stdlib_grades(OptionTable, Variables, MaybeStdlibGrades, !IO),
+        detect_stdlib_grades(OptionTable, MaybeStdlibGrades, !IO),
         (
             MaybeStdlibGrades = ok1(StdlibGrades),
             set.to_sorted_list(StdlibGrades, StdlibGradeList),
@@ -128,8 +125,7 @@ maybe_libgrade_opts_for_detected_stdlib_grades(OptionTable, Variables,
         StdlibGradeOpts = []
     ).
 
-detect_stdlib_grades(OptionTable, EnvOptFileVariables,
-        MaybeStdlibGrades, !IO) :-
+detect_stdlib_grades(OptionTable, MaybeStdlibGrades, !IO) :-
     % Enable the compile-time trace flag "debug-detect-libgrades" to enable
     % debugging messages for library grade detection in the very verbose
     % output.
@@ -140,9 +136,8 @@ detect_stdlib_grades(OptionTable, EnvOptFileVariables,
             "% Detecting library grades ...\n", !TIO)
     ),
     getopt.lookup_maybe_string_option(OptionTable,
-        mercury_standard_library_directory, MaybeOptionsLibDir),
-    lookup_mercury_stdlib_dir(EnvOptFileVariables, MaybeOptFileStdLibDirs),
-    find_mercury_stdlib(MaybeOptionsLibDir, MaybeOptFileStdLibDirs,
+        chosen_stdlib_dir, MaybeChosenStdLibDir),
+    check_chosen_stdlib_dir_exists(MaybeChosenStdLibDir,
         MaybeMerStdLibDir, !IO),
     (
         MaybeMerStdLibDir = ok1(MerStdLibDir),
@@ -337,15 +332,13 @@ report_detected_libgrade(Stream, Grade, !IO) :-
     --->    check_libraries_inputs(
                 cli_target              :: compilation_target,
                 cli_grade_dir_name      :: string,
-                cli_options_stdlib_dirs :: maybe(string),
-                cli_optfile_stdlib_dirs :: maybe1(list(dir_name)),
+                cli_chosen_stdlib_dir   :: maybe(string),
                 cli_mercury_lib_dirs    :: list(string),
                 cli_init_file_dirs      :: list(string),
                 cli_named_libs          :: list(string)
             ).
 
-maybe_check_libraries_are_installed(Globals, EnvOptFileVariables,
-        Specs, !IO) :-
+maybe_check_libraries_are_installed(Globals, Specs, !IO) :-
     globals.lookup_bool_option(Globals, libgrade_install_check, LibgradeCheck),
     (
         LibgradeCheck = yes,
@@ -355,17 +348,15 @@ maybe_check_libraries_are_installed(Globals, EnvOptFileVariables,
         globals.get_target(Globals, Target),
         globals.get_grade_dir(Globals, GradeDirName),
         globals.lookup_maybe_string_option(Globals,
-            mercury_standard_library_directory, MaybeStdLibDir),
-        lookup_mercury_stdlib_dir(EnvOptFileVariables,
-            MaybeConfigMerStdLibDir),
+            chosen_stdlib_dir, MaybeChosenStdLibDir),
         globals.lookup_accumulating_option(Globals,
             mercury_library_directories, MercuryLibDirs),
         globals.lookup_accumulating_option(Globals, init_file_directories,
             InitFileDirs),
         globals.lookup_accumulating_option(Globals, mercury_libraries,
             NamedLibs),
-        Inputs = check_libraries_inputs(Target, GradeDirName, MaybeStdLibDir,
-            MaybeConfigMerStdLibDir, MercuryLibDirs, InitFileDirs, NamedLibs),
+        Inputs = check_libraries_inputs(Target, GradeDirName,
+            MaybeChosenStdLibDir, MercuryLibDirs, InitFileDirs, NamedLibs),
 
         get_has_check_libraries_been_done(Cache0, !IO),
         ( if
@@ -394,9 +385,8 @@ maybe_check_libraries_are_installed(Globals, EnvOptFileVariables,
     list(error_spec)::out, io::di, io::uo) is det.
 
 check_stdlib_is_installed(Inputs, Specs, !IO) :-
-    MaybeOptionsStdLibDir = Inputs ^ cli_options_stdlib_dirs,
-    MaybeOptFileStdLibDir = Inputs ^ cli_optfile_stdlib_dirs,
-    find_mercury_stdlib(MaybeOptionsStdLibDir, MaybeOptFileStdLibDir,
+    MaybeChosenStdLibDir = Inputs ^ cli_chosen_stdlib_dir,
+    check_chosen_stdlib_dir_exists(MaybeChosenStdLibDir,
         MaybeMerStdLibDir, !IO),
     (
         MaybeMerStdLibDir = ok1(StdLibDir),
@@ -475,7 +465,6 @@ check_named_library_is_installed(Globals, Inputs, LibName, !Specs, !IO) :-
     % other hand, we should include the options used to search PROPOSED
     % install directories should be added only when we start using them.
     globals.get_target(Globals, Target),
-    globals.get_options(Globals, OptionTable),
     (
         % In C grades, check for the presence of a library by seeing
         % if its .init files exists.
@@ -484,19 +473,19 @@ check_named_library_is_installed(Globals, Inputs, LibName, !Specs, !IO) :-
         % NOTE: we don't look up the value of the option init_files here
         % because that may include .init files other than those associated with
         % any libraries.
-        SearchAuthDirs = get_search_auth_init_file_dirs(OptionTable)
+        StdLibExt = sle_init
     ;
-        (
-            % In Java grades, check for the presence of the JAR for library.
-            Target = target_java,
-            TestFileName = LibName ++ ".jar"
-        ;
-            % In C# grades, check for the presence of the DLL for the library.
-            Target = target_csharp,
-            TestFileName = LibName ++ ".dll"
-        ),
-        SearchAuthDirs = get_search_auth_mercury_library_dirs(Globals)
+        % In Java grades, check for the presence of the JAR for library.
+        Target = target_java,
+        TestFileName = LibName ++ ".jar",
+        StdLibExt = sle_jar
+    ;
+        % In C# grades, check for the presence of the DLL for the library.
+        Target = target_csharp,
+        TestFileName = LibName ++ ".dll",
+        StdLibExt = sle_dll
     ),
+    SearchAuthDirs = get_search_auth_stdlib_dirs(StdLibExt, Globals),
     search_for_file_returning_dir(SearchAuthDirs, TestFileName,
         _SearchDirs, MaybeDirName, !IO),
     (
@@ -519,52 +508,21 @@ check_named_library_is_installed(Globals, Inputs, LibName, !Specs, !IO) :-
     % Where is the Mercury standard library?
     %
     % NOTE: A standard library directory specified on the command line
-    % overrides one set using the MERCURY_STDLIB_DIR variable.
+    % overrides one set using the MERCURY_STDLIB_DIR environment or
+    % options file variable.
     %
-:- pred find_mercury_stdlib(maybe(string)::in, maybe1(list(dir_name))::in,
-    maybe1(string)::out, io::di, io::uo) is det.
+:- pred check_chosen_stdlib_dir_exists(maybe(string)::in, maybe1(string)::out,
+    io::di, io::uo) is det.
 
-find_mercury_stdlib(MaybeOptionsStdLibDir, MaybeOptFileMerStdLibDir,
-        MaybeMerStdLibDir, !IO) :-
-    % Was the standard library directory set on the command line?
+check_chosen_stdlib_dir_exists(MaybeChosenStdLibDir, MaybeMerStdLibDir, !IO) :-
     (
-        MaybeOptionsStdLibDir = yes(MerStdLibDir),
-        can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO)
+        MaybeChosenStdLibDir = yes(ChosenStdLibDir),
+        can_you_read_dir(ChosenStdLibDir, MaybeMerStdLibDir, !IO)
     ;
-        MaybeOptionsStdLibDir = no,
-        % Was the standard library directory set using the
-        % MERCURY_STDLIB_DIR variable?
-        (
-            MaybeOptFileMerStdLibDir = ok1(MerStdLibDirs),
-            (
-                MerStdLibDirs = [],
-                Pieces = [words("Error: the location of the directory"),
-                    words("that holds the Mercury standard library"),
-                    words("is not specified either by the value of any"),
-                    quote("--mercury-stdlib-dir"), words("option"),
-                    words("to the compiler, nor by any definition of the"),
-                    quote("MERCURY_STDLIB_DIR"), words("variable in the"),
-                    quote("Mercury.config"), words("file."), nl],
-                Spec = no_ctxt_spec($pred, severity_error,
-                    phase_options, Pieces),
-                MaybeMerStdLibDir = error1([Spec])
-            ;
-                MerStdLibDirs = [MerStdLibDir],
-                can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO)
-            ;
-                MerStdLibDirs = [_, _ | _],
-                Pieces = [words("Error: the definition of the"),
-                    quote("MERCURY_STDLIB_DIR"), words("variable in the"),
-                    quote("Mercury.config"), words("file"),
-                    words("contains more than one string."), nl],
-                Spec = no_ctxt_spec($pred, severity_error,
-                    phase_options, Pieces),
-                MaybeMerStdLibDir = error1([Spec])
-            )
-        ;
-            MaybeOptFileMerStdLibDir = error1(Specs),
-            MaybeMerStdLibDir = error1(Specs)
-        )
+        MaybeChosenStdLibDir = no,
+        % The error message should have already been generated by
+        % handle_directory_options in handle_options.m.
+        MaybeMerStdLibDir = error1([])
     ).
 
 %---------------------------------------------------------------------------%

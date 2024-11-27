@@ -81,10 +81,10 @@
 :- type search_auth_private_dirs
     --->    private_auth_normal_dirs(normal_ext, globals)
     ;       private_auth_intermod_dirs(intermod_ext, globals)
-    ;       private_auth_init_file_dirs(option_table)
     ;       private_auth_c_include_dirs(c_incl_ext, globals)
     ;       private_auth_options_file_dirs(option_table)
-    ;       private_auth_mercury_library_dirs(globals).
+    ;       private_auth_lib_dirs(lib_ext, globals)
+    ;       private_auth_stdlib_dirs(stdlib_ext, globals).
 
     % search_which_tail_dirs/search_auth_private_tail_dirs together
     % differ from search_auth_dirs/search_auth_private_dirs the same way
@@ -106,9 +106,9 @@
     = search_auth_dirs.
 :- func get_search_auth_options_file_dirs(option_table)
     = search_auth_tail_dirs.
-:- func get_search_auth_init_file_dirs(option_table)
+:- func get_search_auth_lib_dirs(lib_ext, globals)
     = search_auth_dirs.
-:- func get_search_auth_mercury_library_dirs(globals)
+:- func get_search_auth_stdlib_dirs(stdlib_ext, globals)
     = search_auth_dirs.
 
 %---------------------%
@@ -234,11 +234,11 @@ get_search_auth_intermod_dirs(IntermodExt, Globals) =
 get_search_auth_options_file_dirs(OptionTable) =
     search_auth_private(private_auth_options_file_dirs(OptionTable)).
 
-get_search_auth_init_file_dirs(OptionTable) =
-    search_auth_private(private_auth_init_file_dirs(OptionTable)).
+get_search_auth_lib_dirs(LibExt, Globals) =
+    search_auth_private(private_auth_lib_dirs(LibExt, Globals)).
 
-get_search_auth_mercury_library_dirs(Globals) =
-    search_auth_private(private_auth_mercury_library_dirs(Globals)).
+get_search_auth_stdlib_dirs(StdLibExt, Globals) =
+    search_auth_private(private_auth_stdlib_dirs(StdLibExt, Globals)).
 
 %---------------------------------------------------------------------------%
 
@@ -561,11 +561,6 @@ compute_search_dirs(SearchAuthDirs, Dirs) :-
                 intermod_directories, LegacyDirs),
             Dirs = ProposedDirs ++ LegacyDirs
         ;
-            SearchAuthPrivateDirs = private_auth_init_file_dirs(OptionTable),
-            getopt.lookup_accumulating_option(OptionTable,
-                init_file_directories, LegacyDirs),
-            Dirs = LegacyDirs % TODO
-        ;
             SearchAuthPrivateDirs =
                 private_auth_c_include_dirs(CInclExt, Globals),
             globals.get_ext_dirs_maps(Globals, ExtDirsMaps),
@@ -583,13 +578,38 @@ compute_search_dirs(SearchAuthDirs, Dirs) :-
             getopt.lookup_accumulating_option(OptionTable,
                 options_search_directories, Dirs)
         ;
-            SearchAuthPrivateDirs = private_auth_mercury_library_dirs(Globals),
+            SearchAuthPrivateDirs = private_auth_lib_dirs(LibExt, Globals),
+            globals.get_ext_dirs_maps(Globals, ExtDirsMaps),
+            LibDirsMap = ExtDirsMaps ^ edm_lib,
+            map.lookup(LibDirsMap, LibExt, ProposedDirs),
             globals.get_grade_dir(Globals, GradeDir),
             globals.lookup_accumulating_option(Globals,
                 mercury_library_directories, LibDirs),
             LegacyDirs =
                 list.map((func(LibDir) = LibDir / "lib" / GradeDir), LibDirs),
-            Dirs = LegacyDirs % TODO
+            Dirs = ProposedDirs ++ LegacyDirs
+        ;
+            SearchAuthPrivateDirs =
+                private_auth_stdlib_dirs(StdLibExt, Globals),
+            globals.get_ext_dirs_maps(Globals, ExtDirsMaps),
+            StdLibDirsMap = ExtDirsMaps ^ edm_stdlib,
+            map.lookup(StdLibDirsMap, StdLibExt, ProposedDirs),
+            (
+                StdLibExt = sle_init,
+                globals.lookup_accumulating_option(Globals,
+                    init_file_directories, LegacyDirs)
+            ;
+                ( StdLibExt = sle_jar
+                ; StdLibExt = sle_dll
+                ),
+                globals.get_grade_dir(Globals, GradeDir),
+                globals.lookup_accumulating_option(Globals,
+                    mercury_library_directories, LibDirs),
+                LegacyDirs =
+                    list.map((func(LibDir) = LibDir / "lib" / GradeDir),
+                        LibDirs)
+            ),
+            Dirs = ProposedDirs ++ LegacyDirs
         )
     ).
 

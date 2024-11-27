@@ -2593,7 +2593,7 @@ get_link_opts_for_library(Globals, LibName, LinkerOpt,
         module_name_to_lib_file_name_full_curdir(Globals, $pred, "lib",
             ext_cur_gas(ext_cur_gas_lib_lib_opt), LibModuleName,
             _FullLibFileName, _FullLibFileNameProposed, LibFileName),
-        SearchAuthDirs = get_search_auth_mercury_library_dirs(Globals),
+        SearchAuthDirs = get_search_auth_lib_dirs(le_a, Globals),
         search_for_file_returning_dir(SearchAuthDirs, LibFileName,
             _SearchDirs, MaybeDirName, !IO),
         (
