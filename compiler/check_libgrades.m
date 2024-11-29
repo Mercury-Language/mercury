@@ -505,11 +505,7 @@ check_named_library_is_installed(Globals, Inputs, LibName, !Specs, !IO) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % Where is the Mercury standard library?
-    %
-    % NOTE: A standard library directory specified on the command line
-    % overrides one set using the MERCURY_STDLIB_DIR environment or
-    % options file variable.
+    % Is the Mercury standard library where we think it is?
     %
 :- pred check_chosen_stdlib_dir_exists(maybe(string)::in, maybe1(string)::out,
     io::di, io::uo) is det.
