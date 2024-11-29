@@ -1452,7 +1452,7 @@ maybe_compile_init_obj_file(Globals, ProgressStream, MaybeInitTargetFile,
     globals.lookup_bool_option(Globals, statistics, Stats),
     (
         MaybeInitTargetFile = yes(InitTargetFileName),
-        file_as_new_as(InitObjFileName, Rel, InitTargetFileName, !IO),
+        file_is_as_new_as(InitObjFileName, Rel, InitTargetFileName, !IO),
         ( if
             ( MustCompile = yes
             ; Rel = is_not_as_new_as
@@ -1476,51 +1476,6 @@ maybe_compile_init_obj_file(Globals, ProgressStream, MaybeInitTargetFile,
     ;
         MaybeInitTargetFile = no,
         Result = no
-    ).
-
-    % file_as_new_as(FileNameA, Rel, FileNameB, !IO)
-    %
-    % Check if file A has a timestamp at least as new as the timestamp of
-    % file B. Rel is `missing_timestamp' iff either timestamp could not
-    % be retrieved.
-    %
-:- pred file_as_new_as(file_name::in, is_as_new_as::out, file_name::in,
-    io::di, io::uo) is det.
-
-:- type is_as_new_as
-    --->    is_as_new_as
-    ;       is_not_as_new_as
-    ;       missing_timestamp.
-
-file_as_new_as(FileNameA, Rel, FileNameB, !IO) :-
-    compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO),
-    (
-        ( MaybeCompare = yes(=)
-        ; MaybeCompare = yes(>)
-        ),
-        Rel = is_as_new_as
-    ;
-        MaybeCompare = yes(<),
-        Rel = is_not_as_new_as
-    ;
-        MaybeCompare = no,
-        Rel = missing_timestamp
-    ).
-
-:- pred compare_file_timestamps(file_name::in, file_name::in,
-    maybe(comparison_result)::out, io::di, io::uo) is det.
-
-compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO) :-
-    io.file.file_modification_time(FileNameA, TimeResultA, !IO),
-    io.file.file_modification_time(FileNameB, TimeResultB, !IO),
-    ( if
-        TimeResultA = ok(TimeA),
-        TimeResultB = ok(TimeB)
-    then
-        compare(Compare, TimeA, TimeB),
-        MaybeCompare = yes(Compare)
-    else
-        MaybeCompare = no
     ).
 
 %---------------------------------------------------------------------------%
@@ -2401,7 +2356,7 @@ post_link_maybe_make_symlink_or_copy(Globals, ProgressStream,
         Succeeded = succeeded,
         MadeSymlinkOrCopy = no
     else
-        do_timestamps_match(FullFileName, CurDirFileName,
+        do_full_curdir_timestamps_match(FullFileName, CurDirFileName,
             DoTimestampsMatch, !IO),
         (
             DoTimestampsMatch = yes,
@@ -2438,8 +2393,8 @@ post_link_maybe_make_symlink_or_copy(Globals, ProgressStream,
                 ModuleName, FullLauncherName, _FullLauncherNameProposed,
                 CurDirLauncherName),
 
-            do_timestamps_match(FullLauncherName, CurDirLauncherName,
-                DoLauncherTimestampsMatch, !IO),
+            do_full_curdir_timestamps_match(FullLauncherName,
+                CurDirLauncherName, DoLauncherTimestampsMatch, !IO),
             (
                 DoLauncherTimestampsMatch = yes,
                 Succeeded = succeeded
@@ -2468,17 +2423,6 @@ get_framework_directories(Globals, FrameworkDirs) :-
 get_frameworks(Globals, FrameworkOpts) :-
     globals.lookup_accumulating_option(Globals, frameworks, Frameworks),
     join_quoted_string_list(Frameworks, "-framework ", "", " ", FrameworkOpts).
-
-:- pred do_timestamps_match(string::in, string::in, bool::out, io::di, io::uo)
-    is det.
-
-do_timestamps_match(FileNameA, FileNameB, SameTimestamp, !IO) :-
-    compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO),
-    ( if MaybeCompare = yes(=) then
-        SameTimestamp = yes
-    else
-        SameTimestamp = no
-    ).
 
 shared_libraries_supported(Globals, Supported) :-
     % XXX This seems to be the standard way to check whether shared libraries
@@ -3290,6 +3234,76 @@ output_library_link_flags(Globals, Stream, Specs, !IO) :-
     io.format(Stream, "%s %s %s %s %s\n",
         [s(LinkLibraryDirectories), s(RpathOpts), s(LinkLibraries),
         s(MercuryStdLibs), s(SystemLibs)], !IO).
+
+%---------------------------------------------------------------------------%
+
+:- type is_as_new_as
+    --->    is_as_new_as
+    ;       is_not_as_new_as
+    ;       missing_timestamp.
+
+    % file_is_as_new_as(FileNameA, Rel, FileNameB, !IO)
+    %
+    % Check if FileNameA has a timestamp that is at least as new as FileNameB.
+    % Rel is `missing_timestamp' iff either timestamp could not be retrieved.
+    %
+:- pred file_is_as_new_as(file_name::in, is_as_new_as::out, file_name::in,
+    io::di, io::uo) is det.
+
+file_is_as_new_as(FileNameA, Rel, FileNameB, !IO) :-
+    compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO),
+    (
+        ( MaybeCompare = yes(=)
+        ; MaybeCompare = yes(>)
+        ),
+        Rel = is_as_new_as
+    ;
+        MaybeCompare = yes(<),
+        Rel = is_not_as_new_as
+    ;
+        MaybeCompare = no,
+        Rel = missing_timestamp
+    ).
+
+:- pred do_full_curdir_timestamps_match(string::in, string::in, bool::out,
+    io::di, io::uo) is det.
+
+do_full_curdir_timestamps_match(FullFileName, CurDirFileName,
+        SameTimestamp, !IO) :-
+    ( if FullFileName = CurDirFileName then
+        io.file.file_modification_time(FullFileName, FullTimeResult, !IO),
+        (
+            FullTimeResult = ok(_),
+            SameTimestamp = yes
+        ;
+            FullTimeResult = error(_),
+            % There are no timestamps at all.
+            SameTimestamp = no
+        )
+    else
+        compare_file_timestamps(FullFileName, CurDirFileName, MaybeCmp, !IO),
+        ( if MaybeCmp = yes(=) then
+            SameTimestamp = yes
+        else
+            SameTimestamp = no
+        )
+    ).
+
+:- pred compare_file_timestamps(file_name::in, file_name::in,
+    maybe(comparison_result)::out, io::di, io::uo) is det.
+
+compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO) :-
+    io.file.file_modification_time(FileNameA, TimeResultA, !IO),
+    io.file.file_modification_time(FileNameB, TimeResultB, !IO),
+    ( if
+        TimeResultA = ok(TimeA),
+        TimeResultB = ok(TimeB)
+    then
+        compare(Compare, TimeA, TimeB),
+        MaybeCompare = yes(Compare)
+    else
+        MaybeCompare = no
+    ).
 
 %---------------------------------------------------------------------------%
 
