@@ -688,11 +688,6 @@
     ;       search_c_include_dirs
     ;       search_options_file_dirs(option_table)
     ;       search_dirs_for_ext.
-    % The following two function symbols are never used, because
-    % the code that used to use them now gets their auth versions
-    % directly using functions exported by find_module.m.
-    % ;       search_init_file_dirs(option_table)
-    % ;       search_mercury_library_dirs(globals)
 
     % This type differs from search_which_dirs by
     %
