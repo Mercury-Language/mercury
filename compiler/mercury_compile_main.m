@@ -1088,6 +1088,11 @@ find_modules_to_recompile(ProgressStream, Globals0, Globals, FileOrModule,
     ),
     (
         Smart = yes,
+        % Note that `--smart-recompilation' only works with
+        % `--target-code-only', which is always set when the compiler is
+        % invoked by mmake. Using smart recompilation without using mmake
+        % is not a sensible thing to do. handle_options.m will disable smart
+        % recompilation if `--target-code-only' is not set.
         (
             FileOrModule = fm_module(ModuleName)
         ;
@@ -1100,89 +1105,12 @@ find_modules_to_recompile(ProgressStream, Globals0, Globals, FileOrModule,
             % mapping will be explicitly recorded.
             file_name_to_module_name(FileName, ModuleName)
         ),
-        % XXX EXT Is there some reason why recompilation.check.m shouldn't know
-        % how to find target and timestamp files? If not, then the
-        % FindTargetFiles and FindTargetFiles arguments passed to
-        % should_recompile should be deleted, and the logic of the next two
-        % calls should be moved to recompilation.check.m and turned into
-        % first order code.
-        find_smart_recompilation_target_files(Globals, FindTargetFiles),
-        find_timestamp_files(Globals, FindTimestampFiles),
         recompilation.check.should_recompile(ProgressStream, Globals,
-            ModuleName, FindTargetFiles, FindTimestampFiles,
-            ModulesToRecompile, !HaveParseTreeMaps, !IO)
+            ModuleName, ModulesToRecompile, !HaveParseTreeMaps, !IO)
     ;
         Smart = no,
         ModulesToRecompile = all_modules
     ).
-
-%---------------------%
-
-    % Return a closure which will work out what the target files are for
-    % a module, so recompilation_check.m can check that they are up-to-date
-    % when deciding whether compilation is necessary.
-    % Note that `--smart-recompilation' only works with
-    % `--target-code-only', which is always set when the compiler is
-    % invoked by mmake. Using smart recompilation without using mmake
-    % is not a sensible thing to do. handle_options.m will disable smart
-    % recompilation if `--target-code-only' is not set.
-    %
-:- pred find_smart_recompilation_target_files(globals::in,
-    find_target_file_names::out(find_target_file_names)) is det.
-
-find_smart_recompilation_target_files(Globals, FindTargetFiles) :-
-    globals.get_target(Globals, CompilationTarget),
-    (
-        CompilationTarget = target_c,
-        TargetExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_c)
-    ;
-        CompilationTarget = target_csharp,
-        TargetExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs)
-    ;
-        CompilationTarget = target_java,
-        TargetExt = ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)
-    ),
-    FindTargetFiles =
-        usual_find_target_files(Globals, TargetExt).
-
-:- pred usual_find_target_files(globals::in, ext::in,
-    module_name::in, list(file_name)::out, io::di, io::uo) is det.
-
-usual_find_target_files(Globals, TargetExt,
-        ModuleName, TargetFiles, !IO) :-
-    % XXX Should we check the generated header files?
-    % XXX LEGACY
-    module_name_to_file_name_create_dirs(Globals, $pred, TargetExt,
-        ModuleName, TargetFileName, _TargetFileNameProposed, !IO),
-    TargetFiles = [TargetFileName].
-
-:- pred find_timestamp_files(globals::in,
-    find_timestamp_file_names::out(find_timestamp_file_names)) is det.
-
-find_timestamp_files(Globals, FindTimestampFiles) :-
-    globals.get_target(Globals, CompilationTarget),
-    (
-        CompilationTarget = target_c,
-        TimestampExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_c)
-    ;
-        CompilationTarget = target_csharp,
-        TimestampExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_cs)
-    ;
-        CompilationTarget = target_java,
-        TimestampExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_java)
-    ),
-    FindTimestampFiles =
-        find_timestamp_files_2(Globals, TimestampExt).
-
-:- pred find_timestamp_files_2(globals::in, ext::in,
-    module_name::in, list(file_name)::out, io::di, io::uo) is det.
-
-find_timestamp_files_2(Globals, TimestampExt,
-        ModuleName, TimestampFiles, !IO) :-
-    % XXX LEGACY
-    module_name_to_file_name_create_dirs(Globals, $pred, TimestampExt,
-        ModuleName, TimestampFileName, _TimestampFileNameProposed, !IO),
-    TimestampFiles = [TimestampFileName].
 
 %---------------------------------------------------------------------------%
 
@@ -1273,7 +1201,6 @@ read_augment_and_process_module_ok(ProgressStream, ErrorStream, Globals,
         BurdenedModulesToRecompile = BurdenedModules0
     ),
 
-    find_timestamp_files(Globals, FindTimestampFiles),
     globals.lookup_bool_option(Globals, trace_prof, TraceProf),
     ( if
         non_traced_mercury_builtin_module(ModuleName),
@@ -1294,8 +1221,8 @@ read_augment_and_process_module_ok(ProgressStream, ErrorStream, Globals,
     ),
     augment_and_process_all_submodules(ProgressStream, ErrorStream,
         GlobalsToUse, OpModeAugment, InvokedByMmcMake, MaybeTimestamp,
-        FindTimestampFiles, BurdenedModulesToRecompile,
-        ModulesToLink, ExtraObjFiles, !Specs, !HaveParseTreeMaps, !IO).
+        BurdenedModulesToRecompile, ModulesToLink, ExtraObjFiles,
+        !Specs, !HaveParseTreeMaps, !IO).
 
 :- pred maybe_report_cmd_line(io.text_output_stream::in, bool::in,
     list(string)::in, list(string)::in, io::di, io::uo) is det.
@@ -1420,20 +1347,18 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
 :- pred augment_and_process_all_submodules(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
     op_mode_invoked_by_mmc_make::in, maybe(timestamp)::in,
-    find_timestamp_file_names::in(find_timestamp_file_names),
     list(burdened_module)::in, list(string)::out, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 augment_and_process_all_submodules(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, InvokedByMmcMake, MaybeTimestamp, FindTimestampFiles,
+        OpModeAugment, InvokedByMmcMake, MaybeTimestamp,
         BurdenedModules, ModulesToLink, ExtraObjFiles,
         !Specs, !HaveParseTreeMaps, !IO) :-
     list.map_foldl3(
         augment_and_process_module(ProgressStream, ErrorStream, Globals,
-            OpModeAugment, InvokedByMmcMake, MaybeTimestamp,
-            FindTimestampFiles),
+            OpModeAugment, InvokedByMmcMake, MaybeTimestamp),
         BurdenedModules, ExtraObjFileLists,
         !Specs, !HaveParseTreeMaps, !IO),
     list.map(module_to_link, BurdenedModules, ModulesToLink),
@@ -1464,14 +1389,13 @@ module_to_link(BurdenedModule, ModuleToLink) :-
 :- pred augment_and_process_module(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
     op_mode_invoked_by_mmc_make::in, maybe(timestamp)::in,
-    find_timestamp_file_names::in(find_timestamp_file_names),
     burdened_module::in, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 augment_and_process_module(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, InvokedByMmcMake, MaybeTimestamp, FindTimestampFiles,
+        OpModeAugment, InvokedByMmcMake, MaybeTimestamp,
         BurdenedModule, ExtraObjFiles, !Specs, !HaveParseTreeMaps, !IO) :-
     BurdenedModule = burdened_module(Baggage0, ParseTreeModuleSrc),
     check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs),
@@ -1485,7 +1409,7 @@ augment_and_process_module(ProgressStream, ErrorStream, Globals,
     ( if set.is_empty(Errors ^ rm_fatal_errors) then
         process_augmented_module(ProgressStream, ErrorStream, Globals,
             OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit,
-            FindTimestampFiles, ExtraObjFiles, no_prev_dump, _,
+            ExtraObjFiles, no_prev_dump, _,
             !Specs, !HaveParseTreeMaps, !IO)
     else
         ExtraObjFiles = []
@@ -1495,16 +1419,14 @@ augment_and_process_module(ProgressStream, ErrorStream, Globals,
     io.text_output_stream::in, globals::in,
     op_mode_augment::in, op_mode_invoked_by_mmc_make::in,
     module_baggage::in, aug_compilation_unit::in,
-    find_timestamp_file_names::in(find_timestamp_file_names),
     list(string)::out, dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 process_augmented_module(ProgressStream, ErrorStream, Globals0,
-        OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit,
-        FindTimestampFiles, ExtraObjFiles, !DumpInfo, !Specs,
-        !HaveParseTreeMaps, !IO) :-
+        OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit, ExtraObjFiles,
+        !DumpInfo, !Specs, !HaveParseTreeMaps, !IO) :-
     (
         ( OpModeAugment = opmau_make_analysis_registry
         ; OpModeAugment = opmau_make_xml_documentation
@@ -1594,8 +1516,7 @@ process_augmented_module(ProgressStream, ErrorStream, Globals0,
                 AnalysisSpecs = [],
                 MaybeTopModule = Baggage ^ mb_maybe_top_module,
                 after_front_end_passes(ProgressStream, ErrorStream, Globals,
-                    OpModeCodeGen, MaybeTopModule,
-                    FindTimestampFiles, MaybeTimestampMap, HLDS22,
+                    OpModeCodeGen, MaybeTopModule, MaybeTimestampMap, HLDS22,
                     ExtraObjFiles, !Specs, !DumpInfo, !IO)
             ;
                 AnalysisSpecs = [_ | _],
@@ -1694,13 +1615,12 @@ prepare_for_intermodule_analysis(ProgressStream, Globals,
 :- pred after_front_end_passes(io.text_output_stream::in,
     io.text_output_stream::in, globals::in,
     op_mode_codegen::in, maybe_top_module::in,
-    find_timestamp_file_names::in(find_timestamp_file_names),
     maybe(module_timestamp_map)::in, module_info::in,
     list(string)::out, list(error_spec)::in, list(error_spec)::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
-        MaybeTopModule, FindTimestampFiles, MaybeTimestampMap, !.HLDS,
+        MaybeTopModule, MaybeTimestampMap, !.HLDS,
         ExtraObjFiles, !Specs, !DumpInfo, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     maybe_output_prof_call_graph(ProgressStream, Stats, !HLDS, !IO),
@@ -1830,10 +1750,10 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
             else
                 true
             ),
-            FindTimestampFiles(ModuleName, TimestampFiles, !IO),
-            list.map_foldl(
-                touch_file_datestamp(Globals, ProgressStream),
-                TimestampFiles, _Succeededs, !IO)
+            module_name_to_target_timestamp_file_name_create_dirs(Globals,
+                ModuleName, TimestampFile, !IO),
+            touch_file_datestamp(Globals, ProgressStream, TimestampFile,
+                _Succeededs, !IO)
         ;
             Succeeded = did_not_succeed
             % An error should have been reported earlier.

@@ -18,7 +18,6 @@
 :- interface.
 
 :- import_module libs.
-:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -34,32 +33,17 @@
     --->    all_modules
     ;       some_modules(list(module_name)).
 
-:- type find_target_file_names == pred(module_name, list(file_name), io, io).
-:- inst find_target_file_names == (pred(in, out, di, uo) is det).
-
-:- type find_timestamp_file_names ==
-    pred(module_name, list(file_name), io, io).
-:- inst find_timestamp_file_names ==
-   (pred(in, out, di, uo) is det).
-
-    % should_recompile(ProgressStream, Globals, ModuleName, FindTargetFiles,
-    %   FindTimestampFiles, ModulesToRecompile, HaveParseTreeMaps)
+    % should_recompile(ProgressStream, Globals, ModuleName,
+    %   ModulesToRecompile, !HaveParseTreeMaps, !IO):
     %
     % Process the `.used'  files for the given module and all its
     % inline submodules to find out which modules need to be recompiled.
-    % `FindTargetFiles' takes a module name and returns a list of
-    % file names which need to be up-to-date to avoid recompilation.
-    % `FindTimestampFiles' takes a module name and returns a list of
-    % file names which should be touched if the module does not need
-    % to be recompiled.
     % `ReadModules' is the list of interface files read during
     % recompilation checking, returned to avoid rereading them
     % if recompilation is required.
     %
 :- pred should_recompile(io.text_output_stream::in, globals::in,
-    module_name::in, find_target_file_names::in(find_target_file_names),
-    find_timestamp_file_names::in(find_timestamp_file_names),
-    modules_to_recompile::out,
+    module_name::in, modules_to_recompile::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
@@ -71,6 +55,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_cons.    % for type field_access_type
 :- import_module hlds.hlds_pred.    % for field_access_function_name, pred_id.
+:- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.prim_data.
@@ -105,8 +90,7 @@
 
 %---------------------------------------------------------------------------%
 
-should_recompile(ProgressStream, Globals, ModuleName,
-        FindTargetFiles, FindTimestampFiles, ModulesToRecompile,
+should_recompile(ProgressStream, Globals, ModuleName, ModulesToRecompile,
         HaveParseTreeMaps0, HaveParseTreeMaps, !IO) :-
     globals.lookup_bool_option(Globals, find_all_recompilation_reasons,
         FindAll),
@@ -115,7 +99,7 @@ should_recompile(ProgressStream, Globals, ModuleName,
         ResolvedUsedItems0, set.init, some_modules([]), FindAll, []),
     % XXX How do we know ModuleName is not an inline submodule?
     should_recompile_2(ProgressStream, Globals, is_not_inline_submodule,
-        FindTargetFiles, FindTimestampFiles, ModuleName, Info0, Info, !IO),
+        ModuleName, Info0, Info, !IO),
     ModulesToRecompile = Info ^ rci_modules_to_recompile,
     HaveParseTreeMaps = Info ^ rci_have_parse_tree_maps.
 
@@ -124,21 +108,19 @@ should_recompile(ProgressStream, Globals, ModuleName,
     ;       is_inline_submodule.
 
 :- pred should_recompile_2(io.text_output_stream::in, globals::in,
-    maybe_is_inline_submodule::in,
-    find_target_file_names::in(find_target_file_names),
-    find_timestamp_file_names::in(find_timestamp_file_names), module_name::in,
+    maybe_is_inline_submodule::in, module_name::in,
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det.
 
-should_recompile_2(ProgressStream, Globals, IsSubModule, FindTargetFiles,
-        FindTimestampFiles, ModuleName, !Info, !IO) :-
+should_recompile_2(ProgressStream, Globals, IsSubModule, ModuleName,
+        !Info, !IO) :-
     !Info ^ rci_module_name := ModuleName,
     !Info ^ rci_sub_modules := [],
     read_used_file_for_module(Globals, ModuleName, ReadUsedFileResult, !IO),
     (
         ReadUsedFileResult = used_file_ok(UsedFile),
         should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
-            FindTargetFiles, MaybeStoppingReason, !Info, !IO),
+            MaybeStoppingReason, !Info, !IO),
         (
             MaybeStoppingReason = no,
             Reasons = !.Info ^ rci_recompilation_reasons
@@ -153,12 +135,12 @@ should_recompile_2(ProgressStream, Globals, IsSubModule, FindTargetFiles,
         ),
         (
             Reasons = [],
-            FindTimestampFiles(ModuleName, TimestampFiles, !IO),
+            module_name_to_target_timestamp_file_name_create_dirs(Globals,
+                ModuleName, TimestampFile, !IO),
             maybe_write_recompilation_message(ProgressStream, Globals,
                 write_not_recompiling_message(ModuleName), !IO),
-            list.map_foldl(
-                touch_file_datestamp(Globals, ProgressStream),
-                TimestampFiles, _Succeededs, !IO)
+            touch_file_datestamp(Globals, ProgressStream, TimestampFile,
+                _Succeeded, !IO)
         ;
             Reasons = [_ | _],
             add_module_to_recompile(ModuleName, !Info),
@@ -179,7 +161,7 @@ should_recompile_2(ProgressStream, Globals, IsSubModule, FindTargetFiles,
             !Info ^ rci_is_inline_sub_module := yes,
             list.foldl2(
                 should_recompile_2(ProgressStream, Globals,
-                    is_inline_submodule, FindTargetFiles, FindTimestampFiles),
+                    is_inline_submodule),
                 !.Info ^ rci_sub_modules, !Info, !IO)
         )
     ;
@@ -240,13 +222,12 @@ write_used_file_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
 
 :- pred should_recompile_3(io.text_output_stream::in, globals::in,
     used_file::in, maybe_is_inline_submodule::in,
-    find_target_file_names::in(find_target_file_names),
     maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det.
 
 should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
-        FindTargetFiles, MaybeStoppingReason, !Info, !IO) :-
+        MaybeStoppingReason, !Info, !IO) :-
     % WARNING: any exceptions thrown before the sub_modules field is set
     % in the recompilation_check_info must set the modules_to_recompile field
     % to `all', or else the nested submodules will not be checked
@@ -315,10 +296,9 @@ should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
     ;
         MaybeStoppingReason0 = no,
         % Check whether the output files are present and up-to-date.
-        FindTargetFiles(!.Info ^ rci_module_name, TargetFiles, !IO),
-        list.foldl3(
-            require_recompilation_if_not_up_to_date(RecordedTimestamp),
-            TargetFiles,
+        module_name_to_target_file_name_create_dirs(Globals,
+            !.Info ^ rci_module_name, TargetFile, !IO),
+        require_recompilation_if_not_up_to_date(RecordedTimestamp, TargetFile,
             MaybeStoppingReason0, MaybeStoppingReason1, !Info, !IO),
         check_imported_modules(ProgressStream, Globals, UsedModules,
             MaybeStoppingReason1, MaybeStoppingReason, !Info, !IO)

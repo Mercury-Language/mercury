@@ -802,6 +802,18 @@
 :- pred module_name_to_cur_dir_file_name(ext_cur::in, module_name::in,
     file_name::out) is det.
 
+    % Take a module name and return a list of the file names
+    % which need to be up-to-date to avoid recompilation.
+    %
+:- pred module_name_to_target_file_name_create_dirs(globals::in,
+    module_name::in, file_name::out, io::di, io::uo) is det.
+
+    % Take a module name and return a list of the file names
+    % which should be touched if the module does not need to be recompiled.
+    %
+:- pred module_name_to_target_timestamp_file_name_create_dirs(globals::in,
+    module_name::in, file_name::out, io::di, io::uo) is det.
+
     % fact_table_file_name(Globals, Ext, FactTableFileName,
     %   FullPathName):
     % fact_table_file_name_return_dirs(Globals, Ext, FactTableFileName,
@@ -1608,6 +1620,43 @@ module_name_to_cur_dir_file_name(ExtCur, ModuleName, CurDirFileName) :-
     BaseNameNoExt = module_name_to_base_file_name_no_ext_non_java(ModuleName),
     ext_cur_extension(ExtCur, ExtStr),
     CurDirFileName = BaseNameNoExt ++ ExtStr.
+
+%---------------------%
+
+module_name_to_target_file_name_create_dirs(Globals, ModuleName,
+        TargetFileName, !IO) :-
+    globals.get_target(Globals, CompilationTarget),
+    (
+        CompilationTarget = target_c,
+        TargetExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_c)
+    ;
+        CompilationTarget = target_csharp,
+        TargetExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs)
+    ;
+        CompilationTarget = target_java,
+        TargetExt = ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)
+    ),
+    % XXX Should we check the generated header files?
+    % XXX LEGACY
+    module_name_to_file_name_create_dirs(Globals, $pred, TargetExt,
+        ModuleName, TargetFileName, _TargetFileNameProposed, !IO).
+
+module_name_to_target_timestamp_file_name_create_dirs(Globals, ModuleName,
+        TimestampFileName, !IO) :-
+    globals.get_target(Globals, CompilationTarget),
+    (
+        CompilationTarget = target_c,
+        TimestampExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_c)
+    ;
+        CompilationTarget = target_csharp,
+        TimestampExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_cs)
+    ;
+        CompilationTarget = target_java,
+        TimestampExt = ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_java)
+    ),
+    % XXX LEGACY
+    module_name_to_file_name_create_dirs(Globals, $pred, TimestampExt,
+            ModuleName, TimestampFileName, _TimestampFileNameProposed, !IO).
 
 %---------------------%
 
