@@ -134,42 +134,24 @@ real_main(!IO) :-
     ErrorStream = StdErr,
     % XXX STREAM
     io.set_output_stream(StdErr, _, !IO),
-    io.command_line_arguments(CmdLineArgs, !IO),
-
-    trace [
-        compile_time(flag("cmd_line_args")),
-        run_time(env("MMC_CMD_LINE_ARGS")),
-        io(!TIO)]
-    (
-        dump_args(ErrorStream, "REAL_MAIN", CmdLineArgs, !TIO)
-    ),
 
     unlimit_stack(!IO),
+    io.command_line_arguments(CmdLineArgs, !IO),
 
-    % Replace all @file arguments with the contents of the file.
-    expand_at_file_arguments(CmdLineArgs, Res, !IO),
+    setup_all_args(ProgressStream, ErrorStream, CmdLineArgs, ArgResult, !IO),
     (
-        Res = ok(ExpandedCmdLineArgs),
-        setup_all_args(ProgressStream, ErrorStream, ExpandedCmdLineArgs,
-            ArgResult, !IO),
-        (
-            ArgResult = apr_success(Globals, StdlibGradeFlags,
-                EnvOptFileVariables, EnvVarArgs, OptionArgs, NonOptionArgs),
-            main_after_setup(ProgressStream, ErrorStream, Globals,
-                StdlibGradeFlags, EnvOptFileVariables,
-                EnvVarArgs, OptionArgs, NonOptionArgs, !IO),
-            trace [compile_time(flag("file_name_translations")), io(!TIO)] (
-                write_translations_record_if_any(Globals, !TIO)
-            )
-        ;
-            ArgResult = apr_failure
-            % All the error messages that explain the reason for the failure
-            % have already been printed.
+        ArgResult = apr_success(Globals, StdlibGradeFlags,
+            EnvOptFileVariables, EnvVarArgs, OptionArgs, NonOptionArgs),
+        main_after_setup(ProgressStream, ErrorStream, Globals,
+            StdlibGradeFlags, EnvOptFileVariables,
+            EnvVarArgs, OptionArgs, NonOptionArgs, !IO),
+        trace [compile_time(flag("file_name_translations")), io(!TIO)] (
+            write_translations_record_if_any(Globals, !TIO)
         )
     ;
-        Res = error(E),
-        io.format(ProgressStream, "%s\n", [s(io.error_message(E))], !IO),
-        io.set_exit_status(1, !IO)
+        ArgResult = apr_failure
+        % All the error messages that explain the reason for the failure
+        % have already been printed.
     ),
     record_make_deps_cache_stats(!IO),
     record_write_deps_file_cache_stats(!IO),
@@ -268,75 +250,94 @@ expand_file_into_arg_list(S, Res, !IO) :-
     list(string)::in, arg_processing_result::out, io::di, io::uo) is det.
 
 setup_all_args(ProgressStream, ErrorStream, CmdLineArgs, ArgResult, !IO) :-
-    getopt.init_option_table(option_defaults, DefaultOptionTable),
-    ( if CmdLineArgs = ["--arg-file", ArgFile | ExtraArgs] then
-        % Diagnose bad invocations, e.g. shell redirection operators treated
-        % as command line arguments.
-        (
-            ExtraArgs = []
-        ;
-            ExtraArgs = [_ | _],
-            unexpected($pred,
-                "extra arguments with --arg-file: " ++ string(ExtraArgs))
-        ),
-        process_options_arg_file(ProgressStream, DefaultOptionTable,
-            ArgFile, OptResult, !IO)
-    else
-        process_options_std(ProgressStream, ErrorStream, DefaultOptionTable,
-            CmdLineArgs, OptResult, !IO)
-    ),
+    trace [
+        compile_time(flag("cmd_line_args")),
+        run_time(env("MMC_CMD_LINE_ARGS")),
+        io(!TIO)]
     (
-        OptResult = opr_success(StdlibGradeFlags, EnvOptFileVariables, MCFlags,
-            OptionArgs, NonOptionArgs, OptionSpecs),
+        dump_args(ErrorStream, "REAL_MAIN", CmdLineArgs, !TIO)
+    ),
 
-        get_args_representing_env_vars(EnvVarArgs, !IO),
-        % NOTE: The order of the flags here must be:
-        %
-        %   (1) flags for detected library grades
-        %   (2) flags from Mercury.config and any Mercury.options files
-        %   (3) flags from environment variables
-        %   (4) flags from any command line options
-        %
-        % The order is important, because flags given later in this list
-        % can override those given earlier.
-        %
-        % XXX The relationship between --no-libgrade or --libgrade options set
-        % via the DEFAULT_MCFLAGS variable and detected library grades is
-        % currently not defined. It does not matter at the moment, since
-        % Mercury.config does not contain either of those two flags.
-        AllFlags = StdlibGradeFlags ++ MCFlags ++ EnvVarArgs ++ OptionArgs,
-        trace [compile_time(flag("cmd_line_args")),
-            run_time(env("MMC_CMD_LINE_ARGS")),
-            io(!TIO)]
-        (
-            dump_args(ErrorStream, "AllFlags", AllFlags, !TIO)
+    % Replace all @file arguments with the contents of the file.
+    expand_at_file_arguments(CmdLineArgs, ExpandResult, !IO),
+    (
+        ExpandResult = ok(ExpandedCmdLineArgs),
+        getopt.init_option_table(option_defaults, DefaultOptionTable),
+        ( if ExpandedCmdLineArgs = ["--arg-file", ArgFile | ExtraArgs] then
+            % Diagnose bad invocations, such as shell redirection operators
+            % treated as command line arguments.
+            (
+                ExtraArgs = []
+            ;
+                ExtraArgs = [_ | _],
+                unexpected($pred,
+                    "extra arguments with --arg-file: " ++ string(ExtraArgs))
+            ),
+            process_options_arg_file(ProgressStream, DefaultOptionTable,
+                ArgFile, OptResult, !IO)
+        else
+            process_options_std(ProgressStream, ErrorStream, DefaultOptionTable,
+                ExpandedCmdLineArgs, OptResult, !IO)
         ),
-        lookup_mercury_stdlib_dir(EnvOptFileVariables,
-            MaybeEnvOptFileStdLibDirs),
-        handle_given_options(ProgressStream, DefaultOptionTable,
-            MaybeEnvOptFileStdLibDirs, AllFlags, _, _, Specs, Globals, !IO),
-
-        % Now that we have constructed a globals, print out any errors and/or
-        % warnings generated by the predicates in options_file.m.
-        write_error_specs(ErrorStream, Globals, OptionSpecs, !IO),
-
-        % When computing the option arguments to pass to `--make', only include
-        % the command-line arguments, not the contents of DEFAULT_MCFLAGS.
         (
-            Specs = [_ | _],
-            usage_errors(ProgressStream, Globals, Specs, !IO),
-            ArgResult = apr_failure
+            OptResult = opr_success(StdlibGradeFlags, EnvOptFileVariables,
+                MCFlags, OptionArgs, NonOptionArgs, OptionSpecs),
+
+            get_args_representing_env_vars(EnvVarArgs, !IO),
+            % NOTE: The order of the flags here must be:
+            %
+            %   (1) flags for detected library grades
+            %   (2) flags from Mercury.config and any Mercury.options files
+            %   (3) flags from environment variables
+            %   (4) flags from any command line options
+            %
+            % The order is important, because flags given later in this list
+            % can override those given earlier.
+            %
+            % XXX The relationship between --no-libgrade or --libgrade options
+            % set via the DEFAULT_MCFLAGS variable and detected library grades
+            % is currently not defined. It does not matter at the moment, since
+            % Mercury.config does not contain either of those two flags.
+            AllFlags = StdlibGradeFlags ++ MCFlags ++ EnvVarArgs ++ OptionArgs,
+            trace [compile_time(flag("cmd_line_args")),
+                run_time(env("MMC_CMD_LINE_ARGS")),
+                io(!TIO)]
+            (
+                dump_args(ErrorStream, "AllFlags", AllFlags, !TIO)
+            ),
+            lookup_mercury_stdlib_dir(EnvOptFileVariables,
+                MaybeEnvOptFileStdLibDirs),
+            handle_given_options(ProgressStream, DefaultOptionTable,
+                MaybeEnvOptFileStdLibDirs, AllFlags, _, _, Specs, Globals, !IO),
+
+            % Now that we have constructed a globals, print out any errors
+            % and/or warnings generated by the predicates in options_file.m.
+            write_error_specs(ErrorStream, Globals, OptionSpecs, !IO),
+
+            % When computing the option arguments to pass to `--make',
+            % only include the command-line arguments, not the contents of
+            % DEFAULT_MCFLAGS.
+            (
+                Specs = [_ | _],
+                usage_errors(ProgressStream, Globals, Specs, !IO),
+                ArgResult = apr_failure
+            ;
+                Specs = [],
+                ArgResult = apr_success(Globals, StdlibGradeFlags,
+                    EnvOptFileVariables, EnvVarArgs, OptionArgs, NonOptionArgs)
+            )
         ;
-            Specs = [],
-            ArgResult = apr_success(Globals, StdlibGradeFlags,
-                EnvOptFileVariables, EnvVarArgs, OptionArgs, NonOptionArgs)
+            OptResult = opr_failure(OptionSpecs),
+            % Usually, any error_specs we write out here were generated
+            % in options_file.m.
+            write_error_specs_opt_table(ErrorStream, DefaultOptionTable,
+                OptionSpecs, !IO),
+            io.set_exit_status(1, !IO),
+            ArgResult = apr_failure
         )
     ;
-        OptResult = opr_failure(OptionSpecs),
-        % Usually, any error_specs we write out here were generated
-        % in options_file.m.
-        write_error_specs_opt_table(ErrorStream, DefaultOptionTable,
-            OptionSpecs, !IO),
+        ExpandResult = error(E),
+        io.format(ProgressStream, "%s\n", [s(io.error_message(E))], !IO),
         io.set_exit_status(1, !IO),
         ArgResult = apr_failure
     ).
