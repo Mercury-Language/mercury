@@ -3001,15 +3001,6 @@ handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
                 EnvOptFileMerStdLibDirs = [],
                 MaybeChosenStdLibDir = no,
                 MerStdLibDirs = [],
-                % XXX The commented-out code is the original form of
-                % this error message, when it was in check_libgrades.m.
-%               Pieces = [words("Error: the location of the directory"),
-%                   words("that holds the Mercury standard library"),
-%                   words("is not specified either by the value of any"),
-%                   quote("--mercury-stdlib-dir"), words("option"),
-%                   words("to the compiler, nor by any definition of the"),
-%                   quote("MERCURY_STDLIB_DIR"), words("variable in the"),
-%                   quote("Mercury.config"), words("file."), nl],
                 Pieces = [words("Error: the location of the directory"),
                     words("that holds the Mercury standard library"),
                     words("is not specified"), nl,
@@ -3033,12 +3024,6 @@ handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
                 EnvOptFileMerStdLibDirs = [_, _ | _],
                 MaybeChosenStdLibDir = no,
                 MerStdLibDirs = [],
-                % XXX The commented-out code is the original form of
-                % this error message, when it was in check_libgrades.m.
-%               Pieces = [words("Error: the definition of the"),
-%                   quote("MERCURY_STDLIB_DIR"), words("variable in the"),
-%                   quote("Mercury.config"), words("file"),
-%                   words("contains more than one string."), nl],
                 % Note: we can be more precise about where MERCURY_STDLIB_DIR
                 % came from only if we start recording the origin points of
                 % the entries in the env_optfile_variables structure.

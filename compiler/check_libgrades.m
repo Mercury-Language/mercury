@@ -33,56 +33,64 @@
 :- import_module set.
 
 %---------------------------------------------------------------------------%
-%
-% These predicates answer the question: given the specified location
-% of the Mercury standard library, in which grades is the Mercury standard
-% library installed there?
-%
-% The location of the Mercury standard library may be specified by
-%
-% - the value of the mercury_standard_library_directory option,
-% - the value of the MERCURY_STDLIB_DIR make variable in an options file, or
-% - the value of the MERCURY_STDLIB_DIR environment variable.
-%
-% The above is the priority order of the sources. The second and third are
-% both handled by options_file.m.
-%
-% Note that mmc does not actually need to know anything about installed
-% grades; that info is needed only by the tools (e.g. ml) that process
-% the *output* of mmc. The only parts of the system that now has hardcoded
-% in it the list of installed stdlib grades are Mercury.config and the
-% Mmake.vars file, which is automatically included in the makefiles
-% constructed by mmake. Those hardcoded lists are set by the configure script,
-% and are static data afterward, until the next invocation of configure.
-%
-% Since commit ab20c86, the Mercury compiler uses these predicates
-% to get this information dynamically. This allows additional library
-% grades to be installed without reconfiguration.
-%
 
-:- pred maybe_libgrade_opts_for_detected_stdlib_grades(option_table::in,
-    list(string)::out, io::di, io::uo) is det.
-
+    % This predicate answers the question: given the specified location
+    % of the Mercury standard library, in which grades is the Mercury standard
+    % library installed there?
+    %
+    % The location of the Mercury standard library may be specified by
+    %
+    % - the value of the mercury_standard_library_directory option,
+    % - the value of the MERCURY_STDLIB_DIR make variable in an options file,
+    %   or
+    % - the value of the MERCURY_STDLIB_DIR environment variable.
+    %
+    % The above is the priority order of the sources. The second and third
+    % sources are both handled by options_file.m.
+    %
+    % Note that mmc needs to know the set of installed grades only during
+    % a few kinds of mmc invocations, these being
+    %
+    % - invocations that install a user-written library with mmc --make, and
+    % - invocations of mmc --output-libgrades.
+    %
+    % Note that first kind of invocations want to know the set of grades
+    % in which the Mercury standard library is installed because they want to
+    % install the *user* library in the same set of grades.
+    %
+    % Installing a user library using mmake (*not* mmc --make) works
+    % differently, because in that case, it is mmake that has to decide
+    % the set of grades we want to install. That decision is currently done
+    % by having the configure script put the configured set of installed
+    % grades into the Mmake.vars file.
+    %
+    % This method is less flexible than the one used by mmc --make, in that
+    % only the latter can handle having the Mercury standard library installed
+    % in one or more new grades *after* configuration.
+    %
+    % XXX We should probably change installs using mmake to invoke
+    % "mmc --output-libgrades" instead of consulting the configured set
+    % of grades in Mmake.vars.
+    %
 :- pred detect_stdlib_grades(option_table::in, maybe1(set(string))::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
-%
-% This predicate answers two questions, the first of which is related to
-% but nevertheless quite different from the question above: given the
-% specified location of the Mercury standard library, is the Mercury standard
-% library installed there *in the grade given by the user*, which is now
-% in Globals*?
-%
-% The second question is totally unrelated: are the libraries named by the
-% mercury_libraries option installed in the grade given by Globals in the
-% directories named by the mercury_library_directories and
-% init_file_directories options?
-%
 
-    % If --libgrade-install-check is enabled, then check that all Mercury
-    % libraries required by the target are installed in the selected grade.
-    % Always succeeds if --libgrade-install-check is *not* enabled.
+    % This predicate answers two questions, the first of which is related to
+    % but nevertheless quite different from the question above: given the
+    % specified location of the Mercury standard library, is the Mercury
+    % standard library installed there *in the grade given by the user*,
+    % which is now in Globals?
+    %
+    % The second question is totally unrelated: are the libraries named by the
+    % mercury_libraries option installed in the grade given by Globals in the
+    % directories named by the mercury_library_directories and
+    % init_file_directories options?
+    %
+    % We answer the questions above only if --libgrade-install-check is
+    % enabled. If --libgrade-install-check is *not* enabled, we always return
+    % an empty list of errors.
     %
 :- pred maybe_check_libraries_are_installed(globals::in, list(error_spec)::out,
     io::di, io::uo) is det.
@@ -103,27 +111,6 @@
 :- import_module string.
 
 %---------------------------------------------------------------------------%
-
-maybe_libgrade_opts_for_detected_stdlib_grades(OptionTable,
-        StdlibGradeOpts, !IO) :-
-    getopt.lookup_bool_option(OptionTable, detect_libgrades, Detect),
-    (
-        Detect = yes,
-        detect_stdlib_grades(OptionTable, MaybeStdlibGrades, !IO),
-        (
-            MaybeStdlibGrades = ok1(StdlibGrades),
-            set.to_sorted_list(StdlibGrades, StdlibGradeList),
-            GradeToOpts = (func(Grade) = ["--libgrade", Grade]),
-            StdlibGradeOptionPairs = list.map(GradeToOpts, StdlibGradeList),
-            list.condense(StdlibGradeOptionPairs, StdlibGradeOpts)
-        ;
-            MaybeStdlibGrades = error1(_Specs),
-            StdlibGradeOpts = []
-        )
-    ;
-        Detect = no,
-        StdlibGradeOpts = []
-    ).
 
 detect_stdlib_grades(OptionTable, MaybeStdlibGrades, !IO) :-
     % Enable the compile-time trace flag "debug-detect-libgrades" to enable
