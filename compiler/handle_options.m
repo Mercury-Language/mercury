@@ -1030,8 +1030,9 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     handle_option_to_option_implications(OpMode, !Globals),
     maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO),
 
-    handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
-        !Globals, !Specs),
+    handle_chosen_stdlib_dir(MaybeEnvOptFileMerStdLibDir, !Globals, !Specs),
+    handle_subdir_setting(OpMode, !Globals),
+    handle_directory_options(OpMode, !Globals, !Specs),
     handle_target_compile_link_symlink_options(!Globals),
     handle_compiler_developer_options(!Globals, !IO),
     handle_compare_specialization(!Globals),
@@ -2671,25 +2672,82 @@ maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
 %---------------------%
 
     % Options updated:
-    %   c_include_directory
     %   chosen_stdlib_dir
-    %   default_runtime_library_directory
-    %   init_file_directories
-    %   intermod_directories
-    %   libgrade_install_check
-    %   link_library_directories
+    %
+:- pred handle_chosen_stdlib_dir(maybe1(list(string))::in,
+    globals::in, globals::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+handle_chosen_stdlib_dir(MaybeEnvOptFileMerStdLibDir, !Globals, !Specs) :-
+    % Was the standard library directory set on the command line?
+    globals.lookup_maybe_string_option(!.Globals,
+        mercury_standard_library_directory, MaybeOptionsStdLibDir),
+    (
+        MaybeOptionsStdLibDir = yes(ChosenStdLibDir),
+        MaybeChosenStdLibDir = yes(ChosenStdLibDir)
+    ;
+        MaybeOptionsStdLibDir = no,
+        % Was the standard library directory set using the
+        % MERCURY_STDLIB_DIR variable in either the environment
+        % or in an options_file?
+        (
+            MaybeEnvOptFileMerStdLibDir = ok1(EnvOptFileMerStdLibDirs),
+            (
+                EnvOptFileMerStdLibDirs = [],
+                MaybeChosenStdLibDir = no,
+                Pieces = [words("Error: the location of the directory"),
+                    words("that holds the Mercury standard library"),
+                    words("is not specified"), nl,
+
+                    words("either by an"), quote("--mercury-stdlib-dir"),
+                        words("option,"), nl,
+                    words("or by an environment variable named"),
+                        quote("MERCURY_STDLIB_DIR"), suffix(","), nl,
+                    words("or by a make variable named"),
+                        quote("MERCURY_STDLIB_DIR"),
+                        words("in any specified options file, such as"),
+                        quote("Mercury.config"), suffix("."), nl],
+                Spec = no_ctxt_spec($pred, severity_error,
+                    phase_options, Pieces),
+                !:Specs = [Spec | !.Specs]
+            ;
+                EnvOptFileMerStdLibDirs = [ChosenStdLibDir],
+                MaybeChosenStdLibDir = yes(ChosenStdLibDir)
+            ;
+                EnvOptFileMerStdLibDirs = [_, _ | _],
+                MaybeChosenStdLibDir = no,
+                % Note: we can be more precise about where MERCURY_STDLIB_DIR
+                % came from only if we start recording the origin points of
+                % the entries in the env_optfile_variables structure.
+                Pieces = [words("Error: the definition of the"),
+                    quote("MERCURY_STDLIB_DIR"), words("variable,"),
+                    words("either in the environment"),
+                    words("or in a specified options file,"),
+                    words("contains more than one string."), nl],
+                Spec = no_ctxt_spec($pred, severity_error,
+                    phase_options, Pieces),
+                !:Specs = [Spec | !.Specs]
+            )
+        ;
+            MaybeEnvOptFileMerStdLibDir = error1(EnvOptFileSpecs),
+            MaybeChosenStdLibDir = no,
+            !:Specs = EnvOptFileSpecs ++ !.Specs
+        )
+    ),
+    globals.set_option(chosen_stdlib_dir, maybe_string(MaybeChosenStdLibDir),
+        !Globals).
+
+%---------------------%
+
+    % Options updated:
     %   use_subdirs
     %
     % Other globals fields updated:
     %   subdir_setting
-    %   ext_dirs_maps
     %
-:- pred handle_directory_options(op_mode::in, maybe1(list(string))::in,
-    globals::in, globals::out, list(error_spec)::in, list(error_spec)::out)
-    is det.
+:- pred handle_subdir_setting(op_mode::in, globals::in, globals::out) is det.
 
-handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
-        !Globals, !Specs) :-
+handle_subdir_setting(OpMode, !Globals) :-
     globals.lookup_bool_option(!.Globals, setting_only_use_grade_subdirs,
         UseGradeSubdirs),
     (
@@ -2729,8 +2787,27 @@ handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
             )
         )
     ),
-    globals.set_subdir_setting(SubdirSetting, !Globals),
+    globals.set_subdir_setting(SubdirSetting, !Globals).
 
+%---------------------%
+
+    % Options updated:
+    %   c_include_directory
+    %   default_runtime_library_directory
+    %   init_file_directories
+    %   intermod_directories
+    %   libgrade_install_check
+    %   link_library_directories
+    %   use_subdirs
+    %
+    % Other globals fields updated:
+    %   ext_dirs_maps
+    %
+:- pred handle_directory_options(op_mode::in,
+    globals::in, globals::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+handle_directory_options(OpMode, !Globals, !Specs) :-
     % We only perform the library grade install check if we are
     % building a linked target using mmc --make or if we are building
     % a single source file linked target. (The library grade install
@@ -2760,10 +2837,59 @@ handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
     ),
 
     % Add the standard library directory.
+    %
+    % XXX We should be looking up the value of the chosen_stdlib_dir option,
+    % not the mercury_standard_library_directory option. However, doing that
+    % results in the failure of the foreign_decl_line_number and gh72_errors
+    % test cases in tests/invalid.
+    %
+    % The symptom of those failures is an error message about not being able
+    % to access the nonexistent directory /usr/local/mercury-DEV/lib/mercury
+    % to check the set of installed grades. (That directory is the default
+    % install prefix set by the configure script.)
+    %
+    % The reason why we get *only* those two failures (in a C grade) is that
+    %
+    % - in the test directories that want to generate (and then test)
+    %   executables, mmake invokes mmc only to generate target code,
+    %   with the C compiler then being invoked by mmake itself,
+    %   which makes mmc's op_mode opmau_generate_code(opmcg_target_code_only),
+    %
+    % - in the test directories that want to check error messages,
+    %   by default we invoke mmc with --errorcheck-only,
+    %   which makes mmc's op_mode opmau_errorcheck_only, and
+    %
+    % - both of those op_modes will cause the if-then-else at the top of
+    %   this predicate to set libgrade_install_check to "no".
+    %
+    % The reason why foreign_decl_line_number and gh72_errors fail is that
+    % they both have --no-errorcheck-only as a module-specific mmc flag,
+    % which causes that same if-then-else to leave libgrade_install_check
+    % with its default value of "yes".
+    %
+    % I (zs) see two ways to avoid this problem. One way would be to decouple
+    % the notions of
+    %
+    % - the location of the standard library for libgrade_install_checks
+    %   during bootchecks in a workspace, and
+    %
+    % - the location where a "mmake install" in that workspace
+    %   would put the the standard library
+    %
+    % by specifying a real, existing stdlib location (probably the stdlib
+    % of the installed compiler) during bootchecks.
+    %
+    % The other way would be to decide that we don't want to do
+    % libgrade_install_checks during bootchecks at all, except possibly
+    % for a few tests that specifically want to test the
+    % libgrade_install_check code itself. We would then specify
+    % --no-libgrade-install-check as the default for the tests directory.
+    %
     globals.lookup_maybe_string_option(!.Globals,
         mercury_standard_library_directory, MaybeStdLibDir),
     (
         MaybeStdLibDir = yes(StdLibDir),
+        MerStdLibDirs = [StdLibDir],
         globals.get_options(!.Globals, OptionTable2),
         option_table_add_mercury_library_directory(StdLibDir,
             OptionTable2, OptionTable),
@@ -2788,6 +2914,7 @@ handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
         )
     ;
         MaybeStdLibDir = no,
+        MerStdLibDirs = [],
         globals.set_option(libgrade_install_check, bool(no), !Globals)
     ),
 
@@ -2892,8 +3019,9 @@ handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
         intermod_directories, IntermodDirs2),
     globals.lookup_string_option(!.Globals, target_arch, TargetArch),
     ToGradeSubdir = (func(Dir) = Dir/"Mercury"/Grade/TargetArch),
+    globals.get_subdir_setting(!.Globals, SubdirSetting),
     (
-        UseGradeSubdirs = bool.yes,
+        SubdirSetting = use_cur_ngs_gs_subdir,
         % With `--use-grade-subdirs', `.opt', `.trans_opt' and
         % `.mih' files are placed in a directory named
         % `Mercury/<grade>/<target_arch>/Mercury/<ext>s'.
@@ -2911,7 +3039,9 @@ handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
         IntermodDirs3 = [GradeSubdir] ++ SearchLibFilesGradeSubdirs ++
             list.negated_filter(unify(dir.this_directory), IntermodDirs2)
     ;
-        UseGradeSubdirs = bool.no,
+        ( SubdirSetting = use_cur_ngs_subdir
+        ; SubdirSetting = use_cur_dir
+        ),
         IntermodDirs3 = SearchLibFilesDirs ++ IntermodDirs2
     ),
     % XXX LEGACY
@@ -2923,7 +3053,7 @@ handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
     globals.lookup_accumulating_option(!.Globals,
         init_file_directories, InitDirs2),
     (
-        UseGradeSubdirs = bool.yes,
+        SubdirSetting = use_cur_ngs_gs_subdir,
         % With --use-grade-subdirs we need to search in
         % `Mercury/<grade>/<target_arch>/Mercury/lib' for libraries and
         % `Mercury/<grade>/<target_arch>/Mercury/inits' for init files,
@@ -2937,7 +3067,9 @@ handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
         SearchGradeInitDirs = list.map(ToGradeInitDir, SearchLibFilesDirs),
         InitDirs = SearchGradeInitDirs ++ InitDirs2
     ;
-        UseGradeSubdirs = bool.no,
+        ( SubdirSetting = use_cur_ngs_subdir
+        ; SubdirSetting = use_cur_dir
+        ),
         LinkLibDirs = SearchLibFilesDirs ++ LinkLibDirs2,
         InitDirs = SearchLibFilesDirs ++ InitDirs2
     ),
@@ -2952,19 +3084,17 @@ handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
     % add the full path to the header files in the current directory,
     % and any directories listed with --search-library-files-directory.
     ( if
+        require_complete_switch [SubdirSetting]
         (
-            UseGradeSubdirs = bool.yes,
+            SubdirSetting = use_cur_ngs_gs_subdir,
             ToMihsSubdir =
                 (func(Dir) = ToGradeSubdir(Dir)/"Mercury"/"mihs")
         ;
-            UseGradeSubdirs = bool.no,
-            (
-                UseSubdirs = yes,
-                ToMihsSubdir = (func(Dir) = Dir/"Mercury"/"mihs")
-            ;
-                UseSubdirs = no,
-                fail
-            )
+            SubdirSetting = use_cur_ngs_subdir,
+            ToMihsSubdir = (func(Dir) = Dir/"Mercury"/"mihs")
+        ;
+            SubdirSetting = use_cur_dir,
+            fail
         )
     then
         ToMhsSubdir = (func(Dir) = Dir/"Mercury"/"mhs"),
@@ -2982,69 +3112,6 @@ handle_directory_options(OpMode, MaybeEnvOptFileMerStdLibDir,
     else
         true
     ),
-
-    % Was the standard library directory set on the command line?
-    globals.lookup_maybe_string_option(!.Globals,
-        mercury_standard_library_directory, MaybeOptionsStdLibDir),
-    (
-        MaybeOptionsStdLibDir = yes(ChosenStdLibDir),
-        MaybeChosenStdLibDir = yes(ChosenStdLibDir),
-        MerStdLibDirs = [ChosenStdLibDir]
-    ;
-        MaybeOptionsStdLibDir = no,
-        % Was the standard library directory set using the
-        % MERCURY_STDLIB_DIR variable in either the environment
-        % or in an options_file?
-        (
-            MaybeEnvOptFileMerStdLibDir = ok1(EnvOptFileMerStdLibDirs),
-            (
-                EnvOptFileMerStdLibDirs = [],
-                MaybeChosenStdLibDir = no,
-                MerStdLibDirs = [],
-                Pieces = [words("Error: the location of the directory"),
-                    words("that holds the Mercury standard library"),
-                    words("is not specified"), nl,
-
-                    words("either by an"), quote("--mercury-stdlib-dir"),
-                        words("option,"), nl,
-                    words("or by an environment variable named"),
-                        quote("MERCURY_STDLIB_DIR"), suffix(","), nl,
-                    words("or by a make variable named"),
-                        quote("MERCURY_STDLIB_DIR"),
-                        words("in any specified options file, such as"),
-                        quote("Mercury.config"), suffix("."), nl],
-                Spec = no_ctxt_spec($pred, severity_error,
-                    phase_options, Pieces),
-                !:Specs = [Spec | !.Specs]
-            ;
-                EnvOptFileMerStdLibDirs = [ChosenStdLibDir],
-                MaybeChosenStdLibDir = yes(ChosenStdLibDir),
-                MerStdLibDirs = [ChosenStdLibDir]
-            ;
-                EnvOptFileMerStdLibDirs = [_, _ | _],
-                MaybeChosenStdLibDir = no,
-                MerStdLibDirs = [],
-                % Note: we can be more precise about where MERCURY_STDLIB_DIR
-                % came from only if we start recording the origin points of
-                % the entries in the env_optfile_variables structure.
-                Pieces = [words("Error: the definition of the"),
-                    quote("MERCURY_STDLIB_DIR"), words("variable,"),
-                    words("either in the environment"),
-                    words("or in a specified options file,"),
-                    words("contains more than one string."), nl],
-                Spec = no_ctxt_spec($pred, severity_error,
-                    phase_options, Pieces),
-                !:Specs = [Spec | !.Specs]
-            )
-        ;
-            MaybeEnvOptFileMerStdLibDir = error1(EnvOptFileSpecs),
-            MaybeChosenStdLibDir = no,
-            MerStdLibDirs = [],
-            !:Specs = EnvOptFileSpecs ++ !.Specs
-        )
-    ),
-    globals.set_option(chosen_stdlib_dir, maybe_string(MaybeChosenStdLibDir),
-        !Globals),
 
     globals.lookup_accumulating_option(!.Globals,
         normal_dirs_same_subdir_setting, NormalSame),
