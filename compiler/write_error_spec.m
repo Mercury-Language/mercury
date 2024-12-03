@@ -180,6 +180,7 @@
 
 :- implementation.
 
+:- import_module libs.color_schemes.
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.

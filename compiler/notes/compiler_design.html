@@ -225,7 +225,7 @@ The command-line options are defined in the module options.m.
 mercury_compile.m calls library/getopt.m,
 passing the predicates defined in options.m as arguments, to parse them.
 It then invokes handle_options.m
-(and indirectly, op_mode.m and compute_grade.m)
+(and indirectly, op_mode.m, compute_grade.m, and color_schemes.m)
 to postprocess the option set.
 The results are represented using the type globals, defined in globals.m.
 (Part of the globals structure is defined in optimization_options.m,
@@ -2469,7 +2469,7 @@ unify/2, compare/3, and index/1.
 <li>
 dependency_graph.m computes the call graph for a module,
 and prints it out to a file.
-(The call graph file is used by the profiler.)
+(This call graph file is used by the mprof profiler.)
 The call graph may eventually also be used by det_analysis.m,
 inlining.m, and other parts of the compiler
 which could benefit from traversing the predicates in a module
@@ -2502,8 +2502,8 @@ process_util.m contains predicates
 that deal with process creation and signal handling.
 This module is mainly used by make.m and its submodules.
 <li>
-shell_util.m contains a utility function for quoting arguments to shell
-commands.
+shell_util.m contains a utility function
+for quoting arguments to shell commands.
 <li>
 timestamp.m contains an ADT representing timestamps.
 It is used by smart recompilation and `mmc --make'.

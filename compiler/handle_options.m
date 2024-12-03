@@ -71,6 +71,7 @@
 
 :- import_module analysis.
 :- import_module analysis.operations.
+:- import_module libs.color_schemes.
 :- import_module libs.compiler_util.
 :- import_module libs.compute_grade.
 :- import_module libs.file_util.

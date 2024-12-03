@@ -21,6 +21,7 @@
 :- include_module op_mode.
 :- include_module compute_grade.
 :- include_module trace_params.
+:- include_module color_schemes.
 
 % Error handling.
 :- include_module compiler_util.
