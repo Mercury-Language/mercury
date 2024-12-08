@@ -2,6 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
+# Copyright (C) 2013-2017, 2019-2020, 2023-2024 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -60,6 +61,10 @@ endif
 VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
 
 #-----------------------------------------------------------------------------#
+
+# The comments on MDBCOMP_MODULES in ../slice/Mmakefile apply here as well.
+
+.SECONDARY: $(MDBCOMP_MODULES)
 
 MDBCOMP_MODULES = \
 	builtin_modules.m \

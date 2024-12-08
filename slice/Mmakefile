@@ -2,6 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2005-2007, 2009-2012 The University of Melbourne.
+# Copyright (C) 2013-2017, 2019-2020, 2023-2024 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -118,6 +119,15 @@ all:	$(MDBCOMP_MODULES) $(MERCURY_MAIN_MODULES) $(TAGS_FILE_EXISTS)
 # recompiled in a different grade much more quickly than that.
 #
 
+# This directory contains more than one executable. The $(MDBCOMP_MODULES)
+# are intermediate files in making those executables, and as such, gmake
+# would usually delete them, and the files it has constructed from them,
+# when it has finished making one executable. It will then to copy them over,
+# and build their .int* and .c/.cs/.java files again for the next executable,
+# and the next, and so on. Marking these files as secondary files prevents
+# all these automatic deletions.
+.SECONDARY: $(MDBCOMP_MODULES)
+
 $(MDBCOMP_MODULES): %: $(MDBCOMP_DIR)/%
 	-@/bin/rm -f $*
 	@cp $(MDBCOMP_DIR)/$* .
@@ -226,12 +236,14 @@ all_cs: \
 	mcov.all_cs \
 	mtc_union.all_cs \
 	mtc_diff.all_cs 
+
 all_css: \
 	mslice.all_css \
 	mdice.all_css \
 	mcov.all_css \
 	mtc_union.all_css \
 	mtc_diff.all_css 
+
 all_javas: \
 	mslice.all_javas \
 	mdice.all_javas \
@@ -255,12 +267,14 @@ all_cs: \
 	$(mcov.all_cs) \
 	$(mtc_union.all_cs) \
 	$(mtc_diff.all_cs) 
+
 all_css: \
 	$(mslice.all_css) \
 	$(mdice.all_css) \
 	$(mcov.all_css) \
 	$(mtc_union.all_css) \
 	$(mtc_diff.all_css) 
+
 all_javas: \
 	$(mslice.all_javas) \
 	$(mdice.all_javas) \
