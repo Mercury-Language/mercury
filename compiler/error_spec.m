@@ -1096,13 +1096,16 @@ do_maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
             BestNames, CloseEnoughBestNames),
         CloseEnoughBestNames = [_ | _]
     then
-        % For hand-written code, having more than ten names
-        % equally close to BaseName should be vanishingly rare,
-        % so the limit we impose here should not matter.
-        % But programs that automatically generate Mercury code
-        % may use naming schemes that make such occurrences
-        % much more likely, and for these, avoiding the generation
-        % of far-too-long error messages may be important.
+        BaseNameChars = string.to_char_list(BaseName),
+        list.map(char.to_lower, BaseNameChars, BaseNameLowerChars),
+        is_any_suggestion_same_but_for_case(BaseNameLowerChars,
+            CloseEnoughBestNames, SameButForCase),
+        % For hand-written code, having more than ten names equally close
+        % to BaseName should be vanishingly rare, so the limit we impose here
+        % should not matter. But programs that generate Mercury code
+        % automatically may use naming schemes that make such occurrences
+        % much more likely, and for these, avoiding the generation of
+        % far-too-long error messages may be important.
         list.split_upto(10, CloseEnoughBestNames,
             SuggestedNames0, NonSuggestedNames),
         (
@@ -1115,10 +1118,22 @@ do_maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
             SuggestedNames =
                 list.map(TransformFunc, SuggestedNames0) ++ ["..."]
         ),
-        SuggestionPieces = quote_list_to_pieces("or", SuggestedNames),
-        DidYouMeanPieces0 =
-            [words("(Did you mean")] ++ SuggestionPieces ++
-            [suffix("?)"), nl],
+        SuggestedNamePieces = quote_list_to_pieces("or", SuggestedNames),
+        (
+            SameButForCase = all_have_non_case_difference,
+            DidYouMeanPieces0 =
+                [words("(Did you mean")] ++ SuggestedNamePieces ++
+                [suffix("?)"), nl]
+        ;
+            SameButForCase = some_have_only_case_difference,
+            DidYouMeanPieces0 =
+                [words("(Did you mean")] ++ SuggestedNamePieces ++
+                [suffix("?"),
+                % Note that "lower-vs-upper" is probably just clutter
+                % for experts, but may be essential for others, especially
+                % non-native English speakers.
+                words("Note the lower-vs-upper case difference.)"), nl]
+        ),
         DidYouMeanPieces = color_as_hint(DidYouMeanPieces0)
     else
         DidYouMeanPieces = []
@@ -1164,6 +1179,25 @@ name_is_close_enough(Cost, Query, QueryLenU, Name) :-
         )
     ),
     Cost =< MaxAcceptableCost.
+
+:- type same_but_for_case
+    --->    all_have_non_case_difference
+    ;       some_have_only_case_difference.
+
+:- pred is_any_suggestion_same_but_for_case(list(char)::in, list(string)::in,
+    same_but_for_case::out) is det.
+
+is_any_suggestion_same_but_for_case(_, [], all_have_non_case_difference).
+is_any_suggestion_same_but_for_case(BaseNameLowerChars, [Name | Names],
+        SameButForCase) :-
+    NameChars = string.to_char_list(Name),
+    list.map(char.to_lower, NameChars, NameLowerChars),
+    ( if BaseNameLowerChars = NameLowerChars then
+        SameButForCase = some_have_only_case_difference
+    else
+        is_any_suggestion_same_but_for_case(BaseNameLowerChars, Names,
+            SameButForCase)
+    ).
 
 :- func case_sensitive_replacement_cost(char, char) = uint.
 

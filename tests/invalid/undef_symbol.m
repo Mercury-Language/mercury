@@ -12,9 +12,12 @@
 
 :- implementation.
 
+:- import_module int.
+
 main(!IO) :-
     p(!IO),
     q(!IO),
+    s(42, !IO),
     undef_symbol.r(!IO).
 
 :- pred p(io::di, io::uo) is det.
@@ -30,3 +33,15 @@ q(!IO) :-
     io.write_line(Context, !IO).
 
 % :- pred r(io::di, io::uo) is det.
+
+:- pred s(int::in, io::di, io::uo) is det.
+
+s(A, !IO) :-
+    ( if A = 2 then
+        Bcde = 3
+    else
+        Bcde = 4
+    ),
+    Fghi = Bcde + 99,
+    io.write_int(BcDe, !IO),
+    io.write_int(Fghi, !IO).

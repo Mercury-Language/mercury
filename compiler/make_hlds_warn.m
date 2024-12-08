@@ -100,13 +100,16 @@
 :- import_module hlds.status.
 :- import_module libs.options.
 :- import_module parse_tree.parse_tree_out_misc.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_db.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
+:- import_module int.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term_context.
 :- import_module varset.
@@ -201,17 +204,17 @@ warn_singletons(ModuleInfo, PfSymNameArity, VarSet, BodyGoal, SeenQuant,
         SingletonHeadVars = []
     ;
         SingletonHeadVars = [HeadSHV | TailSHVs],
-        generate_variable_warning(sm_single, HeadContext, PfSymNameArity,
-            VarSet, HeadSHV, TailSHVs, SingleSpec),
-        !:Specs = [SingleSpec | !.Specs]
+        generate_variable_warning(VarSet, HeadContext, sm_single,
+            PfSymNameArity, HeadSHV, TailSHVs, SingleSpecs),
+        !:Specs = SingleSpecs ++ !.Specs
     ),
     (
         MultiHeadVars = []
     ;
         MultiHeadVars = [HeadMHV | TailMHVs],
-        generate_variable_warning(sm_multi, HeadContext, PfSymNameArity,
-            VarSet, HeadMHV, TailMHVs, MultiSpec),
-        !:Specs = [MultiSpec | !.Specs]
+        generate_variable_warning(VarSet, HeadContext, sm_multi,
+            PfSymNameArity, HeadMHV, TailMHVs, MultiSpecs),
+        !:Specs = MultiSpecs ++ !.Specs
     ).
 
 :- type warn_info
@@ -407,7 +410,7 @@ warn_singletons_in_goal(Goal, QuantVars, !Info) :-
         warn_singletons_in_pragma_foreign_proc(!.Info ^ wi_module_info,
             PragmaImpl, Lang, NamesModes, Context, !.Info ^ wi_pf_sna,
             PredId, ProcId, [], PragmaSpecs),
-        list.foldl(add_warn_spec, PragmaSpecs, !Info)
+        add_warn_specs(PragmaSpecs, !Info)
     ;
         GoalExpr = shorthand(ShortHand),
         (
@@ -523,9 +526,9 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, !Info) :-
                 !Info ^ wi_singleton_headvars := SingleHeadVars,
                 !Info ^ wi_head_context := goal_info_get_context(GoalInfo)
             else
-                generate_variable_warning(sm_single, Context, PfSymNameArity,
-                    VarSet, HeadSV, TailSVs, SingleSpec),
-                add_warn_spec(SingleSpec, !Info)
+                generate_variable_warning(VarSet, Context, sm_single,
+                    PfSymNameArity, HeadSV, TailSVs, SingleSpecs),
+                add_warn_specs(SingleSpecs, !Info)
             )
         )
     ),
@@ -545,61 +548,184 @@ warn_singletons_goal_vars(GoalVars, GoalInfo, NonLocals, QuantVars, !Info) :-
             !Info ^ wi_multi_headvars := MultiHeadVars,
             !Info ^ wi_head_context := goal_info_get_context(GoalInfo)
         else
-            generate_variable_warning(sm_multi, Context, PfSymNameArity,
-                VarSet, HeadMV, TailMVs, MultiSpec),
-            add_warn_spec(MultiSpec, !Info)
+            generate_variable_warning(VarSet, Context, sm_multi,
+                PfSymNameArity, HeadMV, TailMVs, MultiSpecs),
+            add_warn_specs(MultiSpecs, !Info)
         )
     ).
+
+:- pred add_warn_specs(list(error_spec)::in,
+    warn_info::in, warn_info::out) is det.
+
+add_warn_specs(NewSpecs, !Info) :-
+    Specs0 = !.Info ^ wi_specs,
+    Specs = NewSpecs ++ Specs0,
+    !Info ^ wi_specs := Specs.
+
+%---------------------------------------------------------------------------%
 
 :- type single_or_multi
     --->    sm_single
     ;       sm_multi.
 
-:- pred generate_variable_warning(single_or_multi::in, prog_context::in,
-    pf_sym_name_arity::in, prog_varset::in, prog_var::in, list(prog_var)::in,
-    error_spec::out) is det.
+:- pred generate_variable_warning(prog_varset::in, prog_context::in,
+    single_or_multi::in, pf_sym_name_arity::in,
+    prog_var::in, list(prog_var)::in, list(error_spec)::out) is det.
 
-generate_variable_warning(SingleMulti, Context, PfSymNameArity, VarSet,
-        Var, Vars, Spec) :-
-    (
-        SingleMulti = sm_single,
-        OnlyMoreThanOnce = "only once"
-    ;
-        SingleMulti = sm_multi,
-        OnlyMoreThanOnce = "more than once"
-    ),
+generate_variable_warning(VarSet, Context, SingleMulti, PfSymNameArity,
+        Var0, Vars0, Specs) :-
     PreamblePieces = [words("In clause for"),
         unqual_pf_sym_name_pred_form_arity(PfSymNameArity), suffix(":"), nl],
-    VarPieces0 = list.map(var_to_quote_piece(VarSet), [Var | Vars]),
-    list.sort_and_remove_dups(VarPieces0, VarPieces),
+    Vars = [Var0 | Vars0],
     (
-        VarPieces = [],
-        % Sorting a nonempty list must yield a nonempty list.
-        unexpected($pred, "VarPieces = []")
+        SingleMulti = sm_single,
+        OnlyMoreThanOnce = "only once",
+
+        varset.var_name_list(VarSet, AllVarNamesAL),
+        assoc_list.values(AllVarNamesAL, AllVarNames),
+        set.list_to_set(AllVarNames, AllVarNamesSet),
+        generate_variable_warning_dyms(VarSet, Context,
+            PreamblePieces, OnlyMoreThanOnce, AllVarNamesSet, Vars,
+            [], NoDymVarNames, [], Specs0)
     ;
-        VarPieces = [VarPiece],
-        WarnPieces = [words("warning: variable")] ++
-            color_as_subject([VarPiece]) ++
-            color_as_incorrect([words("occurs"), words(OnlyMoreThanOnce)]) ++
-            [words("in this scope."), nl]
-    ;
-        VarPieces = [_, _ | _],
-        VarsPieces = piece_list_to_color_pieces(color_subject, "and", [],
-            VarPieces),
-        WarnPieces = [words("warning: variables")] ++ VarsPieces ++
-            color_as_incorrect([words("occur"), words(OnlyMoreThanOnce)]) ++
-            [words("in this scope."), nl]
+        SingleMulti = sm_multi,
+        OnlyMoreThanOnce = "more than once",
+        NoDymVarNames = list.map(mercury_var_to_name_only_vs(VarSet), Vars),
+        Specs0 = []
     ),
+    generate_variable_warning_no_dym(Context, PreamblePieces,
+        OnlyMoreThanOnce, NoDymVarNames, Specs0, Specs).
+
+    % For each singleton variable that is close enough to another variable
+    % name that a "did you mean" replacement suggestion is worthwhile,
+    % generate an error_spec including that suggestions. Return
+    %
+    % - the list of such singleton-var-specific error_specs, and
+    % - the list of singleton vars for which we have no "did you mean"
+    %   suggestion.
+    %
+    % Our caller will then generate a single error_spec that mentions
+    % *all* of the variables without their own "did you mean" suggestions.
+    %
+:- pred generate_variable_warning_dyms(prog_varset::in,
+    prog_context::in, list(format_piece)::in, string::in,
+    set(string)::in, list(prog_var)::in, list(string)::in, list(string)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+generate_variable_warning_dyms(_, _, _, _, _, [], !NoDymVarNames, !Specs).
+generate_variable_warning_dyms(VarSet, Context, PreamblePieces,
+        OnlyMoreThanOnce, AllVarNamesSet, [Var | Vars],
+        !NoDymVarNames, !Specs) :-
+    VarName = mercury_var_to_name_only_vs(VarSet, Var),
+    ( if
+        % Generating "did you mean" suggestions for state variables
+        % is much more likely to be misleading than useful.
+        %
+        % They are likely to be misleading because the "STATE_VARIABLE_" prefix
+        % greatly distorts the similarity tests done by the call to
+        % maybe_construct_did_you_mean_pieces below. For example,
+        % at the user level, !.ABC has nothing in common with !.DEF, but
+        % the internal versions of those names, which may be e.g.
+        % STATE_VARIABLE_ABC_8 and STATE_VARIABLE_DEF_7, are similar enough
+        % that maybe_construct_did_you_mean_pieces *will* consider one of
+        % those to be a suggestable replacement for the other.
+        %
+        % We *could* avoid the above problem if VarName has a STATE_VARIABLE_
+        % prefix by
+        %
+        % - deleting that prefix from VarName,
+        % - restricting AllVarNamesSet to the names that have that prefix,
+        %   but passing them to maybe_construct_did_you_mean_pieces only
+        %   after *also* deleting that prefix from them.
+        %
+        % However, while this should work, it is not all that likely to be
+        % useful. This is because the usefulness of "did you mean" suggestions
+        % is roughly proportional to the number of other variable names that
+        % VarName could possibly be confused with, and in human-written code,
+        % there are very likely to be far fewer state variables than
+        % non-state variables.
+        not string.prefix(VarName, "STATE_VARIABLE_"),
+
+        % The maybe_construct_did_you_mean_pieces predicate can, and sometimes
+        % will, suggest one one-character name (such as q) as a replacement
+        % for another one-character name (such as r). For its original
+        % use-case, predicate and function names, this is fine, because
+        % the average number of one-character predicate and/or function names
+        % in a module is very close to zero. However, one-character variable
+        % names occur in real code much more frequently (usually in generic
+        % code), and scopes that contain several such names, having them
+        % suggested as replacements for each other is more distracting
+        % than useful.
+        string.count_code_points(VarName, VarNameLen),
+        VarNameLen > 1,
+
+        % We got VarName from VarSet, so it *will* occur in AllVarNamesSet.
+        % We are not looking for *it*, we are looking for other variable names
+        % that VarName is very similar to, since VarName being a singleton
+        % may be caused by an unsuccessful attempt to write one of those
+        % instead.
+        set.delete(VarName, AllVarNamesSet, AllOtherVarNamesSet),
+        set.to_sorted_list(AllOtherVarNamesSet, AllOtherVarNames),
+        maybe_construct_did_you_mean_pieces(VarName, AllOtherVarNames,
+            DymPieces),
+        % DymPieces will be [] if we cannot suggest any likely replacement.
+        DymPieces = [_ | _]
+    then
+        generate_variable_warning_dym(Context, PreamblePieces,
+            OnlyMoreThanOnce, VarName, DymPieces, DymSpec),
+        !:Specs = [DymSpec | !.Specs]
+    else
+        !:NoDymVarNames = [VarName | !.NoDymVarNames]
+    ),
+    generate_variable_warning_dyms(VarSet, Context, PreamblePieces,
+        OnlyMoreThanOnce, AllVarNamesSet, Vars, !NoDymVarNames, !Specs).
+
+:- pred generate_variable_warning_no_dym(prog_context::in,
+    list(format_piece)::in, string::in, list(string)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+generate_variable_warning_no_dym(Context, PreamblePieces,
+        OnlyMoreThanOnce, VarNames0, !Specs) :-
+    list.sort_and_remove_dups(VarNames0, VarNames),
+    (
+        VarNames = []
+    ;
+        (
+            VarNames = [VarName],
+            WarnPieces = single_var_warning(VarName, OnlyMoreThanOnce)
+        ;
+            VarNames = [_, _ | _],
+            VarsPieces = quote_list_to_color_pieces(color_subject, "and", [],
+                VarNames),
+            WarnPieces = [words("warning: variables")] ++ VarsPieces ++
+                color_as_incorrect([words("occur"),
+                    words(OnlyMoreThanOnce)]) ++
+                [words("in this scope."), nl]
+        ),
+        Spec = conditional_spec($pred, warn_singleton_vars, yes,
+            severity_warning, phase_pt2h,
+            [msg(Context, PreamblePieces ++ WarnPieces)]),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+:- pred generate_variable_warning_dym(prog_context::in,
+    list(format_piece)::in, string::in, string::in, list(format_piece)::in,
+    error_spec::out) is det.
+
+generate_variable_warning_dym(Context, PreamblePieces,
+        OnlyMoreThanOnce, VarName, DymPieces, Spec) :-
+    WarnPieces = single_var_warning(VarName, OnlyMoreThanOnce),
     Spec = conditional_spec($pred, warn_singleton_vars, yes,
         severity_warning, phase_pt2h,
-        [msg(Context, PreamblePieces ++ WarnPieces)]).
+        [msg(Context, PreamblePieces ++ WarnPieces ++ DymPieces)]).
 
-:- pred add_warn_spec(error_spec::in, warn_info::in, warn_info::out) is det.
+:- func single_var_warning(string, string) = list(format_piece).
 
-add_warn_spec(Spec, !Info) :-
-    Specs0 = !.Info ^ wi_specs,
-    Specs = [Spec | Specs0],
-    !Info ^ wi_specs := Specs.
+single_var_warning(VarName, OnlyMoreThanOnce) = WarnPieces :-
+    WarnPieces = [words("warning: variable")] ++
+        color_as_subject([quote(VarName)]) ++
+        color_as_incorrect([words("occurs"), words(OnlyMoreThanOnce)]) ++
+        [words("in this scope."), nl].
 
 %---------------------------------------------------------------------------%
 

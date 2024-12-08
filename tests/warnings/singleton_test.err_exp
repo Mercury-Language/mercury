@@ -7,9 +7,13 @@ singleton_test.m:013:   Their types will be implicitly set to the builtin type
 singleton_test.m:013:   `void'.
 singleton_test.m:031: In clause for predicate `my_append'/3:
 singleton_test.m:031:   warning: variable [38;5;87m`L2'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+singleton_test.m:031:   [38;5;226m(Did you mean `L' or `L1'?)[39;49m
 singleton_test.m:035: In clause for function `my_append_func'/2:
-singleton_test.m:035:   warning: variables [38;5;87m`L1'[39;49m and [38;5;87m`L2'[39;49m [38;5;203moccur only once[39;49m in
-singleton_test.m:035:   this scope.
+singleton_test.m:035:   warning: variable [38;5;87m`L1'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+singleton_test.m:035:   [38;5;226m(Did you mean `L' or `L2'?)[39;49m
+singleton_test.m:035: In clause for function `my_append_func'/2:
+singleton_test.m:035:   warning: variable [38;5;87m`L2'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+singleton_test.m:035:   [38;5;226m(Did you mean `L' or `L1'?)[39;49m
 singleton_test.m:036: In clause for function `my_append_func'/2:
 singleton_test.m:036:   warning: variable [38;5;87m`T'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 singleton_test.m:038: In the C code for predicate `my_c_pred'/3:

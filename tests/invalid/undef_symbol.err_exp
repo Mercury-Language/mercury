@@ -1,9 +1,13 @@
-undef_symbol.m:018: In clause for predicate `main'/2:
-undef_symbol.m:018:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`undef_symbol.r'/2.[39;49m
-undef_symbol.m:018:   [38;5;226m(Did you mean `p' or `q'?)[39;49m
-undef_symbol.m:023: In clause for predicate `p'/2:
-undef_symbol.m:023:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`string.append'/3.[39;49m
-undef_symbol.m:023:   (The module [38;5;87m`string'[39;49m [38;5;226mhas not been imported.)[39;49m
-undef_symbol.m:029: In clause for predicate `q'/2:
-undef_symbol.m:029:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`term.context'/2.[39;49m
-undef_symbol.m:029:   (The module [38;5;87m`term'[39;49m [38;5;226mhas not been imported.)[39;49m
+undef_symbol.m:021: In clause for predicate `main'/2:
+undef_symbol.m:021:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`undef_symbol.r'/2.[39;49m
+undef_symbol.m:021:   [38;5;226m(Did you mean `<', `>', `p', `q' or `s'?)[39;49m
+undef_symbol.m:026: In clause for predicate `p'/2:
+undef_symbol.m:026:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`string.append'/3.[39;49m
+undef_symbol.m:026:   (The module [38;5;87m`string'[39;49m [38;5;226mhas not been imported.)[39;49m
+undef_symbol.m:032: In clause for predicate `q'/2:
+undef_symbol.m:032:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`term.context'/2.[39;49m
+undef_symbol.m:032:   (The module [38;5;87m`term'[39;49m [38;5;226mhas not been imported.)[39;49m
+undef_symbol.m:046: In clause for predicate `s'/3:
+undef_symbol.m:046:   warning: variable [38;5;87m`BcDe'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+undef_symbol.m:046:   [38;5;226m(Did you mean `Bcde'? Note the lower-vs-upper case[39;49m
+undef_symbol.m:046:   [38;5;226mdifference.)[39;49m
