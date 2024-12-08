@@ -404,11 +404,11 @@
 % an initializer:
 %       struct foo_frame this_frame = { stack_chain };
 % This implicitly zeros out the remaining fields.
-% Only the non-null fields, i.e. the arguments and the trace
-% field, need to be explicitly assigned using assignment statements.
+% Only the non-null fields, i.e. the arguments and the trace field,
+% need to be explicitly assigned using assignment statements.
 %
-% The code in the Mercury runtime to traverse the stack frames would
-% look something like this:
+% The code in the Mercury runtime to traverse the stack frames would look
+% something like this:
 %
 %   void
 %   MR_traverse_stack(struct MR_StackChain *stack_chain)
@@ -576,7 +576,7 @@ ml_elim_nested_defns_in_func(Target, Action, ModuleName, FuncDefn0,
         ml_maybe_add_args(Action, Arguments0, FuncBody0, ModuleName,
             Context, ElimInfo0, ElimInfo1),
         flatten_statement(Action, FuncBody0, FuncBody1, ElimInfo1, ElimInfo2),
-        fixup_gc_statements(Action, ElimInfo2, ElimInfo),
+        use_envptr_in_gc_statements(Action, ElimInfo2, ElimInfo),
         elim_info_finish(ElimInfo, NestedFuncs0, Locals),
 
         (
@@ -707,7 +707,10 @@ ml_maybe_add_args(_, [], _, _, _, !Info).
 ml_maybe_add_args(Action, [Arg | Args], FuncBody, ModuleName, Context,
         !Info) :-
     Arg = mlds_argument(VarName, _Type, GCStmt),
-    ( if ml_should_add_local_var(Action, VarName, GCStmt, [], [FuncBody]) then
+    ( if
+        ml_should_add_local_var_to_env(Action, VarName, GCStmt,
+            [], [FuncBody])
+    then
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
         elim_info_add_local_var(ArgToCopy, !Info)
     else
@@ -730,7 +733,10 @@ ml_maybe_copy_args(Action, Info, [Arg | Args], FuncBody, EnvId,
     ml_maybe_copy_args(Action, Info, Args, FuncBody, EnvId,
         EnvPtrTypeName, Context, ArgsToCopyTail, CodeToCopyArgsTail),
     Arg = mlds_argument(VarName, FieldType, GCStmt),
-    ( if ml_should_add_local_var(Action, VarName, GCStmt, [], [FuncBody]) then
+    ( if
+        ml_should_add_local_var_to_env(Action, VarName, GCStmt,
+            [], [FuncBody])
+    then
         ml_conv_arg_to_var(Context, Arg, ArgToCopy),
 
         % Generate code to copy this arg to the environment struct:
@@ -1281,7 +1287,7 @@ ml_module_name_string(ModuleName) = sym_name_to_string_sep(ModuleName, "__").
 % flatten_statement:
 %
 % Recursively process the statement(s),
-% - calling fixup_var on every use of a variable inside them,
+% - calling use_envptr_in_var on every use of a variable inside them,
 % - calling flatten_nested_local_var_defns for every list of local variable
 %   definitions they contain, and
 % - calling flatten_nested_function_defns for every list of local function
@@ -1358,19 +1364,20 @@ flatten_statement(Action, Stmt0, Stmt, !Info) :-
         Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context)
     ;
         Stmt0 = ml_stmt_while(Kind, Rval0, SubStmt0, LoopLocalVars0, Context),
-        fixup_rval(Action, !.Info, Rval0, Rval),
-        fixup_local_vars(Action, !.Info, LoopLocalVars0, LoopLocalVars),
+        use_envptr_in_rval(Action, !.Info, Rval0, Rval),
+        use_envptr_in_local_vars(Action, !.Info,
+            LoopLocalVars0, LoopLocalVars),
         flatten_statement(Action, SubStmt0, SubStmt, !Info),
         Stmt = ml_stmt_while(Kind, Rval, SubStmt, LoopLocalVars, Context)
     ;
         Stmt0 = ml_stmt_if_then_else(Cond0, Then0, MaybeElse0, Context),
-        fixup_rval(Action, !.Info, Cond0, Cond),
+        use_envptr_in_rval(Action, !.Info, Cond0, Cond),
         flatten_statement(Action, Then0, Then, !Info),
         flatten_maybe_statement(Action, MaybeElse0, MaybeElse, !Info),
         Stmt = ml_stmt_if_then_else(Cond, Then, MaybeElse, Context)
     ;
         Stmt0 = ml_stmt_switch(Type, Val0, Range, Cases0, Default0, Context),
-        fixup_rval(Action, !.Info, Val0, Val),
+        use_envptr_in_rval(Action, !.Info, Val0, Val),
         flatten_cases(Action, Cases0, Cases, !Info),
         flatten_default(Action, Default0, Default, !Info),
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default, Context)
@@ -1382,25 +1389,25 @@ flatten_statement(Action, Stmt0, Stmt, !Info) :-
         Stmt = Stmt0
     ;
         Stmt0 = ml_stmt_computed_goto(Rval0, Labels, Context),
-        fixup_rval(Action, !.Info, Rval0, Rval),
+        use_envptr_in_rval(Action, !.Info, Rval0, Rval),
         Stmt = ml_stmt_computed_goto(Rval, Labels, Context)
     ;
         Stmt0 = ml_stmt_call(Sig, Func0, Args0, RetLvals0, TailCall, Context),
-        fixup_rval(Action, !.Info, Func0, Func),
-        fixup_rvals(Action, !.Info, Args0, Args),
-        fixup_lvals(Action, !.Info, RetLvals0, RetLvals),
+        use_envptr_in_rval(Action, !.Info, Func0, Func),
+        use_envptr_in_rvals(Action, !.Info, Args0, Args),
+        use_envptr_in_lvals(Action, !.Info, RetLvals0, RetLvals),
         Stmt = ml_stmt_call(Sig, Func, Args, RetLvals, TailCall, Context)
     ;
         Stmt0 = ml_stmt_return(Rvals0, Context),
-        fixup_rvals(Action, !.Info, Rvals0, Rvals),
+        use_envptr_in_rvals(Action, !.Info, Rvals0, Rvals),
         Stmt = ml_stmt_return(Rvals, Context)
     ;
         Stmt0 = ml_stmt_do_commit(Ref0, Context),
-        fixup_rval(Action, !.Info, Ref0, Ref),
+        use_envptr_in_rval(Action, !.Info, Ref0, Ref),
         Stmt = ml_stmt_do_commit(Ref, Context)
     ;
         Stmt0 = ml_stmt_try_commit(Ref0, BodyStmt0, HandlerStmt0, Context),
-        fixup_lval(Action, !.Info, Ref0, Ref),
+        use_envptr_in_lval(Action, !.Info, Ref0, Ref),
         flatten_statement(Action, BodyStmt0, BodyStmt, !Info),
         flatten_statement(Action, HandlerStmt0, HandlerStmt1, !Info),
         Stmt1 = ml_stmt_try_commit(Ref, BodyStmt, HandlerStmt1, Context),
@@ -1413,7 +1420,7 @@ flatten_statement(Action, Stmt0, Stmt, !Info) :-
         )
     ;
         Stmt0 = ml_stmt_atomic(AtomicStmt0, Context),
-        fixup_atomic_stmt(Action, !.Info, AtomicStmt0, AtomicStmt),
+        use_envptr_in_atomic_stmt(Action, !.Info, AtomicStmt0, AtomicStmt),
         Stmt = ml_stmt_atomic(AtomicStmt, Context)
     ).
 
@@ -1434,8 +1441,8 @@ flatten_cases(Action, [Case0 | Cases0], [Case | Cases], !Info) :-
 
 flatten_case(Action, Case0, Case, !Info) :-
     Case0 = mlds_switch_case(FirstCond0, LaterConds0, Stmt0),
-    fixup_case_cond(Action, !.Info, FirstCond0, FirstCond),
-    fixup_case_conds(Action, !.Info, LaterConds0, LaterConds),
+    use_envptr_in_case_cond(Action, !.Info, FirstCond0, FirstCond),
+    use_envptr_in_case_conds(Action, !.Info, LaterConds0, LaterConds),
     flatten_statement(Action, Stmt0, Stmt, !Info),
     Case = mlds_switch_case(FirstCond, LaterConds, Stmt).
 
@@ -1613,12 +1620,12 @@ flatten_nested_local_var_defn(Action, HeadLocalVarDefn0, _TailLocalVarDefns0,
     % functions, then strip them out and store them in the elim_info.
     ( if
         % Hoist ordinary local variables.
-        ml_should_add_local_var(Action, LocalVarName, GCStmt,
+        ml_should_add_local_var_to_env(Action, LocalVarName, GCStmt,
             FuncDefns, Stmts)
     then
         % We need to strip out the initializer (if any) and convert it
-        % into an assignment statement, since this local variable
-        % is going to become a field, and fields can't have initializers.
+        % into an assignment statement, since we are turning this local
+        % variable into a field, and fields can't have initializers.
         (
             Init0 = init_obj(Rval),
             Init = no_initializer,
@@ -1646,7 +1653,7 @@ flatten_nested_local_var_defn(Action, HeadLocalVarDefn0, _TailLocalVarDefns0,
         elim_info_add_local_var(HeadLocalVarDefn, !Info),
         HeadLocalVarDefns = []
     else
-        fixup_initializer(Action, !.Info, Init0, Init),
+        use_envptr_in_initializer(Action, !.Info, Init0, Init),
         HeadLocalVarDefn = mlds_local_var_defn(LocalVarName, Context,
             Type, Init, GCStmt),
         HeadLocalVarDefns = [HeadLocalVarDefn],
@@ -1655,15 +1662,15 @@ flatten_nested_local_var_defn(Action, HeadLocalVarDefn0, _TailLocalVarDefns0,
 
     % Succeed iff we should add the definition of this variable to the
     % ei_local_vars field of the elim_info, meaning that it should be added
-    % to the environment struct (if it is a variable) or hoisted out to the
-    % top level (if it is a static const).
+    % to the environment struct.
     %
-:- pred ml_should_add_local_var(action, mlds_local_var_name,
+:- pred ml_should_add_local_var_to_env(action, mlds_local_var_name,
     mlds_gc_statement, list(mlds_function_defn), list(mlds_stmt)).
-:- mode ml_should_add_local_var(in(hoist), in, in, in, in) is semidet.
-:- mode ml_should_add_local_var(in(chain), in, in, in, in) is semidet.
+:- mode ml_should_add_local_var_to_env(in(hoist), in, in, in, in) is semidet.
+:- mode ml_should_add_local_var_to_env(in(chain), in, in, in, in) is semidet.
 
-ml_should_add_local_var(Action, VarName, GCStmt, FuncDefns, FollowingStmts) :-
+ml_should_add_local_var_to_env(Action, VarName, GCStmt,
+        FuncDefns, FollowingStmts) :-
     (
         Action = chain_gc_stack_frames,
         ( GCStmt = gc_trace_code(_)
@@ -1671,7 +1678,7 @@ ml_should_add_local_var(Action, VarName, GCStmt, FuncDefns, FollowingStmts) :-
         )
     ;
         Action = hoist_nested_funcs,
-        ml_need_to_hoist(VarName, FuncDefns, FollowingStmts)
+        ml_should_move_local_var_to_env(VarName, FuncDefns, FollowingStmts)
     ).
 
     % This checks for a nested function definition.
@@ -1681,82 +1688,82 @@ ml_should_add_local_var(Action, VarName, GCStmt, FuncDefns, FollowingStmts) :-
     % XXX This algorithm is quadratic. For a block with N defs, each of which
     % is referenced in a later definition, we do N^2 tests.
     %
-:- pred ml_need_to_hoist(mlds_local_var_name::in,
+:- pred ml_should_move_local_var_to_env(mlds_local_var_name::in,
     list(mlds_function_defn)::in, list(mlds_stmt)::in) is semidet.
 
-ml_need_to_hoist(VarName, FuncDefns, FollowingStmts) :-
-    Filter = ml_need_to_hoist_defn(VarName),
+ml_should_move_local_var_to_env(VarName, FuncDefns, FollowingStmts) :-
+    FilterPred = ml_function_defn_contains_var(VarName),
     (
-        list.find_first_match(Filter, FuncDefns, _)
+        list.find_first_match(FilterPred, FuncDefns, _)
     ;
-        statements_contains_matching_defn(Filter, FollowingStmts)
+        statements_contains_matching_defn(FilterPred, FollowingStmts)
     ).
 
-:- pred ml_need_to_hoist_defn(mlds_local_var_name::in, mlds_function_defn::in)
-    is semidet.
+:- pred ml_function_defn_contains_var(mlds_local_var_name::in,
+    mlds_function_defn::in) is semidet.
 
-ml_need_to_hoist_defn(QualVarName, FuncDefn) :-
+ml_function_defn_contains_var(QualVarName, FuncDefn) :-
     function_defn_contains_var(FuncDefn, QualVarName) = yes.
 
 %---------------------------------------------------------------------------%
 
-% fixup_initializers:
-% fixup_initializer:
-% fixup_atomic_stmt:
-% fixup_case_conds:
-% fixup_case_cond:
-% fixup_target_code_components:
-% fixup_target_code_component:
-% fixup_trail_op:
-% fixup_typed_rvals:
-% fixup_rvals:
-% fixup_rval:
-% fixup_lvals:
-% fixup_lval:
+% use_envptr_in_initializers:
+% use_envptr_in_initializer:
+% use_envptr_in_atomic_stmt:
+% use_envptr_in_case_conds:
+% use_envptr_in_case_cond:
+% use_envptr_in_target_code_components:
+% use_envptr_in_target_code_component:
+% use_envptr_in_trail_op:
+% use_envptr_in_typed_rvals:
+% use_envptr_in_rvals:
+% use_envptr_in_rval:
+% use_envptr_in_lvals:
+% use_envptr_in_lval:
 %
-% Recursively process the specified construct, calling fixup_var on
+% Recursively process the specified construct, calling use_envptr_in_var on
 % every variable inside it.
 
-:- pred fixup_initializers(action, elim_info,
+:- pred use_envptr_in_initializers(action, elim_info,
     list(mlds_initializer), list(mlds_initializer)).
-:- mode fixup_initializers(in(hoist), in, in, out) is det.
-:- mode fixup_initializers(in(chain), in, in, out) is det.
+:- mode use_envptr_in_initializers(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_initializers(in(chain), in, in, out) is det.
 
-fixup_initializers(_, _, [], []).
-fixup_initializers(Action, Info,
+use_envptr_in_initializers(_, _, [], []).
+use_envptr_in_initializers(Action, Info,
         [Initializer0 | Initializers0], [Initializer | Initializers]) :-
-    fixup_initializer(Action, Info, Initializer0, Initializer),
-    fixup_initializers(Action, Info, Initializers0, Initializers).
+    use_envptr_in_initializer(Action, Info, Initializer0, Initializer),
+    use_envptr_in_initializers(Action, Info, Initializers0, Initializers).
 
-:- pred fixup_initializer(action, elim_info,
+:- pred use_envptr_in_initializer(action, elim_info,
     mlds_initializer, mlds_initializer).
-:- mode fixup_initializer(in(hoist), in, in, out) is det.
-:- mode fixup_initializer(in(chain), in, in, out) is det.
+:- mode use_envptr_in_initializer(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_initializer(in(chain), in, in, out) is det.
 
-fixup_initializer(Action, Info, Initializer0, Initializer) :-
+use_envptr_in_initializer(Action, Info, Initializer0, Initializer) :-
     (
         Initializer0 = no_initializer,
         Initializer = Initializer0
     ;
         Initializer0 = init_obj(Rval0),
-        fixup_rval(Action, Info, Rval0, Rval),
+        use_envptr_in_rval(Action, Info, Rval0, Rval),
         Initializer = init_obj(Rval)
     ;
         Initializer0 = init_struct(Type, Members0),
-        fixup_initializers(Action, Info, Members0, Members),
+        use_envptr_in_initializers(Action, Info, Members0, Members),
         Initializer = init_struct(Type, Members)
     ;
         Initializer0 = init_array(Elements0),
-        fixup_initializers(Action, Info, Elements0, Elements),
+        use_envptr_in_initializers(Action, Info, Elements0, Elements),
         Initializer = init_array(Elements)
     ).
 
-:- pred fixup_atomic_stmt(action, elim_info,
+:- pred use_envptr_in_atomic_stmt(action, elim_info,
     mlds_atomic_statement, mlds_atomic_statement).
-:- mode fixup_atomic_stmt(in(hoist), in, in, out) is det.
-:- mode fixup_atomic_stmt(in(chain), in, in, out) is det.
+:- mode use_envptr_in_atomic_stmt(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_atomic_stmt(in(chain), in, in, out) is det.
 
-fixup_atomic_stmt(Action, Info, Atomic0, Atomic) :-
+use_envptr_in_atomic_stmt(Action, Info, Atomic0, Atomic) :-
     (
         ( Atomic0 = comment(_)
         ; Atomic0 = gc_check
@@ -1764,93 +1771,96 @@ fixup_atomic_stmt(Action, Info, Atomic0, Atomic) :-
         Atomic = Atomic0
     ;
         Atomic0 = assign(Lval0, Rval0),
-        fixup_lval(Action, Info, Lval0, Lval),
-        fixup_rval(Action, Info, Rval0, Rval),
+        use_envptr_in_lval(Action, Info, Lval0, Lval),
+        use_envptr_in_rval(Action, Info, Rval0, Rval),
         Atomic = assign(Lval, Rval)
     ;
         Atomic0 = assign_if_in_heap(Lval0, Rval0),
-        fixup_lval(Action, Info, Lval0, Lval),
-        fixup_rval(Action, Info, Rval0, Rval),
+        use_envptr_in_lval(Action, Info, Lval0, Lval),
+        use_envptr_in_rval(Action, Info, Rval0, Rval),
         Atomic = assign_if_in_heap(Lval, Rval)
     ;
         Atomic0 = delete_object(Rval0),
-        fixup_rval(Action, Info, Rval0, Rval),
+        use_envptr_in_rval(Action, Info, Rval0, Rval),
         Atomic = delete_object(Rval)
     ;
         Atomic0 = new_object(Target0, MaybeTag, ExplicitSecTag, Type,
             MaybeSize, MaybeCtorName, ArgRvalsTypes0, MayUseAtomic,
             MaybeAllocId),
-        fixup_lval(Action, Info, Target0, Target),
-        fixup_typed_rvals(Action, Info, ArgRvalsTypes0, ArgRvalsTypes),
+        use_envptr_in_lval(Action, Info, Target0, Target),
+        use_envptr_in_typed_rvals(Action, Info, ArgRvalsTypes0, ArgRvalsTypes),
         Atomic = new_object(Target, MaybeTag, ExplicitSecTag, Type,
             MaybeSize, MaybeCtorName, ArgRvalsTypes, MayUseAtomic,
             MaybeAllocId)
     ;
         Atomic0 = mark_hp(Lval0),
-        fixup_lval(Action, Info, Lval0, Lval),
+        use_envptr_in_lval(Action, Info, Lval0, Lval),
         Atomic = mark_hp(Lval)
     ;
         Atomic0 = restore_hp(Rval0),
-        fixup_rval(Action, Info, Rval0, Rval),
+        use_envptr_in_rval(Action, Info, Rval0, Rval),
         Atomic = restore_hp(Rval)
     ;
         Atomic0 = trail_op(TrailOp0),
-        fixup_trail_op(Action, Info, TrailOp0, TrailOp),
+        use_envptr_in_trail_op(Action, Info, TrailOp0, TrailOp),
         Atomic = trail_op(TrailOp)
     ;
         Atomic0 = inline_target_code(Lang, Components0),
-        fixup_target_code_components(Action, Info, Components0, Components),
+        use_envptr_in_target_code_components(Action, Info,
+            Components0, Components),
         Atomic = inline_target_code(Lang, Components)
     ;
         Atomic0 = outline_foreign_proc(Lang, Vs, Lvals0, Code),
-        fixup_lvals(Action, Info, Lvals0, Lvals),
+        use_envptr_in_lvals(Action, Info, Lvals0, Lvals),
         Atomic = outline_foreign_proc(Lang, Vs, Lvals, Code)
     ).
 
-:- pred fixup_case_conds(action, elim_info,
+:- pred use_envptr_in_case_conds(action, elim_info,
     list(mlds_case_match_cond), list(mlds_case_match_cond)).
-:- mode fixup_case_conds(in(hoist), in, in, out) is det.
-:- mode fixup_case_conds(in(chain), in, in, out) is det.
+:- mode use_envptr_in_case_conds(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_case_conds(in(chain), in, in, out) is det.
 
-fixup_case_conds(_, _, [], []).
-fixup_case_conds(Action, Info, [Cond0 | Conds0], [Cond | Conds]) :-
-    fixup_case_cond(Action, Info, Cond0, Cond),
-    fixup_case_conds(Action, Info, Conds0, Conds).
+use_envptr_in_case_conds(_, _, [], []).
+use_envptr_in_case_conds(Action, Info, [Cond0 | Conds0], [Cond | Conds]) :-
+    use_envptr_in_case_cond(Action, Info, Cond0, Cond),
+    use_envptr_in_case_conds(Action, Info, Conds0, Conds).
 
-:- pred fixup_case_cond(action, elim_info,
+:- pred use_envptr_in_case_cond(action, elim_info,
     mlds_case_match_cond, mlds_case_match_cond).
-:- mode fixup_case_cond(in(hoist), in, in, out) is det.
-:- mode fixup_case_cond(in(chain), in, in, out) is det.
+:- mode use_envptr_in_case_cond(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_case_cond(in(chain), in, in, out) is det.
 
-fixup_case_cond(Action, Info, Cond0, Cond) :-
+use_envptr_in_case_cond(Action, Info, Cond0, Cond) :-
     (
         Cond0 = match_value(Rval0),
-        fixup_rval(Action, Info, Rval0, Rval),
+        use_envptr_in_rval(Action, Info, Rval0, Rval),
         Cond = match_value(Rval)
     ;
         Cond0 = match_range(Low0, High0),
-        fixup_rval(Action, Info, Low0, Low),
-        fixup_rval(Action, Info, High0, High),
+        use_envptr_in_rval(Action, Info, Low0, Low),
+        use_envptr_in_rval(Action, Info, High0, High),
         Cond = match_range(Low, High)
     ).
 
-:- pred fixup_target_code_components(action, elim_info,
+:- pred use_envptr_in_target_code_components(action, elim_info,
     list(target_code_component), list(target_code_component)).
-:- mode fixup_target_code_components(in(hoist), in, in, out) is det.
-:- mode fixup_target_code_components(in(chain), in, in, out) is det.
+:- mode use_envptr_in_target_code_components(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_target_code_components(in(chain), in, in, out) is det.
 
-fixup_target_code_components(_, _, [], []).
-fixup_target_code_components(Action, Info,
+use_envptr_in_target_code_components(_, _, [], []).
+use_envptr_in_target_code_components(Action, Info,
         [Component0 | Components0], [Component | Components]) :-
-    fixup_target_code_component(Action, Info, Component0, Component),
-    fixup_target_code_components(Action, Info, Components0, Components).
+    use_envptr_in_target_code_component(Action, Info,
+        Component0, Component),
+    use_envptr_in_target_code_components(Action, Info,
+        Components0, Components).
 
-:- pred fixup_target_code_component(action, elim_info,
+:- pred use_envptr_in_target_code_component(action, elim_info,
     target_code_component, target_code_component).
-:- mode fixup_target_code_component(in(hoist), in, in, out) is det.
-:- mode fixup_target_code_component(in(chain), in, in, out) is det.
+:- mode use_envptr_in_target_code_component(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_target_code_component(in(chain), in, in, out) is det.
 
-fixup_target_code_component(Action, Info, Component0, Component) :-
+use_envptr_in_target_code_component(Action, Info, Component0, Component) :-
     (
         ( Component0 = raw_target_code(_Code)
         ; Component0 = user_target_code(_Code, _Context)
@@ -1861,26 +1871,26 @@ fixup_target_code_component(Action, Info, Component0, Component) :-
         Component = Component0
     ;
         Component0 = target_code_input(Rval0),
-        fixup_rval(Action, Info, Rval0, Rval),
+        use_envptr_in_rval(Action, Info, Rval0, Rval),
         Component = target_code_input(Rval)
     ;
         Component0 = target_code_output(Lval0),
-        fixup_lval(Action, Info, Lval0, Lval),
+        use_envptr_in_lval(Action, Info, Lval0, Lval),
         Component = target_code_output(Lval)
     ).
 
-:- pred fixup_trail_op(action, elim_info, trail_op, trail_op).
-:- mode fixup_trail_op(in(hoist), in, in, out) is det.
-:- mode fixup_trail_op(in(chain), in, in, out) is det.
+:- pred use_envptr_in_trail_op(action, elim_info, trail_op, trail_op).
+:- mode use_envptr_in_trail_op(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_trail_op(in(chain), in, in, out) is det.
 
-fixup_trail_op(Action, Info, Op0, Op) :-
+use_envptr_in_trail_op(Action, Info, Op0, Op) :-
     (
         Op0 = store_ticket(Lval0),
-        fixup_lval(Action, Info, Lval0, Lval),
+        use_envptr_in_lval(Action, Info, Lval0, Lval),
         Op = store_ticket(Lval)
     ;
         Op0 = reset_ticket(Rval0, Reason),
-        fixup_rval(Action, Info, Rval0, Rval),
+        use_envptr_in_rval(Action, Info, Rval0, Rval),
         Op = reset_ticket(Rval, Reason)
     ;
         ( Op0 = discard_ticket
@@ -1889,77 +1899,78 @@ fixup_trail_op(Action, Info, Op0, Op) :-
         Op = Op0
     ;
         Op0 = mark_ticket_stack(Lval0),
-        fixup_lval(Action, Info, Lval0, Lval),
+        use_envptr_in_lval(Action, Info, Lval0, Lval),
         Op = mark_ticket_stack(Lval)
     ;
         Op0 = prune_tickets_to(Rval0),
-        fixup_rval(Action, Info, Rval0, Rval),
+        use_envptr_in_rval(Action, Info, Rval0, Rval),
         Op = prune_tickets_to(Rval)
     ).
 
-:- pred fixup_typed_rvals(action, elim_info,
+:- pred use_envptr_in_typed_rvals(action, elim_info,
     list(mlds_typed_rval), list(mlds_typed_rval)).
-:- mode fixup_typed_rvals(in(hoist), in, in, out) is det.
-:- mode fixup_typed_rvals(in(chain), in, in, out) is det.
+:- mode use_envptr_in_typed_rvals(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_typed_rvals(in(chain), in, in, out) is det.
 
-fixup_typed_rvals(_, _, [], []).
-fixup_typed_rvals(Action, Info,
+use_envptr_in_typed_rvals(_, _, [], []).
+use_envptr_in_typed_rvals(Action, Info,
         [TypedRval0 | TypedRvals0], [TypedRval | TypedRvals]) :-
     TypedRval0 = ml_typed_rval(Rval0, Type),
-    fixup_rval(Action, Info, Rval0, Rval),
+    use_envptr_in_rval(Action, Info, Rval0, Rval),
     TypedRval = ml_typed_rval(Rval, Type),
-    fixup_typed_rvals(Action, Info, TypedRvals0, TypedRvals).
+    use_envptr_in_typed_rvals(Action, Info, TypedRvals0, TypedRvals).
 
-:- pred fixup_rvals(action, elim_info, list(mlds_rval), list(mlds_rval)).
-:- mode fixup_rvals(in(hoist), in, in, out) is det.
-:- mode fixup_rvals(in(chain), in, in, out) is det.
+:- pred use_envptr_in_rvals(action, elim_info,
+    list(mlds_rval), list(mlds_rval)).
+:- mode use_envptr_in_rvals(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_rvals(in(chain), in, in, out) is det.
 
-fixup_rvals(_, _, [], []).
-fixup_rvals(Action, Info, [Rval0 | Rvals0], [Rval | Rvals]) :-
-    fixup_rval(Action, Info, Rval0, Rval),
-    fixup_rvals(Action, Info, Rvals0, Rvals).
+use_envptr_in_rvals(_, _, [], []).
+use_envptr_in_rvals(Action, Info, [Rval0 | Rvals0], [Rval | Rvals]) :-
+    use_envptr_in_rval(Action, Info, Rval0, Rval),
+    use_envptr_in_rvals(Action, Info, Rvals0, Rvals).
 
-:- pred fixup_rval(action, elim_info, mlds_rval, mlds_rval).
-:- mode fixup_rval(in(hoist), in, in, out) is det.
-:- mode fixup_rval(in(chain), in, in, out) is det.
+:- pred use_envptr_in_rval(action, elim_info, mlds_rval, mlds_rval).
+:- mode use_envptr_in_rval(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_rval(in(chain), in, in, out) is det.
 
-fixup_rval(Action, Info, Rval0, Rval) :-
+use_envptr_in_rval(Action, Info, Rval0, Rval) :-
     (
         Rval0 = ml_lval(Lval0),
-        fixup_lval(Action, Info, Lval0, Lval),
+        use_envptr_in_lval(Action, Info, Lval0, Lval),
         Rval = ml_lval(Lval)
     ;
         Rval0 = ml_mem_addr(Lval0),
-        fixup_lval(Action, Info, Lval0, Lval),
+        use_envptr_in_lval(Action, Info, Lval0, Lval),
         Rval = ml_mem_addr(Lval)
     ;
         Rval0 = ml_mkword(Tag, BaseRval0),
-        fixup_rval(Action, Info, BaseRval0, BaseRval),
+        use_envptr_in_rval(Action, Info, BaseRval0, BaseRval),
         Rval = ml_mkword(Tag, BaseRval)
     ;
         Rval0 = ml_box(Type, SubRval0),
-        fixup_rval(Action, Info, SubRval0, SubRval),
+        use_envptr_in_rval(Action, Info, SubRval0, SubRval),
         Rval = ml_box(Type, SubRval)
     ;
         Rval0 = ml_unbox(Type, SubRval0),
-        fixup_rval(Action, Info, SubRval0, SubRval),
+        use_envptr_in_rval(Action, Info, SubRval0, SubRval),
         Rval = ml_unbox(Type, SubRval)
     ;
         Rval0 = ml_cast(Type, SubRval0),
-        fixup_rval(Action, Info, SubRval0, SubRval),
+        use_envptr_in_rval(Action, Info, SubRval0, SubRval),
         Rval = ml_cast(Type, SubRval)
     ;
         Rval0 = ml_unop(UnOp, SubRval0),
-        fixup_rval(Action, Info, SubRval0, SubRval),
+        use_envptr_in_rval(Action, Info, SubRval0, SubRval),
         Rval = ml_unop(UnOp, SubRval)
     ;
         Rval0 = ml_binop(BinOp, SubRvalA0, SubRvalB0),
-        fixup_rval(Action, Info, SubRvalA0, SubRvalA),
-        fixup_rval(Action, Info, SubRvalB0, SubRvalB),
+        use_envptr_in_rval(Action, Info, SubRvalA0, SubRvalA),
+        use_envptr_in_rval(Action, Info, SubRvalB0, SubRvalB),
         Rval = ml_binop(BinOp, SubRvalA, SubRvalB)
     ;
         Rval0 = ml_vector_common_row_addr(VectorCommon, RowRval0),
-        fixup_rval(Action, Info, RowRval0, RowRval),
+        use_envptr_in_rval(Action, Info, RowRval0, RowRval),
         Rval = ml_vector_common_row_addr(VectorCommon, RowRval)
     ;
         ( Rval0 = ml_const(_)
@@ -1970,27 +1981,28 @@ fixup_rval(Action, Info, Rval0, Rval) :-
         Rval = Rval0
     ).
 
-:- pred fixup_lvals(action, elim_info, list(mlds_lval), list(mlds_lval)).
-:- mode fixup_lvals(in(hoist), in, in, out) is det.
-:- mode fixup_lvals(in(chain), in, in, out) is det.
+:- pred use_envptr_in_lvals(action, elim_info,
+    list(mlds_lval), list(mlds_lval)).
+:- mode use_envptr_in_lvals(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_lvals(in(chain), in, in, out) is det.
 
-fixup_lvals(_, _, [], []).
-fixup_lvals(Action, Info, [X0 | Xs0], [X | Xs]) :-
-    fixup_lval(Action, Info, X0, X),
-    fixup_lvals(Action, Info, Xs0, Xs).
+use_envptr_in_lvals(_, _, [], []).
+use_envptr_in_lvals(Action, Info, [X0 | Xs0], [X | Xs]) :-
+    use_envptr_in_lval(Action, Info, X0, X),
+    use_envptr_in_lvals(Action, Info, Xs0, Xs).
 
-:- pred fixup_lval(action, elim_info, mlds_lval, mlds_lval).
-:- mode fixup_lval(in(hoist), in, in, out) is det.
-:- mode fixup_lval(in(chain), in, in, out) is det.
+:- pred use_envptr_in_lval(action, elim_info, mlds_lval, mlds_lval).
+:- mode use_envptr_in_lval(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_lval(in(chain), in, in, out) is det.
 
-fixup_lval(Action, Info, Lval0, Lval) :-
+use_envptr_in_lval(Action, Info, Lval0, Lval) :-
     (
         Lval0 = ml_field(MaybeTag, Rval0, PtrType, FieldId, FieldType),
-        fixup_rval(Action, Info, Rval0, Rval),
+        use_envptr_in_rval(Action, Info, Rval0, Rval),
         Lval = ml_field(MaybeTag, Rval, PtrType, FieldId, FieldType)
     ;
         Lval0 = ml_mem_ref(Rval0, Type),
-        fixup_rval(Action, Info, Rval0, Rval),
+        use_envptr_in_rval(Action, Info, Rval0, Rval),
         Lval = ml_mem_ref(Rval, Type)
     ;
         ( Lval0 = ml_global_var(_, _)
@@ -1999,18 +2011,20 @@ fixup_lval(Action, Info, Lval0, Lval) :-
         Lval = Lval0
     ;
         Lval0 = ml_local_var(Var0, VarType),
-        fixup_var(Action, Info, Var0, VarType, Lval)
+        use_envptr_in_var(Action, Info, Var0, VarType, Lval)
     ).
 
-:- pred fixup_local_vars(action, elim_info,
+:- pred use_envptr_in_local_vars(action, elim_info,
     list(mlds_local_var_name), list(mlds_local_var_name)).
-:- mode fixup_local_vars(in(hoist), in, in, out) is det.
-:- mode fixup_local_vars(in(chain), in, in, out) is det.
+:- mode use_envptr_in_local_vars(in(hoist), in, in, out) is det.
+:- mode use_envptr_in_local_vars(in(chain), in, in, out) is det.
 
-fixup_local_vars(_, _, [], []).
-fixup_local_vars(Action, Info, [HeadLocalVar0 | TailLocalVars0], LocalVars) :-
-    fixup_local_vars(Action, Info, TailLocalVars0, TailLocalVars),
-    fixup_var(Action, Info, HeadLocalVar0, mlds_unknown_type, HeadLval),
+use_envptr_in_local_vars(_, _, [], []).
+use_envptr_in_local_vars(Action, Info, [HeadLocalVar0 | TailLocalVars0],
+        LocalVars) :-
+    use_envptr_in_local_vars(Action, Info, TailLocalVars0, TailLocalVars),
+    use_envptr_in_var(Action, Info, HeadLocalVar0, mlds_unknown_type,
+        HeadLval),
     (
         HeadLval = ml_local_var(HeadLvalLocalVar, _),
         expect(unify(HeadLocalVar0, HeadLvalLocalVar), $pred,
@@ -2027,32 +2041,32 @@ fixup_local_vars(Action, Info, [HeadLocalVar0 | TailLocalVars0], LocalVars) :-
         LocalVars = TailLocalVars
     ).
 
-% fixup_gc_statements:
+% use_envptr_in_gc_statements:
 %
 % Process the trace code in the locals that have been hoisted to the stack
 % frame structure so that the code correctly refers to any variables that
 % have been pulled out. It assumes the locals don't actually change during
 % the process. I think this should be safe. (schmidt)
 
-:- pred fixup_gc_statements(action, elim_info, elim_info).
-:- mode fixup_gc_statements(in(hoist), in, out) is det.
-:- mode fixup_gc_statements(in(chain), in, out) is det.
+:- pred use_envptr_in_gc_statements(action, elim_info, elim_info).
+:- mode use_envptr_in_gc_statements(in(hoist), in, out) is det.
+:- mode use_envptr_in_gc_statements(in(chain), in, out) is det.
 
-fixup_gc_statements(Action, !Info) :-
+use_envptr_in_gc_statements(Action, !Info) :-
     % We must preserve the order for the Java backend, otherwise the generated
     % code may contain closure_layout vectors that reference typevar vectors
     % which are defined later.
     LocalsCord0 = elim_info_get_local_vars(!.Info),
-    cord.map_foldl(fixup_gc_statements_defn(Action),
+    cord.map_foldl(use_envptr_in_gc_statements_defn(Action),
         LocalsCord0, LocalsCord, !Info),
     elim_info_set_local_vars(LocalsCord, !Info).
 
-:- pred fixup_gc_statements_defn(action,
+:- pred use_envptr_in_gc_statements_defn(action,
     mlds_local_var_defn, mlds_local_var_defn, elim_info, elim_info).
 % We need this predicate to have a single mode for cord.map_foldl.
-:- mode fixup_gc_statements_defn(in, in, out, in, out) is det.
+:- mode use_envptr_in_gc_statements_defn(in, in, out, in, out) is det.
 
-fixup_gc_statements_defn(Action, Defn0, Defn, !Info) :-
+use_envptr_in_gc_statements_defn(Action, Defn0, Defn, !Info) :-
     Defn0 = mlds_local_var_defn(Name, Context, Type, Init, GCStmt0),
     (
         Action = hoist_nested_funcs,
@@ -2068,12 +2082,12 @@ fixup_gc_statements_defn(Action, Defn0, Defn, !Info) :-
     % Change up any references to local vars in the containing function
     % to go via the environment pointer.
     %
-:- pred fixup_var(action, elim_info, mlds_local_var_name, mlds_type,
+:- pred use_envptr_in_var(action, elim_info, mlds_local_var_name, mlds_type,
     mlds_lval).
-:- mode fixup_var(in(hoist), in, in, in, out) is det.
-:- mode fixup_var(in(chain), in, in, in, out) is det.
+:- mode use_envptr_in_var(in(hoist), in, in, in, out) is det.
+:- mode use_envptr_in_var(in(chain), in, in, in, out) is det.
 
-fixup_var(Action, Info, ThisVarName, ThisVarType, Lval) :-
+use_envptr_in_var(Action, Info, ThisVarName, ThisVarType, Lval) :-
     Locals = elim_info_get_local_vars(Info),
     EnvId = elim_info_get_env_type_name(Info),
     EnvPtrVarType = elim_info_get_env_ptr_type_name(Info),
@@ -2413,8 +2427,8 @@ add_unchain_stack_to_cases(Action, [Case0 | Cases0], [Case | Cases], !Info) :-
 
 add_unchain_stack_to_case(Action, Case0, Case, !Info) :-
     Case0 = mlds_switch_case(FirstCond0, LaterConds0, Stmt0),
-    fixup_case_cond(Action, !.Info, FirstCond0, FirstCond),
-    fixup_case_conds(Action, !.Info, LaterConds0, LaterConds),
+    use_envptr_in_case_cond(Action, !.Info, FirstCond0, FirstCond),
+    use_envptr_in_case_conds(Action, !.Info, LaterConds0, LaterConds),
     add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info),
     Case = mlds_switch_case(FirstCond, LaterConds, Stmt).
 
