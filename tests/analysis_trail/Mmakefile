@@ -14,10 +14,12 @@ override EXTRA_MCFLAGS := $(patsubst --transitive-%,,$(EXTRA_MCFLAGS))
 #-----------------------------------------------------------------------------#
 
 ifdef WORKSPACE_HAS_SUBDIRS
-TESTS = trail_m1-nodepend
+PROGS = trail_m1
 else
-TESTS = 
+PROGS = 
 endif
+
+TESTS = $(sort $(PROGS:%=%-nodepend))
 
 include ../Mmake.common
 

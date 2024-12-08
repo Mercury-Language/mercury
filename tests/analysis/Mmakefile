@@ -13,6 +13,7 @@ override EXTRA_MCFLAGS := $(patsubst --transitive-%,,$(EXTRA_MCFLAGS))
 
 #-----------------------------------------------------------------------------#
 
+PROGS =
 TESTS =
 include ../Mmake.common
 

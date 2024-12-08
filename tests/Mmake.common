@@ -64,12 +64,6 @@ ifndef DIFF_OPTS
 DIFF_OPTS = -u
 endif
 
-# Override this with `RUN_RECOMPILATION_TESTS=no' if your compiler
-# cannot run smart recompilation. This is only necessary for compilers
-# built in deep profiling grades, because smart recompilation uses
-# exception handling, which does not yet work with deep profiling.
-RUN_RECOMPILATION_TESTS=yes
-
 # The Java interpreter.
 JAVA=java
 
@@ -122,7 +116,7 @@ $(TESTS_DIR)/Mmake.params: ;
 		{ grep . $@ /dev/null; exit 1; }
 
 # DIFF_WO stands for "diff with opts". We define it to allow the actions
-# for %.int_exp_res to fit onto one line.
+# for e.g. %.opfile_res to fit onto one line.
 DIFF_WO = diff $(DIFF_OPTS)
 
 # For some test cases, there is more than one valid output.
@@ -241,7 +235,7 @@ DIFF_WO = diff $(DIFF_OPTS)
 		echo "Matched $*.optfile_exp" && \
 		cp $*.optfile_res1 $@; } || \
 	{ test -f $*.optfile_exp2 && \
-		$(DIFF_WO) $*.optfile_exp2 $*.out > $*.optfile_res2 && \
+		$(DIFF_WO) $*.optfile_exp2 $*.optfile_out > $*.optfile_res2 && \
 		echo "Matched $*.optfile_exp2" && \
 		cp $*.optfile_res2 $@; } || \
 	{ test -f $*.optfile_exp3 && \
