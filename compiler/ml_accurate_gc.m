@@ -473,8 +473,8 @@ fixup_newobj_in_stmt(Stmt0, Stmt, !Fixup) :-
         fixup_newobj_in_stmt(HandlerStmt0, HandlerStmt, !Fixup),
         Stmt = ml_stmt_try_commit(Ref, BodyStmt, HandlerStmt, Context)
     ;
-        Stmt0 = ml_stmt_atomic(AtomicStmt0, Context),
-        fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup)
+        Stmt0 = ml_stmt_atomic(_, _),
+        fixup_newobj_in_atomic_statement(Stmt0, Stmt, !Fixup)
     ).
 
 :- pred fixup_newobj_in_case(mlds_switch_case::in, mlds_switch_case::out,
@@ -509,16 +509,16 @@ fixup_newobj_in_default(Default0, Default, !Fixup) :-
         Default = default_case(Stmt)
     ).
 
-:- pred fixup_newobj_in_atomic_statement(mlds_atomic_statement::in,
-    prog_context::in, mlds_stmt::out,
+:- pred fixup_newobj_in_atomic_statement(
+    mlds_stmt::in(ml_stmt_is_atomic), mlds_stmt::out,
     fixup_newobj_info::in, fixup_newobj_info::out) is det.
 
-fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
-    ( if
+fixup_newobj_in_atomic_statement(Stmt0, Stmt, !Fixup) :-
+    Stmt0 = ml_stmt_atomic(AtomicStmt0, Context),
+    (
         AtomicStmt0 = new_object(Lval, Ptag, _ExplicitSecTag,
             PointerType, _MaybeSizeInWordsRval, _MaybeCtorName,
-            ArgRvalsTypes,  _MayUseAtomic, _AllocId)
-    then
+            ArgRvalsTypes,  _MayUseAtomic, _AllocId),
         % Generate the declaration of the new local variable.
         %
         % XXX Using array(generic_type) is wrong for --high-level-data.
@@ -568,8 +568,19 @@ fixup_newobj_in_atomic_statement(AtomicStmt0, Context, Stmt, !Fixup) :-
         ),
         AssignStmt = ml_stmt_atomic(assign(Lval, TaggedPtrRval), Context),
         Stmt = ml_stmt_block([], [], ArgInitStmts ++ [AssignStmt], Context)
-    else
-        Stmt = ml_stmt_atomic(AtomicStmt0, Context)
+    ;
+        ( AtomicStmt0 = comment(_)
+        ; AtomicStmt0 = assign(_, _)
+        ; AtomicStmt0 = assign_if_in_heap(_, _)
+        ; AtomicStmt0 = delete_object(_)
+        ; AtomicStmt0 = gc_check
+        ; AtomicStmt0 = mark_hp(_)
+        ; AtomicStmt0 = restore_hp(_)
+        ; AtomicStmt0 = trail_op(_)
+        ; AtomicStmt0 = inline_target_code(_, _)
+        ; AtomicStmt0 = outline_foreign_proc(_, _, _, _)
+        ),
+        Stmt = Stmt0
     ).
 
 :- pred init_field_n(mlds_type::in, mlds_rval::in, prog_context::in,
