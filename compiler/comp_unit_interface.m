@@ -2787,13 +2787,9 @@ restrict_type_ctor_int_defn_for_int2(TypeDefnInfo0, TypeDefnInfo,
         TypeDefnInfo = TypeDefnInfo0
     ;
         TypeDefn0 = parse_tree_solver_type(_),
-        % TypeDefnInfo cannot refer to other modules.
-        % XXX ITEM_LIST This should not be necessary, since a full
-        % (i.e. non-abstract) solver type definition in the interface section
-        % is an error that should have been caught and reported
+        % A full (i.e. non-abstract) solver type definition in the interface
+        % section is an error that should have been caught and reported
         % when we constructed the type_ctor_checked_map.
-        % TypeDefn = parse_tree_abstract_type(abstract_solver_type),
-        % TypeDefnInfo = TypeDefnInfo0 ^ td_ctor_defn := TypeDefn
         unexpected($pred, "parse_tree_abstract_type")
     ;
         TypeDefn0 = parse_tree_abstract_type(_),
