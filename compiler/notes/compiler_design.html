@@ -70,11 +70,9 @@ mercury_compile_main.m starts by
 invoking mercury_compile_args.m to process mmc's arguments.
 It then fully implements the simpler op_modes,
 such as those that ask for reports.
-For the most complex op_modes, it handles just
-the reading in and parsing of source files,
-after which it hands over the later steps to other modules.
+The remaining op_modes are implemented by mercury_compile_augment.m.
 <li>
-mercury_compile_args.m does with argument and option processing,
+mercury_compile_args.m does argument and option processing,
 which is complicated by the fact that
 options can come from Mercury.options files,
 as well as from files named by other options.
