@@ -1,0 +1,9 @@
+repeated_singleton.m:030: In clause for predicate `test_a'/4:
+repeated_singleton.m:030:   warning: variable [38;5;87m`_AT'[39;49m [38;5;203moccurs more than once[39;49m in
+repeated_singleton.m:030:   this scope.
+repeated_singleton.m:032: In clause for predicate `test_a'/4:
+repeated_singleton.m:032:   warning: variable [38;5;87m`_AT'[39;49m [38;5;203moccurs more than once[39;49m in
+repeated_singleton.m:032:   this scope.
+repeated_singleton.m:047: In clause for predicate `test_b'/4:
+repeated_singleton.m:047:   warning: variable [38;5;87m`_AT'[39;49m [38;5;203moccurs more than once[39;49m in
+repeated_singleton.m:047:   this scope.

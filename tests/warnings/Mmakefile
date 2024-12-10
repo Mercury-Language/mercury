@@ -48,6 +48,7 @@ ERRORCHECK_PROGS = \
 	pragma_source_file \
 	purity_warnings \
 	redundant_coerce \
+	repeated_singleton \
 	save \
 	simple_code \
 	singleton_test \

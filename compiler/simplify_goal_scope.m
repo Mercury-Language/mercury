@@ -256,7 +256,9 @@ simplify_goal_scope(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
 
 disable_simplify_warning(Warning, !Tasks) :-
     (
-        Warning = goal_warning_singleton_vars
+        ( Warning = goal_warning_singleton_vars
+        ; Warning = goal_warning_repeated_singleton_vars
+        )
         % Warning about singleton vars is done when clauses are added
         % to the HLDS, not during simplification.
     ;

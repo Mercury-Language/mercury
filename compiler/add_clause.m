@@ -655,8 +655,8 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
             warn_singletons(!.ModuleInfo, WarnPFSymNameArity, VarSet2, Goal0,
                 SeenQuant, !Specs),
             % Warn about variables with overlapping scopes.
-            add_quant_warnings(WarnPFSymNameArity, VarSet, QuantWarnings,
-                !Specs),
+            add_quant_warnings(!.ModuleInfo, WarnPFSymNameArity, VarSet,
+                QuantWarnings, !Specs),
             (
                 SeenQuant = have_not_seen_quant,
                 % Even though we told the call to add_clause_transform above

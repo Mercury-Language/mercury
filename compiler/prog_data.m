@@ -1984,6 +1984,7 @@ best_purity(purity_impure, purity_impure) = purity_impure.
     % of the disable_warnings scope.
 :- type goal_warning
     --->    goal_warning_singleton_vars
+    ;       goal_warning_repeated_singleton_vars
     ;       goal_warning_occurs_check
     ;       goal_warning_non_tail_recursive_calls
     ;       goal_warning_suspicious_recursion

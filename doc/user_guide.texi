@@ -6649,7 +6649,18 @@ Do not warn about argument order rearrangement caused by
 @findex --no-warn-singleton-variables
 @findex --warn-singleton-vars
 @findex --warn-singleton-variables
-Do not warn about variables which only occur once.
+Do not warn about variables which only occur once,
+despite their names not starting with an underscore.
+
+@sp 1
+@item --no-warn-repeated-singleton-vars
+@itemx --no-warn-repeated-singleton-variables
+@findex --no-warn-repeated-singleton-vars
+@findex --no-warn-repeated-singleton-variables
+@findex --warn-repeated-singleton-vars
+@findex --warn-repeated-singleton-variables
+Do not warn about variables which occur more than once,
+despite their names starting with an underscore.
 
 @sp 1
 @item --no-warn-missing-det-decls

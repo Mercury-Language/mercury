@@ -1283,8 +1283,10 @@ Changes to the Mercury language
   `stream.string_writer.format`. These checks test whether the format string
   matches the provided list of values.
 
-* You can now disable another kind of warning with a `disable_warning` scope.
-  Code such as
+* You can now disable another two kinds of warning with a `disable_warning`
+  scope.
+
+  First, code such as
 
       disable_warning [unknown_format_calls] (
           ...
@@ -1295,6 +1297,16 @@ Changes to the Mercury language
   cannot tell whether there are any mismatches between the format string
   and the supplied values, even if the module is compiled with
   `--warn-unknown-format-calls`.
+
+  Second, code such as
+
+      disable_warning [warn_repeated_singleton_vars] (
+          ...
+      )
+
+  will disable warnings in the scope about variables whose names start with
+  an underscore, indicating that they should be singleton variables, but
+  which nevertheless occur more than once.
 
 * Floating point number literals may now contain an underscore
   between the digits forming the fraction part and the `e` or `E` that
@@ -1334,6 +1346,14 @@ Changes to the Mercury compiler
 * We have added a new option `--warn-redundant-coerce`,
   that tells the compiler to generate warnings for type conversions
   from one type to the same type. This option is enabled by default.
+
+* We have added a new option `--warn-repeated-singleton-variables`,
+  which may be shortened to `--warn-repeated-singleton-vars`,
+  that tells the compiler to generate warnings for variables whose name
+  starts with an underscore, indicating that they should be singletons,
+  that nevertheless occur more than once. Until now, warnings about
+  such variables were controlled by the  `--warn-singleton-variables` option.
+  This option is enabled by default.
 
 * We have raised the default value of `--output-compile-error-lines` to 100.
 

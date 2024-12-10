@@ -189,6 +189,7 @@
     ;       halt_at_auto_parallel_failure
     ;       halt_at_invalid_interface
     ;       warn_singleton_vars
+    ;       warn_repeated_singleton_vars
     ;       warn_overlapping_scopes
     ;       warn_det_decls_too_lax
     ;       warn_inferred_erroneous
@@ -1308,6 +1309,7 @@ optdef(oc_warn, halt_at_syntax_errors,                  bool(no)).
 optdef(oc_warn, halt_at_auto_parallel_failure,          bool(no)).
 optdef(oc_warn, halt_at_invalid_interface,              bool(yes)).
 optdef(oc_warn, warn_singleton_vars,                    bool(yes)).
+optdef(oc_warn, warn_repeated_singleton_vars,           bool(yes)).
 optdef(oc_warn, warn_overlapping_scopes,                bool(yes)).
 optdef(oc_warn, warn_det_decls_too_lax,                 bool(yes)).
 optdef(oc_warn, warn_inferred_erroneous,                bool(yes)).
@@ -2286,6 +2288,8 @@ long_table("halt-at-auto-parallel-failure",
 long_table("halt-at-invalid-interface",    halt_at_invalid_interface).
 long_table("warn-singleton-variables", warn_singleton_vars).
 long_table("warn-singleton-vars",      warn_singleton_vars).
+long_table("warn-repeated-singleton-variables", warn_repeated_singleton_vars).
+long_table("warn-repeated-singleton-vars",      warn_repeated_singleton_vars).
 long_table("warn-overlapping-scopes",  warn_overlapping_scopes).
 long_table("warn-det-decls-too-lax",   warn_det_decls_too_lax).
 long_table("warn-inferred-erroneous",  warn_inferred_erroneous).
@@ -4327,6 +4331,7 @@ style_warning_options = [
 non_style_warning_options = [
     warn_accumulator_swaps,
     warn_singleton_vars,
+    warn_repeated_singleton_vars,
     warn_overlapping_scopes,
     warn_det_decls_too_lax,
     warn_inferred_erroneous,
@@ -4495,7 +4500,12 @@ options_help_warning(Stream, !IO) :-
         "\tDo not warn about argument order rearrangement caused",
         "\tby `--introduce-accumulators'.",
         "--no-warn-singleton-vars, --no-warn-singleton-variables",
-        "\tDo not warn about variables which only occur once.",
+        "\tDo not warn about variables which only occur once, despite",
+        "\ttheir names not starting with an underscore.",
+        "--no-warn-repeated-singleton-vars",
+        "--no-warn-repeated-singleton-variables",
+        "\tDo not warn about variables which occur more than once, despite",
+        "\ttheir names starting with an underscore.",
         "--no-warn-overlapping-scopes",
         "\tDo not warn about variables which occur in overlapping scopes.",
         "--no-warn-det-decls-too-lax",

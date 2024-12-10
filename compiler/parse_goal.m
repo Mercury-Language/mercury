@@ -1836,6 +1836,9 @@ parse_warning(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
             WarningFunctor = "singleton_vars",
             Warning = goal_warning_singleton_vars
         ;
+            WarningFunctor = "repeated_singleton_vars",
+            Warning = goal_warning_repeated_singleton_vars
+        ;
             WarningFunctor = "suspicious_recursion",
             Warning = goal_warning_suspicious_recursion
         ;

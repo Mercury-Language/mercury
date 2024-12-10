@@ -1648,7 +1648,13 @@ At the moment, the Mercury compiler supports the disabling of
 the following warning categories:
 @table @code
 @item singleton_vars
-Disable the generation of singleton variable warnings.
+Disable the generation of warnings
+for variables that occur only once
+despite their names not starting with an underscore.
+@item repeated_singleton_vars
+Disable the generation of warnings
+for variables that occur more than once
+despite their names starting with an underscore.
 @item suspected_occurs_check_failure
 Disable the generation of warnings about code that looks like
 it unifies a variable with a term that contains that same variable.
