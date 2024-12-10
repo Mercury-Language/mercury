@@ -51,7 +51,7 @@
     % but occur more than once, or about variables that do not occur in
     % target language code strings when they should.
     %
-:- pred warn_singletons(module_info::in, pf_sym_name_arity::in,
+:- pred warn_singletons_in_clause_body(module_info::in, pf_sym_name_arity::in,
     prog_varset::in, hlds_goal::in, maybe_seen_quant::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -161,8 +161,8 @@ quant_warning_to_spec(PfSymNameArity, VarSet, Warning) = Spec :-
 
 %---------------------------------------------------------------------------%
 
-warn_singletons(ModuleInfo, PfSymNameArity, VarSet, BodyGoal, SeenQuant,
-        !Specs) :-
+warn_singletons_in_clause_body(ModuleInfo, PfSymNameArity, VarSet, BodyGoal,
+        SeenQuant, !Specs) :-
     % We handle warnings about variables in the clause head specially.
     % This is because the compiler transforms clause heads such as
     %
@@ -416,10 +416,10 @@ warn_singletons_in_goal(Params, Goal, QuantVars, !Info) :-
             warn_singletons_in_goal(Params, SubGoal, QuantVars, !Info)
         ;
             Reason = from_ground_term(TermVar, _Kind),
-            % There can be no singleton variables inside the scopes by
-            % construction. The only variable involved in the scope that
-            % can possibly be singleton is the one representing the entire
-            % ground term.
+            % By construction, there can be no singleton variables
+            % inside these scopes. The only variable involved in the scope that
+            % can possibly be subject to either warning is the one that
+            % represents the entire ground term.
             NonLocals = goal_info_get_nonlocals(GoalInfo),
             warn_singletons_goal_vars(Params, [TermVar], GoalInfo, NonLocals,
                 QuantVars, !Info)
@@ -431,11 +431,11 @@ warn_singletons_in_goal(Params, Goal, QuantVars, !Info) :-
         )
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
-
-        % Warn if any quantified variables do not occur in the condition
-        % or the "then" part of the if-then-else.
         (
             Vars = [_ | _],
+            % Warn if any variables quantified by the if-then-else itself
+            % do not occur either in the condition, or in the "then" part
+            % of the if-then-else.
             !Info ^ wi_seen_quant := have_seen_quant,
             CondVars = free_goal_vars(Cond),
             ThenVars = free_goal_vars(Then),
@@ -471,7 +471,27 @@ warn_singletons_in_goal(Params, Goal, QuantVars, !Info) :-
         Context = goal_info_get_context(GoalInfo),
         Lang = get_foreign_language(Attrs),
         NamesModes = list.map(foreign_arg_maybe_name_mode, Args),
-        % ZZZ
+        % Normally, when generate_variable_warning tests whether any warning
+        % we are about to generate is enabled, it consults the relevant
+        % field of Params. The predicate we are calling here cannot do that,
+        % because it does not get passed either Params, or that field.
+        % This is nevertheless OK, because while we are in the process of
+        % constructing the initial HLDS (which is the only time that
+        % warn_singletons_in_clause_body, this predicate's only exported
+        % ancestor, is invoked), clause bodies can contain
+        %
+        % - either one foreign proc, possibly with unifications added
+        %   by the transformation to superhomogeneous form,
+        %
+        % - or the body goal of a Mercury clause.
+        %
+        % But since Mercury clauses cannot contain foreign_procs, and
+        % foreign_proc pragmas cannot contain any scope goals, the original
+        % BodyGoal cannot contain both a foreign_proc and a disable_warning
+        % scope. This means that if we get here, then the flags fields
+        % in Params will still call for the generation of exactly the same
+        % kinds of warnings as the options in the globals structure inside
+        % the module_info.
         warn_singletons_in_pragma_foreign_proc(Params ^ wp_module_info,
             PragmaImpl, Lang, NamesModes, Context, Params ^ wp_pf_sna,
             PredId, ProcId, [], PragmaSpecs),
@@ -541,7 +561,7 @@ warn_singletons_in_unify(Params, X, RHS, GoalInfo, QuantVars, !Info) :-
         warn_singletons_goal_vars(Params, ArgVars, GoalInfo, LambdaNonLocals,
             QuantVars, !Info),
 
-        % Warn if X (the variable we're unifying the lambda expression with)
+        % Warn if X (the variable we are unifying the lambda expression with)
         % is singleton.
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         warn_singletons_goal_vars(Params, [X], GoalInfo, NonLocals,
@@ -553,12 +573,13 @@ warn_singletons_in_unify(Params, X, RHS, GoalInfo, QuantVars, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-    % warn_singletons_goal_vars(Vars, GoalInfo, NonLocals, QuantVars, ...):
+    % warn_singletons_goal_vars(Params, Vars, GoalInfo, NonLocals,
+    %   QuantVars, !Info):
     %
     % Warn if any of the non-underscore variables in Vars don't occur in
     % NonLocals and don't have the same name as any variable in QuantVars,
     % or if any of the underscore variables in Vars do occur in NonLocals.
-    % Omit the warning if GoalInfo says we should.
+    % Omit the warning if Params or GoalInfo says we should.
     %
 :- pred warn_singletons_goal_vars(warn_params::in, list(prog_var)::in,
     hlds_goal_info::in, set_of_progvar::in, set_of_progvar::in,
@@ -566,19 +587,17 @@ warn_singletons_in_unify(Params, X, RHS, GoalInfo, QuantVars, !Info) :-
 
 warn_singletons_goal_vars(Params, GoalVars, GoalInfo, NonLocals, QuantVars,
         !Info) :-
-    % Find all the variables in the goal that don't occur outside the goal
-    % (i.e. are singleton), have a variable name that doesn't start with "_"
-    % or "DCG_", and don't have the same name as any variable in QuantVars
-    % (i.e. weren't explicitly quantified).
-
     VarSet = Params ^ wp_varset,
     PfSymNameArity = Params ^ wp_pf_sna,
     Context = goal_info_get_context(GoalInfo),
 
+    % Find all the variables in the goal that don't occur outside the goal
+    % (i.e. are singleton), have a variable name that doesn't start with "_"
+    % or "DCG_", and don't have the same name as any variable in QuantVars
+    % (i.e. weren't explicitly quantified). If there are any such variables,
+    % generate a warning.
     list.filter(is_singleton_var(NonLocals, QuantVars, VarSet), GoalVars,
         SingleVars),
-
-    % If there were any such variables, issue a warning.
     (
         SingleVars = []
     ;
@@ -604,8 +623,7 @@ warn_singletons_goal_vars(Params, GoalVars, GoalInfo, NonLocals, QuantVars,
 
     % Find all the variables in the goal that do occur outside the goal
     % (i.e. are not singleton) and have a variable name that starts
-    % with "_". If there were any such variables, issue a warning.
-
+    % with "_". If there are any such variables, generate a warning.
     list.filter(is_multi_var(NonLocals, VarSet), GoalVars, MultiVars),
     (
         MultiVars = []
@@ -737,7 +755,7 @@ generate_variable_warning_dyms(VarSet, Context, PreamblePieces,
         % the average number of one-character predicate and/or function names
         % in a module is very close to zero. However, one-character variable
         % names occur in real code much more frequently (usually in generic
-        % code), and scopes that contain several such names, having them
+        % code), and in scopes that contain several such names, having them
         % suggested as replacements for each other is more distracting
         % than useful.
         string.count_code_points(VarName, VarNameLen),
