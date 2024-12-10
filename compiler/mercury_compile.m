@@ -7,7 +7,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% This module defines main/2.  Note that main/2 forwards all of its work to
+% This module defines main/2. Note that main/2 forwards all of its work to
 % mercury_compile_main.real_main/2, but main/2 must be defined in this module
 % so that the compiler executable is generated with the right name.
 %
