@@ -892,7 +892,9 @@
                 % are described as "reconstructions".
                 construct_how           :: how_to_construct,
 
-                % Can the cell be allocated in shared data.
+                % Can the cell be allocated in shared data? If the cell is
+                % unique and thus subject to possible destructive update in
+                % the future, then no, it cannot be allocated in shared data.
                 construct_is_unique     :: cell_is_unique,
 
                 construct_sub_info      :: construct_sub_info
@@ -905,7 +907,7 @@
                 % Note that deconstruction of lambda expressions is
                 % a mode error.
                 %
-                % In HLDS dump, deconstructions that cannot fail are written
+                % In HLDS dumps, deconstructions that cannot fail are written
                 % as `X => f(Y1, Y2)', while deconstructions that can fail
                 % are written as `X ?= f(Y1, Y2)'.
 
