@@ -616,13 +616,14 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
     update_qual_info(TVarNameMap, TVarSet0, ExplicitVarTypes0,
         MaybeOptImported, !QualInfo),
     varset.merge_renaming(VarSet0, ClauseVarSet, VarSet1, Renaming),
-    can_we_do_singleton_and_quant_warnings(PredStatus, !.ClausesInfo, CanWarn),
+    should_we_do_singleton_and_quant_warnings(!.ModuleInfo, PredStatus,
+        !.ClausesInfo, ShouldWarn),
     % We need to keep quantified variables temporarily for use by the code
     % that warns about singletons, and then we want to delete those quantified
-    % variables. If we cannot generate any singleton variable warnings,
+    % variables. If we won't try to generate any singleton variable warnings,
     % then there is no point in keeping those quantified variables.
-    ( CanWarn = cannot_warn, KeepQuantVars = do_not_keep_quant_vars
-    ; CanWarn = can_warn,    KeepQuantVars = keep_quant_vars
+    ( ShouldWarn = should_not_warn, KeepQuantVars = do_not_keep_quant_vars
+    ; ShouldWarn = should_warn,     KeepQuantVars = keep_quant_vars
     ),
     add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
         HeadVars, ArgTerms, Context, ClauseType, BodyGoal, Goal0,
@@ -644,11 +645,11 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
         !ClausesInfo ^ cli_had_syntax_errors := some_clause_syntax_errors
     else
         (
-            CanWarn = cannot_warn,
+            ShouldWarn = should_not_warn,
             VarSet = VarSet2,
             Goal = Goal0
         ;
-            CanWarn = can_warn,
+            ShouldWarn = should_warn,
             PredFormArity = arg_list_arity(HeadVars),
             WarnPFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName,
                 PredFormArity),
@@ -737,18 +738,28 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
 
 %-----------------%
 
-:- type maybe_can_warn
-    --->    cannot_warn
-    ;       can_warn.
+:- type maybe_should_warn
+    --->    should_not_warn
+    ;       should_warn.
 
-:- pred can_we_do_singleton_and_quant_warnings(pred_status::in,
-    clauses_info::in, maybe_can_warn::out) is det.
+:- pred should_we_do_singleton_and_quant_warnings(module_info::in,
+    pred_status::in, clauses_info::in, maybe_should_warn::out) is det.
 
-can_we_do_singleton_and_quant_warnings(PredStatus, ClausesInfo, CanWarn) :-
+should_we_do_singleton_and_quant_warnings(ModuleInfo, PredStatus, ClausesInfo,
+        ShouldWarn) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, warn_singleton_vars, WarnSingleton),
+    globals.lookup_bool_option(Globals, warn_repeated_singleton_vars,
+        WarnRepeatedSingleton),
     ( if
         (
+            % Neither kind of singleton warning is enabled,
+            % so there is no point in looking for singletons.
+            WarnSingleton = no,
+            WarnRepeatedSingleton = no
+        ;
             % Any singleton warnings should be generated for the original code,
-            % not for the copy in a .opt or .trans_opt file.
+            % not for the copy in a .opt file.
             PredStatus = pred_status(status_opt_imported)
         ;
             % Part of the parser's recovery from syntax errors (e.g. when
@@ -766,9 +777,9 @@ can_we_do_singleton_and_quant_warnings(PredStatus, ClausesInfo, CanWarn) :-
             ClausesInfo ^ cli_had_syntax_errors = some_clause_syntax_errors
         )
     then
-        CanWarn = cannot_warn
+        ShouldWarn = should_not_warn
     else
-        CanWarn = can_warn
+        ShouldWarn = should_warn
     ).
 
 %-----------------%
