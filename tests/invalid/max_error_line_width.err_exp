@@ -3,57 +3,62 @@ max_error_line_width.m:056:   error: excessively ambiguous overloading.
 max_error_line_width.m:056:   This caused the type checker to exceed its limits. It may also make your code difficult to
 max_error_line_width.m:056:   understand.
 max_error_line_width.m:056:   The following symbol was overloaded in the following contexts.
-max_error_line_width.m:054:   The function symbol `f'/0.
+max_error_line_width.m:054: 
+max_error_line_width.m:054:   The function symbol [38;5;87m`f'/0.[39;49m
 max_error_line_width.m:054:   The possible matches are:
-max_error_line_width.m:054:     the builtin type constructor `character',
-max_error_line_width.m:054:     the type constructor `max_error_line_width.bar'/0,
-max_error_line_width.m:054:     the type constructor `max_error_line_width.foo'/0.
-max_error_line_width.m:055:   The function symbol `f'/0 is also overloaded here.
+max_error_line_width.m:054:     the builtin type constructor [38;5;226m`character',[39;49m
+max_error_line_width.m:054:     the type constructor [38;5;226m`max_error_line_width.bar'/0,[39;49m
+max_error_line_width.m:054:     the type constructor [38;5;226m`max_error_line_width.foo'/0.[39;49m
+max_error_line_width.m:055:   That symbol is also overloaded here.
 max_error_line_width.m:056: Warning: the [38;5;87mvariable `L'[39;49m is [38;5;203munified with a term containing itself.[39;49m
 max_error_line_width.m:059: In clause for predicate `ambig_overload2'/1:
 max_error_line_width.m:059:   warning: highly ambiguous overloading.
 max_error_line_width.m:059:   This may cause type-checking to be very slow. It may also make your code difficult to
 max_error_line_width.m:059:   understand.
 max_error_line_width.m:059:   The following symbols were overloaded in the following contexts.
-max_error_line_width.m:059:   The function symbol `a1'/0.
+max_error_line_width.m:059: 
+max_error_line_width.m:059:   The function symbol [38;5;87m`a1'/0.[39;49m
 max_error_line_width.m:059:   The possible matches are:
-max_error_line_width.m:059:     the type constructor `max_error_line_width.baz'/0,
-max_error_line_width.m:059:     the type constructor `max_error_line_width.qux'/0.
-max_error_line_width.m:059:   The function symbol `a2'/0.
+max_error_line_width.m:059:     the type constructor [38;5;226m`max_error_line_width.baz'/0,[39;49m
+max_error_line_width.m:059:     the type constructor [38;5;226m`max_error_line_width.qux'/0.[39;49m
+max_error_line_width.m:059: 
+max_error_line_width.m:059:   The function symbol [38;5;87m`a2'/0.[39;49m
 max_error_line_width.m:059:   The possible matches are:
-max_error_line_width.m:059:     the type constructor `max_error_line_width.baz'/0,
-max_error_line_width.m:059:     the type constructor `max_error_line_width.qux'/0.
+max_error_line_width.m:059:     the type constructor [38;5;226m`max_error_line_width.baz'/0,[39;49m
+max_error_line_width.m:059:     the type constructor [38;5;226m`max_error_line_width.qux'/0.[39;49m
 max_error_line_width.m:113: In clause for predicate `test_lt'/1:
 max_error_line_width.m:113:   error: excessively ambiguous overloading.
 max_error_line_width.m:113:   This caused the type checker to exceed its limits. It may also make your code difficult to
 max_error_line_width.m:113:   understand.
 max_error_line_width.m:113:   The following symbol was overloaded in the following contexts.
-max_error_line_width.m:064:   The function symbol `unchecked_left_shift'/2.
+max_error_line_width.m:064: 
+max_error_line_width.m:064:   The function symbol [38;5;87m`unchecked_left_shift'/2.[39;49m
 max_error_line_width.m:064:   The possible matches are:
-max_error_line_width.m:064:     function `int.unchecked_left_shift'/2,
-max_error_line_width.m:064:     function `uint.unchecked_left_shift'/2.
-max_error_line_width.m:065:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
-max_error_line_width.m:066:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
-max_error_line_width.m:067:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
-max_error_line_width.m:068:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
-max_error_line_width.m:069:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
-max_error_line_width.m:070:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
-max_error_line_width.m:071:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
-max_error_line_width.m:072:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
-max_error_line_width.m:073:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
-max_error_line_width.m:074:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
-max_error_line_width.m:075:   The function symbol `unchecked_left_shift'/2 is also overloaded here.
+max_error_line_width.m:064:     [38;5;226mfunction `int.unchecked_left_shift'/2,[39;49m
+max_error_line_width.m:064:     [38;5;226mfunction `uint.unchecked_left_shift'/2.[39;49m
+max_error_line_width.m:065:   That symbol is also overloaded here.
+max_error_line_width.m:066:   That symbol is also overloaded here.
+max_error_line_width.m:067:   That symbol is also overloaded here.
+max_error_line_width.m:068:   That symbol is also overloaded here.
+max_error_line_width.m:069:   That symbol is also overloaded here.
+max_error_line_width.m:070:   That symbol is also overloaded here.
+max_error_line_width.m:071:   That symbol is also overloaded here.
+max_error_line_width.m:072:   That symbol is also overloaded here.
+max_error_line_width.m:073:   That symbol is also overloaded here.
+max_error_line_width.m:074:   That symbol is also overloaded here.
+max_error_line_width.m:075:   That symbol is also overloaded here.
 max_error_line_width.m:123: In clause for predicate `set_browser_param_from_option_table'/3:
 max_error_line_width.m:123:   warning: highly ambiguous overloading.
 max_error_line_width.m:123:   This may cause type-checking to be very slow. It may also make your code difficult to
 max_error_line_width.m:123:   understand.
 max_error_line_width.m:123:   The following symbol was overloaded in the following contexts.
-max_error_line_width.m:118:   The function symbol `lookup_bool_option'/2.
+max_error_line_width.m:118: 
+max_error_line_width.m:118:   The function symbol [38;5;87m`lookup_bool_option'/2.[39;49m
 max_error_line_width.m:118:   The possible matches are:
-max_error_line_width.m:118:     predicate `getopt.lookup_bool_option'/3,
-max_error_line_width.m:118:     function `getopt.lookup_bool_option'/2.
-max_error_line_width.m:119:   The function symbol `lookup_bool_option'/2 is also overloaded here.
-max_error_line_width.m:120:   The function symbol `lookup_bool_option'/2 is also overloaded here.
-max_error_line_width.m:121:   The function symbol `lookup_bool_option'/2 is also overloaded here.
-max_error_line_width.m:122:   The function symbol `lookup_bool_option'/2 is also overloaded here.
-max_error_line_width.m:123:   The function symbol `lookup_bool_option'/2 is also overloaded here.
+max_error_line_width.m:118:     [38;5;226mpredicate `getopt.lookup_bool_option'/3,[39;49m
+max_error_line_width.m:118:     [38;5;226mfunction `getopt.lookup_bool_option'/2.[39;49m
+max_error_line_width.m:119:   That symbol is also overloaded here.
+max_error_line_width.m:120:   That symbol is also overloaded here.
+max_error_line_width.m:121:   That symbol is also overloaded here.
+max_error_line_width.m:122:   That symbol is also overloaded here.
+max_error_line_width.m:123:   That symbol is also overloaded here.

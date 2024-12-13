@@ -2,82 +2,70 @@ ambiguous_overloading_error.m:059: In clause for predicate `ambig_overload1'/1:
 ambiguous_overloading_error.m:059:   error: excessively ambiguous overloading.
 ambiguous_overloading_error.m:059:   The following symbol was overloaded in the
 ambiguous_overloading_error.m:059:   following contexts.
-ambiguous_overloading_error.m:057:   The function symbol `f'/0.
+ambiguous_overloading_error.m:057: 
+ambiguous_overloading_error.m:057:   The function symbol [38;5;87m`f'/0.[39;49m
 ambiguous_overloading_error.m:057:   The possible matches are:
 ambiguous_overloading_error.m:057:     the builtin type constructor
-ambiguous_overloading_error.m:057:     `character',
+ambiguous_overloading_error.m:057:     [38;5;226m`character',[39;49m
 ambiguous_overloading_error.m:057:     the type constructor
-ambiguous_overloading_error.m:057:     `ambiguous_overloading_error.bar'/0,
+ambiguous_overloading_error.m:057:     [38;5;226m`ambiguous_overloading_error.bar'/0,[39;49m
 ambiguous_overloading_error.m:057:     the type constructor
-ambiguous_overloading_error.m:057:     `ambiguous_overloading_error.foo'/0.
-ambiguous_overloading_error.m:058:   The function symbol `f'/0 is also
-ambiguous_overloading_error.m:058:   overloaded here.
+ambiguous_overloading_error.m:057:     [38;5;226m`ambiguous_overloading_error.foo'/0.[39;49m
+ambiguous_overloading_error.m:058:   That symbol is also overloaded here.
 ambiguous_overloading_error.m:059: Warning: the [38;5;87mvariable `L'[39;49m is [38;5;203munified with a[39;49m
 ambiguous_overloading_error.m:059:   [38;5;203mterm containing itself.[39;49m
 ambiguous_overloading_error.m:062: In clause for predicate `ambig_overload2'/1:
 ambiguous_overloading_error.m:062:   warning: highly ambiguous overloading.
 ambiguous_overloading_error.m:062:   The following symbols were overloaded in
 ambiguous_overloading_error.m:062:   the following contexts.
-ambiguous_overloading_error.m:062:   The function symbol `a1'/0.
+ambiguous_overloading_error.m:062: 
+ambiguous_overloading_error.m:062:   The function symbol [38;5;87m`a1'/0.[39;49m
 ambiguous_overloading_error.m:062:   The possible matches are:
 ambiguous_overloading_error.m:062:     the type constructor
-ambiguous_overloading_error.m:062:     `ambiguous_overloading_error.baz'/0,
+ambiguous_overloading_error.m:062:     [38;5;226m`ambiguous_overloading_error.baz'/0,[39;49m
 ambiguous_overloading_error.m:062:     the type constructor
-ambiguous_overloading_error.m:062:     `ambiguous_overloading_error.qux'/0.
-ambiguous_overloading_error.m:062:   The function symbol `a2'/0.
+ambiguous_overloading_error.m:062:     [38;5;226m`ambiguous_overloading_error.qux'/0.[39;49m
+ambiguous_overloading_error.m:062: 
+ambiguous_overloading_error.m:062:   The function symbol [38;5;87m`a2'/0.[39;49m
 ambiguous_overloading_error.m:062:   The possible matches are:
 ambiguous_overloading_error.m:062:     the type constructor
-ambiguous_overloading_error.m:062:     `ambiguous_overloading_error.baz'/0,
+ambiguous_overloading_error.m:062:     [38;5;226m`ambiguous_overloading_error.baz'/0,[39;49m
 ambiguous_overloading_error.m:062:     the type constructor
-ambiguous_overloading_error.m:062:     `ambiguous_overloading_error.qux'/0.
+ambiguous_overloading_error.m:062:     [38;5;226m`ambiguous_overloading_error.qux'/0.[39;49m
 ambiguous_overloading_error.m:116: In clause for predicate `test_lt'/1:
 ambiguous_overloading_error.m:116:   error: excessively ambiguous overloading.
 ambiguous_overloading_error.m:116:   The following symbol was overloaded in the
 ambiguous_overloading_error.m:116:   following contexts.
-ambiguous_overloading_error.m:067:   The predicate symbol `<'/2.
+ambiguous_overloading_error.m:067: 
+ambiguous_overloading_error.m:067:   The predicate symbol [38;5;87m`<'/2.[39;49m
 ambiguous_overloading_error.m:067:   The possible matches are:
-ambiguous_overloading_error.m:067:     predicate `float.<'/2,
-ambiguous_overloading_error.m:067:     predicate `int.<'/2.
-ambiguous_overloading_error.m:068:   The predicate symbol `<'/2 is also
-ambiguous_overloading_error.m:068:   overloaded here.
-ambiguous_overloading_error.m:069:   The predicate symbol `<'/2 is also
-ambiguous_overloading_error.m:069:   overloaded here.
-ambiguous_overloading_error.m:070:   The predicate symbol `<'/2 is also
-ambiguous_overloading_error.m:070:   overloaded here.
-ambiguous_overloading_error.m:071:   The predicate symbol `<'/2 is also
-ambiguous_overloading_error.m:071:   overloaded here.
-ambiguous_overloading_error.m:072:   The predicate symbol `<'/2 is also
-ambiguous_overloading_error.m:072:   overloaded here.
-ambiguous_overloading_error.m:073:   The predicate symbol `<'/2 is also
-ambiguous_overloading_error.m:073:   overloaded here.
-ambiguous_overloading_error.m:074:   The predicate symbol `<'/2 is also
-ambiguous_overloading_error.m:074:   overloaded here.
-ambiguous_overloading_error.m:075:   The predicate symbol `<'/2 is also
-ambiguous_overloading_error.m:075:   overloaded here.
-ambiguous_overloading_error.m:076:   The predicate symbol `<'/2 is also
-ambiguous_overloading_error.m:076:   overloaded here.
-ambiguous_overloading_error.m:077:   The predicate symbol `<'/2 is also
-ambiguous_overloading_error.m:077:   overloaded here.
-ambiguous_overloading_error.m:078:   The predicate symbol `<'/2 is also
-ambiguous_overloading_error.m:078:   overloaded here.
+ambiguous_overloading_error.m:067:     predicate [38;5;226m`float.<'/2,[39;49m
+ambiguous_overloading_error.m:067:     predicate [38;5;226m`int.<'/2.[39;49m
+ambiguous_overloading_error.m:068:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:069:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:070:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:071:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:072:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:073:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:074:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:075:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:076:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:077:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:078:   That symbol is also overloaded here.
 ambiguous_overloading_error.m:126: In clause for predicate
 ambiguous_overloading_error.m:126:   `set_browser_param_from_option_table'/3:
 ambiguous_overloading_error.m:126:   warning: highly ambiguous overloading.
 ambiguous_overloading_error.m:126:   The following symbol was overloaded in the
 ambiguous_overloading_error.m:126:   following contexts.
+ambiguous_overloading_error.m:121: 
 ambiguous_overloading_error.m:121:   The function symbol
-ambiguous_overloading_error.m:121:   `lookup_bool_option'/2.
+ambiguous_overloading_error.m:121:   [38;5;87m`lookup_bool_option'/2.[39;49m
 ambiguous_overloading_error.m:121:   The possible matches are:
-ambiguous_overloading_error.m:121:     predicate `getopt.lookup_bool_option'/3,
-ambiguous_overloading_error.m:121:     function `getopt.lookup_bool_option'/2.
-ambiguous_overloading_error.m:122:   The function symbol `lookup_bool_option'/2
-ambiguous_overloading_error.m:122:   is also overloaded here.
-ambiguous_overloading_error.m:123:   The function symbol `lookup_bool_option'/2
-ambiguous_overloading_error.m:123:   is also overloaded here.
-ambiguous_overloading_error.m:124:   The function symbol `lookup_bool_option'/2
-ambiguous_overloading_error.m:124:   is also overloaded here.
-ambiguous_overloading_error.m:125:   The function symbol `lookup_bool_option'/2
-ambiguous_overloading_error.m:125:   is also overloaded here.
-ambiguous_overloading_error.m:126:   The function symbol `lookup_bool_option'/2
-ambiguous_overloading_error.m:126:   is also overloaded here.
+ambiguous_overloading_error.m:121:     [38;5;226mpredicate `getopt.lookup_bool_option'/3,[39;49m
+ambiguous_overloading_error.m:121:     [38;5;226mfunction `getopt.lookup_bool_option'/2.[39;49m
+ambiguous_overloading_error.m:122:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:123:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:124:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:125:   That symbol is also overloaded here.
+ambiguous_overloading_error.m:126:   That symbol is also overloaded here.
 For more information, recompile with `-E'.

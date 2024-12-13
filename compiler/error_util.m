@@ -91,6 +91,20 @@
 
 %---------------------------------------------------------------------------%
 
+    % Given a function that constructs lists of format pieces when given
+    % an item and a suffix, return a list of format pieces which
+    %
+    % - contains the output of the function for all the items in the list,
+    % - with these outputs being in a sorted order (sorted on format_pieces),
+    % - with the output for all items ending with a comma and a newline,
+    % - with the exception of the last output, which has a period, not a comma.
+    %
+:- pred construct_sorted_line_pieces(
+    func(list(format_piece), T) = list(format_piece)::in,
+    list(T)::in, list(format_piece)::out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- func start_each_msg_with_blank_line(list(error_msg)) = list(error_msg).
 
 %---------------------------------------------------------------------------%
@@ -392,6 +406,39 @@ contains_errors_or_warnings_treated_as_errors_opt_table(OptionTable, Specs)
             Halt = no
         )
     ).
+
+%---------------------------------------------------------------------------%
+
+construct_sorted_line_pieces(MakeItemPiecesFunc, Items, Pieces) :-
+    (
+        Items = [],
+        Pieces = []
+    ;
+        Items = [_ | _],
+        % We want the output piece lists to be sorted, and we want to
+        % - add a comma after the pieces of all items but the last, and
+        % - add a period after the pieces of the last item.
+        % Since the pieces we construct for each item are far from guaranteed
+        % to be in the same order as the items, we cannot identify which
+        % item's pieces should be last by looking at only Items.
+        list.map(construct_sorted_line_pieces_pair(MakeItemPiecesFunc),
+            Items, ItemPiecesPairs),
+        list.sort(ItemPiecesPairs, SortedItemPiecesPairs),
+        list.det_split_last(SortedItemPiecesPairs, NonLastPiecesPairs,
+            _LastPieces - LastItem),
+        list.map(pair.fst, NonLastPiecesPairs, NonLastPiecesList),
+        list.condense(NonLastPiecesList, NonLastPieces),
+        LastPieces = MakeItemPiecesFunc([suffix("."), nl], LastItem),
+        Pieces = NonLastPieces ++ LastPieces
+    ).
+
+:- pred construct_sorted_line_pieces_pair(
+    func(list(format_piece), T) = list(format_piece)::in,
+    T::in, pair(list(format_piece), T)::out) is det.
+
+construct_sorted_line_pieces_pair(MakeItemPiecesFunc, Item,
+        ItemPieces - Item) :-
+    ItemPieces = MakeItemPiecesFunc([suffix(","), nl], Item).
 
 %---------------------------------------------------------------------------%
 

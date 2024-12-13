@@ -51,12 +51,14 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_type_util.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -161,34 +163,29 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
                 sym_name_pred_form_arity(SymName, PredFormArity),
             PredFormArity = pred_form_arity(PredFormArityInt),
             SNA = sym_name_arity(SymName, PredFormArityInt),
-            StartPieces = [words("The predicate symbol"),
-                qual_sym_name_arity(SNA), suffix("."), nl,
+            SNAPiece = qual_sym_name_arity(SNA),
+            StartPieces = [blank_line, words("The predicate symbol")] ++
+                color_as_subject([SNAPiece, suffix(".")]) ++ [nl,
                 words("The possible matches are:"), nl_indent_delta(1)],
-            PredIdPiecesList =
-                list.map(describe_qual_pred_name(ModuleInfo), PredIds),
-            list.sort(PredIdPiecesList, SortedPredIdPiecesList),
-            PredIdPieces =
-                pieces_list_to_line_pieces(SortedPredIdPiecesList) ++
-                [suffix("."), nl],
+            MakeItemPiecesFunc = describe_one_pred_name(ModuleInfo,
+                yes(color_hint), should_module_qualify),
+            construct_sorted_line_pieces(MakeItemPiecesFunc,
+                PredIds, PredIdPieces),
             FirstPieces = StartPieces ++ PredIdPieces,
-            LaterPieces = [words("The predicate symbol"),
-                qual_sym_name_arity(SNA), words("is also overloaded here."),
-                nl]
+            LaterPieces = [words("That symbol"),
+                words("is also overloaded here."), nl]
         ;
-            Symbol = overloaded_func(ConsId, Sources0),
-            list.sort(Sources0, Sources),
-            StartPieces = [words("The function symbol"),
-                qual_cons_id_and_maybe_arity(ConsId), suffix("."), nl,
+            Symbol = overloaded_func(ConsId, Sources),
+            ConsIdPiece = qual_cons_id_and_maybe_arity(ConsId),
+            StartPieces = [blank_line, words("The function symbol")] ++
+                color_as_subject([ConsIdPiece, suffix(".")]) ++ [nl,
                 words("The possible matches are:"), nl_indent_delta(1)],
-            SourcePiecesList = list.map(
-                describe_cons_type_info_source(ModuleInfo), Sources),
-            list.sort(SourcePiecesList, SortedSourcePiecesList),
-            SourcePieces =
-                pieces_list_to_line_pieces(SortedSourcePiecesList) ++
-                [suffix("."), nl],
+            MakeItemPiecesFunc = describe_cons_type_info_source(ModuleInfo,
+                yes(color_hint)),
+            construct_sorted_line_pieces(MakeItemPiecesFunc,
+                Sources, SourcePieces),
             FirstPieces = StartPieces ++ SourcePieces,
-            LaterPieces = [words("The function symbol"),
-                qual_cons_id_and_maybe_arity(ConsId),
+            LaterPieces = [words("That symbol"),
                 words("is also overloaded here."), nl]
         ),
         FirstMsg = msg(FirstContext, FirstPieces),

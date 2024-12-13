@@ -27,6 +27,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
@@ -66,8 +67,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- func describe_cons_type_info_source(module_info, cons_type_info_source)
-    = list(format_piece).
+:- func describe_cons_type_info_source(module_info, maybe(color_name),
+    list(format_piece), cons_type_info_source) = list(format_piece).
 
 :- func describe_args_type_assign_source(module_info, args_type_assign_source)
     = list(format_piece).
@@ -123,13 +124,18 @@
 
 %---------------------------------------------------------------------------%
 
-describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
+describe_cons_type_info_source(ModuleInfo, MaybeColor, SuffixPieces, Source)
+        = Pieces :-
     (
         Source = source_type(TypeCtor, _ConsId),
-        Pieces = [words("the type constructor"), qual_type_ctor(TypeCtor)]
+        Pieces = [words("the type constructor")] ++
+            maybe_color_pieces(MaybeColor,
+                [qual_type_ctor(TypeCtor) | SuffixPieces])
     ;
         Source = source_builtin_type(TypeCtorName),
-        Pieces = [words("the builtin type constructor"), quote(TypeCtorName)]
+        Pieces = [words("the builtin type constructor")] ++
+            maybe_color_pieces(MaybeColor,
+                [quote(TypeCtorName) | SuffixPieces])
     ;
         Source = source_field_access(GetOrSet, TypeCtor,
             _ConsId, _FieldName),
@@ -138,13 +144,17 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
         ),
         Pieces = [words("a"), quote(GetOrSetStr),
             words("field access function"),
-            words("for the type constructor"), qual_type_ctor(TypeCtor)]
+            words("for the type constructor")] ++
+            maybe_color_pieces(MaybeColor,
+                [qual_type_ctor(TypeCtor) | SuffixPieces])
     ;
         Source = source_pred(PredId),
-        Pieces = describe_qual_pred_name(ModuleInfo, PredId)
+        PredIdPieces = describe_qual_pred_name(ModuleInfo, PredId),
+        Pieces = maybe_color_pieces(MaybeColor, PredIdPieces ++ SuffixPieces)
     ;
         Source = source_apply(ApplyOp),
-        Pieces = [words("the builtin operator constructor"), quote(ApplyOp)]
+        Pieces = [words("the builtin operator constructor")] ++
+            maybe_color_pieces(MaybeColor, [quote(ApplyOp) | SuffixPieces])
     ).
 
 describe_args_type_assign_source(ModuleInfo, Source) = Pieces :-

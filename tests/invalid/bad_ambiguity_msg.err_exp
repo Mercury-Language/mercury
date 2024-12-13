@@ -2,8 +2,9 @@ bad_ambiguity_msg.m:035: In clause for predicate `main'/2:
 bad_ambiguity_msg.m:035:   warning: highly ambiguous overloading.
 bad_ambiguity_msg.m:035:   The following symbol was overloaded in the following
 bad_ambiguity_msg.m:035:   context.
-bad_ambiguity_msg.m:038:   The predicate symbol `append'/3.
+bad_ambiguity_msg.m:038: 
+bad_ambiguity_msg.m:038:   The predicate symbol [38;5;87m`append'/3.[39;49m
 bad_ambiguity_msg.m:038:   The possible matches are:
-bad_ambiguity_msg.m:038:     predicate `bad_ambiguity_msg.append'/3,
-bad_ambiguity_msg.m:038:     predicate `list.append'/3.
+bad_ambiguity_msg.m:038:     predicate [38;5;226m`bad_ambiguity_msg.append'/3,[39;49m
+bad_ambiguity_msg.m:038:     predicate [38;5;226m`list.append'/3.[39;49m
 For more information, recompile with `-E'.
