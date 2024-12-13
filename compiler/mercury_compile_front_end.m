@@ -432,8 +432,7 @@ frontend_pass_after_typecheck(ProgressStream, ErrorStream, OpModeAugment,
         ; OpModeAugment = opmau_make_trans_opt
         ; OpModeAugment = opmau_make_analysis_registry
         ; OpModeAugment = opmau_make_xml_documentation
-        ; OpModeAugment = opmau_errorcheck_only
-        ; OpModeAugment = opmau_generate_code(_)
+        ; OpModeAugment = opmau_front_and_middle(_)
         ),
         (
             OpModeAugment = opmau_make_plain_opt,
@@ -442,8 +441,7 @@ frontend_pass_after_typecheck(ProgressStream, ErrorStream, OpModeAugment,
             ( OpModeAugment = opmau_make_trans_opt
             ; OpModeAugment = opmau_make_analysis_registry
             ; OpModeAugment = opmau_make_xml_documentation
-            ; OpModeAugment = opmau_errorcheck_only
-            ; OpModeAugment = opmau_generate_code(_)
+            ; OpModeAugment = opmau_front_and_middle(_)
             ),
             MakeOptInt = no
         ),

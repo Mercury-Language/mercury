@@ -779,8 +779,8 @@ llds_output_pass(ProgressStream, OpModeCodeGen, HLDS,
         % Finally we invoke the C compiler on the generated C files,
         % if we were asked to do so.
         (
-            ( OpModeCodeGen = opmcg_target_and_object_code_only
-            ; OpModeCodeGen = opmcg_target_object_and_executable
+            ( OpModeCodeGen = opfam_target_and_object_code_only
+            ; OpModeCodeGen = opfam_target_object_and_executable
             ),
             llds_c_to_obj(Globals, ProgressStream, ModuleName,
                 CompileSucceeded, !IO),
@@ -793,7 +793,7 @@ llds_output_pass(ProgressStream, OpModeCodeGen, HLDS,
                 and_list([CompileSucceeded | FactTableCompileSucceededs]),
             maybe_set_exit_status(Succeeded, !IO)
         ;
-            OpModeCodeGen = opmcg_target_code_only,
+            OpModeCodeGen = opfam_target_code_only,
             Succeeded = succeeded,
             FactTableObjFiles = []
         )

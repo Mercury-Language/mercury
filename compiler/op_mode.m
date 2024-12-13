@@ -99,17 +99,22 @@
     ;       opmau_make_analysis_registry
     ;       opmau_make_xml_documentation
     ;       opmau_typecheck_only
-    ;       opmau_errorcheck_only
-    ;       opmau_generate_code(op_mode_codegen).
+    ;       opmau_front_and_middle(op_mode_front_and_middle).
 
 %---------------------%
 
-    % The modes of operation that require the Mercury code in the HLDS
-    % to have code generated for it in a target language.
-:- type op_mode_codegen
-    --->    opmcg_target_code_only
-    ;       opmcg_target_and_object_code_only
-    ;       opmcg_target_object_and_executable.
+    % The modes of operation that require us to execute the front end
+    % and the middle end of the Mercury compiler.
+:- type op_mode_front_and_middle
+    --->    opfam_errorcheck_only
+    ;       opfam_target_code_only
+    ;       opfam_target_and_object_code_only
+    ;       opfam_target_object_and_executable.
+
+:- type op_mode_codegen =< op_mode_front_and_middle
+    --->    opfam_target_code_only
+    ;       opfam_target_and_object_code_only
+    ;       opfam_target_object_and_executable.
 
 %---------------------------------------------------------------------------%
 
@@ -184,8 +189,8 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
         set.to_sorted_list(!.OpModeSet, OpModes0),
         (
             OpModes0 = [],
-            OpModeArgs = opma_augment(opmau_generate_code(
-                opmcg_target_object_and_executable)),
+            OpModeArgs = opma_augment(opmau_front_and_middle(
+                opfam_target_object_and_executable)),
             OpMode = opm_top_args(OpModeArgs, InvokedByMMCMake),
             OtherOpModes = []
         ;
@@ -216,7 +221,9 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
                         InvokedByMMCMake),
                     !OpModeSet),
                 set.delete(
-                    opm_top_args(opma_augment(opmau_errorcheck_only),
+                    opm_top_args(
+                        opma_augment(
+                            opmau_front_and_middle(opfam_errorcheck_only)),
                         InvokedByMMCMake),
                     !OpModeSet),
                 some [TogetherOpMode] (
@@ -268,8 +275,7 @@ may_be_together_with_check_only(OpMode) = MayBeTogether :-
                 MayBeTogether = yes
             ;
                 ( OpModeAugment = opmau_typecheck_only
-                ; OpModeAugment = opmau_errorcheck_only
-                ; OpModeAugment = opmau_generate_code(_)
+                ; OpModeAugment = opmau_front_and_middle(_)
                 ),
                 MayBeTogether = no
             )
@@ -378,14 +384,18 @@ bool_op_modes(InvokedByMMCMake) = [
     only_opmode_typecheck_only -
         opm_top_args(opma_augment(opmau_typecheck_only), InvokedByMMCMake),
     only_opmode_errorcheck_only -
-        opm_top_args(opma_augment(opmau_errorcheck_only), InvokedByMMCMake),
+        opm_top_args(
+            opma_augment(opmau_front_and_middle(opfam_errorcheck_only)),
+            InvokedByMMCMake),
     only_opmode_target_code_only -
-        opm_top_args(opma_augment(opmau_generate_code(opmcg_target_code_only)),
+        opm_top_args(
+            opma_augment(opmau_front_and_middle(opfam_target_code_only)),
             InvokedByMMCMake),
     only_opmode_compile_only -
-        opm_top_args(opma_augment(opmau_generate_code(
-            opmcg_target_and_object_code_only)),
-        InvokedByMMCMake)
+        opm_top_args(
+            opma_augment(opmau_front_and_middle(
+                opfam_target_and_object_code_only)),
+            InvokedByMMCMake)
 ].
 
 %---------------------------------------------------------------------------%
@@ -509,18 +519,18 @@ op_mode_to_option_string(OptionTable, MOP) = Str :-
                 MOPAU = opmau_typecheck_only,
                 Str = "--typecheck-only"
             ;
-                MOPAU = opmau_errorcheck_only,
-                Str = "--errorcheck-only"
-            ;
-                MOPAU = opmau_generate_code(MOPCG),
+                MOPAU = opmau_front_and_middle(MOFAM),
                 (
-                    MOPCG = opmcg_target_code_only,
+                    MOFAM = opfam_errorcheck_only,
+                    Str = "--errorcheck-only"
+                ;
+                    MOFAM = opfam_target_code_only,
                     Str = "--target-code-only"
                 ;
-                    MOPCG = opmcg_target_and_object_code_only,
+                    MOFAM = opfam_target_and_object_code_only,
                     Str = "--compile-only"
                 ;
-                    MOPCG = opmcg_target_object_and_executable,
+                    MOFAM = opfam_target_object_and_executable,
                     % We only set this module of operation if none of the
                     % others is specified by options, so this op should
                     % NEVER conflict with any others.

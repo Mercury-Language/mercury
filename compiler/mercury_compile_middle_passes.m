@@ -19,6 +19,8 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.passes_aux.
+:- import_module libs.
+:- import_module libs.op_mode.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
@@ -29,6 +31,7 @@
 :- import_module set.
 
 :- pred middle_pass(io.text_output_stream::in, io.text_output_stream::in,
+    op_mode_front_and_middle::in,
     module_info::in, module_info::out, dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
@@ -60,7 +63,6 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.mark_static_terms.
-:- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -130,7 +132,9 @@
 
 %---------------------------------------------------------------------------%
 
-middle_pass(ProgressStream, ErrorStream, !HLDS, !DumpInfo, !Specs, !IO) :-
+middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
+        !HLDS, !DumpInfo, !.Specs, Specs, !IO) :-
+
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -297,49 +301,78 @@ middle_pass(ProgressStream, ErrorStream, !HLDS, !DumpInfo, !Specs, !IO) :-
     maybe_dump_hlds(ProgressStream, !.HLDS, 213, "float_reg_wrapper",
         !DumpInfo, !IO),
 
-    % If we are compiling in a deep profiling grade then now rerun simplify.
-    % The reason for doing this now is that we want to take advantage of any
-    % opportunities the other optimizations have provided for constant
-    % propagation and we cannot do that once the term-size profiling or deep
-    % profiling transformations have been applied.
-    maybe_simplify(ProgressStream, maybe.no, bool.no,
-        simplify_pass_pre_prof_transforms, Verbose, Stats, !HLDS,
-        [], _SimplifySpecsPreProf, !IO),
-    maybe_dump_hlds(ProgressStream, !.HLDS, 215,
-        "pre_prof_transforms_simplify", !DumpInfo, !IO),
+    % With OpModeFrontAndMiddle = opfam_errorcheck_only, if may make sense
+    % to execute only those passes in the middle end that can report errors.
+    % However, some passes that cannot return new error_specs may nevertheless
+    % be needed. They may be needed
+    %
+    % - because they establish invariants that later middle end passes
+    %   depend on, or
+    %
+    % - because the changes they make to the HLDS affect the diagnostics
+    %   that later passes would generate.
+    %
+    % The pass that expands out all lambda goals is an example of the former,
+    % while the pass that expands out HLDS equivalence types is an example
+    % of the latter.
+    %
+    % What we can do is stop after the last middle end pass that can generate
+    % diagnostics, so that is what we do.
+    Specs = !.Specs,
+    (
+        OpModeFrontAndMiddle = opfam_errorcheck_only
+    ;
+        ( OpModeFrontAndMiddle = opfam_target_code_only
+        ; OpModeFrontAndMiddle = opfam_target_and_object_code_only
+        ; OpModeFrontAndMiddle = opfam_target_object_and_executable
+        ),
 
-    % The term size profiling transformation should be after all
-    % transformations that construct terms of non-zero size. (Deep profiling
-    % does not construct non-zero size terms.)
-    maybe_term_size_prof(ProgressStream, Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(ProgressStream, !.HLDS, 220, "term_size_prof",
-        !DumpInfo, !IO),
+        % If we are compiling in a deep profiling grade, then now rerun
+        % simplify. The reason for doing this now is that we want to
+        % take advantage of any opportunities the other optimizations
+        % have provided for constant propagation, and we cannot do that
+        % once the term-size profiling or deep profiling transformations
+        % have been applied.
+        maybe_simplify(ProgressStream, maybe.no, bool.no,
+            simplify_pass_pre_prof_transforms, Verbose, Stats, !HLDS,
+            [], _SimplifySpecsPreProf, !IO),
+        maybe_dump_hlds(ProgressStream, !.HLDS, 215,
+            "pre_prof_transforms_simplify", !DumpInfo, !IO),
 
-    % The deep profiling transformation should be done late in the piece
-    % since it munges the code a fair amount and introduces strange
-    % disjunctions that might confuse other hlds->hlds transformations.
-    maybe_deep_profiling(ProgressStream, Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(ProgressStream, !.HLDS, 225, "deep_profiling",
-        !DumpInfo, !IO),
+        % The term size profiling transformation should be after all
+        % transformations that construct terms of non-zero size.
+        % (Deep profiling does not construct non-zero size terms.)
+        maybe_term_size_prof(ProgressStream, Verbose, Stats, !HLDS, !IO),
+        maybe_dump_hlds(ProgressStream, !.HLDS, 220, "term_size_prof",
+            !DumpInfo, !IO),
 
-    % Experimental complexity transformation should be done late in the
-    % piece for the same reason as deep profiling. At the moment, they are
-    % exclusive.
-    maybe_experimental_complexity(ProgressStream, Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(ProgressStream, !.HLDS, 230, "complexity",
-        !DumpInfo, !IO),
+        % The deep profiling transformation should be done late in the piece
+        % since it munges the code a fair amount and introduces strange
+        % disjunctions that might confuse other hlds->hlds transformations.
+        maybe_deep_profiling(ProgressStream, Verbose, Stats, !HLDS, !IO),
+        maybe_dump_hlds(ProgressStream, !.HLDS, 225, "deep_profiling",
+            !DumpInfo, !IO),
 
-    % XXX This may be moved to later.
-    maybe_region_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(ProgressStream, !.HLDS, 240, "region_analysis",
-        !DumpInfo, !IO),
+        % Experimental complexity transformation should be done late in the
+        % piece for the same reason as deep profiling. At the moment, they are
+        % exclusive.
+        maybe_experimental_complexity(ProgressStream, Verbose, Stats,
+            !HLDS, !IO),
+        maybe_dump_hlds(ProgressStream, !.HLDS, 230, "complexity",
+            !DumpInfo, !IO),
 
-    maybe_eliminate_dead_procs(ProgressStream, Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(ProgressStream, !.HLDS, 250, "dead_procs",
-        !DumpInfo, !IO),
+        % XXX This may be moved to later.
+        maybe_region_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO),
+        maybe_dump_hlds(ProgressStream, !.HLDS, 240, "region_analysis",
+            !DumpInfo, !IO),
 
-    maybe_dump_hlds(ProgressStream, !.HLDS, 299, "middle_pass",
-        !DumpInfo, !IO).
+        maybe_eliminate_dead_procs(ProgressStream, Verbose, Stats, !HLDS, !IO),
+        maybe_dump_hlds(ProgressStream, !.HLDS, 250, "dead_procs",
+            !DumpInfo, !IO),
+
+        maybe_dump_hlds(ProgressStream, !.HLDS, 299, "middle_pass",
+            !DumpInfo, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 

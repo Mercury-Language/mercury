@@ -414,8 +414,8 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
             ModulesToLink = cord.list(ModulesToLinkCord),
             ExtraObjFiles = cord.list(ExtraObjFilesCord),
             ( if
-                OpModeArgs = opma_augment(opmau_generate_code(
-                    opmcg_target_object_and_executable)),
+                OpModeArgs = opma_augment(opmau_front_and_middle(
+                    opfam_target_object_and_executable)),
                 ModulesToLink = [FirstModule | _]
             then
                 generate_executable(ProgressStream, ErrorStream, Globals,
@@ -1108,9 +1108,8 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
         ; OpModeAugment = opmau_make_xml_documentation
         )
     ;
-        ( OpModeAugment = opmau_errorcheck_only
-        ; OpModeAugment = opmau_typecheck_only
-        ; OpModeAugment = opmau_generate_code(_)
+        ( OpModeAugment = opmau_typecheck_only
+        ; OpModeAugment = opmau_front_and_middle(_)
         ),
         globals.lookup_bool_option(Globals0, report_cmd_line_args_in_doterr,
             ReportCmdLineArgsDotErr),

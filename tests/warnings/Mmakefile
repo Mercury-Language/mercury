@@ -8,19 +8,10 @@ MAYBE_J1 =
 
 #-----------------------------------------------------------------------------#
 
-COMPILE_PROGS = \
-	arg_order_rearrangment \
-	foreign_term_invalid \
-	non_term_user_special \
-	pragma_term_conflict \
-	term_indirect_warning \
-	subtype_order \
-	warn_dead_procs \
-	warn_dead_procs_trace
-
 ERRORCHECK_PROGS = \
 	abstract_type_decl \
 	ambiguous_overloading \
+	arg_order_rearrangment \
 	bug311 \
 	bug412 \
 	bug477 \
@@ -31,6 +22,7 @@ ERRORCHECK_PROGS = \
 	duplicate_const \
 	empty_interface \
 	foreign_singleton \
+	foreign_term_invalid \
 	format_call_multi \
 	format_call_warning \
 	gh85 \
@@ -43,9 +35,11 @@ ERRORCHECK_PROGS = \
 	missing_singleton_warning \
 	non_contiguous_decls \
 	non_stratification \
+	non_term_user_special \
 	obsolete_proc_pragma \
 	occurs \
 	pragma_source_file \
+	pragma_term_conflict \
 	purity_warnings \
 	redundant_coerce \
 	repeated_singleton \
@@ -55,9 +49,11 @@ ERRORCHECK_PROGS = \
 	singleton_test_state_var \
 	spurious_obsolete \
 	state_vars_test \
+	subtype_order \
 	suspicious_foreign_code \
 	suspicious_recursion \
 	table_with_inline \
+	term_indirect_warning \
 	test_tscp \
 	unify_f_g \
 	unify_x_f_x \
@@ -68,6 +64,8 @@ ERRORCHECK_PROGS = \
 	unused_import \
 	unused_interface_import \
 	warn_contiguous_foreign \
+	warn_dead_procs \
+	warn_dead_procs_trace \
 	warn_non_contiguous \
 	warn_non_contiguous_foreign \
 	warn_non_contiguous_foreign_group \
@@ -91,7 +89,7 @@ ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 	ERRORCHECK_PROGS += unused_args_analysis
 endif
 
-PROGS = $(COMPILE_PROGS) $(ERRORCHECK_PROGS) up_to_date
+PROGS = $(ERRORCHECK_PROGS) up_to_date
 
 TESTS = $(sort $(PROGS))
 include ../Mmake.common
@@ -100,15 +98,12 @@ include ../Mmake.common
 # can be found by `mmc --make'.
 include Mercury.options
 
-# With `mmc --make', the errors should only go to the
-# `.err' files, not stderr.
+# With `mmc --make', the errors should only go to the `.err' files, not stderr.
 MCFLAGS += --output-compile-error-lines 0
 MCFLAGS += --color-diagnostics
 MCFLAGS += --infer-all
 
-$(COMPILE_PROGS:%=%.runtest): %.runtest: %.res_compile ;
-
-$(ERRORCHECK_PROGS:%=%.runtest): %.runtest: %.res_error ;
+$(ERRORCHECK_PROGS:%=%.runtest): %.runtest: %.err_res ;
 
 # Build the `.analysis' file for unused_args_analysis_helper_1
 # before building unused_args_analysis.c.
@@ -122,35 +117,6 @@ up_to_date.runtest:
 	diff $(DIFF_OPTS) up_to_date.err_exp up_to_date.err_make \
 		> up_to_date.res_make || \
 		{ cat up_to_date.err_make; cat up_to_date.res_make; exit 1; }
-
-#-----------------------------------------------------------------------------#
-
-%.res_error:	%.err_exp %.err
-	-rm -f $@
-	diff $(DIFF_OPTS) $*.err_exp $*.err > $@ || \
-		{ test -f $*.err_exp2 && \
-		  diff $(DIFF_OPTS) $*.err_exp2 $*.err > $@; } || \
-		{ test -f $*.err_exp3 && \
-		  diff $(DIFF_OPTS) $*.err_exp3 $*.err > $@; } || \
-		{ test -f $*.err_exp4 && \
-		  diff $(DIFF_OPTS) $*.err_exp4 $*.err > $@; } || \
-		{ cat $*.err; cat $@; exit 1; }
-
-%.res_compile:	%.err_exp %.c
-	-rm -f $@
-	diff $(DIFF_OPTS) $*.err_exp $*.err > $@ || \
-		{ test -f $*.err_exp2 && \
-		  diff $(DIFF_OPTS) $*.err_exp2 $*.err > $@; } || \
-		{ test -f $*.err_exp3 && \
-		  diff $(DIFF_OPTS) $*.err_exp3 $*.err > $@; } || \
-		{ test -f $*.err_exp4 && \
-		  diff $(DIFF_OPTS) $*.err_exp4 $*.err > $@; } || \
-		{ cat $*.err; cat $@; exit 1; }
-
-ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-%.c:		%.m
-	$(MCM) $@ 2>&1 | grep -v "^Making" > $*.err
-endif
 
 #-----------------------------------------------------------------------------#
 

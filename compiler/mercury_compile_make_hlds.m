@@ -104,7 +104,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
 
     (
         ( OpModeAugment = opmau_typecheck_only
-        ; OpModeAugment = opmau_errorcheck_only
+        ; OpModeAugment = opmau_front_and_middle(opfam_errorcheck_only)
         ),
         % If we are only typechecking or error checking, then we should not
         % modify any files; this includes writing to .d files.
@@ -115,11 +115,20 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         % we can't work out the full transitive implementation dependencies.
         WriteDFile = do_not_write_d_file
     ;
-        ( OpModeAugment = opmau_make_trans_opt
-        ; OpModeAugment = opmau_generate_code(_)
-        % XXX I (zs) think we should insist on do_not_write_d_file for these.
-        ; OpModeAugment = opmau_make_analysis_registry
-        ; OpModeAugment = opmau_make_xml_documentation
+        (
+            OpModeAugment = opmau_make_trans_opt
+        ;
+            OpModeAugment = opmau_make_analysis_registry
+            % XXX We should insist on do_not_write_d_file for these.
+        ;
+            OpModeAugment = opmau_make_xml_documentation
+            % XXX We should insist on do_not_write_d_file for these.
+        ;
+            OpModeAugment = opmau_front_and_middle(OpModeFAM),
+            ( OpModeFAM = opfam_target_code_only
+            ; OpModeFAM = opfam_target_and_object_code_only
+            ; OpModeFAM = opfam_target_object_and_executable
+            )
         ),
         (
             InvokedByMMCMake = op_mode_invoked_by_mmc_make,
@@ -566,8 +575,7 @@ maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
         ( OpModeAugment = opmau_make_analysis_registry
         ; OpModeAugment = opmau_make_xml_documentation
         ; OpModeAugment = opmau_typecheck_only
-        ; OpModeAugment = opmau_errorcheck_only
-        ; OpModeAugment = opmau_generate_code(_)
+        ; OpModeAugment = opmau_front_and_middle(_)
         ),
         (
             TransOpt = yes,

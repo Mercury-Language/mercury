@@ -143,8 +143,8 @@ handle_given_options(ProgressStream, DefaultOptionTable,
         ( if
             Smart = yes,
             OpMode = opm_top_args(OpModeArgs, _),
-            OpModeArgs = opma_augment(opmau_generate_code(
-                opmcg_target_object_and_executable))
+            OpModeArgs = opma_augment(opmau_front_and_middle(
+                opfam_target_object_and_executable))
         then
             % XXX Currently smart recompilation doesn't check that all the
             % files needed to link are present and up-to-date, so disable it.
@@ -1047,7 +1047,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         OT_Optimize0 = optimize,
         OT_OptMLDSTailCalls = OT_OptMLDSTailCalls0
     ),
-    handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls, OpMode,
+    handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls,
         !Globals, !Specs),
 
     % The rest of the code of this predicate computes the various fields
@@ -2460,14 +2460,19 @@ handle_opmode_implications(OpMode, !Globals) :-
                 Smart = bool.no,
                 Inform = bool.no
             ;
-                OpModeAugment = opmau_errorcheck_only,
-                Smart = bool.no,
-                % We execute all the tests in tests/warnings with
-                % --errorcheck-only.
-                Inform = Inform0
-            ;
-                OpModeAugment = opmau_generate_code(_),
-                Smart = Smart0,
+                OpModeAugment = opmau_front_and_middle(OpModeFrontAndMiddle),
+                (
+                    OpModeFrontAndMiddle = opfam_errorcheck_only,
+                    % We execute all the tests in tests/warnings with
+                    % --errorcheck-only.
+                    Smart = no
+                ;
+                    ( OpModeFrontAndMiddle = opfam_target_code_only
+                    ; OpModeFrontAndMiddle = opfam_target_and_object_code_only
+                    ; OpModeFrontAndMiddle = opfam_target_object_and_executable
+                    ),
+                    Smart = Smart0
+                ),
                 Inform = Inform0
             )
         ;
@@ -2661,7 +2666,7 @@ maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO) :-
         ( if
             OpMode = opm_top_args(OpModeArgs, _),
             OpModeArgs = opma_augment(
-                opmau_generate_code(opmcg_target_code_only))
+                opmau_front_and_middle(opfam_target_code_only))
         then
             true
         else
@@ -2818,8 +2823,8 @@ handle_directory_options(OpMode, !Globals, !Specs) :-
             OpMode = opm_top_make
         ;
             OpMode = opm_top_args(OpModeArgs, _),
-            OpModeArgs = opma_augment(opmau_generate_code(
-                opmcg_target_object_and_executable))
+            OpModeArgs = opma_augment(opmau_front_and_middle(
+                opfam_target_object_and_executable))
         )
     then
         true
@@ -3593,11 +3598,10 @@ handle_colors(!Globals, !IO) :-
     %   none
     %
 :- pred handle_non_tail_rec_warnings(opt_tuple::in,
-    maybe_opt_mlds_tailcalls::in, op_mode::in,
-    globals::in, globals::out,
+    maybe_opt_mlds_tailcalls::in, globals::in, globals::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls, OpMode,
+handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls,
         !Globals, !Specs) :-
     % --warn-non-tail-recursion requires tail call optimization to be enabled.
     % It also doesn't work if you use --errorcheck-only.
@@ -3636,15 +3640,6 @@ handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls, OpMode,
             OptimizeWords =
                 "--warn-non-tail-recursion requires --optimize-tailcalls",
             add_error(phase_options, [words(OptimizeWords)], !Specs)
-        ),
-        ( if
-            OpMode = opm_top_args(opma_augment(opmau_errorcheck_only), _)
-        then
-            ECOWords = "--warn-non-tail-recursion is incompatible"
-                ++ " with --errorcheck-only",
-            add_error(phase_options, [words(ECOWords)], !Specs)
-        else
-            true
         )
     else
         true
