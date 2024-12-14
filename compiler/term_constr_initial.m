@@ -106,7 +106,6 @@
 %
 % XXX This does the wrong thing for copy/2 & typed_unify/2. In both cases,
 % the constraints should show that |HeadVar__1| = |HeadVar__2|, but they don't.
-% Also look at builtin_compound_eq, builtin_compound_lt.
 
 term2_preprocess_module(!ModuleInfo) :-
     should_we_believe_check_termination_markers(!.ModuleInfo,
@@ -547,9 +546,7 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
     ;
         HeadVars = [HeadVar1, HeadVar2],
         ( if
-            ( PredName = "builtin_compound_eq"
-            ; PredName = "builtin_compound_lt"
-            ; PredName = "get_future"
+            ( PredName = "get_future"
             ; PredName = "increment_size"
             ; PredName = "new_future"
             ; PredName = "partial_inst_copy"
@@ -569,9 +566,7 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
                 SizeVar2 = prog_var_to_size_var(SizeVarMap, HeadVar2),
                 Constraints = [make_vars_eq_constraint(SizeVar1, SizeVar2)]
             ;
-                ( PredName = "builtin_compound_eq"
-                ; PredName = "builtin_compound_lt"
-                ; PredName = "get_future"
+                ( PredName = "get_future"
                 ; PredName = "increment_size"
                 ; PredName = "new_future"
                 ; PredName = "signal_future"

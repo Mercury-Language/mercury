@@ -110,35 +110,16 @@
     %
 :- func fim_spec_module_name_from_module(fim_spec, module_name) = module_name.
 
-    % Sub-type of foreign_language for languages for which
-    % we generate external files for foreign code.
-    %
-    % Not currently used.
-% :- inst lang_gen_ext_file for globals.foreign_language/0
-%     --->    lang_c
-%     ;       lang_csharp.
-
     % The module name used for this foreign language.
-    % Not all foreign languages generate external modules,
-    % so this function only succeeds for those that do.
-    %
-    % XXX That is not true. It succeeds for all our current foreign languages,
-    % and our callers expect it to do so.
     %
 :- pred foreign_language_module_name(module_name, foreign_language,
     module_name).
-% :- mode foreign_language_module_name(in, in(lang_gen_ext_file), out) is det.
 :- mode foreign_language_module_name(in, in, out) is det.
 
-    % The file extension used for this foreign language (including the dot).
-    % Not all foreign languages generate external files,
-    % so this function only succeeds for those that do.
-    %
-    % XXX Actually, all the foreign languages we handle *now* *do*
-    % generate external files. (The exception used to be Erlang.)
+    % The file extension used for the target files we genereate
+    % in the given foreign language.
     %
 :- pred foreign_language_file_extension(foreign_language, ext).
-% :- mode foreign_language_file_extension(in(lang_gen_ext_file), out) is det.
 :- mode foreign_language_file_extension(in, out) is det.
 
     % It is possible that more than one foreign language could be used to

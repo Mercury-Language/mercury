@@ -50,4 +50,3 @@ bad_foreign_decl.m:056:   error: expected the [38;5;40mname of a foreign langua
 bad_foreign_decl.m:056:   [38;5;203m`"Erlang"'.[39;49m
 bad_foreign_decl.m:056:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m [38;5;40mjava[39;49m and
 bad_foreign_decl.m:056:   [38;5;40mJava.[39;49m
-bad_foreign_decl.m:056:   Support for Erlang has been discontinued.

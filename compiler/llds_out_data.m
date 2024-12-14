@@ -897,8 +897,6 @@ output_record_rval_decls_format(Info, Stream, Rval, FirstIndent, LaterIndent,
             ; Op = array_index(_)
             ; Op = string_unsafe_index_code_unit
             ; Op = pointer_equal_conservative
-            ; Op = compound_lt
-            ; Op = compound_eq
             ; Op = body
             ; Op = float_from_dword
             ; Op = int64_from_dword
@@ -1231,13 +1229,6 @@ output_rval_binop(Stream, Info, Op, SubRvalA, SubRvalB, !IO) :-
         io.write_string(Stream, ") == ((MR_Word) ", !IO),
         output_rval(Info, SubRvalB, Stream, !IO),
         io.write_string(Stream, "))", !IO)
-    ;
-        ( Op = compound_lt
-        ; Op = compound_eq
-        ),
-        % These operators were intended to be generated only when using
-        % the now-deleted Erlang backend.
-        unexpected($file, $pred, "compound_compare_binop")
     ;
         Op = str_cmp(CmpOp),
         OpStr = cmp_op_c_operator(CmpOp),
@@ -1978,8 +1969,6 @@ do_output_test_rval(Stream, Info, MaybeNegated, TestRval, !IO) :-
             ; Binop = int64_from_dword
             ; Binop = uint64_from_dword
             ; Binop = pointer_equal_conservative
-            ; Binop = compound_eq
-            ; Binop = compound_lt
             ),
             do_output_test_rval_base(Stream, Info, MaybeNegated, TestRval, !IO)
         )

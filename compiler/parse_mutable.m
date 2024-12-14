@@ -632,16 +632,6 @@ parse_mutable_attr(VarSet, MutAttrTerm, MutAttrResult) :-
     then
         MutAttr = mutable_attr_foreign_name(foreign_name(Lang, ForeignName)),
         MutAttrResult = ok1(MutAttrTerm - MutAttr)
-    else if
-        MutAttrTerm = term.functor(term.atom("foreign_name"), Args, _),
-        Args = [LangTerm, _ForeignNameTerm],
-        term_to_foreign_language_erlang(LangTerm)
-    then
-        Pieces = [words("Error in"), decl("mutable"), words("declaration:"),
-            nl, words("support for Erlang has been discontinued."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            get_term_context(MutAttrTerm), Pieces),
-        MutAttrResult = error1([Spec])
     else
         MutAttrStr = describe_error_term(VarSet, MutAttrTerm),
         Pieces =

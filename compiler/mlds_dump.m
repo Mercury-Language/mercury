@@ -953,12 +953,6 @@ binop_to_strcord(BinOp) = Cord :-
     ;
         BinOp = pointer_equal_conservative,
         Cord = strcord("ptr_eq")
-    ;
-        BinOp = compound_eq,
-        Cord = strcord("compound_eq")
-    ;
-        BinOp = compound_lt,
-        Cord = strcord("compound_lt")
     ).
 
 :- func int_type_to_strcord(int_type) = strcord.

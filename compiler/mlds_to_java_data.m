@@ -566,8 +566,6 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
         ; Op = float_from_dword
         ; Op = int64_from_dword
         ; Op = uint64_from_dword
-        ; Op = compound_eq
-        ; Op = compound_lt
         ),
         unexpected($pred, "invalid binary operator")
     ).

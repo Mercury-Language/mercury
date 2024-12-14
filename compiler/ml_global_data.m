@@ -579,8 +579,6 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = body
         ; Op = array_index(_)   % should not be an initializer anyway
         ; Op = string_unsafe_index_code_unit
-        ; Op = compound_eq
-        ; Op = compound_lt
         ; Op = pointer_equal_conservative
         ; Op = int64_from_dword
         ; Op = uint64_from_dword

@@ -301,7 +301,7 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
     maybe_dump_hlds(ProgressStream, !.HLDS, 213, "float_reg_wrapper",
         !DumpInfo, !IO),
 
-    % With OpModeFrontAndMiddle = opfam_errorcheck_only, if may make sense
+    % With OpModeFrontAndMiddle = opfam_errorcheck_only, it may make sense
     % to execute only those passes in the middle end that can report errors.
     % However, some passes that cannot return new error_specs may nevertheless
     % be needed. They may be needed

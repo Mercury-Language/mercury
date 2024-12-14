@@ -167,14 +167,7 @@
     ;       int64_from_dword
     ;       uint64_from_dword
 
-    ;       pointer_equal_conservative
-
-    ;       compound_eq
-    ;       compound_lt.
-            % Comparisons on values of non-atomic types. This is likely to be
-            % supported only on very high-level back-ends.
-            % XXX The only backend that used these was erlang, which
-            % has been deleted.
+    ;       pointer_equal_conservative.
 
 :- inst int_misc_binary_op for binary_op/0
     --->    unchecked_left_shift(ground, ground)
@@ -419,12 +412,6 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
         ;
             ( PredName = "unsigned_lt",       CmpOp = int_as_uint_cmp(lt)
             ; PredName = "unsigned_le",       CmpOp = int_as_uint_cmp(le)
-            ),
-            ProcNum = 0, Args = [X, Y],
-            Code = test(binary_test(CmpOp, X, Y))
-        ;
-            ( PredName = "builtin_compound_eq", CmpOp = compound_eq
-            ; PredName = "builtin_compound_lt", CmpOp = compound_lt
             ),
             ProcNum = 0, Args = [X, Y],
             Code = test(binary_test(CmpOp, X, Y))

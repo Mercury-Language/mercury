@@ -426,8 +426,6 @@ natural_negate_rval(TestRval0, TestRval) :-
             ; Binop0 = int64_from_dword
             ; Binop0 = uint64_from_dword
             ; Binop0 = pointer_equal_conservative
-            ; Binop0 = compound_eq
-            ; Binop0 = compound_lt
             ),
             fail
         )

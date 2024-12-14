@@ -1010,31 +1010,21 @@ simplify_improve_library_call(InstMap0, ModuleName, PredName, ModeNum, Args,
         !Info) :-
     (
         ModuleName = "builtin",
-        (
-            ( PredName = "@<",  Inequality = "<", Invert = no
-            ; PredName = "@>",  Inequality = ">", Invert = no
-            ; PredName = "@=<", Inequality = ">", Invert = yes
-            ; PredName = "@>=", Inequality = "<", Invert = yes
-            ),
-            Args = [TI, X, Y],
-            % The definitions of @<, @=<, @> and @>= all call builtin.compare
-            % and test the result. We improve the call by inlining those
-            % definitions.
-            % XXX We should test to see whether the target supports
-            % builtin compare operations for structured terms, and use those
-            % if available.
-            simplify_inline_builtin_inequality(TI, X, Y, Inequality, Invert,
-                GoalInfo0, ImprovedGoalExpr, InstMap0, !Info),
-            ImprovedGoalInfo = GoalInfo0
-        ;
-            PredName = "compare",
-            % When generating code for target languages that have builtin
-            % operations for comparing structured terms, we replace calls
-            % to Mercury's compare with the target's builtin compare.
-            Context = goal_info_get_context(GoalInfo0),
-            simplify_improve_builtin_compare(ModeNum, Args, Context,
-                ImprovedGoalExpr, ImprovedGoalInfo, !Info)
-        )
+        ( PredName = "@<",  Inequality = "<", Invert = no
+        ; PredName = "@>",  Inequality = ">", Invert = no
+        ; PredName = "@=<", Inequality = ">", Invert = yes
+        ; PredName = "@>=", Inequality = "<", Invert = yes
+        ),
+        Args = [TI, X, Y],
+        % The definitions of @<, @=<, @> and @>= all call builtin.compare
+        % and test the result. We improve the call by inlining those
+        % definitions.
+        % XXX We should test to see whether the target supports
+        % builtin compare operations for structured terms, and use those
+        % if available.
+        simplify_inline_builtin_inequality(TI, X, Y, Inequality, Invert,
+            GoalInfo0, ImprovedGoalExpr, InstMap0, !Info),
+        ImprovedGoalInfo = GoalInfo0
     ;
         ModuleName = "private_builtin",
         ( PredName = "builtin_compare_int",     TypeName = "int"
@@ -1152,74 +1142,6 @@ simplify_inline_builtin_inequality(TI, X, Y, Inequality, Invert, GoalInfo,
         Invert = yes,
         ImprovedGoalExpr = conj(plain_conj,
             [CmpGoal, hlds_goal(negation(UnifyGoal), UnifyInfo)])
-    ).
-
-%---------------------%
-
-:- pred simplify_improve_builtin_compare(int::in, list(prog_var)::in,
-    prog_context::in, hlds_goal_expr::out, hlds_goal_info::out,
-    simplify_info::in, simplify_info::out) is semidet.
-
-simplify_improve_builtin_compare(_ModeNum, Args, Context,
-        GoalExpr, GoalInfo, !Info) :-
-    % On the Erlang backend, it was faster for us to use builtin comparison
-    % operators on high level data structures than to deconstruct the data
-    % structure and compare the atomic constituents. We can only do this
-    % on values of types which we know not to have user-defined equality
-    % predicates.
-    %
-    % The Erlang backend was the only one on which
-    % can_compare_compound_values could ever be "yes".
-    %
-    % globals.lookup_bool_option(Globals, can_compare_compound_values, yes),
-    semidet_fail,
-
-    simplify_info_get_module_info(!.Info, ModuleInfo),
-    list.reverse(Args, [Y, X, R | _]),
-    simplify_info_get_var_table(!.Info, VarTable),
-    lookup_var_type(VarTable, Y, Type),
-    type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type),
-
-    require_det (
-        % We cannot use simplify_build_compare_ite because there is
-        % no builtin_compound_gt predicate (yet).
-        % Using simplify_build_compare_ite would yield faster code,
-        % because the code we generate here start with an equality test,
-        % which is 99+% likely to fail. Starting with a less than or
-        % greater than test would be better. Since such a test can be expected
-        % to determine the final outcome in almost 50% of cases, it would
-        % let us avoid the cost of the second test *much* more frequently.
-
-        generate_plain_call(ModuleInfo, pf_predicate,
-            mercury_private_builtin_module, "builtin_compound_eq",
-            [], [X, Y], instmap_delta_bind_no_var, only_mode,
-            detism_semi, purity_pure, [], Context, CmpEqGoal),
-        generate_plain_call(ModuleInfo, pf_predicate,
-            mercury_private_builtin_module, "builtin_compound_lt",
-            [], [X, Y], instmap_delta_bind_no_var, only_mode,
-            detism_semi, purity_pure, [], Context, CmpLtGoal),
-
-        Builtin = mercury_public_builtin_module,
-        CmpRes = qualified(mercury_public_builtin_module, "comparison_result"),
-        CmpResTypeCtor = type_ctor(CmpRes, 0),
-        UDC_Lt = du_ctor(qualified(Builtin, "<"), 0, CmpResTypeCtor),
-        UDC_Eq = du_ctor(qualified(Builtin, "="), 0, CmpResTypeCtor),
-        UDC_Gt = du_ctor(qualified(Builtin, ">"), 0, CmpResTypeCtor),
-        FunctorResultLt = du_data_ctor(UDC_Lt),
-        FunctorResultEq = du_data_ctor(UDC_Eq),
-        FunctorResultGt = du_data_ctor(UDC_Gt),
-        make_const_construction(Context, R, FunctorResultLt, ReturnLtGoal),
-        make_const_construction(Context, R, FunctorResultEq, ReturnEqGoal),
-        make_const_construction(Context, R, FunctorResultGt, ReturnGtGoal),
-
-        NonLocals = set_of_var.list_to_set([R, X, Y]),
-        goal_info_init(NonLocals, instmap_delta_bind_var(R), detism_det,
-            purity_pure, Context, GoalInfo),
-
-        ReturnLtGtGoalExpr = if_then_else([], CmpLtGoal,
-            ReturnLtGoal, ReturnGtGoal),
-        ReturnLtGtGoal = hlds_goal(ReturnLtGtGoalExpr, GoalInfo),
-        GoalExpr = if_then_else([], CmpEqGoal, ReturnEqGoal, ReturnLtGtGoal)
     ).
 
 %---------------------%

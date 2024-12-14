@@ -47,7 +47,6 @@ bad_foreign_enum.m:087:   error: expected the [38;5;40mname of a foreign langua
 bad_foreign_enum.m:087:   [38;5;203m`"Erlang"'.[39;49m
 bad_foreign_enum.m:087:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m [38;5;40mjava[39;49m and
 bad_foreign_enum.m:087:   [38;5;40mJava.[39;49m
-bad_foreign_enum.m:087:   Support for Erlang has been discontinued.
 bad_foreign_enum.m:088: In the second argument of `:- pragma foreign_enum'
 bad_foreign_enum.m:088:   declaration:
 bad_foreign_enum.m:088:   error: expected [38;5;40m`type_name/type_arity',[39;49m got [38;5;203m`meat'.[39;49m

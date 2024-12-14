@@ -55,9 +55,6 @@
 
 %---------------------%
 
-    % XXX Note that neither the LLDS nor the MLDS backends can accommodate
-    % target languages such as Aditi or Erlang, which (while they existed)
-    % had their own backends.
 :- type backend
     --->    high_level_backend
     ;       low_level_backend.

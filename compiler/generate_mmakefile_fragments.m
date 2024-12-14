@@ -102,15 +102,14 @@
     % Initially, when the only target language was C, the only build system
     % we had was mmake, so the mmake rules we generate here can do everything
     % that one wants to do when targeting C. When we added the ability to
-    % target C# and Erlang, we implemented it for --use-mmc-make only,
-    % *not* for mmake, so the entries we generate for C# and Erlang
-    % mostly just forward the work to --use-mmc-make. Java is in between;
-    % there are more mmake rules for it than for C# or Erlang, but far from
-    % enough for full functionality. In an email to m-rev on 2020 may 25,
-    % Julien said: "IIRC, most of the mmake rules for Java that are not
-    % required by --use-mmc-make are long obsolete". Unfortunately,
-    % apparently there is no documentation of *which* mmake rules for Java
-    % are required by --use-mmc-make.
+    % target C#, we implemented it for --use-mmc-make only, *not* for mmake,
+    % so the entries we generate for C# mostly just forward the work to
+    % --use-mmc-make. Java is in between; there are more mmake rules for it
+    % than for C#, but far from enough for full functionality. In an email
+    % to m-rev on 2020 may 25, Julien said: "IIRC, most of the mmake rules
+    % for Java that are not required by --use-mmc-make are long obsolete".
+    % Unfortunately, apparently there is no documentation of *which*
+    % mmake rules for Java are required by --use-mmc-make.
     %
     % XXX The StdDeps argument allows generate_dependencies_write_d_file
     % to supply some information derived from the overall dependency graph
@@ -1432,59 +1431,6 @@ acc_fact_table_file_names(DepsMap, [Module | Modules], !FactTableFileNames) :-
     % in a non target language.
     set.union(FactTableFileNames, !FactTableFileNames),
     acc_fact_table_file_names(DepsMap, Modules, !FactTableFileNames).
-
-%---------------------%
-
-    % This predicate is unused, because it lost its purpose when we deleted
-    % the Erlang backend.
-    %
-:- pred generate_dv_file_define_c_foreign_vars(globals::in, string::in,
-    list(mmake_entry)::out,
-    module_file_name_cache::in, module_file_name_cache::out,
-    io::di, io::uo) is det.
-:- pragma consider_used(pred(generate_dv_file_define_c_foreign_vars/7)).
-
-generate_dv_file_define_c_foreign_vars(Globals, ModuleMakeVarName,
-        MmakeEntries, !Cache, !IO) :-
-    globals.get_target(Globals, Target),
-    (
-        ( Target = target_c
-        ; Target = target_csharp
-        ; Target = target_java
-        ),
-        ForeignModulesAndExts = []
-    ),
-    ForeignModules = list.map((func({A, _C}) = A), ForeignModulesAndExts),
-
-    make_module_file_names_with_ext(Globals,
-        ext_cur_gas(ext_cur_gas_exec_noext),
-        ForeignModules, ForeignModulesFileNames, !Cache, !IO),
-    MmakeVarForeignModules =
-        mmake_var_defn_list(ModuleMakeVarName ++ ".foreign",
-            ForeignModulesFileNames),
-
-    MakeFileName =
-        ( pred({M, NE}::in, F::out, FP::out, IO0::di, IO::uo) is det :-
-            % XXX LEGACY
-            module_name_to_file_name_create_dirs(Globals, $pred, NE,
-                M, F0, FP0, IO0, IO),
-            F = "$(os_subdir)" ++ F0,
-            FP = "$(os_subdir)" ++ FP0
-        ),
-    list.map2_foldl(MakeFileName, ForeignModulesAndExts,
-        ForeignFileNames, _ForeignFileNamesProposed, !IO),
-
-    % .foreign_cs are the source files which have had foreign code placed
-    % in them.
-    % XXX This rule looks wrong: why are we looking for (a) stuff with an
-    % unknown suffix in (b) the os_subdir, when we (c) refer to it
-    % using a make variable whose name ends in "_cs"?
-    % Of course, since ForeignModulesAndExts is always [] with our current
-    % set of target languages, this does not matter.
-    MmakeVarForeignFileNames =
-        mmake_var_defn_list(ModuleMakeVarName ++ ".foreign_cs",
-            ForeignFileNames),
-    MmakeEntries = [MmakeVarForeignModules, MmakeVarForeignFileNames].
 
 %---------------------%
 

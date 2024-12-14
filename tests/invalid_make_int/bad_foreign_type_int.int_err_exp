@@ -83,7 +83,6 @@ bad_foreign_type_int.m:090:   error: expected the [38;5;40mname of a foreign la
 bad_foreign_type_int.m:090:   got [38;5;203m`"Erlang"'.[39;49m
 bad_foreign_type_int.m:090:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m [38;5;40mjava[39;49m
 bad_foreign_type_int.m:090:   and [38;5;40mJava.[39;49m
-bad_foreign_type_int.m:090:   Support for Erlang has been discontinued.
 bad_foreign_type_int.m:090: In the third argument of `:- pragma foreign_type'
 bad_foreign_type_int.m:090:   declaration:
 bad_foreign_type_int.m:090:   error: expected a [38;5;40mforeign type descriptor,[39;49m got
@@ -94,7 +93,6 @@ bad_foreign_type_int.m:091:   error: expected the [38;5;40mname of a foreign la
 bad_foreign_type_int.m:091:   got [38;5;203m`"erlang"'.[39;49m
 bad_foreign_type_int.m:091:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m [38;5;40mjava[39;49m
 bad_foreign_type_int.m:091:   and [38;5;40mJava.[39;49m
-bad_foreign_type_int.m:091:   Support for Erlang has been discontinued.
 bad_foreign_type_int.m:091: In the third argument of `:- pragma foreign_type'
 bad_foreign_type_int.m:091:   declaration:
 bad_foreign_type_int.m:091:   error: expected a [38;5;40mforeign type descriptor,[39;49m got

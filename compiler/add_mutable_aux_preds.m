@@ -218,15 +218,6 @@ check_mutable(ModuleInfo, ModuleParams, ItemMutable, !Specs) :-
         _OrigType, _Type, OrigInst, Inst,
         _InitTerm, _VarSetMutable, MutAttrs, Context, _SeqNum),
     module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, CompilationTarget),
-    % NOTE We currently support the foreign_name attribute for all targets,
-    % but we did not do so when we supported Erlang.
-    (
-        ( CompilationTarget = target_c
-        ; CompilationTarget = target_java
-        ; CompilationTarget = target_csharp
-        )
-    ),
 
     % If the mutable is to be trailed, then we need to be in a trailing grade.
     MutAttrs = mutable_var_attributes(_LangMap, Const),

@@ -673,13 +673,6 @@ mlds_output_binop(Opts, Stream, Op, X, Y, !IO) :-
         ),
         io.write_string(Stream, ")", !IO)
     ;
-        ( Op = compound_lt
-        ; Op = compound_eq
-        ),
-        % These operators were intended to be generated only when using
-        % the now-deleted Erlang backend.
-        unexpected($pred, "compound_compare_binop")
-    ;
         Op = pointer_equal_conservative,
         io.write_string(Stream, "(((MR_Word) ", !IO),
         mlds_output_rval(Opts, X, Stream, !IO),

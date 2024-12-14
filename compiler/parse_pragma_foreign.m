@@ -102,10 +102,6 @@
     %
 :- pred term_to_foreign_language(term::in, foreign_language::out) is semidet.
 
-    % Does the term represent the recently deleted lang_erlang?
-    %
-:- pred term_to_foreign_language_erlang(term::in) is semidet.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -128,7 +124,6 @@
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -1691,7 +1686,7 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
         MaybeForeignLang = ok1(ForeignLang)
     else
         LangTermStr = describe_error_term(VarSet, LangTerm),
-        MainPieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+        Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
             words("Error: expected the")] ++
             color_as_correct([words("name of a foreign language,")]) ++
             [words("got")] ++
@@ -1701,14 +1696,8 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
             fixed_list_to_color_pieces(color_correct, "and", [suffix(".")],
                 all_foreign_language_strings) ++
             [nl],
-        ( if term_to_foreign_language_erlang(LangTerm) then
-            Pieces = MainPieces ++
-                [words("Support for Erlang has been discontinued."), nl]
-        else
-            Pieces = MainPieces
-        ),
-        Spec = spec($pred, severity_error, phase_t2pt,
-            get_term_context(LangTerm), Pieces),
+        Context = get_term_context(LangTerm),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeForeignLang = error1([Spec])
     ).
 
@@ -1728,8 +1717,8 @@ parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm, MaybeTypeCtor) :-
             [words("got")] ++
             color_as_incorrect([quote(TypeTermStr), suffix(".")]) ++
             [nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            get_term_context(TypeTerm), Pieces),
+        Context = get_term_context(TypeTerm),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeTypeCtor = error1([Spec])
     ).
 
@@ -1759,8 +1748,6 @@ term_to_foreign_language(Term, Lang) :-
     ),
     globals.convert_foreign_language(String, Lang).
 
-term_to_foreign_language_erlang(Term) :-
-    ( Term = term.functor(term.string(String), _, _)
-    ; Term = term.functor(term.atom(String), _, _)
-    ),
-    string.to_lower(String) = "erlang".
+%---------------------------------------------------------------------------%
+:- end_module parse_tree.parse_pragma_foreign.
+%---------------------------------------------------------------------------%

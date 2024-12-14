@@ -285,13 +285,6 @@ string_to_grade_component(FilterDesc, Comp, !Comps, !Specs) :-
     % even though of course that implication is false.
     ( if grade_component_table(Comp, _, _, _, _) then
         !:Comps = [Comp | !.Comps]
-    else if Comp = "erlang" then
-        Pieces = [words("Support for"), quote("erlang"), words("as an"),
-            words(FilterDesc), words("library grade component"),
-            words("has been discontinued."), nl],
-        Spec = no_ctxt_spec($pred, severity_informational, phase_options,
-            Pieces),
-        !:Specs = [Spec | !.Specs]
     else
         Pieces = [words("Unknown"), words(FilterDesc),
             words("library grade component:"), quote(Comp), suffix("."), nl],

@@ -35,7 +35,6 @@
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.proc_requests.
 :- import_module check_hlds.simplify.simplify_goal.
-:- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
@@ -177,30 +176,7 @@ process_complicated_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
         determinism_components(Detism, CanFail, at_most_one),
         lookup_mode_num(ModuleInfo, TypeCtor, UnifyMode, Detism, ProcId),
         ( if
-            % On the Erlang backend, it was faster for us to use builtin
-            % comparison operators on high level data structures than to
-            % deconstruct the data structure and compare the atomic
-            % constituents. We can only do this on values of a type
-            % if that type does not have user-defined equality.
-            %
-            % The Erlang backend was the only one on which
-            % can_compare_compound_values could ever be "yes".
-            %
-            % globals.lookup_bool_option(Globals,
-            %   can_compare_compound_values, yes),
-            semidet_fail,
             hlds_pred.in_in_unification_proc_id(ProcId),
-            type_definitely_has_no_user_defined_equality_pred(ModuleInfo, Type)
-        then
-            ExtraGoals = [],
-            Context = goal_info_get_context(GoalInfo0),
-            generate_plain_call(ModuleInfo, pf_predicate,
-                mercury_private_builtin_module, "builtin_compound_eq",
-                [], [XVar, YVar], instmap_delta_bind_no_var, only_mode,
-                detism_semi, purity_pure, [], Context, Call)
-        else if
-            hlds_pred.in_in_unification_proc_id(ProcId),
-
             % For most imported types, we only generate unification
             % predicate declarations if they are needed for complicated
             % unifications other than proc_id 0. higher_order.m will

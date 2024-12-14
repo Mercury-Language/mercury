@@ -862,8 +862,6 @@ dump_unop(dword_uint64_get_word1) = "dword_uint64_get_word1".
 
 dump_binop(array_index(_)) = "array_index".
 dump_binop(string_unsafe_index_code_unit) = "string_unsafe_index_code_unit".
-dump_binop(compound_lt) = "compound<".
-dump_binop(compound_eq) = "compound=".
 dump_binop(offset_str_eq(Offset, no_size)) =
     "offset_str_eq(" ++ string.int_to_string(Offset) ++ ")".
 dump_binop(offset_str_eq(Offset, size(Size))) =
