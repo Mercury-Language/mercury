@@ -1250,17 +1250,17 @@ lookup_main_target(Variables, MaybeMainTarget) :-
 
 %---------------------------------------------------------------------------%
 
-lookup_mercury_stdlib_dir(Variables, MaybeMerStdlibDir) :-
-    lookup_variable_words(Variables, "MERCURY_STDLIB_DIR", MerStdlibDirResult),
+lookup_mercury_stdlib_dir(Variables, MaybeMerStdLibDir) :-
+    lookup_variable_words(Variables, "MERCURY_STDLIB_DIR", MerStdLibDirResult),
     (
-        MerStdlibDirResult = var_result_set(MerStdlibDir),
-        MaybeMerStdlibDir = ok1(MerStdlibDir)
+        MerStdLibDirResult = var_result_set(MerStdLibDir),
+        MaybeMerStdLibDir = ok1(MerStdLibDir)
     ;
-        MerStdlibDirResult = var_result_unset,
-        MaybeMerStdlibDir = ok1([])
+        MerStdLibDirResult = var_result_unset,
+        MaybeMerStdLibDir = ok1([])
     ;
-        MerStdlibDirResult = var_result_error(OoMSpecs),
-        MaybeMerStdlibDir = error1(one_or_more_to_list(OoMSpecs))
+        MerStdLibDirResult = var_result_error(OoMSpecs),
+        MaybeMerStdLibDir = error1(one_or_more_to_list(OoMSpecs))
     ).
 
 %---------------------------------------------------------------------------%

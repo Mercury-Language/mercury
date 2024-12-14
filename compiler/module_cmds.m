@@ -568,9 +568,9 @@ get_mercury_std_libs_for_java(Globals, !:StdLibs) :-
 
     !:StdLibs = [],
     globals.lookup_maybe_string_option(Globals,
-        mercury_standard_library_directory, MaybeStdlibDir),
+        mercury_standard_library_directory, MaybeStdLibDir),
     (
-        MaybeStdlibDir = yes(StdLibDir),
+        MaybeStdLibDir = yes(StdLibDir),
         globals.get_grade_dir(Globals, GradeDir),
         % Source-to-source debugging libraries.
         globals.lookup_bool_option(Globals, link_ssdb_libs,
@@ -586,7 +586,7 @@ get_mercury_std_libs_for_java(Globals, !:StdLibs) :-
         list.cons(StdLibDir/"lib"/GradeDir/"mer_std.jar", !StdLibs),
         list.cons(StdLibDir/"lib"/GradeDir/"mer_rt.jar", !StdLibs)
     ;
-        MaybeStdlibDir = no
+        MaybeStdLibDir = no
     ).
 
 list_class_files_for_jar(Globals, MainClassFiles, ClassSubDir,

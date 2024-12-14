@@ -1963,9 +1963,9 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkTargetType,
 
 get_mercury_std_libs(Globals, TargetType, StdLibs) :-
     globals.lookup_maybe_string_option(Globals,
-        mercury_standard_library_directory, MaybeStdlibDir),
+        mercury_standard_library_directory, MaybeStdLibDir),
     (
-        MaybeStdlibDir = yes(StdLibDir),
+        MaybeStdLibDir = yes(StdLibDir),
         globals.get_gc_method(Globals, GCMethod),
         (
             ( TargetType = executable
@@ -2114,7 +2114,7 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             unexpected($pred, "unknown linkage " ++ MercuryOrCsharpLinkage)
         )
     ;
-        MaybeStdlibDir = no,
+        MaybeStdLibDir = no,
         StdLibs = ""
     ).
 

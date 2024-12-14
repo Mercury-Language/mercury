@@ -111,7 +111,7 @@
 
 %---------------------------------------------------------------------------%
 
-detect_stdlib_grades(Globals, MaybeStdlibGrades, !IO) :-
+detect_stdlib_grades(Globals, MaybeStdLibGrades, !IO) :-
     % Enable the compile-time trace flag "debug-detect-libgrades" to enable
     % debugging messages for library grade detection in the very verbose
     % output.
@@ -130,20 +130,20 @@ detect_stdlib_grades(Globals, MaybeStdlibGrades, !IO) :-
         trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
             (
                 Verbose = yes,
-                set.fold(report_detected_libgrade(StdOut), StdlibGrades, !TIO),
+                set.fold(report_detected_libgrade(StdOut), StdLibGrades, !TIO),
                 io.write_string(StdOut, "% done.\n", !TIO)
             ;
                 Verbose = no
             )
         ),
-        do_detect_libgrades(MerStdLibDir, StdlibGrades, !IO),
-        MaybeStdlibGrades = ok1(StdlibGrades)
+        do_detect_libgrades(MerStdLibDir, StdLibGrades, !IO),
+        MaybeStdLibGrades = ok1(StdLibGrades)
     ;
         MaybeMerStdLibDir = error1(Specs),
         trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
             maybe_write_string(StdOut, Verbose, "% failed.\n", !TIO)
         ),
-        MaybeStdlibGrades = error1(Specs)
+        MaybeStdLibGrades = error1(Specs)
     ).
 
 :- pred can_you_read_dir(string::in, maybe1(string)::out, io::di, io::uo)

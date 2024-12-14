@@ -314,12 +314,12 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, !IO) :-
         list.foldl(io.print_line(StdOutStream), LibGrades, !IO)
     ;
         OpModeQuery = opmq_output_stdlib_grades,
-        globals.get_maybe_stdlib_grades(Globals, MaybeStdlibGrades),
+        globals.get_maybe_stdlib_grades(Globals, MaybeStdLibGrades),
         (
-            MaybeStdlibGrades = stdlib_grades_known(StdlibGrades),
-            set.fold(io.print_line(StdOutStream), StdlibGrades, !IO)
+            MaybeStdLibGrades = stdlib_grades_known(StdLibGrades),
+            set.fold(io.print_line(StdOutStream), StdLibGrades, !IO)
         ;
-            MaybeStdlibGrades = stdlib_grades_unknown
+            MaybeStdLibGrades = stdlib_grades_unknown
             % During the construction of Globals, handle_opmode_implications
             % should have set detect_stdlib_grades to "yes", which should
             % cause handle_libgrades to detect the standard library's grades.
@@ -330,7 +330,7 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, !IO) :-
         )
     ;
         OpModeQuery = opmq_output_stdlib_modules,
-        GetStdlibModules =
+        GetStdLibModules =
             ( pred(Line::out) is multi :-
                 library.stdlib_module_doc_undoc(ModuleName, DocUndoc),
                 (
@@ -342,8 +342,8 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, !IO) :-
                 ),
                 Line = DocStr ++ " " ++ ModuleName ++ ".m\n"
             ),
-        solutions.solutions(GetStdlibModules, StdlibLines),
-        list.foldl(io.write_string(StdOutStream), StdlibLines, !IO)
+        solutions.solutions(GetStdLibModules, StdLibLines),
+        list.foldl(io.write_string(StdOutStream), StdLibLines, !IO)
     ;
         OpModeQuery = opmq_output_target_arch,
         globals.lookup_string_option(Globals, target_arch, TargetArch),
