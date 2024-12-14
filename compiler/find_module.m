@@ -1,8 +1,8 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 2014, 2016-2017, 2019-2020 The Mercury team.
-% Copyright (C) 2016-2017, 2019-2020, 2022-2024 The Mercury team.
+% Copyright (C) 1993-2012 The University of Melbourne.
+% Copyright (C) 2014-2017, 2019-2020, 2022-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -53,7 +53,7 @@
     % The private ones should be constructed *only*
     %
     % - by the module_name_to_search_file_name predicate in file_names.m,
-    %   which checks the compatbility between the file's extension and the
+    %   which checks the compatibility between the file's extension and the
     %   specification of the directories to be searched, and
     %
     % - by the get_search_auth_* functions below. Note that ascertaining
