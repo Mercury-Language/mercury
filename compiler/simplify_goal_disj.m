@@ -186,13 +186,15 @@ warn_about_any_problem_partial_vars(Innermost, GoalInfo, InstMap0,
         ),
         ProblemPartialVarNames =
             list.map(var_table_entry_name(VarTable), ProblemPartialVars),
-        ProblemPartialVarPieces =
-            fixed_list_to_pieces("and", ProblemPartialVarNames),
+        ProblemPartialVarsPeriodPieces =
+            fixed_list_to_color_pieces(color_subject, "and",
+                [suffix(".")], ProblemPartialVarNames),
         Context = goal_info_get_context(GoalInfo),
-        Pieces = [words("Warning: this disjunction further instantiates"),
-            words("the already partially instantiated"),
+        Pieces = [words("Warning: this disjunction")] ++
+            color_as_incorrect([words("further instantiates")]) ++
+            [words("the already partially instantiated"),
             words(choose_number(ProblemPartialVars, "variable", "variables"))]
-            ++ ProblemPartialVarPieces ++ [suffix("."), nl] ++
+            ++ ProblemPartialVarsPeriodPieces ++ [nl] ++
             [words(choose_number(ProblemPartialVars,
                 "Since the memory cell of this variable
                     is allocated *before* the disjunction,",

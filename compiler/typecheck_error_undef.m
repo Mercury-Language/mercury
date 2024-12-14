@@ -1016,12 +1016,10 @@ maybe_report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Specs :-
         globals.lookup_bool_option(Globals, warn_stubs, WarnStubs),
         (
             WarnStubs = yes,
-            PredDotPieces = describe_one_pred_name(ModuleInfo,
-                yes(color_subject), should_not_module_qualify,
-                [suffix(".")], PredId),
-            Pieces = [words("Warning:")] ++
-                color_as_incorrect([words("no clauses")]) ++
-                [words("for")] ++ PredDotPieces ++ [nl],
+            PredPieces = describe_one_pred_name(ModuleInfo,
+                yes(color_subject), should_not_module_qualify, [], PredId),
+            Pieces = [words("Warning:")] ++ PredPieces ++
+                color_as_incorrect([words("has no clauses.")]) ++ [nl],
             pred_info_get_context(PredInfo, Context),
             Spec = spec($pred, severity_warning, phase_type_check,
                 Context, Pieces),

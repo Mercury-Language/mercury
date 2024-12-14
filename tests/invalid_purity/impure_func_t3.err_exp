@@ -4,5 +4,4 @@ impure_func_t3.m:019:   purity error: call must be in an explicit unification,
 impure_func_t3.m:019:   which in turn [38;5;203mmust be preceded by an `impure'[39;49m
 impure_func_t3.m:019:   [38;5;203mindicator.[39;49m
 impure_func_t3.m:019: In call to predicate [38;5;87m`io.print'/3:[39;49m
-impure_func_t3.m:019:   warning: [38;5;203munnecessary `impure' indicator.[39;49m
-impure_func_t3.m:019:   No purity indicator is necessary.
+impure_func_t3.m:019:   warning: the [38;5;87m`impure' indicator[39;49m is [38;5;203munnecessary.[39;49m

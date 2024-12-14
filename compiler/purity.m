@@ -1602,19 +1602,18 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
     PredColonPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
         should_module_qualify, [suffix(":")], PredId),
     Pieces1 = [words("In call to")] ++ PredColonPieces ++ [nl,
-        words("warning:")] ++
-        color_as_incorrect([words("unnecessary"), quote(DeclaredPurityName),
-            words("indicator.")]) ++
-        [nl],
+        words("warning: the")] ++
+        color_as_subject([quote(DeclaredPurityName), words("indicator")]) ++
+        [words("is")] ++ color_as_incorrect([words("unnecessary.")]),
     (
         ActualPurity = purity_pure,
-        Pieces2 = [words("No purity indicator is necessary."), nl]
+        Pieces2 = [nl]
     ;
         ( ActualPurity = purity_impure
         ; ActualPurity = purity_semipure
         ),
         Pieces2 = [words("A purity indicator of"), quote(ActualPurityName),
-            words("is sufficient."), nl]
+            words("would be sufficient."), nl]
     ),
     Spec = spec($pred, severity_warning, phase_purity_check, Context,
         Pieces1 ++ Pieces2).

@@ -526,17 +526,19 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
         ;
             InFavourOf = [OnlyInFavourOf],
             InFavourOfPieces =
-                [qual_sym_name_arity(OnlyInFavourOf), suffix(".")],
+                color_as_correct([qual_sym_name_arity(OnlyInFavourOf),
+                    suffix(".")]),
             Pieces = MainPieces ++
                 [words("The suggested replacement is")] ++
-                color_as_correct(InFavourOfPieces) ++ [nl]
+                InFavourOfPieces ++ [nl]
         ;
             InFavourOf = [_, _ | _],
-            InFavourOfPieces = piece_list_to_pieces("and",
-                list.map(wrap_sym_name_arity, InFavourOf)) ++ [suffix(".")],
+            InFavourOfSNAs = list.map(wrap_sym_name_arity, InFavourOf),
+            InFavourOfPieces = piece_list_to_color_pieces(color_correct,
+                "and", [suffix(".")], InFavourOfSNAs),
             Pieces = MainPieces ++
                 [words("The possible suggested replacements are")] ++
-                color_as_correct(InFavourOfPieces) ++ [nl]
+                InFavourOfPieces ++ [nl]
         ),
         Spec = conditional_spec($pred, warn_obsolete, yes, severity_warning,
             phase_simplify(report_in_any_mode),

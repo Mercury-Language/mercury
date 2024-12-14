@@ -1,5 +1,5 @@
-bug311.m:167: Warning: this disjunction further instantiates the already
-bug311.m:167:   partially instantiated variable G.
+bug311.m:167: Warning: this disjunction [38;5;203mfurther instantiates[39;49m the already
+bug311.m:167:   partially instantiated variable [38;5;87mG.[39;49m
 bug311.m:167:   Since the memory cell of this variable is allocated *before*
 bug311.m:167:   the disjunction, the different disjuncts will return their
 bug311.m:167:   potentially different solutions for this variable in the same
@@ -7,8 +7,8 @@ bug311.m:167:   memory cell, which will cause any all-solutions predicate to
 bug311.m:167:   think that the different solutions (since they are at the same
 bug311.m:167:   address) are in fact all the same when invoked on the
 bug311.m:167:   procedure.
-bug311.m:185: Warning: this disjunction further instantiates the already
-bug311.m:185:   partially instantiated variables G1, G2 and G3.
+bug311.m:185: Warning: this disjunction [38;5;203mfurther instantiates[39;49m the already
+bug311.m:185:   partially instantiated variables [38;5;87mG1,[39;49m [38;5;87mG2[39;49m and [38;5;87mG3.[39;49m
 bug311.m:185:   Since the memory cells of these variables are allocated
 bug311.m:185:   *before* the disjunction, the different disjuncts will return
 bug311.m:185:   their potentially different solutions for each of these
@@ -16,8 +16,8 @@ bug311.m:185:   variables in the same memory cell, which will cause any
 bug311.m:185:   all-solutions predicate to think that the different solutions
 bug311.m:185:   (since they are at the same address) are in fact all the same
 bug311.m:185:   when invoked on the procedure.
-bug311.m:201: Warning: this disjunction further instantiates the already
-bug311.m:201:   partially instantiated variable GG.
+bug311.m:201: Warning: this disjunction [38;5;203mfurther instantiates[39;49m the already
+bug311.m:201:   partially instantiated variable [38;5;87mGG.[39;49m
 bug311.m:201:   Since the memory cell of this variable is allocated *before*
 bug311.m:201:   the disjunction, the different disjuncts will return their
 bug311.m:201:   potentially different solutions for this variable in the same

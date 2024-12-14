@@ -2050,10 +2050,11 @@ check_subtype_ctors_order(TypeCtor, Ctors, SuperTypeCtor, SuperCtors, Context,
             color_as_incorrect([words("declares some constructors"),
                 words("in a different order")]) ++
             [words("to its supertype")] ++
-            color_as_subject([unqual_type_ctor(SuperTypeCtor), suffix(",")]) ++
-            [words("as shown by this diff"),
-            words("against those of the supertype's constructors"),
-            words("which are present in the subtype:"), nl,
+            color_as_subject([unqual_type_ctor(SuperTypeCtor), suffix(".")]) ++
+            [words("The differences between"),
+            words("the order of function symbols in the subtype,"),
+            words("and the order of the same function symbols"),
+            words("in the supertype, are as follows."), nl,
             blank_line] ++
             ChangeHunkPieces,
         Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),

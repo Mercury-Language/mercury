@@ -1936,41 +1936,18 @@ report_unused_args(_ModuleInfo, PredInfo, UnusedArgs) = Spec :-
     SNA = sym_name_arity(qualified(ModuleName, PredName), UserArityInt),
     Pieces1 = [words("In"), fixed(pred_or_func_to_full_str(PredOrFunc)),
         qual_sym_name_arity(SNA), suffix(":"), nl, words("warning:")],
+    UnusedArgNs = list.map(func(N) = int_fixed(N), UnusedArgs),
+    UnusedArgPieces = piece_list_to_color_pieces(color_subject, "and", [],
+        UnusedArgNs),
     ( if NumArgs = 1 then
-        Pieces2 = [words("argument") | format_arg_list(UnusedArgs)] ++
-            [words("is unused."), nl]
+        Pieces2 = [words("argument")] ++ UnusedArgPieces ++
+            [words("is")] ++ color_as_incorrect([words("unused.")]) ++ [nl]
     else
-        Pieces2 = [words("arguments") | format_arg_list(UnusedArgs)] ++
-            [words("are unused."), nl]
+        Pieces2 = [words("arguments")] ++ UnusedArgPieces ++
+            [words("are")] ++ color_as_incorrect([words("unused.")]) ++ [nl]
     ),
     Spec = spec($pred, severity_warning, phase_code_gen,
         Context, Pieces1 ++ Pieces2).
-
-:- func format_arg_list(list(int)) = list(format_piece).
-
-format_arg_list([]) = unexpected($pred, "empty list").
-format_arg_list([Arg | Rest]) = Pieces :-
-    ArgStr = int_to_string(Arg),
-    (
-        Rest = [],
-        Pieces = [fixed(ArgStr)]
-    ;
-        Rest = [Head | Tail],
-        Pieces = [fixed(ArgStr) | format_arg_list_2(Head, Tail)]
-    ).
-
-:- func format_arg_list_2(int, list(int)) = list(format_piece).
-
-format_arg_list_2(First, List) = Pieces :-
-    FirstStr = int_to_string(First),
-    (
-        List = [Second | Rest],
-        Pieces = [suffix(","), fixed(FirstStr) |
-            format_arg_list_2(Second, Rest)]
-    ;
-        List = [],
-        Pieces = [fixed("and"), fixed(FirstStr)]
-    ).
 
 :- pred maybe_gather_unused_args_pragma(pred_info::in, proc_id::in,
     list(int)::in,

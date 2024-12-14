@@ -17,7 +17,7 @@ simple_code.m:044:   [38;5;87m`simple_code.obsolete2'/0.[39;49m
 simple_code.m:044:   The suggested replacement is [38;5;40m`pred42'/0.[39;49m
 simple_code.m:045: Warning: call to [38;5;203mobsolete[39;49m predicate
 simple_code.m:045:   [38;5;87m`simple_code.obsolete3'/0.[39;49m
-simple_code.m:045:   The possible suggested replacements are [38;5;40m`pred42'/0 and[39;49m
+simple_code.m:045:   The possible suggested replacements are [38;5;40m`pred42'/0[39;49m and
 simple_code.m:045:   [38;5;40m`wonderful.pred43'/0.[39;49m
 simple_code.m:048: Warning: the condition of this if-then-else [38;5;203mcannot fail.[39;49m
 simple_code.m:080: In clause for `r(in(bound(1)), out(bound(42)))':
