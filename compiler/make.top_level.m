@@ -33,7 +33,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred make_process_compiler_args(io.text_output_stream::in, globals::in,
-    list(string)::in, env_optfile_variables::in,
+    env_optfile_variables::in,
     list(string)::in, list(string)::in, list(file_name)::in,
     io::di, io::uo) is det.
 
@@ -78,7 +78,7 @@
 
 %---------------------------------------------------------------------------%
 
-make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
+make_process_compiler_args(ProgressStream, Globals,
         EnvOptFileVariables, EnvVarArgs, OptionArgs, Targets0, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     get_main_target_if_needed(ProgName, EnvOptFileVariables,
@@ -121,7 +121,8 @@ make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
             ClassifiedTargets),
         ClassifiedTargetSet = set.list_to_set(ClassifiedTargets),
 
-        MakeInfo0 = init_make_info(EnvOptFileVariables, DetectedGradeFlags,
+        globals.get_maybe_stdlib_grades(Globals, MaybeStdLibGrades),
+        MakeInfo0 = init_make_info(EnvOptFileVariables, MaybeStdLibGrades,
             KeepGoing, EnvVarArgs, OptionArgs, ClassifiedTargetSet,
             AnalysisRepeat, init_target_file_timestamp_map, ModuleIndexMap,
             DepIndexMap, DepStatusMap),

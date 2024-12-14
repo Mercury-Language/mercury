@@ -10527,7 +10527,9 @@ The default command is @samp{cp}.
 
 @sp 1
 @item --no-detect-libgrades
+@itemx --no-detect-stdlibgrades
 @findex --no-detect-libgrades
+@findex --no-detect-stdlibgrades
 Do not scan the installation directory to determine which
 standard library grades are available.
 

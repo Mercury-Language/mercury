@@ -46,7 +46,7 @@
             % for the build.
 
     % setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
-    %   InvokedByMmcMake, ModuleName, DetectedGradeFlags,
+    %   MaybeStdLibGrades, InvokedByMmcMake, ModuleName,
     %   EnvOptFileVariables, EnvVarArgs, OptionArgs, ExtraOptions, MayBuild,
     %   !Info, !IO):
     %
@@ -67,8 +67,8 @@
     % or possibly just a maybe(op_mode). not list(string),
     %
 :- pred setup_for_build_with_module_options(io.text_output_stream::in,
-    option_table(option)::in, maybe_invoked_by_mmc_make::in,
-    module_name::in, list(string)::in, env_optfile_variables::in,
+    option_table(option)::in, maybe_stdlib_grades::in,
+    maybe_invoked_by_mmc_make::in, module_name::in, env_optfile_variables::in,
     list(string)::in, list(string)::in, list(string)::in,
     may_build::out, io::di, io::uo) is det.
 
@@ -203,7 +203,7 @@
 %---------------------------------------------------------------------------%
 
 setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
-        InvokedByMmcMake, ModuleName, DetectedGradeFlags, EnvOptFileVariables,
+        MaybeStdLibGrades, InvokedByMmcMake, ModuleName, EnvOptFileVariables,
         EnvVarArgs, OptionArgs, ExtraOptions, MayBuild, !IO) :-
     lookup_mmc_module_options(EnvOptFileVariables, ModuleName,
         MaybeModuleOptionArgs),
@@ -219,20 +219,19 @@ setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
         % assumes the interface files were built with `--use-subdirs'.
         (
             InvokedByMmcMake = invoked_by_mmc_make,
-            UseSubdirs = ["--use-subdirs"],
-            InvokedByMake = ["--invoked-by-mmc-make"]
+            UseSubdirsFlags = ["--use-subdirs"],
+            InvokedByMakeFlags = ["--invoked-by-mmc-make"]
         ;
             InvokedByMmcMake = not_invoked_by_mmc_make,
-            UseSubdirs = [],
-            InvokedByMake = []
+            UseSubdirsFlags = [],
+            InvokedByMakeFlags = []
         ),
-        AllOptionArgs = InvokedByMake ++ DetectedGradeFlags ++
-            ModuleOptionArgs ++ EnvVarArgs ++ OptionArgs ++
-            ExtraOptions ++ UseSubdirs,
+        AllOptionArgs = InvokedByMakeFlags ++ ModuleOptionArgs ++
+            EnvVarArgs ++ OptionArgs ++ ExtraOptions ++ UseSubdirsFlags,
         lookup_mercury_stdlib_dir(EnvOptFileVariables,
             MaybeEnvOptFileStdLibDirs),
         handle_given_options(ProgressStream, DefaultOptionTable,
-            MaybeEnvOptFileStdLibDirs, AllOptionArgs, _, _,
+            MaybeStdLibGrades, MaybeEnvOptFileStdLibDirs, AllOptionArgs, _, _,
             OptionSpecs, BuildGlobals, !IO),
         (
             OptionSpecs = [_ | _],

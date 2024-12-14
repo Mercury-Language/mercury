@@ -23,7 +23,6 @@
 :- interface.
 
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
@@ -72,7 +71,7 @@
     % "mmc --output-libgrades" instead of consulting the configured set
     % of grades in Mmake.vars.
     %
-:- pred detect_stdlib_grades(option_table::in, maybe1(set(string))::out,
+:- pred detect_stdlib_grades(globals::in, maybe1(set(string))::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -101,28 +100,28 @@
 :- implementation.
 
 :- import_module libs.file_util.
+:- import_module libs.options.
 :- import_module parse_tree.find_module.
 
 :- import_module bool.
 :- import_module dir.
-:- import_module getopt.
 :- import_module io.file.
 :- import_module maybe.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
-detect_stdlib_grades(OptionTable, MaybeStdlibGrades, !IO) :-
+detect_stdlib_grades(Globals, MaybeStdlibGrades, !IO) :-
     % Enable the compile-time trace flag "debug-detect-libgrades" to enable
     % debugging messages for library grade detection in the very verbose
     % output.
     io.stdout_stream(StdOut, !IO),
-    getopt.lookup_bool_option(OptionTable, verbose, Verbose),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
         maybe_write_string(StdOut, Verbose,
             "% Detecting library grades ...\n", !TIO)
     ),
-    getopt.lookup_maybe_string_option(OptionTable,
+    globals.lookup_maybe_string_option(Globals,
         chosen_stdlib_dir, MaybeChosenStdLibDir),
     check_chosen_stdlib_dir_exists(MaybeChosenStdLibDir,
         MaybeMerStdLibDir, !IO),

@@ -19,6 +19,7 @@
 :- import_module backend_libs.compile_target_code.
 :- import_module libs.
 :- import_module libs.file_util.
+:- import_module libs.globals.
 :- import_module libs.timestamp.
 :- import_module make.build.
 :- import_module make.deps_cache.
@@ -229,13 +230,13 @@
 
 :- type make_info.
 
-:- func init_make_info(env_optfile_variables, list(string), maybe_keep_going,
-    list(string), list(string), set(top_target_file), int,
+:- func init_make_info(env_optfile_variables, maybe_stdlib_grades,
+    maybe_keep_going, list(string), list(string), set(top_target_file), int,
     target_file_timestamp_map, module_index_map, dependency_file_index_map,
     dep_file_status_map) = make_info.
 
 :- func make_info_get_env_optfile_variables(make_info) = env_optfile_variables.
-:- func make_info_get_detected_grade_flags(make_info) = list(string).
+:- func make_info_get_maybe_stdlib_grades(make_info) = maybe_stdlib_grades.
 :- func make_info_get_keep_going(make_info) = maybe_keep_going.
 :- func make_info_get_env_var_args(make_info) = list(string).
 :- func make_info_get_option_args(make_info) = list(string).
@@ -334,8 +335,11 @@
                 % The contents of the Mercury.options file.
                 mki_env_optfile_variables   :: env_optfile_variables,
 
-                % Any flags required to set detected library grades.
-                mki_detected_grade_flags    :: list(string),
+                % The set of detected library grades, if known.
+                % (By the time we construct the initial make_info,
+                % they should be known, *if* the detect_stdlib_grades flag
+                % is set to "yes".)
+                mki_maybe_stdlib_grades     :: maybe_stdlib_grades,
 
                 % The value of the --keep-going option.
                 mki_keep_going              :: maybe_keep_going,
@@ -465,7 +469,7 @@
                 mki_trans_deps_cache        :: trans_deps_cache
             ).
 
-init_make_info(EnvOptFileVariables, DetectedGradeFlags, KeepGoing,
+init_make_info(EnvOptFileVariables, MaybeStdLibGrades, KeepGoing,
         EnvVarArgs, OptionArgs, CmdLineTargets, AnalysisRepeat,
         TargetTimestamps, ModuleIndexMap, DepIndexMap, DepStatusMap)
         = MakeInfo :-
@@ -477,7 +481,7 @@ init_make_info(EnvOptFileVariables, DetectedGradeFlags, KeepGoing,
     MaybeStdoutLock = maybe.no,
     MakeInfo = make_info(
         EnvOptFileVariables,
-        DetectedGradeFlags,
+        MaybeStdLibGrades,
         KeepGoing,
         EnvVarArgs,
         OptionArgs,
@@ -506,8 +510,8 @@ init_make_info(EnvOptFileVariables, DetectedGradeFlags, KeepGoing,
 
 make_info_get_env_optfile_variables(Info) = X :-
     X = Info ^ mki_env_optfile_variables.
-make_info_get_detected_grade_flags(Info) = X :-
-    X = Info ^ mki_detected_grade_flags.
+make_info_get_maybe_stdlib_grades(Info) = X :-
+    X = Info ^ mki_maybe_stdlib_grades.
 make_info_get_keep_going(Info) = X :-
     X = Info ^ mki_keep_going.
 make_info_get_env_var_args(Info) = X :-

@@ -40,7 +40,7 @@
     %   Specs, Globals, !IO).
     %
 :- pred handle_given_options(io.text_output_stream::in, option_table::in,
-    maybe1(list(string))::in, list(string)::in,
+    maybe_stdlib_grades::in, maybe1(list(string))::in, list(string)::in,
     list(string)::out, list(string)::out, list(error_spec)::out, globals::out,
     io::di, io::uo) is det.
 
@@ -71,6 +71,7 @@
 
 :- import_module analysis.
 :- import_module analysis.operations.
+:- import_module libs.check_libgrades.
 :- import_module libs.color_schemes.
 :- import_module libs.compiler_util.
 :- import_module libs.compute_grade.
@@ -94,6 +95,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -102,16 +104,17 @@ generate_default_globals(ProgressStream, DefaultOptionTable0,
         DefaultGlobals, !IO) :-
     map.set(default_globals, bool(yes),
         DefaultOptionTable0, DefaultOptionTable),
+    MaybeStdLibGrades = stdlib_grades_unknown,
     % This value of MaybeEnvOptFileMerStdLibDir will cause the value of
     % the chosen_stdlib_dir option to be set to "no", while also avoiding
     % an error message being generated for that fact. The value of that
     % option will be filled in for real when we create the real,
     % nondefault globals.
     MaybeEnvOptFileMerStdLibDir = error1([]),
-    handle_given_options(ProgressStream, DefaultOptionTable,
+    handle_given_options(ProgressStream, DefaultOptionTable, MaybeStdLibGrades,
         MaybeEnvOptFileMerStdLibDir, [], _, _, _, DefaultGlobals, !IO).
 
-handle_given_options(ProgressStream, DefaultOptionTable,
+handle_given_options(ProgressStream, DefaultOptionTable, MaybeStdLibGrades,
         MaybeEnvOptFileMerStdLibDir, Args0, OptionArgs, Args,
         Specs, !:Globals, !IO) :-
     trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
@@ -128,8 +131,8 @@ handle_given_options(ProgressStream, DefaultOptionTable,
         dump_arguments(ProgressStream, Args, !TIO)
     ),
     convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
-        MaybeError, OptionTable, OptOptions, MaybeEnvOptFileMerStdLibDir,
-        Specs, !:Globals, !IO),
+        MaybeStdLibGrades, MaybeError, OptionTable, OptOptions,
+        MaybeEnvOptFileMerStdLibDir, Specs, !:Globals, !IO),
     (
         Specs = [_ | _]
         % Do NOT set the exit status. This predicate may be called before all
@@ -189,13 +192,13 @@ dump_arguments(ProgressStream, [Arg | Args], !IO) :-
     % one option implies setting/unsetting another one).
     %
 :- pred convert_option_table_result_to_globals(io.text_output_stream::in,
-    option_table::in, maybe(option_error(option))::in, option_table::in,
-    cord(optimization_option)::in, maybe1(list(string))::in,
+    option_table::in, maybe_stdlib_grades::in, maybe(option_error(option))::in,
+    option_table::in, cord(optimization_option)::in, maybe1(list(string))::in,
     list(error_spec)::out, globals::out, io::di, io::uo) is det.
 
 convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
-        MaybeError, OptionTable0, OptOptionsCord, MaybeEnvOptFileMerStdLibDir,
-        !:Specs, Globals, !IO) :-
+        MaybeStdLibGrades, MaybeError, OptionTable0, OptOptionsCord,
+        MaybeEnvOptFileMerStdLibDir, !:Specs, Globals, !IO) :-
     (
         MaybeError = yes(Error),
         ErrorMessage = option_error_to_string(Error),
@@ -247,7 +250,8 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
             )
         then
             convert_options_to_globals(ProgressStream,
-                DefaultOptionTable, OptionTable, MaybeEnvOptFileMerStdLibDir,
+                DefaultOptionTable, OptionTable,
+                MaybeStdLibGrades, MaybeEnvOptFileMerStdLibDir,
                 OptTuple, OpMode, Target, WordSize, GC_Method,
                 TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
                 MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
@@ -881,7 +885,8 @@ check_color_option_values(!OptionTable, !Specs, !IO) :-
     % termination analyser (the old and the new) has its own norm setting.
     %
 :- pred convert_options_to_globals(io.text_output_stream::in,
-    option_table::in, option_table::in, maybe1(list(string))::in,
+    option_table::in, option_table::in,
+    maybe_stdlib_grades::in, maybe1(list(string))::in,
     opt_tuple::in, op_mode::in, compilation_target::in, word_size::in,
     gc_method::in, termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
@@ -893,8 +898,8 @@ check_color_option_values(!OptionTable, !Specs, !IO) :-
     globals::out, io::di, io::uo) is det.
 
 convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
-        MaybeEnvOptFileMerStdLibDir, !.OptTuple, OpMode, Target,
-        WordSize, GC_Method, TermNorm, Term2Norm,
+        MaybeStdLibGrades, MaybeEnvOptFileMerStdLibDir, !.OptTuple,
+        OpMode, Target, WordSize, GC_Method, TermNorm, Term2Norm,
         TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
@@ -966,8 +971,8 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     globals_init(DefaultOptionTable, OptionTable0, !.OptTuple, OpMode,
         MaybeFeedbackInfo, FileInstallCmd, TraceSuppress, ReuseStrategy,
         LimitErrorContextsMap, LinkExtMap, C_CompilerType, CSharp_CompilerType,
-        Target, use_cur_dir, WordSize, GC_Method, TermNorm, Term2Norm,
-        TraceLevel, SSTraceLevel, MaybeThreadSafe,
+        MaybeStdLibGrades, Target, use_cur_dir, WordSize, GC_Method,
+        TermNorm, Term2Norm, TraceLevel, SSTraceLevel, MaybeThreadSafe,
         HostEnvType, SystemEnvType, TargetEnvType, InstallMethod, !:Globals),
 
     globals.lookup_bool_option(!.Globals, experiment2, Experiment2),
@@ -1032,6 +1037,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO),
 
     handle_chosen_stdlib_dir(MaybeEnvOptFileMerStdLibDir, !Globals, !Specs),
+    handle_libgrades(!Globals, !Specs, !IO),
     handle_subdir_setting(OpMode, !Globals),
     handle_directory_options(OpMode, !Globals, !Specs),
     handle_target_compile_link_symlink_options(!Globals),
@@ -1397,7 +1403,6 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         HighLevelCode = yes
     ),
     globals.set_opt_tuple(!.OptTuple, !Globals),
-    postprocess_options_libgrades(!Globals, !Specs),
     globals_init_mutables(!.Globals, !IO).
 
 %---------------------------------------------------------------------------%
@@ -2391,6 +2396,7 @@ handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
     %   warn_wrong_module_name
     %   warn_unused_interface_imports
     %   inform_generated_type_spec_pragmas
+    %   detect_stdlib_grades
     %
 :- pred handle_opmode_implications(op_mode::in,
     globals::in, globals::out) is det.
@@ -2491,8 +2497,33 @@ handle_opmode_implications(OpMode, !Globals) :-
         Smart = bool.no,
         Inform = bool.no
     ;
+        OpMode = opm_top_query(OpModeQuery),
+        (
+            ( OpModeQuery = opmq_output_libgrades
+            ; OpModeQuery = opmq_output_stdlib_grades
+            ),
+            globals.set_option(detect_stdlib_grades, bool(yes), !Globals)
+        ;
+            ( OpModeQuery = opmq_output_cc
+            ; OpModeQuery = opmq_output_c_compiler_type
+            ; OpModeQuery = opmq_output_cflags
+            ; OpModeQuery = opmq_output_c_include_directory_flags
+            ; OpModeQuery = opmq_output_grade_defines
+            ; OpModeQuery = opmq_output_csharp_compiler
+            ; OpModeQuery = opmq_output_csharp_compiler_type
+            ; OpModeQuery = opmq_output_java_class_dir
+            ; OpModeQuery = opmq_output_link_command
+            ; OpModeQuery = opmq_output_shared_lib_link_command
+            ; OpModeQuery = opmq_output_library_link_flags
+            ; OpModeQuery = opmq_output_grade_string
+            ; OpModeQuery = opmq_output_stdlib_modules
+            ; OpModeQuery = opmq_output_target_arch
+            )
+        ),
+        Smart = bool.no,
+        Inform = bool.no
+    ;
         ( OpMode = opm_top_generate_standalone_interface(_)
-        ; OpMode = opm_top_query(_)
         ; OpMode = opm_top_make
         ),
         Smart = bool.no,
@@ -2742,6 +2773,53 @@ handle_chosen_stdlib_dir(MaybeEnvOptFileMerStdLibDir, !Globals, !Specs) :-
     ),
     globals.set_option(chosen_stdlib_dir, maybe_string(MaybeChosenStdLibDir),
         !Globals).
+
+%---------------------%
+
+    % Options updated:
+    %   libgrades
+    %
+    % Other globals fields updated:
+    %   maybe_stdlib_grades
+    %
+:- pred handle_libgrades(globals::in, globals::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+handle_libgrades(!Globals, !Specs, !IO) :-
+    globals.get_maybe_stdlib_grades(!.Globals, MaybeStdLibGrades0),
+    (
+        MaybeStdLibGrades0 = stdlib_grades_known(StdLibGradeSet0),
+        set.to_sorted_list(StdLibGradeSet0, StdLibGrades)
+    ;
+        MaybeStdLibGrades0 = stdlib_grades_unknown,
+        globals.lookup_bool_option(!.Globals, detect_stdlib_grades, Detect),
+        (
+            Detect = yes,
+            detect_stdlib_grades(!.Globals, MaybeStdLibGradeSet, !IO),
+            (
+                MaybeStdLibGradeSet = ok1(StdLibGradeSet),
+                MaybeStdLibGrades = stdlib_grades_known(StdLibGradeSet),
+                globals.set_maybe_stdlib_grades(MaybeStdLibGrades, !Globals),
+                set.to_sorted_list(StdLibGradeSet, StdLibGrades)
+            ;
+                MaybeStdLibGradeSet = error1(_Specs),
+                StdLibGrades = []
+            )
+        ;
+            Detect = no,
+            StdLibGrades = []
+        )
+    ),
+
+    globals.lookup_accumulating_option(!.Globals, libgrades, LibGrades0),
+    ( if LibGrades0 = ["stdlib" | SpecifiedLibGrades] then
+        LibGrades = StdLibGrades ++ SpecifiedLibGrades,
+        globals.set_option(libgrades, accumulating(LibGrades), !Globals)
+    else
+        true
+    ),
+    % Handle the libgrades_{include,exclude}_components options,
+    handle_libgrade_component_incl_excl(!Globals, !Specs).
 
 %---------------------%
 

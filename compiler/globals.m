@@ -38,6 +38,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 
@@ -45,6 +46,12 @@
     % the types of some of the components of this type.
     %
 :- type globals.
+
+%---------------------%
+
+:- type maybe_stdlib_grades
+    --->    stdlib_grades_unknown
+    ;       stdlib_grades_known(set(string)).
 
 %---------------------%
 
@@ -390,7 +397,7 @@
     trace_suppress_items::in, reuse_strategy::in,
     limit_error_contexts_map::in, linked_target_ext_info_map::in,
     c_compiler_type::in, csharp_compiler_type::in,
-    compilation_target::in, subdir_setting::in,
+    maybe_stdlib_grades::in, compilation_target::in, subdir_setting::in,
     word_size::in, gc_method::in, termination_norm::in, termination_norm::in,
     trace_level::in, ssdb_trace_level::in, may_be_thread_safe::in,
     env_type::in, env_type::in, env_type::in, install_method::in,
@@ -404,6 +411,7 @@
     maybe(feedback_info)::out) is det.
 :- pred get_file_install_cmd(globals::in, file_install_cmd::out) is det.
 :- pred get_ext_dirs_maps(globals::in, ext_dirs_maps::out) is det.
+:- pred get_maybe_stdlib_grades(globals::in, maybe_stdlib_grades::out) is det.
 :- pred get_trace_suppress(globals::in, trace_suppress_items::out) is det.
 :- pred get_reuse_strategy(globals::in, reuse_strategy::out) is det.
 :- pred get_limit_error_contexts_map(globals::in,
@@ -438,6 +446,8 @@
 :- pred set_file_install_cmd(file_install_cmd::in,
     globals::in, globals::out) is det.
 :- pred set_ext_dirs_maps(ext_dirs_maps::in,
+    globals::in, globals::out) is det.
+:- pred set_maybe_stdlib_grades(maybe_stdlib_grades::in,
     globals::in, globals::out) is det.
 :- pred set_subdir_setting(subdir_setting::in,
     globals::in, globals::out) is det.
@@ -894,6 +904,7 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
                 g_maybe_feedback            :: maybe(feedback_info),
                 g_file_install_cmd          :: file_install_cmd,
                 g_ext_dirs_maps             :: ext_dirs_maps,
+                g_maybe_stdlib_grades       :: maybe_stdlib_grades,
 
                 % The readonly fields that each require a full word.
                 g_read_only                 :: read_only_globals,
@@ -919,8 +930,8 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
 globals_init(DefaultOptions, Options, OptTuple, OpMode,
         MaybeFeedback, FileInstallCmd, TraceSuppress, ReuseStrategy,
         LimitErrorContextsMap, LinkedTargetExtInfoMap,
-        C_CompilerType, CSharp_CompilerType, Target, SubdirSetting,
-        WordSize, GC_Method, TerminationNorm, Termination2Norm,
+        C_CompilerType, CSharp_CompilerType, MaybeStdLibGradeSet, Target,
+        SubdirSetting, WordSize, GC_Method, TerminationNorm, Termination2Norm,
         TraceLevel, SSTraceLevel, MaybeThreadSafe,
         HostEnvType, SystemEnvType, TargetEnvType, InstallMethod, Globals) :-
     ExtDirsMaps0 = ext_dirs_maps(map.init, map.init, map.init,
@@ -928,8 +939,8 @@ globals_init(DefaultOptions, Options, OptTuple, OpMode,
     ReadOnlyGlobals0 = read_only_globals(TraceSuppress, ReuseStrategy,
          LimitErrorContextsMap, LinkedTargetExtInfoMap, "", C_CompilerType),
     Globals0 = globals(DefaultOptions, Options, OptTuple, OpMode,
-        MaybeFeedback, FileInstallCmd, ExtDirsMaps0, ReadOnlyGlobals0,
-        CSharp_CompilerType, Target, SubdirSetting,
+        MaybeFeedback, FileInstallCmd, ExtDirsMaps0, MaybeStdLibGradeSet,
+        ReadOnlyGlobals0, CSharp_CompilerType, Target, SubdirSetting,
         WordSize, GC_Method, TerminationNorm, Termination2Norm,
         TraceLevel, SSTraceLevel, MaybeThreadSafe,
         HostEnvType, SystemEnvType, TargetEnvType, InstallMethod),
@@ -954,6 +965,8 @@ get_file_install_cmd(Globals, X) :-
     X = Globals ^ g_file_install_cmd.
 get_ext_dirs_maps(Globals, X) :-
     X = Globals ^ g_ext_dirs_maps.
+get_maybe_stdlib_grades(Globals, X) :-
+    X = Globals ^ g_maybe_stdlib_grades.
 get_trace_suppress(Globals, X) :-
     X = Globals ^ g_read_only ^ rog_trace_suppress_items.
 get_reuse_strategy(Globals, X) :-
@@ -1007,6 +1020,8 @@ set_file_install_cmd(X, !Globals) :-
     !Globals ^ g_file_install_cmd := X.
 set_ext_dirs_maps(X, !Globals) :-
     !Globals ^ g_ext_dirs_maps := X.
+set_maybe_stdlib_grades(X, !Globals) :-
+    !Globals ^ g_maybe_stdlib_grades := X.
 set_subdir_setting(X, !Globals) :-
     !Globals ^ g_subdir_setting := X.
 set_word_size(X, !Globals) :-

@@ -1134,7 +1134,7 @@
     ;       install_method
     ;       install_command
     ;       install_command_dir_option
-    ;       detect_libgrades
+    ;       detect_stdlib_grades
     ;       libgrades
     ;       libgrades_include_components
     ;       libgrades_exclude_components
@@ -2137,8 +2137,9 @@ optdef(oc_buildsys, mercury_configuration_directory,    maybe_string(no)).
 optdef(oc_buildsys, install_method,                     string("external")).
 optdef(oc_buildsys, install_command,                    string("cp")).
 optdef(oc_buildsys, install_command_dir_option,         string("-R")).
-optdef(oc_buildsys, detect_libgrades,                   bool(yes)).
-optdef(oc_buildsys, libgrades,                          accumulating([])).
+optdef(oc_buildsys, detect_stdlib_grades,               bool(yes)).
+optdef(oc_buildsys, libgrades,
+                                            accumulating(["stdlib"])).
 optdef(oc_buildsys, libgrades_include_components,       accumulating([])).
 optdef(oc_buildsys, libgrades_exclude_components,       accumulating([])).
 optdef(oc_buildsys, lib_linkages,                       accumulating([])).
@@ -3324,8 +3325,9 @@ long_table("install-method",       install_method).
 long_table("install-command",      install_command).
 long_table("install-command-dir-option", install_command_dir_option).
 long_table("use-symlinks",         use_symlinks).
+long_table("detect-libgrades",     detect_stdlib_grades). % misleading name
+long_table("detect-stdlib-grades", detect_stdlib_grades).
 long_table("library-grade",        libgrades).
-long_table("detect-libgrades",     detect_libgrades).
 long_table("libgrade",             libgrades).
 long_table("libgrades-include-component", libgrades_include_components).
 long_table("libgrades-include",           libgrades_include_components).
@@ -7015,6 +7017,7 @@ options_help_build_system(Stream, !IO) :-
         % only still present for backwards compatibility.
 
         "--no-detect-libgrades",
+        "--no-detect-stdlib-grades",
         "\tDo not scan the installation directory to determine which",
         "\tstandard library grades are available.",
         "--libgrade <grade>",

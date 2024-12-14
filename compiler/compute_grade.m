@@ -48,7 +48,9 @@
     % check that all the grade components are valid and that there are
     % no duplicate grade components.
     %
-:- pred postprocess_options_libgrades(globals::in, globals::out,
+    % XXX Actuall, I (zs) see no sanity checks here at all.
+    %
+:- pred handle_libgrade_component_incl_excl(globals::in, globals::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % The inverse of compute_grade: given a grade, set the appropriate options.
@@ -242,7 +244,7 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
-postprocess_options_libgrades(!Globals, !Specs) :-
+handle_libgrade_component_incl_excl(!Globals, !Specs) :-
     globals.lookup_accumulating_option(!.Globals, libgrades_include_components,
         IncludeComponentStrs),
     globals.lookup_accumulating_option(!.Globals, libgrades_exclude_components,
@@ -265,7 +267,7 @@ postprocess_options_libgrades(!Globals, !Specs) :-
     % string_to_grade_component(OptionStr, Comp, !Comps, !Specs):
     %
     % If `Comp' is a string that represents a valid grade component
-    % then add it to !Comps. If it is not then emit an error message.
+    % then add it to !Comps. If it is not, then emit an error message.
     % `OptionStr' should be the name of the command line option for
     % which the error is to be reported.
     %
@@ -274,6 +276,13 @@ postprocess_options_libgrades(!Globals, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 string_to_grade_component(FilterDesc, Comp, !Comps, !Specs) :-
+    % XXX Including FilterDesc in the error messages seems odd, because
+    % the resulting text can be read as implying that
+    %
+    % - a string is NOT a valid grade component for e.g. inclusion, but
+    % - the same string IS a valid grade component for e.g. exclusion,
+    %
+    % even though of course that implication is false.
     ( if grade_component_table(Comp, _, _, _, _) then
         !:Comps = [Comp | !.Comps]
     else if Comp = "erlang" then

@@ -593,12 +593,12 @@ setup_make_and_install_grade_specific_files_for_grade(ProgressStream, Globals,
     (
         MaybeMCFlags = ok1(MCFlags),
         get_default_options(Globals, DefaultOptionTable),
-        DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
-        AllFlags = DetectedGradeFlags ++ MCFlags ++ EnvVarArgs ++ OptionArgs,
+        MaybeStdLibGrades = make_info_get_maybe_stdlib_grades(!.Info),
+        AllFlags = MCFlags ++ EnvVarArgs ++ OptionArgs,
         lookup_mercury_stdlib_dir(EnvOptFileVariables,
             MaybeEnvOptFileStdLibDirs),
         handle_given_options(ProgressStream, DefaultOptionTable,
-            MaybeEnvOptFileStdLibDirs, AllFlags, _, _,
+            MaybeStdLibGrades, MaybeEnvOptFileStdLibDirs, AllFlags, _, _,
             OptionsSpecs, LibGlobals, !IO)
     ;
         MaybeMCFlags = error1(LookupSpecs),
