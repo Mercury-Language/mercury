@@ -544,17 +544,16 @@ then
     test_grade="${grade}"
 fi
 
-# For the C# and Java grades we must use mmc --make and should disable the
-# namespace cleanliness check.
-#
+# For the C# and Java grades, we have to use mmc --make.
+# We also disable the namespace cleanliness check for these grades.
 case "${grade}" in
-    java)
+    java*)
         target=java
         use_mmc_make=yes
         use_subdirs=yes
         check_namespace=false
         ;;
-    csharp)
+    csharp*)
         target=csharp
         use_mmc_make=yes
         use_subdirs=yes
@@ -607,15 +606,19 @@ fi
 
 # Work out how to parallelise the bootcheck when -jN with N > 1 is given.
 #
-# If --use-mmc-make is *not* enabled then all parallelism is handled by mmake,
+# If --use-mmc-make is *not* enabled, then all parallelism is handled by mmake,
 # using its -jN option.
 #
 # If --use-mmc-make is enabled, then each directory containing Mercury
 # libraries or executables must be built using a single invocation of
-# mmc --make.  Multiple invocation of mmc --make in the same directory
-# will conflict with each other. Directories containing target code only,
-# such as the runtime or trace directories, still need to be built with
-# mmake in order to parallelise their builds.
+# mmc --make. Multiple invocation of mmc --make in the same directory
+# will conflict with each other.
+# XXX This should not prevent us from using paralelism *within* a single
+# invocations of mmc --make.
+#
+# Directories containing target code only, such as the runtime and trace
+# directories, still need to be built with mmake in order to parallelise
+# their builds.
 #
 # Regardless of whether --use-mmc-make is enabled or not, we run the test suite
 # using mmake -jN.
@@ -792,7 +795,6 @@ then
     then
         echo "building of stage 1 successful"
     else
-        cd "${root}"
         mmake ${mmake_opts} depend
         if mmake ${mmake_opts} MMAKEFLAGS=${jfactor} all
         then
@@ -913,7 +915,6 @@ then
         cp "${root}"/mfilterjavac/Mmake* .
         cp "${root}"/mfilterjavac/*_FLAGS.in .
         cp "${root}"/mfilterjavac/.mgnu* .
-        cd "${root}/${stage2dir}"
 
         cd "${root}/${stage2dir}"
         if ${copy_runtime}
@@ -1015,8 +1016,8 @@ then
             cp "${root}"/profiler/Mmake* "${root}"/profiler/Mercury.options .
             cp "${root}"/profiler/*_FLAGS.in .
             cp "${root}"/profiler/.mgnu* .
-            cd "${root}/${stage2dir}"
 
+            cd "${root}/${stage2dir}"
             mkdir deep_profiler
             cd deep_profiler
             ${LN_S} "${root}"/deep_profiler/*.m .
@@ -1101,6 +1102,7 @@ then
             /bin/rm -f Mercury.options
             cp "${root}"/Mercury.stage.options Mercury.options
         fi
+
         if test "${grade}" != ""
         then
             echo "GRADE = ${grade}" >> Mmake.params
@@ -1109,10 +1111,10 @@ then
         then
             echo "${mmc_make_jobs}" >> Mmake.params
         fi
-        cd "${root}"
 
         # set -x
 
+        cd "${root}"
         MMAKE_VPATH=.
         export MMAKE_VPATH
         MMAKE_DIR="${root}"/scripts
@@ -2047,10 +2049,11 @@ EOF
             else
                 case "${grade}" in
                     *debug*)
-                        # These files take up a lot of disk space, so we compress
-                        # them. This reduces the probability that running the tests
-                        # will run out of disk space, while still allowing the
-                        # original files to be reconstructed relatively quickly.
+                        # These files take up a lot of disk space,
+                        # so we compress them. This reduces the probability
+                        # that running the tests will run out of disk space,
+                        # while still allowing the original files to be
+                        # reconstructed relatively quickly.
                         gzip "${root}"/${stage2dir}/library/*.c
                         gzip "${root}"/${stage2dir}/mdbcomp/*.c
                         gzip "${root}"/${stage2dir}/browser/*.c
@@ -2285,9 +2288,7 @@ then
                 if test ! -f tests/runtests.errs
                 then
                     echo "bootcheck: \`--failing-tests' specified but" 1>&2
-                    echo \
-                    "\`tests/runtests.errs' does not exist." \
-                        1>&2
+                    echo "\`tests/runtests.errs' does not exist." 1>&2
                     exit 1
                 fi
 
@@ -2323,8 +2324,7 @@ then
             do
                 specified_test_dir=$(dirname "${specified_test}")
                 specified_test_base=$(basename "${specified_test}")
-                if test -d \
-                    "${root}/tests/${specified_test_dir}"
+                if test -d "${root}/tests/${specified_test_dir}"
                 then
                     cd "${root}/tests/${specified_test_dir}"
                     mmake ${mmake_opts} ${target_opt} ${jfactor} \
