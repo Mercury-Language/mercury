@@ -4,6 +4,7 @@
 --no-halt-at-warn-make-int
 --no-halt-at-warn-make-opt
 --no-infer-all
+--no-libgrade-install-check
 --no-mercury-stdlib-dir
 --warn-dead-preds
 --warn-implicit-stream-calls
