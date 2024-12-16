@@ -153,6 +153,20 @@ module_maybe_nested_target_file_to_search_file_name(ProgressStream, Globals,
         !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     ( if TargetType = module_target_source then
+        % The point of the test above is to avoid the module_target_source
+        % path in module_target_to_file_name, which converts the module name
+        % to a file name using module_name_to_source_file_name, which ignores
+        % the existence of nested submodules. However, as of 2024 dec 17,
+        % module_target_to_search_file_name is never actually invoked
+        % with module_target_source, so we could *change it* to call
+        % module_maybe_nested_source_file_name instead. The main problems
+        % with that are
+        %
+        % - the fact that we take !Info arguments, but
+        %   module_target_to_search_file_name does not, and
+        %
+        % - the lack of symmetry with the non-search versions of the predicates
+        %   involved.
         module_maybe_nested_source_file_name(ProgressStream, Globals,
             ModuleName, FileName, !Info, !IO),
         SearchAuthDirs = search_auth_cur_dir,
@@ -214,7 +228,9 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
     target_type_to_maybe_target_extension(TargetType, TargetExt),
     (
         TargetExt = source,
-        % XXX This call ignores the implicit for_search setting.
+        % XXX This call ignores the implicit for_search setting, but,
+        % replacing this code path with unexpected($pred, "source")
+        % does *not* prevent a successful bootcheck.
         module_name_to_source_file_name(ModuleName, FileName, !IO),
         SearchAuthDirs = search_auth_cur_dir,
         FileNameLegacy = FileName,
