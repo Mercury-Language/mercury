@@ -5523,6 +5523,13 @@ options_help_termination(Stream, !IO) :-
     io::di, io::uo) is det.
 
 options_help_compilation_model(Stream, !IO) :-
+    % XXX The structure of this predicate should mirror
+    % the structure of the "Invocation" chapter of the user's guide,
+    % probably with a sub-predicate for each section in that chapter.
+    % Currently, the user's guide chapter and the help messsage we output
+    % are similar in many ways, but they also have substantial differences,
+    % many of which are unnecessary.
+
     io.write_string(Stream, "\nCompilation model options:\n", !IO),
     io.write_prefixed_lines(Stream, "\t", [
         "The following compilation options affect the generated",
@@ -5542,15 +5549,11 @@ options_help_compilation_model(Stream, !IO) :-
 %
 %  asm_jump
 %  fast
-%  jump        These three are not tested as much as the other
-%              three LLDS base grades and have proved to be a bit
-%              delicate in any case.
+%  jump
 %
-%  hlc_nest
-%  hl_nest     These two rely on GCC nested functions extension.
-%
-%  hl          Not useful.
-%
+% These three are not tested as much as the other three LLDS base grades,
+% and have proved to be a bit delicate in any case.
+
         "\tor one of those with one or more of the grade modifiers",
         "\t`.gc', `.prof', `.memprof', `.profdeep', `.tr',",
         "\t`.spf', `.stseg', `.debug', and/or `.par' appended.",
@@ -7030,7 +7033,8 @@ options_help_build_system(Stream, !IO) :-
         "--libgrades-include <component>",
         "\tRemove grades that do not contain the specified component from",
         "\tthe set of library grades to be installed.",
-        "\t(This option does not work with Mmake, only `mmc --make'.)",
+        "\t(This option works only `mmc --make'; it does not work",
+        "\twith Mmake.)",
         "--libgrades-exclude-component <component>",
         "--libgrades-exclude <component>",
         "\tRemove grades that contain the specified component from the",
@@ -7039,7 +7043,7 @@ options_help_build_system(Stream, !IO) :-
         "--lib-linkage {shared, static}",
         "\tSpecify whether libraries should be installed for shared",
         "\tor static linking. This option can be specified multiple",
-        "\ttimes. By default libraries will be installed for",
+        "\ttimes. By default, libraries will be installed for",
         "\tboth shared and static linking.",
         "--flags <file>",
         "--flags-file <file>",
@@ -7069,9 +7073,9 @@ options_help_build_system(Stream, !IO) :-
         "\tAdd <dir> to the list of directories to be",
         "\tsearched for `.opt' files.",
         "--no-use-search-directories-for-intermod",
-        "\tDon't add arguments to `--search-directory' to the list",
-        "\tof directories to search for `.opt' files - use only the",
-        "\tdirectories given by `--intermod-directory'.",
+        "\tDo not add the arguments of `--search-directory' options to",
+        "\tthe list of directories to search for `.opt' files; use only the",
+        "\targuments of `--intermod-directory' options.",
 % XXX document these options *after* we agree on their semantics.
 % normal-dirs-same
 % normal-dirs_indep

@@ -10562,15 +10562,15 @@ set of library grades to be installed.
 @findex --libgrades-exclude
 Remove grades that contain the specified component from the set of
 library grades to be installed.
-(This option does not work with Mmake, only @samp{mmc --make}.)
+(This option works only with only @samp{mmc --make};
+it does not work with Mmake.)
 
 @sp 1
 @item --lib-linkage @{shared,static@}
 @findex --lib-linkage
-Specify whether libraries should be installed for shared
-or static linking.  This option can be specified multiple
-times.  By default libraries will be installed for
-both shared and static linking.
+Specify whether libraries should be installed for shared or static linking.
+This option can be specified multiple times.
+By default, libraries will be installed for both shared and static linking.
 
 @sp 1
 @item --flags @var{file}
@@ -10619,36 +10619,31 @@ Search @var{dir} for Mercury system's configuration files.
 @findex --search-directory
 @cindex Directories
 @cindex Search path
-Append @var{dir} to the list of directories to be searched for
-imported modules.
+Append @var{dir} to the list of directories
+to be searched for imported modules.
 
 @sp 1
 @item --intermod-directory @var{dir}
 @findex --intermod-directory
 @cindex Directories
 @cindex Search path
-Append @var{dir} to the list of directories to be searched for
-@samp{.opt} files.
-
-@sp 1
-@item --use-search-directories-for-intermod
-@findex --use-search-directories-for-intermod
-@cindex Directories
-@cindex Search path
-Append the arguments of all -I options to the list of directories
+Append @var{dir} to the list of directories
 to be searched for @samp{.opt} files.
 
-@c @sp 1
-@c @item --std-int-file-not-written-msg
-@c @findex --std-int-file-not-written-msg
-@c Standardize messages about interface files not being written
-@c by omitting any directory name components from file names.
+@sp 1
+@item --no-use-search-directories-for-intermod
+@findex --no-use-search-directories-for-intermod
+@cindex Directories
+@cindex Search path
+Do not add the arguments of @samp{--search-directory} options
+to the list of directories to be searched for @samp{.opt} files;
+use only the arguments of @samp{--intermod-directory} options.
 
 @sp 1
 @item --no-libgrade-install-check
 @findex --no-libgrade-install-check
-Do not check that libraries have been installed before attempting
-to use them.  (This option is only meaningful with @samp{mmc --make}.)
+Do not check that libraries have been installed before attempting to use them.
+(This option is only meaningful with @samp{mmc --make}.)
 
 @sp 1
 @item --use-subdirs
@@ -10687,6 +10682,12 @@ Make @samp{mmc --make} to put @samp{.err} files
 into the @samp{Mercury} subdirectory,
 rather than into the current directory.
 @samp{--error-files-in-subdir} has no effect on Mmake.
+
+@c @sp 1
+@c @item --std-int-file-not-written-msg
+@c @findex --std-int-file-not-written-msg
+@c Standardize messages about interface files not being written
+@c by omitting any directory name components from file names.
 
 @sp 1
 @item --order-make-by-timestamp
