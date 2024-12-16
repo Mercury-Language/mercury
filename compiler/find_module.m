@@ -538,7 +538,7 @@ compute_search_dirs(SearchAuthDirs, Dirs) :-
         % to its PROPOSED version will also be a period of switchover
         % from the old options specifying search dirs to the new options.
         % Given a program P that uses library L1, which in turn uses
-        % library L2, is to switch over P first,  then L1, then L2,
+        % library L2, one should switch over P first, then L1, and then L2,
         % with the general rule being if entity (program or library) E1
         % uses entity E2, then we switch over E1 first. The value we
         % assign to Dirs is designed to work for this approach.
