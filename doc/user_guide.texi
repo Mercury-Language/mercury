@@ -10619,16 +10619,60 @@ Search @var{dir} for Mercury system's configuration files.
 @findex --search-directory
 @cindex Directories
 @cindex Search path
-Append @var{dir} to the list of directories
-to be searched for imported modules.
+Append @var{dir} to the list of directories to be searched
+for @samp{.int*} and @samp{.module_dep} files.
+@c XXX Should we list .int0, .int, .int2 and .int3 separately?
+
+@c @c XXX The "normal" part of the names of these options
+@c @c was just a placeholder, since one was needed to differentiate
+@c @c these options from their intermod, c-include-file and .a/.so versions.
+@c @c Its use does not lead to good option names, but it is difficult
+@c @c to come up with better option names. Any ideas?
+@c @c
+@c @c XXX Once there is agreement on the structure of this entry, it will be
+@c @c duplicated, mutatis mutandis, for the other three groups of PROPOSED
+@c @c search dir options.
+@c @sp 1
+@c @item --normal-dirs-same @var{workspacedir}
+@c @itemx --normal-dirs-indep @var{workspacedir}
+@c @itemx --normal-dirs-installed-lib @var{installdir}
+@c @findex --normal-dirs-same
+@c @findex --normal-dirs-indep
+@c @findex --normal-dirs-installed-lib
+@c @cindex Directories
+@c @cindex Search path
+@c Append either the named workspace directory,
+@c or the named library install directory,
+@c to one of three separate lists of directories to be searched
+@c for @samp{.int*} and @samp{.module_dep} files.
+@c Any workspace directory
+@c named in a @var{--normal-dirs-same} option
+@c should set the same values
+@c for the @samp{--use-subdir} and @samp{--use-grade-subdir}
+@c as the current workspace directory;
+@c this restriction does not apply to workspace directories
+@c named in a @var{--normal-dirs-indep} options.
+@c The compiler will first search the workspace directories
+@c named in @var{--normal-dirs-same} options,
+@c second it will search the workspace directories
+@c named in @var{--normal-dirs-indep} options,
+@c and third it will search the library install directories
+@c named in @var{--normal-dirs-installed-lib} options.
+@c
+@c XXX Should we add something to specify that unlike the legacy options,
+@c the arguments of these options never require any directory name components
+@c that would be added by --use-subdirs/--use-grade-subdirs?
 
 @sp 1
 @item --intermod-directory @var{dir}
 @findex --intermod-directory
 @cindex Directories
 @cindex Search path
-Append @var{dir} to the list of directories
-to be searched for @samp{.opt} files.
+Append @var{dir} to the list of directories to be searched
+for @samp{.opt} and @samp{.trans_opt} files.
+@c And also for .request, .imdg, .analysis, .analysis_status, and
+@c .analysis_date files, but we don't document those, because
+@c the analysis framework was never completed.
 
 @sp 1
 @item --no-use-search-directories-for-intermod
