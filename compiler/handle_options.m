@@ -3264,9 +3264,9 @@ handle_directory_options(OpMode, !Globals, !Specs) :-
         ext_cur_ngs_gs_extension_dir(
             ext_cur_ngs_gs_proposed_opt_trans, _, ExtDirTransOpt),
         ext_cur_ngs_gs_extension_dir(
-            ext_cur_ngs_gs_an_ds_date, _, ExtDirDate),
+            ext_cur_ngs_gs_an_analysis_date, _, ExtDirDate),
         ext_cur_ngs_gs_extension_dir(
-            ext_cur_ngs_gs_an_ds_status, _, ExtDirStatus),
+            ext_cur_ngs_gs_an_analysis_status, _, ExtDirStatus),
         ext_cur_ngs_gs_max_ngs_extension_dir(
             ext_cur_ngs_gs_max_ngs_an_analysis, _, ExtDirAnalysis),
         ext_cur_ngs_gs_max_ngs_extension_dir(
@@ -3289,8 +3289,9 @@ handle_directory_options(OpMode, !Globals, !Specs) :-
             IntermodSame, IntermodIndep, IntermodInstalled, IntermodRequest),
         map.det_insert(ie_opt_plain, IntermodPlainOpt, !IntermodDirsMap),
         map.det_insert(ie_opt_trans, IntermodTransOpt, !IntermodDirsMap),
-        map.det_insert(ie_an_ds_date, IntermodDate, !IntermodDirsMap),
-        map.det_insert(ie_an_ds_status, IntermodStatus, !IntermodDirsMap),
+        map.det_insert(ie_an_analysis_date, IntermodDate, !IntermodDirsMap),
+        map.det_insert(ie_an_analysis_status, IntermodStatus,
+            !IntermodDirsMap),
         map.det_insert(ie_an_analysis, IntermodAnalysis, !IntermodDirsMap),
         map.det_insert(ie_an_imdg, IntermodImdg, !IntermodDirsMap),
         map.det_insert(ie_an_request, IntermodRequest, !IntermodDirsMap),

@@ -366,7 +366,7 @@ date_file_extension(ModuleTargetType, Ext) :-
         % can be modified in the process of analysing _another_ module.
         % The timestamp is only updated after actually analysing the module
         % that the `.analysis' file corresponds to.
-        Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_an_ds_date)
+        Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_an_analysis_date)
     ;
         % Header files share a timestamp file with their corresponding
         % target code files.

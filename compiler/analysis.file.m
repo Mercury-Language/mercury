@@ -216,7 +216,7 @@ analysis_status_to_string(optimal, "optimal").
     (pred(in, in, in, out, in, out) is det).
 
 read_module_overall_status(Compiler, Globals, ModuleName, ModuleStatus, !IO) :-
-    ExtStatus = ext_cur_ngs_gs(ext_cur_ngs_gs_an_ds_status),
+    ExtStatus = ext_cur_ngs_gs(ext_cur_ngs_gs_an_analysis_status),
     module_name_to_read_file_name(Compiler, Globals, ExtStatus,
         ModuleName, MaybeFileName, !IO),
     (
@@ -288,7 +288,7 @@ read_module_overall_status_2(FileName, ModuleStatus, !IO) :-
     (pred(in, in, in, in, di, uo) is det).
 
 write_module_overall_status(Info, Globals, ModuleName, Status, !IO) :-
-    ExtStatus = ext_cur_ngs_gs(ext_cur_ngs_gs_an_ds_status),
+    ExtStatus = ext_cur_ngs_gs(ext_cur_ngs_gs_an_analysis_status),
     module_name_to_write_file_name(analysis_info_get_compiler(Info), Globals,
         ExtStatus, ModuleName, FileName, !IO),
     io.open_output(FileName, OpenResult, !IO),

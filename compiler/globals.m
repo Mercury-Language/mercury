@@ -321,8 +321,8 @@
 :- type intermod_ext
     --->    ie_opt_plain
     ;       ie_opt_trans
-    ;       ie_an_ds_date
-    ;       ie_an_ds_status
+    ;       ie_an_analysis_date
+    ;       ie_an_analysis_status
     ;       ie_an_analysis
     ;       ie_an_imdg
     ;       ie_an_request

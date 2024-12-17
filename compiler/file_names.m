@@ -434,9 +434,9 @@
 
             % Compiler-generated files that are part of the incomplete
             % attempt at an intermodule analysis and optimization framework
-            % in analysis.m and its clients.
-    ;       ext_cur_ngs_gs_an_ds_date           % ".analysis_date"
-    ;       ext_cur_ngs_gs_an_ds_status         % ".analysis_status"
+            % in the analysis.m package and its clients.
+    ;       ext_cur_ngs_gs_an_analysis_date     % ".analysis_date"
+    ;       ext_cur_ngs_gs_an_analysis_status   % ".analysis_status"
 
             % Misc extensions.
     ;       ext_cur_ngs_gs_misc_err_date        % ".err_date"
@@ -542,8 +542,8 @@
     ;       ext_cur_ngs_gs_max_ngs_an_analysis.
 
 :- inst ext_analysis_sd for ext_cur_ngs_gs/0
-    --->    ext_cur_ngs_gs_an_ds_status
-    ;       ext_cur_ngs_gs_an_ds_date.
+    --->    ext_cur_ngs_gs_an_analysis_status
+    ;       ext_cur_ngs_gs_an_analysis_date.
 
     % The "mt" is short for make target, because ext_mt describes
     % the set of extensions that target_type_to_target_extension can return.
@@ -1167,9 +1167,9 @@ ext_cur_ngs_gs_extension_dir(Ext, Str, Dir) :-
     % is intentional.
     ; Ext = ext_cur_ngs_gs_init_c,              Str = "_init.c",    Dir = "cs"
 
-    ; Ext = ext_cur_ngs_gs_an_ds_date,
+    ; Ext = ext_cur_ngs_gs_an_analysis_date,
         Str = ".analysis_date",   Dir = "analysis_dates"
-    ; Ext = ext_cur_ngs_gs_an_ds_status,
+    ; Ext = ext_cur_ngs_gs_an_analysis_status,
         Str = ".analysis_status", Dir = "analysis_statuss"
     ; Ext = ext_cur_ngs_gs_misc_err_date,
         Str = ".err_date",  Dir = "err_dates"
@@ -1455,11 +1455,11 @@ module_name_to_search_file_name(Globals, From, Ext, ModuleName,
                 ExtCurNgsGs = ext_cur_ngs_gs_proposed_opt_trans,
                 IntermodExt = ie_opt_trans
             ;
-                ExtCurNgsGs = ext_cur_ngs_gs_an_ds_status,
-                IntermodExt = ie_an_ds_status
+                ExtCurNgsGs = ext_cur_ngs_gs_an_analysis_status,
+                IntermodExt = ie_an_analysis_status
             ;
-                ExtCurNgsGs = ext_cur_ngs_gs_an_ds_date,
-                IntermodExt = ie_an_ds_date
+                ExtCurNgsGs = ext_cur_ngs_gs_an_analysis_date,
+                IntermodExt = ie_an_analysis_date
             )
         ),
         SearchAuthDirs = search_auth_private(

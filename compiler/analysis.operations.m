@@ -1271,7 +1271,7 @@ write_analysis_files(ProgressStream, Compiler, ModuleInfo, ImportedModules0,
         % this module was analysed.
         % XXX A grep for this extension shows that the compiler
         % never actually even tries to look at the files we write here.
-        ExtDate = ext_cur_ngs_gs(ext_cur_ngs_gs_an_ds_date),
+        ExtDate = ext_cur_ngs_gs(ext_cur_ngs_gs_an_analysis_date),
         module_name_to_write_file_name(Compiler, Globals, ExtDate,
             ThisModule, TimestampFileName, !IO),
         touch_file_datestamp(Globals, ProgressStream, TimestampFileName,
