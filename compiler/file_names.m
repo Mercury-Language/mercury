@@ -20,7 +20,6 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
-:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.find_module.
@@ -680,13 +679,10 @@
 
 :- type search_which_dirs
     --->    search_cur_dir
-    ;       search_cur_dir_and(search_which_tail_dirs)
     ;       search_this_dir(dir_name)
     ;       search_this_dir_and(dir_name, search_which_tail_dirs)
     ;       search_normal_dirs
     ;       search_intermod_dirs
-    ;       search_c_include_dirs
-    ;       search_options_file_dirs(option_table)
     ;       search_dirs_for_ext.
 
     % This type differs from search_which_dirs by
@@ -701,9 +697,7 @@
 :- type search_which_tail_dirs =< search_which_dirs
     --->    search_cur_dir
     ;       search_normal_dirs
-    ;       search_intermod_dirs
-    ;       search_c_include_dirs
-    ;       search_options_file_dirs(option_table).
+    ;       search_intermod_dirs.
 
 :- inst search_cur_or_normal for search_which_dirs/0
     --->    search_cur_dir
@@ -1008,6 +1002,7 @@
 
 :- implementation.
 
+:- import_module libs.options.
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.source_file_map.
 
