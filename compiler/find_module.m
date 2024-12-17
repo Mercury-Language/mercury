@@ -74,6 +74,13 @@
 :- type search_auth_dirs
     --->    search_auth_cur_dir
     ;       search_auth_cur_dir_and(search_auth_tail_dirs)
+            % XXX LEGACY All existing uses of search_auth_cur_dir_and take
+            % the list of tail directories from the value of an option.
+            % All these uses should be replaced by code in handle_options.m
+            % that includes the current directory in the value of that option.
+            % However, there is no point in doing this for the LEGACY searches,
+            % and doing it for PROPOSED searches will be much easier once
+            % we no longer support LEGACY searches.
     ;       search_auth_this_dir(dir_name)
     ;       search_auth_this_dir_and(dir_name, search_auth_tail_dirs)
     ;       search_auth_private(search_auth_private_dirs).
