@@ -442,13 +442,10 @@ proposed_install_library_non_grade_specific_files(ProgressStream, Globals,
                 % when using libraries installed by `mmc --make'.
                 ExtMh = ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh),
                 proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
-                    ExtMh, AllModuleNames, !Succeeded, !IO)
+                    ExtMh, AllModuleNames, !Succeeded, !IO),
 
-                % XXX PROPOSED We should do something equivalent to
-                % legacy_install_extra_headers, but where should we
-                % install them to? And should we install .mh files there
-                % as well, or *instead of*, the install done we do
-                % just above?
+                proposed_install_extra_headers(ProgressStream, Globals, Prefix,
+                    !Succeeded, !IO)
             ;
                 ( Target = target_java
                 ; Target = target_csharp
@@ -489,6 +486,36 @@ proposed_install_all_ngs_files(ProgressStream, Globals, Prefix,
             ModuleNames, FileNames),
         install_files_to(ProgressStream, Globals, InstallDir,
             FileNames, !Succeeded, !IO)
+    ).
+
+:- pred proposed_install_extra_headers(io.text_output_stream::in, globals::in,
+    string::in,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+proposed_install_extra_headers(ProgressStream, Globals, Prefix,
+        !Succeeded, !IO) :-
+    globals.lookup_accumulating_option(Globals, extra_library_header,
+        ExtraHdrFileNames),
+    % We could install extra headers to a specialized directory,
+    % or we could install them to the directory to which we install
+    % either .mh or .mih files. Since .mih files are internal details
+    % of the Mercury implementation, that choice looks wrong. The other two
+    % are definitely defensible. The code below chooses the second alternative,
+    % installing to the directory containing .mh files. The main advantage
+    % of this choice is that it avoids the extra complication that an extra
+    % directory to search for would mean for invoking the C compiler.
+    ExtPgsMaxCur = ext_cur_pgs_max_cur_mh,
+    ext_cur_pgs_max_cur_extension_dir(ExtPgsMaxCur, _, ExtDirName),
+
+    InstallDir = Prefix / ExtDirName,
+    make_dir_handle_any_error(ProgressStream, InstallDir,
+        MakeInstallDirSucceeded, !IO),
+    (
+        MakeInstallDirSucceeded = did_not_succeed
+    ;
+        MakeInstallDirSucceeded = succeeded,
+        install_files_to(ProgressStream, Globals, InstallDir,
+            ExtraHdrFileNames, !Succeeded, !IO)
     ).
 
 %---------------------------------------------------------------------------%
