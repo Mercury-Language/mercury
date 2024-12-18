@@ -517,6 +517,69 @@ construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, IntermodDeps,
 
 %---------------------------------------------------------------------------%
 
+    % The idea that code looking for .opt files and maybe .trans_opt files
+    % can be told to accept .m files as acceptable substitutes for them
+    % looks very strange. However, there is *some* logic behind this,
+    % though that logic has been swamped by later changes.
+    %
+    % When we initially construct a program's .dep file, with a command
+    % such as "mmake prog.depend", usually the only files associated
+    % with that program that exist are just the source files: the .intN
+    % files and the .*opt files either don't exist yet, or have just all
+    % been deleted with something like "mmake prog.realclean". In that
+    % situation, the compiler needs to decide what dependencies to put
+    % into prog.dep, which requires deciding what .opt/.trans_opt files
+    % the target code files of the program's modules, and through them
+    % the program's executable, *should* depend on. In this case,
+    % the *current* existence of a source file indicates that in the future,
+    % there *should* exist a .opt and maybe a .trans_opt file for that
+    % module (depending on which intermodule optimization options are enabled).
+    %
+    % There are two issues that this scheme does not handle well,
+    % nested submodules, and --use-subdirs. This is not surprising,
+    % since this code predates both those features :-(
+    % (This code was added in early 1997, while nested submodules and
+    % --use-subdirs were added about a year later.)
+    %
+    % This code mishandles nested modules in that it assumes that
+    % the name of a module can be converted directly to a filename,
+    % whose existence can then be tested. When the named module is
+    % a nested, non-top submodule within a source file, this process
+    % will fail: the second step will find that the file name constructed
+    % by the first step does not exist. This means that prog.dep will
+    % not record dependencies on nested submodules' .opt and .trans_opt files.
+    % Given the mildness of the symptom, it is not surprising that this
+    % flew under the radar. And given the rarity of nested submodules,
+    % this is a problem that is probably not worth fixing.
+    %
+    % This code mishandles --use-subdirs in that it looks for .m files
+    % in the same directories in which it looks for .opt/.trans_opt files,
+    % i.e. in the directories named by --intermod-directory options,
+    % even though .m files may not occur in many directories where
+    % .opt/.trans_opt files may occur. The original code from which
+    % the predicates are derived, the get_curr_dir_deps predicate added
+    % by Simon on 1996 nov 6, as its name says, looked for source files
+    % only in the current directory. Through the --intermod-directory
+    % options, we now also look for .m files in
+    %
+    % - in Mercury subdirs in the current directory,
+    % - in other directories in the same workspace,
+    % - in the Mercury subdirs of other directories in the same workspace, and
+    % - in installed library directories.
+    %
+    % Only the second of these is a place where .m files can legitimately
+    % be found; looking in the others is wasted work.
+    %
+    % Fixing this waste is hard while using the LEGACY search options,
+    % because the value of the intermod_directories option contains
+    % all four of the above kinds of directory names without any indication
+    % of which category they fall into. The PROPOSED search options
+    % intermod_dirs_same_subdir_setting, intermod_dirs_indep_subdir_setting
+    % and intermod_dirs_installed_library, *do* make those distinctions.
+    % We should therefore fix this issue once we have switched over
+    % to using them exclusively.
+    % XXX LEGACY
+    %
 :- type maybe_look_for_src
     --->    do_not_look_for_src
     ;       look_for_src.
@@ -530,6 +593,10 @@ construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, IntermodDeps,
     % file exists, add it to the TransOptDeps list.
     % With do_not_look_for_src, don't look for `.m' files (since we are
     % not building `.opt' files, only using those which are available).
+    %
+    % XXX See the comment on the maybe_look_for_src type about this
+    % strange arrangement.
+    %
     % XXX This won't find nested submodules.
     % XXX Use `mmc --make' if that matters.
     %
@@ -601,6 +668,10 @@ get_plain_trans_opt_deps(Globals, LookForSrc, [ModuleName | ModuleNames],
     % the given extension, filtering out those for which the search fails.
     % With do_not_look_for_src, only look for files with the given extension,
     % not source files.
+    %
+    % XXX See the comment on the maybe_look_for_src type about this
+    % strange arrangement.
+    %
     % XXX This won't find nested submodules.
     % XXX Use `mmc --make' if that matters.
     %
