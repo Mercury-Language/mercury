@@ -19,7 +19,7 @@
 :- import_module libs.maybe_util.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_output.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 
 :- import_module io.
 :- import_module string.
@@ -156,6 +156,7 @@
 :- import_module parse_tree.parse_tree_out_type_repn.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_item.
 :- import_module recompilation.
 :- import_module recompilation.item_types.
 :- import_module recompilation.version.

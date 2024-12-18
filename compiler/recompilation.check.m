@@ -69,6 +69,7 @@
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.write_error_spec.
 :- import_module recompilation.item_types.

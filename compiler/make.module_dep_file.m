@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 expandtab
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2020 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2020, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -60,6 +60,7 @@
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 
 :- import_module dir.
 :- import_module list.

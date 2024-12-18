@@ -18,7 +18,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module parse_tree.error_spec.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 
 :- import_module list.
 
@@ -43,6 +43,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module bool.
 :- import_module int.

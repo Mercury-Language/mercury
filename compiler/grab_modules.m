@@ -61,7 +61,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.module_baggage.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.read_modules.
 
 :- import_module io.
@@ -174,6 +174,7 @@
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.write_error_spec.
 
 :- import_module bool.

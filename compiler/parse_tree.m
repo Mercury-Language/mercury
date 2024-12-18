@@ -17,9 +17,10 @@
 :- interface.
 
 % The parse tree data type itself.
-% The parse tree is split in two. The parts defined in prog_item are needed
-% only by the frontend of the compiler, the parts in prog_data* are needed
-% throughout.
+% The parse tree is split in two. The parts defined in prog_parse_tree.m and
+% prog_item.m are needed only by the frontend of the compiler, the parts
+% in prog_data*.m are needed throughout.
+:- include_module prog_parse_tree.
 :- include_module prog_item.
 :- include_module prog_data.
 :- include_module prog_data_event.

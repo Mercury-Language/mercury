@@ -112,7 +112,7 @@
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_error.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 
 :- import_module bool.
 :- import_module dir.

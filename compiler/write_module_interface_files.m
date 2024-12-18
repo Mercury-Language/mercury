@@ -128,6 +128,7 @@
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 :- import_module recompilation.
 :- import_module recompilation.version.
 

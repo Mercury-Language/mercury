@@ -81,6 +81,7 @@
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.warn_unread_modules.
 

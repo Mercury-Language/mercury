@@ -85,6 +85,7 @@
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign_enum.
+:- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_repn.
 

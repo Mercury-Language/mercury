@@ -29,7 +29,7 @@
 :- import_module parse_tree.generate_mmakefile_fragments.
 :- import_module parse_tree.make_module_file_names.
 :- import_module parse_tree.module_baggage.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 
 :- import_module digraph.
 :- import_module io.
@@ -142,6 +142,7 @@
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_item.
 
 :- import_module bool.
 :- import_module cord.

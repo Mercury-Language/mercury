@@ -119,6 +119,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_util.

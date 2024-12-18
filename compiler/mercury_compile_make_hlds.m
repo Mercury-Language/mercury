@@ -29,7 +29,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_baggage.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.read_modules.
 
 :- import_module bool.

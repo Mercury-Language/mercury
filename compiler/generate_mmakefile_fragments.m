@@ -156,6 +156,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.source_file_map.
 
 :- import_module bool.

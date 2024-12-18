@@ -106,7 +106,7 @@
 :- import_module hlds.special_pred.
 :- import_module hlds.var_table_hlds.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_construct.
 :- import_module parse_tree.prog_type_test.

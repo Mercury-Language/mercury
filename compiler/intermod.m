@@ -86,7 +86,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 :- import_module transform_hlds.intermod_info.
 
 :- import_module string.
@@ -151,6 +151,7 @@
 :- import_module parse_tree.parse_tree_to_term.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.

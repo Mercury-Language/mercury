@@ -92,7 +92,7 @@
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_item.      % undesirable dependency
+:- import_module parse_tree.prog_parse_tree.    % undesirable dependency
 :- import_module parse_tree.prog_type_test.
 
 :- import_module assoc_list.

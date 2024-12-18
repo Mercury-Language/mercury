@@ -226,8 +226,8 @@
 
 :- import_module dir.
 :- import_module getopt.
-:- import_module map.
 :- import_module io.file.
+:- import_module map.
 :- import_module string.
 
 %---------------------------------------------------------------------------%

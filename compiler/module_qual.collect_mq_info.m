@@ -14,7 +14,7 @@
 :- interface.
 
 :- import_module parse_tree.module_qual.mq_info.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 
 %---------------------------------------------------------------------------%
 
@@ -49,6 +49,7 @@
 :- import_module parse_tree.module_qual.id_set.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module bool.
 :- import_module list.

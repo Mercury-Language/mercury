@@ -26,7 +26,7 @@
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.prog_data_used_modules.
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 
 :- import_module io.
 :- import_module list.
@@ -84,6 +84,7 @@
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
+:- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_item_stats.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.

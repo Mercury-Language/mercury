@@ -16,7 +16,7 @@
 :- module parse_tree.prog_item_stats.
 :- interface.
 
-:- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_parse_tree.
 
 :- import_module io.
 
@@ -36,6 +36,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.prog_item.
 
 :- import_module int.
 :- import_module list.
