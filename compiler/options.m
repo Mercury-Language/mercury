@@ -22,8 +22,7 @@
 %   the type "option" itself.
 %
 % - Every option should have its default value defined in a clause of
-%   the option_defaults_2 predicate. Which clause depends on what category
-%   the option falls into (warning, optimization, etc).
+%   the optdef predicate.
 %
 %   For optimization options that should be set automatically at a specific
 %   optimization level, there should also be an entry in opt_level.
@@ -1237,7 +1236,6 @@
 :- import_module libs.compute_grade.
 :- import_module libs.shell_util.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module dir.
 :- import_module map.
@@ -1271,18 +1269,6 @@ option_defaults(Opt, Data) :-
     ;       oc_link
     ;       oc_buildsys
     ;       oc_misc.
-
-:- pred option_defaults_2(option_category, assoc_list(option, option_data)).
-:- mode option_defaults_2(in, out) is det.
-% :- mode option_defaults_2(out, out) is multi.
-
-option_defaults_2(Category, OptsDatas) :-
-    Pred =
-        ( pred((Opt - Data)::out) is nondet :-
-            optdef(Cat, Opt, Data),
-            Cat = Category
-        ),
-    solutions(Pred, OptsDatas).
 
 %---------------------------------------------------------------------------%
 
@@ -4362,16 +4348,14 @@ non_style_warning_options = [
 ].
 
 inconsequential_options(InconsequentialOptions) :-
-    option_defaults_2(oc_warn, WarningOptions),
-    option_defaults_2(oc_verbosity, VerbosityOptions),
-    option_defaults_2(oc_internal, InternalUseOptions),
-    option_defaults_2(oc_buildsys, BuildSystemOptions),
-    assoc_list.keys(WarningOptions, WarningKeys),
-    assoc_list.keys(VerbosityOptions, VerbosityKeys),
-    assoc_list.keys(InternalUseOptions, InternalUseKeys),
-    assoc_list.keys(BuildSystemOptions, BuildSystemKeys),
-    Keys = WarningKeys ++ VerbosityKeys ++ InternalUseKeys ++ BuildSystemKeys,
-    InconsequentialOptions = set.list_to_set(Keys).
+    InconsequentialCategories =
+        set.list_to_set([oc_warn, oc_verbosity, oc_internal, oc_buildsys]),
+    FindOptionsPred =
+        ( pred(Opt::out) is nondet :-
+            optdef(Cat, Opt, _Data),
+            set.member(Cat, InconsequentialCategories)
+        ),
+    solutions_set(FindOptionsPred, InconsequentialOptions).
 
 %---------------------------------------------------------------------------%
 
