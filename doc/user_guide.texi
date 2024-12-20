@@ -10623,22 +10623,20 @@ Append @var{dir} to the list of directories to be searched
 for @samp{.int*} and @samp{.module_dep} files.
 @c XXX Should we list .int0, .int, .int2 and .int3 separately?
 
-@c @c XXX The "normal" part of the names of these options
-@c @c was just a placeholder, since one was needed to differentiate
-@c @c these options from their intermod, c-include-file and .a/.so versions.
-@c @c Its use does not lead to good option names, but it is difficult
-@c @c to come up with better option names. Any ideas?
-@c @c
-@c @c XXX Once there is agreement on the structure of this entry, it will be
-@c @c duplicated, mutatis mutandis, for the other three groups of PROPOSED
-@c @c search dir options.
 @c @sp 1
-@c @item --normal-dirs-same @var{workspacedir}
-@c @itemx --normal-dirs-indep @var{workspacedir}
-@c @itemx --normal-dirs-installed-lib @var{installdir}
-@c @findex --normal-dirs-same
-@c @findex --normal-dirs-indep
-@c @findex --normal-dirs-installed-lib
+@c @item --interface-dir-same-workspace @var{workspace_directory}
+@c @itemx --interface-dir-same-ws @var{workspace_directory}
+@c @sp 1
+@c @itemx --interface-dir-independent-workspace @var{workspace_directory}
+@c @itemx --interface-dir-indepe-ws @var{workspace_directory}
+@c @sp 1
+@c @itemx --interface-dir-installed-library @var{install_directory}
+@c @itemx --interface-dir-installed-lib @var{install_directory}
+@c @findex --interface-dir-same-ws
+@c @findex --interface-dir-same-workspace
+@c @findex --interface-dir-independent-workspace
+@c @findex --interface-dir-indep-ws
+@c @findex --interface-dir-installed-lib
 @c @cindex Directories
 @c @cindex Search path
 @c Append either the named workspace directory,
@@ -10646,18 +10644,21 @@ for @samp{.int*} and @samp{.module_dep} files.
 @c to one of three separate lists of directories to be searched
 @c for @samp{.int*} and @samp{.module_dep} files.
 @c Any workspace directory
-@c named in a @var{--normal-dirs-same} option
+@c named by a @var{--interface-dir-same-workspace} option
+@c (or its abbreviated synonym)
 @c should set the same values
 @c for the @samp{--use-subdir} and @samp{--use-grade-subdir}
 @c as the current workspace directory;
 @c this restriction does not apply to workspace directories
-@c named in a @var{--normal-dirs-indep} options.
+@c named in a @var{--interface-dir-independent-workspace} option
+@c (or its abbreviated synonym).
 @c The compiler will first search the workspace directories
-@c named in @var{--normal-dirs-same} options,
+@c named in @var{--interface-dir-same-workspace} options,
 @c second it will search the workspace directories
-@c named in @var{--normal-dirs-indep} options,
+@c named in @var{--interface-dir-independent-workspace} options,
 @c and third it will search the library install directories
-@c named in @var{--normal-dirs-installed-lib} options.
+@c named in @var{--interface-dir-installed-library} options
+@c (or its abbreviated synonym).
 @c
 @c XXX Should we add something to specify that unlike the legacy options,
 @c the arguments of these options never require any directory name components
