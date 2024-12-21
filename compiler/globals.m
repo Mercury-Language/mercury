@@ -330,7 +330,8 @@
 
 :- type c_incl_ext
     --->    cie_mh
-    ;       cie_mih.
+    ;       cie_mih
+    ;       cie_h.          % Not created from Mercury code.
 
 :- type lib_ext
     --->    le_a.

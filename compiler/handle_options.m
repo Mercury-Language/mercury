@@ -3217,6 +3217,8 @@ handle_directory_options(OpMode, !Globals, !Specs) :-
         c_incl_dirs_indep_subdir_setting, CInclIndep),
     globals.lookup_accumulating_option(!.Globals,
         c_incl_dirs_installed_library, CInclInstalled),
+    globals.lookup_accumulating_option(!.Globals,
+        c_incl_dirs_external, CInclExternal),
 
     globals.lookup_accumulating_option(!.Globals,
         mer_lib_dirs_same_subdir_setting, MerLibSame),
@@ -3310,6 +3312,9 @@ handle_directory_options(OpMode, !Globals, !Specs) :-
             CInclSame, CInclIndep, CInclInstalled, CInclMih),
         map.det_insert(cie_mh, CInclMh, !CInclDirsMap),
         map.det_insert(cie_mih, CInclMih, !CInclDirsMap),
+        CInclH0 = CInclMh ++ CInclMih ++ CInclExternal,
+        list.remove_dups(CInclH0, CInclH),
+        map.det_insert(cie_h, CInclH, !CInclDirsMap),
 
         ext_cur_gas_extension_dir(!.Globals, ext_cur_gas_lib_lib_opt, _,
             ExtDirA),
