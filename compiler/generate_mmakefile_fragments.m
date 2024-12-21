@@ -2165,7 +2165,7 @@ generate_dep_file_install_targets_proposed_gs_gas_c(Globals, MainModuleName,
 
     string.format("$(%s.module_deps)", [s(ModuleMVN)], ModuleDepsMVN),
     string.format("$(%s.opts)",        [s(ModuleMVN)], PlainOptsMVN),
-    string.format("$(%s.trans_opt)",   [s(ModuleMVN)], TransOptsMVN),
+    string.format("$(%s.trans_opts)",  [s(ModuleMVN)], TransOptsMVN),
     string.format("$(%s.mihs)",        [s(ModuleMVN)], MihsMVN),
 
     ActionsMDs0 =       proposed_gs_action_lines(ModuleDepsMVN, "module_deps"),
