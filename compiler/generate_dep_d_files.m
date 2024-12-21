@@ -612,7 +612,7 @@ get_plain_trans_opt_deps(Globals, LookForSrc, [ModuleName | ModuleNames],
         !:OptDeps, !:TransOptDeps, !Cache, !IO),
     (
         LookForSrc = look_for_src,
-        SearchAuthDirsSrc = get_search_auth_intermod_dirs(ie_src, Globals),
+        SearchAuthDirsSrc = get_search_auth_intermod_dirs(ime_src, Globals),
         search_for_module_source(SearchAuthDirsSrc,
             ModuleName, _SearchDirsLook, MaybeFileName, !IO),
         (
@@ -636,7 +636,7 @@ get_plain_trans_opt_deps(Globals, LookForSrc, [ModuleName | ModuleNames],
         make_module_file_name(Globals, $pred, ExtOpt,
             ModuleName, OptName, !Cache, !IO),
         SearchAuthDirsPlainOpt =
-            get_search_auth_intermod_dirs(ie_opt_plain, Globals),
+            get_search_auth_intermod_dirs(ime_opt_plain, Globals),
         search_for_file_returning_dir(SearchAuthDirsPlainOpt,
             OptName, _SearchDirsNotFoundOpt, MaybeOptDir, !IO),
         (
@@ -651,7 +651,7 @@ get_plain_trans_opt_deps(Globals, LookForSrc, [ModuleName | ModuleNames],
         make_module_file_name(Globals, $pred, ExtTransOpt,
             ModuleName, TransOptName, !Cache, !IO),
         SearchAuthDirsTransOpt =
-            get_search_auth_intermod_dirs(ie_opt_trans, Globals),
+            get_search_auth_intermod_dirs(ime_opt_trans, Globals),
         search_for_file_returning_dir(SearchAuthDirsTransOpt,
             TransOptName, _SearchDirsNotFoundTransOpt, MaybeTransOptDir, !IO),
         (
@@ -698,7 +698,7 @@ get_ext_opt_deps(Globals, LookForSrc, Ext, [ModuleName | ModuleNames],
         %
         % XXX It should mention .trans_opt files as well, since we do
         % search for them in the same places.
-        SearchAuthDirsSrc = get_search_auth_intermod_dirs(ie_src, Globals),
+        SearchAuthDirsSrc = get_search_auth_intermod_dirs(ime_src, Globals),
         search_for_module_source(SearchAuthDirsSrc, ModuleName,
             _SearchDirsLook, Result1, !IO),
         (

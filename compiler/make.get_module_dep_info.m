@@ -159,7 +159,7 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
     % XXX LEGACY
     module_name_to_file_name(Globals, $pred, ModuleDepExt,
         ModuleName, DepFileName, _DepFileNameProposed),
-    SearchAuthDirs = get_search_auth_normal_dirs(ne_module_dep, Globals),
+    SearchAuthDirs = get_search_auth_interface_dirs(ife_module_dep, Globals),
     get_file_timestamp(SearchAuthDirs, DepFileName,
         SearchDirs, MaybeDepFileTimestamp, !Info, !IO),
     (
@@ -198,7 +198,8 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
         ;
             MaybeSourceFileTimestamp = error(_),
             find_and_read_module_dep_file(ProgressStream, Globals,
-                RebuildModuleDeps, search_normal_dirs, ModuleName, !Info, !IO),
+                RebuildModuleDeps, search_interface_dirs, ModuleName,
+                !Info, !IO),
 
             % Check for the case where the module name doesn't match the
             % source file name (e.g. parse.m contains module mdb.parse).
@@ -306,7 +307,8 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
 %---------------------------------------------------------------------------%
 
 :- pred find_and_read_module_dep_file(io.text_output_stream::in, globals::in,
-    maybe_rebuild_module_deps::in, search_which_dirs::in(search_cur_or_normal),
+    maybe_rebuild_module_deps::in,
+    search_which_dirs::in(search_cur_or_interface),
     module_name::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_and_read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
@@ -366,7 +368,7 @@ find_and_read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
     ).
 
 :- pred handle_parsed_module_dep_file(io.text_output_stream::in, globals::in,
-    search_which_dirs::in(search_cur_or_normal),
+    search_which_dirs::in(search_cur_or_interface),
     module_name::in, dir_name::in, file_name::in, module_dep_summary::in,
     maybe_error::out, make_info::in, make_info::out, io::di, io::uo) is det.
 

@@ -476,7 +476,7 @@ read_module_src(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors,
 
 read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
         ReadReasonMsg, Search, ReadModuleAndTimestamps, HaveModule, !IO) :-
-    read_module_begin_from_file(ProgressStream, ne_src, Globals,
+    read_module_begin_from_file(ProgressStream, ife_src, Globals,
         ReadReasonMsg, Search, FileName, FileNameDotM, DefaultModuleName,
         ReadDoneMsg, SearchWhichDirs, !IO),
     search_for_file_and_stream(SearchWhichDirs, FileNameDotM,
@@ -1188,14 +1188,14 @@ get_default_module_name_for_file(FileName, FileNameDotM,
 
 %---------------------%
 
-:- pred read_module_begin_from_file(io.text_output_stream::in, normal_ext::in,
-    globals::in, read_reason_msg::in, maybe_search::in,
+:- pred read_module_begin_from_file(io.text_output_stream::in,
+    interface_ext::in, globals::in, read_reason_msg::in, maybe_search::in,
     file_name::in, file_name::in, module_name::out, read_done_msg::out,
     search_auth_dirs::out, io::di, io::uo) is det.
 
-read_module_begin_from_file(ProgressStream, NormalExt, Globals, ReadReasonMsg,
-        Search, FileName, FileNameDotM, DefaultModuleName, ReadDoneMsg,
-        SearchAuthDirs, !IO) :-
+read_module_begin_from_file(ProgressStream, InterfaceExt, Globals,
+        ReadReasonMsg, Search, FileName, FileNameDotM, DefaultModuleName,
+        ReadDoneMsg, SearchAuthDirs, !IO) :-
     % XXX Do not assume that the name of FileNameDotM guarantees
     % that the string it holds ends in ".m".
     get_default_module_name_for_file(FileName, FileNameDotM,
@@ -1204,7 +1204,7 @@ read_module_begin_from_file(ProgressStream, NormalExt, Globals, ReadReasonMsg,
     % with read_module_begin.
     (
         Search = do_search,
-        SearchAuthDirs = get_search_auth_normal_dirs(NormalExt, Globals)
+        SearchAuthDirs = get_search_auth_interface_dirs(InterfaceExt, Globals)
     ;
         Search = do_not_search,
         SearchAuthDirs = search_auth_cur_dir
@@ -1226,7 +1226,7 @@ read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         module_name_to_source_file_name(ModuleName, FileName, !IO),
         (
             Search = do_search,
-            SearchAuthDirs = get_search_auth_normal_dirs(ne_src, Globals)
+            SearchAuthDirs = get_search_auth_interface_dirs(ife_src, Globals)
         ;
             Search = do_not_search,
             SearchAuthDirs = search_auth_cur_dir
@@ -1241,7 +1241,7 @@ read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         % check whether the insts of Ext match the values of SearchWhichDirs.
         (
             Search = do_search,
-            SearchWhichDirs = search_normal_dirs,
+            SearchWhichDirs = search_interface_dirs,
             % XXX LEGACY
             module_name_to_search_file_name(Globals, $pred, Ext, ModuleName,
                 SearchWhichDirs, SearchAuthDirs, FileName, _FileNameProposed)

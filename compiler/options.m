@@ -1149,9 +1149,9 @@
     ;       search_directories
     ;       intermod_directories
     ;       use_search_directories_for_intermod
-    ;       normal_dirs_same_subdir_setting
-    ;       normal_dirs_indep_subdir_setting
-    ;       normal_dirs_installed_library
+    ;       interface_dirs_same_subdir_setting
+    ;       interface_dirs_indep_subdir_setting
+    ;       interface_dirs_installed_library
     ;       intermod_dirs_same_subdir_setting
     ;       intermod_dirs_indep_subdir_setting
     ;       intermod_dirs_installed_library
@@ -2142,9 +2142,9 @@ optdef(oc_buildsys, std_int_file_not_written_msgs,      bool(no)).
 optdef(oc_buildsys, search_directories,                 accumulating(["."])).
 optdef(oc_buildsys, intermod_directories,               accumulating([])).
 optdef(oc_buildsys, use_search_directories_for_intermod, bool(yes)).
-optdef(oc_buildsys, normal_dirs_same_subdir_setting,    accumulating([])).
-optdef(oc_buildsys, normal_dirs_indep_subdir_setting,   accumulating([])).
-optdef(oc_buildsys, normal_dirs_installed_library,      accumulating([])).
+optdef(oc_buildsys, interface_dirs_same_subdir_setting, accumulating([])).
+optdef(oc_buildsys, interface_dirs_indep_subdir_setting, accumulating([])).
+optdef(oc_buildsys, interface_dirs_installed_library,   accumulating([])).
 optdef(oc_buildsys, intermod_dirs_same_subdir_setting,  accumulating([])).
 optdef(oc_buildsys, intermod_dirs_indep_subdir_setting, accumulating([])).
 optdef(oc_buildsys, intermod_dirs_installed_library,    accumulating([])).
@@ -3335,18 +3335,59 @@ long_table("search-directory",     search_directories).
 long_table("intermod-directory",   intermod_directories).
 long_table("use-search-directories-for-intermod",
                     use_search_directories_for_intermod).
-long_table("normal-dirs-same",      normal_dirs_same_subdir_setting).
-long_table("normal-dirs_indep",     normal_dirs_indep_subdir_setting).
-long_table("normal-dirs-installed-lib", normal_dirs_installed_library).
-long_table("intermod-dirs-same",    intermod_dirs_same_subdir_setting).
-long_table("intermod-dirs_indep",   intermod_dirs_indep_subdir_setting).
-long_table("intermod-dirs-installed-lib", intermod_dirs_installed_library).
-long_table("c-incl-dirs-same",      c_incl_dirs_same_subdir_setting).
-long_table("c-incl-dirs_indep",     c_incl_dirs_indep_subdir_setting).
-long_table("c-incl-dirs-installed-lib", c_incl_dirs_installed_library).
-long_table("mer-lib-dirs-same",     mer_lib_dirs_same_subdir_setting).
-long_table("mer-lib-dirs_indep",    mer_lib_dirs_indep_subdir_setting).
-long_table("mer-lib-dirs-installed-lib", mer_lib_dirs_installed_library).
+
+long_table("interface-dir-same-workspace",
+                                    interface_dirs_same_subdir_setting).
+long_table("interface-dir-same-ws",
+                                    interface_dirs_same_subdir_setting).
+long_table("interface-dir-independent-workspace",
+                                    interface_dirs_indep_subdir_setting).
+long_table("interface-dir-indep-ws",
+                                    interface_dirs_indep_subdir_setting).
+long_table("interface-dir-installed-library",
+                                    interface_dirs_installed_library).
+long_table("interface-dir-installed-lib",
+                                    interface_dirs_installed_library).
+
+long_table("intermod-dir-same-workspace",
+                                    intermod_dirs_same_subdir_setting).
+long_table("intermod-dir-same-ws",
+                                    intermod_dirs_same_subdir_setting).
+long_table("intermod-dir-independent-workspace",
+                                    intermod_dirs_indep_subdir_setting).
+long_table("intermod-dir-indep-ws",
+                                    intermod_dirs_indep_subdir_setting).
+long_table("intermod-dir-installed-library",
+                                    intermod_dirs_installed_library).
+long_table("intermod-dir-installed-lib",
+                                    intermod_dirs_installed_library).
+
+long_table("c-include-dir-same-workspace",
+                                    c_incl_dirs_same_subdir_setting).
+long_table("c-incl-dir-same-ws",
+                                    c_incl_dirs_same_subdir_setting).
+long_table("c-include-dir-independent-workspace",
+                                    c_incl_dirs_indep_subdir_setting).
+long_table("c-incl-dir-indep-ws",
+                                    c_incl_dirs_indep_subdir_setting).
+long_table("c-include-dir-installed-library",
+                                    c_incl_dirs_installed_library).
+long_table("c-incl-dir-installed-lib",
+                                    c_incl_dirs_installed_library).
+
+long_table("mercury-library-dir-same-workspace",
+                                    mer_lib_dirs_same_subdir_setting).
+long_table("mer-lib-dir-same-ws",
+                                    mer_lib_dirs_same_subdir_setting).
+long_table("mercury-library-dir-independent-workspace",
+                                    mer_lib_dirs_indep_subdir_setting).
+long_table("mer-lib-dir-indep-ws",
+                                    mer_lib_dirs_indep_subdir_setting).
+long_table("mercury-library-dir-installed-library",
+                                    mer_lib_dirs_installed_library).
+long_table("mer-lib-dir-installed-lib",
+                                    mer_lib_dirs_installed_library).
+
 long_table("libgrade-install-check", libgrade_install_check).
 long_table("order-make-by-timestamp", order_make_by_timestamp).
 long_table("show-make-times",       show_make_times).
@@ -7061,18 +7102,18 @@ options_help_build_system(Stream, !IO) :-
         "\tthe list of directories to search for `.opt' files; use only the",
         "\targuments of `--intermod-directory' options.",
 % XXX document these options *after* we agree on their semantics.
-% normal-dirs-same
-% normal-dirs_indep
-% normal-dirs-installed-lib
-% intermod-dirs-same
-% intermod-dirs_indep
-% intermod-dirs-installed-lib
-% c-incl-dirs-same
-% c-incl-dirs_indep
-% c-incl-dirs-installed-lib
-% mer-lib-dirs-same
-% mer-lib-dirs_indep
-% mer-lib-dirs-installed-lib
+% interface-dir-same-workspace
+% interface-dir-independent-workspace
+% interface-dir-installed-lib
+% intermod-dir-same-workspace
+% intermod-dir-independent-workspace
+% intermod-dir-installed-library
+% c-incl-dir-same-workspace
+% c-incl-dir-independent-workspace
+% c-incl-dir-installed-library
+% mer-lib-dir-same-workspace
+% mer-lib-dir-independent-workspace
+% mer-lib-dir-installed-library
 %
 % This option for internal use only.
 % chosen_stdlib_dir

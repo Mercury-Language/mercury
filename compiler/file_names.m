@@ -681,7 +681,7 @@
     --->    search_cur_dir
     ;       search_this_dir(dir_name)
     ;       search_this_dir_and(dir_name, search_which_tail_dirs)
-    ;       search_normal_dirs
+    ;       search_interface_dirs
     ;       search_intermod_dirs
     ;       search_dirs_for_ext.
 
@@ -696,12 +696,12 @@
     %
 :- type search_which_tail_dirs =< search_which_dirs
     --->    search_cur_dir
-    ;       search_normal_dirs
+    ;       search_interface_dirs
     ;       search_intermod_dirs.
 
-:- inst search_cur_or_normal for search_which_dirs/0
+:- inst search_cur_or_interface for search_which_dirs/0
     --->    search_cur_dir
-    ;       search_normal_dirs.
+    ;       search_interface_dirs.
 
 :- inst search_cur_or_intermod for search_which_dirs/0
     --->    search_cur_dir
@@ -753,7 +753,7 @@
 :- pred module_name_to_search_file_name(globals, string, ext, module_name,
     search_which_dirs, search_auth_dirs, file_name, file_name).
 :- mode module_name_to_search_file_name(in, in,
-    in(ext_int_md), in, in(search_cur_or_normal), out, out, out) is det.
+    in(ext_int_md), in, in(search_cur_or_interface), out, out, out) is det.
 :- mode module_name_to_search_file_name(in, in,
     in(ext_opt), in, in(search_cur_or_intermod), out, out, out) is det.
 :- mode module_name_to_search_file_name(in, in,
@@ -1414,12 +1414,12 @@ module_name_to_search_file_name(Globals, From, Ext, ModuleName,
             SearchAuthDirs = search_auth_cur_dir
         )
     ;
-        SearchWhichDirs = search_normal_dirs,
+        SearchWhichDirs = search_interface_dirs,
         (
             Ext = ext_cur_ngs(ExtCurNgs),
-            ext_cur_ngs_to_normal_ext(ExtCurNgs, NormalExt),
+            ext_cur_ngs_to_interface_ext(ExtCurNgs, InterfaceExt),
             SearchAuthDirs = search_auth_private(
-                private_auth_normal_dirs(NormalExt, Globals))
+                private_auth_interface_dirs(InterfaceExt, Globals))
         )
     ;
         SearchWhichDirs = search_intermod_dirs,
@@ -1427,34 +1427,34 @@ module_name_to_search_file_name(Globals, From, Ext, ModuleName,
             Ext = ext_cur_ngs_gs_max_ngs(ExtCurNgsGsMaxCur),
             (
                 ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_legacy_opt_plain,
-                IntermodExt = ie_opt_plain
+                IntermodExt = ime_opt_plain
             ;
                 ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_legacy_opt_trans,
-                IntermodExt = ie_opt_trans
+                IntermodExt = ime_opt_trans
             ;
                 ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_an_request,
-                IntermodExt = ie_an_request
+                IntermodExt = ime_an_request
             ;
                 ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_an_imdg,
-                IntermodExt = ie_an_imdg
+                IntermodExt = ime_an_imdg
             ;
                 ExtCurNgsGsMaxCur = ext_cur_ngs_gs_max_ngs_an_analysis,
-                IntermodExt = ie_an_analysis
+                IntermodExt = ime_an_analysis
             )
         ;
             Ext = ext_cur_ngs_gs(ExtCurNgsGs),
             (
                 ExtCurNgsGs = ext_cur_ngs_gs_proposed_opt_plain,
-                IntermodExt = ie_opt_plain
+                IntermodExt = ime_opt_plain
             ;
                 ExtCurNgsGs = ext_cur_ngs_gs_proposed_opt_trans,
-                IntermodExt = ie_opt_trans
+                IntermodExt = ime_opt_trans
             ;
                 ExtCurNgsGs = ext_cur_ngs_gs_an_analysis_status,
-                IntermodExt = ie_an_analysis_status
+                IntermodExt = ime_an_analysis_status
             ;
                 ExtCurNgsGs = ext_cur_ngs_gs_an_analysis_date,
-                IntermodExt = ie_an_analysis_date
+                IntermodExt = ime_an_analysis_date
             )
         ),
         SearchAuthDirs = search_auth_private(
@@ -1467,9 +1467,9 @@ module_name_to_search_file_name(Globals, From, Ext, ModuleName,
             SearchAuthDirs = search_auth_cur_dir
         ;
             Ext = ext_cur_ngs(ExtCurNgs),
-            ext_cur_ngs_to_normal_ext(ExtCurNgs, NormalExt),
+            ext_cur_ngs_to_interface_ext(ExtCurNgs, InterfaceExt),
             SearchAuthDirs = search_auth_private(
-                private_auth_normal_dirs(NormalExt, Globals))
+                private_auth_interface_dirs(InterfaceExt, Globals))
         ;
             Ext = ext_cur_ngs_gs(ExtCurNgsGs),
             ( ExtCurNgsGs = ext_cur_ngs_gs_target_c
@@ -1491,10 +1491,10 @@ module_name_to_search_file_name(Globals, From, Ext, ModuleName,
             Ext = ext_cur_ngs_gs_max_ngs(ExtCurNgsGsMaxNgs),
             (
                 ExtCurNgsGsMaxNgs = ext_cur_ngs_gs_max_ngs_legacy_opt_plain,
-                IntermodExt = ie_opt_plain
+                IntermodExt = ime_opt_plain
             ;
                 ExtCurNgsGsMaxNgs = ext_cur_ngs_gs_max_ngs_an_analysis,
-                IntermodExt = ie_an_analysis
+                IntermodExt = ime_an_analysis
             ),
             PrivateDirs = private_auth_intermod_dirs(IntermodExt, Globals),
             SearchAuthDirs =
@@ -1527,15 +1527,15 @@ module_name_to_search_file_name(Globals, From, Ext, ModuleName,
     ;       ext_cur_ngs_int_int3
     ;       ext_cur_ngs_misc_module_dep.
 
-:- pred ext_cur_ngs_to_normal_ext(ext_cur_ngs::in(ext_cur_ngs_search),
-    normal_ext::out) is det.
+:- pred ext_cur_ngs_to_interface_ext(ext_cur_ngs::in(ext_cur_ngs_search),
+    interface_ext::out) is det.
 
-ext_cur_ngs_to_normal_ext(ExtCurNgs, NormalExt) :-
-    ( ExtCurNgs = ext_cur_ngs_int_int0,         NormalExt = ne_int0
-    ; ExtCurNgs = ext_cur_ngs_int_int1,         NormalExt = ne_int1
-    ; ExtCurNgs = ext_cur_ngs_int_int2,         NormalExt = ne_int2
-    ; ExtCurNgs = ext_cur_ngs_int_int3,         NormalExt = ne_int3
-    ; ExtCurNgs = ext_cur_ngs_misc_module_dep,  NormalExt = ne_module_dep
+ext_cur_ngs_to_interface_ext(ExtCurNgs, InterfaceExt) :-
+    ( ExtCurNgs = ext_cur_ngs_int_int0,         InterfaceExt = ife_int0
+    ; ExtCurNgs = ext_cur_ngs_int_int1,         InterfaceExt = ife_int1
+    ; ExtCurNgs = ext_cur_ngs_int_int2,         InterfaceExt = ife_int2
+    ; ExtCurNgs = ext_cur_ngs_int_int3,         InterfaceExt = ife_int3
+    ; ExtCurNgs = ext_cur_ngs_misc_module_dep,  InterfaceExt = ife_module_dep
     ).
 
 %---------------------%

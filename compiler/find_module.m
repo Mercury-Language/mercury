@@ -86,7 +86,7 @@
     ;       search_auth_private(search_auth_private_dirs).
 
 :- type search_auth_private_dirs
-    --->    private_auth_normal_dirs(normal_ext, globals)
+    --->    private_auth_interface_dirs(interface_ext, globals)
     ;       private_auth_intermod_dirs(intermod_ext, globals)
     ;       private_auth_c_include_dirs(c_incl_ext, globals)
     ;       private_auth_options_file_dirs(option_table)
@@ -102,12 +102,12 @@
     ;       search_auth_private(search_auth_private_tail_dirs).
 
 :- type search_auth_private_tail_dirs =< search_auth_private_dirs
-    --->    private_auth_normal_dirs(normal_ext, globals)
+    --->    private_auth_interface_dirs(interface_ext, globals)
     ;       private_auth_intermod_dirs(intermod_ext, globals)
     ;       private_auth_c_include_dirs(c_incl_ext, globals)
     ;       private_auth_options_file_dirs(option_table).
 
-:- func get_search_auth_normal_dirs(normal_ext, globals)
+:- func get_search_auth_interface_dirs(interface_ext, globals)
     = search_auth_dirs.
 :- func get_search_auth_intermod_dirs(intermod_ext, globals)
     = search_auth_dirs.
@@ -232,8 +232,8 @@
 
 %---------------------------------------------------------------------------%
 
-get_search_auth_normal_dirs(NormalExt, Globals) =
-    search_auth_private(private_auth_normal_dirs(NormalExt, Globals)).
+get_search_auth_interface_dirs(InterfaceExt, Globals) =
+    search_auth_private(private_auth_interface_dirs(InterfaceExt, Globals)).
 
 get_search_auth_intermod_dirs(IntermodExt, Globals) =
     search_auth_private(private_auth_intermod_dirs(IntermodExt, Globals)).
@@ -551,10 +551,10 @@ compute_search_dirs(SearchAuthDirs, Dirs) :-
         % assign to Dirs is designed to work for this approach.
         (
             SearchAuthPrivateDirs =
-                private_auth_normal_dirs(NormalExt, Globals),
+                private_auth_interface_dirs(InterfaceExt, Globals),
             globals.get_ext_dirs_maps(Globals, ExtDirsMaps),
-            NormalDirsMap = ExtDirsMaps ^ edm_normal,
-            map.lookup(NormalDirsMap, NormalExt, ProposedDirs),
+            InterfaceDirsMap = ExtDirsMaps ^ edm_interface,
+            map.lookup(InterfaceDirsMap, InterfaceExt, ProposedDirs),
             globals.lookup_accumulating_option(Globals,
                 search_directories, LegacyDirs),
             Dirs = ProposedDirs ++ LegacyDirs

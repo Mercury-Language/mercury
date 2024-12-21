@@ -3198,11 +3198,11 @@ handle_directory_options(OpMode, !Globals, !Specs) :-
     ),
 
     globals.lookup_accumulating_option(!.Globals,
-        normal_dirs_same_subdir_setting, NormalSame),
+        interface_dirs_same_subdir_setting, InterfaceSame),
     globals.lookup_accumulating_option(!.Globals,
-        normal_dirs_indep_subdir_setting, NormalIndep),
+        interface_dirs_indep_subdir_setting, InterfaceIndep),
     globals.lookup_accumulating_option(!.Globals,
-        normal_dirs_installed_library, NormalInstalled),
+        interface_dirs_installed_library, InterfaceInstalled),
 
     globals.lookup_accumulating_option(!.Globals,
         intermod_dirs_same_subdir_setting, IntermodSame),
@@ -3225,10 +3225,10 @@ handle_directory_options(OpMode, !Globals, !Specs) :-
     globals.lookup_accumulating_option(!.Globals,
         mer_lib_dirs_installed_library, MerLibInstalled),
 
-    some [!NormalDirsMap, !IntermodDirsMap, !CInclDirsMap,
+    some [!InterfaceDirsMap, !IntermodDirsMap, !CInclDirsMap,
         !LibDirsMap, !StdLibDirsMap]
     (
-        map.init(!:NormalDirsMap),
+        map.init(!:InterfaceDirsMap),
         map.init(!:IntermodDirsMap),
         map.init(!:CInclDirsMap),
         map.init(!:LibDirsMap),
@@ -3241,23 +3241,24 @@ handle_directory_options(OpMode, !Globals, !Specs) :-
         ext_cur_ngs_extension_dir(
             ext_cur_ngs_misc_module_dep, _, ExtDirModuleDep),
         make_proposed_search_path_ngs(SubdirSetting, ExtDirInt0,
-            NormalSame, NormalIndep, NormalInstalled, NormalInt0),
+            InterfaceSame, InterfaceIndep, InterfaceInstalled, InterfaceInt0),
         make_proposed_search_path_ngs(SubdirSetting, ExtDirInt1,
-            NormalSame, NormalIndep, NormalInstalled, NormalInt1),
+            InterfaceSame, InterfaceIndep, InterfaceInstalled, InterfaceInt1),
         make_proposed_search_path_ngs(SubdirSetting, ExtDirInt2,
-            NormalSame, NormalIndep, NormalInstalled, NormalInt2),
+            InterfaceSame, InterfaceIndep, InterfaceInstalled, InterfaceInt2),
         make_proposed_search_path_ngs(SubdirSetting, ExtDirInt3,
-            NormalSame, NormalIndep, NormalInstalled, NormalInt3),
+            InterfaceSame, InterfaceIndep, InterfaceInstalled, InterfaceInt3),
         make_proposed_search_path_ngs(SubdirSetting, ExtDirModuleDep,
-            NormalSame, NormalIndep, NormalInstalled, NormalModuleDep),
-        map.det_insert(ne_int0, NormalInt0, !NormalDirsMap),
-        map.det_insert(ne_int1, NormalInt1, !NormalDirsMap),
-        map.det_insert(ne_int2, NormalInt2, !NormalDirsMap),
-        map.det_insert(ne_int3, NormalInt3, !NormalDirsMap),
-        map.det_insert(ne_module_dep, NormalModuleDep, !NormalDirsMap),
+            InterfaceSame, InterfaceIndep, InterfaceInstalled,
+            InterfaceModuleDep),
+        map.det_insert(ife_int0, InterfaceInt0, !InterfaceDirsMap),
+        map.det_insert(ife_int1, InterfaceInt1, !InterfaceDirsMap),
+        map.det_insert(ife_int2, InterfaceInt2, !InterfaceDirsMap),
+        map.det_insert(ife_int3, InterfaceInt3, !InterfaceDirsMap),
+        map.det_insert(ife_module_dep, InterfaceModuleDep, !InterfaceDirsMap),
         % XXX We should not look for .m files in installed libraries.
-        NormalSrc = NormalSame ++ NormalIndep ++ NormalInstalled,
-        map.det_insert(ne_src, NormalSrc, !NormalDirsMap),
+        InterfaceSrc = InterfaceSame ++ InterfaceIndep ++ InterfaceInstalled,
+        map.det_insert(ife_src, InterfaceSrc, !InterfaceDirsMap),
 
         ext_cur_ngs_gs_extension_dir(
             ext_cur_ngs_gs_proposed_opt_plain, _, ExtDirPlainOpt),
@@ -3287,17 +3288,17 @@ handle_directory_options(OpMode, !Globals, !Specs) :-
             IntermodSame, IntermodIndep, IntermodInstalled, IntermodImdg),
         make_proposed_search_path_gs(SubdirSetting, Grade, ExtDirRequest,
             IntermodSame, IntermodIndep, IntermodInstalled, IntermodRequest),
-        map.det_insert(ie_opt_plain, IntermodPlainOpt, !IntermodDirsMap),
-        map.det_insert(ie_opt_trans, IntermodTransOpt, !IntermodDirsMap),
-        map.det_insert(ie_an_analysis_date, IntermodDate, !IntermodDirsMap),
-        map.det_insert(ie_an_analysis_status, IntermodStatus,
+        map.det_insert(ime_opt_plain, IntermodPlainOpt, !IntermodDirsMap),
+        map.det_insert(ime_opt_trans, IntermodTransOpt, !IntermodDirsMap),
+        map.det_insert(ime_an_analysis_date, IntermodDate, !IntermodDirsMap),
+        map.det_insert(ime_an_analysis_status, IntermodStatus,
             !IntermodDirsMap),
-        map.det_insert(ie_an_analysis, IntermodAnalysis, !IntermodDirsMap),
-        map.det_insert(ie_an_imdg, IntermodImdg, !IntermodDirsMap),
-        map.det_insert(ie_an_request, IntermodRequest, !IntermodDirsMap),
+        map.det_insert(ime_an_analysis, IntermodAnalysis, !IntermodDirsMap),
+        map.det_insert(ime_an_imdg, IntermodImdg, !IntermodDirsMap),
+        map.det_insert(ime_an_request, IntermodRequest, !IntermodDirsMap),
         % XXX We should not look for .m files in installed libraries.
         IntermodSrc = IntermodSame ++ IntermodIndep ++ IntermodInstalled,
-        map.det_insert(ie_src, IntermodSrc, !IntermodDirsMap),
+        map.det_insert(ime_src, IntermodSrc, !IntermodDirsMap),
 
         ext_cur_pgs_max_cur_extension_dir(
             ext_cur_pgs_max_cur_mh, _, ExtDirMh),
@@ -3329,7 +3330,7 @@ handle_directory_options(OpMode, !Globals, !Specs) :-
         map.det_insert(sle_jar, LibJar, !StdLibDirsMap),
         map.det_insert(sle_dll, LibDll, !StdLibDirsMap),
 
-        ExtDirsMaps = ext_dirs_maps(!.NormalDirsMap, !.IntermodDirsMap,
+        ExtDirsMaps = ext_dirs_maps(!.InterfaceDirsMap, !.IntermodDirsMap,
             !.CInclDirsMap, !.LibDirsMap, !.StdLibDirsMap)
     ),
     globals.set_ext_dirs_maps(ExtDirsMaps, !Globals).
