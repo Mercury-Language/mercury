@@ -2101,9 +2101,9 @@ marker_list_to_markers(Markers, MarkerSet) :-
                 arg_type                :: mer_type
             ).
 
-    % This type is analogous to llds:layout_locn, but it refers to slots in
-    % the extended answer blocks used by I/O action tabling for declarative
-    % debugging, not to lvals.
+    % This type is analogous to layout_locn in llds.m, but it refers
+    % not to lvals, but to slots in the extended answer blocks used by
+    % I/O action tabling for declarative debugging.
 :- type table_locn
     --->    table_locn_direct(int)
     ;       table_locn_indirect(int, int).
