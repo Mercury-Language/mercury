@@ -10095,20 +10095,22 @@ to a sequence of @samp{--c-include-directory} options.
 @c this restriction does not apply to workspace directories
 @c named in a @var{--c-include-dir-independent-workspace} option
 @c (or its abbreviated synonym).
-@c The compiler will first search the workspace directories
+@c The compiler will tell the C compiler to search
+@c first the workspace directories
 @c named in @var{--c-include-dir-same-workspace} options,
-@c second it will search the workspace directories
+@c second the workspace directories
 @c named in @var{--c-include-dir-independent-workspace} options,
-@c third it will search the library install directories
+@c third the library install directories
 @c named in @var{--c-include-dir-installed-library} options
 @c (or its abbreviated synonym),
-@c and fourth it will search the directories
+@c and fourth the directories
 @c named in @var{--c-include-dir-external} options
 @c (or its abbreviated synonym).
 @c
 @c Note that
 @c the @var{workspace_directory} and @var{install_directory} arguments
 @c should name directories that contain a @samp{MercurySystem} directory.
+@c (The argument should not contain that @should{MercurySystem} component.)
 @c XXX LEGACY Change this to @samp{Mercury} after the switchover.
 @c Since @var{external_directory} arguments are intended to contain
 @c header files from programs written in languages other than Mercury,
@@ -10384,6 +10386,7 @@ options as needed.  @xref{Using installed libraries with mmc --make}.
 @c Note that
 @c the @var{workspace_directory} and @var{install_directory} arguments
 @c should name directories that contain a @samp{MercurySystem} directory.
+@c (The argument should not contain that @should{MercurySystem} component.)
 @c XXX LEGACY Change this to @samp{Mercury} after the switchover.
 
 @sp 1
@@ -10770,6 +10773,7 @@ for @samp{.int*} and @samp{.module_dep} files.
 @c Note that
 @c the @var{workspace_directory} and @var{install_directory} arguments
 @c should name directories that contain a @samp{MercurySystem} directory.
+@c (The argument should not contain that @should{MercurySystem} component.)
 @c XXX LEGACY Change this to @samp{Mercury} after the switchover.
 
 @sp 1
@@ -10825,6 +10829,7 @@ for @samp{.opt} and @samp{.trans_opt} files.
 @c Note that
 @c the @var{workspace_directory} and @var{install_directory} arguments
 @c should name directories that contain a @samp{MercurySystem} directory.
+@c (The argument should not contain that @should{MercurySystem} component.)
 @c XXX LEGACY Change this to @samp{Mercury} after the switchover.
 
 @sp 1
