@@ -19,6 +19,7 @@ MCFLAGS-set                     += $(TYPE_SPEC_FLAGS)
 MCFLAGS-set_ordlist             += $(TYPE_SPEC_FLAGS)
 
 MCFLAGS-lexer                   += --optimize-constructor-last-call
+MCFLAGS-list                    += --optimize-constructor-last-call
 
 MCFLAGS-sparse_bitset   += --use-atomic-cells --optimize-constant-propagation
 MCFLAGS-tree_bitset     += --use-atomic-cells --optimize-constant-propagation

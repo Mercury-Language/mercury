@@ -461,45 +461,38 @@
 
 %---------------------------------------------------------------------------%
 
-    % merge(L1, L2) = L:
+    % merge(As, Bs) = ABs:
+    % merge(Compare, As, Bs) = ABs:
     %
-    % L is the result of merging the elements of L1 and L2, in ascending order.
-    % Both L1 and L2 must already be sorted into ascending order.
+    % Given As and Bs, two lists that must both be sorted in non-descending
+    % order according to Compare (or the standard comparison operation, for the
+    % versions that do not take a Compare argument), return the list AB
+    % which contains the elements of both lists, and which is also
+    % in non-descending order. (Note: non-descending order is just another name
+    % for "ascending order but with duplicates permitted".)
+    %
+    % As and Bs may both contain repeated elements, meaning elements for which
+    % comparison returns "equal". Given two equal elements, if they come from
+    % the same input list, then they appear in the same sequence in ABs
+    % as they do in that list. If they come from different input lists,
+    % the element(s) from As will appear before the element(s) from Bs.
     %
 :- func merge(list(T), list(T)) = list(T).
 :- pred merge(list(T)::in, list(T)::in, list(T)::out) is det.
-
-    % merge(Compare, As, Bs) = Sorted:
-    %
-    % True iff, assuming As and Bs are sorted with respect to the ordering
-    % defined by Compare, Sorted is a sorted list containing the elements
-    % of As and Bs. For elements which are equivalent in the ordering,
-    % if they come from the same list then they appear in the same sequence
-    % in Sorted as they do in that list, otherwise the elements from As
-    % appear before the elements from Bs.
-    %
 :- func merge(comparison_func(X), list(X), list(X)) = list(X).
 :- pred merge(comparison_pred(X)::in(comparison_pred),
     list(X)::in, list(X)::in, list(X)::out) is det.
 
-    % merge_and_remove_dups(L1, L2) = L:
+    % merge_and_remove_dups(As, Bs) = ABs:
+    % merge_and_remove_dups(Compare, As, Bs) = Sorted:
     %
-    % L is the result of merging the elements of L1 and L2, in ascending order,
-    % and eliminating any duplicates. L1 and L2 must be sorted and must each
-    % not contain any duplicates.
+    % Versions of the merge operation above that operate on lists with
+    % strict ascending order. Neither As nor Bs may contain duplicates,
+    % and if an element occurs in both As and Bs, ABs will contain
+    % only the element from As.
     %
 :- func merge_and_remove_dups(list(T), list(T)) = list(T).
 :- pred merge_and_remove_dups(list(T)::in, list(T)::in, list(T)::out) is det.
-
-    % merge_and_remove_dups(Compare, As, Bs) = Sorted:
-    %
-    % True iff, assuming As and Bs are sorted with respect to the ordering
-    % defined by Compare and neither contains any duplicates, Sorted is a
-    % sorted list containing the elements of As and Bs without any duplicates.
-    % If an element from As is duplicated in Bs (that is, they are equivalent
-    % in the ordering), then the element from As is the one that appears
-    % in Sorted.
-    %
 :- func merge_and_remove_dups(comparison_func(X), list(X), list(X))
     = list(X).
 :- pred merge_and_remove_dups(comparison_pred(X)::in(comparison_pred),
@@ -2805,6 +2798,7 @@ merge([], [], []).
 merge([], [B | Bs], [B | Bs]).
 merge([A | As], [], [A | As]).
 merge([A | As], [B | Bs], Cs) :-
+    % This code *is* tail recursive with --optimize-constructor-last-call.
     ( if compare(>, A, B) then
         list.merge([A | As], Bs, Cs0),
         Cs = [B | Cs0]
@@ -2823,6 +2817,7 @@ merge(_ComparePred, [], [], []).
 merge(_ComparePred, [], [Y | Ys], [Y | Ys]).
 merge(_ComparePred, [A | As], [], [A | As]).
 merge(ComparePred, [A | As], [Y | Ys], Cs) :-
+    % This code *is* tail recursive with --optimize-constructor-last-call.
     ( if ComparePred(A, Y, (>)) then
         list.merge(ComparePred, [A | As], Ys, CsTail),
         Cs = [Y | CsTail]
@@ -2838,6 +2833,7 @@ merge_and_remove_dups([], [], []).
 merge_and_remove_dups([], [B | Bs], [B | Bs]).
 merge_and_remove_dups([A | As], [], [A | As]).
 merge_and_remove_dups([A | As], [B | Bs], Cs) :-
+    % This code *is* tail recursive with --optimize-constructor-last-call.
     compare(Res, A, B),
     (
         Res = (<),
@@ -2862,6 +2858,7 @@ merge_and_remove_dups(_ComparePred, [], [], []).
 merge_and_remove_dups(_ComparePred, [], [B | Bs], [B | Bs]).
 merge_and_remove_dups(_ComparePred, [A | As], [], [A | As]).
 merge_and_remove_dups(ComparePred, [A | As], [B | Bs], Cs) :-
+    % This code *is* tail recursive with --optimize-constructor-last-call.
     ComparePred(A, B, Res),
     (
         Res = (<),
