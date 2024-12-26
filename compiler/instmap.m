@@ -1457,28 +1457,100 @@ merge_instmap_deltas_pass(VarsTypes, InstMapping0, Deltas,
         !:MergedDeltas = [Delta1 | !.MergedDeltas]
     ;
         Deltas = [Delta1, Delta2],
-        merge_instmapping_typed_vars(VarsTypes, InstMapping0, Delta1, Delta2,
-            map.init, Delta12, !ModuleInfo),
+        merge_instmapping_deltas_2(VarsTypes, InstMapping0,
+            Delta1, Delta2, Delta12, !ModuleInfo),
         !:MergedDeltas = [Delta12 | !.MergedDeltas]
     ;
         Deltas = [Delta1, Delta2, Delta3],
-        merge_instmapping_typed_vars(VarsTypes, InstMapping0, Delta1, Delta2,
-            map.init, Delta12, !ModuleInfo),
-        merge_instmapping_typed_vars(VarsTypes, InstMapping0, Delta12, Delta3,
-            map.init, Delta123, !ModuleInfo),
+        merge_instmapping_deltas_3(VarsTypes, InstMapping0,
+            Delta1, Delta2, Delta3, Delta123, !ModuleInfo),
         !:MergedDeltas = [Delta123 | !.MergedDeltas]
     ;
-        Deltas = [Delta1, Delta2, Delta3, Delta4 | MoreDeltas],
-        merge_instmapping_typed_vars(VarsTypes, InstMapping0, Delta1, Delta2,
-            map.init, Delta12, !ModuleInfo),
-        merge_instmapping_typed_vars(VarsTypes, InstMapping0, Delta3, Delta4,
-            map.init, Delta34, !ModuleInfo),
-        merge_instmapping_typed_vars(VarsTypes, InstMapping0, Delta12, Delta34,
-            map.init, Delta1234, !ModuleInfo),
-        !:MergedDeltas = [Delta1234 | !.MergedDeltas],
+        Deltas = [Delta1, Delta2, Delta3, Delta4],
+        merge_instmapping_deltas_4(VarsTypes, InstMapping0,
+            Delta1, Delta2, Delta3, Delta4, Delta1234, !ModuleInfo),
+        !:MergedDeltas = [Delta1234 | !.MergedDeltas]
+    ;
+        Deltas = [Delta1, Delta2, Delta3, Delta4, Delta5],
+        merge_instmapping_deltas_3(VarsTypes, InstMapping0,
+            Delta1, Delta2, Delta3, Delta123, !ModuleInfo),
+        merge_instmapping_deltas_2(VarsTypes, InstMapping0,
+            Delta4, Delta5, Delta45, !ModuleInfo),
+        merge_instmapping_deltas_2(VarsTypes, InstMapping0,
+            Delta123, Delta45, Delta12345, !ModuleInfo),
+        !:MergedDeltas = [Delta12345 | !.MergedDeltas]
+    ;
+        Deltas = [Delta1, Delta2, Delta3, Delta4, Delta5, Delta6],
+        merge_instmapping_deltas_3(VarsTypes, InstMapping0,
+            Delta1, Delta2, Delta3, Delta123, !ModuleInfo),
+        merge_instmapping_deltas_3(VarsTypes, InstMapping0,
+            Delta4, Delta5, Delta6, Delta456, !ModuleInfo),
+        merge_instmapping_deltas_2(VarsTypes, InstMapping0,
+            Delta123, Delta456, Delta123456, !ModuleInfo),
+        !:MergedDeltas = [Delta123456 | !.MergedDeltas]
+    ;
+        Deltas = [Delta1, Delta2, Delta3, Delta4, Delta5, Delta6, Delta7],
+        merge_instmapping_deltas_4(VarsTypes, InstMapping0,
+            Delta1, Delta2, Delta3, Delta4, Delta1234, !ModuleInfo),
+        merge_instmapping_deltas_3(VarsTypes, InstMapping0,
+            Delta5, Delta6, Delta7, Delta567, !ModuleInfo),
+        merge_instmapping_deltas_2(VarsTypes, InstMapping0,
+            Delta1234, Delta567, Delta1234567, !ModuleInfo),
+        !:MergedDeltas = [Delta1234567 | !.MergedDeltas]
+    ;
+        Deltas = [Delta1, Delta2, Delta3, Delta4,
+            Delta5, Delta6, Delta7, Delta8 | MoreDeltas],
+        merge_instmapping_deltas_4(VarsTypes, InstMapping0,
+            Delta1, Delta2, Delta3, Delta4, Delta1234, !ModuleInfo),
+        merge_instmapping_deltas_4(VarsTypes, InstMapping0,
+            Delta5, Delta6, Delta7, Delta8, Delta5678, !ModuleInfo),
+        merge_instmapping_deltas_2(VarsTypes, InstMapping0,
+            Delta1234, Delta5678, Delta12345678, !ModuleInfo),
+        !:MergedDeltas = [Delta12345678 | !.MergedDeltas],
         merge_instmap_deltas_pass(VarsTypes, InstMapping0, MoreDeltas,
             !MergedDeltas, !ModuleInfo)
     ).
+
+%---------------------%
+
+:- pred merge_instmapping_deltas_2(assoc_list(prog_var, mer_type)::in,
+    instmapping::in, instmapping::in, instmapping::in,
+    instmapping::out, module_info::in, module_info::out) is det.
+:- pragma inline(pred(merge_instmapping_deltas_2/7)).
+
+merge_instmapping_deltas_2(VarsTypes, InstMapping0,
+        Delta1, Delta2, Delta12, !ModuleInfo) :-
+    merge_instmapping_typed_vars(VarsTypes, InstMapping0,
+        Delta1, Delta2, map.init, Delta12, !ModuleInfo).
+
+:- pred merge_instmapping_deltas_3(assoc_list(prog_var, mer_type)::in,
+    instmapping::in, instmapping::in, instmapping::in, instmapping::in,
+    instmapping::out, module_info::in, module_info::out) is det.
+:- pragma inline(pred(merge_instmapping_deltas_3/8)).
+
+merge_instmapping_deltas_3(VarsTypes, InstMapping0,
+        Delta1, Delta2, Delta3, Delta123, !ModuleInfo) :-
+    merge_instmapping_typed_vars(VarsTypes, InstMapping0,
+        Delta1, Delta2, map.init, Delta12, !ModuleInfo),
+    merge_instmapping_typed_vars(VarsTypes, InstMapping0,
+        Delta12, Delta3, map.init, Delta123, !ModuleInfo).
+
+:- pred merge_instmapping_deltas_4(assoc_list(prog_var, mer_type)::in,
+    instmapping::in,
+    instmapping::in, instmapping::in, instmapping::in, instmapping::in,
+    instmapping::out, module_info::in, module_info::out) is det.
+:- pragma inline(pred(merge_instmapping_deltas_4/9)).
+
+merge_instmapping_deltas_4(VarsTypes, InstMapping0,
+        Delta1, Delta2, Delta3, Delta4, Delta1234, !ModuleInfo) :-
+    merge_instmapping_typed_vars(VarsTypes, InstMapping0,
+        Delta1, Delta2, map.init, Delta12, !ModuleInfo),
+    merge_instmapping_typed_vars(VarsTypes, InstMapping0,
+        Delta3, Delta4, map.init, Delta34, !ModuleInfo),
+    merge_instmapping_typed_vars(VarsTypes, InstMapping0,
+        Delta12, Delta34, map.init, Delta1234, !ModuleInfo).
+
+%---------------------%
 
 :- pred merge_instmapping_typed_vars(assoc_list(prog_var, mer_type)::in,
     instmapping::in, instmapping::in, instmapping::in,
