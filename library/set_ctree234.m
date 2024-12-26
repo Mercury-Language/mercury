@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2022 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -473,9 +473,7 @@
 :- pragma type_spec(pred(union/3),              T = var(_)).
 :- pragma type_spec(pred(do_union/5),           T = var(_)).
 :- pragma type_spec(pred(union_list/2),         T = var(_)).
-:- pragma type_spec(pred(do_union_list/3),      T = var(_)).
 :- pragma type_spec(pred(power_union/2),        T = var(_)).
-:- pragma type_spec(pred(do_power_union/5),     T = var(_)).
 :- pragma type_spec(func(intersect/2),          T = var(_)).
 :- pragma type_spec(pred(intersect/3),          T = var(_)).
 :- pragma type_spec(pred(do_intersect/6),       T = var(_)).
@@ -2265,57 +2263,32 @@ do_union(four(E0, E1, E2, T0, T1, T2, T3), !Size, !Tree) :-
     !:Size = !.Size + Incr2,
     do_union(T3, !Size, !Tree).
 
-union_list(Sets) = Union :-
-    union_list(Sets, Union).
+union_list(ListOfSets) = Union :-
+    union_list(ListOfSets, Union).
 
-union_list(Sets, Union) :-
-    list.sort(Sets, SortedSets),
-    do_union_list(SortedSets, Size, Tree),
-    Union = ct(Size, Tree).
+union_list(ListOfSets, Union) :-
+    sets_to_sorted_lists(ListOfSets, ListOfSortedLists),
+    list.merge_lists_and_remove_dups(ListOfSortedLists, MergedSortedList),
+    Union = set_ctree234.sorted_list_to_set(MergedSortedList).
 
-:- pred do_union_list(list(set_ctree234(T))::in,
-    int::out, set_tree234(T)::out) is det.
+power_union(SetOfSets) = Union :-
+    power_union(SetOfSets, Union).
 
-do_union_list([], 0, empty).
-do_union_list([ct(_Size0, Tree0) | Sets], Size, Tree) :-
-    do_union_list(Sets, Size1, Tree1),
-    do_union(Tree0, Size1, Size, Tree1, Tree).
+power_union(SetOfSets, Union) :-
+    ListOfSets = set_ctree234.to_sorted_list(SetOfSets),
+    sets_to_sorted_lists(ListOfSets, ListOfSortedLists),
+    list.merge_lists_and_remove_dups(ListOfSortedLists, MergedSortedList),
+    Union = set_ctree234.sorted_list_to_set(MergedSortedList).
 
-power_union(Sets) = Union :-
-    power_union(Sets, Union).
+%---------------------%
 
-power_union(ct(_, SetTree), Union) :-
-    do_power_union(SetTree, 0, Size, empty, Tree),
-    Union = ct(Size, Tree).
+:- pred sets_to_sorted_lists(list(set_ctree234(T))::in,
+    list(list(T))::out) is det.
 
-:- pred do_power_union(set_tree234(set_ctree234(T))::in,
-    int::in, int::out, set_tree234(T)::in, set_tree234(T)::out) is det.
-
-do_power_union(empty, !Size, !Tree).
-do_power_union(two(E0, T0, T1), !Size, !Tree) :-
-    do_power_union(T0, !Size, !Tree),
-    E0 = ct(_, ET0),
-    do_union(ET0, !Size, !Tree),
-    do_power_union(T1, !Size, !Tree).
-do_power_union(three(E0, E1, T0, T1, T2), !Size, !Tree) :-
-    do_power_union(T0, !Size, !Tree),
-    E0 = ct(_, ET0),
-    do_union(ET0, !Size, !Tree),
-    do_power_union(T1, !Size, !Tree),
-    E1 = ct(_, ET1),
-    do_union(ET1, !Size, !Tree),
-    do_power_union(T2, !Size, !Tree).
-do_power_union(four(E0, E1, E2, T0, T1, T2, T3), !Size, !Tree) :-
-    do_power_union(T0, !Size, !Tree),
-    E0 = ct(_, ET0),
-    do_union(ET0, !Size, !Tree),
-    do_power_union(T1, !Size, !Tree),
-    E1 = ct(_, ET1),
-    do_union(ET1, !Size, !Tree),
-    do_power_union(T2, !Size, !Tree),
-    E2 = ct(_, ET2),
-    do_union(ET2, !Size, !Tree),
-    do_power_union(T3, !Size, !Tree).
+sets_to_sorted_lists([], []).
+sets_to_sorted_lists([Set | Sets], [SortedList | SortedLists]) :-
+    SortedList = set_ctree234.to_sorted_list(Set),
+    sets_to_sorted_lists(Sets, SortedLists).
 
 %---------------------%
 

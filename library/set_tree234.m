@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2022 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -2294,42 +2294,32 @@ do_union(four(E0, E1, E2, T0, T1, T2, T3), !Set) :-
     insert(E2, !Set),
     do_union(T3, !Set).
 
-union_list(Sets) = Union :-
-    union_list(Sets, Union).
+union_list(ListOfSets) = Union :-
+    union_list(ListOfSets, Union).
 
-union_list([], empty).
-union_list([Set | Sets], Union) :-
-    union_list(Sets, Union1),
-    union(Set, Union1, Union).
+union_list(ListOfSets, Union) :-
+    sets_to_sorted_lists(ListOfSets, ListOfSortedLists),
+    list.merge_lists_and_remove_dups(ListOfSortedLists, MergedSortedList),
+    set_tree234.sorted_list_to_set(MergedSortedList, Union).
 
 power_union(Sets) = Union :-
     power_union(Sets, Union).
 
-power_union(Sets, Union) :-
-    power_union_2(Sets, empty, Union).
+power_union(SetOfSets, Union) :-
+    set_tree234.to_sorted_list(SetOfSets, ListOfSets),
+    sets_to_sorted_lists(ListOfSets, ListOfSortedLists),
+    list.merge_lists_and_remove_dups(ListOfSortedLists, MergedSortedList),
+    set_tree234.sorted_list_to_set(MergedSortedList, Union).
 
-:- pred power_union_2(set_tree234(set_tree234(T))::in,
-    set_tree234(T)::in, set_tree234(T)::out) is det.
+%---------------------%
 
-power_union_2(empty, !Union).
-power_union_2(two(E0, T0, T1), !Union) :-
-    power_union_2(T0, !Union),
-    union(E0, !Union),
-    power_union_2(T1, !Union).
-power_union_2(three(E0, E1, T0, T1, T2), !Union) :-
-    power_union_2(T0, !Union),
-    union(E0, !Union),
-    power_union_2(T1, !Union),
-    union(E1, !Union),
-    power_union_2(T2, !Union).
-power_union_2(four(E0, E1, E2, T0, T1, T2, T3), !Union) :-
-    power_union_2(T0, !Union),
-    union(E0, !Union),
-    power_union_2(T1, !Union),
-    union(E1, !Union),
-    power_union_2(T2, !Union),
-    union(E2, !Union),
-    power_union_2(T3, !Union).
+:- pred sets_to_sorted_lists(list(set_tree234(T))::in,
+    list(list(T))::out) is det.
+
+sets_to_sorted_lists([], []).
+sets_to_sorted_lists([Set | Sets], [SortedList | SortedLists]) :-
+    set_tree234.to_sorted_list(Set, SortedList),
+    sets_to_sorted_lists(Sets, SortedLists).
 
 %---------------------%
 
