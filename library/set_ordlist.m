@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-1997,1999-2002, 2004-2006, 2008-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018-2022 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -774,32 +774,32 @@ superset(Superset, Set) :-
 
 %---------------------------------------------------------------------------%
 
-union(S1, S2) = S3 :-
-    union(S1, S2, S3).
+union(SetA, SetB) = SetAB :-
+    union(SetA, SetB, SetAB).
 
-union(sol(Set0), sol(Set1), sol(Set)) :-
-    list.merge_and_remove_dups(Set0, Set1, Set).
+union(sol(SortedListA), sol(SortedListB), sol(SortedListAB)) :-
+    list.merge_and_remove_dups(SortedListA, SortedListB, SortedListAB).
 
-union_list(ListofSets) = Set :-
-    init(Set0),
-    union_list_loop(ListofSets, Set0, Set).
+union_list(ListOfSets) = UnionSet :-
+    union_list(ListOfSets, UnionSet).
 
-union_list(ListofSets, Set) :-
-    Set = union_list(ListofSets).
+union_list(ListOfSets, UnionSet) :-
+    sets_to_sorted_lists(ListOfSets, ListOfSortedLists),
+    list.merge_lists_and_remove_dups(ListOfSortedLists, MergedSortedList),
+    UnionSet = sol(MergedSortedList).
 
-power_union(SS) = S :-
-    power_union(SS, S).
+power_union(SetOfSets) = UnionSet :-
+    power_union(SetOfSets, UnionSet).
 
-power_union(sol(ListofSets), Set) :-
-    Set = union_list(ListofSets).
+power_union(sol(ListOfSets), UnionSet) :-
+    union_list(ListOfSets, UnionSet).
 
-:- pred union_list_loop(list(set_ordlist(T))::in,
-    set_ordlist(T)::in, set_ordlist(T)::out) is det.
+:- pred sets_to_sorted_lists(list(set_ordlist(T))::in,
+    list(list(T))::out) is det.
 
-union_list_loop([], !UnionSet).
-union_list_loop([Set | Sets], !UnionSet) :-
-    union(Set, !UnionSet),
-    union_list_loop(Sets, !UnionSet).
+sets_to_sorted_lists([], []).
+sets_to_sorted_lists([sol(SortedList) | Sets], [SortedList | SortedLists]) :-
+    sets_to_sorted_lists(Sets, SortedLists).
 
 %---------------------%
 
@@ -840,8 +840,8 @@ intersect_list([S0 | Ss]) = S :-
         intersect(S1, S0, S)
     ).
 
-intersect_list(ListofSets, Set) :-
-    Set = intersect_list(ListofSets).
+intersect_list(ListOfSets, Set) :-
+    Set = intersect_list(ListOfSets).
 
 power_intersect(SS) = S :-
     power_intersect(SS, S).

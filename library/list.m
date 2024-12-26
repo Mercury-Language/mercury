@@ -456,8 +456,8 @@
     % which are equivalent with respect to the ordering, with the first
     % occurrence in L0 of such an element.
     %
-:- pred remove_adjacent_dups(comparison_pred(X)::in(comparison_pred),
-    list(X)::in, list(X)::out) is det.
+:- pred remove_adjacent_dups(comparison_pred(T)::in(comparison_pred),
+    list(T)::in, list(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -479,9 +479,9 @@
     %
 :- func merge(list(T), list(T)) = list(T).
 :- pred merge(list(T)::in, list(T)::in, list(T)::out) is det.
-:- func merge(comparison_func(X), list(X), list(X)) = list(X).
-:- pred merge(comparison_pred(X)::in(comparison_pred),
-    list(X)::in, list(X)::in, list(X)::out) is det.
+:- func merge(comparison_func(T), list(T), list(T)) = list(T).
+:- pred merge(comparison_pred(T)::in(comparison_pred),
+    list(T)::in, list(T)::in, list(T)::out) is det.
 
     % merge_and_remove_dups(As, Bs) = ABs:
     % merge_and_remove_dups(Compare, As, Bs) = Sorted:
@@ -493,10 +493,56 @@
     %
 :- func merge_and_remove_dups(list(T), list(T)) = list(T).
 :- pred merge_and_remove_dups(list(T)::in, list(T)::in, list(T)::out) is det.
-:- func merge_and_remove_dups(comparison_func(X), list(X), list(X))
-    = list(X).
-:- pred merge_and_remove_dups(comparison_pred(X)::in(comparison_pred),
-    list(X)::in, list(X)::in, list(X)::out) is det.
+:- func merge_and_remove_dups(comparison_func(T), list(T), list(T))
+    = list(T).
+:- pred merge_and_remove_dups(comparison_pred(T)::in(comparison_pred),
+    list(T)::in, list(T)::in, list(T)::out) is det.
+
+%---------------------%
+
+    % merge_lists(ListOfLists) = MergedList:
+    % merge_lists(Compare, ListOfLists) = MergedList:
+    %
+    % Given ListOfLists, a list contain zero or more lists that must
+    % all be sorted in non-descending order according to Compare
+    % (or the standard comparison operation, for the versions that
+    % do not take a Compare argument), return the list MergedList
+    % which contains the elements of both lists, and which is also
+    % in non-descending order.
+    %
+    % Lists in ListOfLists may contain repeated elements, meaning elements
+    % for which comparison returns "equal". Given two equal elements,
+    % if they come from the same input list, then they appear in the same
+    % sequence in MergedList as their containing lists do in ListOfLists.
+    % If they come from different input lists, the element from earlier
+    % lists in ListOfLists will appear before the element from later lists.
+    %
+:- func merge_lists(list(list(T))) = list(T).
+:- pred merge_lists(list(list(T))::in, list(T)::out) is det.
+:- func merge_lists(comparison_func(T), list(list(T))) = list(T).
+:- pred merge_lists(comparison_pred(T)::in(comparison_pred),
+    list(list(T))::in, list(T)::out) is det.
+
+    % merge_lists_and_remove_dups(ListOfLists) = MergedList:
+    % merge_lists_and_remove_dups(Compare, ListOfLists) = MergedList:
+    %
+    % Given ListOfLists, a list contain zero or more lists that must
+    % all be sorted in ascending order according to Compare (or the standard
+    % comparison operation, for the versions that do not take a Compare
+    % argument), return the list MergedList which contains the elements
+    % of both lists, and which is also in ascending order.
+    %
+    % No list in ListOfLists may not contain repeated elements, meaning
+    % elements for which comparison returns "equal". Given two or more
+    % equal elements that all come from different input lists, MergedList
+    % will contain the element from the earliest of these lists.
+    %
+:- func merge_lists_and_remove_dups(list(list(T))) = list(T).
+:- pred merge_lists_and_remove_dups(list(list(T))::in, list(T)::out) is det.
+:- func merge_lists_and_remove_dups(comparison_func(T), list(list(T)))
+    = list(T).
+:- pred merge_lists_and_remove_dups(comparison_pred(T)::in(comparison_pred),
+    list(list(T))::in, list(T)::out) is det.
 
 %---------------------%
 
@@ -525,9 +571,9 @@
     % in the same sequence in Sorted as they do in Unsorted
     % (that is, the sort is stable).
     %
-:- func sort(comparison_func(X), list(X)) = list(X).
-:- pred sort(comparison_pred(X)::in(comparison_pred), list(X)::in,
-    list(X)::out) is det.
+:- func sort(comparison_func(T), list(T)) = list(T).
+:- pred sort(comparison_pred(T)::in(comparison_pred), list(T)::in,
+    list(T)::out) is det.
 
     % sort_and_remove_dups(Compare, Unsorted, Sorted):
     %
@@ -537,8 +583,8 @@
     % are equivalent with respect to this ordering only the one which
     % occurs first will be in Sorted.
     %
-:- pred sort_and_remove_dups(comparison_pred(X)::in(comparison_pred),
-    list(X)::in, list(X)::out) is det.
+:- pred sort_and_remove_dups(comparison_pred(T)::in(comparison_pred),
+    list(T)::in, list(T)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -2826,6 +2872,8 @@ merge(ComparePred, [A | As], [Y | Ys], Cs) :-
         Cs = [A | CsTail]
     ).
 
+%---------------------%
+
 merge_and_remove_dups(As, Bs) = Zs :-
     list.merge_and_remove_dups(As, Bs, Zs).
 
@@ -2872,6 +2920,289 @@ merge_and_remove_dups(ComparePred, [A | As], [B | Bs], Cs) :-
         Res = (>),
         merge_and_remove_dups(ComparePred, [A | As], Bs, CsTail),
         Cs = [B | CsTail]
+    ).
+
+%---------------------------------------------------------------------------%
+
+merge_lists(Lists) = MergedList :-
+    merge_lists(Lists, MergedList).
+
+merge_lists(Lists, MergedList) :-
+    (
+        Lists = [],
+        MergedList = []
+    ;
+        Lists = [List1],
+        MergedList = List1
+    ;
+        Lists = [List1, List2],
+        merge(List1, List2, MergedList)
+    ;
+        Lists = [List1, List2, List3],
+        merge(List1, List2, List12),
+        merge(List12, List3, MergedList)
+    ;
+        Lists = [_, _, _, _ | _],
+        merge_lists_fixpoint(Lists, MergedList)
+    ).
+
+:- pred merge_lists_fixpoint(list(list(T))::in, list(T)::out) is det.
+
+merge_lists_fixpoint(Lists, MergedList) :-
+    merge_lists_pass(Lists, [], RevMergedLists),
+    % This reverse is not actually required; MergedLists = RevMergedLists
+    % should also work.
+    list.reverse(RevMergedLists, MergedLists),
+    (
+        MergedLists = [],
+        unexpected($pred, "MergedLists is empty")
+    ;
+        MergedLists = [MergedList]
+    ;
+        MergedLists = [_, _ | _],
+        merge_lists_fixpoint(MergedLists, MergedList)
+    ).
+
+:- pred merge_lists_pass(list(list(T))::in,
+    list(list(T))::in, list(list(T))::out) is det.
+
+merge_lists_pass(Lists, !RevMergedLists) :-
+    (
+        Lists = []
+    ;
+        Lists = [List1],
+        !:RevMergedLists = [List1 | !.RevMergedLists]
+    ;
+        Lists = [List1, List2],
+        merge(List1, List2, List12),
+        !:RevMergedLists = [List12 | !.RevMergedLists]
+    ;
+        Lists = [List1, List2, List3],
+        merge(List1, List2, List12),
+        merge(List12, List3, List123),
+        !:RevMergedLists = [List123 | !.RevMergedLists]
+    ;
+        Lists = [List1, List2, List3, List4 | MoreLists],
+        merge(List1, List2, List12),
+        merge(List3, List4, List34),
+        merge(List12, List34, List1234),
+        !:RevMergedLists = [List1234 | !.RevMergedLists],
+        merge_lists_pass(MoreLists, !RevMergedLists)
+    ).
+
+%---------------------%
+
+merge_lists(CompareFunc, Lists) = MergedList :-
+    ComparePred =
+        ( pred(A::in, B::in, Res::out) is det :- Res = CompareFunc(A, B) ),
+    merge_lists(ComparePred, Lists, MergedList).
+
+merge_lists(ComparePred, Lists, MergedList) :-
+    (
+        Lists = [],
+        MergedList = []
+    ;
+        Lists = [List1],
+        MergedList = List1
+    ;
+        Lists = [List1, List2],
+        merge(ComparePred, List1, List2, MergedList)
+    ;
+        Lists = [List1, List2, List3],
+        merge(ComparePred, List1, List2, List12),
+        merge(ComparePred, List12, List3, MergedList)
+    ;
+        Lists = [_, _, _, _ | _],
+        merge_lists_fixpoint(ComparePred, Lists, MergedList)
+    ).
+
+:- pred merge_lists_fixpoint(comparison_pred(T)::in(comparison_pred),
+    list(list(T))::in, list(T)::out) is det.
+
+merge_lists_fixpoint(ComparePred, Lists, MergedList) :-
+    merge_lists_pass(ComparePred, Lists, [], RevMergedLists),
+    % This reverse is required to ensure that for any items that occur
+    % in more than one list, we pick the item that occurs in the first one.
+    list.reverse(RevMergedLists, MergedLists),
+    (
+        MergedLists = [],
+        unexpected($pred, "MergedLists is empty")
+    ;
+        MergedLists = [MergedList]
+    ;
+        MergedLists = [_, _ | _],
+        merge_lists_fixpoint(ComparePred, MergedLists, MergedList)
+    ).
+
+:- pred merge_lists_pass(comparison_pred(T)::in(comparison_pred),
+    list(list(T))::in, list(list(T))::in, list(list(T))::out) is det.
+
+merge_lists_pass(ComparePred, Lists, !RevMergedLists) :-
+    (
+        Lists = []
+    ;
+        Lists = [List1],
+        !:RevMergedLists = [List1 | !.RevMergedLists]
+    ;
+        Lists = [List1, List2],
+        merge(ComparePred, List1, List2, List12),
+        !:RevMergedLists = [List12 | !.RevMergedLists]
+    ;
+        Lists = [List1, List2, List3],
+        merge(ComparePred, List1, List2, List12),
+        merge(ComparePred, List12, List3, List123),
+        !:RevMergedLists = [List123 | !.RevMergedLists]
+    ;
+        Lists = [List1, List2, List3, List4 | MoreLists],
+        merge(ComparePred, List1, List2, List12),
+        merge(ComparePred, List3, List4, List34),
+        merge(ComparePred, List12, List34, List1234),
+        !:RevMergedLists = [List1234 | !.RevMergedLists],
+        merge_lists_pass(ComparePred, MoreLists, !RevMergedLists)
+    ).
+
+%---------------------%
+
+merge_lists_and_remove_dups(Lists) = MergedList :-
+    merge_lists_and_remove_dups(Lists, MergedList).
+
+merge_lists_and_remove_dups(Lists, MergedList) :-
+    (
+        Lists = [],
+        MergedList = []
+    ;
+        Lists = [List1],
+        MergedList = List1
+    ;
+        Lists = [List1, List2],
+        merge_and_remove_dups(List1, List2, MergedList)
+    ;
+        Lists = [List1, List2, List3],
+        merge_and_remove_dups(List1, List2, List12),
+        merge_and_remove_dups(List12, List3, MergedList)
+    ;
+        Lists = [_, _, _, _ | _],
+        merge_lists_and_remove_dups_fixpoint(Lists, MergedList)
+    ).
+
+:- pred merge_lists_and_remove_dups_fixpoint(list(list(T))::in, list(T)::out)
+    is det.
+
+merge_lists_and_remove_dups_fixpoint(Lists, MergedList) :-
+    merge_lists_and_remove_dups_pass(Lists, [], RevMergedLists),
+    % This reverse is not actually required; MergedLists = RevMergedLists
+    % should also work.
+    list.reverse(RevMergedLists, MergedLists),
+    (
+        MergedLists = [],
+        unexpected($pred, "MergedLists is empty")
+    ;
+        MergedLists = [MergedList]
+    ;
+        MergedLists = [_, _ | _],
+        merge_lists_and_remove_dups_fixpoint(MergedLists, MergedList)
+    ).
+
+:- pred merge_lists_and_remove_dups_pass(
+    list(list(T))::in, list(list(T))::in, list(list(T))::out) is det.
+
+merge_lists_and_remove_dups_pass(Lists, !RevMergedLists) :-
+    (
+        Lists = []
+    ;
+        Lists = [List1],
+        !:RevMergedLists = [List1 | !.RevMergedLists]
+    ;
+        Lists = [List1, List2],
+        merge_and_remove_dups(List1, List2, List12),
+        !:RevMergedLists = [List12 | !.RevMergedLists]
+    ;
+        Lists = [List1, List2, List3],
+        merge_and_remove_dups(List1, List2, List12),
+        merge_and_remove_dups(List12, List3, List123),
+        !:RevMergedLists = [List123 | !.RevMergedLists]
+    ;
+        Lists = [List1, List2, List3, List4 | MoreLists],
+        merge_and_remove_dups(List1, List2, List12),
+        merge_and_remove_dups(List3, List4, List34),
+        merge_and_remove_dups(List12, List34, List1234),
+        !:RevMergedLists = [List1234 | !.RevMergedLists],
+        merge_lists_and_remove_dups_pass(MoreLists, !RevMergedLists)
+    ).
+
+%---------------------%
+
+merge_lists_and_remove_dups(CompareFunc, Lists) = MergedList :-
+    ComparePred =
+        ( pred(A::in, B::in, Res::out) is det :- Res = CompareFunc(A, B) ),
+    merge_lists_and_remove_dups(ComparePred, Lists, MergedList).
+
+merge_lists_and_remove_dups(ComparePred, Lists, MergedList) :-
+    (
+        Lists = [],
+        MergedList = []
+    ;
+        Lists = [List1],
+        MergedList = List1
+    ;
+        Lists = [List1, List2],
+        merge_and_remove_dups(ComparePred, List1, List2, MergedList)
+    ;
+        Lists = [List1, List2, List3],
+        merge_and_remove_dups(ComparePred, List1, List2, List12),
+        merge_and_remove_dups(ComparePred, List12, List3, MergedList)
+    ;
+        Lists = [_, _, _, _ | _],
+        merge_lists_and_remove_dups_fixpoint(ComparePred, Lists, MergedList)
+    ).
+
+:- pred merge_lists_and_remove_dups_fixpoint(
+    comparison_pred(T)::in(comparison_pred),
+    list(list(T))::in, list(T)::out) is det.
+
+merge_lists_and_remove_dups_fixpoint(ComparePred, Lists, MergedList) :-
+    merge_lists_and_remove_dups_pass(ComparePred, Lists, [], RevMergedLists),
+    % This reverse is required to ensure that for any items that occur
+    % in more than one list, we pick the item that occurs in the first one.
+    list.reverse(RevMergedLists, MergedLists),
+    (
+        MergedLists = [],
+        unexpected($pred, "MergedLists is empty")
+    ;
+        MergedLists = [MergedList]
+    ;
+        MergedLists = [_, _ | _],
+        merge_lists_and_remove_dups_fixpoint(ComparePred,
+            MergedLists, MergedList)
+    ).
+
+:- pred merge_lists_and_remove_dups_pass(
+    comparison_pred(T)::in(comparison_pred),
+    list(list(T))::in, list(list(T))::in, list(list(T))::out) is det.
+
+merge_lists_and_remove_dups_pass(ComparePred, Lists, !RevMergedLists) :-
+    (
+        Lists = []
+    ;
+        Lists = [List1],
+        !:RevMergedLists = [List1 | !.RevMergedLists]
+    ;
+        Lists = [List1, List2],
+        merge_and_remove_dups(ComparePred, List1, List2, List12),
+        !:RevMergedLists = [List12 | !.RevMergedLists]
+    ;
+        Lists = [List1, List2, List3],
+        merge_and_remove_dups(ComparePred, List1, List2, List12),
+        merge_and_remove_dups(ComparePred, List12, List3, List123),
+        !:RevMergedLists = [List123 | !.RevMergedLists]
+    ;
+        Lists = [List1, List2, List3, List4 | MoreLists],
+        merge_and_remove_dups(ComparePred, List1, List2, List12),
+        merge_and_remove_dups(ComparePred, List3, List4, List34),
+        merge_and_remove_dups(ComparePred, List12, List34, List1234),
+        !:RevMergedLists = [List1234 | !.RevMergedLists],
+        merge_lists_and_remove_dups_pass(ComparePred, MoreLists,
+            !RevMergedLists)
     ).
 
 %---------------------------------------------------------------------------%

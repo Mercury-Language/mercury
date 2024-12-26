@@ -588,6 +588,14 @@ Changes to the Mercury standard library
     - pred `last_gap_foldl/6`
     - func `map_corresponding4/5`
     - pred `map_corresponding4/6`
+    - func `merge_lists/1`
+    - func `merge_lists/2`
+    - pred `merge_lists/2`
+    - pred `merge_lists/3`
+    - func `merge_lists_and_remove_dups/1`
+    - func `merge_lists_and_remove_dups/2`
+    - pred `merge_lists_and_remove_dups/2`
+    - pred `merge_lists_and_remove_dups/3`
     - func `take_while_not/2`
     - pred `take_while_not/3`
     - pred `take_while_not/4`
