@@ -305,7 +305,7 @@
     % to the corresponding element of the output cord, and updates the
     % accumulator.
     %
-:- pred map_foldl(pred(A, B, C, C), cord(A), cord(B), C, C).
+:- pred map_foldl(pred(T1, T2, A, A), cord(T1), cord(T2), A, A).
 :- mode map_foldl(in(pred(in, out, in, out) is det), in, out, in, out)
     is det.
 :- mode map_foldl(in(pred(in, out, mdi, muo) is det), in, out, mdi, muo)
@@ -321,23 +321,23 @@
 
     % As above, but with two accumulators.
     %
-:- pred map_foldl2(pred(A, B, C, C, D, D)::
+:- pred map_foldl2(pred(T1, T2, A, A, B, B)::
     in(pred(in, out, in, out, in, out) is det),
-    cord(A)::in, cord(B)::out, C::in, C::out, D::in, D::out) is det.
+    cord(T1)::in, cord(T2)::out, A::in, A::out, B::in, B::out) is det.
 
     % As above, but with three accumulators.
     %
-:- pred map_foldl3(pred(A, B, C, C, D, D, E, E)::
+:- pred map_foldl3(pred(T1, T2, A, A, B, B, C, C)::
     in(pred(in, out, in, out, in, out, in, out) is det),
-    cord(A)::in, cord(B)::out, C::in, C::out, D::in, D::out, E::in, E::out)
+    cord(T1)::in, cord(T2)::out, A::in, A::out, B::in, B::out, C::in, C::out)
     is det.
 
     % find_first_match(Pred, List, FirstMatch) takes a closure with one
     % input argument. It returns the first element X of the cord (if any)
     % for which Pred(X) is true.
     %
-:- pred find_first_match(pred(X)::in(pred(in) is semidet),
-    cord(X)::in, X::out) is semidet.
+:- pred find_first_match(pred(T)::in(pred(in) is semidet),
+    cord(T)::in, T::out) is semidet.
 
     % equal(CA, CB)  <=>  list(CA) = list(CB).
     % An O(n) operation where n = length(CA) + length(CB).
@@ -352,6 +352,12 @@
 :- implementation.
 
 :- import_module int.
+
+% The original implementation of the cord/1 type had four function symbols
+% in one type: empty, unit, node and branch. However, this representation
+% requires code to handle the "empty" case when we look at *every* part
+% of the cord. This code is both annoying to write and to read, and the
+% tests for empty at these points also reduce performance.
 
 :- type cord(T)
     --->    empty_cord
@@ -1117,10 +1123,10 @@ map_foldl3(_P, empty_cord, empty_cord, !A, !B, !C).
 map_foldl3(P, nonempty_cord(NX), nonempty_cord(NY), !A, !B, !C) :-
     map_foldl3_node(P, NX, NY, !A, !B, !C).
 
-:- pred map_foldl3_node(pred(A, B, C, C, D, D, E, E)::
+:- pred map_foldl3_node(pred(T1, T2, A, A, B, B, C, C)::
     in(pred(in, out, in, out, in, out, in, out) is det),
-    cord_node(A)::in, cord_node(B)::out, C::in, C::out, D::in, D::out,
-    E::in, E::out) is det.
+    cord_node(T1)::in, cord_node(T2)::out, A::in, A::out, B::in, B::out,
+    C::in, C::out) is det.
 
 map_foldl3_node(P, unit_node(X), unit_node(Y), !A, !B, !C) :-
     P(X, Y, !A, !B, !C).
@@ -1136,8 +1142,8 @@ map_foldl3_node(P, branch_node(XA, XB), branch_node(YA, YB), !A, !B, !C) :-
 find_first_match(P, nonempty_cord(NX), FirstMatch) :-
     find_first_match_node(P, NX, FirstMatch).
 
-:- pred find_first_match_node(pred(X)::in(pred(in) is semidet),
-    cord_node(X)::in, X::out) is semidet.
+:- pred find_first_match_node(pred(T)::in(pred(in) is semidet),
+    cord_node(T)::in, T::out) is semidet.
 
 find_first_match_node(P, Node, FirstMatch) :-
     (

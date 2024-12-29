@@ -545,8 +545,8 @@
     %
     % An exception is raised if the list arguments differ in length.
     %
-:- pred all_true_corresponding(pred(X, Y)::in(pred(in, in) is semidet),
-    one_or_more(X)::in, one_or_more(Y)::in) is semidet.
+:- pred all_true_corresponding(pred(T1, T2)::in(pred(in, in) is semidet),
+    one_or_more(T1)::in, one_or_more(T2)::in) is semidet.
 
     % all_false_corresponding(Pred, ListA, ListB):
     % Succeeds if Pred fails for every corresponding pair of elements from
@@ -555,8 +555,8 @@
     %
     % An exception is raised if the list arguments differ in length.
     %
-:- pred all_false_corresponding(pred(X, Y)::in(pred(in, in) is semidet),
-    one_or_more(X)::in, one_or_more(Y)::in) is semidet.
+:- pred all_false_corresponding(pred(T1, T2)::in(pred(in, in) is semidet),
+    one_or_more(T1)::in, one_or_more(T2)::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -590,7 +590,7 @@
     % and calls it with each element of List. If a call succeeds, then
     % its return value is included in TrueList.
     %
-:- func filter_map(func(X) = Y, one_or_more(X)) = list(Y).
+:- func filter_map(func(T1) = T2, one_or_more(T1)) = list(T2).
 :- mode filter_map(in(func(in) = out is semidet), in) = out is det.
 
     % filter_map(Transformer, List, TrueList) takes a predicate
@@ -598,8 +598,8 @@
     % with each element of List. If a call succeeds, then
     % its output is included in TrueList.
     %
-:- pred filter_map(pred(X, Y)::in(pred(in, out) is semidet),
-    one_or_more(X)::in, list(Y)::out) is det.
+:- pred filter_map(pred(T1, T2)::in(pred(in, out) is semidet),
+    one_or_more(T1)::in, list(T2)::out) is det.
 
     % filter_map(Transformer, List, TrueList, FalseList) takes
     % a predicate with one input argument and one output argument.
@@ -607,26 +607,26 @@
     % then the output is included in TrueList; otherwise, the failing
     % input is included in FalseList.
     %
-:- pred filter_map(pred(X, Y)::in(pred(in, out) is semidet),
-    one_or_more(X)::in, list(Y)::out, list(X)::out) is det.
+:- pred filter_map(pred(T1, T2)::in(pred(in, out) is semidet),
+    one_or_more(T1)::in, list(T2)::out, list(T1)::out) is det.
 
     % Same as filter_map/3 except that it only returns the first match:
     %
     %   find_first_map(X, Y, Z) <=> filter_map(X, Y, [Z | _])
     %
-:- pred find_first_map(pred(X, Y)::in(pred(in, out) is semidet),
-    one_or_more(X)::in, Y::out) is semidet.
+:- pred find_first_map(pred(T1, T2)::in(pred(in, out) is semidet),
+    one_or_more(T1)::in, T2::out) is semidet.
 
     % Same as find_first_map, except with two outputs.
     %
-:- pred find_first_map2(pred(X, A, B)::in(pred(in, out, out) is semidet),
-    one_or_more(X)::in, A::out, B::out) is semidet.
+:- pred find_first_map2(pred(T1, A, B)::in(pred(in, out, out) is semidet),
+    one_or_more(T1)::in, A::out, B::out) is semidet.
 
     % Same as find_first_map, except with three outputs.
     %
 :- pred find_first_map3(
-    pred(X, A, B, C)::in(pred(in, out, out, out) is semidet),
-    one_or_more(X)::in, A::out, B::out, C::out) is semidet.
+    pred(T, A, B, C)::in(pred(in, out, out, out) is semidet),
+    one_or_more(T)::in, A::out, B::out, C::out) is semidet.
 
     % find_index_of_match(Match, List, Index0, Index)
     %
@@ -645,8 +645,8 @@
     % Apply the closure T to transform the elements of L
     % into the elements of M.
     %
-:- func map(func(X) = Y, one_or_more(X)) = one_or_more(Y).
-:- pred map(pred(X, Y), one_or_more(X), one_or_more(Y)).
+:- func map(func(T1) = T2, one_or_more(T1)) = one_or_more(T2).
+:- pred map(pred(T1, T2), one_or_more(T1), one_or_more(T2)).
 :- mode map(in(pred(in, out) is det), in, out) is det.
 :- mode map(in(pred(in, out) is cc_multi), in, out) is cc_multi.
 :- mode map(in(pred(in, out) is semidet), in, out) is semidet.
@@ -1707,8 +1707,8 @@
     % then the output is included in TrueList and the accumulator is updated.
     %
 :- pred filter_map_foldl(
-    pred(X, Y, A, A)::in(pred(in, out, in, out) is semidet),
-    one_or_more(X)::in, list(Y)::out, A::in, A::out) is det.
+    pred(T1, T2, A, A)::in(pred(in, out, in, out) is semidet),
+    one_or_more(T1)::in, list(T2)::out, A::in, A::out) is det.
 
 %---------------------------------------------------------------------------%
 

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2019, 2022 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2019, 2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -55,25 +55,29 @@
     %
 :- pred in_bounds(version_array2d(T)::in, int::in, int::in) is semidet.
 
-    % version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]]) ^ elem(I, J) = X
-    % where X is the J+1th element of the I+1th row (i.e. indices start from
-    % zero.)
+    % lookup(VA2D, RowNum, ColNum, Value):
+    % VA2D ^ elem(RowNum, ColNum) = Value:
     %
-    % An exception is thrown unless 0 =< I < M, 0 =< J < N.
+    % Return the value at the given row and column numbers.
+    % Note that both row and column numbers start from zero.
     %
-:- func version_array2d(T) ^ elem(int, int) = T.
+    % Throw an exception if either RowNum or ColNum is out of bounds.
+    %
+:- pred lookup(version_array2d(T)::in, int::in, int::in, T::out) is det.
+:- func elem(int, int, version_array2d(T)) = T.
 
-    % ( VA2D0 ^ elem(I, J) := X ) = VA2D
-    % where VA2D ^ elem(II, JJ) = X                    if I = II, J = JJ
-    % and   VA2D ^ elem(II, JJ) = VA2D0 ^ elem(II, JJ) otherwise.
+    % set(RowNum, ColNum, X, !VA2D):
+    % ( !.VA2D ^ elem(RowNum, ColNum) := X ) = !:VA2D:
     %
-    % An exception is thrown unless 0 =< I < M, 0 =< J < N.
+    % Return a version of the initial version_array2d that contains
+    % all the same values, with the exception that the element at the
+    % given row and column number is set to X.
     %
-    % A predicate version is also provided.
+    % Throw an exception if either RowNum or ColNum is out of bounds.
     %
-:- func ( version_array2d(T) ^ elem(int, int) := T  ) = version_array2d(T).
 :- pred set(int::in, int::in, T::in,
     version_array2d(T)::in, version_array2d(T)::out) is det.
+:- func 'elem :='(int, int, version_array2d(T), T) = version_array2d(T).
 
     % lists(version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN])) =
     %     [[X11, ..., X1N], ..., [XM1, ..., XMN]]
@@ -110,58 +114,82 @@
 
 %---------------------------------------------------------------------------%
 
-
-    % version_array2d(Rows, Cols, Array)
+    % version_array2d(NumRows, NumCols, Array)
     %
-:- type version_array2d(T) ---> version_array2d(int, int, version_array(T)).
+:- type version_array2d(T)
+    --->    version_array2d(int, int, version_array(T)).
 
 %---------------------------------------------------------------------------%
 
-version_array2d(      []      ) = version_array2d(0, 0, version_array([])).
-version_array2d(Xss @ [Xs | _]) = VA2D :-
-    M = length(Xss),
-    N = length(Xs),
-    A = version_array(condense(Xss)),
-    ( if all [Ys] ( member(Ys, Xss) => length(Ys) = N ) then
-        VA2D = version_array2d(M, N, A)
-    else
-        error($pred, "non-rectangular list of lists")
+version_array2d(Rows) = VA2D :-
+    (
+        Rows = [],
+        VA2D = version_array2d(0, 0, version_array([]))
+    ;
+        Rows = [FirstRow | _],
+        list.length(Rows, NumRows),
+        list.length(FirstRow, FirstRowNumCols),
+        ( if
+            all [Row] (
+               list.member(Row, Rows)
+            =>
+                list.length(Row) = FirstRowNumCols
+            )
+        then
+            VA = version_array(list.condense(Rows)),
+            VA2D = version_array2d(NumRows, FirstRowNumCols, VA)
+        else
+            error($pred, "non-rectangular list of lists")
+        )
     ).
 
 %---------------------------------------------------------------------------%
 
-init(M, N, X) =
-    ( if M >= 0, N >= 0 then
-        version_array2d(M, N, version_array.init(M * N, X))
+init(NumRows, NumCols, InitValue) = VA2D :-
+    ( if NumRows >= 0, NumCols >= 0 then
+        VA = version_array.init(NumRows * NumCols, InitValue),
+        VA2D = version_array2d(NumRows, NumCols, VA)
     else
-        func_error($pred, "bounds must be non-negative")
+        error($pred, "bounds must be non-negative")
     ).
 
 %---------------------------------------------------------------------------%
 
-bounds(version_array2d(M, N, _A), M, N).
+bounds(version_array2d(NumRows, NumCols, _A), NumRows, NumCols).
 
 %---------------------------------------------------------------------------%
 
-in_bounds(version_array2d(M, N, _A), I, J) :-
-    0 =< I, I < M,
-    0 =< J, J < N.
+in_bounds(version_array2d(NumRows, NumCols, _A), RowNum, ColNum) :-
+    0 =< RowNum, RowNum < NumRows,
+    0 =< ColNum, ColNum < NumCols.
 
 %---------------------------------------------------------------------------%
 
-version_array2d(_M, N, VA) ^ elem(I, J) = VA ^ elem(I * N + J).
+lookup(VA2D, RowNum, ColNum, Value) :-
+    VA2D = version_array2d(_NumRows, NumCols, VA),
+    version_array.lookup(VA, RowNum * NumCols + ColNum, Value).
+
+elem(RowNum, ColNum, VA2D) = Value :-
+    lookup(VA2D, RowNum, ColNum, Value).
 
 %---------------------------------------------------------------------------%
 
-( version_array2d(M, N, VA) ^ elem(I, J) := X ) =
-    version_array2d(M, N, VA ^ elem(I * N + J) := X).
+set(RowNum, ColNum, NewValue, !VA2D) :-
+    !.VA2D = version_array2d(NumRows, NumCols, VA0),
+    version_array.set(RowNum * NumCols + ColNum, NewValue, VA0, VA),
+    !:VA2D = version_array2d(NumRows, NumCols, VA).
 
-set(I, J, X, VA2D, VA2D ^ elem(I, J) := X).
+'elem :='(RowNum, ColNum, !.VA2D, NewValue) = !:VA2D :-
+    set(RowNum, ColNum, NewValue, !VA2D).
 
 %---------------------------------------------------------------------------%
 
 lists(version_array2d(M, N, VA)) = lists_2((M * N) - 1, N - 1, N, VA, [], []).
 
+    % XXX This predicate should be replaced by two predicates.
+    % One should copy the elements of ONE row, looping over the columns,
+    % while the other should loop over all the rows.
+    %
 :- func lists_2(int, int, int, version_array(T), list(T),
     list(list(T))) = list(list(T)).
 
@@ -178,17 +206,25 @@ lists_2(IJ, J, N, VA, Xs, Xss) =
 
 %---------------------------------------------------------------------------%
 
-copy(version_array2d(M, N, VA)) = version_array2d(M, N, copy(VA)).
+copy(VA2D) = CopyA2D :-
+    VA2D = version_array2d(NumRows, NumCols, VA),
+    CopyA2D = version_array2d(NumRows, NumCols, copy(VA)).
 
 %---------------------------------------------------------------------------%
 
 resize(VA2D0, M, N, X) = VA2D :-
     VA2D1 = init(M, N, X),
     bounds(VA2D0, M0, N0),
+    % XXX By allowing M1 != M and N1 != N, these calls to min *contradict*
+    % the documentation of resize.
     M1    = min(M0, M),
     N1    = min(N0, N),
     VA2D  = resize_2(0, 0, M1, N1, VA2D0, VA2D1).
 
+    % XXX This predicate should be replaced by two predicates.
+    % One should copy and resize ONE row, looping over the columns,
+    % while the other should copy and resize the rows themselves.
+    %
 :- func resize_2(int, int, int, int, version_array2d(T),
     version_array2d(T)) = version_array2d(T).
 

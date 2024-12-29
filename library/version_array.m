@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2012 The University of Melbourne.
-% Copyright (C) 2014-2023 The Mercury Team.
+% Copyright (C) 2014-2024 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -120,7 +120,7 @@
 
     % A ^ elem(I) = lookup(A, I)
     %
-:- func version_array(T) ^ elem(int) = T.
+:- func elem(int, version_array(T)) = T.
 
     % set(I, X, A0, A): A is a copy of array A0 with item I updated to be X.
     % An exception is thrown if I is out of bounds.
@@ -130,7 +130,7 @@
 
     % (A0 ^ elem(I) := X) = A is equivalent to set(I, X, A0, A).
     %
-:- func (version_array(T) ^ elem(int) := T) = version_array(T).
+:- func 'elem :='(int, version_array(T), T) = version_array(T).
 
     % size(A) = N if A contains N items (i.e. the valid indices for A
     % range from 0 to N - 1).
@@ -176,11 +176,11 @@
 
     % foldl(F, A, X) is equivalent to list.foldl(F, list(A), X).
     %
-:- func foldl(func(T1, T2) = T2, version_array(T1), T2) = T2.
+:- func foldl(func(T, A) = A, version_array(T), A) = A.
 
     % foldl(P, A, !X) is equivalent to list.foldl(P, list(A), !X).
     %
-:- pred foldl(pred(T1, T2, T2), version_array(T1), T2, T2).
+:- pred foldl(pred(T, A, A), version_array(T), A, A).
 :- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode foldl(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldl(in(pred(in, di, uo) is det), in, di, uo) is det.
@@ -188,10 +188,10 @@
 :- mode foldl(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
 :- mode foldl(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
-    % foldl2(P, A, !Acc1, !Acc2) is equivalent to
-    % list.foldl2(P, list(A), !Acc1, !Acc2) but more efficient.
+    % foldl2(P, A, !AccA, !AccB) is equivalent to
+    % list.foldl2(P, list(A), !AccA, !AccB) but more efficient.
     %
-:- pred foldl2(pred(T1, T2, T2, T3, T3), version_array(T1), T2, T2, T3, T3).
+:- pred foldl2(pred(T, A, A, B, B), version_array(T), A, A, B, B).
 :- mode foldl2(in(pred(in, in, out, in, out) is det), in, in, out, in, out)
     is det.
 :- mode foldl2(in(pred(in, in, out, mdi, muo) is det), in, in, out, mdi, muo)
@@ -207,9 +207,9 @@
 
     % foldr(F, A, X) is equivalent to list.foldr(F, list(A), Xs).
     %
-:- func foldr(func(T1, T2) = T2, version_array(T1), T2) = T2.
+:- func foldr(func(T, A) = A, version_array(T), A) = A.
 
-:- pred foldr(pred(T1, T2, T2), version_array(T1), T2, T2).
+:- pred foldr(pred(T, A, A), version_array(T), A, A).
 :- mode foldr(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode foldr(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldr(in(pred(in, di, uo) is det), in, di, uo) is det.
@@ -217,7 +217,7 @@
 :- mode foldr(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
 :- mode foldr(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
-:- pred foldr2(pred(T1, T2, T2, T3, T3), version_array(T1), T2, T2, T3, T3).
+:- pred foldr2(pred(T, A, A, B, B), version_array(T), A, A, B, B).
 :- mode foldr2(in(pred(in, in, out, in, out) is det), in, in, out, in, out)
     is det.
 :- mode foldr2(in(pred(in, in, out, mdi, muo) is det), in, in, out, mdi, muo)
@@ -498,7 +498,7 @@ lookup(VA, I, X) :-
     ).
 
 :- pragma inline(func(elem/2)).
-VA ^ elem(I) = X :-
+elem(I, VA) = X :-
     lookup(VA, I, X).
 
 %---------------------------------------------------------------------------%
@@ -512,7 +512,7 @@ set(I, X, !VA) :-
     ).
 
 :- pragma inline(func('elem :='/3)).
-(VA0 ^ elem(I) := X) = VA :-
+'elem :='(I, VA0, X) = VA :-
     set(I, X, VA0, VA).
 
 %---------------------------------------------------------------------------%
@@ -590,8 +590,8 @@ to_list(VA) = list(VA).
 foldl(F, VA, Acc0) = Acc :-
     do_foldl_func(F, VA, 0, size(VA), Acc0, Acc).
 
-:- pred do_foldl_func((func(T1, T2) = T2)::in,
-    version_array(T1)::in, int::in, int::in, T2::in, T2::out) is det.
+:- pred do_foldl_func((func(T, A) = A)::in,
+    version_array(T)::in, int::in, int::in, A::in, A::out) is det.
 
 do_foldl_func(F, VA, I, Size, !Acc) :-
     ( if I < Size then
@@ -607,7 +607,7 @@ do_foldl_func(F, VA, I, Size, !Acc) :-
 foldl(P, VA, !Acc) :-
     do_foldl_pred(P, VA, 0, size(VA), !Acc).
 
-:- pred do_foldl_pred(pred(T1, T2, T2), version_array(T1), int, int, T2, T2).
+:- pred do_foldl_pred(pred(T, A, A), version_array(T), int, int, A, A).
 :- mode do_foldl_pred(in(pred(in, in, out) is det),
     in, in, in, in, out) is det.
 :- mode do_foldl_pred(in(pred(in, mdi, muo) is det),
@@ -632,11 +632,11 @@ do_foldl_pred(P, VA, I, Size, !Acc) :-
 
 %---------------------------------------------------------------------------%
 
-foldl2(P, VA, !Acc1, !Acc2) :-
-    do_foldl2(P, VA, 0, size(VA), !Acc1, !Acc2).
+foldl2(P, VA, !AccA, !AccB) :-
+    do_foldl2(P, VA, 0, size(VA), !AccA, !AccB).
 
-:- pred do_foldl2(pred(T1, T2, T2, T3, T3), version_array(T1), int, int,
-    T2, T2, T3, T3).
+:- pred do_foldl2(pred(T, A, A, B, B), version_array(T), int, int,
+    A, A, B, B).
 :- mode do_foldl2(in(pred(in, in, out, in, out) is det), in, in, in,
     in, out, in, out) is det.
 :- mode do_foldl2(in(pred(in, in, out, mdi, muo) is det), in, in, in,
@@ -650,11 +650,11 @@ foldl2(P, VA, !Acc1, !Acc2) :-
 :- mode do_foldl2(in(pred(in, in, out, di, uo) is semidet), in, in, in,
     in, out, di, uo) is semidet.
 
-do_foldl2(P, VA, I, Size, !Acc1, !Acc2) :-
+do_foldl2(P, VA, I, Size, !AccA, !AccB) :-
     ( if I < Size then
         lookup(VA, I, X),
-        P(X, !Acc1, !Acc2),
-        do_foldl2(P, VA, I + 1, Size, !Acc1, !Acc2)
+        P(X, !AccA, !AccB),
+        do_foldl2(P, VA, I + 1, Size, !AccA, !AccB)
     else
         true
     ).
@@ -664,8 +664,8 @@ do_foldl2(P, VA, I, Size, !Acc1, !Acc2) :-
 foldr(F, VA, Acc0) = Acc :-
     do_foldr_func(F, VA, size(VA) - 1, Acc0, Acc).
 
-:- pred do_foldr_func((func(T1, T2) = T2)::in, version_array(T1)::in,
-    int::in, T2::in, T2::out) is det.
+:- pred do_foldr_func((func(T, A) = A)::in, version_array(T)::in,
+    int::in, A::in, A::out) is det.
 
 do_foldr_func(F, VA, I, !Acc) :-
     ( if I >= 0 then
@@ -681,7 +681,7 @@ do_foldr_func(F, VA, I, !Acc) :-
 foldr(P, VA, !Acc) :-
     do_foldr_pred(P, VA, size(VA) - 1, !Acc).
 
-:- pred do_foldr_pred(pred(T1, T2, T2), version_array(T1), int, T2, T2).
+:- pred do_foldr_pred(pred(T, A, A), version_array(T), int, A, A).
 :- mode do_foldr_pred(in(pred(in, in, out) is det), in, in, in, out) is det.
 :- mode do_foldr_pred(in(pred(in, mdi, muo) is det), in, in, mdi, muo) is det.
 :- mode do_foldr_pred(in(pred(in, di, uo) is det),  in, in, di, uo) is det.
@@ -703,11 +703,11 @@ do_foldr_pred(P, VA, I, !Acc) :-
 
 %---------------------------------------------------------------------------%
 
-foldr2(P, VA, !Acc1, !Acc2) :-
-    do_foldr2(P, VA, size(VA) - 1, !Acc1, !Acc2).
+foldr2(P, VA, !AccA, !AccB) :-
+    do_foldr2(P, VA, size(VA) - 1, !AccA, !AccB).
 
-:- pred do_foldr2(pred(T1, T2, T2, T3, T3), version_array(T1), int,
-    T2, T2, T3, T3).
+:- pred do_foldr2(pred(T, A, A, B, B), version_array(T), int,
+    A, A, B, B).
 :- mode do_foldr2(in(pred(in, in, out, in, out) is det), in, in,
     in, out, in, out) is det.
 :- mode do_foldr2(in(pred(in, in, out, mdi, muo) is det), in, in,
@@ -721,11 +721,11 @@ foldr2(P, VA, !Acc1, !Acc2) :-
 :- mode do_foldr2(in(pred(in, in, out, di, uo) is semidet), in, in,
     in, out, di, uo) is semidet.
 
-do_foldr2(P, VA, I, !Acc1, !Acc2) :-
+do_foldr2(P, VA, I, !AccA, !AccB) :-
     ( if I >= 0 then
         lookup(VA, I, X),
-        P(X, !Acc1, !Acc2),
-        do_foldr2(P, VA, I - 1, !Acc1, !Acc2)
+        P(X, !AccA, !AccB),
+        do_foldr2(P, VA, I - 1, !AccA, !AccB)
     else
         true
     ).

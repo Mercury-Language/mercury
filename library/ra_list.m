@@ -162,8 +162,8 @@
     % Apply the function F or predicate P to transform the elements of L
     % into the elements of M.
     %
-:- func map(func(X) = Y, ra_list(X)) = ra_list(Y).
-:- pred map(pred(X, Y), ra_list(X), ra_list(Y)).
+:- func map(func(T1) = T2, ra_list(T1)) = ra_list(T2).
+:- pred map(pred(T1, T2), ra_list(T1), ra_list(T2)).
 :- mode map(in(pred(in, out) is det), in, out) is det.
 :- mode map(in(pred(in, out) is cc_multi), in, out) is cc_multi.
 :- mode map(in(pred(in, out) is semidet), in, out) is semidet.
@@ -183,8 +183,8 @@
     % is Start, each call to Func or Pred updates it to the next value, and
     % foldl returns its final value as End.
     %
-:- func foldl(func(L, A) = A, ra_list(L), A) = A.
-:- pred foldl(pred(L, A, A), ra_list(L), A, A).
+:- func foldl(func(T, A) = A, ra_list(T), A) = A.
+:- pred foldl(pred(T, A, A), ra_list(T), A, A).
 :- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode foldl(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldl(in(pred(in, di, uo) is det), in, di, uo) is det.
@@ -209,8 +209,8 @@
     % is Start, each call to Func or Pred updates it to the next value, and
     % foldl returns its final value as End.
     %
-:- func foldr(func(L, A) = A, ra_list(L), A) = A.
-:- pred foldr(pred(L, A, A), ra_list(L), A, A).
+:- func foldr(func(T, A) = A, ra_list(T), A) = A.
+:- pred foldr(pred(T, A, A), ra_list(T), A, A).
 :- mode foldr(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode foldr(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldr(in(pred(in, di, uo) is det), in, di, uo) is det.
@@ -651,8 +651,8 @@ map(P, cons(Size, BinTree0, RAList0), cons(Size, BinTree, RAList)) :-
     map_bintree(P, BinTree0, BinTree),
     map(P, RAList0, RAList).
 
-:- func map_bintree(func(X) = Y, ra_list_bintree(X)) = ra_list_bintree(Y).
-:- pred map_bintree(pred(X, Y), ra_list_bintree(X), ra_list_bintree(Y)).
+:- func map_bintree(func(T1) = T2, ra_list_bintree(T1)) = ra_list_bintree(T2).
+:- pred map_bintree(pred(T1, T2), ra_list_bintree(T1), ra_list_bintree(T2)).
 :- mode map_bintree(in(pred(in, out) is det), in, out) is det.
 :- mode map_bintree(in(pred(in, out) is cc_multi), in, out) is cc_multi.
 :- mode map_bintree(in(pred(in, out) is semidet), in, out) is semidet.
@@ -698,8 +698,8 @@ foldl(P, cons(_Size, BinTree, RAList), !A) :-
     foldl_bintree(P, BinTree, !A),
     foldl(P, RAList, !A).
 
-:- func foldl_bintree(func(L, A) = A, ra_list_bintree(L), A) = A.
-:- pred foldl_bintree(pred(L, A, A), ra_list_bintree(L), A, A).
+:- func foldl_bintree(func(T, A) = A, ra_list_bintree(T), A) = A.
+:- pred foldl_bintree(pred(T, A, A), ra_list_bintree(T), A, A).
 :- mode foldl_bintree(in(pred(in, in, out) is det),
     in, in, out) is det.
 :- mode foldl_bintree(in(pred(in, mdi, muo) is det),
@@ -757,8 +757,8 @@ foldr(P, cons(_Size, BinTree, RAList), !A) :-
     foldr(P, RAList, !A),
     foldr_bintree(P, BinTree, !A).
 
-:- func foldr_bintree(func(L, A) = A, ra_list_bintree(L), A) = A.
-:- pred foldr_bintree(pred(L, A, A), ra_list_bintree(L), A, A).
+:- func foldr_bintree(func(T, A) = A, ra_list_bintree(T), A) = A.
+:- pred foldr_bintree(pred(T, A, A), ra_list_bintree(T), A, A).
 :- mode foldr_bintree(in(pred(in, in, out) is det),
     in, in, out) is det.
 :- mode foldr_bintree(in(pred(in, mdi, muo) is det),

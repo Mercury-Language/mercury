@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -199,10 +199,10 @@
     test_bitset(T)::in, test_bitset(T)::out, test_bitset(T)::out)
     is det <= uenum(T).
 
-:- func foldl(func(T, Acc) = Acc, test_bitset(T), Acc) = Acc <= uenum(T).
+:- func foldl(func(T, A) = A, test_bitset(T), A) = A <= uenum(T).
 :- mode foldl(in(func(in, in) = out is det), in, in) = out is det.
 
-:- pred foldl(pred(T, Acc, Acc), test_bitset(T), Acc, Acc) <= uenum(T).
+:- pred foldl(pred(T, A, A), test_bitset(T), A, A) <= uenum(T).
 :- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode foldl(in(pred(in, in, out) is semidet), in, in, out) is semidet.
 

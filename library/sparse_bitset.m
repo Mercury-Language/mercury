@@ -379,9 +379,9 @@
     % (in sorted order) and an accumulator (with the initial value of Start),
     % and returns the final value. Takes O(card(Set)) time.
     %
-:- func foldl(func(T, U) = U, sparse_bitset(T), U) = U <= uenum(T).
+:- func foldl(func(T, A) = A, sparse_bitset(T), A) = A <= uenum(T).
 
-:- pred foldl(pred(T, U, U), sparse_bitset(T), U, U) <= uenum(T).
+:- pred foldl(pred(T, A, A), sparse_bitset(T), A, A) <= uenum(T).
 :- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode foldl(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldl(in(pred(in, di, uo) is det), in, di, uo) is det.
@@ -392,7 +392,7 @@
 :- mode foldl(in(pred(in, in, out) is cc_multi), in, in, out) is cc_multi.
 :- mode foldl(in(pred(in, di, uo) is cc_multi), in, di, uo) is cc_multi.
 
-:- pred foldl2(pred(T, U, U, V, V), sparse_bitset(T), U, U, V, V) <= uenum(T).
+:- pred foldl2(pred(T, A, A, B, B), sparse_bitset(T), A, A, B, B) <= uenum(T).
 :- mode foldl2(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
 :- mode foldl2(in(pred(in, in, out, mdi, muo) is det),
@@ -420,9 +420,9 @@
     % (in reverse sorted order) and an accumulator (with the initial value
     % of Start), and returns the final value. Takes O(card(Set)) time.
     %
-:- func foldr(func(T, U) = U, sparse_bitset(T), U) = U <= uenum(T).
+:- func foldr(func(T, A) = A, sparse_bitset(T), A) = A <= uenum(T).
 
-:- pred foldr(pred(T, U, U), sparse_bitset(T), U, U) <= uenum(T).
+:- pred foldr(pred(T, A, A), sparse_bitset(T), A, A) <= uenum(T).
 :- mode foldr(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode foldr(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldr(in(pred(in, di, uo) is det), in, di, uo) is det.
@@ -433,7 +433,7 @@
 :- mode foldr(in(pred(in, in, out) is cc_multi), in, in, out) is cc_multi.
 :- mode foldr(in(pred(in, di, uo) is cc_multi), in, di, uo) is cc_multi.
 
-:- pred foldr2(pred(T, U, U, V, V), sparse_bitset(T), U, U, V, V) <= uenum(T).
+:- pred foldr2(pred(T, A, A, B, B), sparse_bitset(T), A, A, B, B) <= uenum(T).
 :- mode foldr2(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
 :- mode foldr2(in(pred(in, in, out, mdi, muo) is det),
@@ -1620,7 +1620,7 @@ foldl(Func, sparse_bitset(Elems), Acc0) = Acc :-
 foldl(Pred, sparse_bitset(Elems), !Acc) :-
     do_foldl_pred(Pred, Elems, !Acc).
 
-:- pred do_foldl_pred(pred(T, U, U), bitset_elems, U, U) <= uenum(T).
+:- pred do_foldl_pred(pred(T, A, A), bitset_elems, A, A) <= uenum(T).
 :- mode do_foldl_pred(
     in(pred(in, in, out) is det), in, in, out) is det.
 :- mode do_foldl_pred(
@@ -1653,7 +1653,7 @@ do_foldl_pred(Pred, [H | T], !Acc) :-
 foldl2(Pred, sparse_bitset(Elems), !Acc1, !Acc2) :-
     do_foldl2_pred(Pred, Elems, !Acc1, !Acc2).
 
-:- pred do_foldl2_pred(pred(T, U, U, V, V), bitset_elems, U, U, V, V)
+:- pred do_foldl2_pred(pred(T, A, A, B, B), bitset_elems, A, A, B, B)
     <= uenum(T).
 :- mode do_foldl2_pred(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
@@ -1698,7 +1698,7 @@ foldr(Func, sparse_bitset(Elems), Acc0) = Acc :-
 foldr(Pred, sparse_bitset(Elems), !Acc) :-
     do_foldr_pred(Pred, Elems, !Acc).
 
-:- pred do_foldr_pred(pred(T, U, U), bitset_elems, U, U) <= uenum(T).
+:- pred do_foldr_pred(pred(T, A, A), bitset_elems, A, A) <= uenum(T).
 :- mode do_foldr_pred(
     in(pred(in, in, out) is det), in, in, out) is det.
 :- mode do_foldr_pred(
@@ -1734,7 +1734,7 @@ do_foldr_pred(Pred, [H | T], !Acc) :-
 foldr2(Pred, sparse_bitset(Elems), !Acc1, !Acc2) :-
     do_foldr2_pred(Pred, Elems, !Acc1, !Acc2).
 
-:- pred do_foldr2_pred(pred(T, U, U, V, V), bitset_elems, U, U, V, V)
+:- pred do_foldr2_pred(pred(T, A, A, B, B), bitset_elems, A, A, B, B)
     <= uenum(T).
 :- mode do_foldr2_pred(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
@@ -1773,8 +1773,8 @@ do_foldr2_pred(Pred, [H | T], !Acc1, !Acc2) :-
 
 %---------------------%
 
-:- pred fold_bits_low_to_high(pred(T, U, U),
-    uint, uint, uint, U, U) <= uenum(T).
+:- pred fold_bits_low_to_high(pred(T, A, A),
+    uint, uint, uint, A, A) <= uenum(T).
 :- mode fold_bits_low_to_high(in(pred(in, in, out) is det),
     in, in, in, in, out) is det.
 :- mode fold_bits_low_to_high(in(pred(in, mdi, muo) is det),
@@ -1815,8 +1815,8 @@ fold_bits_low_to_high(Pred, Offset, Bits, Size, !Acc) :-
             !Acc)
     ).
 
-:- pred fold_bits_high_to_low(pred(T, U, U),
-    uint, uint, uint, U, U) <= uenum(T).
+:- pred fold_bits_high_to_low(pred(T, A, A),
+    uint, uint, uint, A, A) <= uenum(T).
 :- mode fold_bits_high_to_low(in(pred(in, in, out) is det),
     in, in, in, in, out) is det.
 :- mode fold_bits_high_to_low(in(pred(in, mdi, muo) is det),
@@ -1857,8 +1857,8 @@ fold_bits_high_to_low(Pred, Offset, Bits, Size, !Acc) :-
         fold_bits_high_to_low(Pred, Offset, LowBits, HalfSize, !Acc)
     ).
 
-:- pred fold2_bits_low_to_high(pred(T, U, U, V, V),
-    uint, uint, uint, U, U, V, V) <= uenum(T).
+:- pred fold2_bits_low_to_high(pred(T, A, A, B, B),
+    uint, uint, uint, A, A, B, B) <= uenum(T).
 :- mode fold2_bits_low_to_high(in(pred(in, in, out, in, out) is det),
     in, in, in, in, out, in, out) is det.
 :- mode fold2_bits_low_to_high(in(pred(in, in, out, mdi, muo) is det),
@@ -1904,8 +1904,8 @@ fold2_bits_low_to_high(Pred, Offset, Bits, Size, !Acc1, !Acc2) :-
             !Acc1, !Acc2)
     ).
 
-:- pred fold2_bits_high_to_low(pred(T, U, U, V, V),
-    uint, uint, uint, U, U, V, V) <= uenum(T).
+:- pred fold2_bits_high_to_low(pred(T, A, A, B, B),
+    uint, uint, uint, A, A, B, B) <= uenum(T).
 :- mode fold2_bits_high_to_low(in(pred(in, in, out, in, out) is det),
     in, in, in, in, out, in, out) is det.
 :- mode fold2_bits_high_to_low(in(pred(in, in, out, mdi, muo) is det),

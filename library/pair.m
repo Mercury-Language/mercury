@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2006 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -28,13 +28,13 @@
 
     % Return the first element of the pair.
     %
-:- func fst(pair(X, Y)) = X.
-:- pred fst(pair(X, Y)::in, X::out) is det.
+:- func fst(pair(T1, T2)) = T1.
+:- pred fst(pair(T1, T2)::in, T1::out) is det.
 
     % Return the second element of the pair.
     %
-:- func snd(pair(X, Y)) = Y.
-:- pred snd(pair(X, Y)::in, Y::out) is det.
+:- func snd(pair(T1, T2)) = T2.
+:- pred snd(pair(T1, T2)::in, T2::out) is det.
 
 :- func pair(T1, T2) = pair(T1, T2).
 

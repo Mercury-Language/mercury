@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997,1999-2000,2002-2003,2005-2006 The University of Melbourne.
-% Copyright (C) 2014-2022 The Mercury team.
+% Copyright (C) 2014-2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -127,9 +127,10 @@
 % Resizing arrays.
 %
 
-    % `resize(BtArray0, Lo, Hi, Item, BtArray)' is true if BtArray
-    % is a bt_array created by expanding or shrinking BtArray0 to fit the
-    % bounds (Lo, Hi). If the new bounds are not wholly contained within
+    % resize(Lo, Hi, Item, BtArray0, BtArray):
+    %
+    % Expand or shrink BtArray0 to fit the bounds (Lo, Hi), returning
+    % the result as BtArray. If the new bounds are not wholly contained within
     % the bounds of BtArray0, Item is used to fill out the other places.
     %
     % Note: This operation is optimised for the case where the lower bound
@@ -139,13 +140,14 @@
     % time proportional to the larger of the two bt_arrays.
     %
 :- func resize(bt_array(T), int, int, T) = bt_array(T).
-:- pred resize(bt_array(T)::in, int::in, int::in, T::in,
-    bt_array(T)::out) is det.
+:- pred resize(int::in, int::in, T::in, bt_array(T)::in, bt_array(T)::out)
+    is det.
 
-    % shrink(BtArray0, Lo, Hi, Item, BtArray) is true if BtArray
-    % is a bt_array created by shrinking BtArray0 to fit the bounds (Lo, Hi).
-    % It is an error if the new bounds are not wholly within the bounds of
-    % BtArray0.
+    % shrink(Lo, Hi, Item, BtArray0, BtArray):
+    %
+    % Shrink BtArray0 to fit the bounds (Lo, Hi), returning the result
+    % as BtArray. It is an error if the new bounds are not wholly within
+    % the bounds of BtArray0.
     %
     % Note: This operation is optimised for the case where the lower bound
     % of the new bt_array is the same as that of the old bt_array. In that
@@ -154,7 +156,7 @@
     % time proportional to the larger of the two bt_arrays.
     %
 :- func shrink(bt_array(T), int, int) = bt_array(T).
-:- pred shrink(bt_array(T)::in, int::in, int::in, bt_array(T)::out)
+:- pred shrink(int::in, int::in, bt_array(T)::in, bt_array(T)::out)
     is det.
 
 %---------------------------------------------------------------------------%
@@ -188,7 +190,7 @@
 %---------------------------------------------------------------------------%
 
     % bsearch takes a bt_array, an element to be matched and a
-    % comparison predicate and returns the position of the first occurrence
+    % comparison predicate, and returns the position of the first occurrence
     % in the bt_array of an element which is equivalent to the given one
     % in the ordering provided. Assumes the bt_array is sorted according
     % to this ordering. Fails if the element is not present.
@@ -312,9 +314,9 @@ in_bounds(bt_array(Low, High, _), Index) :-
 %---------------------------------------------------------------------------%
 
 resize(BT1A, N1, N2, T) = BTA2 :-
-    resize(BT1A, N1, N2, T, BTA2).
+    resize(N1, N2, T, BT1A, BTA2).
 
-resize(Array0, L, H, Item, Array) :-
+resize(L, H, Item, Array0, Array) :-
     Array0 = bt_array(L0, H0, RaList0),
     ( if L = L0 then
         % Optimise the common case where the lower bounds are
@@ -344,9 +346,9 @@ resize(Array0, L, H, Item, Array) :-
     ).
 
 shrink(BT1A, N1, N2) = BTA2 :-
-    shrink(BT1A, N1, N2, BTA2).
+    shrink(N1, N2, BT1A, BTA2).
 
-shrink(Array0, L, H, Array) :-
+shrink(L, H, Array0, Array) :-
     Array0 = bt_array(L0, H0, RaList0),
     ( if ( L < L0 ; H > H0 ) then
         unexpected($pred, "new bounds are larger than old ones")

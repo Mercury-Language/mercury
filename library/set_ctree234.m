@@ -331,8 +331,8 @@
 :- pred map(pred(T1, T2)::in(pred(in, out) is det),
     set_ctree234(T1)::in, set_ctree234(T2)::out) is det.
 
-:- func fold(func(T1, T2) = T2, set_ctree234(T1), T2) = T2.
-:- pred fold(pred(T1, T2, T2), set_ctree234(T1), T2, T2).
+:- func fold(func(T, A) = A, set_ctree234(T), A) = A.
+:- pred fold(pred(T, A, A), set_ctree234(T), A, A).
 :- mode fold(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode fold(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode fold(in(pred(in, di, uo) is det), in, di, uo) is det.
@@ -340,8 +340,8 @@
 :- mode fold(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
 :- mode fold(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
-:- pred fold2(pred(T1, T2, T2, T3, T3), set_ctree234(T1),
-    T2, T2, T3, T3).
+:- pred fold2(pred(T, A, A, B, B), set_ctree234(T),
+    A, A, B, B).
 :- mode fold2(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
 :- mode fold2(in(pred(in, in, out, mdi, muo) is det),
@@ -356,8 +356,8 @@
     in, in, out, di, uo) is semidet.
 
 :- pred fold3(
-    pred(T1, T2, T2, T3, T3, T4, T4), set_ctree234(T1),
-    T2, T2, T3, T3, T4, T4).
+    pred(T, A, A, B, B, C, C), set_ctree234(T),
+    A, A, B, B, C, C).
 :- mode fold3(in(pred(in, in, out, in, out, in, out) is det), in,
     in, out, in, out, in, out) is det.
 :- mode fold3(in(pred(in, in, out, in, out, mdi, muo) is det), in,
@@ -372,8 +372,8 @@
     in, out, in, out, di, uo) is semidet.
 
 :- pred fold4(
-    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5), set_ctree234(T1),
-    T2, T2, T3, T3, T4, T4, T5, T5).
+    pred(T, A, A, B, B, C, C, D, D), set_ctree234(T),
+    A, A, B, B, C, C, D, D).
 :- mode fold4(
     in(pred(in, in, out, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out, in, out) is det.
@@ -394,8 +394,8 @@
     in, in, out, in, out, in, out, di, uo) is semidet.
 
 :- pred fold5(
-    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6),
-    set_ctree234(T1), T2, T2, T3, T3, T4, T4, T5, T5, T6, T6).
+    pred(T, A, A, B, B, C, C, D, D, E, E),
+    set_ctree234(T), A, A, B, B, C, C, D, D, E, E).
 :- mode fold5(
     in(pred(in, in, out, in, out, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out, in, out, in, out) is det.
@@ -416,8 +416,8 @@
     in, in, out, in, out, in, out, in, out, di, uo) is semidet.
 
 :- pred fold6(
-    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6, T7, T7),
-    set_ctree234(T1), T2, T2, T3, T3, T4, T4, T5, T5, T6, T6, T7, T7).
+    pred(T, A, A, B, B, C, C, D, D, E, E, F, F),
+    set_ctree234(T), A, A, B, B, C, C, D, D, E, E, F, F).
 :- mode fold6(
     in(pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out, in, out, in, out, in, out) is det.
@@ -3180,8 +3180,8 @@ fold(Pred, ct(_, Tin), A0) = A :-
     do_fold_func(Pred, Tin, A0, A).
 
 :- pred do_fold_func(
-    (func(T1, T2) = T2)::in((func(in, in) = out) is det),
-    set_tree234(T1)::in, T2::in, T2::out) is det.
+    (func(T, A) = A)::in((func(in, in) = out) is det),
+    set_tree234(T)::in, A::in, A::out) is det.
 
 do_fold_func(_Func, empty, !A).
 do_fold_func(Func, two(E, T0, T1), !A) :-
@@ -3206,8 +3206,8 @@ do_fold_func(Func, four(E0, E1, E2, T0, T1, T2, T3), !A) :-
 fold(Pred, ct(_, Tin), !A) :-
     do_fold_pred(Pred, Tin, !A).
 
-:- pred do_fold_pred(pred(T1, T2, T2), set_tree234(T1),
-    T2, T2).
+:- pred do_fold_pred(pred(T, A, A), set_tree234(T),
+    A, A).
 :- mode do_fold_pred(in(pred(in, in, out) is det), in,
     in, out) is det.
 :- mode do_fold_pred(in(pred(in, mdi, muo) is det), in,
@@ -3245,7 +3245,7 @@ fold2(Pred, ct(_, Tin), !A, !B) :-
     do_fold2_pred(Pred, Tin, !A, !B).
 
 :- pred do_fold2_pred(
-    pred(T1, T2, T2, T3, T3), set_tree234(T1), T2, T2, T3, T3).
+    pred(T, A, A, B, B), set_tree234(T), A, A, B, B).
 :- mode do_fold2_pred(in(pred(in, in, out, in, out) is det),
     in, in, out, in, out) is det.
 :- mode do_fold2_pred(in(pred(in, in, out, mdi, muo) is det),
@@ -3283,8 +3283,8 @@ fold3(Pred, ct(_, Tin), !A, !B, !C) :-
     do_fold3_pred(Pred, Tin, !A, !B, !C).
 
 :- pred do_fold3_pred(
-    pred(T1, T2, T2, T3, T3, T4, T4), set_tree234(T1),
-    T2, T2, T3, T3, T4, T4).
+    pred(T, A, A, B, B, C, C), set_tree234(T),
+    A, A, B, B, C, C).
 :- mode do_fold3_pred(
     in(pred(in, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out) is det.
@@ -3329,8 +3329,8 @@ fold4(Pred, ct(_, Tin), !A, !B, !C, !D) :-
     do_fold4_pred(Pred, Tin, !A, !B, !C, !D).
 
 :- pred do_fold4_pred(
-    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5), set_tree234(T1),
-    T2, T2, T3, T3, T4, T4, T5, T5).
+    pred(T, A, A, B, B, C, C, D, D), set_tree234(T),
+    A, A, B, B, C, C, D, D).
 :- mode do_fold4_pred(
     in(pred(in, in, out, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out, in, out) is det.
@@ -3375,8 +3375,8 @@ fold5(Pred, ct(_, Tin), !A, !B, !C, !D, !E) :-
     do_fold5_pred(Pred, Tin, !A, !B, !C, !D, !E).
 
 :- pred do_fold5_pred(
-    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6), set_tree234(T1),
-    T2, T2, T3, T3, T4, T4, T5, T5, T6, T6).
+    pred(T, A, A, B, B, C, C, D, D, E, E), set_tree234(T),
+    A, A, B, B, C, C, D, D, E, E).
 :- mode do_fold5_pred(
     in(pred(in, in, out, in, out, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out, in, out, in, out) is det.
@@ -3422,8 +3422,8 @@ fold6(Pred, ct(_, Tin), !A, !B, !C, !D, !E, !F) :-
     do_fold6_pred(Pred, Tin, !A, !B, !C, !D, !E, !F).
 
 :- pred do_fold6_pred(
-    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6, T7, T7),
-    set_tree234(T1), T2, T2, T3, T3, T4, T4, T5, T5, T6, T6, T7, T7).
+    pred(T, A, A, B, B, C, C, D, D, E, E, F, F),
+    set_tree234(T), A, A, B, B, C, C, D, D, E, E, F, F).
 :- mode do_fold6_pred(
     in(pred(in, in, out, in, out, in, out, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out, in, out, in, out, in, out) is det.

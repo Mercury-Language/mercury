@@ -849,22 +849,22 @@
     % Takes a closure with one input argument. It returns the first element X
     % of the list (if any) for which Pred(X) is true.
     %
-:- pred find_first_match(pred(X)::in(pred(in) is semidet), list(X)::in,
-    X::out) is semidet.
+:- pred find_first_match(pred(T)::in(pred(in) is semidet), list(T)::in,
+    T::out) is semidet.
 
     % any_true(Pred, List):
     %
     % Succeeds iff Pred succeeds for at least one element of List.
     % Same as `not all_false(Pred, List)'.
     %
-:- pred any_true(pred(X)::in(pred(in) is semidet), list(X)::in) is semidet.
+:- pred any_true(pred(T)::in(pred(in) is semidet), list(T)::in) is semidet.
 
     % any_false(Pred, List):
     %
     % Succeeds iff Pred fails for at least one element of List.
     % Same as `not all_true(Pred, List)'.
     %
-:- pred any_false(pred(X)::in(pred(in) is semidet), list(X)::in) is semidet.
+:- pred any_false(pred(T)::in(pred(in) is semidet), list(T)::in) is semidet.
 
     % all_true(Pred, List):
     %
@@ -872,7 +872,7 @@
     % If Pred succeeds for every member of List, all_true succeeds.
     % If Pred fails for any member of List, all_true fails.
     %
-:- pred all_true(pred(X)::in(pred(in) is semidet), list(X)::in) is semidet.
+:- pred all_true(pred(T)::in(pred(in) is semidet), list(T)::in) is semidet.
 
     % all_false(Pred, List):
     %
@@ -880,7 +880,7 @@
     % If Pred fails for every member of List, all_false succeeds.
     % If Pred succeeds for any member of List, all_false fails.
     %
-:- pred all_false(pred(X)::in(pred(in) is semidet), list(X)::in) is semidet.
+:- pred all_false(pred(T)::in(pred(in) is semidet), list(T)::in) is semidet.
 
     % all_true_corresponding(Pred, ListA, ListB):
     %
@@ -890,8 +890,8 @@
     %
     % Raises an exception if the list arguments differ in length.
     %
-:- pred all_true_corresponding(pred(X, Y)::in(pred(in, in) is semidet),
-    list(X)::in, list(Y)::in) is semidet.
+:- pred all_true_corresponding(pred(T1, T2)::in(pred(in, in) is semidet),
+    list(T1)::in, list(T2)::in) is semidet.
 
     % all_false_corresponding(Pred, ListA, ListB):
     %
@@ -901,8 +901,8 @@
     %
     % Raises an exception if the list arguments differ in length.
     %
-:- pred all_false_corresponding(pred(X, Y)::in(pred(in, in) is semidet),
-    list(X)::in, list(Y)::in) is semidet.
+:- pred all_false_corresponding(pred(T1, T2)::in(pred(in, in) is semidet),
+    list(T1)::in, list(T2)::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
@@ -911,10 +911,10 @@
     % Takes a closure Pred with one input argument. It calls Pred(X)
     % on each member X of List, and includes X in TrueList iff Pred(X) is true.
     %
-:- func filter(pred(X)::in(pred(in) is semidet), list(X)::in)
-    = (list(X)::out) is det.
-:- pred filter(pred(X)::in(pred(in) is semidet), list(X)::in,
-    list(X)::out) is det.
+:- func filter(pred(T)::in(pred(in) is semidet), list(T)::in)
+    = (list(T)::out) is det.
+:- pred filter(pred(T)::in(pred(in) is semidet), list(T)::in,
+    list(T)::out) is det.
 
     % filter(Pred, List, TrueList, FalseList):
     %
@@ -922,8 +922,8 @@
     % on each member X of List. Includes X in TrueList iff Pred(X) is true,
     % and includes X in FalseList iff Pred(X) is false.
     %
-:- pred filter(pred(X)::in(pred(in) is semidet), list(X)::in,
-    list(X)::out, list(X)::out) is det.
+:- pred filter(pred(T)::in(pred(in) is semidet), list(T)::in,
+    list(T)::out, list(T)::out) is det.
 
     % negated_filter(Pred, List) = FalseList:
     %
@@ -931,10 +931,10 @@
     % on each member X of List, and includes X in FalseList iff Pred(X)
     % is false.
     %
-:- func negated_filter(pred(X)::in(pred(in) is semidet), list(X)::in)
-    = (list(X)::out) is det.
-:- pred negated_filter(pred(X)::in(pred(in) is semidet), list(X)::in,
-    list(X)::out) is det.
+:- func negated_filter(pred(T)::in(pred(in) is semidet), list(T)::in)
+    = (list(T)::out) is det.
+:- pred negated_filter(pred(T)::in(pred(in) is semidet), list(T)::in,
+    list(T)::out) is det.
 
     % filter_map(Transformer, List, TrueList):
     %
@@ -942,8 +942,8 @@
     % of List. If Transformer(X) succeeds, then it includes its return value
     % in TrueList.
     %
-:- func filter_map((func(X) = Y)::in((func(in) = out) is semidet),
-    list(X)::in) = (list(Y)::out) is det.
+:- func filter_map((func(T1) = T2)::in((func(in) = out) is semidet),
+    list(T1)::in) = (list(T2)::out) is det.
 
     % filter_map(Transformer, List, TrueList):
     %
@@ -951,8 +951,8 @@
     % and calls it on each element of X of List. If Transformer(X, Y) succeeds,
     % then it includes Y in TrueList.
     %
-:- pred filter_map(pred(X, Y)::in(pred(in, out) is semidet),
-    list(X)::in, list(Y)::out) is det.
+:- pred filter_map(pred(T1, T2)::in(pred(in, out) is semidet),
+    list(T1)::in, list(T2)::out) is det.
 
     % filter_map(Transformer, List, TrueList, FalseList):
     %
@@ -961,8 +961,8 @@
     % then it includes Y in TrueList; if it fails, then it includes X
     % in FalseList.
     %
-:- pred filter_map(pred(X, Y)::in(pred(in, out) is semidet),
-    list(X)::in, list(Y)::out, list(X)::out) is det.
+:- pred filter_map(pred(T1, T2)::in(pred(in, out) is semidet),
+    list(T1)::in, list(T2)::out, list(T1)::out) is det.
 
     % find_first_map(Transformer, List, FirstTrue):
     %
@@ -975,23 +975,23 @@
     %
     %   filter_map(Transformer, List, [FirstTrue | _])
     %
-:- pred find_first_map(pred(X, Y)::in(pred(in, out) is semidet),
-    list(X)::in, Y::out) is semidet.
+:- pred find_first_map(pred(T1, T2)::in(pred(in, out) is semidet),
+    list(T1)::in, T2::out) is semidet.
 
     % find_first_map2(Transformer, List, FirstTrueA, FirstTrueB):
     %
     % Same as find_first_map, except with two outputs.
     %
-:- pred find_first_map2(pred(X, A, B)::in(pred(in, out, out) is semidet),
-    list(X)::in, A::out, B::out) is semidet.
+:- pred find_first_map2(pred(T, A, B)::in(pred(in, out, out) is semidet),
+    list(T)::in, A::out, B::out) is semidet.
 
     % find_first_map3(Transformer, List, FirstTrueA, FirstTrueB, FirstTrueB):
     %
     % Same as find_first_map, except with three outputs.
     %
 :- pred find_first_map3(
-    pred(X, A, B, C)::in(pred(in, out, out, out) is semidet),
-    list(X)::in, A::out, B::out, C::out) is semidet.
+    pred(T, A, B, C)::in(pred(in, out, out, out) is semidet),
+    list(T)::in, A::out, B::out, C::out) is semidet.
 
     % find_index_of_match(Match, List, Index0, Index):
     %
@@ -1010,8 +1010,8 @@
     % Apply the function F or the predicate P to transform the elements of L
     % into the elements of M.
     %
-:- func map(func(X) = Y, list(X)) = list(Y).
-:- pred map(pred(X, Y), list(X), list(Y)).
+:- func map(func(T1) = T2, list(T1)) = list(T2).
+:- pred map(pred(T1, T2), list(T1), list(T2)).
 :- mode map(in(pred(in, out) is det), in, out) is det.
 :- mode map(in(pred(in, out) is cc_multi), in, out) is cc_multi.
 :- mode map(in(pred(in, out) is semidet), in, out) is semidet.
@@ -2331,8 +2331,8 @@
     % then the output is included in TrueList and the accumulator is updated.
     %
 :- pred filter_map_foldl(
-    pred(X, Y, A, A)::in(pred(in, out, in, out) is semidet),
-    list(X)::in, list(Y)::out, A::in, A::out) is det.
+    pred(T1, T2, A, A)::in(pred(in, out, in, out) is semidet),
+    list(T1)::in, list(T2)::out, A::in, A::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

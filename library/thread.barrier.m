@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005, 2014 Mission Critical IT.
-% Copyright (C) 2014-2015, 2018, 2022 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -12,8 +12,8 @@
 %
 % This module provides a barrier implementation.
 %
-% A barrier is a position in a program that any thread (of N threads) must
-% be suspended at until all the other threads (of N) reach the same
+% A barrier is a position in a program that any thread (of N threads)
+% must be suspended at until all the other threads (of N) reach the same
 % position.
 %
 % Barriers are represented by calls to barrier/3 (defined below). Different

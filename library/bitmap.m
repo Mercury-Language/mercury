@@ -129,67 +129,114 @@
 :- mode is_empty(in) is semidet.
 
 %---------------------------------------------------------------------------%
-%
-% Get or set the given bit.
-% The unsafe versions do not check whether the bit is in range.
-%
 
+    % get_bit(Bitmap, Index) = Bit:
+    % Bitmap ^ bit(Index) = Bit:
+    %
+    % Get the indicated bit of Bitmap.
+    %
+    % Throws an exception if Index is not in range.
+    %
 :- func get_bit(bitmap, bit_index) = bool.
 % :- mode get_bit(bitmap_ui, in) = out is det.
 :- mode get_bit(in, in) = out is det.
-:- func bitmap      ^ bit(bit_index)    = bool.
-% :- mode bitmap_ui ^ bit(in)           = out is det.
-:- mode in          ^ bit(in)           = out is det.
+:- func bit(bit_index, bitmap) = bool.
+% :- mode bit(in, bitmap_ui) = out is det.
+:- mode bit(in, in) = out is det.
 
+    % unsafe_get_bit(Bitmap, Index) = Bit:
+    % Bitmap ^ unsafe_bit(Index) = Bit:
+    %
+    % Does the same job as get_bit, but the result is undefined
+    % if Index is not in range.
+    %
 :- func unsafe_get_bit(bitmap, bit_index) = bool.
 % :- mode unsafe_get_bit(bitmap_ui, in) = out is det.
 :- mode unsafe_get_bit(in, in) = out is det.
-:- func bitmap      ^ unsafe_bit(bit_index) = bool.
-% :- mode bitmap_ui ^ unsafe_bit(in)        = out is det.
-:- mode in          ^ unsafe_bit(in)        = out is det.
+:- func unsafe_bit(bit_index, bitmap) = bool.
+% :- mode unsafe_bit(in, bitmap_ui) = out is det.
+:- mode unsafe_bit(in, in) = out is det.
 
+    % set_bit(Index, NewBit, !BitMap:
+    % !.Bitmap ^ bit(Index) := NewBit:
+    %
+    % Set the indicated bit of !.Bitmap to NewBit.
+    %
+    % Throws an exception if Index is not in range.
+    %
 :- pred set_bit(bit_index, bool, bitmap, bitmap).
 :- mode set_bit(in, in, bitmap_di, bitmap_uo) is det.
-:- func (bitmap    ^ bit(bit_index) := bool) = bitmap.
-:- mode (bitmap_di ^ bit(in)        := in)   = bitmap_uo is det.
+:- func 'bit :='(bit_index, bitmap, bool) = bitmap.
+:- mode 'bit :='(in, bitmap_di, in) = bitmap_uo is det.
 
+    % unsafe_set_bit(Index, NewBit, !BitMap:
+    % !.Bitmap ^ unsafe_bit(Index) := NewBit:
+    %
+    % Does the same job as set_bit, but the result is undefined
+    % if Index is not in range.
+    %
 :- pred unsafe_set_bit(bit_index, bool, bitmap, bitmap).
 :- mode unsafe_set_bit(in, in, bitmap_di, bitmap_uo) is det.
-:- func (bitmap    ^ unsafe_bit(bit_index) := bool) = bitmap.
-:- mode (bitmap_di ^ unsafe_bit(in)        := in)   = bitmap_uo is det.
+:- func 'unsafe_bit :='(bit_index, bitmap, bool) = bitmap.
+:- mode 'unsafe_bit :='(in, bitmap_di, in) = bitmap_uo is det.
 
 %---------------------------------------------------------------------------%
-%
-% Bitmap ^ bits(OffSet, NumBits) = Word.
-% The low order bits of Word contain the NumBits bits of BitMap
-% starting at OffSet.
-% 0 =< NumBits =< int.bits_per_int.
-%
 
+    % get_bits(Bitmap, Index, NumBits) = Word:
+    % Bitmap ^ bits(Index) = Word:
+    %
+    % Get some number of bits at the indicated Index out of Bitmap.
+    % The low order bits of Word will contain the NumBits bits of Bitmap
+    % starting at Index. NumBits must be in the range given by
+    % 0 =< NumBits =< int.bits_per_int.
+    %
+    % Throws an exception if either Index or NumBits is not in range.
+    %
 :- func get_bits(bitmap, bit_index, num_bits) = word.
 % :- mode get_bits(bitmap_ui, in, in) = out is det.
 :- mode get_bits(in, in, in) = out is det.
-:- func bitmap      ^ bits(bit_index, num_bits) = word.
-% :- mode bitmap_ui ^ bits(in, in)              = out is det.
-:- mode in          ^ bits(in, in)              = out is det.
+:- func bits(bit_index, num_bits, bitmap) = word.
+% :- mode bits(in, in, bitmap_ui) = out is det.
+:- mode bits(in, in, in) = out is det.
 
+    % unsafe_get_bits(Bitmap, Index, NumBits) = Word:
+    % Bitmap ^ unsafe_bits(Index) = Word:
+    %
+    % Does the same job as get_bits, but the result is undefined
+    % if either Index or NumBits is not in range.
+    %
 :- func unsafe_get_bits(bitmap, bit_index, num_bits) = word.
 % :- mode unsafe_get_bits(bitmap_ui, in, in) = out is det.
 :- mode unsafe_get_bits(in, in, in) = out is det.
-:- func bitmap      ^ unsafe_bits(bit_index, num_bits)  = word.
-% :- mode bitmap_ui ^ unsafe_bits(in, in)               = out is det.
-:- mode in          ^ unsafe_bits(in, in)               = out is det.
+:- func unsafe_bits(bit_index, num_bits, bitmap) = word.
+% :- mode unsafe_bits(in, in, bitmap_ui) = out is det.
+:- mode unsafe_bits(in, in, in) = out is det.
 
+    % set_bits(Index, NumBits, Word, Bitmap0, BitMap):
+    % Bitmap0 ^ bits(Index) := Word = BitMap:
+    %
+    % Set the NumBits bits of Bitmap0 starting at Index the low order
+    % NumBits bits of Words, returning the updated bitmap as Bitmap.
+    %
+    % NumBits must be in the range given by 0 =< NumBits =< int.bits_per_int.
+    %
+    % Throws an exception if either Index or NumBits is not in range.
+    %
 :- pred set_bits(bit_index, num_bits, word, bitmap, bitmap).
 :- mode set_bits(in, in, in, bitmap_di, bitmap_uo) is det.
-:- func (bitmap     ^ bits(bit_index, num_bits) := word) = bitmap.
-:- mode (bitmap_di  ^ bits(in, in)              := in)   = bitmap_uo is det.
+:- func 'bits :='(bit_index, num_bits, bitmap, word) = bitmap.
+:- mode 'bits :='(in, in, bitmap_di, in) = bitmap_uo is det.
 
+    % unsafe_set_bits(Index, NumBits, Word, Bitmap0, BitMap):
+    % Bitmap0 ^ unsafe_bits(Index) := Word = BitMap:
+    %
+    % Does the same job as set_bits, but the result is undefined
+    % if either Index or NumBits is not in range.
+    %
 :- pred unsafe_set_bits(bit_index, num_bits, word, bitmap, bitmap).
 :- mode unsafe_set_bits(in, in, in, bitmap_di, bitmap_uo) is det.
-:- func (bitmap     ^ unsafe_bits(bit_index, num_bits) := word) = bitmap.
-:- mode (bitmap_di  ^ unsafe_bits(in, in)              := in)   = bitmap_uo
-    is det.
+:- func 'unsafe_bits :='(bit_index, num_bits, bitmap, word) = bitmap.
+:- mode 'unsafe_bits :='(in, in, bitmap_di, in) = bitmap_uo is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -205,26 +252,26 @@
 :- func get_byte(bitmap, byte_index) = byte.
 % :- mode get_byte(bitmap_ui, in) = out is det.
 :- mode get_byte(in, in) = out is det.
-:- func bitmap      ^ byte(byte_index) = byte.
-% :- mode bitmap_ui ^ byte(in) = out is det.
-:- mode in          ^ byte(in) = out is det.
+:- func byte(byte_index, bitmap) = word.
+% :- mode byte(in, bitmap_ui) = out is det.
+:- mode byte(in, in) = out is det.
 
 :- func unsafe_get_byte(bitmap, byte_index) = byte.
 % :- mode unsafe_get_byte(bitmap_ui, in) = out is det.
 :- mode unsafe_get_byte(in, in) = out is det.
-:- func bitmap      ^ unsafe_byte(byte_index)   = byte.
-% :- mode bitmap_ui ^ unsafe_byte(in)           = out is det.
-:- mode in          ^ unsafe_byte(in)           = out is det.
+:- func unsafe_byte(byte_index, bitmap) = word.
+% :- mode unsafe_byte(in, bitmap_ui) = out is det.
+:- mode unsafe_byte(in, in) = out is det.
 
 :- pred set_byte(byte_index, byte, bitmap, bitmap).
 :- mode set_byte(in, in, bitmap_di, bitmap_uo) is det.
-:- func (bitmap    ^ byte(byte_index) := byte) = bitmap.
-:- mode (bitmap_di ^ byte(in)         := in)   = bitmap_uo is det.
+:- func 'byte :='(byte_index, bitmap, byte) = bitmap.
+:- mode 'byte :='(in, bitmap_di, in) = bitmap_uo is det.
 
 :- pred unsafe_set_byte(byte_index, byte, bitmap, bitmap).
 :- mode unsafe_set_byte(in, in, bitmap_di, bitmap_uo) is det.
-:- func (bitmap    ^ unsafe_byte(byte_index) := byte) = bitmap.
-:- mode (bitmap_di ^ unsafe_byte(in)         := in)   = bitmap_uo is det.
+:- func 'unsafe_byte :='(byte_index, bitmap, byte) = bitmap.
+:- mode 'unsafe_byte :='(in, bitmap_di, in) = bitmap_uo is det.
 
 %
 % Versions of the above that set or take uint8 values instead of a byte stored
@@ -649,14 +696,12 @@ num_bits(_) = _ :-
 "
     NumBits = BM->num_bits;
 ").
-
 :- pragma foreign_proc("Java",
     num_bits(BM::in) = (NumBits::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     NumBits = BM.num_bits;
 ").
-
 :- pragma foreign_proc("C#",
     num_bits(BM::in) = (NumBits::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -698,7 +743,7 @@ get_bit(BM, I) = B :-
         throw_bit_bounds_error(BM, "bitmap.get_bit", I)
     ).
 
-BM ^ bit(I) = B :-
+bit(I, BM) = B :-
     ( if in_range(BM, I) then
         B = unsafe_get_bit(BM, I)
     else
@@ -708,7 +753,7 @@ BM ^ bit(I) = B :-
 unsafe_get_bit(BM, I) = B :-
     ( if unsafe_is_set(BM, I) then B = yes else B = no ).
 
-BM ^ unsafe_bit(I) = B :-
+unsafe_bit(I, BM) = B :-
     unsafe_get_bit(BM, I) = B.
 
 set_bit(I, B, !BM) :-
@@ -718,7 +763,7 @@ set_bit(I, B, !BM) :-
         throw_bit_bounds_error(!.BM, "bitmap.set_bit", I)
     ).
 
-(!.BM ^ bit(I) := B) = !:BM :-
+'bit :='(I, !.BM, B) = !:BM :-
     ( if in_range(!.BM, I) then
         unsafe_set_bit(I, B, !BM)
     else
@@ -730,7 +775,7 @@ unsafe_set_bit(I, yes, !BM) :-
 unsafe_set_bit(I, no, !BM) :-
     unsafe_clear(I, !BM).
 
-(!.BM ^ unsafe_bit(I) := B) = !:BM :-
+'unsafe_bit :='(I, !.BM, B) = !:BM :-
     unsafe_set_bit(I, B, !BM).
 
 %---------------------------------------------------------------------------%
@@ -754,7 +799,7 @@ get_bits(BM, FirstBit, NumBits) = Word :-
         throw_bit_bounds_error(BM, "bitmap.get_bits", FirstBit)
     ).
 
-BM ^ bits(FirstBit, NumBits) = Word :-
+bits(FirstBit, NumBits, BM) = Word :-
     ( if
         FirstBit >= 0,
         NumBits >= 0,
@@ -779,7 +824,7 @@ unsafe_get_bits(BM, FirstBit, NumBits) = Bits :-
     extract_bits_from_bytes(FirstByteIndex, FirstBitIndex,
         NumBits, BM, 0, Bits).
 
-BM ^ unsafe_bits(FirstBit, NumBits) = Word :-
+unsafe_bits(FirstBit, NumBits, BM) = Word :-
     unsafe_get_bits(BM, FirstBit, NumBits) = Word.
 
     % Extract the given number of bits starting at the most significant.
@@ -841,7 +886,7 @@ set_bits(FirstBit, NumBits, Bits, !BM) :-
         throw_bit_bounds_error(!.BM, "bitmap.set_bits", FirstBit)
     ).
 
-(!.BM ^ bits(FirstBit, NumBits) := Bits) = !:BM :-
+'bits :='(FirstBit, NumBits, !.BM, Bits) = !:BM :-
     ( if
         FirstBit >= 0,
         NumBits >= 0,
@@ -867,7 +912,7 @@ unsafe_set_bits(FirstBit, NumBits, Bits, !BM) :-
     LastBitIndex = bit_index_in_byte(LastBit),
     set_bits_in_bytes(LastByteIndex, LastBitIndex, NumBits, Bits, !BM).
 
-(!.BM ^ unsafe_bits(FirstBit, NumBits) := Bits) = !:BM :-
+'unsafe_bits :='(FirstBit, NumBits, !.BM, Bits) = !:BM :-
     unsafe_set_bits(FirstBit, NumBits, Bits, !BM).
 
     % Set the given number of bits starting at the least significant.
@@ -909,7 +954,7 @@ get_byte(BM, N) = Byte :-
         throw_byte_bounds_error(BM, "bitmap.get_byte", N)
     ).
 
-BM ^ byte(N) = Byte :-
+byte(N, BM) = Byte :-
     ( if byte_in_range(BM, N) then
         Byte = unsafe_get_byte(BM, N)
     else
@@ -922,7 +967,6 @@ BM ^ byte(N) = Byte :-
 "
     Byte = (MR_Integer) BM->elements[N];
 ").
-
 :- pragma foreign_proc("Java",
     unsafe_get_byte(BM::in, N::in) = (Byte::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -930,7 +974,6 @@ BM ^ byte(N) = Byte :-
     // Mask off sign bits so Byte is in range 0-255.
     Byte = ((int) BM.elements[N]) & 0xff;
 ").
-
 :- pragma foreign_proc("C#",
     unsafe_get_byte(BM::in, N::in) = (Byte::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -941,7 +984,7 @@ BM ^ byte(N) = Byte :-
 unsafe_get_byte(_BM, _N) = _Byte :-
     private_builtin.sorry("bitmap.unsafe_byte").
 
-BM ^ unsafe_byte(N) = Byte :-
+unsafe_byte(N, BM) = Byte :-
     unsafe_get_byte(BM, N) = Byte.
 
 %---------------------------------------------------------------------------%
@@ -953,7 +996,7 @@ set_byte(N, Byte, !BM) :-
         throw_byte_bounds_error(!.BM, "bitmap.set_byte", N)
     ).
 
-(!.BM ^ byte(N) := Byte) = !:BM :-
+'byte :='(N, !.BM, Byte) = !:BM :-
     ( if byte_in_range(!.BM, N) then
         unsafe_set_byte(N, Byte, !BM)
     else
@@ -967,7 +1010,6 @@ set_byte(N, Byte, !BM) :-
     BM = BM0;
     BM->elements[N] = (MR_uint_least8_t) Byte;
 ").
-
 :- pragma foreign_proc("Java",
     unsafe_set_byte(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -975,7 +1017,6 @@ set_byte(N, Byte, !BM) :-
     BM = BM0;
     BM.elements[N] = (byte) Byte;
 ").
-
 :- pragma foreign_proc("C#",
     unsafe_set_byte(N::in, Byte::in, BM0::bitmap_di, BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -987,7 +1028,7 @@ set_byte(N, Byte, !BM) :-
 unsafe_set_byte(_N, _Byte, !BM) :-
     private_builtin.sorry("bitmap.unsafe_set_byte").
 
-(!.BM ^ unsafe_byte(N) := Byte) = !:BM :-
+'unsafe_byte :='(N, !.BM, Byte) = !:BM :-
     unsafe_set_byte(N, Byte, !BM).
 
 %---------------------------------------------------------------------------%
@@ -1005,14 +1046,12 @@ get_uint8(BM, N) = U8 :-
 "
     U8 = (uint8_t) BM->elements[N];
 ").
-
 :- pragma foreign_proc("Java",
     unsafe_get_uint8(BM::in, N::in) = (U8::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     U8 = BM.elements[N];
 ").
-
 :- pragma foreign_proc("C#",
     unsafe_get_uint8(BM::in, N::in) = (U8::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1036,7 +1075,6 @@ set_uint8(N, U8, !BM) :-
     BM = BM0;
     BM->elements[N] = (MR_uint_least8_t) U8;
 ").
-
 :- pragma foreign_proc("Java",
     unsafe_set_uint8(N::in, U8::in, BM0::bitmap_di, BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1044,7 +1082,6 @@ set_uint8(N, U8, !BM) :-
     BM = BM0;
     BM.elements[N] = (byte) U8;
 ").
-
 :- pragma foreign_proc("C#",
     unsafe_set_uint8(N::in, U8::in, BM0::bitmap_di, BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -1143,7 +1180,6 @@ unsafe_is_clear(BM, I) :-
     MR_allocate_bitmap_msg(BM, BM0->num_bits, MR_ALLOC_ID);
     MR_copy_bitmap(BM, BM0);
 ").
-
 :- pragma foreign_proc("C#",
     copy(BM0::in) = (BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -1151,7 +1187,6 @@ unsafe_is_clear(BM, I) :-
     BM = new mercury.runtime.MercuryBitmap(BM0.num_bits);
     System.Array.Copy(BM0.elements, 0, BM.elements, 0, BM0.elements.Length);
 ").
-
 :- pragma foreign_proc("Java",
     copy(BM0::in) = (BM::bitmap_uo),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
@@ -1334,21 +1369,21 @@ zip(Fn, BM_A, BM_B, BM) :-
     ( if num_bits(BM_B) = 0 then
         BM = BM_B
     else
-        zip2(byte_index_for_bit(num_bits(BM_B) - 1), Fn, BM_A, BM_B, BM)
+        zip_loop(byte_index_for_bit(num_bits(BM_B) - 1), Fn, BM_A, BM_B, BM)
     ).
 
-:- pred zip2(byte_index, func(byte, byte) = byte, bitmap, bitmap, bitmap).
-% :- mode zip2(in, in(func(in, in) = out is det),
+:- pred zip_loop(byte_index, func(byte, byte) = byte, bitmap, bitmap, bitmap).
+% :- mode zip_loop(in, in(func(in, in) = out is det),
 %    bitmap_ui, bitmap_di, bitmap_uo) is det.
-:- mode zip2(in, in(func(in, in) = out is det), in, bitmap_di, bitmap_uo)
+:- mode zip_loop(in, in(func(in, in) = out is det), in, bitmap_di, bitmap_uo)
     is det.
 
-zip2(I, Fn, BM_A, BM_B, BM) :-
+zip_loop(I, Fn, BM_A, BM_B, BM) :-
     ( if I >= 0 then
         XA = unsafe_get_byte(BM_A, I),
         XB = unsafe_get_byte(BM_B, I),
         unsafe_set_byte(I, Fn(XA, XB), BM_B, BM_C),
-        zip2(I - 1, Fn, BM_A, BM_C, BM)
+        zip_loop(I - 1, Fn, BM_A, BM_C, BM)
     else
         BM = BM_B
     ).
@@ -1813,15 +1848,16 @@ hash(BM) = HashVal :-
     else
         NumBytes = NumBytes0 + 1
     ),
-    hash_2(BM, 0, NumBytes, 0, HashVal0),
+    hash_loop(BM, 0, NumBytes, 0, HashVal0),
     HashVal = HashVal0 `xor` NumBits.
 
-:- pred hash_2(bitmap::in, byte_index::in, int::in, int::in, int::out) is det.
+:- pred hash_loop(bitmap::in, byte_index::in, int::in, int::in, int::out)
+    is det.
 
-hash_2(BM, Index, Length, !HashVal) :-
+hash_loop(BM, Index, Length, !HashVal) :-
     ( if Index < Length then
         combine_hash(unsafe_get_byte(BM, Index), !HashVal),
-        hash_2(BM, Index + 1, Length, !HashVal)
+        hash_loop(BM, Index + 1, Length, !HashVal)
     else
         true
     ).

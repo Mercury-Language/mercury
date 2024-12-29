@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2007, 2010-2011 The University of Melbourne
-% Copyright (C) 2013-2015, 2017-2019, 2022 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2019, 2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -54,13 +54,22 @@
     %
 :- func num_bits(version_bitmap) = int.
 
-    % Get the given bit.
+    % get_bit(BM, I, Bit):
+    % BM ^ bit(I) = Bit:
     %
-:- func version_bitmap ^ bit(int) = bool.
+    % Get the bit at the given index.
+    %
+:- pred get_bit(version_bitmap::in, int::in, bool::out) is det.
+:- func bit(int, version_bitmap) = bool.
 
-    % Set the given bit.
+    % set_bit(I, NewBit, !BM):
+    % BM0 ^ bit(I) := NewBit = BM:
     %
-:- func (version_bitmap ^ bit(int) := bool) = version_bitmap.
+    % Set the bit at the given index.
+    %
+:- pred set_bit(int::in, bool::in, version_bitmap::in, version_bitmap::out)
+    is det.
+:- func 'bit :='(int, version_bitmap, bool) = version_bitmap.
 
     % set(BM, I), clear(BM, I) and flip(BM, I) set, clear and flip
     % bit I in BM respectively. An exception is thrown if I is out
@@ -142,6 +151,9 @@ init(N, B) = BM :-
 %---------------------------------------------------------------------------%
 
 resize(BM0, N, B) = BM :-
+    resize(N, B, BM0, BM).
+
+resize(N, B, BM0, BM) :-
     ( if N =< 0 then
         BM = init(N, B)
     else
@@ -160,8 +172,6 @@ resize(BM0, N, B) = BM :-
                     ^ elem(Offset) := (BM1 ^ elem(Offset) /\ Mask) \/ Bits),
         BM      = clear_filler_bits(BM2)
     ).
-
-resize(N, B, BM, resize(BM, N, B)).
 
 %---------------------------------------------------------------------------%
 
@@ -186,52 +196,67 @@ initializer(yes) = \(0).
 
 %---------------------------------------------------------------------------%
 
-num_bits(BM) = BM ^ elem(0).
+num_bits(BM) = NumBits :-
+    version_array.lookup(BM, 0, NumBits).
 
 %---------------------------------------------------------------------------%
 
 :- pred in_range(version_bitmap::in, int::in) is semidet.
 
-in_range(BM, I) :- 0 =< I, I < num_bits(BM).
+in_range(BM, I) :-
+    0 =< I,
+    I < num_bits(BM).
 
 %---------------------------------------------------------------------------%
 
-BM ^ bit(I) = ( if is_set(BM, I) then yes else no ).
+get_bit(BM, I, Bit) :-
+    Bit = ( if is_set(BM, I) then yes else no ).
 
-(BM ^ bit(I) := yes) = set(BM, I).
-(BM ^ bit(I) := no) = clear(BM, I).
+bit(I, BM) = Bit :-
+    get_bit(BM, I, Bit).
+
+set_bit(I, yes, BM0, BM) :-
+    set(I, BM0, BM).
+set_bit(I, no,  BM0, BM) :-
+    clear(I, BM0, BM).
+
+'bit :='(I, BM0, NewBit) = BM :-
+    set_bit(I, NewBit, BM0, BM).
 
 %---------------------------------------------------------------------------%
 
-set(BM, I) =
-    ( if in_range(BM, I) then
-        BM ^ elem(int_offset(I)) :=
-            BM ^ elem(int_offset(I)) \/ bitmask(I)
+set(BM0, I) = BM :-
+    set(I, BM0, BM).
+
+set(I, BM0, BM) :-
+    ( if in_range(BM0, I) then
+        BM = BM0 ^ elem(int_offset(I)) :=
+            BM0 ^ elem(int_offset(I)) \/ bitmask(I)
     else
-        func_error($pred, "out of range")
+        error($pred, "out of range")
     ).
 
-set(I, BM, set(BM, I)).
+clear(BM0, I) = BM :-
+    clear(I, BM0, BM).
 
-clear(BM, I) =
-    ( if in_range(BM, I) then
-        BM ^ elem(int_offset(I)) :=
-            BM ^ elem(int_offset(I)) /\ \bitmask(I)
+clear(I, BM0, BM) :-
+    ( if in_range(BM0, I) then
+        BM = BM0 ^ elem(int_offset(I)) :=
+            BM0 ^ elem(int_offset(I)) /\ \bitmask(I)
     else
-        func_error($pred, "out of range")
+        error($pred, "out of range")
     ).
 
-clear(I, BM, clear(BM, I)).
+flip(BM0, I) = BM :-
+    flip(I, BM0, BM).
 
-flip(BM, I) =
-    ( if in_range(BM, I) then
-        BM ^ elem(int_offset(I)) :=
-            BM ^ elem(int_offset(I)) `xor` bitmask(I)
+flip(I, BM0, BM) :-
+    ( if in_range(BM0, I) then
+        BM = BM0 ^ elem(int_offset(I)) :=
+            BM0 ^ elem(int_offset(I)) `xor` bitmask(I)
     else
-        func_error($pred, "out of range")
+        error($pred, "out of range")
     ).
-
-flip(I, BM, flip(BM, I)).
 
 %---------------------------------------------------------------------------%
 
@@ -349,9 +374,9 @@ int_offset(I) = 1 + int.quot_bits_per_int(I).
     %
 :- func bitmask(int) = int.
 
-    % NOTE: it would be nicer to use /\ with a bitmask here rather
-    % than rem. Do modern back-ends do the decent thing here if
-    % int.bits_per_int is the expected power of two?
+    % NOTE: it would be nicer to use /\ with a bitmask here rather than rem.
+    % Do modern back-ends do the decent thing here if int.bits_per_int
+    % is the expected power of two?
     %
 bitmask(I) = 1 `unchecked_left_shift` int.rem_bits_per_int(I).
 

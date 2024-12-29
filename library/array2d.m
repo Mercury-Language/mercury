@@ -119,7 +119,9 @@
 % :- mode array2d_ui ^ elem(in, in) = out is det.
 :- mode in ^ elem(in, in) = out is det.
 
-    % unsafe_lookup(Array, R, C):
+    % unsafe_lookup(Array, R, C) = Elem:
+    % unsafe_lookup(Array, R, C, Elem):
+    % Array ^ unsafe_elem(R, C) = Elem:
     %
     % Given a 2d array Array with NumRows rows and NumColumns columns,
     % return the element at row R and column C. Indices start at zero.
@@ -134,11 +136,12 @@
 :- pred unsafe_lookup(array2d(T), int, int, T).
 % :- mode unsafe_lookup(array2d_ui, in, in, out) is det.
 :- mode unsafe_lookup(in, in, in, out) is det.
-:- func array2d(T) ^ unsafe_elem(int, int) = T.
-% :- mode array2d_ui ^ unsafe_elem(in, in) = out is det.
-:- mode in ^ unsafe_elem(in, in) = out is det.
+:- func unsafe_elem(int, int, array2d(T)) = T.
+% :- mode unsafe_elem(in, in, array2du) = out is det.
+:- mode unsafe_elem(in, in, in) = out is det.
 
     % set(R, C, NewElem, Array0, Array):
+    % Array0 ^ elem(R, C) := NewElem = Array:
     %
     % Return Array, which differs from Array0 only in that
     % the value at row R and column C is NewElem.
@@ -147,10 +150,12 @@
     %
 :- pred set(int, int, T, array2d(T), array2d(T)).
 :- mode set(in, in, in, array2d_di, array2d_uo) is det.
-:- func (array2d(T) ^ elem(int, int) := T) = array2d(T).
-:- mode (array2d_di ^ elem(in, in) := in) = array2d_uo is det.
+:- func 'elem :='(int, int, array2d(T), T) = array2d(T).
+:- mode 'elem :='(in, in, array2d_di, in) = array2d_uo is det.
 
+    % unsafe_set(R, C, NewElem, Array0) = Array:
     % unsafe_set(R, C, NewElem, Array0, Array):
+    % Array0 ^ unsafe_elem(R, C) := NewElem = Array:
     %
     % Return Array, which differs from Array0 only in that
     % the value at row R and column C is NewElem.
@@ -159,9 +164,8 @@
     %
 :- pred unsafe_set(int, int, T, array2d(T), array2d(T)).
 :- mode unsafe_set(in, in, in, array2d_di, array2d_uo) is det.
-:- func (array2d(T) ^ unsafe_elem(int, int) := T ) = array2d(T).
-:- mode (array2d_di ^ unsafe_elem(in, in) := in) = array2d_uo is det.
-
+:- func 'unsafe_elem :='(int, int, array2d(T), T) = array2d(T).
+:- mode 'unsafe_elem :='(in, in, array_di, in) = array2d_uo is det.
 
     % lists(Array):
     %

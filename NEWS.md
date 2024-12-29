@@ -52,6 +52,9 @@ Changes that may break compatibility
   `det_update/4`, `insert/4`, `set/4` and `update/4`, have had the order
   of their arguments changed.
 
+* Two predicates in the `bt_array` module, `resize/4` and `shrink/4`,
+  have had the order of their arguments changed.
+
 * The character sequences `<<u` and `>>u` are now recognized as single tokens.
   (They are the names of new versions of the left and right shift operators
   that expect the shift amount to be specified by an unsigned integer;
@@ -78,8 +81,8 @@ Changes that may break compatibility
 * We have changed the meaning of `mmc --make name.cs`.
 
   The `mmc --make` target `name.cs` now means "build the .cs file
-  of the named module". To build all the .c files of a program,
-  use the target `program.all_cs`.
+  of the named module". To build all the .c files of a program, which was
+  the previous meaning of that target, use the target `program.all_cs`.
 
 * Some (undocumented) mmake variables in compiler-generated `.dv` files
   have been renamed:
@@ -149,6 +152,13 @@ Changes to the Mercury standard library
     - pred `write_bitmap/4`
     - pred `write_bitmap_range/5`
     - pred `write_bitmap_range/6`
+
+### Changes to the `bt_array` module
+
+* The following predicates have had the order of their arguments changed:
+
+    - pred `resize/4`
+    - pred `shrink/4`
 
 ### Changes to the `builtin` module
 
@@ -1266,6 +1276,19 @@ Changes to the Mercury standard library
 
     - func `version_array_to_doc/1`
                        (replacement: `pretty_printer.version_array_to_doc`/1)
+
+### Changes to the `version_array2d` module
+
+* The following predicate has been added:
+
+    - pred `lookup/4`
+
+### Changes to the `version_bitmap` module
+
+* The following predicates have been added:
+
+    - pred `get_bit/3`
+    - pred `set_bit/4`
 
 ### Changes to the `version_hash_table` module
 

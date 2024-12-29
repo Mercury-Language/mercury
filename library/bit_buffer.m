@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2009 The University of Melbourne
-% Copyright (C) 2014, 2018 The Mercury team.
+% Copyright (C) 2014, 2018, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 % File: bit_buffer.m.
@@ -103,26 +103,25 @@
     %
 :- type bit_buffer(Stream, State, Error)
     --->    bit_buffer(
-                mer_bitmap :: bitmap,
-                mer_pos :: bit_index,
-                mer_size :: num_bits,
+                mer_bitmap          :: bitmap,
+                mer_pos             :: bit_index,
+                mer_size            :: num_bits,
 
-                mer_use_stream :: bool,
+                mer_use_stream      :: bool,
 
-                mer_stream :: Stream,
-                mer_state :: State,
+                mer_stream          :: Stream,
+                mer_state           :: State,
 
                 % For write buffers only.
-                % If we're not writing to a stream, keep a list of filled
+                % If we are not writing to a stream, keep a list of filled
                 % bitmaps in reverse order. These will be concatenated into
                 % a single bitmap by finalize_to_bitmap.
                 %
-                mer_filled_bitmaps :: list(bitmap),
+                mer_filled_bitmaps  :: list(bitmap),
 
                 % For read buffers only. The first error found when reading
                 % from a stream. Subsequent calls will return this error.
-                %
-                mer_read_status :: stream.res(Error)
+                mer_read_status     :: stream.res(Error)
             ).
 
 :- type bit_buffer(Stream, State) == bit_buffer(Stream, State, {}).
@@ -132,8 +131,8 @@
 :- mode bit_buffer_di == in.
 :- mode bit_buffer_uo == out.
 
-    % Allocating memory for every read or write would be bad, so
-    % we manually perform destructive update in C.
+    % Allocating memory for every read or write would be bad,
+    % so we manually perform destructive update in C.
     %
 :- pragma foreign_decl("C", "
 typedef struct {

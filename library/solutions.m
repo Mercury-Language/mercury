@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007 The University of Melbourne.
-% Copyright (C) 2014-2021 The Mercury team.
+% Copyright (C) 2014-2021, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -51,7 +51,7 @@
 :- mode unsorted_solutions(in(pred(out) is nondet), out)
     is cc_multi.
 
-:- func aggregate(pred(T), func(T, U) = U, U) = U.
+:- func aggregate(pred(T), func(T, A) = A, A) = A.
 :- mode aggregate(in(pred(out) is multi), in(func(in, in) = out is det), in)
     = out is det.
 :- mode aggregate(in(pred(out) is nondet), in(func(in, in) = out is det), in)
@@ -65,7 +65,7 @@
     %   solutions(Generator, Solutions),
     %   list.foldl(AccumulatorPred, Solutions, Acc0, Acc).
     %
-:- pred aggregate(pred(T), pred(T, U, U), U, U).
+:- pred aggregate(pred(T), pred(T, A, A), A, A).
 :- mode aggregate(in(pred(out) is multi),
     in(pred(in, in, out) is det), in, out) is det.
 :- mode aggregate(in(pred(out) is multi),
@@ -83,7 +83,7 @@
     %   solutions(Generator, Solutions),
     %   list.foldl2(AccumulatorPred, Solutions, AccA0, AccA, AccB0, AccB).
     %
-:- pred aggregate2(pred(T), pred(T, U, U, V, V), U, U, V, V).
+:- pred aggregate2(pred(T), pred(T, A, A, B, B), A, A, B, B).
 :- mode aggregate2(in(pred(out) is multi),
     in(pred(in, in, out, in, out) is det), in, out, in, out) is det.
 :- mode aggregate2(in(pred(out) is multi),
@@ -105,7 +105,7 @@
     % AccumulatorPred for each solution as it is obtained, rather than
     % first building a list of all the solutions.
     %
-:- pred unsorted_aggregate(pred(T), pred(T, U, U), U, U).
+:- pred unsorted_aggregate(pred(T), pred(T, A, A), A, A).
 :- mode unsorted_aggregate(in(pred(out) is multi),
     in(pred(in, in, out) is det), in, out) is cc_multi.
 :- mode unsorted_aggregate(in(pred(out) is multi),
@@ -139,7 +139,7 @@
     % AccumulatorPred for each solution as it is obtained, rather than
     % first building a list of all the solutions.
     %
-:- pred unsorted_aggregate2(pred(T), pred(T, U, U, V, V), U, U, V, V).
+:- pred unsorted_aggregate2(pred(T), pred(T, A, A, B, B), A, A, B, B).
 :- mode unsorted_aggregate2(in(pred(out) is multi),
     in(pred(in, in, out, in, out) is det), in, out, in, out) is cc_multi.
 :- mode unsorted_aggregate2(in(pred(out) is multi),
@@ -287,7 +287,7 @@ assert_num_solutions(_Pred::in(pred(out) is nondet), List::in, List::out).
 % solutions for this, using the second argument to aggregate them however the
 % user wishes. This is basically a generalization of solutions/2.
 
-:- pred builtin_aggregate(pred(T), pred(T, U, U), U, U).
+:- pred builtin_aggregate(pred(T), pred(T, A, A), A, A).
 :- mode builtin_aggregate(in(pred(out) is multi),
     in(pred(in, in, out) is det), in, out) is cc_multi.
 :- mode builtin_aggregate(in(pred(out) is multi),
@@ -416,7 +416,7 @@ builtin_aggregate(GeneratorPred, CollectorPred, !Acc) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred builtin_aggregate2(pred(T), pred(T, U, U, V, V), U, U, V, V).
+:- pred builtin_aggregate2(pred(T), pred(T, A, A, B, B), A, A, B, B).
 :- mode builtin_aggregate2(in(pred(out) is multi),
     in(pred(in, in, out, in, out) is det),
     in, out, in, out) is cc_multi.

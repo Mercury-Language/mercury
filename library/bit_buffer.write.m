@@ -2,9 +2,10 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2011 The University of Melbourne
-% Copyright (C) 2014-2016, 2018 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
+%
 % File: bit_buffer.write.m.
 % Main author: stayl.
 % Stability: low.
@@ -51,7 +52,7 @@
     % new(NumBytes):
     %
     % Create a buffer which collects all of the bits written, and does
-    % not write them to a stream.  The bits are collected in chunks of
+    % not write them to a stream. The bits are collected in chunks of
     % size NumBytes bytes, and are written to a bitmap by
     % `finalize_to_bitmap/1'.
     %
@@ -201,9 +202,8 @@ put_bits(Bits, NumBits, write_buffer(!.Buffer), write_buffer(!:Buffer)) :-
     BM0 = !.Buffer ^ bitmap,
     Pos0 = !.Buffer ^ pos,
 
-    % We always make sure there is enough room in the buffer for a full
-    % word to be written, so this can't run off the end of the bitmap.
-    %
+    % We always make sure there is enough room in the buffer for a full word
+    % to be written, so this can't run off the end of the bitmap.
     BM = BM0 ^ bits(Pos0, NumBits) := Bits,
     Pos = Pos0 + NumBits,
     set_bitmap(BM, Pos, !Buffer),
@@ -219,7 +219,7 @@ put_bitmap(BM, Index, NumBits,
         write_buffer(!.Buffer), write_buffer(!:Buffer)) :-
     put_bitmap_2(BM, Index, NumBits, !Buffer).
 
-    % XXX If we're writing to a list of bitmaps and the user doesn't want
+    % XXX If we are writing to a list of bitmaps and the user doesn't want
     % to write to the bitmap again, we should just add the bitmap passed
     % by the user to the list of filled bitmaps, if the current buffer
     % bitmap is full enough that we're not wasting too much space.
@@ -315,7 +315,6 @@ finalize_to_bitmap(write_buffer(Buffer)) = !:BM :-
     !:BM = bitmap.init(NumBits),
 
     % Copy out the filled bitmaps starting at the end of the result bitmap.
-    %
     LastBM = shrink_without_copying(Buffer ^ bitmap, Buffer ^ pos),
     copy_out_bitmap(LastBM, NumBits, Index, !BM),
     list.foldl2(copy_out_bitmap, Buffer ^ filled_bitmaps, Index, _, !BM).

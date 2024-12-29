@@ -91,10 +91,10 @@ test(Xs, !IO) :-
     bt_array.set(B0, 8, 100, B1),
     bt_array.to_list(B1, Bs1),
     write_message_int_list("B1: ", Bs1, !IO),
-    bt_array.resize(B1, 0, 14, 1000, B2),
+    bt_array.resize(0, 14, 1000, B1, B2),
     bt_array.to_list(B2, Bs2),
     write_message_int_list("B2: ", Bs2, !IO),
-    bt_array.shrink(B2, 0, 9, B3),
+    bt_array.shrink(0, 9, B2, B3),
     bt_array.to_list(B3, Bs3),
     write_message_int_list("B3: ", Bs3, !IO),
 

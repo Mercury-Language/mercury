@@ -176,7 +176,8 @@
 
 :- pragma foreign_decl("C", "
 #ifndef MR_HIGHLEVEL_CODE
-  #if (!defined(MR_EXEC_TRACE) && !defined(MR_DEEP_PROFILING)) || !defined(MR_USE_GCC_NONLOCAL_GOTOS)
+  #if (!defined(MR_EXEC_TRACE) && !defined(MR_DEEP_PROFILING)) \
+        || !defined(MR_USE_GCC_NONLOCAL_GOTOS)
     // In calling thread.yield, semaphore.wait or semaphore.signal,
     // the calling context may need to suspend and yield to another context.
     // This is implemented by setting the resume address of the context to
@@ -222,8 +223,8 @@ import jmercury.runtime.Task;
 
     % A descriptor for a (detached) Mercury thread.
     % thread_desc values are not publicly exported, but they may help with
-    % debugging by printing and/or comparing of 'thread' values. There is no
-    % guarantee that a thread descriptor remains unique after a thread
+    % debugging by printing and/or comparing of 'thread' values. There is
+    % no guarantee that a thread descriptor remains unique after a thread
     % terminates, as the memory address used to derive the descriptor
     % may be reused.
     %
@@ -234,7 +235,8 @@ import jmercury.runtime.Task;
 :- type thread_handle.
 :- pragma foreign_type("C", thread_handle, "ML_ThreadHandle").
 :- pragma foreign_type("C#", thread_handle, "System.Threading.Thread").
-:- pragma foreign_type("Java", thread_handle, "jmercury.runtime.MercuryThread").
+:- pragma foreign_type("Java", thread_handle,
+    "jmercury.runtime.MercuryThread").
 
 %---------------------------------------------------------------------------%
 

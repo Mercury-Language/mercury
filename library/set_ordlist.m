@@ -319,15 +319,15 @@
 
     % Return the set of items for which the given predicate succeeds.
     %
-:- func filter(pred(T1), set_ordlist(T1)) = set_ordlist(T1).
+:- func filter(pred(T), set_ordlist(T)) = set_ordlist(T).
 :- mode filter(in(pred(in) is semidet), in) = out is det.
-:- pred filter(pred(T1), set_ordlist(T1), set_ordlist(T1)).
+:- pred filter(pred(T), set_ordlist(T), set_ordlist(T)).
 :- mode filter(in(pred(in) is semidet), in, out) is det.
 
     % Return the set of items for which the given predicate succeeds, and the
     % set of items for which it fails.
     %
-:- pred filter(pred(T1), set_ordlist(T1), set_ordlist(T1), set_ordlist(T1)).
+:- pred filter(pred(T), set_ordlist(T), set_ordlist(T), set_ordlist(T)).
 :- mode filter(in(pred(in) is semidet), in, out, out) is det.
 
 :- func filter_map(func(T1) = T2, set_ordlist(T1)) = set_ordlist(T2).
@@ -337,8 +337,8 @@
 
 :- func map(func(T1) = T2, set_ordlist(T1)) = set_ordlist(T2).
 
-:- func fold(func(T1, T2) = T2, set_ordlist(T1), T2) = T2.
-:- pred fold(pred(T1, T2, T2), set_ordlist(T1), T2, T2).
+:- func fold(func(T, A) = A, set_ordlist(T), A) = A.
+:- pred fold(pred(T, A, A), set_ordlist(T), A, A).
 :- mode fold(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode fold(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode fold(in(pred(in, di, uo) is det), in, di, uo) is det.
@@ -346,8 +346,8 @@
 :- mode fold(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
 :- mode fold(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
-:- func foldl(func(T1, T2) = T2, set_ordlist(T1), T2) = T2.
-:- pred foldl(pred(T1, T2, T2), set_ordlist(T1), T2, T2).
+:- func foldl(func(T, A) = A, set_ordlist(T), A) = A.
+:- pred foldl(pred(T, A, A), set_ordlist(T), A, A).
 :- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode foldl(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldl(in(pred(in, di, uo) is det), in, di, uo) is det.
@@ -355,8 +355,8 @@
 :- mode foldl(in(pred(in, mdi, muo) is semidet), in, mdi, muo) is semidet.
 :- mode foldl(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
-:- pred fold2(pred(T1, T2, T2, T3, T3), set_ordlist(T1),
-    T2, T2, T3, T3).
+:- pred fold2(pred(T, A, A, B, B), set_ordlist(T),
+    A, A, B, B).
 :- mode fold2(in(pred(in, in, out, in, out) is det), in,
     in, out, in, out) is det.
 :- mode fold2(in(pred(in, in, out, mdi, muo) is det), in,
@@ -370,8 +370,8 @@
 :- mode fold2(in(pred(in, in, out, di, uo) is semidet), in,
     in, out, di, uo) is semidet.
 
-:- pred foldl2(pred(T1, T2, T2, T3, T3), set_ordlist(T1),
-    T2, T2, T3, T3).
+:- pred foldl2(pred(T, A, A, B, B), set_ordlist(T),
+    A, A, B, B).
 :- mode foldl2(in(pred(in, in, out, in, out) is det), in,
     in, out, in, out) is det.
 :- mode foldl2(in(pred(in, in, out, mdi, muo) is det), in,
@@ -385,8 +385,8 @@
 :- mode foldl2(in(pred(in, in, out, di, uo) is semidet), in,
     in, out, di, uo) is semidet.
 
-:- pred fold3(pred(T1, T2, T2, T3, T3, T4, T4),
-    set_ordlist(T1), T2, T2, T3, T3, T4, T4).
+:- pred fold3(pred(T, A, A, B, B, C, C),
+    set_ordlist(T), A, A, B, B, C, C).
 :- mode fold3(in(pred(in, in, out, in, out, in, out) is det), in,
     in, out, in, out, in, out) is det.
 :- mode fold3(in(pred(in, in, out, in, out, mdi, muo) is det), in,
@@ -400,8 +400,8 @@
 :- mode fold3(in(pred(in, in, out, in, out, di, uo) is semidet), in,
     in, out, in, out, di, uo) is semidet.
 
-:- pred foldl3(pred(T1, T2, T2, T3, T3, T4, T4),
-    set_ordlist(T1), T2, T2, T3, T3, T4, T4).
+:- pred foldl3(pred(T, A, A, B, B, C, C),
+    set_ordlist(T), A, A, B, B, C, C).
 :- mode foldl3(in(pred(in, in, out, in, out, in, out) is det), in,
     in, out, in, out, in, out) is det.
 :- mode foldl3(in(pred(in, in, out, in, out, mdi, muo) is det), in,
@@ -415,8 +415,8 @@
 :- mode foldl3(in(pred(in, in, out, in, out, di, uo) is semidet), in,
     in, out, in, out, di, uo) is semidet.
 
-:- pred fold4(pred(T1, T2, T2, T3, T3, T4, T4, T5, T5),
-    set_ordlist(T1), T2, T2, T3, T3, T4, T4, T5, T5).
+:- pred fold4(pred(T, A, A, B, B, C, C, D, D),
+    set_ordlist(T), A, A, B, B, C, C, D, D).
 :- mode fold4(
     in(pred(in, in, out, in, out, in, out, in, out) is det), in,
     in, out, in, out, in, out, in, out) is det.
@@ -436,8 +436,8 @@
     in(pred(in, in, out, in, out, in, out, di, uo) is semidet), in,
     in, out, in, out, in, out, di, uo) is semidet.
 
-:- pred foldl4(pred(T1, T2, T2, T3, T3, T4, T4, T5, T5),
-    set_ordlist(T1), T2, T2, T3, T3, T4, T4, T5, T5).
+:- pred foldl4(pred(T, A, A, B, B, C, C, D, D),
+    set_ordlist(T), A, A, B, B, C, C, D, D).
 :- mode foldl4(
     in(pred(in, in, out, in, out, in, out, in, out) is det), in,
     in, out, in, out, in, out, in, out) is det.
@@ -458,8 +458,8 @@
     in, out, in, out, in, out, di, uo) is semidet.
 
 :- pred fold5(
-    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6),
-    set_ordlist(T1), T2, T2, T3, T3, T4, T4, T5, T5, T6, T6).
+    pred(T, A, A, B, B, C, C, D, D, E, E),
+    set_ordlist(T), A, A, B, B, C, C, D, D, E, E).
 :- mode fold5(
     in(pred(in, in, out, in, out, in, out, in, out, in, out) is det), in,
     in, out, in, out, in, out, in, out, in, out) is det.
@@ -480,8 +480,8 @@
     in, out, in, out, in, out, in, out, di, uo) is semidet.
 
 :- pred foldl5(
-    pred(T1, T2, T2, T3, T3, T4, T4, T5, T5, T6, T6),
-    set_ordlist(T1), T2, T2, T3, T3, T4, T4, T5, T5, T6, T6).
+    pred(T, A, A, B, B, C, C, D, D, E, E),
+    set_ordlist(T), A, A, B, B, C, C, D, D, E, E).
 :- mode foldl5(
     in(pred(in, in, out, in, out, in, out, in, out, in, out) is det), in,
     in, out, in, out, in, out, in, out, in, out) is det.
@@ -957,9 +957,9 @@ divide_by_set(sol(DivideBySet), sol(Set), sol(TruePart), sol(FalsePart)) :-
     list.reverse(RevTruePart, TruePart),
     list.reverse(RevFalsePart, FalsePart).
 
-:- pred divide_by_set_loop(list(T1)::in, list(T1)::in,
-    list(T1)::in, list(T1)::out,
-    list(T1)::in, list(T1)::out) is det.
+:- pred divide_by_set_loop(list(T)::in, list(T)::in,
+    list(T)::in, list(T)::out,
+    list(T)::in, list(T)::out) is det.
 
 divide_by_set_loop([], [], !RevTrue, !RevFalse).
 divide_by_set_loop([], [H | T], !RevTrue, !RevFalse) :-

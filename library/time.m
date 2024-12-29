@@ -5,7 +5,7 @@
 % "Feel free to use this code or parts of it any way you want."
 %
 % Some portions are Copyright (C) 1999-2007,2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2023 The Mercury team.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -44,8 +44,7 @@
                 clock_t     % tms_cstime: system time of children
             ).
 
-    % The `time_t' type is an abstract type that represents
-    % calendar times.
+    % The `time_t' type is an abstract type that represents calendar times.
     %
 :- type time_t.
 

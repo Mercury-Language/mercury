@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2021-2022 The Mercury team.
+% Copyright (C) 2014-2018, 2021-2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -361,9 +361,9 @@
     % (in sorted order) and an accumulator (with the initial value of Start),
     % and returns the final value. Takes O(card(Set)) time.
     %
-:- func foldl(func(T, U) = U, tree_bitset(T), U) = U <= uenum(T).
+:- func foldl(func(T, A) = A, tree_bitset(T), A) = A <= uenum(T).
 
-:- pred foldl(pred(T, U, U), tree_bitset(T), U, U) <= uenum(T).
+:- pred foldl(pred(T, A, A), tree_bitset(T), A, A) <= uenum(T).
 :- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode foldl(in(pred(in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldl(in(pred(in, di, uo) is det), in, di, uo) is det.
@@ -375,7 +375,7 @@
 :- mode foldl(in(pred(in, di, uo) is cc_multi), in, di, uo) is cc_multi.
 :- mode foldl(in(pred(in, in, out) is cc_multi), in, in, out) is cc_multi.
 
-:- pred foldl2(pred(T, U, U, V, V), tree_bitset(T), U, U, V, V) <= uenum(T).
+:- pred foldl2(pred(T, A, A, B, B), tree_bitset(T), A, A, B, B) <= uenum(T).
 :- mode foldl2(in(pred(in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
 :- mode foldl2(in(pred(in, in, out, di, uo) is det),
@@ -397,9 +397,9 @@
     % (in reverse sorted order) and an accumulator (with the initial value
     % of Start), and returns the final value. Takes O(card(Set)) time.
     %
-:- func foldr(func(T, U) = U, tree_bitset(T), U) = U <= uenum(T).
+:- func foldr(func(T, A) = A, tree_bitset(T), A) = A <= uenum(T).
 
-:- pred foldr(pred(T, U, U), tree_bitset(T), U, U) <= uenum(T).
+:- pred foldr(pred(T, A, A), tree_bitset(T), A, A) <= uenum(T).
 :- mode foldr(in(pred(in, di, uo) is det), in, di, uo) is det.
 :- mode foldr(in(pred(in, in, out) is det), in, in, out) is det.
 :- mode foldr(in(pred(in, in, out) is semidet), in, in, out) is semidet.
@@ -407,7 +407,7 @@
 :- mode foldr(in(pred(in, di, uo) is cc_multi), in, di, uo) is cc_multi.
 :- mode foldr(in(pred(in, in, out) is cc_multi), in, in, out) is cc_multi.
 
-:- pred foldr2(pred(T, U, U, V, V), tree_bitset(T), U, U, V, V) <= uenum(T).
+:- pred foldr2(pred(T, A, A, B, B), tree_bitset(T), A, A, B, B) <= uenum(T).
 :- mode foldr2(in(pred(in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
 :- mode foldr2(in(pred(in, in, out, di, uo) is det),
@@ -3791,7 +3791,7 @@ foldl(P, Set, !Acc) :-
         do_foldl_pred(P, InteriorNodes, !Acc)
     ).
 
-:- pred do_foldl_pred(pred(T, U, U), list(interior_node), U, U) <= uenum(T).
+:- pred do_foldl_pred(pred(T, A, A), list(interior_node), A, A) <= uenum(T).
 :- mode do_foldl_pred(in(pred(in, in, out) is det),
     in, in, out) is det.
 :- mode do_foldl_pred(in(pred(in, mdi, muo) is det),
@@ -3827,7 +3827,7 @@ do_foldl_pred(P, [H | T], !Acc) :-
     ),
     do_foldl_pred(P, T, !Acc).
 
-:- pred leaf_foldl_pred(pred(T, U, U), list(leaf_node), U, U) <= uenum(T).
+:- pred leaf_foldl_pred(pred(T, A, A), list(leaf_node), A, A) <= uenum(T).
 :- mode leaf_foldl_pred(in(pred(in, in, out) is det),
     in, in, out) is det.
 :- mode leaf_foldl_pred(in(pred(in, mdi, muo) is det),
@@ -3869,7 +3869,7 @@ foldl2(P, Set, !AccA, !AccB) :-
         do_foldl2_pred(P, InteriorNodes, !AccA, !AccB)
     ).
 
-:- pred do_foldl2_pred(pred(T, U, U, V, V), list(interior_node), U, U, V, V)
+:- pred do_foldl2_pred(pred(T, A, A, B, B), list(interior_node), A, A, B, B)
     <= uenum(T).
 :- mode do_foldl2_pred(in(pred(in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
@@ -3902,7 +3902,7 @@ do_foldl2_pred(P, [H | T], !AccA, !AccB) :-
     ),
     do_foldl2_pred(P, T, !AccA, !AccB).
 
-:- pred leaf_foldl2_pred(pred(T, U, U, V, V), list(leaf_node), U, U, V, V)
+:- pred leaf_foldl2_pred(pred(T, A, A, B, B), list(leaf_node), A, A, B, B)
     <= uenum(T).
 :- mode leaf_foldl2_pred(in(pred(in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
@@ -3948,7 +3948,7 @@ foldr(P, Set, !Acc) :-
         do_foldr_pred(P, InteriorNodes, !Acc)
     ).
 
-:- pred do_foldr_pred(pred(T, U, U), list(interior_node), U, U) <= uenum(T).
+:- pred do_foldr_pred(pred(T, A, A), list(interior_node), A, A) <= uenum(T).
 :- mode do_foldr_pred(in(pred(in, di, uo) is det),
     in, di, uo) is det.
 :- mode do_foldr_pred(in(pred(in, in, out) is det),
@@ -3979,7 +3979,7 @@ do_foldr_pred(P, [H | T], !Acc) :-
         do_foldr_pred(P, InteriorNodes, !Acc)
     ).
 
-:- pred leaf_foldr_pred(pred(T, U, U), list(leaf_node), U, U) <= uenum(T).
+:- pred leaf_foldr_pred(pred(T, A, A), list(leaf_node), A, A) <= uenum(T).
 :- mode leaf_foldr_pred(in(pred(in, di, uo) is det),
     in, di, uo) is det.
 :- mode leaf_foldr_pred(in(pred(in, in, out) is det),
@@ -4016,7 +4016,7 @@ foldr2(P, Set, !AccA, !AccB) :-
         do_foldr2_pred(P, InteriorNodes, !AccA, !AccB)
     ).
 
-:- pred do_foldr2_pred(pred(T, U, U, V, V), list(interior_node), U, U, V, V)
+:- pred do_foldr2_pred(pred(T, A, A, B, B), list(interior_node), A, A, B, B)
     <= uenum(T).
 :- mode do_foldr2_pred(in(pred(in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
@@ -4052,7 +4052,7 @@ do_foldr2_pred(P, [H | T], !AccA, !AccB) :-
         do_foldr2_pred(P, InteriorNodes, !AccA, !AccB)
     ).
 
-:- pred leaf_foldr2_pred(pred(T, U, U, V, V), list(leaf_node), U, U, V, V)
+:- pred leaf_foldr2_pred(pred(T, A, A, B, B), list(leaf_node), A, A, B, B)
     <= uenum(T).
 :- mode leaf_foldr2_pred(in(pred(in, di, uo, di, uo) is det),
     in, di, uo, di, uo) is det.
@@ -4090,8 +4090,8 @@ leaf_foldr2_pred(P, [H | T], !AccA, !AccB) :-
 
     % Do a binary search for the 1 bits in an int.
     %
-:- pred fold_bits(fold_direction, pred(T, U, U),
-    uint, uint, uint, U, U) <= uenum(T).
+:- pred fold_bits(fold_direction, pred(T, A, A),
+    uint, uint, uint, A, A) <= uenum(T).
 :- mode fold_bits(in, in(pred(in, in, out) is det),
     in, in, in, in, out) is det.
 :- mode fold_bits(in, in(pred(in, mdi, muo) is det),
@@ -4142,8 +4142,8 @@ fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
         )
     ).
 
-:- pred fold2_bits(fold_direction, pred(T, U, U, V, V),
-    uint, uint, uint, U, U, V, V) <= uenum(T).
+:- pred fold2_bits(fold_direction, pred(T, A, A, B, B),
+    uint, uint, uint, A, A, B, B) <= uenum(T).
 :- mode fold2_bits(in, in(pred(in, di, uo, di, uo) is det),
     in, in, in, di, uo, di, uo) is det.
 :- mode fold2_bits(in, in(pred(in, in, out, di, uo) is det),

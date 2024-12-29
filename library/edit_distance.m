@@ -22,7 +22,7 @@
 %   candidate sequences, the candidate that is closest to a given query
 %   sequence.
 %
-% Doing a second job with the second problem requires a mechanism that
+% Doing a good job with the second problem requires a mechanism that
 % allows callers to specify that a transposition of two elements (such as
 % replacing "bc" with "cb", thus transforming e.g. "abcd" into "acbd")
 % has a different cost than deleting one element in one place in the sequence
@@ -109,9 +109,9 @@
     % If this is not the case, i.e. if there are some target sequences
     % whose distance is less than or equal to MaxEditDistance, this predicate
     % will succeed, and will do the same job as find_closest_seqs, but it is
-    % intended to do more quickly, the efficiency gain coming from stopping
+    % intended to do so more quickly, the efficiency gain coming from stopping
     % the computation of exact edit distances as soon as it becomes known
-    % that the distance would exceed MaxEditDistance.
+    % that the exact distance would exceed MaxEditDistance.
     %
 :- pred find_best_close_enough_seqs(edit_params(T)::in, list(T)::in,
     list(list(T))::in, uint::in, uint::out,

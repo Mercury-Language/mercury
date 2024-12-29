@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1999, 2001-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2022 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -90,12 +90,13 @@
 % option, that predicate will report an error when processing a command line
 % that contains that option.
 %
-% Boolean (i.e. bool or bool_special), maybe_int, maybe_string and
-% accumulating options can be negated. Negating an accumulating option
-% empties the accumulated list of strings. Single-character options
-% can be negated by following them with another `-', e.g. `-x-' will negate
-% the `-x' option. Long options can be negated by preceding them with `--no-',
-% e.g. `--no-foo' will negate the `--foo' option.
+% Boolean (i.e. bool or bool_special), maybe_int, maybe_string,
+% maybe_string_special  and accumulating options can be negated.
+% Negating an accumulating option empties the accumulated list of strings.
+% Single-character options can be negated by following them with another `-',
+% for example `-x-' will negate the `-x' option. Long options can be negated
+% by preceding them with `--no-', for example `--no-foo' will negate
+% the `--foo' option.
 %
 % Note that arguments following an option may be separated from the option by
 % either whitespace or the equals character `=', so that e.g. `--foo 3' and
@@ -338,7 +339,7 @@
             % The argument gives the option as it appeared on the command line.
 
     ;       option_error(OptionType, string, option_error_reason).
-            % An error occurred with a specific option. The first  argument
+            % An error occurred with a specific option. The first argument
             % identifies the option enumeration value; the second identifies
             % the string that appeared on the command line for that option;
             % the third argument describes the nature of the error with that
@@ -973,12 +974,13 @@ process_arguments(ShortOptionPred, LongOptionPred, SpecialHandler,
     %   values, looking for file_special options. When it finds one, it
     %   replaces that file_special option with the option sequence in the
     %   file named in the option's argument, *after* invoking itself on that
-    %   option sequence. This expand out all file_special options, however
-    %   deeply nested inside other file_special options.
+    %   option sequence. This expands out *all* file_special options,
+    %   regardless of how deeply they may be nested inside other
+    %   file_special options.
     %
     % - In phase 3, we process the list of recorded option values as expanded
-    %   out by expand_file_specials, updating the option table and (if relevant
-    %   !UserData as we go, and filling in !OptionsSet.
+    %   out by expand_file_specials, updating the option table and !UserData
+    %   (if applicable), and filling in !OptionsSet, as we go.
     %
     % All three phases may find and report errors. At the moment,
     % we go on to second and third phase only if the earlier phases

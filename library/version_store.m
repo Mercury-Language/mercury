@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2011 The University of Melbourne.
-% Copyright (C) 2013-2016, 2018, 2022 The Mercury team.
+% Copyright (C) 2013-2016, 2018, 2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -58,31 +58,36 @@
 :- pred copy_mutvar(mutvar(T, S)::in, mutvar(T, S)::out,
     version_store(S)::in, version_store(S)::out) is det.
 
-    % VS ^ elem(Mutvar) returns the element referenced by Mutvar in
-    % the version store.
+    % lookup(VS, MutVar) = Element:
+    % VS ^ elem(Mutvar) = Element:
     %
-:- func version_store(S) ^ elem(mutvar(T, S)) = T.
-
-    % lookup(VS, Mutvar) = VS ^ elem(Mutvar).
-    %
-    % A predicate version is also provided.
+    % Return the Element referenced by Mutvar in the version store VS.
     %
 :- func lookup(version_store(S), mutvar(T, S)) = T.
+% NOTE_TO_IMPLEMENTORS: XXX There should be pred version of lookup.
+:- func elem(mutvar(T, S), version_store(S)) = T.
+
+    % get_mutvar(Mutvar, Element, VS, VS):
+    %
+    % Return the Element referenced by Mutvar in the version store VS,
+    % and also return the unchanged version store. This version of lookup
+    % may be useful in code using state variables.
+    %
 :- pred get_mutvar(mutvar(T, S)::in, T::out,
     version_store(S)::in, version_store(S)::out) is det.
 
-    % ( VS ^ elem(Mutvar) := X ) updates the version store so that
-    % Mutvar now refers to value X.
+    % set(VS0, Mutvar, X) = VS:
+    % set_mutvar(Mutvar, X, VS0, VS):
+    % VS0 ^ elem(Mutvar) := X = VS:
     %
-:- func ( version_store(S) ^ elem(mutvar(T, S)) := T ) = version_store(S).
-
-    % set(VS, Mutvar, X) = ( VS ^ elem(Mutvar) := X ).
-    %
-    % A predicate version is also provided.
+    % Update the version store VS0 so that Mutvar now refers to value X,
+    % returning the new version store as VS.
     %
 :- func set(version_store(S), mutvar(T, S), T) = version_store(S).
 :- pred set_mutvar(mutvar(T, S)::in, T::in,
     version_store(S)::in, version_store(S)::out) is det.
+% NOTE_TO_IMPLEMENTORS: XXX The pred version should be "set", not "set_mutvar".
+:- func 'elem :='(mutvar(T, S), version_store(S), T) = version_store(S).
 
     % unsafe_rewind(VS) produces a version of VS for which all accesses
     % are O(1). Invoking this predicate renders undefined VS and all later
@@ -181,10 +186,10 @@ copy_mutvar(Mutvar0, Mutvar, VS0, VS) :-
 
 %---------------------------------------------------------------------------%
 
-VS ^ elem(Mutvar) = Value :-
+lookup(VS, Mutvar) = Value :-
     version_store.get_mutvar(Mutvar, Value, VS, _VS).
 
-lookup(VS, Mutvar) = Value :-
+elem(Mutvar, VS) = Value :-
     version_store.get_mutvar(Mutvar, Value, VS, _VS).
 
 get_mutvar(mutvar(I), Value, VS, VS) :-
@@ -194,14 +199,14 @@ get_mutvar(mutvar(I), Value, VS, VS) :-
 
 %---------------------------------------------------------------------------%
 
-VS0 ^ elem(Mutvar) := Value = VS :-
-    version_store.set_mutvar(Mutvar, Value, VS0, VS).
-
 set(VS0, Mutvar, Value) = VS :-
     version_store.set_mutvar(Mutvar, Value, VS0, VS).
 
 set_mutvar(mutvar(I), Value, version_store(VA0), version_store(VA)) :-
     version_array.set(I, univ(Value), VA0, VA).
+
+'elem :='(Mutvar, VS0, Value) = VS :-
+    version_store.set_mutvar(Mutvar, Value, VS0, VS).
 
 %---------------------------------------------------------------------------%
 

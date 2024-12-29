@@ -5,6 +5,7 @@
 % Copyright (C) 2014-2015, 2018-2019, 2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
+%
 % File: bit_buffer.read.m.
 % Main author: stayl.
 % Stability: low.
@@ -14,7 +15,7 @@
 % to `bulk_get', then satisfying bit-oriented requests from the buffer.
 %
 % Return values of `error(...)' are only used for errors in the stream
-% being read.  Once an error value has been returned, all future calls
+% being read. Once an error value has been returned, all future calls
 % will return that error.
 %
 % Bounds errors or invalid argument errors (for example a read request
@@ -22,12 +23,12 @@
 % Requests triggering an exception in this way will not change the state
 % of the stream.
 %
-% CAVEAT: the user is referred to the documentation in the header
-% of array.m regarding programming with unique objects (the compiler
-% does not currently recognise them, hence we are forced to use
-% non-unique modes until the situation is rectified; this places
-% a small burden on the programmer to ensure the correctness of his
-% code that would otherwise be assured by the compiler.)
+% CAVEAT: the user is referred to the documentation at the top of array.m
+% regarding programming with unique objects (the compiler does not currently
+% recognise them, hence we are forced to use non-unique modes until
+% the situation is rectified; this places a small burden on the programmer
+% to ensure the correctness of his code that would otherwise be assured
+% by the compiler.)
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -55,7 +56,7 @@
     % new(NumBytes, Stream, State) creates a buffer which will read from
     % the stream specified by Stream and State in chunks of NumBytes bytes.
     % `NumBytes' must at least the size of a Mercury int, given by
-    % int.bits_per_int.  If it is less, the size of an int will be used
+    % int.bits_per_int. If it is less, the size of an int will be used
     % instead.
     %
 :- func new(num_bytes, Stream, State) = read_buffer(Stream, State, Error)
@@ -197,8 +198,8 @@
 
 :- import_module require.
 
-    % If an operation reports an error, it must set the read_error
-    % field so that all further operations report an error as well.
+    % If an operation reports an error, it must set the read_error field
+    % so that all further operations report an error as well.
     % This is done at the site the error is discovered; places which
     % just convert the type of an error value don't need to set the
     % read_error field.
@@ -209,21 +210,19 @@
 
 new(NumBytes, Stream, State) = Buffer :-
     % We store Size + bits_per_int bits in the buffer. The first word
-    % of the buffer contains the bits that were in the buffer when it
-    % was last refilled.
+    % of the buffer contains the bits that were in the buffer when it was
+    % last refilled.
     %
     % We require the buffer size to be at least bits_per_int so that
     % a call to `get_bits' can always be satisfied with a single buffer refill.
     % Allowing smaller buffer sizes would complicate the code for a case
     % that shouldn't occur in practice anyway.
-    %
     SizeInBits = NumBytes * bits_per_byte,
     ChunkSize = int.max(SizeInBits, bits_per_int),
     BMSize = ChunkSize + bits_per_int,
     BM = bitmap.init(BMSize, no),
 
     % Start at the end of the buffer to force a fill on the first read.
-    %
     Pos = BMSize,
     Buffer = read_buffer(new_buffer(BM, Pos, BMSize, yes, Stream, State)).
 
@@ -409,13 +408,9 @@ recursively_get_bitmap(!.Index, !.NumBits, !BM, !NumBitsRead,
         % Take the bits that are already in the buffer.
         copy_buffered_bits_to_bitmap(!Index, !NumBits, !BM,
             !NumBitsRead, !Buffer),
-        ( if
-            !.NumBits = 0
-        then
+        ( if !.NumBits = 0 then
             Result = ok
-        else if
-            !.Index `unchecked_rem` bits_per_byte = 0
-        then
+        else if !.Index `unchecked_rem` bits_per_byte = 0 then
             % We can do a bulk_get straight into the result bitmap.
             bulk_get_into_result_bitmap(!Index, !NumBits, !BM, !NumBitsRead,
                 BulkGetResult, !Buffer),
@@ -534,14 +529,12 @@ do_refill_read_buffer(Result, !.Buffer, !:Buffer) :-
             unexpected($pred, "too many bits in buffer")
         ),
         some [!BM, !State, !Pos, !Size] (
-
             !:BM = !.Buffer ^ bitmap,
             !:Pos = !.Buffer ^ pos,
             !:Size = !.Buffer ^ size,
             !:State = !.Buffer ^ state,
 
             % Copy the remaining bits back to the first word of the buffer.
-            %
             Remain = !.Size - !.Pos,
             OldPos = !.Pos,
             !:Pos = bits_per_int - Remain,
@@ -553,9 +546,8 @@ do_refill_read_buffer(Result, !.Buffer, !:Buffer) :-
             ),
 
             % Perform a bulk get from the stream into the buffer
-            % starting at the second word.  bit_buffer.read.new
+            % starting at the second word. bit_buffer.read.new
             % guarantees that !.Size is at least as big as bits_per_int.
-            %
             ChunkSize = !.Size - bits_per_int,
             StartByteIndex = bits_per_int `unchecked_quotient` bits_per_byte,
             NumBytesToRead = ChunkSize `unchecked_quotient` bits_per_byte,
@@ -563,10 +555,8 @@ do_refill_read_buffer(Result, !.Buffer, !:Buffer) :-
             stream.bulk_get(Stream, StartByteIndex, NumBytesToRead, !BM,
                 NumBytesRead, Result, !State),
 
-            % Record the new size of the buffer if `bulk_get' hit eof
-            % or an error.  Further attempts to refill the buffer will
-            % do nothing.
-            %
+            % Record the new size of the buffer if `bulk_get' hit eof or
+            % an error. Further attempts to refill the buffer will do nothing.
             ( if NumBytesRead = NumBytesToRead then
                 true
             else
@@ -575,7 +565,6 @@ do_refill_read_buffer(Result, !.Buffer, !:Buffer) :-
                 % the current stream interface doesn't allow for that.
                 % If that was allowed we shouldn't modify the size of the
                 % buffer or change it to bitmap only here.
-                %
                 !:Size = NumBytesRead * bits_per_byte + bits_per_int,
                 set_use_stream(no, !Buffer)
             ),

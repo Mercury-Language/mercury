@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2000, 2003-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021, 2023 The Mercury team.
+% Copyright (C) 2014-2019, 2021, 2023-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -48,7 +48,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- type rbtree(Key, Value).
+:- type rbtree(K, V).
 
     % Initialise the data structure.
     %
@@ -181,8 +181,8 @@
 
 :- func to_assoc_list(rbtree(K, V)) = assoc_list(K, V).
 
-:- func foldl(func(K, V, T) = T, rbtree(K, V), T) = T.
-:- pred foldl(pred(K, V, T, T), rbtree(K, V), T, T).
+:- func foldl(func(K, V, A) = A, rbtree(K, V), A) = A.
+:- pred foldl(pred(K, V, A, A), rbtree(K, V), A, A).
 :- mode foldl(in(pred(in, in, in, out) is det), in, in, out) is det.
 :- mode foldl(in(pred(in, in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode foldl(in(pred(in, in, di, uo) is det), in, di, uo) is det.
@@ -193,7 +193,7 @@
 :- mode foldl(in(pred(in, in, di, uo) is semidet), in, di, uo)
     is semidet.
 
-:- pred foldl2(pred(K, V, T, T, U, U), rbtree(K, V), T, T, U, U).
+:- pred foldl2(pred(K, V, A, A, B, B), rbtree(K, V), A, A, B, B).
 :- mode foldl2(in(pred(in, in, in, out, in, out) is det),
     in, in, out, in, out) is det.
 :- mode foldl2(in(pred(in, in, in, out, mdi, muo) is det),
@@ -209,8 +209,8 @@
 :- mode foldl2(in(pred(in, in, in, out, di, uo) is semidet),
     in, in, out, di, uo) is semidet.
 
-:- pred foldl3(pred(K, V, T, T, U, U, W, W), rbtree(K, V),
-    T, T, U, U, W, W).
+:- pred foldl3(pred(K, V, A, A, B, B, C, C), rbtree(K, V),
+    A, A, B, B, C, C).
 :- mode foldl3(in(pred(in, in, in, out, in, out, in, out) is det),
     in, in, out, in, out, in, out) is det.
 :- mode foldl3(in(pred(in, in, in, out, in, out, in, out) is semidet),
@@ -279,8 +279,8 @@
     is semidet.
 :- mode foldr_values(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
-:- func map_values(func(K, V) = W, rbtree(K, V)) = rbtree(K, W).
-:- pred map_values(pred(K, V, W), rbtree(K, V), rbtree(K, W)).
+:- func map_values(func(K, V1) = V2, rbtree(K, V1)) = rbtree(K, V2).
+:- pred map_values(pred(K, V1, V2), rbtree(K, V1), rbtree(K, V2)).
 :- mode map_values(in(pred(in, in, out) is det), in, out) is det.
 :- mode map_values(in(pred(in, in, out) is semidet), in, out) is semidet.
 

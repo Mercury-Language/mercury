@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2023 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -168,11 +168,11 @@
 
     % Fold a function over the key-value bindings in the given hash table.
     %
-:- func fold(func(K, V, T) = T, version_hash_table(K, V), T) = T.
+:- func fold(func(K, V, A) = A, version_hash_table(K, V), A) = A.
 
     % Fold a predicate over the key-value bindings in the given hash table.
     %
-:- pred fold(pred(K, V, T, T), version_hash_table(K, V), T, T).
+:- pred fold(pred(K, V, A, A), version_hash_table(K, V), A, A).
 :- mode fold(in(pred(in, in, in, out) is det), in, in, out) is det.
 :- mode fold(in(pred(in, in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode fold(in(pred(in, in, di, uo) is det), in, di, uo) is det.
@@ -634,7 +634,7 @@ fold(F, HT, X0) = X :-
     ),
     version_array.foldl(fold_f(F), Buckets, X0, X).
 
-:- pred fold_f(func(K, V, T) = T, hash_table_alist(K, V), T, T).
+:- pred fold_f(func(K, V, A) = A, hash_table_alist(K, V), A, A).
 :- mode fold_f(in(func(in, in, in) = out is det), in, in, out) is det.
 :- mode fold_f(in(func(in, in, di) = uo is det), in, di, uo) is det.
 
@@ -657,7 +657,7 @@ fold(P, HT, !A) :-
     ),
     version_array.foldl(fold_p(P), Buckets, !A).
 
-:- pred fold_p(pred(K, V, T, T), hash_table_alist(K, V), T, T).
+:- pred fold_p(pred(K, V, A, A), hash_table_alist(K, V), A, A).
 :- mode fold_p(in(pred(in, in, in, out) is det), in, in, out) is det.
 :- mode fold_p(in(pred(in, in, mdi, muo) is det), in, mdi, muo) is det.
 :- mode fold_p(in(pred(in, in, di, uo) is det), in, di, uo) is det.
