@@ -807,47 +807,21 @@ intersect(Xs, Ys) = Intersection :-
     intersect(Xs, Ys, Intersection).
 
 intersect(sol(Xs), sol(Ys), sol(Intersection)) :-
-    intersect_loop(Xs, Ys, Intersection).
+    list.intersect(Xs, Ys, Intersection).
 
-:- pred intersect_loop(list(T), list(T), list(T)).
-:- mode intersect_loop(in, in, out) is det.
-:- mode intersect_loop(in, in, in) is semidet.
+intersect_list(ListOfSets) = IntersectSet :-
+    intersect_list(ListOfSets, IntersectSet).
 
-intersect_loop([], _, []).
-intersect_loop([_ | _], [], []).
-intersect_loop([X | Xs], [Y | Ys], Intersection) :-
-    compare(R, X, Y),
-    (
-        R = (<),
-        intersect_loop(Xs, [Y | Ys], Intersection)
-    ;
-        R = (=),
-        intersect_loop(Xs, Ys, Intersection0),
-        Intersection = [X | Intersection0]
-    ;
-        R = (>),
-        intersect_loop([X | Xs], Ys, Intersection)
-    ).
+intersect_list(ListOfSets, IntersectSet) :-
+    sets_to_sorted_lists(ListOfSets, ListOfLists),
+    list.intersect_lists(ListOfLists, IntersectList),
+    IntersectSet = sol(IntersectList).
 
-intersect_list([]) = sol([]).
-intersect_list([S0 | Ss]) = S :-
-    (
-        Ss = [],
-        S = S0
-    ;
-        Ss = [_ | _],
-        S1 = intersect_list(Ss),
-        intersect(S1, S0, S)
-    ).
+power_intersect(SetOfSets) = IntersectSet :-
+    power_intersect(SetOfSets, IntersectSet).
 
-intersect_list(ListOfSets, Set) :-
-    Set = intersect_list(ListOfSets).
-
-power_intersect(SS) = S :-
-    power_intersect(SS, S).
-
-power_intersect(sol(S0), S) :-
-    intersect_list(S0) = S.
+power_intersect(sol(ListOfSets), IntersectSet) :-
+    intersect_list(ListOfSets, IntersectSet).
 
 %---------------------%
 

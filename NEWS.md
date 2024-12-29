@@ -590,6 +590,10 @@ Changes to the Mercury standard library
     - pred `det_head/2`
     - pred `det_tail/2`
     - func `inst_preserving_condense/1`
+    - func `intersect/2`
+    - pred `intersect/3`
+    - func `intersect_lists/1`
+    - pred `intersect_lists/2`
     - pred `intersperse/3`
     - pred `intersperse_list/3`
     - pred `intersperse_list_last/4`

@@ -546,6 +546,31 @@
 
 %---------------------%
 
+    % intersect(ListA, ListB) = IntersectList:
+    % intersect(ListA, ListB, IntersectList):
+    %
+    % Given ListA and ListB, two lists that must be sorted in ascending order
+    % (without duplicates) according to the standard comparison operation,
+    % return the list IntersectList which contains only the elements
+    % that occur in *both* ListA and ListB.
+    %
+:- func intersect(list(T), list(T)) = list(T).
+:- pred intersect(list(T)::in, list(T)::in, list(T)::out) is det.
+
+    % intersect_lists(ListOfLists) = IntersectList:
+    % intersect_lists(ListOfLists, IntersectList):
+    %
+    % Given ListOfLists, a list contain zero or more lists that must
+    % all be sorted in ascending order (without duplicates) according
+    % to the standard comparison operation, return the list IntersectList
+    % which contains only the elements from ListOfLists that occur in
+    % *all* lists in ListOfLists.
+    %
+:- func intersect_lists(list(list(T))) = list(T).
+:- pred intersect_lists(list(list(T))::in, list(T)::out) is det.
+
+%---------------------%
+
     % sort(List) = SortedList:
     %
     % Sorts List and returns the result as SortedList.
@@ -3203,6 +3228,92 @@ merge_lists_and_remove_dups_pass(ComparePred, Lists, !RevMergedLists) :-
         !:RevMergedLists = [List1234 | !.RevMergedLists],
         merge_lists_and_remove_dups_pass(ComparePred, MoreLists,
             !RevMergedLists)
+    ).
+
+%---------------------------------------------------------------------------%
+
+intersect(ListA, ListB) = IntersectList :-
+    intersect(ListA, ListB, IntersectList).
+
+intersect([], _, []).
+intersect([_ | _], [], []).
+intersect([X | Xs], [Y | Ys], IntersectList) :-
+    compare(R, X, Y),
+    (
+        R = (<),
+        intersect(Xs, [Y | Ys], IntersectList)
+    ;
+        R = (=),
+        intersect(Xs, Ys, IntersectList0),
+        IntersectList = [X | IntersectList0]
+    ;
+        R = (>),
+        intersect([X | Xs], Ys, IntersectList)
+    ).
+
+intersect_lists(Lists) = IntersectList :-
+    intersect_lists(Lists, IntersectList).
+
+intersect_lists(Lists, IntersectList) :-
+    (
+        Lists = [],
+        IntersectList = []
+    ;
+        Lists = [List1],
+        IntersectList = List1
+    ;
+        Lists = [List1, List2],
+        intersect(List1, List2, IntersectList)
+    ;
+        Lists = [List1, List2, List3],
+        intersect(List1, List2, List12),
+        intersect(List12, List3, IntersectList)
+    ;
+        Lists = [_, _, _, _ | _],
+        intersect_lists_fixpoint(Lists, IntersectList)
+    ).
+
+:- pred intersect_lists_fixpoint(list(list(T))::in, list(T)::out) is det.
+
+intersect_lists_fixpoint(Lists, IntersectList) :-
+    intersect_lists_pass(Lists, [], RevIntersectLists),
+    % The order does not matter.
+    IntersectLists = RevIntersectLists,
+    (
+        IntersectLists = [],
+        unexpected($pred, "IntersectLists is empty")
+    ;
+        IntersectLists = [IntersectList]
+    ;
+        IntersectLists = [_, _ | _],
+        intersect_lists_fixpoint(IntersectLists, IntersectList)
+    ).
+
+:- pred intersect_lists_pass(list(list(T))::in,
+    list(list(T))::in, list(list(T))::out) is det.
+
+intersect_lists_pass(Lists, !RevIntersectLists) :-
+    (
+        Lists = []
+    ;
+        Lists = [List1],
+        !:RevIntersectLists = [List1 | !.RevIntersectLists]
+    ;
+        Lists = [List1, List2],
+        intersect(List1, List2, List12),
+        !:RevIntersectLists = [List12 | !.RevIntersectLists]
+    ;
+        Lists = [List1, List2, List3],
+        intersect(List1, List2, List12),
+        intersect(List12, List3, List123),
+        !:RevIntersectLists = [List123 | !.RevIntersectLists]
+    ;
+        Lists = [List1, List2, List3, List4 | MoreLists],
+        intersect(List1, List2, List12),
+        intersect(List3, List4, List34),
+        intersect(List12, List34, List1234),
+        !:RevIntersectLists = [List1234 | !.RevIntersectLists],
+        intersect_lists_pass(MoreLists, !RevIntersectLists)
     ).
 
 %---------------------------------------------------------------------------%

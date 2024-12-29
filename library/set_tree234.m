@@ -2388,29 +2388,19 @@ do_intersect(four(E0, E1, E2, T0, T1, T2, T3), SetB, !Intersect) :-
     ),
     do_intersect(T3, SetB, !Intersect).
 
-intersect_list(Sets) = Intersect :-
-    intersect_list(Sets, Intersect).
+intersect_list(Sets) = IntersectSet :-
+    intersect_list(Sets, IntersectSet).
 
-intersect_list([], empty).
-intersect_list([Set | Sets], Intersect) :-
-    Intersect = intersect_list_2(Set, Sets).
+intersect_list(Sets, IntersectSet) :-
+    sets_to_sorted_lists(Sets, Lists),
+    list.intersect_lists(Lists, IntersectList),
+    sorted_list_to_set(IntersectList, IntersectSet).
 
-:- func intersect_list_2(set_tree234(T), list(set_tree234(T)))
-    = set_tree234(T).
+power_intersect(Sets) = IntersectSet :-
+    power_intersect(Sets, IntersectSet).
 
-intersect_list_2(Set, []) = Set.
-intersect_list_2(Set, [Head | Tail]) =
-    ( if Set = empty then
-        empty
-    else
-        intersect_list_2(intersect(Set, Head), Tail)
-    ).
-
-power_intersect(Sets) = Intersect :-
-    power_intersect(Sets, Intersect).
-
-power_intersect(Sets, Intersect) :-
-    Intersect = intersect_list(to_sorted_list(Sets)).
+power_intersect(Sets, IntersectSet) :-
+    intersect_list(to_sorted_list(Sets), IntersectSet).
 
 %---------------------%
 

@@ -2355,36 +2355,13 @@ do_intersect(four(E0, E1, E2, T0, T1, T2, T3), SetB, !Size, !Tree) :-
     ),
     do_intersect(T3, SetB, !Size, !Tree).
 
-intersect_list(Sets) = Intersect :-
-    list.sort(Sets, SortedSets),
-    (
-        SortedSets = [],
-        Intersect = init
-    ;
-        SortedSets = [Head | Tail],
-        Head = ct(HeadSize, HeadTree),
-        do_intersect_list(HeadSize, HeadTree, Tail,
-            IntersectSize, IntersectTree),
-        Intersect = ct(IntersectSize, IntersectTree)
-    ).
+intersect_list(Sets) = IntersectSet :-
+    sets_to_sorted_lists(Sets, Lists),
+    list.intersect_lists(Lists, IntersectList),
+    IntersectSet = sorted_list_to_set(IntersectList).
 
-:- pred do_intersect_list(int::in, set_tree234(T)::in,
-    list(set_ctree234(T))::in, int::out, set_tree234(T)::out) is det.
-
-do_intersect_list(SizeIn, TreeIn, [], SizeIn, TreeIn).
-do_intersect_list(SizeIn, TreeIn, [Head | Tail], Size, Tree) :-
-    ( if SizeIn = 0 then
-        Size = SizeIn,
-        Tree = TreeIn
-    else
-        Head = ct(_HeadSize, HeadTree),
-        do_intersect(TreeIn, HeadTree, 0, Size1, empty, Tree1),
-        do_intersect_list(Size1, Tree1, Tail, Size, Tree)
-    ).
-
-power_intersect(Sets) =
-    % XXX We could implement this without converting the tree to a sorted list.
-    intersect_list(to_sorted_list(Sets)).
+power_intersect(Sets) = IntersectSet :-
+    IntersectSet = intersect_list(to_sorted_list(Sets)).
 
 %---------------------%
 
