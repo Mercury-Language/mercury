@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1998, 2004-2006 The University of Melbourne.
+% Copyright (C) 2015, 2021 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -23,7 +24,6 @@
 :- import_module list.
 
 %---------------------------------------------------------------------------%
-
 
 :- pred build_call_graph(io.text_output_stream::in, list(string)::in,
     digraph(string)::in, digraph(string)::out, io::di, io::uo) is det.

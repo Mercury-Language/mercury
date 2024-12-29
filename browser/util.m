@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2002, 2004-2007, 2010-2011 The University of Melbourne.
-% Copyright (C) 2015, 2018-2023 The Mercury team.
+% Copyright (C) 2015, 2018-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 
