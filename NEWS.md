@@ -1411,7 +1411,7 @@ Changes to the Mercury compiler
   that should be moved with them, and will warn about any unwanted coupling
   the move would create between the old module and the new.
 
-* We have added a new option `--warn-can-fail-function'. If the user specifies
+* We have added a new option `--warn-can-fail-function`. If the user specifies
   this option, the compiler will generate a warning for every function
   whose primary mode (which means the mode in which all its arguments
   are input) can fail without generating a return value.
