@@ -2,11 +2,12 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2013-2018, 2020-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: code_gen.m.
+% File: proc_gen.m.
 % Main authors: conway, zs.
 %
 % Code generation - convert from HLDS to LLDS.

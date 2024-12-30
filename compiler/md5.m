@@ -1,12 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021 The Mercury team.
+% Copyright (C) 2021, 2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: md5.
+% File: md5.m.
 % Main author: wangp.
 %
 % This module contains an implementation of the MD5 message digest algorithm.

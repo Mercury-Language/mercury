@@ -7,7 +7,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: use_local_vars.m
+% File: use_local_vars.m.
 % Author: zs.
 %
 % This module implements an LLDS->LLDS transformation that optimizes the
