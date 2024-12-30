@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2000,2002 University of Melbourne.
+** Copyright (C) 1999-2000, 2002 The University of Melbourne.
 ** Copyright (C) 2018 The Mercury team.
 ** This file is distributed under the terms specified in COPYING.LIB.
 */

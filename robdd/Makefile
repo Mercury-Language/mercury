@@ -1,7 +1,7 @@
 #-----------------------------------------------------------------------------#
 # vim: ts=8 sw=8 noexpandtab
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2001-2004,2007 University of Melbourne.
+# Copyright (C) 2001-2004, 2007 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
