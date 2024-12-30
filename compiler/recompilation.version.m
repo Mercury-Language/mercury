@@ -7,7 +7,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: recompilation_version.m.
+% File: recompilation.version.m.
 % Main author: stayl.
 %
 % Compute version numbers for program items in interface files.
