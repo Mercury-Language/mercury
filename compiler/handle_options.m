@@ -281,7 +281,26 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
         LinkExtMap, !:Specs, !IO) :-
     !:Specs = [],
-    raw_lookup_string_option(!.OptionTable, target, TargetStr),
+    check_grade_options(!.OptionTable, Target, WordSize, GC_Method, !Specs),
+    check_codegen_options(!.OptionTable,
+        MaybeThreadSafe, ReuseStrategy, MaybeFeedbackInfo, !Specs, !IO),
+    check_termination_options(!.OptionTable, TermNorm, Term2Norm, !Specs),
+    check_debug_options(!.OptionTable,
+        TraceLevel, TraceSuppress, SSTraceLevel, !Specs),
+    check_system_env_options(!.OptionTable,
+        C_CompilerType, CSharp_CompilerType,
+        HostEnvType, SystemEnvType, TargetEnvType, !Specs),
+    check_hlds_dump_options(!OptionTable, !Specs),
+    check_diagnostics_options(!.OptionTable, LimitErrorContextsMap, !Specs),
+    check_linked_target_extensions(!.OptionTable, LinkExtMap, !Specs),
+    check_color_options(!OptionTable, !Specs, !IO).
+
+:- pred check_grade_options(option_table::in,
+    compilation_target::out, word_size::out, gc_method::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_grade_options(OptionTable, Target, WordSize, GC_Method, !Specs) :-
+    raw_lookup_string_option(OptionTable, target, TargetStr),
     ( if convert_target(TargetStr, TargetPrime) then
         Target = TargetPrime
     else
@@ -294,7 +313,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         add_error(phase_options, TargetSpec, !Specs)
     ),
 
-    raw_lookup_int_option(!.OptionTable, bits_per_word, BitsPerWord),
+    raw_lookup_int_option(OptionTable, bits_per_word, BitsPerWord),
     ( if BitsPerWord = 32 then
         WordSize = word_size_32
     else if BitsPerWord = 64 then
@@ -310,7 +329,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         add_error(phase_options, WordSizeSpec, !Specs)
     ),
 
-    raw_lookup_string_option(!.OptionTable, gc, GC_MethodStr),
+    raw_lookup_string_option(OptionTable, gc, GC_MethodStr),
     ( if convert_gc_method(GC_MethodStr, GC_MethodPrime) then
         GC_Method = GC_MethodPrime
     else
@@ -321,9 +340,15 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
             quote_list_to_pieces("or", ["none", "conservative", "boehm", "hgc",
                 "accurate", "automatic"]) ++ [suffix("."), nl],
         add_error(phase_options, GCMethodSpec, !Specs)
-    ),
+    ).
 
-    raw_lookup_int_option(!.OptionTable, fact_table_hash_percent_full,
+:- pred check_codegen_options(option_table::in,
+    may_be_thread_safe::out, reuse_strategy::out, maybe(feedback_info)::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+check_codegen_options(OptionTable, MaybeThreadSafe, ReuseStrategy,
+        MaybeFeedbackInfo, !Specs, !IO) :-
+    raw_lookup_int_option(OptionTable, fact_table_hash_percent_full,
         FactTablePercentFull),
     ( if
         FactTablePercentFull >= 1,
@@ -338,22 +363,77 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         add_error(phase_options, FactTablePercentFullSpec, !Specs)
     ),
 
-    raw_lookup_int_option(!.OptionTable, inform_incomplete_switch_threshold,
-        IncompleteSwitchThreshold),
+    raw_lookup_string_option(OptionTable, maybe_thread_safe_opt,
+        MaybeThreadSafeStr),
     ( if
-        IncompleteSwitchThreshold >= 0,
-        IncompleteSwitchThreshold =< 100
+        convert_maybe_thread_safe(MaybeThreadSafeStr, MaybeThreadSafePrime)
     then
-        true
+        MaybeThreadSafe = MaybeThreadSafePrime
     else
-        IncompleteSwitchThresholdSpec =
-            [words("Invalid argument"), int_fixed(IncompleteSwitchThreshold),
-            words("to the"), quote("--inform-incomplete-switch-threshold"),
-            words("option; must be an integer between 0 and 100."), nl],
-        add_error(phase_options, IncompleteSwitchThresholdSpec, !Specs)
+        MaybeThreadSafe = no, % dummy
+        % XXX This should either be a boolean option, or the two values
+        % should have descriptive names, not `yes' and `no'.
+        % XXX They should definitely use a bespoke type inside the compiler.
+        MTSSpec =
+            [words("Invalid argument"), quote(MaybeThreadSafeStr),
+            words("to the"), quote("--maybe-thread-safe"), words("option;"),
+            words("must be")] ++
+            quote_list_to_pieces("or", ["no", "yes"]) ++ [suffix("."), nl],
+        add_error(phase_options, MTSSpec, !Specs)
     ),
 
-    raw_lookup_string_option(!.OptionTable, termination_norm, TermNormStr),
+    raw_lookup_string_option(OptionTable, structure_reuse_constraint,
+        ReuseConstraintStr),
+    raw_lookup_int_option(OptionTable, structure_reuse_constraint_arg,
+        ReuseConstraintArgNum),
+    ( if
+        convert_reuse_strategy(ReuseConstraintStr, ReuseConstraintArgNum,
+            ReuseStrategyPrime)
+    then
+        ReuseStrategy = ReuseStrategyPrime
+    else
+        ReuseStrategy = same_cons_id,   % dummy
+        ReuseConstrSpec =
+            [words("Invalid argument"), quote(ReuseConstraintStr),
+            words("to the"), quote("--structure-reuse-constraint"),
+            words("option; must be")] ++
+            quote_list_to_pieces("or", ["same_cons_id",
+                "within_n_cells_difference"]) ++
+            [suffix("."), nl],
+        add_error(phase_options, ReuseConstrSpec, !Specs)
+    ),
+
+    raw_lookup_string_option(OptionTable, feedback_file, FeedbackFile),
+    ( if FeedbackFile = "" then
+        % No feedback info.
+        MaybeFeedbackInfo = no
+    else
+        % When we are compiling a single module, we generally don't know
+        % the name of the executable that the compiled module will end up in,
+        % and in fact the compiled module may end up in more than one
+        % executable. We therefore cannot require that we use feedback files
+        % derived from any one profiled program.
+        MaybeExpectedProfiledProgramName = no,
+        read_feedback_file(FeedbackFile, MaybeExpectedProfiledProgramName,
+            FeedbackReadResult, !IO),
+        (
+            FeedbackReadResult = ok(FeedbackInfo),
+            MaybeFeedbackInfo = yes(FeedbackInfo)
+        ;
+            FeedbackReadResult = error(Error),
+            feedback_read_error_message_string(FeedbackFile, Error,
+                ErrorMessage),
+            add_error(phase_options, [words(ErrorMessage)], !Specs),
+            MaybeFeedbackInfo = no
+        )
+    ).
+
+:- pred check_termination_options(option_table::in,
+    termination_norm::out, termination_norm::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_termination_options(OptionTable, TermNorm, Term2Norm, !Specs) :-
+    raw_lookup_string_option(OptionTable, termination_norm, TermNormStr),
     ( if convert_termination_norm(TermNormStr, TermNormPrime) then
         TermNorm = TermNormPrime
     else
@@ -367,7 +447,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         add_error(phase_options, TermNormSpec, !Specs)
     ),
 
-    raw_lookup_string_option(!.OptionTable, termination2_norm, Term2NormStr),
+    raw_lookup_string_option(OptionTable, termination2_norm, Term2NormStr),
     ( if convert_termination_norm(Term2NormStr, Term2NormPrime) then
         Term2Norm = Term2NormPrime
     else
@@ -379,18 +459,24 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
                 ["simple", "total", "num-data-elems"]) ++
             [suffix("."), nl],
         add_error(phase_options, Term2NormSpec, !Specs)
-    ),
+    ).
 
-    raw_lookup_bool_option(!.OptionTable, force_disable_tracing,
+:- pred check_debug_options(option_table::in,
+    trace_level::out, trace_suppress_items::out, ssdb_trace_level::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_debug_options(OptionTable, TraceLevel, TraceSuppress, SSTraceLevel,
+        !Specs) :-
+    raw_lookup_bool_option(OptionTable, force_disable_tracing,
         ForceDisableTracing),
     (
         ForceDisableTracing = yes,
         TraceLevel = trace_level_none
     ;
         ForceDisableTracing = no,
-        raw_lookup_string_option(!.OptionTable, trace_level, Trace),
-        raw_lookup_bool_option(!.OptionTable, exec_trace, ExecTrace),
-        raw_lookup_bool_option(!.OptionTable, decl_debug, DeclDebug),
+        raw_lookup_string_option(OptionTable, trace_level, Trace),
+        raw_lookup_bool_option(OptionTable, exec_trace, ExecTrace),
+        raw_lookup_bool_option(OptionTable, decl_debug, DeclDebug),
         ( if
             convert_trace_level(Trace, ExecTrace, DeclDebug, MaybeTraceLevel)
         then
@@ -416,7 +502,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         )
     ),
 
-    raw_lookup_string_option(!.OptionTable, suppress_trace, SuppressStr),
+    raw_lookup_string_option(OptionTable, suppress_trace, SuppressStr),
     ( if convert_trace_suppress(SuppressStr, TraceSuppressPrime) then
         TraceSuppress = TraceSuppressPrime
     else
@@ -429,15 +515,15 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         add_error(phase_options, TraceSuppressSpec, !Specs)
     ),
 
-    raw_lookup_bool_option(!.OptionTable, force_disable_ssdebug,
+    raw_lookup_bool_option(OptionTable, force_disable_ssdebug,
         ForceDisableSSDB),
     (
         ForceDisableSSDB = yes,
         SSTraceLevel = ssdb_none
     ;
         ForceDisableSSDB = no,
-        raw_lookup_string_option(!.OptionTable, ssdb_trace_level, SSTrace),
-        raw_lookup_bool_option(!.OptionTable, source_to_source_debug, SSDB),
+        raw_lookup_string_option(OptionTable, ssdb_trace_level, SSTrace),
+        raw_lookup_bool_option(OptionTable, source_to_source_debug, SSDB),
         ( if convert_ssdb_trace_level(SSTrace, SSDB, SSTL) then
             SSTraceLevel = SSTL
         else
@@ -449,27 +535,107 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
                     "shallow", "deep"]) ++ [suffix("."), nl],
             add_error(phase_options, SSDBSpec, !Specs)
         )
-    ),
+    ).
 
-    raw_lookup_string_option(!.OptionTable, maybe_thread_safe_opt,
-        MaybeThreadSafeStr),
-    ( if
-        convert_maybe_thread_safe(MaybeThreadSafeStr, MaybeThreadSafePrime)
-    then
-        MaybeThreadSafe = MaybeThreadSafePrime
+:- pred check_system_env_options(option_table::in,
+    c_compiler_type::out, csharp_compiler_type::out,
+    env_type::out, env_type::out, env_type::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_system_env_options(OptionTable, C_CompilerType, CSharp_CompilerType,
+        HostEnvType, SystemEnvType, TargetEnvType, !Specs) :-
+    raw_lookup_string_option(OptionTable, c_compiler_type,
+        C_CompilerTypeStr),
+    ( if convert_c_compiler_type(C_CompilerTypeStr, C_CompilerTypePrime) then
+        C_CompilerType = C_CompilerTypePrime
     else
-        MaybeThreadSafe = no, % dummy
-        % XXX This should either be a boolean option, or the two values
-        % should have descriptive names, not `yes' and `no'.
-        % XXX They should definitely use a bespoke type inside the compiler.
-        MTSSpec =
-            [words("Invalid argument"), quote(MaybeThreadSafeStr),
-            words("to the"), quote("--maybe-thread-safe"), words("option;"),
+        C_CompilerType = cc_unknown,   % dummy
+        ValidC_CompilerTypes = [
+            "gcc",
+            "clang",
+            "msvc_x86",
+            "msvc_x64",
+            "unknown"
+        ],
+        CCTpec =
+            [words("Invalid argument"), quote(C_CompilerTypeStr),
+            words("to the"), quote("--c-compiler-type"), words("option;"),
             words("must be")] ++
-            quote_list_to_pieces("or", ["no", "yes"]) ++ [suffix("."), nl],
-        add_error(phase_options, MTSSpec, !Specs)
+            quote_list_to_pieces("or", ValidC_CompilerTypes) ++
+            [suffix("."), nl],
+        add_error(phase_options, CCTpec, !Specs)
     ),
 
+    raw_lookup_string_option(OptionTable, csharp_compiler_type,
+        CSharp_CompilerTypeStr),
+    ( if
+        convert_csharp_compiler_type(CSharp_CompilerTypeStr,
+            CSharp_CompilerTypePrime)
+    then
+        CSharp_CompilerType = CSharp_CompilerTypePrime
+    else
+        CSharp_CompilerType = csharp_unknown,   % dummy
+        CSCSpec =
+            [words("Invalid argument"), quote(CSharp_CompilerTypeStr),
+            words("to the"), quote("--csharp-compiler-type"), words("option;"),
+            words("must be")] ++
+            quote_list_to_pieces("or", ["microsoft", "mono", "unknown"]) ++
+            [suffix("."), nl],
+        add_error(phase_options, CSCSpec, !Specs)
+    ),
+
+    raw_lookup_string_option(OptionTable, host_env_type, HostEnvTypeStr),
+    ( if convert_env_type(HostEnvTypeStr, HostEnvTypePrime) then
+        HostEnvType = HostEnvTypePrime
+    else
+        HostEnvType = env_type_posix,   % dummy
+        HostEnvSpec =
+            [words("Invalid argument"), quote(HostEnvTypeStr), words("to the"),
+            quote("--host-env-type"), words("option; must be")] ++
+            quote_list_to_pieces("or",
+                ["posix", "cygwin", "msys", "windows"]) ++
+            [suffix("."), nl],
+        add_error(phase_options, HostEnvSpec, !Specs)
+    ),
+    raw_lookup_string_option(OptionTable, system_env_type, SystemEnvTypeStr),
+    ( if
+        ( if SystemEnvTypeStr = "" then
+            SystemEnvTypePrime = HostEnvType
+        else
+            convert_env_type(SystemEnvTypeStr, SystemEnvTypePrime)
+        )
+    then
+        SystemEnvType = SystemEnvTypePrime
+    else
+        SystemEnvType = env_type_posix,    % dummy
+        SystemEnvSpec =
+            [words("Invalid argument"), quote(SystemEnvTypeStr),
+            words("to the"), quote("--system-env-type"), words("option;"),
+            words("must be")] ++
+            quote_list_to_pieces("or",
+                ["posix", "cygwin", "msys", "windows"]) ++
+            [suffix("."), nl],
+        add_error(phase_options, SystemEnvSpec, !Specs)
+    ),
+    raw_lookup_string_option(OptionTable, target_env_type, TargetEnvTypeStr),
+    ( if convert_env_type(TargetEnvTypeStr, TargetEnvTypePrime) then
+        TargetEnvType = TargetEnvTypePrime
+    else
+        TargetEnvType = env_type_posix,   % dummy
+        TargetEnvTypeSpec =
+            [words("Invalid argument"), quote(TargetEnvTypeStr),
+            words("to the"), quote("--target-env-type"), words("option;"),
+            words("must be")] ++
+            quote_list_to_pieces("or",
+                ["posix", "cygwin", "msys", "windows"]) ++
+            [suffix("."), nl],
+        add_error(phase_options, TargetEnvTypeSpec, !Specs)
+    ).
+
+:- pred check_hlds_dump_options(option_table::in, option_table::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_hlds_dump_options(!OptionTable, !Specs) :-
     raw_lookup_string_option(!.OptionTable, dump_hlds_alias, DumpAlias),
     ( if DumpAlias = "" then
         true
@@ -544,143 +710,29 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
             true
         ),
         map.set(dump_hlds_options, string(!.DumpOptions), !OptionTable)
-    ),
+    ).
 
-    raw_lookup_string_option(!.OptionTable, c_compiler_type,
-        C_CompilerTypeStr),
-    ( if convert_c_compiler_type(C_CompilerTypeStr, C_CompilerTypePrime) then
-        C_CompilerType = C_CompilerTypePrime
-    else
-        C_CompilerType = cc_unknown,   % dummy
-        ValidC_CompilerTypes = [
-            "gcc",
-            "clang",
-            "msvc_x86",
-            "msvc_x64",
-            "unknown"
-        ],
-        CCTpec =
-            [words("Invalid argument"), quote(C_CompilerTypeStr),
-            words("to the"), quote("--c-compiler-type"), words("option;"),
-            words("must be")] ++
-            quote_list_to_pieces("or", ValidC_CompilerTypes) ++
-            [suffix("."), nl],
-        add_error(phase_options, CCTpec, !Specs)
-    ),
+:- pred check_diagnostics_options(option_table::in,
+    limit_error_contexts_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-    raw_lookup_string_option(!.OptionTable, csharp_compiler_type,
-        CSharp_CompilerTypeStr),
+check_diagnostics_options(OptionTable, LimitErrorContextsMap, !Specs) :-
+    raw_lookup_int_option(OptionTable, inform_incomplete_switch_threshold,
+        IncompleteSwitchThreshold),
     ( if
-        convert_csharp_compiler_type(CSharp_CompilerTypeStr,
-            CSharp_CompilerTypePrime)
+        IncompleteSwitchThreshold >= 0,
+        IncompleteSwitchThreshold =< 100
     then
-        CSharp_CompilerType = CSharp_CompilerTypePrime
+        true
     else
-        CSharp_CompilerType = csharp_unknown,   % dummy
-        CSCSpec =
-            [words("Invalid argument"), quote(CSharp_CompilerTypeStr),
-            words("to the"), quote("--csharp-compiler-type"), words("option;"),
-            words("must be")] ++
-            quote_list_to_pieces("or", ["microsoft", "mono", "unknown"]) ++
-            [suffix("."), nl],
-        add_error(phase_options, CSCSpec, !Specs)
+        IncompleteSwitchThresholdSpec =
+            [words("Invalid argument"), int_fixed(IncompleteSwitchThreshold),
+            words("to the"), quote("--inform-incomplete-switch-threshold"),
+            words("option; must be an integer between 0 and 100."), nl],
+        add_error(phase_options, IncompleteSwitchThresholdSpec, !Specs)
     ),
 
-    raw_lookup_string_option(!.OptionTable, structure_reuse_constraint,
-        ReuseConstraintStr),
-    raw_lookup_int_option(!.OptionTable, structure_reuse_constraint_arg,
-        ReuseConstraintArgNum),
-    ( if
-        convert_reuse_strategy(ReuseConstraintStr, ReuseConstraintArgNum,
-            ReuseStrategyPrime)
-    then
-        ReuseStrategy = ReuseStrategyPrime
-    else
-        ReuseStrategy = same_cons_id,   % dummy
-        ReuseConstrSpec =
-            [words("Invalid argument"), quote(ReuseConstraintStr),
-            words("to the"), quote("--structure-reuse-constraint"),
-            words("option; must be")] ++
-            quote_list_to_pieces("or", ["same_cons_id",
-                "within_n_cells_difference"]) ++
-            [suffix("."), nl],
-        add_error(phase_options, ReuseConstrSpec, !Specs)
-    ),
-
-    raw_lookup_string_option(!.OptionTable, feedback_file, FeedbackFile),
-    ( if FeedbackFile = "" then
-        % No feedback info.
-        MaybeFeedbackInfo = no
-    else
-        % When we are compiling a single module, we generally don't know
-        % the name of the executable that the compiled module will end up in,
-        % and in fact the compiled module may end up in more than one
-        % executable. We therefore cannot require that we use feedback files
-        % derived from any one profiled program.
-        MaybeExpectedProfiledProgramName = no,
-        read_feedback_file(FeedbackFile, MaybeExpectedProfiledProgramName,
-            FeedbackReadResult, !IO),
-        (
-            FeedbackReadResult = ok(FeedbackInfo),
-            MaybeFeedbackInfo = yes(FeedbackInfo)
-        ;
-            FeedbackReadResult = error(Error),
-            feedback_read_error_message_string(FeedbackFile, Error,
-                ErrorMessage),
-            add_error(phase_options, [words(ErrorMessage)], !Specs),
-            MaybeFeedbackInfo = no
-        )
-    ),
-
-    raw_lookup_string_option(!.OptionTable, host_env_type, HostEnvTypeStr),
-    ( if convert_env_type(HostEnvTypeStr, HostEnvTypePrime) then
-        HostEnvType = HostEnvTypePrime
-    else
-        HostEnvType = env_type_posix,   % dummy
-        HostEnvSpec =
-            [words("Invalid argument"), quote(HostEnvTypeStr), words("to the"),
-            quote("--host-env-type"), words("option; must be")] ++
-            quote_list_to_pieces("or",
-                ["posix", "cygwin", "msys", "windows"]) ++
-            [suffix("."), nl],
-        add_error(phase_options, HostEnvSpec, !Specs)
-    ),
-    raw_lookup_string_option(!.OptionTable, system_env_type, SystemEnvTypeStr),
-    ( if
-        ( if SystemEnvTypeStr = "" then
-            SystemEnvTypePrime = HostEnvType
-        else
-            convert_env_type(SystemEnvTypeStr, SystemEnvTypePrime)
-        )
-    then
-        SystemEnvType = SystemEnvTypePrime
-    else
-        SystemEnvType = env_type_posix,    % dummy
-        SystemEnvSpec =
-            [words("Invalid argument"), quote(SystemEnvTypeStr),
-            words("to the"), quote("--system-env-type"), words("option;"),
-            words("must be")] ++
-            quote_list_to_pieces("or",
-                ["posix", "cygwin", "msys", "windows"]) ++
-            [suffix("."), nl],
-        add_error(phase_options, SystemEnvSpec, !Specs)
-    ),
-    raw_lookup_string_option(!.OptionTable, target_env_type, TargetEnvTypeStr),
-    ( if convert_env_type(TargetEnvTypeStr, TargetEnvTypePrime) then
-        TargetEnvType = TargetEnvTypePrime
-    else
-        TargetEnvType = env_type_posix,   % dummy
-        TargetEnvTypeSpec =
-            [words("Invalid argument"), quote(TargetEnvTypeStr),
-            words("to the"), quote("--target-env-type"), words("option;"),
-            words("must be")] ++
-            quote_list_to_pieces("or",
-                ["posix", "cygwin", "msys", "windows"]) ++
-            [suffix("."), nl],
-        add_error(phase_options, TargetEnvTypeSpec, !Specs)
-    ),
-
-    raw_lookup_accumulating_option(!.OptionTable, limit_error_contexts,
+    raw_lookup_accumulating_option(OptionTable, limit_error_contexts,
         LimitErrorContextsOptionStrs),
     convert_limit_error_contexts(LimitErrorContextsOptionStrs,
         BadLimitErrorContextsOptions, LimitErrorContextsMap),
@@ -701,10 +753,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
             [words("to the"), quote("--limit-error-contexts"),
             words("option."), nl],
         add_error(phase_options, LECSpec, !Specs)
-    ),
-
-    check_linked_target_extensions(!.OptionTable, LinkExtMap, !Specs),
-    check_color_option_values(!OptionTable, !Specs, !IO).
+    ).
 
 :- pred check_linked_target_extensions(option_table::in,
     linked_target_ext_info_map::out,
@@ -844,10 +893,10 @@ get_all_obj_extensions(Ext, AllExtA, MaybeAllExtB) :-
     % check_option_values has finished, will handle the separate question
     % of whether the use of colors is *enabled*.
     %
-:- pred check_color_option_values(option_table::in, option_table::out,
+:- pred check_color_options(option_table::in, option_table::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-check_color_option_values(!OptionTable, !Specs, !IO) :-
+check_color_options(!OptionTable, !Specs, !IO) :-
     raw_lookup_string_option(!.OptionTable, color_scheme_set_to, ColorScheme),
     raw_lookup_string_option(!.OptionTable, color_scheme_set_by, SetBy),
     ( if
@@ -1068,56 +1117,9 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         OT_AllowInlining = do_not_allow_inlining
     ),
 
-    (
-        Target = target_c,
-        OT_EnableConstStructPoly = OT_EnableConstStructPoly0,
-        NeedProcBodies = trace_needs_proc_body_reps(TraceLevel, TraceSuppress),
-        ( if
-            (
-                % We generate representations of procedure bodies for the
-                % declarative debugger and for the profiler. When
-                % traverse_primitives in browser/declarative_tree.m looks for
-                % the Nth argument of variable X and X is built with code
-                % such as X = ground_term_const(...), it crashes. It should be
-                % taught not to do that, but in the meantime, we prevent the
-                % situation from arising in the first place. (We never look
-                % for the original sources of type infos and typeclass infos,
-                % so we can use constant structures for them.)
-                NeedProcBodies = yes
-            ;
-                % If we allowed the use of references to the const_struct_db,
-                %
-                % - those references would be dangling references
-                %   if they were ever written to a .opt file, and
-                %
-                % - they would also confuse the termination analyzers,
-                %   since they were written before the const_struct_db
-                %   was implemented, and they have (yet) not been taught
-                %   about it.
-                OpMode = opm_top_args(opma_augment(Augment), _),
-                ( Augment = opmau_make_plain_opt
-                ; Augment = opmau_make_trans_opt
-                )
-            ;
-                % If we are not allowed to use const structs for the
-                % type_infos and typeclass_infos created by the polymorphism
-                % pass, then we may not use them for user terms either.
-                OT_EnableConstStructPoly0 = do_not_enable_const_struct_poly
-            )
-        then
-            OT_EnableConstStructUser = do_not_enable_const_struct_user
-        else
-            OT_EnableConstStructUser = OT_EnableConstStructUser0
-        )
-    ;
-        Target = target_java,
-        OT_EnableConstStructPoly = OT_EnableConstStructPoly0,
-        OT_EnableConstStructUser = do_not_enable_const_struct_user
-    ;
-        Target = target_csharp,
-        OT_EnableConstStructPoly = do_not_enable_const_struct_poly,
-        OT_EnableConstStructUser = do_not_enable_const_struct_user
-    ),
+    handle_const_struct(Target, OpMode, TraceLevel, TraceSuppress,
+        OT_EnableConstStructPoly0, OT_EnableConstStructPoly,
+        OT_EnableConstStructUser0, OT_EnableConstStructUser),
 
     % `--optimize-constant-propagation' effectively inlines builtins.
     %
@@ -1138,16 +1140,6 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         OT_PropConstants = OT_PropConstants0
     else
         OT_PropConstants = do_not_prop_constants
-    ),
-
-    (
-        AllowSrcChangesDebug = allow_src_changes,
-        OT_OptDupCalls = OT_OptDupCalls0,
-        OT_OptHigherOrder = OT_OptHigherOrder0
-    ;
-        AllowSrcChangesDebug = do_not_allow_src_changes,
-        OT_OptDupCalls = do_not_opt_dup_calls,
-        OT_OptHigherOrder = do_not_opt_higher_order
     ),
 
     % XXX deforestation and constraint propagation do not perform folding
@@ -1350,15 +1342,19 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
 
     (
         AllowSrcChangesDebug = do_not_allow_src_changes,
+        OT_OptDupCalls = do_not_opt_dup_calls,
         OT_OptSVCell = do_not_opt_svcell,
         OT_OptLoopInvariants = do_not_opt_loop_invariants,
+        OT_OptHigherOrder = do_not_opt_higher_order,
         OT_Untuple = do_not_untuple,
         OT_Tuple = do_not_tuple,
         OT_MergeCodeAfterSwitch = do_not_merge_code_after_switch
     ;
         AllowSrcChangesDebug = allow_src_changes,
+        OT_OptDupCalls = OT_OptDupCalls0,
         OT_OptSVCell = OT_OptSVCell0,
         OT_OptLoopInvariants = OT_OptLoopInvariants0,
+        OT_OptHigherOrder = OT_OptHigherOrder0,
         OT_Tuple = OT_Tuple0,
         OT_Untuple = OT_Untuple0,
         OT_MergeCodeAfterSwitch = OT_MergeCodeAfterSwitch0
@@ -3728,6 +3724,71 @@ handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls,
         )
     else
         true
+    ).
+
+%---------------------%
+
+    % Options updated:
+    %   none
+    %
+:- pred handle_const_struct(compilation_target::in, op_mode::in,
+    trace_level::in, trace_suppress_items::in,
+    maybe_enable_const_struct_poly::in, maybe_enable_const_struct_poly::out,
+    maybe_enable_const_struct_user::in, maybe_enable_const_struct_user::out)
+    is det.
+
+handle_const_struct(Target, OpMode, TraceLevel, TraceSuppress,
+        OT_EnableConstStructPoly0, OT_EnableConstStructPoly,
+        OT_EnableConstStructUser0, OT_EnableConstStructUser) :-
+    (
+        Target = target_c,
+        OT_EnableConstStructPoly = OT_EnableConstStructPoly0,
+        NeedProcBodies = trace_needs_proc_body_reps(TraceLevel, TraceSuppress),
+        ( if
+            (
+                % We generate representations of procedure bodies for the
+                % declarative debugger and for the profiler. When
+                % traverse_primitives in browser/declarative_tree.m looks for
+                % the Nth argument of variable X and X is built with code
+                % such as X = ground_term_const(...), it crashes. It should be
+                % taught not to do that, but in the meantime, we prevent the
+                % situation from arising in the first place. (We never look
+                % for the original sources of type infos and typeclass infos,
+                % so we can use constant structures for them.)
+                NeedProcBodies = yes
+            ;
+                % If we allowed the use of references to the const_struct_db,
+                %
+                % - those references would be dangling references
+                %   if they were ever written to a .opt file, and
+                %
+                % - they would also confuse the termination analyzers,
+                %   since they were written before the const_struct_db
+                %   was implemented, and they have (yet) not been taught
+                %   about it.
+                OpMode = opm_top_args(opma_augment(Augment), _),
+                ( Augment = opmau_make_plain_opt
+                ; Augment = opmau_make_trans_opt
+                )
+            ;
+                % If we are not allowed to use const structs for the
+                % type_infos and typeclass_infos created by the polymorphism
+                % pass, then we may not use them for user terms either.
+                OT_EnableConstStructPoly0 = do_not_enable_const_struct_poly
+            )
+        then
+            OT_EnableConstStructUser = do_not_enable_const_struct_user
+        else
+            OT_EnableConstStructUser = OT_EnableConstStructUser0
+        )
+    ;
+        Target = target_java,
+        OT_EnableConstStructPoly = OT_EnableConstStructPoly0,
+        OT_EnableConstStructUser = do_not_enable_const_struct_user
+    ;
+        Target = target_csharp,
+        OT_EnableConstStructPoly = do_not_enable_const_struct_poly,
+        OT_EnableConstStructUser = do_not_enable_const_struct_user
     ).
 
 %---------------------------------------------------------------------------%
