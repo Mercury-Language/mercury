@@ -63,8 +63,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % write_short_interface_file_int3(ProgressStream, Globals, AddToHptm,
-    %   BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO):
+    % generate_and_write_interface_file_int3(ProgressStream, Globals,
+    %   AddToHptm, BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO):
     %
     % Output the unqualified short interface file to <module>.int3.
     %
@@ -85,8 +85,8 @@
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
-    % write_private_interface_file_int0(ProgressStream, Globals, AddToHptm,
-    %   BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO):
+    % generate_and_write_interface_file_int0(ProgressStream, Globals,
+    %   AddToHptm, BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO):
     %
     % Given a burdened_module, output the private (`.int0') interface file
     % for the module. (The private interface contains all the declarations
@@ -99,8 +99,8 @@
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
-    % write_interface_file_int1_int2(ProgressStream, Globals, AddToHptm,
-    %   BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO):
+    % generate_and_write_interface_file_int1_int2(ProgressStream, Globals,
+    %   AddToHptm, BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO):
     %
     % Given a burdened_module, output the long (`.int') and short (`.int2')
     % interface files for the module.
