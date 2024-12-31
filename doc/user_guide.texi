@@ -7749,13 +7749,17 @@ instead of the usual ascending order. This is useful if you want to work
 on the last errors in a file first.
 
 @sp 1
-@item --show-definitions
+@item --show-defns
+@itemx --show-definitions
+@findex --show-defns
 @findex --show-definitions
 Write out a list of the types, insts, modes, predicates, functions,
 typeclasses and instances defined in the module to @file{@var{module}.defns}.
 
 @sp 1
-@item --show-definition-line-counts
+@item --show-defn-line-counts
+@itemx --show-definition-line-counts
+@findex --show-defn-line-counts
 @findex --show-definition-line-counts
 Write out a list of the predicates and functions defined in the module,
 together with the names of the files containing them
@@ -7764,11 +7768,13 @@ The list will be ordered on the names and arities of the
 predicates and functions.
 
 @sp 1
-@item --show-definition-extents
+@item --show-defn-extents
+@itemx --show-definition-extents
+@findex --show-defn-extents
 @findex --show-definition-extents
-Write out a list of the predicates and functions defined in
-the module, together with the approximate line numbers of their
-first and last lines, to @file{@var{module}.defn_extents}.
+Write out a list of the predicates and functions defined in the module,
+together with the approximate line numbers of their first and last lines,
+to @file{@var{module}.defn_extents}.
 The list will be ordered on the starting line numbers
 of the predicates and functions.
 

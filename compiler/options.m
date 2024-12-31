@@ -2556,8 +2556,11 @@ long_table("auto-comments",            auto_comments).
 long_table("frameopt-comments",        frameopt_comments).
 long_table("max-error-line-width",     max_error_line_width).
 long_table("reverse-error-order",      reverse_error_order).
+long_table("show-defns",               show_definitions).
 long_table("show-definitions",         show_definitions).
-long_table("show-definition-line-counts",  show_definition_line_counts).
+long_table("show-defn-line-counts",    show_definition_line_counts).
+long_table("show-definition-line-counts", show_definition_line_counts).
+long_table("show-defn-extents",        show_definition_extents).
 long_table("show-definition-extents",  show_definition_extents).
 long_table("show-local-call-tree",     show_local_call_tree).
 long_table("show-all-type-repns",              show_all_type_repns).
