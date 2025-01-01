@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2018, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -69,6 +69,7 @@ string_ops_noncanon_impl(NonCanon, OpTable, X, String) :-
     % For efficiency, these predicates collect a list of strings which,
     % when concatenated in reverse order, produce the final output.
     %
+    % XXX This should be a string builder.
 :- type revstrings == list(string).
 
     % Utility predicate.
@@ -100,91 +101,127 @@ value_to_revstrings(NonCanon, OpTable, X, !Rs) :-
 :- mode value_to_revstrings_prio(in, in, in, in, in, out) is cc_multi.
 
 value_to_revstrings_prio(NonCanon, OpTable, Priority, X, !Rs) :-
-    % We need to special-case the builtin types:
-    %   int, uint, int8, uint8, int16, uint16, int32, uint32
-    %   char, float, string
-    %   type_info, univ, c_pointer, array
-    %   and private_builtin.type_info
-
-    ( if dynamic_cast(X, String) then
-        add_revstring(term_io.quoted_string(String), !Rs)
-    else if dynamic_cast(X, Char) then
-        add_revstring(term_io.quoted_char_to_string(Char), !Rs)
-    else if dynamic_cast(X, Int) then
-        add_revstring(string.int_to_string(Int), !Rs)
-    else if dynamic_cast(X, UInt) then
-        add_revstring(string.uint_to_string(UInt) ++ "u", !Rs)
-    else if dynamic_cast(X, Int8) then
-        add_revstring(string.int8_to_string(Int8) ++ "i8", !Rs)
-    else if dynamic_cast(X, UInt8) then
-        add_revstring(string.uint8_to_string(UInt8) ++ "u8", !Rs)
-    else if dynamic_cast(X, Int16) then
-        add_revstring(string.int16_to_string(Int16) ++ "i16", !Rs)
-    else if dynamic_cast(X, UInt16) then
-        add_revstring(string.uint16_to_string(UInt16) ++ "u16", !Rs)
-    else if dynamic_cast(X, Int32) then
-        add_revstring(string.int32_to_string(Int32) ++ "i32", !Rs)
-    else if dynamic_cast(X, UInt32) then
-        add_revstring(string.uint32_to_string(UInt32) ++ "u32", !Rs)
-    else if dynamic_cast(X, Float) then
-        add_revstring(string.float_to_string(Float), !Rs)
-    else if dynamic_cast(X, Bitmap) then
-        add_revstring(term_io.quoted_string(bitmap.to_string(Bitmap)), !Rs)
-    else if dynamic_cast(X, TypeDesc) then
-        type_desc_to_revstrings(TypeDesc, !Rs)
-    else if dynamic_cast(X, TypeCtorDesc) then
-        type_ctor_desc_to_revstrings(TypeCtorDesc, !Rs)
-    else if dynamic_cast(X, C_Pointer) then
-        add_revstring(c_pointer_to_string(C_Pointer), !Rs)
-    else if
-        % Check if the type is array.array/1. We cannot just use dynamic_cast
-        % here since array.array/1 is a polymorphic type.
-        %
-        % The calls to type_ctor_name and type_ctor_module_name are not really
-        % necessary -- we could use dynamic_cast in the condition instead of
-        % det_dynamic_cast in the body. However, this way of doing things
-        % is probably more efficient in the common case when the thing
-        % being printed is *not* of type array.array/1.
-        %
-        % The ordering of the tests here (arity, then name, then module name,
-        % rather than the reverse) is also chosen for efficiency, to find
-        % failure cheaply in the common cases, rather than for readability.
-        %
-        type_ctor_and_args(type_of(X), TypeCtor, ArgTypes),
-        ArgTypes = [ElemType],
-        type_ctor_name(TypeCtor) = "array",
-        type_ctor_module_name(TypeCtor) = "array"
+    % We need to special-case the builtin types.
+    % XXX Are there any that should special-case but don't?
+    % There is at least one: univ.
+    type_ctor_and_args(type_of(X), TypeCtorDesc, ArgTypeDescs),
+    TypeCtorModuleName = type_ctor_module_name(TypeCtorDesc),
+    TypeCtorName = type_ctor_name(TypeCtorDesc),
+    ( if
+        (
+            TypeCtorModuleName = "builtin",
+            (
+                TypeCtorName = "string",
+                det_dynamic_cast(X, Str),
+                ToAddStr = term_io.quoted_string(Str)
+            ;
+                TypeCtorName = "character",
+                det_dynamic_cast(X, Char),
+                ToAddStr = term_io.quoted_char_to_string(Char)
+            ;
+                TypeCtorName = "float",
+                det_dynamic_cast(X, Float),
+                ToAddStr = string.float_to_string(Float)
+            ;
+                TypeCtorName = "int",
+                det_dynamic_cast(X, I),
+                ToAddStr = string.int_to_string(I)
+            ;
+                TypeCtorName = "int8",
+                det_dynamic_cast(X, I8),
+                ToAddStr = string.int8_to_string(I8) ++ "i8"
+            ;
+                TypeCtorName = "int16",
+                det_dynamic_cast(X, I16),
+                ToAddStr = string.int16_to_string(I16) ++ "i16"
+            ;
+                TypeCtorName = "int32",
+                det_dynamic_cast(X, I32),
+                ToAddStr = string.int32_to_string(I32) ++ "i32"
+            ;
+                TypeCtorName = "int64",
+                det_dynamic_cast(X, I64),
+                ToAddStr = string.int64_to_string(I64) ++ "i64"
+            ;
+                TypeCtorName = "uint",
+                det_dynamic_cast(X, U),
+                ToAddStr = string.uint_to_string(U) ++ "u"
+            ;
+                TypeCtorName = "uint8",
+                det_dynamic_cast(X, U8),
+                ToAddStr = string.uint8_to_string(U8) ++ "u8"
+            ;
+                TypeCtorName = "uint16",
+                det_dynamic_cast(X, U16),
+                ToAddStr = string.uint16_to_string(U16) ++ "u16"
+            ;
+                TypeCtorName = "uint32",
+                det_dynamic_cast(X, U32),
+                ToAddStr = string.uint32_to_string(U32) ++ "u32"
+            ;
+                TypeCtorName = "uint64",
+                det_dynamic_cast(X, U64),
+                ToAddStr = string.uint64_to_string(U64) ++ "u64"
+            ;
+                TypeCtorName = "c_pointer",
+                det_dynamic_cast(X, CPtr),
+                ToAddStr = c_pointer_to_string(CPtr)
+            )
+        ;
+            TypeCtorModuleName = "bitmap",
+            TypeCtorName = "bitmap",
+            det_dynamic_cast(X, Bitmap),
+            ToAddStr = term_io.quoted_string(bitmap.to_string(Bitmap))
+        ;
+            TypeCtorModuleName = "type_desc",
+            (
+                TypeCtorName = "type_desc",
+                det_dynamic_cast(X, TypeDesc),
+                ToAddStr = term_io.quoted_atom(type_name(TypeDesc))
+            ;
+                TypeCtorName = "type_ctor_desc",
+                det_dynamic_cast(X, TypeCtorDesc),
+                ToAddStr = type_ctor_desc_to_string(TypeCtorDesc)
+            )
+        ;
+            TypeCtorModuleName = "private_builtin",
+            TypeCtorName = "type_info",
+            ArgTypeDescs = [ElemType],
+            % The following code used to be split across two predicates.
+            % I (zs) think that this may explain its (probably) unnecessary
+            % complexity.
+            has_type(Elem, ElemType),
+            same_private_builtin_type(PITypeInfo, Elem),
+            det_dynamic_cast(X, PITypeInfo),
+            private_builtin.unsafe_type_cast(PITypeInfo, TypeInfo),
+            type_desc.type_info_to_type_desc(TypeInfo, TypeDesc),
+            ToAddStr = term_io.quoted_atom(type_name(TypeDesc))
+        )
     then
-        % Now that we know the element type, we can constrain the type of
-        % the variable Array so that we can use det_dynamic_cast.
-        %
-        has_type(Elem, ElemType),
-        same_array_elem_type(Array, Elem),
-        det_dynamic_cast(X, Array),
-        array_to_revstrings(NonCanon, OpTable, Array, !Rs)
+        add_revstring(ToAddStr, !Rs)
     else if
-        type_ctor_and_args(type_of(X), TypeCtor, ArgTypes),
-        ArgTypes = [ElemType],
-        type_ctor_name(TypeCtor) = "version_array",
-        type_ctor_module_name(TypeCtor) = "version_array"
+         (
+            TypeCtorModuleName = "array",
+            TypeCtorName = "array",
+            ArgTypeDescs = [ElemType],
+            % Now that we know the element type, we can constrain the type of
+            % the variable Array so that we can use det_dynamic_cast.
+            has_type(Elem, ElemType),
+            same_array_elem_type(Array, Elem),
+            det_dynamic_cast(X, Array),
+            array_to_revstrings(NonCanon, OpTable, Array, !Rs)
+        ;
+            TypeCtorModuleName = "version_array",
+            TypeCtorName = "version_array",
+            ArgTypeDescs = [ElemType],
+            has_type(Elem, ElemType),
+            same_version_array_elem_type(VersionArray, Elem),
+            det_dynamic_cast(X, VersionArray),
+            version_array_to_revstrings(NonCanon, OpTable, VersionArray, !Rs)
+        )
     then
-        has_type(Elem, ElemType),
-        same_version_array_elem_type(VersionArray, Elem),
-        det_dynamic_cast(X, VersionArray),
-        version_array_to_revstrings(NonCanon, OpTable, VersionArray, !Rs)
-    else if
-        % Check if the type is private_builtin.type_info/1.
-        % See the comments above for array.array/1.
-        %
-        type_ctor_and_args(type_of(X), TypeCtor, ArgTypes),
-        ArgTypes = [ElemType],
-        type_ctor_name(TypeCtor) = "type_info",
-        type_ctor_module_name(TypeCtor) = "private_builtin"
-    then
-        has_type(Elem, ElemType),
-        same_private_builtin_type(PrivateBuiltinTypeInfo, Elem),
-        det_dynamic_cast(X, PrivateBuiltinTypeInfo),
-        private_builtin_type_info_to_revstrings(PrivateBuiltinTypeInfo, !Rs)
+        % The condition has already done the updates to !Rs.
+        true
     else
         ordinary_term_to_revstrings(NonCanon, OpTable, Priority, X, !Rs)
     ).
@@ -477,16 +514,9 @@ version_array_to_revstrings(NonCanon, OpTable, Array, !Rs) :-
         version_array.to_list(Array) `with_type` list(T), !Rs),
     add_revstring(")", !Rs).
 
-:- pred type_desc_to_revstrings(type_desc::in,
-    revstrings::in, revstrings::out) is det.
+:- func type_ctor_desc_to_string(type_ctor_desc) = string.
 
-type_desc_to_revstrings(TypeDesc, !Rs) :-
-    add_revstring(term_io.quoted_atom(type_name(TypeDesc)), !Rs).
-
-:- pred type_ctor_desc_to_revstrings(type_ctor_desc::in,
-    revstrings::in, revstrings::out) is det.
-
-type_ctor_desc_to_revstrings(TypeCtorDesc, !Rs) :-
+type_ctor_desc_to_string(TypeCtorDesc) = Str :-
     type_desc.type_ctor_name_and_arity(TypeCtorDesc, ModuleName,
         Name0, Arity0),
     Name = term_io.quoted_atom(Name0),
@@ -495,31 +525,26 @@ type_ctor_desc_to_revstrings(TypeCtorDesc, !Rs) :-
         Name = "func"
     then
         % The type ctor that we call `builtin.func/N' takes N + 1 type
-        % parameters: N arguments plus one return value. So we need to subtract
-        % one from the arity here.
+        % parameters: N arguments and one return value. So we need to
+        % subtract one from the arity here.
         Arity = Arity0 - 1
     else
         Arity = Arity0
     ),
     ( if ModuleName = "builtin" then
-        String = string.format("%s/%d", [s(Name), i(Arity)])
+        Str = string.format("%s/%d", [s(Name), i(Arity)])
     else
-        String = string.format("%s.%s/%d", [s(ModuleName), s(Name), i(Arity)])
-    ),
-    add_revstring(String, !Rs).
-
-:- pred private_builtin_type_info_to_revstrings(
-    private_builtin.type_info::in, revstrings::in, revstrings::out) is det.
-
-private_builtin_type_info_to_revstrings(PrivateBuiltinTypeInfo, !Rs) :-
-    private_builtin.unsafe_type_cast(PrivateBuiltinTypeInfo, TypeInfo),
-    type_desc.type_info_to_type_desc(TypeInfo, TypeDesc),
-    type_desc_to_revstrings(TypeDesc, !Rs).
+        Str = string.format("%s.%s/%d", [s(ModuleName), s(Name), i(Arity)])
+    ).
 
 :- pred det_dynamic_cast(T1::in, T2::out) is det.
 
-det_dynamic_cast(X, Y) :-
-    det_univ_to_type(univ(X), Y).
+det_dynamic_cast(A, B) :-
+    ( if dynamic_cast(A, BPrime) then
+        B = BPrime
+    else
+        unexpected($pred, "dynamic_cast failed")
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module string.to_string.
