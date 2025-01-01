@@ -69,7 +69,21 @@ string_ops_noncanon_impl(NonCanon, OpTable, X, String) :-
     % For efficiency, these predicates collect a list of strings which,
     % when concatenated in reverse order, produce the final output.
     %
-    % XXX This should be a string builder.
+    % XXX This *should* be a string builder, but *cannot* be a string builder
+    % without the operations on string builders having <in,out> modes besides
+    % the current <di,uo> modes. This is because in several places in this
+    % module, we have code in the conditions of if-then-elses that both
+    %
+    % - tests whether the input has one of several known shapes, and
+    % - converts inputs of each shape to a string *using more than one append*.
+    %
+    % If each append has a <di,uo> mode, then this whole code cannot be
+    % in the condition, since a failure in the condition after an append
+    % would require resurrecting an already-destroyed value.
+    %
+    % We could avoid this by delaying the appends to the string builder
+    % to the then-part of the if-then-else, but this would require
+    % more complex and slower code. This makes the whole exercise unattractive.
 :- type revstrings == list(string).
 
     % Utility predicate.
