@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 expandtab ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2009-2011 The University of Melbourne
-% Copyright (C) 2014-2016, 2018, 2020, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2020, 2022-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1086,7 +1086,7 @@ expand_format_term(Name, Args, TailDocs, Docs, !Limit, CurrentPri) :-
 
 expand_format_op(Op, Args, EnclosingPriority, Docs) :-
     % XXX With one exception, all the set_op_priority pp_internals are
-    % created here. They are intended set the priority of one argument,
+    % created here. They are intended to set the priority of one argument,
     % which in this case is equivalent to setting the priority from
     % the occurrence of the set_op_priority until either the next
     % set_op_priority, or until the next close_group. The fact that
