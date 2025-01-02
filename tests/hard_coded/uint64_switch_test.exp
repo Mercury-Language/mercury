@@ -6,4 +6,4 @@ foo(4u64, _) ==> <<FALSE>>
 foo(5u64, "five")
 foo(6u64, _) ==> <<FALSE>>
 foo(7u64, "seven")
-foo(8u64,' _) ==> <<FALSE>>
+foo(8u64, _) ==> <<FALSE>>
