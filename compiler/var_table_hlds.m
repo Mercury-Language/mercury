@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023 The Mercury team
+% Copyright (C) 2023, 2025 The Mercury team
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -30,6 +30,25 @@
 :- import_module list.
 
 %---------------------------------------------------------------------------%
+%
+% These two predicates convert <varset, vartypes> pairs to var_tables,
+% and vice versa. They are used by
+%
+% - ancient compiler passes (such as mode_constraints.) that could use
+%   var_tables but don't (because they were written way before var_tables),
+%   and
+%
+% - by code that constructs new clauses (such as unify/compare predicates
+%   and stubs) from HLDS code.
+%
+% The former will never be worth converting to use var_tables. The latter
+% *could* be so converted, but it would require the code that now constructs
+% clause_infos to construct HLDS predicates instead. This is definitely
+% possible, since all the code that now constructs clause_infos should be
+% able to figure out the exact types of all the variables in those clauses,
+% but would require new code to explicitly materialize those types, instead of
+% just leaving that job to the typechecker.
+%
 
     % Create a var_table from a varset/vartypes pair.
     %
@@ -40,8 +59,13 @@
     %
 :- pred split_var_table(var_table::in, prog_varset::out, vartypes::out) is det.
 
+%---------------------------------------------------------------------------%
+
     % Create a var_table from a varset and a list of variables
     % with their types.
+    %
+    % The typechecking pass uses these predicates to record its results
+    % in pred_infos.
     %
 :- pred vars_types_to_var_table(module_info::in, prog_varset::in,
     assoc_list(prog_var, mer_type)::in, var_table::out) is det.
