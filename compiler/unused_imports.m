@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -813,8 +813,8 @@ proc_info_used_modules(Visibility, _ProcId, ProcInfo, !UsedModules) :-
     % in all the proc_infos in a pred_info should not be a problem,
     % given that the average number of proc_infos per pred_info typically
     % hovers in the 1.01-to-1.2 range.
-    foldl_var_table(var_table_entry_used_modules(visibility_private), VarTable,
-        !UsedModules),
+    foldl_var_table_values(var_table_entry_used_modules(visibility_private),
+        VarTable, !UsedModules),
 
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
     (
