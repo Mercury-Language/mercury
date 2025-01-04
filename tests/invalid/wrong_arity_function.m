@@ -23,12 +23,27 @@
 :- import_module string.
 
 main(!IO) :-
-    % The message for this error should include the arity 2 function "f"
-    % defined below, as well as the arity 1 data constructor "f" that
-    % would wrap a floating point value to be printed in a call to io.format.
-    X = f(1, 2, 3),
+    % The message for this error should include
+    % - the arity 1 data constructor "f" in string.poly_type, and
+    % - the arity 2 function "f" defined below
+    % in the main part, and
+    % - the arity 2 function "f" defined below,
+    % - the arity 3 predicate "f" defined below, and
+    % - the arity 4 predicate "f" defined below
+    % in the "if you are trying to construct a closure" part.
+    X = f(1, 2, 3, 4, 5),
     io.format("X = %d\n", [i(X)], !IO).
 
 :- func f(int, int) = int.
 
 f(A, B) = A + B.
+
+:- pred f(int::in, int::in, int::out) is det.
+
+f(A, B, AB) :-
+    AB = A + B.
+
+:- pred f(int::in, int::in, int::in, int::out) is det.
+
+f(A, B, C, ABC) :-
+    ABC = A + B + C.

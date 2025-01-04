@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -708,20 +708,31 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
 
     ( if ConsId = du_data_ctor(DuCtor) then
         DuCtor = du_ctor(SymName, Arity, _),
+        return_cons_arities(ConsTable, SymName, ConsArities),
+        predicate_table_lookup_sym(PredicateTable, may_be_partially_qualified,
+            SymName, PredIds),
+        return_pred_func_arities(ModuleInfo, PredIds,
+            [], PredArities, [], FuncArities),
+        % A program can refer to functions both
+        %
+        % - by calling them, which requires their full list of arguments, and
+        % - by constructing closures from them, which requires any initial
+        %   subsequence of their full argument list.
+        %
+        % For a function with N arguments, the first requires N args in the
+        % call, while the second is ok any in number between 0 and N.
+        %
+        % This is why we report FuncArities twice, with each message being
+        % specific to one of the situations above.
+        ConsFuncArities0 = ConsArities ++ FuncArities,
+        list.sort_and_remove_dups(ConsFuncArities0, ConsFuncArities),
+        list.delete_all(ConsFuncArities, Arity, OtherConsFuncArities),
         ( if
-            return_cons_arities(ConsTable, SymName, ConsArities),
-
-            predicate_table_lookup_sym(PredicateTable,
-                may_be_partially_qualified, SymName, PredIds),
-            return_function_arities(ModuleInfo, PredIds, [], FuncArities),
-
-            list.sort_and_remove_dups(ConsArities ++ FuncArities, AllArities),
-            list.delete_all(AllArities, Arity, OtherArities),
-            OtherArities = [_ | _]
+            OtherConsFuncArities = [_ | _]
         then
-            FunctorPieces = wrong_arity_constructor_to_pieces(SymName,
-                Arity, OtherArities),
-            FunctorComps = [always(FunctorPieces)],
+            ConsFuncPieces = wrong_arity_constructor_to_pieces(SymName,
+                Arity, OtherConsFuncArities),
+            ConsFuncComps = [always(ConsFuncPieces)],
             % The code that constructs QualMsgs below uses wording that
             % can be misleading in the presence of arity mismatches.
             QualSuggestionMsgs = []
@@ -751,14 +762,14 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
                     [words("operator expects")] ++
                     color_as_correct([words("one")]) ++
                     [words("argument, not")] ++
-                    color_as_incorrect([int_name(Arity), suffix(".)")]) ++
-                    [nl],
+                    color_as_incorrect([int_name(Arity), suffix(".")]) ++
+                    [suffix(")"), nl],
                 MissingImportModules = []
             else
                 AddeddumPieces = [],
                 MissingImportModules = []
             ),
-            FunctorComps = [always(UndefSymbolPieces ++ AddeddumPieces)],
+            ConsFuncComps = [always(UndefSymbolPieces ++ AddeddumPieces)],
             BaseName = unqualify_name(SymName),
             return_cons_defns_with_given_name(ConsTable, BaseName, ConsDefns),
             list.foldl(accumulate_matching_cons_module_names(SymName),
@@ -804,36 +815,61 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
                 QualSuggestionMsgs = QualMsgs
             )
         ),
-        FirstMsg = simple_msg(Context, [InitComp | FunctorComps]),
+        PredMarkers = ClauseContext ^ tecc_pred_markers,
+        ( if check_marker(PredMarkers, marker_named_class_instance_method) then
+            % We are processing a clause that the compiler generated itself
+            % for an instance declaration such as "func(func_a/3) is one_str"
+            % in tests/invalid/no_method.m. If we did not disable the
+            % execution of the else-part in such contexts, we would get
+            % misleading error messages such as
+            %
+            % no_method.m:035:   If you are trying to construct a closure
+            % no_method.m:035:   containing `one_str', you cannot do so with
+            % no_method.m:035:   3 arguments: the only function with this name
+            % no_method.m:035:   has arity 2.
+            %
+            % I (zs) found that out the hard way :-(
+            PredFuncComps = []
+        else
+            report_closure_construction_errors(SymName, Arity,
+                PredArities, FuncArities, PredFuncComps)
+        ),
+        FirstMsg = simple_msg(Context,
+            [InitComp | ConsFuncComps] ++ PredFuncComps),
         Spec = error_spec($pred, severity_error, phase_type_check,
             [FirstMsg | ConsMsgs] ++ QualSuggestionMsgs)
     else
-        Pieces = [words("error:")] ++
+        UndefPieces = [words("error:")] ++
             color_as_incorrect([words("undefined")]) ++
             [words("symbol")] ++
             color_as_subject([qual_cons_id_and_maybe_arity(ConsId),
                 suffix(".")]) ++
             [nl],
-        Spec = spec($pred, severity_error, phase_type_check, Context, Pieces)
+        UndefComp = always(UndefPieces),
+        Msg = simple_msg(Context, [InitComp, UndefComp]),
+        Spec = error_spec($pred, severity_error, phase_type_check, [Msg])
     ).
 
-:- pred return_function_arities(module_info::in, list(pred_id)::in,
+:- pred return_pred_func_arities(module_info::in, list(pred_id)::in,
+    list(int)::in, list(int)::out,
     list(int)::in, list(int)::out) is det.
 
-return_function_arities(_, [], !FuncArities).
-return_function_arities(ModuleInfo, [PredId | PredIds], !FuncArities) :-
+return_pred_func_arities(_, [], !PredArities, !FuncArities).
+return_pred_func_arities(ModuleInfo, [PredId | PredIds],
+        !PredArities, !FuncArities) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+    pred_info_get_orig_arity(PredInfo, PredFormArity),
+    user_arity_pred_form_arity(PredOrFunc,
+        user_arity(UserArityInt), PredFormArity),
     (
-        PredOrFunc = pf_predicate
+        PredOrFunc = pf_predicate,
+        !:PredArities = [UserArityInt | !.PredArities]
     ;
         PredOrFunc = pf_function,
-        pred_info_get_orig_arity(PredInfo, PredFormArity),
-        user_arity_pred_form_arity(PredOrFunc,
-            user_arity(FuncUserArityInt), PredFormArity),
-        !:FuncArities = [FuncUserArityInt | !.FuncArities]
+        !:FuncArities = [UserArityInt | !.FuncArities]
     ),
-    return_function_arities(ModuleInfo, PredIds, !FuncArities).
+    return_pred_func_arities(ModuleInfo, PredIds, !PredArities, !FuncArities).
 
 :- func wrong_arity_constructor_to_pieces(sym_name, arity, list(int))
     = list(format_piece).
@@ -960,6 +996,70 @@ report_cons_error(Context, ConsError) = Msgs :-
             color_as_incorrect([words("not existentially typed.")]) ++
             [nl],
         Msgs = [msg(Context, Pieces)]
+    ).
+
+:- pred report_closure_construction_errors(sym_name::in, int::in,
+    list(int)::in, list(int)::in, list(error_msg_component)::out) is det.
+
+report_closure_construction_errors(SymName, ConsIdArity,
+        PredArities, FuncArities, PredFuncComps) :-
+    list.sort_and_remove_dups(PredArities, SortedPredArities),
+    list.sort_and_remove_dups(FuncArities, SortedFuncArities),
+    report_closure_arities(pf_predicate, SortedPredArities, PredArityPieces),
+    report_closure_arities(pf_function,  SortedFuncArities, FuncArityPieces),
+    IfYouAreTryingPieces = [words("If you are trying to construct"),
+        words("a closure containing")] ++
+        color_as_subject([qual_sym_name(SymName), suffix(",")]) ++
+        [words("you cannot do so with")] ++
+        color_as_incorrect([int_fixed(ConsIdArity)]) ++
+        [words("arguments:")],
+    (
+        PredArityPieces = [],
+        FuncArityPieces = [],
+        PredFuncComps = []
+    ;
+        PredArityPieces = [],
+        FuncArityPieces = [_ | _],
+        PredFuncPieces = IfYouAreTryingPieces ++ FuncArityPieces ++
+            [suffix("."), nl],
+        PredFuncComps = [always(PredFuncPieces)]
+    ;
+        PredArityPieces = [_ | _],
+        FuncArityPieces = [],
+        PredFuncPieces = IfYouAreTryingPieces ++ PredArityPieces ++
+            [suffix("."), nl],
+        PredFuncComps = [always(PredFuncPieces)]
+    ;
+        PredArityPieces = [_ | _],
+        FuncArityPieces = [_ | _],
+        PredFuncPieces = IfYouAreTryingPieces ++ PredArityPieces ++
+            [suffix(","), words("and")] ++ FuncArityPieces ++
+            [suffix("."), nl],
+        PredFuncComps = [always(PredFuncPieces)]
+    ).
+
+:- pred report_closure_arities(pred_or_func::in, list(int)::in,
+    list(format_piece)::out) is det.
+
+report_closure_arities(PredOrFunc, Arities, Pieces) :-
+    (
+        Arities = [],
+        Pieces = []
+    ;
+        Arities = [HeadArity | TailArities],
+        (
+            TailArities = [],
+            Pieces = [words("the only"), p_or_f(PredOrFunc),
+                words("with this name has arity")] ++
+                color_as_correct([int_fixed(HeadArity)])
+        ;
+            TailArities = [_ | _],
+            ArityPieces = list.map((func(N) = int_fixed(N)), Arities),
+            AritiesPieces = piece_list_to_color_pieces(color_correct,
+                "and", [], ArityPieces),
+            Pieces = [words("the"), p_or_f(PredOrFunc), suffix("s"),
+                words("with this name have arities")] ++ AritiesPieces
+        )
     ).
 
 %---------------------------------------------------------------------------%
