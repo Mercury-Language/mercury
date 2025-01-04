@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2021, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -233,10 +233,11 @@ typecheck_unify_var_functor_std(UnifyContext, Context, LHSVar, ConsId, ArgVars,
 %---------------------------------------------------------------------------%
 
     % Note: changes here may require changes to
-    % post_typecheck.resolve_unify_functor,
-    % intermod.module_qualify_unify_rhs,
-    % recompilation.usage.find_matching_constructors
-    % and recompilation.check.check_functor_ambiguities.
+    %
+    % - post_typecheck.resolve_unify_functor,
+    % - intermod.module_qualify_unify_rhs,
+    % - recompilation.usage.find_matching_constructors and
+    % - recompilation.check.check_functor_ambiguities.
     %
 :- pred typecheck_info_get_ctor_list(typecheck_info::in, cons_id::in, int::in,
     goal_id::in, list(cons_type_info)::out, list(cons_error)::out) is det.
@@ -254,8 +255,9 @@ typecheck_info_get_ctor_list(Info, ConsId, Arity, GoalId, ConsInfos,
         PredStatus \= pred_status(status_opt_imported)
     then
         ( if
+            ConsId = du_data_ctor(DuCtor),
             builtin_field_access_function_type(Info, GoalId,
-                ConsId, Arity, FieldAccessConsInfos)
+                DuCtor, Arity, FieldAccessConsInfos)
         then
             split_cons_errors(FieldAccessConsInfos, ConsInfos, ConsErrors)
         else
@@ -263,24 +265,83 @@ typecheck_info_get_ctor_list(Info, ConsId, Arity, GoalId, ConsInfos,
             ConsErrors = []
         )
     else
-        typecheck_info_get_ctor_list_2(Info, ConsId, Arity, GoalId,
+        typecheck_info_get_ctor_list_std(Info, ConsId, Arity, GoalId,
             ConsInfos, ConsErrors)
     ).
 
-:- pred typecheck_info_get_ctor_list_2(typecheck_info::in, cons_id::in,
+:- pred typecheck_info_get_ctor_list_std(typecheck_info::in, cons_id::in,
     arity::in, goal_id::in, list(cons_type_info)::out, list(cons_error)::out)
     is det.
 
-typecheck_info_get_ctor_list_2(Info, ConsId, Arity, GoalId,
+typecheck_info_get_ctor_list_std(Info, ConsId, Arity, GoalId,
         ConsInfos, ConsErrors) :-
-    % Check if ConsId is a constructor in a discriminated union type.
-    typecheck_info_get_du_cons_ctor_list(Info, ConsId, GoalId,
+    (
+        (
+            ConsId = some_int_const(IntConst),
+            TypeName = type_name_of_int_const(IntConst)
+        ;
+            ConsId = float_const(_),
+            TypeName = "float"
+        ;
+            ConsId = char_const(_),
+            TypeName = "character"
+        ;
+            ConsId = string_const(_),
+            TypeName = "string"
+        ;
+            ConsId = impl_defined_const(IDCKind),
+            (
+                ( IDCKind = idc_file
+                ; IDCKind = idc_module
+                ; IDCKind = idc_pred
+                ; IDCKind = idc_grade
+                ),
+                TypeName = "string"
+            ;
+                IDCKind = idc_line,
+                TypeName = "int"
+            )
+        ),
+        typecheck_info_construct_builtin_cons_info(TypeName, ConsInfos),
+        ConsErrors = []
+    ;
+        ConsId = tuple_cons(_TupleArity),
+        typecheck_info_construct_tuple_cons_info(Arity, ConsInfos),
+        ConsErrors = []
+    ;
+        ConsId = du_data_ctor(DuCtor),
+        typecheck_info_get_ctor_list_du(Info, DuCtor, Arity, GoalId,
+            ConsInfos, ConsErrors)
+    ;
+        ( ConsId = base_typeclass_info_const(_, _, _, _)
+        ; ConsId = closure_cons(_)
+        ; ConsId = deep_profiling_proc_layout(_)
+        ; ConsId = ground_term_const(_, _)
+        ; ConsId = table_io_entry_desc(_)
+        ; ConsId = tabling_info_const(_)
+        ; ConsId = type_ctor_info_const(_, _, _)
+        ; ConsId = type_info_cell_constructor(_)
+        ; ConsId = type_info_const(_)
+        ; ConsId = typeclass_info_cell_constructor
+        ; ConsId = typeclass_info_const(_)
+        ),
+        ConsInfos = [],
+        ConsErrors = []
+    ).
+
+:- pred typecheck_info_get_ctor_list_du(typecheck_info::in, du_ctor::in,
+    arity::in, goal_id::in, list(cons_type_info)::out, list(cons_error)::out)
+    is det.
+
+typecheck_info_get_ctor_list_du(Info, DuCtor, Arity, GoalId,
+        ConsInfos, ConsErrors) :-
+    typecheck_info_get_du_cons_ctor_list(Info, DuCtor, GoalId,
         DuConsInfos, DuConsErrors),
 
-    % Check if ConsId is a field access function for which the user
+    % Check whether DuCtor is a field access function for which the user
     % has not supplied a declaration.
     ( if
-        builtin_field_access_function_type(Info, GoalId, ConsId, Arity,
+        builtin_field_access_function_type(Info, GoalId, DuCtor, Arity,
             FieldAccessMaybeConsInfosPrime)
     then
         split_cons_errors(FieldAccessMaybeConsInfosPrime,
@@ -290,128 +351,125 @@ typecheck_info_get_ctor_list_2(Info, ConsId, Arity, GoalId,
         FieldAccessConsErrors = []
     ),
 
-    % Check if ConsId is a constant of one of the builtin atomic types
-    % (string, float, int, character). If so, insert the resulting
-    % cons_type_info at the start of the list.
+    % Check whether DuCtor is of a builtin type. It can be of only one
+    % builtin type: "character".
+    DuCtor = du_ctor(SymName, _Arity, _TypeCtor),
     ( if
         Arity = 0,
-        builtin_atomic_type(ConsId, BuiltInTypeName)
+        SymName = unqualified(String),
+        string.char_to_string(_, String)
     then
-        TypeCtor = type_ctor(unqualified(BuiltInTypeName), 0),
-        construct_type(TypeCtor, [], ConsType),
-        varset.init(ConsTypeVarSet),
-        ConsInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
-            empty_hlds_constraints, source_builtin_type(BuiltInTypeName)),
-        BuiltinConsInfos = [ConsInfo]
+        typecheck_info_construct_builtin_cons_info("character", CharConsInfos)
     else
-        BuiltinConsInfos = []
+        CharConsInfos = []
     ),
 
-    % Check if ConsId is a tuple constructor.
-    ( if
-        ( ConsId = du_data_ctor(du_ctor(unqualified("{}"), TupleArity, _))
-        ; ConsId = tuple_cons(TupleArity)
-        )
-    then
-        % Make some fresh type variables for the argument types. These have
-        % kind `star' since there are values (namely the arguments of the
-        % tuple constructor) which have these types.
-
-        varset.init(TupleConsTypeVarSet0),
-        varset.new_vars(TupleArity, TupleArgTVars,
-            TupleConsTypeVarSet0, TupleConsTypeVarSet),
-        var_list_to_type_list(map.init, TupleArgTVars, TupleArgTypes),
-
-        TupleTypeCtor = type_ctor(unqualified("{}"), TupleArity),
-        construct_type(TupleTypeCtor, TupleArgTypes, TupleConsType),
-
-        % Tuples can't have existentially typed arguments.
-        TupleExistQVars = [],
-        TupleConsInfo = cons_type_info(TupleConsTypeVarSet, TupleExistQVars,
-            TupleConsType, TupleArgTypes, empty_hlds_constraints,
-            source_builtin_type("tuple")),
-        TupleConsInfos = [TupleConsInfo]
+    % Check whether DuCtor is a tuple constructor.
+    ( if SymName = unqualified("{}") then
+        typecheck_info_construct_tuple_cons_info(Arity, TupleConsInfos)
     else
         TupleConsInfos = []
     ),
 
-    % Check if ConsId is the name of a predicate which takes at least
+    % Check whether DuCtor is the name of a predicate which takes at least
     % Arity arguments. If so, insert the resulting cons_type_info
     % at the start of the list.
     % XXX We insert it, but NOT at the start.
-    ( if
-        builtin_pred_type(Info, ConsId, Arity, GoalId, PredConsInfosPrime)
-    then
-        PredConsInfos = PredConsInfosPrime
-    else
-        PredConsInfos = []
-    ),
+    builtin_pred_type(Info, DuCtor, Arity, GoalId, PredConsInfos),
 
     % Check for higher-order function calls.
-    ( if builtin_apply_type(Info, ConsId, Arity, ApplyConsInfosPrime) then
+    ( if builtin_apply_type(Info, DuCtor, Arity, ApplyConsInfosPrime) then
         ApplyConsInfos = ApplyConsInfosPrime
     else
         ApplyConsInfos = []
     ),
 
     ConsInfos = DuConsInfos ++ FieldAccessConsInfos ++
-        BuiltinConsInfos ++ TupleConsInfos ++ PredConsInfos ++ ApplyConsInfos,
+        CharConsInfos ++ TupleConsInfos ++ PredConsInfos ++ ApplyConsInfos,
     ConsErrors = DuConsErrors ++ FieldAccessConsErrors.
 
-:- pred typecheck_info_get_du_cons_ctor_list(typecheck_info::in, cons_id::in,
+:- pred typecheck_info_construct_builtin_cons_info(string::in,
+    list(cons_type_info)::out) is det.
+
+typecheck_info_construct_builtin_cons_info(BuiltinTypeName, ConsInfos) :-
+    TypeCtor = type_ctor(unqualified(BuiltinTypeName), 0),
+    construct_type(TypeCtor, [], ConsType),
+    varset.init(ConsTypeVarSet),
+    ConsInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
+        empty_hlds_constraints, source_builtin_type(BuiltinTypeName)),
+    ConsInfos = [ConsInfo].
+
+:- pred typecheck_info_construct_tuple_cons_info(arity::in,
+    list(cons_type_info)::out) is det.
+
+typecheck_info_construct_tuple_cons_info(TupleArity, TupleConsInfos) :-
+    % Make some fresh type variables for the argument types. These have
+    % kind `star' since there are values (namely the arguments of the
+    % tuple constructor) which have these types.
+    varset.init(TupleConsTypeVarSet0),
+    varset.new_vars(TupleArity, TupleArgTVars,
+        TupleConsTypeVarSet0, TupleConsTypeVarSet),
+    var_list_to_type_list(map.init, TupleArgTVars, TupleArgTypes),
+
+    TupleTypeCtor = type_ctor(unqualified("{}"), TupleArity),
+    construct_type(TupleTypeCtor, TupleArgTypes, TupleConsType),
+
+    % Tuples can't have existentially typed arguments.
+    TupleExistQVars = [],
+    TupleConsInfo = cons_type_info(TupleConsTypeVarSet, TupleExistQVars,
+        TupleConsType, TupleArgTypes, empty_hlds_constraints,
+        source_builtin_type("tuple")),
+    TupleConsInfos = [TupleConsInfo].
+
+:- pred typecheck_info_get_du_cons_ctor_list(typecheck_info::in, du_ctor::in,
     goal_id::in, list(cons_type_info)::out, list(cons_error)::out) is det.
 
-typecheck_info_get_du_cons_ctor_list(Info, ConsId, GoalId,
+typecheck_info_get_du_cons_ctor_list(Info, DuCtor, GoalId,
         ConsInfos, ConsErrors) :-
-    ( if ConsId = du_data_ctor(DuCtor) then
-        DuCtor = du_ctor(Name, Arity, ConsIdTypeCtor),
-        typecheck_info_get_cons_table(Info, ConsTable),
+    DuCtor = du_ctor(Name, Arity, ConsIdTypeCtor),
+    typecheck_info_get_cons_table(Info, ConsTable),
 
-        % Check if ConsId has been defined as a constructor in some
-        % discriminated union type or types.
-        ( if search_cons_table(ConsTable, DuCtor, ConsDefns) then
-            convert_cons_defn_list(Info, GoalId, do_not_flip_constraints,
-                DuCtor, ConsDefns, PlainConsInfos, PlainConsErrors)
-        else
-            PlainConsInfos = [],
-            PlainConsErrors = []
-        ),
-
-        % For "existentially typed" functors, whether the functor is actually
-        % existentially typed depends on whether it is used as a constructor
-        % or as a deconstructor. As a constructor, it is universally typed,
-        % but as a deconstructor, it is existentially typed. But type checking
-        % and polymorphism need to know whether it is universally or
-        % existentially quantified _before_ mode analysis has inferred
-        % the mode of the unification. Therefore, we use a special syntax
-        % for construction unifications with existentially quantified functors:
-        % instead of just using the functor name (e.g. "Y = foo(X)",
-        % the programmer must use the special functor name "new foo"
-        % (e.g. "Y = 'new foo'(X)").
-        %
-        % Here we check for occurrences of functor names starting with "new ".
-        % For these, we look up the original functor in the constructor symbol
-        % table, and for any occurrences of that functor we flip the
-        % quantifiers on the type definition (i.e. convert the existential
-        % quantifiers and constraints into universal ones).
-
-        ( if
-            remove_new_prefix(Name, OrigName),
-            OrigDuCtor = du_ctor(OrigName, Arity, ConsIdTypeCtor),
-            search_cons_table(ConsTable, OrigDuCtor, ExistQConsDefns)
-        then
-            convert_cons_defn_list(Info, GoalId, flip_constraints_for_new,
-                OrigDuCtor, ExistQConsDefns,
-                UnivQuantConsInfos, UnivQuantConsErrors),
-            ConsInfos = PlainConsInfos ++ UnivQuantConsInfos,
-            ConsErrors = PlainConsErrors ++ UnivQuantConsErrors
-        else
-            ConsInfos = PlainConsInfos,
-            ConsErrors = PlainConsErrors
-        )
+    % Check if ConsId has been defined as a constructor in some
+    % discriminated union type or types.
+    ( if search_cons_table(ConsTable, DuCtor, ConsDefns) then
+        convert_cons_defn_list(Info, GoalId, do_not_flip_constraints,
+            DuCtor, ConsDefns, PlainConsInfos, PlainConsErrors)
     else
-        ConsInfos = [],
-        ConsErrors = []
+        PlainConsInfos = [],
+        PlainConsErrors = []
+    ),
+
+    % For "existentially typed" functors, whether the functor is actually
+    % existentially typed depends on whether it is used as a constructor
+    % or as a deconstructor. As a constructor, it is universally typed,
+    % but as a deconstructor, it is existentially typed. But type checking
+    % and polymorphism need to know whether it is universally or
+    % existentially quantified _before_ mode analysis has inferred
+    % the mode of the unification. Therefore, we use a special syntax
+    % for construction unifications with existentially quantified functors:
+    % instead of just using the functor name (e.g. "Y = foo(X)",
+    % the programmer must use the special functor name "new foo"
+    % (e.g. "Y = 'new foo'(X)").
+    %
+    % Here we check for occurrences of functor names starting with "new ".
+    % For these, we look up the original functor in the constructor symbol
+    % table, and for any occurrences of that functor we flip the quantifiers
+    % on the type definition (i.e. convert the existential quantifiers
+    % and constraints into universal ones).
+
+    ( if
+        remove_new_prefix(Name, OrigName),
+        OrigDuCtor = du_ctor(OrigName, Arity, ConsIdTypeCtor),
+        search_cons_table(ConsTable, OrigDuCtor, ExistQConsDefns)
+    then
+        convert_cons_defn_list(Info, GoalId, flip_constraints_for_new,
+            OrigDuCtor, ExistQConsDefns,
+            UnivQuantConsInfos, UnivQuantConsErrors),
+        ConsInfos = PlainConsInfos ++ UnivQuantConsInfos,
+        ConsErrors = PlainConsErrors ++ UnivQuantConsErrors
+    else
+        ConsInfos = PlainConsInfos,
+        ConsErrors = PlainConsErrors
     ).
 
     % Filter out the errors (they aren't actually reported as errors
@@ -824,89 +882,18 @@ type_assigns_vars_have_types(Info, [TypeAssign | TypeAssigns],
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % builtin_atomic_type(Const, TypeName):
+    % builtin_apply_type(Info, DuCtor, Arity, ConsTypeInfos):
     %
-    % If Const is *or can be* a constant of a builtin atomic type,
-    % set TypeName to the name of that type, otherwise fail.
-    %
-:- pred builtin_atomic_type(cons_id::in, string::out) is semidet.
-
-builtin_atomic_type(ConsId, TypeName) :-
-    require_complete_switch [ConsId]
-    (
-        ConsId = some_int_const(IntConst),
-        TypeName = type_name_of_int_const(IntConst)
-    ;
-        ConsId = float_const(_),
-        TypeName = "float"
-    ;
-        ConsId = char_const(_),
-        TypeName = "character"
-    ;
-        ConsId = string_const(_),
-        TypeName = "string"
-    ;
-        ConsId = du_data_ctor(DuCtor),
-        DuCtor = du_ctor(SymName, Arity, _TypeCtor),
-        % We are before post-typecheck, so character constants have
-        % not yet been converted to char_consts.
-        %
-        % XXX The parser should have a separate term.functor representation
-        % for character constants, which should be converted to char_consts
-        % during the term to item translation.
-        ( if
-            SymName = unqualified(String),
-            string.char_to_string(_, String),
-            Arity = 0
-        then
-            TypeName = "character"
-        else
-            fail
-        )
-    ;
-        ConsId = impl_defined_const(IDCKind),
-        (
-            ( IDCKind = idc_file
-            ; IDCKind = idc_module
-            ; IDCKind = idc_pred
-            ; IDCKind = idc_grade
-            ),
-            TypeName = "string"
-        ;
-            IDCKind = idc_line,
-            TypeName = "int"
-        )
-    ;
-        ( ConsId = base_typeclass_info_const(_, _, _, _)
-        ; ConsId = closure_cons(_)
-        ; ConsId = deep_profiling_proc_layout(_)
-        ; ConsId = ground_term_const(_, _)
-        ; ConsId = table_io_entry_desc(_)
-        ; ConsId = tabling_info_const(_)
-        ; ConsId = tuple_cons(_)
-        ; ConsId = type_ctor_info_const(_, _, _)
-        ; ConsId = type_info_cell_constructor(_)
-        ; ConsId = type_info_const(_)
-        ; ConsId = typeclass_info_cell_constructor
-        ; ConsId = typeclass_info_const(_)
-        ),
-        fail
-    ).
-
-%---------------------%
-
-    % builtin_apply_type(Info, ConsId, Arity, ConsTypeInfos):
-    %
-    % Succeed if ConsId is the builtin apply/N or ''/N (N>=2),
+    % Succeed if DuCtor is the builtin apply/N or ''/N (N>=2),
     % which is used to invoke higher-order functions.
     % If so, bind ConsTypeInfos to a singleton list containing
     % the appropriate type for apply/N of the specified Arity.
     %
-:- pred builtin_apply_type(typecheck_info::in, cons_id::in, int::in,
+:- pred builtin_apply_type(typecheck_info::in, du_ctor::in, int::in,
     list(cons_type_info)::out) is semidet.
 
-builtin_apply_type(_Info, ConsId, Arity, ConsTypeInfos) :-
-    ConsId = du_data_ctor(du_ctor(unqualified(ApplyName), _, _)),
+builtin_apply_type(_Info, DuCtor, Arity, ConsTypeInfos) :-
+    DuCtor = du_ctor(unqualified(ApplyName), _, _),
     % XXX FIXME handle impure apply/N more elegantly (e.g. nicer syntax)
     (
         ApplyName = "apply",
@@ -936,20 +923,21 @@ builtin_apply_type(_Info, ConsId, Arity, ConsTypeInfos) :-
 
 %---------------------%
 
-    % builtin_field_access_function_type(Info, GoalId, ConsId,
+    % builtin_field_access_function_type(Info, GoalId, DuCtor,
     %   Arity, ConsTypeInfos):
     %
-    % Succeed if ConsId is the name of one the automatically
-    % generated field access functions (fieldname, '<fieldname> :=').
+    % Succeed if DuCtor is the name of one the automatically generated
+    % field access functions (fieldname, '<fieldname> :=').
     %
 :- pred builtin_field_access_function_type(typecheck_info::in, goal_id::in,
-    cons_id::in, arity::in, list(maybe_cons_type_info)::out) is semidet.
+    du_ctor::in, arity::in, list(maybe_cons_type_info)::out) is semidet.
 
-builtin_field_access_function_type(Info, GoalId, ConsId, Arity,
+builtin_field_access_function_type(Info, GoalId, DuCtor, Arity,
         MaybeConsTypeInfos) :-
     % Taking the address of automatically generated field access functions
     % is not allowed, so currying does have to be considered here.
-    ConsId = du_data_ctor(du_ctor(Name, Arity, _)),
+    % XXX zs: shouldn't that be "does NOT have to be considered"?
+    DuCtor = du_ctor(Name, Arity, _),
     typecheck_info_get_module_info(Info, ModuleInfo),
     is_field_access_function_name(ModuleInfo, Name, Arity, AccessType,
         FieldName),
@@ -1183,23 +1171,23 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldSymName,
 
 %---------------------%
 
-    % builtin_pred_type(Info, ConsId, Arity, GoalId, PredConsInfoList):
+    % builtin_pred_type(Info, DuCtor, Arity, GoalId, PredConsInfoList):
     %
-    % If ConsId/Arity is a constant of a pred type, instantiates
+    % If DuCtor/Arity is a constant of a pred type, instantiates
     % the output parameters, otherwise fails.
     %
     % Instantiates PredConsInfoList to the set of cons_type_info structures
-    % for each predicate with name `ConsId' and arity greater than or equal to
+    % for each predicate with name `DuCtor' and arity greater than or equal to
     % Arity. GoalId is used to identify any constraints introduced.
     %
     % For example, functor `map.search/1' has type `pred(K, V)'
     % (hence PredTypeParams = [K, V]) and argument types [map(K, V)].
     %
-:- pred builtin_pred_type(typecheck_info::in, cons_id::in, int::in,
-    goal_id::in, list(cons_type_info)::out) is semidet.
+:- pred builtin_pred_type(typecheck_info::in, du_ctor::in, int::in,
+    goal_id::in, list(cons_type_info)::out) is det.
 
-builtin_pred_type(Info, ConsId, Arity, GoalId, ConsTypeInfos) :-
-    ConsId = du_data_ctor(du_ctor(SymName, _, _)),
+builtin_pred_type(Info, DuCtor, Arity, GoalId, ConsTypeInfos) :-
+    DuCtor = du_ctor(SymName, _, _),
     typecheck_info_get_predicate_table(Info, PredicateTable),
     typecheck_info_get_calls_are_fully_qualified(Info, IsFullyQualified),
     predicate_table_lookup_sym(PredicateTable, IsFullyQualified, SymName,
