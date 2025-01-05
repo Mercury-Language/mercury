@@ -509,8 +509,9 @@ report_error_undef_du_ctor(ClauseContext, GoalContext, Context, DuCtor,
     DuCtor = du_ctor(SymName, Arity, _),
     ( if
         SymName = unqualified(Name),
-        ( if language_builtin_functor(Name, Arity) then
-            language_builtin_functor_components(Name, Arity, FunctorComps)
+        ( if language_builtin_functor(Name, Arity, UsedAsWhat) then
+            language_builtin_functor_components(Name, Arity, UsedAsWhat,
+                FunctorComps)
         else if syntax_functor_components(Name, Arity, SyntaxComps) then
             FunctorComps = SyntaxComps
         else
@@ -530,45 +531,34 @@ report_error_undef_du_ctor(ClauseContext, GoalContext, Context, DuCtor,
     % of a builtin language construct that should be used as a goal,
     % not as an expression.
     %
-:- pred language_builtin_functor(string::in, arity::in) is semidet.
+:- pred language_builtin_functor(string::in, arity::in, string::out)
+    is semidet.
 
-language_builtin_functor("=", 2).
-language_builtin_functor("\\=", 2).
-language_builtin_functor(",", 2).
-language_builtin_functor(";", 2).
-language_builtin_functor("\\+", 1).
-language_builtin_functor("not", 1).
-language_builtin_functor("<=>", 2).
-language_builtin_functor("=>", 2).
-language_builtin_functor("<=", 2).
-language_builtin_functor("call", _).
-language_builtin_functor("impure", 1).
-language_builtin_functor("semipure", 1).
-language_builtin_functor("all", 2).
-language_builtin_functor("some", 2).
+language_builtin_functor("=", 2, "part of a goal").
+language_builtin_functor("\\=", 2, "part of a goal").
+language_builtin_functor(",", 2, "a connective between goals").
+language_builtin_functor(";", 2, "a connective between goals").
+language_builtin_functor("\\+", 1, "a prefix before a goal").
+language_builtin_functor("not", 1, "a prefix before a goal").
+language_builtin_functor("<=>", 2, "a connective between goals").
+language_builtin_functor("=>", 2, "a connective between goals").
+language_builtin_functor("<=", 2, "a connective between goals").
+language_builtin_functor("call", _, "a prefix before a goal").
+language_builtin_functor("impure", 1, "a prefix before a goal").
+language_builtin_functor("semipure", 1, "a prefix before a goal").
+language_builtin_functor("all", 2, "part of a goal").
+language_builtin_functor("some", 2, "part of a goal").
 
 :- pred language_builtin_functor_components(string::in, arity::in,
-    list(error_msg_component)::out) is det.
+    string::in, list(error_msg_component)::out) is det.
 
-language_builtin_functor_components(Name, Arity, Components) :-
+language_builtin_functor_components(Name, Arity, UsedAsWhat, Components) :-
     NameArity = name_arity(Name, Arity),
-    % XXX For many of the strings that we can get as Name, such as ";" and
-    % "impure", the phrase "should be used as a goal" is somewhat misleading.
-    % This is because neither is a goal; a semicolon is a connective
-    % *between* two goals, while "impure" is a prefix *before* a goal.
-    %
-    % is_undef_pred_a_syntax_error has some wording we may want to use here
-    % for such cases. It would be nice if we could do that without any
-    % code duplication.
     MainPieces = [words("error: the language construct")] ++
         color_as_subject([name_arity(NameArity)]) ++
-        color_as_incorrect([words("should be used as a goal,"),
-            words("not as an expression.")]) ++
-        [nl],
-    VerbosePieces = [words("If you are trying to use a goal"),
-        words("as a boolean function, you should write")] ++
-        color_as_hint([words_quote("if <goal> then yes else no"),
-            words("instead.")]) ++
+        [words("should be used as")] ++
+        color_as_correct([words(UsedAsWhat), suffix(",")]) ++
+        color_as_incorrect([words("not as an expression.")]) ++
         [nl],
     ( if Name = "call" then
         VerboseCallPieces =
@@ -593,7 +583,6 @@ language_builtin_functor_components(Name, Arity, Components) :-
         VerboseCallPieces = []
     ),
     Components = [always(MainPieces),
-        verbose_only(verbose_always, VerbosePieces),
         verbose_only(verbose_once, VerboseCallPieces)].
 
 %---------------------%
@@ -743,7 +732,7 @@ report_error_undef_du_ctor_std(ClauseContext, Context, InitComp, DuCtor,
     %   subsequence of their full argument list.
     %
     % For a function with N arguments, the first requires N args in the
-    % call, while the second is ok any in number between 0 and N.
+    % call, while the second is ok with any number between 0 and N.
     %
     % This is why we report FuncArities twice, with each message being
     % specific to one of the situations above.

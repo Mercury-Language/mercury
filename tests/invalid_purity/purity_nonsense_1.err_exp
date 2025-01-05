@@ -5,13 +5,14 @@ purity_nonsense_1.m:011:   error: this [38;5;87m`impure' marker[39;49m is [38
 purity_nonsense_1.m:011:   [38;5;203mpredicate call.[39;49m
 purity_nonsense_1.m:011: In clause for predicate `e12'/0:
 purity_nonsense_1.m:011:   in argument 1 of call to predicate `impure'/1:
-purity_nonsense_1.m:011:   error: the language construct [38;5;87m`\+'/1[39;49m [38;5;203mshould be used[39;49m
-purity_nonsense_1.m:011:   [38;5;203mas a goal, not as an expression.[39;49m
+purity_nonsense_1.m:011:   error: the language construct [38;5;87m`\+'/1[39;49m should be used
+purity_nonsense_1.m:011:   as [38;5;40ma prefix before a goal,[39;49m [38;5;203mnot as an expression.[39;49m
 purity_nonsense_1.m:011: In clause for predicate `e12'/0:
 purity_nonsense_1.m:011:   in argument 1 of call to predicate `impure'/1:
 purity_nonsense_1.m:011:   in argument 1 of functor `\\+/1':
-purity_nonsense_1.m:011:   error: the language construct [38;5;87m`impure'/1[39;49m [38;5;203mshould be[39;49m
-purity_nonsense_1.m:011:   [38;5;203mused as a goal, not as an expression.[39;49m
+purity_nonsense_1.m:011:   error: the language construct [38;5;87m`impure'/1[39;49m should be
+purity_nonsense_1.m:011:   used as [38;5;40ma prefix before a goal,[39;49m [38;5;203mnot as an[39;49m
+purity_nonsense_1.m:011:   [38;5;203mexpression.[39;49m
 purity_nonsense_1.m:011: In clause for predicate `e12'/0:
 purity_nonsense_1.m:011:   in argument 1 of call to predicate `impure'/1:
 purity_nonsense_1.m:011:   in argument 1 of functor `\\+/1':
@@ -24,13 +25,14 @@ purity_nonsense_1.m:013:   error: this [38;5;87m`semipure' marker[39;49m is [
 purity_nonsense_1.m:013:   [38;5;203mpredicate call.[39;49m
 purity_nonsense_1.m:013: In clause for predicate `e13'/0:
 purity_nonsense_1.m:013:   in argument 1 of call to predicate `semipure'/1:
-purity_nonsense_1.m:013:   error: the language construct [38;5;87m`\+'/1[39;49m [38;5;203mshould be used[39;49m
-purity_nonsense_1.m:013:   [38;5;203mas a goal, not as an expression.[39;49m
+purity_nonsense_1.m:013:   error: the language construct [38;5;87m`\+'/1[39;49m should be used
+purity_nonsense_1.m:013:   as [38;5;40ma prefix before a goal,[39;49m [38;5;203mnot as an expression.[39;49m
 purity_nonsense_1.m:013: In clause for predicate `e13'/0:
 purity_nonsense_1.m:013:   in argument 1 of call to predicate `semipure'/1:
 purity_nonsense_1.m:013:   in argument 1 of functor `\\+/1':
-purity_nonsense_1.m:013:   error: the language construct [38;5;87m`semipure'/1[39;49m [38;5;203mshould be[39;49m
-purity_nonsense_1.m:013:   [38;5;203mused as a goal, not as an expression.[39;49m
+purity_nonsense_1.m:013:   error: the language construct [38;5;87m`semipure'/1[39;49m should be
+purity_nonsense_1.m:013:   used as [38;5;40ma prefix before a goal,[39;49m [38;5;203mnot as an[39;49m
+purity_nonsense_1.m:013:   [38;5;203mexpression.[39;49m
 purity_nonsense_1.m:013: In clause for predicate `e13'/0:
 purity_nonsense_1.m:013:   in argument 1 of call to predicate `semipure'/1:
 purity_nonsense_1.m:013:   in argument 1 of functor `\\+/1':
