@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2019, 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -375,7 +375,7 @@ should_copy_clauses_to_procs(PredInfo) :-
     % Don't process typeclass methods, because their proc_infos
     % are generated already mode-correct.
     pred_info_get_markers(PredInfo, PredMarkers),
-    not check_marker(PredMarkers, marker_class_method).
+    not marker_is_present(PredMarkers, marker_class_method).
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.clause_to_proc.

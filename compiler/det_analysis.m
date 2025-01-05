@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2172,7 +2172,7 @@ determinism_declarations_procs(PredId, PredInfo, [ProcId | ProcIds],
             hlds_pred.in_in_unification_proc_id(ProcId)
         ;
             pred_info_get_markers(PredInfo, Markers),
-            check_marker(Markers, marker_class_method)
+            marker_is_present(Markers, marker_class_method)
         )
     then
         !:NoInferProcs = [PredProcId | !.NoInferProcs]

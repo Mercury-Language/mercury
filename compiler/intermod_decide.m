@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2024 The Mercury team.
+% Copyright (C) 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -251,7 +251,7 @@ opt_exporting_pred_is_likely_worthwhile(Params, ModuleInfo,
     ;
         % Mutable access preds should always be included in .opt files.
         pred_info_get_markers(PredInfo, Markers),
-        check_marker(Markers, marker_mutable_access_pred)
+        marker_is_present(Markers, marker_mutable_access_pred)
     ;
         pred_has_a_higher_order_input_arg(ModuleInfo, PredInfo),
         clause_list_size(Clauses, GoalSize),
@@ -275,11 +275,11 @@ may_opt_export_pred(PredId, PredInfo, TypeSpecForcePreds) :-
     % goals which cannot be written to `.opt' files (they cannot be read
     % back in). They will be recreated in the importing module.
     pred_info_get_markers(PredInfo, Markers),
-    not check_marker(Markers, marker_class_method),
-    not check_marker(Markers, marker_class_instance_method),
+    not marker_is_present(Markers, marker_class_method),
+    not marker_is_present(Markers, marker_class_instance_method),
 
     % Don't write stub clauses to `.opt' files.
-    not check_marker(Markers, marker_stub),
+    not marker_is_present(Markers, marker_stub),
 
     % Don't export builtins, since they will be recreated in the
     % importing module anyway.
@@ -290,8 +290,8 @@ may_opt_export_pred(PredId, PredInfo, TypeSpecForcePreds) :-
     not set.member(PredId, TypeSpecForcePreds),
 
     % Don't export non-inlinable predicates.
-    not check_marker(Markers, marker_user_marked_no_inline),
-    not check_marker(Markers, marker_mmc_marked_no_inline),
+    not marker_is_present(Markers, marker_user_marked_no_inline),
+    not marker_is_present(Markers, marker_mmc_marked_no_inline),
 
     % Don't export tabled predicates, since they are not inlinable.
     pred_info_get_proc_table(PredInfo, ProcTable),
@@ -634,7 +634,7 @@ intermod_do_add_pred(PredId, MayOptExportPred, !IntermodInfo) :-
         % *after* mode analysis, so this restriction is likely to be
         % unnecessary.
         (
-            check_marker(Markers, marker_infer_modes)
+            marker_is_present(Markers, marker_infer_modes)
         ;
             pred_info_get_proc_table(PredInfo, Procs),
             ProcIds = pred_info_all_procids(PredInfo),
@@ -671,7 +671,7 @@ intermod_do_add_pred(PredId, MayOptExportPred, !IntermodInfo) :-
         % to include them in .opt files.
 
         pred_info_get_purity(PredInfo, purity_impure),
-        not check_marker(Markers, marker_mutable_access_pred)
+        not marker_is_present(Markers, marker_mutable_access_pred)
     then
         MayOptExportPred = may_not_opt_export_pred
     else if
@@ -693,7 +693,7 @@ intermod_do_add_pred(PredId, MayOptExportPred, !IntermodInfo) :-
         % are always written to the `.opt' file.
 
         pred_info_get_markers(PredInfo, Markers),
-        check_marker(Markers, marker_class_method)
+        marker_is_present(Markers, marker_class_method)
     then
         MayOptExportPred = may_opt_export_pred
     else if

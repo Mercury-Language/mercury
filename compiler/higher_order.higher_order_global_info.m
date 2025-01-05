@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -453,8 +453,8 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
         % - the code seems to *prevent* the specialization of class methods
         %   in the match_is_full case, and
         % - it seems to have nothing to do with the log message of that diff.
-        not check_marker(Markers, marker_class_method),
-        not check_marker(Markers, marker_class_instance_method),
+        not marker_is_present(Markers, marker_class_method),
+        not marker_is_present(Markers, marker_class_instance_method),
 
         (
             Params ^ param_do_type_spec = do_not_spec_types

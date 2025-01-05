@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2015-2024 The Mercury team.
+% Copyright (C) 2015-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -503,8 +503,8 @@ clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
         % this check if there is a promise_{pure,semipure} pragma for the
         % predicate/function, since in that case they will differ anyway.
         ( if
-            ( check_marker(Markers, marker_promised_pure)
-            ; check_marker(Markers, marker_promised_semipure)
+            ( marker_is_present(Markers, marker_promised_pure)
+            ; marker_is_present(Markers, marker_promised_semipure)
             )
         then
             true

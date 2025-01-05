@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1520,10 +1520,8 @@ find_matching_version(Info, CalleePredProcId, Args0, HigherOrderArgs,
                 % won't be called.
                 UserTypeSpec = spec_types_user_guided,
                 pred_info_get_markers(CalleePredInfo, Markers),
-                (
-                    check_marker(Markers, marker_class_method)
-                ;
-                    check_marker(Markers, marker_class_instance_method)
+                ( marker_is_present(Markers, marker_class_method)
+                ; marker_is_present(Markers, marker_class_instance_method)
                 )
             ;
                 HigherOrder = opt_higher_order,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -225,7 +225,7 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
         SimplifyTasks0, SimplifyTasks),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_markers(PredInfo0, Markers0),
-    ( if check_marker(Markers0, marker_mode_check_clauses) then
+    ( if marker_is_present(Markers0, marker_mode_check_clauses) then
         simplify_proc_maybe_mark_modecheck_clauses(!ProcInfo)
     else
         true
@@ -247,7 +247,7 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
     % if its body contains any calls relevant to format_calls.m.
 
     ( if
-        check_marker(Markers0, marker_has_format_call),
+        marker_is_present(Markers0, marker_has_format_call),
         SimplifyTasks ^ do_invoke_format_call = invoke_format_call
     then
         (
@@ -524,7 +524,7 @@ maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
         !Specs) :-
     (
         MayDuplicate = proc_may_duplicate,
-        ( if check_marker(Markers, marker_user_marked_no_inline) then
+        ( if marker_is_present(Markers, marker_user_marked_no_inline) then
             AttrPieces = [quote("may_duplicate"), words("attribute")],
             PragmaPieces = [pragma_decl("no_inline"), words("declaration")],
             Pieces = [words("Error: the")] ++
@@ -542,7 +542,7 @@ maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
         )
     ;
         MayDuplicate = proc_may_not_duplicate,
-        ( if check_marker(Markers, marker_user_marked_inline) then
+        ( if marker_is_present(Markers, marker_user_marked_inline) then
             AttrPieces = [quote("may_not_duplicate"), words("attribute")],
             PragmaPieces = [pragma_decl("inline"), words("declaration")],
             Pieces = [words("Error: the")] ++
@@ -568,7 +568,7 @@ maybe_warn_about_may_export_body_attribute(MayExportBody, Markers, Context,
         !Specs) :-
     (
         MayExportBody = proc_may_export_body,
-        ( if check_marker(Markers, marker_user_marked_no_inline) then
+        ( if marker_is_present(Markers, marker_user_marked_no_inline) then
             AttrPieces = [quote("may_export_body"), words("attribute")],
             PragmaPieces = [pragma_decl("inline"), words("declaration")],
             Pieces = [words("Error: the")] ++

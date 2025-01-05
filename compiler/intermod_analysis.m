@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021-2024 The Mercury team.
+% Copyright (C) 2021-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -633,8 +633,8 @@ gather_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
         % instance methods causes the compiler to abort when it reads them
         % back in.
         pred_info_get_markers(PredInfo, Markers),
-        not check_marker(Markers, marker_class_instance_method),
-        not check_marker(Markers, marker_named_class_instance_method),
+        not marker_is_present(Markers, marker_class_instance_method),
+        not marker_is_present(Markers, marker_named_class_instance_method),
 
         proc_info_get_exception_info(ProcInfo, MaybeProcExceptionInfo),
         MaybeProcExceptionInfo = yes(ProcExceptionInfo)
@@ -871,8 +871,8 @@ should_write_exception_info(ModuleInfo, PredId, ProcId, PredInfo,
             % instance methods causes the compiler to abort when it reads them
             % back in.
             pred_info_get_markers(PredInfo, Markers),
-            not check_marker(Markers, marker_class_instance_method),
-            not check_marker(Markers, marker_named_class_instance_method)
+            not marker_is_present(Markers, marker_class_instance_method),
+            not marker_is_present(Markers, marker_named_class_instance_method)
         )
     then
         ShouldWrite = should_write
@@ -900,8 +900,8 @@ should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
             % back in.
             %
             pred_info_get_markers(PredInfo, Markers),
-            not check_marker(Markers, marker_class_instance_method),
-            not check_marker(Markers, marker_named_class_instance_method)
+            not marker_is_present(Markers, marker_class_instance_method),
+            not marker_is_present(Markers, marker_named_class_instance_method)
         )
     then
         ShouldWrite = should_write
@@ -928,8 +928,8 @@ should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
             % instance methods causes the compiler to abort when it reads them
             % back in.
             pred_info_get_markers(PredInfo, Markers),
-            not check_marker(Markers, marker_class_instance_method),
-            not check_marker(Markers, marker_named_class_instance_method)
+            not marker_is_present(Markers, marker_class_instance_method),
+            not marker_is_present(Markers, marker_named_class_instance_method)
         )
     then
         ShouldWrite = should_write

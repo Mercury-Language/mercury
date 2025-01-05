@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -857,7 +857,7 @@
 
     % Check if a particular is in the set.
     %
-:- pred check_marker(pred_markers::in, pred_marker::in) is semidet.
+:- pred marker_is_present(pred_markers::in, pred_marker::in) is semidet.
 
     % Add some markers to the set.
     %
@@ -928,7 +928,7 @@ next_proc_id(ProcTable, ProcId) :-
     proc_id_to_int(ProcId, Num).
 
 calls_are_fully_qualified(Markers) =
-    ( if check_marker(Markers, marker_calls_are_fully_qualified) then
+    ( if marker_is_present(Markers, marker_calls_are_fully_qualified) then
         is_fully_qualified
     else
         may_be_partially_qualified
@@ -1887,21 +1887,21 @@ pred_info_update_goal_type(NPGoalType1, !PredInfo) :-
 
 pred_info_requested_inlining(PredInfo0) :-
     pred_info_get_markers(PredInfo0, Markers),
-    ( check_marker(Markers, marker_user_marked_inline)
-    ; check_marker(Markers, marker_heuristic_inline)
+    ( marker_is_present(Markers, marker_user_marked_inline)
+    ; marker_is_present(Markers, marker_heuristic_inline)
     ).
 
 pred_info_requested_no_inlining(PredInfo0) :-
     pred_info_get_markers(PredInfo0, Markers),
-    ( check_marker(Markers, marker_user_marked_no_inline)
-    ; check_marker(Markers, marker_mmc_marked_no_inline)
+    ( marker_is_present(Markers, marker_user_marked_no_inline)
+    ; marker_is_present(Markers, marker_mmc_marked_no_inline)
     ).
 
 pred_info_get_purity(PredInfo0, Purity) :-
     pred_info_get_markers(PredInfo0, Markers),
-    ( if check_marker(Markers, marker_is_impure) then
+    ( if marker_is_present(Markers, marker_is_impure) then
         Purity = purity_impure
-    else if check_marker(Markers, marker_is_semipure) then
+    else if marker_is_present(Markers, marker_is_semipure) then
         Purity = purity_semipure
     else
         Purity = purity_pure
@@ -1909,9 +1909,9 @@ pred_info_get_purity(PredInfo0, Purity) :-
 
 pred_info_get_promised_purity(PredInfo0, MaybePromisedPurity) :-
     pred_info_get_markers(PredInfo0, Markers),
-    ( if check_marker(Markers, marker_promised_pure) then
+    ( if marker_is_present(Markers, marker_promised_pure) then
         MaybePromisedPurity = yes(purity_pure)
-    else if check_marker(Markers, marker_promised_semipure) then
+    else if marker_is_present(Markers, marker_promised_semipure) then
         MaybePromisedPurity = yes(purity_semipure)
     else
         MaybePromisedPurity = no
@@ -1919,7 +1919,7 @@ pred_info_get_promised_purity(PredInfo0, MaybePromisedPurity) :-
 
 pred_info_infer_modes(PredInfo) :-
     pred_info_get_markers(PredInfo, Markers),
-    check_marker(Markers, marker_infer_modes).
+    marker_is_present(Markers, marker_infer_modes).
 
 purity_to_markers(purity_pure, []).
 purity_to_markers(purity_semipure, [marker_is_semipure]).
@@ -1942,7 +1942,7 @@ pred_info_get_sym_name(PredInfo, SymName) :-
 
 init_markers(set.init).
 
-check_marker(MarkerSet, Marker) :-
+marker_is_present(MarkerSet, Marker) :-
     set.member(Marker, MarkerSet).
 
 add_marker(Marker, !MarkerSet) :-

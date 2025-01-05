@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -679,7 +679,7 @@ call_arg_id_to_pieces(PrintHoVarName, CallId, ArgNum, PredMarkers) = Pieces :-
             % than the clause syntax, we also omit the "call to",
             % since in that case there was no explicit call in
             % the user's source code.
-            check_marker(PredMarkers, marker_named_class_instance_method)
+            marker_is_present(PredMarkers, marker_named_class_instance_method)
         )
     then
         CallToPieces = []

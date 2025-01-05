@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002, 2005-2007, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018, 2020, 2022, 2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2020, 2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -124,7 +124,7 @@ decide_what_term2_errors_to_report(ModuleInfo, SCC, Errors,
                 module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _),
                 not pred_info_is_imported(PredInfo),
                 pred_info_get_markers(PredInfo, Markers),
-                check_marker(Markers, marker_check_termination)
+                marker_is_present(Markers, marker_check_termination)
             ),
         set.filter(IsCheckTerm, SCC, CheckTermPPIds),
         set.is_non_empty(CheckTermPPIds)

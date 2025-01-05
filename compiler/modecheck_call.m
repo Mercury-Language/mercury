@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2001, 2003-2012 The University of Melbourne.
-% Copyright (C) 2015, 2024 The Mercury team.
+% Copyright (C) 2015, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -114,7 +114,7 @@ modecheck_plain_or_foreign_call(PredId, MaybeDetism, ProcId0, SelectedProcId,
     % XXX Then we should have a switch on ProcIds.
     ( if
         ProcIds = [],
-        not check_marker(Markers, marker_infer_modes)
+        not marker_is_present(Markers, marker_infer_modes)
     then
         set_of_var.init(WaitingVars),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -127,7 +127,7 @@ modecheck_plain_or_foreign_call(PredId, MaybeDetism, ProcId0, SelectedProcId,
         ExtraGoals = no_extra_goals
     else if
         ProcIds = [ProcId],
-        ( not check_marker(Markers, marker_infer_modes)
+        ( not marker_is_present(Markers, marker_infer_modes)
         ; MayChangeCalledProc = may_not_change_called_proc
         )
     then
@@ -304,7 +304,7 @@ no_matching_modes(PredId, ArgVars, Mismatches, MaybeDetism, WaitingVars,
     mode_info_get_pred_id_table(!.ModeInfo, PredIdTable),
     map.lookup(PredIdTable, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    ( if check_marker(Markers, marker_infer_modes) then
+    ( if marker_is_present(Markers, marker_infer_modes) then
         insert_new_mode(PredId, ArgVars, MaybeDetism, NewProcId, !ModeInfo),
         % We don't yet know the final insts for the newly created mode
         % of the called predicate, so we set the instmap to unreachable,

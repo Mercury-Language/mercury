@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2000,2002-2007, 2010-2012 The University of Melbourne.
-% Copyright (c) 2014-2017, 2019-2022, 2024 The Mercury team.
+% Copyright (c) 2014-2017, 2019-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -227,7 +227,7 @@ generate_arg_infos_for_proc(ModuleInfo, UseFloatRegs, Markers, ArgTypes,
     ( if
         UseFloatRegs = yes,
         % XXX we don't yet use float registers for class method calls
-        not check_marker(Markers, marker_class_instance_method)
+        not marker_is_present(Markers, marker_class_instance_method)
     then
         proc_info_get_reg_r_headvars(!.ProcInfo, RegR_HeadVars),
         list.map_corresponding(reg_type_for_headvar(RegR_HeadVars),

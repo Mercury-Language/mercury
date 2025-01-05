@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -374,7 +374,7 @@ is_pred_created_type_correct(ModuleInfo, !PredInfo) :-
             % XXX Why the delay?
             pred_info_is_builtin(!.PredInfo),
             pred_info_get_markers(!.PredInfo, Markers),
-            not check_marker(Markers, marker_builtin_stub)
+            not marker_is_present(Markers, marker_builtin_stub)
         )
     then
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
@@ -431,13 +431,13 @@ handle_stubs_and_non_contiguous_clauses(ModuleInfo, PredId, !PredInfo,
         % errors.
         ( if
             globals.lookup_bool_option(Globals, allow_stubs, yes),
-            not check_marker(Markers0, marker_class_method)
+            not marker_is_present(Markers0, marker_class_method)
         then
             !:Specs =
                 maybe_report_no_clauses_stub(ModuleInfo, PredId, !.PredInfo),
             generate_and_add_stub_clause(ModuleInfo, PredId, !PredInfo)
         else if
-            check_marker(Markers0, marker_builtin_stub)
+            marker_is_present(Markers0, marker_builtin_stub)
         then
             !:Specs = [],
             generate_and_add_stub_clause(ModuleInfo, PredId, !PredInfo)
@@ -463,7 +463,7 @@ handle_stubs_and_non_contiguous_clauses(ModuleInfo, PredId, !PredInfo,
         % There are no clauses for class methods. The clauses are generated
         % later on, in polymorphism.expand_class_method_bodies.
         % XXX Why the delay?
-        ( if check_marker(Markers0, marker_class_method) then
+        ( if marker_is_present(Markers0, marker_class_method) then
             % For the moment, we just insert the types of the head vars
             % into the clauses_info.
             clauses_info_get_headvar_list(ClausesInfo1, HeadVars),
@@ -538,7 +538,7 @@ do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
         pred_info_get_arg_types(!.PredInfo, _ArgTypeVarSet, ExistQVars0,
             ArgTypes0),
         pred_info_get_markers(!.PredInfo, Markers0),
-        ( if check_marker(Markers0, marker_infer_type) then
+        ( if marker_is_present(Markers0, marker_infer_type) then
             % For a predicate whose type is inferred, the predicate is allowed
             % to bind the type variables in the head of the predicate's type
             % declaration. Such predicates are given an initial type

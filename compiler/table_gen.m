@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2015-2024 The Mercury team.
+% Copyright (C) 2015-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1448,7 +1448,7 @@ create_new_io_goal(OrigGoal, TableIoEntryKind, Unitize, TableIoStates,
     ModuleInfo0 = !.TableInfo ^ table_module_info,
     module_info_pred_info(ModuleInfo0, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    ( if check_marker(Markers, marker_user_marked_no_inline) then
+    ( if marker_is_present(Markers, marker_user_marked_no_inline) then
         % If the predicate should not be inlined, then we create a new
         % predicate with the same body as the original predicate, which is
         % called wherever the original goal would appear in the transformed

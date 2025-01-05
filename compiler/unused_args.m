@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -379,7 +379,7 @@ maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs,
             % stub procedures (those which originally had no clauses)
             % as if they use all of their arguments,
             pred_info_get_markers(PredInfo, Markers),
-            check_marker(Markers, marker_stub)
+            marker_is_present(Markers, marker_stub)
         ;
             % The method of a class instance must have the exact same set
             % or arguments as the class method itself. We cannot delete
@@ -1818,7 +1818,7 @@ gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
             % Don't warn about stubs for procedures with no clauses --
             % in that case, we *expect* none of the arguments to be used.
             pred_info_get_markers(PredInfo, Markers),
-            not check_marker(Markers, marker_stub),
+            not marker_is_present(Markers, marker_stub),
 
             % Don't warn about lambda expressions not using arguments.
             % (The warning message for these doesn't contain context,
@@ -1847,8 +1847,8 @@ gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
             % XXX We don't currently generate pragmas for the automatically
             % generated class instance methods because the compiler aborts
             % when trying to read them back in from the `.opt' files.
-            not check_marker(Markers, marker_class_instance_method),
-            not check_marker(Markers, marker_named_class_instance_method)
+            not marker_is_present(Markers, marker_class_instance_method),
+            not marker_is_present(Markers, marker_named_class_instance_method)
         then
             (
                 DoPragma = no

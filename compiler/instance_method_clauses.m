@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2022-2023 The Mercury team.
+% Copyright (C) 2022-2023, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -78,9 +78,9 @@ produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, ArgTypes,
         make_n_fresh_vars("HeadVar__", PredFormArityInt, HeadVars,
             VarSet0, VarSet),
         set_of_var.list_to_set(HeadVars, NonLocals),
-        ( if check_marker(Markers, marker_is_impure) then
+        ( if marker_is_present(Markers, marker_is_impure) then
             Purity = purity_impure
-        else if check_marker(Markers, marker_is_semipure) then
+        else if marker_is_present(Markers, marker_is_semipure) then
             Purity = purity_semipure
         else
             Purity = purity_pure

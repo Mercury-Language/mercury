@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2024 The Mercury team.
+% Copyright (C) 2014-2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -80,7 +80,7 @@ construct_type_inference_messages(ModuleInfo, ValidPredIdSet,
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     ( if
-        check_marker(Markers, marker_infer_type),
+        marker_is_present(Markers, marker_infer_type),
         set_tree234.contains(ValidPredIdSet, PredId),
         not pred_info_is_promise(PredInfo, _)
     then
@@ -137,7 +137,7 @@ construct_type_inference_message(ModuleInfo, PredId, PredInfo) = Spec :-
         ( pred(OtherPredId::in) is semidet :-
             module_info_pred_info(ModuleInfo, OtherPredId, OtherPredInfo),
             pred_info_get_markers(OtherPredInfo, OtherPredMarkers),
-            not check_marker(OtherPredMarkers, marker_infer_type)
+            not marker_is_present(OtherPredMarkers, marker_infer_type)
         ),
     list.filter(PredIsDeclared, AllOtherPredIds, AllOtherDeclaredPredIds),
     (

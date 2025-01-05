@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -226,7 +226,7 @@ add_arg_regs_in_proc(ModuleInfo, ProcId, PredInfo0, PredInfo) :-
     pred_info_get_markers(PredInfo0, PredMarkers),
     pred_info_proc_info(PredInfo0, ProcId, ProcInfo0),
     proc_info_get_argmodes(ProcInfo0, ArgModes0),
-    ( if check_marker(PredMarkers, marker_class_instance_method) then
+    ( if marker_is_present(PredMarkers, marker_class_instance_method) then
         % For class instance methods use the argument types before
         % instance types were substituted. The list of arguments in the
         % procedure may be longer due to type_infos and typeclass_infos.

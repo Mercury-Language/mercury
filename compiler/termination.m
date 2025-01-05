@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-2001, 2003-2012 The University of Melbourne.
-% Copyright (C) 2014-2020, 2022-2024 The Mercury Team.
+% Copyright (C) 2014-2020, 2022-2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -525,7 +525,7 @@ decide_what_term_errors_to_report(ModuleInfo, SCC, Errors,
                 module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _),
                 not pred_info_is_imported(PredInfo),
                 pred_info_get_markers(PredInfo, Markers),
-                check_marker(Markers, marker_check_termination)
+                marker_is_present(Markers, marker_check_termination)
             ),
         set.filter(IsCheckTerm, SCC, CheckTermPPIds),
         set.is_non_empty(CheckTermPPIds)
@@ -629,7 +629,7 @@ term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
     then
         % Since we cannot see their definition, we consider procedures
         % which have a `:- pragma external_{pred/func}' to be imported.
-        ( if check_marker(Markers, marker_terminates) then
+        ( if marker_is_present(Markers, marker_terminates) then
             change_procs_termination_info(ProcIds, yes, cannot_loop(unit),
                 ProcTable0, ProcTable2)
         else
@@ -647,10 +647,10 @@ term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
         % so it cannot be depended upon.
         ( if
             (
-                check_marker(Markers, marker_terminates)
+                marker_is_present(Markers, marker_terminates)
             ;
                 BelieveCheckTerm = do_believe_check_termination,
-                check_marker(Markers, marker_check_termination)
+                marker_is_present(Markers, marker_check_termination)
             )
         then
             change_procs_termination_info(ProcIds, yes, cannot_loop(unit),
@@ -666,7 +666,7 @@ term_preprocess_pred(BelieveCheckTerm, PredId, !ModuleInfo) :-
         change_procs_arg_size_info(ProcIds, no, ArgSizeInfo,
             ProcTable1, ProcTable2)
     ),
-    ( if check_marker(Markers, marker_does_not_terminate) then
+    ( if marker_is_present(Markers, marker_does_not_terminate) then
         RequestError = term_error(Context, does_not_term_pragma(PredId)),
         RequestTerminationInfo = can_loop([RequestError]),
         change_procs_termination_info(ProcIds, yes,

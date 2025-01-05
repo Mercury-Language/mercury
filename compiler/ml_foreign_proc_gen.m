@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -194,7 +194,7 @@ ml_gen_foreign_proc_for_csharp_or_java(TargetLang, OrdinaryKind, Attributes,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    ( if check_marker(Markers, marker_mutable_access_pred) then
+    ( if marker_is_present(Markers, marker_mutable_access_pred) then
         MutableSpecial = mutable_special_case
     else
         MutableSpecial = not_mutable_special_case

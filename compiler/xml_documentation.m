@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -539,7 +539,7 @@ pred_documentation(C, _PredId, PredInfo, !Xml) :-
     ( if
         pred_status_defined_in_this_module(PredStatus) = yes,
         Origin = origin_user(user_made_pred(_, _, _)),
-        not check_marker(Markers, marker_class_method)
+        not marker_is_present(Markers, marker_class_method)
     then
         Xml = predicate_documentation(C, PredInfo),
         !:Xml = [Xml | !.Xml]

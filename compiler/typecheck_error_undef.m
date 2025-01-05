@@ -836,7 +836,9 @@ report_error_undef_du_ctor_std(ClauseContext, Context, InitComp, DuCtor,
         )
     ),
     PredMarkers = ClauseContext ^ tecc_pred_markers,
-    ( if check_marker(PredMarkers, marker_named_class_instance_method) then
+    ( if
+        marker_is_present(PredMarkers, marker_named_class_instance_method)
+    then
         % We are processing a clause that the compiler generated itself
         % for an instance declaration such as "func(func_a/3) is one_str"
         % in tests/invalid/no_method.m. If we did not disable the
@@ -1157,8 +1159,8 @@ should_report_no_clauses(ModuleInfo, PredInfo) = ShouldReport :-
     pred_info_get_markers(PredInfo, PredMarkers),
     ( if
         ( set.contains(IntBadClauses, Id)
-        ; check_marker(PredMarkers, marker_fact_table_semantic_errors)
-        ; check_marker(PredMarkers, marker_no_pred_decl)
+        ; marker_is_present(PredMarkers, marker_fact_table_semantic_errors)
+        ; marker_is_present(PredMarkers, marker_no_pred_decl)
         ; ModuleName \= PredModuleName
         )
     then

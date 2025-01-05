@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -244,7 +244,7 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
                 MaybePredMaybeProcId = no
             ;
                 MaybeNewPredId = yes(NewPredId),
-                ( if check_marker(Markers, marker_class_method) then
+                ( if marker_is_present(Markers, marker_class_method) then
                     IsClassMethod = is_a_class_method
                 else
                     IsClassMethod = is_not_a_class_method

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -364,9 +364,9 @@ perform_pred_purity_checks(ModuleInfo, PredId, PredInfo,
                 ; NPGoalType = np_goal_type_clause_and_foreign
                 )
             ;
-                ( check_marker(Markers, marker_class_method)
-                ; check_marker(Markers, marker_class_instance_method)
-                ; check_marker(Markers, marker_stub)
+                ( marker_is_present(Markers, marker_class_method)
+                ; marker_is_present(Markers, marker_class_instance_method)
+                ; marker_is_present(Markers, marker_stub)
                 )
             )
         then
@@ -544,7 +544,7 @@ compute_purity_for_clause(Clause0, Clause, PredInfo, Purity, !Info) :-
             )
         ;
             pred_info_get_markers(PredInfo, Markers),
-            check_marker(Markers, marker_promised_equivalent_clauses)
+            marker_is_present(Markers, marker_promised_equivalent_clauses)
         ;
             pred_info_get_goal_type(PredInfo, GoalType),
             GoalType = goal_not_for_promise(np_goal_type_foreign)
@@ -881,9 +881,9 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
         % mutable predicates either.
 
         pred_info_get_markers(PredInfo, Markers),
-        ( check_marker(Markers, marker_class_method)
-        ; check_marker(Markers, marker_class_instance_method)
-        ; check_marker(Markers, marker_mutable_access_pred)
+        ( marker_is_present(Markers, marker_class_method)
+        ; marker_is_present(Markers, marker_class_instance_method)
+        ; marker_is_present(Markers, marker_mutable_access_pred)
         )
     then
         true
@@ -1037,7 +1037,7 @@ check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, ArgVars, Specs) :-
         ),
         % Don't warn about bogus purity annotations in compiler-generated
         % mutable predicates.
-        ( if check_marker(CallerMarkers, marker_mutable_access_pred) then
+        ( if marker_is_present(CallerMarkers, marker_mutable_access_pred) then
             Specs = ClosureSpecs
         else
             Spec = impure_unification_expr_error(VarTable, Var,

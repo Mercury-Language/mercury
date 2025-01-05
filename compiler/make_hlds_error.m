@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2006, 2008, 2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -360,7 +360,7 @@ gather_porf_arities(ModuleInfo, [PredId | PredIds], WantedPorF,
     PorF = pred_info_is_pred_or_func(PredInfo),
     ( if PorF = WantedPorF then
         pred_info_get_markers(PredInfo, Markers),
-        ( if check_marker(Markers, marker_no_pred_decl) then
+        ( if marker_is_present(Markers, marker_no_pred_decl) then
             % This pred has no declaration, so including its arity in the list
             % would be misleading.
             true

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -587,7 +587,7 @@ copy_pred_body(OldPredIdTable, PredId, PredIdTable0, PredIdTable) :-
         % already mode-correct, and because copying from the clauses_info
         % doesn't work for them.
         pred_info_get_markers(PredInfo0, Markers),
-        check_marker(Markers, marker_class_method)
+        marker_is_present(Markers, marker_class_method)
     then
         PredIdTable = PredIdTable0
     else
@@ -628,7 +628,7 @@ should_modecheck_pred(PredInfo) = ShouldModeCheck :-
             % Don't modecheck class methods, because they are generated
             % already mode-correct and with correct instmap deltas.
             pred_info_get_markers(PredInfo, PredMarkers),
-            check_marker(PredMarkers, marker_class_method)
+            marker_is_present(PredMarkers, marker_class_method)
         )
     then
         ShouldModeCheck = no
@@ -682,7 +682,7 @@ maybe_modecheck_pred(ProgressStream, WhatToCheck, MayChangeCalledProc, PredId,
 maybe_write_modes_progress_message(ProgressStream, ModuleInfo, WhatToCheck,
         PredId, PredInfo, !IO) :-
     pred_info_get_markers(PredInfo, Markers),
-    ( if check_marker(Markers, marker_infer_modes) then
+    ( if marker_is_present(Markers, marker_infer_modes) then
         (
             WhatToCheck = check_modes,
             Msg = "Mode-analysing"
@@ -757,7 +757,7 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
         ;
             InferModesOpt = no,
             pred_info_get_markers(PredInfo, Markers),
-            ( if check_marker(Markers, marker_no_pred_decl) then
+            ( if marker_is_present(Markers, marker_no_pred_decl) then
                 % Generate an error_spec that prints nothing.
                 % While we don't want the user to see the error message,
                 % we need the severity_error to stop the compiler
@@ -905,7 +905,7 @@ do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
         PredId, PredInfo0, ProcId, !ProcInfo, ClausesInfo,
         !ModuleInfo, !ProcModeErrorMap, !Changed, ErrorAndWarningSpecs) :-
     pred_info_get_markers(PredInfo0, Markers),
-    ( if check_marker(Markers, marker_infer_modes) then
+    ( if marker_is_present(Markers, marker_infer_modes) then
         InferModes = do_infer_modes
     else
         InferModes = do_not_infer_modes
@@ -1102,7 +1102,7 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, IsUnifyPred,
         CheckpointMsg),
     ( if
         InferModes = do_not_infer_modes,
-        check_marker(Markers, marker_mode_check_clauses),
+        marker_is_present(Markers, marker_mode_check_clauses),
         Body0 = hlds_goal(BodyGoalExpr0, BodyGoalInfo0),
         (
             BodyGoalExpr0 = disj(Disjuncts0),
@@ -1879,7 +1879,7 @@ report_mode_inference_messages_for_preds(ModuleInfo, ProcModeErrorMap,
         OutputDetism, [PredId | PredIds], !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    ( if check_marker(Markers, marker_infer_modes) then
+    ( if marker_is_present(Markers, marker_infer_modes) then
         ProcIds = pred_info_all_procids(PredInfo),
         pred_info_get_proc_table(PredInfo, Procs),
         report_mode_inference_messages_for_procs(ModuleInfo, ProcModeErrorMap,

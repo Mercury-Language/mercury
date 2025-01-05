@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2024 The Mercury team.
+% Copyright (C) 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -74,7 +74,7 @@ propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcs,
     list.reverse(RevErrorProcs, ErrorProcs),
     pred_info_set_proc_table(Procs, !PredInfo),
     pred_info_get_markers(!.PredInfo, Markers),
-    ( if check_marker(Markers, marker_has_rhs_lambda) then
+    ( if marker_is_present(Markers, marker_has_rhs_lambda) then
         % We have not copied goals in clauses to become the bodies
         % of procedures, so the lambda expressions in whose arguments
         % we should propagate types into insts exist only in the clauses_info.

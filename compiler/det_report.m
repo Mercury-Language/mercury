@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -312,14 +312,14 @@ check_for_too_tight_or_loose_declared_determinism(PredProcId,
                 % the determinism in the `:- typeclass' declaration will be
                 % the loosest of all possible instances. This is similar to
                 % the reason we don't report warnings for lambda expressions.
-                not check_marker(Markers, marker_class_instance_method),
+                not marker_is_present(Markers, marker_class_instance_method),
 
                 % Don't report warnings for procedures with no clauses.
-                not check_marker(Markers, marker_stub),
+                not marker_is_present(Markers, marker_stub),
 
                 % Don't report warnings for predicates for which the user
                 % has written a pragma requesting no warnings.
-                not check_marker(Markers, marker_no_detism_warning),
+                not marker_is_present(Markers, marker_no_detism_warning),
 
                 % Don't report warnings for compiler-generated Unify, Compare
                 % or Index procedures, since the user has no way to shut
@@ -436,7 +436,7 @@ make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
     pred_info_get_markers(PredInfo, Markers),
     ( if
         ( if
-            check_marker(Markers, marker_has_incomplete_switch),
+            marker_is_present(Markers, marker_has_incomplete_switch),
             module_info_get_globals(ModuleInfo, Globals),
             globals.lookup_bool_option(Globals, inform_incomplete_switch, yes)
         then
@@ -444,7 +444,7 @@ make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
             % require_complete_switch scope around all switches.
             InformIncompleteSwitches = inform_incomplete_switches
         else if
-            check_marker(Markers, marker_has_require_scope)
+            marker_is_present(Markers, marker_has_require_scope)
         then
             InformIncompleteSwitches = do_not_inform_incomplete_switches
         else

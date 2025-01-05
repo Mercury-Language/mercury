@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2023 The Mercury Team.
+% Copyright (C) 2014-2023, 2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1159,9 +1159,7 @@ should_inline_at_call_site(Info, GoalExpr0, GoalInfo0, ShouldInline) :-
         % OK, we could inline it - but should we? Apply our heuristics.
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_get_markers(PredInfo, Markers),
-        ( if
-            check_marker(Markers, marker_user_marked_inline)
-        then
+        ( if marker_is_present(Markers, marker_user_marked_inline) then
             UserReq = user_req
         else
             UserReq = not_user_req
@@ -1169,7 +1167,7 @@ should_inline_at_call_site(Info, GoalExpr0, GoalInfo0, ShouldInline) :-
         ( if
             ( TailRec = tail_rec
             ; UserReq = user_req
-            ; check_marker(Markers, marker_heuristic_inline)
+            ; marker_is_present(Markers, marker_heuristic_inline)
             ; set.member(PredProcId, ShouldInlineProcs)
             )
         then

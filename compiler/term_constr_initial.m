@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2016, 2018, 2020-2024 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -300,7 +300,7 @@ process_builtin_procs(BelieveCheckTerm, ModuleInfo, PredId, !PredInfo) :-
             % procedure is never created. This causes problems with
             % intermodule optimization. The current workaround is to set up
             % a dummy size_var_map for each procedure.
-            ( if check_marker(Markers, marker_terminates) then
+            ( if marker_is_present(Markers, marker_terminates) then
                 TermStatus = cannot_loop(term_reason_pragma_supplied),
                 change_procs_constr_termination_info(ProcIds, yes, TermStatus,
                     !ProcTable),
@@ -324,10 +324,10 @@ process_builtin_procs(BelieveCheckTerm, ModuleInfo, PredId, !PredInfo) :-
             % depended upon.
             ( if
                 (
-                    check_marker(Markers, marker_terminates)
+                    marker_is_present(Markers, marker_terminates)
                 ;
                     BelieveCheckTerm = do_believe_check_termination,
-                    check_marker(Markers, marker_check_termination)
+                    marker_is_present(Markers, marker_check_termination)
                 )
             then
                 change_procs_constr_termination_info(ProcIds, yes,
@@ -340,7 +340,7 @@ process_builtin_procs(BelieveCheckTerm, ModuleInfo, PredId, !PredInfo) :-
             change_procs_constr_arg_size_info(ProcIds, yes, ArgSizeInfo,
                 !ProcTable)
         ),
-        ( if check_marker(Markers, marker_does_not_terminate) then
+        ( if marker_is_present(Markers, marker_does_not_terminate) then
             TerminationInfo =
                 can_loop([term2_error(Context, does_not_term_pragma(PredId))]),
             NonTermArgSizeInfo = polyhedron.universe,
