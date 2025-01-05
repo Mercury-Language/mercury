@@ -267,6 +267,7 @@
 
     % Returns the median value of the set. In the case of a tie,
     % returns the smaller of the two integers in the middle of the set.
+    % Throws an exception if the set is empty.
     %
 :- func median(ranges) = int.
 
