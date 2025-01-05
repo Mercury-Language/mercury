@@ -464,7 +464,6 @@ ORDINARY_PROGS = \
 	test_one_or_more_chunk \
 	test_pretty_printer \
 	test_pretty_printer_defaults \
-	test_ranges \
 	test_semaphore \
 	test_split_switch_arms \
 	test_yield \
@@ -855,6 +854,7 @@ ifeq "$(findstring profdeep,$(GRADE))" ""
 		take_split_upto \
 		test_array2d \
 		test_injection \
+		test_ranges \
 		try_syntax_1 \
 		try_syntax_2 \
 		try_syntax_3 \
