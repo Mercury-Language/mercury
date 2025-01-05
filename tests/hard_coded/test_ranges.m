@@ -33,6 +33,7 @@ main(!IO) :-
     test_unary_test_op(is_empty, "is_empty", !IO),
     test_unary_test_op(is_non_empty, "is_non_empty", !IO),
     test_is_contiguous(!IO),
+    test_is_singleton(!IO),
 
     % Comparison
     test_comparison(!IO),
@@ -51,7 +52,7 @@ main(!IO) :-
 
     % Operations on two or more sets.
     test_binary_op(union, "union", !IO),
-    test_binary_op(intersection, "intersection", !IO),
+    test_binary_op(intersect, "intersect", !IO),
     test_binary_op(difference, "difference", !IO),
 
     % Operations that divide a set into two parts.
@@ -67,7 +68,7 @@ main(!IO) :-
     test_to_sorted_list(!IO),
 
     % Counting.
-    test_size(!IO),
+    test_count(!IO),
 
     % Selecting individual elements from a set.
     test_median(!IO),
@@ -101,16 +102,61 @@ main(!IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred test_construction(io::di, io::uo) is det.
+:- pred test_construction(io::di, io::uo) is cc_multi.
 
 test_construction(!IO) :-
     io.write_string("*** Test construction of ranges ***\n\n", !IO),
+    test_empty(!IO),
+    test_range(!IO),
+    test_make_singleton_set(!IO).
+
+:- pred test_empty(io::di, io::uo) is det.
+
+test_empty(!IO) :-
     io.format("empty = %s\n", [r(empty)], !IO),
+    io.nl(!IO).
+
+:- pred test_range(io::di, io::uo) is cc_multi.
+
+test_range(!IO) :-
     io.format("range(0, 0) = %s\n", [r(range(0, 0))], !IO),
     io.format("range(1, 0) = %s\n", [r(range(1, 0))], !IO),
     io.format("range(-1, 1) = %s\n", [r(range(-1, 1))], !IO),
     io.format("range(1, 3) = %s\n", [r(range(1, 3))], !IO),
     io.format("range(3, 1) = %s\n", [r(range(3, 1))], !IO),
+
+    % Check that we cannot construct a set containing min_int.
+    io.write_string("range(min_int) = ", !IO),
+    ( try []
+        Range = range(min_int, 3)
+    then
+        io.format("%s (FAIL)\n", [r(Range)], !IO)
+    catch S ->
+        S = software_error(Msg),
+        io.format("<<exception: %s>>\n", [s(Msg)], !IO)
+    catch_any Other ->
+        throw(Other)
+    ),
+    io.nl(!IO).
+
+:- pred test_make_singleton_set(io::di, io::uo) is cc_multi.
+
+test_make_singleton_set(!IO) :-
+    io.format("make_singleton_set(-1) = %s\n", [r(make_singleton_set(-1))], !IO),
+    io.format("make_singleton_set(0) = %s\n", [r(make_singleton_set(0))], !IO),
+    io.format("make_singleton_set(1) = %s\n", [r(make_singleton_set(1))], !IO),
+    % Check that we cannot construct a singeleton set containg min_int.
+    io.write_string("make_singleton_set(min_int) = ", !IO),
+    ( try []
+        Range = make_singleton_set(min_int)
+    then
+        io.format("%s (FAIL)\n", [r(Range)], !IO)
+    catch S ->
+        S = software_error(Msg),
+        io.format("<<exception: %s>>\n", [s(Msg)], !IO)
+    catch_any Other ->
+        throw(Other)
+    ),
     io.nl(!IO).
 
 %---------------------------------------------------------------------------%
@@ -186,6 +232,25 @@ do_test_is_contiguous(Ranges, !IO) :-
     io.format("is_contiguous(%s) ===> ", [r(Ranges)], !IO),
     ( if is_contiguous(Ranges, Lo, Hi) then
         io.format("[%d, %d]\n", [i(Lo), i(Hi)], !IO)
+    else
+        io.write_string("FAIL\n", !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred test_is_singleton(io::di, io::uo) is det.
+
+test_is_singleton(!IO) :-
+    io.write_string("*** Test is_singleton/2 ***\n\n", !IO),
+    list.foldl(do_test_is_singleton, test_ranges, !IO),
+    io.nl(!IO).
+
+:- pred do_test_is_singleton(ranges::in, io::di, io::uo) is det.
+
+do_test_is_singleton(Ranges, !IO) :-
+    io.format("is_singleton(%s) ===> ", [r(Ranges)], !IO),
+    ( if is_singleton(Ranges, Elem) then
+        io.format("%d\n", [i(Elem)], !IO)
     else
         io.write_string("FAIL\n", !IO)
     ).
@@ -342,8 +407,8 @@ test_membership(!IO) :-
 
     io.nl(!IO),
 
-    io.write_string("*** Test range_member/2 ****\n\n", !IO),
-    list.foldl(test_range_member, test_ranges, !IO),
+    io.write_string("*** Test nondet_range_member/2 ****\n\n", !IO),
+    list.foldl(test_nondet_range_member, test_ranges, !IO),
 
     io.nl(!IO),
 
@@ -368,15 +433,15 @@ do_test_member_2(Ranges, Value, !IO) :-
     io.format("member(%d, %s) ===> %s\n",
         [i(Value), r(Ranges), s(Result)], !IO).
 
-:- pred test_range_member(ranges::in, io::di, io::uo) is det.
+:- pred test_nondet_range_member(ranges::in, io::di, io::uo) is det.
 
-test_range_member(Ranges, !IO) :-
+test_nondet_range_member(Ranges, !IO) :-
     Pred = (pred(V::out) is nondet :-
-        range_member(Lo, Hi, Ranges),
+        nondet_range_member(Lo, Hi, Ranges),
         V = {Lo, Hi}
     ),
     solutions(Pred, Result),
-    io.format("range_member(%s) ===> %s\n",
+    io.format("nondet_range_member(%s) ===> %s\n",
         [r(Ranges), s(string(Result))], !IO).
 
 :- pred test_nondet_member(ranges::in, io::di, io::uo) is det.
@@ -654,18 +719,18 @@ do_test_to_sorted_list(Ranges, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred test_size(io::di, io::uo) is det.
+:- pred test_count(io::di, io::uo) is det.
 
-test_size(!IO) :-
-    io.write_string("*** Test size/1 ***\n\n", !IO),
-    list.foldl(do_test_size, test_ranges, !IO),
+test_count(!IO) :-
+    io.write_string("*** Test count/1 ***\n\n", !IO),
+    list.foldl(do_test_count, test_ranges, !IO),
     io.nl(!IO).
 
-:- pred do_test_size(ranges::in, io::di, io::uo) is det.
+:- pred do_test_count(ranges::in, io::di, io::uo) is det.
 
-do_test_size(Ranges, !IO) :-
-    Size = ranges.size(Ranges),
-    io.format("size(%s) = %d\n", [r(Ranges), i(Size)], !IO).
+do_test_count(Ranges, !IO) :-
+    Size = ranges.count(Ranges),
+    io.format("count(%s) = %d\n", [r(Ranges), i(Size)], !IO).
 
 %---------------------------------------------------------------------------%
 

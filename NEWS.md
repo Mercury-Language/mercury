@@ -776,9 +776,29 @@ Changes to the Mercury standard library
 
 ### Changes to the `ranges` module
 
-* The following predicate has been added:
+* The following predicate and functions have been added:
 
+    - func `make_singleton_set/1`
+    - pred `is_singleton/2`
+    - pred `contains/2`
+    - func `count/1`
+    - pred `delete/3`
+    - pred `delete_list/3` 
+    - pred `difference/3`
+    - func `intersect/2`
+    - pred `intersect/3`
+    - pred `insert_list/3`
+    - pred `nondet_range_member/3`
+    - pred `restrict_min/3`
+    - pred `restrict_max/3`
+    - pred `restrict_range/4`
     - pred `search_range/4`
+    - pred `union/3`
+
+* The following function and predicate have been marked obsolete:
+
+    - func `intersection/2` (replacement: `intersect/2`)
+    - pred `range_member/3` (replacement: `nondet_range_member`/3)
 
 ### Changes to the `rbtree` module
 

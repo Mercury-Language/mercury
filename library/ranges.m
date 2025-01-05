@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2009 The University of Melbourne.
 % Copyright (C) 2013-2016 Opturion Pty Ltd.
-% Copyright (C) 2017-2019, 2022-2024 The Mercury team.
+% Copyright (C) 2017-2019, 2022-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -49,6 +49,11 @@
     %
 :- func range(int, int) = ranges.
 
+    % make_singleton_set(Elem) returns the set containing just the single
+    % element Elem.
+    %
+:- func make_singleton_set(int) = ranges.
+
 %---------------------------------------------------------------------------%
 %
 % Emptiness and other tests.
@@ -67,6 +72,10 @@
     %
 :- pred is_contiguous(ranges::in, int::out, int::out) is semidet.
 
+    % is_singleton(Set, Elem) is true iff Set contains the single element Elem.
+    %
+:- pred is_singleton(ranges::in, int::out) is semidet.
+
 %---------------------------------------------------------------------------%
 %
 % Membership tests.
@@ -75,16 +84,10 @@
     % member(X, Set) is true iff X is a member of Set.
     %
 :- pred member(int::in, ranges::in) is semidet.
-% NOTE_TO_IMPLEMENTORS XXX Should also have the arg-reversed contains version.
 
-    % range_member(Lo, Hi, Set):
+    % contains(Set, X) is true iff X is a member of Set.
     %
-    % Nondeterministically produce each range in Set.
-    % Each time this call succeeds, Lo and Hi will be bound to
-    % the smallest and largest integers respectively in a range in Set.
-    %
-:- pred range_member(int::out, int::out, ranges::in) is nondet.
-% NOTE_TO_IMPLEMENTORS XXX This predicate is also nondet, like the next.
+:- pred contains(ranges::in, int::in) is semidet.
 
     % nondet_member(X, Set):
     %
@@ -92,6 +95,19 @@
     % Each time this call succeeds, X will be bound to an element in Set.
     %
 :- pred nondet_member(int::out, ranges::in) is nondet.
+
+    % nondet_range_member(Lo, Hi, Set):
+    %
+    % Nondeterministically produce each range in Set.
+    % Each time this call succeeds, Lo and Hi will be bound to
+    % the smallest and largest integers respectively in a range in Set.
+    %
+:- pred nondet_range_member(int::out, int::out, ranges::in) is nondet.
+
+    % Obsolete synonym for nondet_range_member/3.
+    %
+:- pred range_member(int::out, int::out, ranges::in) is nondet.
+:- pragma obsolete(pred(range_member/3), [nondet_range_member/3]).
 
 %---------------------------------------------------------------------------%
 %
@@ -104,14 +120,26 @@
 :- func insert(int, ranges) = ranges.
 :- pred insert(int::in, ranges::in, ranges::out) is det.
 
+    % insert_list(Xs, Set0, Set) is true iff Set is the union of Set0 and
+    % the set containing only the members of Xs.
+    %
+:- func insert_list(list(int), ranges) = ranges.
+:- pred insert_list(list(int)::in, ranges::in, ranges::out) is det.
+
     % delete(X, Set0, Set) is true iff Set is the relative complement
     % of Set0 and the set containing only X, i.e. if Set is the set
     % which contains all the elements of Set0 except X.
     %
 :- func delete(int, ranges) = ranges.
-% NOTE_TO_IMPLEMENTORS XXX add predicate version of delete.
+:- pred delete(int::in, ranges::in, ranges::out) is det.
 % NOTE_TO_IMPLEMENTORS XXX add semidet remove predicate,
 % NOTE_TO_IMPLEMENTORS which fails if the item to delete is not in the set
+
+    % delete_list(Xs, Set0, Set) is true iff Set is the relative complement
+    % of Set0 and the set containing only the members of Xs.
+    %
+:- func delete_list(list(int), ranges) = ranges.
+:- pred delete_list(list(int)::in, ranges::in, ranges::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -140,16 +168,24 @@
     % and SetB.
     %
 :- func union(ranges, ranges) = ranges.
+:- pred union(ranges::in, ranges::in, ranges::out) is det.
 
-    % intersection(SetA, SetB): return the set that contains all the integers
+    % intersect(SetA, SetB): return the set that contains all the integers
     % in both SetA and SetB.
-    % NOTE_TO_IMPLEMENTORS XXX this is called intersect elsewhere.
+    %
+:- func intersect(ranges, ranges) = ranges.
+:- pred intersect(ranges::in, ranges::in, ranges::out) is det.
+
+    % An obsolete synonym for intersect/2.
+    %
 :- func intersection(ranges, ranges) = ranges.
+:- pragma obsolete(func(intersection/2), [intersect/2]).
 
     % difference(SetA, SetB): return the set that contains all of the integers
     % that are in SetA but not in SetB.
     %
 :- func difference(ranges, ranges) = ranges.
+:- pred difference(ranges::in, ranges::in, ranges::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -216,7 +252,11 @@
 
     % Return the number of distinct integers that are in the set
     % (as opposed to the number of ranges).
-    % NOTE_TO_IMPLEMENTORS XXX this is called count in the other set modules.
+    %
+:- func count(ranges) = int.
+
+    % A synonym for count/1.
+    % NOTE_TO_IMPLEMENTORS XXX mark this obsolete and eventually remove it.
     %
 :- func size(ranges) = int.
 
@@ -259,26 +299,26 @@
 
     % restrict_min(Min, Set): return the set that contains
     % all the integers in Set that are greater than or equal to Min.
-    % NOTE_TO_IMPLEMENTORS Needs a state-var friendly predicate version
     %
 :- func restrict_min(int, ranges) = ranges.
+:- pred restrict_min(int::in, ranges::in, ranges::out) is det.
 
     % restrict_max(Max, Set): return the set that contains
     % all the integers in Set that are less than or equal to Max.
-    % NOTE_TO_IMPLEMENTORS Needs a state-var friendly predicate version
     %
 :- func restrict_max(int, ranges) = ranges.
+:- pred restrict_max(int::in, ranges::in, ranges::out) is det.
 
-    % restrict_range(Min, Max, Set) return the set that contains
+    % restrict_range(Min, Max, Set): return the set that contains
     % all the integers X in Set that satisfy Min =< X =< Max.
-    % NOTE_TO_IMPLEMENTORS Needs a state-var friendly predicate version
     %
 :- func restrict_range(int, int, ranges) = ranges.
+:- pred restrict_range(int::in, int::in, ranges::in, ranges::out) is det.
 
 %---------------------------------------------------------------------------%
 %
 % Transformations of a set.
-% NOTE_TO_IMPLEMENTORS These names are unformative
+% NOTE_TO_IMPLEMENTORS These names are uninformative
 %
 
     % Negate all numbers: X in Set <=> -X in negate(Set)
@@ -414,8 +454,12 @@
 % int ML_ranges_is_empty(ML_Ranges r)
 %   Return true iff `r` is the empty set.
 %
+% MR_Integer ML_ranges_count(ML_Ranges r)
+%  Return the number of distinct integers in `r`.
+%
 % MR_Integer ML_ranges_size(ML_Ranges r)
 %   Return the number of distinct integers in `r'.
+%   (Synonym for ML_ranges_count).
 %
 % int ML_ranges_split(ML_Ranges d, MR_Integer *l, MR_Integer *h,
 %       ML_Ranges *rest)
@@ -451,8 +495,12 @@
 % boolean is_empty(ranges.Ranges_0 r)
 %   Return true iff `r' is the empty set.
 %
+% int count(ranges.Ranges_0 r)
+%   Return the number of distinct integers in `r'.
+%
 % int size(ranges.Ranges_0 r)
 %   Return the number of distinct integers in `r'.
+%   (Synonym for count).
 %
 % boolean split(ranges.Ranges_0 d,
 %     jmercury.runtime.Ref<Integer> l,
@@ -534,6 +582,13 @@ range(Lo, Hi) = Ranges :-
         Ranges = range(Lo - 1, Hi, nil)
     ).
 
+make_singleton_set(Elem) = Ranges :-
+    ( if Elem = min_int then
+        error($pred, "cannot represent min_int")
+    else
+        Ranges = range(Elem - 1, Elem, nil)
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_export("C",    ranges.is_empty(in), "ML_ranges_is_empty").
@@ -546,6 +601,8 @@ is_non_empty(range(_, _, _)).
 is_contiguous(Range, Lo + 1, Hi) :-
     Range = range(Lo, Hi, nil).
 
+is_singleton(range(N - 1, N, nil), N).
+
 %---------------------------------------------------------------------------%
 
 member(N, range(Lo, Hi, Tail)) :-
@@ -556,17 +613,23 @@ member(N, range(Lo, Hi, Tail)) :-
         ranges.member(N, Tail)
     ).
 
-range_member(Lo, Hi, range(Lo0, Hi0, Tail)) :-
+contains(S, E) :-
+    member(E, S).
+
+nondet_member(N, As) :-
+    nondet_range_member(Lo, Hi, As),
+    int.nondet_int_in_range(Lo, Hi, N).
+
+nondet_range_member(Lo, Hi, range(Lo0, Hi0, Tail)) :-
     (
         Lo = Lo0 + 1,
         Hi = Hi0
     ;
-        range_member(Lo, Hi, Tail)
+        nondet_range_member(Lo, Hi, Tail)
     ).
 
-nondet_member(N, As) :-
-    range_member(Lo, Hi, As),
-    int.nondet_int_in_range(Lo, Hi, N).
+range_member(Lo, Hi, Ranges) :-
+    nondet_range_member(Lo, Hi, Ranges).
 
 %---------------------------------------------------------------------------%
 
@@ -575,10 +638,31 @@ nondet_member(N, As) :-
 :- pragma foreign_export("Java",
     ranges.insert(in, in) = out, "insert").
 
-insert(N, As) = union(As, range(N, N)).
-insert(N, As, Bs) :- Bs = insert(N, As).
+insert(N, As) = union(As, make_singleton_set(N)).
+insert(N, As, Bs) :-
+    Bs = insert(N, As).
 
-delete(N, As) = difference(As, range(N, N)).
+insert_list(Es, Set0) = Set :-
+    insert_list(Es, Set0, Set).
+
+insert_list([], !Set).
+insert_list([E | Es], !Set) :-
+    !:Set = insert(E, !.Set),
+    insert_list(Es, !Set).
+
+%---------------------%
+
+delete(N, As) = difference(As, make_singleton_set(N)).
+delete(N, As, Bs) :-
+    Bs = delete(N, As).
+
+delete_list(SetA, SetB) = Set:-
+    delete_list(SetA, SetB, Set).
+
+delete_list([], !Set).
+delete_list([E | Es], !Set) :-
+    !:Set = delete(E, !.Set),
+    delete_list(Es, !Set).
 
 %---------------------------------------------------------------------------%
 
@@ -588,7 +672,7 @@ subset(SetA, SetB) :-
 
 disjoint(SetA, SetB) :-
     % XXX Should implement this more efficiently.
-    ranges.intersection(SetA, SetB) = nil.
+    ranges.intersect(SetA, SetB) = nil.
 
 %---------------------------------------------------------------------------%
 
@@ -698,6 +782,9 @@ union(As @ range(LA, UA, As0), Bs @ range(LB, UB, Bs0)) = Result :-
         Result = n_diff_na_b(LB, UB, Bs0, As)
     ).
 
+union(Xs, Ys, Union) :-
+    Union = union(Xs, Ys).
+
     % n_union_a_nb(L, A, U, B) =
     %   {X | X > L} \ (A \/ ({Y | Y > U} \ B))
     %
@@ -754,7 +841,7 @@ n_union_na_nb(L, UA, As0, UB, Bs0) = Result :-
         Result = range(L, UA, diff_a_nb(As0, UB, Bs0))
     ;
         R = (=),
-        Result = range(L, UA, ranges.intersection(As0, Bs0))
+        Result = range(L, UA, ranges.intersect(As0, Bs0))
     ;
         R = (>),
         Result = range(L, UB, diff_a_nb(Bs0, UA, As0))
@@ -762,11 +849,11 @@ n_union_na_nb(L, UA, As0, UB, Bs0) = Result :-
 
 %---------------------------------------------------------------------------%
 
-    % intersection(A, B) = A /\ B
+    % intersect(A, B) = A /\ B
     %
-intersection(nil, _) = nil.
-intersection(range(_, _, _), nil) = nil.
-intersection(As @ range(LA, UA, As0), Bs @ range(LB, UB, Bs0)) = Result :-
+intersect(nil, _) = nil.
+intersect(range(_, _, _), nil) = nil.
+intersect(As @ range(LA, UA, As0), Bs @ range(LB, UB, Bs0)) = Result :-
     compare(R, LA, LB),
     (
         R = (<),
@@ -778,6 +865,12 @@ intersection(As @ range(LA, UA, As0), Bs @ range(LB, UB, Bs0)) = Result :-
         R = (>),
         Result = diff_a_nb(As, UB, Bs0)
     ).
+
+intersect(Xs, Ys, Intersection) :-
+    Intersection = intersect(Xs, Ys).
+
+intersection(Xs, Ys) =
+    intersect(Xs, Ys).
 
     % int_na_b(U, A, B) = ({X | X > U} \ A) /\ B
     %
@@ -858,6 +951,9 @@ difference(As @ range(LA, UA, As0), Bs @ range(LB, UB, Bs0)) = Result :-
         Result = int_a_nb(As, UB, Bs0)
     ).
 
+difference(Xs, Ys, Difference) :-
+    Difference = difference(Xs, Ys).
+
     % n_diff_na_b(L, U, A, B) = {X | X > L} \ (({Y | Y > U} \ A) \ B)
     %
     % assuming L < U, U < min(A) and L < min(B).
@@ -895,7 +991,7 @@ diff_a_nb(As @ range(LA, UA, As0), UB, Bs0) = Result :-
         Result = diff_a_nb(Bs0, UA, As0)
     ;
         R = (>),
-        Result = ranges.intersection(As, Bs0)
+        Result = ranges.intersect(As, Bs0)
     ).
 
     % diff_na_nb(UA, A, UB, B) = ({X | X > UA} \ A) \ ({Y | Y > UB} \ B)
@@ -976,11 +1072,16 @@ to_sorted_list_2(L, H, Ints) =
 
 %---------------------------------------------------------------------------%
 
+:- pragma foreign_export("C",    ranges.count(in) = out, "ML_ranges_count").
+:- pragma foreign_export("Java", ranges.count(in) = out, "count").
+
+count(nil) = 0.
+count(range(L, U, Rest)) = (U - L) + size(Rest).
+
 :- pragma foreign_export("C",    ranges.size(in) = out, "ML_ranges_size").
 :- pragma foreign_export("Java", ranges.size(in) = out, "size").
 
-size(nil) = 0.
-size(range(L, U, Rest)) = (U - L) + size(Rest).
+size(Xs) = count(Xs).
 
 %---------------------------------------------------------------------------%
 
@@ -1051,6 +1152,11 @@ restrict_min(Min, As0 @ range(L, U, As1)) = As :-
         As = restrict_min(Min, As1)
     ).
 
+restrict_min(Min, !Set) :-
+    !:Set = restrict_min(Min, !.Set).
+
+%---------------------%
+
 restrict_max(_, nil) = nil.
 restrict_max(Max, range(L, U, As0)) = As :-
     ( if Max =< L then
@@ -1061,8 +1167,16 @@ restrict_max(Max, range(L, U, As0)) = As :-
         As = range(L, U, restrict_max(Max, As0))
     ).
 
+restrict_max(Max, !Set) :-
+    !:Set = restrict_max(Max, !.Set).
+
+%---------------------%
+
 restrict_range(Min, Max, As) =
-    ranges.intersection(range(Min - 1, Max, nil), As).
+    ranges.intersect(range(Min - 1, Max, nil), As).
+
+restrict_range(Min, Max, !Set) :-
+    !:Set = restrict_range(Min, Max, !.Set).
 
 %---------------------------------------------------------------------------%
 
@@ -1072,6 +1186,8 @@ negate(As) = negate_aux(As, nil).
 
 negate_aux(nil, As) = As.
 negate_aux(range(L, U, As), A) = negate_aux(As, range(-U-1, -L-1, A)).
+
+%---------------------%
 
 plus(nil, nil) = nil.
 plus(nil, range(_,_,_)) = nil.
@@ -1088,6 +1204,8 @@ plus(range(Lx, Hx, Xs), range(L, H, S @ range(_,_,_))) = Result :-
     B = plus(range(Lx, Hx, Xs), S),
     Result = union(A,B).
 
+%---------------------%
+
 shift(nil, _) = nil.
 shift(As @ range(L, H, As0), C) = Result :-
     ( if C = 0 then
@@ -1095,6 +1213,8 @@ shift(As @ range(L, H, As0), C) = Result :-
     else
         Result = range(L + C, H + C, shift(As0, C))
     ).
+
+%---------------------%
 
 dilation(nil, _) = nil.
 dilation(A @ range(_,_,_) , C) = Result :-
@@ -1109,6 +1229,8 @@ dilation(A @ range(_,_,_) , C) = Result :-
         list.map(*(C), L) = L0,
         Result = from_list(L0)
     ).
+
+%---------------------%
 
 contraction(nil, _) = nil.
 contraction(A @ range(L, H, As), C) = Result :-
@@ -1135,6 +1257,8 @@ contraction_0(L0, H0, range(L1, H1, As), C) = Result :-
     else
         Result = range(L0, H0, contraction_0(L1N, H1N, As, C))
     ).
+
+%---------------------%
 
    % 0 < B. Round up.
    %
