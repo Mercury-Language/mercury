@@ -154,83 +154,123 @@ typecheck_unify_var_functor_std(UnifyContext, Context, LHSVar, ConsId, ArgVars,
     % If there aren't any, report an undefined constructor error.
     list.length(ArgVars, Arity),
     typecheck_info_get_ctor_list(!.Info, ConsId, Arity, GoalId,
-        ConsTypeInfos, ConsErrors),
+        ConsInfoResult),
     (
-        ConsTypeInfos = [],
-        typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        TypeAssignSet = TypeAssignSet0,
-        GoalContext = type_error_in_unify(UnifyContext),
-        Spec = report_error_undef_cons(ClauseContext, GoalContext,
-            Context, ConsErrors, ConsId),
-        typecheck_info_add_error(Spec, !Info)
+        ConsInfoResult = cons_info_non_du_ctor(ConsTypeInfo),
+        typecheck_unify_var_functor_cons_infos(UnifyContext, Context, LHSVar,
+            ConsId, Arity, ArgVars, [ConsTypeInfo],
+            TypeAssignSet0, TypeAssignSet, !Info)
     ;
+        ConsInfoResult = cons_info_du_ctor(DuCtor, ConsTypeInfos, ConsErrors),
         (
-            ConsTypeInfos = [_]
-        ;
-            ConsTypeInfos = [_, _ | _],
-            Sources = list.map(project_cons_type_info_source, ConsTypeInfos),
-            Symbol = overloaded_func(ConsId, Sources),
-            typecheck_info_add_overloaded_symbol(Symbol, Context, !Info)
-        ),
-
-        % Produce the ConsTypeAssignSet, which is essentially the
-        % cross-product of the ConsTypeInfos and the TypeAssignSet0.
-        get_cons_type_assigns_for_cons_defns(ConsTypeInfos, TypeAssignSet0,
-            [], ConsTypeAssignSet),
-        ( if
-            ConsTypeAssignSet = [],
-            TypeAssignSet0 = [_ | _]
-        then
-            % This should never happen, since undefined ctors
-            % should be caught by the check just above.
-            unexpected($pred, "undefined cons?")
-        else
-            true
-        ),
-
-        % Check that the type of the functor matches the type of the
-        % variable.
-        typecheck_var_functor_types(LHSVar, ConsTypeAssignSet,
-            [], ArgsTypeAssignSet),
-        ( if
-            ArgsTypeAssignSet = [],
-            ConsTypeAssignSet = [_ | _]
-        then
-            ConsIdSpec = report_error_unify_var_functor_result(!.Info,
-                UnifyContext, Context, LHSVar, ConsTypeInfos, ConsId, Arity,
-                TypeAssignSet0),
-            typecheck_info_add_error(ConsIdSpec, !Info)
-        else
-            true
-        ),
-
-        % Check that the type of the arguments of the functor matches
-        % their expected type for this functor.
-        typecheck_functor_arg_types(!.Info, ArgVars, ArgsTypeAssignSet,
-            [], TypeAssignSet1),
-        (
-            TypeAssignSet1 = [_ | _],
-            TypeAssignSet = TypeAssignSet1
-        ;
-            TypeAssignSet1 = [],
-            % If we encountered an error, continue checking with the
-            % original type assign set.
+            ConsTypeInfos = [],
             TypeAssignSet = TypeAssignSet0,
-            (
-                ArgsTypeAssignSet = []
-                % The error did not originate here, so generating an error
-                % message here would be misleading.
-            ;
-                ArgsTypeAssignSet = [_ | _],
-                ArgSpec = report_error_unify_var_functor_args(!.Info,
-                    UnifyContext, Context, LHSVar, ConsTypeInfos,
-                    ConsId, ArgVars, ArgsTypeAssignSet),
-                typecheck_info_add_error(ArgSpec, !Info)
-            )
+            typecheck_info_get_error_clause_context(!.Info, ClauseContext),
+            GoalContext = type_error_in_unify(UnifyContext),
+            % Note that ConsErrors may be [], but the fact that there are
+            % no ConsTypeInfos is itself an error.
+            Spec = report_error_undef_du_ctor(ClauseContext, GoalContext,
+                Context, DuCtor, ConsErrors),
+            typecheck_info_add_error(Spec, !Info)
+        ;
+            ConsTypeInfos = [_ | _],
+            typecheck_unify_var_functor_cons_infos(UnifyContext, Context,
+                LHSVar, ConsId, Arity, ArgVars, ConsTypeInfos,
+                TypeAssignSet0, TypeAssignSet, !Info)
+        )
+    ;
+        ( ConsInfoResult = cons_info_field_access_func
+        ; ConsInfoResult = cons_info_comp_gen_cons_id
+        ),
+        TypeAssignSet = TypeAssignSet0,
+        typecheck_info_get_error_clause_context(!.Info, ClauseContext),
+        GoalContext = type_error_in_unify(UnifyContext),
+        Spec = report_error_undef_non_du_ctor(ClauseContext, GoalContext,
+            Context, ConsId),
+        typecheck_info_add_error(Spec, !Info)
+    ).
+
+:- pred typecheck_unify_var_functor_cons_infos(unify_context::in,
+    prog_context::in, prog_var::in, cons_id::in, arity::in, list(prog_var)::in,
+    list(cons_type_info)::in(non_empty_list),
+    type_assign_set::in, type_assign_set::out,
+    typecheck_info::in, typecheck_info::out) is det.
+
+typecheck_unify_var_functor_cons_infos(UnifyContext, Context, LHSVar,
+        ConsId, Arity, ArgVars, ConsTypeInfos,
+        TypeAssignSet0, TypeAssignSet, !Info) :-
+    (
+        ConsTypeInfos = [_]
+    ;
+        ConsTypeInfos = [_, _ | _],
+        Sources = list.map(project_cons_type_info_source, ConsTypeInfos),
+        Symbol = overloaded_func(ConsId, Sources),
+        typecheck_info_add_overloaded_symbol(Symbol, Context, !Info)
+    ),
+
+    % Produce the ConsTypeAssignSet, which is essentially the
+    % cross-product of the ConsTypeInfos and the TypeAssignSet0.
+    get_cons_type_assigns_for_cons_defns(ConsTypeInfos, TypeAssignSet0,
+        [], ConsTypeAssignSet),
+    ( if
+        ConsTypeAssignSet = [],
+        TypeAssignSet0 = [_ | _]
+    then
+        % This should never happen, since undefined ctors
+        % should be caught by the check just above.
+        unexpected($pred, "undefined cons?")
+    else
+        true
+    ),
+
+    % Check that the type of the functor matches the type of the
+    % variable.
+    typecheck_var_functor_types(LHSVar, ConsTypeAssignSet,
+        [], ArgsTypeAssignSet),
+    ( if
+        ArgsTypeAssignSet = [],
+        ConsTypeAssignSet = [_ | _]
+    then
+        ConsIdSpec = report_error_unify_var_functor_result(!.Info,
+            UnifyContext, Context, LHSVar, ConsTypeInfos, ConsId, Arity,
+            TypeAssignSet0),
+        typecheck_info_add_error(ConsIdSpec, !Info)
+    else
+        true
+    ),
+
+    % Check that the type of the arguments of the functor matches
+    % their expected type for this functor.
+    typecheck_functor_arg_types(!.Info, ArgVars, ArgsTypeAssignSet,
+        [], TypeAssignSet1),
+    (
+        TypeAssignSet1 = [_ | _],
+        TypeAssignSet = TypeAssignSet1
+    ;
+        TypeAssignSet1 = [],
+        % If we encountered an error, continue checking with the
+        % original type assign set.
+        TypeAssignSet = TypeAssignSet0,
+        (
+            ArgsTypeAssignSet = []
+            % The error did not originate here, so generating an error
+            % message here would be misleading.
+        ;
+            ArgsTypeAssignSet = [_ | _],
+            ArgSpec = report_error_unify_var_functor_args(!.Info,
+                UnifyContext, Context, LHSVar, ConsTypeInfos,
+                ConsId, ArgVars, ArgsTypeAssignSet),
+            typecheck_info_add_error(ArgSpec, !Info)
         )
     ).
 
 %---------------------------------------------------------------------------%
+
+:- type cons_info_result
+    --->    cons_info_non_du_ctor(cons_type_info)
+    ;       cons_info_du_ctor(du_ctor, list(cons_type_info), list(cons_error))
+    ;       cons_info_field_access_func
+    ;       cons_info_comp_gen_cons_id.
 
     % Note: changes here may require changes to
     %
@@ -240,10 +280,9 @@ typecheck_unify_var_functor_std(UnifyContext, Context, LHSVar, ConsId, ArgVars,
     % - recompilation.check.check_functor_ambiguities.
     %
 :- pred typecheck_info_get_ctor_list(typecheck_info::in, cons_id::in, int::in,
-    goal_id::in, list(cons_type_info)::out, list(cons_error)::out) is det.
+    goal_id::in, cons_info_result::out) is det.
 
-typecheck_info_get_ctor_list(Info, ConsId, Arity, GoalId, ConsInfos,
-        ConsErrors) :-
+typecheck_info_get_ctor_list(Info, ConsId, Arity, GoalId, ConsInfoResult) :-
     typecheck_info_get_is_field_access_function(Info, IsFieldAccessFunc),
     ( if
         % If we are typechecking the clause added for a field access function
@@ -259,22 +298,21 @@ typecheck_info_get_ctor_list(Info, ConsId, Arity, GoalId, ConsInfos,
             builtin_field_access_function_type(Info, GoalId,
                 DuCtor, Arity, FieldAccessConsInfos)
         then
-            split_cons_errors(FieldAccessConsInfos, ConsInfos, ConsErrors)
+            split_cons_errors(FieldAccessConsInfos, ConsInfos, ConsErrors),
+            ConsInfoResult = cons_info_du_ctor(DuCtor, ConsInfos, ConsErrors)
         else
-            ConsInfos = [],
-            ConsErrors = []
+            ConsInfoResult = cons_info_field_access_func
         )
     else
         typecheck_info_get_ctor_list_std(Info, ConsId, Arity, GoalId,
-            ConsInfos, ConsErrors)
+            ConsInfoResult)
     ).
 
 :- pred typecheck_info_get_ctor_list_std(typecheck_info::in, cons_id::in,
-    arity::in, goal_id::in, list(cons_type_info)::out, list(cons_error)::out)
-    is det.
+    arity::in, goal_id::in, cons_info_result::out) is det.
 
 typecheck_info_get_ctor_list_std(Info, ConsId, Arity, GoalId,
-        ConsInfos, ConsErrors) :-
+        ConsInfoResult) :-
     (
         (
             ConsId = some_int_const(IntConst),
@@ -302,16 +340,16 @@ typecheck_info_get_ctor_list_std(Info, ConsId, Arity, GoalId,
                 TypeName = "int"
             )
         ),
-        typecheck_info_construct_builtin_cons_info(TypeName, ConsInfos),
-        ConsErrors = []
+        typecheck_info_construct_builtin_cons_info(TypeName, ConsInfo),
+        ConsInfoResult = cons_info_non_du_ctor(ConsInfo)
     ;
         ConsId = tuple_cons(_TupleArity),
-        typecheck_info_construct_tuple_cons_info(Arity, ConsInfos),
-        ConsErrors = []
+        typecheck_info_construct_tuple_cons_info(Arity, ConsInfo),
+        ConsInfoResult = cons_info_non_du_ctor(ConsInfo)
     ;
         ConsId = du_data_ctor(DuCtor),
         typecheck_info_get_ctor_list_du(Info, DuCtor, Arity, GoalId,
-            ConsInfos, ConsErrors)
+            ConsInfoResult)
     ;
         ( ConsId = base_typeclass_info_const(_, _, _, _)
         ; ConsId = closure_cons(_)
@@ -325,16 +363,15 @@ typecheck_info_get_ctor_list_std(Info, ConsId, Arity, GoalId,
         ; ConsId = typeclass_info_cell_constructor
         ; ConsId = typeclass_info_const(_)
         ),
-        ConsInfos = [],
-        ConsErrors = []
+        % The compiler passes that can create these kinds of cons_ids
+        % have not been run yet.
+        ConsInfoResult = cons_info_comp_gen_cons_id
     ).
 
 :- pred typecheck_info_get_ctor_list_du(typecheck_info::in, du_ctor::in,
-    arity::in, goal_id::in, list(cons_type_info)::out, list(cons_error)::out)
-    is det.
+    arity::in, goal_id::in, cons_info_result::out) is det.
 
-typecheck_info_get_ctor_list_du(Info, DuCtor, Arity, GoalId,
-        ConsInfos, ConsErrors) :-
+typecheck_info_get_ctor_list_du(Info, DuCtor, Arity, GoalId, ConsInfoResult) :-
     typecheck_info_get_du_cons_ctor_list(Info, DuCtor, GoalId,
         DuConsInfos, DuConsErrors),
 
@@ -359,14 +396,16 @@ typecheck_info_get_ctor_list_du(Info, DuCtor, Arity, GoalId,
         SymName = unqualified(String),
         string.char_to_string(_, String)
     then
-        typecheck_info_construct_builtin_cons_info("character", CharConsInfos)
+        typecheck_info_construct_builtin_cons_info("character", CharConsInfo),
+        CharConsInfos = [CharConsInfo]
     else
         CharConsInfos = []
     ),
 
     % Check whether DuCtor is a tuple constructor.
     ( if SymName = unqualified("{}") then
-        typecheck_info_construct_tuple_cons_info(Arity, TupleConsInfos)
+        typecheck_info_construct_tuple_cons_info(Arity, TupleConsInfo),
+        TupleConsInfos = [TupleConsInfo]
     else
         TupleConsInfos = []
     ),
@@ -386,23 +425,23 @@ typecheck_info_get_ctor_list_du(Info, DuCtor, Arity, GoalId,
 
     ConsInfos = DuConsInfos ++ FieldAccessConsInfos ++
         CharConsInfos ++ TupleConsInfos ++ PredConsInfos ++ ApplyConsInfos,
-    ConsErrors = DuConsErrors ++ FieldAccessConsErrors.
+    ConsErrors = DuConsErrors ++ FieldAccessConsErrors,
+    ConsInfoResult = cons_info_du_ctor(DuCtor, ConsInfos, ConsErrors).
 
 :- pred typecheck_info_construct_builtin_cons_info(string::in,
-    list(cons_type_info)::out) is det.
+    cons_type_info::out) is det.
 
-typecheck_info_construct_builtin_cons_info(BuiltinTypeName, ConsInfos) :-
+typecheck_info_construct_builtin_cons_info(BuiltinTypeName, ConsInfo) :-
     TypeCtor = type_ctor(unqualified(BuiltinTypeName), 0),
     construct_type(TypeCtor, [], ConsType),
     varset.init(ConsTypeVarSet),
     ConsInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
-        empty_hlds_constraints, source_builtin_type(BuiltinTypeName)),
-    ConsInfos = [ConsInfo].
+        empty_hlds_constraints, source_builtin_type(BuiltinTypeName)).
 
 :- pred typecheck_info_construct_tuple_cons_info(arity::in,
-    list(cons_type_info)::out) is det.
+    cons_type_info::out) is det.
 
-typecheck_info_construct_tuple_cons_info(TupleArity, TupleConsInfos) :-
+typecheck_info_construct_tuple_cons_info(TupleArity, ConsInfo) :-
     % Make some fresh type variables for the argument types. These have
     % kind `star' since there are values (namely the arguments of the
     % tuple constructor) which have these types.
@@ -416,10 +455,9 @@ typecheck_info_construct_tuple_cons_info(TupleArity, TupleConsInfos) :-
 
     % Tuples can't have existentially typed arguments.
     TupleExistQVars = [],
-    TupleConsInfo = cons_type_info(TupleConsTypeVarSet, TupleExistQVars,
+    ConsInfo = cons_type_info(TupleConsTypeVarSet, TupleExistQVars,
         TupleConsType, TupleArgTypes, empty_hlds_constraints,
-        source_builtin_type("tuple")),
-    TupleConsInfos = [TupleConsInfo].
+        source_builtin_type("tuple")).
 
 :- pred typecheck_info_get_du_cons_ctor_list(typecheck_info::in, du_ctor::in,
     goal_id::in, list(cons_type_info)::out, list(cons_error)::out) is det.

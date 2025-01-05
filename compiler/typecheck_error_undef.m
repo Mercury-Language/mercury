@@ -39,6 +39,9 @@
 
 %---------------------------------------------------------------------------%
 
+:- func report_error_undef_non_du_ctor(type_error_clause_context,
+    type_error_goal_context, prog_context, cons_id) = error_spec.
+
 :- type cons_error
     --->    other_lang_foreign_type_constructor(type_ctor, hlds_type_defn)
     ;       abstract_imported_type
@@ -46,8 +49,8 @@
                 tvarset, list(tvar))
     ;       new_on_non_existential_type(type_ctor).
 
-:- func report_error_undef_cons(type_error_clause_context,
-    type_error_goal_context, prog_context, list(cons_error), cons_id)
+:- func report_error_undef_du_ctor(type_error_clause_context,
+    type_error_goal_context, prog_context, du_ctor, list(cons_error))
     = error_spec.
 
 %---------------------------------------------------------------------------%
@@ -473,18 +476,39 @@ report_error_func_instead_of_pred(Context) = Msg :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
-% The implementation of report_error_undef_cons.
+% The implementation of report_error_undef_non_du_ctor.
 %
 
-report_error_undef_cons(ClauseContext, GoalContext, Context, ConsErrors,
-        ConsId) = Spec :-
+report_error_undef_non_du_ctor(ClauseContext, GoalContext, Context, ConsId)
+        = Spec :-
+    InClauseForPieces = in_clause_for_pieces(ClauseContext),
+    GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
+    InitComp = always(InClauseForPieces ++ GoalContextPieces),
+    ConsIdPiece = qual_cons_id_and_maybe_arity(ConsId),
+    UndefPieces = [words("error:")] ++
+        color_as_incorrect([words("undefined")]) ++
+        [words("symbol")] ++
+        color_as_subject([ConsIdPiece, suffix(".")]) ++
+        [nl],
+    UndefComp = always(UndefPieces),
+    Msg = simple_msg(Context, [InitComp, UndefComp]),
+    Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% The implementation of report_error_undef_du_ctor.
+%
+
+report_error_undef_du_ctor(ClauseContext, GoalContext, Context, DuCtor,
+        ConsErrors) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
     InitComp = always(InClauseForPieces ++ GoalContextPieces),
     % Check for some special cases, so that we can give clearer error messages.
+    DuCtor = du_ctor(SymName, Arity, _),
     ( if
-        ConsId = du_data_ctor(DuCtor),
-        DuCtor = du_ctor(unqualified(Name), Arity, _),
+        SymName = unqualified(Name),
         ( if language_builtin_functor(Name, Arity) then
             language_builtin_functor_components(Name, Arity, FunctorComps)
         else if syntax_functor_components(Name, Arity, SyntaxComps) then
@@ -496,8 +520,8 @@ report_error_undef_cons(ClauseContext, GoalContext, Context, ConsErrors,
         Spec = error_spec($pred, severity_error, phase_type_check,
             [simple_msg(Context, [InitComp | FunctorComps])])
     else
-        report_error_undef_cons_std(ClauseContext, Context, InitComp,
-            ConsErrors, ConsId, Spec)
+        report_error_undef_du_ctor_std(ClauseContext, Context, InitComp,
+            DuCtor, ConsErrors, Spec)
     ).
 
 %---------------------%
@@ -688,12 +712,12 @@ syntax_functor_components(FunctorName, Arity, Components) :-
 
 %---------------------%
 
-:- pred report_error_undef_cons_std(type_error_clause_context::in,
-    prog_context::in, error_msg_component::in, list(cons_error)::in,
-    cons_id::in, error_spec::out) is det.
+:- pred report_error_undef_du_ctor_std(type_error_clause_context::in,
+    prog_context::in, error_msg_component::in, du_ctor::in,
+    list(cons_error)::in, error_spec::out) is det.
 
-report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
-        ConsId, Spec) :-
+report_error_undef_du_ctor_std(ClauseContext, Context, InitComp, DuCtor,
+        ConsErrors, Spec) :-
     (
         ConsErrors = [],
         ConsMsgs = []
@@ -706,149 +730,134 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
     module_info_get_cons_table(ModuleInfo, ConsTable),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
 
-    ( if ConsId = du_data_ctor(DuCtor) then
-        DuCtor = du_ctor(SymName, Arity, _),
-        return_cons_arities(ConsTable, SymName, ConsArities),
-        predicate_table_lookup_sym(PredicateTable, may_be_partially_qualified,
-            SymName, PredIds),
-        return_pred_func_arities(ModuleInfo, PredIds,
-            [], PredArities, [], FuncArities),
-        % A program can refer to functions both
-        %
-        % - by calling them, which requires their full list of arguments, and
-        % - by constructing closures from them, which requires any initial
-        %   subsequence of their full argument list.
-        %
-        % For a function with N arguments, the first requires N args in the
-        % call, while the second is ok any in number between 0 and N.
-        %
-        % This is why we report FuncArities twice, with each message being
-        % specific to one of the situations above.
-        ConsFuncArities0 = ConsArities ++ FuncArities,
-        list.sort_and_remove_dups(ConsFuncArities0, ConsFuncArities),
-        list.delete_all(ConsFuncArities, Arity, OtherConsFuncArities),
-        ( if
-            OtherConsFuncArities = [_ | _]
-        then
-            ConsFuncPieces = wrong_arity_constructor_to_pieces(SymName,
-                Arity, OtherConsFuncArities),
-            ConsFuncComps = [always(ConsFuncPieces)],
-            % The code that constructs QualMsgs below uses wording that
-            % can be misleading in the presence of arity mismatches.
-            QualSuggestionMsgs = []
-        else
-            UndefSymbolPieces = [words("error:")] ++
-                color_as_incorrect([words("undefined")]) ++
-                [words("symbol")] ++
-                color_as_subject([qual_cons_id_and_maybe_arity(ConsId),
-                    suffix(".")]) ++
-                [nl],
-            ( if
-                SymName = qualified(ModQual, _)
-            then
-                maybe_report_missing_import_addendum(ClauseContext, ModQual,
-                    AddeddumPieces, MissingImportModules)
-            else if
-                SymName = unqualified("[|]"),
-                Arity = 2
-            then
-                maybe_report_missing_import_addendum(ClauseContext,
-                    unqualified("list"), AddeddumPieces, MissingImportModules)
-            else if
-                SymName = unqualified("coerce")
-            then
-                AddeddumPieces = [words("(The builtin")] ++
-                    color_as_subject([words("coerce")]) ++
-                    [words("operator expects")] ++
-                    color_as_correct([words("one")]) ++
-                    [words("argument, not")] ++
-                    color_as_incorrect([int_name(Arity), suffix(".")]) ++
-                    [suffix(")"), nl],
-                MissingImportModules = []
-            else
-                AddeddumPieces = [],
-                MissingImportModules = []
-            ),
-            ConsFuncComps = [always(UndefSymbolPieces ++ AddeddumPieces)],
-            BaseName = unqualify_name(SymName),
-            return_cons_defns_with_given_name(ConsTable, BaseName, ConsDefns),
-            list.foldl(accumulate_matching_cons_module_names(SymName),
-                ConsDefns, [], ConsModuleNames),
-            PredModuleNames =
-                find_possible_pf_missing_module_qualifiers(PredicateTable,
-                    pf_predicate, SymName),
-            FuncModuleNames =
-                find_possible_pf_missing_module_qualifiers(PredicateTable,
-                    pf_function, SymName),
-            ModuleNames =
-                ConsModuleNames ++ PredModuleNames ++ FuncModuleNames,
-            set.list_to_set(ModuleNames, ModuleNamesSet0),
-            set.delete_list(MissingImportModules,
-                ModuleNamesSet0, ModuleNamesSet),
-            QualMsgs = report_any_missing_module_qualifiers(ClauseContext,
-                Context, "symbol", ModuleNamesSet),
-            ( if
-                ConsMsgs = [],
-                QualMsgs = []
-            then
-                % It seems that the reference is to the wrong name.
-                % See if we can mention some similar names that could be
-                % the one they intended.
-                cons_table_names(ConsTable, ConsTableNameSet),
-                get_known_pred_info_names(PredicateTable, pf_function,
-                    KnownFuncNames0),
-                set.sorted_list_to_set(KnownFuncNames0, KnownFuncNamesSet0),
-                set.union(ConsTableNameSet,
-                    KnownFuncNamesSet0, KnownFuncNamesSet),
-                set.to_sorted_list(KnownFuncNamesSet, KnownFuncNames),
-                maybe_construct_did_you_mean_pieces(BaseName, KnownFuncNames,
-                    DidYouMeanPieces),
-                (
-                    DidYouMeanPieces = [],
-                    QualSuggestionMsgs = []
-                ;
-                    DidYouMeanPieces = [_ | _],
-                    DidyouMeanMsg = msg(Context, DidYouMeanPieces),
-                    QualSuggestionMsgs = [DidyouMeanMsg]
-                )
-            else
-                QualSuggestionMsgs = QualMsgs
-            )
-        ),
-        PredMarkers = ClauseContext ^ tecc_pred_markers,
-        ( if check_marker(PredMarkers, marker_named_class_instance_method) then
-            % We are processing a clause that the compiler generated itself
-            % for an instance declaration such as "func(func_a/3) is one_str"
-            % in tests/invalid/no_method.m. If we did not disable the
-            % execution of the else-part in such contexts, we would get
-            % misleading error messages such as
-            %
-            % no_method.m:035:   If you are trying to construct a closure
-            % no_method.m:035:   containing `one_str', you cannot do so with
-            % no_method.m:035:   3 arguments: the only function with this name
-            % no_method.m:035:   has arity 2.
-            %
-            % I (zs) found that out the hard way :-(
-            PredFuncComps = []
-        else
-            report_closure_construction_errors(SymName, Arity,
-                PredArities, FuncArities, PredFuncComps)
-        ),
-        FirstMsg = simple_msg(Context,
-            [InitComp | ConsFuncComps] ++ PredFuncComps),
-        Spec = error_spec($pred, severity_error, phase_type_check,
-            [FirstMsg | ConsMsgs] ++ QualSuggestionMsgs)
-    else
-        UndefPieces = [words("error:")] ++
+    DuCtor = du_ctor(SymName, Arity, _),
+    return_cons_arities(ConsTable, SymName, ConsArities),
+    predicate_table_lookup_sym(PredicateTable, may_be_partially_qualified,
+        SymName, PredIds),
+    return_pred_func_arities(ModuleInfo, PredIds,
+        [], PredArities, [], FuncArities),
+    % A program can refer to functions both
+    %
+    % - by calling them, which requires their full list of arguments, and
+    % - by constructing closures from them, which requires any initial
+    %   subsequence of their full argument list.
+    %
+    % For a function with N arguments, the first requires N args in the
+    % call, while the second is ok any in number between 0 and N.
+    %
+    % This is why we report FuncArities twice, with each message being
+    % specific to one of the situations above.
+    ConsFuncArities0 = ConsArities ++ FuncArities,
+    list.sort_and_remove_dups(ConsFuncArities0, ConsFuncArities),
+    list.delete_all(ConsFuncArities, Arity, OtherConsFuncArities),
+    (
+        OtherConsFuncArities = [_ | _],
+        ConsFuncPieces = wrong_arity_constructor_to_pieces(SymName,
+            Arity, OtherConsFuncArities),
+        ConsFuncComps = [always(ConsFuncPieces)],
+        % The code that constructs QualMsgs below uses wording that
+        % can be misleading in the presence of arity mismatches.
+        QualSuggestionMsgs = []
+    ;
+        OtherConsFuncArities = [],
+        ConsIdPiece = qual_cons_id_and_maybe_arity(du_data_ctor(DuCtor)),
+        UndefSymbolPieces = [words("error:")] ++
             color_as_incorrect([words("undefined")]) ++
             [words("symbol")] ++
-            color_as_subject([qual_cons_id_and_maybe_arity(ConsId),
-                suffix(".")]) ++
+            color_as_subject([ConsIdPiece, suffix(".")]) ++
             [nl],
-        UndefComp = always(UndefPieces),
-        Msg = simple_msg(Context, [InitComp, UndefComp]),
-        Spec = error_spec($pred, severity_error, phase_type_check, [Msg])
-    ).
+        ( if
+            SymName = qualified(ModQual, _)
+        then
+            maybe_report_missing_import_addendum(ClauseContext, ModQual,
+                AddeddumPieces, MissingImportModules)
+        else if
+            SymName = unqualified("[|]"),
+            Arity = 2
+        then
+            maybe_report_missing_import_addendum(ClauseContext,
+                unqualified("list"), AddeddumPieces, MissingImportModules)
+        else if
+            SymName = unqualified("coerce")
+        then
+            AddeddumPieces = [words("(The builtin")] ++
+                color_as_subject([words("coerce")]) ++
+                [words("operator expects")] ++
+                color_as_correct([words("one")]) ++
+                [words("argument, not")] ++
+                color_as_incorrect([int_name(Arity), suffix(".")]) ++
+                [suffix(")"), nl],
+            MissingImportModules = []
+        else
+            AddeddumPieces = [],
+            MissingImportModules = []
+        ),
+        ConsFuncComps = [always(UndefSymbolPieces ++ AddeddumPieces)],
+        BaseName = unqualify_name(SymName),
+        return_cons_defns_with_given_name(ConsTable, BaseName, ConsDefns),
+        list.foldl(accumulate_matching_cons_module_names(SymName),
+            ConsDefns, [], ConsModuleNames),
+        PredModuleNames =
+            find_possible_pf_missing_module_qualifiers(PredicateTable,
+                pf_predicate, SymName),
+        FuncModuleNames =
+            find_possible_pf_missing_module_qualifiers(PredicateTable,
+                pf_function, SymName),
+        ModuleNames = ConsModuleNames ++ PredModuleNames ++ FuncModuleNames,
+        set.list_to_set(ModuleNames, ModuleNamesSet0),
+        set.delete_list(MissingImportModules, ModuleNamesSet0, ModuleNamesSet),
+        QualMsgs = report_any_missing_module_qualifiers(ClauseContext,
+            Context, "symbol", ModuleNamesSet),
+        ( if
+            ConsMsgs = [],
+            QualMsgs = []
+        then
+            % It seems that the reference is to the wrong name.
+            % See if we can mention some similar names that could be
+            % the one they intended.
+            cons_table_names(ConsTable, ConsTableNameSet),
+            get_known_pred_info_names(PredicateTable, pf_function,
+                KnownFuncNames0),
+            set.sorted_list_to_set(KnownFuncNames0, KnownFuncNamesSet0),
+            set.union(ConsTableNameSet, KnownFuncNamesSet0, KnownFuncNamesSet),
+            set.to_sorted_list(KnownFuncNamesSet, KnownFuncNames),
+            maybe_construct_did_you_mean_pieces(BaseName, KnownFuncNames,
+                DidYouMeanPieces),
+            (
+                DidYouMeanPieces = [],
+                QualSuggestionMsgs = []
+            ;
+                DidYouMeanPieces = [_ | _],
+                DidyouMeanMsg = msg(Context, DidYouMeanPieces),
+                QualSuggestionMsgs = [DidyouMeanMsg]
+            )
+        else
+            QualSuggestionMsgs = QualMsgs
+        )
+    ),
+    PredMarkers = ClauseContext ^ tecc_pred_markers,
+    ( if check_marker(PredMarkers, marker_named_class_instance_method) then
+        % We are processing a clause that the compiler generated itself
+        % for an instance declaration such as "func(func_a/3) is one_str"
+        % in tests/invalid/no_method.m. If we did not disable the
+        % execution of the else-part in such contexts, we would get
+        % misleading error messages such as
+        %
+        % no_method.m:035:   If you are trying to construct a closure
+        % no_method.m:035:   containing `one_str', you cannot do so with
+        % no_method.m:035:   3 arguments: the only function with this name
+        % no_method.m:035:   has arity 2.
+        %
+        % I (zs) found that out the hard way :-(
+        PredFuncComps = []
+    else
+        report_closure_construction_errors(SymName, Arity,
+            PredArities, FuncArities, PredFuncComps)
+    ),
+    FirstMsg = simple_msg(Context,
+        [InitComp | ConsFuncComps] ++ PredFuncComps),
+    Spec = error_spec($pred, severity_error, phase_type_check,
+        [FirstMsg | ConsMsgs] ++ QualSuggestionMsgs).
 
 :- pred return_pred_func_arities(module_info::in, list(pred_id)::in,
     list(int)::in, list(int)::out,
