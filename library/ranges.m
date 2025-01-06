@@ -606,27 +606,27 @@ is_singleton(range(N - 1, N, nil), N).
 
 %---------------------------------------------------------------------------%
 
-member(N, range(Lo, Hi, Tail)) :-
+member(N, range(Lo, Hi, Rest)) :-
     (
         N > Lo,
         N =< Hi
     ;
-        ranges.member(N, Tail)
+        ranges.member(N, Rest)
     ).
 
-contains(S, E) :-
-    member(E, S).
+contains(Set, E) :-
+    member(E, Set).
 
-nondet_member(N, As) :-
-    nondet_range_member(Lo, Hi, As),
+nondet_member(N, Set) :-
+    nondet_range_member(Lo, Hi, Set),
     int.nondet_int_in_range(Lo, Hi, N).
 
-nondet_range_member(Lo, Hi, range(Lo0, Hi0, Tail)) :-
+nondet_range_member(Lo, Hi, range(Lo0, Hi0, Rest)) :-
     (
         Lo = Lo0 + 1,
         Hi = Hi0
     ;
-        nondet_range_member(Lo, Hi, Tail)
+        nondet_range_member(Lo, Hi, Rest)
     ).
 
 range_member(Lo, Hi, Ranges) :-
@@ -639,30 +639,34 @@ range_member(Lo, Hi, Ranges) :-
 :- pragma foreign_export("Java",
     ranges.insert(in, in) = out, "insert").
 
-insert(N, As) = union(As, make_singleton_set(N)).
-insert(N, As, Bs) :-
-    Bs = insert(N, As).
+insert(E, Set0) = Set :-
+    insert(E, Set0, Set).
+
+insert(E, Set0, Set) :-
+    union(Set0, make_singleton_set(E), Set).
 
 insert_list(Es, Set0) = Set :-
     insert_list(Es, Set0, Set).
 
 insert_list([], !Set).
 insert_list([E | Es], !Set) :-
-    !:Set = insert(E, !.Set),
+    insert(E, !Set),
     insert_list(Es, !Set).
 
 %---------------------%
 
-delete(N, As) = difference(As, make_singleton_set(N)).
-delete(N, As, Bs) :-
-    Bs = delete(N, As).
+delete(E, Set0) = Set :-
+    delete(E, Set0, Set).
 
-delete_list(SetA, SetB) = Set:-
-    delete_list(SetA, SetB, Set).
+delete(E, Set0, Set) :-
+    difference(Set0, make_singleton_set(E), Set).
+
+delete_list(Es, Set0) = Set:-
+    delete_list(Es, Set0, Set).
 
 delete_list([], !Set).
 delete_list([E | Es], !Set) :-
-    !:Set = delete(E, !.Set),
+    delete(E, !Set),
     delete_list(Es, !Set).
 
 %---------------------------------------------------------------------------%
@@ -1021,7 +1025,7 @@ diff_na_nb(UA, As0, UB, Bs0) = Result :-
 :- pragma foreign_export("Java",
     ranges.split(in, out, out, out), "split").
 
-split(range(Min1, Max, Rest), Min1 + 1, Max, Rest).
+split(range(Lo, Hi, Rest), Lo + 1, Hi, Rest).
 
 %---------------------------------------------------------------------------%
 
@@ -1059,16 +1063,16 @@ from_set(Set) =
 %---------------------------------------------------------------------------%
 
 to_sorted_list(nil) = [].
-to_sorted_list(range(L, H, Rest)) =
-    to_sorted_list_2(L, H, to_sorted_list(Rest)).
+to_sorted_list(range(Lo, Hi, Rest)) =
+    to_sorted_list_2(Lo, Hi, to_sorted_list(Rest)).
 
 :- func to_sorted_list_2(int, int, list(int)) = list(int).
 
-to_sorted_list_2(L, H, Ints) =
-    ( if H = L then
-        Ints
+to_sorted_list_2(Lo, Hi, List) =
+    ( if Hi = Lo then
+        List
     else
-        to_sorted_list_2(L, H - 1, [H | Ints])
+        to_sorted_list_2(Lo, Hi - 1, [Hi | List])
     ).
 
 %---------------------------------------------------------------------------%
@@ -1076,8 +1080,15 @@ to_sorted_list_2(L, H, Ints) =
 :- pragma foreign_export("C",    ranges.count(in) = out, "ML_ranges_count").
 :- pragma foreign_export("Java", ranges.count(in) = out, "count").
 
-count(nil) = 0.
-count(range(L, U, Rest)) = (U - L) + size(Rest).
+count(Set) = N :-
+    count_acc(Set, 0, N).
+
+:- pred count_acc(ranges::in, int::in, int::out) is det.
+
+count_acc(nil, !N).
+count_acc(range(Lo, Hi, Rest), !N) :-
+    !:N = (Hi - Lo) + !.N,
+    count_acc(Rest, !N).
 
 :- pragma foreign_export("C",    ranges.size(in) = out, "ML_ranges_size").
 :- pragma foreign_export("Java", ranges.size(in) = out, "size").
@@ -1086,14 +1097,14 @@ size(Xs) = count(Xs).
 
 %---------------------------------------------------------------------------%
 
-median(As) = N :-
-    Size = size(As),
-    ( if Size > 0 then
-        MiddleIndex = (Size + 1) / 2
+median(Set) = Median :-
+    Count = count(Set),
+    ( if Count > 0 then
+        MiddleIndex = (Count + 1) / 2
     else
         error($pred, "empty set")
     ),
-    N = element_index(As, MiddleIndex).
+    Median = element_index(Set, MiddleIndex).
 
     % element_index(Intervals, I) returns the I'th largest value in the set
     % represented by Intervals (the least item in the set having index 1).
