@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2022, 2024 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1535,8 +1535,8 @@ do_delete(E, Decr, Tin, Tout, RH) :-
 
 %---------------------%
 
-delete_list(SetA, SetB) = Set:-
-    delete_list(SetA, SetB, Set).
+delete_list(Es, Set0) = Set:-
+    delete_list(Es, Set0, Set).
 
 delete_list(Es, ct(Size0, Tree0), ct(Size, Tree)) :-
     do_delete_list(Es, Size0, Size, Tree0, Tree).
