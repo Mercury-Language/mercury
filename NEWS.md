@@ -788,11 +788,15 @@ Changes to the Mercury standard library
     - func `intersect/2`
     - pred `intersect/3`
     - pred `insert_list/3`
+    - func `list_to_ranges/1`
+    - pred `list_to_ranges/2`
     - pred `nondet_range_member/3`
     - pred `restrict_min/3`
     - pred `restrict_max/3`
     - pred `restrict_range/4`
     - pred `search_range/4`
+    - func `set_to_ranges/1`
+    - pred `set_to_ranges/2`
     - pred `union/3`
 
 * The following function and predicate have been marked obsolete:

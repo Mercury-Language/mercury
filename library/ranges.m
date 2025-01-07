@@ -226,13 +226,21 @@
 %
 
     % Convert from a list of integers.
-    % NOTE_TO_IMPLEMENTORS XXX Should have list_to_ranges synonym.
     % NOTE_TO_IMPLEMENTORS XXX Should have sorted_list_to_ranges version.
+    %
+:- func list_to_ranges(list(int)) = ranges.
+:- pred list_to_ranges(list(int)::in, ranges::out) is det.
+
+    % Synonym for list_to_ranges/1.
     %
 :- func from_list(list(int)) = ranges.
 
     % Convert from a set of integers.
-    % NOTE_TO_IMPLEMENTORS XXX Should have set_to_ranges synonym.
+    %
+:- func set_to_ranges(set(int)) = ranges.
+:- pred set_to_ranges(set(int)::in, ranges::out) is det.
+
+    % Synonym for set_to_ranges/1.
     %
 :- func from_set(set(int)) = ranges.
 
@@ -1054,11 +1062,21 @@ prune_to_prev_non_member(range(LA, UA, As0), Result, !N) :-
 
 %---------------------------------------------------------------------------%
 
-from_list(List) =
-    list.foldl(ranges.insert, List, ranges.empty).
+list_to_ranges(List) = Set :-
+    list_to_ranges(List, Set).
 
-from_set(Set) =
-    ranges.from_list(set.to_sorted_list(Set)).
+list_to_ranges(List, Set) :-
+    list.foldl(ranges.insert, List, ranges.empty, Set).
+
+from_list(List) = list_to_ranges(List).
+
+set_to_ranges(Set) = Ranges :-
+    set_to_ranges(Set, Ranges).
+
+set_to_ranges(Set, Ranges) :-
+    set.foldl(ranges.insert, Set, ranges.empty, Ranges).
+
+from_set(Set) = set_to_ranges(Set).
 
 %---------------------------------------------------------------------------%
 
