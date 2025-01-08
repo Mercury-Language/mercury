@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -74,12 +74,12 @@
 
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.make_goal.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
+:- import_module hlds.var_table_hlds.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -1310,10 +1310,8 @@ simplify_make_const(Type, ConstConsId, ConstVar, Goal, !Info) :-
 
 simplify_make_var(Type, Var, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
-    IsDummy = is_type_a_dummy(ModuleInfo, Type),
-    Entry = vte("", Type, IsDummy),
     simplify_info_get_var_table(!.Info, VarTable0),
-    add_var_entry(Entry, Var, VarTable0, VarTable),
+    create_fresh_var(ModuleInfo, Type, Var, VarTable0, VarTable),
     simplify_info_set_var_table(VarTable, !Info).
 
 %---------------------%

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -57,7 +57,6 @@
 :- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_tasks.
-:- import_module check_hlds.type_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_dependency_graph.
@@ -67,6 +66,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
+:- import_module hlds.var_table_hlds.
 :- import_module libs.
 :- import_module libs.dependency_graph.
 :- import_module libs.globals.
@@ -1359,7 +1359,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
 
 create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
         !PDInfo) :-
-    OldArgs = VersionInfo ^ version_arg_vars,
+    OldArgVars = VersionInfo ^ version_arg_vars,
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         CalledPredInfo, CalledProcInfo),
@@ -1379,48 +1379,47 @@ create_call_goal(proc(PredId, ProcId), VersionInfo, Renaming, TypeSubn, Goal,
     pd_info_set_pred_info(PredInfo, !PDInfo),
     apply_variable_renaming_to_type_list(TypeRenaming, ArgTypes0, ArgTypes1),
 
-    create_deforest_call_args(ModuleInfo, Renaming, TypeSubn,
-        OldArgs, ArgTypes1, Args, VarTable0, VarTable),
+    create_deforest_call_arg_vars(ModuleInfo, Renaming, TypeSubn,
+        OldArgVars, ArgTypes1, ArgVars, VarTable0, VarTable),
     proc_info_set_var_table(VarTable, ProcInfo0, ProcInfo),
     pd_info_set_proc_info(ProcInfo, !PDInfo),
 
     % Compute a goal_info.
     proc_info_get_argmodes(CalledProcInfo, ArgModes),
-    instmap_delta_from_mode_list(ModuleInfo, Args, ArgModes, InstMapDelta),
+    instmap_delta_from_mode_list(ModuleInfo, ArgVars, ArgModes, InstMapDelta),
     proc_info_interface_determinism(ProcInfo, Detism),
-    set_of_var.list_to_set(Args, NonLocals),
+    set_of_var.list_to_set(ArgVars, NonLocals),
     pred_info_get_purity(CalledPredInfo, Purity),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo),
 
     PredModule = pred_info_module(CalledPredInfo),
     PredName = pred_info_name(CalledPredInfo),
-    GoalExpr = plain_call(PredId, ProcId, Args, not_builtin, no,
+    GoalExpr = plain_call(PredId, ProcId, ArgVars, not_builtin, no,
         qualified(PredModule, PredName)),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-:- pred create_deforest_call_args(module_info::in,
+:- pred create_deforest_call_arg_vars(module_info::in,
     map(prog_var, prog_var)::in, tsubst::in,
     list(prog_var)::in, list(mer_type)::in, list(prog_var)::out,
     var_table::in, var_table::out) is det.
 
-create_deforest_call_args(_, _, _, [], [], [], !VarTable).
-create_deforest_call_args(_, _, _, [], [_ | _], _, !VarTable) :-
+create_deforest_call_arg_vars(_, _, _, [], [], [], !VarTable).
+create_deforest_call_arg_vars(_, _, _, [], [_ | _], _, !VarTable) :-
     unexpected($pred, "length mismatch").
-create_deforest_call_args(_, _, _, [_ | _], [], _, !VarTable) :-
+create_deforest_call_arg_vars(_, _, _, [_ | _], [], _, !VarTable) :-
     unexpected($pred, "length mismatch").
-create_deforest_call_args(ModuleInfo, Renaming, TypeSubn,
-        [OldArg | OldArgs], [ArgType | ArgTypes], [Arg | Args], !VarTable) :-
-    ( if map.search(Renaming, OldArg, ArgPrime) then
-        Arg = ArgPrime
+create_deforest_call_arg_vars(ModuleInfo, Renaming, TypeSubn,
+        [OldArgVar | OldArgVars], [ArgType | ArgTypes], [ArgVar | ArgVars],
+        !VarTable) :-
+    ( if map.search(Renaming, OldArgVar, ArgVarPrime) then
+        ArgVar = ArgVarPrime
     else
         % The variable is local to the call. Create a fresh variable.
         apply_subst_to_type(TypeSubn, ArgType, SubnArgType),
-        IsDummy = is_type_a_dummy(ModuleInfo, SubnArgType),
-        ArgEntry = vte("", SubnArgType, IsDummy),
-        add_var_entry(ArgEntry, Arg, !VarTable)
+        create_fresh_var(ModuleInfo, SubnArgType, ArgVar, !VarTable)
     ),
-    create_deforest_call_args(ModuleInfo, Renaming, TypeSubn,
-        OldArgs, ArgTypes, Args, !VarTable).
+    create_deforest_call_arg_vars(ModuleInfo, Renaming, TypeSubn,
+        OldArgVars, ArgTypes, ArgVars, !VarTable).
 
 %-----------------------------------------------------------------------------%
 
@@ -1648,7 +1647,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgVars,
     module_info_pred_info(ModuleInfo, NonGeneralisedPredId,
         NonGeneralisedPredInfo),
     pred_info_get_arg_types(NonGeneralisedPredInfo, NonGeneralisedArgTypes),
-    create_deforest_call_args(ModuleInfo, GeneralRenaming, TypeRenaming,
+    create_deforest_call_arg_vars(ModuleInfo, GeneralRenaming, TypeRenaming,
         NonGeneralisedArgVars, NonGeneralisedArgTypes, NewArgVars,
         !.VarTable, _),
 

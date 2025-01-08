@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2021-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2021-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -54,8 +54,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.type_util.
 :- import_module hlds.instmap.
+:- import_module hlds.var_table_hlds.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
@@ -128,15 +128,7 @@ convert_pred_to_lambda_goal(ModuleInfo0, Purity, X0, PredId, ProcId,
         MaybeRHS = error1(Specs)
     ).
 
-:- pred create_fresh_vars(module_info::in, list(mer_type)::in,
-    list(prog_var)::out, var_table::in, var_table::out) is det.
-
-create_fresh_vars(_, [], [], !VarTable).
-create_fresh_vars(ModuleInfo, [Type | Types], [Var | Vars], !VarTable) :-
-    IsDummy = is_type_a_dummy(ModuleInfo, Type),
-    Entry = vte("", Type, IsDummy),
-    add_var_entry(Entry, Var, !VarTable),
-    create_fresh_vars(ModuleInfo, Types, Vars, !VarTable).
+%---------------------------------------------------------------------------%
 
 fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, RHS0, MaybeRHS) :-
     RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, ArgVars0,

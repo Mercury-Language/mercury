@@ -74,6 +74,17 @@
 
 %---------------------------------------------------------------------------%
 
+:- pred create_fresh_named_var(module_info::in, string::in, mer_type::in,
+    prog_var::out, var_table::in, var_table::out) is det.
+
+:- pred create_fresh_var(module_info::in, mer_type::in,
+    prog_var::out, var_table::in, var_table::out) is det.
+
+:- pred create_fresh_vars(module_info::in, list(mer_type)::in,
+    list(prog_var)::out, var_table::in, var_table::out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.
@@ -273,6 +284,23 @@ corresponding_vars_types_to_vars_entries(ModuleInfo, VarSet,
     !:VarsEntries = [Var - Entry | !.VarsEntries],
     corresponding_vars_types_to_vars_entries(ModuleInfo, VarSet, Vars, Types,
         !VarsEntries).
+
+%---------------------------------------------------------------------------%
+
+create_fresh_named_var(ModuleInfo, Name, Type, Var, !VarTable) :-
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    Entry = vte(Name, Type, IsDummy),
+    add_var_entry(Entry, Var, !VarTable).
+
+create_fresh_var(ModuleInfo, Type, Var, !VarTable) :-
+    IsDummy = is_type_a_dummy(ModuleInfo, Type),
+    Entry = vte("", Type, IsDummy),
+    add_var_entry(Entry, Var, !VarTable).
+
+create_fresh_vars(_, [], [], !VarTable).
+create_fresh_vars(ModuleInfo, [Type | Types], [Var | Vars], !VarTable) :-
+    create_fresh_var(ModuleInfo, Type, Var, !VarTable),
+    create_fresh_vars(ModuleInfo, Types, Vars, !VarTable).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.var_table_hlds.

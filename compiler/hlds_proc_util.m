@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2024 The Mercury team.
+% Copyright (C) 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -134,7 +134,7 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_test.
 :- import_module check_hlds.mode_util.
-:- import_module check_hlds.type_util.
+:- import_module hlds.var_table_hlds.
 :- import_module parse_tree.prog_type_test.
 
 :- import_module assoc_list.
@@ -264,13 +264,7 @@ proc_info_create_var_from_type(Name, Type, IsDummy, Var, !ProcInfo) :-
 
 proc_info_create_vars_from_types(ModuleInfo, Types, Vars, !ProcInfo) :-
     proc_info_get_var_table(!.ProcInfo, VarTable0),
-    AddVar =
-        ( pred(T::in, V::out, VT0::in, VT::out) is det :-
-            IsDummy = is_type_a_dummy(ModuleInfo, T),
-            Entry = vte("", T, IsDummy),
-            add_var_entry(Entry, V, VT0, VT)
-        ),
-    list.map_foldl(AddVar, Types, Vars, VarTable0, VarTable),
+    create_fresh_vars(ModuleInfo, Types, Vars, VarTable0, VarTable),
     proc_info_set_var_table(VarTable, !ProcInfo).
 
 %---------------------%

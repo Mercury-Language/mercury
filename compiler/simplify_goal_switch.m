@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -41,6 +41,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.make_goal.
+:- import_module hlds.var_table_hlds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_detism.
@@ -329,12 +330,7 @@ create_test_unification(Var, ConsId, ConsArity, ExtraGoal, InstMap0, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     lookup_var_type(VarTable0, Var, VarType),
     type_util.get_cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes),
-    MakeArgEntry =
-        ( pred(T::in, vte("", T, IsDummy)::out) is det :-
-            IsDummy = is_type_a_dummy(ModuleInfo, T)
-        ),
-    list.map(MakeArgEntry, ArgTypes, ArgEntries),
-    list.map_foldl(add_var_entry, ArgEntries, ArgVars, VarTable0, VarTable),
+    create_fresh_vars(ModuleInfo, ArgTypes, ArgVars, VarTable0, VarTable),
     simplify_info_set_var_table(VarTable, !Info),
     instmap_lookup_var(InstMap0, Var, Inst0),
     inst_expand(ModuleInfo, Inst0, Inst1),

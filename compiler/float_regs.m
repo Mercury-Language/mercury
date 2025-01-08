@@ -164,6 +164,7 @@
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.quantification.
+:- import_module hlds.var_table_hlds.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.builtin_lib_types.
@@ -1676,16 +1677,6 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     UnifyGoal = hlds_goal(UnifyGoalExpr, UnifyGoalInfo),
 
     lambda_info_set_recompute_nonlocals(must_recompute_nonlocals, !Info).
-
-:- pred create_fresh_vars(module_info::in, list(mer_type)::in,
-    list(prog_var)::out, var_table::in, var_table::out) is det.
-
-create_fresh_vars(_, [], [], !VarTable).
-create_fresh_vars(ModuleInfo, [Type | Types], [Var | Vars], !VarTable) :-
-    IsDummy = is_type_a_dummy(ModuleInfo, Type),
-    Entry = vte("", Type, IsDummy),
-    add_var_entry(Entry, Var, !VarTable),
-    create_fresh_vars(ModuleInfo, Types, Vars, !VarTable).
 
 :- pred make_reg_r_headvars(var_table::in, prog_var::in, ho_arg_reg::in,
     set_of_progvar::in, set_of_progvar::out) is det.

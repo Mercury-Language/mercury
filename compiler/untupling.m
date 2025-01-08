@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018-2024 The Mercury team.
+% Copyright (C) 2014-2016, 2018-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -125,6 +125,7 @@
 :- import_module hlds.pred_name.
 :- import_module hlds.quantification.
 :- import_module hlds.status.
+:- import_module hlds.var_table_hlds.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
@@ -653,9 +654,9 @@ fix_calls_in_cases(ModuleInfo, TransformMap,
     list(prog_var)::out, list(hlds_goal)::out, list(hlds_goal)::out,
     var_table::in, var_table::out) is det.
 
-expand_call_args(ModuleInfo, TypeTable, Args0, ArgModes0, Args,
+expand_call_args(ModuleInfo, TypeTable, ArgVars0, ArgModes0, ArgVars,
         EnterUnifs, ExitUnifs, !VarTable) :-
-    expand_call_args_2(ModuleInfo, TypeTable, [], Args0, ArgModes0, Args,
+    expand_call_args_2(ModuleInfo, TypeTable, [], ArgVars0, ArgModes0, ArgVars,
         EnterUnifs, ExitUnifs, !VarTable).
 
 :- pred expand_call_args_2(module_info::in, type_table::in, list(mer_type)::in,
@@ -669,43 +670,36 @@ expand_call_args_2(_, _, _, [], [_ | _], _, _, _, !VarTable) :-
 expand_call_args_2(_, _, _, [_ | _], [], _, _, _, !VarTable) :-
     unexpected($pred, "length mismatch").
 expand_call_args_2(ModuleInfo, TypeTable, ContainerTypes0,
-        [Arg0 | Args0], [ArgMode | ArgModes], Args,
+        [ArgVar0 | ArgVars0], [ArgMode | ArgModes], ArgVars,
         EnterUnifs, ExitUnifs, !VarTable) :-
-    lookup_var_type(!.VarTable, Arg0, Arg0Type),
+    lookup_var_type(!.VarTable, ArgVar0, Arg0Type),
     expand_argument(ArgMode, Arg0Type, ContainerTypes0, TypeTable, Expansion),
     (
         Expansion = expansion(ConsId, Types),
         list.length(Types, NumVars),
-        AddUnnamedVarForType =
-            ( pred(T::in, V::out, VT0::in, VT::out) is det :-
-                IsDummy = is_type_a_dummy(ModuleInfo, T),
-                Entry = vte("", T, IsDummy),
-                add_var_entry(Entry, V, VT0, VT)
-            ),
-        list.map_foldl(AddUnnamedVarForType, Types, ReplacementArgs,
-            !VarTable),
+        create_fresh_vars(ModuleInfo, Types, ReplacementArgVars, !VarTable),
         list.duplicate(NumVars, ArgMode, ReplacementModes),
         ContainerTypes = [Arg0Type | ContainerTypes0],
         ( if ArgMode = in_mode then
-            deconstruct_functor(Arg0, ConsId, ReplacementArgs, Unif),
+            deconstruct_functor(ArgVar0, ConsId, ReplacementArgVars, Unif),
             EnterUnifs = [Unif | EnterUnifs1],
             expand_call_args_2(ModuleInfo, TypeTable, ContainerTypes,
-                ReplacementArgs ++ Args0, ReplacementModes ++ ArgModes,
-                Args, EnterUnifs1, ExitUnifs, !VarTable)
+                ReplacementArgVars ++ ArgVars0, ReplacementModes ++ ArgModes,
+                ArgVars, EnterUnifs1, ExitUnifs, !VarTable)
         else if ArgMode = out_mode then
-            construct_functor(Arg0, ConsId, ReplacementArgs, Unif),
+            construct_functor(ArgVar0, ConsId, ReplacementArgVars, Unif),
             ExitUnifs = ExitUnifs1 ++ [Unif],
             expand_call_args_2(ModuleInfo, TypeTable, ContainerTypes,
-                ReplacementArgs ++ Args0, ReplacementModes ++ ArgModes,
-                Args, EnterUnifs, ExitUnifs1, !VarTable)
+                ReplacementArgVars ++ ArgVars0, ReplacementModes ++ ArgModes,
+                ArgVars, EnterUnifs, ExitUnifs1, !VarTable)
         else
             unexpected($pred, "unsupported mode")
         )
     ;
         Expansion = no_expansion,
-        Args = [Arg0 | Args1],
-        expand_call_args(ModuleInfo, TypeTable, Args0, ArgModes, Args1,
-            EnterUnifs, ExitUnifs, !VarTable)
+        expand_call_args(ModuleInfo, TypeTable, ArgVars0, ArgModes, ArgVars1,
+            EnterUnifs, ExitUnifs, !VarTable),
+        ArgVars = [ArgVar0 | ArgVars1]
     ).
 
 %-----------------------------------------------------------------------------%

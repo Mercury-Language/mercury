@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021, 2024 The Mercury team.
+% Copyright (C) 2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -43,6 +43,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module hlds.var_table_hlds.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
@@ -168,7 +169,7 @@ modecheck_coerce_vars(ModuleInfo0, X, Y, TypeX, TypeY, InstX, InstY, Result,
         else
             % Y is bound so bind the coercion result to a fresh variable
             % YPrime, then unify Y = YPrime.
-            create_fresh_var(TypeY, YPrime, !ModeInfo),
+            modecheck_info_create_fresh_var(TypeY, YPrime, !ModeInfo),
             create_var_var_unification(Y, YPrime, TypeY, !.ModeInfo,
                 ExtraGoal),
             ExtraGoals = extra_goals([], [ExtraGoal]),
@@ -185,15 +186,13 @@ modecheck_coerce_vars(ModuleInfo0, X, Y, TypeX, TypeY, InstX, InstY, Result,
         Result = coerce_mode_error
     ).
 
-:- pred create_fresh_var(mer_type::in, prog_var::out,
+:- pred modecheck_info_create_fresh_var(mer_type::in, prog_var::out,
     mode_info::in, mode_info::out) is det.
 
-create_fresh_var(VarType, Var, !ModeInfo) :-
+modecheck_info_create_fresh_var(VarType, Var, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    VarIsDummy = is_type_a_dummy(ModuleInfo, VarType),
-    VarEntry = vte("", VarType, VarIsDummy),
     mode_info_get_var_table(!.ModeInfo, VarTable0),
-    add_var_entry(VarEntry, Var, VarTable0, VarTable),
+    create_fresh_var(ModuleInfo, VarType, Var, VarTable0, VarTable),
     mode_info_set_var_table(VarTable, !ModeInfo).
 
 %---------------------------------------------------------------------------%
