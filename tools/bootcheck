@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 et ft=sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2008, 2010-2011 The University of Melbourne.
-# Copyright (C) 2013-2024 The Mercury team.
+# Copyright (C) 2013-2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -2515,7 +2515,6 @@ fi
 
 if test "${mdb_command_test_inp_status}" != 0
 then
-
     echo "ERROR EXIT: unexpected change in" \
         "tests/debugger/mdb_command_test.inp"
     exitstatus=1
