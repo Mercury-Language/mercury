@@ -11,18 +11,16 @@
 :- interface.
 
 :- import_module io.
-:- import_module list.
-:- import_module std_util.
 
 :- pred main(io::di, io::uo) is det.
 
-:- pred meta_parse_list(pred(Y, Y, X), list(X), Y, Y).
-:- mode meta_parse_list(pred(in, out, out) is semidet, out, in, out) is det.
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module builtin.
 :- import_module int.
+:- import_module list.
+:- import_module std_util.
 :- import_module string.
 
 main(!IO) :-
@@ -34,6 +32,9 @@ main(!IO) :-
     else
         io.write_string("Failure.\n", !IO)
     ).
+
+:- pred meta_parse_list(pred(Y, Y, X), list(X), Y, Y).
+:- mode meta_parse_list(pred(in, out, out) is semidet, out, in, out) is det.
 
 meta_parse_list(P, L, In, Out) :-
     ( if call(P, In, Out0, E) then

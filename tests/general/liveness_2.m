@@ -11,22 +11,23 @@
 %
 % The switch must be in the condition of the if-then-else, and the
 % test unification must follow it.
+%
 
 :- module liveness_2.
 
 :- interface.
 
-:- import_module bool.
-:- import_module int.
 :- import_module io.
-:- import_module std_util.
 
-:- pred main(io, io).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
-:- pred gather(bool::in, int::in, int::in, int::out) is det.
+%---------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module bool.
+:- import_module int.
+:- import_module std_util.
 
 main(!IO) :-
     gather(yes, 0, 7, Num),
@@ -37,6 +38,8 @@ main(!IO) :-
     ),
     io.write_int(Num, !IO),
     io.nl(!IO).
+
+:- pred gather(bool::in, int::in, int::in, int::out) is det.
 
 gather(P, NumLast, Test, Num) :-
     ( if

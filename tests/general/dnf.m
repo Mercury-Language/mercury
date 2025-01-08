@@ -4,6 +4,7 @@
 %
 % This tests whether the program as transformed by dnf still works.
 % It does not (cannot) test whether dnf is applied, of course.
+%
 
 :- module dnf.
 :- interface.
@@ -14,7 +15,9 @@
 :- implementation.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module pair.
+:- import_module solutions.
+:- import_module string.
 
 main(!IO) :-
     solutions(
@@ -26,14 +29,14 @@ main(!IO) :-
 
 :- pred print_list(list(pair(int))::in, io::di, io::uo) is det.
 
-print_list([], !IO) :-
+print_list([], !IO).
 print_list([X - Y | XYs], !IO) :-
     io.format("X = %d, Y = %d\n", [i(X), i(Y)], !IO),
     print_list(XYs, !IO).
 
-:- pred q(int::out, int::out) is multidet.
+:- pred q(int::out, int::out) is multi.
 
-:- pragma(memo, q/2).
+:- pragma memo(pred(q/2)).
 
 q(X, Y) :-
     ( X = 1 ; X = 2 ),

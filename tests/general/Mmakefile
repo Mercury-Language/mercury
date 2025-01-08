@@ -23,6 +23,7 @@ ORDINARY_PROGS = \
 	det_complicated_unify_2		\
 	determinism_inlining		\
 	disj_disj			\
+	dnf				\
 	do_while			\
 	double_error_1			\
 	double_error_2			\
@@ -85,9 +86,6 @@ EXCEPTION_PROGS = \
 	map_corresponding 		\
 	unused_arg_determinism
 
-# dnf.m does not work in non-gc grades, because it uses `pragma memo'
-# (i.e. tabling) and tabling is not yet implemented for non-gc grades.
-#
 # The problem for state_var_trace is lack of needed reordering by the
 # unique mode system.
 

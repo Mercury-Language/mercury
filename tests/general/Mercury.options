@@ -31,9 +31,28 @@ MLFLAGS-string_test_1                   += --no-strip
 # Also, it's not worth doing the check for these test cases anyway since
 # the entire point of them is to check that string.format aborts when
 # passed an invalid format string.
-#
 MCFLAGS-string_format_test_2            += --no-warn-known-bad-format-calls
 MCFLAGS-string_format_test_3            += --no-warn-known-bad-format-calls
 
+MCFLAGS-commit_bug_1                    += --no-warn-det-decls-too-lax
+MCFLAGS-determinism_inlining            += --no-warn-det-decls-too-lax
+MCFLAGS-do_while                        += --no-warn-det-decls-too-lax
+MCFLAGS-fail_detism                     += --no-warn-det-decls-too-lax
+MCFLAGS-nondet_ite_1                    += --no-warn-det-decls-too-lax
+MCFLAGS-nondet_ite_2                    += --no-warn-det-decls-too-lax
+MCFLAGS-nondet_ite_3                    += --no-warn-det-decls-too-lax
+MCFLAGS-nondet_ite_4                    += --no-warn-det-decls-too-lax
+MCFLAGS-semidet_lambda                  += --no-warn-det-decls-too-lax
 MCFLAGS-unreachable                     += --no-warn-det-decls-too-lax
 MCFLAGS-unused_arg_determinism          += --no-warn-det-decls-too-lax
+
+MCFLAGS-nondet_ite_4                    += --no-warn-simple-code
+MCFLAGS-petdr1                          += --no-warn-simple-code
+MCFLAGS-state_vars_tests                += --no-warn-simple-code
+
+MCFLAGS-unreachable                     += --no-warn-unification-cannot-succeed
+
+# As of 2025 jan 9, these tests contain calls to predicates that
+# the standard library has marked as obsolete.
+MCFLAGS-io_foldl                        += --no-warn-obsolete
+MCFLAGS-test_parsing_utils              += --no-warn-obsolete

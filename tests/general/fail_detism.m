@@ -10,15 +10,19 @@
 % as an empty disjunction, this violates an invariant required by the code
 % generator (that every det disjunction must have an alternative that always
 % succeeds).
+%
 
 :- module fail_detism.
 :- interface.
+
 :- import_module io.
-:- import_module string.
 
 :- pred main(io::di, io::uo) is cc_multi.
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
+:- import_module string.
 
 main(!IO) :-
     p(X),
