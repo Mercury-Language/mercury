@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2016, 2019, 2021-2024  The Mercury team.
+% Copyright (C) 2015-2016, 2019, 2021-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -159,7 +159,7 @@
 
 % We want efficient retrieval of all the modules which define an id
 % with a certain name and arity, and we want support for the generation
-% of useful diagnostics for slighly-wrong references. We therefore implement
+% of useful diagnostics for slightly-wrong references. We therefore implement
 % each id_set as a three stage map from
 %
 % - first the base name of an entity,
