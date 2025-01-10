@@ -1,5 +1,5 @@
 bug150_partial_color.m:014: Error: the implicit determinism declaration for
-bug150_partial_color.m:014:   `car'(in) = out [38;5;203mis not satisfied.[39;49m
+bug150_partial_color.m:014:   function `car'/1 [38;5;203mis not satisfied.[39;49m
 bug150_partial_color.m:014:   Declared `det', inferred [38;5;203m`semidet'.[39;49m
 bug150_partial_color.m:014:   The reason for the difference is the following.
 bug150_partial_color.m:018: 

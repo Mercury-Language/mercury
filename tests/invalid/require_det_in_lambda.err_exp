@@ -1,4 +1,4 @@
 require_det_in_lambda.m:018: Error: the required determinism of the goal in
 require_det_in_lambda.m:018:   this scope is [38;5;40m`det',[39;49m but its actual determinism
 require_det_in_lambda.m:018:   is [38;5;203m`semidet'.[39;49m
-require_det_in_lambda.m:019:   This call to [38;5;87m`int.<'(in, in)[39;49m [38;5;203mcan fail.[39;49m
+require_det_in_lambda.m:019:   This call to predicate [38;5;87m`int.<'/2[39;49m [38;5;203mcan fail.[39;49m

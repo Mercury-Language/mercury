@@ -1217,13 +1217,15 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
             Detism0 = detism_erroneous
         then
             proc_info_get_context(ProcInfo, ProcContext),
-            WillNotThrowProcPieces = describe_one_proc_name_mode(ModuleInfo,
-                output_mercury, yes(color_subject), should_not_module_qualify,
-                [], proc(PredId, ProcId)),
+            WillNotThrowProcPieces =
+                describe_one_proc_name_maybe_argmodes(ModuleInfo,
+                    output_mercury, yes(color_subject),
+                    should_not_module_qualify, [], proc(PredId, ProcId)),
             WillNotThrowPieces = [words("Error:")] ++ WillNotThrowProcPieces ++
-                [words("has determinism erroneous but also has"),
-                words("foreign clauses that have a"),
-                quote("will_not_throw_exception"), words("attribute.")] ++
+                [words("has determinism erroneous, but also has"),
+                words("foreign clauses that have a")] ++
+                color_as_subject([quote("will_not_throw_exception")]) ++
+                [words("attribute.")] ++
                 color_as_incorrect([words("This attribute cannot be applied"),
                     words("to erroneous procedures.")]) ++
                 [nl],
@@ -1274,8 +1276,9 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
         % the context in the goal gives the location of the foreign_proc
         % pragma.
         Context = goal_info_get_context(GoalInfo),
-        ProcPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
-            no, should_not_module_qualify, [], proc(PredId, ProcId)),
+        ProcPieces = describe_one_proc_name_maybe_argmodes(ModuleInfo,
+            output_mercury, no, should_not_module_qualify, [],
+            proc(PredId, ProcId)),
         Pieces = [words("Error: the procedure specification in this"),
             pragma_decl("foreign_proc"), words("declaration for")] ++
             ProcPieces ++

@@ -1,23 +1,24 @@
 user_field_access_decl_override_1.m:022: Warning: the determinism declaration
-user_field_access_decl_override_1.m:022:   for [38;5;87m`f1'(in) = out[39;49m [38;5;203mcould be tighter.[39;49m
+user_field_access_decl_override_1.m:022:   for function [38;5;87m`f1'/1[39;49m [38;5;203mcould be[39;49m
+user_field_access_decl_override_1.m:022:   [38;5;203mtighter.[39;49m
 user_field_access_decl_override_1.m:022:   Declared [38;5;40m`semidet',[39;49m inferred [38;5;203m`det'.[39;49m
 user_field_access_decl_override_1.m:023: Warning: the determinism declaration
-user_field_access_decl_override_1.m:023:   for [38;5;87m`f1 :='(in, in) = out[39;49m [38;5;203mcould be[39;49m
+user_field_access_decl_override_1.m:023:   for function [38;5;87m`f1 :='/2[39;49m [38;5;203mcould be[39;49m
 user_field_access_decl_override_1.m:023:   [38;5;203mtighter.[39;49m
 user_field_access_decl_override_1.m:023:   Declared [38;5;40m`semidet',[39;49m inferred [38;5;203m`det'.[39;49m
 user_field_access_decl_override_1.m:025: Error: the determinism declaration for
-user_field_access_decl_override_1.m:025:   [38;5;87m`get_foo_f1'(in) = out[39;49m [38;5;203mis not[39;49m
+user_field_access_decl_override_1.m:025:   function [38;5;87m`get_foo_f1'/1[39;49m [38;5;203mis not[39;49m
 user_field_access_decl_override_1.m:025:   [38;5;203msatisfied.[39;49m
 user_field_access_decl_override_1.m:025:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 user_field_access_decl_override_1.m:025:   The reason for the difference is the
 user_field_access_decl_override_1.m:025:   following.
 user_field_access_decl_override_1.m:030: 
 user_field_access_decl_override_1.m:030:   In unification of [38;5;87m`X'[39;49m and [38;5;87m`f1(Foo)'[39;49m:
-user_field_access_decl_override_1.m:030:   this call to
-user_field_access_decl_override_1.m:030:   [38;5;87m`user_field_access_decl_override_1.f1'(in)[39;49m
-user_field_access_decl_override_1.m:030:   [38;5;87m= out[39;49m [38;5;203mcan fail.[39;49m
+user_field_access_decl_override_1.m:030:   this call to function
+user_field_access_decl_override_1.m:030:   [38;5;87m`user_field_access_decl_override_1.f1'/1[39;49m
+user_field_access_decl_override_1.m:030:   [38;5;203mcan fail.[39;49m
 user_field_access_decl_override_1.m:032: Error: the determinism declaration for
-user_field_access_decl_override_1.m:032:   [38;5;87m`set_foo_f1'(in, in, out)[39;49m [38;5;203mis not[39;49m
+user_field_access_decl_override_1.m:032:   predicate [38;5;87m`set_foo_f1'/3[39;49m [38;5;203mis not[39;49m
 user_field_access_decl_override_1.m:032:   [38;5;203msatisfied.[39;49m
 user_field_access_decl_override_1.m:032:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 user_field_access_decl_override_1.m:032:   The reason for the difference is the
@@ -26,6 +27,6 @@ user_field_access_decl_override_1.m:037:
 user_field_access_decl_override_1.m:037:   In unification of
 user_field_access_decl_override_1.m:037:   [38;5;87m`STATE_VARIABLE_Foo'[39;49m and [38;5;87m`'f1[39;49m
 user_field_access_decl_override_1.m:037:   [38;5;87m:='(STATE_VARIABLE_Foo_0, X)'[39;49m:
-user_field_access_decl_override_1.m:037:   this call to
-user_field_access_decl_override_1.m:037:   [38;5;87m`user_field_access_decl_override_1.f1[39;49m
-user_field_access_decl_override_1.m:037:   [38;5;87m:='(in, in) = out[39;49m [38;5;203mcan fail.[39;49m
+user_field_access_decl_override_1.m:037:   this call to function
+user_field_access_decl_override_1.m:037:   [38;5;87m`user_field_access_decl_override_1.f1 :='/2[39;49m
+user_field_access_decl_override_1.m:037:   [38;5;203mcan fail.[39;49m

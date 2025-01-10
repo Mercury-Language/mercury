@@ -1,0 +1,8 @@
+petdr1.m:014: Warning: the determinism declaration for predicate
+petdr1.m:014:   [38;5;87m`interpreter'/1[39;49m [38;5;203mcould be tighter.[39;49m
+petdr1.m:014:   Declared [38;5;40m`nondet',[39;49m inferred [38;5;203m`det'.[39;49m
+petdr1.m:015: Warning: the determinism declaration for predicate [38;5;87m`which'/1[39;49m
+petdr1.m:015:   [38;5;203mcould be tighter.[39;49m
+petdr1.m:015:   Declared [38;5;40m`nondet',[39;49m inferred [38;5;203m`multi'.[39;49m
+petdr1.m:023: Warning: the condition of this if-then-else [38;5;203mcannot succeed.[39;49m
+petdr1.m:024: Warning: the negated goal [38;5;203mcannot succeed.[39;49m

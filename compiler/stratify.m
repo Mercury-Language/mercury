@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2017 The Mercury Team.
+% Copyright (C) 2017, 2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1011,10 +1011,11 @@ stratify_get_called_procs_cases([Case | Cases], !Calls) :-
 :- func generate_stratify_error(module_info, pred_proc_id, prog_context,
     string, error_or_warning) = error_spec.
 
-generate_stratify_error(ModuleInfo, PPId, Context, Message, ErrorOrWarning)
-        = Spec :-
-    ProcColonPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
-        yes(color_subject), should_not_module_qualify, [suffix(":")], PPId),
+generate_stratify_error(ModuleInfo, PredProcId, Context, Message,
+        ErrorOrWarning) = Spec :-
+    ProcColonPieces = describe_one_proc_name_maybe_argmodes(ModuleInfo,
+        output_mercury, yes(color_subject), should_not_module_qualify,
+        [suffix(":")], PredProcId),
     Preamble = [words("In")] ++ ProcColonPieces ++ [nl],
     (
         ErrorOrWarning = is_warning,

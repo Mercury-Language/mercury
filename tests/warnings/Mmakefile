@@ -38,6 +38,7 @@ ERRORCHECK_PROGS = \
 	non_term_user_special \
 	obsolete_proc_pragma \
 	occurs \
+	petdr1 \
 	pragma_source_file \
 	pragma_term_conflict \
 	purity_warnings \

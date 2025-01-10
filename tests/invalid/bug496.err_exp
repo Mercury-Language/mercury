@@ -1,5 +1,5 @@
-bug496.m:022: Error: the determinism declaration for [38;5;87m`options_to_action'(in,[39;49m
-bug496.m:022:   [38;5;87min, out)[39;49m [38;5;203mis not satisfied.[39;49m
+bug496.m:022: Error: the determinism declaration for predicate
+bug496.m:022:   [38;5;87m`options_to_action'/3[39;49m [38;5;203mis not satisfied.[39;49m
 bug496.m:022:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`nondet'.[39;49m
 bug496.m:022:   The reasons for the difference are the following.
 bug496.m:050: 

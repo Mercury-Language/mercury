@@ -10,18 +10,14 @@
 
 :- module petdr1.
 :- interface.
-:- import_module io.
 
-:- pred main(io::di, io::uo) is det.
+:- pred interpreter(int::out) is nondet.
+:- pred which(int::out) is nondet.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 :- import_module require.
-
-main(!IO).
-
-:- pred interpreter(int::out) is nondet.    % don't fix the determinism
 
 interpreter(Out) :-
     ( if
@@ -33,8 +29,6 @@ interpreter(Out) :-
     else
         Out = 42
     ).
-
-:- pred which(int::out) is nondet.          % don't fix the determinism
 
 which(1).
 which(2).

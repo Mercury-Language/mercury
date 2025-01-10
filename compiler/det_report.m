@@ -192,7 +192,6 @@
 :- import_module cord.
 :- import_module getopt.
 :- import_module int.
-:- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
@@ -216,12 +215,8 @@ check_determinism_of_proc(ProgressStream, PredProcId, !ModuleInfo, !Specs) :-
     module_info_pred_proc_info(!.ModuleInfo, PredProcId, PredInfo, ProcInfo),
 
     trace [compiletime(flag("debug-check-detism-progress")), io(!IO)] (
-        proc_info_get_argmodes(ProcInfo, PredArgModes),
-        proc_info_get_inst_varset(ProcInfo, InstVarSet),
-        PredProcId = proc(PredId, _ProcId),
-        PredModePieces = describe_one_pred_name_mode(!.ModuleInfo,
-            output_mercury, InstVarSet, no, should_not_module_qualify, [],
-            PredId, PredArgModes),
+        PredModePieces = describe_one_proc_name_maybe_argmodes(!.ModuleInfo,
+            output_mercury, no, should_not_module_qualify, [], PredProcId),
         PredStr = error_pieces_to_one_line_string(PredModePieces),
         io.format(ProgressStream, "check_determinism_of_proc %s\n",
             [s(PredStr)], !IO)
@@ -263,12 +258,8 @@ check_determinism_of_imported_proc(ProgressStream, ModuleInfo, PredProcId,
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
 
     trace [compiletime(flag("debug-check-detism-progress")), io(!IO)] (
-        proc_info_get_argmodes(ProcInfo, PredArgModes),
-        proc_info_get_inst_varset(ProcInfo, InstVarSet),
-        PredProcId = proc(PredId, _ProcId),
-        PredModePieces = describe_one_pred_name_mode(ModuleInfo,
-            output_mercury, InstVarSet, no, should_not_module_qualify, [],
-            PredId, PredArgModes),
+        PredModePieces = describe_one_proc_name_maybe_argmodes(ModuleInfo,
+            output_mercury, no, should_not_module_qualify, [], PredProcId),
         PredStr = error_pieces_to_one_line_string(PredModePieces),
         io.format(ProgressStream, "check_determinism_of_imported_proc %s\n",
             [s(PredStr)], !IO)
@@ -738,7 +729,7 @@ check_function_semantics(ModuleInfo, PredProcId, PredInfo, ProcInfo, !Specs) :-
             % with e.g. the `rand()' function; we don't want to allow it
             % in Mercury.
             MultiSolnSpec = report_multisoln_func(ModuleInfo, PredProcId,
-                ProcInfo, PredArgModes, InferredDetism),
+                ProcInfo, InferredDetism),
             !:Specs = [MultiSolnSpec | !.Specs]
         ),
         (
@@ -769,16 +760,13 @@ check_function_semantics(ModuleInfo, PredProcId, PredInfo, ProcInfo, !Specs) :-
     ).
 
 :- func report_multisoln_func(module_info, pred_proc_id, proc_info,
-    list(mer_mode), determinism) = error_spec.
+    determinism) = error_spec.
 
-report_multisoln_func(ModuleInfo, PredProcId, ProcInfo, PredArgModes,
-        InferredDetism) = Spec :-
-    proc_info_get_context(ProcInfo, FuncContext),
-    proc_info_get_inst_varset(ProcInfo, InstVarSet),
-    PredProcId = proc(PredId, _ProcId),
-    PredModePieces = describe_one_pred_name_mode(ModuleInfo,
-        output_mercury, InstVarSet, no, should_not_module_qualify, [],
-        PredId, PredArgModes),
+report_multisoln_func(ModuleInfo, PredProcId, ProcInfo, InferredDetism)
+        = Spec :-
+    proc_info_get_context(ProcInfo, Context),
+    PredModePieces = describe_one_proc_name_maybe_argmodes(ModuleInfo,
+        output_mercury, no, should_not_module_qualify, [], PredProcId),
     InferredDetismStr = mercury_det_to_string(InferredDetism),
     MainPieces = [words("Error: invalid determinism for")] ++
         color_as_subject(PredModePieces ++ [suffix(":")]) ++ [nl,
@@ -787,7 +775,7 @@ report_multisoln_func(ModuleInfo, PredProcId, ProcInfo, PredArgModes,
         [nl],
     VerbosePieces = func_primary_mode_det_msg,
     Spec = error_spec($pred, severity_error, phase_detism_check,
-        [simple_msg(FuncContext,
+        [simple_msg(Context,
             [always(MainPieces),
             verbose_only(verbose_once, VerbosePieces)])]).
 
@@ -895,7 +883,7 @@ check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         else
             ShouldModuleQual = should_module_qualify
         ),
-        ProcColonPieces = describe_one_proc_name_mode(ModuleInfo,
+        ProcColonPieces = describe_one_proc_name_maybe_argmodes(ModuleInfo,
             output_mercury, yes(color_subject), ShouldModuleQual,
             [suffix(":")], PredProcId),
         GoodDetismPieces = color_as_correct([quote("det"), suffix(",")]) ++
@@ -1002,7 +990,7 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
         det_info_get_pred_proc_id(!.DetInfo, PredProcId),
         Context = goal_info_get_context(GoalInfo),
         det_info_get_module_info(!.DetInfo, ModuleInfo),
-        ProcColonPieces = describe_one_proc_name_mode(ModuleInfo,
+        ProcColonPieces = describe_one_proc_name_maybe_argmodes(ModuleInfo,
             output_mercury, yes(color_subject), should_not_module_qualify,
             [suffix(":")], PredProcId),
         DeclaredStr = determinism_to_string(DeclaredDetism),
@@ -1035,8 +1023,9 @@ report_determinism_problem(ModuleInfo, PredProcId, ErrorOrWarn, ProblemStr,
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_detism_decl(ProcInfo, DetismDecl),
     proc_info_get_context(ProcInfo, Context),
-    ProcPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
-        yes(color_subject), should_not_module_qualify, [], PredProcId),
+    ProcPieces = describe_one_proc_name_maybe_argmodes(ModuleInfo,
+        output_mercury, yes(color_subject), should_not_module_qualify, [],
+        PredProcId),
     DeclaredStr = determinism_to_string(DeclaredDetism),
     InferredStr = determinism_to_string(InferredDetism),
     DeclaredPieces = color_as_correct([quote(DeclaredStr), suffix(",")]),
@@ -1298,8 +1287,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
 :- pred det_diagnose_primitive_goal(determinism::in, determinism::in,
     list(format_piece)::out) is det.
 
-det_diagnose_primitive_goal(Desired, Actual,
-        Pieces) :-
+det_diagnose_primitive_goal(Desired, Actual, Pieces) :-
     determinism_components(Desired, DesiredCanFail, DesiredSolns),
     determinism_components(Actual, ActualCanFail, ActualSolns),
     compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail),
@@ -2459,14 +2447,12 @@ det_report_call_context(CallUnifyContext, DetInfo, PredId, ProcId,
             CallUnifyContext = no,
             UnifyPieces = []
         ),
-        pred_info_get_proc_table(PredInfo, ProcTable),
-        map.lookup(ProcTable, ProcId, ProcInfo),
-        proc_info_declared_argmodes(ProcInfo, ArgModes),
-        proc_info_get_inst_varset(ProcInfo, InstVarSet),
-        PredPieces = describe_one_pred_name_mode(ModuleInfo, output_mercury,
-            InstVarSet, no, should_module_qualify, [], PredId, ArgModes),
+        PredProcId = proc(PredId, ProcId),
+        PredPieces = describe_one_proc_name_maybe_argmodes(ModuleInfo,
+            output_mercury, yes(color_subject), should_module_qualify,
+            [], PredProcId),
         SurroundingUnifyContextPieces = [],
-        GoalPieces = [words("This call to")] ++ color_as_subject(PredPieces)
+        GoalPieces = [words("This call to")] ++ PredPieces
     ).
 
 %---------------------------------------------------------------------------%

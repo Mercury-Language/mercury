@@ -1,10 +1,10 @@
-erroneous_throw_promise.m:009: Error: [38;5;87m`foo'(in)[39;49m has determinism erroneous but
-erroneous_throw_promise.m:009:   also has foreign clauses that have a
-erroneous_throw_promise.m:009:   `will_not_throw_exception' attribute. [38;5;203mThis[39;49m
-erroneous_throw_promise.m:009:   [38;5;203mattribute cannot be applied to erroneous[39;49m
+erroneous_throw_promise.m:009: Error: predicate [38;5;87m`foo'/1[39;49m has determinism
+erroneous_throw_promise.m:009:   erroneous, but also has foreign clauses that
+erroneous_throw_promise.m:009:   have a [38;5;87m`will_not_throw_exception'[39;49m attribute.
+erroneous_throw_promise.m:009:   [38;5;203mThis attribute cannot be applied to erroneous[39;49m
 erroneous_throw_promise.m:009:   [38;5;203mprocedures.[39;49m
-erroneous_throw_promise.m:011: Error: [38;5;87m`bar'(in)[39;49m has determinism erroneous but
-erroneous_throw_promise.m:011:   also has foreign clauses that have a
-erroneous_throw_promise.m:011:   `will_not_throw_exception' attribute. [38;5;203mThis[39;49m
-erroneous_throw_promise.m:011:   [38;5;203mattribute cannot be applied to erroneous[39;49m
+erroneous_throw_promise.m:011: Error: predicate [38;5;87m`bar'/1[39;49m has determinism
+erroneous_throw_promise.m:011:   erroneous, but also has foreign clauses that
+erroneous_throw_promise.m:011:   have a [38;5;87m`will_not_throw_exception'[39;49m attribute.
+erroneous_throw_promise.m:011:   [38;5;203mThis attribute cannot be applied to erroneous[39;49m
 erroneous_throw_promise.m:011:   [38;5;203mprocedures.[39;49m

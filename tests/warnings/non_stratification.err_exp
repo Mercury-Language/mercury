@@ -1,4 +1,4 @@
-non_stratification.m:017: In [38;5;87m`foo'(in):[39;49m
+non_stratification.m:017: In predicate [38;5;87m`foo'/1:[39;49m
 non_stratification.m:017:   warning: [38;5;203mcall introduces a non-stratified loop.[39;49m
 non_stratification.m:017:   A non-stratified loop is a loop in the call graph
 non_stratification.m:017:   of the given predicate/function that allows it to

@@ -492,8 +492,8 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
         then
             InFavourOf = InFavourOfPrime,
             PredOrProcDotPieces = [words("procedure")] ++
-                describe_one_proc_name_mode(ModuleInfo, output_mercury,
-                    yes(color_subject), should_module_qualify,
+                describe_one_proc_name_maybe_argmodes(ModuleInfo,
+                    output_mercury, yes(color_subject), should_module_qualify,
                     [suffix(".")], proc(PredId, ProcId))
         else
             fail

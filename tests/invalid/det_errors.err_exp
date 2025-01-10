@@ -1,30 +1,30 @@
-det_errors.m:009: Error: the determinism declaration for [38;5;87m`p1'(in)[39;49m [38;5;203mis not[39;49m
-det_errors.m:009:   [38;5;203msatisfied.[39;49m
+det_errors.m:009: Error: the determinism declaration for predicate [38;5;87m`p1'/1[39;49m [38;5;203mis[39;49m
+det_errors.m:009:   [38;5;203mnot satisfied.[39;49m
 det_errors.m:009:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:009:   The reason for the difference is the following.
 det_errors.m:042: 
 det_errors.m:042:   In argument 1 of clause head:
 det_errors.m:042:   unification of [38;5;87m`HeadVar__1'[39;49m and [38;5;87m`42'[39;49m [38;5;203mcan fail.[39;49m
-det_errors.m:010: Error: the determinism declaration for [38;5;87m`p2'(in)[39;49m [38;5;203mis not[39;49m
-det_errors.m:010:   [38;5;203msatisfied.[39;49m
+det_errors.m:010: Error: the determinism declaration for predicate [38;5;87m`p2'/1[39;49m [38;5;203mis[39;49m
+det_errors.m:010:   [38;5;203mnot satisfied.[39;49m
 det_errors.m:010:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:010:   The reason for the difference is the following.
 det_errors.m:043: 
 det_errors.m:043:   Unification of [38;5;87m`X'[39;49m and [38;5;87m`42'[39;49m [38;5;203mcan fail.[39;49m
-det_errors.m:011: Error: the determinism declaration for [38;5;87m`p3'(in)[39;49m [38;5;203mis not[39;49m
-det_errors.m:011:   [38;5;203msatisfied.[39;49m
+det_errors.m:011: Error: the determinism declaration for predicate [38;5;87m`p3'/1[39;49m [38;5;203mis[39;49m
+det_errors.m:011:   [38;5;203mnot satisfied.[39;49m
 det_errors.m:011:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:011:   The reason for the difference is the following.
 det_errors.m:044: 
 det_errors.m:044:   Unification of [38;5;87m`X'[39;49m and [38;5;87m`42'[39;49m [38;5;203mcan fail.[39;49m
-det_errors.m:012: Error: the determinism declaration for [38;5;87m`p4'(in)[39;49m [38;5;203mis not[39;49m
-det_errors.m:012:   [38;5;203msatisfied.[39;49m
+det_errors.m:012: Error: the determinism declaration for predicate [38;5;87m`p4'/1[39;49m [38;5;203mis[39;49m
+det_errors.m:012:   [38;5;203mnot satisfied.[39;49m
 det_errors.m:012:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:012:   The reason for the difference is the following.
 det_errors.m:045: 
 det_errors.m:045:   In argument 2 of functor `+/2':
 det_errors.m:045:   unification with [38;5;87m`21'[39;49m [38;5;203mcan fail.[39;49m
-det_errors.m:026: Error: the determinism declaration for [38;5;87m`q'(in, out)[39;49m [38;5;203mis not[39;49m
+det_errors.m:026: Error: the determinism declaration for predicate [38;5;87m`q'/2[39;49m [38;5;203mis not[39;49m
 det_errors.m:026:   [38;5;203msatisfied.[39;49m
 det_errors.m:026:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:026:   The reason for the difference is the following.
@@ -36,7 +36,7 @@ det_errors.m:048:     [38;5;203m`f'/0,[39;49m
 det_errors.m:048:     [38;5;203m`g'/0,[39;49m
 det_errors.m:048:     [38;5;203m`h'/1,[39;49m
 det_errors.m:048:     [38;5;203m`i'/1.[39;49m
-det_errors.m:034: Error: the determinism declaration for [38;5;87m`r'(in, out)[39;49m [38;5;203mis not[39;49m
+det_errors.m:034: Error: the determinism declaration for predicate [38;5;87m`r'/2[39;49m [38;5;203mis not[39;49m
 det_errors.m:034:   [38;5;203msatisfied.[39;49m
 det_errors.m:034:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`nondet'.[39;49m
 det_errors.m:034:   The reasons for the difference are the following.
@@ -63,7 +63,7 @@ det_errors.m:075:   inside the case d/0 of the switch on V_17:
 det_errors.m:075:   disjunction has more than one disjunct with solutions.
 det_errors.m:078: 
 det_errors.m:078:   This later disjunct [38;5;203mmay have a solution.[39;49m
-det_errors.m:035: Error: the determinism declaration for [38;5;87m`s'(in, out)[39;49m [38;5;203mis not[39;49m
+det_errors.m:035: Error: the determinism declaration for predicate [38;5;87m`s'/2[39;49m [38;5;203mis not[39;49m
 det_errors.m:035:   [38;5;203msatisfied.[39;49m
 det_errors.m:035:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`nondet'.[39;49m
 det_errors.m:035:   The reasons for the difference are the following.

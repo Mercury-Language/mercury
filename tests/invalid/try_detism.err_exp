@@ -1,5 +1,5 @@
-try_detism.m:016: Error: the determinism declaration for [38;5;87m`p'(out, di, uo)[39;49m [38;5;203mis[39;49m
-try_detism.m:016:   [38;5;203mnot satisfied.[39;49m
+try_detism.m:016: Error: the determinism declaration for predicate [38;5;87m`p'/3[39;49m [38;5;203mis not[39;49m
+try_detism.m:016:   [38;5;203msatisfied.[39;49m
 try_detism.m:016:   Declared [38;5;40m`cc_multi',[39;49m inferred [38;5;203m`cc_nondet'.[39;49m
 try_detism.m:016:   The reason for the difference is the following.
 try_detism.m:023: 

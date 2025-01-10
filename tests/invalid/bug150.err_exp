@@ -1,4 +1,4 @@
-bug150.m:014: Error: the implicit determinism declaration for [38;5;87m`car'(in) = out[39;49m
+bug150.m:014: Error: the implicit determinism declaration for function [38;5;87m`car'/1[39;49m
 bug150.m:014:   [38;5;203mis not satisfied.[39;49m
 bug150.m:014:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 bug150.m:014:   The reason for the difference is the following.

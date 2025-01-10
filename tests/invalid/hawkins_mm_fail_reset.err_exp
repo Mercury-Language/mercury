@@ -1,5 +1,5 @@
-hawkins_mm_fail_reset.m:024: Warning: the determinism declaration for
-hawkins_mm_fail_reset.m:024:   [38;5;87m`entry'(out)[39;49m [38;5;203mcould be tighter.[39;49m
+hawkins_mm_fail_reset.m:024: Warning: the determinism declaration for predicate
+hawkins_mm_fail_reset.m:024:   [38;5;87m`entry'/1[39;49m [38;5;203mcould be tighter.[39;49m
 hawkins_mm_fail_reset.m:024:   Declared [38;5;40m`nondet',[39;49m inferred [38;5;203m`failure'.[39;49m
 hawkins_mm_fail_reset.m:031: Error: [38;5;87m`:- pragma minimal_model' declarations[39;49m are
 hawkins_mm_fail_reset.m:031:   [38;5;203mnot allowed[39;49m for procedures with determinism

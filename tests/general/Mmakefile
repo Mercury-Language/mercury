@@ -55,7 +55,6 @@ ORDINARY_PROGS = \
 	nondetlive			\
 	parse_list			\
 	partition			\
-	petdr1				\
 	prune_switch			\
 	read_dir_regression		\
 	read_line_as_string		\

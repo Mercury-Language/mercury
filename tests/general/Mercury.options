@@ -47,7 +47,6 @@ MCFLAGS-unreachable                     += --no-warn-det-decls-too-lax
 MCFLAGS-unused_arg_determinism          += --no-warn-det-decls-too-lax
 
 MCFLAGS-nondet_ite_4                    += --no-warn-simple-code
-MCFLAGS-petdr1                          += --no-warn-simple-code
 MCFLAGS-state_vars_tests                += --no-warn-simple-code
 
 MCFLAGS-unreachable                     += --no-warn-unification-cannot-succeed
