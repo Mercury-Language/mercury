@@ -89,20 +89,20 @@
     %
 :- pred contains(ranges::in, int::in) is semidet.
 
-    % nondet_member(X, Set):
+    % nondet_member(Set X):
     %
     % Nondeterministically produce each element in Set.
     % Each time this call succeeds, X will be bound to an element in Set.
     %
-:- pred nondet_member(int::out, ranges::in) is nondet.
+:- pred nondet_member(ranges::in, int::out) is nondet.
 
-    % nondet_range_member(Lo, Hi, Set):
+    % nondet_range_member(Set, Lo, Hi):
     %
     % Nondeterministically produce each range in Set.
     % Each time this call succeeds, Lo and Hi will be bound to
     % the smallest and largest integers respectively in a range in Set.
     %
-:- pred nondet_range_member(int::out, int::out, ranges::in) is nondet.
+:- pred nondet_range_member(ranges::in, int::out, int::out) is nondet.
 
     % Obsolete synonym for nondet_range_member/3.
     %
@@ -627,20 +627,20 @@ member(N, range(Lo, Hi, Rest)) :-
 contains(Set, E) :-
     member(E, Set).
 
-nondet_member(N, Set) :-
-    nondet_range_member(Lo, Hi, Set),
+nondet_member(Set, N) :-
+    nondet_range_member(Set, Lo, Hi),
     int.nondet_int_in_range(Lo, Hi, N).
 
-nondet_range_member(Lo, Hi, range(Lo0, Hi0, Rest)) :-
+nondet_range_member(range(Lo0, Hi0, Rest), Lo, Hi) :-
     (
         Lo = Lo0 + 1,
         Hi = Hi0
     ;
-        nondet_range_member(Lo, Hi, Rest)
+        nondet_range_member(Rest, Lo, Hi)
     ).
 
 range_member(Lo, Hi, Ranges) :-
-    nondet_range_member(Lo, Hi, Ranges).
+    nondet_range_member(Ranges, Lo, Hi).
 
 %---------------------------------------------------------------------------%
 

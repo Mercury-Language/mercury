@@ -55,6 +55,9 @@ Changes that may break compatibility
 * Two predicates in the `bt_array` module, `resize/4` and `shrink/4`,
   have had the order of their arguments changed.
 
+* One predicate in the `ranges` module, `nondet_member/2`, has had the order of
+  its arguments changed.
+
 * The character sequences `<<u` and `>>u` are now recognized as single tokens.
   (They are the names of new versions of the left and right shift operators
   that expect the shift amount to be specified by an unsigned integer;
@@ -775,6 +778,10 @@ Changes to the Mercury standard library
             (replacement: `random.shuffle_list/4` or `random.shuffle_list/5`)
 
 ### Changes to the `ranges` module
+
+* The following predicate has had the order of its arguments changed:
+
+    - pred `nondet_member/2`
 
 * The following predicate and functions have been added:
 

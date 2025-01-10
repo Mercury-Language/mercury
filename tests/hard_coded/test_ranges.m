@@ -439,7 +439,7 @@ do_test_member_2(Ranges, Value, !IO) :-
 
 test_nondet_range_member(Ranges, !IO) :-
     Pred = (pred(V::out) is nondet :-
-        nondet_range_member(Lo, Hi, Ranges),
+        nondet_range_member(Ranges, Lo, Hi),
         V = {Lo, Hi}
     ),
     solutions(Pred, Result),
@@ -449,10 +449,7 @@ test_nondet_range_member(Ranges, !IO) :-
 :- pred test_nondet_member(ranges::in, io::di, io::uo) is det.
 
 test_nondet_member(Ranges, !IO) :-
-    Pred = (pred(V::out) is nondet :-
-        nondet_member(V, Ranges)
-    ),
-    solutions(Pred, Result),
+    solutions(nondet_member(Ranges), Result),
     io.format("nondet_member(%s) ===> %s\n",
         [r(Ranges), s(string(Result))], !IO).
 
