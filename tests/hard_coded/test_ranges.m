@@ -145,7 +145,7 @@ test_make_singleton_set(!IO) :-
     io.format("make_singleton_set(-1) = %s\n", [r(make_singleton_set(-1))], !IO),
     io.format("make_singleton_set(0) = %s\n", [r(make_singleton_set(0))], !IO),
     io.format("make_singleton_set(1) = %s\n", [r(make_singleton_set(1))], !IO),
-    % Check that we cannot construct a singeleton set containg min_int.
+    % Check that we cannot construct a singleton set containing min_int.
     io.write_string("make_singleton_set(min_int) = ", !IO),
     ( try []
         Range = make_singleton_set(min_int)
@@ -157,6 +157,8 @@ test_make_singleton_set(!IO) :-
     catch_any Other ->
         throw(Other)
     ),
+    io.format("make_singleton_set(max_int) = %s\n",
+        [r(make_singleton_set(max_int))], !IO),
     io.nl(!IO).
 
 %---------------------------------------------------------------------------%
@@ -174,7 +176,7 @@ test_universe(!IO) :-
         io.write_string("PASS: ranges.universe is empty.\n", !IO)
     ),
     ( if is_contiguous(Universe, Lo, Hi) then
-        io.write_string("PASS: ranges.univere is continguous\n", !IO),
+        io.write_string("PASS: ranges.universe is contiguous\n", !IO),
         ( if Lo = int.min_int + 1 then
             io.write_string(
                 "PASS: ranges.universe lower bound is min_int + 1.\n", !IO)
@@ -457,28 +459,37 @@ test_nondet_member(Ranges, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred test_insert_and_delete((func(int, ranges) = ranges)::in, string::in,
-    io::di, io::uo) is det.
+    io::di, io::uo) is cc_multi.
 
 test_insert_and_delete(Op, OpDesc, !IO) :-
     io.format("*** Test %s/2 ***\n\n", [s(OpDesc)], !IO),
-    Values = [-1, 0, 1, 10],
+    Values = [min_int, -1, 0, 1, 10, max_int],
     list.foldl(do_test_insert_and_delete(Op, OpDesc, Values),
         test_ranges, !IO),
     io.nl(!IO).
 
 :-  pred do_test_insert_and_delete((func(int, ranges) = ranges)::in,
-    string::in, list(int)::in, ranges::in, io::di, io::uo) is det.
+    string::in, list(int)::in, ranges::in, io::di, io::uo) is cc_multi.
 
 do_test_insert_and_delete(Op, OpDesc, Values, Ranges, !IO) :-
     list.foldl(do_test_insert_and_delete_2(Op, OpDesc, Ranges), Values, !IO).
 
 :-  pred do_test_insert_and_delete_2((func(int, ranges) = ranges)::in,
-    string::in, ranges::in, int::in, io::di, io::uo) is det.
+    string::in, ranges::in, int::in, io::di, io::uo) is cc_multi.
 
 do_test_insert_and_delete_2(Op, OpDesc, Ranges, Value, !IO) :-
-    Result = Op(Value, Ranges),
-    io.format("%s(%d, %s) = %s\n",
-        [s(OpDesc), i(Value), r(Ranges), r(Result)], !IO).
+    io.format("%s(%s, %s) = ",
+        [s(OpDesc), n(Value), r(Ranges)], !IO),
+    ( try []
+        Result = Op(Value, Ranges)
+    then
+        io.format("%s\n", [r(Result)], !IO)
+    catch S ->
+        S = software_error(Msg),
+        io.format("<<exception: %s>>\n", [s(Msg)], !IO)
+    catch_any Other ->
+        throw(Other)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -559,7 +570,8 @@ do_test_restrict_range_2(Ranges, {Min, Max}, !IO) :-
 
 test_binary_test_op(Pred, PredName, !IO) :-
     io.format("*** Test %s/2 ***\n\n", [s(PredName)], !IO),
-    list.foldl(do_binary_test_op_1(Pred, PredName, test_ranges), test_ranges, !IO),
+    list.foldl(do_binary_test_op_1(Pred, PredName, test_ranges), test_ranges,
+        !IO),
     io.nl(!IO).
 
 :- pred do_binary_test_op_1(pred(ranges, ranges)::in(pred(in, in) is semidet),
@@ -656,12 +668,13 @@ do_test_prune_2(Pred, PredDesc, Ranges, Value, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred test_from_list(io::di, io::uo) is det.
+:- pred test_from_list(io::di, io::uo) is cc_multi.
 
 test_from_list(!IO) :-
     io.write_string("*** Test from_list/1 ***\n\n", !IO),
     TestLists = [
         [],
+        [min_int],
         [-1],
         [0],
         [1],
@@ -674,18 +687,28 @@ test_from_list(!IO) :-
     list.foldl(do_test_from_list, TestLists, !IO),
     io.nl(!IO).
 
-:- pred do_test_from_list(list(int)::in, io::di, io::uo) is det.
+:- pred do_test_from_list(list(int)::in, io::di, io::uo) is cc_multi.
 
 do_test_from_list(List, !IO) :-
-    Ranges = ranges.from_list(List),
-    io.format("from_list(%s) = %s\n", [s(string(List)), r(Ranges)], !IO).
+    io.format("from_list(%s) = ", [li(List)], !IO),
+    ( try []
+        Ranges = ranges.from_list(List)
+    then
+        io.format("%s\n", [r(Ranges)], !IO)
+    catch S ->
+        S = software_error(Msg),
+        io.format("<<exception: %s>>\n", [s(Msg)], !IO)
+    catch_any Other ->
+        throw(Other)
+    ).
 
-:- pred test_from_set(io::di, io::uo) is det.
+:- pred test_from_set(io::di, io::uo) is cc_multi.
 
 test_from_set(!IO) :-
     io.write_string("*** Test from_set/1 ***\n\n", !IO),
     TestSets = [
         set.from_list([]),
+        set.from_list([min_int]),
         set.from_list([-1]),
         set.from_list([0]),
         set.from_list([1]),
@@ -696,11 +719,20 @@ test_from_set(!IO) :-
     list.foldl(do_test_from_set, TestSets, !IO),
     io.nl(!IO).
 
-:- pred do_test_from_set(set(int)::in, io::di, io::uo) is det.
+:- pred do_test_from_set(set(int)::in, io::di, io::uo) is cc_multi.
 
-do_test_from_set(List, !IO) :-
-    Ranges = ranges.from_set(List),
-    io.format("from_set(%s) = %s\n", [s(string(List)), r(Ranges)], !IO).
+do_test_from_set(Set, !IO) :-
+    io.format("from_set(%s) = ", [si(Set)], !IO),
+    ( try []
+        Ranges = ranges.from_set(Set)
+    then
+        io.format("%s\n", [r(Ranges)], !IO)
+    catch S ->
+        S = software_error(Msg),
+        io.format("<<exception: %s>>\n", [s(Msg)], !IO)
+    catch_any Other ->
+        throw(Other)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -935,13 +967,45 @@ ranges_to_desc(Ranges) = Desc :-
 
 range_to_desc(Lo, Hi, !Descs) :-
     ( if Lo = Hi then
-        Desc = string.format("[%d]", [i(Lo)])
+        Desc = string.format("[%s]", [n(Lo)])
     else if Lo + 1 = Hi then
-        Desc = string.format("[%d, %d]", [i(Lo), i(Hi)])
+        Desc = string.format("[%s, %s]", [n(Lo), n(Hi)])
     else
-        Desc = string.format("[%d .. %d]", [i(Lo), i(Hi)])
+        Desc = string.format("[%s .. %s]", [n(Lo), n(Hi)])
     ),
     !:Descs = [Desc | !.Descs].
+
+    % Format an integer, returning a symbolic representation for {min,max}_int.
+    %
+:- func n(int) = poly_type.
+
+n(N) = s(int_to_maybe_symbolic_string(N)).
+
+    % Format a list of integers, returning symbolic representations for
+    % {min,max}_int.
+    %
+:- func li(list(int)) = poly_type.
+
+li(List) = s(ListStr) :-
+    ListStrs = list.map(int_to_maybe_symbolic_string, List),
+    ListStr = "[" ++ string.join_list(", ", ListStrs) ++ "]".
+
+:- func si(set(int)) = poly_type.
+
+si(Set) = s(SetStr) :-
+    ElemStrs = list.map(int_to_maybe_symbolic_string, to_sorted_list(Set)),
+    SetStr = "set([" ++ string.join_list(", ", ElemStrs) ++ "])".
+
+:- func int_to_maybe_symbolic_string(int) = string.
+
+int_to_maybe_symbolic_string(N) = Str :-
+    ( if N = min_int then
+        Str = "min_int"
+    else if N = max_int then
+        Str = "max_int"
+    else
+        string.int_to_string(N, Str)
+    ).
 
 %---------------------------------------------------------------------------%
 

@@ -116,6 +116,7 @@
 
     % insert(X, Set0, Set) is true iff Set is the union of Set0 and
     % the set containing only X.
+    % Throws an exception if X = min_int.
     %
 :- func insert(int, ranges) = ranges.
 :- pred insert(int::in, ranges::in, ranges::out) is det.
@@ -129,6 +130,7 @@
     % delete(X, Set0, Set) is true iff Set is the relative complement
     % of Set0 and the set containing only X, i.e. if Set is the set
     % which contains all the elements of Set0 except X.
+    % Throws an exception if X = min_int.
     %
 :- func delete(int, ranges) = ranges.
 :- pred delete(int::in, ranges::in, ranges::out) is det.
