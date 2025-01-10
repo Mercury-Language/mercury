@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1997-2007, 2009-2012 The University of Melbourne.
 % Copyright (C) 2014-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: hlds_error_util.m.
 % Main author: zs.
@@ -14,8 +14,8 @@
 % formatting of error messages. It builds upon parse_tree.error_spec,
 % and extends it with predicates that access HLDS data structures.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.hlds_error_util.
 :- interface.
@@ -37,7 +37,7 @@
 :- import_module maybe.
 :- import_module pair.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates to convert predicate and procedure names to strings.
 %
@@ -89,45 +89,93 @@
     % describe_several_pred_names(ModuleInfo, MaybeColor, Qual, PredIds)
     %   = Spec:
     %
-    % Invoke describe_one_pred_name on each of the given PredIds, 
+    % Invoke describe_one_pred_name on each of the given PredIds,
     % and return the results of those invocations joined togther in a list
     % with the final pair of predicate descriptions separated by "and".
     % We pass the given MaybeColor and Qual, and [] as SuffixPieces,
-    % to each  call to describe_one_pred_name. This is because it does not
+    % to each call to describe_one_pred_name. This is because it does not
     % make sense to add the same suffix to the description of every pred.
     % (Though it may make sense to add it to the last one.)
     %
 :- func describe_several_pred_names(module_info, maybe(color_name),
     should_module_qualify, list(pred_id)) = list(format_piece).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
+    % describe_one_proc_name_maybe_argmodes(ModuleInfo, Lang, MaybeColor,
+    %   Qual, SuffixPieces, PredProcId) = Spec:
+    %
+    % Return a description of the given procedure.
+    %
+    % If the procedure is the only procedure in its predicate or function,
+    % the description will just a description of the predicate or function
+    % as constructed by describe_one_pred_name.
+    %
+    % If the procedure is NOT the only procedure in its predicate or function,
+    % then description will consist of the name of the predicate or function
+    % (module qualified if Qual is should_module_qualify), followed by
+    % the modes of its arguments. The result will look like one of these:
+    %
+    %   `name(in, in, out)'
+    %   `name(in, in) = out'
+    %
 :- func describe_one_proc_name_maybe_argmodes(module_info, output_lang,
     maybe(color_name), should_module_qualify, list(format_piece), pred_proc_id)
     = list(format_piece).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- func describe_one_proc_name(module_info, maybe(color_name),
-    should_module_qualify, pred_proc_id) = list(format_piece).
-
+    % describe_qual_proc_name(ModuleInfo, PredProcId) = Spec:
+    % describe_unqual_proc_name(ModuleInfo, PredProcId) = Spec:
+    % describe_one_proc_name(ModuleInfo, MaybeColor, Qual, SuffixPieces,
+    %   PredProcId) = Spec:
+    %
+    % Return a description of the given procedure. These descriptions
+    % will consist of a description of the predicate or function to which
+    % the procedure belongs (as constructed by describe_one_pred_name),
+    % followed by a suffix of the form "mode N".
+    %
 :- func describe_qual_proc_name(module_info, pred_proc_id)
     = list(format_piece).
 :- func describe_unqual_proc_name(module_info, pred_proc_id)
     = list(format_piece).
+:- func describe_one_proc_name(module_info, maybe(color_name),
+    should_module_qualify, pred_proc_id) = list(format_piece).
 
+    % describe_several_proc_names(ModuleInfo, MaybeColor, Qual, PredProcIds)
+    %   = Spec:
+    %
+    % Do the same job for procedures as describe_several_pred_names does
+    % for predicates and functions.
+    %
 :- func describe_several_proc_names(module_info, maybe(color_name),
     should_module_qualify, list(pred_proc_id)) = list(format_piece).
 
+%---------------------------------------------------------------------------%
+
+    % describe_one_call_site(ModuleInfo, MaybeColor, Qual, Site) = Pieces:
+    %
+    % Return a description of a call site, which a pair consisting of the
+    % id of the callee, and the context of the call. The description
+    % will consist of the description of the callee as returned by
+    % describe_one_proc_name, followed by test of the form
+    % "at filename:linenumber".
+    %
 :- func describe_one_call_site(module_info, maybe(color_name),
     should_module_qualify, pair(pred_proc_id, prog_context))
     = list(format_piece).
 
+    % describe_several_call_sites(ModuleInfo, MaybeColor, Qual, Sites)
+    %   = Pieces:
+    %
+    % Invoke describe_one_call_site on each call site, and join the
+    % resulting descriptions together with commas and a final "and".
+    %
 :- func describe_several_call_sites(module_info, maybe(color_name),
     should_module_qualify, assoc_list(pred_proc_id, prog_context))
     = list(format_piece).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return the arities that the given pred_ids have.
     %
@@ -136,7 +184,7 @@
 :- pred find_user_arities(pred_id_table::in, list(pred_id)::in,
     list(user_arity)::out) is det.
 
-    % Return the set of arities that the given pred_ids have,
+    % Return the arities that the given pred_ids have,
     % other than the given arity.
     %
 :- pred find_pred_arities_other_than(pred_id_table::in, list(pred_id)::in,
@@ -148,7 +196,7 @@
 
 :- func project_pred_form_arity_int(pred_form_arity) = int.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Every possible path of execution in mercury_compile.m should call
 % definitely_write_out_errors exactly once, just after the compiler
@@ -189,8 +237,8 @@
     globals::in, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -207,11 +255,10 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module set.
 :- import_module string.
 :- import_module term_context.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 describe_qual_pred_name(ModuleInfo, PredId) =
     describe_one_pred_name(ModuleInfo, no, should_module_qualify,
@@ -320,7 +367,7 @@ describe_several_pred_names(ModuleInfo, MaybeColor, ShouldModuleQualify,
         PredIds),
     Pieces = pieces_list_to_pieces("and", PiecesList).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 describe_one_proc_name_maybe_argmodes(ModuleInfo, Lang, MaybeColor,
         ShouldModuleQualify, SuffixPieces, PredProcId) = Pieces :-
@@ -374,53 +421,11 @@ describe_one_proc_name_maybe_argmodes(ModuleInfo, Lang, MaybeColor,
         %   times they see such a diagnostic, after which it will become
         %   superfluous, and
         %
-        % - for non-novices or ex-novices, such a prefix be clutter that
-        %   hurts more than it helps.
+        % - for non-novices and ex-novices, such a prefix will be clutter
+        %   that hurts more than it helps.
         Pieces = describe_one_pred_info_name(MaybeColor, ShouldModuleQualify,
             SuffixPieces, PredInfo)
     ).
-
-describe_one_proc_name(ModuleInfo, MaybeColor, ShouldModuleQualify,
-        PredProcId) = Pieces :-
-    SuffixPieces = [],
-    PredProcId = proc(PredId, ProcId),
-    PredPieces = describe_one_pred_name(ModuleInfo, MaybeColor,
-        ShouldModuleQualify, SuffixPieces, PredId),
-    proc_id_to_int(ProcId, ProcIdInt),
-    string.int_to_string(ProcIdInt, ProcIdStr),
-    Pieces = PredPieces ++ [words("mode"), words(ProcIdStr)].
-
-describe_qual_proc_name(ModuleInfo, PredProcId) =
-    describe_one_proc_name(ModuleInfo, no, should_module_qualify,
-        PredProcId).
-
-describe_unqual_proc_name(ModuleInfo, PredProcId) =
-    describe_one_proc_name(ModuleInfo, no, should_not_module_qualify,
-        PredProcId).
-
-describe_several_proc_names(ModuleInfo, MaybeColor, ShouldModuleQualify,
-        PPIds) = Pieces :-
-    PiecesList = list.map(
-        describe_one_proc_name(ModuleInfo, MaybeColor, ShouldModuleQualify),
-        PPIds),
-    Pieces = pieces_list_to_pieces("and", PiecesList).
-
-describe_one_call_site(ModuleInfo, MaybeColor, ShouldModuleQualify,
-        PPId - Context) = Pieces :-
-    ProcNamePieces = describe_one_proc_name(ModuleInfo, MaybeColor,
-        ShouldModuleQualify, PPId),
-    FileName = term_context.context_file(Context),
-    LineNumber = term_context.context_line(Context),
-    string.int_to_string(LineNumber, LineNumberStr),
-    Pieces = ProcNamePieces ++
-        [words("at"), fixed(FileName ++ ":" ++ LineNumberStr)].
-
-describe_several_call_sites(ModuleInfo, MaybeColor, ShouldModuleQualify,
-        Sites) = Pieces :-
-    PiecesList = list.map(
-        describe_one_call_site(ModuleInfo, MaybeColor, ShouldModuleQualify),
-        Sites),
-    Pieces = pieces_list_to_pieces("and", PiecesList).
 
 :- func maybe_module_qualification(module_name, should_module_qualify)
     = string.
@@ -448,55 +453,97 @@ arg_modes_to_string(Lang, InstVarSet, ArgModes0) = Str :-
         Str = "(" ++ ArgsStr ++ ")"
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-find_pred_arities(PredTable, PredIds, Arities) :-
-    find_pred_arities_set(PredTable, PredIds, AritiesSet),
-    set.to_sorted_list(AritiesSet, Arities).
+describe_qual_proc_name(ModuleInfo, PredProcId) =
+    describe_one_proc_name(ModuleInfo, no, should_module_qualify,
+        PredProcId).
 
-find_user_arities(PredTable, PredIds, Arities) :-
-    find_user_arities_set(PredTable, PredIds, AritiesSet),
-    set.to_sorted_list(AritiesSet, Arities).
+describe_unqual_proc_name(ModuleInfo, PredProcId) =
+    describe_one_proc_name(ModuleInfo, no, should_not_module_qualify,
+        PredProcId).
+
+describe_one_proc_name(ModuleInfo, MaybeColor, ShouldModuleQualify,
+        PredProcId) = Pieces :-
+    SuffixPieces = [],
+    PredProcId = proc(PredId, ProcId),
+    PredPieces = describe_one_pred_name(ModuleInfo, MaybeColor,
+        ShouldModuleQualify, SuffixPieces, PredId),
+    proc_id_to_int(ProcId, ProcIdInt),
+    Pieces = PredPieces ++ [words("mode"), int_fixed(ProcIdInt)].
+
+describe_several_proc_names(ModuleInfo, MaybeColor, ShouldModuleQualify,
+        PPIds) = Pieces :-
+    PiecesList = list.map(
+        describe_one_proc_name(ModuleInfo, MaybeColor, ShouldModuleQualify),
+        PPIds),
+    Pieces = pieces_list_to_pieces("and", PiecesList).
+
+%---------------------------------------------------------------------------%
+
+describe_one_call_site(ModuleInfo, MaybeColor, ShouldModuleQualify,
+        PPId - Context) = Pieces :-
+    ProcNamePieces = describe_one_proc_name(ModuleInfo, MaybeColor,
+        ShouldModuleQualify, PPId),
+    Context = context(FileName, LineNumber),
+    string.int_to_string(LineNumber, LineNumberStr),
+    Pieces = ProcNamePieces ++
+        [words("at"), fixed(FileName ++ ":" ++ LineNumberStr)].
+
+describe_several_call_sites(ModuleInfo, MaybeColor, ShouldModuleQualify,
+        Sites) = Pieces :-
+    PiecesList = list.map(
+        describe_one_call_site(ModuleInfo, MaybeColor, ShouldModuleQualify),
+        Sites),
+    Pieces = pieces_list_to_pieces("and", PiecesList).
+
+%---------------------------------------------------------------------------%
+
+find_pred_arities(PredTable, PredIds, PredFormArities) :-
+    gather_pred_form_arities(PredTable, PredIds, [], PredFormArities0),
+    list.sort_and_remove_dups(PredFormArities0, PredFormArities).
+
+find_user_arities(PredTable, PredIds, UserArities) :-
+    gather_user_arities(PredTable, PredIds, [], UserArities0),
+    list.sort_and_remove_dups(UserArities0, UserArities).
 
 find_pred_arities_other_than(PredTable, PredIds, Arity, OtherArities) :-
-    find_pred_arities_set(PredTable, PredIds, AritiesSet),
-    set.delete(Arity, AritiesSet, OtherAritiesSet),
-    set.to_sorted_list(OtherAritiesSet, OtherArities).
+    find_pred_arities(PredTable, PredIds, AllArities),
+    list.delete_all(AllArities, Arity, OtherArities).
 
 find_user_arities_other_than(PredTable, PredIds, Arity, OtherArities) :-
-    find_user_arities_set(PredTable, PredIds, AritiesSet),
-    set.delete(Arity, AritiesSet, OtherAritiesSet),
-    set.to_sorted_list(OtherAritiesSet, OtherArities).
+    find_user_arities(PredTable, PredIds, AllArities),
+    list.delete_all(AllArities, Arity, OtherArities).
 
-:- pred find_pred_arities_set(pred_id_table::in, list(pred_id)::in,
-    set(pred_form_arity)::out) is det.
+%---------------------%
 
-find_pred_arities_set(_, [], set.init).
-find_pred_arities_set(PredTable, [PredId | PredIds], AritiesSet) :-
-    find_pred_arities_set(PredTable, PredIds, AritiesSet0),
+:- pred gather_pred_form_arities(pred_id_table::in, list(pred_id)::in,
+    list(pred_form_arity)::in, list(pred_form_arity)::out) is det.
+
+gather_pred_form_arities(_, [], !PredFormArities).
+gather_pred_form_arities(PredTable, [PredId | PredIds], !PredFormArities) :-
     map.lookup(PredTable, PredId, PredInfo),
     pred_info_get_orig_arity(PredInfo, PredFormArity),
-    set.insert(PredFormArity, AritiesSet0, AritiesSet).
+    !:PredFormArities = [PredFormArity | !.PredFormArities],
+    gather_pred_form_arities(PredTable, PredIds, !PredFormArities).
 
-:- pred find_user_arities_set(pred_id_table::in, list(pred_id)::in,
-    set(user_arity)::out) is det.
+:- pred gather_user_arities(pred_id_table::in, list(pred_id)::in,
+    list(user_arity)::in, list(user_arity)::out) is det.
 
-find_user_arities_set(_, [], set.init).
-find_user_arities_set(PredTable, [PredId | PredIds], AritiesSet) :-
-    find_user_arities_set(PredTable, PredIds, AritiesSet0),
+gather_user_arities(_, [], !UserArities).
+gather_user_arities(PredTable, [PredId | PredIds], !UserArities) :-
     map.lookup(PredTable, PredId, PredInfo),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_get_orig_arity(PredInfo, PredFormArity),
-    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-    set.insert(UserArity, AritiesSet0, AritiesSet).
+    UserArity = pred_info_user_arity(PredInfo),
+    !:UserArities = [UserArity | !.UserArities],
+    gather_user_arities(PredTable, PredIds, !UserArities).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 project_user_arity_int(user_arity(A)) = A.
 
 project_pred_form_arity_int(pred_form_arity(A)) = A.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 definitely_write_out_errors(Stream, Globals, Specs, !IO) :-
     write_error_specs(Stream, Globals, Specs, !IO).
@@ -512,6 +559,6 @@ maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
         !:Specs = []
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.hlds_error_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
