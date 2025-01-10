@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2019-2024 The Mercury team.
+% Copyright (C) 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -527,7 +527,7 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, ErrorStream, Globals,
                 OwnOptFileName, OwnOptModuleErrors,
                 OptSpecs0, OptSpecs1, OptError0, OptError)
         ),
-        pre_hlds_maybe_write_out_errors(ErrorStream, VeryVerbose, Globals,
+        maybe_write_out_errors(ErrorStream, VeryVerbose, Globals,
             OptSpecs1, OptSpecs, !IO)
     else
         ParseTreePlainOpts = ParseTreePlainOpts0,
@@ -1330,8 +1330,7 @@ read_plain_opt_files(ProgressStream, Globals, VeryVerbose,
         DontQueueOptModules1 = DontQueueOptModules0
     ),
 
-    pre_hlds_maybe_write_out_errors(ProgressStream, VeryVerbose, Globals,
-        !Specs, !IO),
+    maybe_write_out_errors(ProgressStream, VeryVerbose, Globals, !Specs, !IO),
     read_plain_opt_files(ProgressStream, Globals, VeryVerbose,
         ReadOptFilesTransitively, ModuleNames1, DontQueueOptModules1,
         !ParseTreePlainOptsCord, !ExplicitDeps, !ImplicitNeeds,
@@ -1363,8 +1362,7 @@ read_trans_opt_files(ProgressStream, Globals, VeryVerbose,
         update_opt_error_status_on_failure(Globals,
             warn_missing_trans_opt_files, FileName, Errors, !Specs, !OptError)
     ),
-    pre_hlds_maybe_write_out_errors(ProgressStream, VeryVerbose, Globals,
-        !Specs, !IO),
+    maybe_write_out_errors(ProgressStream, VeryVerbose, Globals, !Specs, !IO),
 
     read_trans_opt_files(ProgressStream, Globals, VeryVerbose,
         ModuleNames, !ParseTreeTransOptsCord, !Specs, !OptError, !IO).

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2011 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -116,7 +116,6 @@
 :- import_module hlds.goal_mode.
 :- import_module hlds.hlds_call_tree.
 :- import_module hlds.hlds_clauses.
-:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_statistics.
 :- import_module libs.file_util.
@@ -133,6 +132,7 @@
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.write_error_spec.
 :- import_module top_level.mercury_compile_middle_passes.
 :- import_module transform_hlds.
 :- import_module transform_hlds.dead_proc_elim.

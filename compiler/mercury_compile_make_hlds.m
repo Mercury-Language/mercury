@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022-2024 The Mercury Team.
+% Copyright (C) 2022-2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -165,8 +165,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
     maybe_read_event_set(Globals, EventSetFileName, EventSetName,
         EventSpecMap0, EventSetErrors, !Specs, !IO),
 
-    pre_hlds_maybe_write_out_errors(ErrorStream, Verbose, Globals,
-        !Specs, !IO),
+    maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
     maybe_write_string(ProgressStream, Verbose,
         "% Module qualifying items...\n", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
@@ -175,8 +174,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         MQUndefTypes, MQUndefInsts, MQUndefModes, MQUndefTypeClasses,
         [], QualifySpecs),
     !:Specs = QualifySpecs ++ !.Specs,
-    pre_hlds_maybe_write_out_errors(ErrorStream, Verbose, Globals,
-        !Specs, !IO),
+    maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO),
 
@@ -189,8 +187,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         RecompInfo0, RecompInfo, ExpandSpecs),
     ExpandErrors = contains_errors(Globals, ExpandSpecs),
     !:Specs = ExpandSpecs ++ !.Specs,
-    pre_hlds_maybe_write_out_errors(ErrorStream, Verbose, Globals,
-        !Specs, !IO),
+    maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO),
     mq_info_set_recompilation_info(RecompInfo, MQInfo0, MQInfo),
@@ -625,8 +622,7 @@ make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet, MQInfo,
         TypeEqvMap, UsedModules, Verbose, Stats, !:HLDS, QualInfo,
         FoundInvalidType, FoundInvalidInstOrMode,
         FoundSemanticError, !Specs, !IO) :-
-    pre_hlds_maybe_write_out_errors(ErrorStream, Verbose, Globals,
-        !Specs, !IO),
+    maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
     maybe_write_string(ProgressStream, Verbose,
         "% Converting parse tree to hlds...\n", !IO),
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
@@ -650,8 +646,7 @@ make_hlds(ProgressStream, ErrorStream, Globals, AugCompUnit, EventSet, MQInfo,
     else
         FoundSemanticError = no
     ),
-    pre_hlds_maybe_write_out_errors(ErrorStream, Verbose, Globals,
-        !Specs, !IO),
+    maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
 

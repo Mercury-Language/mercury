@@ -23,16 +23,12 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_table.
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
-:- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
@@ -197,47 +193,6 @@
 :- func project_pred_form_arity_int(pred_form_arity) = int.
 
 %---------------------------------------------------------------------------%
-%
-% Every possible path of execution in mercury_compile.m should call
-% definitely_write_out_errors exactly once, just after the compiler
-% has finished doing all the things that can generate error reports.
-%
-% If Verbose = no, then this call is intended to write out all at once
-% all the error specifications accumulated until then. They are written out
-% all at once so that write_error_specs can sort them by context.
-%
-% If Verbose = yes, then keeping all the error messages until the end would
-% be confusing, since we would be reporting that e.g. the program had type
-% errors *before* printing the type error messages. In that case, we want to
-% print (using maybe_write_out_errors or its pre-HLDS twin) all the
-% accumulated errors before each message to the user.
-%
-% This applies to *all* messages.
-%
-% - The calls to maybe_write_out_errors before a message that announces
-%   the completion (and success or failure) of a phase obviously report
-%   the errors (if any) discovered by the phase.
-%
-% - The calls to maybe_write_out_errors before a message that announces
-%   the phase the compiler is about to enter serve to write out any messages
-%   from previous phases that have not yet been written out.
-%
-%   We could require each phase to write out the errors it discovers when it
-%   finishes (if Verbose = yes, that is), but that would eliminate any
-%   opportunity to group and sort together the error messages of two or more
-%   adjacent phases that are *not* separated by a message to the user even with
-%   Verbose = yes. Since the cost of calling maybe_write_out_errors
-%   when there is nothing to print is so low (a few dozen instructions),
-%   we can easily afford to incur it unnecessarily once per compiler phase.
-
-:- pred definitely_write_out_errors(io.text_output_stream::in, globals::in,
-    list(error_spec)::in, io::di, io::uo) is det.
-
-:- pred maybe_write_out_errors(io.text_output_stream::in, bool::in,
-    globals::in, list(error_spec)::in, list(error_spec)::out,
-    io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -251,7 +206,6 @@
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
-:- import_module parse_tree.write_error_spec.
 
 :- import_module int.
 :- import_module map.
@@ -542,22 +496,6 @@ gather_user_arities(PredTable, [PredId | PredIds], !UserArities) :-
 project_user_arity_int(user_arity(A)) = A.
 
 project_pred_form_arity_int(pred_form_arity(A)) = A.
-
-%---------------------------------------------------------------------------%
-
-definitely_write_out_errors(Stream, Globals, Specs, !IO) :-
-    write_error_specs(Stream, Globals, Specs, !IO).
-
-maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
-    % pre_hlds_maybe_write_out_errors in write_error_spec.m is a
-    % pre-HLDS version of this predicate.
-    (
-        Verbose = no
-    ;
-        Verbose = yes,
-        write_error_specs(Stream, Globals, !.Specs, !IO),
-        !:Specs = []
-    ).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_error_util.

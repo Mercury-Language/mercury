@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2022-2024 The Mercury team.
+% Copyright (C) 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -160,9 +160,47 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred pre_hlds_maybe_write_out_errors(io.text_output_stream::in,
-    bool::in, globals::in,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    % maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO):
+    %
+    % Every possible path of execution in mercury_compile.m should call
+    % write_error_specs on the accumulated but not-yet-printed error_specs
+    % exactly once, just after the compiler has finished doing all the things
+    % that can generate error reports. This predicate is intended to manage
+    % the printing of error_specs before that point.
+    %
+    % If Verbose = no, then that call to write_error_specs should write out
+    % all at once all the error specifications accumulated until then.
+    % Being written out all at once, write_error_specs can sort them
+    % by context.
+    %
+    % If Verbose = yes, then keeping all the error messages until the end would
+    % be confusing, since we would be reporting that e.g. the program had type
+    % errors *before* printing the type error messages. In that case,
+    % we want to print (using maybe_write_out_errors) all the accumulated
+    % errors before each message to the user.
+    %
+    % This applies to *all* messages.
+    %
+    % - The calls to maybe_write_out_errors before a message that announces
+    %   the completion (and success or failure) of a phase should obviously
+    %   report the errors (if any) discovered by the phase.
+    %
+    % - The calls to maybe_write_out_errors before a message that announces
+    %   the phase the compiler is about to enter serve to write out any
+    %   messages from previous phases that have not yet been written out.
+    %
+    %   We could require each phase to write out the errors it discovers
+    %   when it finishes (if Verbose = yes, that is), but that would eliminate
+    %   any opportunity to group and sort together the error messages
+    %   of two or more adjacent phases that are *not* separated by a message
+    %   to the user even with Verbose = yes. Since the cost of calling
+    %   maybe_write_out_errors when there is nothing to print is so low
+    %   (a few dozen instructions), we can easily afford to incur it
+    %   unnecessarily once per compiler phase.
+    %
+:- pred maybe_write_out_errors(io.text_output_stream::in, bool::in,
+    globals::in, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -2438,9 +2476,7 @@ pop_stack_ignore_empty(Stack0, Stack) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-pre_hlds_maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
-    % maybe_write_out_errors in hlds_error_util.m is a HLDS version
-    % of this predicate. The documentation is in that file.
+maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
     (
         Verbose = no
     ;
