@@ -464,10 +464,6 @@
 
 :- pred marker_name(pred_marker::in, string::out) is det.
 
-:- type need_to_requantify
-    --->    need_to_requantify
-    ;       do_not_need_to_requantify.
-
     % This type is isomorphic to the module_section type, but defining it here
     % allows us not to depend on parse_tree.prog_item.m.
 :- type decl_section
@@ -485,9 +481,9 @@
                 item_seq_num
             ).
 
-:- type format_call
-    --->    format_call(
-                % The context of the format_call pragma whose into
+:- type format_call_info
+    --->    format_call_info(
+                % The context of the format_call pragma whose info
                 % this field of the pred_info records. We use this
                 % to generate more informative error messages in cases of
                 % duplicate format_call pragmas.
@@ -554,7 +550,7 @@
     tsubst::out, external_type_params::out, constraint_proof_map::out,
     constraint_map::out, list(prog_constraint)::out, inst_graph_info::out,
     list(arg_modes_map)::out, map(prog_var, string)::out, set(assert_id)::out,
-    maybe(list(sym_name_arity))::out, maybe(format_call)::out,
+    maybe(list(sym_name_arity))::out, maybe(format_call_info)::out,
     list(mer_type)::out) is det.
 
 :- pred pred_create(module_name::in,
@@ -566,7 +562,7 @@
     tsubst::in, external_type_params::in, constraint_proof_map::in,
     constraint_map::in, list(prog_constraint)::in, inst_graph_info::in,
     list(arg_modes_map)::in, map(prog_var, string)::in, set(assert_id)::in,
-    maybe(list(sym_name_arity))::in, maybe(format_call)::in,
+    maybe(list(sym_name_arity))::in, maybe(format_call_info)::in,
     list(mer_type)::in, pred_info::out) is det.
 
 %---------------------%
@@ -672,8 +668,8 @@
     set(assert_id)::out) is det.
 :- pred pred_info_get_obsolete_in_favour_of(pred_info::in,
     maybe(list(sym_name_arity))::out) is det.
-:- pred pred_info_get_format_call(pred_info::in,
-    maybe(format_call)::out) is det.
+:- pred pred_info_get_format_call_info(pred_info::in,
+    maybe(format_call_info)::out) is det.
 :- pred pred_info_get_instance_method_arg_types(pred_info::in,
     list(mer_type)::out) is det.
 :- pred pred_info_get_clauses_info(pred_info::in,
@@ -731,7 +727,7 @@
 :- pred pred_info_set_obsolete_in_favour_of(
     maybe(list(sym_name_arity))::in,
     pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_format_call(maybe(format_call)::in,
+:- pred pred_info_set_format_call_info(maybe(format_call_info)::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_instance_method_arg_types(list(mer_type)::in,
     pred_info::in, pred_info::out) is det.
@@ -1193,7 +1189,7 @@ marker_name(marker_fact_table_semantic_errors, "fact_table_semantic_errors").
                 % - optimizations that can change argument lists are
                 %   all run *after* the front end, and therefore after
                 %   all code that cares about the value of this field.
-                psi_format_call                 :: maybe(format_call),
+                psi_format_call_info            :: maybe(format_call_info),
 
                 % If this predicate is a class method implementation, this
                 % list records the argument types before substituting the type
@@ -1549,8 +1545,8 @@ pred_info_get_assertions(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_assertions.
 pred_info_get_obsolete_in_favour_of(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_obsolete_in_favour_of.
-pred_info_get_format_call(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_format_call.
+pred_info_get_format_call_info(!.PI, X) :-
+    X = !.PI ^ pi_pred_sub_info ^ psi_format_call_info.
 pred_info_get_instance_method_arg_types(!.PI, X) :-
     X = !.PI ^ pi_pred_sub_info ^ psi_instance_method_arg_types.
 pred_info_get_clauses_info(!.PI, X) :-
@@ -1656,8 +1652,8 @@ pred_info_set_assertions(X, !PI) :-
     !PI ^ pi_pred_sub_info ^ psi_assertions := X.
 pred_info_set_obsolete_in_favour_of(X, !PI) :-
     !PI ^ pi_pred_sub_info ^ psi_obsolete_in_favour_of := X.
-pred_info_set_format_call(X, !PI) :-
-    !PI ^ pi_pred_sub_info ^ psi_format_call := X.
+pred_info_set_format_call_info(X, !PI) :-
+    !PI ^ pi_pred_sub_info ^ psi_format_call_info := X.
 pred_info_set_instance_method_arg_types(X, !PI) :-
     !PI ^ pi_pred_sub_info ^ psi_instance_method_arg_types := X.
 pred_info_set_clauses_info(X, !PI) :-

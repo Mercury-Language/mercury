@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -429,7 +429,7 @@ is_format_call(PredInfo, ArgVars) :-
     ( if is_builtin_format_call(ModuleName, Name, ArgVars) then
         true
     else
-        pred_info_get_format_call(PredInfo, MaybeFormatCall),
+        pred_info_get_format_call_info(PredInfo, MaybeFormatCall),
         (
             MaybeFormatCall = yes(_FormatCall)
         ;
@@ -480,10 +480,10 @@ is_format_call_kind_and_vars(PredInfo, ModuleName, Name, ArgVars, GoalInfo,
     then
         Kind = KindPrime
     else
-        pred_info_get_format_call(PredInfo, MaybeFormatCall),
+        pred_info_get_format_call_info(PredInfo, MaybeFormatCall),
         (
             MaybeFormatCall = yes(FormatCall),
-            FormatCall = format_call(Context, OoMFmtStrValArgs),
+            FormatCall = format_call_info(Context, OoMFmtStrValArgs),
             one_or_more.length(OoMFmtStrValArgs, NumFmtStrValArgs),
             one_or_more.map_foldl(arg_nums_to_vars(ArgVars, NumFmtStrValArgs),
                 OoMFmtStrValArgs, OoMFmtStrValVars, 1, _),
@@ -986,9 +986,9 @@ follow_poly_type(ConjMaps, PredMap, CurId, PolyTypeVar,
     prog_var::in, prog_var::in) is semidet.
 
 format_call_is_checked_in_parent(PredInfo, ProcInfo, VarFS, VarVL) :-
-    pred_info_get_format_call(PredInfo, MaybeFormatCall),
+    pred_info_get_format_call_info(PredInfo, MaybeFormatCall),
     MaybeFormatCall = yes(FormatCall),
-    FormatCall = format_call(_Context, OoMFormatStringsValues),
+    FormatCall = format_call_info(_Context, OoMFormatStringsValues),
     FormatStringsValues = one_or_more_to_list(OoMFormatStringsValues),
     proc_info_get_headvars(ProcInfo, HeadVars),
     format_call_is_checked_in_parent_loop(HeadVars, FormatStringsValues,

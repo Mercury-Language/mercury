@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -373,19 +373,22 @@ polymorphism_update_arg_types(MaybeProgressStream, PredId,
         ArgTypes = ExtraArgTypes ++ ArgTypes0,
         pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes,
             PredInfo0, PredInfo1),
-        pred_info_get_format_call(PredInfo1, MaybeFormatCall1),
+        pred_info_get_format_call_info(PredInfo1, MaybeFormatCall1),
         (
             MaybeFormatCall1 = no,
             PredInfo2 = PredInfo1
         ;
-            MaybeFormatCall1 = yes(format_call(Context, OoMFormatStrsValues1)),
+            MaybeFormatCall1 = yes(FormatCall1),
+            FormatCall1 = format_call_info(Context, OoMFormatStrsValues1),
             % Update the argument numbers in the format_call field
             % to account for the new arguments we just added at the front
             % of the argument list.
             one_or_more.map(increment_arg_nums(NumExtraHeadVars),
                 OoMFormatStrsValues1, OoMFormatStrsValues2),
-            MaybeFormatCall2 = yes(format_call(Context, OoMFormatStrsValues2)),
-            pred_info_set_format_call(MaybeFormatCall2, PredInfo1, PredInfo2)
+            FormatCall2 = format_call_info(Context, OoMFormatStrsValues2),
+            MaybeFormatCall2 = yes(FormatCall2),
+            pred_info_set_format_call_info(MaybeFormatCall2,
+                PredInfo1, PredInfo2)
         )
     ),
 

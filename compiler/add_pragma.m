@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2023-2024 The Mercury team.
+% Copyright (C) 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -362,12 +362,13 @@ mark_pred_as_format_call(FormatCallInfo, PragmaStatus, !ModuleInfo, !Specs) :-
         map.lookup(PredIdTable0, PredId, PredInfo0),
         check_pragma_status("format_call", psc_decl, PragmaStatus, Context,
             PredInfo0, !Specs),
-        pred_info_get_format_call(PredInfo0, MaybeFormatCall0),
+        pred_info_get_format_call_info(PredInfo0, MaybeFormatCall0),
         (
             MaybeFormatCall0 = no,
             % Record the presence of the format_call pragma for this pred.
-            FormatCall = format_call(Context, OoMArgSpecs),
-            pred_info_set_format_call(yes(FormatCall), PredInfo0, PredInfo),
+            FormatCall = format_call_info(Context, OoMArgSpecs),
+            pred_info_set_format_call_info(yes(FormatCall),
+                PredInfo0, PredInfo),
             map.det_update(PredId, PredInfo, PredIdTable0, PredIdTable),
             module_info_set_pred_id_table(PredIdTable, !ModuleInfo),
             % Record this pragma as needing to be checked by the
@@ -376,7 +377,7 @@ mark_pred_as_format_call(FormatCallInfo, PragmaStatus, !ModuleInfo, !Specs) :-
             set.insert(PredId, FCPreds0, FCPreds),
             module_info_set_format_call_pragma_preds(FCPreds, !ModuleInfo)
         ;
-            MaybeFormatCall0 = yes(format_call(OldContext, _)),
+            MaybeFormatCall0 = yes(format_call_info(OldContext, _)),
             FirstPieces = [words("Error:")] ++
                 color_as_incorrect([words("duplicate"),
                     pragma_decl("format_call"), words("declaration")]) ++

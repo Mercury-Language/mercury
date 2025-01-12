@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022-2024 The Mercury team.
+% Copyright (C) 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -89,7 +89,7 @@ check_pragma_format_call_preds(FormatCallPredIds, !ModuleInfo, !Specs) :-
 check_pragma_format_call_pred(PredId, !ModuleInfo, !Specs) :-
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     ( if map.search(PredIdTable0, PredId, PredInfo0) then
-        pred_info_get_format_call(PredInfo0, MaybeFormatCall0),
+        pred_info_get_format_call_info(PredInfo0, MaybeFormatCall0),
         (
             MaybeFormatCall0 = no,
             % add_pragma.m should add a pred_id to the set of predicates
@@ -100,7 +100,7 @@ check_pragma_format_call_pred(PredId, !ModuleInfo, !Specs) :-
             MaybeFormatCall0 = yes(FormatCall0)
         ),
 
-        FormatCall0 = format_call(Context, OoMFormatArgs0),
+        FormatCall0 = format_call_info(Context, OoMFormatArgs0),
         FormatArgs0 = one_or_more_to_list(OoMFormatArgs0),
         list.length(FormatArgs0, NumFormatArgs0),
         pred_info_get_proc_table(PredInfo0, ProcTable0),
@@ -120,13 +120,13 @@ check_pragma_format_call_pred(PredId, !ModuleInfo, !Specs) :-
         (
             FormatArgs = [HeadFormatArgs | TailFormatArgs],
             OoMFormatArgs = one_or_more(HeadFormatArgs, TailFormatArgs),
-            FormatCall = format_call(Context, OoMFormatArgs),
+            FormatCall = format_call_info(Context, OoMFormatArgs),
             MaybeFormatCall = yes(FormatCall)
         ;
             FormatArgs = [],
             MaybeFormatCall = no
         ),
-        pred_info_set_format_call(MaybeFormatCall, PredInfo0, PredInfo),
+        pred_info_set_format_call_info(MaybeFormatCall, PredInfo0, PredInfo),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     else
         true

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -206,12 +206,12 @@ format_pred(Info, Lang, ModuleInfo, PredId, PredInfo, !State) :-
             list.foldl(format_obsolete_in_favour_of,
                 ObsoleteInFavourOf, !State)
         ),
-        pred_info_get_format_call(PredInfo, MaybeFormatCall),
+        pred_info_get_format_call_info(PredInfo, MaybeFormatCall),
         (
             MaybeFormatCall = no
         ;
             MaybeFormatCall = yes(FormatCall),
-            FormatCall = format_call(_Context, OoMFormatStringValues),
+            FormatCall = format_call_info(_Context, OoMFormatStringValues),
             FormatStringValues = one_or_more_to_list(OoMFormatStringValues),
             output_format_string_values(FormatStringValues, !State)
         ),
