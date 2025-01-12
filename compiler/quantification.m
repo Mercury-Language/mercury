@@ -98,7 +98,7 @@
     % implicitly_quantify_clause_body_general_vs(NonLocalsToRecompute,
     %   HeadVars, Warnings, !Goal, !VarTable, !RttiVarMaps):
     %
-    % Do the job described at the top-of-module comment. Find out the scope
+    % Do the job described in the top-of-module comment. Find out the scope
     % of each variable, rename (actually, re-number) apart variables with
     % distinct scopes that happen to share the same name, and fill in
     % the nonlocals slots of all the goal_infos. Use either !VarSet and
@@ -132,8 +132,8 @@
     % free_goal_vars(Goal) = Vars:
     % free_goal_expr_vars(GoalExpr) = Vars:
     %
-    % Vars is the set of variables that occur free (unquantified) in Goal
-    % or GoalExpr
+    % Vars is the set of variables that occur free (unquantified)
+    % in Goal or GoalExpr.
     %
 :- func free_goal_vars(hlds_goal) = set_of_progvar.
 :- func free_goal_expr_vars(hlds_goal_expr) = set_of_progvar.
@@ -215,18 +215,15 @@ implicitly_quantify_goal_general_vs(NonLocalsToRecompute, KeepQuantVars,
         ),
         implicitly_quantify_goal_vs_2(ord_nl_no_lambda, KeepQuantVars,
             OutsideVars, Warnings, !Goal, !VarSet, !VarTypes, !RttiVarMaps)
-    ),
-    ( if
-        NonLocalsToRecompute = cg_nl_no_lambda,
-        % If the goal does not contain a reconstruction, the code-gen nonlocals
-        % and the ordinary nonlocals are the same.
-        goal_contains_reconstruction(!.Goal, yes)
-    then
-        implicitly_quantify_goal_vs_2(cg_nl_no_lambda, KeepQuantVars,
-            OutsideVars, _, !Goal, !VarSet, !VarTypes, !RttiVarMaps)
-    else
-        true
     ).
+    % Unlike the var_table version of this predicate, we do not need
+    % to check for goals containing reconstructions. This is because
+    %
+    % - the compiler switches from using varsets to using var_tables
+    %   at the end of the typechecking pass, and
+    %
+    % - compiler passes that can introduce reconstructions can run
+    %   only after typechecking.
 
 implicitly_quantify_goal_general(NonLocalsToRecompute, OutsideVars,
         Warnings, !Goal, !VarTable, !RttiVarMaps) :-
@@ -287,8 +284,7 @@ implicitly_quantify_goal_vs_2(NonLocalsToRecompute, KeepQuantVars, OutsideVars,
 
 :- pred implicitly_quantify_goal_2(nonlocals_to_recompute,
     set_of_progvar, list(quant_warning),
-    hlds_goal, hlds_goal,
-    var_table, var_table, rtti_varmaps, rtti_varmaps).
+    hlds_goal, hlds_goal, var_table, var_table, rtti_varmaps, rtti_varmaps).
 :- mode implicitly_quantify_goal_2(in(ord_nl_maybe_lambda),
     in, out, in, out, in, out, in, out) is det.
 :- mode implicitly_quantify_goal_2(in(ord_nl_no_lambda),
@@ -345,9 +341,8 @@ quantify_goal(NonLocalsToRecompute, Goal0, Goal, !Info) :-
                 hlds_goal(!:GoalExpr, !:GoalInfo),
                 !Info),
 
-            % Make sure that the information in the RTTI varmaps is updated
-            % to reflect any new variables that we may have just introduced.
-
+            % Update the information in the RTTI varmaps to reflect
+            % any new variables that we may have just introduced.
             some [!RttiVarMaps] (
                 get_rtti_varmaps(!.Info, !:RttiVarMaps),
                 map.foldl(rtti_var_info_duplicate, RenameMap, !RttiVarMaps),
