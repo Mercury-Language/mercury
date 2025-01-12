@@ -442,6 +442,7 @@
 :- import_module check_hlds.modecheck_util.
 :- import_module hlds.error_msg_inst.
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.

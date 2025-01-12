@@ -245,6 +245,7 @@
 :- implementation.
 
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_markers.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module transform_hlds.

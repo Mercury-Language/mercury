@@ -35,6 +35,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.

@@ -197,6 +197,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_markers.
 :- import_module hlds.pred_name.
 :- import_module hlds.special_pred.
 :- import_module mdbcomp.

@@ -27,6 +27,7 @@
 :- include_module hlds_goal.
 :- include_module hlds_inst_mode.
 :- include_module hlds_llds.
+:- include_module hlds_markers.
 :- include_module hlds_module.
 :- include_module hlds_pred.
 :- include_module hlds_promise.

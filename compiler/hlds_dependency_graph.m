@@ -144,6 +144,7 @@
 :- import_module backend_libs.proc_label.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_markers.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.

@@ -109,6 +109,7 @@
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.add_foreign_proc.
 :- import_module hlds.make_hlds.add_pragma_tabling.

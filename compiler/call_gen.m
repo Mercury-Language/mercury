@@ -76,6 +76,7 @@
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.instmap.
 :- import_module libs.options.

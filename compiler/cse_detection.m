@@ -101,6 +101,7 @@
 :- import_module check_hlds.switch_detection.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_proc_util.

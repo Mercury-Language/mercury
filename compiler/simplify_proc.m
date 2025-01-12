@@ -90,6 +90,7 @@
 :- import_module check_hlds.simplify.simplify_info.
 :- import_module check_hlds.simplify.split_switch_arms.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_proc_util.

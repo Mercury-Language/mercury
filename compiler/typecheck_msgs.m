@@ -39,6 +39,7 @@
 :- implementation.
 
 :- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.

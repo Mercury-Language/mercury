@@ -69,6 +69,7 @@
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.proc_requests.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.instmap.

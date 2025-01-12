@@ -137,6 +137,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.

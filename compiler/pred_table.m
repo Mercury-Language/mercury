@@ -19,6 +19,7 @@
 :- module hlds.pred_table.
 :- interface.
 
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.

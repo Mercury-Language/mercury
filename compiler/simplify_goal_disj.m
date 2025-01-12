@@ -53,6 +53,7 @@
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_goal.

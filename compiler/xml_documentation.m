@@ -37,6 +37,7 @@
 
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.pred_name.

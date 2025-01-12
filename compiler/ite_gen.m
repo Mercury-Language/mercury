@@ -46,6 +46,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.

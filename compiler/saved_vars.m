@@ -47,6 +47,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.recompute_instmap_deltas.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.

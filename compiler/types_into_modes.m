@@ -49,6 +49,7 @@
 
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_markers.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.

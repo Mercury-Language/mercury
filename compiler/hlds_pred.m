@@ -27,6 +27,7 @@
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_promise.
 :- import_module hlds.hlds_rtti.
@@ -273,196 +274,7 @@
     %
 :- func calls_are_fully_qualified(pred_markers) = is_fully_qualified.
 
-    % Predicates can be marked with various boolean flags, called "markers".
-
-    % A set of pred_markers.
-:- type pred_markers == set(pred_marker).
-
-:- type pred_marker
-    --->    marker_stub
-            % The predicate has no clauses. typecheck.m will generate a body
-            % for the predicate which just throws an exception. This marker
-            % is used to tell purity analysis and determinism analysis
-            % not to issue warnings for these predicates.
-
-    ;       marker_builtin_stub
-            % This predicate is a builtin but has no clauses for whatever
-            % reason. typecheck.m should generate a stub clause for it but no
-            % warn about it.
-
-    ;       marker_infer_type
-            % Requests type inference for the predicate. These markers are
-            % inserted by make_hlds for undeclared predicates.
-
-    ;       marker_infer_modes
-            % Requests mode inference for the predicate. These markers are
-            % inserted by make_hlds for undeclared predicates.
-
-    ;       marker_no_pred_decl
-            % This predicate had no (valid) `:- pred' or `:- func' declaration.
-            % Since we have generated an error message about this, suppress
-            % the generation of any similar messages about missing mode
-            % declarations, since the missing (or invalid) declaration
-            % could have been a combined predmode declaration.
-
-    ;       marker_no_detism_warning
-            % Requests no warnings about the determinism of this predicate
-            % being too loose.
-            % Used for pragma(no_determinism_warning).
-
-    ;       marker_user_marked_inline
-            % The user requests that this be predicate should be inlined,
-            % even if it exceeds the usual size limits. Used for
-            % pragma(inline). Mutually exclusive with
-            % marker_user_marked_no_inline.
-
-    ;       marker_heuristic_inline
-            % The compiler (meaning probably inlining.m) requests that this
-            % predicate be inlined. Does not override
-            % marker_user_marked_no_inline.
-
-    ;       marker_user_marked_no_inline
-            % The user requests that this be predicate should not be inlined.
-            % Used for pragma(no_inline). Mutually exclusive with
-            % marker_user_marked_inline.
-
-    ;       marker_mmc_marked_no_inline
-            % The compiler requests that this be predicate should not be
-            % inlined. Used for pragma(mode_check_clauses). Mutually exclusive
-            % with marker_user_marked_inline.
-
-    ;       marker_consider_used
-            % The user has requested that this predicate be considered used
-            % when we consider which procedures are dead, so we can generate
-            % dead procedure warnings for them. If this marker is present
-            % on a predicate, then neither the procedures of this predicate
-            % nor the other procedures they call, directly or indirectly,
-            % should get dead procedure warnings.
-
-    ;       marker_class_method
-            % Requests that this predicate be transformed into the appropriate
-            % call to a class method.
-
-    ;       marker_class_instance_method
-            % This predicate was automatically generated for the implementation
-            % of a class method for an instance.
-
-    ;       marker_named_class_instance_method
-            % This predicate was automatically generated for the implementation
-            % of a class method for an instance, and the instance was defined
-            % using the named syntax (e.g. "pred(...) is ...") rather than
-            % the clause syntax. (For such predicates, we output slightly
-            % different error messages.)
-
-    ;       marker_is_impure
-            % Requests that no transformation that would be inappropriate for
-            % impure code be performed on calls to this predicate. This
-            % includes reordering calls to it relative to other goals
-            % (in both conjunctions and disjunctions), and removing
-            % redundant calls to it.
-
-    ;       marker_is_semipure
-            % Requests that no transformation that would be inappropriate
-            % for semipure code be performed on calls to this predicate.
-            % This includes removing redundant calls to it on different sides
-            % of an impure goal.
-
-    ;       marker_promised_pure
-            % Requests that calls to this predicate be transformed as usual,
-            % despite any impure or semipure markers present.
-
-    ;       marker_promised_semipure
-            % Requests that calls to this predicate be treated as semipure,
-            % despite any impure calls in the body.
-
-    ;       marker_promised_equivalent_clauses
-            % Promises that all modes of the predicate have equivalent
-            % semantics, event if they are defined by different sets of
-            % mode-specific clauses.
-
-    % The terminates and does_not_terminate pragmas are kept as markers
-    % to ensure that conflicting declarations are not made by the user.
-    % Otherwise, the information could be added to the ProcInfos directly.
-
-    ;       marker_terminates
-            % The user guarantees that this predicate will terminate
-            % for all (finite?) input.
-
-    ;       marker_does_not_terminate
-            % States that this predicate does not terminate. This is useful
-            % for pragma foreign_code, which the compiler assumes to be
-            % terminating.
-
-    ;       marker_check_termination
-            % The user requires the compiler to guarantee the termination
-            % of this predicate. If the compiler cannot guarantee termination
-            % then it must give an error message.
-
-    ;       marker_calls_are_fully_qualified
-            % All calls in this predicate are fully qualified. This occurs for
-            % predicates read from `.opt' files and compiler-generated
-            % predicates.
-
-    ;       marker_mode_check_clauses
-            % Each clause of the predicate should be modechecked separately.
-            % Used for predicates defined by lots of clauses (usually facts)
-            % for which the compiler's quadratic behavior during mode checking
-            % (in inst_match.bound_inst_list_contains_instname and
-            % instmap.merge) would be unacceptable.
-
-    ;       marker_mutable_access_pred
-            % This predicate is part of the machinery used to access mutables.
-            % This marker is used to inform inlining that we should _always_
-            % attempt to inline this predicate across module boundaries.
-
-    ;       marker_has_require_scope
-            % The body of this predicate contains a require_complete_switch
-            % or require_detism scope. This marker is set if applicable during
-            % determinism inference. It is used during determinism reporting:
-            % procedures in predicates that have this marker are checked
-            % for violations of the requirements of these scopes even if
-            % the overall determinism of the procedure body is correct.
-
-    ;       marker_has_incomplete_switch
-            % The body of this predicate contains an incomplete switch
-            % (one for which the switched-on variable may have a value
-            % that does not match any of the cases). This marker is set
-            % if applicable during determinism inference. It is used during
-            % determinism reporting: if the inform_incomplete_switch option
-            % is set, then procedures in predicates that have this marker
-            % are traversed again to generate informational messages about
-            % these incomplete switches, even if the overall determinism
-            % of the procedure body is correct.
-
-    ;       marker_has_format_call
-            % The body of this predicate contains calls to predicates
-            % recognized by format_call.is_format_call. This marker is set
-            % (if applicable) during determinism analysis, when the predicate
-            % body has to be traversed anyway. It is used by the simplification
-            % pass at the end of semantic analysis, both to warn about
-            % incorrect (or at least not verifiably correct) format calls,
-            % and to optimize correct format calls. Neither the warnings
-            % nor the optimizations can be applicable to predicates that
-            % do not contain format calls, as shown by not having this marker.
-
-    ;       marker_has_rhs_lambda
-            % The body of this predicate contains a unification whose
-            % right hand side is a lambda goal. This marker is set by
-            % the typecheck pass, and it is used (as of this writing)
-            % only by the post-typecheck pass.
-
-    ;       marker_fact_table_semantic_errors.
-            % This predicate has a fact_table pragma for it, so it is
-            % *expected* not to have any clauses in the program itself,
-            % but the compiler found some problems with its declaration,
-            % and so the compiler did not generate clauses (actually,
-            % foreign_procs) for it either. Therefore its procedures
-            % have no implementations, but there should be no separate
-            % error message about this: since they would probably generate
-            % more confusion than enlightenment. The error messages generated
-            % by fact_table.m should be entirely sufficient.
-
-:- pred marker_name(pred_marker::in, string::out) is det.
+%---%
 
     % This type is isomorphic to the module_section type, but defining it here
     % allows us not to depend on parse_tree.prog_item.m.
@@ -840,39 +652,10 @@
 
 :- pred pred_info_infer_modes(pred_info::in) is semidet.
 
-:- pred purity_to_markers(purity::in, list(pred_marker)::out) is det.
-
 :- pred pred_info_get_pf_sym_name_arity(pred_info::in, pf_sym_name_arity::out)
     is det.
 
 :- pred pred_info_get_sym_name(pred_info::in, sym_name::out) is det.
-
-    % Create an empty set of markers.
-    %
-:- pred init_markers(pred_markers::out) is det.
-
-    % Check if a particular is in the set.
-    %
-:- pred marker_is_present(pred_markers::in, pred_marker::in) is semidet.
-
-    % Add some markers to the set.
-    %
-:- pred add_marker(pred_marker::in,
-    pred_markers::in, pred_markers::out) is det.
-:- pred add_markers(list(pred_marker)::in,
-    pred_markers::in, pred_markers::out) is det.
-
-    % Remove a marker from the set.
-    %
-:- pred remove_marker(pred_marker::in,
-    pred_markers::in, pred_markers::out) is det.
-
-    % Convert the set to and from a list.
-    %
-:- pred markers_to_marker_list(pred_markers::in, list(pred_marker)::out)
-    is det.
-:- pred marker_list_to_markers(list(pred_marker)::in, pred_markers::out)
-    is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -929,41 +712,6 @@ calls_are_fully_qualified(Markers) =
     else
         may_be_partially_qualified
     ).
-
-%---------------------------------------------------------------------------%
-
-% For markers that we add to a predicate because of a pragma on that predicate,
-% the marker name MUST correspond to the name of the pragma.
-marker_name(marker_stub, "stub").
-marker_name(marker_builtin_stub, "builtin_stub").
-marker_name(marker_infer_type, "infer_type").
-marker_name(marker_infer_modes, "infer_modes").
-marker_name(marker_user_marked_inline, "inline").
-marker_name(marker_heuristic_inline, "heuristic_inline").
-marker_name(marker_no_pred_decl, "no_pred_decl").
-marker_name(marker_user_marked_no_inline, "no_inline").
-marker_name(marker_mmc_marked_no_inline, "mmc_no_inline").
-marker_name(marker_consider_used, "consider_used").
-marker_name(marker_no_detism_warning, "no_determinism_warning").
-marker_name(marker_class_method, "class_method").
-marker_name(marker_class_instance_method, "class_instance_method").
-marker_name(marker_named_class_instance_method, "named_class_instance_method").
-marker_name(marker_is_impure, "impure").
-marker_name(marker_is_semipure, "semipure").
-marker_name(marker_promised_pure, "promise_pure").
-marker_name(marker_promised_semipure, "promise_semipure").
-marker_name(marker_promised_equivalent_clauses, "promise_equivalent_clauses").
-marker_name(marker_terminates, "terminates").
-marker_name(marker_check_termination, "check_termination").
-marker_name(marker_does_not_terminate, "does_not_terminate").
-marker_name(marker_calls_are_fully_qualified, "calls_are_fully_qualified").
-marker_name(marker_mode_check_clauses, "mode_check_clauses").
-marker_name(marker_mutable_access_pred, "mutable_access_pred").
-marker_name(marker_has_require_scope, "has_require_scope").
-marker_name(marker_has_incomplete_switch, "has_incomplete_switch").
-marker_name(marker_has_format_call, "has_format_call").
-marker_name(marker_has_rhs_lambda, "has_rhs_lambda").
-marker_name(marker_fact_table_semantic_errors, "fact_table_semantic_errors").
 
 %---------------------------------------------------------------------------%
 
@@ -1917,10 +1665,6 @@ pred_info_infer_modes(PredInfo) :-
     pred_info_get_markers(PredInfo, Markers),
     marker_is_present(Markers, marker_infer_modes).
 
-purity_to_markers(purity_pure, []).
-purity_to_markers(purity_semipure, [marker_is_semipure]).
-purity_to_markers(purity_impure, [marker_is_impure]).
-
 %---------------------------------------------------------------------------%
 
 pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity) :-
@@ -1933,28 +1677,6 @@ pred_info_get_sym_name(PredInfo, SymName) :-
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
     SymName = qualified(Module, Name).
-
-%---------------------------------------------------------------------------%
-
-init_markers(set.init).
-
-marker_is_present(MarkerSet, Marker) :-
-    set.member(Marker, MarkerSet).
-
-add_marker(Marker, !MarkerSet) :-
-    set.insert(Marker, !MarkerSet).
-
-add_markers(Markers, !MarkerSet) :-
-    set.insert_list(Markers, !MarkerSet).
-
-remove_marker(Marker, !MarkerSet) :-
-    set.delete(Marker, !MarkerSet).
-
-markers_to_marker_list(MarkerSet, Markers) :-
-    set.to_sorted_list(MarkerSet, Markers).
-
-marker_list_to_markers(Markers, MarkerSet) :-
-    set.list_to_set(Markers, MarkerSet).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

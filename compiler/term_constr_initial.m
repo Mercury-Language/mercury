@@ -54,6 +54,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.

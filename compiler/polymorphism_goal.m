@@ -49,6 +49,7 @@
 :- import_module hlds.from_ground_term_util.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_class.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.quantification.

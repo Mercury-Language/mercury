@@ -106,6 +106,7 @@
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.

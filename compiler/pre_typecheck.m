@@ -48,6 +48,7 @@
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_goal.
 :- import_module hlds.status.
