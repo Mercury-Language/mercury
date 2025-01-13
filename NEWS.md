@@ -783,7 +783,7 @@ Changes to the Mercury standard library
 
     - pred `nondet_member/2`
 
-* The following predicate and functions have been added:
+* The following predicates and functions have been added:
 
     - func `make_singleton_set/1`
     - pred `is_singleton/2`
