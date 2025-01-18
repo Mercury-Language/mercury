@@ -11,7 +11,19 @@
 % Authors: Mark Brown.
 % Stability: medium.
 %
-% This module defines the ranges abstract type.
+% This module provides sets of integers represented using a range list.
+% Each contiguous block of integers in a set is stored as a range that
+% specifies the bounds of the block, and these ranges are kept in a list-like
+% structure. Elements of these sets must be in (min_int + 1) .. max_int
+% (inclusive). The value min_int cannot be included in any set.
+% Predicates and functions in this module that attempt to construct sets
+% containing min_int will throw an exception.
+%
+% This module provides predicates and functions that operate on either the
+% individual elements in a set or on the pairs of integers that define the
+% bounds of the blocks used in the representation. Predicates and functions
+% that do the latter have names containing "range" (e.g. range_foldr,
+% nondet_range_member).
 %
 %---------------------------------------------------------------------------%
 
@@ -23,11 +35,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Range lists represent sets of integers. Each contiguous block
-    % of integers in the set is stored as a range which specifies
-    % the bounds of the block, and these ranges are kept in a list-like
-    % structure.
-    %
 :- type ranges.
 
 %---------------------------------------------------------------------------%
@@ -40,8 +47,7 @@
 :- func empty = ranges.
 
     % universe returns the largest set that can be handled by this module.
-    % This is the set of integers (min_int + 1)..max_int. Note that min_int
-    % cannot be represented in any set.
+    % This is the set of integers (min_int + 1) .. max_int (inclusive).
     %
 :- func universe = ranges.
 
