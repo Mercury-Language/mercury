@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2007, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018-2021, 2024 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,18 +41,18 @@
     % The first four fields give the relative costs of the four kinds
     % of operations this optimization concerns itself with.
     %
-    % one_path_op_ratio and one_path_op_ratio are tuning parameters;
-    % find_via_cell_vars will say that the optimization is inapplicable
-    % (i.e. that none of the candidates should be accessed via the cell)
-    % unless the ratios of benefit operations to cost operations and
-    % benefit nodes to cost nodes are at or above the percentage
-    % thresholds specified by these two fields respectively.
+    % one_path_op_ratio and one_path_node_ratio are tuning parameters
+    % that specify thresholds. Specifically, find_via_cell_vars says that
+    % we should apply not the optimization (i.e. that none of the candidates
+    % should be accessed via the cell) unless the ratios of benefit operations
+    % to cost operations, and benefit nodes to cost nodes, are at or above
+    % the percentage thresholds specified by these two fields respectively.
     %
     % The include_all_candidates field says whether this thresholding
     % operation is to count the benefits obtainable from the candidate
     % variables that do not happen to be accessed in the AfterFlush
     % argument of find_via_cell_vars.
-
+    %
 :- type matching_params
     --->    matching_params(
                 cell_var_store_cost     :: int,
@@ -123,16 +123,18 @@
             ).
 
 :- type cost_operation
-    --->    cell_var_load(int)      % segment number, >= 2
-    ;       cell_var_store.         % in initial segment
+    --->    cell_var_load(int)          % segment number, >= 2
+    ;       cell_var_store.             % in initial segment
 
 :- type benefit_operation
     --->    field_var_load(prog_var)    % in initial segment
     ;       field_var_store(prog_var).  % in initial segment
 
-% The integers differentiate the different copies of an operation.
-:- type cost_node --->      cost_node(cost_operation, int).
-:- type benefit_node --->   benefit_node(benefit_operation, int).
+    % The integers differentiate the different copies of an operation.
+:- type cost_node
+    --->    cost_node(cost_operation, int).
+:- type benefit_node
+    --->    benefit_node(benefit_operation, int).
 
     % The field_costs_benefits structure records, for a given field variable,
     % the nodes of the cost we incur and the benefits we gain if we access that
@@ -469,8 +471,8 @@ find_augmenting_path(BenefitNodes, Graph, Matching, Path) :-
 
     % Build an initial queue of all the unmatched benefit nodes, with empty
     % paths. Take the first element of the queue and see what nodes are
-    % reachable from there. If one is unmatched return the path, otherwise add
-    % these nodes to the queue if they haven't been visited before.
+    % reachable from there. If one is unmatched, return the path, otherwise
+    % add these nodes to the queue if they haven't been visited before.
     %
 :- pred find_first_path_bf(list(benefit_node)::in, stack_slot_graph::in,
     matching::in, edge_list::out) is semidet.
@@ -677,9 +679,6 @@ get_unmatched_cost_nodes([Node | Nodes], MatchingCB) = UnmatchedNodes :-
 
     % Dump the results of the matching process to standard output to assist in
     % tracking down any correctness and performance problems with this module.
-    % Using this predicate requires uncommenting the import of module unsafe,
-    % the call to dump_results, and two lines computing one of the arguments of
-    % that call.
     %
 :- pred dump_results(io.text_output_stream::in,
     prog_var::in, set_of_progvar::in, list(prog_var)::in,
