@@ -54,11 +54,15 @@
 :- pred do_compile_c_file(globals::in, io.text_output_stream::in, pic::in,
     string::in, string::in, maybe_succeeded::out, io::di, io::uo) is det.
 
+%---------------------%
+
     % compile_java_files(Globals, ProgressStream, HeadJavaFile, TailJavaFiles,
     %   Succeeded, !IO)
     %
 :- pred compile_java_files(globals::in, io.text_output_stream::in,
     string::in, list(string)::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+%---------------------%
 
     % compile_csharp_file(Globals, ProgressStream, ErrorStream,
     %   CSharpFile, DLLFile, Succeeded, !IO)
@@ -66,6 +70,8 @@
 :- pred compile_csharp_file(globals::in, io.text_output_stream::in,
     module_dep_info::in, file_name::in, file_name::in, maybe_succeeded::out,
     io::di, io::uo) is det.
+
+%---------------------%
 
     % make_library_init_file(Globals, ProgressStream,
     %   MainModuleName, ModuleNames, Succeeded, !IO):
@@ -82,6 +88,12 @@
 :- pred make_init_obj_file(globals::in,
     io.text_output_stream::in,
     module_name::in, list(module_name)::in, maybe(file_name)::out,
+    io::di, io::uo) is det.
+
+%---------------------%
+
+:- pred linked_target_file_name_full_curdir(globals::in, module_name::in,
+    linked_target_type::in, file_name::out, file_name::out,
     io::di, io::uo) is det.
 
     % link_modules_into_executable_or_shared_library(ProgressStream, Globals,
@@ -152,9 +164,7 @@
     globals::in, linked_target_type::in, module_name::in, list(string)::in,
     list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
-:- pred linked_target_file_name_full_curdir(globals::in, module_name::in,
-    linked_target_type::in, file_name::out, file_name::out,
-    io::di, io::uo) is det.
+%---------------------%
 
     % post_link_maybe_make_symlink_or_copy(Globals,
     %   ProgressStream, FullFileName, CurDirFileName,
@@ -170,6 +180,8 @@
     io.text_output_stream::in, file_name::in, file_name::in,
     module_name::in, linked_target_type::in, maybe_succeeded::out, bool::out,
     io::di, io::uo) is det.
+
+%---------------------%
 
     % shared_libraries_supported(Globals, SharedLibsSupported)
     %
@@ -239,7 +251,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% Stuff used for standalone interfaces.
+% used for standalone interfaces.
 %
 
     % make_standalone_interface(Globals, ProgressStream, BaseName, !IO):
@@ -1518,6 +1530,49 @@ maybe_compile_init_obj_file(Globals, ProgressStream, MaybeInitTargetFile,
 
 %---------------------------------------------------------------------------%
 
+linked_target_file_name_full_curdir(Globals, ModuleName, LinkedTargetType,
+        FullFileName, CurDirFileName, !IO) :-
+    % This code should be in file_names.m. The only reason why it is here
+    % is that the linked_target_type type is defined here.
+    (
+        % Java archives and Java executables get the same filename.
+        % XXX Then why make the distinction in linked_target_type?
+        (
+            LinkedTargetType = executable,
+            Ext = ext_cur_gas(ext_cur_gas_exec_exec_opt)
+        ;
+            LinkedTargetType = csharp_executable,
+            Ext = ext_cur_gas(ext_cur_gas_exec_exe)
+        ;
+            LinkedTargetType = csharp_library,
+            Ext = ext_cur_gs(ext_cur_gs_lib_cil_dll)
+        ;
+            LinkedTargetType = java_archive,
+            Ext = ext_cur_gs(ext_cur_gs_lib_jar)
+        ;
+            LinkedTargetType = java_executable,
+            Ext = ext_cur_gs(ext_cur_gs_lib_jar)
+        ),
+        % XXX LEGACY
+        module_name_to_file_name_full_curdir_create_dirs(Globals, $pred,
+            Ext, ModuleName, FullFileName, _FullFileNameProposed,
+            CurDirFileName, !IO)
+    ;
+        (
+            LinkedTargetType = static_library,
+            Ext = ext_cur_gas(ext_cur_gas_lib_lib_opt)
+        ;
+            LinkedTargetType = shared_library,
+            Ext = ext_cur_gas(ext_cur_gas_lib_sh_lib_opt)
+        ),
+        % XXX LEGACY
+        module_name_to_lib_file_name_full_curdir_create_dirs(Globals, $pred,
+            "lib", Ext, ModuleName, FullFileName, _FullFileNameProposed,
+            CurDirFileName, !IO)
+    ).
+
+%---------------------------------------------------------------------------%
+
 link_modules_into_executable_or_shared_library(ProgressStream, Globals,
         ModuleNames, ExtraObjFileNames, Specs, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, output_file_name, OutputFileName),
@@ -1617,45 +1672,6 @@ link_files_into_executable_or_library(ProgressStream, Globals,
     ;
         LinkSucceeded = did_not_succeed,
         Succeeded = did_not_succeed
-    ).
-
-linked_target_file_name_full_curdir(Globals, ModuleName, LinkedTargetType,
-        FullFileName, CurDirFileName, !IO) :-
-    (
-        % Java archives and Java executables get the same filename.
-        % XXX Then why make the distinction in linked_target_type?
-        (
-            LinkedTargetType = executable,
-            Ext = ext_cur_gas(ext_cur_gas_exec_exec_opt)
-        ;
-            LinkedTargetType = csharp_executable,
-            Ext = ext_cur_gas(ext_cur_gas_exec_exe)
-        ;
-            LinkedTargetType = csharp_library,
-            Ext = ext_cur_gs(ext_cur_gs_lib_cil_dll)
-        ;
-            LinkedTargetType = java_archive,
-            Ext = ext_cur_gs(ext_cur_gs_lib_jar)
-        ;
-            LinkedTargetType = java_executable,
-            Ext = ext_cur_gs(ext_cur_gs_lib_jar)
-        ),
-        % XXX LEGACY
-        module_name_to_file_name_full_curdir_create_dirs(Globals, $pred,
-            Ext, ModuleName, FullFileName, _FullFileNameProposed,
-            CurDirFileName, !IO)
-    ;
-        (
-            LinkedTargetType = static_library,
-            Ext = ext_cur_gas(ext_cur_gas_lib_lib_opt)
-        ;
-            LinkedTargetType = shared_library,
-            Ext = ext_cur_gas(ext_cur_gas_lib_sh_lib_opt)
-        ),
-        % XXX LEGACY
-        module_name_to_lib_file_name_full_curdir_create_dirs(Globals, $pred,
-            "lib", Ext, ModuleName, FullFileName, _FullFileNameProposed,
-            CurDirFileName, !IO)
     ).
 
 :- pred get_launcher_script_extension(globals::in, ext::out) is det.
@@ -2958,8 +2974,8 @@ join_string_list([String | Strings], Prefix, Suffix, Separator, Result) :-
     string::in, string::out) is det.
 
 join_quoted_string_list(Strings, Prefix, Suffix, Separator, Result) :-
-    join_string_list(map(quote_shell_cmd_arg, Strings), Prefix, Suffix,
-        Separator, Result).
+    QuotedStrings = list.map(quote_shell_cmd_arg, Strings),
+    join_string_list(QuotedStrings, Prefix, Suffix, Separator, Result).
 
     % module_names_to_file_names(Globals, Ext, ModuleNames, ExtFileNames):
     %
@@ -3041,9 +3057,10 @@ make_standalone_int_header(ProgressStream, BaseName, Succeeded, !IO) :-
     io.open_output(HdrFileName, OpenResult, !IO),
     (
         OpenResult = ok(HdrFileStream),
+        UpperBaseName = string.to_upper(BaseName),
         io.write_strings(HdrFileStream, [
-            "#ifndef ", to_upper(BaseName), "_H\n",
-            "#define ", to_upper(BaseName), "_H\n",
+            "#ifndef ", UpperBaseName, "_H\n",
+            "#define ", UpperBaseName, "_H\n",
             "\n",
             "#ifdef __cplusplus\n",
             "extern \"C\" {\n",
@@ -3059,7 +3076,7 @@ make_standalone_int_header(ProgressStream, BaseName, Succeeded, !IO) :-
             "}\n",
             "#endif\n",
             "\n",
-            "#endif /* ", to_upper(BaseName), "_H */\n"],
+            "#endif /* ", UpperBaseName, "_H */\n"],
             !IO),
         io.close_output(HdrFileStream, !IO),
         Succeeded = succeeded
