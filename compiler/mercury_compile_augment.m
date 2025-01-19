@@ -55,6 +55,7 @@
 :- import_module analysis.operations.
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
+:- import_module backend_libs.link_target_code.
 :- import_module backend_libs.export.
 :- import_module check_hlds.
 :- import_module check_hlds.xml_documentation.

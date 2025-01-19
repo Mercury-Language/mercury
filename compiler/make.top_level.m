@@ -49,6 +49,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
+:- import_module backend_libs.link_target_code.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module make.deps_set.

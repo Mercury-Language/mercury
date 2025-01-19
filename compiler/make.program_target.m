@@ -62,6 +62,7 @@
 :- import_module analysis.operations.
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
+:- import_module backend_libs.link_target_code.
 :- import_module libs.check_libgrades.
 :- import_module libs.file_util.
 :- import_module libs.options.
@@ -129,6 +130,7 @@ make_linked_target(ProgressStream, Globals, LinkedTargetFile,
             not list.member("shared", LibLinkages)
         )
     then
+        % XXX What is the justification for this?
         LinkedTargetSucceeded = succeeded
     else
         maybe_check_libraries_are_installed(Globals, LibgradeCheckSpecs, !IO),
@@ -356,10 +358,10 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
                 close_module_error_stream_handle_errors(ProgressStream,
                     Globals, MainModuleName, MESI, ErrorStream, !Info, !IO)
             ),
-            Cleanup = linked_target_cleanup(ProgressStream, Globals,
+            CleanupPred = linked_target_cleanup(ProgressStream, Globals,
                 MainModuleName, LinkedTargetType,
                 FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName),
-            teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
+            teardown_checking_for_interrupt(VeryVerbose, Cookie, CleanupPred,
                 Succeeded0, Succeeded, !Info, !IO)
         else
             Succeeded = did_not_succeed
@@ -445,6 +447,23 @@ filter_out_nested_modules(ProgressStream, Globals, Modules0, Modules,
     list.foldl3(collect_nested_modules(ProgressStream, Globals), Modules0,
         set.init, NestedModules, !Info, !IO),
     list.negated_filter(set.contains(NestedModules), Modules0, Modules).
+
+:- pred collect_nested_modules(io.text_output_stream::in, globals::in,
+    module_name::in, set(module_name)::in, set(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+collect_nested_modules(ProgressStream, Globals, ModuleName,
+        !NestedModules, !Info, !IO) :-
+    get_maybe_module_dep_info(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
+    (
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+        module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
+        NestedSubModules = get_nested_children_of_top_module(MaybeTopModule),
+        set.union(NestedSubModules, !NestedModules)
+    ;
+        MaybeModuleDepInfo = no_module_dep_info
+    ).
 
 %---------------------%
 
@@ -1214,14 +1233,14 @@ maybe_with_analysis_cache_dir_2(ProgressStream, Globals, P, Succeeded,
         UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
         OrigOptionArgs = make_info_get_option_args(!.Info),
         % Pass the name of the cache directory to child processes.
-        make_info_set_option_args(OrigOptionArgs ++ [CacheDirOption, CacheDir],
-            !Info),
+        NewOptionArgs = OrigOptionArgs ++ [CacheDirOption, CacheDir],
+        make_info_set_option_args(NewOptionArgs, !Info),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
-        P(ProgressStream, Succeeded1, !Info, !IO),
-        Cleanup = remove_cache_dir(ProgressStream, Globals, CacheDir),
-        teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
-            Succeeded1, Succeeded, !Info, !IO),
+        P(ProgressStream, TaskSucceeded, !Info, !IO),
+        CleanupPred = remove_cache_dir(ProgressStream, Globals, CacheDir),
+        teardown_checking_for_interrupt(VeryVerbose, Cookie, CleanupPred,
+            TaskSucceeded, Succeeded, !Info, !IO),
         remove_cache_dir(ProgressStream, Globals, CacheDir, !Info, !IO),
         make_info_set_option_args(OrigOptionArgs, !Info)
     ;
@@ -1255,14 +1274,14 @@ maybe_with_analysis_cache_dir_3(ProgressStream, Globals, P, Succeeded,
         UseAnalysisCacheDir = use_analysis_cache_dir(CacheDir, CacheDirOption),
         OrigOptionArgs = make_info_get_option_args(!.Info),
         % Pass the name of the cache directory to child processes.
-        make_info_set_option_args(OrigOptionArgs ++ [CacheDirOption, CacheDir],
-            !Info),
+        NewOptionArgs = OrigOptionArgs ++ [CacheDirOption, CacheDir],
+        make_info_set_option_args(NewOptionArgs, !Info),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         setup_checking_for_interrupt(Cookie, !IO),
-        P(ProgressStream, Succeeded1, !Info, !Specs, !IO),
-        Cleanup = remove_cache_dir(ProgressStream, Globals, CacheDir),
-        teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
-            Succeeded1, Succeeded, !Info, !IO),
+        P(ProgressStream, TaskSucceeded, !Info, !Specs, !IO),
+        CleanupPred = remove_cache_dir(ProgressStream, Globals, CacheDir),
+        teardown_checking_for_interrupt(VeryVerbose, Cookie, CleanupPred,
+            TaskSucceeded, Succeeded, !Info, !IO),
         remove_cache_dir(ProgressStream, Globals, CacheDir, !Info, !IO),
         make_info_set_option_args(OrigOptionArgs, !Info)
     ;
@@ -1614,16 +1633,16 @@ build_c_library(ProgressStream, Globals, MainModuleName, AllModules, Succeeded,
     make_linked_target(ProgressStream, Globals,
         linked_target_file(MainModuleName, static_library),
         StaticSucceeded, !Info, !Specs, !IO),
-    shared_libraries_supported(Globals, SharedLibsSupported),
+    are_shared_libraries_supported(Globals, SharedLibsSupported),
     (
         StaticSucceeded = succeeded,
         (
-            SharedLibsSupported = yes,
+            SharedLibsSupported = shared_libraries_supported,
             make_linked_target(ProgressStream, Globals,
                 linked_target_file(MainModuleName, shared_library),
                 SharedLibsSucceeded, !Info, !Specs, !IO)
         ;
-            SharedLibsSupported = no,
+            SharedLibsSupported = shared_libraries_not_supported,
             SharedLibsSucceeded = succeeded
         ),
         % We can only build the .init file if we have succesfully built
@@ -1661,25 +1680,6 @@ build_java_library(ProgressStream, Globals, MainModuleName, Succeeded,
     make_linked_target(ProgressStream, Globals,
         linked_target_file(MainModuleName, java_archive),
         Succeeded, !Info, !Specs, !IO).
-
-%---------------------------------------------------------------------------%
-
-:- pred collect_nested_modules(io.text_output_stream::in, globals::in,
-    module_name::in, set(module_name)::in, set(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-collect_nested_modules(ProgressStream, Globals, ModuleName,
-        !NestedModules, !Info, !IO) :-
-    get_maybe_module_dep_info(ProgressStream, Globals,
-        ModuleName, MaybeModuleDepInfo, !Info, !IO),
-    (
-        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-        module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
-        NestedSubModules = get_nested_children_of_top_module(MaybeTopModule),
-        set.union(NestedSubModules, !NestedModules)
-    ;
-        MaybeModuleDepInfo = no_module_dep_info
-    ).
 
 %---------------------------------------------------------------------------%
 

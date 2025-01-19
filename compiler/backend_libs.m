@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2007, 2011 The University of Melbourne.
-% Copyright (C) 2015, 2018, 2020, 2024 The Mercury team.
+% Copyright (C) 2015, 2018, 2020, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,6 +22,7 @@
 :- include_module export.
 :- include_module foreign.
 :- include_module interval.
+:- include_module link_target_code.
 :- include_module lookup_switch_util.
 :- include_module matching.
 :- include_module name_mangle.

@@ -41,6 +41,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
+:- import_module backend_libs.link_target_code.
 :- import_module hlds.
 :- import_module hlds.instmap.
 :- import_module libs.check_libgrades.

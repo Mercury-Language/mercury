@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
 % Copyright (C) 2008-2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2018, 2020-2024 The Mercury team.
+% Copyright (C) 2013-2015, 2018, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -138,6 +138,17 @@
     %
 :- pred open_temp_output(maybe_error({string, text_output_stream})::out,
     io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
+    % compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO):
+    %
+    % Get the timestamps of both files. If this is successful, compare them,
+    % and return the result of the comparison as the argument of "yes".
+    % Otherwise, return "no".
+    %
+:- pred compare_file_timestamps(file_name::in, file_name::in,
+    maybe(comparison_result)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -422,6 +433,21 @@ open_temp_file(TempFileResult, Result, !IO) :-
         TempFileResult = error(Error),
         Result = error(format("could not create temporary file: %s",
             [s(error_message(Error))]))
+    ).
+
+%---------------------------------------------------------------------------%
+
+compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO) :-
+    io.file.file_modification_time(FileNameA, TimeResultA, !IO),
+    io.file.file_modification_time(FileNameB, TimeResultB, !IO),
+    ( if
+        TimeResultA = ok(TimeA),
+        TimeResultB = ok(TimeB)
+    then
+        compare(Compare, TimeA, TimeB),
+        MaybeCompare = yes(Compare)
+    else
+        MaybeCompare = no
     ).
 
 %---------------------------------------------------------------------------%

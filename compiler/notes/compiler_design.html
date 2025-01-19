@@ -311,8 +311,9 @@ Also used by mercury_compile.m to collect the value of DEFAULT_MCFLAGS,
 which contains the auto-configured flags passed to the compiler.
 </ul>
 
-The build process also invokes routines in compile_target_code.m,
-which is part of the backend_libs.m package (see below).
+The build process also invokes routines
+in compile_target_code.m and link_target_code.m,
+which are part of the backend_libs.m package (see below).
 
 <h2>Front end</h2>
 <h3>1. Parsing</h3>
@@ -2483,6 +2484,13 @@ It is used by both the LLDS and MLDS backends.
 <li>
 name_mangle.m defines predicates
 for mangling names to forms acceptable as identifiers in target languages.
+<li>
+compile_target_code.m compiles
+the code we generate in our various target languages,
+converting C code to object files,
+converting Java code to .jar files, and
+converting C# code to .dll files
+(containing .NET Common Intermediate Language).
 <li>
 compile_target_code.m invokes compilers and/or linkers
 for our various target languages

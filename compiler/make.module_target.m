@@ -83,6 +83,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.link_target_code.
 :- import_module libs.options.
 :- import_module libs.process_util.
 :- import_module libs.shell_util.
