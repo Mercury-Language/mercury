@@ -267,11 +267,12 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, !IO) :-
         io.print_line(StdOutStream, CC_Type, !IO)
     ;
         OpModeQuery = opmq_output_cflags,
-        output_c_compiler_flags(Globals, StdOutStream, !IO),
-        io.nl(StdOutStream, !IO)
+        get_c_compiler_flags(Globals, CFlags),
+        io.print_line(StdOutStream, CFlags, !IO)
     ;
         OpModeQuery = opmq_output_c_include_directory_flags,
-        output_c_include_directory_flags(Globals, StdOutStream, !IO)
+        get_c_include_dir_flags(Globals, CInclFlags),
+        io.print_line(StdOutStream, CInclFlags, !IO)
     ;
         OpModeQuery = opmq_output_csharp_compiler,
         globals.lookup_string_option(Globals, csharp_compiler, CSC),
@@ -289,7 +290,8 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, !IO) :-
         io.print_line(StdOutStream, ClassDirName, !IO)
     ;
         OpModeQuery = opmq_output_grade_defines,
-        output_c_grade_defines(Globals, StdOutStream, !IO)
+        get_c_grade_defines(Globals, GradeDefines),
+        io.print_line(StdOutStream, GradeDefines, !IO)
     ;
         OpModeQuery = opmq_output_link_command,
         globals.lookup_string_option(Globals, link_executable_command,

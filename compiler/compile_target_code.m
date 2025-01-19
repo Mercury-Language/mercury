@@ -47,8 +47,7 @@
     % Work out whether we should be generating position-independent
     % object code for C executables.
     %
-:- pred get_executable_object_code_type(globals::in, pic::out)
-    is det.
+:- pred get_executable_object_code_type(globals::in, pic::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -163,32 +162,32 @@
 
 %---------------------------------------------------------------------------%
 
-    % Output the C compiler flags to the given stream.
+    % Return the C compiler flags.
+    %
     % This predicate is used to implement the `--output-cflags' option.
     %
-:- pred output_c_compiler_flags(globals::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
+:- pred get_c_compiler_flags(globals::in, string::out) is det.
 
-    % Output the C compiler flags that define the macros used to specify the
+    % Return the C compiler flags that define the macros used to specify the
     % current compilation grade to the given stream.
+    %
     % This predicate is used to implement the `--output-grade-defines' option.
     %
-:- pred output_c_grade_defines(globals::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
+:- pred get_c_grade_defines(globals::in, string::out) is det.
 
-    % Output the C compiler flags that specify where the C compiler should
-    % search for header files to the given stream.
+    % Return the C compiler flags that specify where the C compiler should
+    % search for header files.
+    %
     % This predicate is used to implement the `--output-c-include-dir-flags'
     % option.
     %
-:- pred output_c_include_directory_flags(globals::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred get_c_include_dir_flags(globals::in, string::out) is det.
 
 :- pred get_framework_directories(globals::in, string::out) is det.
 
 %---------------------------------------------------------------------------%
 %
-% XXX These two predicates belong elsewhere, in module dedicated
+% XXX These two predicates belong elsewhere, in a module dedicated
 % to utility operations for constructing command lines.
 %
 
@@ -298,9 +297,9 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         SubDirInclOpt = "-I. "
     ),
 
-    gather_c_include_dir_flags(Globals, InclOpt),
+    get_c_include_dir_flags(Globals, InclOpt),
     get_framework_directories(Globals, FrameworkInclOpt),
-    gather_c_grade_defines(Globals, GradeDefinesOpts),
+    get_c_grade_defines(Globals, GradeDefinesOpts),
 
     globals.lookup_bool_option(Globals, gcc_global_registers, GCC_Regs),
     (
@@ -493,320 +492,6 @@ arch_is_apple_darwin(FullArch) :-
     ArchComponents = [_CPU, Mfr, OS],
     Mfr = "apple",
     string.prefix(OS, "darwin").
-
-%---------------------------------------------------------------------------%
-
-:- pred gather_c_grade_defines(globals::in, string::out) is det.
-
-gather_c_grade_defines(Globals, GradeDefines) :-
-    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-    (
-        HighLevelCode = yes,
-        HighLevelCodeOpt = "-DMR_HIGHLEVEL_CODE "
-    ;
-        HighLevelCode = no,
-        HighLevelCodeOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, gcc_global_registers, GCC_Regs),
-    (
-        GCC_Regs = yes,
-        RegOpt = "-DMR_USE_GCC_GLOBAL_REGISTERS "
-    ;
-        GCC_Regs = no,
-        RegOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, gcc_non_local_gotos, GCC_Gotos),
-    (
-        GCC_Gotos = yes,
-        GotoOpt = "-DMR_USE_GCC_NONLOCAL_GOTOS "
-    ;
-        GCC_Gotos = no,
-        GotoOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, asm_labels, ASM_Labels),
-    (
-        ASM_Labels = yes,
-        AsmOpt = "-DMR_USE_ASM_LABELS "
-    ;
-        ASM_Labels = no,
-        AsmOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, parallel, Parallel),
-    (
-        Parallel = yes,
-        ParallelOpt = "-DMR_THREAD_SAFE "
-    ;
-        Parallel = no,
-        ParallelOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, threadscope, Threadscope),
-    (
-        Threadscope = yes,
-        ThreadscopeOpt = "-DMR_THREADSCOPE "
-    ;
-        Threadscope = no,
-        ThreadscopeOpt = ""
-    ),
-    globals.get_gc_method(Globals, GC_Method),
-    BoehmGC_Opt = "-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC ",
-    (
-        GC_Method = gc_automatic,
-        GC_Opt = ""
-    ;
-        GC_Method = gc_none,
-        GC_Opt = ""
-    ;
-        GC_Method = gc_boehm,
-        GC_Opt = BoehmGC_Opt
-    ;
-        GC_Method = gc_boehm_debug,
-        GC_Opt = BoehmGC_Opt ++
-            "-DMR_BOEHM_GC_DEBUG -DGC_DEBUG -DKEEP_BACKPTRS "
-    ;
-        GC_Method = gc_hgc,
-        GC_Opt = "-DMR_CONSERVATIVE_GC -DMR_HGC "
-    ;
-        GC_Method = gc_accurate,
-        GC_Opt = "-DMR_NATIVE_GC "
-    ),
-    globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
-    (
-        ProfileCalls = yes,
-        ProfileCallsOpt = "-DMR_MPROF_PROFILE_CALLS "
-    ;
-        ProfileCalls = no,
-        ProfileCallsOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, profile_time, ProfileTime),
-    (
-        ProfileTime = yes,
-        ProfileTimeOpt = "-DMR_MPROF_PROFILE_TIME "
-    ;
-        ProfileTime = no,
-        ProfileTimeOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
-    (
-        ProfileMemory = yes,
-        ProfileMemoryOpt = "-DMR_MPROF_PROFILE_MEMORY "
-    ;
-        ProfileMemory = no,
-        ProfileMemoryOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
-    (
-        ProfileDeep = yes,
-        ProfileDeepOpt = "-DMR_DEEP_PROFILING "
-    ;
-        ProfileDeep = no,
-        ProfileDeepOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, record_term_sizes_as_words,
-        RecordTermSizesAsWords),
-    globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
-        RecordTermSizesAsCells),
-    (
-        RecordTermSizesAsWords = yes,
-        RecordTermSizesAsCells = yes,
-        % This should have been caught in handle_options.
-        unexpected($pred, "inconsistent record term size options")
-    ;
-        RecordTermSizesAsWords = yes,
-        RecordTermSizesAsCells = no,
-        RecordTermSizesOpt = "-DMR_RECORD_TERM_SIZES "
-    ;
-        RecordTermSizesAsWords = no,
-        RecordTermSizesAsCells = yes,
-        RecordTermSizesOpt = "-DMR_RECORD_TERM_SIZES " ++
-            "-DMR_RECORD_TERM_SIZES_AS_CELLS "
-    ;
-        RecordTermSizesAsWords = no,
-        RecordTermSizesAsCells = no,
-        RecordTermSizesOpt = ""
-    ),
-
-    globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBits),
-    string.int_to_string(NumPtagBits, NumPtagBitsString),
-    NumPtagBitsOpt = "-DMR_TAGBITS=" ++ NumPtagBitsString ++ " ",
-    globals.lookup_bool_option(Globals, decl_debug, DeclDebug),
-    (
-        DeclDebug = yes,
-        DeclDebugOpt = "-DMR_DECL_DEBUG "
-    ;
-        DeclDebug = no,
-        DeclDebugOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, source_to_source_debug, SourceDebug),
-    (
-        SourceDebug = yes,
-        SourceDebugOpt = "-DMR_SS_DEBUG "
-    ;
-        SourceDebug = no,
-        SourceDebugOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, exec_trace, ExecTrace),
-    (
-        ExecTrace = yes,
-        ExecTraceOpt = "-DMR_EXEC_TRACE "
-    ;
-        ExecTrace = no,
-        ExecTraceOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, extend_stacks_when_needed, Extend),
-    globals.lookup_bool_option(Globals, stack_segments, StackSegments),
-    (
-        Extend = yes,
-        StackSegments = no,
-        ExtendOpt = "-DMR_EXTEND_STACKS_WHEN_NEEDED "
-    ;
-        Extend = no,
-        StackSegments = yes,
-        ExtendOpt = "-DMR_STACK_SEGMENTS "
-    ;
-        Extend = no,
-        StackSegments = no,
-        ExtendOpt = ""
-    ;
-        Extend = yes,
-        StackSegments = yes,
-        % This should have been caught in handle_options,
-        % but there is no code there to do so.
-        % XXX Should we delete --extend-stacks-when-needed?
-        % options.m has been listing it as "experimental" since 2007.
-        ExtendOpt = unexpected($pred,
-            "--extend-stacks-when-needed and --stack-segments")
-    ),
-    globals.lookup_bool_option(Globals, c_debug_grade, CDebugGrade),
-    (
-        CDebugGrade = yes,
-        % This grade option tells the C compiler to turn on the generation
-        % of debugging symbols and to disable the optimizations that
-        % would make the executable harder to debug in a C debugger
-        % such as gdb. However, here we gather only *macro* definitions,
-        % not general compiler flags.
-        CDebugGradeOpt = "-DMR_C_DEBUG_GRADE "
-    ;
-        CDebugGrade = no,
-        CDebugGradeOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, use_trail, UseTrail),
-    (
-        UseTrail = yes,
-        UseTrailOpt = "-DMR_USE_TRAIL "
-    ;
-        UseTrail = no,
-        UseTrailOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, use_minimal_model_stack_copy,
-        MinimalModelStackCopy),
-    globals.lookup_bool_option(Globals, use_minimal_model_own_stacks,
-        MinimalModelOwnStacks),
-    (
-        MinimalModelStackCopy = yes,
-        MinimalModelOwnStacks = yes,
-        % This should have been caught in handle_options.
-        unexpected($pred, "inconsistent minimal model options")
-    ;
-        MinimalModelStackCopy = yes,
-        MinimalModelOwnStacks = no,
-        MinimalModelBaseOpt = "-DMR_USE_MINIMAL_MODEL_STACK_COPY "
-    ;
-        MinimalModelStackCopy = no,
-        MinimalModelOwnStacks = yes,
-        MinimalModelBaseOpt = "-DMR_USE_MINIMAL_MODEL_OWN_STACKS "
-    ;
-        MinimalModelStackCopy = no,
-        MinimalModelOwnStacks = no,
-        MinimalModelBaseOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, minimal_model_debug,
-        MinimalModelDebug),
-    (
-        MinimalModelDebug = yes,
-        ( if MinimalModelBaseOpt = "" then
-            % We ignore the debug flag unless one of the base flags is set.
-            MinimalModelOpt = MinimalModelBaseOpt
-        else
-            MinimalModelOpt = MinimalModelBaseOpt ++
-                "-DMR_MINIMAL_MODEL_DEBUG "
-        )
-    ;
-        MinimalModelDebug = no,
-        MinimalModelOpt = MinimalModelBaseOpt
-    ),
-
-    globals.lookup_bool_option(Globals, pregenerated_dist, PregeneratedDist),
-    (
-        PregeneratedDist = yes,
-        PregeneratedDistOpt = "-DMR_PREGENERATED_DIST "
-    ;
-        PregeneratedDist = no,
-        PregeneratedDistOpt = ""
-    ),
-    globals.lookup_bool_option(Globals, single_prec_float, SinglePrecFloat),
-    (
-        SinglePrecFloat = yes,
-        SinglePrecFloatOpt = "-DMR_USE_SINGLE_PREC_FLOAT "
-    ;
-        SinglePrecFloat = no,
-        SinglePrecFloatOpt = ""
-    ),
-
-    globals.lookup_bool_option(Globals, use_regions, UseRegions),
-    (
-        UseRegions = yes,
-        UseRegionsOpt0 = "-DMR_USE_REGIONS ",
-        globals.lookup_bool_option(Globals, use_regions_debug,
-            UseRegionsDebug),
-        (
-            UseRegionsDebug = yes,
-            UseRegionsOpt1 = UseRegionsOpt0 ++ "-DMR_RBMM_DEBUG "
-        ;
-            UseRegionsDebug = no,
-            UseRegionsOpt1 = UseRegionsOpt0
-        ),
-        globals.lookup_bool_option(Globals, use_regions_profiling,
-            UseRegionsProfiling),
-        (
-            UseRegionsProfiling = yes,
-            UseRegionsOpt = UseRegionsOpt1 ++ "-DMR_RBMM_PROFILING "
-        ;
-            UseRegionsProfiling = no,
-            UseRegionsOpt = UseRegionsOpt1
-        )
-    ;
-        UseRegions = no,
-        UseRegionsOpt = ""
-    ),
-    string.append_list([
-        HighLevelCodeOpt,
-        RegOpt, GotoOpt, AsmOpt,
-        ParallelOpt,
-        ThreadscopeOpt,
-        GC_Opt,
-        ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt, ProfileDeepOpt,
-        RecordTermSizesOpt,
-        NumPtagBitsOpt,
-        ExtendOpt,
-        CDebugGradeOpt, DeclDebugOpt,
-        SourceDebugOpt,
-        ExecTraceOpt,
-        UseTrailOpt,
-        MinimalModelOpt,
-        PregeneratedDistOpt,
-        SinglePrecFloatOpt,
-        UseRegionsOpt], GradeDefines).
-
-%---------------------------------------------------------------------------%
-
-:- pred gather_c_include_dir_flags(globals::in, string::out) is det.
-
-gather_c_include_dir_flags(Globals, InclOpt) :-
-    globals.lookup_accumulating_option(Globals, c_include_directories,
-        C_Incl_Dirs),
-    InclOpt = string.append_list(list.condense(list.map(
-        (func(C_INCL) = ["-I", quote_shell_cmd_arg(C_INCL), " "]),
-        C_Incl_Dirs))).
 
 %---------------------------------------------------------------------------%
 
@@ -1660,35 +1345,322 @@ make_standalone_int_body(Globals, ProgressStream, BaseName, !IO) :-
     ).
 
 %---------------------------------------------------------------------------%
-%
-% C compiler flags.
-%
 
-output_c_compiler_flags(Globals, Stream, !IO) :-
+get_c_compiler_flags(Globals, CFlags) :-
     get_executable_object_code_type(Globals, PIC),
-    gather_c_compiler_flags(Globals, PIC, CFlags),
-    io.write_string(Stream, CFlags, !IO).
+    gather_c_compiler_flags(Globals, PIC, CFlags).
 
-%---------------------------------------------------------------------------%
-%
-% Grade defines flags.
-%
+%---------------------%
 
-output_c_grade_defines(Globals, Stream, !IO) :-
-    get_executable_object_code_type(Globals, _PIC),
-    gather_c_grade_defines(Globals, GradeDefines),
-    io.write_string(Stream, GradeDefines, !IO),
-    io.nl(Stream, !IO).
+get_c_grade_defines(Globals, GradeDefines) :-
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    (
+        HighLevelCode = yes,
+        HighLevelCodeOpt = "-DMR_HIGHLEVEL_CODE "
+    ;
+        HighLevelCode = no,
+        HighLevelCodeOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, gcc_global_registers, GCC_Regs),
+    (
+        GCC_Regs = yes,
+        RegOpt = "-DMR_USE_GCC_GLOBAL_REGISTERS "
+    ;
+        GCC_Regs = no,
+        RegOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, gcc_non_local_gotos, GCC_Gotos),
+    (
+        GCC_Gotos = yes,
+        GotoOpt = "-DMR_USE_GCC_NONLOCAL_GOTOS "
+    ;
+        GCC_Gotos = no,
+        GotoOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, asm_labels, ASM_Labels),
+    (
+        ASM_Labels = yes,
+        AsmOpt = "-DMR_USE_ASM_LABELS "
+    ;
+        ASM_Labels = no,
+        AsmOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    (
+        Parallel = yes,
+        ParallelOpt = "-DMR_THREAD_SAFE "
+    ;
+        Parallel = no,
+        ParallelOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, threadscope, Threadscope),
+    (
+        Threadscope = yes,
+        ThreadscopeOpt = "-DMR_THREADSCOPE "
+    ;
+        Threadscope = no,
+        ThreadscopeOpt = ""
+    ),
+    globals.get_gc_method(Globals, GC_Method),
+    BoehmGC_Opt = "-DMR_CONSERVATIVE_GC -DMR_BOEHM_GC ",
+    (
+        GC_Method = gc_automatic,
+        GC_Opt = ""
+    ;
+        GC_Method = gc_none,
+        GC_Opt = ""
+    ;
+        GC_Method = gc_boehm,
+        GC_Opt = BoehmGC_Opt
+    ;
+        GC_Method = gc_boehm_debug,
+        GC_Opt = BoehmGC_Opt ++
+            "-DMR_BOEHM_GC_DEBUG -DGC_DEBUG -DKEEP_BACKPTRS "
+    ;
+        GC_Method = gc_hgc,
+        GC_Opt = "-DMR_CONSERVATIVE_GC -DMR_HGC "
+    ;
+        GC_Method = gc_accurate,
+        GC_Opt = "-DMR_NATIVE_GC "
+    ),
+    globals.lookup_bool_option(Globals, profile_calls, ProfileCalls),
+    (
+        ProfileCalls = yes,
+        ProfileCallsOpt = "-DMR_MPROF_PROFILE_CALLS "
+    ;
+        ProfileCalls = no,
+        ProfileCallsOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, profile_time, ProfileTime),
+    (
+        ProfileTime = yes,
+        ProfileTimeOpt = "-DMR_MPROF_PROFILE_TIME "
+    ;
+        ProfileTime = no,
+        ProfileTimeOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, profile_memory, ProfileMemory),
+    (
+        ProfileMemory = yes,
+        ProfileMemoryOpt = "-DMR_MPROF_PROFILE_MEMORY "
+    ;
+        ProfileMemory = no,
+        ProfileMemoryOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, profile_deep, ProfileDeep),
+    (
+        ProfileDeep = yes,
+        ProfileDeepOpt = "-DMR_DEEP_PROFILING "
+    ;
+        ProfileDeep = no,
+        ProfileDeepOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_words,
+        RecordTermSizesAsWords),
+    globals.lookup_bool_option(Globals, record_term_sizes_as_cells,
+        RecordTermSizesAsCells),
+    (
+        RecordTermSizesAsWords = yes,
+        RecordTermSizesAsCells = yes,
+        % This should have been caught in handle_options.
+        unexpected($pred, "inconsistent record term size options")
+    ;
+        RecordTermSizesAsWords = yes,
+        RecordTermSizesAsCells = no,
+        RecordTermSizesOpt = "-DMR_RECORD_TERM_SIZES "
+    ;
+        RecordTermSizesAsWords = no,
+        RecordTermSizesAsCells = yes,
+        RecordTermSizesOpt = "-DMR_RECORD_TERM_SIZES " ++
+            "-DMR_RECORD_TERM_SIZES_AS_CELLS "
+    ;
+        RecordTermSizesAsWords = no,
+        RecordTermSizesAsCells = no,
+        RecordTermSizesOpt = ""
+    ),
 
-%---------------------------------------------------------------------------%
-%
-% C include directory flags.
-%
+    globals.lookup_int_option(Globals, num_ptag_bits, NumPtagBits),
+    string.int_to_string(NumPtagBits, NumPtagBitsString),
+    NumPtagBitsOpt = "-DMR_TAGBITS=" ++ NumPtagBitsString ++ " ",
+    globals.lookup_bool_option(Globals, decl_debug, DeclDebug),
+    (
+        DeclDebug = yes,
+        DeclDebugOpt = "-DMR_DECL_DEBUG "
+    ;
+        DeclDebug = no,
+        DeclDebugOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, source_to_source_debug, SourceDebug),
+    (
+        SourceDebug = yes,
+        SourceDebugOpt = "-DMR_SS_DEBUG "
+    ;
+        SourceDebug = no,
+        SourceDebugOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, exec_trace, ExecTrace),
+    (
+        ExecTrace = yes,
+        ExecTraceOpt = "-DMR_EXEC_TRACE "
+    ;
+        ExecTrace = no,
+        ExecTraceOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, extend_stacks_when_needed, Extend),
+    globals.lookup_bool_option(Globals, stack_segments, StackSegments),
+    (
+        Extend = yes,
+        StackSegments = no,
+        ExtendOpt = "-DMR_EXTEND_STACKS_WHEN_NEEDED "
+    ;
+        Extend = no,
+        StackSegments = yes,
+        ExtendOpt = "-DMR_STACK_SEGMENTS "
+    ;
+        Extend = no,
+        StackSegments = no,
+        ExtendOpt = ""
+    ;
+        Extend = yes,
+        StackSegments = yes,
+        % This should have been caught in handle_options,
+        % but there is no code there to do so.
+        % XXX Should we delete --extend-stacks-when-needed?
+        % options.m has been listing it as "experimental" since 2007.
+        ExtendOpt = unexpected($pred,
+            "--extend-stacks-when-needed and --stack-segments")
+    ),
+    globals.lookup_bool_option(Globals, c_debug_grade, CDebugGrade),
+    (
+        CDebugGrade = yes,
+        % This grade option tells the C compiler to turn on the generation
+        % of debugging symbols and to disable the optimizations that
+        % would make the executable harder to debug in a C debugger
+        % such as gdb. However, here we gather only *macro* definitions,
+        % not general compiler flags.
+        CDebugGradeOpt = "-DMR_C_DEBUG_GRADE "
+    ;
+        CDebugGrade = no,
+        CDebugGradeOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, use_trail, UseTrail),
+    (
+        UseTrail = yes,
+        UseTrailOpt = "-DMR_USE_TRAIL "
+    ;
+        UseTrail = no,
+        UseTrailOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, use_minimal_model_stack_copy,
+        MinimalModelStackCopy),
+    globals.lookup_bool_option(Globals, use_minimal_model_own_stacks,
+        MinimalModelOwnStacks),
+    (
+        MinimalModelStackCopy = yes,
+        MinimalModelOwnStacks = yes,
+        % This should have been caught in handle_options.
+        unexpected($pred, "inconsistent minimal model options")
+    ;
+        MinimalModelStackCopy = yes,
+        MinimalModelOwnStacks = no,
+        MinimalModelBaseOpt = "-DMR_USE_MINIMAL_MODEL_STACK_COPY "
+    ;
+        MinimalModelStackCopy = no,
+        MinimalModelOwnStacks = yes,
+        MinimalModelBaseOpt = "-DMR_USE_MINIMAL_MODEL_OWN_STACKS "
+    ;
+        MinimalModelStackCopy = no,
+        MinimalModelOwnStacks = no,
+        MinimalModelBaseOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, minimal_model_debug,
+        MinimalModelDebug),
+    (
+        MinimalModelDebug = yes,
+        ( if MinimalModelBaseOpt = "" then
+            % We ignore the debug flag unless one of the base flags is set.
+            MinimalModelOpt = MinimalModelBaseOpt
+        else
+            MinimalModelOpt = MinimalModelBaseOpt ++
+                "-DMR_MINIMAL_MODEL_DEBUG "
+        )
+    ;
+        MinimalModelDebug = no,
+        MinimalModelOpt = MinimalModelBaseOpt
+    ),
 
-output_c_include_directory_flags(Globals, Stream, !IO) :-
-    gather_c_include_dir_flags(Globals, InclOpts),
-    io.write_string(Stream, InclOpts, !IO),
-    io.nl(Stream, !IO).
+    globals.lookup_bool_option(Globals, pregenerated_dist, PregeneratedDist),
+    (
+        PregeneratedDist = yes,
+        PregeneratedDistOpt = "-DMR_PREGENERATED_DIST "
+    ;
+        PregeneratedDist = no,
+        PregeneratedDistOpt = ""
+    ),
+    globals.lookup_bool_option(Globals, single_prec_float, SinglePrecFloat),
+    (
+        SinglePrecFloat = yes,
+        SinglePrecFloatOpt = "-DMR_USE_SINGLE_PREC_FLOAT "
+    ;
+        SinglePrecFloat = no,
+        SinglePrecFloatOpt = ""
+    ),
+
+    globals.lookup_bool_option(Globals, use_regions, UseRegions),
+    (
+        UseRegions = yes,
+        UseRegionsOpt0 = "-DMR_USE_REGIONS ",
+        globals.lookup_bool_option(Globals, use_regions_debug,
+            UseRegionsDebug),
+        (
+            UseRegionsDebug = yes,
+            UseRegionsOpt1 = UseRegionsOpt0 ++ "-DMR_RBMM_DEBUG "
+        ;
+            UseRegionsDebug = no,
+            UseRegionsOpt1 = UseRegionsOpt0
+        ),
+        globals.lookup_bool_option(Globals, use_regions_profiling,
+            UseRegionsProfiling),
+        (
+            UseRegionsProfiling = yes,
+            UseRegionsOpt = UseRegionsOpt1 ++ "-DMR_RBMM_PROFILING "
+        ;
+            UseRegionsProfiling = no,
+            UseRegionsOpt = UseRegionsOpt1
+        )
+    ;
+        UseRegions = no,
+        UseRegionsOpt = ""
+    ),
+    string.append_list([
+        HighLevelCodeOpt,
+        RegOpt, GotoOpt, AsmOpt,
+        ParallelOpt,
+        ThreadscopeOpt,
+        GC_Opt,
+        ProfileCallsOpt, ProfileTimeOpt, ProfileMemoryOpt, ProfileDeepOpt,
+        RecordTermSizesOpt,
+        NumPtagBitsOpt,
+        ExtendOpt,
+        CDebugGradeOpt, DeclDebugOpt,
+        SourceDebugOpt,
+        ExecTraceOpt,
+        UseTrailOpt,
+        MinimalModelOpt,
+        PregeneratedDistOpt,
+        SinglePrecFloatOpt,
+        UseRegionsOpt], GradeDefines).
+
+%---------------------%
+
+get_c_include_dir_flags(Globals, InclOpts) :-
+    globals.lookup_accumulating_option(Globals, c_include_directories,
+        CInclDirs),
+    InclOpts = string.append_list(list.condense(list.map(
+        (func(CIncl) = ["-I", quote_shell_cmd_arg(CIncl), " "]),
+        CInclDirs))).
+
+%---------------------%
 
 get_framework_directories(Globals, FrameworkDirs) :-
     globals.lookup_accumulating_option(Globals, framework_directories,
