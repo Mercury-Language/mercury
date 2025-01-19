@@ -455,33 +455,14 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
         DebugFlagsOpt = linker_debug_flags,
         TraceFlagsOpt = linker_trace_flags,
         UndefOpt = "",
-        ReserveStackSizeOpt = reserve_stack_size_flags(Globals)
+        ReserveStackSizeOpt = get_reserve_stack_size_flags(Globals)
     ),
 
     globals.lookup_string_option(Globals, linker_lto_flags, LTOOpts),
 
     % Should the executable be stripped?
-    globals.lookup_bool_option(Globals, strip, Strip),
-    ( if
-        LinkedTargetType = executable,
-        Strip = bool.yes
-    then
-        globals.lookup_string_option(Globals, linker_strip_flag,
-            LinkerStripOpt),
-        globals.lookup_string_option(Globals, strip_executable_command,
-            StripExeCommand),
-        globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
-        ( if MercuryLinkage = "shared" then
-            StripExeFlagsOpt = strip_executable_shared_flags
-        else
-            StripExeFlagsOpt = strip_executable_static_flags
-        ),
-        globals.lookup_string_option(Globals, StripExeFlagsOpt, StripExeFlags)
-    else
-        LinkerStripOpt = "",
-        StripExeCommand = "",
-        StripExeFlags = ""
-    ),
+    get_strip_flags(Globals, LinkedTargetType,
+        LinkerStripOpt, StripExeCommand, StripExeFlags),
 
     globals.lookup_bool_option(Globals, target_debug, TargetDebug),
     (
@@ -507,26 +488,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
     ),
 
     % Are the thread libraries needed?
-    use_thread_libs(Globals, UseThreadLibs),
-    (
-        UseThreadLibs = bool.yes,
-        globals.lookup_string_option(Globals, ThreadFlagsOpt, ThreadOpts),
-
-        % Determine which options are needed to link to libhwloc, if
-        % libhwloc is not used then the string option will be empty.
-        ( if Linkage = "shared" then
-            HwlocFlagsOpt = hwloc_libs
-        else if Linkage = "static" then
-            HwlocFlagsOpt = hwloc_static_libs
-        else
-            unexpected($pred, "Invalid linkage")
-        ),
-        globals.lookup_string_option(Globals, HwlocFlagsOpt, HwlocOpts)
-    ;
-        UseThreadLibs = bool.no,
-        ThreadOpts = "",
-        HwlocOpts = ""
-    ),
+    get_thread_flags(Globals, ThreadFlagsOpt, Linkage, ThreadOpts, HwlocOpts),
 
     % Find the Mercury standard libraries.
     get_mercury_std_libs(Globals, LinkedTargetType, MercuryStdLibs),
@@ -557,25 +519,8 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
     get_framework_directories(Globals, FrameworkDirectories),
 
     % Set up the install name for shared libraries.
-    globals.lookup_bool_option(Globals, shlib_linker_use_install_name,
-        UseInstallName),
-    ( if
-        UseInstallName = bool.yes,
-        LinkedTargetType = shared_library
-    then
-        % NOTE: `ShLibFileName' must *not* be prefixed with a directory.
-        %       get_install_name_option will prefix it with the correct
-        %       directory which is the one where the library is going to
-        %       be installed, *not* where it is going to be built.
-        %
-        BaseFileName = sym_name_to_string(ModuleName),
-        globals.lookup_string_option(Globals, shared_library_extension,
-            SharedLibExt),
-        ShLibFileName = "lib" ++ BaseFileName ++ SharedLibExt,
-        get_install_name_option(Globals, ShLibFileName, InstallNameOpt)
-    else
-        InstallNameOpt = ""
-    ),
+    get_install_name_opt(Globals, ModuleName, LinkedTargetType,
+        InstallNameOpt),
 
     globals.get_trace_level(Globals, TraceLevel),
     TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
@@ -720,9 +665,9 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
 
 %---------------------%
 
-:- func reserve_stack_size_flags(globals) = string.
+:- func get_reserve_stack_size_flags(globals) = string.
 
-reserve_stack_size_flags(Globals) = Flags :-
+get_reserve_stack_size_flags(Globals) = Flags :-
     globals.lookup_int_option(Globals, cstack_reserve_size, ReserveStackSize),
     ( if ReserveStackSize = -1 then
         Flags = ""
@@ -740,6 +685,63 @@ reserve_stack_size_flags(Globals) = Flags :-
             ),
             string.format("-stack:%d", [i(ReserveStackSize)], Flags)
         )
+    ).
+
+%---------------------%
+
+:- pred get_strip_flags(globals::in, linked_target_type::in,
+    string::out, string::out, string::out) is det.
+
+get_strip_flags(Globals, LinkedTargetType,
+        LinkerStripOpt, StripExeCommand, StripExeFlags) :-
+    % Should the executable be stripped?
+    globals.lookup_bool_option(Globals, strip, Strip),
+    ( if
+        LinkedTargetType = executable,
+        Strip = yes
+    then
+        globals.lookup_string_option(Globals, linker_strip_flag,
+            LinkerStripOpt),
+        globals.lookup_string_option(Globals, strip_executable_command,
+            StripExeCommand),
+        globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
+        ( if MercuryLinkage = "shared" then
+            StripExeFlagsOpt = strip_executable_shared_flags
+        else
+            StripExeFlagsOpt = strip_executable_static_flags
+        ),
+        globals.lookup_string_option(Globals, StripExeFlagsOpt, StripExeFlags)
+    else
+        LinkerStripOpt = "",
+        StripExeCommand = "",
+        StripExeFlags = ""
+    ).
+
+%---------------------%
+
+:- pred get_thread_flags(globals::in, option::in, string::in,
+    string::out, string::out) is det.
+
+get_thread_flags(Globals, ThreadFlagsOpt, Linkage, ThreadOpts, HwlocOpts) :-
+    use_thread_libs(Globals, UseThreadLibs),
+    (
+        UseThreadLibs = bool.yes,
+        globals.lookup_string_option(Globals, ThreadFlagsOpt, ThreadOpts),
+
+        % Determine which options are needed to link to libhwloc, if
+        % libhwloc is not used then the string option will be empty.
+        ( if Linkage = "shared" then
+            HwlocFlagsOpt = hwloc_libs
+        else if Linkage = "static" then
+            HwlocFlagsOpt = hwloc_static_libs
+        else
+            unexpected($pred, "Invalid linkage")
+        ),
+        globals.lookup_string_option(Globals, HwlocFlagsOpt, HwlocOpts)
+    ;
+        UseThreadLibs = bool.no,
+        ThreadOpts = "",
+        HwlocOpts = ""
     ).
 
 %---------------------%
@@ -1053,6 +1055,32 @@ get_runtime_library_path_opts(Globals, LinkedTargetType,
         )
     else
         RpathOpts = ""
+    ).
+
+%---------------------%
+
+:- pred get_install_name_opt(globals::in, module_name::in,
+    linked_target_type::in, string::out) is det.
+
+get_install_name_opt(Globals, ModuleName, LinkedTargetType, InstallNameOpt) :-
+    globals.lookup_bool_option(Globals, shlib_linker_use_install_name,
+        UseInstallName),
+    ( if
+        UseInstallName = bool.yes,
+        LinkedTargetType = shared_library
+    then
+        % NOTE: `ShLibFileName' must *not* be prefixed with a directory.
+        %       get_install_name_option will prefix it with the correct
+        %       directory which is the one where the library is going to
+        %       be installed, *not* where it is going to be built.
+        %
+        BaseFileName = sym_name_to_string(ModuleName),
+        globals.lookup_string_option(Globals, shared_library_extension,
+            SharedLibExt),
+        ShLibFileName = "lib" ++ BaseFileName ++ SharedLibExt,
+        get_install_name_option(Globals, ShLibFileName, InstallNameOpt)
+    else
+        InstallNameOpt = ""
     ).
 
 %---------------------%
