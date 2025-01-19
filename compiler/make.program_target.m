@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2013-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -105,27 +105,27 @@
 
 make_linked_target(ProgressStream, Globals, LinkedTargetFile,
         LinkedTargetSucceeded, !Info, !Specs, !IO) :-
-    LinkedTargetFile = linked_target_file(_MainModuleName, FileType),
+    LinkedTargetFile = linked_target_file(_MainModuleName, LinkedTargetType),
     (
-        FileType = shared_library,
+        LinkedTargetType = shared_library,
         ExtraOptions = ["--compile-to-shared-lib"]
     ;
-        ( FileType = executable
-        ; FileType = static_library
-        ; FileType = csharp_executable
-        ; FileType = csharp_library
-        ; FileType = java_executable
-        ; FileType = java_archive
+        ( LinkedTargetType = executable
+        ; LinkedTargetType = static_library
+        ; LinkedTargetType = csharp_executable
+        ; LinkedTargetType = csharp_library
+        ; LinkedTargetType = java_executable
+        ; LinkedTargetType = java_archive
         ),
         ExtraOptions = []
     ),
     globals.lookup_accumulating_option(Globals, lib_linkages, LibLinkages),
     ( if
         (
-            FileType = static_library,
+            LinkedTargetType = static_library,
             not list.member("static", LibLinkages)
         ;
-            FileType = shared_library,
+            LinkedTargetType = shared_library,
             not list.member("shared", LibLinkages)
         )
     then
@@ -153,7 +153,7 @@ make_linked_target(ProgressStream, Globals, LinkedTargetFile,
 
 make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions,
         ProgressStream, Succeeded, !Info, !Specs, !IO) :-
-    LinkedTargetFile = linked_target_file(MainModuleName, _FileType),
+    LinkedTargetFile = linked_target_file(MainModuleName, _LinkedTargetType),
 
     % When using `--intermodule-analysis', perform an analysis pass first.
     % The analysis of one module may invalidate the results of a module
@@ -206,7 +206,7 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions,
 
 make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
         !Info, !IO) :-
-    LinkedTargetFile = linked_target_file(MainModuleName, FileType),
+    LinkedTargetFile = linked_target_file(MainModuleName, LinkedTargetType),
     find_reachable_local_modules(ProgressStream, Globals,
         MainModuleName, DepsSucceeded, AllModules, !Info, !IO),
     KeepGoing = make_info_get_keep_going(!.Info),
@@ -216,7 +216,7 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
     then
         Succeeded = did_not_succeed
     else
-        get_object_code_type(Globals, FileType, PIC),
+        get_object_code_type(Globals, LinkedTargetType, PIC),
 
         % Build the `.c' files first so that errors are reported
         % as soon as possible.
@@ -313,7 +313,8 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
             )
         ),
 
-        linked_target_file_name_full_curdir(Globals, MainModuleName, FileType,
+        linked_target_file_name_full_curdir(Globals, MainModuleName,
+        LinkedTargetType,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName, !IO),
         get_file_timestamp(search_auth_cur_dir, FullMainModuleLinkedFileName,
             _SearchDirs, MaybeTimestamp, !Info, !IO),
@@ -347,7 +348,8 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
             ;
                 MaybeErrorStream = es_ok(MESI, ErrorStream),
                 build_linked_target(ProgressStream, Globals,
-                    MainModuleName, FileType, FullMainModuleLinkedFileName,
+                    MainModuleName, LinkedTargetType,
+                    FullMainModuleLinkedFileName,
                     CurDirMainModuleLinkedFileName, MaybeOldestLhsTimestamp,
                     AllModules, ObjModules, CompilationTarget, PIC,
                     ShouldRebuildLhs, Succeeded0, !Info, !IO),
@@ -355,7 +357,7 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
                     Globals, MainModuleName, MESI, ErrorStream, !Info, !IO)
             ),
             Cleanup = linked_target_cleanup(ProgressStream, Globals,
-                MainModuleName, FileType,
+                MainModuleName, LinkedTargetType,
                 FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName),
             teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
                 Succeeded0, Succeeded, !Info, !IO)
@@ -497,7 +499,7 @@ get_foreign_object_targets(ProgressStream, Globals, PIC,
     maybe_succeeded::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-build_linked_target(ProgressStream, Globals, MainModuleName, FileType,
+build_linked_target(ProgressStream, Globals, MainModuleName, LinkedTargetType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         MaybeOldestLhsTimestamp, AllModules, ObjModules,
         CompilationTarget, PIC, ShouldRebuildLhs, Succeeded, !Info, !IO) :-
@@ -517,7 +519,7 @@ build_linked_target(ProgressStream, Globals, MainModuleName, FileType,
     (
         PreLinkSucceeded = succeeded,
         build_linked_target_2(ProgressStream, Globals,
-            MainModuleName, FileType,
+            MainModuleName, LinkedTargetType,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
             MaybeOldestLhsTimestamp, AllModules, ObjModules,
             CompilationTarget, PIC, ShouldRebuildLhs, Succeeded, !Info, !IO)
@@ -533,7 +535,8 @@ build_linked_target(ProgressStream, Globals, MainModuleName, FileType,
     maybe_succeeded::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-build_linked_target_2(ProgressStream, Globals0, MainModuleName, FileType,
+build_linked_target_2(ProgressStream, Globals0, MainModuleName,
+        LinkedTargetType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         MaybeOldestLhsTimestamp, AllModules, ObjModules,
         CompilationTarget, PIC, ShouldRebuildLhs, Succeeded, !Info, !IO) :-
@@ -547,17 +550,17 @@ build_linked_target_2(ProgressStream, Globals0, MainModuleName, FileType,
     % libraries linked using dlopen().
     AllModulesList = set.to_sorted_list(AllModules),
     (
-        FileType = executable,
+        LinkedTargetType = executable,
         make_init_obj_file_check_result(ProgressStream, NoLinkObjsGlobals,
             MainModuleName, AllModulesList, InitObjSucceeded, InitObjects,
             !Info, !IO)
     ;
-        ( FileType = static_library
-        ; FileType = shared_library
-        ; FileType = csharp_executable
-        ; FileType = csharp_library
-        ; FileType = java_executable
-        ; FileType = java_archive
+        ( LinkedTargetType = static_library
+        ; LinkedTargetType = shared_library
+        ; LinkedTargetType = csharp_executable
+        ; LinkedTargetType = csharp_library
+        ; LinkedTargetType = java_executable
+        ; LinkedTargetType = java_archive
         ),
         InitObjSucceeded = succeeded,
         InitObjects = []
@@ -611,12 +614,12 @@ build_linked_target_2(ProgressStream, Globals0, MainModuleName, FileType,
             ExtraObjShouldRebuildLhs = all_lhs_files_up_to_date
         then
             post_link_maybe_warn_linked_target_up_to_date(ProgressStream,
-                NoLinkObjsGlobals, MainModuleName, FileType,
+                NoLinkObjsGlobals, MainModuleName, LinkedTargetType,
                 FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
                 Succeeded, !Info, !IO)
         else
             rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
-                MainModuleName, FileType, FullMainModuleLinkedFileName,
+                MainModuleName, LinkedTargetType, FullMainModuleLinkedFileName,
                 AllModulesList, ObjModules, InitObjects, LinkObjects,
                 CompilationTarget, PIC, Succeeded, !Info, !IO)
         )
@@ -655,11 +658,11 @@ make_init_obj_file_check_result(ProgressStream, NoLinkObjsGlobals,
     io::di, io::uo) is det.
 
 post_link_maybe_warn_linked_target_up_to_date(ProgressStream,
-        NoLinkObjsGlobals, MainModuleName, FileType,
+        NoLinkObjsGlobals, MainModuleName, LinkedTargetType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         Succeeded, !Info, !IO) :-
     MainModuleLinkedTarget =
-        top_target_file(MainModuleName, linked_target(FileType)),
+        top_target_file(MainModuleName, linked_target(LinkedTargetType)),
     ( if FullMainModuleLinkedFileName = CurDirMainModuleLinkedFileName then
         maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
             MainModuleLinkedTarget, FullMainModuleLinkedFileName, !Info,
@@ -669,7 +672,8 @@ post_link_maybe_warn_linked_target_up_to_date(ProgressStream,
     else
         post_link_maybe_make_symlink_or_copy(NoLinkObjsGlobals, ProgressStream,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
-            MainModuleName, FileType, Succeeded, MadeSymlinkOrCopy, !IO),
+            MainModuleName, LinkedTargetType, Succeeded,
+            MadeSymlinkOrCopy, !IO),
         (
             MadeSymlinkOrCopy = yes,
             maybe_symlink_or_copy_linked_target_msg(NoLinkObjsGlobals,
@@ -692,7 +696,7 @@ post_link_maybe_warn_linked_target_up_to_date(ProgressStream,
     io::di, io::uo) is det.
 
 rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
-        MainModuleName, FileType, FullMainModuleLinkedFileName,
+        MainModuleName, LinkedTargetType, FullMainModuleLinkedFileName,
         AllModulesList, ObjModules, InitObjectFileNames, LinkObjectFileNames,
         CompilationTarget, PIC, Succeeded, !Info, !IO) :-
     maybe_making_filename_msg(NoLinkObjsGlobals,
@@ -738,11 +742,12 @@ rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
         % if an interrupt is received.
         call_in_forked_process(
             link_and_write_error_specs(NoLinkObjsGlobals, ProgressStream,
-                FileType, MainModuleName, AllObjects),
+                LinkedTargetType, MainModuleName, AllObjects),
             Succeeded, !IO)
     ),
     CmdLineTargets0 = make_info_get_command_line_targets(!.Info),
-    set.delete(top_target_file(MainModuleName, linked_target(FileType)),
+    set.delete(
+        top_target_file(MainModuleName, linked_target(LinkedTargetType)),
         CmdLineTargets0, CmdLineTargets),
     make_info_set_command_line_targets(CmdLineTargets, !Info),
     (
@@ -787,7 +792,7 @@ get_module_foreign_object_files(ProgressStream, Globals, PIC,
 
 link_and_write_error_specs(Globals, ProgressStream,
         LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
-    compile_target_code.link(Globals, ProgressStream,
+    link_files_into_executable_or_library(ProgressStream, Globals,
         LinkTargetType, ModuleName, ObjectsList, Specs, Succeeded, !IO),
     % The errors we can get here are not specific to any Mercury module.
     write_error_specs(ProgressStream, Globals, Specs, !IO).
@@ -796,7 +801,8 @@ link_and_write_error_specs(Globals, ProgressStream,
     module_name::in, linked_target_type::in, file_name::in, file_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-linked_target_cleanup(ProgressStream, Globals, MainModuleName, FileType,
+linked_target_cleanup(ProgressStream, Globals,
+        MainModuleName, LinkedTargetType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         !Info, !IO) :-
     remove_file_for_make(ProgressStream, Globals, verbose_make,
@@ -808,16 +814,16 @@ linked_target_cleanup(ProgressStream, Globals, MainModuleName, FileType,
             CurDirMainModuleLinkedFileName, !Info, !IO)
     ),
     (
-        FileType = executable,
+        LinkedTargetType = executable,
         remove_init_files(ProgressStream, Globals, verbose_make,
             MainModuleName, !Info, !IO)
     ;
-        ( FileType = static_library
-        ; FileType = shared_library
-        ; FileType = csharp_executable
-        ; FileType = csharp_library
-        ; FileType = java_executable
-        ; FileType = java_archive
+        ( LinkedTargetType = static_library
+        ; LinkedTargetType = shared_library
+        ; LinkedTargetType = csharp_executable
+        ; LinkedTargetType = csharp_library
+        ; LinkedTargetType = java_executable
+        ; LinkedTargetType = java_archive
         )
     ).
 

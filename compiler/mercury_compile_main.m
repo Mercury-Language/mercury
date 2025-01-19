@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2017-2024 The Mercury Team.
+% Copyright (C) 2017-2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -417,8 +417,8 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
             then
                 generate_executable(ProgressStream, ErrorStream, Globals,
                     InvokedByMmcMake, EnvOptFileVariables,
-                    EnvVarArgs, OptionArgs, ModulesToLink, ExtraObjFiles,
-                    FirstModule, !IO)
+                    EnvVarArgs, OptionArgs,
+                    FirstModule, ModulesToLink, ExtraObjFiles, !IO)
             else
                 true
             )
@@ -451,18 +451,18 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
 :- pred generate_executable(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_invoked_by_mmc_make::in,
     env_optfile_variables::in, list(string)::in, list(string)::in,
-    list(string)::in, list(string)::in, string::in, io::di, io::uo) is det.
+    module_name::in, list(module_name)::in, list(string)::in,
+    io::di, io::uo) is det.
 
 generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
         EnvOptFileVariables, EnvVarArgs, OptionArgs,
-        ModulesToLink, ExtraObjFiles, FirstModule, !IO) :-
-    file_name_to_module_name(FirstModule, MainModuleName),
+        FirstModule, ModulesToLink, ExtraObjFiles, !IO) :-
     globals.get_target(Globals, Target),
     (
         Target = target_java,
         % For Java, at the "link" step we just generate a shell script;
         % the actual linking will be done at runtime by the Java interpreter.
-        create_java_shell_script(ProgressStream, Globals, MainModuleName,
+        create_java_shell_script(ProgressStream, Globals, FirstModule,
             Succeeded, !IO)
     ;
         ( Target = target_c
@@ -474,23 +474,24 @@ generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
         (
             InvokedByMmcMake = op_mode_invoked_by_mmc_make,
             % `mmc --make' has already set up the options.
-            link_module_list(ProgressStream, ModulesToLink, ExtraObjFiles,
-                Globals, Specs, Succeeded, !IO)
+            link_modules_into_executable_or_shared_library(ProgressStream,
+                Globals, ModulesToLink, ExtraObjFiles, Specs, Succeeded, !IO)
         ;
             InvokedByMmcMake = op_mode_not_invoked_by_mmc_make,
             get_default_options(Globals, DefaultOptionTable),
             globals.get_maybe_stdlib_grades(Globals, MaybeStdLibGrades),
             setup_for_build_with_module_options(ProgressStream,
                 DefaultOptionTable, MaybeStdLibGrades, not_invoked_by_mmc_make,
-                MainModuleName, EnvOptFileVariables, EnvVarArgs, OptionArgs,
+                FirstModule, EnvOptFileVariables, EnvVarArgs, OptionArgs,
                 [], MayBuild, !IO),
             (
                 MayBuild = may_not_build(Specs),
                 Succeeded = did_not_succeed
             ;
                 MayBuild = may_build(_AllOptionArgs, BuildGlobals),
-                link_module_list(ProgressStream, ModulesToLink, ExtraObjFiles,
-                    BuildGlobals, Specs, Succeeded, !IO)
+                link_modules_into_executable_or_shared_library(ProgressStream,
+                    BuildGlobals, ModulesToLink, ExtraObjFiles,
+                    Specs, Succeeded, !IO)
             )
         ),
         write_error_specs(ErrorStream, Globals, Specs, !IO)
@@ -503,7 +504,7 @@ generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
     io.text_output_stream::in, io.text_input_stream::in, globals::in,
     op_mode_args::in, op_mode_invoked_by_mmc_make::in,
     env_optfile_variables::in, list(string)::in, list(string)::in,
-    cord(string)::in, cord(string)::out,
+    cord(module_name)::in, cord(module_name)::out,
     cord(string)::in, cord(string)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
@@ -549,7 +550,8 @@ setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
     op_mode_args::in, op_mode_invoked_by_mmc_make::in,
     env_optfile_variables::in,
     list(string)::in, list(string)::in, list(string)::in,
-    cord(string)::in, cord(string)::out, cord(string)::in, cord(string)::out,
+    cord(module_name)::in, cord(module_name)::out,
+    cord(string)::in, cord(string)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
@@ -579,15 +581,16 @@ setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
 :- pred do_process_compiler_cmd_line_args(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_args::in,
     op_mode_invoked_by_mmc_make::in, list(string)::in, list(string)::in,
-    cord(string)::in, cord(string)::out, cord(string)::in, cord(string)::out,
+    cord(module_name)::in, cord(module_name)::out,
+    cord(string)::in, cord(string)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 do_process_compiler_cmd_line_args(_, _, _, _, _, _, [],
-        !Modules, !ExtraObjFiles, !HaveParseTreeMaps, !IO).
+        !ModulesToLink, !ExtraObjFiles, !HaveParseTreeMaps, !IO).
 do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, OptionArgs, [Arg | Args],
-        !Modules, !ExtraObjFiles, !HaveParseTreeMaps, !IO) :-
+        !ModulesToLink, !ExtraObjFiles, !HaveParseTreeMaps, !IO) :-
     % `mmc --make' has already set up the options.
     FileOrModule = string_to_file_or_module(Arg),
     do_process_compiler_arg(ProgressStream, ErrorStream, Globals,
@@ -599,11 +602,11 @@ do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
         Args = [_ | _],
         gc.garbage_collect(!IO)
     ),
-    !:Modules = !.Modules ++ cord.from_list(ArgModules),
+    !:ModulesToLink = !.ModulesToLink ++ cord.from_list(ArgModules),
     !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
     do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, OptionArgs, Args,
-        !Modules, !ExtraObjFiles, !HaveParseTreeMaps, !IO).
+        !ModulesToLink, !ExtraObjFiles, !HaveParseTreeMaps, !IO).
 
 %---------------------%
 
@@ -623,7 +626,7 @@ do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     io.text_output_stream::in, globals::in,
     op_mode_args::in, op_mode_invoked_by_mmc_make::in,
     env_optfile_variables::in, list(string)::in, list(string)::in, string::in,
-    list(string)::out, list(string)::out,
+    list(module_name)::out, list(string)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
@@ -659,7 +662,7 @@ setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
 :- pred do_process_compiler_arg(io.text_output_stream::in,
     io.text_output_stream::in, globals::in,
     op_mode_args::in, op_mode_invoked_by_mmc_make::in, list(string)::in,
-    file_or_module::in, list(string)::out, list(string)::out,
+    file_or_module::in, list(module_name)::out, list(string)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
@@ -1091,7 +1094,7 @@ find_modules_to_recompile(ProgressStream, Globals0, Globals, FileOrModule,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
     op_mode_invoked_by_mmc_make::in, list(string)::in,
     file_or_module::in, modules_to_recompile::in,
-    list(string)::out, list(string)::out, list(error_spec)::out,
+    list(module_name)::out, list(string)::out, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 

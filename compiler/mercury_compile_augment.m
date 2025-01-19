@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2017-2024 The Mercury Team.
+% Copyright (C) 2017-2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -24,6 +24,8 @@
 :- import_module libs.globals.
 :- import_module libs.op_mode.
 :- import_module libs.timestamp.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.parse_error.
@@ -40,9 +42,8 @@
     io.text_output_stream::in, globals::in, op_mode_augment::in,
     op_mode_invoked_by_mmc_make::in, file_name::in, maybe(timestamp)::in,
     read_module_errors::in, parse_tree_src::in,
-    modules_to_recompile::in, list(string)::out, list(string)::out,
-    list(error_spec)::out,
-    have_parse_tree_maps::in, have_parse_tree_maps::out,
+    modules_to_recompile::in, list(module_name)::out, list(string)::out,
+    list(error_spec)::out, have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -65,9 +66,7 @@
 :- import_module hlds.passes_aux.
 :- import_module libs.maybe_util.
 :- import_module libs.options.
-:- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.check_module_interface.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
@@ -145,7 +144,7 @@ augment_and_process_source_file(ProgressStream, ErrorStream, Globals,
 :- pred augment_and_process_all_submodules(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
     op_mode_invoked_by_mmc_make::in, maybe(timestamp)::in,
-    list(burdened_module)::in, list(string)::out, list(string)::out,
+    list(burdened_module)::in, list(module_name)::out, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
@@ -159,15 +158,15 @@ augment_and_process_all_submodules(ProgressStream, ErrorStream, Globals,
             OpModeAugment, InvokedByMmcMake, MaybeTimestamp),
         BurdenedModules, ExtraObjFileLists,
         !Specs, !HaveParseTreeMaps, !IO),
-    list.map(module_to_link, BurdenedModules, ModulesToLink),
+    list.map(burdened_module_to_module_name, BurdenedModules, ModulesToLink),
     list.condense(ExtraObjFileLists, ExtraObjFiles).
 
-:- pred module_to_link(burdened_module::in, string::out) is det.
+:- pred burdened_module_to_module_name(burdened_module::in, module_name::out)
+    is det.
 
-module_to_link(BurdenedModule, ModuleToLink) :-
+burdened_module_to_module_name(BurdenedModule, ModuleName) :-
     BurdenedModule = burdened_module(_, ParseTreeModuleSrc),
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    module_name_to_file_name_stem(ModuleName, ModuleToLink).
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name.
 
 %---------------------------------------------------------------------------%
 

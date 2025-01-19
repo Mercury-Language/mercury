@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2013-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -503,12 +503,15 @@ build_object_code(ProgressStream, ErrorStream, Globals, Target, PIC,
             Succeeded, !IO)
     ;
         Target = target_csharp,
+        % XXX This code uses infrastructure we built for *linking several
+        % files* as a way to *compile just one file*. It would be nice
+        % to know the reasoning behind that decision.
         % XXX LEGACY
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs),
             ModuleName, CsharpFile, _CsharpFileProposed, !IO),
-        compile_target_code.link(Globals, ProgressStream, csharp_library,
-            ModuleName, [CsharpFile], Specs, Succeeded, !IO),
+        link_files_into_executable_or_library(ProgressStream, Globals,
+            csharp_library, ModuleName, [CsharpFile], Specs, Succeeded, !IO),
         % XXX MAKE This predicate, build_object_code, is invoked only as the
         % top call in a newly-spawned-off process. We cannot return Specs
         % to our caller, because our caller is in a separate process.

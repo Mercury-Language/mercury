@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -248,9 +248,9 @@ make_top_target(ProgressStream, Globals, Target, Succeeded, !Info, !IO) :-
             make_module_target([], ProgressStream, Globals,
                 dep_target(TargetFile), Succeeded, !Info, !IO)
         ;
-            TargetType = linked_target(ProgramTargetType),
-            LinkedTargetFile = linked_target_file(ModuleName,
-                ProgramTargetType),
+            TargetType = linked_target(LinkedTargetType),
+            LinkedTargetFile =
+                linked_target_file(ModuleName, LinkedTargetType),
             make_linked_target(ProgressStream, Globals, LinkedTargetFile,
                 Succeeded, !Info, [], Specs, !IO),
             write_error_specs(ErrorStream, Globals, Specs, !IO)
