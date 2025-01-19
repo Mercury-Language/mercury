@@ -501,7 +501,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
     % (See the comment above get_restricted_command_lin_link_opts/3 for
     % details.)
     get_restricted_command_line_link_opts(Globals, LinkedTargetType,
-        ResCmdLinkOpts),
+        RestrictedCmdLinkOpts),
 
     globals.lookup_accumulating_option(Globals, LDFlagsOpt, LDFlagsList),
     join_string_list(LDFlagsList, "", "", " ", LDFlags),
@@ -536,63 +536,22 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
     join_quoted_string_list(Frameworks, "-framework ", "", " ", FrameworkOpts),
 
     get_link_opts_for_libraries(Globals, MaybeLinkLibraries, Specs, !IO),
-    globals.lookup_string_option(Globals, linker_opt_separator, LinkOptSep),
     (
         MaybeLinkLibraries = maybe.yes(LinkLibrariesList),
         join_quoted_string_list(LinkLibrariesList, "", "", " ",
             LinkLibraries),
-
-        globals.lookup_bool_option(Globals, restricted_command_line,
-            RestrictedCommandLine),
+        prepare_for_link_exe_or_shared_lib_cmd(ProgressStream, Globals,
+            ObjectsList, PrepareResult, !IO),
         (
-            % If we have a restricted command line, then it is possible
-            % that following link command will call sub-commands itself
-            % and thus overflow the command line, so in this case
-            % we first create an archive of all of the object files.
-            % XXX Can someone who knows the actual reason for
-            % restricted_command_line please clarify the above sentence?
-            RestrictedCommandLine = yes,
-            globals.lookup_string_option(Globals, library_extension, LibExt),
-            io.file.get_temp_directory(TempDir, !IO),
-            io.file.make_temp_file(TempDir, "mtmp", LibExt,
-                TmpArchiveResult, !IO),
-            (
-                TmpArchiveResult = ok(TmpArchive),
-                % Only include actual object files in the temporary archive,
-                % not other files such as other archives.
-                filter_object_files(Globals, ObjectsList,
-                    ProperObjectFiles, NonObjectFiles),
-                % Delete the currently empty output file first, otherwise ar
-                % will fail to recognise its file format.
-                io.file.remove_file(TmpArchive, _, !IO),
-                create_archive(Globals, ProgressStream, TmpArchive, yes,
-                    ProperObjectFiles, ArchiveSucceeded, !IO),
-                MaybeDeleteTmpArchive = yes(TmpArchive),
-                join_quoted_string_list([TmpArchive | NonObjectFiles],
-                    "", "", " ", Objects)
-            ;
-                TmpArchiveResult = error(Error),
-                io.format(ProgressStream,
-                    "Could not create temporary file: %s\n",
-                    [s(error_message(Error))], !IO),
-                ArchiveSucceeded = did_not_succeed,
-                MaybeDeleteTmpArchive = no,
-                join_quoted_string_list(ObjectsList, "", "", " ", Objects)
-            )
-        ;
-            RestrictedCommandLine = no,
-            ArchiveSucceeded = succeeded,
-            MaybeDeleteTmpArchive = no,
-            join_quoted_string_list(ObjectsList, "", "", " ", Objects)
-        ),
-
-        (
-            ArchiveSucceeded = succeeded,
+            PrepareResult = prepare_succeeded(Objects, MaybeDemangleCmd,
+                MaybeFileToDelete),
 
             % Note that LDFlags may contain `-l' options so it should come
             % after Objects.
             globals.lookup_string_option(Globals, CommandOpt, Command),
             get_linker_output_option(Globals, LinkedTargetType, OutputOpt),
+            globals.lookup_string_option(Globals, linker_opt_separator,
+                LinkOptSep),
             string.append_list([
                 Command, " ",
                 StaticOpts, " ",
@@ -612,27 +571,16 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
                 DebugOpts, " ",
                 SanitizerOpts, " ",
                 FrameworkOpts, " ",
-                ResCmdLinkOpts, " ",
+                RestrictedCmdLinkOpts, " ",
                 LDFlags, " ",
                 LinkLibraries, " ",
                 MercuryStdLibs, " ",
                 HwlocOpts, " ",
                 SystemLibs], LinkCmd),
-
-            globals.lookup_bool_option(Globals, demangle, Demangle),
-            (
-                Demangle = bool.yes,
-                globals.lookup_string_option(Globals, demangle_command,
-                    DemangleCmd),
-                MaybeDemangleCmd = maybe.yes(DemangleCmd)
-            ;
-                Demangle = bool.no,
-                MaybeDemangleCmd = maybe.no
-            ),
-
             invoke_system_command_maybe_filter_output(Globals,
                 ProgressStream, ProgressStream, cmd_verbose_commands,
                 LinkCmd, MaybeDemangleCmd, LinkSucceeded, !IO),
+
             % Invoke strip utility separately if required.
             ( if
                 LinkSucceeded = succeeded,
@@ -647,16 +595,16 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
                     StripCmd, no, Succeeded, !IO)
             else
                 Succeeded = LinkSucceeded
+            ),
+            (
+                MaybeFileToDelete = maybe.yes(FileToDelete),
+                io.file.remove_file(FileToDelete, _, !IO)
+            ;
+                MaybeFileToDelete = maybe.no
             )
         ;
-            ArchiveSucceeded = did_not_succeed,
+            PrepareResult = prepare_failed,
             Succeeded = did_not_succeed
-        ),
-        (
-            MaybeDeleteTmpArchive = maybe.yes(FileToDelete),
-            io.file.remove_file(FileToDelete, _, !IO)
-        ;
-            MaybeDeleteTmpArchive = maybe.no
         )
     ;
         MaybeLinkLibraries = maybe.no,
@@ -974,7 +922,7 @@ make_link_lib(Globals, LinkedTargetType, LibName, LinkOpt) :-
     linked_target_type::in(c_exe_or_shared_lib), string::out) is det.
 
 get_restricted_command_line_link_opts(Globals, LinkedTargetType,
-        ResCmdLinkOpts) :-
+        RestrictedCmdLinkOpts) :-
     globals.lookup_bool_option(Globals, restricted_command_line,
         RestrictedCommandLine),
     (
@@ -984,7 +932,7 @@ get_restricted_command_line_link_opts(Globals, LinkedTargetType,
             get_c_compiler_type(Globals, C_CompilerType),
             (
                 C_CompilerType = cc_cl_x86(_),
-                ResCmdLinkFlags = [
+                RestrictedCmdLinkFlags = [
                     "-nologo",
                     "-ignore:4001",
                     "-subsystem:console",
@@ -992,10 +940,11 @@ get_restricted_command_line_link_opts(Globals, LinkedTargetType,
                     "-entry:wmainCRTStartup",
                     "-defaultlib:libcmt"
                 ],
-                join_string_list(ResCmdLinkFlags, "", "", " ", ResCmdLinkOpts)
+                join_string_list(RestrictedCmdLinkFlags, "", "", " ",
+                    RestrictedCmdLinkOpts)
             ;
                 C_CompilerType = cc_cl_x64(_),
-                ResCmdLinkFlags = [
+                RestrictedCmdLinkFlags = [
                     "-nologo",
                     "-ignore:4001",
                     "-subsystem:console",
@@ -1003,21 +952,22 @@ get_restricted_command_line_link_opts(Globals, LinkedTargetType,
                     "-entry:wmainCRTStartup",
                     "-defaultlib:libcmt"
                 ],
-                join_string_list(ResCmdLinkFlags, "", "", " ", ResCmdLinkOpts)
+                join_string_list(RestrictedCmdLinkFlags, "", "", " ",
+                    RestrictedCmdLinkOpts)
             ;
                 ( C_CompilerType = cc_gcc(_, _, _)
                 ; C_CompilerType = cc_clang(_)
                 ; C_CompilerType = cc_unknown
                 ),
-                ResCmdLinkOpts = ""
+                RestrictedCmdLinkOpts = ""
             )
         ;
             LinkedTargetType = shared_library,
-            ResCmdLinkOpts = ""
+            RestrictedCmdLinkOpts = ""
         )
     ;
         RestrictedCommandLine = no,
-        ResCmdLinkOpts = ""
+        RestrictedCmdLinkOpts = ""
     ).
 
 %---------------------%
@@ -1138,6 +1088,81 @@ get_linker_output_option(Globals, LinkedTargetType, OutputOpt) :-
         ; C_CompilerType = cc_unknown
         ),
         OutputOpt = " -o "
+    ).
+
+%---------------------%
+
+:- type prepare_to_link_result
+    --->    prepare_succeeded(string, maybe(string), maybe(string))
+            % Objects, MaybeDemangleCmd, MaybeTmpArchiveToDelete
+    ;       prepare_failed.
+            % Any error messages have already been printed.
+
+:- pred prepare_for_link_exe_or_shared_lib_cmd(io.text_output_stream::in,
+    globals::in, list(string)::in,
+    prepare_to_link_result::out, io::di, io::uo) is det.
+
+prepare_for_link_exe_or_shared_lib_cmd(ProgressStream, Globals, ObjectsList,
+        PrepareResult, !IO) :-
+    globals.lookup_bool_option(Globals, demangle, Demangle),
+    (
+        Demangle = yes,
+        globals.lookup_string_option(Globals, demangle_command, DemangleCmd),
+        MaybeDemangleCmd = yes(DemangleCmd)
+    ;
+        Demangle = no,
+        MaybeDemangleCmd = no
+    ),
+    globals.lookup_bool_option(Globals, restricted_command_line,
+        RestrictedCommandLine),
+    (
+        % If we have a restricted command line, then it is possible
+        % that following link command will call sub-commands itself
+        % and thus overflow the command line, so in this case
+        % we first create an archive of all of the object files.
+        % XXX Can someone who knows the actual reason for
+        % restricted_command_line please clarify the above sentence?
+        RestrictedCommandLine = yes,
+        globals.lookup_string_option(Globals, library_extension, LibExt),
+        io.file.get_temp_directory(TempDir, !IO),
+        io.file.make_temp_file(TempDir, "mtmp", LibExt,
+            TmpArchiveResult, !IO),
+        (
+            TmpArchiveResult = ok(TmpArchive),
+            % Only include actual object files in the temporary archive,
+            % not other files such as other archives.
+            filter_object_files(Globals, ObjectsList,
+                ProperObjectFiles, NonObjectFiles),
+            % Delete the currently empty output file first, otherwise ar
+            % will fail to recognise its file format.
+            io.file.remove_file(TmpArchive, _, !IO),
+            create_archive(Globals, ProgressStream, TmpArchive, yes,
+                ProperObjectFiles, ArchiveSucceeded, !IO),
+            (
+                ArchiveSucceeded = succeeded,
+                join_quoted_string_list([TmpArchive | NonObjectFiles],
+                    "", "", " ", Objects),
+                MaybeTmpArchiveToDelete = yes(TmpArchive),
+                PrepareResult = prepare_succeeded(Objects, MaybeDemangleCmd,
+                    MaybeTmpArchiveToDelete)
+            ;
+                ArchiveSucceeded = did_not_succeed,
+                io.file.remove_file(TmpArchive, _, !IO),
+                PrepareResult = prepare_failed
+            )
+        ;
+            TmpArchiveResult = error(Error),
+            io.format(ProgressStream,
+                "Could not create temporary file: %s\n",
+                [s(error_message(Error))], !IO),
+            PrepareResult = prepare_failed
+        )
+    ;
+        RestrictedCommandLine = no,
+        join_quoted_string_list(ObjectsList, "", "", " ", Objects),
+        MaybeTmpArchiveToDelete = no,
+        PrepareResult = prepare_succeeded(Objects, MaybeDemangleCmd,
+            MaybeTmpArchiveToDelete)
     ).
 
 %---------------------------------------------------------------------------%
