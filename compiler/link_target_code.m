@@ -913,7 +913,7 @@ make_link_lib(Globals, LinkedTargetType, LibName, LinkOpt) :-
     % When using --restricted-command-line with Visual C we add all the object
     % files to a temporary archive before linking an executable.
     % However, if only .lib files are given on the command line then
-    % the linker needs to manually told some details that it usually infers
+    % the linker needs to be manually told some details that it usually infers
     % from the object files, for example the program entry point and the
     % target machine type. link.exe will print a warning (#4001) when this
     % occurs so we also need to shut that up.
