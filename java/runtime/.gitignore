@@ -1,5 +1,4 @@
 *.so
 *.pic_o
 Constants.java
-Native.java
 *.class
