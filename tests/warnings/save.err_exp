@@ -1,3 +1,6 @@
+save.m:015: Warning: this [38;5;87m`:- import_module' declaration for module `int'[39;49m [38;5;203mis[39;49m
+save.m:015:   [38;5;203mout of order[39;49m with respect to the preceding `:- import_module'
+save.m:015:   declaration for module `list'.
 save.m:026: The call to predicate [38;5;87m`io.write_string'/3[39;49m could have an additional
 save.m:026:   argument [38;5;226mexplicitly specifying a stream.[39;49m
 save.m:028: The call to predicate [38;5;87m`prolog.see'/4[39;49m [38;5;226mcould be made redundant[39;49m by

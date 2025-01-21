@@ -26,8 +26,8 @@
 
 :- import_module prof_info.
 
-:- import_module io.
 :- import_module digraph.
+:- import_module io.
 
 %---------------------------------------------------------------------------%
 

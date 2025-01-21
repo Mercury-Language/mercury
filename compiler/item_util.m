@@ -25,6 +25,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_parse_tree.
 
+:- import_module bool.
 :- import_module list.
 :- import_module map.
 :- import_module one_or_more.
@@ -74,8 +75,8 @@
     module_names_contexts::in, module_names_contexts::out,
     module_names_contexts::in, module_names_contexts::out) is det.
 
-    % classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
-    %   ImportUseMap, !Specs) :-
+    % classify_int_imp_import_use_modules(WarnUnsortedAvailBlocks,
+    %   ModuleName, IntAvails, ImpAvails, ImportUseMap, !Specs) :-
     %
     % The input is item_avails showing which modules are imported and/or used
     % where in the interface and implementation sections. This input
@@ -95,7 +96,15 @@
     % We return a structured representation of the non-duplicate entries
     % in ImportUseMap.
     %
-:- pred classify_int_imp_import_use_modules(module_name::in,
+    % If WarnUnsortedAvailBlocks is "yes", then generate warnings
+    %
+    % - when more than one import_module or use_module declaration occurs
+    %   on the same line, and
+    %
+    % - when a block of import_module and/or use_module declarations
+    %   that occur on consecutive lines is not sorted on module name.
+    %
+:- pred classify_int_imp_import_use_modules(bool::in, module_name::in,
     list(item_avail)::in, list(item_avail)::in,
     section_import_and_or_use_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -354,11 +363,14 @@
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_foreign.
 
-:- import_module bool.
+:- import_module char.
+:- import_module int.
 :- import_module maybe.
+:- import_module multi_map.
 :- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
+:- import_module string.
 :- import_module term_context.
 :- import_module varset.
 
@@ -497,8 +509,8 @@ accumulate_imports_uses_maps([Avail | Avails], !ImportMap, !UseMap) :-
 
 %---------------------%
 
-classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
-        !:ImportUseMap, !Specs) :-
+classify_int_imp_import_use_modules(WarnUnsortedAvailBlocks, ModuleName,
+        IntAvails, ImpAvails, !:ImportUseMap, !Specs) :-
     get_imports_uses_maps(IntAvails, IntImportContextsMap, IntUseContextsMap),
     get_imports_uses_maps(ImpAvails, ImpImportContextsMap, ImpUseContextsMap),
     map.map_foldl(
@@ -522,7 +534,19 @@ classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
 
     warn_if_avail_for_self(ModuleName, !ImportUseMap, !Specs),
     list.foldl2(warn_if_avail_for_ancestor(ModuleName),
-        get_ancestors(ModuleName), !ImportUseMap, !Specs).
+        get_ancestors(ModuleName), !ImportUseMap, !Specs),
+
+    (
+        WarnUnsortedAvailBlocks = no
+    ;
+        WarnUnsortedAvailBlocks = yes,
+        % Processing IntAvails and ImpAvails together lets us warn
+        % about the unlikely but possible case of the same line containing
+        % e.g. one import_module declaration in the interface section
+        % and another in the implementation section, with a ":- interface"
+        % or ":- implementation" marker in between.
+        warn_unsorted_avail_blocks(IntAvails ++ ImpAvails, !Specs)
+    ).
 
 classify_int_imp_use_modules(ModuleName, IntUseContextsMap, ImpUseContextsMap,
         !:UseMap, !Specs) :-
@@ -936,6 +960,173 @@ section_use_first_context(Use) = Context :-
     ).
 
 %---------------------%
+
+:- pred warn_unsorted_avail_blocks(list(item_avail)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+warn_unsorted_avail_blocks(Avails, !Specs) :-
+    build_import_use_file_map(Avails, multi_map.init, FileMap),
+    map.foldl(generate_unsorted_avail_block_warnings_for_file,
+        FileMap, !Specs).
+
+    % Values of this type map a file name to the list of import_module
+    % and/or use_module declarations in that file.
+:- type import_use_file_map == multi_map(string, import_use_line).
+
+:- type import_use_line
+    --->    import_use_line(
+                % On this line in the file whose entry we are in ...
+                int,
+
+                % ... there is an import or use of this module name.
+                % The next field specifies which.
+                string,
+
+                % The word "import_module" or the word "use_module".
+                string
+
+                % We want the line number field first, so that sorting
+                % a list of import_use_lines makes it trivial to find
+                % blocks of consecutive imports and/or uses.
+            ).
+
+:- pred build_import_use_file_map(list(item_avail)::in,
+    import_use_file_map::in, import_use_file_map::out) is det.
+
+build_import_use_file_map([], !FileMap).
+build_import_use_file_map([Avail | Avails], !FileMap) :-
+    (
+        Avail = avail_import(avail_import_info(ModuleName, Context, _)),
+        AvailDecl = "import_module"
+    ;
+        Avail = avail_use(avail_use_info(ModuleName, Context, _)),
+        AvailDecl = "use_module"
+    ),
+    ModuleNameStr = sym_name_to_string(ModuleName),
+    Context = context(FileName, LineNumber),
+    ImportUseLine = import_use_line(LineNumber, ModuleNameStr, AvailDecl),
+    multi_map.add(FileName, ImportUseLine, !FileMap),
+    build_import_use_file_map(Avails, !FileMap).
+
+:- pred generate_unsorted_avail_block_warnings_for_file(string::in,
+    list(import_use_line)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+generate_unsorted_avail_block_warnings_for_file(FileName, ImportUseLines,
+        !Specs) :-
+    list.sort(ImportUseLines, SortedImportUseLines),
+    (
+        SortedImportUseLines = []
+        % This should not happen, but there is no point in aborting here.
+    ;
+        SortedImportUseLines = [FirstLine | LaterLines],
+        generate_unsorted_avail_block_warnings(FileName, FirstLine,
+            LaterLines, !Specs)
+    ).
+
+:- pred generate_unsorted_avail_block_warnings(string::in,
+    import_use_line::in, list(import_use_line)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+generate_unsorted_avail_block_warnings(_FileName, _, [], !Specs).
+generate_unsorted_avail_block_warnings(FileName, PrevImportUseLine,
+        [ImportUseLine | ImportUseLines], !Specs) :-
+    PrevImportUseLine = import_use_line(PrevLineNum, PrevModuleNameStr,
+        PrevAvailDecl),
+    ImportUseLine = import_use_line(CurLineNum, CurModuleNameStr,
+        CurAvailDecl),
+    ( if CurLineNum = PrevLineNum then
+        Pieces = [words("Warning: this")] ++
+            color_as_subject([decl(CurAvailDecl),
+                words("declaration for module"), quote(CurModuleNameStr)]) ++
+            color_as_incorrect([words("is on the same line")]) ++
+            [words("as the preceding"),
+            decl(PrevAvailDecl), words("declaration for module"),
+            quote(PrevModuleNameStr), suffix("."), nl],
+        Context = context(FileName, CurLineNum),
+        Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    else if
+        CurLineNum = PrevLineNum + 1,
+        module_names_are_in_order(PrevModuleNameStr, CurModuleNameStr) = no
+    then
+        Pieces = [words("Warning: this")] ++
+            color_as_subject([decl(CurAvailDecl),
+                words("declaration for module"), quote(CurModuleNameStr)]) ++
+            color_as_incorrect([words("is out of order")]) ++
+            [words("with respect to the preceding"),
+            decl(PrevAvailDecl), words("declaration for module"),
+            quote(PrevModuleNameStr), suffix("."), nl],
+        Context = context(FileName, CurLineNum),
+        Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    else
+        true
+    ),
+    generate_unsorted_avail_block_warnings(FileName,
+        ImportUseLine, ImportUseLines, !Specs).
+
+:- func module_names_are_in_order(string, string) = bool.
+
+module_names_are_in_order(PrevModuleNameStr, CurModuleNameStr) = InOrder :-
+    compare(CmpResult, PrevModuleNameStr, CurModuleNameStr),
+    (
+        CmpResult = (<),
+        % The two module names are in the excepted ascending order.
+        InOrder = yes
+    ;
+        CmpResult = (=),
+        % The code that looks for duplicate imports and/or uses, which
+        % also handles the case where the duplicate appearances are *not*
+        % next to each other, will generate a warning for this case.
+        % We don't want to generate two warnings for the same problem.
+        InOrder = yes
+    ;
+        CmpResult = (>),
+        string.to_char_list(PrevModuleNameStr, PrevChars),
+        string.to_char_list(CurModuleNameStr, CurChars),
+        % We want to allow import sequences such as
+        %
+        %   :- import_module int8.
+        %   :- import_module int16.
+        %   :- import_module int32.
+        %   :- import_module int64.
+        %
+        % even though lexicographically, int16 < int8. So we consider
+        % two module names to be in order if
+        %
+        % - they consist of nothing but digits starting at the point
+        %   of their first difference, and
+        %
+        % - the numbers that those digits represent are in order.
+        InOrder = module_names_are_in_numerical_order(PrevChars, CurChars)
+    ).
+
+:- func module_names_are_in_numerical_order(list(char), list(char)) = bool.
+
+module_names_are_in_numerical_order([], []) = _ :-
+    unexpected($pred, "CmpResult is >, but char lists are identical").
+module_names_are_in_numerical_order([], [_ | _]) = no.
+module_names_are_in_numerical_order([_ | _], []) = no.
+module_names_are_in_numerical_order([PrevChar | PrevChars],
+        [CurChar | CurChars]) = InOrder :-
+    ( if PrevChar = CurChar then
+        InOrder = module_names_are_in_numerical_order(PrevChars, CurChars)
+    else
+        string.from_char_list([PrevChar | PrevChars], PrevSuffix),
+        string.from_char_list([CurChar | CurChars], CurSuffix),
+        ( if
+            string.to_int(PrevSuffix, PrevNum),
+            string.to_int(CurSuffix, CurNum),
+            PrevNum < CurNum
+        then
+            InOrder = yes
+        else
+            InOrder = no
+        )
+    ).
+
+%---------------------------------------------------------------------------%
 
 import_and_or_use_map_section_to_maybe_implicit(SectionImportUseMap,
         ImportUseMap) :-

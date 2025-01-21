@@ -3,3 +3,8 @@ unused_interface_import.m:009:   warning: module
 unused_interface_import.m:009:   [38;5;87m`unused_interface_import_helper_1'[39;49m is imported
 unused_interface_import.m:009:   in the interface, but it is [38;5;203mnot used in the[39;49m
 unused_interface_import.m:009:   [38;5;203minterface.[39;49m
+unused_interface_import.m:009: Warning: this [38;5;87m`:- import_module' declaration for[39;49m
+unused_interface_import.m:009:   [38;5;87mmodule `unused_interface_import_helper_1'[39;49m [38;5;203mis[39;49m
+unused_interface_import.m:009:   [38;5;203mout of order[39;49m with respect to the preceding
+unused_interface_import.m:009:   `:- import_module' declaration for module
+unused_interface_import.m:009:   `unused_interface_import_helper_2'.

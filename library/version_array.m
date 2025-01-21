@@ -288,8 +288,8 @@
 
 :- implementation.
 
-:- import_module int.
 :- import_module exception.
+:- import_module int.
 :- import_module string.
 
 %---------------------------------------------------------------------------%

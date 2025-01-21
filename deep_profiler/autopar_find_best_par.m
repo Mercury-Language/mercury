@@ -58,8 +58,8 @@
 :- import_module benchmarking.
 :- import_module digraph.
 :- import_module float.
-:- import_module io.
 :- import_module int.
+:- import_module io.
 :- import_module map.
 :- import_module pair.
 :- import_module require.

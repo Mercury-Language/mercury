@@ -103,8 +103,8 @@
 :- implementation.
 
 :- import_module exception.
-:- import_module thread.semaphore.
 :- import_module mutvar.
+:- import_module thread.semaphore.
 
 %---------------------------------------------------------------------------%
 

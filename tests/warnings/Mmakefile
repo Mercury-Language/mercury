@@ -61,6 +61,7 @@ ERRORCHECK_PROGS = \
 	unknown_warning \
 	unneeded_mode_specific_clause \
 	unsigned_zero_cmp \
+	unsorted_import_blocks \
 	unused_args_test \
 	unused_import \
 	unused_interface_import \

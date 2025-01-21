@@ -87,8 +87,8 @@
 
 :- implementation.
 
-:- import_module require.
 :- import_module list.
+:- import_module require.
 :- import_module string.
 
 %---------------------------------------------------------------------------%

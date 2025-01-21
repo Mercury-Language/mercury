@@ -2415,6 +2415,7 @@ handle_opmode_implications(OpMode, !Globals) :-
             globals.set_option(halt_at_warn, bool(HaltAtWarn), !Globals),
             globals.set_option(warn_unused_interface_imports, bool(no),
                 !Globals),
+            turn_off_all_style_warnings(!Globals),
             (
                 ( OpModeArgsMI = omif_int0
                 ; OpModeArgsMI = omif_int1_int2
@@ -2442,6 +2443,7 @@ handle_opmode_implications(OpMode, !Globals) :-
                 globals.lookup_bool_option(!.Globals, halt_at_warn_make_opt,
                     HaltAtWarn),
                 globals.set_option(halt_at_warn, bool(HaltAtWarn), !Globals),
+                turn_off_all_style_warnings(!Globals),
                 Smart = bool.no,
                 Inform = bool.no
             ;
@@ -2452,6 +2454,7 @@ handle_opmode_implications(OpMode, !Globals) :-
                 globals.lookup_bool_option(!.Globals, halt_at_warn_make_opt,
                     HaltAtWarn),
                 globals.set_option(halt_at_warn, bool(HaltAtWarn), !Globals),
+                turn_off_all_style_warnings(!Globals),
                 Smart = bool.no,
                 Inform = bool.no
             ;
@@ -2459,6 +2462,7 @@ handle_opmode_implications(OpMode, !Globals) :-
                 ; OpModeAugment = opmau_make_xml_documentation
                 ; OpModeAugment = opmau_typecheck_only
                 ),
+                turn_off_all_style_warnings(!Globals),
                 Smart = bool.no,
                 Inform = bool.no
             ;
@@ -2541,6 +2545,14 @@ handle_opmode_implications(OpMode, !Globals) :-
         globals.set_option(inform_generated_type_spec_pragmas, bool(Inform),
             !Globals)
     ).
+
+:- pred turn_off_all_style_warnings(globals::in, globals::out) is det.
+
+turn_off_all_style_warnings(!Globals) :-
+    globals.get_options(!.Globals, OptionTable0),
+    set_all_options_to(style_warning_options, bool(no),
+        OptionTable0, OptionTable),
+    globals.set_options(OptionTable, !Globals).
 
 %---------------------%
 

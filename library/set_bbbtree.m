@@ -447,8 +447,8 @@
 
 :- implementation.
 
-:- import_module require.
 :- import_module int.
+:- import_module require.
 
 % Implementation based on "Functional Pearls: Efficient sets - a balancing act"
 % by Stephen Adams, J. Functional Programming 3 (4): 553-561, Oct 1993.

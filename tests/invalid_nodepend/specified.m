@@ -15,8 +15,8 @@
 :- import_module benchmarking.
 :- import_module int.
 :- import_module list.
-:- import_module require.
 :- import_module pair.
+:- import_module require.
 
 main(!IO) :-
     perform_trials(aplp_vs_vplp, [1, 4], 14, 3, 0, 0, !IO),

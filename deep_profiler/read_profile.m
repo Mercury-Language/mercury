@@ -33,14 +33,14 @@
 
 :- import_module array_util.
 :- import_module io_combinator.
-:- import_module measurements.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
+:- import_module measurements.
 
-:- import_module assoc_list.
 :- import_module array.
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
 :- import_module int.

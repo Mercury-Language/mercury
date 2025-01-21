@@ -218,7 +218,7 @@ check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0, !Specs) :-
         "trying to convert non-ifk_int0 parse_tree_int to parse_tree_int0"),
 
     classify_include_modules(IntIncls, ImpIncls, InclMap, !Specs),
-    classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
+    classify_int_imp_import_use_modules(no, ModuleName, IntAvails, ImpAvails,
         SectionImportUseMap, !Specs),
 
     set.list_to_set(list.map(fim_item_to_spec, IntFIMs), IntFIMSpecs),
@@ -380,7 +380,7 @@ check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1, !Specs) :-
         "trying to convert non-ifk_int1 parse_tree_int to parse_tree_int1"),
 
     classify_include_modules(IntIncls, ImpIncls, InclMap, !Specs),
-    classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
+    classify_int_imp_import_use_modules(no, ModuleName, IntAvails, ImpAvails,
         SectionImportUseMap, !Specs),
     map.foldl2(restrict_to_section_use_map_entry(".int"),
         SectionImportUseMap, map.init, SectionUseMap, !Specs),
@@ -630,7 +630,7 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
     classify_include_modules(IntIncls, [], InclMap, !Specs),
     map.foldl(add_only_int_include, InclMap, map.init, IntInclMap),
 
-    classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
+    classify_int_imp_import_use_modules(no, ModuleName, IntAvails, ImpAvails,
         SectionImportUseMap, !Specs),
     map.foldl2(restrict_to_section_use_map_entry(".int2"),
         SectionImportUseMap, map.init, SectionUseMap, !Specs),
@@ -807,7 +807,7 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
     classify_include_modules(IntIncls, [], InclMap, !Specs),
     map.foldl(add_only_int_include, InclMap, map.init, IntInclMap),
 
-    classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
+    classify_int_imp_import_use_modules(no, ModuleName, IntAvails, ImpAvails,
         SectionImportUseMap, !Specs),
     map.foldl2(restrict_to_int_import_map_entry(".int3"),
         SectionImportUseMap, map.init, IntImportMap, !Specs),
@@ -1577,8 +1577,10 @@ check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
     ImpFinalises = IntFinalises ++ ImpFinalises0,
     ImpMutables = IntMutables ++ ImpMutables0,
 
-    classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
-        SectionImportUseMap, !Specs),
+    globals.lookup_bool_option(Globals, warn_unsorted_import_blocks,
+        WarnUnsortedImportBlocks),
+    classify_int_imp_import_use_modules(WarnUnsortedImportBlocks, ModuleName,
+        IntAvails, ImpAvails, SectionImportUseMap, !Specs),
     import_and_or_use_map_section_to_maybe_implicit(SectionImportUseMap,
         ImportUseMap0),
     extend_import_and_or_use_map_with_implicits(Globals,

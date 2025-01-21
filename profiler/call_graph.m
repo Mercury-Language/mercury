@@ -33,9 +33,9 @@
 
 :- implementation.
 
-:- import_module read.
-:- import_module options.
 :- import_module globals.
+:- import_module options.
+:- import_module read.
 
 :- import_module bool.
 :- import_module maybe.

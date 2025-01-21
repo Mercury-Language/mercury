@@ -17,8 +17,8 @@
 :- module string.parse_runtime.
 :- interface.
 
-:- import_module string.parse_util.
 :- import_module list.
+:- import_module string.parse_util.
 
 %---------------------------------------------------------------------------%
 

@@ -124,8 +124,8 @@
 :- implementation.
 
 :- import_module int.
-:- import_module version_array.
 :- import_module require.
+:- import_module version_array.
 
     % A version_bitmap is represented as an array of ints where each int stores
     % int.bits_per_int bits. The first element of the array (index 0)

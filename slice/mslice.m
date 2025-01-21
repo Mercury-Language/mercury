@@ -24,8 +24,8 @@
 :- implementation.
 
 :- import_module mdbcomp.
-:- import_module mdbcomp.slice_and_dice.
 :- import_module mdbcomp.shared_utilities.
+:- import_module mdbcomp.slice_and_dice.
 
 :- import_module bool.
 :- import_module getopt.

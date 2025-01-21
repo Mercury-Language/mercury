@@ -12,8 +12,8 @@
 
 :- interface.
 
-:- import_module list.
 :- import_module int.
+:- import_module list.
 
 % The pragma shouldn't be allowed in the interface
 :- pragma require_tail_recursion(length/2, [warn]).

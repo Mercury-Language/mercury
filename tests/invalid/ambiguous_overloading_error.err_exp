@@ -1,3 +1,8 @@
+ambiguous_overloading_error.m:054: Warning: this [38;5;87m`:- import_module' declaration[39;49m
+ambiguous_overloading_error.m:054:   [38;5;87mfor module `float'[39;49m [38;5;203mis out of order[39;49m with
+ambiguous_overloading_error.m:054:   respect to the preceding
+ambiguous_overloading_error.m:054:   `:- import_module' declaration for module
+ambiguous_overloading_error.m:054:   `int'.
 ambiguous_overloading_error.m:059: In clause for predicate `ambig_overload1'/1:
 ambiguous_overloading_error.m:059:   error: excessively ambiguous overloading.
 ambiguous_overloading_error.m:059:   The following symbol was overloaded in the

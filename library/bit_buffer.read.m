@@ -36,8 +36,8 @@
 :- module bit_buffer.read.
 :- interface.
 
-:- import_module io.
 :- import_module bitmap.
+:- import_module io.
 
 :- type read_buffer(Stream, State, Error).
     % <= stream.bulk_reader(Stream, byte_index, bitmap, State, Error).

@@ -21,8 +21,8 @@
 
 :- interface.
 
-:- import_module mdb.name_mangle.
 :- import_module io.
+:- import_module mdb.name_mangle.
 
 :- type link_mode
     --->    lazy        % RTLD_LAZY

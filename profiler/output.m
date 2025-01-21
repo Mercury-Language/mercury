@@ -33,9 +33,9 @@
 
 :- implementation.
 
+:- import_module generate_output.
 :- import_module globals.
 :- import_module options.
-:- import_module generate_output.
 
 :- import_module assoc_list.
 :- import_module bool.

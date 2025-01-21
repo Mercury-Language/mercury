@@ -2,8 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module type_spec_unname_var_r.
-
+:- module unsorted_import_blocks.
 :- interface.
 
 :- import_module io.
@@ -12,9 +11,11 @@
 
 :- implementation.
 
+:- import_module string.
 :- import_module list.
-:- import_module type_spec_unname_var_r_2.
+:- import_module int32.
+:- use_module    int8.
+:- import_module int16.
 
 main(!IO) :-
-    p([1], 2.0, 2, Result),
-    io.write_line(Result, !IO).
+    io.format("%d %d %d\n", [i8(1i8), i16(2i16), i32(3i32)], !IO).

@@ -1451,6 +1451,18 @@ Changes to the Mercury compiler
   and that functions that compute a value only in some circumstances
   (i.e. partial functions) be expressed as predicates instead.
 
+* We have added a new option `--warn-unsorted-import-blocks`. If the user
+  specifies this option, the compiler will generate a warning if any line
+  contains `import_module` or `use_module` declarations for more than one
+  module, or if a block of such declarations on consecutive lines
+  are not sorted on module name.
+
+  The discipline enforced by this option can standardize the appearance
+  of the sections of Mercury modules containing these declarations, make
+  diffs of changes to these sections easier to read, and spare programmers
+  from having to decide on a case-by-case basis exactly where they want
+  to add a new `import_module` or `use_module` declaration.
+
 * The deprecated option `--trail-segments` has been deleted and the grade
   component `trseg` is no longer accepted as a synonym for `tr`.
 

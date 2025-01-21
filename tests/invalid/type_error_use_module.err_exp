@@ -1,3 +1,7 @@
+type_error_use_module.m:015: Warning: this [38;5;87m`:- use_module' declaration for[39;49m
+type_error_use_module.m:015:   [38;5;87mmodule `map'[39;49m [38;5;203mis out of order[39;49m with respect to the
+type_error_use_module.m:015:   preceding `:- use_module' declaration for module
+type_error_use_module.m:015:   `type_error_use_module_helper_1'.
 type_error_use_module.m:018: In clause for predicate `main'/2:
 type_error_use_module.m:018:   in argument 1 of call to predicate
 type_error_use_module.m:018:   `io.write_line'/3:

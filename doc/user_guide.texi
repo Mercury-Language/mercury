@@ -7094,6 +7094,15 @@ is the same as the argument type.
 @findex --warn-can-fail-function
 Warn about functions that can fail.
 
+@sp 1
+@item --warn-unsorted-import-block
+@itemx --warn-unsorted-import-blocks
+@findex --warn-unsorted-import-block
+@findex --warn-unsorted-import-blocks
+Warn about two import and/or use declarations on the same line,
+or if a sequence of such declarations on consecutive lines
+are not sorted on module name.
+
 @end table
 
 @node Verbosity options

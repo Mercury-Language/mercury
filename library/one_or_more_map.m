@@ -25,8 +25,8 @@
 
 :- import_module assoc_list.
 :- import_module list.
-:- import_module one_or_more.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module set.
 
 %---------------------------------------------------------------------------%

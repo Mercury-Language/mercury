@@ -22,10 +22,10 @@
 :- interface.
 
 :- import_module analysis_utils.
+:- import_module coverage.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
-:- import_module coverage.
 :- import_module measurements.
 :- import_module profile.
 :- import_module report.

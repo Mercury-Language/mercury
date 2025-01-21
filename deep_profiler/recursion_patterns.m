@@ -18,9 +18,9 @@
 :- module recursion_patterns.
 :- interface.
 
-:- import_module report.
 :- import_module measurements.
 :- import_module profile.
+:- import_module report.
 
 :- import_module maybe.
 

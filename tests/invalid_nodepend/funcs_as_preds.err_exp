@@ -5,6 +5,9 @@ funcs_as_preds.m:014:   an [38;5;40m`:- interface' declaration[39;49m or an [
 funcs_as_preds.m:014:   [38;5;40mdeclaration.[39;49m
 funcs_as_preds.m:014:   The following assumes that the missing declaration is
 funcs_as_preds.m:014:   an `:- implementation' declaration.
+funcs_as_preds.m:015: Warning: this [38;5;87m`:- import_module' declaration for module[39;49m
+funcs_as_preds.m:015:   [38;5;87m`bool'[39;49m [38;5;203mis out of order[39;49m with respect to the preceding
+funcs_as_preds.m:015:   `:- import_module' declaration for module `list'.
 funcs_as_preds.m:018: Error: clause for function [38;5;87m`null'/1[39;49m [38;5;203mwithout[39;49m a
 funcs_as_preds.m:018:   corresponding `:- func' declaration.
 funcs_as_preds.m:018: In clause for function `null'/1:

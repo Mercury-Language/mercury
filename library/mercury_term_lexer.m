@@ -27,8 +27,8 @@
 :- interface.
 
 :- import_module char.
-:- import_module io.
 :- import_module integer.
+:- import_module io.
 
 %---------------------------------------------------------------------------%
 

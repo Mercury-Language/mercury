@@ -34,8 +34,8 @@
 :- import_module mdbcomp.feedback.automatic_parallelism.
 :- import_module mdprof_fb.
 :- import_module mdprof_fb.automatic_parallelism.
-:- import_module mdprof_fb.automatic_parallelism.autopar_search_callgraph.
 :- import_module mdprof_fb.automatic_parallelism.autopar_reports.
+:- import_module mdprof_fb.automatic_parallelism.autopar_search_callgraph.
 :- import_module message.
 :- import_module profile.
 :- import_module startup.

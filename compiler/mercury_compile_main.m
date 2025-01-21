@@ -924,7 +924,7 @@ handle_not_found_files(Specs0, Specs, Continue) :-
         Continue = yes
     ;
         NotFoundFiles = [_ | _],
-        list.sort(NotFoundFiles, SortedNotFoundFiles),
+        list.sort_and_remove_dups(NotFoundFiles, SortedNotFoundFiles),
         list.split_upto(10, SortedNotFoundFiles, FilesToShow, FilesNotToShow),
         (
             FilesNotToShow = [],

@@ -45,8 +45,8 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module unit.
 :- import_module type_desc.
+:- import_module unit.
 
 %---------------------------------------------------------------------------%
 %

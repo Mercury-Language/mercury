@@ -22,8 +22,8 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 
-:- import_module list.
 :- import_module io.
+:- import_module list.
 :- import_module univ.
 
 %---------------------------------------------------------------------------%

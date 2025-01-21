@@ -255,6 +255,7 @@
     ;       inform_generated_type_spec_pragmas
     ;       warn_redundant_coerce
     ;       warn_can_fail_function
+    ;       warn_unsorted_import_blocks
 
     % Verbosity options
     ;       verbose
@@ -1380,6 +1381,7 @@ optdef(oc_warn, inform_ignored_pragma_errors,           bool(no)).
 optdef(oc_warn, inform_generated_type_spec_pragmas,     bool(no)).
 optdef(oc_warn, warn_redundant_coerce,                  bool(yes)).
 optdef(oc_warn, warn_can_fail_function,                 bool(no)).
+optdef(oc_warn, warn_unsorted_import_blocks,            bool(no)).
 
     % Verbosity options.
 
@@ -2380,6 +2382,8 @@ long_table("inform-generated-type-spec-pragmas",
                                         inform_generated_type_spec_pragmas).
 long_table("warn-redundant-coerce",     warn_redundant_coerce).
 long_table("warn-can-fail-function",    warn_can_fail_function).
+long_table("warn-unsorted-import-block", warn_unsorted_import_blocks).
+long_table("warn-unsorted-import-blocks", warn_unsorted_import_blocks).
 
 % verbosity options
 long_table("verbose",                  verbose).
@@ -4352,7 +4356,8 @@ style_warning_options = [
     warn_unneeded_mode_specific_clause,
     inform_suboptimal_packing,
     warn_redundant_coerce,
-    warn_can_fail_function
+    warn_can_fail_function,
+    warn_unsorted_import_blocks
 ].
 
 non_style_warning_options = [
@@ -4748,7 +4753,11 @@ options_help_warning(Stream, !IO) :-
         "--no-warn-redundant-coerce",
         "\tDo not warn about redundant type conversions.",
         "---warn-can-fail-funcion",
-        "\tWarn about functions that can fail."
+        "\tWarn about functions that can fail.",
+        "--warn-unsorted-import-block, --warn-unsorted-import-blocks",
+        "\tWarn about two import and/or use declarations on the same line,",
+        "\tor if a sequence of such declarations on consecutive lines",
+        "\tare not sorted on module name."
     ], !IO).
 
 :- pred options_help_verbosity(io.text_output_stream::in,

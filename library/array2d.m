@@ -191,8 +191,8 @@
 
 :- implementation.
 
-:- import_module require.
 :- import_module int.
+:- import_module require.
 
 :- interface.
 

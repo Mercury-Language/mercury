@@ -18,8 +18,8 @@
 
 :- import_module list.
 :- import_module maybe.
-:- import_module univ.
 :- import_module type_desc.
+:- import_module univ.
 
 %---------------------------------------------------------------------------%
 

@@ -24,9 +24,9 @@
 :- module html_format.
 :- interface.
 
+:- import_module display.
 :- import_module profile.
 :- import_module query.
-:- import_module display.
 
 %---------------------------------------------------------------------------%
 

@@ -1,3 +1,8 @@
+ho_default_func_2.m:011: Warning: this [38;5;87m`:- import_module' declaration for[39;49m
+ho_default_func_2.m:011:   [38;5;87mmodule[39;49m
+ho_default_func_2.m:011:   [38;5;87m`ho_default_func_2.ho_default_func_2_helper_1'[39;49m [38;5;203mis[39;49m
+ho_default_func_2.m:011:   [38;5;203mout of order[39;49m with respect to the preceding
+ho_default_func_2.m:011:   `:- import_module' declaration for module `io'.
 ho_default_func_2.m:023: In clause for `baz(out)':
 ho_default_func_2.m:023:   in argument 1 of call to function
 ho_default_func_2.m:023:   `ho_default_func_2.ho_default_func_2_helper_1.mkid'/1:
