@@ -428,12 +428,6 @@ $(RT_LIB_NAME).jar: copy_java_runtime_files
 	$(JAVAC) $(ALL_JAVACFLAGS) jmercury/runtime/*.java
 	$(JAR) $(JAR_CREATE_FLAGS) $(RT_LIB_NAME).jar jmercury/runtime/*.class
 	$(JAR) i $(RT_LIB_NAME).jar
-	# -+cd jmercury/runtime && mmake $(NATIVE_SO)
-	# -cp jmercury/runtime/$(NATIVE_SO) .
-
-# This shared object was used to implement some standard library methods,
-# but currently not.
-NATIVE_SO = Native.$(EXT_FOR_SHARED_LIB)
 
 #-----------------------------------------------------------------------------#
 
@@ -566,7 +560,7 @@ realclean_local:
 	rm -rf jmercury
 	rm -f mr_int.class mr_float.class mr_char.class
 	rm -f mr_int\$$*.class mr_float\$$*.class mr_char\$$*.class
-	rm -f $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar $(NATIVE_SO)
+	rm -f $(STD_LIB_NAME).jar $(RT_LIB_NAME).jar
 
 #-----------------------------------------------------------------------------#
 
