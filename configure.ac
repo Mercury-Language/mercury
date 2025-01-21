@@ -5420,7 +5420,6 @@ bindist/bindist.INSTALL
 bindist/bindist.Makefile
 runtime/mercury_dotnet.cs
 java/runtime/Constants.java
-java/runtime/Native.java
 compiler/COMP_FLAGS
 grade_lib/GRADE_LIB_FLAGS
 library/LIB_FLAGS
