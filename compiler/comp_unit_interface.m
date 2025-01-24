@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2016, 2018-2024 The Mercury team.
+% Copyright (C) 2015-2016, 2018-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -142,6 +142,8 @@
 
 :- import_module libs.options.
 :- import_module parse_tree.check_type_inst_mode_defns.
+:- import_module parse_tree.convert_import_use.
+:- import_module parse_tree.convert_include.
 :- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.decide_type_repn.
 :- import_module parse_tree.error_util.

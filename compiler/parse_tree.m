@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018-2024 The Mercury team.
+% Copyright (C) 2014-2016, 2018-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -92,6 +92,8 @@
 % Utility routines.
 :- include_module builtin_lib_types.
 :- include_module check_type_inst_mode_defns.
+:- include_module convert_import_use.
+:- include_module convert_include.
 :- include_module int_emu.
 :- include_module item_util.
 :- include_module prog_detism.

@@ -187,6 +187,8 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.check_type_inst_mode_defns.
+:- import_module parse_tree.convert_import_use.
+:- import_module parse_tree.convert_include.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.prog_data_foreign.

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2024 The Mercury team.
+% Copyright (C) 2015-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -147,6 +147,8 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.canonicalize_interface.
+:- import_module parse_tree.convert_import_use.
+:- import_module parse_tree.convert_include.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.parse_tree_out_clause.
 :- import_module parse_tree.parse_tree_out_item.

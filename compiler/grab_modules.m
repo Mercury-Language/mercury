@@ -166,6 +166,7 @@
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module parse_tree.check_import_accessibility.
+:- import_module parse_tree.convert_import_use.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
