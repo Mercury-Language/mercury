@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -163,10 +163,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- type maybe_ignore_errors
-    --->    ignore_errors
-    ;       do_not_ignore_errors.
-
     % Why are we attempting to read and parse a file?
 :- type read_reason_msg
     --->    rrm_file
@@ -191,9 +187,8 @@
             % Because the named file belongs to this module, and we need
             % to get its dependencies.
 
-    % read_module_src(ProgressStream, Globals, ReadReasonMsg,
-    %   IgnoreErrors, Search, ModuleName, FileName, ReadModuleAndTimestamps,
-    %   HaveModule, !IO):
+    % read_module_src(ProgressStream, Globals, ReadReasonMsg, Search,
+    %   ModuleName, FileName, ReadModuleAndTimestamps, HaveModule, !IO):
     %
     % Given a module name, read in and parse the source code of that file,
     % printing progress messages along the way if the verbosity level
@@ -240,7 +235,7 @@
     %   its actual timestamp.
     %
 :- pred read_module_src(io.text_output_stream::in, globals::in,
-    read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
+    read_reason_msg::in, maybe_search::in,
     module_name::in, list(term.context)::in, read_module_and_timestamps::in,
     have_read_module(parse_tree_src)::out, io::di, io::uo) is det.
 
@@ -298,9 +293,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % read_module_intN(ProgressStream, Globals, ReadReasonMsg,
-    %   IgnoreErrors, Search, ModuleName, FileName, ReadModuleAndTimestamps,
-    %   HaveModule, !IO):
+    % read_module_intN(ProgressStream, Globals, ReadReasonMsg, Search,
+    %   ModuleName, FileName, ReadModuleAndTimestamps, HaveModule, !IO):
     %
     % Given a module name, read in and parse the specified kind of interface
     % file for that module, printing progress messages along the way
@@ -315,19 +309,19 @@
     % among the search directories contains the file with that filename.
     %
 :- pred read_module_int0(io.text_output_stream::in, globals::in,
-    read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
+    read_reason_msg::in, maybe_search::in,
     module_name::in, read_module_and_timestamps::in,
     have_module(parse_tree_int0)::out, io::di, io::uo) is det.
 :- pred read_module_int1(io.text_output_stream::in, globals::in,
-    read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
+    read_reason_msg::in, maybe_search::in,
     module_name::in, read_module_and_timestamps::in,
     have_module(parse_tree_int1)::out, io::di, io::uo) is det.
 :- pred read_module_int2(io.text_output_stream::in, globals::in,
-    read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
+    read_reason_msg::in, maybe_search::in,
     module_name::in, read_module_and_timestamps::in,
     have_module(parse_tree_int2)::out, io::di, io::uo) is det.
 :- pred read_module_int3(io.text_output_stream::in, globals::in,
-    read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
+    read_reason_msg::in, maybe_search::in,
     module_name::in, read_module_and_timestamps::in,
     have_module(parse_tree_int3)::out, io::di, io::uo) is det.
 
@@ -425,9 +419,8 @@ have_parse_tree_source_get_maybe_timestamp_errors(Source,
 
 %---------------------------------------------------------------------------%
 
-read_module_src(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors,
-        Search, ModuleName, ExpectationContexts, ReadModuleAndTimestamps,
-        HaveModule, !IO) :-
+read_module_src(ProgressStream, Globals, ReadReasonMsg, Search, ModuleName,
+        ExpectationContexts, ReadModuleAndTimestamps, HaveModule, !IO) :-
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_src, FileName0, ReadDoneMsg, SearchAuthDirs, !IO),
     % For `.m' files, we need to deal with the case where the module name
@@ -440,9 +433,9 @@ read_module_src(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors,
             ExpectationContexts, ReadModuleAndTimestamps, MaybeTimestampRes,
             MaybeParseTreeSrc0, Errors0, !IO),
         read_module_end_module(ProgressStream, Globals,
-            mfas_ok(FileNameAndStream), IgnoreErrors, fk_src, ReadDoneMsg,
+            mfas_ok(FileNameAndStream), fk_src, ReadDoneMsg,
             FileName0, FileName, MaybeTimestampRes, MaybeTimestamp,
-            Errors0, Errors1, !IO),
+            Errors0, Errors, !IO),
         FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
         io.close_input(FileStream, !IO),
         (
@@ -457,10 +450,9 @@ read_module_src(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors,
             % the unexpected module name.
             ParseTreeSrc = ParseTreeSrc0 ^ pts_module_name := ModuleName,
             HaveModule = have_module(FileName, ParseTreeSrc,
-                was_read(MaybeTimestamp, Errors1))
+                was_read(MaybeTimestamp, Errors))
         ;
             MaybeParseTreeSrc0 = no,
-            Errors = no_file_errors(IgnoreErrors, Errors1),
             HaveModule = have_not_read_module(FileName, Errors)
         )
     ;
@@ -468,9 +460,8 @@ read_module_src(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors,
         io_error_to_read_module_errors(frme_could_not_open_file,
             phase_find_files(FileName0), ErrorMsg, Errors0, !IO),
         read_module_end_module(ProgressStream, Globals, mfas_error(Errors0),
-            IgnoreErrors, fk_src, ReadDoneMsg, FileName0, FileName,
-            no, _MaybeTimestamp, Errors0, Errors1, !IO),
-        Errors = no_file_errors(IgnoreErrors, Errors1),
+            fk_src, ReadDoneMsg, FileName0, FileName,
+            no, _MaybeTimestamp, Errors0, Errors, !IO),
         HaveModule = have_not_read_module(FileName, Errors)
     ).
 
@@ -487,16 +478,16 @@ read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
             DefaultModuleName, [], ReadModuleAndTimestamps, MaybeTimestampRes,
             MaybeParseTreeSrc, Errors0, !IO),
         read_module_end_file(Globals, fk_src, ReadDoneMsg, FileNameDotM,
-            MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
+            MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO),
         FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
         io.close_input(FileStream, !IO),
         (
             MaybeParseTreeSrc = yes(ParseTreeSrc),
             HaveModule = have_module(FileNameDotM, ParseTreeSrc,
-                was_read(MaybeTimestamp, Errors1))
+                was_read(MaybeTimestamp, Errors))
         ;
             MaybeParseTreeSrc = no,
-            HaveModule = have_not_read_module(FileNameDotM, Errors1)
+            HaveModule = have_not_read_module(FileNameDotM, Errors)
         )
     ;
         MaybeFileNameAndStream = error(ErrorMsg),
@@ -518,8 +509,7 @@ maybe_read_module_int0(ProgressStream, Globals, Search, ModuleName,
     then
         HaveModule = HaveReadModulePrime
     else
-        read_module_int0(ProgressStream, Globals, rrm_std,
-            do_not_ignore_errors, Search, ModuleName,
+        read_module_int0(ProgressStream, Globals, rrm_std, Search, ModuleName,
             always_read_module(ReturnTimestamp), HaveModule, !IO),
         map.set(ModuleName, HaveModule, OrigHPTM, HPTM),
         !HaveParseTreeMaps ^ hptm_int0 := HPTM
@@ -534,8 +524,7 @@ maybe_read_module_int1(ProgressStream, Globals, Search, ModuleName,
     then
         HaveModule = HaveReadModulePrime
     else
-        read_module_int1(ProgressStream, Globals, rrm_std,
-            do_not_ignore_errors, Search, ModuleName,
+        read_module_int1(ProgressStream, Globals, rrm_std, Search, ModuleName,
             always_read_module(ReturnTimestamp), HaveModule, !IO),
         map.set(ModuleName, HaveModule, OrigHPTM, HPTM),
         !HaveParseTreeMaps ^ hptm_int1 := HPTM
@@ -550,8 +539,7 @@ maybe_read_module_int2(ProgressStream, Globals, Search, ModuleName,
     then
         HaveModule = HaveReadModulePrime
     else
-        read_module_int2(ProgressStream, Globals, rrm_std,
-            do_not_ignore_errors, Search, ModuleName,
+        read_module_int2(ProgressStream, Globals, rrm_std, Search, ModuleName,
             always_read_module(ReturnTimestamp), HaveModule, !IO),
         map.set(ModuleName, HaveModule, OrigHPTM, HPTM),
         !HaveParseTreeMaps ^ hptm_int2 := HPTM
@@ -566,8 +554,7 @@ maybe_read_module_int3(ProgressStream, Globals, Search, ModuleName,
     then
         HaveModule = HaveReadModulePrime
     else
-        read_module_int3(ProgressStream, Globals, rrm_std,
-            do_not_ignore_errors, Search, ModuleName,
+        read_module_int3(ProgressStream, Globals, rrm_std, Search, ModuleName,
             always_read_module(ReturnTimestamp), HaveModule, !IO),
         map.set(ModuleName, HaveModule, OrigHPTM, HPTM),
         !HaveParseTreeMaps ^ hptm_int3 := HPTM
@@ -600,7 +587,7 @@ search_module_name_timestamp_if_needed(HPTM, ModuleName, ReturnTimestamp,
 
 %---------------------%
 
-read_module_int0(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
+read_module_int0(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, ReadModuleAndTimestamps, HaveModule, !IO) :-
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_int(ifk_int0), FileName0, ReadDoneMsg, SearchDirs, !IO),
@@ -612,29 +599,27 @@ read_module_int0(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
             ReadModuleAndTimestamps, MaybeTimestampRes,
             MaybeParseTreeInt0, Errors0, !IO),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int0), ReadDoneMsg, FileName0, FileName,
-            MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
+            fk_int(ifk_int0), ReadDoneMsg, FileName0, FileName,
+            MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO),
         FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
         io.close_input(FileStream, !IO),
         (
             MaybeParseTreeInt0 = yes(ParseTreeInt0),
             HaveModule = have_module(FileName, ParseTreeInt0,
-                was_read(MaybeTimestamp, Errors1))
+                was_read(MaybeTimestamp, Errors))
         ;
             MaybeParseTreeInt0 = no,
-            Errors = no_file_errors(IgnoreErrors, Errors1),
             HaveModule = have_not_read_module(FileName, Errors)
         )
     ;
         MaybeFileNameAndStream = mfas_error(Errors0),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int0), ReadDoneMsg, FileName0, FileName,
-            no, _MaybeTimestamp, Errors0, Errors1, !IO),
-        Errors = no_file_errors(IgnoreErrors, Errors1),
+            fk_int(ifk_int0), ReadDoneMsg, FileName0, FileName,
+            no, _MaybeTimestamp, Errors0, Errors, !IO),
         HaveModule = have_not_read_module(FileName, Errors)
     ).
 
-read_module_int1(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
+read_module_int1(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, ReadModuleAndTimestamps, HaveModule, !IO) :-
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_int(ifk_int1), FileName0, ReadDoneMsg, SearchDirs, !IO),
@@ -646,29 +631,27 @@ read_module_int1(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
             ReadModuleAndTimestamps, MaybeTimestampRes,
             MaybeParseTreeInt1, Errors0, !IO),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int1), ReadDoneMsg, FileName0, FileName,
-            MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
+            fk_int(ifk_int1), ReadDoneMsg, FileName0, FileName,
+            MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO),
         FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
         io.close_input(FileStream, !IO),
         (
             MaybeParseTreeInt1 = yes(ParseTreeInt1),
             HaveModule = have_module(FileName, ParseTreeInt1,
-                was_read(MaybeTimestamp, Errors1))
+                was_read(MaybeTimestamp, Errors))
         ;
             MaybeParseTreeInt1 = no,
-            Errors = no_file_errors(IgnoreErrors, Errors1),
             HaveModule = have_not_read_module(FileName, Errors)
         )
     ;
         MaybeFileNameAndStream = mfas_error(Errors0),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int1), ReadDoneMsg, FileName0, FileName,
-            no, _MaybeTimestamp, Errors0, Errors1, !IO),
-        Errors = no_file_errors(IgnoreErrors, Errors1),
+            fk_int(ifk_int1), ReadDoneMsg, FileName0, FileName,
+            no, _MaybeTimestamp, Errors0, Errors, !IO),
         HaveModule = have_not_read_module(FileName, Errors)
     ).
 
-read_module_int2(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
+read_module_int2(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, ReadModuleAndTimestamps, HaveModule, !IO) :-
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_int(ifk_int2), FileName0, ReadDoneMsg, SearchDirs, !IO),
@@ -680,29 +663,27 @@ read_module_int2(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
             ReadModuleAndTimestamps, MaybeTimestampRes,
             MaybeParseTreeInt2, Errors0, !IO),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int2), ReadDoneMsg, FileName0, FileName,
-            MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
+            fk_int(ifk_int2), ReadDoneMsg, FileName0, FileName,
+            MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO),
         FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
         io.close_input(FileStream, !IO),
         (
             MaybeParseTreeInt2 = yes(ParseTreeInt2),
             HaveModule = have_module(FileName, ParseTreeInt2,
-                was_read(MaybeTimestamp, Errors1))
+                was_read(MaybeTimestamp, Errors))
         ;
             MaybeParseTreeInt2 = no,
-            Errors = no_file_errors(IgnoreErrors, Errors1),
             HaveModule = have_not_read_module(FileName, Errors)
         )
     ;
         MaybeFileNameAndStream = mfas_error(Errors0),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int2), ReadDoneMsg, FileName0, FileName,
-            no, _MaybeTimestamp, Errors0, Errors1, !IO),
-        Errors = no_file_errors(IgnoreErrors, Errors1),
+            fk_int(ifk_int2), ReadDoneMsg, FileName0, FileName,
+            no, _MaybeTimestamp, Errors0, Errors, !IO),
         HaveModule = have_not_read_module(FileName, Errors)
     ).
 
-read_module_int3(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
+read_module_int3(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, ReadModuleAndTimestamps, HaveModule, !IO) :-
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_int(ifk_int3), FileName0, ReadDoneMsg, SearchDirs, !IO),
@@ -714,25 +695,23 @@ read_module_int3(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
             ReadModuleAndTimestamps, MaybeTimestampRes,
             MaybeParseTreeInt3, Errors0, !IO),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int3), ReadDoneMsg, FileName0, FileName,
-            MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
+            fk_int(ifk_int3), ReadDoneMsg, FileName0, FileName,
+            MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO),
         FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
         io.close_input(FileStream, !IO),
         (
             MaybeParseTreeInt3 = yes(ParseTreeInt3),
             HaveModule = have_module(FileName, ParseTreeInt3,
-                was_read(MaybeTimestamp, Errors1))
+                was_read(MaybeTimestamp, Errors))
         ;
             MaybeParseTreeInt3 = no,
-            Errors = no_file_errors(IgnoreErrors, Errors1),
             HaveModule = have_not_read_module(FileName, Errors)
         )
     ;
         MaybeFileNameAndStream = mfas_error(Errors0),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int3), ReadDoneMsg, FileName0, FileName,
-            no, _MaybeTimestamp, Errors0, Errors1, !IO),
-        Errors = no_file_errors(IgnoreErrors, Errors1),
+            fk_int(ifk_int3), ReadDoneMsg, FileName0, FileName,
+            no, _MaybeTimestamp, Errors0, Errors, !IO),
         HaveModule = have_not_read_module(FileName, Errors)
     ).
 
@@ -742,7 +721,6 @@ read_module_plain_opt(ProgressStream, Globals, ModuleName,
         HaveModule, !IO) :-
     ReadReasonMsg = rrm_std,
     Search = do_search,
-    IgnoreErrors = do_not_ignore_errors,
     MaybeTimestampRes = no,
 
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
@@ -754,7 +732,7 @@ read_module_plain_opt(ProgressStream, Globals, ModuleName,
         actually_read_module_plain_opt(Globals, FileNameAndStream, ModuleName,
             MaybeParseTreePlainOpt, Errors0, !IO),
         read_module_end_module(ProgressStream, Globals,
-            MaybeFileNameAndStream, IgnoreErrors, fk_opt(ofk_opt), ReadDoneMsg,
+            MaybeFileNameAndStream, fk_opt(ofk_opt), ReadDoneMsg,
             FileName0, FileName, MaybeTimestampRes, _MaybeTimestamp,
             Errors0, Errors, !IO),
         FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
@@ -770,7 +748,7 @@ read_module_plain_opt(ProgressStream, Globals, ModuleName,
     ;
         MaybeFileNameAndStream = mfas_error(Errors0),
         read_module_end_module(ProgressStream, Globals,
-            MaybeFileNameAndStream, IgnoreErrors, fk_opt(ofk_opt), ReadDoneMsg,
+            MaybeFileNameAndStream, fk_opt(ofk_opt), ReadDoneMsg,
             FileName0, FileName, MaybeTimestampRes, _MaybeTimestamp,
             Errors0, Errors, !IO),
         HaveModule = have_not_read_module(FileName, Errors)
@@ -780,7 +758,6 @@ read_module_trans_opt(ProgressStream, Globals, ModuleName,
         HaveModule, !IO) :-
     ReadReasonMsg = rrm_std,
     Search = do_search,
-    IgnoreErrors = do_not_ignore_errors,
     MaybeTimestampRes = no,
 
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
@@ -793,7 +770,7 @@ read_module_trans_opt(ProgressStream, Globals, ModuleName,
         actually_read_module_trans_opt(Globals, FileNameAndStream, ModuleName,
             MaybeParseTreeTransOpt, Errors0, !IO),
         read_module_end_module(ProgressStream, Globals,
-            MaybeFileNameAndStream, IgnoreErrors, fk_opt(ofk_trans_opt),
+            MaybeFileNameAndStream, fk_opt(ofk_trans_opt),
             ReadDoneMsg, FileName0, FileName,
             MaybeTimestampRes, _MaybeTimestamp, Errors0, Errors, !IO),
         FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
@@ -809,7 +786,7 @@ read_module_trans_opt(ProgressStream, Globals, ModuleName,
     ;
         MaybeFileNameAndStream = mfas_error(Errors0),
         read_module_end_module(ProgressStream, Globals,
-            MaybeFileNameAndStream, IgnoreErrors, fk_opt(ofk_trans_opt),
+            MaybeFileNameAndStream, fk_opt(ofk_trans_opt),
             ReadDoneMsg, FileName0, FileName,
             MaybeTimestampRes, _MaybeTimestamp, Errors0, Errors, !IO),
         HaveModule = have_not_read_module(FileName, Errors)
@@ -1275,13 +1252,13 @@ read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         FileName, ReadDoneMsg, !IO).
 
 :- pred read_module_end_module(io.text_output_stream::in, globals::in,
-    maybe_file_and_stream::in, maybe_ignore_errors::in,
-    file_kind::in, read_done_msg::in, file_name::in, file_name::out,
+    maybe_file_and_stream::in, file_kind::in, read_done_msg::in,
+    file_name::in, file_name::out,
     maybe(io.res(timestamp))::in, maybe(timestamp)::out,
     read_module_errors::in, read_module_errors::out, io::di, io::uo) is det.
 
 read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-        IgnoreErrors, FileKind, ReadDoneMsg, FileName0, FileName,
+        FileKind, ReadDoneMsg, FileName0, FileName,
         MaybeTimestampRes, MaybeTimestamp, Errors0, Errors, !IO) :-
     % The code of read_module_end_module and read_module_end_file
     % should be kept in sync.
@@ -1293,8 +1270,7 @@ read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
     ),
     check_timestamp_report_if_needed_and_missing(Globals, FileName0,
         MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
-    handle_any_read_module_errors(FileKind, ReadDoneMsg,
-        IgnoreErrors, Errors1, Errors, !IO),
+    handle_any_read_module_errors(FileKind, ReadDoneMsg, Errors1, Errors, !IO),
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     maybe_report_stats(ProgressStream, Statistics, !IO).
 
@@ -1310,114 +1286,61 @@ read_module_end_file(Globals, FileKind, ReadDoneMsg, FileName,
         MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
     % Unlike read_module_end_module, we assume do_not_ignore_errors.
     handle_any_read_module_errors(FileKind, ReadDoneMsg,
-        do_not_ignore_errors, Errors1, Errors, !IO).
+        Errors1, Errors, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- func no_file_errors(maybe_ignore_errors, read_module_errors)
-    = read_module_errors.
-
-no_file_errors(IgnoreErrors, Errors0) = Errors :-
-    (
-        IgnoreErrors = do_not_ignore_errors,
-        Errors = Errors0
-    ;
-        IgnoreErrors = ignore_errors,
-        FatalErrors0 = Errors0 ^ rm_fatal_errors,
-        ( if set.contains(FatalErrors0, frme_could_not_find_file) then
-            FatalError = frme_could_not_find_file
-        else
-            FatalError = frme_could_not_open_file
-        ),
-        Errors = no_file_errors_ignored(FatalError)
-    ).
-
-    % According to IgnoreErrors = ignore_errors, being unable to
-    % read the file is not an error, so delete all the error_specs,
-    % but keep the fatal error to prevent this module from being put
-    % into deps_maps. This is because modules in deps_maps get .d files
-    % created for them, which is not appropriate for a file
-    % that does not exist, at least in the current directory.
-    %
-    % XXX Why not add a field to read_module_errors that specifically
-    % says whether the module should be put into deps_maps?
-    %
-:- func no_file_errors_ignored(fatal_read_module_error) = read_module_errors.
-
-no_file_errors_ignored(FatalError) = Errors :-
-    Errors = read_module_errors(
-        set.make_singleton_set(FatalError), [],
-        set.init, [], []).
-
-%---------------------%
-
-:- pred handle_any_read_module_errors(file_kind::in,
-    read_done_msg::in, maybe_ignore_errors::in,
+:- pred handle_any_read_module_errors(file_kind::in, read_done_msg::in,
     read_module_errors::in, read_module_errors::out, io::di, io::uo) is det.
 
-handle_any_read_module_errors(FileKind, ReadDoneMsg, IgnoreErrors,
-        Errors0, Errors, !IO) :-
-    (
-        IgnoreErrors = ignore_errors,
-        FatalErrors0 = Errors0 ^ rm_fatal_errors,
-        ( if set.contains(FatalErrors0, frme_could_not_open_file) then
-            output_read_done_msg(ReadDoneMsg, "not found.\n", !IO),
-            Errors = no_file_errors_ignored(frme_could_not_open_file)
+handle_any_read_module_errors(FileKind, ReadDoneMsg, Errors0, Errors, !IO) :-
+    FatalErrors0 = Errors0 ^ rm_fatal_errors,
+    NonFatalErrors0 = Errors0 ^ rm_nonfatal_errors,
+    ( if
+        ( set.is_non_empty(FatalErrors0)
+        ; set.is_non_empty(NonFatalErrors0)
+        )
+    then
+        ( if set.is_non_empty(FatalErrors0) then
+            ( if set.contains(FatalErrors0, frme_could_not_open_file) then
+                Msg = "not found.\n"
+            else
+                Msg = "fatal error(s).\n"
+            )
         else
-            % XXX CLEANUP we should not print "done" if Errors is nonempty.
-            output_read_done_msg(ReadDoneMsg, "done.\n", !IO),
+            % Any errors must be nonfatal. Are they syntax errors?
+            ( if
+                ( set.contains(NonFatalErrors0,
+                    rme_no_module_decl_at_start)
+                ; set.contains(NonFatalErrors0,
+                    rme_no_section_decl_at_start)
+                ; set.contains(NonFatalErrors0,
+                    rme_end_module_not_at_end_of_src)
+                ; set.contains(NonFatalErrors0,
+                    rme_unexpected_term_in_int_or_opt)
+                ; set.contains(NonFatalErrors0, rme_could_not_read_term)
+                ; set.contains(NonFatalErrors0, rme_could_not_parse_item)
+                )
+            then
+                Msg = "parse error(s).\n"
+            else
+                Msg = "nonfatal error(s).\n"
+            )
+        ),
+        output_read_done_msg(ReadDoneMsg, Msg, !IO),
+        (
+            FileKind = fk_opt(_),
+            Errors = Errors0
+        ;
+            ( FileKind = fk_src
+            ; FileKind = fk_int(_)
+            ),
             Errors = Errors0
         )
-    ;
-        IgnoreErrors = do_not_ignore_errors,
-        FatalErrors0 = Errors0 ^ rm_fatal_errors,
-        NonFatalErrors0 = Errors0 ^ rm_nonfatal_errors,
-        ( if
-            ( set.is_non_empty(FatalErrors0)
-            ; set.is_non_empty(NonFatalErrors0)
-            )
-        then
-            ( if set.is_non_empty(FatalErrors0) then
-                ( if set.contains(FatalErrors0, frme_could_not_open_file) then
-                    Msg = "not found.\n"
-                else
-                    Msg = "fatal error(s).\n"
-                )
-            else
-                % Any errors must be nonfatal. Are they syntax errors?
-                ( if
-                    ( set.contains(NonFatalErrors0,
-                        rme_no_module_decl_at_start)
-                    ; set.contains(NonFatalErrors0,
-                        rme_no_section_decl_at_start)
-                    ; set.contains(NonFatalErrors0,
-                        rme_end_module_not_at_end_of_src)
-                    ; set.contains(NonFatalErrors0,
-                        rme_unexpected_term_in_int_or_opt)
-                    ; set.contains(NonFatalErrors0, rme_could_not_read_term)
-                    ; set.contains(NonFatalErrors0, rme_could_not_parse_item)
-                    )
-                then
-                    Msg = "parse error(s).\n"
-                else
-                    Msg = "nonfatal error(s).\n"
-                )
-            ),
-            output_read_done_msg(ReadDoneMsg, Msg, !IO),
-            (
-                FileKind = fk_opt(_),
-                Errors = Errors0
-            ;
-                ( FileKind = fk_src
-                ; FileKind = fk_int(_)
-                ),
-                Errors = Errors0
-            )
-        else
-            Errors = Errors0,
-            % XXX CLEANUP This should just print "done".
-            output_read_done_msg(ReadDoneMsg, "successful parse.\n", !IO)
-        )
+    else
+        Errors = Errors0,
+        % XXX CLEANUP This should just print "done".
+        output_read_done_msg(ReadDoneMsg, "successful parse.\n", !IO)
     ).
 
 %---------------------%

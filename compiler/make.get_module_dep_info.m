@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 expandtab
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2020, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2020, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -505,7 +505,7 @@ try_to_write_module_dep_files_for_top_module(ProgressStream, Globals,
     % it would make the timestamp available for a later lookup,
     % However, we do not record HaveReadSrc in a have_parse_tree_map.
     read_module_src(ProgressStream, Globals, rrm_get_deps,
-        do_not_ignore_errors, do_not_search, ModuleName, [],
+        do_not_search, ModuleName, [],
         always_read_module(do_return_timestamp), HaveReadSrc, !IO),
     (
         HaveReadSrc = have_module(SourceFileName, ParseTreeSrc, Source),

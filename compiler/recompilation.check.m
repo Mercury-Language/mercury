@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -250,7 +250,7 @@ should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
         % If the module has changed, recompile.
         ModuleName = !.Info ^ rci_module_name,
         read_module_src(ProgressStream, Globals, rrm_std,
-            do_not_ignore_errors, do_search, ModuleName, [],
+            do_search, ModuleName, [],
             do_not_read_module_if_match(RecordedTimestamp), HaveReadSrc, !IO),
         (
             HaveReadSrc = have_not_read_module(FileName, Errors),
@@ -370,7 +370,7 @@ check_imported_modules(ProgressStream, Globals,
     pred cim_search_mapN(have_parse_tree_map(PT)::in,
         module_name::in, have_module(PT)::out) is semidet,
     pred cim_read_module_intN(io.text_output_stream::in, globals::in,
-        read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
+        read_reason_msg::in, maybe_search::in,
         module_name::in, read_module_and_timestamps::in,
         have_module(PT)::out, io::di, io::uo) is det,
     pred cim_record_read_file_intN(module_name::in, file_name::in,
@@ -386,7 +386,7 @@ check_imported_modules(ProgressStream, Globals,
     ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
         map.search(HPTM, ModuleName, HaveReadModule)
     ),
-    pred(cim_read_module_intN/10) is read_module_int0,
+    pred(cim_read_module_intN/9) is read_module_int0,
     pred(cim_record_read_file_intN/7) is record_read_file_int0,
     ( cim_get_version_numbersN(PT, VN) :-
         PT ^ pti0_maybe_version_numbers = version_numbers(VN)
@@ -398,7 +398,7 @@ check_imported_modules(ProgressStream, Globals,
     ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
         map.search(HPTM, ModuleName, HaveReadModule)
     ),
-    pred(cim_read_module_intN/10) is read_module_int1,
+    pred(cim_read_module_intN/9) is read_module_int1,
     pred(cim_record_read_file_intN/7) is record_read_file_int1,
     ( cim_get_version_numbersN(PT, VN) :-
         PT ^ pti1_maybe_version_numbers = version_numbers(VN)
@@ -410,7 +410,7 @@ check_imported_modules(ProgressStream, Globals,
     ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
         map.search(HPTM, ModuleName, HaveReadModule)
     ),
-    pred(cim_read_module_intN/10) is read_module_int2,
+    pred(cim_read_module_intN/9) is read_module_int2,
     pred(cim_record_read_file_intN/7) is record_read_file_int2,
     ( cim_get_version_numbersN(PT, VN) :-
         PT ^ pti2_maybe_version_numbers = version_numbers(VN)
@@ -422,7 +422,7 @@ check_imported_modules(ProgressStream, Globals,
     ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
         map.search(HPTM, ModuleName, HaveReadModule)
     ),
-    pred(cim_read_module_intN/10) is read_module_int3,
+    pred(cim_read_module_intN/9) is read_module_int3,
     pred(cim_record_read_file_intN/7) is record_read_file_int3,
     ( cim_get_version_numbersN(_PT, _VN) :-
         fail
@@ -502,8 +502,7 @@ check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
         HaveReadModuleIntN = HaveReadModuleIntNPrime
     else
         Recorded = bool.no,
-        cim_read_module_intN(ProgressStream, Globals,
-            rrm_std, do_not_ignore_errors, do_search,
+        cim_read_module_intN(ProgressStream, Globals, rrm_std, do_search,
             ImportedModuleName, do_not_read_module_if_match(RecordedTimestamp),
             HaveReadModuleIntN, !IO)
     ),

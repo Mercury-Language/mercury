@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022-2024 The Mercury team.
+% Copyright (C) 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -242,9 +242,8 @@
     %
     % for building dependency maps between modules.
     %
-:- pred parse_tree_src_to_burdened_module_list(globals::in,
-    file_name::in, read_module_errors::in, maybe(timestamp)::in,
-    parse_tree_src::in,
+:- pred parse_tree_src_to_burdened_module_list(globals::in, file_name::in,
+    read_module_errors::in, maybe(timestamp)::in, parse_tree_src::in,
     list(error_spec)::out, list(burdened_module)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -318,14 +317,20 @@ parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
     % recording error kinds per submodule, not per file, and (b) this
     % overestimation does not prevent us from doing anything we want to do,
     % or are even are likely to want to do in the foreseeable future.
-    ReadModuleErrors =
-        read_module_errors(FatalErrors, _, NonFatalErrors, _, _),
-    NoSpecReadModuleErrors =
-        read_module_errors(FatalErrors, [], NonFatalErrors, [], []),
+    %
+    % XXX Unfortunately, nuking the error_specs while keeping the
+    % fatal error indications violates an invariant that the
+    % do_we_have_a_valid_module_dep predicate in write_deps_file.m
+    % depends on, so this code is commented out. This is the behavior
+    % preferred by all callers of this predicate.
+%   ReadModuleErrors =
+%       read_module_errors(FatalErrors, _, NonFatalErrors, _, _),
+%   ReadModuleErrorsToUse =
+%       read_module_errors(FatalErrors, [], NonFatalErrors, [], [])
     list.map(
         maybe_nested_init_burdened_module(SourceFileName,
             TopModuleName, AllModuleNames,
-            NoSpecReadModuleErrors, MaybeTimestamp),
+            ReadModuleErrors, MaybeTimestamp),
         ParseTreeModuleSrcs, BurdenedModules).
 
 :- pred maybe_nested_init_burdened_module(file_name::in,

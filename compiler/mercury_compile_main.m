@@ -1237,7 +1237,7 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
         (
             FileOrModuleName = fm_module(_),
             read_module_src(ProgressStream, Globals0, rrm_std,
-                do_not_ignore_errors, do_not_search, ModuleName, [],
+                do_not_search, ModuleName, [],
                 always_read_module(ReturnTimestamp), HaveReadSrc, !IO)
         ;
             FileOrModuleName = fm_file(FileName),

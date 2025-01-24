@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -53,18 +53,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- type submodule_kind
-    --->    toplevel
-    ;       nested_submodule
-    ;       separate_submodule.
-
-    % Check if a module is a top-level module, a nested submodule,
-    % or a separate submodule.
-    %
-:- func get_submodule_kind(module_name, deps_map) = submodule_kind.
-
-%---------------------------------------------------------------------------%
-
 :- type file_or_module
     --->    fm_file(file_name)
     ;       fm_module(module_name).
@@ -94,27 +82,6 @@
 
 %---------------------------------------------------------------------------%
 
-get_submodule_kind(ModuleName, DepsMap) = Kind :-
-    (
-        ModuleName = qualified(Parent, _),
-        map.lookup(DepsMap, ModuleName, deps(_, _, BurdenedModule)),
-        map.lookup(DepsMap, Parent, deps(_, _, ParentBurdenedModule)),
-        ModuleBaggage = BurdenedModule ^ bm_baggage,
-        ParentBaggage = ParentBurdenedModule ^ bm_baggage,
-        ModuleFileName = ModuleBaggage ^ mb_source_file_name,
-        ParentFileName = ParentBaggage ^ mb_source_file_name,
-        ( if ModuleFileName = ParentFileName then
-            Kind = nested_submodule
-        else
-            Kind = separate_submodule
-        )
-    ;
-        ModuleName = unqualified(_),
-        Kind = toplevel
-    ).
-
-%---------------------------------------------------------------------------%
-
 generate_deps_map(ProgressStream, Globals, Search, FileOrModule, ModuleName,
         !:DepsMap, !:Specs, !IO) :-
     SeenModules0 = set_tree234.init,
@@ -127,11 +94,12 @@ generate_deps_map(ProgressStream, Globals, Search, FileOrModule, ModuleName,
         build_initial_deps_map_for_file(ProgressStream, Globals,
             FileName, ModuleName, !:DepsMap, !:Specs, !IO)
     ),
+    CmdLineModuleName = ModuleName,
     ModuleExpectationContexts0 = map.singleton(ModuleName, []),
     ReadModules0 = set_tree234.init,
     UnreadModules0 = set_tree234.init,
-    generate_deps_map_loop(ProgressStream, Globals, Search, SeenModules0,
-        ModuleExpectationContexts0,
+    generate_deps_map_loop(ProgressStream, Globals, Search, CmdLineModuleName,
+        SeenModules0, ModuleExpectationContexts0,
         ReadModules0, ReadModules, UnreadModules0, UnreadModules1,
         !DepsMap, !Specs, !IO),
     % When module mod_a.mod_b is nested inside mod_a.m, the source file
@@ -205,23 +173,24 @@ build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
 :- type expectation_contexts == list(term_context).
 
 :- pred generate_deps_map_loop(io.text_output_stream::in, globals::in,
-    maybe_search::in, set_tree234(module_name)::in,
+    maybe_search::in, module_name::in, set_tree234(module_name)::in,
     expectation_contexts_map::in,
     set_tree234(module_name)::in, set_tree234(module_name)::out,
     set_tree234(module_name)::in, set_tree234(module_name)::out,
     deps_map::in, deps_map::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-generate_deps_map_loop(ProgressStream, Globals, Search,
+generate_deps_map_loop(ProgressStream, Globals, Search, CmdLineModuleName,
         !.SeenModules, !.ModuleExpCs, !ReadModules, !UnreadModules,
         !DepsMap, !Specs, !IO) :-
     ( if map.remove_smallest(Module, ExpectationContexts, !ModuleExpCs) then
         set_tree234.insert(Module, !SeenModules),
         generate_deps_map_step(ProgressStream, Globals, Search,
-            Module, ExpectationContexts, !.SeenModules,
+            CmdLineModuleName, Module, ExpectationContexts, !.SeenModules,
             !ModuleExpCs, !ReadModules, !UnreadModules, !DepsMap, !Specs, !IO),
-        generate_deps_map_loop(ProgressStream, Globals, Search, !.SeenModules,
-            !.ModuleExpCs, !ReadModules, !UnreadModules, !DepsMap, !Specs, !IO)
+        generate_deps_map_loop(ProgressStream, Globals, Search,
+            CmdLineModuleName, !.SeenModules, !.ModuleExpCs,
+            !ReadModules, !UnreadModules, !DepsMap, !Specs, !IO)
     else
         % If we can't remove the smallest, then the set of modules to be
         % processed is empty.
@@ -229,7 +198,7 @@ generate_deps_map_loop(ProgressStream, Globals, Search,
     ).
 
     % generate_deps_map_step(ProgressStream, Globals, Search,
-    %   Module, ExpectationContexts, SeenModules0,
+    %   CmdLineModuleName, Module, ExpectationContexts, SeenModules0,
     %   !ModuleExpCs, !DepsMap, !Specs, !IO):
     %
     % Process Module, which we expect *should* exist due to the code
@@ -250,22 +219,22 @@ generate_deps_map_loop(ProgressStream, Globals, Search,
     % plain sets generates a very small slowdown.
     %
 :- pred generate_deps_map_step(io.text_output_stream::in, globals::in,
-    maybe_search::in, module_name::in, expectation_contexts::in,
-    set_tree234(module_name)::in,
+    maybe_search::in, module_name::in, module_name::in,
+    expectation_contexts::in, set_tree234(module_name)::in,
     expectation_contexts_map::in, expectation_contexts_map::out,
     set_tree234(module_name)::in, set_tree234(module_name)::out,
     set_tree234(module_name)::in, set_tree234(module_name)::out,
     deps_map::in, deps_map::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
-generate_deps_map_step(ProgressStream, Globals, Search,
+generate_deps_map_step(ProgressStream, Globals, Search, CmdLineModuleName,
         Module, ExpectationContexts, SeenModules0, !ModuleExpCs,
         !ReadModules, !UnreadModules, !DepsMap, !Specs, !IO) :-
     % Look up the module's dependencies, and determine whether
     % it has been processed yet.
     lookup_or_find_dependency_info_for_module(ProgressStream, Globals, Search,
-        Module, ExpectationContexts, MaybeDeps0, NewBurdenedModules,
-        !DepsMap, !Specs, !IO),
+        CmdLineModuleName, Module, ExpectationContexts, MaybeDeps0,
+        NewBurdenedModules, !DepsMap, !Specs, !IO),
     update_read_unread_modules(ProgressStream, Module,
         MaybeDeps0, NewBurdenedModules, !ReadModules, !UnreadModules),
 
@@ -431,20 +400,21 @@ add_module_name_and_context(SeenModules0, Context, ModuleName, !ModuleExpCs) :-
     % save the dependencies in the dependency map.
     %
 :- pred lookup_or_find_dependency_info_for_module(io.text_output_stream::in,
-    globals::in, maybe_search::in, module_name::in, expectation_contexts::in,
-    maybe(deps)::out, list(burdened_module)::out, deps_map::in, deps_map::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    globals::in, maybe_search::in, module_name::in, module_name::in,
+    expectation_contexts::in, maybe(deps)::out, list(burdened_module)::out,
+    deps_map::in, deps_map::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
 lookup_or_find_dependency_info_for_module(ProgressStream, Globals, Search,
-        ModuleName, ExpectationContexts, MaybeDeps, NewBurdenedModules,
-        !DepsMap, !Specs, !IO) :-
+        CmdLineModuleName, ModuleName, ExpectationContexts, MaybeDeps,
+        NewBurdenedModules, !DepsMap, !Specs, !IO) :-
     ( if map.search(!.DepsMap, ModuleName, Deps) then
         MaybeDeps = yes(Deps),
         NewBurdenedModules = []
     else
         read_src_file_for_dependency_info(ProgressStream, Globals, Search,
-            ModuleName, ExpectationContexts, MaybeDummy, NewBurdenedModules,
-            !Specs, !IO),
+            CmdLineModuleName, ModuleName, ExpectationContexts, MaybeDummy,
+            NewBurdenedModules, !Specs, !IO),
         (
             NewBurdenedModules = [_ | _],
             list.foldl(insert_into_deps_map(MaybeDummy),
@@ -502,22 +472,28 @@ insert_into_deps_map(MaybeDummy, BurdenedModule, !DepsMap) :-
     % structure for both the named module and each of its nested submodules.
     %
 :- pred read_src_file_for_dependency_info(io.text_output_stream::in,
-    globals::in, maybe_search::in, module_name::in, expectation_contexts::in,
+    globals::in, maybe_search::in, module_name::in, module_name::in,
+    expectation_contexts::in,
     maybe_dummy_burdened_module::out, list(burdened_module)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-read_src_file_for_dependency_info(ProgressStream, Globals, Search, ModuleName,
-        ExpectationContexts, MaybeDummy, BurdenedModules, !Specs, !IO) :-
+read_src_file_for_dependency_info(ProgressStream, Globals, Search,
+        CmdLineModuleName, ModuleName, ExpectationContexts, MaybeDummy,
+        BurdenedModules, !Specs, !IO) :-
     % XXX If HaveReadModuleSrc contains error messages, any parse tree
     % it may also contain may not be complete, and the rest of this predicate
     % may work on incorrect data.
     read_module_src(ProgressStream, Globals, rrm_get_deps,
-        ignore_errors, Search, ModuleName, ExpectationContexts,
+        Search, ModuleName, ExpectationContexts,
         always_read_module(do_not_return_timestamp), HaveReadModuleSrc, !IO),
     (
         HaveReadModuleSrc = have_module(SourceFileName, ParseTreeSrc, Source),
         Source = was_read(MaybeTimestamp, ReadModuleErrors),
-        MaybeDummy = non_dummy_burdened_module
+        MaybeDummy = non_dummy_burdened_module,
+        parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
+            ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
+            Specs, BurdenedModules),
+        !:Specs = Specs ++ !.Specs
     ;
         HaveReadModuleSrc = have_not_read_module(SourceFileName,
             ReadModuleErrors),
@@ -564,24 +540,31 @@ read_src_file_for_dependency_info(ProgressStream, Globals, Search, ModuleName,
         %   module :-( However, these dependencies should not drag into
         %   the deps_map any module that other, nondummy modules' dependencies
         %   wouldn't drag in anyway.
+
         MaybeTimestamp = maybe.no,
         ParseTreeSrc = parse_tree_src(ModuleName, dummy_context, cord.init),
-        MaybeDummy = dummy_burdened_module
-    ),
-    parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
-        ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
-        Specs, BurdenedModules),
-%   (
-%       HaveReadModuleSrc = have_module(SourceFileName, _MaybeTimestamp,
-%           ParseTreeSrc, ReadModuleErrors),
-%       parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
-%           ParseTreeSrc, ReadModuleErrors, Specs, BurdenedModules)
-%   ;
-%       HaveReadModuleSrc = have_not_read_module(_, ReadModuleErrors),
-%       BurdenedModules = [],
-%       Specs = get_read_module_specs(ReadModuleErrors)
-%   ),
-    !:Specs = Specs ++ !.Specs.
+        MaybeDummy = dummy_burdened_module,
+        % This should be
+        % BurdenedModules = [],
+        % Specs = get_read_module_specs(ReadModuleErrors),
+        parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
+            ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
+            Specs, BurdenedModules),
+        ( if ModuleName = CmdLineModuleName then
+            % The module we cannot read is named on the command line.
+            % The user will definitely be interested in the fact that
+            % we cannot read it.
+            !:Specs = Specs ++ !.Specs
+        else
+            % The module is NOT named on the command line, but merely
+            % imported directly or (more likely) indirectly by it.
+            % The module may well be in another directory of the project,
+            % or it may be in an installed library (such as the Mercury
+            % standard library) that its code will be linked with.
+            % We therefore do not print any error message.
+            true
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.deps_map.
