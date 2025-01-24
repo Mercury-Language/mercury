@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -113,12 +113,6 @@
 
 :- pred divide_by_set(set_of_var(T)::in, set_of_var(T)::in,
     set_of_var(T)::out, set_of_var(T)::out) is det.
-
-:- pred cartesian_product(set_of_var(T)::in, set_of_var(T)::in,
-    list(set_of_var(T))::out) is det.
-
-:- pred cartesian_product_list(list(set_of_var(T))::in,
-    list(set_of_var(T))::out) is det.
 
 %---------------------%
 % Traversals.
@@ -313,30 +307,6 @@ divide(Pred, Set, InPart, OutPart) :-
 
 divide_by_set(DivideBySet, Set, InPart, OutPart) :-
     sparse_bitset.divide_by_set(DivideBySet, Set, InPart, OutPart).   % MODULE
-
-cartesian_product(A, B, Product) :-
-    sparse_bitset.foldl(cartesian_product2(A), B, [], Product).       % MODULE
-
-:- pred cartesian_product2(set_of_var(T)::in, var(T)::in,
-    list(set_of_var(T))::in, list(set_of_var(T))::out) is det.
-
-cartesian_product2(SetA, VarB, !Sets) :-
-    Pred =
-        (pred(VarA::in, SetsI0::in, SetsI::out) is det :-
-            Set = set_of_var.list_to_set([VarA, VarB]),
-            SetsI = [Set | SetsI0]
-        ),
-    set_of_var.fold(Pred, SetA, !Sets).
-
-cartesian_product_list([], []).
-cartesian_product_list([FirstSet | OtherSets], Product) :-
-    list.foldl(cartesian_product_list2(FirstSet), OtherSets, [], Product).
-
-:- pred cartesian_product_list2(set_of_var(T)::in, set_of_var(T)::in,
-    list(set_of_var(T))::in, list(set_of_var(T))::out) is det.
-
-cartesian_product_list2(A, B, SetsAcc, Product ++ SetsAcc) :-
-    cartesian_product(A, B, Product).
 
 %---------------------%
 % Traversals.
