@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2022, 2024 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -153,9 +153,10 @@ lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
     ;
         Enabled = enable_const_struct_poly,
         ConstStruct = const_struct(ConsId, Args, Type, _Inst, DefinedWhere),
-        ( if ConsId = du_data_ctor(du_ctor(SymName, _, _)) then
+        ( if ConsId = du_data_ctor(DuCtor) then
+            DuCtor = du_ctor(SymName, _, _),
             Name = unqualify_name(SymName),
-            ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId, Type),
+            ConsProxyStruct = cons_proxy_struct(Name, Args, DuCtor, Type),
             const_struct_db_get_next_num(!.Db, NextConstNum),
             const_struct_db_get_cons_proxy_map(!.Db, ConsProxyMap0),
             map.search_insert(ConsProxyStruct, NextConstNum, MaybeOldConstNum,
@@ -239,9 +240,10 @@ delete_const_struct(ConstNum, !Db) :-
     const_struct_db_set_num_map(NumMap, !Db),
 
     ConstStruct = const_struct(ConsId, Args, Type, _Inst, _DefinedWhere),
-    ( if ConsId = du_data_ctor(du_ctor(SymName, _, _)) then
+    ( if ConsId = du_data_ctor(DuCtor) then
+        DuCtor = du_ctor(SymName, _, _),
         Name = unqualify_name(SymName),
-        ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId, Type),
+        ConsProxyStruct = cons_proxy_struct(Name, Args, DuCtor, Type),
         const_struct_db_get_cons_proxy_map(!.Db, ConsProxyMap0),
         map.det_remove(ConsProxyStruct, _ConstNum,
             ConsProxyMap0, ConsProxyMap),
@@ -271,7 +273,7 @@ const_struct_db_get_structs(Db, Structs) :-
     --->    cons_proxy_struct(
                 cps_name        :: string,
                 cps_args        :: list(const_struct_arg),
-                cps_cons_id     :: cons_id,
+                cps_du_ctor     :: du_ctor,
                 cps_term_type   :: mer_type
             ).
 
