@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2015-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -215,7 +215,7 @@ deps_list_to_deps_graph(_, [], [], !IntDepsGraph, !ImpDepsGraph).
 deps_list_to_deps_graph(DepsMap,
         [Deps | DepsList], [BurdenedModule | BurdenedModules],
         !IntDepsGraph, !ImpDepsGraph) :-
-    Deps = deps(_, _, BurdenedModule),
+    Deps = deps(_, BurdenedModule),
     Baggage = BurdenedModule ^ bm_baggage,
     Errors = Baggage ^ mb_errors,
     FatalErrors = Errors ^ rm_fatal_errors,
@@ -234,7 +234,7 @@ deps_list_to_deps_graph(DepsMap,
     = module_dep_info.
 
 lookup_burdened_module_in_deps_map(DepsMap, ModuleName) = ModuleDepInfo :-
-    map.lookup(DepsMap, ModuleName, deps(_, _, BurdenedModule)),
+    map.lookup(DepsMap, ModuleName, deps(_, BurdenedModule)),
     ModuleDepInfo = module_dep_info_full(BurdenedModule).
 
 %---------------------------------------------------------------------------%
@@ -689,15 +689,6 @@ get_ext_opt_deps(Globals, LookForSrc, Ext, [ModuleName | ModuleNames],
     get_ext_opt_deps(Globals, LookForSrc, Ext, ModuleNames, !:OptDeps, !IO),
     (
         LookForSrc = look_for_src,
-        % XXX Why are we looking for *source* files in intermod_dirs?
-        % Neither of our caller call sites that pass look_for_src
-        % have any documentation of their reasons, and the documentation
-        % of --intermod-directory says:
-        %
-        % "Append dir to the list of directories to be search for .opt files".
-        %
-        % XXX It should mention .trans_opt files as well, since we do
-        % search for them in the same places.
         SearchAuthDirsSrc = get_search_auth_intermod_dirs(ime_src, Globals),
         search_for_module_source(SearchAuthDirsSrc, ModuleName,
             _SearchDirsLook, Result1, !IO),

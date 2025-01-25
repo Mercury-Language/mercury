@@ -37,19 +37,11 @@
 
 :- type deps_map == map(module_name, deps).
 :- type deps
-    --->    deps(
-                have_processed,
-                maybe_dummy_burdened_module,
-                burdened_module
-            ).
+    --->    deps(have_processed, burdened_module).
 
 :- type have_processed
     --->    not_yet_processed
     ;       already_processed.
-
-:- type maybe_dummy_burdened_module
-    --->    non_dummy_burdened_module
-    ;       dummy_burdened_module.
 
 %---------------------------------------------------------------------------%
 
@@ -158,8 +150,7 @@ build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
         BurdenedModules = []
     ),
     map.init(DepsMap0),
-    list.foldl(insert_into_deps_map(non_dummy_burdened_module),
-        BurdenedModules, DepsMap0, DepsMap).
+    list.foldl(insert_into_deps_map, BurdenedModules, DepsMap0, DepsMap).
 
 %---------------------------------------------------------------------------%
 
@@ -244,10 +235,10 @@ generate_deps_map_step(ProgressStream, Globals, Search, CmdLineModuleName,
     % XXX Why only the *public* children?
     ( if
         MaybeDeps0 = yes(Deps0),
-        Deps0 = deps(Done0, MaybeDummy, BurdenedModule),
+        Deps0 = deps(Done0, BurdenedModule),
         Done0 = not_yet_processed
     then
-        Deps = deps(already_processed, MaybeDummy, BurdenedModule),
+        Deps = deps(already_processed, BurdenedModule),
         map.det_update(Module, Deps, !DepsMap),
         ParseTreeModuleSrc = BurdenedModule ^ bm_module,
 
@@ -283,11 +274,8 @@ generate_deps_map_step(ProgressStream, Globals, Search, CmdLineModuleName,
 
 update_read_unread_modules(ProgressStream, Module,
         MaybeDeps, NewBurdenedModules, !ReadModules, !UnreadModules) :-
-    ( if
-        MaybeDeps = yes(Deps),
-        Deps = deps(_, MaybeDummy, _),
-        MaybeDummy = non_dummy_burdened_module
-    then
+    (
+        MaybeDeps = yes(_Deps),
         NewReadModules =
             list.map((func(BM) = BM ^ bm_module ^ ptms_module_name),
                 NewBurdenedModules),
@@ -299,7 +287,8 @@ update_read_unread_modules(ProgressStream, Module,
             io.format(ProgressStream, "read %s\n",
                 [s(string.join_list(", ", NewReadModuleStrs))], !TIO)
         )
-    else
+    ;
+        MaybeDeps = no,
         set_tree234.insert(Module, !UnreadModules),
         trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
             io(!TIO)]
@@ -413,12 +402,11 @@ lookup_or_find_dependency_info_for_module(ProgressStream, Globals, Search,
         NewBurdenedModules = []
     else
         read_src_file_for_dependency_info(ProgressStream, Globals, Search,
-            CmdLineModuleName, ModuleName, ExpectationContexts, MaybeDummy,
+            CmdLineModuleName, ModuleName, ExpectationContexts,
             NewBurdenedModules, !Specs, !IO),
         (
             NewBurdenedModules = [_ | _],
-            list.foldl(insert_into_deps_map(MaybeDummy),
-                NewBurdenedModules, !DepsMap),
+            list.foldl(insert_into_deps_map, NewBurdenedModules, !DepsMap),
             % We can do a map.lookup here even though a map.search above
             % failed, because ModuleName should be one of the BurdenedModules
             % the call above just added to !DepsMap.
@@ -449,13 +437,13 @@ lookup_or_find_dependency_info_for_module(ProgressStream, Globals, Search,
     % submodule and also as a nested submodule is caught by
     % split_into_compilation_units_perform_checks.
     %
-:- pred insert_into_deps_map(maybe_dummy_burdened_module::in,
-    burdened_module::in, deps_map::in, deps_map::out) is det.
+:- pred insert_into_deps_map(burdened_module::in,
+    deps_map::in, deps_map::out) is det.
 
-insert_into_deps_map(MaybeDummy, BurdenedModule, !DepsMap) :-
+insert_into_deps_map(BurdenedModule, !DepsMap) :-
     ParseTreeModuleSrc = BurdenedModule ^ bm_module,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    Deps = deps(not_yet_processed, MaybeDummy, BurdenedModule),
+    Deps = deps(not_yet_processed, BurdenedModule),
     % NOTE Redirecting this call to map.det_insert leads to a clean bootcheck
     % with one exception: it causes the failure of the invalid_make_int/sub_c
     % test case, with this message:
@@ -473,12 +461,11 @@ insert_into_deps_map(MaybeDummy, BurdenedModule, !DepsMap) :-
     %
 :- pred read_src_file_for_dependency_info(io.text_output_stream::in,
     globals::in, maybe_search::in, module_name::in, module_name::in,
-    expectation_contexts::in,
-    maybe_dummy_burdened_module::out, list(burdened_module)::out,
+    expectation_contexts::in, list(burdened_module)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 read_src_file_for_dependency_info(ProgressStream, Globals, Search,
-        CmdLineModuleName, ModuleName, ExpectationContexts, MaybeDummy,
+        CmdLineModuleName, ModuleName, ExpectationContexts,
         BurdenedModules, !Specs, !IO) :-
     % XXX If HaveReadModuleSrc contains error messages, any parse tree
     % it may also contain may not be complete, and the rest of this predicate
@@ -489,71 +476,19 @@ read_src_file_for_dependency_info(ProgressStream, Globals, Search,
     (
         HaveReadModuleSrc = have_module(SourceFileName, ParseTreeSrc, Source),
         Source = was_read(MaybeTimestamp, ReadModuleErrors),
-        MaybeDummy = non_dummy_burdened_module,
         parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
             ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
             Specs, BurdenedModules),
         !:Specs = Specs ++ !.Specs
     ;
-        HaveReadModuleSrc = have_not_read_module(SourceFileName,
+        HaveReadModuleSrc = have_not_read_module(_SourceFileName,
             ReadModuleErrors),
-        % XXX Creating a dummy parse tree, from which we then construct
-        % a single burdened module, which we then add to the deps_map,
-        % preserves old behavior. This old behavior has two effects,
-        % as far as I can tell (zs, 2022 apr 28).
-        %
-        % - It includes modules which are imported but whose sources
-        %   are not in the current directory among the dependencies
-        %   of the main module in the main module's .dv file.
-        %
-        %   I see three main classes of such modules. The two obvious classes
-        %   are Mercury library modules and a project's own modules in other
-        %   directories, which may or may not be accessed via libraries.
-        %   A third class is nested submodules which are not found because
-        %   they are looked up as if they were separate submodules. This is
-        %   exemplified by the tests/invalid_make_int/sub_c test case,
-        %   where sub_c.m imports sub_c_helper_1.sub_1, but
-        %   sub_c_helper_1.sub_1.m does not exist, because sub_1 is a
-        %   nested submodule inside sub_c_helper_1.m.
-        %
-        %   It is arguable whether including the first two categories
-        %   among the main module's dependencies in the .dv file
-        %   is a good or not. With the right view path, they can detect
-        %   when the main module needs to be rebuilt due to changes in them,
-        %   but specifying that view path to --generate-dependencies, and
-        %   having the compiler actually use that view path, would be
-        %   a better idea. Including the third is probably a bad idea
-        %   from all respects, though (a) distinguishing that category
-        %   from the other two is nontrivial, and (b) fixing that bad idea
-        %   would require changing the expected output of the sub_c test case.
-        %
-        %   The commented out code below is a possible replacement of this
-        %   switch and the call following it. We could use it if we decide
-        %   not to put dummy parse_tree_srcs into the deps_map. Switching
-        %   to it bootchecks, though only with a different expected output
-        %   for the sub_c test case.
-        %
-        % - Strangely, even the totally empty parse_tree_src we construct
-        %   will end up having dependencies, because we implicitly import
-        %   both the public and private builtin modules into all modules,
-        %   even if they contain nothing that could refer to either builtin
-        %   module :-( However, these dependencies should not drag into
-        %   the deps_map any module that other, nondummy modules' dependencies
-        %   wouldn't drag in anyway.
-
-        MaybeTimestamp = maybe.no,
-        ParseTreeSrc = parse_tree_src(ModuleName, dummy_context, cord.init),
-        MaybeDummy = dummy_burdened_module,
-        % This should be
-        % BurdenedModules = [],
-        % Specs = get_read_module_specs(ReadModuleErrors),
-        parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
-            ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
-            Specs, BurdenedModules),
+        BurdenedModules = [],
         ( if ModuleName = CmdLineModuleName then
             % The module we cannot read is named on the command line.
             % The user will definitely be interested in the fact that
             % we cannot read it.
+            Specs = get_read_module_specs(ReadModuleErrors),
             !:Specs = Specs ++ !.Specs
         else
             % The module is NOT named on the command line, but merely

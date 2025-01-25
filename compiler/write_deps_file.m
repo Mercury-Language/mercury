@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2012 The University of Melbourne.
-% Copyright (C) 2013-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2013-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -169,24 +169,31 @@ generate_and_write_d_file_gendep(ProgressStream, Globals, FileOrModule,
     maybe1(burdened_module)::out) is det.
 
 do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule) :-
-    map.lookup(DepsMap, ModuleName, ModuleDep),
-    ModuleDep = deps(_, _, BurdenedModule),
-    BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
-    Errors = Baggage ^ mb_errors,
-    FatalErrors = Errors ^ rm_fatal_errors,
-    ( if set.is_non_empty(FatalErrors) then
-        FatalErrorSpecs = Errors ^ rm_fatal_error_specs,
-        (
-            FatalErrorSpecs = [],
-            string.format("FatalErrorSpecs = [], with FatalErrors = %s\n",
-                [s(string.string(FatalErrors))], UnexpectedMsg),
-            unexpected($pred, UnexpectedMsg)
-        ;
-            FatalErrorSpecs = [_ | _],
-            MaybeBurdenedModule = error1(FatalErrorSpecs)
+    ( if map.search(DepsMap, ModuleName, ModuleDep) then
+        ModuleDep = deps(_, BurdenedModule),
+        BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
+        Errors = Baggage ^ mb_errors,
+        FatalErrors = Errors ^ rm_fatal_errors,
+        ( if set.is_non_empty(FatalErrors) then
+            FatalErrorSpecs = Errors ^ rm_fatal_error_specs,
+            (
+                FatalErrorSpecs = [],
+                string.format("FatalErrorSpecs = [], with FatalErrors = %s\n",
+                    [s(string.string(FatalErrors))], UnexpectedMsg),
+                unexpected($pred, UnexpectedMsg)
+            ;
+                FatalErrorSpecs = [_ | _],
+                MaybeBurdenedModule = error1(FatalErrorSpecs)
+            )
+        else
+            MaybeBurdenedModule = ok1(BurdenedModule)
         )
     else
-        MaybeBurdenedModule = ok1(BurdenedModule)
+        % We don't have an error message to return here, but we also
+        % neither want or need to return one, because if execution got here,
+        % then the compiler should have already tried to read in ModuleName,
+        % and printed a diagnostic for the failure of that attempt.
+        MaybeBurdenedModule = error1([])
     ).
 
 %---------------------------------------------------------------------------%

@@ -797,7 +797,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
 deps_make_ints(ProgressStream, Globals, DepsMap,
         !Specs, !HaveParseTreeMaps, !IO) :-
     map.values(DepsMap, DepsList),
-    list.filter_map_foldl(gather_local_burdened_modules,
+    list.map_foldl(gather_local_burdened_modules,
         DepsList, BurdenedModules, [], Ancestors),
     % XXX This code should be parallelized.
     % We could replace the next call with a loop that, in each iteration,
@@ -893,15 +893,13 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
         )
     ).
 
-:- pred gather_local_burdened_modules(deps::in,
-    burdened_module::out,
+:- pred gather_local_burdened_modules(deps::in, burdened_module::out,
     assoc_list(list(string), burdened_module)::in,
-    assoc_list(list(string), burdened_module)::out) is semidet.
+    assoc_list(list(string), burdened_module)::out) is det.
 
 gather_local_burdened_modules(Deps, BurdenedModule, !Ancestors) :-
-    Deps = deps(_HaveProcessed, MaybeDummy, BurdenedModule),
+    Deps = deps(_HaveProcessed, BurdenedModule),
     BurdenedModule = burdened_module(_Baggage, ParseTreeModuleSrc),
-    MaybeDummy = non_dummy_burdened_module,
     IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
     ( if map.is_empty(IncludeMap) then
         true

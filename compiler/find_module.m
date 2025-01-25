@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2020, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2020, 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -226,6 +226,7 @@
 
 :- import_module dir.
 :- import_module getopt.
+:- import_module io.environment.
 :- import_module io.file.
 :- import_module map.
 :- import_module string.
@@ -264,21 +265,27 @@ search_for_file(SearchAuthDirs, FileName,
     ).
 
 search_for_file_and_stream(SearchAuthDirs, FileName,
-        SearchDirs, MaybeFilePathNameAndStream, !IO) :-
+        SearchDirs, Result, !IO) :-
     compute_search_dirs(SearchAuthDirs, SearchDirs),
-    search_for_file_and_stream_loop(SearchDirs, SearchDirs, FileName,
-        MaybeFilePathNameAndStream, !IO).
+    search_for_file_and_stream_loop(SearchDirs, FileName,
+        MaybeFilePathNameAndStream, !IO),
+    (
+        MaybeFilePathNameAndStream = no,
+        cannot_find_in_dirs_msg(FileName, SearchDirs, Msg, !IO),
+        Result = error(Msg)
+    ;
+        MaybeFilePathNameAndStream = yes(FilePathNameAndStream),
+        Result = ok(FilePathNameAndStream)
+    ).
 
-:- pred search_for_file_and_stream_loop(list(dir_name)::in,
-    list(dir_name)::in, file_name::in, maybe_error(path_name_and_stream)::out,
-    io::di, io::uo) is det.
+:- pred search_for_file_and_stream_loop(list(dir_name)::in, file_name::in,
+    maybe(path_name_and_stream)::out, io::di, io::uo) is det.
 
-search_for_file_and_stream_loop(AllDirs, Dirs, FileName,
+search_for_file_and_stream_loop(Dirs, FileName,
         MaybeFilePathNameAndStream, !IO) :-
     (
         Dirs = [],
-        Msg = cannot_find_in_dirs_msg(FileName, AllDirs),
-        MaybeFilePathNameAndStream = error(Msg)
+        MaybeFilePathNameAndStream = no
     ;
         Dirs = [HeadDir | TailDirs],
         make_path_name_noncanon(HeadDir, FileName, HeadFilePathNameNC),
@@ -293,11 +300,11 @@ search_for_file_and_stream_loop(AllDirs, Dirs, FileName,
                 HeadFilePathName = dir.make_path_name(HeadDir, FileName)
             ),
             MaybeFilePathNameAndStream =
-                ok(path_name_and_stream(HeadFilePathName, HeadStream))
+                yes(path_name_and_stream(HeadFilePathName, HeadStream))
         ;
             MaybeHeadStream = error(_),
-            search_for_file_and_stream_loop(AllDirs, TailDirs,
-                FileName, MaybeFilePathNameAndStream, !IO)
+            search_for_file_and_stream_loop(TailDirs, FileName,
+                MaybeFilePathNameAndStream, !IO)
         )
     ).
 
@@ -318,21 +325,27 @@ search_for_file_returning_dir(SearchAuthDirs, FileName,
     ).
 
 search_for_file_returning_dir_and_stream(SearchAuthDirs, FileName,
-        SearchDirs, MaybeDirPathNameAndStream, !IO) :-
+        SearchDirs, Result, !IO) :-
     compute_search_dirs(SearchAuthDirs, SearchDirs),
-    search_for_file_returning_dir_and_stream_loop(SearchDirs, SearchDirs,
-        FileName, MaybeDirPathNameAndStream, !IO).
+    search_for_file_returning_dir_and_stream_loop(SearchDirs, FileName,
+        MaybeFilePathNameAndStream, !IO),
+    (
+        MaybeFilePathNameAndStream = no,
+        cannot_find_in_dirs_msg(FileName, SearchDirs, Msg, !IO),
+        Result = error(Msg)
+    ;
+        MaybeFilePathNameAndStream = yes(FilePathNameAndStream),
+        Result = ok(FilePathNameAndStream)
+    ).
 
 :- pred search_for_file_returning_dir_and_stream_loop(list(dir_name)::in,
-    list(dir_name)::in, file_name::in, maybe_error(path_name_and_stream)::out,
-    io::di, io::uo) is det.
+    file_name::in, maybe(path_name_and_stream)::out, io::di, io::uo) is det.
 
-search_for_file_returning_dir_and_stream_loop(AllDirs, Dirs, FileName,
+search_for_file_returning_dir_and_stream_loop(Dirs, FileName,
         MaybeDirNameAndStream, !IO) :-
     (
         Dirs = [],
-        Msg = cannot_find_in_dirs_msg(FileName, AllDirs),
-        MaybeDirNameAndStream = error(Msg)
+        MaybeDirNameAndStream = no
     ;
         Dirs = [HeadDir | TailDirs],
         make_path_name_noncanon(HeadDir, FileName, HeadFilePathNameNC),
@@ -340,32 +353,38 @@ search_for_file_returning_dir_and_stream_loop(AllDirs, Dirs, FileName,
         (
             MaybeHeadStream = ok(HeadStream),
             MaybeDirNameAndStream =
-                ok(path_name_and_stream(HeadDir, HeadStream))
+                yes(path_name_and_stream(HeadDir, HeadStream))
         ;
             MaybeHeadStream = error(_),
-            search_for_file_returning_dir_and_stream_loop(AllDirs, TailDirs,
-                FileName, MaybeDirNameAndStream, !IO)
+            search_for_file_returning_dir_and_stream_loop(TailDirs, FileName,
+                MaybeDirNameAndStream, !IO)
         )
     ).
 
 %---------------------%
 
 search_for_file_returning_dir_and_contents(SearchAuthDirs, FileName,
-        SearchDirs, MaybeDirPathNameAndContents, !IO) :-
+        SearchDirs, Result, !IO) :-
     compute_search_dirs(SearchAuthDirs, SearchDirs),
-    search_for_file_returning_dir_and_contents_loop(SearchDirs, SearchDirs,
-        FileName, MaybeDirPathNameAndContents, !IO).
+    search_for_file_returning_dir_and_contents_loop(SearchDirs, FileName,
+        MaybeDirPathNameAndContents, !IO),
+    (
+        MaybeDirPathNameAndContents = no,
+        cannot_find_in_dirs_msg(FileName, SearchDirs, Msg, !IO),
+        Result = error(Msg)
+    ;
+        MaybeDirPathNameAndContents = yes(DirPathNameAndContents),
+        Result = ok(DirPathNameAndContents)
+    ).
 
 :- pred search_for_file_returning_dir_and_contents_loop(list(dir_name)::in,
-    list(dir_name)::in, file_name::in,
-    maybe_error(dir_name_and_contents)::out, io::di, io::uo) is det.
+    file_name::in, maybe(dir_name_and_contents)::out, io::di, io::uo) is det.
 
-search_for_file_returning_dir_and_contents_loop(AllDirs, Dirs, FileName,
+search_for_file_returning_dir_and_contents_loop(Dirs, FileName,
         MaybeDirNameAndContents, !IO) :-
     (
         Dirs = [],
-        Msg = cannot_find_in_dirs_msg(FileName, AllDirs),
-        MaybeDirNameAndContents = error(Msg)
+        MaybeDirNameAndContents = no
     ;
         Dirs = [HeadDir | TailDirs],
         make_path_name_noncanon(HeadDir, FileName, HeadFilePathNameNC),
@@ -374,11 +393,11 @@ search_for_file_returning_dir_and_contents_loop(AllDirs, Dirs, FileName,
         (
             MaybeHeadContents = ok(HeadContents),
             MaybeDirNameAndContents =
-                ok(dir_name_and_contents(HeadDir, HeadContents))
+                yes(dir_name_and_contents(HeadDir, HeadContents))
         ;
             MaybeHeadContents = error(_),
-            search_for_file_returning_dir_and_contents_loop(AllDirs, TailDirs,
-                FileName, MaybeDirNameAndContents, !IO)
+            search_for_file_returning_dir_and_contents_loop(TailDirs, FileName,
+                MaybeDirNameAndContents, !IO)
         )
     ).
 
@@ -386,17 +405,23 @@ search_for_file_returning_dir_and_contents_loop(AllDirs, Dirs, FileName,
 
 search_for_file_mod_time(SearchAuthDirs, FileName, SearchDirs, Result, !IO) :-
     compute_search_dirs(SearchAuthDirs, SearchDirs),
-    search_for_file_mod_time_loop(SearchDirs, SearchDirs, FileName,
-        Result, !IO).
+    search_for_file_mod_time_loop(SearchDirs, FileName, MaybeModTime, !IO),
+    (
+        MaybeModTime = no,
+        cannot_find_in_dirs_msg(FileName, SearchDirs, Msg, !IO),
+        Result = error(Msg)
+    ;
+        MaybeModTime = yes(ModTime),
+        Result = ok(ModTime)
+    ).
 
-:- pred search_for_file_mod_time_loop(list(dir_name)::in, list(dir_name)::in,
-    file_name::in, maybe_error(time_t)::out, io::di, io::uo) is det.
+:- pred search_for_file_mod_time_loop(list(dir_name)::in, file_name::in,
+    maybe(time_t)::out, io::di, io::uo) is det.
 
-search_for_file_mod_time_loop(AllDirs, Dirs, FileName, MaybeModTime, !IO) :-
+search_for_file_mod_time_loop(Dirs, FileName, MaybeModTime, !IO) :-
     (
         Dirs = [],
-        Msg = cannot_find_in_dirs_msg(FileName, AllDirs),
-        MaybeModTime = error(Msg)
+        MaybeModTime = no
     ;
         Dirs = [HeadDir | TailDirs],
         make_path_name_noncanon(HeadDir, FileName, HeadFilePathNameNC),
@@ -404,33 +429,63 @@ search_for_file_mod_time_loop(AllDirs, Dirs, FileName, MaybeModTime, !IO) :-
             MaybeHeadModTime, !IO),
         (
             MaybeHeadModTime = ok(HeadModTime),
-            MaybeModTime = ok(HeadModTime)
+            MaybeModTime = yes(HeadModTime)
         ;
             MaybeHeadModTime = error(_),
-            search_for_file_mod_time_loop(AllDirs, TailDirs, FileName,
+            search_for_file_mod_time_loop(TailDirs, FileName,
                 MaybeModTime, !IO)
         )
     ).
 
 %---------------------%
 
-:- func cannot_find_in_dirs_msg(file_name, list(dir_name)) = string.
+:- pred cannot_find_in_dirs_msg(file_name::in, list(dir_name)::in, string::out,
+    io::di, io::uo) is det.
 
-cannot_find_in_dirs_msg(FileName, Dirs) = Msg :-
-    (
-        Dirs = [],
-        string.format("cannot find `%s' in the empty list of directories",
+cannot_find_in_dirs_msg(FileName, Dirs, Msg, !IO) :-
+    % This environment variable is the mechanism we use in the invalid_make_int
+    % test directory to ensure that the output generated by the compiler
+    % does NOT depend on the exact pathnames in Dirs.
+    %
+    % The cost of looking up this environment variable is negligible compared
+    % to the cost of trying the find the file.
+    io.environment.get_environment_var("MERCURY_NO_PATHS_IN_CANNOT_FIND_MSG",
+        MaybeEnvVarValue, !IO),
+    ( if
+        MaybeEnvVarValue = yes(EnvVarValue),
+        EnvVarValue \= ""
+    then
+        % We include a period at the end of this message because
+        % MERCURY_NO_PATHS_IN_CANNOT_FIND_MSG is intended to be set
+        % only for test cases in tests/invalid_make_int, and for those,
+        % this is the right output.
+        string.format("cannot find `%s' in the search path.",
             [s(FileName)], Msg)
-    ;
-        Dirs = [SingleDir],
-        string.format("cannot find `%s' in directory `%s'",
-            [s(FileName), s(SingleDir)], Msg)
-    ;
-        Dirs = [_, _ | _],
-        WrapInQuotes = (func(N) = "`" ++ N ++ "'"),
-        DirsStr = string.join_list(", ", list.map(WrapInQuotes, Dirs)),
-        string.format("cannot find `%s' in directories %s",
-            [s(FileName), s(DirsStr)], Msg)
+    else
+        % We do not include a period at the end of these messages
+        % because they may end up being returned to the
+        % error_and_maybe_rebuilding_msg predicate in
+        % make.get_module_dep_info.m. All other places in the compiler
+        % that get these message want to print them at the end of a sentence,
+        % but that predicate may decide to add a "...rebuilding" suffix.
+        % The callers that want to add periods after Msg will do so.
+        % (Actually, while some do, and do not want to, there are some
+        % in which a period would look better, but is not added.)
+        (
+            Dirs = [],
+            string.format("cannot find `%s' in the empty list of directories",
+                [s(FileName)], Msg)
+        ;
+            Dirs = [SingleDir],
+            string.format("cannot find `%s' in directory `%s'",
+                [s(FileName), s(SingleDir)], Msg)
+        ;
+            Dirs = [_, _ | _],
+            WrapInQuotes = (func(N) = "`" ++ N ++ "'"),
+            DirsStr = string.join_list(", ", list.map(WrapInQuotes, Dirs)),
+            string.format("cannot find `%s' in directories %s",
+                [s(FileName), s(DirsStr)], Msg)
+        )
     ).
 
 :- pred make_path_name_noncanon(dir_name::in, file_name::in, file_name::out)

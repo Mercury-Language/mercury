@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2012 The University of Melbourne.
-% Copyright (C) 2013-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2013-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1131,7 +1131,7 @@ select_no_fatal_error_modules(_, [], []).
 select_no_fatal_error_modules(DepsMap, [ModuleName | ModuleNames0],
         ModuleNames) :-
     select_no_fatal_error_modules(DepsMap, ModuleNames0, ModuleNamesTail),
-    map.lookup(DepsMap, ModuleName, deps(_, _, BurdenedModule)),
+    map.lookup(DepsMap, ModuleName, deps(_, BurdenedModule)),
     Baggage = BurdenedModule ^ bm_baggage,
     ModuleErrors = Baggage ^ mb_errors,
     FatalErrors = ModuleErrors ^ rm_fatal_errors,
@@ -1163,7 +1163,7 @@ generate_dv_file_define_mod_misc_vars(Globals, DepsMap, Modules,
     % The modules for which we need to generate .int0 files.
     HasSubmodules =
         ( pred(Module::in) is semidet :-
-            map.lookup(DepsMap, Module, deps(_, _, BurdenedModule)),
+            map.lookup(DepsMap, Module, deps(_, BurdenedModule)),
             ParseTreeModuleSrc = BurdenedModule ^ bm_module,
             IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
             not map.is_empty(IncludeMap)
@@ -1424,7 +1424,7 @@ get_fact_table_file_names(DepsMap, Modules, FactTableFileNames) :-
 
 acc_fact_table_file_names(_DepsMap, [], !FactTableFileNames).
 acc_fact_table_file_names(DepsMap, [Module | Modules], !FactTableFileNames) :-
-    map.lookup(DepsMap, Module, deps(_, _, BurdenedModule)),
+    map.lookup(DepsMap, Module, deps(_, BurdenedModule)),
     ParseTreeModuleSrc = BurdenedModule ^ bm_module,
     get_fact_tables(ParseTreeModuleSrc, FactTableFileNames),
     % Handle object files for foreign code.
@@ -1898,7 +1898,7 @@ generate_dep_file_install_targets_legacy(ModuleName, DepsMap,
     ),
     ( if
         some [BurdenedModule] (
-            map.member(DepsMap, _, deps(_, _, BurdenedModule)),
+            map.member(DepsMap, _, deps(_, BurdenedModule)),
             ParseTreeModuleSrc = BurdenedModule ^ bm_module,
             IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
             not map.is_empty(IncludeMap)
@@ -2295,7 +2295,7 @@ generate_dep_file_install_all_files(MainModuleNameStr, LibModuleNameStr,
 
 some_module_in_deps_map_has_a_submodule(DepsMap) :-
     some [BurdenedModule] (
-        map.member(DepsMap, _, deps(_, _, BurdenedModule)),
+        map.member(DepsMap, _, deps(_, BurdenedModule)),
         ParseTreeModuleSrc = BurdenedModule ^ bm_module,
         IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
         not map.is_empty(IncludeMap)
@@ -2488,7 +2488,7 @@ remove_files_cmd(Files) =
 
 get_source_file(DepsMap, ModuleName, FileName) :-
     map.lookup(DepsMap, ModuleName, Deps),
-    Deps = deps(_, _, BurdenedModule),
+    Deps = deps(_, BurdenedModule),
     Baggage = BurdenedModule ^ bm_baggage,
     SourceFileName = Baggage ^ mb_source_file_name,
     ( if string.remove_suffix(SourceFileName, ".m", SourceFileBase) then

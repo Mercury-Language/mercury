@@ -64,6 +64,9 @@ MULTI_MODULE_PROGS = \
 #-----------------------------------------------------------------------------#
 
 PROGS = $(SINGLE_MODULE_PROGS) $(MULTI_MODULE_PROGS)
+# Note that the "-nodepend" part is a bit of a lie for the MULTI_MODULE_PROGS
+# part of PROGS, because the rule for the .int_err files of MULTI_MODULE_PROGS
+# *does* make the dependencies, though in a more controlled manner.
 TESTS = $(sort $(PROGS:%=%-nodepend))
 include ../Mmake.common
 
@@ -87,7 +90,8 @@ $(SINGLE_MODULE_PROGS:%=%.int_err): %.int_err: %.m
 $(MULTI_MODULE_PROGS:%=%.int_err): %.int_err: %.m
 	+mmake $*.depend
 	+mmake $*.all_int3s
-	if $(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
+	if MERCURY_NO_PATHS_IN_CANNOT_FIND_MSG=true \
+		$(MC) --make-interface $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) $* \
 		> $*.int_err 2>&1; \
 	then false; \
 	else true; \
@@ -96,6 +100,6 @@ $(MULTI_MODULE_PROGS:%=%.int_err): %.int_err: %.m
 clean_local: clean_invalid
 
 clean_invalid:
-	rm -f *.dep_err *.err *.int_err *.int_err_res
+	rm -f *.dep_err *.err *.int3 *.int2 *.int *.int_err *.int_err_res*
 
 #-----------------------------------------------------------------------------#
