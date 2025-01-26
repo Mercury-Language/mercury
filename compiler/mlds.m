@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2011 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -831,7 +831,6 @@
                 % is given by a string, that string is the name of an integer
                 % constant in a foreign language.)
                 mecd_const_value        :: mlds_enum_const
-
             ).
 
 :- type mlds_enum_const
@@ -1243,22 +1242,24 @@
             % using the `field' lval with an `offset' mlds_field_id;
             % indices start at zero.
             %
-            % Note that mlds_array_type/1 is used for representing
-            % the target language's native arrays, whereas
-            % mlds_mercury_array_type/1 (see above) is used for
-            % representing Mercury arrays.
+            % Note that we use mlds_array_type/1 for representing
+            % the target language's native arrays, whereas we use
+            % mlds_mercury_array_type/1 (see above) for representing
+            % Mercury arrays.
             %
-            % Currently MLDS array types are used for
-            % (a) static constants that would otherwise be allocated
-            %     with a `new_object', if we are using the low-level
-            %     data representation (--no-high-level-data)
-            % (b) for static constants of certain Mercury types which are
-            %     always represented using the low-level data
-            %     representation, regardless of --high-level-data,
-            %     in particular closures and type_infos.
-            % (c) for any other arrays generated internally by the
-            %     MLDS code generator, e.g. the arrays used for
-            %     string switches.
+            % Currently we use MLDS array types for
+            %
+            % - static constants that would otherwise be allocated
+            %   with a `new_object', if we are using the low-level
+            %   data representation (--no-high-level-data);
+            %
+            % - for static constants of certain Mercury types which are
+            %   always represented using the low-level data representation,
+            %   regardless of --high-level-data, in particular closures
+            %   and type_infos;
+            %
+            % - for any other arrays generated internally by the MLDS
+            %   code generator, e.g. the arrays used for string switches.
 
     ;       mlds_mostly_generic_array_type(list(mlds_type))
             % A generic array with some float elements. All other elements
@@ -2167,11 +2168,11 @@
             % for the given procedure.
 
     ;       mlconst_null(mlds_type).
-            % A null value, of the given type. Usually the type will be a
-            % pointer (mlds_ptr_type) but it could also be string or a
-            % func_type. (Null is not a valid value of type string or
-            % func_type, but null values of those types may be useful as
-            % placeholders in cases where the value will never be used.)
+            % A null value, of the given type. Usually the type will be
+            % a pointer (mlds_ptr_type) but it could also be string or
+            % a func_type. (Null is not a valid value of type string or
+            % func_type, but null values of those types may be useful
+            % as placeholders in cases where the value will never be used.)
 
 :- type mlds_code_addr
     --->    mlds_code_addr(
