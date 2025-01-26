@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2021 The Mercury team.
+% Copyright (C) 2014-2021, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -237,7 +237,8 @@ substitute_state_var_mappings_unify_var_term([], [], !VarSet, !State, !Specs).
 substitute_state_var_mappings_unify_var_term([UVT0 | UVTs0], [UVT | UVTs],
         !VarSet, !State, !Specs) :-
     UVT0 = unify_var_term(Var, Arg0),
-    substitute_state_var_mapping(Arg0, Arg, !VarSet, !State, !Specs),
+    replace_any_dot_color_state_var_in_term(Arg0, Arg,
+        !VarSet, !State, !Specs),
     UVT = unify_var_term(Var, Arg),
     substitute_state_var_mappings_unify_var_term(UVTs0, UVTs,
         !VarSet, !State, !Specs).
@@ -254,7 +255,8 @@ substitute_state_var_mappings_unify_var_term_num_context([], [],
 substitute_state_var_mappings_unify_var_term_num_context(
         [UVTNC0 | UVTNCs0], [UVTNC | UVTNCs], !VarSet, !State, !Specs) :-
     UVTNC0 = unify_var_term_num_context(Var, Arg0, ArgNum, ArgContext),
-    substitute_state_var_mapping(Arg0, Arg, !VarSet, !State, !Specs),
+    replace_any_dot_color_state_var_in_term(Arg0, Arg,
+        !VarSet, !State, !Specs),
     UVTNC = unify_var_term_num_context(Var, Arg, ArgNum, ArgContext),
     substitute_state_var_mappings_unify_var_term_num_context(UVTNCs0, UVTNCs,
         !VarSet, !State, !Specs).
@@ -568,8 +570,10 @@ do_arg_unification(XVar, YTerm, Context, ArgContext, Order, ArgNum,
 do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
         Purity, Order, Expansion, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs) :-
-    substitute_state_var_mapping(LHS0, LHS, !VarSet, !SVarState, !Specs),
-    substitute_state_var_mapping(RHS0, RHS, !VarSet, !SVarState, !Specs),
+    replace_any_dot_color_state_var_in_term(LHS0, LHS,
+        !VarSet, !SVarState, !Specs),
+    replace_any_dot_color_state_var_in_term(RHS0, RHS,
+        !VarSet, !SVarState, !Specs),
     classify_unravel_unification(LHS, RHS,
         Context, MainContext, SubContext, Purity, Order, map.init, Expansion,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
@@ -585,7 +589,8 @@ do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
 do_unravel_var_unification(LHSVar, RHS0, Context, MainContext, SubContext,
         Purity, Order, Expansion, !SVarState, !SVarStore, !VarSet,
         !ModuleInfo, !QualInfo, !Specs) :-
-    substitute_state_var_mapping(RHS0, RHS, !VarSet, !SVarState, !Specs),
+    replace_any_dot_color_state_var_in_term(RHS0, RHS,
+        !VarSet, !SVarState, !Specs),
     classify_unravel_var_unification(LHSVar, RHS,
         Context, MainContext, SubContext, Purity, Order, map.init, Expansion,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs).
@@ -703,7 +708,7 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
         Context, MainContext, SubContext,
         Purity, Order, !.AncestorVarMap, Expansion,
         !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs) :-
-    substitute_state_var_mappings(YArgTerms0, YArgTerms, !VarSet,
+    replace_any_dot_color_state_var_in_terms(YArgTerms0, YArgTerms, !VarSet,
         !SVarState, !Specs),
     ( if
         YFunctor = term.atom(YAtom),
@@ -729,7 +734,7 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
                 FunctorName = qualified(ModuleName, Name),
                 % We have done state variable name expansion at the top
                 % level of Args, but not at the level of NameArgTerms.
-                substitute_state_var_mappings(NameArgTerms,
+                replace_any_dot_color_state_var_in_terms(NameArgTerms,
                     MaybeQualifiedYArgTermsPrime, !VarSet, !SVarState, !Specs)
             else
                 FunctorName = string_to_sym_name_sep(YAtom, "__"),
@@ -1073,7 +1078,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                 RValGoalCord = cord.empty
             ;
                 RValTerm0 = term.functor(_, _, _),
-                substitute_state_var_mapping(RValTerm0, RValTerm,
+                replace_any_dot_color_state_var_in_term(RValTerm0, RValTerm,
                     !VarSet, !SVarState, !Specs),
                 make_fresh_arg_var_no_svar(RValTerm0, RValTermVar, [],
                     !VarSet),
@@ -1125,7 +1130,8 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                     BeforeInsideSVarState, AfterCondInsideSVarState,
                     !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
 
-                substitute_state_var_mapping(ThenTerm0, ThenTerm, !VarSet,
+                replace_any_dot_color_state_var_in_term(ThenTerm0, ThenTerm,
+                    !VarSet,
                     AfterCondInsideSVarState, AfterThenInsideSVarState0,
                     !Specs),
                 map.init(AncestorVarMap),
@@ -1144,8 +1150,8 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                     BeforeSVarState, AfterThenInsideSVarState,
                     AfterThenSVarState),
 
-                substitute_state_var_mapping(ElseTerm0, ElseTerm, !VarSet,
-                    BeforeSVarState, AfterElseSVarState0, !Specs),
+                replace_any_dot_color_state_var_in_term(ElseTerm0, ElseTerm,
+                    !VarSet, BeforeSVarState, AfterElseSVarState0, !Specs),
                 classify_unravel_var_unification(XVar, ElseTerm,
                     Context, MainContext, SubContext,
                     Purity, Order, AncestorVarMap, ElseExpansion,
@@ -1192,8 +1198,8 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
             (
                 MaybeFieldNames = ok1(FieldNames),
                 require_det (
-                    substitute_state_var_mapping(InputTerm0, InputTerm,
-                        !VarSet, !SVarState, !Specs),
+                    replace_any_dot_color_state_var_in_term(InputTerm0,
+                        InputTerm, !VarSet, !SVarState, !Specs),
                     make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [],
                         !VarSet),
                     expand_get_field_function_call(Context, MainContext,
@@ -1254,11 +1260,11 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
             (
                 MaybeFieldNames = ok1(FieldNames),
                 require_det (
-                    substitute_state_var_mapping(InputTerm0, InputTerm,
-                        !VarSet, !SVarState, !Specs),
+                    replace_any_dot_color_state_var_in_term(InputTerm0,
+                        InputTerm, !VarSet, !SVarState, !Specs),
                     make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [],
                         !VarSet),
-                    substitute_state_var_mapping(FieldValueTerm0,
+                    replace_any_dot_color_state_var_in_term(FieldValueTerm0,
                         FieldValueTerm, !VarSet, !SVarState, !Specs),
                     make_fresh_arg_var_no_svar(FieldValueTerm, FieldValueVar,
                         [InputTermVar], !VarSet),
@@ -2373,7 +2379,8 @@ make_fresh_arg_vars_subst_svars_loop([Arg | Args], [Var | Vars],
 
 make_fresh_arg_var_subst_svars(Arg0, Var, !RevVarsArgs,
         !VarSet, !SVarState, !Specs) :-
-    substitute_state_var_mapping(Arg0, Arg, !VarSet, !SVarState, !Specs),
+    replace_any_dot_color_state_var_in_term(Arg0, Arg,
+        !VarSet, !SVarState, !Specs),
     (
         Arg = term.variable(ArgVar, _),
         ( if have_seen_arg_var(!.RevVarsArgs, ArgVar) then

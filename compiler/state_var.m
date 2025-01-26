@@ -35,12 +35,10 @@
     % This synonym improves code legibility. The intention is that we use
     % svar instead of prog_var in pred type declarations for any variables X
     % that represent state variables !X.
-    %
 :- type svar == prog_var.
 
     % When collecting the arms of a disjunction, we also need to collect
     % the resulting svar_states.
-    %
 :- type hlds_goal_svar_state
     --->    hlds_goal_svar_state(hlds_goal, svar_state).
 
@@ -148,8 +146,8 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Add unifiers to the Then and Else arms of an if-then-else to make sure
-    % that all the state variables match up.
+    % Add unifiers to the Then and Else arms of an if-then-else as needed
+    % to ensure that all the state variables match up.
     %
     % We also add unifiers to the Then arm for any new state variable
     % mappings produced in the condition.
@@ -216,19 +214,22 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Given a list of argument terms, substitute !.X and !:X with the
-    % corresponding state variable mappings. Any !X should already have been
-    % expanded into !.X, !:X via a call to expand_bang_state_pairs.
+    % Given a list of argument terms, replace !.X and !:X with the
+    % ordinary variables corresponding to them, updating the svar_state
+    % as appropriate. Any occurrence of !X should already have been
+    % expanded into a <!.X, !:X> pair by a call to expand_bang_state_pairs.
     %
-:- pred substitute_state_var_mappings(
+    % XXX Having "mapping" as part of the name is not useful.
+    %
+:- pred replace_any_dot_color_state_var_in_terms(
     list(prog_term)::in, list(prog_term)::out,
     prog_varset::in, prog_varset::out,
     svar_state::in, svar_state::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-    % Same as substitute_state_var_mappings, but for only one term.
+    % Same as replace_any_dot_color_state_var_in_terms, but for only one term.
     %
-:- pred substitute_state_var_mapping(prog_term::in, prog_term::out,
+:- pred replace_any_dot_color_state_var_in_term(prog_term::in, prog_term::out,
     prog_varset::in, prog_varset::out, svar_state::in, svar_state::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -333,7 +334,8 @@
 
     % State vars defined outside a lambda goal become readonly when we move
     % inside the lambda goal. Inside the lambda goal, it makes sense to access
-    % the current value of such state vars, but not to update it.
+    % the current value of such a state var, but it does not make sense
+    % to try to update its value.
     %
     % We should make negations behave similarly: it should not be possible
     % to update an outside state var inside a negation. However, for now,
@@ -1754,13 +1756,15 @@ svar_finish_inner_atomic_scope(_Context, InnerScopeInfo,
 % Look up prog_vars for a state_var.
 %
 
-substitute_state_var_mappings([], [], !VarSet, !State, !Specs).
-substitute_state_var_mappings([Arg0 | Args0], [Arg | Args], !VarSet, !State,
-        !Specs) :-
-    substitute_state_var_mapping(Arg0, Arg, !VarSet, !State, !Specs),
-    substitute_state_var_mappings(Args0, Args, !VarSet, !State, !Specs).
+replace_any_dot_color_state_var_in_terms([], [], !VarSet, !State, !Specs).
+replace_any_dot_color_state_var_in_terms([Arg0 | Args0], [Arg | Args],
+        !VarSet, !State, !Specs) :-
+    replace_any_dot_color_state_var_in_term(Arg0, Arg,
+        !VarSet, !State, !Specs),
+    replace_any_dot_color_state_var_in_terms(Args0, Args,
+        !VarSet, !State, !Specs).
 
-substitute_state_var_mapping(Arg0, Arg, !VarSet, !State, !Specs) :-
+replace_any_dot_color_state_var_in_term(Arg0, Arg, !VarSet, !State, !Specs) :-
     ( if Arg0 = functor(atom("!."), [variable(StateVar, _)], Context) then
         lookup_dot_state_var(Context, StateVar, Var, !VarSet, !State, !Specs),
         Arg = variable(Var, Context)
