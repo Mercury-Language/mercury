@@ -797,7 +797,7 @@ det_infer_conj([Goal0 | Goals0], [Goal | Goals], InstMap0, SolnContext,
     % the SolnContext properly.
 
     % First, process the second and subsequent conjuncts.
-    update_instmap(Goal0, InstMap0, InstMap1),
+    apply_goal_instmap_delta(Goal0, InstMap0, InstMap1),
     det_infer_conj(Goals0, Goals, InstMap1, SolnContext,
         RightFailingContexts, MaybePromiseEqvSolutionSets,
         TailDetism, !ConjFailingContexts, !DetInfo),
@@ -1401,7 +1401,7 @@ det_infer_if_then_else(Cond0, Cond, Then0, Then, Else0, Else, InstMap0,
         get_det_debug_output_stream(!.DetInfo, DebugStream, !IO),
         io.write_string(DebugStream, "inferring condition\n", !IO)
     ),
-    update_instmap(Cond0, InstMap0, InstMap1),
+    apply_goal_instmap_delta(Cond0, InstMap0, InstMap1),
     det_infer_goal(Then0, Then, InstMap1, SolnContext, RightFailingContexts,
         MaybePromiseEqvSolutionSets, ThenDetism, ThenFailingContexts,
         !DetInfo),

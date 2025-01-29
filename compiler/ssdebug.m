@@ -655,7 +655,7 @@ ssdebug_process_proc_det(SSTraceLevel, PredId, ProcId,
         % Make the variable list at the exit port. It's currently a
         % completely new list instead of adding on to the list generated
         % for the call port.
-        update_instmap(OrigBodyGoal, InitInstMap, FinalInstMap),
+        apply_goal_instmap_delta(OrigBodyGoal, InitInstMap, FinalInstMap),
         make_arg_list(0, FinalInstMap, HeadVars, Renaming, ExitArgListVar,
             ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarTable,
             BoundVarDescsAtCall, _BoundVarDescsAtExit),
@@ -731,7 +731,7 @@ ssdebug_process_proc_semi(SSTraceLevel, PredId, ProcId,
         % Make the variable list at the exit port. It's currently a
         % completely new list instead of adding on to the list generated
         % for the call port.
-        update_instmap(OrigBodyGoal, InitInstMap, FinalInstMap),
+        apply_goal_instmap_delta(OrigBodyGoal, InitInstMap, FinalInstMap),
         make_arg_list(0, FinalInstMap, HeadVars, Renaming, ExitArgListVar,
             ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarTable,
             BoundVarDescsAtCall, _BoundVarDescsAtExit),
@@ -851,7 +851,7 @@ ssdebug_process_proc_nondet(SSTraceLevel, PredId, ProcId,
         % Make the variable list at the exit port. It's currently a
         % completely new list instead of adding on to the list generated
         % for the call port.
-        update_instmap(OrigBodyGoal, InitInstMap, FinalInstMap),
+        apply_goal_instmap_delta(OrigBodyGoal, InitInstMap, FinalInstMap),
         make_arg_list(0, FinalInstMap, HeadVars, map.init, ExitArgListVar,
             ExitArgListGoals, !ModuleInfo, !ProcInfo, !PredInfo, !VarTable,
             BoundVarDescsAtCall, _BoundVarDescsAtExit),

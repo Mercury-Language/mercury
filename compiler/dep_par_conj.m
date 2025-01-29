@@ -436,7 +436,7 @@ sync_dep_par_conjs_in_goal(Goal0, Goal, InstMap0, InstMap, !SyncInfo) :-
         % These should have been expanded out by now.
         unexpected($pred, "shorthand")
     ),
-    update_instmap(Goal, InstMap0, InstMap).
+    apply_goal_instmap_delta(Goal, InstMap0, InstMap).
 
 :- pred sync_dep_par_conjs_in_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     instmap::in, sync_info::in, sync_info::out) is det.
@@ -658,7 +658,7 @@ sync_dep_par_conjunct(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
             map.init, Renaming),
         rename_some_vars_in_goal(Renaming, !Goal)
     ),
-    update_instmap(!.Goal, !InstMap).
+    apply_goal_instmap_delta(!.Goal, !InstMap).
 
     % Divide the shared variables into
     % - those that are consumed by this conjunct, and

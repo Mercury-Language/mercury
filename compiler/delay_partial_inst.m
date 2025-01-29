@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2007-2012 The University of Melbourne.
-% Copyright (C) 2014-2015 The Mercury team.
+% Copyright (C) 2014-2015, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -306,7 +306,7 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
         Goal = hlds_goal(switch(Var, CanFail, Cases), GoalInfo0)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
-        update_instmap(Cond0, InstMap0, InstMapThen),
+        apply_goal_instmap_delta(Cond0, InstMap0, InstMapThen),
         delay_partial_inst_in_goal(InstMap0, Cond0, Cond, !ConstructMap,
             !DelayInfo),
         delay_partial_inst_in_goal(InstMapThen, Then0, Then, !ConstructMap,
@@ -435,7 +435,7 @@ delay_partial_inst_in_conj(InstMap0, [HeadGoal0 | TailGoals0], Goals,
         !ConstructMap, !DelayInfo) :-
     delay_partial_inst_in_goal(InstMap0, HeadGoal0, HeadGoal, !ConstructMap,
         !DelayInfo),
-    update_instmap(HeadGoal0, InstMap0, InstMap1),
+    apply_goal_instmap_delta(HeadGoal0, InstMap0, InstMap1),
     delay_partial_inst_in_conj(InstMap1, TailGoals0, TailGoals, !ConstructMap,
         !DelayInfo),
     goal_to_conj_list(HeadGoal, HeadGoals),

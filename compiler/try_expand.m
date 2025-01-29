@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public Licence - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -505,7 +505,7 @@ expand_try_goal(InstMap, TryGoal, FinalGoal, !Info) :-
 
     % Handle nested try goals.
     expand_try_goals_in_goal(InstMap, Goal0, Goal1, !Info),
-    update_instmap(Goal0, InstMap, InstMapAfterGoal),
+    apply_goal_instmap_delta(Goal0, InstMap, InstMapAfterGoal),
     expand_try_goals_in_goal(InstMapAfterGoal, Then0, Then1, !Info),
     (
         MaybeElse0 = yes(Else0),

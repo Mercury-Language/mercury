@@ -1224,7 +1224,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         else
             MsgGroupsCond = []
         ),
-        update_instmap(Cond, InstMap0, InstMap1),
+        apply_goal_instmap_delta(Cond, InstMap0, InstMap1),
         det_diagnose_goal(Then, InstMap1, Desired, SwitchContexts, !DetInfo,
             MsgGroupsThen),
         det_diagnose_goal(Else, InstMap0, Desired, SwitchContexts, !DetInfo,
@@ -1359,7 +1359,7 @@ det_diagnose_conj([Goal | Goals], InstMap0, Desired, SwitchContexts, !DetInfo,
         MsgGroups) :-
     det_diagnose_goal(Goal, InstMap0, Desired, SwitchContexts, !DetInfo,
         HeadMsgGroups),
-    update_instmap(Goal, InstMap0, InstMap1),
+    apply_goal_instmap_delta(Goal, InstMap0, InstMap1),
     det_diagnose_conj(Goals, InstMap1, Desired, SwitchContexts, !DetInfo,
         TailMsgGroups),
     MsgGroups = HeadMsgGroups ++ TailMsgGroups.
@@ -1650,7 +1650,7 @@ reqscope_check_goal(Goal, InstMap0, IIS, MaybeReportedSwitch,
         GoalExpr = if_then_else(_, Cond, Then, Else),
         reqscope_check_goal(Cond, InstMap0, IIS, no,
             SwitchContexts, !DetInfo),
-        update_instmap(Cond, InstMap0, InstMap1),
+        apply_goal_instmap_delta(Cond, InstMap0, InstMap1),
         reqscope_check_goal(Then, InstMap1, IIS, no,
             SwitchContexts, !DetInfo),
         reqscope_check_goal(Else, InstMap0, IIS, no,
@@ -2112,7 +2112,7 @@ reqscope_check_conj([Goal | Goals], InstMap0, IIS,
         MaybeReportedSwitch, SwitchContexts, !DetInfo) :-
     reqscope_check_goal(Goal, InstMap0, IIS,
         MaybeReportedSwitch, SwitchContexts, !DetInfo),
-    update_instmap(Goal, InstMap0, InstMap1),
+    apply_goal_instmap_delta(Goal, InstMap0, InstMap1),
     reqscope_check_conj(Goals, InstMap1, IIS,
         MaybeReportedSwitch, SwitchContexts, !DetInfo).
 

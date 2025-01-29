@@ -295,7 +295,7 @@ detect_switches_in_goal_update_instmap(!InstMap, Goal0, Goal, !LocalInfo) :-
     detect_switches_in_goal_expr(!.InstMap, no, GoalInfo, GoalExpr0, GoalExpr,
         !LocalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo),
-    update_instmap(Goal0, !InstMap).
+    apply_goal_instmap_delta(Goal0, !InstMap).
 
     % Here we process each of the different sorts of goals.
     %

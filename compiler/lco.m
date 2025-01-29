@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1669,7 +1669,7 @@ lco_transform_variant_goal(ModuleInfo, Transforms, VariantMap, VarToAddr,
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0),
-        update_instmap(Cond, InstMap0, InstMap1),
+        apply_goal_instmap_delta(Cond, InstMap0, InstMap1),
         lco_transform_variant_goal(ModuleInfo, Transforms, VariantMap,
             VarToAddr, InstMap1, Then0, Then, ThenChanged, !ProcInfo),
         lco_transform_variant_goal(ModuleInfo, Transforms, VariantMap,
@@ -1756,7 +1756,7 @@ rev_conj_and_attach_init_instmaps(_, [], !RevGoalIMs).
 rev_conj_and_attach_init_instmaps(InstMap0, [Goal | Goals], !RevGoalIMs) :-
     GoalIM = goal_and_init_instmap(Goal, InstMap0),
     !:RevGoalIMs = [GoalIM | !.RevGoalIMs],
-    update_instmap(Goal, InstMap0, InstMap1),
+    apply_goal_instmap_delta(Goal, InstMap0, InstMap1),
     rev_conj_and_attach_init_instmaps(InstMap1, Goals, !RevGoalIMs).
 
 :- pred lco_transform_variant_rev_conj(module_info::in, variant_transforms::in,
@@ -1838,7 +1838,7 @@ lco_transform_variant_case(ModuleInfo, Transforms, VariantMap, VarToAddr,
 lco_transform_variant_plain_call(ModuleInfo, Transforms, VariantMap, VarToAddr,
         InstMap0, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, Changed,
         !ProcInfo) :-
-    update_instmap_goal_info(GoalInfo0, InstMap0, InstMap1),
+    apply_goal_info_instmap_delta(GoalInfo0, InstMap0, InstMap1),
     proc_info_get_var_table(!.ProcInfo, VarTable),
     list.filter(is_grounding(ModuleInfo, VarTable, InstMap0, InstMap1),
         VarToAddr, GroundingVarToAddr),
@@ -1915,7 +1915,7 @@ lco_transform_variant_plain_call(ModuleInfo, Transforms, VariantMap, VarToAddr,
 
 lco_transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
         GoalInfo, GoalExpr0, GoalExpr, Changed, !ProcInfo) :-
-    update_instmap_goal_info(GoalInfo, InstMap0, InstMap1),
+    apply_goal_info_instmap_delta(GoalInfo, InstMap0, InstMap1),
     proc_info_get_var_table(!.ProcInfo, VarTable),
     list.filter(is_grounding(ModuleInfo, VarTable, InstMap0, InstMap1),
         VarToAddr, GroundingVarToAddr),

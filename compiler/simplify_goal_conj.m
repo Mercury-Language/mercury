@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2017, 2019-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -206,7 +206,7 @@ simplify_conj(!.PrevGoals, [HeadGoal0 | TailGoals0], Goals, ConjInfo,
             simplify_conj(!.PrevGoals, HeadTailGoals1, Goals, ConjInfo,
                 NestedContext0, InstMap0, !Common, !Info)
         else
-            update_instmap(HeadGoal1, InstMap0, InstMap1),
+            apply_goal_instmap_delta(HeadGoal1, InstMap0, InstMap1),
             ( if
                 % Delete unreachable goals.
                 (
@@ -1127,7 +1127,7 @@ simplify_par_conjuncts([Goal0 |Goals0], [Goal | Goals],
         NestedContext0, InstMap0, Common0, !Info) :-
     simplify_goal(Goal0, Goal,
         NestedContext0, InstMap0, Common0, _Common1, !Info),
-    update_instmap(Goal, InstMap0, InstMap1),
+    apply_goal_instmap_delta(Goal, InstMap0, InstMap1),
     simplify_par_conjuncts(Goals0, Goals,
         NestedContext0, InstMap1, Common0, !Info).
 

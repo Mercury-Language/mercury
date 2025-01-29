@@ -620,9 +620,9 @@ insert_reg_wrappers_goal_2(Goal0, Goal, !InstMap, !Info, !Specs) :-
         Goal = hlds_goal(GoalExpr, GoalInfo0),
         % Imported procedures may have a body consisting of an empty
         % conjunction, yet have an `unreachable' instmap delta.
-        % Then we must make !:InstMap `unreachable' as well otherwise
+        % Then we must make !:InstMap `unreachable' as well, otherwise
         % we will run into problems at fix_branching_goal.
-        update_instmap_if_unreachable(Goal, !InstMap)
+        copy_any_unreachability_from_goal_instmap_delta(Goal, !InstMap)
     ;
         GoalExpr0 = disj(Goals0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
@@ -643,14 +643,14 @@ insert_reg_wrappers_goal_2(Goal0, Goal, !InstMap, !Info, !Specs) :-
             !Specs),
         GoalExpr = negation(SubGoal),
         Goal = hlds_goal(GoalExpr, GoalInfo0),
-        update_instmap_if_unreachable(Goal, !InstMap)
+        copy_any_unreachability_from_goal_instmap_delta(Goal, !InstMap)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         ( if Reason = from_ground_term(_, from_ground_term_construct) then
             % The subgoal cannot construct higher order values.
             GoalExpr = GoalExpr0,
             Goal = hlds_goal(GoalExpr, GoalInfo0),
-            update_instmap(Goal, !InstMap)
+            apply_goal_instmap_delta(Goal, !InstMap)
         else
             insert_reg_wrappers_goal(SubGoal0, SubGoal, !InstMap, !Info,
                 !Specs),
@@ -707,7 +707,7 @@ insert_reg_wrappers_goal_2(Goal0, Goal, !InstMap, !Info, !Specs) :-
             ; GenericCall = cast(_)
             ),
             Goal = Goal0,
-            update_instmap(Goal, !InstMap)
+            apply_goal_instmap_delta(Goal, !InstMap)
         )
     ;
         GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId, ForeignArgs0,
@@ -735,7 +735,7 @@ finish_call_goal(WrapGoals, CallGoalExpr0, CallGoalInfo0, Goal,
     % callee's argument modes that we made in the first phase.
     CallGoal0 = hlds_goal(CallGoalExpr0, CallGoalInfo0),
     do_recompute_atomic_instmap_delta(CallGoal0, CallGoal, !.InstMap, !Info),
-    update_instmap(CallGoal, !InstMap),
+    apply_goal_instmap_delta(CallGoal, !InstMap),
     CallGoal = hlds_goal(_, CallGoalInfo),
     conj_list_to_goal(WrapGoals ++ [CallGoal], CallGoalInfo, Goal).
 
@@ -750,10 +750,10 @@ do_recompute_atomic_instmap_delta(Goal0, Goal, InstMap, !Info) :-
         InstVarSet, InstMap, Goal0, Goal, ModuleInfo0, ModuleInfo),
     lambda_info_set_module_info(ModuleInfo, !Info).
 
-:- pred update_instmap_if_unreachable(hlds_goal::in, instmap::in, instmap::out)
-    is det.
+:- pred copy_any_unreachability_from_goal_instmap_delta(hlds_goal::in,
+    instmap::in, instmap::out) is det.
 
-update_instmap_if_unreachable(Goal, InstMap0, InstMap) :-
+copy_any_unreachability_from_goal_instmap_delta(Goal, InstMap0, InstMap) :-
     Goal = hlds_goal(_, GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     ( if instmap_delta_is_unreachable(InstMapDelta) then
@@ -798,7 +798,7 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
                 GoalContext, !Info, !Specs),
             (
                 MaybeWrappedGoals = yes(WrapGoals),
-                list.foldl(update_instmap, WrapGoals, !InstMap),
+                list.foldl(apply_goal_instmap_delta, WrapGoals, !InstMap),
                 lambda_info_get_module_info(!.Info, ModuleInfo),
                 update_construct_goal_instmap_delta(ModuleInfo, CellVar,
                     ConsId, Args, GoalInfo0, GoalInfo1, !InstMap),
@@ -841,7 +841,7 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
         else
             Goal = hlds_goal(GoalExpr0, GoalInfo0)
         ),
-        update_instmap(Goal, !InstMap)
+        apply_goal_instmap_delta(Goal, !InstMap)
     ;
         Unification0 = assign(ToVar, FromVar),
         Delta0 = goal_info_get_instmap_delta(GoalInfo0),
@@ -849,11 +849,11 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
         instmap_delta_set_var(ToVar, Inst, Delta0, Delta),
         goal_info_set_instmap_delta(Delta, GoalInfo0, GoalInfo1),
         Goal = hlds_goal(GoalExpr0, GoalInfo1),
-        update_instmap(Goal, !InstMap)
+        apply_goal_instmap_delta(Goal, !InstMap)
     ;
         Unification0 = simple_test(_, _),
         Goal = hlds_goal(GoalExpr0, GoalInfo0),
-        update_instmap(Goal, !InstMap)
+        apply_goal_instmap_delta(Goal, !InstMap)
     ;
         Unification0 = complicated_unify(_, _, _),
         unexpected($pred, "complicated_unify")

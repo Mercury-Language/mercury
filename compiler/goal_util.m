@@ -50,8 +50,9 @@
     % compute the final instmap that results from the initial instmap
     % after execution of the goal.
     %
-:- pred update_instmap(hlds_goal::in, instmap::in, instmap::out) is det.
-:- pred update_instmap_goal_info(hlds_goal_info::in,
+:- pred apply_goal_instmap_delta(hlds_goal::in,
+    instmap::in, instmap::out) is det.
+:- pred apply_goal_info_instmap_delta(hlds_goal_info::in,
     instmap::in, instmap::out) is det.
 
     % create_renaming(OutputVars, InstMapDelta, !VarTable,
@@ -514,11 +515,11 @@
 
 %-----------------------------------------------------------------------------%
 
-update_instmap(hlds_goal(_GoalExpr0, GoalInfo0), !InstMap) :-
+apply_goal_instmap_delta(hlds_goal(_GoalExpr0, GoalInfo0), !InstMap) :-
     DeltaInstMap = goal_info_get_instmap_delta(GoalInfo0),
     apply_instmap_delta(DeltaInstMap, !InstMap).
 
-update_instmap_goal_info(GoalInfo0, !InstMap) :-
+apply_goal_info_instmap_delta(GoalInfo0, !InstMap) :-
     DeltaInstMap = goal_info_get_instmap_delta(GoalInfo0),
     apply_instmap_delta(DeltaInstMap, !InstMap).
 

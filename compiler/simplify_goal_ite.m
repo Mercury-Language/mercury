@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2014-2022, 2024 The Mercury team.
+% Copyright (C) 2014-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -226,7 +226,7 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
 
     simplify_goal(Cond0, Cond, NestedContext0, InstMap0,
         Common0, AfterCondCommon, !Info),
-    update_instmap(Cond, InstMap0, AfterCondInstMap0),
+    apply_goal_instmap_delta(Cond, InstMap0, AfterCondInstMap0),
     simplify_goal(Then0, Then, NestedContext0, AfterCondInstMap0,
         AfterCondCommon, _AfterThenCommon, !Info),
 

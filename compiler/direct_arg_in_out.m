@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2020-2024 The Mercury team.
+% Copyright (C) 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1508,7 +1508,7 @@ expand_daio_in_conj([], [], _, !VarMap, !Info).
 expand_daio_in_conj([Goal0 | Goals0], [Goal | Goals], InstMap0,
         !VarMap, !Info) :-
     expand_daio_in_goal(Goal0, Goal, InstMap0, !VarMap, !Info),
-    update_instmap(Goal0, InstMap0, InstMap1),
+    apply_goal_instmap_delta(Goal0, InstMap0, InstMap1),
     expand_daio_in_conj(Goals0, Goals, InstMap1, !VarMap, !Info).
 
 %---------------------%
@@ -1687,7 +1687,7 @@ expand_daio_in_branches(GoalInfo0, InstMap0, Arms0, Arms,
 expand_daio_in_if_then_else(GoalInfo0, Cond0, Cond, Then0, Then,
         Else0, Else, InstMap0, InitVarMap, MergedVarMap, !Info) :-
     expand_daio_in_goal(Cond0, Cond, InstMap0, InitVarMap, CondVarMap, !Info),
-    update_instmap(Cond0, InstMap0, InstMap1),
+    apply_goal_instmap_delta(Cond0, InstMap0, InstMap1),
     expand_daio_in_goal(Then0, Then1, InstMap1, CondVarMap, ThenVarMap, !Info),
     expand_daio_in_goal(Else0, Else1, InstMap0, InitVarMap, ElseVarMap, !Info),
     ThenArmVarMap1 = arm_varmap(Then1, ThenVarMap),
