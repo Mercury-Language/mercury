@@ -139,7 +139,11 @@
     one_or_more_map(K, V)::in, one_or_more_map(K, V)::out) is det.
 
     % Add the given value-key pair to the one_or_more_map.
+    % (`reverse_set' is a synonym for `reverse_add'.)
     %
+:- func reverse_add(one_or_more_map(K, V), V, K) = one_or_more_map(K, V).
+:- pred reverse_add(V::in, K::in,
+    one_or_more_map(K, V)::in, one_or_more_map(K, V)::out) is det.
 :- func reverse_set(one_or_more_map(K, V), V, K) = one_or_more_map(K, V).
 :- pred reverse_set(V::in, K::in,
     one_or_more_map(K, V)::in, one_or_more_map(K, V)::out) is det.
@@ -424,11 +428,17 @@ set(!.OneOrMoreMap, Key, Value) = !:OneOrMoreMap :-
 set(Key, Value, !OneOrMoreMap) :-
     one_or_more_map.add(Key, Value, !OneOrMoreMap).
 
+reverse_add(!.OneOrMoreMap, Value, Key) = !:OneOrMoreMap :-
+    one_or_more_map.add(Key, Value, !OneOrMoreMap).
+
+reverse_add(Value, Key, !OneOrMoreMap) :-
+    one_or_more_map.add(Key, Value, !OneOrMoreMap).
+
 reverse_set(!.OneOrMoreMap, Value, Key) = !:OneOrMoreMap :-
-    one_or_more_map.set(Key, Value, !OneOrMoreMap).
+    one_or_more_map.add(Key, Value, !OneOrMoreMap).
 
 reverse_set(Value, Key, !OneOrMoreMap) :-
-    one_or_more_map.set(Key, Value, !OneOrMoreMap).
+    one_or_more_map.add(Key, Value, !OneOrMoreMap).
 
 %---------------------------------------------------------------------------%
 

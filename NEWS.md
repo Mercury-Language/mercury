@@ -632,6 +632,13 @@ Changes to the Mercury standard library
     - func `one_or_more_to_doc/1`
                         (replacement: `pretty_printer.one_or_more_to_doc`/1)
 
+### Changes to the `one_or_more_map` module
+
+* The following predicates and functions have been added:
+
+    - func `reverse_add/3`
+    - pred `reverse_add/4`
+
 ### Changes to the `map` module
 
 * The following predicates have been added:
