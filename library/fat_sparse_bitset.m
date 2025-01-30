@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
-% Copyright (C) 2014, 2016-2022, 2024 The Mercury team.
+% Copyright (C) 2014, 2016-2022, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -16,7 +16,7 @@
 % will be much more compact than either the list-of-elements representations
 % provided by set.m, set_ordlist.m, and set_unordlist.m, or the
 % tree-of-elements representations provided by set_bbbtree.m, set_tree234.
-% or set_ctree234.m.
+% and set_ctree234.m.
 %
 % A sparse bitset is represented as a sorted list, with each element
 % of this list containing two unsigned integers: Offset and Bits.
@@ -143,16 +143,16 @@
 
 %---------------------%
 
-    % delete(Set, Item) returns the difference of Set and the set containing
-    % only Item. Takes O(rep_size(Set)) time and space.
+    % delete(Set, Item) returns the difference between Set and the set
+    % containing only Item. Takes O(rep_size(Set)) time and space.
     %
 :- func delete(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= uenum(T).
 :- pred delete(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is det <= uenum(T).
 
-    % delete_list(Set, Item) returns the difference of Set and the set
-    % containing only the members of Item. Same as
-    % `difference(Set, list_to_set(Item))', but may be more efficient.
+    % delete_list(Set, Items) returns the difference between Set and the set
+    % containing only the members of Items. Same as
+    % `difference(Set, list_to_set(Items))', but may be more efficient.
     %
 :- func delete_list(fat_sparse_bitset(T), list(T)) = fat_sparse_bitset(T)
     <= uenum(T).
@@ -166,25 +166,24 @@
 :- pred remove(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is semidet <= uenum(T).
 
-    % remove_list(Item, Set0, Set) returns in Set the difference of Set0
-    % and the set containing all the elements of Item, failing if any element
-    % of Item is not in Set0. Same as `subset(list_to_set(Item), Set0),
-    % difference(Set0, list_to_set(Item), Set)', but may be more efficient.
+    % remove_list(Items, Set0, Set) returns in Set the difference of Set0
+    % and the set containing all the elements of Items, failing if any element
+    % of Item is not in Set0. Same as `subset(list_to_set(Items), Set0),
+    % difference(Set0, list_to_set(Items), Set)', but may be more efficient.
     %
 :- pred remove_list(list(T)::in,
     fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out) is semidet
     <= uenum(T).
 
-    % remove_leq(Set, Item) returns Set with all elements less than or equal
-    % to Item removed. In other words, it returns the set containing all the
-    % elements of Set whose enum forms are greater than the enum form of Item.
+    % remove_leq(Set, Item) returns returns the set containing all the
+    % elements of Set whose enum forms are strictly greater than
+    % the enum form of Item.
     %
 :- func remove_leq(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= uenum(T).
 :- pred remove_leq(T::in, fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::out)
     is det <= uenum(T).
 
-    % remove_gt(Set, Item) returns Set with all elements greater than Item
-    % removed. In other words, it returns the set containing all the elements
+    % remove_gt(Set, Item) returns returns the set containing all the elements
     % of Set whose enum forms are less than or equal to the enum form of Item.
     %
 :- func remove_gt(fat_sparse_bitset(T), T) = fat_sparse_bitset(T) <= uenum(T).
@@ -273,15 +272,18 @@
 %
 
     % divide(Pred, Set, InPart, OutPart):
-    % InPart consists of those elements of Set for which Pred succeeds;
-    % OutPart consists of those elements of Set for which Pred fails.
+    %
+    % InPart will consist of those elements of Set for which Pred succeeds;
+    % OutPart will consist of those elements of Set for which Pred fails.
     %
 :- pred divide(pred(T)::in(pred(in) is semidet), fat_sparse_bitset(T)::in,
     fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= uenum(T).
 
     % divide_by_set(DivideBySet, Set, InPart, OutPart):
-    % InPart consists of those elements of Set which are also in DivideBySet;
-    % OutPart consists of those elements of Set which are not in DivideBySet.
+    %
+    % InPart will consist of those elements of Set which are also in
+    % DivideBySet; OutPart will consist of those elements of Set
+    % which are not in DivideBySet.
     %
 :- pred divide_by_set(fat_sparse_bitset(T)::in, fat_sparse_bitset(T)::in,
     fat_sparse_bitset(T)::out, fat_sparse_bitset(T)::out) is det <= uenum(T).
@@ -293,8 +295,8 @@
 
     % list_to_set(List) returns a set containing only the members of List.
     % In the worst case this will take O(length(List)^2) time and space.
-    % If the elements of the list are closely grouped, it will be closer
-    % to O(length(List)).
+    % If the elements of the list are closely grouped, the complexity
+    % will be closer to O(length(List)).
     %
 :- func list_to_set(list(T)) = fat_sparse_bitset(T) <= uenum(T).
 :- pred list_to_set(list(T)::in, fat_sparse_bitset(T)::out) is det <= uenum(T).
