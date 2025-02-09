@@ -11895,7 +11895,8 @@ to actual shades of color.
 @item @samp{subject}
 The compiler uses the @samp{subject} color
 for the entity that the diagnostic is about.
-(This may be something like a specific variable, type or predicate.)
+Examples of such entities include
+a specific variable, a specific type, or a specific predicate.
 @item @samp{incorrect}
 The compiler uses the @samp{incorrect} color
 to emphasize either
@@ -11910,6 +11911,8 @@ it will show the argument's actual type using the @samp{incorrect} color,
 and the expected type using the @samp{correct} color.
 It does this because the type is far more likely to be wrong in the call
 than in the declaration of the called predicate or function.
+(Of course, situations do sometimes occur
+in which it is the type in the declaration that is wrong.)
 @item @samp{inconsistent}
 The compiler uses the @samp{inconsistent} color
 when it knows that two parts of the code are inconsistent with each other,
@@ -11979,7 +11982,7 @@ which your terminal or terminal emulator
 is @emph{virtually certain} to support.
 @item
 The schemes ending in ``16'' use
-the first 16 color slots listed of that 8-bit color table.
+the first 16 color slots listed in that 8-bit color table.
 These 16 color slots differ from the other 240 colors in that table
 in that most terminal emulators allow users
 to select the actual colors that go into those slots.
