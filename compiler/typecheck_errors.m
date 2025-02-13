@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1816,57 +1816,10 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
     % XXX TYPECHECK_ERRORS If both MaybeSingles are yes(), then
     % we could try to print the diff of the two types, though that would
     % probably help only if their outermost type_ctors are different.
-    (
-        MaybeSingleActual = yes(SingleActualPieces),
-        % Technically, it is a *semi*colon, but ...
-        ActualColonPieces0 = SingleActualPieces ++ [suffix(";")],
-        ActualColonPieces = color_as_incorrect(ActualColonPieces0),
-        ActualPartPieces =
-            [words("has type"), nl_indent_delta(1)] ++
-            ActualColonPieces ++ [nl_indent_delta(-1)]
-    ;
-        MaybeSingleActual = no,
-        ActualPieceLists = list.map((func(AE) = AE ^ actual_type_pieces),
-            ActualExpectedList),
-        ActualColonPieces0 = pieces_list_to_line_pieces(ActualPieceLists) ++
-            [suffix(";")],
-        ActualColonPieces = color_as_incorrect(ActualColonPieces0),
-        ActualPartPieces =
-            [words("has one of the following inferred types:"),
-                nl_indent_delta(1)] ++
-            ActualColonPieces ++
-                [nl_indent_delta(-1)]
-    ),
-    (
-        MaybeSingleExpected = yes(SingleExpectedPieces),
-        ExpectedDotPieces0 = SingleExpectedPieces ++ [suffix(".")],
-        ExpectedDotPieces = color_as_correct(ExpectedDotPieces0),
-        ExpectedPartPieces =
-            [words("expected type was"), nl_indent_delta(1)] ++
-            ExpectedDotPieces ++ [nl_indent_delta(-1)]
-    ;
-        MaybeSingleExpected = no,
-        should_we_print_expectation_sources(ActualExpectedList,
-            MaybePrintSource),
-        (
-            MaybePrintSource = do_not_print_expectation_source,
-            ExpectedPieceLists = list.map(
-                (func(AE) = AE ^ expected_type_pieces),
-                ActualExpectedList),
-            ExpectedDotPieces0 =
-                pieces_list_to_line_pieces(ExpectedPieceLists) ++
-                [suffix(".")],
-            ExpectedDotPieces = color_as_correct(ExpectedDotPieces0),
-            ExpectedPartPieces =
-                [words("expected type was one of"), nl_indent_delta(1)] ++
-                ExpectedDotPieces ++ [nl_indent_delta(-1)]
-        ;
-            MaybePrintSource = print_expectation_source,
-            ModuleInfo = ClauseContext ^ tecc_module_info,
-            acc_expected_type_source_pieces(ModuleInfo, ActualExpectedList,
-                _, ExpectedPartPieces)
-        )
-    ),
+    print_actual_type_or_types(ActualExpectedList,
+        MaybeSingleActual, ActualPartPieces),
+    print_expected_type_or_types(ClauseContext, ActualExpectedList,
+        MaybeSingleExpected, ExpectedPartPieces),
     ActualExpectedPieces =
         TypeErrorPieces ++ ActualPartPieces ++ ExpectedPartPieces,
     ( if ActualExpectedList = [ActualExpected] then
@@ -1881,6 +1834,8 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
         % ActualExpectedList would be more confusing than helpful.
         DiffPieces = []
     ).
+
+%---------------------%
 
 :- pred is_actual_or_expected_single_type(list(actual_expected_types)::in,
     maybe(list(format_piece))::out, maybe(list(format_piece))::out) is det.
@@ -1914,6 +1869,72 @@ is_actual_or_expected_single_type_loop([AE | AEs],
     ),
     is_actual_or_expected_single_type_loop(AEs,
         !MaybeSingleActual, !MaybeSingleExpected).
+
+%---------------------%
+
+:- pred print_actual_type_or_types(list(actual_expected_types)::in,
+    maybe(list(format_piece))::in, list(format_piece)::out) is det.
+
+print_actual_type_or_types(ActualExpectedList, MaybeSingleActual,
+        ActualPartPieces) :-
+    (
+        MaybeSingleActual = yes(SingleActualPieces),
+        % Technically, it is a *semi*colon, but ...
+        ActualColonPieces0 = SingleActualPieces ++ [suffix(";")],
+        ActualColonPieces = color_as_incorrect(ActualColonPieces0),
+        ActualPartPieces =
+            [words("has type"), nl_indent_delta(1)] ++
+            ActualColonPieces ++ [nl_indent_delta(-1)]
+    ;
+        MaybeSingleActual = no,
+        ActualPieceLists = list.map((func(AE) = AE ^ actual_type_pieces),
+            ActualExpectedList),
+        ActualColonPieces0 = pieces_list_to_line_pieces(ActualPieceLists) ++
+            [suffix(";")],
+        ActualColonPieces = color_as_incorrect(ActualColonPieces0),
+        ActualPartPieces =
+            [words("has one of the following inferred types:"),
+                nl_indent_delta(1)] ++
+            ActualColonPieces ++
+                [nl_indent_delta(-1)]
+    ).
+
+:- pred print_expected_type_or_types(type_error_clause_context::in,
+    list(actual_expected_types)::in, maybe(list(format_piece))::in,
+    list(format_piece)::out) is det.
+
+print_expected_type_or_types(ClauseContext, ActualExpectedList,
+        MaybeSingleExpected, ExpectedPartPieces) :-
+    (
+        MaybeSingleExpected = yes(SingleExpectedPieces),
+        ExpectedDotPieces0 = SingleExpectedPieces ++ [suffix(".")],
+        ExpectedDotPieces = color_as_correct(ExpectedDotPieces0),
+        ExpectedPartPieces =
+            [words("expected type was"), nl_indent_delta(1)] ++
+            ExpectedDotPieces ++ [nl_indent_delta(-1)]
+    ;
+        MaybeSingleExpected = no,
+        should_we_print_expectation_sources(ActualExpectedList,
+            MaybePrintSource),
+        (
+            MaybePrintSource = do_not_print_expectation_source,
+            ExpectedPieceLists = list.map(
+                (func(AE) = AE ^ expected_type_pieces),
+                ActualExpectedList),
+            ExpectedDotPieces0 =
+                pieces_list_to_line_pieces(ExpectedPieceLists) ++
+                [suffix(".")],
+            ExpectedDotPieces = color_as_correct(ExpectedDotPieces0),
+            ExpectedPartPieces =
+                [words("expected type was one of"), nl_indent_delta(1)] ++
+                ExpectedDotPieces ++ [nl_indent_delta(-1)]
+        ;
+            MaybePrintSource = print_expectation_source,
+            ModuleInfo = ClauseContext ^ tecc_module_info,
+            acc_expected_type_source_pieces(ModuleInfo, ActualExpectedList,
+                _, ExpectedPartPieces)
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 
