@@ -223,7 +223,8 @@ The command-line options are defined in the module options.m.
 mercury_compile.m calls library/getopt.m,
 passing the predicates defined in options.m as arguments, to parse them.
 It then invokes handle_options.m
-(and indirectly, op_mode.m, compute_grade.m, and color_schemes.m)
+(and indirectly, check_options.m, op_mode.m, compute_grade.m,
+and color_schemes.m)
 to postprocess the option set.
 The results are represented using the type globals, defined in globals.m.
 (Part of the globals structure is defined in optimization_options.m,

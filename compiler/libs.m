@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2003, 2005, 2008-2009 The University of Melbourne.
-% Copyright (C) 2015, 2017, 2019-2024 The Mercury team
+% Copyright (C) 2015, 2017, 2019-2025 The Mercury team
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,6 +17,7 @@
 :- include_module globals.
 :- include_module options.
 :- include_module handle_options.
+:- include_module check_options.
 :- include_module optimization_options.
 :- include_module op_mode.
 :- include_module compute_grade.
