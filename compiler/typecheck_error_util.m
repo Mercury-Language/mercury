@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2022-2024 The Mercury team.
+% Copyright (C) 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,6 +22,8 @@
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module hlds.hlds_out.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
@@ -76,6 +78,15 @@
 
 %---------------------------------------------------------------------------%
 
+    % This function generates the preamble (initial part of) all type error
+    % messages, giving the name of the predicate or function in which the error
+    % occurred.
+    %
+:- func in_clause_for_pieces(type_error_clause_context) =
+    list(format_piece).
+
+%---------------------------------------------------------------------------%
+
 :- func goal_context_to_pieces(type_error_clause_context,
     type_error_goal_context) = list(format_piece).
 
@@ -84,12 +95,10 @@
 
 %---------------------------------------------------------------------------%
 
-    % This function generates the preamble (initial part of) all type error
-    % messages, giving the name of the predicate or function in which the error
-    % occurred.
-    %
-:- func in_clause_for_pieces(type_error_clause_context) =
-    list(format_piece).
+:- func argument_name_to_pieces_lc(prog_varset, last_context_word, prog_var)
+    = list(format_piece).
+:- func argument_name_to_pieces_uc(prog_varset, last_context_word, prog_var)
+    = list(format_piece).
 
 %---------------------------------------------------------------------------%
 
@@ -110,11 +119,10 @@
 
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_error_util.
-:- import_module hlds.hlds_out.
-:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.var_db.
 
@@ -203,6 +211,14 @@ describe_args_type_assign_source(ModuleInfo, Source) = Pieces :-
         % These should not occur in errors at all.
         Pieces = []
     ).
+
+%---------------------------------------------------------------------------%
+
+in_clause_for_pieces(ClauseContext) = Pieces :-
+    ModuleInfo = ClauseContext ^ tecc_module_info,
+    PredId = ClauseContext ^ tecc_pred_id,
+    PredIdPieces = describe_unqual_pred_name(ModuleInfo, PredId),
+    Pieces = [words("In clause for") | PredIdPieces] ++ [suffix(":"), nl].
 
 %---------------------------------------------------------------------------%
 
@@ -362,11 +378,47 @@ arg_vector_kind_to_pieces(ClauseContext, ArgVectorKind) = Pieces :-
             suffix(":"), nl]
     ).
 
-in_clause_for_pieces(ClauseContext) = Pieces :-
-    ModuleInfo = ClauseContext ^ tecc_module_info,
-    PredId = ClauseContext ^ tecc_pred_id,
-    PredIdPieces = describe_unqual_pred_name(ModuleInfo, PredId),
-    Pieces = [words("In clause for") | PredIdPieces] ++ [suffix(":"), nl].
+%---------------------------------------------------------------------------%
+
+argument_name_to_pieces_lc(VarSet, LastContextWord, Var) = Pieces :-
+    ( if varset.search_name(VarSet, Var, _) then
+        Pieces = [words("variable"),
+            quote(mercury_var_to_name_only_vs(VarSet, Var))]
+    else
+        (
+            ( LastContextWord = lcw_none
+            ; LastContextWord = lcw_call
+            ; LastContextWord = lcw_argument
+            ),
+            Pieces = [words("argument")]
+        ;
+            LastContextWord = lcw_result,
+            Pieces = [words("result")]
+        ;
+            LastContextWord = lcw_element,
+            Pieces = [words("element")]
+        )
+    ).
+
+argument_name_to_pieces_uc(VarSet, LastContextWord, Var) = Pieces :-
+    ( if varset.search_name(VarSet, Var, _) then
+        Pieces = [words("Variable"),
+            quote(mercury_var_to_name_only_vs(VarSet, Var))]
+    else
+        (
+            ( LastContextWord = lcw_none
+            ; LastContextWord = lcw_call
+            ; LastContextWord = lcw_argument
+            ),
+            Pieces = [words("Argument")]
+        ;
+            LastContextWord = lcw_result,
+            Pieces = [words("Result")]
+        ;
+            LastContextWord = lcw_element,
+            Pieces = [words("Element")]
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 
