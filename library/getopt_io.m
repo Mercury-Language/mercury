@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1999, 2001-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2024 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1814,60 +1814,72 @@ lookup_bool_option(OptionTable, Opt) = Bool :-
     lookup_bool_option(OptionTable, Opt, Bool).
 
 lookup_bool_option(OptionTable, Opt, Bool) :-
-    ( if map.lookup(OptionTable, Opt, bool(BoolPrime)) then
+    map.lookup(OptionTable, Opt, Value),
+    ( if Value = bool(BoolPrime) then
         Bool = BoolPrime
     else
-        error("Expected bool option and didn't get one.")
+        OptStr = string.string(Opt),
+        unexpected($pred, OptStr ++ " is not a bool option")
     ).
 
 lookup_int_option(OptionTable, Opt) = Int :-
     lookup_int_option(OptionTable, Opt, Int).
 
 lookup_int_option(OptionTable, Opt, Int) :-
-    ( if map.lookup(OptionTable, Opt, int(IntPrime)) then
+    map.lookup(OptionTable, Opt, Value),
+    ( if Value = int(IntPrime) then
         Int = IntPrime
     else
-        error("Expected int option and didn't get one.")
+        OptStr = string.string(Opt),
+        unexpected($pred, OptStr ++ " is not an int option")
     ).
 
 lookup_string_option(OptionTable, Opt) = Str :-
     lookup_string_option(OptionTable, Opt, Str).
 
 lookup_string_option(OptionTable, Opt, Str) :-
-    ( if map.lookup(OptionTable, Opt, string(StrPrime)) then
+    map.lookup(OptionTable, Opt, Value),
+    ( if Value = string(StrPrime) then
         Str = StrPrime
     else
-        error("Expected string option and didn't get one.")
+        OptStr = string.string(Opt),
+        unexpected($pred, OptStr ++ " is not a string option")
     ).
 
 lookup_maybe_int_option(OptionTable, Opt) = MaybeInt :-
     lookup_maybe_int_option(OptionTable, Opt, MaybeInt).
 
 lookup_maybe_int_option(OptionTable, Opt, MaybeInt) :-
-    ( if map.lookup(OptionTable, Opt, maybe_int(MaybeIntPrime)) then
+    map.lookup(OptionTable, Opt, Value),
+    ( if Value = maybe_int(MaybeIntPrime) then
         MaybeInt = MaybeIntPrime
     else
-        error("Expected maybe_int option and didn't get one.")
+        OptStr = string.string(Opt),
+        unexpected($pred, OptStr ++ " is not a maybe_int option")
     ).
 
 lookup_maybe_string_option(OptionTable, Opt) = MaybeString :-
     lookup_maybe_string_option(OptionTable, Opt, MaybeString).
 
 lookup_maybe_string_option(OptionTable, Opt, MaybeString) :-
-    ( if map.lookup(OptionTable, Opt, maybe_string(MaybeStringPrime)) then
+    map.lookup(OptionTable, Opt, Value),
+    ( if Value = maybe_string(MaybeStringPrime) then
         MaybeString = MaybeStringPrime
     else
-        error("Expected maybe_string option and didn't get one.")
+        OptStr = string.string(Opt),
+        unexpected($pred, OptStr ++ " is not a maybe_string option")
     ).
 
 lookup_accumulating_option(OptionTable, Opt) = Acc :-
     lookup_accumulating_option(OptionTable, Opt, Acc).
 
 lookup_accumulating_option(OptionTable, Opt, Acc) :-
-    ( if map.lookup(OptionTable, Opt, accumulating(AccPrime)) then
+    map.lookup(OptionTable, Opt, Value),
+    ( if Value = accumulating(AccPrime) then
         Acc = AccPrime
     else
-        error("Expected accumulating option and didn't get one.")
+        OptStr = string.string(Opt),
+        unexpected($pred, OptStr ++ " is not an accumulating option")
     ).
 
 %---------------------------------------------------------------------------%

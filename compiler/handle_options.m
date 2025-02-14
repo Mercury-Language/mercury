@@ -230,7 +230,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
                 quote_list_to_pieces("and", OpModeStrs) ++ [suffix("."), nl],
             add_error(phase_options, OpModePieces, !Specs)
         ),
-        raw_lookup_bool_option(OptionTable, default_globals, DefaultGlobals),
+        lookup_bool_option(OptionTable, default_globals, DefaultGlobals),
         % If we are generating the default globals, then executing
         % the else-part would result in infinite recursion, which
         % may or may not cause unbounded stack growth that can cause
@@ -300,7 +300,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_grade_options(OptionTable, Target, WordSize, GC_Method, !Specs) :-
-    raw_lookup_string_option(OptionTable, target, TargetStr),
+    lookup_string_option(OptionTable, target, TargetStr),
     ( if convert_target(TargetStr, TargetPrime) then
         Target = TargetPrime
     else
@@ -313,7 +313,7 @@ check_grade_options(OptionTable, Target, WordSize, GC_Method, !Specs) :-
         add_error(phase_options, TargetSpec, !Specs)
     ),
 
-    raw_lookup_int_option(OptionTable, bits_per_word, BitsPerWord),
+    lookup_int_option(OptionTable, bits_per_word, BitsPerWord),
     ( if BitsPerWord = 32 then
         WordSize = word_size_32
     else if BitsPerWord = 64 then
@@ -329,7 +329,7 @@ check_grade_options(OptionTable, Target, WordSize, GC_Method, !Specs) :-
         add_error(phase_options, WordSizeSpec, !Specs)
     ),
 
-    raw_lookup_string_option(OptionTable, gc, GC_MethodStr),
+    lookup_string_option(OptionTable, gc, GC_MethodStr),
     ( if convert_gc_method(GC_MethodStr, GC_MethodPrime) then
         GC_Method = GC_MethodPrime
     else
@@ -348,7 +348,7 @@ check_grade_options(OptionTable, Target, WordSize, GC_Method, !Specs) :-
 
 check_codegen_options(OptionTable, MaybeThreadSafe, ReuseStrategy,
         MaybeFeedbackInfo, !Specs, !IO) :-
-    raw_lookup_int_option(OptionTable, fact_table_hash_percent_full,
+    lookup_int_option(OptionTable, fact_table_hash_percent_full,
         FactTablePercentFull),
     ( if
         FactTablePercentFull >= 1,
@@ -363,7 +363,7 @@ check_codegen_options(OptionTable, MaybeThreadSafe, ReuseStrategy,
         add_error(phase_options, FactTablePercentFullSpec, !Specs)
     ),
 
-    raw_lookup_string_option(OptionTable, maybe_thread_safe_opt,
+    lookup_string_option(OptionTable, maybe_thread_safe_opt,
         MaybeThreadSafeStr),
     ( if
         convert_maybe_thread_safe(MaybeThreadSafeStr, MaybeThreadSafePrime)
@@ -382,9 +382,9 @@ check_codegen_options(OptionTable, MaybeThreadSafe, ReuseStrategy,
         add_error(phase_options, MTSSpec, !Specs)
     ),
 
-    raw_lookup_string_option(OptionTable, structure_reuse_constraint,
+    lookup_string_option(OptionTable, structure_reuse_constraint,
         ReuseConstraintStr),
-    raw_lookup_int_option(OptionTable, structure_reuse_constraint_arg,
+    lookup_int_option(OptionTable, structure_reuse_constraint_arg,
         ReuseConstraintArgNum),
     ( if
         convert_reuse_strategy(ReuseConstraintStr, ReuseConstraintArgNum,
@@ -403,7 +403,7 @@ check_codegen_options(OptionTable, MaybeThreadSafe, ReuseStrategy,
         add_error(phase_options, ReuseConstrSpec, !Specs)
     ),
 
-    raw_lookup_string_option(OptionTable, feedback_file, FeedbackFile),
+    lookup_string_option(OptionTable, feedback_file, FeedbackFile),
     ( if FeedbackFile = "" then
         % No feedback info.
         MaybeFeedbackInfo = no
@@ -433,7 +433,7 @@ check_codegen_options(OptionTable, MaybeThreadSafe, ReuseStrategy,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_termination_options(OptionTable, TermNorm, Term2Norm, !Specs) :-
-    raw_lookup_string_option(OptionTable, termination_norm, TermNormStr),
+    lookup_string_option(OptionTable, termination_norm, TermNormStr),
     ( if convert_termination_norm(TermNormStr, TermNormPrime) then
         TermNorm = TermNormPrime
     else
@@ -447,7 +447,7 @@ check_termination_options(OptionTable, TermNorm, Term2Norm, !Specs) :-
         add_error(phase_options, TermNormSpec, !Specs)
     ),
 
-    raw_lookup_string_option(OptionTable, termination2_norm, Term2NormStr),
+    lookup_string_option(OptionTable, termination2_norm, Term2NormStr),
     ( if convert_termination_norm(Term2NormStr, Term2NormPrime) then
         Term2Norm = Term2NormPrime
     else
@@ -467,16 +467,16 @@ check_termination_options(OptionTable, TermNorm, Term2Norm, !Specs) :-
 
 check_debug_options(OptionTable, TraceLevel, TraceSuppress, SSTraceLevel,
         !Specs) :-
-    raw_lookup_bool_option(OptionTable, force_disable_tracing,
+    lookup_bool_option(OptionTable, force_disable_tracing,
         ForceDisableTracing),
     (
         ForceDisableTracing = yes,
         TraceLevel = trace_level_none
     ;
         ForceDisableTracing = no,
-        raw_lookup_string_option(OptionTable, trace_level, Trace),
-        raw_lookup_bool_option(OptionTable, exec_trace, ExecTrace),
-        raw_lookup_bool_option(OptionTable, decl_debug, DeclDebug),
+        lookup_string_option(OptionTable, trace_level, Trace),
+        lookup_bool_option(OptionTable, exec_trace, ExecTrace),
+        lookup_bool_option(OptionTable, decl_debug, DeclDebug),
         ( if
             convert_trace_level(Trace, ExecTrace, DeclDebug, MaybeTraceLevel)
         then
@@ -502,7 +502,7 @@ check_debug_options(OptionTable, TraceLevel, TraceSuppress, SSTraceLevel,
         )
     ),
 
-    raw_lookup_string_option(OptionTable, suppress_trace, SuppressStr),
+    lookup_string_option(OptionTable, suppress_trace, SuppressStr),
     ( if convert_trace_suppress(SuppressStr, TraceSuppressPrime) then
         TraceSuppress = TraceSuppressPrime
     else
@@ -515,15 +515,15 @@ check_debug_options(OptionTable, TraceLevel, TraceSuppress, SSTraceLevel,
         add_error(phase_options, TraceSuppressSpec, !Specs)
     ),
 
-    raw_lookup_bool_option(OptionTable, force_disable_ssdebug,
+    lookup_bool_option(OptionTable, force_disable_ssdebug,
         ForceDisableSSDB),
     (
         ForceDisableSSDB = yes,
         SSTraceLevel = ssdb_none
     ;
         ForceDisableSSDB = no,
-        raw_lookup_string_option(OptionTable, ssdb_trace_level, SSTrace),
-        raw_lookup_bool_option(OptionTable, source_to_source_debug, SSDB),
+        lookup_string_option(OptionTable, ssdb_trace_level, SSTrace),
+        lookup_bool_option(OptionTable, source_to_source_debug, SSDB),
         ( if convert_ssdb_trace_level(SSTrace, SSDB, SSTL) then
             SSTraceLevel = SSTL
         else
@@ -544,8 +544,7 @@ check_debug_options(OptionTable, TraceLevel, TraceSuppress, SSTraceLevel,
 
 check_system_env_options(OptionTable, C_CompilerType, CSharp_CompilerType,
         HostEnvType, SystemEnvType, TargetEnvType, !Specs) :-
-    raw_lookup_string_option(OptionTable, c_compiler_type,
-        C_CompilerTypeStr),
+    lookup_string_option(OptionTable, c_compiler_type, C_CompilerTypeStr),
     ( if convert_c_compiler_type(C_CompilerTypeStr, C_CompilerTypePrime) then
         C_CompilerType = C_CompilerTypePrime
     else
@@ -566,7 +565,7 @@ check_system_env_options(OptionTable, C_CompilerType, CSharp_CompilerType,
         add_error(phase_options, CCTpec, !Specs)
     ),
 
-    raw_lookup_string_option(OptionTable, csharp_compiler_type,
+    lookup_string_option(OptionTable, csharp_compiler_type,
         CSharp_CompilerTypeStr),
     ( if
         convert_csharp_compiler_type(CSharp_CompilerTypeStr,
@@ -584,7 +583,7 @@ check_system_env_options(OptionTable, C_CompilerType, CSharp_CompilerType,
         add_error(phase_options, CSCSpec, !Specs)
     ),
 
-    raw_lookup_string_option(OptionTable, host_env_type, HostEnvTypeStr),
+    lookup_string_option(OptionTable, host_env_type, HostEnvTypeStr),
     ( if convert_env_type(HostEnvTypeStr, HostEnvTypePrime) then
         HostEnvType = HostEnvTypePrime
     else
@@ -597,7 +596,7 @@ check_system_env_options(OptionTable, C_CompilerType, CSharp_CompilerType,
             [suffix("."), nl],
         add_error(phase_options, HostEnvSpec, !Specs)
     ),
-    raw_lookup_string_option(OptionTable, system_env_type, SystemEnvTypeStr),
+    lookup_string_option(OptionTable, system_env_type, SystemEnvTypeStr),
     ( if
         ( if SystemEnvTypeStr = "" then
             SystemEnvTypePrime = HostEnvType
@@ -617,7 +616,7 @@ check_system_env_options(OptionTable, C_CompilerType, CSharp_CompilerType,
             [suffix("."), nl],
         add_error(phase_options, SystemEnvSpec, !Specs)
     ),
-    raw_lookup_string_option(OptionTable, target_env_type, TargetEnvTypeStr),
+    lookup_string_option(OptionTable, target_env_type, TargetEnvTypeStr),
     ( if convert_env_type(TargetEnvTypeStr, TargetEnvTypePrime) then
         TargetEnvType = TargetEnvTypePrime
     else
@@ -636,7 +635,7 @@ check_system_env_options(OptionTable, C_CompilerType, CSharp_CompilerType,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_hlds_dump_options(!OptionTable, !Specs) :-
-    raw_lookup_string_option(!.OptionTable, dump_hlds_alias, DumpAlias),
+    lookup_string_option(!.OptionTable, dump_hlds_alias, DumpAlias),
     ( if DumpAlias = "" then
         true
     else if convert_dump_alias(DumpAlias, AliasDumpOptions) then
@@ -717,7 +716,7 @@ check_hlds_dump_options(!OptionTable, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_diagnostics_options(OptionTable, LimitErrorContextsMap, !Specs) :-
-    raw_lookup_int_option(OptionTable, inform_incomplete_switch_threshold,
+    lookup_int_option(OptionTable, inform_incomplete_switch_threshold,
         IncompleteSwitchThreshold),
     ( if
         IncompleteSwitchThreshold >= 0,
@@ -732,7 +731,7 @@ check_diagnostics_options(OptionTable, LimitErrorContextsMap, !Specs) :-
         add_error(phase_options, IncompleteSwitchThresholdSpec, !Specs)
     ),
 
-    raw_lookup_accumulating_option(OptionTable, limit_error_contexts,
+    lookup_accumulating_option(OptionTable, limit_error_contexts,
         LimitErrorContextsOptionStrs),
     convert_limit_error_contexts(LimitErrorContextsOptionStrs,
         BadLimitErrorContextsOptions, LimitErrorContextsMap),
@@ -761,16 +760,11 @@ check_diagnostics_options(OptionTable, LimitErrorContextsMap, !Specs) :-
 
 check_linked_target_extensions(OptionTable, !:LinkExtMap, !Specs) :-
     map.init(!:LinkExtMap),
-    raw_lookup_string_option(OptionTable,
-        object_file_extension, ObjExt),
-    raw_lookup_string_option(OptionTable,
-        pic_object_file_extension, PicObjExt),
-    raw_lookup_string_option(OptionTable,
-        executable_file_extension, ExecExt),
-    raw_lookup_string_option(OptionTable,
-        library_extension, LibExt),
-    raw_lookup_string_option(OptionTable,
-        shared_library_extension, SharedLibExt),
+    lookup_string_option(OptionTable, object_file_extension, ObjExt),
+    lookup_string_option(OptionTable, pic_object_file_extension, PicObjExt),
+    lookup_string_option(OptionTable, executable_file_extension, ExecExt),
+    lookup_string_option(OptionTable, library_extension, LibExt),
+    lookup_string_option(OptionTable, shared_library_extension, SharedLibExt),
 
     map.det_insert(".install",
         linked_target_ext_info("", ltk_library_install), !LinkExtMap),
@@ -897,8 +891,8 @@ get_all_obj_extensions(Ext, AllExtA, MaybeAllExtB) :-
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 check_color_options(!OptionTable, !Specs, !IO) :-
-    raw_lookup_string_option(!.OptionTable, color_scheme_set_to, ColorScheme),
-    raw_lookup_string_option(!.OptionTable, color_scheme_set_by, SetBy),
+    lookup_string_option(!.OptionTable, color_scheme_set_to, ColorScheme),
+    lookup_string_option(!.OptionTable, color_scheme_set_by, SetBy),
     ( if
         (
             SetBy = "default",
@@ -4076,54 +4070,6 @@ convert_dump_alias("statevar", "gvCP").
 convert_dump_alias("lco", "agiuvzD").
 convert_dump_alias("poly", "vxX").
 convert_dump_alias("du", "TL").
-
-%---------------------------------------------------------------------------%
-
-:- pred raw_lookup_bool_option(option_table::in, option::in, bool::out) is det.
-
-raw_lookup_bool_option(OptionTable, Option, BoolValue) :-
-    map.lookup(OptionTable, Option, OptionValue),
-    ( if OptionValue = bool(BoolValuePrime) then
-        BoolValue = BoolValuePrime
-    else
-        OptionStr = string.string(Option),
-        unexpected($pred, OptionStr ++ " is not a bool")
-    ).
-
-:- pred raw_lookup_int_option(option_table::in, option::in, int::out) is det.
-
-raw_lookup_int_option(OptionTable, Option, IntValue) :-
-    map.lookup(OptionTable, Option, OptionValue),
-    ( if OptionValue = int(IntValuePrime) then
-        IntValue = IntValuePrime
-    else
-        OptionStr = string.string(Option),
-        unexpected($pred, OptionStr ++ " is not an int")
-    ).
-
-:- pred raw_lookup_string_option(option_table::in, option::in,
-    string::out) is det.
-
-raw_lookup_string_option(OptionTable, Option, StringValue) :-
-    map.lookup(OptionTable, Option, OptionValue),
-    ( if OptionValue = string(StringValuePrime) then
-        StringValue = StringValuePrime
-    else
-        OptionStr = string.string(Option),
-        unexpected($pred, OptionStr ++ " is not a string")
-    ).
-
-:- pred raw_lookup_accumulating_option(option_table::in, option::in,
-    list(string)::out) is det.
-
-raw_lookup_accumulating_option(OptionTable, Option, AccumulatingValue) :-
-    map.lookup(OptionTable, Option, OptionValue),
-    ( if OptionValue = accumulating(AccumulatingValuePrime) then
-        AccumulatingValue = AccumulatingValuePrime
-    else
-        OptionStr = string.string(Option),
-        unexpected($pred, OptionStr ++ " is not accumulating")
-    ).
 
 %---------------------------------------------------------------------------%
 :- end_module libs.handle_options.
