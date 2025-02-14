@@ -13,4 +13,6 @@ actual_expected.m:110:         [38;5;40mactual_expected.label,[39;49m
 actual_expected.m:110:         [38;5;40mset_ordlist.set_ordlist(actual_expected.lval)[39;49m
 actual_expected.m:110:       [38;5;40m)[39;49m
 actual_expected.m:110:     [38;5;40m).[39;49m
+actual_expected.m:110:   Arity mismatch for type constructor `tree234':
+actual_expected.m:110:   expected [38;5;40mone argument,[39;49m got [38;5;203mtwo.[39;49m
 For more information, recompile with `-E'.

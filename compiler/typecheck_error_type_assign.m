@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2022-2024 The Mercury team.
+% Copyright (C) 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -562,8 +562,8 @@ type_stuff_to_actual_expected(AddQuotes, InstVarSet, ExpectedType,
         ActualExpected = actual_expected_types(ActualPieces, VarType,
             ExpectedPieces, ExpectedType, ExistQTVars, no)
     else
-        ActualExpected = actual_expected_types(ActualPieces0, VarType,
-            ExpectedPieces0, ExpectedType, ExistQTVars, no)
+        ActualExpected = actual_expected_types(ActualPieces0, StrippedVarType,
+            ExpectedPieces0, StrippedExpectedType, ExistQTVars, no)
     ).
 
 arg_type_stuff_to_actual_expected(AddQuotes, InstVarSet, ArgTypeStuff)

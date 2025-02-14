@@ -1582,15 +1582,13 @@ report_any_invisible_int_types(ClauseContext, BuiltinTypes) = Pieces :-
             TailInvisIntTypePieces = [_ | _],
             InvisIntTypePieces =
                 [HeadInvisIntTypePiece | TailInvisIntTypePieces],
-            InvisIntTypeListPieces =
-                piece_list_to_color_pieces(color_hint, "and", [],
-                    InvisIntTypePieces),
+            InvisIntTypeListAreImportedtPieces =
+                piece_list_to_color_pieces(color_hint, "and",
+                    [words("are imported.")], InvisIntTypePieces),
             Pieces = [words("Note that operations on values of types") |
                 InvisIntTypePieces] ++ [words("are available"),
                 words("only if modules")] ++
-                InvisIntTypeListPieces ++
-                color_as_hint([words("are imported.")]) ++
-                [nl]
+                InvisIntTypeListAreImportedtPieces ++ [nl]
         )
     else
         Pieces = []
@@ -1813,9 +1811,6 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
         color_as_subject(argument_name_to_pieces_lc(VarSet, lcw_none, Var)),
     is_actual_or_expected_single_type(ActualExpectedList,
         MaybeSingleActual, MaybeSingleExpected),
-    % XXX TYPECHECK_ERRORS If both MaybeSingles are yes(), then
-    % we could try to print the diff of the two types, though that would
-    % probably help only if their outermost type_ctors are different.
     print_actual_type_or_types(ActualExpectedList,
         MaybeSingleActual, ActualPartPieces),
     print_expected_type_or_types(ClauseContext, ActualExpectedList,
@@ -1826,7 +1821,7 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
         MaybeActualExpected = yes(ActualExpected),
         ActualExpected = actual_expected_types(_ActualPieces, ActualType,
             _ExpectedPieces, ExpectedType, ExistQTVars, _Source),
-        DiffPieces = type_diff_pieces([], ExistQTVars,
+        DiffPieces = type_diff_pieces([], ExistQTVars, top_level,
             ActualType, ExpectedType)
     else
         MaybeActualExpected = no,
@@ -2018,11 +2013,15 @@ acc_expected_type_source_pieces(ModuleInfo,
 
 %---------------------------------------------------------------------------%
 
-:- func type_diff_pieces(list(format_piece), list(tvar),
+:- type maybe_top_level
+    --->    not_top_level
+    ;       top_level.
+
+:- func type_diff_pieces(list(format_piece), list(tvar), maybe_top_level,
     mer_type, mer_type) = list(format_piece).
 
-type_diff_pieces(ContextPieces, ExistQTVars, ActualType0, ExpectedType0)
-        = DiffPieces :-
+type_diff_pieces(ContextPieces, ExistQTVars, MaybeTopLevel,
+        ActualType0, ExpectedType0) = DiffPieces :-
     ActualType = strip_kind_annotation(ActualType0),
     ExpectedType = strip_kind_annotation(ExpectedType0),
     ( if
@@ -2043,12 +2042,57 @@ type_diff_pieces(ContextPieces, ExistQTVars, ActualType0, ExpectedType0)
             ),
             fail
         ;
-            ActualType = defined_type(TypeSymName, ActualArgTypes, _),
-            ExpectedType = defined_type(TypeSymName, ExpectedArgTypes, _),
-            ActualArgTypes \= ExpectedArgTypes,
-            DiffPiecesPrime = arg_type_list_diff_pieces(ContextPieces,
-                [words("type constructor"), unqual_sym_name(TypeSymName)],
-                ExistQTVars, ActualArgTypes, ExpectedArgTypes)
+            ActualType = defined_type(ActualTypeSymName,
+                ActualArgTypes, _),
+            ExpectedType = defined_type(ExpectedTypeSymName,
+                ExpectedArgTypes, _),
+            list.length(ActualArgTypes, ActualArity),
+            list.length(ExpectedArgTypes, ExpectedArity),
+            ActualTypeCtor = type_ctor(ActualTypeSymName, ActualArity),
+            ExpectedTypeCtor = type_ctor(ExpectedTypeSymName, ExpectedArity),
+            ( if ActualTypeCtor = ExpectedTypeCtor then
+                % If ActualArgTypes = ExpectedArgTypes, then there is
+                % no difference to report.
+                ActualArgTypes \= ExpectedArgTypes,
+                DiffPiecesPrime = arg_type_list_diff_pieces(ContextPieces,
+                    [words("type constructor"),
+                        unqual_type_ctor(ActualTypeCtor)],
+                    ExistQTVars, ActualArgTypes, ExpectedArgTypes)
+            else
+                ( if ActualArity = ExpectedArity then
+                    % Do not generate a diff if the difference is
+                    % at the top level, because in that case, the diff
+                    % would just duplicate the printing of the whole of
+                    % the actual and expected types.
+                    MaybeTopLevel = not_top_level,
+                    ( if
+                        ActualTypeSymName = qualified(CommonModuleName, _),
+                        ExpectedTypeSymName = qualified(CommonModuleName, _)
+                    then
+                        ActualTCPiece = unqual_type_ctor(ActualTypeCtor),
+                        ExpectedTCPiece = unqual_type_ctor(ExpectedTypeCtor)
+                    else
+                        ActualTCPiece = qual_type_ctor(ActualTypeCtor),
+                        ExpectedTCPiece = qual_type_ctor(ExpectedTypeCtor)
+                    ),
+                    CausePieces =
+                        [words("Argument type mismatch:"),
+                        words("expected"), nl_indent_delta(1)] ++
+                        color_as_correct([ExpectedTCPiece, suffix(",")]) ++
+                        [nl_indent_delta(-1),
+                        words("got"), nl_indent_delta(1)] ++
+                        color_as_incorrect([ActualTCPiece, suffix(".")]) ++
+                        [nl_indent_delta(-1)]
+                else
+                    % Since arity differences are easy to overlook,
+                    % we want to point them out even at the top level.
+                    TypeCtorPieces = [words("type constructor"),
+                        unqual_sym_name(ActualTypeSymName)],
+                    CausePieces = report_type_ctor_arity_mismatch(
+                        TypeCtorPieces, ActualArity, ExpectedArity)
+                ),
+                DiffPiecesPrime = wrap_diff_pieces(ContextPieces, CausePieces)
+            )
         ;
             ActualType = tuple_type(ActualArgTypes, _),
             ExpectedType = tuple_type(ExpectedArgTypes, _),
@@ -2122,23 +2166,31 @@ arg_type_list_diff_pieces(ContextPieces, TypeCtorPieces, ExistQTVars,
         DiffPieces = []
     else if ActualNumArgs = ExpectedNumArgs then
         DiffPieces = arg_type_list_diff_pieces_loop(ContextPieces,
-            TypeCtorPieces, ExistQTVars, 1, ActualArgTypes, ExpectedArgTypes)
+            TypeCtorPieces, ExpectedNumArgs, ExistQTVars, 1,
+            ActualArgTypes, ExpectedArgTypes)
     else
-        ( if ExpectedNumArgs = 1 then
-            ArgumentS = "argument"
-        else
-            ArgumentS = "arguments"
-        ),
-        CausePieces =
-            color_as_incorrect([words("Arity mismatch")]) ++
-            [words("for")] ++ TypeCtorPieces ++ [suffix(":"),
-            words("expected")] ++
-            color_as_inconsistent([int_name(ExpectedNumArgs),
-                words(ArgumentS), suffix(",")]) ++
-            [words("got")] ++
-            color_as_inconsistent([int_name(ActualNumArgs), suffix(".")]),
+        CausePieces = report_type_ctor_arity_mismatch(TypeCtorPieces,
+            ActualNumArgs, ExpectedNumArgs),
         DiffPieces = wrap_diff_pieces(ContextPieces, CausePieces)
     ).
+
+:- func report_type_ctor_arity_mismatch(list(format_piece), arity, arity)
+    = list(format_piece).
+
+report_type_ctor_arity_mismatch(TypeCtorPieces, ActualNumArgs, ExpectedNumArgs)
+        = Pieces :-
+    ( if ExpectedNumArgs = 1 then
+        ArgumentS = "argument"
+    else
+        ArgumentS = "arguments"
+    ),
+    Pieces =
+        [words("Arity mismatch for")] ++ TypeCtorPieces ++ [suffix(":"),
+        words("expected")] ++
+        color_as_correct([int_name(ExpectedNumArgs),
+            words(ArgumentS), suffix(",")]) ++
+        [words("got")] ++
+        color_as_incorrect([int_name(ActualNumArgs), suffix(".")]).
 
 :- func higher_order_diff_pieces(list(format_piece), list(tvar),
     pred_or_func, pred_or_func, list(mer_type), list(mer_type),
@@ -2152,11 +2204,10 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
         true
     else
         ExpActPredFuncCausePieces =
-            color_as_incorrect([words("Predicate vs function mismatch:")]) ++
-            [words("expected a")] ++
-            color_as_inconsistent([p_or_f(ExpectedPorF), suffix(",")]) ++
+            [words("Predicate vs function mismatch: expected a")] ++
+            color_as_correct([p_or_f(ExpectedPorF), suffix(",")]) ++
             [words("got a")] ++
-            color_as_inconsistent([p_or_f(ActualPorF), suffix(".")]),
+            color_as_incorrect([p_or_f(ActualPorF), suffix(".")]),
         add_to_diff_pieces(ContextPieces, ExpActPredFuncCausePieces,
             !DiffPieces)
     ),
@@ -2164,12 +2215,12 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
         true
     else
         ExpActPurityCausePieces =
-            color_as_incorrect([words("Purity mismatch:")]) ++
-            [words("expected"), purity_desc_article(ExpectedPurity)] ++
-            color_as_inconsistent([purity_desc(ExpectedPurity),
+            [words("Purity mismatch: expected"),
+            purity_desc_article(ExpectedPurity)] ++
+            color_as_correct([purity_desc(ExpectedPurity),
                 p_or_f(ExpectedPorF), suffix(",")]) ++
             [words("got"), purity_desc_article(ActualPurity)] ++
-            color_as_inconsistent([purity_desc(ActualPurity),
+            color_as_incorrect([purity_desc(ActualPurity),
                 p_or_f(ActualPorF), suffix(".")]),
         add_to_diff_pieces(ContextPieces, ExpActPurityCausePieces, !DiffPieces)
     ),
@@ -2193,6 +2244,10 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                 ActualArgModes, _ActualRegInfo, ActualDetism),
             ExpectedPredInstInfo = pred_inst_info(ExpectedHOPorF,
                 ExpectedArgModes, _ExpectedRegInfo, ExpectedDetism),
+            % The coloring pattern differs from the messages above
+            % because this is a difference between either two sources of
+            % actual information, or between two sources of expected
+            % information, not between one actual and one expected source.
             ( if ActualHOPorF = ActualPorF then
                 true
             else
@@ -2279,13 +2334,13 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                 ActualDetismStr = determinism_to_string(ActualDetism),
                 ExpectedDetismStr = determinism_to_string(ExpectedDetism),
                 DetismCausePieces =
-                    color_as_incorrect([words("Determinism mismatch:")]) ++
-                    [words("the actual"), p_or_f(ActualPorF), words("has"),
+                    [words("Determinism mismatch:"),
+                    words("the actual"), p_or_f(ActualPorF), words("has"),
                     words("determinism")] ++
-                    color_as_inconsistent([words(ActualDetismStr),
+                    color_as_incorrect([words(ActualDetismStr),
                         suffix(",")]) ++
                     [words("but the expected determinism is")] ++
-                    color_as_inconsistent([words(ExpectedDetismStr),
+                    color_as_correct([words(ExpectedDetismStr),
                         suffix(".")]),
                 add_to_diff_pieces(ContextPieces, DetismCausePieces,
                     !DiffPieces)
@@ -2314,29 +2369,33 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
     % that the two lists are the same length.
     %
 :- func arg_type_list_diff_pieces_loop(list(format_piece),
-    list(format_piece), list(tvar), int, list(mer_type), list(mer_type))
+    list(format_piece), arity, list(tvar), int, list(mer_type), list(mer_type))
     = list(format_piece).
 
-arg_type_list_diff_pieces_loop(_, _, _, _, [], []) = [].
-arg_type_list_diff_pieces_loop(_, _, _, _, [], [_ | _]) = _ :-
+arg_type_list_diff_pieces_loop(_, _, _, _, _, [], []) = [].
+arg_type_list_diff_pieces_loop(_, _, _, _, _, [], [_ | _]) = _ :-
     unexpected($pred, "list length mismatch").
-arg_type_list_diff_pieces_loop(_, _, _, _, [_ | _], []) = _ :-
+arg_type_list_diff_pieces_loop(_, _, _, _, _, [_ | _], []) = _ :-
     unexpected($pred, "list length mismatch").
-arg_type_list_diff_pieces_loop(ContextPieces, TypeCtorPieces,
+arg_type_list_diff_pieces_loop(ContextPieces, TypeCtorPieces, TypeCtorArity,
         ExistQTVars, CurArgNum, [ActualArgType | ActualArgTypes],
         [ExpectedArgType | ExpectedArgTypes]) = DiffPieces :-
     TailDiffPieces = arg_type_list_diff_pieces_loop(ContextPieces,
-        TypeCtorPieces, ExistQTVars, CurArgNum + 1,
+        TypeCtorPieces, TypeCtorArity, ExistQTVars, CurArgNum + 1,
         ActualArgTypes, ExpectedArgTypes),
     ( if ActualArgType = ExpectedArgType then
         DiffPieces = TailDiffPieces
     else
+        ( if TypeCtorArity = 1 then
+            ArgNumOfPieces = [words("only argument of")]
+        else
+            ArgNumOfPieces = [nth_fixed(CurArgNum), words("argument of")]
+        ),
         ArgContextPieces = [treat_next_as_first | ContextPieces] ++
-            [lower_case_next_if_not_first, words("In the"),
-            nth_fixed(CurArgNum), words("argument of")] ++
-            TypeCtorPieces ++ [suffix(":"), nl],
+            [lower_case_next_if_not_first, words("In the")] ++
+            ArgNumOfPieces ++ TypeCtorPieces ++ [suffix(":"), nl],
         HeadDiffPieces = type_diff_pieces(ArgContextPieces, ExistQTVars,
-            ActualArgType, ExpectedArgType),
+            not_top_level, ActualArgType, ExpectedArgType),
         DiffPieces = HeadDiffPieces ++ TailDiffPieces
     ).
 

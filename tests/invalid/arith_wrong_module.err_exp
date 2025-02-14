@@ -26,7 +26,7 @@ arith_wrong_module.m:025:     expected type was
 arith_wrong_module.m:025:       [38;5;40mint.[39;49m
 arith_wrong_module.m:025:   Note that operations on values of types `int16'
 arith_wrong_module.m:025:   `uint16' are available only if modules [38;5;226m`int16'[39;49m and
-arith_wrong_module.m:025:   [38;5;226m`uint16'[39;49m [38;5;226mare imported.[39;49m
+arith_wrong_module.m:025:   [38;5;226m`uint16' are imported.[39;49m
 arith_wrong_module.m:028: In clause for predicate `game_loop'/4:
 arith_wrong_module.m:028:   in unification of [38;5;87mvariable `Diff'[39;49m
 arith_wrong_module.m:028:   and term [38;5;87m`(End - Start)':[39;49m

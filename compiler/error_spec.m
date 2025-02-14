@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2022-2024 The Mercury team.
+% Copyright (C) 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -642,7 +642,7 @@
 % These functions form an (incomplete) 4 by 2 by 2 by 2 matrix.
 %
 % The first dimension specifies what the individual items are, and how
-% they should be treated
+% they should be treated.
 %
 % - If the function name starts with "fixed", this means that each item
 %   is a string, and it should be formatted as a fixed string.
@@ -664,7 +664,7 @@
 % return colored pieces takes as one argument the name of that color,
 % and they also take a LastSuffix parameter, which is a list of pieces
 % that the function adds to the last item. The caller can use this argument
-% to put a period as a suffix at the end of a sentence, if the given list
+% e.g. to put a period as a suffix at the end of a sentence, if the given list
 % is at the end of that sentence; or to put a comma or semicolon at the
 % end of clause within a sentence, if the list is at the end of that clause.
 % Of course, LastSuffix may also be the empty list of pieces. In any case,
