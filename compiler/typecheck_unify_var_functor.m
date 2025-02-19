@@ -48,8 +48,8 @@
 
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.typecheck_error_undef.
-:- import_module check_hlds.typecheck_error_util.
 :- import_module check_hlds.typecheck_error_unify.
+:- import_module check_hlds.typecheck_error_util.
 :- import_module check_hlds.typecheck_util.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_cons.
