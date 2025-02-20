@@ -179,7 +179,9 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.
+:- import_module libs.globals.
 :- import_module libs.maybe_util.
+:- import_module libs.optimization_options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
@@ -1142,8 +1144,13 @@ compute_scope_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
                             ConstructOrderMarkedSubGoals),
                         Order = construct_bottom_up
                     ),
-                    introduce_partial_fgt_scopes(GoalInfo, SubGoalInfo0,
-                        ConstructOrderMarkedSubGoals, Order, SubGoal),
+                    ModuleInfo = !.Info ^ pi_module_info,
+                    module_info_get_globals(ModuleInfo, Globals),
+                    globals.get_opt_tuple(Globals, OptTuple),
+                    Threshold = OptTuple ^ ot_from_ground_term_threshold,
+                    introduce_partial_fgt_scopes(Threshold, Order,
+                        GoalInfo, SubGoalInfo0, ConstructOrderMarkedSubGoals,
+                        SubGoal),
                     % Delete the scope wrapper around SubGoal0.
                     SubGoal = hlds_goal(GoalExpr, _)
                 )

@@ -53,6 +53,9 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.quantification.
+:- import_module libs.
+:- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
@@ -1174,8 +1177,12 @@ polymorphism_process_from_ground_term_initial(TermVar, GoalInfo0, SubGoal0,
         GoalExpr = scope(Reason, SubGoal0)
     ;
         InvariantsStatus = fgt_invariants_broken,
-        introduce_partial_fgt_scopes(GoalInfo0, SubGoalInfo0,
-            ConstructOrderMarkedSubGoals, deconstruct_top_down, SubGoal),
+        poly_info_get_module_info(!.Info, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_opt_tuple(Globals, OptTuple),
+        Threshold = OptTuple ^ ot_from_ground_term_threshold,
+        introduce_partial_fgt_scopes(Threshold, deconstruct_top_down,
+            GoalInfo0, SubGoalInfo0, ConstructOrderMarkedSubGoals, SubGoal),
         % Delete the scope wrapper around SubGoal0.
         SubGoal = hlds_goal(GoalExpr, _)
     ).

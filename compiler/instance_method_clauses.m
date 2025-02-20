@@ -140,9 +140,10 @@ produce_instance_method_clause(PredOrFunc, Context, InstanceStatus,
             StateVarContext)
     then
         TVarSet = TVarSet0,
-        report_illegal_func_svar_result(StateVarContext, ClauseVarSet,
-            StateVar, !Specs),
-        !:Specs = get_any_errors_warnings2(MaybeBodyGoal) ++ !.Specs
+        ResultSpec = report_illegal_func_svar_result_raw(StateVarContext,
+            ClauseVarSet, StateVar),
+        !:Specs = [ResultSpec | get_any_errors_warnings2(MaybeBodyGoal)] ++
+            !.Specs
     else
         (
             MaybeBodyGoal = error2(BodyGoalSpecs),

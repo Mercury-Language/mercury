@@ -212,8 +212,9 @@ module_add_clause_2(ProgressStream, PredStatus, ClauseType, PredId,
         !:PredSpecs = [],
         (
             IllegalSVarResult = yes({StateVar, StateVarContext}),
-            report_illegal_func_svar_result(StateVarContext, ClauseVarSet,
-                StateVar, !PredSpecs)
+            ResultSpec = report_illegal_func_svar_result_raw(StateVarContext,
+                ClauseVarSet, StateVar),
+            !:PredSpecs = [ResultSpec | !.PredSpecs]
         ;
             IllegalSVarResult = no
         ),
@@ -626,25 +627,24 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
     ( ShouldWarn = should_not_warn, KeepQuantVars = do_not_keep_quant_vars
     ; ShouldWarn = should_warn,     KeepQuantVars = keep_quant_vars
     ),
+    % We want to find out if *this* clause has a syntax error, so forget
+    % about any errors in previous clauses.
+    qual_info_set_found_syntax_error(no, !QualInfo),
     add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
         HeadVars, ArgTerms, Context, ClauseType, BodyGoal, Goal0,
-        VarSet1, VarSet2, QuantWarnings, StateVarWarnings, StateVarErrors,
+        VarSet1, VarSet2, QuantWarnings, StateVarWarnings,
         !ModuleInfo, !QualInfo, !Specs),
     qual_info_get_tvarset(!.QualInfo, TVarSet),
-    qual_info_get_found_syntax_error(!.QualInfo, FoundError),
-    qual_info_set_found_syntax_error(no, !QualInfo),
-    ( if
-        ( FoundError = yes
-        ; StateVarErrors = [_ | _]
-        )
-    then
+    qual_info_get_found_syntax_error(!.QualInfo, FoundSyntaxError),
+    (
+        FoundSyntaxError = yes,
         % Don't insert clauses containing syntax errors into the
         % clauses_info, because doing that would cause typecheck.m
         % to report spurious type errors. Don't report singleton variable
         % warnings if there were syntax errors.
-        !:Specs = StateVarErrors ++ !.Specs,
         !ClausesInfo ^ cli_had_syntax_errors := some_clause_syntax_errors
-    else
+    ;
+        FoundSyntaxError = no,
         (
             ShouldWarn = should_not_warn,
             VarSet = VarSet2,
@@ -792,19 +792,19 @@ should_we_do_singleton_and_quant_warnings(ModuleInfo, PredStatus, ClausesInfo,
     pred_or_func::in, sym_name::in, list(prog_var)::in,
     list(prog_term)::in, prog_context::in, clause_type::in,
     goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    list(quant_warning)::out, list(error_spec)::out, list(error_spec)::out,
+    list(quant_warning)::out, list(error_spec)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
         HeadVars, ArgTerms0, Context, ClauseType, ParseTreeBodyGoal, Goal,
-        !VarSet, QuantWarnings, StateVarWarnings, StateVarErrors,
+        !VarSet, QuantWarnings, StateVarWarningSpecs,
         !ModuleInfo, !QualInfo, !Specs) :-
-    some [!SInfo, !SVarState, !SVarStore] (
+    some [!SVarState, !UrInfo] (
         rename_vars_in_term_list(need_not_rename, Renaming,
             ArgTerms0, ArgTerms1),
-        svar_prepare_for_clause_head(ArgTerms1, ArgTerms, !VarSet,
-            FinalSVarMap, !:SVarState, !:SVarStore, !Specs),
+        svar_prepare_for_clause_head(!.ModuleInfo, !.QualInfo, !.VarSet,
+            ArgTerms1, ArgTerms, FinalSVarMap, !:SVarState, !:UrInfo),
         InitialSVarState = !.SVarState,
         (
             ClauseType = clause_for_promise(_),
@@ -816,8 +816,7 @@ add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
             HeadGoal0 = true_goal,
             pair_vars_with_terms(HeadVars, ArgTerms, HeadVarsArgTerms),
             insert_arg_unifications(HeadVarsArgTerms, Context, ArgContext,
-                HeadGoal0, HeadGoal1, !SVarState, !SVarStore, !VarSet,
-                !ModuleInfo, !QualInfo, !Specs),
+                HeadGoal0, HeadGoal1, !SVarState, !UrInfo),
             % The only pass that pays attention to the from_head feature,
             % switch_detection, only does so on kinds of hlds_goal_exprs
             % that do not occur in from_ground_term scopes, which we have
@@ -837,16 +836,18 @@ add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
                 do_not_attach_in_from_ground_term, HeadGoal1, HeadGoal)
         ),
         transform_parse_tree_goal_to_hlds(loc_whole_goal, Renaming,
-            ParseTreeBodyGoal, BodyGoal, !SVarState, !SVarStore, !VarSet,
-            !ModuleInfo, !QualInfo, !Specs),
+            ParseTreeBodyGoal, BodyGoal, !SVarState, !UrInfo),
         FinalSVarState = !.SVarState,
-        svar_finish_clause_body(Globals, ModuleName, Context, FinalSVarMap,
-            HeadGoal, BodyGoal, Goal0, InitialSVarState, FinalSVarState,
-            !.SVarStore, StateVarWarnings, StateVarErrors),
+        svar_finish_clause_body(Context, FinalSVarMap,
+            InitialSVarState, FinalSVarState, HeadGoal, BodyGoal, Goal0,
+            StateVarWarningSpecs, !UrInfo),
+        !.UrInfo = unravel_info(!:ModuleInfo, _FgtThreshold,
+            !:QualInfo, !:VarSet, _SVarStore, UnravelSpecs),
+        !:Specs = UnravelSpecs ++ !.Specs,
 
-        module_info_get_globals(!.ModuleInfo, Globals),
-        module_info_get_name(!.ModuleInfo, ModuleName),
         trace [compiletime(flag("debug-statevar-lambda")), io(!IO)] (
+            module_info_get_globals(!.ModuleInfo, Globals),
+            module_info_get_name(!.ModuleInfo, ModuleName),
             globals.lookup_string_option(Globals, experiment, Experiment),
             PredName = unqualify_name(PredSymName),
             ( if PredName = Experiment then

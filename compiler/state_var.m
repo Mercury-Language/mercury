@@ -17,18 +17,90 @@
 :- interface.
 
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
 :- import_module hlds.make_hlds.goal_expr_to_goal.
-:- import_module libs.
-:- import_module libs.globals.
+:- import_module hlds.make_hlds.qual_info.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
 :- import_module map.
+
+%-----------------------------------------------------------------------------%
+
+    % This type describes the state of the code that converts goals
+    % from their parse tree form to their HLDS form. Almost all the code
+    % in all the modules of the make_hlds package that handle goals
+    % pass around values of this type as effectively global state,
+    % with persistent updates. (The state of the state var transformation
+    % itself is threaded through that code in a different manner;
+    % see the definition of the svar_state type below.)
+    %
+    % With one exception, all of the fields are writeable.
+:- type unravel_info
+    --->    unravel_info(
+                % The module_info, which we use for several purposes.
+                % Most uses are readonly, including getting the globals
+                % for option lookup, and the module name for creating
+                % debug output streams.
+                %
+                % The only situation in which we update the module_info field
+                % is when processing disable_warning scopes that disable
+                % the warning for occurs check violations. In that case,
+                % we set the option controlling that warning to "no"
+                % while processing the goal in the scope, and reset it
+                % afterwards. Such scopes are rare enough that storing the
+                % value of that option as a separate field in this structure
+                % would not be worthwhile.
+                ui_module_info      :: module_info,
+
+                % The value of the from_ground_term_threshold option.
+                % This field duplicates the value stored in the globals
+                % structure, but it is needed often enough that a separate
+                % fast-access copy is worthwhile.
+                % This field is read-only.
+                ui_fgt_threshold    :: int,
+
+                % The store where we record information about what entities
+                % imported from other modules are used. We use that info
+                % to generate warnings about unused imports.
+                ui_qual_info        :: qual_info,
+
+                % The varset of the clause whose goal we are converting.
+                % New instances of state variables are allocated from here.
+                ui_varset           :: prog_varset,
+
+                % The part of the state of the state var transformation
+                % that is updated persistently (meaning, that once we create
+                % a new version, we don't go back to look at previous
+                % versions.)
+                ui_state_var_store  :: svar_store,
+
+                % The errrors and warnings that we definitely want to print.
+                % (The svar_store also contains error_specs, but we print those
+                % only as hints *if and when* we later find certain other kinds
+                % of errors.)
+                ui_error_specs      :: list(error_spec)
+            ).
+
+%-----------------------------------------------------------------------------%
+
+:- pred create_new_unravel_var(prog_var::out,
+    unravel_info::in, unravel_info::out) is det.
+
+:- pred create_new_named_unravel_var(string::in, prog_var::out,
+    unravel_info::in, unravel_info::out) is det.
+
+:- pred record_unravel_found_syntax_error(
+    unravel_info::in, unravel_info::out) is det.
+
+:- pred add_unravel_error(error_spec::in,
+    unravel_info::in, unravel_info::out) is det.
+:- pred add_unravel_errors(list(error_spec)::in,
+    unravel_info::in, unravel_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -79,10 +151,9 @@
     % to represent these values, and return a mapping from the state vars
     % to these designated-final-value prog_vars.
     %
-:- pred svar_prepare_for_clause_head(list(prog_term)::in, list(prog_term)::out,
-    prog_varset::in, prog_varset::out, map(svar, prog_var)::out,
-    svar_state::out, svar_store::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred svar_prepare_for_clause_head(module_info::in, qual_info::in,
+    prog_varset::in, list(prog_term)::in, list(prog_term)::out,
+    map(svar, prog_var)::out, svar_state::out, unravel_info::out) is det.
 
     % Prepare for processing a lambda expression by processing its head.
     %
@@ -94,22 +165,21 @@
 :- pred svar_prepare_for_lambda_head(prog_context::in,
     list(prog_term)::in, list(prog_term)::out,
     map(svar, prog_var)::out, svar_state::in, svar_state::out,
-    prog_varset::in, prog_varset::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    unravel_info::in, unravel_info::out) is det.
 
     % Finish processing a clause. Make the final values of the clause's state
     % vars match the mapping we decided on when processing the head.
     %
-:- pred svar_finish_clause_body(globals::in, module_name::in, prog_context::in,
-    map(svar, prog_var)::in, hlds_goal::in, hlds_goal::in, hlds_goal::out,
-    svar_state::in, svar_state::in, svar_store::in,
-    list(error_spec)::out, list(error_spec)::out) is det.
+:- pred svar_finish_clause_body(prog_context::in, map(svar, prog_var)::in,
+    svar_state::in, svar_state::in,
+    hlds_goal::in, hlds_goal::in, hlds_goal::out,
+    list(error_spec)::out, unravel_info::in, unravel_info::out) is det.
 
     % Finish processing a lambda expression.
     %
-:- pred svar_finish_lambda_body(globals::in, module_name::in, prog_context::in,
-    map(svar, prog_var)::in, list(hlds_goal)::in, hlds_goal::out,
-    svar_state::in, svar_state::in, svar_store::in, svar_store::out) is det.
+:- pred svar_finish_lambda_body(prog_context::in, map(svar, prog_var)::in,
+    list(hlds_goal)::in, hlds_goal::out, svar_state::in, svar_state::in,
+    unravel_info::in, unravel_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -125,13 +195,13 @@
 
     % Add some local state variables.
     %
-:- pred svar_prepare_for_local_state_vars(prog_context::in, prog_varset::in,
-    list(svar)::in, svar_state::in, svar_state::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred svar_prepare_for_local_state_vars(prog_context::in, list(svar)::in,
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
 
     % Remove some local state variables.
     %
-:- pred svar_finish_local_state_vars(globals::in, module_name::in,
+:- pred svar_finish_local_state_vars(unravel_info::in,
     list(svar)::in, svar_state::in, svar_state::in, svar_state::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -140,9 +210,8 @@
     % bindings, by adding unifiers as necessary.
     %
 :- pred svar_finish_disjunction(list(hlds_goal_svar_state)::in,
-    list(hlds_goal)::out,
-    prog_varset::in, prog_varset::out, svar_state::in, svar_state::out,
-    svar_store::in, svar_store::out) is det.
+    list(hlds_goal)::out, svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -152,13 +221,12 @@
     % We also add unifiers to the Then arm for any new state variable
     % mappings produced in the condition.
     %
-:- pred svar_finish_if_then_else(globals::in, module_name::in,
-    loc_kind::in, prog_context::in, list(svar)::in,
+:- pred svar_finish_if_then_else(loc_kind::in, prog_context::in,
+    list(svar)::in,
     hlds_goal::in, hlds_goal::out, hlds_goal::in, hlds_goal::out,
     svar_state::in, svar_state::in, svar_state::in, svar_state::in,
-    svar_state::out, prog_varset::in, prog_varset::out,
-    svar_store::in, svar_store::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -166,7 +234,7 @@
 :- type svar_inner_atomic_scope_info.
 
     % svar_start_outer_atomic_scope(Context, OuterStateVar, OuterDI, OuterUO,
-    %   OuterScopeInfo, !State, !VarSet, !Specs):
+    %   OuterScopeInfo, !SVarState, !UrInfo):
     %
     % This predicate converts a !OuterStateVar specification in an atomic scope
     % to a pair of outer state variables, OuterDI and OuterUO. Since
@@ -177,8 +245,8 @@
     %
 :- pred svar_start_outer_atomic_scope(prog_context::in, prog_var::in,
     prog_var::out, prog_var::out, svar_outer_atomic_scope_info::out,
-    svar_state::in, svar_state::out, prog_varset::in, prog_varset::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
 
     % svar_finish_outer_atomic_scope(OuterScopeInfo, !SInfo):
     %
@@ -189,18 +257,18 @@
     svar_state::in, svar_state::out) is det.
 
     % svar_start_inner_atomic_scope(Context, InnerStateVar, InnerScopeInfo,
-    %   !State, !VarSet, !Specs):
+    %   !SVarState, !UrInfo):
     %
     % This predicate prepares for an atomic scope with an !InnerStateVar
     % specification by making that state var available.
     %
 :- pred svar_start_inner_atomic_scope(prog_context::in, prog_var::in,
     svar_inner_atomic_scope_info::out,
-    svar_state::in, svar_state::out, prog_varset::in, prog_varset::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
 
     % svar_finish_inner_atomic_scope(Context, InnerScopeInfo, InnerDI, InnerUO,
-    %   !State, !VarSet, !Specs):
+    %   !SVarState, !UrInfo):
     %
     % This predicate ends an atomic scope with an !InnerStateVar
     % specification by making that state var unavailable, and returning
@@ -209,8 +277,8 @@
     %
 :- pred svar_finish_inner_atomic_scope(prog_context::in,
     svar_inner_atomic_scope_info::in, prog_var::out, prog_var::out,
-    svar_state::in, svar_state::out, prog_varset::in, prog_varset::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -219,33 +287,30 @@
     % as appropriate. Any occurrence of !X should already have been
     % expanded into a <!.X, !:X> pair by a call to expand_bang_state_pairs.
     %
-    % XXX Having "mapping" as part of the name is not useful.
-    %
 :- pred replace_any_dot_color_state_var_in_terms(
     list(prog_term)::in, list(prog_term)::out,
-    prog_varset::in, prog_varset::out,
     svar_state::in, svar_state::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    unravel_info::in, unravel_info::out) is det.
 
     % Same as replace_any_dot_color_state_var_in_terms, but for only one term.
     %
 :- pred replace_any_dot_color_state_var_in_term(prog_term::in, prog_term::out,
-    prog_varset::in, prog_varset::out, svar_state::in, svar_state::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
 
     % Look up the prog_var that represents the current state of the given
     % state variable.
     %
 :- pred lookup_dot_state_var(prog_context::in, svar::in, prog_var::out,
-    prog_varset::in, prog_varset::out, svar_state::in, svar_state::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
 
     % Look up the prog_var that represents the next state of the given
     % state variable.
     %
 :- pred lookup_colon_state_var(prog_context::in, svar::in, prog_var::out,
-    prog_varset::in, prog_varset::out, svar_state::in, svar_state::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -254,13 +319,13 @@
     %
 :- pred svar_flatten_conj(prog_context::in,
     list(hlds_goal)::in, hlds_goal::out,
-    svar_store::in, svar_store::out) is det.
+    unravel_info::in, unravel_info::out) is det.
 
     % Flatten a goal into a conjunction while preserving the invariants that
     % the state variable transformation cares about.
     %
 :- pred svar_goal_to_conj_list(hlds_goal::in, list(hlds_goal)::out,
-    svar_store::in, svar_store::out) is det.
+    unravel_info::in, unravel_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -286,18 +351,22 @@
 %-----------------------------------------------------------------------------%
 
 :- pred report_illegal_state_var_update(prog_context::in,
-    string::in, prog_context::in, prog_varset::in,
-    svar::in, list(error_spec)::in, list(error_spec)::out) is det.
+    string::in, prog_context::in, svar::in,
+    unravel_info::in, unravel_info::out) is det.
 
-:- pred report_illegal_func_svar_result(prog_context::in, prog_varset::in,
-    svar::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred report_illegal_func_svar_result(prog_context::in, svar::in,
+    unravel_info::in, unravel_info::out) is det.
+:- func report_illegal_func_svar_result_raw(prog_context,
+    prog_varset, svar) = error_spec.
 
-:- pred report_illegal_bang_svar_lambda_arg(prog_context::in, prog_varset::in,
-    svar::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred report_illegal_bang_svar_lambda_arg(prog_context::in, svar::in,
+    unravel_info::in, unravel_info::out) is det.
+:- func report_illegal_bang_svar_lambda_arg_raw(prog_context,
+    prog_varset, svar) = error_spec.
 
 :- pred report_svar_unify_error(prog_context::in, svar::in,
-    prog_varset::in, prog_varset::out, svar_state::in, svar_state::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -307,9 +376,12 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.make_goal.
+:- import_module libs.
+:- import_module libs.globals.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.goal_path.
-:- import_module parse_tree.error_util.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
@@ -326,6 +398,38 @@
 :- import_module term.
 :- import_module term_context.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
+
+create_new_unravel_var(Var, !UrInfo) :-
+    VarSet0 = !.UrInfo ^ ui_varset,
+    varset.new_var(Var, VarSet0, VarSet),
+    !UrInfo ^ ui_varset := VarSet.
+
+create_new_named_unravel_var(Name, Var, !UrInfo) :-
+    VarSet0 = !.UrInfo ^ ui_varset,
+    varset.new_named_var(Name, Var, VarSet0, VarSet),
+    !UrInfo ^ ui_varset := VarSet.
+
+record_unravel_found_syntax_error(!UrInfo) :-
+    QualInfo0 = !.UrInfo ^ ui_qual_info,
+    qual_info_set_found_syntax_error(yes, QualInfo0, QualInfo),
+    !UrInfo ^ ui_qual_info := QualInfo.
+
+add_unravel_error(NewSpec, !UrInfo) :-
+    Specs0 = !.UrInfo ^ ui_error_specs,
+    Specs = [NewSpec | Specs0],
+    !UrInfo ^ ui_error_specs := Specs.
+
+add_unravel_errors(NewSpecs, !UrInfo) :-
+    (
+        NewSpecs = []
+    ;
+        NewSpecs = [_ | _],
+        Specs0 = !.UrInfo ^ ui_error_specs,
+        Specs = NewSpecs ++ Specs0,
+        !UrInfo ^ ui_error_specs := Specs
+    ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -385,9 +489,21 @@
 
 :- type svar_store
     --->    svar_store(
-                store_next_goal_id  ::  ucounter,
-                store_final_remap   ::  incremental_rename_map,
-                store_specs         ::  list(error_spec)
+                store_next_goal_id          ::  ucounter,
+                store_final_remap           ::  incremental_rename_map,
+                % We use this slot to store informational messages that
+                % we want to print *only* in the presence of mode errors,
+                % because
+                %
+                % - in the presence of mode errors, they can sometimes
+                %   pinpoint the *cause* of some of those errors, but
+                % - in the absence of mode errors, the messages would be
+                %   only clutter.
+                %
+                % As of 2025 feb 20, these messages are all about situations
+                % in which a disjunction or an if-then-else initialises
+                % a state variable in some branches but not in others.
+                store_missing_init_specs    ::  list(error_spec)
             ).
 
     % Create a new svar_state/store set up to start processing a clause head.
@@ -404,23 +520,25 @@ new_svar_store = svar_store(counter.uinit(1u), map.init, []).
     ;       name_final.
 
 :- pred new_state_var_instance(svar::in, state_var_name_source::in,
-    prog_var::out, prog_varset::in, prog_varset::out) is det.
+    prog_var::out, unravel_info::in, unravel_info::out) is det.
 
-new_state_var_instance(StateVar, NameSource, Var, !VarSet) :-
-    SVarName = varset.lookup_name(!.VarSet, StateVar),
+new_state_var_instance(StateVar, NameSource, Var, !UrInfo) :-
+    VarSet0 = !.UrInfo ^ ui_varset,
+    SVarName = varset.lookup_name(VarSet0, StateVar),
     (
         NameSource = name_initial,
         ProgVarName = string.format("STATE_VARIABLE_%s_0", [s(SVarName)]),
-        varset.new_named_var(ProgVarName, Var, !VarSet)
+        varset.new_named_var(ProgVarName, Var, VarSet0, VarSet)
     ;
         NameSource = name_middle,
         ProgVarBaseName = string.format("STATE_VARIABLE_%s", [s(SVarName)]),
-        varset.new_uniquely_named_var(ProgVarBaseName, Var, !VarSet)
+        varset.new_uniquely_named_var(ProgVarBaseName, Var, VarSet0, VarSet)
     ;
         NameSource = name_final,
         ProgVarName = string.format("STATE_VARIABLE_%s", [s(SVarName)]),
-        varset.new_named_var(ProgVarName, Var, !VarSet)
-    ).
+        varset.new_named_var(ProgVarName, Var, VarSet0, VarSet)
+    ),
+    !UrInfo ^ ui_varset := VarSet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -485,31 +603,36 @@ expand_bang_state_pairs_in_clause(ItemClause0, ItemClause) :-
 % Handle the start of processing a clause.
 %
 
-svar_prepare_for_clause_head(Args0, Args, !VarSet, FinalMap,
-        !:State, !:Store, !Specs) :-
-    !:State = new_svar_state,
-    !:Store = new_svar_store,
+svar_prepare_for_clause_head(ModuleInfo0, QualInfo0, VarSet0,
+        Args0, Args, FinalMap, !:SVarState, !:UrInfo) :-
+    module_info_get_globals(ModuleInfo0, Globals),
+    globals.get_opt_tuple(Globals, OptTuple),
+    Threshold = OptTuple ^ ot_from_ground_term_threshold,
+    !:SVarState = new_svar_state,
+    SVarStore0 = new_svar_store,
+    Specs0 = [],
+    !:UrInfo = unravel_info(ModuleInfo0, Threshold, QualInfo0, VarSet0,
+        SVarStore0, Specs0),
     svar_prepare_head_terms(Args0, Args, map.init, FinalMap,
-        !State, !VarSet, !Specs).
+        !SVarState, !UrInfo).
 
 :- pred svar_prepare_head_terms(list(prog_term)::in, list(prog_term)::out,
     map(svar, prog_var)::in, map(svar, prog_var)::out,
-    svar_state::in, svar_state::out, prog_varset::in, prog_varset::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
 
-svar_prepare_head_terms([], [], !FinalMap, !State, !VarSet, !Specs).
+svar_prepare_head_terms([], [], !FinalMap, !SVarState, !UrInfo).
 svar_prepare_head_terms([Term0 | Terms0], [Term | Terms],
-        !FinalMap, !State, !VarSet, !Specs) :-
-    svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs),
-    svar_prepare_head_terms(Terms0, Terms, !FinalMap, !State, !VarSet, !Specs).
+        !FinalMap, !SVarState, !UrInfo) :-
+    svar_prepare_head_term(Term0, Term, !FinalMap, !SVarState, !UrInfo),
+    svar_prepare_head_terms(Terms0, Terms, !FinalMap, !SVarState, !UrInfo).
 
 :- pred svar_prepare_head_term(prog_term::in, prog_term::out,
     map(svar, prog_var)::in, map(svar, prog_var)::out,
     svar_state::in, svar_state::out,
-    prog_varset::in, prog_varset::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    unravel_info::in, unravel_info::out) is det.
 
-svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
+svar_prepare_head_term(Term0, Term, !FinalMap, !SVarState, !UrInfo) :-
     (
         Term0 = variable(_, _),
         Term = Term0
@@ -519,13 +642,13 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
             Functor = atom("!."),
             SubTerms0 = [variable(StateVar, _)]
         then
-            !.State = svar_state(StatusMap0),
+            !.SVarState = svar_state(StatusMap0),
             ( if map.search(StatusMap0, StateVar, OldStatus) then
                 (
                     OldStatus = status_unknown,
                     % !:S happened to precede !.S in the head, which is ok.
                     new_state_var_instance(StateVar, name_initial, Var,
-                        !VarSet),
+                        !UrInfo),
                     Term = variable(Var, Context),
                     Status = status_known(Var),
                     map.det_update(StateVar, Status, StatusMap0, StatusMap)
@@ -546,27 +669,27 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
                     % which make_svars_read_only has given this status,
                     % and the lambda expression itself also has !.StateVar.
                     new_state_var_instance(StateVar, name_initial, Var,
-                        !VarSet),
+                        !UrInfo),
                     Term = variable(Var, Context),
                     Status = status_known(Var),
                     map.det_update(StateVar, Status, StatusMap0, StatusMap)
                 )
             else
-                new_state_var_instance(StateVar, name_initial, Var, !VarSet),
+                new_state_var_instance(StateVar, name_initial, Var, !UrInfo),
                 Term = variable(Var, Context),
                 Status = status_known(Var),
                 map.det_insert(StateVar, Status, StatusMap0, StatusMap)
             ),
-            !:State = svar_state(StatusMap)
+            !:SVarState = svar_state(StatusMap)
         else if
             Functor = atom("!:"),
             SubTerms0 = [variable(StateVar, _)]
         then
-            new_state_var_instance(StateVar, name_final, Var, !VarSet),
+            new_state_var_instance(StateVar, name_final, Var, !UrInfo),
             Term = variable(Var, Context),
             Status = status_unknown,
 
-            !.State = svar_state(StatusMap0),
+            !.SVarState = svar_state(StatusMap0),
             ( if map.search(StatusMap0, StateVar, OldStatus) then
                 (
                     OldStatus = status_unknown,
@@ -596,18 +719,17 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
             else
                 map.det_insert(StateVar, Status, StatusMap0, StatusMap)
             ),
-            !:State = svar_state(StatusMap),
+            !:SVarState = svar_state(StatusMap),
             map.search_insert(StateVar, Var, MaybeOldVar, !FinalMap),
             (
                 MaybeOldVar = yes(_),
-                report_repeated_head_state_var(Context, !.VarSet, StateVar,
-                    !Specs)
+                report_repeated_head_state_var(Context, StateVar, !UrInfo)
             ;
                 MaybeOldVar = no
             )
         else
             svar_prepare_head_terms(SubTerms0, SubTerms,
-                !FinalMap, !State, !VarSet, !Specs),
+                !FinalMap, !SVarState, !UrInfo),
             Term = functor(Functor, SubTerms, Context)
         )
     ).
@@ -618,7 +740,7 @@ svar_prepare_head_term(Term0, Term, !FinalMap, !State, !VarSet, !Specs) :-
 %
 
 svar_prepare_for_lambda_head(Context, Args0, Args, FinalMap,
-        OutsideState, InsideState, !VarSet, !Specs) :-
+        OutsideState, InsideState, !UrInfo) :-
     % Make all currently visible state vars readonly, since they cannot
     % be updated inside the lambda expression.
     %
@@ -636,7 +758,7 @@ svar_prepare_for_lambda_head(Context, Args0, Args, FinalMap,
     % Handle the arguments of the lambda expression as if they were the head
     % of a clause.
     svar_prepare_head_terms(Args0, Args, map.init, FinalMap,
-        InsideState0, InsideState, !VarSet, !Specs).
+        InsideState0, InsideState, !UrInfo).
 
 :- pred make_svars_read_only(readonly_context_kind::in, prog_context::in,
     assoc_list(svar, svar_status)::in, assoc_list(svar, svar_status)::out)
@@ -666,14 +788,12 @@ make_svars_read_only(ROC, Context, [SVar - CurStatus | CurTail], LambdaList) :-
 % Handle the end of processing a clause or lambda expression.
 %
 
-svar_finish_clause_body(Globals, ModuleName, Context, FinalMap,
-        HeadGoal0, BodyGoal0, Goal, InitialSVarState, FinalSVarState,
-        !.SVarStore, WarningSpecs, ErrorSpecs) :-
-    svar_finish_body(Globals, ModuleName, Context, FinalMap,
-        [HeadGoal0, BodyGoal0], Goal1, InitialSVarState, FinalSVarState,
-        !SVarStore),
-    !.SVarStore = svar_store(_, DelayedRenamings, Specs),
-    list.filter(severity_is_error(Globals), Specs, ErrorSpecs, WarningSpecs),
+svar_finish_clause_body(Context, FinalMap, InitialSVarState, FinalSVarState,
+        HeadGoal0, BodyGoal0, Goal, StateVarSpecs, !UrInfo) :-
+    svar_finish_body(Context, FinalMap, [HeadGoal0, BodyGoal0], Goal1,
+        InitialSVarState, FinalSVarState, !UrInfo),
+    SVarStore0 = !.UrInfo ^ ui_state_var_store,
+    SVarStore0 = svar_store(_, DelayedRenamings, StateVarSpecs),
     ( if
         map.is_empty(FinalMap),
         map.is_empty(DelayedRenamings)
@@ -681,6 +801,9 @@ svar_finish_clause_body(Globals, ModuleName, Context, FinalMap,
         Goal = Goal1
     else
         trace [compiletime(flag("state-var-lambda")), io(!IO)] (
+            ModuleInfo = !.UrInfo ^ ui_module_info,
+            module_info_get_globals(ModuleInfo, Globals),
+            module_info_get_name(ModuleInfo, ModuleName),
             get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
             map.to_assoc_list(FinalMap, FinalList),
             map.to_assoc_list(DelayedRenamings, DelayedList),
@@ -762,17 +885,17 @@ svar_finish_clause_body(Globals, ModuleName, Context, FinalMap,
         delete_unneeded_copy_goals(Goal2, Goal, SeenLater0, _SeenLater)
     ).
 
-svar_finish_lambda_body(Globals, ModuleName, Context, FinalMap, Goals0, Goal,
-        InitialSVarState, FinalSVarState, !SVarStore) :-
-    svar_finish_body(Globals, ModuleName, Context, FinalMap, Goals0, Goal,
-        InitialSVarState, FinalSVarState, !SVarStore).
+svar_finish_lambda_body(Context, FinalMap, Goals0, Goal,
+        InitialSVarState, FinalSVarState, !UrInfo) :-
+    svar_finish_body(Context, FinalMap, Goals0, Goal,
+        InitialSVarState, FinalSVarState, !UrInfo).
 
-:- pred svar_finish_body(globals::in, module_name::in, prog_context::in,
-    map(svar, prog_var)::in, list(hlds_goal)::in, hlds_goal::out,
-    svar_state::in, svar_state::in, svar_store::in, svar_store::out) is det.
+:- pred svar_finish_body(prog_context::in, map(svar, prog_var)::in,
+    list(hlds_goal)::in, hlds_goal::out, svar_state::in, svar_state::in,
+    unravel_info::in, unravel_info::out) is det.
 
-svar_finish_body(Globals, ModuleName, Context, FinalMap, Goals0, Goal,
-        InitialSVarState, FinalSVarState, !Store) :-
+svar_finish_body(Context, FinalMap, Goals0, Goal,
+        InitialSVarState, FinalSVarState, !UrInfo) :-
     map.to_assoc_list(FinalMap, FinalAssocList),
     InitialSVarState = svar_state(InitialSVarStatusMap),
     FinalSVarState = svar_state(FinalSVarStatusMap),
@@ -786,13 +909,17 @@ svar_finish_body(Globals, ModuleName, Context, FinalMap, Goals0, Goal,
         CopyGoals = [_ | _],
         Goals1 = Goals0 ++ CopyGoals
     ),
-    svar_flatten_conj(Context, Goals1, Goal1, !Store),
+    svar_flatten_conj(Context, Goals1, Goal1, !UrInfo),
 
     Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
     GoalId1 = goal_info_get_goal_id(GoalInfo1),
-    !.Store = svar_store(NextGoalId1, DelayedRenamingMap1, Specs),
+    SVarStore0 = !.UrInfo ^ ui_state_var_store,
+    SVarStore0 = svar_store(NextGoalId1, DelayedRenamingMap1, StateVarSpecs1),
     ( if map.search(DelayedRenamingMap1, GoalId1, DelayedRenaming0) then
         trace [compiletime(flag("state-var-lambda")), io(!IO)] (
+            ModuleInfo = !.UrInfo ^ ui_module_info,
+            module_info_get_globals(ModuleInfo, Globals),
+            module_info_get_name(ModuleInfo, ModuleName),
             get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
             io.write_string(DebugStream, "\nfinishing body, ", !IO),
             io.write_string(DebugStream,
@@ -818,6 +945,9 @@ svar_finish_body(Globals, ModuleName, Context, FinalMap, Goals0, Goal,
             GoalId = goal_id(GoalIdNum),
 
             trace [compiletime(flag("state-var-lambda")), io(!IO)] (
+                ModuleInfo = !.UrInfo ^ ui_module_info,
+                module_info_get_globals(ModuleInfo, Globals),
+                module_info_get_name(ModuleInfo, ModuleName),
                 get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
                 io.write_string(DebugStream, "\nfinishing body, ", !IO),
                 io.write_string(DebugStream,
@@ -833,7 +963,8 @@ svar_finish_body(Globals, ModuleName, Context, FinalMap, Goals0, Goal,
             Goal = hlds_goal(GoalExpr1, GoalInfo)
         )
     ),
-    !:Store = svar_store(NextGoalId, DelayedRenamingMap, Specs).
+    SVarStore = svar_store(NextGoalId, DelayedRenamingMap, StateVarSpecs1),
+    !UrInfo ^ ui_state_var_store := SVarStore.
 
 :- pred svar_find_final_renames_and_copy_goals(assoc_list(svar, prog_var)::in,
     map(svar, svar_status)::in, map(svar, svar_status)::in,
@@ -885,12 +1016,12 @@ svar_find_final_renames_and_copy_goals([Head | Tail],
 % does NOT mean that we finished the containing atomic goal.
 %
 
-svar_finish_atomic_goal(Loc, !State) :-
+svar_finish_atomic_goal(Loc, !SVarState) :-
     (
         Loc = loc_whole_goal,
-        !.State = svar_state(StatusMap0),
+        !.SVarState = svar_state(StatusMap0),
         map.map_values_only(reset_updated_status, StatusMap0, StatusMap),
-        !:State = svar_state(StatusMap)
+        !:SVarState = svar_state(StatusMap)
     ;
         Loc = loc_inside_atomic_goal
     ).
@@ -916,33 +1047,36 @@ reset_updated_status(!Status) :-
 % Handle scopes that introduce state variables.
 %
 
-svar_prepare_for_local_state_vars(Context, VarSet, StateVars,
-        OutsideState, InsideState, !Specs) :-
+svar_prepare_for_local_state_vars(Context, StateVars,
+        OutsideState, InsideState, !UrInfo) :-
     OutsideState = svar_state(StatusMapOutside),
-    prepare_svars_for_scope(Context, VarSet, StateVars,
-        StatusMapOutside, StatusMapInside, !Specs),
+    prepare_svars_for_scope(Context, StateVars,
+        StatusMapOutside, StatusMapInside, !UrInfo),
     InsideState = svar_state(StatusMapInside).
 
-:- pred prepare_svars_for_scope(prog_context::in, prog_varset::in,
-    list(svar)::in, map(svar, svar_status)::in, map(svar, svar_status)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred prepare_svars_for_scope(prog_context::in, list(svar)::in,
+    map(svar, svar_status)::in, map(svar, svar_status)::out,
+    unravel_info::in, unravel_info::out) is det.
 
-prepare_svars_for_scope(_Context, _VarSet, [], !StatusMap, !Specs).
-prepare_svars_for_scope(Context, VarSet, [SVar | SVars],
-        !StatusMap, !Specs) :-
+prepare_svars_for_scope(_Context, [], !StatusMap, !UrInfo).
+prepare_svars_for_scope(Context, [SVar | SVars],
+        !StatusMap, !UrInfo) :-
     ( if map.search(!.StatusMap, SVar, _OldStatus) then
-        report_state_var_shadow(Context, VarSet, SVar, !Specs),
+        report_state_var_shadow(Context, SVar, !UrInfo),
         map.det_update(SVar, status_unknown, !StatusMap)
     else
         map.det_insert(SVar, status_unknown, !StatusMap)
     ),
-    prepare_svars_for_scope(Context, VarSet, SVars, !StatusMap, !Specs).
+    prepare_svars_for_scope(Context, SVars, !StatusMap, !UrInfo).
 
-svar_finish_local_state_vars(Globals, ModuleName, StateVars,
+svar_finish_local_state_vars(UrInfo, StateVars,
         StateBeforeOutside, StateAfterInside, StateAfterOutside) :-
     StateBeforeOutside = svar_state(StatusMapBeforeOutside),
     StateAfterInside = svar_state(StatusMapAfterInside),
     trace [compiletime(flag("state-var-scope")), io(!IO)] (
+        ModuleInfo = UrInfo ^ ui_module_info,
+        module_info_get_globals(ModuleInfo, Globals),
+        module_info_get_name(ModuleInfo, ModuleName),
         get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
         map.to_assoc_list(StatusMapBeforeOutside, BeforeOutsideStatuses),
         map.to_assoc_list(StatusMapAfterInside, AfterInsideStatuses),
@@ -996,8 +1130,7 @@ finish_svars_for_scope([SVar | SVars], StatusMapBeforeOutside,
 %   state var, it schedules the prog_var representing the final value in
 %   that arm to be renamed to the picked prog_var.
 
-svar_finish_disjunction(DisjStates, Disjs, !VarSet,
-        StateBefore, StateAfter, !Store) :-
+svar_finish_disjunction(DisjStates, Disjs, StateBefore, StateAfter, !UrInfo) :-
     StateBefore = svar_state(StatusMapBefore),
     ( if map.is_empty(StatusMapBefore) then
         % Optimize the common case.
@@ -1012,13 +1145,16 @@ svar_finish_disjunction(DisjStates, Disjs, !VarSet,
             ChangedStatusListAfter),
         StateAfter = svar_state(StatusMapAfter),
 
-        !.Store = svar_store(NextGoalId0, DelayedRenamings0, Specs0),
-        merge_changes_made_by_arms(DisjStates, StatusMapBefore,
-            ChangedStatusListAfter, !.VarSet, [], RevDisjs,
+        VarSet0 = !.UrInfo ^ ui_varset,
+        SVarStore0 = !.UrInfo ^ ui_state_var_store,
+        SVarStore0 = svar_store(NextGoalId0, DelayedRenamings0, SVarSpecs0),
+        merge_changes_made_by_arms(VarSet0, DisjStates, StatusMapBefore,
+            ChangedStatusListAfter, [], RevDisjs,
             NextGoalId0, NextGoalId, DelayedRenamings0, DelayedRenamings,
-            Specs0, Specs),
+            SVarSpecs0, SVarSpecs),
         list.reverse(RevDisjs, Disjs),
-        !:Store = svar_store(NextGoalId, DelayedRenamings, Specs)
+        SVarStore = svar_store(NextGoalId, DelayedRenamings, SVarSpecs),
+        !UrInfo ^ ui_state_var_store := SVarStore
     ).
 
 :- pred get_disjuncts_with_empty_states(list(hlds_goal_svar_state)::in,
@@ -1077,24 +1213,26 @@ find_changes_in_arm_and_update_changed_status_map([Before | Befores],
 
     % Pass 2. Effect the computed changes in the status map.
     %
-:- pred merge_changes_made_by_arms(list(hlds_goal_svar_state)::in,
+:- pred merge_changes_made_by_arms(prog_varset::in,
+    list(hlds_goal_svar_state)::in,
     map(svar, svar_status)::in, assoc_list(svar, svar_status)::in,
-    prog_varset::in, list(hlds_goal)::in, list(hlds_goal)::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
     ucounter::in, ucounter::out,
     incremental_rename_map::in, incremental_rename_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-merge_changes_made_by_arms([], _StatusMapBefore, _ChangedStatusListAfter,
-        _VarSet, !RevArms, !NextGoalId, !DelayedRenamings, !Specs).
-merge_changes_made_by_arms([ArmState | ArmStates],
-        StatusMapBefore, ChangedStatusListAfter, VarSet, !RevArms,
-        !NextGoalId, !DelayedRenamings, !Specs) :-
+merge_changes_made_by_arms(_, [], _, _,
+        !RevArms, !NextGoalId, !DelayedRenamings, !Specs).
+merge_changes_made_by_arms(VarSet, [ArmState | ArmStates],
+        StatusMapBefore, ChangedStatusListAfter,
+        !RevArms, !NextGoalId, !DelayedRenamings, !Specs) :-
     ArmState = hlds_goal_svar_state(Arm0, StateAfterArm),
     StatusMapAfterArm = StateAfterArm ^ state_status_map,
     counter.uallocate(ArmIdNum, !NextGoalId),
     ArmId = goal_id(ArmIdNum),
-    handle_arm_updated_state_vars(ChangedStatusListAfter, StatusMapBefore,
-        StatusMapAfterArm, VarSet, UninitVarNames, CopyGoals, ArmRenames),
+    handle_arm_updated_state_vars(VarSet,
+        ChangedStatusListAfter, StatusMapBefore, StatusMapAfterArm,
+        UninitVarNames, CopyGoals, ArmRenames),
     map.det_insert(ArmId, ArmRenames, !DelayedRenamings),
     Arm0 = hlds_goal(ArmExpr0, ArmInfo0),
     (
@@ -1119,20 +1257,21 @@ merge_changes_made_by_arms([ArmState | ArmStates],
     goal_info_set_goal_id(ArmId, ArmInfo0, ArmInfo),
     Arm = hlds_goal(ArmExpr, ArmInfo),
     !:RevArms = [Arm | !.RevArms],
-    merge_changes_made_by_arms(ArmStates, StatusMapBefore,
-        ChangedStatusListAfter, VarSet, !RevArms,
-        !NextGoalId, !DelayedRenamings, !Specs).
+    merge_changes_made_by_arms(VarSet, ArmStates,
+        StatusMapBefore, ChangedStatusListAfter,
+        !RevArms, !NextGoalId, !DelayedRenamings, !Specs).
 
-:- pred handle_arm_updated_state_vars(assoc_list(svar, svar_status)::in,
-    map(svar, svar_status)::in, map(svar, svar_status)::in,
-    prog_varset::in, list(string)::out,
+:- pred handle_arm_updated_state_vars(prog_varset::in,
+    assoc_list(svar, svar_status)::in,
+    map(svar, svar_status)::in, map(svar, svar_status)::in, list(string)::out,
     list(hlds_goal)::out, assoc_list(prog_var, prog_var)::out) is det.
 
-handle_arm_updated_state_vars([], _, _, _, [], [], []).
-handle_arm_updated_state_vars([Change | Changes], StatusMapBefore,
-        StatusMapAfterArm, VarSet, UninitVarNames, CopyGoals, Renames) :-
-    handle_arm_updated_state_vars(Changes, StatusMapBefore, StatusMapAfterArm,
-        VarSet, UninitVarNamesTail, CopyGoalsTail, RenamesTail),
+handle_arm_updated_state_vars(_, [], _, _, [], [], []).
+handle_arm_updated_state_vars(VarSet, [Change | Changes], StatusMapBefore,
+        StatusMapAfterArm, UninitVarNames, CopyGoals, Renames) :-
+    handle_arm_updated_state_vars(VarSet, Changes,
+        StatusMapBefore, StatusMapAfterArm,
+        UninitVarNamesTail, CopyGoalsTail, RenamesTail),
     Change = StateVar - AfterAllArmsStatus,
     map.lookup(StatusMapBefore, StateVar, BeforeStatus),
     map.lookup(StatusMapAfterArm, StateVar, AfterArmStatus),
@@ -1257,10 +1396,10 @@ make_copy_goal(FromVar, ToVar, CopyGoal) :-
 % unknown_updated in any of the status maps we handle.
 %
 
-svar_finish_if_then_else(Globals, ModuleName, LocKind, Context, QuantStateVars,
+svar_finish_if_then_else(LocKind, Context, QuantStateVars,
         ThenGoal0, ThenGoal, ElseGoal0, ElseGoal,
         StateBefore, StateAfterCond, StateAfterThen, StateAfterElse,
-        StateAfterITE, !VarSet, !Store, !Specs) :-
+        StateAfterITE, !UrInfo) :-
     StateBefore = svar_state(StatusMapBefore),
     StatusMapAfterCond = StateAfterCond ^ state_status_map,
     StatusMapAfterThen = StateAfterThen ^ state_status_map,
@@ -1276,13 +1415,13 @@ svar_finish_if_then_else(Globals, ModuleName, LocKind, Context, QuantStateVars,
     expect(unify(SVarsBefore, SVarsAfterElse), $pred,
         "vars Before != AfterElse"),
 
-    handle_state_vars_in_ite(Globals, ModuleName, LocKind, QuantStateVars,
+    handle_state_vars_in_ite(LocKind, QuantStateVars,
         SVarsBefore, StatusMapBefore, StatusMapAfterCond,
         StatusMapAfterThen, StatusMapAfterElse,
-        map.init, StatusMapAfterITE, !VarSet,
+        map.init, StatusMapAfterITE,
         [], NeckCopyGoals, [], ThenEndCopyGoals, [], ElseEndCopyGoals,
         [], ThenRenames, [], ElseRenames,
-        [], ThenMissingInits, [], ElseMissingInits),
+        [], ThenMissingInits, [], ElseMissingInits, !UrInfo),
     StateAfterITE = svar_state(StatusMapAfterITE),
 
     % It is ok for an arm that cannot succeed not to initialize a variable,
@@ -1292,23 +1431,19 @@ svar_finish_if_then_else(Globals, ModuleName, LocKind, Context, QuantStateVars,
         ThenMissingInits = []
     ;
         ThenMissingInits = [_ | _],
-        ThenSpecs0 = !.Store ^ store_specs,
         report_missing_inits_in_ite(Context, ThenMissingInits,
-            "succeeds", "fails", ThenSpecs0, ThenSpecs),
-        !Store ^ store_specs := ThenSpecs
+            "succeeds", "fails", !UrInfo)
     ),
     (
         ElseMissingInits = []
     ;
         ElseMissingInits = [_ | _],
-        ElseSpecs0 = !.Store ^ store_specs,
         report_missing_inits_in_ite(Context, ElseMissingInits,
-            "fails", "succeeds", ElseSpecs0, ElseSpecs),
-        !Store ^ store_specs := ElseSpecs
+            "fails", "succeeds", !UrInfo)
     ),
 
-    svar_goal_to_conj_list(ThenGoal0, ThenGoals0, !Store),
-    svar_goal_to_conj_list(ElseGoal0, ElseGoals0, !Store),
+    svar_goal_to_conj_list(ThenGoal0, ThenGoals0, !UrInfo),
+    svar_goal_to_conj_list(ElseGoal0, ElseGoals0, !UrInfo),
     ThenGoals = NeckCopyGoals ++ ThenGoals0 ++ ThenEndCopyGoals,
     ElseGoals = ElseGoals0 ++ ElseEndCopyGoals,
     ThenGoal0 = hlds_goal(_ThenExpr0, ThenInfo0),
@@ -1316,7 +1451,8 @@ svar_finish_if_then_else(Globals, ModuleName, LocKind, Context, QuantStateVars,
     conj_list_to_goal(ThenGoals, ThenInfo0, ThenGoal1),
     conj_list_to_goal(ElseGoals, ElseInfo0, ElseGoal1),
 
-    !.Store = svar_store(NextGoalId0, DelayedRenamings0, Specs),
+    SVarStore0 = !.UrInfo ^ ui_state_var_store,
+    SVarStore0 = svar_store(NextGoalId0, DelayedRenamings0, SVarSpecs0),
     counter.uallocate(ThenGoalIdNum, NextGoalId0, NextGoalId1),
     counter.uallocate(ElseGoalIdNum, NextGoalId1, NextGoalId),
     ThenGoalId = goal_id(ThenGoalIdNum),
@@ -1327,30 +1463,31 @@ svar_finish_if_then_else(Globals, ModuleName, LocKind, Context, QuantStateVars,
         DelayedRenamings0, DelayedRenamings1),
     map.det_insert(ElseGoalId, ElseRenames,
         DelayedRenamings1, DelayedRenamings),
-    !:Store = svar_store(NextGoalId, DelayedRenamings, Specs).
+    SVarStore = svar_store(NextGoalId, DelayedRenamings, SVarSpecs0),
+    !UrInfo ^ ui_state_var_store := SVarStore.
 
-:- pred handle_state_vars_in_ite(globals::in, module_name::in,
-    loc_kind::in, list(svar)::in, list(svar)::in,
+:- pred handle_state_vars_in_ite(loc_kind::in, list(svar)::in, list(svar)::in,
     map(svar, svar_status)::in, map(svar, svar_status)::in,
     map(svar, svar_status)::in, map(svar, svar_status)::in,
     map(svar, svar_status)::in, map(svar, svar_status)::out,
-    prog_varset::in, prog_varset::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     assoc_list(prog_var, prog_var)::in, assoc_list(prog_var, prog_var)::out,
     assoc_list(prog_var, prog_var)::in, assoc_list(prog_var, prog_var)::out,
-    list(string)::in, list(string)::out, list(string)::in, list(string)::out)
-    is det.
+    list(string)::in, list(string)::out, list(string)::in, list(string)::out,
+    unravel_info::in, unravel_info::out) is det.
 
-handle_state_vars_in_ite(_, _, _, _, [], _, _, _, _, !StatusMapAfterITE,
-        !VarSet, !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
-        !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits).
-handle_state_vars_in_ite(Globals, ModuleName, LocKind, QuantStateVars,
-        [SVar | SVars], StatusMapBefore, StatusMapAfterCond,
+handle_state_vars_in_ite(_, _, [], _, _, _, _, !StatusMapAfterITE,
+        !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
+        !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits,
+        !UrInfo).
+handle_state_vars_in_ite(LocKind, QuantStateVars, [SVar | SVars],
+        StatusMapBefore, StatusMapAfterCond,
         StatusMapAfterThen, StatusMapAfterElse, !StatusMapAfterITE,
-        !VarSet, !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
-        !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits) :-
+        !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
+        !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits,
+        !UrInfo) :-
     map.lookup(StatusMapBefore, SVar, StatusBefore),
     map.lookup(StatusMapAfterCond, SVar, StatusAfterCond),
     map.lookup(StatusMapAfterThen, SVar, StatusAfterThen),
@@ -1365,11 +1502,12 @@ handle_state_vars_in_ite(Globals, ModuleName, LocKind, QuantStateVars,
         % Then will thus be unchanged. This is why we pass StatusBefore
         % not just for itself, but in place of StatusAfterCond and
         % StatusAfterThen as well.
-        handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar,
+        handle_state_var_in_ite(LocKind, SVar,
             StatusBefore, StatusBefore, StatusBefore,
             StatusAfterElse, StatusAfterITE,
-            !VarSet, !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
-            !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits)
+            !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
+            !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits,
+            !UrInfo)
     else
         % If StatusBefore = status_known_ro(_, _, _), then we would expect
         % StatusBefore = StatusAfterCond
@@ -1379,35 +1517,37 @@ handle_state_vars_in_ite(Globals, ModuleName, LocKind, QuantStateVars,
         % that should be readonly in this scope, then our recovery from that
         % error would invalidate these expectations.
 
-        handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar,
+        handle_state_var_in_ite(LocKind, SVar,
             StatusBefore, StatusAfterCond, StatusAfterThen,
             StatusAfterElse, StatusAfterITE,
-            !VarSet, !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
-            !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits)
+            !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
+            !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits,
+            !UrInfo)
     ),
     map.det_insert(SVar, StatusAfterITE, !StatusMapAfterITE),
-    handle_state_vars_in_ite(Globals, ModuleName, LocKind,
-        QuantStateVars, SVars, StatusMapBefore, StatusMapAfterCond,
+    handle_state_vars_in_ite(LocKind, QuantStateVars, SVars,
+        StatusMapBefore, StatusMapAfterCond,
         StatusMapAfterThen, StatusMapAfterElse, !StatusMapAfterITE,
-        !VarSet, !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
-        !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits).
+        !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
+        !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits,
+        !UrInfo).
 
-:- pred handle_state_var_in_ite(globals::in, module_name::in,
-    loc_kind::in, svar::in,
+:- pred handle_state_var_in_ite(loc_kind::in, svar::in,
     svar_status::in, svar_status::in, svar_status::in, svar_status::in,
-    svar_status::out, prog_varset::in, prog_varset::out,
+    svar_status::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     list(hlds_goal)::in, list(hlds_goal)::out,
     assoc_list(prog_var, prog_var)::in, assoc_list(prog_var, prog_var)::out,
     assoc_list(prog_var, prog_var)::in, assoc_list(prog_var, prog_var)::out,
-    list(string)::in, list(string)::out, list(string)::in, list(string)::out)
-    is det.
+    list(string)::in, list(string)::out, list(string)::in, list(string)::out,
+    unravel_info::in, unravel_info::out) is det.
 
-handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar, StatusBefore,
+handle_state_var_in_ite(LocKind, SVar, StatusBefore,
         StatusAfterCond, StatusAfterThen, StatusAfterElse, StatusAfterITE,
-        !VarSet, !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
-        !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits) :-
+        !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
+        !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits,
+        !UrInfo) :-
     % There are eight cases depending on which of Cond, Then and Else
     % update the state variable:
     %
@@ -1422,6 +1562,9 @@ handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar, StatusBefore,
     % 8 yes  yes  yes   rename else to match then
 
     trace [compiletime(flag("state-var-ite")), io(!IO)] (
+        ModuleInfo = !.UrInfo ^ ui_module_info,
+        module_info_get_globals(ModuleInfo, Globals),
+        module_info_get_name(ModuleInfo, ModuleName),
         get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
         io.write_string(DebugStream, "state variable ", !IO),
         io.write_line(DebugStream, SVar, !IO),
@@ -1453,7 +1596,8 @@ handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar, StatusBefore,
                     StatusAfterITE = StatusAfterElse
                 ;
                     StatusBefore = status_unknown,
-                    varset.lookup_name(!.VarSet, SVar, SVarName),
+                    VarSet = !.UrInfo ^ ui_varset,
+                    varset.lookup_name(VarSet, SVar, SVarName),
                     !:ThenMissingInits =
                         ["!:" ++ SVarName | !.ThenMissingInits],
                     % We pretend the then part defines StateVar, since this is
@@ -1492,7 +1636,8 @@ handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar, StatusBefore,
                     StatusAfterITE = StatusAfterThen
                 ;
                     StatusBefore = status_unknown,
-                    varset.lookup_name(!.VarSet, SVar, SVarName),
+                    VarSet = !.UrInfo ^ ui_varset,
+                    varset.lookup_name(VarSet, SVar, SVarName),
                     !:ElseMissingInits =
                         ["!:" ++ SVarName | !.ElseMissingInits],
                     % We pretend the else part defines StateVar, since this is
@@ -1536,7 +1681,7 @@ handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar, StatusBefore,
                 (
                     StatusBefore = status_known(VarBefore),
                     new_state_var_instance(SVar, name_middle, FinalVar,
-                        !VarSet),
+                        !UrInfo),
                     VarAfterCond =
                         svar_get_current_progvar(LocKind, StatusAfterCond),
 
@@ -1547,7 +1692,8 @@ handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar, StatusBefore,
                     StatusAfterITE = status_known(FinalVar)
                 ;
                     StatusBefore = status_unknown,
-                    varset.lookup_name(!.VarSet, SVar, SVarName),
+                    VarSet = !.UrInfo ^ ui_varset,
+                    varset.lookup_name(VarSet, SVar, SVarName),
                     !:ElseMissingInits =
                         ["!:" ++ SVarName | !.ElseMissingInits],
                     % We pretend the else part defines StateVar, since this is
@@ -1555,7 +1701,7 @@ handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar, StatusBefore,
                     % If it can, we will generate an error message during
                     % mode analysis.
                     new_state_var_instance(SVar, name_middle, FinalVar,
-                        !VarSet),
+                        !UrInfo),
                     VarAfterCond =
                         svar_get_current_progvar(LocKind, StatusAfterCond),
                     make_copy_goal(VarAfterCond, FinalVar, NeckCopyGoal),
@@ -1601,7 +1747,8 @@ handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar, StatusBefore,
                     StatusAfterITE = StatusAfterThen
                 ;
                     StatusBefore = status_unknown,
-                    varset.lookup_name(!.VarSet, SVar, SVarName),
+                    VarSet = !.UrInfo ^ ui_varset,
+                    varset.lookup_name(VarSet, SVar, SVarName),
                     !:ElseMissingInits =
                         ["!:" ++ SVarName | !.ElseMissingInits],
                     % We pretend the else part defines StateVar, since this is
@@ -1654,34 +1801,33 @@ handle_state_var_in_ite(Globals, ModuleName, LocKind, SVar, StatusBefore,
     ;       no_svar_outer_atomic_scope_info.
 
 svar_start_outer_atomic_scope(Context, OuterStateVar, OuterDIVar, OuterUOVar,
-        OuterScopeInfo, !State, !VarSet, !Specs) :-
-    StatusMap0 = !.State ^ state_status_map,
+        OuterScopeInfo, !SVarState, !UrInfo) :-
+    StatusMap0 = !.SVarState ^ state_status_map,
     ( if map.remove(OuterStateVar, BeforeStatus, StatusMap0, StatusMap) then
-        !State ^ state_status_map := StatusMap,
+        !SVarState ^ state_status_map := StatusMap,
         (
             BeforeStatus = status_unknown,
-            report_uninitialized_state_var(Context, !.VarSet, OuterStateVar,
-                !Specs),
+            report_uninitialized_state_var(Context, OuterStateVar, !UrInfo),
             new_state_var_instance(OuterStateVar, name_middle, OuterDIVar,
-                !VarSet),
+                !UrInfo),
             new_state_var_instance(OuterStateVar, name_middle, OuterUOVar,
-                !VarSet),
+                !UrInfo),
             OuterScopeInfo = svar_outer_atomic_scope_info(OuterStateVar,
                 BeforeStatus, BeforeStatus)
         ;
             BeforeStatus = status_known_ro(OuterDIVar, RO_Construct,
                 RO_Context),
             report_illegal_state_var_update(Context,
-                ro_construct_name(RO_Construct), RO_Context, !.VarSet,
-                OuterStateVar, !Specs),
+                ro_construct_name(RO_Construct), RO_Context, OuterStateVar,
+                !UrInfo),
             new_state_var_instance(OuterStateVar, name_middle, OuterUOVar,
-                !VarSet),
+                !UrInfo),
             OuterScopeInfo = svar_outer_atomic_scope_info(OuterStateVar,
                 BeforeStatus, BeforeStatus)
         ;
             BeforeStatus = status_known(OuterDIVar),
             new_state_var_instance(OuterStateVar, name_middle, OuterUOVar,
-                !VarSet),
+                !UrInfo),
             AfterStatus = status_known(OuterUOVar),
             OuterScopeInfo = svar_outer_atomic_scope_info(OuterStateVar,
                 BeforeStatus, AfterStatus)
@@ -1694,22 +1840,21 @@ svar_start_outer_atomic_scope(Context, OuterStateVar, OuterDIVar, OuterUOVar,
             unexpected($pred, "status updated")
         )
     else
-        report_non_visible_state_var("", Context, !.VarSet, OuterStateVar,
-            !Specs),
+        report_non_visible_state_var("", Context, OuterStateVar, !UrInfo),
         new_state_var_instance(OuterStateVar, name_middle, OuterDIVar,
-            !VarSet),
+            !UrInfo),
         new_state_var_instance(OuterStateVar, name_middle, OuterUOVar,
-            !VarSet),
+            !UrInfo),
         OuterScopeInfo = no_svar_outer_atomic_scope_info
     ).
 
-svar_finish_outer_atomic_scope(OuterScopeInfo, !State) :-
+svar_finish_outer_atomic_scope(OuterScopeInfo, !SVarState) :-
     (
         OuterScopeInfo = svar_outer_atomic_scope_info(OuterStateVar,
             _BeforeStatus, AfterStatus),
-        StatusMap0 = !.State ^ state_status_map,
+        StatusMap0 = !.SVarState ^ state_status_map,
         map.det_insert(OuterStateVar, AfterStatus, StatusMap0, StatusMap),
-        !State ^ state_status_map := StatusMap
+        !SVarState ^ state_status_map := StatusMap
     ;
         OuterScopeInfo = no_svar_outer_atomic_scope_info
     ).
@@ -1724,20 +1869,20 @@ svar_finish_outer_atomic_scope(OuterScopeInfo, !State) :-
             ).
 
 svar_start_inner_atomic_scope(_Context, InnerStateVar, InnerScopeInfo,
-        !State, !VarSet, !Specs) :-
-    StateBefore = !.State,
-    new_state_var_instance(InnerStateVar, name_initial, InnerDIVar, !VarSet),
-    StatusMap0 = !.State ^ state_status_map,
+        !SVarState, !UrInfo) :-
+    SVarStateBefore = !.SVarState,
+    new_state_var_instance(InnerStateVar, name_initial, InnerDIVar, !UrInfo),
+    StatusMap0 = !.SVarState ^ state_status_map,
     map.set(InnerStateVar, status_known(InnerDIVar), StatusMap0, StatusMap),
-    !State ^ state_status_map := StatusMap,
+    !SVarState ^ state_status_map := StatusMap,
     InnerScopeInfo = svar_inner_atomic_scope_info(InnerStateVar, InnerDIVar,
-        StateBefore).
+        SVarStateBefore).
 
 svar_finish_inner_atomic_scope(_Context, InnerScopeInfo,
-        InnerDIVar, InnerUOVar, !State, !VarSet, !Specs) :-
+        InnerDIVar, InnerUOVar, !SVarState, !UrInfo) :-
     InnerScopeInfo = svar_inner_atomic_scope_info(InnerStateVar, InnerDIVar,
-        StateBefore),
-    StatusMap0 = !.State ^ state_status_map,
+        SVarStateBefore),
+    StatusMap0 = !.SVarState ^ state_status_map,
     map.lookup(StatusMap0, InnerStateVar, Status),
     (
         Status = status_known(InnerUOVar)
@@ -1749,54 +1894,49 @@ svar_finish_inner_atomic_scope(_Context, InnerScopeInfo,
         ),
         unexpected($pred, "status != known")
     ),
-    !:State = StateBefore.
+    !:SVarState = SVarStateBefore.
 
 %-----------------------------------------------------------------------------%
 %
 % Look up prog_vars for a state_var.
 %
 
-replace_any_dot_color_state_var_in_terms([], [], !VarSet, !State, !Specs).
+replace_any_dot_color_state_var_in_terms([], [], !SVarState, !UrInfo).
 replace_any_dot_color_state_var_in_terms([Arg0 | Args0], [Arg | Args],
-        !VarSet, !State, !Specs) :-
-    replace_any_dot_color_state_var_in_term(Arg0, Arg,
-        !VarSet, !State, !Specs),
-    replace_any_dot_color_state_var_in_terms(Args0, Args,
-        !VarSet, !State, !Specs).
+        !SVarState, !UrInfo) :-
+    replace_any_dot_color_state_var_in_term(Arg0, Arg, !SVarState, !UrInfo),
+    replace_any_dot_color_state_var_in_terms(Args0, Args, !SVarState, !UrInfo).
 
-replace_any_dot_color_state_var_in_term(Arg0, Arg, !VarSet, !State, !Specs) :-
+replace_any_dot_color_state_var_in_term(Arg0, Arg, !SVarState, !UrInfo) :-
     ( if Arg0 = functor(atom("!."), [variable(StateVar, _)], Context) then
-        lookup_dot_state_var(Context, StateVar, Var, !VarSet, !State, !Specs),
+        lookup_dot_state_var(Context, StateVar, Var, !SVarState, !UrInfo),
         Arg = variable(Var, Context)
     else if Arg0 = functor(atom("!:"), [variable(StateVar, _)], Context) then
-        lookup_colon_state_var(Context, StateVar, Var, !VarSet, !State,
-            !Specs),
+        lookup_colon_state_var(Context, StateVar, Var, !SVarState, !UrInfo),
         Arg = variable(Var, Context)
     else
         Arg = Arg0
     ).
 
-lookup_dot_state_var(Context, StateVar, Var, !VarSet, !State, !Specs) :-
-    StatusMap0 = !.State ^ state_status_map,
+lookup_dot_state_var(Context, StateVar, Var, !SVarState, !UrInfo) :-
+    StatusMap0 = !.SVarState ^ state_status_map,
     ( if map.search(StatusMap0, StateVar, Status) then
         (
             Status = status_unknown,
-            report_uninitialized_state_var(Context, !.VarSet, StateVar,
-                !Specs),
+            report_uninitialized_state_var(Context, StateVar, !UrInfo),
             % We make StateVar known to avoid duplicate reports.
-            new_state_var_instance(StateVar, name_middle, Var, !VarSet),
+            new_state_var_instance(StateVar, name_middle, Var, !UrInfo),
             map.det_update(StateVar, status_known(Var),
                 StatusMap0, StatusMap),
-            !State ^ state_status_map := StatusMap
+            !SVarState ^ state_status_map := StatusMap
         ;
             Status = status_unknown_updated(NewVar),
-            report_uninitialized_state_var(Context, !.VarSet, StateVar,
-                !Specs),
+            report_uninitialized_state_var(Context, StateVar, !UrInfo),
             % We make StateVar known to avoid duplicate reports.
-            new_state_var_instance(StateVar, name_middle, Var, !VarSet),
+            new_state_var_instance(StateVar, name_middle, Var, !UrInfo),
             map.det_update(StateVar, status_known_updated(Var, NewVar),
                 StatusMap0, StatusMap),
-            !State ^ state_status_map := StatusMap
+            !SVarState ^ state_status_map := StatusMap
         ;
             ( Status = status_known(Var)
             ; Status = status_known_ro(Var, _, _)
@@ -1804,25 +1944,25 @@ lookup_dot_state_var(Context, StateVar, Var, !VarSet, !State, !Specs) :-
             )
         )
     else
-        report_non_visible_state_var(".", Context, !.VarSet, StateVar, !Specs),
+        report_non_visible_state_var(".", Context, StateVar, !UrInfo),
         Var = StateVar
     ).
 
-lookup_colon_state_var(Context, StateVar, Var, !VarSet, !State, !Specs) :-
-    StatusMap0 = !.State ^ state_status_map,
+lookup_colon_state_var(Context, StateVar, Var, !SVarState, !UrInfo) :-
+    StatusMap0 = !.SVarState ^ state_status_map,
     ( if map.search(StatusMap0, StateVar, Status) then
         (
             Status = status_unknown,
-            new_state_var_instance(StateVar, name_middle, Var, !VarSet),
+            new_state_var_instance(StateVar, name_middle, Var, !UrInfo),
             map.det_update(StateVar, status_unknown_updated(Var),
                 StatusMap0, StatusMap),
-            !State ^ state_status_map := StatusMap
+            !SVarState ^ state_status_map := StatusMap
         ;
             Status = status_known(OldVar),
-            new_state_var_instance(StateVar, name_middle, Var, !VarSet),
+            new_state_var_instance(StateVar, name_middle, Var, !UrInfo),
             map.det_update(StateVar, status_known_updated(OldVar, Var),
                 StatusMap0, StatusMap),
-            !State ^ state_status_map := StatusMap
+            !SVarState ^ state_status_map := StatusMap
         ;
             Status = status_known_ro(OldVar, RO_Construct, RO_Context),
             (
@@ -1830,24 +1970,24 @@ lookup_colon_state_var(Context, StateVar, Var, !VarSet, !State, !Specs) :-
                 RO_ConstructName = "lambda expression"
             ),
             report_illegal_state_var_update(Context, RO_ConstructName,
-                RO_Context, !.VarSet, StateVar, !Specs),
+                RO_Context, StateVar, !UrInfo),
             % We remove the readonly notation to avoid duplicate reports.
-            new_state_var_instance(StateVar, name_middle, Var, !VarSet),
+            new_state_var_instance(StateVar, name_middle, Var, !UrInfo),
             map.det_update(StateVar, status_known_updated(OldVar, Var),
                 StatusMap0, StatusMap),
-            !State ^ state_status_map := StatusMap
+            !SVarState ^ state_status_map := StatusMap
         ;
             Status = status_known_updated(_OldVar, Var)
         ;
             Status = status_unknown_updated(Var)
         )
     else
-        report_non_visible_state_var(":", Context, !.VarSet, StateVar, !Specs),
+        report_non_visible_state_var(":", Context, StateVar, !UrInfo),
         % We could make StateVar known to avoid duplicate reports.
-        % new_state_var_instance(StateVar, name_initial, Var, !VarSet),
+        % new_state_var_instance(StateVar, name_initial, Var, !UrInfo),
         % map.det_insert(StateVar, status_known_updated(Var, Var),
         %     StatusMap0, StatusMap),
-        % !State ^ state_status_map := StatusMap
+        % !SVarState ^ state_status_map := StatusMap
         Var = StateVar
     ).
 
@@ -1899,26 +2039,28 @@ svar_get_current_progvar(LocKind, Status) = ProgVar :-
 % *will* get done on each conjunct.
 %
 
-svar_flatten_conj(Context, Goals, Goal, !Store) :-
-    list.map_foldl(svar_goal_to_conj_list, Goals, GoalConjuncts, !Store),
+svar_flatten_conj(Context, Goals, Goal, !UrInfo) :-
+    list.map_foldl(svar_goal_to_conj_list, Goals, GoalConjuncts, !UrInfo),
     list.condense(GoalConjuncts, Conjuncts),
     GoalExpr = conj(plain_conj, Conjuncts),
     goal_info_init(Context, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-svar_goal_to_conj_list(Goal, Conjuncts, !Store) :-
+svar_goal_to_conj_list(Goal, Conjuncts, !UrInfo) :-
     % The code here is the same as in svar_goal_to_conj_list_internal,
     % modulo the differences in the argument list.
     Goal = hlds_goal(GoalExpr, GoalInfo),
     ( if GoalExpr = conj(plain_conj, Conjuncts0) then
-        !.Store = svar_store(NextGoalId0, DelayedRenamingMap0, Specs),
+        SVarStore0 = !.UrInfo ^ ui_state_var_store,
+        SVarStore0 = svar_store(NextGoalId0, DelayedRenamingMap0, SVarSpecs0),
         GoalId = goal_info_get_goal_id(GoalInfo),
         ( if map.search(DelayedRenamingMap0, GoalId, GoalDelayedRenaming) then
             list.map_foldl2(
                 add_conjunct_delayed_renames(GoalDelayedRenaming),
                     Conjuncts0, Conjuncts, NextGoalId0, NextGoalId,
                     DelayedRenamingMap0, DelayedRenamingMap),
-            !:Store = svar_store(NextGoalId, DelayedRenamingMap, Specs)
+            SVarStore = svar_store(NextGoalId, DelayedRenamingMap, SVarSpecs0),
+            !UrInfo ^ ui_state_var_store := SVarStore
         else
             Conjuncts = Conjuncts0
         )
@@ -2202,8 +2344,9 @@ is_term_a_bang_state_pair(ArgTerm, StateVar, Context) :-
 % Report various kinds of errors.
 %
 
-report_illegal_state_var_update(Context, RO_Construct, RO_Context, VarSet,
-        StateVar, !Specs) :-
+report_illegal_state_var_update(Context, RO_Construct, RO_Context,
+        StateVar, !UrInfo) :-
+    VarSet = !.UrInfo ^ ui_varset,
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces1 = [words("Error: you cannot use")] ++
         color_as_incorrect([quote("!:" ++ Name)]) ++
@@ -2216,7 +2359,7 @@ report_illegal_state_var_update(Context, RO_Construct, RO_Context, VarSet,
         words("state variable"), quote(Name), words("readonly."), nl],
     Msg2 = msg(RO_Context, Pieces2),
     Spec = error_spec($pred, severity_error, phase_pt2h, [Msg1, Msg2]),
-    !:Specs = [Spec | !.Specs].
+    add_unravel_error(Spec, !UrInfo).
 
 :- func ro_construct_name(readonly_context_kind) = string.
 
@@ -2224,7 +2367,12 @@ ro_construct_name(roc_lambda) = "lambda expression".
 
 %-----------------------------------------------------------------------------%
 
-report_illegal_func_svar_result(Context, VarSet, StateVar, !Specs) :-
+report_illegal_func_svar_result(Context, StateVar, !UrInfo) :-
+    VarSet = !.UrInfo ^ ui_varset,
+    Spec = report_illegal_func_svar_result_raw(Context, VarSet, StateVar),
+    add_unravel_error(Spec, !UrInfo).
+
+report_illegal_func_svar_result_raw(Context, VarSet, StateVar) = Spec :-
     Name = varset.lookup_name(VarSet, StateVar),
     % While having !.Var appear as a function argument is quite ordinary,
     % having it appear as a function *result* is not. We therefore do not
@@ -2233,12 +2381,16 @@ report_illegal_func_svar_result(Context, VarSet, StateVar, !Specs) :-
         color_as_incorrect([quote("!" ++ Name)]) ++
         [words("cannot be a function result. You probably meant")] ++
         color_as_correct([fixed("!:" ++ Name), suffix(".")]) ++ [nl],
-    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-    !:Specs = [Spec | !.Specs].
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 
-report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !Specs) :-
+report_illegal_bang_svar_lambda_arg(Context, StateVar, !UrInfo) :-
+    VarSet = !.UrInfo ^ ui_varset,
+    Spec = report_illegal_bang_svar_lambda_arg_raw(Context, VarSet, StateVar),
+    add_unravel_error(Spec, !UrInfo).
+
+report_illegal_bang_svar_lambda_arg_raw(Context, VarSet, StateVar) = Spec :-
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Error:")] ++
         color_as_incorrect([quote("!" ++ Name)]) ++
@@ -2247,29 +2399,29 @@ report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !Specs) :-
         color_as_correct([quote("!." ++ Name)]) ++
         [words("or")] ++
         color_as_correct([quote("!:" ++ Name), suffix(".")]) ++ [nl],
-    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-    !:Specs = [Spec | !.Specs].
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_non_visible_state_var(string::in, prog_context::in,
-    prog_varset::in, svar::in, list(error_spec)::in, list(error_spec)::out)
-    is det.
+:- pred report_non_visible_state_var(string::in, prog_context::in, svar::in,
+    unravel_info::in, unravel_info::out) is det.
 
-report_non_visible_state_var(DorC, Context, VarSet, StateVar, !Specs) :-
+report_non_visible_state_var(DorC, Context, StateVar, !UrInfo) :-
+    VarSet = !.UrInfo ^ ui_varset,
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Error: state variable")] ++
         color_as_incorrect([quote("!" ++ DorC ++ Name)]) ++
         [words("is not visible in this context."), nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-    !:Specs = [Spec | !.Specs].
+    add_unravel_error(Spec, !UrInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_uninitialized_state_var(prog_context::in, prog_varset::in,
-    svar::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred report_uninitialized_state_var(prog_context::in, svar::in,
+    unravel_info::in, unravel_info::out) is det.
 
-report_uninitialized_state_var(Context, VarSet, StateVar, !Specs) :-
+report_uninitialized_state_var(Context, StateVar, !UrInfo) :-
+    VarSet = !.UrInfo ^ ui_varset,
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Warning: you cannot refer to")] ++
         color_as_subject([quote("!." ++ Name)]) ++
@@ -2277,43 +2429,44 @@ report_uninitialized_state_var(Context, VarSet, StateVar, !Specs) :-
         color_as_incorrect([words("not been initialized")]) ++
         [words("yet."), nl],
     Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
-    !:Specs = [Spec | !.Specs].
+    add_unravel_error(Spec, !UrInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_repeated_head_state_var(prog_context::in, prog_varset::in,
-    svar::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred report_repeated_head_state_var(prog_context::in, svar::in,
+    unravel_info::in, unravel_info::out) is det.
 
-report_repeated_head_state_var(Context, VarSet, StateVar, !Specs) :-
+report_repeated_head_state_var(Context, StateVar, !UrInfo) :-
+    VarSet = !.UrInfo ^ ui_varset,
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Warning: clause head introduces")] ++
         color_as_incorrect([words("state variable"), quote(Name)]) ++
         [words("more than once."), nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-    !:Specs = [Spec | !.Specs].
+    add_unravel_error(Spec, !UrInfo).
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_state_var_shadow(prog_context::in, prog_varset::in,
-    svar::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred report_state_var_shadow(prog_context::in, svar::in,
+    unravel_info::in, unravel_info::out) is det.
 
-report_state_var_shadow(Context, VarSet, StateVar, !Specs) :-
+report_state_var_shadow(Context, StateVar, !UrInfo) :-
+    VarSet = !.UrInfo ^ ui_varset,
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Warning: new state variable")] ++
         color_as_subject([quote(Name)]) ++
         color_as_incorrect([words("shadows old one.")]) ++ [nl],
     Spec = conditional_spec($pred, warn_state_var_shadowing, yes,
         severity_warning, phase_pt2h, [msg(Context, Pieces)]),
-    !:Specs = [Spec | !.Specs].
+    add_unravel_error(Spec, !UrInfo).
 
 %-----------------------------------------------------------------------------%
 
 :- pred report_missing_inits_in_ite(prog_context::in, list(string)::in,
-    string::in, string::in, list(error_spec)::in, list(error_spec)::out)
-    is det.
+    string::in, string::in, unravel_info::in, unravel_info::out) is det.
 
 report_missing_inits_in_ite(Context, NextStateVars,
-        WhenMissing, WhenNotMissing, !Specs) :-
+        WhenMissing, WhenNotMissing, !UrInfo) :-
     NextStateVarsPieces = quote_list_to_color_pieces(color_subject, "and",
         [suffix(",")], NextStateVars),
     Pieces = [words("When the condition"), words(WhenNotMissing), suffix(","),
@@ -2323,7 +2476,9 @@ report_missing_inits_in_ite(Context, NextStateVars,
         [words("but when the condition"), words(WhenMissing), suffix(",")] ++
         color_as_inconsistent([words("it does not.")]) ++ [nl],
     Spec = spec($pred, severity_informational, phase_pt2h, Context, Pieces),
-    !:Specs = [Spec | !.Specs].
+    Specs0 = !.UrInfo ^ ui_state_var_store ^ store_missing_init_specs,
+    Specs = [Spec | Specs0],
+    !UrInfo ^ ui_state_var_store ^ store_missing_init_specs := Specs.
 
 :- pred report_missing_inits_in_disjunct(prog_context::in, list(string)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -2334,12 +2489,15 @@ report_missing_inits_in_disjunct(Context, NextStateVars, !Specs) :-
             NextStateVars) ++
         color_as_incorrect([words("but not this one.")]) ++ [nl],
     Spec = spec($pred, severity_informational, phase_pt2h, Context, Pieces),
+    % The intention is that our caller got !.Specs from the state var store's
+    % store_missing_init_specs field, and will put the updated list back there.
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%
 
-report_svar_unify_error(Context, StateVar, !VarSet, !State, !Specs) :-
-    Name = varset.lookup_name(!.VarSet, StateVar),
+report_svar_unify_error(Context, StateVar, !SVarState, !UrInfo) :-
+    VarSet = !.UrInfo ^ ui_varset,
+    Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Error:")] ++
         color_as_incorrect([fixed("!" ++ Name)]) ++
         [words("cannot appear as a unification argument."), nl,
@@ -2347,8 +2505,8 @@ report_svar_unify_error(Context, StateVar, !VarSet, !State, !Specs) :-
         color_as_correct([fixed("!." ++ Name)]) ++ [words("or")] ++
         color_as_correct([fixed("!:" ++ Name), suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-    !:Specs = [Spec | !.Specs],
-    !.State = svar_state(StatusMap0),
+    add_unravel_error(Spec, !UrInfo),
+    !.SVarState = svar_state(StatusMap0),
     % If StateVar was not known before, then this is the first occurrence
     % of this state variable, and the user almost certainly intended it
     % to define its initial value. Any messages from later goals complaining
@@ -2364,18 +2522,11 @@ report_svar_unify_error(Context, StateVar, !VarSet, !State, !Specs) :-
         % The state variable is already known.
         true
     else
-        new_state_var_instance(StateVar, name_initial, Var, !VarSet),
+        new_state_var_instance(StateVar, name_initial, Var, !UrInfo),
         Status = status_known(Var),
         map.set(StateVar, Status, StatusMap0, StatusMap),
-        !:State = svar_state(StatusMap)
+        !:SVarState = svar_state(StatusMap)
     ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred severity_is_error(globals::in, error_spec::in) is semidet.
-
-severity_is_error(Globals, Spec) :-
-    actual_spec_severity(Globals, Spec) = yes(actual_severity_error).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.state_var.

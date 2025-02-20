@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -56,6 +56,11 @@
 :- func actual_spec_severity(globals, error_spec) = maybe(actual_severity).
 :- func actual_spec_severity_opt_table(option_table, error_spec) =
     maybe(actual_severity).
+
+    % Succeeds if and only if the given error_spec has a severity,
+    % and it is severity_error.
+    %
+:- pred actual_spec_severity_is_error(globals::in, error_spec::in) is semidet.
 
     % Compute the worst actual severity (if any) occurring in a list of
     % error_specs.
@@ -294,6 +299,9 @@ actual_spec_severity_opt_table(OptionTable, Spec) = MaybeSeverity :-
             MaybeSeverity = no
         )
     ).
+
+actual_spec_severity_is_error(Globals, Spec) :-
+    actual_spec_severity(Globals, Spec) = yes(actual_severity_error).
 
 %---------------------%
 

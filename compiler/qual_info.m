@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2009, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -76,8 +76,7 @@
     % Process an explicit type qualification.
     %
 :- pred process_type_qualification(prog_var::in, mer_type::in, tvarset::in,
-    prog_context::in, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+    prog_context::in, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred make_atomic_unification(prog_var::in, unify_rhs::in, prog_context::in,
@@ -215,8 +214,7 @@ set_module_recompilation_info(QualInfo, !ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
-        !QualInfo, !Specs) :-
+process_type_qualification(Var, Type0, VarSet, Context, !QualInfo, !Specs) :-
     !.QualInfo = qual_info(TypeEqvMap, TVarSet0, TVarRenaming0,
         TVarNameMap0, VarTypes0, MQInfo0, MaybeOptImported,
         FoundSyntaxError, FoundTraceGoal),

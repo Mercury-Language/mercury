@@ -122,8 +122,9 @@
     % This allows us to preserve the effect of the compiler optimizations of
     % fgt{i,c} scopes for as large a portion of the original scope as possible.
     %
-:- pred introduce_partial_fgt_scopes(hlds_goal_info::in, hlds_goal_info::in,
-    list(fgt_marked_goal)::in, goal_order::in, hlds_goal::out) is det.
+:- pred introduce_partial_fgt_scopes(int::in, goal_order::in,
+    hlds_goal_info::in, hlds_goal_info::in, list(fgt_marked_goal)::in,
+    hlds_goal::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -131,13 +132,10 @@
 
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_markers.
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module parse_tree.set_of_var.
 
 :- import_module cord.
 :- import_module int.
-:- import_module maybe.
 :- import_module require.
 
 %---------------------------------------------------------------------------%
@@ -185,9 +183,9 @@ project_kept_goal(MarkedGoal, Goal) :-
 
 %---------------------------------------------------------------------------%
 
-introduce_partial_fgt_scopes(GoalInfo0, SubGoalInfo0, RevMarkedSubGoals,
-        Order, SubGoal) :-
-    introduce_partial_fgt_scopes_loop(RevMarkedSubGoals, Order,
+introduce_partial_fgt_scopes(Threshold, Order, GoalInfo0, SubGoalInfo0,
+        RevMarkedSubGoals, SubGoal) :-
+    introduce_partial_fgt_scopes_loop(Threshold, Order, RevMarkedSubGoals,
         map.init, BuildInfoMap),
     map.values(BuildInfoMap, BuildInfos),
     list.map(project_build_info_goal_cord, BuildInfos, BuildGoalCords),
@@ -229,12 +227,13 @@ introduce_partial_fgt_scopes(GoalInfo0, SubGoalInfo0, RevMarkedSubGoals,
     % breaks these invariants, we wrap fgt{i,c} scopes around the code
     % subsequences that construct any of the Yi that keep those invariants.
     %
-:- pred introduce_partial_fgt_scopes_loop(list(fgt_marked_goal)::in,
-    goal_order::in, fgt_build_info_map::in, fgt_build_info_map::out) is det.
+:- pred introduce_partial_fgt_scopes_loop(int::in, goal_order::in,
+    list(fgt_marked_goal)::in,
+    fgt_build_info_map::in, fgt_build_info_map::out) is det.
 
-introduce_partial_fgt_scopes_loop([], _Order, !BuildInfoMap).
-introduce_partial_fgt_scopes_loop([RevMarkedGoal | RevMarkedGoals], Order,
-        !BuildInfoMap) :-
+introduce_partial_fgt_scopes_loop(_, _, [], !BuildInfoMap).
+introduce_partial_fgt_scopes_loop(Threshold, Order,
+        [RevMarkedGoal | RevMarkedGoals], !BuildInfoMap) :-
     (
         RevMarkedGoal = fgt_kept_goal(Goal, Var, ArgVars),
         SavedBuildInfoMap = !.BuildInfoMap,
@@ -249,13 +248,13 @@ introduce_partial_fgt_scopes_loop([RevMarkedGoal | RevMarkedGoals], Order,
         ;
             Kept = broken,
             !:BuildInfoMap = SavedBuildInfoMap,
-            lookup_and_remove_arg_vars_insert_fgt(ArgVars, Order,
+            lookup_and_remove_arg_vars_insert_fgt(Threshold, Order, ArgVars,
                 cord.init, ArgsGoalCord, !BuildInfoMap),
             KeptGI = broken_no_gi
         )
     ;
         RevMarkedGoal = fgt_broken_goal(Goal, Var, ArgVars),
-        lookup_and_remove_arg_vars_insert_fgt(ArgVars, Order,
+        lookup_and_remove_arg_vars_insert_fgt(Threshold, Order, ArgVars,
             cord.init, ArgsGoalCord, !BuildInfoMap),
         KeptGI = broken_no_gi
     ),
@@ -268,7 +267,8 @@ introduce_partial_fgt_scopes_loop([RevMarkedGoal | RevMarkedGoals], Order,
     ),
     VarBuildInfo = fgt_build_info(KeptGI, GoalCord),
     map.det_insert(Var, VarBuildInfo, !BuildInfoMap),
-    introduce_partial_fgt_scopes_loop(RevMarkedGoals, Order, !BuildInfoMap).
+    introduce_partial_fgt_scopes_loop(Threshold, Order,
+        RevMarkedGoals, !BuildInfoMap).
 
     % Loop over all the Yi in a unification of the form X = f(Y1, ..., Yn),
     % and report the goal cord needed to build all the Yi (!:GoalCord),
@@ -307,13 +307,13 @@ lookup_and_remove_arg_vars([Var | Vars], !GoalCord, !Kept, !TotalSize,
     % In the process, remove all the Yi from !:BuildInfoMap, since they
     % should never appear in the reverse goal sequence again.
     %
-:- pred lookup_and_remove_arg_vars_insert_fgt(list(prog_var)::in,
-    goal_order::in, cord(hlds_goal)::in, cord(hlds_goal)::out,
+:- pred lookup_and_remove_arg_vars_insert_fgt(int::in, goal_order::in,
+    list(prog_var)::in, cord(hlds_goal)::in, cord(hlds_goal)::out,
     fgt_build_info_map::in, fgt_build_info_map::out) is det.
 
-lookup_and_remove_arg_vars_insert_fgt([], _Order, !GoalCord, !BuildInfoMap).
-lookup_and_remove_arg_vars_insert_fgt([Var | Vars], Order, !GoalCord,
-        !BuildInfoMap) :-
+lookup_and_remove_arg_vars_insert_fgt(_, _, [], !GoalCord, !BuildInfoMap).
+lookup_and_remove_arg_vars_insert_fgt(Threshold, Order, [Var | Vars],
+        !GoalCord, !BuildInfoMap) :-
     map.det_remove(Var, BuildInfo, !BuildInfoMap),
     BuildInfo = fgt_build_info(VarKept, VarGoalCord0),
     (
@@ -321,11 +321,7 @@ lookup_and_remove_arg_vars_insert_fgt([Var | Vars], Order, !GoalCord,
         ( if cord.is_empty(VarGoalCord0) then
             unexpected($pred, "VarGoalCord0 is empty")
         else
-            MaybeThreshold = get_maybe_from_ground_term_threshold,
-            ( if
-                MaybeThreshold = yes(Threshold),
-                Size0 >= Threshold
-            then
+            ( if Size0 >= Threshold then
                 goal_info_set_nonlocals(set_of_var.make_singleton(Var),
                     GoalInfo0, GoalInfo),
                 VarGoals0 = cord.list(VarGoalCord0),
@@ -351,7 +347,7 @@ lookup_and_remove_arg_vars_insert_fgt([Var | Vars], Order, !GoalCord,
         VarGoalCord = VarGoalCord0
     ),
     !:GoalCord = !.GoalCord ++ VarGoalCord,
-    lookup_and_remove_arg_vars_insert_fgt(Vars, Order, !GoalCord,
+    lookup_and_remove_arg_vars_insert_fgt(Threshold, Order, Vars, !GoalCord,
         !BuildInfoMap).
 
 %---------------------------------------------------------------------------%

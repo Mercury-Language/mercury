@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury Team.
+% Copyright (C) 2013-2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -518,11 +518,6 @@
 %---------------------------------------------------------------------------%
 
 :- pred globals_init_mutables(globals::in, io::di, io::uo) is det.
-
-    % Return the number of functions symbols at or above which a ground term's
-    % superhomogeneous form should be wrapped in a from_ground_term scope.
-    %
-:- func get_maybe_from_ground_term_threshold = maybe(int).
 
     % Return whether this compiler invocation allows a higher order inst
     % to be used as a mode.
@@ -1239,11 +1234,6 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % This mutable controls how big a ground term has to be before the code
-    % in superhomogeneous.m wraps it up in a from_ground_term scope.
-:- mutable(maybe_from_ground_term_threshold, maybe(int), no, ground,
-    [untrailed, attach_to_io_state]).
-
 :- mutable(allow_ho_insts_as_modes, bool, yes, ground,
     [untrailed, attach_to_io_state]).
 
@@ -1258,16 +1248,8 @@ double_width_floats_on_det_stack(Globals, FloatDwords) :-
 %---------------------------------------------------------------------------%
 
 globals_init_mutables(Globals, !IO) :-
-    globals.get_opt_tuple(Globals, OptTuple),
-    FromGroundTermThreshold = OptTuple ^ ot_from_ground_term_threshold,
-    set_maybe_from_ground_term_threshold(yes(FromGroundTermThreshold), !IO),
     globals.lookup_bool_option(Globals, allow_ho_insts_as_modes, Allow),
     set_allow_ho_insts_as_modes(Allow, !IO).
-
-get_maybe_from_ground_term_threshold = MaybeThreshold :-
-    promise_pure (
-        semipure get_maybe_from_ground_term_threshold(MaybeThreshold)
-    ).
 
 get_allow_ho_insts_as_modes = Allow :-
     promise_pure (
