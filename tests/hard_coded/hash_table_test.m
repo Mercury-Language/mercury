@@ -42,14 +42,14 @@ main(!IO) :-
 
         io.write_string("Inserting elements\n", !IO),
         inst_preserving_fold_up(do_insert, 0, Max - 1, !HT),
-        trace [runtime(env("HASH_TABLE_STATS"))] (
-            impure report_stats
+        trace [runtime(env("HASH_TABLE_STATS")), io(!TIO)] (
+            benchmarking.report_standard_stats(!TIO)
         ),
 
         io.write_string("Looking up elements\n", !IO),
         inst_preserving_fold_up(do_lookup, 0, Max - 1, !HT),
-        trace [runtime(env("HASH_TABLE_STATS"))] (
-            impure report_stats
+        trace [runtime(env("HASH_TABLE_STATS")), io(!TIO)] (
+            benchmarking.report_standard_stats(!TIO)
         ),
 
         NumOccupants0 = hash_table.num_occupants(!.HT),
@@ -62,8 +62,8 @@ main(!IO) :-
         Half = Max / 2,
         io.write_string("Deleting some elements\n", !IO),
         inst_preserving_fold_up(do_delete, 0, Half - 1, !HT),
-        trace [runtime(env("HASH_TABLE_STATS"))] (
-            impure report_stats
+        trace [runtime(env("HASH_TABLE_STATS")), io(!TIO)] (
+            benchmarking.report_standard_stats(!TIO)
         ),
 
         NumOccupants = hash_table.num_occupants(!.HT),
@@ -82,14 +82,14 @@ main(!IO) :-
 
         io.write_string("Setting negative elements\n", !IO),
         inst_preserving_fold_up(do_set_neg, 0, Max - 1, !HT),
-        trace [runtime(env("HASH_TABLE_STATS"))] (
-            impure report_stats
+        trace [runtime(env("HASH_TABLE_STATS")), io(!TIO)] (
+            benchmarking.report_standard_stats(!TIO)
         ),
 
         io.write_string("Looking up negative elements\n", !IO),
         inst_preserving_fold_up(do_lookup_neg, 0, Max - 1, !HT),
-        trace [runtime(env("HASH_TABLE_STATS"))] (
-            impure report_stats
+        trace [runtime(env("HASH_TABLE_STATS")), io(!TIO)] (
+            benchmarking.report_standard_stats(!TIO)
         ),
 
         _ = !.HT

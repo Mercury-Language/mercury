@@ -1,5 +1,6 @@
 # vim: ts=4 sw=4 expandtab
 
+MCFLAGS-class                           += --no-warn-stdlib-shadowing
 MCFLAGS-direct_arg_cyclic               += --intermod-opt
 MCFLAGS-direct_arg_cyclic_helper_1      += --intermod-opt
 MCFLAGS-direct_arg_cyclic_helper_2      += --intermod-opt

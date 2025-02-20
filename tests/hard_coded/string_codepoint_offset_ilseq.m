@@ -31,23 +31,23 @@ main(!IO) :-
     S = "a" ++ S0 ++ "b" ++ S1 ++ "z",
 
     io.write_string("start counting from offset 0\n", !IO),
-    test_codepoint_offset(S, 0, 0, !IO),
+    test_code_point_offset(S, 0, 0, !IO),
     io.nl(!IO),
 
     io.write_string("start counting from offset 1\n", !IO),
-    test_codepoint_offset(S, 1, 0, !IO),
+    test_code_point_offset(S, 1, 0, !IO),
     io.nl(!IO),
 
     io.write_string("start counting from offset 2\n", !IO),
-    test_codepoint_offset(S, 2, 0, !IO),
+    test_code_point_offset(S, 2, 0, !IO),
     io.nl(!IO).
 
-:- pred test_codepoint_offset(string::in, int::in, int::in, io::di, io::uo)
+:- pred test_code_point_offset(string::in, int::in, int::in, io::di, io::uo)
     is det.
 
-test_codepoint_offset(S, StartOffset, Count, !IO) :-
-    ( if string.codepoint_offset(S, StartOffset, Count, Offset) then
-        io.format("string.codepoint_offset(S, %d, %d, %d); ",
+test_code_point_offset(S, StartOffset, Count, !IO) :-
+    ( if string.code_point_offset(S, StartOffset, Count, Offset) then
+        io.format("string.code_point_offset(S, %d, %d, %d); ",
             [i(StartOffset), i(Count), i(Offset)], !IO),
         ( if string.index(S, Offset, Char) then
             io.write_string("Char = ", !IO),
@@ -56,9 +56,9 @@ test_codepoint_offset(S, StartOffset, Count, !IO) :-
         else
             io.write_string("string.index/3 failed\n", !IO)
         ),
-        test_codepoint_offset(S, StartOffset, Count + 1, !IO)
+        test_code_point_offset(S, StartOffset, Count + 1, !IO)
     else
-        io.format("string.codepoint_offset(S, %d, %d, _) failed\n",
+        io.format("string.code_point_offset(S, %d, %d, _) failed\n",
             [i(StartOffset), i(Count)], !IO)
     ).
 

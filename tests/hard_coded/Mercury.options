@@ -1,6 +1,8 @@
 # vim: ts=4 sw=4 expandtab
 
-MCFLAGS-allow_stubs             += --allow-stubs --no-warn-stubs --infer-all
+MCFLAGS-allow_stubs                 += --allow-stubs --no-warn-stubs
+MCFLAGS-allow_stubs                 += --infer-all --no-inform-inferred-types
+MCFLAGS-allow_stubs                 += --no-inform-inferred-modes
 MCFLAGS-any_call_hoist_bug          += --loop-invariants
 MCFLAGS-bad_direct_reuse            += --ctgc
 MCFLAGS-bad_indirect_reuse_1        += --ctgc --no-common-struct
@@ -9,10 +11,11 @@ MCFLAGS-bad_indirect_reuse_3        += --ctgc --no-common-struct
 MCFLAGS-bad_indirect_reuse_4        += --ctgc --no-common-struct
 MCFLAGS-big_array_from_list         += --optimize-tailcalls
 MCFLAGS-bigtest                     += --intermodule-optimization -O3
-MCFLAGS-boyer                       += --infer-all
+MCFLAGS-boyer                       += --infer-all --no-inform-inferred-types
 MCFLAGS-bug103                      += --optimize-constructor-last-call
 MCFLAGS-bug160                      += -w --optimize-peep-mkword
 MCFLAGS-bug240                      += -O1
+MCFLAGS-bug300                      += --no-const-struct
 MCFLAGS-bug300          += --no-const-struct --optimize-constructor-last-call
 MCFLAGS-bug314                      += --trace deep
 MCFLAGS-bug392                      += -O0 --deforestation
@@ -30,11 +33,15 @@ MCFLAGS-coerce_opt                  += --intermodule-optimization
 MCFLAGS-deforest_cc_bug             += --deforestation
 MCFLAGS-delay_partial_test_1        += --delay-partial-instantiations
 MCFLAGS-delay_partial_test_2        += --delay-partial-instantiations
+MCFLAGS-delay_partial_test_2        += --no-warn-simple-code
 MCFLAGS-ground_terms                += --from-ground-term-threshold=2
 MCFLAGS-impl_defn_literals          += --no-warn-simple-code
 
 MCFLAGS-lp                          += --intermodule-optimization -O3
 MCFLAGS-elim_local_var_char         += --eliminate-local-vars
+MCFLAGS-erroneous_liveness          += --no-warn-obsolete
+MCFLAGS-existential_float           += --no-inform-inferred-types
+MCFLAGS-existential_float           += --no-inform-inferred-modes
 MCFLAGS-float_consistency           += --optimize-constant-propagation
 MCFLAGS-foreign_enum_mod            += --intermodule-optimization
 MCFLAGS-foreign_enum_mod_helper_1   += --intermodule-optimization
@@ -63,6 +70,7 @@ MCFLAGS-intermod_try_goal           += --intermodule-optimization
 MCFLAGS-intermod_try_goal_helper_1  += --intermodule-optimization
 MCFLAGS-intermod_type_qual          += --intermodule-optimization
 MCFLAGS-intermod_type_qual_helper_1 += --intermodule-optimization
+MCFLAGS-io_globals_deadlock         += --no-warn-obsolete
 MCFLAGS-lco_double                  += --optimize-constructor-last-call
 MCFLAGS-lco_mday_bug_1              += --optimize-constructor-last-call
 MCFLAGS-lco_mday_bug_2              += --optimize-constructor-last-call
@@ -92,8 +100,14 @@ MCFLAGS-term_io_test                += --no-warn-unresolved-polymorphism
 MCFLAGS-test_imported_no_tag        += --no-warn-interface-imports
 MCFLAGS-test_split_switch_arms      += --split-switch-arms
 MCFLAGS-type_info_const_ins += --const-struct --optimise-constant-propagation
+MCFLAGS-type_qual                   += --no-inform-inferred-types
 MCFLAGS-uncond_reuse                += --ctgc
 MCFLAGS-uncond_reuse_bad            += --ctgc
+MCFLAGS-unused_float_box_test       += --no-inform-inferred-types
+MCFLAGS-unused_float_box_test       += --no-inform-inferred-modes
+MCFLAGS-user_defined_equality_1     += --no-inform-inferred-types
+MCFLAGS-user_defined_equality_1     += --no-inform-inferred-modes
+MCFLAGS-user_defined_equality_2     += --no-warn-det-decls-too-lax
 MCFLAGS-uo_regression1              += --from-ground-term-threshold=4
 MCFLAGS-write                       += --no-warn-unresolved-polymorphism
 

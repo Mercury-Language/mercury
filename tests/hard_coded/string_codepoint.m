@@ -32,19 +32,19 @@ main(!IO) :-
     io.write_int(NumCodeUnits, !IO),
     io.nl(!IO),
 
-    io.write_string("\ncount_codepoints:\n", !IO),
-    count_codepoints(Str, NumCodePoints),
+    io.write_string("\ncount_code_points:\n", !IO),
+    count_code_points(Str, NumCodePoints),
     io.write_int(NumCodePoints, !IO),
     io.nl(!IO),
 
-    io.write_string("\ncodepoint_offset:\n", !IO),
-    test_codepoint_offset(Str, 0, !IO),
-    test_codepoint_offset(Str, 1, !IO),
-    test_codepoint_offset(Str, 2, !IO),
-    test_codepoint_offset(Str, 3, !IO),
-    test_codepoint_offset(Str, 4, !IO),
-    test_codepoint_offset(Str, 5, !IO),
-    test_codepoint_offset(Str, 6, !IO),
+    io.write_string("\ncode_point_offset:\n", !IO),
+    test_code_point_offset(Str, 0, !IO),
+    test_code_point_offset(Str, 1, !IO),
+    test_code_point_offset(Str, 2, !IO),
+    test_code_point_offset(Str, 3, !IO),
+    test_code_point_offset(Str, 4, !IO),
+    test_code_point_offset(Str, 5, !IO),
+    test_code_point_offset(Str, 6, !IO),
 
     io.write_string("\nto_char_list:\n", !IO),
     string.to_char_list(Str, CharList),
@@ -86,42 +86,42 @@ main(!IO) :-
     io.write_string("\nunsafe_prev_index:\n", !IO),
     test_unsafe_prev_index(Str, length(Str), !IO),
 
-    io.write_string("\nsplit_by_codepoint:\n", !IO),
-    test_split_by_codepoint(Str, -1, !IO),
-    test_split_by_codepoint(Str,  0, !IO),
-    test_split_by_codepoint(Str,  1, !IO),
-    test_split_by_codepoint(Str,  2, !IO),
-    test_split_by_codepoint(Str,  3, !IO),
-    test_split_by_codepoint(Str,  4, !IO),
-    test_split_by_codepoint(Str,  5, !IO),
-    test_split_by_codepoint(Str,  6, !IO),
+    io.write_string("\nsplit_by_code_point:\n", !IO),
+    test_split_by_code_point(Str, -1, !IO),
+    test_split_by_code_point(Str,  0, !IO),
+    test_split_by_code_point(Str,  1, !IO),
+    test_split_by_code_point(Str,  2, !IO),
+    test_split_by_code_point(Str,  3, !IO),
+    test_split_by_code_point(Str,  4, !IO),
+    test_split_by_code_point(Str,  5, !IO),
+    test_split_by_code_point(Str,  6, !IO),
 
-    io.write_string("\nleft_by_codepoint:\n", !IO),
-    string.left_by_codepoint(Str, 3, L3),
+    io.write_string("\nleft_by_code_point:\n", !IO),
+    string.left_by_code_point(Str, 3, L3),
     io.write_string(L3, !IO),
     io.nl(!IO),
 
-    io.write_string("\nright_by_codepoint:\n", !IO),
-    string.right_by_codepoint(Str, 3, R3),
+    io.write_string("\nright_by_code_point:\n", !IO),
+    string.right_by_code_point(Str, 3, R3),
     io.write_string(R3, !IO),
     io.nl(!IO),
 
-    io.write_string("\nbetween_codepoints:\n", !IO),
+    io.write_string("\nbetween_code_points:\n", !IO),
     Range = -2 .. (NumCodePoints + 1),
-    foldl(test_between_codepoints(Str, Range), Range, !IO),
+    foldl(test_between_code_points(Str, Range), Range, !IO),
     io.nl(!IO).
 
-:- pred test_codepoint_offset(string::in, int::in, io::di, io::uo) is det.
+:- pred test_code_point_offset(string::in, int::in, io::di, io::uo) is det.
 
-test_codepoint_offset(Str, Pos, !IO) :-
-    ( if string.codepoint_offset(Str, Pos, Offset) then
-        io.format("string.codepoint_offset(Str, %d, %d)\n",
+test_code_point_offset(Str, Pos, !IO) :-
+    ( if string.code_point_offset(Str, Pos, Offset) then
+        io.format("string.code_point_offset(Str, %d, %d)\n",
             [i(Pos), i(Offset)], !IO),
-        ( if string.codepoint_offset(Str, Offset, 1, Offset2) then
-            io.format("string.codepoint_offset(Str, %d, 1, %d)\n",
+        ( if string.code_point_offset(Str, Offset, 1, Offset2) then
+            io.format("string.code_point_offset(Str, %d, 1, %d)\n",
                 [i(Offset), i(Offset2)], !IO)
         else
-            io.format("string.codepoint_offset(Str, %d, 1, _) failed\n",
+            io.format("string.code_point_offset(Str, %d, 1, _) failed\n",
                 [i(Offset)], !IO)
         ),
         ( if string.index(Str, Offset, Char) then
@@ -132,7 +132,7 @@ test_codepoint_offset(Str, Pos, !IO) :-
                 [i(Offset)], !IO)
         )
     else
-        io.format("string.codepoint_offset(Str, %d, _) failed\n",
+        io.format("string.code_point_offset(Str, %d, _) failed\n",
             [i(Pos)], !IO)
     ).
 
@@ -169,40 +169,39 @@ test_unsafe_prev_index(Str, Index, !IO) :-
         io.write_string("end\n", !IO)
     ).
 
-:- pred test_split_by_codepoint(string::in, int::in, io::di, io::uo) is det.
+:- pred test_split_by_code_point(string::in, int::in, io::di, io::uo) is det.
 
-test_split_by_codepoint(Str, Pos, !IO) :-
-    string.split_by_codepoint(Str, Pos, L, R),
-    io.format("split_by_codepoint(Str, %d, ""%s"", ""%s"")\n",
+test_split_by_code_point(Str, Pos, !IO) :-
+    string.split_by_code_point(Str, Pos, L, R),
+    io.format("split_by_code_point(Str, %d, ""%s"", ""%s"")\n",
         [i(Pos), s(L), s(R)], !IO).
 
-:- pred test_between_codepoints(string::in, list(int)::in, int::in,
+:- pred test_between_code_points(string::in, list(int)::in, int::in,
     io::di, io::uo) is det.
 
-test_between_codepoints(Str, EndRange, Start, !IO) :-
-    foldl(test_between_codepoints_2(Str, Start), EndRange, !IO).
+test_between_code_points(Str, EndRange, Start, !IO) :-
+    foldl(test_between_code_points_2(Str, Start), EndRange, !IO).
 
-:- pred test_between_codepoints_2(string::in, int::in, int::in,
+:- pred test_between_code_points_2(string::in, int::in, int::in,
     io::di, io::uo) is det.
 
-test_between_codepoints_2(Str, Start, End, !IO) :-
-    string.between_codepoints(Str, Start, End, SubString),
-    io.format("between_codepoints(Str, %d, %d, ""%s"")\n",
+test_between_code_points_2(Str, Start, End, !IO) :-
+    string.between_code_points(Str, Start, End, SubString),
+    io.format("between_code_points(Str, %d, %d, ""%s"")\n",
         [i(Start), i(End), s(SubString)], !IO),
 
-    slow_between_codepoints(Str, Start, End, SlowSubString),
+    slow_between_code_points(Str, Start, End, SlowSubString),
     ( if SubString = SlowSubString then
         true
     else
-        io.write_string("but slow_between_codepoints returned: \"", !IO),
-        io.write_string(SlowSubString, !IO),
-        io.write_string("\"\n", !IO)
+        io.format("but slow_between_code_points returned: \"%s\"\n",
+            [s(SlowSubString)], !IO)
     ).
 
-:- pred slow_between_codepoints(string::in, int::in, int::in, string::out)
+:- pred slow_between_code_points(string::in, int::in, int::in, string::out)
     is det.
 
-slow_between_codepoints(Str, Start, End, SubString) :-
+slow_between_code_points(Str, Start, End, SubString) :-
     Chars = to_char_list(Str),
     NumCodePoints = length(Chars),
     ClampStart = clamp(0, Start, NumCodePoints),

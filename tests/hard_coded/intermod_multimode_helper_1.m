@@ -53,13 +53,13 @@
 
 :- implementation.
 
-func0 = ("func0 = out" :: out).
+func0 = "func0 = out".
 
-:- pragma promise_pure(func(func1/1)). % XXX technically this is a lie
+:- pragma promise_pure(func(func1/1)).      % XXX technically this is a lie
 func1(_::in) = ("func1(in) = out"::out).
 func1(0::out) = ("func1(out) = out"::out).
 
-:- pragma promise_pure(func2/2). % XXX technically this is a lie
+:- pragma promise_pure(func2/2).            % XXX technically this is a lie
 :- pragma inline(func2/2).
 func2(_::in, _::in) = (R::out) :-
     R = "func2(in, in) = out".

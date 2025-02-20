@@ -16,7 +16,6 @@
 :- interface.
 
 :- import_module io.
-:- import_module maybe.
 
 :- pred main(io::di, io::uo) is det.
 
@@ -25,7 +24,10 @@
     mode m(in, in, di, uo) is det
 ].
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
+:- import_module maybe.
 
 :- instance p(maybe(T), maybe(U)) where [
     pred(m/4) is write_maybe_pair

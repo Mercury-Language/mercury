@@ -7,7 +7,6 @@
 :- interface.
 
 :- import_module io.
-:- import_module list.
 
 :- pred main(io::di, io::uo) is det.
 
@@ -16,7 +15,10 @@
     mode m(in, di, uo) is det
 ].
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
+:- import_module list.
 
 :- instance p(list(T)) where [
     pred(m/3) is io.write

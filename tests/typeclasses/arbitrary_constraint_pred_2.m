@@ -5,7 +5,6 @@
 :- module arbitrary_constraint_pred_2.
 :- interface.
 
-:- import_module float.
 :- import_module io.
 :- import_module list.
 
@@ -18,7 +17,10 @@
 :- pred mg(T, T) <= solver_for(list(T), T).
 :- mode mg(in, out) is det.
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
+:- import_module float.
 :- import_module std_util.
 
 main(!IO) :-

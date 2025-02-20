@@ -439,12 +439,12 @@ verify(BM) :-
 :- func foreign_hash(bitmap) = int.
 %:- mode foreign_hash(bitmap_ui) = out is det.
 :- mode foreign_hash(in) = out is det.
-:- pragma promise_pure(foreign_hash/1).
 
 foreign_hash(BM) = bitmap.hash(BM).
 
 :- pragma foreign_proc("C",
     foreign_hash(BM::in) = (Hash::out),
     [will_not_call_mercury, promise_pure],
-    "Hash = MR_hash_bitmap(BM);"
-).
+"
+    Hash = MR_hash_bitmap(BM);
+").

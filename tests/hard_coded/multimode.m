@@ -38,16 +38,16 @@ main(!IO) :-
 
 :- func func0 = string.
 :- mode func0 = out is det.
-func0 = ("func0 = out" :: out).
+func0 = "func0 = out".
 
-:- pragma promise_pure(func1/1). % XXX technically this is a lie
+:- pragma promise_pure(func1/1).            % XXX technically this is a lie
 :- func func1(int) = string.
 :- mode func1(in) = out is det.
 :- mode func1(out) = out is det.
 func1(_::in) = ("func1(in) = out"::out).
 func1(0::out) = ("func1(out) = out"::out).
 
-:- pragma promise_pure(func2/2). % XXX technically this is a lie
+:- pragma promise_pure(func2/2).            % XXX technically this is a lie
 :- func func2(int, int) = string.
 :- mode func2(in, in) = out is det.
 :- mode func2(in, out) = out is det.

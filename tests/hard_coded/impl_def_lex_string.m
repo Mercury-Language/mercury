@@ -16,7 +16,6 @@
 
 :- implementation.
 
-:- import_module io.
 :- import_module mercury_term_lexer.
 
 %---------------------------------------------------------------------------%

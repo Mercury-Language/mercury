@@ -9,6 +9,11 @@
 
 :- include_module parent_t2_helper_1.
 
+% This is here just to shut up a warning.
+% The "main" predicate of the program is in the submodule parent_t2_helper_1.
+:- type export_something
+    --->    export_something.
+
 :- implementation.
 
 :- import_module io.

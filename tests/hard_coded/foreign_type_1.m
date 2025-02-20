@@ -12,8 +12,6 @@
 
 :- implementation.
 
-:- type coord.
-
 :- func new(int, int) = coord.
 :- pragma foreign_export("C", new(in, in) = out, "exported_new").
 

@@ -102,8 +102,8 @@ main(!IO) :-
         SMono = struct_mono(foo(1.5, 2.5)) : struct(float),
 
         begin("docall_struct_poly_generic_args", !IO),
-        docall_struct_poly_generic_args(SPoly, 3.5, Res),
-        io.write_float(Res, !IO),
+        docall_struct_poly_generic_args(SPoly, 3.5, Res1),
+        io.write_float(Res1, !IO),
         io.nl(!IO),
 
         begin("docall_struct_poly_float_args", !IO),
@@ -236,7 +236,7 @@ main(!IO) :-
     ),
 
     begin("lost_inst", !IO),
-    some [S1, S2, S3, S2_Cast, Res] (
+    some [S1, S2, S3, Res] (
         S1 = struct_poly(P2),
         lost_inst(S1, S2),
         cast_inst(S2, S3),

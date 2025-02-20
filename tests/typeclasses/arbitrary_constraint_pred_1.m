@@ -7,7 +7,6 @@
 
 :- import_module float.
 :- import_module io.
-:- import_module string.
 
 :- pred main(io::di, io::uo) is det.
 
@@ -18,8 +17,11 @@
 :- pred mg(T, T) <= solver_for(float, T).
 :- mode mg(in, out) is det.
 
+%---------------------------------------------------------------------------%
+
 :- implementation.
 :- import_module std_util.
+:- import_module string.
 
 main(!IO) :-
     mg("1.0", S),

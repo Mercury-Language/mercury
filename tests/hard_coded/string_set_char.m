@@ -15,6 +15,7 @@
 :- implementation.
 
 :- import_module char.
+:- import_module list.
 :- import_module require.
 :- import_module string.
 
@@ -120,9 +121,8 @@ main(!IO) :-
 :- pred set_char_by_cp(string::in, int::in, char::in, string::out) is semidet.
 
 set_char_by_cp(Str0, CodePoint, Char, Str) :-
-    string.codepoint_offset(Str0, CodePoint, Offset),
+    string.code_point_offset(Str0, CodePoint, Offset),
     string.set_char(Char, Offset, Str0, Str),
     trace [io(!IO), runtime(env("DEBUG"))] (
-        io.write_string(Str, !IO),
-        io.nl(!IO)
+        io.format("%s\n", [s(Str)], !IO)
     ).

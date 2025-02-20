@@ -30,6 +30,6 @@ main(!IO) :-
     S1 = string.between(S0, 0, 1),
     S2 = string.between(S0, 1, count_code_units(S0)),
     S = S0 ++ S1 ++ "," ++ S2 ++ S0,
-    string.count_codepoints(S, Num),
+    string.count_code_points(S, Num),
     io.write_int(Num, !IO),
     io.nl(!IO).

@@ -28,7 +28,8 @@ n(Pred, Pred2) :-
 p(Pred, Pred2) :-
     Arg = 42,
     Pred2 = (pred(B::in, C::out) is det :- call(Pred, Arg, B, C)).
-q(Pred, Pred2) :- % semidet
+q(Pred, Pred2) :-
+    semidet_succeed,
     Arg = 42,
     Pred2 = (pred(B::in, C::out) is det :- call(Pred, Arg, B, C)).
 r(Pred, X, Pred2) :-

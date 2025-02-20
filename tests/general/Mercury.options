@@ -3,8 +3,14 @@
 # mode_inf, mode_inf_bug and mode_inference_reorder need to be compiled
 # with `--infer-all'.
 MCFLAGS-mode_inf                        += --infer-all
+MCFLAGS-mode_inf                        += --no-inform-inferred-types
+MCFLAGS-mode_inf                        += --no-inform-inferred-modes
 MCFLAGS-mode_inf_bug                    += --infer-all
+MCFLAGS-mode_inf_bug                    += --no-inform-inferred-types
+MCFLAGS-mode_inf_bug                    += --no-inform-inferred-modes
 MCFLAGS-mode_inference_reorder          += --infer-all
+MCFLAGS-mode_inference_reorder          += --no-inform-inferred-types
+MCFLAGS-mode_inference_reorder          += --no-inform-inferred-modes
 
 MCFLAGS-ho_spec_branch_bug              += --optimize-higher-order
 

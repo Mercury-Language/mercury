@@ -8,15 +8,16 @@
 
 :- interface.
 
-:- import_module qual_is_test_helper_1.
-
 :- import_module io.
-:- import_module list.
-:- import_module string.
 
 :- pred qual_is_test.main(io.state::di, io.state::uo) is det.
 
 :- implementation.
+
+:- import_module qual_is_test_helper_1.
+
+:- import_module list.
+:- import_module string.
 
 qual_is_test.main(!IO) :-
     io.write_string(W, !IO),

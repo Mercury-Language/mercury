@@ -31,7 +31,8 @@
     --->    field(indexing, cardinality, set(entry)).
 
 :- func init_field = field.
-init_field = field(unindexed, 0, S) :- set.init(S).
+init_field = field(unindexed, 0, S) :-
+    set.init(S).
 
 %%%
 
@@ -174,8 +175,7 @@ oneArg(S, [H | T], H, !IO) :-
     ( if T = [] then
         true
     else
-        string.append("only one arg expected for command---",
-            S, Message),
+        string.append("only one arg expected for command---", S, Message),
         abort(Message, !IO)
     ).
 
@@ -222,4 +222,3 @@ abort(Message, !IO) :-
 %   io.write_string(Message),
 %   io.nl,
 %   io.set_exit_status(1).
-

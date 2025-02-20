@@ -34,7 +34,7 @@ test1(!IO) :-
         ( pred(X::out) is nondet :-
             varset.init(Varset0),
             varset.new_vars(10, Vars, Varset0, _),
-            list.member(X, Vars)
+            list.member(X : var, Vars)
         ),
     solutions(Lambda, List),
     io.write_line(List, !IO).
@@ -53,7 +53,7 @@ test2b(S, !IO) :-
 :- pred foo(T, var).
 :- mode foo(in, out) is nondet.
 
-foo(Blah, X) :-
+foo(_Blah, X) :-
     varset.init(Varset0),
     varset.new_vars(10, Vars, Varset0, _),
     list.member(X, Vars).

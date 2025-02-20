@@ -49,7 +49,7 @@ main(!IO) :-
 
 :- impure pred incr(int::out) is det.
 
-incr(_::out) :-
+incr(_) :-
     error("incr/1 called for language other than C").
 
 :- pragma foreign_proc("C",
@@ -73,7 +73,7 @@ incr(_::out) :-
 
 :- semipure pred get(int::out) is det.
 
-get(_::out) :-
+get(_) :-
     error("get/1 called for language other than C").
 
 :- pragma foreign_proc("C",
