@@ -7,7 +7,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module string_count_codepoints_ilseq.
+:- module string_count_code_points_ilseq.
 :- interface.
 
 :- import_module io.

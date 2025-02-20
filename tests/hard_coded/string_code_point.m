@@ -7,7 +7,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module string_codepoint.
+:- module string_code_point.
 :- interface.
 
 :- import_module io.

@@ -7,7 +7,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module string_codepoint_offset_ilseq.
+:- module string_code_point_offset_ilseq.
 :- interface.
 
 :- import_module io.
