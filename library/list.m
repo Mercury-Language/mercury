@@ -237,12 +237,21 @@
 
     % contains(List, Elem):
     %
-    % Equivalent to member(Elem, List).
+    % Equivalent to member(Elem, List) in the (in, in) mode.
     %
     % Sometimes you need the arguments in this order, because you want to
     % construct a closure with only the list.
     %
 :- pred contains(list(T)::in, T::in) is semidet.
+
+    % nondet_member(List, Elem):
+    %
+    % Equivalent to member(Elem, List) in the (out, in) mode.
+    %
+    % Sometimes you need the arguments in this order, because you want to
+    % construct a closure with only the list.
+    %
+:- pred nondet_member(list(T)::in, T::out) is nondet.
 
 %---------------------------------------------------------------------------%
 
@@ -2559,6 +2568,9 @@ member_indexes0_loop(X, I, [H | T], Indexes) :-
     ).
 
 contains(List, Elem) :-
+    list.member(Elem, List).
+
+nondet_member(List, Elem) :-
     list.member(Elem, List).
 
 %---------------------------------------------------------------------------%

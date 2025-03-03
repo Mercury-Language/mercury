@@ -94,6 +94,13 @@
     %
 :- pred contains(diet(T)::in, T::in) is semidet <= diet_element(T).
 
+    % nondet_member(Set, X):
+    %
+    % Nondeterministically produce each element in Set.
+    % Each time this call succeeds, X will be bound to an element in Set.
+    %
+:- pred nondet_member(diet(T)::in, T::out) is nondet <= diet_element(T).
+
 %---------------------------------------------------------------------------%
 %
 % Insertions and deletions.
@@ -797,6 +804,9 @@ contains(T, Z) :-
     else
         true
     ).
+
+nondet_member(Set, Elem) :-
+    member(Elem, Set).
 
 %---------------------------------------------------------------------------%
 

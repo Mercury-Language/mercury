@@ -112,6 +112,8 @@
     %
 :- pred contains(fat_sparse_bitset(T)::in, T::in) is semidet <= uenum(T).
 
+:- pred nondet_member(fat_sparse_bitset(T)::in, T::out) is nondet <= uenum(T).
+
 %---------------------------------------------------------------------------%
 %
 % Insertions and deletions.
@@ -684,6 +686,11 @@ contains_search_nodes(Elems, ItemOffset, ItemBitToSet) :-
     else
         contains_search_nodes(Tail, ItemOffset, ItemBitToSet)
     ).
+
+%---------------------%
+
+nondet_member(Set, Item) :-
+    member(Item, Set).
 
 %---------------------------------------------------------------------------%
 

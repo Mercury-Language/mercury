@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1997, 1999-2012 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018-2024 The Mercury team.
+% Copyright (C) 2014-2016, 2018-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -80,6 +80,13 @@
     % contains(Set, X) is true iff X is a member of Set.
     %
 :- pred contains(set(T)::in, T::in) is semidet.
+
+    % nondet_member(Set, X):
+    %
+    % Nondeterministically produce each element in Set.
+    % Each time this call succeeds, X will be bound to an element in Set.
+    %
+:- pred nondet_member(set(T)::in, T::out) is nondet.
 
 %---------------------------------------------------------------------------%
 %
@@ -664,6 +671,9 @@ is_member(X, Set, Result) :-
 
 contains(Set, X) :-
     set_ordlist.contains(Set, X).
+
+nondet_member(Set, X) :-
+    set_ordlist.nondet_member(Set, X).
 
 %---------------------------------------------------------------------------%
 

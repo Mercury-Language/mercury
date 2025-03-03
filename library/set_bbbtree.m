@@ -81,6 +81,13 @@
     %
 :- pred contains(set_bbbtree(T)::in, T::in) is semidet.
 
+    % nondet_member(Set X):
+    %
+    % Nondeterministically produce each element in Set.
+    % Each time this call succeeds, X will be bound to an element in Set.
+    %
+:- pred nondet_member(set_bbbtree(T)::in, T::out) is nondet.
+
     % least(Set, X) is true iff X is smaller than all the other members of Set.
     %
 :- pred least(set_bbbtree(T), T).
@@ -543,6 +550,9 @@ is_member(X, Set, Result) :-
     ).
 
 contains(Set, X) :-
+    member(X, Set).
+
+nondet_member(Set, X) :-
     member(X, Set).
 
 least(tree(V, _N, L, _R), X) :-

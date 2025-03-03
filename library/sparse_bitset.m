@@ -127,6 +127,13 @@
     %
 :- pred contains(sparse_bitset(T)::in, T::in) is semidet <= uenum(T).
 
+    % nondet_member(Set, Item):
+    %
+    % Nondeterministically produce each element in Set.
+    % Each time this call succeeds, Item will be bound to an element in Set.
+    %
+:- pred nondet_member(sparse_bitset(T)::in, T::out) is nondet <= uenum(T).
+
 %---------------------------------------------------------------------------%
 %
 % Insertions and deletions.
@@ -684,6 +691,11 @@ contains_search_nodes([Head | Tail], ItemOffset, ItemBitToSet) :-
     else
         contains_search_nodes(Tail, ItemOffset, ItemBitToSet)
     ).
+
+%---------------------%
+
+nondet_member(Set, Item) :-
+    member(Item, Set).
 
 %---------------------------------------------------------------------------%
 

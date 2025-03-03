@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2020-2024 The Mercury team.
+% Copyright (C) 2020-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -152,6 +152,15 @@
     % construct a closure with only the list.
     %
 :- pred contains(one_or_more(T)::in, T::in) is semidet.
+
+    % nondet_member(List, Elem):
+    %
+    % Equivalent to member(Elem, List) in the (out, in) mode.
+    %
+    % Sometimes you need the arguments in this order, because you want to
+    % construct a closure with only the list.
+    %
+:- pred nondet_member(one_or_more(T)::in, T::out) is multi.
 
 %---------------------------------------------------------------------------%
 
@@ -1876,6 +1885,9 @@ member_indexes0(X, one_or_more(H, T), Indexes) :-
 
 contains(one_or_more(H, T), Elem) :-
     list.member(Elem, [H | T]).
+
+nondet_member(OoM, Elem) :-
+    member(Elem, OoM).
 
 %---------------------------------------------------------------------------%
 

@@ -81,6 +81,7 @@
     % one_member(Set, X) is true iff X is a member of Set.
     %
 :- pred one_member(set_ctree234(T)::in, T::out) is nondet.
+:- pragma obsolete(pred(one_member/2), [set_ctree234.nondet_member/2]).
 
     % is_member(Set, X, Result) returns `Result = yes' iff
     % X is a member of Set.
@@ -92,7 +93,14 @@
     %
 :- pred contains(set_ctree234(T)::in, T::in) is semidet.
 
-%---------------------------------------------------------------------------%
+    % nondet_member(Set, X):
+    %
+    % Nondeterministically produce each element in Set.
+    % Each time this call succeeds, X will be bound to an element in Set.
+    %
+:- pred nondet_member(set_ctree234(T)::in, T::out) is nondet.
+
+%--------------------------------------------------------------------------%
 %
 % Insertions and deletions.
 %
@@ -544,7 +552,7 @@ is_singleton(ct(1, two(X, empty, empty)), X).
 member(E::in, Set::in) :-
     contains(Set, E).
 member(E::out, Set::in) :-
-    one_member(Set, E).
+    nondet_member(Set, E).
 
 one_member(ct(_, Tin), E) :-
     do_one_member(Tin, E).
@@ -681,6 +689,9 @@ contains(ct(_, T), E) :-
 
 do_contains(Tree, E) :-
     do_is_member(Tree, E, yes).
+
+nondet_member(ct(_, T), E) :-
+    do_one_member(T, E).
 
 %---------------------------------------------------------------------------%
 

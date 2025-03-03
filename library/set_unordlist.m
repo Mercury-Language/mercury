@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997,1999-2002, 2004-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018-2019, 2021-2022, 2024 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2019, 2021-2022, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -80,6 +80,13 @@
     % contains(Set, X) is true iff X is a member of Set.
     %
 :- pred contains(set_unordlist(T)::in, T::in) is semidet.
+
+    % nondet_member(Set, X):
+    %
+    % Nondeterministically produce each element in Set.
+    % Each time this call succeeds, X will be bound to an element in Set.
+    %
+:- pred nondet_member(set_unordlist(T)::in, T::out) is nondet.
 
 %---------------------------------------------------------------------------%
 %
@@ -462,8 +469,14 @@ is_singleton(sul(Xs), X) :-
 
 %---------------------------------------------------------------------------%
 
-member(E, sul(S)) :-
+:- pragma promise_equivalent_clauses(pred(member/2)).
+
+member(E::in, sul(S)::in) :-
     list.member(E, S).
+
+member(E::out, sul(S)::in) :-
+    list.sort_and_remove_dups(S, SortedList),
+    list.member(E, SortedList).
 
 is_member(E, S, R) :-
     ( if set_unordlist.member(E, S) then
@@ -473,6 +486,9 @@ is_member(E, S, R) :-
     ).
 
 contains(S, E) :-
+    set_unordlist.member(E, S).
+
+nondet_member(S, E) :-
     set_unordlist.member(E, S).
 
 %---------------------------------------------------------------------------%

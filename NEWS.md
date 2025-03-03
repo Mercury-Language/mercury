@@ -219,6 +219,10 @@ Changes to the Mercury standard library
 
 ### Changes to the `diet` module
 
+* The following predicate has been added:
+
+    - pred `nondet_member/2`
+
 * The following obsolete predicate has been removed:
 
     - pred `empty/1`
@@ -276,6 +280,10 @@ Changes to the Mercury standard library
 
     - func `sorted_list_to_set/1`
     - pred `sorted_list_to_set/2`
+
+* The following predicate has been added:
+
+    - pred `nondet_member/1`
 
 * The following obsolete predicate has been removed:
 
@@ -613,6 +621,7 @@ Changes to the Mercury standard library
     - func `merge_lists_and_remove_dups/2`
     - pred `merge_lists_and_remove_dups/2`
     - pred `merge_lists_and_remove_dups/3`
+    - pred `nondet_member/2`
     - func `take_while_not/2`
     - pred `take_while_not/3`
     - pred `take_while_not/4`
@@ -626,6 +635,7 @@ Changes to the Mercury standard library
 * The following predicate has been added:
 
     - pred `is_non_empty/1`
+    - pred `nondet_member/2`
 
 * The following function has been marked obsolete:
 
@@ -829,9 +839,10 @@ Changes to the Mercury standard library
 
 ### Changes to the `set` module
 
-* The following predicate has been added:
+* The following predicates have been added:
 
-    - pred `map2_fold/6`
+    - pred `map2_fold/6` 
+    - pred `nondet_member/2`
 
 * The following obsolete predicates and function have been removed:
 
@@ -841,12 +852,25 @@ Changes to the Mercury standard library
 
 ### Changes to the `set_bbbtree` module
 
+* The following predicate has been added:
+
+    - pred `nondet_member/2`
+
 * The following obsolete predicates have been removed:
 
     - pred `empty/1`
     - pred `non_empty/1`
+    - pred `nondet_member/2`
 
 ### Changes to the `set_ctree234` module
+
+* The following predicate has been added:
+
+    - pred `nondet_member/2`
+
+* The following predicate has been marked obsolete:
+
+    - pred `one_member/2` (replacement: `nondet_member/2`)
 
 * The following obsolete predicates have been removed:
 
@@ -855,6 +879,10 @@ Changes to the Mercury standard library
 
 ### Changes to the `set_ordlist` module
 
+* The following predicate has been added:
+
+    - pred `nondet_member/2`
+
 * The following obsolete predicates have been removed:
 
     - pred `empty/1`
@@ -862,12 +890,24 @@ Changes to the Mercury standard library
 
 ### Changes to the `set_tree234` module
 
+* The following predicate has been added:
+
+    - pred `nondet_member/2`
+
 * The following obsolete predicates have been removed:
 
     - pred `empty/1`
     - pred `non_empty/1`
 
 ### Changes to the `set_unordlist` module
+
+* We have changed the behaviour of the `(out, in) is nondet` mode of the
+  predicate `member/2` so that it does not return any element of the set more
+  than once.
+
+* The following predicate has been added:
+
+   - pred `nondet_member/2`
 
 * The following obsolete predicates have been removed:
 
@@ -881,6 +921,10 @@ Changes to the Mercury standard library
     - The `sparse_bitset(T)` type now requires `T` to be an instance of the
      `uenum` typeclass, replacing the earlier requirement that it be
      a member of the `enum` typeclass.
+
+* The following predicate has been added:
+
+    - pred `nondet_member/2`
 
 * The following obsolete predicate has been removed:
 
@@ -1202,6 +1246,7 @@ Changes to the Mercury standard library
 
 * The following predicates have been added:
 
+    - pred `nondet_member/2`
     - pred `remove_leq/3`
     - pred `remove_gt/3`
 

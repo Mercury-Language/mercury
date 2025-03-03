@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2021-2022, 2024 The Mercury team.
+% Copyright (C) 2014-2018, 2021-2022, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -107,6 +107,8 @@
     % Takes O(log(card(Set))) time.
     %
 :- pred contains(tree_bitset(T)::in, T::in) is semidet <= uenum(T).
+
+:- pred nondet_member(tree_bitset(T)::in, T::out) is nondet <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -1112,6 +1114,11 @@ interiorlist_contains([Head | Tail], Index) :-
     else
         interiorlist_contains(Tail, Index)
     ).
+
+%---------------------%
+
+nondet_member(Set, Elem) :-
+    member(Elem, Set).
 
 %---------------------------------------------------------------------------%
 

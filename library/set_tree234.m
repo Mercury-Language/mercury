@@ -80,6 +80,13 @@
     %
 :- pred contains(set_tree234(T)::in, T::in) is semidet.
 
+    % nondet_member(Set, X):
+    %
+    % Nondeterministically produce each element in Set.
+    % Each time this call succeeds, X will be bound to an element in Set.
+    %
+:- pred nondet_member(set_tree234(T)::in, T::out) is nondet.
+
 %---------------------------------------------------------------------------%
 %
 % Insertions and deletions.
@@ -791,6 +798,9 @@ is_member(T, E, R) :-
 
 contains(T, E) :-
     is_member(T, E, yes).
+
+nondet_member(T, E) :-
+    member(E, T).
 
 %---------------------------------------------------------------------------%
 
