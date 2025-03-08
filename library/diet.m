@@ -280,6 +280,10 @@
 :- pred sorted_list_to_set(list(T)::in, diet(T)::out) is det
     <= diet_element(T).
 
+    % A synonym for sorted_list_to_set/1.
+    %
+:- func from_sorted_list(list(T)) = diet(T) <= diet_element(T).
+
 %---------------------------------------------------------------------------%
 %
 % Converting sets to lists.
@@ -1540,11 +1544,14 @@ from_list(List, Set) :-
 from_interval_list(List, Set) :-
     list.foldl(insert_interval, List, init, Set).
 
-sorted_list_to_set(List) = Set :-
-    sorted_list_to_set(List, Set).
+sorted_list_to_set(SortedList) = Set :-
+    sorted_list_to_set(SortedList, Set).
 
-sorted_list_to_set(List, Set) :-
-    list_to_set(List, Set).
+sorted_list_to_set(SortedList, Set) :-
+    list_to_set(SortedList, Set).
+
+from_sorted_list(SortedList) = Set :-
+    sorted_list_to_set(SortedList, Set).
 
 %---------------------------------------------------------------------------%
 

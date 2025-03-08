@@ -219,8 +219,9 @@ Changes to the Mercury standard library
 
 ### Changes to the `diet` module
 
-* The following predicate has been added:
+* The following function and predicate have been added:
 
+    - func `from_sorted_list/1`
     - pred `nondet_member/2`
 
 * The following obsolete predicate has been removed:
@@ -281,8 +282,10 @@ Changes to the Mercury standard library
     - func `sorted_list_to_set/1`
     - pred `sorted_list_to_set/2`
 
-* The following predicate has been added:
+* The following functions and predicate have been added:
 
+    - func `from_list/1`
+    - func `from_sorted_list/1`
     - pred `nondet_member/1`
 
 * The following obsolete predicate has been removed:
@@ -864,8 +867,9 @@ Changes to the Mercury standard library
 
 ### Changes to the `set_ctree234` module
 
-* The following predicate has been added:
+* The following function and predicate have been added:
 
+    - func `from_sorted_list/1`
     - pred `nondet_member/2`
 
 * The following predicate has been marked obsolete:
@@ -890,8 +894,9 @@ Changes to the Mercury standard library
 
 ### Changes to the `set_tree234` module
 
-* The following predicate has been added:
+* The following function and predicate have been added:
 
+    - func `from_osrted_list/1`
     - pred `nondet_member/2`
 
 * The following obsolete predicates have been removed:
@@ -922,8 +927,10 @@ Changes to the Mercury standard library
      `uenum` typeclass, replacing the earlier requirement that it be
      a member of the `enum` typeclass.
 
-* The following predicate has been added:
+* The following functions and predicate have been added:
 
+    - func `from_list/1`
+    - func `from_sorted_list/`
     - pred `nondet_member/2`
 
 * The following obsolete predicate has been removed:
@@ -1244,8 +1251,10 @@ Changes to the Mercury standard library
 
 ### Changes to the `tree_bitset` module
 
-* The following predicates have been added:
+* The following functions and predicates have been added:
 
+    - func `from_list/1`
+    - func `from_sorted_list/1`
     - pred `nondet_member/2`
     - pred `remove_leq/3`
     - pred `remove_gt/3`

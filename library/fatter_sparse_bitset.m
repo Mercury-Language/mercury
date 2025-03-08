@@ -374,12 +374,20 @@
 :- pred list_to_set(list(T)::in, fatter_sparse_bitset(T)::out) is det
     <= uenum(T).
 
+    % A synonym for list_to_set/1.
+    %
+:- func from_list(list(T)) = fatter_sparse_bitset(T) <= uenum(T).
+
     % sorted_list_to_set(List) returns a set containing only the members
     % of List. List must be sorted. Takes O(length(List)) time and space.
     %
 :- func sorted_list_to_set(list(T)) = fatter_sparse_bitset(T) <= uenum(T).
 :- pred sorted_list_to_set(list(T)::in, fatter_sparse_bitset(T)::out)
     is det <= uenum(T).
+
+    % A synonym for sorted_list_to_set/1.
+    %
+:- func from_sorted_list(list(T)) = fatter_sparse_bitset(T) <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -1629,6 +1637,11 @@ reverse_bitset_elems_acc(bitset_cons(XOffset, XBitsLo, XBitsHi, Xs), Ys, Zs) :-
 
 %---------------------%
 
+from_list(ItemList) = Set :-
+    list_to_set(ItemList, Set).
+
+%---------------------%
+
 sorted_list_to_set(SortedList) = Set :-
     sorted_list_to_set(SortedList, Set).
 
@@ -1680,6 +1693,11 @@ sorted_list_to_set_loop(Item1, [Item2 | Items], Offset, BitsLo, BitsHi,
         BitsHi = BitsHi1,
         Tail = make_bitset_cons(Offset0, BitsLo0, BitsHi0, Tail0)
     ).
+
+%---------------------%
+
+from_sorted_list(SortedList) = Set :-
+    sorted_list_to_set(SortedList, Set).
 
 %---------------------%
 

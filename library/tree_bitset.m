@@ -288,6 +288,10 @@
 :- func list_to_set(list(T)) = tree_bitset(T) <= uenum(T).
 :- pred list_to_set(list(T)::in, tree_bitset(T)::out) is det <= uenum(T).
 
+    % A synonym for list_to_set/1.
+    %
+:- func from_list(list(T)) = tree_bitset(T) <= uenum(T).
+
     % sorted_list_to_set(List) returns a set containing only the members
     % of List. List must be sorted *on the enum values of the items*.
     % If the to_uint method of uenum(T) preserves order, then this is
@@ -299,6 +303,10 @@
 :- func sorted_list_to_set(list(T)) = tree_bitset(T) <= uenum(T).
 :- pred sorted_list_to_set(list(T)::in, tree_bitset(T)::out) is det
     <= uenum(T).
+
+    % A synonym for sorted_list_to_set/1.
+    %
+:- func from_sorted_list(list(T)) = tree_bitset(T) <= uenum(T).
 
 %---------------------------------------------------------------------------%
 %
@@ -3511,6 +3519,9 @@ list_to_set(List) = sorted_list_to_set(list.sort(List)).
 list_to_set(List, Set) :-
     Set = list_to_set(List).
 
+from_list(List) = Set :-
+    Set = list_to_set(List).
+
 %---------------------%
 
 sorted_list_to_set(Elems) = Set :-
@@ -3539,6 +3550,9 @@ sorted_list_to_set(Elems) = Set :-
     ).
 
 sorted_list_to_set(List, Set) :-
+    Set = sorted_list_to_set(List).
+
+from_sorted_list(List) = Set :-
     Set = sorted_list_to_set(List).
 
 :- pred items_to_index(list(T)::in, list(uint)::out) is det <= uenum(T).

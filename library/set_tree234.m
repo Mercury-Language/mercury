@@ -268,6 +268,10 @@
 :- func sorted_list_to_set(list(T)) = set_tree234(T).
 :- pred sorted_list_to_set(list(T)::in, set_tree234(T)::out) is det.
 
+    % A synonym for sorted_list_to_set/1.
+    %
+:- func from_sorted_list(list(T)) = set_tree234(T).
+
     % rev_sorted_list_to_set(List) = Set is true iff Set is the set
     % containing only the members of List. List must be sorted
     % in descending order and must not contain duplicates.
@@ -2734,6 +2738,11 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
             )
         )
     ).
+
+%---------------------%
+
+from_sorted_list(SortedList) = Set :-
+    sorted_list_to_set(SortedList, Set).
 
 %---------------------%
 

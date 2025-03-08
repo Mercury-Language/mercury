@@ -272,6 +272,9 @@
     % `from_list' is a synonym for `list_to_set'.
     %
 :- func list_to_set(list(T)) = set_ctree234(T).
+
+    % A synonym for list_to_set/1.
+    %
 :- func from_list(list(T)) = set_ctree234(T).
 
     % sorted_list_to_set(List) = Set is true iff Set is the set
@@ -279,6 +282,10 @@
     % in ascending order and must not contain any duplicates.
     %
 :- func sorted_list_to_set(list(T)) = set_ctree234(T).
+
+    % A synonym for sorted_list_to_set/1.
+    %
+:- func from_sorted_list(list(T)) = set_ctree234(T).
 
     % rev_sorted_list_to_set(List) = Set is true iff Set is the set
     % containing only the members of List. List must be sorted
@@ -2690,6 +2697,11 @@ do_from_sorted_list(Len, !List, Level0, AllThrees0, Tree) :-
             )
         )
     ).
+
+%---------------------%
+
+from_sorted_list(SortedList) =
+    sorted_list_to_set(SortedList).
 
 %---------------------%
 

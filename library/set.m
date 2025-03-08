@@ -266,7 +266,7 @@
 :- func list_to_set(list(T)) = set(T).
 :- pred list_to_set(list(T)::in, set(T)::out) is det.
 
-    % Synonym for list_to_set/1.
+    % A synonym for list_to_set/1.
     %
 :- func from_list(list(T)) = set(T).
 
