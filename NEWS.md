@@ -896,7 +896,7 @@ Changes to the Mercury standard library
 
 * The following function and predicate have been added:
 
-    - func `from_osrted_list/1`
+    - func `from_sorted_list/1`
     - pred `nondet_member/2`
 
 * The following obsolete predicates have been removed:
