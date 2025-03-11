@@ -38,7 +38,7 @@
 %
 % The inferred determinism for each mode is added to the proc_info. If a
 % determinism has been declared for the procedure, it will be tested against
-% the inferred determinism later on in det_report.m.
+% the inferred determinism later on in det_check_proc.m.
 %
 % XXX All combinations of `in' and `out' arguments are now supported for all
 % determinisms. Only the builtin `string', `int' and `float' types are

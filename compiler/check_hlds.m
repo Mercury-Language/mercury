@@ -124,7 +124,9 @@
 :- include_module cse_detection.
 :- include_module det_analysis.
 :- include_module det_infer_goal.
-:- include_module det_report.
+:- include_module det_check_proc.
+:- include_module det_check_goal.
+:- include_module det_check_switch.
 :- include_module det_util.
 :- include_module switch_detection.
 

@@ -162,11 +162,11 @@
 
 :- implementation.
 
-:- import_module check_hlds.det_report.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.const_struct.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_rtti.
@@ -330,6 +330,10 @@
     --->    structure(prog_var, list(prog_var)).
 
 :- type seen_calls == map(seen_call_id, list(call_args)).
+
+:- type seen_call_id
+    --->    seen_call(pred_id, proc_id)
+    ;       higher_order_call.
 
 :- type call_args
     --->    call_args(
@@ -1232,6 +1236,22 @@ common_do_optimise_call(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
         map.det_insert(SeenCall, [ThisCall], SeenCalls0, SeenCalls),
         CommonStruct = CommonStruct0 ^ seen_calls := SeenCalls,
         MaybeAssignsGoalExpr = no
+    ).
+
+    % Describe a call we have seen.
+    %
+:- func det_report_seen_call_id(module_info, seen_call_id)
+    = list(format_piece).
+
+det_report_seen_call_id(ModuleInfo, SeenCall) = Pieces :-
+    (
+        SeenCall = seen_call(PredId, _),
+        PredPieces = describe_one_pred_name(ModuleInfo, no,
+            should_module_qualify, [], PredId),
+        Pieces = [words("call to") | PredPieces]
+    ;
+        SeenCall = higher_order_call,
+        Pieces = [words("higher-order call")]
     ).
 
 %---------------------------------------------------------------------------%

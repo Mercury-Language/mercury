@@ -52,6 +52,8 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
@@ -79,12 +81,30 @@
     pred_id::in, proc_id::in, module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
+%
+% The type and predicates in this section are not logically part of this
+% module, but they are used by several *other* modules to control the
+% operation of the calls they make to the predicates above.
+%
+
+:- type options_to_restore.
+
+    % Call this predicate before rerunning determinism analysis after an
+    % optimization pass to disable all warnings. Errors will still be reported.
+    %
+:- pred disable_det_warnings(options_to_restore::out,
+    globals::in, globals::out) is det.
+
+:- pred restore_det_warnings(options_to_restore::in,
+    globals::in, globals::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module check_hlds.det_infer_goal.
-:- import_module check_hlds.det_report.
+:- import_module check_hlds.det_check_proc.
 :- import_module check_hlds.det_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
@@ -94,9 +114,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_table.
-:- import_module libs.
 :- import_module libs.file_util.
-:- import_module libs.globals.
 :- import_module libs.maybe_util.
 :- import_module libs.options.
 :- import_module parse_tree.parse_tree_out_misc.
@@ -105,9 +123,12 @@
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.var_table.
 
+:- import_module assoc_list.
 :- import_module bool.
+:- import_module getopt.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -509,6 +530,29 @@ set_non_inferred_proc_determinism(proc(PredId, ProcId), !ModuleInfo) :-
     ;
         MaybeDet = no
     ).
+
+%---------------------------------------------------------------------------%
+
+:- type options_to_restore == assoc_list(option, option_data).
+
+disable_det_warnings(OptionsToRestore, !Globals) :-
+    globals.lookup_option(!.Globals, warn_simple_code, WarnSimple),
+    globals.lookup_option(!.Globals, warn_det_decls_too_lax, WarnDeclsTooLax),
+    globals.set_option(warn_simple_code, bool(no), !Globals),
+    globals.set_option(warn_det_decls_too_lax, bool(no), !Globals),
+    OptionsToRestore = [
+        warn_simple_code - WarnSimple,
+        warn_det_decls_too_lax - WarnDeclsTooLax
+    ].
+
+restore_det_warnings(OptionsToRestore, !Globals) :-
+    list.foldl(restore_option, OptionsToRestore, !Globals).
+
+:- pred restore_option(pair(option, option_data)::in,
+    globals::in, globals::out) is det.
+
+restore_option(Option - Value, !Globals) :-
+    globals.set_option(Option, Value, !Globals).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.det_analysis.

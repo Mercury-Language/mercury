@@ -159,8 +159,8 @@
 
 :- implementation.
 
+:- import_module check_hlds.det_analysis.
 :- import_module check_hlds.det_infer_goal.
-:- import_module check_hlds.det_report.
 :- import_module check_hlds.det_util.
 :- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_match.

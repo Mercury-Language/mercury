@@ -11,8 +11,8 @@
 % Main authors: fjh, zs.
 %
 % Utility predicates used in two or more of the modules concerned with
-% determinism: switch_detection, cse_detection, det_analysis, det_report
-% and simplify.
+% determinism: switch_detection, cse_detection, det_analysis, det_infer_goal,
+% det_check_proc, det_check_goal, and simplify.
 %
 %-----------------------------------------------------------------------------%
 

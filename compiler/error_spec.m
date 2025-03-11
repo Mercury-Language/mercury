@@ -584,6 +584,11 @@
 :- func add_suffix_if_nonempty(list(format_piece), list(format_piece)) =
     list(format_piece).
 
+:- pred append_prefix_and_maybe_verbose(maybe(color_name)::in,
+    list(format_piece)::in, list(format_piece)::in,
+    list(format_piece)::in, list(format_piece)::in,
+    error_msg_component::out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- pred extract_msg_maybe_context(error_msg::in, maybe(prog_context)::out)
@@ -890,6 +895,21 @@ add_suffix_if_nonempty(BasePieces, SuffixPieces) = Pieces :-
     ;
         BasePieces = [_ | _],
         Pieces = BasePieces ++ SuffixPieces
+    ).
+
+append_prefix_and_maybe_verbose(MaybeColor,
+        NeutralPrefixPieces, ColorPrefixPieces0, MainPieces, VerbosePieces,
+        Component) :-
+    PrefixPieces = NeutralPrefixPieces ++
+        maybe_color_pieces(MaybeColor, ColorPrefixPieces0),
+    (
+        VerbosePieces = [],
+        Component = always(PrefixPieces ++ MainPieces)
+    ;
+        VerbosePieces = [_ | _],
+        Component = verbose_and_nonverbose(
+            PrefixPieces ++ VerbosePieces,
+            PrefixPieces ++ MainPieces)
     ).
 
 %---------------------------------------------------------------------------%

@@ -88,7 +88,7 @@
 % Note that if the value of e.g. a format string is an input to the procedure,
 % we won't be able to check whether the values match the format string.
 % Whether we give a warning in such cases is controlled by a separate option,
-% which is consulted in det_report.m.
+% which is consulted in det_check_goal.m.
 %
 % Likewise, we cannot do our checks if the value of a format string
 % is computed by a call to an unknown procedure rather than a unification

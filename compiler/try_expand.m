@@ -212,7 +212,6 @@
 :- implementation.
 
 :- import_module check_hlds.det_analysis.
-:- import_module check_hlds.det_report.
 :- import_module check_hlds.modes.
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module hlds.goal_util.

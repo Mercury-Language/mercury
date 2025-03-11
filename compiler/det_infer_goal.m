@@ -64,7 +64,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.det_report.
+:- import_module check_hlds.det_check_goal.
 :- import_module check_hlds.mode_comparison.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.format_call.
@@ -87,6 +87,7 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
@@ -137,6 +138,21 @@ det_infer_proc_goal(InstMap0, SolnContext, Detism, Goal0, Goal, !DetInfo) :-
     % Note that such scopes may not be nested, so we only need one context.
 :- type pess_info
     --->    pess_info(list(prog_var), prog_context).
+
+:- type failing_context
+    --->    failing_context(
+                prog_context,
+                failing_goal
+            ).
+
+:- type failing_goal
+    --->    incomplete_switch(prog_var)
+    ;       fail_goal
+    ;       test_goal(prog_var, prog_var)
+    ;       deconstruct_goal(prog_var, cons_id)
+    ;       call_goal(pred_id, proc_id)
+    ;       generic_call_goal(generic_call)
+    ;       negated_goal.
 
     % det_infer_goal(InstMap0, SolnContext, MaybePromiseEqvSolutionSets,
     %   Detism, RightFailingContexts, GoalFailingContexts,
@@ -574,6 +590,46 @@ det_infer_unify(InstMap0, SolnContext, GoalInfo, LHS, Unify, UnifyContext,
         GoalFailingContexts = []
     ).
 
+    % Check a lambda goal with the specified declared and inferred
+    % determinisms.
+    %
+:- pred det_check_lambda(determinism::in, determinism::in, hlds_goal::in,
+    hlds_goal_info::in, instmap::in, det_info::in, det_info::out) is det.
+
+det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
+        !DetInfo) :-
+    compare_determinisms(DeclaredDetism, InferredDetism, Cmp),
+    (
+        ( Cmp = first_detism_tighter_than
+        ; Cmp = first_detism_incomparable
+        ),
+        det_info_get_pred_proc_id(!.DetInfo, PredProcId),
+        Context = goal_info_get_context(GoalInfo),
+        det_info_get_module_info(!.DetInfo, ModuleInfo),
+        ProcColonPieces = describe_one_proc_name_maybe_argmodes(ModuleInfo,
+            output_mercury, yes(color_subject), should_not_module_qualify,
+            [suffix(":")], PredProcId),
+        DeclaredStr = determinism_to_string(DeclaredDetism),
+        InferredStr = determinism_to_string(InferredDetism),
+        DeclaredPieces = color_as_correct([quote(DeclaredStr), suffix(",")]),
+        InferredPieces = color_as_incorrect([quote(InferredStr), suffix(".")]),
+        Pieces = [words("In")] ++ ProcColonPieces ++ [nl,
+            words("determinism error in lambda expression."), nl] ++
+            [words("Declared")] ++ DeclaredPieces ++
+            [words("inferred")] ++ InferredPieces ++ [nl],
+        det_diagnose_goal_get_msgs(InstMap0, DeclaredDetism, Goal,
+            GoalMsgs, !DetInfo),
+        Spec = error_spec($pred, severity_error, phase_detism_check,
+            [msg(Context, Pieces) | GoalMsgs]),
+        det_info_add_error_spec(Spec, !DetInfo)
+    ;
+        ( Cmp = first_detism_same_as
+        ; Cmp = first_detism_looser_than
+        )
+        % We don't bother issuing warnings if the determinism was too loose;
+        % that will often be the case, and should not be warned about.
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- pred det_infer_call(soln_context::in, hlds_goal_info::in,
@@ -897,15 +953,14 @@ det_infer_par_conj(InstMap0, SolnContext, MaybePromiseEqvSolutionSets,
         MaybePromiseEqvSolutionSets, Detism,
         RightFailingContexts, [], GoalFailingContexts,
         Goals0, Goals, !DetInfo),
+    determinism_components(Detism, CanFail, MaxSoln),
     ( if
-        determinism_components(Detism, CanFail, Solns),
         CanFail = cannot_fail,
-        Solns \= at_most_many
+        MaxSoln \= at_most_many
     then
         true
     else
         Context = goal_info_get_context(GoalInfo),
-        determinism_components(Detism, CanFail, MaxSoln),
         (
             CanFail = can_fail,
             First = "Error: parallel conjunct may fail."
@@ -926,8 +981,10 @@ det_infer_par_conj(InstMap0, SolnContext, MaybePromiseEqvSolutionSets,
         Rest = "The current implementation supports only "
             ++ "single-solution non-failing parallel conjunctions.",
         Pieces = [words(First), words(Rest), nl],
-        det_diagnose_conj(Goals, InstMap0, detism_det, [], !DetInfo,
-            GoalMsgGroups),
+        % The switch context should be irrelevant to the problem.
+        SwitchContexts = [],
+        det_diagnose_conj(InstMap0, SwitchContexts, detism_det, Goals,
+            GoalMsgGroups, !DetInfo),
         sort_error_msg_groups(GoalMsgGroups, SortedGoalMsgGroups),
         SortedGoalMsgs = flatten_error_msg_groups(SortedGoalMsgGroups),
         Spec = error_spec($pred, severity_error, phase_detism_check,
@@ -1557,6 +1614,17 @@ det_infer_scope(InstMap0, SolnContext, MaybePromiseEqvSolutionSets0,
         )
     ).
 
+    % Return a printable representation of the given promise_solutions_kind.
+    %
+:- func promise_solutions_kind_str(promise_solutions_kind) = string.
+
+promise_solutions_kind_str(equivalent_solutions)
+    = "promise_equivalent_solutions".
+promise_solutions_kind_str(equivalent_solution_sets)
+    = "promise_equivalent_solution_sets".
+promise_solutions_kind_str(equivalent_solution_sets_arbitrary)
+    = "arbitrary".
+
 %---------------------------------------------------------------------------%
 
 :- pred det_infer_atomic(instmap::in, soln_context::in, maybe(pess_info)::in,
@@ -1658,6 +1726,10 @@ det_infer_orelse_goals(InstMap0, SolnContext, MaybePromiseEqvSolutionSets,
 %
 % Predicates needed to process more than one kind of goal.
 %
+
+:- type cc_unify_context
+    --->    ccuc_unify(unify_context)
+    ;       ccuc_switch.
 
 :- pred det_check_for_noncanonical_type(prog_var::in, bool::in, can_fail::in,
     soln_context::in, list(failing_context)::in, list(failing_context)::in,
@@ -1823,6 +1895,67 @@ noncanon_unify_verbose_would_require =
     words("but I am not going to do that implicitly."),
     words("(If that is really what you want, you must do it explicitly.)"),
     nl].
+
+%---------------------------------------------------------------------------%
+
+    % Describe the given list of failing contexts.
+    %
+:- func failing_contexts_description(module_info, var_table,
+    list(failing_context)) = list(error_msg).
+
+failing_contexts_description(ModuleInfo, VarTable, FailingContexts) =
+    list.map(failing_context_description(ModuleInfo, VarTable),
+        FailingContexts).
+
+:- func failing_context_description(module_info, var_table,
+    failing_context) = error_msg.
+
+failing_context_description(ModuleInfo, VarTable, FailingContext) = Msg :-
+    FailingContext = failing_context(Context, FailingGoal),
+    (
+        FailingGoal = incomplete_switch(Var),
+        VarPiece = var_in_table_to_quote_piece(VarTable, Var),
+        Pieces = [words("The")] ++
+            color_as_subject([words("switch on"), VarPiece]) ++
+            [words("is")] ++
+            color_as_incorrect([words("incomplete.")]) ++ [nl]
+    ;
+        FailingGoal = fail_goal,
+        Pieces = color_as_subject([words("Fail goal")]) ++
+            color_as_incorrect([words("can fail.")]) ++ [nl]
+    ;
+        FailingGoal = test_goal(VarA, VarB),
+        VarPieceA = var_in_table_to_quote_piece(VarTable, VarA),
+        VarPieceB = var_in_table_to_quote_piece(VarTable, VarB),
+        Pieces = [words("Unification of")] ++ color_as_subject([VarPieceA]) ++
+            [words("and")] ++ color_as_subject([VarPieceB]) ++
+            color_as_incorrect([words("can fail.")]) ++ [nl]
+    ;
+        FailingGoal = deconstruct_goal(Var, ConsId),
+        VarPiece = var_in_table_to_quote_piece(VarTable, Var),
+        Pieces = [words("Unification of")] ++ color_as_subject([VarPiece]) ++
+            [words("with")] ++
+            color_as_subject([qual_cons_id_and_maybe_arity(ConsId)]) ++
+            color_as_incorrect([words("can fail.")]) ++ [nl]
+    ;
+        FailingGoal = call_goal(PredId, _ProcId),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        Name = pred_info_name(PredInfo),
+        Pieces = [words("Call to")] ++ color_as_subject([fixed(Name)]) ++
+            color_as_incorrect([words("can fail.")]) ++ [nl]
+    ;
+        FailingGoal = generic_call_goal(GenericCall),
+        VarNameSrc = vns_var_table(VarTable),
+        GenericCallPieces =
+            generic_call_to_pieces(print_ho_var_name, VarNameSrc, GenericCall),
+        Pieces = color_as_subject([upper_case_next | GenericCallPieces]) ++
+            color_as_incorrect([words("can fail.")]) ++ [nl]
+    ;
+        FailingGoal = negated_goal,
+        Pieces = color_as_subject([words("Negated goal")]) ++
+            color_as_incorrect([words("can fail.")]) ++ [nl]
+    ),
+    Msg = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
 

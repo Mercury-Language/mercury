@@ -51,7 +51,6 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.det_analysis.
-:- import_module check_hlds.det_report.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.modecheck_util.
 :- import_module check_hlds.recompute_instmap_deltas.

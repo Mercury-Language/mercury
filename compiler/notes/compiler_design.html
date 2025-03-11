@@ -1380,7 +1380,10 @@ The indexing and determinism analysis system also consists of several modules.
     It also reports any errors found by this process.
     <li>
     Any errors that involve the determinisms of whole procedures
-    are checked for and reported by det_report.m.
+    are checked for and reported
+    by det_check_proc.m, det_check_goal.m and det_check_switch.m,
+    which look for errors with procedure interfaces, goals in general,
+    and switch goals in particular respectively.
     <li>
     det_util.m contains utility predicates used in several modules.
     </ul>
