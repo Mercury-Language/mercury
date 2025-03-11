@@ -116,8 +116,8 @@ determinism_pass(ProgressStream, Specs, !ModuleInfo) :-
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds0),
     determinism_declarations(PredIdTable0, ValidPredIds0,
-        DeclaredProcs, UndeclaredProcs, NoInferProcs, ImportedProcs),
-    list.foldl(set_non_inferred_proc_determinism, NoInferProcs, !ModuleInfo),
+        DeclaredProcs, UndeclaredProcs, CompGenProcs, ImportedProcs),
+    list.foldl(set_non_inferred_proc_determinism, CompGenProcs, !ModuleInfo),
     list.foldl(set_non_inferred_proc_determinism, ImportedProcs, !ModuleInfo),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -394,26 +394,34 @@ maybe_record_change_print_inferred(ModuleInfo, Debug, PredProcId,
 %---------------------------------------------------------------------------%
 
     % Determinism_declarations takes a module_info as input and returns
-    % three lists of procedure ids:
+    % four lists of procedure ids.
     %
-    % - DeclaredProcs holds the procedures that have declarations that need
-    %   to be checked.
+    % - DeclaredProcs holds the local user-written procedures
+    %   that have declarations that need to be checked.
     %
-    % - UndeclaredProcs holds the procedures that don't have declarations
-    %   whose determinism needs to be inferred.
+    % - UndeclaredProcs holds the local user-written procedures
+    %   that don't have declarations, whose determinism needs to be inferred.
     %
-    % - NoInferProcs holds the procedures whose determinism is already known,
-    %   and which should not be processed further.
+    % - CompGenProcs holds the local compiler-generated procedures.
+    %   Their determinism is already known, and they are known to be correct.
+    %
+    % - ImportedProcs hold the nonlocal procedures, whose determinism
+    %   *should* be included in their mode declarations in the .int/.int2 file.
+    %   We perform all the checks on the declarations of procedures that
+    %   we perform on the declarations of DeclaredProcs. We don't perform
+    %   checks on them that require access to the procedure's body goal,
+    %   since we (in the absence of inter-module optimization, at least)
+    %   we don't have access to those.
     %
 :- pred determinism_declarations(pred_id_table::in, list(pred_id)::in,
     list(pred_proc_id)::out, list(pred_proc_id)::out,
     list(pred_proc_id)::out, list(pred_proc_id)::out) is det.
 
 determinism_declarations(PredIdTable, PredIds,
-        DeclaredProcs, UndeclaredProcs, NoInferProcs, ImportedProcs) :-
+        DeclaredProcs, UndeclaredProcs, CompGenProcs, ImportedProcs) :-
     determinism_declarations_preds(PredIdTable, PredIds,
         [], DeclaredProcs, [], UndeclaredProcs,
-        [], NoInferProcs, [], ImportedProcs).
+        [], CompGenProcs, [], ImportedProcs).
 
 :- pred determinism_declarations_preds(pred_id_table::in, list(pred_id)::in,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
@@ -422,15 +430,15 @@ determinism_declarations(PredIdTable, PredIds,
     list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 determinism_declarations_preds(_PredIdTable, [],
-        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs).
+        !DeclaredProcs, !UndeclaredProcs, !CompGenProcs, !ImportedProcs).
 determinism_declarations_preds(PredIdTable, [PredId | PredIds],
-        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs) :-
+        !DeclaredProcs, !UndeclaredProcs, !CompGenProcs, !ImportedProcs) :-
     map.lookup(PredIdTable, PredId, PredInfo),
     ProcIds = pred_info_all_procids(PredInfo),
     determinism_declarations_procs(PredId, PredInfo, ProcIds,
-        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs),
+        !DeclaredProcs, !UndeclaredProcs, !CompGenProcs, !ImportedProcs),
     determinism_declarations_preds(PredIdTable, PredIds,
-        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs).
+        !DeclaredProcs, !UndeclaredProcs, !CompGenProcs, !ImportedProcs).
 
 :- pred determinism_declarations_procs(pred_id::in, pred_info::in,
     list(proc_id)::in,
@@ -440,9 +448,9 @@ determinism_declarations_preds(PredIdTable, [PredId | PredIds],
     list(pred_proc_id)::in, list(pred_proc_id)::out) is det.
 
 determinism_declarations_procs(_PredId, _PredInfo, [],
-        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs).
+        !DeclaredProcs, !UndeclaredProcs, !CompGenProcs, !ImportedProcs).
 determinism_declarations_procs(PredId, PredInfo, [ProcId | ProcIds],
-        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs) :-
+        !DeclaredProcs, !UndeclaredProcs, !CompGenProcs, !ImportedProcs) :-
     PredProcId = proc(PredId, ProcId),
     ( if
         % Imported predicates need to be checked, but that will happen
@@ -461,7 +469,7 @@ determinism_declarations_procs(PredId, PredInfo, [ProcId | ProcIds],
             marker_is_present(Markers, marker_class_method)
         )
     then
-        !:NoInferProcs = [PredProcId | !.NoInferProcs]
+        !:CompGenProcs = [PredProcId | !.CompGenProcs]
     else
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo),
@@ -475,7 +483,7 @@ determinism_declarations_procs(PredId, PredInfo, [ProcId | ProcIds],
         )
     ),
     determinism_declarations_procs(PredId, PredInfo, ProcIds,
-        !DeclaredProcs, !UndeclaredProcs, !NoInferProcs, !ImportedProcs).
+        !DeclaredProcs, !UndeclaredProcs, !CompGenProcs, !ImportedProcs).
 
     % We can't infer a tighter determinism for imported procedures or for
     % class methods, so set the inferred determinism to be the same as the
