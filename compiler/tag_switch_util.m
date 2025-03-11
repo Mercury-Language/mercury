@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -50,10 +50,8 @@
 % means we will generate MLDS code for it more than once.
 
     % Note that it is not an error for a primary tag to have no case.
-    % This can happen when
-    %
-    % - the in semidet switches, or in det switches where the
-    % initial inst of the switch variable is a bound(...) inst representing
+    % This can happen e.g. in det switches where the initial inst
+    % of the switched-on variable is a bound(...) inst representing
     % a subtype.
     %
 :- type ptag_case_group(CaseRep)
@@ -69,7 +67,7 @@
                 % For all of them, the following invariant holds:
                 %
                 % - either the ptag is unshared (i.e. its sectag_locn
-                %   is either sectag_none or sectag_none_direct_arg,
+                %   is either sectag_none or sectag_none_direct_arg),
                 %
                 % - or the ptag is shared between two or more function symbols,
                 %   meaning its sectag_locn is one of the alternatives
