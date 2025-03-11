@@ -81,7 +81,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.det_analysis.
+:- import_module check_hlds.det_infer_goal.
 :- import_module check_hlds.det_util.
 :- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.simplify.common.
@@ -798,10 +798,10 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
         det_get_soln_context(Detism, SolnContext),
         some [!ModuleInfo, !ProcInfo, !VarTable, !RttiVarMaps]
         (
-            % Det_infer_goal looks up the proc_info in the module_info for
+            % det_infer_proc_goal looks up the proc_info in the module_info for
             % the var_table, so we have to put all the proc_info components
-            % we have updated back in the proc_info, which we have have to put
-            % back in the module_info.
+            % we have updated back in the proc_info, which we have to put back
+            % in the module_info.
             simplify_info_get_module_info(!.Info, !:ModuleInfo),
             simplify_info_get_var_table(!.Info, !:VarTable),
             simplify_info_get_rtti_varmaps(!.Info, !:RttiVarMaps),
@@ -816,8 +816,8 @@ maybe_recompute_fields_after_top_level_goal(GoalInfo0, InstMap0,
 
             det_info_init(!.ModuleInfo, PredProcId, !.VarTable,
                 pess_extra_vars_report, [], DetInfo0),
-            det_infer_goal(!Goal, InstMap0, SolnContext, [], no,
-                _, _, DetInfo0, DetInfo),
+            det_infer_proc_goal(InstMap0, SolnContext, _Detism,
+                !Goal, DetInfo0, DetInfo),
             det_info_get_module_info(DetInfo, !:ModuleInfo),
             det_info_get_var_table(DetInfo, !:VarTable),
             simplify_info_set_module_info(!.ModuleInfo, !Info),

@@ -1371,11 +1371,16 @@ The indexing and determinism analysis system also consists of several modules.
     that were buried too deeply for it to see
     in the original code cse_detection.m was invoked with.
     <li>
-    det_analysis.m annotates each goal with its determinism;
+    det_analysis.m manages the determinism inference process.
+    <li>
+    det_infer_goal.m annotates each goal with its determinism;
     it inserts cuts in the form of "some" goals
     wherever the determinisms and delta instantiations of the goals involved
     make it necessary.
-    Any errors found during determinism analysis are reported by det_report.m.
+    It also reports any errors found by this process.
+    <li>
+    Any errors that involve the determinisms of whole procedures
+    are checked for and reported by det_report.m.
     <li>
     det_util.m contains utility predicates used in several modules.
     </ul>

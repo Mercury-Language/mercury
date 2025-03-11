@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -159,7 +159,7 @@
 
 :- implementation.
 
-:- import_module check_hlds.det_analysis.
+:- import_module check_hlds.det_infer_goal.
 :- import_module check_hlds.det_report.
 :- import_module check_hlds.det_util.
 :- import_module check_hlds.inst_lookup.
@@ -399,8 +399,8 @@ rerun_det_analysis(Goal0, Goal, !PDInfo) :-
     det_info_init(ModuleInfo1, PredProcId, VarTable,
         pess_extra_vars_ignore, [], DetInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap),
-    det_infer_goal(Goal0, Goal, InstMap, SolnContext, [], no, _, _,
-        DetInfo0, DetInfo),
+    det_infer_proc_goal(InstMap, SolnContext, _Detism,
+        Goal0, Goal, DetInfo0, DetInfo),
     det_info_get_module_info(DetInfo, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo),
     det_info_get_error_specs(DetInfo, Specs),
