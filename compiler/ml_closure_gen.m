@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2024 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,12 +25,13 @@
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module list.
 
 %---------------------------------------------------------------------------%
 
-    % ml_construct_closure(PredId, ProcId, Var, ArgVars, ArgModes,
+    % ml_construct_closure(NonLocals, PredId, ProcId, Var, ArgVars, ArgModes,
     %   HowToConstruct, Context, Defns, Stmts, !Info):
     %
     % Generate code to construct a closure for the procedure specified
@@ -38,9 +39,10 @@
     % by ArgVars (and ArgModes), and to store the pointer to the resulting
     % closure in Var.
     %
-:- pred ml_construct_closure(pred_id::in, proc_id::in, prog_var::in,
-    list(prog_var)::in, list(unify_mode)::in, how_to_construct::in,
-    prog_context::in, list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
+:- pred ml_construct_closure(set_of_progvar::in, pred_id::in, proc_id::in,
+    prog_var::in, list(prog_var)::in, list(unify_mode)::in,
+    how_to_construct::in, prog_context::in,
+    list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % ml_gen_closure_wrapper(PredId, ProcId, Offset, NumClosureArgs,
@@ -118,8 +120,8 @@
 
 %---------------------------------------------------------------------------%
 
-ml_construct_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct,
-        Context, Defns, Stmts, !Info) :-
+ml_construct_closure(NonLocals, PredId, ProcId, Var, ArgVars, ArgModes,
+        HowToConstruct, Context, Defns, Stmts, !Info) :-
     % This constructs a closure.
     % The representation of closures for the LLDS backend is defined in
     % runtime/mercury_ho_call.h.
@@ -180,7 +182,7 @@ ml_construct_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct,
         NumExtraArgRvalsTypes, ArgVars, ArgVarsTypesWidths),
     FirstArgNum = 1,
     TakeAddr = [],
-    ml_gen_new_object(MaybeConsId, MaybeConsName, Ptag, MaybeStag,
+    ml_gen_new_object(NonLocals, MaybeConsId, MaybeConsName, Ptag, MaybeStag,
         Var, VarEntry, ExtraArgRvalsTypes, ArgVarsTypesWidths, ArgModes,
         FirstArgNum, TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info).
 

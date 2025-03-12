@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
-% Copyright (C) 2014, 2018-2024 The Mercury team.
+% Copyright (C) 2014, 2018-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -19,6 +19,7 @@
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
@@ -183,6 +184,9 @@
     ;       assign_nondummy_unused
     ;       assign_dummy.
 
+    % ml_compute_assign_direction(ModuleInfo, NonLocals, ArgVar, ArgVarEntry,
+    %   FieldType, ArgMode, Dir):
+    %
     % Figure out in which direction the assignment goes
     % between a field of a term, and the corresponding argument.
     %
@@ -192,8 +196,9 @@
     % This is why it must distinguish assignments involving dummy values
     % even from assignments where the target is unused.
     %
-:- pred ml_compute_assign_direction(module_info::in, unify_mode::in,
-    mer_type::in, var_table_entry::in, assign_dir::out) is det.
+:- pred ml_compute_assign_direction(module_info::in, set_of_progvar::in,
+    prog_var::in, var_table_entry::in, mer_type::in, unify_mode::in,
+    assign_dir::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -908,8 +913,8 @@ ml_cast_to_unsigned_without_sign_extend(Fill, Rval0, Rval) :-
 
 %---------------------------------------------------------------------------%
 
-ml_compute_assign_direction(ModuleInfo, ArgMode,
-        FieldType, ArgVarEntry, Dir) :-
+ml_compute_assign_direction(ModuleInfo, NonLocals, ArgVar, ArgVarEntry,
+        FieldType, ArgMode, Dir) :-
     ArgVarType = ArgVarEntry ^ vte_type,
     % XXX ARG_PACK We should not need to check here whether
     % FieldType is a dummy type; the arg_pos_width should tell us that.
@@ -920,7 +925,7 @@ ml_compute_assign_direction(ModuleInfo, ArgMode,
         Dir = assign_dummy
     ;
         EitherIsDummy = neither_is_dummy_type,
-        % The test of the code in this predicate is the same as
+        % The rest of the code in this predicate is the same as
         % the code of compute_assign_direction, with one exception
         % that prevents any simple kind of code reuse: the fact that
         % we return assign_nondummy_X instead of assign_X.
@@ -944,7 +949,15 @@ ml_compute_assign_direction(ModuleInfo, ArgMode,
             ;
                 RightTopMode = top_out,
                 % Input - output: it is an assignment to the RHS.
-                Dir = assign_nondummy_right
+                % Is the RHS variable used anywhere else?
+                ( if set_of_var.contains(NonLocals, ArgVar) then
+                    % Yes it is.
+                    Dir = assign_nondummy_right
+                else
+                    % No, it is not. Our caller therefore will NOT need
+                    % to assign a value to the RHS variable.
+                    Dir = assign_nondummy_unused
+                )
             ;
                 RightTopMode = top_unused,
                 unexpected($pred, "some strange unify")

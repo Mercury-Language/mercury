@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2024 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -637,7 +637,7 @@ ml_gen_goal_expr(Determinism, CodeModel, Context, GoalExpr, GoalInfo,
         LocalVarDefns, FuncDefns, Stmts, !Info) :-
     (
         GoalExpr = unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
-        ml_generate_unification(CodeModel, Unification, Context,
+        ml_generate_unification(CodeModel, GoalInfo, Context, Unification,
             LocalVarDefns, Stmts, !Info),
         FuncDefns = []
     ;

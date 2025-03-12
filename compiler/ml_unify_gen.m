@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2022, 2024 The Mercury team.
+% Copyright (C) 2013-2018, 2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -28,8 +28,8 @@
 
     % Generate MLDS code for a unification.
     %
-:- pred ml_generate_unification(code_model::in, unification::in,
-    prog_context::in,
+:- pred ml_generate_unification(code_model::in, hlds_goal_info::in,
+    prog_context::in, unification::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -52,7 +52,7 @@
 
 %---------------------------------------------------------------------------%
 
-ml_generate_unification(CodeModel, Unification, Context,
+ml_generate_unification(CodeModel, GoalInfo, Context, Unification,
         Defns, Stmts, !Info) :-
     (
         Unification = assign(TargetVar, SourceVar),
@@ -84,12 +84,15 @@ ml_generate_unification(CodeModel, Unification, Context,
             expect(unify(MaybeSizeProfInfo, no), $pred,
                 "term size profiling not yet supported")
         ),
-        ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
-            TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info)
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
+        ml_generate_construction_unification(NonLocals, LHSVar, ConsId,
+            RHSVars, ArgModes, TakeAddr, HowToConstruct, Context,
+            Defns, Stmts, !Info)
     ;
         Unification = deconstruct(LHSVar, ConsId, RHSVars, ArgModes,
             CanFail, CanCGC),
-        ml_generate_deconstruction_unification(LHSVar, ConsId,
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
+        ml_generate_deconstruction_unification(NonLocals, LHSVar, ConsId,
             RHSVars, ArgModes, CanFail, CanCGC, CodeModel, Context,
             Defns, Stmts, !Info)
     ;

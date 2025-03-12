@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -223,26 +223,46 @@ delete_unused_in_stmt_return_cord(Stmt0, StmtCord, SeenAfter, SeenBefore,
     ;
         Stmt0 = ml_stmt_if_then_else(CondRval, ThenStmt0, MaybeElseStmt0,
             Ctxt),
-        delete_unused_in_stmt(ThenStmt0, ThenStmt, SeenAfter, SeenBeforeThen,
-            !Info),
+        delete_unused_in_stmt(ThenStmt0, ThenStmt,
+            SeenAfter, SeenBeforeThen, !Info),
         (
             MaybeElseStmt0 = no,
-            MaybeElseStmt = no,
+            ElseStmt = ml_stmt_block([], [], [], Ctxt),
             SeenBeforeThenElse = SeenBeforeThen
         ;
             MaybeElseStmt0 = yes(ElseStmt0),
             delete_unused_in_stmt(ElseStmt0, ElseStmt,
                 SeenAfter, SeenBeforeElse, !Info),
-            ( if ElseStmt = ml_stmt_block([], [], [], _) then
-                MaybeElseStmt = no
-            else
-                MaybeElseStmt = yes(ElseStmt)
-            ),
             set.union(SeenBeforeThen, SeenBeforeElse, SeenBeforeThenElse)
         ),
-        see_in_rval(CondRval, SeenBeforeThenElse, SeenBefore),
-        Stmt = ml_stmt_if_then_else(CondRval, ThenStmt, MaybeElseStmt, Ctxt),
-        StmtCord = cord.singleton(Stmt)
+        ( if ThenStmt = ml_stmt_block([], [], [], _) then
+            ( if ElseStmt = ml_stmt_block([], [], [], _) then
+                % There is no Then part and no Else part. We can optimize away
+                % the whole if-then-else, including the condition.
+                SeenBefore = SeenBeforeThenElse,
+                StmtCord = cord.init
+            else
+                % There is no Then part, but there is an Else part.
+                see_in_rval(CondRval, SeenBeforeThenElse, SeenBefore),
+                % Alternatively, we could instead return
+                % ml_stmt_if_then_else(NegCondRval, ElseStmt, no, Ctxt).
+                Stmt = ml_stmt_if_then_else(CondRval, ThenStmt, yes(ElseStmt),
+                    Ctxt),
+                StmtCord = cord.singleton(Stmt)
+            )
+        else
+            ( if ElseStmt = ml_stmt_block([], [], [], _) then
+                % There is a Then part, but no Else part.
+                MaybeElseStmt = no
+            else
+                % There is both a Then part and an Else part.
+                MaybeElseStmt = yes(ElseStmt)
+            ),
+            see_in_rval(CondRval, SeenBeforeThenElse, SeenBefore),
+            Stmt =
+                ml_stmt_if_then_else(CondRval, ThenStmt, MaybeElseStmt, Ctxt),
+            StmtCord = cord.singleton(Stmt)
+        )
     ;
         Stmt0 = ml_stmt_switch(SwitchValueType, SwitchRval, Range, Cases0,
             Default0, Ctxt),
@@ -493,8 +513,7 @@ delete_unused_in_func_defn(FuncDefn0, FuncDefn, SeenBefore) :-
         Params = mlds_func_params(Args, _ReturnTypes),
         ArgLocalVars = list.map(project_mlds_argument_name, Args),
         set.list_to_set(ArgLocalVars, SeenAfter),
-        delete_unused_in_stmt(Stmt0, Stmt, SeenAfter, SeenBefore,
-            Info0, Info),
+        delete_unused_in_stmt(Stmt0, Stmt, SeenAfter, SeenBefore, Info0, Info),
         OrigOrOpt = Info ^ uai_orig_opt_code,
         (
             OrigOrOpt = may_use_optimized_code,

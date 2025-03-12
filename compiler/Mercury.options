@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2002-2009 The University of Melbourne.
-# Copyright (C) 2013, 2015-2024 The Mercury team.
+# Copyright (C) 2013, 2015-2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -24,6 +24,11 @@ MCFLAGS-hlds.quantification              += --optimize-unused-args
 # typecheck_module_one_iteration should be tail recursive.
 MCFLAGS-check_hlds.typecheck             += --optimize-constructor-last-call \
                                             --unneeded-code 
+MCFLAGS-check_hlds.typecheck_clauses     += --optimize-constructor-last-call \
+                                            --unneeded-code 
+
+MCFLAGS-ml_backend.ml_unify_gen_deconstruct += --unneeded-code \
+                                            --optimize-constructor-last-call \
 
 # compute_goals_purity should be tail recursive.
 MCFLAGS-check_hlds.purity                += --optimize-constructor-last-call

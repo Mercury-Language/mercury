@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
-% Copyright (C) 2014, 2018-2024 The Mercury team.
+% Copyright (C) 2014, 2018-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -19,6 +19,7 @@
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 
 :- import_module bool.
@@ -30,8 +31,8 @@
     % ml_generate_construction_unification generates code
     % for a construction unification.
     %
-:- pred ml_generate_construction_unification(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(unify_mode)::in, list(int)::in,
+:- pred ml_generate_construction_unification(set_of_progvar::in, prog_var::in,
+    cons_id::in, list(prog_var)::in, list(unify_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -42,10 +43,10 @@
 :- type mlds_rval_type_and_width
     --->    rval_type_and_width(mlds_rval, mlds_type, arg_pos_width).
 
-    % ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag,
-    %   LHSVar, LHSVarEntry, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
-    %   ArgModes, FirstArgNum, TakeAddr, HowToConstruct, Context,
-    %   Stmts, !Info):
+    % ml_gen_new_object(NonLocals, MaybeConsId, MaybeCtorName, Ptag,
+    %   ExplicitSectag, LHSVar, LHSVarEntry,
+    %   ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths, ArgModes, FirstArgNum,
+    %   TakeAddr, HowToConstruct, Context, Stmts, !Info):
     %
     % Generate a `new_object' statement, or a static constant, depending on the
     % value of the how_to_construct argument. The `ExtraRvalsTypesWidths'
@@ -54,9 +55,9 @@
     %
     % Exported for use by ml_closure_gen.m.
     %
-:- pred ml_gen_new_object(maybe(cons_id)::in, maybe(qual_ctor_id)::in,
-    ptag::in, bool::in, prog_var::in, var_table_entry::in,
-    list(mlds_rval_type_and_width)::in,
+:- pred ml_gen_new_object(set_of_progvar::in, maybe(cons_id)::in,
+    maybe(qual_ctor_id)::in, ptag::in, bool::in,
+    prog_var::in, var_table_entry::in, list(mlds_rval_type_and_width)::in,
     list(arg_var_type_and_width)::in, list(unify_mode)::in,
     int::in, list(int)::in, how_to_construct::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
@@ -119,8 +120,8 @@
 
 %---------------------------------------------------------------------------%
 
-ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
-        TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info) :-
+ml_generate_construction_unification(NonLocals, LHSVar, ConsId, RHSVars,
+        ArgModes, TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info) :-
     ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
     (
         % Constants.
@@ -217,7 +218,7 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
     ;
         % Ordinary compound terms.
         ConsTag = remote_args_tag(RemoteArgsTagInfo),
-        ml_generate_construct_compound(LHSVar, ConsId,
+        ml_generate_construct_compound(NonLocals, LHSVar, ConsId,
             RemoteArgsTagInfo, RHSVars, ArgModes, TakeAddr, HowToConstruct,
             Context, Defns, Stmts, !Info)
     ;
@@ -236,25 +237,25 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         ),
         expect(unify(TakeAddr, []), $pred,
             "notag or direct_arg_tag: take_addr"),
-        ml_genenate_construct_notag_direct_arg(LHSVar, ConsTag,
+        ml_genenate_construct_notag_direct_arg(NonLocals, LHSVar, ConsTag,
             RHSVars, ArgModes, Context, Stmts, !Info),
         Defns = []
     ;
         ConsTag = closure_tag(PredId, ProcId),
-        ml_construct_closure(PredId, ProcId, LHSVar, RHSVars, ArgModes,
-            HowToConstruct, Context, Defns, Stmts, !Info)
+        ml_construct_closure(NonLocals, PredId, ProcId, LHSVar, RHSVars,
+            ArgModes, HowToConstruct, Context, Defns, Stmts, !Info)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred ml_generate_construct_compound(prog_var::in,
+:- pred ml_generate_construct_compound(set_of_progvar::in, prog_var::in,
     cons_id::in, remote_args_tag_info::in,
     list(prog_var)::in, list(unify_mode)::in, list(int)::in,
     how_to_construct::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_generate_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
+ml_generate_construct_compound(NonLocals, LHSVar, ConsId, RemoteArgsTagInfo,
         RHSVars, ArgModes, TakeAddr, HowToConstruct, Context,
         Defns, Stmts, !Info) :-
     ml_gen_info_get_target(!.Info, Target),
@@ -367,8 +368,8 @@ ml_generate_construct_compound(LHSVar, ConsId, RemoteArgsTagInfo,
         ml_cons_name(Target, ConsId, CtorName),
         MaybeCtorName = yes(CtorName)
     ),
-    ml_gen_new_object(yes(ConsId), MaybeCtorName, Ptag, ExplicitSectag,
-        LHSVar, LHSVarEntry, TagwordRvalsTypesWidths,
+    ml_gen_new_object(NonLocals, yes(ConsId), MaybeCtorName, Ptag,
+        ExplicitSectag, LHSVar, LHSVarEntry, TagwordRvalsTypesWidths,
         NonTagwordRHSVarsTypesWidths, NonTagwordArgModes,
         FirstArgNum, TakeAddr, HowToConstruct, Context, Defns, Stmts, !Info).
 
@@ -426,7 +427,7 @@ ml_generate_construct_tagword_compound(ConsId, TagFilledBitfield,
 
 %---------------------------------------------------------------------------%
 
-ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag,
+ml_gen_new_object(NonLocals, MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag,
         LHSVar, LHSVarEntry, ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths,
         ArgModes, FirstArgNum, TakeAddr, HowToConstruct, Context,
         Defns, Stmts, !Info) :-
@@ -447,7 +448,7 @@ ml_gen_new_object(MaybeConsId, MaybeCtorName, Ptag, ExplicitSectag,
         Defns = []
     ;
         HowToConstruct = reuse_cell(CellToReuse),
-        ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
+        ml_gen_new_object_reuse_cell(NonLocals, MaybeConsId, MaybeCtorName,
             Ptag, ExplicitSectag, LHSVar, LHSVarEntry,
             ExtraRHSRvalsTypesWidths, RHSVarsTypesWidths, ArgModes,
             TakeAddr, CellToReuse, Context, Defns, Stmts, !Info)
@@ -585,7 +586,7 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
     AssignStmt = ml_gen_assign(LHSLval, RHSRval, Context),
     Stmts = [AssignStmt].
 
-:- pred ml_gen_new_object_reuse_cell(maybe(cons_id)::in,
+:- pred ml_gen_new_object_reuse_cell(set_of_progvar::in, maybe(cons_id)::in,
     maybe(qual_ctor_id)::in, ptag::in, bool::in,
     prog_var::in, var_table_entry::in,
     list(mlds_rval_type_and_width)::in, list(arg_var_type_and_width)::in,
@@ -593,7 +594,7 @@ ml_gen_new_object_statically(MaybeConsId, MaybeCtorName, Ptag,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
+ml_gen_new_object_reuse_cell(NonLocals, MaybeConsId, MaybeCtorName,
         Ptag, ExplicitSectag, LHSVar, LHSVarEntry, ExtraRHSRvalsTypesWidths,
         RHSVarsTypesWidths, ArgModes, TakeAddr, CellToReuse, Context,
         Defns, Stmts, !Info) :-
@@ -670,7 +671,7 @@ ml_gen_new_object_reuse_cell(MaybeConsId, MaybeCtorName,
     % XXX We do more work than we need to here, as some of the cells
     % may already contain the correct values.
     FirstArgNum = 1,
-    ml_gen_dynamic_deconstruct_args(FieldGen, RHSVarRepns, ArgModes,
+    ml_gen_dynamic_deconstruct_args(NonLocals, FieldGen, RHSVarRepns, ArgModes,
         FirstArgNum, Context, TakeAddr, TakeAddrInfos,
         Defns, FieldStmts, !Info),
     ml_gen_field_take_address_assigns(TakeAddrInfos, LHSLval, LHS_MLDS_Type,
@@ -1170,12 +1171,12 @@ ml_gen_tagword_statically(Info, [RHSVarTypeWidth | RHSVarsTypesWidths],
 
 %---------------------------------------------------------------------------%
 
-:- pred ml_genenate_construct_notag_direct_arg(
+:- pred ml_genenate_construct_notag_direct_arg(set_of_progvar::in,
     prog_var::in, cons_tag::in(no_or_direct_arg_tag), list(prog_var)::in,
     list(unify_mode)::in, prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_genenate_construct_notag_direct_arg(LHSVar, ConsTag, RHSVars,
+ml_genenate_construct_notag_direct_arg(NonLocals, LHSVar, ConsTag, RHSVars,
         ArgModes, Context, Stmts, !Info) :-
     get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
     ml_gen_info_get_var_table(!.Info, VarTable),
@@ -1210,8 +1211,8 @@ ml_genenate_construct_notag_direct_arg(LHSVar, ConsTag, RHSVars,
             % for assign_nondummy_unused. We don't need to put a ptag on
             % a dummy value if either we have a nondummy value (the then
             % part above), or if there is no ptag (the arm for no_tag above).
-            ml_compute_assign_direction(ModuleInfo, ArgMode, LHSType,
-                RHSVarEntry, Dir),
+            ml_compute_assign_direction(ModuleInfo, NonLocals,
+                RHSVar, RHSVarEntry, LHSType, ArgMode, Dir),
             (
                 Dir = assign_nondummy_right,
                 unexpected($pred, "left-to-right data flow in construction")

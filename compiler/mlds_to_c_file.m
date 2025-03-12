@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -610,7 +610,7 @@ mlds_output_grade_check_fn_defn(Stream, ModuleName, !IO) :-
     GradeCheckDecl = grade_check_fn_decl_to_string(ModuleName),
     io.format(Stream, "%s\n", [s(GradeCheckDecl)], !IO),
     io.format(Stream, "{\n", [], !IO),
-    io.format(Stream, "    return &MR_GRADE_VAR;\n", [], !IO),
+    io.format(Stream, "  return &MR_GRADE_VAR;\n", [], !IO),
     io.format(Stream, "}\n", [], !IO).
 
     % Get the foreign code for C.
@@ -686,9 +686,9 @@ mlds_output_init_fn_defns(Opts, Stream, ModuleName, FuncDefns,
         FuncDefns = [_ | _]
     then
         io.write_strings(Stream,
-            ["\tstatic MR_bool initialised = MR_FALSE;\n",
-            "\tif (initialised) return;\n",
-            "\tinitialised = MR_TRUE;\n\n"], !IO),
+            ["  static MR_bool initialised = MR_FALSE;\n",
+            "  if (initialised) return;\n",
+            "  initialised = MR_TRUE;\n\n"], !IO),
         mlds_output_calls_to_init_entry(Stream, ModuleName, FuncDefns, !IO),
         mlds_output_call_to_register_alloc_sites(Stream, AllocSites, !IO)
     else
@@ -700,9 +700,9 @@ mlds_output_init_fn_defns(Opts, Stream, ModuleName, FuncDefns,
     (
         TypeCtorInfoDefns = [_ | _],
         io.write_strings(Stream,
-            ["\tstatic MR_bool initialised = MR_FALSE;\n",
-            "\tif (initialised) return;\n",
-            "\tinitialised = MR_TRUE;\n\n"], !IO),
+            ["  static MR_bool initialised = MR_FALSE;\n",
+            "  if (initialised) return;\n",
+            "  initialised = MR_TRUE;\n\n"], !IO),
         mlds_output_calls_to_register_tci(Stream, ModuleName,
             TypeCtorInfoDefns, !IO)
     ;
@@ -712,7 +712,7 @@ mlds_output_init_fn_defns(Opts, Stream, ModuleName, FuncDefns,
 
     io.format(Stream, "%s\n{\n", [s(DebuggerDecl)], !IO),
     io.write_string(Stream,
-        "\tMR_fatal_error(""debugger initialization in MLDS grade"");\n", !IO),
+        "  MR_fatal_error(""debugger initialization in MLDS grade"");\n", !IO),
     io.write_string(Stream, "}\n", !IO),
 
     % Maybe write out wrapper functions that call user-defined intialisation
@@ -741,7 +741,7 @@ mlds_output_init_fn_defns(Opts, Stream, ModuleName, FuncDefns,
 
 output_calls_to_void_funcs(_, [], !IO).
 output_calls_to_void_funcs(Stream, [FuncName | FuncNames], !IO) :-
-    io.format(Stream, "\t%s();\n", [s(FuncName)], !IO),
+    io.format(Stream, "  %s();\n", [s(FuncName)], !IO),
     output_calls_to_void_funcs(Stream, FuncNames, !IO).
 
 :- func init_fn_decl_to_string(mlds_module_name, string) = string.
@@ -776,7 +776,7 @@ mlds_output_calls_to_init_entry(Stream, ModuleName,
     FuncName = FuncDefn ^ mfd_function_name,
     QualFuncName = qual_function_name(ModuleName, FuncName),
     QualFuncNameStr = qual_function_name_to_string_for_c(QualFuncName),
-    io.format(Stream, "\tMR_init_entry(%s);\n",
+    io.format(Stream, "  MR_init_entry(%s);\n",
         [s(QualFuncNameStr)], !IO),
     mlds_output_calls_to_init_entry(Stream, ModuleName, FuncDefns, !IO).
 
@@ -793,7 +793,7 @@ mlds_output_calls_to_register_tci(Stream, MLDS_ModuleName,
     GlobalVarName = GlobalVarDefn ^ mgvd_name,
     QualGlobalVarNameStr = maybe_qual_global_var_name_to_string_for_c(
         MLDS_ModuleName, GlobalVarName),
-    io.format(Stream, "\tMR_register_type_ctor_info(&%s);\n",
+    io.format(Stream, "  MR_register_type_ctor_info(&%s);\n",
         [s(QualGlobalVarNameStr)], !IO),
     mlds_output_calls_to_register_tci(Stream, MLDS_ModuleName,
         GlobalVarDefns, !IO).
@@ -810,7 +810,7 @@ mlds_output_call_to_register_alloc_sites(Stream, AllocSites, !IO) :-
         AllocSites = [_ | _],
         list.length(AllocSites, NumAllocSites),
         io.format(Stream,
-            "\tMR_register_alloc_sites(MR_alloc_sites, %d);\n",
+            "  MR_register_alloc_sites(MR_alloc_sites, %d);\n",
             [i(NumAllocSites)], !IO)
     ).
 
