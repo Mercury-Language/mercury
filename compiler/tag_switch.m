@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2000,2002-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2015-2018, 2020, 2024 The Mercury team.
+% Copyright (C) 2015-2018, 2020, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -232,10 +232,9 @@ generate_tag_switch(VarRval, VarType, VarName, TaggedCases, CodeModel, CanFail,
     % get_ptag_counts(ModuleInfo, VarType, MaxPtagUint8, PtagCountMap),
     Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
         EndLabel),
-    group_cases_by_ptag(ModuleInfo, VarType, TaggedCases,
-        represent_tagged_case_for_llds(Params),
-        map.init, CaseLabelMap0, !MaybeEnd, !CI, unit, _,
-        PtagGroups0, NumPtagsUsed, MaxPtagUint8),
+    group_cases_by_ptag(ModuleInfo, represent_tagged_case_for_llds(Params),
+        VarType, TaggedCases, map.init, CaseLabelMap0, !MaybeEnd, !CI, unit, _,
+        PtagGroups0, CaseRepGoalMap, NumPtagsUsed, MaxPtagUint8),
 
     get_globals(!.CI, Globals),
     Method = choose_switch_method(Globals, NumPtagsUsed),
@@ -264,7 +263,7 @@ generate_tag_switch(VarRval, VarType, VarName, TaggedCases, CodeModel, CanFail,
 
     (
         Method = try_me_else_chain,
-        order_ptag_groups_by_count(PtagGroups0, PtagGroups),
+        order_ptag_groups_by_count(CaseRepGoalMap, PtagGroups0, PtagGroups),
         list.det_head_tail(PtagGroups, HeadPtagGroup, TailPtagGroups),
         generate_primary_try_me_else_chain(VarRval, PtagRval,
             SectagReg, MaybeFailLabel, HeadPtagGroup, TailPtagGroups,
@@ -273,7 +272,7 @@ generate_tag_switch(VarRval, VarType, VarName, TaggedCases, CodeModel, CanFail,
             CaseLabelMap1, _CaseLabelMap)
     ;
         Method = try_chain,
-        order_ptag_groups_by_count(PtagGroups0, PtagGroups1),
+        order_ptag_groups_by_count(CaseRepGoalMap, PtagGroups0, PtagGroups1),
         ( if
             CanFail = cannot_fail,
             PtagGroups1 = [MostFreqGroup | OtherGroups]

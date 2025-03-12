@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000, 2003-2012 The University of Melbourne.
-% Copyright (C) 2013, 2015, 2017-2018, 2021-2022, 2024 The Mercury team.
+% Copyright (C) 2013, 2015, 2017-2018, 2021-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -81,14 +81,17 @@ ml_generate_tag_switch_if_possible(Var, VarEntry, TaggedCases,
     % the groups covering the most function symbols come first.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     VarType = VarEntry ^ vte_type,
-    group_cases_by_ptag(ModuleInfo, VarType, TaggedCases,
+    group_cases_by_ptag(ModuleInfo,
         gen_tagged_case_code(CodeModel, EntryPackedArgsMap),
+        VarType, TaggedCases,
         map.init, CodeMap, [], ReachableConstVarMaps0,
         may_use_tag_switch, MayUseTagSwitch, !Info,
-        PtagCaseGroups0, _NumPtagsUsed, MaxPtagUint8),
+        PtagCaseGroups, _CaseRepGoalMap, _NumPtagsUsed, MaxPtagUint8),
     % Proceed only if we can do so safely.
     MayUseTagSwitch = may_use_tag_switch,
-    order_ptag_groups_by_count(PtagCaseGroups0, PtagCaseGroups),
+    % Note that there is no point in calling order_ptag_groups_by_count,
+    % because regardless of the order in which we generate the arms of the
+    % ml_stmt_switch, we will print them out in ptag value order.
     ml_generate_tag_switch(Var, VarEntry, CodeModel, CanFail, Context,
         MaxPtagUint8, CodeMap, ReachableConstVarMaps0, PtagCaseGroups,
         Stmts, !Info).

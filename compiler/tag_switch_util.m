@@ -180,20 +180,28 @@
     % Group together all the cases that depend on the given variable
     % having the same primary tag value.
     %
-:- pred group_cases_by_ptag(module_info::in, mer_type::in,
-    list(tagged_case)::in,
+:- pred group_cases_by_ptag(module_info::in,
     pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB,
         StateC, StateC, StateD, StateD)
         ::in(pred(in, out, in, out, in, out, in, out, in, out) is det),
+    mer_type::in, list(tagged_case)::in,
     StateA::in, StateA::out, StateB::in, StateB::out,
     StateC::in, StateC::out, StateD::in, StateD::out,
-    list(ptag_case_group(CaseRep))::out, int::out, uint8::out) is det.
+    list(ptag_case_group(CaseRep))::out, map(CaseRep, hlds_goal)::out,
+    int::out, uint8::out) is det.
 
     % Order the given groups based on the number of function symbols they
     % represent, putting the ones with the most function symbols first.
+    % However, consider cases that are erroneous to have zero function symbols,
+    % because if the switched-on variable has a value that leads to such a
+    % case, then the performance of the code affects only fast how we get
+    % to the code that throws an exception, and that case is not worth
+    % optimizing.
+    %
     % Break ties by using the order of the first ptag in each group.
     %
-:- pred order_ptag_groups_by_count(list(ptag_case_group(CaseRep))::in,
+:- pred order_ptag_groups_by_count(map(CaseRep, hlds_goal)::in,
+    list(ptag_case_group(CaseRep))::in,
     list(ptag_case_group(CaseRep))::out) is det.
 
 :- type empty_ptag_list =< list(ptag)
@@ -275,12 +283,13 @@
 
 %---------------------------------------------------------------------------%
 
-group_cases_by_ptag(ModuleInfo, VarType, TaggedCases, RepresentCase,
+group_cases_by_ptag(ModuleInfo, RepresentCase, VarType, TaggedCases,
         !StateA, !StateB, !StateC, !StateD,
-        PtagGroups, NumPtagsUsed, MaxPtagUint8) :-
+        PtagGroups, CaseRepGoalMap, NumPtagsUsed, MaxPtagUint8) :-
     get_ptag_counts(ModuleInfo, VarType, MaxPtagUint8, PtagSectagMap),
-    group_cases_by_ptag_loop(PtagSectagMap, TaggedCases, RepresentCase,
-        !StateA, !StateB, !StateC, !StateD, map.init, PtagCaseMap),
+    group_cases_by_ptag_loop(PtagSectagMap, RepresentCase, TaggedCases,
+        !StateA, !StateB, !StateC, !StateD,
+        map.init, PtagCaseMap, map.init, CaseRepGoalMap),
     map.to_assoc_list(PtagCaseMap, PtagCaseList),
     list.length(PtagCaseList, NumPtagsUsed),
     build_ptag_groups(PtagSectagMap, PtagCaseList,
@@ -290,26 +299,31 @@ group_cases_by_ptag(ModuleInfo, VarType, TaggedCases, RepresentCase,
     SharedPtagGroups = list.map(wrap_shared_ptag_info, SharedPtagInfos),
     PtagGroups = WholePtagGroups ++ SharedPtagGroups.
 
-:- pred group_cases_by_ptag_loop(ptag_sectag_map::in, list(tagged_case)::in,
+:- pred group_cases_by_ptag_loop(ptag_sectag_map::in,
     pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB,
         StateC, StateC, StateD, StateD)
         ::in(pred(in, out, in, out, in, out, in, out, in, out) is det),
+    list(tagged_case)::in,
     StateA::in, StateA::out, StateB::in, StateB::out,
     StateC::in, StateC::out, StateD::in, StateD::out,
-    ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
+    ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out,
+    map(CaseRep, hlds_goal)::in, map(CaseRep, hlds_goal)::out) is det.
 
-group_cases_by_ptag_loop(_, [], _,
-        !StateA, !StateB, !StateC, !StateD, !PtagCaseMap).
-group_cases_by_ptag_loop(PtagSectagMap, [TaggedCase | TaggedCases],
-        RepresentCase, !StateA, !StateB, !StateC, !StateD, !PtagCaseMap) :-
-    TaggedCase = tagged_case(MainTaggedConsId, OtherConsIds, _CaseId, _Goal),
-    RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC, !StateD),
+group_cases_by_ptag_loop(_, _, [],
+        !StateA, !StateB, !StateC, !StateD, !PtagCaseMap, !CaseRepGoalMap).
+group_cases_by_ptag_loop(PtagSectagMap, RepresentCase,
+        [TaggedCase | TaggedCases], !StateA, !StateB, !StateC, !StateD,
+        !PtagCaseMap, !CaseRepGoalMap) :-
+    TaggedCase = tagged_case(MainTaggedConsId, OtherConsIds, _CaseId, Goal),
+    RepresentCase(TaggedCase, CaseRep,
+        !StateA, !StateB, !StateC, !StateD),
     group_case_by_ptag(PtagSectagMap, CaseRep,
         MainTaggedConsId, !PtagCaseMap),
     list.foldl(group_case_by_ptag(PtagSectagMap, CaseRep),
         OtherConsIds, !PtagCaseMap),
-    group_cases_by_ptag_loop(PtagSectagMap, TaggedCases, RepresentCase,
-        !StateA, !StateB, !StateC, !StateD, !PtagCaseMap).
+    map.det_insert(CaseRep, Goal, !CaseRepGoalMap),
+    group_cases_by_ptag_loop(PtagSectagMap, RepresentCase, TaggedCases,
+        !StateA, !StateB, !StateC, !StateD, !PtagCaseMap, !CaseRepGoalMap).
 
 :- pred group_case_by_ptag(ptag_sectag_map::in, CaseRep::in,
     tagged_cons_id::in,
@@ -603,15 +617,22 @@ wrap_shared_ptag_info(SharedInfo) = one_shared_ptag(SharedInfo).
 
 %---------------------------------------------------------------------------%
 
-order_ptag_groups_by_count(Groups, SortedGroups) :-
-    list.sort(order_groups_by_more_functors, Groups, SortedGroups).
+order_ptag_groups_by_count(CaseRepGoalMap, Groups, SortedGroups) :-
+    % We want to count the *effective* number of cons_ids covered by each group
+    % just once, instead of once per comparison.
+    list.map(count_functors_in_ptag_case_group(CaseRepGoalMap),
+        Groups, CountedGroups),
+    list.sort(order_groups_by_more_functors,
+        CountedGroups, SortedCountedGroups),
+    SortedGroups =
+        list.map((func(counted_group(_C, G)) = G), SortedCountedGroups).
 
-:- pred order_groups_by_more_functors(ptag_case_group(CaseRep)::in,
-    ptag_case_group(CaseRep)::in, comparison_result::out) is det.
+:- pred order_groups_by_more_functors(counted_ptag_case_group(CaseRep)::in,
+    counted_ptag_case_group(CaseRep)::in, comparison_result::out) is det.
 
-order_groups_by_more_functors(GroupA, GroupB, CompareResult) :-
-    NumFunctorsA = num_functors_in_ptag_case_group(GroupA),
-    NumFunctorsB = num_functors_in_ptag_case_group(GroupB),
+order_groups_by_more_functors(CountedGroupA, CountedGroupB, CompareResult) :-
+    CountedGroupA = counted_group(NumFunctorsA, GroupA),
+    CountedGroupB = counted_group(NumFunctorsB, GroupB),
     ( if NumFunctorsA > NumFunctorsB then
         % We want the groups with the largest counts first ...
         CompareResult = (<)
@@ -626,16 +647,61 @@ order_groups_by_more_functors(GroupA, GroupB, CompareResult) :-
         compare(CompareResult, MainPtagA, MainPtagB)
     ).
 
-:- func num_functors_in_ptag_case_group(ptag_case_group(CaseRep)) = uint.
+%---------------%
 
-num_functors_in_ptag_case_group(Group) = NumFunctors :-
+:- type counted_ptag_case_group(CaseRep)
+    --->    counted_group(uint, ptag_case_group(CaseRep)).
+
+:- pred count_functors_in_ptag_case_group(map(CaseRep, hlds_goal)::in,
+    ptag_case_group(CaseRep)::in, counted_ptag_case_group(CaseRep)::out)
+    is det.
+
+count_functors_in_ptag_case_group(CaseRepGoalMap, Group, CountedGroup) :-
     (
         Group = one_or_more_whole_ptags(WholeInfo),
-        NumFunctors = WholeInfo ^ wpi_num_functors
+        WholeInfo = whole_ptags_info(_HeadPtag, _TailPtags,
+            NumFunctors, CaseRep),
+        CaseDetism = case_rep_detism(CaseRepGoalMap, CaseRep),
+        ( if CaseDetism = detism_erroneous then
+            EffectiveNumFunctors = 0u
+        else
+            EffectiveNumFunctors = NumFunctors
+        )
     ;
         Group = one_shared_ptag(SharedInfo),
-        NumFunctors = SharedInfo ^ spi_num_functors
+        SharedInfo = shared_ptag_info(_Ptag, _SectagLocn, _MaxSecTag,
+            _Complete, _NumFunctors, _SectagGoalMap, SectagCaseMap),
+        map.foldl(count_can_succeed_case_reps(CaseRepGoalMap),
+            SectagCaseMap, 0u, EffectiveNumFunctors)
+    ),
+    CountedGroup = counted_group(EffectiveNumFunctors, Group).
+
+%---------------%
+
+:- pred count_can_succeed_case_reps(map(CaseRep, hlds_goal)::in,
+    CaseRep::in, one_or_more(uint)::in, uint::in, uint::out) is det.
+
+count_can_succeed_case_reps(CaseRepGoalMap, CaseRep, OoMSectags,
+        !EffectiveNumFunctors) :-
+    CaseDetism = case_rep_detism(CaseRepGoalMap, CaseRep),
+    ( if CaseDetism = detism_erroneous then
+        % Leave !EffectiveNumFunctors unchanged.
+        true
+    else
+        !:EffectiveNumFunctors = !.EffectiveNumFunctors +
+            uint.det_from_int(one_or_more.length(OoMSectags))
     ).
+
+%---------------%
+
+:- func case_rep_detism(map(CaseRep, hlds_goal), CaseRep) = determinism.
+
+case_rep_detism(CaseRepGoalMap, CaseRep) = Detism :-
+    map.lookup(CaseRepGoalMap, CaseRep, Goal),
+    Goal = hlds_goal(_GoalExpr, GoalInfo),
+    Detism = goal_info_get_determinism(GoalInfo).
+
+%---------------%
 
 :- func main_ptag_in_ptag_case_group(ptag_case_group(CaseRep)) = uint8.
 
