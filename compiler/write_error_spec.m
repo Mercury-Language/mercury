@@ -593,8 +593,7 @@ should_this_msg_be_printed(LimitErrorContextsMap, TreatAsFirst, Indent,
         % about adding a nl, with or without an indent delta, to the end
         % of all error_msgs anyway, so this is not needed.
         OoMPieces = one_or_more(HeadPiece, TailPieces),
-        MsgPieces =
-            msg_pieces(MaybeContext, TreatAsFirst, Indent, OoMPieces),
+        MsgPieces = msg_pieces(MaybeContext, TreatAsFirst, Indent, OoMPieces),
         (
             MaybeContext = no,
             PrintOrNot = do_print(MsgPieces)
@@ -1042,53 +1041,50 @@ lookup_color_in_db(ColorDb, ColorName, MaybeColorSpec) :-
 
 add_word_to_cord(Word, !CaseChange, !WordsCord) :-
     (
-        !.CaseChange = do_not_change_case_next,
-        % Leave !CaseChange as it is.
-        cord.snoc(Word, !WordsCord)
-    ;
-        ( !.CaseChange = do_lower_case_next
-        ; !.CaseChange = do_upper_case_next
-        ),
+        Word = word_text(Text),
         (
-            Word = word_text(Text),
+            !.CaseChange = do_not_change_case_next,
+            % Leave !CaseChange as it is.
+            cord.snoc(Word, !WordsCord)
+        ;
+            !.CaseChange = do_lower_case_next,
             (
-                !.CaseChange = do_lower_case_next,
-                (
-                    Text = plain(Str),
-                    ChangedText = plain(uncapitalize_first(Str))
-                ;
-                    Text = prefix(Str),
-                    ChangedText = prefix(uncapitalize_first(Str))
-                ;
-                    Text = suffix(Str),
-                    ChangedText = suffix(uncapitalize_first(Str))
-                )
+                Text = plain(Str),
+                ChangedText = plain(uncapitalize_first(Str))
             ;
-                !.CaseChange = do_upper_case_next,
-                (
-                    Text = plain(Str),
-                    ChangedText = plain(capitalize_first(Str))
-                ;
-                    Text = prefix(Str),
-                    ChangedText = prefix(capitalize_first(Str))
-                ;
-                    Text = suffix(Str),
-                    ChangedText = suffix(capitalize_first(Str))
-                )
+                Text = prefix(Str),
+                ChangedText = prefix(uncapitalize_first(Str))
+            ;
+                Text = suffix(Str),
+                ChangedText = suffix(uncapitalize_first(Str))
             ),
-            ChangedWord = word_text(ChangedText),
+            cord.snoc(word_text(ChangedText), !WordsCord),
             % We have changed the case of the next word; do not change the word
             % *after* the next unless asked to so by another piece.
             !:CaseChange = do_not_change_case_next
         ;
-            ( Word = word_color(_)
-            ; Word = word_nl(_)
+            !.CaseChange = do_upper_case_next,
+            (
+                Text = plain(Str),
+                ChangedText = plain(capitalize_first(Str))
+            ;
+                Text = prefix(Str),
+                ChangedText = prefix(capitalize_first(Str))
+            ;
+                Text = suffix(Str),
+                ChangedText = suffix(capitalize_first(Str))
             ),
-            ChangedWord = Word
-            % We have not yet lowered the next word, so keep !CaseChange
-            % as it is.
+            cord.snoc(word_text(ChangedText), !WordsCord),
+            % We have changed the case of the next word; do not change the word
+            % *after* the next unless asked to so by another piece.
+            !:CaseChange = do_not_change_case_next
+        )
+    ;
+        ( Word = word_color(_)
+        ; Word = word_nl(_)
         ),
-        cord.snoc(ChangedWord, !WordsCord)
+        % We have not yet lowered the next word, so keep !CaseChange as it is.
+        cord.snoc(Word, !WordsCord)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1122,6 +1118,7 @@ add_word_to_cord(Word, !CaseChange, !WordsCord) :-
                 paren_status
             ).
 
+    % Note that "ssc" is short for "space, string or color".
 :- type ssc_unit
     --->    ssc_space
     ;       ssc_str(string)
@@ -1143,6 +1140,8 @@ convert_words_to_paragraphs(ColorDb, Words, Paras) :-
         ParasCord0, ParasCord),
     Paras = cord.list(ParasCord).
 
+    % Successive values of this type represent the stages of gluing together
+    % (in the general case) some prefixes, a plain word, and some suffixes.
 :- type in_work
     --->    empty_slate
     ;       in_work(
@@ -1152,8 +1151,16 @@ convert_words_to_paragraphs(ColorDb, Words, Paras) :-
 
 :- type is_in_work_text_prefix
     --->    in_work_text_is_plain
+            % The in-work text should be treated as a plain word.
+            % It may have had some prefixes and/or suffixes
+            % added to it already.
     ;       in_work_text_is_prefix
+            % The in-work text should be treated as a prefix.
+            % It consists of the concatenation of one or more prefixes.
     ;       in_work_text_is_pure_suffix.
+            % The in-work text is the concatenation of one or more suffixes
+            % that were not directly preceded by a plain word, or even by
+            % a prefix.
 
 :- pred convert_words_to_paragraphs_acc(color_db::in, list(word)::in,
     cord(ssc_unit)::in, in_work::in,
@@ -1186,25 +1193,23 @@ convert_words_to_paragraphs_acc(ColorDb, [Word | Words],
         % sequence would show up in the diff as a red herring.)
         (
             ColorChange = color_start(_),
-            Done0 = !.Done,
-            InWork0 = !.InWork,
             (
-                InWork0 = empty_slate,
-                ( if cord.is_non_empty(Done0) then
+                !.InWork = empty_slate,
+                ( if cord.is_non_empty(!.Done) then
                     cord.snoc(ssc_space, !Done)
                 else
                     true
                 )
             ;
-                InWork0 = in_work(_, InWorkTextKind),
+                !.InWork = in_work(_, InWorkTextKind0),
                 mark_in_work_as_done(!Done, !InWork),
                 (
-                    ( InWorkTextKind = in_work_text_is_plain
-                    ; InWorkTextKind = in_work_text_is_pure_suffix
+                    ( InWorkTextKind0 = in_work_text_is_plain
+                    ; InWorkTextKind0 = in_work_text_is_pure_suffix
                     ),
                     cord.snoc(ssc_space, !Done)
                 ;
-                    InWorkTextKind = in_work_text_is_prefix
+                    InWorkTextKind0 = in_work_text_is_prefix
                 )
             ),
             cord.snoc(ssc_color(ColorChange), !Done)
@@ -1280,6 +1285,23 @@ record_text_word(TextWord, Done0, Done, InWork0, InWork) :-
     ;
         InWork0 = in_work(InWorkText0, InWorkTextKind0),
         (
+            InWorkTextKind0 = in_work_text_is_prefix,
+            Done = Done0,
+            (
+                TextWord = plain(Text),
+                InWorkText = InWorkText0 ++ Text,
+                InWork = in_work(InWorkText, in_work_text_is_plain)
+            ;
+                TextWord = prefix(AdditionalPrefix),
+                InWorkText = InWorkText0 ++ AdditionalPrefix,
+                InWork = in_work(InWorkText, in_work_text_is_prefix)
+            ;
+                TextWord = suffix(Text),
+                InWorkText = InWorkText0 ++ Text,
+                % prefix + suffix is not PURE suffix
+                InWork = in_work(InWorkText, in_work_text_is_plain)
+            )
+        ;
             InWorkTextKind0 = in_work_text_is_plain,
             (
                 TextWord = plain(Text),
@@ -1320,23 +1342,6 @@ record_text_word(TextWord, Done0, Done, InWork0, InWork) :-
                 Done = Done0,
                 InWorkText = InWorkText0 ++ Suffix,
                 InWork = in_work(InWorkText, in_work_text_is_pure_suffix)
-            )
-        ;
-            InWorkTextKind0 = in_work_text_is_prefix,
-            Done = Done0,
-            (
-                TextWord = plain(Text),
-                InWorkText = InWorkText0 ++ Text,
-                InWork = in_work(InWorkText, in_work_text_is_plain)
-            ;
-                TextWord = prefix(AdditionalPrefix),
-                InWorkText = InWorkText0 ++ AdditionalPrefix,
-                InWork = in_work(InWorkText, in_work_text_is_prefix)
-            ;
-                TextWord = suffix(Text),
-                InWorkText = InWorkText0 ++ Text,
-                % prefix + suffix is not PURE suffix
-                InWork = in_work(InWorkText, in_work_text_is_plain)
             )
         )
     ).
@@ -1394,7 +1399,7 @@ add_space_if_needed(Done0, Done) :-
     ).
 
     % Return the ssc_units we have gathered so far for inclusion in a
-    % new paragraph, and set up  Done and InWork for starting work
+    % new paragraph, and set up Done and InWork for starting work
     % on the next paragraph.
     %
 :- pred end_work_on_one_paragraphs_ssc_units(list(ssc_unit)::out,
