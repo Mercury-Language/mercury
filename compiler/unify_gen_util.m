@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2022, 2024 The Mercury team.
+% Copyright (C) 2013-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,6 +17,7 @@
 :- import_module ll_backend.llds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module list.
 
@@ -80,7 +81,8 @@
     % Figure out in which direction the assignment goes
     % between a field of a term, and the corresponding argument.
     %
-:- pred compute_assign_direction(module_info::in, unify_mode::in, mer_type::in,
+:- pred compute_assign_direction(module_info::in, set_of_progvar::in,
+    prog_var::in, mer_type::in, unify_mode::in,
     assign_dir::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -373,7 +375,8 @@ maybe_cast_masked_off_rval(Fill, MaskedRval0, MaskedRval) :-
 
 %---------------------------------------------------------------------------%
 
-compute_assign_direction(ModuleInfo, ArgMode, ArgType, Dir) :-
+compute_assign_direction(ModuleInfo, NonLocals, RHSVar, ArgType, ArgMode,
+        Dir) :-
     % Any change here will require a corresponding change
     % in ml_compute_assign_direction.
     ArgMode = unify_modes_li_lf_ri_rf(LeftInitInst, LeftFinalInst,
@@ -394,7 +397,15 @@ compute_assign_direction(ModuleInfo, ArgMode, ArgType, Dir) :-
         ;
             RightTopMode = top_out,
             % Input - output: it is an assignment to the RHS.
-            Dir = assign_right
+            % Is the RHS variable used anywhere else?
+            ( if set_of_var.contains(NonLocals, RHSVar) then
+                % Yes it is.
+                Dir = assign_right
+            else
+                % No, it is not. Our caller therefore will NOT need
+                % to assign a value to the RHS variable.
+                Dir = assign_unused
+            )
         ;
             RightTopMode = top_unused,
             unexpected($pred, "some strange unify")

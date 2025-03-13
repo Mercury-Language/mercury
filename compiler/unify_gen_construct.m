@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2022, 2024 The Mercury team.
+% Copyright (C) 2013-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -81,6 +81,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 
 :- import_module bool.
@@ -262,19 +263,21 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
     ;
         ConsTag = no_tag,
         expect(unify(TakeAddr, []), $pred, "notag: take_addr"),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
         get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
         RHSType = variable_type(!.CI, RHSVar),
         % Information can flow to the left as well as to the right
         % in deconstructions.
-        generate_deconstruct_no_tag_unify_arg(LHSVar, RHSVar, RHSType, ArgMode,
-            Code, !.CI, !CLD)
+        generate_deconstruct_no_tag_unify_arg(NonLocals, LHSVar, RHSVar,
+            RHSType, ArgMode, Code, !.CI, !CLD)
     ;
         ConsTag = direct_arg_tag(Ptag),
         expect(unify(TakeAddr, []), $pred, "direct_arg_tag: take_addr"),
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
         get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
-        Type = variable_type(!.CI, RHSVar),
-        generate_direct_arg_construct(LHSVar, RHSVar, Ptag,
-            ArgMode, Type, Code, !.CI, !CLD)
+        RHSType = variable_type(!.CI, RHSVar),
+        generate_direct_arg_construct(NonLocals, LHSVar, RHSVar, RHSType,
+            Ptag, ArgMode, Code, !.CI, !CLD)
     ;
         ConsTag = closure_tag(PredId, ProcId),
         expect(unify(TakeAddr, []), $pred, "closure_tag has take_addr"),
@@ -692,31 +695,32 @@ generate_field_take_address_assigns([FieldAddr | FieldAddrs],
     % - the left-hand-side (the whole term), and
     % - the right-hand-side (the one argument).
     %
-:- pred generate_direct_arg_construct(prog_var::in, prog_var::in, ptag::in,
-    unify_mode::in, mer_type::in, llds_code::out,
-    code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred generate_direct_arg_construct(set_of_progvar::in,
+    prog_var::in, prog_var::in, mer_type::in, ptag::in, unify_mode::in,
+    llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_direct_arg_construct(Var, ArgVar, Ptag, ArgMode, Type, Code,
-        CI, !CLD) :-
+generate_direct_arg_construct(NonLocals, LHSVar, RHSVar, RHSVarType,
+        Ptag, ArgMode, Code, CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
-    compute_assign_direction(ModuleInfo, ArgMode, Type, Dir),
+    compute_assign_direction(ModuleInfo, NonLocals, RHSVar, RHSVarType,
+        ArgMode, Dir),
     (
         Dir = assign_right,
         unexpected($pred, "assign right in construction")
     ;
         Dir = assign_left,
         ( if Ptag = ptag(0u8) then
-            assign_var_to_var(Var, ArgVar, !CLD),
+            assign_var_to_var(LHSVar, RHSVar, !CLD),
             Code = empty
         else
-            assign_expr_to_var(Var, mkword(Ptag, var(ArgVar)), Code, !CLD)
+            assign_expr_to_var(LHSVar, mkword(Ptag, var(RHSVar)), Code, !CLD)
         )
     ;
         Dir = assign_unused,
         % Construct a tagged pointer to a pointer value
         % which is as yet unknown.
         % XXX This will have to change if we start to support aliasing.
-        assign_const_to_var(Var, mkword_hole(Ptag), CI, !CLD),
+        assign_const_to_var(LHSVar, mkword_hole(Ptag), CI, !CLD),
         Code = empty
     ).
 

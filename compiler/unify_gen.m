@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2020, 2022, 2024 The Mercury team.
+% Copyright (C) 2013-2020, 2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -101,8 +101,9 @@ generate_unification(CodeModel, Unification, GoalInfo, Code, !CI, !CLD) :-
     ;
         Unification = deconstruct(LHSVar, ConsId, RHSVars, ArgModes,
             CanFail, CanCGC),
-        generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
-            CanFail, CanCGC, Code, !CI, !CLD)
+        NonLocals = goal_info_get_nonlocals(GoalInfo),
+        generate_deconstruction_unification(NonLocals, LHSVar, ConsId,
+            RHSVars, ArgModes, CanFail, CanCGC, Code, !CI, !CLD)
     ;
         Unification = complicated_unify(_, _, _),
         % These should have been converted into calls to unification predicates

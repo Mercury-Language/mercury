@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2020, 2022, 2024 The Mercury team.
+% Copyright (C) 2013-2020, 2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,22 +17,23 @@
 :- import_module ll_backend.llds.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.set_of_var.
 
 :- import_module list.
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_deconstruction_unification(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(unify_mode)::in, can_fail::in, can_cgc::in,
-    llds_code::out, code_info::in, code_info::out,
+:- pred generate_deconstruction_unification(set_of_progvar::in,
+    prog_var::in, cons_id::in, list(prog_var)::in, list(unify_mode)::in,
+    can_fail::in, can_cgc::in, llds_code::out, code_info::in, code_info::out,
     code_loc_dep::in, code_loc_dep::out) is det.
 
 %---------------------------------------------------------------------------%
 
     % Generate a subunification between two [field | variable].
     %
-:- pred generate_deconstruct_no_tag_unify_arg(prog_var::in, prog_var::in,
-    mer_type::in, unify_mode::in, llds_code::out,
+:- pred generate_deconstruct_no_tag_unify_arg(set_of_progvar::in,
+    prog_var::in, prog_var::in, mer_type::in, unify_mode::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -68,16 +69,16 @@
 
 %---------------------------------------------------------------------------%
 
-generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
-        CanFail, CanCGC, Code, !CI, !CLD) :-
+generate_deconstruction_unification(NonLocals, LHSVar, ConsId,
+        RHSVars, ArgModes, CanFail, CanCGC, Code, !CI, !CLD) :-
     (
         CanFail = can_fail,
-        generate_semi_deconstruction(LHSVar, ConsId, RHSVars, ArgModes,
-            DeconstructCode, !CI, !CLD)
+        generate_semi_deconstruction(NonLocals, LHSVar, ConsId,
+            RHSVars, ArgModes, DeconstructCode, !CI, !CLD)
     ;
         CanFail = cannot_fail,
-        generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes,
-            DeconstructCode, !.CI, !CLD)
+        generate_det_deconstruction(NonLocals, LHSVar, ConsId,
+            RHSVars, ArgModes, DeconstructCode, !.CI, !CLD)
     ),
     (
         CanCGC = can_cgc,
@@ -110,12 +111,12 @@ generate_deconstruction_unification(LHSVar, ConsId, RHSVars, ArgModes,
     % A semideterministic deconstruction unification is tag-test
     % followed by a deterministic deconstruction.
     %
-:- pred generate_semi_deconstruction(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(unify_mode)::in,
+:- pred generate_semi_deconstruction(set_of_progvar::in, prog_var::in,
+    cons_id::in, list(prog_var)::in, list(unify_mode)::in,
     llds_code::out, code_info::in, code_info::out,
     code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_semi_deconstruction(LHSVar, ConsId, RHSVars, Modes, Code,
+generate_semi_deconstruction(NonLocals, LHSVar, ConsId, RHSVars, Modes, Code,
         !CI, !CLD) :-
     produce_variable(LHSVar, LHSVarCode, LHSVarRval, !CLD),
     get_var_table(!.CI, VarTable),
@@ -128,7 +129,7 @@ generate_semi_deconstruction(LHSVar, ConsId, RHSVars, Modes, Code,
     remember_position(!.CLD, AfterUnify),
     generate_failure(FailCode, !CI, !.CLD),
     reset_to_position(AfterUnify, !.CI, !:CLD),
-    generate_det_deconstruction(LHSVar, ConsId, RHSVars, Modes,
+    generate_det_deconstruction(NonLocals, LHSVar, ConsId, RHSVars, Modes,
         DetDeconstructCode, !.CI, !CLD),
     SuccessLabelCode = singleton(llds_instr(label(SuccLabel), "")),
     Code = LHSVarCode ++ TagTestCode ++ FailCode ++
@@ -144,11 +145,11 @@ generate_semi_deconstruction(LHSVar, ConsId, RHSVars, Modes, Code,
     % are generated eagerly (they _must_ be), but assignment unifications
     % are cached.
     %
-:- pred generate_det_deconstruction(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(unify_mode)::in,
+:- pred generate_det_deconstruction(set_of_progvar::in, prog_var::in,
+    cons_id::in, list(prog_var)::in, list(unify_mode)::in,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
+generate_det_deconstruction(NonLocals, LHSVar, ConsId, RHSVars, ArgModes, Code,
         CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
     ConsTag = cons_id_to_tag(ModuleInfo, ConsId),
@@ -198,14 +199,14 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
         ;
             IsDummy = is_not_dummy_type,
             RHSType = variable_type(CI, RHSVar),
-            generate_deconstruct_no_tag_unify_arg(LHSVar, RHSVar, RHSType,
-                ArgMode, Code, CI, !CLD)
+            generate_deconstruct_no_tag_unify_arg(NonLocals, LHSVar, RHSVar,
+                RHSType, ArgMode, Code, CI, !CLD)
         )
     ;
         ConsTag = direct_arg_tag(Ptag),
         get_notag_or_direct_arg_arg_mode(RHSVars, ArgModes, RHSVar, ArgMode),
-        generate_direct_arg_deconstruct(LHSVar, RHSVar, Ptag, ArgMode,
-            Code, CI, !CLD)
+        generate_direct_arg_deconstruct(NonLocals, LHSVar, RHSVar,
+            Ptag, ArgMode, Code, CI, !CLD)
     ;
         ConsTag = remote_args_tag(RemoteArgsTagInfo),
         LHSBaseRval = var(LHSVar),
@@ -219,15 +220,16 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
             ;
                 RemoteArgsTagInfo = remote_args_unshared(LHSPtag)
             ),
-            generate_deconstruct_unify_args(VarTable, LHSPtag, LHSBaseRval,
-                RHSVarsWidths, ArgModes, Code, CI, !CLD)
+            generate_deconstruct_unify_args(VarTable, NonLocals,
+                LHSPtag, LHSBaseRval, RHSVarsWidths, ArgModes, Code, CI, !CLD)
         ;
             RemoteArgsTagInfo = remote_args_shared(LHSPtag, RemoteSectag),
             RemoteSectag = remote_sectag(_SectagUint, SectagSize),
             (
                 SectagSize = rsectag_word,
-                generate_deconstruct_unify_args(VarTable, LHSPtag, LHSBaseRval,
-                    RHSVarsWidths, ArgModes, Code, CI, !CLD)
+                generate_deconstruct_unify_args(VarTable, NonLocals,
+                    LHSPtag, LHSBaseRval, RHSVarsWidths, ArgModes,
+                    Code, CI, !CLD)
             ;
                 SectagSize = rsectag_subword(_),
                 take_tagword_args(RHSVarsWidths, ArgModes,
@@ -238,9 +240,10 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
                 LHSSectagWordRval0 = lval(LHSSectagWordLval),
                 LHSSectagWordRval = LHSSectagWordRval0,
                 MaterializeTagwordCode = empty,
-                generate_deconstruct_tagword_unify_args(LHSSectagWordRval,
-                    TagwordRHSVarsWidths, TagwordArgModes, [LHSSectagWordLval],
-                    [], ToOrRvals, 0u, ToOrMask, AssignRightCode, CI, !CLD),
+                generate_deconstruct_tagword_unify_args(NonLocals,
+                    LHSSectagWordRval, TagwordRHSVarsWidths, TagwordArgModes,
+                    [LHSSectagWordLval], [], ToOrRvals, 0u, ToOrMask,
+                    AssignRightCode, CI, !CLD),
                 (
                     ToOrRvals = [],
                     TagwordCode = MaterializeTagwordCode ++ AssignRightCode
@@ -262,7 +265,8 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
                     TagwordCode = MaterializeTagwordCode ++
                         AssignRightCode ++ ToOrRvalCode ++ AssignLeftCode
                 ),
-                generate_deconstruct_unify_args(VarTable, LHSPtag, LHSBaseRval,
+                generate_deconstruct_unify_args(VarTable, NonLocals,
+                    LHSPtag, LHSBaseRval,
                     NonTagwordRHSVarsWidths, NonTagwordArgModes,
                     NonTagwordCode, CI, !CLD),
                 Code = TagwordCode ++ NonTagwordCode
@@ -276,7 +280,7 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
         ConsTag = local_args_tag(_),
         associate_cons_id_args_with_widths(ModuleInfo, ConsId,
             RHSVars, RHSVarsWidths),
-        generate_deconstruct_tagword_unify_args(var(LHSVar),
+        generate_deconstruct_tagword_unify_args(NonLocals, var(LHSVar),
             RHSVarsWidths, ArgModes, [], [], ToOrRvals, 0u, ToOrMask,
             AssignRightCode, CI, !CLD),
         (
@@ -296,35 +300,39 @@ generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Code,
     % Generate code to perform a list of deterministic subunifications
     % for the arguments of a construction.
     %
-:- pred generate_deconstruct_unify_args(var_table::in, ptag::in, rval::in,
-    list(arg_and_width(prog_var))::in, list(unify_mode)::in, llds_code::out,
+:- pred generate_deconstruct_unify_args(var_table::in, set_of_progvar::in,
+    ptag::in, rval::in, list(arg_and_width(prog_var))::in,
+    list(unify_mode)::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_deconstruct_unify_args(_, _, _, [], [], empty, _CI, !CLD).
-generate_deconstruct_unify_args(_, _, _, [], [_ | _], _, _, !CLD) :-
+generate_deconstruct_unify_args(_, _, _, _, [], [], empty, _CI, !CLD).
+generate_deconstruct_unify_args(_, _, _, _, [], [_ | _], _, _, !CLD) :-
     unexpected($pred, "length mismatch").
-generate_deconstruct_unify_args(_, _, _, [_ | _], [], _, _, !CLD) :-
+generate_deconstruct_unify_args(_, _, _, _, [_ | _], [], _, _, !CLD) :-
     unexpected($pred, "length mismatch").
-generate_deconstruct_unify_args(VarTable, LHSPtag, LHSBaseRval,
+generate_deconstruct_unify_args(VarTable, NonLocals, LHSPtag, LHSBaseRval,
         [RHSVarLHSWidth | RHSVarsLHSWidths], [ArgMode | ArgModes],
         Code, CI, !CLD) :-
     RHSVarLHSWidth = arg_and_width(RHSVar, LHSArgPosWidth),
     lookup_var_entry(VarTable, RHSVar, RHSVarEntry),
     RHSType = RHSVarEntry ^ vte_type,
-    generate_deconstruct_unify_arg(LHSPtag, LHSBaseRval, LHSArgPosWidth,
-        RHSVar, RHSType, ArgMode, HeadCode, CI, !CLD),
-    generate_deconstruct_unify_args(VarTable, LHSPtag, LHSBaseRval,
+    generate_deconstruct_unify_arg(NonLocals, LHSPtag,
+        LHSBaseRval, LHSArgPosWidth, RHSVar, RHSType, ArgMode,
+        HeadCode, CI, !CLD),
+    generate_deconstruct_unify_args(VarTable, NonLocals, LHSPtag, LHSBaseRval,
         RHSVarsLHSWidths, ArgModes, TailCode, CI, !CLD),
     Code = HeadCode ++ TailCode.
 
-:- pred generate_deconstruct_unify_arg(ptag::in, rval::in, arg_pos_width::in,
+:- pred generate_deconstruct_unify_arg(set_of_progvar::in, ptag::in,
+    rval::in, arg_pos_width::in,
     prog_var::in, mer_type::in, unify_mode::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_deconstruct_unify_arg(LHSPtag, LHSBaseRval, LHSArgPosWidth,
+generate_deconstruct_unify_arg(NonLocals, LHSPtag, LHSBaseRval, LHSArgPosWidth,
         RHSVar, RHSType, ArgMode, Code, CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
-    compute_assign_direction(ModuleInfo, ArgMode, RHSType, Dir),
+    compute_assign_direction(ModuleInfo, NonLocals, RHSVar, RHSType, ArgMode,
+        Dir),
     (
         Dir = assign_right,
         ( if variable_is_forward_live(!.CLD, RHSVar) then
@@ -344,10 +352,11 @@ generate_deconstruct_unify_arg(LHSPtag, LHSBaseRval, LHSArgPosWidth,
         Code = empty
     ).
 
-generate_deconstruct_no_tag_unify_arg(LHSVar, RHSVar, RHSType, ArgMode,
-        Code, CI, !CLD) :-
+generate_deconstruct_no_tag_unify_arg(NonLocals, LHSVar, RHSVar, RHSType,
+        ArgMode, Code, CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
-    compute_assign_direction(ModuleInfo, ArgMode, RHSType, Dir),
+    compute_assign_direction(ModuleInfo, NonLocals, RHSVar, RHSType,
+        ArgMode, Dir),
     (
         Dir = assign_right,
         ( if variable_is_forward_live(!.CLD, RHSVar) then
@@ -370,25 +379,25 @@ generate_deconstruct_no_tag_unify_arg(LHSVar, RHSVar, RHSType, ArgMode,
         Code = empty
     ).
 
-:- pred generate_deconstruct_tagword_unify_args(rval::in,
+:- pred generate_deconstruct_tagword_unify_args(set_of_progvar::in, rval::in,
     list(arg_and_width(prog_var))::in, list(unify_mode)::in, list(lval)::in,
     list(rval)::in, list(rval)::out, uint::in, uint::out,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_deconstruct_tagword_unify_args(_LHSRval, [], [], _,
+generate_deconstruct_tagword_unify_args(_, _, [], [], _,
         !ToOrRvals, !ToOrMask, empty, _CI, !CLD).
-generate_deconstruct_tagword_unify_args(_LHSRval, [], [_ | _], _,
+generate_deconstruct_tagword_unify_args(_, _, [], [_ | _], _,
         !ToOrRvals, !ToOrMask, _, _, !CLD) :-
     unexpected($pred, "length mismatch").
-generate_deconstruct_tagword_unify_args(_LHSRval, [_ | _], [], _,
+generate_deconstruct_tagword_unify_args(_, _, [_ | _], [], _,
         !ToOrRvals, !ToOrMask, _, _, !CLD) :-
     unexpected($pred, "length mismatch").
-generate_deconstruct_tagword_unify_args(LHSRval,
+generate_deconstruct_tagword_unify_args(NonLocals, LHSRval,
         [RHSVarWidth | RHSVarsWidths], [ArgMode | ArgModes], FieldLvals,
         !ToOrRvals, !ToOrMask, Code, CI, !CLD) :-
-    generate_deconstruct_tagword_unify_arg(LHSRval, RHSVarWidth,
+    generate_deconstruct_tagword_unify_arg(NonLocals, LHSRval, RHSVarWidth,
         ArgMode, FieldLvals, !ToOrRvals, !ToOrMask, HeadCode, CI, !CLD),
-    generate_deconstruct_tagword_unify_args(LHSRval, RHSVarsWidths,
+    generate_deconstruct_tagword_unify_args(NonLocals, LHSRval, RHSVarsWidths,
         ArgModes, FieldLvals, !ToOrRvals, !ToOrMask, TailCode, CI, !CLD),
     Code = HeadCode ++ TailCode.
 
@@ -397,19 +406,20 @@ generate_deconstruct_tagword_unify_args(LHSRval,
     % the assignments to the right, and update the state variables to help
     % our caller generate a single assignment to the left.
     %
-:- pred generate_deconstruct_tagword_unify_arg(rval::in,
+:- pred generate_deconstruct_tagword_unify_arg(set_of_progvar::in, rval::in,
     arg_and_width(prog_var)::in, unify_mode::in, list(lval)::in,
     list(rval)::in, list(rval)::out, uint::in, uint::out,
     llds_code::out, code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_deconstruct_tagword_unify_arg(LHSRval, RHSVarWidth, ArgMode,
+generate_deconstruct_tagword_unify_arg(NonLocals, LHSRval, RHSVarWidth, ArgMode,
         FieldLvals, !ToOrRvals, !ToOrMask, Code, CI, !CLD) :-
     RHSVarWidth = arg_and_width(RHSVar, ArgPosWidth),
     get_module_info(CI, ModuleInfo),
     get_var_table(CI, VarTable),
     lookup_var_entry(VarTable, RHSVar, RHSVarEntry),
     RHSType = RHSVarEntry ^ vte_type,
-    compute_assign_direction(ModuleInfo, ArgMode, RHSType, Dir),
+    compute_assign_direction(ModuleInfo, NonLocals, RHSVar, RHSType, ArgMode,
+        Dir),
     (
         Dir = assign_right,
         ( if variable_is_forward_live(!.CLD, RHSVar) then
@@ -649,15 +659,16 @@ take_tagword_args([VarWidth | VarsWidths], [ArgMode | ArgModes],
     % - the left-hand-side (the whole term), and
     % - the right-hand-side (the one argument).
     %
-:- pred generate_direct_arg_deconstruct(prog_var::in, prog_var::in,
-    ptag::in, unify_mode::in, llds_code::out,
+:- pred generate_direct_arg_deconstruct(set_of_progvar::in,
+    prog_var::in, prog_var::in, ptag::in, unify_mode::in, llds_code::out,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_direct_arg_deconstruct(LHSVar, RHSVar, Ptag, ArgMode, Code,
+generate_direct_arg_deconstruct(NonLocals, LHSVar, RHSVar, Ptag, ArgMode, Code,
         CI, !CLD) :-
     get_module_info(CI, ModuleInfo),
     RHSType = variable_type(CI, RHSVar),
-    compute_assign_direction(ModuleInfo, ArgMode, RHSType, Dir),
+    compute_assign_direction(ModuleInfo, NonLocals, RHSVar, RHSType, ArgMode,
+        Dir),
     (
         Dir = assign_right,
         ( if variable_is_forward_live(!.CLD, RHSVar) then
