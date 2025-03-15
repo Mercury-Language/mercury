@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
-% Copyright (C) 2013-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2013-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -11,8 +11,59 @@
 % Original author: stayl.
 % Author of current version: zs.
 %
-% Code to find the dependencies for a particular target,
-% e.g. module.c depends on module.m, import.int, etc.
+% This job of this module to find, for a given file T (a target file),
+% which *other* files Si you need in order to build T. Effectively,
+% given a file name T, it finds all the filename Si that occur on the
+% right hand sides of the (implicit) make rules whose left hand side
+% contains T:
+%
+%   T:        S1 S2 ...
+%
+% Note that we find only the *direct* prereqs of T. This means that
+% we return e.g. S1, but not the files needed to build S1 itself.
+% (Unless by some very unlikely chance, the files needed to build S1
+% are also direct prereqs of T itself.)
+%
+% We should consider returning effectively a tree, whose nodes are file names,
+% where the children of a node are the direct prereqs of the file represented
+% by that node, but which have their own prereqs as their children, all the way
+% down to the files that have *no* prerequisites. We could construct such
+% a tree for every target named on the "mmc --make" command line, yielding
+% effectively a forest.
+%
+% Having the full forest available before we start builting the first target
+% should allow us to increase parallelism by exploiting our knowledge of
+% the structure of Mercury dependencies. We could follow a strategy of
+% building files in a bottom up order, like a layercake:
+%
+% - building all needed .int3 files
+% - building all needed .int0 files
+% - building all needed .int and .int2 files
+% - building all needed .opt files (if enabled)
+% - building all needed .trans_opt files (if enabled)
+% - building all needed .c/.java/.cs files, depending on the target language
+% - building all needed .o/.jar/.dll files, depending on the target language
+% - building all needed executables or their equivalents
+%
+% In most of these stages, once all the files of the previous stages have been
+% built, it should be possible to build all files with the given suffix
+% in that stage in parallel. The exceptions are the creation of .int0 files
+% (where the creation of the .int0 files for e.g. module A and module A.B
+% may not be independent), and the creation of .trans_opt files (which must
+% respect the chosen order between those files.)
+%
+% In the absence of this global view, it is possible for e.g. an invocation
+% of "mmc --make -j8 prog" the decide to build A.c, B.c, C.c, D.c, E.c, F.c
+% and G.c at once, but if all of those modules import module H, then all
+% seven build processes may need to stall waiting for the completion of
+% the task that builds H.int. This cannot happen with the layercake approach.
+%
+% The one drawback of the layercake approach is that computing the full
+% prereq tree before building the first file may feel like a slow startup
+% tp the user. This is definitely a much smaller concern now (the 2020s)
+% than it was in the 1980s, but whether the startup delay it causes
+% is below the perceptibility threshold for typical size projects,
+% is something that can be answered only by empirical testing.
 %
 %---------------------------------------------------------------------------%
 

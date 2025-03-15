@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -368,11 +368,11 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
         ),
         % XXX There are four distinct paths through this if-then-else.
         % The first, second and fourth of these set FileToFind to a file name
-        % that has no dir name component (the first and second because
+        % that has no dir name component. (The first and second because
         % dir.split_name has removed the dir name component, the fourth
-        % because dir.split_name has not found any split name component.
-        % So why in hell does the third path set FileToFind to a file name
-        % that is *known* to have a directory name component?
+        % because dir.split_name has not found any split name component.)
+        % So why in hell does the third path set FileToFind to a file name,
+        % OptionsPathName, that is *known* to have a directory name component?
         % In the original form of this code, the OptionsPathName variable
         % had its original name, OptionsFile0, so it *could* have been
         % a typo, but if so, why hasn't it been caught?
@@ -573,6 +573,11 @@ include_context_msg(FileName - Context) = Msg :-
 
 %---------------------------------------------------------------------------%
 
+    % NOTE: It would be nice if we could just use io.read_file_as_string here,
+    % because it would avoid the need to check for error when reading in
+    % *every* *single* *character*. Unfortunately, we cannot, because
+    % that predicate does not work for stdin.
+    %
 :- pred read_options_lines(search_info::in, incl_stack::in,
     io.text_input_stream::in, file_name::in, int::in,
     env_optfile_variables::in, env_optfile_variables::out,
