@@ -31,7 +31,7 @@
 % a tree for every target named on the "mmc --make" command line, yielding
 % effectively a forest.
 %
-% Having the full forest available before we start builting the first target
+% Having the full forest available before we start building the first target
 % should allow us to increase parallelism by exploiting our knowledge of
 % the structure of Mercury dependencies. We could follow a strategy of
 % building files in a bottom up order, like a layercake:
@@ -60,7 +60,7 @@
 %
 % The one drawback of the layercake approach is that computing the full
 % prereq tree before building the first file may feel like a slow startup
-% tp the user. This is definitely a much smaller concern now (the 2020s)
+% to the user. This is definitely a much smaller concern now (the 2020s)
 % than it was in the 1980s, but whether the startup delay it causes
 % is below the perceptibility threshold for typical size projects,
 % is something that can be answered only by empirical testing.
