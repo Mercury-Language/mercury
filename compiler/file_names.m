@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2011 The University of Melbourne.
-% Copyright (C) 2023-2024 The Mercury team.
+% Copyright (C) 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1993,10 +1993,13 @@ make_selected_proposed_dir_name_gas(SubdirSetting, Grade, TargetArch,
         Dir = PrefixDir
     ;
         SubdirSetting = use_cur_ngs_subdir,
-        Dir = PrefixDir / "MercurySystem" / ExtSubDir
+        Components = [PrefixDir, "MercurySystem", ExtSubDir],
+        Dir = relative_path_name_from_components(Components)
     ;
         SubdirSetting = use_cur_ngs_gs_subdir,
-        Dir = PrefixDir / "MercurySystem" / ExtSubDir / Grade / TargetArch
+        Components = [PrefixDir, "MercurySystem", ExtSubDir,
+            Grade, TargetArch],
+        Dir = relative_path_name_from_components(Components)
     ).
 
 make_all_proposed_dir_names_gas(Grade, TargetArch, ExtSubDir,
@@ -2018,10 +2021,12 @@ make_selected_proposed_dir_name_gs(SubdirSetting, Grade, ExtSubDir, PrefixDir,
         Dir = PrefixDir
     ;
         SubdirSetting = use_cur_ngs_subdir,
-        Dir = PrefixDir / "MercurySystem" / ExtSubDir
+        Components = [PrefixDir, "MercurySystem", ExtSubDir],
+        Dir = relative_path_name_from_components(Components)
     ;
         SubdirSetting = use_cur_ngs_gs_subdir,
-        Dir = PrefixDir / "MercurySystem" / ExtSubDir / Grade
+        Components = [PrefixDir, "MercurySystem", ExtSubDir, Grade],
+        Dir = relative_path_name_from_components(Components)
     ).
 
 make_all_proposed_dir_names_gs(Grade, ExtSubDir, PrefixDir, Dirs) :-
@@ -2044,7 +2049,8 @@ make_selected_proposed_dir_name_ngs(SubdirSetting, ExtSubDir, PrefixDir,
         ( SubdirSetting = use_cur_ngs_subdir
         ; SubdirSetting = use_cur_ngs_gs_subdir
         ),
-        Dir = PrefixDir / "MercurySystem" / ExtSubDir
+        Components = [PrefixDir, "MercurySystem", ExtSubDir],
+        Dir = relative_path_name_from_components(Components)
     ).
 
 make_all_proposed_dir_names_ngs(ExtSubDir, PrefixDir, Dirs) :-
