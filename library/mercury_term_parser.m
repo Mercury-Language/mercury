@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2001, 2003-2008, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -317,47 +317,52 @@ check_for_errors(Parse, VarSet, Tokens, LeftOverTokens, Result) :-
 
 :- pred check_for_bad_token(token_list::in, maybe({string, int})::out) is det.
 
-check_for_bad_token(token_cons(Token, LineNum0, Tokens), MaybeBadTokenMsg) :-
+check_for_bad_token(TokenList, MaybeBadTokenMsg) :-
     (
-        Token = io_error(IO_Error),
-        io.error_message(IO_Error, IO_ErrorMessage),
-        string.format("I/O error: %s", [s(IO_ErrorMessage)], Message),
-        MaybeBadTokenMsg = yes({Message, LineNum0})
+        TokenList = token_cons(Token, LineNum0, Tokens),
+        (
+            Token = io_error(IO_Error),
+            io.error_message(IO_Error, IO_ErrorMessage),
+            string.format("I/O error: %s", [s(IO_ErrorMessage)], Message),
+            MaybeBadTokenMsg = yes({Message, LineNum0})
+        ;
+            Token = junk(Char),
+            char.to_int(Char, Code),
+            string.int_to_base_string(Code, 10, Decimal),
+            string.int_to_base_string(Code, 16, Hex),
+            string.format("Syntax error: illegal character 0x%s (%s) in input",
+                [s(Hex), s(Decimal)], Message),
+            MaybeBadTokenMsg = yes({Message, LineNum0})
+        ;
+            Token = error(ErrorMessage),
+            string.format("Syntax error: %s", [s(ErrorMessage)], Message),
+            MaybeBadTokenMsg = yes({Message, LineNum0})
+        ;
+            ( Token = name(_)
+            ; Token = variable(_)
+            ; Token = integer(_, _, _, _)
+            ; Token = float(_)
+            ; Token = string(_)
+            ; Token = implementation_defined(_)
+            ; Token = open
+            ; Token = open_ct
+            ; Token = close
+            ; Token = open_list
+            ; Token = close_list
+            ; Token = open_curly
+            ; Token = close_curly
+            ; Token = ht_sep
+            ; Token = comma
+            ; Token = end
+            ; Token = eof
+            ; Token = integer_dot(_)
+            ),
+            check_for_bad_token(Tokens, MaybeBadTokenMsg)
+        )
     ;
-        Token = junk(Char),
-        char.to_int(Char, Code),
-        string.int_to_base_string(Code, 10, Decimal),
-        string.int_to_base_string(Code, 16, Hex),
-        string.format("Syntax error: illegal character 0x%s (%s) in input",
-            [s(Hex), s(Decimal)], Message),
-        MaybeBadTokenMsg = yes({Message, LineNum0})
-    ;
-        Token = error(ErrorMessage),
-        string.format("Syntax error: %s", [s(ErrorMessage)], Message),
-        MaybeBadTokenMsg = yes({Message, LineNum0})
-    ;
-        ( Token = name(_)
-        ; Token = variable(_)
-        ; Token = integer(_, _, _, _)
-        ; Token = float(_)
-        ; Token = string(_)
-        ; Token = implementation_defined(_)
-        ; Token = open
-        ; Token = open_ct
-        ; Token = close
-        ; Token = open_list
-        ; Token = close_list
-        ; Token = open_curly
-        ; Token = close_curly
-        ; Token = ht_sep
-        ; Token = comma
-        ; Token = end
-        ; Token = eof
-        ; Token = integer_dot(_)
-        ),
-        check_for_bad_token(Tokens, MaybeBadTokenMsg)
+        TokenList = token_nil,
+        MaybeBadTokenMsg = no
     ).
-check_for_bad_token(token_nil, no).
 
 :- pred parse_whole_term(parse_result(term(T))::out,
     token_list::in, token_list::out,
