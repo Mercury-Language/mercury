@@ -89,7 +89,7 @@ read_call_graph(FileName, MaybeInitDeep, !IO) :-
                 % When we implement compression of data files, we would
                 % want to pipe the rest of the input stream through the
                 % decompression mechanism.
-                read_nodes(FileStream, InitDeep, MaybeInitDeep, !IO)
+                read_nodes_outer_loop(FileStream, InitDeep, MaybeInitDeep, !IO)
             ;
                 MaybeInitDeepHeader = error(Error),
                 MaybeInitDeep = error(Error)
@@ -270,19 +270,19 @@ deep_flag_all_fields_mask =
     deep_flag_compression_mask \/
     deep_flag_coverage_mask.
 
-:- pred read_nodes(io.binary_input_stream::in, initial_deep::in,
+:- pred read_nodes_outer_loop(io.binary_input_stream::in, initial_deep::in,
     maybe_error(initial_deep)::out, io::di, io::uo) is det.
 
-read_nodes(InputStream, InitDeep0, MaybeInitDeep, !IO) :-
-    % Wrap the real function inside another loop. This strategy ensures that
-    % this code works in grades that lack tail recursion, such as debugging
-    % grades. read_nodes_2 will return after it has exceeded a depth limit,
-    % unwinding its stack. The outer loop will continue as long as read_nodes_2
+read_nodes_outer_loop(InputStream, InitDeep0, MaybeInitDeep, !IO) :-
+    % We use two nested loops to ensure that this code works even in grades
+    % that lack tail recursion, such as debugging grades. read_nodes_inner_loop
+    % will return after it has processed 50000 nodes, unwinding its stack.
+    % This outer loop predicate will continue as long as read_nodes_inner_loop
     % thinks that more work remains.
     %
-    % The depth of 50,000 has been chosen as it is roughly less than half the
+    % The value of 50,000 has been chosen as it is roughly less than half the
     % stack depth that causes crashes during debugging.
-    read_nodes_2(InputStream, 50000, InitDeep0, MaybeInitDeep0, !IO),
+    read_nodes_inner_loop(InputStream, 50000, InitDeep0, MaybeInitDeep0, !IO),
     (
         MaybeInitDeep0 = init_deep_complete(InitDeep),
         MaybeInitDeep = ok(InitDeep)
@@ -291,7 +291,7 @@ read_nodes(InputStream, InitDeep0, MaybeInitDeep, !IO) :-
         MaybeInitDeep = error(Error)
     ;
         MaybeInitDeep0 = init_deep_incomplete(InitDeep1),
-        read_nodes(InputStream, InitDeep1, MaybeInitDeep, !IO)
+        read_nodes_outer_loop(InputStream, InitDeep1, MaybeInitDeep, !IO)
     ).
 
 :- type maybe_init_deep_complete
@@ -299,97 +299,94 @@ read_nodes(InputStream, InitDeep0, MaybeInitDeep, !IO) :-
     ;       init_deep_incomplete(initial_deep)
     ;       error(string).
 
-:- pred read_nodes_2(io.binary_input_stream::in, int::in, initial_deep::in,
-    maybe_init_deep_complete::out, io::di, io::uo) is det.
+:- pred read_nodes_inner_loop(io.binary_input_stream::in, int::in,
+    initial_deep::in, maybe_init_deep_complete::out, io::di, io::uo) is det.
 
-read_nodes_2(InputStream, Depth, !.InitDeep, MaybeInitDeep, !IO) :-
-    ( if Depth < 1 then
+read_nodes_inner_loop(InputStream, !.NumLeft,
+        !.InitDeep, MaybeInitDeep, !IO) :-
+    ( if !.NumLeft < 1 then
         MaybeInitDeep = init_deep_incomplete(!.InitDeep)
     else
-        read_nodes_3(InputStream, Depth - 1, !.InitDeep, MaybeInitDeep, !IO)
-    ).
-
-:- pred read_nodes_3(io.binary_input_stream::in, int::in, initial_deep::in,
-    maybe_init_deep_complete::out, io::di, io::uo) is det.
-
-read_nodes_3(InputStream, Depth, !.InitDeep, MaybeInitDeep, !IO) :-
-    ProfileStats = !.InitDeep ^ init_profile_stats,
-    read_byte(InputStream, MaybeByte, !IO),
-    (
-        MaybeByte = ok(Byte),
-        ( if is_next_item_token(Byte, NextItem) then
-            (
-                NextItem = deep_item_call_site_dynamic,
-                read_call_site_dynamic(InputStream, MaybeCSD, !IO),
+        !:NumLeft = !.NumLeft - 1,
+        ProfileStats = !.InitDeep ^ init_profile_stats,
+        read_byte(InputStream, MaybeByte, !IO),
+        (
+            MaybeByte = ok(Byte),
+            ( if is_next_item_token(Byte, NextItem) then
                 (
-                    MaybeCSD = ok2(CallSiteDynamic, CSDI),
-                    CSDs0 = !.InitDeep ^ init_call_site_dynamics,
-                    deep_insert(CSDs0, CSDI, CallSiteDynamic, CSDs),
-                    !InitDeep ^ init_call_site_dynamics := CSDs,
-                    read_nodes_2(InputStream, Depth, !.InitDeep,
-                        MaybeInitDeep, !IO)
+                    NextItem = deep_item_call_site_dynamic,
+                    read_call_site_dynamic(InputStream, MaybeCSD, !IO),
+                    (
+                        MaybeCSD = ok2(CallSiteDynamic, CSDI),
+                        CSDs0 = !.InitDeep ^ init_call_site_dynamics,
+                        deep_insert(CSDI, CallSiteDynamic, CSDs0, CSDs),
+                        !InitDeep ^ init_call_site_dynamics := CSDs,
+                        read_nodes_inner_loop(InputStream, !.NumLeft,
+                            !.InitDeep, MaybeInitDeep, !IO)
+                    ;
+                        MaybeCSD = error2(Error),
+                        MaybeInitDeep = error(Error)
+                    )
                 ;
-                    MaybeCSD = error2(Error),
-                    MaybeInitDeep = error(Error)
-                )
-            ;
-                NextItem = deep_item_proc_dynamic,
-                read_proc_dynamic(InputStream, ProfileStats, MaybePD, !IO),
-                (
-                    MaybePD = ok2(ProcDynamic, PDI),
-                    PDs0 = !.InitDeep ^ init_proc_dynamics,
-                    deep_insert(PDs0, PDI, ProcDynamic, PDs),
-                    !InitDeep ^ init_proc_dynamics := PDs,
-                    read_nodes_2(InputStream, Depth, !.InitDeep,
-                        MaybeInitDeep, !IO)
+                    NextItem = deep_item_proc_dynamic,
+                    read_proc_dynamic(InputStream, ProfileStats, MaybePD, !IO),
+                    (
+                        MaybePD = ok2(ProcDynamic, PDI),
+                        PDs0 = !.InitDeep ^ init_proc_dynamics,
+                        deep_insert(PDI, ProcDynamic, PDs0, PDs),
+                        !InitDeep ^ init_proc_dynamics := PDs,
+                        read_nodes_inner_loop(InputStream, !.NumLeft,
+                            !.InitDeep, MaybeInitDeep, !IO)
+                    ;
+                        MaybePD = error2(Error),
+                        MaybeInitDeep = error(Error)
+                    )
                 ;
-                    MaybePD = error2(Error),
-                    MaybeInitDeep = error(Error)
-                )
-            ;
-                NextItem = deep_item_call_site_static,
-                read_call_site_static(InputStream, MaybeCSS, !IO),
-                (
-                    MaybeCSS = ok({CallSiteStatic, CSSI}),
-                    CSSs0 = !.InitDeep ^ init_call_site_statics,
-                    deep_insert(CSSs0, CSSI, CallSiteStatic, CSSs),
-                    !InitDeep ^ init_call_site_statics := CSSs,
-                    read_nodes_2(InputStream, Depth, !.InitDeep,
-                        MaybeInitDeep, !IO)
+                    NextItem = deep_item_call_site_static,
+                    read_call_site_static(InputStream, MaybeCSS, !IO),
+                    (
+                        MaybeCSS = ok({CallSiteStatic, CSSI}),
+                        CSSs0 = !.InitDeep ^ init_call_site_statics,
+                        deep_insert(CSSI, CallSiteStatic, CSSs0, CSSs),
+                        !InitDeep ^ init_call_site_statics := CSSs,
+                        read_nodes_inner_loop(InputStream, !.NumLeft,
+                            !.InitDeep, MaybeInitDeep, !IO)
+                    ;
+                        MaybeCSS = error(Error),
+                        MaybeInitDeep = error(Error)
+                    )
                 ;
-                    MaybeCSS = error(Error),
-                    MaybeInitDeep = error(Error)
-                )
-            ;
-                NextItem = deep_item_proc_static,
-                read_proc_static(InputStream, ProfileStats, MaybePS, !IO),
-                (
-                    MaybePS = ok2(ProcStatic, PSI),
-                    PSs0 = !.InitDeep ^ init_proc_statics,
-                    deep_insert(PSs0, PSI, ProcStatic, PSs),
-                    !InitDeep ^ init_proc_statics := PSs,
-                    read_nodes_2(InputStream, Depth, !.InitDeep,
-                        MaybeInitDeep, !IO)
+                    NextItem = deep_item_proc_static,
+                    read_proc_static(InputStream, ProfileStats, MaybePS, !IO),
+                    (
+                        MaybePS = ok2(ProcStatic, PSI),
+                        PSs0 = !.InitDeep ^ init_proc_statics,
+                        deep_insert(PSI, ProcStatic, PSs0, PSs),
+                        !InitDeep ^ init_proc_statics := PSs,
+                        read_nodes_inner_loop(InputStream, !.NumLeft,
+                            !.InitDeep, MaybeInitDeep, !IO)
+                    ;
+                        MaybePS = error2(Error),
+                        MaybeInitDeep = error(Error)
+                    )
                 ;
-                    MaybePS = error2(Error),
-                    MaybeInitDeep = error(Error)
+                    NextItem = deep_item_end,
+                    MaybeInitDeep = init_deep_complete(!.InitDeep)
                 )
-            ;
-                NextItem = deep_item_end,
-                MaybeInitDeep = init_deep_complete(!.InitDeep)
+            else
+                string.format("unexpected token %d", [i(Byte)], Msg),
+                MaybeInitDeep = error(Msg)
             )
-        else
-            string.format("unexpected token %d", [i(Byte)], Msg),
+        ;
+            MaybeByte = eof,
+            % XXX: Shouldn't this be an error? Shouldn't we expect
+            % a deep_item_end token before eof?
+            MaybeInitDeep = init_deep_complete(!.InitDeep)
+        ;
+            MaybeByte = error(Error),
+            io.error_message(Error, Msg),
             MaybeInitDeep = error(Msg)
         )
-    ;
-        MaybeByte = eof,
-        % XXX: Shouldn't this be an error since there's a deep_item_end token?
-        MaybeInitDeep = init_deep_complete(!.InitDeep)
-    ;
-        MaybeByte = error(Error),
-        io.error_message(Error, Msg),
-        MaybeInitDeep = error(Msg)
     ).
 
 :- pred read_call_site_static(io.binary_input_stream::in,
@@ -1485,9 +1482,9 @@ read_deep_byte(InputStream, MaybeByte, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred deep_insert(array(T)::in, int::in, T::in, array(T)::out) is det.
+:- pred deep_insert(int::in, T::in, array(T)::in, array(T)::out) is det.
 
-deep_insert(A0, Ind, Item, A) :-
+deep_insert(Ind, Item, A0, A) :-
     array.max(A0, Max),
     ( if Ind > Max then
         error("deep_insert: array bounds violation")

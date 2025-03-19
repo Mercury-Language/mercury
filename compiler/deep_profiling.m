@@ -725,8 +725,7 @@ deep_prof_transform_normal_proc(ModuleInfo, PredProcId, !ProcInfo,
         generate_var_c_ptr("ProcStaticLayout", ProcStaticVar, !VarTable),
 
         proc_info_get_context(!.ProcInfo, Context),
-        FileName = term_context.context_file(Context),
-        LineNumber = term_context.context_line(Context),
+        Context = context(FileName, LineNumber),
 
         proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepProfInfo),
         extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo),
@@ -820,8 +819,7 @@ deep_prof_transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info_get_var_table(!.ProcInfo, VarTable0),
     generate_var_c_ptr("MiddleCSD", MiddleCSD, VarTable0, VarTable1),
 
-    Context = goal_info_get_context(GoalInfo0),
-    FileName = term_context.context_file(Context),
+    goal_info_get_context(GoalInfo0) = context(FileName, _LineNumber),
 
     proc_info_get_maybe_deep_profile_info(!.ProcInfo, MaybeDeepProfInfo),
     extract_deep_rec_info(MaybeDeepProfInfo, MaybeRecInfo),
@@ -1278,9 +1276,7 @@ deep_prof_wrap_call(Goal0, Goal, !DeepInfo) :-
     !DeepInfo ^ deep_var_table := VarTable1,
     !DeepInfo ^ deep_site_num_counter := SiteNumCounter,
 
-    Context = goal_info_get_context(GoalInfo0),
-    FileName0 = term_context.context_file(Context),
-    LineNumber = term_context.context_line(Context),
+    goal_info_get_context(GoalInfo0) = context(FileName0, LineNumber),
     compress_filename(!.DeepInfo, FileName0, FileName),
     CallKind = classify_call(ModuleInfo, GoalExpr0),
     (
@@ -1582,9 +1578,7 @@ deep_prof_wrap_foreign_code(Goal0, Goal, !DeepInfo) :-
     generate_deep_det_call(ModuleInfo, "prepare_for_callback", 1,
         [SiteNumVar], [], PrepareGoal),
 
-    Context = goal_info_get_context(GoalInfo0),
-    FileName0 = term_context.context_file(Context),
-    LineNumber = term_context.context_line(Context),
+    goal_info_get_context(GoalInfo0) = context(FileName0, LineNumber),
     compress_filename(!.DeepInfo, FileName0, FileName),
     CallSite = callback(FileName, LineNumber, GoalPath),
 
@@ -1622,30 +1616,26 @@ compress_filename(Deep, FileName0, FileName) :-
 classify_call(ModuleInfo, Expr) = Class :-
     (
         Expr = plain_call(PredId, ProcId, ArgVars, _, _, _),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        PredProcId = proc(PredId, ProcId),
         ( if
-            lookup_builtin_pred_proc_id(ModuleInfo,
-                mercury_public_builtin_module, "unify",
-                pf_predicate, user_arity(2), mode_no(0), PredId, _),
+            pred_info_get_module_name(PredInfo, PredModule),
+            PredModule = mercury_public_builtin_module,
+
+            pred_info_get_name(PredInfo, PredName),
+            UserArity = pred_info_user_arity(PredInfo),
+            ( PredName = "unify",                   UserArity = user_arity(2)
+            ; PredName = "compare",                 UserArity = user_arity(3)
+            ; PredName = "compare_representation",  UserArity = user_arity(3)
+            ),
+
+            pf_predicate = pred_info_is_pred_or_func(PredInfo),
+
             ArgVars = [TypeInfoVar | _]
         then
-            Class = call_class_special(proc(PredId, ProcId), TypeInfoVar)
-        else if
-            lookup_builtin_pred_proc_id(ModuleInfo,
-                mercury_public_builtin_module, "compare",
-                pf_predicate, user_arity(3), mode_no(0), PredId, _),
-            ArgVars = [TypeInfoVar | _]
-        then
-            Class = call_class_special(proc(PredId, ProcId), TypeInfoVar)
-        else if
-            lookup_builtin_pred_proc_id(ModuleInfo,
-                mercury_public_builtin_module,
-                "compare_representation", pf_predicate, user_arity(3),
-                mode_no(0), PredId, _),
-            ArgVars = [TypeInfoVar | _]
-        then
-            Class = call_class_special(proc(PredId, ProcId), TypeInfoVar)
+            Class = call_class_special(PredProcId, TypeInfoVar)
         else
-            Class = call_class_normal(proc(PredId, ProcId))
+            Class = call_class_normal(PredProcId)
         )
     ;
         Expr = generic_call(Generic, _, _, _, _),
