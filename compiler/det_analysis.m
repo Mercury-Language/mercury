@@ -103,8 +103,8 @@
 
 :- implementation.
 
-:- import_module check_hlds.det_infer_goal.
 :- import_module check_hlds.det_check_proc.
+:- import_module check_hlds.det_infer_goal.
 :- import_module check_hlds.det_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.

@@ -24,7 +24,6 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.deps_map.
-:- import_module parse_tree.file_names.
 :- import_module parse_tree.make_module_file_names.
 :- import_module parse_tree.module_baggage.
 
@@ -149,6 +148,7 @@
 :- implementation.
 
 :- import_module libs.options.
+:- import_module parse_tree.file_names.
 :- import_module parse_tree.get_dependencies.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.

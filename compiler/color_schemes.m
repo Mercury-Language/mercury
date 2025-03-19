@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2024 The Mercury Team.
+% Copyright (C) 2024-2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -23,10 +23,8 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 
-:- import_module getopt.
 :- import_module io.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 
 %---------------------------------------------------------------------------%
@@ -96,7 +94,9 @@
 
 :- import_module bool.
 :- import_module char.
+:- import_module getopt.
 :- import_module int.
+:- import_module map.
 :- import_module string.
 :- import_module uint8.
 

@@ -23,8 +23,6 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
-:- import_module list.
-
 %---------------------------------------------------------------------------%
 
 :- func report_unsatisfiable_constraints(type_error_clause_context,
@@ -64,6 +62,7 @@
 :- import_module parse_tree.prog_type_test.
 
 :- import_module bool.
+:- import_module list.
 :- import_module maybe.
 :- import_module require.
 :- import_module set.

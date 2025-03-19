@@ -19,8 +19,8 @@
 :- module check_hlds.det_check_goal.
 :- interface.
 
-:- import_module check_hlds.det_util.
 :- import_module check_hlds.det_check_switch.
+:- import_module check_hlds.det_util.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.

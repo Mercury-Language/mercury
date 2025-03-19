@@ -23,7 +23,6 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
-:- import_module list.
 :- import_module maybe.
 
 %---------------------------------------------------------------------------%
@@ -71,6 +70,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.error_type_util.
 
+:- import_module list.
 :- import_module pair.
 :- import_module require.
 :- import_module set.

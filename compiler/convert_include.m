@@ -22,7 +22,6 @@
 :- import_module parse_tree.prog_parse_tree.
 
 :- import_module list.
-:- import_module map.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
@@ -55,6 +54,7 @@
 
 :- import_module parse_tree.prog_data.
 
+:- import_module map.
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
