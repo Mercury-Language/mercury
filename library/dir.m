@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995,1997,1999-2000,2002-2012 The University of Melbourne.
-% Copyright (C) 2016-2023 The Mercury team.
+% Copyright (C) 2016-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -143,17 +143,17 @@
 
     % PathName = DirName / FileName
     %
-    % Given a directory name and a filename, return the pathname of that
-    % file in that directory.
+    % Given a directory name and a filename, return the pathname of
+    % that file in that directory.
     %
-    % Duplicate directory separators will not be introduced if
-    % DirName ends with a directory separator.
+    % If DirName ends with a directory separator, this function
+    % will not add a second one.
     %
-    % On Windows, a call such as `"C:"/"foo"' will return "C:foo".
+    % On Windows, a call such as `"C:" / "foo"' will return "C:foo".
     %
     % Throws an exception if FileName is an absolute path name.
-    % Throws an exception on Windows if FileName is a current
-    % drive relative path such as "C:".
+    % Throws an exception on Windows if FileName is a drive relative path
+    % such as "C:".
     %
 :- func string / string = string.
 :- func make_path_name(string, string) = string.
@@ -917,7 +917,7 @@ dotnet_path_name_is_absolute_2(_) :-
 
 %---------------------------------------------------------------------------%
 
-DirName0/FileName0 = PathName :-
+DirName0 / FileName0 = PathName :-
     ( if is_path_string_canonical(DirName0) then
         DirName = DirName0
     else
@@ -967,27 +967,19 @@ DirName0/FileName0 = PathName :-
 path_name_is_drive_letter_relative_path(FileName) :-
     % In the following, C stands for any drive letter, and xyz for
     % non-special characters that can occur in filenames.
-    ( if
-        path_name_starts_with_drive_letter_colon(FileName, ThirdCharIndex)
-    then
-        ( if
-            string.unsafe_index_next(FileName, ThirdCharIndex, _, ThirdChar)
-        then
-            ( if is_directory_separator(ThirdChar) then
-                % FileName is "C:\xyz", which is a drive letter path,
-                % but an absolute one.
-                fail
-            else
-                % FileName is "C:xyz", which is a drive letter relative path.
-                true
-            )
+    path_name_starts_with_drive_letter_colon(FileName, ThirdCharIndex),
+    ( if string.unsafe_index_next(FileName, ThirdCharIndex, _, ThirdChar) then
+        ( if is_directory_separator(ThirdChar) then
+            % FileName is "C:\xyz", which is a drive letter path,
+            % but an absolute one.
+            fail
         else
-            % FileName is "C:", which is a drive letter relative path.
+            % FileName is "C:xyz", which is a drive letter relative path.
             true
         )
     else
-        % FileName does not start with "C:".
-        fail
+        % FileName is "C:", which is a drive letter relative path.
+        true
     ).
 
 :- pred path_name_starts_with_drive_letter_colon(string::in, int::out)
@@ -1003,7 +995,7 @@ path_name_starts_with_drive_letter_colon(FileName, ThirdCharIndex) :-
     SecondChar = (':'),
     char.is_alpha(FirstChar).
 
-make_path_name(DirName, FileName) = DirName/FileName.
+make_path_name(DirName, FileName) = DirName / FileName.
 
 relative_path_name_from_components(Components) = PathName :-
     Sep = string.from_char(dir.directory_separator),
