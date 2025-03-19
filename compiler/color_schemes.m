@@ -380,11 +380,6 @@ convert_color_spec_options(OptionTable) = MaybeColorSpecs :-
 :- func convert_color_spec_option(string, string) = maybe1(maybe(color_spec)).
 
 convert_color_spec_option(OptionName, OptionValue) = MaybeMaybeColorSpec :-
-    % If/when we want to support 24-bit color, or indeed any form of
-    % color specification beyond 8-bit, we would do it here.
-    % (The options that specify colors are strings, not integers,
-    % specifically to make it possible to specify 24-bit colors
-    % as strings of the form "R-G-B".)
     ( if OptionValue = "" then
         MaybeColor = no,
         MaybeMaybeColorSpec = ok1(MaybeColor)
