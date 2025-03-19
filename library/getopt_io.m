@@ -717,6 +717,7 @@
 :- import_module cord.
 :- import_module pair.
 :- import_module require.
+:- import_module set_tree234.
 :- import_module solutions.
 :- import_module string.
 :- import_module unit.
@@ -999,8 +1000,19 @@ process_arguments(ShortOptionPred, LongOptionPred, SpecialHandler,
             NFSOptionValues, !MaybeIO),
         (
             MaybeExpandError = no_option_error,
+            % Inserting into a set is O(N) in the size of the set, while
+            % inserting into a set_tree234 is O(log N). This gain more than
+            % pays for the two conversions we do here.
+            %
+            % XXX We could eliminate the conversions at the cost of doing
+            % s/set/set_tree234/ on the arg list of the exported predicates
+            % that call us. Should we make this breaking change?
+            OptionsSet0 = set_tree234.sorted_list_to_set(
+                set.to_sorted_list(!.OptionsSet)),
             process_option_values(SpecialHandler, NFSOptionValues, MaybeError,
-                !OptionTable, !OptionsSet, !UserData)
+                !OptionTable, OptionsSet0, OptionsSet, !UserData),
+            !:OptionsSet = set.sorted_list_to_set(
+                set_tree234.to_sorted_list(OptionsSet))
         ;
             MaybeExpandError = found_option_error(_Error),
             MaybeError = MaybeExpandError
@@ -1034,74 +1046,81 @@ record_arguments_loop(ShortOptionPred, LongOptionPred, OptionTable,
         [Arg0 | Args0], NonOptionArgs, !RevOptionArgs,
         MaybeError, !OptionValues) :-
     ( if
-        Arg0 = "--"
+        % Test for an initial "--" just this once, instead of doing three
+        % times, one for each of the "--", "--no-.." and "--..."
+        % code paths below.
+        %
+        % We need the value of MaybeLongOption only on the third code path,
+        % but allocating memory for it on the first two code paths as well
+        % should not be a performance issue, since both of those paths
+        % are quite rare, the first structurally, the second statistically.
+        string.remove_prefix("--", Arg0, MaybeLongOption)
     then
-        % "--" terminates option processing
-        NonOptionArgs = Args0,
-        MaybeError = no_option_error
-    else if
-        string.append("--no-", LongOption, Arg0)
-    then
-        ( if LongOptionPred(LongOption, Flag) then
-            OptName = "--" ++ LongOption,
-            record_negated_option(OptionTable, Flag, OptName, NegMaybeError,
-                !OptionValues),
-            (
-                NegMaybeError = no_option_error,
-                !:RevOptionArgs = [Arg0 | !.RevOptionArgs],
-                record_arguments_loop(ShortOptionPred, LongOptionPred,
-                    OptionTable, Args0, NonOptionArgs, !RevOptionArgs,
-                    MaybeError, !OptionValues)
-            ;
-                NegMaybeError = found_option_error(_),
-                MaybeError = NegMaybeError,
-                NonOptionArgs = Args0
-            )
-        else
-            Error = unrecognized_option(Arg0),
-            MaybeError = found_option_error(Error),
-            NonOptionArgs = Args0
-        )
-    else if
-        string.append("--", LongOptionStr, Arg0)
-    then
-        ( if string.sub_string_search(LongOptionStr, "=", OptionLen) then
-            string.split(LongOptionStr, OptionLen, LongOption, EqualOptionArg),
-            ( if string.first_char(EqualOptionArg, '=', OptionArg) then
-                MaybeArg = option_arg(OptionArg)
-            else
-                error("bad split of --longoption=arg")
-            )
-        else
-            LongOption = LongOptionStr,
-            MaybeArg = no_option_arg
-        ),
-        OptName = "--" ++ LongOption,
-        ( if LongOptionPred(LongOption, Flag) then
-            ( if map.search(OptionTable, Flag, OptionData) then
-                !:RevOptionArgs = [Arg0 | !.RevOptionArgs],
-                record_unnegated_long_option(Flag, OptName,
-                    OptionData, MaybeArg, Args0, Args1, !RevOptionArgs,
-                    LongMaybeError, !OptionValues),
+        ( if MaybeLongOption = "" then
+            % "--" terminates option processing
+            NonOptionArgs = Args0,
+            MaybeError = no_option_error
+        else if string.remove_prefix("no-", MaybeLongOption, LongOption) then
+            ( if LongOptionPred(LongOption, Flag) then
+                OptName = "--" ++ LongOption,
+                record_negated_option(OptionTable, Flag, OptName,
+                    NegMaybeError, !OptionValues),
                 (
-                    LongMaybeError = no_option_error,
+                    NegMaybeError = no_option_error,
+                    !:RevOptionArgs = [Arg0 | !.RevOptionArgs],
                     record_arguments_loop(ShortOptionPred, LongOptionPred,
-                        OptionTable, Args1, NonOptionArgs, !RevOptionArgs,
+                        OptionTable, Args0, NonOptionArgs, !RevOptionArgs,
                         MaybeError, !OptionValues)
                 ;
-                    LongMaybeError = found_option_error(_),
-                    MaybeError = LongMaybeError,
+                    NegMaybeError = found_option_error(_),
+                    MaybeError = NegMaybeError,
                     NonOptionArgs = Args0
                 )
             else
-                Error = option_error(Flag, Arg0, unknown_type),
+                Error = unrecognized_option(Arg0),
                 MaybeError = found_option_error(Error),
                 NonOptionArgs = Args0
             )
         else
-            Error = unrecognized_option(OptName),
-            MaybeError = found_option_error(Error),
-            NonOptionArgs = Args0
+            ( if string.sub_string_search(MaybeLongOption, "=", OptionLen) then
+                string.split(MaybeLongOption, OptionLen,
+                    LongOption, EqualOptionArg),
+                ( if string.first_char(EqualOptionArg, '=', OptionArg) then
+                    MaybeArg = option_arg(OptionArg)
+                else
+                    error("bad split of --longoption=arg")
+                )
+            else
+                LongOption = MaybeLongOption,
+                MaybeArg = no_option_arg
+            ),
+            OptName = "--" ++ LongOption,
+            ( if LongOptionPred(LongOption, Flag) then
+                ( if map.search(OptionTable, Flag, OptionData) then
+                    !:RevOptionArgs = [Arg0 | !.RevOptionArgs],
+                    record_unnegated_long_option(Flag, OptName,
+                        OptionData, MaybeArg, Args0, Args1, !RevOptionArgs,
+                        LongMaybeError, !OptionValues),
+                    (
+                        LongMaybeError = no_option_error,
+                        record_arguments_loop(ShortOptionPred, LongOptionPred,
+                            OptionTable, Args1, NonOptionArgs, !RevOptionArgs,
+                            MaybeError, !OptionValues)
+                    ;
+                        LongMaybeError = found_option_error(_),
+                        MaybeError = LongMaybeError,
+                        NonOptionArgs = Args0
+                    )
+                else
+                    Error = option_error(Flag, Arg0, unknown_type),
+                    MaybeError = found_option_error(Error),
+                    NonOptionArgs = Args0
+                )
+            else
+                Error = unrecognized_option(OptName),
+                MaybeError = found_option_error(Error),
+                NonOptionArgs = Args0
+            )
         )
     else if
         string.first_char(Arg0, '-', ShortOptions),
@@ -1647,7 +1666,7 @@ expand_file_special_option(ShortOptionPred, LongOptionPred, OptionTable,
     list(option_value(OptionType))::in(list_skel(non_file_special)),
     maybe_option_error(OptionType)::out,
     option_table(OptionType)::in, option_table(OptionType)::out,
-    set(OptionType)::in, set(OptionType)::out,
+    set_tree234(OptionType)::in, set_tree234(OptionType)::out,
     UserDataType::in, UserDataType::out) is det.
 
 process_option_values(_SpecialHandler, [], no_option_error,
@@ -1685,7 +1704,7 @@ process_option_values(SpecialHandler, [OV | OVs], MaybeError,
             OV = ov_accumulating_reset(Flag, _OptName),
             map.set(Flag, accumulating([]), !OptionTable)
         ),
-        set.insert(Flag, !OptionsSet),
+        set_tree234.insert(Flag, !OptionsSet),
         process_option_values(SpecialHandler, OVs, MaybeError,
             !OptionTable, !OptionsSet, !UserData)
     ;
@@ -1705,7 +1724,7 @@ process_option_values(SpecialHandler, [OV | OVs], MaybeError,
             OV = ov_maybe_string_special(Flag, OptName, MaybeStringValue),
             OptionData = maybe_string(MaybeStringValue)
         ),
-        set.insert(Flag, !OptionsSet),
+        set_tree234.insert(Flag, !OptionsSet),
         process_special_option(SpecialHandler, Flag, OptName, OptionData,
             MaybeSpecialError, !OptionTable, !OptionsSet, !UserData),
         (
@@ -1723,7 +1742,7 @@ process_option_values(SpecialHandler, [OV | OVs], MaybeError,
     OptionType::in, string::in, special_data::in,
     maybe_option_error(OptionType)::out,
     option_table(OptionType)::in, option_table(OptionType)::out,
-    set(OptionType)::in, set(OptionType)::out,
+    set_tree234(OptionType)::in, set_tree234(OptionType)::out,
     UserDataType::in, UserDataType::out) is det.
 
 process_special_option(SpecialHandler, Flag, OptName, OptionData,
@@ -1758,7 +1777,8 @@ process_special_option(SpecialHandler, Flag, OptName, OptionData,
             TrackHandler(Flag, OptionData, !.OptionTable, Result0,
                 NewOptionsSet)
         then
-            set.union(NewOptionsSet, !OptionsSet),
+            NewOptions = set.to_sorted_list(NewOptionsSet),
+            set_tree234.insert_list(NewOptions, !OptionsSet),
             (
                 Result0 = ok(NewOptionTable),
                 !:OptionTable = NewOptionTable,
