@@ -1283,10 +1283,10 @@ lookup_mmc_module_options(Variables, ModuleName, Result) :-
 :- pred lookup_mmc_maybe_module_options(env_optfile_variables::in,
     env_optfile_var_class::in, maybe1(list(string))::out) is det.
 
-lookup_mmc_maybe_module_options(Variables, MaybeModuleName, Result) :-
+lookup_mmc_maybe_module_options(Variables, EnvOptFileVarClass, Result) :-
     VarIds = env_optfile_var_ids,
     list.map_foldl(
-        lookup_env_optfile_var(Variables, MaybeModuleName),
+        lookup_env_optfile_var(Variables, EnvOptFileVarClass),
         VarIds, VarIdsMaybeValues, [], Specs),
     (
         Specs = [],
@@ -1478,69 +1478,68 @@ var_to_mmc_spec(mercury_linkage) = option([], "--mercury-linkage").
 
 lookup_env_optfile_var(Variables, EnvOptFileVarClass, FlagsVarId,
         FlagsVarId - MaybeValues, !Specs) :-
+    % NOTE: The order in which we add these lists of flags are added together
+    % is important. In the resulting set the flags must occur in the order
+    %
+    % - first from DefaultFlagsResult
+    % - then from FlagsResult
+    % - then from ExtraFlagsResult
+    % - then from ModuleFlagsResult.
+    %
+    % Failing to maintain this order will result in the user being unable
+    % to override the default value of many of the compiler's options.
+    %
+    % On the other hand, there is no point in not exploiting the fact
+    % that for some values of EnvOptFileVarClass, some of those sources
+    % of flags do not exist.
     VarName = env_optfile_var_id_name(FlagsVarId),
     lookup_variable_words(Variables, "DEFAULT_" ++ VarName,
         DefaultFlagsResult),
     (
         EnvOptFileVarClass = default,
-        FlagsResult = var_result_unset,
-        ExtraFlagsResult = var_result_unset
+        Result = DefaultFlagsResult
     ;
-        ( EnvOptFileVarClass = module_specific(_)
-        ; EnvOptFileVarClass = non_module_specific
-        ),
+        EnvOptFileVarClass = non_module_specific,
         lookup_variable_words(Variables, VarName, FlagsResult),
-        lookup_variable_words(Variables, "EXTRA_" ++ VarName, ExtraFlagsResult)
-    ),
-    ( if
+        lookup_variable_words(Variables, "EXTRA_" ++ VarName,
+            ExtraFlagsResult),
+        Result =
+            DefaultFlagsResult  `combine_var_results`
+            FlagsResult         `combine_var_results`
+            ExtraFlagsResult
+    ;
         EnvOptFileVarClass = module_specific(ModuleName),
-        env_optfile_var_id_is_target_specific(FlagsVarId) = yes
-    then
-        ModuleFileNameBase = sym_name_to_string(ModuleName),
-        ModuleVarName = VarName ++ "-" ++ ModuleFileNameBase,
-        lookup_variable_words(Variables, ModuleVarName, ModuleFlagsResult)
-    else
-        ModuleFlagsResult = var_result_unset
+        lookup_variable_words(Variables, VarName, FlagsResult),
+        lookup_variable_words(Variables, "EXTRA_" ++ VarName,
+            ExtraFlagsResult),
+        TargetSpecific = env_optfile_var_id_is_target_specific(FlagsVarId),
+        (
+            TargetSpecific = yes,
+            ModuleFileNameBase = sym_name_to_string(ModuleName),
+            ModuleVarName = VarName ++ "-" ++ ModuleFileNameBase,
+            lookup_variable_words(Variables, ModuleVarName, ModuleFlagsResult),
+            Result =
+                DefaultFlagsResult  `combine_var_results`
+                FlagsResult         `combine_var_results`
+                ExtraFlagsResult    `combine_var_results`
+                ModuleFlagsResult
+        ;
+            TargetSpecific = no,
+            Result =
+                DefaultFlagsResult  `combine_var_results`
+                FlagsResult         `combine_var_results`
+                ExtraFlagsResult
+        )
     ),
 
-    % NOTE: The order in which these lists of flags are added together is
-    % important. In the resulting set the flags from DefaultFlagsResult
-    % *must* occur before those in FlagsResult, which in turn *must* occur
-    % before those in ExtraFlagsResult ... etc. Failing to maintain this order
-    % will result in the user being unable to override the default value
-    % of many of the compiler's options.
-
-    Result =
-        DefaultFlagsResult  `combine_var_results`
-        FlagsResult         `combine_var_results`
-        ExtraFlagsResult    `combine_var_results`
-        ModuleFlagsResult,
-
-    % Check the result is valid for the variable type.
+    % Check whether the result is valid for the variable type.
     (
         Result = var_result_unset,
         MaybeValues = no
     ;
         Result = var_result_set(Values),
         ( if FlagsVarId = ml_libs then
-            NotLibLPrefix =
-                ( pred(LibFlag::in) is semidet :-
-                    not string.prefix(LibFlag, "-l")
-                ),
-            BadLibs = list.filter(NotLibLPrefix, Values),
-            (
-                BadLibs = [],
-                MaybeValues = yes(Values)
-            ;
-                BadLibs = [_ | _],
-                MaybeValues = no,
-                Pieces = [words("Error: MLLIBS must contain only"),
-                    quote("-l"), words("options, found")] ++
-                    quote_list_to_pieces("and", BadLibs) ++ [suffix(".")],
-                Spec = no_ctxt_spec($pred, severity_error,
-                    phase_read_files, Pieces),
-                !:Specs = [Spec | !.Specs]
-            )
+            check_ml_libs_values(Values, MaybeValues, !Specs)
         else
             MaybeValues = yes(Values)
         )
@@ -1623,6 +1622,29 @@ lookup_variable_value(Variables, VarName, ValueChars, !UndefVarNames) :-
             ValueChars = [],
             set.insert(VarName, !UndefVarNames)
         )
+    ).
+
+:- pred check_ml_libs_values(list(string)::in, maybe(list(string))::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_ml_libs_values(Values, MaybeValues, !Specs) :-
+    NotLibLPrefix =
+        ( pred(LibFlag::in) is semidet :-
+            not string.prefix(LibFlag, "-l")
+        ),
+    BadLibs = list.filter(NotLibLPrefix, Values),
+    (
+        BadLibs = [],
+        MaybeValues = yes(Values)
+    ;
+        BadLibs = [_ | _],
+        MaybeValues = no,
+        Pieces = [words("Error: MLLIBS must contain only"),
+            quote("-l"), words("options, found")] ++
+            quote_list_to_pieces("and", BadLibs) ++ [suffix(".")],
+        Spec = no_ctxt_spec($pred, severity_error,
+            phase_read_files, Pieces),
+        !:Specs = [Spec | !.Specs]
     ).
 
 %---------------------------------------------------------------------------%
