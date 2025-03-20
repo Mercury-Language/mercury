@@ -248,13 +248,30 @@
 
 :- type call_site_static
     --->    call_site_static(
-                css_container :: proc_static_ptr,
-                               % The containing procedure.
-                css_slot_num  :: int,
-                               % Slot number in the containing procedure.
-                css_kind      :: call_site_kind_and_callee,
-                css_line_num  :: int,
-                css_goal_path :: reverse_goal_path
+                % The containing procedure.
+                css_container   :: proc_static_ptr,
+                % The slot # of this call site number in that procedure.
+                css_slot_num    :: int,
+
+                css_kind        :: call_site_kind_and_callee,
+
+                % The context of the call site.
+                %
+                % We used to store only the line number here, getting the
+                % file name from the file name of the procedure in the
+                % proc_static. This works *almost* all the time. However,
+                % in the presence of both intermodule optimization and
+                % inlining, it breaks down. This is because if for example
+                % line 123 in module_a.m contains a call to a predicate in
+                % module_b.m, which the compiler invocation for module_a
+                % gets from line 456 in module_b.opt, the file name in the
+                % proc_static will be module.m, but the line number will
+                % be 456. I (zs) can testify from experience that this is
+                % very confusing.
+                css_file_name   :: string,
+                css_line_num    :: int,
+
+                css_goal_path   :: reverse_goal_path
             ).
 
 %---------------------------------------------------------------------------%

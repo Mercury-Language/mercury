@@ -65,9 +65,9 @@ read_call_graph(FileName, MaybeInitDeep, !IO) :-
     io.open_binary_input(FileName, OpenResult, !IO),
     (
         OpenResult = ok(FileStream),
-        read_deep_id_string(FileStream, MaybeVersionNumber, !IO),
+        read_deep_id_string(FileStream, MaybeAcceptableVersion, !IO),
         (
-            MaybeVersionNumber = ok(_VersionNumber),
+            MaybeAcceptableVersion = ok(AcceptableVersion),
             % In the future, we could use different code to read in
             % profiling data files with different version numbers.
             io_combinator.maybe_error_sequence_11(
@@ -89,13 +89,14 @@ read_call_graph(FileName, MaybeInitDeep, !IO) :-
                 % When we implement compression of data files, we would
                 % want to pipe the rest of the input stream through the
                 % decompression mechanism.
-                read_nodes_outer_loop(FileStream, InitDeep, MaybeInitDeep, !IO)
+                read_nodes_outer_loop(FileStream, AcceptableVersion,
+                    InitDeep, MaybeInitDeep, !IO)
             ;
                 MaybeInitDeepHeader = error(Error),
                 MaybeInitDeep = error(Error)
             )
         ;
-            MaybeVersionNumber = error(Msg),
+            MaybeAcceptableVersion = error(Msg),
             MaybeInitDeep = error(Msg)
         ),
         io.close_binary_input(FileStream, !IO)
@@ -105,10 +106,14 @@ read_call_graph(FileName, MaybeInitDeep, !IO) :-
         MaybeInitDeep = error(Msg)
     ).
 
-:- pred read_deep_id_string(io.binary_input_stream::in, maybe_error(int)::out,
-    io::di, io::uo) is det.
+:- type acceptable_version
+    --->    av_8
+    ;       av_9.
 
-read_deep_id_string(InputStream, MaybeVersionNumber, !IO) :-
+:- pred read_deep_id_string(io.binary_input_stream::in,
+    maybe_error(acceptable_version)::out, io::di, io::uo) is det.
+
+read_deep_id_string(InputStream, MaybeAcceptableVersion, !IO) :-
     % The 10 extra chars should be ample for the version number and newline.
     FirstLineLenLimit = string.length(deep_id_prefix) + 10,
     read_line(InputStream, FirstLineLenLimit, MaybeLine, !IO),
@@ -119,17 +124,17 @@ read_deep_id_string(InputStream, MaybeVersionNumber, !IO) :-
             string.append(deep_id_prefix, Suffix, Line),
             string.to_int(Suffix, VersionNumber)
         then
-            ( if acceptable_version(VersionNumber) then
-                MaybeVersionNumber = ok(VersionNumber)
+            ( if acceptable_version(VersionNumber, AcceptableVersion) then
+                MaybeAcceptableVersion = ok(AcceptableVersion)
             else
-                MaybeVersionNumber = error("version number mismatch")
+                MaybeAcceptableVersion = error("version number mismatch")
             )
         else
-            MaybeVersionNumber = error("not a deep profiling data file")
+            MaybeAcceptableVersion = error("not a deep profiling data file")
         )
     ;
         MaybeLine = error(Error),
-        MaybeVersionNumber = error(Error)
+        MaybeAcceptableVersion = error(Error)
     ).
 
     % Return the constant prefix of the string identifying a file
@@ -144,9 +149,10 @@ read_deep_id_string(InputStream, MaybeVersionNumber, !IO) :-
 
 deep_id_prefix = "Mercury deep profiler data version ".
 
-:- pred acceptable_version(int::in) is semidet.
+:- pred acceptable_version(int::in, acceptable_version::out) is semidet.
 
-acceptable_version(8).
+acceptable_version(8, av_8).
+acceptable_version(9, av_9).
 
 :- pred maybe_init_deep(string::in, int::in, int::in, int::in, int::in,
     int::in, int::in, int::in, int::in, int::in, int::in,
@@ -173,7 +179,8 @@ maybe_init_deep(ProgName, FlagsInt, MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec,
             array.init(MaxCSS + 1,
                 call_site_static(
                     make_dummy_psptr, -1,
-                    normal_call_and_callee(make_dummy_psptr, ""), -1, rgp_nil
+                    normal_call_and_callee(make_dummy_psptr, ""),
+                    "", -1, rgp_nil
                 )),
             array.init(MaxPS + 1,
                 proc_static(dummy_proc_id, "", "", "", "", "", -1, no,
@@ -270,10 +277,11 @@ deep_flag_all_fields_mask =
     deep_flag_compression_mask \/
     deep_flag_coverage_mask.
 
-:- pred read_nodes_outer_loop(io.binary_input_stream::in, initial_deep::in,
-    maybe_error(initial_deep)::out, io::di, io::uo) is det.
+:- pred read_nodes_outer_loop(io.binary_input_stream::in,
+    acceptable_version::in, initial_deep::in, maybe_error(initial_deep)::out,
+    io::di, io::uo) is det.
 
-read_nodes_outer_loop(InputStream, InitDeep0, MaybeInitDeep, !IO) :-
+read_nodes_outer_loop(InputStream, Version, InitDeep0, MaybeInitDeep, !IO) :-
     % We use two nested loops to ensure that this code works even in grades
     % that lack tail recursion, such as debugging grades. read_nodes_inner_loop
     % will return after it has processed 50000 nodes, unwinding its stack.
@@ -282,7 +290,8 @@ read_nodes_outer_loop(InputStream, InitDeep0, MaybeInitDeep, !IO) :-
     %
     % The value of 50,000 has been chosen as it is roughly less than half the
     % stack depth that causes crashes during debugging.
-    read_nodes_inner_loop(InputStream, 50000, InitDeep0, MaybeInitDeep0, !IO),
+    read_nodes_inner_loop(InputStream, Version, 50000,
+        InitDeep0, MaybeInitDeep0, !IO),
     (
         MaybeInitDeep0 = init_deep_complete(InitDeep),
         MaybeInitDeep = ok(InitDeep)
@@ -291,7 +300,8 @@ read_nodes_outer_loop(InputStream, InitDeep0, MaybeInitDeep, !IO) :-
         MaybeInitDeep = error(Error)
     ;
         MaybeInitDeep0 = init_deep_incomplete(InitDeep1),
-        read_nodes_outer_loop(InputStream, InitDeep1, MaybeInitDeep, !IO)
+        read_nodes_outer_loop(InputStream, Version,
+            InitDeep1, MaybeInitDeep, !IO)
     ).
 
 :- type maybe_init_deep_complete
@@ -299,10 +309,11 @@ read_nodes_outer_loop(InputStream, InitDeep0, MaybeInitDeep, !IO) :-
     ;       init_deep_incomplete(initial_deep)
     ;       error(string).
 
-:- pred read_nodes_inner_loop(io.binary_input_stream::in, int::in,
+:- pred read_nodes_inner_loop(io.binary_input_stream::in,
+    acceptable_version::in, int::in,
     initial_deep::in, maybe_init_deep_complete::out, io::di, io::uo) is det.
 
-read_nodes_inner_loop(InputStream, !.NumLeft,
+read_nodes_inner_loop(InputStream, Version, !.NumLeft,
         !.InitDeep, MaybeInitDeep, !IO) :-
     ( if !.NumLeft < 1 then
         MaybeInitDeep = init_deep_incomplete(!.InitDeep)
@@ -321,7 +332,7 @@ read_nodes_inner_loop(InputStream, !.NumLeft,
                         CSDs0 = !.InitDeep ^ init_call_site_dynamics,
                         deep_insert(CSDI, CallSiteDynamic, CSDs0, CSDs),
                         !InitDeep ^ init_call_site_dynamics := CSDs,
-                        read_nodes_inner_loop(InputStream, !.NumLeft,
+                        read_nodes_inner_loop(InputStream, Version, !.NumLeft,
                             !.InitDeep, MaybeInitDeep, !IO)
                     ;
                         MaybeCSD = error2(Error),
@@ -335,7 +346,7 @@ read_nodes_inner_loop(InputStream, !.NumLeft,
                         PDs0 = !.InitDeep ^ init_proc_dynamics,
                         deep_insert(PDI, ProcDynamic, PDs0, PDs),
                         !InitDeep ^ init_proc_dynamics := PDs,
-                        read_nodes_inner_loop(InputStream, !.NumLeft,
+                        read_nodes_inner_loop(InputStream, Version, !.NumLeft,
                             !.InitDeep, MaybeInitDeep, !IO)
                     ;
                         MaybePD = error2(Error),
@@ -343,13 +354,13 @@ read_nodes_inner_loop(InputStream, !.NumLeft,
                     )
                 ;
                     NextItem = deep_item_call_site_static,
-                    read_call_site_static(InputStream, MaybeCSS, !IO),
+                    read_call_site_static(InputStream, Version, MaybeCSS, !IO),
                     (
                         MaybeCSS = ok({CallSiteStatic, CSSI}),
                         CSSs0 = !.InitDeep ^ init_call_site_statics,
                         deep_insert(CSSI, CallSiteStatic, CSSs0, CSSs),
                         !InitDeep ^ init_call_site_statics := CSSs,
-                        read_nodes_inner_loop(InputStream, !.NumLeft,
+                        read_nodes_inner_loop(InputStream, Version, !.NumLeft,
                             !.InitDeep, MaybeInitDeep, !IO)
                     ;
                         MaybeCSS = error(Error),
@@ -363,7 +374,7 @@ read_nodes_inner_loop(InputStream, !.NumLeft,
                         PSs0 = !.InitDeep ^ init_proc_statics,
                         deep_insert(PSI, ProcStatic, PSs0, PSs),
                         !InitDeep ^ init_proc_statics := PSs,
-                        read_nodes_inner_loop(InputStream, !.NumLeft,
+                        read_nodes_inner_loop(InputStream, Version, !.NumLeft,
                             !.InitDeep, MaybeInitDeep, !IO)
                     ;
                         MaybePS = error2(Error),
@@ -390,29 +401,54 @@ read_nodes_inner_loop(InputStream, !.NumLeft,
     ).
 
 :- pred read_call_site_static(io.binary_input_stream::in,
-    maybe_error({call_site_static, int})::out, io::di, io::uo) is det.
+    acceptable_version::in, maybe_error({call_site_static, int})::out,
+    io::di, io::uo) is det.
 
-read_call_site_static(InputStream, MaybeCSS, !IO) :-
+read_call_site_static(InputStream, Version, MaybeCSS, !IO) :-
     trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (
         io.output_stream(OutputStream, !TIO),
         io.write_string(OutputStream, "reading call_site_static.\n", !TIO)
     ),
-    io_combinator.maybe_error_sequence_4(
-        read_ptr(InputStream, css),
-        read_call_site_kind_and_callee(InputStream),
-        read_num(InputStream),
-        read_string(InputStream),
-        ( pred(CSSI0::in, Kind::in, LineNumber::in, GoalPathStr::in, CSS::out)
-                is det :-
-            DummyPSPtr = make_dummy_psptr,
-            DummySlotNum = -1,
-            rev_goal_path_from_string_det(GoalPathStr, RevGoalPath0),
-            rev_goal_path_remove_type_info(RevGoalPath0, RevGoalPath),
-            CallSiteStatic0 = call_site_static(DummyPSPtr,
-                DummySlotNum, Kind, LineNumber, RevGoalPath),
-            CSS = ok({CallSiteStatic0, CSSI0})
-        ),
-        MaybeCSS, !IO),
+    (
+        Version = av_8,
+        io_combinator.maybe_error_sequence_4(
+            read_ptr(InputStream, css),
+            read_call_site_kind_and_callee(InputStream),
+            read_num(InputStream),
+            read_string(InputStream),
+            ( pred(CSSI0::in, Kind::in, LineNumber::in,
+                    GoalPathStr::in, CSS::out) is det :-
+                DummyPSPtr = make_dummy_psptr,
+                DummySlotNum = -1,
+                rev_goal_path_from_string_det(GoalPathStr, RevGoalPath0),
+                rev_goal_path_remove_type_info(RevGoalPath0, RevGoalPath),
+                % Setting the FileName slot to "" asks users of this field
+                % to copy the file name in the call site's proc_static.
+                CallSiteStatic0 = call_site_static(DummyPSPtr,
+                    DummySlotNum, Kind, "", LineNumber, RevGoalPath),
+                CSS = ok({CallSiteStatic0, CSSI0})
+            ),
+            MaybeCSS, !IO)
+    ;
+        Version = av_9,
+        io_combinator.maybe_error_sequence_5(
+            read_ptr(InputStream, css),
+            read_call_site_kind_and_callee(InputStream),
+            read_string(InputStream),
+            read_num(InputStream),
+            read_string(InputStream),
+            ( pred(CSSI0::in, Kind::in, FileName::in, LineNumber::in,
+                    GoalPathStr::in, CSS::out) is det :-
+                DummyPSPtr = make_dummy_psptr,
+                DummySlotNum = -1,
+                rev_goal_path_from_string_det(GoalPathStr, RevGoalPath0),
+                rev_goal_path_remove_type_info(RevGoalPath0, RevGoalPath),
+                CallSiteStatic0 = call_site_static(DummyPSPtr,
+                    DummySlotNum, Kind, FileName, LineNumber, RevGoalPath),
+                CSS = ok({CallSiteStatic0, CSSI0})
+            ),
+            MaybeCSS, !IO)
+    ),
     (
         MaybeCSS = ok({CallSiteStatic, CSSI}),
         trace [compile_time(flag("debug_read_profdeep")), io(!TIO)] (

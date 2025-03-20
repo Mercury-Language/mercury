@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2001-2008, 2010-2011 The University of Melbourne.
-// Copyright (C) 2016, 2018-2019, 2022, 2024 The Mercury team.
+// Copyright (C) 2016, 2018-2019, 2022, 2024-2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // Deep profiling module
@@ -760,7 +760,7 @@ static void
 MR_write_out_deep_id_string(FILE *fp)
 {
     // Must be the same as deep_id_string in deep_profiler/read_profile.m
-    const char  *id_string = "Mercury deep profiler data version 8\n";
+    const char  *id_string = "Mercury deep profiler data version 9\n";
 
     fputs(id_string, fp);
 }
@@ -1239,7 +1239,7 @@ MR_write_out_call_site_static(FILE *fp, const MR_CallSiteStatic *css)
             MR_write_string(fp, "");
         }
     }
-    // XXX MR_css_file_name
+    MR_write_string(fp, css->MR_css_file_name);
     MR_write_num(fp, css->MR_css_line_number);
     MR_write_string(fp, css->MR_css_goal_path);
 }

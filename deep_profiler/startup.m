@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2002, 2004-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017, 2019, 2021, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017, 2019, 2021, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -454,13 +454,13 @@ record_css_containers_2(SlotNum, PSPtr, CSSPtrs, !CallSiteStatics) :-
         array.lookup(CSSPtrs, SlotNum, CSSPtr),
         lookup_call_site_statics(!.CallSiteStatics, CSSPtr, CSS0),
         CSS0 = call_site_static(PSPtr0, SlotNum0,
-            Kind, LineNumber, GoalPath),
+            Kind, FileName, LineNumber, GoalPath),
         require(unify(PSPtr0, proc_static_ptr(-1)),
             "record_css_containers_2: real proc_static_ptr"),
         require(unify(SlotNum0, -1),
             "record_css_containers_2: real slot_num"),
         CSS = call_site_static(PSPtr, SlotNum,
-            Kind, LineNumber, GoalPath),
+            Kind, FileName, LineNumber, GoalPath),
         update_call_site_statics(CSSPtr, CSS, !CallSiteStatics),
         record_css_containers_2(SlotNum - 1, PSPtr, CSSPtrs, !CallSiteStatics)
     else

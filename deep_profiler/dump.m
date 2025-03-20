@@ -512,13 +512,14 @@ dump_call_site_static(OutputStream, Restriction, Index, CallSiteStatic, !IO) :-
         )
     then
         CallSiteStatic = call_site_static(ContainerPSPtr, SlotNum,
-            Kind, LineNum, GoalPath),
+            Kind, File, LineNum, GoalPath),
         ContainerPSPtr = proc_static_ptr(ContainerPSI),
         GoalPathString = rev_goal_path_to_string(GoalPath),
         io.format(OutputStream, "css%d:\n", [i(Index)], !IO),
         io.format(OutputStream, "\tcss_container\t= ps%d\n",
             [i(ContainerPSI)], !IO),
         io.format(OutputStream, "\tcss_slot_num\t= <%d>\n", [i(SlotNum)], !IO),
+        io.format(OutputStream, "\tcss_file_name\t= <%s>\n", [s(File)], !IO),
         io.format(OutputStream, "\tcss_line_num\t= <%d>\n", [i(LineNum)], !IO),
         io.format(OutputStream, "\tcss_goal_path\t= <%s>\n",
             [s(GoalPathString)], !IO),

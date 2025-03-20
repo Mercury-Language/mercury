@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017 The Mercury team.
+% Copyright (C) 2014-2015, 2017, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1482,9 +1482,10 @@ create_call_site_static_dump_report(Deep, CSSPtr,
     ( if valid_call_site_static_ptr(Deep, CSSPtr) then
         deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
         CSS = call_site_static(ContainingPSPtr, SlotNumber, CallSiteKind,
-            LineNumber, GoalPath),
+            FileName, LineNumber, GoalPath),
         CallSiteStaticDumpInfo = call_site_static_dump_info(CSSPtr,
-            ContainingPSPtr, SlotNumber, LineNumber, GoalPath, CallSiteKind),
+            ContainingPSPtr, SlotNumber, FileName, LineNumber, GoalPath,
+            CallSiteKind),
         MaybeCallSiteStaticDumpInfo = ok(CallSiteStaticDumpInfo)
     else
         MaybeCallSiteStaticDumpInfo = error("invalid call_site_static index")
@@ -1539,10 +1540,14 @@ describe_proc(Deep, PSPtr) = ProcDesc :-
 describe_call_site(Deep, CSSPtr) = CallSiteDesc :-
     ( if valid_call_site_static_ptr(Deep, CSSPtr) then
         deep_lookup_call_site_statics(Deep, CSSPtr, CSS),
-        CSS = call_site_static(ContainingPSPtr, SlotNumber, Kind, LineNumber,
-            RevGoalPath),
+        CSS = call_site_static(ContainingPSPtr, SlotNumber, Kind,
+            FileNameCSS, LineNumber, RevGoalPath),
         deep_lookup_proc_statics(Deep, ContainingPSPtr, ContainingPS),
-        FileName = ContainingPS ^ ps_file_name,
+        ( if FileNameCSS = "" then
+            FileName = ContainingPS ^ ps_file_name
+        else
+            FileName = FileNameCSS
+        ),
         ModuleName = ContainingPS ^ ps_decl_module,
         UnQualRefinedName = ContainingPS ^ ps_uq_refined_id,
         QualRefinedName = ContainingPS ^ ps_q_refined_id,

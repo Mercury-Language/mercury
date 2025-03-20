@@ -520,6 +520,7 @@
                 cssdi_cssptr                :: call_site_static_ptr,
                 cssdi_containing_psptr      :: proc_static_ptr,
                 cssdi_slot_number           :: int,
+                cssdi_file_name             :: string,
                 cssdi_line_number           :: int,
                 cssdi_goal_path             :: reverse_goal_path,
                 cssdi_callee                :: call_site_kind_and_callee

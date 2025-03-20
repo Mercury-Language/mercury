@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2012 The University of Melbourne.
-% Copyright (C) 2015, 2017-2019, 2021-2022 The Mercury team.
+% Copyright (C) 2015, 2017-2019, 2021-2022, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2298,7 +2298,8 @@ format_coverage_point_row(CoveragePoint, Row) :-
 
 display_report_call_site_static_dump(Prefs, CallSiteStaticDumpInfo, Display) :-
     CallSiteStaticDumpInfo = call_site_static_dump_info(CSSPtr,
-        ContainingPSPtr, SlotNumber, LineNumber, GoalPath, CallSiteKind),
+        ContainingPSPtr, SlotNumber, FileName, LineNumber, GoalPath,
+        CallSiteKind),
     CSSPtr = call_site_static_ptr(CSSI),
     string.format("Dump of call_site_static %d", [i(CSSI)], Title),
     ContainingPSPtr = proc_static_ptr(ContainingPSI),
@@ -2337,6 +2338,7 @@ display_report_call_site_static_dump(Prefs, CallSiteStaticDumpInfo, Display) :-
     Values =
         [("Containing proc_static:" - td_l(ContainingProcStaticLink)),
         ("Slot number:"             - td_i(SlotNumber)),
+        ("File name:"               - td_s(FileName)),
         ("Line number:"             - td_i(LineNumber)),
         ("Goal path:"               - td_s(rev_goal_path_to_string(GoalPath))),
         ("Call site kind:"          - CallSiteKindData)],
