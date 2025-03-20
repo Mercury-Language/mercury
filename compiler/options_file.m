@@ -150,7 +150,6 @@
 :- import_module parse_tree.find_module.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module char.
 :- import_module dir.
 :- import_module getopt.
@@ -1284,15 +1283,13 @@ lookup_mmc_module_options(Variables, ModuleName, Result) :-
     env_optfile_var_class::in, maybe1(list(string))::out) is det.
 
 lookup_mmc_maybe_module_options(Variables, EnvOptFileVarClass, Result) :-
-    VarIds = env_optfile_var_ids,
-    list.map_foldl(
+    RevVarIds = list.reverse(env_optfile_var_ids),
+    list.foldl2(
         lookup_env_optfile_var(Variables, EnvOptFileVarClass),
-        VarIds, VarIdsMaybeValues, [], Specs),
+        RevVarIds, [], MmcOptions, [], Specs),
     (
         Specs = [],
-        MmcOptLists = list.map(convert_to_mmc_options, VarIdsMaybeValues),
-        list.condense(MmcOptLists, MmcOpts),
-        Result = ok1(MmcOpts)
+        Result = ok1(MmcOptions)
     ;
         Specs = [_ | _],
         % Returning error1 here is correct because all error_specs in Specs
@@ -1347,85 +1344,6 @@ env_optfile_var_ids =
     ml_objs, lib_dirs, ld_flags, ld_libflags,
     libraries, ml_libs, c2init_args, install_prefix].
 
-:- func env_optfile_var_id_name(env_optfile_var_id) = string.
-
-env_optfile_var_id_name(grade_flags) = "GRADEFLAGS".
-env_optfile_var_id_name(mmc_flags) = "MCFLAGS".
-env_optfile_var_id_name(c_flags) = "CFLAGS".
-env_optfile_var_id_name(gcc_flags) = "GCC_FLAGS".
-env_optfile_var_id_name(clang_flags) = "CLANG_FLAGS".
-env_optfile_var_id_name(msvc_flags) = "MSVC_FLAGS".
-env_optfile_var_id_name(java_flags) = "JAVACFLAGS".
-env_optfile_var_id_name(csharp_flags) = "CSCFLAGS".
-env_optfile_var_id_name(ml_objs) = "MLOBJS".
-env_optfile_var_id_name(ml_libs) = "MLLIBS".
-env_optfile_var_id_name(ld_flags) = "LDFLAGS".
-env_optfile_var_id_name(ld_libflags) = "LD_LIBFLAGS".
-env_optfile_var_id_name(c2init_args) = "C2INITARGS".
-env_optfile_var_id_name(libraries) = "LIBRARIES".
-env_optfile_var_id_name(lib_dirs) = "LIB_DIRS".
-env_optfile_var_id_name(lib_grades) = "LIBGRADES".
-env_optfile_var_id_name(lib_linkages) = "LIB_LINKAGES".
-env_optfile_var_id_name(install_prefix) = "INSTALL_PREFIX".
-env_optfile_var_id_name(stdlib_dir) = "MERCURY_STDLIB_DIR".
-env_optfile_var_id_name(config_dir) = "MERCURY_CONFIG_DIR".
-env_optfile_var_id_name(linkage) = "LINKAGE".
-env_optfile_var_id_name(mercury_linkage) = "MERCURY_LINKAGE".
-
-:- func env_optfile_var_id_is_target_specific(env_optfile_var_id) = bool.
-
-env_optfile_var_id_is_target_specific(VarId) = IsTargetSpecific :-
-    (
-        ( VarId = grade_flags
-        ; VarId = lib_dirs
-        ; VarId = stdlib_dir
-        ; VarId = config_dir
-        ),
-        IsTargetSpecific = no
-    ;
-        ( VarId = mmc_flags
-        ; VarId = c_flags
-        ; VarId = gcc_flags
-        ; VarId = clang_flags
-        ; VarId = msvc_flags
-        ; VarId = java_flags
-        ; VarId = csharp_flags
-        ; VarId = ml_objs
-        ; VarId = ml_libs
-        ; VarId = ld_flags
-        ; VarId = ld_libflags
-        ; VarId = c2init_args
-        ; VarId = libraries
-        ; VarId = install_prefix
-        ; VarId = lib_grades
-        ; VarId = lib_linkages
-        ; VarId = linkage
-        ; VarId = mercury_linkage
-        ),
-        IsTargetSpecific = yes
-    ).
-
-:- func convert_to_mmc_options(
-    pair(env_optfile_var_id, maybe(list(string)))) = list(string).
-
-convert_to_mmc_options(_ - no) = [].
-convert_to_mmc_options(VarId - yes(VarValue)) =
-    convert_to_mmc_options_with_value(VarId, VarValue).
-
-:- func convert_to_mmc_options_with_value(env_optfile_var_id, list(string))
-    = list(string).
-
-convert_to_mmc_options_with_value(VarId, VarValue) = OptionsStrings :-
-    MMCOptionSpec = var_to_mmc_spec(VarId),
-    (
-        MMCOptionSpec = mmc_flags,
-        OptionsStrings = VarValue
-    ;
-        MMCOptionSpec = option(InitialOptions, OptionName),
-        OptionsStrings = list.condense([InitialOptions |
-            list.map((func(Word) = [OptionName, Word]), VarValue)])
-    ).
-
 :- type mmc_option_spec
     --->    mmc_flags
             % The options can be passed directly to mmc.
@@ -1439,30 +1357,151 @@ convert_to_mmc_options_with_value(VarId, VarValue) = OptionsStrings :-
                 option_name         :: string
             ).
 
-:- func var_to_mmc_spec(env_optfile_var_id) = mmc_option_spec.
+:- type maybe_target_specific
+    --->    not_target_specific
+    ;       target_specific(string).
+            % The string should be VarNameMinus (see below).
 
-var_to_mmc_spec(grade_flags) = mmc_flags.
-var_to_mmc_spec(mmc_flags) = mmc_flags.
-var_to_mmc_spec(c_flags) = option([], "--cflag").
-var_to_mmc_spec(gcc_flags) = option([], "--gcc-flag").
-var_to_mmc_spec(clang_flags) = option([], "--clang-flag").
-var_to_mmc_spec(msvc_flags) = option([], "--msvc-flag").
-var_to_mmc_spec(java_flags) = option([], "--java-flag").
-var_to_mmc_spec(csharp_flags) = option([], "--csharp-flag").
-var_to_mmc_spec(ml_objs) = option([], "--link-object").
-var_to_mmc_spec(ml_libs) = mmc_flags.
-var_to_mmc_spec(ld_flags) = option([], "--ld-flag").
-var_to_mmc_spec(ld_libflags) = option([], "--ld-libflag").
-var_to_mmc_spec(c2init_args) = option([], "--init-file").
-var_to_mmc_spec(libraries) = option([], "--mercury-library").
-var_to_mmc_spec(lib_dirs) = option([], "--mercury-library-directory").
-var_to_mmc_spec(lib_grades) = option(["--no-libgrade"], "--libgrade").
-var_to_mmc_spec(lib_linkages) = option(["--no-lib-linkage"], "--lib-linkage").
-var_to_mmc_spec(install_prefix) = option([], "--install-prefix").
-var_to_mmc_spec(stdlib_dir) = option([], "--mercury-stdlib-dir").
-var_to_mmc_spec(config_dir) = option([], "--mercury-config-dir").
-var_to_mmc_spec(linkage) = option([], "--linkage").
-var_to_mmc_spec(mercury_linkage) = option([], "--mercury-linkage").
+:- pred get_env_optfile_var_info(env_optfile_var_id::in,
+    string::out, string::out, string::out,
+    maybe_target_specific::out, mmc_option_spec::out) is det.
+
+get_env_optfile_var_info(VarId, VarName, DefaultVarName, ExtraVarName,
+        TargetSpecific, OptionSpec) :-
+    (
+        VarId = grade_flags,
+        VarName = "GRADEFLAGS",
+        TargetSpecific = not_target_specific,
+        OptionSpec = mmc_flags
+    ;
+        VarId = mmc_flags,
+        VarName = "MCFLAGS",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = mmc_flags
+    ;
+        VarId = c_flags,
+        VarName = "CFLAGS",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--cflag")
+    ;
+        VarId = gcc_flags,
+        VarName = "GCC_FLAGS",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--gcc-flag")
+    ;
+        VarId = clang_flags,
+        VarName = "CLANG_FLAGS",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--clang-flag")
+    ;
+        VarId = msvc_flags,
+        VarName = "MSVC_FLAGS",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--msvc-flag")
+    ;
+        VarId = java_flags,
+        VarName = "JAVACFLAGS",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--java-flag")
+    ;
+        VarId = csharp_flags,
+        VarName = "CSCFLAGS",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--csharp-flag")
+    ;
+        VarId = ml_objs,
+        VarName = "MLOBJS",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--link-object")
+    ;
+        VarId = ml_libs,
+        VarName = "MLLIBS",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = mmc_flags
+    ;
+        VarId = ld_flags,
+        VarName = "LDFLAGS",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--ld-flag")
+    ;
+        VarId = ld_libflags,
+        VarName = "LD_LIBFLAGS",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--ld-libflag")
+    ;
+        VarId = c2init_args,
+        VarName = "C2INITARGS",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--init-file")
+    ;
+        VarId = libraries,
+        VarName = "LIBRARIES",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--mercury-library")
+    ;
+        VarId = lib_dirs,
+        VarName = "LIB_DIRS",
+        TargetSpecific = not_target_specific,
+        OptionSpec = option([], "--mercury-library-directory")
+    ;
+        VarId = lib_grades,
+        VarName = "LIBGRADES",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option(["--no-libgrade"], "--libgrade")
+    ;
+        VarId = lib_linkages,
+        VarName = "LIB_LINKAGES",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option(["--no-lib-linkage"], "--lib-linkage")
+    ;
+        VarId = install_prefix,
+        VarName = "INSTALL_PREFIX",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--install-prefix")
+    ;
+        VarId = stdlib_dir,
+        VarName = "MERCURY_STDLIB_DIR",
+        TargetSpecific = not_target_specific,
+        OptionSpec = option([], "--mercury-stdlib-dir")
+    ;
+        VarId = config_dir,
+        VarName = "MERCURY_CONFIG_DIR",
+        TargetSpecific = not_target_specific,
+        OptionSpec = option([], "--mercury-config-dir")
+    ;
+        VarId = linkage,
+        VarName = "LINKAGE",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--linkage")
+    ;
+        VarId = mercury_linkage,
+        VarName = "MERCURY_LINKAGE",
+        VarNameMinus = VarName ++ "-",
+        TargetSpecific = target_specific(VarNameMinus),
+        OptionSpec = option([], "--mercury-linkage")
+    ),
+    % XXX There should be an optimization to
+    % - move these two calls into each switch arm above, and then
+    % - evaluate all copies of both calls at compile time.
+    DefaultVarName = "DEFAULT_" ++ VarName,
+    ExtraVarName = "EXTRA_" ++ VarName.
 
 %---------------------------------------------------------------------------%
 
@@ -1473,11 +1512,11 @@ var_to_mmc_spec(mercury_linkage) = option([], "--mercury-linkage").
 
 :- pred lookup_env_optfile_var(env_optfile_variables::in,
     env_optfile_var_class::in, env_optfile_var_id::in,
-    pair(env_optfile_var_id, maybe(list(string)))::out,
+    list(string)::in, list(string)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 lookup_env_optfile_var(Variables, EnvOptFileVarClass, FlagsVarId,
-        FlagsVarId - MaybeValues, !Specs) :-
+        !AllMmcOptions, !Specs) :-
     % NOTE: The order in which we add these lists of flags are added together
     % is important. In the resulting set the flags must occur in the order
     %
@@ -1492,17 +1531,16 @@ lookup_env_optfile_var(Variables, EnvOptFileVarClass, FlagsVarId,
     % On the other hand, there is no point in not exploiting the fact
     % that for some values of EnvOptFileVarClass, some of those sources
     % of flags do not exist.
-    VarName = env_optfile_var_id_name(FlagsVarId),
-    lookup_variable_words(Variables, "DEFAULT_" ++ VarName,
-        DefaultFlagsResult),
+    get_env_optfile_var_info(FlagsVarId, VarName, DefaultVarName, ExtraVarName,
+        TargetSpecific, OptionSpec),
+    lookup_variable_words(Variables, DefaultVarName, DefaultFlagsResult),
     (
         EnvOptFileVarClass = default,
         Result = DefaultFlagsResult
     ;
         EnvOptFileVarClass = non_module_specific,
         lookup_variable_words(Variables, VarName, FlagsResult),
-        lookup_variable_words(Variables, "EXTRA_" ++ VarName,
-            ExtraFlagsResult),
+        lookup_variable_words(Variables, ExtraVarName, ExtraFlagsResult),
         Result =
             DefaultFlagsResult  `combine_var_results`
             FlagsResult         `combine_var_results`
@@ -1510,13 +1548,11 @@ lookup_env_optfile_var(Variables, EnvOptFileVarClass, FlagsVarId,
     ;
         EnvOptFileVarClass = module_specific(ModuleName),
         lookup_variable_words(Variables, VarName, FlagsResult),
-        lookup_variable_words(Variables, "EXTRA_" ++ VarName,
-            ExtraFlagsResult),
-        TargetSpecific = env_optfile_var_id_is_target_specific(FlagsVarId),
+        lookup_variable_words(Variables, ExtraVarName, ExtraFlagsResult),
         (
-            TargetSpecific = yes,
+            TargetSpecific = target_specific(VarNameMinus),
             ModuleFileNameBase = sym_name_to_string(ModuleName),
-            ModuleVarName = VarName ++ "-" ++ ModuleFileNameBase,
+            ModuleVarName = VarNameMinus ++ ModuleFileNameBase,
             lookup_variable_words(Variables, ModuleVarName, ModuleFlagsResult),
             Result =
                 DefaultFlagsResult  `combine_var_results`
@@ -1524,7 +1560,7 @@ lookup_env_optfile_var(Variables, EnvOptFileVarClass, FlagsVarId,
                 ExtraFlagsResult    `combine_var_results`
                 ModuleFlagsResult
         ;
-            TargetSpecific = no,
+            TargetSpecific = not_target_specific,
             Result =
                 DefaultFlagsResult  `combine_var_results`
                 FlagsResult         `combine_var_results`
@@ -1534,18 +1570,27 @@ lookup_env_optfile_var(Variables, EnvOptFileVarClass, FlagsVarId,
 
     % Check whether the result is valid for the variable type.
     (
-        Result = var_result_unset,
-        MaybeValues = no
+        Result = var_result_unset
+        % Leave !AllMmcOptions as is.
     ;
-        Result = var_result_set(Values),
+        Result = var_result_set(VarValues),
         ( if FlagsVarId = ml_libs then
-            check_ml_libs_values(Values, MaybeValues, !Specs)
+            check_ml_libs_values(VarValues, !Specs)
         else
-            MaybeValues = yes(Values)
-        )
+            true
+        ),
+        (
+            OptionSpec = mmc_flags,
+            MmcOptions = VarValues
+        ;
+            OptionSpec = option(InitialOptions, OptionName),
+            MmcOptions = list.condense([InitialOptions |
+                list.map((func(Word) = [OptionName, Word]), VarValues)])
+        ),
+        !:AllMmcOptions = MmcOptions ++ !.AllMmcOptions
     ;
         Result = var_result_error(OoMSpecs),
-        MaybeValues = no,
+        % Leave !AllMmcOptions as is.
         !:Specs = one_or_more_to_list(OoMSpecs) ++ !.Specs
     ).
 
@@ -1624,21 +1669,19 @@ lookup_variable_value(Variables, VarName, ValueChars, !UndefVarNames) :-
         )
     ).
 
-:- pred check_ml_libs_values(list(string)::in, maybe(list(string))::out,
+:- pred check_ml_libs_values(list(string)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_ml_libs_values(Values, MaybeValues, !Specs) :-
+check_ml_libs_values(VarValues, !Specs) :-
     NotLibLPrefix =
         ( pred(LibFlag::in) is semidet :-
             not string.prefix(LibFlag, "-l")
         ),
-    BadLibs = list.filter(NotLibLPrefix, Values),
+    BadLibs = list.filter(NotLibLPrefix, VarValues),
     (
-        BadLibs = [],
-        MaybeValues = yes(Values)
+        BadLibs = []
     ;
         BadLibs = [_ | _],
-        MaybeValues = no,
         Pieces = [words("Error: MLLIBS must contain only"),
             quote("-l"), words("options, found")] ++
             quote_list_to_pieces("and", BadLibs) ++ [suffix(".")],
