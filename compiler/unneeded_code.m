@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2014-2023 The Mercury team.
+% Copyright (C) 2014-2023, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -781,26 +781,25 @@ unneeded_process_goal_internal(UnneededInfo, Goal0, Goal,
 
 unneeded_process_conj(UnneededInfo, Goals0, Goals, InitInstMap, _FinalInstMap,
         !WhereNeededMap, !RefinedGoals, !Changed) :-
-    build_bracketed_conj(Goals0, InitInstMap, BracketedGoals),
-    list.reverse(BracketedGoals, RevBracketedGoals),
+    build_bracketed_rev_conj(Goals0, InitInstMap, [], RevBracketedGoals),
     unneeded_process_rev_bracketed_conj(UnneededInfo,
         RevBracketedGoals, RevGoals, !WhereNeededMap, !RefinedGoals, !Changed),
     list.reverse(RevGoals, Goals).
 
-:- pred build_bracketed_conj(list(hlds_goal)::in, instmap::in,
-    list(bracketed_goal)::out) is det.
+:- pred build_bracketed_rev_conj(list(hlds_goal)::in, instmap::in,
+    list(bracketed_goal)::in, list(bracketed_goal)::out) is det.
 
-build_bracketed_conj([], _, []).
-build_bracketed_conj([Goal | Goals], InitInstMap, BracketedGoals) :-
+build_bracketed_rev_conj([], _, !RevBracketedGoals).
+build_bracketed_rev_conj([Goal | Goals], InitInstMap, !RevBracketedGoals) :-
     ( if instmap_is_unreachable(InitInstMap) then
-        BracketedGoals = []
+        true
     else
         Goal = hlds_goal(_, GoalInfo),
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-        apply_instmap_delta(InstMapDelta, InitInstMap, FinalInstMap),
-        build_bracketed_conj(Goals, FinalInstMap, BracketedTail),
-        BracketedGoal = bracketed_goal(Goal, InitInstMap, FinalInstMap),
-        BracketedGoals = [BracketedGoal | BracketedTail]
+        apply_instmap_delta(InstMapDelta, InitInstMap, AfterGoalInstMap),
+        BracketedGoal = bracketed_goal(Goal, InitInstMap, AfterGoalInstMap),
+        !:RevBracketedGoals = [BracketedGoal | !.RevBracketedGoals],
+        build_bracketed_rev_conj(Goals, AfterGoalInstMap, !RevBracketedGoals)
     ).
 
 :- pred unneeded_process_rev_bracketed_conj(unneeded_code_info::in,
@@ -811,17 +810,18 @@ build_bracketed_conj([Goal | Goals], InitInstMap, BracketedGoals) :-
 unneeded_process_rev_bracketed_conj(_, [], [],
         !WhereNeededMap, !RefinedGoals, !Changed).
 unneeded_process_rev_bracketed_conj(UnneededInfo,
-        [BracketedGoal | BracketedGoals], Goals,
+        [RevBracketedGoal | RevBracketedGoals], RevGoals,
         !WhereNeededMap, !RefinedGoals, !Changed) :-
-    BracketedGoal = bracketed_goal(Goal0, InitInstMap, FinalInstMap),
-    unneeded_process_goal(UnneededInfo, Goal0, Goal1,
+    RevBracketedGoal = bracketed_goal(RevGoal0, InitInstMap, FinalInstMap),
+    unneeded_process_goal(UnneededInfo, RevGoal0, RevGoal1,
         InitInstMap, FinalInstMap, !WhereNeededMap, !RefinedGoals, !Changed),
-    unneeded_process_rev_bracketed_conj(UnneededInfo, BracketedGoals, Goals1,
+    unneeded_process_rev_bracketed_conj(UnneededInfo,
+        RevBracketedGoals, RevGoals1,
         !WhereNeededMap, !RefinedGoals, !Changed),
-    ( if Goal1 = hlds_goal(true_goal_expr, _) then
-        Goals = Goals1
+    ( if RevGoal1 = hlds_goal(conj(plain_conj, []), _) then
+        RevGoals = RevGoals1
     else
-        Goals = [Goal1 | Goals1]
+        RevGoals = [RevGoal1 | RevGoals1]
     ).
 
 %---------------------------------------------------------------------------%
