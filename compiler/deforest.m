@@ -804,7 +804,7 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
             Optimized0 = no
         )
     ),
-    Optimized = is_improvement_worth_while(!.PDInfo, Optimized0,
+    Optimized = is_any_improvement_worth_while(!.PDInfo, Optimized0,
         CostDelta0, SizeDelta0),
 
     % Clean up.
@@ -1039,35 +1039,52 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
     % - without any check at all the code size of the library only increases
     % ~10%.
     %
-:- func is_improvement_worth_while(pd_info, bool, int, int) = bool.
+:- func is_any_improvement_worth_while(pd_info, bool, int, int) = bool.
 
-is_improvement_worth_while(PDInfo, Optimized0, CostDelta0, SizeDelta0)
+is_any_improvement_worth_while(PDInfo, Optimized0, CostDelta0, SizeDelta0)
         = Optimized :-
-    pd_info_get_cost_delta(PDInfo, CostDelta),
-    pd_info_get_size_delta(PDInfo, SizeDelta),
-    Improvement = CostDelta - CostDelta0,
-    SizeDifference = SizeDelta - SizeDelta0,
-
-    pd_info_get_module_info(PDInfo, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_opt_tuple(Globals, OptTuple),
-    Factor = OptTuple ^ ot_deforestation_cost_factor,
-    ( if
+    (
+        Optimized0 = no,
+        Optimized = no
+    ;
         Optimized0 = yes,
-        check_deforestation_improvement(Factor, Improvement, SizeDifference)
-    then
-        Optimized = yes,
-        trace [io(!IO)] (
-            pd_debug_message(PDInfo, "is_improvement_worth_while",
-                "enough improvement: cost(%i) size(%i)\n",
-                [i(Improvement), i(SizeDifference)], !IO)
-        )
-    else
-        Optimized = no,
-        trace [io(!IO)] (
-            pd_debug_message(PDInfo, "is_improvement_worth_while",
-                "not enough improvement: cost(%i) size(%i)\n",
-                [i(Improvement), i(SizeDifference)], !IO)
+        pd_info_get_cost_delta(PDInfo, CostDelta),
+        pd_info_get_size_delta(PDInfo, SizeDelta),
+        CostDiff = CostDelta - CostDelta0,
+        SizeDiff = SizeDelta - SizeDelta0,
+
+        pd_info_get_module_info(PDInfo, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.get_opt_tuple(Globals, OptTuple),
+        Factor = OptTuple ^ ot_deforestation_cost_factor,
+        ( if
+            ( if SizeDiff =< 5 then
+                % For small increases in size, accept any amount of
+                % optimization.
+                CostDiff > 0
+            else
+                % Accept the optimization if we save the equivalent of
+                % a heap increment per 3 extra atomic goals. Note that
+                % folding is heavily rewarded by pd_cost.m, so this
+                % isn't very restrictive if a fold occurs.
+                ExpectedCostDiff = 1000 * cost_of_heap_incr * SizeDiff // 3,
+                FudgedCostDiff = CostDiff * Factor,
+                FudgedCostDiff >= ExpectedCostDiff
+            )
+        then
+            Optimized = yes,
+            trace [io(!IO)] (
+                pd_debug_message(PDInfo, "is_improvement_worth_while",
+                    "enough improvement: cost(%i) size(%i)\n",
+                    [i(CostDiff), i(SizeDiff)], !IO)
+            )
+        else
+            Optimized = no,
+            trace [io(!IO)] (
+                pd_debug_message(PDInfo, "is_improvement_worth_while",
+                    "not enough improvement: cost(%i) size(%i)\n",
+                    [i(CostDiff), i(SizeDiff)], !IO)
+            )
         )
     ).
 
@@ -1238,8 +1255,8 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
                 "unfolding first call\n", [], !IO)
         ),
 
-        unfold_call(no, no, PredId1, ProcId1, Args1, EarlierGoal, UnfoldedCall,
-            DidUnfold, !PDInfo),
+        maybe_unfold_call(no, no, PredId1, ProcId1, Args1, DidUnfold,
+            EarlierGoal, UnfoldedCall, !PDInfo),
         create_conj(UnfoldedCall, BetweenGoals, MaybeLaterGoal, NonLocals,
             DeforestGoal0),
         set_of_var.to_sorted_list(NonLocals, NonLocalsList),
@@ -1999,8 +2016,8 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
                     "Local termination check succeeded\n", [], !IO)
             ),
             pd_info_set_local_term_info(LocalTermInfo, !PDInfo),
-            unfold_call(yes, yes, PredId, ProcId,
-                Args, Goal0, Goal1, Optimized, !PDInfo),
+            maybe_unfold_call(yes, yes, PredId, ProcId, Args, Optimized,
+                Goal0, Goal1, !PDInfo),
             (
                 Optimized = yes,
                 deforest_goal(Goal1, Goal, !PDInfo)
@@ -2025,12 +2042,12 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
         Goal = Goal0
     ).
 
-:- pred unfold_call(bool::in, bool::in, pred_id::in, proc_id::in,
-    list(prog_var)::in, hlds_goal::in, hlds_goal::out, bool::out,
+:- pred maybe_unfold_call(bool::in, bool::in, pred_id::in, proc_id::in,
+    list(prog_var)::in, bool::out, hlds_goal::in, hlds_goal::out,
     pd_info::in, pd_info::out) is det.
 
-unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
-        Goal0, Goal, Optimized, !PDInfo) :-
+maybe_unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
+        Optimized, Goal0, Goal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
@@ -2050,143 +2067,163 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
             NumVars < VarsThreshold
         )
     then
-        Goal0 = hlds_goal(_, GoalInfo0),
-        CallContext = goal_info_get_context(GoalInfo0),
-        pd_info_get_pred_info(!.PDInfo, PredInfo0),
-        module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-            CalledPredInfo, CalledProcInfo),
-        pred_info_get_typevarset(PredInfo0, TypeVarSet0),
-        pred_info_get_univ_quant_tvars(PredInfo0, UnivQVars),
-        proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps0),
-        inlining.do_inline_call(ModuleInfo, UnivQVars, CallContext,
-            CalledPredInfo, CalledProcInfo, Args, Goal1,
-            TypeVarSet0, TypeVarSet, VarTable0, VarTable,
-            RttiVarMaps0, RttiVarMaps),
-        pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo),
-        proc_info_get_has_parallel_conj(CalledProcInfo, CalledHasParallelConj),
-
-        proc_info_set_var_table(VarTable, ProcInfo0, ProcInfo1),
-        proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo1, ProcInfo2),
-        (
-            CalledHasParallelConj = has_parallel_conj,
-            proc_info_set_has_parallel_conj(has_parallel_conj,
-                ProcInfo2, ProcInfo)
-        ;
-            CalledHasParallelConj = has_no_parallel_conj,
-            % Leave the has_parallel_conj field of the proc_info as it is.
-            ProcInfo = ProcInfo2
-        ),
-
-        pd_info_set_pred_info(PredInfo, !PDInfo),
-        pd_info_set_proc_info(ProcInfo, !PDInfo),
-
-        goal_cost(Goal1, OriginalCost),
-        pd_info_get_cost_delta(!.PDInfo, CostDelta0),
-        pd_info_get_size_delta(!.PDInfo, SizeDelta0),
-        pd_info_get_changed(!.PDInfo, Changed0),
-
-        % Update the quantification if not all the output arguments are used.
-        Goal1 = hlds_goal(_, GoalInfo1),
-        NonLocals1 = goal_info_get_nonlocals(GoalInfo1),
-        set_of_var.list_to_set(Args, NonLocals),
-        ( if set_of_var.equal(NonLocals1, NonLocals) then
-            Goal2 = Goal1
-        else
-            pd_requantify_goal(NonLocals, Goal1, Goal2, !PDInfo)
-        ),
-
-        % Push the extra information from the call through the goal.
-        trace [io(!IO)] (
-            pd_debug_message(!.PDInfo, "unfold_call",
-                "running unique modes\n", [], !IO)
-        ),
-        proc_info_arglives(ModuleInfo, CalledProcInfo, ArgLives),
-        get_live_vars(Args, ArgLives, LiveVars0),
-        set_of_var.list_to_set(LiveVars0, LiveVars1),
-        set_of_var.intersect(NonLocals, LiveVars1, LiveVars),
-        pd_util.unique_modecheck_goal_live_vars(LiveVars, Goal2, Goal3, Errors,
-            !PDInfo),
-
-        (
-            Errors = [],
-            Optimized0 = yes
-        ;
-            Errors = [_ | _],
-            % This can happen because common.m does not maintain unique mode
-            % correctness. This should eventually be fixed.
-            Optimized0 = no
-        ),
-
-        trace [io(!IO)] (
-            pd_debug_message(!.PDInfo, "unfold_call",
-                "running simplify\n", [], !IO)
-        ),
-        find_simplify_tasks(Globals, do_not_generate_warnings, SimplifyTasks),
-        pd_util.pd_simplify_goal("unfold_call", SimplifyTasks,
-            Goal3, Goal4, !PDInfo),
-
-        pd_info_get_cost_delta(!.PDInfo, CostDelta1),
-        CostDelta = CostDelta1 - CostDelta0,
-        goal_size(Goal4, GoalSize),
-        SizeDelta = GoalSize - cost_of_call,
-        Factor = OptTuple ^ ot_deforestation_cost_factor,
-        ( if
-            Optimized0 = yes,
-            (
-                CheckImprovement = no
-            ;
-                CheckImprovement = yes,
-                % XXX Should this test Goal4? zs
-                ( if is_simple_goal(Goal3) then
-                    true
-                else
-                    check_improvement(Factor, GoalSize, OriginalCost,
-                        CostDelta)
-                )
-            )
-        then
-            Goal = Goal4,
-            trace [io(!IO)] (
-                pd_debug_message(!.PDInfo, "unfold_call",
-                    "inlined: cost(%i) size(%i)\n",
-                    [i(CostDelta), i(SizeDelta)], !IO)
-            ),
-            pd_info_incr_size_delta(SizeDelta, !PDInfo),
-            pd_info_set_changed(yes, !PDInfo),
-            Det0 = goal_info_get_determinism(GoalInfo0),
-            Goal = hlds_goal(_, GoalInfo),
-            Det = goal_info_get_determinism(GoalInfo),
-
-            % Rerun determinism analysis later if the determinism of any of
-            % the sub-goals changes - this avoids problems with inlining
-            % erroneous predicates.
-            ( if Det = Det0 then
-                true
-            else
-                pd_info_set_rerun_det(yes, !PDInfo)
-            ),
-
-            Optimized = yes
-        else
-            trace [io(!IO)] (
-                pd_debug_message(!.PDInfo, "unfold_call",
-                    "not enough improvement - " ++
-                    "not inlining: cost(%i) size(%i)\n",
-                    [i(CostDelta), i(SizeDelta)], !IO)
-            ),
-            pd_info_set_pred_info(PredInfo0, !PDInfo),
-            pd_info_set_proc_info(ProcInfo0, !PDInfo),
-            pd_info_set_size_delta(SizeDelta0, !PDInfo),
-            pd_info_set_cost_delta(CostDelta0, !PDInfo),
-            pd_info_set_changed(Changed0, !PDInfo),
-            Goal = Goal0,
-            Optimized = no
-        )
+        try_to_unfold_call(ModuleInfo, Globals, VarTable0, CheckImprovement,
+            PredId, ProcId, ProcInfo0, Args, Optimized, Goal0, Goal, !PDInfo)
     else
         trace [io(!IO)] (
-            pd_debug_message(!.PDInfo, "unfold_call",
+            pd_debug_message(!.PDInfo, "maybe_unfold_call",
                 "too many variables - not inlining\n", [], !IO)
         ),
+        Goal = Goal0,
+        Optimized = no
+    ).
+
+:- pred try_to_unfold_call(module_info::in, globals::in, var_table::in,
+    bool::in, pred_id::in, proc_id::in, proc_info::in, list(prog_var)::in,
+    bool::out, hlds_goal::in, hlds_goal::out,
+    pd_info::in, pd_info::out) is det.
+
+try_to_unfold_call(ModuleInfo, Globals, VarTable0, CheckImprovement,
+        PredId, ProcId, ProcInfo0, Args, Optimized, Goal0, Goal, !PDInfo) :-
+    Goal0 = hlds_goal(_, GoalInfo0),
+    CallContext = goal_info_get_context(GoalInfo0),
+    pd_info_get_pred_info(!.PDInfo, PredInfo0),
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
+        CalledPredInfo, CalledProcInfo),
+    pred_info_get_typevarset(PredInfo0, TypeVarSet0),
+    pred_info_get_univ_quant_tvars(PredInfo0, UnivQVars),
+    proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps0),
+    inlining.do_inline_call(ModuleInfo, UnivQVars, CallContext,
+        CalledPredInfo, CalledProcInfo, Args, Goal1, TypeVarSet0, TypeVarSet,
+        VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
+    pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo),
+    proc_info_get_has_parallel_conj(CalledProcInfo, CalledHasParallelConj),
+
+    proc_info_set_var_table(VarTable, ProcInfo0, ProcInfo1),
+    proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo1, ProcInfo2),
+    (
+        CalledHasParallelConj = has_parallel_conj,
+        proc_info_set_has_parallel_conj(has_parallel_conj,
+            ProcInfo2, ProcInfo)
+    ;
+        CalledHasParallelConj = has_no_parallel_conj,
+        % Leave the has_parallel_conj field of the proc_info as it is.
+        ProcInfo = ProcInfo2
+    ),
+
+    pd_info_set_pred_info(PredInfo, !PDInfo),
+    pd_info_set_proc_info(ProcInfo, !PDInfo),
+
+    goal_cost(Goal1, OriginalCost),
+    pd_info_get_cost_delta(!.PDInfo, CostDelta0),
+    pd_info_get_size_delta(!.PDInfo, SizeDelta0),
+    pd_info_get_changed(!.PDInfo, Changed0),
+
+    % Update the quantification if not all the output arguments are used.
+    Goal1 = hlds_goal(_, GoalInfo1),
+    NonLocals1 = goal_info_get_nonlocals(GoalInfo1),
+    set_of_var.list_to_set(Args, NonLocals),
+    ( if set_of_var.equal(NonLocals1, NonLocals) then
+        Goal2 = Goal1
+    else
+        pd_requantify_goal(NonLocals, Goal1, Goal2, !PDInfo)
+    ),
+
+    % Push the extra information from the call through the goal.
+    trace [io(!IO)] (
+        pd_debug_message(!.PDInfo, "try_to_unfold_call",
+            "running unique modes\n", [], !IO)
+    ),
+    proc_info_arglives(ModuleInfo, CalledProcInfo, ArgLives),
+    get_live_vars(Args, ArgLives, LiveVars0),
+    set_of_var.list_to_set(LiveVars0, LiveVarsSet0),
+    set_of_var.intersect(NonLocals, LiveVarsSet0, LiveVarsSet),
+    pd_util.unique_modecheck_goal_live_vars(LiveVarsSet, Goal2, Goal3,
+        ModeErrors, !PDInfo),
+
+    trace [io(!IO)] (
+        pd_debug_message(!.PDInfo, "try_to_unfold_call",
+            "running simplify\n", [], !IO)
+    ),
+    find_simplify_tasks(Globals, do_not_generate_warnings, SimplifyTasks),
+    pd_util.pd_simplify_goal("try_to_unfold_call", SimplifyTasks,
+        Goal3, Goal4, !PDInfo),
+
+    choose_original_or_inlined(CheckImprovement, PredInfo0, ProcInfo0,
+        GoalInfo0, Changed0, ModeErrors, OriginalCost, CostDelta0, SizeDelta0,
+        Optimized, Goal0, Goal4, Goal, !PDInfo).
+
+:- pred choose_original_or_inlined(bool::in, pred_info::in, proc_info::in,
+    hlds_goal_info::in, bool::in, list(T)::in, int::in, int::in, int::in,
+    bool::out, hlds_goal::in, hlds_goal::in, hlds_goal::out,
+    pd_info::in, pd_info::out) is det.
+
+choose_original_or_inlined(CheckImprovement, PredInfo0, ProcInfo0, GoalInfo0,
+        Changed0, ModeErrors, OriginalCost, CostDelta0, SizeDelta0, Optimized,
+        Goal0, OptGoal, Goal, !PDInfo) :-
+    pd_info_get_cost_delta(!.PDInfo, CostDelta1),
+    CostDelta = CostDelta1 - CostDelta0,
+    goal_size(OptGoal, OptGoalSize),
+    SizeDelta = OptGoalSize - cost_of_call,
+    ( if
+        ModeErrors = [],
+        (
+            CheckImprovement = no
+        ;
+            CheckImprovement = yes,
+            ( if is_simple_goal(OptGoal) then
+                true
+            else
+                % Very rough heuristics for checking improvement.
+                % This should lean towards allowing optimizations.
+                %
+                % XXX We should pay attention to ot_deforestation_cost_factor
+                % in OptTuple.
+                ( if OptGoalSize =< 5 then
+                    % For small increases in code size, accept any amount
+                    % of optimization.
+                    CostDelta > 0
+                else
+                    PercentChange = CostDelta * 100 // OriginalCost,
+                    PercentChange >= 5
+                )
+            )
+        )
+    then
+        Goal = OptGoal,
+        trace [io(!IO)] (
+            pd_debug_message(!.PDInfo, "choose_original_or_inlined",
+                "inlined: cost(%i) size(%i)\n",
+                [i(CostDelta), i(SizeDelta)], !IO)
+        ),
+        pd_info_incr_size_delta(SizeDelta, !PDInfo),
+        pd_info_set_changed(yes, !PDInfo),
+        Det0 = goal_info_get_determinism(GoalInfo0),
+        Goal = hlds_goal(_, GoalInfo),
+        Det = goal_info_get_determinism(GoalInfo),
+
+        % Rerun determinism analysis later if the determinism of any of
+        % the sub-goals changes - this avoids problems with inlining
+        % erroneous predicates.
+        ( if Det = Det0 then
+            true
+        else
+            pd_info_set_rerun_det(yes, !PDInfo)
+        ),
+
+        Optimized = yes
+    else
+        trace [io(!IO)] (
+            pd_debug_message(!.PDInfo, "choose_original_or_inlined",
+                "not enough improvement - " ++
+                "not inlining: cost(%i) size(%i)\n",
+                [i(CostDelta), i(SizeDelta)], !IO)
+        ),
+        pd_info_set_pred_info(PredInfo0, !PDInfo),
+        pd_info_set_proc_info(ProcInfo0, !PDInfo),
+        pd_info_set_size_delta(SizeDelta0, !PDInfo),
+        pd_info_set_cost_delta(CostDelta0, !PDInfo),
+        pd_info_set_changed(Changed0, !PDInfo),
         Goal = Goal0,
         Optimized = no
     ).
@@ -2210,38 +2247,6 @@ is_simple_goal(hlds_goal(GoalExpr, _)) :-
         % Handle a call or builtin + tests on the output.
         goal_to_conj_list(Goal1, GoalList1),
         is_simple_goal_list(GoalList1)
-    ).
-
-%-----------------------------------------------------------------------------%
-
-    % Very rough heuristics for checking improvement. This should lean
-    % towards allowing optimizations.
-    %
-:- pred check_improvement(int::in, int::in, int::in, int::in) is semidet.
-
-check_improvement(_Factor, Size, OriginalCost, CostDelta) :-
-    ( if Size =< 5 then
-        % For small increases in size, accept any amount of optimization.
-        CostDelta > 0
-    else
-        PercentChange = CostDelta * 100 // OriginalCost,
-        PercentChange >= 5
-    ).
-
-:- pred check_deforestation_improvement(int::in, int::in, int::in)
-    is semidet.
-
-check_deforestation_improvement(Factor, CostDelta, SizeChange) :-
-    ( if SizeChange =< 5 then
-        % For small increases in size, accept any amount of optimization.
-        CostDelta > 0
-    else
-        % Accept the optimization if we save the equivalent of a heap increment
-        % per 3 extra atomic goals. Note that folding is heavily rewarded by
-        % pd_cost.m, so this isn't very restrictive if a fold occurs.
-        ExpectedCostDelta = 1000 * cost_of_heap_incr * SizeChange // 3,
-        FudgedCostDelta = CostDelta * Factor,
-        FudgedCostDelta >= ExpectedCostDelta
     ).
 
 %-----------------------------------------------------------------------------%
