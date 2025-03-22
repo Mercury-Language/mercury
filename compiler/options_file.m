@@ -945,8 +945,8 @@ split_into_words_loop(Chars0, !RevWords, MaybeError) :-
     %
     % Read one word from Chars0, returning the remaining characters in Chars
     % and the word itself in Word, if MaybeError = no. If MaybeError is
-    % yes(Error), then Error will describe the error, abd the none of
-    % the other return values will be meaningful.
+    % yes(Error), then Error will describe the error, and none of the other
+    % return values will be meaningful.
     %
     % A word is defined as a sequence of either
     % - non-whitespace characters,
@@ -1011,8 +1011,8 @@ get_word_acc([Char | Chars0], Chars, RevWord0, RevWord, MaybeError) :-
     % after the initial double quote, returning the remaining characters
     % in Chars and adding the characters of the string itself in reverse
     % to RevString0 yielding RevString, if MaybeError = no. If MaybeError is
-    % yes(Error), then Error will describe the error, abd the none of
-    % the other return values will be meaningful.
+    % yes(Error), then Error will describe the error, and none of the other
+    % return values will be meaningful.
     %
 :- pred get_string_acc(list(char)::in, list(char)::out,
     list(char)::in, list(char)::out, maybe(string)::out) is det.
