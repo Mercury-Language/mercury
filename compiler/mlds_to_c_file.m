@@ -148,29 +148,29 @@ output_c_file_opts(ProgressStream, MLDS, Opts, Suffix, Succeeded, !IO) :-
 output_c_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
         !:Succeeded, !IO) :-
     % We write the header file out to <module>.mih.tmp and then call
-    % `update_interface' to move the <module>.mih.tmp file to <module>.mih.
-    % This avoids updating the timestamp on the `.mih' file if it has not
-    % changed.
+    % `copy_dot_tmp_to_base_file_report_any_error' to move the
+    % <module>.mih.tmp file to <module>.mih. This avoids updating
+    % the timestamp on the `.mih' file if it has not changed.
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
     % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih),
         ModuleName, MihFileName, _MihFileNameProposed, !IO),
-    HeaderFileName = MihFileName ++ Suffix,
-    TmpHeaderFileName = HeaderFileName ++ ".tmp",
+    MihSuffixFileName = MihFileName ++ Suffix,
+    TmpMihSuffixFileName = MihSuffixFileName ++ ".tmp",
     globals.lookup_bool_option(Globals, line_numbers_for_c_headers,
         LineNumbersForCHdrs),
     HdrOpts = ((Opts
         ^ m2co_line_numbers := LineNumbersForCHdrs)
         ^ m2co_foreign_line_numbers := LineNumbersForCHdrs),
     Indent = 0u,
-    output_to_file_stream(ProgressStream, Globals, TmpHeaderFileName,
+    output_to_file_stream(ProgressStream, Globals, TmpMihSuffixFileName,
         mlds_output_hdr_file(HdrOpts, Indent, MLDS), !:Succeeded, !IO),
     (
         !.Succeeded = succeeded,
         copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
-            ".mih", HeaderFileName, !:Succeeded, !IO)
+            ".mih", MihSuffixFileName, !:Succeeded, !IO)
     ;
         !.Succeeded = did_not_succeed
     ).
