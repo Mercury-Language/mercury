@@ -796,13 +796,13 @@
 :- pred module_name_to_cur_dir_file_name(ext_cur::in, module_name::in,
     file_name::out) is det.
 
-    % Take a module name and return a list of the file names
-    % which need to be up-to-date to avoid recompilation.
+    % Take a module name and return the file name
+    % which needs to be up-to-date to avoid recompilation.
     %
 :- pred module_name_to_target_file_name_create_dirs(globals::in,
     module_name::in, file_name::out, io::di, io::uo) is det.
 
-    % Take a module name and return a list of the file names
+    % Take a module name and return the file name
     % which should be touched if the module does not need to be recompiled.
     %
 :- pred module_name_to_target_timestamp_file_name_create_dirs(globals::in,
