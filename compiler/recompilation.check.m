@@ -173,54 +173,6 @@ should_recompile_2(ProgressStream, Globals, IsSubModule, ModuleName,
         !Info ^ rci_modules_to_recompile := all_modules
     ).
 
-:- pred write_not_recompiling_message(module_name::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-write_not_recompiling_message(ModuleName, Stream, !IO) :-
-    io.format(Stream, "Not recompiling module %s.\n",
-        [s(escaped_sym_name_to_string(ModuleName))], !IO).
-
-:- pred write_reasons_message(globals::in, module_name::in,
-    list(recompile_reason)::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
-
-write_reasons_message(Globals, ModuleName, Reasons, Stream, !IO) :-
-    list.foldl(write_recompile_reason(Globals, Stream, ModuleName),
-        Reasons, !IO).
-
-:- pred write_used_file_error(globals::in, module_name::in,
-    used_file_error::in, io.text_output_stream::in, io::di, io::uo) is det.
-
-write_used_file_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
-    PrefixPieces = [words("Recompiling module"), qual_sym_name(ModuleName),
-        suffix(":"), nl],
-    (
-        UsedFileError = uf_read_error(FileName, _IOError),
-        Pieces = [words("file"), quote(FileName), words("not found."), nl],
-        Spec = no_ctxt_spec($pred, severity_informational,
-            phase_read_files, PrefixPieces ++ Pieces)
-    ;
-        UsedFileError = uf_invalid_file_format(FileName),
-        Pieces = [words("invalid version number in"), quote(FileName),
-            suffix("."), nl],
-        Spec = no_ctxt_spec($pred, severity_informational,
-            phase_read_files, PrefixPieces ++ Pieces)
-    ;
-        UsedFileError = uf_syntax_error(Context, Message),
-        AllPieces = PrefixPieces ++ [words(Message), suffix("."), nl],
-        Spec = spec($pred, severity_informational, phase_read_files,
-            Context, AllPieces)
-    ;
-        UsedFileError = uf_unreadable_used_items(UsedItemSpecs),
-        list.map(extract_spec_msgs_and_maybe_add_id(Globals),
-            UsedItemSpecs, MsgsList),
-        list.condense(MsgsList, Msgs),
-        % MaybeContext = find_first_context_in_msgs(Msgs),
-        Spec = error_spec($pred, severity_informational, phase_read_files,
-            Msgs)
-    ),
-    write_error_spec(Stream, Globals, Spec, !IO).
-
 :- pred should_recompile_3(io.text_output_stream::in, globals::in,
     used_file::in, maybe_is_inline_submodule::in,
     maybe(recompile_reason)::out,
@@ -229,6 +181,9 @@ write_used_file_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
 
 should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
         MaybeStoppingReason, !Info, !IO) :-
+    % XXX The following warning may, or may not, have been obsoleted
+    % by the commit that redesigned this module's operation away from
+    % relying wholly on exceptions.
     % WARNING: any exceptions thrown before the sub_modules field is set
     % in the recompilation_check_info must set the modules_to_recompile field
     % to `all', or else the nested submodules will not be checked
@@ -241,9 +196,8 @@ should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
     !Info ^ rci_used_typeclasses := set.list_to_set(UsedClasses),
     (
         IsSubModule = is_inline_submodule,
-        % For inline submodules, we don't need to check the module
-        % timestamp, because we have already checked the timestamp
-        % for the parent module.
+        % For inline submodules, we don't need to check the module timestamp,
+        % because we have already checked the timestamp for the parent module.
         MaybeStoppingReason0 = no
     ;
         IsSubModule = is_not_inline_submodule,
@@ -364,74 +318,6 @@ check_imported_modules(ProgressStream, Globals,
             !MaybeStoppingReason, !Info, !IO)
     ).
 
-%---------------------------------------------------------------------------%
-
-:- typeclass check_imported_module_int_file(PT) where [
-    pred cim_search_mapN(have_parse_tree_map(PT)::in,
-        module_name::in, have_module(PT)::out) is semidet,
-    pred cim_read_module_intN(io.text_output_stream::in, globals::in,
-        read_reason_msg::in, maybe_search::in,
-        module_name::in, read_module_and_timestamps::in,
-        have_module(PT)::out, io::di, io::uo) is det,
-    pred cim_record_read_file_intN(module_name::in, file_name::in,
-        module_timestamp::in, PT::in, read_module_errors::in,
-        recompilation_check_info::in, recompilation_check_info::out) is det,
-    pred cim_get_version_numbersN(PT::in,
-        module_item_version_numbers::out) is semidet,
-    pred cim_get_ambiguity_checkablesN(PT::in,
-        ambiguity_checkables::out) is det
-].
-
-:- instance check_imported_module_int_file(parse_tree_int0) where [
-    ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
-        map.search(HPTM, ModuleName, HaveReadModule)
-    ),
-    pred(cim_read_module_intN/9) is read_module_int0,
-    pred(cim_record_read_file_intN/7) is record_read_file_int0,
-    ( cim_get_version_numbersN(PT, VN) :-
-        PT ^ pti0_maybe_version_numbers = version_numbers(VN)
-    ),
-    pred(cim_get_ambiguity_checkablesN/2) is get_ambiguity_checkables_int0
-].
-
-:- instance check_imported_module_int_file(parse_tree_int1) where [
-    ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
-        map.search(HPTM, ModuleName, HaveReadModule)
-    ),
-    pred(cim_read_module_intN/9) is read_module_int1,
-    pred(cim_record_read_file_intN/7) is record_read_file_int1,
-    ( cim_get_version_numbersN(PT, VN) :-
-        PT ^ pti1_maybe_version_numbers = version_numbers(VN)
-    ),
-    pred(cim_get_ambiguity_checkablesN/2) is get_ambiguity_checkables_int1
-].
-
-:- instance check_imported_module_int_file(parse_tree_int2) where [
-    ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
-        map.search(HPTM, ModuleName, HaveReadModule)
-    ),
-    pred(cim_read_module_intN/9) is read_module_int2,
-    pred(cim_record_read_file_intN/7) is record_read_file_int2,
-    ( cim_get_version_numbersN(PT, VN) :-
-        PT ^ pti2_maybe_version_numbers = version_numbers(VN)
-    ),
-    pred(cim_get_ambiguity_checkablesN/2) is get_ambiguity_checkables_int2
-].
-
-:- instance check_imported_module_int_file(parse_tree_int3) where [
-    ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
-        map.search(HPTM, ModuleName, HaveReadModule)
-    ),
-    pred(cim_read_module_intN/9) is read_module_int3,
-    pred(cim_record_read_file_intN/7) is record_read_file_int3,
-    ( cim_get_version_numbersN(_PT, _VN) :-
-        fail
-    ),
-    pred(cim_get_ambiguity_checkablesN/2) is get_ambiguity_checkables_int3
-].
-
-%---------------------------------------------------------------------------%
-
     % Check whether the interface file read for a module in the last
     % compilation has changed, and if so whether the items have changed
     % in a way which should cause a recompilation.
@@ -447,6 +333,8 @@ check_imported_module(ProgressStream, Globals, UsedModule, MaybeStoppingReason,
         MaybeUsedVersionNumbers),
     ModuleTimestamp =
         module_timestamp(FileKind, _RecordedTimestamp, _RecompAvail),
+    % XXX We should look into using subtypes to avoid the need
+    % for this switch.
     (
         FileKind = fk_int(IntFileKind)
     ;
@@ -457,6 +345,12 @@ check_imported_module(ProgressStream, Globals, UsedModule, MaybeStoppingReason,
         unexpected($pred, "fk_opt")
     ),
     HaveParseTreeMaps = !.Info ^ rci_have_parse_tree_maps,
+    % NOTE The calls to check_imported_module_intN are all identical
+    % except for which field of HaveParseTreeMaps we select, *but*
+    % the identical parts cannot be factored out. This is because the
+    % different fields of HaveParseTreeMaps have different types,
+    % and therefore the four calls below set the PT type variable in the
+    % signature of check_imported_module_intN to four different values.
     (
         IntFileKind = ifk_int0,
         check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
@@ -1195,11 +1089,11 @@ check_type_defn_ambiguity_with_functor(RecompAvail, TypeCtor, TypeDefn,
 
 check_functor_ambiguities(RecompAvail, TypeCtor, Ctor,
         !MaybeStoppingReason, !Info) :-
-    Ctor = ctor(_, _, Name, Args, Arity, _),
+    Ctor = ctor(_, _, SymName, Args, Arity, _),
     ResolvedCtor = resolved_functor_data_constructor(TypeCtor),
-    check_functor_ambiguities_by_name(RecompAvail, Name,
+    check_functor_ambiguities_by_name(RecompAvail, SymName,
         match_arity_exact(Arity), ResolvedCtor, !MaybeStoppingReason, !Info),
-    ConsCtor = cons_ctor(Name, Arity, TypeCtor),
+    ConsCtor = cons_ctor(SymName, Arity, TypeCtor),
     FieldAccessResolvedCtor =
         resolved_functor_field_access_func(ConsCtor),
     list.foldl2(
@@ -1221,11 +1115,11 @@ check_field_ambiguities(RecompAvail, ResolvedCtor, CtorArg,
         CtorFieldName = ctor_field_name(FieldName, _Ctxt),
         % XXX The arities to match below will need to change if we ever
         % allow taking the address of field access functions.
-        field_access_function_name(get, FieldName, ExtractFuncName),
-        field_access_function_name(set, FieldName, UpdateFuncName),
-        check_functor_ambiguities_by_name(RecompAvail, ExtractFuncName,
+        field_access_function_name(get, FieldName, ExtractFuncSymName),
+        field_access_function_name(set, FieldName, UpdateFuncSymName),
+        check_functor_ambiguities_by_name(RecompAvail, ExtractFuncSymName,
             match_arity_exact(1), ResolvedCtor, !MaybeStoppingReason, !Info),
-        check_functor_ambiguities_by_name(RecompAvail, UpdateFuncName,
+        check_functor_ambiguities_by_name(RecompAvail, UpdateFuncSymName,
             match_arity_exact(2), ResolvedCtor, !MaybeStoppingReason, !Info)
     ).
 
@@ -1241,32 +1135,35 @@ check_field_ambiguities(RecompAvail, ResolvedCtor, CtorArg,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_functor_ambiguities_by_name(RecompAvail, Name, MatchArity, ResolvedCtor,
-        !MaybeStoppingReason, !Info) :-
+check_functor_ambiguities_by_name(RecompAvail, SymName, MatchArity,
+        ResolvedCtor, !MaybeStoppingReason, !Info) :-
     (
         !.MaybeStoppingReason = yes(_)
     ;
         !.MaybeStoppingReason = no,
         UsedItems = !.Info ^ rci_used_items,
-        UnqualName = unqualify_name(Name),
+        Name = unqualify_name(SymName),
         UsedCtors = UsedItems ^ rui_functors,
-        ( if map.search(UsedCtors, UnqualName, UsedCtorAL) then
-            check_functor_ambiguities_2(RecompAvail, Name, MatchArity,
-                ResolvedCtor, UsedCtorAL, no, !:MaybeStoppingReason, !Info)
+        ( if map.search(UsedCtors, Name, UsedCtorAL) then
+            check_functor_ambiguities_by_name_loop(RecompAvail, SymName,
+                MatchArity, ResolvedCtor, UsedCtorAL,
+                no, !:MaybeStoppingReason, !Info)
         else
             !:MaybeStoppingReason = no
         )
     ).
 
-:- pred check_functor_ambiguities_2(recomp_avail::in, sym_name::in,
+:- pred check_functor_ambiguities_by_name_loop(recomp_avail::in, sym_name::in,
     functor_match_arity::in, resolved_functor::in,
     assoc_list(arity, resolved_functor_map)::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_functor_ambiguities_2(_, _, _, _, [], !MaybeStoppingReason, !Info).
-check_functor_ambiguities_2(RecompAvail, Name, MatchArity, ResolvedCtor,
-        [Arity - UsedCtorMap | UsedCtorAL], !MaybeStoppingReason, !Info) :-
+check_functor_ambiguities_by_name_loop(_, _, _, _, [],
+        !MaybeStoppingReason, !Info).
+check_functor_ambiguities_by_name_loop(RecompAvail, SymName, MatchArity,
+        ResolvedCtor, [Arity - UsedCtorMap | UsedCtorAL],
+        !MaybeStoppingReason, !Info) :-
     (
         !.MaybeStoppingReason = yes(_)
     ;
@@ -1301,7 +1198,7 @@ check_functor_ambiguities_2(RecompAvail, Name, MatchArity, ResolvedCtor,
         (
             Check = yes,
             map.foldl2(
-                check_functor_ambiguity(RecompAvail, Name, Arity,
+                check_functor_ambiguity(RecompAvail, SymName, Arity,
                     ResolvedCtor),
                 UsedCtorMap, no, !:MaybeStoppingReason, !Info)
         ;
@@ -1309,8 +1206,9 @@ check_functor_ambiguities_2(RecompAvail, Name, MatchArity, ResolvedCtor,
         ),
         (
             Continue = yes,
-            check_functor_ambiguities_2(RecompAvail, Name, MatchArity,
-                ResolvedCtor, UsedCtorAL, !MaybeStoppingReason, !Info)
+            check_functor_ambiguities_by_name_loop(RecompAvail, SymName,
+                MatchArity, ResolvedCtor, UsedCtorAL,
+                !MaybeStoppingReason, !Info)
         ;
             Continue = no
         )
@@ -1362,7 +1260,7 @@ check_functor_ambiguity(RecompAvail, SymName, Arity, ResolvedCtor,
                 rci_module_name             :: module_name,
                 rci_is_inline_sub_module    :: bool,
                 rci_sub_modules             :: list(module_name),
-                rci_have_parse_tree_maps   :: have_parse_tree_maps,
+                rci_have_parse_tree_maps    :: have_parse_tree_maps,
                 rci_used_items              :: resolved_used_items,
                 rci_used_typeclasses        :: set(recomp_item_name),
                 rci_modules_to_recompile    :: modules_to_recompile,
@@ -1417,6 +1315,132 @@ add_module_to_recompile(Module, !Info) :-
         ModulesToRecompile0 = some_modules(Modules0),
         !Info ^ rci_modules_to_recompile := some_modules([Module | Modules0])
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred record_recompilation_reason(recompile_reason::in,
+    maybe(recompile_reason)::out,
+    recompilation_check_info::in, recompilation_check_info::out) is det.
+
+record_recompilation_reason(Reason, MaybeStoppingReason, !Info) :-
+    CollectAllReasons = !.Info ^ rci_collect_all_reasons,
+    (
+        CollectAllReasons = yes,
+        % XXX Note that many places in the code above record a stopping reason
+        % *without* either calling this predicate or checking the value of
+        % CollectAllReasons themselves, so CollectAllReasons being yes
+        % does NOT guarantee that we in fact collect all reasons to recompile.
+        MaybeStoppingReason = no,
+        !Info ^ rci_recompilation_reasons :=
+            [Reason | !.Info ^ rci_recompilation_reasons]
+    ;
+        CollectAllReasons = no,
+        MaybeStoppingReason = yes(Reason)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- type ambiguity_checkables
+    --->    ambiguity_checkables(
+                % NOTE We should consider making the types of the first
+                % three fields type_ctor_defn_map, inst_ctor_defn_map and
+                % mode_ctor_defn_map respectively. However, before we do that,
+                % we need to decide exactly how we want to handle any entries
+                % in the implementation section versions of those maps.
+                % I (zs) think it is quite likely that the original code
+                % of this module did not consider the treatment of such entries
+                % thoroughly enough.
+                %
+                % Consider that the original motivation to put type
+                % definitions into the implementation sections of .int files
+                % was to give the compiler the information it needs to decide
+                % on the correct representation of values of the type,
+                % especially in the context of equivalence types involving
+                % floats, which at the time were stored in two words
+                % (as 64 bit entities on a 32 bit platform). However,
+                % such type definition items specify non-user-visible
+                % information, and as such should not be able to affect
+                % which type names are ambiguous and which are not.
+                % And yet the code of this module has always processed
+                % type definition items without regard to which section
+                % of an interface file they occurred in. (It is possible
+                % that the reason for this is that when this code was first
+                % written, interface files did not *have* implementation
+                % sections.)
+                list(item_type_defn_info),
+                list(item_inst_defn_info),
+                list(item_mode_defn_info),
+                list(item_typeclass_info),
+                list(item_pred_decl_info)
+            ).
+
+%---------------------%
+
+:- typeclass check_imported_module_int_file(PT) where [
+    pred cim_search_mapN(have_parse_tree_map(PT)::in,
+        module_name::in, have_module(PT)::out) is semidet,
+    pred cim_read_module_intN(io.text_output_stream::in, globals::in,
+        read_reason_msg::in, maybe_search::in,
+        module_name::in, read_module_and_timestamps::in,
+        have_module(PT)::out, io::di, io::uo) is det,
+    pred cim_record_read_file_intN(module_name::in, file_name::in,
+        module_timestamp::in, PT::in, read_module_errors::in,
+        recompilation_check_info::in, recompilation_check_info::out) is det,
+    pred cim_get_version_numbersN(PT::in,
+        module_item_version_numbers::out) is semidet,
+    pred cim_get_ambiguity_checkablesN(PT::in,
+        ambiguity_checkables::out) is det
+].
+
+:- instance check_imported_module_int_file(parse_tree_int0) where [
+    ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
+        map.search(HPTM, ModuleName, HaveReadModule)
+    ),
+    pred(cim_read_module_intN/9) is read_module_int0,
+    pred(cim_record_read_file_intN/7) is record_read_file_int0,
+    ( cim_get_version_numbersN(PT, VN) :-
+        PT ^ pti0_maybe_version_numbers = version_numbers(VN)
+    ),
+    pred(cim_get_ambiguity_checkablesN/2) is get_ambiguity_checkables_int0
+].
+
+:- instance check_imported_module_int_file(parse_tree_int1) where [
+    ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
+        map.search(HPTM, ModuleName, HaveReadModule)
+    ),
+    pred(cim_read_module_intN/9) is read_module_int1,
+    pred(cim_record_read_file_intN/7) is record_read_file_int1,
+    ( cim_get_version_numbersN(PT, VN) :-
+        PT ^ pti1_maybe_version_numbers = version_numbers(VN)
+    ),
+    pred(cim_get_ambiguity_checkablesN/2) is get_ambiguity_checkables_int1
+].
+
+:- instance check_imported_module_int_file(parse_tree_int2) where [
+    ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
+        map.search(HPTM, ModuleName, HaveReadModule)
+    ),
+    pred(cim_read_module_intN/9) is read_module_int2,
+    pred(cim_record_read_file_intN/7) is record_read_file_int2,
+    ( cim_get_version_numbersN(PT, VN) :-
+        PT ^ pti2_maybe_version_numbers = version_numbers(VN)
+    ),
+    pred(cim_get_ambiguity_checkablesN/2) is get_ambiguity_checkables_int2
+].
+
+:- instance check_imported_module_int_file(parse_tree_int3) where [
+    ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
+        map.search(HPTM, ModuleName, HaveReadModule)
+    ),
+    pred(cim_read_module_intN/9) is read_module_int3,
+    pred(cim_record_read_file_intN/7) is record_read_file_int3,
+    ( cim_get_version_numbersN(_PT, _VN) :-
+        fail
+    ),
+    pred(cim_get_ambiguity_checkablesN/2) is get_ambiguity_checkables_int3
+].
+
+%---------------------%
 
 :- pred record_read_file_src(module_name::in, file_name::in,
     module_timestamp::in, parse_tree_src::in, read_module_errors::in,
@@ -1494,7 +1518,155 @@ record_read_file_int3(ModuleName, FileName, ModuleTimestamp, ParseTreeInt3,
     HaveParseTreeMaps = HaveParseTreeMaps3 ^ hptm_int3 := HPTM,
     !Info ^ rci_have_parse_tree_maps := HaveParseTreeMaps.
 
+%---------------------%
+
+:- pred get_ambiguity_checkables_int0(parse_tree_int0::in,
+    ambiguity_checkables::out) is det.
+
+get_ambiguity_checkables_int0(ParseTreeInt0, Checkables) :-
+    ParseTreeInt0 = parse_tree_int0(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _InclMap, _ImportUseMap, _IntFIMs, _ImpFIMs,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        IntTypeClasses, _IntInstances, IntPredDecls, _IntModeDecls,
+        _IntDeclPragmas, _IntDeclMarkers, _IntPromises,
+        ImpTypeClasses, _ImpInstances, ImpPredDecls, _ImpModeDecls,
+        _ImpDeclPragmas, _ImpDeclMarkers, _ImpPromises),
+    type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
+        IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
+    inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap,
+        IntInstDefns, ImpInstDefns),
+    mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
+        IntModeDefns, ImpModeDefns),
+
+    ItemTypeDefns = IntTypeDefns ++ ImpTypeDefns,
+    ItemInstDefns = IntInstDefns ++ ImpInstDefns,
+    ItemModeDefns = IntModeDefns ++ ImpModeDefns,
+    ItemTypeClasses = IntTypeClasses ++ ImpTypeClasses,
+    ItemPredDecls = IntPredDecls ++ ImpPredDecls,
+    Checkables = ambiguity_checkables(ItemTypeDefns,
+        ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls).
+
+:- pred get_ambiguity_checkables_int1(parse_tree_int1::in,
+    ambiguity_checkables::out) is det.
+
+get_ambiguity_checkables_int1(ParseTreeInt1, Checkables) :-
+    ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _InclMap, _ImportUseMap, _IntFIMs, _ImpFIMs,
+        TypeDefnCheckedMap, InstDefnCheckedMap, ModeDefnCheckedMap,
+        IntTypeClasses, _IntItemInstances, IntPredDecls, _IntModeDecls,
+        _IntDeclPragmas, _IntDeclMarkers, _IntPromises,
+        _IntTypeRepnMap, ImpTypeClasses),
+    type_ctor_checked_map_get_src_defns(TypeDefnCheckedMap,
+        IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
+    inst_ctor_checked_map_get_src_defns(InstDefnCheckedMap,
+        IntInstDefns, ImpInstDefns),
+    mode_ctor_checked_map_get_src_defns(ModeDefnCheckedMap,
+        IntModeDefns, ImpModeDefns),
+    expect(unify(ImpInstDefns, []), $pred, "ImpInstDefns != []"),
+    expect(unify(ImpModeDefns, []), $pred, "ImpModeDefns != []"),
+    ItemTypeDefns = IntTypeDefns ++ ImpTypeDefns,
+    ItemInstDefns = IntInstDefns,
+    ItemModeDefns = IntModeDefns,
+    ItemTypeClasses = IntTypeClasses ++ coerce(ImpTypeClasses),
+    ItemPredDecls = IntPredDecls,
+    Checkables = ambiguity_checkables(ItemTypeDefns,
+        ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls).
+
+:- pred get_ambiguity_checkables_int2(parse_tree_int2::in,
+    ambiguity_checkables::out) is det.
+
+get_ambiguity_checkables_int2(ParseTreeInt2, Checkables) :-
+    ParseTreeInt2 = parse_tree_int2(_ModuleName, _ModuleNameContext,
+        _MaybeVersionNumbers, _InclMap, _ImportUseMap, _IntFIMs, _ImpFIMs,
+        TypeDefnCheckedMap, InstDefnCheckedMap, ModeDefnCheckedMap,
+        IntItemTypeClasses, _IntItemInstances, _IntTypeRepnMap),
+    type_ctor_checked_map_get_src_defns(TypeDefnCheckedMap,
+        IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
+    inst_ctor_checked_map_get_src_defns(InstDefnCheckedMap,
+        IntInstDefns, ImpInstDefns),
+    mode_ctor_checked_map_get_src_defns(ModeDefnCheckedMap,
+        IntModeDefns, ImpModeDefns),
+    expect(unify(ImpInstDefns, []), $pred, "ImpInstDefns != []"),
+    expect(unify(ImpModeDefns, []), $pred, "ImpModeDefns != []"),
+    ItemTypeDefns = IntTypeDefns ++ ImpTypeDefns,
+    ItemInstDefns = IntInstDefns,
+    ItemModeDefns = IntModeDefns,
+    ItemTypeClasses = IntItemTypeClasses,
+    ItemPredDecls = [],
+    Checkables = ambiguity_checkables(ItemTypeDefns,
+        ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls).
+
+:- pred get_ambiguity_checkables_int3(parse_tree_int3::in,
+    ambiguity_checkables::out) is det.
+
+get_ambiguity_checkables_int3(ParseTreeInt3, Checkables) :-
+    ParseTreeInt3 = parse_tree_int3(_ModuleName, _ModuleNameContext,
+        _InclMap, _ImportUseMap,
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        IntTypeClasses, _IntInstances, _TypeRepnMap),
+    type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
+        IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
+    inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap,
+        IntInstDefns, ImpInstDefns),
+    mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
+        IntModeDefns, ImpModeDefns),
+    expect(unify(ImpTypeDefns, []), $pred, "ImpTypeDefns != []"),
+    expect(unify(ImpInstDefns, []), $pred, "ImpInstDefns != []"),
+    expect(unify(ImpModeDefns, []), $pred, "ImpModeDefns != []"),
+    IntPredDecls = [],
+    Checkables = ambiguity_checkables(IntTypeDefns,
+        IntInstDefns, IntModeDefns, coerce(IntTypeClasses), IntPredDecls).
+
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred write_not_recompiling_message(module_name::in,
+    io.text_output_stream::in, io::di, io::uo) is det.
+
+write_not_recompiling_message(ModuleName, Stream, !IO) :-
+    io.format(Stream, "Not recompiling module %s.\n",
+        [s(escaped_sym_name_to_string(ModuleName))], !IO).
+
+:- pred write_reasons_message(globals::in, module_name::in,
+    list(recompile_reason)::in, io.text_output_stream::in,
+    io::di, io::uo) is det.
+
+write_reasons_message(Globals, ModuleName, Reasons, Stream, !IO) :-
+    list.foldl(write_recompile_reason(Globals, Stream, ModuleName),
+        Reasons, !IO).
+
+:- pred write_used_file_error(globals::in, module_name::in,
+    used_file_error::in, io.text_output_stream::in, io::di, io::uo) is det.
+
+write_used_file_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
+    PrefixPieces = [words("Recompiling module"), qual_sym_name(ModuleName),
+        suffix(":"), nl],
+    (
+        UsedFileError = uf_read_error(FileName, _IOError),
+        Pieces = [words("file"), quote(FileName), words("not found."), nl],
+        Spec = no_ctxt_spec($pred, severity_informational,
+            phase_read_files, PrefixPieces ++ Pieces)
+    ;
+        UsedFileError = uf_invalid_file_format(FileName),
+        Pieces = [words("invalid version number in"), quote(FileName),
+            suffix("."), nl],
+        Spec = no_ctxt_spec($pred, severity_informational,
+            phase_read_files, PrefixPieces ++ Pieces)
+    ;
+        UsedFileError = uf_syntax_error(Context, Message),
+        AllPieces = PrefixPieces ++ [words(Message), suffix("."), nl],
+        Spec = spec($pred, severity_informational, phase_read_files,
+            Context, AllPieces)
+    ;
+        UsedFileError = uf_unreadable_used_items(UsedItemSpecs),
+        list.map(extract_spec_msgs_and_maybe_add_id(Globals),
+            UsedItemSpecs, MsgsList),
+        list.condense(MsgsList, Msgs),
+        % MaybeContext = find_first_context_in_msgs(Msgs),
+        Spec = error_spec($pred, severity_informational, phase_read_files,
+            Msgs)
+    ),
+    write_error_spec(Stream, Globals, Spec, !IO).
 
 :- pred maybe_write_recompilation_message(io.text_output_stream::in,
     globals::in,
@@ -1619,161 +1791,6 @@ describe_resolved_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
             words("for constructor"), unqual_sym_name_arity(ConsSNA),
             words("of type"), qual_type_ctor(TypeCtor)]
     ).
-
-%---------------------------------------------------------------------------%
-
-:- pred record_recompilation_reason(recompile_reason::in,
-    maybe(recompile_reason)::out,
-    recompilation_check_info::in, recompilation_check_info::out) is det.
-
-record_recompilation_reason(Reason, MaybeStoppingReason, !Info) :-
-    CollectAllReasons = !.Info ^ rci_collect_all_reasons,
-    (
-        CollectAllReasons = yes,
-        % XXX Note that many places in the code above record a stopping reason
-        % *without* either calling this predicate or checking the value of
-        % CollectAllReasons themselves, so CollectAllReasons being yes
-        % does NOT guarantee that we in fact collect all reasons to recompile.
-        MaybeStoppingReason = no,
-        !Info ^ rci_recompilation_reasons :=
-            [Reason | !.Info ^ rci_recompilation_reasons]
-    ;
-        CollectAllReasons = no,
-        MaybeStoppingReason = yes(Reason)
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- type ambiguity_checkables
-    --->    ambiguity_checkables(
-                % NOTE We should consider making the types of the first
-                % three fields type_ctor_defn_map, inst_ctor_defn_map and
-                % mode_ctor_defn_map respectively. However, before we do that,
-                % we need to decide exactly how we want to handle any entries
-                % in the implementation section versions of those maps.
-                % I (zs) think it is quite likely that the original code
-                % of this module did not consider the treatment of such entries
-                % thoroughly enough.
-                %
-                % Consider that the original motivation to put type
-                % definitions into the implementation sections of .int files
-                % was to give the compiler the information it needs to decide
-                % on the correct representation of values of the type,
-                % especially in the context of equivalence types involving
-                % floats, which at the time were stored in two words
-                % (as 64 bit entities on a 32 bit platform). However,
-                % such type definition items specify non-user-visible
-                % information, and as such should not be able to affect
-                % which type names are ambiguous and which are not.
-                % And yet the code of this module has always processed
-                % type definition items without regard to which section
-                % of an interface file they occurred in. (It is possible
-                % that the reason for this is that when this code was first
-                % written, interface files did not *have* implementation
-                % sections.)
-                list(item_type_defn_info),
-                list(item_inst_defn_info),
-                list(item_mode_defn_info),
-                list(item_typeclass_info),
-                list(item_pred_decl_info)
-            ).
-
-:- pred get_ambiguity_checkables_int0(parse_tree_int0::in,
-    ambiguity_checkables::out) is det.
-
-get_ambiguity_checkables_int0(ParseTreeInt0, Checkables) :-
-    ParseTreeInt0 = parse_tree_int0(_ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _InclMap, _ImportUseMap, _IntFIMs, _ImpFIMs,
-        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        IntTypeClasses, _IntInstances, IntPredDecls, _IntModeDecls,
-        _IntDeclPragmas, _IntDeclMarkers, _IntPromises,
-        ImpTypeClasses, _ImpInstances, ImpPredDecls, _ImpModeDecls,
-        _ImpDeclPragmas, _ImpDeclMarkers, _ImpPromises),
-    type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
-        IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
-    inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap,
-        IntInstDefns, ImpInstDefns),
-    mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
-        IntModeDefns, ImpModeDefns),
-
-    ItemTypeDefns = IntTypeDefns ++ ImpTypeDefns,
-    ItemInstDefns = IntInstDefns ++ ImpInstDefns,
-    ItemModeDefns = IntModeDefns ++ ImpModeDefns,
-    ItemTypeClasses = IntTypeClasses ++ ImpTypeClasses,
-    ItemPredDecls = IntPredDecls ++ ImpPredDecls,
-    Checkables = ambiguity_checkables(ItemTypeDefns,
-        ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls).
-
-:- pred get_ambiguity_checkables_int1(parse_tree_int1::in,
-    ambiguity_checkables::out) is det.
-
-get_ambiguity_checkables_int1(ParseTreeInt1, Checkables) :-
-    ParseTreeInt1 = parse_tree_int1(_ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _InclMap, _ImportUseMap, _IntFIMs, _ImpFIMs,
-        TypeDefnCheckedMap, InstDefnCheckedMap, ModeDefnCheckedMap,
-        IntTypeClasses, _IntItemInstances, IntPredDecls, _IntModeDecls,
-        _IntDeclPragmas, _IntDeclMarkers, _IntPromises,
-        _IntTypeRepnMap, ImpTypeClasses),
-    type_ctor_checked_map_get_src_defns(TypeDefnCheckedMap,
-        IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
-    inst_ctor_checked_map_get_src_defns(InstDefnCheckedMap,
-        IntInstDefns, ImpInstDefns),
-    mode_ctor_checked_map_get_src_defns(ModeDefnCheckedMap,
-        IntModeDefns, ImpModeDefns),
-    expect(unify(ImpInstDefns, []), $pred, "ImpInstDefns != []"),
-    expect(unify(ImpModeDefns, []), $pred, "ImpModeDefns != []"),
-    ItemTypeDefns = IntTypeDefns ++ ImpTypeDefns,
-    ItemInstDefns = IntInstDefns,
-    ItemModeDefns = IntModeDefns,
-    ItemTypeClasses = IntTypeClasses ++ coerce(ImpTypeClasses),
-    ItemPredDecls = IntPredDecls,
-    Checkables = ambiguity_checkables(ItemTypeDefns,
-        ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls).
-
-:- pred get_ambiguity_checkables_int2(parse_tree_int2::in,
-    ambiguity_checkables::out) is det.
-
-get_ambiguity_checkables_int2(ParseTreeInt2, Checkables) :-
-    ParseTreeInt2 = parse_tree_int2(_ModuleName, _ModuleNameContext,
-        _MaybeVersionNumbers, _InclMap, _ImportUseMap, _IntFIMs, _ImpFIMs,
-        TypeDefnCheckedMap, InstDefnCheckedMap, ModeDefnCheckedMap,
-        IntItemTypeClasses, _IntItemInstances, _IntTypeRepnMap),
-    type_ctor_checked_map_get_src_defns(TypeDefnCheckedMap,
-        IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
-    inst_ctor_checked_map_get_src_defns(InstDefnCheckedMap,
-        IntInstDefns, ImpInstDefns),
-    mode_ctor_checked_map_get_src_defns(ModeDefnCheckedMap,
-        IntModeDefns, ImpModeDefns),
-    expect(unify(ImpInstDefns, []), $pred, "ImpInstDefns != []"),
-    expect(unify(ImpModeDefns, []), $pred, "ImpModeDefns != []"),
-    ItemTypeDefns = IntTypeDefns ++ ImpTypeDefns,
-    ItemInstDefns = IntInstDefns,
-    ItemModeDefns = IntModeDefns,
-    ItemTypeClasses = IntItemTypeClasses,
-    ItemPredDecls = [],
-    Checkables = ambiguity_checkables(ItemTypeDefns,
-        ItemInstDefns, ItemModeDefns, ItemTypeClasses, ItemPredDecls).
-
-:- pred get_ambiguity_checkables_int3(parse_tree_int3::in,
-    ambiguity_checkables::out) is det.
-
-get_ambiguity_checkables_int3(ParseTreeInt3, Checkables) :-
-    ParseTreeInt3 = parse_tree_int3(_ModuleName, _ModuleNameContext,
-        _InclMap, _ImportUseMap,
-        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        IntTypeClasses, _IntInstances, _TypeRepnMap),
-    type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
-        IntTypeDefns, ImpTypeDefns, _ImpForeignEnums),
-    inst_ctor_checked_map_get_src_defns(InstCtorCheckedMap,
-        IntInstDefns, ImpInstDefns),
-    mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
-        IntModeDefns, ImpModeDefns),
-    expect(unify(ImpTypeDefns, []), $pred, "ImpTypeDefns != []"),
-    expect(unify(ImpInstDefns, []), $pred, "ImpInstDefns != []"),
-    expect(unify(ImpModeDefns, []), $pred, "ImpModeDefns != []"),
-    IntPredDecls = [],
-    Checkables = ambiguity_checkables(IntTypeDefns,
-        IntInstDefns, IntModeDefns, coerce(IntTypeClasses), IntPredDecls).
 
 %---------------------------------------------------------------------------%
 :- end_module recompilation.check.
