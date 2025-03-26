@@ -767,19 +767,21 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         ExtraObjFiles = []
     ;
         OpModeArgs = opma_augment(OpModeAugment),
-        find_modules_to_recompile(ProgressStream, Globals0, Globals,
-            FileOrModule, ModulesToRecompile, !HaveParseTreeMaps, !IO),
-        ( if ModulesToRecompile = some_modules([]) then
+        find_file_components_to_recompile(ProgressStream, Globals0, Globals,
+            FileOrModule, WhatToRecompile, !HaveParseTreeMaps, !IO),
+        ( if WhatToRecompile = some_file_components([]) then
             % XXX Currently smart recompilation is disabled if mmc is linking
             % the executable, because it doesn't know how to check whether
             % all the necessary intermediate files are present and up-to-date.
+            %
+            % XXX What does the above comment have to do with the code here?
             SpecsList = [],
             ModulesToLink = [],
             ExtraObjFiles = []
         else
             read_augment_and_process_module(ProgressStream, ErrorStream,
                 Globals, OpModeAugment, InvokedByMmcMake, OptionArgs,
-                FileOrModule, ModulesToRecompile, ModulesToLink, ExtraObjFiles,
+                FileOrModule, WhatToRecompile, ModulesToLink, ExtraObjFiles,
                 Specs, !HaveParseTreeMaps, !IO),
             SpecsList = [Specs]
         )
@@ -1044,13 +1046,14 @@ version_numbers_return_timestamp(yes) = do_return_timestamp.
 
 %---------------------%
 
-:- pred find_modules_to_recompile(io.text_output_stream::in, globals::in,
-    globals::out, file_or_module::in, modules_to_recompile::out,
+:- pred find_file_components_to_recompile(io.text_output_stream::in,
+    globals::in, globals::out, file_or_module::in,
+    file_components_to_recompile::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
-find_modules_to_recompile(ProgressStream, Globals0, Globals, FileOrModule,
-        ModulesToRecompile, !HaveParseTreeMaps, !IO) :-
+find_file_components_to_recompile(ProgressStream, Globals0, Globals,
+        FileOrModule, WhatToRecompile, !HaveParseTreeMaps, !IO) :-
     globals.lookup_bool_option(Globals0, smart_recompilation, Smart0),
     io_get_disable_smart_recompilation(DisableSmart, !IO),
     (
@@ -1082,11 +1085,11 @@ find_modules_to_recompile(ProgressStream, Globals0, Globals, FileOrModule,
             % mapping will be explicitly recorded.
             file_name_to_module_name(FileName, ModuleName)
         ),
-        recompilation.check.should_recompile(ProgressStream, Globals,
-            ModuleName, ModulesToRecompile, !HaveParseTreeMaps, !IO)
+        what_file_components_should_we_recompile(ProgressStream, Globals,
+            ModuleName, WhatToRecompile, !HaveParseTreeMaps, !IO)
     ;
         Smart = no,
-        ModulesToRecompile = all_modules
+        WhatToRecompile = all_file_components
     ).
 
 %---------------------------------------------------------------------------%
@@ -1094,14 +1097,14 @@ find_modules_to_recompile(ProgressStream, Globals0, Globals, FileOrModule,
 :- pred read_augment_and_process_module(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
     op_mode_invoked_by_mmc_make::in, list(string)::in,
-    file_or_module::in, modules_to_recompile::in,
+    file_or_module::in, file_components_to_recompile::in,
     list(module_name)::out, list(string)::out, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
         OpModeAugment, InvokedByMmcMake, OptionArgs, FileOrModule,
-        MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles, Specs,
+        MaybeWhatToRecompile, ModulesToLink, ExtraObjFiles, Specs,
         !HaveParseTreeMaps, !IO) :-
     (
         ( OpModeAugment = opmau_make_plain_opt
@@ -1141,7 +1144,7 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
             augment_and_process_source_file(ProgressStream, ErrorStream,
                 Globals, OpModeAugment, InvokedByMmcMake, SourceFileName,
                 MaybeTimestamp, ReadModuleErrors, ParseTreeSrc,
-                MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles,
+                MaybeWhatToRecompile, ModulesToLink, ExtraObjFiles,
                 Specs, !HaveParseTreeMaps, !IO)
         )
     ).

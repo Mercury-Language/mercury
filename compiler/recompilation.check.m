@@ -7,10 +7,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: recompilation_check.m.
+% File: recompilation.check.m.
 % Main author: stayl.
 %
-% Check whether a module should be recompiled.
+% Check whether a source file should be recompiled.
+%
+% In the rare case where a source file contains not just a top module
+% but also some nested submodules, find out which top and/or sub module
+% should be recompiled.
 %
 %---------------------------------------------------------------------------%
 
@@ -29,21 +33,27 @@
 
 %---------------------------------------------------------------------------%
 
-:- type modules_to_recompile
-    --->    all_modules
-    ;       some_modules(list(module_name)).
+:- type file_components_to_recompile
+    --->    all_file_components
+    ;       some_file_components(list(module_name)).
 
-    % should_recompile(ProgressStream, Globals, ModuleName,
-    %   ModulesToRecompile, !HaveParseTreeMaps, !IO):
+    % what_file_components_should_we_recompile(ProgressStream, Globals,
+    %   ModuleName, FileComponentsToRecompile, !HaveParseTreeMaps, !IO):
     %
-    % Process the `.used'  files for the given module and all its
-    % inline submodules to find out which modules need to be recompiled.
+    % Process the `.used'  files for the given module (which is named as an
+    % argument of the current compiler invocation) and all its inline
+    % submodules (if any) to find out which parts of that source file
+    % need to be recompiled.
+    %
+    % NOTE ModuleName should be the top module in its source file, but
+    % our caller does nothing to check this.
+    %
     % `ReadModules' is the list of interface files read during
     % recompilation checking, returned to avoid rereading them
     % if recompilation is required.
     %
-:- pred should_recompile(io.text_output_stream::in, globals::in,
-    module_name::in, modules_to_recompile::out,
+:- pred what_file_components_should_we_recompile(io.text_output_stream::in,
+    globals::in, module_name::in, file_components_to_recompile::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
@@ -91,96 +101,88 @@
 
 %---------------------------------------------------------------------------%
 
-should_recompile(ProgressStream, Globals, ModuleName, ModulesToRecompile,
-        HaveParseTreeMaps0, HaveParseTreeMaps, !IO) :-
+what_file_components_should_we_recompile(ProgressStream, Globals, ModuleName,
+        WhatToRecompile, HaveParseTreeMaps0, HaveParseTreeMaps, !IO) :-
     globals.lookup_bool_option(Globals, find_all_recompilation_reasons,
-        FindAll),
+        FindAllReasons),
     ResolvedUsedItems0 = init_resolved_used_items,
-    Info0 = recompilation_check_info(ModuleName, no, [], HaveParseTreeMaps0,
-        ResolvedUsedItems0, set.init, some_modules([]), FindAll, []),
-    % XXX How do we know ModuleName is not an inline submodule?
-    should_recompile_2(ProgressStream, Globals, is_not_inline_submodule,
-        ModuleName, Info0, Info, !IO),
-    ModulesToRecompile = Info ^ rci_modules_to_recompile,
+    % Start by assuming that we need to recompile *nothing*,
+    % and mark things for recompilation *only* when we discover
+    % the need for such recompilation.
+    Info0 = recompilation_check_info(FindAllReasons, HaveParseTreeMaps0,
+        ResolvedUsedItems0, set.init, some_file_components([]), []),
+    get_used_file_should_we_recompile_module(ProgressStream, Globals,
+        compiler_arg_module, ModuleName, ReadUsedFileResult,
+        Info0, Info1, !IO),
+    (
+        ReadUsedFileResult = used_file_ok(UsedFile),
+        WhatToRecompile1 = Info1 ^ rci_what_to_recompile,
+        (
+            WhatToRecompile1 = all_file_components,
+            % There is no point in checking whether we should recompile
+            % all submodules of ModuleName; we have already decided that
+            % we have to.
+            Info = Info1
+        ;
+            WhatToRecompile1 = some_file_components(_),
+            % So far, we have made a decision on whether to recompile
+            % ModuleName; now make the same decision for its nested submodules,
+            % if any.
+            MaybeTopModule = UsedFile ^ uf_maybe_top_module,
+            (
+                MaybeTopModule = not_top_module_used_file,
+                Info = Info1
+            ;
+                MaybeTopModule = top_module_used_file(NestedSubModuleNames),
+                % Note that NestedSubModuleNames will *usually* be empty.
+                list.map_foldl2(
+                    get_used_file_should_we_recompile_module(ProgressStream,
+                        Globals, submodule_of_compiler_arg_module),
+                    NestedSubModuleNames, _, Info1, Info, !IO)
+            )
+        )
+    ;
+        ReadUsedFileResult = used_file_error(_),
+        Info = Info1
+    ),
+    WhatToRecompile = Info ^ rci_what_to_recompile,
     HaveParseTreeMaps = Info ^ rci_have_parse_tree_maps.
 
-:- type maybe_is_inline_submodule
-    --->    is_not_inline_submodule
-    ;       is_inline_submodule.
+:- type maybe_compiler_arg_module
+    --->    compiler_arg_module
+    ;       submodule_of_compiler_arg_module.
 
-:- pred should_recompile_2(io.text_output_stream::in, globals::in,
-    maybe_is_inline_submodule::in, module_name::in,
+:- pred get_used_file_should_we_recompile_module(io.text_output_stream::in,
+    globals::in, maybe_compiler_arg_module::in, module_name::in,
+    used_file_result(used_file)::out,
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det.
 
-should_recompile_2(ProgressStream, Globals, IsSubModule, ModuleName,
-        !Info, !IO) :-
-    !Info ^ rci_module_name := ModuleName,
-    !Info ^ rci_sub_modules := [],
+get_used_file_should_we_recompile_module(ProgressStream, Globals,
+        MaybeCompilerArg, ModuleName, ReadUsedFileResult, !Info, !IO) :-
     read_used_file_for_module(Globals, ModuleName, ReadUsedFileResult, !IO),
     (
         ReadUsedFileResult = used_file_ok(UsedFile),
-        should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
-            MaybeStoppingReason, !Info, !IO),
-        (
-            MaybeStoppingReason = no,
-            Reasons = !.Info ^ rci_recompilation_reasons
-        ;
-            MaybeStoppingReason = yes(StoppingReason),
-            % Ignoring the old contents of the rci_recompilation_reasons field
-            % in favor of the stopping reason preserves old behavior.
-            % (We used to throw an exception containing StoppingReason,
-            % and we used to ignore the contents of rci_collect_all_reasons
-            % when catching that exception.)
-            Reasons = [StoppingReason]
-        ),
-        (
-            Reasons = [],
-            module_name_to_target_timestamp_file_name_create_dirs(Globals,
-                ModuleName, TimestampFile, !IO),
-            maybe_write_recompilation_message(ProgressStream, Globals,
-                write_not_recompiling_message(ModuleName), !IO),
-            touch_file_datestamp(Globals, ProgressStream, TimestampFile,
-                _Succeeded, !IO)
-        ;
-            Reasons = [_ | _],
-            add_module_to_recompile(ModuleName, !Info),
-            maybe_write_recompilation_message(ProgressStream, Globals,
-                write_reasons_message(Globals, ModuleName,
-                    list.reverse(Reasons)),
-                !IO)
-        ),
-
-        ModulesToRecompile = !.Info ^ rci_modules_to_recompile,
-        (
-            ModulesToRecompile = all_modules
-        ;
-            ModulesToRecompile = some_modules(_),
-            % XXX How does this piece of code justify the jump from
-            % "not all modules should be recompiled" to "must recompile
-            % !.Info ^ rci_sub_modules"?
-            !Info ^ rci_is_inline_sub_module := yes,
-            list.foldl2(
-                should_recompile_2(ProgressStream, Globals,
-                    is_inline_submodule),
-                !.Info ^ rci_sub_modules, !Info, !IO)
-        )
+        should_we_recompile_module(ProgressStream, Globals, ModuleName,
+            UsedFile, MaybeCompilerArg, MaybeStoppingReason, !Info, !IO),
+        record_and_maybe_report_recompilation_why_or_why_not(ProgressStream,
+            Globals, ModuleName, MaybeStoppingReason, !Info, !IO)
     ;
         ReadUsedFileResult = used_file_error(UsedFileError),
         maybe_write_recompilation_message(ProgressStream, Globals,
             write_used_file_error(Globals, ModuleName, UsedFileError),
             !IO),
-        !Info ^ rci_modules_to_recompile := all_modules
+        !Info ^ rci_what_to_recompile := all_file_components
     ).
 
-:- pred should_recompile_3(io.text_output_stream::in, globals::in,
-    used_file::in, maybe_is_inline_submodule::in,
+:- pred should_we_recompile_module(io.text_output_stream::in, globals::in,
+    module_name::in, used_file::in, maybe_compiler_arg_module::in,
     maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det.
 
-should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
-        MaybeStoppingReason, !Info, !IO) :-
+should_we_recompile_module(ProgressStream, Globals, ModuleName, UsedFile,
+        MaybeCompilerArg, MaybeStoppingReason, !Info, !IO) :-
     % XXX The following warning may, or may not, have been obsoleted
     % by the commit that redesigned this module's operation away from
     % relying wholly on exceptions.
@@ -188,21 +190,19 @@ should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
     % in the recompilation_check_info must set the modules_to_recompile field
     % to `all', or else the nested submodules will not be checked
     % and necessary recompilations may be missed.
-    UsedFile = used_file(ModuleTimestamp, InlineSubModules,
+    UsedFile = used_file(ModuleTimestamp, _MaybeTopModule,
         UsedItems, UsedClasses, UsedModules),
     ModuleTimestamp = module_timestamp(_, RecordedTimestamp, _),
-    !Info ^ rci_sub_modules := InlineSubModules,
     !Info ^ rci_used_items := UsedItems,
     !Info ^ rci_used_typeclasses := set.list_to_set(UsedClasses),
     (
-        IsSubModule = is_inline_submodule,
+        MaybeCompilerArg = submodule_of_compiler_arg_module,
         % For inline submodules, we don't need to check the module timestamp,
         % because we have already checked the timestamp for the parent module.
         MaybeStoppingReason0 = no
     ;
-        IsSubModule = is_not_inline_submodule,
-        % If the module has changed, recompile.
-        ModuleName = !.Info ^ rci_module_name,
+        MaybeCompilerArg = compiler_arg_module,
+        % XXX Why aren't we searching !.Info ^ rci_have_parse_tree_maps?
         read_module_src(ProgressStream, Globals, rrm_std,
             do_search, ModuleName, [],
             do_not_read_module_if_match(RecordedTimestamp), HaveReadSrc, !IO),
@@ -223,11 +223,12 @@ should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
                 MaybeNewTimestamp = yes(NewTimestamp),
                 NewTimestamp \= RecordedTimestamp
             then
+                % If the source file has changed, recompile all its components.
                 record_read_file_src(ModuleName, FileName,
                     ModuleTimestamp ^ mts_timestamp := NewTimestamp,
                     ParseTreeSrc, Errors, !Info),
-                !Info ^ rci_modules_to_recompile := all_modules,
-                ChangedReason = recompile_for_module_changed(FileName),
+                !Info ^ rci_what_to_recompile := all_file_components,
+                ChangedReason = recompile_for_file_changed(FileName),
                 record_recompilation_reason(ChangedReason,
                     MaybeStoppingReason0, !Info)
             else if
@@ -252,11 +253,50 @@ should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
         MaybeStoppingReason0 = no,
         % Check whether the output files are present and up-to-date.
         module_name_to_target_file_name_create_dirs(Globals,
-            !.Info ^ rci_module_name, TargetFile, !IO),
+            ModuleName, TargetFile, !IO),
         require_recompilation_if_not_up_to_date(RecordedTimestamp, TargetFile,
             MaybeStoppingReason0, MaybeStoppingReason1, !Info, !IO),
         check_imported_modules(ProgressStream, Globals, UsedModules,
             MaybeStoppingReason1, MaybeStoppingReason, !Info, !IO)
+    ).
+
+:- pred record_and_maybe_report_recompilation_why_or_why_not(
+    io.text_output_stream::in, globals::in, module_name::in,
+    maybe(recompile_reason)::in,
+    recompilation_check_info::in, recompilation_check_info::out,
+    io::di, io::uo) is det.
+
+record_and_maybe_report_recompilation_why_or_why_not(ProgressStream, Globals,
+        ModuleName, MaybeStoppingReason, !Info, !IO) :-
+    (
+        MaybeStoppingReason = no,
+        Reasons = !.Info ^ rci_recompilation_reasons
+    ;
+        MaybeStoppingReason = yes(StoppingReason),
+        % Ignoring the old contents of the rci_recompilation_reasons field
+        % in favor of the stopping reason preserves old behavior.
+        % (We used to throw an exception containing StoppingReason,
+        % and we used to ignore the contents of rci_collect_all_reasons
+        % when catching that exception.)
+        Reasons = [StoppingReason]
+    ),
+    (
+        Reasons = [],
+        module_name_to_target_timestamp_file_name_create_dirs(Globals,
+            ModuleName, TimestampFile, !IO),
+        maybe_write_recompilation_message(ProgressStream, Globals,
+            write_not_recompiling_message(ModuleName), !IO),
+        % Record *in the filesystem* that this module has been found to be
+        % up to date as of this time.
+        touch_file_datestamp(Globals, ProgressStream, TimestampFile,
+            _Succeeded, !IO)
+    ;
+        Reasons = [_ | _],
+        add_module_to_recompile(ModuleName, !Info),
+        maybe_write_recompilation_message(ProgressStream, Globals,
+            write_reasons_message(Globals, ModuleName,
+                list.reverse(Reasons)),
+            !IO)
     ).
 
 :- func read_module_error_stopping_reason(file_name, read_module_errors)
@@ -386,10 +426,6 @@ check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
     ModuleTimestamp =
         module_timestamp(_FileKind, RecordedTimestamp, _RecompAvail),
     ( if
-        % If we are checking a nested submodule, don't re-read interface files
-        % read for other modules checked during this compilation.
-        % XXX We restrict this optimization to nested submodules?
-        !.Info ^ rci_is_inline_sub_module = yes,
         cim_search_mapN(HPTM, ImportedModuleName, HaveReadModuleIntNPrime)
     then
         Recorded = bool.yes,
@@ -440,7 +476,7 @@ check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
                     ModuleTimestamp, UsedVersionNumbers, VersionNumbers,
                     Checkables, MaybeStoppingReason, !Info)
             else
-                Reason = recompile_for_module_changed(FileName),
+                Reason = recompile_for_file_changed(FileName),
                 record_recompilation_reason(Reason, MaybeStoppingReason,
                     !Info)
             )
@@ -1257,14 +1293,11 @@ check_functor_ambiguity(RecompAvail, SymName, Arity, ResolvedCtor,
 
 :- type recompilation_check_info
     --->    recompilation_check_info(
-                rci_module_name             :: module_name,
-                rci_is_inline_sub_module    :: bool,
-                rci_sub_modules             :: list(module_name),
+                rci_collect_all_reasons     :: bool,
                 rci_have_parse_tree_maps    :: have_parse_tree_maps,
                 rci_used_items              :: resolved_used_items,
                 rci_used_typeclasses        :: set(recomp_item_name),
-                rci_modules_to_recompile    :: modules_to_recompile,
-                rci_collect_all_reasons     :: bool,
+                rci_what_to_recompile       :: file_components_to_recompile,
                 rci_recompilation_reasons   :: list(recompile_reason)
             ).
 
@@ -1276,7 +1309,7 @@ check_functor_ambiguity(RecompAvail, SymName, Arity, ResolvedCtor,
     ;       recompile_for_output_file_not_up_to_date(
                 file_name
             )
-    ;       recompile_for_module_changed(
+    ;       recompile_for_file_changed(
                 file_name
             )
     ;       recompile_for_item_ambiguity(
@@ -1308,12 +1341,13 @@ check_functor_ambiguity(RecompAvail, SymName, Arity, ResolvedCtor,
     recompilation_check_info::out) is det.
 
 add_module_to_recompile(Module, !Info) :-
-    ModulesToRecompile0 = !.Info ^ rci_modules_to_recompile,
+    ModulesToRecompile0 = !.Info ^ rci_what_to_recompile,
     (
-        ModulesToRecompile0 = all_modules
+        ModulesToRecompile0 = all_file_components
     ;
-        ModulesToRecompile0 = some_modules(Modules0),
-        !Info ^ rci_modules_to_recompile := some_modules([Module | Modules0])
+        ModulesToRecompile0 = some_file_components(Modules0),
+        Modules = [Module | Modules0],
+        !Info ^ rci_what_to_recompile := some_file_components(Modules)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1447,12 +1481,14 @@ record_recompilation_reason(Reason, MaybeStoppingReason, !Info) :-
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 record_read_file_src(ModuleName, FileName, ModuleTimestamp,
-        ParseTree, Errors, !Info) :-
+        ParseTreeSrc, Errors, !Info) :-
     HaveParseTreeMaps0 = !.Info ^ rci_have_parse_tree_maps,
     HaveParseTreeMapSrc0 = HaveParseTreeMaps0 ^ hptm_src,
     ModuleTimestamp = module_timestamp(_, Timestamp, _),
+    % XXX Make this map.det_insert once we have ensured that
+    % we read ParseTreeSrc *only* if we do not already have it.
     map.set(ModuleName,
-        have_module(FileName, ParseTree, was_read(yes(Timestamp), Errors)),
+        have_module(FileName, ParseTreeSrc, was_read(yes(Timestamp), Errors)),
         HaveParseTreeMapSrc0, HaveParseTreeMapSrc),
     HaveParseTreeMaps =
         HaveParseTreeMaps0 ^ hptm_src := HaveParseTreeMapSrc,
@@ -1696,7 +1732,7 @@ write_recompile_reason(Globals, Stream, ThisModuleName, Reason, !IO) :-
         Pieces = [words("output file"), quote(FileName),
             words("is not up to date."), nl]
     ;
-        Reason = recompile_for_module_changed(FileName),
+        Reason = recompile_for_file_changed(FileName),
         Pieces = [words("file"), quote(FileName), words("has changed."), nl]
     ;
         Reason = recompile_for_item_ambiguity(Item, AmbiguousItems),

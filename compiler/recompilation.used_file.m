@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -116,7 +116,7 @@
                 ufc_module_name             :: module_name,
 
                 % Is this module the top module in its source file?
-                ufc_maybe_top_module        :: maybe_top_module,
+                ufc_maybe_top_module        :: maybe_top_module_used_file,
 
                 % XXX Document the remaining fields.
                 ufc_module_timestamp_map    :: module_timestamp_map,
@@ -143,12 +143,6 @@
             ).
 
 :- type imported_item_set == set(name_arity).
-
-    % Changes which modify the format of the `.used' files will increment
-    % this number. recompilation_check.m should recompile if the version number
-    % is out of date.
-    %
-:- func used_file_version_number = int.
 
 :- pred write_usage_file(io.text_output_stream::in, module_info::in,
     used_file_contents::in, io::di, io::uo) is det.
@@ -177,26 +171,25 @@
     --->    used_file(
                 % The timestamp of the source file of the module
                 % whose .used file this is.
-                module_timestamp,
+                uf_module_timestamp     :: module_timestamp,
 
-                % If this list is non-empty, then this module is the top
-                % module in its source file, and the list gives the names
-                % of all of its nested submodules.
-                %
-                % If this list is empty, then *either*
-                %
-                % - this module is not the top module in its source file, or
-                % - this module *is* the top module in its source file,
-                %   but it has no nested submodules.
-                %
-                % You can't tell which of these is the case.
-                list(module_name),
+                % If this module the top module in its source file?
+                % If it is, what are the names of its submodules?
+                uf_maybe_top_module     :: maybe_top_module_used_file,
 
                 % XXX document the meanings of these fields.
-                resolved_used_items,
-                list(recomp_item_name),
-                list(recomp_used_module)
+                uf_resolved_used_items  :: resolved_used_items,
+                uf_recomp_item_names    :: list(recomp_item_name),
+                uf_recomp_used_modules  :: list(recomp_used_module)
             ).
+
+    % This type contains the same information as the maybe_top_module type,
+    % but in a way that can be written out and read back in *without*
+    % being affected by any possible changes in the (private) definition
+    % of the set type.
+:- type maybe_top_module_used_file
+    --->    top_module_used_file(list(module_name))
+    ;       not_top_module_used_file.
 
 :- type recomp_used_module
     --->    recomp_used_module(
@@ -242,8 +235,6 @@ init_resolved_used_items =
         map.init, map.init, map.init).
 
 %---------------------------------------------------------------------------%
-
-used_file_version_number = 2.
 
 write_usage_file(ProgressStream, ModuleInfo, UsedFileContents, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -314,9 +305,19 @@ write_usage_file_to_stream(Stream, UsedFileContents, !IO) :-
 :- func used_file_version_numbers_to_string = string.
 
 used_file_version_numbers_to_string = Str :-
+    % This should be more verbose, giving readers of the file a clue
+    % about what program created this file.
     string.format("%d,%d.\n\n",
         [i(used_file_version_number),
         i(module_item_version_numbers_version_number)], Str).
+
+    % Changes which modify the format of the `.used' files will increment
+    % this number. recompilation_check.m should recompile if the version number
+    % is out of date.
+    %
+:- func used_file_version_number = int.
+
+used_file_version_number = 3.
 
 %---------------------------------------------------------------------------%
 
@@ -329,19 +330,20 @@ module_source_timestamp_to_string(ModuleName, Timestamp) = Str :-
 
 %---------------------------------------------------------------------------%
 
-:- func nested_children_of_top_module_to_string(maybe_top_module) = string.
+:- func nested_children_of_top_module_to_string(maybe_top_module_used_file)
+    = string.
 
 nested_children_of_top_module_to_string(MaybeTopModule) = Str :-
-    NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
     (
-        NestedSubModules = [],
-        Str = "sub_modules.\n\n"
+        MaybeTopModule = not_top_module_used_file,
+        Str = "not_top_module_used_file.\n\n"
     ;
-        NestedSubModules = [_ | _],
+        MaybeTopModule = top_module_used_file(NestedSubModules),
         NestedSubModuleStrs =
             list.map(mercury_bracketed_sym_name_to_string, NestedSubModules),
         NestedSubModulesStr = string.join_list(", ", NestedSubModuleStrs),
-        string.format("sub_modules(%s).\n\n", [s(NestedSubModulesStr)], Str)
+        string.format("top_module_used_file([%s]).\n\n",
+            [s(NestedSubModulesStr)], Str)
     ).
 
 %---------------------------------------------------------------------------%
@@ -706,7 +708,7 @@ read_and_parse_used_file(UsedFileName, UsedFileString, MaxOffset,
             MaxOffset, !LineContext, !LinePosn, ParseTimestamp),
         % Find out whether this module has any inline submodules.
         read_and_parse_inline_submodules(UsedFileName, UsedFileString,
-            MaxOffset, !LineContext, !LinePosn, ParseInlineSubModules),
+            MaxOffset, !LineContext, !LinePosn, ParseMaybeTopModule),
         % Parse the used items, which are used for checking for ambiguities
         % with new items.
         read_and_parse_used_items(UsedFileName, UsedFileString,
@@ -718,19 +720,19 @@ read_and_parse_used_file(UsedFileName, UsedFileString, MaxOffset,
             cord.init, ParseUsedModules),
         ( if
             ParseTimestamp = used_file_ok(ModuleNameTimestamp),
-            ParseInlineSubModules = used_file_ok(InlineSubModules),
+            ParseMaybeTopModule = used_file_ok(MaybeTopModule),
             ParseUsedItems = used_file_ok(UsedItems),
             ParseUsedClasses = used_file_ok(UsedClasses),
             ParseUsedModules = used_file_ok(UsedModules)
         then
             ModuleNameTimestamp =
                 module_name_and_timestamp(_ModuleName, ModuleTimestamp),
-            UsedFile = used_file(ModuleTimestamp, InlineSubModules,
+            UsedFile = used_file(ModuleTimestamp, MaybeTopModule,
                 UsedItems, set.to_sorted_list(UsedClasses), UsedModules),
             ParseUsedFile = used_file_ok(UsedFile)
         else
             Errors1 = project_error_reason(ParseTimestamp),
-            Errors2 = project_error_reason(ParseInlineSubModules),
+            Errors2 = project_error_reason(ParseMaybeTopModule),
             Errors3 = project_error_reason(ParseUsedItems),
             Errors4 = project_error_reason(ParseUsedClasses),
             Errors5 = project_error_reason(ParseUsedModules),
@@ -857,28 +859,38 @@ parse_module_timestamp(Term, ParseTerm) :-
 
 :- pred read_and_parse_inline_submodules(string::in, string::in, int::in,
     line_context::in, line_context::out, line_posn::in, line_posn::out,
-    used_file_result(list(module_name))::out) is det.
+    used_file_result(maybe_top_module_used_file)::out) is det.
 
 read_and_parse_inline_submodules(UsedFileName, UsedFileString, MaxOffset,
-        !LineContext, !LinePosn, ParseSubModules) :-
+        !LineContext, !LinePosn, ParseMaybeTopModule) :-
     % Find out whether this module has any inline submodules.
     read_term_check_for_error_or_eof(UsedFileName, UsedFileString, MaxOffset,
-        !LineContext, !LinePosn, "inline submodules", ReadTerm),
+        !LineContext, !LinePosn, "maybe_top_module_used_file", ReadTerm),
     (
         ReadTerm = used_file_error(Error),
-        ParseSubModules = used_file_error(Error)
+        ParseMaybeTopModule = used_file_error(Error)
     ;
         ReadTerm = used_file_ok(Term),
         ( if
-            Term = term.functor(term.atom("sub_modules"), SubModuleTerms, _),
+            Term = term.functor(term.atom("top_module_used_file"),
+                SubModulesTerms, _),
+            SubModulesTerms = [SubModulesTerm],
+            list_term_to_term_list(SubModulesTerm, SubModuleTerms),
             list.map(try_parse_sym_name_and_no_args,
                 SubModuleTerms, SubModules)
         then
-            ParseSubModules = used_file_ok(SubModules)
+            MaybeTopModule = top_module_used_file(SubModules),
+            ParseMaybeTopModule = used_file_ok(MaybeTopModule)
+        else if
+            Term = term.functor(term.atom("not_top_module_used_file"), [], _)
+        then
+            MaybeTopModule = not_top_module_used_file,
+            ParseMaybeTopModule = used_file_ok(MaybeTopModule)
         else
             Context = get_term_context(Term),
-            Error = uf_syntax_error(Context, "error in sub_modules term"),
-            ParseSubModules = used_file_error(Error)
+            Error = uf_syntax_error(Context,
+                "error in maybe_top_module_used_file term"),
+            ParseMaybeTopModule = used_file_error(Error)
         )
     ).
 

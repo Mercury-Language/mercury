@@ -26,13 +26,12 @@ else
 	C_ONLY_PROGS =
 endif
 
-PROGS = $(PROGS0) $(C_ONLY_PROGS)
 
 # These tests only work if the workspace was compiled with `--use-subdirs'.
-ifneq ($(origin WORKSPACE),undefined)
-    ifeq ($(shell test -d $(WORKSPACE)/library/Mercury || echo cannot_run),cannot_run)
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
+	PROGS = $(PROGS0) $(C_ONLY_PROGS)
+else
 	PROGS =
-    endif
 endif
 
 TESTS = $(sort $(PROGS))

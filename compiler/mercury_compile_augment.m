@@ -42,8 +42,9 @@
     io.text_output_stream::in, globals::in, op_mode_augment::in,
     op_mode_invoked_by_mmc_make::in, file_name::in, maybe(timestamp)::in,
     read_module_errors::in, parse_tree_src::in,
-    modules_to_recompile::in, list(module_name)::out, list(string)::out,
-    list(error_spec)::out, have_parse_tree_maps::in, have_parse_tree_maps::out,
+    file_components_to_recompile::in,
+    list(module_name)::out, list(string)::out, list(error_spec)::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -101,7 +102,7 @@ augment_and_process_source_file(ProgressStream, ErrorStream, Globals,
         ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
         !:Specs, BurdenedModules0),
     (
-        MaybeModulesToRecompile = some_modules(ModulesToRecompile),
+        MaybeModulesToRecompile = some_file_components(ModulesToRecompile),
         ToRecompile =
             ( pred(BM::in) is semidet :-
                 BM = burdened_module(_, PTMS),
@@ -110,7 +111,7 @@ augment_and_process_source_file(ProgressStream, ErrorStream, Globals,
         list.filter(ToRecompile, BurdenedModules0,
             BurdenedModulesToRecompile)
     ;
-        MaybeModulesToRecompile = all_modules,
+        MaybeModulesToRecompile = all_file_components,
         BurdenedModulesToRecompile = BurdenedModules0
     ),
 

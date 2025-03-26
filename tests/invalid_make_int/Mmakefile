@@ -55,7 +55,7 @@ MULTI_MODULE_PROGS = \
 # While the following tests were in ../invalid, they were included among
 # the modules listed in the definition of the REDIRECT_OPT_ERROR_MODULES
 # make variable. However, they seem to be working just fine when moved
-# to this direct, which has no such list.
+# to this directory, which has no such list.
 #
 # 	bad_type_class_constraint_intermodule
 # 	bug521_sub

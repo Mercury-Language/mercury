@@ -26,9 +26,19 @@ include ../Mmake.common
 # by `mmc --make'.
 include Mercury.options
 
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
+
+$(SINGLE_MODULE_PROGS:%=%.runtest): %.runtest: Mercury/ints/%.int ;
+
+$(MULTI_MODULE_PROGS:%=%.runtest): %.runtest: Mercury/ints/%.int ;
+
+else
+
 $(SINGLE_MODULE_PROGS:%=%.runtest): %.runtest: %.int ;
 
 $(MULTI_MODULE_PROGS:%=%.runtest): %.runtest: %.int ;
+
+endif
 
 #-----------------------------------------------------------------------------#
 

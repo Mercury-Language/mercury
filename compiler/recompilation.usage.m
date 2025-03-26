@@ -66,6 +66,14 @@
 
 construct_used_file_contents(ModuleInfo, RecompInfo, MaybeTopModule,
         TimestampMap, Contents) :-
+    (
+        MaybeTopModule = top_module(SubModuleSet),
+        SubModules = set.to_sorted_list(SubModuleSet),
+        MaybeTopModuleUsedFile = top_module_used_file(SubModules)
+    ;
+        MaybeTopModule = not_top_module,
+        MaybeTopModuleUsedFile = not_top_module_used_file
+    ),
     % Go over the set of imported items found to be used and
     % find the transitive closure of the imported items they use.
 
@@ -107,8 +115,8 @@ construct_used_file_contents(ModuleInfo, RecompInfo, MaybeTopModule,
     ResolvedUsedItems = Info ^ resolved_used_items,
 
     ModuleItemVersionNumbersMap = RecompInfo ^ recomp_version_numbers,
-    Contents = used_file_contents(ModuleName, MaybeTopModule, TimestampMap,
-        ModuleItemVersionNumbersMap,
+    Contents = used_file_contents(ModuleName, MaybeTopModuleUsedFile,
+        TimestampMap, ModuleItemVersionNumbersMap,
         ResolvedUsedItems, UsedTypeClasses, ImportedItems, ModuleInstances).
 
 %---------------------------------------------------------------------------%

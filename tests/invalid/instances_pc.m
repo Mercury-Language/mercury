@@ -8,7 +8,8 @@
 % information needed for doing that check is contained in the parent module's
 % private interface (.int0) file.
 %
-% The .err_exp file is for C, the .err_exp2 file is for Java and C#.
+% The .err_exp file is for --no-use-subdirs.
+% The .err_exp2 file is for --use-subdirs.
 %
 %---------------------------------------------------------------------------%
 
