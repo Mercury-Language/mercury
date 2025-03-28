@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2009-2011 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020, 2022-2024 The Mercury team.
+% Copyright (C) 2013-2018, 2020, 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -1626,7 +1626,7 @@ output_label_or_not_reached(Stream, MaybeLabel, !IO) :-
     maybe(alloc_site_id)::in, may_use_atomic_alloc::in, maybe(rval)::in,
     label_output_info::in, io::di, io::uo) is det.
 
-output_incr_hp_no_reuse(Info, Stream, Lval, MaybePtag, MaybeOffset, Rval,
+output_incr_hp_no_reuse(Info, Stream, Lval, MaybePtag, MaybeOffset, SizeRval,
         MaybeAllocId, MayUseAtomicAlloc, MaybeRegionRval,
         _LabelOutputInfo, !IO) :-
     (
@@ -1645,7 +1645,12 @@ output_incr_hp_no_reuse(Info, Stream, Lval, MaybePtag, MaybeOffset, Rval,
         io.write_string(Stream, ", ", !IO),
         output_rval(Info, RegionRval, Stream, !IO),
         io.write_string(Stream, ", ", !IO),
-        output_rval_as_type(Info, Rval, lt_word, Stream, !IO),
+        ( if SizeRval = const(llconst_int(N)) then
+            io.write_int(Stream, N, !IO)
+        else
+            output_rval_as_type(Info, SizeRval, lt_int(int_type_int),
+                Stream, !IO)
+        ),
         io.write_string(Stream, ")", !IO)
     ;
         MaybeRegionRval = no,
@@ -1686,7 +1691,12 @@ output_incr_hp_no_reuse(Info, Stream, Lval, MaybePtag, MaybeOffset, Rval,
                 io.write_int(Stream, Offset, !IO),
                 io.write_string(Stream, ", ", !IO)
             ),
-            output_rval_as_type(Info, Rval, lt_word, Stream, !IO),
+            ( if SizeRval = const(llconst_int(N)) then
+                io.write_int(Stream, N, !IO)
+            else
+                output_rval_as_type(Info, SizeRval, lt_int(int_type_int),
+                    Stream, !IO)
+            ),
             io.write_string(Stream, ", ", !IO),
             output_maybe_alloc_site_id(Info, Stream, MaybeAllocId, !IO),
             io.write_string(Stream, ", NULL)", !IO)
@@ -1753,7 +1763,12 @@ output_incr_hp_no_reuse(Info, Stream, Lval, MaybePtag, MaybeOffset, Rval,
             ;
                 MaybeOffset = no
             ),
-            output_rval_as_type(Info, Rval, lt_word, Stream, !IO),
+            ( if SizeRval = const(llconst_int(N)) then
+                io.write_int(Stream, N, !IO)
+            else
+                output_rval_as_type(Info, SizeRval, lt_int(int_type_int),
+                    Stream, !IO)
+            ),
             io.write_string(Stream, ")", !IO)
         )
     ).

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018, 2024 The Mercury team.
+% Copyright (C) 2018, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -109,7 +109,11 @@ mlds_output_lval(Opts, Lval, Stream, !IO) :-
                 ),
                 mlds_output_rval(Opts, PtrRval, Stream, !IO),
                 io.write_string(Stream, ", ", !IO),
-                mlds_output_rval(Opts, OffsetRval, Stream, !IO),
+                ( if OffsetRval = ml_const(mlconst_int(N)) then
+                    io.write_int(Stream, N, !IO)
+                else
+                    mlds_output_rval(Opts, OffsetRval, Stream, !IO)
+                ),
                 io.write_string(Stream, "))", !IO)
             else
                 % The field type for ml_lval_field(_, _, ml_field_offset(_),
@@ -1102,7 +1106,7 @@ mlds_output_initializer(Opts, Stream, _Type, Initializer, !IO) :-
 mlds_needs_initialization(no_initializer) = no.
 mlds_needs_initialization(init_obj(_)) = yes.
 mlds_needs_initialization(init_struct(_Type, [])) = no.
-mlds_needs_initialization(init_struct(_Type, [_|_])) = yes.
+mlds_needs_initialization(init_struct(_Type, [_ | _])) = yes.
 mlds_needs_initialization(init_array(_)) = yes.
 
 mlds_output_initializer_body(Opts, Stream, Indent, Initializer, !IO) :-
