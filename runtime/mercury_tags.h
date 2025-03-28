@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1993-2001, 2003-2007 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_tags.h - defines macros for tagging and untagging words.
@@ -72,17 +72,10 @@
 // Mercury data structures. The definitions of these macros depend on the data
 // representation scheme used by compiler/du_type_layout.m.
 
-#define MR_FIRST_UNRESERVED_RAW_TAG  0
+#define MR_TAG_NIL      MR_mktag(0)
+#define MR_TAG_CONS     MR_mktag(1)
 
-#define MR_RAW_TAG_NIL          MR_FIRST_UNRESERVED_RAW_TAG
-#define MR_RAW_TAG_CONS         (MR_FIRST_UNRESERVED_RAW_TAG + 1)
-
-#define MR_RAW_UNIV_TAG         MR_FIRST_UNRESERVED_RAW_TAG
-
-#define MR_TAG_NIL      MR_mktag(MR_RAW_TAG_NIL)
-#define MR_TAG_CONS     MR_mktag(MR_RAW_TAG_CONS)
-
-#define MR_UNIV_TAG     MR_mktag(MR_RAW_UNIV_TAG)
+#define MR_UNIV_TAG     MR_mktag(0)
 
 #if MR_TAGBITS > 0
   // Cons cells are represented using two words.
