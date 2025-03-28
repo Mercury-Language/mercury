@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module duplicate_instance_3.
+:- module duplicate_instance_static_link.
 :- interface.
 :- import_module io.
 

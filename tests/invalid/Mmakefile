@@ -26,7 +26,7 @@ MAYBE_J1 =
 # files should be put into the invalid_make_int directory.
 
 ALWAYS_SPECIAL_RULE_MULTIMODULE_PROGS = \
-	duplicate_instance_2
+	duplicate_instance
 
 ALWAYS_SPECIAL_RULE_SINGLEMODULE_PROGS = \
 	foreign_include_file_missing \
@@ -409,7 +409,7 @@ TYPE_SPEC_PROGS = $(TYPE_SPEC_MODULES)
 #		files and .mh files rather than in .m files,
 #		or being reported in .m files but at the line number of
 #		the pragma foreign_proc rather than the pragma foreign_type)
-#	duplicate_instance_3 (the error is only detected when doing
+#	duplicate_instance_static_link (the error is only detected when doing
 #		normal static linking; the error goes undetected
 #		when doing dynamic linking)
 #	parent.undeclared_child (just not yet implemented)
@@ -575,12 +575,12 @@ foreign_type_line_number.err: foreign_type_line_number.m
 		sed 's@Mercury/cs/@@g' | sort -u \
 		> foreign_type_line_number.err
 
-# For duplicate_instance_{1,2}, the error is only caught at link time.
-# So we need to use a different rule for that.
+# For this test case, the error is only caught at link time,
+# so we need to use a different rule for that.
 # The exact error message varies a lot from system to system, so we don't check
-# the error output, we just check the command return status.
-duplicate_instance_2.err: duplicate_instance_1.m duplicate_instance_2.m
-	if $(MCM) duplicate_instance_2 > /dev/null 2>&1; \
+# the error output; we just check the command return status.
+duplicate_instance.err: duplicate_instance.m duplicate_instance_helper_1.m
+	if $(MCM) duplicate_instance > /dev/null 2>&1; \
 	then false; \
 	else echo "Error was successfully detected" > $*.err; \
 	fi

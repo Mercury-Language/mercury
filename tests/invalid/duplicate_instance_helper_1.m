@@ -2,15 +2,12 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module duplicate_instance_2.
+:- module duplicate_instance_helper_1.
 :- interface.
-:- import_module io.
 
-:- pred main(state::di, state::uo) is det.
+:- typeclass foo(T) where [].
+:- instance foo(int).
 
 :- implementation.
-:- import_module duplicate_instance_1.
 
 :- instance foo(int) where [].
-
-main --> [].
