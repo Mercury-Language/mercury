@@ -583,8 +583,8 @@ trace_setup(Globals, ProcInfo, EffTraceLevel, MaybeTailRecLabel,
         then
             get_next_label(RedoLayoutLabel, !CI),
             MaybeRedoLayoutLabel = yes(RedoLayoutLabel),
-            % We always reserve slots 1, 2 and 3, and we reserve slot 4
-            % for the redo layout label.
+            % We always reserve slots 1, 2 and 3, and we hereby reserve
+            % slot 4 for the redo layout label.
             !:NextSlot = 5
         else
             MaybeRedoLayoutLabel = no,
@@ -686,22 +686,31 @@ trace_setup(Globals, ProcInfo, EffTraceLevel, MaybeTailRecLabel,
 generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     CodeModel = get_proc_model(CI),
     MaybeFromFullSlot  = TraceInfo ^ ti_from_full_lval,
-    MaybeIoSeqSlot     = TraceInfo ^ ti_io_seq_lval,
+    MaybeIoSeqSlot0    = TraceInfo ^ ti_io_seq_lval,
     MaybeTrailLvals    = TraceInfo ^ ti_trail_lvals,
     MaybeMaxfrLval     = TraceInfo ^ ti_maxfr_lval,
     MaybeCallTableLval = TraceInfo ^ ti_call_table_tip_lval,
     MaybeTailRecInfo   = TraceInfo ^ ti_tail_rec_info,
     MaybeRedoLabel     = TraceInfo ^ ti_redo_label,
-    event_num_slot(CodeModel, EventNumLval),
-    call_num_slot(CodeModel, CallNumLval),
-    call_depth_slot(CodeModel, CallDepthLval),
-    stackref_to_string(EventNumLval, EventNumStr),
-    stackref_to_string(CallNumLval, CallNumStr),
-    stackref_to_string(CallDepthLval, CallDepthStr),
     some [!CodeStr] (
         % Stage 1.
-        !:CodeStr = "\t\tMR_trace_fill_std_slots(" ++ EventNumStr ++ ", " ++
-            CallNumStr ++ ", " ++ CallDepthStr ++ ");\n",
+        (
+            CodeModel = model_non,
+            !:CodeStr = "\t\tMR_trace_fill_std_slots_fv;\n",
+            MaybeIoSeqSlot = MaybeIoSeqSlot0
+        ;
+            ( CodeModel = model_det
+            ; CodeModel = model_semi
+            ),
+            ( if MaybeIoSeqSlot0 = yes(stackvar(IoSeqSlotNum0)) then
+                !:CodeStr = "\t\tMR_trace_fill_std_slots_sv_io(" ++
+                    string.int_to_string(IoSeqSlotNum0) ++ ");\n",
+                MaybeIoSeqSlot = no
+            else
+                !:CodeStr = "\t\tMR_trace_fill_std_slots_sv;\n",
+                MaybeIoSeqSlot = MaybeIoSeqSlot0
+            )
+        ),
         % Stage 2.
         (
             MaybeRedoLabel = yes(RedoLayoutLabel),
@@ -745,6 +754,8 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         (
             MaybeFromFullSlot = yes(CallFromFullSlot),
             stackref_to_string(CallFromFullSlot, CallFromFullSlotStr),
+            call_depth_slot(CodeModel, CallDepthLval),
+            stackref_to_string(CallDepthLval, CallDepthStr),
             !:CodeStr =
                 "\t\t" ++ CallFromFullSlotStr ++ " = MR_trace_from_full;\n" ++
                 "\t\tif (MR_trace_from_full) {\n" ++

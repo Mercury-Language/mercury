@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2009, 2011 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_trace_base.h defines the interface between the main part
@@ -104,6 +104,14 @@ extern  void            MR_trace_name_count_port_ensure_init(void);
 
 #define MR_trace_incr_seq()         ((MR_Word) ++MR_trace_call_seqno)
 #define MR_trace_incr_depth()       ((MR_Word) ++MR_trace_call_depth)
+
+#define MR_trace_fill_std_slots_sv                                      \
+    MR_trace_fill_std_slots(MR_sv(1), MR_sv(2), MR_sv(3))
+#define MR_trace_fill_std_slots_fv                                      \
+    MR_trace_fill_std_slots(MR_fv(1), MR_fv(2), MR_fv(3))
+
+#define MR_trace_fill_std_slots_sv_io(IoSeqSlot)                        \
+    (MR_trace_fill_std_slots_sv, MR_sv(IoSeqSlot) = MR_io_tabling_counter)
 
 #define MR_trace_fill_std_slots(s1, s2, s3)                             \
     (((s1) = MR_trace_event_number),                                    \
