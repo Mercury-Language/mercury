@@ -20,15 +20,24 @@ PROGS0 =	\
 	rebuild
 
 ifeq "$(filter csharp% java%,$(GRADE))" ""
+	# XXX Why isn't build_object listed here?
 	C_ONLY_PROGS = \
 		factt
 else
 	C_ONLY_PROGS =
 endif
 
-
-# These tests only work if the workspace was compiled with `--use-subdirs'.
-ifeq ($(MMAKE_USE_SUBDIRS),yes)
+# The tests in this directory work only if the workspace was compiled
+# with `--use-subdirs'. We test for this by checking the value of
+# TESTS_USE_SUBDIRS, which tools/bootcheck sets to the same value
+# it sets MMAKE_USE_SUBDIRS. The reason why we don't check the value
+# of MMAKE_USE_SUBDIRS is that mmake itself, through scripts/mmake.in,
+# can override the initial value of MMAKE_USE_SUBDIRS if it sees a Mercury
+# directory, and we seem to have some test actions that create such
+# directories. Some such actions, such as the ones in this directory,
+# are *meant* to create Mercury directories, but some others may create them
+# even though they shouldn't.
+ifeq ($(TESTS_USE_SUBDIRS),yes)
 	PROGS = $(PROGS0) $(C_ONLY_PROGS)
 else
 	PROGS =
@@ -39,8 +48,8 @@ include ../Mmake.common
 
 %.runtest: %.res ;
 
-Mercury.modules: lexer.m
-	$(MC) -f $^
+Mercury.modules: $(wildcard *.m)
+	$(MC) -f $(wildcard *.m)
 
 bug489.log: Mercury.modules
 
@@ -102,5 +111,6 @@ realclean_mmc_make: TESTS_FLAGS
 	cd lib; $(MCM) complex_numbers.realclean linkage_test2.realclean
 	rm -f TESTS_FLAGS
 	rm -f Mercury.modules
+	rm -rf Mercury lib/Mercury
 
 #-----------------------------------------------------------------------------#

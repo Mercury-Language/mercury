@@ -808,6 +808,16 @@ then
     MMAKE_USE_SUBDIRS=${use_subdirs}
     export MMAKE_USE_SUBDIRS
 
+    # We use TESTS_USE_SUBDIRS to record the value that we set
+    # MMAKE_USE_SUBDIRS to. While mmake can override the value that
+    # we assign to MMAKE_USE_SUBDIRS here (by effectively force-enabling
+    # the use of subdirs if a Mercury directory exists), mmake won't
+    # do this to the TESTS_USE_SUBDIRS variable, since it does not know
+    # about it. Some test directories (mmc_make and valid_make_int, as of
+    # 2025 mar 28) need this stability.
+    TESTS_USE_SUBDIRS=${use_subdirs}
+    export TESTS_USE_SUBDIRS
+
     MMAKE_USE_MMC_MAKE=${use_mmc_make}
     export MMAKE_USE_MMC_MAKE
 
@@ -2350,6 +2360,13 @@ then
             do
                 if test -d "${root}/tests/${testdir}"
                 then
+                    # Temporary addition on 2025 mar 28, intended to
+                    # track down any stray Mercury directories left
+                    # unintentionally by test cases.
+                    echo FIND BAD SUBDIRS
+                    find ${root} -name Mercury
+                    echo END FIND BAD SUBDIRS
+
                     cd "${root}/tests/${testdir}"
                     mmake ${mmake_opts} ${target_opt} ${jfactor} \
                         ${test_grade_opt} ${test_log_opt} \
@@ -2447,11 +2464,31 @@ then
     cd "${root}"
 fi
 
+cd "${root}"
 if ${delete_deep_data}
 then
-    (cd "${root}"; \
-        find stage2 tests -name Deep.data -o -name Deep.procrep -print \
-        | xargs /bin/rm -f)
+    # NOTE You need the parentheses for the -print action to apply
+    # to the file name matches for *all* the patterns.
+    #
+    # The mmc and mandelbrot subdirectories of tests/feedback contain
+    # .data and .procrep files that are under version control, and which
+    # we do therefore do NOT want to delete. (We *could* delete them,
+    # and then do "git co" to get them back, but that would not work
+    # in non-version-controlled copies of workspaces.)
+    #
+    # Note that we *could* just stop deleting files named Deep.{data,procrep}.
+    # The code here serves to clean up such files left by deep profiling
+    # bootchecks before the naming change, but that won't be needed forever.
+    find stage2 tests \
+        \( -name Deep.data \
+        -o -name Deep.procrep \
+        -o -name 'mercury_compile_on_*_at_*.data' \
+        -o -name 'mercury_compile_on_*_at_*.procrep' \
+        \) -print \
+        | sed \
+            -e '/tests\/feedback\/mmc/d' \
+            -e '/tests\/feedback\/mandelbrot/d' \
+        | xargs /bin/rm -f
 fi
 
 #-----------------------------------------------------------------------------#

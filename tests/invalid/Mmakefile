@@ -622,7 +622,10 @@ $(foreach module,$(REDIRECT_OPT_ERROR_MODULES),$(eval $(call OVERRIDE_OPT_RULE,$
 
 clean_local: clean_invalid
 
+# The Mercury directory is created as a side effect of the $(MCM) invocation
+# for the duplicate_instance_2 test case.
 clean_invalid:
+	rm -rf Mercury
 	rm -f *.dep_err *.int_err *.err *.err_res *.err_res[2345]
 
 #-----------------------------------------------------------------------------#
