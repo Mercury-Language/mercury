@@ -1,7 +1,7 @@
 #-----------------------------------------------------------------------------#
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2016 The Mercury team.
+# Copyright (C) 2016, 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -53,8 +53,8 @@ MAIN_TARGET = all
 MERCURY_MAIN_MODULES = choose_grade test_grades try_all_grade_structs
 # EXTRA_MCFLAGS = --trace-flag debug_solver
 
-DEPENDS = Mercury.modules $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
-DEPS = Mercury.modules $(patsubst %,%.dep,$(MERCURY_MAIN_MODULES))
+DEPENDS = $(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
+DEPS = $(patsubst %,%.dep,$(MERCURY_MAIN_MODULES))
 
 # This directory contains source files for which the module name
 # doesn't match the file name, so smart recompilation won't work
@@ -70,7 +70,7 @@ depend:	GRADE_LIB_FLAGS Mercury.modules $(DEPENDS)
 $(DEPENDS): GRADE_LIB_FLAGS Mercury.modules
 
 .PHONY: dep
-dep:	GRADE_LIB_FLAGS $(DEPS)
+dep:	GRADE_LIB_FLAGS Mercury.modules $(DEPS)
 
 #-----------------------------------------------------------------------------#
 
