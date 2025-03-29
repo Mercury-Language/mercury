@@ -148,15 +148,20 @@ format_pred(Info, Lang, ModuleInfo, PredId, PredInfo, !State) :-
     pred_info_get_external_type_params(PredInfo, ExternalTypeParams),
     pred_info_get_var_name_remap(PredInfo, VarNameRemap),
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    ( if string.contains_char(DumpOptions, 'v') then
+    DumpVarNums = DumpOptions ^ dump_var_numbers_in_names,
+    (
+        DumpVarNums = yes,
         VarNamePrint = print_name_and_num
-    else
+    ;
+        DumpVarNums = no,
         VarNamePrint = print_name_only
     ),
     pred_info_get_proc_table(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, ProcIdsInfos),
     find_filled_in_procs(ProcIdsInfos, FilledInProcIdsInfos),
-    ( if string.contains_char(DumpOptions, 'C') then
+    DumpClauses = DumpOptions ^ dump_clauses,
+    (
+        DumpClauses = yes,
         % Information about predicates is dumped if 'C' suboption is on.
         PredSymName = qualified(PredModuleName, PredName),
         (
@@ -255,19 +260,21 @@ format_pred(Info, Lang, ModuleInfo, PredId, PredInfo, !State) :-
         OriginStr = dump_origin(TVarSet, VarNamePrint, "% origin: ", Origin),
         string.builder.append_string(OriginStr, !State),
         PrintedPred = yes
-    else
+    ;
+        DumpClauses = no,
         PrintedPred = no
     ),
-    ( if
-        string.contains_char(DumpOptions, 'x'),
-        FilledInProcIdsInfos = [_ | _]
-    then
+
+    (
+        FilledInProcIdsInfos = [_ | _],
         format_procs_loop(Info, VarNamePrint, ModuleInfo, PredId, PredInfo,
             FilledInProcIdsInfos, !State),
         PrintedProc = yes
-    else
+    ;
+        FilledInProcIdsInfos = [],
         PrintedProc = no
     ),
+
     ( if
         ( PrintedPred = yes
         ; PrintedProc = yes
@@ -469,37 +476,22 @@ format_constraint_id(ConstraintId, !State) :-
     is det.
 
 set_dump_opts_for_clauses(Info, ClausesInfo) :-
-    OptionsStr = Info ^ hoi_dump_hlds_options,
-    some [!DumpStr] (
-        !:DumpStr = "",
-        ( if string.contains_char(OptionsStr, 'c') then
-            !:DumpStr = !.DumpStr ++ "c"
-        else
-            true
-        ),
-        ( if string.contains_char(OptionsStr, 'n') then
-            !:DumpStr = !.DumpStr ++ "n"
-        else
-            true
-        ),
-        ( if string.contains_char(OptionsStr, 'v') then
-            !:DumpStr = !.DumpStr ++ "v"
-        else
-            true
-        ),
-        ( if string.contains_char(OptionsStr, 'g') then
-            !:DumpStr = !.DumpStr ++ "g"
-        else
-            true
-        ),
-        ( if string.contains_char(OptionsStr, 'P') then
-            !:DumpStr = !.DumpStr ++ "P"
-        else
-            true
-        ),
-        DumpStr = !.DumpStr
-    ),
-    ClausesInfo = Info ^ hoi_dump_hlds_options := DumpStr.
+    GenOptions = Info ^ hoi_dump_hlds_options,
+    some [!ClauseOptions] (
+        % Nuke all dump options except the ones explicitly copied below.
+        !:ClauseOptions = empty_dump_options,
+        !ClauseOptions ^ dump_goal_type_contexts :=
+            GenOptions ^ dump_goal_type_contexts,
+        !ClauseOptions ^ dump_goal_nonlocals :=
+            GenOptions ^ dump_goal_nonlocals,
+        !ClauseOptions ^ dump_var_numbers_in_names :=
+            GenOptions ^ dump_var_numbers_in_names,
+        !ClauseOptions ^ dump_goal_features :=
+            GenOptions ^ dump_goal_features,
+        !ClauseOptions ^ dump_goal_ids_paths :=
+            GenOptions ^ dump_goal_ids_paths,
+        ClausesInfo = Info ^ hoi_dump_hlds_options := !.ClauseOptions
+    ).
 
 :- pred format_clauses(hlds_out_info::in, output_lang::in, module_info::in,
     pred_id::in, pred_or_func::in, var_name_source::in, type_qual::in,
@@ -553,37 +545,41 @@ format_clause(Info, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
     IndentStr = indent2_string(Indent),
     Indent1 = Indent + 1u,
     DumpOptions = Info ^ hoi_dump_hlds_options,
+    DumpClauseModes = DumpOptions ^ dump_clause_modes,
     (
         ApplicableModes = all_modes
     ;
         ApplicableModes = selected_modes(Modes),
-        ( if string.contains_char(DumpOptions, 'm') then
+        (
+            DumpClauseModes = yes,
             string.builder.format(
                 "%s%% modes for which this clause applies: ",
                 [s(IndentStr)], !State),
             ModeInts = list.map(proc_id_to_int, Modes),
             format_intlist(ModeInts, !State),
             string.builder.append_string("\n", !State)
-        else
-            true
+        ;
+            DumpClauseModes = no
         )
     ;
         ApplicableModes = unify_in_in_modes,
-        ( if string.contains_char(DumpOptions, 'm') then
+        (
+            DumpClauseModes = yes,
             string.builder.format(
                 "%s%% this clause applies only to <in,in> unify modes.\n",
                 [s(IndentStr)], !State)
-        else
-            true
+        ;
+            DumpClauseModes = no
         )
     ;
         ApplicableModes = unify_non_in_in_modes,
-        ( if string.contains_char(DumpOptions, 'm') then
+        (
+            DumpClauseModes = yes,
             string.builder.format(
                 "%s%% this clause applies only to non <in,in> unify modes.\n",
                 [s(IndentStr)], !State)
-        else
-            true
+        ;
+            DumpClauseModes = no
         )
     ),
     (
@@ -787,10 +783,17 @@ format_proc(Info, VarNamePrint, ModuleInfo, PredId, PredInfo,
         EvalMethod, MaybeProcTableIOInfo, MaybeCallTableTip, !State),
     format_proc_deep_profiling_info(VarTable, VarNamePrint,
         MaybeDeepProfileInfo, !State),
-    format_proc_termination_info(DumpOptions,
-        MaybeArgSize, MaybeTermination, !State),
-    format_proc_opt_info(DumpOptions, VarTable, TVarSet,
-        VarNamePrint, MaybeStructureSharing, MaybeStructureReuse,
+
+    DumpTermination = DumpOptions ^ dump_termination_analysis,
+    (
+        DumpTermination = yes,
+        format_proc_termination_info(MaybeArgSize, MaybeTermination, !State)
+    ;
+        DumpTermination = no
+    ),
+
+    format_proc_opt_info(DumpOptions, VarTable, TVarSet, VarNamePrint,
+        MaybeStructureSharing, MaybeStructureReuse,
         MaybeUntupleInfo, !State),
     format_proc_deleted_callee_set(DeletedCallCalleeSet, !State),
     format_pred_proc_var_name_remap(vns_var_table(VarTable),
@@ -1218,26 +1221,21 @@ coverage_point_to_string(cp_type_branch_arm) = "branch arm".
 
 %---------------------%
 
-:- pred format_proc_termination_info(string::in,
-    maybe(arg_size_info)::in, maybe(termination_info)::in,
+:- pred format_proc_termination_info(maybe(arg_size_info)::in,
+    maybe(termination_info)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-format_proc_termination_info(DumpOptions,  MaybeArgSize,
-        MaybeTermination, !State) :-
-    ( if string.contains_char(DumpOptions, 't') then
-        SizeStr = maybe_arg_size_info_to_string(yes, MaybeArgSize),
-        TermStr = maybe_termination_info_to_string(yes, MaybeTermination),
-        string.builder.format("%% arg size properties: %s\n",
-            [s(SizeStr)], !State),
-        string.builder.format("%% termination properties: %s\n",
-            [s(TermStr)], !State)
-    else
-        true
-    ).
+format_proc_termination_info(MaybeArgSize, MaybeTermination, !State) :-
+    SizeStr = maybe_arg_size_info_to_string(yes, MaybeArgSize),
+    TermStr = maybe_termination_info_to_string(yes, MaybeTermination),
+    string.builder.format("%% arg size properties: %s\n",
+        [s(SizeStr)], !State),
+    string.builder.format("%% termination properties: %s\n",
+        [s(TermStr)], !State).
 
 %---------------------%
 
-:- pred format_proc_opt_info(string::in, var_table::in, tvarset::in,
+:- pred format_proc_opt_info(hlds_dump_options::in, var_table::in, tvarset::in,
     var_name_print::in, maybe(structure_sharing_domain_and_status)::in,
     maybe(structure_reuse_domain_and_status)::in, maybe(untuple_proc_info)::in,
     string.builder.state::di, string.builder.state::uo) is det.
@@ -1245,8 +1243,9 @@ format_proc_termination_info(DumpOptions,  MaybeArgSize,
 format_proc_opt_info(DumpOptions, VarTable, TVarSet, VarNamePrint,
         MaybeStructureSharing, MaybeStructureReuse, MaybeUntupleInfo,
         !State) :-
+    DumpStructSharing = DumpOptions ^ dump_struct_sharing_info,
     ( if
-        string.contains_char(DumpOptions, 'S'),
+        DumpStructSharing = yes,
         MaybeStructureSharing = yes(StructureSharing)
     then
         string.builder.append_string("% structure sharing: \n", !State),
@@ -1257,8 +1256,9 @@ format_proc_opt_info(DumpOptions, VarTable, TVarSet, VarNamePrint,
     else
         true
     ),
+    DumpUseReuse = DumpOptions ^ dump_use_reuse_info,
     ( if
-        string.contains_char(DumpOptions, 'R'),
+        DumpUseReuse = yes,
         MaybeStructureReuse = yes(StructureReuse)
     then
         string.builder.append_string("% structure reuse: \n", !State),
@@ -1361,8 +1361,9 @@ format_eff_trace_level(ModuleInfo, PredInfo, ProcInfo, !State) :-
 
 %---------------------%
 
-:- pred format_proc_arg_info(string::in, var_table::in, var_name_print::in,
-    maybe(list(is_live))::in, set_of_progvar::in, maybe(list(arg_info))::in,
+:- pred format_proc_arg_info(hlds_dump_options::in, var_table::in,
+    var_name_print::in, maybe(list(is_live))::in,
+    set_of_progvar::in, maybe(list(arg_info))::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
 format_proc_arg_info(DumpOptions, VarTable, VarNamePrint,
@@ -1383,8 +1384,9 @@ format_proc_arg_info(DumpOptions, VarTable, VarNamePrint,
     else
         true
     ),
+    DumpArgPassing = DumpOptions ^ dump_arg_passing_info,
     ( if
-        string.contains_char(DumpOptions, 'A'),
+        DumpArgPassing = yes,
         MaybeArgInfos = yes(ArgInfos)
     then
         string.builder.format("%% arg_infos: %s\n",

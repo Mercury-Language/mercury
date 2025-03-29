@@ -278,7 +278,7 @@ format_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !State) :-
     MercInfo = merc_out_info_disable_line_numbers(MercInfo0),
     OutInfo = OutInfo0 ^ hoi_merc_out_info := MercInfo,
     % Disable verbose dumping of clauses.
-    OutInfoForPreds = OutInfo ^ hoi_dump_hlds_options := "",
+    OutInfoForPreds = OutInfo ^ hoi_dump_hlds_options := empty_dump_options,
 
     intermod_gather_types(Types, TypeDefns, ForeignEnums),
     intermod_gather_insts(ModuleInfo, InstDefns),

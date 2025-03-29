@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -304,13 +304,19 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     Info = InfoGoal ^ hoig_out_info,
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    ( if string.contains_char(DumpOptions, 'c') then
+
+    DumpContexts = DumpOptions ^ dump_goal_type_contexts,
+    (
+        DumpContexts = yes,
         Context = goal_info_get_context(GoalInfo),
         maybe_format_context_comment(Indent, "", Context, !State)
-    else
-        true
+    ;
+        DumpContexts = no
     ),
-    ( if string.contains_char(DumpOptions, 'P') then
+
+    DumpGoalIdsPaths = DumpOptions ^ dump_goal_ids_paths,
+    (
+        DumpGoalIdsPaths = yes,
         GoalId = goal_info_get_goal_id(GoalInfo),
         ( if is_valid_goal_id(GoalId) then
             GoalId = goal_id(GoalIdNum),
@@ -319,10 +325,13 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
         else
             true
         )
-    else
-        true
+    ;
+        DumpGoalIdsPaths = no
     ),
-    ( if string.contains_char(DumpOptions, 'n') then
+
+    DumpNonLocals = DumpOptions ^ dump_goal_nonlocals,
+    (
+        DumpNonLocals = yes,
         NonLocalsSet = goal_info_get_nonlocals(GoalInfo),
         set_of_var.to_sorted_list(NonLocalsSet, NonLocalsList),
         (
@@ -334,12 +343,15 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
         ;
             NonLocalsList = []
         )
-    else
-        true
+    ;
+        DumpNonLocals = no
     ),
+
     VarNameSrc = InfoGoal ^ hoig_var_name_src,
     VarNamePrint = InfoGoal ^ hoig_var_name_print,
-    ( if string.contains_char(DumpOptions, 'p') then
+    DumpGoalBirthsDeaths = DumpOptions ^ dump_goal_birth_death_sets,
+    (
+        DumpGoalBirthsDeaths = yes,
         ( if
             goal_info_maybe_get_pre_deaths(GoalInfo, PreDeaths),
             PreDeathList = set_of_var.to_sorted_list(PreDeaths),
@@ -364,10 +376,13 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
         else
             true
         )
-    else
-        true
+    ;
+        DumpGoalBirthsDeaths = no
     ),
-    ( if string.contains_char(DumpOptions, 'B') then
+
+    DumpModeConstraints = DumpOptions ^ dump_mode_constraints,
+    (
+        DumpModeConstraints = yes,
         goal_info_get_producing_vars(GoalInfo, ProducingVars),
         ( if set_of_var.is_non_empty(ProducingVars) then
             set_of_var.to_sorted_list(ProducingVars, ProducingVarsList),
@@ -411,17 +426,23 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
         else
             true
         )
-    else
-        true
+    ;
+        DumpModeConstraints = no
     ),
-    ( if string.contains_char(DumpOptions, 'd') then
+
+    DumpDetism = DumpOptions ^ dump_goal_determinism,
+    (
+        DumpDetism = yes,
         Determinism = goal_info_get_determinism(GoalInfo),
         string.builder.format("%s%% determinism: %s\n",
             [s(IndentStr), s(determinism_to_string(Determinism))], !State)
-    else
-        true
+    ;
+        DumpDetism = no
     ),
-    ( if string.contains_char(DumpOptions, 'e') then
+
+    DumpRegions = DumpOptions ^ dump_region_annotations,
+    (
+        DumpRegions = yes,
         MaybeRbmmInfo = goal_info_get_maybe_rbmm(GoalInfo),
         (
             MaybeRbmmInfo = yes(RbmmInfo),
@@ -457,10 +478,13 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
         ;
             MaybeRbmmInfo = no
         )
-    else
-        true
+    ;
+        DumpRegions = no
     ),
-    ( if string.contains_char(DumpOptions, 'z') then
+
+    DumpPurity = DumpOptions ^ dump_goal_purity_markers,
+    (
+        DumpPurity = yes,
         Purity = goal_info_get_purity(GoalInfo),
         (
             Purity = purity_pure
@@ -471,10 +495,13 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
             Purity = purity_impure,
             string.builder.format("%s%% impure\n", [s(IndentStr)], !State)
         )
-    else
-        true
+    ;
+        DumpPurity = no
     ),
-    ( if string.contains_char(DumpOptions, 'E') then
+
+    DumpDeepProf = DumpOptions ^ dump_goal_purity_markers,
+    (
+        DumpDeepProf = yes,
         MaybeDPInfo = goal_info_get_maybe_dp_info(GoalInfo),
         (
             MaybeDPInfo = yes(dp_goal_info(MdprofInst, MaybeDPCoverageInfo)),
@@ -517,11 +544,15 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
         ;
             MaybeDPInfo = no
         )
-    else
-        true
+    ;
+        DumpDeepProf = no
     ),
+
     format_goal_expr(InfoGoal, Indent, Follow, GoalExpr, !State),
-    ( if string.contains_char(DumpOptions, 'i') then
+
+    DumpInstMapVars = DumpOptions ^ dump_goal_instmap_vars,
+    (
+        DumpInstMapVars = yes,
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap_delta_changed_vars(InstMapDelta, Vars),
         ( if
@@ -532,28 +563,36 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
         then
             true
         else
-            ( if string.contains_char(DumpOptions, 'D') then
+            DumpInstMapDeltas = DumpOptions ^ dump_goal_instmap_deltas,
+            DumpInstMapIndent = DumpOptions ^ dump_structured_insts,
+            (
+                DumpInstMapDeltas = yes,
                 ( if instmap_delta_is_unreachable(InstMapDelta) then
                     string.builder.format("%s%% new insts: unreachable\n",
                         [s(IndentStr)], !State)
-                else if string.contains_char(DumpOptions, 'Y') then
-                    instmap_delta_to_assoc_list(InstMapDelta, NewVarInsts),
-                    NewVarInstStrs = list.map(
-                        new_var_inst_msg_to_string(InfoGoal, IndentStr),
-                        NewVarInsts),
-                    string.builder.format("%s%% new insts:\n",
-                        [s(IndentStr)], !State),
-                    string.builder.append_strings(NewVarInstStrs, !State)
                 else
-                    instmap_delta_to_assoc_list(InstMapDelta, NewVarInsts),
-                    NewVarInstStrs = list.map(
-                        new_var_inst_to_string(InfoGoal, IndentStr),
-                        NewVarInsts),
-                    string.builder.format("%s%% new insts:\n",
-                        [s(IndentStr)], !State),
-                    string.builder.append_strings(NewVarInstStrs, !State)
+                    (
+                        DumpInstMapIndent = yes,
+                        instmap_delta_to_assoc_list(InstMapDelta, NewVarInsts),
+                        NewVarInstStrs = list.map(
+                            new_var_inst_msg_to_string(InfoGoal, IndentStr),
+                            NewVarInsts),
+                        string.builder.format("%s%% new insts:\n",
+                            [s(IndentStr)], !State),
+                        string.builder.append_strings(NewVarInstStrs, !State)
+                    ;
+                        DumpInstMapIndent = no,
+                        instmap_delta_to_assoc_list(InstMapDelta, NewVarInsts),
+                        NewVarInstStrs = list.map(
+                            new_var_inst_to_string(InfoGoal, IndentStr),
+                            NewVarInsts),
+                        string.builder.format("%s%% new insts:\n",
+                            [s(IndentStr)], !State),
+                        string.builder.append_strings(NewVarInstStrs, !State)
+                    )
                 )
-            else
+            ;
+                DumpInstMapDeltas = no,
                 ( if instmap_delta_is_unreachable(InstMapDelta) then
                     NewVarsStr = "unreachable"
                 else
@@ -575,10 +614,12 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
 %       PrefixStr = indent_string(Indent) ++ "% ",
 %       GoalModeStrs = dump_goal_mode(PrefixStr, VarNameSrc, GoalMode),
 %       list.foldl(io.write_string(Stream), GoalModeStrs, !State)
-    else
-        true
+    ;
+        DumpInstMapVars = no
     ),
-    ( if string.contains_char(DumpOptions, 'p') then
+
+    (
+        DumpGoalBirthsDeaths = yes,
         ( if
             goal_info_maybe_get_post_deaths(GoalInfo, PostDeaths),
             PostDeathList = set_of_var.to_sorted_list(PostDeaths),
@@ -603,10 +644,13 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
         else
             true
         )
-    else
-        true
+    ;
+        DumpGoalBirthsDeaths = no
     ),
-    ( if string.contains_char(DumpOptions, 'R') then
+
+    DumpUseReuse = DumpOptions ^ dump_use_reuse_info,
+    (
+        DumpUseReuse = yes,
         ( if
             yes(LFU) = goal_info_get_maybe_lfu(GoalInfo),
             yes(LBU) = goal_info_get_maybe_lbu(GoalInfo),
@@ -653,9 +697,10 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
         else
             true
         )
-    else
-        true
+    ;
+        DumpUseReuse = no
     ),
+
     CodeGenInfo = goal_info_get_code_gen_info(GoalInfo),
     (
         CodeGenInfo = no_code_gen_info
@@ -664,7 +709,10 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
         format_llds_code_gen_info(Info, GoalInfo, VarNameSrc, VarNamePrint,
             Indent, !State)
     ),
-    ( if string.contains_char(DumpOptions, 'g') then
+
+    DumpGoalFeatures = DumpOptions ^ dump_goal_features,
+    (
+        DumpGoalFeatures = yes,
         Features = goal_info_get_features(GoalInfo),
         set.to_sorted_list(Features, FeatureList),
         (
@@ -674,8 +722,8 @@ do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
             string.builder.format("%s%% Goal features: %s\n",
                 [s(IndentStr), s(string.string(FeatureList))], !State)
         )
-    else
-        true
+    ;
+        DumpGoalFeatures = no
     ).
 
 :- func new_var_inst_to_string(hlds_out_info_goal, string,
@@ -727,9 +775,12 @@ new_var_inst_msg_to_string(InfoGoal, IndentStr, Var - Inst) = Str :-
 
 format_llds_code_gen_info(Info, GoalInfo, VarNameSrc, VarNamePrint,
         Indent, !State) :-
-    DumpOptions = Info ^ hoi_dump_hlds_options,
     IndentStr = indent2_string(Indent),
-    ( if string.contains_char(DumpOptions, 'f') then
+    DumpOptions = Info ^ hoi_dump_hlds_options,
+
+    DumpFollowVars = DumpOptions ^ dump_follow_vars,
+    (
+        DumpFollowVars = yes,
         goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
         (
             MaybeFollowVars = yes(FollowVars),
@@ -743,10 +794,13 @@ format_llds_code_gen_info(Info, GoalInfo, VarNameSrc, VarNamePrint,
         ;
             MaybeFollowVars = no
         )
-    else
-        true
+    ;
+        DumpFollowVars = no
     ),
-    ( if string.contains_char(DumpOptions, 'r') then
+
+    DumpResumePoints = DumpOptions ^ dump_goal_resume_points,
+    (
+        DumpResumePoints = yes,
         goal_info_get_resume_point(GoalInfo, Resume),
         (
             Resume = no_resume_point
@@ -771,128 +825,127 @@ format_llds_code_gen_info(Info, GoalInfo, VarNameSrc, VarNamePrint,
             string.builder.format("%s%% resume point %s %s\n",
                 [s(IndentStr), s(LocsStr), s(ResumeVarsStr)], !State)
         )
-    else
-        true
+    ;
+        DumpResumePoints = no
     ),
-    ( if
-        string.contains_char(DumpOptions, 's'),
+
+    DumpStoreMap = DumpOptions ^ dump_goal_store_maps,
+    (
+        DumpStoreMap = yes,
         goal_info_get_store_map(GoalInfo, StoreMap),
         map.to_assoc_list(StoreMap, StoreMapList),
-        StoreMapList = [_ | _]
-    then
-        string.builder.format("%s%% store map:\n", [s(IndentStr)], !State),
-        format_var_to_abs_locns(VarNameSrc, VarNamePrint, Indent,
-            StoreMapList, !State)
-    else
-        true
-    ),
-    ( if
-        string.contains_char(DumpOptions, 's'),
+        (
+            StoreMapList = [_ | _],
+            string.builder.format("%s%% store map:\n", [s(IndentStr)], !State),
+            format_var_to_abs_locns(VarNameSrc, VarNamePrint, Indent,
+                StoreMapList, !State)
+        ;
+            StoreMapList = []
+        ),
         goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
-        MaybeNeedAcrossCall = yes(NeedAcrossCall)
-    then
-        NeedAcrossCall = need_across_call(CallForwardSet, CallResumeSet,
-            CallNondetSet),
-        CallForwardList = set_of_var.to_sorted_list(CallForwardSet),
-        CallResumeList = set_of_var.to_sorted_list(CallResumeSet),
-        CallNondetList = set_of_var.to_sorted_list(CallNondetSet),
-        string.builder.format("%s%% need across call forward vars: ",
-            [s(IndentStr)], !State),
         (
-            CallForwardList = [],
-            string.builder.append_string("none\n", !State)
-        ;
-            CallForwardList = [_ | _],
-            mercury_format_vars_src(VarNameSrc, VarNamePrint, CallForwardList,
-                string.builder.handle, !State),
-            string.builder.append_string("\n", !State)
-        ),
+            MaybeNeedAcrossCall = yes(NeedAcrossCall),
+            NeedAcrossCall = need_across_call(CallForwardSet, CallResumeSet,
+                CallNondetSet),
+            CallForwardList = set_of_var.to_sorted_list(CallForwardSet),
+            CallResumeList = set_of_var.to_sorted_list(CallResumeSet),
+            CallNondetList = set_of_var.to_sorted_list(CallNondetSet),
+            string.builder.format("%s%% need across call forward vars: ",
+                [s(IndentStr)], !State),
+            (
+                CallForwardList = [],
+                string.builder.append_string("none\n", !State)
+            ;
+                CallForwardList = [_ | _],
+                mercury_format_vars_src(VarNameSrc, VarNamePrint,
+                    CallForwardList, string.builder.handle, !State),
+                string.builder.append_string("\n", !State)
+            ),
 
-        string.builder.format("%s%% need across call resume vars: ",
-            [s(IndentStr)], !State),
-        (
-            CallResumeList = [],
-            string.builder.append_string("none\n", !State)
-        ;
-            CallResumeList = [_ | _],
-            mercury_format_vars_src(VarNameSrc, VarNamePrint, CallResumeList,
-                string.builder.handle, !State),
-            string.builder.append_string("\n", !State)
-        ),
+            string.builder.format("%s%% need across call resume vars: ",
+                [s(IndentStr)], !State),
+            (
+                CallResumeList = [],
+                string.builder.append_string("none\n", !State)
+            ;
+                CallResumeList = [_ | _],
+                mercury_format_vars_src(VarNameSrc, VarNamePrint,
+                    CallResumeList, string.builder.handle, !State),
+                string.builder.append_string("\n", !State)
+            ),
 
-        string.builder.format("%s%% need across call nondet vars: ",
-            [s(IndentStr)], !State),
-        (
-            CallNondetList = [],
-            string.builder.append_string("none\n", !State)
+            string.builder.format("%s%% need across call nondet vars: ",
+                [s(IndentStr)], !State),
+            (
+                CallNondetList = [],
+                string.builder.append_string("none\n", !State)
+            ;
+                CallNondetList = [_ | _],
+                mercury_format_vars_src(VarNameSrc, VarNamePrint,
+                    CallNondetList, string.builder.handle, !State),
+                string.builder.append_string("\n", !State)
+            )
         ;
-            CallNondetList = [_ | _],
-            mercury_format_vars_src(VarNameSrc, VarNamePrint, CallNondetList,
-                string.builder.handle, !State),
-            string.builder.append_string("\n", !State)
-        )
-    else
-        true
-    ),
-    ( if
-        string.contains_char(DumpOptions, 's'),
+            MaybeNeedAcrossCall = no
+        ),
         goal_info_get_maybe_need_in_resume(GoalInfo, MaybeNeedInResume),
-        MaybeNeedInResume = yes(NeedInResume)
-    then
-        NeedInResume = need_in_resume(ResumeOnStack, ResumeResumeSet,
-            ResumeNondetSet),
-        ResumeResumeList = set_of_var.to_sorted_list(ResumeResumeSet),
-        ResumeNondetList = set_of_var.to_sorted_list(ResumeNondetSet),
+        (
+            MaybeNeedInResume = yes(NeedInResume),
+            NeedInResume = need_in_resume(ResumeOnStack, ResumeResumeSet,
+                ResumeNondetSet),
+            ResumeResumeList = set_of_var.to_sorted_list(ResumeResumeSet),
+            ResumeNondetList = set_of_var.to_sorted_list(ResumeNondetSet),
 
-        (
-            ResumeOnStack = yes,
-            string.builder.format("%s%% resume point has stack label\n",
-                [s(IndentStr)], !State)
-        ;
-            ResumeOnStack = no,
-            string.builder.format("%s%% resume point has no stack label\n",
-                [s(IndentStr)], !State)
-        ),
-        string.builder.format("%s%% need in resume resume vars: ",
-            [s(IndentStr)], !State),
-        (
-            ResumeResumeList = [],
-            string.builder.append_string("none\n", !State)
-        ;
-            ResumeResumeList = [_ | _],
-            mercury_format_vars_src(VarNameSrc, VarNamePrint,
-                ResumeResumeList, string.builder.handle, !State),
-            string.builder.append_string("\n", !State)
-        ),
+            (
+                ResumeOnStack = yes,
+                string.builder.format("%s%% resume point has stack label\n",
+                    [s(IndentStr)], !State)
+            ;
+                ResumeOnStack = no,
+                string.builder.format("%s%% resume point has no stack label\n",
+                    [s(IndentStr)], !State)
+            ),
+            string.builder.format("%s%% need in resume resume vars: ",
+                [s(IndentStr)], !State),
+            (
+                ResumeResumeList = [],
+                string.builder.append_string("none\n", !State)
+            ;
+                ResumeResumeList = [_ | _],
+                mercury_format_vars_src(VarNameSrc, VarNamePrint,
+                    ResumeResumeList, string.builder.handle, !State),
+                string.builder.append_string("\n", !State)
+            ),
 
-        string.builder.format("%s%% need in resume nondet vars: ",
-            [s(IndentStr)], !State),
-        (
-            ResumeNondetList = [],
-            string.builder.append_string("none\n", !State)
+            string.builder.format("%s%% need in resume nondet vars: ",
+                [s(IndentStr)], !State),
+            (
+                ResumeNondetList = [],
+                string.builder.append_string("none\n", !State)
+            ;
+                ResumeNondetList = [_ | _],
+                mercury_format_vars_src(VarNameSrc, VarNamePrint,
+                    ResumeNondetList, string.builder.handle, !State),
+                string.builder.append_string("\n", !State)
+            )
         ;
-            ResumeNondetList = [_ | _],
-            mercury_format_vars_src(VarNameSrc, VarNamePrint,
-                ResumeNondetList, string.builder.handle, !State),
-            string.builder.append_string("\n", !State)
-        )
-    else
-        true
-    ),
-    ( if
-        string.contains_char(DumpOptions, 's'),
+            MaybeNeedInResume = no
+        ),
         goal_info_get_maybe_need_in_par_conj(GoalInfo, MaybeNeedInParConj),
-        MaybeNeedInParConj = yes(NeedInParConj)
-    then
-        NeedInParConj = need_in_par_conj(ParConjSet),
-        ParConjList = set_of_var.to_sorted_list(ParConjSet),
-        string.builder.format("%s%% need in par_conj vars: ",
-            [s(IndentStr)], !State),
-        mercury_format_vars_src(VarNameSrc, VarNamePrint, ParConjList,
-            string.builder.handle, !State),
-        string.builder.append_string("\n", !State)
-    else
-        true
+        (
+            MaybeNeedInParConj = yes(NeedInParConj),
+            NeedInParConj = need_in_par_conj(ParConjSet),
+            ParConjList = set_of_var.to_sorted_list(ParConjSet),
+            string.builder.format("%s%% need in par_conj vars: ",
+                [s(IndentStr)], !State),
+            mercury_format_vars_src(VarNameSrc, VarNamePrint, ParConjList,
+                string.builder.handle, !State),
+            string.builder.append_string("\n", !State)
+        ;
+            MaybeNeedInParConj = no
+        )
+    ;
+        DumpStoreMap = no
     ).
 
 write_var_to_abs_locns(Stream, VarNameSrc, VarNamePrint, Indent,
@@ -1035,11 +1088,10 @@ format_goal_unify(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     ),
     format_unify_rhs_2(InfoGoal, Indent, VarType, RHS, !State),
     string.builder.append_string(Follow, !State),
-    ( if
-        ( string.contains_char(DumpOptions, 'u')
-        ; string.contains_char(DumpOptions, 'p')
-        )
-    then
+
+    DumpUnifyDetails = DumpOptions ^ dump_unification_details,
+    DumpGoalBirthsDeaths = DumpOptions ^ dump_goal_birth_death_sets,
+    ( if ( DumpUnifyDetails = yes ; DumpGoalBirthsDeaths = yes ) then
         ( if
             % Don not output bogus info if we haven't been through
             % mode analysis yet.
@@ -1187,8 +1239,11 @@ format_unify_rhs_2(InfoGoal, Indent, MaybeType, RHS, !State) :-
         else
             true
         ),
+
         DumpOptions = Info ^ hoi_dump_hlds_options,
-        ( if string.contains_char(DumpOptions, 'n') then
+        DumpNonLocals = DumpOptions ^ dump_goal_nonlocals,
+        (
+            DumpNonLocals = yes,
             (
                 NonLocals = [_ | _],
                 NonLocalsStr = mercury_vars_to_string_src(VarNameSrc,
@@ -1198,8 +1253,8 @@ format_unify_rhs_2(InfoGoal, Indent, MaybeType, RHS, !State) :-
             ;
                 NonLocals = []
             )
-        else
-            true
+        ;
+            DumpNonLocals = no
         )
     ).
 
@@ -1255,7 +1310,9 @@ write_unification(InfoGoal, Indent, Unification, !State) :-
 
         Info = InfoGoal ^ hoig_out_info,
         DumpOptions = Info ^ hoi_dump_hlds_options,
-        ( if string.contains_char(DumpOptions, 'u') then
+        DumpUnifyDetails = DumpOptions ^ dump_unification_details,
+        (
+            DumpUnifyDetails = yes,
             ( if ConsId = du_data_ctor(du_ctor(_, _, TypeCtor)) then
                 TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
                 TypeCtorSymNameStr = sym_name_to_string(TypeCtorSymName),
@@ -1330,19 +1387,21 @@ write_unification(InfoGoal, Indent, Unification, !State) :-
                 string.builder.format("%s%% construct in region: %s\n",
                     [s(IndentStr), s(RegVarStr)], !State)
             )
-        else
-            true
+        ;
+            DumpUnifyDetails = no
         )
     ;
         Unification = deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail,
             CanCGC),
         Info = InfoGoal ^ hoig_out_info,
         DumpOptions = Info ^ hoi_dump_hlds_options,
-        ( if string.contains_char(DumpOptions, 'G') then
+        DumpCtgc = DumpOptions ^ dump_ctgc,
+        (
+            DumpCtgc = yes,
             string.builder.format("%s%% Compile time garbage collect: %s\n",
                 [s(IndentStr), s(string.string(CanCGC))], !State)
-        else
-            true
+        ;
+            DumpCtgc = no
         ),
         VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
         (
@@ -1401,22 +1460,27 @@ format_functor_and_submodes(InfoGoal, Indent, ConsId, ArgVars,
             [s(ConsIdStr), s(ArgVarsStr)], !State),
         Info = InfoGoal ^ hoig_out_info,
         DumpOptions = Info ^ hoi_dump_hlds_options,
-        ( if string.contains_char(DumpOptions, 'a') then
+        DumpUnifyArgmodes = DumpOptions ^ dump_unify_argmodes,
+        (
+            DumpUnifyArgmodes = yes,
             InstVarSet = InfoGoal ^ hoig_inst_varset,
             IndentStr = indent2_string(Indent),
             list.map(limit_size_of_unify_mode, ArgUnifyModes0, ArgUnifyModes),
-            ( if string.contains_char(DumpOptions, 'y') then
+            DumpUnifyArgmodesStruct = DumpOptions ^ dump_unify_argmodes_struct,
+            (
+                DumpUnifyArgmodesStruct = yes,
                 string.builder.format("%s%% arg-modes\n",
                     [s(IndentStr)], !State),
                 mercury_format_structured_unify_mode_list(output_debug,
                     InstVarSet, do_incl_addr, Indent, ArgUnifyModes,
                     string.builder.handle, !State)
-            else
+            ;
+                DumpUnifyArgmodesStruct = no,
                 format_arg_modes(InstVarSet, IndentStr, 1,
                     ArgUnifyModes, !State)
             )
-        else
-            true
+        ;
+            DumpUnifyArgmodes = no
         )
     ).
 
@@ -1543,10 +1607,12 @@ limit_size_of_bound_functors(Levels,
 format_goal_plain_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin,
         MaybeUnifyContext, PredName),
+    IndentStr = indent2_string(Indent),
     Info = InfoGoal ^ hoig_out_info,
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    IndentStr = indent2_string(Indent),
-    ( if string.contains_char(DumpOptions, 'b') then
+    DumpBuiltinStatus = DumpOptions ^ dump_call_builtin_status,
+    (
+        DumpBuiltinStatus = yes,
         (
             Builtin = inline_builtin,
             string.builder.format("%s%% inline builtin\n",
@@ -1554,8 +1620,8 @@ format_goal_plain_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
         ;
             Builtin = not_builtin
         )
-    else
-        true
+    ;
+        DumpBuiltinStatus = no
     ),
     ( if PredId = invalid_pred_id then
         % If we do not know the id of the callee yet, then treat the call
@@ -1598,7 +1664,9 @@ format_goal_plain_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     InParenArgVarsStr = sym_name_and_args_to_string(VarNameSrc, VarNamePrint,
         PredName, InParenArgVars),
     string.builder.format("%s%s", [s(InParenArgVarsStr), s(Follow)], !State),
-    ( if string.contains_char(DumpOptions, 'l') then
+    DumpInstMapVars = DumpOptions ^ dump_goal_instmap_vars,
+    (
+        DumpInstMapVars = yes,
         pred_id_to_int(PredId, PredNum),
         proc_id_to_int(ProcId, ProcNum),
         string.builder.format("%s%% pred id: %i, proc id: %d%s",
@@ -1624,8 +1692,8 @@ format_goal_plain_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
         ;
             MaybeUnifyContext = no
         )
-    else
-        true
+    ;
+        DumpInstMapVars = no
     ).
 
 :- func sym_name_and_args_to_string(var_name_source, var_name_print, sym_name,
@@ -1656,6 +1724,7 @@ format_goal_generic_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     GoalExpr = generic_call(GenericCall, ArgVars, Modes, MaybeArgRegs, _),
     Info = InfoGoal ^ hoig_out_info,
     DumpOptions = Info ^ hoi_dump_hlds_options,
+    DumpCallPredIds = DumpOptions ^ dump_call_pred_ids,
     VarNameSrc = InfoGoal ^ hoig_var_name_src,
     VarNamePrint = InfoGoal ^ hoig_var_name_print,
     IndentStr = indent2_string(Indent),
@@ -1665,12 +1734,13 @@ format_goal_generic_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
         PurityPrefix = purity_prefix_to_string(Purity),
         (
             PredOrFunc = pf_predicate,
-            ( if string.contains_char(DumpOptions, 'l') then
+            (
+                DumpCallPredIds = yes,
                 string.builder.format("%s%% higher-order predicate call\n",
                     [s(IndentStr)], !State),
                 format_ho_arg_regs(Indent, MaybeArgRegs, !State)
-            else
-                true
+            ;
+                DumpCallPredIds = no
             ),
             CallStr = functor_to_string(VarNameSrc, VarNamePrint,
                 term.atom("call"), [PredVar | ArgVars]),
@@ -1678,13 +1748,14 @@ format_goal_generic_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
                 [s(IndentStr), s(PurityPrefix), s(CallStr)], !State)
         ;
             PredOrFunc = pf_function,
-            ( if string.contains_char(DumpOptions, 'l') then
+            (
+                DumpCallPredIds = yes,
                 string.builder.format(
                     "%s%% higher-order function application\n",
                     [s(IndentStr)], !State),
                 format_ho_arg_regs(Indent, MaybeArgRegs, !State)
-            else
-                true
+            ;
+                DumpCallPredIds = no
             ),
             pred_args_to_func_args([PredVar | ArgVars],
                 FuncArgVars, FuncRetVar),
@@ -1700,12 +1771,13 @@ format_goal_generic_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     ;
         GenericCall = class_method(TCInfoVar, method_proc_num(MethodNum),
             _ClassId, _MethodId),
-        ( if string.contains_char(DumpOptions, 'l') then
+        (
+            DumpCallPredIds = yes,
             string.builder.format("%s%% class method call\n",
                 [s(IndentStr)], !State),
             format_ho_arg_regs(Indent, MaybeArgRegs, !State)
-        else
-            true
+        ;
+            DumpCallPredIds = no
         ),
         Context = dummy_context,
         Functor = term.atom("class_method_call"),
@@ -1720,11 +1792,12 @@ format_goal_generic_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
         string.builder.append_string(Follow, !State)
     ;
         GenericCall = event_call(EventName),
-        ( if string.contains_char(DumpOptions, 'l') then
+        (
+            DumpCallPredIds = yes,
             string.builder.format("%s%% event call\n", [s(IndentStr)], !State),
             format_ho_arg_regs(Indent, MaybeArgRegs, !State)
-        else
-            true
+        ;
+            DumpCallPredIds = no
         ),
         Functor = term.atom(EventName),
         term_subst.var_list_to_term_list(ArgVars, ArgTerms),
@@ -1748,21 +1821,24 @@ format_goal_generic_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
             % written to .opt files.
             CastTypeString = "coerce"
         ),
-        ( if string.contains_char(DumpOptions, 'l') then
+        (
+            DumpCallPredIds = yes,
             string.builder.format("%s%% %s\n",
                 [s(IndentStr), s(CastTypeString)], !State),
             format_ho_arg_regs(Indent, MaybeArgRegs, !State)
-        else
-            true
+        ;
+            DumpCallPredIds = no
         ),
-        ( if string.contains_char(DumpOptions, 'D') then
+        DumpInstMapDeltas = DumpOptions ^ dump_goal_instmap_deltas,
+        (
+            DumpInstMapDeltas = yes,
             varset.init(InstVarSet),
             ModesStr = mercury_mode_list_to_string(output_debug, InstVarSet,
                 Modes),
             string.builder.format("%s%% modes: %s\n",
                 [s(IndentStr), s(ModesStr)], !State)
-        else
-            true
+        ;
+            DumpInstMapDeltas = no
         ),
         PredOrFunc = write_cast_as_pred_or_func(CastType),
         (
@@ -1956,7 +2032,7 @@ format_goal_conj(InfoGoal, Indent, Follow, GoalExpr, !State) :-
             ConjType = plain_conj,
             Info = InfoGoal ^ hoig_out_info,
             DumpOptions = Info ^ hoi_dump_hlds_options,
-            ( if DumpOptions = "" then
+            ( if DumpOptions = empty_dump_options then
                 write_conj(InfoGoal, Indent, Follow, ",\n",
                     Goal, Goals, !State)
             else
@@ -2001,7 +2077,7 @@ write_conj(InfoGoal, Indent, Follow, Separator, Goal1, Goals1, !State) :-
         Goals1 = [Goal2 | Goals2],
         Info = InfoGoal ^ hoig_out_info,
         DumpOptions = Info ^ hoi_dump_hlds_options,
-        ( if DumpOptions = "" then
+        ( if DumpOptions = empty_dump_options then
             do_format_goal(InfoGoal, Indent, Separator, Goal1, !State)
         else
             % When generating verbose dumps, we want the comma on its own line,
@@ -2173,7 +2249,7 @@ format_goal_if_then_else(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     Info = InfoGoal ^ hoig_out_info,
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if
-        DumpOptions \= "",
+        DumpOptions \= empty_dump_options,
         Else = hlds_goal(if_then_else(_, _, _, _), _)
     then
         ElseIndent = Indent

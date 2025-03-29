@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -187,8 +187,7 @@ format_hlds(ModuleInfo, !State) :-
         DumpOptions = DumpOptions0
     ;
         DumpSpecPreds = yes,
-        % Print unify (and compare and index) predicates.
-        DumpOptions = DumpOptions0 ++ "U"
+        DumpOptions = DumpOptions0 ^ dump_unify_compare_preds := yes
     ),
     ( if
         % If the user specifically requested one or more predicates and/or
@@ -201,33 +200,40 @@ format_hlds(ModuleInfo, !State) :-
     then
         true
     else
-        ( if string.contains_char(DumpOptions, 'I') then
+        DumpImports = DumpOptions ^ dump_imports,
+        (
+            DumpImports = yes,
             module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
             map.foldl(format_avail_entry, AvailModuleMap, !State)
-        else
-            true
+        ;
+            DumpImports = no
         ),
-        ( if string.contains_char(DumpOptions, 'T') then
-            ( if string.contains_char(DumpOptions, 'L') then
-                LocalOnly = yes
-            else
-                LocalOnly = no
-            ),
+
+        DumpTypesClasses = DumpOptions ^ dump_type_typeclass_tables,
+        (
+            DumpTypesClasses = yes,
+            LocalOnly = DumpOptions ^ dump_type_table_only_local,
             module_info_get_type_table(ModuleInfo, TypeTable),
             module_info_get_instance_table(ModuleInfo, InstanceTable),
             module_info_get_class_table(ModuleInfo, ClassTable),
             format_type_table(Info, LocalOnly, TypeTable, !State),
             format_classes(Info, ClassTable, !State),
             format_instances(Info, InstanceTable, !State)
-        else
-            true
+        ;
+            DumpTypesClasses = no
         ),
-        ( if string.contains_char(DumpOptions, 'M') then
+
+        DumpInstsModes = DumpOptions ^ dump_inst_mode_tables,
+        (
+            DumpInstsModes = yes,
             module_info_get_inst_table(ModuleInfo, InstTable),
             module_info_get_mode_table(ModuleInfo, ModeTable),
-            ( if string.contains_char(DumpOptions, 'Y') then
+            DumpStructuredInsts = DumpOptions ^ dump_structured_insts,
+            (
+                DumpStructuredInsts = yes,
                 MaybeUseErrorMsgInst = use_error_msg_inst(ModuleInfo)
-            else
+            ;
+                DumpStructuredInsts = no,
                 MaybeUseErrorMsgInst = do_not_use_error_msg_inst
             ),
             globals.lookup_int_option(Globals, dump_hlds_inst_limit,
@@ -237,24 +243,32 @@ format_hlds(ModuleInfo, !State) :-
             format_inst_table(Lang, MaybeUseErrorMsgInst,
                 InstNumLimit, InstSizeLimit, InstTable, !State),
             format_mode_table(ModeTable, !State)
-        else
-            true
+        ;
+            DumpInstsModes = no
         ),
-        ( if string.contains_char(DumpOptions, 'Z') then
+
+        DumpCallAnswerTables = DumpOptions ^ dump_call_answer_tables,
+        (
+            DumpCallAnswerTables = yes,
             module_info_get_table_struct_map(ModuleInfo, TableStructMap),
             format_table_structs(ModuleInfo, TableStructMap, !State)
-        else
-            true
+        ;
+            DumpCallAnswerTables = no
         )
     ),
-    ( if string.contains_char(DumpOptions, 'X') then
+
+    DumpConstStructs = DumpOptions ^ dump_constant_structures,
+    (
+        DumpConstStructs = yes,
         module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
         format_const_struct_db(ConstStructDb, !State)
-    else
-        true
+    ;
+        DumpConstStructs = no
     ),
+
+    DumpPreds = DumpOptions ^ dump_predicates,
     ( if
-        ( string.contains_char(DumpOptions, 'x')
+        ( DumpPreds = yes
         ; DumpSpecPreds = yes
         )
     then
@@ -263,7 +277,10 @@ format_hlds(ModuleInfo, !State) :-
     else
         true
     ),
-    ( if string.contains_char(DumpOptions, 'O') then
+
+    DumpDepOrder = DumpOptions ^ dump_dependency_ordering,
+    (
+        DumpDepOrder = yes,
         module_info_get_maybe_dependency_info(ModuleInfo, MaybeDependencyInfo),
         (
             MaybeDependencyInfo = no,
@@ -272,8 +289,8 @@ format_hlds(ModuleInfo, !State) :-
             MaybeDependencyInfo = yes(DependencyInfo),
             format_dependency_info(Info, ModuleInfo, DependencyInfo, !State)
         )
-    else
-        true
+    ;
+        DumpDepOrder = no
     ),
     format_footer(ModuleInfo, !State).
 
@@ -713,24 +730,23 @@ maybe_write_pred(Info, Lang, ModuleInfo, PredId - PredInfo, !State) :-
             true
         )
     else
+        DumpImports = DumpOptions ^ dump_imports,
+        DumpUnifyCompare = DumpOptions ^ dump_unify_compare_preds,
         ( if
             (
-                not string.contains_char(DumpOptions, 'I'),
-                pred_info_is_imported(PredInfo)
+                DumpImports = no,
+                (
+                    pred_info_is_imported(PredInfo)
+                ;
+                    % For pseudo-imported predicates (i.e. unification preds),
+                    % only print them if we are using a local mode for them.
+                    pred_info_is_pseudo_imported(PredInfo),
+                    ProcIds = pred_info_all_procids(PredInfo),
+                    hlds_pred.in_in_unification_proc_id(ProcId),
+                    ProcIds = [ProcId]
+                )
             ;
-                % For pseudo-imported predicates (i.e. unification preds),
-                % only print them if we are using a local mode for them.
-                not string.contains_char(DumpOptions, 'I'),
-                pred_info_is_pseudo_imported(PredInfo),
-                ProcIds = pred_info_all_procids(PredInfo),
-                hlds_pred.in_in_unification_proc_id(ProcId),
-                ProcIds = [ProcId]
-            ;
-                % We dump unification and other compiler-generated special
-                % predicates if suboption 'U' is on. We don't need that
-                % information to understand how the program has been
-                % transformed.
-                not string.contains_char(DumpOptions, 'U'),
+                DumpUnifyCompare = no,
                 is_unify_index_or_compare_pred(PredInfo)
             )
         then

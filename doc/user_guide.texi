@@ -7938,7 +7938,7 @@ unification categories and other implementation details of unifications
 @item @samp{v}
 variable numbers in variable names
 @item @samp{x}
-predicate type information
+predicates
 @item @samp{y}
 structured insts in the arg-modes of unification
 @item @samp{z}
@@ -7975,7 +7975,7 @@ type and typeclass information
 unify and compare predicates
 @item @samp{X}
 constant structures
-@item @samp{X}
+@item @samp{Y}
 print insts using indentation to explain structure
 @item @samp{Z}
 information about globals structs representing call and answer tables

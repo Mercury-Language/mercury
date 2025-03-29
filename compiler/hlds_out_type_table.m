@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021-2024 The Mercury team.
+% Copyright (C) 2021-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -108,11 +108,13 @@ format_type_table_entry(Info, TypeCtor - TypeDefn, !State) :-
     string.builder.append_char('\n', !State),
     maybe_format_context_comment(0u, "", Context, !State),
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    ( if string.contains_char(DumpOptions, 'c') then
+    DumpContexts = DumpOptions ^ dump_goal_type_contexts,
+    (
+        DumpContexts = yes,
         string.builder.format("%% status %s\n",
             [s(type_import_status_to_string(TypeStatus))], !State)
-    else
-        true
+    ;
+        DumpContexts = no
     ),
     ( if
         ( TypeBody = hlds_solver_type(_)

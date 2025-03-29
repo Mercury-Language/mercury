@@ -35,6 +35,7 @@
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
@@ -45,10 +46,59 @@
 
 %---------------------------------------------------------------------------%
 
+:- func empty_dump_options = hlds_dump_options.
+
+:- type hlds_dump_options
+    --->    hlds_dump_options(
+                dump_unify_argmodes             :: bool,    % a
+                dump_call_builtin_status        :: bool,    % b
+                dump_goal_type_contexts         :: bool,    % c
+                dump_goal_determinism           :: bool,    % d
+                dump_region_annotations         :: bool,    % e
+                dump_follow_vars                :: bool,    % f
+                dump_goal_features              :: bool,    % g
+                dump_goal_instmap_vars          :: bool,    % i
+                dump_call_pred_ids              :: bool,    % l
+                dump_clause_modes               :: bool,    % m
+                dump_goal_nonlocals             :: bool,    % n
+                dump_goal_birth_death_sets      :: bool,    % p
+                dump_goal_resume_points         :: bool,    % r
+                dump_goal_store_maps            :: bool,    % s
+                dump_termination_analysis       :: bool,    % t
+                dump_unification_details        :: bool,    % u
+                dump_var_numbers_in_names       :: bool,    % v
+                dump_predicates                 :: bool,    % x
+                dump_unify_argmodes_struct      :: bool,    % y
+                dump_goal_purity_markers        :: bool,    % z
+                dump_arg_passing_info           :: bool,    % A
+                dump_mode_constraints           :: bool,    % B
+                dump_clauses                    :: bool,    % C
+                dump_goal_instmap_deltas        :: bool,    % D
+                dump_deep_profiling             :: bool,    % E
+                dump_ctgc                       :: bool,    % G
+                % The dump_imports field controls both
+                % - whether we dump the contents of {import,use}_module decls,
+                % - and whether we dump the code of imported preds.
+                dump_imports                    :: bool,    % I
+                dump_type_table_only_local      :: bool,    % L
+                dump_inst_mode_tables           :: bool,    % M
+                dump_dependency_ordering        :: bool,    % O
+                dump_goal_ids_paths             :: bool,    % P
+                dump_use_reuse_info             :: bool,    % R
+                dump_struct_sharing_info        :: bool,    % S
+                dump_type_typeclass_tables      :: bool,    % T
+                dump_unify_compare_preds        :: bool,    % U
+                dump_constant_structures        :: bool,    % X
+                dump_structured_insts           :: bool,    % Y
+                dump_call_answer_tables         :: bool     % Z
+            ).
+
+%---------------------------------------------------------------------------%
+
 :- type hlds_out_info
     --->    hlds_out_info(
-                hoi_dump_hlds_options           :: string,
-                hoi_dump_hlds_options_backup    :: string,
+                hoi_dump_hlds_options           :: hlds_dump_options,
+                hoi_dump_hlds_options_backup    :: hlds_dump_options,
                 hoi_dump_hlds_pred_ids          :: list(string),
                 hoi_dump_hlds_pred_names        :: list(string),
                 hoi_merc_out_info               :: merc_out_info
@@ -311,6 +361,7 @@
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_parse_tree.    % undesirable dependency
 
+:- import_module char.
 :- import_module int.
 :- import_module map.
 :- import_module term_context.
@@ -320,8 +371,159 @@
 
 %---------------------------------------------------------------------------%
 
+empty_dump_options =
+    hlds_dump_options(
+        bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no,
+        bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no,
+        bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no,
+        bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no,
+        bool.no, bool.no, bool.no, bool.no, bool.no, bool.no
+    ).
+
+:- func setup_hlds_dump_options(string) = hlds_dump_options.
+
+setup_hlds_dump_options(Str) = DumpOptions :-
+    DumpOptions0 = empty_dump_options,
+    string.to_char_list(Str, Chars),
+    list.foldl(apply_dump_option, Chars, DumpOptions0, DumpOptions).
+
+:- pred apply_dump_option(char::in,
+    hlds_dump_options::in, hlds_dump_options::out) is det.
+
+apply_dump_option(Char, DumpOptions0, DumpOptions) :-
+    ( if dump_opt(Char, SetFunc) then
+        DumpOptions = SetFunc(DumpOptions0)
+    else
+        % XXX We probably should report this, though not reporting such errors
+        % has not been much of an issue in 30+ years ...
+        DumpOptions = DumpOptions0
+    ).
+
+:- pred dump_opt(char::in, (func(hlds_dump_options) = hlds_dump_options)::out)
+    is semidet.
+
+dump_opt('a', set_dump_unify_argmodes).
+dump_opt('b', set_dump_call_builtin_status).
+dump_opt('c', set_dump_goal_type_contexts).
+dump_opt('d', set_dump_goal_determinism).
+dump_opt('e', set_dump_region_annotations).
+dump_opt('f', set_dump_follow_vars).
+dump_opt('g', set_dump_goal_features).
+dump_opt('i', set_dump_goal_instmap_vars).
+dump_opt('l', set_dump_call_pred_ids).
+dump_opt('m', set_dump_clause_modes).
+dump_opt('n', set_dump_goal_nonlocals).
+dump_opt('p', set_dump_goal_birth_death_sets).
+dump_opt('r', set_dump_goal_resume_points).
+dump_opt('s', set_dump_goal_store_maps).
+dump_opt('t', set_dump_termination_analysis).
+dump_opt('u', set_dump_unification_details).
+dump_opt('v', set_dump_var_numbers_in_names).
+dump_opt('x', set_dump_predicates).
+dump_opt('y', set_dump_unify_argmodes_struct).
+dump_opt('z', set_dump_goal_purity_markers).
+dump_opt('A', set_dump_arg_passing_info).
+dump_opt('B', set_dump_mode_constraints).
+dump_opt('C', set_dump_clauses).
+dump_opt('D', set_dump_goal_instmap_deltas).
+dump_opt('E', set_dump_deep_profiling).
+dump_opt('G', set_dump_ctgc).
+dump_opt('I', set_dump_imports).
+dump_opt('L', set_dump_type_table_only_local).
+dump_opt('M', set_dump_inst_mode_tables).
+dump_opt('O', set_dump_dependency_ordering).
+dump_opt('P', set_dump_goal_ids_paths).
+dump_opt('R', set_dump_use_reuse_info).
+dump_opt('S', set_dump_struct_sharing_info).
+dump_opt('T', set_dump_type_typeclass_tables).
+dump_opt('U', set_dump_unify_compare_preds).
+dump_opt('X', set_dump_constant_structures).
+dump_opt('Y', set_dump_structured_insts).
+dump_opt('Z', set_dump_call_answer_tables).
+
+:- func set_dump_unify_argmodes(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_call_builtin_status(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_goal_type_contexts(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_goal_determinism(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_region_annotations(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_follow_vars(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_goal_features(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_goal_instmap_vars(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_call_pred_ids(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_clause_modes(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_goal_nonlocals(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_goal_birth_death_sets(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_goal_resume_points(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_goal_store_maps(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_termination_analysis(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_unification_details(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_var_numbers_in_names(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_predicates(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_unify_argmodes_struct(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_goal_purity_markers(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_arg_passing_info(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_mode_constraints(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_clauses(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_goal_instmap_deltas(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_deep_profiling(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_ctgc(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_imports(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_type_table_only_local(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_inst_mode_tables(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_dependency_ordering(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_goal_ids_paths(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_use_reuse_info(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_struct_sharing_info(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_type_typeclass_tables(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_unify_compare_preds(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_constant_structures(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_structured_insts(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_call_answer_tables(hlds_dump_options) = hlds_dump_options.
+
+set_dump_unify_argmodes(X) = X ^ dump_unify_argmodes := yes.
+set_dump_call_builtin_status(X) = X ^ dump_call_builtin_status := yes.
+set_dump_goal_type_contexts(X) = X ^ dump_goal_type_contexts := yes.
+set_dump_goal_determinism(X) = X ^ dump_goal_determinism := yes.
+set_dump_region_annotations(X) = X ^ dump_region_annotations := yes.
+set_dump_follow_vars(X) = X ^ dump_follow_vars := yes.
+set_dump_goal_features(X) = X ^ dump_goal_features := yes.
+set_dump_goal_instmap_vars(X) = X ^ dump_goal_instmap_vars := yes.
+set_dump_call_pred_ids(X) = X ^ dump_call_pred_ids := yes.
+set_dump_clause_modes(X) = X ^ dump_clause_modes := yes.
+set_dump_goal_nonlocals(X) = X ^ dump_goal_nonlocals := yes.
+set_dump_goal_birth_death_sets(X) = X ^ dump_goal_birth_death_sets := yes.
+set_dump_goal_resume_points(X) = X ^ dump_goal_resume_points := yes.
+set_dump_goal_store_maps(X) = X ^ dump_goal_store_maps := yes.
+set_dump_termination_analysis(X) = X ^ dump_termination_analysis := yes.
+set_dump_unification_details(X) = X ^ dump_unification_details := yes.
+set_dump_var_numbers_in_names(X) = X ^ dump_var_numbers_in_names := yes.
+set_dump_predicates(X) = X ^ dump_predicates := yes.
+set_dump_unify_argmodes_struct(X) = X ^ dump_unify_argmodes_struct := yes.
+set_dump_goal_purity_markers(X) = X ^ dump_goal_purity_markers := yes.
+set_dump_arg_passing_info(X) = X ^ dump_arg_passing_info := yes.
+set_dump_mode_constraints(X) = X ^ dump_mode_constraints := yes.
+set_dump_clauses(X) = X ^ dump_clauses := yes.
+set_dump_goal_instmap_deltas(X) = X ^ dump_goal_instmap_deltas := yes.
+set_dump_deep_profiling(X) = X ^ dump_deep_profiling := yes.
+set_dump_ctgc(X) = X ^ dump_ctgc := yes.
+set_dump_imports(X) = X ^ dump_imports := yes.
+set_dump_type_table_only_local(X) = X ^ dump_type_table_only_local := yes.
+set_dump_inst_mode_tables(X) = X ^ dump_inst_mode_tables := yes.
+set_dump_dependency_ordering(X) = X ^ dump_dependency_ordering := yes.
+set_dump_goal_ids_paths(X) = X ^ dump_goal_ids_paths := yes.
+set_dump_use_reuse_info(X) = X ^ dump_use_reuse_info := yes.
+set_dump_struct_sharing_info(X) = X ^ dump_struct_sharing_info := yes.
+set_dump_type_typeclass_tables(X) = X ^ dump_type_typeclass_tables := yes.
+set_dump_unify_compare_preds(X) = X ^ dump_unify_compare_preds := yes.
+set_dump_constant_structures(X) = X ^ dump_constant_structures := yes.
+set_dump_structured_insts(X) = X ^ dump_structured_insts := yes.
+set_dump_call_answer_tables(X) = X ^ dump_call_answer_tables := yes.
+
+%---------------------------------------------------------------------------%
+
 init_hlds_out_info(Globals, Lang) = Info :-
-    globals.lookup_string_option(Globals, dump_hlds_options, DumpOptions),
+    globals.lookup_string_option(Globals, dump_hlds_options, DumpOptionsStr),
+    DumpOptions = setup_hlds_dump_options(DumpOptionsStr),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_id, Ids),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_name, Names),
     MercInfo = init_merc_out_info(Globals, unqualified_item_names, Lang),

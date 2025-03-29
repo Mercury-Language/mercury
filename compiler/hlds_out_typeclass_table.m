@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021-2024 The Mercury team.
+% Copyright (C) 2021-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -45,6 +45,7 @@
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_data.
 
+:- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -85,9 +86,12 @@ format_class_defn(Info, ClassId - ClassDefn, !State) :-
         [s(class_id_to_string(ClassId))], !State),
     maybe_format_context_comment(0u, "", Context, !State),
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    ( if string.contains_char(DumpOptions, 'v') then
+    DumpVarNums = DumpOptions ^ dump_var_numbers_in_names,
+    (
+        DumpVarNums = yes,
         VarNamePrint = print_name_and_num
-    else
+    ;
+        DumpVarNums = no,
         VarNamePrint = print_name_only
     ),
 
@@ -183,9 +187,12 @@ format_instance_defn(Info, InstanceDefn, !State) :-
     maybe_format_context_comment(1u, "", Context, !State),
 
     DumpOptions = Info ^ hoi_dump_hlds_options,
-    ( if string.contains_char(DumpOptions, 'v') then
+    DumpVarNums = DumpOptions ^ dump_var_numbers_in_names,
+    (
+        DumpVarNums = yes,
         VarNamePrint = print_name_and_num
-    else
+    ;
+        DumpVarNums = no,
         VarNamePrint = print_name_only
     ),
 
