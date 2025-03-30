@@ -1,0 +1,4 @@
+undef_in_ancestor.m:033: In declaration of predicate `test'/3:
+undef_in_ancestor.m:033:   error: the inst [38;5;6m`undef_in_ancestor.foo'/0[39;49m is
+undef_in_ancestor.m:033:   [38;5;9mundefined.[39;49m
+`undef_in_ancestor.child.int' and `undef_in_ancestor.child.int2' not written.

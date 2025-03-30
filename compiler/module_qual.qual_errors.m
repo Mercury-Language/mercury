@@ -312,7 +312,11 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         mq_info_get_imported_modules(Info, ImportedModuleNames),
         AvailModuleNames =
             [ThisModuleName | set_tree234.to_sorted_list(ImportedModuleNames)],
-        module_name_matches_some(IdModuleName, AvailModuleNames) = no
+        module_name_matches_some(IdModuleName, AvailModuleNames) = no,
+
+        % Ancestors are always implicitly imported.
+        Ancestors = get_ancestors_set(ThisModuleName),
+        not set.contains(Ancestors, IdModuleName)
     then
         % This used to say "The module IdModuleName has not been imported.".
         % However, a module with that name may not even exist, since it may be

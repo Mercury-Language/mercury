@@ -38,6 +38,9 @@ MAKE_DEP_ONLY_PROGS = \
 #   invalid_make_int, and
 # - this is not warranted, because the errors they report are tested for
 #   elsewhere.
+#
+# XXX The test case undef_in_ancestor is currently disabled due to the
+# lack of a compatible test setup anywhere in the invalid test directories.
 
 #-----------------------------------------------------------------------------#
 
