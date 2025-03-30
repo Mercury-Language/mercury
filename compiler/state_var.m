@@ -789,9 +789,9 @@ make_svars_read_only(ROC, Context, [SVar - CurStatus | CurTail], LambdaList) :-
 %
 
 svar_finish_clause_body(Context, FinalMap, InitialSVarState, FinalSVarState,
-        HeadGoal0, BodyGoal0, Goal, StateVarSpecs, !UrInfo) :-
-    svar_finish_body(Context, FinalMap, [HeadGoal0, BodyGoal0], Goal1,
-        InitialSVarState, FinalSVarState, !UrInfo),
+        HeadUnificationsGoal, BodyGoal0, Goal, StateVarSpecs, !UrInfo) :-
+    svar_finish_body(Context, FinalMap, [HeadUnificationsGoal, BodyGoal0],
+        Goal1, InitialSVarState, FinalSVarState, !UrInfo),
     SVarStore0 = !.UrInfo ^ ui_state_var_store,
     SVarStore0 = svar_store(_, DelayedRenamings, StateVarSpecs),
     ( if
@@ -807,82 +807,26 @@ svar_finish_clause_body(Context, FinalMap, InitialSVarState, FinalSVarState,
             get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
             map.to_assoc_list(FinalMap, FinalList),
             map.to_assoc_list(DelayedRenamings, DelayedList),
-            io.write_string(DebugStream,
-                "\nFINISH CLAUSE BODY in context ", !IO),
+            InitialSVarState = svar_state(InitialSVarStateMap),
+            map.to_assoc_list(InitialSVarStateMap, InitialSVarStateList),
+            FinalSVarState = svar_state(FinalSVarStateMap),
+            map.to_assoc_list(FinalSVarStateMap, FinalSVarStateList),
+
+            io.write_string(DebugStream, "\nFINISH CLAUSE BODY in ", !IO),
             io.write_line(DebugStream, Context, !IO),
             io.write_string(DebugStream, "applying subn\n", !IO),
             io.write_line(DebugStream, FinalList, !IO),
             io.write_string(DebugStream, "with incremental subn\n", !IO),
-            io.write_line(DebugStream, DelayedList, !IO)
+            io.write_line(DebugStream, DelayedList, !IO),
+            io.write_string(DebugStream, "with initial svar states\n", !IO),
+            io.write_line(DebugStream, InitialSVarStateList, !IO),
+            io.write_string(DebugStream, "with final svar states\n", !IO),
+            io.write_line(DebugStream, FinalSVarStateList, !IO),
+            io.nl(DebugStream, !IO)
         ),
         incremental_rename_vars_in_goal(map.init, DelayedRenamings,
             Goal1, Goal2),
-
-        % Suppose we have a goal such as this:
-        %
-        %   ( if p(..., !.S, !:S) then
-        %       <then_part>
-        %   else
-        %       <else_part>
-        %   )
-        %
-        % and that !:S is not referred to anywhere in the clause
-        % (not in then_part, not in else_part, not in the following code).
-        %
-        % In this form, warn_singletons can generate a warning about !:S
-        % being a singleton. However, the state variable transformation
-        % transforms it to code like this:
-        %
-        %   ( if p(..., STATE_VARIABLE_S_5, STATE_VARIABLE_S_6) then
-        %       <then_part>, STATE_VARIABLE_S_7 = STATE_VARIABLE_S_6
-        %   else
-        %       <else_part>, STATE_VARIABLE_S_7 = STATE_VARIABLE_S_5
-        %   )
-        %
-        % and marks both assignments to STATE_VARIABLE_S_7 as not being
-        % subject to singleton warnings.
-        %
-        % We don't actually *want* to generate warnings about the assignments
-        % to STATE_VARIABLE_S_7, because the problem is not in those
-        % assignments or in the if-then-else arms that contain them.
-        % Instead, it is in the condition. However, with this version
-        % of the code, the occurrence of STATE_VARIABLE_S_6 in the condition
-        % is *not* a singleton.
-        %
-        % To allow us to generate a warning about !:S in the condition,
-        % we delete all copy unifications inserted by the state variable
-        % transformation that assign to a variable that is not referred to
-        % either in the code that follows the assignment, or in the head.
-        % (The head contains the output arguments, which will live
-        % beyond the lifetime of anything in the clause body.)
-        %
-        % To find which variables occur after a copy goal, we have
-        % delete_unneeded_copy_goals do a backwards traversal of the clause
-        % body, keeping track of all the variables it has seen.
-        %
-        % To find which variables occur in the head, we use the call to
-        % goal_vars below. The variables in HeadGoal0 contain not just
-        % the head_vars of the clause, but also the state variable instances
-        % any of them are unified with. (This includes the input arguments
-        % as well as the output arguments, but the clause body won't contain
-        % any assignments to either the input arguments or the state variable
-        % instances they are unified with, so including them in SeenLater0
-        % is harmless. As it happens, we have to include them because we
-        % don't know which arguments are input and which are output,
-        % a distinction that in any case may be mode-dependent.)
-        %
-        % We cannot count on the definitions of those state var instances
-        % being before any of the occurrences of the head vars they are
-        % unified with. For example, if a fact contains an !S argument pair,
-        % the call to svar_finish_body above will put the unification of
-        % the state var instances representing !.S and !:S *after*
-        % HeadGoal0. If we initialized SeenLater0 to just the head_vars
-        % of the clause, this unification would assign to a variable
-        % that is *not* in SeenLater0, and would thus be eliminated,
-        % which would be a bug.
-        goal_vars(HeadGoal0, HeadGoal0Vars),
-        SeenLater0 = HeadGoal0Vars,
-        delete_unneeded_copy_goals(Goal2, Goal, SeenLater0, _SeenLater)
+        delete_unneeded_copy_goals_in_clause(HeadUnificationsGoal, Goal2, Goal)
     ).
 
 svar_finish_lambda_body(Context, FinalMap, Goals0, Goal,
@@ -1548,19 +1492,6 @@ handle_state_var_in_ite(LocKind, SVar, StatusBefore,
         !NeckCopyGoals, !ThenEndCopyGoals, !ElseEndCopyGoals,
         !ThenRenames, !ElseRenames, !ThenMissingInits, !ElseMissingInits,
         !UrInfo) :-
-    % There are eight cases depending on which of Cond, Then and Else
-    % update the state variable:
-    %
-    % # Cond Then Else  Action
-    % 1 no   no   no    do nothing
-    % 2 no   no   yes   copy at end of then
-    % 3 no   yes  no    copy at end of else
-    % 4 no   yes  yes   rename else to match then
-    % 5 yes  no   no    copy from cond at start of then, copy at end of else
-    % 6 yes  no   yes   copy from cond at start of then
-    % 7 yes  yes  no    copy at end of else
-    % 8 yes  yes  yes   rename else to match then
-
     trace [compiletime(flag("state-var-ite")), io(!IO)] (
         ModuleInfo = !.UrInfo ^ ui_module_info,
         module_info_get_globals(ModuleInfo, Globals),
@@ -1578,213 +1509,249 @@ handle_state_var_in_ite(LocKind, SVar, StatusBefore,
         io.write_line(DebugStream, StatusAfterElse, !IO)
     ),
 
-    ( if StatusAfterCond = StatusBefore then
-        % Cases 1-4.
-        ( if StatusAfterThen = StatusAfterCond then
-            % Cases 1-2.
-            ( if StatusAfterElse = StatusBefore then
-                % Case 1.
+    % There are eight cases depending on which of Then, Else and Cond
+    % update the state variable:
+    %
+    % #  Then Else  Cond Action
+    % A1 no   no    no   do nothing
+    % A2 no   no    yes  copy from cond at start of then, copy at end of else
+    % B1 no   yes   no   copy at end of then
+    % B2 no   yes   yes  copy from cond at start of then
+    % C1 yes  no    no   copy at end of else
+    % C2 yes  no    yes  copy at end of else
+    % D1 yes  yes   no   rename else to match then
+    % D2 yes  yes   yes  rename else to match then
+    %
+    % The nesting structure is:
+    %
+    % - Did Then update SVar? (Is StatusAfterThen = StatusAfterCond?)
+    % - Did Else update SVar? (Is StatusAfterElse = StatusBefore?)
+    % - did Cond update SVar? (Is StatusAfterCond = StatusBefore?)
+    %
+    % Note that if Then updates SVar, as it does in these cases, then
+    % it does not matter whether Cond also updates SVar, since its final state
+    % will not depend on that intermediate state. This is why we do not
+    % differentiate between C1 and C2, and between D1 and D2. And this
+    % in turn is the reason for why we test for updates by Then (and Else)
+    % before we test for updates by Cond.
+
+    ( if StatusAfterThen = StatusAfterCond then
+        % Cases A-B.
+        ( if StatusAfterElse = StatusBefore then
+            % Case A.
+            ( if StatusAfterCond = StatusBefore then
+                % Case A1.
                 StatusAfterITE = StatusBefore
             else
-                % Case 2.
-                (
-                    StatusBefore = status_known(VarBefore),
-                    VarAfterElse =
-                        svar_get_current_progvar(LocKind, StatusAfterElse),
-                    make_copy_goal(VarBefore, VarAfterElse, CopyGoal),
-                    !:ThenEndCopyGoals = [CopyGoal | !.ThenEndCopyGoals],
-                    StatusAfterITE = StatusAfterElse
-                ;
-                    StatusBefore = status_unknown,
-                    VarSet = !.UrInfo ^ ui_varset,
-                    varset.lookup_name(VarSet, SVar, SVarName),
-                    !:ThenMissingInits =
-                        ["!:" ++ SVarName | !.ThenMissingInits],
-                    % We pretend the then part defines StateVar, since this is
-                    % the right thing to do when the then part cannot succeed.
-                    % If it can, we will generate an error message during
-                    % mode analysis.
-                    StatusAfterITE = StatusAfterElse
-                ;
-                    StatusBefore = status_known_ro(_, _, _),
-                    % The update of !SVar in the else case was an error,
-                    % for which we have already generated an error message.
-                    % Because of that, this dummy value won't be used.
-                    % XXX Returning StatusAfterElse would cause fewer cascading
-                    % error messages, but are those messages useful or not?
-                    StatusAfterITE = StatusBefore
-                ;
-                    ( StatusBefore = status_known_updated(_, _)
-                    ; StatusBefore = status_unknown_updated(_)
-                    ),
-                    % This can happen if LocKind = loc_inside_atomic_goal,
-                    % but any reference to !:SVar in the else case should
-                    % have just returned the new progvar for SVar.
-                    unexpected($pred, "updated before (case 2)")
-                )
+                % Case A2.
+                handle_state_var_in_ite_cond(LocKind, SVar,
+                    StatusBefore, StatusAfterCond, StatusAfterITE,
+                    !NeckCopyGoals, !ElseEndCopyGoals, !ElseMissingInits,
+                    !UrInfo)
             )
         else
-            % Cases 3-4.
-            ( if StatusAfterElse = StatusBefore then
-                % Case 3.
-                (
-                    StatusBefore = status_known(VarBefore),
-                    VarAfterThen =
-                        svar_get_current_progvar(LocKind, StatusAfterThen),
-                    make_copy_goal(VarBefore, VarAfterThen, CopyGoal),
-                    !:ElseEndCopyGoals = [CopyGoal | !.ElseEndCopyGoals],
-                    StatusAfterITE = StatusAfterThen
-                ;
-                    StatusBefore = status_unknown,
-                    VarSet = !.UrInfo ^ ui_varset,
-                    varset.lookup_name(VarSet, SVar, SVarName),
-                    !:ElseMissingInits =
-                        ["!:" ++ SVarName | !.ElseMissingInits],
-                    % We pretend the else part defines StateVar, since this is
-                    % the right thing to do when the else part cannot succeed.
-                    % If it can, we will generate an error message during
-                    % mode analysis.
-                    StatusAfterITE = StatusAfterThen
-                ;
-                    StatusBefore = status_known_ro(_, _, _),
-                    % The update of !SVar in the then case was an error,
-                    % for which we have already generated an error message.
-                    % Because of that, this dummy value won't be used.
-                    % XXX Returning StatusAfterThen would cause fewer cascading
-                    % error messages, but are those messages useful or not?
-                    StatusAfterITE = StatusBefore
-                ;
-                    ( StatusBefore = status_known_updated(_, _)
-                    ; StatusBefore = status_unknown_updated(_)
-                    ),
-                    % This can happen if LocKind = loc_inside_atomic_goal,
-                    % but any reference to !:SVar in the then case should
-                    % have just returned the new progvar for SVar.
-                    unexpected($pred, "updated before (case 3)")
-                )
+            % Case B.
+            ( if StatusAfterCond = StatusBefore then
+                % Case B1.
+                handle_state_var_in_ite_else(LocKind, SVar,
+                    StatusBefore, StatusAfterElse, StatusAfterITE,
+                    !ThenEndCopyGoals, !ThenMissingInits, !UrInfo)
             else
-                % Case 4.
-                VarAfterThen =
-                    svar_get_current_progvar(LocKind, StatusAfterThen),
-                VarAfterElse =
-                    svar_get_current_progvar(LocKind, StatusAfterElse),
-                !:ElseRenames = [VarAfterElse - VarAfterThen | !.ElseRenames],
-                StatusAfterITE = StatusAfterThen
+                % Case B2.
+                handle_state_var_in_ite_cond_else(LocKind,
+                    StatusAfterCond, StatusAfterElse, StatusAfterITE,
+                    !NeckCopyGoals, !ElseEndCopyGoals,
+                    !ElseRenames, !ElseMissingInits, !UrInfo)
             )
         )
     else
-        % Cases 5-8.
-        ( if StatusAfterThen = StatusAfterCond then
-            % Cases 5-6.
-            ( if StatusAfterElse = StatusBefore then
-                % Case 5.
-                (
-                    StatusBefore = status_known(VarBefore),
-                    new_state_var_instance(SVar, name_middle, FinalVar,
-                        !UrInfo),
-                    VarAfterCond =
-                        svar_get_current_progvar(LocKind, StatusAfterCond),
-
-                    make_copy_goal(VarAfterCond, FinalVar, NeckCopyGoal),
-                    !:NeckCopyGoals = [NeckCopyGoal | !.NeckCopyGoals],
-                    make_copy_goal(VarBefore, FinalVar, ElseCopyGoal),
-                    !:ElseEndCopyGoals = [ElseCopyGoal | !.ElseEndCopyGoals],
-                    StatusAfterITE = status_known(FinalVar)
-                ;
-                    StatusBefore = status_unknown,
-                    VarSet = !.UrInfo ^ ui_varset,
-                    varset.lookup_name(VarSet, SVar, SVarName),
-                    !:ElseMissingInits =
-                        ["!:" ++ SVarName | !.ElseMissingInits],
-                    % We pretend the else part defines StateVar, since this is
-                    % the right thing to do when the else part cannot succeed.
-                    % If it can, we will generate an error message during
-                    % mode analysis.
-                    new_state_var_instance(SVar, name_middle, FinalVar,
-                        !UrInfo),
-                    VarAfterCond =
-                        svar_get_current_progvar(LocKind, StatusAfterCond),
-                    make_copy_goal(VarAfterCond, FinalVar, NeckCopyGoal),
-                    !:NeckCopyGoals = [NeckCopyGoal | !.NeckCopyGoals],
-                    StatusAfterITE = status_known(FinalVar)
-                ;
-                    StatusBefore = status_known_ro(_, _, _),
-                    % The update of !SVar in the condition was an error,
-                    % for which we have already generated an error message.
-                    % Because of that, this dummy value won't be used.
-                    % XXX Returning StatusAfterCond would cause fewer cascading
-                    % error messages, but are those messages useful or not?
-                    StatusAfterITE = StatusBefore
-                ;
-                    ( StatusBefore = status_known_updated(_, _)
-                    ; StatusBefore = status_unknown_updated(_)
-                    ),
-                    % This can happen if LocKind = loc_inside_atomic_goal,
-                    % but any reference to !:SVar in the condition should
-                    % have just returned the new progvar for SVar.
-                    unexpected($pred, "updated before (case 5)")
-                )
-            else
-                % Case 6.
-                VarAfterCond =
-                    svar_get_current_progvar(LocKind, StatusAfterCond),
-                VarAfterElse =
-                    svar_get_current_progvar(LocKind, StatusAfterElse),
-                make_copy_goal(VarAfterCond, VarAfterElse, CopyGoal),
-                !:NeckCopyGoals = [CopyGoal | !.NeckCopyGoals],
-                StatusAfterITE = StatusAfterElse
-            )
+        % Cases C-D.
+        ( if StatusAfterElse = StatusBefore then
+            % Case C. We handle C1 and C2 the same way.
+            handle_state_var_in_ite_maybe_cond_then(LocKind,
+                SVar, StatusBefore, StatusAfterThen, StatusAfterITE,
+                !ElseEndCopyGoals, !ElseMissingInits, !UrInfo)
         else
-            % Cases 7-8.
-            ( if StatusAfterElse = StatusBefore then
-                % Case 7.
-                (
-                    StatusBefore = status_known(VarBefore),
-                    VarAfterThen =
-                        svar_get_current_progvar(LocKind, StatusAfterThen),
-                    make_copy_goal(VarBefore, VarAfterThen, CopyGoal),
-                    !:ElseEndCopyGoals = [CopyGoal | !.ElseEndCopyGoals],
-                    StatusAfterITE = StatusAfterThen
-                ;
-                    StatusBefore = status_unknown,
-                    VarSet = !.UrInfo ^ ui_varset,
-                    varset.lookup_name(VarSet, SVar, SVarName),
-                    !:ElseMissingInits =
-                        ["!:" ++ SVarName | !.ElseMissingInits],
-                    % We pretend the else part defines StateVar, since this is
-                    % the right thing to do when the else part cannot succeed.
-                    % If it can, we will generate an error message during
-                    % mode analysis.
-                    StatusAfterITE = StatusAfterThen
-                ;
-                    StatusBefore = status_known_ro(_, _, _),
-                    % The updates of !SVar in the condition and then cases
-                    % were errors, for which we already generated messages.
-                    % Because of that, this dummy value won't be used.
-                    % XXX Returning StatusAfterThen would cause fewer cascading
-                    % error messages, but are those messages useful or not?
-                    StatusAfterITE = StatusBefore
-                ;
-                    ( StatusBefore = status_known_updated(_, _)
-                    ; StatusBefore = status_unknown_updated(_)
-                    ),
-                    % This can happen if LocKind = loc_inside_atomic_goal,
-                    % but any reference to !:SVar in the condition and
-                    % then case should have just returned the new progvar
-                    % for SVar.
-                    unexpected($pred, "updated before (case 7)")
-                )
-            else
-                % Case 8.
-                VarAfterThen =
-                    svar_get_current_progvar(LocKind, StatusAfterThen),
-                VarAfterElse =
-                    svar_get_current_progvar(LocKind, StatusAfterElse),
-                !:ElseRenames = [VarAfterElse - VarAfterThen | !.ElseRenames],
-                StatusAfterITE = StatusAfterThen
-            )
+            % Case D. We handle D1 and D2 the same way.
+            handle_state_var_in_ite_maybe_cond_then_else(LocKind,
+                StatusAfterThen, StatusAfterElse, StatusAfterITE,
+                !ElseEndCopyGoals, !ElseRenames, !ElseMissingInits, !UrInfo)
         )
     ).
+
+:- pred handle_state_var_in_ite_cond(loc_kind::in, svar::in,
+    svar_status::in, svar_status::in, svar_status::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    list(string)::in, list(string)::out,
+    unravel_info::in, unravel_info::out) is det.
+:- pragma inline(pred(handle_state_var_in_ite_cond/13)).
+
+handle_state_var_in_ite_cond(LocKind, SVar,
+        StatusBefore, StatusAfterCond, StatusAfterITE,
+        !NeckCopyGoals, !ElseEndCopyGoals, !ElseMissingInits, !UrInfo) :-
+    (
+        StatusBefore = status_known(VarBefore),
+        new_state_var_instance(SVar, name_middle, FinalVar, !UrInfo),
+        VarAfterCond = svar_get_current_progvar(LocKind, StatusAfterCond),
+        make_copy_goal(VarAfterCond, FinalVar, NeckCopyGoal),
+        !:NeckCopyGoals = [NeckCopyGoal | !.NeckCopyGoals],
+        make_copy_goal(VarBefore, FinalVar, ElseCopyGoal),
+        !:ElseEndCopyGoals = [ElseCopyGoal | !.ElseEndCopyGoals],
+        StatusAfterITE = status_known(FinalVar)
+    ;
+        StatusBefore = status_unknown,
+        VarSet = !.UrInfo ^ ui_varset,
+        varset.lookup_name(VarSet, SVar, SVarName),
+        !:ElseMissingInits = ["!:" ++ SVarName | !.ElseMissingInits],
+        % We pretend the else part defines StateVar, since this is
+        % the right thing to do when the else part cannot succeed.
+        % If it can, we will generate an error message during
+        % mode analysis.
+        new_state_var_instance(SVar, name_middle, FinalVar, !UrInfo),
+        VarAfterCond = svar_get_current_progvar(LocKind, StatusAfterCond),
+        make_copy_goal(VarAfterCond, FinalVar, NeckCopyGoal),
+        !:NeckCopyGoals = [NeckCopyGoal | !.NeckCopyGoals],
+        StatusAfterITE = status_known(FinalVar)
+    ;
+        StatusBefore = status_known_ro(_, _, _),
+        % The update of !SVar in the condition was an error, for which
+        % we have already generated an error message. Because of that,
+        % this dummy value won't be used.
+        % XXX Returning StatusAfterCond would cause fewer cascading
+        % error messages, but are those messages useful?
+        StatusAfterITE = StatusBefore
+    ;
+        ( StatusBefore = status_known_updated(_, _)
+        ; StatusBefore = status_unknown_updated(_)
+        ),
+        % This can happen if LocKind = loc_inside_atomic_goal, but
+        % any reference to !:SVar in the condition should have
+        % just returned the new progvar for SVar.
+        unexpected($pred, "updated before (case 5)")
+    ).
+
+:- pred handle_state_var_in_ite_else(loc_kind::in, svar::in,
+    svar_status::in, svar_status::in, svar_status::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    list(string)::in, list(string)::out,
+    unravel_info::in, unravel_info::out) is det.
+:- pragma inline(pred(handle_state_var_in_ite_else/11)).
+
+handle_state_var_in_ite_else(LocKind, SVar, StatusBefore,
+        StatusAfterElse, StatusAfterITE,
+        !ThenEndCopyGoals, !ThenMissingInits, !UrInfo) :-
+    (
+        StatusBefore = status_known(VarBefore),
+        VarAfterElse = svar_get_current_progvar(LocKind, StatusAfterElse),
+        make_copy_goal(VarBefore, VarAfterElse, CopyGoal),
+        !:ThenEndCopyGoals = [CopyGoal | !.ThenEndCopyGoals],
+        StatusAfterITE = StatusAfterElse
+    ;
+        StatusBefore = status_unknown,
+        VarSet = !.UrInfo ^ ui_varset,
+        varset.lookup_name(VarSet, SVar, SVarName),
+        !:ThenMissingInits = ["!:" ++ SVarName | !.ThenMissingInits],
+        % We pretend the then part defines StateVar, since this is the right
+        % thing to do when the then part cannot succeed. If it can, we will
+        % generate an error message during mode analysis.
+        StatusAfterITE = StatusAfterElse
+    ;
+        StatusBefore = status_known_ro(_, _, _),
+        % The update of !SVar in the else case was an error, for which
+        % we have already generated an error message. Because of that,
+        % this dummy value won't be used.
+        % XXX Returning StatusAfterElse would cause fewer cascading
+        % error messages, but are those messages useful?
+        StatusAfterITE = StatusBefore
+    ;
+        ( StatusBefore = status_known_updated(_, _)
+        ; StatusBefore = status_unknown_updated(_)
+        ),
+        % This can happen if LocKind = loc_inside_atomic_goal, but
+        % any reference to !:SVar in the else case should have just returned
+        % the new progvar for SVar.
+        unexpected($pred, "updated before (case 2)")
+    ).
+
+:- pred handle_state_var_in_ite_cond_else(loc_kind::in,
+    svar_status::in, svar_status::in, svar_status::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    assoc_list(prog_var, prog_var)::in, assoc_list(prog_var, prog_var)::out,
+    list(string)::in, list(string)::out,
+    unravel_info::in, unravel_info::out) is det.
+:- pragma inline(pred(handle_state_var_in_ite_cond_else/14)).
+
+handle_state_var_in_ite_cond_else(LocKind,
+        StatusAfterCond, StatusAfterElse, StatusAfterITE,
+        !NeckCopyGoals, !ElseEndCopyGoals, !ElseRenames, !ElseMissingInits,
+        !UrInfo) :-
+    VarAfterCond = svar_get_current_progvar(LocKind, StatusAfterCond),
+    VarAfterElse = svar_get_current_progvar(LocKind, StatusAfterElse),
+    make_copy_goal(VarAfterCond, VarAfterElse, CopyGoal),
+    !:NeckCopyGoals = [CopyGoal | !.NeckCopyGoals],
+    StatusAfterITE = StatusAfterElse.
+
+:- pred handle_state_var_in_ite_maybe_cond_then(
+    loc_kind::in, svar::in,
+    svar_status::in, svar_status::in, svar_status::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    list(string)::in, list(string)::out,
+    unravel_info::in, unravel_info::out) is det.
+:- pragma inline(pred(handle_state_var_in_ite_maybe_cond_then/11)).
+
+handle_state_var_in_ite_maybe_cond_then(LocKind, SVar,
+        StatusBefore, StatusAfterThen, StatusAfterITE,
+        !ElseEndCopyGoals, !ElseMissingInits, !UrInfo) :-
+    (
+        StatusBefore = status_known(VarBefore),
+        VarAfterThen = svar_get_current_progvar(LocKind, StatusAfterThen),
+        make_copy_goal(VarBefore, VarAfterThen, CopyGoal),
+        !:ElseEndCopyGoals = [CopyGoal | !.ElseEndCopyGoals],
+        StatusAfterITE = StatusAfterThen
+    ;
+        StatusBefore = status_unknown,
+        VarSet = !.UrInfo ^ ui_varset,
+        varset.lookup_name(VarSet, SVar, SVarName),
+        !:ElseMissingInits = ["!:" ++ SVarName | !.ElseMissingInits],
+        % We pretend the else part defines StateVar, since this is the
+        % right thing to do when the else part cannot succeed. If it can,
+        % we will generate an error message during mode analysis.
+        StatusAfterITE = StatusAfterThen
+    ;
+        StatusBefore = status_known_ro(_, _, _),
+        % The updates of !SVar in the condition and then cases were errors,
+        % for which we already generated messages. Because of that,
+        % this dummy value won't be used.
+        % XXX Returning StatusAfterThen would cause fewer cascading
+        % error messages, but are those messages useful?
+        StatusAfterITE = StatusBefore
+    ;
+        ( StatusBefore = status_known_updated(_, _)
+        ; StatusBefore = status_unknown_updated(_)
+        ),
+        % This can happen if LocKind = loc_inside_atomic_goal, but
+        % any reference to !:SVar in the condition and then case
+        % should have just returned the new progvar for SVar.
+        unexpected($pred, "updated before (case 7)")
+    ).
+
+:- pred handle_state_var_in_ite_maybe_cond_then_else(loc_kind::in,
+    svar_status::in, svar_status::in, svar_status::out,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    assoc_list(prog_var, prog_var)::in, assoc_list(prog_var, prog_var)::out,
+    list(string)::in, list(string)::out,
+    unravel_info::in, unravel_info::out) is det.
+:- pragma inline(pred(handle_state_var_in_ite_maybe_cond_then_else/12)).
+
+handle_state_var_in_ite_maybe_cond_then_else(LocKind,
+        StatusAfterThen, StatusAfterElse, StatusAfterITE,
+        !ElseEndCopyGoals, !ElseRenames, !ElseMissingInits, !UrInfo) :-
+    VarAfterThen = svar_get_current_progvar(LocKind, StatusAfterThen),
+    VarAfterElse = svar_get_current_progvar(LocKind, StatusAfterElse),
+    !:ElseRenames = [VarAfterElse - VarAfterThen | !.ElseRenames],
+    StatusAfterITE = StatusAfterThen.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2120,6 +2087,75 @@ add_conjunct_delayed_renames(DelayedRenamingToAdd, Goal0, Goal,
 % A post-pass to delete unneeded copy unifications. Such unifications
 % can hide singleton variable problems.
 %
+
+    % Suppose we have a goal such as this:
+    %
+    %   ( if p(..., !.S, !:S) then
+    %       <then_part>
+    %   else
+    %       <else_part>
+    %   )
+    %
+    % and that !:S is not referred to anywhere in the clause
+    % (not in then_part, not in else_part, not in the following code).
+    %
+    % In this form, warn_singletons can generate a warning about !:S
+    % being a singleton. However, the state variable transformation
+    % transforms it to code like this:
+    %
+    %   ( if p(..., STATE_VARIABLE_S_5, STATE_VARIABLE_S_6) then
+    %       <then_part>, STATE_VARIABLE_S_7 = STATE_VARIABLE_S_6
+    %   else
+    %       <else_part>, STATE_VARIABLE_S_7 = STATE_VARIABLE_S_5
+    %   )
+    %
+    % and marks both assignments to STATE_VARIABLE_S_7 as not being subject
+    % to singleton warnings.
+    %
+    % We don't actually *want* to generate warnings about the assignments
+    % to STATE_VARIABLE_S_7, because the problem is not in those assignments
+    % or in the if-then-else arms that contain them. Instead, it is
+    % in the condition. However, with this version of the code, the occurrence
+    % of STATE_VARIABLE_S_6 in the condition is *not* a singleton.
+    %
+    % To allow us to generate a warning about !:S in the condition,
+    % we delete all copy unifications inserted by the state variable
+    % transformation that assign to a variable that is not referred to
+    % either in the code that follows the assignment, or in the head.
+    % (The head contains the output arguments, which will live
+    % beyond the lifetime of anything in the clause body.)
+    %
+    % To find which variables occur after a copy goal, we have
+    % delete_unneeded_copy_goals do a backwards traversal of the clause body,
+    % keeping track of all the variables it has seen.
+    %
+    % To find which variables occur in the head, we use the call to goal_vars
+    % below. The variables in HeadUnificationsGoal contain not just the
+    % head_vars of the clause, but also the state variable instances any
+    % of them are unified with. (This includes the input arguments as well as
+    % the output arguments, but the clause body won't contain any assignments
+    % to either the input arguments or the state variable instances
+    % they are unified with, so including them in SeenLater0 is harmless.
+    % As it happens, we have to include them because we don't know
+    % which arguments are input and which are output, a distinction
+    % that in any case may be mode-dependent.)
+    %
+    % We cannot count on the definitions of those state var instances being
+    % before any of the occurrences of the head vars they are unified with.
+    % For example, if a fact contains an !S argument pair, the call to
+    % svar_finish_body in our caller will put the unification of the state
+    % var instances representing !.S and !:S *after* HeadUnificationsGoal.
+    % If we initialized SeenLater0 to just the head_vars of the clause,
+    % this unification would assign to a variable that is *not* in SeenLater0,
+    % and would thus be eliminated, which would be a bug.
+    %
+:- pred delete_unneeded_copy_goals_in_clause(hlds_goal::in,
+    hlds_goal::in, hlds_goal::out) is det.
+
+delete_unneeded_copy_goals_in_clause(HeadUnificationsGoal, Goal0, Goal) :-
+    goal_vars(HeadUnificationsGoal, HeadUnificationsGoalVars),
+    SeenLater0 = HeadUnificationsGoalVars,
+    delete_unneeded_copy_goals(Goal0, Goal, SeenLater0, _SeenLater).
 
 :- pred delete_unneeded_copy_goals(hlds_goal::in, hlds_goal::out,
     set_of_progvar::in, set_of_progvar::out) is det.

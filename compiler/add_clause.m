@@ -808,15 +808,16 @@ add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
         InitialSVarState = !.SVarState,
         (
             ClauseType = clause_for_promise(_),
-            HeadGoal = true_goal
+            HeadUnificationsGoal = true_goal
         ;
             ClauseType = clause_not_for_promise,
             PredFormArity = arg_list_arity(ArgTerms0),
             ArgContext = ac_head(PredOrFunc, PredFormArity),
-            HeadGoal0 = true_goal,
+            HeadUnificationsGoal0 = true_goal,
             pair_vars_with_terms(HeadVars, ArgTerms, HeadVarsArgTerms),
             insert_arg_unifications(HeadVarsArgTerms, Context, ArgContext,
-                HeadGoal0, HeadGoal1, !SVarState, !UrInfo),
+                HeadUnificationsGoal0, HeadUnificationsGoal1,
+                !SVarState, !UrInfo),
             % The only pass that pays attention to the from_head feature,
             % switch_detection, only does so on kinds of hlds_goal_exprs
             % that do not occur in from_ground_term scopes, which we have
@@ -833,14 +834,15 @@ add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
             % to another kind of scope should attach any from_head feature
             % present on the scope to all its subgoals.
             attach_features_to_all_goals([feature_from_head],
-                do_not_attach_in_from_ground_term, HeadGoal1, HeadGoal)
+                do_not_attach_in_from_ground_term,
+                HeadUnificationsGoal1, HeadUnificationsGoal)
         ),
         transform_parse_tree_goal_to_hlds(loc_whole_goal, Renaming,
             ParseTreeBodyGoal, BodyGoal, !SVarState, !UrInfo),
         FinalSVarState = !.SVarState,
         svar_finish_clause_body(Context, FinalSVarMap,
-            InitialSVarState, FinalSVarState, HeadGoal, BodyGoal, Goal0,
-            StateVarWarningSpecs, !UrInfo),
+            InitialSVarState, FinalSVarState, HeadUnificationsGoal, BodyGoal,
+            Goal0, StateVarWarningSpecs, !UrInfo),
         !.UrInfo = unravel_info(!:ModuleInfo, _FgtThreshold,
             !:QualInfo, !:VarSet, _SVarStore, UnravelSpecs),
         !:Specs = UnravelSpecs ++ !.Specs,
@@ -866,7 +868,7 @@ add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
                 io.write_line(DebugStream, HeadVars, !IO),
                 io.write_string(DebugStream, "\narg unifies:\n", !IO),
                 dump_goal_nl(DebugStream, !.ModuleInfo, VarNameSrc,
-                    TVarSet, InstVarSet, HeadGoal, !IO),
+                    TVarSet, InstVarSet, HeadUnificationsGoal, !IO),
                 io.write_string(DebugStream, "\nparse tree goal body:\n", !IO),
                 mercury_format_goal(DebugStream, !.VarSet, 0u,
                     ParseTreeBodyGoal, !IO),
