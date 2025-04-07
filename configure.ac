@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
-# Copyright (C) 2013-2024 The Mercury team.
+# Copyright (C) 2013-2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -2977,6 +2977,8 @@ ENABLE_BOEHM_PARALLEL_MARK=
 #
 BOEHM_CFLAGS_FOR_THREADS="-DGC_THREADS"
 
+BOEHM_NEED_ATOMIC_OPS_ASM=no
+
 # This should be set if both the system malloc and Boehm GC (in the default
 # configuration) may both call sbrk.
 avoid_sbrk=
@@ -2987,6 +2989,14 @@ case "$host" in
         THREAD_LIBS="-lpthread -lrt -ldl"
         ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
         ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
+        case "$host" in
+            sparc*)
+                if test "$mercury_cv_cc_type" != gcc; then
+                    # See boehm_gc/Makefile.direct
+                    BOEHM_NEED_ATOMIC_OPS_ASM=yes
+                fi
+                ;;
+        esac
         ;;
 
     *linux*)
@@ -3136,6 +3146,7 @@ AC_SUBST(LD_LIBFLAGS_FOR_THREADS)
 AC_SUBST(ENABLE_BOEHM_THREAD_LOCAL_ALLOC)
 AC_SUBST(ENABLE_BOEHM_PARALLEL_MARK)
 AC_SUBST(BOEHM_CFLAGS_FOR_THREADS)
+AC_SUBST(BOEHM_NEED_ATOMIC_OPS_ASM)
 
 save_LIBS="$LIBS"
 LIBS="$THREAD_LIBS"
