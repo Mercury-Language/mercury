@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1994-2000,2002, 2004, 2006, 2008 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018 The Mercury Team.
+// Copyright (C) 2014-2016, 2018, 2025 The Mercury Team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_memory.h:
@@ -112,8 +112,9 @@ extern  void    MR_ensure_big_enough_buffer(char **buffer_ptr,
 // These routines all allocate memory that will be traced by the
 // conservative garbage collector, if conservative GC is enabled.
 // (For the native GC, you need to call MR_add_root() to register roots.)
-// These routines all check for a null return value themselves,
-// so the caller need not check.
+// The pointer values they return are all guaranteed to be non-NULL.
+// (If they cannot allocate the requested amount of memory,
+// they abort the program instead of returning NULL.)
 //
 // MR_GC_NEW(type):
 //  Allocates space for an object of the specified type.
@@ -134,22 +135,22 @@ extern  void    MR_ensure_big_enough_buffer(char **buffer_ptr,
 // MR_GC_RESIZE_ARRAY(ptr, type, num):
 //  Resizes the array, as with realloc().
 //
-// MR_GC_malloc(bytes):
+// MR_GC_malloc(num_bytes):
 //  Allocates the given number of bytes.
 //  If conservative GC is enabled, the memory will be garbage collected
 //  when it is no longer referenced from GC-traced memory (see above).
 //
-// MR_GC_malloc_uncollectable(bytes):
-//  Allocates the given number of bytes.
-//  The memory will not be garbage collected, and so it should be
-//  explicitly deallocated using MR_GC_free().
-//
-// MR_GC_malloc_atomic(bytes):
+// MR_GC_malloc_atomic(num_bytes):
 //  Allocates the given number of bytes.
 //  Pointers to GC objects may not be stored in this object. This allows
 //  the GC to optimize its marking phase.
 //
-// MR_GC_realloc(ptr, bytes):
+// MR_GC_malloc_uncollectable(num_bytes):
+//  Allocates the given number of bytes.
+//  The memory will not be garbage collected, and so it should be
+//  explicitly deallocated using MR_GC_free().
+//
+// MR_GC_realloc(ptr, num_bytes):
 //  Reallocates the memory block pointed to by ptr.
 //
 // MR_GC_free(ptr):
