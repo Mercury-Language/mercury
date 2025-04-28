@@ -374,6 +374,26 @@ static  FILE        *debug_fp;
 
 #define MR_FILENAME_BUF_LEN     1024
 
+// Append the string pointed to by src into the buffer pointed to by dst,
+// where dst_sz is the size of the destination buffer. Aborts the program
+// if there is not enough space in the destination buffer.
+static void
+MR_safe_strcat(char dst[], size_t dst_sz, const char *src)
+{
+    size_t dst_len = strnlen(dst, dst_sz);
+    if (dst_len >= dst_sz) {
+        MR_fatal_error("MR_safe_strcat: destination unterminated");
+    }
+
+    size_t dst_rem = dst_sz - dst_len - 1;
+    size_t src_len = strlen(src);
+    if (src_len > dst_rem) {
+        MR_fatal_error("MR_safe_strcat: insufficient space in destination");
+    }
+    memcpy(dst + dst_len, src, src_len);
+    dst[dst_len + src_len] = '\0';
+}
+
 void
 MR_write_out_profiling_tree(void)
 {
@@ -425,13 +445,13 @@ MR_write_out_profiling_tree(void)
                     "_on_%04d-%02d-%02d_at_%02d-%02d-%02d",
                     tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
                     tm->tm_hour, tm->tm_min, tm->tm_sec);
-                strncat(data_filename, date_name, MR_FILENAME_BUF_LEN);
-                strncat(procrep_filename, date_name, MR_FILENAME_BUF_LEN);
+                MR_safe_strcat(data_filename, MR_FILENAME_BUF_LEN, date_name);
+                MR_safe_strcat(procrep_filename, MR_FILENAME_BUF_LEN, date_name);
             }
         }
 
-        strncat(data_filename, ".data", MR_FILENAME_BUF_LEN);
-        strncat(procrep_filename, ".procrep", MR_FILENAME_BUF_LEN);
+        MR_safe_strcat(data_filename, MR_FILENAME_BUF_LEN, ".data");
+        MR_safe_strcat(procrep_filename, MR_FILENAME_BUF_LEN, ".procrep");
     }
 
     #if defined(MR_WIN32) && !defined(MR_CYGWIN)
