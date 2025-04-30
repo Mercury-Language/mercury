@@ -159,6 +159,18 @@ EHWPOISON
 EBFONT
 "
 
+# Potential aliases:
+# - EWOULDBLOCK should be the same as EAGAIN
+# - EDEADLOCK should be the same as EDEADLK
+# - ENOTSUP may be the same as EOPNOTSUPP on some platforms
+# - ENOTEMPTY may be the same as EEXIST on some platforms
+possible_aliases="
+EWOULDBLOCK
+EDEADLOCK
+ENOTSUP
+ENOTEMPTY
+"
+
 cat <<EOF
 // vim: ts=4 sw=4 expandtab ft=c
 
@@ -184,23 +196,20 @@ for name in $names ; do
     echo "#endif"
 done
 
-# Handle potential aliases:
-# - EWOULDBLOCK should be the same as EAGAIN
-# - EDEADLOCK should be the same as EDEADLK
-# - ENOTSUP may be the same as EOPNOTSUPP on some platforms
-# - ENOTEMPTY may be the same as EEXIST on some platforms
-handle_alias() {
-    echo "#if defined($1) && ($1 != $2)"
-    echo "    case $1: return \"$1\";"
+cat <<EOF
+    default:
+        switch (errnum) {
+EOF
+
+for name in $possible_aliases ; do
+    echo "#ifdef $name"
+    echo "        case $name: return \"$name\";"
     echo "#endif"
-}
-handle_alias EWOULDBLOCK EAGAIN
-handle_alias EDEADLOCK EDEADLK
-handle_alias ENOTSUP EOPNOTSUPP
-handle_alias ENOTEMPTY EEXIST
+done
 
 cat <<EOF
-    default: return NULL;
+        }
     }
+    return NULL;
 }
 EOF

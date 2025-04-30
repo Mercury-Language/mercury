@@ -455,18 +455,21 @@ MR_errno_name(int errnum)
 #ifdef EBFONT
     case EBFONT: return "EBFONT";
 #endif
-#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
-    case EWOULDBLOCK: return "EWOULDBLOCK";
+    default:
+        switch (errnum) {
+#ifdef EWOULDBLOCK
+        case EWOULDBLOCK: return "EWOULDBLOCK";
 #endif
-#if defined(EDEADLOCK) && (EDEADLOCK != EDEADLK)
-    case EDEADLOCK: return "EDEADLOCK";
+#ifdef EDEADLOCK
+        case EDEADLOCK: return "EDEADLOCK";
 #endif
-#if defined(ENOTSUP) && (ENOTSUP != EOPNOTSUPP)
-    case ENOTSUP: return "ENOTSUP";
+#ifdef ENOTSUP
+        case ENOTSUP: return "ENOTSUP";
 #endif
-#if defined(ENOTEMPTY) && (ENOTEMPTY != EEXIST)
-    case ENOTEMPTY: return "ENOTEMPTY";
+#ifdef ENOTEMPTY
+        case ENOTEMPTY: return "ENOTEMPTY";
 #endif
-    default: return NULL;
+        }
     }
+    return NULL;
 }
