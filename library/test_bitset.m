@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2024 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -569,13 +569,13 @@ remove_least(Least, In @ tb(SetA0, SetB0, SetC0, SetD0, SetS0), Result) :-
     ( if
         MaybeA = yes(LA - SA),
         MaybeB = yes(LB - SB),
-        MaybeC = yes(LC - SC),
+        MaybeC = yes(LC - Sc),  % avoid SC_32 macro on AIX
         MaybeD = yes(LD - SD),
         MaybeS = yes(LS - SS),
         LA = LS, LB = LS, LC = LS, LD = LS
     then
         Least = LS,
-        check1("remove_least", In, tb(SA, SB, SC, SD, SS), Result)
+        check1("remove_least", In, tb(SA, SB, Sc, SD, SS), Result)
     else if
         MaybeA = no,
         MaybeB = no,
