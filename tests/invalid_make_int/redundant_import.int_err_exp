@@ -1,0 +1,3 @@
+redundant_import.m:013: In declaration of predicate `main'/3:
+redundant_import.m:013:   error: the type [38;5;87m`undef_type'/0[39;49m is [38;5;203mundefined.[39;49m
+`redundant_import.int' and `redundant_import.int2' not written.

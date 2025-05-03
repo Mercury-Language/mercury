@@ -35,6 +35,7 @@ SINGLE_MODULE_PROGS = \
 	missing_initial_section \
 	missing_interface_import \
 	pragma_export_int \
+	redundant_import \
 	test_type_spec_int \
 	type_arity \
 	type_vars_int \
