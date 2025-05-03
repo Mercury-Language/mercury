@@ -279,7 +279,7 @@
 %---------------------------------------------------------------------------%
 
     % Return a printable representation of a functor and its arguments.
-    % The prog_varset gives the names of any variables.
+    % The var_name_source gives the names of any variables.
     %
 :- func functor_to_string(var_name_source, var_name_print, const,
     list(prog_var)) = string.
@@ -294,9 +294,9 @@
     var_name_print, module_name, const, list(prog_term)) = string.
 
     % Return a printable representation of a cons_id and arguments.
-    % The prog_varset gives the names of any variables, while the module_info
-    % allows the interpretation of cons_ids that are shrouded references
-    % to procedures.
+    % The var_name_source gives the names of any variables, while
+    % the module_info allows the interpretation of cons_ids
+    % that are shrouded references to procedures.
     %
 :- func functor_cons_id_to_string(module_info, var_name_source, var_name_print,
     cons_id, list(prog_var)) = string.
