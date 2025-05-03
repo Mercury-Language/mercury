@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2000, 2002-2004, 2006 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_library_types.h - definitions of some basic types used by the
@@ -16,8 +16,8 @@
 #include <stdio.h>          // for `FILE'
 #include <stdarg.h>         // for `va_list'
 
-// The C `MercuryFile' type is used for the Mercury `io.stream' type
-// in library/io.m.
+// The C `MercuryFile' type below (whichever version is selected)
+// implements the Mercury type `io.stream' in library/io.m.
 // Mercury files are not quite the same as C stdio FILEs,
 // because we keep track of a lot more information.
 
@@ -168,7 +168,7 @@ typedef MercuryFile *MercuryFilePtr;
 // Do the reverse to above.
 // The only place we use this in browser/listing.m.
 
-#define MR_unwrap_input_stream(mf) ((MercuryFilePtr)(mf))
+#define MR_unwrap_input_stream(mf)  ((MercuryFilePtr)(mf))
 #define MR_unwrap_output_stream(mf) ((MercuryFilePtr)(mf))
 
 #endif // not MERCURY_LIBRARY_TYPES_H
