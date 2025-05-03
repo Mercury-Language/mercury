@@ -651,10 +651,13 @@
 %
 % - If the function name starts with "fixed", this means that each item
 %   is a string, and it should be formatted as a fixed string.
+%
 % - If the function name starts with "quote", this means that each item
 %   is a string, and it should be formatted as a quoted string.
+%
 % - If the function name starts with "piece", this means that each item
 %   is a piece, and it should be used as is.
+%
 % - If the function name starts with "pieces", this means that each item
 %   is a list of pieces, which should be used as is.
 %
@@ -683,6 +686,7 @@
 % - If the function name includes either "strict" or "to_line_pieces", then
 %   we treat all gaps between items the same, by adding a comma as a suffix
 %   to the item before the gap.
+%
 % - Otherwise, we treat the last gap differently, by putting a separator word,
 %   usually either "and" or "or", in that gap.
 %
@@ -724,7 +728,7 @@
 :- func pieces_list_to_color_pieces(color_name, string,
     list(format_piece), list(list(format_piece))) = list(format_piece).
 
-    % x_strict_list_to_pieces(LastSepWord, Items) = Pieces.
+    % x_strict_list_to_pieces(Items) = Pieces.
     %
 :- func fixed_strict_list_to_pieces(
     list(string)) = list(format_piece).
