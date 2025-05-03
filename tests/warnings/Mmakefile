@@ -65,6 +65,7 @@ ERRORCHECK_PROGS = \
 	unused_args_test \
 	unused_import \
 	unused_interface_import \
+	unresolved_polymorphism_anon \
 	warn_contiguous_foreign \
 	warn_dead_procs \
 	warn_dead_procs_trace \

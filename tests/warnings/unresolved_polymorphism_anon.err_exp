@@ -1,0 +1,10 @@
+unresolved_polymorphism_anon.m:036: Warning: [38;5;203munresolved polymorphism[39;49m in
+unresolved_polymorphism_anon.m:036:   predicate [38;5;87m`maybe_throw_pred'/2.[39;49m
+unresolved_polymorphism_anon.m:036:   The variable with an unbound type was:
+unresolved_polymorphism_anon.m:036:     [38;5;87m`V_7':[39;49m [38;5;203mexception.exception_result(T).[39;49m
+unresolved_polymorphism_anon.m:036:   The unbound type variable [38;5;203m`T'[39;49m will be
+unresolved_polymorphism_anon.m:036:   implicitly bound to the builtin type
+unresolved_polymorphism_anon.m:036:   `void'.
+unresolved_polymorphism_anon.m:053:   `V_7' represents the term
+unresolved_polymorphism_anon.m:053:   `exception(Exception)'.
+For more information, recompile with `-E'.

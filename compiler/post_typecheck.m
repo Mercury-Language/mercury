@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -89,6 +89,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.
+:- import_module hlds.var_origins.
 :- import_module hlds.var_table_hlds.
 :- import_module libs.
 :- import_module libs.globals.
@@ -108,6 +109,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -605,9 +607,10 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
 
     PredDescDotPieces = describe_one_pred_name(ModuleInfo,
         yes(color_subject), should_not_module_qualify, [suffix(".")], PredId),
-    list.map_foldl3(var_vte_to_name_and_type_strs(TVarSet),
+    list.map_foldl4(var_vte_to_name_and_type_strs(TVarSet),
         VarsEntries, VarTypeStrs0,
-        0, MaxVarNameLen0, all_tvars, MaybeAllTVars, set.init, TVars),
+        0, MaxVarNameLen0, all_tvars, MaybeAllTVars, set.init, TVars,
+        set.init, AnonVars),
     list.sort(VarTypeStrs0, VarTypeStrs),
     (
         MaybeAllTVars = all_tvars,
@@ -618,11 +621,12 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
             words(choose_number(VarsEntries, "Its type", "Their types")),
             words("will be implicitly set to the builtin type"),
             quote("void"), suffix("."), nl],
-        Known = "known"
+        Known = "known",
+        AnonVarMsgs = []
     ;
         MaybeAllTVars = not_all_tvars,
-        % var_and_type_to_pieces will line things up so that instead of
-        % output such as
+        % var_and_type_to_pieces_pairs will line things up so that
+        % instead of output such as
         %
         %   Var1: Type1
         %   VarABCD: TypeABCD
@@ -661,7 +665,15 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
                 TVarStrList) ++
             [words("will be implicitly bound to the builtin type"),
             quote("void"), suffix("."), nl],
-        Known = "fully known"
+        Known = "fully known",
+
+        pred_info_get_clauses_info(PredInfo, ClausesInfo),
+        VarTable = ClausesInfo ^ cli_var_table,
+        compute_var_origins_in_pred(
+            explain_origins_of_unnamed_vars(ModuleInfo, VarTable, AnonVars),
+            PredInfo, _OriginMap, cord.init, AnonVarMsgsCord0),
+        AnonVarMsgs0 = cord.list(AnonVarMsgsCord0),
+        list.sort_and_remove_dups(AnonVarMsgs0, AnonVarMsgs)
     ),
     MainPieces = [words("Warning:")] ++
         color_as_incorrect([words("unresolved polymorphism")]) ++
@@ -674,9 +686,10 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
     TypeOrTypes = choose_number(VarsEntries, "type", "types"),
     VarOrVars = choose_number(VarsEntries, "variable", "variables"),
     IsOrAre = choose_number(VarsEntries, "is", "are"),
-    VerbosePieces = [words("The body of the clause contains a call"),
-        words("to a polymorphic predicate,"),
-        words("but I can't determine which version should be called,"),
+    % NOTE There are other ways to get unbound tvars as well.
+    VerbosePieces = [words("This usually means that the body of the clause"),
+        words("contains a call to a polymorphic predicate,"),
+        words("but I cannot determine which version should be called,"),
         words("because the"), words(TypeOrTypes),
         words("of the"), words(VarOrVars), words("listed above"),
         words(IsOrAre), words("not"), words(Known), suffix("."),
@@ -688,7 +701,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
     Spec = conditional_spec($pred, warn_unresolved_polymorphism, yes,
-        severity_warning, phase_type_check, [Msg]),
+        severity_warning, phase_type_check, [Msg | AnonVarMsgs]),
     !:Specs = [Spec | !.Specs].
 
 :- type maybe_all_tvars
@@ -698,10 +711,11 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
 :- pred var_vte_to_name_and_type_strs(tvarset::in,
     pair(prog_var, var_table_entry)::in, pair(string, string)::out,
     int::in, int::out, maybe_all_tvars::in, maybe_all_tvars::out,
-    set(tvar)::in, set(tvar)::out) is det.
+    set(tvar)::in, set(tvar)::out,
+    set(prog_var)::in, set(prog_var)::out) is det.
 
 var_vte_to_name_and_type_strs(TVarSet, Var - Entry, VarStr - TypeStr,
-        !MaxVarNameLen, !AllTVars, !TVars) :-
+        !MaxVarNameLen, !AllTVars, !TVars, !AnonVars) :-
     Entry = vte(Name, Type, _IsDummy),
     VarStr = mercury_var_raw_to_string(print_name_only, Var, Name),
     TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
@@ -717,6 +731,11 @@ var_vte_to_name_and_type_strs(TVarSet, Var - Entry, VarStr - TypeStr,
         !:AllTVars = not_all_tvars,
         set_of_type_vars_in_type(Type, TVarsInType),
         set.union(TVarsInType, !TVars)
+    ),
+    ( if Name = "" then
+        set.insert(Var, !AnonVars)
+    else
+        true
     ).
 
 :- func var_and_type_to_pieces_pairs(int, pair(string, string)) =
@@ -733,6 +752,21 @@ var_and_type_to_pieces_pairs(MaxVarNameLen, VarName - TypeStr)
     ),
     VarPieces = [quote(VarName), suffix(ColonPadding)],
     TypePieces = [words(TypeStr)].
+
+%---------------------------------------------------------------------------%
+
+:- pred explain_origins_of_unnamed_vars(module_info::in, var_table::in,
+    set(prog_var)::in, var_origins_map::in, prog_var::in, var_origin::in,
+    cord(error_msg)::in, cord(error_msg)::out) is det.
+
+explain_origins_of_unnamed_vars(ModuleInfo, VarTable, AnonVars,
+        _OriginsMap, Var, Origin, !AnonVarMsgsCord) :-
+    ( if set.contains(AnonVars,  Var) then
+        explain_var_origin(ModuleInfo, VarTable, Var, Origin, VarOriginMsgs),
+        !:AnonVarMsgsCord = !.AnonVarMsgsCord ++ cord.from_list(VarOriginMsgs)
+    else
+        true
+    ).
 
 %---------------------------------------------------------------------------%
 

@@ -11,9 +11,10 @@ typeclass_test_8.m:009:   The variable with an unbound type was:
 typeclass_test_8.m:009:     [38;5;203m`X'.[39;49m
 typeclass_test_8.m:009:   Its type will be implicitly set to the builtin type
 typeclass_test_8.m:009:   `void'.
-typeclass_test_8.m:009:   The body of the clause contains a call to a
-typeclass_test_8.m:009:   polymorphic predicate, but I can't determine which
-typeclass_test_8.m:009:   version should be called, because the type of the
-typeclass_test_8.m:009:   variable listed above is not known. (I ought to tell
-typeclass_test_8.m:009:   you which call caused the problem, but I am afraid
-typeclass_test_8.m:009:   you will have to work it out yourself. My apologies.)
+typeclass_test_8.m:009:   This usually means that the body of the clause
+typeclass_test_8.m:009:   contains a call to a polymorphic predicate, but I
+typeclass_test_8.m:009:   cannot determine which version should be called,
+typeclass_test_8.m:009:   because the type of the variable listed above is not
+typeclass_test_8.m:009:   known. (I ought to tell you which call caused the
+typeclass_test_8.m:009:   problem, but I am afraid you will have to work it out
+typeclass_test_8.m:009:   yourself. My apologies.)

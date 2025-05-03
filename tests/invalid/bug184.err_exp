@@ -6,4 +6,6 @@ bug184.m:019:   The variable with an unbound type was:
 bug184.m:019:     [38;5;87m`V_2':[39;49m [38;5;203mlist.list(T).[39;49m
 bug184.m:019:   The unbound type variable [38;5;203m`T'[39;49m will be implicitly bound to the
 bug184.m:019:   builtin type `void'.
+bug184.m:025:   `V_2' is the first argument of the function symbol `f' unified
+bug184.m:025:   with `HeadVar__1'.
 For more information, recompile with `-E'.
