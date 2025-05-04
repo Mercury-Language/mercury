@@ -1477,6 +1477,9 @@ simplify.m is a package of submodules.
     It replaces both with assignment unifications.
     It is invoked by the goal-type-specific submodules above.
     <li>
+    mark_trace_goals.m ensures that goals have the contains_trace_goal feature
+    if and only if they actually contain trace goals.
+    <li>
     format_call.m looks for calls to predicates
     such as string.format and io.format.
     It uses the facilities of format_call_errors.m to report calls
