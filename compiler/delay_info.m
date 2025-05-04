@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-1998, 2003-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017, 2019, 2021 The Mercury team.
+% Copyright (C) 2014-2015, 2017, 2019, 2021, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -83,11 +83,11 @@
     % delay_info_wakeup_goals(Goals, !DelayInfo):
     %
     % If there are any "pending" goals at the current depth, remove them
-    % from the delay_info and return them. Otherwise, return the empty list.
+    % from the delay_info, and return them. Otherwise, return the empty list.
     %
     % Goals is the list of those pending goals in the order that they should
     % be woken up, and !:DelayInfo is the new delay_info, updated to reflect
-    % the fact that Goals have been woken up and hence are longer pending.
+    % the fact that Goals have been woken up, and hence are longer "pending".
     %
 :- pred delay_info_wakeup_goals(list(hlds_goal)::out,
     delay_info::in, delay_info::out) is det.
@@ -175,21 +175,35 @@
 
     % Sanity-check the delay_info structure.
     %
-:- pred delay_info_check_invariant(delay_info::in) is det.
-:- pragma inline(pred(delay_info_check_invariant/1)).
+    % We return a "new" delay_info that is just the old one, purely
+    % to avoid having the call to this predicate eliminated by simplification
+    % before inlining has had a chance to run.
+    %
+:- pred delay_info_check_invariant(delay_info::in, delay_info::out) is det.
+:- pragma inline(pred(delay_info_check_invariant/2)).
 
-delay_info_check_invariant(DelayInfo) :-
+delay_info_check_invariant(!DelayInfo) :-
     trace [compiletime(flag("check_delay_info_invariant"))] (
-        DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+        !.DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
             WaitingGoalsTable, _PendingGoals, NextSeqNums),
         ( if
+            % Note: the two calls to stack.depth are det, but
+            % the unifications of their outputs with CurrentDepth may fail.
             stack.depth(DelayedGoalStack, CurrentDepth),
             stack.depth(NextSeqNums, CurrentDepth),
+            % We want to compute WaitingVars only if the depth checks succeed.
             map.keys(WaitingGoalsTable, WaitingVars),
-            waiting_goals_check_invariant(WaitingVars, WaitingGoalsTable)
+            check_invariant_waiting_goals(WaitingGoalsTable, WaitingVars)
         then
             true
         else
+            % NOTE: The next time we get a busted invariant, the first step
+            % should to finding the problem should be to replace the code
+            % of the condition above with det code that returns a list
+            % of specific violations, and abort if the list is non-empty.
+            % That would allow this code to report more than the one bit
+            % worth of information represented by the absence vs presence
+            % of this abort.
             unexpected($pred, "invariant violated")
         )
     ).
@@ -197,46 +211,46 @@ delay_info_check_invariant(DelayInfo) :-
     % For every variable which goals are waiting on, check the consistency
     % of all the goals waiting on that var.
     %
-:- pred waiting_goals_check_invariant(list(prog_var)::in,
-    waiting_goals_table::in) is semidet.
+:- pred check_invariant_waiting_goals(waiting_goals_table::in,
+    list(prog_var)::in) is semidet.
 
-waiting_goals_check_invariant([], _).
-waiting_goals_check_invariant([Var | Vars], WaitingGoalsTable) :-
+check_invariant_waiting_goals(_WaitingGoalsTable, []).
+check_invariant_waiting_goals(WaitingGoalsTable, [Var | Vars]) :-
     map.lookup(WaitingGoalsTable, Var, WaitingGoals),
     map.keys(WaitingGoals, GoalNums),
-    waiting_goal_check_invariant(GoalNums, WaitingGoals, WaitingGoalsTable),
-    waiting_goals_check_invariant(Vars, WaitingGoalsTable).
+    check_invariant_waiting_goal(WaitingGoalsTable, WaitingGoals, GoalNums),
+    check_invariant_waiting_goals(WaitingGoalsTable, Vars).
 
     % Check the consistency of a list of goal_nums in the waiting_goals_table.
     %
-:- pred waiting_goal_check_invariant(list(delay_goal_num)::in,
-    waiting_goals::in, waiting_goals_table::in) is semidet.
+:- pred check_invariant_waiting_goal(waiting_goals_table::in,
+    waiting_goals::in, list(delay_goal_num)::in) is semidet.
 
-waiting_goal_check_invariant([], _, _).
-waiting_goal_check_invariant([GoalNum | GoalNums], WaitingGoals,
-        WaitingGoalsTable) :-
+check_invariant_waiting_goal(_, _, []).
+check_invariant_waiting_goal(WaitingGoalsTable, WaitingGoals,
+        [GoalNum | GoalNums]) :-
     map.lookup(WaitingGoals, GoalNum, Vars),
     set.list_to_set(Vars, VarsSet),
-    waiting_goal_vars_check_invariant(Vars, GoalNum, VarsSet,
-        WaitingGoalsTable),
-    waiting_goal_check_invariant(GoalNums, WaitingGoals, WaitingGoalsTable).
+    check_invariant_waiting_goal_vars(WaitingGoalsTable, GoalNum,
+        VarsSet, Vars),
+    check_invariant_waiting_goal(WaitingGoalsTable, WaitingGoals, GoalNums).
 
     % For every variable which a goal is waiting on, there should be an entry
     % in the waiting_goals_table for that goal, and the set of vars which it is
     % waiting on in that entry should be the same as in all its other entries.
     %
-:- pred waiting_goal_vars_check_invariant(list(prog_var)::in,
-    delay_goal_num::in, set(prog_var)::in, waiting_goals_table::in) is semidet.
+:- pred check_invariant_waiting_goal_vars(waiting_goals_table::in,
+    delay_goal_num::in, set(prog_var)::in, list(prog_var)::in) is semidet.
 
-waiting_goal_vars_check_invariant([], _, _, _).
-waiting_goal_vars_check_invariant([Var | Vars], GoalNum, GivenVars,
-        WaitingGoalsTable) :-
+check_invariant_waiting_goal_vars(_, _, _, []).
+check_invariant_waiting_goal_vars(WaitingGoalsTable, GoalNum, GivenVars,
+        [Var | Vars]) :-
     map.search(WaitingGoalsTable, Var, WaitingGoals),
     map.search(WaitingGoals, GoalNum, VarsList),
     set.list_to_set(VarsList, VarsSet),
     set.equal(GivenVars, VarsSet),
-    waiting_goal_vars_check_invariant(Vars, GoalNum, GivenVars,
-        WaitingGoalsTable).
+    check_invariant_waiting_goal_vars(WaitingGoalsTable, GoalNum, GivenVars,
+        Vars).
 
 %-----------------------------------------------------------------------------%
 
@@ -248,38 +262,38 @@ delay_info_init(DelayInfo) :-
     stack.init(NextSeqNums),
     DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
         WaitingGoalsTable, PendingGoals, NextSeqNums),
-    delay_info_check_invariant(DelayInfo).
+    delay_info_check_invariant(DelayInfo, _).
 
 %-----------------------------------------------------------------------------%
 
 delay_info_enter_conj(DelayInfo0, DelayInfo) :-
-    delay_info_check_invariant(DelayInfo0),
-    DelayInfo0 = delay_info(CurrentDepth0, DelayedGoalStack0,
-        WaitingGoalsTable, PendingGoals, NextSeqNums0),
+    delay_info_check_invariant(DelayInfo0, DelayInfo1),
+    DelayInfo1 = delay_info(CurrentDepth1, DelayedGoalStack1,
+        WaitingGoalsTable, PendingGoals, NextSeqNums1),
     map.init(DelayedGoals),
-    stack.push(DelayedGoals, DelayedGoalStack0, DelayedGoalStack),
-    stack.push(0, NextSeqNums0, NextSeqNums),
-    CurrentDepth = CurrentDepth0 + 1,
-    DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+    stack.push(DelayedGoals, DelayedGoalStack1, DelayedGoalStack),
+    stack.push(0, NextSeqNums1, NextSeqNums),
+    CurrentDepth = CurrentDepth1 + 1,
+    DelayInfo2 = delay_info(CurrentDepth, DelayedGoalStack,
         WaitingGoalsTable, PendingGoals, NextSeqNums),
-    delay_info_check_invariant(DelayInfo).
+    delay_info_check_invariant(DelayInfo2, DelayInfo).
 
 %-----------------------------------------------------------------------------%
 
 delay_info_leave_conj(DelayInfo0, DelayedGoalsList, DelayInfo) :-
-    delay_info_check_invariant(DelayInfo0),
-    DelayInfo0 = delay_info(CurrentDepth0, DelayedGoalStack0,
-        WaitingGoalsTable0, PendingGoals, NextSeqNums0),
-    stack.det_pop(DelayedGoals, DelayedGoalStack0, DelayedGoalStack),
+    delay_info_check_invariant(DelayInfo0, DelayInfo1),
+    DelayInfo1 = delay_info(CurrentDepth1, DelayedGoalStack1,
+        WaitingGoalsTable1, PendingGoals, NextSeqNums1),
+    stack.det_pop(DelayedGoals, DelayedGoalStack1, DelayedGoalStack),
     map.keys(DelayedGoals, SeqNums),
-    remove_delayed_goals(SeqNums, DelayedGoals, CurrentDepth0,
-        WaitingGoalsTable0, WaitingGoalsTable),
-    stack.det_pop(_, NextSeqNums0, NextSeqNums),
-    CurrentDepth = CurrentDepth0 - 1,
+    remove_delayed_goals(SeqNums, DelayedGoals, CurrentDepth1,
+        WaitingGoalsTable1, WaitingGoalsTable),
+    stack.det_pop(_, NextSeqNums1, NextSeqNums),
+    CurrentDepth = CurrentDepth1 - 1,
     map.values(DelayedGoals, DelayedGoalsList),
-    DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+    DelayInfo2 = delay_info(CurrentDepth, DelayedGoalStack,
         WaitingGoalsTable, PendingGoals, NextSeqNums),
-    delay_info_check_invariant(DelayInfo).
+    delay_info_check_invariant(DelayInfo2, DelayInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -303,31 +317,31 @@ remove_delayed_goals([SeqNum | SeqNums], DelayedGoalsTable, Depth,
 %-----------------------------------------------------------------------------%
 
 delay_info_delay_goal(Error, Goal, DelayInfo0, DelayInfo) :-
-    delay_info_check_invariant(DelayInfo0),
+    delay_info_check_invariant(DelayInfo0, DelayInfo1),
     Error = mode_error_info(Vars, _, _, _),
-    DelayInfo0 = delay_info(CurrentDepth, DelayedGoalStack0,
-        WaitingGoalsTable0, PendingGoals, NextSeqNums0),
+    DelayInfo1 = delay_info(CurrentDepth, DelayedGoalStack1,
+        WaitingGoalsTable1, PendingGoals, NextSeqNums1),
 
-    % Get the next sequence number
-    stack.det_pop(SeqNum, NextSeqNums0, NextSeqNums1),
+    % Get the next sequence number.
+    stack.det_pop(SeqNum, NextSeqNums1, NextSeqNums2),
     NextSeq = SeqNum + 1,
-    stack.push(NextSeq, NextSeqNums1, NextSeqNums),
+    stack.push(NextSeq, NextSeqNums2, NextSeqNums),
 
-    % Store the goal in the delayed goal stack
-    stack.det_pop(DelayedGoals0, DelayedGoalStack0, DelayedGoalStack1),
+    % Store the goal in the delayed goal stack.
+    stack.det_pop(DelayedGoals1, DelayedGoalStack1, DelayedGoalStack2),
     map.set(SeqNum, delayed_goal(Vars, Error, Goal),
-        DelayedGoals0, DelayedGoals),
-    stack.push(DelayedGoals, DelayedGoalStack1, DelayedGoalStack),
+        DelayedGoals1, DelayedGoals),
+    stack.push(DelayedGoals, DelayedGoalStack2, DelayedGoalStack),
 
-    % Store indexes to the goal in the waiting goals table
+    % Store indexes to the goal in the waiting goals table.
     GoalNum = delay_goal_num(CurrentDepth, SeqNum),
     set_of_var.to_sorted_list(Vars, VarList),
     add_waiting_vars(VarList, GoalNum, VarList,
-        WaitingGoalsTable0, WaitingGoalsTable),
+        WaitingGoalsTable1, WaitingGoalsTable),
 
-    DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+    DelayInfo2 = delay_info(CurrentDepth, DelayedGoalStack,
         WaitingGoalsTable, PendingGoals, NextSeqNums),
-    delay_info_check_invariant(DelayInfo).
+    delay_info_check_invariant(DelayInfo2, DelayInfo).
 
     % add_waiting_vars(Vars, Goal, AllVars, WGT0, WGT):
     %
@@ -362,7 +376,7 @@ delay_info_bind_var_list([Var|Vars], !DelayInfo) :-
     delay_info_bind_var_list(Vars, !DelayInfo).
 
 delay_info_bind_var(Var, !DelayInfo) :-
-    delay_info_check_invariant(!.DelayInfo),
+    delay_info_check_invariant(!DelayInfo),
     !.DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
         WaitingGoalsTable0, PendingGoals0, NextSeqNums),
     ( if map.search(WaitingGoalsTable0, Var, GoalsWaitingOnVar) then
@@ -372,7 +386,7 @@ delay_info_bind_var(Var, !DelayInfo) :-
             WaitingGoalsTable0, WaitingGoalsTable),
         !:DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
             WaitingGoalsTable, PendingGoals, NextSeqNums),
-        delay_info_check_invariant(!.DelayInfo)
+        delay_info_check_invariant(!DelayInfo)
     else
         true
     ).
@@ -437,7 +451,7 @@ delay_info_wakeup_goals(Goals, !DelayInfo) :-
     % returned zero goals, a bit less than 9% returned one goal, and less than
     % 1% of all calls returned two or more goals.
 
-    delay_info_check_invariant(!.DelayInfo),
+    delay_info_check_invariant(!DelayInfo),
     !.DelayInfo = delay_info(CurrentDepth, DelayedGoalStack0, WaitingGoals,
         PendingGoalsTable0, NextSeqNums),
 
@@ -461,7 +475,7 @@ delay_info_wakeup_goals(Goals, !DelayInfo) :-
 
             !:DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
                 WaitingGoals, PendingGoalsTable, NextSeqNums),
-            delay_info_check_invariant(!.DelayInfo)
+            delay_info_check_invariant(!DelayInfo)
         ;
             SeqNums = [],
             Goals = []
