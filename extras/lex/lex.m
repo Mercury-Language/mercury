@@ -1,6 +1,6 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % lex.m
 % Copyright (C) 2001-2002 Ralph Becket <rbeck@microsoft.com>
@@ -10,7 +10,7 @@
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
 % Copyright (C) 2002, 2006, 2010-2011 The University of Melbourne
-% Copyright (C) 2014, 2017-2023 The Mercury team.
+% Copyright (C) 2014, 2017-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % This module puts everything together, compiling a list of lexemes into state
@@ -19,7 +19,7 @@
 % Note that the astral characters (in Unicode) are not included in the range of
 % Unicode characters, as the astral planes are very sparsely assigned.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module lex.
 :- interface.
@@ -32,7 +32,7 @@
 :- import_module sparse_bitset.
 :- import_module enum.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type token_creator(Token) ==  (func(string) = Token).
 :- inst token_creator ==         (func(in) = out is det).
@@ -256,8 +256,8 @@
 :- pred read_char(read_result::out,
     lexer_state(Tok, Src)::di, lexer_state(Tok, Src)::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -281,7 +281,7 @@
 :- import_module lex.lexeme.
 :- import_module lex.regexp.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type lexer(Token, Source)
     --->    lexer(
@@ -327,19 +327,19 @@
     --->    yes(pair(token_creator, ground))
     ;       no.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 ignore(Tok, Tok).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 return(Token, _) = Token.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 (R1 -> TC) = (re(R1) - TC).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 init(Lexemes, BufReadPred) = Lexer :-
     DontIgnoreAnything =
@@ -352,7 +352,7 @@ init(Lexemes, BufReadPred, IgnorePred) = Lexer :-
     CompiledLexemes = list.map(compile_lexeme, Lexemes),
     Lexer = lexer(CompiledLexemes, IgnorePred, BufReadPred).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 start(Lexer0, Src) = State :-
     Lexer = lexer_inst_cast(Lexer0),
@@ -383,7 +383,7 @@ start(Lexer0, Src) = State :-
     Lexer = Lexer0;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred init_lexer_instance(lexer(Tok, Src)::in(lexer),
     lexer_instance(Tok, Src)::out(lexer_instance), buf::array_uo) is det.
@@ -398,7 +398,7 @@ init_lexer_instance(Lexer, Instance, Buf) :-
     Instance       = lexer_instance(InitLexemes, InitWinnerFunc, InitLexemes,
                            InitWinner, BufState, IgnorePred).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Lexing may *start* with a candidate winner if one of the lexemes
     % accepts the empty string. We pick the first such, if any, since
@@ -416,18 +416,18 @@ initial_winner_func([L | Ls]) =
         initial_winner_func(Ls)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 offset_from_start(Offset, !State) :-
     Offset  = !.State ^ run ^ buf_state ^ buf_cursor,
     !:State = unsafe_promise_unique(!.State).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 stop(State) = Src :-
     lexer_state_args(State, _Instance, _Buf, Src).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 read(Result, State0, State) :-
     lexer_state_args(State0, Instance0, Buf0, Src0),
@@ -457,7 +457,7 @@ read_2(Result, !Instance, !Buf, !Src) :-
         process_eof(Result, !Instance, BufState, !.Buf)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred process_char(io.read_result(Tok)::out, char::in,
     lexer_instance(Tok, Src)::in(lexer_instance),
@@ -484,7 +484,7 @@ process_char(Result, Char, !Instance, BufState, !Buf, !Src) :-
         read_2(Result, !Instance, !Buf, !Src)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred process_any_winner(io.read_result(Tok)::out, winner(Tok)::in(winner),
     lexer_instance(Tok, Src)::in(lexer_instance),
@@ -539,7 +539,7 @@ process_any_winner(Result, no, !Instance, BufState0, !Buf, !Src) :-
         ^ current_winner := InitWinner                )
         ^ buf_state      := commit(BufState)          ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred process_eof(io.read_result(Tok)::out,
     lexer_instance(Tok, Src)::in(lexer_instance),
@@ -565,7 +565,7 @@ process_eof(Result, !Instance, !.BufState, !.Buf) :-
         ^ current_winner := InitWinner                )
         ^ buf_state      := commit(!.BufState)        ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Note that in the case where two or more lexemes match the same
     % string, the win is given to the earliest such lexeme in the list.
@@ -596,7 +596,7 @@ advance_live_lexemes(Char, Offset, [L | Ls0], Ls, !Winner) :-
         advance_live_lexemes(Char, Offset, Ls0, Ls, !Winner)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred live_lexeme_in_accepting_state(
     list(live_lexeme(Tok))::in(live_lexeme_list),
@@ -609,8 +609,8 @@ live_lexeme_in_accepting_state([L | Ls], Token) :-
         live_lexeme_in_accepting_state(Ls, Token)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % It is much more convenient (especially for integration with parsers
     % such as moose) to package up the lexer_instance, buf and Src
@@ -622,7 +622,7 @@ live_lexeme_in_accepting_state([L | Ls], Token) :-
                 src     :: Src
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func args_lexer_state(lexer_instance(Tok, Src)::in(lexer_instance),
     buf::array_di, Src::di) = (lexer_state(Tok, Src)::uo) is det.
@@ -630,7 +630,7 @@ live_lexeme_in_accepting_state([L | Ls], Token) :-
 args_lexer_state(Instance, Buf, Src) = LexerState :-
     unsafe_promise_unique(lexer_state(Instance, Buf, Src), LexerState).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred lexer_state_args(lexer_state(Tok, Src)::di,
     lexer_instance(Tok, Src)::out(lexer_instance),
@@ -640,14 +640,14 @@ lexer_state_args(lexer_state(Instance, Buf0, Src0), Instance, Buf, Src) :-
     unsafe_promise_unique(Buf0, Buf),
     unsafe_promise_unique(Src0, Src).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 manipulate_source(P, !State) :-
     lexer_state_args(!.State, Instance, Buf, Src0),
     P(Src0, Src),
     !:State = args_lexer_state(Instance, Buf, Src).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 read_char(Result, !State) :-
     lexer_state_args(!.State, Instance0, Buf0, Src0),
@@ -658,7 +658,7 @@ read_char(Result, !State) :-
 
     !:State = args_lexer_state(Instance, Buf, Src).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 read_from_stdin(_Offset, Result, !IO) :-
     io.read_char(IOResult, !IO),
@@ -673,7 +673,7 @@ read_from_stdin(_Offset, Result, !IO) :-
         throw(IOResult)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % XXX This is bad for long strings! We should cache the string length
     % somewhere rather than recomputing it each time we read a char.
@@ -685,7 +685,7 @@ read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
         Result = eof
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The type of regular expressions.
 %
@@ -698,7 +698,7 @@ read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
     ;       star(regexp)           % Kleene closure
     ;       charset(charset).      % Matches any char in the set
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- instance regexp(regexp) where [
     re(RE) = RE
@@ -712,7 +712,7 @@ read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
     re(S) =  R :-
         ( if S = "" then
             R = null
-          else
+        else
             R = string.foldl(func(Char, R0) = R1 :-
                 ( if R0 = eps then R1 = re(Char) else R1 = R0 ++ re(Char) ),
                 S,
@@ -728,7 +728,7 @@ read_from_string(Offset, Result, String, unsafe_promise_unique(String)) :-
             sparse_bitset.init)
 ].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Basic primitive regexps.
 %
@@ -739,7 +739,7 @@ R1 \/ R2   = alt(re(R1), re(R2)).
 (R1 or R2) = alt(re(R1), re(R2)).
 *(R1)      = star(re(R1)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Some basic non-primitive regexps.
 %
@@ -817,7 +817,7 @@ R * N = Result :-
         Result = conc(re(R), (R * (N - 1)))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Some useful single-char regexps.
 %
@@ -844,7 +844,7 @@ ident      = (alphanum or ('_')).
 tab        = re('\t').
 spc        = re(' ').
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Some useful compound regexps.
 
 nl         = (?('\r') ++ '\n').  % matches both Posix and Windows newline.
@@ -858,5 +858,5 @@ identifier = (identstart ++ *(ident)).
 whitespace = *(wspc).
 junk       = *(dot).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

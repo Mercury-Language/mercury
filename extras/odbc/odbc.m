@@ -1,4 +1,4 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997 Mission Critical.
@@ -54,8 +54,8 @@
 %   Add a nicer interface so the user does not need to manipulate
 %   SQL strings.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module odbc.
 :- interface.
@@ -64,7 +64,7 @@
 :- import_module list.
 :- import_module pair.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates and types for transaction processing.
 %
@@ -104,7 +104,7 @@
     %
 :- pred rollback(string::in, odbc.state::di, odbc.state::uo) is erroneous.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates and types for the execution of SQL statements.
 %
@@ -142,7 +142,7 @@
 :- mode aggregate(in, in(pred(in, in, out) is det), in, out, di, uo) is det.
 :- mode aggregate(in, in(pred(in, di, uo) is det), di, uo, di, uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates and types to get information about database tables.
 %
@@ -188,7 +188,7 @@
     odbc.search_pattern::in, list(odbc.table_desc)::out,
     odbc.state::di, odbc.state::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % The following types are used to return status and error information from
 % ODBC calls.
@@ -278,8 +278,8 @@
     ;       serialization_failure
     ;       invalid_state.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -294,7 +294,7 @@
 
 :- pragma require_feature_set([conservative_gc]).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We do not actually store anything in the odbc.state, since that
     % would make the exception handling more inconvenient and error-prone.
@@ -448,7 +448,7 @@ SQLRETURN odbc_ret_code = SQL_SUCCESS;
 MR_Word  odbc_message_list;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 transaction(Source, User, Password, Closure, TransactionResult, !IO) :-
     % We could have separate open and close connection predicates in the
@@ -587,7 +587,7 @@ transaction_done:
 }
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Call the transaction closure.
 %
@@ -629,7 +629,7 @@ do_transaction(Closure, GotException, Results, Exception, State0, State) :-
     T = 0;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 rollback(Error, !DB) :-
     odbc.add_message(error(user_requested_rollback) - Error, !DB),
@@ -656,8 +656,8 @@ rollback(Error, !DB) :-
     // DB = DB0; (not reached)
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates and types to manage connections.
 %
@@ -677,7 +677,7 @@ rollback(Error, !DB) :-
 :- pred close_connection(odbc.connection::in, odbc.result::out,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_type("C", connection, "SQLHDBC").
 
@@ -691,7 +691,7 @@ open_connection(Source, User, Password, Result - Messages, !IO) :-
         Result = error
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred do_open_connection(string::in, string::in, string::in,
     odbc.connection::uo, int::out, list(odbc.message)::out, io::di, io::uo)
@@ -749,7 +749,7 @@ open_connection(Source, User, Password, Result - Messages, !IO) :-
     odbc_connection = SQL_NULL_HDBC;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 close_connection(Connection, Result, !IO) :-
     do_close_connection(Connection, Status, RevMessages, !IO),
@@ -779,8 +779,8 @@ close_connection(Connection, Result, !IO) :-
     odbc_message_list = MR_list_empty();
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 execute(SQLString, !DB) :-
     some [!Statement] (
@@ -799,7 +799,7 @@ solutions(SQLString, Results, !DB) :-
 aggregate(SQLString, Accumulator, !Acc, !DB) :-
     do_aggregate(odbc.execute_statement(SQLString), Accumulator, !Acc, !DB).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred do_aggregate(
     pred(odbc.statement, odbc.statement, odbc.state, odbc.state),
@@ -820,7 +820,7 @@ do_aggregate(Execute, Accumulate, !Result, !DB) :-
         cleanup_statement_check_error(!.Statement, !DB)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Get the set of result rows from the statement.
     %
@@ -851,7 +851,7 @@ get_rows_loop(NumColumns, Accumulate, !Result, !Statement, !DB) :-
         get_rows_loop(NumColumns, Accumulate, !Result, !Statement, !DB)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Get the values from the current fetched row.
     %
@@ -869,7 +869,7 @@ get_attributes(CurrCol, NumCols, Row, !Statement, !DB) :-
         Row = []
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Get the value of a column in the current fetched row.
     %
@@ -897,7 +897,7 @@ get_attribute(NumColumn, Value, !Statement, !DB) :-
         Value = float(Float)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type attribute_type
     --->    int
@@ -927,7 +927,7 @@ int_to_attribute_type_table(3, string).
 int_to_attribute_type_table(4, string).
 int_to_attribute_type_table(5, null).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type statement.
 
@@ -1018,7 +1018,7 @@ extern void
 odbc_get_data_in_one_go(MODBC_Statement *statement, int column_id);
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred alloc_statement(odbc.statement::uo,
     odbc.state::di, odbc.state::uo) is det.
@@ -1047,7 +1047,7 @@ odbc_get_data_in_one_go(MODBC_Statement *statement, int column_id);
     DB = DB0;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred execute_statement(string::in, odbc.statement::di, odbc.statement::uo,
     odbc.state::di, odbc.state::uo) is det.
@@ -1087,7 +1087,7 @@ odbc_get_data_in_one_go(MODBC_Statement *statement, int column_id);
     DB = DB0;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % There are two methods to get data back from an ODBC application.
     %
@@ -1225,7 +1225,7 @@ odbc_get_data_in_one_go(MODBC_Statement *statement, int column_id);
     DB = DB0;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Fetch the next row of the current statement.
     %
@@ -1267,7 +1267,7 @@ odbc_get_data_in_one_go(MODBC_Statement *statement, int column_id);
     DB = DB0;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_number_of_columns(int::out,
     odbc.statement::di, odbc.statement::uo,
@@ -1284,7 +1284,7 @@ odbc_get_data_in_one_go(MODBC_Statement *statement, int column_id);
     DB = DB0;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred get_data(int::in, int::out, float::out, string::out, int::out,
     odbc.statement::di, odbc.statement::uo,
@@ -1525,7 +1525,7 @@ condense_chunks(RevChunks, String) :-
     list.reverse(RevChunks, Chunks),
     string.append_list(Chunks, String).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred cleanup_statement_check_error(odbc.statement::di,
     odbc.state::di, odbc.state::uo) is det.
@@ -1576,8 +1576,8 @@ odbc_do_cleanup_statement(MODBC_Statement *statement)
 }
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_code("C", "
 // Map an ODBC SQL type to a supported attribute type.
@@ -1778,8 +1778,8 @@ odbc_sql_type_to_size(SWORD sql_type, UDWORD cbColDef,
 }
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Catalog functions.
 %
@@ -1888,7 +1888,7 @@ odbc_do_get_data_sources(MR_Word *SourceNames, MR_Word *SourceDescs,
     return rc;
 }").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 tables(Qualifier, Owner, TableName, Tables, !DB) :-
     convert_pattern_argument(Qualifier, QualifierStr, QualifierStatus),
@@ -1919,7 +1919,7 @@ convert_table_desc(Row0, Table) :-
     Table = odbc.table_desc(Qualifier, Owner, Name,
         Type, Description, DriverColumns).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % convert_pattern_argument(Pattern, String, Status).
     % This is used in a fairly crude interface to C. If the Status is 0,
@@ -1981,8 +1981,8 @@ convert_pattern_argument(pattern(Str), Str, 1).
     DB = DB0;
 ").
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Error checking.
 %
@@ -2006,7 +2006,7 @@ convert_pattern_argument(pattern(Str), Str, 1).
     SUCCESS_INDICATOR = (Status == SQL_NO_DATA_FOUND);
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Handle ODBC error codes. Refer to the ODBC API Reference
     % provided with the ODBC SDK. The first two characters of the SQLSTATE
@@ -2207,6 +2207,6 @@ odbc_check(SQLHENV env_handle, SQLHDBC connection_handle,
 }
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module odbc.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

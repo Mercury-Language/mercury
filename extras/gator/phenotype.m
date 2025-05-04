@@ -46,7 +46,7 @@
     %
     % This predicate randomly selects an individual for reproduction.
     %
-    % I've considered fitness proportionate selection (aka roulette
+    % I have considered fitness proportionate selection (aka roulette
     % wheel selection) and tournament selection. The fitness
     % proportionate selection method will be used as it is simple and
     % doesn't require us to tweak any parameters (which could require a
@@ -93,6 +93,8 @@
 
 :- type fitness == float.
 
+%---------------------------------------------------------------------------%
+
 read_phenotypes(Path, Phenotypes, !IO) :-
     io.open_input(Path, OpenResult, !IO),
     (
@@ -116,7 +118,6 @@ read_phenotypes(Path, Phenotypes, !IO) :-
     ).
 
 fitness(Weightings, Phenotype) = Fitness :-
-
     CompileTimes = Phenotype ^ compile_times,
     ExecutableSizes = list.map(float.float, Phenotype ^ executable_sizes),
     RunTimes = Phenotype ^ run_times,
@@ -124,7 +125,7 @@ fitness(Weightings, Phenotype) = Fitness :-
     list.condense([CompileTimes, ExecutableSizes, RunTimes], Benchmarks),
     map_2in_1out(*, Weightings, Benchmarks) = WeightedBenchmarks,
     list.foldl(+, WeightedBenchmarks, 0.0) = SumOfWeightedBenchmarks,
-    
+
     Fitness = 1.0 / SumOfWeightedBenchmarks.
 
 selection(Genotypes, Fitness, _, Parent, !RNG) :-

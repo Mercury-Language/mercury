@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -532,8 +532,8 @@
     ;       guid_io_error(io.error)
     ;       guid_cmd_error(io.system_result).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -546,7 +546,7 @@
 :- import_module term_to_xml.
 :- import_module univ.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 generate_installer(Installer, GUIDFile, FileName, Result, !IO) :-
     io.open_output(FileName, OpenOutputResult, !IO),

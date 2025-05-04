@@ -1,6 +1,6 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % This simple program reads in terms from standard input, and outputs
 % those terms as indented structures, annotating each occurrence of
@@ -16,7 +16,7 @@
 % term parsing by simply replacing the operator table assigned to Ops in main
 % with a table of one's own choosing.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module show_ops.
 :- interface.

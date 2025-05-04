@@ -1,4 +1,5 @@
 #!/bin/sh
+# vim: ts=4 sw=4 expandtab ft=sh
 #
 # Copyright (C) 2005-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
@@ -11,119 +12,127 @@
 # set of optimisation flags to be passed to the Mercury compiler for a
 # given program.
 #
-# It is based around two data structures: the genotype and the
-# phenotype.  This shell script contains a loop that, for each
-# generation, evaluates the genotypes in the current generation (which
-# gives their phenotypes), and evolves the genotypes in the next
-# generation of individuals.
+# It is based around two data structures: the genotype and the phenotype.
+# This shell script contains a loop that, for each generation, evaluates
+# the genotypes in the current generation (which gives their phenotypes),
+# and evolves the genotypes in the next generation of individuals.
 #
 # There are two subprograms: evaluate and evolve, and for each of these
-# subprograms (as well as this shell script), there is a .conf file.  A
-# dependency tree for these shell scripts, configuration files and
-# Mercury modules is shown below.  The subprograms above call the ones
+# subprograms (as well as this shell script), there is a .conf file.
+#  A dependency tree for these shell scripts, configuration files and
+# Mercury modules is shown below. The subprograms above call the ones
 # directly below them, but not the other way around.
 #
-#	gator
-#		gator.conf
-#		evaluate
-#			evaluate.conf
-#		evolve.m
-#			evolve.conf
-#			genotype.m
-#			phenotype.m
-#			tausworthe3.m
+#   gator
+#       gator.conf
+#       evaluate
+#           evaluate.conf
+#       evolve.m
+#           evolve.conf
+#           genotype.m
+#           phenotype.m
+#           tausworthe3.m
 #
 
 prog=`basename "$0"`
-usage="usage: $prog [-g generation] [-k] [-n count] [-v]"
+usage="usage: ${prog} [-g generation] [-k] [-n count] [-v]"
 
 while getopts g:kn:v f
 do
-	case $f in
-	g)	generation="$OPTARG";;
-	k)	kill=true;;
-	n)	count="$OPTARG";;
-	v)	set -x;;
-	\?)	echo "$usage" >&2; exit 1;;
+    case ${f} in
+    g)
+        generation="${OPTARG}"
+        ;;
+    k)
+        kill=true
+        ;;
+    n)
+        count="${OPTARG}"
+        ;;
+    v)
+        set -x
+        ;;
+    \?)
+        echo "${usage}" >&2;
+        exit 1
+        ;;
 esac
 done
-shift `expr $OPTIND - 1`
+shift `expr ${OPTIND} - 1`
 
 echo '==> Reading gator.conf' >&2
 . gator.conf || exit 1
 
-#
 # We need to have ssh-agent(1) running so that the user doesn't have to
 # type a password/passphrase every time we connect to another server.
-#
 while ! ssh-add
 do
-	eval `ssh-agent`
+    eval `ssh-agent`
 done
 
 kill=${kill:-false}
-if $kill
+if ${kill}
 then
-	i=1
-	while [ $i -le $num_hosts ]
-	do
-		eval "host=\${host$i}"
-		printf "==> Killing evaluate on %s\n" $host >&2
-		ssh "$host" pkill evaluate
-		i=`expr $i + 1`
-	done
+    i=1
+    while test ${i} -le ${num_hosts}
+    do
+        eval "host=\${host${i}}"
+        printf "==> Killing evaluate on %s\n" ${host} >&2
+        ssh "${host}" pkill evaluate
+        i=`expr ${i} + 1`
+    done
 
-	echo '==> Killing ssh-agent' >&2
-	ssh-agent -k
+    echo '==> Killing ssh-agent' >&2
+    ssh-agent -k
 
-	echo '==> Killing gator' >&2
-	exec pkill gator
+    echo '==> Killing gator' >&2
+    exec pkill gator
 fi
 
-tmp="${TMPDIR:-/tmp}"/"$prog"$$
-rm -rf "$tmp" && mkdir "$tmp" || exit 1
+tmp="${TMPDIR:-/tmp}"/"${prog}"$$
+rm -rf "${tmp}" && mkdir "${tmp}" || exit 1
 
-trap 'ssh-agent -k; rm -rf "$tmp"; exit' 0 1 2 3 15
+trap 'ssh-agent -k; rm -rf "${tmp}"; exit' 0 1 2 3 15
 
 i=1
-while [ $i -le $num_hosts ]
+while test ${i} -le ${num_hosts}
 do
-	eval "host=\${host$i}"
-	eval "benchmarks=\${benchmarks$i}"
+    eval "host=\${host${i}}"
+    eval "benchmarks=\${benchmarks${i}}"
 
-	if ssh "$host" [ -d "$benchmarks" ]
-	then
-		printf "==> Copying sources from %s:%s\n" "$host" \
-		    "$benchmarks" >&2
+    if ssh "${host}" test -d "${benchmarks}"
+    then
+        printf "==> Copying sources from %s:%s\n" "${host}" \
+            "${benchmarks}" >&2
 
-		ssh "$host" '(cd '"$benchmarks"' && tar -cf - .) | bzip2' \
-		    >"$tmp"/benchmarks.tar.bz2
-		break
-	fi
+        ssh "${host}" '(cd '"${benchmarks}"' && tar -cf - .) | bzip2' \
+            > "${tmp}"/benchmarks.tar.bz2
+        break
+    fi
 
-	i=`expr $i + 1`
+    i=`expr ${i} + 1`
 done
 
-if [ ! -f "$tmp"/benchmarks.tar.bz2 ]
+if test ! -f "${tmp}"/benchmarks.tar.bz2
 then
-	echo '==> Error: couldn'\''t find benchmark program sources' >&2
-	exit 1
+    echo '==> Error: couldn'\''t find benchmark program sources' >&2
+    exit 1
 fi
 
 i=1
-while [ $i -le $num_hosts ]
+while test ${i} -le ${num_hosts}
 do
-	eval "host=\${host$i}"
-	eval "benchmarks=\${benchmarks$i}"
+    eval "host=\${host${i}}"
+    eval "benchmarks=\${benchmarks${i}}"
 
-	printf "==> Copying sources to %s:%s\n" "$host" "$benchmarks" >&2
+    printf "==> Copying sources to %s:%s\n" "${host}" "${benchmarks}" >&2
 
-	ssh "$host" rm -rf "$benchmarks"
-	ssh "$host" mkdir "$benchmarks"
-	ssh "$host" 'bzip2 -dc - | (cd '"$benchmarks"' && tar -xf -)' \
-	    <"$tmp"/benchmarks.tar.bz2
+    ssh "${host}" rm -rf "${benchmarks}"
+    ssh "${host}" mkdir "${benchmarks}"
+    ssh "${host}" 'bzip2 -dc - | (cd '"${benchmarks}"' && tar -xf -)' \
+        < "${tmp}"/benchmarks.tar.bz2
 
-	i=`expr $i + 1`
+    i=`expr ${i} + 1`
 done
 
 mmc --make evolve || exit 1
@@ -131,115 +140,101 @@ mmc --make evolve || exit 1
 generation=${generation:-1}
 while true
 do
-	#
-	# We maintain a FIFO queue which contains (the index of) all the
-	# hosts available for us to use, and which are not busy
-	# evaluating a genotype.
-	#
+    # We maintain a FIFO queue which contains (the index of) all the hosts
+    # available for us to use, and which are not busy evaluating a genotype.
 
-	fifo="$tmp"/fifo
-	rm -rf "$fifo" && mkfifo "$fifo" || exit 1
+    fifo="${tmp}"/fifo
+    rm -rf "${fifo}" && mkfifo "${fifo}" || exit 1
 
-	#
-	# Note that throughout the program, the shell variable $i is
-	# used as an index to the host, and $j is used as an index to
-	# the genotype.
-	#
+    # Note that throughout the program, the shell variable ${i} is used
+    # as an index to the host, and ${j} is used as an index to the genotype.
 
-	i=1
-	while [ $i -le $num_hosts ]
-	do
-		echo "$i" >>"$fifo" &
-		i=`expr $i + 1`
-	done
+    i=1
+    while test ${i} -le ${num_hosts}
+    do
+        echo "${i}" >> "${fifo}" &
+        i=`expr ${i} + 1`
+    done
 
-	#
-	# For each genotype, find a host to evaluate it on.  Once we're
-	# done evaluating the genotype, put the host back into the queue.
-	#
+    # For each genotype, find a host to evaluate it on. Once we are done
+    # evaluating the genotype, put the host back into the queue.
 
-	genotypes=generations/$generation/genotypes
-	num_genotypes=`wc -l <"$genotypes"` || exit 1
+    genotypes=generations/${generation}/genotypes
+    num_genotypes=`wc -l <"${genotypes}"` || exit 1
 
-	j=1
-	while [ $j -le $num_genotypes ]
-	do
-		out=generations/$generation/evaluate.out.$j
-		err=generations/$generation/evaluate.err.$j
+    j=1
+    while test ${j} -le ${num_genotypes}
+    do
+        out=generations/${generation}/evaluate.out.${j}
+        err=generations/${generation}/evaluate.err.${j}
 
-		read i
+        read i
 
-		eval "host=\${host$i}"
-		eval "workspace=\${workspace$i}"
-		eval "benchmarks=\${benchmarks$i}"
-		eval "path=\${path$i}"
+        eval "host=\${host${i}}"
+        eval "workspace=\${workspace${i}}"
+        eval "benchmarks=\${benchmarks${i}}"
+        eval "path=\${path${i}}"
 
-		printf "==> Connecting to %s (%d/%d = %d%%)\n" $host $j \
-		    $num_genotypes `expr 100 \* $j / $num_genotypes` >&2
+        printf "==> Connecting to %s (%d/%d = %d%%)\n" ${host} ${j} \
+            ${num_genotypes} `expr 100 \* ${j} / ${num_genotypes}` >&2
 
-		(
-			sed -n ${j}p <"$genotypes" | ssh "$host" nice -n 19 \
-			    "$workspace"/evaluate -b "$benchmarks" -p "$path" \
-			    -v -w "$workspace" >"$out" 2>"$err"
+        (
+            sed -n ${j}p <"${genotypes}" | ssh "${host}" nice -n 19 \
+                "${workspace}"/evaluate -b "${benchmarks}" -p "${path}" \
+                -v -w "${workspace}" > "${out}" 2> "${err}"
 
-			echo "$i"
-		) &
+            echo "${i}"
+        ) &
 
-		j=`expr $j + 1`
-	done <"$fifo" >>"$fifo"
+        j=`expr ${j} + 1`
+    done < "${fifo}" >> "${fifo}"
 
-	#
-	# After all the genotypes have been evaluated, combine the
-	# fragments that make up the "$phenotypes" file.
-	#
+    # After all the genotypes have been evaluated, combine the fragments
+    # that make up the "${phenotypes}" file.
 
-	phenotypes=generations/$generation/phenotypes
+    phenotypes=generations/${generation}/phenotypes
 
-	echo '[' >"$phenotypes"
+    echo '[' > "${phenotypes}"
 
-	wait
+    wait
 
-	j=1
-	while [ $j -le $num_genotypes ]
-	do
-		out=generations/$generation/evaluate.out.$j
-		err=generations/$generation/evaluate.err.$j
+    j=1
+    while test ${j} -le ${num_genotypes}
+    do
+        out=generations/${generation}/evaluate.out.${j}
+        err=generations/${generation}/evaluate.err.${j}
 
-		cat "$out" >>"$phenotypes"
-		[ $j -lt $num_genotypes ] && echo ',' >>"$phenotypes"
+        cat "${out}" >> "${phenotypes}"
+        test ${j} -lt ${num_genotypes} && echo ',' >> "${phenotypes}"
 
-		# These files can be around 6 MB per generation (uncompressed).
-		bzip2 "$err"
+        # These files can be around 6 MB per generation (uncompressed).
+        bzip2 "${err}"
 
-		j=`expr $j + 1`
-	done
+        j=`expr ${j} + 1`
+    done
 
-	echo '].' >>"$phenotypes"
+    echo '].' >> "${phenotypes}"
 
-	#
-	# Generate the next set of genotypes.
-	#
+    # Generate the next set of genotypes.
 
-	next_generation=`expr $generation + 1`
+    next_generation=`expr ${generation} + 1`
 
-	next_genotypes=generations/$next_generation/genotypes
-	ladder=generations/$generation/ladder
+    next_genotypes=generations/${next_generation}/genotypes
+    ladder=generations/${generation}/ladder
 
-	printf "==> Next generation: %d\n" $next_generation >&2
+    printf "==> Next generation: %d\n" ${next_generation} >&2
 
-	mkdir generations/$next_generation
-	./evolve -g "$genotypes" -h "$next_genotypes" -l "$ladder" \
-	    -p "$phenotypes" || exit 1
+    mkdir generations/${next_generation}
+    ./evolve -g "${genotypes}" -h "${next_genotypes}" -l "${ladder}" \
+        -p "${phenotypes}" || exit 1
 
-	generation="$next_generation"
+    generation="${next_generation}"
 
-	#
-	# Print the top $count individuals in the history of the evolution.
-	#
+    # Print the top ${count} individuals in the history of the evolution.
 
-	printf "==> Current top %d\n" $n >&2
-	sort -rnk3 generations/*/ladder | grep -v '[0-9]e-' | head -n $count |
-	    sed -e 's/[ 	]*$//'
+    printf "==> Current top %d\n" ${n} >&2
+    sort -rnk3 generations/*/ladder | grep -v '[0-9]e-' | head -n ${count} |
+        sed -e 's/[     ]*$//'
 done
 
 # NOTREACHED

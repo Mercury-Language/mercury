@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et ft=mercury
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % regex.m
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Copyright (C) 2002, 2006, 2010 The University of Melbourne
-% Copyright (C) 2014, 2018-2019, 2023 The Mercury team.
+% Copyright (C) 2014, 2018-2019, 2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % This module provides basic string matching and search and replace
@@ -32,7 +32,7 @@
 % NOTE: these minor differences may go away in a future revision of this
 % module.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module regex.
 :- interface.
@@ -42,7 +42,7 @@
 :- import_module list.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The type of (compiled) regular expressions.
     %
@@ -183,8 +183,8 @@
     (func(string) = string)::in(func(in) = out is det), string::in)
     = (string::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -196,7 +196,7 @@
 :- import_module require.
 :- import_module std_util.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type regex == lexer(string, string).
 
@@ -223,19 +223,19 @@
 
 :- type chars == list(char).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma memo(regex/1).
 
 regex(S) = init([regexp(S) - id], read_from_string).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pragma memo(regexp/1).
 
 regexp(S) = finish_regex(S, string.foldl(compile_regex(S), S, res([]))).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func compile_regex(string, char, parser_state) = parser_state.
 
@@ -243,18 +243,22 @@ compile_regex(S, C, ParserState0) = ParserState :-
     (
         ParserState0 = res(REs),
         % res: we are looking for the next regex or operator.
-        (      if C = ('.')  then ParserState = res([re(dot) | REs])
-          else if C = ('|')  then ParserState = res(alt(S, REs))
-          else if C = ('*')  then ParserState = res(star(S, REs))
-          else if C = ('+')  then ParserState = res(plus(S, REs))
-          else if C = ('?')  then ParserState = res(opt(S, REs))
-          else if C = ('(')  then ParserState = res([lpar | REs])
-          else if C = (')')  then ParserState = res(rpar(S, REs))
-          else if C = ('[')  then ParserState = set1(REs)
-          else if C = (']')  then ParserState =
-                                    regex_error("`]' without opening `['", S)
-          else if C = ('\\') then ParserState = esc(REs)
-          else                    ParserState = res([char(re(C)) | REs])
+        ( if 
+            ( C = ('.'),  PS = res([re(dot) | REs])
+            ; C = ('|'),  PS = res(alt(S, REs))
+            ; C = ('*'),  PS = res(star(S, REs))
+            ; C = ('+'),  PS = res(plus(S, REs))
+            ; C = ('?'),  PS = res(opt(S, REs))
+            ; C = ('('),  PS = res([lpar | REs])
+            ; C = (')'),  PS = res(rpar(S, REs))
+            ; C = ('['),  PS = set1(REs)
+            ; C = (']'),  PS = regex_error("`]' without opening `['", S)
+            ; C = ('\\'), PS = esc(REs)
+            )
+        then
+            ParserState = PS
+        else
+            ParserState = res([char(re(C)) | REs])
         )
     ;
         ParserState0 = esc(REs),
@@ -297,7 +301,7 @@ compile_regex(S, C, ParserState0) = ParserState :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Turn a list of chars into an any or anybut.
     %
@@ -306,7 +310,7 @@ compile_regex(S, C, ParserState0) = ParserState :-
 char_set(no,  Cs) = re(any(from_char_list(Cs))).
 char_set(yes, Cs) = re(anybut(from_char_list([('\n') | Cs]))).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Push a range of chars onto a char list.
     %
@@ -322,7 +326,7 @@ push_range(A, B, Cs) = Rg ++ Cs :-
 int_to_char(X) =
     ( if char.to_int(C, X) then C else func_error("regex.int_to_char") ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func finish_regex(string, parser_state) = regexp.
 
@@ -351,7 +355,7 @@ finish_regex(S, res(REs)) =
         regex_error("`(' without closing `)'", S)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The *, + and ? regexes.
     %
@@ -382,7 +386,7 @@ opt(S, REs) =
         regex_error("`?' without preceding regex", S)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Handle an alternation sign.
     %
@@ -405,7 +409,7 @@ alt(S, REs) =
         regex_error("`|' without preceding regex", S)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Handle a closing parenthesis.
     %
@@ -426,7 +430,7 @@ rpar(S, REs) =
         regex_error("`)' without opening `('", S)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func extract_regex(re) = regexp.
 
@@ -435,7 +439,7 @@ extract_regex(char(R)) = R.
 extract_regex(alt(_))  = func_error("regex.extract_regex").
 extract_regex(lpar)    = func_error("regex.extract_regex").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Throw a wobbly.
     %
@@ -445,7 +449,7 @@ extract_regex(lpar)    = func_error("regex.extract_regex").
 regex_error(Msg, String) =
     func_error("regex: " ++ Msg ++ " in \"" ++ String ++ "\"").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The empty regex.
     %
@@ -453,14 +457,14 @@ regex_error(Msg, String) =
 
 nil = re(re("")).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 left_match(Regex, String, Substring, 0, length(Substring)) :-
     State = start(Regex, unsafe_promise_unique(String)),
     lex.read(ok(Substring), State, _).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % We have to keep trying successive suffixes of String until
     % we find a complete match.
@@ -476,12 +480,12 @@ right_match_2(Regex, String, Length, !Start, Substring) :-
     Substring0 = right_by_code_point(String, Length - !.Start),
     ( if exact_match(Regex, Substring0) then
         Substring = Substring0
-      else
+    else
         !:Start = !.Start + 1,
         right_match_2(Regex, String, Length, !Start, Substring)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 first_match(Regex, String, Substring, Start, length(Substring)) :-
     State = start(Regex, unsafe_promise_unique(String)),
@@ -500,13 +504,13 @@ first_match_2(Substring, Start, !.State) :-
         Start  = Start0
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 exact_match(Regex, String) :-
     State = start(Regex, unsafe_promise_unique(String)),
     lex.read(ok(String), State, _).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 matches(Regex, String) = Matches :-
     State   = start(Regex, unsafe_promise_unique(String)),
@@ -564,17 +568,17 @@ matches_2(Length, LastEnd, State0) = Matches :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 replace_first(Regex, Replacement, String) =
     change_first(Regex, func(_) = Replacement, String).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 replace_all(Regex, Replacement, String) =
     change_all(Regex, func(_) = Replacement, String).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 change_first(Regex, ChangeFn, String) =
     ( if first_match(Regex, String, Substring, Start, Count) then
@@ -587,7 +591,7 @@ change_first(Regex, ChangeFn, String) =
         String
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 change_all(Regex, ChangeFn, String) =
     append_list(change_all_2(String, ChangeFn, 0, matches(Regex, String))).
@@ -602,6 +606,6 @@ change_all_2(String, ChangeFn, I, [{Substring, Start, Count} | Matches]) =
       ChangeFn(Substring)
     | change_all_2(String, ChangeFn, Start + Count, Matches)].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module regex.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

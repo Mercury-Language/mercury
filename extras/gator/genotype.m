@@ -25,9 +25,9 @@
 
     % read_genotypes(Path, Genotypes, !IO):
     %
-    % Reads in a list of genotypes from the given file.  A genotype is
-    % made up of a set of flags.  Each genotype within a file is
-    % separated by a newline character, and each flag within a genotype
+    % Reads in a list of genotypes from the given file.
+    % A genotype is made up of a set of flags. Each genotype within a file
+    % is separated by a newline character, and each flag within a genotype
     % is separated by one or more spaces.
     %
 :- pred read_genotypes(string::in, list(genotype)::out, io::di, io::uo) is det.
@@ -41,9 +41,9 @@
     % used to differentiate the two different parents and children.
     %
     % A "cut and splice" algorithm was chosen here as it is simple
-    % to implement and seems to be well suited to the data structure
-    % used.  Many common crossover methods assume the genotype is a
-    % fixed-length bit-array.
+    % to implement and seems to be well suited to the data structure used.
+    % Many common crossover methods assume the genotype
+    % is a fixed-length bit-array.
     %
 :- pred crossover(genotype::in, genotype::in, genotype::out, genotype::out,
     RNG::in, RNG::out) is det <= random(RNG, Seed).
@@ -97,9 +97,9 @@
 % predicate, which parses a file containing the flags to be passed to the
 % compiler.
 %
-% The parser is implemented using Mercury's DCG notation.  The many/4
+% The parser is implemented using Mercury's DCG notation. The many/4
 % predicate is a higher-order DCG-rule that takes another DCG-rule as its
-% first argument.  It is used to parse a list of things such as a list of
+% first argument. It is used to parse a list of things such as a list of
 % genotypes or a list of flags.
 %
 
@@ -131,7 +131,7 @@ read_genotypes(Path, Genotypes, !IO) :-
     list(T)::out, list(char)::in, list(char)::out) is semidet.
 
 many(P, Ps) -->
-    ( if P(X) then 
+    ( if P(X) then
         many(P, Xs),
         { Ps = [X | Xs] }
     else
@@ -181,8 +181,8 @@ crossover(Mother, Father, Son, Daughter, !RNG) :-
     Son = set.union_list(PartsOfSon),
     Daughter = set.union_list(PartsOfDaughter).
 
-:- pred cut(genotype::in, genotype::out, genotype::out, RNG::in,
-        RNG::out) is det <= random(RNG, Seed).
+:- pred cut(genotype::in, genotype::out, genotype::out,
+    RNG::in, RNG::out) is det <= random(RNG, Seed).
 
 cut(Parent, PartOfSon, PartOfDaughter, !RNG) :-
     ( if
@@ -200,7 +200,6 @@ cut(Parent, PartOfSon, PartOfDaughter, !RNG) :-
     set.list_to_set(End, PartOfDaughter).
 
 mutation(Flags, !Genotype, !RNG) :-
-
     list.length(Flags, NumFlags),
     next(Next, !RNG),
     Index = Next mod NumFlags,
@@ -216,9 +215,8 @@ mutation(Flags, !Genotype, !RNG) :-
 %
 % Printing out a list of genotypes.
 %
-% This section contains the implementation of the print_genotypes/4
-% predicate, which creates a file containing the flags to be passed to the
-% compiler.
+% This section contains the implementation of print_genotypes/4,
+% which creates a file containing the flags to be passed to the compiler.
 %
 
 print_genotypes(Path, Genotypes, !IO) :-

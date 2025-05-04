@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006, 2012 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -168,7 +168,7 @@
     string::in, list(wizard_step(L))::in,
     list(dialog(L, wizard_step_dlg))::out) is det.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Various default dialogs.
 %
@@ -188,7 +188,7 @@
 :- func files_in_use_dialog(L, L, L, L, L, L, string)
     = dialog(L, wizard_step_dlg).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a list containing one UI element if the input list has
     % any elements and an empty list if there are no dialogs in the input
@@ -196,7 +196,7 @@
     %
 :- func maybe_ui_elements(list(annotated_dialog), id, id) = list(xml).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 

@@ -1,10 +1,10 @@
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
-%------------------------------------------------------------------------------%
-% Copyright (C) 2020 The Mercury team.
+%---------------------------------------------------------------------------%
+% Copyright (C) 2020, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Author: Zoltan Somogyi
 %
@@ -55,7 +55,7 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -68,7 +68,7 @@
 :- import_module pair.
 :- import_module string.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type file_name == string.
 :- type output_file
@@ -127,7 +127,7 @@ main(!IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred make_output_map(list(file_name)::in, int::in,
     output_map::in, output_map::out) is det.
@@ -138,7 +138,7 @@ make_output_map([OutputFileName | OutputFileNames], FileNumber, !OutputMap) :-
     map.det_insert(FileNumber, OutputFile, !OutputMap),
     make_output_map(OutputFileNames, FileNumber + 1, !OutputMap).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred split_file(list(string)::in, file_name::in, int::in,
     list(int)::in, output_map::in, output_map::out,
@@ -201,7 +201,7 @@ record_data_line(DataLine, [Output | Outputs], !OutputMap) :-
     map.det_update(Output, OutputFile, !OutputMap),
     record_data_line(DataLine, Outputs, !OutputMap).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred output_split_files(io.text_output_stream::in,
     assoc_list(int, output_file)::in, io::di, io::uo) is det.
@@ -230,4 +230,4 @@ output_split_files(StdErrStream, [_Output - OutputFile | OutputFiles], !IO) :-
 write_line_and_nl(OutputStream, Line, !IO) :-
     io.format(OutputStream, "%s\n", [s(Line)], !IO).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1,10 +1,10 @@
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2000,2003, 2006-2008, 2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Author: Tom Conway <conway@cs.mu.oz.au>.
 % Modifications by Tyson Dowd <trd@cs.mu.oz.au>
@@ -59,7 +59,7 @@
 
 :- pred main(io::di, io::uo) is det.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -86,7 +86,7 @@
     --->    cs_slash_star
     ;       cs_percent.
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 main(!IO) :-
     io.command_line_arguments(Args0, !IO),
@@ -163,7 +163,7 @@ run_error(InvokeEditor, Style, Args0, !IO) :-
         )
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred read_error_files(list(string)::in, error_map::in, error_map::out,
     list(string)::in, list(string)::out, list(string)::in, list(string)::out,
@@ -256,7 +256,7 @@ parse_error(Chars, File, Line, Message) :-
     string.to_int(LineStr, Line),
     string.from_char_list(MsgChars, Message).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred process_error_map(comment_style::in, error_map::in,
     io::di, io::uo) is det.
@@ -386,7 +386,7 @@ make_comment(Style, Msg) = CommentMsg :-
         CommentMsg = "% ### " ++ Msg ++ "\n"
     ).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred invoke_editor(error_map::in, io::di, io::uo) is det.
 
@@ -401,7 +401,7 @@ invoke_editor(ErrorMap, !IO) :-
     % XXX We ignore the error status, which isn't nice.
     io.call_system(CommandStr, _Res, !IO).
 
-%------------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type option
     --->    invoke_editor

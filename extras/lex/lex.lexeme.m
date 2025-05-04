@@ -10,14 +10,14 @@
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
 % Copyright (C) 2002, 2010-2011 The University of Melbourne.
-% Copyright (C) 2017-2019, 2023 The Mercury team.
+% Copyright (C) 2017-2019, 2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % A lexeme combines a token with a regexp. The lexer compiles lexemes
 % and returns the longest successful parse in the input stream,
 % or an error if no match occurs.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module lex.lexeme.
 :- interface.
@@ -27,7 +27,7 @@
 :- import_module bitmap.
 :- import_module char.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type compiled_lexeme(T)
     --->    compiled_lexeme(
@@ -71,8 +71,8 @@
     %
 :- pred in_accepting_state(compiled_lexeme(T)::in(compiled_lexeme)) is semidet.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -83,7 +83,7 @@
 :- import_module list.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 compile_lexeme(Lexeme) = CompiledLexeme :-
     Lexeme         = (RegExp - TokenCreator),
@@ -98,7 +98,7 @@ compile_lexeme(Lexeme) = CompiledLexeme :-
     TransitionMap  = transition_map(Accepting, Rows),
     CompiledLexeme = compiled_lexeme(TokenCreator, StartState, TransitionMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func find_top_state(transitions) = int.
 :- mode find_top_state(in(atom_transitions)) = out is det.
@@ -106,7 +106,7 @@ compile_lexeme(Lexeme) = CompiledLexeme :-
 find_top_state([]) = 0.
 find_top_state([trans(X, _, Y) | Ts]) = max(X, max(Y, find_top_state(Ts))).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func set_accepting_states(set(state_no), bitmap) = bitmap.
 :- mode set_accepting_states(in, bitmap_di) = bitmap_uo is det.
@@ -121,7 +121,7 @@ set_accepting_states_0([], Bitmap) = Bitmap.
 set_accepting_states_0([State | States], Bitmap) =
     set_accepting_states_0(States, bitmap.set(Bitmap, State)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func set_up_rows(int, int, transitions) = list(row).
 :- mode set_up_rows(in, in, in(atom_transitions)) = out is det.
@@ -134,7 +134,7 @@ set_up_rows(I, N, Transitions) = Rows :-
            set_up_rows(I + 1, N, Transitions)]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func compile_transitions_for_state(int::in, packed_transitions::in,
     transitions::in(atom_transitions)) = (row::array_uo) is det.
@@ -153,7 +153,7 @@ compile_transitions_for_state(I, IBTs, [T | Ts]) =
         Ts
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 next_state(CLXM, CurrentState, Char, NextState, IsAccepting) :-
     Rows = CLXM ^ transition_map ^ rows,
@@ -161,7 +161,7 @@ next_state(CLXM, CurrentState, Char, NextState, IsAccepting) :-
     find_next_state(Char, Rows ^ elem(CurrentState), NextState),
     IsAccepting = AcceptingStates ^ bit(NextState).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred find_next_state(char, array(packed_transition), state_no).
 :- mode find_next_state(in, in, out) is semidet.
@@ -183,13 +183,13 @@ find_next_state_0(Lo, Hi, Char, PackedTransitions, State) :-
         find_next_state_0(Lo + 1, Hi, Char, PackedTransitions, State)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 in_accepting_state(CLXM) :-
     bitmap.is_set(
         CLXM ^ transition_map ^ accepting_states, CLXM ^ state
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module lex.lexeme.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

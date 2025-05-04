@@ -5,14 +5,14 @@
 % lex.convert_NFA_to_DFA.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 % Copyright (C) 2002, 2010 The University of Melbourne
-% Copyright (C) 2014, 2018-2019, 2023 The Mercury team.
+% Copyright (C) 2014, 2018-2019, 2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % Fri Aug 18 12:30:25 BST 2000
 %
 % Powerset construction used to transform NFAs into DFAs.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module lex.convert_NFA_to_DFA.
 :- interface.
@@ -23,8 +23,8 @@
 :- mode convert_NFA_to_DFA(in(null_transition_free_state_mc)) =
     out(null_transition_free_state_mc) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -36,7 +36,7 @@
 :- import_module set.
 :- import_module sparse_bitset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type state_sets
     ==      set(state_set).
@@ -53,7 +53,7 @@
 :- type state_set_no_map
     ==      map(state_set, int).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 convert_NFA_to_DFA(NFA) = DFA :-
     (
@@ -87,7 +87,7 @@ convert_NFA_to_DFA(NFA) = DFA :-
         DFA = state_mc(DFAStartState, DFAStopStates, DFATransitions)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % If S is a state_no set, then S -c-> S' where
     % S' = {y | x in S, x -c-> y}
@@ -118,7 +118,7 @@ compute_DFA_state_sets_and_transitions(Ts, NewSs0, Ss0, Ss, STs0, STs) :-
         compute_DFA_state_sets_and_transitions(Ts, NewSs, Ss1, Ss, STs1, STs)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given a state_no set and a set of transition chars for that
     % state_no set, find the set of state_no set transitions (said
@@ -132,7 +132,7 @@ state_set_transitions(Ts, S) = STs :-
     TCs = to_sorted_list(transition_chars(Ts, S)),
     STs = list.map(state_set_transition(Ts, S), TCs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given a state_no set, find all the transition chars:
     %
@@ -144,21 +144,21 @@ transition_chars(Ts, S) = Charset :-
     Sets = list.map(transition_chars_for_state(Ts), set.to_sorted_list(S)),
     Charset = union_list(Sets).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func transition_chars_for_state(transitions, state_no) = charset.
 
 transition_chars_for_state(Ts, X) =
     union_list(list.filter_map(transition_char_for_state(X), Ts)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func transition_char_for_state(state_no, transition) = charset.
 :- mode transition_char_for_state(in, in) = out is semidet.
 
 transition_char_for_state(X, trans(X, C, _Y)) = C.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given a state_no set and a char, find the state_no set transition:
     %
@@ -172,7 +172,7 @@ state_set_transition(Ts, FromStateSet, C) = Transition :-
     TargetStateSet = target_state_set(Ts, FromStateSet, C),
     Transition = trans(FromStateSet, Charset, TargetStateSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given a state_no set and a char, find the target state_no set:
     %
@@ -183,14 +183,14 @@ state_set_transition(Ts, FromStateSet, C) = Transition :-
 target_state_set(Ts, S, C) =
     set.power_union(set.map(target_state_set_0(Ts, C), S)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func target_state_set_0(transitions, char, state_no) = state_set.
 
 target_state_set_0(Ts, C, X) =
     set.list_to_set(list.filter_map(target_state(X, C), Ts)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func target_state(state_no, char, transition) = state_no.
 :- mode target_state(in, in, in) = out is semidet.
@@ -198,14 +198,14 @@ target_state_set_0(Ts, C, X) =
 target_state(X, C, trans(X, Charset, Y)) = Y :-
     contains(Charset, C).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func compute_DFA_stop_state_sets(state_set, state_sets) = state_sets.
 
 compute_DFA_stop_state_sets(StopStates, StateSets) =
     set.filter_map(stop_state_set(StopStates), StateSets).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func stop_state_set(state_set, state_set) = state_set.
 :- mode stop_state_set(in, in) = out is semidet.
@@ -213,7 +213,7 @@ compute_DFA_stop_state_sets(StopStates, StateSets) =
 stop_state_set(StopStates, StateSet) = StateSet :-
     set.is_non_empty(StopStates `set.intersect` StateSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func number_state_sets(state_sets) = state_set_no_map.
 
@@ -223,7 +223,7 @@ number_state_sets(Ss) = StateNos :-
             map.set(S, N, Map0, Map)
         ), Ss, 0, _, map.init, StateNos).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func map_state_set_transitions_to_numbers(state_set_no_map::in,
     state_set_transitions::in) = (transitions::out(atom_transitions)).
@@ -236,6 +236,6 @@ map_state_set_transitions_to_numbers(Map, [ST | STs]) = [T | Ts] :-
     Y = map.lookup(Map, SY),
     T = trans(X, C ,Y).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module lex.convert_NFA_to_DFA.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

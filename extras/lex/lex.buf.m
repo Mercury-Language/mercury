@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % lex.buf.m
 % Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
 % Copyright (C) 2002, 2010 The University of Melbourne.
-% Copyright (C) 2017-2019, 2023 The Mercury team.
+% Copyright (C) 2017-2019, 2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % Sat Aug 19 16:56:30 BST 2000
@@ -83,7 +83,7 @@
 % This is important since it means that the region prior to the cursor
 % in the buffer is now available for garbage collection.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module lex.buf.
 :- interface.
@@ -93,7 +93,7 @@
 :- import_module char.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % XXX We need a char and/or byte array datatype;
     % array(char) uses one word for each char, which is rather wasteful.
@@ -167,8 +167,8 @@
 :- func commit(buf_state(T)) = buf_state(T).
 :- mode commit(in(buf_state)) = out(buf_state) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -191,13 +191,13 @@ initial_buf_size = 1024.
 % :- func initial_buf_size = int.
 % initial_buf_size = 32.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 init(BufReadPred, BufState, Buf) :-
     BufState = buf_state(0, 0, 0, 0, initial_buf_size, no, BufReadPred),
     Buf      = array.init(initial_buf_size, ('@')).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 read(Result, BufState0, BufState, !Buf, !Src) :-
     Origin   = BufState0 ^ buf_origin,
@@ -236,7 +236,7 @@ read(Result, BufState0, BufState, !Buf, !Src) :-
         read(Result, BufState1, BufState, !Buf, !Src)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Garbage collects the chars between the origin and start and
     % extends the buffer if the remaining space is below the low
@@ -256,7 +256,7 @@ adjust_buf(GarbageLength, ExtraLength, Buf0, Buf) :-
     ),
     Buf = shift_buf(0, Size0 - GarbageLength, GarbageLength, Buf0, Buf1).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func shift_buf(int, int, int, buf, buf) = buf.
 :- mode shift_buf(in, in, in, array_ui, array_di) = array_uo is det.
@@ -269,15 +269,15 @@ shift_buf(I, Hi, Disp, Src, Tgt) =
         Tgt
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 start_offset(BufState) = BufState ^ buf_start.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 cursor_offset(BufState) = BufState ^ buf_cursor.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 rewind_cursor(Offset, BufState) =
     ( if
@@ -290,7 +290,7 @@ rewind_cursor(Offset, BufState) =
         BufState ^ buf_cursor := Offset
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 string_to_cursor(BufState, Buf) = String :-
     From   = BufState ^ buf_start - BufState ^ buf_origin,
@@ -298,10 +298,10 @@ string_to_cursor(BufState, Buf) = String :-
     To     = From + Length,
     String = string.from_char_list(array.fetch_items(Buf, From, To)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 commit(BufState) = ( BufState ^ buf_start := BufState ^ buf_cursor ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module lex.buf.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

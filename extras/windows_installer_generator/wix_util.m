@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006 The University of Melbourne.
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -27,7 +27,7 @@
     --->    admin
     ;       normal.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Various attributes used in the generation of the Wix source file.
 %
@@ -56,7 +56,7 @@
 
 :- func shortcut_where_attr(shortcut_where) = attr.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type position == pair(int).
 
@@ -88,8 +88,8 @@
 
 :- func system_or_user_to_string(env_var_system_or_user) = string.
 
-%----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -100,7 +100,7 @@
 :- import_module require.
 :- import_module string.
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 guid_attr(GUID) = attr("Guid", GUID).
 
@@ -139,7 +139,7 @@ modeless_attr(modeless) = attr("Modeless", "yes").
 modeless_attr(not_modeless) = attr("Modeless", "no").
 modeless_attr(keep_modeless) = attr("KeepModeless", "yes").
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred is_legal_windows_short_name(string::in) is semidet.
 
@@ -186,13 +186,13 @@ version_no_to_string(version_no(Major, Minor, Build, Other)) =
     int_to_string(Major) ++ "." ++ int_to_string(Minor) ++ "." ++
     int_to_string(Build) ++ "." ++ int_to_string(Other).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 env_vars_component_id = "ENVIRONMENT_VARIABLES_COMPONENT".
 desktop_id = "DesktopFolder".
 programs_menu_id = "PROGRAMSMENU".
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 how_set_to_string(replace) = "all".
 how_set_to_string(prepend) = "first".

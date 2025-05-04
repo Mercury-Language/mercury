@@ -1,6 +1,6 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ff=unix ft=mercury
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % lex.regexp.m
 % Fri Aug 18 06:43:09 BST 2000
@@ -10,7 +10,7 @@
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
 % Copyright (C) 2002, 2010 The University of Melbourne
-% Copyright (C) 2014, 2017-2018 The Mercury team.
+% Copyright (C) 2014, 2017-2018, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %
 % Thu Jul 26 07:45:47 UTC 2001
@@ -18,7 +18,7 @@
 % Converts basic regular expressions into non-deterministic finite automata
 % (NFAs).
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module lex.regexp.
 :- interface.
@@ -34,8 +34,8 @@
 :- func remove_null_transitions(state_mc::in)
     = (state_mc::out(null_transition_free_state_mc)) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -48,7 +48,7 @@
 :- import_module string.
 :- import_module sparse_bitset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 regexp_to_NFA(R) = NFA :-
     C0 = counter.init(0),
@@ -57,7 +57,7 @@ regexp_to_NFA(R) = NFA :-
     compile(Start, R, Stop, Transitions, C, _),
     NFA = state_mc(Start, set.make_singleton_set(Stop), Transitions).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred compile(state_no::in, regexp::in, state_no::in, transitions::out,
     counter::in, counter::out) is det.
@@ -77,8 +77,9 @@ compile(X, star(R), Y, TsA ++ TsB, !Counter) :-
     compile(X, null, Y, TsA, !Counter),
     compile(X, R, X, TsB, !Counter).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
+remove_null_transitions(NFA0) = NFA :-
     % If we have a non-looping null transition from X to Y,
     % then we need to add all the transitions from Y to X.
     %
@@ -86,7 +87,6 @@ compile(X, star(R), Y, TsA ++ TsB, !Counter) :-
     % null transition graph and then, for each edge X -> Y in that graph,
     % adding X -C-> Z for all C and Z s.t. Y -C-> Z.
     %
-remove_null_transitions(NFA0) = NFA :-
     Ts = NFA0 ^ smc_state_transitions,
     split_transitions(Ts, NullTs, CharTs),
     trans_closure(NullTs, map.init, _Ins, map.init, Outs),
@@ -106,7 +106,7 @@ remove_null_transitions(NFA0) = NFA :-
         ^ smc_state_transitions := NullFreeTs )
         ^ smc_stop_states       := StopStates).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred split_transitions(transitions, transitions, transitions).
 :- mode split_transitions(in, out(null_transitions), out(atom_transitions)).
@@ -117,7 +117,7 @@ split_transitions([null(X, Y) | Ts], [null(X, Y) | NTs], CTs) :-
 split_transitions([trans(X, C, Y) | Ts], NTs, [trans(X, C, Y) | CTs]) :-
     split_transitions(Ts, NTs, CTs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type null_map == map(state_no, set(state_no)).
 
@@ -133,21 +133,21 @@ trans_closure([T | Ts], !Ins, !Outs) :-
     !:Ins = set.fold(add_to_null_mapping(XInAndX),  YOutAndY, !.Ins),
     trans_closure(Ts, !Ins, !Outs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func null_map_lookup(state_no, null_map) = set(state_no).
 
 null_map_lookup(X, Map) =
     ( if map.search(Map, X, Ys) then Ys else set.init ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func add_to_null_mapping(set(state_no), state_no, null_map) = null_map.
 
 add_to_null_mapping(Xs, Y, Map) =
     map.set(Map, Y, Xs `set.union` null_map_lookup(Y, Map)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % XXX add_atom_transitions (and its callees) originally used the inst-
     % subtyping given in the commented out mode declarations. Limitations in
@@ -204,7 +204,7 @@ add_atom_transitions(Outs, CTs) = NullFreeTs :-
     Y = X;
 ").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func add_atom_transitions_0(transitions, pair(state_no, set(state_no))) =
     transitions.
@@ -216,7 +216,7 @@ add_atom_transitions_0(CTs, X - Ys) =
         list.map(add_atom_transitions_1(CTs, X), set.to_sorted_list(Ys))
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func add_atom_transitions_1(transitions, state_no, state_no) = transitions.
 %:- mode add_atom_transitions_1(in(atom_transitions), in, in) =
@@ -225,7 +225,7 @@ add_atom_transitions_0(CTs, X - Ys) =
 add_atom_transitions_1(CTs0, X, Y) = CTs :-
     list.filter_map(maybe_copy_transition(X, Y), CTs0, CTs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred maybe_copy_transition(state_no, state_no, transition, transition).
 %:- mode maybe_copy_transition(in,in,in(atom_transition),out(atom_transition))
@@ -236,7 +236,7 @@ maybe_copy_transition(_, _, null(_, _) , _) :-
     unexpected($file, $pred, "null transition").
 maybe_copy_transition(X, Y, trans(Y, C, Z), trans(X, C, Z)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func nulls_to_stop_state(null_map, set(state_no), transition) = state_no.
 :- mode nulls_to_stop_state(in, in, in) = out is semidet.
@@ -247,6 +247,6 @@ nulls_to_stop_state(Outs, StopStates, null(X, _Y)) = X :-
         set.member(Z, StopStates)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module lex.regexp.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
