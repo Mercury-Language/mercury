@@ -1,8 +1,8 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2000, 2002-2004 The University of Melbourne.
-# Copyright (C) 2015, 2018 The Mercury team.
+# Copyright (C) 2015, 2018, 2025 The Mercury team.
 # This file is distributed under the terms specified in COPYING.LIB.
 #-----------------------------------------------------------------------------#
 
@@ -16,10 +16,13 @@ MAIN_TARGET = $(LIBRARY)
 
 MCFLAGS-mercury_www = --no-warn-nothing-exported
 
+.PHONY: depend
 depend: mercury_www.depend
 
+.PHONY: distclean
 distclean: realclean
 
+.PHONY: install
 install: libmercury_www.install
 
 .PHONY: check

@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 #
 # Copyright (C) 2001 Ralph Becket <rbeck@microsoft.com>
@@ -53,5 +53,9 @@ CFLAGS = -DMERCURY_BOOTSTRAP_H
 -include ../Mmake.params
 
 MAIN_TARGET = libcurs
+
+.PHONY: depend
 depend: curs.depend
+
+.PHONY: install
 install: $(MAIN_TARGET).install

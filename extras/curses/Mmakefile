@@ -1,8 +1,8 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2000-2003 The University of Melbourne.
-# Copyright (C) 2015-2018, 2022 The Mercury team.
+# Copyright (C) 2015-2018, 2022, 2025 The Mercury team.
 # This file is distributed under the terms specified in COPYING.LIB.
 #-----------------------------------------------------------------------------#
 
@@ -19,10 +19,13 @@ MLLIBS = $(NCURSES_LIBS)
 
 -include ../Mmake.params
 
+.PHONY: default_target
 default_target:	libmcurses
 
+.PHONY: depend
 depend:	mcurses.depend
 
+.PHONY: install
 install: libmcurses.install
 
 .PHONY: check

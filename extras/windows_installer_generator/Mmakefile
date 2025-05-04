@@ -1,7 +1,11 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab
+# vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 
 MAIN_TARGET=libwix
+
+.PHONY: depend
 depend: wix.depend
+
+.PHONY: install
 install: libwix.install
