@@ -52,14 +52,13 @@
 extern  void    MR_init_memory(void);
 extern  void    MR_init_heap(void);
 
-#ifdef MR_CONSERVATIVE_GC
-  extern void   MR_init_conservative_GC(void);
-#endif
-
 ////////////////////////////////////////////////////////////////////////////
 
-// MR_malloc() and MR_realloc() are like the standard C malloc() and realloc()
-// functions, except that the return values are checked.
+// MR_malloc() and MR_realloc() are identical to the malloc() and realloc()
+// functions in standard C, except for the fact that the pointer values
+// they return are all guaranteed to be non-NULL.
+// (If they cannot allocate the requested amount of memory,
+// they abort the program instead of returning NULL.)
 //
 // Structures allocated with MR_malloc() and MR_realloc() must NOT contain
 // pointers into GC'ed memory, because those pointers will never be traced
@@ -157,13 +156,13 @@ extern  void    MR_ensure_big_enough_buffer(char **buffer_ptr,
 //  Deallocates the memory.
 //
 // MR_GC_register_finalizer(ptr, finalize_func, data):
-//  When ptr is garbage collected invoke (*finalize_func)(ptr, data).
-//  ptr must have be a pointer to space allocated by the garbage collector.
+//  When ptr is garbage collected, invoke (*finalize_func)(ptr, data).
+//  ptr must have be a pointer to memory allocated by the garbage collector.
 //  data is a pointer to some user-defined data.
-//  XXX currently this only works with the Boehm collector, i.e. in .gc
-//          grades, it is a no-op in non .gc grades.
+//  XXX Currently this only works with the Boehm collector,
+//  i.e. in .gc grades. It is a no-op in non .gc grades.
 //
-//      XXX this interface is subject to change.
+//  XXX This interface is subject to change.
 //
 // Note: consider using the _attrib variants below.
 //
@@ -171,13 +170,13 @@ extern  void    MR_ensure_big_enough_buffer(char **buffer_ptr,
 //  Create a weak pointer to object and store it in the memory pointed to by
 //  ptr (a double pointer). object must have been allocated using one of
 //  the MR_GC methods. Weak pointers only work with the Boehm collector
-//  (.gc grades). In other grades this is an ordinary pointer.
+//  (.gc grades). In other grades, this is an ordinary pointer.
 //
 // MR_weak_ptr_read(weak_ptr):
 //  Dereference a weak pointer. Returns NULL of the pointed to object has
 //  been deallocated. If weak_ptr is NULL then NULL is returned, so the
 //  programmer doesn't need to do an extra NULL check in case their pointer
-//  is deliberately NULL;
+//  is deliberately NULL.
 
 extern  void    *MR_GC_malloc(size_t num_bytes);
 extern  void    *MR_GC_malloc_uncollectable(size_t num_bytes);

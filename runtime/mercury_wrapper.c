@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1994-2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018, 2020-2024 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2020-2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // file: mercury_wrapper.c
@@ -785,7 +785,7 @@ MR_init_conservative_GC(void)
     MR_hgc_add_root(&MR_runqueue_head);
     (*MR_address_of_init_gc)();
 
-  #else // MR_BOEHM_GC
+  #elif defined(MR_BOEHM_GC)
 
     // Sometimes Mercury apps fail the GC_is_visible() test.
     // dyn_load.c traverses the entire address space and registers
@@ -837,6 +837,9 @@ MR_init_conservative_GC(void)
         }
     }
 
+    // Note that the code of several functions in mercury_memory.c
+    // depends on boehm_gc's out-of-memory handler to avoid explicitly
+    // checking the return values of calls to the GC_MALLOCx family for NULL.
     GC_set_oom_fn(MR_oom_func);
 
     #ifdef MR_THREAD_SAFE
@@ -846,7 +849,11 @@ MR_init_conservative_GC(void)
     GC_allow_register_threads();
     #endif // MR_THREAD_SAFE
 
-  #endif // MR_BOEHM_GC
+  #else
+
+    MR_fatal_error("conservative gc is neither boehm_gc nor hgc");
+
+  #endif // MR_HGC + MR_BOEHM_GC
 }
 #endif // MR_CONSERVATIVE_GC
 

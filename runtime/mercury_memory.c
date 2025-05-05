@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1994-2000,2002-2004, 2006, 2008, 2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018 The Mercury Team.
+// Copyright (C) 2014-2016, 2018, 2025 The Mercury Team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module defines the register array and data regions of the
@@ -301,12 +301,8 @@ MR_ensure_big_enough_buffer(char **buffer_ptr, int *buffer_size_ptr,
 
 ////////////////////////////////////////////////////////////////////////////
 
-// These routines allocate memory that will be scanned by the
-// conservative garbage collector.
-//
-// XXX This is inefficient. If MR_BOEHM_GC is enabled, we should set
-// `GC_oom_fn' (see boehm_gc/gc.h) rather than testing the return value
-// from GC_MALLOC() or GC_MALLOC_UNCOLLECTABLE().
+// These routines allocate memory that, in Boehm grades, will be scanned
+// by the conservative garbage collector.
 
 void *
 MR_GC_malloc(size_t num_bytes)
@@ -315,13 +311,13 @@ MR_GC_malloc(size_t num_bytes)
 
 #ifdef  MR_CONSERVATIVE_GC
     ptr = GC_MALLOC(num_bytes);
+    // We rely on boehm_gc's GC_oom_fn mechanism to check for NULL.
 #else
     ptr = malloc(num_bytes);
-#endif
-
     if (ptr == NULL && num_bytes != 0) {
         MR_fatal_error("could not allocate memory");
     }
+#endif
 
     return ptr;
 }
@@ -333,13 +329,13 @@ MR_GC_malloc_atomic(size_t num_bytes)
 
 #ifdef  MR_CONSERVATIVE_GC
     ptr = GC_MALLOC_ATOMIC(num_bytes);
+    // We rely on boehm_gc's GC_oom_fn mechanism to check for NULL.
 #else
     ptr = malloc(num_bytes);
-#endif
-
     if (ptr == NULL && num_bytes != 0) {
         MR_fatal_error("could not allocate memory");
     }
+#endif
 
     return ptr;
 }
@@ -351,13 +347,13 @@ MR_GC_malloc_uncollectable(size_t num_bytes)
 
 #ifdef  MR_CONSERVATIVE_GC
     ptr = GC_MALLOC_UNCOLLECTABLE(num_bytes);
+    // We rely on boehm_gc's GC_oom_fn mechanism to check for NULL.
 #else
     ptr = malloc(num_bytes);
-#endif
-
     if (ptr == NULL && num_bytes != 0) {
         MR_fatal_error("could not allocate memory");
     }
+#endif
 
     return ptr;
 }
@@ -369,18 +365,19 @@ MR_GC_realloc(void *old_ptr, size_t num_bytes)
 
 #ifdef  MR_CONSERVATIVE_GC
     ptr = GC_REALLOC(old_ptr, num_bytes);
+    // We rely on boehm_gc's GC_oom_fn mechanism to check for NULL.
 #else
     ptr = realloc(old_ptr, num_bytes);
-#endif
     if (ptr == NULL && num_bytes != 0) {
         MR_fatal_error("ran out of memory");
     }
+#endif
 
     return ptr;
 }
 
 #ifdef MR_BOEHM_GC
-void*
+void *
 MR_weak_ptr_read_unsafe(void* weak_ptr_) {
     MR_weak_ptr *weak_ptr = weak_ptr_;
 
