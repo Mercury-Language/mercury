@@ -37,7 +37,7 @@
 %
 % Because this intention is to help with error messages created during
 % type analysis, this module does not look at, or use, any part of the HLDS
-% that is meaningful during type analysis, such as instmap_deltas.
+% that is not meaningful during type analysis, such as instmap_deltas.
 %
 %---------------------------------------------------------------------------%
 
@@ -168,7 +168,7 @@
     % Note that one kind of goal, negations, introduce scopes that 'forget'
     % origins. This is because if a variable is generated in a negated goal,
     % it cannot be referred to from outside the negation. Therefore any
-    % additions to OriginsMap inside a negated goal will be effectivel
+    % additions to OriginsMap inside a negated goal will be effectively
     % forgotten when the traversal leaves the negation.
     %
     % This is why instead of letting our caller post-process OriginsMap,
@@ -638,9 +638,6 @@ update_var_origins_generic_call_args(CollectPred, Context, GCall,
 
 update_var_origin(CollectPred, Var, VarOrigin, !OriginsMap, !Acc) :-
     ( if map.search(!.OriginsMap, Var, _VarOriginsCord0) then
-        % set.insert(VarOrigin, VarOriginsCord0, VarOriginsCord),
-        % map.det_update(Var, VarOriginsCord, !OriginsMap)
-        % ZZZ
         true
     else
         VarOriginsCord = set.make_singleton_set(VarOrigin),
