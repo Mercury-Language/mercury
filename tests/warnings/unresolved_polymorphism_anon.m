@@ -22,7 +22,7 @@
 % being tested here: an unresolved polymorphism in extras/odbc/odbc.m.
 %
 % XXX It would be nice to test variable origins other than just "this variable
-% represents a term constructed here". We can of coyrse add test cases
+% represents a term constructed here". We can of course add test cases
 % for such situations as we come across them.
 %
 %---------------------------------------------------------------------------%
