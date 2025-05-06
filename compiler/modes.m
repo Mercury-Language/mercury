@@ -152,6 +152,7 @@
 :- import_module check_hlds.switch_detection.
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unique_modes.
+:- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
@@ -935,7 +936,6 @@ do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_argmodes(!.ProcInfo, ArgModes0),
     proc_info_arglives(!.ModuleInfo, !.ProcInfo, ArgLives0),
-    proc_info_get_goal(!.ProcInfo, Body0),
 
     % Modecheck the body. First set the initial instantiation of the head
     % arguments, then modecheck the body, and then check that the final
@@ -960,10 +960,31 @@ do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
             MayChangeCalledProc, !:ModeInfo),
         mode_info_set_changed_flag(!.Changed, !ModeInfo),
 
-        mode_list_get_final_insts(!.ModuleInfo, ArgModes0, ArgFinalInsts0),
+        mode_info_get_debug_modes(!.ModeInfo, MaybeDebugFlags),
+        (
+            MaybeDebugFlags = no
+        ;
+            MaybeDebugFlags = yes(DebugFlags),
+            DebugGoalIds = DebugFlags ^ goal_ids,
+            (
+                DebugGoalIds = mdf_no_goal_ids
+            ;
+                DebugGoalIds = mdf_goal_ids,
+                % Placing this call here, after we have already retrieved
+                % some components of the proc_info, depends for its
+                % correctness on the fact that this call will affect
+                % no part of the proc_info except the body goal, and
+                % and only the goal_id slots in the hlds_goal_infos
+                % inside it.
+                fill_goal_id_slots_in_proc(!.ModuleInfo, _ContainingGoalMap,
+                    !ProcInfo)
+            )
+        ),
 
+        proc_info_get_goal(!.ProcInfo, BodyGoal0),
+        mode_list_get_final_insts(!.ModuleInfo, ArgModes0, ArgFinalInsts0),
         modecheck_proc_body(!.ModuleInfo, WhatToCheck, InferModes, IsUnifyPred,
-            Markers, PredId, ProcId, Body0, Body, HeadVars,
+            Markers, PredId, ProcId, BodyGoal0, BodyGoal, HeadVars,
             InstMap0, ArgFinalInsts0, ArgFinalInsts, !ModeInfo),
 
         mode_info_get_errors(!.ModeInfo, ModeErrors),
@@ -1023,7 +1044,7 @@ do_modecheck_proc(WhatToCheck, MayChangeCalledProc,
         % add new variables (e.g. when handling calls in implied modes).
         mode_info_get_var_table(!.ModeInfo, VarTable),
         mode_info_get_need_to_requantify(!.ModeInfo, NeedToRequantify),
-        proc_info_set_goal(Body, !ProcInfo),
+        proc_info_set_goal(BodyGoal, !ProcInfo),
         proc_info_set_var_table(VarTable, !ProcInfo),
         proc_info_set_argmodes(ArgModes, !ProcInfo),
         (
@@ -1102,10 +1123,10 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, IsUnifyPred,
     string.format("procedure_%d_%d",
         [i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId))],
         CheckpointMsg),
+    Body0 = hlds_goal(BodyGoalExpr0, BodyGoalInfo0),
     ( if
         InferModes = do_not_infer_modes,
         marker_is_present(Markers, marker_mode_check_clauses),
-        Body0 = hlds_goal(BodyGoalExpr0, BodyGoalInfo0),
         (
             BodyGoalExpr0 = disj(Disjuncts0),
             Disjuncts0 = [_ | _],
@@ -1204,7 +1225,7 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, IsUnifyPred,
         ArgFinalInsts = ArgFinalInsts0
     else
         % Modecheck the procedure body as a single goal.
-        mode_checkpoint(enter, CheckpointMsg, !ModeInfo),
+        mode_checkpoint(enter, CheckpointMsg, BodyGoalInfo0, !ModeInfo),
         (
             WhatToCheck = check_modes,
             modecheck_goal(Body0, Body, !ModeInfo)
@@ -1212,7 +1233,7 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, IsUnifyPred,
             WhatToCheck = check_unique_modes,
             unique_modes_check_goal(Body0, Body, !ModeInfo)
         ),
-        mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
+        mode_checkpoint(exit, CheckpointMsg, BodyGoalInfo0, !ModeInfo),
 
         % Check that final insts match those specified in the mode declaration.
         (
@@ -1392,10 +1413,11 @@ save_proc_info(ModuleInfo, ProcId, PredId, !OldPredIdTable) :-
 
 modecheck_clause_disj(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
         Disjunct0, Disjunct, !ModeInfo) :-
-    mode_checkpoint(enter, CheckpointMsg, !ModeInfo),
+    Disjunct0 = hlds_goal(_, DisjunctInfo0),
+    mode_checkpoint(enter, CheckpointMsg, DisjunctInfo0, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
     modecheck_goal(Disjunct0, Disjunct, !ModeInfo),
-    mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
+    mode_checkpoint(exit, CheckpointMsg, DisjunctInfo0, !ModeInfo),
 
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(do_not_infer_modes, HeadVars,
@@ -1407,8 +1429,9 @@ modecheck_clause_disj(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
 
 modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
         Var, Case0, Case, !ModeInfo) :-
-    mode_checkpoint(enter, CheckpointMsg, !ModeInfo),
     Case0 = case(MainConsId, OtherConsIds, Goal0),
+    Goal0 = hlds_goal(_, GoalInfo0),
+    mode_checkpoint(enter, CheckpointMsg, GoalInfo0, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
 
     modecheck_record_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
@@ -1417,18 +1440,20 @@ modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
     mode_info_get_instmap(!.ModeInfo, InstMap1),
     ( if instmap_is_reachable(InstMap1) then
         modecheck_goal(Goal0, Goal1, !ModeInfo),
-        mode_info_get_instmap(!.ModeInfo, InstMap)
+        mode_info_get_instmap(!.ModeInfo, InstMap),
+        ExitGoalInfo = GoalInfo0
     else
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having mode information.
         Goal1 = true_goal,
-        InstMap = InstMap1
+        InstMap = InstMap1,
+        Goal1 = hlds_goal(_, ExitGoalInfo)
     ),
 
     % Don't lose the information added by the functor test above.
     fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal1, Goal),
-    mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
+    mode_checkpoint(exit, CheckpointMsg, ExitGoalInfo, !ModeInfo),
 
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(do_not_infer_modes, HeadVars,
@@ -1443,13 +1468,14 @@ modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
 unique_modecheck_clause_disj(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
         DisjDetism, DisjNonLocals, NondetLiveVars0,
         Disjunct0, Disjunct, !ModeInfo) :-
-    mode_checkpoint(enter, CheckpointMsg, !ModeInfo),
+    Disjunct0 = hlds_goal(_, DisjunctInfo0),
+    mode_checkpoint(enter, CheckpointMsg, DisjunctInfo0, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
     mode_info_set_nondet_live_vars(NondetLiveVars0, !ModeInfo),
     unique_modes_prepare_for_disjunct(Disjunct0, DisjDetism, DisjNonLocals,
         !ModeInfo),
     unique_modes_check_goal(Disjunct0, Disjunct, !ModeInfo),
-    mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
+    mode_checkpoint(exit, CheckpointMsg, DisjunctInfo0, !ModeInfo),
 
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(do_not_infer_modes, HeadVars,
@@ -1461,26 +1487,29 @@ unique_modecheck_clause_disj(CheckpointMsg, HeadVars, InstMap0, ArgFinalInsts0,
 
 unique_modecheck_clause_switch(CheckpointMsg, HeadVars, InstMap0,
         ArgFinalInsts0, Var, Case0, Case, !ModeInfo) :-
-    mode_checkpoint(enter, CheckpointMsg, !ModeInfo),
     Case0 = case(MainConsId, OtherConsIds, Goal0),
+    Goal0 = hlds_goal(_, GoalInfo0),
+    mode_checkpoint(enter, CheckpointMsg, GoalInfo0, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
 
     modecheck_record_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo),
 
     mode_info_get_instmap(!.ModeInfo, InstMap1),
     ( if instmap_is_reachable(InstMap1) then
-        unique_modes_check_goal(Goal0, Goal1, !ModeInfo)
+        unique_modes_check_goal(Goal0, Goal1, !ModeInfo),
+        ExitGoalInfo = GoalInfo0
     else
         % We should not mode-analyse the goal, since it is unreachable.
         % Instead we optimize the goal away, so that later passes
         % won't complain about it not having mode information.
-        Goal1 = true_goal
+        Goal1 = true_goal,
+        Goal1 = hlds_goal(_, ExitGoalInfo)
     ),
 
     % Don't lose the information added by the functor test above.
     mode_info_get_instmap(!.ModeInfo, InstMap),
     fixup_instmap_switch_var(Var, InstMap0, InstMap, Goal1, Goal),
-    mode_checkpoint(exit, CheckpointMsg, !ModeInfo),
+    mode_checkpoint(exit, CheckpointMsg, ExitGoalInfo, !ModeInfo),
 
     % Check that final insts match those specified in the mode declaration.
     modecheck_final_insts(do_not_infer_modes, HeadVars,

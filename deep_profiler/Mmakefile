@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
-# Copyright (C) 2013-2017, 2019-2020, 2023-2024 The Mercury team.
+# Copyright (C) 2013-2017, 2019-2020, 2023-2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -46,7 +46,6 @@ ALL_DEEP_MAIN_MODULES = \
 	mdprof_procrep
 
 # Always compile the deep profiler, even if it is not enabled.
-#
 MAIN_TARGET=all
 MERCURY_MAIN_MODULES=$(ALL_DEEP_MAIN_MODULES)
 DEPEND=$(patsubst %,%.depend,$(ALL_DEEP_MAIN_MODULES))
@@ -64,8 +63,6 @@ VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
 
 # The comments on MDBCOMP_MODULES in ../slice/Mmakefile apply here as well.
 
-.SECONDARY: $(MDBCOMP_MODULES)
-
 MDBCOMP_MODULES = \
 	builtin_modules.m \
 	feedback.automatic_parallelism.m \
@@ -79,6 +76,8 @@ MDBCOMP_MODULES = \
 	slice_and_dice.m \
 	sym_name.m \
 	trace_counts.m
+
+.SECONDARY: $(MDBCOMP_MODULES)
 
 #-----------------------------------------------------------------------------#
 

@@ -7249,10 +7249,25 @@ Please see @ref{Enabling the use of color} for the details.
 @findex --debug-modes
 Output debugging traces of the mode checking.
 
+@c @sp 1
+@c @item --debug-modes-minimal
+@c @findex --debug-modes-minimal
+@c Output only minimal debugging traces of the mode checking.
+
 @sp 1
 @item --debug-modes-verbose
 @findex --debug-modes-verbose
 Output detailed debugging traces of the mode checking.
+
+@c @sp 1
+@c @item --debug-modes-delay-vars
+@c @findex --debug-modes-delay-vars
+@c Output info about the variables involved in delayed goals.
+
+@c @sp 1
+@c @item --debug-modes-goal-ids
+@c @findex --debug-modes-goal-ids
+@c Output the id of the goal at all mode debug checkpoints.
 
 @sp 1
 @item --debug-modes-pred-id @var{predid}

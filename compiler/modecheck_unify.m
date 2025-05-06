@@ -1389,7 +1389,7 @@ modecheck_unify_rhs_lambda_std(X, RHS0, Unification0, UnifyContext, _,
         VarLock = var_lock_lambda(PredOrFunc),
         mode_info_lock_vars(VarLock, NonLocals, !ModeInfo),
 
-        mode_checkpoint(enter, "lambda goal", !ModeInfo),
+        mode_checkpoint(enter, "lambda goal", GoalInfo0, !ModeInfo),
         mode_info_get_how_to_check(!.ModeInfo, HowToCheckGoal),
         (
             HowToCheckGoal = check_unique_modes,
@@ -1400,7 +1400,7 @@ modecheck_unify_rhs_lambda_std(X, RHS0, Unification0, UnifyContext, _,
         ),
         mode_list_get_final_insts(ModuleInfo0, Modes, FinalInsts),
         modecheck_lambda_final_insts(Vars, FinalInsts, !ModeInfo),
-        mode_checkpoint(exit, "lambda goal", !ModeInfo),
+        mode_checkpoint(exit, "lambda goal", GoalInfo0, !ModeInfo),
 
         mode_info_remove_live_vars(LiveVars, !ModeInfo),
         mode_info_unlock_vars(VarLock, NonLocals, !ModeInfo),

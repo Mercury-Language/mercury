@@ -33,6 +33,7 @@ ERRORCHECK_PROGS = \
 	inst_with_no_type \
 	missing_if \
 	missing_singleton_warning \
+	moved_trace_goal \
 	non_contiguous_decls \
 	non_stratification \
 	non_term_user_special \

@@ -171,10 +171,12 @@ unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
             GoalExpr, !ModeInfo)
     ;
         GoalExpr0 = generic_call(_, _, _, _, _),
-        unique_modes_check_goal_generic_call(GoalExpr0, GoalExpr, !ModeInfo)
+        unique_modes_check_goal_generic_call(GoalExpr0, GoalInfo0,
+            GoalExpr, !ModeInfo)
     ;
         GoalExpr0 = conj(GoalType0, Goals0),
-        unique_modes_check_goal_conj(GoalType0, Goals0, GoalExpr, !ModeInfo)
+        unique_modes_check_goal_conj(GoalType0, Goals0, GoalInfo0,
+            GoalExpr, !ModeInfo)
     ;
         GoalExpr0 = disj(Goals0),
         unique_modes_check_goal_disj(Goals0, GoalInfo0, GoalExpr, !ModeInfo)
@@ -204,11 +206,11 @@ unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
                 GoalInfo0, GoalExpr, !ModeInfo)
         ;
             ShortHand0 = try_goal(MaybeIO, ResultVar, SubGoal0),
-            mode_checkpoint(enter, "try", !ModeInfo),
+            mode_checkpoint(enter, "try", GoalInfo0, !ModeInfo),
             unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo),
             ShortHand = try_goal(MaybeIO, ResultVar, SubGoal),
             GoalExpr = shorthand(ShortHand),
-            mode_checkpoint(exit, "try", !ModeInfo)
+            mode_checkpoint(exit, "try", GoalInfo0, !ModeInfo)
         ;
             ShortHand0 = bi_implication(_, _),
             % These should have been expanded out by now.
@@ -224,14 +226,14 @@ unique_modes_check_goal_expr(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
 
 unique_modes_check_goal_unify(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     GoalExpr0 = unify(LHS0, RHS0, _UniModes0, Unification0, UnifyContext),
-    mode_checkpoint(enter, "unify", !ModeInfo),
+    mode_checkpoint(enter, "unify", GoalInfo0, !ModeInfo),
     mode_info_set_call_context(call_context_unify(UnifyContext), !ModeInfo),
 
     modecheck_unify(LHS0, RHS0, Unification0, UnifyContext, GoalInfo0,
         GoalExpr, !ModeInfo),
 
     mode_info_unset_call_context(!ModeInfo),
-    mode_checkpoint(exit, "unify", !ModeInfo).
+    mode_checkpoint(exit, "unify", GoalInfo0, !ModeInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -244,7 +246,7 @@ unique_modes_check_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr,
         !ModeInfo) :-
     GoalExpr0 = plain_call(PredId, ProcId0, ArgVars, Builtin,
         MaybeUnifyContext, PredSymName),
-    mode_checkpoint_sn(enter, "call", PredSymName, !ModeInfo),
+    mode_checkpoint_sn(enter, "call", PredSymName, GoalInfo0, !ModeInfo),
     mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
         !ModeInfo),
 
@@ -254,7 +256,7 @@ unique_modes_check_goal_plain_call(GoalExpr0, GoalInfo0, GoalExpr,
         PredSymName),
 
     mode_info_unset_call_context(!ModeInfo),
-    mode_checkpoint_sn(exit, "call", PredSymName, !ModeInfo).
+    mode_checkpoint_sn(exit, "call", PredSymName, GoalInfo0, !ModeInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -269,7 +271,7 @@ unique_modes_check_goal_foreign_call(GoalExpr0, GoalInfo0, GoalExpr,
         Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
     % To modecheck a pragma_c_code, we just modecheck the proc for
     % which it is the goal.
-    mode_checkpoint(enter, "foreign_proc", !ModeInfo),
+    mode_checkpoint(enter, "foreign_proc", GoalInfo0, !ModeInfo),
     mode_info_set_call_context(call_context_call(mode_call_plain(PredId)),
         !ModeInfo),
 
@@ -280,18 +282,20 @@ unique_modes_check_goal_foreign_call(GoalExpr0, GoalInfo0, GoalExpr,
         MaybeTraceRuntimeCond, PragmaCode),
 
     mode_info_unset_call_context(!ModeInfo),
-    mode_checkpoint(exit, "foreign_proc", !ModeInfo).
+    mode_checkpoint(exit, "foreign_proc", GoalInfo0, !ModeInfo).
 
 %---------------------------------------------------------------------------%
 
 :- pred unique_modes_check_goal_generic_call(
-    hlds_goal_expr::in(goal_expr_generic_call), hlds_goal_expr::out,
+    hlds_goal_expr::in(goal_expr_generic_call),
+    hlds_goal_info::in, hlds_goal_expr::out,
     mode_info::in, mode_info::out) is det.
 
-unique_modes_check_goal_generic_call(GoalExpr0, GoalExpr, !ModeInfo) :-
+unique_modes_check_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr,
+        !ModeInfo) :-
     GoalExpr0 = generic_call(GenericCall, ArgVars, ArgModes,
         _MaybeRegTypes, Detism),
-    mode_checkpoint(enter, "generic_call", !ModeInfo),
+    mode_checkpoint(enter, "generic_call", GoalInfo0, !ModeInfo),
     CallId = mode_call_generic(GenericCall),
     mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
 
@@ -322,7 +326,7 @@ unique_modes_check_goal_generic_call(GoalExpr0, GoalExpr, !ModeInfo) :-
     GoalExpr = GoalExpr0,
 
     mode_info_unset_call_context(!ModeInfo),
-    mode_checkpoint(exit, "generic_call", !ModeInfo).
+    mode_checkpoint(exit, "generic_call", GoalInfo0, !ModeInfo).
 
 %---------------------------------------------------------------------------%
 %
@@ -461,10 +465,12 @@ unique_modes_check_call_modes(MatchWhat, ArgOffset, ArgVars, ProcArgModes,
 %---------------------------------------------------------------------------%
 
 :- pred unique_modes_check_goal_conj(conj_type::in, list(hlds_goal)::in,
-    hlds_goal_expr::out, mode_info::in, mode_info::out) is det.
+    hlds_goal_info::in, hlds_goal_expr::out,
+    mode_info::in, mode_info::out) is det.
 
-unique_modes_check_goal_conj(ConjType, Goals0, GoalExpr, !ModeInfo) :-
-    mode_checkpoint(enter, "conj", !ModeInfo),
+unique_modes_check_goal_conj(ConjType, Goals0, GoalInfo0, GoalExpr,
+        !ModeInfo) :-
+    mode_checkpoint(enter, "conj", GoalInfo0, !ModeInfo),
     (
         Goals0 = [],
         % For efficiency, optimize common case.
@@ -475,7 +481,7 @@ unique_modes_check_goal_conj(ConjType, Goals0, GoalExpr, !ModeInfo) :-
         unique_modes_flatten_and_check_conj(ConjType, Goals0, Goals, !ModeInfo)
     ),
     GoalExpr = conj(ConjType, Goals),
-    mode_checkpoint(exit, "conj", !ModeInfo).
+    mode_checkpoint(exit, "conj", GoalInfo0, !ModeInfo).
 
 :- pred unique_modes_flatten_and_check_conj(conj_type::in,
     list(hlds_goal)::in, list(hlds_goal)::out, mode_info::in, mode_info::out)
@@ -581,7 +587,7 @@ unique_modes_check_par_conj_1([Goal0 | Goals0], [Goal | Goals],
     mode_info::in, mode_info::out) is det.
 
 unique_modes_check_goal_disj(Goals0, GoalInfo0, GoalExpr, !ModeInfo) :-
-    mode_checkpoint(enter, "disj", !ModeInfo),
+    mode_checkpoint(enter, "disj", GoalInfo0, !ModeInfo),
     (
         Goals0 = [],
         Goals = [],
@@ -618,7 +624,7 @@ unique_modes_check_goal_disj(Goals0, GoalInfo0, GoalExpr, !ModeInfo) :-
         instmap_merge(NonLocals, ArmInstMaps, merge_disj, !ModeInfo)
     ),
     GoalExpr = disj(Goals),
-    mode_checkpoint(exit, "disj", !ModeInfo).
+    mode_checkpoint(exit, "disj", GoalInfo0, !ModeInfo).
 
 %---------------------%
 
@@ -680,7 +686,7 @@ unique_modes_prepare_for_disjunct(Goal0, DisjDetism, DisjNonLocals,
 
 unique_modes_check_goal_switch(Var, CanFail, Cases0, GoalInfo0, GoalExpr,
         !ModeInfo) :-
-    mode_checkpoint(enter, "switch", !ModeInfo),
+    mode_checkpoint(enter, "switch", GoalInfo0, !ModeInfo),
     (
         Cases0 = [],
         Cases = [],
@@ -694,7 +700,7 @@ unique_modes_check_goal_switch(Var, CanFail, Cases0, GoalInfo0, GoalExpr,
         instmap_merge(NonLocals, ArmInstMaps, merge_disj, !ModeInfo)
     ),
     GoalExpr = switch(Var, CanFail, Cases),
-    mode_checkpoint(exit, "switch", !ModeInfo).
+    mode_checkpoint(exit, "switch", GoalInfo0, !ModeInfo).
 
 :- pred unique_modes_check_cases(list(case)::in, prog_var::in,
     list(case)::out, list(instmap)::out, mode_info::in, mode_info::out) is det.
@@ -738,7 +744,7 @@ unique_modes_check_cases([Case0 | Cases0], Var, [Case | Cases],
 
 unique_modes_check_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0,
         GoalExpr, !ModeInfo) :-
-    mode_checkpoint(enter, "if-then-else", !ModeInfo),
+    mode_checkpoint(enter, "if-then-else", GoalInfo0, !ModeInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo0),
     CondVars = goal_get_nonlocals(Cond0),
     ThenVars = goal_get_nonlocals(Then0),
@@ -803,7 +809,7 @@ unique_modes_check_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0,
         ArmInstMaps),
     instmap_merge(NonLocals, ArmInstMaps, merge_if_then_else, !ModeInfo),
     GoalExpr = if_then_else(Vars, Cond, Then, Else),
-    mode_checkpoint(exit, "if-then-else", !ModeInfo).
+    mode_checkpoint(exit, "if-then-else", GoalInfo0, !ModeInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -812,7 +818,7 @@ unique_modes_check_goal_if_then_else(Vars, Cond0, Then0, Else0, GoalInfo0,
     mode_info::in, mode_info::out) is det.
 
 unique_modes_check_goal_negation(SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
-    mode_checkpoint(enter, "not", !ModeInfo),
+    mode_checkpoint(enter, "not", GoalInfo0, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
 
     % We need to mark all the variables which are live after the negation
@@ -838,7 +844,7 @@ unique_modes_check_goal_negation(SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
     mode_info_set_live_vars(LiveVars0, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
     GoalExpr = negation(SubGoal),
-    mode_checkpoint(exit, "not", !ModeInfo).
+    mode_checkpoint(exit, "not", GoalInfo0, !ModeInfo).
 
 %---------------------------------------------------------------------------%
 
@@ -850,7 +856,7 @@ unique_modes_check_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr,
         !ModeInfo) :-
     (
         Reason = trace_goal(_, _, _, _, _),
-        mode_checkpoint(enter, "trace scope", !ModeInfo),
+        mode_checkpoint(enter, "trace scope", GoalInfo0, !ModeInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
         % We need to lock the non-local variables, to ensure that
@@ -860,13 +866,13 @@ unique_modes_check_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr,
         unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo),
         mode_info_unlock_vars(var_lock_trace_goal, NonLocals, !ModeInfo),
         mode_info_set_instmap(InstMap0, !ModeInfo),
-        mode_checkpoint(exit, "trace scope", !ModeInfo),
+        mode_checkpoint(exit, "trace scope", GoalInfo0, !ModeInfo),
         GoalExpr = scope(Reason, SubGoal)
     ;
         Reason = from_ground_term(TermVar, FGT),
         (
             FGT = from_ground_term_construct,
-            mode_checkpoint(enter, "from_ground_term_construct scope",
+            mode_checkpoint(enter, "fgt_construct scope", GoalInfo0,
                 !ModeInfo),
             mode_info_var_is_live(!.ModeInfo, TermVar, LiveTermVar),
             (
@@ -893,15 +899,16 @@ unique_modes_check_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr,
                 % The term constructed by the scope is not used anywhere.
                 GoalExpr = conj(plain_conj, [])
             ),
-            mode_checkpoint(exit, "from_ground_term_construct scope",
-                !ModeInfo)
+            mode_checkpoint(exit, "fgt_construct scope", GoalInfo0, !ModeInfo)
         ;
             ( FGT = from_ground_term_deconstruct
             ; FGT = from_ground_term_other
             ),
-            mode_checkpoint(enter, "scope", !ModeInfo),
+            mode_checkpoint(enter, "fgt_non_construct scope", GoalInfo0,
+                !ModeInfo),
             unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo),
-            mode_checkpoint(exit, "scope", !ModeInfo),
+            mode_checkpoint(exit, "fgt_non_construct scope", GoalInfo0,
+                !ModeInfo),
             GoalExpr = scope(Reason, SubGoal)
         ;
             FGT = from_ground_term_initial,
@@ -919,9 +926,9 @@ unique_modes_check_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr,
         ; Reason = barrier(_)
         ; Reason = loop_control(_, _, _)
         ),
-        mode_checkpoint(enter, "scope", !ModeInfo),
+        mode_checkpoint(enter, "scope", GoalInfo0, !ModeInfo),
         unique_modes_check_goal(SubGoal0, SubGoal, !ModeInfo),
-        mode_checkpoint(exit, "scope", !ModeInfo),
+        mode_checkpoint(exit, "scope", GoalInfo0, !ModeInfo),
         GoalExpr = scope(Reason, SubGoal)
     ).
 
@@ -937,7 +944,7 @@ unique_modes_check_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr,
 unique_modes_check_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
         MainGoal0, OrElseGoals0, OrElseInners, GoalInfo0, GoalExpr,
         !ModeInfo) :-
-    mode_checkpoint(enter, "atomic_goal", !ModeInfo),
+    mode_checkpoint(enter, "atomic_goal", GoalInfo0, !ModeInfo),
     (
         OrElseGoals0 = [],
         unique_modes_check_goal(MainGoal0, MainGoal, !ModeInfo),
@@ -972,7 +979,7 @@ unique_modes_check_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
     ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
         MainGoal, OrElseGoals, OrElseInners),
     GoalExpr = shorthand(ShortHand),
-    mode_checkpoint(exit, "atomic_goal", !ModeInfo).
+    mode_checkpoint(exit, "atomic_goal", GoalInfo0, !ModeInfo).
 
 %---------------------------------------------------------------------------%
 

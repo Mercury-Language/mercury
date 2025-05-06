@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017, 2019, 2021-2022, 2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017, 2019, 2021-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -404,7 +404,7 @@ candidate_parallel_conjunctions_clique_proc(Opts, Deep, RecursionType,
             append_message(pl_clique(CliquePtr),
                 warning_cannot_compute_cost_of_recursive_calls(Error),
                 !Messages),
-            RecursiveCallSiteCostMap = map.init
+            map.init(RecursiveCallSiteCostMap)
         ),
 
         % Analyse this procedure for parallelism opportunities.
@@ -529,7 +529,7 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
     then
         % Silently skip over any code from the runtime, since
         % we can't expect to find its procedure representation.
-        Candidates = map.init
+        map.init(Candidates)
     else
         deep_lookup_clique_index(Deep, PDPtr, CliquePtr),
         PSPtr = PD ^ pd_proc_static,
@@ -613,7 +613,7 @@ candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr, RecursionType,
             )
         ;
             MaybeProcRep = error(_),
-            Candidates = map.init,
+            map.init(Candidates),
             append_message(pl_proc(ProcLabel),
                 warning_cannot_lookup_proc_defn, !Messages)
         )

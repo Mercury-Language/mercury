@@ -1,0 +1,16 @@
+moved_trace_goal.m:033: Warning: this trace goal was [38;5;226mreordered[39;49m to execute after
+moved_trace_goal.m:033:   some goals that occur before it in the text of the
+moved_trace_goal.m:033:   program.
+moved_trace_goal.m:037:   This is the location of the last primitive goal that
+moved_trace_goal.m:037:   this trace goal was moved after. Note that the trace
+moved_trace_goal.m:037:   goal would have been moved only within its original
+moved_trace_goal.m:037:   conjunction, and this goal may be only part of the
+moved_trace_goal.m:037:   conjunct that the trace goal was moved after.
+moved_trace_goal.m:039: Warning: this trace goal was [38;5;226mreordered[39;49m to execute after
+moved_trace_goal.m:039:   some goals that occur before it in the text of the
+moved_trace_goal.m:039:   program.
+moved_trace_goal.m:043:   This is the location of the last primitive goal that
+moved_trace_goal.m:043:   this trace goal was moved after. Note that the trace
+moved_trace_goal.m:043:   goal would have been moved only within its original
+moved_trace_goal.m:043:   conjunction, and this goal may be only part of the
+moved_trace_goal.m:043:   conjunct that the trace goal was moved after.

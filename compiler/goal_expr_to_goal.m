@@ -899,9 +899,9 @@ transform_try_expr_with_io(LocKind, Renaming, IOStateVarUnrenamed, IOStateVar,
     create_new_named_unravel_var("TryResult", ResultVar, !UrInfo),
     create_new_unravel_var(ExcpVar, !UrInfo),
 
-    ResultVarTerm = variable(ResultVar, Context),
-    ExcpVarTerm = variable(ExcpVar, Context),
-    NullTupleTerm = functor(atom("{}"), [], Context),
+    ResultVarTerm = term.variable(ResultVar, Context),
+    ExcpVarTerm = term.variable(ExcpVar, Context),
+    NullTupleTerm = term.functor(atom("{}"), [], Context),
 
     goal_info_init(Context, GoalInfo),
 
@@ -1087,6 +1087,54 @@ transform_try_expr_without_io(LocKind, Renaming, SubGoal, ThenGoal,
     GoalExpr = shorthand(ShortHand),
     TryGoal = hlds_goal(GoalExpr, GoalInfo).
 
+    % NOTE We need to use the context of the overall try goal, and not the
+    % context of the goal in the catch scope, for the code we add in front
+    % of the catch scope goal to pick up the value of the exception itself.
+    % The reason is the following, explained using this try scope
+    % in deep_profiler/autopar_search_callgraph.m:
+    %
+    %   promise_equivalent_solutions [Candidates, ProcMessages]
+    %   ( try [] (
+    %       candidate_parallel_conjunctions_proc(Opts, Deep, PDPtr,
+    %           RecursionType, RecursiveCallSiteCostMap, CandidatesPrime,
+    %           ProcMessagesPrime)
+    %   )
+    %   then (
+    %       Candidates = CandidatesPrime,
+    %       ProcMessages = ProcMessagesPrime
+    %   )
+    %   catch_any Exp -> (
+    %       trace [io(!IO)] (
+    %           ...
+    %       ),
+    %       throw(Exp)
+    %   )),
+    %
+    % With addition of warnings for moved trace goals, the try wrapper
+    % around this call to candidate_parallel_conjunctions_proc caused
+    % bootcheck to fail while compiling this module for stage 2, because
+    %
+    % - the predicates called from make_exception_handling_disjunct
+    %   adds a goal to just before the goal in the catch_any scope
+    %   to pick up the value of Exp;
+    %
+    % - they used to use the context of that goal as the context
+    %   of that pickup goal;
+    %
+    % - the goal in the catch_any scope is the conjunction of the trace
+    %   goal and the call to throw;
+    %
+    % - the context of the conjunction itself is the context of the comma
+    %   *between* those two goals;
+    %
+    % - this means that the pickup goal, whose context is the *last*
+    %   line of the trace goal, while the context of the trace goal itself
+    %   is its *first* line;
+    %
+    % - which triggers the new warning about the trace goal being moved later;
+    %
+    % - which --halt-at-warn turns into an error.
+    %
 :- pred make_exception_handling_disjunct(prog_term::in, prog_term::in,
     list(catch_expr)::in, maybe(catch_any_expr)::in, prog_context::in,
     goal::out) is det.
@@ -1098,20 +1146,21 @@ make_exception_handling_disjunct(ResultVarTerm, ExcpVarTerm, Catches,
         exception_functor("exception", ExcpVarTerm, Context),
         purity_pure),
     make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, Catches, MaybeCatchAny,
-        CatchChain),
+        Context, CatchChain),
     Goal = conj_expr(Context, ResultIsExceptionUnify, [CatchChain]).
 
 :- pred make_catch_ite_chain(prog_term::in, prog_term::in,
-    list(catch_expr)::in, maybe(catch_any_expr)::in, goal::out) is det.
+    list(catch_expr)::in, maybe(catch_any_expr)::in, prog_context::in,
+    goal::out) is det.
 
 make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, Catches, MaybeCatchAny,
-        Goal) :-
+        Context, Goal) :-
     (
         Catches = [catch_expr(FirstPattern, FirstGoal) | RestCatches],
         make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, RestCatches,
-            MaybeCatchAny, ElseGoal),
+            MaybeCatchAny, Context, ElseGoal),
         make_catch_pattern_unify_goal(FirstPattern, ExcpVarTerm,
-            FirstPatternGoal),
+            Context, FirstPatternGoal),
         Goal = if_then_else_expr(get_term_context(FirstPattern), [], [],
             FirstPatternGoal, FirstGoal, ElseGoal)
     ;
@@ -1121,7 +1170,9 @@ make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, Catches, MaybeCatchAny,
             % With a catch_any part, end the if-then-else chain with:
             %   CatchAnyVar = exc_univ_value(Excp),
             %   CatchAnyGoal
-            Context = get_goal_context(CatchAnyGoal),
+            % Note that GetUnivValue is part of the implementation mechanism
+            % of the try scope. Its context must be the context of that scope,
+            % NOT the context of CatchAnyGoal.
             GetUnivValue = unify_expr(Context,
                 variable(CatchAnyVar, Context),
                 exception_functor("exc_univ_value", ExcpVarTerm, Context),
@@ -1132,16 +1183,19 @@ make_catch_ite_chain(ResultVarTerm, ExcpVarTerm, Catches, MaybeCatchAny,
             % Without a catch_any part, end the if-then-else chain
             % by rethrowing the exception.
             Rethrow = qualified(mercury_exception_module, "rethrow"),
-            Goal = call_expr( get_term_context(ExcpVarTerm),
+            Goal = call_expr(get_term_context(ExcpVarTerm),
                 Rethrow, [ResultVarTerm], purity_pure)
         )
     ).
 
 :- pred make_catch_pattern_unify_goal(prog_term::in, prog_term::in,
-    goal::out) is det.
+    prog_context::in, goal::out) is det.
 
-make_catch_pattern_unify_goal(CatchPatternTerm, ExcpVarTerm, Goal) :-
-    Goal = call_expr(get_term_context(CatchPatternTerm),
+make_catch_pattern_unify_goal(CatchPatternTerm, ExcpVarTerm, Context, Goal) :-
+    % Note that Goal is part of the implementation mechanism
+    % of the try scope. Its context must be the context of that scope,
+    % NOT the context of CatchPatternTerm.
+    Goal = call_expr(Context,
         qualified(mercury_exception_module, "exc_univ_to_type"),
         [ExcpVarTerm, CatchPatternTerm], purity_pure).
 

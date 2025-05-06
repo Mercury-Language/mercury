@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2011 The University of Melbourne.
-% Copyright (C) 2015, 2017, 2019, 2021-2022 The Mercury team.
+% Copyright (C) 2015, 2017, 2019, 2021-2022, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -199,7 +199,7 @@ build_dynamic_call_site_cost_and_callee_map(Deep, CSSPtr - Slot,
     ;
         Slot = slot_multi(_, CSDPtrsArray),
         to_list(CSDPtrsArray, CSDPtrs),
-        map3(call_site_dynamic_get_callee_and_costs(Deep), CSDPtrs,
+        list.map3(call_site_dynamic_get_callee_and_costs(Deep), CSDPtrs,
             Callees, Owns, Inherits),
         Own = sum_own_infos(Owns),
         Inherit = sum_inherit_infos(Inherits),
@@ -218,13 +218,13 @@ build_dynamic_call_site_cost_and_callee_map(Deep, CSSPtr - Slot,
     call_site_dynamic_ptr::in, callee::out, own_prof_info::out,
     inherit_prof_info::out) is det.
 
-call_site_dynamic_get_callee_and_costs(Deep, CSDPtr,
-        callee(CalleeCliquePtr, CSDPtr), Own, Inherit) :-
+call_site_dynamic_get_callee_and_costs(Deep, CSDPtr, Callee, Own, Inherit) :-
     lookup_call_site_dynamics(Deep ^ call_site_dynamics, CSDPtr, CSD),
-    lookup_csd_desc(Deep ^ csd_desc, CSDPtr, Inherit),
     PDPtr = CSD ^ csd_callee,
     lookup_clique_index(Deep ^ clique_index, PDPtr, CalleeCliquePtr),
-    Own = CSD ^ csd_own_prof.
+    Callee = callee(CalleeCliquePtr, CSDPtr),
+    Own = CSD ^ csd_own_prof,
+    lookup_csd_desc(Deep ^ csd_desc, CSDPtr, Inherit).
 
 :- pred call_site_kind_to_higher_order(call_site_kind_and_callee::in,
     higher_order::out) is det.
@@ -269,13 +269,14 @@ build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr, RecursionType,
                 % Descend once to move to the depth of the recursive callees.
                 get_recursive_calls_and_counts(Deep, CliquePtr, PDPtr,
                     CallCountsMap),
-                RecursiveCallSiteCostMap = map_values_only(
-                    ( func(Count) =
-                            build_cs_cost_csq_percall(float(Count),
-                                CostFn(DepthI)) :-
-                        DepthI = round_to_int(MaxDepth / float(Count))
+                CountToCallSiteCost =
+                    ( pred(Count::in, CallSiteCost::out) is det :-
+                        DepthI = round_to_int(MaxDepth / float(Count)),
+                        CallSiteCost = build_cs_cost_csq_percall(float(Count),
+                            CostFn(DepthI))
                     ),
-                    CallCountsMap),
+                map.map_values_only(CountToCallSiteCost,
+                    CallCountsMap, RecursiveCallSiteCostMap),
                 MaybeRecursiveCallSiteCostMap = ok(RecursiveCallSiteCostMap),
 
                 trace [compile_time(flag("debug_recursive_call_costs")),
@@ -321,8 +322,9 @@ build_recursive_call_site_cost_map(Deep, CliquePtr, PDPtr, RecursionType,
 
 get_recursive_calls_and_counts(Deep, CliquePtr, PDPtr, CallCountsMap) :-
     proc_dynamic_paired_call_site_slots(Deep, PDPtr, SiteSlots),
-    foldl(build_recursive_call_site_counts_map(Deep, CliquePtr), SiteSlots,
-        map.init, CallCountsMap).
+    list.foldl(
+        build_recursive_call_site_counts_map(Deep, CliquePtr),
+        SiteSlots, map.init, CallCountsMap).
 
 :- pred build_recursive_call_site_counts_map(deep::in, clique_ptr::in,
     pair(call_site_static_ptr, call_site_array_slot)::in,
@@ -346,8 +348,8 @@ build_recursive_call_site_counts_map(Deep, CliquePtr, CSSPtr - CSDSlot,
         )
     ;
         CSDSlot = slot_multi(_, CSDPtrs),
-        map2(call_site_dynamic_get_count_and_callee(Deep), to_list(CSDPtrs),
-            Counts, MaybeCallees),
+        list.map2(call_site_dynamic_get_count_and_callee(Deep),
+            array.to_list(CSDPtrs), Counts, MaybeCallees),
         Count = foldl(plus, Counts, 0),
         ( if
             member(MaybeCallee, MaybeCallees),
@@ -395,12 +397,12 @@ format_recursive_call_site_cost_map(Map, Result) :-
     cord(string)::in, cord(string)::out) is det.
 
 format_recursive_call_site_cost(RevGoalPath, Cost, !Result) :-
-    !:Result = cord.snoc(!.Result ++ indent(1), String),
-    String = format("%s -> Percall cost: %f Calls: %f\n",
-        [s(GoalPathString), f(PerCallCost), f(Calls)]),
     GoalPathString = rev_goal_path_to_string(RevGoalPath),
     PerCallCost = cs_cost_get_percall(Cost),
-    Calls = cs_cost_get_calls(Cost).
+    Calls = cs_cost_get_calls(Cost),
+    String = format("%s -> Percall cost: %f Calls: %f\n",
+        [s(GoalPathString), f(PerCallCost), f(Calls)]),
+    !:Result = cord.snoc(!.Result ++ indent(1), String).
 
 %---------------------------------------------------------------------------%
 
@@ -418,7 +420,7 @@ proc_dynamic_paired_call_site_slots(Deep, PDPtr, PairedSlots) :-
 
 cost_and_callees_is_recursive(ParentCliquePtr, CostAndCallees) :-
     Callees = CostAndCallees ^ cac_callees,
-    member(Callee, Callees),
+    set.member(Callee, Callees),
     ParentCliquePtr = Callee ^ c_clique.
 
 %---------------------------------------------------------------------------%

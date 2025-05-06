@@ -131,23 +131,56 @@
 
 :- type locked_vars == assoc_list(var_lock_reason, set_of_progvar).
 
-:- type mode_info.
+%---------------------%
 
-:- type debug_flags
-    --->    debug_flags(
+% Bespoke types for representing debugging flags.
+% We use a simple wrapper around bool for the statistics flag
+% to make it easier to invoke maybe_report_stats.
+
+:- type mode_debug_flag_statistics
+    --->    mdf_statistics(bool).
+
+:- type mode_debug_flag_verbose
+    --->    mdf_not_verbose
+    ;       mdf_verbose.
+
+:- type mode_debug_flag_minimal
+    --->    mdf_not_minimal
+    ;       mdf_minimal.
+
+:- type mode_debug_flag_goal_ids
+    --->    mdf_no_goal_ids
+    ;       mdf_goal_ids.
+
+:- type mode_debug_flag_delay_vars
+    --->    mdf_no_delay_vars
+    ;       mdf_delay_vars.
+
+:- type mode_debug_flags
+    --->    mode_debug_flags(
                 % The empty string when mode checking, and a prefix to put
                 % in front of goal kind names when unique mode checking.
                 unique_prefix   :: string,
 
+                % The value --debug-modes-statistics.
+                statistics      :: mode_debug_flag_statistics,
+
                 % The value --debug-modes-verbose.
-                verbose         :: bool,
+                verbose         :: mode_debug_flag_verbose,
 
                 % The value --debug-modes-minimal.
-                minimal         :: bool,
+                minimal         :: mode_debug_flag_minimal,
 
-                % The value --debug-modes-statistics.
-                statistics      :: bool
+                % The value --debug-modes-goal-ids.
+                goal_ids        :: mode_debug_flag_goal_ids,
+
+                % The value --debug-modes-delay-vars.
+                delay_vars      :: mode_debug_flag_delay_vars
             ).
+
+%---------------------%
+
+:- type mode_info.
 
     % Initialize the mode_info.
     %
@@ -215,7 +248,7 @@
 :- pred mode_info_get_pred_id(mode_info::in, pred_id::out) is det.
 :- pred mode_info_get_proc_id(mode_info::in, proc_id::out) is det.
 :- pred mode_info_get_var_table(mode_info::in, var_table::out) is det.
-:- pred mode_info_get_debug_modes(mode_info::in, maybe(debug_flags)::out)
+:- pred mode_info_get_debug_modes(mode_info::in, maybe(mode_debug_flags)::out)
     is det.
 :- pred mode_info_get_locked_vars(mode_info::in, locked_vars::out) is det.
 :- pred mode_info_get_live_vars(mode_info::in, bag(prog_var)::out) is det.
@@ -539,7 +572,7 @@
                 % Is mode debugging of this procedure enabled? If yes,
                 % is verbose mode debugging enabled, is minimal mode debugging
                 % enabled, and is statistics printing enabled?
-                msi_debug                   :: maybe(debug_flags),
+                msi_debug                   :: maybe(mode_debug_flags),
 
                 % The "locked" variables, i.e. variables which cannot be
                 % further instantiated inside a negated context.
@@ -679,7 +712,6 @@
 
 mode_context_init(mode_context_not_call_or_unify).
 
-
 %---------------------------------------------------------------------------%
 
 mode_info_init(ModuleInfo, ProcModeErrorMap, PredId, ProcId, Context, LiveVars,
@@ -699,12 +731,30 @@ mode_info_init(ModuleInfo, ProcModeErrorMap, PredId, ProcId, Context, LiveVars,
             HowToCheck = check_unique_modes,
             UniquePrefix = "unique "
         ),
-        globals.lookup_bool_option(Globals, debug_modes_verbose, DebugVerbose),
-        globals.lookup_bool_option(Globals, debug_modes_minimal, DebugMinimal),
+        globals.lookup_bool_option(Globals, debug_modes_verbose,
+            OptVerbose),
         globals.lookup_bool_option(Globals, debug_modes_statistics,
-            Statistics),
-        Flags = debug_flags(UniquePrefix, DebugVerbose, DebugMinimal,
-            Statistics),
+            OptStatistics),
+        globals.lookup_bool_option(Globals, debug_modes_minimal,
+            OptMinimal),
+        globals.lookup_bool_option(Globals, debug_modes_delay_vars,
+            OptDelayVars),
+        globals.lookup_bool_option(Globals, debug_modes_goal_ids,
+            OptGoalIds),
+        ( OptVerbose = no,  DebugVerbose = mdf_not_verbose
+        ; OptVerbose = yes, DebugVerbose = mdf_verbose
+        ),
+        ( OptMinimal = no,  DebugMinimal = mdf_not_minimal
+        ; OptMinimal = yes, DebugMinimal = mdf_minimal
+        ),
+        ( OptGoalIds = no,  DebugGoalIds = mdf_no_goal_ids
+        ; OptGoalIds = yes, DebugGoalIds = mdf_goal_ids
+        ),
+        ( OptDelayVars = no,  DebugDelayVars = mdf_no_delay_vars
+        ; OptDelayVars = yes, DebugDelayVars = mdf_delay_vars
+        ),
+        Flags = mode_debug_flags(UniquePrefix, mdf_statistics(OptStatistics),
+            DebugVerbose, DebugMinimal, DebugGoalIds, DebugDelayVars),
         MaybeDebug = yes(Flags)
     else
         MaybeDebug = no
@@ -1250,7 +1300,7 @@ mode_info_add_error(ModeErrorInfo, !ModeInfo) :-
             module_info_get_name(ModuleInfo, ModuleName),
             get_debug_output_stream(Globals0, ModuleName, DebugStream, !IO),
             list.length(Errors, ErrorNum),
-            io.format(DebugStream, "Adding error_spec %d\n",
+            io.format(DebugStream, "\nAdding error_spec %d\n",
                 [i(ErrorNum)], !IO),
             Spec = mode_error_info_to_spec(!.ModeInfo, ModeErrorInfo),
             globals.set_option(print_error_spec_id, bool(yes),

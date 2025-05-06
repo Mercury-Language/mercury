@@ -314,6 +314,8 @@
     ;       debug_modes_statistics
     ;       debug_modes_minimal
     ;       debug_modes_verbose
+    ;       debug_modes_delay_vars
+    ;       debug_modes_goal_ids
     ;       debug_modes_pred_id
     ;       debug_dep_par_conj
     ;       debug_det
@@ -1420,6 +1422,8 @@ optdef(oc_verbosity, debug_types_pred_name,             accumulating([])).
 optdef(oc_verbosity, debug_modes,                       bool(no)).
 optdef(oc_verbosity, debug_modes_statistics,            bool(no)).
 optdef(oc_verbosity, debug_modes_minimal,               bool(no)).
+optdef(oc_verbosity, debug_modes_delay_vars,            bool(yes)).
+optdef(oc_verbosity, debug_modes_goal_ids,              bool(yes)).
 optdef(oc_verbosity, debug_modes_verbose,               bool(no)).
 optdef(oc_verbosity, debug_modes_pred_id,               int(-1)).
 optdef(oc_verbosity, debug_dep_par_conj,                accumulating([])).
@@ -2420,6 +2424,8 @@ long_table("debug-modes",              debug_modes).
 long_table("debug-modes-statistics",   debug_modes_statistics).
 long_table("debug-modes-minimal",      debug_modes_minimal).
 long_table("debug-modes-verbose",      debug_modes_verbose).
+long_table("debug-modes-delay-vars",   debug_modes_delay_vars).
+long_table("debug-modes-goal-ids",     debug_modes_goal_ids).
 long_table("debug-modes-pred-id",      debug_modes_pred_id).
 long_table("debug-dep-par-conj",       debug_dep_par_conj).
 long_table("debug-determinism",        debug_det).
@@ -4855,6 +4861,10 @@ options_help_verbosity(Stream, !IO) :-
         "\tOutput only minimal debugging traces of the mode checking.",
         "--debug-modes-verbose",
         "\tOutput detailed debugging traces of the mode checking.",
+%       "--debug-modes-delay-vars",
+%       "\tOutput info about the variables involved in delayed goals.",
+%       "--debug-modes-goal-ids",
+%       "\tOutput the id of the goal at all mode debug checkpoints.",
         "--debug-modes-pred-id <n>",
         "\tWith `--debug-modes', restrict the debugging traces to the",
         "\tmode checking of the predicate or function with the specified",

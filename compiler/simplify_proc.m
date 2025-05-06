@@ -600,8 +600,8 @@ maybe_warn_about_may_export_body_attribute(MayExportBody, Markers, Context,
 
 simplify_top_level_goal(NestedContext0, InstMap0, AllowSplitSwitchArms,
         !Goal, !Info) :-
-    % Simplification is done in two passes, which is we have two calls to
-    % do_simplify_top_level_goal below. The first pass performs common
+    % Simplification is done in two main passes, which is we have two calls
+    % to do_simplify_top_level_goal below. The first pass performs common
     % structure and duplicate call elimination. The second pass performs
     % excess assignment elimination, and cleans up the code after the
     % first pass.
@@ -611,6 +611,9 @@ simplify_top_level_goal(NestedContext0, InstMap0, AllowSplitSwitchArms,
     % of the second pass may need this information to be up-to-date.
     % Therefore we have to be prepared to recompute this information
     % between the two passes.
+    %
+    % After the two main passes that both invoke do_simplify_top_level_goal,
+    % we have some optional other passes as well.
     some [!SimplifyTasks] (
         simplify_info_get_simplify_tasks(!.Info, !:SimplifyTasks),
         OriginalSimplifyTasks = !.SimplifyTasks,
@@ -659,6 +662,7 @@ simplify_top_level_goal(NestedContext0, InstMap0, AllowSplitSwitchArms,
         % some cleaning up after the common structure pass.
         do_simplify_top_level_goal(NestedContext0, InstMap0, !Goal, !Info),
 
+        % OPTIONAL PASS 3.
         simplify_info_get_switch_arms_to_split(!.Info, ToSplitArms),
         ( if
             set.is_non_empty(ToSplitArms),
@@ -700,12 +704,20 @@ simplify_top_level_goal(NestedContext0, InstMap0, AllowSplitSwitchArms,
             true
         ),
 
-        simplify_info_get_found_contains_trace(!.Info, FoundContainsTrace),
-        (
-            FoundContainsTrace = no
-        ;
-            FoundContainsTrace = yes,
-            set_goal_contains_trace_features_in_goal(!Goal, _)
+        % OPTIONAL PASS 4.
+        ( if
+            simplify_do_after_front_end(!.Info),
+            simplify_info_get_found_contains_trace(!.Info, yes)
+        then
+            set_goal_contains_trace_features_in_goal(!Goal, _ContainsTraceGoal,
+                map.init, _LastNonTraceGoal, [], TraceSpecs),
+            % Note that we ignore the setting of do_not_allow_messages above,
+            % since it applies only to pass 2.
+            simplify_info_get_error_specs(!.Info, Specs0),
+            Specs = TraceSpecs ++ Specs0,
+            simplify_info_set_error_specs(Specs, !Info)
+        else
+            true
         )
         % We do not have to put OriginalSimplifyTasks back into !:Info
         % at the end, because neither of our two callers will look at

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018, 2021, 2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -111,7 +111,9 @@ modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo) :-
 
 :- type impurity_errors == list(mode_error_info).
 
-    % Schedule goals, and also flatten conjunctions of the same type as we go.
+    % Schedule goals, and also flatten plain conjunctions as we go.
+    % (We do not flatten parallel conjunctions, since nested parallel
+    % conjunctions are rarer than hen's teeth.)
     %
 :- pred modecheck_conj_list_flatten_and_schedule(conj_type::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
@@ -134,7 +136,10 @@ modecheck_conj_list_flatten_and_schedule_acc(_ConjType, [], !Goals,
 modecheck_conj_list_flatten_and_schedule_acc(ConjType, [Goal0 | Goals0],
         !Goals, !ImpurityErrors, !ModeInfo) :-
     ( if
+        % Do this test first because it will usually fail, while ...
         Goal0 = hlds_goal(conj(plain_conj, ConjGoals), _),
+        % ... this test will almost always succeed, since parallel
+        % conjunctions are rare.
         ConjType = plain_conj
     then
         Goals1 = ConjGoals ++ Goals0,
@@ -161,6 +166,7 @@ modecheck_conj_list_flatten_and_schedule_acc(ConjType, [Goal0 | Goals0],
         ),
 
         % Hang onto the original instmap, delay_info, and live_vars.
+        % XXX Where do we "hang onto" the live_vars?
         mode_info_get_instmap(!.ModeInfo, InstMap0),
         mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
 
@@ -217,11 +223,8 @@ modecheck_conj_list_flatten_and_schedule_acc(ConjType, [Goal0 | Goals0],
         (
             WokenGoals = []
         ;
-            WokenGoals = [_],
-            mode_checkpoint(wakeup, "goal", !ModeInfo)
-        ;
-            WokenGoals = [_, _ | _],
-            mode_checkpoint(wakeup, "goals", !ModeInfo)
+            WokenGoals = [HeadWokenGoal | TailWokenGoals],
+            mode_checkpoint_wakeups(HeadWokenGoal, TailWokenGoals, !ModeInfo)
         ),
         mode_info_set_delay_info(DelayInfo, !ModeInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap),

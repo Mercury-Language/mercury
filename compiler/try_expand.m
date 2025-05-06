@@ -10,19 +10,23 @@
 % File: try_expand.m
 % Author: wangp.
 %
-% Try goals are implemented by replacing them with calls to predicates in the
-% `exception' module.  For example, goal such as:
+% We implement try goals by replacing them with calls to predicates
+% in the `exception' module. Given a goal of the form
 %
-%      (try [] p(X, Y)
-%       then q(X, Y)
-%       else r
-%       catch ...
+%      ( try []
+%           p(X, Y)
+%      then
+%           q(X, Y)
+%      else
+%           r
+%      catch
+%           ...
 %      )
 %
-% is expanded to:
+% we expand it to:
 %
 %      exception.try(
-%          (pred(OutputTuple::out) is semidet :-
+%          ( pred(OutputTuple::out) is semidet :-
 %              p(X, Y),
 %              OutputTuple = {X, Y}
 %          ), TryResult),
@@ -516,9 +520,10 @@ expand_try_goal(InstMap, TryGoal, FinalGoal, !Info) :-
     ),
     expand_try_goals_in_goal(InstMap, ExcpHandling0, ExcpHandling1, !Info),
 
-    % Find the output variables.  Note we use Goal0, not Goal1, as any nested
+    % Find the output variables. Note we use Goal0, not Goal1, as any nested
     % tries would have been transformed will mess up the calculation.
-    bound_nonlocals_in_goal(!.Info ^ ti_module_info, InstMap, Goal0,
+    % XXX That sentence is grammatically incorrect.
+    compute_bound_nonlocals_in_goal(!.Info ^ ti_module_info, InstMap, Goal0,
         GoalOutputVarsSet0),
     (
         MaybeIO = yes(try_io_state_vars(_IOStateVarInitial, IOStateVarFinal)),
@@ -531,19 +536,19 @@ expand_try_goal(InstMap, TryGoal, FinalGoal, !Info) :-
 
     some [!ModuleInfo, !PredInfo, !ProcInfo] (
         !.Info = trys_info(!:ModuleInfo, !:PredInfo, !:ProcInfo, _),
-        expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1,
+        implement_try_goal(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1,
             ExcpHandling1, InstMapAfterGoal, GoalOutputVarsSet, FinalGoal,
             !PredInfo, !ProcInfo, !ModuleInfo),
         !:Info = trys_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, yes)
     ).
 
-:- pred expand_try_goal_2(maybe(try_io_state_vars)::in, prog_var::in,
+:- pred implement_try_goal(maybe(try_io_state_vars)::in, prog_var::in,
     hlds_goal::in, hlds_goal::in, maybe(hlds_goal)::in, hlds_goal::in,
     instmap::in, set_of_progvar::in, hlds_goal::out,
     pred_info::in, pred_info::out, proc_info::in, proc_info::out,
     module_info::in, module_info::out) is det.
 
-expand_try_goal_2(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
+implement_try_goal(MaybeIO, ResultVar, Goal1, Then1, MaybeElse1, ExcpHandling1,
         InstMap, GoalOutputVarsSet, FinalGoal,
         !PredInfo, !ProcInfo, !ModuleInfo) :-
     some [!VarTable] (
@@ -808,16 +813,16 @@ lookup_case_goal([Case | Cases], ConsId, Goal) :-
         lookup_case_goal(Cases, ConsId, Goal)
     ).
 
-:- pred bound_nonlocals_in_goal(module_info::in, instmap::in, hlds_goal::in,
-    set_of_progvar::out) is det.
+:- pred compute_bound_nonlocals_in_goal(module_info::in, instmap::in,
+    hlds_goal::in, set_of_progvar::out) is det.
 
-bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, BoundNonLocals) :-
+compute_bound_nonlocals_in_goal(ModuleInfo, InstMap, Goal, BoundNonLocals) :-
     Goal = hlds_goal(_, GoalInfo),
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
-    BoundNonLocals = set_of_var.filter(
+    set_of_var.filter(
         var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstMapDelta),
-        NonLocals).
+        NonLocals, BoundNonLocals).
 
 :- pred make_try_lambda(hlds_goal::in, set_of_progvar::in,
     mer_type::in, maybe(try_io_state_vars)::in, prog_var::out, hlds_goal::out,
