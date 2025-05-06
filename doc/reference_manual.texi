@@ -1937,7 +1937,7 @@ to the specified arguments.
 Field access expressions provide a convenient way
 to select or update fields of data constructors,
 independent of the definition of the constructor.
-Field access expressions are transformed into
+The compiler transforms field access expressions into
 sequences of calls to field selection or update functions
 (@pxref{Field access functions}).
 
@@ -3058,13 +3058,15 @@ and can optionally be followed by an existential type class constraint.
 For details, see @ref{Existential types}.
 Existentially typed discriminated union definitions need not be transparent.
 
-The arguments of constructor definitions may be labelled.
-These labels cause the compiler to generate functions
-which can be used to conveniently select and update fields of a term
+The arguments of constructor definitions may be named.
+These names cause the compiler to generate functions
+which can be used to select and update fields of a term
 in a manner independent of the definition of the type
 (@pxref{Field access functions}).
-A labelled argument has the form @w{@code{@var{fieldname} :: @var{Type}}}.
-It is an error for two fields in the same type to have the same label.
+A named argument has the form @w{@code{@var{fieldname} :: @var{Type}}}.
+It is an error for
+two fields in the same type definition to have the same name,
+even if the fields they name occur in different data constructors.
 
 Here are some examples of discriminated union definitions:
 
@@ -3768,9 +3770,9 @@ Every clause in a Mercury program must be type-correct.
 @node Field access functions
 @section Field access functions
 
-Fields of constructors of discriminated union types may be labelled
+Fields of constructors of discriminated union types may be named
 (@pxref{Discriminated unions}).
-These labels cause the compiler to generate functions
+These names cause the compiler to generate functions
 which can be used to select and update fields of a term
 in a manner independent of the definition of the type.
 
@@ -3794,10 +3796,11 @@ and to select and update fields of the DCG arguments of a clause
 @var{field}(@var{Term})
 @end example
 
-Each field label @samp{@var{field}} in a constructor
-causes generation of a field selection function @samp{@var{field}/1},
+Each field name @samp{@var{field}} in a constructor
+tells the compiler to generate
+a field selection function @samp{@var{field}/1},
 which takes an expression of the same type as the constructor
-and returns the value of the labelled field,
+and returns the value of the named field,
 failing if the top-level constructor of the argument
 is not the constructor containing the field.
 
@@ -3824,17 +3827,18 @@ The declaration acts as the request for the generation of that code.
 '@var{field} :='(@var{Term}, @var{ValueTerm})
 @end example
 
-Each field label @samp{@var{field}} in a constructor
-causes generation of a field update function @samp{'@var{field} :='/2}.
+Each field name @samp{@var{field}} in a constructor
+tells the compiler to generate
+a field update function @samp{'@var{field} :='/2}.
 The first argument of this function
 is an expression of the same type as the constructor.
 The second argument
-is an expression of the same type as the labelled field.
+is an expression of the same type as the named field.
 The return value is a copy of the first argument
-with the value of the labelled field replaced by the second argument.
+with the value of the named field replaced by the second argument.
 @samp{'@var{field} :='/2} fails
 if the top-level constructor of the first argument
-is not the constructor containing the labelled field.
+is not the constructor containing the named field.
 
 If the declaration of the field is in the interface section of the module,
 the corresponding field update function is also exported from the module.
@@ -3845,12 +3849,13 @@ However, the type and modes of this function may be explicitly declared,
 in which case it will have only the declared modes.
 
 To create a higher-order value from a field update function,
-an explicit lambda expression must be used,
+users must write an explicit lambda expression,
 unless a single mode declaration is supplied for the field update function.
 The reason for this is that normally, as with field selection functions,
 field update functions are implemented directly as unifications,
 without the code of a function being generated for them.
-The declaration acts as the request for the generation of that code.
+The declaration acts as the request
+for the compiler to generate that function.
 
 Some fields cannot be updated using field update functions.
 For the constructor @samp{unsettable/2} below,
@@ -3886,7 +3891,7 @@ If a field occurs in the interface section of a module,
 then any declaration for a field access function for that field
 must also occur in the interface section.
 
-If there are multiple fields with the same label in the same module,
+If there are multiple fields with the same name in the same module,
 only one of those fields can have user-supplied declarations
 for its selection function.
 Similarly, only one of those fields can have user-supplied declarations
