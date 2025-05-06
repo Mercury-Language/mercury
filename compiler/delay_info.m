@@ -15,6 +15,10 @@
 % compile time. This module defines an abstract data type `delay_info' that
 % records the information necessary for suspending and waking up goals.
 %
+% XXX There is a long comment in the modecheck_goal_scope predicate
+% in modecheck_goal.m about two bugs in this module. Anyone working
+% on this module in the future should definitely read it.
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.delay_info.

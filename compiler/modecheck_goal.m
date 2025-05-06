@@ -947,15 +947,100 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
     (
         Reason = trace_goal(_, _, _, _, _),
         mode_checkpoint(enter, "trace scope", GoalInfo0, !ModeInfo),
+        mode_info_get_var_table(!.ModeInfo, VarTable),
         mode_info_get_instmap(!.ModeInfo, InstMap0),
         NonLocals = goal_info_get_nonlocals(GoalInfo0),
-        % We need to lock the non-local variables, to ensure that
-        % the trace goal does not bind them. If it did, then the code
-        % would not be valid with the trace goal disabled.
-        mode_info_lock_vars(var_lock_trace_goal, NonLocals, !ModeInfo),
-        modecheck_goal(SubGoal0, SubGoal, !ModeInfo),
-        mode_info_unlock_vars(var_lock_trace_goal, NonLocals, !ModeInfo),
-        mode_info_set_instmap(InstMap0, !ModeInfo),
+        set_of_var.to_sorted_list(NonLocals, NonLocalVars),
+        mode_info_get_module_info(!.ModeInfo, ModuleInfo),
+        % Testing here whether all the nonlocals of the trace goal are ground,
+        % and delaying the scope if some are not, is a workaround for a bug.
+        % The test case for the bug is tests/warnings/moved_trace_goal.m.
+        %
+        % The relevant predicate in that test starts with a trace goal
+        % which prints the values of A, B and C, with A and B being ground,
+        % but C is not. The compiler used to move this trace goal not just
+        % after the next if-then-else (which grounds C), but also after
+        % all the rest of the predicate's code. It did this because the
+        % compiler's code handling delayed goals recorded, as the set of
+        % variables that needed to be available for the trace goal to be
+        % scheduled, not {C}, but {STATE_VARIABLE_IO_10}.
+        %
+        % The history behind this is that goal_expr_to_goal.m wraps calls to
+        % unsafe_{get,set}_io_state around the body of the trace goal.
+        % So the trace goal is a conjunction whose second conjunct,
+        % the actual trace goal, is waiting on C, and whose third conjunct,
+        % the call to unsafe_set_io_state, needs the I/O state at the
+        % end of the trace goal.
+        %
+        % Bug 1 is that delay_info.m constructs the set of variables that
+        % the conjunction, and therefore the trace goal, is waiting on
+        % based on the needs of just the last disjunct.
+        %
+        % Bug 2 is that it does not notice that this I/O state variable
+        % is *local* to the trace goal, which means that it can never be
+        % even mentioned, much less produced, by any goal outside it.
+        %
+        % The right way to fix this problem would be to fix both those bugs
+        % in delay_info.m. Nevertheless, I (zs) have chosen to work around
+        % them here instead, because
+        %
+        % - the code of delay_info.m is not documented anywhere well enough
+        %   for me to be confident in the correctness of any modification
+        %   I could make, while
+        %
+        % - that opaque code has nevertheless worked well for over thirty
+        %   years.
+        %
+        % A note about the test here: requiring all NonLocalVars to be ground
+        % is a sufficient condition for the workaround, but not a necessary
+        % one. The condition we really want is "does SubGoal0 bind any part
+        % of any of NonLocalVars?". However, we cannot answer that question
+        % without doing mode analysis on SubGoal0, which is what we want
+        % to avoid if the condition fails. Requiring groundness cuts the
+        % Gordian knot of this circularity.
+        VarIsNonGround =
+            ( pred(Var::in) is semidet :-
+                lookup_var_type(VarTable, Var, VarType),
+                instmap_lookup_var(InstMap0, Var, VarInst),
+                not inst_is_ground(ModuleInfo, VarType, VarInst)
+            ),
+        list.filter(VarIsNonGround, NonLocalVars, NonGroundNonLocalVars),
+        (
+            NonGroundNonLocalVars = [],
+            % We need to lock the non-local variables, to ensure that
+            % the trace goal does not bind them. If it did, then the code
+            % would not be valid with the trace goal disabled.
+            %
+            % XXX Now that we know all nonlocals are ground, this locking
+            % should be unnecessary, but
+            %
+            % - this code has worked for a long time;
+            % - I (zs) am only 99% sure it would work without the locks,
+            %   not 100%, and
+            % - the negligible slowdown caused by the locks is good insurance
+            %   against possible future bug reports from that 1%.
+            mode_info_lock_vars(var_lock_trace_goal, NonLocals, !ModeInfo),
+            modecheck_goal(SubGoal0, SubGoal, !ModeInfo),
+            mode_info_unlock_vars(var_lock_trace_goal, NonLocals, !ModeInfo),
+            mode_info_set_instmap(InstMap0, !ModeInfo)
+        ;
+            NonGroundNonLocalVars = [HeadNGVar | TailNGVars],
+            Error = mode_error_nonground_trace_goal(HeadNGVar, TailNGVars),
+            % We add this error NOT because we expect it to be printed;
+            % it won't be. We add it because it will force modecheck_goal_conj
+            % to delay this trace goal until we know the values of
+            % NonGroundNonLocalVars.
+            %
+            % When we successfully reschedule this goal, we will take the
+            % NonGroundNonLocalVars = [] switch arm. This is why the warnings
+            % about trace goals being moved are generated not here during
+            % mode analysis (when we do not yet know the final schedule
+            % of all the goals in the procedure body) but during the
+            % simplification pass (when we do know that schedule).
+            mode_info_error(set_of_var.list_to_set(NonGroundNonLocalVars),
+                Error, !ModeInfo),
+            SubGoal = SubGoal0
+        ),
         GoalExpr = scope(Reason, SubGoal),
         mode_checkpoint(exit, "trace scope", GoalInfo0, !ModeInfo)
     ;

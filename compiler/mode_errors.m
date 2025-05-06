@@ -177,6 +177,11 @@
     ;       mode_error_coerce_error(list(coerce_error))
             % Mode error in coerce expression.
 
+    % Mode errors in trace goals expressions.
+
+    ;       mode_error_nonground_trace_goal(prog_var, list(prog_var))
+            % The nonlocal variables of the trace goal are not ground.
+
     % Mode errors that can happen in more than one kind of goal.
 
     ;       mode_error_bind_locked_var(var_lock_reason, prog_var,
@@ -582,6 +587,10 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
     ;
         ModeError = mode_error_coerce_error(CoerceErrors),
         Spec = mode_error_coerce_error_to_spec(ModeInfo, CoerceErrors)
+    ;
+        ModeError = mode_error_nonground_trace_goal(HeadNGVar, TailNGVars),
+        Spec = mode_error_nonground_trace_goal_to_spec(ModeInfo,
+            HeadNGVar, TailNGVars)
     ;
         ModeError = mode_error_bind_locked_var(Reason, Var, InstA, InstB),
         Spec = mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var,
@@ -1902,6 +1911,38 @@ report_bad_arity_pieces({ConsId, InstArity, ExpectedArity}) = Pieces :-
         [suffix(";"), words("should be")] ++
         color_as_correct([int_fixed(ExpectedArity)]) ++
         [suffix(")")].
+
+%---------------------------------------------------------------------------%
+
+:- func mode_error_nonground_trace_goal_to_spec(mode_info,
+    prog_var, list(prog_var)) = error_spec.
+
+mode_error_nonground_trace_goal_to_spec(ModeInfo, HeadNGVar, TailNGVars)
+        = Spec :-
+    Preamble = mode_info_context_preamble(ModeInfo),
+    mode_info_get_context(ModeInfo, Context),
+    mode_info_get_var_table(ModeInfo, VarTable),
+    NGVarNames = list.map(mercury_var_to_string(VarTable, print_name_only),
+        [HeadNGVar | TailNGVars]),
+    VarNameCommaPieces = quote_list_to_color_pieces(color_subject,
+        "and", [suffix(",")], NGVarNames),
+    (
+        TailNGVars = [],
+        VarOrVars = "variable",
+        IsOrAre = "is"
+    ;
+        TailNGVars = [_ | _],
+        VarOrVars = "variables",
+        IsOrAre = "are"
+    ),
+    Pieces =
+        [words("error: the"), words(VarOrVars)] ++ VarNameCommaPieces ++
+        [words("whose value the trace goal"),
+        words("expects to get from the surrounding code,"),
+        words(IsOrAre)] ++ color_as_incorrect([words("not ground")]) ++
+        [words("at entry to the trace goal."), nl],
+    Spec = spec($pred, severity_error,
+        phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
 
