@@ -64,7 +64,7 @@ modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo) :-
 
     % Try to schedule the goals of the conjunction.
     modecheck_conj_list_flatten_and_schedule(ConjType, Goals0, Goals1,
-        [], RevImpurityErrors0, !ModeInfo),
+        cord.init, ImpurityErrorsCord1, !ModeInfo),
 
     mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
     delay_info_leave_conj(DelayInfo2, DelayedGoals0, DelayInfo3),
@@ -72,7 +72,7 @@ modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo) :-
 
     % Try to schedule the goals that our earlier scheduling attempt delayed.
     modecheck_delayed_goals(ConjType, DelayedGoals0, DelayedGoals, Goals2,
-        RevImpurityErrors0, RevImpurityErrors, !ModeInfo),
+        ImpurityErrorsCord1, ImpurityErrorsCord, !ModeInfo),
     Goals = Goals1 ++ Goals2,
 
     mode_info_get_errors(!.ModeInfo, NewErrors),
@@ -85,7 +85,7 @@ modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo) :-
 
         % Report all the impurity errors
         % (making sure we report the errors in the correct order).
-        list.reverse(RevImpurityErrors, ImpurityErrors),
+        ImpurityErrors = cord.list(ImpurityErrorsCord),
         mode_info_get_errors(!.ModeInfo, Errors5),
         Errors6 = Errors5 ++ ImpurityErrors,
         mode_info_set_errors(Errors6, !ModeInfo)
@@ -109,7 +109,7 @@ modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo) :-
         )
     ).
 
-:- type impurity_errors == list(mode_error_info).
+:- type impurity_error == mode_error_info.
 
     % Schedule goals, and also flatten plain conjunctions as we go.
     % (We do not flatten parallel conjunctions, since nested parallel
@@ -117,24 +117,24 @@ modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo) :-
     %
 :- pred modecheck_conj_list_flatten_and_schedule(conj_type::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
-    impurity_errors::in, impurity_errors::out,
+    cord(impurity_error)::in, cord(impurity_error)::out,
     mode_info::in, mode_info::out) is det.
 
 modecheck_conj_list_flatten_and_schedule(ConjType, Goals0, Goals,
-        !ImpurityErrors, !ModeInfo) :-
+        !ImpurityErrorsCord, !ModeInfo) :-
     modecheck_conj_list_flatten_and_schedule_acc(ConjType, Goals0,
-        cord.init, GoalsCord, !ImpurityErrors, !ModeInfo),
+        cord.init, GoalsCord, !ImpurityErrorsCord, !ModeInfo),
     Goals = cord.list(GoalsCord).
 
 :- pred modecheck_conj_list_flatten_and_schedule_acc(conj_type::in,
     list(hlds_goal)::in, cord(hlds_goal)::in, cord(hlds_goal)::out,
-    impurity_errors::in, impurity_errors::out,
+    cord(impurity_error)::in, cord(impurity_error)::out,
     mode_info::in, mode_info::out) is det.
 
 modecheck_conj_list_flatten_and_schedule_acc(_ConjType, [], !Goals,
-        !ImpurityErrors, !ModeInfo).
+        !ImpurityErrorsCord, !ModeInfo).
 modecheck_conj_list_flatten_and_schedule_acc(ConjType, [Goal0 | Goals0],
-        !Goals, !ImpurityErrors, !ModeInfo) :-
+        !Goals, !ImpurityErrorsCord, !ModeInfo) :-
     ( if
         % Do this test first because it will usually fail, while ...
         Goal0 = hlds_goal(conj(plain_conj, ConjGoals), _),
@@ -144,7 +144,7 @@ modecheck_conj_list_flatten_and_schedule_acc(ConjType, [Goal0 | Goals0],
     then
         Goals1 = ConjGoals ++ Goals0,
         modecheck_conj_list_flatten_and_schedule_acc(ConjType, Goals1,
-            !Goals, !ImpurityErrors, !ModeInfo)
+            !Goals, !ImpurityErrorsCord, !ModeInfo)
     else
         % We attempt to schedule the first goal in the conjunction.
         % If successful, we try to wake up pending goals (if any), and if not,
@@ -156,7 +156,7 @@ modecheck_conj_list_flatten_and_schedule_acc(ConjType, [Goal0 | Goals0],
             Purity = purity_impure,
             Impure = yes,
             check_for_impurity_error(Goal0, ScheduledSolverGoals,
-                !ImpurityErrors, !ModeInfo),
+                !ImpurityErrorsCord, !ModeInfo),
             !:Goals = !.Goals ++ cord.from_list(ScheduledSolverGoals)
         ;
             ( Purity = purity_pure
@@ -198,7 +198,7 @@ modecheck_conj_list_flatten_and_schedule_acc(ConjType, [Goal0 | Goals0],
                 mode_info_get_mode_context(!.ModeInfo, ModeContext),
                 ImpureErrorInfo = mode_error_info(Vars, ImpureError,
                     Context, ModeContext),
-                !:ImpurityErrors = [ImpureErrorInfo | !.ImpurityErrors]
+                cord.snoc(ImpureErrorInfo, !ImpurityErrorsCord)
             ;
                 Impure = no
             )
@@ -236,7 +236,7 @@ modecheck_conj_list_flatten_and_schedule_acc(ConjType, [Goal0 | Goals0],
         else
             % The remaining goals may still need to be flattened.
             modecheck_conj_list_flatten_and_schedule_acc(ConjType, Goals1,
-                !Goals, !ImpurityErrors, !ModeInfo)
+                !Goals, !ImpurityErrorsCord, !ModeInfo)
         )
     ).
 
@@ -252,11 +252,11 @@ modecheck_conj_list_flatten_and_schedule_acc(ConjType, [Goal0 | Goals0],
     %
 :- pred modecheck_delayed_goals(conj_type::in, list(delayed_goal)::in,
     list(delayed_goal)::out, list(hlds_goal)::out,
-    impurity_errors::in, impurity_errors::out,
+    cord(impurity_error)::in, cord(impurity_error)::out,
     mode_info::in, mode_info::out) is det.
 
 modecheck_delayed_goals(ConjType, DelayedGoals0, DelayedGoals, Goals,
-        !ImpurityErrors, !ModeInfo) :-
+        !ImpurityErrorsCord, !ModeInfo) :-
     (
         % There are no unscheduled goals, so we don't need to do anything.
         DelayedGoals0 = [],
@@ -273,7 +273,7 @@ modecheck_delayed_goals(ConjType, DelayedGoals0, DelayedGoals, Goals,
         mode_info_set_delay_info(DelayInfo1, !ModeInfo),
 
         modecheck_conj_list_flatten_and_schedule(ConjType, Goals0, Goals1,
-            !ImpurityErrors, !ModeInfo),
+            !ImpurityErrorsCord, !ModeInfo),
 
         mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
         delay_info_leave_conj(DelayInfo2, DelayedGoals1, DelayInfo3),
@@ -284,7 +284,7 @@ modecheck_delayed_goals(ConjType, DelayedGoals0, DelayedGoals, Goals,
             % We scheduled some goals. Keep going until we either
             % flounder or succeed.
             modecheck_delayed_goals(ConjType, DelayedGoals1, DelayedGoals,
-                Goals2, !ImpurityErrors, !ModeInfo),
+                Goals2, !ImpurityErrorsCord, !ModeInfo),
             Goals = Goals1 ++ Goals2
         else
             DelayedGoals = DelayedGoals1,
@@ -307,10 +307,10 @@ hlds_goal_from_delayed_goal(delayed_goal(_WaitingVars, _ModeError, Goal)) =
     % for initialisation.)
     %
 :- pred check_for_impurity_error(hlds_goal::in, list(hlds_goal)::out,
-    impurity_errors::in, impurity_errors::out,
+    cord(impurity_error)::in, cord(impurity_error)::out,
     mode_info::in, mode_info::out) is det.
 
-check_for_impurity_error(Goal, Goals, !ImpurityErrors, !ModeInfo) :-
+check_for_impurity_error(Goal, Goals, !ImpurityErrorsCord, !ModeInfo) :-
     mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
     delay_info_leave_conj(DelayInfo0, DelayedGoals0, DelayInfo1),
     mode_info_set_delay_info(DelayInfo1, !ModeInfo),
@@ -323,7 +323,7 @@ check_for_impurity_error(Goal, Goals, !ImpurityErrors, !ModeInfo) :-
         HeadVarUnificationGoals, NonHeadVarUnificationGoals0),
     modecheck_delayed_goals(plain_conj,
         NonHeadVarUnificationGoals0, NonHeadVarUnificationGoals, Goals,
-        !ImpurityErrors, !ModeInfo),
+        !ImpurityErrorsCord, !ModeInfo),
     mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
     delay_info_enter_conj(DelayInfo2, DelayInfo3),
     redelay_goals(HeadVarUnificationGoals, DelayInfo3, DelayInfo),
@@ -340,7 +340,7 @@ check_for_impurity_error(Goal, Goals, !ImpurityErrors, !ModeInfo) :-
         mode_info_get_context(!.ModeInfo, Context),
         mode_info_get_mode_context(!.ModeInfo, ModeContext),
         ImpurityError = mode_error_info(Vars, ModeError, Context, ModeContext),
-        !:ImpurityErrors = [ImpurityError | !.ImpurityErrors]
+        cord.snoc(ImpurityError, !ImpurityErrorsCord)
     ).
 
 :- pred filter_headvar_unification_goals(list(prog_var)::in,
