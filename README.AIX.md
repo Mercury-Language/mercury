@@ -3,55 +3,58 @@ Mercury on AIX
 
 This file documents the port of Mercury to AIX.
 
-Mercury was tested on AIX in 2019 with the following configuration.
+Mercury was minimally tested on AIX in 2025 with the following configuration.
 
-* AIX 7.1 on POWER9.
-* GCC version 6.3.0.
+* AIX 7.3 on POWER9.
+* GCC version 10.3.0
 * High-level C grades (`hlc.gc`, `hlc.par.gc`).
 
 Prerequisites
 -------------
 
-Install `yum` by running this
-[script](https://public.dhe.ibm.com/aix/freeSoftware/aixtoolbox/ezinstall/ppc/yum.sh).
+Install `dnf` using a script:
+
+```
+/usr/opt/perl5/bin/lwp-download \
+    https://public.dhe.ibm.com/aix/freeSoftware/aixtoolbox/ezinstall/ppc/dnf_aixtoolbox.sh
+chmod +x dnf_aixtoolbox.sh
+./dnf_aixtoolbox.sh -d
+```
 
 Then install the necessary packages:
 
 ```
-    $ yum install gcc make flex bison
+dnf install tar gcc make flex bison
 ```
 
 Building with GCC
 -----------------
 
-GCC defaults to `-maix32`. To build for the 64-bit AIX ABI, it may be easiest to
+GCC defaults to `-maix32`. To build for the 64-bit AIX ABI, it is easiest to
 create a shell script containing:
 
 ```
-    exec gcc -maix64 "$@"
+#!/bin/sh
+exec gcc -maix64 "$@"
 ```
 
-Mark the script executable and then run `configure` like this:
+Mark the script executable, then set up the environment:
 
 ```
-    $ CC=/path/to/gcc-maix64 ./configure [options]
+export PATH=/opt/freeware/bin:$PATH
+export CC=/path/to/gcc-maix64
+export OBJECT_MODE=64
 ```
 
-If you are using `/usr/bin/ar` then you must also set an environment variable:
-
-```
-    $ export OBJECT_MODE=64
-```
-
-If you try to use GNU `ar` instead (from binutils) you will run into problems
+`OBJECT_MODE=64` is required if using `/usr/bin/ar` as the archive tool.
+If you try to use GNU `ar` (from binutils) instead, you will run into problems
 when `/usr/bin/ranlib` is invoked on archives created by GNU `ar`.
 
-The `mercury_compile` executable will overflow the PowerPC TOC with `gcc` in its
-default configuration. One solution is to add this to `Mmake.params` before
-running `make`:
+Add the following to `Mmake.params` before running `make`. This prevents `gcc`
+overflowing the PowerPC TOC when creating the `mercury_compile` executable.
 
 ```
-    EXTRA_CFLAGS=-mminimal-toc
+EXTRA_CFLAGS=-mminimal-toc
 ```
 
 Your own programs may also overflow the TOC, depending on their size.
