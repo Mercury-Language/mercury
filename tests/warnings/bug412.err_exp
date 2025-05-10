@@ -1,51 +1,22 @@
-bug412.m:014: In module `bug412':
-bug412.m:014:   warning: [38;5;87mmodule `bitmap'[39;49m has a `:- import_module' declaration,
-bug412.m:014:   but [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:015: In module `bug412':
-bug412.m:015:   warning: [38;5;87mmodule `bit_buffer'[39;49m has a `:- import_module'
-bug412.m:015:   declaration, but [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:016: In module `bug412':
-bug412.m:016:   warning: [38;5;87mmodule `bool'[39;49m has a `:- import_module' declaration,
-bug412.m:016:   but [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:018: In module `bug412':
-bug412.m:018:   warning: [38;5;87mmodule `char'[39;49m has a `:- import_module' declaration,
-bug412.m:018:   but [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:019: In module `bug412':
-bug412.m:019:   warning: [38;5;87mmodule `diet'[39;49m has a `:- import_module' declaration,
-bug412.m:019:   but [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:020: In module `bug412':
-bug412.m:020:   warning: [38;5;87mmodule `digraph'[39;49m has a `:- import_module' declaration,
-bug412.m:020:   but [38;5;203mis not used anywhere in the module.[39;49m
+bug412.m:008: In module `bug412':
+bug412.m:008:   warning: module [38;5;87mbool[39;49m has an `:- import_module' declaration in
+bug412.m:008:   the interface, but [38;5;203mis not used in the interface.[39;49m
 bug412.m:021: In module `bug412':
-bug412.m:021:   warning: [38;5;87mmodule `enum'[39;49m has a `:- import_module' declaration,
-bug412.m:021:   but [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:022: In module `bug412':
-bug412.m:022:   warning: [38;5;87mmodule `io'[39;49m has a `:- import_module' declaration, but
-bug412.m:022:   [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:023: In module `bug412':
-bug412.m:023:   warning: [38;5;87mmodule `ops'[39;49m has a `:- import_module' declaration, but
-bug412.m:023:   [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:024: In module `bug412':
-bug412.m:024:   warning: [38;5;87mmodule `pprint'[39;49m has a `:- import_module' declaration,
-bug412.m:024:   but [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:025: In module `bug412':
-bug412.m:025:   warning: [38;5;87mmodule `rtree'[39;49m has a `:- import_module' declaration,
-bug412.m:025:   but [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:026: In module `bug412':
-bug412.m:026:   warning: [38;5;87mmodule `store'[39;49m has a `:- import_module' declaration,
-bug412.m:026:   but [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:027: In module `bug412':
-bug412.m:027:   warning: [38;5;87mmodule `stream'[39;49m has a `:- import_module' declaration,
-bug412.m:027:   but [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:028: In module `bug412':
-bug412.m:028:   warning: [38;5;87mmodule `string'[39;49m has a `:- import_module' declaration,
-bug412.m:028:   but [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:029: In module `bug412':
-bug412.m:029:   warning: [38;5;87mmodule `string.builder'[39;49m has a `:- import_module'
-bug412.m:029:   declaration, but [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:031: In module `bug412':
-bug412.m:031:   warning: [38;5;87mmodule `term'[39;49m has a `:- import_module' declaration,
-bug412.m:031:   but [38;5;203mis not used anywhere in the module.[39;49m
-bug412.m:032: In module `bug412':
-bug412.m:032:   warning: [38;5;87mmodule `univ'[39;49m has a `:- import_module' declaration,
-bug412.m:032:   but [38;5;203mis not used anywhere in the module.[39;49m
+bug412.m:021:   warning: the following modules have `:- import_module'
+bug412.m:021:   declarations, but [38;5;203mare not used anywhere in the module.[39;49m
+bug412.m:021:   module [38;5;87mbitmap[39;49m
+bug412.m:022:   module [38;5;87mbit_buffer[39;49m
+bug412.m:024:   module [38;5;87mchar[39;49m
+bug412.m:025:   module [38;5;87mdiet[39;49m
+bug412.m:026:   module [38;5;87mdigraph[39;49m
+bug412.m:027:   module [38;5;87menum[39;49m
+bug412.m:028:   module [38;5;87mio[39;49m
+bug412.m:029:   module [38;5;87mops[39;49m
+bug412.m:030:   module [38;5;87mpprint[39;49m
+bug412.m:031:   module [38;5;87mrtree[39;49m
+bug412.m:032:   module [38;5;87mstore[39;49m
+bug412.m:033:   module [38;5;87mstream[39;49m
+bug412.m:034:   module [38;5;87mstring[39;49m
+bug412.m:035:   module [38;5;87mstring.builder[39;49m
+bug412.m:037:   module [38;5;87mterm[39;49m
+bug412.m:038:   module [38;5;87muniv[39;49m

@@ -5,15 +5,21 @@
 :- module bug412.
 :- interface.
 
+:- import_module bool.
+
 % Avoid a warning about the module not exporting anything.
 :- type blah
     --->    blah.
 
 :- implementation.
 
+% Test a warning about a module imported in the interface not being used
+% in the interface.
+:- type blah2
+    --->    blah2(bool).
+
 :- import_module bitmap.
 :- import_module bit_buffer.
-:- import_module bool.
 :- import_module builtin.
 :- import_module char.
 :- import_module diet.

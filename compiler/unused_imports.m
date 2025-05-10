@@ -73,6 +73,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module pretty_printer.
 :- import_module set.
@@ -82,7 +83,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-warn_about_unused_imports(ProgressStream, ModuleInfo, Specs) :-
+warn_about_unused_imports(ProgressStream, ModuleInfo, !:Specs) :-
     module_info_get_name(ModuleInfo, ModuleName),
     find_all_non_warn_modules(ProgressStream, ModuleInfo, UsedModules),
 
@@ -132,10 +133,12 @@ warn_about_unused_imports(ProgressStream, ModuleInfo, Specs) :-
         io.nl(ProgressStream, !IO)
     ),
 
-    map.foldl(
-        maybe_warn_about_avail(ModuleName,
-            UnusedAnywhereImports, UnusedInterfaceImports),
-        AvailModuleMap, [], Specs).
+    map.foldl2(
+        maybe_warn_about_avail(UnusedAnywhereImports, UnusedInterfaceImports),
+        AvailModuleMap, [], !:Specs, map.init, UnusedAvailMap),
+    one_or_more_map.to_assoc_list(UnusedAvailMap, UnusedAvailAL),
+    list.foldl(generate_unused_import_warning(ModuleName), UnusedAvailAL,
+        !Specs).
 
 :- pred get_avail_modules_anywhere_interface(
     assoc_list(module_name, avail_module_entry)::in,
@@ -158,14 +161,42 @@ get_avail_modules_anywhere_interface([ModuleEntry | ModuleEntries],
     get_avail_modules_anywhere_interface(ModuleEntries,
         !AvailAnywhereCord, !AvailInterfaceCord).
 
-:- pred maybe_warn_about_avail(module_name::in,
-    set(module_name)::in, set(module_name)::in,
-    module_name::in, avail_module_entry::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+%-----------------------------------------------------------------------------%
 
-maybe_warn_about_avail(TopModuleName,
-        UnusedAnywhereImports, UnusedInterfaceImports,
-        ModuleName, AvailEntry, !Specs) :-
+:- type anywhere_or_interface
+    --->    aoi_anywhere
+    ;       aoi_interface.
+
+    % The wording of the message we generate depends on
+    %
+    % - whether the avail is unused in the whole module or
+    %   just in the interface, and on
+    %
+    % - whether the the avail is an import_module or a use_module declaration.
+:- type unused_avail_msg_kind
+    --->    unused_avail_msg_kind(
+                anywhere_or_interface,
+                import_or_use
+            ).
+
+    % The particulars of the message: the module named in the unused avail,
+    % and its location.
+:- type unused_avail
+    --->    unused_avail(
+                prog_context,
+                module_name
+            ).
+
+:- type unused_avail_map ==
+    one_or_more_map(unused_avail_msg_kind, unused_avail).
+
+:- pred maybe_warn_about_avail(set(module_name)::in, set(module_name)::in,
+    module_name::in, avail_module_entry::in,
+    list(error_spec)::in, list(error_spec)::out,
+    unused_avail_map::in, unused_avail_map::out) is det.
+
+maybe_warn_about_avail(UnusedAnywhereImports, UnusedInterfaceImports,
+        ModuleName, AvailEntry, !Specs, !UnusedAvailMap) :-
     AvailEntry = avail_module_entry(_Section, _ImportOrUse, Avails),
     list.sort(compare_avails, Avails, SortedAvails),
     (
@@ -181,27 +212,27 @@ maybe_warn_about_avail(TopModuleName,
         % in the implementation section of this module, we want the error
         % message to treat the import as being the implementation section.
         % The same reasoning applies to ImportOrUse.
-        HeadAvail = avail_module(Section, ImportOrUse, HeadContext),
+        HeadAvail = avail_module(Section, ImportOrUse, HeadCtxt),
         maybe_generate_redundant_avail_warnings(ModuleName, SortedAvails,
             [], !Specs),
-        ( if set.member(ModuleName, UnusedAnywhereImports) then
-            AnywhereSpec = generate_unused_import_warning(TopModuleName,
-                ModuleName, ImportOrUse, HeadContext, aoi_anywhere),
-            !:Specs = [AnywhereSpec | !.Specs],
+        ( if set.contains(UnusedAnywhereImports, ModuleName) then
+            MsgKindA = unused_avail_msg_kind(aoi_anywhere, ImportOrUse),
+            one_or_more_map.add(MsgKindA, unused_avail(HeadCtxt, ModuleName),
+                !UnusedAvailMap),
             AnywhereWarning = yes
         else
             AnywhereWarning = no
         ),
         ( if
             Section = ms_interface,
-            set.member(ModuleName, UnusedInterfaceImports),
+            set.contains(UnusedInterfaceImports, ModuleName),
             % Do not generate a report that a module is unused in the interface
             % if we have generated a report that it is unused *anywhere*.
             AnywhereWarning = no
         then
-            InterfaceSpec = generate_unused_import_warning(TopModuleName,
-                ModuleName, ImportOrUse, HeadContext, aoi_interface),
-            !:Specs = [InterfaceSpec | !.Specs]
+            MsgKindI = unused_avail_msg_kind(aoi_interface, ImportOrUse),
+            one_or_more_map.add(MsgKindI, unused_avail(HeadCtxt, ModuleName),
+                !UnusedAvailMap)
         else
             true
         )
@@ -315,15 +346,13 @@ add_msg_if_avail_as_general(ModuleName, ThisAvail, PrevAvail, !Msgs) :-
         !:Msgs = [Msg | !.Msgs]
     ).
 
-:- type anywhere_or_interface
-    --->    aoi_anywhere
-    ;       aoi_interface.
+:- pred generate_unused_import_warning(module_name::in,
+    pair(unused_avail_msg_kind, one_or_more(unused_avail))::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-:- func generate_unused_import_warning(module_name, module_name, import_or_use,
-    prog_context, anywhere_or_interface) = error_spec.
-
-generate_unused_import_warning(ModuleName, UnusedModuleName, ImportOrUse,
-        Context, AnywhereOrInterface) = Spec :-
+generate_unused_import_warning(ModuleName, MsgKind - OoMUnusedAvails0,
+        !Specs) :-
+    MsgKind = unused_avail_msg_kind(AnywhereOrInterface, ImportOrUse),
     (
         AnywhereOrInterface = aoi_anywhere,
         DeclInTheLocn = "",
@@ -334,16 +363,59 @@ generate_unused_import_warning(ModuleName, UnusedModuleName, ImportOrUse,
         NotUsedInTheLocn = "in the interface"
     ),
     ImportOrUseDeclName = import_or_use_decl_name(ImportOrUse),
-    Pieces = [words("In module"), qual_sym_name(ModuleName), suffix(":"), nl,
-        words("warning:")] ++
-        color_as_subject([words("module"), qual_sym_name(UnusedModuleName)]) ++
-        [words("has a"), decl(ImportOrUseDeclName),
-        words("declaration"), words(DeclInTheLocn), suffix(","),
-        words("but")] ++
-        color_as_incorrect([words("is not used"), words(NotUsedInTheLocn),
-            suffix(".")]) ++
-        [nl],
-    Spec = spec($pred, severity_warning, phase_code_gen, Context, Pieces).
+    ( ImportOrUse = import_decl, ImportOrUseAAn = "an"
+    ; ImportOrUse = use_decl,    ImportOrUseAAn = "a"
+    ),
+    % This sorts first on context, and *then* on module name.
+    % This is because I (zs) think that the natural way to delete
+    % unused import_module declarations is in order of context,
+    % not order of module name, and that therefore the list of
+    % declarations to be deleted should be ordered to make this easier.
+    one_or_more.sort(OoMUnusedAvails0, OoMUnusedAvails),
+    OoMUnusedAvails = one_or_more(HeadUnusedAvail, TailUnusedAvails),
+    HeadUnusedAvail = unused_avail(HeadContext, HeadModuleName),
+    (
+        TailUnusedAvails = [],
+        Pieces =
+            [words("In module"), qual_sym_name(ModuleName), suffix(":"), nl,
+            words("warning:")] ++
+            unused_module_name_to_pieces(HeadModuleName) ++
+            [words("has"), words(ImportOrUseAAn), decl(ImportOrUseDeclName),
+            words("declaration"), words(DeclInTheLocn), suffix(","),
+            words("but")] ++
+            color_as_incorrect([words("is not used"),
+                words(NotUsedInTheLocn), suffix(".")]) ++
+            [nl],
+        Spec = spec($pred, severity_warning, phase_code_gen,
+            HeadContext, Pieces)
+    ;
+        TailUnusedAvails = [_ | _],
+        MainPieces =
+            [words("In module"), qual_sym_name(ModuleName), suffix(":"), nl,
+            words("warning: the following modules have"),
+            decl(ImportOrUseDeclName), words("declarations"),
+            words(DeclInTheLocn), suffix(","), words("but")] ++
+            color_as_incorrect([words("are not used"),
+                words(NotUsedInTheLocn), suffix(".")]) ++
+            [nl],
+        MainMsg = msg(HeadContext, MainPieces),
+        UnusedAvailToMsg =
+            ( func(unused_avail(Ctxt, MN)) = ModuleMsg :-
+                ModulePieces = unused_module_name_to_pieces(MN) ++ [nl],
+                ModuleMsg = msg(Ctxt, ModulePieces)
+            ),
+        ModuleMsgs = list.map(UnusedAvailToMsg,
+            [HeadUnusedAvail | TailUnusedAvails]),
+        Spec = error_spec($pred, severity_warning, phase_code_gen,
+            [MainMsg | ModuleMsgs])
+    ),
+    !:Specs = [Spec | !.Specs].
+
+:- func unused_module_name_to_pieces(module_name) = list(format_piece).
+
+unused_module_name_to_pieces(ModuleName) = Pieces :-
+    ModuleNameStr = sym_name_to_string(ModuleName),
+    Pieces = [words("module")] ++ color_as_subject([fixed(ModuleNameStr)]).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
