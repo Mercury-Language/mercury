@@ -1,0 +1,19 @@
+missing_parent_import.m:028: In module `missing_parent_import': error:
+missing_parent_import.m:028:   the absence of an [38;5;40m`:- import_module'[39;49m or
+missing_parent_import.m:028:   [38;5;40m`:- use_module' declaration[39;49m for
+missing_parent_import.m:028:   [38;5;87m`missing_parent_import_helper_1'[39;49m [38;5;203mprevents access[39;49m
+missing_parent_import.m:028:   to the `:- import_module' and `:- use_module'
+missing_parent_import.m:028:   declarations for its child modules
+missing_parent_import.m:028:   `missing_parent_import_helper_1.child' and
+missing_parent_import.m:028:   `missing_parent_import_helper_1.child2'.
+missing_parent_import.m:035: In clause for predicate `main'/2:
+missing_parent_import.m:035:   error: call to [38;5;203mundefined[39;49m predicate
+missing_parent_import.m:035:   [38;5;87m`child.hello'/2.[39;49m
+missing_parent_import.m:035:   (The possible parent module
+missing_parent_import.m:035:   [38;5;87m`missing_parent_import_helper_1'[39;49m [38;5;203mhas not been[39;49m
+missing_parent_import.m:035:   [38;5;203mimported.)[39;49m
+missing_parent_import.m:038: In clause for predicate `main'/2:
+missing_parent_import.m:038:   error: call to [38;5;203mundefined[39;49m predicate
+missing_parent_import.m:038:   [38;5;87m`missing_parent_import_helper_2.sub.hello'/2.[39;49m
+missing_parent_import.m:038:   (The module [38;5;87m`missing_parent_import_helper_2.sub'[39;49m
+missing_parent_import.m:038:   [38;5;226mhas not been imported.)[39;49m

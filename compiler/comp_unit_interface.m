@@ -26,7 +26,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.prog_parse_tree.
-:- import_module parse_tree.read_modules.   % ZZZ for have_parse_tree_maps
+:- import_module parse_tree.read_modules.
 
 :- import_module io.
 :- import_module list.
@@ -595,7 +595,8 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
             % Construct the `.int0' file.
             create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0,
                 [], GenerateSpecs),
-            filter_interface_generation_specs(Globals, GenerateSpecs, Specs),
+            filter_interface_generation_specs(Globals, GenerateSpecs,
+                FilteredGenerateSpecs),
             ExtraSuffix = "",
             construct_int_file_name(Globals, ModuleName, ifk_int0, ExtraSuffix,
                 FileName, !IO),
@@ -609,18 +610,23 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
                 !HaveParseTreeMaps ^ hptm_int0 := Int0Map
             ),
             MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
+            maybe_add_delayed_messages(AugMakeIntUnit,
+                FilteredGenerateSpecs, Specs),
             GenerateResult = gpti0_ok(ParseTreeInt0, MaybeTimestamp,
                 FileName, Specs)
         ;
             EffectiveGetQualSpecs = [_ | _],
-            GenerateResult = gpti0_error(ModuleName, [], EffectiveGetQualSpecs)
+            maybe_add_delayed_messages(AugMakeIntUnit,
+                EffectiveGetQualSpecs, Specs),
+            GenerateResult = gpti0_error(ModuleName, [], Specs)
         )
     else
         % The negative indent is to let the rest of the error_spec
         % start at the left margin.
         PrefixPieces = [words("Error reading .int3 and/or .int0 files."),
             nl_indent_delta(-1)],
-        GenerateResult = gpti0_error(ModuleName, PrefixPieces, GetSpecs)
+        maybe_add_delayed_messages(AugMakeIntUnit1, GetSpecs, Specs),
+        GenerateResult = gpti0_error(ModuleName, PrefixPieces, Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -696,7 +702,7 @@ generate_pre_grab_pre_qual_interface_for_int0(ParseTreeModuleSrc,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
-    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, _, _, _,
+    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, _, _, _, _,
         ModuleItemVersionNumbersMap),
 
     ( if map.search(ModuleItemVersionNumbersMap, ModuleName, MIVNs) then
@@ -796,7 +802,8 @@ generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
             EffectiveGetQualSpecs = [],
             create_parse_trees_int1_int2(Globals, AugMakeIntUnit,
                 ParseTreeInt1, ParseTreeInt2, [], GenerateSpecs),
-            filter_interface_generation_specs(Globals, GenerateSpecs, Specs),
+            filter_interface_generation_specs(Globals,
+                GenerateSpecs, FilteredGenerateSpecs),
             ExtraSuffix = "",
             construct_int_file_name(Globals, ModuleName, ifk_int1, ExtraSuffix,
                 FileName1, !IO),
@@ -816,19 +823,23 @@ generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
                 !HaveParseTreeMaps ^ hptm_int2 := Int2Map
             ),
             MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
+            maybe_add_delayed_messages(AugMakeIntUnit,
+                FilteredGenerateSpecs, Specs),
             GenerateResult = gpti12_ok(ParseTreeInt1, ParseTreeInt2,
                 MaybeTimestamp, FileName1, FileName2, Specs)
         ;
             EffectiveGetQualSpecs = [_ | _],
-            GenerateResult =
-                gpti12_error(ModuleName, [], EffectiveGetQualSpecs)
+            maybe_add_delayed_messages(AugMakeIntUnit,
+                EffectiveGetQualSpecs, Specs),
+            GenerateResult = gpti12_error(ModuleName, [], Specs)
         )
     else
         % The negative indent is to let the rest of the error_spec
         % start at the left margin.
         PrefixPieces = [words("Error reading .int3 and/or .int0 files."),
             nl_indent_delta(-1)],
-        GenerateResult = gpti12_error(ModuleName, PrefixPieces, GetSpecs)
+        maybe_add_delayed_messages(AugMakeIntUnit1, GetSpecs, Specs),
+        GenerateResult = gpti12_error(ModuleName, PrefixPieces, Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1159,7 +1170,7 @@ create_parse_tree_int1(Globals, AugMakeIntUnit,
         TypeCtorRepnMap, ParseTreeInt1, !Specs) :-
     % We return some of our intermediate results to our caller, for use
     % in constructing the .int2 file.
-    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc,
+    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, _,
         _, DirectIntSpecs, IndirectIntSpecs, _),
 
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
@@ -2531,7 +2542,7 @@ create_parse_tree_int2(AugMakeIntUnit,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         TypeCtorRepnMap, ParseTreeInt2) :-
-    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, _, _, _, _),
+    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, _, _, _, _, _),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
 
@@ -3654,6 +3665,21 @@ construct_int_file_name(Globals, ModuleName, IntFileKind, ExtraSuffix,
     module_name_to_file_name_create_dirs(Globals, $pred, Ext,
         ModuleName, IntFileName0, _IntFileNameProposed0, !IO),
     IntFileName = IntFileName0 ++ ExtraSuffix.
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_add_delayed_messages(aug_make_int_unit::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_add_delayed_messages(AugMakeIntUnit, OtherSpecs, Specs) :-
+    (
+        OtherSpecs = [],
+        Specs = []
+    ;
+        OtherSpecs = [_ | _],
+        DelayedSpecs = AugMakeIntUnit ^ amiu_delayed_specs,
+        Specs = DelayedSpecs ++ OtherSpecs
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.comp_unit_interface.

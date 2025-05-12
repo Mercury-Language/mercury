@@ -38,6 +38,8 @@
 :- module parse_tree.check_import_accessibility.
 :- interface.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_parse_tree.
 
@@ -62,12 +64,18 @@
 %---------------------------------------------------------------------------%
 
     % check_import_accessibility(ParseTreeModuleSrc, ImportAccessibilityInfo,
-    %   Specs):
+    %   MissingModulesInt, MissingModulesImp, DelayedSpecs, Specs):
     %
     % This predicate does the job described in the top-of-module comment.
+    % It also returns the list of modules for which at least use_module,
+    % if not import_module, declarations are missing from the interface
+    % and implementation sections respectively. Any errors caused by these
+    % are returned in DelayedSpecs, not Specs.
     %
 :- pred check_import_accessibility(parse_tree_module_src::in,
-    import_accessibility_info::in, list(error_spec)::out) is det.
+    import_accessibility_info::in,
+    list(module_name)::out, list(module_name)::out,
+    list(error_spec)::out, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -76,8 +84,6 @@
 
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.convert_import_use.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -220,7 +226,7 @@ aug_comp_unit_get_import_accessibility_info(AugCompUnit,
 
 aug_make_int_unit_get_import_accessibility_info(AugMakeIntUnit,
         ImportAccessibilityInfo) :-
-    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, AncestorIntSpecs,
+    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, _, AncestorIntSpecs,
         DirectIntSpecs, IndirectIntSpecs, _ModuleVersionNumbers),
     some [!ReadModules, !InclMap, !SrcIntImportUseMap, !SrcImpImportUseMap,
         !AncestorImportUseMap]
@@ -650,7 +656,7 @@ record_avails_acc([Avail | Avails], !ImportUseMap) :-
 %---------------------------------------------------------------------------%
 
 check_import_accessibility(ParseTreeModuleSrc, ImportAccessibilityInfo,
-        !:Specs) :-
+        MissingModulesInt, MissingModulesImp, !:DelayedSpecs, !:Specs) :-
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
     ImportAccessibilityInfo = import_accessibility_info(ReadModules,
@@ -706,13 +712,14 @@ check_import_accessibility(ParseTreeModuleSrc, ImportAccessibilityInfo,
     map.delete_list(SrcIntMissingAncestors,
         SrcImpMissingAncestorMap0, SrcImpMissingAncestorMap),
 
-    map.foldl(
+    !:DelayedSpecs = [],
+    map.foldl2(
         report_missing_ancestor(ModuleName,
             missing_in_src_int(SrcImpImportUseMap)),
-        SrcIntMissingAncestorMap, !Specs),
-    map.foldl(
+        SrcIntMissingAncestorMap, [], MissingModulesInt, !DelayedSpecs),
+    map.foldl2(
         report_missing_ancestor(ModuleName, missing_in_src_imp),
-        SrcImpMissingAncestorMap, !Specs).
+        SrcImpMissingAncestorMap, [], MissingModulesImp, !DelayedSpecs).
 
 %---------------------------------------------------------------------------%
 
@@ -868,17 +875,18 @@ update_iu_and_least_context(IoUC, !ImportAndOrUse, !LeastContext) :-
 
 :- type missing_where
     --->    missing_in_src_int(module_import_or_use_map)
-    ;       missing_in_src_imp
-    ;       missing_in_non_src.
+    ;       missing_in_src_imp.
 
 :- pred report_missing_ancestor(module_name::in,
     missing_where::in, module_name::in, missing_ancestor_info::in,
+    list(module_name)::in, list(module_name)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_missing_ancestor(ModuleName, MissingWhere,
-        MissingModuleName, SrcIntInfo, !Specs) :-
-    SrcIntInfo = missing_ancestor_info(DescendantModuleNamesSet, MaxDepth,
-        ImportAndOrUse, LeastContext),
+        MissingModuleName, MissingAncestorInfo, !ModulesToAdd, !Specs) :-
+    !:ModulesToAdd = [MissingModuleName | !.ModulesToAdd],
+    MissingAncestorInfo = missing_ancestor_info(DescendantModuleNamesSet,
+        MaxDepth, ImportAndOrUse, LeastContext),
     set.to_sorted_list(DescendantModuleNamesSet, DescendantModuleNames),
     ( MaxDepth = poa_parent, ChildOrDescendant = "child"
     ; MaxDepth = poa_ancestor, ChildOrDescendant = "descendant"
@@ -897,9 +905,7 @@ report_missing_ancestor(ModuleName, MissingWhere,
         MissingWhere = missing_in_src_int(_),
         InTheInterface = [words("in the interface")]
     ;
-        ( MissingWhere = missing_in_src_imp
-        ; MissingWhere = missing_in_non_src
-        ),
+        MissingWhere = missing_in_src_imp,
         InTheInterface = []
     ),
     DescendantPieces = list.map(wrap_module_name, DescendantModuleNames),

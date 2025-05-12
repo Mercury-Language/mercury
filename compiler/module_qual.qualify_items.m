@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2024 The Mercury team.
+% Copyright (C) 2015-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -149,7 +149,7 @@ module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
 
 module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
         !Specs) :-
-    AugMakeIntUnit0 = aug_make_int_unit(ParseTreeModuleSrc0,
+    AugMakeIntUnit0 = aug_make_int_unit(ParseTreeModuleSrc0, DelayedSpecs0,
         AncestorInt0s, DirectInt3Specs, IndirectInt3Specs,
         ModuleVersionNumbers),
 
@@ -163,7 +163,7 @@ module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
             map.values(DirectInt3Specs), !Info),
         qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
             !Info, !Specs),
-        AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc,
+        AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, DelayedSpecs0,
             AncestorInt0s, DirectInt3Specs, IndirectInt3Specs,
             ModuleVersionNumbers),
         maybe_report_qual_errors(Globals, !.Info, ModuleName, !Specs)

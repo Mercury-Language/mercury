@@ -21,8 +21,8 @@
 %---------------------------------------------------------------------------%
 
 :- import_module missing_parent_import_helper_2.
-% The ommission of the following import is the bug that this
-% test case is testing.
+% The ommission of the following import is the bug that
+% this test case is testing.
 % :- import_module missing_parent_import_helper_1.
 
 :- import_module missing_parent_import_helper_1.child.
@@ -35,7 +35,7 @@ main(!IO) :-
     child.hello(!IO),
     hello(!IO),
     missing_parent_import_helper_1.child2.hello(!IO),
-    missing_parent_import_helper_2.hello(!IO).
+    missing_parent_import_helper_2.sub.hello(!IO).
 
 %---------------------------------------------------------------------------%
 :- end_module missing_parent_import.

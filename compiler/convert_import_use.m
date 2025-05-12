@@ -668,8 +668,8 @@ error_if_use_for_self(ModuleName, !UseMap, !Specs) :-
             color_as_incorrect([decl("use_module"),
                 words("declaration for itself!")]) ++
             [nl],
-        Spec = spec($pred, severity_error, phase_pt2h,
-            section_use_first_context(Use), Pieces),
+        Context = section_use_first_context(Use),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -693,8 +693,8 @@ error_if_use_for_ancestor(ModuleName, AncestorName, !UseMap, !Specs) :-
             color_as_incorrect([decl("use_module"),
                 words("declaration for its own ancestor module,")]) ++
             [qual_sym_name(AncestorName), suffix("."), nl],
-        Spec = spec($pred, severity_error, phase_pt2h,
-            section_use_first_context(Use), Pieces),
+        Context = section_use_first_context(Use),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true

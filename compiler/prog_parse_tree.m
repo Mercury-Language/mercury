@@ -807,7 +807,20 @@
 :- type aug_make_int_unit
     --->    aug_make_int_unit(
                 % The source code of the module.
+                %
+                % Note that any "missing parent imports" 
                 amiu_module_src     :: parse_tree_module_src,
+
+                % The list of messages for errors in amiu_module_src
+                % whose reporting we would like to delay until a compiler
+                % invocation that generates target code.
+                %
+                % We report these messages *only* if the creation of the
+                % .int[012] file for the module cannot succeed for
+                % *other* reasons. In that case, not reporting them
+                % would give the programmer
+                an incomplete picture of what is wrong.
+                amiu_delayed_specs  :: list(error_spec),
 
                 % The interface files of the ancestors of this module.
                 % (The read_why_int0 is always implicitly rwi0_section.)
@@ -821,7 +834,7 @@
 
                 % The module_version_numbers records in all the imported
                 % interface files.
-                amiu_item_version_map:: module_item_version_numbers_map
+                amiu_item_version_map :: module_item_version_numbers_map
             ).
 
     % init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit):

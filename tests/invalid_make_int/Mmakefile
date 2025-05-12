@@ -4,10 +4,9 @@
 
 TESTS_DIR = ..
 THIS_DIR = invalid_make_int
-# Two tests, missing_parent_import and sub_c, use nested submodules,
-# which requires -j1. The loss of parallelism has a performance impact,
-# but due to the small number of test cases in this directory, this impact
-# is small.
+# One test, sub_c, uses nested submodules, which requires -j1.
+# The loss of parallelism has a performance impact, but due to the
+# small number of test cases in this directory, this impact is small.
 MAYBE_J1 = -j1
 
 # Note: multi-module tests are listed separately from single-module tests
@@ -48,7 +47,6 @@ SINGLE_MODULE_PROGS = \
 MULTI_MODULE_PROGS = \
 	int_impl_imports \
 	missing_interface_import_test_2 \
-	missing_parent_import \
 	sub_c \
 	test_nested \
 	transitive_import

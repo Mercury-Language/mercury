@@ -182,6 +182,7 @@
 :- import_module cord.
 :- import_module map.
 :- import_module one_or_more.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
@@ -190,7 +191,7 @@
 %---------------------------------------------------------------------------%
 
 grab_unqual_imported_modules_make_int(ProgressStream, Globals,
-        ParseTreeModuleSrc, !:AugMakeIntUnit,
+        ParseTreeModuleSrc0, !:AugMakeIntUnit,
         !Baggage, !HaveParseTreeMaps, !IO) :-
     % The predicates grab_imported_modules_augment and
     % grab_unqual_imported_modules_make_int have quite similar tasks.
@@ -201,7 +202,7 @@ grab_unqual_imported_modules_make_int(ProgressStream, Globals,
     some [!IntIndirectImported, !ImpIndirectImported]
     (
         GrabbedFileMap0 = !.Baggage ^ mb_grabbed_file_map,
-        map.set(ModuleName, gf_src(ParseTreeModuleSrc),
+        map.set(ModuleName, gf_src(ParseTreeModuleSrc0),
             GrabbedFileMap0, GrabbedFileMap1),
         !Baggage ^ mb_grabbed_file_map := GrabbedFileMap1,
         % XXX For most of Mercury's existence, we have not looked for
@@ -217,22 +218,22 @@ grab_unqual_imported_modules_make_int(ProgressStream, Globals,
         % (going from 170 test failures to 195 on 2023 oct 22).
         !Baggage ^ mb_errors := init_read_module_errors,
 
-        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+        ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
         SrcMap0 = !.HaveParseTreeMaps ^ hptm_module_src,
-        map.set(ModuleName, ParseTreeModuleSrc, SrcMap0, SrcMap),
+        map.set(ModuleName, ParseTreeModuleSrc0, SrcMap0, SrcMap),
         !HaveParseTreeMaps ^ hptm_module_src := SrcMap,
 
-        init_aug_make_int_unit(ParseTreeModuleSrc, !:AugMakeIntUnit),
+        init_aug_make_int_unit(ParseTreeModuleSrc0, !:AugMakeIntUnit),
 
-        ImportAndOrUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
-        import_and_or_use_map_to_module_name_contexts(ImportAndOrUseMap,
-            IntImportMap, IntUseMap, ImpImportMap, ImpUseMap,
-            IntUseImpImportMap),
-        map.keys_as_set(IntImportMap, IntImports0),
-        map.keys_as_set(IntUseMap, IntUses),
-        map.keys_as_set(ImpImportMap, ImpImports),
-        map.keys_as_set(ImpUseMap, ImpUses),
-        map.keys_as_set(IntUseImpImportMap, IntUsesImpImports),
+        ImportAndOrUseMap0 = ParseTreeModuleSrc0 ^ ptms_import_use_map,
+        import_and_or_use_map_to_module_name_contexts(ImportAndOrUseMap0,
+            IntImportMap0, IntUseMap0, ImpImportMap0, ImpUseMap0,
+            IntUseImpImportMap0),
+        map.keys_as_set(IntImportMap0, IntImports0),
+        map.keys_as_set(IntUseMap0, IntUses),
+        map.keys_as_set(ImpImportMap0, ImpImports),
+        map.keys_as_set(ImpUseMap0, ImpUses),
+        map.keys_as_set(IntUseImpImportMap0, IntUsesImpImports),
         set.insert(mercury_public_builtin_module, IntImports0, IntImports),
 
         % Get the .int0 files of the ancestor modules.
@@ -298,9 +299,120 @@ grab_unqual_imported_modules_make_int(ProgressStream, Globals,
 
         aug_make_int_unit_get_import_accessibility_info(!.AugMakeIntUnit,
             ImportAccessibilityInfo),
-        check_import_accessibility(ParseTreeModuleSrc,
-            ImportAccessibilityInfo, AccessSpecs),
-        module_baggage_add_nonfatal_specs(AccessSpecs, !Baggage)
+        check_import_accessibility(ParseTreeModuleSrc0,
+            ImportAccessibilityInfo, MissingModulesInt, MissingModulesImp,
+            DelayedSpecs, AccessSpecs),
+        module_baggage_add_nonfatal_specs(AccessSpecs, !Baggage),
+
+        % We handle DelayedSpecs separately from AccessSpecs  because
+        % it is possible that
+        %
+        % - the programmer's main focus is working on some module
+        %   *other than* ModuleName,
+        %
+        % - he/she modified ModuleName just to export something that the
+        %   the module working on needs, and added imports for what they
+        %   thought was the bare minimum set of modules to get that
+        %   working, but accidentally left out some of their ancestors.
+        %
+        % In such cases, preventing the creation of ModuleName's .int file
+        % will force the programmer to deal with what they would view as a
+        % side issue *before* they can get back to what they want to
+        % actually work on. It is better to generate (an approximation to)
+        % what the .int file for ModuleName would be *after* the programmer
+        % has finished working on the other module, once they have
+        % got around to compiling ModuleName, getting AccessSpecs then,
+        % and adds the missing ancestors, all at times of their own
+        % choosing.
+        %
+        % Note that there should be one delayed spec for each missing module.
+        list.foldl(add_missing_int_module, MissingModulesInt,
+            ImportAndOrUseMap0, ImportAndOrUseMap1),
+        list.foldl(add_missing_imp_module, MissingModulesImp,
+            ImportAndOrUseMap1, ImportAndOrUseMap),
+        ParseTreeModuleSrc = ParseTreeModuleSrc0
+            ^ ptms_import_use_map := ImportAndOrUseMap,
+        !AugMakeIntUnit ^ amiu_delayed_specs := DelayedSpecs,
+        !AugMakeIntUnit ^ amiu_module_src := ParseTreeModuleSrc
+    ).
+
+%---------------------%
+
+:- pred add_missing_int_module(module_name::in,
+import_and_or_use_map::in, import_and_or_use_map::out) is det.
+
+add_missing_int_module(ModuleName, !ImportAndOrUseMap) :-
+    ( if map.search(!.ImportAndOrUseMap, ModuleName, MaybeImplicit0) then
+        (
+            MaybeImplicit0 = explicit_avail(ImportAndOrUse0),
+            update_missing_int_module(ImportAndOrUse0, ImportAndOrUse),
+            MaybeImplicit = explicit_avail(ImportAndOrUse)
+        ;
+            MaybeImplicit0 = implicit_avail(Implicit0, MaybeExplicit0),
+            (
+                MaybeExplicit0 = yes(ImportAndOrUse0),
+                update_missing_int_module(ImportAndOrUse0, ImportAndOrUse)
+            ;
+                MaybeExplicit0 = no,
+                ImportAndOrUse = int_use(dummy_context)
+            ),
+            MaybeExplicit = yes(ImportAndOrUse),
+            MaybeImplicit = implicit_avail(Implicit0, MaybeExplicit)
+        ),
+        map.det_update(ModuleName, MaybeImplicit, !ImportAndOrUseMap)
+    else
+        ImportAndOrUse = int_use(dummy_context),
+        MaybeImplicit = explicit_avail(ImportAndOrUse),
+        map.det_insert(ModuleName, MaybeImplicit, !ImportAndOrUseMap)
+    ).
+
+:- pred update_missing_int_module(
+    section_import_and_or_use::in, section_import_and_or_use::out) is det.
+
+update_missing_int_module(ImportAndOrUse0, ImportAndOrUse):-
+    (
+        ( ImportAndOrUse0 = int_import(_)
+        ; ImportAndOrUse0 = int_use(_)
+        ; ImportAndOrUse0 = int_use_imp_import(_, _)
+        ),
+        unexpected($pred, "module missing from int is in int")
+    ;
+        ImportAndOrUse0 = imp_use(_ImpContext),
+        % Using _ImpContext instead dummy_context would be misleading.
+        % However, which context we use probably won't matter.
+        ImportAndOrUse = int_use(dummy_context)
+    ;
+        ImportAndOrUse0 = imp_import(ImpContext),
+        ImportAndOrUse = int_use_imp_import(dummy_context, ImpContext)
+    ).
+
+%---------------------%
+
+:- pred add_missing_imp_module(module_name::in,
+    import_and_or_use_map::in, import_and_or_use_map::out) is det.
+
+add_missing_imp_module(ModuleName, !ImportAndOrUseMap) :-
+    ( if map.search(!.ImportAndOrUseMap, ModuleName, MaybeImplicit0) then
+        (
+            MaybeImplicit0 = explicit_avail(_),
+            unexpected($pred, "module missing from imp is in int or imp")
+        ;
+            MaybeImplicit0 = implicit_avail(Implicit0, MaybeExplicit0),
+            (
+                MaybeExplicit0 = yes(_),
+                unexpected($pred, "module missing from imp is in int or imp")
+            ;
+                MaybeExplicit0 = no,
+                ImportAndOrUse = imp_use(dummy_context)
+            )
+        ),
+        MaybeExplicit = yes(ImportAndOrUse),
+        MaybeImplicit = implicit_avail(Implicit0, MaybeExplicit),
+        map.det_update(ModuleName, MaybeImplicit, !ImportAndOrUseMap)
+    else
+        ImportAndOrUse = imp_use(dummy_context),
+        MaybeImplicit = explicit_avail(ImportAndOrUse),
+        map.det_insert(ModuleName, MaybeImplicit, !ImportAndOrUseMap)
     ).
 
 %---------------------------------------------------------------------------%
@@ -456,8 +568,9 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, MaybeTimestamp,
 
         aug_comp_unit_get_import_accessibility_info(!.AugCompUnit,
             ImportAccessibilityInfo),
-        check_import_accessibility(ParseTreeModuleSrc,
-            ImportAccessibilityInfo, AccessSpecs),
+        check_import_accessibility(ParseTreeModuleSrc, ImportAccessibilityInfo,
+            _MissingModulesInt, _MissingModulesImp, DelayedSpecs, AccessSpecs),
+        module_baggage_add_nonfatal_specs(DelayedSpecs, !Baggage),
         module_baggage_add_nonfatal_specs(AccessSpecs, !Baggage)
     ).
 
@@ -1547,11 +1660,12 @@ aug_compilation_unit_maybe_add_module_version_numbers(ModuleName,
     aug_make_int_unit::out) is det.
 
 init_aug_make_int_unit(ParseTreeModuleSrc, AugMakeIntUnit) :-
+    DelayedSpecs = [],
     map.init(AncestorIntSpecs),
     map.init(DirectIntSpecs),
     map.init(IndirectIntSpecs),
     map.init(VersionNumbers),
-    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc,
+    AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, DelayedSpecs,
         AncestorIntSpecs, DirectIntSpecs, IndirectIntSpecs, VersionNumbers).
 
 %---------------------%

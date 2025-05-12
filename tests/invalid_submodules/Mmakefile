@@ -21,6 +21,7 @@ MAYBE_J1 = -j1
 
 STD_PROGS = \
 	exported_unify3 \
+	missing_parent_import \
 	undef_mod_qual \
 	unresolved_overloading
 
