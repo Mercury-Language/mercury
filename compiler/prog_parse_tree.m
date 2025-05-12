@@ -808,7 +808,9 @@
     --->    aug_make_int_unit(
                 % The source code of the module.
                 %
-                % Note that any "missing parent imports" 
+                % Note that some kinds of errors, such as "importing a.b.c
+                % without importing a.b", will have been corrected
+                % automatically.
                 amiu_module_src     :: parse_tree_module_src,
 
                 % The list of messages for errors in amiu_module_src
@@ -818,8 +820,8 @@
                 % We report these messages *only* if the creation of the
                 % .int[012] file for the module cannot succeed for
                 % *other* reasons. In that case, not reporting them
-                % would give the programmer
-                an incomplete picture of what is wrong.
+                % would give the programmer an incomplete picture
+                % of what is wrong.
                 amiu_delayed_specs  :: list(error_spec),
 
                 % The interface files of the ancestors of this module.
