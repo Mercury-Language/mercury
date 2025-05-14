@@ -1,30 +1,32 @@
 Mercury on macOS
 ================
 
-This file documents the port of Mercury to macOS / OS X / Mac OS X
+This file documents the port of Mercury to macOS.
 (i.e. the `*-apple-darwin*` configuration).
 
-Versions of macOS prior to 10.9 are not supported.
+Mercury does not support versions of macOS prior to 10.9.
+Mercury supports both Intel and Apple Silicon Macs, although the latter has not
+been extensively tested.
 
 Contents
 --------
 
-* Mercury on Intel Macs
+* Mercury on macOS
 * Note for users of Xcode 11
 * Deployment Target Settings
 * Deep profiling on macOS
 
-Mercury on Intel Macs
-----------------------
+Mercury on macOS
+----------------
 
-Mercury should build and install "out-of-the-box" on Intel Macs using macOS
-10.9 onwards.
+Mercury should build and install "out-of-the-box" on Intel and Apple Silicon
+Macs using macOS 10.9 onwards.
 
 The `asm_fast*` and `reg*` grades are only available on 64-bit Intel systems
 and only when using GCC version 4.3 or later as the C compiler.
 
 If `clang` is being used as the C compiler then the only low-level C grades
-available are the `none*` grades.  The high-level C, Java and C# grades
+available are the `none*` grades. The high-level C, Java and C# grades
 all work. The C# grades require the Mono .NET implementation.
 (See [README.CSharp.md](README.CSharp.md) for further details.)
 
@@ -32,10 +34,10 @@ If the `asm_fast.gc` grade is not available, and unless otherwise directed,
 then the `hlc.gc` grade will be used as the default grade for compiling
 applications.
 
-On x86-64 machines, the default is to install 64-bit versions of the
-executables and libraries in the Mercury system.  On machines running versions
-of macOS up to and including 10.14, users can choose to install 32-bit versions
-instead by invoking Mercury's `configure` script either with the option
+On machines running versions of macOS up to, and including, 10.14, you can
+choose to install a 32-bit version of Mercury instead of the default 64-bit
+version. This is done by invoking Mercury's `configure` script either with the
+option
 
 ```
     --with-cc="clang -m32"
@@ -47,20 +49,21 @@ or
     --with-cc="gcc -m32"
 ```
 
-depending on their preferred compiler. In either case, every invocation
+depending on your preferred C compiler. In either case, every invocation
 of the selected C compiler on Mercury-generated C files will specify
-the `-m32` option. The reason for the limitation to 10.14 is that
-32-bit executables are not supported at all from macOS 10.15 onwards.
+the `-m32` option. The reason for the restriction to version 10.14 is that
+macOS does not support 32-bit executables from version 10.15 onwards.
 
 If, after installing Mercury, you encounter errors about missing `.mih` files,
-and you have fink installed, then try removing the fink components from your
-`PATH` (these usually start with `/sw`) and reinstalling.
+and you have [fink](https://www.finkproject.org/) installed, try removing the
+fink components from your `PATH` (these usually start with `/sw`) and
+reinstalling.
 
 Note for users of Xcode 11
 --------------------------
 
 Versions of Xcode 11 prior to 11.4 ship with a broken version of `clang`
-that *cannot* be used to compile Mercury.  The `configure` script will print
+that *cannot* be used to compile Mercury. The `configure` script will print
 a warning if it detects that you are using the broken version.
 
 A discussion of this issue can be found at
