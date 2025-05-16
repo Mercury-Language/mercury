@@ -446,7 +446,8 @@ MR_write_out_profiling_tree(void)
                     tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
                     tm->tm_hour, tm->tm_min, tm->tm_sec);
                 MR_safe_strcat(data_filename, MR_FILENAME_BUF_LEN, date_name);
-                MR_safe_strcat(procrep_filename, MR_FILENAME_BUF_LEN, date_name);
+                MR_safe_strcat(procrep_filename, MR_FILENAME_BUF_LEN,
+                    date_name);
             }
         }
 
