@@ -194,6 +194,11 @@
     ;       warn_inferred_erroneous
     ;       warn_nothing_exported
     ;       warn_unused_args
+    % XXX We should also warn about unused statevars in "some (...)" scopes.
+    ;       warn_unneeded_initial_statevars
+    ;       warn_unneeded_initial_statevars_lambda
+    ;       warn_unneeded_final_statevars
+    ;       warn_unneeded_final_statevars_lambda
     ;       warn_interface_imports
     ;       warn_interface_imports_in_parents
     ;       warn_missing_opt_files
@@ -1305,6 +1310,10 @@ optdef(oc_warn, warn_det_decls_too_lax,                 bool(yes)).
 optdef(oc_warn, warn_inferred_erroneous,                bool(yes)).
 optdef(oc_warn, warn_nothing_exported,                  bool(yes)).
 optdef(oc_warn, warn_unused_args,                       bool(no)).
+optdef(oc_warn, warn_unneeded_initial_statevars,        bool(yes)).
+optdef(oc_warn, warn_unneeded_initial_statevars_lambda, bool(yes)).
+optdef(oc_warn, warn_unneeded_final_statevars,          bool(yes)).
+optdef(oc_warn, warn_unneeded_final_statevars_lambda,   bool(yes)).
 optdef(oc_warn, warn_interface_imports,                 bool(yes)).
 optdef(oc_warn, warn_interface_imports_in_parents,      bool(no)).
 optdef(oc_warn, warn_inconsistent_pred_order_clauses,   bool(no)).
@@ -2290,6 +2299,14 @@ long_table("warn-det-decls-too-lax",   warn_det_decls_too_lax).
 long_table("warn-inferred-erroneous",  warn_inferred_erroneous).
 long_table("warn-nothing-exported",    warn_nothing_exported).
 long_table("warn-unused-args",         warn_unused_args).
+long_table("warn-unneeded-initial-statevars",
+                                       warn_unneeded_initial_statevars).
+long_table("warn-unneeded-initial-statevars-lambda",
+                                       warn_unneeded_initial_statevars_lambda).
+long_table("warn-unneeded-final-statevars",
+                                       warn_unneeded_final_statevars).
+long_table("warn-unneeded-final-statevars-lambda",
+                                       warn_unneeded_final_statevars_lambda).
 long_table("warn-interface-imports",   warn_interface_imports).
 long_table("warn-interface-imports-in-parents",
                                         warn_interface_imports_in_parents).
@@ -3518,21 +3535,23 @@ long_table("escape-2024-04-28",
                                     compiler_sufficiently_recent).
 long_table("can-fail-function-obsolete-2024-08-10",
                                     compiler_sufficiently_recent).
-long_table("experiment",           experiment).
-long_table("experiment1",          experiment1).
-long_table("experiment2",          experiment2).
-long_table("experiment3",          experiment3).
-long_table("experiment4",          experiment4).
-long_table("experiment5",          experiment5).
+long_table("unused-statevar-warn-2025-05-16",
+                                    compiler_sufficiently_recent).
+long_table("experiment",            experiment).
+long_table("experiment1",           experiment1).
+long_table("experiment2",           experiment2).
+long_table("experiment3",           experiment3).
+long_table("experiment4",           experiment4).
+long_table("experiment5",           experiment5).
 long_table("allow-ho-insts-as-modes",
                                     allow_ho_insts_as_modes).
 long_table("ignore-par-conjunctions",
                                     ignore_par_conjunctions).
-long_table("control-granularity",  control_granularity).
-long_table("distance-granularity", distance_granularity).
-long_table("implicit-parallelism", implicit_parallelism).
-long_table("feedback-file",        feedback_file).
-long_table("par-loop-control",     par_loop_control).
+long_table("control-granularity",   control_granularity).
+long_table("distance-granularity",  distance_granularity).
+long_table("implicit-parallelism",  implicit_parallelism).
+long_table("feedback-file",         feedback_file).
+long_table("par-loop-control",      par_loop_control).
 long_table("par-loop-control-preserve-tail-recursion",
                                     par_loop_control_preserve_tail_recursion).
 
@@ -4338,6 +4357,8 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
     ).
 
 style_warning_options = [
+    warn_unneeded_initial_statevars,
+    warn_unneeded_initial_statevars_lambda,
     warn_inconsistent_pred_order_clauses,
     warn_inconsistent_pred_order_foreign_procs,
     warn_non_contiguous_decls,
@@ -4375,6 +4396,8 @@ non_style_warning_options = [
     warn_inferred_erroneous,
     warn_nothing_exported,
     warn_unused_args,
+    warn_unneeded_final_statevars,
+    warn_unneeded_final_statevars_lambda,
     warn_interface_imports,
     warn_interface_imports_in_parents,
     warn_missing_opt_files,
@@ -4570,6 +4593,20 @@ options_help_warning(Stream, !IO) :-
         "\tDo not warn about modules which export nothing.",
         "--warn-unused-args",
         "\tWarn about predicate arguments which are not used.",
+/*
+        "--no-warn-unneeded-initial-statevars",
+        "\tDo not warn about state variables in clause heads",
+        "\tthat could be ordinary variables.",
+        "--no-warn-unneeded-initial-statevars-lambda",
+        "\tDo not warn about state variables in lambda expressions",
+        "\tthat could be ordinary variables.",
+        "--no-warn-unneeded-final-statevars",
+        "\tDo not warn about !:S state variables in clause heads",
+        "\twhose value will always be the same as !.S.",
+        "--no-warn-unneeded-final-statevars-lambda",
+        "\tDo not warn about !:S state variables in lambda expressions",
+        "\twhose value will always be the same as !.S.",
+*/
         "--no-warn-interface-imports",
         "\tDo not warn about modules imported in the interface, but",
         "\twhich are not used in the interface.",

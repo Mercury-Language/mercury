@@ -423,11 +423,11 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     handle_chosen_stdlib_dir(MaybeEnvOptFileMerStdLibDir, !Globals, !Specs),
     handle_libgrades(!Globals, !Specs, !IO),
     handle_subdir_setting(OpMode, !Globals),
-    handle_directory_options(OpMode, !Globals, !Specs),
+    handle_directory_options(OpMode, !Globals),
     handle_target_compile_link_symlink_options(!Globals),
     handle_compiler_developer_options(!Globals, !IO),
     handle_compare_specialization(!Globals),
-    handle_colors(!Globals, !IO),
+    handle_colors(!Globals),
 
     (
         OT_Optimize0 = do_not_optimize,
@@ -437,8 +437,8 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         OT_Optimize0 = optimize,
         OT_OptMLDSTailCalls = OT_OptMLDSTailCalls0
     ),
-    handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls,
-        !Globals, !Specs),
+    handle_non_tail_rec_warnings(!.Globals, OptTuple0, OT_OptMLDSTailCalls,
+        !Specs),
 
     % The rest of the code of this predicate computes the various fields
     % of the optimization options tuple.
@@ -744,10 +744,10 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
 :- pred check_for_incompatibilities(globals::in, op_mode::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_for_incompatibilities(!.Globals, OpMode, !Specs) :-
+check_for_incompatibilities(Globals, OpMode, !Specs) :-
     % `--transitive-intermodule-optimization' and `--make' are
     % not compatible with each other.
-    globals.lookup_bool_option(!.Globals, transitive_optimization, TransOpt),
+    globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
     (
         TransOpt = bool.yes,
         ( if
@@ -772,9 +772,9 @@ check_for_incompatibilities(!.Globals, OpMode, !Specs) :-
 
     % `--intermodule-optimization' and `--intermodule-analysis' are
     % not compatible with each other.
-    globals.lookup_bool_option(!.Globals, intermodule_optimization,
+    globals.lookup_bool_option(Globals, intermodule_optimization,
         InterModOpt),
-    globals.lookup_bool_option(!.Globals, intermodule_analysis,
+    globals.lookup_bool_option(Globals, intermodule_analysis,
         InterModAnalysis),
     ( if
         InterModOpt = bool.yes,
@@ -789,9 +789,9 @@ check_for_incompatibilities(!.Globals, OpMode, !Specs) :-
         true
     ),
 
-    globals.lookup_maybe_string_option(!.Globals,
+    globals.lookup_maybe_string_option(Globals,
         generate_standalone_interface, MaybeStandaloneInt),
-    globals.lookup_bool_option(!.Globals,
+    globals.lookup_bool_option(Globals,
         extra_initialization_functions, ExtraInitFunctions),
     ( if
         MaybeStandaloneInt = maybe.yes(_),
@@ -1749,6 +1749,10 @@ handle_opmode_implications(OpMode, !Globals) :-
             globals.set_option(halt_at_warn, bool(HaltAtWarn), !Globals),
             globals.set_option(warn_unused_interface_imports, bool(no),
                 !Globals),
+            globals.set_option(warn_unneeded_final_statevars, bool(no),
+                !Globals),
+            globals.set_option(warn_unneeded_final_statevars_lambda, bool(no),
+                !Globals),
             turn_off_all_style_warnings(!Globals),
             (
                 ( OpModeArgsMI = omif_int0
@@ -2230,10 +2234,9 @@ handle_subdir_setting(OpMode, !Globals) :-
     %   ext_dirs_maps
     %
 :- pred handle_directory_options(op_mode::in,
-    globals::in, globals::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    globals::in, globals::out) is det.
 
-handle_directory_options(OpMode, !Globals, !Specs) :-
+handle_directory_options(OpMode, !Globals) :-
     % We only perform the library grade install check if we are
     % building a linked target using mmc --make or if we are building
     % a single source file linked target. (The library grade install
@@ -2990,9 +2993,9 @@ handle_compare_specialization(!Globals) :-
     % Options updated:
     %   use_color_diagnostics
     %
-:- pred handle_colors(globals::in, globals::out, io::di, io::uo) is det.
+:- pred handle_colors(globals::in, globals::out) is det.
 
-handle_colors(!Globals, !IO) :-
+handle_colors(!Globals) :-
     % NOTE This predicate does not yet handle the issue of whether
     % the output is going to a tty or not. If and when it does want to do so,
     % it will first have to *figure out* where the output is going.
@@ -3024,17 +3027,17 @@ handle_colors(!Globals, !IO) :-
     % Options updated:
     %   none
     %
-:- pred handle_non_tail_rec_warnings(opt_tuple::in,
-    maybe_opt_mlds_tailcalls::in, globals::in, globals::out,
+:- pred handle_non_tail_rec_warnings(globals::in, opt_tuple::in,
+    maybe_opt_mlds_tailcalls::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-handle_non_tail_rec_warnings(OptTuple0, OT_OptMLDSTailCalls,
-        !Globals, !Specs) :-
+handle_non_tail_rec_warnings(Globals, OptTuple0, OT_OptMLDSTailCalls,
+        !Specs) :-
     % --warn-non-tail-recursion requires tail call optimization to be enabled.
     % It also doesn't work if you use --errorcheck-only.
-    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion_self,
+    globals.lookup_bool_option(Globals, warn_non_tail_recursion_self,
         WarnNonTailRecSelf),
-    globals.lookup_bool_option(!.Globals, warn_non_tail_recursion_mutual,
+    globals.lookup_bool_option(Globals, warn_non_tail_recursion_mutual,
         WarnNonTailRecMutual),
     ( if
         ( WarnNonTailRecSelf = bool.yes
