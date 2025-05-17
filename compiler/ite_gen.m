@@ -436,7 +436,7 @@ generate_negation_general(CodeModel, Goal, NotGoalInfo, ResumeVars, ResumeLocs,
             reset_reason_commit, PruneTicketCode, !CI, !CLD),
         maybe_generate_negated_event_code(Goal, NotGoalInfo, neg_failure,
             FailTraceCode, !CI, !CLD),
-        generate_failure(FailCode, !CI, !.CLD),
+        generate_failure(FailCode, !.CI, !.CLD),
         % We want liveness after not(G) to be the same as after G.
         % Information about what variables are where will be set
         % by generate_resume_point.

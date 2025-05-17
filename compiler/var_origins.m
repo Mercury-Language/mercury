@@ -236,7 +236,7 @@ compute_var_origins_in_clauses(_CollectPred, _HeadVars,
 compute_var_origins_in_clauses(CollectPred, HeadVars,
         CurClauseNum, [Clause | Clauses], !RevOriginsMapList, !Acc) :-
     Clause = clause(_ApplicableProcs, BodyGoal, Lang, Context,
-        _StateVarWarnings),
+        _StateVarWarnings, _UnusedSVarDescs),
     (
         Lang = impl_lang_mercury,
         OriginClauseHead = origin_clause_head(Context, CurClauseNum, HeadVars),

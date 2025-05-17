@@ -24,6 +24,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.indent.
+:- import_module libs.maybe_util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
@@ -105,16 +106,6 @@
             ).
 
 :- func init_hlds_out_info(globals, output_lang) = hlds_out_info.
-
-%---------------------------------------------------------------------------%
-
-:- type is_first
-    --->    is_first
-    ;       is_not_first.
-
-:- type is_last
-    --->    is_last
-    ;       is_not_last.
 
 %---------------------------------------------------------------------------%
 

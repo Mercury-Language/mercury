@@ -424,7 +424,7 @@ transform_dcg_record_syntax(LocKind, Renaming, AccessType, ArgTerms0, Context,
             svar_finish_atomic_goal(LocKind, !SVarState)
         ;
             MaybeFieldNames = error1(FieldNamesSpecs),
-            add_unravel_errors(FieldNamesSpecs, !UrInfo),
+            add_unravel_specs(FieldNamesSpecs, !UrInfo),
             invalid_goal("^", ArgTerms1, GoalInfo, HLDSGoal,
                 !SVarState, !UrInfo),
             record_unravel_found_syntax_error(!UrInfo)
@@ -470,7 +470,7 @@ transform_dcg_record_syntax(LocKind, Renaming, AccessType, ArgTerms0, Context,
             )
         ),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        add_unravel_error(Spec, !UrInfo)
+        add_unravel_spec(Spec, !UrInfo)
     ).
 
 :- pred transform_dcg_record_syntax_2(field_access_type::in, field_list::in,
@@ -855,7 +855,7 @@ transform_parse_tree_goal_to_hlds_try(LocKind, Renaming, Goal, HLDSGoal,
                     words("part.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            add_unravel_error(Spec, !UrInfo),
+            add_unravel_spec(Spec, !UrInfo),
             HLDSGoal = true_goal_with_context(Context)
         )
     ;
@@ -1282,7 +1282,7 @@ transform_parse_tree_goal_to_hlds_atomic(LocKind, Renaming, Goal, HLDSGoal,
         (
             MaybeInnerScopeInfo = yes(InnerScopeInfo2),
             svar_finish_inner_atomic_scope(Context, InnerScopeInfo2,
-                InnerDI, InnerUO, !SVarState, !UrInfo),
+                InnerDI, InnerUO, !SVarState),
             Inner = atomic_interface_vars(InnerDI, InnerUO)
         ;
             MaybeInnerScopeInfo = no,

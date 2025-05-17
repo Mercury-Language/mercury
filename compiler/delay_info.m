@@ -186,9 +186,9 @@
 :- pred delay_info_check_invariant(delay_info::in, delay_info::out) is det.
 :- pragma inline(pred(delay_info_check_invariant/2)).
 
-delay_info_check_invariant(!DelayInfo) :-
+delay_info_check_invariant(DelayInfo, DelayInfo) :-
     trace [compiletime(flag("check_delay_info_invariant"))] (
-        !.DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
+        DelayInfo = delay_info(CurrentDepth, DelayedGoalStack,
             WaitingGoalsTable, _PendingGoals, NextSeqNums),
         ( if
             % Note: the two calls to stack.depth are det, but

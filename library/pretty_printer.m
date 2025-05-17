@@ -619,7 +619,7 @@ do_put_docs(Stream, Canonicalize, FMap, LineWidth, [HeadDoc0 | TailDocs0],
                     !Limit, !.Pri)
             ;
                 HeadDoc0 = format_list(Univs, Sep),
-                expand_format_list(Univs, Sep, TailDocs0, Docs, !Limit)
+                expand_format_list(!.Limit, Univs, Sep, TailDocs0, Docs)
             ;
                 HeadDoc0 = format_term(Name, Univs),
                 expand_format_term(Name, Univs, TailDocs0, Docs, !Limit, !.Pri)
@@ -821,7 +821,7 @@ expand_docs_to_line_end(Canonicalize, FMap,
                     TailDocs0, Docs1, !Limit, !.Pri)
             ;
                 HeadDoc0 = format_list(HeadUnivs, Sep),
-                expand_format_list(HeadUnivs, Sep, TailDocs0, Docs1, !Limit)
+                expand_format_list(!.Limit, HeadUnivs, Sep, TailDocs0, Docs1)
             ;
                 HeadDoc0 = format_term(Name, HeadUnivs),
                 expand_format_term(Name, HeadUnivs, TailDocs0, Docs1, !Limit,
@@ -998,13 +998,13 @@ expand_format_univ(Canonicalize, FMap, Univ, TailDocs, Docs,
 
     % Expand a list of univs into docs using the given separator.
     %
-:- pred expand_format_list(list(univ)::in, doc::in, list(doc)::in,
-    list(doc)::out, func_symbol_limit::in, func_symbol_limit::out) is det.
+:- pred expand_format_list(func_symbol_limit::in, list(univ)::in,
+    doc::in, list(doc)::in, list(doc)::out) is det.
 
-expand_format_list([], _Sep, TailDocs, Docs, !Limit) :-
+expand_format_list(_Limit, [], _Sep, TailDocs, Docs) :-
     Docs = TailDocs.
-expand_format_list([HeadUniv | TailUnivs], Sep, TailDocs, Docs, !Limit) :-
-    ( if func_limit_reached(!.Limit) then
+expand_format_list(Limit, [HeadUniv | TailUnivs], Sep, TailDocs, Docs) :-
+    ( if func_limit_reached(Limit) then
         Docs = [ellipsis | TailDocs]
     else
         (

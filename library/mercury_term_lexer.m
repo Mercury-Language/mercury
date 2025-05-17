@@ -1489,11 +1489,11 @@ linestr_get_comment_after_star(String, Len, LineContext0, LinePosn0,
 :- pred start_quoted_name(io.text_input_stream::in, char::in, list(char)::in,
     token::out, io::di, io::uo) is det.
 
-start_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO) :-
-    get_quoted_name(Stream, QuoteChar, !.RevChars, Token0, !IO),
+start_quoted_name(Stream, QuoteChar, RevChars0, Token, !IO) :-
+    get_quoted_name(Stream, QuoteChar, RevChars0, Token0, !IO),
     ( if Token0 = error(_) then
         % Skip to the end of the string or name.
-        start_quoted_name(Stream, QuoteChar, !.RevChars, _, !IO),
+        start_quoted_name(Stream, QuoteChar, RevChars0, _, !IO),
         Token = Token0
     else if Token0 = eof then
         Token = error("unterminated quote")
@@ -1505,14 +1505,14 @@ start_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO) :-
     list(char)::in, posn::in, token::out, string_token_context::out,
     posn::in, posn::out) is det.
 
-string_start_quoted_name(String, Len, QuoteChar, !.RevChars, Posn0,
+string_start_quoted_name(String, Len, QuoteChar, RevChars0, Posn0,
         Token, Context, !Posn) :-
-    string_get_quoted_name(String, Len, QuoteChar, !.RevChars, Posn0,
+    string_get_quoted_name(String, Len, QuoteChar, RevChars0, Posn0,
         Token0, Context, !Posn),
     ( if Token0 = error(_) then
         % Skip to the end of the string or name.
         disable_warning [suspicious_recursion] (
-            string_start_quoted_name(String, Len, QuoteChar, !.RevChars,
+            string_start_quoted_name(String, Len, QuoteChar, RevChars0,
                 Posn0, _, _, !Posn)
         ),
         Token = Token0
@@ -1527,14 +1527,14 @@ string_start_quoted_name(String, Len, QuoteChar, !.RevChars, Posn0,
     line_context::in, line_posn::in, token::out, string_token_context::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-linestr_start_quoted_name(String, Len, QuoteChar, !.RevChars,
+linestr_start_quoted_name(String, Len, QuoteChar, RevChars0,
         LineContext0, LinePosn0, Token, Context, !LineContext, !LinePosn) :-
-    linestr_get_quoted_name(String, Len, QuoteChar, !.RevChars,
+    linestr_get_quoted_name(String, Len, QuoteChar, RevChars0,
         LineContext0, LinePosn0, Token0, Context, !LineContext, !LinePosn),
     ( if Token0 = error(_) then
         % Skip to the end of the string or name.
         disable_warning [suspicious_recursion] (
-            linestr_start_quoted_name(String, Len, QuoteChar, !.RevChars,
+            linestr_start_quoted_name(String, Len, QuoteChar, RevChars0,
                 LineContext0, LinePosn0, _, _, !LineContext, !LinePosn)
         ),
         Token = Token0
@@ -2076,7 +2076,7 @@ unicode_decode_error_to_result(DecodeError) = Result :-
 :- pred get_hex_char_escape(io.text_input_stream::in, char::in, list(char)::in,
     list(char)::in, token::out, io::di, io::uo) is det.
 
-get_hex_char_escape(Stream, QuoteChar, !.RevChars, !.RevHexChars,
+get_hex_char_escape(Stream, QuoteChar, RevChars0, !.RevHexChars,
     Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
@@ -2089,10 +2089,10 @@ get_hex_char_escape(Stream, QuoteChar, !.RevChars, !.RevHexChars,
         Result = ok,
         ( if char.is_hex_digit(Char) then
             !:RevHexChars = [Char | !.RevHexChars],
-            get_hex_char_escape(Stream, QuoteChar, !.RevChars, !.RevHexChars,
+            get_hex_char_escape(Stream, QuoteChar, RevChars0, !.RevHexChars,
                 Token, !IO)
         else if Char = ('\\') then
-            finish_hex_escape(Stream, QuoteChar, !.RevChars, !.RevHexChars,
+            finish_hex_escape(Stream, QuoteChar, RevChars0, !.RevHexChars,
                 Token, !IO)
         else
             Token = error("unterminated hex escape")
@@ -2103,17 +2103,17 @@ get_hex_char_escape(Stream, QuoteChar, !.RevChars, !.RevHexChars,
     list(char)::in, list(char)::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
 
-string_get_hex_char_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
+string_get_hex_char_escape(String, Len, QuoteChar, RevChars0, !.RevHexChars,
         Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_hex_digit(Char) then
             !:RevHexChars = [Char | !.RevHexChars],
             disable_warning [suspicious_recursion] (
                 string_get_hex_char_escape(String, Len, QuoteChar,
-                    !.RevChars, !.RevHexChars, Posn0, Token, Context, !Posn)
+                    RevChars0, !.RevHexChars, Posn0, Token, Context, !Posn)
             )
         else if Char = ('\\') then
-            string_finish_hex_escape(String, Len, QuoteChar, !.RevChars,
+            string_finish_hex_escape(String, Len, QuoteChar, RevChars0,
                 !.RevHexChars, Posn0, Token, Context, !Posn)
         else
             string_get_context(Posn0, Context),
@@ -2129,18 +2129,18 @@ string_get_hex_char_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
     line_context::in, line_posn::in, token::out, string_token_context::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-linestr_get_hex_char_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
+linestr_get_hex_char_escape(String, Len, QuoteChar, RevChars0, !.RevHexChars,
         LineContext0, LinePosn0, Token, Context, !LineContext, !LinePosn) :-
     ( if linestr_read_char(String, Len, Char, !LineContext, !LinePosn) then
         ( if char.is_hex_digit(Char) then
             !:RevHexChars = [Char | !.RevHexChars],
             disable_warning [suspicious_recursion] (
                 linestr_get_hex_char_escape(String, Len, QuoteChar,
-                    !.RevChars, !.RevHexChars, LineContext0, LinePosn0,
+                    RevChars0, !.RevHexChars, LineContext0, LinePosn0,
                     Token, Context, !LineContext, !LinePosn)
             )
         else if Char = ('\\') then
-            linestr_finish_hex_escape(String, Len, QuoteChar, !.RevChars,
+            linestr_finish_hex_escape(String, Len, QuoteChar, RevChars0,
                 !.RevHexChars, LineContext0, LinePosn0,
                 Token, Context, !LineContext, !LinePosn)
         else
@@ -2157,14 +2157,14 @@ linestr_get_hex_char_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
 
 %---------------------%
 
-finish_hex_escape(Stream, QuoteChar, !.RevChars, !.RevHexChars, Token, !IO) :-
+finish_hex_escape(Stream, QuoteChar, !.RevChars, RevHexChars0, Token, !IO) :-
     (
-        !.RevHexChars = [],
+        RevHexChars0 = [],
         Token = error("empty hex escape")
     ;
-        !.RevHexChars = [_ | _],
+        RevHexChars0 = [_ | _],
         ( if
-            rev_char_list_to_string(!.RevHexChars, HexString),
+            rev_char_list_to_string(RevHexChars0, HexString),
             string.base_string_to_int(16, HexString, Int),
             char.to_int(Char, Int)
         then
@@ -2183,16 +2183,16 @@ finish_hex_escape(Stream, QuoteChar, !.RevChars, !.RevHexChars, Token, !IO) :-
     list(char)::in, list(char)::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
 
-string_finish_hex_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
+string_finish_hex_escape(String, Len, QuoteChar, !.RevChars, RevHexChars0,
         Posn0, Token, Context, !Posn) :-
     (
-        !.RevHexChars = [],
+        RevHexChars0 = [],
         string_get_context(Posn0, Context),
         Token = error("empty hex escape")
     ;
-        !.RevHexChars = [_ | _],
+        RevHexChars0 = [_ | _],
         ( if
-            rev_char_list_to_string(!.RevHexChars, HexString),
+            rev_char_list_to_string(RevHexChars0, HexString),
             string.base_string_to_int(16, HexString, Int),
             char.to_int(Char, Int)
         then
@@ -2215,16 +2215,16 @@ string_finish_hex_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
     line_context::in, line_posn::in, token::out, string_token_context::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-linestr_finish_hex_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
+linestr_finish_hex_escape(String, Len, QuoteChar, !.RevChars, RevHexChars0,
         LineContext0, LinePosn0, Token, Context, !LineContext, !LinePosn) :-
     (
-        !.RevHexChars = [],
+        RevHexChars0 = [],
         linestr_get_context(LineContext0, Context),
         Token = error("empty hex escape")
     ;
-        !.RevHexChars = [_ | _],
+        RevHexChars0 = [_ | _],
         ( if
-            rev_char_list_to_string(!.RevHexChars, HexString),
+            rev_char_list_to_string(RevHexChars0, HexString),
             string.base_string_to_int(16, HexString, Int),
             char.to_int(Char, Int)
         then
@@ -2248,7 +2248,7 @@ linestr_finish_hex_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
 :- pred get_octal_escape(io.text_input_stream::in, char::in, list(char)::in,
     list(char)::in, token::out, io::di, io::uo) is det.
 
-get_octal_escape(Stream, QuoteChar, !.RevChars, !.RevOctalChars, Token, !IO) :-
+get_octal_escape(Stream, QuoteChar, RevChars0, !.RevOctalChars, Token, !IO) :-
     io.read_char_unboxed(Stream, Result, Char, !IO),
     (
         Result = error(Error),
@@ -2260,10 +2260,10 @@ get_octal_escape(Stream, QuoteChar, !.RevChars, !.RevOctalChars, Token, !IO) :-
         Result = ok,
         ( if char.is_octal_digit(Char) then
             !:RevOctalChars = [Char | !.RevOctalChars],
-            get_octal_escape(Stream, QuoteChar, !.RevChars, !.RevOctalChars,
+            get_octal_escape(Stream, QuoteChar, RevChars0, !.RevOctalChars,
                 Token, !IO)
         else if Char = ('\\') then
-            finish_octal_escape(Stream, QuoteChar, !.RevChars, !.RevOctalChars,
+            finish_octal_escape(Stream, QuoteChar, RevChars0, !.RevOctalChars,
                 Token, !IO)
         else
             Token = error("unterminated octal escape")
@@ -2274,18 +2274,18 @@ get_octal_escape(Stream, QuoteChar, !.RevChars, !.RevOctalChars, Token, !IO) :-
     list(char)::in, list(char)::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
 
-string_get_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
+string_get_octal_escape(String, Len, QuoteChar, RevChars0, !.RevOctalChars,
         Posn0, Token, Context, !Posn) :-
     ( if string_read_char(String, Len, Char, !Posn) then
         ( if char.is_octal_digit(Char) then
             !:RevOctalChars = [Char | !.RevOctalChars],
             disable_warning [suspicious_recursion] (
                 string_get_octal_escape(String, Len, QuoteChar,
-                    !.RevChars, !.RevOctalChars, Posn0, Token, Context, !Posn)
+                    RevChars0, !.RevOctalChars, Posn0, Token, Context, !Posn)
             )
         else if Char = ('\\') then
             string_finish_octal_escape(String, Len, QuoteChar,
-                !.RevChars, !.RevOctalChars, Posn0, Token, Context, !Posn)
+                RevChars0, !.RevOctalChars, Posn0, Token, Context, !Posn)
         else
             string_get_context(Posn0, Context),
             Token = error("unterminated octal escape")
@@ -2300,19 +2300,19 @@ string_get_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
     line_context::in, line_posn::in, token::out, string_token_context::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-linestr_get_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
+linestr_get_octal_escape(String, Len, QuoteChar, RevChars0, !.RevOctalChars,
         LineContext0, LinePosn0, Token, Context, !LineContext, !LinePosn) :-
     ( if linestr_read_char(String, Len, Char, !LineContext, !LinePosn) then
         ( if char.is_octal_digit(Char) then
             !:RevOctalChars = [Char | !.RevOctalChars],
             disable_warning [suspicious_recursion] (
                 linestr_get_octal_escape(String, Len, QuoteChar,
-                    !.RevChars, !.RevOctalChars, LineContext0, LinePosn0,
+                    RevChars0, !.RevOctalChars, LineContext0, LinePosn0,
                     Token, Context, !LineContext, !LinePosn)
             )
         else if Char = ('\\') then
             linestr_finish_octal_escape(String, Len, QuoteChar,
-                !.RevChars, !.RevOctalChars, LineContext0, LinePosn0,
+                RevChars0, !.RevOctalChars, LineContext0, LinePosn0,
                 Token, Context, !LineContext, !LinePosn)
         else
             linestr_get_context(LineContext0, Context),
@@ -2328,15 +2328,15 @@ linestr_get_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
 :- pred finish_octal_escape(io.text_input_stream::in, char::in, list(char)::in,
     list(char)::in, token::out, io::di, io::uo) is det.
 
-finish_octal_escape(Stream, QuoteChar, !.RevChars, !.RevOctalChars,
+finish_octal_escape(Stream, QuoteChar, !.RevChars, RevOctalChars0,
         Token, !IO) :-
     (
-        !.RevOctalChars = [],
+        RevOctalChars0 = [],
         Token = error("empty octal escape")
     ;
-        !.RevOctalChars = [_ | _],
+        RevOctalChars0 = [_ | _],
         ( if
-            rev_char_list_to_string(!.RevOctalChars, OctalString),
+            rev_char_list_to_string(RevOctalChars0, OctalString),
             string.base_string_to_int(8, OctalString, Int),
             char.to_int(Char, Int)
         then
@@ -2355,16 +2355,16 @@ finish_octal_escape(Stream, QuoteChar, !.RevChars, !.RevOctalChars,
     list(char)::in, list(char)::in, posn::in, token::out,
     string_token_context::out, posn::in, posn::out) is det.
 
-string_finish_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
+string_finish_octal_escape(String, Len, QuoteChar, !.RevChars, RevOctalChars0,
         Posn0, Token, Context, !Posn) :-
     (
-        !.RevOctalChars = [],
+        RevOctalChars0 = [],
         Token = error("empty octal escape"),
         string_get_context(Posn0, Context)
     ;
-        !.RevOctalChars = [_ | _],
+        RevOctalChars0 = [_ | _],
         ( if
-            rev_char_list_to_string(!.RevOctalChars, OctalString),
+            rev_char_list_to_string(RevOctalChars0, OctalString),
             string.base_string_to_int(8, OctalString, Int),
             char.to_int(Char, Int)
         then
@@ -2388,16 +2388,16 @@ string_finish_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
 linestr_finish_octal_escape(String, Len, QuoteChar,
-        !.RevChars, !.RevOctalChars, LineContext0, LinePosn0,
+        !.RevChars, RevOctalChars0, LineContext0, LinePosn0,
         Token, Context, !LineContext, !LinePosn) :-
     (
-        !.RevOctalChars = [],
+        RevOctalChars0 = [],
         Token = error("empty octal escape"),
         linestr_get_context(LineContext0, Context)
     ;
-        !.RevOctalChars = [_ | _],
+        RevOctalChars0 = [_ | _],
         ( if
-            rev_char_list_to_string(!.RevOctalChars, OctalString),
+            rev_char_list_to_string(RevOctalChars0, OctalString),
             string.base_string_to_int(8, OctalString, Int),
             char.to_int(Char, Int)
         then

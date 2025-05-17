@@ -219,7 +219,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             Goals = [FirstDisjunct | _],
             reached_branch_end(GoalInfo, yes(FirstDisjunct), branch_disj,
                 StartAnchor, EndAnchor, BeforeId, AfterId,
-                MaybeResumeVars, !IntervalInfo, !Acc),
+                MaybeResumeVars, !IntervalInfo),
             build_interval_info_in_disj(Goals, doesnt_need_flush,
                 StartAnchor, EndAnchor, BeforeId, AfterId,
                 OpenIntervals, !IntervalInfo, !Acc),
@@ -240,7 +240,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         GoalExpr = switch(Var, _Det, Cases),
         reached_branch_end(GoalInfo, no, branch_switch,
             StartAnchor, EndAnchor, BeforeId, AfterId, MaybeResumeVars,
-            !IntervalInfo, !Acc),
+            !IntervalInfo),
         build_interval_info_in_cases(Cases, StartAnchor, EndAnchor,
             BeforeId, AfterId, OpenIntervalsList, !IntervalInfo, !Acc),
         OpenIntervals = set.union_list(OpenIntervalsList),
@@ -252,28 +252,28 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         GoalExpr = negation(SubGoal),
         reached_branch_end(GoalInfo, yes(SubGoal), branch_neg,
             StartAnchor, EndAnchor, BeforeId, AfterId, MaybeResumeVars,
-            !IntervalInfo, !Acc),
+            !IntervalInfo),
         enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
         build_interval_info_in_goal(SubGoal, !IntervalInfo, !Acc),
         reached_branch_start(needs_flush, StartAnchor, BeforeId,
-            OpenIntervals, !IntervalInfo, !Acc),
+            OpenIntervals, !IntervalInfo),
         leave_branch_start(branch_neg, StartAnchor, BeforeId, MaybeResumeVars,
             OpenIntervals, !IntervalInfo)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
         reached_branch_end(GoalInfo, yes(Cond), branch_ite,
             StartAnchor, EndAnchor, BeforeId, AfterId, MaybeResumeVars,
-            !IntervalInfo, !Acc),
+            !IntervalInfo),
         enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
         build_interval_info_in_goal(Then, !IntervalInfo, !Acc),
         reached_cond_then(GoalInfo, !IntervalInfo),
         build_interval_info_in_goal(Cond, !IntervalInfo, !Acc),
         reached_branch_start(doesnt_need_flush, StartAnchor, BeforeId,
-            CondOpenIntervals, !IntervalInfo, !Acc),
+            CondOpenIntervals, !IntervalInfo),
         enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
         build_interval_info_in_goal(Else, !IntervalInfo, !Acc),
         reached_branch_start(needs_flush, StartAnchor, BeforeId,
-            _ElseOpenIntervals, !IntervalInfo, !Acc),
+            _ElseOpenIntervals, !IntervalInfo),
         leave_branch_start(branch_ite, StartAnchor, BeforeId, MaybeResumeVars,
             CondOpenIntervals, !IntervalInfo)
     ;
@@ -320,7 +320,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             assoc_list.keys(GenericVarsArgInfos, GenericVars),
             Inputs = GenericVars ++ InputArgs,
             build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
-                !IntervalInfo, !Acc)
+                !IntervalInfo)
         )
     ;
         GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin, _, _),
@@ -341,7 +341,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             goal_info_get_maybe_need_across_call(GoalInfo,
                 MaybeNeedAcrossCall),
             build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
-                !IntervalInfo, !Acc)
+                !IntervalInfo)
         )
     ;
         GoalExpr = call_foreign_proc(_Attributes, PredId, ProcId,
@@ -363,7 +363,7 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
             MaybeNeedAcrossCall = yes(_)
         then
             build_interval_info_at_call(InputVars, MaybeNeedAcrossCall,
-                GoalInfo, !IntervalInfo, !Acc)
+                GoalInfo, !IntervalInfo)
         else
             require_in_regs(InputVars, !IntervalInfo),
             require_access(InputVars, !IntervalInfo)
@@ -449,11 +449,10 @@ shared_left_to_right_deconstruct(ModuleInfo, VarTable,
 
 :- pred build_interval_info_at_call(list(prog_var)::in,
     maybe(need_across_call)::in, hlds_goal_info::in,
-    interval_info::in, interval_info::out, T::in, T::out) is det
-    <= build_interval_info_acc(T).
+    interval_info::in, interval_info::out) is det.
 
 build_interval_info_at_call(Inputs, MaybeNeedAcrossCall, GoalInfo,
-        !IntervalInfo, !Acc) :-
+        !IntervalInfo) :-
     (
         MaybeNeedAcrossCall = yes(NeedAcrossCall),
         NeedAcrossCall = need_across_call(ForwardVars, ResumeVars,
@@ -528,7 +527,7 @@ build_interval_info_in_disj([Goal | Goals], MaybeNeedsFlush,
     enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
     build_interval_info_in_goal(Goal, !IntervalInfo, !Acc),
     reached_branch_start(MaybeNeedsFlush, StartAnchor, BeforeId,
-        OpenIntervals, !IntervalInfo, !Acc),
+        OpenIntervals, !IntervalInfo),
     build_interval_info_in_disj(Goals, needs_flush, StartAnchor, EndAnchor,
         BeforeId, AfterId, _OpenIntervals, !IntervalInfo, !Acc).
 
@@ -545,7 +544,7 @@ build_interval_info_in_cases([Case | Cases],
     enter_branch_tail(EndAnchor, AfterId, !IntervalInfo),
     build_interval_info_in_goal(Goal, !IntervalInfo, !Acc),
     reached_branch_start(doesnt_need_flush, StartAnchor, BeforeId,
-        OpenIntervals, !IntervalInfo, !Acc),
+        OpenIntervals, !IntervalInfo),
     build_interval_info_in_cases(Cases, StartAnchor, EndAnchor,
         BeforeId, AfterId, OpenIntervalsList, !IntervalInfo, !Acc).
 
@@ -555,12 +554,11 @@ build_interval_info_in_cases([Case | Cases],
 :- pred reached_branch_end(hlds_goal_info::in, maybe(hlds_goal)::in,
     branch_construct::in, anchor::out, anchor::out,
     interval_id::out, interval_id::out, maybe(set_of_progvar)::out,
-    interval_info::in, interval_info::out, T::in, T::out) is det
-    <= build_interval_info_acc(T).
+    interval_info::in, interval_info::out) is det.
 
 reached_branch_end(GoalInfo, MaybeResumeGoal, Construct,
         StartAnchor, EndAnchor, BeforeIntervalId, AfterIntervalId,
-        MaybeResumeVars, !IntervalInfo, !Acc) :-
+        MaybeResumeVars, !IntervalInfo) :-
     GoalId = goal_info_get_goal_id(GoalInfo),
     record_branch_end(GoalId, !IntervalInfo),
     ( if
@@ -611,11 +609,11 @@ enter_branch_tail(EndAnchor, AfterId, !IntervalInfo) :-
     one_open_interval(BranchTailId, !IntervalInfo).
 
 :- pred reached_branch_start(maybe_needs_flush::in, anchor::in,
-    interval_id::in, set(interval_id)::out, interval_info::in,
-    interval_info::out, T::in, T::out) is det <= build_interval_info_acc(T).
+    interval_id::in, set(interval_id)::out,
+    interval_info::in, interval_info::out) is det.
 
 reached_branch_start(MaybeNeedsFlush, StartAnchor, BeforeId, OpenIntervals,
-        !IntervalInfo, !Acc) :-
+        !IntervalInfo) :-
     get_cur_interval(BranchStartId, !.IntervalInfo),
     record_interval_start(BranchStartId, StartAnchor, !IntervalInfo),
     record_interval_succ(BeforeId, BranchStartId, !IntervalInfo),

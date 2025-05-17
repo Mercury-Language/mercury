@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2011 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -325,7 +325,7 @@ module_add_type_defn_mercury(TypeStatus1, TypeCtor, TypeParams,
             OldDefnBody \= hlds_abstract_type(_)
         then
             maybe_report_multiply_defined_type(TypeStatus, TypeCtor, Context,
-                OldDefn, !ModuleInfo, !FoundInvalidType, !Specs)
+                OldDefn, !FoundInvalidType, !Specs)
         else
             replace_type_ctor_defn(TypeCtor, TypeDefn, TypeTable0, TypeTable),
             module_info_set_type_table(TypeTable, !ModuleInfo)
@@ -407,7 +407,7 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
             else
                 % ... or not.
                 maybe_report_multiply_defined_type(TypeStatus, TypeCtor,
-                    Context, OldDefn, !ModuleInfo, !FoundInvalidType, !Specs)
+                    Context, OldDefn, !FoundInvalidType, !Specs)
             )
         )
     else
@@ -629,12 +629,12 @@ merge_maybe(no, yes(T), yes(T)).
 %
 
 :- pred maybe_report_multiply_defined_type(type_status::in, type_ctor::in,
-    prog_context::in, hlds_type_defn::in, module_info::in, module_info::out,
+    prog_context::in, hlds_type_defn::in,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 maybe_report_multiply_defined_type(TypeStatus, TypeCtor, Context, OldDefn,
-        !ModuleInfo, !FoundInvalidType, !Specs) :-
+        !FoundInvalidType, !Specs) :-
     % Issue an error message if the second definition wasn't read
     % while reading .opt files.
     % XXX STATUS
@@ -1004,9 +1004,9 @@ add_du_ctors_check_subtype_check_foreign_type(TypeTable, TypeCtor, TypeDefn,
     ;
         Body = hlds_foreign_type(ForeignTypeBody),
         get_type_defn_prev_errors(TypeDefn, PrevErrors),
-        check_foreign_type_for_current_target(TypeCtor, ForeignTypeBody,
-            PrevErrors, Context, FoundInvalidTypeInForeignBody,
-            !ModuleInfo, !Specs),
+        check_foreign_type_for_current_target(!.ModuleInfo, TypeCtor,
+            ForeignTypeBody, PrevErrors, Context,
+            FoundInvalidTypeInForeignBody, !Specs),
         (
             FoundInvalidTypeInForeignBody = found_invalid_type,
             !:FoundInvalidType = found_invalid_type
@@ -1112,7 +1112,7 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
     FieldNames = list.map(func(C) = C ^ arg_field_name, Args),
     FirstField = 1,
     add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,
-        QualifiedDuA, TypeStatus, FirstField, !FieldNameTable, !Specs).
+        QualifiedDuA, TypeStatus, FirstField, !FieldNameTable).
 
 :- pred add_ctor_to_list(type_ctor::in, string::in, int::in, module_name::in,
     list(du_ctor)::in, list(du_ctor)::out) is det.
@@ -1126,32 +1126,30 @@ add_ctor_to_list(TypeCtor, ConsName, Arity, ModuleQual, !DuCtors) :-
 :- pred add_ctor_field_names(list(maybe(ctor_field_name))::in,
     need_qualifier::in, list(module_name)::in, type_ctor::in,
     du_ctor::in, type_status::in, int::in,
-    ctor_field_table::in, ctor_field_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    ctor_field_table::in, ctor_field_table::out) is det.
 
-add_ctor_field_names([], _, _, _, _, _, _, !FieldNameTable, !Specs).
+add_ctor_field_names([], _, _, _, _, _, _, !FieldNameTable).
 add_ctor_field_names([MaybeCtorFieldName | MaybeCtorFieldNames], NeedQual,
         PartialQuals, TypeCtor, DuCtor, TypeStatus,
-        FieldNumber, !FieldNameTable, !Specs) :-
+        FieldNumber, !FieldNameTable) :-
     (
         MaybeCtorFieldName = yes(ctor_field_name(FieldName, FieldNameContext)),
         FieldDefn = hlds_ctor_field_defn(FieldNameContext, TypeStatus,
             TypeCtor, DuCtor, FieldNumber),
         add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
-            !FieldNameTable, !Specs)
+            !FieldNameTable)
     ;
         MaybeCtorFieldName = no
     ),
     add_ctor_field_names(MaybeCtorFieldNames, NeedQual, PartialQuals, TypeCtor,
-        DuCtor, TypeStatus, FieldNumber + 1, !FieldNameTable, !Specs).
+        DuCtor, TypeStatus, FieldNumber + 1, !FieldNameTable).
 
 :- pred add_ctor_field_name(sym_name::in, hlds_ctor_field_defn::in,
     need_qualifier::in, list(module_name)::in,
-    ctor_field_table::in, ctor_field_table::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    ctor_field_table::in, ctor_field_table::out) is det.
 
 add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
-        !FieldNameTable, !Specs) :-
+        !FieldNameTable) :-
     (
         FieldName = qualified(FieldModule0, _),
         FieldModule = FieldModule0
@@ -1167,19 +1165,6 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
     then
         % check_type_inst_mode_defns has already generated an error message
         % for this.
-        %
-        % ConflictingDefn = hlds_ctor_field_defn(OrigContext, _, _, _, _),
-        % FieldDefn = hlds_ctor_field_defn(Context, _, _, _, _),
-        % FieldString = sym_name_to_string(FieldName),
-        % Pieces = [words("Error: field"), quote(FieldString),
-        %     words("multiply defined."), nl],
-        % HereMsg = msg(Context, Pieces),
-        % PrevPieces = [words("Here is the previous definition of field"),
-        %     quote(FieldString), suffix("."), nl],
-        % PrevMsg = msg(OrigContext, PrevPieces),
-        % Spec = error_spec($pred, severity_error, phase_pt2h,
-        %     [HereMsg, PrevMsg]),
-        % !:Specs = [Spec | !.Specs]
         true
     else
         UnqualFieldName = unqualify_name(FieldName),
@@ -1221,14 +1206,14 @@ do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
     % has a representation for the backend we are generating code for.
     % If it does not, we generate an error message.
     %
-:- pred check_foreign_type_for_current_target(type_ctor::in,
+:- pred check_foreign_type_for_current_target(module_info::in, type_ctor::in,
     foreign_type_body::in, type_defn_prev_errors::in, prog_context::in,
-    found_invalid_type::out, module_info::in, module_info::out,
+    found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_foreign_type_for_current_target(TypeCtor, ForeignTypeBody, PrevErrors,
-        Context, FoundInvalidType, !ModuleInfo, !Specs) :-
-    module_info_get_globals(!.ModuleInfo, Globals),
+check_foreign_type_for_current_target(ModuleInfo, TypeCtor, ForeignTypeBody,
+        PrevErrors, Context, FoundInvalidType, !Specs) :-
+    module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     ( if have_foreign_type_for_backend(Target, ForeignTypeBody, yes) then
         FoundInvalidType = did_not_find_invalid_type

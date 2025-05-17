@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2012 The University of Melbourne.
-% Copyright (C) 2015, 2019-2024 The Mercury team.
+% Copyright (C) 2015, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -339,7 +339,7 @@ add_mc_vars_for_goal(PredId, ProgVarSet, Goal, !VarInfo) :-
 add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
         !Constraints) :-
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_get_headvars(ClausesInfo, HeadVars),
+    clauses_info_get_arg_vector(ClausesInfo, HeadVars),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
     get_clause_list_maybe_repeated(ClausesRep, Clauses),
     % XXX If this code is ever actually used, it should be updated

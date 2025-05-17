@@ -1762,11 +1762,11 @@ generate_compare_proc_body_du_linear(SpecDefnInfo, UCOptions, CtorRepns,
     unify_proc_info_set_module_info(ModuleInfo, !Info),
 
     X_InstmapDelta = instmap_delta_bind_var(IndexX),
-    build_spec_pred_call(TypeCtor, spec_pred_index, [X, IndexX],
-        X_InstmapDelta, detism_det, Context, GoalIndexX, !Info),
+    build_spec_pred_call(!.Info, TypeCtor, spec_pred_index, [X, IndexX],
+        X_InstmapDelta, detism_det, Context, GoalIndexX),
     Y_InstmapDelta = instmap_delta_bind_var(IndexY),
-    build_spec_pred_call(TypeCtor, spec_pred_index, [Y, IndexY],
-        Y_InstmapDelta, detism_det, Context, GoalIndexY, !Info),
+    build_spec_pred_call(!.Info, TypeCtor, spec_pred_index, [Y, IndexY],
+        Y_InstmapDelta, detism_det, Context, GoalIndexY),
 
     build_simple_call(ModuleInfo, mercury_private_builtin_module,
         "builtin_int_lt", [IndexX, IndexY], Context,
@@ -2730,18 +2730,17 @@ generate_index_proc_body(SpecDefnInfo, X, Index, Clause, !Info) :-
 
 generate_index_proc_body_du(SpecDefnInfo, CtorRepns, X, Index,
         Clause, !Info) :-
-    list.map_foldl2(generate_index_du_case(SpecDefnInfo, Index),
-        CtorRepns, Cases, 0, _, !Info),
+    list.map_foldl(generate_index_du_case(SpecDefnInfo, Index),
+        CtorRepns, Cases, 0, _),
     Context = SpecDefnInfo ^ spdi_context,
     goal_info_init(Context, GoalInfo),
     Goal = hlds_goal(switch(X, cannot_fail, Cases), GoalInfo),
     quantify_clause_body(all_modes, [X, Index], Goal, Context, Clause, !Info).
 
 :- pred generate_index_du_case(spec_pred_defn_info::in, prog_var::in,
-    constructor_repn::in, case::out, int::in, int::out,
-    unify_proc_info::in, unify_proc_info::out) is det.
+    constructor_repn::in, case::out, int::in, int::out) is det.
 
-generate_index_du_case(SpecDefnInfo, Index, CtorRepn, Case, !N, !Info) :-
+generate_index_du_case(SpecDefnInfo, Index, CtorRepn, Case, !N) :-
     CtorRepn = ctor_repn(_Ordinal, _MaybeExistConstraints, FunctorName,
         _ConsTag, _ArgRepns, FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
@@ -2821,14 +2820,13 @@ build_simple_call(ModuleInfo, ModuleName, PredName, ArgVars, Context, Goal) :-
         [], ArgVars, instmap_delta_bind_no_var, mode_no(0),
         detism_erroneous, purity_pure, [], Context, Goal).
 
-:- pred build_spec_pred_call(type_ctor::in, special_pred_id::in,
-    list(prog_var)::in, instmap_delta::in, determinism::in,
-    prog_context::in, hlds_goal::out,
-    unify_proc_info::in, unify_proc_info::out) is det.
+:- pred build_spec_pred_call(unify_proc_info::in, type_ctor::in,
+    special_pred_id::in, list(prog_var)::in, instmap_delta::in,
+    determinism::in, prog_context::in, hlds_goal::out) is det.
 
-build_spec_pred_call(TypeCtor, SpecialPredId, ArgVars, InstmapDelta, Detism,
-        Context, Goal, !Info) :-
-    unify_proc_info_get_module_info(!.Info, ModuleInfo),
+build_spec_pred_call(Info, TypeCtor, SpecialPredId, ArgVars,
+        InstmapDelta, Detism, Context, Goal) :-
+    unify_proc_info_get_module_info(Info, ModuleInfo),
     get_special_proc_det(ModuleInfo, TypeCtor, SpecialPredId,
         PredName, PredId, ProcId),
     GoalExpr = plain_call(PredId, ProcId, ArgVars, not_builtin, no, PredName),
@@ -2919,7 +2917,8 @@ quantify_clause_body(ApplModes, HeadVars, Goal0, Context, Clause, !Info) :-
         VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
     unify_proc_info_set_var_table(VarTable, !Info),
     unify_proc_info_set_rtti_varmaps(RttiVarMaps, !Info),
-    Clause = clause(ApplModes, Goal, impl_lang_mercury, Context, []).
+    Clause = clause(ApplModes, Goal, impl_lang_mercury, Context,
+        [], init_unused_statevar_arg_map).
 
 %---------------------------------------------------------------------------%
 

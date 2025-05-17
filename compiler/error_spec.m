@@ -317,12 +317,15 @@
 
     ;       int_fixed(int)
     ;       int_name(int)
+    ;       uint_fixed(uint)
+    ;       uint_name(uint)
             % Convert the integer to a string, then treat as fixed.
             % int_fixed always generates numerals, such as 1, 2, 3 etc,
             % while int_name generates one, two, three etc up to ten,
             % then switches back to numerals starting with 11.
 
     ;       nth_fixed(int)
+    ;       unth_fixed(uint)
             % Convert the integer to a string, such as "first", "second",
             % "third", tenth, 11th and so on, and then treat as fixed.
 
@@ -565,11 +568,13 @@
     % up to ten. For integers other than 0..10, return the value as digits.
     %
 :- func int_name_str(int) = string.
+:- func uint_name_str(uint) = string.
 
     % The ordinal version of int_name_str, returning first, second etc
     % for 1..10.
     %
 :- func nth_fixed_str(int) = string.
+:- func unth_fixed_str(uint) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -853,6 +858,26 @@ int_name_str(N) = Str :-
         Str = int_to_string(N)
     ).
 
+uint_name_str(N) = Str :-
+    ( if
+        ( N = 0u,  StrPrime = "zero"
+        ; N = 1u,  StrPrime = "one"
+        ; N = 2u,  StrPrime = "two"
+        ; N = 3u,  StrPrime = "three"
+        ; N = 4u,  StrPrime = "four"
+        ; N = 5u,  StrPrime = "five"
+        ; N = 6u,  StrPrime = "six"
+        ; N = 7u,  StrPrime = "seven"
+        ; N = 8u,  StrPrime = "eight"
+        ; N = 9u,  StrPrime = "nine"
+        ; N = 10u, StrPrime = "ten"
+        )
+    then
+        Str = StrPrime
+    else
+        Str = uint_to_string(N)
+    ).
+
 nth_fixed_str(N) = Str :-
     ( if
         ( N = 1,  StrPrime = "first"
@@ -876,6 +901,35 @@ nth_fixed_str(N) = Str :-
         ( if N > 20, LastDigit = 2 then
             Str = NStr ++ "nd"
         else if N > 20, LastDigit = 3 then
+            Str = NStr ++ "rd"
+        else
+            Str = NStr ++ "th"
+        )
+    ).
+
+unth_fixed_str(N) = Str :-
+    ( if
+        ( N = 1u,  StrPrime = "first"
+        ; N = 2u,  StrPrime = "second"
+        ; N = 3u,  StrPrime = "third"
+        ; N = 4u,  StrPrime = "fourth"
+        ; N = 5u,  StrPrime = "fifth"
+        ; N = 6u,  StrPrime = "sixth"
+        ; N = 7u,  StrPrime = "seventh"
+        ; N = 8u,  StrPrime = "eighth"
+        ; N = 9u,  StrPrime = "ninth"
+        ; N = 10u, StrPrime = "tenth"
+        )
+    then
+        Str = StrPrime
+    else
+        % We want to print 12th and 13th, not 12nd and 13rd,
+        % but 42nd and 43rd instead of 42th and 43th.
+        NStr = uint_to_string(N),
+        LastDigit = N mod 10u,
+        ( if N > 20u, LastDigit = 2u then
+            Str = NStr ++ "nd"
+        else if N > 20u, LastDigit = 3u then
             Str = NStr ++ "rd"
         else
             Str = NStr ++ "th"

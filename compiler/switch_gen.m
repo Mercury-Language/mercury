@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2024 The Mercury team.
+% Copyright (C) 2013-2018, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -640,7 +640,7 @@ generate_if_then_else_chain_cases(CheaperTagTest, VarRval, VarType, VarName,
             % followed by the end of switch label to which the cases branch.
             some [!CLD] (
                 reset_to_position(BranchStart, !.CI, !:CLD),
-                generate_failure(FailCode, !CI, !.CLD)
+                generate_failure(FailCode, !.CI, !.CLD)
             )
         ;
             CanFail = cannot_fail,

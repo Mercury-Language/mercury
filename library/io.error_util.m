@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2024 The Mercury team.
+% Copyright (C) 2023-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -326,7 +326,7 @@ make_win32_error_message(_, _, _, !IO) :-
     }
 ").
 
-get_exception_object_message(_, _, !IO) :-
+get_exception_object_message(_, _, IO, IO) :-
     error("io.error_util.get_exception_object_message: inapplicable back-end").
 
 %---------------------------------------------------------------------------%

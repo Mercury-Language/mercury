@@ -834,8 +834,17 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.CaseChange,
             Piece = int_name(Int),
             PlainWord = int_name_str(Int)
         ;
+            Piece = uint_fixed(UInt),
+            PlainWord = uint_to_string(UInt)
+        ;
+            Piece = uint_name(UInt),
+            PlainWord = uint_name_str(UInt)
+        ;
             Piece = nth_fixed(Int),
             PlainWord = nth_fixed_str(Int)
+        ;
+            Piece = unth_fixed(UInt),
+            PlainWord = unth_fixed_str(UInt)
         ;
             Piece = p_or_f(PredOrFunc),
             PlainWord = pred_or_func_to_full_str(PredOrFunc)
@@ -2401,7 +2410,10 @@ update_first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg) :-
         ; Piece = quote(_)
         ; Piece = int_fixed(_)
         ; Piece = int_name(_)
+        ; Piece = uint_fixed(_)
+        ; Piece = uint_name(_)
         ; Piece = nth_fixed(_)
+        ; Piece = unth_fixed(_)
         ; Piece = prefix(_)
         ; Piece = suffix(_)
         ; Piece = qual_sym_name(_)

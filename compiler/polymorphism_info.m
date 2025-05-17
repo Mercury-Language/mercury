@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2021-2022 The Mercury team.
+% Copyright (C) 2014-2015, 2021-2022, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -380,38 +380,38 @@ poly_info_extract(Info, Specs, !PredInfo, !ProcInfo, !:ModuleInfo) :-
 :- pragma inline(pred(poly_info_get_const_struct_db/2)).
 :- pragma inline(pred(poly_info_get_errors/2)).
 
-poly_info_get_module_info(!.PI, X) :-
-    X = !.PI ^ poly_module_info.
-poly_info_get_var_table(!.PI, X) :-
-    X = !.PI ^ poly_var_table.
-poly_info_get_rtti_varmaps(!.PI, X) :-
-    X = !.PI ^ poly_rtti_varmaps.
-poly_info_get_typevarset(!.PI, X) :-
-    X = !.PI ^ poly_typevarset.
-poly_info_get_tvar_kind_map(!.PI, X) :-
-    X = !.PI ^ poly_tvar_kind_map.
-poly_info_get_proof_map(!.PI, X) :-
-    X = !.PI ^ poly_proof_map.
-poly_info_get_constraint_map(!.PI, X) :-
-    X = !.PI ^ poly_constraint_map.
-poly_info_get_type_info_var_map(!.PI, X) :-
-    X = !.PI ^ poly_type_info_var_map.
-poly_info_get_typeclass_info_map(!.PI, X) :-
-    X = !.PI ^ poly_typeclass_info_map.
-poly_info_get_int_const_map(!.PI, X) :-
-    X = !.PI ^ poly_int_const_map.
-poly_info_get_const_struct_var_map(!.PI, X) :-
-    X = !.PI ^ poly_const_struct_var_map.
-poly_info_get_num_reuses(!.PI, X) :-
-    X = !.PI ^ poly_num_reuses.
-poly_info_get_const_struct_db(!.PI, X) :-
-    X = !.PI ^ poly_const_struct_db.
-poly_info_get_defined_where(!.PI, X) :-
-    X = !.PI ^ poly_defined_where.
-poly_info_get_must_requantify(!.PI, X) :-
-    X = !.PI ^ poly_must_requantify.
-poly_info_get_errors(!.PI, X) :-
-    X = !.PI ^ poly_errors.
+poly_info_get_module_info(PI, X) :-
+    X = PI ^ poly_module_info.
+poly_info_get_var_table(PI, X) :-
+    X = PI ^ poly_var_table.
+poly_info_get_rtti_varmaps(PI, X) :-
+    X = PI ^ poly_rtti_varmaps.
+poly_info_get_typevarset(PI, X) :-
+    X = PI ^ poly_typevarset.
+poly_info_get_tvar_kind_map(PI, X) :-
+    X = PI ^ poly_tvar_kind_map.
+poly_info_get_proof_map(PI, X) :-
+    X = PI ^ poly_proof_map.
+poly_info_get_constraint_map(PI, X) :-
+    X = PI ^ poly_constraint_map.
+poly_info_get_type_info_var_map(PI, X) :-
+    X = PI ^ poly_type_info_var_map.
+poly_info_get_typeclass_info_map(PI, X) :-
+    X = PI ^ poly_typeclass_info_map.
+poly_info_get_int_const_map(PI, X) :-
+    X = PI ^ poly_int_const_map.
+poly_info_get_const_struct_var_map(PI, X) :-
+    X = PI ^ poly_const_struct_var_map.
+poly_info_get_num_reuses(PI, X) :-
+    X = PI ^ poly_num_reuses.
+poly_info_get_const_struct_db(PI, X) :-
+    X = PI ^ poly_const_struct_db.
+poly_info_get_defined_where(PI, X) :-
+    X = PI ^ poly_defined_where.
+poly_info_get_must_requantify(PI, X) :-
+    X = PI ^ poly_must_requantify.
+poly_info_get_errors(PI, X) :-
+    X = PI ^ poly_errors.
 
 :- pragma inline(pred(poly_info_set_var_table/3)).
 :- pragma inline(pred(poly_info_set_var_table_rtti/4)).

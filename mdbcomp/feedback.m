@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018, 2021, 2023 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2021, 2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -433,12 +433,12 @@ read_check_line(Stream, TestLine, NotMatchError, !MaybeError, !IO) :-
     maybe_error(string, feedback_read_error)::out, io::di, io::uo) is det.
 
 read_profiled_program_name(Stream, MaybeExpectedProfiledProgram,
-        !.MaybeError, MaybeActualProfiledProgram, !IO) :-
+        MaybeError0, MaybeActualProfiledProgram, !IO) :-
     (
-        !.MaybeError = yes(Error),
+        MaybeError0 = yes(Error),
         MaybeActualProfiledProgram = error(Error)
     ;
-        !.MaybeError = no,
+        MaybeError0 = no,
         io.read_line_as_string(Stream, LineResult, !IO),
         (
             LineResult = ok(String),

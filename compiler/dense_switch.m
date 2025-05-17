@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2015-2021, 2024 The Mercury team.
+% Copyright (C) 2015-2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -183,7 +183,7 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
         FailLabelCode = singleton(
             llds_instr(label(FailLabel), FailComment)
         ),
-        generate_failure(FailureCode, !CI, !.CLD),
+        generate_failure(FailureCode, !.CI, !.CLD),
         FailCode = FailLabelCode ++ FailureCode
     ),
 

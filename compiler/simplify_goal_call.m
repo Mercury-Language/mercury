@@ -1066,8 +1066,7 @@ simplify_improve_library_call(InstMap0, ModuleName, PredName, ModeNum, Args,
             % Tautological comparisons generate warnings (which we treat
             % as errors) from some compilers, so we avoid emitting them
             % even in pregen grades.
-            replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr),
-            ImprovedGoalInfo = GoalInfo0
+            replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr)
         ;
             Pregen = no,
             % This also optimizes away tautological comparisons, but does
@@ -1075,8 +1074,9 @@ simplify_improve_library_call(InstMap0, ModuleName, PredName, ModeNum, Args,
             simplify_improve_arith_shift_cmp_ops(IntType, InstMap0,
                 ModuleName, PredName, ModeNum, Args,
                 GoalExpr0, ImprovedGoalExpr,
-                GoalInfo0, ImprovedGoalInfo, !Info)
-        )
+                GoalInfo0, !Info)
+        ),
+        ImprovedGoalInfo = GoalInfo0
     ),
     simplify_info_set_rerun_quant_instmap_delta(!Info).
 
@@ -1320,11 +1320,11 @@ simplify_make_var(Type, Var, !Info) :-
 :- pred simplify_improve_arith_shift_cmp_ops(int_type::in, instmap::in,
     string::in, string::in, int::in, list(prog_var)::in,
     hlds_goal_expr::in, hlds_goal_expr::out,
-    hlds_goal_info::in, hlds_goal_info::out,
+    hlds_goal_info::in,
     simplify_info::in, simplify_info::out) is semidet.
 
 simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
-        _ModeNum, Args, GoalExpr0, ImprovedGoalExpr, !GoalInfo, !Info) :-
+        _ModeNum, Args, GoalExpr0, ImprovedGoalExpr, GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     (
@@ -1337,7 +1337,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
         Args = [X, Y],
         WordBits = target_word_bits(Globals),
         simplify_make_int_ico_op(ModuleName, Op, X, WordBits, Y,
-            ImprovedGoalExpr, !.GoalInfo, !Info)
+            ImprovedGoalExpr, GoalInfo, !Info)
     ;
         PredName = "times_bits_per_int",
         IntType = int_type_int,
@@ -1345,7 +1345,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
         Op = "*",
         WordBits = target_word_bits(Globals),
         simplify_make_int_ico_op(ModuleName, Op, X, WordBits, Y,
-            ImprovedGoalExpr, !.GoalInfo, !Info)
+            ImprovedGoalExpr, GoalInfo, !Info)
     ;
         ( PredName = "/",   Op = "unchecked_quotient"
         ; PredName = "//",  Op = "unchecked_quotient"
@@ -1356,7 +1356,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
         ( if InstY = bound(_, _, [bound_functor(ConsY, [])]) then
             ( if is_zero_const(IntType, ConsY) then
                 ImprovedGoalExpr = GoalExpr0,
-                Context = goal_info_get_context(!.GoalInfo),
+                Context = goal_info_get_context(GoalInfo),
                 SymName = qualified(unqualified(ModuleName), PredName),
                 Pieces = [words("Error: call to")] ++
                     color_as_subject([qual_sym_name(SymName)]) ++
@@ -1397,7 +1397,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
                         inline_builtin, X, Y, Z, ImprovedGoalExpr)
                 else
                     ImprovedGoalExpr = GoalExpr0,
-                    report_bad_shift_amount(ModuleName, PredName, !.GoalInfo,
+                    report_bad_shift_amount(ModuleName, PredName, GoalInfo,
                         NumTargetBits, !Info)
                 )
             ;
@@ -1407,7 +1407,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
                         inline_builtin, X, Y, Z, ImprovedGoalExpr)
                 else
                     ImprovedGoalExpr = GoalExpr0,
-                    report_bad_shift_amount(ModuleName, PredName, !.GoalInfo,
+                    report_bad_shift_amount(ModuleName, PredName, GoalInfo,
                         NumTargetBits, !Info)
                 )
             )
@@ -1453,7 +1453,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
             %   throw(ExceptionVar)
             % )
 
-            Context = goal_info_get_context(!.GoalInfo),
+            Context = goal_info_get_context(GoalInfo),
             simplify_make_int_const(NumTargetBits, NumTargetBitsConstVar,
                 NumTargetBitsConstGoal, !Info),
             PrivateBuiltin = mercury_private_builtin_module,
@@ -1472,7 +1472,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
 
             simplify_make_binary_op_goal_expr(!.Info, ModuleName, Op,
                 inline_builtin, X, Y, Z, UncheckedShiftGoalExpr),
-            UncheckedShiftGoal = hlds_goal(UncheckedShiftGoalExpr, !.GoalInfo),
+            UncheckedShiftGoal = hlds_goal(UncheckedShiftGoalExpr, GoalInfo),
 
             string.format("%s.(%s): second operand is out of range",
                 [s(ModuleName), s(PredName)], NotInRangeStr),

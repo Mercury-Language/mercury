@@ -590,7 +590,7 @@ maybe_mark_tail_rec_calls(ProgressStream, Verbose, Stats,
     process_valid_nonimported_preds_errors(
         update_pred_error(
             mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap)),
-        !HLDS, !Specs, !IO),
+        !HLDS, !Specs),
     maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
 

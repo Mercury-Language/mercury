@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2011 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -28,11 +28,9 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
 
 :- import_module bool.
@@ -124,28 +122,6 @@
 
 %-----------------------------------------------------------------------------%
 
-    % Given some foreign code, generate some suitable proxy code for
-    % calling the code via one of the given languages.
-    % This might mean, for example, generating a call to a
-    % forwarding function in C.
-    % The foreign language argument specifies which language is the
-    % target language, the other inputs are the name, types, input
-    % variables and so on for a piece of pragma foreign code.
-    % The outputs are the new attributes and implementation for this
-    % code.
-    % XXX This implementation is currently incomplete, so in future
-    % this interface may change.
-    % XXX As of 2022 feb 15, this predicate, which effectively does nothing,
-    % is unused.
-    %
-:- pred extrude_pragma_implementation(list(foreign_language)::in,
-    list(pragma_var)::in, sym_name::in, pred_or_func::in, prog_context::in,
-    module_info::in, module_info::out,
-    foreign_proc_attributes::in, foreign_proc_attributes::out,
-    pragma_foreign_proc_impl::in, pragma_foreign_proc_impl::out) is det.
-
-%-----------------------------------------------------------------------------%
-
     % The name of the #define which can be used to guard declarations with
     % to prevent entities being declared twice.
     %
@@ -156,6 +132,8 @@
 
 :- implementation.
 
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
 
 :- import_module require.
@@ -522,81 +500,6 @@ filter_exports(WantedLang, Exports0, LangExports, NotLangExports) :-
             WantedLang = Lang
         ),
     list.filter(IsWanted, Exports0, LangExports, NotLangExports).
-
-%-----------------------------------------------------------------------------%
-
-extrude_pragma_implementation([], _PragmaVars, _PredName, _PredOrFunc,
-        _Context, !ModuleInfo, !NewAttributes, !Impl) :-
-    unexpected($pred, "no suitable target languages available").
-extrude_pragma_implementation([TargetLang | TargetLangs], _PragmaVars,
-        _PredName, _PredOrFunc, _Context, !ModuleInfo, !Attributes, !Impl) :-
-    % We just use the first target language for now, it might be nice
-    % to try a few others if the backend supports multiple ones.
-    % NOTE None of the backends do.
-    ForeignLanguage = get_foreign_language(!.Attributes),
-
-    % If the foreign language is available as a target language,
-    % we don't need to do anything.
-    ( if list.member(ForeignLanguage, [TargetLang | TargetLangs]) then
-        true
-    else
-        set_foreign_language(TargetLang, !Attributes),
-        extrude_pragma_implementation_2(TargetLang, ForeignLanguage,
-            !ModuleInfo, !Impl)
-    ).
-
-:- pred extrude_pragma_implementation_2(
-    foreign_language::in, foreign_language::in,
-    module_info::in, module_info::out,
-    pragma_foreign_proc_impl::in, pragma_foreign_proc_impl::out) is det.
-
-extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
-        !ModuleInfo, !Impl) :-
-    % This isn't finished yet, and we probably won't implement it for C
-    % calling MC++. For C calling normal C++ we would generate a proxy
-    % function in C++ (implemented in a piece of C++ body code) with C
-    % linkage, and import that function. The backend would spit the C++
-    % body code into a separate file.
-    % NOTE None of that will happen.
-    (
-        TargetLanguage = lang_c,
-        (
-            ForeignLanguage = lang_c
-        ;
-            ( ForeignLanguage = lang_csharp
-            ; ForeignLanguage = lang_java
-            ),
-            unimplemented_combination(TargetLanguage, ForeignLanguage)
-        )
-    ;
-        TargetLanguage = lang_csharp,
-        (
-            ForeignLanguage = lang_csharp
-        ;
-            ( ForeignLanguage = lang_c
-            ; ForeignLanguage = lang_java
-            ),
-            unimplemented_combination(TargetLanguage, ForeignLanguage)
-        )
-    ;
-        TargetLanguage = lang_java,
-        (
-            ForeignLanguage = lang_java
-        ;
-            ( ForeignLanguage = lang_c
-            ; ForeignLanguage = lang_csharp
-            ),
-            unimplemented_combination(TargetLanguage, ForeignLanguage)
-        )
-    ).
-
-:- pred unimplemented_combination(foreign_language::in, foreign_language::in)
-    is erroneous.
-
-unimplemented_combination(Lang1, Lang2) :-
-    sorry($pred, "unimplemented: calling "
-        ++ foreign_language_string(Lang2) ++ " foreign code from "
-        ++ foreign_language_string(Lang1)).
 
 %-----------------------------------------------------------------------------%
 

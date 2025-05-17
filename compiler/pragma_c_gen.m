@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -396,7 +396,7 @@ generate_trace_runtime_cond_foreign_proc_code(RuntimeExpr, Code, !CI, !CLD) :-
     generate_runtime_cond_code(RuntimeExpr, CondRval, !CI),
     get_next_label(SuccessLabel, !CI),
     remember_position(!.CLD, BeforeFailure),
-    generate_failure(FailCode, !CI, !.CLD),
+    generate_failure(FailCode, !.CI, !.CLD),
     reset_to_position(BeforeFailure, !.CI, !:CLD),
 
     CondCode = singleton(
@@ -685,7 +685,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         MaybeFailLabel = yes(TheFailLabel),
         get_next_label(SkipLabel, !CI),
         remember_position(!.CLD, BeforeFailure),
-        generate_failure(FailCode, !CI, !.CLD),
+        generate_failure(FailCode, !.CI, !.CLD),
         reset_to_position(BeforeFailure, !.CI, !:CLD),
 
         GotoSkipLabelCode = singleton(
@@ -703,7 +703,7 @@ generate_ordinary_foreign_proc_code(CodeModel, Attributes, PredId, ProcId,
         MaybeFailLabel = no,
         ( if Detism = detism_failure then
             remember_position(!.CLD, BeforeFailure),
-            generate_failure(FailureCode, !CI, !.CLD),
+            generate_failure(FailureCode, !.CI, !.CLD),
             reset_to_position(BeforeFailure, !.CI, !:CLD)
         else
             FailureCode = cord.empty

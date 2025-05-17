@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2015, 2017-2024 The Mercury team.
+% Copyright (C) 2015, 2017-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1761,8 +1761,8 @@ decide_type_repns_old(ModuleInfo, TypeRepnDec, TypeTable0,
         NonSubTypeCtorsTypeDefns1, NonSubTypeCtorsTypeDefns2, !Specs),
 
     % Pass 2b.
-    list.map_foldl(decide_if_subtype(TypeTable0, NonSubTypeCtorsTypeDefns2),
-        SubTypeCtorsTypeDefns1, SubTypeCtorsTypeDefns2, !Specs),
+    list.map(decide_if_subtype(TypeTable0, NonSubTypeCtorsTypeDefns2),
+        SubTypeCtorsTypeDefns1, SubTypeCtorsTypeDefns2),
 
     TypeCtorsTypeDefns = SubTypeCtorsTypeDefns2 ++ NonSubTypeCtorsTypeDefns2.
 
@@ -3641,11 +3641,11 @@ take_local_packable_functors_constant_sectag_bits(Params, ArgPackBits,
     %
 :- pred decide_if_subtype(type_table::in,
     assoc_list(type_ctor, hlds_type_defn)::in,
-    pair(type_ctor, hlds_type_defn)::in, pair(type_ctor, hlds_type_defn)::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    pair(type_ctor, hlds_type_defn)::in, pair(type_ctor, hlds_type_defn)::out)
+    is det.
 
 decide_if_subtype(OldTypeTable, NonSubTypeCtorsTypeDefns,
-        TypeCtorTypeDefn0, TypeCtorTypeDefn, !Specs) :-
+        TypeCtorTypeDefn0, TypeCtorTypeDefn) :-
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
     (

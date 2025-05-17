@@ -521,7 +521,7 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
                 create_tabling_statistics_pred(ProgressStream, PredOrFunc,
                     PredModuleName, PredName, UserArity, ProcId, SingleProc,
                     Context, IsTablingSupported, ItemMercuryStatus, PredStatus,
-                    !ProcTable, !ModuleInfo, !QualInfo, !Specs)
+                    !ModuleInfo, !QualInfo, !Specs)
             ;
                 Statistics = table_do_not_gather_statistics
             ),
@@ -530,7 +530,7 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
                 create_tabling_reset_pred(ProgressStream, PredOrFunc,
                     PredModuleName, PredName, UserArity, ProcId, SingleProc,
                     Context, IsTablingSupported, ItemMercuryStatus, PredStatus,
-                    !ProcTable, !ModuleInfo, !QualInfo, !Specs)
+                    !ModuleInfo, !QualInfo, !Specs)
             ;
                 AllowReset = table_do_not_allow_reset
             )
@@ -568,14 +568,13 @@ set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
     pred_or_func::in, module_name::in, string::in, user_arity::in,
     proc_id::in, aux_tabling_maybe_single_proc::in, prog_context::in,
     bool::in, item_mercury_status::in, pred_status::in,
-    proc_table::in, proc_table::out, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 create_tabling_statistics_pred(ProgressStream, PredOrFunc,
         PredModuleName, PredName, UserArity, ProcId, SingleProc, Context,
         IsTablingSupported, ItemMercuryStatus, PredStatus,
-        !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !QualInfo, !Specs) :-
     Transform = tn_aux_tabling(PredOrFunc, UserArity, atpk_statistics,
         SingleProc, proc_id_to_int(ProcId)),
     make_transformed_pred_name(PredName, Transform, StatsPredName),
@@ -670,14 +669,12 @@ create_tabling_statistics_pred(ProgressStream, PredOrFunc,
     pred_or_func::in, module_name::in, string::in, user_arity::in,
     proc_id::in, aux_tabling_maybe_single_proc::in, prog_context::in,
     bool::in, item_mercury_status::in, pred_status::in,
-    proc_table::in, proc_table::out, module_info::in, module_info::out,
-    qual_info::in, qual_info::out,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 create_tabling_reset_pred(ProgressStream, PredOrFunc, PredModuleName, PredName,
         UserArity, ProcId, SingleProc, Context, IsTablingSupported,
-        ItemMercuryStatus, PredStatus,
-        !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
+        ItemMercuryStatus, PredStatus, !ModuleInfo, !QualInfo, !Specs) :-
     Transform = tn_aux_tabling(PredOrFunc, UserArity, atpk_reset,
         SingleProc, proc_id_to_int(ProcId)),
     make_transformed_pred_name(PredName, Transform, ResetPredName),

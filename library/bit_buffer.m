@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2009 The University of Melbourne
-% Copyright (C) 2014, 2018, 2024 The Mercury team.
+% Copyright (C) 2014, 2018, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 % File: bit_buffer.m.
@@ -65,7 +65,7 @@
 
 :- instance stream.stream(error_stream, error_state) where
 [
-    name(_Stream, "error_stream", !State)
+    name(_Stream, "error_stream", State, State)
 ].
 
 :- instance stream.input(error_stream, error_state) where
@@ -74,12 +74,12 @@
 :- instance stream.bulk_reader(error_stream, byte_index, bitmap,
     error_state, error_stream_error) where
 [
-    bulk_get(_, _, _, !BM, 0, error(error_stream_error), !State)
+    bulk_get(_, _, _, BM, BM, 0, error(error_stream_error), State, State)
 ].
 
 :- instance stream.output(error_stream, error_state) where
 [
-    flush(_, !State) :- throw(error_stream_error)
+    flush(_, State, State) :- throw(error_stream_error)
 ].
 
 :- instance stream.writer(error_stream, bitmap.slice, error_state)

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2022-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -232,12 +232,12 @@ to_string(State) = String :-
 :- pred string_builder_name(string.builder.handle::in, string::out,
     string.builder.state::di, string.builder.state::uo) is det.
 
-string_builder_name(_Handle, "<<string builder stream>>", !State).
+string_builder_name(_Handle, "<<string builder stream>>", State, State).
 
 :- pred string_builder_flush(string.builder.handle::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-string_builder_flush(_Handle, !State).
+string_builder_flush(_Handle, State, State).
 
 :- pred string_builder_put_string(string.builder.handle::in, string::in,
     string.builder.state::di, string.builder.state::uo) is det.

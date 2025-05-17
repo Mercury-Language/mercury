@@ -1605,7 +1605,8 @@ add_type_spec_version_of_pred(PredId, PredInfo0, PredFormArity, TSInfo0,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
     construct_pred_or_func_call(PredId, PredOrFunc, SymName, ArgVars,
         GoalInfo, Goal),
-    Clause = clause(ApplicableModes, Goal, impl_lang_mercury, PredContext, []),
+    Clause = clause(ApplicableModes, Goal, impl_lang_mercury, PredContext,
+        [], init_unused_statevar_arg_map),
     % XXX We could use explicit type qualifications here for the
     % argument types, but explicit type qualification doesn't work correctly
     % with type inference due to a bug somewhere in % the typecheck pass --

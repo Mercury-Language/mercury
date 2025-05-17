@@ -12,8 +12,8 @@ try_detism.m:023:   Unification of [38;5;87m`X'[39;49m and [38;5;87m`V_17'[3
 try_detism.m:022: In clause for `p(out, di, uo)':
 try_detism.m:022:   in call to predicate `exception.try_io'/4:
 try_detism.m:022:   mode error: the insts of arguments [38;5;87m`TryLambda'[39;49m, [38;5;87m[39;49m
-try_detism.m:022:   [38;5;87m`TryResult'[39;49m, [38;5;87m`STATE_VARIABLE_IO_10'[39;49m and [38;5;87m`TryIOOutput'[39;49m [38;5;203mdo[39;49m
-try_detism.m:022:   [38;5;203mnot match[39;49m either of the two modes of predicate
+try_detism.m:022:   [38;5;87m`TryResult'[39;49m, [38;5;87m`STATE_VARIABLE_IO_1'[39;49m and [38;5;87m`TryIOOutput'[39;49m [38;5;203mdo not[39;49m
+try_detism.m:022:   [38;5;203mmatch[39;49m either of the two modes of predicate
 try_detism.m:022:   `exception.try_io'/4.
 try_detism.m:022: 
 try_detism.m:022:     The inst of the first argument, [38;5;87m`TryLambda'[39;49m, which is

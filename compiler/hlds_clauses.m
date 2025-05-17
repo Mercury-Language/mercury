@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2015-2016, 2018-2019, 2021-2023 The Mercury team.
+% Copyright (C) 2015-2016, 2018-2019, 2021-2023, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -31,6 +31,7 @@
 
 :- import_module bool.
 :- import_module list.
+:- import_module map.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -141,7 +142,7 @@
                 cli_tvar_name_map           :: tvar_name_map,
 
                 % The head variables.
-                cli_headvars                :: proc_arg_vector(prog_var),
+                cli_arg_vector              :: proc_arg_vector(prog_var),
 
                 % The clauses themselves (some may be pragma foreign_procs).
                 cli_rep                     :: clauses_rep,
@@ -186,7 +187,7 @@
     is det.
 :- pred clauses_info_get_tvar_name_map(clauses_info::in, tvar_name_map::out)
     is det.
-:- pred clauses_info_get_headvars(clauses_info::in,
+:- pred clauses_info_get_arg_vector(clauses_info::in,
     proc_arg_vector(prog_var)::out) is det.
 :- pred clauses_info_get_clauses_rep(clauses_info::in, clauses_rep::out,
     clause_item_numbers::out) is det.
@@ -205,7 +206,7 @@
     clauses_info::in, clauses_info::out) is det.
 :- pred clauses_info_set_tvar_name_map(tvar_name_map::in,
     clauses_info::in, clauses_info::out) is det.
-:- pred clauses_info_set_headvars(proc_arg_vector(prog_var)::in,
+:- pred clauses_info_set_arg_vector(proc_arg_vector(prog_var)::in,
     clauses_info::in, clauses_info::out) is det.
 :- pred clauses_info_set_clauses_rep(clauses_rep::in, clause_item_numbers::in,
     clauses_info::in, clauses_info::out) is det.
@@ -246,7 +247,7 @@
     % - When we add a new clause, we need to add it at the end.
     %   This is best done by either keeping the clauses in reversed order
     %   (which is what we used to do) or keeping them in a cord (which is
-    %   what we do now). Using a plain list in forward order would make
+    %   what we do now). Using a plain list in forward order would
     %   require O(N^2) operations to add N clauses to the list.
     % - When users want to get the clause list, they want it in forward order.
     %   With either the reversed list or cord representations, this requires
@@ -270,10 +271,11 @@
     % the clause list nor update the clauses_rep, or its containing
     % clause_info. This is less than ideal from a performance viewpoint,
     % but it is ok for experimental features whose performance doesn't (yet)
-    % matter. The name get_clause_list_maybe_repeated is there to remind
-    % programmers who call it about the performance problem with repeated
-    % representation changes, to act as incentive to switch to one of the
-    % previous two versions.
+    % matter, *and* in situations where you know that the clause cord
+    % is already a flat list. The name get_clause_list_maybe_repeated
+    % is there to remind programmers who call it about the performance
+    % problem with repeated representation changes, to act as incentive
+    % to switch to one of the previous two versions.
     %
 :- pred get_clause_list(list(clause)::out,
     clauses_rep::in, clauses_rep::out) is det.
@@ -298,6 +300,27 @@
     %
 :- pred add_clause(clause::in, clauses_rep::in, clauses_rep::out) is det.
 
+:- type init_or_final_arg
+    --->    init_arg_only
+    ;       init_and_final_arg(uint)  % the final argnum
+    ;       final_arg_only.
+
+:- type statevar_arg_desc
+    --->    statevar_arg_desc(
+                % The argument numbers of the first occurrences of
+                % !.SV and/or !:SV respectively, *if* those occurrences
+                % represent a whole argument. Argument numbers start at 1u.
+                % At least one of the occurrences must represent a whole arg.
+                init_or_final_arg,
+
+                % The name of the state variable.
+                string
+            ).
+
+:- type unused_statevar_arg_map == map(uint, statevar_arg_desc).
+
+:- func init_unused_statevar_arg_map = unused_statevar_arg_map.
+
 :- type clause
     --->    clause(
                 % Modes for which this clause applies.
@@ -305,7 +328,8 @@
                 clause_body                 :: hlds_goal,
                 clause_lang                 :: implementation_language,
                 clause_context              :: prog_context,
-                clause_statevar_warnings    :: list(error_spec)
+                clause_statevar_warnings    :: list(error_spec),
+                clause_unused_svar_arg_map  :: unused_statevar_arg_map
             ).
 
 :- func clause_body(clause) = hlds_goal.
@@ -424,7 +448,6 @@
 
 :- import_module cord.
 :- import_module int.
-:- import_module map.
 :- import_module require.
 :- import_module string.
 :- import_module varset.
@@ -494,7 +517,7 @@ clauses_info_get_explicit_vartypes(CI, CI ^ cli_explicit_vartypes).
 clauses_info_get_var_table(CI, CI ^ cli_var_table).
 clauses_info_get_rtti_varmaps(CI, CI ^ cli_rtti_varmaps).
 clauses_info_get_tvar_name_map(CI, CI ^ cli_tvar_name_map).
-clauses_info_get_headvars(CI, CI ^ cli_headvars).
+clauses_info_get_arg_vector(CI, CI ^ cli_arg_vector).
 clauses_info_get_clauses_rep(CI, CI ^ cli_rep, CI ^ cli_item_numbers).
 clauses_info_get_have_foreign_clauses(CI, CI ^ cli_have_foreign_clauses).
 clauses_info_get_had_syntax_errors(CI, CI ^ cli_had_syntax_errors).
@@ -509,8 +532,8 @@ clauses_info_set_rtti_varmaps(X, !CI) :-
     !CI ^ cli_rtti_varmaps := X.
 clauses_info_set_tvar_name_map(X, !CI) :-
     !CI ^ cli_tvar_name_map := X.
-clauses_info_set_headvars(X, !CI) :-
-    !CI ^ cli_headvars := X.
+clauses_info_set_arg_vector(X, !CI) :-
+    !CI ^ cli_arg_vector := X.
 clauses_info_set_clauses_rep(X, Y, !CI) :-
     !CI ^ cli_rep := X,
     !CI ^ cli_item_numbers := Y.
@@ -521,9 +544,9 @@ clauses_info_set_had_syntax_errors(X, !CI) :-
 
 %-----------------------------------------------------------------------------%
 
-clauses_info_get_headvar_list(CI, HeadVarList) :-
-    clauses_info_get_headvars(CI, HeadVars),
-    HeadVarList = proc_arg_vector_to_list(HeadVars).
+clauses_info_get_headvar_list(CI, HeadVars) :-
+    clauses_info_get_arg_vector(CI, ArgVector),
+    HeadVars = proc_arg_vector_to_list(ArgVector).
 
 :- type clauses_rep
     --->    clauses_rep(
@@ -578,6 +601,8 @@ add_clause(Clause, !ClausesRep) :-
     !:ClausesRep = clauses_rep(NumClauses, ClausesCord).
 
 %-----------------------------------------------------------------------------%
+
+init_unused_statevar_arg_map = map.init.
 
 init_clause_item_numbers_user = user_clauses([], []).
 init_clause_item_numbers_comp_gen = comp_gen_clauses.

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2006 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2021-2022 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2021-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -87,13 +87,13 @@ report_diffs(OutputStream, Drop, Max, Univ1, Univ2, !IO) :-
 :- pred compute_diffs(univ::in, univ::in, term_path::in,
     list(term_path_diff)::in, list(term_path_diff)::out) is cc_multi.
 
-compute_diffs(Univ1, Univ2, !.RevPath, !RevDiffs) :-
+compute_diffs(Univ1, Univ2, RevPath, !RevDiffs) :-
     deconstruct(univ_value(Univ1), include_details_cc, Functor1, _, Args1),
     deconstruct(univ_value(Univ2), include_details_cc, Functor2, _, Args2),
     ( if Functor1 = Functor2 then
-        compute_arg_diffs(Args1, Args2, !.RevPath, 1, !RevDiffs)
+        compute_arg_diffs(Args1, Args2, RevPath, 1, !RevDiffs)
     else
-        list.reverse(!.RevPath, Path),
+        list.reverse(RevPath, Path),
         !:RevDiffs = [term_path_diff(Path, Univ1, Univ2) | !.RevDiffs]
     ).
 
@@ -105,10 +105,10 @@ compute_arg_diffs([], [_ | _], _, _, !RevDiffs) :-
     error("compute_arg_diffs: argument list mismatch").
 compute_arg_diffs([_ | _], [], _, _, !RevDiffs) :-
     error("compute_arg_diffs: argument list mismatch").
-compute_arg_diffs([Arg1 | Args1], [Arg2 | Args2], !.RevPath, ArgNum,
+compute_arg_diffs([Arg1 | Args1], [Arg2 | Args2], RevPath0, ArgNum,
         !RevDiffs) :-
-    compute_diffs(Arg1, Arg2, [ArgNum | !.RevPath], !RevDiffs),
-    compute_arg_diffs(Args1, Args2, !.RevPath, ArgNum + 1, !RevDiffs).
+    compute_diffs(Arg1, Arg2, [ArgNum | RevPath0], !RevDiffs),
+    compute_arg_diffs(Args1, Args2, RevPath0, ArgNum + 1, !RevDiffs).
 
 :- pred show_diff(io.text_output_stream::in, term_path_diff::in,
     int::in, int::out, io::di, io::uo) is cc_multi.

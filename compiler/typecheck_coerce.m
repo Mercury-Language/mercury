@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2021, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -26,9 +26,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred typecheck_coerce(prog_context::in, list(prog_var)::in,
-    type_assign_set::in, type_assign_set::out,
-    typecheck_info::in, typecheck_info::out) is det.
+:- pred typecheck_coerce(typecheck_info::in, prog_context::in,
+    list(prog_var)::in, type_assign_set::in, type_assign_set::out) is det.
 
     % Check coerce constraints in each type assignment to see if they can be
     % satisfied. If there are one or more type assignments in which all
@@ -36,8 +35,8 @@
     % and discard the rest -- we don't need to consider the type assignments
     % with unsatisfiable coerce constraints any more.
     %
-:- pred typecheck_prune_coerce_constraints(type_assign_set::in,
-    type_assign_set::out, typecheck_info::in, typecheck_info::out) is det.
+:- pred typecheck_prune_coerce_constraints(typecheck_info::in,
+    type_assign_set::in, type_assign_set::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -69,15 +68,15 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-typecheck_coerce(Context, Args, TypeAssignSet0, TypeAssignSet, !Info) :-
+typecheck_coerce(Info, Context, Args, TypeAssignSet0, TypeAssignSet) :-
     ( if Args = [FromVar0, ToVar0] then
         FromVar = FromVar0,
         ToVar = ToVar0
     else
         unexpected($pred, "coerce requires two arguments")
     ),
-    list.foldl2(typecheck_coerce_2(Context, FromVar, ToVar),
-        TypeAssignSet0, [], TypeAssignSet1, !Info),
+    list.foldl(typecheck_coerce_2(Info, Context, FromVar, ToVar),
+        TypeAssignSet0, [], TypeAssignSet1),
     ( if
         TypeAssignSet1 = [],
         TypeAssignSet0 = [_ | _]
@@ -87,12 +86,12 @@ typecheck_coerce(Context, Args, TypeAssignSet0, TypeAssignSet, !Info) :-
         TypeAssignSet = TypeAssignSet1
     ).
 
-:- pred typecheck_coerce_2(prog_context::in, prog_var::in, prog_var::in,
-    type_assign::in, type_assign_set::in, type_assign_set::out,
-    typecheck_info::in, typecheck_info::out) is det.
+:- pred typecheck_coerce_2(typecheck_info::in, prog_context::in,
+    prog_var::in, prog_var::in, type_assign::in,
+    type_assign_set::in, type_assign_set::out) is det.
 
-typecheck_coerce_2(Context, FromVar, ToVar, TypeAssign0,
-        !TypeAssignSet, !Info) :-
+typecheck_coerce_2(Info, Context, FromVar, ToVar, TypeAssign0,
+        !TypeAssignSet) :-
     type_assign_get_var_types(TypeAssign0, VarTypes),
     type_assign_get_typevarset(TypeAssign0, TVarSet),
     type_assign_get_existq_tvars(TypeAssign0, ExistQTVars),
@@ -118,7 +117,7 @@ typecheck_coerce_2(Context, FromVar, ToVar, TypeAssign0,
         type_is_ground_except_vars(ToType, ExistQTVars)
     then
         % We can compare the types on both sides immediately.
-        typecheck_info_get_type_table(!.Info, TypeTable),
+        typecheck_info_get_type_table(Info, TypeTable),
         ( if
             typecheck_coerce_between_types(TypeTable, TVarSet,
                 FromType, ToType, TypeAssign0, TypeAssign1)
@@ -473,8 +472,8 @@ compare_types_corresponding(TypeTable, TVarSet, Comparison,
 
 %---------------------------------------------------------------------------%
 
-typecheck_prune_coerce_constraints(TypeAssignSet0, TypeAssignSet, !Info) :-
-    typecheck_info_get_type_table(!.Info, TypeTable),
+typecheck_prune_coerce_constraints(Info, TypeAssignSet0, TypeAssignSet) :-
+    typecheck_info_get_type_table(Info, TypeTable),
     list.map(type_assign_prune_coerce_constraints(TypeTable),
         TypeAssignSet0, TypeAssignSet1),
     list.filter(type_assign_has_only_satisfied_coerce_constraints,

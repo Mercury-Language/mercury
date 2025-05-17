@@ -373,12 +373,12 @@ delay_partial_inst_in_goal(InstMap0, Goal0, Goal, !ConstructMap, !DelayInfo) :-
         ;
             Unify = deconstruct(_Var, _ConsId, _Args, _ArgModes,
                 _CanFail, _CanCGC),
-            delay_partial_inst_in_deconstruct(Goal0, Mode, Unify, Goal,
-                !ConstructMap, !DelayInfo)
+            delay_partial_inst_in_deconstruct(!.DelayInfo, Goal0, Mode, Unify,
+                Goal, !ConstructMap)
         ;
             Unify = complicated_unify(_Mode, _CanFail, _TypeInfos),
-            delay_partial_inst_in_complicated_unify(Goal0, LHS, RHS0,
-                Unify, Goal, !ConstructMap, !DelayInfo)
+            delay_partial_inst_in_complicated_unify(!.ConstructMap,
+                Goal0, LHS, RHS0, Unify, Goal)
         ;
             ( Unify = assign(_, _)
             ; Unify = simple_test(_, _)
@@ -552,13 +552,12 @@ add_to_construct_map(Var, ConsId, CanonVars, !ConstructMap) :-
 % instantiated term.
 %
 
-:- pred delay_partial_inst_in_deconstruct(hlds_goal::in,
-    unify_mode::in, unification::in(unification_deconstruct), hlds_goal::out,
-    construct_map::in, construct_map::out,
-    delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
+:- pred delay_partial_inst_in_deconstruct(delay_partial_inst_info::in, 
+    hlds_goal::in, unify_mode::in, unification::in(unification_deconstruct),
+    hlds_goal::out, construct_map::in, construct_map::out) is det.
 
-delay_partial_inst_in_deconstruct(Goal0, UnifyMode, Unify, Goal,
-        !ConstructMap, !DelayInfo) :-
+delay_partial_inst_in_deconstruct(DelayInfo, Goal0, UnifyMode, Unify, Goal,
+        !ConstructMap) :-
     Unify = deconstruct(Var, ConsId, Args, ArgModes, _CanFail, _CanCGC),
     ( if
         map.search(!.ConstructMap, Var, CanonVarsMap0),
@@ -566,8 +565,8 @@ delay_partial_inst_in_deconstruct(Goal0, UnifyMode, Unify, Goal,
     then
         % Unify each ground argument with the corresponding canonical
         % variable.
-        ModuleInfo = !.DelayInfo ^ dpi_module_info,
-        VarTable = !.DelayInfo ^ dpi_var_table,
+        ModuleInfo = DelayInfo ^ dpi_module_info,
+        VarTable = DelayInfo ^ dpi_var_table,
         ProgContext = goal_info_get_context(GoalInfo0),
         list.filter_map_corresponding3(
             maybe_unify_var_with_ground_var(ModuleInfo, VarTable, ProgContext),
@@ -617,14 +616,12 @@ maybe_unify_var_with_ground_var(ModuleInfo, VarTable, Context, LHSVar, RHSVar,
 % Handle complicated test unifications.
 %
 
-:- pred delay_partial_inst_in_complicated_unify(hlds_goal::in,
-    prog_var::in, unify_rhs::in,
-    unification::in(unification_complicated_unify), hlds_goal::out,
-    construct_map::in, construct_map::out,
-    delay_partial_inst_info::in, delay_partial_inst_info::out) is det.
+:- pred delay_partial_inst_in_complicated_unify(construct_map::in,
+    hlds_goal::in, prog_var::in, unify_rhs::in,
+    unification::in(unification_complicated_unify), hlds_goal::out) is det.
 
-delay_partial_inst_in_complicated_unify(Goal0, LHS, RHS0, Unify, Goal,
-        !ConstructMap, !DelayInfo) :-
+delay_partial_inst_in_complicated_unify(ConstructMap, Goal0, LHS, RHS0,
+        Unify, Goal) :-
     Unify = complicated_unify(_Mode, CanFail, _TypeInfos),
     % Deal with tests generated for calls to implied modes.
     %
@@ -641,8 +638,7 @@ delay_partial_inst_in_complicated_unify(Goal0, LHS, RHS0, Unify, Goal,
     ( if
         CanFail = can_fail,
         RHS0 = rhs_var(RHSVar),
-        get_sole_cons_id_and_canon_vars(!.ConstructMap, LHS, ConsId,
-            CanonArgs)
+        get_sole_cons_id_and_canon_vars(ConstructMap, LHS, ConsId, CanonArgs)
     then
         Goal0 = hlds_goal(_, GoalInfo0),
         ProgContext = goal_info_get_context(GoalInfo0),

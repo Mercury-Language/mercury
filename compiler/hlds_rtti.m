@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018, 2021-2024 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2021-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -595,14 +595,17 @@ rtti_set_type_info_locn(TVar, Locn, !RttiVarMaps) :-
 :- pred maybe_check_type_info_var(type_info_locn::in, tvar::in,
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
-maybe_check_type_info_var(type_info(Var), TVar, !RttiVarMaps) :-
-    map.lookup(!.RttiVarMaps ^ rv_ti_type_map, Var, Type),
+maybe_check_type_info_var(type_info(Var), TVar, RttiVarMaps, RttiVarMaps) :-
+    % We do an unneeded return of RttiVarMaps to ensure that
+    % calls to this predicate, and therefore this sanity check,
+    % do not get optimized away.
+    map.lookup(RttiVarMaps ^ rv_ti_type_map, Var, Type),
     ( if Type = type_variable(TVar, _) then
         true
     else
         unexpected($pred, "inconsistent info in rtti_varmaps")
     ).
-maybe_check_type_info_var(typeclass_info(_, _), _, !RttiVarMaps).
+maybe_check_type_info_var(typeclass_info(_, _), _, RttiVarMaps, RttiVarMaps).
 
 rtti_det_insert_typeclass_info_var(Constraint, ProgVar, !RttiVarMaps) :-
     Map0 = !.RttiVarMaps ^ rv_tci_constraint_map,

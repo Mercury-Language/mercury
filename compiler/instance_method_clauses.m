@@ -94,7 +94,7 @@ produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, ArgTypes,
         construct_and_record_pred_or_func_call(invalid_pred_id, PredOrFunc,
             InstancePredName, HeadVars, GoalInfo, IntroducedGoal, !QualInfo),
         IntroducedClause = clause(all_modes, IntroducedGoal, impl_lang_mercury,
-            Context, []),
+            Context, [], init_unused_statevar_arg_map),
 
         vartypes_from_corresponding_lists(HeadVars, ArgTypes,
             ExplicitVarTypes),

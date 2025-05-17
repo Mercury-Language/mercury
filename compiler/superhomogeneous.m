@@ -499,11 +499,11 @@ do_arg_unifications_with_contexts(
     unravel_info::in, unravel_info::out) is det.
 
 do_arg_unification(XVar, YTerm, Context, ArgContext, Order, ArgNum,
-        !.AncestorVarMap, Expansion, !SVarState, !UrInfo) :-
+        AncestorVarMap, Expansion, !SVarState, !UrInfo) :-
     % It is the caller's job to make sure that if needed, then both
     % XVar and the top level of YTerm have already been through
     % state var mapping expansion.
-    occurs_check(!.AncestorVarMap, XVar, !UrInfo),
+    occurs_check(AncestorVarMap, XVar, !UrInfo),
     (
         YTerm = term.variable(YVar, YVarContext),
         ( if XVar = YVar then
@@ -523,7 +523,7 @@ do_arg_unification(XVar, YTerm, Context, ArgContext, Order, ArgNum,
             MainContext, SubContext),
         unravel_var_functor_unification(XVar, YFunctor, YArgTerms,
             YFunctorContext, Context, MainContext, SubContext, purity_pure,
-            Order, !.AncestorVarMap, Expansion, !SVarState, !UrInfo)
+            Order, AncestorVarMap, Expansion, !SVarState, !UrInfo)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -561,7 +561,7 @@ do_unravel_var_unification(LHSVar, RHS0, Context, MainContext, SubContext,
     unravel_info::in, unravel_info::out) is det.
 
 classify_unravel_unification(XTerm, YTerm, Context, MainContext, SubContext,
-        Purity, Order, !.AncestorVarMap, Expansion, !SVarState, !UrInfo) :-
+        Purity, Order, AncestorVarMap, Expansion, !SVarState, !UrInfo) :-
     (
         % `X = Y' needs no unravelling.
         XTerm = term.variable(XVar, _),
@@ -574,13 +574,13 @@ classify_unravel_unification(XTerm, YTerm, Context, MainContext, SubContext,
         YTerm = term.functor(YFunctor, YArgTerms, YFunctorContext),
         unravel_var_functor_unification(XVar, YFunctor, YArgTerms,
             YFunctorContext, Context, MainContext, SubContext,
-            Purity, Order, !.AncestorVarMap, Expansion, !SVarState, !UrInfo)
+            Purity, Order, AncestorVarMap, Expansion, !SVarState, !UrInfo)
     ;
         XTerm = term.functor(XFunctor, XArgTerms, XFunctorContext),
         YTerm = term.variable(YVar, _),
         unravel_var_functor_unification(YVar, XFunctor, XArgTerms,
             XFunctorContext, Context, MainContext, SubContext,
-            Purity, Order, !.AncestorVarMap, Expansion, !SVarState, !UrInfo)
+            Purity, Order, AncestorVarMap, Expansion, !SVarState, !UrInfo)
     ;
         % If we find a unification of the form `f1(...) = f2(...)',
         % then we replace it with `Tmp = f1(...), Tmp = f2(...)',
@@ -592,14 +592,14 @@ classify_unravel_unification(XTerm, YTerm, Context, MainContext, SubContext,
         YTerm = term.functor(YFunctor, YArgTerms, YFunctorContext),
         create_new_unravel_var(TmpVar, !UrInfo),
         % TmpVar cannot occur in either XTerm or YTerm, so adding it
-        % to !AncestorVarMap would not result in any hits, and would only
+        % to AncestorVarMap would not result in any hits, and would only
         % slow down lookups.
         unravel_var_functor_unification(TmpVar, XFunctor, XArgTerms,
             XFunctorContext, Context, MainContext, SubContext,
-            Purity, Order, !.AncestorVarMap, ExpansionX, !SVarState, !UrInfo),
+            Purity, Order, AncestorVarMap, ExpansionX, !SVarState, !UrInfo),
         unravel_var_functor_unification(TmpVar, YFunctor, YArgTerms,
             YFunctorContext, Context, MainContext, SubContext,
-            Purity, Order, !.AncestorVarMap, ExpansionY, !SVarState, !UrInfo),
+            Purity, Order, AncestorVarMap, ExpansionY, !SVarState, !UrInfo),
         goal_info_init(Context, GoalInfo),
         expansion_to_goal_cord_wrap_if_fgti(!.UrInfo, GoalInfo, ExpansionX,
             MaybeWrappedGoalCordX),
@@ -652,7 +652,7 @@ classify_unravel_var_unification(XVar, YTerm, Context, MainContext, SubContext,
 
 unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
         Context, MainContext, SubContext,
-        Purity, Order, !.AncestorVarMap, Expansion, !SVarState, !UrInfo) :-
+        Purity, Order, AncestorVarMap, Expansion, !SVarState, !UrInfo) :-
     replace_any_dot_color_state_var_in_terms(YArgTerms0, YArgTerms,
         !SVarState, !UrInfo),
     ( if
@@ -700,7 +700,7 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
         ),
         build_var_cons_id_unification(XVar, ConsId, MaybeQualifiedYArgTerms,
             YFunctorContext, Context, MainContext, SubContext, Purity,
-            !.AncestorVarMap, Expansion, !SVarState, !UrInfo)
+            AncestorVarMap, Expansion, !SVarState, !UrInfo)
     ).
 
 :- pred build_var_cons_id_unification(prog_var::in, cons_id::in,
@@ -855,7 +855,7 @@ parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !UrInfo) :-
             MaybeConsId = ok1(ConsId)
         ;
             MaybeConsId = error1(ConsIdSpecs),
-            add_unravel_errors(ConsIdSpecs, !UrInfo),
+            add_unravel_specs(ConsIdSpecs, !UrInfo),
             % This is a dummy.
             ConsId = some_int_const(int_const(0))
         )
@@ -896,7 +896,7 @@ parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !UrInfo) :-
                 [words("and")] ++
                 color_as_correct([quote("$grade"), suffix(".")]) ++ [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            add_unravel_error(Spec, !UrInfo),
+            add_unravel_spec(Spec, !UrInfo),
             % This is a dummy.
             ConsId = impl_defined_const(idc_line)
         )
@@ -948,13 +948,13 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                         [], TypeQualSpecs),
                     !UrInfo ^ ui_qual_info := QualInfo,
                     % Note that most of time, TypeQualSpecs will be [].
-                    add_unravel_errors(TypeQualSpecs, !UrInfo)
+                    add_unravel_specs(TypeQualSpecs, !UrInfo)
                 ;
                     DeclTypeResult = error1(DeclTypeSpecs),
                     % The varset is a prog_varset even though it contains
                     % the names of type variables in ErrorTerm, which is
                     % a generic term.
-                    add_unravel_errors(DeclTypeSpecs, !UrInfo)
+                    add_unravel_specs(DeclTypeSpecs, !UrInfo)
                 ),
                 do_unravel_var_unification(XVar, RValTerm,
                     Context, MainContext, SubContext, Purity, Order, Expansion,
@@ -1066,7 +1066,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
             (
                 MaybeVarsCond =
                     ok4(Vars, StateVars, CondParseTree, CondWarningSpecs),
-                add_unravel_errors(CondWarningSpecs, !UrInfo),
+                add_unravel_specs(CondWarningSpecs, !UrInfo),
                 BeforeSVarState = !.SVarState,
                 svar_prepare_for_local_state_vars(Context, StateVars,
                     BeforeSVarState, BeforeInsideSVarState, !UrInfo),
@@ -1117,7 +1117,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                 Expansion = expansion(not_fgti, cord.singleton(Goal))
             ;
                 MaybeVarsCond = error4(VarsCondSpecs),
-                add_unravel_errors(VarsCondSpecs, !UrInfo),
+                add_unravel_specs(VarsCondSpecs, !UrInfo),
                 Expansion = expansion(not_fgti,
                     cord.singleton(true_goal_with_context(Context)))
             )
@@ -1290,7 +1290,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h,
                 YFunctorContext, Pieces),
-            add_unravel_error(Spec, !UrInfo),
+            add_unravel_spec(Spec, !UrInfo),
             record_unravel_found_syntax_error(!UrInfo),
             Expansion = expansion(not_fgti, cord.empty)
         )
@@ -1353,8 +1353,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
     svar_state::in, unravel_info::in, unravel_info::out) is det.
 
 parse_lambda_expr(XVar, Purity, Context, MainContext, SubContext,
-        PurityPFArgsDetTerm, MaybeLambdaBody, Expansion,
-        !.SVarState, !UrInfo) :-
+        PurityPFArgsDetTerm, MaybeLambdaBody, Expansion, SVarState, !UrInfo) :-
     (
         MaybeLambdaBody = no,
         TrueGoal = true_expr(Context),
@@ -1380,7 +1379,7 @@ parse_lambda_expr(XVar, Purity, Context, MainContext, SubContext,
         !UrInfo ^ ui_varset := VarSet,
         (
             MaybeBodyGoal0 = ok2(BodyGoal, BodyGoalWarningSpecs),
-            add_unravel_errors(BodyGoalWarningSpecs, !UrInfo),
+            add_unravel_specs(BodyGoalWarningSpecs, !UrInfo),
             MaybeBodyGoal = ok1(BodyGoal)
         ;
             MaybeBodyGoal0 = error2(BodyGoalSpecs),
@@ -1391,13 +1390,13 @@ parse_lambda_expr(XVar, Purity, Context, MainContext, SubContext,
         MaybeLambdaHead, !UrInfo),
     (
         MaybeLambdaHead = error1(LambdaHeadSpecs),
-        add_unravel_errors(LambdaHeadSpecs, !UrInfo),
+        add_unravel_specs(LambdaHeadSpecs, !UrInfo),
         record_unravel_found_syntax_error(!UrInfo),
         Expansion = expansion(not_fgti, cord.empty)
     ;
         MaybeLambdaHead = ok1(LambdaHead),
         build_lambda_expression(XVar, Purity, Context, MainContext, SubContext,
-            LambdaHead, MaybeBodyGoal, Expansion, !.SVarState, !UrInfo)
+            LambdaHead, MaybeBodyGoal, Expansion, SVarState, !UrInfo)
     ).
 
 :- type maybe_dcg_vars
@@ -2018,13 +2017,13 @@ build_lambda_expression(LHSVar, UnificationPurity,
             [nl],
         InconsistentVarsSpec = spec($pred, severity_error, phase_t2pt,
             Context, InconsistentVarsPieces),
-        add_unravel_error(InconsistentVarsSpec, !UrInfo)
+        add_unravel_spec(InconsistentVarsSpec, !UrInfo)
     ),
     (
         MaybeDetism = ok1(Detism)
     ;
         MaybeDetism = error1(DetismSpecs),
-        add_unravel_errors(DetismSpecs, !UrInfo),
+        add_unravel_specs(DetismSpecs, !UrInfo),
         % Due to the error, this dummy value won't be used.
         Detism = detism_det
     ),
@@ -2032,7 +2031,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
         MaybeBodyGoal = ok1(BodyGoal)
     ;
         MaybeBodyGoal = error1(BodyGoalSpecs),
-        add_unravel_errors(BodyGoalSpecs, !UrInfo),
+        add_unravel_specs(BodyGoalSpecs, !UrInfo),
         record_unravel_found_syntax_error(!UrInfo),
         % Due to the error, this dummy value won't be used.
         BodyGoal = true_expr(Context)
@@ -2041,7 +2040,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
     ArgSpecs = BadModeSpecs ++ SVarSpecs,
     (
         ArgSpecs = [_ | _],
-        add_unravel_errors(ArgSpecs, !UrInfo),
+        add_unravel_specs(ArgSpecs, !UrInfo),
         record_unravel_found_syntax_error(!UrInfo),
         Goal = true_goal_with_context(Context)
     ;
@@ -2049,7 +2048,8 @@ build_lambda_expression(LHSVar, UnificationPurity,
         some [!SVarState] (
             ArgTerms1 = list.map(project_lambda_arg_term, LambdaArgs1),
             svar_prepare_for_lambda_head(Context, ArgTerms1, ArgTerms,
-                FinalSVarMap, OutsideSVarState, !:SVarState, !UrInfo),
+                FinalSVarMap, NewSVars, OutsideSVarState,
+                !:SVarState, !UrInfo),
             InitialSVarState = !.SVarState,
 
             % Partition the arguments (and their corresponding lambda vars)
@@ -2118,7 +2118,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
 
             % Fix up any state variable unifications.
             FinalSVarState = !.SVarState,
-            svar_finish_lambda_body(Context, FinalSVarMap,
+            svar_finish_lambda_body(Context, NewSVars, FinalSVarMap,
                 [HeadBefore, Body, HeadAfter], HLDS_Goal0,
                 InitialSVarState, FinalSVarState, !UrInfo),
 
@@ -2226,7 +2226,7 @@ qualify_lambda_arg_modes_if_not_opt_imported(LambdaArgs0, LambdaArgs,
         qual_info_set_mq_info(MQInfo, QualInfo0, QualInfo),
         !UrInfo ^ ui_qual_info := QualInfo,
         % Note: Specs will almost always be [].
-        add_unravel_errors(Specs, !UrInfo)
+        add_unravel_specs(Specs, !UrInfo)
     ;
         MaybeOptImported = is_opt_imported,
         % The modes in `.opt' files are already fully module qualified.
@@ -2381,7 +2381,7 @@ occurs_check(AncestorVarMap, Var, !UrInfo) :-
                 [nl],
             Spec = spec($pred, severity_warning, phase_pt2h,
                 AncestorContext, Pieces),
-            add_unravel_error(Spec, !UrInfo)
+            add_unravel_spec(Spec, !UrInfo)
         )
     else
         true

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -560,7 +560,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % pred_infos don't have a marker to say "defined using a fact table".
     % and without this, we cannot know when to generate such a warning.
     add_impl_pragmas(ProgressStream, ImplPragmas, cord.init, PragmaTabledCord,
-        !ModuleInfo, !QualInfo, !Specs),
+        !ModuleInfo, !Specs),
     PragmasTabled = cord.list(PragmaTabledCord),
     add_impl_pragmas_tabled(ProgressStream, PragmasTabled,
         !ModuleInfo, !QualInfo, !Specs),

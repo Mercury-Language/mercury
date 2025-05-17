@@ -6730,6 +6730,30 @@ exported predicates, functions, insts, modes or types.
 Warn about predicate or function arguments which are not used.
 
 @sp 1
+@item --no-warn-unneeded-initial-statevars
+@findex --no-warn-unneeded-initial-statevars
+Do not warn about state variables in clause heads
+that could be ordinary variables.
+
+@sp 1
+@item --no-warn-unneeded-initial-statevars-lambda
+@findex --no-warn-unneeded-initial-statevars-lambda
+Do not warn about state variables in lambda expressions
+that could be ordinary variables.
+
+@sp 1
+@item --no-warn-unneeded-final-statevars
+@findex --no-warn-unneeded-final-statevars
+Do not warn about @code{!:S} state variables in clause heads
+whose value will always be the same as @code{!.S}.
+
+@sp 1
+@item --no-warn-unneeded-final-statevars-lambda
+@findex --no-warn-unneeded-final-statevars-lambda
+Do not warn about @code{!:S} state variables in lambda expressions
+whose value will always be the same as @code{!.S}.
+
+@sp 1
 @item --no-warn-interface-imports
 @c @item --warn-interface-imports
 @findex --no-warn-interface-imports

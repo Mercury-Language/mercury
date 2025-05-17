@@ -241,10 +241,10 @@ module_add_clause_2(ProgressStream, PredStatus, ClauseType, PredId,
                 !:Specs = BodyGoalWarningSpecs ++ !.Specs,
                 pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
                 pred_info_get_typevarset(!.PredInfo, TVarSet0),
-                select_applicable_modes(MaybeAnnotatedArgTerms, ClauseVarSet,
-                    PredStatus, Context, PredId, !.PredInfo, ArgTerms,
-                    ProcIdsForThisClause, AllProcIds,
-                    !ModuleInfo, !QualInfo, !Specs),
+                select_applicable_modes(!.ModuleInfo, MaybeAnnotatedArgTerms,
+                    ClauseVarSet, PredStatus, Context, PredId, !.PredInfo,
+                    ArgTerms, ProcIdsForThisClause, AllProcIds,
+                    !QualInfo, !Specs),
                 clauses_info_add_clause(ProcIdsForThisClause, AllProcIds,
                     PredStatus, ClauseType, PredOrFunc, PredSymName,
                     ArgTerms, Context, SeqNum, BodyGoal, ClauseVarSet,
@@ -388,17 +388,18 @@ maybe_add_error_for_builtin(ModuleInfo, PredInfo, Context, !Specs) :-
     % Extract the mode annotations (if any) from the clause arguments,
     % and determine which mode(s) this clause should apply to.
     %
-:- pred select_applicable_modes(list(prog_term)::in, prog_varset::in,
-    pred_status::in, prog_context::in, pred_id::in, pred_info::in,
-    list(prog_term)::out, clause_applicable_modes::out, list(proc_id)::out,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
+:- pred select_applicable_modes(module_info::in, list(prog_term)::in,
+    prog_varset::in, pred_status::in, prog_context::in,
+    pred_id::in, pred_info::in, list(prog_term)::out,
+    clause_applicable_modes::out, list(proc_id)::out,
+    qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
-        PredId, PredInfo, ArgTerms, ApplProcIds, AllProcIds,
-        !ModuleInfo, !QualInfo, !Specs) :-
+select_applicable_modes(ModuleInfo, MaybeAnnotatedArgTerms, VarSet,
+        PredStatus, Context, PredId, PredInfo, ArgTerms,
+        ApplProcIds, AllProcIds, !QualInfo, !Specs) :-
     AllProcIds = pred_info_all_procids(PredInfo),
-    PredIdStr = pred_id_to_user_string(!.ModuleInfo, PredId),
+    PredIdStr = pred_id_to_user_string(ModuleInfo, PredId),
     ContextPieces = cord.from_list([words("In the head of a clause for"),
         fixed(PredIdStr), suffix(":"), nl]),
     get_mode_annotations(VarSet, ContextPieces, 1, MaybeAnnotatedArgTerms,
@@ -451,7 +452,7 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
             pred_info_get_proc_table(PredInfo, Procs),
             map.to_assoc_list(Procs, ExistingProcs),
             ( if
-                get_procedure_matching_declmodes_with_renaming(!.ModuleInfo,
+                get_procedure_matching_declmodes_with_renaming(ModuleInfo,
                     ExistingProcs, ArgModes, ProcId)
             then
                 ApplProcIds = selected_modes([ProcId]),
@@ -463,7 +464,7 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
                     % should be reported elsewhere.
                 ;
                     ExistingProcs = [_],
-                    module_info_get_globals(!.ModuleInfo, Globals),
+                    module_info_get_globals(ModuleInfo, Globals),
                     globals.lookup_bool_option(Globals,
                         warn_unneeded_mode_specific_clause, Warn),
                     (
@@ -487,7 +488,7 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
                     ExistingProcs = [_, _ | _]
                 )
             else
-                report_undeclared_mode_error(!.ModuleInfo, PredId, PredInfo,
+                report_undeclared_mode_error(ModuleInfo, PredId, PredInfo,
                     VarSet, ArgModes, [words("clause")], Context, !Specs),
                 % Apply the clause to all modes.
                 % XXX Would it be better to apply it to none?
@@ -632,7 +633,7 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
     qual_info_set_found_syntax_error(no, !QualInfo),
     add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
         HeadVars, ArgTerms, Context, ClauseType, BodyGoal, Goal0,
-        VarSet1, VarSet2, QuantWarnings, StateVarWarnings,
+        VarSet1, VarSet2, QuantWarnings, StateVarWarnings, UnusedSVarArgMap,
         !ModuleInfo, !QualInfo, !Specs),
     qual_info_get_tvarset(!.QualInfo, TVarSet),
     qual_info_get_found_syntax_error(!.QualInfo, FoundSyntaxError),
@@ -720,13 +721,13 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
                 ModeIds = [_ | _],
                 ApplicableModeIds = selected_modes(ModeIds),
                 Clause = clause(ApplicableModeIds, Goal, impl_lang_mercury,
-                    Context, StateVarWarnings),
+                    Context, StateVarWarnings, UnusedSVarArgMap),
                 add_clause(Clause, ClausesRep1, ClausesRep)
             )
         ;
             HasForeignClauses0 = no_foreign_lang_clauses,
             Clause = clause(ApplModeIds0, Goal, impl_lang_mercury, Context,
-                StateVarWarnings),
+                StateVarWarnings, UnusedSVarArgMap),
             add_clause(Clause, ClausesRep0, ClausesRep)
         ),
         qual_info_get_explicit_var_types(!.QualInfo, ExplicitVarTypes),
@@ -793,18 +794,20 @@ should_we_do_singleton_and_quant_warnings(ModuleInfo, PredStatus, ClausesInfo,
     list(prog_term)::in, prog_context::in, clause_type::in,
     goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
     list(quant_warning)::out, list(error_spec)::out,
+    unused_statevar_arg_map::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
         HeadVars, ArgTerms0, Context, ClauseType, ParseTreeBodyGoal, Goal,
-        !VarSet, QuantWarnings, StateVarWarningSpecs,
+        !VarSet, QuantWarnings, StateVarWarningSpecs, UnusedSVarArgMap,
         !ModuleInfo, !QualInfo, !Specs) :-
     some [!SVarState, !UrInfo] (
         rename_vars_in_term_list(need_not_rename, Renaming,
             ArgTerms0, ArgTerms1),
         svar_prepare_for_clause_head(!.ModuleInfo, !.QualInfo, !.VarSet,
-            ArgTerms1, ArgTerms, FinalSVarMap, !:SVarState, !:UrInfo),
+            ArgTerms1, ArgTerms, FinalSVarMap, NewSVars,
+            !:SVarState, !:UrInfo),
         InitialSVarState = !.SVarState,
         (
             ClauseType = clause_for_promise(_),
@@ -840,9 +843,9 @@ add_clause_transform(KeepQuantVars, Renaming, PredOrFunc, PredSymName,
         transform_parse_tree_goal_to_hlds(loc_whole_goal, Renaming,
             ParseTreeBodyGoal, BodyGoal, !SVarState, !UrInfo),
         FinalSVarState = !.SVarState,
-        svar_finish_clause_body(Context, FinalSVarMap,
+        svar_finish_clause_body(Context, NewSVars, FinalSVarMap,
             InitialSVarState, FinalSVarState, HeadUnificationsGoal, BodyGoal,
-            Goal0, StateVarWarningSpecs, !UrInfo),
+            Goal0, StateVarWarningSpecs, UnusedSVarArgMap, !UrInfo),
         !.UrInfo = unravel_info(!:ModuleInfo, _FgtThreshold,
             !:QualInfo, !:VarSet, _SVarStore, UnravelSpecs),
         !:Specs = UnravelSpecs ++ !.Specs,

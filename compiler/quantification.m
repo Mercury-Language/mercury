@@ -349,8 +349,7 @@ quantify_goal(NonLocalsToRecompute, Goal0, Goal, !Info) :-
                 set_rtti_varmaps(!.RttiVarMaps, !Info)
             )
         ),
-        set_goal_nonlocals(NonLocalsToRecompute, NonLocalVars,
-            !GoalInfo, !Info),
+        set_goal_nonlocals(NonLocalsToRecompute, NonLocalVars, !GoalInfo),
 
         % If the nonlocals set has shrunk (e.g. because some optimization
         % optimizes away the other occurrences of a variable, causing it
@@ -1016,11 +1015,11 @@ quantify_goal_bi_implication(LHS0, RHS0, GoalExpr, OldGoalInfo, !Info) :-
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo1),
     set_goal_nonlocals(ord_nl_maybe_lambda, LHS_NonLocalVars,
-        GoalInfo1, LHS_GI, !Info),
+        GoalInfo1, LHS_GI),
     set_goal_nonlocals(ord_nl_maybe_lambda, RHS_NonLocalVars,
-        GoalInfo1, RHS_GI, !Info),
+        GoalInfo1, RHS_GI),
     set_goal_nonlocals(ord_nl_maybe_lambda, NonLocalVars,
-        GoalInfo1, GI, !Info),
+        GoalInfo1, GI),
     NotLHS = hlds_goal(negation(LHS), LHS_GI),
     NotRHS = hlds_goal(negation(RHS), RHS_GI),
     ForwardsImplicationExpr =
@@ -2507,15 +2506,15 @@ rename_vars_apart(NonLocalsToRecompute, RenameSet, RenameMap, !Goal, !Info) :-
 %---------------------------------------------------------------------------%
 
 :- pred set_goal_nonlocals(nonlocals_to_recompute, set_of_progvar,
-    hlds_goal_info, hlds_goal_info, quant_info, quant_info).
+    hlds_goal_info, hlds_goal_info).
 :- mode set_goal_nonlocals(in(ord_nl_maybe_lambda),
-    in, in, out, in, out) is det.
+    in, in, out) is det.
 :- mode set_goal_nonlocals(in(ord_nl_no_lambda),
-    in, in, out, in, out) is det.
+    in, in, out) is det.
 :- mode set_goal_nonlocals(in(cg_nl_no_lambda),
-    in, in, out, in, out) is det.
+    in, in, out) is det.
 
-set_goal_nonlocals(NonLocalsToRecompute, NonLocals, !GoalInfo, !Info) :-
+set_goal_nonlocals(NonLocalsToRecompute, NonLocals, !GoalInfo) :-
     (
         ( NonLocalsToRecompute = ord_nl_maybe_lambda
         ; NonLocalsToRecompute = ord_nl_no_lambda

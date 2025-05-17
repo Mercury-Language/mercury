@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2006, 2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1501,7 +1501,7 @@ minimal_model_2([V | Vs], R0, !TrueVars, !FalseVars) :-
 %---------------------------------------------------------------------------%
 
 :- pragma promise_pure(pred(clear_caches/2)).
-clear_caches(!IO) :-
+clear_caches(IO, IO) :-
     impure clear_caches.
 
 :- pragma no_inline(pred(clear_caches/0)).

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2010, 2012 The University of Melbourne.
-% Copyright (C) 2015, 2018-2019, 2024 The Mercury team.
+% Copyright (C) 2015, 2018-2019, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -82,6 +82,10 @@
     proc_arg_vector(T)::in, proc_arg_vector(T)::out) is det.
 :- pred proc_arg_vector_set_maybe_ret_value(maybe(T)::in,
     proc_arg_vector(T)::in, proc_arg_vector(T)::out) is det.
+
+    % Return the user args *and* the function result, if any.
+    %
+:- func proc_arg_vector_get_user_visible_args(proc_arg_vector(T)) = list(T).
 
 %-----------------------------------------------------------------------------%
 %
@@ -329,17 +333,17 @@ proc_arg_vector_set_maybe_ret_value(RV, !V) :-
 
 %-----------------------------------------------------------------------------%
 
+proc_arg_vector_get_user_visible_args(ArgVec) = UserVisibleArgs :-
+    OrigArgs = ArgVec ^ pav_user_args,
+    MaybeReturnValue = ArgVec ^ pav_maybe_ret_value,
+    AnyReturnValues = get_any_return_values(MaybeReturnValue),
+    UserVisibleArgs = OrigArgs ++ AnyReturnValues.
+
 proc_arg_vector_to_list(ArgVec) = List :-
     ArgVec = proc_arg_vector(InstanceTypeInfos, InstanceTypeClassInfos,
         UnivTypeInfos, ExistTypeInfos, UnivTypeClassInfos,
-        ExistTypeClassInfos, OrigArgs, MaybeRetValue),
-    (
-        MaybeRetValue = yes(Value),
-        RetValue = [Value]
-    ;
-        MaybeRetValue = no,
-        RetValue = []
-    ),
+        ExistTypeClassInfos, OrigArgs, MaybeReturnValue),
+    AnyReturnValues = get_any_return_values(MaybeReturnValue),
     list.condense([InstanceTypeInfos,
            InstanceTypeClassInfos,
            UnivTypeInfos,
@@ -347,7 +351,14 @@ proc_arg_vector_to_list(ArgVec) = List :-
            UnivTypeClassInfos,
            ExistTypeClassInfos,
            OrigArgs,
-           RetValue], List).
+           AnyReturnValues], List).
+
+:- func get_any_return_values(maybe(T)) = list(T).
+
+get_any_return_values(MaybeReturnValue) = AnyReturnValues :-
+    ( MaybeReturnValue = yes(Value), AnyReturnValues = [Value]
+    ; MaybeReturnValue = no,         AnyReturnValues = []
+    ).
 
 proc_arg_vector_to_set(ArgVec) = Set :-
     List = proc_arg_vector_to_list(ArgVec),

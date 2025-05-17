@@ -576,16 +576,16 @@ no_conjunct_refers_to_var([Goal | Goals], TestVar) :-
     hlds_goal_expr::in(goal_expr_switch), hlds_goal_info::in,
     merge_code_after_switch_result::out(merge_switch_switch)) is det.
 
-try_to_merge_switch_after_switch(!.Info, FirstGoalExpr, FirstGoalInfo,
+try_to_merge_switch_after_switch(Info, FirstGoalExpr, FirstGoalInfo,
         SecondGoalExpr0, SecondGoalInfo0, Result) :-
     trace [compile_time(flag("merge_switch_switch")), io(!IO)] (
-        simplify_info_get_progress_stream(!.Info, ProgressStream),
-        simplify_info_get_module_info(!.Info, ModuleInfo),
+        simplify_info_get_progress_stream(Info, ProgressStream),
+        simplify_info_get_module_info(Info, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
         OutInfo = init_hlds_out_info(Globals, output_debug),
-        simplify_info_get_var_table(!.Info, VarTable),
-        simplify_info_get_tvarset(!.Info, TVarSet),
-        simplify_info_get_inst_varset(!.Info, InstVarSet),
+        simplify_info_get_var_table(Info, VarTable),
+        simplify_info_get_tvarset(Info, TVarSet),
+        simplify_info_get_inst_varset(Info, InstVarSet),
         FirstGoal = hlds_goal(FirstGoalExpr, FirstGoalInfo),
         SecondGoal0 = hlds_goal(SecondGoalExpr0, SecondGoalInfo0),
 
@@ -625,7 +625,7 @@ try_to_merge_switch_after_switch(!.Info, FirstGoalExpr, FirstGoalInfo,
             CanFail = can_fail
         ),
         map.foldl(
-            construct_and_add_merged_switch_case(!.Info,
+            construct_and_add_merged_switch_case(Info,
                 FirstSwitchGoalMap, SecondSwitchGoalMap),
             CasesConsIdsMap, [], Cases0),
         list.sort(Cases0, Cases),
@@ -634,13 +634,13 @@ try_to_merge_switch_after_switch(!.Info, FirstGoalExpr, FirstGoalInfo,
             GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
         trace [compile_time(flag("merge_switch_switch")), io(!IO)] (
-            simplify_info_get_progress_stream(!.Info, ProgressStream),
-            simplify_info_get_module_info(!.Info, ModuleInfo),
+            simplify_info_get_progress_stream(Info, ProgressStream),
+            simplify_info_get_module_info(Info, ModuleInfo),
             module_info_get_globals(ModuleInfo, Globals),
             OutInfo = init_hlds_out_info(Globals, output_debug),
-            simplify_info_get_var_table(!.Info, VarTable),
-            simplify_info_get_tvarset(!.Info, TVarSet),
-            simplify_info_get_inst_varset(!.Info, InstVarSet),
+            simplify_info_get_var_table(Info, VarTable),
+            simplify_info_get_tvarset(Info, TVarSet),
+            simplify_info_get_inst_varset(Info, InstVarSet),
 
             io.write_string(ProgressStream, "merge successful\n", !IO),
             write_goal_nl(OutInfo, ProgressStream, ModuleInfo,
@@ -651,7 +651,7 @@ try_to_merge_switch_after_switch(!.Info, FirstGoalExpr, FirstGoalInfo,
         Result = merge_successful_new_code_not_simplified(Goal)
     else
         trace [compile_time(flag("merge_switch_switch")), io(!IO)] (
-            simplify_info_get_progress_stream(!.Info, ProgressStream),
+            simplify_info_get_progress_stream(Info, ProgressStream),
             io.write_string(ProgressStream, "merge unsuccessful\n", !IO),
             io.flush_output(ProgressStream, !IO)
         ),

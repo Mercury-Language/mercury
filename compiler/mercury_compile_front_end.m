@@ -376,7 +376,7 @@ do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
         DidWeExceedIterationLimit = within_iteration_limit
     ;
         TypeCheckConstraints = no,
-        prepare_for_typecheck_module(!HLDS),
+        prepare_for_typecheck_module(!HLDS, !Specs),
         typecheck_module(ProgressStream, !HLDS, TypeCheckSpecs,
             FoundSyntaxError, DidWeExceedIterationLimit)
     ),
@@ -1555,7 +1555,7 @@ maybe_simplify(ProgressStream, MaybeErrorStream, Warn, SimplifyPass,
         SimplifyTasks = list_to_simplify_tasks(Globals, SimpList),
         process_valid_nonimported_preds_errors(
             update_pred_error(simplify_pred(ProgressStream, SimplifyTasks)),
-            !HLDS, [], SimplifySpecs, !IO),
+            !HLDS, [], SimplifySpecs),
         (
             SimplifyPass = simplify_pass_frontend,
             (

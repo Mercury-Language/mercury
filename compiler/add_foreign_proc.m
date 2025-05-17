@@ -66,6 +66,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -288,11 +289,11 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
                 pred_info_get_arg_types(!.PredInfo, ArgTypes),
                 pred_info_get_purity(!.PredInfo, Purity),
                 pred_info_get_markers(!.PredInfo, Markers),
-                clauses_info_add_foreign_proc(PredOrFunc,
+                clauses_info_add_foreign_proc(!.ModuleInfo, PredOrFunc,
                     PredModuleName, PredName, PredId, ProcId,
                     ProgVarSet, PragmaVars, ArgTypes,
                     Purity, Attributes, Markers, Context, PragmaImpl,
-                    ClausesInfo1, ClausesInfo, !ModuleInfo, !Specs),
+                    ClausesInfo1, ClausesInfo, !Specs),
                 pred_info_set_clauses_info(ClausesInfo, !PredInfo),
                 pred_info_update_goal_type(np_goal_type_foreign, !PredInfo),
 
@@ -370,24 +371,24 @@ report_bad_foreign_proc_in_dot_opt_file(RejectCause, Context, !Specs) :-
     % pragma foreign_proc declaration and the head vars of the pred. Also
     % return the hlds_goal.
     %
-:- pred clauses_info_add_foreign_proc(pred_or_func::in,
+:- pred clauses_info_add_foreign_proc(module_info::in, pred_or_func::in,
     module_name::in, string::in, pred_id::in, proc_id::in,
     prog_varset::in, list(pragma_var)::in, list(mer_type)::in,
     purity::in, foreign_proc_attributes::in, pred_markers::in,
     prog_context::in, pragma_foreign_proc_impl::in,
-    clauses_info::in, clauses_info::out, module_info::in, module_info::out,
+    clauses_info::in, clauses_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-clauses_info_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
+clauses_info_add_foreign_proc(ModuleInfo, PredOrFunc, PredModuleName, PredName,
         PredId, ProcId, VarSet, PragmaVars, OrigArgTypes,
         Purity, Attributes0, Markers, Context, PragmaImpl0,
-        !ClausesInfo, !ModuleInfo, !Specs) :-
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+        !ClausesInfo, !Specs) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ( if pred_info_is_builtin(PredInfo) then
         % When bootstrapping a change that defines a builtin using
         % normal Mercury code, we need to disable the generation
         % of the error message, and just ignore the definition.
-        module_info_get_globals(!.ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, allow_defn_of_builtins,
             AllowDefnOfBuiltin),
         (
@@ -407,24 +408,24 @@ clauses_info_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
         )
     else
         AllProcIds = pred_info_all_procids(PredInfo),
-        clauses_info_do_add_foreign_proc(PredOrFunc,
+        clauses_info_do_add_foreign_proc(ModuleInfo, PredOrFunc,
             PredModuleName, PredName, PredId, ProcId, AllProcIds,
             VarSet, PragmaVars, OrigArgTypes, Purity, Attributes0, Markers,
-            Context, PragmaImpl0, !ClausesInfo, !ModuleInfo, !Specs)
+            Context, PragmaImpl0, !ClausesInfo, !Specs)
     ).
 
-:- pred clauses_info_do_add_foreign_proc(pred_or_func::in,
+:- pred clauses_info_do_add_foreign_proc(module_info::in, pred_or_func::in,
     module_name::in, string::in, pred_id::in, proc_id::in, list(proc_id)::in,
     prog_varset::in, list(pragma_var)::in, list(mer_type)::in,
     purity::in, foreign_proc_attributes::in, pred_markers::in,
     prog_context::in, pragma_foreign_proc_impl::in,
-    clauses_info::in, clauses_info::out, module_info::in, module_info::out,
+    clauses_info::in, clauses_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
-        PredId, ProcId, AllProcIds, PVarSet, PragmaVars, OrigArgTypes,
-        Purity, Attributes0, Markers, Context, PragmaImpl,
-        !ClausesInfo, !ModuleInfo, !Specs) :-
+clauses_info_do_add_foreign_proc(ModuleInfo,
+        PredOrFunc, PredModuleName, PredName, PredId, ProcId, AllProcIds,
+        PVarSet, PragmaVars, OrigArgTypes, Purity, Attributes0, Markers,
+        Context, PragmaImpl, !ClausesInfo, !Specs) :-
     % Our caller should have already added this foreign_proc to ItemNumbers.
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes,
         VarTable, RttiVarMaps, TVarNameMap, HeadVars, ClausesRep0,
@@ -439,7 +440,7 @@ clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
     % XXX We should retain and check the Mercury clauses, and override them
     % with a more specific foreign language implementation only after semantic
     % analysis.
-    module_info_get_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     NewLang = get_foreign_language(Attributes0),
     PredFormArity = arg_list_arity(OrigArgTypes),
@@ -562,7 +563,8 @@ clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
                 HldsGoal0, HldsGoal, VarSet0, VarSet,
                 EmptyExplicitVarTypes, _, EmptyRttiVarmaps, _),
             Clause = clause(selected_modes([ProcId]), HldsGoal,
-                impl_lang_foreign(NewLang), Context, []),
+                impl_lang_foreign(NewLang), Context,
+                [], init_unused_statevar_arg_map),
             Clauses = [Clause | Clauses1],
             set_clause_list(Clauses, ClausesRep),
             HasForeignClauses = some_foreign_lang_clauses,
@@ -620,8 +622,8 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
             PredModuleName, PredName, PredFormArity, NewContext, Target,
             NewLang, AllProcIds, NewClauseProcId, LaterOverridden,
             LaterClauses0, LaterClauses, !Specs),
-        FirstClause0 = clause(ApplProcIds0, Body, FirstClauseLang,
-            FirstClauseContext, StateVarWarnings),
+        FirstClause0 = clause(ApplProcIds0, _Body, FirstClauseLang,
+            FirstClauseContext, _StateVarWarnings, _UnusedSVarDescs),
         (
             FirstClauseLang = impl_lang_mercury,
             (
@@ -646,8 +648,8 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
                     % This clause is overridden by the new foreign_proc only
                     % in some modes, so mark it as being applicable only in the
                     % remaining modes.
-                    FirstClause = clause(selected_modes(ProcIds), Body,
-                        FirstClauseLang, FirstClauseContext, StateVarWarnings),
+                    FirstClause = FirstClause0 ^ clause_applicable_procs
+                        := selected_modes(ProcIds),
                     Clauses = [FirstClause | LaterClauses]
                 )
             else
@@ -690,9 +692,8 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
                         % in some modes, so we keep it in those modes.
                         %
                         % XXX This should not happen.
-                        FirstClause = clause(selected_modes(ProcIds), Body,
-                            FirstClauseLang, FirstClauseContext,
-                            StateVarWarnings),
+                        FirstClause = FirstClause0 ^ clause_applicable_procs
+                            := selected_modes(ProcIds),
                         Clauses = [FirstClause | LaterClauses],
                         Overridden = LaterOverridden
                     ),

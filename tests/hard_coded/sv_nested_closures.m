@@ -36,12 +36,15 @@ main(!IO) :-
 :- pred baz(int::in, int::out, io::di, io::uo) is det.
 
 baz(!Y, !IO) :-
+    % The occurrences of " + 0" prevent warnings about !Y and !Z being unused.
     io.format("(baz) !.Y = %d\n", [i(!.Y)], !IO),
     BazFoo =
         ( pred(!.Y::in, !:Y::out, !.IO::di, !:IO::uo) is det :-
+            !:Y = !.Y + 0,
             io.format("(BazFoo) !.Y = %d\n", [i(!.Y)], !IO),
             BazBar =
                 ( pred(!.Z::in, !:Z::out, !.IO::di, !:IO::uo) is det :-
+                    !:Z = !.Z + 0,
                     io.format("(BazBar) !.Y = %d\n", [i(!.Y)], !IO)
                 ),
             BazBar(400, _, !IO)

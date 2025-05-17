@@ -195,7 +195,7 @@ check_typeclasses(ProgressStream, !ModuleInfo, !QualInfo, !:Specs) :-
         maybe_write_string(ProgressStream, Verbose,
             "% Checking instance declaration types...\n", !IO)
     ),
-    check_instance_declaration_types(!ModuleInfo, [], InstanceDeclSpecs),
+    check_instance_declaration_types(!.ModuleInfo, [], InstanceDeclSpecs),
 
     !:Specs = CycleSpecs ++ InstanceDeclSpecs,
 
@@ -389,12 +389,12 @@ find_class_cycle(ClassId, PathRemaining0, PathSoFar0, Cycle) :-
     % in the instance declaration must be either a type with no arguments,
     % or a polymorphic type whose arguments are all distinct type variables.
     %
-:- pred check_instance_declaration_types(module_info::in, module_info::out,
+:- pred check_instance_declaration_types(module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_instance_declaration_types(!ModuleInfo, !Specs) :-
-    module_info_get_instance_table(!.ModuleInfo, InstanceTable),
-    map.foldl(check_instance_declaration_types_for_class(!.ModuleInfo),
+check_instance_declaration_types(ModuleInfo, !Specs) :-
+    module_info_get_instance_table(ModuleInfo, InstanceTable),
+    map.foldl(check_instance_declaration_types_for_class(ModuleInfo),
         InstanceTable, !Specs).
 
 :- pred check_instance_declaration_types_for_class(module_info::in,

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -45,7 +45,7 @@
 
 :- pred process_valid_nonimported_preds_errors(
     update_pred_task::update_pred_task, module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -218,7 +218,7 @@
 
 %---------------------------------------------------------------------------%
 
-process_valid_nonimported_preds_errors(Task, !ModuleInfo, !Specs, !IO) :-
+process_valid_nonimported_preds_errors(Task, !ModuleInfo, !Specs) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     list.foldl2(process_valid_nonimported_pred(Task), PredIds,
         !ModuleInfo, !Specs).

@@ -812,7 +812,7 @@ do_read_file_contents(FileName, Result, !IO) :-
 :- pred read_file_contents_no_io(string::in, read_file_contents_result::out,
     unit::di, unit::uo) is det.
 
-read_file_contents_no_io(_FileName, Result, !Unit) :-
+read_file_contents_no_io(_FileName, Result, Unit, Unit) :-
     Result = read_failure_no_io.
 
 %---------------------------------------------------------------------------%

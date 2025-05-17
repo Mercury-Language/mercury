@@ -127,6 +127,7 @@
 :- import_module bool.
 :- import_module map.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term_context.
 :- import_module varset.
@@ -583,7 +584,7 @@ add_builtin(ModuleInfo, CompilationTarget, PredId, HeadTypes0, !PredInfo) :-
     pred_info_get_context(!.PredInfo, Context),
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
     clauses_info_get_varset(ClausesInfo0, VarSet0),
-    clauses_info_get_headvars(ClausesInfo0, ProcArgVector),
+    clauses_info_get_arg_vector(ClausesInfo0, ProcArgVector),
     % XXX ARGVEC - clean this up after the pred_info is converted to use
     % the arg_vector structure.
     HeadVars0 = proc_arg_vector_to_list(ProcArgVector),
@@ -691,7 +692,8 @@ add_builtin(ModuleInfo, CompilationTarget, PredId, HeadTypes0, !PredInfo) :-
         Stub = no,
         % Construct a clause containing that pseudo-recursive call.
         Goal = hlds_goal(GoalExpr, GoalInfo),
-        Clause = clause(all_modes, Goal, impl_lang_mercury, Context, []),
+        Clause = clause(all_modes, Goal, impl_lang_mercury, Context,
+            [], init_unused_statevar_arg_map),
         set_clause_list([Clause], ClausesRep)
     ;
         Stub = yes,

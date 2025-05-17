@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2004-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2020, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2020, 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -241,9 +241,9 @@ ensure_unique_arguments(PredId, !ModuleInfo) :-
     clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
     clauses_info_get_var_table(ClausesInfo0, VarTable0),
     split_var_table(VarTable0, VarSet0, VarTypes0),
-    clauses_info_get_headvars(ClausesInfo0, HeadVars),
+    clauses_info_get_arg_vector(ClausesInfo0, ArgVector),
 
-    SeenSoFar = set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
+    SeenSoFar = set_of_var.list_to_set(proc_arg_vector_to_list(ArgVector)),
     get_clause_list_for_replacement(ClausesRep0, Clauses0),
     BodyGoals0 = list.map(func(X) = clause_body(X), Clauses0),
     list.map_foldl3(ensure_unique_arguments_in_goal, BodyGoals0, BodyGoals,

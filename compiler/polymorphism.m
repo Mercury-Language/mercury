@@ -358,7 +358,7 @@ polymorphism_update_arg_types(MaybeProgressStream, PredId,
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_get_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_get_var_table(ClausesInfo0, VarTable0),
-    clauses_info_get_headvars(ClausesInfo0, HeadVars),
+    clauses_info_get_arg_vector(ClausesInfo0, HeadVars),
     proc_arg_vector_partition_poly_args(HeadVars, ExtraHeadVarList,
         OldHeadVarList),
     % We need ExistQVars whether or not ExtraHeadVarList is empty or not.

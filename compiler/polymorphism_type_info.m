@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021-2024 The Mercury team.
+% Copyright (C) 2021-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -681,7 +681,8 @@ polymorphism_construct_second_type_info_cell(Type, TypeCtor, NeedTypeCtorArity,
 
 %---------------------%
 
-init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal, !RttiVarMaps) :-
+init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal,
+        RttiVarMaps0, RttiVarMaps) :-
     type_to_ctor_det(Type, TypeCtor),
     Cell = type_info_cell(TypeCtor),
     ConsId = cell_cons_id(Cell),
@@ -717,7 +718,10 @@ init_type_info_var(Type, ArgVars, TypeInfoVar, TypeInfoGoal, !RttiVarMaps) :-
     InstMapDelta = instmap_delta_from_assoc_list(
         [TypeInfoVar - TypeInfoVarInst]),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
-    TypeInfoGoal = hlds_goal(Unify, GoalInfo).
+    TypeInfoGoal = hlds_goal(Unify, GoalInfo),
+
+    % XXX This may be a bug.
+    RttiVarMaps = RttiVarMaps0.
 
 init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
         ConsId, TypeCtorInfoGoal, !VarTable, !RttiVarMaps) :-

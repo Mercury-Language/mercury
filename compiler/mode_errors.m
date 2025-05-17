@@ -455,6 +455,7 @@
 :- import_module hlds.hlds_proc_util.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.maybe_util.
 :- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.

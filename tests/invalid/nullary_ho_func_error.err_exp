@@ -12,6 +12,6 @@ nullary_ho_func_error.m:026:   The partial type assignment was:
 nullary_ho_func_error.m:026:     STATE_VARIABLE_IO_0_4: io.state
 nullary_ho_func_error.m:026:     STATE_VARIABLE_IO_5: io.state
 nullary_ho_func_error.m:026:     V_6:             string
-nullary_ho_func_error.m:026:     STATE_VARIABLE_IO_7_7: io.state
+nullary_ho_func_error.m:026:     STATE_VARIABLE_IO_1_7: io.state
 nullary_ho_func_error.m:026:     V_8:             T
 nullary_ho_func_error.m:026:     V_10:            ((func) = T)

@@ -1310,10 +1310,10 @@ optdef(oc_warn, warn_det_decls_too_lax,                 bool(yes)).
 optdef(oc_warn, warn_inferred_erroneous,                bool(yes)).
 optdef(oc_warn, warn_nothing_exported,                  bool(yes)).
 optdef(oc_warn, warn_unused_args,                       bool(no)).
-optdef(oc_warn, warn_unneeded_initial_statevars,        bool(yes)).
-optdef(oc_warn, warn_unneeded_initial_statevars_lambda, bool(yes)).
-optdef(oc_warn, warn_unneeded_final_statevars,          bool(yes)).
-optdef(oc_warn, warn_unneeded_final_statevars_lambda,   bool(yes)).
+optdef(oc_warn, warn_unneeded_initial_statevars,        bool(no)).
+optdef(oc_warn, warn_unneeded_initial_statevars_lambda, bool(no)).
+optdef(oc_warn, warn_unneeded_final_statevars,          bool(no)).
+optdef(oc_warn, warn_unneeded_final_statevars_lambda,   bool(no)).
 optdef(oc_warn, warn_interface_imports,                 bool(yes)).
 optdef(oc_warn, warn_interface_imports_in_parents,      bool(no)).
 optdef(oc_warn, warn_inconsistent_pred_order_clauses,   bool(no)).
@@ -4593,7 +4593,6 @@ options_help_warning(Stream, !IO) :-
         "\tDo not warn about modules which export nothing.",
         "--warn-unused-args",
         "\tWarn about predicate arguments which are not used.",
-/*
         "--no-warn-unneeded-initial-statevars",
         "\tDo not warn about state variables in clause heads",
         "\tthat could be ordinary variables.",
@@ -4606,7 +4605,6 @@ options_help_warning(Stream, !IO) :-
         "--no-warn-unneeded-final-statevars-lambda",
         "\tDo not warn about !:S state variables in lambda expressions",
         "\twhose value will always be the same as !.S.",
-*/
         "--no-warn-interface-imports",
         "\tDo not warn about modules imported in the interface, but",
         "\twhich are not used in the interface.",

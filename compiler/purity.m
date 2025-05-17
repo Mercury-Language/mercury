@@ -1361,8 +1361,8 @@ compute_shorthand_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
                 OuterTypeSpecs = [],
                 AtomicGoalsAndInners = assoc_list.from_corresponding_lists(
                     [MainGoal0 | OrElseGoals0], [Inner | OrElseInners]),
-                list.map_foldl(wrap_inner_outer_goals(Outer),
-                    AtomicGoalsAndInners, AllAtomicGoals1, !Info),
+                list.map(wrap_inner_outer_goals(!.Info, Outer),
+                    AtomicGoalsAndInners, AllAtomicGoals1),
                 (
                     AllAtomicGoals1 = [MainGoal1 | OrElseGoals1]
                 ;
@@ -1423,11 +1423,10 @@ check_outer_var_type(Context, VarTable, Var, VarType, Specs) :-
         Specs = [Spec]
     ).
 
-:- pred wrap_inner_outer_goals(atomic_interface_vars::in,
-    pair(hlds_goal, atomic_interface_vars)::in, hlds_goal::out,
-    purity_info::in, purity_info::out) is det.
+:- pred wrap_inner_outer_goals(purity_info::in, atomic_interface_vars::in,
+    pair(hlds_goal, atomic_interface_vars)::in, hlds_goal::out) is det.
 
-wrap_inner_outer_goals(Outer, Goal0 - Inner, Goal, !Info) :-
+wrap_inner_outer_goals(Info, Outer, Goal0 - Inner, Goal) :-
     Goal0 = hlds_goal(_, GoalInfo0),
     NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
     Context = goal_info_get_context(GoalInfo0),
@@ -1437,7 +1436,7 @@ wrap_inner_outer_goals(Outer, Goal0 - Inner, Goal, !Info) :-
     % Generate the STM outer_to_inner and inner_to_outer goals.
     OuterToInnerPred = "stm_from_outer_to_inner",
     InnerToOuterPred = "stm_from_inner_to_outer",
-    ModuleInfo = !.Info ^ pi_module_info,
+    ModuleInfo = Info ^ pi_module_info,
     Clobbered = ground(clobbered, none_or_default_func),
     Unique = ground(unique, none_or_default_func),
     generate_plain_call(ModuleInfo, pf_predicate,

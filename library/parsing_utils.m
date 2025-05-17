@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2020, 2022 The Mercury team.
+% Copyright (C) 2014-2020, 2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -451,8 +451,8 @@ new_src_and_ps(InputString, Src, PS) :-
 
 input_string(Src, Src ^ input_string, Src ^ input_length).
 
-current_offset(_Src, Offset, !PS) :-
-    Offset = !.PS.
+current_offset(_Src, Offset, PS, PS) :-
+    Offset = PS.
 
 get_skip_whitespace_pred(Src, SkipWS) :-
     SkipWS0 = Src ^ skip_ws_pred,
@@ -884,14 +884,14 @@ comma_separated_list(P, Src, Result, !S, !PS) :-
 
 %---------------------------------------------------------------------------%
 
-fail_with_message(Msg, Src, Val, !PS) :-
+fail_with_message(Msg, Src, Val, PS, PS) :-
     % This is pure, because the mutable can only be accessed via
     % the parse/4 predicate which will always return the same results
     % for the same inputs.
     promise_pure (
         impure set_mutvar(Src ^ last_fail_message,
-            fail_message_info(!.PS, yes(Msg))),
-        impure set_mutvar(Src ^ furthest_offset, !.PS),
+            fail_message_info(PS, yes(Msg))),
+        impure set_mutvar(Src ^ furthest_offset, PS),
         ( if semidet_fail then
             dynamic_cast(0, Val) % unreachable
         else

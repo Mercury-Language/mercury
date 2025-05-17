@@ -21,6 +21,16 @@
 
 %---------------------%
 
+:- type is_first
+    --->    is_first
+    ;       is_not_first.
+
+:- type is_last
+    --->    is_last
+    ;       is_not_last.
+
+%---------------------%
+
 :- type maybe_changed
     --->    unchanged
     ;       changed.

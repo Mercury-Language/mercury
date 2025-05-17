@@ -159,7 +159,7 @@ typecheck_clauses_loop(HeadVars, ArgTypes, [Clause0 | Clauses0], !RevClauses,
     typecheck_info::in, typecheck_info::out) is det.
 
 typecheck_clause(HeadVars, ArgTypes, !Clause, !TypeAssignSet, !Info) :-
-    !.Clause = clause(_, Body0, _, Context, _),
+    !.Clause = clause(_, Body0, _, Context, _, _),
 
     % Typecheck the clause - first the head unification, and then the body.
     ArgVectorKind = arg_vector_clause_head,
@@ -171,7 +171,7 @@ typecheck_clause(HeadVars, ArgTypes, !Clause, !TypeAssignSet, !Info) :-
         VarSet = ClauseContext ^ tecc_varset,
         type_checkpoint("end of clause", !.Info, VarSet, !.TypeAssignSet, !IO)
     ),
-    typecheck_prune_coerce_constraints(!TypeAssignSet, !Info),
+    typecheck_prune_coerce_constraints(!.Info, !TypeAssignSet),
     !Clause ^ clause_body := Body,
     typecheck_check_for_ambiguity(Context, clause_only, HeadVars,
         !.TypeAssignSet, !Info).
@@ -417,7 +417,7 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
                     type_checkpoint("coerce", !.Info, VarSet,
                         !.TypeAssignSet, !IO)
                 ),
-                typecheck_coerce(Context, ArgVars, !TypeAssignSet, !Info)
+                typecheck_coerce(!.Info, Context, ArgVars, !TypeAssignSet)
             )
         ),
         GoalExpr = GoalExpr0

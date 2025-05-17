@@ -806,7 +806,7 @@ generate_table_lookup_code_for_each_kind(CaseConstsSeveralLlds, Kind, Kinds,
         some [!CLD] (
             reset_to_position(BranchStart, !.CI, !:CLD),
             release_reg(BaseRegLval, !CLD),
-            generate_failure(KindCode, !CI, !.CLD)
+            generate_failure(KindCode, !.CI, !.CLD)
         )
     ;
         Kind = kind_one_soln,

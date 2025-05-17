@@ -692,7 +692,7 @@ prof_dependency_graph_to_string(DepGraphStr, !ModuleInfo) :-
 :- pred append_empty_node(pred_proc_id::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-append_empty_node(_, !SB).
+append_empty_node(_, SB, SB).
 
 %---------------------------------------------------------------------------%
 

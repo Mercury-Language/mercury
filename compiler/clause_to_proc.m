@@ -115,7 +115,7 @@ copy_clauses_to_maybe_imported_proc_in_proc_info(PredInfo, ClausesInfo,
 
         % XXX ARGVEC - when the proc_info uses the proc_arg_vector,
         % just pass the headvar vector directly to the proc_info.
-        clauses_info_get_headvars(ClausesInfo, HeadVars),
+        clauses_info_get_arg_vector(ClausesInfo, HeadVars),
         HeadVarList = proc_arg_vector_to_list(HeadVars),
         clauses_info_get_var_table(ClausesInfo, VarTable),
         clauses_info_get_rtti_varmaps(ClausesInfo, RttiVarMaps),

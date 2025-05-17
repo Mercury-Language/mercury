@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -4658,7 +4658,7 @@ type_info_index_as_pti(TypeInfo, _) = PseudoTypeInfo :-
     TypeInfo = TypeInfo0;
 ").
 
-set_type_info_index(_, _, _, !TypeInfo) :-
+set_type_info_index(_, _, _, TypeInfo, TypeInfo) :-
     det_unimplemented("set_type_info_index").
 
 %---------------------------------------------------------------------------%

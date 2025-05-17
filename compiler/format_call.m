@@ -1193,7 +1193,7 @@ format_call_traverse_conj(Params, [Goal | Goals], CurId, !FormatCallSites,
     ;
         GoalExpr = unify(_, RHS, _, Unification, _),
         format_call_traverse_unify(Unification, GoalInfo, CurId,
-            !ConjMaps, !PredMap, !RelevantVars),
+            !ConjMaps, !RelevantVars),
         (
             RHS = rhs_lambda_goal(_Purity, _HOGroundness, _PredFunc,
                 _LambdaNonLocals, _LambdaArgVarsModes,
@@ -1228,11 +1228,11 @@ format_call_traverse_conj(Params, [Goal | Goals], CurId, !FormatCallSites,
     ).
 
 :- pred format_call_traverse_unify(unification::in, hlds_goal_info::in,
-    conj_id::in, conj_maps::in, conj_maps::out, conj_pred_map::in,
-    conj_pred_map::out, set_of_progvar::in, set_of_progvar::out) is det.
+    conj_id::in, conj_maps::in, conj_maps::out,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
-format_call_traverse_unify(Unification, GoalInfo, CurId, !ConjMaps, !PredMap,
-        !RelevantVars) :-
+format_call_traverse_unify(Unification, GoalInfo, CurId,
+        !ConjMaps, !RelevantVars) :-
     (
         Unification = assign(TargetVar, SourceVar),
         ( if set_of_var.member(!.RelevantVars, TargetVar) then

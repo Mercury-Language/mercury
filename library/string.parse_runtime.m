@@ -257,11 +257,11 @@ get_first_spec(!Chars, !PolyTypes, _Flags, _MaybeWidth, _MaybePrec, SpecNum,
     !.Chars = [],
     Spec = spec_constant_string(""),
     Errors = [error_no_specifier(SpecNum, list.length(!.PolyTypes))].
-get_first_spec(!Chars, !PolyTypes, !.Flags, MaybeWidth, MaybePrec, SpecNum,
+get_first_spec(!Chars, !PolyTypes, Flags0, MaybeWidth, MaybePrec, SpecNum,
         Spec, Errors) :-
     !.Chars = [SpecChar | !:Chars],
     ( if
-        parse_spec(SpecChar, !PolyTypes, !.Flags, MaybeWidth, MaybePrec,
+        parse_spec(SpecChar, !PolyTypes, Flags0, MaybeWidth, MaybePrec,
             SpecNum, SpecPrime, ErrorsPrime)
     then
         Spec = SpecPrime,

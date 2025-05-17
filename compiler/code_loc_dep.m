@@ -702,7 +702,7 @@ save_hp_in_branch(Code, Slot, Pos0, Pos, !CI) :-
     % current failure environment.
     %
 :- pred generate_failure(llds_code::out,
-    code_info::in, code_info::out, code_loc_dep::in) is det.
+    code_info::in, code_loc_dep::in) is det.
 
     % Generate code that checks if the given rval is false, and if yes,
     % executes a failure that is appropriate for the current failure
@@ -1594,7 +1594,7 @@ generate_semi_commit(SemiCommitInfo, Code, !CI, !CLD) :-
 
     remember_position(!.CLD, AfterCommit),
     generate_resume_point(ResumePoint, ResumePointCode, !CI, !CLD),
-    generate_failure(FailCode, !CI, !.CLD),
+    generate_failure(FailCode, !.CI, !.CLD),
     reset_to_position(AfterCommit, !.CI, !:CLD),
 
     maybe_restore_trail_info(MaybeTrailSlots, CommitTrailCode,
@@ -1839,21 +1839,21 @@ set_resume_point_and_frame_to_unknown(!CLD) :-
 
 %---------------------------------------------------------------------------%
 
-generate_failure(Code, !CI, !.CLD) :-
-    get_fail_info(!.CLD, FailInfo),
+generate_failure(Code, CI, CLD) :-
+    get_fail_info(CLD, FailInfo),
     FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _),
     (
         ResumeKnown = resume_point_known(_),
         stack.det_top(ResumePoints, TopResumePoint),
         ( if
-            pick_matching_resume_addr(!.CLD, TopResumePoint, FailureAddress0)
+            pick_matching_resume_addr(CLD, TopResumePoint, FailureAddress0)
         then
             FailureAddress = FailureAddress0,
             PlaceCode = empty
         else
             pick_first_resume_point(TopResumePoint, Map, FailureAddress),
             map.to_assoc_list(Map, AssocList),
-            pick_and_place_vars(AssocList, _, PlaceCode, !.CLD, _AfterPlaceCLD)
+            pick_and_place_vars(AssocList, _, PlaceCode, CLD, _AfterPlaceCLD)
         ),
         BranchCode = singleton(llds_instr(goto(FailureAddress), "fail")),
         Code = PlaceCode ++ BranchCode
@@ -1862,7 +1862,7 @@ generate_failure(Code, !CI, !.CLD) :-
         Code = singleton(llds_instr(goto(do_redo), "fail"))
     ),
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
-        should_trace_code_gen(!.CI, ShouldTrace),
+        should_trace_code_gen(CI, ShouldTrace),
         (
             ShouldTrace = yes(Stream),
             io.write_string(Stream, "failure code\n", !IO),

@@ -547,19 +547,19 @@ prepare_for_call(CodeModel, GoalInfo, CallModel, TraceCode, !CI, !CLD) :-
 :- pred handle_call_failure(code_model::in, hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-handle_call_failure(CodeModel, GoalInfo, FailHandlingCode, !CI, !.CLD) :-
+handle_call_failure(CodeModel, GoalInfo, FailHandlingCode, !CI, CLD) :-
     (
         CodeModel = model_semi,
         Detism = goal_info_get_determinism(GoalInfo),
         ( if Detism = detism_failure then
-            generate_failure(FailHandlingCode, !CI, !.CLD)
+            generate_failure(FailHandlingCode, !.CI, CLD)
         else
             get_next_label(ContLab, !CI),
             FailTestCode = singleton(
                 llds_instr(if_val(lval(reg(reg_r, 1)), code_label(ContLab)),
                     "test for success")
             ),
-            generate_failure(FailCode, !CI, !.CLD),
+            generate_failure(FailCode, !.CI, CLD),
             ContLabelCode = singleton(
                 llds_instr(label(ContLab), "")
             ),

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2020, 2022, 2024 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2020, 2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -430,7 +430,7 @@ init_string_trie_switch_info_jump(CanFail, Info, !CI, !.CLD) :-
     get_next_label(FailLabel, !CI),
     % We must generate the failure code in the context in which
     % none of the switch arms have been executed yet.
-    generate_string_switch_fail(CanFail, FailCode, !CI, !.CLD),
+    generate_string_switch_fail(CanFail, FailCode, !.CI, !.CLD),
 
     GotoFailCode = singleton(
         llds_instr(goto(code_label(FailLabel)), "no match; goto fail")
@@ -691,7 +691,7 @@ init_string_trie_switch_info_lookup(CanFail, Info, !CI, !.CLD) :-
         FailCode = empty
     ;
         CanFail = can_fail,
-        generate_failure(FailCode, !CI, !.CLD)
+        generate_failure(FailCode, !.CI, !.CLD)
     ),
 
     Info = string_trie_switch_info_lookup(Encoding, BranchStart,
@@ -1199,7 +1199,7 @@ init_string_hash_switch_info(CanFail, Info, !CI, !.CLD) :-
     % We must generate the failure code in the context in which
     % none of the switch arms have been executed yet.
     remember_position(!.CLD, BranchStart),
-    generate_string_switch_fail(CanFail, FailCode, !CI, !.CLD),
+    generate_string_switch_fail(CanFail, FailCode, !.CI, !.CLD),
 
     Info = string_hash_switch_info(SlotReg, RowStartReg, StringReg,
         LoopStartLabel, NoMatchLabel, FailLabel, BranchStart, FailCode).
@@ -1646,7 +1646,7 @@ init_string_binary_switch_info(CanFail, Info, !CI, !.CLD) :-
     % We must generate the failure code in the context in which
     % none of the switch arms have been executed yet.
     remember_position(!.CLD, BranchStart),
-    generate_string_switch_fail(CanFail, FailCode, !CI, !.CLD),
+    generate_string_switch_fail(CanFail, FailCode, !.CI, !.CLD),
 
     Info = string_binary_switch_info(LoReg, HiReg, MidReg, ResultReg,
         LoopStartLabel, GtEqLabel, EqLabel, FailLabel, BranchStart, FailCode).
@@ -1738,12 +1738,12 @@ generate_string_binary_switch_search(Info, VarRval, TableAddrRval,
 %---------------------------------------------------------------------------%
 
 :- pred generate_string_switch_fail(can_fail::in, llds_code::out,
-    code_info::in, code_info::out, code_loc_dep::in) is det.
+    code_info::in, code_loc_dep::in) is det.
 
-generate_string_switch_fail(CanFail, FailCode, !CI, !.CLD) :-
+generate_string_switch_fail(CanFail, FailCode, CI, CLD) :-
     (
         CanFail = can_fail,
-        generate_failure(FailCode, !CI, !.CLD)
+        generate_failure(FailCode, CI, CLD)
     ;
         CanFail = cannot_fail,
         FailCode = singleton(

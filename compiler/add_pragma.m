@@ -64,7 +64,7 @@
     ims_list(item_impl_pragma_info)::in,
     ims_cord(impl_pragma_tabled_info)::in,
         ims_cord(impl_pragma_tabled_info)::out,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 :- pred add_impl_pragmas_tabled(io.text_output_stream::in,
@@ -768,12 +768,12 @@ add_decl_marker(ItemMercuryStatus, DeclMarker, !ModuleInfo, !Specs) :-
 % Adding impl pragmas to the HLDS.
 %
 
-add_impl_pragmas(_, [], !PragmaTabledListCord, !ModuleInfo, !QualInfo, !Specs).
+add_impl_pragmas(_, [], !PragmaTabledListCord, !ModuleInfo, !Specs).
 add_impl_pragmas(ProgressStream, [ImsList | ImsLists],
-        !PragmaTabledListCord, !ModuleInfo, !QualInfo, !Specs) :-
+        !PragmaTabledListCord, !ModuleInfo, !Specs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
-    list.foldl4(add_impl_pragma(ProgressStream, ItemMercuryStatus), Items,
-        cord.init, PragmaTabledCord, !ModuleInfo, !QualInfo, !Specs),
+    list.foldl3(add_impl_pragma(ProgressStream, ItemMercuryStatus), Items,
+        cord.init, PragmaTabledCord, !ModuleInfo, !Specs),
     PragmaTabledList = cord.list(PragmaTabledCord),
     (
         PragmaTabledList = []
@@ -783,7 +783,7 @@ add_impl_pragmas(ProgressStream, [ImsList | ImsLists],
         cord.snoc(SubList, !PragmaTabledListCord)
     ),
     add_impl_pragmas(ProgressStream, ImsLists,
-        !PragmaTabledListCord, !ModuleInfo, !QualInfo, !Specs).
+        !PragmaTabledListCord, !ModuleInfo, !Specs).
 
 add_impl_pragmas_tabled(_, [], !ModuleInfo, !QualInfo, !Specs).
 add_impl_pragmas_tabled(ProgressStream, [ImsList | ImsLists],
@@ -800,11 +800,11 @@ add_impl_pragmas_tabled(ProgressStream, [ImsList | ImsLists],
 :- pred add_impl_pragma(io.text_output_stream::in, item_mercury_status::in,
     item_impl_pragma_info::in,
     cord(impl_pragma_tabled_info)::in, cord(impl_pragma_tabled_info)::out,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_impl_pragma(ProgressStream, ItemMercuryStatus, Pragma, !PragmaTabledCord,
-        !ModuleInfo, !QualInfo, !Specs) :-
+        !ModuleInfo, !Specs) :-
     (
         Pragma = impl_pragma_foreign_decl(FDInfo),
         % XXX STATUS Check ItemMercuryStatus
@@ -840,8 +840,8 @@ add_impl_pragma(ProgressStream, ItemMercuryStatus, Pragma, !PragmaTabledCord,
     ;
         Pragma = impl_pragma_req_feature_set(RFSInfo),
         RFSInfo = impl_pragma_req_feature_set_info(FeatureSet, Context, _),
-        check_required_feature_set(FeatureSet, ItemMercuryStatus, Context,
-            !ModuleInfo, !Specs)
+        check_required_feature_set(!.ModuleInfo, FeatureSet,
+            ItemMercuryStatus, Context, !Specs)
     ).
 
 %---------------------%
@@ -1299,13 +1299,12 @@ add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc,
 
 %---------------------%
 
-:- pred check_required_feature_set(set(required_feature)::in,
+:- pred check_required_feature_set(module_info::in, set(required_feature)::in,
     item_mercury_status::in, prog_context::in,
-    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_required_feature_set(FeatureSet, ItemMercuryStatus, Context,
-        !ModuleInfo, !Specs) :-
+check_required_feature_set(ModuleInfo, FeatureSet, ItemMercuryStatus, Context,
+        !Specs) :-
     (
         ItemMercuryStatus = item_defined_in_other_module(_),
         % `require_feature_set' pragmas are not included in interface files
@@ -1313,7 +1312,7 @@ check_required_feature_set(FeatureSet, ItemMercuryStatus, Context,
         unexpected($pred, "imported require_feature_set pragma")
     ;
         ItemMercuryStatus = item_defined_in_this_module(_),
-        module_info_get_globals(!.ModuleInfo, Globals),
+        module_info_get_globals(ModuleInfo, Globals),
         set.fold(check_required_feature(Globals, Context), FeatureSet, !Specs)
     ).
 

@@ -59,7 +59,7 @@
     % from proceeding further in compilation. We do this separately since some
     % errors (e.g. bad type for main) do NOT prevent us from going further.
     %
-    % Note that when checking assertions we take the conservative approach
+    % Note that when checking assertions, we take the conservative approach
     % of warning about unbound type variables. There may be cases for which
     % this doesn't make sense.
     %
@@ -127,19 +127,42 @@ post_typecheck_finish_preds(!ModuleInfo, NumBadErrors,
     module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
     ValidPredIdSet = set_tree234.list_to_set(ValidPredIds),
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
-    map.map_foldl4(post_typecheck_do_finish_pred(!.ModuleInfo, ValidPredIdSet),
-        PredIdTable0, PredIdTable, map.init, _Cache, 0, NumBadErrors,
+    map.to_sorted_assoc_list(PredIdTable0, PredIdsInfos0),
+    post_typecheck_do_finish_preds(!.ModuleInfo, ValidPredIdSet,
+        PredIdsInfos0, PredIdsInfos, map.init, _TypePropCache, 0, NumBadErrors,
         [], AlwaysSpecs, [], NoTypeErrorSpecs),
+    map.from_sorted_assoc_list(PredIdsInfos, PredIdTable),
     module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
+:- pred post_typecheck_do_finish_preds(module_info::in,
+    set_tree234(pred_id)::in,
+    assoc_list(pred_id, pred_info)::in, assoc_list(pred_id, pred_info)::out,
+    tprop_cache::in, tprop_cache::out, int::in, int::out,
+    list(error_spec)::in, list(error_spec)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+post_typecheck_do_finish_preds(_ModuleInfo, _ValidPredIdSet, [], [],
+        !TypePropCache, !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs).
+post_typecheck_do_finish_preds(ModuleInfo, ValidPredIdSet,
+        [PredIdInfo0 | PredIdsInfos0], [PredIdInfo | PredIdsInfos],
+        !TypePropCache, !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs) :-
+    PredIdInfo0 = PredId - PredInfo0,
+    post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet,
+        PredId, PredInfo0, PredInfo,
+        !TypePropCache, !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs),
+    PredIdInfo = PredId - PredInfo,
+    post_typecheck_do_finish_preds(ModuleInfo, ValidPredIdSet,
+        PredIdsInfos0, PredIdsInfos,
+        !TypePropCache, !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs).
+
 :- pred post_typecheck_do_finish_pred(module_info::in,
-    set_tree234(pred_id)::in, pred_id::in,
-    pred_info::in, pred_info::out, tprop_cache::in, tprop_cache::out,
-    int::in, int::out, list(error_spec)::in, list(error_spec)::out,
+    set_tree234(pred_id)::in, pred_id::in, pred_info::in, pred_info::out,
+    tprop_cache::in, tprop_cache::out, int::in, int::out,
+    list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
-        !Cache, !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs) :-
+        !TypePropCache, !NumBadErrors, !AlwaysSpecs, !NoTypeErrorSpecs) :-
     ( if set_tree234.contains(ValidPredIdSet, PredId) then
         % Regardless of the path we take when processing a valid predicate,
         % we need to ensure that we fill in the vte_is_dummy field in all
@@ -178,7 +201,7 @@ post_typecheck_do_finish_pred(ModuleInfo, ValidPredIdSet, PredId, !PredInfo,
             check_type_of_main(!.PredInfo, !AlwaysSpecs)
         ),
         propagate_checked_types_into_pred_modes(ModuleInfo, ErrorProcs,
-            InstForTypeSpecs, !Cache, !PredInfo),
+            InstForTypeSpecs, !TypePropCache, !PredInfo),
         !:NoTypeErrorSpecs = InstForTypeSpecs ++ !.NoTypeErrorSpecs,
         report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo,
             !AlwaysSpecs),

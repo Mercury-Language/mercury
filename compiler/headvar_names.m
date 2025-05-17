@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2022-2023 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2022-2023, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,13 +22,28 @@
 :- import_module libs.
 :- import_module libs.globals.
 
+:- import_module list.
+
+:- type maybe_look_for_unused_statevars
+    --->    do_not_look_for_unused_statevars
+            % No clause had any unused state variables.
+    ;       look_for_unused_statevars(list(string)).
+            % At least one clause had unused state variables.
+            % The argument gives, for each head variable,
+            % either its the consensus name (if it has one),
+            % or an empty string (if it does not).
+            % (pre_typecheck.m uses that info to decide whether an unused
+            % state variable in one clause is justified by consistency
+            % with another clause that *does* use that same state variable.)
+
     % If all clauses give a given head variables the same name, use this name
     % instead of the introduced `HeadVar__n' names for the head variables
     % in the pred_info. This gives better error messages, more meaningful
     % variable names in the debugger and slightly faster compilation.
     %
-:- pred maybe_improve_headvar_names(globals::in, pred_info::in, pred_info::out)
-    is det.
+:- pred maybe_improve_headvar_names(globals::in,
+    maybe_look_for_unused_statevars::out,
+    pred_info::in, pred_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -44,14 +59,13 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module bool.
-:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
 :- import_module varset.
 
-maybe_improve_headvar_names(Globals, !PredInfo) :-
+maybe_improve_headvar_names(Globals, MaybeLookForUnusedSVars, !PredInfo) :-
     globals.get_op_mode(Globals, OpMode),
     ( if OpMode = opm_top_args(opma_augment(opmau_make_plain_opt), _) then
         % Don't change headvar names when making a `.opt' file, because
@@ -60,22 +74,23 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
         % original argument terms, not just the argument variables,
         % in the clause head, and this pass would make it difficult to
         % work out what were the original arguments).
-        true
+        MaybeLookForUnusedSVars = do_not_look_for_unused_statevars
     else
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
         clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
-        clauses_info_get_headvars(ClausesInfo0, HeadVars0),
+        clauses_info_get_arg_vector(ClausesInfo0, ArgVector0),
         clauses_info_get_varset(ClausesInfo0, VarSet0),
         get_clause_list_for_replacement(ClausesRep0, Clauses0),
         (
-            Clauses0 = []
+            Clauses0 = [],
+            MaybeLookForUnusedSVars = do_not_look_for_unused_statevars
         ;
             Clauses0 = [SingleClause0],
             Goal0 = SingleClause0 ^ clause_body,
 
             Goal0 = hlds_goal(_, GoalInfo0),
             goal_to_conj_list(Goal0, Conj0),
-            improve_single_clause_headvars(Conj0, HeadVars0, [],
+            improve_single_clause_headvars(Conj0, ArgVector0, [],
                 VarSet0, VarSet, map.init, Subst, [], RevConj),
 
             NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
@@ -84,8 +99,17 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
             goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
             conj_list_to_goal(list.reverse(RevConj), GoalInfo, Goal),
 
-            apply_renaming_to_proc_arg_vector(Subst, HeadVars0, HeadVars),
-            clauses_info_set_headvars(HeadVars, ClausesInfo0, ClausesInfo1),
+            apply_renaming_to_proc_arg_vector(Subst, ArgVector0, ArgVector),
+            clauses_info_set_arg_vector(ArgVector, ClausesInfo0, ClausesInfo1),
+
+            ( if some_statevar_is_unused_in_clause(SingleClause0) then
+                HeadVars = proc_arg_vector_get_user_visible_args(ArgVector),
+                list.map(varset.lookup_name(VarSet), HeadVars, HeadVarNames),
+                MaybeLookForUnusedSVars =
+                    look_for_unused_statevars(HeadVarNames)
+            else
+                MaybeLookForUnusedSVars = do_not_look_for_unused_statevars
+            ),
 
             SingleClause = SingleClause0 ^ clause_body := Goal,
             set_clause_list([SingleClause], ClausesRep),
@@ -97,10 +121,22 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
             Clauses0 = [_, _ | _],
             % If a headvar is assigned to a variable with the same name
             % (or no name) in every clause, rename it to have that name.
-            list.map2(find_headvar_names_in_clause(VarSet0, HeadVars0),
+            list.map2(find_headvar_names_in_clause(VarSet0, ArgVector0),
                 Clauses0, VarNameInfoMaps, VarsInMapSets),
             ConsensusMap = find_consensus_headvar_names(VarsInMapSets,
                 VarNameInfoMaps),
+
+            ( if
+                list.all_true(some_statevar_is_unused_in_clause, Clauses0)
+            then
+                HeadVars0 = proc_arg_vector_get_user_visible_args(ArgVector0),
+                list.map(find_consensus_name(ConsensusMap),
+                    HeadVars0, HeadVarNames),
+                MaybeLookForUnusedSVars =
+                    look_for_unused_statevars(HeadVarNames)
+            else
+                MaybeLookForUnusedSVars = do_not_look_for_unused_statevars
+            ),
 
             % We don't apply the renaming right now, because that could lead to
             % error messages about unifications of the form X = X instead of
@@ -124,6 +160,22 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
         )
     ).
 
+:- pred some_statevar_is_unused_in_clause(clause::in) is semidet.
+
+some_statevar_is_unused_in_clause(Clause) :-
+    UnusedSVarArgMap = Clause ^ clause_unused_svar_arg_map,
+    not map.is_empty(UnusedSVarArgMap).
+
+:- pred find_consensus_name(map(prog_var, string)::in, prog_var::in,
+    string::out) is det.
+
+find_consensus_name(ConsensusMap, Var, ConsensusName) :-
+    ( if map.search(ConsensusMap, Var, ConsensusNamePrime) then
+        ConsensusName = ConsensusNamePrime
+    else
+        ConsensusName = ""
+    ).
+
 :- pred set_var_name_remap_in_proc(map(prog_var, string)::in, proc_id::in,
     proc_table::in, proc_table::out) is det.
 
@@ -131,6 +183,8 @@ set_var_name_remap_in_proc(ConsensusMap, ProcId, !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_set_var_name_remap(ConsensusMap, ProcInfo0, ProcInfo),
     map.det_update(ProcId, ProcInfo, !ProcTable).
+
+%-----------------------------------------------------------------------------%
 
 :- pred improve_single_clause_headvars(list(hlds_goal)::in,
     proc_arg_vector(prog_var)::in, list(prog_var)::in,

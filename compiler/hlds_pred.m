@@ -1240,67 +1240,67 @@ pred_info_user_arity(PI) = UserArity :-
     pred_info_get_orig_arity(PI, PredFormArity),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity).
 
-pred_info_get_module_name(!.PI, X) :-
-    X = !.PI ^ pi_module_name.
-pred_info_get_is_pred_or_func(!.PI, X) :-
-    X = !.PI ^ pi_is_pred_or_func.
-pred_info_get_name(!.PI, X) :-
-    X = !.PI ^ pi_name.
-pred_info_get_orig_arity(!.PI, X) :-
-    X = !.PI ^ pi_orig_arity.
+pred_info_get_module_name(PI, X) :-
+    X = PI ^ pi_module_name.
+pred_info_get_is_pred_or_func(PI, X) :-
+    X = PI ^ pi_is_pred_or_func.
+pred_info_get_name(PI, X) :-
+    X = PI ^ pi_name.
+pred_info_get_orig_arity(PI, X) :-
+    X = PI ^ pi_orig_arity.
 
-pred_info_get_context(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_context.
-pred_info_get_cur_user_decl_info(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_cur_user_decl.
-pred_info_get_origin(!.PI, X) :-
-    X = !.PI ^ pi_pred_origin.
-pred_info_get_status(!.PI, X) :-
-    X = !.PI ^ pi_status.
-pred_info_get_goal_type(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_goal_type.
-pred_info_get_markers(!.PI, X) :-
-    X = !.PI ^ pi_markers.
-pred_info_get_arg_types(!.PI, X) :-
-    X = !.PI ^ pi_arg_types.
-pred_info_get_typevarset(!.PI, X) :-
-    X = !.PI ^ pi_typevarset.
-pred_info_get_tvar_kind_map(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_tvar_kind_map.
-pred_info_get_exist_quant_tvars(!.PI, X) :-
-    X = !.PI ^ pi_exist_quant_tvars.
-pred_info_get_existq_tvar_binding(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_existq_tvar_binding.
-pred_info_get_polymorphism_added_args(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_polymorphism_added_args.
-pred_info_get_external_type_params(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_external_type_params.
-pred_info_get_class_context(!.PI, X) :-
-    X = !.PI ^ pi_class_context.
-pred_info_get_constraint_proof_map(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_constraint_proof_map.
-pred_info_get_constraint_map(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_constraint_map.
-pred_info_get_unproven_body_constraints(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_unproven_body_constraints.
-pred_info_get_inst_graph_info(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_inst_graph_info.
-pred_info_get_arg_modes_maps(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_arg_modes_maps.
-pred_info_get_var_name_remap(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_var_name_remap.
-pred_info_get_assertions(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_assertions.
-pred_info_get_obsolete_in_favour_of(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_obsolete_in_favour_of.
-pred_info_get_format_call_info(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_format_call_info.
-pred_info_get_instance_method_arg_types(!.PI, X) :-
-    X = !.PI ^ pi_pred_sub_info ^ psi_instance_method_arg_types.
-pred_info_get_clauses_info(!.PI, X) :-
-    X = !.PI ^ pi_clauses_info.
-pred_info_get_proc_table(!.PI, X) :-
-    X = !.PI ^ pi_proc_table.
+pred_info_get_context(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_context.
+pred_info_get_cur_user_decl_info(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_cur_user_decl.
+pred_info_get_origin(PI, X) :-
+    X = PI ^ pi_pred_origin.
+pred_info_get_status(PI, X) :-
+    X = PI ^ pi_status.
+pred_info_get_goal_type(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_goal_type.
+pred_info_get_markers(PI, X) :-
+    X = PI ^ pi_markers.
+pred_info_get_arg_types(PI, X) :-
+    X = PI ^ pi_arg_types.
+pred_info_get_typevarset(PI, X) :-
+    X = PI ^ pi_typevarset.
+pred_info_get_tvar_kind_map(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_tvar_kind_map.
+pred_info_get_exist_quant_tvars(PI, X) :-
+    X = PI ^ pi_exist_quant_tvars.
+pred_info_get_existq_tvar_binding(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_existq_tvar_binding.
+pred_info_get_polymorphism_added_args(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_polymorphism_added_args.
+pred_info_get_external_type_params(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_external_type_params.
+pred_info_get_class_context(PI, X) :-
+    X = PI ^ pi_class_context.
+pred_info_get_constraint_proof_map(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_constraint_proof_map.
+pred_info_get_constraint_map(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_constraint_map.
+pred_info_get_unproven_body_constraints(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_unproven_body_constraints.
+pred_info_get_inst_graph_info(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_inst_graph_info.
+pred_info_get_arg_modes_maps(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_arg_modes_maps.
+pred_info_get_var_name_remap(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_var_name_remap.
+pred_info_get_assertions(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_assertions.
+pred_info_get_obsolete_in_favour_of(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_obsolete_in_favour_of.
+pred_info_get_format_call_info(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_format_call_info.
+pred_info_get_instance_method_arg_types(PI, X) :-
+    X = PI ^ pi_pred_sub_info ^ psi_instance_method_arg_types.
+pred_info_get_clauses_info(PI, X) :-
+    X = PI ^ pi_clauses_info.
+pred_info_get_proc_table(PI, X) :-
+    X = PI ^ pi_proc_table.
 
 pred_info_set_module_name(X, !PI) :-
     !PI ^ pi_module_name := X.
@@ -1470,10 +1470,10 @@ pred_info_remove_procid(ProcId, !PredInfo) :-
     map.delete(ProcId, Procs0, Procs),
     pred_info_set_proc_table(Procs, !PredInfo).
 
-pred_info_get_arg_types(!.PredInfo, X, Y, Z) :-
-    X = !.PredInfo ^ pi_decl_typevarset,
-    Y = !.PredInfo ^ pi_exist_quant_tvars,
-    Z = !.PredInfo ^ pi_arg_types.
+pred_info_get_arg_types(PredInfo, X, Y, Z) :-
+    X = PredInfo ^ pi_decl_typevarset,
+    Y = PredInfo ^ pi_exist_quant_tvars,
+    Z = PredInfo ^ pi_arg_types.
 
 pred_info_set_arg_types(X, Y, Z, !PredInfo) :-
     !PredInfo ^ pi_decl_typevarset := X,

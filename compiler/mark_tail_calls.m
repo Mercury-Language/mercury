@@ -320,16 +320,16 @@ mark_tail_rec_calls_in_scc(Params, SCC, [PredProcId | PredProcIds],
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap, PredId, !ModuleInfo,
-        !PredInfo, !Specs) :-
+mark_tail_rec_calls_in_pred_for_llds_code_gen(SCCMap, PredId,
+        ModuleInfo, ModuleInfo, !PredInfo, !Specs) :-
     % We don't update ModuleInfo. Nevertheless, the passes_aux traversal
     % that our caller uses to call us requires us to pass back a new
     % ModuleInfo, even though it will itself put the updated PredInfo
     % back into ModuleInfo.
-    module_info_get_globals(!.ModuleInfo, Globals),
+    module_info_get_globals(ModuleInfo, Globals),
     get_params_for_llds_code_gen(Globals, Params),
     ProcIds = pred_info_all_non_imported_procids(!.PredInfo),
-    mark_tail_rec_calls_in_procs(Params, !.ModuleInfo, SCCMap,
+    mark_tail_rec_calls_in_procs(Params, ModuleInfo, SCCMap,
         PredId, ProcIds, !PredInfo, !Specs).
 
 :- pred mark_tail_rec_calls_in_procs(tail_rec_params::in,

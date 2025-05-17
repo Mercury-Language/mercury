@@ -256,7 +256,7 @@ generate_tag_switch(VarRval, VarType, VarName, TaggedCases, CodeModel, CanFail,
         ),
         some [!CLD] (
             reset_to_position(BranchStart, !.CI, !:CLD),
-            generate_failure(FailureCode, !CI, !.CLD)
+            generate_failure(FailureCode, !.CI, !.CLD)
         ),
         FailCode = FailLabelCode ++ FailureCode
     ),
