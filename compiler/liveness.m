@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2016, 2018-2024 The Mercury team.
+% Copyright (C) 2013-2016, 2018-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1361,20 +1361,20 @@ delay_death_goal(VarTable, Goal0, Goal, !BornVars, !DelayedDead) :-
     set_of_var.union(PreDelayedDead, !DelayedDead),
     goal_info_set_pre_deaths(UnnamedPreDeaths, GoalInfo0, GoalInfo1),
 
-    delay_death_goal_expr(VarTable, GoalExpr0, GoalExpr, GoalInfo1, GoalInfo2,
+    delay_death_goal_expr(VarTable, GoalExpr0, GoalExpr,
         !BornVars, !DelayedDead),
 
-    goal_info_get_post_births(GoalInfo2, PostBirths),
-    goal_info_get_post_deaths(GoalInfo2, PostDeaths2),
+    goal_info_get_post_births(GoalInfo1, PostBirths),
+    goal_info_get_post_deaths(GoalInfo1, PostDeaths1),
 
     set_of_var.union(PostBirths, !BornVars),
-    set_of_var.divide(var_is_named(VarTable), PostDeaths2,
+    set_of_var.divide(var_is_named(VarTable), PostDeaths1,
         PostDelayedDead, UnnamedPostDeaths),
     set_of_var.union(PostDelayedDead, !DelayedDead),
     set_of_var.divide_by_set(BornVars0, !.DelayedDead,
         !:DelayedDead, ToBeKilled),
     set_of_var.union(UnnamedPostDeaths, ToBeKilled, PostDeaths),
-    goal_info_set_post_deaths(PostDeaths, GoalInfo2, GoalInfo),
+    goal_info_set_post_deaths(PostDeaths, GoalInfo1, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred var_is_named(var_table::in, prog_var::in) is semidet.
@@ -1386,12 +1386,10 @@ var_is_named(VarTable, Var) :-
 
 :- pred delay_death_goal_expr(var_table::in,
     hlds_goal_expr::in, hlds_goal_expr::out,
-    hlds_goal_info::in, hlds_goal_info::out,
     set_of_progvar::in, set_of_progvar::out,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-delay_death_goal_expr(VarTable, !GoalExpr, !GoalInfo, !BornVars,
-        !DelayedDead) :-
+delay_death_goal_expr(VarTable, !GoalExpr, !BornVars, !DelayedDead) :-
     (
         ( !.GoalExpr = unify(_, _, _, _, _)
         ; !.GoalExpr = plain_call(_, _, _, _, _, _)

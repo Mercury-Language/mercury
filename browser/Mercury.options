@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2002-2006, 2010 The University of Melbourne.
-# Copyright (C) 2015-2016, 2023-2024 The Mercury team.
+# Copyright (C) 2015-2016, 2023-2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -29,6 +29,8 @@ MCFLAGS-mdb.sized_pretty            += --no-optimize-constructor-last-call
 
 MCFLAGS-mdb.name_mangle             += --no-warn-inferred-erroneous
 MCFLAGS-mdb.interactive_query       += --no-warn-inferred-erroneous
+
+MCFLAGS-mdb.browser_info            += --no-warn-unneeded-final-statevars
 
 # XXX This line is needed so that `mmake --use-mmc-make libmer_browser'
 # passes `-lmer_mdbcomp' to `mmc --make' in the MLLIBS variable.

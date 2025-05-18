@@ -36,6 +36,8 @@ MCFLAGS-check_hlds.purity                += --optimize-constructor-last-call
 # module_qualify_items_loop should be tail recursive.
 MCFLAGS-parse_tree.module_qual.qualify_items \
                                          += --optimize-constructor-last-call
+# post_typecheck_do_finish_preds should be tail recursive.
+MCFLAGS-check_hlds.post_typecheck        += --no-optimize-constructor-last-call
 
 # The predicates in these modules that could be transformed by lcmc
 # are not speed-critical.
@@ -48,7 +50,6 @@ MCFLAGS-backend_libs.saved_vars          += --no-optimize-constructor-last-call
 MCFLAGS-bytecode_backend.bytecode_gen    += --no-optimize-constructor-last-call
 MCFLAGS-check_hlds.ordering_mode_constraints \
                                          += --no-optimize-constructor-last-call
-MCFLAGS-check_hlds.post_typecheck        += --no-optimize-constructor-last-call
 MCFLAGS-check_hlds.type_constraints      += --no-optimize-constructor-last-call
 MCFLAGS-hlds.assertion                   += --no-optimize-constructor-last-call
 MCFLAGS-hlds.error_msg_inst              += --no-optimize-constructor-last-call
@@ -109,3 +110,8 @@ MCFLAGS-mode_robdd.tfeirn                += -O3
 MCFLAGS-mode_robdd.implications          += -O0
 
 MCFLAGS-transform_hlds.higher_order      += --no-warn-nothing-exported
+
+MCFLAGS-check_hlds.mode_constraints      += --no-warn-unneeded-final-statevars
+MCFLAGS-check_hlds.mode_ordering         += --no-warn-unneeded-final-statevars
+MCFLAGS-parse_tree.parse_module          += --no-warn-unneeded-initial-statevars
+MCFLAGS-transform_hlds.stm_expand        += --no-warn-unneeded-final-statevars

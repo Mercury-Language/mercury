@@ -513,11 +513,11 @@ generate_string_trie_lookup_switch(VarRval, LookupSwitchInfo, CanFail,
 
 generate_string_trie_simple_lookup_switch(LookupInfo, CaseValues,
         OutVars, OutTypes, EndLabel, EndBranch, SetAndCheckCaseNumCode, Code,
-        !MaybeEnd, !CI, !.CLD) :-
+        !MaybeEnd, !CI, CLD) :-
     (
         OutVars = [],
         generate_single_soln_table_lookup_code_no_vars(EndBranch, LookupCode,
-            !MaybeEnd, !.CLD)
+            !MaybeEnd, CLD)
     ;
         OutVars = [_ | _],
         NumPrevColumns = 0,
@@ -533,7 +533,7 @@ generate_string_trie_simple_lookup_switch(LookupInfo, CaseValues,
         MainRowSelect = main_row_number_reg(lval(CaseIdRegLval), OutTypes),
         generate_single_soln_table_lookup_code_some_vars(MainTableDataId,
             MainRowSelect, NumPrevColumns, OutVars, EndBranch, LookupCode,
-            !MaybeEnd, !.CI, !.CLD)
+            !MaybeEnd, !.CI, CLD)
     ),
     MainCode = SetAndCheckCaseNumCode ++ LookupCode,
     SwitchKindStr = "string trie single soln lookup switch",
@@ -931,12 +931,12 @@ generate_string_hash_lookup_switch(VarRval, LookupSwitchInfo,
 
 generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
         OutVars, OutTypes, CanFail, EndLabel, EndBranch, Code,
-        !MaybeEnd, !CI, !.CLD) :-
+        !MaybeEnd, !CI, CLD) :-
     % This predicate, generate_string_hash_several_soln_lookup_switch,
     % and generate_string_hash_lookup_switch do similar tasks using
     % similar code, so if you need to update one, you probably need to
     % update them all.
-    init_string_hash_switch_info(CanFail, HashSwitchInfo, !CI, !.CLD),
+    init_string_hash_switch_info(CanFail, HashSwitchInfo, !CI, CLD),
 
     % Compute the hash table.
     construct_string_hash_cases(CaseValues, allow_doubling, TableSize,
@@ -972,14 +972,14 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     (
         OutVars = [],
         generate_single_soln_table_lookup_code_no_vars(EndBranch, LookupCode,
-            !MaybeEnd, !.CLD)
+            !MaybeEnd, CLD)
     ;
         OutVars = [_ | _],
         RowStartRegLval = HashSwitchInfo ^ shsi_row_start_reg,
         MainRowSelect = main_row_start_offset_reg(lval(RowStartRegLval)),
         generate_single_soln_table_lookup_code_some_vars(MainTableDataId,
             MainRowSelect, NumPrevColumns, OutVars, EndBranch, LookupCode,
-            !MaybeEnd, !.CI, !.CLD)
+            !MaybeEnd, !.CI, CLD)
     ),
 
     append_goto_end(EndLabel, LookupCode, LookupGotoEndCode),
@@ -1426,13 +1426,13 @@ generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
 
 generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
         OutVars, OutTypes, CanFail, EndLabel, EndBranch, Code,
-        !MaybeEnd, !CI, !.CLD) :-
+        !MaybeEnd, !CI, CLD) :-
     % This predicate, generate_string_binary_several_soln_lookup_switch,
     % and generate_string_binary_lookup_switch do similar tasks using
     % similar code, so if you need to update one, you probably need to
     % update them all.
 
-    init_string_binary_switch_info(CanFail, BinarySwitchInfo, !CI, !.CLD),
+    init_string_binary_switch_info(CanFail, BinarySwitchInfo, !CI, CLD),
 
     list.length(CaseValues, TableSize),
     list.length(OutVars, NumOutVars),
@@ -1458,14 +1458,14 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
     (
         OutVars = [],
         generate_single_soln_table_lookup_code_no_vars(EndBranch, LookupCode,
-            !MaybeEnd, !.CLD)
+            !MaybeEnd, CLD)
     ;
         OutVars = [_ | _],
         MidRegLval = BinarySwitchInfo ^ sbsi_mid_reg,
         MainRowSelect = main_row_number_reg(lval(MidRegLval), MainRowTypes),
         generate_single_soln_table_lookup_code_some_vars(MainTableDataId,
             MainRowSelect, NumPrevColumns, OutVars, EndBranch,
-            LookupCode, !MaybeEnd, !.CI, !.CLD)
+            LookupCode, !MaybeEnd, !.CI, CLD)
     ),
 
     MainCode = BinarySearchCode ++ LookupCode,

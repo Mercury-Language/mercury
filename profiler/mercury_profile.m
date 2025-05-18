@@ -213,7 +213,7 @@ main_3(Args, !IO) :-
 
         maybe_write_string(ProgressStream, Verbose,
             "% Propagating counts...", !IO),
-        propagate_counts(CallGraph, Prof0, Prof, !IO),
+        propagate_counts(CallGraph, Prof0, Prof),
         maybe_write_string(ProgressStream, Verbose,
             " done\n", !IO)
     ;

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014, 2016-2024 The Mercury team.
+% Copyright (C) 2014, 2016-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -503,13 +503,13 @@ parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
     maybe1(item_or_marker)::out) is det.
 
 parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
-        SeqNum, QuantType, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM) :-
+        SeqNum, QuantType, PurityAttrs, !.QuantConstrAttrs, MaybeIOM) :-
     (
         ArgTerms = [VarsTerm, SubTerm],
         QuantAttr = qca_quant_vars(QuantType, VarsTerm),
         !:QuantConstrAttrs = cord.snoc(!.QuantConstrAttrs, QuantAttr),
         parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
-            SeqNum, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
+            SeqNum, PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
     ;
         ( ArgTerms = []
         ; ArgTerms = [_]
@@ -532,14 +532,14 @@ parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
     maybe1(item_or_marker)::out) is det.
 
 parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
-        Context, SeqNum, QuantType, !.PurityAttrs, !.QuantConstrAttrs,
+        Context, SeqNum, QuantType, PurityAttrs, !.QuantConstrAttrs,
         MaybeIOM) :-
     (
         ArgTerms = [SubTerm, ConstraintsTerm],
         ConstrAttr = qca_constraint(QuantType, ConstraintsTerm),
         !:QuantConstrAttrs = cord.snoc(!.QuantConstrAttrs, ConstrAttr),
         parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
-            SeqNum, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
+            SeqNum, PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
     ;
         ( ArgTerms = []
         ; ArgTerms = [_]
@@ -562,14 +562,13 @@ parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
     maybe1(item_or_marker)::out) is det.
 
 parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
-        Context, SeqNum, Purity, !.PurityAttrs, !.QuantConstrAttrs,
-        MaybeIOM) :-
+        Context, SeqNum, Purity, !.PurityAttrs, QuantConstrAttrs, MaybeIOM) :-
     (
         ArgTerms = [SubTerm],
         PurityAttr = purity_attr(Purity),
         !:PurityAttrs = cord.snoc(!.PurityAttrs, PurityAttr),
         parse_attributed_decl(ModuleName, VarSet, SubTerm, IsInClass, Context,
-            SeqNum, !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM)
+            SeqNum, !.PurityAttrs, QuantConstrAttrs, MaybeIOM)
     ;
         ( ArgTerms = []
         ; ArgTerms = [_, _ | _]
@@ -590,12 +589,12 @@ parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
     maybe1(item_or_marker)::out) is det.
 
 parse_attributed_decl(ModuleName, VarSet, Term, IsInClass, _Context, SeqNum,
-        !.PurityAttrs, !.QuantConstrAttrs, MaybeIOM) :-
+        PurityAttrs, QuantConstrAttrs, MaybeIOM) :-
     ( if Term = term.functor(term.atom(Functor), ArgTerms, FunctorContext) then
         ( if
             parse_attr_decl_item_or_marker(ModuleName, VarSet,
                 Functor, ArgTerms, IsInClass, FunctorContext, SeqNum,
-                !.PurityAttrs, !.QuantConstrAttrs, MaybeIOMPrime)
+                PurityAttrs, QuantConstrAttrs, MaybeIOMPrime)
         then
             MaybeIOM = MaybeIOMPrime
         else

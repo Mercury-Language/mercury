@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017-2018, 2020-2021, 2023-2024 The Mercury team.
+% Copyright (C) 2017-2018, 2020-2021, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -941,10 +941,13 @@ method_ptrs_in_rval(Rval, !CodeAddrsInConsts) :-
         )
     ).
 
+    % This predicate never does anything. It is here only to supply
+    % a argument for *why* doing nothing is ok.
+    %
 :- pred method_ptrs_in_lval(mlds_lval::in,
     code_addrs_in_consts::in, code_addrs_in_consts::out) is det.
 
-method_ptrs_in_lval(Lval, !CodeAddrsInConsts) :-
+method_ptrs_in_lval(Lval, CodeAddrsInConsts, CodeAddrsInConsts) :-
     (
         Lval = ml_mem_ref(_Rval, _Type)
         % Here, "_Rval" is the address of a variable so we don't check it.

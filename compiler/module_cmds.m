@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2008-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -663,7 +663,9 @@ make_nested_class_prefix(ClassFileName, ClassPrefix) :-
     io::di, io::uo) is det.
 
 accumulate_nested_class_files(NestedClassPrefixes, DirName, BaseName,
-        FileType, Continue, !Acc, !IO) :-
+        FileType, Continue, !Acc, IO, IO) :-
+    % The I/O state arguments, which we do not use, are required
+    % by dir.general_foldl2.
     (
         % These file types may be .class files.
         ( FileType = regular_file

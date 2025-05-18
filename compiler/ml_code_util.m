@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -386,8 +386,8 @@
     % Generate code to call the current success continuation.
     % This is used for generating success when in a model_non context.
     %
-:- pred ml_gen_call_current_success_cont(prog_context::in,
-    mlds_stmt::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_call_current_success_cont(ml_gen_info::in, prog_context::in,
+    mlds_stmt::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -441,8 +441,7 @@
 
 :- pred ml_generate_field_assign(mlds_lval::in, mlds_type::in,
     mlds_field_id::in, mlds_vector_common::in, mlds_type::in,
-    mlds_rval::in, prog_context::in, mlds_stmt::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    mlds_rval::in, prog_context::in, mlds_stmt::out) is det.
 
 :- pred ml_generate_field_assigns(list(prog_var)::in, list(mlds_type)::in,
     list(mlds_field_id)::in, mlds_vector_common::in, mlds_type::in,
@@ -1477,7 +1476,7 @@ ml_gen_success(CodeModel, Context, Stmts, !Info) :-
         % ===>
         %   SUCCEED()
         %
-        ml_gen_call_current_success_cont(Context, CallCont, !Info),
+        ml_gen_call_current_success_cont(!.Info, Context, CallCont),
         Stmts = [CallCont]
     ).
 
@@ -1587,8 +1586,8 @@ ml_skip_dummy_argument_types(ModuleInfo, [Lval - Type | LvalsTypes],
         LvalsMLDSTypes = [Lval - MLDSType |  TailLvalsMLDSTypes]
     ).
 
-ml_gen_call_current_success_cont(Context, Stmt, !Info) :-
-    ml_gen_info_current_success_cont(!.Info, SuccCont),
+ml_gen_call_current_success_cont(Info, Context, Stmt) :-
+    ml_gen_info_current_success_cont(Info, SuccCont),
     SuccCont = success_cont(FuncRval, EnvPtrRval, ArgTypesLvals0),
 
     assoc_list.keys_and_values(ArgTypesLvals0, ArgLvals0, ArgTypes0),
@@ -1688,7 +1687,7 @@ search_ground_rval(FinalConstVarMap, Var, Rval) :-
     GroundTerm = ml_ground_term(Rval, _, _).
 
 ml_generate_field_assign(OutVarLval, FieldType, FieldId, VectorCommon,
-        StructType, IndexRval, Context, Stmt, !Info) :-
+        StructType, IndexRval, Context, Stmt) :-
     BaseRval = ml_vector_common_row_addr(VectorCommon, IndexRval),
     FieldLval = ml_field(yes(ptag(0u8)), BaseRval, StructType,
         FieldId, FieldType),
@@ -1710,8 +1709,7 @@ ml_generate_field_assigns(OutVars, FieldTypes, FieldIds, VectorCommon,
     then
         ml_gen_var_direct(!.Info, HeadOutVar, HeadOutVarLval),
         ml_generate_field_assign(HeadOutVarLval, HeadFieldType, HeadFieldId,
-            VectorCommon, StructType, IndexRval, Context, HeadStmt,
-            !Info),
+            VectorCommon, StructType, IndexRval, Context, HeadStmt),
         ml_generate_field_assigns(TailOutVars, TailFieldTypes, TailFieldIds,
             VectorCommon, StructType, IndexRval, Context, TailStmts,
             !Info),

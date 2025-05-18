@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2013-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1035,29 +1035,28 @@ proposed_install_library_grade_specific_files_for_grade(ProgressStream,
             Target = target_c,
             proposed_install_library_grade_specific_files_for_grade_c(
                 ProgressStream, Globals, Prefix, Grade,
-                MainModuleName, AllModuleNames, !Succeeded, !Info, !IO)
+                MainModuleName, AllModuleNames, !Succeeded, !IO)
         ;
             Target = target_java,
             proposed_install_library_grade_specific_files_for_grade_java(
                 ProgressStream, Globals, Prefix, Grade,
-                MainModuleName, AllModuleNames, !Succeeded, !Info, !IO)
+                MainModuleName, AllModuleNames, !Succeeded, !IO)
         ;
             Target = target_csharp,
             proposed_install_library_grade_specific_files_for_grade_csharp(
                 ProgressStream, Globals, Prefix, Grade,
-                MainModuleName, AllModuleNames, !Succeeded, !Info, !IO)
+                MainModuleName, AllModuleNames, !Succeeded, !IO)
         )
     ).
 
 :- pred proposed_install_library_grade_specific_files_for_grade_c(
     io.text_output_stream::in, globals::in, string::in, string::in,
     module_name::in, list(module_name)::in,
-    maybe_succeeded::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 proposed_install_library_grade_specific_files_for_grade_c(ProgressStream,
         Globals, Prefix, Grade, MainModuleName, AllModuleNames,
-        !Succeeded, !Info, !IO) :-
+        !Succeeded, !IO) :-
     ExtInit = ext_cur_gs(ext_cur_gs_lib_init),
     proposed_install_all_gs_files(ProgressStream, Globals, Prefix, Grade,
         ExtInit, [MainModuleName], !Succeeded, !IO),
@@ -1118,12 +1117,11 @@ proposed_install_library_grade_specific_files_for_grade_c(ProgressStream,
 :- pred proposed_install_library_grade_specific_files_for_grade_java(
     io.text_output_stream::in, globals::in, string::in, string::in,
     module_name::in, list(module_name)::in,
-    maybe_succeeded::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 proposed_install_library_grade_specific_files_for_grade_java(ProgressStream,
         Globals, Prefix, Grade, MainModuleName, _AllModuleNames,
-        !Succeeded, !Info, !IO) :-
+        !Succeeded, !IO) :-
     ExtJar = ext_cur_gs_lib_jar,
     GenExtJar = ext_cur_gs(ExtJar),
     module_name_to_workspace_file_name(Globals, GenExtJar,
@@ -1144,12 +1142,11 @@ proposed_install_library_grade_specific_files_for_grade_java(ProgressStream,
 :- pred proposed_install_library_grade_specific_files_for_grade_csharp(
     io.text_output_stream::in, globals::in, string::in, string::in,
     module_name::in, list(module_name)::in,
-    maybe_succeeded::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 proposed_install_library_grade_specific_files_for_grade_csharp(ProgressStream,
         Globals, Prefix, Grade, MainModuleName, _AllModuleNames,
-        !Succeeded, !Info, !IO) :-
+        !Succeeded, !IO) :-
     ExtCilDll = ext_cur_gs_lib_cil_dll,
     GenExtCilDll = ext_cur_gs(ExtCilDll),
     module_name_to_workspace_file_name(Globals, GenExtCilDll,

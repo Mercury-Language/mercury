@@ -1683,10 +1683,10 @@ report_wrong_module_start(FirstContext, Expected, Actual) = Spec :-
 
 check_for_unexpected_item_at_end(SourceFileName, FileString, FileStringLen,
         ModuleName, FileKind, FinalLookAhead, SeqNumCounter0,
-        !Errors, !.LineContext, !.LinePosn) :-
+        !Errors, LineContext, LinePosn) :-
     get_next_item_or_marker(SourceFileName, FileString, FileStringLen,
         FinalLookAhead, ModuleName, IOMResult,
-        SeqNumCounter0, _SeqNumCounter, !.LineContext, _, !.LinePosn, _),
+        SeqNumCounter0, _SeqNumCounter, LineContext, _, LinePosn, _),
     (
         IOMResult = read_iom_eof
     ;

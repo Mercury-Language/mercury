@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2024 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -703,19 +703,19 @@ maybe_generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = MaybeDeepProfInfo :-
 
 generate_category_code(CodeModel, ProcContext, Goal, ResumePoint,
         TraceSlotInfo, Code, MaybeTraceCallLabel, ProcFrameSlots,
-        !CI, !.CLD) :-
+        !CI, CLD) :-
     (
         CodeModel = model_det,
         generate_det_code(ProcContext, Goal, ResumePoint, TraceSlotInfo,
-            Code, MaybeTraceCallLabel, ProcFrameSlots, !CI, !.CLD)
+            Code, MaybeTraceCallLabel, ProcFrameSlots, !CI, CLD)
     ;
         CodeModel = model_semi,
         generate_semi_code(ProcContext, Goal, ResumePoint, TraceSlotInfo,
-            Code, MaybeTraceCallLabel, ProcFrameSlots, !CI, !.CLD)
+            Code, MaybeTraceCallLabel, ProcFrameSlots, !CI, CLD)
     ;
         CodeModel = model_non,
         generate_non_code(ProcContext, Goal, ResumePoint, TraceSlotInfo,
-            Code, MaybeTraceCallLabel, ProcFrameSlots, !CI, !.CLD)
+            Code, MaybeTraceCallLabel, ProcFrameSlots, !CI, CLD)
     ).
 
 :- pred generate_det_code(prog_context::in, hlds_goal::in,

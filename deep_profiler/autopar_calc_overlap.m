@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017, 2019, 2022, 2024 The Mercury team.
+% Copyright (C) 2014-2015, 2017, 2019, 2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -281,8 +281,7 @@ calculate_dependent_parallel_cost(Info, ProductionsMap, Var - SeqEventTime,
     ;
         SeqEventTime = production(SeqProdTime),
         calculate_dependent_parallel_cost_production(Info, SeqProdTime,
-            !PrevSeqConsumeTime, !PrevParConsumeTime, !ResumeTime,
-            !RevExecution, !ConsumptionsMap)
+            !PrevSeqConsumeTime, !PrevParConsumeTime)
     ).
 
 :- pred calculate_dependent_parallel_cost_consumption(
@@ -336,13 +335,10 @@ calculate_dependent_parallel_cost_consumption(Info, ProductionsMap,
 
 :- pred calculate_dependent_parallel_cost_production(
     implicit_parallelism_info::in, float::in, float::in, float::out,
-    float::in, float::out, float::in, float::out,
-    assoc_list(float, float)::in, assoc_list(float, float)::out,
-    map(var_rep, float)::in, map(var_rep, float)::out) is det.
+    float::in, float::out) is det.
 
 calculate_dependent_parallel_cost_production(Info,
-        SeqProdTime, !PrevSeqConsumeTime, !PrevParConsumeTime,
-        !ResumeTime, !RevExecution, !ConsumptionsMap) :-
+        SeqProdTime, !PrevSeqConsumeTime, !PrevParConsumeTime) :-
     SignalCost = float(Info ^ ipi_opts ^ cpcp_future_signal_cost),
 
     ParProdTime = !.PrevParConsumeTime +

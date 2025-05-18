@@ -318,10 +318,10 @@ lco_modulo_constructors(!ModuleInfo) :-
 :- pred lco_scc(set(pred_proc_id)::in, variant_map::in, variant_map::out,
     module_info::in, module_info::out) is det.
 
-lco_scc(SCC, !VariantMap, !ModuleInfo) :-
-    % XXX did we forget to add CurSCCVariants to !VariantMap?
+lco_scc(SCC, VariantMap, VariantMap, !ModuleInfo) :-
+    % XXX Did we forget to add CurSCCVariants to !VariantMap? Yes, we did.
     ModuleInfo0 = !.ModuleInfo,
-    set.foldl4(lco_proc_if_permitted(!.VariantMap, SCC), SCC, !ModuleInfo,
+    set.foldl4(lco_proc_if_permitted(VariantMap, SCC), SCC, !ModuleInfo,
         map.init, CurSCCVariantMap, map.init, CurSCCUpdateMap,
         lco_is_permitted_on_scc, Permitted),
     multi_map.to_flat_assoc_list(CurSCCVariantMap, CurSCCVariants),
@@ -603,8 +603,9 @@ lco_in_conj(Goals0, MaybeGoals, !Info, ConstInfo) :-
             [], RevAfterDependentGoals,
             [], RevAfterNonDependentGoals,
             DelayForVars0, DelayForVars),
-        list.foldl2(acceptable_construct_unification(ConstInfo, DelayForVars),
-            RevAfterDependentGoals, bag.init, UnifyInputVars, !Info)
+        list.foldl(
+            acceptable_construct_unification(!.Info, ConstInfo, DelayForVars),
+            RevAfterDependentGoals, bag.init, UnifyInputVars)
     then
         list.reverse(RevAfterDependentGoals, UnifyGoals),
         transform_call_and_unifies(RecGoal, RecOutArgs,
@@ -758,13 +759,12 @@ partition_dependent_goal(_Info, _ConstInfo, Goal,
 
 %---------------------------------------------------------------------------%
 
-:- pred acceptable_construct_unification(lco_const_info::in,
+:- pred acceptable_construct_unification(lco_info::in, lco_const_info::in,
     set_of_progvar::in, hlds_goal::in,
-    bag(prog_var)::in, bag(prog_var)::out, lco_info::in, lco_info::out)
-    is semidet.
+    bag(prog_var)::in, bag(prog_var)::out) is semidet.
 
-acceptable_construct_unification(ConstInfo, DelayForVars, Goal,
-        !UnifyInputVars, !Info) :-
+acceptable_construct_unification(Info, ConstInfo, DelayForVars, Goal,
+        !UnifyInputVars) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     GoalExpr = unify(_, _, _, Unification, _),
     Unification = construct(ConstructedVar, ConsId, ConstructArgVars,
@@ -775,8 +775,8 @@ acceptable_construct_unification(ConstInfo, DelayForVars, Goal,
         SubInfo = construct_sub_info(MaybeTakeAddrs, _),
         MaybeTakeAddrs = no
     ),
-    ModuleInfo = !.Info ^ lco_module_info,
-    VarTable = !.Info ^ lco_var_table,
+    ModuleInfo = Info ^ lco_module_info,
+    VarTable = Info ^ lco_var_table,
     acceptable_construct_modes(ModuleInfo, VarTable,
         ConstructArgVars, ArgModes),
     ConsId = du_data_ctor(DuCtor),

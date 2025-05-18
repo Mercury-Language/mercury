@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2013, 2015-2020, 2024 The Mercury team.
+% Copyright (C) 2013, 2015-2020, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -348,7 +348,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
     ;
         Uinstr0 = if_val(_, _),
         jump_opt_if_val(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
-            !CheckedNondetTailCallInfo, NewRemain)
+            NewRemain)
     ;
         Uinstr0 = assign(Lval, Rval0),
         % Any labels mentioned in Rval0 should be short-circuited.
@@ -393,7 +393,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
     ;
         Uinstr0 = foreign_proc_code(_, _, _, _, _, _, _, _, _, _),
         jump_opt_foreign_proc_code(Uinstr0, Comment0, Instrs0, PrevInstr,
-            JumpOptInfo, !CheckedNondetTailCallInfo, NewRemain)
+            JumpOptInfo, NewRemain)
     ;
         Uinstr0 = block(_, _, _),
         % These are supposed to be introduced only after jumpopt is run
@@ -743,11 +743,10 @@ jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
 
 :- pred jump_opt_if_val(instr::in(instr_if_val), string::in,
     list(instruction)::in, instr::in, jump_opt_info::in,
-    maybe_check_nondet_tailcalls::in, maybe_check_nondet_tailcalls::out,
     new_remain::out) is det.
 
 jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
-        !CheckedNondetTailCallInfo, NewRemain) :-
+        NewRemain) :-
     Uinstr0 = if_val(Cond, TargetAddr),
     ( if TargetAddr = code_label(TargetLabel) then
         JumpOptInfo = jump_opt_info(InstrMap, BlockMap, _LvalMap,
@@ -906,11 +905,10 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
 
 :- pred jump_opt_foreign_proc_code(instr::in(instr_foreign_proc_code),
     string::in, list(instruction)::in, instr::in, jump_opt_info::in,
-    maybe_check_nondet_tailcalls::in, maybe_check_nondet_tailcalls::out,
     new_remain::out) is det.
 
 jump_opt_foreign_proc_code(Uinstr0, Comment0, Instrs0, _PrevInstr,
-        JumpOptInfo, !CheckedNondetTailCallInfo, NewRemain) :-
+        JumpOptInfo, NewRemain) :-
     Uinstr0 = foreign_proc_code(Decls, Components0, MayCallMercury,
         MaybeFixNoLayout, MaybeFixLayout, MaybeFixOnlyLayout,
         MaybeNoFix0, MaybeDefLabel, StackSlotRef, MaybeDup),

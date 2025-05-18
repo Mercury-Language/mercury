@@ -194,14 +194,12 @@
 :- import_module libs.
 :- import_module libs.globals.
 
-:- import_module io.
-
 :- inst shallow_or_deep for globals.ssdb_trace_level/0
     --->    ssdb_shallow
     ;       ssdb_deep.
 
 :- pred ssdebug_transform_module(ssdb_trace_level::in(shallow_or_deep),
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -249,7 +247,7 @@
 
 %-----------------------------------------------------------------------------%
 
-ssdebug_transform_module(SSTraceLevel, !ModuleInfo, !IO) :-
+ssdebug_transform_module(SSTraceLevel, !ModuleInfo) :-
     (
         SSTraceLevel = ssdb_shallow,
         % With the shallow trace level, the parent of a library procedure

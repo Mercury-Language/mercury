@@ -620,9 +620,8 @@ sync_dep_par_proc_body(ModuleInfo, AllowSomePathsOnly, SharedVars, FutureMap,
         % WaitAfterVars are pushed into this call but not consumed in the body.
         % Our caller expects them to be consumed by the time this call returns
         % so we must wait for them.
-        list.foldl2(insert_wait_after_goal(ModuleInfo, FutureMap),
-            set_of_var.to_sorted_list(WaitAfterVars),
-            !Goal, !VarTable)
+        list.foldl(insert_wait_after_goal(ModuleInfo, !.VarTable, FutureMap),
+            set_of_var.to_sorted_list(WaitAfterVars), !Goal)
     ).
 
 :- pred sync_dep_par_conjunct(module_info::in,
@@ -696,8 +695,8 @@ insert_wait_in_goal_for_proc(ModuleInfo, AllowSomePathsOnly, FutureMap,
         WaitedOnAllSuccessPaths = waited_on_all_success_paths
     ;
         WaitedOnAllSuccessPaths = not_waited_on_all_success_paths,
-        insert_wait_after_goal(ModuleInfo, FutureMap, ConsumedVar,
-            !Goal, !VarTable)
+        insert_wait_after_goal(ModuleInfo, !.VarTable, FutureMap,
+            ConsumedVar, !Goal)
     ).
 
 %---------------------------------------------------------------------------%
@@ -794,8 +793,8 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
             GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
             InvariantEstablished = yes,
             ( if ConsumedVar = SwitchVar then
-                insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
-                    Goal0, Goal1, !VarTable),
+                insert_wait_before_goal(ModuleInfo, !.VarTable, FutureMap,
+                    ConsumedVar, Goal0, Goal1),
                 WaitedOnAllSuccessPaths0 = waited_on_all_success_paths
             else
                 (
@@ -832,8 +831,8 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
                 % the variable waited-for by the condition, and then assigning
                 % the renamed variable to its original name in the then-part.
                 WaitedOnAllSuccessPaths0 = waited_on_all_success_paths,
-                insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
-                    Goal0, Goal1, !VarTable)
+                insert_wait_before_goal(ModuleInfo, !.VarTable, FutureMap,
+                    ConsumedVar, Goal0, Goal1)
             else
                 % If ConsumedVar is not in the nonlocals of Cond, then it
                 % must be in the nonlocals of at least one of Then0 and Else0.
@@ -873,8 +872,8 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
             % We treat the negated goal just as we treat the condition of
             % an if-then-else.
             WaitedOnAllSuccessPaths0 = waited_on_all_success_paths,
-            insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
-                Goal0, Goal1, !VarTable)
+            insert_wait_before_goal(ModuleInfo, !.VarTable, FutureMap,
+                ConsumedVar, Goal0, Goal1)
         ;
             ( GoalExpr0 = unify(_, _, _, _, _)
             ; GoalExpr0 = plain_call(_, _, _, _, _, _)
@@ -883,8 +882,8 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
             ),
             InvariantEstablished = no,
             WaitedOnAllSuccessPaths0 = waited_on_all_success_paths,
-            insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
-                Goal0, Goal1, !VarTable)
+            insert_wait_before_goal(ModuleInfo, !.VarTable, FutureMap,
+                ConsumedVar, Goal0, Goal1)
         ;
             GoalExpr0 = shorthand(_),
             unexpected($pred, "shorthand")
@@ -935,8 +934,8 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
                 (
                     InvariantEstablished = no,
                     WaitedOnAllSuccessPaths = waited_on_all_success_paths,
-                    insert_wait_after_goal(ModuleInfo, FutureMap, ConsumedVar,
-                        Goal2, Goal, !VarTable)
+                    insert_wait_after_goal(ModuleInfo, !.VarTable, FutureMap,
+                        ConsumedVar, Goal2, Goal)
                 ;
                     InvariantEstablished = yes,
                     unexpected($pred,
@@ -946,24 +945,22 @@ insert_wait_in_goal(ModuleInfo, AllowSomePathsOnly, FutureMap, ConsumedVar,
         )
     ).
 
-:- pred insert_wait_before_goal(module_info::in, future_map::in,
-    prog_var::in, hlds_goal::in, hlds_goal::out,
-    var_table::in, var_table::out) is det.
+:- pred insert_wait_before_goal(module_info::in, var_table::in, future_map::in,
+    prog_var::in, hlds_goal::in, hlds_goal::out) is det.
 
-insert_wait_before_goal(ModuleInfo, FutureMap, ConsumedVar,
-        Goal0, Goal, !VarTable) :-
+insert_wait_before_goal(ModuleInfo, VarTable, FutureMap, ConsumedVar,
+        Goal0, Goal) :-
     map.lookup(FutureMap, ConsumedVar, FutureVar),
-    make_wait_goal(ModuleInfo, !.VarTable, FutureVar, ConsumedVar, WaitGoal),
+    make_wait_goal(ModuleInfo, VarTable, FutureVar, ConsumedVar, WaitGoal),
     conjoin_goals_update_goal_infos(Goal0 ^ hg_info, WaitGoal, Goal0, Goal).
 
-:- pred insert_wait_after_goal(module_info::in, future_map::in,
-    prog_var::in, hlds_goal::in, hlds_goal::out,
-    var_table::in, var_table::out) is det.
+:- pred insert_wait_after_goal(module_info::in, var_table::in, future_map::in,
+    prog_var::in, hlds_goal::in, hlds_goal::out) is det.
 
-insert_wait_after_goal(ModuleInfo, FutureMap, ConsumedVar,
-        Goal0, Goal, !VarTable) :-
+insert_wait_after_goal(ModuleInfo, VarTable, FutureMap, ConsumedVar,
+        Goal0, Goal) :-
     map.lookup(FutureMap, ConsumedVar, FutureVar),
-    make_wait_goal(ModuleInfo, !.VarTable, FutureVar, ConsumedVar, WaitGoal),
+    make_wait_goal(ModuleInfo, VarTable, FutureVar, ConsumedVar, WaitGoal),
     conjoin_goals_update_goal_infos(Goal0 ^ hg_info, Goal0, WaitGoal, Goal).
 
     % Insert a wait for ConsumedVar in the first goal in the conjunction
@@ -1178,8 +1175,8 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                     % pointless, since the code generator will turn the entire
                     % scope into a single assignment statement. We therefore
                     % put he signal *after* the scope.
-                    insert_signal_after_goal(ModuleInfo, FutureMap,
-                        ProducedVar, Goal0, Goal, !VarTable)
+                    insert_signal_after_goal(ModuleInfo, !.VarTable, FutureMap,
+                        ProducedVar, Goal0, Goal)
                 else
                     SubGoal0 = hlds_goal(_, SubGoalInfo0),
                     Detism0 = goal_info_get_determinism(GoalInfo0),
@@ -1197,8 +1194,8 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                         % availability of ProducedVar only when it has become
                         % stable, which is when the scope has cut away any
                         % possibility of further backtracking inside SubGoal0.
-                        insert_signal_after_goal(ModuleInfo, FutureMap,
-                            ProducedVar, Goal0, Goal, !VarTable)
+                        insert_signal_after_goal(ModuleInfo, !.VarTable,
+                            FutureMap, ProducedVar, Goal0, Goal)
                     else
                         insert_signal_in_goal(ModuleInfo, FutureMap,
                             ProducedVar, SubGoal0, SubGoal, !VarTable),
@@ -1212,8 +1209,8 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
                 ; GoalExpr0 = generic_call(_, _, _, _, _)
                 ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
                 ),
-                insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
-                    Goal0, Goal, !VarTable)
+                insert_signal_after_goal(ModuleInfo, !.VarTable, FutureMap,
+                    ProducedVar, Goal0, Goal)
             ;
                 GoalExpr0 = shorthand(_),
                 unexpected($pred, "shorthand")
@@ -1232,13 +1229,12 @@ insert_signal_in_goal(ModuleInfo, FutureMap, ProducedVar,
         Goal = Goal0
     ).
 
-:- pred insert_signal_after_goal(module_info::in, future_map::in,
-    prog_var::in, hlds_goal::in, hlds_goal::out,
-    var_table::in, var_table::out) is det.
+:- pred insert_signal_after_goal(module_info::in, var_table::in,
+    future_map::in, prog_var::in, hlds_goal::in, hlds_goal::out) is det.
 
-insert_signal_after_goal(ModuleInfo, FutureMap, ProducedVar,
-        Goal0, Goal, !VarTable) :-
-    make_signal_goal(ModuleInfo, !.VarTable, FutureMap, ProducedVar,
+insert_signal_after_goal(ModuleInfo, VarTable, FutureMap, ProducedVar,
+        Goal0, Goal) :-
+    make_signal_goal(ModuleInfo, VarTable, FutureMap, ProducedVar,
         SignalGoal),
     conjoin_goals_update_goal_infos(Goal0 ^ hg_info, Goal0, SignalGoal, Goal).
 
@@ -3403,13 +3399,13 @@ conjoin_goal_and_goal_list_update_goal_infos(!.GoalInfo, GoalA, GoalsB,
 :- pred conjoin_goals_update_goal_infos(hlds_goal_info::in,
     hlds_goal::in, hlds_goal::in, hlds_goal::out) is det.
 
-conjoin_goals_update_goal_infos(!.GoalInfo, GoalA, GoalB, Goal) :-
+conjoin_goals_update_goal_infos(GoalInfo, GoalA, GoalB, Goal) :-
     ( if GoalB = hlds_goal(conj(plain_conj, GoalsB), _) then
         GoalListB = GoalsB
     else
         GoalListB = [GoalB]
     ),
-    conjoin_goal_and_goal_list_update_goal_infos(!.GoalInfo, GoalA, GoalListB,
+    conjoin_goal_and_goal_list_update_goal_infos(GoalInfo, GoalA, GoalListB,
         Goal).
 
 %---------------------------------------------------------------------------%

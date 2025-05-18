@@ -162,7 +162,7 @@ ml_generate_deconstruction_unification(NonLocals, LHSVar, ConsId, RHSVars,
 
 ml_generate_semi_deconstruction(NonLocals, LHSVar, ConsId, RHSVars, ArgModes,
         Context, Defns, Stmts, !Info) :-
-    ml_generate_test_var_has_cons_id(LHSVar, ConsId, TestRval, !Info),
+    ml_generate_test_var_has_cons_id(!.Info, LHSVar, ConsId, TestRval),
     ml_gen_set_success(TestRval, Context, SetTestResultStmt, !Info),
     ml_gen_test_success(SucceededRval, !Info),
     ml_generate_det_deconstruction(NonLocals, LHSVar, ConsId, RHSVars,
@@ -442,9 +442,9 @@ ml_gen_dynamic_deconstruct_args(NonLocals, FieldGen,
         Defns = HeadDefns ++ TailDefns,
         Stmts = HeadStmts ++ TailStmts
     else
-        ml_gen_dynamic_deconstruct_arg(NonLocals, FieldGen, ArgVar,
+        ml_gen_dynamic_deconstruct_arg(!.Info, NonLocals, FieldGen, ArgVar,
             CtorArgRepn, ArgMode, CurArgNum, Context, _FilledBitfields,
-            HeadStmts, !Info),
+            HeadStmts),
         ml_gen_dynamic_deconstruct_args(NonLocals, FieldGen, ArgVarRepns,
             ArgModes, NextArgNum, Context, TakeAddr, TakeAddrInfos,
             Defns, TailStmts, !Info),
@@ -467,8 +467,9 @@ ml_gen_dynamic_deconstruct_args_in_word(NonLocals, FieldGen, ArgVar,
         ArgVarRepns, ArgModes, LeftOverArgVarRepns, LeftOverArgModes,
         CurArgNum, LeftOverArgNum, CellOffset, Context, TakeAddr,
         Defns, Stmts, !Info) :-
-    ml_gen_dynamic_deconstruct_arg(NonLocals, FieldGen, ArgVar, CtorArgRepn,
-        ArgMode, CurArgNum, Context, FirstFilledBitfields, HeadStmts, !Info),
+    ml_gen_dynamic_deconstruct_arg(!.Info, NonLocals, FieldGen,
+        ArgVar, CtorArgRepn, ArgMode, CurArgNum, Context,
+        FirstFilledBitfields, HeadStmts),
     (
         FirstFilledBitfields = [],
         AllPartialsRight0 = not_all_partials_assign_right
@@ -592,9 +593,9 @@ ml_gen_dynamic_deconstruct_args_in_word_loop(NonLocals, FieldGen,
     (
         (
             ArgPosWidth = apw_partial_shifted(_, _, _, _, _, _),
-            ml_gen_dynamic_deconstruct_arg(NonLocals, FieldGen, ArgVar,
+            ml_gen_dynamic_deconstruct_arg(!.Info, NonLocals, FieldGen, ArgVar,
                 CtorArgRepn, ArgMode, CurArgNum, Context,
-                HeadFilledBitfields, HeadStmts, !Info),
+                HeadFilledBitfields, HeadStmts),
             (
                 HeadFilledBitfields = [],
                 !:AllPartialsRight = not_all_partials_assign_right
@@ -603,9 +604,9 @@ ml_gen_dynamic_deconstruct_args_in_word_loop(NonLocals, FieldGen,
             )
         ;
             ArgPosWidth = apw_none_shifted(_, _),
-            ml_gen_dynamic_deconstruct_arg(NonLocals, FieldGen, ArgVar,
+            ml_gen_dynamic_deconstruct_arg(!.Info, NonLocals, FieldGen, ArgVar,
                 CtorArgRepn, ArgMode, CurArgNum, Context,
-                HeadFilledBitfields, HeadStmts, !Info),
+                HeadFilledBitfields, HeadStmts),
             expect(unify(HeadFilledBitfields, []), $pred,
                 "HeadFilledBitfields != [] for apw_none_shifted")
         ),
@@ -636,14 +637,13 @@ ml_gen_dynamic_deconstruct_args_in_word_loop(NonLocals, FieldGen,
         Stmts = []
     ).
 
-:- pred ml_gen_dynamic_deconstruct_arg(set_of_progvar::in, field_gen::in,
-    prog_var::in, constructor_arg_repn::in, unify_mode::in,
+:- pred ml_gen_dynamic_deconstruct_arg(ml_gen_info::in, set_of_progvar::in,
+    field_gen::in, prog_var::in, constructor_arg_repn::in, unify_mode::in,
     int::in, prog_context::in,
-    list(filled_bitfield)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    list(filled_bitfield)::out, list(mlds_stmt)::out) is det.
 
-ml_gen_dynamic_deconstruct_arg(NonLocals, FieldGen, ArgVar, CtorArgRepn,
-        ArgMode, ArgNum, Context, FilledBitfields, Stmts, !Info) :-
+ml_gen_dynamic_deconstruct_arg(Info, NonLocals, FieldGen, ArgVar, CtorArgRepn,
+        ArgMode, ArgNum, Context, FilledBitfields, Stmts) :-
     FieldGen = field_gen(MaybePrimaryTag, AddrRval, AddrType, FieldVia),
     ArgPosWidth = CtorArgRepn ^ car_pos_width,
     (
@@ -674,21 +674,21 @@ ml_gen_dynamic_deconstruct_arg(NonLocals, FieldGen, ArgVar, CtorArgRepn,
     % Box the field type, if needed.
     % XXX ARG_PACK For sub-word-sized fields, this should *never* be needed,
     % so we should do this only for full- and double-word arguments.
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    ml_gen_info_get_high_level_data(!.Info, HighLevelData),
+    ml_gen_info_get_module_info(Info, ModuleInfo),
+    ml_gen_info_get_high_level_data(Info, HighLevelData),
     FieldWidth = arg_pos_width_to_width_only(ArgPosWidth),
     FieldRawType = CtorArgRepn ^ car_type,
     ml_type_as_field(ModuleInfo, HighLevelData, FieldRawType, FieldWidth,
         FieldType),
 
     % Generate lvals for the LHS ...
-    ml_gen_mlds_type(!.Info, FieldType, MLDS_FieldType),
+    ml_gen_mlds_type(Info, FieldType, MLDS_FieldType),
     FieldLval = ml_field(MaybePrimaryTag, AddrRval, AddrType,
         FieldId, MLDS_FieldType),
     % ... and the RHS.
-    ml_gen_info_get_var_table(!.Info, VarTable),
+    ml_gen_info_get_var_table(Info, VarTable),
     lookup_var_entry(VarTable, ArgVar, ArgVarEntry),
-    ml_gen_var(!.Info, ArgVar, ArgVarEntry, ArgLval),
+    ml_gen_var(Info, ArgVar, ArgVarEntry, ArgLval),
     ArgType = ArgVarEntry ^ vte_type,
 
     % Now generate code to unify them.

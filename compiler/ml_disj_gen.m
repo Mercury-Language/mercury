@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2020, 2022, 2024 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2020, 2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -359,7 +359,7 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info) :-
 
     ml_generate_field_assigns(OutVars, MLDS_FieldTypes, FieldIds,
         VectorCommon, StructType, SlotVarRval, Context, LookupStmts, !Info),
-    ml_gen_call_current_success_cont(Context, CallContStmt, !Info),
+    ml_gen_call_current_success_cont(!.Info, Context, CallContStmt),
 
     InitSlotVarStmt = ml_stmt_atomic(
         assign(SlotVarLval, ml_const(mlconst_int(0))),

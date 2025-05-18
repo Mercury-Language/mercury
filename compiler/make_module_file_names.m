@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2012 The University of Melbourne.
-% Copyright (C) 2013-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2013-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -37,18 +37,15 @@
 
 :- pred make_module_file_name_group_with_ext(globals::in, string::in,
     ext::in, set(module_name)::in, list(mmake_file_name_group)::out,
-    module_file_name_cache::in, module_file_name_cache::out,
-    io::di, io::uo) is det.
+    module_file_name_cache::in, module_file_name_cache::out) is det.
 
 :- pred make_module_file_names_with_ext(globals::in, ext::in,
     list(module_name)::in, list(mmake_file_name)::out,
-    module_file_name_cache::in, module_file_name_cache::out,
-    io::di, io::uo) is det.
+    module_file_name_cache::in, module_file_name_cache::out) is det.
 
 :- pred make_module_file_name(globals::in, string::in, ext::in,
     module_name::in, file_name::out,
-    module_file_name_cache::in, module_file_name_cache::out,
-    io::di, io::uo) is det.
+    module_file_name_cache::in, module_file_name_cache::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -111,18 +108,17 @@
 %
 
 make_module_file_name_group_with_ext(Globals, GroupName, Ext,
-        ModuleSet, Groups, !Cache, !IO) :-
+        ModuleSet, Groups, !Cache) :-
     set.to_sorted_list(ModuleSet, Modules),
-    make_module_file_names_with_ext(Globals, Ext, Modules, FileNames,
-        !Cache, !IO),
+    make_module_file_names_with_ext(Globals, Ext, Modules, FileNames, !Cache),
     Groups = make_file_name_group(GroupName, FileNames).
 
 make_module_file_names_with_ext(Globals, Ext, Modules, FileNames,
-        !Cache, !IO) :-
-    list.map_foldl2(make_module_file_name(Globals, $pred, Ext),
-        Modules, FileNames, !Cache, !IO).
+        !Cache) :-
+    list.map_foldl(make_module_file_name(Globals, $pred, Ext),
+        Modules, FileNames, !Cache).
 
-make_module_file_name(Globals, From, Ext, ModuleName, FileName, !Cache, !IO) :-
+make_module_file_name(Globals, From, Ext, ModuleName, FileName, !Cache) :-
     % We cache result of the translation, in order to save on
     % temporary string construction.
     % See the analysis of gathered statistics below for why we use the cache

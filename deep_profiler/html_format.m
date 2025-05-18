@@ -292,8 +292,10 @@ table_to_html(FormatInfo, !StyleControlMap, Table, HTML) :-
     table_header_rows::in, style_control_map::in, style_control_map::out,
     table_header_group::in, html::out) is det.
 
-table_header_group_to_html_row_1(FormatInfo, HeaderNumRows, !StyleControlMap,
-        HeaderGroup, HTML) :-
+table_header_group_to_html_row_1(FormatInfo, HeaderNumRows,
+        StyleControlMap, StyleControlMap, HeaderGroup, HTML) :-
+    % We do not read or update StyleControlMap, but the argument pair
+    % returning StyleControlMap unchanged is required by map_join_html.
     HeaderGroup = table_header_group(Titles, ColumnClass, _SetStyle),
     (
         Titles = table_header_group_single(Title),
@@ -345,8 +347,10 @@ table_header_group_to_html_row_2(FormatInfo, !StyleControlMap,
     style_control_map::in, style_control_map::out,
     table_data::in, html::out) is det.
 
-table_data_to_th_html(FormatInfo, ColumnClass, !StyleControlMap,
-        TableData, HTML) :-
+table_data_to_th_html(FormatInfo, ColumnClass,
+        StyleControlMap, StyleControlMap, TableData, HTML) :-
+    % We do not read or update StyleControlMap, but the argument pair
+    % returning StyleControlMap unchanged is required by map_join_html.
     ColumnClassStr = table_column_class_to_string(ColumnClass),
     TableDataHTML = table_data_to_html(FormatInfo, TableData),
     StartTag = string.format("<th class=\"%s\">", [s(ColumnClassStr)]),
@@ -481,8 +485,10 @@ table_row_to_html(FormatInfo, MaybeColClassMap, NumColumns, !StyleControlMap,
     style_control_map::in, style_control_map::out,
     int::in, int::out, table_cell::in, html::out) is det.
 
-table_cell_to_html(FormatInfo, MaybeClassMap, !StyleControlMap, !ColumnNum,
-        Cell, HTML) :-
+table_cell_to_html(FormatInfo, MaybeClassMap, StyleControlMap, StyleControlMap,
+        !ColumnNum, Cell, HTML) :-
+    % We do not read or update StyleControlMap, but the argument pair
+    % returning StyleControlMap unchanged is required by map_join_html_count.
     (
         Cell = table_empty_cell,
         !:ColumnNum = !.ColumnNum + 1,
@@ -937,8 +943,8 @@ sep_map_join_html_acc(Separator, MapPred, !StyleControlMap, [Head | Tail],
     style_control_map::in, style_control_map::out,
     int::in, list(A)::in, html::out) is det.
 
-map_join_html_count(MapPred, !StyleControlMap, !.ColumnNum, List, HTML) :-
-    sep_map_join_html_count(empty_html, MapPred, !StyleControlMap, !.ColumnNum,
+map_join_html_count(MapPred, !StyleControlMap, ColumnNum, List, HTML) :-
+    sep_map_join_html_count(empty_html, MapPred, !StyleControlMap, ColumnNum,
         List, HTML).
 
     % For each A, MapPred(!StyleControlMap, N, A, S), and concatenate all Ss

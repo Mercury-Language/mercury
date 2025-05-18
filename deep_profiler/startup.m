@@ -1098,9 +1098,9 @@ gather_call_site_csdptrs(Slot, CSDPtrs0, CSDPtrs1, IsZeroed0, IsZeroed) :-
 %
 % The stats are needed only when writing the deep profiling paper anyway.
 
-maybe_report_stats(yes(_OutputStream), !IO).
+maybe_report_stats(yes(_OutputStream), IO, IO).
     % io.report_stats("standard", !IO).
-maybe_report_stats(no, !IO).
+maybe_report_stats(no, IO, IO).
 
 :- pred maybe_report_msg(maybe(io.text_output_stream)::in, string::in,
     io::di, io::uo) is det.

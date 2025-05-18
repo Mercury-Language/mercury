@@ -206,9 +206,8 @@ generate_and_write_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
     % First, build up a map of the dependencies.
     SourceFileName = Baggage ^ mb_source_file_name,
 
-    map.init(Cache0),
     generate_dv_mmakefile(Globals, SourceFileName, ModuleName, DepsMap,
-        MmakeFileDv, Cache0, _Cache, !IO),
+        MmakeFileDv),
     generate_dep_mmakefile(Globals, SourceFileName, ModuleName, DepsMap,
         MmakeFileDep, !IO),
     MmakeFileStrDv = mmakefile_to_string(MmakeFileDv),

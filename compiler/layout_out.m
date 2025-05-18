@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2012 The University of Melbourne.
-% Copyright (C) 2013-2016, 2018-2022, 2024 The Mercury team.
+% Copyright (C) 2013-2016, 2018-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -214,6 +214,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term_context.
+:- import_module uint.
 
 %-----------------------------------------------------------------------------%
 
@@ -1524,12 +1525,12 @@ output_exec_traces_array(Info, Stream, ExecTraces, !IO) :-
     output_layout_array_name_storage_type_name(Stream, ModuleName, Name,
         being_defined, !IO),
     io.format(Stream, "[%d] = {\n", [i(NumExecTraces)], !IO),
-    list.foldl2(output_exec_trace_slot(Info, Stream), ExecTraces, 0, _, !IO),
+    list.foldl2(output_exec_trace_slot(Info, Stream), ExecTraces, 0u, _, !IO),
     io.write_string(Stream, "};\n\n", !IO).
 
 :- pred output_exec_trace_slot(llds_out_info::in,
     io.text_output_stream::in, proc_layout_exec_trace::in,
-    int::in, int::out, io::di, io::uo) is det.
+    uint::in, uint::out, io::di, io::uo) is det.
 
 output_exec_trace_slot(Info, Stream, ExecTrace, !Slot, !IO) :-
     ExecTrace = proc_layout_exec_trace(MaybeCallLabelSlotName,
@@ -1542,7 +1543,8 @@ output_exec_trace_slot(Info, Stream, ExecTrace, !Slot, !IO) :-
     io.write_string(Stream, "{ ", !IO),
     (
         AutoComments = auto_comments,
-        io.format(Stream, "/* %d */ ", [i(!.Slot)], !IO)
+        io.format(Stream, "/* %u */ ", [u(!.Slot)], !IO),
+        !:Slot = !.Slot + 1u
     ;
         AutoComments = no_auto_comments
     ),
@@ -1707,18 +1709,19 @@ output_threadscope_string_table_array(Info, Stream, TSStringTable, !IO) :-
         being_defined, !IO),
     io.format(Stream, "[%d] = {\n", [i(NumStrings)], !IO),
     list.foldl2(output_threadscope_string_table_slot(Info, Stream),
-        TSStringTable, 0, _, !IO),
+        TSStringTable, 0u, _, !IO),
     io.write_string(Stream, "};\n#endif\n\n", !IO).
 
 :- pred output_threadscope_string_table_slot(llds_out_info::in,
     io.text_output_stream::in, string::in,
-    int::in, int::out, io::di, io::uo) is det.
+    uint::in, uint::out, io::di, io::uo) is det.
 
 output_threadscope_string_table_slot(Info, Stream, String, !Slot, !IO) :-
     AutoComments = Info ^ lout_auto_comments,
     (
         AutoComments = auto_comments,
-        io.format(Stream, "/* %d */ ", [i(!.Slot)], !IO)
+        io.format(Stream, "/* %u */ ", [u(!.Slot)], !IO),
+        !:Slot = !.Slot + 1u
     ;
         AutoComments = no_auto_comments
     ),
@@ -1740,28 +1743,23 @@ output_alloc_sites_array(Info, Stream, AllocSites, !IO) :-
         alloc_site_array, being_defined, !IO),
     list.length(AllocSites, NumAllocSitess),
     io.format(Stream, "[%d] = {\n", [i(NumAllocSitess)], !IO),
-    list.foldl2(output_alloc_site_slot(Info, Stream), AllocSites, 0, _, !IO),
+    list.foldl2(output_alloc_site_slot(Info, Stream), AllocSites, 0u, _, !IO),
     io.write_string(Stream, "};\n\n", !IO).
 
 :- pred output_alloc_site_slot(llds_out_info::in, io.text_output_stream::in,
-    alloc_site_info::in, int::in, int::out, io::di, io::uo) is det.
+    alloc_site_info::in, uint::in, uint::out, io::di, io::uo) is det.
 
 output_alloc_site_slot(_Info, Stream, AllocSite, !Slot, !IO) :-
-    AllocSite = alloc_site_info(ProcLabel, Context, TypeMsg, Words),
-    FileName = term_context.context_file(Context),
-    LineNumber = term_context.context_line(Context),
-    io.write_string(Stream, "\t{ ", !IO),
-    io.write_string(Stream,
-        proc_label_to_c_string(add_label_prefix, ProcLabel), !IO),
-    io.write_string(Stream, ", ", !IO),
+    AllocSite = alloc_site_info(ProcLabel, Context, TypeMsg, NumWords),
+    Context = context(FileName, LineNumber),
+    ProcLabelStr = proc_label_to_c_string(add_label_prefix, ProcLabel),
+    io.format(Stream, "\t/* slot %u */ {%s, ",
+        [u(!.Slot), s(ProcLabelStr)], !IO),
     output_quoted_string_c(Stream, FileName, !IO),
-    io.write_string(Stream, ", ", !IO),
-    io.write_int(Stream, LineNumber, !IO),
-    io.write_string(Stream, ", ", !IO),
+    io.format(Stream, ", %d, ", [i(LineNumber)], !IO),
     output_quoted_string_c(Stream, TypeMsg, !IO),
-    io.write_string(Stream, ", ", !IO),
-    io.write_int(Stream, Words, !IO),
-    io.write_string(Stream, "},\n", !IO).
+    io.format(Stream, ", %d},\n ", [i(NumWords)], !IO),
+    !:Slot = !.Slot + 1u.
 
 %-----------------------------------------------------------------------------%
 

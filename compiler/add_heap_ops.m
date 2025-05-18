@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018-2020, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2020, 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -134,8 +134,8 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
                 )
             then
                 new_saved_hp_var(SavedHeapPointerVar, !Info),
-                gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal,
-                    !Info),
+                gen_mark_hp(!.Info, SavedHeapPointerVar, Context,
+                    MarkHeapPointerGoal),
                 disj_add_heap_ops(Disjuncts0, Disjuncts, is_first_disjunct,
                     yes(SavedHeapPointerVar), GoalInfo0, !Info),
                 DisjGoalExpr = disj(Disjuncts),
@@ -207,13 +207,13 @@ goal_expr_add_heap_ops(GoalExpr0, GoalInfo0, Goal, !Info) :-
         ( if goal_may_allocate_heap(CondGoal0) then
             new_saved_hp_var(SavedHeapPointerVar, !Info),
             Context = goal_info_get_context(GoalInfo0),
-            gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal,
-                !Info),
+            gen_mark_hp(!.Info, SavedHeapPointerVar, Context,
+                MarkHeapPointerGoal),
 
             % Generate code to restore the heap pointer, and insert that code
             % at the start of the Else branch.
-            gen_restore_hp(SavedHeapPointerVar, Context,
-                RestoreHeapPointerGoal, !Info),
+            gen_restore_hp(!.Info, SavedHeapPointerVar, Context,
+                RestoreHeapPointerGoal),
             ElseGoal1 = hlds_goal(_, ElseGoal1Info),
             ElseGoalExpr = conj(plain_conj,
                 [RestoreHeapPointerGoal, ElseGoal1]),
@@ -266,8 +266,8 @@ disj_add_heap_ops([Goal0 | Goals0], DisjGoals, IsFirstBranch,
         IsFirstBranch = is_not_first_disjunct,
         MaybeSavedHeapPointerVar = yes(SavedHeapPointerVar0)
     then
-        gen_restore_hp(SavedHeapPointerVar0, Context, RestoreHeapPointerGoal,
-            !Info),
+        gen_restore_hp(!.Info, SavedHeapPointerVar0, Context,
+            RestoreHeapPointerGoal),
         conj_list_to_goal([RestoreHeapPointerGoal, Goal1], GoalInfo, Goal)
     else
         Goal = Goal1
@@ -285,7 +285,7 @@ disj_add_heap_ops([Goal0 | Goals0], DisjGoals, IsFirstBranch,
     then
         % Generate code to save the heap pointer.
         new_saved_hp_var(SavedHeapPointerVar, !Info),
-        gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info),
+        gen_mark_hp(!.Info, SavedHeapPointerVar, Context, MarkHeapPointerGoal),
 
         % Recursively handle the remaining disjuncts.
         disj_add_heap_ops(Goals0, Goals1, is_not_first_disjunct,
@@ -320,19 +320,19 @@ cases_add_heap_ops([Case0 | Cases0], [Case | Cases], !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred gen_mark_hp(prog_var::in, prog_context::in, hlds_goal::out,
-    heap_ops_info::in, heap_ops_info::out) is det.
+:- pred gen_mark_hp(heap_ops_info::in, prog_var::in, prog_context::in,
+    hlds_goal::out) is det.
 
-gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info) :-
-    heap_generate_call(!.Info, "mark_hp",
+gen_mark_hp(Info, SavedHeapPointerVar, Context, MarkHeapPointerGoal) :-
+    heap_generate_call(Info, "mark_hp",
         [SavedHeapPointerVar], instmap_delta_bind_var(SavedHeapPointerVar),
         detism_det, purity_impure, Context, MarkHeapPointerGoal).
 
-:- pred gen_restore_hp(prog_var::in, prog_context::in, hlds_goal::out,
-    heap_ops_info::in, heap_ops_info::out) is det.
+:- pred gen_restore_hp(heap_ops_info::in, prog_var::in, prog_context::in,
+    hlds_goal::out) is det.
 
-gen_restore_hp(SavedHeapPointerVar, Context, RestoreHeapPointerGoal, !Info) :-
-    heap_generate_call(!.Info, "restore_hp",
+gen_restore_hp(Info, SavedHeapPointerVar, Context, RestoreHeapPointerGoal) :-
+    heap_generate_call(Info, "restore_hp",
         [SavedHeapPointerVar], instmap_delta_bind_no_var,
         detism_det, purity_impure, Context, RestoreHeapPointerGoal).
 

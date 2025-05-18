@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2001, 2003-2009, 2011 The University of Melbourne.
-% Copyright (C) 2016, 2019-2024 The Mercury team.
+% Copyright (C) 2016, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -289,8 +289,8 @@ parse_non_call_dcg_goal(GoalKind, Args, Context, ContextPieces, MaybeGoal,
         ( GoalKind = dgk_not
         ; GoalKind = dgk_not_prolog
         ),
-        parse_dcg_goal_not(GoalKind, Args, Context, ContextPieces,
-            MaybeGoal, !VarSet, !Counter, !DCGVar)
+        parse_dcg_goal_not(GoalKind, Args, Context, ContextPieces, !.DCGVar,
+            MaybeGoal, !VarSet, !Counter)
     ;
         ( GoalKind = dgk_some
         ; GoalKind = dgk_all
@@ -322,8 +322,7 @@ parse_non_call_dcg_goal(GoalKind, Args, Context, ContextPieces, MaybeGoal,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
         GoalKind = dgk_braces,
-        parse_dcg_goal_braces(Args, Context, ContextPieces,
-            MaybeGoal, !VarSet, !Counter, !DCGVar)
+        parse_dcg_goal_braces(Args, Context, ContextPieces, MaybeGoal, !VarSet)
     ;
         GoalKind = dgk_nil,
         parse_dcg_goal_nil(Args, Context, ContextPieces,
@@ -334,8 +333,7 @@ parse_non_call_dcg_goal(GoalKind, Args, Context, ContextPieces, MaybeGoal,
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     ;
         GoalKind = dgk_equal,
-        parse_dcg_goal_equal(Args, Context, ContextPieces,
-            MaybeGoal, !VarSet, !Counter, !DCGVar)
+        parse_dcg_goal_equal(Args, Context, ContextPieces, !.DCGVar, MaybeGoal)
     ;
         GoalKind = dgk_colon_equal,
         parse_dcg_goal_colon_equal(Args, Context, ContextPieces,
@@ -403,17 +401,16 @@ parse_dcg_goal_promise_purity(GoalKind, ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_dcg_goal_not(dcg_goal_kind::in(dcg_goal_kind_not),
-    list(term)::in, prog_context::in, cord(format_piece)::in,
+    list(term)::in, prog_context::in, cord(format_piece)::in, prog_var::in,
     maybe2(goal, list(warning_spec))::out,
-    prog_varset::in, prog_varset::out, counter::in, counter::out,
-    prog_var::in, prog_var::out) is det.
-:- pragma inline(pred(parse_dcg_goal_not/11)).
+    prog_varset::in, prog_varset::out, counter::in, counter::out) is det.
+:- pragma inline(pred(parse_dcg_goal_not/10)).
 
-parse_dcg_goal_not(GoalKind, ArgTerms, Context, ContextPieces,
-        MaybeGoal, !VarSet, !Counter, !DCGVar) :-
+parse_dcg_goal_not(GoalKind, ArgTerms, Context, ContextPieces, DCGVar,
+        MaybeGoal, !VarSet, !Counter) :-
     ( if ArgTerms = [SubGoalTerm] then
         parse_dcg_goal(SubGoalTerm, ContextPieces, MaybeSubGoal,
-            !VarSet, !Counter, !.DCGVar, _),
+            !VarSet, !Counter, DCGVar, _),
         (
             MaybeSubGoal = ok2(SubGoal, GoalWarningSpecs),
             Goal = not_expr(Context, SubGoal),
@@ -914,12 +911,10 @@ parse_dcg_goal_if(ArgTerms, Context, ContextPieces,
 :- pred parse_dcg_goal_braces(list(term)::in,
     prog_context::in, cord(format_piece)::in,
     maybe2(goal, list(warning_spec))::out,
-    prog_varset::in, prog_varset::out, counter::in, counter::out,
-    prog_var::in, prog_var::out) is det.
-:- pragma inline(pred(parse_dcg_goal_braces/10)).
+    prog_varset::in, prog_varset::out) is det.
+:- pragma inline(pred(parse_dcg_goal_braces/6)).
 
-parse_dcg_goal_braces(ArgTerms, Context, ContextPieces,
-        MaybeGoal, !VarSet, !Counter, !DCGVar) :-
+parse_dcg_goal_braces(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
     (
         ArgTerms = [],
         Pieces = [words("Error: expected")] ++
@@ -1020,18 +1015,15 @@ parse_dcg_goal_cons(ArgTerms, Context, _ContextPieces,
 %---------------------%
 
 :- pred parse_dcg_goal_equal(list(term)::in,
-    prog_context::in, cord(format_piece)::in,
-    maybe2(goal, list(warning_spec))::out,
-    prog_varset::in, prog_varset::out, counter::in, counter::out,
-    prog_var::in, prog_var::out) is det.
-:- pragma inline(pred(parse_dcg_goal_equal/10)).
+    prog_context::in, cord(format_piece)::in, prog_var::in,
+    maybe2(goal, list(warning_spec))::out) is det.
+:- pragma inline(pred(parse_dcg_goal_equal/5)).
 
-parse_dcg_goal_equal(ArgTerms, Context, ContextPieces,
-        MaybeGoal, !VarSet, !Counter, !DCGVar) :-
+parse_dcg_goal_equal(ArgTerms, Context, ContextPieces, DCGVar, MaybeGoal) :-
     ( if ArgTerms = [ArgTerm0] then
         % Call to '='/1 - unify argument with DCG input arg.
         term.coerce(ArgTerm0, ArgTerm),
-        DCGVarTerm = variable(!.DCGVar, Context),
+        DCGVarTerm = variable(DCGVar, Context),
         Goal = unify_expr(Context, ArgTerm, DCGVarTerm, purity_pure),
         MaybeGoal = ok2(Goal, [])
     else

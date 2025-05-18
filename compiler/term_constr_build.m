@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2012 The University of Melbourne.
-% Copyright (C) 2017-2018, 2020-2024 The Mercury Team.
+% Copyright (C) 2017-2018, 2020-2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -441,8 +441,8 @@ build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
         ( if
             Reason = from_ground_term(TermVar, from_ground_term_construct)
         then
-            build_abstract_from_ground_term_goal(TermVar, SubGoal,
-                AbstractGoal, !Info)
+            build_abstract_from_ground_term_goal(!.Info, TermVar, SubGoal,
+                AbstractGoal)
         else
             build_abstract_goal(SubGoal, AbstractGoal, !Info)
         )
@@ -454,7 +454,7 @@ build_abstract_goal_2(GoalExpr, GoalInfo, AbstractGoal, !Info) :-
             GoalInfo, AbstractGoal, !Info)
     ;
         GoalExpr = unify(_, _, _, Unification, _),
-        build_abstract_unification(Unification, AbstractGoal, !Info)
+        build_abstract_unification(!.Info, Unification, AbstractGoal)
     ;
         GoalExpr = negation(SubGoal),
         % Event though a negated goal cannot have any output we still need
@@ -774,22 +774,21 @@ detect_switch_var(hlds_goal(shorthand(_), _), _, _) :-
 % which act like giant construction unifications.
 %
 
-:- pred build_abstract_from_ground_term_goal(prog_var::in, hlds_goal::in,
-    abstract_goal::out, tti_traversal_info::in, tti_traversal_info::out)
-    is det.
+:- pred build_abstract_from_ground_term_goal(tti_traversal_info::in,
+    prog_var::in, hlds_goal::in, abstract_goal::out) is det.
 
-build_abstract_from_ground_term_goal(TermVar, SubGoal, AbstractGoal, !Info) :-
+build_abstract_from_ground_term_goal(Info, TermVar, SubGoal, AbstractGoal) :-
     SubGoal = hlds_goal(SubGoalExpr, _SubGoalInfo),
     ( if SubGoalExpr = conj(plain_conj, Conjuncts) then
-        SizeVarMap = !.Info ^ tti_size_var_map,
-        Zeros = !.Info ^ tti_zeros,
+        SizeVarMap = Info ^ tti_size_var_map,
+        Zeros = Info ^ tti_zeros,
         TermSizeVar = prog_var_to_size_var(SizeVarMap, TermVar),
         ( if set.member(TermSizeVar, Zeros) then
             Constraints = []
         else
-            ModuleInfo = !.Info ^ tti_module_info,
-            Norm = !.Info ^ tti_norm,
-            VarTable = !.Info ^ tti_var_table,
+            ModuleInfo = Info ^ tti_module_info,
+            Norm = Info ^ tti_norm,
+            VarTable = Info ^ tti_var_table,
             abstract_from_ground_term_conjuncts(ModuleInfo, Norm, VarTable,
                 Conjuncts, map.init, SizeMap),
             map.lookup(SizeMap, TermVar, KnownTermVarSize),
@@ -857,27 +856,27 @@ accumulate_sum([Size | Sizes], !TotalSize) :-
 % Additional predicates for abstracting unifications.
 %
 
-:- pred build_abstract_unification(unification::in, abstract_goal::out,
-    tti_traversal_info::in, tti_traversal_info::out) is det.
+:- pred build_abstract_unification(tti_traversal_info::in, unification::in,
+    abstract_goal::out) is det.
 
-build_abstract_unification(Unification, AbstractGoal, !Info) :-
+build_abstract_unification(Info, Unification, AbstractGoal) :-
     (
         Unification = construct(Var, ConsId, ArgVars, Modes, _, _, _),
-        build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes,
-            Constraints, !Info),
+        build_abstract_decon_or_con_unify(Info, Var, ConsId, ArgVars, Modes,
+            Constraints),
         AbstractGoal = build_goal_from_unify(Constraints)
     ;
         Unification = deconstruct(Var, ConsId, ArgVars, Modes, _, _),
-        build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes,
-            Constraints, !Info),
+        build_abstract_decon_or_con_unify(Info, Var, ConsId, ArgVars, Modes,
+            Constraints),
         AbstractGoal = build_goal_from_unify(Constraints)
     ;
         Unification = assign(LVar, RVar),
-        build_abstract_simple_or_assign_unify(LVar, RVar, Constraints, !Info),
+        build_abstract_simple_or_assign_unify(Info, LVar, RVar, Constraints),
         AbstractGoal = build_goal_from_unify(Constraints)
     ;
         Unification = simple_test(LVar, RVar),
-        build_abstract_simple_or_assign_unify(LVar, RVar, Constraints, !Info),
+        build_abstract_simple_or_assign_unify(Info, LVar, RVar, Constraints),
         AbstractGoal = build_goal_from_unify(Constraints)
     ;
         Unification = complicated_unify(_, _, _),
@@ -889,13 +888,13 @@ build_abstract_unification(Unification, AbstractGoal, !Info) :-
     % first and second arguments, then the constraint returned is |X| -
     % |U| - |V| = |f|. (|X| is the size_var corresponding to X).
     %
-:- pred build_abstract_decon_or_con_unify(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(unify_mode)::in, lp_constraint_conj::out,
-    tti_traversal_info::in, tti_traversal_info::out) is det.
+:- pred build_abstract_decon_or_con_unify(tti_traversal_info::in,
+    prog_var::in, cons_id::in, list(prog_var)::in, list(unify_mode)::in,
+    lp_constraint_conj::out) is det.
 
-build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
-        !Info) :-
-    VarTable = !.Info ^ tti_var_table,
+build_abstract_decon_or_con_unify(Info, Var, ConsId, ArgVars, Modes,
+        Constraints) :-
+    VarTable = Info ^ tti_var_table,
     lookup_var_type(VarTable, Var, Type),
     ( if
         % The only valid higher-order unifications are assignments.
@@ -916,8 +915,8 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
 
         strip_typeinfos_from_args_and_modes(VarTable, ArgVars, FixedArgVars,
             Modes, FixedModes),
-        ModuleInfo = !.Info ^ tti_module_info,
-        Norm = !.Info ^ tti_norm,
+        ModuleInfo = Info ^ tti_module_info,
+        Norm = Info ^ tti_norm,
         type_to_ctor_det(Type, TypeCtor),
         functor_norm(ModuleInfo, Norm, TypeCtor, ConsId, Constant,
             FixedArgVars, CountedVars, FixedModes, _),
@@ -929,8 +928,8 @@ build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
         % |Var| is just the size_var corresponding to Var. The value of
         % `Constant' will depend upon the norm being used.
 
-        SizeVarMap = !.Info ^ tti_size_var_map,
-        Zeros = !.Info ^ tti_zeros,
+        SizeVarMap = Info ^ tti_size_var_map,
+        Zeros = Info ^ tti_zeros,
 
         SizeVar = prog_var_to_size_var(SizeVarMap, Var),
         ( if set.member(SizeVar, Zeros) then
@@ -994,14 +993,13 @@ strip_typeinfos_from_args_and_modes_2(VarTable, [Arg | !.Args], !:Args,
     % Assignment and simple_test unifications of the form X = Y
     % are abstracted as |X| - |Y| = 0.
     %
-:- pred build_abstract_simple_or_assign_unify(prog_var::in, prog_var::in,
-    lp_constraint_conj::out,
-    tti_traversal_info::in, tti_traversal_info::out) is det.
+:- pred build_abstract_simple_or_assign_unify(tti_traversal_info::in,
+    prog_var::in, prog_var::in, lp_constraint_conj::out) is det.
 
-build_abstract_simple_or_assign_unify(LeftProgVar, RightProgVar, Constraints,
-        !Info) :-
-    SizeVarMap = !.Info ^ tti_size_var_map,
-    Zeros = !.Info ^ tti_zeros,
+build_abstract_simple_or_assign_unify(Info, LeftProgVar, RightProgVar,
+        Constraints) :-
+    SizeVarMap = Info ^ tti_size_var_map,
+    Zeros = Info ^ tti_zeros,
     LeftSizeVar = prog_var_to_size_var(SizeVarMap, LeftProgVar),
     RightSizeVar = prog_var_to_size_var(SizeVarMap, RightProgVar),
     ( if

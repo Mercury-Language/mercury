@@ -91,3 +91,15 @@ MCFLAGS-io.error_util           += --no-warn-inferred-erroneous
 MCFLAGS-io                      += --no-warn-inferred-erroneous
 MCFLAGS-profiling_builtin       += --no-warn-inferred-erroneous
 MCFLAGS-table_builtin           += --no-warn-inferred-erroneous
+
+MCFLAGS-benchmarking            += --no-warn-unneeded-final-statevars
+MCFLAGS-exception               += --no-warn-unneeded-final-statevars
+MCFLAGS-gc                      += --no-warn-unneeded-final-statevars
+MCFLAGS-io                      += --no-warn-unneeded-final-statevars
+MCFLAGS-io.environment          += --no-warn-unneeded-final-statevars
+MCFLAGS-io.stream_ops           += --no-warn-unneeded-final-statevars
+MCFLAGS-random                  += --no-warn-unneeded-final-statevars
+MCFLAGS-stm_builtin             += --no-warn-unneeded-final-statevars
+MCFLAGS-thread.future           += --no-warn-unneeded-final-statevars
+MCFLAGS-thread.mvar             += --no-warn-unneeded-final-statevars
+MCFLAGS-thread.semaphore        += --no-warn-unneeded-final-statevars

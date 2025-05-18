@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2021 The Mercury team.
+% Copyright (C) 2013-2021, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -101,7 +101,7 @@ foldl3_make_track_flags_for_modules_loop(ErrorStream, ProgressStream,
         Globals, [ModuleName | ModuleNames], Succeeded,
         !LastHash, !Info, !IO) :-
     make_track_flags_files_for_module(ErrorStream, ProgressStream,
-        Globals, ModuleName, Succeeded0, !LastHash, !Info, !IO),
+        Globals, !.Info, ModuleName, Succeeded0, !LastHash, !IO),
     (
         Succeeded0 = succeeded,
         foldl3_make_track_flags_for_modules_loop(ErrorStream, ProgressStream,
@@ -114,21 +114,21 @@ foldl3_make_track_flags_for_modules_loop(ErrorStream, ProgressStream,
 %---------------------------------------------------------------------------%
 
 :- pred make_track_flags_files_for_module(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, module_name::in,
+    io.text_output_stream::in, globals::in, make_info::in, module_name::in,
     maybe_succeeded::out, last_hash::in, last_hash::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
-make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals,
-        ModuleName, Succeeded, !LastHash, !Info, !IO) :-
-    EnvOptFileVariables = make_info_get_env_optfile_variables(!.Info),
+make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals, Info,
+        ModuleName, Succeeded, !LastHash, !IO) :-
+    EnvOptFileVariables = make_info_get_env_optfile_variables(Info),
     lookup_mmc_module_options(EnvOptFileVariables, ModuleName,
         MaybeModuleOptionArgs),
     (
         MaybeModuleOptionArgs = ok1(ModuleOptionArgs),
-        MaybeStdLibGrades = make_info_get_maybe_stdlib_grades(!.Info),
+        MaybeStdLibGrades = make_info_get_maybe_stdlib_grades(Info),
         lookup_mercury_stdlib_dir(EnvOptFileVariables, MaybeStdLibDirs),
-        EnvVarArgs = make_info_get_env_var_args(!.Info),
-        OptionArgs = make_info_get_option_args(!.Info),
+        EnvVarArgs = make_info_get_env_var_args(Info),
+        OptionArgs = make_info_get_option_args(Info),
         AllOptionArgs = ModuleOptionArgs ++ EnvVarArgs ++ OptionArgs,
 
         % The set of options from one module to the next is usually identical,

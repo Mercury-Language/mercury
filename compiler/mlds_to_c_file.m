@@ -291,7 +291,7 @@ mlds_output_hdr_file(Opts, Indent, MLDS, Stream, Errors, !IO) :-
 
 % XXX currently we assume all imports are source imports, i.e. that the header
 % file does not depend on any types defined in other header files.
-mlds_output_hdr_imports(_Stream, _Indent, _Imports, !IO).
+mlds_output_hdr_imports(_Stream, _Indent, _Imports, IO, IO).
 
 :- pred mlds_output_src_imports(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, list(mlds_import)::in, io::di, io::uo) is det.
@@ -549,7 +549,7 @@ mlds_output_src_start(Opts, Stream, Indent, ModuleName, ForeignCode,
 :- pred mlds_output_src_bootstrap_defines(io.text_output_stream::in,
     io::di, io::uo) is det.
 
-mlds_output_src_bootstrap_defines(_, !IO).
+mlds_output_src_bootstrap_defines(_, IO, IO).
 
 :- pred mlds_output_hdr_end(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, mercury_module_name::in, io::di, io::uo) is det.

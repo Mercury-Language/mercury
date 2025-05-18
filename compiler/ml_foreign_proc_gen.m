@@ -208,7 +208,7 @@ ml_gen_foreign_proc_for_csharp_or_java(TargetLang, OrdinaryKind, Attributes,
         1, 1, Args, ArgDecls, CopyTIsIn, _CopyTIsOut),
 
     % Generate code to set the values of the input variables.
-    ml_gen_foreign_proc_ccsj_input_args(Lang, Args, AssignInputs, !Info),
+    ml_gen_foreign_proc_ccsj_input_args(!.Info, Lang, Args, AssignInputs),
 
     % Generate MLDS statements to assign the values of the output variables.
     ml_gen_foreign_proc_csharp_java_output_args(MutableSpecial, Args, Context,
@@ -340,7 +340,7 @@ ml_gen_foreign_proc_for_c(OrdinaryKind, Attributes, PredId, _ProcId,
         ArgDecls, CopyTIsIn, CopyTIsOut),
 
     % Generate code to set the values of the input variables.
-    ml_gen_foreign_proc_ccsj_input_args(Lang, Args, AssignInputs, !Info),
+    ml_gen_foreign_proc_ccsj_input_args(!.Info, Lang, Args, AssignInputs),
 
     % Generate code to assign the values of the output variables.
     ml_gen_foreign_proc_c_output_args(Args, Context,
@@ -782,51 +782,50 @@ var_is_singleton(Name) :-
 
     % For C, C# and Java.
     %
-:- pred ml_gen_foreign_proc_ccsj_input_args(foreign_language::in,
-    list(foreign_arg)::in, list(target_code_component)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_foreign_proc_ccsj_input_args(ml_gen_info::in,
+    foreign_language::in,
+    list(foreign_arg)::in, list(target_code_component)::out) is det.
 
-ml_gen_foreign_proc_ccsj_input_args(Lang, Args, AssignInputs, !Info) :-
-    list.map_foldl(ml_gen_foreign_proc_ccsj_input_arg_if_used(Lang), Args,
-        AssignInputsList, !Info),
+ml_gen_foreign_proc_ccsj_input_args(Info, Lang, Args, AssignInputs) :-
+    list.map(ml_gen_foreign_proc_ccsj_input_arg_if_used(Info, Lang),
+        Args, AssignInputsList),
     list.condense(AssignInputsList, AssignInputs).
 
     % ml_gen_foreign_proc_c_input_arg_if_used generates C, C# or Java code
     % to assign the value of an input arg for a foreign_proc.
     %
-:- pred ml_gen_foreign_proc_ccsj_input_arg_if_used(foreign_language::in,
-    foreign_arg::in, list(target_code_component)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_foreign_proc_ccsj_input_arg_if_used(ml_gen_info::in,
+    foreign_language::in, foreign_arg::in, list(target_code_component)::out)
+    is det.
 
-ml_gen_foreign_proc_ccsj_input_arg_if_used(Lang, ForeignArg, AssignInput,
-        !Info) :-
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+ml_gen_foreign_proc_ccsj_input_arg_if_used(Info, Lang, ForeignArg,
+        AssignInput) :-
+    ml_gen_info_get_module_info(Info, ModuleInfo),
     ForeignArg = foreign_arg(Var, MaybeNameAndMode, OrigType, BoxPolicy),
     ( if
         MaybeNameAndMode = yes(foreign_arg_name_mode(ArgName, Mode)),
         not var_is_singleton(ArgName),
         mode_to_top_functor_mode(ModuleInfo, Mode, OrigType, top_in)
     then
-        ml_gen_foreign_proc_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType,
-            BoxPolicy, AssignInput, !Info)
+        ml_gen_foreign_proc_ccsj_gen_input_arg(Info, Lang, Var, ArgName,
+            OrigType, BoxPolicy, AssignInput)
     else
         % If the variable doesn't occur in the ArgNames list,
         % it can't be used, so we just ignore it.
         AssignInput = []
     ).
 
-:- pred ml_gen_foreign_proc_ccsj_gen_input_arg(foreign_language::in,
-    prog_var::in, string::in, mer_type::in, box_policy::in,
-    list(target_code_component)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_foreign_proc_ccsj_gen_input_arg(ml_gen_info::in,
+    foreign_language::in, prog_var::in, string::in, mer_type::in,
+    box_policy::in, list(target_code_component)::out) is det.
 
-ml_gen_foreign_proc_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
-        AssignInput, !Info) :-
-    ml_gen_info_get_var_table(!.Info, VarTable),
+ml_gen_foreign_proc_ccsj_gen_input_arg(Info, Lang, Var, ArgName, OrigType,
+        BoxPolicy, AssignInput) :-
+    ml_gen_info_get_var_table(Info, VarTable),
     lookup_var_entry(VarTable, Var, VarEntry),
     VarEntry = vte(_, VarType, IsDummy),
-    ml_gen_var(!.Info, Var, VarEntry, VarLval),
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    ml_gen_var(Info, Var, VarEntry, VarLval),
+    ml_gen_info_get_module_info(Info, ModuleInfo),
     (
         IsDummy = is_dummy_type,
         % The variable may not have been declared, so we need to generate
@@ -845,7 +844,7 @@ ml_gen_foreign_proc_ccsj_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
     MaybeForeignType = is_this_a_foreign_type(ModuleInfo, OrigType),
     TypeString =
         maybe_foreign_type_to_string(Lang, OrigType, MaybeForeignType),
-    ml_gen_info_get_high_level_data(!.Info, HighLevelData),
+    ml_gen_info_get_high_level_data(Info, HighLevelData),
     ( if
         input_arg_assignable_with_cast(Lang, HighLevelData, OrigType,
             MaybeForeignType, TypeString, Cast)

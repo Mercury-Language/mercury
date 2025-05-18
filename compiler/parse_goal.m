@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2016-2024 The Mercury team.
+% Copyright (C) 2016-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -450,7 +450,7 @@ parse_non_call_goal(GoalKind, Args, Context, ContextPieces, MaybeGoal,
         parse_goal_else(Args, Context, ContextPieces, MaybeGoal, !VarSet)
     ;
         GoalKind = gk_if,
-        parse_goal_if(Args, Context, ContextPieces, MaybeGoal, !VarSet)
+        parse_goal_if(Args, Context, ContextPieces, MaybeGoal)
     ;
         GoalKind = gk_then,
         parse_goal_then(Args, Context, ContextPieces, MaybeGoal, !VarSet)
@@ -518,12 +518,10 @@ parse_non_call_goal(GoalKind, Args, Context, ContextPieces, MaybeGoal,
         ( GoalKind = gk_true
         ; GoalKind = gk_fail
         ),
-        parse_goal_true_fail(GoalKind, Args, Context, ContextPieces,
-            MaybeGoal, !VarSet)
+        parse_goal_true_fail(GoalKind, Args, Context, ContextPieces, MaybeGoal)
     ;
         GoalKind = gk_equal,
-        parse_goal_equal(Args, Context, ContextPieces,
-            MaybeGoal, !VarSet)
+        parse_goal_equal(Args, Context, ContextPieces, MaybeGoal)
     ).
 
 %---------------------%
@@ -1045,11 +1043,10 @@ parse_goal_else(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 
 :- pred parse_goal_if(list(term)::in,
     term.context::in, cord(format_piece)::in,
-    maybe2(goal, list(warning_spec))::out,
-    prog_varset::in, prog_varset::out) is det.
-:- pragma inline(pred(parse_goal_if/6)).
+    maybe2(goal, list(warning_spec))::out) is det.
+:- pragma inline(pred(parse_goal_if/4)).
 
-parse_goal_if(ArgTerms, Context, _ContextPieces, MaybeGoal, !VarSet) :-
+parse_goal_if(ArgTerms, Context, _ContextPieces, MaybeGoal) :-
     ( if
         ArgTerms = [term.functor(term.atom("then"),
             [_CondGoalTerm, ThenGoalTerm], ThenContext)]
@@ -1610,12 +1607,10 @@ parse_goal_event(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
 
 :- pred parse_goal_true_fail(goal_kind::in(goal_kind_true_fail),
     list(term)::in, term.context::in, cord(format_piece)::in,
-    maybe2(goal, list(warning_spec))::out,
-    prog_varset::in, prog_varset::out) is det.
-:- pragma inline(pred(parse_goal_true_fail/7)).
+    maybe2(goal, list(warning_spec))::out) is det.
+:- pragma inline(pred(parse_goal_true_fail/5)).
 
-parse_goal_true_fail(GoalKind, ArgTerms, Context, ContextPieces,
-        MaybeGoal, !VarSet) :-
+parse_goal_true_fail(GoalKind, ArgTerms, Context, ContextPieces, MaybeGoal) :-
     (
         GoalKind = gk_true,
         Goal = true_expr(Context)
@@ -1636,11 +1631,10 @@ parse_goal_true_fail(GoalKind, ArgTerms, Context, ContextPieces,
 %---------------------%
 
 :- pred parse_goal_equal(list(term)::in, term.context::in,
-    cord(format_piece)::in, maybe2(goal, list(warning_spec))::out,
-    prog_varset::in, prog_varset::out) is det.
-:- pragma inline(pred(parse_goal_equal/6)).
+    cord(format_piece)::in, maybe2(goal, list(warning_spec))::out) is det.
+:- pragma inline(pred(parse_goal_equal/4)).
 
-parse_goal_equal(ArgTerms, Context, ContextPieces, MaybeGoal, !VarSet) :-
+parse_goal_equal(ArgTerms, Context, ContextPieces, MaybeGoal) :-
     ( if ArgTerms = [TermA0, TermB0] then
         term.coerce(TermA0, TermA),
         term.coerce(TermB0, TermB),

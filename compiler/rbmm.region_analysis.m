@@ -43,7 +43,7 @@
 %---------------------------------------------------------------------------%
 
 do_region_analysis(!ModuleInfo) :-
-    region_points_to_analysis(RptaInfoTable, !ModuleInfo),
+    region_points_to_analysis(!.ModuleInfo, RptaInfoTable),
     execution_path_analysis(!.ModuleInfo, ExecPathTable),
     live_variable_analysis(!.ModuleInfo, ExecPathTable, LVBeforeTable,
         LVAfterTable, VoidVarTable),

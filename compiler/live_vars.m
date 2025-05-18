@@ -235,7 +235,7 @@ build_live_sets_in_goal_expr(AllocData, ResumeVars0,
         GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         build_live_sets_in_foreign_proc(AllocData, ResumeVars0,
             GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
-            !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars)
+            !StackAlloc, !.Liveness, !NondetLiveness, !ParStackVars)
     ;
         GoalExpr0 = conj(_, _),
         build_live_sets_in_conj(AllocData, ResumeVars0,
@@ -397,14 +397,13 @@ build_live_sets_in_call(AllocData, ResumeVars0, OutVars, GoalInfo0, GoalInfo,
 :- pred build_live_sets_in_foreign_proc(alloc_data::in, set_of_progvar::in,
     hlds_goal_expr::in(goal_expr_foreign_proc), hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out, T::in, T::out,
-    set_of_progvar::in, set_of_progvar::out,
-    set_of_progvar::in, set_of_progvar::out,
+    set_of_progvar::in, set_of_progvar::in, set_of_progvar::out,
     parallel_stackvars::in, parallel_stackvars::out)
     is det <= stack_alloc_info(T).
 
 build_live_sets_in_foreign_proc(AllocData, ResumeVars0,
         GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
-        !StackAlloc, !Liveness, !NondetLiveness, !ParStackVars) :-
+        !StackAlloc, Liveness0, !NondetLiveness, !ParStackVars) :-
     GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId, Args, _, _, _),
     GoalExpr = GoalExpr0,
     ModuleInfo = AllocData ^ ad_module_info,
@@ -431,7 +430,7 @@ build_live_sets_in_foreign_proc(AllocData, ResumeVars0,
         % that may be needed at an enclosing resumption point.
         build_live_sets_in_call(AllocData, ResumeVars0,
             set_to_bitset(OutVars), GoalInfo0, GoalInfo,
-            !StackAlloc, !.Liveness, !NondetLiveness, !ParStackVars)
+            !StackAlloc, Liveness0, !NondetLiveness, !ParStackVars)
     ).
 
 %---------------------------------------------------------------------------%

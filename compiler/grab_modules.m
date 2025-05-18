@@ -707,7 +707,8 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, ErrorStream, Globals,
 %---------------------------------------------------------------------------%
 
 grab_trans_opt_files(ProgressStream, Globals, TransOptModuleNames, FoundError,
-        !Baggage, !AugCompUnit, !HaveParseTreeMaps, !IO) :-
+        !Baggage, !AugCompUnit, HaveParseTreeMaps, HaveParseTreeMaps, !IO) :-
+    % XXX We should be using !HaveParseTreeMaps.
     globals.lookup_bool_option(Globals, verbose, Verbose),
     maybe_write_string(ProgressStream, Verbose,
         "% Reading .trans_opt files..\n", !IO),
@@ -1263,7 +1264,7 @@ grab_module_int3_file(ProgressStream, Globals, ReadWhy3, ModuleName,
 :- pragma inline(pred(maybe_log_augment_decision/8)).
 
 maybe_log_augment_decision(ProgressStream, Why, IntFileKind, ReadWhy,
-        ModuleName, Read, !IO) :-
+        ModuleName, Read, IO, IO) :-
     trace [compile_time(flag("log_augment_decisions")),
         runtime(env("LOG_AUGMENT_DECISION")), io(!TIO)]
     (
@@ -1503,7 +1504,7 @@ read_trans_opt_files(ProgressStream, Globals, VeryVerbose,
     maybe_opt_file_error::in, maybe_opt_file_error::out) is det.
 
 update_opt_error_status_on_failure(Globals, WarnOption, FileName,
-        ReadModuleErrors, !Specs, !Error) :-
+        ReadModuleErrors, !Specs, Error, Error) :-
     % We get here if we couldn't find and/or open the file.
     % ModuleErrors ^ rm_fatal_error_specs will already contain
     % an error_severity error_spec about that, with more details

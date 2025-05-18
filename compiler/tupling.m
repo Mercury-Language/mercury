@@ -950,22 +950,23 @@ prepare_proc_for_counting(PredProcId, !ReverseGoalPathMapMap, !ModuleInfo) :-
 :- pred opt_at_call_site(need_across_call::in, alloc_data::in,
     opt_tuple_alloc::in, opt_tuple_alloc::out) is det.
 
-opt_at_call_site(_NeedAtCall, _AllocData, !StackAlloc).
+opt_at_call_site(_NeedAtCall, _AllocData, StackAlloc, StackAlloc).
 
 :- pred opt_at_resume_site(need_in_resume::in, alloc_data::in,
     opt_tuple_alloc::in, opt_tuple_alloc::out) is det.
 
-opt_at_resume_site(_NeedAtResume, _AllocData, !StackAlloc).
+opt_at_resume_site(_NeedAtResume, _AllocData, StackAlloc, StackAlloc).
 
 :- pred opt_at_par_conj(need_in_par_conj::in, alloc_data::in,
     opt_tuple_alloc::in, opt_tuple_alloc::out) is det.
 
-opt_at_par_conj(_NeedParConj, _AllocData, !StackAlloc).
+opt_at_par_conj(_NeedParConj, _AllocData, StackAlloc, StackAlloc).
 
 :- pred opt_at_recursive_call_for_loop_control(need_for_loop_control::in,
     alloc_data::in, opt_tuple_alloc::in, opt_tuple_alloc::out) is det.
 
-opt_at_recursive_call_for_loop_control(_NeedLC, _AllocData, !StackAlloc).
+opt_at_recursive_call_for_loop_control(_NeedLC, _AllocData,
+    StackAlloc, StackAlloc).
 
 %-----------------------------------------------------------------------------%
 
@@ -1602,7 +1603,8 @@ build_interval_info(ModuleInfo, ProcInfo, IntervalInfo) :-
 :- pred use_cell(prog_var::in, list(prog_var)::in, cons_id::in, hlds_goal::in,
     interval_info::in, interval_info::out, unit::in, unit::out) is det.
 
-use_cell(_CellVar, _FieldVarList, _ConsId, _Goal, !IntervalInfo, !Unit).
+use_cell(_CellVar, _FieldVarList, _ConsId, _Goal,
+    IntervalInfo, IntervalInfo, Unit, Unit).
 
 %-----------------------------------------------------------------------------%
 

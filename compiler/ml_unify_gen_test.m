@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2012 The University of Melbourne.
-% Copyright (C) 2014, 2018, 2021-2022, 2024 The Mercury team.
+% Copyright (C) 2014, 2018, 2021-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -26,8 +26,8 @@
     % We generate the boolean rval TestRval, which will evaluate to true
     % iff Var has the functor specified by ConsId.
     %
-:- pred ml_generate_test_var_has_cons_id(prog_var::in, cons_id::in,
-    mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_generate_test_var_has_cons_id(ml_gen_info::in, prog_var::in,
+    cons_id::in, mlds_rval::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -40,9 +40,9 @@
     %
     % Exported for use by ml_switch_gen.m.
     %
-:- pred ml_generate_test_var_has_one_tagged_cons_id(prog_var::in,
-    tagged_cons_id::in, list(tagged_cons_id)::in, mlds_rval::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_generate_test_var_has_one_tagged_cons_id(ml_gen_info::in,
+    prog_var::in, tagged_cons_id::in, list(tagged_cons_id)::in,
+    mlds_rval::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -71,35 +71,35 @@
 
 %---------------------------------------------------------------------------%
 
-ml_generate_test_var_has_cons_id(Var, ConsId, TestRval, !Info) :-
+ml_generate_test_var_has_cons_id(Info, Var, ConsId, TestRval) :-
     % NOTE: Keep in sync with ml_generate_test_var_has_one_tagged_cons_id
     % below.
-    ml_gen_info_get_var_table(!.Info, VarTable),
+    ml_gen_info_get_var_table(Info, VarTable),
     lookup_var_entry(VarTable, Var, VarEntry),
     VarType = VarEntry ^ vte_type,
-    ml_gen_var(!.Info, Var, VarEntry, VarLval),
+    ml_gen_var(Info, Var, VarEntry, VarLval),
     VarRval = ml_lval(VarLval),
-    ml_cons_id_to_tag(!.Info, ConsId, ConsTag),
-    ml_get_maybe_cheaper_tag_test(!.Info, VarType, CheaperTagTest),
-    ml_generate_test_rval_has_cons_tag(!.Info, VarRval, VarType,
+    ml_cons_id_to_tag(Info, ConsId, ConsTag),
+    ml_get_maybe_cheaper_tag_test(Info, VarType, CheaperTagTest),
+    ml_generate_test_rval_has_cons_tag(Info, VarRval, VarType,
         CheaperTagTest, ConsTag, TestRval).
 
 %---------------------------------------------------------------------------%
 
-ml_generate_test_var_has_one_tagged_cons_id(Var,
-        MainTaggedConsId, OtherTaggedConsIds, TestRval, !Info) :-
+ml_generate_test_var_has_one_tagged_cons_id(Info, Var,
+        MainTaggedConsId, OtherTaggedConsIds, TestRval) :-
     % NOTE: Keep in sync with ml_generate_test_var_has_cons_id above.
-    ml_gen_info_get_var_table(!.Info, VarTable),
+    ml_gen_info_get_var_table(Info, VarTable),
     lookup_var_entry(VarTable, Var, VarEntry),
     VarType = VarEntry ^ vte_type,
-    ml_gen_var(!.Info, Var, VarEntry, VarLval),
+    ml_gen_var(Info, Var, VarEntry, VarLval),
     VarRval = ml_lval(VarLval),
-    ml_get_maybe_cheaper_tag_test(!.Info, VarType, CheaperTagTest),
+    ml_get_maybe_cheaper_tag_test(Info, VarType, CheaperTagTest),
 
-    ml_generate_test_rval_has_tagged_cons_id(!.Info, VarRval, VarType,
+    ml_generate_test_rval_has_tagged_cons_id(Info, VarRval, VarType,
         CheaperTagTest, MainTaggedConsId, MainTestRval),
     list.map(
-        ml_generate_test_rval_has_tagged_cons_id(!.Info, VarRval, VarType,
+        ml_generate_test_rval_has_tagged_cons_id(Info, VarRval, VarType,
             CheaperTagTest),
         OtherTaggedConsIds, OtherTestRvals),
     ml_logical_or_rvals(MainTestRval, OtherTestRvals, TestRval).

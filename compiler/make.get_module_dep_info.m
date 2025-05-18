@@ -525,8 +525,8 @@ try_to_write_module_dep_files_for_top_module(ProgressStream, Globals,
             cannot_write_module_dep_files(Globals, ProgressStream,
                 ModuleName, ReadModuleErrors, !Info, !IO)
         else
-            open_module_error_stream(ProgressStream, Globals, ModuleName,
-                MaybeErrorStream, !Info, !IO),
+            open_module_error_stream(ProgressStream, Globals, !.Info,
+                ModuleName, MaybeErrorStream, !IO),
             (
                 MaybeErrorStream = es_ok(MESI, ErrorStream),
                 write_module_dep_files_for_source_file(Globals,
@@ -640,7 +640,7 @@ write_module_dep_files_for_source_file(Globals, ProgressStream,
         ;
             MayBuild = may_build(_AllOptions, BuildGlobals),
             make_int3_files(ProgressStream, ErrorStream, BuildGlobals,
-                BurdenedModules, Succeeded0, !Info, !IO)
+                BurdenedModules, Succeeded0, !IO)
         ),
 
         CleanupMSI =
@@ -679,10 +679,10 @@ make_info_add_burdened_module_as_dep(BurdenedModule, !Info) :-
 
 :- pred make_int3_files(io.text_output_stream::in, io.text_output_stream::in,
     globals::in, list(burdened_module)::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 make_int3_files(ProgressStream, ErrorStream, Globals,
-        BurdenedModules, Succeeded, !Info, !IO) :-
+        BurdenedModules, Succeeded, !IO) :-
     % XXX MAKE We should probably add to, and keep, HaveParseTreeMaps.
     list.map2_foldl2(
         generate_and_write_interface_file_int3(ProgressStream, Globals,

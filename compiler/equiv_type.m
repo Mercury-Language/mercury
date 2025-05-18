@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -268,7 +268,7 @@ expand_eqv_types_insts(AugCompUnit0, AugCompUnit, EventSpecMap0, EventSpecMap,
 
     map.to_assoc_list(EventSpecMap0, EventSpecList0),
     replace_in_event_specs(TypeEqvMap, EventSpecList0, EventSpecList,
-        !RecompInfo, !UsedModules, !Specs),
+        !UsedModules),
     map.from_sorted_assoc_list(EventSpecList, EventSpecMap).
 
 %---------------------------------------------------------------------------%
@@ -426,7 +426,7 @@ build_eqv_maps_in_parse_tree_plain_opt(ParseTreePlainOpt,
     inst_eqv_map::in, inst_eqv_map::out) is det.
 
 build_eqv_maps_in_parse_tree_trans_opt(_ParseTreePlainOpt,
-        !TypeEqvMap, !InstEqvMap).
+        TypeEqvMap, TypeEqvMap, InstEqvMap, InstEqvMap).
     % .trans_opt files can contain neither type nor inst definitions.
 
 %---------------------%
@@ -953,7 +953,8 @@ replace_in_parse_tree_plain_opt(ModuleName, TypeEqvMap, InstEqvMap,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 replace_in_parse_tree_trans_opt(_ModuleName, _TypeEqvMap, _InstEqvMap,
-        !ParseTreeTransOpt, !RecompInfo, !UsedModules, !Specs).
+        ParseTreeTransOpt, ParseTreeTransOpt, RecompInfo, RecompInfo,
+        UsedModules, UsedModules, Specs, Specs).
     % No component that may appear in a parse_tree_trans_opt
     % needs any expansions.
 
@@ -1519,7 +1520,7 @@ replace_in_decl_pragma_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         DeclPragma0 = decl_pragma_type_spec_constr(TypeSpecConstr0),
         replace_in_decl_pragma_type_spec_constr(ModuleName, MaybeRecord,
             TypeEqvMap, InstEqvMap, TypeSpecConstr0, TypeSpecConstr,
-            !RecompInfo, !UsedModules, Specs),
+            !UsedModules, Specs),
         DeclPragma = decl_pragma_type_spec_constr(TypeSpecConstr)
     ;
         DeclPragma0 = decl_pragma_type_spec(TypeSpec0),
@@ -1545,12 +1546,11 @@ replace_in_decl_pragma_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
     decl_pragma_type_spec_constr_info::in,
         decl_pragma_type_spec_constr_info::out,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
     used_modules::in, used_modules::out, list(error_spec)::out) is det.
 
 replace_in_decl_pragma_type_spec_constr(ModuleName, MaybeRecord,
         TypeEqvMap, _InstEqvMap, TypeSpecInfoConstr0, TypeSpecInfoConstr,
-        !RecompInfo, !UsedModules, []) :-
+        !UsedModules, []) :-
     TypeSpecInfoConstr0 = decl_pragma_type_spec_constr_info(PragmaModuleName,
         OoMConstraints0, ApplyToSupers, OoMSubsts0, TVarSet0, ItemIds0,
         Context, SeqNum),
@@ -1598,11 +1598,13 @@ replace_in_decl_pragma_type_spec_constr(ModuleName, MaybeRecord,
 
 replace_in_decl_pragma_type_spec(ModuleName, MaybeRecord,
         TypeEqvMap, _InstEqvMap, TypeSpecInfo0, TypeSpecInfo,
-        !RecompInfo, !UsedModules, []) :-
+        RecompInfo, RecompInfo, !UsedModules, []) :-
+    % Returning RecompInfo unchanged is required by the interface
+    % of replace_in_list.
     TypeSpecInfo0 = decl_pragma_type_spec_info(PFUMM, PredName, NewName,
         Subst0, TVarSet0, ItemIds0, Context, SeqNum),
     ( if
-        ( !.RecompInfo = no
+        ( RecompInfo = no
         ; PredName = qualified(ModuleName, _)
         )
     then
@@ -1700,57 +1702,41 @@ replace_in_mutable_defn(MaybeRecord, TypeEqvMap, InstEqvMap, Info0, Info,
 
 :- pred replace_in_event_specs(type_eqv_map::in,
     assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    used_modules::in, used_modules::out) is det.
 
-replace_in_event_specs(_, [], [], !RecompInfo, !UsedModules, !Specs).
+replace_in_event_specs(_, [], [], !UsedModules).
 replace_in_event_specs(TypeEqvMap,
         [Name - EventSpec0 | NameSpecs0], [Name - EventSpec | NameSpecs],
-        !RecompInfo, !UsedModules, !Specs) :-
-    replace_in_event_spec(TypeEqvMap, EventSpec0, EventSpec,
-        !RecompInfo, !UsedModules, !Specs),
-    replace_in_event_specs(TypeEqvMap, NameSpecs0, NameSpecs,
-        !RecompInfo, !UsedModules, !Specs).
+        !UsedModules) :-
+    replace_in_event_spec(TypeEqvMap, EventSpec0, EventSpec, !UsedModules),
+    replace_in_event_specs(TypeEqvMap, NameSpecs0, NameSpecs, !UsedModules).
 
 :- pred replace_in_event_spec(type_eqv_map::in,
     event_spec::in, event_spec::out,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    used_modules::in, used_modules::out) is det.
 
-replace_in_event_spec(TypeEqvMap, EventSpec0, EventSpec,
-        !RecompInfo, !UsedModules, !Specs) :-
+replace_in_event_spec(TypeEqvMap, EventSpec0, EventSpec, !UsedModules) :-
     EventSpec0 = event_spec(EventNumber, EventName, EventLineNumber,
         Attrs0, SyntAttrNumOrder),
-    replace_in_event_attrs(TypeEqvMap, Attrs0, Attrs,
-        !RecompInfo, !UsedModules, !Specs),
+    replace_in_event_attrs(TypeEqvMap, Attrs0, Attrs, !UsedModules),
     EventSpec = event_spec(EventNumber, EventName, EventLineNumber,
         Attrs, SyntAttrNumOrder).
 
 :- pred replace_in_event_attrs(type_eqv_map::in,
     list(event_attribute)::in, list(event_attribute)::out,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    used_modules::in, used_modules::out) is det.
 
-replace_in_event_attrs(_TypeEqvMap, [], [],
-        !RecompInfo, !UsedModules, !Specs).
+replace_in_event_attrs(_TypeEqvMap, [], [], !UsedModules).
 replace_in_event_attrs(TypeEqvMap, [Attr0 | Attrs0], [Attr | Attrs],
-        !RecompInfo, !UsedModules, !Specs) :-
-    replace_in_event_attr(TypeEqvMap, Attr0, Attr,
-        !RecompInfo, !UsedModules, !Specs),
-    replace_in_event_attrs(TypeEqvMap, Attrs0, Attrs,
-        !RecompInfo, !UsedModules, !Specs).
+        !UsedModules) :-
+    replace_in_event_attr(TypeEqvMap, Attr0, Attr, !UsedModules),
+    replace_in_event_attrs(TypeEqvMap, Attrs0, Attrs, !UsedModules).
 
 :- pred replace_in_event_attr(type_eqv_map::in,
     event_attribute::in, event_attribute::out,
-    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
-    used_modules::in, used_modules::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    used_modules::in, used_modules::out) is det.
 
-replace_in_event_attr(TypeEqvMap, Attr0, Attr,
-        !RecompInfo, !UsedModules, !Specs) :-
+replace_in_event_attr(TypeEqvMap, Attr0, Attr, !UsedModules) :-
     % We construct the attributes' modes ourselves in event_spec.m; they should
     % not contain type names.
     Attr0 = event_attribute(AttrNum, AttrName, AttrType0, AttrMode,

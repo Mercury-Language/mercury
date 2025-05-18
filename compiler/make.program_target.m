@@ -342,8 +342,8 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
         then
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             setup_checking_for_interrupt(Cookie, !IO),
-            open_module_error_stream(ProgressStream, Globals, MainModuleName,
-                MaybeErrorStream, !Info, !IO),
+            open_module_error_stream(ProgressStream, Globals, !.Info,
+                MainModuleName, MaybeErrorStream, !IO),
             (
                 MaybeErrorStream = es_error_already_reported,
                 Succeeded0 = did_not_succeed
@@ -924,25 +924,22 @@ build_java_files(ProgressStream, Globals, MainModuleName, ModuleNames,
             ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)),
         ModuleNames, JavaFiles, _JavaFilesProposed, !IO),
     % We redirect errors to a file named after the main module.
-    open_module_error_stream(ProgressStream, Globals, MainModuleName,
-        MaybeErrorStream, !Info, !IO),
+    open_module_error_stream(ProgressStream, Globals, !.Info, MainModuleName,
+        MaybeErrorStream, !IO),
     (
         MaybeErrorStream = es_error_already_reported,
         Succeeded = did_not_succeed
     ;
         MaybeErrorStream = es_ok(MESI, ErrorStream),
-        build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded,
-            !Info, !IO),
+        build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded, !IO),
         close_module_error_stream_handle_errors(ProgressStream, Globals,
             MainModuleName, MESI, ErrorStream, !Info, !IO)
     ).
 
 :- pred build_java_files_2(io.text_output_stream::in, globals::in,
-    list(string)::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    list(string)::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded,
-        !Info, !IO) :-
+build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded, !IO) :-
     list.det_head_tail(JavaFiles, HeadJavaFile, TailJavaFiles),
     call_in_forked_process(
         compile_java_files(Globals, ProgressStream,
@@ -1361,7 +1358,9 @@ create_analysis_cache_dir(ProgressStream, Globals, Succeeded, CacheDir, !IO) :-
 :- pred remove_cache_dir(io.text_output_stream::in, globals::in, string::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-remove_cache_dir(ProgressStream, Globals, CacheDir, !Info, !IO) :-
+remove_cache_dir(ProgressStream, Globals, CacheDir, Info, Info, !IO) :-
+    % The unnecessary Info arguments are required by the (current)
+    % interface of teardown_checking_for_interrupt.
     verbose_make_two_part_msg(Globals, "Removing", CacheDir, RemovingMsg),
     maybe_write_msg(ProgressStream, RemovingMsg, !IO),
     io.file.remove_file_recursively(CacheDir, _, !IO).

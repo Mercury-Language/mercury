@@ -634,7 +634,7 @@ get_plain_trans_opt_deps(Globals, LookForSrc, [ModuleName | ModuleNames],
         ExtOpt =
             ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
         make_module_file_name(Globals, $pred, ExtOpt,
-            ModuleName, OptName, !Cache, !IO),
+            ModuleName, OptName, !Cache),
         SearchAuthDirsPlainOpt =
             get_search_auth_intermod_dirs(ime_opt_plain, Globals),
         search_for_file_returning_dir(SearchAuthDirsPlainOpt,
@@ -649,7 +649,7 @@ get_plain_trans_opt_deps(Globals, LookForSrc, [ModuleName | ModuleNames],
         ExtTransOpt =
             ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_trans),
         make_module_file_name(Globals, $pred, ExtTransOpt,
-            ModuleName, TransOptName, !Cache, !IO),
+            ModuleName, TransOptName, !Cache),
         SearchAuthDirsTransOpt =
             get_search_auth_intermod_dirs(ime_opt_trans, Globals),
         search_for_file_returning_dir(SearchAuthDirsTransOpt,

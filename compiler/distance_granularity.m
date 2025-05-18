@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -404,7 +404,7 @@ apply_dg_to_goal(!Goal, CallerPredId, CallerProcId, PredIdSpecialized,
     maybe(prog_var)::in, maybe(prog_var)::out, bool::out) is det.
 
 apply_dg_to_plain_call(!GoalExpr, CallerPredId, PredIdSpecialized,
-        SymNameSpecialized, CallerProcId, !ProcInfo, !ModuleInfo,
+        SymNameSpecialized, CallerProcId, !ProcInfo, ModuleInfo, ModuleInfo,
         IsInParallelConj, !MaybeGranularityVar,
         IsRecursiveCallInParallelConj) :-
     !.GoalExpr = plain_call(CalleePredId, CalleeProcId, CallArgs, CallBuiltin,

@@ -460,8 +460,8 @@ det_disj_to_ite([Disjunct | Disjuncts], GoalInfo, Goal) :-
 %---------------------------------------------------------------------------%
 
 simplify_goal_atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
-        MainGoal0, OrElseGoals0, OrElseInners, GoalExpr, !GoalInfo,
-        _NestedContext0, _InstMap0, Common0, Common0, !Info) :-
+        MainGoal0, OrElseGoals0, OrElseInners, GoalExpr, GoalInfo, GoalInfo,
+        _NestedContext0, _InstMap0, Common0, Common0, Info, Info) :-
     % XXX STM: At the moment we do not simplify the inner goals as there is
     % a chance that the outer and inner variables will change which will
     % cause problems during expansion of STM constructs. This will be

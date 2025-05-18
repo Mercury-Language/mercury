@@ -566,15 +566,15 @@ deforest_conj([Goal0 - MaybeBranchInfo | Goals0], NonLocals,
             DeforestInfo)
     then
         handle_deforestation(NonLocals, DeforestInfo,
-            RevGoals0, RevGoals1, Goals1, Goals2, Optimized, !PDInfo),
+            RevGoals0, Goals1, Goals2, Optimized, !PDInfo),
         (
             Optimized = yes,
-            deforest_conj(Goals2, NonLocals, RevGoals1, RevGoals, !PDInfo)
+            deforest_conj(Goals2, NonLocals, RevGoals0, RevGoals, !PDInfo)
         ;
             Optimized = no,
             pd_info_update_goal(Goal0, !PDInfo),
-            RevGoals2 = [Goal0 | RevGoals0],
-            deforest_conj(Goals0, NonLocals, RevGoals2, RevGoals, !PDInfo)
+            RevGoals1 = [Goal0 | RevGoals0],
+            deforest_conj(Goals0, NonLocals, RevGoals1, RevGoals, !PDInfo)
         )
     else
         pd_info_update_goal(Goal0, !PDInfo),
@@ -663,11 +663,11 @@ potential_deforestation(Info1, Info2, DeforestBranches) :-
     % for deforestation and attempt the optimization.
     %
 :- pred handle_deforestation(set_of_progvar::in, deforest_info::in,
-    list(hlds_goal)::in, list(hlds_goal)::out,
+    list(hlds_goal)::in,
     annotated_conj::in, annotated_conj::out, bool::out,
     pd_info::in, pd_info::out) is det.
 
-handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
+handle_deforestation(NonLocals, DeforestInfo0, RevBeforeGoals0, !AfterGoals,
         Optimized, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     pd_info_get_instmap(!.PDInfo, InstMap0),
@@ -682,7 +682,7 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
     reorder_conj(DeforestInfo0, DeforestInfo,
         BeforeIrrelevant, AfterIrrelevant, !.PDInfo),
 
-    get_sub_conj_nonlocals(NonLocals, DeforestInfo, !.RevBeforeGoals,
+    get_sub_conj_nonlocals(NonLocals, DeforestInfo, RevBeforeGoals0,
         BeforeIrrelevant, AfterIrrelevant, !.AfterGoals, ConjNonLocals),
 
     % Update the instmap.
@@ -696,7 +696,7 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
     DeforestInfo = deforest_info(EarlierGoal, _, BetweenGoals,
         LaterGoal, _, DeforestBranches),
 
-    should_try_deforestation(DeforestInfo, ShouldOptimize, !PDInfo),
+    should_try_deforestation(DeforestInfo, !.PDInfo, ShouldOptimize),
     (
         ShouldOptimize = no,
         Optimized0 = no,
@@ -849,13 +849,13 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
 
     % Check whether deforestation is legal and worthwhile.
     %
-:- pred should_try_deforestation(deforest_info::in, bool::out,
-    pd_info::in, pd_info::out) is det.
+:- pred should_try_deforestation(deforest_info::in, pd_info::in,
+    bool::out) is det.
 
-should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo) :-
+should_try_deforestation(DeforestInfo, PDInfo, ShouldTry) :-
     DeforestInfo = deforest_info(EarlierGoal, EarlierBranchInfo,
         BetweenGoals, LaterGoal, _, _),
-    pd_info_get_useless_versions(!.PDInfo, UselessVersions),
+    pd_info_get_useless_versions(PDInfo, UselessVersions),
     ( if
         EarlierGoal = hlds_goal(plain_call(PredId1, ProcId1, _, _, _, _), _),
         LaterGoal = hlds_goal(plain_call(PredId2, ProcId2, _, _, _, _), _),
@@ -863,7 +863,7 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo) :-
             UselessVersions)
     then
         trace [compile_time(flag("debug_deforest")), io(!IO)] (
-            pd_debug_message(!.PDInfo, "should_try_deforestation",
+            pd_debug_message(PDInfo, "should_try_deforestation",
                 "version tried before, not worthwhile\n", [], !IO)
         ),
         ShouldTry = no
@@ -882,7 +882,7 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo) :-
         set_of_var.is_non_empty(UsedOpaqueVars)
     then
         trace [compile_time(flag("debug_deforest")), io(!IO)] (
-            pd_debug_message(!.PDInfo, "should_try_deforestation",
+            pd_debug_message(PDInfo, "should_try_deforestation",
                 "later goals depend on opaque vars\n", [], !IO)
         ),
         ShouldTry = no

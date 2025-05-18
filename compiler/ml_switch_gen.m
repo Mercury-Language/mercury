@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2020, 2022-2024 The Mercury team.
+% Copyright (C) 2013-2020, 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -490,7 +490,8 @@ ml_switch_generate_if_then_else_chain_ites(Var, TaggedCase, TaggedCases,
 
             % Generate the test for checking whether we are in the first
             % tagged case.
-            ml_switch_generate_if_then_else_cond(Var, TaggedCase, Cond, !Info),
+            ml_switch_generate_if_then_else_cond(!.Info, Var, TaggedCase,
+                Cond),
 
             % Generate code for the first tagged case.
             ml_gen_goal_as_branch_block(CodeModel, Goal, GoalBlock,
@@ -510,7 +511,7 @@ ml_switch_generate_if_then_else_chain_ites(Var, TaggedCase, TaggedCases,
 
         % Generate the test for checking whether we are in the first
         % tagged case.
-        ml_switch_generate_if_then_else_cond(Var, TaggedCase, Cond, !Info),
+        ml_switch_generate_if_then_else_cond(!.Info, Var, TaggedCase, Cond),
 
         % Generate code for the first tagged case.
         ml_gen_goal_as_branch_block(CodeModel, Goal, GoalBlock,
@@ -527,13 +528,13 @@ ml_switch_generate_if_then_else_chain_ites(Var, TaggedCase, TaggedCases,
         Stmt = ml_stmt_if_then_else(Cond, GoalBlock, yes(LaterBlock), Context)
     ).
 
-:- pred ml_switch_generate_if_then_else_cond(prog_var::in, tagged_case::in,
-    mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_switch_generate_if_then_else_cond(ml_gen_info::in, prog_var::in,
+    tagged_case::in, mlds_rval::out) is det.
 
-ml_switch_generate_if_then_else_cond(Var, TaggedCase, CondRval, !Info) :-
+ml_switch_generate_if_then_else_cond(Info, Var, TaggedCase, CondRval) :-
     TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
-    ml_generate_test_var_has_one_tagged_cons_id(Var,
-        MainTaggedConsId, OtherTaggedConsIds, CondRval, !Info).
+    ml_generate_test_var_has_one_tagged_cons_id(Info, Var,
+        MainTaggedConsId, OtherTaggedConsIds, CondRval).
 
 %---------------------------------------------------------------------------%
 

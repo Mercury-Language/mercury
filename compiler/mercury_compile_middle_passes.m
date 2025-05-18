@@ -202,7 +202,7 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
     % before optimizations such as higher-order specialization and inlining,
     % which can make the original code for a procedure dead by
     % inlining/specializing all uses of it.
-    maybe_warn_dead_procs(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
+    maybe_warn_dead_procs(ProgressStream, Verbose, Stats, !.HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 130, "warn_dead_procs",
         !DumpInfo, !IO),
 
@@ -865,11 +865,11 @@ maybe_type_ctor_infos(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pred maybe_warn_dead_procs(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    module_info::in, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
-maybe_warn_dead_procs(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
+maybe_warn_dead_procs(ProgressStream, Verbose, Stats, HLDS, !Specs, !IO) :-
+    module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, warn_dead_procs, WarnDeadProcs),
     globals.lookup_bool_option(Globals, warn_dead_preds, WarnDeadPreds),
     ( if
@@ -887,7 +887,7 @@ maybe_warn_dead_procs(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
                 "% Warning about dead predicates...\n", !IO)
         ),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        dead_proc_warn(!.HLDS, DeadSpecs),
+        dead_proc_warn(HLDS, DeadSpecs),
         !:Specs = DeadSpecs ++ !.Specs,
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
@@ -908,7 +908,7 @@ maybe_untuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         Untuple = untuple,
         maybe_write_string(ProgressStream, Verbose, "% Untupling...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        untuple_arguments(!HLDS, !IO),
+        untuple_arguments(!HLDS),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_simplify(ProgressStream, maybe.no, bool.no,
             simplify_pass_post_untuple, Verbose, Stats, !HLDS,
@@ -994,7 +994,7 @@ maybe_ssdb(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
             maybe_write_string(ProgressStream, Verbose,
                 "% Apply source to source debugging transformation ...\n",
                 !IO),
-            ssdebug_transform_module(SSTraceLevel, !HLDS, !IO),
+            ssdebug_transform_module(SSTraceLevel, !HLDS),
             maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
             maybe_report_stats(ProgressStream, Stats, !IO)
         )

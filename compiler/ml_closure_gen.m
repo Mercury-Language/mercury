@@ -236,7 +236,7 @@ ml_gen_closure_layout(PredId, ProcId, Context,
     ml_global_data::in, ml_global_data::out) is det.
 
 ml_gen_closure_proc_id(_ModuleInfo, _Context, InitProcId, ProcIdType,
-        !GlobalData) :-
+        GlobalData, GlobalData) :-
     % XXX currently we don't fill in the ProcId field!
     InitProcId = init_obj(ml_const(mlconst_null(ProcIdType))),
     ProcIdType = mlds_generic_type.
@@ -952,8 +952,8 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
     WrapperFuncBody = ml_gen_block(LocalVarDefns, FuncDefns, Stmts, Context),
     ml_gen_new_func_label(yes(WrapperParams), WrapperFuncName,
         WrapperFuncRval, !Info),
-    ml_gen_wrapper_func(WrapperFuncName, WrapperParams, Context,
-        WrapperFuncBody, WrapperFuncDefn, !Info),
+    ml_gen_wrapper_func(!.Info, WrapperFuncName, WrapperParams, Context,
+        WrapperFuncBody, WrapperFuncDefn),
     WrapperFuncType = mlds_func_type(WrapperParams),
     ml_gen_info_add_closure_wrapper_defn(WrapperFuncDefn, !Info).
 
@@ -1013,14 +1013,13 @@ gen_closure_gc_statement(ClosureName, ClosureDeclType,
     ml_gen_gc_statement_poly(ClosureName, ClosureDeclType, ClosureActualType,
         Context, ClosureGCStmt, !Info).
 
-:- pred ml_gen_wrapper_func(mlds_maybe_aux_func_id::in, mlds_func_params::in,
-    prog_context::in, mlds_stmt::in, mlds_function_defn::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_gen_wrapper_func(ml_gen_info::in, mlds_maybe_aux_func_id::in,
+    mlds_func_params::in, prog_context::in, mlds_stmt::in,
+    mlds_function_defn::out) is det.
 
-ml_gen_wrapper_func(MaybeAux, FuncParams, Context, Stmt, FunctionDefn,
-        !Info) :-
+ml_gen_wrapper_func(Info, MaybeAux, FuncParams, Context, Stmt, FunctionDefn) :-
     % XXX MLDS_DEFN: pass the needed flags to ml_gen_label_func
-    ml_gen_label_func(!.Info, MaybeAux, mlds_func_source_wrapper, FuncParams,
+    ml_gen_label_func(Info, MaybeAux, mlds_func_source_wrapper, FuncParams,
         Context, Stmt, FunctionDefn0),
     FunctionDefn0 = mlds_function_defn(Name, Ctxt, _DeclFlags0,
         MaybePredProcId, DefnFuncParams, Body, EnvVarNames, TailRec),

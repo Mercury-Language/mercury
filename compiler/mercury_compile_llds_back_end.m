@@ -740,8 +740,8 @@ llds_output_pass(ProgressStream, OpModeCodeGen, HLDS,
         list.chunk(Procs, ProcsPerFunc, ChunkedProcs)
     ),
     proc_chunks_to_c_modules(CModuleName, ChunkedProcs, ChunkedModules),
-    list.map_foldl(make_foreign_import_header_code(Globals), C_Includes,
-        C_IncludeHeaderCodes, !IO),
+    list.map(make_foreign_import_header_code(Globals),
+        C_Includes, C_IncludeHeaderCodes),
 
     make_decl_guards(ModuleSymName, DeclGuardStart, DeclGuardEnd),
     % We don't want to put C_LocalHeaderCodes between DeclGuardStart and
@@ -883,9 +883,9 @@ make_decl_guards(ModuleName, StartGuard, EndGuard) :-
         floi_literal(End), dummy_context).
 
 :- pred make_foreign_import_header_code(globals::in, fim_spec::in,
-    foreign_decl_code::out, io::di, io::uo) is det.
+    foreign_decl_code::out) is det.
 
-make_foreign_import_header_code(Globals, FIMSpec, Include, !IO) :-
+make_foreign_import_header_code(Globals, FIMSpec, Include) :-
     FIMSpec = fim_spec(Lang, ModuleName),
     (
         Lang = lang_c,

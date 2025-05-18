@@ -307,7 +307,7 @@ classify_int_imp_use_modules(ModuleName, IntUseContextsMap, ImpUseContextsMap,
         ImpUseContextsMap, ImpUseMap, !Specs),
 
     map.init(!:UseMap),
-    map.foldl2(record_int_use_only, IntUseMap, !UseMap, !Specs),
+    map.foldl(record_int_use_only, IntUseMap, !UseMap),
     map.foldl2(record_imp_use_only, ImpUseMap, !UseMap, !Specs),
 
     error_if_use_for_self(ModuleName, !UseMap, !Specs),
@@ -511,10 +511,9 @@ record_imp_use(ModuleName, Context, !ImportUseMap, !Specs) :-
 %---------------------%
 
 :- pred record_int_use_only(module_name::in, prog_context::in,
-    section_use_map::in, section_use_map::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    section_use_map::in, section_use_map::out) is det.
 
-record_int_use_only(ModuleName, Context, !UseMap, !Specs) :-
+record_int_use_only(ModuleName, Context, !UseMap) :-
     ( if map.search(!.UseMap, ModuleName, OldEntry) then
         ( OldEntry = int_use(_)
         ; OldEntry = imp_use(_)

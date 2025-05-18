@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2015-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -471,9 +471,11 @@ apply_trans_opt_deps_spec_in_scc(SCC, !EdgesToRemove, !Graph) :-
     trans_opt_deps_spec::in, trans_opt_deps_spec::out,
     digraph(module_name)::in, digraph(module_name)::out) is det.
 
-apply_trans_opt_deps_spec_for_module(SourceKey, !EdgesToRemove, !Graph) :-
+apply_trans_opt_deps_spec_for_module(SourceKey,
+        EdgesToRemove, EdgesToRemove, !Graph) :-
+    % XXX This predicate does not update EdgesToRemove, Should it do so?
     digraph.lookup_vertex(!.Graph, SourceKey, SourceName),
-    ( if map.search(!.EdgesToRemove, SourceName, AllowOrDisallow) then
+    ( if map.search(EdgesToRemove, SourceName, AllowOrDisallow) then
         digraph.lookup_from(!.Graph, SourceKey, TargetSet),
         (
             AllowOrDisallow = module_allow_deps(_Context, AllowList),

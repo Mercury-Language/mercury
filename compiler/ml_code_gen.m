@@ -1357,7 +1357,7 @@ ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel, Context,
             %   <do Goal>
             %   SUCCEED()
 
-            ml_gen_call_current_success_cont(Context, CallCont, !Info),
+            ml_gen_call_current_success_cont(!.Info, Context, CallCont),
             !:Stmts = !.Stmts ++ [CallCont]
         ;
             OuterCodeModel = model_non,
@@ -1372,7 +1372,7 @@ ml_gen_maybe_convert_goal_code_model(OuterCodeModel, InnerCodeModel, Context,
             %   if (succeeded) SUCCEED()
 
             ml_gen_test_success(Succeeded, !Info),
-            ml_gen_call_current_success_cont(Context, CallCont, !Info),
+            ml_gen_call_current_success_cont(!.Info, Context, CallCont),
             IfStmt = ml_stmt_if_then_else(Succeeded, CallCont, no, Context),
             !:Stmts = !.Stmts ++ [IfStmt]
         )

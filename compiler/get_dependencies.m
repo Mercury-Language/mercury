@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2015-2024 The Mercury team.
+% Copyright (C) 2015-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -529,7 +529,7 @@ acc_implicit_avail_needs_in_parse_tree_plain_opt(ParseTreePlainOpt,
     implicit_avail_needs::in, implicit_avail_needs::out) is det.
 
 acc_implicit_avail_needs_in_parse_tree_trans_opt(ParseTreeTransOpt,
-        !ImplicitAvailNeeds) :-
+        ImplicitAvailNeeds, ImplicitAvailNeeds) :-
     ParseTreeTransOpt = parse_tree_trans_opt(_ModuleName, _ModuleNameContext,
         _TermInfos, _Term2Infos, _Exceptions, _Trailings, _MMTablings,
         _Sharings, _Reuses).

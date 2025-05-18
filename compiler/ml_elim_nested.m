@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999-2011 The University of Melbourne.
-% Copyright (C) 2014-2019, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2019, 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2364,8 +2364,8 @@ add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info) :-
         Stmt = ml_stmt_switch(Type, Val, Range, Cases, Default, Context)
     ;
         Stmt0 = ml_stmt_call(_Sig, _Func, _Args, RetLvals, CallKind, Context),
-        add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context,
-            Stmt, !Info)
+        add_unchain_stack_to_call(!.Info, Stmt0, RetLvals, CallKind, Context,
+            Stmt)
     ;
         Stmt0 = ml_stmt_return(_Rvals, Context),
         Stmt = prepend_unchain_frame(Stmt0, Context, !.Info)
@@ -2384,16 +2384,16 @@ add_unchain_stack_to_stmt(Action, Stmt0, Stmt, !Info) :-
         Stmt = Stmt0
     ).
 
-:- pred add_unchain_stack_to_call(mlds_stmt::in, list(mlds_lval)::in,
-    ml_call_kind::in, prog_context::in, mlds_stmt::out,
-    elim_info::in, elim_info::out) is det.
+:- pred add_unchain_stack_to_call(elim_info::in, mlds_stmt::in,
+    list(mlds_lval)::in, ml_call_kind::in, prog_context::in,
+    mlds_stmt::out) is det.
 
-add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context, Stmt, !Info) :-
+add_unchain_stack_to_call(Info, Stmt0, RetLvals, CallKind, Context, Stmt) :-
     (
         CallKind = no_return_call,
         % For no-return calls, we just unchain the stack
         % frame before the call.
-        Stmt = prepend_unchain_frame(Stmt0, Context, !.Info)
+        Stmt = prepend_unchain_frame(Stmt0, Context, Info)
     ;
         CallKind = tail_call,
         % For tail calls, we unchain the stack frame before the call,
@@ -2401,7 +2401,7 @@ add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context, Stmt, !Info) :-
         % The return statement is needed ensure that the code doesn't
         % fall through (past the tail call) and then try to unchain
         % the already-unchained stack frame.
-        UnchainFrame = ml_gen_unchain_frame(Context, !.Info),
+        UnchainFrame = ml_gen_unchain_frame(Context, Info),
         RetRvals = list.map(func(Rval) = ml_lval(Rval), RetLvals),
         RetStmt = ml_stmt_return(RetRvals, Context),
         Stmt = ml_stmt_block([], [], [UnchainFrame, Stmt0, RetStmt], Context)

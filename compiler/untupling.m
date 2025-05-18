@@ -104,10 +104,7 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 
-:- import_module io.
-
-:- pred untuple_arguments(module_info::in, module_info::out, io::di, io::uo)
-    is det.
+:- pred untuple_arguments(module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -166,7 +163,7 @@
                 hlds_goal
             ).
 
-untuple_arguments(!ModuleInfo, !IO) :-
+untuple_arguments(!ModuleInfo) :-
     expand_args_in_module(!ModuleInfo, TransformMap),
     fix_calls_to_expanded_procs(TransformMap, !ModuleInfo).
 

@@ -184,19 +184,18 @@
 generate_parse_tree_int3(Globals, AddToHptm, BurdenedModule,
         GenerateResult, !HaveParseTreeMaps, !IO) :-
     BurdenedModule = burdened_module(_Baggage, ParseTreeModuleSrc),
-    create_parse_tree_int3(ParseTreeModuleSrc, UnQualParseTreeInt3,
-        [], CreateSpecs0),
+    create_parse_tree_int3(ParseTreeModuleSrc, UnQualParseTreeInt3),
     module_qualify_parse_tree_int3(Globals, UnQualParseTreeInt3, ParseTreeInt3,
         [], _QualSpecs),
     % We ignore _QualSpecs. The original comment about this was:
     %   Any Specs this can generate would be better reported
     %   when the module is being compiled to target language code.
-    % And create_parse_tree_int3 always returns CreateSpecs0 = [].
+    % And create_parse_tree_int3 cannot return any error_specs either.
     % This means that EffectivelyErrors is guaranteed to be "no".
     % The error handling code here is therefore has no job to do.
     % It is here it *may* get a job later, if we ever decide
     % we want to look for and report error when creating .int3 files.
-    Specs0 = CreateSpecs0,
+    Specs0 = [],
     filter_interface_generation_specs(Globals, Specs0, Specs1),
     EffectivelyErrors =
         contains_errors_or_warnings_treated_as_errors(Globals, Specs1),
@@ -225,10 +224,10 @@ generate_parse_tree_int3(Globals, AddToHptm, BurdenedModule,
     % in the current module and writes out the .int3 file.
     % XXX document me better
     %
-:- pred create_parse_tree_int3(parse_tree_module_src::in, parse_tree_int3::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred create_parse_tree_int3(parse_tree_module_src::in,
+    parse_tree_int3::out) is det.
 
-create_parse_tree_int3(ParseTreeModuleSrc, ParseTreeInt3, !Specs) :-
+create_parse_tree_int3(ParseTreeModuleSrc, ParseTreeInt3) :-
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         OrigInclMap, OrigImportUseMap,
         _IntFIMSpecMap, _ImpFIMSpecMap, _IntSelfFIMLangs, _ImpSelfFIMLangs,
@@ -593,10 +592,7 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
         (
             EffectiveGetQualSpecs = [],
             % Construct the `.int0' file.
-            create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0,
-                [], GenerateSpecs),
-            filter_interface_generation_specs(Globals, GenerateSpecs,
-                FilteredGenerateSpecs),
+            create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0),
             ExtraSuffix = "",
             construct_int_file_name(Globals, ModuleName, ifk_int0, ExtraSuffix,
                 FileName, !IO),
@@ -610,8 +606,7 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
                 !HaveParseTreeMaps ^ hptm_int0 := Int0Map
             ),
             MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
-            maybe_add_delayed_messages(AugMakeIntUnit,
-                FilteredGenerateSpecs, Specs),
+            maybe_add_delayed_messages(AugMakeIntUnit, [], Specs),
             GenerateResult = gpti0_ok(ParseTreeInt0, MaybeTimestamp,
                 FileName, Specs)
         ;
@@ -698,10 +693,10 @@ generate_pre_grab_pre_qual_interface_for_int0(ParseTreeModuleSrc,
     % makes available some not-generally-available items to the other modules
     % nested inside it.
     %
-:- pred create_parse_tree_int0(aug_make_int_unit::in, parse_tree_int0::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred create_parse_tree_int0(aug_make_int_unit::in,
+    parse_tree_int0::out) is det.
 
-create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
+create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0) :-
     AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, _, _, _, _,
         ModuleItemVersionNumbersMap),
 
@@ -2032,7 +2027,7 @@ hide_type_ctor_checked_defn_imp_details_for_int1(BothTypesMap,
     (
         TypeCtorCheckedDefn0 = checked_defn_solver(_, _),
         hide_type_ctor_checked_defn_solver_imp_details_for_int1(TypeCtor,
-            TypeCtorCheckedDefn0, !TypeCtorCheckedMap, !ImpImplicitFIMLangs)
+            TypeCtorCheckedDefn0, !TypeCtorCheckedMap)
     ;
         TypeCtorCheckedDefn0 = checked_defn_std(_, _),
         hide_type_ctor_checked_defn_std_imp_details_for_int1(BothTypesMap,
@@ -2047,11 +2042,10 @@ hide_type_ctor_checked_defn_imp_details_for_int1(BothTypesMap,
 
 :- pred hide_type_ctor_checked_defn_solver_imp_details_for_int1(type_ctor::in,
     type_ctor_checked_defn::in(type_ctor_checked_defn_solver),
-    type_ctor_checked_map::in, type_ctor_checked_map::out,
-    set(foreign_language)::in, set(foreign_language)::out) is det.
+    type_ctor_checked_map::in, type_ctor_checked_map::out) is det.
 
 hide_type_ctor_checked_defn_solver_imp_details_for_int1(TypeCtor,
-        TypeCtorCheckedDefn0, !TypeCtorCheckedMap, !ImpImplicitFIMLangs) :-
+        TypeCtorCheckedDefn0, !TypeCtorCheckedMap) :-
     TypeCtorCheckedDefn0 = checked_defn_solver(SolverTypeDefn0, _SrcDefns0),
     % Leave everything in interface section as is.
     % For items in implementation section:

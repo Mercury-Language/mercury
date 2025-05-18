@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 2005-2006 The University of Melbourne.
-# Copyright (C) 2016, 2021, 2023 The Mercury team.
+# Copyright (C) 2016, 2021, 2023, 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -14,3 +14,5 @@ MCFLAGS-mer_mdbcomp     += --no-warn-nothing-exported --no-warn-unused-imports
 # Operations on symnames don't have deep enough recursion to pay back
 # the overheads of duplicating the recursive procedure.
 MCFLAGS-mdbcomp.sym_name    += --no-optimize-constructor-last-call
+
+MCFLAGS-mdbcomp.feedback    += --no-warn-unneeded-initial-statevars

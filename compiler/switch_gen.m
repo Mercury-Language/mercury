@@ -198,7 +198,7 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
 generate_int_switch(ModuleInfo, Globals,
         SwitchVarRval, SwitchVarType, SwitchVarName,
         TaggedCases, MaybeIntSwitchInfo, CodeModel, CanFail, GoalInfo,
-        EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
+        EndLabel, MaybeEnd, SwitchCode, !CI, CLD) :-
     num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
     ( if
         MaybeIntSwitchInfo = int_switch(IntSwitchInfo),
@@ -229,7 +229,7 @@ generate_int_switch(ModuleInfo, Globals,
             ReqDensity, NeedBitVecCheck, NeedRangeCheck,
             FirstVal, LastVal),
         is_lookup_switch(get_int_tag, FilteredTaggedCases, GoalInfo,
-            !.CI, !.CLD, MaybeLookupSwitchInfo),
+            !.CI, CLD, MaybeLookupSwitchInfo),
         MaybeLookupSwitchInfo = yes(LookupSwitchInfo)
     then
         % We update MaybeEnd1 to MaybeEnd to account for the possible
@@ -251,11 +251,11 @@ generate_int_switch(ModuleInfo, Globals,
     then
         generate_dense_switch(TaggedCases, SwitchVarRval,
             SwitchVarName, CodeModel, GoalInfo, DenseSwitchInfo,
-            EndLabel, no, MaybeEnd, SwitchCode, !CI, !.CLD)
+            EndLabel, no, MaybeEnd, SwitchCode, !CI, CLD)
     else
         order_and_generate_cases(SwitchVarRval, SwitchVarType, SwitchVarName,
             TaggedCases, CodeModel, CanFail, GoalInfo,
-            EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+            EndLabel, MaybeEnd, SwitchCode, !CI, CLD)
     ).
 
 :- pred generate_string_switch(globals::in, rval::in, mer_type::in, string::in,
@@ -265,7 +265,7 @@ generate_int_switch(ModuleInfo, Globals,
 
 generate_string_switch(Globals, SwitchVarRval, SwitchVarType, SwitchVarName,
         TaggedCases, CodeModel, CanFail, GoalInfo,
-        EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
+        EndLabel, MaybeEnd, SwitchCode, !CI, CLD) :-
     filter_out_failing_cases_if_needed(CodeModel,
         TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
     num_cons_ids_in_tagged_cases(FilteredTaggedCases, NumConsIds, NumArms),
@@ -275,12 +275,12 @@ generate_string_switch(Globals, SwitchVarRval, SwitchVarType, SwitchVarName,
     ( if NumArms < 2 then
         order_and_generate_cases(SwitchVarRval, SwitchVarType, SwitchVarName,
             TaggedCases, CodeModel, CanFail, GoalInfo,
-            EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+            EndLabel, MaybeEnd, SwitchCode, !CI, CLD)
     else
         generate_smart_string_switch(Globals, SwitchVarRval, SwitchVarType,
             SwitchVarName, TaggedCases, FilteredTaggedCases,
             CodeModel, CanFail, FilteredCanFail, NumConsIds, GoalInfo,
-            EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+            EndLabel, MaybeEnd, SwitchCode, !CI, CLD)
     ).
 
 :- pred generate_smart_string_switch(globals::in, rval::in, mer_type::in,
@@ -293,9 +293,9 @@ generate_smart_string_switch(Globals,
         SwitchVarRval, SwitchVarType, SwitchVarName,
         TaggedCases, FilteredTaggedCases,
         CodeModel, CanFail, FilteredCanFail, NumConsIds, GoalInfo,
-        EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
+        EndLabel, MaybeEnd, SwitchCode, !CI, CLD) :-
     is_lookup_switch(get_string_tag, FilteredTaggedCases, GoalInfo,
-        !.CI, !.CLD, MaybeLookupSwitchInfo),
+        !.CI, CLD, MaybeLookupSwitchInfo),
     globals.get_opt_tuple(Globals, OptTuple),
     ( if
         % For now, string trie switches have been implemented only for C,
@@ -318,7 +318,7 @@ generate_smart_string_switch(Globals,
             MaybeLookupSwitchInfo = no,
             generate_string_trie_jump_switch(SwitchVarRval, SwitchVarName,
                 TaggedCases, CodeModel, CanFail, GoalInfo,
-                EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+                EndLabel, MaybeEnd, SwitchCode, !CI, CLD)
         )
     else if
         StringHashSwitchSize = OptTuple ^ ot_string_hash_switch_size,
@@ -335,7 +335,7 @@ generate_smart_string_switch(Globals,
             MaybeLookupSwitchInfo = no,
             generate_string_hash_jump_switch(SwitchVarRval, SwitchVarName,
                 TaggedCases, CodeModel, CanFail, GoalInfo,
-                EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+                EndLabel, MaybeEnd, SwitchCode, !CI, CLD)
         )
     else if
         StringBinarySwitchSize = OptTuple ^ ot_string_binary_switch_size,
@@ -352,12 +352,12 @@ generate_smart_string_switch(Globals,
             MaybeLookupSwitchInfo = no,
             generate_string_binary_jump_switch(SwitchVarRval, SwitchVarName,
                 TaggedCases, CodeModel, CanFail, GoalInfo,
-                EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+                EndLabel, MaybeEnd, SwitchCode, !CI, CLD)
         )
     else
         order_and_generate_cases(SwitchVarRval, SwitchVarType, SwitchVarName,
             TaggedCases, CodeModel, CanFail, GoalInfo,
-            EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+            EndLabel, MaybeEnd, SwitchCode, !CI, CLD)
     ).
 
 %---------------------------------------------------------------------------%
@@ -393,7 +393,7 @@ generate_smart_string_switch(Globals,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 order_and_generate_cases(VarRval, VarType, VarName, TaggedCases,
-        CodeModel, CanFail, GoalInfo, EndLabel, MaybeEnd, Code, !CI, !.CLD) :-
+        CodeModel, CanFail, GoalInfo, EndLabel, MaybeEnd, Code, !CI, CLD) :-
     order_cases(TaggedCases, OrderedTaggedCases, CodeModel, CanFail, !.CI),
     type_to_ctor_det(VarType, TypeCtor),
     get_module_info(!.CI, ModuleInfo),
@@ -404,7 +404,7 @@ order_and_generate_cases(VarRval, VarType, VarName, TaggedCases,
     else
         CheaperTagTest = no_cheaper_tag_test
     ),
-    remember_position(!.CLD, BranchStart),
+    remember_position(CLD, BranchStart),
     generate_if_then_else_chain_cases(CheaperTagTest,
         VarRval, VarType, VarName, OrderedTaggedCases,
         CodeModel, CanFail, GoalInfo, BranchStart,

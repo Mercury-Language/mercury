@@ -751,7 +751,7 @@ frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS, FoundError,
             !DumpInfo, !IO),
 
         maybe_warn_about_unused_imports(ProgressStream, ErrorStream,
-            Verbose, Stats, !HLDS, !Specs, !IO),
+            Verbose, Stats, !.HLDS, !Specs, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 33, "unused_imports",
             !DumpInfo, !IO),
 
@@ -821,12 +821,12 @@ frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS, FoundError,
                 !DumpInfo, !IO),
 
             maybe_generate_style_warnings(ProgressStream, ErrorStream,
-                Verbose, Stats, !HLDS, !Specs, !IO),
+                Verbose, Stats, !.HLDS, !Specs, !IO),
 
             maybe_proc_statistics(ProgressStream, ErrorStream,
-                Verbose, Stats, "AfterFrontEnd", !HLDS, !Specs, !IO),
+                Verbose, Stats, "AfterFrontEnd", !.HLDS, !Specs, !IO),
             maybe_inst_statistics(ProgressStream, ErrorStream,
-                Verbose, Stats, !HLDS, !Specs, !IO),
+                Verbose, Stats, !.HLDS, !Specs, !IO),
 
             % Work out whether we encountered any errors.
             MaybeWorstSpecsSeverity =
@@ -1018,13 +1018,12 @@ post_copy_polymorphism_pass(ProgressStream, ErrorStream, Verbose, Stats,
 %---------------------------------------------------------------------------%
 
 :- pred maybe_warn_about_unused_imports(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out,
+    io.text_output_stream::in, bool::in, bool::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 maybe_warn_about_unused_imports(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, !Specs, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
+        HLDS, !Specs, !IO) :-
+    module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, warn_unused_imports,
         WarnUnusedImports),
     (
@@ -1032,7 +1031,7 @@ maybe_warn_about_unused_imports(ProgressStream, ErrorStream, Verbose, Stats,
         maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
         maybe_write_string(ProgressStream, Verbose,
             "% Checking for unused imports...", !IO),
-        warn_about_unused_imports(ProgressStream, !.HLDS, UnusedImportSpecs),
+        warn_about_unused_imports(ProgressStream, HLDS, UnusedImportSpecs),
         !:Specs = UnusedImportSpecs ++ !.Specs,
         maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
         maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
@@ -1614,13 +1613,12 @@ simplify_pred(ProgressStream, SimplifyTasks0, PredId,
 %---------------------------------------------------------------------------%
 
 :- pred maybe_generate_style_warnings(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out,
+    io.text_output_stream::in, bool::in, bool::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 maybe_generate_style_warnings(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, !Specs, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
+        HLDS, !Specs, !IO) :-
+    module_info_get_globals(HLDS, Globals),
     maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
 
     globals.lookup_bool_option(Globals, warn_non_contiguous_decls,
@@ -1659,7 +1657,7 @@ maybe_generate_style_warnings(ProgressStream, ErrorStream, Verbose, Stats,
         ),
         maybe_write_string(ProgressStream, Verbose,
             "% Generating style warnings...\n", !IO),
-        generate_style_warnings(!.HLDS, WarnNonContigPreds,
+        generate_style_warnings(HLDS, WarnNonContigPreds,
             WarnPredDeclDefnOrder,  StyleSpecs),
         !:Specs = StyleSpecs ++ !.Specs,
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
@@ -1669,13 +1667,12 @@ maybe_generate_style_warnings(ProgressStream, ErrorStream, Verbose, Stats,
 %---------------------------------------------------------------------------%
 
 :- pred maybe_proc_statistics(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in, string::in,
-    module_info::in, module_info::out,
+    io.text_output_stream::in, bool::in, bool::in, string::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 maybe_proc_statistics(ProgressStream, ErrorStream, Verbose, Stats, Msg,
-        !HLDS, !Specs, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
+        HLDS, !Specs, !IO) :-
+    module_info_get_globals(HLDS, Globals),
     maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
 
     globals.lookup_string_option(Globals, proc_size_statistics, StatsFileName),
@@ -1688,7 +1685,7 @@ maybe_proc_statistics(ProgressStream, ErrorStream, Verbose, Stats, Msg,
             StatsFileNameResult = ok(StatsFileStream),
             maybe_write_string(ProgressStream, Verbose,
                 "% Generating proc statistics...\n", !IO),
-            write_proc_stats_for_module(StatsFileStream, Msg, !.HLDS, !IO),
+            write_proc_stats_for_module(StatsFileStream, Msg, HLDS, !IO),
             io.close_output(StatsFileStream, !IO),
             maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
             maybe_report_stats(ProgressStream, Stats, !IO)
@@ -1704,13 +1701,12 @@ maybe_proc_statistics(ProgressStream, ErrorStream, Verbose, Stats, Msg,
 %---------------------------------------------------------------------------%
 
 :- pred maybe_inst_statistics(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out,
+    io.text_output_stream::in, bool::in, bool::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 maybe_inst_statistics(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, !Specs, !IO) :-
-    module_info_get_globals(!.HLDS, Globals),
+        HLDS, !Specs, !IO) :-
+    module_info_get_globals(HLDS, Globals),
     maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
 
     globals.lookup_string_option(Globals, inst_statistics, StatsFileName),
@@ -1723,7 +1719,7 @@ maybe_inst_statistics(ProgressStream, ErrorStream, Verbose, Stats,
             StatsFileNameResult = ok(StatsFileStream),
             maybe_write_string(ProgressStream, Verbose,
                 "% Generating inst statistics...\n", !IO),
-            write_inst_stats_for_module(StatsFileStream, !.HLDS, !IO),
+            write_inst_stats_for_module(StatsFileStream, HLDS, !IO),
             io.close_output(StatsFileStream, !IO),
             maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
             maybe_report_stats(ProgressStream, Stats, !IO)

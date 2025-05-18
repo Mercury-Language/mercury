@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2015, 2018, 2020-2024 The Mercury team.
+% Copyright (C) 2015, 2018, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -344,7 +344,7 @@ optimize_initial(Info, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                get_opt_progress_output_stream(Info, ProgressStream),
                 io.format(ProgressStream,
                     "%% Optimizing nondet frames for %s\n",
                     [s(LabelStr)], !IO)
@@ -411,7 +411,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                get_opt_progress_output_stream(Info, ProgressStream),
                 io.format(ProgressStream, "%% Optimizing jumps for %s\n",
                     [s(LabelStr)], !IO)
             )
@@ -433,7 +433,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                get_opt_progress_output_stream(Info, ProgressStream),
                 io.format(ProgressStream, "%% Optimizing locally for %s\n",
                     [s(LabelStr)], !IO)
             )
@@ -455,7 +455,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                get_opt_progress_output_stream(Info, ProgressStream),
                 io.format(ProgressStream, "%% Optimizing labels for %s\n",
                     [s(LabelStr)], !IO)
             )
@@ -475,7 +475,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                get_opt_progress_output_stream(Info, ProgressStream),
                 io.format(ProgressStream, "%% Optimizing duplicates for %s\n",
                     [s(LabelStr)], !IO)
             )
@@ -494,7 +494,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         Mod = yes
     ),
     trace [io(!IO)] (
-        get_opt_progress_output_stream(Info, ProgressStream, !IO),
+        get_opt_progress_output_stream(Info, ProgressStream),
         Statistics = Info ^ lopt_detailed_statistics,
         maybe_report_stats(ProgressStream, Statistics, !IO)
     ).
@@ -515,7 +515,7 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                get_opt_progress_output_stream(Info, ProgressStream),
                 io.format(ProgressStream, "%% Optimizing frames for %s\n",
                     [s(LabelStr)], !IO)
             )
@@ -538,7 +538,7 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
             "frame", "after frame opt", ProcLabel, !OptDebugInfo),
         Statistics = Info ^ lopt_detailed_statistics,
         trace [io(!IO)] (
-            get_opt_progress_output_stream(Info, ProgressStream, !IO),
+            get_opt_progress_output_stream(Info, ProgressStream),
             maybe_report_stats(ProgressStream, Statistics, !IO)
         ),
 
@@ -553,7 +553,7 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
             (
                 VeryVerbose = yes,
                 trace [io(!IO)] (
-                    get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                    get_opt_progress_output_stream(Info, ProgressStream),
                     io.format(ProgressStream, "%% Optimizing jumps for %s\n",
                         [s(LabelStr)], !IO)
                 )
@@ -586,7 +586,7 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
             (
                 VeryVerbose = yes,
                 trace [io(!IO)] (
-                    get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                    get_opt_progress_output_stream(Info, ProgressStream),
                     io.format(ProgressStream, "%% Optimizing labels for %s\n",
                         [s(LabelStr)], !IO)
                 )
@@ -604,7 +604,7 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
             (
                 VeryVerbose = yes,
                 trace [io(!IO)] (
-                    get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                    get_opt_progress_output_stream(Info, ProgressStream),
                     io.format(ProgressStream, "%% Optimizing locally for %s\n",
                         [s(LabelStr)], !IO)
                 )
@@ -628,7 +628,7 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                get_opt_progress_output_stream(Info, ProgressStream),
                 io.format(ProgressStream, "%% Optimizing local vars for %s\n",
                     [s(LabelStr)], !IO)
             )
@@ -671,7 +671,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                get_opt_progress_output_stream(Info, ProgressStream),
                 io.format(ProgressStream, "%% Optimizing labels for %s\n",
                     [s(LabelStr)], !IO)
             )
@@ -689,7 +689,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                get_opt_progress_output_stream(Info, ProgressStream),
                 io.format(ProgressStream, "%% Optimizing reassign for %s\n",
                     [s(LabelStr)], !IO)
             )
@@ -707,7 +707,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                get_opt_progress_output_stream(Info, ProgressStream),
                 io.format(ProgressStream, "%% Optimizing delay slot for %s\n",
                     [s(LabelStr)], !IO)
             )
@@ -723,7 +723,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            get_opt_progress_output_stream(Info, ProgressStream, !IO),
+            get_opt_progress_output_stream(Info, ProgressStream),
             io.format(ProgressStream, "%% Optimizing returns for %s\n",
                 [s(LabelStr)], !IO)
         )
@@ -738,7 +738,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                get_opt_progress_output_stream(Info, ProgressStream),
                 io.format(ProgressStream, "%% Standardizing labels for %s\n",
                     [s(LabelStr)], !IO)
             )
@@ -756,7 +756,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_opt_progress_output_stream(Info, ProgressStream, !IO),
+                get_opt_progress_output_stream(Info, ProgressStream),
                 io.format(ProgressStream, "%% Wrapping blocks for %s\n",
                     [s(LabelStr)], !IO)
             )
@@ -877,9 +877,9 @@ init_llds_opt_info(ProgressStream, Globals, ModuleName) = Info :-
         PessimizeTailCalls, StdLabels, UseLocalVars).
 
 :- pred get_opt_progress_output_stream(llds_opt_info::in,
-    io.text_output_stream::out, io::di, io::uo) is det.
+    io.text_output_stream::out) is det.
 
-get_opt_progress_output_stream(Info, ProgressStream, !IO) :-
+get_opt_progress_output_stream(Info, ProgressStream) :-
     ProgressStream = Info ^ lopt_progress_stream.
 
 %-----------------------------------------------------------------------------%

@@ -604,7 +604,7 @@ EOF
         $BOOTSTRAP_MC \
             --verbose \
             $link_static_opt conftest \
-            --escape-2024-04-28 \
+            --unused-statevar-warn-2025-05-16 \
             --allow-ho-insts-as-modes \
             --no-ssdb \
             </dev/null >&AS_MESSAGE_LOG_FD 2>&1 &&

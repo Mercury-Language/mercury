@@ -353,8 +353,8 @@ build_target(ProgressStream, Globals, CompilationTask,
             ExtraAndTaskOptions, MayBuild, !IO),
         (
             MayBuild = may_build(AllOptionArgs, BuildGlobals),
-            open_module_error_stream(ProgressStream, Globals, ModuleName,
-                MaybeErrorStream, !Info, !IO),
+            open_module_error_stream(ProgressStream, Globals, !.Info,
+                ModuleName, MaybeErrorStream, !IO),
             (
                 MaybeErrorStream = es_error_already_reported,
                 Succeeded0 = did_not_succeed
@@ -362,7 +362,7 @@ build_target(ProgressStream, Globals, CompilationTask,
                 MaybeErrorStream = es_ok(MESI, ErrorStream),
                 build_target_2(ProgressStream, ErrorStream, BuildGlobals,
                     Task, ModuleName, ModuleDepInfo,
-                    MaybeArgFileName, AllOptionArgs, Succeeded0, !Info, !IO),
+                    MaybeArgFileName, AllOptionArgs, Succeeded0, !IO),
                 close_module_error_stream_handle_errors(ProgressStream,
                     Globals, ModuleName, MESI, ErrorStream, !Info, !IO)
             )
@@ -398,14 +398,13 @@ build_target(ProgressStream, Globals, CompilationTask,
         Succeeded = did_not_succeed
     ).
 
-:- pred build_target_2( io.text_output_stream::in, io.text_output_stream::in,
+:- pred build_target_2(io.text_output_stream::in, io.text_output_stream::in,
     globals::in, compilation_task_type::in, module_name::in,
     module_dep_info::in, maybe(file_name)::in, list(string)::in,
-    maybe_succeeded::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+    maybe_succeeded::out, io::di, io::uo) is det.
 
 build_target_2(ProgressStream, ErrorStream, Globals, Task, ModuleName,
-        ModuleDepInfo, ArgFileName, AllOptionArgs, Succeeded, !Info, !IO) :-
+        ModuleDepInfo, ArgFileName, AllOptionArgs, Succeeded, !IO) :-
     (
         Task = process_module(ModuleTask),
         ModuleArg = sym_name_to_string(ModuleName),

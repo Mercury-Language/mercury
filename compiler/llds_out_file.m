@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2009-2011 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2024 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -226,7 +226,7 @@ output_single_c_file(Globals, Stream, CFile, Errors, !DeclSet, !IO) :-
     output_c_module_init_list(Info, Stream, ModuleName, AnnotatedModules,
         RttiDatas, ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs,
         TSStringTable, AllocSites, UserInitPredCNames, UserFinalPredCNames,
-        !DeclSet, !IO),
+        !IO),
 
     list.filter_map(maybe_is_error, ForeignIncludeResults, ErrorsA),
     list.filter_map(maybe_is_error, ForeignCodeResults, ErrorsB),
@@ -417,12 +417,11 @@ gather_labels_from_instrs_acc([Instr | Instrs],
     list(proc_layout_data)::in, list(module_layout_data)::in,
     list(complexity_proc_info)::in, list(string)::in,
     list(alloc_site_info)::in, list(string)::in, list(string)::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 output_c_module_init_list(Info, Stream, ModuleName, AnnotatedModules,
         RttiDatas, ProcLayoutDatas, ModuleLayoutDatas, ComplexityProcs,
-        TSStringTable, AllocSites, InitPredNames, FinalPredNames,
-        !DeclSet, !IO) :-
+        TSStringTable, AllocSites, InitPredNames, FinalPredNames, !IO) :-
     MustInit =
         ( pred(Module::in) is semidet :-
             module_defines_label_with_layout(Info, Module)

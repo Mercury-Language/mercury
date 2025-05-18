@@ -367,7 +367,7 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
         % - a construction unification with a region to construct in.
         region_transform_goal_expr(ModuleInfo, Graph, ResurRenaming,
             IteRenaming, ActualRegionArgProc, ProgPoint, GoalExpr0, GoalExpr,
-            GoalInfo0, GoalInfo, !NameToVar, !VarTable),
+            !NameToVar, !VarTable),
 
         % Assignment unifications due to ite renaming.
         assignments_from_ite_renaming_anno(IteRenamingAnnoProc, ProgPoint,
@@ -384,7 +384,7 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
                 !VarTable, IteRenamingAssignments, Conjs1),
 
             % The goal at this program point itself.
-            Conjs2 = Conjs1 ++ [hlds_goal(GoalExpr, GoalInfo)],
+            Conjs2 = Conjs1 ++ [hlds_goal(GoalExpr, GoalInfo0)],
 
             % Region instructions after this program point.
             list.foldl3(region_instruction_to_conj(ModuleInfo, Context,
@@ -392,7 +392,7 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
                 !VarTable, Conjs2, Conjs3)
         else
             % The goal at this program point itself.
-            Conjs3 = IteRenamingAssignments ++ [hlds_goal(GoalExpr, GoalInfo)]
+            Conjs3 = IteRenamingAssignments ++ [hlds_goal(GoalExpr, GoalInfo0)]
         ),
 
         % Assignment unifications due to region resurrection renaming.
@@ -400,9 +400,9 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
             ProgPoint, IteRenaming, !NameToVar, !VarTable, Conjs3, Conjs),
 
         ( if Conjs = [_, _ | _] then
-            !:Goal = hlds_goal(conj(plain_conj, Conjs), GoalInfo)
+            !:Goal = hlds_goal(conj(plain_conj, Conjs), GoalInfo0)
         else
-            !:Goal = hlds_goal(GoalExpr, GoalInfo)
+            !:Goal = hlds_goal(GoalExpr, GoalInfo0)
         )
     ;
         HasSubGoals = has_subgoals,
@@ -417,12 +417,11 @@ region_transform_goal(ModuleInfo, Graph, ResurRenamingProc, IteRenamingProc,
 :- pred region_transform_goal_expr(module_info::in, rpt_graph::in,
     rbmm_renaming::in, rbmm_renaming::in, pp_actual_region_args_table::in,
     program_point::in, hlds_goal_expr::in, hlds_goal_expr::out,
-    hlds_goal_info::in, hlds_goal_info::out, name_to_prog_var::in,
-    name_to_prog_var::out, var_table::in, var_table::out) is det.
+    name_to_prog_var::in, name_to_prog_var::out,
+    var_table::in, var_table::out) is det.
 
 region_transform_goal_expr(ModuleInfo, Graph, ResurRenaming, IteRenaming,
-        ActualRegionArgProc, ProgPoint, !GoalExpr, !GoalInfo,
-        !NameToVar, !VarTable) :-
+        ActualRegionArgProc, ProgPoint, !GoalExpr, !NameToVar, !VarTable) :-
     (
         !.GoalExpr = plain_call(CalleePredId, CalleeProcId, Args0, Builtin,
             Context, Name),

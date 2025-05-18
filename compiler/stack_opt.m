@@ -349,12 +349,12 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
 :- pred opt_at_call_site(need_across_call::in, alloc_data::in,
     opt_stack_alloc::in, opt_stack_alloc::out) is det.
 
-opt_at_call_site(_NeedAtCall, _AllocData, !StackAlloc).
+opt_at_call_site(_NeedAtCall, _AllocData, StackAlloc, StackAlloc).
 
 :- pred opt_at_resume_site(need_in_resume::in, alloc_data::in,
     opt_stack_alloc::in, opt_stack_alloc::out) is det.
 
-opt_at_resume_site(_NeedAtResume, _AllocData, !StackAlloc).
+opt_at_resume_site(_NeedAtResume, _AllocData, StackAlloc, StackAlloc).
 
 :- pred opt_at_par_conj(need_in_par_conj::in, alloc_data::in,
     opt_stack_alloc::in, opt_stack_alloc::out) is det.
@@ -592,12 +592,12 @@ record_matching_result(CellVar, ConsId, ArgVars, ViaCellVars, Goal,
     else
         set.to_sorted_list(PotentialIntervals, PotentialIntervalList),
         set.to_sorted_list(PotentialAnchors, PotentialAnchorList),
-        list.foldl3(record_cell_var_for_interval(CellVar, ViaCellVars),
-            PotentialIntervalList, !IntervalInfo, !StackOptInfo,
-            set.init, InsertIntervals),
-        list.foldl3(add_anchor_inserts(Goal, ViaCellVars, InsertIntervals),
-            PotentialAnchorList, !IntervalInfo, !StackOptInfo,
-            set.init, InsertAnchors),
+        list.foldl2(record_cell_var_for_interval(CellVar, ViaCellVars),
+            PotentialIntervalList, !IntervalInfo, set.init, InsertIntervals),
+        list.foldl2(
+            add_anchor_inserts(Goal, ViaCellVars, InsertIntervals,
+                !.IntervalInfo),
+            PotentialAnchorList, !StackOptInfo, set.init, InsertAnchors),
         Goal = hlds_goal(_, GoalInfo),
         GoalId = goal_info_get_goal_id(GoalInfo),
         MatchingResult = matching_result(CellVar, ConsId,
@@ -611,11 +611,10 @@ record_matching_result(CellVar, ConsId, ArgVars, ViaCellVars, Goal,
 
 :- pred record_cell_var_for_interval(prog_var::in, set_of_progvar::in,
     interval_id::in, interval_info::in, interval_info::out,
-    stack_opt_info::in, stack_opt_info::out,
     set(interval_id)::in, set(interval_id)::out) is det.
 
 record_cell_var_for_interval(CellVar, ViaCellVars, IntervalId,
-        !IntervalInfo, !StackOptInfo, !InsertIntervals) :-
+        !IntervalInfo, !InsertIntervals) :-
     record_interval_vars(IntervalId, [CellVar], !IntervalInfo),
     delete_interval_vars(IntervalId, ViaCellVars, DeletedVars, !IntervalInfo),
     ( if set_of_var.is_non_empty(DeletedVars) then
@@ -625,13 +624,13 @@ record_cell_var_for_interval(CellVar, ViaCellVars, IntervalId,
     ).
 
 :- pred add_anchor_inserts(hlds_goal::in, set_of_progvar::in,
-    set(interval_id)::in, anchor::in, interval_info::in,
-    interval_info::out, stack_opt_info::in, stack_opt_info::out,
+    set(interval_id)::in, interval_info::in, anchor::in,
+    stack_opt_info::in, stack_opt_info::out,
     set(anchor)::in, set(anchor)::out) is det.
 
-add_anchor_inserts(Goal, ArgVarsViaCellVar, InsertIntervals, Anchor,
-        !IntervalInfo, !StackOptInfo, !InsertAnchors) :-
-    map.lookup(!.IntervalInfo ^ ii_anchor_follow_map, Anchor, AnchorFollow),
+add_anchor_inserts(Goal, ArgVarsViaCellVar, InsertIntervals, IntervalInfo,
+        Anchor, !StackOptInfo, !InsertAnchors) :-
+    map.lookup(IntervalInfo ^ ii_anchor_follow_map, Anchor, AnchorFollow),
     AnchorFollow = anchor_follow_info(_, AnchorIntervals),
     set.intersect(AnchorIntervals, InsertIntervals,
         AnchorInsertIntervals),

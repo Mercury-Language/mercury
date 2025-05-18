@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2017 The Mercury Team.
+% Copyright (C) 2017, 2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -40,8 +40,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred region_points_to_analysis(rpta_info_table::out,
-    module_info::in, module_info::out) is det.
+:- pred region_points_to_analysis(module_info::in, rpta_info_table::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -74,10 +74,10 @@
 
 %---------------------------------------------------------------------------%
 
-region_points_to_analysis(InfoTable, !ModuleInfo) :-
-    rpta_info_table_init = InfoTable0,
-    intra_proc_rpta(!.ModuleInfo, InfoTable0, InfoTable1),
-    inter_proc_rpta(!.ModuleInfo, InfoTable1, InfoTable).
+region_points_to_analysis(ModuleInfo, !:InfoTable) :-
+    !:InfoTable = rpta_info_table_init,
+    intra_proc_rpta(ModuleInfo, !InfoTable),
+    inter_proc_rpta(ModuleInfo, !InfoTable).
 
 %---------------------------------------------------------------------------%
 %

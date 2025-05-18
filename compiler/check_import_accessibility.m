@@ -195,30 +195,24 @@ aug_comp_unit_get_import_accessibility_info(AugCompUnit,
         Ancestors = get_ancestors_set(ModuleName),
         record_includes_imports_uses_in_parse_tree_module_src(
             ParseTreeModuleSrc,
-            !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-        map.foldl5_values(
+            !ReadModules, !InclMap, !SrcIntImportUseMap, !SrcImpImportUseMap),
+        map.foldl3_values(
             record_includes_imports_uses_in_ancestor_int_spec(Ancestors),
-            AncestorIntSpecs, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-        map.foldl5_values(
+            AncestorIntSpecs, !ReadModules, !InclMap, !AncestorImportUseMap),
+        map.foldl2_values(
             record_includes_imports_uses_in_direct_int1_spec(Ancestors),
-            DirectIntSpecs, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-        map.foldl5_values(
+            DirectIntSpecs, !ReadModules, !InclMap),
+        map.foldl2_values(
             record_includes_imports_uses_in_indirect_int2_spec(Ancestors),
-            IndirectIntSpecs, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-        map.foldl5_values(
+            IndirectIntSpecs, !ReadModules, !InclMap),
+        map.foldl_values(
             record_includes_imports_uses_in_parse_tree_plain_opt(Ancestors),
-            PlainOpts, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+            PlainOpts, !AncestorImportUseMap),
         % .trans_opt files may contain no include_module, import_module
         % or use_module declarations, so there is nothing to record for them.
-        map.foldl5_values(
+        map.foldl3_values(
             record_includes_imports_uses_in_int_for_opt_spec(Ancestors),
-            IntForOptSpecs, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+            IntForOptSpecs, !ReadModules, !InclMap, !AncestorImportUseMap),
         ImportAccessibilityInfo = import_accessibility_info(!.ReadModules,
             seen_all_includes, !.InclMap,
             !.SrcIntImportUseMap, !.SrcImpImportUseMap, !.AncestorImportUseMap)
@@ -240,20 +234,16 @@ aug_make_int_unit_get_import_accessibility_info(AugMakeIntUnit,
         Ancestors = get_ancestors_set(ModuleName),
         record_includes_imports_uses_in_parse_tree_module_src(
             ParseTreeModuleSrc,
-            !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-        map.foldl5_values(
+            !ReadModules, !InclMap, !SrcIntImportUseMap, !SrcImpImportUseMap),
+        map.foldl3_values(
             record_includes_imports_uses_in_parse_tree_int0(Ancestors),
-            AncestorIntSpecs, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-        map.foldl5_values(
+            AncestorIntSpecs, !ReadModules, !InclMap, !AncestorImportUseMap),
+        map.foldl2_values(
             record_includes_imports_uses_in_direct_int3_spec(Ancestors),
-            DirectIntSpecs, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
-        map.foldl5_values(
+            DirectIntSpecs, !ReadModules, !InclMap),
+        map.foldl2_values(
             record_includes_imports_uses_in_indirect_int3_spec(Ancestors),
-            IndirectIntSpecs, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap),
+            IndirectIntSpecs, !ReadModules, !InclMap),
         ImportAccessibilityInfo = import_accessibility_info(!.ReadModules,
             seen_only_int_includes, !.InclMap,
             !.SrcIntImportUseMap, !.SrcImpImportUseMap, !.AncestorImportUseMap)
@@ -266,12 +256,11 @@ aug_make_int_unit_get_import_accessibility_info(AugMakeIntUnit,
     set(module_name)::in, set(module_name)::out,
     module_inclusion_map::in, module_inclusion_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out) is det.
 
 record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
         !ReadModules, !MaybeAbstractInclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+        !SrcIntImportUseMap, !SrcImpImportUseMap) :-
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, _,
         InclMap, ImportUseMap,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
@@ -286,108 +275,78 @@ record_includes_imports_uses_in_parse_tree_module_src(ParseTreeModuleSrc,
     ancestor_int_spec::in,
     set(module_name)::in, set(module_name)::out,
     module_inclusion_map::in, module_inclusion_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out) is det.
 
 record_includes_imports_uses_in_ancestor_int_spec(Ancestors,
-        AncestorSpec, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+        AncestorSpec, !ReadModules, !InclMap, !AncestorImportUseMap) :-
     AncestorSpec = ancestor_int0(ParseTreeInt0, _ReadWhyInt0),
     record_includes_imports_uses_in_parse_tree_int0(Ancestors,
-        ParseTreeInt0, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
+        ParseTreeInt0, !ReadModules, !InclMap, !AncestorImportUseMap).
 
 :- pred record_includes_imports_uses_in_direct_int1_spec(
     set(module_name)::in, direct_int1_spec::in,
     set(module_name)::in, set(module_name)::out,
-    module_inclusion_map::in, module_inclusion_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+    module_inclusion_map::in, module_inclusion_map::out) is det.
 
 record_includes_imports_uses_in_direct_int1_spec(Ancestors,
-        DirectSpec, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+        DirectSpec, !ReadModules, !InclMap) :-
     DirectSpec = direct_int1(ParseTreeInt1, ReadWhyInt1),
     record_includes_imports_uses_in_parse_tree_int1(Ancestors,
-        ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
+        ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap).
 
 :- pred record_includes_imports_uses_in_indirect_int2_spec(
     set(module_name)::in, indirect_int2_spec::in,
     set(module_name)::in, set(module_name)::out,
-    module_inclusion_map::in, module_inclusion_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+    module_inclusion_map::in, module_inclusion_map::out) is det.
 
 record_includes_imports_uses_in_indirect_int2_spec(Ancestors,
-        IndirectSpec, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+        IndirectSpec, !ReadModules, !InclMap) :-
     IndirectSpec = indirect_int2(ParseTreeInt2, ReadWhyInt2),
     record_includes_imports_uses_in_parse_tree_int2(Ancestors,
-        ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
+        ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap).
 
 :- pred record_includes_imports_uses_in_direct_int3_spec(
     set(module_name)::in, direct_int3_spec::in,
     set(module_name)::in, set(module_name)::out,
-    module_inclusion_map::in, module_inclusion_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+    module_inclusion_map::in, module_inclusion_map::out) is det.
 
 record_includes_imports_uses_in_direct_int3_spec(Ancestors,
-        IndirectSpec, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+        IndirectSpec, !ReadModules, !InclMap) :-
     IndirectSpec = direct_int3(ParseTreeInt3, _ReadWhyInt3),
     record_includes_imports_uses_in_parse_tree_int3(Ancestors,
-        ParseTreeInt3, non_abstract_section, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
+        ParseTreeInt3, non_abstract_section, !ReadModules, !InclMap).
 
 :- pred record_includes_imports_uses_in_indirect_int3_spec(
     set(module_name)::in, indirect_int3_spec::in,
     set(module_name)::in, set(module_name)::out,
-    module_inclusion_map::in, module_inclusion_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+    module_inclusion_map::in, module_inclusion_map::out) is det.
 
 record_includes_imports_uses_in_indirect_int3_spec(Ancestors,
-        IndirectSpec, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+        IndirectSpec, !ReadModules, !InclMap) :-
     IndirectSpec = indirect_int3(ParseTreeInt3, _ReadWhyInt3),
     record_includes_imports_uses_in_parse_tree_int3(Ancestors,
-        ParseTreeInt3, abstract_section, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap).
+        ParseTreeInt3, abstract_section, !ReadModules, !InclMap).
 
 :- pred record_includes_imports_uses_in_int_for_opt_spec(set(module_name)::in,
     int_for_opt_spec::in,
     set(module_name)::in, set(module_name)::out,
     module_inclusion_map::in, module_inclusion_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out) is det.
 
 record_includes_imports_uses_in_int_for_opt_spec(Ancestors,
-        IntForOptSpec, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+        IntForOptSpec, !ReadModules, !InclMap, !AncestorImportUseMap) :-
     (
         IntForOptSpec = for_opt_int0(ParseTreeInt0, _ReadWhyInt0),
         record_includes_imports_uses_in_parse_tree_int0(Ancestors,
-            ParseTreeInt0, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
+            ParseTreeInt0, !ReadModules, !InclMap, !AncestorImportUseMap)
     ;
         IntForOptSpec = for_opt_int1(ParseTreeInt1, ReadWhyInt1),
         record_includes_imports_uses_in_parse_tree_int1(Ancestors,
-            ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
+            ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap)
     ;
         IntForOptSpec = for_opt_int2(ParseTreeInt2, ReadWhyInt2),
         record_includes_imports_uses_in_parse_tree_int2(Ancestors,
-            ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap,
-            !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap)
+            ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap)
     ).
 
 %---------------------%
@@ -396,13 +355,11 @@ record_includes_imports_uses_in_int_for_opt_spec(Ancestors,
     parse_tree_int0::in,
     set(module_name)::in, set(module_name)::out,
     module_inclusion_map::in, module_inclusion_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out) is det.
 
 record_includes_imports_uses_in_parse_tree_int0(Ancestors,
         ParseTreeInt0, !ReadModules, !MaybeAbstractInclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+        !AncestorImportUseMap) :-
     ParseTreeInt0 = parse_tree_int0(ModuleName, _, _, InclMap, ImportUseMap,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
@@ -424,14 +381,10 @@ record_includes_imports_uses_in_parse_tree_int0(Ancestors,
 :- pred record_includes_imports_uses_in_parse_tree_int1(set(module_name)::in,
     parse_tree_int1::in, read_why_int1::in,
     set(module_name)::in, set(module_name)::out,
-    module_inclusion_map::in, module_inclusion_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+    module_inclusion_map::in, module_inclusion_map::out) is det.
 
 record_includes_imports_uses_in_parse_tree_int1(Ancestors,
-        ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+        ParseTreeInt1, ReadWhyInt1, !ReadModules, !InclMap) :-
     ParseTreeInt1 = parse_tree_int1(ModuleName, _, _, InclMap, _,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
@@ -462,14 +415,10 @@ record_includes_imports_uses_in_parse_tree_int1(Ancestors,
 :- pred record_includes_imports_uses_in_parse_tree_int2(set(module_name)::in,
     parse_tree_int2::in, read_why_int2::in,
     set(module_name)::in, set(module_name)::out,
-    module_inclusion_map::in, module_inclusion_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+    module_inclusion_map::in, module_inclusion_map::out) is det.
 
 record_includes_imports_uses_in_parse_tree_int2(Ancestors,
-        ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+        ParseTreeInt2, ReadWhyInt2, !ReadModules, !InclMap) :-
     ParseTreeInt2 = parse_tree_int2(ModuleName, _, _,
         IntInclMap, _, _, _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
@@ -490,14 +439,10 @@ record_includes_imports_uses_in_parse_tree_int2(Ancestors,
 :- pred record_includes_imports_uses_in_parse_tree_int3(set(module_name)::in,
     parse_tree_int3::in, maybe_abstract_section::in,
     set(module_name)::in, set(module_name)::out,
-    module_inclusion_map::in, module_inclusion_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out) is det.
+    module_inclusion_map::in, module_inclusion_map::out) is det.
 
 record_includes_imports_uses_in_parse_tree_int3(Ancestors,
-        ParseTreeInt3, MaybeAbstractSection, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+        ParseTreeInt3, MaybeAbstractSection, !ReadModules, !InclMap) :-
     ParseTreeInt3 = parse_tree_int3(ModuleName, _, IntInclMap,
         _, _, _, _, _, _, _),
     set.insert(ModuleName, !ReadModules),
@@ -508,15 +453,10 @@ record_includes_imports_uses_in_parse_tree_int3(Ancestors,
 
 :- pred record_includes_imports_uses_in_parse_tree_plain_opt(
     set(module_name)::in, parse_tree_plain_opt::in,
-    set(module_name)::in, set(module_name)::out,
-    module_inclusion_map::in, module_inclusion_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
-    module_import_or_use_map::in, module_import_or_use_map::out,
     module_import_or_use_map::in, module_import_or_use_map::out) is det.
 
 record_includes_imports_uses_in_parse_tree_plain_opt(Ancestors,
-        ParseTreePlainOpt, !ReadModules, !InclMap,
-        !SrcIntImportUseMap, !SrcImpImportUseMap, !AncestorImportUseMap) :-
+        ParseTreePlainOpt, !AncestorImportUseMap) :-
     ParseTreePlainOpt = parse_tree_plain_opt(ModuleName, _, UseMap,
         _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _),
     ( if set.contains(Ancestors, ModuleName) then

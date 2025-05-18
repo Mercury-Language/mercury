@@ -559,10 +559,10 @@ generate_parallelisations(Info, Algorithm, GoalsForParallelisation,
     bnb_profile::in, bnb_profile::out) is det.
 
 generate_parallelisations_loop(_, _, [],
-        !.IncompleteParallelisation, !MaybeBestSolns, !Profile) :-
+        IncompleteParallelisation0, !MaybeBestSolns, !Profile) :-
     % Check whether we have generated at least two parallel conjuncts.
-    ( if ip_get_num_parallel_conjuncts(!.IncompleteParallelisation) >= 2 then
-        maybe_update_best_complete_parallelisation(!.IncompleteParallelisation,
+    ( if ip_get_num_parallel_conjuncts(IncompleteParallelisation0) >= 2 then
+        maybe_update_best_complete_parallelisation(IncompleteParallelisation0,
             !MaybeBestSolns, !Profile)
     else
         % We have not. That means that this is not a solution, so
@@ -571,16 +571,16 @@ generate_parallelisations_loop(_, _, [],
             !.Profile ^ bnbp_complete_non_solution + 1
     ).
 generate_parallelisations_loop(Info, Algorithm, [GoalGroup | GoalGroups],
-        !.IncompleteParallelisation, !MaybeBestSolns, !Profile) :-
+        IncompleteParallelisation0, !MaybeBestSolns, !Profile) :-
     % XXX The algorithm could be closer to the one in the paper.
 
-    LastScheduledGoal0 = !.IncompleteParallelisation ^ ip_last_scheduled_goal,
+    LastScheduledGoal0 = IncompleteParallelisation0 ^ ip_last_scheduled_goal,
     gg_get_details(GoalGroup, _Index, Num, _Classification),
 
     LastScheduledGoal = LastScheduledGoal0 + Num,
     some [!AddToLastParallelisation, !AddToNewParallelisation] (
-        !:AddToLastParallelisation = !.IncompleteParallelisation,
-        !:AddToNewParallelisation = !.IncompleteParallelisation,
+        !:AddToLastParallelisation = IncompleteParallelisation0,
+        !:AddToNewParallelisation = IncompleteParallelisation0,
 
         % Consider adding this goal to the last parallel conjunct.
         !AddToLastParallelisation ^ ip_last_scheduled_goal
@@ -590,7 +590,7 @@ generate_parallelisations_loop(Info, Algorithm, [GoalGroup | GoalGroups],
 
         % Consider putting this goal into a new parallel conjunct.
         ParConjsRevLastGoal0 =
-            !.IncompleteParallelisation ^ ip_par_conjs_rev_last_goal,
+            IncompleteParallelisation0 ^ ip_par_conjs_rev_last_goal,
         ParConjsRevLastGoal = [LastScheduledGoal0 | ParConjsRevLastGoal0],
         !AddToNewParallelisation ^ ip_par_conjs_rev_last_goal :=
             ParConjsRevLastGoal,

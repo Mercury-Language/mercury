@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -81,8 +81,8 @@
     --->    es_ok(module_error_stream_info, io.text_output_stream)
     ;       es_error_already_reported.
 
-    % open_module_error_stream(ProgressStream, Globals, ModuleName,
-    %   MaybeMESIErrorStream, !Info, !IO):
+    % open_module_error_stream(ProgressStream, Globals, Info, ModuleName,
+    %   MaybeMESIErrorStream, !IO):
     %
     % Produce an output stream which writes to the error file
     % for the given module.
@@ -93,8 +93,8 @@
     % to ErrorStream.
     %
 :- pred open_module_error_stream(io.text_output_stream::in, globals::in,
-    module_name::in, error_stream_result::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    make_info::in, module_name::in, error_stream_result::out,
+    io::di, io::uo) is det.
 
     % close_module_error_stream_handle_errors(ProgressStream, Globals,
     %   ModuleName, MESI, ErrorOutputStream, !Info, !IO):
@@ -251,13 +251,13 @@ setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
     ;       mesi_err_file(string).
             % The name of the .err file.
 
-open_module_error_stream(ProgressStream, Globals, ModuleName, MaybeErrorStream,
-        !Info, !IO) :-
+open_module_error_stream(ProgressStream, Globals, Info, ModuleName,
+        MaybeErrorStream, !IO) :-
     % XXX LEGACY
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs_err(ext_cur_ngs_gs_err_err), ModuleName,
         ErrorFileName, _ErrorFileNameProposed, !IO),
-    ErrorFileModules0 = make_info_get_error_file_modules(!.Info),
+    ErrorFileModules0 = make_info_get_error_file_modules(Info),
     ( if set.contains(ErrorFileModules0, ModuleName) then
         % Write the output to a temporary file first, to allow us to print
         % just the part of the error file that relates to the current command.
@@ -270,7 +270,7 @@ open_module_error_stream(ProgressStream, Globals, ModuleName, MaybeErrorStream,
             MaybeErrorStream = es_ok(MESI, TmpErrorOutputStream)
         ;
             TmpErrorFileResult = error(ErrorMsg),
-            with_locked_stdout(!.Info,
+            with_locked_stdout(Info,
                 write_error_creating_temp_file(ProgressStream, ErrorMsg),
                 !IO),
             MaybeErrorStream = es_error_already_reported
@@ -315,7 +315,7 @@ open_module_error_stream(ProgressStream, Globals, ModuleName, MaybeErrorStream,
         ;
             ErrorFileResult = error(ErrorMsg),
             io.error_message(ErrorMsg, ErrorMsgStr),
-            with_locked_stdout(!.Info,
+            with_locked_stdout(Info,
                 write_error_creating_temp_file(ProgressStream, ErrorMsgStr),
                 !IO),
             MaybeErrorStream = es_error_already_reported
@@ -629,7 +629,9 @@ worker_loop(ProgressStream, Globals, KeepGoing, MakeTarget, Targets,
 :- pred worker_loop_signal_cleanup(job_ctl::in, list(pid)::in,
     Info::in, Info::out, io::di, io::uo) is det.
 
-worker_loop_signal_cleanup(JobCtl, Pids, !Info, !IO) :-
+worker_loop_signal_cleanup(JobCtl, Pids, Info, Info, !IO) :-
+    % Returning Info unchanged is required by the (current) interface
+    % of teardown_checking_for_interrupt.
     mark_abort(JobCtl, !IO),
     list.foldl(send_signal(sigint), Pids, !IO).
 

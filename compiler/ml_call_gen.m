@@ -837,12 +837,12 @@ ml_gen_success_cont(OutputArgLvalsTypes, Context, NewCont, ContDecls, !Info) :-
         % continuation function will not be live across any heap allocations or
         % procedure calls.
         %
-        ml_gen_cont_params(OutputArgLvalsTypes, Params, !Info),
+        ml_gen_cont_params(OutputArgLvalsTypes, Params),
         ml_gen_new_func_label(yes(Params),
             ContFuncLabel, ContFuncLabelRval, !Info),
         % Push nesting level.
         ml_gen_copy_args_to_locals(OutputArgLvalsTypes, Context, CopyStmts),
-        ml_gen_call_current_success_cont(Context, CallContStmt, !Info),
+        ml_gen_call_current_success_cont(!.Info, Context, CallContStmt),
         CopyStmt = ml_gen_block([], [], CopyStmts ++ [CallContStmt], Context),
         % Pop nesting level.
         ml_gen_label_func(!.Info, ContFuncLabel, mlds_func_source_continuation,
@@ -864,9 +864,9 @@ ml_gen_success_cont(OutputArgLvalsTypes, Context, NewCont, ContDecls, !Info) :-
     % if needed.
     %
 :- pred ml_gen_cont_params(assoc_list(mlds_lval, mlds_type)::in,
-    mlds_func_params::out, ml_gen_info::in, ml_gen_info::out) is det.
+    mlds_func_params::out) is det.
 
-ml_gen_cont_params(OutputArgLvalsTypes, Params, !Info) :-
+ml_gen_cont_params(OutputArgLvalsTypes, Params) :-
     ml_gen_cont_params_loop(OutputArgLvalsTypes, 1, Args0),
     ml_declare_env_ptr_arg(EnvPtrArg),
     Args = Args0 ++ [EnvPtrArg],

@@ -27,12 +27,10 @@
 :- import_module prof_info.
 
 :- import_module digraph.
-:- import_module io.
 
 %---------------------------------------------------------------------------%
 
-:- pred propagate_counts(digraph(string)::in, prof::in, prof::out,
-    io::di, io::uo) is det.
+:- pred propagate_counts(digraph(string)::in, prof::in, prof::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -61,7 +59,7 @@
                 cycle_to_preds_map  :: cycle_to_preds_map
             ).
 
-propagate_counts(CallGraph, !Prof, !IO) :-
+propagate_counts(CallGraph, !Prof) :-
     prof_get_addrdeclmap(!.Prof, AddrDeclMap),
     prof_get_profnodemap(!.Prof, ProfNodeMap0),
 

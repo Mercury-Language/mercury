@@ -392,8 +392,7 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals, OpModeArgs,
                     ErrorStream, Globals, OpModeArgs, InvokedByMmcMake,
                     EnvOptFileVariables, EnvVarArgs, OptionArgs, Args,
                     cord.empty, ModulesToLinkCord,
-                    cord.empty, ExtraObjFilesCord,
-                    !HaveParseTreeMaps, !Specs, !IO)
+                    cord.empty, ExtraObjFilesCord, !HaveParseTreeMaps, !IO)
             ;
                 InvokedByMmcMake = op_mode_invoked_by_mmc_make,
                 % `mmc --make' has already set up the options.
@@ -528,7 +527,7 @@ setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
         setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
             OpModeArgs, InvokedByMmcMake, EnvOptFileVariables,
             EnvVarArgs, OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
-            !HaveParseTreeMaps, !Specs, !IO),
+            !HaveParseTreeMaps, !IO),
         !:Modules = !.Modules ++ cord.from_list(ArgModules),
         !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
         setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream,
@@ -556,18 +555,18 @@ setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
     cord(module_name)::in, cord(module_name)::out,
     cord(string)::in, cord(string)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 setup_and_process_compiler_cmd_line_args(_, _, _, _, _, _, _, _, [],
-        !Modules, !ExtraObjFiles, !HaveParseTreeMaps, !Specs, !IO).
+        !Modules, !ExtraObjFiles, !HaveParseTreeMaps, !IO).
 setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, EnvOptFileVariables,
         EnvVarArgs, OptionArgs, [Arg | Args], !Modules, !ExtraObjFiles,
-        !HaveParseTreeMaps, !Specs, !IO) :-
+        !HaveParseTreeMaps, !IO) :-
     setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, EnvOptFileVariables,
         EnvVarArgs, OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
-        !HaveParseTreeMaps, !Specs, !IO),
+        !HaveParseTreeMaps, !IO),
     (
         Args = []
     ;
@@ -579,7 +578,7 @@ setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream,
         Globals, OpModeArgs, InvokedByMmcMake, EnvOptFileVariables,
         EnvVarArgs, OptionArgs, Args, !Modules, !ExtraObjFiles,
-        !HaveParseTreeMaps, !Specs, !IO).
+        !HaveParseTreeMaps, !IO).
 
 :- pred do_process_compiler_cmd_line_args(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_args::in,
@@ -631,12 +630,12 @@ do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     env_optfile_variables::in, list(string)::in, list(string)::in, string::in,
     list(module_name)::out, list(string)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, EnvOptFileVariables,
         EnvVarArgs, OptionArgs, Arg, ModulesToLink, ExtraObjFiles,
-        !HaveParseTreeMaps, !Specs, !IO) :-
+        !HaveParseTreeMaps, !IO) :-
     get_default_options(Globals, DefaultOptionTable),
     FileOrModule = string_to_file_or_module(Arg),
     ModuleName = file_or_module_to_module_name(FileOrModule),

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -112,8 +112,7 @@ specialize_call_to_unify_or_compare(CalleePredInfo, CalleeProcId,
         ( if
             is_type_a_dummy(ModuleInfo, Type) = is_dummy_type
         then
-            specialize_unify_or_compare_pred_for_dummy(MaybeResult, Goal,
-                !Info)
+            specialize_unify_or_compare_pred_for_dummy(MaybeResult, Goal)
         else if
             % Look for unification or comparison applied directly to a
             % builtin or atomic type. This needs to be done separately from
@@ -188,9 +187,9 @@ create_goal_to_call_type_specific_unify_or_compare(SpecialPredType, SpecialId,
         MaybeContext, SymName).
 
 :- pred specialize_unify_or_compare_pred_for_dummy(maybe(prog_var)::in,
-    hlds_goal_expr::out, higher_order_info::in, higher_order_info::out) is det.
+    hlds_goal_expr::out) is det.
 
-specialize_unify_or_compare_pred_for_dummy(MaybeResult, GoalExpr, !Info) :-
+specialize_unify_or_compare_pred_for_dummy(MaybeResult, GoalExpr) :-
     (
         MaybeResult = no,
         GoalExpr = conj(plain_conj, [])     % true

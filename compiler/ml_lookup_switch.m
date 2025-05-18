@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2024 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -520,10 +520,10 @@ ml_gen_several_soln_lookup_code(Context, SlotVarRval,
 
     ml_generate_field_assign(NumLaterSolnsVarLval, MLDS_IntType,
         NumLaterSolnsFieldId, FirstSolnVectorCommon, FirstSolnStructType,
-        SlotVarRval, Context, NumLaterSolnsAssignStmt, !Info),
+        SlotVarRval, Context, NumLaterSolnsAssignStmt),
     ml_generate_field_assign(LaterSlotVarLval, MLDS_IntType,
         FirstLaterSolnRowFieldId, FirstSolnVectorCommon, FirstSolnStructType,
-        SlotVarRval, Context, LaterSlotVarAssignStmt, !Info),
+        SlotVarRval, Context, LaterSlotVarAssignStmt),
     ml_generate_field_assigns(OutVars, OutTypes, FirstSolnOutFieldIds,
         FirstSolnVectorCommon, FirstSolnStructType,
         SlotVarRval, Context, FirstSolnLookupStmts, !Info),
@@ -531,7 +531,7 @@ ml_gen_several_soln_lookup_code(Context, SlotVarRval,
         LaterSolnVectorCommon, LaterSolnStructType,
         LaterSlotVarRval, Context, LaterSolnLookupStmts, !Info),
 
-    ml_gen_call_current_success_cont(Context, CallContStmt, !Info),
+    ml_gen_call_current_success_cont(!.Info, Context, CallContStmt),
     FirstLookupSucceedStmt = ml_stmt_block([], [],
         FirstSolnLookupStmts ++ [CallContStmt], Context),
 

@@ -1002,13 +1002,13 @@ generate_tailrec_event_code(TraceInfo, ArgsInfos, GoalId, Context, Code,
     ).
 
 :- pred generate_tailrec_reset_slots_code(trace_info::in,
-    llds_code::out, code_info::in, code_info::out) is det.
+    code_info::in, llds_code::out) is det.
 
-generate_tailrec_reset_slots_code(TraceInfo, Code, !CI) :-
+generate_tailrec_reset_slots_code(TraceInfo, CI, Code) :-
     % We reset all the debugging slots that need to be reset. We handle them
     % in the order of allocation.
     % Stage 1.
-    CodeModel = get_proc_model(!.CI),
+    CodeModel = get_proc_model(CI),
     event_num_slot(CodeModel, EventNumLval),
     call_num_slot(CodeModel, CallNumLval),
     call_depth_slot(CodeModel, CallDepthLval),
@@ -1122,8 +1122,8 @@ generate_event_code(Port, PortInfo, MaybeTraceInfo, Context, HideEvent,
         list.delete_elems(LiveVars0, OutputVars, LiveVars),
         (
             MaybeTraceInfo = yes(TailRecTraceInfo),
-            generate_tailrec_reset_slots_code(TailRecTraceInfo,
-                TailRecResetCode, !CI)
+            generate_tailrec_reset_slots_code(TailRecTraceInfo, !.CI,
+                TailRecResetCode)
         ;
             MaybeTraceInfo = no,
             unexpected($pred, "tailrec call without TraceInfo")
