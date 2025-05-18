@@ -1255,7 +1255,6 @@
 
 %---------------------------------------------------------------------------%
 
-
 :- pragma no_determinism_warning(pred(option_defaults/2)).
 % getopt and hence handle_options.m expect a nondet predicate,
 % so we declare option_defaults to be nondet, even though it is multi.
@@ -1264,7 +1263,10 @@ option_defaults(Opt, Data) :-
     optdef(_Category, Opt, Data).
 
 :- type option_category
-    --->    oc_warn
+    --->    oc_warn_c       % options that *control* warnings
+    ;       oc_warn_ns      % nonstyle warnings
+    ;       oc_warn_s       % style warnings
+    ;       oc_warn_i       % requests for information  ZZZ -> oc_inform?
     ;       oc_verbosity
     ;       oc_opmode
     ;       oc_aux_output
@@ -1294,105 +1296,105 @@ option_defaults(Opt, Data) :-
     % affects a style warning, you will need to modify the handling of
     % inhibit_style_warnings as well.
 
-optdef(oc_warn, inhibit_warnings,                       bool_special).
-optdef(oc_warn, inhibit_style_warnings,                 bool_special).
-optdef(oc_warn, warn_accumulator_swaps,                 bool(yes)).
-optdef(oc_warn, halt_at_warn,                           bool(no)).
-optdef(oc_warn, halt_at_warn_make_int,                  bool(no)).
-optdef(oc_warn, halt_at_warn_make_opt,                  bool(no)).
-optdef(oc_warn, halt_at_syntax_errors,                  bool(no)).
-optdef(oc_warn, halt_at_auto_parallel_failure,          bool(no)).
-optdef(oc_warn, halt_at_invalid_interface,              bool(yes)).
-optdef(oc_warn, warn_singleton_vars,                    bool(yes)).
-optdef(oc_warn, warn_repeated_singleton_vars,           bool(yes)).
-optdef(oc_warn, warn_overlapping_scopes,                bool(yes)).
-optdef(oc_warn, warn_det_decls_too_lax,                 bool(yes)).
-optdef(oc_warn, warn_inferred_erroneous,                bool(yes)).
-optdef(oc_warn, warn_nothing_exported,                  bool(yes)).
-optdef(oc_warn, warn_unused_args,                       bool(no)).
-optdef(oc_warn, warn_unneeded_initial_statevars,        bool(no)).
-optdef(oc_warn, warn_unneeded_initial_statevars_lambda, bool(no)).
-optdef(oc_warn, warn_unneeded_final_statevars,          bool(no)).
-optdef(oc_warn, warn_unneeded_final_statevars_lambda,   bool(no)).
-optdef(oc_warn, warn_interface_imports,                 bool(yes)).
-optdef(oc_warn, warn_interface_imports_in_parents,      bool(no)).
-optdef(oc_warn, warn_inconsistent_pred_order_clauses,   bool(no)).
-optdef(oc_warn, warn_inconsistent_pred_order_foreign_procs, bool(no)).
-optdef(oc_warn, warn_non_contiguous_decls,              bool(yes)).
-optdef(oc_warn, warn_non_contiguous_clauses,            bool(no)).
+optdef(oc_warn_c,  inhibit_warnings,                    bool_special).
+optdef(oc_warn_c,  inhibit_style_warnings,              bool_special).
+optdef(oc_warn_ns, warn_accumulator_swaps,              bool(yes)).
+optdef(oc_warn_c,  halt_at_warn,                        bool(no)).
+optdef(oc_warn_c,  halt_at_warn_make_int,               bool(no)).
+optdef(oc_warn_c,  halt_at_warn_make_opt,               bool(no)).
+optdef(oc_warn_c,  halt_at_syntax_errors,               bool(no)).
+optdef(oc_warn_c,  halt_at_auto_parallel_failure,       bool(no)).
+optdef(oc_warn_c,  halt_at_invalid_interface,           bool(yes)).
+optdef(oc_warn_ns, warn_singleton_vars,                 bool(yes)).
+optdef(oc_warn_ns, warn_repeated_singleton_vars,        bool(yes)).
+optdef(oc_warn_ns, warn_overlapping_scopes,             bool(yes)).
+optdef(oc_warn_ns, warn_det_decls_too_lax,              bool(yes)).
+optdef(oc_warn_ns, warn_inferred_erroneous,             bool(yes)).
+optdef(oc_warn_ns, warn_nothing_exported,               bool(yes)).
+optdef(oc_warn_ns, warn_unused_args,                    bool(no)).
+optdef(oc_warn_s,  warn_unneeded_initial_statevars,     bool(no)).
+optdef(oc_warn_s,  warn_unneeded_initial_statevars_lambda, bool(no)).
+optdef(oc_warn_ns, warn_unneeded_final_statevars,       bool(no)).
+optdef(oc_warn_ns, warn_unneeded_final_statevars_lambda, bool(no)).
+optdef(oc_warn_ns, warn_interface_imports,              bool(yes)).
+optdef(oc_warn_ns, warn_interface_imports_in_parents,   bool(no)).
+optdef(oc_warn_s,  warn_inconsistent_pred_order_clauses, bool(no)).
+optdef(oc_warn_s,  warn_inconsistent_pred_order_foreign_procs, bool(no)).
+optdef(oc_warn_s,  warn_non_contiguous_decls,           bool(yes)).
+optdef(oc_warn_s,  warn_non_contiguous_clauses,         bool(no)).
     % XXX warn_non_contiguous_clauses should default to yes.
-optdef(oc_warn, warn_non_contiguous_foreign_procs,      bool(no)).
-optdef(oc_warn, warn_non_stratification,                bool(no)).
-optdef(oc_warn, warn_missing_opt_files,                 bool(yes)).
-optdef(oc_warn, warn_missing_trans_opt_files,           bool(no)).
-optdef(oc_warn, warn_missing_trans_opt_deps,            bool(yes)).
-optdef(oc_warn, warn_unification_cannot_succeed,        bool(yes)).
-optdef(oc_warn, warn_simple_code,                       bool(yes)).
-optdef(oc_warn, warn_duplicate_calls,                   bool(no)).
-optdef(oc_warn, warn_implicit_stream_calls,             bool(no)).
-optdef(oc_warn, warn_missing_module_name,               bool(yes)).
-optdef(oc_warn, warn_wrong_module_name,                 bool(yes)).
-optdef(oc_warn, error_output_suffix,                    string("")).
-optdef(oc_warn, progress_output_suffix,                 string("")).
-optdef(oc_warn, inference_output_suffix,                string("")).
-optdef(oc_warn, debug_output_suffix,                    string("")).
-optdef(oc_warn, recompile_output_suffix,                string("")).
-optdef(oc_warn, warn_smart_recompilation,               bool(yes)).
-optdef(oc_warn, warn_undefined_options_variables,       bool(yes)).
-optdef(oc_warn, warn_suspicious_recursion,              bool(no)).
-optdef(oc_warn, warn_non_tail_recursion_self,           bool(no)).
-optdef(oc_warn, warn_non_tail_recursion_mutual,         bool(no)).
-optdef(oc_warn, warn_non_tail_recursion,                maybe_string_special).
-optdef(oc_warn, warn_obvious_non_tail_recursion,        bool(no)).
-optdef(oc_warn, warn_target_code,                       bool(yes)).
-optdef(oc_warn, warn_up_to_date,                        bool(yes)).
-optdef(oc_warn, warn_stubs,                             bool(yes)).
-optdef(oc_warn, warn_dead_procs,                        bool(no)).
-optdef(oc_warn, warn_dead_preds,                        bool(no)).
-optdef(oc_warn, warn_table_with_inline,                 bool(yes)).
-optdef(oc_warn, warn_non_term_special_preds,            bool(yes)).
-optdef(oc_warn, warn_known_bad_format_calls,            bool(yes)).
-optdef(oc_warn, warn_only_one_format_string_error,      bool(yes)).
-optdef(oc_warn, warn_unknown_format_calls,              bool(no)).
-optdef(oc_warn, warn_obsolete,                          bool(yes)).
-optdef(oc_warn, warn_insts_without_matching_type,       bool(yes)).
-optdef(oc_warn, warn_insts_with_functors_without_type,  bool(no)).
-optdef(oc_warn, warn_unused_imports,                    bool(no)).
+optdef(oc_warn_s,  warn_non_contiguous_foreign_procs,   bool(no)).
+optdef(oc_warn_ns, warn_non_stratification,             bool(no)).
+optdef(oc_warn_ns, warn_missing_opt_files,              bool(yes)).
+optdef(oc_warn_ns, warn_missing_trans_opt_files,        bool(no)).
+optdef(oc_warn_ns, warn_missing_trans_opt_deps,         bool(yes)).
+optdef(oc_warn_ns, warn_unification_cannot_succeed,     bool(yes)).
+optdef(oc_warn_s,  warn_simple_code,                    bool(yes)).
+optdef(oc_warn_s,  warn_duplicate_calls,                bool(no)).
+optdef(oc_warn_s,  warn_implicit_stream_calls,          bool(no)).
+optdef(oc_warn_ns, warn_missing_module_name,            bool(yes)).
+optdef(oc_warn_ns, warn_wrong_module_name,              bool(yes)).
+optdef(oc_warn_c,  error_output_suffix,                 string("")).
+optdef(oc_warn_c,  progress_output_suffix,              string("")).
+optdef(oc_warn_c,  inference_output_suffix,             string("")).
+optdef(oc_warn_c,  debug_output_suffix,                 string("")).
+optdef(oc_warn_c,  recompile_output_suffix,             string("")).
+optdef(oc_warn_ns, warn_smart_recompilation,            bool(yes)).
+optdef(oc_warn_ns, warn_undefined_options_variables,    bool(yes)).
+optdef(oc_warn_ns, warn_suspicious_recursion,           bool(no)). /*ZZZ*/
+optdef(oc_warn_s,  warn_non_tail_recursion_self,        bool(no)).
+optdef(oc_warn_s,  warn_non_tail_recursion_mutual,      bool(no)).
+optdef(oc_warn_c,  warn_non_tail_recursion,             maybe_string_special).
+optdef(oc_warn_s,  warn_obvious_non_tail_recursion,     bool(no)).
+optdef(oc_warn_ns, warn_target_code,                    bool(yes)).
+optdef(oc_warn_ns, warn_up_to_date,                     bool(yes)).
+optdef(oc_warn_ns, warn_stubs,                          bool(yes)).
+optdef(oc_warn_s,  warn_dead_procs,                     bool(no)).
+optdef(oc_warn_s,  warn_dead_preds,                     bool(no)).
+optdef(oc_warn_ns, warn_table_with_inline,              bool(yes)).
+optdef(oc_warn_ns, warn_non_term_special_preds,         bool(yes)).
+optdef(oc_warn_s,  warn_known_bad_format_calls,         bool(yes)).
+optdef(oc_warn_c,  warn_only_one_format_string_error,   bool(yes)).
+optdef(oc_warn_s,  warn_unknown_format_calls,           bool(no)).
+optdef(oc_warn_ns, warn_obsolete,                       bool(yes)). /*ZZZ*/
+optdef(oc_warn_s,  warn_insts_without_matching_type,    bool(yes)).
+optdef(oc_warn_s,  warn_insts_with_functors_without_type,bool(no)).
+optdef(oc_warn_ns, warn_unused_imports,                 bool(no)). /*ZZZ*/
     % XXX warn_unused_imports is disabled by default until someone
     % removes all the unused imports from the compiler itself,
     % which is compiled with --halt-at-warn by default.
     % XXX The above comment is obsolete; warn_unused_imports is now
     % turned on by default in COMP_FLAGS.
-optdef(oc_warn, warn_unused_interface_imports,          bool(yes)).
+optdef(oc_warn_ns, warn_unused_interface_imports,       bool(yes)). /*ZZZ*/
     % Since warn_unused_interface_imports does *part* of the job
     % of warn_unused_imports, it is automatically turned off if
     % warn_unused_imports is turned on. It is also turned off when
     % generating interface files, because the presence of unused
     % imports in the interface of module A should not prevent the
     % testing of a module B that imports A.
-optdef(oc_warn, inform_ite_instead_of_switch,           bool(no)).
-optdef(oc_warn, inform_incomplete_switch,               bool(no)).
-optdef(oc_warn, inform_incomplete_switch_threshold,     int(0)).
-optdef(oc_warn, warn_unresolved_polymorphism,           bool(yes)).
-optdef(oc_warn, warn_suspicious_foreign_procs,          bool(no)).
-optdef(oc_warn, warn_suspicious_foreign_code,           bool(no)).
-optdef(oc_warn, warn_state_var_shadowing,               bool(yes)).
-optdef(oc_warn, warn_unneeded_mode_specific_clause,     bool(yes)).
-optdef(oc_warn, warn_suspected_occurs_check_failure,    bool(yes)).
-optdef(oc_warn, warn_potentially_ambiguous_pragma,      bool(no)).
-optdef(oc_warn, warn_ambiguous_pragma,                  bool(yes)).
-optdef(oc_warn, warn_stdlib_shadowing,                  bool(yes)).
-optdef(oc_warn, inform_incomplete_color_scheme,         bool(no)).
-optdef(oc_warn, inform_inferred,                        bool_special).
-optdef(oc_warn, inform_inferred_types,                  bool(yes)).
-optdef(oc_warn, inform_inferred_modes,                  bool(yes)).
-optdef(oc_warn, inform_suboptimal_packing,              bool(no)).
-optdef(oc_warn, print_error_spec_id,                    bool(no)).
-optdef(oc_warn, inform_ignored_pragma_errors,           bool(no)).
-optdef(oc_warn, inform_generated_type_spec_pragmas,     bool(no)).
-optdef(oc_warn, warn_redundant_coerce,                  bool(yes)).
-optdef(oc_warn, warn_can_fail_function,                 bool(no)).
-optdef(oc_warn, warn_unsorted_import_blocks,            bool(no)).
+optdef(oc_warn_s,  inform_ite_instead_of_switch,        bool(no)). /*->warn*/
+optdef(oc_warn_s,  inform_incomplete_switch,            bool(no)). /*->warn*/
+optdef(oc_warn_c,  inform_incomplete_switch_threshold,  int(0)).   /*->warn*/
+optdef(oc_warn_ns, warn_unresolved_polymorphism,        bool(yes)). /*ZZZ*/
+optdef(oc_warn_s,  warn_suspicious_foreign_procs,       bool(no)). /*->ns*/
+optdef(oc_warn_s,  warn_suspicious_foreign_code,        bool(no)). /*ZZZ?*/
+optdef(oc_warn_s,  warn_state_var_shadowing,            bool(yes)).
+optdef(oc_warn_s,  warn_unneeded_mode_specific_clause,  bool(yes)).
+optdef(oc_warn_ns, warn_suspected_occurs_check_failure, bool(yes)).
+optdef(oc_warn_ns, warn_potentially_ambiguous_pragma,   bool(no)).
+optdef(oc_warn_ns, warn_ambiguous_pragma,               bool(yes)).
+optdef(oc_warn_ns, warn_stdlib_shadowing,               bool(yes)). /*ZZZ*/
+optdef(oc_warn_i,  inform_incomplete_color_scheme,      bool(no)).
+optdef(oc_warn_i,  inform_inferred,                     bool_special).
+optdef(oc_warn_i,  inform_inferred_types,               bool(yes)). /*ZZZ*/
+optdef(oc_warn_i,  inform_inferred_modes,               bool(yes)).
+optdef(oc_warn_i,  inform_suboptimal_packing,           bool(no)).  /*ZZZ*/
+optdef(oc_warn_c,  print_error_spec_id,                 bool(no)).
+optdef(oc_warn_i,  inform_ignored_pragma_errors,        bool(no)).
+optdef(oc_warn_i,  inform_generated_type_spec_pragmas,  bool(no)).
+optdef(oc_warn_s,  warn_redundant_coerce,               bool(yes)).
+optdef(oc_warn_s,  warn_can_fail_function,              bool(no)).
+optdef(oc_warn_s,  warn_unsorted_import_blocks,         bool(no)).
 
     % Verbosity options.
 
@@ -4421,8 +4423,8 @@ non_style_warning_options = [
 ].
 
 inconsequential_options(InconsequentialOptions) :-
-    InconsequentialCategories =
-        set.list_to_set([oc_warn, oc_verbosity, oc_internal, oc_buildsys]),
+    InconsequentialCategories = set.list_to_set([oc_warn_c, oc_warn_ns,
+        oc_warn_s, oc_warn_i, oc_verbosity, oc_internal, oc_buildsys]),
     FindOptionsPred =
         ( pred(Opt::out) is nondet :-
             optdef(Cat, Opt, _Data),
