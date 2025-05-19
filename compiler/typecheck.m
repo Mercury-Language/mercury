@@ -845,7 +845,7 @@ generate_stub_clause(ModuleInfo, PredInfo, PredName, StubClause,
     goal_info_init(Context, GoalInfo),
     Body = hlds_goal(conj(plain_conj, [UnifyGoal, CallGoal]), GoalInfo),
     StubClause = clause(all_modes, Body, impl_lang_mercury, Context,
-        [], init_unused_statevar_arg_map).
+        [], init_unused_statevar_arg_map, clause_is_not_a_fact).
 
 :- pred rename_instance_method_constraints(tvar_renaming::in,
     pred_origin::in, pred_origin::out) is det.

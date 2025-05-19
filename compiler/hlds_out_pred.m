@@ -541,7 +541,7 @@ format_clause(Info, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
         TypeQual, VarNamePrint, WriteWhichModes, Indent, HeadTerms,
         Clause, !State) :-
     Clause = clause(ApplicableModes, Goal, ImplLang, Context,
-        _StateVarWarnings, _UnusedSVarDescs),
+        _StateVarWarnings, _UnusedSVarDescs, _MaybeFact),
     IndentStr = indent2_string(Indent),
     Indent1 = Indent + 1u,
     DumpOptions = Info ^ hoi_dump_hlds_options,

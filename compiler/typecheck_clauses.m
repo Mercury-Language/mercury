@@ -159,7 +159,7 @@ typecheck_clauses_loop(HeadVars, ArgTypes, [Clause0 | Clauses0], !RevClauses,
     typecheck_info::in, typecheck_info::out) is det.
 
 typecheck_clause(HeadVars, ArgTypes, !Clause, !TypeAssignSet, !Info) :-
-    !.Clause = clause(_, Body0, _, Context, _, _),
+    !.Clause = clause(_, Body0, _, Context, _, _, _),
 
     % Typecheck the clause - first the head unification, and then the body.
     ArgVectorKind = arg_vector_clause_head,

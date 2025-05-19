@@ -321,6 +321,10 @@
 
 :- func init_unused_statevar_arg_map = unused_statevar_arg_map.
 
+:- type is_clause_a_fact
+    --->    clause_is_not_a_fact
+    ;       clause_is_a_fact.
+
 :- type clause
     --->    clause(
                 % Modes for which this clause applies.
@@ -329,7 +333,8 @@
                 clause_lang                 :: implementation_language,
                 clause_context              :: prog_context,
                 clause_statevar_warnings    :: list(error_spec),
-                clause_unused_svar_arg_map  :: unused_statevar_arg_map
+                clause_unused_svar_arg_map  :: unused_statevar_arg_map,
+                clause_maybe_fact           :: is_clause_a_fact
             ).
 
 :- func clause_body(clause) = hlds_goal.

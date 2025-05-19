@@ -154,3 +154,10 @@ MCFLAGS-ho_default_func_2       += --warn-unsorted-import-blocks
 MCFLAGS-require_scopes          += --warn-unsorted-import-blocks
 MCFLAGS-type_error_use_module   += --warn-unsorted-import-blocks
 MCFLAGS-types                   += --warn-unsorted-import-blocks
+
+MCFLAGS-bug197                  += --no-warn-unneeded-final-statevars
+MCFLAGS-bug197                  += --no-warn-unneeded-final-statevars-lambda
+MCFLAGS-bug487                  += --no-warn-unneeded-final-statevars
+MCFLAGS-fbnf                    += --no-warn-unneeded-final-statevars
+MCFLAGS-multimode_missing_impure += --no-warn-unneeded-final-statevars
+MCFLAGS-typeclass_test_8        += --no-warn-unneeded-final-statevars

@@ -693,7 +693,7 @@ add_builtin(ModuleInfo, CompilationTarget, PredId, HeadTypes0, !PredInfo) :-
         % Construct a clause containing that pseudo-recursive call.
         Goal = hlds_goal(GoalExpr, GoalInfo),
         Clause = clause(all_modes, Goal, impl_lang_mercury, Context,
-            [], init_unused_statevar_arg_map),
+            [], init_unused_statevar_arg_map, clause_is_not_a_fact),
         set_clause_list([Clause], ClausesRep)
     ;
         Stub = yes,

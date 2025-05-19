@@ -189,7 +189,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
         Clause = clause(all_modes, Goal, impl_lang_mercury, Context,
-            [], init_unused_statevar_arg_map),
+            [], init_unused_statevar_arg_map, clause_is_not_a_fact),
         set_clause_list([Clause], ClausesRep),
         ItemNumbers = init_clause_item_numbers_comp_gen,
         clauses_info_set_clauses_rep(ClausesRep, ItemNumbers,
@@ -218,12 +218,15 @@ warn_about_any_unused_or_nonupdated_statevars(PredInfo, HeadVarNames,
     ;
         Clauses = [HeadClause | TailClauses],
         map.init(InitAndFinalMap0),
+        MaybeAllFacts0 = all_clauses_are_facts,
         build_init_and_final_map(is_first,
             HeadClause, HeadClauseInitArgs,
-            InitAndFinalMap0, InitAndFinalMap1),
-        list.map_foldl(build_init_and_final_map(is_not_first),
+            InitAndFinalMap0, InitAndFinalMap1,
+            MaybeAllFacts0, MaybeAllFacts1),
+        list.map_foldl2(build_init_and_final_map(is_not_first),
             TailClauses, TailClausesInitArgs,
-            InitAndFinalMap1, InitAndFinalMap),
+            InitAndFinalMap1, InitAndFinalMap,
+            MaybeAllFacts1, MaybeAllFacts),
         AllClausesInitArgs =
             set.intersect_list([HeadClauseInitArgs | TailClausesInitArgs]),
         HeadClauseContext = HeadClause ^ clause_context,
@@ -231,10 +234,26 @@ warn_about_any_unused_or_nonupdated_statevars(PredInfo, HeadVarNames,
             warn_about_any_unused_statevars_in_clause(PredInfo, HeadVarNames,
                 AllClausesInitArgs, InitAndFinalMap),
             Clauses, !Specs),
-        map.foldl(
-            warn_about_nonupdated_statevar(PredInfo, HeadClauseContext,
-                TailClauses),
-            InitAndFinalMap, !Specs)
+        (
+            MaybeAllFacts = all_clauses_are_facts
+            % Programmers can easily *see* that the state vars
+            % in InitAndFinalMap cannot be updated in any of the clauses
+            % of PredInfo, since no clause has a body.
+            %
+            % This heuristic allows programmers to write clauses such as
+            %
+            %   p(_, 0, !IO). % XXX Implement this properly later.
+            %
+            % without being prodded by the algorithm to change this to
+            %
+            %   p(_, 0, IO, IO).
+        ;
+            MaybeAllFacts = some_clause_is_not_a_fact,
+            map.foldl(
+                warn_about_nonupdated_statevar(PredInfo, HeadClauseContext,
+                    TailClauses),
+                InitAndFinalMap, !Specs)
+        )
     ).
 
 %---------------------%
@@ -247,17 +266,30 @@ warn_about_any_unused_or_nonupdated_statevars(PredInfo, HeadVarNames,
 
 :- type init_and_final_map == map(uint, init_and_final).
 
+:- type are_all_clauses_facts
+    --->    some_clause_is_not_a_fact
+    ;       all_clauses_are_facts.
+
 %---------------------%
 
 :- pred build_init_and_final_map(is_first::in, clause::in, set(uint)::out,
-    init_and_final_map::in, init_and_final_map::out) is det.
+    init_and_final_map::in, init_and_final_map::out,
+    are_all_clauses_facts::in, are_all_clauses_facts::out) is det.
 
-build_init_and_final_map(IsFirst, Clause, ClauseInitArgs, !InitAndFinalMap) :-
+build_init_and_final_map(IsFirst, Clause, ClauseInitArgs,
+        !InitAndFinalMap, !MaybeAllFacts) :-
     UnusedSVarArgMap = Clause ^ clause_unused_svar_arg_map,
     map.to_sorted_assoc_list(UnusedSVarArgMap, UnusedSVarArgAL),
     collect_init_and_final_args(IsFirst, UnusedSVarArgAL,
         set.init, ClauseInitArgs, !InitAndFinalMap, set.init, KeepAliveSet),
-    map.select(!.InitAndFinalMap, KeepAliveSet, !:InitAndFinalMap).
+    map.select(!.InitAndFinalMap, KeepAliveSet, !:InitAndFinalMap),
+    MaybeFact = Clause ^ clause_maybe_fact,
+    (
+        MaybeFact = clause_is_a_fact
+    ;
+        MaybeFact = clause_is_not_a_fact,
+        !:MaybeAllFacts = some_clause_is_not_a_fact
+    ).
 
 :- pred collect_init_and_final_args(is_first::in,
     assoc_list(uint, statevar_arg_desc)::in,
@@ -314,7 +346,7 @@ collect_init_and_final_args(IsFirst, [ArgDesc | ArgDescs],
 
 warn_about_any_unused_statevars_in_clause(PredInfo, HeadVarNames,
         AllClausesInitArgs, InitAndFinalMap, Clause, !Specs) :-
-    Clause = clause(_, _, _, ClauseContext, _, UnusedSVarArgMap),
+    Clause = clause(_, _, _, ClauseContext, _, UnusedSVarArgMap, _),
     map.to_sorted_assoc_list(UnusedSVarArgMap, UnusedSVarArgAL),
     warn_about_any_unused_statevars(PredInfo, HeadVarNames, AllClausesInitArgs,
         InitAndFinalMap, ClauseContext, UnusedSVarArgAL, !Specs).

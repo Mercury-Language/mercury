@@ -1,2 +1,6 @@
+try_io_else.m:019: In predicate `main'/2:
+try_io_else.m:019:   warning: the second argument, represented by the state
+try_io_else.m:019:   variable [38;5;87m`!:IO',[39;49m [38;5;203mcould be deleted,[39;49m because its value is
+try_io_else.m:019:   always the same as its initial value.
 try_io_else.m:020: Error: a [38;5;87m`try' goal with an `io' parameter[39;49m [38;5;203mcannot have an[39;49m
 try_io_else.m:020:   [38;5;203m`else' part.[39;49m

@@ -1,3 +1,7 @@
+state_vars_test_5.m:020: In predicate `p'/1:
+state_vars_test_5.m:020:   warning: state variable [38;5;87m`!:X'[39;49m is [38;5;203mnever updated[39;49m in
+state_vars_test_5.m:020:   this clause, so it should be replaced with an
+state_vars_test_5.m:020:   ordinary variable.
 state_vars_test_5.m:020: In clause for `p(out)':
 state_vars_test_5.m:020:   mode error: argument 1 did not get sufficiently
 state_vars_test_5.m:020:   instantiated.

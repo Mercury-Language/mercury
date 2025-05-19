@@ -37,8 +37,10 @@
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred clauses_info_add_clause(clause_applicable_modes::in, list(proc_id)::in,
-    pred_status::in, clause_type::in,
+    % This predicate is exported for use by instance_method_clauses.m.
+    %
+:- pred add_clause_to_clauses_info(clause_applicable_modes::in,
+    list(proc_id)::in, pred_status::in, clause_type::in,
     pred_or_func::in, sym_name::in, list(prog_term)::in,
     prog_context::in, item_seq_num::in, goal::in, prog_varset::in,
     tvarset::in, tvarset::out, clauses_info::in, clauses_info::out,
@@ -134,7 +136,7 @@ module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
         predicate_table_lookup_pf_sym_arity(PredicateTable, is_fully_qualified,
             PredOrFunc, PredSymName, PredFormArity, PredIds),
         ( if PredIds = [PredId] then
-            module_add_clause_2(ProgressStream, PredStatus, ClauseType, PredId,
+            add_clause_to_hlds(ProgressStream, PredStatus, ClauseType, PredId,
                 PredOrFunc, PredSymName, ArgTerms, PredFormArity,
                 ClauseVarSet, MaybeBodyGoal, Context, SeqNum,
                 IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs)
@@ -168,14 +170,14 @@ module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
                     is_not_a_class_method, Context, Origin,
                     [words("clause")], PredId, !ModuleInfo, !Specs)
             ),
-            module_add_clause_2(ProgressStream, PredStatus, ClauseType, PredId,
+            add_clause_to_hlds(ProgressStream, PredStatus, ClauseType, PredId,
                 PredOrFunc, PredSymName, ArgTerms, PredFormArity,
                 ClauseVarSet, MaybeBodyGoal, Context, SeqNum,
                 IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs)
         )
     ).
 
-:- pred module_add_clause_2(io.text_output_stream::in,
+:- pred add_clause_to_hlds(io.text_output_stream::in,
     pred_status::in, clause_type::in, pred_id::in,
     pred_or_func::in, sym_name::in, list(prog_term)::in, pred_form_arity::in,
     prog_varset::in, maybe2(goal, list(warning_spec))::in, prog_context::in,
@@ -183,7 +185,7 @@ module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_add_clause_2(ProgressStream, PredStatus, ClauseType, PredId,
+add_clause_to_hlds(ProgressStream, PredStatus, ClauseType, PredId,
         PredOrFunc, PredSymName, MaybeAnnotatedArgTerms, PredFormArity,
         ClauseVarSet, MaybeBodyGoal, Context, SeqNum, IllegalSVarResult,
         !ModuleInfo, !QualInfo, !Specs) :-
@@ -245,7 +247,7 @@ module_add_clause_2(ProgressStream, PredStatus, ClauseType, PredId,
                     ClauseVarSet, PredStatus, Context, PredId, !.PredInfo,
                     ArgTerms, ProcIdsForThisClause, AllProcIds,
                     !QualInfo, !Specs),
-                clauses_info_add_clause(ProcIdsForThisClause, AllProcIds,
+                add_clause_to_clauses_info(ProcIdsForThisClause, AllProcIds,
                     PredStatus, ClauseType, PredOrFunc, PredSymName,
                     ArgTerms, Context, SeqNum, BodyGoal, ClauseVarSet,
                     TVarSet0, TVarSet, ClausesInfo0, ClausesInfo,
@@ -589,7 +591,7 @@ get_mode_annotation(VarSet, ContextPieces, ArgNum, MaybeAnnotatedArgTerm,
 
 %-----------------------------------------------------------------------------%
 
-clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
+add_clause_to_clauses_info(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
         PredOrFunc, PredSymName, ArgTerms, Context, SeqNum, BodyGoal,
         ClauseVarSet, TVarSet0, TVarSet,
         !ClausesInfo, !ModuleInfo, !QualInfo, !Specs) :-
@@ -680,6 +682,11 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
                 qual_info_set_explicit_var_types(QuantVarTypes, !QualInfo)
             )
         ),
+        ( if BodyGoal = true_expr(_) then
+            MaybeFact = clause_is_a_fact
+        else
+            MaybeFact = clause_is_not_a_fact
+        ),
         % If we have foreign clauses, we should only add this clause
         % for modes *not* covered by the foreign clauses.
         (
@@ -721,13 +728,13 @@ clauses_info_add_clause(ApplModeIds0, AllModeIds, PredStatus, ClauseType,
                 ModeIds = [_ | _],
                 ApplicableModeIds = selected_modes(ModeIds),
                 Clause = clause(ApplicableModeIds, Goal, impl_lang_mercury,
-                    Context, StateVarWarnings, UnusedSVarArgMap),
+                    Context, StateVarWarnings, UnusedSVarArgMap, MaybeFact),
                 add_clause(Clause, ClausesRep1, ClausesRep)
             )
         ;
             HasForeignClauses0 = no_foreign_lang_clauses,
             Clause = clause(ApplModeIds0, Goal, impl_lang_mercury, Context,
-                StateVarWarnings, UnusedSVarArgMap),
+                StateVarWarnings, UnusedSVarArgMap, MaybeFact),
             add_clause(Clause, ClausesRep0, ClausesRep)
         ),
         qual_info_get_explicit_var_types(!.QualInfo, ExplicitVarTypes),

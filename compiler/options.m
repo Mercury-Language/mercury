@@ -1312,10 +1312,10 @@ optdef(oc_warn_ns, warn_det_decls_too_lax,              bool(yes)).
 optdef(oc_warn_ns, warn_inferred_erroneous,             bool(yes)).
 optdef(oc_warn_ns, warn_nothing_exported,               bool(yes)).
 optdef(oc_warn_ns, warn_unused_args,                    bool(no)).
-optdef(oc_warn_s,  warn_unneeded_initial_statevars,     bool(no)).
-optdef(oc_warn_s,  warn_unneeded_initial_statevars_lambda, bool(no)).
-optdef(oc_warn_ns, warn_unneeded_final_statevars,       bool(no)).
-optdef(oc_warn_ns, warn_unneeded_final_statevars_lambda, bool(no)).
+optdef(oc_warn_s,  warn_unneeded_initial_statevars,     bool(yes)).
+optdef(oc_warn_s,  warn_unneeded_initial_statevars_lambda, bool(yes)).
+optdef(oc_warn_ns, warn_unneeded_final_statevars,       bool(yes)).
+optdef(oc_warn_ns, warn_unneeded_final_statevars_lambda, bool(yes)).
 optdef(oc_warn_ns, warn_interface_imports,              bool(yes)).
 optdef(oc_warn_ns, warn_interface_imports_in_parents,   bool(no)).
 optdef(oc_warn_s,  warn_inconsistent_pred_order_clauses, bool(no)).

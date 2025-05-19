@@ -59,3 +59,5 @@ MCFLAGS-var_as_pred_name        += --no-halt-at-invalid-interface
 MCFLAGS-vars_in_wrong_places    += --no-halt-at-invalid-interface
 MCFLAGS-vars_in_wrong_places    += --verbose-error-messages
 MCFLAGS-where_abstract_enum     += --no-halt-at-invalid-interface
+
+MCFLAGS-bug410                  += --no-warn-unneeded-final-statevars

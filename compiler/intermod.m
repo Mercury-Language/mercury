@@ -1030,7 +1030,7 @@ format_promise(Info, ModuleInfo, TVarSet, VarTable, PromiseType, HeadVars,
 
 intermod_format_clause(OutInfo, ModuleInfo, PredId, SymName, PredOrFunc,
         VarTable, TypeQual, HeadVars, Clause0, !State) :-
-    Clause0 = clause(ApplicableProcIds, Goal, ImplLang, _, _, _),
+    Clause0 = clause(ApplicableProcIds, Goal, ImplLang, _, _, _, _),
     (
         ImplLang = impl_lang_mercury,
         strip_headvar_unifications(HeadVars, Clause0, ClauseHeadVars, Clause),

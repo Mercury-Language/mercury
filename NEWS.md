@@ -678,7 +678,7 @@ Changes to the Mercury standard library
   to declare an operator string to be e.g. an infix operator using
   two separate entries, with different priorities. Operator tables now map
   each operator string to a structure which has
-  
+
   - one slot for a description of an infix operator,
   - one slot for a description of a binary prefix operator,
   - one slot for a description of a unary prefix operator, and
@@ -810,7 +810,7 @@ Changes to the Mercury standard library
     - pred `contains/2`
     - func `count/1`
     - pred `delete/3`
-    - pred `delete_list/3` 
+    - pred `delete_list/3`
     - pred `difference/3`
     - func `intersect/2`
     - pred `intersect/3`
@@ -844,13 +844,13 @@ Changes to the Mercury standard library
 
 * The following predicates have been added:
 
-    - pred `map2_fold/6` 
+    - pred `map2_fold/6`
     - pred `nondet_member/2`
 
 * The following obsolete predicates and function have been removed:
 
     - pred `empty/1`
-    - pred `non_empty/1` 
+    - pred `non_empty/1`
     - func `set/1`
 
 ### Changes to the `set_bbbtree` module
@@ -1523,6 +1523,26 @@ Changes to the Mercury compiler
   diffs of changes to these sections easier to read, and spare programmers
   from having to decide on a case-by-case basis exactly where they want
   to add a new `import_module` or `use_module` declaration.
+
+* We have added two new options, `--warn-unneeded-initial-statevars`,
+  and `--warn-unneeded-initial-statevars-lambda`, which report, for
+  clause heads and lambda expressions respectively, when an argument
+  of the form !.SV in their argument list is never updated. In most cases,
+  changing such arguments into non-statevars will improve the code
+  by avoiding giving readers of the code a false expectation of an update.
+  (An exception is when a !.SV argument is not updated in one clause,
+  but is updated in another clause.) Both options are on by default.
+
+* We have added two new options, `--warn-unneeded-final-statevars`,
+  and `--warn-unneeded-final-statevars-lambda`, which report, for
+  clause heads and lambda expressions respectively, when an argument
+  of the form !:SV in their argument list is guaranteed to be unified
+  with the !.SV argument in the same argument list. In the absence of
+  constraints that require keeping the predicate signature unchanged
+  (e.g. to allow the predicate to be passed to a higher order construct),
+  the !:SV argument should be deleted, and if the only use of the !.SV
+  argument was to set the value of the !:SV argument, then the !.SV
+  argument should be deleted too. Both options are on by default.
 
 * The deprecated option `--trail-segments` has been deleted and the grade
   component `trseg` is no longer accepted as a synonym for `tr`.

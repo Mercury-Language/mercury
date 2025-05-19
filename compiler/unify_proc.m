@@ -2917,8 +2917,14 @@ quantify_clause_body(ApplModes, HeadVars, Goal0, Context, Clause, !Info) :-
         VarTable0, VarTable, RttiVarMaps0, RttiVarMaps),
     unify_proc_info_set_var_table(VarTable, !Info),
     unify_proc_info_set_rtti_varmaps(RttiVarMaps, !Info),
+    Goal = hlds_goal(GoalExpr0, _),
+    ( if GoalExpr0 = conj(_, []) then
+        MaybeFact = clause_is_a_fact
+    else
+        MaybeFact = clause_is_not_a_fact
+    ),
     Clause = clause(ApplModes, Goal, impl_lang_mercury, Context,
-        [], init_unused_statevar_arg_map).
+        [], init_unused_statevar_arg_map, MaybeFact).
 
 %---------------------------------------------------------------------------%
 
