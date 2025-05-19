@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2013-2018 The Mercury team.
+// Copyright (C) 2013-2018, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_conf_param.h:
@@ -134,7 +134,7 @@
 // MR_USE_GCC_GLOBAL_REGISTERS
 // MR_USE_GCC_NONLOCAL_GOTOS
 // MR_USE_ASM_LABELS
-// MR_CONSERVATIVE_GC (= boehm_gc)
+// MR_CONSERVATIVE_GC (= boehm_gc, or hgc)
 // MR_BOEHM_GC
 // MR_HGC
 // MR_NATIVE_GC

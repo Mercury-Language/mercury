@@ -302,7 +302,29 @@ MR_ensure_big_enough_buffer(char **buffer_ptr, int *buffer_size_ptr,
 ////////////////////////////////////////////////////////////////////////////
 
 // These routines allocate memory that, in Boehm grades, will be scanned
-// by the conservative garbage collector.
+// by the conservative garbage collector. (Except for MR_GC_malloc_atomic,
+// which allocates memory that won't be scanned.)
+//
+// Note that
+//
+// - We define MR_CONSERVATIVE_GC if either MR_BOEHM_GC or MR_HGC is defined.
+//
+// - However, neither the MLDS nor the LLDS backend actually call
+//   these functions.
+//
+//   - The code of mlds_to_c_statement.m implements new_object MLDS statements
+//     by calling the MR_new_object/MR_new_object_atomic macros, which end up
+//     invoking GC_MALLOC/GC_MALLOC_ATOMIC directly, i.e. without going through
+//     the functions below.
+//
+//   - The code of llds_out_instr.m implements incr_hp instructions
+//     by calling the MR_offset_incr_hp/MR_offset_incr_hp_atomic macros,
+//     which *also* end up invoking GC_MALLOC/GC_MALLOC_ATOMIC directly.
+//
+// - The definitions of the next four MR_GC_* functions assume MR_BOEHM_GC;
+//   they won't work with MR_HGC. If we ever want to actually *finish* MR_HGC,
+//   this should be fixed, because some code *does* call these functions.
+//   Specifically, some of the extras contain C foreign_procs that do so.
 
 void *
 MR_GC_malloc(size_t num_bytes)
