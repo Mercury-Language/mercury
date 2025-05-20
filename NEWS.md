@@ -120,7 +120,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `array_to_doc/1` (replacement: `pretty_printer.array_to_doc`/1)
+    - func `array_to_doc/1` (replacement: `pretty_printer.array_to_doc/1`)
 
 ### Changes to the `benchmarking` module
 
@@ -184,7 +184,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `char_to_doc/1`   (replacement: `pretty_printer.char_to_doc`/1)
+    - func `char_to_doc/1`   (replacement: `pretty_printer.char_to_doc/1`)
 
 ### Changes to the `construct` module
 
@@ -302,7 +302,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `float_to_doc/1`   (replacement: `pretty_printer.float_to_doc`/1)
+    - func `float_to_doc/1`   (replacement: `pretty_printer.float_to_doc/1`)
 
 ### Changes to the `hash_table` module
 
@@ -347,7 +347,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `int_to_doc/1`    (replacement: `pretty_printer.int_to_doc`/1)
+    - func `int_to_doc/1`    (replacement: `pretty_printer.int_to_doc/1`)
 
 ### Changes to the `int8` module
 
@@ -360,7 +360,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `int8_to_doc/1`   (replacement: `pretty_printer.int8_to_doc`/1)
+    - func `int8_to_doc/1`   (replacement: `pretty_printer.int8_to_doc/1`)
 
 ### Changes to the `int16` module
 
@@ -373,7 +373,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `int16_to_doc/1`  (replacement: `pretty_printer.int16_to_doc`/1)
+    - func `int16_to_doc/1`  (replacement: `pretty_printer.int16_to_doc/1`)
 
 ### Changes to the `int32` module
 
@@ -386,7 +386,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `int32_to_doc/1`  (replacement: `pretty_printer.int32_to_doc`/1)
+    - func `int32_to_doc/1`  (replacement: `pretty_printer.int32_to_doc/1`)
 
 ### Changes to the `int64` module
 
@@ -399,7 +399,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `int64_to_doc/1`  (replacement: `pretty_printer.int64_to_doc`/1)
+    - func `int64_to_doc/1`  (replacement: `pretty_printer.int64_to_doc/1`)
 
 ### Changes to the `io` module
 
@@ -631,7 +631,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `list_to_doc/1`  (replacement: `pretty_printer.list_to_doc`/1)
+    - func `list_to_doc/1`  (replacement: `pretty_printer.list_to_doc/1`)
 
 ### Changes to the `one_or_more` module
 
@@ -643,7 +643,7 @@ Changes to the Mercury standard library
 * The following function has been marked obsolete:
 
     - func `one_or_more_to_doc/1`
-                        (replacement: `pretty_printer.one_or_more_to_doc`/1)
+                        (replacement: `pretty_printer.one_or_more_to_doc/1`)
 
 ### Changes to the `one_or_more_map` module
 
@@ -984,19 +984,19 @@ Changes to the Mercury standard library
 * The following predicates and functions have been marked obsolete:
 
     - func `string_to_doc/1`
-                            (replacement: `pretty_printer.string_to_doc`/1)
-    - func `between_codepoints/3`    (replacement: `between_code_points`/3)
-    - pred `between_codepoints/4`    (replacement: `between_code_points`/4)
-    - pred `codepoint_offset/3`      (replacement: `code_point_offset`/3)
-    - pred `codepoint_offset/4`      (replacement: `code_point_offset`/4)
-    - func `count_codepoints/1`      (replacement: `count_code_points`/1)
-    - pred `count_codepoints/2`      (replacement: `count_code_points`/2)
-    - func `left_by_codepoint/2`     (replacement: `left_by_code_point`/2)
-    - pred `left_by_codepoint/3`     (replacement: `left_by_code_point`/3)
-    - func `right_by_codepoint/2`    (replacement: `right_by_code_point`/2)
-    - pred `right_by_codepoint/3`    (replacement: `right_by_code_point`/3)
-    - pred `split_by_codepoint/3`    (replacement: `split_by_code_point`/3)
-    - pred `split_by_codepoint/4`    (replacement: `split_by_code_point'/4`)
+                            (replacement: `pretty_printer.string_to_doc/1`)
+    - func `between_codepoints/3`    (replacement: `between_code_points/3`)
+    - pred `between_codepoints/4`    (replacement: `between_code_points/4`)
+    - pred `codepoint_offset/3`      (replacement: `code_point_offset/3`)
+    - pred `codepoint_offset/4`      (replacement: `code_point_offset/4`)
+    - func `count_codepoints/1`      (replacement: `count_code_points/1`)
+    - pred `count_codepoints/2`      (replacement: `count_code_points/2`)
+    - func `left_by_codepoint/2`     (replacement: `left_by_code_point/2`)
+    - pred `left_by_codepoint/3`     (replacement: `left_by_code_point/3`)
+    - func `right_by_codepoint/2`    (replacement: `right_by_code_point/2`)
+    - pred `right_by_codepoint/3`    (replacement: `right_by_code_point/3`)
+    - pred `split_by_codepoint/3`    (replacement: `split_by_code_point/3`)
+    - pred `split_by_codepoint/4`    (replacement: `split_by_code_point/4`)
 
 * The semantics of the `format_table_max` function has been changed.
   Previously, the function's documentation was silent on how the returned
@@ -1276,7 +1276,7 @@ Changes to the Mercury standard library
 * The following function has been marked obsolete:
 
     - func `tree234_to_doc/1`
-                            (replacement: `pretty_printer.tree234_to_doc`/1)
+                            (replacement: `pretty_printer.tree234_to_doc/1`)
 
 ### Changes to the `tree_bitset` module
 
@@ -1308,7 +1308,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `uint_to_doc/1`   (replacement: `pretty_printer.uint_to_doc`/1)
+    - func `uint_to_doc/1`   (replacement: `pretty_printer.uint_to_doc/1`)
 
 ### Changes to the `uint8` module
 
@@ -1321,7 +1321,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `uint8_to_doc/1`  (replacement: `pretty_printer.uint8_to_doc`/1)
+    - func `uint8_to_doc/1`  (replacement: `pretty_printer.uint8_to_doc/1`)
 
 ### Changes to the `uint16` module
 
@@ -1334,7 +1334,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `uint16_to_doc/1` (replacement: `pretty_printer.uint16_to_doc`/1)
+    - func `uint16_to_doc/1` (replacement: `pretty_printer.uint16_to_doc/1`)
 
 ### Changes to the `uint32` module
 
@@ -1347,7 +1347,7 @@ Changes to the Mercury standard library
 
 * The following function has been marked obsolete:
 
-    - func `uint32_to_doc/1` (replacement: `pretty_printer.uint32_to_doc`/1)
+    - func `uint32_to_doc/1` (replacement: `pretty_printer.uint32_to_doc/1`)
 
 ### Changes to the `uint64` module
 
@@ -1371,7 +1371,7 @@ Changes to the Mercury standard library
 * The following function has been marked obsolete:
 
     - func `version_array_to_doc/1`
-                       (replacement: `pretty_printer.version_array_to_doc`/1)
+                       (replacement: `pretty_printer.version_array_to_doc/1`)
 
 ### Changes to the `version_array2d` module
 
