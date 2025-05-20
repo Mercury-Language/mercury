@@ -163,7 +163,7 @@ open(FileName, Mode, Scope, Result, !IO) :-
 #endif
 }").
 
-dlopen(_, _, _, _, !IO) :-
+dlopen(_, _, _, _, _, _) :-
     private_builtin.sorry("dlopen").
 
 :- pragma foreign_decl("C",
@@ -324,7 +324,7 @@ mercury_sym(Handle, MercuryProc0, Result, !IO) :-
 #endif
 }").
 
-dlsym(_, _, _, !IO) :-
+dlsym(_, _, _, _, _) :-
     private_builtin.sorry("dlsym").
 
 :- pred dlerror(string::out, io::di, io::uo) is det.
@@ -347,7 +347,7 @@ dlsym(_, _, _, !IO) :-
     MR_make_aligned_string_copy(ErrorMsg, msg);
 }").
 
-dlerror(_, !IO) :-
+dlerror(_, _, _) :-
     private_builtin.sorry("dlerror").
 
 close(handle(Handle), Result, !IO) :-
@@ -370,7 +370,7 @@ close(handle(Handle), Result, !IO) :-
 #endif
 ").
 
-dlclose(_, !IO) :-
+dlclose(_, _, _) :-
     private_builtin.sorry("dlclose").
 
 %---------------------------------------------------------------------------%

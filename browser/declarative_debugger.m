@@ -1038,7 +1038,7 @@ extern  int MR_DD_debug_origin;
 "
     Flag = MR_DD_debug_origin;
 ").
-debug_origin(_, !IO) :-
+debug_origin(_, _, _) :-
     private_builtin.sorry("declarative_debugger.debug_origin").
 
 %---------------------------------------------------------------------------%

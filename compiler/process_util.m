@@ -441,7 +441,7 @@ start_in_forked_process(P, MaybePid, !IO) :-
 #endif  // MC_CAN_FORK
 ").
 
-start_in_forked_process_2(_, _, !IO) :-
+start_in_forked_process_2(_, _, _, _) :-
     sorry($pred, "NYI in languages other than C").
 
     % call_child_process_io_pred(P, ExitStatus).

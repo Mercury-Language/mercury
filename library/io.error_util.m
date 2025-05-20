@@ -233,7 +233,7 @@ throw_on_error(Error, Prefix, !IO) :-
     MR_memcpy(Msg + prefix_len, errmsg, errmsg_len + 1); // include NUL
 ").
 
-make_errno_message(_, _, _, !IO) :-
+make_errno_message(_, _, _, _, _) :-
     error("io.error_util.make_errno_message: inapplicable back-end").
 
 %---------------------------------------------------------------------------%
@@ -290,7 +290,7 @@ make_errno_message(_, _, _, !IO) :-
 #endif
 ").
 
-make_win32_error_message(_, _, _, !IO) :-
+make_win32_error_message(_, _, _, _, _) :-
     error("io.error_util.make_win32_error_message: inapplicable back-end").
 
 %---------------------------------------------------------------------------%

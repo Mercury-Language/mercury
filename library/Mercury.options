@@ -100,6 +100,7 @@ MCFLAGS-io.environment          += --no-warn-unneeded-final-statevars
 MCFLAGS-io.stream_ops           += --no-warn-unneeded-final-statevars
 MCFLAGS-random                  += --no-warn-unneeded-final-statevars
 MCFLAGS-stm_builtin             += --no-warn-unneeded-final-statevars
+MCFLAGS-thread                  += --no-warn-unneeded-final-statevars
 MCFLAGS-thread.future           += --no-warn-unneeded-final-statevars
 MCFLAGS-thread.mvar             += --no-warn-unneeded-final-statevars
 MCFLAGS-thread.semaphore        += --no-warn-unneeded-final-statevars
