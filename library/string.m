@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -16,20 +16,20 @@
 % encoding, depending on the target language.
 %
 % When Mercury is compiled to C, strings are UTF-8 encoded, with a null
-% character as the string terminator. A single code point requires one to four
-% bytes (code units) to encode.
+% character as the string terminator. With UTF-8, each code unit is one byte,
+% and a single code point requires one to four of these code units to encode.
 %
 % When Mercury is compiled to Java, strings are represented using Java's
 % String type. When Mercury is compiled to C#, strings are represented using
 % C#'s `System.String' type. Both of these types use the UTF-16 encoding.
-% A single code point requires one or two 16-bit integers (code units)
-% to encode.
+% With UTF-16, each code unit is a 16 bit integer, and a single code point
+% requires one or two of these code units to encode.
 %
 % The Mercury compiler will only allow well-formed UTF-8 or UTF-16 string
 % constants. However, it is possible to produce strings containing invalid
 % UTF-8 or UTF-16 via I/O, foreign code, and substring operations.
 % Predicates or functions that inspect strings may fail, throw an exception,
-% or else behave in some special way when they encounter an ill-formed
+% or else behave in some other special way when they encounter an ill-formed
 % code unit sequence.
 %
 % Unexpected null characters embedded in the middle of strings can be a source
@@ -38,8 +38,8 @@
 % detect such a null character. Programmers must not create strings that might
 % contain null characters using the foreign language interface.
 %
-% The builtin comparison operation on strings is also implementation
-% dependent. The current implementation performs string comparison using
+% The builtin comparison operation on strings is also dependent on the target
+% language. The current implementation performs string comparison using
 %
 % - C's strcmp() function, when compiling to C;
 % - Java's String.compareTo() method, when compiling to Java; and
@@ -50,6 +50,7 @@
 % This module is divided into several sections. These sections are:
 %
 % - Wrapper types that associate particular semantics with raw strings.
+% - Identifying the UTF version used by the current platform.
 % - Converting between strings and lists of characters.
 % - Reading characters from strings.
 % - Writing characters to strings.
@@ -87,7 +88,7 @@
 %
 % Wrapper types that associate particular semantics with raw strings.
 %
-% These types are used for defining stream typeclass instances
+% These types are useful for defining stream typeclass instances
 % where you want different instances for strings representing different
 % semantic entities. Using the string type itself, without a wrapper,
 % would be ambiguous in such situations.
@@ -152,8 +153,8 @@
 
     % Convert a list of characters (code points) to a string.
     % Throws an exception if the list contains a null character or code point
-    % that cannot be encoded in a string (namely, surrogate code points cannot
-    % be encoded in UTF-8 strings).
+    % that cannot be encoded in a string. (Namely, surrogate code points cannot
+    % be encoded in UTF-8 strings.)
     %
 :- func from_char_list(list(char)::in) = (string::uo) is det.
 :- pred from_char_list(list(char)::in, string::uo) is det.
@@ -166,8 +167,8 @@
     % Same as from_char_list, except that it reverses the order
     % of the characters.
     % Throws an exception if the list contains a null character or code point
-    % that cannot be encoded in a string (namely, surrogate code points cannot
-    % be encoded in UTF-8 strings).
+    % that cannot be encoded in a string. (Namely, surrogate code points cannot
+    % be encoded in UTF-8 strings.)
     %
 :- func from_rev_char_list(list(char)::in) = (string::uo) is det.
 :- pred from_rev_char_list(list(char)::in, string::uo) is det.
@@ -227,8 +228,8 @@
     % Construct a string consisting of Count occurrences of Char code points
     % in sequence, returning the empty string if Count is less than or equal
     % to zero. Throws an exception if Char is a null character or code point
-    % that cannot be encoded in a string (namely, surrogate code points cannot
-    % be encoded in UTF-8 strings).
+    % that cannot be encoded in a string. (Namely, surrogate code points cannot
+    % be encoded in UTF-8 strings.)
     %
 :- func duplicate_char(char::in, int::in) = (string::uo) is det.
 :- pred duplicate_char(char::in, int::in, string::uo) is det.
