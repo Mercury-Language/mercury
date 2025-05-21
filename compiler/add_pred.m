@@ -165,71 +165,8 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
         !:Specs = [Spec | !.Specs],
         MaybePredMaybeProcId = no
     else
-        PredFormArity = types_and_maybe_modes_arity(ArgTypesAndMaybeModes),
-        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
-        (
-            PredOrFunc = pf_predicate,
-            (
-                ArgTypesAndMaybeModes = no_types_arity_zero,
-                ArgTypes = [],
-                (
-                    % If a predicate declaration has no arguments and no
-                    % determinism, then it has none of the components of
-                    % a mode declaration.
-                    MaybeDetism = no,
-                    MaybeArgModes = no
-                ;
-                    % If a predicate declaration has no arguments but does
-                    % declare a determinism, then it has all of the components
-                    % of a mode declaration for an arity-zero predicate.
-                    %
-                    % parse_item.m is supposed to set ArgTypesAndMaybeModes
-                    % to types_and_modes([]) instead of types_only([])
-                    % in these cases, but just in case we get a pred decl
-                    % that is constructed elsewhere ...
-                    MaybeDetism = yes(_),
-                    MaybeArgModes = yes([])
-                )
-            ;
-                ArgTypesAndMaybeModes = types_only(ArgTypes),
-                MaybeArgModes = no
-            ;
-                ArgTypesAndMaybeModes = types_and_modes(ArgTypesAndModes),
-                split_types_and_modes(ArgTypesAndModes, ArgTypes, ArgModes0),
-                MaybeArgModes = yes(ArgModes0)
-            )
-        ;
-            PredOrFunc = pf_function,
-            (
-                ArgTypesAndMaybeModes = no_types_arity_zero,
-                % There should be at least one type, the type of the
-                % return value.
-                unexpected($pred, "no_types_arity_zero")
-            ;
-                ArgTypesAndMaybeModes = types_only(ArgTypes),
-                % A function declaration that contains no argument modes
-                % but does specify a determinism is implicitly specifying
-                % the default mode.
-                (
-                    MaybeDetism = yes(_),
-                    UserArity = user_arity(UserArityInt),
-                    in_mode(InMode),
-                    list.duplicate(UserArityInt, InMode, InModes),
-                    out_mode(OutMode),
-                    MaybeArgModes = yes(InModes ++ [OutMode])
-                ;
-                    MaybeDetism = no,
-                    MaybeArgModes = no
-                )
-            ;
-                ArgTypesAndMaybeModes = types_and_modes(ArgTypesAndModes),
-                split_types_and_modes(ArgTypesAndModes, ArgTypes, ArgModes0),
-                MaybeArgModes = yes(ArgModes0)
-            )
-        ),
-        ( MaybeArgModes = no,     PredmodeDecl = no_predmode_decl
-        ; MaybeArgModes = yes(_), PredmodeDecl = predmode_decl
-        ),
+        compute_arg_types_maybe_modes(PredOrFunc, ArgTypesAndMaybeModes,
+            MaybeDetism, UserArity, ArgTypes, MaybeArgModes, PredmodeDecl),
         record_pred_origin(PredOrFunc, PredSymName, UserArity, Origin,
             Context, PredOrigin, Markers),
         add_new_pred(PredOrigin, Context, SeqNum, PredStatus, NeedQual,
@@ -276,6 +213,79 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
             check_for_modeless_predmode_decl(PredStatus, PredOrFunc,
                 PredSymName, ArgTypes, MaybeDetism, Context, !Specs)
         )
+    ).
+
+:- pred compute_arg_types_maybe_modes(pred_or_func::in,
+    types_and_maybe_modes::in, maybe(determinism)::in, user_arity::out,
+    list(mer_type)::out, maybe(list(mer_mode))::out, maybe_predmode_decl::out)
+    is det.
+
+compute_arg_types_maybe_modes(PredOrFunc, ArgTypesAndMaybeModes, MaybeDetism,
+        UserArity, ArgTypes, MaybeArgModes, PredmodeDecl) :-
+    PredFormArity = types_and_maybe_modes_arity(ArgTypesAndMaybeModes),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+    (
+        PredOrFunc = pf_predicate,
+        (
+            ArgTypesAndMaybeModes = no_types_arity_zero,
+            ArgTypes = [],
+            (
+                % If a predicate declaration has no arguments and no
+                % determinism, then it has none of the components of
+                % a mode declaration.
+                MaybeDetism = no,
+                MaybeArgModes = no
+            ;
+                % If a predicate declaration has no arguments but does
+                % declare a determinism, then it has all of the components
+                % of a mode declaration for an arity-zero predicate.
+                %
+                % parse_item.m is supposed to set ArgTypesAndMaybeModes
+                % to types_and_modes([]) instead of types_only([])
+                % in these cases, but just in case we get a pred decl
+                % that is constructed elsewhere ...
+                MaybeDetism = yes(_),
+                MaybeArgModes = yes([])
+            )
+        ;
+            ArgTypesAndMaybeModes = types_only(ArgTypes),
+            MaybeArgModes = no
+        ;
+            ArgTypesAndMaybeModes = types_and_modes(ArgTypesAndModes),
+            split_types_and_modes(ArgTypesAndModes, ArgTypes, ArgModes0),
+            MaybeArgModes = yes(ArgModes0)
+        )
+    ;
+        PredOrFunc = pf_function,
+        (
+            ArgTypesAndMaybeModes = no_types_arity_zero,
+            % There should be at least one type, the type of the
+            % return value.
+            unexpected($pred, "no_types_arity_zero")
+        ;
+            ArgTypesAndMaybeModes = types_only(ArgTypes),
+            % A function declaration that contains no argument modes
+            % but does specify a determinism is implicitly specifying
+            % the default mode.
+            (
+                MaybeDetism = yes(_),
+                UserArity = user_arity(UserArityInt),
+                in_mode(InMode),
+                list.duplicate(UserArityInt, InMode, InModes),
+                out_mode(OutMode),
+                MaybeArgModes = yes(InModes ++ [OutMode])
+            ;
+                MaybeDetism = no,
+                MaybeArgModes = no
+            )
+        ;
+            ArgTypesAndMaybeModes = types_and_modes(ArgTypesAndModes),
+            split_types_and_modes(ArgTypesAndModes, ArgTypes, ArgModes0),
+            MaybeArgModes = yes(ArgModes0)
+        )
+    ),
+    ( MaybeArgModes = no,     PredmodeDecl = no_predmode_decl
+    ; MaybeArgModes = yes(_), PredmodeDecl = predmode_decl
     ).
 
 :- pred record_pred_origin(pred_or_func::in, sym_name::in, user_arity::in,
@@ -391,33 +401,8 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
     ),
     PredFormArity = arg_list_arity(Types),
     PredSymName = qualified(PredModuleName, PredName),
-    ( if
-        % NOTE This code is duplicating the effect of
-        %
-        % MaybeItemMercuryStatus = yes(ItemMercuryStatus),
-        % ItemMercuryStatus = item_defined_in_this_module(ItemExport)
-        %
-        % without requiring our caller to pass ItemMercuryStatus here.
-        % The reason why this is important is that for compiler-generated
-        % predicate declarations, there is no natural ItemMercuryStatus.
-        PredStatus = pred_status(OldItemStatus),
-        (
-            OldItemStatus = status_local,
-            ItemExport = item_export_nowhere
-        ;
-            OldItemStatus = status_exported_to_submodules,
-            ItemExport = item_export_only_submodules
-        ;
-            OldItemStatus = status_exported,
-            ItemExport = item_export_anywhere
-        )
-    then
-        DeclSection = item_decl_section(ItemExport),
-        MaybeCurUserDecl = yes(cur_user_decl_info(DeclSection,
-            PredmodeDecl, SeqNum))
-    else
-        MaybeCurUserDecl = no
-    ),
+    compute_maybe_cur_user_decl(PredStatus, PredmodeDecl, SeqNum,
+        MaybeCurUserDecl),
     GoalType = goal_not_for_promise(np_goal_type_none),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     % XXX CIT_TYPES should be cit_types(Types),
@@ -467,22 +452,40 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
         ),
         module_info_set_predicate_table(PredTable, !ModuleInfo)
     ),
-    DefnThisModule = pred_status_defined_in_this_module(PredStatus0),
-    (
-        DefnThisModule = yes
-    ;
-        DefnThisModule = no,
-        % All predicate and function declarations read in from
-        % automatically generated interface files should be fully qualified,
-        % *provided* that the source files they are derived from
-        % import all the modules needed to module qualify them.
+    maybe_report_any_unqualified_types(PredStatus0, PredSymName, Context,
+        Types, !Specs).
+
+:- pred compute_maybe_cur_user_decl(pred_status::in, maybe_predmode_decl::in,
+    item_seq_num::in, maybe(cur_user_decl_info)::out) is det.
+
+compute_maybe_cur_user_decl(PredStatus, PredmodeDecl, SeqNum,
+        MaybeCurUserDecl) :-
+    ( if
+        % NOTE This code is duplicating the effect of
         %
-        % For now, we look for and report any unqualified types read in
-        % from .int files. Once we can guarantee that such things cannot occur,
-        % by making --print-errors-warnings-when-generating-interface
-        % not just the default but not even an option that can be switched off,
-        % this code should not be needed anymore.
-        report_any_unqualified_types(PredSymName, Context, Types, !Specs)
+        % MaybeItemMercuryStatus = yes(ItemMercuryStatus),
+        % ItemMercuryStatus = item_defined_in_this_module(ItemExport)
+        %
+        % without requiring our caller to pass ItemMercuryStatus here.
+        % The reason why this is important is that for compiler-generated
+        % predicate declarations, there is no natural ItemMercuryStatus.
+        PredStatus = pred_status(OldItemStatus),
+        (
+            OldItemStatus = status_local,
+            ItemExport = item_export_nowhere
+        ;
+            OldItemStatus = status_exported_to_submodules,
+            ItemExport = item_export_only_submodules
+        ;
+            OldItemStatus = status_exported,
+            ItemExport = item_export_anywhere
+        )
+    then
+        DeclSection = item_decl_section(ItemExport),
+        MaybeCurUserDecl = yes(cur_user_decl_info(DeclSection,
+            PredmodeDecl, SeqNum))
+    else
+        MaybeCurUserDecl = no
     ).
 
 %---------------------%
@@ -501,6 +504,30 @@ item_decl_section(ItemExport) = DeclSection :-
     ).
 
 %---------------------%
+
+:- pred maybe_report_any_unqualified_types(pred_status::in, sym_name::in,
+    prog_context::in, list(mer_type)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_report_any_unqualified_types(PredStatus0, PredSymName, Context, Types,
+        !Specs) :-
+    DefnThisModule = pred_status_defined_in_this_module(PredStatus0),
+    (
+        DefnThisModule = yes
+    ;
+        DefnThisModule = no,
+        % All predicate and function declarations read in from
+        % automatically generated interface files should be fully qualified,
+        % *provided* that the source files they are derived from
+        % import all the modules needed to module qualify them.
+        %
+        % For now, we look for and report any unqualified types read in
+        % from .int files. Once we can guarantee that such things cannot occur,
+        % by making --print-errors-warnings-when-generating-interface
+        % not just the default but not even an option that can be switched off,
+        % this code should not be needed anymore.
+        report_any_unqualified_types(PredSymName, Context, Types, !Specs)
+    ).
 
 :- pred report_any_unqualified_types(sym_name::in, prog_context::in,
     list(mer_type)::in, list(error_spec)::in, list(error_spec)::out) is det.
@@ -564,6 +591,10 @@ report_any_unqualified_type(PredSymName, Context, Type, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
+:- type maybe_stub
+    --->    stub
+    ;       non_stub(hlds_goal).
+
     % For most builtin predicates, say foo/2, we add a clause
     %
     %   foo(H1, H2) :- foo(H1, H2).
@@ -608,12 +639,10 @@ add_builtin(ModuleInfo, CompilationTarget, PredId, HeadTypes0, !PredInfo) :-
         ),
         SupportsStore = no
     then
-        GoalExpr = conj(plain_conj, []),
-        GoalInfo = GoalInfo1,
         HeadVars = HeadVars0,
         HeadTypes = HeadTypes0,
         VarSet = VarSet0,
-        Stub = yes
+        MaybeStub = stub
     else if
         (
             ModuleName = mercury_private_builtin_module,
@@ -652,7 +681,7 @@ add_builtin(ModuleInfo, CompilationTarget, PredId, HeadTypes0, !PredInfo) :-
         Reason = promise_purity(purity_semipure),
         GoalExpr = scope(Reason, ConjGoal),
         GoalInfo = GoalInfo1,
-        Stub = no
+        MaybeStub = non_stub(hlds_goal(GoalExpr, GoalInfo))
     else if
         (
             ModuleName = mercury_private_builtin_module,
@@ -670,7 +699,7 @@ add_builtin(ModuleInfo, CompilationTarget, PredId, HeadTypes0, !PredInfo) :-
         HeadVars = HeadVars0,
         HeadTypes = HeadTypes0,
         VarSet = VarSet0,
-        Stub = no
+        MaybeStub = non_stub(hlds_goal(GoalExpr, GoalInfo))
     else
         % Construct the pseudo-recursive call to ModuleName.Name(HeadVars).
         SymName = qualified(ModuleName, Name),
@@ -685,19 +714,18 @@ add_builtin(ModuleInfo, CompilationTarget, PredId, HeadTypes0, !PredInfo) :-
         HeadVars = HeadVars0,
         HeadTypes = HeadTypes0,
         VarSet = VarSet0,
-        Stub = no
+        MaybeStub = non_stub(hlds_goal(GoalExpr, GoalInfo))
     ),
 
     (
-        Stub = no,
+        MaybeStub = stub,
+        set_clause_list([], ClausesRep)
+    ;
+        MaybeStub = non_stub(Goal),
         % Construct a clause containing that pseudo-recursive call.
-        Goal = hlds_goal(GoalExpr, GoalInfo),
         Clause = clause(all_modes, Goal, impl_lang_mercury, Context,
             [], init_unused_statevar_arg_map, clause_is_not_a_fact),
         set_clause_list([Clause], ClausesRep)
-    ;
-        Stub = yes,
-        set_clause_list([], ClausesRep)
     ),
 
     % Put the clause we just built (if any) into the pred_info,
@@ -721,11 +749,11 @@ add_builtin(ModuleInfo, CompilationTarget, PredId, HeadTypes0, !PredInfo) :-
     pred_info_get_markers(!.PredInfo, Markers0),
     add_marker(marker_user_marked_no_inline, Markers0, Markers1),
     (
-        Stub = yes,
+        MaybeStub = stub,
         add_marker(marker_stub, Markers1, Markers2),
         add_marker(marker_builtin_stub, Markers2, Markers)
     ;
-        Stub = no,
+        MaybeStub = non_stub(_),
         Markers = Markers1
     ),
     pred_info_set_markers(Markers, !PredInfo).
@@ -810,34 +838,8 @@ module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod,
     ItemModeDecl = item_mode_decl_info(_PredSymName, _MaybePredOrFunc,
         Modes, _WithInst, MaybeDetism, InstVarSet, Context, SeqNum),
     PredFormArity = arg_list_arity(Modes),
-    % Check that the determinism was specified.
-    (
-        MaybeDetism = no,
-        DetismDecl = detism_decl_none,
-        pred_info_get_status(!.PredInfo, PredStatus),
-        PredModule = pred_info_module(!.PredInfo),
-        PredSymName = qualified(PredModule, PredName),
-        (
-            IsClassMethod = is_a_class_method,
-            unspecified_det_for_method(PredOrFunc, PredSymName, PredFormArity,
-                Context, !Specs)
-        ;
-            IsClassMethod = is_not_a_class_method,
-            IsExported = pred_status_is_exported(PredStatus),
-            (
-                IsExported = yes,
-                unspecified_det_for_exported(PredOrFunc, PredSymName,
-                    PredFormArity, Context, !Specs)
-            ;
-                IsExported = no,
-                unspecified_det_for_local(PredOrFunc, PredSymName,
-                    PredFormArity, Context, !Specs)
-            )
-        )
-    ;
-        MaybeDetism = yes(_),
-        DetismDecl = detism_decl_explicit
-    ),
+    check_that_detism_is_declared(!.PredInfo, IsClassMethod, PredOrFunc,
+        PredName, PredFormArity, MaybeDetism, Context, DetismDecl, !Specs),
     pred_info_get_cur_user_decl_info(!.PredInfo, MaybeCurUserDecl),
     (
         MaybeCurUserDecl = yes(CurUserDecl),
@@ -847,50 +849,18 @@ module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod,
             PartOfPredmode = not_part_of_predmode,
             ItemMercuryStatus = item_defined_in_this_module(ItemExport)
         then
-            ModeDeclSection = item_decl_section(ItemExport),
-            ( if PredDeclSection = ModeDeclSection then
-                true
-            else
-                ModeSectionStr = decl_section_to_string(ModeDeclSection),
-                PredSectionStr = decl_section_to_string(PredDeclSection),
-                user_arity_pred_form_arity(PredOrFunc,
-                    user_arity(UserArityInt), PredFormArity),
-                NA = name_arity(PredName, UserArityInt),
-                PredOrFuncDecl = pred_or_func_to_str(PredOrFunc),
-                SectionPieces = [words("Error: mode declaration in the")] ++
-                    color_as_incorrect([fixed(ModeSectionStr),
-                        words("section")]) ++
-                    [words("for"), p_or_f(PredOrFunc)] ++
-                    color_as_subject([name_arity(NA), suffix(".")]) ++
-                    [words("It should be in the")] ++
-                    color_as_correct([fixed(PredSectionStr),
-                        words("section,")]) ++
-                    [words("because the corresponding"),
-                    decl(PredOrFuncDecl), words("declaration is there."), nl],
-                SectionSpec = spec($pred, severity_error, phase_pt2h,
-                    Context, SectionPieces),
-                !:Specs = [SectionSpec | !.Specs]
-            ),
-            (
-                PredIsPredMode = no_predmode_decl
-            ;
-                PredIsPredMode = predmode_decl,
-                user_arity_pred_form_arity(PredOrFunc,
-                    UserArity, PredFormArity),
-                PFNameArity = pred_pf_name_arity(PredOrFunc,
-                    unqualified(PredName), UserArity),
-                PredModeSpec =
-                    report_mode_decl_after_predmode(PFNameArity, Context),
-                !:Specs = [PredModeSpec | !.Specs]
-            )
+            check_for_mode_decl_in_wrong_section(PredDeclSection, ItemExport,
+                PredOrFunc, PredName, PredFormArity, Context, !Specs),
+            check_for_mode_decl_after_predmode(PredIsPredMode, PredOrFunc,
+                PredName, PredFormArity, Context, !Specs)
         else
             true
         )
     ;
         MaybeCurUserDecl = no
         % We allow mode declarations for predicates (and functions) that have
-        % no item_pred_decl. If the right options are given, the argument types
-        % will be inferred.
+        % no item_pred_decl. With the right compiler options, the argument
+        % types will be inferred.
     ),
     % Add the mode declaration to the pred_info for this procedure.
     ArgLives = no,
@@ -900,10 +870,97 @@ module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod,
         Modes, yes(Modes), ArgLives, DetismDecl, MaybeDetism,
         address_is_not_taken, HasParallelConj, !PredInfo, ProcId).
 
+%---------------------%
+
+:- pred check_that_detism_is_declared(pred_info::in, maybe_class_method::in,
+    pred_or_func::in, string::in, pred_form_arity::in, maybe(determinism)::in,
+    prog_context::in, detism_decl::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_that_detism_is_declared(PredInfo, IsClassMethod, PredOrFunc,
+        PredName, PredFormArity, MaybeDetism, Context, DetismDecl, !Specs) :-
+    (
+        MaybeDetism = no,
+        DetismDecl = detism_decl_none,
+        pred_info_get_status(PredInfo, PredStatus),
+        PredModuleName = pred_info_module(PredInfo),
+        PredSymName = qualified(PredModuleName, PredName),
+        (
+            IsClassMethod = is_a_class_method,
+            report_unspecified_det_for_method(PredOrFunc, PredSymName,
+                PredFormArity, Context, !Specs)
+        ;
+            IsClassMethod = is_not_a_class_method,
+            IsExported = pred_status_is_exported(PredStatus),
+            (
+                IsExported = yes,
+                report_unspecified_det_for_exported(PredOrFunc, PredSymName,
+                    PredFormArity, Context, !Specs)
+            ;
+                IsExported = no,
+                report_unspecified_det_for_local(PredOrFunc, PredSymName,
+                    PredFormArity, Context, !Specs)
+            )
+        )
+    ;
+        MaybeDetism = yes(_),
+        DetismDecl = detism_decl_explicit
+    ).
+
+%---------------------%
+
+:- pred check_for_mode_decl_in_wrong_section(decl_section::in, item_export::in,
+    pred_or_func::in, string::in, pred_form_arity::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_for_mode_decl_in_wrong_section(PredDeclSection, ItemExport,
+        PredOrFunc, PredName, PredFormArity, Context, !Specs) :-
+    ModeDeclSection = item_decl_section(ItemExport),
+    ( if PredDeclSection = ModeDeclSection then
+        true
+    else
+        ModeSectionStr = decl_section_to_string(ModeDeclSection),
+        PredSectionStr = decl_section_to_string(PredDeclSection),
+        user_arity_pred_form_arity(PredOrFunc,
+            user_arity(UserArityInt), PredFormArity),
+        NA = name_arity(PredName, UserArityInt),
+        PredOrFuncDecl = pred_or_func_to_str(PredOrFunc),
+        Pieces = [words("Error: mode declaration in the")] ++
+            color_as_incorrect([fixed(ModeSectionStr), words("section")]) ++
+            [words("for"), p_or_f(PredOrFunc)] ++
+            color_as_subject([name_arity(NA), suffix(".")]) ++
+            [words("It should be in the")] ++
+            color_as_correct([fixed(PredSectionStr), words("section,")]) ++
+            [words("because the corresponding"),
+            decl(PredOrFuncDecl), words("declaration is there."), nl],
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
+
 :- func decl_section_to_string(decl_section) = string.
 
 decl_section_to_string(decl_interface) = "interface".
 decl_section_to_string(decl_implementation) = "implementation".
+
+%---------------------%
+
+:- pred check_for_mode_decl_after_predmode(maybe_predmode_decl::in,
+    pred_or_func::in, string::in, pred_form_arity::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_for_mode_decl_after_predmode(PredIsPredMode, PredOrFunc, PredName,
+        PredFormArity, Context, !Specs) :-
+    (
+        PredIsPredMode = no_predmode_decl
+    ;
+        PredIsPredMode = predmode_decl,
+        user_arity_pred_form_arity(PredOrFunc,
+            UserArity, PredFormArity),
+        PFNameArity = pred_pf_name_arity(PredOrFunc,
+            unqualified(PredName), UserArity),
+        PredModeSpec = report_mode_decl_after_predmode(PFNameArity, Context),
+        !:Specs = [PredModeSpec | !.Specs]
+    ).
 
 report_mode_decl_after_predmode(PFNameArity, Context) = Spec :-
     PFNameArity = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
@@ -920,11 +977,12 @@ report_mode_decl_after_predmode(PFNameArity, Context) = Spec :-
 
 %---------------------------------------------------------------------------%
 
-:- pred unspecified_det_for_method(pred_or_func::in, sym_name::in,
+:- pred report_unspecified_det_for_method(pred_or_func::in, sym_name::in,
     pred_form_arity::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-unspecified_det_for_method(PorF, SymName, PredFormArity, Context, !Specs) :-
+report_unspecified_det_for_method(PorF, SymName, PredFormArity, Context,
+        !Specs) :-
     user_arity_pred_form_arity(PorF, user_arity(UserArityInt), PredFormArity),
     SNA = sym_name_arity(SymName, UserArityInt),
     Pieces = [words("Error:")] ++
@@ -936,11 +994,12 @@ unspecified_det_for_method(PorF, SymName, PredFormArity, Context, !Specs) :-
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred unspecified_det_for_exported(pred_or_func::in, sym_name::in,
+:- pred report_unspecified_det_for_exported(pred_or_func::in, sym_name::in,
     pred_form_arity::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-unspecified_det_for_exported(PorF, SymName, PredFormArity, Context, !Specs) :-
+report_unspecified_det_for_exported(PorF, SymName, PredFormArity, Context,
+        !Specs) :-
     user_arity_pred_form_arity(PorF, user_arity(UserArityInt), PredFormArity),
     SNA = sym_name_arity(SymName, UserArityInt),
     Pieces = [words("Error:")] ++
@@ -951,11 +1010,12 @@ unspecified_det_for_exported(PorF, SymName, PredFormArity, Context, !Specs) :-
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred unspecified_det_for_local(pred_or_func::in, sym_name::in,
+:- pred report_unspecified_det_for_local(pred_or_func::in, sym_name::in,
     pred_form_arity::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-unspecified_det_for_local(PorF, SymName, PredFormArity, Context, !Specs) :-
+report_unspecified_det_for_local(PorF, SymName, PredFormArity, Context,
+        !Specs) :-
     user_arity_pred_form_arity(PorF, user_arity(UserArityInt), PredFormArity),
     SNA = sym_name_arity(SymName, UserArityInt),
     MainPieces = [words("Error:")] ++
