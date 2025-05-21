@@ -24,15 +24,15 @@
 
 :- import_module list.
 
-:- type maybe_look_for_unused_statevars
-    --->    do_not_look_for_unused_statevars
+:- type maybe_look_for_unneeded_statevars
+    --->    do_not_look_for_unneeded_statevars
             % No clause had any unused state variables.
-    ;       look_for_unused_statevars(list(string)).
+    ;       look_for_unneeded_statevars(list(string)).
             % At least one clause had unused state variables.
             % The argument gives, for each head variable,
             % either its the consensus name (if it has one),
             % or an empty string (if it does not).
-            % (pre_typecheck.m uses that info to decide whether an unused
+            % (pre_typecheck.m uses that info to decide whether an unneeded
             % state variable in one clause is justified by consistency
             % with another clause that *does* use that same state variable.)
 
@@ -42,7 +42,7 @@
     % variable names in the debugger and slightly faster compilation.
     %
 :- pred maybe_improve_headvar_names(globals::in,
-    maybe_look_for_unused_statevars::out,
+    maybe_look_for_unneeded_statevars::out,
     pred_info::in, pred_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -74,7 +74,7 @@ maybe_improve_headvar_names(Globals, MaybeLookForUnusedSVars, !PredInfo) :-
         % original argument terms, not just the argument variables,
         % in the clause head, and this pass would make it difficult to
         % work out what were the original arguments).
-        MaybeLookForUnusedSVars = do_not_look_for_unused_statevars
+        MaybeLookForUnusedSVars = do_not_look_for_unneeded_statevars
     else
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
         clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers),
@@ -83,7 +83,7 @@ maybe_improve_headvar_names(Globals, MaybeLookForUnusedSVars, !PredInfo) :-
         get_clause_list_for_replacement(ClausesRep0, Clauses0),
         (
             Clauses0 = [],
-            MaybeLookForUnusedSVars = do_not_look_for_unused_statevars
+            MaybeLookForUnusedSVars = do_not_look_for_unneeded_statevars
         ;
             Clauses0 = [SingleClause0],
             Goal0 = SingleClause0 ^ clause_body,
@@ -106,9 +106,9 @@ maybe_improve_headvar_names(Globals, MaybeLookForUnusedSVars, !PredInfo) :-
                 HeadVars = proc_arg_vector_get_user_visible_args(ArgVector),
                 list.map(varset.lookup_name(VarSet), HeadVars, HeadVarNames),
                 MaybeLookForUnusedSVars =
-                    look_for_unused_statevars(HeadVarNames)
+                    look_for_unneeded_statevars(HeadVarNames)
             else
-                MaybeLookForUnusedSVars = do_not_look_for_unused_statevars
+                MaybeLookForUnusedSVars = do_not_look_for_unneeded_statevars
             ),
 
             SingleClause = SingleClause0 ^ clause_body := Goal,
@@ -133,9 +133,9 @@ maybe_improve_headvar_names(Globals, MaybeLookForUnusedSVars, !PredInfo) :-
                 list.map(find_consensus_name(ConsensusMap),
                     HeadVars0, HeadVarNames),
                 MaybeLookForUnusedSVars =
-                    look_for_unused_statevars(HeadVarNames)
+                    look_for_unneeded_statevars(HeadVarNames)
             else
-                MaybeLookForUnusedSVars = do_not_look_for_unused_statevars
+                MaybeLookForUnusedSVars = do_not_look_for_unneeded_statevars
             ),
 
             % We don't apply the renaming right now, because that could lead to

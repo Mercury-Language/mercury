@@ -28,11 +28,11 @@
 %   This is important for making any type error messages about these variables
 %   easier to understand.
 %
-% 4 We generate warnings for unused state variables in clause heads.
+% 4 We generate warnings for unneeded state variables in clause heads.
 %
 % Each of those tasks requires access to all the clauses of each predicate;
-% for example, a state variable is unused in a predicate only if it is
-% unused in all of the predicate's clauses. Technically, each task needs
+% for example, a state variable is unneeded in a predicate only if it is
+% unneeded in all of the predicate's clauses. Technically, each task needs
 % only all the clauses of a given predicate, but it is simpler and cheaper
 % (in terms of locality) to process all predicates together in this
 % compiler pass.
@@ -134,11 +134,11 @@ prepare_for_typecheck(ModuleInfo, ValidPredIdSet,
 
             % Task 4.
             (
-                MaybeLookForUnusedSVars = do_not_look_for_unused_statevars
+                MaybeLookForUnusedSVars = do_not_look_for_unneeded_statevars
             ;
                 MaybeLookForUnusedSVars =
-                    look_for_unused_statevars(HeadVarNames),
-                warn_about_any_unused_or_nonupdated_statevars(!.PredInfo,
+                    look_for_unneeded_statevars(HeadVarNames),
+                warn_about_any_unneeded_statevars(!.PredInfo,
                     HeadVarNames, !Specs)
             ),
             PredIdInfo = PredId - !.PredInfo
@@ -205,11 +205,10 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred warn_about_any_unused_or_nonupdated_statevars(pred_info::in,
-    list(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred warn_about_any_unneeded_statevars(pred_info::in, list(string)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_about_any_unused_or_nonupdated_statevars(PredInfo, HeadVarNames,
-        !Specs) :-
+warn_about_any_unneeded_statevars(PredInfo, HeadVarNames, !Specs) :-
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
     get_clause_list_maybe_repeated(ClausesRep, Clauses),
@@ -231,26 +230,32 @@ warn_about_any_unused_or_nonupdated_statevars(PredInfo, HeadVarNames,
             set.intersect_list([HeadClauseInitArgs | TailClausesInitArgs]),
         HeadClauseContext = HeadClause ^ clause_context,
         list.foldl(
-            warn_about_any_unused_statevars_in_clause(PredInfo, HeadVarNames,
-                AllClausesInitArgs, InitAndFinalMap),
+            warn_about_any_unneeded_initial_statevars_in_clause(PredInfo,
+                HeadVarNames, AllClausesInitArgs, InitAndFinalMap),
             Clauses, !Specs),
-        (
-            MaybeAllFacts = all_clauses_are_facts
-            % Programmers can easily *see* that the state vars
-            % in InitAndFinalMap cannot be updated in any of the clauses
-            % of PredInfo, since no clause has a body.
-            %
-            % This heuristic allows programmers to write clauses such as
-            %
-            %   p(_, 0, !IO). % XXX Implement this properly later.
-            %
-            % without being prodded by the algorithm to change this to
-            %
-            %   p(_, 0, IO, IO).
-        ;
-            MaybeAllFacts = some_clause_is_not_a_fact,
+        ( if
+            (
+                map.is_empty(InitAndFinalMap)
+                % No final statevar is unneeded.
+            ;
+                MaybeAllFacts = all_clauses_are_facts
+                % Programmers can easily *see* that the state vars
+                % in InitAndFinalMap cannot be updated in any of the clauses
+                % of PredInfo, since no clause has a body.
+                %
+                % This heuristic allows programmers to write clauses such as
+                %
+                %   p(_, 0, !IO). % XXX Implement this properly later.
+                %
+                % without being prodded by the algorithm to change this to
+                %
+                %   p(_, 0, IO, IO).
+            )
+        then
+            true
+        else
             map.foldl(
-                warn_about_nonupdated_statevar(PredInfo, HeadClauseContext,
+                warn_about_unneeded_final_statevar(PredInfo, HeadClauseContext,
                     TailClauses),
                 InitAndFinalMap, !Specs)
         )
@@ -340,25 +345,27 @@ collect_init_and_final_args(IsFirst, [ArgDesc | ArgDescs],
 
 %---------------------%
 
-:- pred warn_about_any_unused_statevars_in_clause(pred_info::in,
+:- pred warn_about_any_unneeded_initial_statevars_in_clause(pred_info::in,
     list(string)::in, set(uint)::in, init_and_final_map::in, clause::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_about_any_unused_statevars_in_clause(PredInfo, HeadVarNames,
+warn_about_any_unneeded_initial_statevars_in_clause(PredInfo, HeadVarNames,
         AllClausesInitArgs, InitAndFinalMap, Clause, !Specs) :-
     Clause = clause(_, _, _, ClauseContext, _, UnusedSVarArgMap, _),
     map.to_sorted_assoc_list(UnusedSVarArgMap, UnusedSVarArgAL),
-    warn_about_any_unused_statevars(PredInfo, HeadVarNames, AllClausesInitArgs,
-        InitAndFinalMap, ClauseContext, UnusedSVarArgAL, !Specs).
+    warn_about_any_unneeded_initial_statevars(PredInfo, HeadVarNames,
+        AllClausesInitArgs, InitAndFinalMap, ClauseContext,
+        UnusedSVarArgAL, !Specs).
 
-:- pred warn_about_any_unused_statevars(pred_info::in,
+:- pred warn_about_any_unneeded_initial_statevars(pred_info::in,
     list(string)::in, set(uint)::in, init_and_final_map::in, prog_context::in,
     assoc_list(uint, statevar_arg_desc)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_about_any_unused_statevars(_, _, _, _, _, [], !Specs).
-warn_about_any_unused_statevars(PredInfo, HeadVars, AllClausesInitArgs,
-        InitAndFinalMap, ClauseContext, [ArgDesc | ArgDescs], !Specs) :-
+warn_about_any_unneeded_initial_statevars(_, _, _, _, _, [], !Specs).
+warn_about_any_unneeded_initial_statevars(PredInfo, HeadVars,
+        AllClausesInitArgs, InitAndFinalMap, ClauseContext,
+        [ArgDesc | ArgDescs], !Specs) :-
     ArgDesc = ArgNum - statevar_arg_desc(InitOrFinal, SVarName),
     (
         (
@@ -395,7 +402,7 @@ warn_about_any_unused_statevars(PredInfo, HeadVars, AllClausesInitArgs,
             PredNameColonPieces = describe_one_pred_info_name(no,
                 should_not_module_qualify, [suffix(":")], PredInfo),
             % Please keep this wording in sync with the code of the
-            % report_unused_svar_in_lambda predicate in state_var.m.
+            % report_unneeded_svar_in_lambda predicate in state_var.m.
             Pieces = [words("In")] ++ PredNameColonPieces ++ [nl,
                 words("warning: state variable")] ++
                 color_as_subject([quote(Prefix ++ SVarName)]) ++
@@ -411,16 +418,16 @@ warn_about_any_unused_statevars(PredInfo, HeadVars, AllClausesInitArgs,
     ;
         InitOrFinal = init_and_final_arg(_FinalArgNum)
     ),
-    warn_about_any_unused_statevars(PredInfo, HeadVars, AllClausesInitArgs,
-        InitAndFinalMap, ClauseContext, ArgDescs, !Specs).
+    warn_about_any_unneeded_initial_statevars(PredInfo, HeadVars,
+        AllClausesInitArgs, InitAndFinalMap, ClauseContext, ArgDescs, !Specs).
 
 %---------------------%
 
-:- pred warn_about_nonupdated_statevar(pred_info::in, prog_context::in,
+:- pred warn_about_unneeded_final_statevar(pred_info::in, prog_context::in,
     list(clause)::in, uint::in, init_and_final::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_about_nonupdated_statevar(PredInfo, HeadClauseContext, TailClauses,
+warn_about_unneeded_final_statevar(PredInfo, HeadClauseContext, TailClauses,
         _InitArgNum, InitAndFinal, !Specs) :-
     PredNameColonPieces = describe_one_pred_info_name(no,
         should_not_module_qualify, [suffix(":")], PredInfo),
@@ -464,7 +471,7 @@ warn_about_nonupdated_statevar(PredInfo, HeadClauseContext, TailClauses,
             [words("the"), unth_fixed(FinalArgNum), words("argument,")]
     ),
     % Please keep this wording in sync with the code of the
-    % report_unused_svar_in_lambda predicate in state_var.m.
+    % report_unneeded_svar_in_lambda predicate in state_var.m.
     Pieces = [words("In")] ++ PredNameColonPieces ++ [nl,
         words("warning:")] ++ FinalArgCommaPieces ++
         BangColonSVarNameCommaPieces ++
