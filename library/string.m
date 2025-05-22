@@ -50,7 +50,7 @@
 % This module is divided into several sections. These sections are:
 %
 % - Wrapper types that associate particular semantics with raw strings.
-% - Identifying the UTF version used by the current platform.
+% - Identifying the Unicode encoding form version used by the current platform.
 % - Converting between strings and lists of characters.
 % - Reading characters from strings.
 % - Writing characters to strings.
