@@ -563,9 +563,9 @@ do_unravel_var_unification(LHSVar, RHS0, Context, MainContext, SubContext,
 classify_unravel_unification(XTerm, YTerm, Context, MainContext, SubContext,
         Purity, Order, AncestorVarMap, Expansion, !SVarState, !UrInfo) :-
     (
-        % `X = Y' needs no unravelling.
         XTerm = term.variable(XVar, _),
         YTerm = term.variable(YVar, _),
+        % `X = Y' needs no unravelling.
         create_atomic_complicated_unification(XVar, rhs_var(YVar),
             Context, MainContext, SubContext, Purity, Goal),
         Expansion = expansion(not_fgti, cord.singleton(Goal))
@@ -582,14 +582,14 @@ classify_unravel_unification(XTerm, YTerm, Context, MainContext, SubContext,
             XFunctorContext, Context, MainContext, SubContext,
             Purity, Order, AncestorVarMap, Expansion, !SVarState, !UrInfo)
     ;
+        XTerm = term.functor(XFunctor, XArgTerms, XFunctorContext),
+        YTerm = term.functor(YFunctor, YArgTerms, YFunctorContext),
         % If we find a unification of the form `f1(...) = f2(...)',
         % then we replace it with `Tmp = f1(...), Tmp = f2(...)',
         % and then process it according to the rules above.
         % Note that we can't simplify it yet, e.g. by pairwise unifying
         % the args of XTerm and YTerm, because we might simplify away
         % type errors.
-        XTerm = term.functor(XFunctor, XArgTerms, XFunctorContext),
-        YTerm = term.functor(YFunctor, YArgTerms, YFunctorContext),
         create_new_unravel_var(TmpVar, !UrInfo),
         % TmpVar cannot occur in either XTerm or YTerm, so adding it
         % to AncestorVarMap would not result in any hits, and would only
@@ -1945,14 +1945,6 @@ parse_lambda_detism(VarSet, DetismTerm, MaybeDetism) :-
                 maybe1(determinism)     % The determinism of the lambda expr.
             ).
 
-:- pred build_lambda_expression(prog_var::in, purity::in,
-    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
-    lambda_head::in, maybe1(goal)::in, expansion::out,
-    svar_state::in, unravel_info::in, unravel_info::out) is det.
-
-build_lambda_expression(LHSVar, UnificationPurity,
-        Context, MainContext, SubContext, LambdaHead, MaybeBodyGoal,
-        Expansion, OutsideSVarState, !UrInfo) :-
     % In the parse tree, the lambda arguments can be any terms, but in the HLDS
     % they must be distinct variables. So we introduce fresh variables
     % for the lambda arguments, and add appropriate unifications.
@@ -1993,32 +1985,23 @@ build_lambda_expression(LHSVar, UnificationPurity,
     % be careful because variables in arguments should similarly be quantified,
     % but variables in the function return value term (and not in the
     % arguments) should *not* be locally quantified.
+    %
+:- pred build_lambda_expression(prog_var::in, purity::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
+    lambda_head::in, maybe1(goal)::in, expansion::out,
+    svar_state::in, unravel_info::in, unravel_info::out) is det.
 
+build_lambda_expression(LHSVar, UnificationPurity,
+        Context, MainContext, SubContext, LambdaHead, MaybeBodyGoal,
+        Expansion, OutsideSVarState, !UrInfo) :-
     LambdaHead = lambda_head(LambdaPurity, Groundness, PredOrFunc,
         LambdaArgs0, BadModeSpecs, SVarSpecs, MaybeDetism),
     qualify_lambda_arg_modes_if_not_opt_imported(LambdaArgs0, LambdaArgs1,
         Modes, !UrInfo),
-    inconsistent_constrained_inst_vars_in_modes(Modes, InconsistentVars),
     VarSet0 = !.UrInfo ^ ui_varset,
     varset.coerce(VarSet0, TVarSet),
     varset.coerce(VarSet0, InstVarSet),
-    (
-        InconsistentVars = []
-    ;
-        InconsistentVars = [_ | _],
-        InconsistentVarPieces =
-            list.map(var_to_quote_piece(InstVarSet), InconsistentVars),
-        InconsistentVarsPieces =
-            [words("Error: the constraints on the inst"),
-            words(choose_number(InconsistentVars, "variable", "variables"))] ++
-            piece_list_to_color_pieces(color_subject, "and", [],
-                InconsistentVarPieces) ++
-            color_as_incorrect([words("are inconsistent.")]) ++
-            [nl],
-        InconsistentVarsSpec = spec($pred, severity_error, phase_t2pt,
-            Context, InconsistentVarsPieces),
-        add_unravel_spec(InconsistentVarsSpec, !UrInfo)
-    ),
+    warn_about_any_inconsistent_inst_vars(InstVarSet, Context, Modes, !UrInfo),
     (
         MaybeDetism = ok1(Detism)
     ;
@@ -2157,6 +2140,25 @@ build_lambda_expression(LHSVar, UnificationPurity,
         )
     ),
     Expansion = expansion(not_fgti, cord.singleton(Goal)).
+
+:- pred warn_about_any_inconsistent_inst_vars(inst_varset::in,
+    prog_context::in, list(mer_mode)::in,
+    unravel_info::in, unravel_info::out) is det.
+
+warn_about_any_inconsistent_inst_vars(InstVarSet, Context, Modes, !UrInfo) :-
+    inconsistent_constrained_inst_vars_in_modes(Modes, InconsistentVars),
+    (
+        InconsistentVars = []
+    ;
+        InconsistentVars = [_ | _],
+        VarPieces = list.map(var_to_quote_piece(InstVarSet), InconsistentVars),
+        Pieces = [words("Error: the constraints on the inst"),
+            words(choose_number(InconsistentVars, "variable", "variables"))] ++
+            piece_list_to_color_pieces(color_subject, "and", [], VarPieces) ++
+            color_as_incorrect([words("are inconsistent.")]) ++ [nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+        add_unravel_spec(Spec, !UrInfo)
+    ).
 
     % Partition the lists of arguments and variables into lists
     % of non-output and output arguments and variables.
@@ -2299,8 +2301,8 @@ make_fresh_arg_vars_subst_svars_loop([], [],
         !RevVarsArgs, !SVarState, !UrInfo).
 make_fresh_arg_vars_subst_svars_loop([Arg | Args], [Var | Vars],
         !RevVarsArgs, !SVarState, !UrInfo) :-
-    make_fresh_arg_var_subst_svars(Arg, Var, !RevVarsArgs,
-        !SVarState, !UrInfo),
+    make_fresh_arg_var_subst_svars(Arg, Var,
+        !RevVarsArgs, !SVarState, !UrInfo),
     make_fresh_arg_vars_subst_svars_loop(Args, Vars,
         !RevVarsArgs, !SVarState, !UrInfo).
 
