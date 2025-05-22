@@ -27,7 +27,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % Return all the variables in the goal or goal expression.
+    % Return all the variables in the goal.
     % Unlike quantification.goal_vars, this predicate returns
     % even the explicitly quantified variables.
     %
@@ -36,25 +36,25 @@
     % if you have a way to do it *without* calling the predicate, you will
     % probably want to do it that way.
     %
-:- pred goal_vars(hlds_goal::in, set_of_progvar::out) is det.
+:- pred vars_in_goal(hlds_goal::in, set_of_progvar::out) is det.
 
-    % Do the same job as goal_vars, but for a list of goals.
+    % Do the same job as vars_in_goal, but for a list of goals.
     %
-:- pred goals_goal_vars(list(hlds_goal)::in, set_of_progvar::out) is det.
+:- pred vars_in_goals(list(hlds_goal)::in, set_of_progvar::out) is det.
 
 %---------------------%
 
-    % Do the same job as the goal_vars predicate above, with one exception:
+    % Do the same job as the vars_in_goal predicate above, with one exception:
     % ignore the variables that occur in any unification goal whose features
     % include feature_state_var_copy.
     %
-:- pred non_svar_copy_goal_vars(hlds_goal::in, set_of_progvar::out) is det.
+:- pred non_svar_copy_vars_in_goal(hlds_goal::in, set_of_progvar::out) is det.
 
 %---------------------%
 
     % Return all the variables in a generic call.
     %
-:- pred generic_call_vars(generic_call::in, list(prog_var)::out) is det.
+:- pred vars_in_generic_call(generic_call::in, list(prog_var)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -75,18 +75,18 @@
 
 %---------------------------------------------------------------------------%
 
-goal_vars(Goal, !:Set) :-
+vars_in_goal(Goal, !:Set) :-
     set_of_var.init(!:Set),
-    goal_vars_acc(Goal, !Set).
+    vars_in_goal_acc(Goal, !Set).
 
-goals_goal_vars(Goals, !:Set) :-
+vars_in_goals(Goals, !:Set) :-
     set_of_var.init(!:Set),
-    goals_goal_vars_acc(Goals, !Set).
+    vars_in_goals_acc(Goals, !Set).
 
-:- pred goal_vars_acc(hlds_goal::in,
+:- pred vars_in_goal_acc(hlds_goal::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-goal_vars_acc(Goal, !Set) :-
+vars_in_goal_acc(Goal, !Set) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = unify(Var, RHS, _, Unif, _),
@@ -105,10 +105,10 @@ goal_vars_acc(Goal, !Set) :-
             ; Unif = complicated_unify(_, _, _)
             )
         ),
-        rhs_goal_vars_acc(RHS, !Set)
+        vars_in_rhs_acc(RHS, !Set)
     ;
         GoalExpr = generic_call(GenericCall, ArgVars, _, _, _),
-        generic_call_vars(GenericCall, GenericCallVars),
+        vars_in_generic_call(GenericCall, GenericCallVars),
         set_of_var.insert_list(GenericCallVars, !Set),
         set_of_var.insert_list(ArgVars, !Set)
     ;
@@ -118,11 +118,11 @@ goal_vars_acc(Goal, !Set) :-
         ( GoalExpr = conj(_, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        goals_goal_vars_acc(Goals, !Set)
+        vars_in_goals_acc(Goals, !Set)
     ;
         GoalExpr = switch(Var, _Det, Cases),
         set_of_var.insert(Var, !Set),
-        cases_goal_vars_acc(Cases, !Set)
+        vars_in_cases_acc(Cases, !Set)
     ;
         GoalExpr = scope(Reason, SubGoal),
         (
@@ -152,16 +152,16 @@ goal_vars_acc(Goal, !Set) :-
             ; Reason = trace_goal(_, _, _, _, _)
             )
         ),
-        goal_vars_acc(SubGoal, !Set)
+        vars_in_goal_acc(SubGoal, !Set)
     ;
         GoalExpr = negation(SubGoal),
-        goal_vars_acc(SubGoal, !Set)
+        vars_in_goal_acc(SubGoal, !Set)
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         set_of_var.insert_list(Vars, !Set),
-        goal_vars_acc(Cond, !Set),
-        goal_vars_acc(Then, !Set),
-        goal_vars_acc(Else, !Set)
+        vars_in_goal_acc(Cond, !Set),
+        vars_in_goal_acc(Then, !Set),
+        vars_in_goal_acc(Else, !Set)
     ;
         GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
         ArgVars = list.map(foreign_arg_var, Args),
@@ -185,45 +185,45 @@ goal_vars_acc(Goal, !Set) :-
                 MaybeOutputVars = yes(OutputVars),
                 set_of_var.insert_list(OutputVars, !Set)
             ),
-            goal_vars_acc(MainGoal, !Set),
-            goals_goal_vars_acc(OrElseGoals, !Set)
+            vars_in_goal_acc(MainGoal, !Set),
+            vars_in_goals_acc(OrElseGoals, !Set)
         ;
             Shorthand = try_goal(_, _, SubGoal),
             % The IO and Result variables would be in SubGoal.
-            goal_vars_acc(SubGoal, !Set)
+            vars_in_goal_acc(SubGoal, !Set)
         ;
             Shorthand = bi_implication(LeftGoal, RightGoal),
-            goal_vars_acc(LeftGoal, !Set),
-            goal_vars_acc(RightGoal, !Set)
+            vars_in_goal_acc(LeftGoal, !Set),
+            vars_in_goal_acc(RightGoal, !Set)
         )
     ).
 
-:- pred goals_goal_vars_acc(list(hlds_goal)::in,
+:- pred vars_in_goals_acc(list(hlds_goal)::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-goals_goal_vars_acc([], !Set).
-goals_goal_vars_acc([Goal | Goals], !Set) :-
-    goal_vars_acc(Goal, !Set),
-    goals_goal_vars_acc(Goals, !Set).
+vars_in_goals_acc([], !Set).
+vars_in_goals_acc([Goal | Goals], !Set) :-
+    vars_in_goal_acc(Goal, !Set),
+    vars_in_goals_acc(Goals, !Set).
 
-:- pred cases_goal_vars_acc(list(case)::in,
+:- pred vars_in_cases_acc(list(case)::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-cases_goal_vars_acc([], !Set).
-cases_goal_vars_acc([case(_, _, Goal) | Cases], !Set) :-
-    goal_vars_acc(Goal, !Set),
-    cases_goal_vars_acc(Cases, !Set).
+vars_in_cases_acc([], !Set).
+vars_in_cases_acc([case(_, _, Goal) | Cases], !Set) :-
+    vars_in_goal_acc(Goal, !Set),
+    vars_in_cases_acc(Cases, !Set).
 
 %---------------------%
 
-non_svar_copy_goal_vars(Goal, !:Set) :-
+non_svar_copy_vars_in_goal(Goal, !:Set) :-
     set_of_var.init(!:Set),
-    non_svar_copy_goal_vars_acc(Goal, !Set).
+    non_svar_copy_vars_in_goal_acc(Goal, !Set).
 
-:- pred non_svar_copy_goal_vars_acc(hlds_goal::in,
+:- pred non_svar_copy_vars_in_goal_acc(hlds_goal::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-non_svar_copy_goal_vars_acc(Goal, !Set) :-
+non_svar_copy_vars_in_goal_acc(Goal, !Set) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = unify(Var, RHS, _, Unif, _),
@@ -247,11 +247,11 @@ non_svar_copy_goal_vars_acc(Goal, !Set) :-
                 ; Unif = complicated_unify(_, _, _)
                 )
             ),
-            rhs_goal_vars_acc(RHS, !Set)
+            vars_in_rhs_acc(RHS, !Set)
         )
     ;
         GoalExpr = generic_call(GenericCall, ArgVars, _, _, _),
-        generic_call_vars(GenericCall, GenericCallVars),
+        vars_in_generic_call(GenericCall, GenericCallVars),
         set_of_var.insert_list(GenericCallVars, !Set),
         set_of_var.insert_list(ArgVars, !Set)
     ;
@@ -261,11 +261,11 @@ non_svar_copy_goal_vars_acc(Goal, !Set) :-
         ( GoalExpr = conj(_, Goals)
         ; GoalExpr = disj(Goals)
         ),
-        non_svar_copy_goals_goal_vars_acc(Goals, !Set)
+        non_svar_copy_vars_in_goals_acc(Goals, !Set)
     ;
         GoalExpr = switch(Var, _Det, Cases),
         set_of_var.insert(Var, !Set),
-        non_svar_copy_cases_goal_vars_acc(Cases, !Set)
+        non_svar_copy_vars_in_cases_acc(Cases, !Set)
     ;
         GoalExpr = scope(Reason, SubGoal),
         (
@@ -295,16 +295,16 @@ non_svar_copy_goal_vars_acc(Goal, !Set) :-
             ; Reason = trace_goal(_, _, _, _, _)
             )
         ),
-        non_svar_copy_goal_vars_acc(SubGoal, !Set)
+        non_svar_copy_vars_in_goal_acc(SubGoal, !Set)
     ;
         GoalExpr = negation(SubGoal),
-        non_svar_copy_goal_vars_acc(SubGoal, !Set)
+        non_svar_copy_vars_in_goal_acc(SubGoal, !Set)
     ;
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
         set_of_var.insert_list(Vars, !Set),
-        non_svar_copy_goal_vars_acc(Cond, !Set),
-        non_svar_copy_goal_vars_acc(Then, !Set),
-        non_svar_copy_goal_vars_acc(Else, !Set)
+        non_svar_copy_vars_in_goal_acc(Cond, !Set),
+        non_svar_copy_vars_in_goal_acc(Then, !Set),
+        non_svar_copy_vars_in_goal_acc(Else, !Set)
     ;
         GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
         ArgVars = list.map(foreign_arg_var, Args),
@@ -328,41 +328,41 @@ non_svar_copy_goal_vars_acc(Goal, !Set) :-
                 MaybeOutputVars = yes(OutputVars),
                 set_of_var.insert_list(OutputVars, !Set)
             ),
-            non_svar_copy_goal_vars_acc(MainGoal, !Set),
-            non_svar_copy_goals_goal_vars_acc(OrElseGoals, !Set)
+            non_svar_copy_vars_in_goal_acc(MainGoal, !Set),
+            non_svar_copy_vars_in_goals_acc(OrElseGoals, !Set)
         ;
             Shorthand = try_goal(_, _, SubGoal),
             % The IO and Result variables would be in SubGoal.
-            non_svar_copy_goal_vars_acc(SubGoal, !Set)
+            non_svar_copy_vars_in_goal_acc(SubGoal, !Set)
         ;
             Shorthand = bi_implication(LeftGoal, RightGoal),
-            non_svar_copy_goal_vars_acc(LeftGoal, !Set),
-            non_svar_copy_goal_vars_acc(RightGoal, !Set)
+            non_svar_copy_vars_in_goal_acc(LeftGoal, !Set),
+            non_svar_copy_vars_in_goal_acc(RightGoal, !Set)
         )
     ).
 
-:- pred non_svar_copy_goals_goal_vars_acc(list(hlds_goal)::in,
+:- pred non_svar_copy_vars_in_goals_acc(list(hlds_goal)::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-non_svar_copy_goals_goal_vars_acc([], !Set).
-non_svar_copy_goals_goal_vars_acc([Goal | Goals], !Set) :-
-    non_svar_copy_goal_vars_acc(Goal, !Set),
-    non_svar_copy_goals_goal_vars_acc(Goals, !Set).
+non_svar_copy_vars_in_goals_acc([], !Set).
+non_svar_copy_vars_in_goals_acc([Goal | Goals], !Set) :-
+    non_svar_copy_vars_in_goal_acc(Goal, !Set),
+    non_svar_copy_vars_in_goals_acc(Goals, !Set).
 
-:- pred non_svar_copy_cases_goal_vars_acc(list(case)::in,
+:- pred non_svar_copy_vars_in_cases_acc(list(case)::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-non_svar_copy_cases_goal_vars_acc([], !Set).
-non_svar_copy_cases_goal_vars_acc([case(_, _, Goal) | Cases], !Set) :-
-    non_svar_copy_goal_vars_acc(Goal, !Set),
-    non_svar_copy_cases_goal_vars_acc(Cases, !Set).
+non_svar_copy_vars_in_cases_acc([], !Set).
+non_svar_copy_vars_in_cases_acc([case(_, _, Goal) | Cases], !Set) :-
+    non_svar_copy_vars_in_goal_acc(Goal, !Set),
+    non_svar_copy_vars_in_cases_acc(Cases, !Set).
 
 %---------------------%
 
-:- pred rhs_goal_vars_acc(unify_rhs::in,
+:- pred vars_in_rhs_acc(unify_rhs::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
-rhs_goal_vars_acc(RHS, !Set) :-
+vars_in_rhs_acc(RHS, !Set) :-
     (
         RHS = rhs_var(X),
         set_of_var.insert(X, !Set)
@@ -374,13 +374,13 @@ rhs_goal_vars_acc(RHS, !Set) :-
         assoc_list.keys(ArgVarsModes, ArgVars),
         set_of_var.insert_list(NonLocals, !Set),
         set_of_var.insert_list(ArgVars, !Set),
-        goal_vars_acc(Goal, !Set)
+        vars_in_goal_acc(Goal, !Set)
     ).
 
-generic_call_vars(higher_order(Var, _, _, _, _), [Var]).
-generic_call_vars(class_method(Var, _, _, _), [Var]).
-generic_call_vars(event_call(_), []).
-generic_call_vars(cast(_), []).
+vars_in_generic_call(higher_order(Var, _, _, _, _), [Var]).
+vars_in_generic_call(class_method(Var, _, _, _), [Var]).
+vars_in_generic_call(event_call(_), []).
+vars_in_generic_call(cast(_), []).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.goal_vars.

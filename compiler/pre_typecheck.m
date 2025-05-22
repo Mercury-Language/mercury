@@ -506,7 +506,7 @@ maybe_warn_about_unneeded_final_statevar(ModuleInfo, PredInfo,
 
 gather_clause_body_non_svar_copy_vars(Clause, !BodyVars) :-
     BodyGoal = Clause ^ clause_body,
-    non_svar_copy_goal_vars(BodyGoal, BodyGoalVars),
+    non_svar_copy_vars_in_goal(BodyGoal, BodyGoalVars),
     set_of_var.union(BodyGoalVars, !BodyVars).
 
 %---------------------%

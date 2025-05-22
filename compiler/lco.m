@@ -746,7 +746,7 @@ potentially_moveable_goal(Goal) :-
 partition_dependent_goal(_Info, _ConstInfo, Goal,
         !RevDependentGoals, !RevNonDependentGoals, !DelayForVars) :-
     Goal = hlds_goal(_GoalExpr, GoalInfo),
-    goal_vars(Goal, GoalVars),
+    vars_in_goal(Goal, GoalVars),
     set_of_var.intersect(!.DelayForVars, GoalVars, Intersection),
     ( if set_of_var.is_empty(Intersection) then
         !:RevNonDependentGoals = [Goal | !.RevNonDependentGoals]

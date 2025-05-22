@@ -2310,7 +2310,7 @@ add_conjunct_delayed_renames(DelayedRenamingToAdd, Goal0, Goal,
     hlds_goal::in, hlds_goal::out) is det.
 
 delete_unneeded_copy_goals_in_clause(HeadUnificationsGoal, Goal0, Goal) :-
-    goal_vars(HeadUnificationsGoal, HeadUnificationsGoalVars),
+    vars_in_goal(HeadUnificationsGoal, HeadUnificationsGoalVars),
     SeenLater0 = HeadUnificationsGoalVars,
     delete_unneeded_copy_goals(Goal0, Goal, SeenLater0, _SeenLater).
 
@@ -2321,7 +2321,7 @@ delete_unneeded_copy_goals(Goal0, Goal, SeenAfter, SeenBefore) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo),
     (
         GoalExpr0 = unify(LHSVar, _, _, _, _),
-        goal_vars(Goal0, GoalVars0),
+        vars_in_goal(Goal0, GoalVars0),
         ( if
             goal_info_has_feature(GoalInfo, feature_state_var_copy),
             not set_of_var.member(SeenAfter, LHSVar)
@@ -2337,7 +2337,7 @@ delete_unneeded_copy_goals(Goal0, Goal, SeenAfter, SeenBefore) :-
         ; GoalExpr0 = generic_call(_, _, _, _, _)
         ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
         ),
-        goal_vars(Goal0, GoalVars0),
+        vars_in_goal(Goal0, GoalVars0),
         set_of_var.union(GoalVars0, SeenAfter, SeenBefore),
         Goal = Goal0
     ;

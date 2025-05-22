@@ -650,7 +650,7 @@ calc_pred_variables(InitInstmap, FinalInstmap, Goal,
         InnerDI, InnerUO, IgnoreVarList, StmGoalVars, !StmInfo) :-
     ModuleInfo = !.StmInfo ^ stm_info_module_info,
 
-    goal_vars(Goal, GoalVars0),
+    vars_in_goal(Goal, GoalVars0),
     set_of_var.delete_list(IgnoreVarList, GoalVars0, GoalVars),
     GoalVarList = set_of_var.to_sorted_list(GoalVars),
 
@@ -2587,7 +2587,7 @@ run_quantification_over_pred(!NewPredInfo) :-
 
 new_pred_set_goal(Goal, !NewPredInfo) :-
     ProcInfo0 = !.NewPredInfo ^ new_pred_proc_info,
-    goal_vars(Goal, GoalVars),
+    vars_in_goal(Goal, GoalVars),
     GoalVarsSet = set_of_var.bitset_to_set(GoalVars),
     proc_info_get_var_table(ProcInfo0, ProcVarTable0),
 

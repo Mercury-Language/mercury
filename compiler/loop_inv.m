@@ -1173,7 +1173,7 @@ goal_inputs(ModuleInfo, Goal) = Inputs :-
             Args, argmodes(ModuleInfo, PredId, ProcId), Inputs)
     ;
         GoalExpr = generic_call(GenericCall, Args, ArgModes, _, _),
-        generic_call_vars(GenericCall, GenericCallVars),
+        vars_in_generic_call(GenericCall, GenericCallVars),
         list.filter_map_corresponding(is_input_arg(ModuleInfo),
             Args, ArgModes, Inputs0),
         Inputs = GenericCallVars ++ Inputs0

@@ -750,7 +750,7 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
         )
     ;
         GoalExpr = generic_call(GenericCall, Args, _, _, _),
-        goal_vars.generic_call_vars(GenericCall, CallArgs),
+        vars_in_generic_call(GenericCall, CallArgs),
         set_list_vars_used(CallArgs, !VarDep),
         set_list_vars_used(Args, !VarDep)
     ;

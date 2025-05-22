@@ -459,7 +459,7 @@ warn_singletons_in_goal(Params, Goal, QuantVars, !Info) :-
             QuantVars, !Info)
     ;
         GoalExpr = generic_call(GenericCall, Args0, _, _, _),
-        goal_vars.generic_call_vars(GenericCall, Args1),
+        vars_in_generic_call(GenericCall, Args1),
         Args = Args0 ++ Args1,
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         warn_singletons_goal_vars(Params, Args, GoalInfo, NonLocals,

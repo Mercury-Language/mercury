@@ -1160,7 +1160,7 @@ define_new_pred(PredSymName, Origin, TVarSet, InstVarSet,
     ),
 
     % Remove unneeded variables from the var_table.
-    goal_vars.goal_vars(Goal0, GoalVars0),
+    vars_in_goal(Goal0, GoalVars0),
     set_of_var.insert_list(ArgVars, GoalVars0, GoalVars),
     GoalVarsSet = set_of_var.bitset_to_set(GoalVars),
     var_table_select(GoalVarsSet, VarTable0, VarTable),

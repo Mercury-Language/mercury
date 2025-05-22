@@ -2563,7 +2563,7 @@ compute_var_number_map(VarTable, HeadVars, Internals, Goal, VarNumMap) :-
     some [!VarNumMap, !Counter] (
         !:VarNumMap = map.init,
         !:Counter = counter.init(1), % to match term.var_supply_init
-        goal_vars.goal_vars(Goal, GoalVarSet),
+        vars_in_goal(Goal, GoalVarSet),
         set_of_var.to_sorted_list(GoalVarSet, GoalVars),
         list.foldl2(add_var_to_var_number_map(VarTable), GoalVars,
             !VarNumMap, !Counter),

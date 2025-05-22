@@ -1118,8 +1118,8 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals], !ONRenaming) :-
             OldGoalExpr = generic_call(OldGenericCall, OldArgs1, _, _, Det),
             NewGoalExpr = generic_call(NewGenericCall, NewArgs1, _, _, Det),
             match_generic_call(OldGenericCall, NewGenericCall),
-            goal_vars.generic_call_vars(OldGenericCall, OldArgs0),
-            goal_vars.generic_call_vars(NewGenericCall, NewArgs0),
+            vars_in_generic_call(OldGenericCall, OldArgs0),
+            vars_in_generic_call(NewGenericCall, NewArgs0),
             OldArgs = OldArgs0 ++ OldArgs1,
             NewArgs = NewArgs0 ++ NewArgs1
         )

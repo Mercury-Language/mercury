@@ -266,7 +266,7 @@ pd_debug_definitely_output_goal(PDInfo, DebugStream, IdStr, Msg, Goal, !IO) :-
     io.format(DebugStream, "%s: %s\n", [s(IdStr), s(Msg)], !IO),
 
     proc_info_get_var_table(ProcInfo, VarTable),
-    goal_vars.goal_vars(Goal, Vars),
+    vars_in_goal(Goal, Vars),
     pd_info_get_instmap(PDInfo, InstMap),
     instmap_restrict(Vars, InstMap, VarsInstMap),
     InstMapStr = instmap_to_string(VarTable, print_name_and_num,

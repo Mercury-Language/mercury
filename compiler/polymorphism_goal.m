@@ -716,7 +716,7 @@ requantify_lambda_goal(LambdaNonLocals0, ArgVars, ExistQVars, !Goal,
         goal_util.extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps0,
             VarTable0, ExistQVars, NonLocalsWithArgVars, LambdaTiTciVars),
 
-        goal_vars(!.Goal, GoalVars),
+        vars_in_goal(!.Goal, GoalVars),
         IsTiOrTci =
             ( pred(Var::in) is semidet :-
                 lookup_var_type(VarTable0, Var, VarType),

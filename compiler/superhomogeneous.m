@@ -2144,7 +2144,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
             % possibly be nonlocal. Quantification will reduce this down
             % to the proper set of nonlocal arguments.
             some [!LambdaGoalVars] (
-                goal_vars.goal_vars(HLDS_Goal, !:LambdaGoalVars),
+                vars_in_goal(HLDS_Goal, !:LambdaGoalVars),
                 set_of_var.delete_list(LambdaVars, !LambdaGoalVars),
                 set_of_var.delete_list(QuantifiedVars, !LambdaGoalVars),
                 LambdaNonLocals = set_of_var.to_sorted_list(!.LambdaGoalVars)
