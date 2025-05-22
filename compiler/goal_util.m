@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
 % Copyright (C) 2015-2019, 2021-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: goal_util.m.
 % Main author: conway.
@@ -13,8 +13,8 @@
 % This module provides various utility procedures for manipulating HLDS goals,
 % e.g. attaching features to goals.
 %
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.goal_util.
 :- interface.
@@ -44,7 +44,7 @@
 :- import_module set.
 :- import_module term_context.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given a goal (or its goal_info) and an initial instmap,
     % compute the final instmap that results from the initial instmap
@@ -54,6 +54,8 @@
     instmap::in, instmap::out) is det.
 :- pred apply_goal_info_instmap_delta(hlds_goal_info::in,
     instmap::in, instmap::out) is det.
+
+%---------------------------------------------------------------------------%
 
     % create_renaming(OutputVars, InstMapDelta, !VarTable,
     %   UnifyGoals, NewVars, Renaming):
@@ -70,6 +72,8 @@
 :- pred create_renaming(list(prog_var)::in, instmap_delta::in,
     var_table::in, var_table::out,
     list(hlds_goal)::out, list(prog_var)::out, prog_var_renaming::out) is det.
+
+%---------------------------------------------------------------------------%
 
     % clone_variable(OldVar, OldVarTable, !VarTable, !Renaming, CloneVar):
     %
@@ -118,6 +122,8 @@
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
+%---------------------------------------------------------------------------%
+
     % Return all the variables in the goal or goal expression.
     % Unlike quantification.goal_vars, this predicate returns
     % even the explicitly quantified variables.
@@ -137,6 +143,8 @@
     %
 :- pred generic_call_vars(generic_call::in, list(prog_var)::out) is det.
 
+%---------------------------------------------------------------------------%
+
 :- type attach_in_from_ground_term
     --->    attach_in_from_ground_term
     ;       do_not_attach_in_from_ground_term.
@@ -150,6 +158,8 @@
     in(bound(attach_in_from_ground_term)), in, out) is det.
 :- mode attach_features_to_all_goals(in,
     in(bound(do_not_attach_in_from_ground_term)), in, out) is det.
+
+%---------------------------------------------------------------------------%
 
     % extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps,
     %   VarTypes, ExistQVars, NonLocals, NonLocalTypeInfos):
@@ -173,6 +183,8 @@
     var_table::in, existq_tvars::in,
     set_of_progvar::in, set_of_progvar::out) is det.
 
+%---------------------------------------------------------------------------%
+
 :- type is_leaf
     --->    is_leaf
     ;       is_not_leaf.
@@ -181,9 +193,13 @@
     %
 :- func proc_body_is_leaf(hlds_goal) = is_leaf.
 
+%---------------------------------------------------------------------------%
+
     % See whether the goal is a branched structure.
     %
 :- pred goal_is_branched(hlds_goal_expr::in) is semidet.
+
+%---------------------------------------------------------------------------%
 
     % Return an indication of the size of the goal.
     %
@@ -197,6 +213,8 @@
     %
 :- pred clause_list_size(list(clause)::in, int::out) is det.
 
+%---------------------------------------------------------------------------%
+
     % Return a set of all the procedures referred to by the given goal or
     % goals. Differs from goal_calls not just in the fact that it returns
     % a set of pred_proc_ids all at once, but also in that it also returns
@@ -206,11 +224,15 @@
 :- func goals_proc_refs(list(hlds_goal)) = set(pred_proc_id).
 :- func goal_proc_refs(hlds_goal) = set(pred_proc_id).
 
+%---------------------%
+
     % Test whether the goal calls the given procedure.
     %
 :- pred goal_calls(hlds_goal, pred_proc_id).
 :- mode goal_calls(in, in) is semidet.
 :- mode goal_calls(in, out) is nondet.
+
+%---------------------%
 
     % Test whether the goal calls the given predicate.
     % This is useful before mode analysis when the proc_ids
@@ -219,6 +241,8 @@
 :- pred goal_calls_pred_id(hlds_goal, pred_id).
 :- mode goal_calls_pred_id(in, in) is semidet.
 :- mode goal_calls_pred_id(in, out) is nondet.
+
+%---------------------%
 
     % goal_calls_proc_in_set(Goal, PredProcIds):
     %
@@ -236,10 +260,14 @@
 :- func goal_list_calls_proc_in_set(list(hlds_goal), set(pred_proc_id))
     = set(pred_proc_id).
 
+%---------------------%
+
     % Test whether the goal contains a reconstruction
     % (a construction where the `construct_how' field is `cell_to_reuse(_)').
     %
 :- pred goal_contains_reconstruction(hlds_goal::in, bool::out) is det.
+
+%---------------------%
 
     % goal_contains_goal(Goal, SubGoal) is true iff Goal contains SubGoal,
     % i.e. iff Goal = SubGoal or Goal contains SubGoal as a direct
@@ -247,10 +275,7 @@
     %
 :- pred goal_contains_goal(hlds_goal::in, hlds_goal::out) is multi.
 
-    % direct_subgoal(Goal, DirectSubGoal) is true iff DirectSubGoal is
-    % a direct sub-goal of Goal.
-    %
-:- pred direct_subgoal(hlds_goal_expr::in, hlds_goal::out) is nondet.
+%---------------------%
 
     % Returns all the pred_ids that are called from a list of goals.
     %
@@ -271,6 +296,8 @@
 :- pred pred_proc_ids_called_from_goal(hlds_goal::in,
     list(pred_proc_id)::out) is det.
 
+%---------------------------------------------------------------------------%
+
 :- type goal_is_atomic
     --->    goal_is_atomic
     ;       goal_is_nonatomic.
@@ -279,7 +306,7 @@
     %
 :- pred goal_is_atomic(hlds_goal::in, goal_is_atomic::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % NOTE: Neither switch_to_disjunction nor case_to_disjunct is currently used,
 % but they could be useful in the future.
@@ -301,7 +328,7 @@
     cons_id::in, hlds_goal::out, var_table::in, var_table::out,
     module_info::in, module_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Flatten the conjuncts of a conjunction.
     % Flattens only one level.
@@ -313,6 +340,8 @@
     % Flattens all levels recursively.
     %
 :- pred flatten_disj(list(hlds_goal)::in, list(hlds_goal)::out) is det.
+
+%---------------------------------------------------------------------------%
 
     % Create a conjunction of the specified type using the specified two goals.
     % This fills in the hlds_goal_info.
@@ -326,17 +355,16 @@
 :- pred create_conj_from_list(list(hlds_goal)::in, conj_type::in,
     hlds_goal::out) is det.
 
+%---------------------------------------------------------------------------%
+
     % can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
-    %   InstmapBeforeGoal1, Goal1, InstmapBeforeGoal2, Goal2).
+    %   InstmapBeforeGoal1, Goal1, InstmapBeforeGoal2, Goal2):
     %
-    % Goals can be reordered if
-    % - the goals are independent
-    % - the goals are not impure
-    % - any possible change in termination behaviour is allowed according
-    %   to the semantics options.
+    % Succeed if the conjunction (Goal1, Goal2) can be reordered to
+    % (Goal2, Goal1).
     %
-    % NOTE: this version is deprecated; new code should use the following
-    %       version because it supports the intermodule-analysis framework.
+    % NOTE: this version is deprecated. New code should use the following
+    % version, because it supports the intermodule-analysis framework.
     %
 :- pred can_reorder_goals_old(module_info::in, var_table::in, bool::in,
     instmap::in, hlds_goal::in, instmap::in, hlds_goal::in) is semidet.
@@ -348,13 +376,14 @@
     % can_reorder_goals(VarTable, FullyStrict, InstmapBeforeGoal1, Goal1,
     %   InstmapBeforeGoal2, Goal2, Result, !ModuleInfo).
     %
-    % Result is `yes' if the goals can be reordered; no otherwise.
+    % Return `yes' if the goals can be reordered; otherwise, return 'no'.
     %
     % Goals can be reordered if
-    % - the goals are independent
-    % - the goals are not impure
-    % - any possible change in termination behaviour is allowed according
-    %   to the semantics options.
+    % - the goals are independent;
+    % - the goals are not impure; and
+    % - the compiler options specifying the programmer's chosen
+    %   Mercury semantics permit any changes in termination behaviour
+    %   that may result from the reordering.
     %
     % NOTE: new code should use this version as it supports the
     %       intermodule-analysis framework.
@@ -362,6 +391,8 @@
 :- pred can_reorder_goals(var_table::in, bool::in, instmap::in,
     hlds_goal::in, instmap::in, hlds_goal::in, can_reorder_goals::out,
     module_info::in, module_info::out) is det.
+
+%---------------------%
 
     % reordering_maintains_termination_old(ModuleInfo, FullyStrict,
     %   Goal1, Goal2).
@@ -395,6 +426,8 @@
 :- pred reordering_maintains_termination(bool::in,
     hlds_goal::in, hlds_goal::in, reorder_maintains_termination::out,
     module_info::in, module_info::out) is det.
+
+%---------------------------------------------------------------------------%
 
     % generate_plain_call(ModuleInfo, PredOrFunc, ModuleName, ProcName,
     %   TIArgVars, ArgVars, InstMapDelta, ModeNo, Detism, Purity, Features,
@@ -445,16 +478,16 @@
 :- pred generate_cast_with_insts(cast_kind::in, prog_var::in, prog_var::in,
     mer_inst::in, mer_inst::in, prog_context::in, hlds_goal::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred foreign_proc_uses_variable(pragma_foreign_proc_impl::in, string::in)
     is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- func maybe_strip_equality_pretest(hlds_goal) = hlds_goal.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type maybe_transformed_goal
     --->    ok(hlds_goal)
@@ -489,8 +522,8 @@
     pred(hlds_goal, hlds_goal)::in(pred(in, out) is det),
     hlds_goal::in, hlds_goal::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -513,7 +546,7 @@
 :- import_module string.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 apply_goal_instmap_delta(hlds_goal(_GoalExpr0, GoalInfo0), !InstMap) :-
     DeltaInstMap = goal_info_get_instmap_delta(GoalInfo0),
@@ -523,7 +556,7 @@ apply_goal_info_instmap_delta(GoalInfo0, !InstMap) :-
     DeltaInstMap = goal_info_get_instmap_delta(GoalInfo0),
     apply_instmap_delta(DeltaInstMap, !InstMap).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 create_renaming(OrigVars, InstMapDelta, !VarTable, Unifies, NewVars,
         Renaming) :-
@@ -561,7 +594,7 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarTable,
     create_renaming_2(OrigVars, InstMapDelta, !VarTable,
         !RevUnifies, !RevNewVars, !Renaming).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 clone_variable(Var, OldVarTable, !VarTable, !Renaming, CloneVar) :-
     ( if map.search(!.Renaming, Var, CloneVarPrime) then
@@ -605,7 +638,7 @@ clone_variables_vs([Var | Vars], OldVarNames, OldVarTypes, !VarSet, !VarTypes,
     clone_variables_vs(Vars, OldVarNames, OldVarTypes, !VarSet, !VarTypes,
         !Renaming).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 goal_vars(Goal, !:Set) :-
     !:Set = set_of_var.init,
@@ -769,7 +802,7 @@ generic_call_vars(class_method(Var, _, _, _), [Var]).
 generic_call_vars(event_call(_), []).
 generic_call_vars(cast(_), []).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 attach_features_to_all_goals(Features, InFromGroundTerm, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
@@ -888,7 +921,7 @@ attach_features_to_goal_expr(Features, InFromGroundTerm,
         GoalExpr = shorthand(ShortHand)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, VarTable, ExistQVars,
         NonLocals, NonLocalTiTciVars) :-
@@ -940,7 +973,7 @@ do_extra_nonlocal_typeinfos_typeclass_infos(RttiVarMaps, NonLocalsTypes,
     set_of_var.union(NonLocalTypeInfoVars, NonLocalTypeClassInfoVars,
         NonLocalTiTciVars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 proc_body_is_leaf(hlds_goal(GoalExpr, _)) = IsLeaf :-
     (
@@ -1043,13 +1076,30 @@ proc_body_is_leaf_cases([Case | Cases]) = IsLeaf :-
         IsLeaf = is_not_leaf
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-goal_is_branched(if_then_else(_, _, _, _)).
-goal_is_branched(switch(_, _, _)).
-goal_is_branched(disj(_)).
+goal_is_branched(GoalExpr) :-
+    require_complete_switch [GoalExpr]
+    (
+        ( GoalExpr = if_then_else(_, _, _, _)
+        ; GoalExpr = switch(_, _, _)
+        ; GoalExpr = disj(_)
+        )
+    ;
+        ( GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ; GoalExpr = conj(_, _)
+        ; GoalExpr = disj(_)
+        ; GoalExpr = negation(_)
+        ; GoalExpr = scope(_, _)
+        ; GoalExpr = shorthand(_)
+        ),
+        fail
+    ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 goal_size(hlds_goal(GoalExpr, _), Size) :-
     goal_expr_size(GoalExpr, Size).
@@ -1150,7 +1200,7 @@ goal_expr_size(GoalExpr, Size) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 goals_proc_refs(Goals) = ReferredToProcs :-
     list.foldl(goal_proc_refs_acc, Goals, set.init, ReferredToProcs).
@@ -1276,7 +1326,7 @@ cons_id_proc_refs_acc(ConsId, !ReferredToProcs) :-
         set.insert(PredProcId, !ReferredToProcs)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % We could implement goal_calls as
 %   goal_calls(Goal, proc(PredId, ProcId)) :-
@@ -1290,36 +1340,8 @@ cons_id_proc_refs_acc(ConsId, !ReferredToProcs) :-
 % goal_calls_this_proc(Goal, PredProcId) = bool
 % all_called_procs_in_goal(Goal) = cord(pred_proc_id)
 
-goal_calls(hlds_goal(GoalExpr, _), PredProcId) :-
-    goal_expr_calls(GoalExpr, PredProcId).
-
-:- pred goals_calls(list(hlds_goal), pred_proc_id).
-:- mode goals_calls(in, in) is semidet.
-:- mode goals_calls(in, out) is nondet.
-
-goals_calls([Goal | Goals], PredProcId) :-
-    (
-        goal_calls(Goal, PredProcId)
-    ;
-        goals_calls(Goals, PredProcId)
-    ).
-
-:- pred cases_calls(list(case), pred_proc_id).
-:- mode cases_calls(in, in) is semidet.
-:- mode cases_calls(in, out) is nondet.
-
-cases_calls([case(_, _, Goal) | Cases], PredProcId) :-
-    (
-        goal_calls(Goal, PredProcId)
-    ;
-        cases_calls(Cases, PredProcId)
-    ).
-
-:- pred goal_expr_calls(hlds_goal_expr, pred_proc_id).
-:- mode goal_expr_calls(in, in) is semidet.
-:- mode goal_expr_calls(in, out) is nondet.
-
-goal_expr_calls(GoalExpr, PredProcId) :-
+goal_calls(Goal, PredProcId) :-
+    Goal = hlds_goal(GoalExpr, _),
     require_complete_switch [GoalExpr]
     (
         GoalExpr = conj(_ConjType, Conjuncts),
@@ -1365,7 +1387,29 @@ goal_expr_calls(GoalExpr, PredProcId) :-
         fail
     ).
 
-%-----------------------------------------------------------------------------%
+:- pred goals_calls(list(hlds_goal), pred_proc_id).
+:- mode goals_calls(in, in) is semidet.
+:- mode goals_calls(in, out) is nondet.
+
+goals_calls([Goal | Goals], PredProcId) :-
+    (
+        goal_calls(Goal, PredProcId)
+    ;
+        goals_calls(Goals, PredProcId)
+    ).
+
+:- pred cases_calls(list(case), pred_proc_id).
+:- mode cases_calls(in, in) is semidet.
+:- mode cases_calls(in, out) is nondet.
+
+cases_calls([case(_, _, Goal) | Cases], PredProcId) :-
+    (
+        goal_calls(Goal, PredProcId)
+    ;
+        cases_calls(Cases, PredProcId)
+    ).
+
+%---------------------------------------------------------------------------%
 %
 % We could implement goal_calls_pred_id as
 %   goal_calls_pred_id(Goal, PredId) :-
@@ -1374,36 +1418,8 @@ goal_expr_calls(GoalExpr, PredProcId) :-
 % since it avoids creating any choice points.
 %
 
-goal_calls_pred_id(hlds_goal(GoalExpr, _), PredId) :-
-    goal_expr_calls_pred_id(GoalExpr, PredId).
-
-:- pred goals_calls_pred_id(list(hlds_goal), pred_id).
-:- mode goals_calls_pred_id(in, in) is semidet.
-:- mode goals_calls_pred_id(in, out) is nondet.
-
-goals_calls_pred_id([Goal | Goals], PredId) :-
-    (
-        goal_calls_pred_id(Goal, PredId)
-    ;
-        goals_calls_pred_id(Goals, PredId)
-    ).
-
-:- pred cases_calls_pred_id(list(case), pred_id).
-:- mode cases_calls_pred_id(in, in) is semidet.
-:- mode cases_calls_pred_id(in, out) is nondet.
-
-cases_calls_pred_id([case(_, _, Goal) | Cases], PredId) :-
-    (
-        goal_calls_pred_id(Goal, PredId)
-    ;
-        cases_calls_pred_id(Cases, PredId)
-    ).
-
-:- pred goal_expr_calls_pred_id(hlds_goal_expr, pred_id).
-:- mode goal_expr_calls_pred_id(in, in) is semidet.
-:- mode goal_expr_calls_pred_id(in, out) is nondet.
-
-goal_expr_calls_pred_id(GoalExpr, PredId) :-
+goal_calls_pred_id(Goal, PredId) :-
+    Goal = hlds_goal(GoalExpr, _),
     require_complete_switch [GoalExpr]
     (
         GoalExpr = conj(_ConjType, Conjuncts),
@@ -1448,7 +1464,29 @@ goal_expr_calls_pred_id(GoalExpr, PredId) :-
         fail
     ).
 
-%-----------------------------------------------------------------------------%
+:- pred goals_calls_pred_id(list(hlds_goal), pred_id).
+:- mode goals_calls_pred_id(in, in) is semidet.
+:- mode goals_calls_pred_id(in, out) is nondet.
+
+goals_calls_pred_id([Goal | Goals], PredId) :-
+    (
+        goal_calls_pred_id(Goal, PredId)
+    ;
+        goals_calls_pred_id(Goals, PredId)
+    ).
+
+:- pred cases_calls_pred_id(list(case), pred_id).
+:- mode cases_calls_pred_id(in, in) is semidet.
+:- mode cases_calls_pred_id(in, out) is nondet.
+
+cases_calls_pred_id([case(_, _, Goal) | Cases], PredId) :-
+    (
+        goal_calls_pred_id(Goal, PredId)
+    ;
+        cases_calls_pred_id(Cases, PredId)
+    ).
+
+%---------------------------------------------------------------------------%
 
 goal_calls_proc_in_set(Goal, PredProcIds) = CalledPredProcIds :-
     goal_calls_proc_in_set_acc(Goal, PredProcIds,
@@ -1461,8 +1499,8 @@ goal_list_calls_proc_in_set(Goals, PredProcIds) = CalledPredProcIds :-
 :- pred goal_calls_proc_in_set_acc(hlds_goal::in, set(pred_proc_id)::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
-goal_calls_proc_in_set_acc(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
-        !CalledSet) :-
+goal_calls_proc_in_set_acc(Goal, PredProcIds, !CalledSet) :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = unify(_, _, _, _, _)
     ;
@@ -1477,11 +1515,11 @@ goal_calls_proc_in_set_acc(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
-        GoalExpr = conj(_, Goals),
-        goal_list_calls_proc_in_set_acc(Goals, PredProcIds, !CalledSet)
+        GoalExpr = conj(_, SubGoals),
+        goal_list_calls_proc_in_set_acc(SubGoals, PredProcIds, !CalledSet)
     ;
-        GoalExpr = disj(Goals),
-        goal_list_calls_proc_in_set_acc(Goals, PredProcIds, !CalledSet)
+        GoalExpr = disj(SubGoals),
+        goal_list_calls_proc_in_set_acc(SubGoals, PredProcIds, !CalledSet)
     ;
         GoalExpr = switch(_, _, Cases),
         case_list_calls_proc_in_list_acc(Cases, PredProcIds, !CalledSet)
@@ -1491,10 +1529,10 @@ goal_calls_proc_in_set_acc(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
         goal_calls_proc_in_set_acc(Then, PredProcIds, !CalledSet),
         goal_calls_proc_in_set_acc(Else, PredProcIds, !CalledSet)
     ;
-        GoalExpr = negation(Goal),
-        goal_calls_proc_in_set_acc(Goal, PredProcIds, !CalledSet)
+        GoalExpr = negation(SubGoal),
+        goal_calls_proc_in_set_acc(SubGoal, PredProcIds, !CalledSet)
     ;
-        GoalExpr = scope(Reason, Goal),
+        GoalExpr = scope(Reason, SubGoal),
         ( if
             Reason = from_ground_term(_, FGT),
             ( FGT = from_ground_term_construct
@@ -1504,7 +1542,7 @@ goal_calls_proc_in_set_acc(hlds_goal(GoalExpr, _GoalInfo), PredProcIds,
             % These goals contain only construction unifications.
             true
         else
-            goal_calls_proc_in_set_acc(Goal, PredProcIds, !CalledSet)
+            goal_calls_proc_in_set_acc(SubGoal, PredProcIds, !CalledSet)
         )
     ;
         GoalExpr = shorthand(ShortHand),
@@ -1540,7 +1578,7 @@ case_list_calls_proc_in_list_acc([Case | Cases], PredProcIds, !CalledSet) :-
     goal_calls_proc_in_set_acc(Goal, PredProcIds, !CalledSet),
     case_list_calls_proc_in_list_acc(Cases, PredProcIds, !CalledSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 goal_contains_reconstruction(Goal, ContainsReconstruction) :-
     Goal = hlds_goal(GoalExpr, _),
@@ -1655,29 +1693,70 @@ cases_contain_reconstruction([Case | Cases], ContainsReconstruction) :-
         cases_contain_reconstruction(Cases, ContainsReconstruction)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-goal_contains_goal(Goal, Goal).
-goal_contains_goal(hlds_goal(GoalExpr, _), SubGoal) :-
-    direct_subgoal(GoalExpr, DirectSubGoal),
-    goal_contains_goal(DirectSubGoal, SubGoal).
-
-direct_subgoal(scope(_, Goal), Goal).
-direct_subgoal(negation(Goal), Goal).
-direct_subgoal(if_then_else(_, Cond, Then, Else), Goal) :-
-    ( Goal = Cond
-    ; Goal = Then
-    ; Goal = Else
+goal_contains_goal(Goal, ContainedGoal) :-
+    (
+        ContainedGoal = Goal
+    ;
+        Goal = hlds_goal(GoalExpr, _),
+        direct_subgoal(GoalExpr, DirectSubGoal),
+        goal_contains_goal(DirectSubGoal, ContainedGoal)
     ).
-direct_subgoal(conj(_ConjType, ConjList), Goal) :-
-    list.member(Goal, ConjList).
-direct_subgoal(disj(DisjList), Goal) :-
-    list.member(Goal, DisjList).
-direct_subgoal(switch(_, _, CaseList), Goal) :-
-    list.member(Case, CaseList),
-    Case = case(_, _, Goal).
 
-%-----------------------------------------------------------------------------%
+    % direct_subgoal(Goal, DirectSubGoal) is true iff
+    % DirectSubGoal is a direct subgoal of Goal.
+    %
+:- pred direct_subgoal(hlds_goal_expr::in, hlds_goal::out) is nondet.
+
+direct_subgoal(GoalExpr, DirectSubGoal) :-
+    require_complete_switch [GoalExpr]
+    (
+        ( GoalExpr = conj(_, DirectSubGoals)
+        ; GoalExpr = disj(DirectSubGoals)
+        ),
+        list.member(DirectSubGoal, DirectSubGoals)
+    ;
+        GoalExpr = switch(_, _, Cases),
+        list.member(Case, Cases),
+        Case = case(_, _, DirectSubGoal)
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        ( DirectSubGoal = Cond
+        ; DirectSubGoal = Then
+        ; DirectSubGoal = Else
+        )
+    ;
+        GoalExpr = negation(DirectSubGoal)
+    ;
+        GoalExpr = scope(_, DirectSubGoal)
+    ;
+        ( GoalExpr = unify(_, _, _, _, _)
+        ; GoalExpr = plain_call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
+        fail
+    ;
+        GoalExpr = shorthand(Shorthand),
+        % NOTE We used to fail for shorthand goals. This was either a bug,
+        % or a limitation that should have been documented.
+        (
+            Shorthand = bi_implication(SubGoalA, SubGoalB),
+            ( DirectSubGoal = SubGoalA
+            ; DirectSubGoal = SubGoalB
+            )
+        ;
+            Shorthand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
+            ( DirectSubGoal = MainGoal
+            ; list.member(DirectSubGoal, OrElseGoals)
+            )
+        ;
+            Shorthand = try_goal(_, _, DirectSubGoal)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
 
 pred_ids_called_from_goals(Goals, PredIds) :-
     (
@@ -1717,6 +1796,8 @@ pred_proc_ids_called_from_goal(Goal, PredProcIds) :-
         ),
     solutions.solutions(P, PredProcIds).
 
+%---------------------------------------------------------------------------%
+
 goal_is_atomic(Goal, GoalIsAtomic) :-
     Goal = hlds_goal(GoalExpr, _),
     (
@@ -1740,7 +1821,7 @@ goal_is_atomic(Goal, GoalIsAtomic) :-
         unexpected($pred, "shorthand")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 switch_to_disjunction(_, [], _, [], !VarTable, !ModuleInfo).
 switch_to_disjunction(Var, [Case | Cases], InstMap, Goals,
@@ -1813,7 +1894,7 @@ case_to_disjunct(Var, CaseGoal, InstMap, ConsId, Disjunct,
         CombinedGoalInfo),
     Disjunct = hlds_goal(conj(plain_conj, GoalList), CombinedGoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 flatten_conj([], []).
 flatten_conj([Goal | Goals0], FlatConj) :-
@@ -1837,7 +1918,7 @@ flatten_disj_acc(Disjunct, !FlatDisjuncts) :-
         !:FlatDisjuncts = [Disjunct | !.FlatDisjuncts]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 create_conj(GoalA, GoalB, Type, ConjGoal) :-
     create_conj_from_list([GoalA, GoalB], Type, ConjGoal).
@@ -1866,7 +1947,7 @@ create_conj_from_list(Conjuncts, ConjType, ConjGoal) :-
         unexpected($pred, "empty conjunction")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 can_reorder_goals_old(ModuleInfo, VarTable, FullyStrict,
         InstmapBeforeEarlierGoal, EarlierGoal,
@@ -1953,6 +2034,8 @@ can_reorder_goals(VarTable, FullyStrict, InstmapBeforeEarlierGoal,
         )
     ).
 
+%---------------------%
+
 reordering_maintains_termination_old(ModuleInfo, FullyStrict,
         EarlierGoal, LaterGoal) :-
     EarlierGoal = hlds_goal(_, EarlierGoalInfo),
@@ -2017,6 +2100,8 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
         )
     ).
 
+%---------------------%
+
     % If the earlier goal changes the instantiatedness of a variable
     % that is used in the later goal, then the later goal depends on
     % the earlier goal.
@@ -2040,7 +2125,7 @@ goal_depends_on_earlier_goal(ModuleInfo, VarTable,
     set_of_var.intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),
     not set_of_var.is_empty(Intersection).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 generate_plain_call(ModuleInfo, PredOrFunc, ModuleName, ProcName,
         TIArgVars, NonTIArgVars, InstMapDelta0, ModeNo, Detism, Purity,
@@ -2128,13 +2213,13 @@ generate_cast_with_insts(CastType, InArg, OutArg, InInst, OutInst, Context,
         [in_mode(InInst), out_mode(OutInst)], arg_reg_types_unset, detism_det),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 foreign_proc_uses_variable(Impl, VarName) :-
     Impl = fp_impl_ordinary(ForeignBody, _),
     string.sub_string_search(ForeignBody, VarName, _).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_strip_equality_pretest(Goal0) = Goal :-
     % The if_then_else constructed by unify_proc is sometimes wrapped up
@@ -2222,13 +2307,13 @@ maybe_strip_equality_pretest_case(Case0) = Case :-
     Goal = maybe_strip_equality_pretest(Goal0),
     Case = case(MainConsId, OtherConsIds, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
+maybe_transform_goal_at_goal_path(TransformPred, TargetGoalPath,
         Goal0, MaybeGoal) :-
     (
         TargetGoalPath = fgp_nil,
-        TransformP(Goal0, MaybeGoal0),
+        TransformPred(Goal0, MaybeGoal0),
         maybe_error_to_maybe_transformed_goal(MaybeGoal0, MaybeGoal)
     ;
         TargetGoalPath = fgp_cons(FirstStep, LaterPath),
@@ -2247,7 +2332,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                 FirstStep = step_conj(ConjNum),
                 list.index1(Conjs0, ConjNum, Conj0)
             then
-                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
+                maybe_transform_goal_at_goal_path(TransformPred, LaterPath,
                     Conj0, MaybeConj),
                 (
                     MaybeConj = ok(Conj),
@@ -2269,7 +2354,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                 FirstStep = step_disj(DisjNum),
                 list.index1(Disjs0, DisjNum, Disj0)
             then
-                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
+                maybe_transform_goal_at_goal_path(TransformPred, LaterPath,
                     Disj0, MaybeDisj),
                 (
                     MaybeDisj = ok(Disj),
@@ -2292,7 +2377,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                 list.index1(Cases0, CaseNum, Case0)
             then
                 CaseGoal0 = Case0 ^ case_goal,
-                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
+                maybe_transform_goal_at_goal_path(TransformPred, LaterPath,
                     CaseGoal0, MaybeCaseGoal),
                 (
                     MaybeCaseGoal = ok(CaseGoal),
@@ -2312,7 +2397,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
         ;
             GoalExpr0 = negation(SubGoal0),
             ( if FirstStep = step_neg then
-                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
+                maybe_transform_goal_at_goal_path(TransformPred, LaterPath,
                     SubGoal0, MaybeSubGoal),
                 (
                     MaybeSubGoal = ok(SubGoal),
@@ -2330,7 +2415,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
             ( if FirstStep = step_scope(_MaybeCut) then
-                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
+                maybe_transform_goal_at_goal_path(TransformPred, LaterPath,
                     SubGoal0, MaybeSubGoal),
                 (
                     MaybeSubGoal = ok(SubGoal),
@@ -2348,7 +2433,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
         ;
             GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
             ( if FirstStep = step_ite_cond then
-                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
+                maybe_transform_goal_at_goal_path(TransformPred, LaterPath,
                     Cond0, MaybeCond),
                 (
                     MaybeCond = ok(Cond),
@@ -2361,7 +2446,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     MaybeGoal = MaybeCond
                 )
             else if FirstStep = step_ite_then then
-                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
+                maybe_transform_goal_at_goal_path(TransformPred, LaterPath,
                     Then0, MaybeThen),
                 (
                     MaybeThen = ok(Then),
@@ -2374,7 +2459,7 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
                     MaybeGoal = MaybeThen
                 )
             else if FirstStep = step_ite_else then
-                maybe_transform_goal_at_goal_path(TransformP, LaterPath,
+                maybe_transform_goal_at_goal_path(TransformPred, LaterPath,
                     Else0, MaybeElse),
                 (
                     MaybeElse = ok(Else),
@@ -2395,11 +2480,11 @@ maybe_transform_goal_at_goal_path(TransformP, TargetGoalPath,
         )
     ).
 
-maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
+maybe_transform_goal_at_goal_path_with_instmap(TransformPred, TargetGoalPath,
         Instmap0, Goal0, MaybeGoal) :-
     (
         TargetGoalPath = fgp_nil,
-        TransformP(Instmap0, Goal0, MaybeGoal0),
+        TransformPred(Instmap0, Goal0, MaybeGoal0),
         maybe_error_to_maybe_transformed_goal(MaybeGoal0, MaybeGoal)
     ;
         TargetGoalPath = fgp_cons(FirstStep, LaterPath),
@@ -2424,7 +2509,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     HeadConjs),
                 list.foldl(apply_instmap_delta, HeadInstdeltas,
                     Instmap0, Instmap),
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                maybe_transform_goal_at_goal_path_with_instmap(TransformPred,
                     LaterPath, Instmap, Conj0, MaybeConj),
                 (
                     MaybeConj = ok(Conj),
@@ -2446,7 +2531,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                 FirstStep = step_disj(DisjNum),
                 list.index1(Disjs0, DisjNum, Disj0)
             then
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                maybe_transform_goal_at_goal_path_with_instmap(TransformPred,
                     LaterPath, Instmap0, Disj0, MaybeDisj),
                 (
                     MaybeDisj = ok(Disj),
@@ -2469,7 +2554,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                 list.index1(Cases0, CaseNum, Case0)
             then
                 CaseGoal0 = Case0 ^ case_goal,
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                maybe_transform_goal_at_goal_path_with_instmap(TransformPred,
                     LaterPath, Instmap0, CaseGoal0, MaybeCaseGoal),
                 (
                     MaybeCaseGoal = ok(CaseGoal),
@@ -2489,7 +2574,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
         ;
             GoalExpr0 = negation(SubGoal0),
             ( if FirstStep = step_neg then
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                maybe_transform_goal_at_goal_path_with_instmap(TransformPred,
                     LaterPath, Instmap0, SubGoal0, MaybeSubGoal),
                 (
                     MaybeSubGoal = ok(SubGoal),
@@ -2507,7 +2592,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
         ;
             GoalExpr0 = scope(Reason, SubGoal0),
             ( if FirstStep = step_scope(_MaybeCut) then
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                maybe_transform_goal_at_goal_path_with_instmap(TransformPred,
                     LaterPath, Instmap0, SubGoal0, MaybeSubGoal),
                 (
                     MaybeSubGoal = ok(SubGoal),
@@ -2525,7 +2610,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
         ;
             GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
             ( if FirstStep = step_ite_cond then
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                maybe_transform_goal_at_goal_path_with_instmap(TransformPred,
                     LaterPath, Instmap0, Cond0, MaybeCond),
                 (
                     MaybeCond = ok(Cond),
@@ -2541,7 +2626,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                 apply_instmap_delta(
                     goal_info_get_instmap_delta(Cond0 ^ hg_info),
                     Instmap0, Instmap),
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                maybe_transform_goal_at_goal_path_with_instmap(TransformPred,
                     LaterPath, Instmap, Then0, MaybeThen),
                 (
                     MaybeThen = ok(Then),
@@ -2554,7 +2639,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
                     MaybeGoal = MaybeThen
                 )
             else if FirstStep = step_ite_else then
-                maybe_transform_goal_at_goal_path_with_instmap(TransformP,
+                maybe_transform_goal_at_goal_path_with_instmap(TransformPred,
                     LaterPath, Instmap0, Else0, MaybeElse),
                 (
                     MaybeElse = ok(Else),
@@ -2581,7 +2666,7 @@ maybe_transform_goal_at_goal_path_with_instmap(TransformP, TargetGoalPath,
 maybe_error_to_maybe_transformed_goal(ok(Goal), ok(Goal)).
 maybe_error_to_maybe_transformed_goal(error(Error), error(Error)).
 
-transform_all_goals(TransformP, Goal0, Goal) :-
+transform_all_goals(TransformPred, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
     (
         ( GoalExpr0 = unify(_, _, _, _, _)
@@ -2592,42 +2677,42 @@ transform_all_goals(TransformP, Goal0, Goal) :-
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = conj(ConjType, Conjs0),
-        list.map(transform_all_goals(TransformP), Conjs0, Conjs),
+        list.map(transform_all_goals(TransformPred), Conjs0, Conjs),
         GoalExpr = conj(ConjType, Conjs)
     ;
         GoalExpr0 = disj(Disjs0),
-        list.map(transform_all_goals(TransformP), Disjs0, Disjs),
+        list.map(transform_all_goals(TransformPred), Disjs0, Disjs),
         GoalExpr = disj(Disjs)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         list.map(
             ( pred(Case0::in, Case::out) is det :-
                 GoalI0 = Case0 ^ case_goal,
-                transform_all_goals(TransformP, GoalI0, GoalI),
+                transform_all_goals(TransformPred, GoalI0, GoalI),
                 Case = Case0 ^ case_goal := GoalI
             ), Cases0, Cases),
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = negation(SubGoal0),
-        transform_all_goals(TransformP, SubGoal0, SubGoal),
+        transform_all_goals(TransformPred, SubGoal0, SubGoal),
         GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
-        transform_all_goals(TransformP, SubGoal0, SubGoal),
+        transform_all_goals(TransformPred, SubGoal0, SubGoal),
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = if_then_else(ExistVars, Cond0, Then0, Else0),
-        transform_all_goals(TransformP, Cond0, Cond),
-        transform_all_goals(TransformP, Then0, Then),
-        transform_all_goals(TransformP, Else0, Else),
+        transform_all_goals(TransformPred, Cond0, Cond),
+        transform_all_goals(TransformPred, Then0, Then),
+        transform_all_goals(TransformPred, Else0, Else),
         GoalExpr = if_then_else(ExistVars, Cond, Then, Else)
     ;
         GoalExpr0 = shorthand(_),
         unexpected($pred, "shorthand")
     ),
     Goal1 = hlds_goal(GoalExpr, GoalInfo0),
-    TransformP(Goal1, Goal).
+    TransformPred(Goal1, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.goal_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
