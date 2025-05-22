@@ -131,7 +131,7 @@
     % Warning: the complexity of this predicate is proportional to the
     % size of the goal. Goals can be pretty big. Whatever you want to do,
     % if you have a way to do it *without* calling the predicate, you will
-    % probably want to it that way.
+    % probably want to do it that way.
     %
 :- pred goal_vars(hlds_goal::in, set_of_progvar::out) is det.
 
