@@ -1,0 +1,6 @@
+unneeded_final_statevar.m:041: In predicate `p3'/2:
+unneeded_final_statevar.m:041:   warning: the first argument and the second
+unneeded_final_statevar.m:041:   argument, represented by the state variable
+unneeded_final_statevar.m:041:   [38;5;87m`!State',[39;49m [38;5;203mcould be deleted,[39;49m because they are
+unneeded_final_statevar.m:041:   not used, and because the final value is
+unneeded_final_statevar.m:041:   always the same as the initial value.

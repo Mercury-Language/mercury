@@ -8,7 +8,8 @@
 %
 % File: hlds_markers.m.
 %
-% This module the pred_marker and goal_feature types, and their operations.
+% This module defines the pred_marker and goal_feature types,
+% and their operations.
 % (Actually, all the operations are on pred_markers.)
 %
 % The presence or absence of each pred_marker in a pred_info, or

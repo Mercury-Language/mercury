@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1995-1998, 2000-2012 The University of Melbourne.
-% Copyright (C) 2015, 2018-2024 The Mercury team.
+% Copyright (C) 2015, 2018-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -64,13 +64,13 @@
     %
 :- pred inst_is_mostly_unique(module_info::in, mer_inst::in) is semidet.
 
-    % Succeed if the inst is not `mostly_unique' or `unique', i.e.
-    % if it is shared or free. It fails for abstract insts.
+    % Succeed if the inst contains no `mostly_unique' or `unique' components,
+    % i.e. if all of it is one of shared or free.
     %
 :- pred inst_is_not_partly_unique(module_info::in, mer_inst::in) is semidet.
 
-    % Succeed if the inst is not `unique', i.e. if it is mostly_unique,
-    % shared, or free. It fails for abstract insts.
+    % Succeed if the inst contains no `unique' components,
+    % i.e. if all of it is one of mostly_unique, shared or free.
     %
 :- pred inst_is_not_fully_unique(module_info::in, mer_inst::in) is semidet.
 

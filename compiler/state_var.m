@@ -136,6 +136,15 @@
     %
 :- func initial_state_var_name(string) = string.
 
+    % is_prog_var_for_some_state_var(VarSet, ProgVar, StateVarName):
+    %
+    % Succeed if and only if ProgVar's name indicates that it represents
+    % a version of a state variable named StateVarName. Succeed for
+    % any version: initial, middle, or final.
+    %
+:- pred is_prog_var_for_some_state_var(prog_varset::in, prog_var::in,
+    string::out) is semidet.
+
 %---------------------------------------------------------------------------%
 
     % Replace !X args with two args !.X, !:X in that order.
@@ -604,6 +613,57 @@ new_state_var_instance(StateVar, NameSource, Var, !UrInfo) :-
 
 initial_state_var_name(SVarName) = ProgVarName :-
     ProgVarName = string.format("STATE_VARIABLE_%s_0", [s(SVarName)]).
+
+is_prog_var_for_some_state_var(VarSet, Var, SVarName) :-
+    % All prog_vars representing state vars are named.
+    varset.search_name(VarSet, Var, VarName),
+    string.remove_prefix("STATE_VARIABLE_", VarName, AfterStdPrefix),
+    UnderscoreSeparatedPieces = string.split_at_char('_', AfterStdPrefix),
+    (
+        UnderscoreSeparatedPieces = [],
+        % There is no underscore, so there can be no numerical suffix.
+        SVarName = AfterStdPrefix
+    ;
+        UnderscoreSeparatedPieces = [_ | _],
+        list.det_last(UnderscoreSeparatedPieces, LastPiece),
+        string.to_int(LastPiece, _N),
+        % This is either the initial or a middle version of SVarName.
+        % (Initial if _N is zero, and middle otherwise)
+        NumericalSuffix = "_" ++ LastPiece,
+        SVarName = string.det_remove_suffix(AfterStdPrefix, NumericalSuffix)
+    ).
+
+    % is_prog_var_for_state_var(VarSet, StateVarName, ProgVar):
+    %
+    % Succeed if and only if ProgVar's name indicates that it represents
+    % a version of the state variable named !StateVarName. Succeed for
+    % any version: initial, middle, or final.
+    %
+    % This was a first attempt at solving the problem that the predicate above
+    % is also addressing, before I realized that collecting all referenced
+    % state variables permits a simpler design in our caller than having to
+    % repeat the test (on *every* variable in a clauses_info's varset) for
+    % every state var of interest to the code generating unneeded state
+    % warnings.
+    %
+:- pred is_prog_var_for_state_var(prog_varset::in, string::in, prog_var::in)
+   is semidet.
+:- pragma consider_used(pred(is_prog_var_for_state_var/3)).
+
+is_prog_var_for_state_var(VarSet, SVarName, Var) :-
+    % All prog_vars representing state vars are named.
+    varset.search_name(VarSet, Var, VarName),
+    string.remove_prefix("STATE_VARIABLE_", VarName, AfterStdPrefix),
+    string.remove_prefix(SVarName, AfterStdPrefix, Suffix),
+    (
+        Suffix = ""
+        % This is the final version of  SVarName.
+    ;
+        string.remove_prefix("_", Suffix, SuffixAfterUnderscore),
+        string.to_int(SuffixAfterUnderscore, _N)
+        % This is either the initial or a middle version of SVarName.
+        % (Initial if _N is zero, and middle otherwise)
+    ).
 
 %---------------------------------------------------------------------------%
 %

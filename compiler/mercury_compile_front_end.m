@@ -377,6 +377,10 @@ do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
     ;
         TypeCheckConstraints = no,
         prepare_for_typecheck_module(!HLDS, !Specs),
+        % This dump opportunity is here mostly to allow observation of
+        % the effects of the transformation for regularizing headvar names.
+        maybe_dump_hlds(ProgressStream, !.HLDS, 14, "pre_typecheck",
+            !DumpInfo, !IO),
         typecheck_module(ProgressStream, !HLDS, TypeCheckSpecs,
             FoundSyntaxError, DidWeExceedIterationLimit)
     ),

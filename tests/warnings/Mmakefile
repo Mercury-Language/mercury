@@ -61,6 +61,7 @@ ERRORCHECK_PROGS = \
 	unify_x_f_x \
 	unknown_warning \
 	unneeded_mode_specific_clause \
+	unneeded_final_statevar \
 	unsigned_zero_cmp \
 	unsorted_import_blocks \
 	unused_args_test \

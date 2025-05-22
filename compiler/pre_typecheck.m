@@ -57,8 +57,11 @@
 
 :- implementation.
 
+:- import_module check_hlds.inst_test.
+:- import_module check_hlds.mode_util.
 :- import_module hlds.goal_path.
 :- import_module hlds.headvar_names.
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
@@ -138,7 +141,7 @@ prepare_for_typecheck(ModuleInfo, ValidPredIdSet,
             ;
                 MaybeLookForUnusedSVars =
                     look_for_unneeded_statevars(HeadVarNames),
-                warn_about_any_unneeded_statevars(!.PredInfo,
+                warn_about_any_unneeded_statevars(ModuleInfo, !.PredInfo,
                     HeadVarNames, !Specs)
             ),
             PredIdInfo = PredId - !.PredInfo
@@ -205,10 +208,11 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred warn_about_any_unneeded_statevars(pred_info::in, list(string)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred warn_about_any_unneeded_statevars(module_info::in, pred_info::in,
+    list(string)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_about_any_unneeded_statevars(PredInfo, HeadVarNames, !Specs) :-
+warn_about_any_unneeded_statevars(ModuleInfo, PredInfo, HeadVarNames,
+        !Specs) :-
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
     get_clause_list_maybe_repeated(ClausesRep, Clauses),
@@ -254,9 +258,19 @@ warn_about_any_unneeded_statevars(PredInfo, HeadVarNames, !Specs) :-
         then
             true
         else
+            VarSet = ClausesInfo ^ cli_varset,
+            BodyVarsSet0 = set_of_var.init,
+            gather_clause_body_non_svar_copy_vars(HeadClause,
+                BodyVarsSet0, BodyVarsSet1),
+            list.foldl(gather_clause_body_non_svar_copy_vars, TailClauses,
+                BodyVarsSet1, BodyVarsSet),
+            set_of_var.to_sorted_list(BodyVarsSet, BodyVars),
+            list.filter_map(is_prog_var_for_some_state_var(VarSet),
+                BodyVars, BodyVarSVarNames),
+            set.list_to_set(BodyVarSVarNames, BodyVarSVarNameSet),
             map.foldl(
-                warn_about_unneeded_final_statevar(PredInfo, HeadClauseContext,
-                    TailClauses),
+                maybe_warn_about_unneeded_final_statevar(ModuleInfo, PredInfo,
+                    BodyVarSVarNameSet, HeadClauseContext, TailClauses),
                 InitAndFinalMap, !Specs)
         )
     ).
@@ -423,64 +437,226 @@ warn_about_any_unneeded_initial_statevars(PredInfo, HeadVars,
 
 %---------------------%
 
+:- pred maybe_warn_about_unneeded_final_statevar(module_info::in,
+    pred_info::in, set(string)::in, prog_context::in, list(clause)::in,
+    uint::in, init_and_final::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_warn_about_unneeded_final_statevar(ModuleInfo, PredInfo,
+        BodyVarSVarNameSet, HeadClauseContext, TailClauses,
+        InitArgNum, InitAndFinal, !Specs) :-
+    InitAndFinal = init_and_final(FinalArgNum, SVarNameSet),
+    set.intersect(BodyVarSVarNameSet, SVarNameSet, SVarNameSetInBody),
+    ( if set.is_non_empty(SVarNameSetInBody) then
+        % The body of at least one clause in the definition of this predicate
+        % (as opposed to the clause heads) contains a reference to an initial
+        % or to a final version of this state var. We should therefore report
+        % that only the *final* statevar argument is unneeded.
+        %
+        % There is one exception to this. For state variables that represent
+        % unique state, accessing the initial version *and preserving
+        % uniqueness in a way that is visible to the caller* requires
+        % returning a new version of the state var, so that its mode
+        % can tell the caller that the returned reference is still unique.
+        ( if
+            pred_args_are_free_of_declared_uniqueness(ModuleInfo, PredInfo,
+                InitArgNum, FinalArgNum)
+        then
+            warn_about_unneeded_final_statevar(PredInfo, HeadClauseContext,
+                TailClauses, FinalArgNum, SVarNameSet, !Specs)
+        else
+            true
+        )
+    else
+        % The definition of this predicate is missing not only any middle
+        % occurrence of this state var, it is also missing any initial
+        % or final occurrence, except in the clause heads.
+        % We should therefore report that *both* arguments are unneeded.
+        %
+        % Uniqueness concerns do not apply here, because if the programmer
+        % deletes both arguments, the reference to the unique state that
+        % the caller would have passed to the predicate (or function)
+        % is still available to it.
+        warn_about_unneeded_initial_final_statevar(PredInfo, HeadClauseContext,
+            TailClauses, InitArgNum, FinalArgNum, SVarNameSet, !Specs)
+    ).
+
+%---------------------%
+
+    % Note that even for clauses that are facts in the source code,
+    % such as "noop(!IO).", will contain a nonempty body goal, since
+    % the conversion to HLDS will create a clause of the form
+    %
+    %   noop(STATE_VARIABLE_IO_0, STATE_VARIABLE_IO) :-
+    %       STATE_VARIABLE_IO = STATE_VARIABLE_IO_0.
+    %
+    % What our caller wants to know, for a given state var, is not
+    % "do progvars representing versions of this state var occur in the
+    % body goal of the clause", because we know in advance that for any
+    % state var that occurs in the clause head, the answer must be "yes".
+    % What it wants to know instead is "do progvars representing versions
+    % of this state var occur in the clause body *other than unify goals
+    % that just copy state var values".
+    %
+    % Here we gather the data that allows our caller to answer that question
+    % for any state var.
+    %
+:- pred gather_clause_body_non_svar_copy_vars(clause::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
+
+gather_clause_body_non_svar_copy_vars(Clause, !BodyVars) :-
+    BodyGoal = Clause ^ clause_body,
+    non_svar_copy_goal_vars(BodyGoal, BodyGoalVars),
+    set_of_var.union(BodyGoalVars, !BodyVars).
+
+%---------------------%
+
+:- pred pred_args_are_free_of_declared_uniqueness(module_info::in,
+    pred_info::in, uint::in, uint::in) is semidet.
+
+pred_args_are_free_of_declared_uniqueness(ModuleInfo, PredInfo,
+        InitArgNum, FinalArgNum) :-
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    map.values(ProcTable, ProcInfos),
+    list.all_true(
+        proc_args_are_free_of_declared_uniqueness(ModuleInfo,
+            InitArgNum, FinalArgNum),
+        ProcInfos).
+
+:- pred proc_args_are_free_of_declared_uniqueness(module_info::in,
+    uint::in, uint::in, proc_info::in) is semidet.
+
+proc_args_are_free_of_declared_uniqueness(ModuleInfo, InitArgNum, FinalArgNum,
+        ProcInfo) :-
+    proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeDeclArgModes),
+    (
+        MaybeDeclArgModes = no
+        % There are no declared arg modes, so they cannot contain uniqueness.
+    ;
+        MaybeDeclArgModes = yes(ArgModes),
+        list.det_index1(ArgModes, uint.cast_to_int(InitArgNum), InitArgMode),
+        list.det_index1(ArgModes, uint.cast_to_int(FinalArgNum), FinalArgMode),
+        mode_is_free_of_uniqueness(ModuleInfo, InitArgMode),
+        mode_is_free_of_uniqueness(ModuleInfo, FinalArgMode)
+    ).
+
+:- pred mode_is_free_of_uniqueness(module_info::in, mer_mode::in) is semidet.
+
+mode_is_free_of_uniqueness(ModuleInfo, Mode) :-
+    mode_get_insts(ModuleInfo, Mode, InitInst, FinalInst),
+    inst_is_not_partly_unique(ModuleInfo, InitInst),
+    inst_is_not_partly_unique(ModuleInfo, FinalInst).
+
+%---------------------%
+
 :- pred warn_about_unneeded_final_statevar(pred_info::in, prog_context::in,
-    list(clause)::in, uint::in, init_and_final::in,
+    list(clause)::in, uint::in, set(string)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 warn_about_unneeded_final_statevar(PredInfo, HeadClauseContext, TailClauses,
-        _InitArgNum, InitAndFinal, !Specs) :-
+        FinalArgNum, SVarNameSet, !Specs) :-
     PredNameColonPieces = describe_one_pred_info_name(no,
         should_not_module_qualify, [suffix(":")], PredInfo),
-    InitAndFinal = init_and_final(FinalArgNum, SVarNameSet),
     set.to_sorted_list(SVarNameSet, SVarNames),
     BangColonSVarNames = list.map((func(N) = "!:" ++ N), SVarNames),
-    (
-        BangColonSVarNames = [],
-        unexpected($pred, "BangColonSVarNames = []")
-    ;
-        BangColonSVarNames = [BangColonSVarName],
-        BangColonSVarNameCommaPieces =
-            [words("represented by the state variable")] ++
-            color_as_subject([quote(BangColonSVarName), suffix(",")])
-    ;
-        BangColonSVarNames = [_, _ | _],
-        % Since we get one SVarName for InitArgNum per clause,
-        % we cannot get here without TailClauses being nonempty.
-        BangColonSVarNameCommaPieces =
-            [words("represented by one of the state variables")] ++
-            quote_list_to_color_pieces(color_subject, "and", [],
-                BangColonSVarNames) ++
-            [words("in each clause,")]
-    ),
-    ( TailClauses = [],      InEachClausePieces = []
-    ; TailClauses = [_ | _], InEachClausePieces = [words("in each clause")]
-    ),
-    pred_info_get_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_get_arg_vector(ClausesInfo, ArgVector),
-    UserArgs = proc_arg_vector_get_user_args(ArgVector),
-    list.length(UserArgs, NumUserArgs),
-    ( if uint.cast_to_int(FinalArgNum) > NumUserArgs then
-        expect(unify(uint.cast_to_int(FinalArgNum + 1u), NumUserArgs),
-            $pred, "FinalArgNum is not numbered correctly for return value"),
-        expect(unify(pred_info_is_pred_or_func(PredInfo), pf_function),
-            $pred, "PredInfo is not a function"),
-        FinalArgCommaPieces =
-            [words("the function return value,")]
-    else
-        FinalArgCommaPieces =
-            [words("the"), unth_fixed(FinalArgNum), words("argument,")]
-    ),
+    RepresentedByCommaPieces =
+        represented_by_svar_names_pieces(BangColonSVarNames),
+    InEachClausePieces = in_each_clause_pieces(TailClauses),
+    FinalArgPieces = arg_num_pieces(PredInfo, FinalArgNum),
     % Please keep this wording in sync with the code of the
     % report_unneeded_svar_in_lambda predicate in state_var.m.
     Pieces = [words("In")] ++ PredNameColonPieces ++ [nl,
-        words("warning:")] ++ FinalArgCommaPieces ++
-        BangColonSVarNameCommaPieces ++
+        words("warning:")] ++ FinalArgPieces ++ [suffix(",")] ++
+        RepresentedByCommaPieces ++
         color_as_incorrect([words("could be deleted,")]) ++
         [words("because its value")] ++ InEachClausePieces ++
         [words("is always the same as its initial value."), nl],
     Spec = conditional_spec($pred, warn_unneeded_final_statevars, yes,
         severity_warning, phase_pt2h, [msg(HeadClauseContext, Pieces)]),
     !:Specs = [Spec | !.Specs].
+
+:- pred warn_about_unneeded_initial_final_statevar(pred_info::in,
+    prog_context::in, list(clause)::in, uint::in, uint::in, set(string)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+warn_about_unneeded_initial_final_statevar(PredInfo, HeadClauseContext,
+        TailClauses, InitArgNum, FinalArgNum, SVarNameSet, !Specs) :-
+    PredNameColonPieces = describe_one_pred_info_name(no,
+        should_not_module_qualify, [suffix(":")], PredInfo),
+    set.to_sorted_list(SVarNameSet, SVarNames),
+    BangSVarNames = list.map((func(N) = "!" ++ N), SVarNames),
+    RepresentedByCommaPieces = represented_by_svar_names_pieces(BangSVarNames),
+    InAnyClausePieces = in_any_clause_pieces(TailClauses),
+    InitArgPieces = arg_num_pieces(PredInfo, InitArgNum),
+    FinalArgPieces = arg_num_pieces(PredInfo, FinalArgNum),
+    % Please keep this wording in sync with the code of the
+    % XXX not yet written predicate in state_var.m.
+    Pieces = [words("In")] ++ PredNameColonPieces ++ [nl,
+        words("warning:")] ++ InitArgPieces ++ [words("and")]
+        ++ FinalArgPieces ++ [suffix(",")] ++
+        RepresentedByCommaPieces ++
+        color_as_incorrect([words("could be deleted,")]) ++
+        [words("because they are not used")] ++ InAnyClausePieces ++
+        [suffix(","), words("and because the final value"),
+        words("is always the same as the initial value."), nl],
+    Spec = conditional_spec($pred, warn_unneeded_final_statevars, yes,
+        severity_warning, phase_pt2h, [msg(HeadClauseContext, Pieces)]),
+    !:Specs = [Spec | !.Specs].
+
+%---------------------%
+
+:- func represented_by_svar_names_pieces(list(string)) = list(format_piece).
+
+represented_by_svar_names_pieces(BangSVarNames) = BangSVarNameCommaPieces :-
+    (
+        BangSVarNames = [],
+        unexpected($pred, "BangSVarNames = []")
+    ;
+        BangSVarNames = [BangSVarName],
+        BangSVarNameCommaPieces =
+            [words("represented by the state variable")] ++
+            color_as_subject([quote(BangSVarName), suffix(",")])
+    ;
+        BangSVarNames = [_, _ | _],
+        % Since we get one SVarName for InitArgNum per clause,
+        % we cannot get here without TailClauses being nonempty.
+        BangSVarNameCommaPieces =
+            [words("represented by one of the state variables")] ++
+            quote_list_to_color_pieces(color_subject, "and", [],
+                BangSVarNames) ++
+            [words("in each clause,")]
+    ).
+
+:- func in_each_clause_pieces(list(clause)) = list(format_piece).
+
+in_each_clause_pieces(TailClauses) = InEachClausePieces :-
+    ( TailClauses = [],      InEachClausePieces = []
+    ; TailClauses = [_ | _], InEachClausePieces = [words("in each clause")]
+    ).
+
+:- func in_any_clause_pieces(list(clause)) = list(format_piece).
+
+in_any_clause_pieces(TailClauses) = InEachClausePieces :-
+    ( TailClauses = [],      InEachClausePieces = []
+    ; TailClauses = [_ | _], InEachClausePieces = [words("in any clause")]
+    ).
+
+:- func arg_num_pieces(pred_info, uint) = list(format_piece).
+
+arg_num_pieces(PredInfo, ArgNum) = ArgPieces :-
+    pred_info_get_clauses_info(PredInfo, ClausesInfo),
+    clauses_info_get_arg_vector(ClausesInfo, ArgVector),
+    UserArgs = proc_arg_vector_get_user_args(ArgVector),
+    list.length(UserArgs, NumUserArgs),
+    ( if uint.cast_to_int(ArgNum) > NumUserArgs then
+        expect(unify(uint.cast_to_int(ArgNum + 1u), NumUserArgs),
+            $pred, "ArgNum is not numbered correctly for return value"),
+        expect(unify(pred_info_is_pred_or_func(PredInfo), pf_function),
+            $pred, "PredInfo is not a function"),
+        ArgPieces = [words("the function return value")]
+    else
+        ArgPieces = [words("the"), unth_fixed(ArgNum), words("argument")]
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.pre_typecheck.
