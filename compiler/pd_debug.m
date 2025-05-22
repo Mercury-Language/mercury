@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2020-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -63,7 +63,7 @@
 
 :- implementation.
 
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_vars.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
@@ -266,7 +266,7 @@ pd_debug_definitely_output_goal(PDInfo, DebugStream, IdStr, Msg, Goal, !IO) :-
     io.format(DebugStream, "%s: %s\n", [s(IdStr), s(Msg)], !IO),
 
     proc_info_get_var_table(ProcInfo, VarTable),
-    goal_util.goal_vars(Goal, Vars),
+    goal_vars.goal_vars(Goal, Vars),
     pd_info_get_instmap(PDInfo, InstMap),
     instmap_restrict(Vars, InstMap, VarsInstMap),
     InstMapStr = instmap_to_string(VarTable, print_name_and_num,

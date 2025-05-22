@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -108,7 +108,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_vars.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
@@ -2563,7 +2563,7 @@ compute_var_number_map(VarTable, HeadVars, Internals, Goal, VarNumMap) :-
     some [!VarNumMap, !Counter] (
         !:VarNumMap = map.init,
         !:Counter = counter.init(1), % to match term.var_supply_init
-        goal_util.goal_vars(Goal, GoalVarSet),
+        goal_vars.goal_vars(Goal, GoalVarSet),
         set_of_var.to_sorted_list(GoalVarSet, GoalVars),
         list.foldl2(add_var_to_var_number_map(VarTable), GoalVars,
             !VarNumMap, !Counter),

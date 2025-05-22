@@ -398,7 +398,7 @@
 
 :- implementation.
 
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_vars.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.make_goal.
 :- import_module libs.

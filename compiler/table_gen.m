@@ -64,6 +64,7 @@
 :- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
+:- import_module hlds.goal_contains.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.

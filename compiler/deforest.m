@@ -57,7 +57,9 @@
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_tasks.
 :- import_module hlds.goal_form.
+:- import_module hlds.goal_reorder.
 :- import_module hlds.goal_util.
+:- import_module hlds.goal_vars.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
@@ -1021,8 +1023,8 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
             MaybeLaterGoal = yes(LaterGoal),
             OtherGoal = LaterGoal
         ),
-        not goal_util.reordering_maintains_termination_old(ModuleInfo,
-            FullyStrict, EarlierGoal, OtherGoal)
+        not reordering_maintains_termination_old(ModuleInfo, FullyStrict,
+            EarlierGoal, OtherGoal)
     then
         trace [io(!IO)] (
             pd_debug_message(!.PDInfo, "can_optimize_conj",
@@ -1235,9 +1237,9 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             module_info_pred_proc_info(ModuleInfo0, PredId1, ProcId1, _,
                 CalledProcInfo1),
             proc_info_get_goal(CalledProcInfo1, CalledGoal1),
-            goal_util.goal_vars(CalledGoal1, GoalVars1),
+            goal_vars.goal_vars(CalledGoal1, GoalVars1),
             set_of_var.to_sorted_list(GoalVars1, GoalVarsList1),
-            goal_util.goals_goal_vars(BetweenGoals, GoalVars2),
+            goal_vars.goals_goal_vars(BetweenGoals, GoalVars2),
             set_of_var.to_sorted_list(GoalVars2, GoalVarsList2),
 
             list.length(GoalVarsList1, NumVars1),
@@ -1629,7 +1631,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgVars,
     map.from_corresponding_lists(FirstVersionArgVars, FirstArgVars,
         FirstRenaming0),
 
-    goal_util.goal_vars(FirstVersionGoal, FirstVersionVars0),
+    goal_vars.goal_vars(FirstVersionGoal, FirstVersionVars0),
     set_of_var.to_sorted_list(FirstVersionVars0, FirstVersionVars),
 
     module_info_pred_proc_info(ModuleInfo, FirstPredId, FirstProcId,

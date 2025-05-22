@@ -172,7 +172,8 @@
 :- import_module check_hlds.simplify.simplify_proc.
 :- import_module check_hlds.unique_modes.
 :- import_module hlds.goal_form.
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_reorder.
+:- import_module hlds.goal_vars.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module libs.
@@ -1117,8 +1118,8 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals], !ONRenaming) :-
             OldGoalExpr = generic_call(OldGenericCall, OldArgs1, _, _, Det),
             NewGoalExpr = generic_call(NewGenericCall, NewArgs1, _, _, Det),
             match_generic_call(OldGenericCall, NewGenericCall),
-            goal_util.generic_call_vars(OldGenericCall, OldArgs0),
-            goal_util.generic_call_vars(NewGenericCall, NewArgs0),
+            goal_vars.generic_call_vars(OldGenericCall, OldArgs0),
+            goal_vars.generic_call_vars(NewGenericCall, NewArgs0),
             OldArgs = OldArgs0 ++ OldArgs1,
             NewArgs = NewArgs0 ++ NewArgs1
         )
@@ -1194,7 +1195,7 @@ pd_can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, LaterGoal) :-
     EarlierTrace = contains_no_trace_goal,
     LaterTrace = contains_no_trace_goal,
 
-    goal_util.reordering_maintains_termination_old(ModuleInfo, FullyStrict,
+    reordering_maintains_termination_old(ModuleInfo, FullyStrict,
         EarlierGoal, LaterGoal),
 
     % Don't reorder the goals if the later goal depends on the outputs

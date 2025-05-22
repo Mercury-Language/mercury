@@ -94,7 +94,8 @@
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_test.
 :- import_module check_hlds.type_util.
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_refs.
+:- import_module hlds.goal_vars.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
@@ -749,7 +750,7 @@ unused_args_traverse_goal(Info, Goal, !VarDep) :-
         )
     ;
         GoalExpr = generic_call(GenericCall, Args, _, _, _),
-        goal_util.generic_call_vars(GenericCall, CallArgs),
+        goal_vars.generic_call_vars(GenericCall, CallArgs),
         set_list_vars_used(CallArgs, !VarDep),
         set_list_vars_used(Args, !VarDep)
     ;

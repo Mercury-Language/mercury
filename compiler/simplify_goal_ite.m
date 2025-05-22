@@ -45,6 +45,7 @@
 
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_refs.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.

@@ -173,7 +173,9 @@
 :- import_module check_hlds.polymorphism_type_info.
 :- import_module check_hlds.recompute_instmap_deltas.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_transform.
 :- import_module hlds.goal_util.
+:- import_module hlds.goal_vars.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.

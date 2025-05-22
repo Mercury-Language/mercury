@@ -79,6 +79,11 @@
 :- include_module goal_form.
 :- include_module goal_path.
 :- include_module goal_util.
+:- include_module goal_vars.
+:- include_module goal_refs.
+:- include_module goal_contains.
+:- include_module goal_reorder.
+:- include_module goal_transform.
 :- include_module headvar_names.
 :- include_module hlds_call_tree.
 :- include_module hlds_code_util.

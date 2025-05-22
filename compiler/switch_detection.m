@@ -81,6 +81,7 @@
 :- import_module check_hlds.det_util.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_refs.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_markers.

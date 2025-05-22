@@ -153,7 +153,7 @@
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unique_modes.
 :- import_module hlds.goal_path.
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_transform.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.

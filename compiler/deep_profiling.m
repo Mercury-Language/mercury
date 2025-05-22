@@ -68,7 +68,7 @@
 :- import_module check_hlds.mode_top_functor.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_path.
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_transform.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_markers.

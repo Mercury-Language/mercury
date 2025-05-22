@@ -130,7 +130,7 @@
 :- import_module check_hlds.mode_test.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.from_ground_term_util.
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_vars.
 :- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
@@ -2144,7 +2144,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
             % possibly be nonlocal. Quantification will reduce this down
             % to the proper set of nonlocal arguments.
             some [!LambdaGoalVars] (
-                goal_util.goal_vars(HLDS_Goal, !:LambdaGoalVars),
+                goal_vars.goal_vars(HLDS_Goal, !:LambdaGoalVars),
                 set_of_var.delete_list(LambdaVars, !LambdaGoalVars),
                 set_of_var.delete_list(QuantifiedVars, !LambdaGoalVars),
                 LambdaNonLocals = set_of_var.to_sorted_list(!.LambdaGoalVars)

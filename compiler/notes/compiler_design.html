@@ -907,11 +907,26 @@ and marks procedures containing directly tail recursive calls as such.
 <li>
 hlds_code_util.m contains utility routines for use during HLDS generation.
 <li>
+goal_contains.m contains predicates
+for computing what subgoals a goal contains.
+<li>
 goal_form.m contains predicates for determining
 whether HLDS goals match various criteria.
 <li>
-goal_util.m contains various miscellaneous utility predicates
-for manipulating HLDS goals, such as attaching features to goals.
+goal_refs.m contains predicates
+for computing which predicates a goal calls or otherwise references.
+<li>
+goal_reorder.m contains predicates
+for testing whether the order of two goals can be safely switched.
+<li>
+goal_transform.m contains predicates
+for transforming goals recursively.
+<li>
+goal_vars.m contains predicates
+for computing which variables a goal contains.
+<li>
+goal_util.m contains miscellaneous utility predicates
+for manipulating HLDS goals that do not really fit into the modules above.
 <li>
 make_goal.m contains predicates for creating new HLDS goals.
 <li>

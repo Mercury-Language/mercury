@@ -53,7 +53,7 @@
 :- implementation.
 
 :- import_module hlds.default_func_mode.
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_transform.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_error_util.

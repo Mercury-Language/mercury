@@ -95,7 +95,7 @@
 
 :- implementation.
 
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_vars.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
@@ -459,7 +459,7 @@ warn_singletons_in_goal(Params, Goal, QuantVars, !Info) :-
             QuantVars, !Info)
     ;
         GoalExpr = generic_call(GenericCall, Args0, _, _, _),
-        goal_util.generic_call_vars(GenericCall, Args1),
+        goal_vars.generic_call_vars(GenericCall, Args1),
         Args = Args0 ++ Args1,
         NonLocals = goal_info_get_nonlocals(GoalInfo),
         warn_singletons_goal_vars(Params, Args, GoalInfo, NonLocals,

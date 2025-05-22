@@ -39,7 +39,7 @@
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module check_hlds.type_util.
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_refs.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.make_goal.
 :- import_module hlds.var_table_hlds.

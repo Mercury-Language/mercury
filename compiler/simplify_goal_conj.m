@@ -44,6 +44,7 @@
 :- implementation.
 
 :- import_module check_hlds.simplify.simplify_goal.
+:- import_module hlds.goal_refs.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.

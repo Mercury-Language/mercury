@@ -48,6 +48,7 @@
 :- import_module hlds.const_struct.
 :- import_module hlds.from_ground_term_util.
 :- import_module hlds.goal_util.
+:- import_module hlds.goal_vars.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.

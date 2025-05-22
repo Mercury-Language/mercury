@@ -130,7 +130,7 @@
 
 :- implementation.
 
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_transform.
 :- import_module hlds.hlds_markers.
 :- import_module parse_tree.set_of_var.
 

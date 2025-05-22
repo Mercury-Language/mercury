@@ -58,7 +58,7 @@
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unique_modes.
 :- import_module hlds.const_struct.
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_refs.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.

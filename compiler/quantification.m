@@ -143,7 +143,9 @@
 
 :- implementation.
 
+:- import_module hlds.goal_contains.
 :- import_module hlds.goal_util.
+:- import_module hlds.goal_vars.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.instmap.
 :- import_module parse_tree.prog_rename.
@@ -405,7 +407,7 @@ quantify_goal_expr(NonLocalsToRecompute, GoalExpr0, GoalExpr, GoalInfo0,
     ;
         GoalExpr0 = generic_call(GenericCall, CallArgVars, _, _, _),
         GoalExpr = GoalExpr0,
-        goal_util.generic_call_vars(GenericCall, GenericArgVars),
+        goal_vars.generic_call_vars(GenericCall, GenericArgVars),
         ArgVars = GenericArgVars ++ CallArgVars,
         quantify_primitive_goal(ArgVars, !Info),
         goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
@@ -1894,7 +1896,7 @@ goal_expr_vars_maybe_lambda_2(NonLocalsToRecompute, GoalExpr,
         set_of_var.insert_list(ArgVars, !Set)
     ;
         GoalExpr = generic_call(GenericCall, ArgVars1, _, _, _),
-        goal_util.generic_call_vars(GenericCall, ArgVars0),
+        goal_vars.generic_call_vars(GenericCall, ArgVars0),
         set_of_var.insert_list(ArgVars0, !Set),
         set_of_var.insert_list(ArgVars1, !Set)
     ;
@@ -2068,7 +2070,7 @@ goal_expr_vars_maybe_lambda_and_bi_impl_2(GoalExpr, !Set, !LambdaSet) :-
         set_of_var.insert_list(ArgVars, !Set)
     ;
         GoalExpr = generic_call(GenericCall, ArgVars1, _, _, _),
-        goal_util.generic_call_vars(GenericCall, ArgVars0),
+        goal_vars.generic_call_vars(GenericCall, ArgVars0),
         set_of_var.insert_list(ArgVars0, !Set),
         set_of_var.insert_list(ArgVars1, !Set)
     ;
@@ -2235,7 +2237,7 @@ goal_expr_vars_no_lambda_2(NonLocalsToRecompute, GoalExpr, !Set) :-
         set_of_var.insert_list(ArgVars, !Set)
     ;
         GoalExpr = generic_call(GenericCall, ArgVars1, _, _, _),
-        goal_util.generic_call_vars(GenericCall, ArgVars0),
+        goal_vars.generic_call_vars(GenericCall, ArgVars0),
         set_of_var.insert_list(ArgVars0, !Set),
         set_of_var.insert_list(ArgVars1, !Set)
     ;

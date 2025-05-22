@@ -82,7 +82,7 @@
 :- import_module check_hlds.mode_errors.
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.types_into_modes.
-:- import_module hlds.goal_util.
+:- import_module hlds.goal_contains.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
