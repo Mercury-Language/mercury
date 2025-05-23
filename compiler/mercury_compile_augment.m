@@ -223,22 +223,9 @@ augment_and_process_module(ProgressStream, ErrorStream, Globals,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
-process_augmented_module(ProgressStream, ErrorStream, Globals0,
+process_augmented_module(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit, ExtraObjFiles,
         !DumpInfo, !Specs, !HaveParseTreeMaps, !IO) :-
-    (
-        ( OpModeAugment = opmau_make_analysis_registry
-        ; OpModeAugment = opmau_make_xml_documentation
-        ; OpModeAugment = opmau_typecheck_only
-        ; OpModeAugment = opmau_front_and_middle(_)
-        ),
-        Globals = Globals0
-    ;
-        ( OpModeAugment = opmau_make_plain_opt
-        ; OpModeAugment = opmau_make_trans_opt
-        ),
-        disable_warning_options(Globals0, Globals)
-    ),
     make_hlds_pass(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit,
         HLDS1, QualInfo, MaybeTimestampMap, UndefTypes, UndefModes,
@@ -312,16 +299,6 @@ process_augmented_module(ProgressStream, ErrorStream, Globals0,
         ),
         ExtraObjFiles = []
     ).
-
-:- pred disable_warning_options(globals::in, globals::out) is det.
-
-disable_warning_options(Globals0, Globals) :-
-    globals.get_options(Globals0, OptionTable0),
-    set_all_options_to(style_warning_options, bool(no),
-        OptionTable0, OptionTable1),
-    set_all_options_to(non_style_warning_options, bool(no),
-        OptionTable1, OptionTable),
-    globals.set_options(OptionTable, Globals0, Globals).
 
 %---------------------------------------------------------------------------%
 

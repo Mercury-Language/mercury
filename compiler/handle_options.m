@@ -404,19 +404,19 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
 
     % These three calls are in this order because
     %
-    % - handle_opmode_implications may set transitive_optimization,
+    % - handle_op_mode_implications may set transitive_optimization,
     % - handle_option_to_option_implications may set
     %   intermodule_optimization if transitive_optimization is set,
     % - maybe_disable_smart_recompilation then needs the final value
     %   of intermodule_optimization.
     %
     % However, while it is hard to see, there is no conflict here.
-    % handle_opmode_implications sets transitive_optimization
-    % only when the opmode calls for making .trans_opt files,
+    % handle_op_mode_implications sets transitive_optimization
+    % only when the op_mode calls for making .trans_opt files,
     % while maybe_disable_smart_recompilation needs the value of
-    % intermodule_optimization only when the opmode calls for
+    % intermodule_optimization only when the op_mode calls for
     % generating target language code.
-    handle_opmode_implications(OpMode, !Globals),
+    handle_op_mode_implications(OpMode, !Globals),
     handle_option_to_option_implications(OpMode, !Globals),
     maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO),
 
@@ -1728,10 +1728,10 @@ handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
     %   inform_generated_type_spec_pragmas
     %   detect_stdlib_grades
     %
-:- pred handle_opmode_implications(op_mode::in,
+:- pred handle_op_mode_implications(op_mode::in,
     globals::in, globals::out) is det.
 
-handle_opmode_implications(OpMode, !Globals) :-
+handle_op_mode_implications(OpMode, !Globals) :-
     % Disable `--smart-recompilation' unless we are generating target code.
     globals.lookup_bool_option(!.Globals, smart_recompilation, Smart0),
     globals.lookup_bool_option(!.Globals, inform_generated_type_spec_pragmas,
@@ -1743,17 +1743,8 @@ handle_opmode_implications(OpMode, !Globals) :-
         % recompilation.
         (
             OpModeArgs = opma_make_interface(OpModeArgsMI),
-            globals.set_option(line_numbers, bool(no), !Globals),
-            globals.lookup_bool_option(!.Globals, halt_at_warn_make_int,
-                HaltAtWarn),
-            globals.set_option(halt_at_warn, bool(HaltAtWarn), !Globals),
-            globals.set_option(warn_unused_interface_imports, bool(no),
+            turn_off_all_only_codegen_warnings(halt_at_warn_make_int,
                 !Globals),
-            globals.set_option(warn_unneeded_final_statevars, bool(no),
-                !Globals),
-            globals.set_option(warn_unneeded_final_statevars_lambda, bool(no),
-                !Globals),
-            turn_off_all_style_warnings(!Globals),
             (
                 ( OpModeArgsMI = omif_int0
                 ; OpModeArgsMI = omif_int1_int2
@@ -1777,22 +1768,16 @@ handle_opmode_implications(OpMode, !Globals) :-
             OpModeArgs = opma_augment(OpModeAugment),
             (
                 OpModeAugment = opmau_make_plain_opt,
-                globals.set_option(line_numbers, bool(no), !Globals),
-                globals.lookup_bool_option(!.Globals, halt_at_warn_make_opt,
-                    HaltAtWarn),
-                globals.set_option(halt_at_warn, bool(HaltAtWarn), !Globals),
-                turn_off_all_style_warnings(!Globals),
+                turn_off_all_only_codegen_warnings(halt_at_warn_make_opt,
+                    !Globals),
                 Smart = bool.no,
                 Inform = bool.no
             ;
                 OpModeAugment = opmau_make_trans_opt,
                 globals.set_option(transitive_optimization, bool(yes),
                     !Globals),
-                globals.set_option(line_numbers, bool(no), !Globals),
-                globals.lookup_bool_option(!.Globals, halt_at_warn_make_opt,
-                    HaltAtWarn),
-                globals.set_option(halt_at_warn, bool(HaltAtWarn), !Globals),
-                turn_off_all_style_warnings(!Globals),
+                turn_off_all_only_codegen_warnings(halt_at_warn_make_opt,
+                    !Globals),
                 Smart = bool.no,
                 Inform = bool.no
             ;
@@ -1800,7 +1785,7 @@ handle_opmode_implications(OpMode, !Globals) :-
                 ; OpModeAugment = opmau_make_xml_documentation
                 ; OpModeAugment = opmau_typecheck_only
                 ),
-                turn_off_all_style_warnings(!Globals),
+                turn_off_all_only_codegen_warnings(halt_at_warn, !Globals),
                 Smart = bool.no,
                 Inform = bool.no
             ;
@@ -1884,13 +1869,25 @@ handle_opmode_implications(OpMode, !Globals) :-
             !Globals)
     ).
 
-:- pred turn_off_all_style_warnings(globals::in, globals::out) is det.
+:- pred turn_off_all_only_codegen_warnings(option::in,
+    globals::in, globals::out) is det.
 
-turn_off_all_style_warnings(!Globals) :-
-    globals.get_options(!.Globals, OptionTable0),
-    set_all_options_to(style_warning_options, bool(no),
-        OptionTable0, OptionTable),
-    globals.set_options(OptionTable, !Globals).
+turn_off_all_only_codegen_warnings(HaltAtWarnSrcOpt, !Globals) :-
+    some [!OptionTable]
+    (
+        globals.get_options(!.Globals, !:OptionTable),
+
+        map.det_update(line_numbers, bool(no), !OptionTable),
+
+        map.lookup(!.OptionTable, HaltAtWarnSrcOpt, HaltAtWarn),
+        map.set(halt_at_warn, HaltAtWarn, !OptionTable),
+
+        set_all_options_to(dodgy_code_warning_options, bool(no), !OptionTable),
+        set_all_options_to(style_warning_options, bool(no), !OptionTable),
+        set_all_options_to(info_request_options, bool(no), !OptionTable),
+
+        globals.set_options(!.OptionTable, !Globals)
+    ).
 
 %---------------------%
 
