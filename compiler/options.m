@@ -4450,8 +4450,9 @@ handle_quoted_flag(Option, Flag, !OptionTable) :-
 %---------------------------------------------------------------------------%
 
 options_help(Stream, !IO) :-
-    io.write_string(Stream, "\t-?, -h, --help\n", !IO),
-    io.write_string(Stream, "\t\tPrint this usage message.\n", !IO),
+    OptHelpHelp = gen_help("help", [], ['?', 'h'], no_arg, help_public,
+        ["Print this usage message."]),
+    output_help_messages(Stream, [OptHelpHelp], !IO),
     options_help_warning(Stream, !IO),
     options_help_verbosity(Stream, !IO),
     options_help_output(Stream, !IO),
@@ -7251,6 +7252,134 @@ options_help_misc(Stream, !IO) :-
         "\tUse the specified profiling feedback file which may currently",
         "\tonly be processed for implicit parallelism."
     ], !IO).
+
+%---------------------------------------------------------------------------%
+%
+% XXX The code from here to the end of the file should be in another file,
+% since options.m is big enough already :-(.
+%
+% This structured representation improves on our traditional approach
+% of storing just lists of lines in the following ways.
+%
+% - It does not force us to start every line documenting an option
+%   with "\tactual help text".
+%
+% - It does not require global changes to change indentation levels.
+%
+% - It allows an optional check, probably inside a trace scope, that tests
+%   each first and each later line whether they fit on a standard
+%   80 column line, and adds an easily greppable marker if any
+%   exceeds that limit.
+%
+% - It allows taking a line width parameter, and reflowing the later lines
+%   to respect that limit.
+%
+% - It allows adding a version of output_help_messages that outputs
+%   the help message not to be read by a compiler user, but with
+%   texinfo markup, intended to be copy-and-pasted into doc/user_guide.texi.
+%
+
+:- type help
+    --->    gen_help(
+                % The name of the option.
+                gh_long_name            :: string,
+
+                % Any alternate names of the option.
+                % We have many options that have both British and American
+                % spelling of the option name, and some have both
+                % short and long versions.
+                %
+                % The order of these alt options here will be preserved
+                % in the output. They will all follow gh_long_name.
+                gh_alt_long_names       :: list(string),
+
+                % Every character in this field is a short name of the option.
+                % The order of these short options here will be preserved
+                % in the output.
+                gh_short_names          :: list(char),
+
+                % If the option takes an argument, then this should contain
+                % the name of the placeholder for that argument.
+                gh_maybe_arg            :: maybe_opt_arg,
+
+                % Is the option's documentation printed for users, or not?
+                gh_public_or_private    :: help_public_or_private,
+
+                % The lines describing the effect of the option.
+                gh_description          :: list(string)
+            )
+    % The following function symbols (whose list will grow)
+    % all have a subset of the fields of gen_help.
+    %
+    % The fields they contain have the same semantics as in gen_help.
+    % The fields they do not contain implicitly default to "[]" for lists,
+    % "no_arg" for maybe_opt_arg, and help_public for help_public_or_private.
+    %
+    % This design minimizes clutter in lists of help structure.
+    ;       help(
+                h_long_name             :: string,
+                h_description           :: list(string)
+            ).
+
+:- type maybe_opt_arg
+    --->    no_arg
+    ;       arg(string).
+
+:- type help_public_or_private
+    --->    help_public
+    ;       help_private.
+
+:- pred output_help_messages(io.text_output_stream::in, list(help)::in,
+    io::di, io::uo) is det.
+
+output_help_messages(_Stream, [], !IO).
+output_help_messages(Stream, [OptHelp | OptHelps], !IO) :-
+    output_help_message(Stream, OptHelp, !IO),
+    output_help_messages(Stream, OptHelps, !IO).
+
+:- pred output_help_message(io.text_output_stream::in, help::in,
+    io::di, io::uo) is det.
+
+output_help_message(Stream, OptHelp, !IO) :-
+    (
+        OptHelp = gen_help(LongName, AltLongNames, ShortNames, MaybeArg,
+            PublicOrPrivate, DescLines),
+        ArgSuffix = opt_arg_to_suffix(MaybeArg),
+        LongNames = [LongName | AltLongNames],
+        ShortNameStrs = list.map(short_name_to_str(ArgSuffix), ShortNames),
+        LongNameStrs = list.map(long_name_to_str(ArgSuffix), LongNames),
+        FirstLine = string.join_list(", ", ShortNameStrs ++ LongNameStrs)
+    ;
+        OptHelp = help(LongName, DescLines),
+        FirstLine = "--" ++ LongName,
+        PublicOrPrivate = help_public
+    ),
+    (
+        PublicOrPrivate = help_public,
+        % Until all options are documented using help structures,
+        % maintain the existing indentation.
+        % io.write_prefixed_lines(Stream, "    ", [FirstLine], !IO),
+        % io.write_prefixed_lines(Stream, "        ", DescLines, !IO)
+        io.write_prefixed_lines(Stream, "\t", [FirstLine], !IO),
+        io.write_prefixed_lines(Stream, "\t\t", DescLines, !IO)
+    ;
+        PublicOrPrivate = help_private
+    ).
+
+:- func long_name_to_str(string, string) = string.
+
+long_name_to_str(ArgSuffix, LongName) =
+    string.format("--%s%s", [s(LongName), s(ArgSuffix)]).
+
+:- func short_name_to_str(string, char) = string.
+
+short_name_to_str(ArgSuffix, ShortName) =
+    string.format("-%c%s", [c(ShortName), s(ArgSuffix)]).
+
+:- func opt_arg_to_suffix(maybe_opt_arg) = string.
+
+opt_arg_to_suffix(no_arg) = "".
+opt_arg_to_suffix(arg(Arg)) = " <" ++ Arg ++ ">".
 
 %---------------------------------------------------------------------------%
 :- end_module libs.options.
