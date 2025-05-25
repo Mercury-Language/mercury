@@ -3363,7 +3363,7 @@ long_usage(ProgressStream, !IO) :-
         "Arguments in the form @file are replaced with the contents of",
         "the file."
     ], !IO),
-    io.write_string(ProgressStream, "Options:\n", !IO),
+    io.write_string(ProgressStream, "\nOptions:\n", !IO),
     options_help(ProgressStream, !IO).
 
 :- pred write_copyright_notice(io.text_output_stream::in, io::di, io::uo)

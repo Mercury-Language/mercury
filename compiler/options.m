@@ -4462,12 +4462,12 @@ options_help(Stream, !IO) :-
         std_help_section(options_help_semantics),
         std_help_section(options_help_termination),
         std_help_section(options_help_ctgc),
-        options_help_compilation_model
+        options_help_compilation_model,
+        options_help_code_generation
     ],
     list.foldl(output_maybe_nested_help_section(Stream, What),
         MaybeNestedSections, !IO),
 
-    options_help_code_generation(Stream, !IO),
     options_help_optimization(Stream, !IO),
     options_help_hlds_hlds_optimization(Stream, !IO),
     options_help_hlds_llds_optimization(Stream, !IO),
@@ -4486,7 +4486,7 @@ options_help_help = Section :-
         gen_help("help", pos_one_line, [], ['?', 'h'], help_public,
             ["Print this usage message."])
     ],
-    Section = help_section(no, [], HelpStructs).
+    Section = unnamed_help_section(HelpStructs).
 
 :- func options_help_warning = help_section.
 
@@ -4867,7 +4867,7 @@ options_help_warning = Section :-
             "or if a sequence of such declarations on consecutive lines",
             "are not sorted on module name."])
     ],
-    Section = help_section(yes(SectionName), [], HelpStructs).
+    Section = help_section(SectionName, [], HelpStructs).
 
 :- func options_help_verbosity = help_section.
 
@@ -5078,7 +5078,7 @@ options_help_verbosity = Section :-
             "Output detailed debugging traces of the `--prop-mode-constraints'",
             "option."])
     ],
-    Section = help_section(yes(SectionName), [], HelpStructs).
+    Section = help_section(SectionName, [], HelpStructs).
 
 :- func options_help_output = help_section.
 
@@ -5249,7 +5249,7 @@ options_help_output = Section :-
             "Mercury standard library."])
 
     ],
-    Section = help_section(yes(SectionName), SectionCommentLines, HelpStructs).
+    Section = help_section(SectionName, SectionCommentLines, HelpStructs).
 
 :- func options_help_aux_output = help_section.
 
@@ -5653,7 +5653,7 @@ options_help_aux_output = Section :-
             "Limit common struct optimization to the preds with the given ids."])
 
     ],
-    Section = help_section(yes(SectionName), [], HelpStructs).
+    Section = help_section(SectionName, [], HelpStructs).
 
 :- func options_help_semantics = help_section.
 
@@ -5706,7 +5706,7 @@ options_help_semantics = Section :-
             "Get the specification of user-defined events from <filename>."])
 
     ],
-    Section = help_section(yes(SectionName), SectionCommentLines, HelpStructs).
+    Section = help_section(SectionName, SectionCommentLines, HelpStructs).
 
 :- func options_help_termination = help_section.
 
@@ -5813,7 +5813,7 @@ options_help_termination = Section :-
             "attempt to infer termination,"])
 
     ],
-    Section = help_section(yes(SectionName), [], HelpStructs).
+    Section = help_section(SectionName, [], HelpStructs).
 
 :- func options_help_ctgc = help_section.
 
@@ -5862,7 +5862,7 @@ options_help_ctgc = Section :-
             "cannot be reused."])
 
     ],
-    Section = help_section(yes(SectionName), [], HelpStructs).
+    Section = help_section(SectionName, [], HelpStructs).
 
 :- func options_help_compilation_model = maybe_nested_help_section.
 
@@ -5905,7 +5905,7 @@ options_help_compilation_model = NestedSection :-
             "Attempting to use a grade which has not been installed",
             "will result in an error at link time."])
     ],
-    SectionGrade = help_section(no, [], HelpStructsGrade),
+    SectionGrade = unnamed_help_section(HelpStructsGrade),
 
     % XXX The use of tabs here and many places below
     % is a crude (non-semantic) way to align things.
@@ -5941,8 +5941,7 @@ options_help_compilation_model = NestedSection :-
             "Generate C code in `<module>.c', but do not generate object",
             "code."])
     ],
-    SectionTarget = help_section(yes(SectionNameTarget), [],
-        HelpStructsTarget),
+    SectionTarget = help_section(SectionNameTarget, [], HelpStructsTarget),
 
     % ZZZ
 %   io.write_string(Stream,
@@ -5971,7 +5970,7 @@ options_help_compilation_model = NestedSection :-
         priv_help("ss-debug\t\t\t\t(grade modifier: `.ssdebug')", [
             "Enable the source-to-source debugging transform."])
     ],
-    SectionDebug = help_section(yes(SectionNameDebug), [], HelpStructsDebug),
+    SectionDebug = help_section(SectionNameDebug, [], HelpStructsDebug),
 
     SectionNameProf = "Profiling",
     HelpStructsProf = [
@@ -6091,7 +6090,7 @@ options_help_compilation_model = NestedSection :-
             "grades on some processors, See README.ThreadScope for details."])
 
     ],
-    SectionProf = help_section(yes(SectionNameProf), [], HelpStructsProf),
+    SectionProf = help_section(SectionNameProf, [], HelpStructsProf),
 
     SectionNameMisc = "Miscellaneous optional features",
     HelpStructsMisc = [
@@ -6157,7 +6156,7 @@ options_help_compilation_model = NestedSection :-
             "that may be allocated into by a call."])
 
     ],
-    SectionMisc = help_section(yes(SectionNameMisc), [], HelpStructsMisc),
+    SectionMisc = help_section(SectionNameMisc, [], HelpStructsMisc),
 
     SectionNameLlds = "LLDS back-end compilation model options",
     HelpStructsLlds = [
@@ -6201,7 +6200,7 @@ options_help_compilation_model = NestedSection :-
             "(This option is not for general use.)",
             "Use float registers for argument passing."])
     ],
-    SectionLlds = help_section(yes(SectionNameLlds), [], HelpStructsLlds),
+    SectionLlds = help_section(SectionNameLlds, [], HelpStructsLlds),
 
     SectionNameMlds = "MLDS back-end compilation model options",
     HelpStructsMlds = [
@@ -6249,7 +6248,7 @@ options_help_compilation_model = NestedSection :-
             "in the function that called setjmp()."])
 
     ],
-    SectionMlds = help_section(yes(SectionNameMlds), [], HelpStructsMlds),
+    SectionMlds = help_section(SectionNameMlds, [], HelpStructsMlds),
 
     SectionNameData = "Developer data representation options",
     HelpStructsData = [
@@ -6311,7 +6310,7 @@ options_help_compilation_model = NestedSection :-
             "(namely, double-precision floats)."])
 
     ],
-    SectionData = help_section(yes(SectionNameData), [], HelpStructsData),
+    SectionData = help_section(SectionNameData, [], HelpStructsData),
 
     SectionNameDev = "Developer options features",
     HelpStructsDev = [
@@ -6407,125 +6406,155 @@ options_help_compilation_model = NestedSection :-
             "Use the constraint based type checker instead of the old one."])
 
     ],
-    SectionDev = help_section(yes(SectionNameDev), [], HelpStructsDev),
+    SectionDev = help_section(SectionNameDev, [], HelpStructsDev),
 
     NestedSection = nested_help_section(OverallName, OverallCommentLines,
         [SectionGrade, SectionTarget, SectionDebug, SectionProf,
         SectionMisc, SectionLlds, SectionMlds, SectionData, SectionDev]).
 
-:- pred options_help_code_generation(io.text_output_stream::in,
-    io::di, io::uo) is det.
+:- func options_help_code_generation = maybe_nested_help_section.
 
-options_help_code_generation(Stream, !IO) :-
-    io.write_string(Stream, "\nCode generation options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-%       "--table-debug",
-%       "\tEnables the generation of code that helps to debug tabling",
-%       "\tprimitives.",
+options_help_code_generation = NestedSection :-
+    OverallName = "Code generation options",
 
-        "--no-trad-passes",
-        "\tThe default `--trad-passes' completely processes each predicate",
-        "\tbefore going on to the next predicate.",
-        "\tThis option tells the compiler",
-        "\tto complete each phase of code generation on all predicates",
-        "\tbefore going on the next phase on all predicates.",
-    %   "--parallel-liveness",
-    %   "Use multiple threads when computing liveness.",
-    %   "At the moment this option implies `--no-trad-passes',",
-    %   "and requires the compiler to be built in a",
-    %   "low-level parallel grade and running with multiple engines.",
-    %   "--parallel-code-gen",
-    %   "Use multiple threads when generating code.",
-    %   "At the moment this option implies `--no-trad-passes',",
-    %   "and requires the compiler to be built in a",
-    %   "low-level parallel grade and running with multiple engines.",
-        "--no-reclaim-heap-on-nondet-failure",
-        "\tDon't reclaim heap on backtracking in nondet code.",
-        "--no-reclaim-heap-on-semidet-failure",
-        "\tDon't reclaim heap on backtracking in semidet code.",
-        "--no-reclaim-heap-on-failure",
-        "\tCombines the effect of the two options above.",
+    SectionNameGen = "Code generation option selection",
+    HelpStructsGen = [
 
-        "--max-jump-table-size=<n>",
-        "\tThe maximum number of entries a jump table can have.",
-        "\tThe special value 0 indicates the table size is unlimited.",
-        "\tThis option can be useful to avoid exceeding fixed limits",
-        "\timposed by some C compilers.",
+        priv_help("table-debug", [
+            "Enables the generation of code that helps to debug tabling",
+            "primitives."]),
 
-        % This is a developer only option.
-%       "--compare-specialization=<n>",
-%       "\tGenerate quadratic instead of linear compare predicates for",
-%       "\ttypes with up to n function symbols. Higher values of n lead to",
-%       "\tfaster but also bigger compare predicates.",
+        help("no-trad-passes", [
+            "The default `--trad-passes' completely processes each predicate",
+            "before going on to the next predicate.",
+            "This option tells the compiler",
+            "to complete each phase of code generation on all predicates",
+            "before going on the next phase on all predicates."]),
 
-        % This is a developer only option.
-%       "--no-should-pretest-equality",
-%       "\tIf specified, do not add a test for the two values being equal",
-%       "\tas words to the starts of potentially expensive unify and compare",
-%       "\tpredicates."
+        priv_help("parallel-liveness", [
+            "Use multiple threads when computing liveness.",
+            "At the moment this option implies `--no-trad-passes',",
+            "and requires the compiler to be built in a",
+            "low-level parallel grade and running with multiple engines."]),
 
-        "--fact-table-max-array-size <n>",
-        "\tSpecify the maximum number of elements in a single",
-        "\t`:- pragma fact_table' data array (default: 1024).",
-        "--fact-table-hash-percent-full <percentage>",
-        "\tSpecify how full the `:- pragma fact_table' hash tables",
-        "\tshould be allowed to get. Given as an integer percentage",
-        "\t(valid range: 1 to 100, default: 90)."
+        priv_help("parallel-code-gen", [
+            "Use multiple threads when generating code.",
+            "At the moment this option implies `--no-trad-passes',",
+            "and requires the compiler to be built in a",
+            "low-level parallel grade and running with multiple engines."]),
 
-% This option is not yet documented because it is not yet useful -- currently
-% we don't take advantage of GNU C's computed gotos extension.
-%       "--no-prefer-switch",
-%       "\tGenerate code using computed gotos rather than switches.",
-%       "\tThis makes the generated code less readable, but potentially",
-%       "\tslightly more efficient.",
-%       "\tThis option has no effect unless the `--high-level-code' option",
-%       "\tis enabled.",
-% These options are for implementors only, for use in testing and benchmarking.
-%       "--prefer-while-loop-over-jump-self",
-%       "\tGenerate code for tail-recursive single procedures using an",
-%       "\tinfinite while loop, with tail calls being done by a continue.",
-%       "\tThe alternative is a label at the start of the procedure,",
-%       "\twith tail calls being done by a jump to the label.",
-%       "\tThis option has no effect unless the `--high-level-code' option",
-%       "\tis enabled.",
-%       "--prefer-while-loop-over-jump-mutual",
-%       "\tGenerate code for tail-recursive-SCCs using an infinite while loop",
-%       "\twrapped around a switch, with one switch arm for each procedure",
-%       "\tin the TSCC, with tail calls being done by setting the value of",
-%       "\tthe switched-on variable and a continue. The alternative is",
-%       "\ta simple label before the code of each procedure, with tail calls",
-%       "\tbeing done by a jump to the label.",
-%       "\tThis option has no effect unless the `--high-level-code' option",
-%       "\tis enabled.",
-% This optimization is for implementors only. Turning this option on provides
-% the fairest possible test of --optimize-saved-vars-cell.
-%       "--no-opt-no-return-calls",
-%       "\tDo not optimize the stack usage of calls that cannot return.",
+        help("no-reclaim-heap-on-nondet-failure", [
+            "Don't reclaim heap on backtracking in nondet code."]),
+
+        help("no-reclaim-heap-on-semidet-failure", [
+            "Don't reclaim heap on backtracking in semidet code."]),
+
+        help("no-reclaim-heap-on-failure", [
+            "Combines the effect of the two options above."]),
+
+        help("max-jump-table-size=<n>", [
+            "The maximum number of entries a jump table can have.",
+            "The special value 0 indicates the table size is unlimited.",
+            "This option can be useful to avoid exceeding fixed limits",
+            "imposed by some C compilers."]),
 
         % This is a developer only option.
-%        "--debug-class-init",
-%        "\tIn Java grades, generate code that causes a trace of class",
-%        "\tinitialization to be printed to the standard output when the",
-%        "\tenvironment variable MERCURY_DEBUG_CLASS_INIT is defined."
-    ], !IO),
+        priv_help("compare-specialization=<n>", [
+            "Generate quadratic instead of linear compare predicates for",
+            "types with up to n function symbols. Higher values of n lead to",
+            "faster but also bigger compare predicates."]),
 
-    io.write_string(Stream, "\n    Code generation target options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "--branch-delay-slot    \t(This option is not for general use.)",
-        "\tAssume that branch instructions have a delay slot.",
-        "--num-real-r-regs <n>  \t(This option is not for general use.)",
-        "\tAssume registers r1 up to r<n> are real general purpose",
-        "\tregisters.",
-        "--num-real-f-regs <n>  \t(This option is not for general use.)",
-        "\tAssume registers f1 up to f<n> are real floating point",
-        "\tregisters.",
-        "--num-real-r-temps <n> \t(This option is not for general use.)",
-        "\tAssume that <n> non-float temporaries will fit into",
-        "\treal machine registers.",
-        "--num-real-f-temps <n> \t(This option is not for general use.)",
-        "\tAssume that <n> float temporaries will fit into",
-        "\treal machine registers."
-    ], !IO).
+        % This is a developer only option.
+        priv_help("no-should-pretest-equality", [
+            "If specified, do not add a test for the two values being equal",
+            "as words to the starts of potentially expensive unify and compare",
+            "predicates."]),
+
+        help("fact-table-max-array-size <n>", [
+            "Specify the maximum number of elements in a single",
+            "`:- pragma fact_table' data array (default: 1024)."]),
+
+        help("fact-table-hash-percent-full <percentage>", [
+            "Specify how full the `:- pragma fact_table' hash tables",
+            "should be allowed to get. Given as an integer percentage",
+            "(valid range: 1 to 100, default: 90)."]),
+
+        % This option is not yet documented because it is not yet useful;
+        % currently we don't take advantage of GNU C's computed gotos
+        % extension.
+        priv_help("no-prefer-switch", [
+            "Generate code using computed gotos rather than switches.",
+            "This makes the generated code less readable, but potentially",
+            "slightly more efficient.",
+            "This option has no effect unless the `--high-level-code' option",
+            "is enabled."]),
+
+        % These options are for implementors only, for use in
+        % testing and benchmarking.
+        priv_help("prefer-while-loop-over-jump-self", [
+            "Generate code for tail-recursive single procedures using an",
+            "infinite while loop, with tail calls being done by a continue.",
+            "The alternative is a label at the start of the procedure,",
+            "with tail calls being done by a jump to the label.",
+            "This option has no effect unless the `--high-level-code' option",
+            "is enabled."]),
+
+        priv_help("prefer-while-loop-over-jump-mutual", [
+            "Generate code for tail-recursive-SCCs using an infinite while loop",
+            "wrapped around a switch, with one switch arm for each procedure",
+            "in the TSCC, with tail calls being done by setting the value of",
+            "the switched-on variable and a continue. The alternative is",
+            "a simple label before the code of each procedure, with tail calls",
+            "being done by a jump to the label.",
+            "This option has no effect unless the `--high-level-code' option",
+            "is enabled."]),
+
+        % This optimization is for implementors only. Turning this option on
+        % provides the fairest possible test of --optimize-saved-vars-cell.
+        priv_help("no-opt-no-return-calls", [
+            "Do not optimize the stack usage of calls that cannot return."]),
+
+        % This is a developer only option.
+        priv_help("debug-class-init", [
+            "In Java grades, generate code that causes a trace of class",
+            "initialization to be printed to the standard output when the",
+            "environment variable MERCURY_DEBUG_CLASS_INIT is defined."])
+
+    ],
+    SectionGen = help_section(SectionNameGen, [], HelpStructsGen),
+
+    SectionNameTarget = "Code generation target options",
+    HelpStructsTarget = [
+
+        help("branch-delay-slot", [
+            "(This option is not for general use.)",
+            "Assume that branch instructions have a delay slot."]),
+
+        help("num-real-r-regs <n>", [
+            "(This option is not for general use.)",
+            "Assume registers r1 up to r<n> are real general purpose",
+            "registers."]),
+
+        help("num-real-f-regs <n>", [
+            "(This option is not for general use.)",
+            "Assume registers f1 up to f<n> are real floating point",
+            "registers."]),
+
+        help("num-real-r-temps <n>", [
+            "(This option is not for general use.)",
+            "Assume that <n> non-float temporaries will fit into",
+            "real machine registers."]),
+
+        help("num-real-f-temps <n>", [
+            "(This option is not for general use.)",
+            "Assume that <n> float temporaries will fit into",
+            "real machine registers."])
+
+    ],
+    SectionTarget = help_section(SectionNameTarget, [], HelpStructsTarget),
+
+    NestedSection = nested_help_section(OverallName, [],
+        [SectionGen, SectionTarget]).
 
 :- pred options_help_optimization(io.text_output_stream::in,
     io::di, io::uo) is det.
@@ -7583,9 +7612,14 @@ options_help_misc(Stream, !IO) :-
 
 :- type help_section
     --->    help_section(
-                hs_maybe_section_name       :: maybe(string),
+                hs_section_name             :: string,
                 hs_section_comment_lines    :: list(string),
                 hs_help_structs             :: list(help)
+            )
+    ;       unnamed_help_section(
+                % If a section has no name, it shouldn't have any
+                % comment lines either.
+                uhs_help_structs             :: list(help)
             ).
 
 :- type maybe_nested_help_section
@@ -7767,14 +7801,18 @@ output_maybe_nested_help_section(Stream, What, MaybeNestedSection, !IO) :-
             OverallCommentLines, Subsections),
         % The original code used different indentation
         % from what we generate below.
-        io.format(Stream, "\n%s:\n\n", [s(OverallName)], !IO),
+        %
+        % We do NOT put a newline after the OverallName + OverallCommentLines
+        % combo, because each of the Subsections will *start* by printing
+        % a newline, and we do not want to end up with two.
+        io.format(Stream, "\n%s:\n", [s(OverallName)], !IO),
         (
             OverallCommentLines = []
         ;
             OverallCommentLines = [_ | _],
+            io.nl(Stream, !IO),
             io.write_prefixed_lines(Stream, single_indent,
-                OverallCommentLines, !IO),
-            io.nl(Stream, !IO)
+                OverallCommentLines, !IO)
         ),
         list.foldl(output_help_section(Stream, What, single_indent),
             Subsections, !IO)
@@ -7784,9 +7822,19 @@ output_maybe_nested_help_section(Stream, What, MaybeNestedSection, !IO) :-
     string::in, help_section::in, io::di, io::uo) is det.
 
 output_help_section(Stream, What, SectionNameIndent, Section, !IO) :-
-    Section = help_section(MaybeSectionName, SectionCommentLines, HelpStructs),
     (
-        MaybeSectionName = no
+        Section = help_section(SectionName0, SectionCommentLines, HelpStructs),
+        MaybeSectionName = yes(SectionName0)
+    ;
+        Section = unnamed_help_section(HelpStructs),
+        MaybeSectionName = no,
+        SectionCommentLines = []
+    ),
+    % Both with a section and without it, separate this section
+    % from what came before.
+    (
+        MaybeSectionName = no,
+        io.nl(Stream, !IO)
     ;
         MaybeSectionName = yes(SectionName),
         io.format(Stream, "\n%s%s:\n\n",
