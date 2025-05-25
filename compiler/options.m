@@ -4463,19 +4463,23 @@ options_help(Stream, !IO) :-
         std_help_section(options_help_termination),
         std_help_section(options_help_ctgc),
         options_help_compilation_model,
-        options_help_code_generation
+        options_help_code_generation,
+
+        % XXX Based on the indentation, options_help_*optimization
+        % were originally intended to be read as subsections
+        % of a single overall section.
+        std_help_section(options_help_optimization),
+        std_help_section(options_help_hlds_hlds_optimization),
+        std_help_section(options_help_hlds_llds_optimization),
+        std_help_section(options_help_llds_llds_optimization),
+        std_help_section(options_help_mlds_mlds_optimization),
+        std_help_section(options_help_output_optimization),
+        std_help_section(options_help_target_code_compilation),
+        std_help_section(options_help_link)
     ],
     list.foldl(output_maybe_nested_help_section(Stream, What),
         MaybeNestedSections, !IO),
 
-    options_help_optimization(Stream, !IO),
-    options_help_hlds_hlds_optimization(Stream, !IO),
-    options_help_hlds_llds_optimization(Stream, !IO),
-    options_help_llds_llds_optimization(Stream, !IO),
-    options_help_mlds_mlds_optimization(Stream, !IO),
-    options_help_output_optimization(Stream, !IO),
-    options_help_target_code_compilation(Stream, !IO),
-    options_help_link(Stream, !IO),
     options_help_build_system(Stream, !IO),
     options_help_misc(Stream, !IO).
 
@@ -6556,578 +6560,707 @@ options_help_code_generation = NestedSection :-
     NestedSection = nested_help_section(OverallName, [],
         [SectionGen, SectionTarget]).
 
-:- pred options_help_optimization(io.text_output_stream::in,
-    io::di, io::uo) is det.
+:- func options_help_optimization = help_section.
 
-options_help_optimization(Stream, !IO) :-
-    io.write_string(Stream, "\nOptimization Options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
+options_help_optimization = Section :-
+    SectionName = "Optimization Options",
+    HelpStructs = [
+
         % This is for use by Mercury.config only.
-    %   "--default-opt-level -O<n>",
-    %   "\tSet the default optimization level to <n>.",
-        "-O <n>, --opt-level <n>, --optimization-level <n>",
-        "\tSet optimization level to <n>.",
-        "\tOptimization level -1 means no optimization",
-        "\twhile optimization level 6 means full optimization.",
-    %   "\t\tFor a full description of each optimization level,",
-    %   "\t\tsee the Mercury User's Guide.",
-        "--opt-space, --optimize-space",
-        "\tTurn on optimizations that reduce code size",
-        "\tand turn off optimizations that significantly",
-        "\tincrease code size.",
-        "--intermod-opt",
-        "--intermodule-optimization",
-        "\tPerform inlining and higher-order specialization of",
-        "\tthe code for predicates imported from other modules.",
-        "\tThis option must be set throughout the compilation process.",
-        "--trans-intermod-opt",
-        "--transitive-intermodule-optimization",
-        "\tImport the transitive intermodule optimization data.",
-        "\tThis data is imported from `<module>.trans_opt' files.",
-        "\tNote that `--transitive-intermodule-optimization' does not",
-        "\twork with `mmc --make'.",
-        "--no-read-opt-files-transitively",
-        "\tOnly read the inter-module optimization information",
-        "\tfor directly imported modules, not the transitive",
-        "\tclosure of the imports.",
-        "--use-opt-files",
-        "\tPerform inter-module optimization using any",
-        "\t`.opt' files which are already built,",
-        "\te.g. those for the standard library, but do",
-        "\tnot build any others.",
-        "--use-trans-opt-files",
-        "\tPerform inter-module optimization using any",
-        "\t`.trans_opt' files which are already built,",
-        "\te.g. those for the standard library, but do",
-        "\tnot build any others.",
-        "--intermodule-analysis",
-        "\tPerform analyses such as termination analysis and",
-        "\tunused argument elimination across module boundaries.",
-        "\tThis option is not yet fully implemented.",
-        "--analysis-repeat <n>",
-        "\tThe maximum number of times to repeat analyses of",
-        "\tsuboptimal modules with `--intermodule-analysis'",
-        "\t(default: 0)."
+        priv_help("default-opt-level -O<n>", [
+            "Set the default optimization level to <n>."]),
+
+        short_arg_help("-O <n>", "opt-level <n>",
+                ["optimization-level <n>"], [
+            "Set optimization level to <n>.",
+            "Optimization level -1 means no optimization",
+            "while optimization level 6 means full optimization."]),
+            % "For a full description of each optimization level,",
+            % "see the Mercury User's Guide.",
+
+        alt_help("opt-space", pos_sep_lines, ["optimize-space"], [
+            "Turn on optimizations that reduce code size",
+            "and turn off optimizations that significantly",
+            "increase code size."]),
+
+        alt_help("intermod-opt", pos_sep_lines,
+                ["intermodule-optimization"], [
+            "Perform inlining and higher-order specialization of",
+            "the code for predicates imported from other modules.",
+            "This option must be set throughout the compilation process."]),
+
+        alt_help("trans-intermod-opt", pos_sep_lines,
+                ["transitive-intermodule-optimization"], [
+            "Import the transitive intermodule optimization data.",
+            "This data is imported from `<module>.trans_opt' files.",
+            "Note that `--transitive-intermodule-optimization' does not",
+            "work with `mmc --make'."]),
+
+        help("no-read-opt-files-transitively", [
+            "Only read the inter-module optimization information",
+            "for directly imported modules, not the transitive",
+            "closure of the imports."]),
+
+        help("use-opt-files", [
+            "Perform inter-module optimization using any",
+            "`.opt' files which are already built,",
+            "e.g. those for the standard library, but do",
+            "not build any others."]),
+
+        help("use-trans-opt-files", [
+            "Perform inter-module optimization using any",
+            "`.trans_opt' files which are already built,",
+            "e.g. those for the standard library, but do",
+            "not build any others."]),
+
+        help("intermodule-analysis", [
+            "Perform analyses such as termination analysis and",
+            "unused argument elimination across module boundaries.",
+            "This option is not yet fully implemented."]),
+
+        help("analysis-repeat <n>", [
+            "The maximum number of times to repeat analyses of",
+            "suboptimal modules with `--intermodule-analysis'",
+            "(default: 0)."]),
+
         % This is commented out as this feature is still experimental.
-%       "--analysis-file-cache",
-%       "\tEnable caching of parsed analysis files. This may",
-%       "\timprove compile times with `--intermodule-analysis'."
-    ], !IO).
+        priv_help("analysis-file-cache", [
+            "Enable caching of parsed analysis files. This may",
+            "improve compile times with `--intermodule-analysis'."])
 
-:- pred options_help_hlds_hlds_optimization(io.text_output_stream::in,
-    io::di, io::uo) is det.
+    ],
+    Section = help_section(SectionName, [], HelpStructs).
 
-options_help_hlds_hlds_optimization(Stream, !IO) :-
-    io.write_string(Stream,
-        "\n    High-level (HLDS -> HLDS) optimizations:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        % "--no-allow-inlining",
-        % "\tDisable all forms of inlining.",
-        "--no-inlining",
-        "\tDisable all forms of inlining.",
-        "--no-inline-simple",
-        "\tDisable the inlining of simple procedures.",
-        "--no-inline-builtins",
-        "\tGenerate builtins (e.g. arithmetic operators) as calls to",
-        "\tout-of-line procedures. This is done by default when,",
-        "\tdebugging, as without this option the execution of",
-        "\tbuiltins is not traced.",
-        "--no-inline-single-use",
-        "\tDisable the inlining of procedures called only once.",
-        "--inline-call-cost <cost>",
-        "\tAssume that the cost of a call is the given parameter.",
-        "\tUsed only in conjunction with `--inline-compound-threshold'.",
-        "\tmultiplied by the number of times it is called,",
-        "--inline-compound-threshold <threshold>",
-        "\tInline a procedure if its size (measured roughly",
-        "\tin terms of the number of connectives in its internal form)",
-        "\tless the assumed call cost, multiplied by the number of times",
-        "\tit is called is below the given threshold.",
-        "--inline-simple-threshold <threshold>",
-        "\tInline a procedure if its size is less than the",
-        "\tgiven threshold.",
-        "--intermod-inline-simple-threshold",
-        "\tSimilar to `--inline-simple-threshold', except used to",
-        "\tdetermine which predicates should be included in",
-        "\t`.opt' files. Note that changing this between writing",
-        "\tthe `.opt' file and compiling to C may cause link errors,",
-        "\tand too high a value may result in reduced performance.",
-        "--inline-vars-threshold <threshold>",
-        "\tDon't inline a call if it would result in a procedure",
-        "\tcontaining more than <threshold> variables. Procedures",
-        "\tcontaining large numbers of variables can cause",
-        "\tslow compilation.",
-        "--inline-linear-tail-rec-sccs",
-        "\tGiven a set of mutually recursive procedures (an SCC, or strongly",
-        "\tconnected component, of the call graph) in which each procedure",
-        "\tcontains exactly tail call to a procedure in the SCC, so that",
-        "\tthe tail recursive calls form a linear chain through the SCC,",
-        "\tinline the callee at every one of those mutually tail recursive",
-        "\tcall sites. This converts mutual tail recursion into self tail",
-        "\trecursion, which the MLDS backend can turn into code that runs",
-        "\tin constant stack space.",
-%       "--inline-linear-tail-rec-sccs-max-extra <E>",
-%       "\tWhen considering whether to apply --inline-linear-tail-rec-sccs",
-%       "\tto an SCC containing N procedures, allow the SCC to contain",
-%       "\tup to N+E mutually recursive tail calls."
-%       "--from-ground-term-threshold <n>",
-%       "\tWrap a from_ground_term scope around the expanded,",
-%       "\tsuperhomogeneous form of a ground term that involves at least.",
-%       "\tthe given number of function symbols.",
-        "--no-const-struct",
-        "\tDisable the gathering of constant structures in a separate",
-        "\ttable.",
-        "--no-common-struct",
-        "\tDisable optimization of common term structures.",
+:- func options_help_hlds_hlds_optimization = help_section.
 
-%       Common goal optimization should not be turned off, since it can
-%       break programs that would otherwise compile properly (e.g.,
-%       benchmarks/icfp2000). This is kept as a developer-only option.
-%
-%       "--no-common-goal",
-%       "\tDisable optimization of common goals.",
-%       "\tAt the moment this optimization",
-%       "\tdetects only common deconstruction unifications.",
-%       "\tDisabling this optimization reduces the class of predicates",
-%       "\tthat the compiler considers to be deterministic.",
+options_help_hlds_hlds_optimization = Section :-
+    SectionName = "High-level (HLDS -> HLDS) optimizations",
+    HelpStructs = [
 
-        "--constraint-propagation",
-        "\tEnable the constraint propagation transformation,",
-        "\twhich attempts to transform the code so that goals",
-        "\twhich can fail are executed as early as possible.",
-        "--local-constraint-propagation",
-        "\tEnable the constraint propagation transformation,",
-        "\tbut only rearrange goals within each procedure.",
-        "\tSpecialized versions of procedures will not be created.",
-        "--no-follow-code",
-        "\tDon't migrate into the end of branched goals.",
-        "--excess-assign",
-        "\tRemove excess assignment unifications.",
-        % "--merge-code-after-switch",
-        % "\tMerge the goal after a switch into the switch, if we can.",
-        % "\tTwo cases in which we can are when that goal just tests.",
-        % "\tthe value of a variable set in the switch, and when that goal,",
-        % "\tis a switch on the same variable.",
-        "--no-optimize-format-calls",
-        "\tDo not attempt to interpret the format string in calls to",
-        "\tstring.format and related predicates at compile time;",
-        "\talways leave this to be done at runtime.",
-        "--split-switch-arms",
-        "\tWhen a switch on a variable has an inner switch on that",
-        "\tsame variable inside one of its arms, split up that arm of the",
-        "\touter switch along the same lines, effectively inlining",
-        "\tthe inner switch.",
-        "--optimize-duplicate-calls",
-        "\tOptimize away multiple calls to a predicate",
-        "\twith the same input arguments.",
-        "--loop-invariants",
-        "\tHoist loop invariants out of loops.",
-        "--delay-constructs",
-        "\tReorder goals to move construction unifications after",
-        "\tprimitive goals that can fail.",
-        % "--optimize-saved-vars-const",
-        % "\tMinimize the number of variables saved across calls by",
-        % "\tintroducing duplicate copies of variables bound to",
-        % "\tconstants in each interval between flushes where they",
-        % "\tare needed.",
-        % "--optimize-saved-vars-cell",
-        % "\tMinimize the number of variables saved across calls by",
-        % "\ttrying to use saved variables pointing to cells to reach",
-        % "\tthe variables stored in those cells.",
-        "--optimize-saved-vars",
-        "\tMinimize the number of variables saved across calls.",
-        "--optimize-unused-args",
-        "\tRemove unused predicate arguments.",
-        "\tThis will cause the compiler to generate more",
-        "\tefficient code for many polymorphic predicates.",
-        "--intermod-unused-args",
-        "\tPerform unused argument removal across module boundaries.",
-        "\tThis option implies `--optimize-unused-args' and",
-        "\t`--intermodule-optimization'.",
+        priv_help("no-allow-inlining", [
+            "Disable all forms of inlining."]),
 
-        "--optimize-higher-order",
-        "\tEnable specialization of higher-order predicates.",
-        "--type-specialization",
-        "\tEnable specialization of polymorphic predicates where the",
-        "\tpolymorphic types are known.",
-        "--user-guided-type-specialization",
-        "\tEnable specialization of polymorphic predicates for which",
-        "\tthere are `:- pragma type_spec' declarations.",
-        "--higher-order-size-limit",
-        "\tSet the maximum goal size of specialized versions created by",
-        "\t`--optimize-higher-order' and `--type-specialization'.",
-        "\tGoal size is measured as the number of calls, unifications",
-        "\tand branched goals.",
-        "--higher-order-arg-limit <limit>",
-        "\tSet the maximum size of higher-order arguments to",
-        "\tbe specialized by `--optimize-higher-order' and",
-        "\t`--type-specialization'.",
-        "--unneeded-code",
-        "\tRemove goals from computation paths where their outputs are",
-        "\tnot needed, provided the semantics options allow the deletion",
-        "\tor movement of the goal.",
-        "--unneeded-code-copy-limit",
-        "\tGives the maximum number of places to which a goal may be copied",
-        "\twhen removing it from computation paths on which its outputs are",
-        "\tnot needed. A value of zero forbids goal movement and allows",
-        "\tonly goal deletion; a value of one prevents any increase in the",
-        "\tsize of the code.",
-        "--optimize-constant-propagation",
-        "\tGiven calls to some frequently used library functions and",
-        "\tpredicates, mainly those that do arithmetic, evaluate them",
-        "\tat compile time, if all their input arguments are constants.",
-        "--introduce-accumulators",
-        "\tAttempt to introduce accumulating variables into",
-        "\tprocedures, so as to make them tail recursive.",
-%       "--optimize-constructor-last-call-accumulator",
-%       "\tEnable the optimization via accumulators of ""last"" calls",
-%       "\tthat are followed by constructor application.",
-%       "--optimize-constructor-last-call-null",
-%       "\tWhen --optimize-constructor-last-call is enabled, put NULL in"
-%       "\tuninitialized fields (to prevent the garbage collector from",
-%       "\tlooking at and following a random bit pattern).",
-        "--optimize-constructor-last-call",
-        "\tEnable the optimization of ""last"" calls that are followed by",
-        "\tconstructor application.",
-        "--deforestation",
-        "\tEnable deforestation. Deforestation is a program",
-        "\ttransformation whose aim is to avoid the construction of",
-        "\tintermediate data structures and to avoid repeated traversals",
-        "\tover data structures within a conjunction.",
-        "--deforestation-depth-limit <limit>",
-        "\tSpecify a depth limit to prevent infinite loops in the",
-        "\tdeforestation algorithm.",
-        "\tA value of -1 specifies no depth limit. The default is 4.",
-        "--deforestation-vars-threshold <threshold>",
-        "\tSpecify a rough limit on the number of variables",
-        "\tin a procedure created by deforestation.",
-        "\tA value of -1 specifies no limit. The default is 200.",
-        "--deforestation-size-threshold <threshold>",
-        "\tSpecify a rough limit on the size of a goal",
-        "\tto be optimized by deforestation.",
-        "\tA value of -1 specifies no limit. The default is 15.",
-        "--analyse-exceptions",
-        "\tEnable exception analysis. Identify those",
-        "\tprocedures that will not throw an exception.",
-        "\tSome optimizations can make use of this information.",
-% XXX The options controlling closure analysis are currently
-% commented out because it isn't useful. It can be uncommented when
-% we actually have something that uses it.
-%       "--analyse-closures",
-%       "\tEnable closure analysis. Try to identify the possible",
-%       "\tvalues that higher-order valued variables can take.",
-%       "\tSome optimizations can make use of this information.",
-        "--analyse-trail-usage",
-        "\tEnable trail usage analysis. Identify those",
-        "\tprocedures that will not modify the trail.",
-        "\tThis information is used to reduce the overhead",
-        "\tof trailing.",
-% `--no-optimize-trail-usage' is a developer-only option.
-% It is intended for the benchmarking of trail usage optimization.
-% Otherwise, it should not be turned off as doing so interferes with
-% the results of the trail usage analysis.
-        % "--no-optimize-trail-usage",
-        % "\tDo not try and restrict trailing to those parts",
-        % "\tof the program that actually use it.",
-% `--no-optimize-region-ops' is a developer-only option.
-% It is intended for the benchmarking of region ops optimization.
-        % "--no-optimize-region-ops",
-        % "\tDo not try and restrict region operations to those parts",
-        % "\tof the program that actually use it.",
-        "--analyse-mm-tabling",
-        "\tIdentify those goals that do not call procedures",
-        "\tthat are evaluated using minimal model tabling.",
-        "\tThis information is used to reduce the overhead",
-        "\tof minimal model tabling."
-        % "--untuple",
-        % "\tExpand out procedure arguments when the argument type",
-        % "\tis a tuple or a type with exactly one functor.",
-        % "\tNote: this is almost always a pessimization.",
-        % "--tuple",
-        % "\tTry to find opportunities for procedures to pass some",
-        % "\targuments to each other as a tuple rather than as",
-        % "\tindividual arguments.",
-        % "\tNote: so far this has mostly a detrimental effect.",
-        % "--tuple-trace-counts-file",
-        % "\tSupply a trace counts summary file for the tupling",
-        % "\ttransformation. The summary should be made from a sample",
-        % "\trun of the program you are compiling, compiled without",
-        % "\toptimizations.",
-        % "--tuple-costs-ratio",
-        % "\tA value of 110 for this parameter means the tupling",
-        % "\ttransformation will transform a procedure if it thinks",
-        % "\tthat procedure would be 10% worse, on average, than",
-        % "\twhatever transformed version of the procedure it has in",
-        % "\tmind. The default is 100.",
-        % "--tuple-min-args",
-        % "\tThe minimum number of input arguments that the tupling",
-        % "\ttransformation will consider passing together as a",
-        % "\ttuple. This is mostly to speed up the compilation",
-        % "\tprocess by not pursuing (presumably) unfruitful searches.",
-% This is for measurements by implementors only.
-%       "--no-inline-par-builtins",
-%       "\tGenerate calls to the predicates of par_builtin.m, instead of",
-%       "\tbodily including their definitions as C code.",
-%       Actually, this is the default for now.
-% This is for measurements by implementors only.
-%       "--always-specialize-in-dep-par-conjs",
-%       "\tWhen the transformation for handling dependent parallel",
-%       "\tconjunctions adds waits and/or signals around a call,",
-%       "\tcreate a specialized version of the called procedure, even if".
-%       "\tthis is not profitable.",
-% '--region-analysis' is not documented because it is still experimental.
-%        "--region-analysis",
-%        "\tEnable the analysis for region-based memory management."
-    ], !IO).
+        help("no-inlining", [
+            "Disable all forms of inlining."]),
+
+        help("no-inline-simple", [
+            "Disable the inlining of simple procedures."]),
+
+        help("no-inline-builtins", [
+            "Generate builtins (e.g. arithmetic operators) as calls to",
+            "out-of-line procedures. This is done by default when,",
+            "debugging, as without this option the execution of",
+            "builtins is not traced."]),
+
+        help("no-inline-single-use", [
+            "Disable the inlining of procedures called only once."]),
+
+        help("inline-call-cost <cost>", [
+            "Assume that the cost of a call is the given parameter.",
+            "Used only in conjunction with `--inline-compound-threshold'.",
+            "multiplied by the number of times it is called,"]),
+
+        help("inline-compound-threshold <threshold>", [
+            "Inline a procedure if its size (measured roughly",
+            "in terms of the number of connectives in its internal form)",
+            "less the assumed call cost, multiplied by the number of times",
+            "it is called is below the given threshold."]),
+
+        help("inline-simple-threshold <threshold>", [
+            "Inline a procedure if its size is less than the",
+            "given threshold."]),
+
+        help("intermod-inline-simple-threshold", [
+            "Similar to `--inline-simple-threshold', except used to",
+            "determine which predicates should be included in",
+            "`.opt' files. Note that changing this between writing",
+            "the `.opt' file and compiling to C may cause link errors,",
+            "and too high a value may result in reduced performance."]),
+
+        help("inline-vars-threshold <threshold>", [
+            "Don't inline a call if it would result in a procedure",
+            "containing more than <threshold> variables. Procedures",
+            "containing large numbers of variables can cause",
+            "slow compilation."]),
+
+        help("inline-linear-tail-rec-sccs", [
+            "Given a set of mutually recursive procedures (an SCC, or strongly",
+            "connected component, of the call graph) in which each procedure",
+            "contains exactly tail call to a procedure in the SCC, so that",
+            "the tail recursive calls form a linear chain through the SCC,",
+            "inline the callee at every one of those mutually tail recursive",
+            "call sites. This converts mutual tail recursion into self tail",
+            "recursion, which the MLDS backend can turn into code that runs",
+            "in constant stack space."]),
+
+        priv_help("inline-linear-tail-rec-sccs-max-extra <E>", [
+            "When considering whether to apply --inline-linear-tail-rec-sccs",
+            "to an SCC containing N procedures, allow the SCC to contain",
+            "up to N+E mutually recursive tail calls."]),
+
+        priv_help("from-ground-term-threshold <n>", [
+            "Wrap a from_ground_term scope around the expanded,",
+            "superhomogeneous form of a ground term that involves at least.",
+            "the given number of function symbols."]),
+
+        help("no-const-struct", [
+            "Disable the gathering of constant structures in a separate",
+            "table."]),
+
+        help("no-common-struct", [
+            "Disable optimization of common term structures."]),
+
+        % Common goal optimization should not be turned off, since it can
+        % break programs that would otherwise compile properly (e.g.,
+        % benchmarks/icfp2000). This is kept as a developer-only option.
+        priv_help("no-common-goal", [
+            "Disable optimization of common goals.",
+            "At the moment this optimization",
+            "detects only common deconstruction unifications.",
+            "Disabling this optimization reduces the class of predicates",
+            "that the compiler considers to be deterministic."]),
+
+        help("constraint-propagation", [
+            "Enable the constraint propagation transformation,",
+            "which attempts to transform the code so that goals",
+            "which can fail are executed as early as possible."]),
+
+        help("local-constraint-propagation", [
+            "Enable the constraint propagation transformation,",
+            "but only rearrange goals within each procedure.",
+            "Specialized versions of procedures will not be created."]),
+
+        help("no-follow-code", [
+            "Don't migrate into the end of branched goals."]),
+
+        help("excess-assign", [
+            "Remove excess assignment unifications."]),
+
+        priv_help("merge-code-after-switch", [
+            "Merge the goal after a switch into the switch, if we can.",
+            "Two cases in which we can are when that goal just tests.",
+            "the value of a variable set in the switch, and when that goal,",
+            "is a switch on the same variable."]),
+
+        help("no-optimize-format-calls", [
+            "Do not attempt to interpret the format string in calls to",
+            "string.format and related predicates at compile time;",
+            "always leave this to be done at runtime."]),
+
+        help("split-switch-arms", [
+            "When a switch on a variable has an inner switch on that",
+            "same variable inside one of its arms, split up that arm of the",
+            "outer switch along the same lines, effectively inlining",
+            "the inner switch."]),
+
+        help("optimize-duplicate-calls", [
+            "Optimize away multiple calls to a predicate",
+            "with the same input arguments."]),
+
+        help("loop-invariants", [
+            "Hoist loop invariants out of loops."]),
+
+        help("delay-constructs", [
+            "Reorder goals to move construction unifications after",
+            "primitive goals that can fail."]),
+
+        priv_help("optimize-saved-vars-const", [
+            "Minimize the number of variables saved across calls by",
+            "introducing duplicate copies of variables bound to",
+            "constants in each interval between flushes where they",
+            "are needed."]),
+
+        priv_help("optimize-saved-vars-cell", [
+            "Minimize the number of variables saved across calls by",
+            "trying to use saved variables pointing to cells to reach",
+            "the variables stored in those cells."]),
+
+        help("optimize-saved-vars", [
+            "Minimize the number of variables saved across calls."]),
+
+        help("optimize-unused-args", [
+            "Remove unused predicate arguments.",
+            "This will cause the compiler to generate more",
+            "efficient code for many polymorphic predicates."]),
+
+        help("intermod-unused-args", [
+            "Perform unused argument removal across module boundaries.",
+            "This option implies `--optimize-unused-args' and",
+            "`--intermodule-optimization'."]),
+
+        help("optimize-higher-order", [
+            "Enable specialization of higher-order predicates."]),
+
+        help("type-specialization", [
+            "Enable specialization of polymorphic predicates where the",
+            "polymorphic types are known."]),
+
+        help("user-guided-type-specialization", [
+            "Enable specialization of polymorphic predicates for which",
+            "there are `:- pragma type_spec' declarations."]),
+
+        help("higher-order-size-limit", [
+            "Set the maximum goal size of specialized versions created by",
+            "`--optimize-higher-order' and `--type-specialization'.",
+            "Goal size is measured as the number of calls, unifications",
+            "and branched goals."]),
+
+        help("higher-order-arg-limit <limit>", [
+            "Set the maximum size of higher-order arguments to",
+            "be specialized by `--optimize-higher-order' and",
+            "`--type-specialization'."]),
+
+        help("unneeded-code", [
+            "Remove goals from computation paths where their outputs are",
+            "not needed, provided the semantics options allow the deletion",
+            "or movement of the goal."]),
+
+        help("unneeded-code-copy-limit", [
+            "Gives the maximum number of places to which a goal may be copied",
+            "when removing it from computation paths on which its outputs are",
+            "not needed. A value of zero forbids goal movement and allows",
+            "only goal deletion; a value of one prevents any increase in the",
+            "size of the code."]),
+
+        help("optimize-constant-propagation", [
+            "Given calls to some frequently used library functions and",
+            "predicates, mainly those that do arithmetic, evaluate them",
+            "at compile time, if all their input arguments are constants."]),
+
+        help("introduce-accumulators", [
+            "Attempt to introduce accumulating variables into",
+            "procedures, so as to make them tail recursive."]),
+
+        priv_help("optimize-constructor-last-call-accumulator", [
+            "Enable the optimization via accumulators of ""last"" calls",
+            "that are followed by constructor application."]),
+
+        priv_help("optimize-constructor-last-call-null", [
+            "When --optimize-constructor-last-call is enabled, put NULL in",
+            "uninitialized fields (to prevent the garbage collector from",
+            "looking at and following a random bit pattern)."]),
+
+        help("optimize-constructor-last-call", [
+            "Enable the optimization of ""last"" calls that are followed by",
+            "constructor application."]),
+
+        help("deforestation", [
+            "Enable deforestation. Deforestation is a program",
+            "transformation whose aim is to avoid the construction of",
+            "intermediate data structures and to avoid repeated traversals",
+            "over data structures within a conjunction."]),
+
+        help("deforestation-depth-limit <limit>", [
+            "Specify a depth limit to prevent infinite loops in the",
+            "deforestation algorithm.",
+            "A value of -1 specifies no depth limit. The default is 4."]),
+
+        help("deforestation-vars-threshold <threshold>", [
+            "Specify a rough limit on the number of variables",
+            "in a procedure created by deforestation.",
+            "A value of -1 specifies no limit. The default is 200."]),
+
+        help("deforestation-size-threshold <threshold>", [
+            "Specify a rough limit on the size of a goal",
+            "to be optimized by deforestation.",
+            "A value of -1 specifies no limit. The default is 15."]),
+
+        help("analyse-exceptions", [
+            "Enable exception analysis. Identify those",
+            "procedures that will not throw an exception.",
+            "Some optimizations can make use of this information."]),
+
+        % XXX The options controlling closure analysis are currently
+        % commented out because it isn't useful. It can be uncommented when
+        % we actually have something that uses it.
+        priv_help("analyse-closures", [
+            "Enable closure analysis. Try to identify the possible",
+            "values that higher-order valued variables can take.",
+            "Some optimizations can make use of this information."]),
+
+        help("analyse-trail-usage", [
+            "Enable trail usage analysis. Identify those",
+            "procedures that will not modify the trail.",
+            "This information is used to reduce the overhead",
+            "of trailing."]),
+
+        % This option is developer-only.
+        % It is intended for the benchmarking of trail usage optimization.
+        % Otherwise, it should not be turned off, as doing so interferes with
+        % the results of the trail usage analysis.
+        priv_help("no-optimize-trail-usage", [
+            "Do not try and restrict trailing to those parts",
+            "of the program that actually use it."]),
+
+        % `--no-optimize-region-ops' is a developer-only option.
+        % It is intended for the benchmarking of region ops optimization.
+        priv_help("no-optimize-region-ops", [
+            "Do not try and restrict region operations to those parts",
+            "of the program that actually use it."]),
+
+        help("analyse-mm-tabling", [
+            "Identify those goals that do not call procedures",
+            "that are evaluated using minimal model tabling.",
+            "This information is used to reduce the overhead",
+            "of minimal model tabling."]),
+
+        priv_help("untuple", [
+            "Expand out procedure arguments when the argument type",
+            "is a tuple or a type with exactly one functor.",
+            "Note: this is almost always a pessimization."]),
+
+        priv_help("tuple", [
+            "Try to find opportunities for procedures to pass some",
+            "arguments to each other as a tuple rather than as",
+            "individual arguments.",
+            "Note: so far this has mostly a detrimental effect."]),
+
+        priv_help("tuple-trace-counts-file <filename>", [
+            "Supply a trace counts summary file for the tupling",
+            "transformation. The summary should be made from a sample",
+            "run of the program you are compiling, compiled without",
+            "optimizations."]),
+
+        priv_help("tuple-costs-ratio", [
+            "A value of 110 for this parameter means the tupling",
+            "transformation will transform a procedure if it thinks",
+            "that procedure would be 10% worse, on average, than",
+            "whatever transformed version of the procedure it has in",
+            "mind. The default is 100."]),
+
+        priv_help("tuple-min-args", [
+            "The minimum number of input arguments that the tupling",
+            "transformation will consider passing together as a",
+            "tuple. This is mostly to speed up the compilation",
+            "process by not pursuing (presumably) unfruitful searches."]),
+
+        % This is for measurements by implementors only.
+        priv_help("no-inline-par-builtins", [
+            "Generate calls to the predicates of par_builtin.m, instead of",
+            "bodily including their definitions as C code."]),
+            % XXX Actually, this is the default for now.
+
+        % This is for measurements by implementors only.
+        priv_help("always-specialize-in-dep-par-conjs", [
+            "When the transformation for handling dependent parallel",
+            "conjunctions adds waits and/or signals around a call,",
+            "create a specialized version of the called procedure, even if",
+            "this is not profitable."]),
+
+        % This option is not documented because it is still experimental.
+        priv_help("region-analysis", [
+            "Enable the analysis for region-based memory management."])
+
+    ],
+    Section = help_section(SectionName, [], HelpStructs).
 
     % XXX This is out-of-date. --smart-indexing also affects the
     % MLDS backend.
     %
-:- pred options_help_hlds_llds_optimization(io.text_output_stream::in,
-    io::di, io::uo) is det.
+:- func options_help_hlds_llds_optimization = help_section.
 
-options_help_hlds_llds_optimization(Stream, !IO) :-
-    io.write_string(Stream,
-        "\n    Medium-level (HLDS -> LLDS) optimizations:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "--no-smart-indexing",
-        "\tGenerate switches as simple if-then-else chains;",
-        "\tdisable string hashing and integer table-lookup indexing.",
-% The following options are for developers only --they provide finer grained
-% control over smart indexing.
-%       "--no-smart-atomic-indexing",
-%       "\tDo not generate smart switches on atomic types.",
-%       "--no-smart-string-indexing",
-%       "\tDo not generate smart switches on strings."
-%       "--no-smart-tag-indexing",
-%       "\tDo not generate smart switches on discriminated union types.",
-%       "--no-smart-float-indexing",
-%       "\tDo not generate smart switches on floats."
-        "--dense-switch-req-density <percentage>",
-        "\tThe jump table generated for an atomic switch",
-        "\tmust have at least this percentage of full slots (default: 25).",
-        "--lookup-switch-req-density <percentage>",
-        "\tThe jump table generated for an atomic switch",
-        "\tin which all the outputs are constant terms",
-        "\tmust have at least this percentage of full slots (default: 25).",
-        "--dense-switch-size <n>",
-        "\tThe jump table generated for an atomic switch",
-        "\tmust have at least this many entries (default: 4).",
-        "--lookup-switch-size <n>",
-        "\tThe lookup table generated for an atomic switch",
-        "\tmust have at least this many entries (default: 4).",
-        "--string-trie-switch-size <n>",
-        "\tThe trie generated for a string switch",
-        "\tmust have at least this many entries (default: 16).",
-        "--string-hash-switch-size <n>",
-        "\tThe hash table generated for a string switch",
-        "\tmust have at least this many entries (default: 8).",
-        "--string-binary-switch-size <n>",
-        "\tThe binary search table generated for a string switch",
-        "\tmust have at least this many entries (default: 4).",
-        "--tag-switch-size <n>",
-        "\tThe number of alternatives in a tag switch",
-        "\tmust be at least this number (default: 3).",
-        "--try-switch-size <n>",
-        "\tThe number of alternatives in a try/retry chain switch",
-        "\tmust be at least this number (default: 3).",
-        "--binary-switch-size <n>",
-        "\tThe number of alternatives in a binary search switch",
-        "\tmust be at least this number (default: 4).",
-% These options are only for performance tests.
-%       "--switch-single-rec-base-first",
-%       "\tIn a switch with two arms, one a base case and one with a single",
-%       "\trecursive call, put the base case first.
-%       "--switch-multi-rec-base-first",
-%       "\tIn a switch with two arms, one a base case and one with multiple",
-%       "\trecursive calls, put the base case first.
-        "--no-static-ground-terms",
-        "\tDisable the optimization of constructing constant ground terms",
-        "\tat compile time and storing them as static constants.",
-        "\tNote that auxiliary data structures created by the compiler",
-        "\tfor purposes such as debugging will still be created as",
-        "\tstatic constants.",
-        "--no-use-atomic-cells",
-        "\tDon't use the atomic variants of the Boehm gc allocator calls,",
-        "\teven when this would otherwise be possible.",
-        "--no-middle-rec",
-        "\tDisable the middle recursion optimization.",
-        "--no-simple-neg",
-        "\tDon't generate simplified code for simple negations."
-%       "--no-allow-hijacks",
-%       "\tDo not generate code in which a procedure hijacks",
-%       "\ta nondet stack frame that possibly belongs to",
-%       "\tanother procedure invocation".
-    ], !IO).
+options_help_hlds_llds_optimization = Section :-
+    SectionName = "Medium-level (HLDS -> LLDS) optimizations",
+    HelpStructs = [
 
-:- pred options_help_llds_llds_optimization(io.text_output_stream::in,
-    io::di, io::uo) is det.
+        help("no-smart-indexing", [
+            "Generate switches as simple if-then-else chains;",
+            "disable string hashing and integer table-lookup indexing."]),
 
-options_help_llds_llds_optimization(Stream, !IO) :-
-    io.write_string(Stream,
-        "\n    Low-level (LLDS -> LLDS) optimizations:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "--no-common-data",
-        "\tDisable optimization of common data structures.",
-        "--no-common-layout-data",
-        "\tDisable optimization of common subsequences in layout",
-        "\tstructures.",
-        "--no-llds-optimize",
-        "\tDisable the low-level optimization passes.",
-        "--optimize-dead-procs",
-        "\tEnable dead predicate elimination.",
-        "--no-optimize-peep",
-        "\tDisable local peephole optimizations.",
-% This is useful for developers only, to test whether a gcc bug has been fixed.
-%       "--no-optimize-peep-mkword",
-%       "\tDisable peephole optimizations of words created by mkword.",
-        "--no-optimize-jumps",
-        "\tDisable elimination of jumps to jumps.",
-        "--no-optimize-fulljumps",
-        "\tDisable elimination of jumps to ordinary code.",
-        "--pessimize-tailcalls",
-        "\tDisable the optimization of tailcalls.",
-        "--checked-nondet-tailcalls",
-        "\tConvert nondet calls into tail calls whenever possible, even",
-        "\twhen this requires a runtime check. This option tries to",
-        "\tminimize stack consumption, possibly at the expense of speed.",
-        "--no-use-local-vars",
-        "\tDisable the transformation to use local variables in C code",
-        "\tblocks wherever possible.",
-% This is useful for developers only.
-%       "--standardize-labels",
-%       "\tStandardize internal labels in the generated code.",
-        "--no-optimize-labels",
-        "\tDisable elimination of dead labels and code.",
-        "--optimize-dups",
-        "\tEnable elimination of duplicate code within procedures.",
-        "--optimize-proc-dups",
-        "\tEnable elimination of duplicate procedures.",
-%%%     "--optimize-copyprop",
-%%%     "\tEnable the copy propagation optimization.",
-        "--no-optimize-frames",
-        "\tDisable stack frame optimizations.",
-        "--no-optimize-delay-slot",
-        "\tDisable branch delay slot optimizations.",
-        "--optimize-reassign",
-        "\tOptimize away assignments to locations that already hold",
-        "\tthe assigned value.",
-        "--optimize-repeat <n>",
-        "\tIterate most optimizations at most <n> times (default: 3).",
-        "--layout-compression-limit <n>",
-        "\tAttempt to compress the layout structures used by the debugger",
-        "\tonly as long as the arrays involved have at most <n> elements",
-        "\t(default: 4000)."
-    ], !IO).
+        % The following options are for developers only --they provide
+        % finer grained control over smart indexing.
 
-:- pred options_help_mlds_mlds_optimization(io.text_output_stream::in,
-    io::di, io::uo) is det.
+        priv_help("no-smart-atomic-indexing", [
+            "Do not generate smart switches on atomic types."]),
 
-options_help_mlds_mlds_optimization(Stream, !IO) :-
-    io.write_string(Stream, "\n    MLDS -> MLDS optimizations:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "--no-mlds-optimize",
-        "\tDisable the MLDS->MLDS optimization passes.",
-        "--no-mlds-peephole",
-        "\tDo not perform peephole optimization of the MLDS.",
-        "--no-optimize-tailcalls",
-        "\tTreat tailcalls as ordinary calls, rather than optimizing",
-        "\tby turning self-tailcalls into loops.",
-        "--no-optimize-initializations",
-        "\tLeave initializations of local variables as",
-        "\tassignment statements, rather than converting such",
-        "\tassignment statements into initializers.",
-% This is useful for developers only.
-%       "--eliminate-unused-mlds-assigns",
-%       "\tEliminate assignments to dead variables in the MLDS.",
-        "--eliminate-local-vars",
-        "\tEliminate local variables with known values, where possible,",
-        "\tby replacing occurrences of such variables with their values.",
-        "--no-generate-trail-ops-inline",
-        "\tDo not generate trailing operations inline,",
-        "\tbut instead insert calls to the versions of these operations",
-        "\tin the standard library."
-    ], !IO).
+        priv_help("no-smart-string-indexing", [
+            "Do not generate smart switches on strings."]),
 
-:- pred options_help_output_optimization(io.text_output_stream::in,
-    io::di, io::uo) is det.
+        priv_help("no-smart-tag-indexing", [
+            "Do not generate smart switches on discriminated union types."]),
 
-options_help_output_optimization(Stream, !IO) :-
-    io.write_string(Stream,
-        "\n    Output-level (LLDS -> C) optimizations:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "--use-macro-for-redo-fail",
-        "\tEmit the fail or redo macro instead of a branch",
-        "\tto the fail or redo code in the runtime system.",
-        "\tThis produces slightly bigger but slightly faster code.",
-        "--no-emit-c-loops",
-        "\tUse only gotos, don't emit C loop constructs.",
-        "--procs-per-c-function <n>",
-        "\tPut the code for up to <n> Mercury",
-        "\tprocedures in a single C function. The default",
-        "\tvalue of <n> is one. Increasing <n> can produce",
-        "\tslightly more efficient code, but makes compilation slower.",
-        "--everything-in-one-c-function",
-        "\tThis option has the effect of putting the code for all",
-        "\tthe Mercury procedures in a single C function,",
-        "\twhich produces the most efficient code but tends to",
-        "\tseverely stress the C compiler on large modules.",
-        "--no-local-thread-engine-base",
-        "\tDo not copy the thread-local Mercury engine base address",
-        "\tinto local variables. This option only affects low-level",
-        "\tparallel grades not using the GNU C global register variables",
-        "\textension."
-    ], !IO).
+        priv_help("no-smart-float-indexing", [
+            "Do not generate smart switches on floats."]),
 
-:- pred options_help_target_code_compilation(io.text_output_stream::in,
-    io::di, io::uo) is det.
+        help("dense-switch-req-density <percentage>", [
+            "The jump table generated for an atomic switch",
+            "must have at least this percentage of full slots (default: 25)."]),
 
-options_help_target_code_compilation(Stream, !IO) :-
-    io.write_string(Stream, "\n    Target code compilation:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "\tNote that if you are using Mmake, you need to pass these",
-        "\toptions to the target code compiler (e.g. `mgnuc')",
-        "\trather than to `mmc'.",
+        help("lookup-switch-req-density <percentage>", [
+            "The jump table generated for an atomic switch",
+            "in which all the outputs are constant terms",
+            "must have at least this percentage of full slots (default: 25)."]),
 
-        "--target-debug",
-        "\tEnable debugging of the generated target code.",
-        "\tIf the target language is C, this has the same effect as",
-        "\t`--c-debug' (see below).",
-        "\tIf the target language is C#, this causes the compiler to",
-        "\tpass `/debug' to the C# compiler.)",
+        help("dense-switch-size <n>", [
+            "The jump table generated for an atomic switch",
+            "must have at least this many entries (default: 4)."]),
 
-        "--cc <compiler-name>",
-        "\tSpecify which C compiler to use.",
+        help("lookup-switch-size <n>", [
+            "The lookup table generated for an atomic switch",
+            "must have at least this many entries (default: 4)."]),
 
-        "--no-c-optimize",
-        "\tDon't enable the C compiler's optimizations.",
+        help("string-trie-switch-size <n>", [
+            "The trie generated for a string switch",
+            "must have at least this many entries (default: 16)."]),
 
-        "--no-ansi-c",
-        "\tThis option is deprecated and does not have any effect.",
+        help("string-hash-switch-size <n>", [
+            "The hash table generated for a string switch",
+            "must have at least this many entries (default: 8)."]),
 
-        "--c-debug",
-        "\tEnable debugging of the generated C code.",
-        "\t(This has the same effect as `--cflags ""-g""'",
-        "\tand disables stripping of the executable.)",
+        help("string-binary-switch-size <n>", [
+            "The binary search table generated for a string switch",
+            "must have at least this many entries (default: 4)."]),
 
-        "--c-include-directory <dir>, --c-include-dir <dir>",
-        "\tAppend <dir> to the list of directories to be searched for",
-        "\tC header files. Note that if you want to override",
-        "\tthis list, rather than append to it, then you can set the",
-        "\t`MERCURY_MC_ALL_C_INCL_DIRS' environment variable to a",
-        "\tsequence of `--c-include-directory' options.",
+        help("tag-switch-size <n>", [
+            "The number of alternatives in a tag switch",
+            "must be at least this number (default: 3)."]),
 
-        "--inline-alloc",
-        "\tInline calls to GC_malloc().",
-        "\tThis can improve performance a fair bit,",
-        "\tbut may significantly increase code size.",
-        "\tThis option has no effect if `--gc boehm'",
-        "\tis not set or if the C compiler is not GNU C.",
+        help("try-switch-size <n>", [
+            "The number of alternatives in a try/retry chain switch",
+            "must be at least this number (default: 3)."]),
 
-        "--cflags <options>, --cflag <option>",
-        "\tSpecify options to be passed to the C compiler.",
-        "\t`--cflag' should be used for single words which need",
-        "\tto be quoted when passed to the shell.",
+        help("binary-switch-size <n>", [
+            "The number of alternatives in a binary search switch",
+            "must be at least this number (default: 4)."]),
+
+        % The next two options are only for performance tests.
+        priv_help("switch-single-rec-base-first", [
+            "In a switch with two arms, one a base case and one with a single",
+            "recursive call, put the base case first."]),
+
+        priv_help("switch-multi-rec-base-first", [
+            "In a switch with two arms, one a base case and one with multiple",
+            "recursive calls, put the base case first."]),
+
+        help("no-static-ground-terms", [
+            "Disable the optimization of constructing constant ground terms",
+            "at compile time and storing them as static constants.",
+            "Note that auxiliary data structures created by the compiler",
+            "for purposes such as debugging will still be created as",
+            "static constants."]),
+
+        help("no-use-atomic-cells", [
+            "Don't use the atomic variants of the Boehm gc allocator calls,",
+            "even when this would otherwise be possible."]),
+
+        help("no-middle-rec", [
+            "Disable the middle recursion optimization."]),
+
+        help("no-simple-neg", [
+            "Don't generate simplified code for simple negations."]),
+
+        priv_help("no-allow-hijacks", [
+            "Do not generate code in which a procedure hijacks",
+            "a nondet stack frame that possibly belongs to",
+            "another procedure invocation"])
+
+    ],
+    Section = help_section(SectionName, [], HelpStructs).
+
+:- func options_help_llds_llds_optimization = help_section.
+
+options_help_llds_llds_optimization = Section :-
+    SectionName = "Low-level (LLDS -> LLDS) optimizations",
+    HelpStructs = [
+
+        help("no-common-data", [
+            "Disable optimization of common data structures."]),
+
+        help("no-common-layout-data", [
+            "Disable optimization of common subsequences in layout",
+            "structures."]),
+
+        help("no-llds-optimize", [
+            "Disable the low-level optimization passes."]),
+
+        help("optimize-dead-procs", [
+            "Enable dead predicate elimination."]),
+
+        help("no-optimize-peep", [
+            "Disable local peephole optimizations."]),
+
+        % This is useful for developers only, to test whether a gcc bug
+        % has been fixed.
+        priv_help("no-optimize-peep-mkword", [
+            "Disable peephole optimizations of words created by mkword."]),
+
+        help("no-optimize-jumps", [
+            "Disable elimination of jumps to jumps."]),
+
+        help("no-optimize-fulljumps", [
+            "Disable elimination of jumps to ordinary code."]),
+
+        help("pessimize-tailcalls", [
+            "Disable the optimization of tailcalls."]),
+
+        help("checked-nondet-tailcalls", [
+            "Convert nondet calls into tail calls whenever possible, even",
+            "when this requires a runtime check. This option tries to",
+            "minimize stack consumption, possibly at the expense of speed."]),
+
+        help("no-use-local-vars", [
+            "Disable the transformation to use local variables in C code",
+            "blocks wherever possible."]),
+
+        % This is useful for developers only.
+        priv_help("standardize-labels", [
+            "Standardize internal labels in the generated code."]),
+
+        help("no-optimize-labels", [
+            "Disable elimination of dead labels and code."]),
+
+        help("optimize-dups", [
+            "Enable elimination of duplicate code within procedures."]),
+
+        help("optimize-proc-dups", [
+            "Enable elimination of duplicate procedures."]),
+
+        help("no-optimize-frames", [
+            "Disable stack frame optimizations."]),
+
+        help("no-optimize-delay-slot", [
+            "Disable branch delay slot optimizations."]),
+
+        help("optimize-reassign", [
+            "Optimize away assignments to locations that already hold",
+            "the assigned value."]),
+
+        help("optimize-repeat <n>", [
+            "Iterate most optimizations at most <n> times (default: 3)."]),
+
+        help("layout-compression-limit <n>", [
+            "Attempt to compress the layout structures used by the debugger",
+            "only as long as the arrays involved have at most <n> elements",
+            "(default: 4000)."])
+
+    ],
+    Section = help_section(SectionName, [], HelpStructs).
+
+:- func options_help_mlds_mlds_optimization = help_section.
+
+options_help_mlds_mlds_optimization = Section :-
+    SectionName = "MLDS -> MLDS optimizations",
+    HelpStructs = [
+
+        help("no-mlds-optimize", [
+            "Disable the MLDS->MLDS optimization passes."]),
+
+        help("no-mlds-peephole", [
+            "Do not perform peephole optimization of the MLDS."]),
+
+        help("no-optimize-tailcalls", [
+            "Treat tailcalls as ordinary calls, rather than optimizing",
+            "by turning self-tailcalls into loops."]),
+
+        help("no-optimize-initializations", [
+            "Leave initializations of local variables as",
+            "assignment statements, rather than converting such",
+            "assignment statements into initializers."]),
+
+        % This is useful for developers only.
+        priv_help("eliminate-unused-mlds-assigns", [
+            "Eliminate assignments to dead variables in the MLDS."]),
+
+        help("eliminate-local-vars", [
+            "Eliminate local variables with known values, where possible,",
+            "by replacing occurrences of such variables with their values."]),
+
+        help("no-generate-trail-ops-inline", [
+            "Do not generate trailing operations inline,",
+            "but instead insert calls to the versions of these operations",
+            "in the standard library."])
+
+    ],
+    Section = help_section(SectionName, [], HelpStructs).
+
+:- func options_help_output_optimization = help_section.
+
+options_help_output_optimization = Section :-
+    SectionName = "Output-level (LLDS -> C) optimizations",
+    HelpStructs = [
+
+        help("use-macro-for-redo-fail", [
+            "Emit the fail or redo macro instead of a branch",
+            "to the fail or redo code in the runtime system.",
+            "This produces slightly bigger but slightly faster code."]),
+
+        help("no-emit-c-loops", [
+            "Use only gotos, don't emit C loop constructs."]),
+
+        help("procs-per-c-function <n>", [
+            "Put the code for up to <n> Mercury",
+            "procedures in a single C function. The default",
+            "value of <n> is one. Increasing <n> can produce",
+            "slightly more efficient code, but makes compilation slower."]),
+
+        help("everything-in-one-c-function", [
+            "This option has the effect of putting the code for all",
+            "the Mercury procedures in a single C function,",
+            "which produces the most efficient code but tends to",
+            "severely stress the C compiler on large modules."]),
+
+        help("no-local-thread-engine-base", [
+            "Do not copy the thread-local Mercury engine base address",
+            "into local variables. This option only affects low-level",
+            "parallel grades not using the GNU C global register variables",
+            "extension."])
+
+    ],
+    Section = help_section(SectionName, [], HelpStructs).
+
+:- func options_help_target_code_compilation = help_section.
+
+options_help_target_code_compilation = Section :-
+    SectionName = "Target code compilation",
+
+    SectionCommentLines = [
+        "Note that if you are using Mmake, you need to pass these",
+        "options to the target code compiler (e.g. `mgnuc')",
+        "rather than to `mmc'."
+    ],
+
+    HelpStructs = [
+
+        help("target-debug", [
+            "Enable debugging of the generated target code.",
+            "If the target language is C, this has the same effect as",
+            "`--c-debug' (see below).",
+            "If the target language is C#, this causes the compiler to",
+            "pass `/debug' to the C# compiler.)"]),
+
+        help("cc <compiler-name>", [
+            "Specify which C compiler to use."]),
+
+        help("no-c-optimize", [
+            "Don't enable the C compiler's optimizations."]),
+
+        help("no-ansi-c", [
+            "This option is deprecated and does not have any effect."]),
+
+        help("c-debug", [
+            "Enable debugging of the generated C code.",
+            "(This has the same effect as `--cflags ""-g""'",
+            "and disables stripping of the executable.)"]),
+
+        alt_help("c-include-directory <dir>", pos_sep_lines,
+                ["c-include-dir <dir>"], [
+            "Append <dir> to the list of directories to be searched for",
+            "C header files. Note that if you want to override",
+            "this list, rather than append to it, then you can set the",
+            "`MERCURY_MC_ALL_C_INCL_DIRS' environment variable to a",
+            "sequence of `--c-include-directory' options."]),
+
+        help("inline-alloc", [
+            "Inline calls to GC_malloc().",
+            "This can improve performance a fair bit,",
+            "but may significantly increase code size.",
+            "This option has no effect if `--gc boehm'",
+            "is not set or if the C compiler is not GNU C."]),
+
+        alt_help("cflags <options>", pos_sep_lines, ["cflag <option>"], [
+            "Specify options to be passed to the C compiler.",
+            "`--cflag' should be used for single words which need",
+            "to be quoted when passed to the shell."]),
 
         % The --gcc-flags, --gcc-flag, --clang-flags, --clang-flag,
         % --msvc-flags and --msvc-flag options are an internal
@@ -7144,183 +7277,224 @@ options_help_target_code_compilation(Stream, !IO) :-
 
         % --cflags-for-ansi is deprecated and no longer has any effect.
 
-        "--javac <javac>",
-        "--java-compiler <javac>",
-        "\tSpecify which Java compiler to use. The default is `javac'.",
+        alt_help("javac <javac>", pos_sep_lines,
+                ["java-compiler <javac>"], [
+            "Specify which Java compiler to use. The default is `javac'."]),
 
-        "--java-interpreter <java>",
-        "\tSpecify which Java interpreter to use.",
-        "\tThe default is `java'",
+        help("java-interpreter <java>", [
+            "Specify which Java interpreter to use.",
+            "The default is `java'"]),
 
-        "--javac-flags <options>, --javac-flag <option>",
-        "--java-flags <options>, --java-flag <option>",
-        "\tSpecify options to be passed to the Java compiler.",
-        "\t`--java-flag' or `--javac-flag' should be used for single words",
-        "\twhich need to be quoted when passed to the shell.",
+        alt_help("javac-flags <options>", pos_sep_lines,
+                ["javac-flag <option>",
+                "java-flags <options>",
+                "java-flag <option>"], [
+            "Specify options to be passed to the Java compiler.",
+            "`--java-flag' or `--javac-flag' should be used for single words",
+            "which need to be quoted when passed to the shell."]),
 
-        "--java-classpath <path>",
-        "\tSet the classpath for the Java compiler and interpreter.",
+        help("java-classpath <path>", [
+            "Set the classpath for the Java compiler and interpreter."]),
 
-        "--java-runtime-flags <options>, java-runtime-flag <option>",
-        "\tSpecify options to be passed to the Java interpreter.",
-        "\t`--java-runtime-flag' should be used for single words which need",
-        "\tto be quoted when passed to the shell.",
+        alt_help("java-runtime-flags <options>", pos_sep_lines,
+                ["java-runtime-flag <option>"], [
+            "Specify options to be passed to the Java interpreter.",
+            "`--java-runtime-flag' should be used for single words which need",
+            "to be quoted when passed to the shell."]),
 
-        "--csharp-compiler <csc>",
-        "\tSpecify the name of the C# Compiler. The default is `csc'.",
-        "--csharp-flags <options>, --csharp-flag <option>",
-        "\tSpecify options to be passed to the C# compiler.",
-        "\t`--csharp-flag' should be used for single words which need",
-        "\tto be quoted when passed to the shell.",
-        "--cli-interpreter <prog>",
-        "\tSpecify the program that implements the Common Language",
-        "\tInfrastructure (CLI) execution environment, e.g. `mono'."
-    ], !IO).
+        help("csharp-compiler <csc>", [
+            "Specify the name of the C# Compiler. The default is `csc'."]),
 
-:- pred options_help_link(io.text_output_stream::in, io::di, io::uo) is det.
+        alt_help("csharp-flags <options>", pos_sep_lines,
+                ["csharp-flag <option>"], [
+            "Specify options to be passed to the C# compiler.",
+            "`--csharp-flag' should be used for single words which need",
+            "to be quoted when passed to the shell."]),
 
-options_help_link(Stream, !IO) :-
-    io.write_string(Stream, "\nLink Options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "-o <filename>, --output-file <filename>",
-        "\tSpecify the name of the final executable.",
-        "\t(The default executable name is the same as the name",
-        "\tof the first module on the command line.)",
-        "\tThis option is ignored by `mmc --make'.",
-        "--ld-flags <options>, --ld-flag <option>",
-        "\tSpecify options to be passed to the linker command",
-        "\tinvoked by ml to link an executable.",
-        "\tUse `ml --print-link-command' to find out which",
-        "\tcommand is used.",
-        "\t`--ld-flag' should be used for single words which need",
-        "\tto be quoted when passed to the shell.",
-        "--ld-libflags <options>, --ld-libflag <option>",
-        "\tSpecify options to be passed to the linker command",
-        "\tinvoked by ml to link a shared library.",
-        "\tUse `ml --print-shared-lib-link-command' to find out",
-        "\twhich command is used.",
-        "\t`--ld-libflag' should be used for single words which need",
-        "\tto be quoted when passed to the shell.",
-        "-L <directory>, --library-directory <directory>",
-        "\tAppend <directory> to the list of directories in which",
-        "\tto search for libraries.",
-        "-R <directory>, --runtime-library-directory <directory>",
-        "\tAppend <directory> to the list of directories in which",
-        "\tto search for shared libraries at runtime.",
-        "--no-default-runtime-library-directory",
-        "\tDo not add any directories to the runtime search path",
-        "\tautomatically.",
-        "--shlib-linker-install-name-path <directory>",
-        "\tSpecify the path where a shared library will be installed.",
-        "\tThis option is useful on systems where the runtime search",
-        "\tpath is obtained from the shared library and not via the",
-        "\t-R option above (such as Mac OS X).",
-        "-l <library>, --library <library>",
-        "\tLink with the specified library.",
-        "--link-object <file>",
-        "\tLink with the specified object or archive file.",
-        "--search-lib-files-dir <directory>",
-        "--search-library-files-directory <directory>",
-        "\tSearch <directory> for Mercury library files that have not yet",
-        "\tbeen installed. Similar to adding <directory> using all of the",
-        "\t`--search-directory', `--intermod-directory',",
-        "\t`--library-directory', `--init-file-directory' and",
-        "\t`--c-include-directory' options.",
-        "--mld <directory>, --mercury-library-directory <directory>",
-        "\tAppend <directory> to the list of directories to",
-        "\tbe searched for Mercury libraries. This will add",
-        "\t`--search-directory', `--library-directory',",
-        "\t`--init-file-directory' and `--c-include-directory'",
-        "\toptions as needed.",
-        "--mercury-standard-library-directory <directory>",
-        "--mercury-stdlib-dir <directory>",
-        "\tSearch <directory> for the Mercury standard library.",
-        "\tImplies `--mercury-library-directory <directory>'",
-        "\tand `--mercury-configuration-directory <directory>'.",
-        "--no-mercury-standard-library-directory",
-        "--no-mercury-stdlib-dir",
-        "\tDon't use the Mercury standard library.",
-        "\tImplies `--no-mercury-configuration-directory'.",
-        "--ml <library>, --mercury-library <library>",
-        "\tLink with the specified Mercury library.",
+        help("cli-interpreter <prog>", [
+            "Specify the program that implements the Common Language",
+            "Infrastructure (CLI) execution environment, e.g. `mono'."])
 
-        "--linkage {shared, static}",
-        "\tSpecify whether to use shared or static linking for",
-        "\texecutables. Shared libraries are always linked",
-        "\twith `--linkage shared'.",
-        "--mercury-linkage {shared, static}",
-        "\tSpecify whether to use shared or static linking when",
-        "\tlinking an executable with Mercury libraries.",
-        "\tShared libraries are always linked with",
-        "\t`--mercury-linkage shared'.",
+    ],
+    Section = help_section(SectionName, SectionCommentLines, HelpStructs).
 
-        "--init-file-directory <directory>",
-        "\tAppend <directory> to the list of directories to",
-        "\tbe searched for `.init' files by c2init.",
-        "--init-file <init-file>",
-        "\tAppend <init-file> to the list of `.init' files to",
-        "\tbe passed to c2init.",
-        "--trace-init-file <init-file>",
-        "\tAppend <init-file> to the list of `.init' files to",
-        "\tbe passed to c2init when tracing is enabled.",
+:- func options_help_link = help_section.
 
-        "--no-demangle",
-        "\tDon't pipe link errors through the Mercury demangler.",
-        "--no-main",
-        "\tDon't generate a C main() function. The user's code must",
-        "\tprovide a main() function.",
-        "--no-allow-undefined",
-        "\tDo not allow undefined symbols in shared libraries.",
-        "--no-use-readline",
-        "\tDisable use of the readline library in the debugger.",
-        "--runtime-flags <flags>",
-        "\tSpecify flags to pass to the Mercury runtime.",
-        "--extra-initialization-functions, --extra-inits",
-        "\tSearch `.c' files for extra initialization functions.",
-        "\t(This may be necessary if the C files contain",
-        "\thand-coded C code with `INIT' comments, rather than",
-        "\tcontaining only C code that was automatically generated",
-        "\tby the Mercury compiler.)",
+options_help_link = Section :-
+    SectionName = "Link Options",
+    HelpStructs = [
 
-        "--link-executable-command <command>",
-        "\tSpecify the command used to invoke the linker when linking",
-        "\tan executable.",
-        "--link-shared-lib-command <command>",
-        "\tSpecify the command used to invoke the linker when linking",
-        "\ta shared library.",
+        short_arg_help("o <filename>", "output-file <filename>", [], [
+            "Specify the name of the final executable.",
+            "(The default executable name is the same as the name",
+            "of the first module on the command line.)",
+            "This option is ignored by `mmc --make'."]),
 
-        "--no-strip",
-        "\tDo not strip executables.",
-        "--strip-executable-command <command>",
-        "\tSpecify the command used to strip executables if no linker",
-        "\tflag to do so is available. This option has no effect on ml.",
-        "--strip-executable-shared-flags <options>",
-        "\tSpecify options to pass to the strip executable command when",
-        "\tlinking against Mercury shared libraries.",
-        "--strip-executable-static-flags <options>",
-        "\tSpecify options to pass to the strip executable command when",
-        "\tlinking against Mercury static libraries.",
+        alt_help("ld-flags <options>", pos_sep_lines, ["ld-flag <option>"], [
+            "Specify options to be passed to the linker command",
+            "invoked by ml to link an executable.",
+            "Use `ml --print-link-command' to find out which",
+            "command is used.",
+            "`--ld-flag' should be used for single words which need",
+            "to be quoted when passed to the shell."]),
 
-        "--java-archive-command <command>",
-        "\tSpecify the command used to produce Java archive (JAR) files.",
+        alt_help("ld-libflags <options>", pos_sep_lines,
+                ["ld-libflag <option>"], [
+            "Specify options to be passed to the linker command",
+            "invoked by ml to link a shared library.",
+            "Use `ml --print-shared-lib-link-command' to find out",
+            "which command is used.",
+            "`--ld-libflag' should be used for single words which need",
+            "to be quoted when passed to the shell."]),
 
-        "--framework <framework>",
-        "\tBuild and link against the specified framework.",
-        "\t(Mac OS X only.)",
-        "-F <directory>, --framework-directory <directory>",
-        "\tAppend the specified directory to the framework search path.",
-        "\t(Mac OS X only.)",
+        short_arg_help("L <directory>", "library-directory <directory>", [], [
+            "Append <directory> to the list of directories in which",
+            "to search for libraries."]),
 
-        "--sign-assembly <keyfile>",
-        "\tSign the current assembly with the strong name contained",
-        "\tin the specified key file.",
-        "\t(This option is only meaningful when generating library",
-        "\tassemblies with the C# back-end.)",
+        short_arg_help("R <directory>",
+                "runtime-library-directory <directory>", [], [
+            "Append <directory> to the list of directories in which",
+            "to search for shared libraries at runtime."]),
 
-        "--cstack-reserve-size <size>",
-        "\tSet the total size of the C stack in virtual memory for",
-        "\texecutables. The stack size is given in bytes.",
-        "\t(Microsoft Windows only.)"
+        help("no-default-runtime-library-directory", [
+            "Do not add any directories to the runtime search path",
+            "automatically."]),
+
+        help("shlib-linker-install-name-path <directory>", [
+            "Specify the path where a shared library will be installed.",
+            "This option is useful on systems where the runtime search",
+            "path is obtained from the shared library and not via the",
+            "-R option above (such as Mac OS X)."]),
+
+        short_arg_help("l <library>", "library <library>", [], [
+            "Link with the specified library."]),
+
+        help("link-object <file>", [
+            "Link with the specified object or archive file."]),
+
+        alt_help("search-lib-files-dir <directory>", pos_sep_lines,
+                ["search-library-files-directory <directory>"], [
+            "Search <directory> for Mercury library files that have not yet",
+            "been installed. Similar to adding <directory> using all of the",
+            "`--search-directory', `--intermod-directory',",
+            "`--library-directory', `--init-file-directory' and",
+            "`--c-include-directory' options."]),
+
+        alt_help("mld <directory>", pos_sep_lines,
+                ["mercury-library-directory <directory>"], [
+            "Append <directory> to the list of directories to",
+            "be searched for Mercury libraries. This will add",
+            "`--search-directory', `--library-directory',",
+            "`--init-file-directory' and `--c-include-directory'",
+            "options as needed."]),
+
+        alt_help("mercury-standard-library-directory <directory>",
+                pos_sep_lines, ["mercury-stdlib-dir <directory>"], [
+            "Search <directory> for the Mercury standard library.",
+            "Implies `--mercury-library-directory <directory>'",
+            "and `--mercury-configuration-directory <directory>'."]),
+
+        alt_help("no-mercury-standard-library-directory", pos_sep_lines,
+                ["no-mercury-stdlib-dir"], [
+            "Don't use the Mercury standard library.",
+            "Implies `--no-mercury-configuration-directory'."]),
+
+        alt_help("ml <library>", pos_sep_lines,
+                ["mercury-library <library>"], [
+            "Link with the specified Mercury library."]),
+
+        help("linkage {shared, static}", [
+            "Specify whether to use shared or static linking for",
+            "executables. Shared libraries are always linked",
+            "with `--linkage shared'."]),
+
+        help("mercury-linkage {shared, static}", [
+            "Specify whether to use shared or static linking when",
+            "linking an executable with Mercury libraries.",
+            "Shared libraries are always linked with",
+            "`--mercury-linkage shared'."]),
+
+        help("init-file-directory <directory>", [
+            "Append <directory> to the list of directories to",
+            "be searched for `.init' files by c2init."]),
+
+        help("init-file <init-file>", [
+            "Append <init-file> to the list of `.init' files to",
+            "be passed to c2init."]),
+
+        help("trace-init-file <init-file>", [
+            "Append <init-file> to the list of `.init' files to",
+            "be passed to c2init when tracing is enabled."]),
+
+        help("no-demangle", [
+            "Don't pipe link errors through the Mercury demangler."]),
+
+        help("no-main", [
+            "Don't generate a C main() function. The user's code must",
+            "provide a main() function."]),
+
+        help("no-allow-undefined", [
+            "Do not allow undefined symbols in shared libraries."]),
+
+        help("no-use-readline", [
+            "Disable use of the readline library in the debugger."]),
+
+        help("runtime-flags <flags>", [
+            "Specify flags to pass to the Mercury runtime."]),
+
+        alt_help("extra-initialization-functions", pos_sep_lines,
+                ["extra-inits"], [
+            "Search `.c' files for extra initialization functions.",
+            "(This may be necessary if the C files contain",
+            "hand-coded C code with `INIT' comments, rather than",
+            "containing only C code that was automatically generated",
+            "by the Mercury compiler.)"]),
+
+        help("link-executable-command <command>", [
+            "Specify the command used to invoke the linker when linking",
+            "an executable."]),
+
+        help("link-shared-lib-command <command>", [
+            "Specify the command used to invoke the linker when linking",
+            "a shared library."]),
+
+        help("no-strip", [
+            "Do not strip executables."]),
+
+        help("strip-executable-command <command>", [
+            "Specify the command used to strip executables if no linker",
+            "flag to do so is available. This option has no effect on ml."]),
+
+        help("strip-executable-shared-flags <options>", [
+            "Specify options to pass to the strip executable command when",
+            "linking against Mercury shared libraries."]),
+
+        help("strip-executable-static-flags <options>", [
+            "Specify options to pass to the strip executable command when",
+            "linking against Mercury static libraries."]),
+
+        help("java-archive-command <command>", [
+            "Specify the command used to produce Java archive (JAR) files."]),
+
+        help("framework <framework>", [
+            "Build and link against the specified framework.",
+            "(Mac OS X only.)"]),
+
+        short_arg_help("F <directory>",
+                "framework-directory <directory>", [], [
+            "Append the specified directory to the framework search path.",
+            "(Mac OS X only.)"]),
+
+        help("sign-assembly <keyfile>", [
+            "Sign the current assembly with the strong name contained",
+            "in the specified key file.",
+            "(This option is only meaningful when generating library",
+            "assemblies with the C# back-end.)"]),
+
+        help("cstack-reserve-size <size>", [
+            "Set the total size of the C stack in virtual memory for",
+            "executables. The stack size is given in bytes.",
+            "(Microsoft Windows only.)"])
 
         % The --shared-library-extension,
         % --library-extension, --executable-file-extension
@@ -7349,7 +7523,9 @@ options_help_link(Stream, !IO) :-
         % --shlib-linker-use-install-name,
         % options are reserved for use by the `Mercury.config' file;
         % they are deliberately not documented.
-    ], !IO).
+
+    ],
+    Section = help_section(SectionName, [], HelpStructs).
 
 :- pred options_help_build_system(io.text_output_stream::in,
     io::di, io::uo) is det.
