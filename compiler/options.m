@@ -156,7 +156,7 @@
     % internally by the Mercury implementation, those which are not
     % sufficiently useful to be worth mentioning in the User Guide,
     % or options for experimental features that are not yet stable
-    % enough to be officially supported should still be documented.
+    % enough to be officially supported should still be documented).
     % The documentation can go either next to the option definition
     % here, or as commented-out code in the appropriate subroutine
     % of options_help/2.
@@ -4453,19 +4453,20 @@ handle_quoted_flag(Option, Flag, !OptionTable) :-
 options_help(Stream, !IO) :-
     What = print_public_help,
 
-    Sections = [
-        options_help_help,
-        options_help_warning,
-        options_help_verbosity,
-        options_help_output,
-        options_help_aux_output,
-        options_help_semantics,
-        options_help_termination,
-        options_help_ctgc
+    MaybeNestedSections = [
+        std_help_section(options_help_help),
+        std_help_section(options_help_warning),
+        std_help_section(options_help_verbosity),
+        std_help_section(options_help_output),
+        std_help_section(options_help_aux_output),
+        std_help_section(options_help_semantics),
+        std_help_section(options_help_termination),
+        std_help_section(options_help_ctgc),
+        options_help_compilation_model
     ],
-    list.foldl(output_help_section(Stream, What), Sections, !IO),
+    list.foldl(output_maybe_nested_help_section(Stream, What),
+        MaybeNestedSections, !IO),
 
-    options_help_compilation_model(Stream, !IO),
     options_help_code_generation(Stream, !IO),
     options_help_optimization(Stream, !IO),
     options_help_hlds_hlds_optimization(Stream, !IO),
@@ -5310,7 +5311,7 @@ options_help_aux_output = Section :-
 
         % "--trace decl" is not documented, because it is for backwards
         % compatibility only. It is now equivalent to `--trace rep'.
-        % help("trace {minimum, shallow, deep, decl, rep, default}",
+        % "trace {minimum, shallow, deep, decl, rep, default}",
         help("trace {minimum, shallow, deep, rep, default}", [
             "Generate code that includes the specified level",
             "of execution tracing.",
@@ -5863,10 +5864,9 @@ options_help_ctgc = Section :-
     ],
     Section = help_section(yes(SectionName), [], HelpStructs).
 
-:- pred options_help_compilation_model(io.text_output_stream::in,
-    io::di, io::uo) is det.
+:- func options_help_compilation_model = maybe_nested_help_section.
 
-options_help_compilation_model(Stream, !IO) :-
+options_help_compilation_model = NestedSection :-
     % XXX The structure of this predicate should mirror
     % the structure of the "Invocation" chapter of the user's guide,
     % probably with a sub-predicate for each section in that chapter.
@@ -5874,521 +5874,544 @@ options_help_compilation_model(Stream, !IO) :-
     % are similar in many ways, but they also have substantial differences,
     % many of which are unnecessary.
 
-    io.write_string(Stream, "\nCompilation model options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
+    OverallName = "Compilation model options",
+    OverallCommentLines = [
         "The following compilation options affect the generated",
         "code in such a way that the entire program must be",
         "compiled with the same setting of these options,",
         "and it must be linked to a version of the Mercury",
         "library which has been compiled with the same setting."
-    ], !IO),
-    io.write_string(Stream, "\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "-s <grade>, --grade <grade>",
-        "\tSelect the compilation model. The <grade> should be one of",
-        "\tthe base grades `none', `reg', `asm_fast', `hlc', `java' or,",
-        "\t`csharp'.",
+    ],
 
-% The following base grade components are not publicly documented:
-%
-%  asm_jump
-%  fast
-%  jump
-%
-% These three are not tested as much as the other three LLDS base grades,
-% and have proved to be a bit delicate in any case.
+    HelpStructsGrade = [
+        % The following base grade components are not publicly documented:
+        %
+        %  asm_jump
+        %  fast
+        %  jump
+        %
+        % These three are not tested as much as the other three LLDS base
+        % grades, and have proved to be a bit delicate in any case.
+        % ZZZ This is WAY out of date.
+        short_arg_help("s <grade>", "grade <grade>", [], [
+            "Select the compilation model. The <grade> should consist of",
+            "one of the base grades `none', `reg', `asm_fast', `hlc', `java'",
+            "or `csharp',",
+            "followed by zero or more of the grade modifiers",
+            "`.gc', `.prof', `.memprof', `.profdeep', `.tr',",
+            "`.spf', `.stseg', `.debug', and `.par'.",
+            "Depending on your particular installation, only a subset",
+            "of these possible grades will have been installed.",
+            "Attempting to use a grade which has not been installed",
+            "will result in an error at link time."])
+    ],
+    SectionGrade = help_section(no, [], HelpStructsGrade),
 
-        "\tor one of those with one or more of the grade modifiers",
-        "\t`.gc', `.prof', `.memprof', `.profdeep', `.tr',",
-        "\t`.spf', `.stseg', `.debug', and/or `.par' appended.",
-        "\tDepending on your particular installation, only a subset",
-        "\tof these possible grades will have been installed.",
-        "\tAttempting to use a grade which has not been installed",
-        "\twill result in an error at link time."
-    ], !IO),
+    % XXX The use of tabs here and many places below
+    % is a crude (non-semantic) way to align things.
+    SectionNameTarget = "Target selection compilation model options",
+    HelpStructsTarget = [
+        alt_help("target c\t\t\t(grades: none, reg, asm_fast, hlc)",
+                pos_sep_lines,
+                ["target csharp\t\t\t(grades: csharp)",
+                "target java\t\t\t(grades: java)"], [
+            "Specify the target language: C, C# or Java.",
+            "The default is C.",
+            "Targets other than C imply `--high-level-code' (see below)."]),
 
-    io.write_string(Stream,
-        "\n    Target selection compilation model options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        %"--target c\t\t\t(grades: none, reg, jump, fast,",
-        %"\t\t\t\t\tasm_jump, asm_fast, hl, hlc)",
-        "--target c\t\t\t(grades: none, reg, asm_fast, hlc)",
-        "--target csharp\t\t\t(grades: csharp)",
-        "--target java\t\t\t(grades: java)",
-        "\tSpecify the target language: C, C# or Java.",
-        "\tThe default is C.",
-        "\tTargets other than C imply `--high-level-code' (see below).",
+        help("csharp", [
+            "An abbreviation for `--target csharp'."]),
 
-        "--csharp",
-        "\tAn abbreviation for `--target csharp'.",
-        "--csharp-only",
-        "\tAn abbreviation for `--target csharp --target-code-only'.",
-        "\tGenerate C# code in `<module>.cs', but do not generate",
-        "\tobject code.",
+        % XXX Using "object code" for C# and Java is iffy.
+        help("csharp-only", [
+            "An abbreviation for `--target csharp --target-code-only'.",
+            "Generate C# code in `<module>.cs', but do not generate",
+            "object code."]),
 
-        "--java",
-        "\tAn abbreviation for `--target java'.",
-        "--java-only",
-        "\tAn abbreviation for `--target java --target-code-only'.",
-        "\tGenerate Java code in `<module>.java', but do not generate",
-        "\tobject code.",
+        help("java", [
+            "An abbreviation for `--target java'."]),
 
-        "--compile-to-c",
-        "\tAn abbreviation for `--target c --target-code-only'.",
-        "\tGenerate C code in `<module>.c', but do not generate object",
-        "\tcode."
-    ], !IO),
+        help("java-only", [
+            "An abbreviation for `--target java --target-code-only'.",
+            "Generate Java code in `<module>.java', but do not generate",
+            "object code."]),
 
-    io.write_string(Stream,
-        "\n    Optional feature compilation model options:\n", !IO),
-    io.write_string(Stream,
-        "\n      Debugging\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "--debug\t\t\t\t(grade modifier: `.debug')",
-        "\tEnable Mercury-level debugging.",
-        "\tSee the Debugging chapter of the Mercury User's Guide",
-        "\tfor details.",
-        "\tThis option is not yet supported for the `--high-level-code'",
-        "\tback-ends.",
-        "--decl-debug\t\t\t\t(grade modifier: `.decldebug')",
-        "\tEnable full support for declarative debugging.",
-        "\tThis allows subterm dependency tracking in the declarative",
-        "\tdebugger.",
-        "\tSee the Debugging chapter of the Mercury User's Guide",
-        "\tfor details.",
-        "\tThis option is not yet supported for the `--high-level-code'",
-        "\tback-ends."
-% XXX The source-to-source debugging transform is not ready for public
-% consumption.
-%       "--ss-debug\t\t\t\t(grade modifier: `.ssdebug')",
-%       "\tEnable the source-to-source debugging transform."
-    ], !IO),
-    io.write_string(Stream,
-        "\n      Profiling\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "-p, --profiling, --time-profiling",
-        "\t\t\t\t(grade modifier: `.prof')",
-        "\tEnable time and call profiling. Insert profiling hooks in the",
-        "\tgenerated code, and also output some profiling",
-        "\tinformation (the static call graph) to the file",
-        "\t`<module>.prof'.",
-        "\tThis option is not supported for the C# or Java back-ends.",
-        "--memory-profiling\t\t(grade modifier: `.memprof')",
-        "\tEnable memory and call profiling.",
-        "\tThis option is not supported for the C# or Java back-ends.",
-        "--deep-profiling\t\t(grade modifier: `.profdeep')",
-        "\tEnable deep profiling.",
-        "\tThis option is not supported for the high-level C, C#",
-        "\tor Java back-ends.",
+        help("compile-to-c", [
+            "An abbreviation for `--target c --target-code-only'.",
+            "Generate C code in `<module>.c', but do not generate object",
+            "code."])
+    ],
+    SectionTarget = help_section(yes(SectionNameTarget), [],
+        HelpStructsTarget),
 
-% This option is not documented, it is intended for use by developers only.
-%
-%       "--pre-prof-transforms-simplify",
-%       "\tForce the pre-profiling simplification pass that is usually",
-%       "\tenabled when building a profiling version of a program. This",
-%       "\tallows a developer to enable this pass when using a",
-%       "\tnon-profiling build. It can be used to test that generated code",
-%       "\tintroduced in earlier passes is well-formed before it is",
-%       "\tpotentially removed by the dead procedure elimination pass later",
-%       "\ton.",
-%
+    % ZZZ
+%   io.write_string(Stream,
+%       "\n    Optional feature compilation model options:\n", !IO),
 
-% XXX The following options are not documented,
-% because they are currently not useful.
-% The idea was for you to be able to use --profile-calls
-% and --profile-time separately, but that doesn't work
-% because compiling with --profile-time instead of
-% --profile-calls results in different code addresses,
-% so you can't combine the data from versions of
-% your program compiled with different options.
-%
-%       "--profile-calls\t\t(grade modifier: `.profcalls')",
-%       "\tSimilar to `--profiling', except that only gathers",
-%       "\tcall counts, not timing information.",
-%       "\tUseful on systems where time profiling is not supported,",
-%       "\tbut not as useful as `--memory-profiling'.",
-%       "--profile-time\t\t(grade modifier: `.proftime')",
-%       "\tSimilar to `--profiling', except that it only gathers",
-%       "\ttiming information, not call counts.",
-%       "--profile-memory\t\t(grade modifier: `.profmem')",
-%       "\tSimilar to `--memory-profiling', except that it only",
-%       "\tgathers memory usage information, not call counts.",
+    SectionNameDebug = "Debugging",
+    HelpStructsDebug = [
+        help("debug\t\t\t\t(grade modifier: `.debug')", [
+            "Enable Mercury-level debugging.",
+            "See the Debugging chapter of the Mercury User's Guide",
+            "for details.",
+            "This option is not yet supported for the `--high-level-code'",
+            "back-ends."]),
 
-        "--no-coverage-profiling",
-        "\tDisable coverage profiling.",
-% The following options are for implementors only (intended for experiments).
-%       "--coverage-profiling-via-calls",
-%       "\tUse calls to implement coverage points, not inline foreign code.",
+        help("decl-debug\t\t\t\t(grade modifier: `.decldebug')", [
+            "Enable full support for declarative debugging.",
+            "This allows subterm dependency tracking in the declarative",
+            "debugger.",
+            "See the Debugging chapter of the Mercury User's Guide",
+            "for details.",
+            "This option is not yet supported for the `--high-level-code'",
+            "back-ends."]),
 
-%       "--coverage-profiling-static",
-%       "\tDisable dynamic coverage profiling, this uses less memory and may",
-%       "\tbe faster.",
+        % XXX The source-to-source debugging transform is not ready for public
+        % consumption.
+        priv_help("ss-debug\t\t\t\t(grade modifier: `.ssdebug')", [
+            "Enable the source-to-source debugging transform."])
+    ],
+    SectionDebug = help_section(yes(SectionNameDebug), [], HelpStructsDebug),
 
-%       "Switches to effect coverage profiling (part of deep profiling).",
-%       "they enable different types of coverage points.",
+    SectionNameProf = "Profiling",
+    HelpStructsProf = [
 
-%       "--no-profile-deep-coverage-after-goal",
-%       "\tDisable coverage points after goals.",
-%       "--no-profile-deep-coverage-branch-ite",
-%       "\tDisable coverage points at the beginning of then and else",
-%       "\tbranches.",
-%       "--no-profile-deep-coverage-branch-switch",
-%       "\tDisable coverage points at the beginning of switch branches.",
-%       "--no-profile-deep-coverage-branch-disj",
-%       "\tDisable coverage points at the beginning of disjunction branches.",
+        short_help('p', "profiling",
+                ["time-profiling\t\t(grade modifier: `.prof')"], [
+            "Enable time and call profiling. Insert profiling hooks in the",
+            "generated code, and also output some profiling",
+            "information (the static call graph) to the file",
+            "`<module>.prof'.",
+            "This option is not supported for the C# or Java back-ends."]),
 
-%       I believe these options are broken - pbone.
-%       "Switches to tune the coverage profiling pass, useful for",
-%       "debugging.",
-%
-%       "--no-profile-deep-coverage-use-portcounts",
-%       "\tTurn off usage of port counts in the deep profiler to provide",
-%       "\tsome coverage information.",
-%       "--no-profile-deep-coverage-use-trivial",
-%       "\tTurn off usage of trivial goal information",
+        help("memory-profiling\t\t(grade modifier: `.memprof')", [
+            "Enable memory and call profiling.",
+            "This option is not supported for the C# or Java back-ends."]),
 
-        "--profile-for-feedback",
-        "\tSelect deep profiling options suitable for profiler directed",
-        "\timplicit parallelism.",
-        "\t--profile-for-implicit-parallelism is a deprecated synonym for",
-        "\tthis option",
+        help("deep-profiling\t\t(grade modifier: `.profdeep')", [
+            "Enable deep profiling.",
+            "This option is not supported for the high-level C, C#",
+            "or Java back-ends."]),
+
+        % This option is not documented, it is intended for use
+        % by developers only.
+        priv_help("pre-prof-transforms-simplify", [
+            "Force the pre-profiling simplification pass that is usually",
+            "enabled when building a profiling version of a program. This",
+            "allows a developer to enable this pass when using a",
+            "non-profiling build. It can be used to test that generated code",
+            "introduced in earlier passes is well-formed before it is",
+            "potentially removed by the dead procedure elimination pass later",
+            "on."]),
+
+        % XXX The following options are not documented,
+        % because they are currently not useful.
+        % The idea was for you to be able to use --profile-calls
+        % and --profile-time separately, but that doesn't work
+        % because compiling with --profile-time instead of
+        % --profile-calls results in different code addresses,
+        % so you can't combine the data from versions of
+        % your program compiled with different options.
+
+        priv_help("profile-calls\t\t(grade modifier: `.profcalls')", [
+            "Similar to `--profiling', except that only gathers",
+            "call counts, not timing information.",
+            "Useful on systems where time profiling is not supported,",
+            "but not as useful as `--memory-profiling'."]),
+
+        priv_help("profile-time\t\t(grade modifier: `.proftime')", [
+            "Similar to `--profiling', except that it only gathers",
+            "timing information, not call counts."]),
+
+        priv_help("profile-memory\t\t(grade modifier: `.profmem')", [
+            "Similar to `--memory-profiling', except that it only",
+            "gathers memory usage information, not call counts."]),
+
+        help("no-coverage-profiling", [
+            "Disable coverage profiling."]),
+
+        % The following options are for implementors only
+        % (intended for experiments).
+        priv_help("coverage-profiling-via-calls", [
+            "Use calls to implement coverage points, not inline foreign code."]),
+
+        priv_help("coverage-profiling-static", [
+            "Disable dynamic coverage profiling, this uses less memory and may",
+            "be faster."]),
+
+        % Options to control coverage profiling (part of deep profiling):
+        % they enable different types of coverage points.
+
+        priv_help("no-profile-deep-coverage-after-goal", [
+            "Disable coverage points after goals."]),
+
+        priv_help("no-profile-deep-coverage-branch-ite", [
+            "Disable coverage points at the beginning of then and else",
+            "branches."]),
+
+        priv_help("no-profile-deep-coverage-branch-switch", [
+            "Disable coverage points at the beginning of switch branches."]),
+
+        priv_help("no-profile-deep-coverage-branch-disj", [
+            "Disable coverage points at the beginning of disjunction branches."]),
+
+        % Options to tune the coverage profiling pass, useful for debugging.
+        % I believe these options are broken - pbone.
+
+        priv_help("no-profile-deep-coverage-use-portcounts", [
+            "Turn off usage of port counts in the deep profiler to provide",
+            "some coverage information."]),
+
+        priv_help("no-profile-deep-coverage-use-trivial", [
+            "Turn off usage of trivial goal information"]),
+
+        help("profile-for-feedback", [
+            "Select deep profiling options suitable for profiler directed",
+            "implicit parallelism.",
+            "--profile-for-implicit-parallelism is a deprecated synonym for",
+            "this option."]),
 
         % These are commented out as this feature is still experimental.
-        %"--record-term-sizes-as-words\t\t(grade modifier: `.tsw')",
-        %"\tAugment each heap cell with its size in words.",
-        %"--record-term-sizes-as-cells\t\t(grade modifier: `.tsc')",
-        %"\tAugment each heap cell with its size in cells.",
 
-        "--experimental-complexity <filename>",
-        "\tEnable experimental complexity analysis for the predicates",
-        "\tlisted in the given file.",
-        "\tThis option is supported for the C back-end, with",
-        "\t`--no-highlevel-code'.",
+        priv_help("record-term-sizes-as-words\t\t(grade modifier: `.tsw')", [
+            "Augment each heap cell with its size in words."]),
 
-        "--threadscope\t\t(grade modifier: `.threadscope')",
-        "\tEnable support for profiling parallel execution.",
-        "\tThis option is supported by the low-level C back-end parallel",
-        "\tgrades on some processors, See README.ThreadScope for details."
-    ], !IO),
+        priv_help("record-term-sizes-as-cells\t\t(grade modifier: `.tsc')", [
+            "Augment each heap cell with its size in cells."]),
 
-    io.write_string(Stream,
-        "\n      Miscellaneous optional features\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
+        help("experimental-complexity <filename>", [
+            "Enable experimental complexity analysis for the predicates",
+            "listed in the given file.",
+            "This option is supported for the C back-end, with",
+            "`--no-highlevel-code'."]),
+
+        help("threadscope\t\t(grade modifier: `.threadscope')", [
+            "Enable support for profiling parallel execution.",
+            "This option is supported by the low-level C back-end parallel",
+            "grades on some processors, See README.ThreadScope for details."])
+
+    ],
+    SectionProf = help_section(yes(SectionNameProf), [], HelpStructsProf),
+
+    SectionNameMisc = "Miscellaneous optional features",
+    HelpStructsMisc = [
+
         % Documentation for the "accurate" and "hgc" GC methods is
         % commented out as those methods are still experimental
-        %"--gc {none, boehm, hgc, accurate, automatic}",
-        %"--garbage-collection {none, boehm, hgc, accurate, automatic}",
-        "--gc {none, boehm, automatic}",
-        "--garbage-collection {none, boehm, automatic}",
-        "\t\t\t\t(`java' and `csharp' grades",
-        "\t\t\t\t\t use `--gc automatic',",
-        "\t\t\t\t`.gc' grades use `--gc boehm',",
-        %"\t\t\t\t`.hgc' grades use `--gc hgc',",
-        "\t\t\t\tother grades use `--gc none'.)",
-        "\tSpecify which method of garbage collection to use",
-        "\t(default: boehm).",
-        "\t`boehm' is Hans Boehm et al's conservative collector.",
-        %"\t`hgc' is our own conservative collector;",
-        %"\t`accurate' is our own type-accurate copying GC;",
-        %"\tit requires `--high-level-code'.",
-        "\t`automatic' means the target language provides it.",
-        "\tThis is the case for the C# and Java back-ends,",
-        "\twhich always use the garbage collector of the underlying",
-        "\timplementation.",
-        "--use-trail\t\t\t(grade modifier: `.tr')",
-        "\tEnable use of a trail.",
-        "\tThis is necessary for interfacing with constraint solvers,",
-        "\tor for backtrackable destructive update.",
-        "\tThis option is not yet supported for the C# or Java backends.",
-        "--parallel\t\t(grade modifier: `.par')",
-        "\tEnable parallel execution support for the low-level C grades.",
-        "\tEnable concurrency (via pthreads) for the high-level C grades.",
-        "--maybe-thread-safe {yes, no}",
-        "\tSpecify how to treat the `maybe_thread_safe' foreign code",
-        "\tattribute. `yes' means that a foreign procedure with the",
-        "\t`maybe_thread_safe' option is treated as though it has a",
-        "\t`thread_safe' attribute. `no' means that the foreign",
-        "\tprocedure is treated as though it has a `not_thread_safe'",
-        "\tattribute. The default is `no'.",
-        "--single-prec-float\t\t(grade modifier: `.spf')",
-        "\tUse single precision floats so that, on 32-bit machines,",
-        "\tfloating point values don't need to be boxed. Double",
-        "\tprecision floats are used by default.",
-        "\tThis option is not supported for the C# or Java back-ends."
+        % "--gc {none, boehm, hgc, accurate, automatic}",
+        % "--garbage-collection {none, boehm, hgc, accurate, automatic}",
+        alt_help("gc {none, boehm, automatic}", pos_sep_lines,
+                ["garbage-collection {none, boehm, automatic}"], [
+            "\t\t\t(`java' and `csharp' grades",
+            "\t\t\t\t use `--gc automatic',",
+            "\t\t\t`.gc' grades use `--gc boehm',",
+            %"\t\t\t`.hgc' grades use `--gc hgc',",
+            "\t\t\tother grades use `--gc none'.)",
+            "Specify which method of garbage collection to use",
+            "(default: boehm).",
+            "`boehm' is Hans Boehm et al's conservative collector.",
+            %"`hgc' is our own conservative collector;",
+            %"`accurate' is our own type-accurate copying GC;",
+            %"it requires `--high-level-code'.",
+            "`automatic' means the target language provides it.",
+            "This is the case for the C# and Java back-ends,",
+            "which always use the garbage collector of the underlying",
+            "implementation."]),
+
+        help("use-trail\t\t\t(grade modifier: `.tr')", [
+            "Enable use of a trail.",
+            "This is necessary for interfacing with constraint solvers,",
+            "or for backtrackable destructive update.",
+            "This option is not yet supported for the C# or Java backends."]),
+
+        help("parallel\t\t(grade modifier: `.par')", [
+            "Enable parallel execution support for the low-level C grades.",
+            "Enable concurrency (via pthreads) for the high-level C grades."]),
+
+        help("maybe-thread-safe {yes, no}", [
+            "Specify how to treat the `maybe_thread_safe' foreign code",
+            "attribute. `yes' means that a foreign procedure with the",
+            "`maybe_thread_safe' option is treated as though it has a",
+            "`thread_safe' attribute. `no' means that the foreign",
+            "procedure is treated as though it has a `not_thread_safe'",
+            "attribute. The default is `no'."]),
+
+        help("single-prec-float\t\t(grade modifier: `.spf')", [
+            "Use single precision floats so that, on 32-bit machines,",
+            "floating point values don't need to be boxed. Double",
+            "precision floats are used by default.",
+            "This option is not supported for the C# or Java back-ends."]),
+
         % This is commented out as this feature is still experimental.
-        %"--extend-stacks-when-needed",
-        %"\tSpecify that code that increments a stack pointer must",
-        %"\textend the stack when this is needed.",
+        priv_help("extend-stacks-when-needed", [
+            "Specify that code that increments a stack pointer must",
+            "extend the stack when this is needed."]),
+
         % RBMM is undocumented since it is still experimental.
-        % should also document rbmmd rbmmp rbmmdp
-        %"--use-regions\t\t(grade modifier: `.rbmm')",
-        %"\tEnable support for region-based memory management."
-        %"--use-alloc-regions",
-        %"\tCompute and use the exact set of regions",
-        %"\t that may be allocated into by a call."
-    ], !IO),
+        % Should also document rbmmd rbmmp rbmmdp.
+        priv_help("use-regions\t\t(grade modifier: `.rbmm')", [
+            "Enable support for region-based memory management."]),
 
-    io.write_string(Stream,
-        "\n    LLDS back-end compilation model options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        %"--gcc-global-registers\t\t(grades: reg, fast, asm_fast)",
-        %"--no-gcc-global-registers\t(grades: none, jump, asm_jump)",
-        "--gcc-global-registers\t\t(grades: reg, asm_fast)",
-        "--no-gcc-global-registers\t(grades: none)",
-        "\tSpecify whether or not to use GNU C's",
-        "\tglobal register variables extension.",
-        "\tThis option is ignored if the `--high-level-code' option is",
-        "\tenabled.",
-        %"--gcc-non-local-gotos\t\t(grades: jump, fast, asm_jump, asm_fast)",
-        %"--no-gcc-non-local-gotos\t(grades: none, reg)",
-        "--gcc-non-local-gotos\t\t(grades: asm_fast)",
-        "--no-gcc-non-local-gotos\t(grades: none, reg)",
-        "\tSpecify whether or not to use GNU C's",
-        "\t""labels as values"" extension.",
-        "\tThis option is ignored if the `--high-level-code' option is",
-        "\tenabled.",
-        %"--asm-labels\t\t\t(grades: asm_jump, asm_fast)",
-        %"--no-asm-labels\t\t\t(grades: none, reg, jump, fast)",
-        "--asm-labels\t\t\t(grades: asm_fast)",
-        "--no-asm-labels\t\t\t(grades: none, reg)",
-        "\tSpecify whether or not to use GNU C's",
-        "\tasm extensions for inline assembler labels.",
-        "\tThis option is ignored if the `--high-level-code' option is",
-        "\tenabled.",
-        "--stack-segments\t\t(grade modifier: `.stseg')",
-        "\tSpecify whether to use dynamically sized stacks that are",
-        "\tcomposed of small segments. This can help to avoid stack",
-        "\texhaustion at the cost of increased execution time.",
-        "\tThis option is not supported by the `--high-level-code'",
-        "\tback-ends."
+        priv_help("use-alloc-regions", [
+            "Compute and use the exact set of regions",
+            "that may be allocated into by a call."])
+
+    ],
+    SectionMisc = help_section(yes(SectionNameMisc), [], HelpStructsMisc),
+
+    SectionNameLlds = "LLDS back-end compilation model options",
+    HelpStructsLlds = [
+        % "--gcc-global-registers\t\t(grades: reg, fast, asm_fast)",
+        % "--no-gcc-global-registers\t(grades: none, jump, asm_jump)",
+        alt_help("gcc-global-registers\t\t(grades: reg, asm_fast)",
+                pos_sep_lines,
+                ["no-gcc-global-registers\t(grades: none)"], [
+            "Specify whether or not to use GNU C's",
+            "global register variables extension.",
+            "This option is ignored if the `--high-level-code' option is",
+            "enabled."]),
+
+        % "--gcc-non-local-gotos\t\t(grades: jump, fast, asm_jump, asm_fast)",
+        % "--no-gcc-non-local-gotos\t(grades: none, reg)",
+        alt_help("gcc-non-local-gotos\t\t(grades: asm_fast)", pos_sep_lines,
+                ["no-gcc-non-local-gotos\t(grades: none, reg)"], [
+            "Specify whether or not to use GNU C's",
+            """labels as values"" extension.",
+            "This option is ignored if the `--high-level-code' option is",
+            "enabled."]),
+
+        % "--asm-labels\t\t\t(grades: asm_jump, asm_fast)",
+        % "--no-asm-labels\t\t\t(grades: none, reg, jump, fast)",
+        alt_help("asm-labels\t\t\t(grades: asm_fast)", pos_sep_lines,
+                ["no-asm-labels\t\t\t(grades: none, reg)"], [
+            "Specify whether or not to use GNU C's",
+            "asm extensions for inline assembler labels.",
+            "This option is ignored if the `--high-level-code' option is",
+            "enabled."]),
+
+        help("stack-segments\t\t(grade modifier: `.stseg')", [
+            "Specify whether to use dynamically sized stacks that are",
+            "composed of small segments. This can help to avoid stack",
+            "exhaustion at the cost of increased execution time.",
+            "This option is not supported by the `--high-level-code'",
+            "back-ends."]),
+
         % This is a developer only option.
-%       "--use-float-registers",
-%       "(This option is not for general use.)",
-%       "\tUse float registers for argument passing."
-    ], !IO),
+        priv_help("use-float-registers", [
+            "(This option is not for general use.)",
+            "Use float registers for argument passing."])
+    ],
+    SectionLlds = help_section(yes(SectionNameLlds), [], HelpStructsLlds),
 
-    io.write_string(Stream,
-        "\n    MLDS back-end compilation model options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "-H, --high-level-code\t\t\t(grades: hlc, csharp, java)",
-        "\tUse an alternative back-end that generates high-level code",
-        "\trather than the very low-level code that is generated by our",
-        "\toriginal back-end.",
-        "--c-debug-grade\t\t\t(grades: hlc)",
-        "\tRequire that all modules in the program be compiled to object code",
-        "\tin a way that allows the program executable to be debuggable",
-        "\twith debuggers for C, such as gdb. This option is intended mainly",
-        "\tfor the developers of Mercury, though it can also help to debug",
-        "\tC code included in Mercury programs."
-% The --det-copy-out option is not yet documented,
-% because it is not yet tested much and probably not very useful,
-% except for Java, where it is the default.
-%       "--det-copy-out",
-%       "\tSpecify whether to handle output arguments for det/semidet",
-%       "\tprocedures using return-by-value rather than pass-by-reference.",
-%       "\tThis option is ignored if the `--high-level-code' option",
-%       "\tis not enabled.",
-% The --nondet-copy-out option is not yet documented,
-% because it is probably not very useful except for Java,
-% where it is the default.
-%       "--nondet-copy-out",
-%       "\tSpecify whether to handle output arguments for nondet",
-%       "\tprocedures using pass-by-value rather than pass-by-reference.",
-%       "\tThis option is ignored if the `--high-level-code' option",
-%       "\tis not enabled.",
-% The --put-commit-in-own-func option is not documented because
-% it is enabled automatically (by handle_options) in the situations
-% where it is needed; the user should never need to set it.
-%       "--put-commit-in-own-func",
-%       "\tPut each commit in its own C function.",
-%       "\tThis option only affects the MLDS back-ends.",
-%       "\tIt is needed for the high-level C back-end,",
-%       "\twhere commits are implemented via setjmp()/longjmp(),",
-%       "\tsince longjmp() may clobber any non-volatile local vars",
-%       "\tin the function that called setjmp().",
-%   ])
-    ], !IO),
+    SectionNameMlds = "MLDS back-end compilation model options",
+    HelpStructsMlds = [
 
-    io.write_string(Stream,
-        "\n    Developer compilation model options:\n", !IO),
-    io.write_string(Stream,
-        "\n      Data representation\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "--num-ptag-bits <n>           (This option is not for general use.)",
-        "\tUse <n> primary tag bits."
+        short_help('H',
+            "high-level-code\t\t\t(grades: hlc, csharp, java)", [], [
+            "Use an alternative back-end that generates high-level code",
+            "rather than the very low-level code that is generated by our",
+            "original back-end."]),
+
+        help("c-debug-grade\t\t\t(grades: hlc)", [
+            "Require that all modules in the program be compiled to object code",
+            "in a way that allows the program executable to be debuggable",
+            "with debuggers for C, such as gdb. This option is intended mainly",
+            "for the developers of Mercury, though it can also help to debug",
+            "C code included in Mercury programs."]),
+
+        % The --det-copy-out option is not yet documented,
+        % because it is not yet tested much and probably not very useful,
+        % except for Java, where it is the default.
+        priv_help("det-copy-out", [
+            "Specify whether to handle output arguments for det/semidet",
+            "procedures using return-by-value rather than pass-by-reference.",
+            "This option is ignored if the `--high-level-code' option",
+            "is not enabled."]),
+
+        % The --nondet-copy-out option is not yet documented,
+        % because it is probably not very useful except for Java,
+        % where it is the default.
+        priv_help("nondet-copy-out", [
+            "Specify whether to handle output arguments for nondet",
+            "procedures using pass-by-value rather than pass-by-reference.",
+            "This option is ignored if the `--high-level-code' option",
+            "is not enabled."]),
+
+        % The --put-commit-in-own-func option is not documented because
+        % it is enabled automatically (by handle_options) in the situations
+        % where it is needed; the user should never need to set it.
+        priv_help("put-commit-in-own-func", [
+            "Put each commit in its own C function.",
+            "This option only affects the MLDS back-ends.",
+            "It is needed for the high-level C back-end,",
+            "where commits are implemented via setjmp()/longjmp(),",
+            "since longjmp() may clobber any non-volatile local vars",
+            "in the function that called setjmp()."])
+
+    ],
+    SectionMlds = help_section(yes(SectionNameMlds), [], HelpStructsMlds),
+
+    SectionNameData = "Developer data representation options",
+    HelpStructsData = [
         % Normally, The --num-tag-bits option is used only by the compiler.
         % By default, its value is set to the value of the --conf-low-tag-bits
         % option when targeting C, and to zero when targeting other languages.
-        % Its only legitimate use is for cross-compilation.
+        % Its only legitimate use by non-developers is for cross-compilation.
+        % XXX That fact should be included in the help text.
+        help("num-ptag-bits <n>", [
+            "(This option is not for general use.)",
+            "Use <n> primary tag bits."]),
 
-        % The --conf-low-tag-bits option is reserved for use
-        % by the `mmc' script; it is deliberately not documented.
+        % The following are all developer only options.
+        priv_help("conf-low-tag-bits", [
+            "Reserved for use by the `mmc' script"]),
 
-        % The --bits-per-word option is intended for use
-        % by the `mmc' script; it is deliberately not documented.
+        priv_help("bits-per-word", [
+            "Reserved for use by the `mmc' script"]),
 
-        % The --bytes-per-word option is intended for use
-        % by the `mmc' script; it is deliberately not documented.
+        priv_help("bytes-per-word", [
+            "Reserved for use by the `mmc' script"]),
 
-        % This is a developer only option.
-%       "--unboxed-float",
-%       "(This option is not for general use.)",
-%       "\tDo not box floating point numbers.",
-%       "\tThis assumes that a Mercury float will fit in a word.",
-%       "\tThe C code needs to be compiled with `-UMR_BOXED_FLOAT'.",
-%       "\tIt may also need to be compiled with",
-%       "\t`-DMR_USE_SINGLE_PREC_FLOAT', if double precision",
-%       "\tfloats don't fit into a word."
+        priv_help("unboxed-float", [
+            "(This option is not for general use.)",
+            "Do not box floating point numbers.",
+            "This assumes that a Mercury float will fit in a word.",
+            "The C code needs to be compiled with `-UMR_BOXED_FLOAT'.",
+            "It may also need to be compiled with",
+            "`-DMR_USE_SINGLE_PREC_FLOAT', if double precision",
+            "floats don't fit into a word."]),
 
-%       % This is a developer only option.
-%       "--unboxed-int64s",
-%       "(This option is not for general use.)",
-%       "\tDo not box 64-bit integer numbers",
-%       "\tThis assumes that word size of the target machine is at least",
-%       "\t64-bits in size.",
-%       "\tThe C code needs to be compiled with `-UMR_BOXED_INT64S'.",
+        priv_help("unboxed-int64s", [
+            "(This option is not for general use.)",
+            "Do not box 64-bit integer numbers",
+            "This assumes that word size of the target machine is at least",
+            "64-bits in size.",
+            "The C code needs to be compiled with `-UMR_BOXED_INT64S'."]),
 
-        % This is a developer only option.
-%       "--no-unboxed-no-tag-types",
-%       "(This option is not for general use.)",
-%       "\tBox no-tag types. This option is disabled by default."
+        priv_help("no-unboxed-no-tag-types", [
+            "(This option is not for general use.)",
+            "Box no-tag types. This option is disabled by default.])"]),
 
-        % This is a developer only option.
-%       "--arg-pack-bits <n>",
-%       "(This option is not for general use.)",
-%       "\tThe number of bits in a word in which to pack constructor"
-%       "arguments.",
+        priv_help("arg-pack-bits <n>", [
+            "(This option is not for general use.)",
+            "The number of bits in a word in which to pack constructor",
+            "arguments."]),
 
-        % This is a developer only option.
-%       "--pack-everything",
-%       "(This option is not for general use.)",
-%       "\tTell decide_type_repn.m to pack everything that can be packed.",
+        priv_help("pack-everything", [
+            "(This option is not for general use.)",
+            "Tell decide_type_repn.m to pack everything that can be packed."]),
 
-        % This is a developer only option.
-%       "--allow-direct-args",
-%       "(This option is not for general use.)",
-%       "\tAllow the direct arg optimization.",
+        priv_help("allow-direct-args", [
+            "(This option is not for general use.)",
+            "Allow the direct arg optimization."]),
 
-        % This is a developer only option.
-%       "--no-allow-double-word-fields",
-%       "(This option is not for general use.)",
-%       "\tDisallow storing a single constructor argument in two words"
-%       "(namely, double-precision floats).",
-    ], !IO),
-    io.write_string(Stream,
-        "\n      Developer optional features\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "--use-minimal-model-stack-copy",
-        "(This option is not for general use.)",
-        "\tEnable the use of the standard form of minimal model tabling.",
+        priv_help("no-allow-double-word-fields", [
+            "(This option is not for general use.)",
+            "Disallow storing a single constructor argument in two words",
+            "(namely, double-precision floats)."])
 
-        "--use-minimal-model-own-stacks",
-        "(This option is not for general use.)",
-        "\tEnable the use of an experimental form of minimal model tabling.",
+    ],
+    SectionData = help_section(yes(SectionNameData), [], HelpStructsData),
 
-        "--minimal-model-debug",
-        "(This option is not for general use.)",
-        "\tEnables extra data structures that assist in debugging",
-        "\tminimal model tabling.",
+    SectionNameDev = "Developer options features",
+    HelpStructsDev = [
+        % XXX The following *should* all be developer only options.
 
-        "--no-type-layout",
-        "(This option is not for general use.)",
-        "\tDon't output type_ctor_layout structures or references",
-        "\tto them. (The C code also needs to be compiled with",
-        "\t`-DNO_TYPE_LAYOUT')."
+        help("use-minimal-model-stack-copy", [
+            "(This option is not for general use.)",
+            "Enable the use of the standard form of minimal model tabling."]),
 
-        % This is a developer only option.
-%       "--basic-stack-layout",
-%       "(This option is not for general use.)",
-%       "\tGenerate the simple stack_layout structures required",
-%       "\tfor stack traces.",
+        help("use-minimal-model-own-stacks", [
+            "(This option is not for general use.)",
+            "Enable the use of an experimental form of minimal model tabling."]),
 
-        % This is a developer only option.
-%       "--agc-stack-layout",
-%       "(This option is not for general use.)",
-%       "\tGenerate the stack_layout structures required for",
-%       "\taccurate garbage collection.",
+        help("minimal-model-debug", [
+            "(This option is not for general use.)",
+            "Enables extra data structures that assist in debugging",
+            "minimal model tabling."]),
 
-        % This is a developer only option.
-%       "--procid-stack-layout",
-%       "(This option is not for general use.)",
-%       "\tGenerate the stack_layout structures required for",
-%       "\tlooking up procedure identification information.",
+        help("no-type-layout", [
+            "(This option is not for general use.)",
+            "Don't output type_ctor_layout structures or references",
+            "to them. (The C code also needs to be compiled with",
+            "`-DNO_TYPE_LAYOUT')."]),
 
-        % This is a developer only option.
-%       "--trace-stack-layout",
-%       "(This option is not for general use.)",
-%       "\tGenerate the stack_layout structures required for",
-%       "\texecution tracing.",
+        % The following are all developer only options.
 
-        % This is a developer only option.
-%       "--body-typeinfo-liveness",
-%       "(This option is not for general use.)",
-%       For documentation, see the comment in the type declaration.
+        priv_help("basic-stack-layout", [
+            "(This option is not for general use.)",
+            "Generate the simple stack_layout structures required",
+            "for stack traces."]),
 
-        % This is a developer only option.
-%       "--can-compare-constants-as-ints",
-%       "(This option is not for general use.)",
-%       For documentation, see the comment in the type declaration.
+        priv_help("agc-stack-layout", [
+            "(This option is not for general use.)",
+            "Generate the stack_layout structures required for",
+            "accurate garbage collection."]),
 
-        % This is a developer only option.
-%       "--pretest-equality-cast-pointers",
-%       "(This option is not for general use.)",
-%       For documentation, see the comment in the type declaration.
+        priv_help("procid-stack-layout", [
+            "(This option is not for general use.)",
+            "Generate the stack_layout structures required for",
+            "looking up procedure identification information."]),
 
-        % This is a developer only option.
-%       "--can-compare-compound-values"
-%       "(This option is not for general use.)",
-%       For documentation, see the comment in the type declaration.
+        priv_help("trace-stack-layout", [
+            "(This option is not for general use.)",
+            "Generate the stack_layout structures required for",
+            "execution tracing."]),
 
-        % This is a developer only option.
-%       "--lexically-order-constructors"
-%       "(This option is not for general use.)",
-%       For documentation, see the comment in the type declaration.
+        priv_help("body-typeinfo-liveness", [
+            "(This option is not for general use.)"]),
 
-        % This is a developer only option.
-%       "--mutable-always-boxed",
-%       "(This option is not for general use.)",
-%       For documentation, see the comment in the type declaration.
+        priv_help("can-compare-constants-as-ints", [
+            "(This option is not for general use.)"]),
 
-        % This is a developer only option.
-%       "--delay-partial-instantiations",
-%       "(This option is not for general use.)",
-%       For documentation, see delay_partial_inst.m
+        priv_help("pretest-equality-cast-pointers", [
+            "(This option is not for general use.)"]),
 
-        % This is a developer only option.
-%       "--allow-defn-of-builtins",
-%       "(This option is not for general use.)",
-%       For documentation, see the comment in the type declaration.
+        priv_help("can-compare-compound-values", [
+            "(This option is not for general use.)"]),
 
-        % This is a developer only option.
-%       "--special-preds",
-%       "(This option is not for general use.)",
-%       For documentation, see the comment in the type declaration.
+        priv_help("lexically-order-constructors", [
+            "(This option is not for general use.)"]),
 
-        % All these are developer only options.
-%       "(These options are not for general use.)",
-%       For documentation, see runtime/mercury_region.h.
-%       "--size-region-ite-fixed"
-%       "--size-region-disj-fixed"
-%       "--size-region-commit-fixed"
-%       "--size-region-ite-protect"
-%       "--size-region-ite-snapshot"
-%       "--size-region-disj-protect"
-%       "--size-region-disj-snapshot"
-%       "--size-region-commit-entry"
+        priv_help("mutable-always-boxed", [
+            "(This option is not for general use.)"]),
 
-        % This is a developer only option.
-%       "--allow-multi-arm-switches",
-%       "(This option is not for general use.)",
-%       Allow the compiler to generate switches in which one arm handles
-%       more than one cons_id.
+        priv_help("delay-partial-instantiations", [
+            "(This option is not for general use.)",
+            "For documentation, see delay_partial_inst.m"]),
 
-        % This is a developer only option.
-%       "--type-check-constraints",
-%       "(This option is not for general use.)",
-%       Use the constraint based type checker instead of the old one.
-    ], !IO).
+        priv_help("allow-defn-of-builtins", [
+            "(This option is not for general use.)"]),
+
+        priv_help("special-preds", [
+            "(This option is not for general use.)"]),
+
+        % For documentation of the region options,
+        % see runtime/mercury_region.h.
+        priv_help("size-region-ite-fixed", []),
+        priv_help("size-region-disj-fixed", []),
+        priv_help("size-region-commit-fixed", []),
+        priv_help("size-region-ite-protect", []),
+        priv_help("size-region-ite-snapshot", []),
+        priv_help("size-region-disj-protect", []),
+        priv_help("size-region-disj-snapshot", []),
+        priv_help("size-region-commit-entry", []),
+
+        priv_help("allow-multi-arm-switches", [
+            "(This option is not for general use.)",
+            "Allow the compiler to generate switches in which one arm handles",
+            "more than one cons_id."]),
+
+        priv_help("type-check-constraints", [
+            "(This option is not for general use.)",
+            "Use the constraint based type checker instead of the old one."])
+
+    ],
+    SectionDev = help_section(yes(SectionNameDev), [], HelpStructsDev),
+
+    NestedSection = nested_help_section(OverallName, OverallCommentLines,
+        [SectionGrade, SectionTarget, SectionDebug, SectionProf,
+        SectionMisc, SectionLlds, SectionMlds, SectionData, SectionDev]).
 
 :- pred options_help_code_generation(io.text_output_stream::in,
     io::di, io::uo) is det.
@@ -7565,6 +7588,14 @@ options_help_misc(Stream, !IO) :-
                 hs_help_structs             :: list(help)
             ).
 
+:- type maybe_nested_help_section
+    --->    std_help_section(help_section)
+    ;       nested_help_section(
+                nhs_overall_name            :: string,
+                nhs_overall_comment_lines   :: list(string),
+                nhs_subsections             :: list(help_section)
+            ).
+
 % This structured representation improves on our traditional approach
 % of storing just lists of lines in the following ways.
 %
@@ -7724,16 +7755,42 @@ options_help_misc(Stream, !IO) :-
     --->    print_public_help
     ;       print_public_and_private_help.
 
-:- pred output_help_section(io.text_output_stream::in, print_what_help::in,
-    help_section::in, io::di, io::uo) is det.
+:- pred output_maybe_nested_help_section(io.text_output_stream::in,
+    print_what_help::in, maybe_nested_help_section::in, io::di, io::uo) is det.
 
-output_help_section(Stream, What, Section, !IO) :-
+output_maybe_nested_help_section(Stream, What, MaybeNestedSection, !IO) :-
+    (
+        MaybeNestedSection = std_help_section(Section),
+        output_help_section(Stream, What, "", Section, !IO)
+    ;
+        MaybeNestedSection = nested_help_section(OverallName,
+            OverallCommentLines, Subsections),
+        % The original code used different indentation
+        % from what we generate below.
+        io.format(Stream, "\n%s:\n\n", [s(OverallName)], !IO),
+        (
+            OverallCommentLines = []
+        ;
+            OverallCommentLines = [_ | _],
+            io.write_prefixed_lines(Stream, single_indent,
+                OverallCommentLines, !IO),
+            io.nl(Stream, !IO)
+        ),
+        list.foldl(output_help_section(Stream, What, single_indent),
+            Subsections, !IO)
+    ).
+
+:- pred output_help_section(io.text_output_stream::in, print_what_help::in,
+    string::in, help_section::in, io::di, io::uo) is det.
+
+output_help_section(Stream, What, SectionNameIndent, Section, !IO) :-
     Section = help_section(MaybeSectionName, SectionCommentLines, HelpStructs),
     (
         MaybeSectionName = no
     ;
         MaybeSectionName = yes(SectionName),
-        io.format(Stream, "\n%s:\n", [s(SectionName)], !IO)
+        io.format(Stream, "\n%s%s:\n\n",
+            [s(SectionNameIndent), s(SectionName)], !IO)
     ),
     (
         SectionCommentLines = []
@@ -7757,6 +7814,17 @@ output_help_messages(Stream, What, [OptHelp | OptHelps], !IO) :-
     help::in, io::di, io::uo) is det.
 
 output_help_message(Stream, What, OptHelp, !IO) :-
+    % XXX We could automatically add "(This option is not for general use.)"
+    % to the start of the description of every private option, to save
+    % the repetition of including it in help_private structures.
+    %
+    % We currently handle this message quite badly. First, we do not include it
+    % in many help_private structures (which, to be fair, won't matter
+    % until we implement callers that specify print_public_and_private_help.
+    % Second, we *do* include it in a few help_public structures, in which
+    % cases it gives non-developer readers useless information. To make
+    % the message useful, the message would have to say *in what situations*
+    % the option may be relevant to non-developers.
     OptNameLineMaxLen = 71,
     (
         OptHelp = gen_help(LongName, AltNamePos, AltLongNames, ShortNames,
