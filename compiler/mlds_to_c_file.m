@@ -166,7 +166,7 @@ output_c_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
         ^ m2co_foreign_line_numbers := LineNumbersForCHdrs),
     Indent = 0u,
     output_to_file_stream(ProgressStream, Globals, TmpMihSuffixFileName,
-        mlds_output_hdr_file(HdrOpts, Indent, MLDS), !:Succeeded, !IO),
+        mlds_output_mih_hdr_file(HdrOpts, Indent, MLDS), !:Succeeded, !IO),
     (
         !.Succeeded = succeeded,
         copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
@@ -217,12 +217,13 @@ output_c_dump_func_defns(Opts, ModuleName, [FuncDefn | FuncDefns],
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_hdr_file(mlds_to_c_opts::in, indent::in, mlds::in,
+:- pred mlds_output_mih_hdr_file(mlds_to_c_opts::in, indent::in, mlds::in,
     io.text_output_stream::in, list(string)::out, io::di, io::uo) is det.
 
-mlds_output_hdr_file(Opts, Indent, MLDS, Stream, Errors, !IO) :-
-    % The header file must contain _definitions_ of all public types, but only
-    % _declarations_ of all public variables, constants, and functions.
+mlds_output_mih_hdr_file(Opts, Indent, MLDS, Stream, Errors, !IO) :-
+    % The .mih header file must contain _definitions_ of all public types,
+    % but only _declarations_ of all public variables, constants,
+    % and functions.
     %
     % Note that we do not forward-declare the types here; the forward
     % declarations that we need for types used in function prototypes
@@ -252,18 +253,16 @@ mlds_output_hdr_file(Opts, Indent, MLDS, Stream, Errors, !IO) :-
     expect(unify(ClassDefns, []), $pred, "ClassDefns != []"),
     expect(unify(EnumDefns, []), $pred, "EnumDefns != []"),
     % Environment definitions are always private.
-    list.filter(global_var_defn_is_private,
-        RttiDefns ++ CellDefns ++ TableStructDefns,
-        _PrivateGlobalVarDefns, PublicGlobarVarDefns),
-    list.filter(function_defn_is_private,
-        ClosureWrapperFuncDefns ++ ProcDefns,
-        _PrivateFuncDefns, PublicFuncDefns),
+    list.negated_filter(global_var_defn_is_private,
+        RttiDefns ++ CellDefns ++ TableStructDefns, PublicGlobarVarDefns),
+    list.negated_filter(function_defn_is_private,
+        ClosureWrapperFuncDefns ++ ProcDefns, PublicFuncDefns),
     list.sort(PublicGlobarVarDefns, SortedPublicGlobarVarDefns),
     list.sort(PublicFuncDefns, SortedPublicFuncDefns),
 
-    mlds_output_hdr_start(Opts, Stream, Indent, ModuleName, !IO),
+    mlds_output_mih_hdr_start(Opts, Stream, Indent, ModuleName, !IO),
     io.nl(Stream, !IO),
-    mlds_output_hdr_imports(Stream, Indent, Imports, !IO),
+    mlds_output_mih_hdr_imports(Stream, Indent, Imports, !IO),
     io.nl(Stream, !IO),
 
     % Get the foreign code for C.
@@ -286,12 +285,12 @@ mlds_output_hdr_file(Opts, Indent, MLDS, Stream, Errors, !IO) :-
     io.nl(Stream, !IO),
     mlds_output_hdr_end(Opts, Stream, Indent, ModuleName, !IO).
 
-:- pred mlds_output_hdr_imports(io.text_output_stream::in, indent::in,
+:- pred mlds_output_mih_hdr_imports(io.text_output_stream::in, indent::in,
     list(mlds_import)::in, io::di, io::uo) is det.
 
 % XXX currently we assume all imports are source imports, i.e. that the header
 % file does not depend on any types defined in other header files.
-mlds_output_hdr_imports(_Stream, _Indent, _Imports, IO, IO).
+mlds_output_mih_hdr_imports(_Stream, _Indent, _Imports, IO, IO).
 
 :- pred mlds_output_src_imports(mlds_to_c_opts::in, io.text_output_stream::in,
     indent::in, list(mlds_import)::in, io::di, io::uo) is det.
@@ -478,10 +477,11 @@ mlds_output_env_var_decl(Stream, EnvVarName, !IO) :-
     io.format(Stream, "extern MR_Word %s;\n",
         [s(global_var_ref_to_string(env_var_ref(EnvVarName)))], !IO).
 
-:- pred mlds_output_hdr_start(mlds_to_c_opts::in, io.text_output_stream::in,
-    indent::in, mercury_module_name::in, io::di, io::uo) is det.
+:- pred mlds_output_mih_hdr_start(mlds_to_c_opts::in,
+    io.text_output_stream::in, indent::in, mercury_module_name::in,
+    io::di, io::uo) is det.
 
-mlds_output_hdr_start(Opts, Stream, Indent, ModuleName, !IO) :-
+mlds_output_mih_hdr_start(Opts, Stream, Indent, ModuleName, !IO) :-
     ModuleNameStr = sym_name_to_string(ModuleName),
     MangledModuleNameStr = sym_name_mangle(ModuleName),
     mlds_output_auto_gen_comment(Opts, Stream, ModuleName, !IO),
