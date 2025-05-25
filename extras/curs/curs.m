@@ -32,8 +32,6 @@
 
 :- include_module panel.
 
-:- import_module curs.panel.
-
 :- import_module bool.
 :- import_module int.
 :- import_module io.

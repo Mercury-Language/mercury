@@ -546,15 +546,15 @@ process_any_winner(Result, no, !Instance, BufState0, !Buf, !Src) :-
         lexer_instance(Tok, Src)::out(lexer_instance),
     buf_state(Src)::in(buf_state), buf::array_ui) is det.
 
-process_eof(Result, !Instance, !.BufState, !.Buf) :-
+process_eof(Result, !Instance, BufState, Buf) :-
     CurrentWinner = !.Instance ^ current_winner,
     (
         CurrentWinner = no,
-        Offset        = !.BufState ^ cursor_offset,
+        Offset        = BufState ^ cursor_offset,
         Result        = eof
     ;
         CurrentWinner = yes(TokenCreator - Offset),
-        String        = string_to_cursor(!.BufState, !.Buf),
+        String        = string_to_cursor(BufState, Buf),
         Token         = TokenCreator(String),
         IgnorePred    = !.Instance ^ ignore_pred,
         Result        = ( if IgnorePred(Token) then eof else ok(Token) )
@@ -563,7 +563,7 @@ process_eof(Result, !Instance, !.BufState, !.Buf) :-
     !:Instance = ((( !.Instance
         ^ live_lexemes   := !.Instance ^ init_lexemes )
         ^ current_winner := InitWinner                )
-        ^ buf_state      := commit(!.BufState)        ).
+        ^ buf_state      := commit(BufState)          ).
 
 %---------------------------------------------------------------------------%
 
