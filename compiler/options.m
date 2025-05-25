@@ -4456,15 +4456,15 @@ options_help(Stream, !IO) :-
     Sections = [
         options_help_help,
         options_help_warning,
-        options_help_verbosity
+        options_help_verbosity,
+        options_help_output,
+        options_help_aux_output,
+        options_help_semantics,
+        options_help_termination,
+        options_help_ctgc
     ],
     list.foldl(output_help_section(Stream, What), Sections, !IO),
 
-    options_help_output(Stream, !IO),
-    options_help_aux_output(Stream, !IO),
-    options_help_semantics(Stream, !IO),
-    options_help_termination(Stream, !IO),
-    options_help_ctgc(Stream, !IO),
     options_help_compilation_model(Stream, !IO),
     options_help_code_generation(Stream, !IO),
     options_help_optimization(Stream, !IO),
@@ -4485,14 +4485,14 @@ options_help_help = Section :-
         gen_help("help", pos_one_line, [], ['?', 'h'], help_public,
             ["Print this usage message."])
     ],
-    Section = help_section(no, HelpStructs).
+    Section = help_section(no, [], HelpStructs).
 
 :- func options_help_warning = help_section.
 
 options_help_warning = Section :-
     SectionName = "Warning Options",
     HelpStructs = [
-        short_help('w', "inhibit-warnings",
+        short_help('w', "inhibit-warnings", [],
             ["Disable all warning messages."]),
 
         help("inhibit-style-warnings",
@@ -4502,7 +4502,7 @@ options_help_warning = Section :-
             "This option causes the compiler to treat all warnings",
             "as if they were errors when generating target code.",
             "This means that if the compiler issues any warning,",
-            "it will not generate target code --- instead, it will",
+            "it will not generate target code; instead, it will",
             "return a non-zero exit status."]),
 
         help("halt-at-warn-make-interface", [
@@ -4510,14 +4510,15 @@ options_help_warning = Section :-
             "as if they were errors when generating an interface file",
             "(a .int, .int0, .int2 or .int3 file). This means that",
             "if the compiler issues any warnings at that time,",
-            "it will not generate the interface file --- instead,",
+            "it will not generate the interface file; instead,",
             "it will return a non-zero exit status."]),
+
         help("halt-at-warn-make-opt", [
             "This option causes the compiler to treat all warnings",
             "as if they were errors when generating an optimization file",
             "(.opt or .trans_opt file.) This means that if the compiler",
             "issues any warnings at that time, it will not generate the",
-            "optimization file --- instead, it will return a non-zero",
+            "optimization file; instead, it will return a non-zero",
             "exit status."]),
 
         help("halt-at-syntax-errors", [
@@ -4704,6 +4705,7 @@ options_help_warning = Section :-
         priv_help("warn-non-tail-recursion-self", [
             "Warn about any self recursive calls that are not tail
             recursive."]),
+
         priv_help("warn-non-tail-recursion-mutual", [
             "Warn about any mutually recursive calls that are not",
             "tail recursive."]),
@@ -4715,7 +4717,7 @@ options_help_warning = Section :-
         help("warn-obvious-non-tail-recursion", [
             "Warn about recursive calls that are not tail calls",
             "even if they obviously cannot be tail calls,",
-        "because they are followed by other recursive calls."]),
+            "because they are followed by other recursive calls."]),
 
         help("no-warn-up-to-date", [
             "Do not warn if targets specified on the command line",
@@ -4864,20 +4866,20 @@ options_help_warning = Section :-
             "or if a sequence of such declarations on consecutive lines",
             "are not sorted on module name."])
     ],
-    Section = help_section(yes(SectionName), HelpStructs).
+    Section = help_section(yes(SectionName), [], HelpStructs).
 
 :- func options_help_verbosity = help_section.
 
 options_help_verbosity = Section :-
     SectionName =  "Verbosity Options",
     HelpStructs = [
-        short_help('v', "verbose", [
+        short_help('v', "verbose", [], [
             "Output progress messages at each stage in the compilation."]),
 
-        short_help('V', "very-verbose", [
+        short_help('V', "very-verbose", [], [
             "Output very verbose progress messages."]),
 
-        short_help('E', "verbose-error-messages", [
+        short_help('E', "verbose-error-messages", [], [
             "Explain error messages. Asks the compiler to give you a more",
             "detailed explanation of any errors it finds in your program."]),
 
@@ -4910,7 +4912,7 @@ options_help_verbosity = Section :-
             "Report the command line arguments for compilations whose output",
             "mmake normally redirects to a `.err' file."]),
 
-        short_help('S', "statistics", [
+        short_help('S', "statistics", [], [
             "Output messages about the compiler's time/space usage.",
             "At the moment this option implies `--no-trad-passes', so you get",
             "information at the boundaries between phases of the compiler."]),
@@ -4966,14 +4968,14 @@ options_help_verbosity = Section :-
 
         % These work only if the compiler was compiled with
         % "--trace-flag type_checkpoint".
-        priv_short_help('T', "debug-types", [
+        priv_short_help('T', "debug-types", [], [
             "Output detailed debugging traces of type checking."]),
 
         priv_help("--debug-types-pred-name <pred_or_func_name>", [
             "Output detailed debugging traces of type checking",
             "only for predicates and functions named by one of these options."]),
 
-        short_help('N', "debug-modes", [
+        short_help('N', "debug-modes", [], [
             "Output debugging traces of the mode checking."]),
 
         help("debug-modes-statistics", [
@@ -5075,635 +5077,791 @@ options_help_verbosity = Section :-
             "Output detailed debugging traces of the `--prop-mode-constraints'",
             "option."])
     ],
-    Section = help_section(yes(SectionName), HelpStructs).
+    Section = help_section(yes(SectionName), [], HelpStructs).
 
-:- pred options_help_output(io.text_output_stream::in, io::di, io::uo) is det.
+:- func options_help_output = help_section.
 
-options_help_output(Stream, !IO) :-
-    io.write_string(Stream, "\nOutput Options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
+options_help_output = Section :-
+    SectionName = "Output Options",
+    SectionCommentLines = [
         "These options are mutually exclusive.",
         "Only the first one specified will apply.",
         "If none of these options are specified, the default action",
-        "is to link the named modules to produce an executable.\n",
-        "-f, --generate-source-file-mapping",
-        "\tOutput the module name to file name mapping for the list",
-        "\tof source files given as non-option arguments to mmc",
-        "\tto `Mercury.modules'. This must be done before",
-        "\t`mmc --generate-dependencies' if there are any modules",
-        "\tfor which the file name does not match the module name.",
-        "\tIf there are no such modules the mapping need not be",
-        "\tgenerated.",
-        "-M, --generate-dependencies",
-        "--generate-dependencies-ints",
+        "is to link the named modules to produce an executable."
+    ],
+    HelpStructs = [
+        short_help('f', "generate-source-file-mapping", [], [
+            "Output the module name to file name mapping for the list",
+            "of source files given as non-option arguments to mmc",
+            "to `Mercury.modules'. This must be done before",
+            "`mmc --generate-dependencies' if there are any modules",
+            "for which the file name does not match the module name.",
+            "If there are no such modules the mapping need not be",
+            "generated."]),
+
         % XXX This leaves out important details, such as .dv and .d files.
-        "\tOutput `Make'-style dependencies for the module",
-        "\tand all of its dependencies to `<module>.dep'.",
-        "\tThe --generate-dependencies-ints version also outputs",
-        "\t.int3, .int0, .int and .int2 files for all the modules",
-        "\tin the program.",
-        "--generate-dependency-file",
-        "\tOutput `Make'-style dependencies for the module",
-        "\tto `<module>.d'.",
-        "--generate-module-order",
-        "\tOutput the strongly connected components of the module",
-        "\tdependency graph in top-down order to `<module>.order'.",
-        "\tEffective only if --generate-dependencies is also specified.",
-        "--generate-standalone-interface <basename>",
-        "\tOutput a stand-alone interface.",
-        "\t<basename> is used as the basename of any files generated for",
-        "\tthe stand-alone interface. (See the Stand-alone Interface",
-        "\tchapter of the Mercury User's Guide for further details.)",
-        "-i, --make-int, --make-interface",
-        "\tWrite the module interface to `<module>.int',",
-        "\tand write the short interface to `<module>.int2'",
-        "\tThis option should only be used by mmake.",
-        "--make-priv-int, --make-private-interface",
-        "\tWrite the private interface to `<module>.int0'.",
-        "\tThis option should only be used by mmake.",
-        "--make-short-int, --make-short-interface",
-        "\tWrite the unqualified short interface to `<module>.int3'.",
-        "\tThis option should only be used by mmake.",
-        "--make-opt-int, --make-optimization-interface",
-        "\tWrite inter-module optimization information to",
-        "\t`<module>.opt'.",
-        "\tThis option should only be used by mmake.",
-        "--make-trans-opt",
-        "--make-transitive-optimization-interface",
-        "\tOutput transitive optimization information",
-        "\tinto the `<module>.trans_opt' file.",
-        "\tThis option should only be used by mmake.",
-        "-x,--make-xml-doc,--make-xml-documentation",
-        "\tOutput XML documentation of the module",
-        "\tinto the `<module>.xml' file.",
-        "\tThis option should only be used by mmake.",
-        "-P, --convert-to-mercury",
-        "\tConvert to Mercury. Output to file `<module>.ugly'",
-        "\tThis option acts as a Mercury ugly-printer.",
-        "-t, --typecheck-only",
-        "\tJust check that the code is syntactically correct and",
-        "\ttype-correct. Don't check modes or determinism,",
-        "\tand don't generate any code.",
-        "-e, --errorcheck-only",
-        "\tCheck the module for errors, but do not generate any code.",
-        "-C, --target-code-only",
-        "\tGenerate target code (i.e. C code in `<module>.c',",
-        "\tC# code in `<module>.cs', or Java code in",
-        "\t`<module>.java'), but not object code.",
-        "-c, --compile-only",
-        "\tGenerate C code in `<module>.c' and object code in `<module>.o'",
-        "\tbut do not attempt to link the named modules.",
-        % --compile-to-shared-lib is intended only for use
-        % by the debugger's interactive query facility,
-        % so it isn't documented.
-        "--output-grade-string",
-        "\tCompute the canonical string representing the currently",
-        "\tselected grade, and print it on the standard output.",
-        "--output-link-command",
-        "\tPrint to standard output the command used to link executables.",
-        "--output-shared-lib-link-command",
-        "\tPrint to standard output the command used to link shared libraries",
-        "--output-stdlib-grades",
-        "\tPrint to standard output the list of compilation grades in which",
-        "\tthe Mercury standard library is available with this compiler.",
-        "--output-libgrades",
-        "\tPrint to standard output the list of compilation grades in which",
-        "\ta library to be installed should be built.",
-        "--output-cc",
-        "\tPrint to standard output the command used to invoke the",
-        "\tC compiler.",
-        "--output-cc-type, --output-c-compiler-type",
-        "\tPrint the C compiler type to the standard output.",
-        "--output-cflags",
-        "\tPrint to standard output the flags with which the C compiler",
-        "\twill be invoked.",
-        "--output-csharp-compiler",
-        "\tPrint to standard output the command used to invoke the C#",
-        "\tcompiler.",
-        "--output-csharp-compiler-type",
-        "\tPrint the C# compiler type to the standard output.",
-        "--output-library-link-flags",
-        "\tPrint to standard output the flags that are passed to linker",
-        "\tin order to link against the current set of libraries.",
-        "\tThis includes the standard library, as well as any other",
-        "\tlibraries specified via the --ml option.",
-        "--output-grade-defines",
-        "\tPrint to standard output the flags that are passed to the",
-        "\tC compiler to define the macros whose values specify the",
-        "\tcompilation grade.",
-        "--output-c-include-dir-flags, --output-c-include-directory-flags",
-        "\tPrint to standard output the flags that are passed to the",
-        "\tC compiler to specify which directories to search for",
-        "\tC header files. This includes the C header files from the",
-        "\tstandard library.",
-        "--output-target-arch",
-        "\tPrint the target architecture to the standard output.",
-        "--output-class-dir, --output-class-directory",
-        "--output-java-class-dir, --output-java-class-directory",
-        "\tPrint to standard output the name of the directory in which",
-        "\tgenerated Java class files will be placed.",
-        "--output-stdlib-modules",
-        "\tPrint to standard output the names of the modules in the",
-        "\tMercury standard library."
-    ], !IO).
+        short_help('M', "generate-dependencies", [], [
+            "Output `Make'-style dependencies for the module",
+            "and all of its dependencies to `<module>.dep'."]),
 
-:- pred options_help_aux_output(io.text_output_stream::in,
-    io::di, io::uo) is det.
+        help("generate-dependencies-ints", [
+            "Does the same job as --generate-dependencies, but also",
+            "outputs .int3, .int0, .int and .int2 files for all the modules",
+            "in the program."]),
 
-options_help_aux_output(Stream, !IO) :-
-    io.write_string(Stream, "\nAuxiliary Output Options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-% These are commented out until the compiler consistently does
-% what these options say it should do when specified.
-%       "--error-output-suffix .xyz",
-%       "\tWhen compiling module M, output any error, warning and/or",
-%       "\tinformational messages about the module to a file named `M.xyz'.",
-%       "\tThe default is for such output to go to standard error.",
-%       "--progress-output-suffix .xyz",
-%       "\tWhen compiling module M, output messages about the progress",
-%       "\tof the compilation to a file named `M.xyz'. This includes any",
-%       "\tstatistics about the performance of compiler passes, if enabled.",
-%       "\tThe default is for such output to go to standard error.",
-%       "--inference-output-suffix .xyz",
-%       "\tWhen compiling module M, output the results of any type and/or",
-%       "\tmode inference to a file named `M.xyz'.",
-%       "\tThe default is for such output to go to standard error.",
+        help("generate-dependency-file", [
+            "Output `Make'-style dependencies for the module",
+            "to `<module>.d'."]),
 
-% These are commented out because they are intended only for developers.
-%       "--debug-output-suffix .xyz",
-%       "\tWhen compiling module M, direct output that is intended to",
-%       "\thelp debug the compiler to a file named `M.xyz'.",
-%       "\tThe default is for such output to go to standard error.",
-%       "--recompile-output-suffix .xyz",
-%       This is intended to direct the output from the test cases in
-%       tests/reccompilation to file.
+        help("generate-module-order", [
+            "Output the strongly connected components of the module",
+            "dependency graph in top-down order to `<module>.order'.",
+            "Effective only if --generate-dependencies is also specified."]),
 
-        "--smart-recompilation",
-        "\tWhen compiling, write program dependency information",
-        "\tto be used to avoid unnecessary recompilations if an",
-        "\timported module's interface changes in a way which does",
-        "\tnot invalidate the compiled code. `--smart-recompilation'",
-        "\tdoes not yet work with `--intermodule-optimization'.",
-        "--generate-mmc-deps",
-        "--generate-mmc-make-module-dependencies",
-        "\tGenerate dependencies for use by `mmc --make' even",
-        "\twhen using Mmake. This is recommended when building a",
-        "\tlibrary for installation.",
+        help("generate-standalone-interface <basename>", [
+            "Output a stand-alone interface.",
+            "<basename> is used as the basename of any files generated for",
+            "the stand-alone interface. (See the Stand-alone Interface",
+            "chapter of the Mercury User's Guide for further details.)"]),
 
-% XXX The source-to-source debugging transform is not ready for public
-% consumption.
-        %"--link-ssdebug-libs",
-        %"--link-ssdb-libs",
-        %"\tLink the source to source debugging libraries into the",
-        %"\tthe executable.",
-        %"--ss-trace {none, shallow, deep}",
-        %"\tThe trace level to use for source to source debugging of",
-        %"\tthe given module.",
+        short_help('i', "make-int", ["make-interface"], [
+            "Write the module interface to `<module>.int',",
+            "and write the short interface to `<module>.int2'",
+            "This option should only be used by mmake."]),
 
-% "--trace decl" is not documented, because it is for backwards
-% compatibility only. It is now equivalent to `--trace rep'.
-%       "--trace {minimum, shallow, deep, decl, rep, default}",
-        "--trace {minimum, shallow, deep, rep, default}",
-        "\tGenerate code that includes the specified level",
-        "\tof execution tracing.",
-        "\tSee the Debugging chapter of the Mercury User's Guide",
-        "\tfor details.",
-        "--exec-trace-tail-rec",
-        "\tGenerate TAIL events for self-tail-recursive calls instead of",
-        "\tEXIT events. This allows these recursive calls to reuse",
-        "\ttheir parent call's stack frame, but it also means that",
-        "\tthe debugger won't have access to the contents of the reused",
-        "\tstack frames",
-%       "--suppress-trace <suppress-items>,",
-%       "\tSuppress the named aspects of the execution tracing system.",
-%       This is a developer-only option:
-%       "--force-disable-trace",
-%       "\tForce tracing to be set to trace level none.",
-%       "\tThis overrides all other tracing/grade options.",
-%       "\tIts main use is to turn off tracing in the browser",
-%       "\tdirectory, even for .debug and .decldebug grades.",
-        "--trace-optimized",
-        "\tDo not disable optimizations that can change the trace.",
-% "--trace-prof" is not documented because if is only intended for developers
-% of the deep profiler.
-%       "--trace-prof"",
-%       "\tEnable tracing of deep profiling service predicates.",
-% I/O tabling is deliberately not documented. It is mean to be switched on,
-% with consistent parameters, in debugging grades, and to be consistently
-% switched off in non-debugging grades. Inconsistent use of the options
-% governing I/O tabling can yield core dumps from the debugger, so these
-% options are for implementors only.
-%       "--trace-table-io",
-%       "\tEnable the tabling of I/O actions, to allow the debugger",
-%       "\tto execute retry commands across I/O actions.",
-%       "--trace-table-io-only-retry",
-%       "\tSet up I/O tabling to support only retries across I/O",
-%       "\tactions, not the printing of actions or declarative",
-%       "\tdebugging. This reduces the size of the I/O action table.",
-%       "--trace-table-io-states",
-%       "\tWhen tabling I/O actions, table the io.state arguments",
-%       "\ttogether with the others. This should be required iff",
-%       "\tvalues of type io.state actually contain information.",
-%       "--trace-table-io-require",
-%       "\tRequire the tabling of I/O actions, i.e. generate an error",
-%       "\tif an I/O primitive does not have the tabled_for_io",
-%       "\tannotation.",
-%       "--trace-table-io-all",
-%       "\tTable all I/O actions even in the absence of annotations.",
-%       "\tIf a primitive has no annotation specifying the type of",
-%       "\ttabling required, deduce it from the values of the other",
-%       "\tannotations.",
-        "--trace-flag <keyword>",
-        "\tEnable the trace goals that depend on the <keyword> trace flag.",
-        "--profile-optimized",
-        "\tDo not disable optimizations that can distort deep profiles.",
-        "--no-delay-death",
-        "\tWhen the trace level is `deep', the compiler normally",
-        "\tpreserves the values of variables as long as possible, even",
-        "\tbeyond the point of their last use, in order to make them",
-        "\taccessible from as many debugger events as possible.",
-        "\tHowever, it will not do this if this option is given.",
-        "--delay-death-max-vars <N>",
-        "\tDelay the deaths of variables only when the number of variables",
-        "\tin the procedure is no more than N. The default value is 1000.",
-        "--stack-trace-higher-order",
-        "\tEnable stack traces through predicates and functions with",
-        "\thigher-order arguments, even if stack tracing is not",
-        "\tsupported in general.",
-%       This is a developer-only option:
-%       "--force-disable-ssdebug",
-%       "\tDisable ssdebug transformation even in ssdebug grades.",
-%       "--tabling-via-extra-args",
-%       "\tGenerate output via extra_args in foreign_procs.",
-%       "--allow-table-reset",
-%       "\tGenerate C code for resetting tabling data structures.",
-        "-n, --line-numbers",
-        "\tPut source line numbers into the generated code.",
-        "\tThe generated code may be in C (the usual case),",
-        "\tor in Mercury (with the option --convert-to-mercury).",
-        "--no-line-numbers-around-foreign-code",
-        "\tDo not put source line numbers into the generated code",
-        "\taround inclusions of foreign language code.",
-        "--line-numbers-for-c-headers",
-        "\tPut source line numbers in the generated C header files.",
-        "\tThis can make it easier to track down any problems with",
-        "\tC code in foreign_decl pragmas, but may cause unnecessary",
-        "\trecompilations of other modules if any of these line numbers",
-        "\tchanges (e.g. because the location of a predicate declaration",
-        "\tchanges in the Mercury source file).",
-% This option is for developers only.
-%       "--type-repns-for-humans",
-%       "\tFormat type_repn items in automatically generated interface files",
-%       "\tto be more easily read by humans.",
-        "--auto-comments",
-        "\tOutput comments in the generated target language file.",
-% This option is for developers only. Since it can include one C comment inside
-% another, the resulting code is not guaranteed to be valid C.
-%       "--frameopt-comments",
-%       "\tGet frameopt.m to generate comments describing its operation.",
-        "\t(The code may be easier to understand if you also",
-        "\tuse the `--no-llds-optimize' option.)",
-        "--max-error-line-width <n>",
-        "\tSet the maximum width of an error message line to <n> characters",
-        "\t(unless a long single word forces the line over this limit).",
-        "\tSpecifying --no-max-error-line-width removes the limit.",
-        "--reverse-error-order",
-        "\tPrint error messages in descending order of their line numbers,",
-        "\tinstead of the usual ascending order. This is useful if you want",
-        "\tto work on the last errors in a file first.",
-        "--show-definitions",
-        "\tWrite out a list of the types, insts, modes, predicates, functions",
-        "\ttypeclasses and instances defined in the module to",
-        "\t`<module>.defns'.",
-        "--show-definition-line-counts",
-        "\tWrite out a list of the predicates and functions defined in",
-        "\tthe module, together with the names of the files containing them",
-        "\tand their approximate line counts, to `<module>.defn_line_counts'.",
-        "\tThe list will be ordered on the names and arities of the",
-        "\tpredicates and functions.",
-        "--show-definition-extents",
-        "\tWrite out a list of the predicates and functions defined in",
-        "\tthe module, together with the approximate line numbers of their",
-        "\tfirst and last lines, to `<module>.defn_extents'.",
-        "\tThe list will be ordered on the starting line numbers",
-        "\tof the predicates and functions.",
-        "--show-local-call-tree",
-        "\tConstruct the local call tree of the predicates and functions",
-        "\tdefined in the module. Each node of this tree is a local",
-        "\tpredicate or function, and each node has edges linking it to the",
-        "\tnodes of the other local predicates and functions it directly",
-        "\trefers to. Write out to `<module>.local_call_tree' a list of",
-        "\tthese nodes. Put these nodes into the order in which they are",
-        "\tencountered by a depth-first left-to-right traversal of the bodies",
-        "\t(as reordered by mode analysis), of the first procedure of",
-        "\teach predicate or function, starting the traversal at the",
-        "\texported predicates and/or functions of the module.",
-        "\tList the callees of each node in the same order.",
-        "\tWrite a flattened form of this call tree, containing just",
-        "\tthe predicates and functions in the same traversal order,",
-        "\tto `<module>.local_call_tree_order'.",
-        "\tConstruct another call tree of the predicates and functions",
-        "\tdefined in the module in which each entry lists",
-        "\tnot just the local predicates/functions directly referred to,",
-        "\tbut all directly or indirectly referenced predicates/functions,",
-        "\twhether or not they are defined in the current module.",
-        "\tThe one restriction is that we consider only references",
-        "\tthat occur in the body of the current module.",
-        "\tWrite out this tree to `<module>.local_call_full'.",
-        "--show-local-type-representations",
-        "\tWrite out information about the representations of all types",
-        "\tdefined in the module being compiled to `<module>.type_repns'.",
-        "--show-all-type-representations",
-        "\tWrite out information about the representations of all types",
-        "\tvisible in the module being compiled to `<module>.type_repns'.",
-%       "--show-developer-type-representations",
-%       "\tWhen writing out information about the representations of types,",
-%       "\tinclude information that is of interest to mmc developers only.",
-        "--show-dependency-graph",
-        "\tWrite out the dependency graph to `<module>.dependency_graph'.",
-        "--show-pred-movability <pred_or_func_name>",
-        "\tWrite out a short report on the effect of moving the code of",
-        "\tthe named predicate or function (or the named several predicates",
-        "\tand/or functions, if the option is given several times)",
-        "\tto a new module. This includes listing the other predicates",
-        "\tand/or functions that would have to be moved with them, and",
-        "\twhether the move would cause unwanted coupling between",
-        "\tthe new module and the old.",
-        "--imports-graph",
-        "\tWrite out the imports graph to `<module>.imports_graph'.",
-        "\tThe imports graph contains the directed graph module A",
-        "\timports module B.",
-        "\tThe resulting file can be processed by the graphviz tools.",
-        "\tEffective only if --generate-dependencies is also specified.",
-% This option is for developers only for now.
-%       "--trans-opt-deps-spec <filename>",
-%       "\tSpecify a file to remove edges from the trans-opt dependency",
-%       "\tgraph.",
-% This option is for developers only.
-%       "--dump-trace-counts <stage number or name>",
-%       "\tIf the compiler was compiled with debugging enabled and is being",
-%       "\trun with trace counting enabled, write out the trace counts file",
-%       "\tafter the specified stage to `<module>.trace_counts.<num>-<name>'.",
-%       "\tStage numbers range from 1-599.",
-%       "\tMultiple dump options accumulate.",
-        "-d <n>, --dump-hlds <stage number or name>",
-        "\tDump the HLDS (high level intermediate representation) after",
-        "\tthe specified stage to `<module>.hlds_dump.<num>-<name>'.",
-        "\tStage numbers range from 1-599.",
-        "\tMultiple dump options accumulate.",
-        "--dump-hlds-pred-id <n>",
-        "\tDump the HLDS only of the predicate/function with the given",
-        "\tpred id.",
-        "--dump-hlds-pred-name <name>",
-        "\tDump the HLDS only of the predicate/function with the given",
-        "\tname.",
-% This option is for developers only.
-%       "--dump-hlds-pred-name-order",
-%       "\tDump the predicates in the HLDS ordered by name",
-%       "\tnot ordered by pred id.",
-% This option is for developers only.
-%       "--dump-hlds-spec-preds",
-%       "\tWith `--dump-hlds', dump the special (unify, compare, and index)",
-%       "\tpredicates not in pred-id order, but in alphabetical order",
-%       "\tby type constructor.",
-% This option is for developers only.
-%       "--dump-hlds-spec-preds-for <typename>",
-%       "\tDump only the special (unify, compare, and index) predicates",
-%       "\tfor the types named by the (possibly multiple) occurrences",
-%       "\tof this option.",
-% This option is for developers only.
-%       "-D, --dump-hlds-alias <dump-alias>",
-%       "\tWith `--dump-hlds', include extra detail in the dump.",
-%       "\tEach dump alias is shorthand for a set of option letters.",
-%       "\tThe list of aliases is in handle_options.m",
-        "--dump-hlds-options <options>",
-        "\tWith `--dump-hlds', include extra detail in the dump.",
-        "\tEach type of detail is included in the dump if its",
-        "\tcorresponding letter occurs in the option argument",
-        "\t(see the Mercury User's Guide for details).",
-        "--dump-hlds-inst-limit <N>",
-        "\tDump at most N insts in each inst table.",
-        "--dump-hlds-inst-size-limit <N>",
-        "\tDump insts in an inst table only if their size does not exceed N.",
-        "--dump-hlds-file-suffix <suffix>",
-        "\tAppend the given suffix to the names of the files created by",
-        "\tthe `--dump-hlds' option.",
-        "--dump-same-hlds",
-        "\tCreate a file for a HLDS stage even if the file notes only that",
-        "\tthis stage is identical to the previously dumped HLDS stage.",
-        "--dump-mlds <stage number or name>",
-        "\tDump the MLDS (medium level intermediate representation)",
-        "\tafter the specified stage, as C code,",
-        "\tto`<module>.c_dump.<num>-<name>',",
-        "\tand `<module>.mih_dump.<num>-<name>'.",
-        "\tStage numbers range from 1-99.",
-        "\tMultiple dump options accumulate.",
-        "\tThis option works only in MLDS grades that target C.",
-        "--dump-mlds-pred-name <pred or func name>",
-        "\tDump the MLDS (medium level intermediate representation)",
-        "\tof the predicate or function with the specified name",
-        "\tat the stages specified by the --dump-mlds option.",
-        "\tThe dump file will consist of the predicates and functions",
-        "\tnamed by all the occurrences of this option (there may be",
-        "\tmore than one), and nothing else.",
-        "--verbose-dump-mlds <stage number or name>",
-        "\tDump the internal compiler representation of the MLDS, after",
-        "\tthe specified stage, to `<module>.mlds_dump.<num>-<name>'.",
-        "\tThis option works in all MLDS grades."
-% This option is only intended to be used for debugging the compiler.
-%       "--dump-options-file output_file",
-%       "\tDump the internal compiler representation of files named in",
-%       "\t--options-file options to output_file."
-% The mode constraints code is still experimental so these options are
-% currently commented out.
-%       "--mode-constraints"
-%       "\tRun constraint based mode analysis. The default is to",
-%       "\tuse the robdd solution using the full (subtyping)",
-%       "\tconstraints and dump results.",
-%       "--simple-mode-constraints",
-%       "\tUse only the simplified constraint system when running",
-%       "\tthe robdd solver constraints based mode analysis.",
-%       "--prop-mode-constraints",
-%       "\tUse the new propagation solver for constraints based",
-%       "\tmode analysis.",
-%       "--compute-goal-modes",
-%       "\tCompute goal modes.",
-% These options are only intended to be used for debugging the compiler.
-%       "--unneeded-code-debug",
-%       "\tPrint progress messages during the unneeded code elimination",
-%       "\tpasses.",
-%       "--unneeded-code-debug-pred-name <predname>",
-%       "\tPrint the definition of <predname> at the start of each pass",
-%       "\tof the unneeded code elimination algorithm.",
-%       "--common-struct-preds <predids>",
-%       "\tLimit common struct optimization to the preds with the given ids.",
-    ], !IO).
+        alt_help("make-priv-int", pos_sep_lines, ["make-private-interface"], [
+            "Write the private interface to `<module>.int0'.",
+            "This option should only be used by mmake."]),
 
-:- pred options_help_semantics(io.text_output_stream::in,
-    io::di, io::uo) is det.
+        alt_help("make-short-int", pos_sep_lines, ["make-short-interface"], [
+            "Write the unqualified short interface to `<module>.int3'.",
+            "This option should only be used by mmake."]),
 
-options_help_semantics(Stream, !IO) :-
-    io.write_string(Stream,
-        "\nLanguage semantics options:\n", !IO),
-    io.write_string(Stream,
-        "(See the Mercury language reference manual ", !IO),
-    io.write_string(Stream,
-        "for detailed explanations.)\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "--no-reorder-conj",
-        "\tExecute conjunctions left-to-right except where the modes imply",
-        "\tthat reordering is unavoidable.",
-        "--no-reorder-disj",
-        "\tExecute disjunctions strictly left-to-right.",
-        "--no-fully-strict",
-        "\tAllow infinite loops or goals with determinism erroneous to be",
-        "\toptimised away.",
-        "--allow-stubs",
-        "\tAllow procedures to have no clauses. Any calls to",
-        "\tsuch procedures will raise an exception at run-time.",
-        "\tThis option is sometimes useful during program development.",
-        "\t(See also the documentation for the `--warn-stubs' option",
-        "\tin the ""Warning Options"" section.)",
-        "--infer-all",
-        "\tAbbreviation for `--infer-types --infer-modes --infer-det'.",
-        "--infer-types",
-        "\tIf there is no type declaration for a predicate or function,",
-        "\ttry to infer the type, rather than just reporting an error.",
-        "--infer-modes",
-        "\tIf there is no mode declaration for a predicate,",
-        "\ttry to infer the modes, rather than just reporting an error.",
+        alt_help("make-opt-int", pos_sep_lines,
+                ["make-optimization-interface"], [
+            "Write inter-module optimization information to `<module>.opt'.",
+            "This option should only be used by mmake."]),
 
-        "--no-infer-det, --no-infer-determinism",
-        "\tIf there is no determinism declaration for a procedure,",
-        "\tdon't try to infer the determinism, just report an error.",
-        "--type-inference-iteration-limit <n>",
-        "\tPerform at most <n> passes of type inference (default: 60).",
-        "--mode-inference-iteration-limit <n>",
-        "\tPerform at most <n> passes of mode inference (default: 30).",
-        "--event-set-file-name <filename>",
-        "\tGet the specification of user-defined events from <filename>."
-    ], !IO).
+        alt_help("make-trans-opt", pos_sep_lines,
+                ["make-transitive-optimization-interface"], [
+            "Output transitive optimization information",
+            "into the `<module>.trans_opt' file.",
+            "This option should only be used by mmake."]),
 
-:- pred options_help_ctgc(io.text_output_stream::in, io::di, io::uo) is det.
+        short_help('x', "make-xml-doc", ["make-xml-documentation"], [
+            "Output XML documentation of the module",
+            "into the `<module>.xml' file.",
+            "This option should only be used by mmake."]),
 
-options_help_ctgc(Stream, !IO) :-
-    io.write_string(Stream,
-        "\nCompile Time Garbage Collection Options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "--structure-sharing",
-        "\tPerform structure sharing analysis.",
-        "--structure-sharing-widening <n>",
-        "\tPerform widening when the set of structure sharing pairs becomes",
-        "\tlarger than <n>. When n=0, widening is not enabled.",
-        "\t(default: 0).",
-        "--structure-reuse, --ctgc",
-        "\tPerform structure reuse analysis (Compile Time Garbage",
-        "\tCollection).",
-        "--structure-reuse-constraint " ++
-            "{same_cons_id, within_n_cells_difference}",
-        "--ctgc-constraint {same_cons_id, within_n_cells_difference}",
-        "\tConstraint on the way we allow structure reuse. `same_cons_id'",
-        "\tspecifies that reuse is only allowed between terms of the same",
-        "\ttype and constructor. `within_n_cells_difference' states that",
-        "\treuse is allowed as long as the arities between the reused term",
-        "\tand new term does not exceed a certain threshold. The threshold",
-        "\tneeds to be set using `--structure-reuse-constraint-arg'.",
-        "\t(default: within_n_cells_difference, with threshold 0)",
-        "--structure-reuse-constraint-arg, --ctgc-constraint-arg",
-        "\tSpecify the maximum difference in arities between the terms that",
-        "\tcan be reused, and the terms that reuse these terms.",
-        "\t(default: 0)"
+        short_help('P', "convert-to-mercury", [], [
+            "Convert to Mercury. Output to file `<module>.ugly'",
+            "This option acts as a Mercury ugly-printer."]),
 
-% This option is for developers only.
-%       "--structure-reuse-max-conditions",
-%       "\tSoft limit on the number of reuse conditions to accumulate",
-%       "\tfor a procedure. (default: 10)"
+        short_help('t', "typecheck-only", [], [
+            "Just check that the code is syntactically correct and",
+            "type-correct. Don't check modes or determinism,",
+            "and don't generate any code."]),
 
-% This option is likely to break many optimisations which haven't been updated.
-%       "--structure-reuse-free-cells",
-%       "\tImmediately free cells which are known to be dead but which",
-%       "\tcannot be reused."
-    ], !IO).
+        short_help('e', "errorcheck-only", [], [
+            "Check the module for errors, but do not generate any code."]),
 
-:- pred options_help_termination(io.text_output_stream::in,
-    io::di, io::uo) is det.
+        short_help('C', "target-code-only", [], [
+            "Generate target code (i.e. C code in `<module>.c',",
+            "C# code in `<module>.cs', or Java code in",
+            "`<module>.java'), but not object code."]),
 
-options_help_termination(Stream, !IO) :-
-    io.write_string(Stream, "\nTermination Analysis Options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "--enable-term, --enable-termination",
-        "\tAnalyse each predicate to discover if it terminates.",
-        "--chk-term, --check-term, --check-termination",
-        "\tEnable termination analysis, and emit warnings for some",
-        "\tpredicates or functions that cannot be proved to terminate.",
-        "\tIn many cases where the compiler is unable to prove termination",
-        "\tthe problem is either a lack of information about the",
-        "\ttermination properties of other predicates, or because language",
-        "\tconstructs (such as higher order calls) were used which could",
-        "\tnot be analysed. In these cases the compiler does not emit a",
-        "\twarning of non-termination, as it is likely to be spurious.",
-        "--verb-chk-term, --verb-check-term, --verbose-check-termination",
-        "\tEnable termination analysis, and emit warnings for all",
-        "\tpredicates or functions that cannot be proved to terminate.",
-        "--term-single-arg <n>, --termination-single-argument-analysis <n>",
-        "\tWhen performing termination analysis, try analyzing",
-        "\trecursion on single arguments in strongly connected",
-        "\tcomponents of the call graph that have up to <n> procedures.",
-        "\tSetting this limit to zero disables single argument analysis.",
-        "--termination-norm {simple, total, num-data-elems}",
-        "\tThe norm defines how termination analysis measures the size",
-        "\tof a memory cell. The `simple' norm says that size is always",
-        "\tone. The `total' norm says that it is the number of words",
-        "\tin the cell. The `num-data-elems' norm says that it is the",
-        "\tnumber of words in the cell that contain something other",
-        "\tthan pointers to cells of the same type.",
-        "--term-err-limit <n>, --termination-error-limit <n>",
-        "\tPrint at most <n> reasons for any single termination error",
-        "\t(default: 3).",
-        "--term-path-limit <n>, --termination-path-limit <n>",
-        "\tPerform termination analysis only on predicates",
-        "\twith at most <n> paths (default: 256)."
+        short_help('c', "compile-only", [], [
+            "Generate C code in `<module>.c' and object code in `<module>.o'",
+            "but do not attempt to link the named modules."]),
 
-% The following options are used to control the new termination analyser.
-% They are currently disabled because that is still a work-in-progress.
-%
-%       "--enable-term2, --enable-termination2",
-%       "\tAnalyse each predicate to discover if it terminates.",
-%       "\tThis uses an alternative termination analysis based",
-%       "\ton convex constraints.",
-%       "--chk-term2, --check-termination2",
-%       "\tEnable the alternative termination analysis, and emit warnings for",
-%       "\tsome predicates or functions that cannot be proved to terminate.",
-%       "\tIn many cases where the compiler is unable to prove termination",
-%       "\tthe problem is either a lack of information about the",
-%       "\ttermination properties of other predicates, or because language",
-%       "\tconstructs (such as higher order calls) were used which could",
-%       "\tnot be analysed. In these cases the compiler does not emit a",
-%       "\twarning of non-termination, as it is likely to be spurious.",
-%       "--verb-chk-term2, --verb-check-term2, --verbose-check-termination2",
-%       "--termination2-norm {simple, total, num-data-elems}",
-%       "\tTell the alternative termination analyser which norm to use.",
-%       "\tSee the description of the `--termination-norm' option for a",
-%       "\tdescription of the different types of norm available."
-%       "--term2-widening-limit <n>, --termination2-widening-limit <n>",
-%       "\tSet the threshold for the number of iterations after which the",
-%       "\targument size analyser invokes widening.",
-%       "--term2-propagate-failure-constrs, " ++
-%           "--termination2-propagate-failure-constraints",
-%       "\tMake the argument analyser infer information about the sizes of any"
-%       "\tinputs to a goal in contexts where that goal fails."
-%       "--term2-max-matrix-size <n>, --termination2-maximum-matrix-size <n>",
-%       "\tLimit the sizes of constraints systems in the analyser to <n>",
-%       "\tconstraints. Use approximations of some constraint operations,",
-%       "\tsuch as projection, if this threshold is exceeded. This will",
-%       "\tspeed up the analysis at the cost of reduced precision.",
+        % XXX Improve this documentation.
+        priv_help("compile-to-shared-lib", [
+            "This option is intended only for use by the debugger's",
+            "interactive query facility."]),
 
-% This option is for developers only.
-% It is useful for benchmarking the argument size analysis.
-%       "--term2-argument-size-analysis-only, --term2-arg-size-analysis-only",
-%       "\tPerform argument size analysis on each SCC but do not",
-%       "\tattempt to infer termination,"
-    ], !IO).
+        help("output-grade-string", [
+            "Compute the canonical string representing the currently",
+            "selected grade, and print it on the standard output."]),
+
+        help("output-link-command", [
+            "Print to standard output the command used to link executables."]),
+
+        help("output-shared-lib-link-command", [
+            "Print to standard output the command used to link shared libraries"]),
+
+        help("output-stdlib-grades", [
+            "Print to standard output the list of compilation grades in which",
+            "the Mercury standard library is available with this compiler."]),
+
+        help("output-libgrades", [
+            "Print to standard output the list of compilation grades in which",
+            "a library to be installed should be built."]),
+
+        help("output-cc", [
+            "Print to standard output the command used to invoke the",
+            "C compiler."]),
+
+        alt_help("output-cc-type", pos_sep_lines, ["output-c-compiler-type"], [
+            "Print the C compiler type to the standard output."]),
+
+        help("output-cflags", [
+            "Print to standard output the flags with which the C compiler",
+            "will be invoked."]),
+
+        help("output-csharp-compiler", [
+            "Print to standard output the command used to invoke the C#",
+            "compiler."]),
+
+        help("output-csharp-compiler-type", [
+            "Print the C# compiler type to the standard output."]),
+
+        help("output-library-link-flags", [
+            "Print to standard output the flags that are passed to linker",
+            "in order to link against the current set of libraries.",
+            "This includes the standard library, as well as any other",
+            "libraries specified via the --ml option."]),
+
+        help("output-grade-defines", [
+            "Print to standard output the flags that are passed to the",
+            "C compiler to define the macros whose values specify the",
+            "compilation grade."]),
+
+        alt_help("output-c-include-dir-flags", pos_sep_lines,
+                ["output-c-include-directory-flags"], [
+            "Print to standard output the flags that are passed to the",
+            "C compiler to specify which directories to search for",
+            "C header files. This includes the C header files from the",
+            "standard library."]),
+
+        help("output-target-arch", [
+            "Print the target architecture to the standard output."]),
+
+        alt_help("output-class-dir", pos_sep_lines,
+                ["output-class-directory",
+                "output-java-class-dir",
+                "output-java-class-directory"], [
+            "Print to standard output the name of the directory in which",
+            "generated Java class files will be placed."]),
+
+        help("output-stdlib-modules", [
+            "Print to standard output the names of the modules in the",
+            "Mercury standard library."])
+
+    ],
+    Section = help_section(yes(SectionName), SectionCommentLines, HelpStructs).
+
+:- func options_help_aux_output = help_section.
+
+options_help_aux_output = Section :-
+    SectionName = "Auxiliary Output Options",
+    HelpStructs = [
+        % The next five options are private until the compiler consistently
+        % does what these options say it should do when specified.
+
+        priv_help("error-output-suffix .xyz", [
+            "When compiling module M, output any error, warning and/or",
+            "informational messages about the module to a file named `M.xyz'.",
+            "The default is for such output to go to standard error."]),
+
+        priv_help("progress-output-suffix .xyz", [
+            "When compiling module M, output messages about the progress",
+            "of the compilation to a file named `M.xyz'. This includes any",
+            "statistics about the performance of compiler passes, if enabled.",
+            "The default is for such output to go to standard error."]),
+
+        priv_help("inference-output-suffix .xyz", [
+            "When compiling module M, output the results of any type and/or",
+            "mode inference to a file named `M.xyz'.",
+            "The default is for such output to go to standard error."]),
+
+        % These are also commented out because they are intended
+        % only for developers.
+        priv_help("debug-output-suffix .xyz", [
+            "When compiling module M, direct output that is intended to",
+            "help debug the compiler to a file named `M.xyz'.",
+            "The default is for such output to go to standard error."]),
+
+        priv_help("recompile-output-suffix .xyz", [
+            "This is intended to direct the output from the test cases in
+            tests/reccompilation to file."]),
+
+        help("smart-recompilation", [
+            "When compiling, write program dependency information",
+            "to be used to avoid unnecessary recompilations if an",
+            "imported module's interface changes in a way which does",
+            "not invalidate the compiled code. `--smart-recompilation'",
+            "does not yet work with `--intermodule-optimization'."]),
+
+        alt_help("generate-mmc-deps", pos_sep_lines,
+                ["generate-mmc-make-module-dependencies"], [
+            "Generate dependencies for use by `mmc --make' even",
+            "when using Mmake. This is recommended when building a",
+            "library for installation."]),
+
+        % XXX The source-to-source debugging transform is not ready for public
+        % consumption.
+        priv_alt_help("link-ssdebug-libs", pos_sep_lines, ["link-ssdb-libs"], [
+            "Link the source to source debugging libraries into the",
+            "the executable."]),
+
+        priv_help("ss-trace {none, shallow, deep}", [
+            "The trace level to use for source to source debugging of",
+            "the given module."]),
+
+        % "--trace decl" is not documented, because it is for backwards
+        % compatibility only. It is now equivalent to `--trace rep'.
+        % help("trace {minimum, shallow, deep, decl, rep, default}",
+        help("trace {minimum, shallow, deep, rep, default}", [
+            "Generate code that includes the specified level",
+            "of execution tracing.",
+            "See the Debugging chapter of the Mercury User's Guide",
+            "for details."]),
+
+        help("exec-trace-tail-rec", [
+            "Generate TAIL events for self-tail-recursive calls instead of",
+            "EXIT events. This allows these recursive calls to reuse",
+            "their parent call's stack frame, but it also means that",
+            "the debugger won't have access to the contents of the reused",
+            "stack frames"]),
+
+        priv_help("suppress-trace <suppress-items>,", [
+            "Suppress the named aspects of the execution tracing system."]),
+
+        priv_help("force-disable-trace", [
+            "Force tracing to be set to trace level none.",
+            "This overrides all other tracing/grade options.",
+            "Its main use is to turn off tracing in the browser",
+            "directory, even for .debug and .decldebug grades."]),
+
+        help("trace-optimized", [
+            "Do not disable optimizations that can change the trace."]),
+
+        % "--trace-prof" is not documented because it is intended
+        % only for developers of the deep profiler.
+        priv_help("trace-prof", [
+            "Enable tracing of deep profiling service predicates."]),
+
+        % I/O tabling is deliberately not documented. It is meant to be
+        % switched on, with consistent parameters, in debugging grades,
+        % and to be consistently switched off in non-debugging grades.
+        % Inconsistent use of the options governing I/O tabling
+        % can yield core dumps from the debugger, so these options
+        % are for implementors only.
+        priv_help("trace-table-io", [
+            "Enable the tabling of I/O actions, to allow the debugger",
+            "to execute retry commands across I/O actions."]),
+
+        priv_help("trace-table-io-only-retry", [
+            "Set up I/O tabling to support only retries across I/O",
+            "actions, not the printing of actions or declarative",
+            "debugging. This reduces the size of the I/O action table."]),
+
+        priv_help("trace-table-io-states", [
+            "When tabling I/O actions, table the io.state arguments",
+            "together with the others. This should be required iff",
+            "values of type io.state actually contain information."]),
+
+        priv_help("trace-table-io-require", [
+            "Require the tabling of I/O actions, i.e. generate an error",
+            "if an I/O primitive does not have the tabled_for_io",
+            "annotation."]),
+
+        priv_help("trace-table-io-all", [
+            "Table all I/O actions even in the absence of annotations.",
+            "If a primitive has no annotation specifying the type of",
+            "tabling required, deduce it from the values of the other",
+            "annotations."]),
+
+        help("trace-flag <keyword>", [
+            "Enable the trace goals that depend on the <keyword> trace flag."]),
+
+        help("profile-optimized", [
+            "Do not disable optimizations that can distort deep profiles."]),
+
+        help("no-delay-death", [
+            "When the trace level is `deep', the compiler normally",
+            "preserves the values of variables as long as possible, even",
+            "beyond the point of their last use, in order to make them",
+            "accessible from as many debugger events as possible.",
+            "However, it will not do this if this option is given."]),
+
+        help("delay-death-max-vars <N>", [
+            "Delay the deaths of variables only when the number of variables",
+            "in the procedure is no more than N. The default value is 1000."]),
+
+        help("stack-trace-higher-order", [
+            "Enable stack traces through predicates and functions with",
+            "higher-order arguments, even if stack tracing is not",
+            "supported in general."]),
+
+        % This is a developer-only option:
+        priv_help("force-disable-ssdebug", [
+            "Disable ssdebug transformation even in ssdebug grades."]),
+
+        priv_help("tabling-via-extra-args", [
+            "Generate output via extra_args in foreign_procs."]),
+
+        priv_help("allow-table-reset", [
+            "Generate C code for resetting tabling data structures."]),
+
+        short_help('n', "line-numbers", [], [
+            "Put source line numbers into the generated code.",
+            "The generated code may be in C (the usual case),",
+            "or in Mercury (with the option --convert-to-mercury)."]),
+
+        help("no-line-numbers-around-foreign-code", [
+            "Do not put source line numbers into the generated code",
+            "around inclusions of foreign language code."]),
+
+        help("line-numbers-for-c-headers", [
+            "Put source line numbers in the generated C header files.",
+            "This can make it easier to track down any problems with",
+            "C code in foreign_decl pragmas, but may cause unnecessary",
+            "recompilations of other modules if any of these line numbers",
+            "changes (e.g. because the location of a predicate declaration",
+            "changes in the Mercury source file)."]),
+
+        % This option is for developers only.
+        priv_help("type-repns-for-humans", [
+            "Format type_repn items in automatically generated interface files",
+            "to be more easily read by humans."]),
+
+        help("auto-comments", [
+            "Output comments in the generated target language file.",
+            "(The code may be easier to understand if you also",
+            "use the `--no-llds-optimize' option.)"]),
+
+        % This option is for developers only. Since it can include
+        % one C comment inside another, the resulting code is not guaranteed
+        % to be valid C.
+        priv_help("frameopt-comments", [
+            "Get frameopt.m to generate comments describing its operation.",
+            "(The code may be easier to understand if you also",
+            "use the `--no-llds-optimize' option.)"]),
+
+        help("max-error-line-width <n>", [
+            "Set the maximum width of an error message line to <n> characters",
+            "(unless a long single word forces the line over this limit).",
+            "Specifying --no-max-error-line-width removes the limit."]),
+
+        help("reverse-error-order", [
+            "Print error messages in descending order of their line numbers,",
+            "instead of the usual ascending order. This is useful if you want",
+            "to work on the last errors in a file first."]),
+
+        help("show-definitions", [
+            "Write out a list of the types, insts, modes, predicates, functions",
+            "typeclasses and instances defined in the module to",
+            "`<module>.defns'."]),
+
+        help("show-definition-line-counts", [
+            "Write out a list of the predicates and functions defined in",
+            "the module, together with the names of the files containing them",
+            "and their approximate line counts, to `<module>.defn_line_counts'.",
+            "The list will be ordered on the names and arities of the",
+            "predicates and functions."]),
+
+        help("show-definition-extents", [
+            "Write out a list of the predicates and functions defined in",
+            "the module, together with the approximate line numbers of their",
+            "first and last lines, to `<module>.defn_extents'.",
+            "The list will be ordered on the starting line numbers",
+            "of the predicates and functions."]),
+
+        help("show-local-call-tree", [
+            "Construct the local call tree of the predicates and functions",
+            "defined in the module. Each node of this tree is a local",
+            "predicate or function, and each node has edges linking it to the",
+            "nodes of the other local predicates and functions it directly",
+            "refers to. Write out to `<module>.local_call_tree' a list of",
+            "these nodes. Put these nodes into the order in which they are",
+            "encountered by a depth-first left-to-right traversal of the bodies",
+            "(as reordered by mode analysis), of the first procedure of",
+            "each predicate or function, starting the traversal at the",
+            "exported predicates and/or functions of the module.",
+            "List the callees of each node in the same order.",
+            "Write a flattened form of this call tree, containing just",
+            "the predicates and functions in the same traversal order,",
+            "to `<module>.local_call_tree_order'.",
+            "Construct another call tree of the predicates and functions",
+            "defined in the module in which each entry lists",
+            "not just the local predicates/functions directly referred to,",
+            "but all directly or indirectly referenced predicates/functions,",
+            "whether or not they are defined in the current module.",
+            "The one restriction is that we consider only references",
+            "that occur in the body of the current module.",
+            "Write out this tree to `<module>.local_call_full'."]),
+
+        help("show-local-type-representations", [
+            "Write out information about the representations of all types",
+            "defined in the module being compiled to `<module>.type_repns'."]),
+
+        help("show-all-type-representations", [
+            "Write out information about the representations of all types",
+            "visible in the module being compiled to `<module>.type_repns'."]),
+
+        priv_help("show-developer-type-representations", [
+            "When writing out information about the representations of types,",
+            "include information that is of interest to mmc developers only."]),
+
+        help("show-dependency-graph", [
+            "Write out the dependency graph to `<module>.dependency_graph'."]),
+
+        help("show-pred-movability <pred_or_func_name>", [
+            "Write out a short report on the effect of moving the code of",
+            "the named predicate or function (or the named several predicates",
+            "and/or functions, if the option is given several times)",
+            "to a new module. This includes listing the other predicates",
+            "and/or functions that would have to be moved with them, and",
+            "whether the move would cause unwanted coupling between",
+            "the new module and the old."]),
+
+        help("imports-graph", [
+            "Write out the imports graph to `<module>.imports_graph'.",
+            "The imports graph contains the directed graph module A",
+            "imports module B.",
+            "The resulting file can be processed by the graphviz tools.",
+            "Effective only if --generate-dependencies is also specified."]),
+
+        % This option is for developers only for now.
+        priv_help("trans-opt-deps-spec <filename>", [
+            "Specify a file to remove edges from the trans-opt dependency",
+            "graph."]),
+
+        % This option is for developers only.
+        priv_help("dump-trace-counts <stage number or name>", [
+            "If the compiler was compiled with debugging enabled and is being",
+            "run with trace counting enabled, write out the trace counts file",
+            "after the specified stage to `<module>.trace_counts.<num>-<name>'.",
+            "Stage numbers range from 1-599.",
+            "Multiple dump options accumulate."]),
+
+        short_arg_help("d <n>", "dump-hlds <stage number or name>", [], [
+            "Dump the HLDS (high level intermediate representation) after",
+            "the specified stage to `<module>.hlds_dump.<num>-<name>'.",
+            "Stage numbers range from 1-599.",
+            "Multiple dump options accumulate."]),
+
+        help("dump-hlds-pred-id <n>", [
+            "Dump the HLDS only of the predicate/function with the given",
+            "pred id."]),
+
+        help("dump-hlds-pred-name <name>", [
+            "Dump the HLDS only of the predicate/function with the given",
+            "name."]),
+
+        % This option is for developers only.
+        priv_help("dump-hlds-pred-name-order", [
+            "Dump the predicates in the HLDS ordered by name",
+            "not ordered by pred id."]),
+
+        % This option is for developers only.
+        priv_help("dump-hlds-spec-preds", [
+            "With `--dump-hlds', dump the special (unify, compare, and index)",
+            "predicates not in pred-id order, but in alphabetical order",
+            "by type constructor."]),
+
+        % This option is for developers only.
+        priv_help("dump-hlds-spec-preds-for <typename>", [
+            "Dump only the special (unify, compare, and index) predicates",
+            "for the types named by the (possibly multiple) occurrences",
+            "of this option."]),
+
+        % This option is for developers only.
+        priv_short_arg_help("D <dump_alias>",
+                "dump-hlds-alias <dump-alias>", [], [
+            "With `--dump-hlds', include extra detail in the dump.",
+            "Each dump alias is shorthand for a set of option letters.",
+            "The list of aliases is in handle_options.m"]),
+
+        help("dump-hlds-options <options>", [
+            "With `--dump-hlds', include extra detail in the dump.",
+            "Each type of detail is included in the dump if its",
+            "corresponding letter occurs in the option argument",
+            "(see the Mercury User's Guide for details)."]),
+
+        help("dump-hlds-inst-limit <N>", [
+            "Dump at most N insts in each inst table."]),
+
+        help("dump-hlds-inst-size-limit <N>", [
+            "Dump insts in an inst table only if their size does not exceed N."]),
+
+        help("dump-hlds-file-suffix <suffix>", [
+            "Append the given suffix to the names of the files created by",
+            "the `--dump-hlds' option."]),
+
+        help("dump-same-hlds", [
+            "Create a file for a HLDS stage even if the file notes only that",
+            "this stage is identical to the previously dumped HLDS stage."]),
+
+        help("dump-mlds <stage number or name>", [
+            "Dump the MLDS (medium level intermediate representation)",
+            "after the specified stage, as C code,",
+            "to`<module>.c_dump.<num>-<name>',",
+            "and `<module>.mih_dump.<num>-<name>'.",
+            "Stage numbers range from 1-99.",
+            "Multiple dump options accumulate.",
+            "This option works only in MLDS grades that target C."]),
+
+        help("dump-mlds-pred-name <pred or func name>", [
+            "Dump the MLDS (medium level intermediate representation)",
+            "of the predicate or function with the specified name",
+            "at the stages specified by the --dump-mlds option.",
+            "The dump file will consist of the predicates and functions",
+            "named by all the occurrences of this option (there may be",
+            "more than one), and nothing else."]),
+
+        help("verbose-dump-mlds <stage number or name>", [
+            "Dump the internal compiler representation of the MLDS, after",
+            "the specified stage, to `<module>.mlds_dump.<num>-<name>'.",
+            "This option works in all MLDS grades."]),
+
+        % This option is only intended to be used for debugging the compiler.
+        priv_help("dump-options-file output_file", [
+            "Dump the internal compiler representation of files named in",
+            "options-file options to output_file."]),
+
+        % The mode constraints code was experimental, so these options
+        % are currently commented out.
+        priv_help("mode-constraints", [
+            "Run constraint based mode analysis. The default is to",
+            "use the robdd solution using the full (subtyping)",
+            "constraints and dump results."]),
+
+        priv_help("simple-mode-constraints", [
+            "Use only the simplified constraint system when running",
+            "the robdd solver constraints based mode analysis."]),
+
+        priv_help("prop-mode-constraints", [
+            "Use the new propagation solver for constraints based",
+            "mode analysis."]),
+
+        priv_help("compute-goal-modes", [
+            "Compute goal modes."]),
+
+        % These options are only intended to be used for debugging
+        % the compiler.
+        priv_help("unneeded-code-debug", [
+            "Print progress messages during the unneeded code elimination",
+            "passes."]),
+
+        priv_help("unneeded-code-debug-pred-name <predname>", [
+            "Print the definition of <predname> at the start of each pass",
+            "of the unneeded code elimination algorithm.",
+            "--common-struct-preds <predids>",
+            "Limit common struct optimization to the preds with the given ids."])
+
+    ],
+    Section = help_section(yes(SectionName), [], HelpStructs).
+
+:- func options_help_semantics = help_section.
+
+options_help_semantics = Section :-
+    SectionName = "Language semantics options",
+    SectionCommentLines = [
+        "(See the Mercury language reference manual for detailed explanations.)"
+    ],
+    HelpStructs = [
+        help("no-reorder-conj", [
+            "Execute conjunctions left-to-right except where the modes imply",
+            "that reordering is unavoidable."]),
+
+        help("no-reorder-disj", [
+            "Execute disjunctions strictly left-to-right."]),
+
+        help("no-fully-strict", [
+            "Allow infinite loops or goals with determinism erroneous to be",
+            "optimised away."]),
+
+        help("allow-stubs", [
+            "Allow procedures to have no clauses. Any calls to",
+            "such procedures will raise an exception at run-time.",
+            "This option is sometimes useful during program development.",
+            "(See also the documentation for the `--warn-stubs' option",
+            "in the ""Warning Options"" section.)"]),
+
+        help("infer-all", [
+            "Abbreviation for `--infer-types --infer-modes --infer-det'."]),
+
+        help("infer-types", [
+            "If there is no type declaration for a predicate or function,",
+            "try to infer the type, rather than just reporting an error."]),
+
+        help("infer-modes", [
+            "If there is no mode declaration for a predicate,",
+            "try to infer the modes, rather than just reporting an error."]),
+
+        alt_help("no-infer-det", pos_sep_lines, ["no-infer-determinism"], [
+            "If there is no determinism declaration for a procedure,",
+            "don't try to infer the determinism, just report an error."]),
+
+        help("type-inference-iteration-limit <n>", [
+            "Perform at most <n> passes of type inference (default: 60)."]),
+
+        help("mode-inference-iteration-limit <n>", [
+            "Perform at most <n> passes of mode inference (default: 30)."]),
+
+        help("event-set-file-name <filename>", [
+            "Get the specification of user-defined events from <filename>."])
+
+    ],
+    Section = help_section(yes(SectionName), SectionCommentLines, HelpStructs).
+
+:- func options_help_ctgc = help_section.
+
+options_help_ctgc = Section :-
+    SectionName = "Compile Time Garbage Collection Options",
+    HelpStructs = [
+        help("structure-sharing", [
+            "Perform structure sharing analysis."]),
+
+        help("structure-sharing-widening <n>", [
+            "Perform widening when the set of structure sharing pairs becomes",
+            "larger than <n>. When n=0, widening is not enabled.",
+            "(default: 0)."]),
+
+        alt_help("structure-reuse", pos_sep_lines, ["ctgc"], [
+            "Perform structure reuse analysis (Compile Time Garbage",
+            "Collection)."]),
+
+        alt_help("structure-reuse-constraint " ++
+                "{same_cons_id, within_n_cells_difference}", pos_sep_lines,
+                ["ctgc-constraint " ++
+                "{same_cons_id, within_n_cells_difference}"], [
+            "Constraint on the way we allow structure reuse. `same_cons_id'",
+            "specifies that reuse is only allowed between terms of the same",
+            "type and constructor. `within_n_cells_difference' states that",
+            "reuse is allowed as long as the arities between the reused term",
+            "and new term does not exceed a certain threshold. The threshold",
+            "needs to be set using `--structure-reuse-constraint-arg'.",
+            "(default: within_n_cells_difference, with threshold 0)"]),
+
+        alt_help("structure-reuse-constraint-arg", pos_sep_lines,
+                ["ctgc-constraint-arg"], [
+            "Specify the maximum difference in arities between the terms that",
+            "can be reused, and the terms that reuse these terms.",
+            "(default: 0)"]),
+
+        % This option is for developers only.
+        priv_help("structure-reuse-max-conditions", [
+            "Soft limit on the number of reuse conditions to accumulate",
+            "for a procedure. (default: 10)"]),
+
+        % This option is likely to break many optimisations
+        % which haven't been updated.
+        priv_help("structure-reuse-free-cells", [
+            "Immediately free cells which are known to be dead but which",
+            "cannot be reused."])
+
+    ],
+    Section = help_section(yes(SectionName), [], HelpStructs).
+
+:- func options_help_termination = help_section.
+
+options_help_termination = Section :-
+    SectionName = "Termination Analysis Options",
+    HelpStructs = [
+        alt_help("enable-term", pos_sep_lines, ["enable-termination"], [
+            "Analyse each predicate to discover if it terminates."]),
+
+        alt_help("chk-term", pos_sep_lines,
+                ["check-term", "check-termination"], [
+            "Enable termination analysis, and emit warnings for some",
+            "predicates or functions that cannot be proved to terminate.",
+            "In many cases where the compiler is unable to prove termination",
+            "the problem is either a lack of information about the",
+            "termination properties of other predicates, or because language",
+            "constructs (such as higher order calls) were used which could",
+            "not be analysed. In these cases the compiler does not emit a",
+            "warning of non-termination, as it is likely to be spurious."]),
+
+        alt_help("verb-chk-term", pos_sep_lines,
+                ["verb-check-term", "verbose-check-termination"], [
+            "Enable termination analysis, and emit warnings for all",
+            "predicates or functions that cannot be proved to terminate."]),
+
+        alt_help("term-single-arg <n>", pos_sep_lines,
+                ["termination-single-argument-analysis <n>"], [
+            "When performing termination analysis, try analyzing",
+            "recursion on single arguments in strongly connected",
+            "components of the call graph that have up to <n> procedures.",
+            "Setting this limit to zero disables single argument analysis."]),
+
+        help("termination-norm {simple, total, num-data-elems}", [
+            "The norm defines how termination analysis measures the size",
+            "of a memory cell. The `simple' norm says that size is always",
+            "one. The `total' norm says that it is the number of words",
+            "in the cell. The `num-data-elems' norm says that it is the",
+            "number of words in the cell that contain something other",
+            "than pointers to cells of the same type."]),
+
+        alt_help("term-err-limit <n>", pos_sep_lines,
+                ["termination-error-limit <n>"], [
+            "Print at most <n> reasons for any single termination error",
+            "(default: 3)."]),
+
+        alt_help("term-path-limit <n>", pos_sep_lines,
+                ["termination-path-limit <n>"], [
+            "Perform termination analysis only on predicates",
+            "with at most <n> paths (default: 256)."]),
+
+        % The following options are used to control the new termination
+        % analyser. They are currently disabled because that is still
+        % a work-in-progress. XXX Or is it?
+
+        priv_alt_help("enable-term2", pos_sep_lines, ["enable-termination2"], [
+            "Analyse each predicate to discover if it terminates.",
+            "This uses an alternative termination analysis based",
+            "on convex constraints."]),
+
+        priv_alt_help("chk-term2", pos_sep_lines, ["check-termination2"], [
+            "Enable the alternative termination analysis, and emit warnings for",
+            "some predicates or functions that cannot be proved to terminate.",
+            "In many cases where the compiler is unable to prove termination",
+            "the problem is either a lack of information about the",
+            "termination properties of other predicates, or because language",
+            "constructs (such as higher order calls) were used which could",
+            "not be analysed. In these cases the compiler does not emit a",
+            "warning of non-termination, as it is likely to be spurious."]),
+
+        priv_alt_help("verb-chk-term2", pos_sep_lines,
+                ["verb-check-term2", "verbose-check-termination2"], [
+            % XXX These options used to have no documentation at all.
+            % The following is my guess (zs).
+            "Report more verbose errors from the alternative termination",
+            "analysis algorithm"]),
+
+        priv_help("termination2-norm {simple, total, num-data-elems}", [
+            "Tell the alternative termination analyser which norm to use.",
+            "See the description of the `--termination-norm' option for a",
+            "description of the different types of norm available."]),
+
+        priv_alt_help("term2-widening-limit <n>", pos_sep_lines,
+                ["termination2-widening-limit <n>"], [
+            "Set the threshold for the number of iterations after which the",
+            "argument size analyser invokes widening."]),
+
+        priv_alt_help("term2-propagate-failure-constrs", pos_sep_lines,
+            ["termination2-propagate-failure-constraints"], [
+            "Make the argument analyser infer information about the sizes of",
+            "any inputs to a goal in contexts where that goal fails."]),
+
+        priv_alt_help("term2-max-matrix-size <n>", pos_sep_lines,
+                ["termination2-maximum-matrix-size <n>"], [
+            "Limit the sizes of constraints systems in the analyser to <n>",
+            "constraints. Use approximations of some constraint operations,",
+            "such as projection, if this threshold is exceeded. This will",
+            "speed up the analysis at the cost of reduced precision."]),
+
+        % This option is for developers only.
+        % It is useful for benchmarking the argument size analysis.
+        priv_alt_help("term2-argument-size-analysis-only", pos_sep_lines,
+                ["term2-arg-size-analysis-only"], [
+            "Perform argument size analysis on each SCC but do not",
+            "attempt to infer termination,"])
+
+    ],
+    Section = help_section(yes(SectionName), [], HelpStructs).
 
 :- pred options_help_compilation_model(io.text_output_stream::in,
     io::di, io::uo) is det.
@@ -6691,7 +6849,7 @@ options_help_hlds_llds_optimization(Stream, !IO) :-
 %       "\tDo not generate smart switches on strings."
 %       "--no-smart-tag-indexing",
 %       "\tDo not generate smart switches on discriminated union types.",
-%       "---no-smart-float-indexing",
+%       "--no-smart-float-indexing",
 %       "\tDo not generate smart switches on floats."
         "--dense-switch-req-density <percentage>",
         "\tThe jump table generated for an atomic switch",
@@ -7402,8 +7560,9 @@ options_help_misc(Stream, !IO) :-
 
 :- type help_section
     --->    help_section(
-                hs_maybe_section_name   :: maybe(string),
-                hs_help_structs         :: list(help)
+                hs_maybe_section_name       :: maybe(string),
+                hs_section_comment_lines    :: list(string),
+                hs_help_structs             :: list(help)
             ).
 
 % This structured representation improves on our traditional approach
@@ -7473,6 +7632,9 @@ options_help_misc(Stream, !IO) :-
                 % We have many options that have both British and American
                 % spelling of the option name, and some have both
                 % short and long versions.
+                % XXX We should decide on a consistent order:
+                % - should British or American spelling come first?
+                % - should we go from long versions to short, or vice versa?
                 %
                 % The order of these alt options here will be preserved
                 % in the output. They will all follow gh_long_name.
@@ -7482,8 +7644,12 @@ options_help_misc(Stream, !IO) :-
                 % The order of these short options here will be preserved
                 % in the output.
                 %
-                % Using a char here works only because no option that
-                % has a short name has an argument.
+                % We use a char because all options using gen_help
+                % have short names that havee no argument.
+                % (Some options using the other function symbols below
+                % *do* have short names that take arguments, and for these,
+                % we use strings, the first character of which is the short
+                % name, and the rest is the argument description suffix.
                 gh_short_names          :: list(char),
 
                 % Is the option's documentation printed for users, or not?
@@ -7524,12 +7690,26 @@ options_help_misc(Stream, !IO) :-
     ;       short_help(
                 sh_short_name           :: char,
                 sh_long_name            :: string,
+                sh_alt_long_names       :: list(string),
                 sh_description          :: list(string)
             )
     ;       priv_short_help(
                 psh_short_name          :: char,
                 psh_long_name           :: string,
+                psh_alt_long_names      :: list(string),
                 psh_description         :: list(string)
+            )
+    ;       short_arg_help(
+                sah_short_name          :: string,
+                sah_long_name           :: string,
+                sah_alt_long_names      :: list(string),
+                sah_description         :: list(string)
+            )
+    ;       priv_short_arg_help(
+                psah_short_name         :: string,
+                psah_long_name          :: string,
+                psah_alt_long_names     :: list(string),
+                psah_description        :: list(string)
             ).
 
 :- type help_public_or_private
@@ -7548,12 +7728,20 @@ options_help_misc(Stream, !IO) :-
     help_section::in, io::di, io::uo) is det.
 
 output_help_section(Stream, What, Section, !IO) :-
-    Section = help_section(MaybeSectionName, HelpStructs),
+    Section = help_section(MaybeSectionName, SectionCommentLines, HelpStructs),
     (
         MaybeSectionName = no
     ;
         MaybeSectionName = yes(SectionName),
         io.format(Stream, "\n%s:\n", [s(SectionName)], !IO)
+    ),
+    (
+        SectionCommentLines = []
+    ;
+        SectionCommentLines = [_ | _],
+        io.write_prefixed_lines(Stream, single_indent,
+            SectionCommentLines, !IO),
+        io.nl(Stream, !IO)
     ),
     output_help_messages(Stream, What, HelpStructs, !IO).
 
@@ -7598,21 +7786,37 @@ output_help_message(Stream, What, OptHelp, !IO) :-
         ),
         LongNames = [LongName | AltLongNames],
         LongNameStrs = list.map(long_name_to_str, LongNames),
-        OptNameLines = join_options(AltNamePos, OptNameLineMaxLen, LongNameStrs)
+        OptNameLines =
+            join_options(AltNamePos, OptNameLineMaxLen, LongNameStrs)
     ;
         (
-            OptHelp = short_help(ShortName, LongName, DescLines),
+            OptHelp = short_help(ShortName, LongName, AltLongNames,
+                DescLines),
+            ShortNameStr = short_name_to_str(ShortName),
             PublicOrPrivate = help_public
         ;
-            OptHelp = priv_short_help(ShortName, LongName, DescLines),
+            OptHelp = short_arg_help(ShortName, LongName, AltLongNames,
+                DescLines),
+            ShortNameStr = short_name_with_arg_to_str(ShortName),
+            PublicOrPrivate = help_public
+        ;
+            OptHelp = priv_short_help(ShortName, LongName, AltLongNames,
+                DescLines),
+            ShortNameStr = short_name_to_str(ShortName),
+            PublicOrPrivate = help_private
+        ;
+            OptHelp = priv_short_arg_help(ShortName, LongName, AltLongNames,
+                DescLines),
+            ShortNameStr = short_name_with_arg_to_str(ShortName),
             PublicOrPrivate = help_private
         ),
-        ShortNameStr = short_name_to_str(ShortName),
         LongNameStr = long_name_to_str(LongName),
+        AltLongNameStrs = list.map(long_name_to_str, AltLongNames),
         % We could use pos_sep_lines, but we should use one setting
         % consistently for all <one short, one long> name options.
-        OptNameLines = join_options(pos_one_line, OptNameLineMaxLen,
-            [ShortNameStr, LongNameStr])
+        OptNameLines0 = join_options(pos_one_line, OptNameLineMaxLen,
+            [ShortNameStr, LongNameStr]),
+        OptNameLines = OptNameLines0 ++ AltLongNameStrs
     ),
     ( if
         (
@@ -7622,12 +7826,8 @@ output_help_message(Stream, What, OptHelp, !IO) :-
             What = print_public_and_private_help
         )
     then
-        % Until all options are documented using help structures,
-        % maintain the existing indentation.
-        % OptNamePrefix = "    ",
-        % DescPrefix    = "        ",
-        OptNamePrefix = "\t",
-        DescPrefix = "\t\t",
+        OptNamePrefix = single_indent,
+        DescPrefix = double_indent,
         io.write_prefixed_lines(Stream, OptNamePrefix, OptNameLines, !IO),
         io.write_prefixed_lines(Stream, DescPrefix, DescLines, !IO)
     else
@@ -7643,6 +7843,11 @@ long_name_to_str(LongName) =
 
 short_name_to_str(ShortName) =
     string.format("-%c", [c(ShortName)]).
+
+:- func short_name_with_arg_to_str(string) = string.
+
+short_name_with_arg_to_str(ShortName) =
+    string.format("-%s", [s(ShortName)]).
 
     % join_options(AltNamePos, OptNameLineMaxLen, OptionStrs) = Lines :-
     % Given a list of short and/or long option strings, of the form
@@ -7673,6 +7878,16 @@ join_options(AltNamePos, OptNameLineMaxLen, OptionStrs) = Lines :-
     else
         Lines = [OneLine]
     ).
+
+:- func single_indent = string.
+:- func double_indent = string.
+
+% Until all options are documented using help structures,
+% maintain the existing indentation.
+% single_indent = "    ".
+% double_indent = "        ".
+single_indent = "\t".
+double_indent = "\t\t".
 
 %---------------------------------------------------------------------------%
 :- end_module libs.options.
