@@ -4451,11 +4451,15 @@ handle_quoted_flag(Option, Flag, !OptionTable) :-
 %---------------------------------------------------------------------------%
 
 options_help(Stream, !IO) :-
-    OptHelpHelp = gen_help("help", [], ['?', 'h'], no_arg, help_public,
-        ["Print this usage message."]),
-    output_help_messages(Stream, [OptHelpHelp], !IO),
-    options_help_warning(Stream, !IO),
-    options_help_verbosity(Stream, !IO),
+    What = print_public_help,
+
+    Sections = [
+        options_help_help,
+        options_help_warning,
+        options_help_verbosity
+    ],
+    list.foldl(output_help_section(Stream, What), Sections, !IO),
+
     options_help_output(Stream, !IO),
     options_help_aux_output(Stream, !IO),
     options_help_semantics(Stream, !IO),
@@ -4474,13 +4478,23 @@ options_help(Stream, !IO) :-
     options_help_build_system(Stream, !IO),
     options_help_misc(Stream, !IO).
 
-:- pred options_help_warning(io.text_output_stream::in, io::di, io::uo) is det.
+:- func options_help_help = help_section.
 
-options_help_warning(Stream, !IO) :-
-    io.write_string(Stream, "\nWarning Options:\n", !IO),
+options_help_help = Section :-
     HelpStructs = [
-        gen_help("inhibit-warnings", [], ['w'], no_arg, help_public,
+        gen_help("help", pos_one_line, [], ['?', 'h'], help_public,
+            ["Print this usage message."])
+    ],
+    Section = help_section(no, HelpStructs).
+
+:- func options_help_warning = help_section.
+
+options_help_warning = Section :-
+    SectionName = "Warning Options",
+    HelpStructs = [
+        short_help('w', "inhibit-warnings",
             ["Disable all warning messages."]),
+
         help("inhibit-style-warnings",
             ["Disable all warning messages about programming style."]),
 
@@ -4533,11 +4547,12 @@ options_help_warning(Stream, !IO) :-
             "Do not warn about argument order rearrangement caused",
             "by `--introduce-accumulators'."]),
 
-        alt_help("no-warn-singleton-vars", ["no-warn-singleton-variables"], [
+        alt_help("no-warn-singleton-vars", pos_sep_lines,
+                ["no-warn-singleton-variables"], [
             "Do not warn about variables which only occur once, despite",
             "their names not starting with an underscore."]),
 
-        alt_help("no-warn-repeated-singleton-vars",
+        alt_help("no-warn-repeated-singleton-vars", pos_sep_lines,
                 ["no-warn-repeated-singleton-variables"], [
             "Do not warn about variables which occur more than once, despite",
             "their names starting with an underscore."]),
@@ -4675,7 +4690,7 @@ options_help_warning(Stream, !IO) :-
         help("no-warn-smart-recompilation", [
             "Disable warnings from the smart recompilation system."]),
 
-        alt_help("no-warn-undefined-options-vars",
+        alt_help("no-warn-undefined-options-vars", pos_sep_lines,
                 ["no-warn-undefined-options-variables"], [
             "Do not warn about references to undefined variables in",
             "options files with `--make'."]),
@@ -4843,180 +4858,224 @@ options_help_warning(Stream, !IO) :-
         help("-warn-can-fail-function", [
             "Warn about functions that can fail."]),
 
-        alt_help("warn-unsorted-import-block",
+        alt_help("warn-unsorted-import-block", pos_sep_lines,
                 ["warn-unsorted-import-blocks"], [
             "Warn about two import and/or use declarations on the same line,",
             "or if a sequence of such declarations on consecutive lines",
             "are not sorted on module name."])
     ],
-    output_help_messages(Stream, HelpStructs, !IO).
+    Section = help_section(yes(SectionName), HelpStructs).
 
-:- pred options_help_verbosity(io.text_output_stream::in,
-    io::di, io::uo) is det.
+:- func options_help_verbosity = help_section.
 
-options_help_verbosity(Stream, !IO) :-
-    io.write_string(Stream, "\nVerbosity Options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "-v, --verbose",
-        "\tOutput progress messages at each stage in the compilation.",
-        "-V, --very-verbose",
-        "\tOutput very verbose progress messages.",
-        "-E, --verbose-error-messages",
-        "\tExplain error messages. Asks the compiler to give you a more",
-        "\tdetailed explanation of any errors it finds in your program.",
-        "--no-verbose-make",
-        "\tDisable messages about the progress of builds using",
-        "\tthe `--make' option.",
-        "--verbose-commands",
-        "\tOutput each external command before it is run.",
-        "\tNote that some commands will only be printed with `--verbose'.",
-        "--verbose-recompilation",
-        "\tWhen using `--smart-recompilation', output messages",
-        "\texplaining why a module needs to be recompiled.",
-        "--find-all-recompilation-reasons",
-        "\tFind all the reasons why a module needs to be recompiled,",
-        "\tnot just the first. Implies `--verbose-recompilation'.",
-        "--output-compile-error-lines <n>",
-        "--no-output-compile-error-lines",
-        "\tWith `--make', output the first <n> lines of the `.err'",
-        "\tfile after compiling a module (default: 100).",
-        "\tSpecifying --no-output-compile-error-lines removes the limit.",
-        "--report-cmd-line-args-doterr",
-        "\tReport the command line arguments.",
-        "--report-cmd-line-args-in-doterr",
-        "\tReport the command line arguments for compilations whose output",
-        "\tmmake normally redirects to a `.err' file.",
-        "-S, --statistics",
-        "\tOutput messages about the compiler's time/space usage.",
-        "\tAt the moment this option implies `--no-trad-passes', so you get",
-        "\tinformation at the boundaries between phases of the compiler.",
-% The only sensible way to use --detailed-statistics, based on --very-verbose,
-% is implemented automatically in handle_options, so users shouldn't need to be
-% aware of it.
-%       "--detailed-statistics",
-%       "\tOutput more detailed messages about the compiler's",
-%       "\ttime/space usage.",
-        "--proc-size-statistics <filename>",
-        "\tAppend information about the size of each procedure in the",
-        "\tmodule in terms of goals and variables to the end of the",
-        "\tnamed file.",
-%       "--inst-statistics <filename>",
-%       "\tAppend a count of each kind of insts in the procedures in the",
-%       "\tmodule to the end of the named file.",
-        "--limit-error-contexts filename:minline1-maxline1,minline2-maxline2",
-        "\tPrint errors and warnings for the named file only when their",
-        "\tline number is in one of the specified ranges.",
-        "\tThe minimum or maximum line number in each range may be omitted,",
-        "\tin which case the range has no lower or upper bound respectively.",
-        "\tMultiple --limit-error-context options accumulate.",
-        "\tIf more than one --limit-error-context option is given for",
-        "\tthe same file, only the last one will have an effect.",
-        "\tIf the file name and colon are missing, the limit will apply",
-        "\tto all files.",
-% XXX This option should be used only by the configure script.
-%       "--config-enable-color-diagnostics",
-% XXX This option should be used only by our test suite.
-%       "--ignore-color-envvars"
-%
-        "--color-scheme <ColorScheme>",
-        "\tSpecify the color scheme to use for diagnostics, if the use of",
-        "\tcolor in diagnostics is enabled. For information about how the",
-        "\tcompiler uses colors in diagnostic messages, and about the",
-        "\tsyntax of color scheme specifications, please see the",
-        "\tsection named \"Color schemes\" in the Mercury user's Guide",
-        "\tfor the details.",
+options_help_verbosity = Section :-
+    SectionName =  "Verbosity Options",
+    HelpStructs = [
+        short_help('v', "verbose", [
+            "Output progress messages at each stage in the compilation."]),
 
-        "--no-color-diagnostics",
-        "\tDisable the use of colors in diagnostic messages. Please see",
-        "\tthe section named \"Enabling the use of color\" section in the",
-        "\tMercury Users's Guide for details.",
+        short_help('V', "very-verbose", [
+            "Output very verbose progress messages."]),
 
-% These work only if the compiler was compiled with
-% "--trace-flag type_checkpoint".
-%       "-T, --debug-types",
-%       "\tOutput detailed debugging traces of type checking.",
-%       "--debug-types-pred-name <pred_or_func_name>",
-%       "\tOutput detailed debugging traces of type checking",
-%       "\tonly for predicates and functions named by one of these options.",
-        "-N, --debug-modes",
-        "\tOutput debugging traces of the mode checking.",
-        "--debug-modes-statistics",
-        "\tOutput statistics after each step of mode checking.",
-        "--debug-modes-minimal",
-        "\tOutput only minimal debugging traces of the mode checking.",
-        "--debug-modes-verbose",
-        "\tOutput detailed debugging traces of the mode checking.",
-%       "--debug-modes-delay-vars",
-%       "\tOutput info about the variables involved in delayed goals.",
-%       "--debug-modes-goal-ids",
-%       "\tOutput the id of the goal at all mode debug checkpoints.",
-        "--debug-modes-pred-id <n>",
-        "\tWith `--debug-modes', restrict the debugging traces to the",
-        "\tmode checking of the predicate or function with the specified",
-        "\tpred id.",
-% --debug-dep-par-conj <n> is a developer only option,
-% and it is effective only if the compiler was compiled with the right
-% trace flags.
-%       "--debug-dep-par-conj <n>",
-%       "\tOutput detailed debugging traces during the dependent",
-%       "\tAND-parallelism transformation of the predicate with the",
-%       "\tpredicate id.",
-        "--debug-det, --debug-determinism",
-        "\tOutput detailed debugging traces of determinism analysis.",
-% --debug-code-gen-pred-id <n> is a developer only option,
-% and it is effective only if the compiler was compiled with the right
-% trace flags.
-%       "--debug-code-gen-pred-id <n>",
-%       "\tOutput detailed debugging traces of code generation for the",
-%       "\tpredicate or function with the given pred id.",
-% The new termination analyser is currently a work-in-progress.
-%       "--debug-term, --debug-termination",
-%       "\tOutput detailed debugging traces of the termination2 analysis.",
-% --debug-dead-proc-elim is a developer only option.
-%       "--debug-dead-proc-elim",
-%       "\tOutput the needed-entity-map generated by dead procedure",
-%       "\telimination.",
-% --debug-higher-order-specialization is a developer only option.
-%       "--debug-higher-order-specialization",
-%       "\tOutput messages about the procedure specializations done",
-%       "\tby higher_order.m.",
-        "--debug-opt",
-        "\tOutput detailed debugging traces of the optimization process.",
-        "--debug-opt-pred-id <n>",
-        "\tOutput detailed debugging traces of the optimization process",
-        "\tonly for the predicate/function with the specified pred id.",
-        "--debug-opt-pred-name <name>",
-        "\tOutput detailed debugging traces of the optimization process",
-        "\tonly for the predicate/function with the specified name.",
-        "--debug-pd",
-        "\tOutput detailed debugging traces of the partial",
-        "\tdeduction and deforestation process.",
-        "--debug-liveness <pred_id>",
-        "\tOutput detailed debugging traces of the liveness analysis",
-        "\tof the predicate with the given predicate id.",
-        "--debug-make",
-        "\tOutput detailed debugging traces of the `--make' option.",
-% This can be uncommented when the '--analyse-closures' option is uncommented.
-% (See below.)
-%       "--debug-closure",
-%       "\tOutput detailed debugging traces of the closure analysis."
-        "--debug-trail-usage",
-        "\tOutput detailed debugging traces of the `--analyse-trail-usage'",
-        "\toption.",
-        "--debug-intermodule-analysis",
-        "\tOutput detailed debugging traces of the `--intermodule-analysis'",
-        "\toption.",
-        "--debug-indirect-reuse",
-        "\tOutput detailed debugging traces of the indirect reuse pass of",
-        "\tthe `--structure-reuse' option.",
-        "--debug-type-rep",
-        "\tOutput debugging traces of type representation choices."
-% The mode constraints code is still experimental so this option is
-% currently commented out.
-%       "--debug-mode-constraints",
-%       "\tOutput detailed debugging traces of the `--prop-mode-constraints'",
-%       "\toption."
-    ], !IO).
+        short_help('E', "verbose-error-messages", [
+            "Explain error messages. Asks the compiler to give you a more",
+            "detailed explanation of any errors it finds in your program."]),
+
+        help("no-verbose-make", [
+            "Disable messages about the progress of builds using",
+            "the `--make' option."]),
+
+        help("verbose-commands", [
+            "Output each external command before it is run.",
+            "Note that some commands will only be printed with `--verbose'."]),
+
+        help("verbose-recompilation", [
+            "When using `--smart-recompilation', output messages",
+            "explaining why a module needs to be recompiled."]),
+
+        help("find-all-recompilation-reasons", [
+            "Find all the reasons why a module needs to be recompiled,",
+            "not just the first. Implies `--verbose-recompilation'."]),
+
+        alt_help("output-compile-error-lines <n>", pos_sep_lines,
+                ["no-output-compile-error-lines"], [
+            "With `--make', output the first <n> lines of the `.err'",
+            "file after compiling a module (default: 100).",
+            "Specifying --no-output-compile-error-lines removes the limit."]),
+
+        help("report-cmd-line-args-doterr", [
+            "Report the command line arguments."]),
+
+        help("report-cmd-line-args-in-doterr", [
+            "Report the command line arguments for compilations whose output",
+            "mmake normally redirects to a `.err' file."]),
+
+        short_help('S', "statistics", [
+            "Output messages about the compiler's time/space usage.",
+            "At the moment this option implies `--no-trad-passes', so you get",
+            "information at the boundaries between phases of the compiler."]),
+
+        % The only sensible way to use --detailed-statistics, based on
+        % --very-verbose, is implemented automatically in handle_options,
+        % so users shouldn't need to be aware of it.
+        priv_help("detailed-statistics", [
+            "Output more detailed messages about the compiler's",
+            "time/space usage."]),
+
+        help("proc-size-statistics <filename>", [
+            "Append information about the size of each procedure in the",
+            "module in terms of goals and variables to the end of the",
+            "named file."]),
+
+        priv_help("inst-statistics <filename>", [
+            "Append a count of each kind of insts in the procedures in the",
+            "module to the end of the named file."]),
+
+        help("limit-error-contexts filename:minline1-maxline1,minline2-maxline2", [
+            "Print errors and warnings for the named file only when their",
+            "line number is in one of the specified ranges.",
+            "The minimum or maximum line number in each range may be omitted,",
+            "in which case the range has no lower or upper bound respectively.",
+            "Multiple --limit-error-context options accumulate.",
+            "If more than one --limit-error-context option is given for",
+            "the same file, only the last one will have an effect.",
+            "If the file name and colon are missing, the limit will apply",
+            "to all files."]),
+
+        % This option should be used only by the configure script.
+        priv_help("config-default-color-diagnostics", [
+            "The default value of the --use-color-diagnostics option,",
+            "set by the configure script."]),
+
+        % This option should be used only by our test suite.
+        priv_help("ignore-color-envvars", [
+            "ignore the --color-scheme-envvar option."]),
+
+        help("color-scheme <ColorScheme>", [
+            "Specify the color scheme to use for diagnostics, if the use of",
+            "color in diagnostics is enabled. For information about how the",
+            "compiler uses colors in diagnostic messages, and about the",
+            "syntax of color scheme specifications, please see the",
+            "section named \"Color schemes\" in the Mercury user's Guide",
+            "for the details."]),
+
+        help("no-color-diagnostics", [
+            "Disable the use of colors in diagnostic messages. Please see",
+            "the section named \"Enabling the use of color\" section in the",
+            "Mercury Users's Guide for details."]),
+
+        % These work only if the compiler was compiled with
+        % "--trace-flag type_checkpoint".
+        priv_short_help('T', "debug-types", [
+            "Output detailed debugging traces of type checking."]),
+
+        priv_help("--debug-types-pred-name <pred_or_func_name>", [
+            "Output detailed debugging traces of type checking",
+            "only for predicates and functions named by one of these options."]),
+
+        short_help('N', "debug-modes", [
+            "Output debugging traces of the mode checking."]),
+
+        help("debug-modes-statistics", [
+            "Output statistics after each step of mode checking."]),
+
+        help("debug-modes-minimal", [
+            "Output only minimal debugging traces of the mode checking."]),
+
+        help("debug-modes-verbose", [
+            "Output detailed debugging traces of the mode checking."]),
+
+        priv_help("debug-modes-delay-vars", [
+            "Output info about the variables involved in delayed goals."]),
+
+        priv_help("debug-modes-goal-ids", [
+            "Output the id of the goal at all mode debug checkpoints."]),
+
+        help("debug-modes-pred-id <n>", [
+            "With `--debug-modes', restrict the debugging traces to the",
+            "mode checking of the predicate or function with the specified",
+            "pred id."]),
+
+        % --debug-dep-par-conj <n> is a developer only option,
+        % and it is effective only if the compiler was compiled with the right
+        % trace flags.
+        priv_help("debug-dep-par-conj <n>", [
+            "Output detailed debugging traces during the dependent",
+            "AND-parallelism transformation of the predicate with the",
+            "predicate id."]),
+
+        alt_help("debug-det", pos_sep_lines, ["debug-determinism"], [
+            "Output detailed debugging traces of determinism analysis."]),
+
+        % --debug-code-gen-pred-id <n> is a developer only option,
+        % and it is effective only if the compiler was compiled with
+        % the right trace flags.
+        priv_help("debug-code-gen-pred-id <n>", [
+            "Output detailed debugging traces of code generation for the",
+            "predicate or function with the given pred id."]),
+
+        % The new termination analyser is currently a work-in-progress.
+        priv_alt_help("debug-term", pos_sep_lines, ["debug-termination"], [
+            "Output detailed debugging traces of the termination2 analysis."]),
+
+        % --debug-dead-proc-elim is a developer only option.
+        priv_help("debug-dead-proc-elim", [
+            "Output the needed-entity-map generated by dead procedure",
+            "elimination."]),
+
+        % --debug-higher-order-specialization is a developer only option.
+        priv_help("debug-higher-order-specialization", [
+            "Output messages about the procedure specializations done",
+            "by higher_order.m."]),
+
+        help("debug-opt", [
+            "Output detailed debugging traces of the optimization process."]),
+
+        help("debug-opt-pred-id <n>", [
+            "Output detailed debugging traces of the optimization process",
+            "only for the predicate/function with the specified pred id."]),
+
+        help("debug-opt-pred-name <name>", [
+            "Output detailed debugging traces of the optimization process",
+            "only for the predicate/function with the specified name."]),
+
+        help("debug-pd", [
+            "Output detailed debugging traces of the partial",
+            "deduction and deforestation process."]),
+
+        help("debug-liveness <pred_id>", [
+            "Output detailed debugging traces of the liveness analysis",
+            "of the predicate with the given predicate id."]),
+
+        help("debug-make", [
+            "Output detailed debugging traces of the `--make' option."]),
+
+        % This can be uncommented when the '--analyse-closures' option
+        % is uncommented. (See below.)
+        priv_help("debug-closure", [
+            "Output detailed debugging traces of the closure analysis."]),
+
+        help("debug-trail-usage", [
+            "Output detailed debugging traces of the `--analyse-trail-usage'",
+            "option."]),
+
+        help("debug-intermodule-analysis", [
+            "Output detailed debugging traces of the `--intermodule-analysis'",
+            "option."]),
+
+        help("debug-indirect-reuse", [
+            "Output detailed debugging traces of the indirect reuse pass of",
+            "the `--structure-reuse' option."]),
+
+        help("debug-type-rep", [
+            "Output debugging traces of type representation choices."]),
+
+        % The mode constraints code is still experimental.
+        priv_help("debug-mode-constraints", [
+            "Output detailed debugging traces of the `--prop-mode-constraints'",
+            "option."])
+    ],
+    Section = help_section(yes(SectionName), HelpStructs).
 
 :- pred options_help_output(io.text_output_stream::in, io::di, io::uo) is det.
 
@@ -7340,7 +7399,13 @@ options_help_misc(Stream, !IO) :-
 %
 % XXX The code from here to the end of the file should be in another file,
 % since options.m is big enough already :-(.
-%
+
+:- type help_section
+    --->    help_section(
+                hs_maybe_section_name   :: maybe(string),
+                hs_help_structs         :: list(help)
+            ).
+
 % This structured representation improves on our traditional approach
 % of storing just lists of lines in the following ways.
 %
@@ -7361,11 +7426,48 @@ options_help_misc(Stream, !IO) :-
 %   the help message not to be read by a compiler user, but with
 %   texinfo markup, intended to be copy-and-pasted into doc/user_guide.texi.
 %
+% - Once all help text is in these structures, and we have a single data
+%   structure that holds all those structures, we can add an option that
+%   asks for a bijection check, which tests
+%
+%   - whether all option names mentioned as keys in the short_option and
+%     long_option predicates appear in exactly one help structure, and
+%
+%   - whether all short and long option names mentioned in the set of all
+%     help structures have a match among the keys of the short_option and
+%     long_option predicates.
+%
+%   We could even check whether any long option whose documentation has
+%   a "no-" prefix is a negatable long option.
+%
 
 :- type help
     --->    gen_help(
-                % The name of the option.
+                % The name of the option, minus the "--" prefix, but
+                % including any "no-" prefix. If the option takes an argument,
+                % then the option name should be followed by " <argdesc>".
+                %
+                % The reason for including the "no-" prefix is that
+                % the description string has to be written differently
+                % depending on whether the option is default-on or default-off,
+                % and so requiring the documentation writer to add the prefix
+                % is a trivially small extra burden.
+                %
+                % The reason for including the " <argdesc>" suffix if the
+                % option has an argument is that for accumulating options,
+                % only the positive version takes an argument, but we must
+                % document the negative version as well. This makes we cannot
+                % add the argdesc suffix to all alternate names willy-nilly,
+                % and any automatic addition that is smart enough to always
+                % do the right thing would come with an unjustifiable amount
+                % of complexity.
+                %
+                % (Both "no-" prefixes and " <...>" suffixes will need to be
+                % be stripped off for any bijection check.)
                 gh_long_name            :: string,
+
+                % Should we try to print all the names on one line, or not?
+                gh_alt_name_pos         :: alt_name_pos,
 
                 % Any alternate names of the option.
                 % We have many options that have both British and American
@@ -7379,11 +7481,10 @@ options_help_misc(Stream, !IO) :-
                 % Every character in this field is a short name of the option.
                 % The order of these short options here will be preserved
                 % in the output.
+                %
+                % Using a char here works only because no option that
+                % has a short name has an argument.
                 gh_short_names          :: list(char),
-
-                % If the option takes an argument, then this should contain
-                % the name of the placeholder for that argument.
-                gh_maybe_arg            :: maybe_opt_arg,
 
                 % Is the option's documentation printed for users, or not?
                 gh_public_or_private    :: help_public_or_private,
@@ -7391,75 +7492,136 @@ options_help_misc(Stream, !IO) :-
                 % The lines describing the effect of the option.
                 gh_description          :: list(string)
             )
-    % The following function symbols (whose list will grow)
+    % The following function symbols (whose list may grow)
     % all have a subset of the fields of gen_help.
     %
     % The fields they contain have the same semantics as in gen_help.
-    % The fields they do not contain implicitly default to "[]" for lists,
-    % "no_arg" for maybe_opt_arg, and help_public for help_public_or_private.
+    % The fields they do not contain implicitly default to "[]" for
+    % alternate names, and will get their public vs private status
+    % from the function symbol name.
     %
-    % This design minimizes clutter in lists of help structure.
+    % This design minimizes clutter in lists of help structures.
     ;       help(
                 h_long_name             :: string,
                 h_description           :: list(string)
             )
-    ;       alt_help(
-                ah_long_name            :: string,
-                ah_alt_long_names       :: list(string),
-                ah_description          :: list(string)
-            )
     ;       priv_help(
                 ph_long_name            :: string,
                 ph_description          :: list(string)
+            )
+    ;       alt_help(
+                ah_long_name            :: string,
+                ah_alt_name_pos         :: alt_name_pos,
+                ah_alt_long_names       :: list(string),
+                ah_description          :: list(string)
+            )
+    ;       priv_alt_help(
+                pah_long_name           :: string,
+                pah_alt_name_pos        :: alt_name_pos,
+                pah_alt_long_names      :: list(string),
+                pah_description         :: list(string)
+            )
+    ;       short_help(
+                sh_short_name           :: char,
+                sh_long_name            :: string,
+                sh_description          :: list(string)
+            )
+    ;       priv_short_help(
+                psh_short_name          :: char,
+                psh_long_name           :: string,
+                psh_description         :: list(string)
             ).
-
-:- type maybe_opt_arg
-    --->    no_arg
-    ;       arg(string).
 
 :- type help_public_or_private
     --->    help_public
     ;       help_private.
 
-:- pred output_help_messages(io.text_output_stream::in, list(help)::in,
-    io::di, io::uo) is det.
+:- type alt_name_pos
+    --->    pos_one_line
+    ;       pos_sep_lines.
 
-output_help_messages(_Stream, [], !IO).
-output_help_messages(Stream, [OptHelp | OptHelps], !IO) :-
-    output_help_message(Stream, OptHelp, !IO),
-    output_help_messages(Stream, OptHelps, !IO).
+:- type print_what_help
+    --->    print_public_help
+    ;       print_public_and_private_help.
 
-:- pred output_help_message(io.text_output_stream::in, help::in,
-    io::di, io::uo) is det.
+:- pred output_help_section(io.text_output_stream::in, print_what_help::in,
+    help_section::in, io::di, io::uo) is det.
 
-output_help_message(Stream, OptHelp, !IO) :-
+output_help_section(Stream, What, Section, !IO) :-
+    Section = help_section(MaybeSectionName, HelpStructs),
+    (
+        MaybeSectionName = no
+    ;
+        MaybeSectionName = yes(SectionName),
+        io.format(Stream, "\n%s:\n", [s(SectionName)], !IO)
+    ),
+    output_help_messages(Stream, What, HelpStructs, !IO).
+
+:- pred output_help_messages(io.text_output_stream::in, print_what_help::in,
+    list(help)::in, io::di, io::uo) is det.
+
+output_help_messages(_Stream, _What, [], !IO).
+output_help_messages(Stream, What, [OptHelp | OptHelps], !IO) :-
+    output_help_message(Stream, What, OptHelp, !IO),
+    output_help_messages(Stream, What, OptHelps, !IO).
+
+:- pred output_help_message(io.text_output_stream::in, print_what_help::in,
+    help::in, io::di, io::uo) is det.
+
+output_help_message(Stream, What, OptHelp, !IO) :-
     OptNameLineMaxLen = 71,
     (
-        OptHelp = gen_help(LongName, AltLongNames, ShortNames, MaybeArg,
+        OptHelp = gen_help(LongName, AltNamePos, AltLongNames, ShortNames,
             PublicOrPrivate, DescLines),
-        ArgSuffix = opt_arg_to_suffix(MaybeArg),
         LongNames = [LongName | AltLongNames],
-        ShortNameStrs = list.map(short_name_to_str(ArgSuffix), ShortNames),
-        LongNameStrs = list.map(long_name_to_str(ArgSuffix), LongNames),
-        OptNameLines = join_options(OptNameLineMaxLen,
+        ShortNameStrs = list.map(short_name_to_str, ShortNames),
+        LongNameStrs = list.map(long_name_to_str, LongNames),
+        OptNameLines = join_options(AltNamePos, OptNameLineMaxLen,
             ShortNameStrs ++ LongNameStrs)
     ;
-        OptHelp = help(LongName, DescLines),
-        OptNameLines = ["--" ++ LongName],
-        PublicOrPrivate = help_public
+        (
+            OptHelp = help(LongName, DescLines),
+            PublicOrPrivate = help_public
+        ;
+            OptHelp = priv_help(LongName, DescLines),
+            PublicOrPrivate = help_private
+        ),
+        OptNameLines = ["--" ++ LongName]
     ;
-        OptHelp = alt_help(LongName, AltLongNames, DescLines),
+        (
+            OptHelp = alt_help(LongName, AltNamePos, AltLongNames, DescLines),
+            PublicOrPrivate = help_public
+        ;
+            OptHelp = priv_alt_help(LongName, AltNamePos, AltLongNames,
+                DescLines),
+            PublicOrPrivate = help_private
+        ),
         LongNames = [LongName | AltLongNames],
-        LongNameStrs = list.map(long_name_to_str(""), LongNames),
-        OptNameLines = join_options(OptNameLineMaxLen, LongNameStrs),
-        PublicOrPrivate = help_public
+        LongNameStrs = list.map(long_name_to_str, LongNames),
+        OptNameLines = join_options(AltNamePos, OptNameLineMaxLen, LongNameStrs)
     ;
-        OptHelp = priv_help(LongName, DescLines),
-        OptNameLines = ["--" ++ LongName],
-        PublicOrPrivate = help_private
+        (
+            OptHelp = short_help(ShortName, LongName, DescLines),
+            PublicOrPrivate = help_public
+        ;
+            OptHelp = priv_short_help(ShortName, LongName, DescLines),
+            PublicOrPrivate = help_private
+        ),
+        ShortNameStr = short_name_to_str(ShortName),
+        LongNameStr = long_name_to_str(LongName),
+        % We could use pos_sep_lines, but we should use one setting
+        % consistently for all <one short, one long> name options.
+        OptNameLines = join_options(pos_one_line, OptNameLineMaxLen,
+            [ShortNameStr, LongNameStr])
     ),
-    (
-        PublicOrPrivate = help_public,
+    ( if
+        (
+            PublicOrPrivate = help_public
+        ;
+            PublicOrPrivate = help_private,
+            What = print_public_and_private_help
+        )
+    then
         % Until all options are documented using help structures,
         % maintain the existing indentation.
         % OptNamePrefix = "    ",
@@ -7468,40 +7630,48 @@ output_help_message(Stream, OptHelp, !IO) :-
         DescPrefix = "\t\t",
         io.write_prefixed_lines(Stream, OptNamePrefix, OptNameLines, !IO),
         io.write_prefixed_lines(Stream, DescPrefix, DescLines, !IO)
-    ;
-        PublicOrPrivate = help_private
+    else
+        true
     ).
 
-:- func long_name_to_str(string, string) = string.
+:- func long_name_to_str(string) = string.
 
-long_name_to_str(ArgSuffix, LongName) =
-    string.format("--%s%s", [s(LongName), s(ArgSuffix)]).
+long_name_to_str(LongName) =
+    string.format("--%s", [s(LongName)]).
 
-:- func short_name_to_str(string, char) = string.
+:- func short_name_to_str(char) = string.
 
-short_name_to_str(ArgSuffix, ShortName) =
-    string.format("-%c%s", [c(ShortName), s(ArgSuffix)]).
+short_name_to_str(ShortName) =
+    string.format("-%c", [c(ShortName)]).
 
-:- func opt_arg_to_suffix(maybe_opt_arg) = string.
-
-opt_arg_to_suffix(no_arg) = "".
-opt_arg_to_suffix(arg(Arg)) = " <" ++ Arg ++ ">".
-
-    % join_options(OptNameLineMaxLen, OptionStrs) = Lines :-
+    % join_options(AltNamePos, OptNameLineMaxLen, OptionStrs) = Lines :-
     % Given a list of short and/or long option strings, of the form
     % -X or --Y, return one or more lines containing those option strings.
-    % If all option strings fit together on one when separated by commas,
-    % we will return that line. If they do *not* fit, then
-    % we will return one line for each option string, whether short or long.
+    % If AltNamePos = pos_one_line, *and* all option strings fit together
+    % on one when separated by commas, we will return that line.
+    % Otherwise we will return one line for each option string,
+    % whether short or long.
     %
-:- func join_options(int, list(string)) = list(string).
+    % For lists of long option names that "rhyme", i.e. they have
+    % common prefixes followed by different suffixes, pos_sep_lines
+    % will make that fact pop out at the reader; pos_one_line will not.
+    % This makes pos_sep_lines preferable in that case.
+    %
+:- func join_options(alt_name_pos, int, list(string)) = list(string).
 
-join_options(OptNameLineMaxLen, OptionStrs) = Lines :-
+join_options(AltNamePos, OptNameLineMaxLen, OptionStrs) = Lines :-
     OneLine = string.join_list(", ", OptionStrs),
-    ( if string.count_code_points(OneLine) =< OptNameLineMaxLen then
-        Lines = [OneLine]
-    else
+    ( if
+        (
+            AltNamePos = pos_one_line,
+            string.count_code_points(OneLine) > OptNameLineMaxLen
+        ;
+            AltNamePos = pos_sep_lines
+        )
+    then
         Lines = OptionStrs
+    else
+        Lines = [OneLine]
     ).
 
 %---------------------------------------------------------------------------%
