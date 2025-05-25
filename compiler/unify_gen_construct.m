@@ -156,14 +156,15 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
             RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName,
                 uint16.det_from_int(TypeArity)),
-            DataId = rtti_data_id(ctor_rtti_id(RttiTypeCtor,
-                type_ctor_type_ctor_info)),
+            CtorRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
+            DataId = rtti_data_id(CtorRttiId),
             ConstRval = const(llconst_data_addr(DataId))
         ;
             ConsTag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
             TCName = generate_class_name(ClassId),
-            DataId = rtti_data_id(tc_rtti_id(TCName,
-                type_class_base_typeclass_info(ModuleName, Instance))),
+            TCRttiName = type_class_base_typeclass_info(ModuleName, Instance),
+            TCRttiId = tc_rtti_id(TCName, TCRttiName),
+            DataId = rtti_data_id(TCRttiId),
             ConstRval = const(llconst_data_addr(DataId))
         ;
             ConsTag = deep_profiling_proc_layout_tag(PredId, ProcId),

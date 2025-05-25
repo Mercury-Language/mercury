@@ -2089,8 +2089,8 @@ represent_live_value_type_and_var_num(VarNumMap, LiveValueType, TypeRval,
 
 represent_special_live_value_type(SpecialTypeName, Rval) :-
     RttiTypeCtor = rtti_type_ctor(unqualified(""), SpecialTypeName, 0u16),
-    DataId =
-        rtti_data_id(ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info)),
+    CtorRttiId = ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info),
+    DataId = rtti_data_id(CtorRttiId),
     Rval = const(llconst_data_addr(DataId)).
 
 :- pred convert_var_to_int(var_num_map::in, prog_var::in, int::out) is det.
