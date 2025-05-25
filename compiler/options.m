@@ -1250,6 +1250,7 @@
 
 :- import_module bool.
 :- import_module dir.
+:- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -4477,296 +4478,378 @@ options_help(Stream, !IO) :-
 
 options_help_warning(Stream, !IO) :-
     io.write_string(Stream, "\nWarning Options:\n", !IO),
-    io.write_prefixed_lines(Stream, "\t", [
-        "-w, --inhibit-warnings",
-        "\tDisable all warning messages.",
-        "--inhibit-style-warnings",
-        "\tDisable all warning messages about programming style.",
-        "--halt-at-warn",
-        "\tThis option causes the compiler to treat all warnings",
-        "\tas if they were errors when generating target code.",
-        "\tThis means that if the compiler issues any warning,",
-        "\tit will not generate target code --- instead, it will",
-        "\treturn a non-zero exit status.",
-        "--halt-at-warn-make-interface",
-        "\tThis option causes the compiler to treat all warnings",
-        "\tas if they were errors when generating an interface file",
-        "\t(a .int, .int0, .int2 or .int3 file). This means that",
-        "\tif the compiler issues any warnings at that time,",
-        "\tit will not generate the interface file --- instead,",
-        "\tit will return a non-zero exit status.",
-        "--halt-at-warn-make-opt",
-        "\tThis option causes the compiler to treat all warnings",
-        "\tas if they were errors when generating an optimization file",
-        "\t(.opt or .trans_opt file.) This means that if the compiler",
-        "\tissues any warnings at that time, it will not generate the",
-        "\toptimization file --- instead, it will return a non-zero",
-        "\texit status.",
-        "--halt-at-syntax-errors",
-        "\tThis option causes the compiler to halt immediately",
-        "\tafter syntax checking and not do any semantic checking",
-        "\tif it finds any syntax errors in the program.",
-%       "--halt-at-auto-parallel-failure",
-%       "\tThis option causes the compiler to halt if it cannot perform",
-%       "\tan auto-parallelization requested by a feedback file.",
-% --halt-at-invalid-interface is a temporary developer-only option.
-        "--no-halt-at-invalid-interface",
-        "\tThis option operates when the compiler is invoked with the",
-        "\t--make--interface option to generate .int and .int2 files",
-        "\tfor one or more modules. In its default setting,",
-        "\t--halt-at-invalid-interface, it causes the compiler to check",
-        "\tthe consistency of those parts of each of those modules",
-        "\tthat are intended to end up in the .int and .int2 files.",
-        "\tIf these checks find any problems, the compiler will stop",
-        "\twithout generating those files after printing an error message",
-        "\tfor each problem. Users can prevent this behavior,",
-        "\tand thus allow the generation of invalid interface files,",
-        "\tby specifying --no-halt-at-invalid-interface.",
-        "--no-warn-accumulator-swaps",
-        "\tDo not warn about argument order rearrangement caused",
-        "\tby `--introduce-accumulators'.",
-        "--no-warn-singleton-vars, --no-warn-singleton-variables",
-        "\tDo not warn about variables which only occur once, despite",
-        "\ttheir names not starting with an underscore.",
-        "--no-warn-repeated-singleton-vars",
-        "--no-warn-repeated-singleton-variables",
-        "\tDo not warn about variables which occur more than once, despite",
-        "\ttheir names starting with an underscore.",
-        "--no-warn-overlapping-scopes",
-        "\tDo not warn about variables which occur in overlapping scopes.",
-        "--no-warn-det-decls-too-lax",
-        "\tDo not warn about determinism declarations",
-        "\twhich could have been stricter.",
-        "--no-warn-inferred-erroneous",
-        "\tDo not warn about procedures whose determinism is inferred",
-        "\terroneous but whose determinism declarations are laxer.",
-        "--no-warn-insts-without-matching-type",
-        "\tDo not warn about insts that are not consistent with any",
-        "\tof the types in scope.",
-        "--warn-insts-with-functors-without-type",
-        "\tWarn about insts that do specify functors but do not specify",
-        "\twhat type they are for.",
+    HelpStructs = [
+        gen_help("inhibit-warnings", [], ['w'], no_arg, help_public,
+            ["Disable all warning messages."]),
+        help("inhibit-style-warnings",
+            ["Disable all warning messages about programming style."]),
+
+        help("halt-at-warn", [
+            "This option causes the compiler to treat all warnings",
+            "as if they were errors when generating target code.",
+            "This means that if the compiler issues any warning,",
+            "it will not generate target code --- instead, it will",
+            "return a non-zero exit status."]),
+
+        help("halt-at-warn-make-interface", [
+            "This option causes the compiler to treat all warnings",
+            "as if they were errors when generating an interface file",
+            "(a .int, .int0, .int2 or .int3 file). This means that",
+            "if the compiler issues any warnings at that time,",
+            "it will not generate the interface file --- instead,",
+            "it will return a non-zero exit status."]),
+        help("halt-at-warn-make-opt", [
+            "This option causes the compiler to treat all warnings",
+            "as if they were errors when generating an optimization file",
+            "(.opt or .trans_opt file.) This means that if the compiler",
+            "issues any warnings at that time, it will not generate the",
+            "optimization file --- instead, it will return a non-zero",
+            "exit status."]),
+
+        help("halt-at-syntax-errors", [
+            "This option causes the compiler to halt immediately",
+            "after syntax checking and not do any semantic checking",
+            "if it finds any syntax errors in the program."]),
+
+        priv_help("halt-at-auto-parallel-failure", [
+            "This option causes the compiler to halt if it cannot perform",
+            "an auto-parallelization requested by a feedback file."]),
+
+        % --halt-at-invalid-interface is a temporary developer-only option.
+        help("no-halt-at-invalid-interface", [
+            "This option operates when the compiler is invoked with the",
+            "--make--interface option to generate .int and .int2 files",
+            "for one or more modules. In its default setting,",
+            "--halt-at-invalid-interface, it causes the compiler to check",
+            "the consistency of those parts of each of those modules",
+            "that are intended to end up in the .int and .int2 files.",
+            "If these checks find any problems, the compiler will stop",
+            "without generating those files after printing an error message",
+            "for each problem. Users can prevent this behavior,",
+            "and thus allow the generation of invalid interface files,",
+            "by specifying --no-halt-at-invalid-interface."]),
+
+        help("no-warn-accumulator-swaps", [
+            "Do not warn about argument order rearrangement caused",
+            "by `--introduce-accumulators'."]),
+
+        alt_help("no-warn-singleton-vars", ["no-warn-singleton-variables"], [
+            "Do not warn about variables which only occur once, despite",
+            "their names not starting with an underscore."]),
+
+        alt_help("no-warn-repeated-singleton-vars",
+                ["no-warn-repeated-singleton-variables"], [
+            "Do not warn about variables which occur more than once, despite",
+            "their names starting with an underscore."]),
+
+        help("no-warn-overlapping-scopes", [
+            "Do not warn about variables which occur in overlapping scopes."]),
+
+        help("no-warn-det-decls-too-lax", [
+            "Do not warn about determinism declarations",
+            "which could have been stricter."]),
+
+        help("no-warn-inferred-erroneous", [
+            "Do not warn about procedures whose determinism is inferred",
+            "erroneous but whose determinism declarations are laxer."]),
+
+        help("no-warn-insts-without-matching-type", [
+            "Do not warn about insts that are not consistent with any",
+            "of the types in scope."]),
+
+        help("warn-insts-with-functors-without-type", [
+            "Warn about insts that do specify functors but do not specify",
+            "what type they are for."]),
+
         % XXX don't forget to update the user_guide.texi
-        % "--no-warn-unused-imports",
-        % "\tDo not warn about modules that are imported but not used.",
-        "--warn-unused-imports",
-        "\tWarn about modules that are imported but not used.",
+        % help("no-warn-unused-imports", [
+        %   "Do not warn about modules that are imported but not used."]),
+        help("warn-unused-imports", [
+            "Warn about modules that are imported but not used."]),
+
         % Not documented because its relationship with --warn-unused-imports
         % is too complicated for users (and maybe even developers ...).
-%       "--warn-unused-interface-imports",
-%       "\tWarn about modules that are imported in the interface",
-%       "\tbut not used there.",
-        "--no-warn-nothing-exported",
-        "\tDo not warn about modules which export nothing.",
-        "--warn-unused-args",
-        "\tWarn about predicate arguments which are not used.",
-        "--no-warn-unneeded-initial-statevars",
-        "\tDo not warn about state variables in clause heads",
-        "\tthat could be ordinary variables.",
-        "--no-warn-unneeded-initial-statevars-lambda",
-        "\tDo not warn about state variables in lambda expressions",
-        "\tthat could be ordinary variables.",
-        "--no-warn-unneeded-final-statevars",
-        "\tDo not warn about !:S state variables in clause heads",
-        "\twhose value will always be the same as !.S.",
-        "--no-warn-unneeded-final-statevars-lambda",
-        "\tDo not warn about !:S state variables in lambda expressions",
-        "\twhose value will always be the same as !.S.",
-        "--no-warn-interface-imports",
-        "\tDo not warn about modules imported in the interface, but",
-        "\twhich are not used in the interface.",
-        "--warn-interface-imports-in-parents",
-        "\tWarn about modules that are imported in the interface of",
-        "\ta parent module, but not used in the interface of that module.",
-        "--no-warn-missing-opt-files",
-        "\tDisable warnings about `.opt' files which cannot be opened.",
-        "--warn-missing-trans-opt-files",
-        "\tEnable warnings about `.trans_opt' files which cannot",
-        "\tbe opened.",
-        "--no-warn-missing-trans-opt-deps",
-        "\tDisable warnings produced when the information required",
-        "\tto allow `.trans_opt' files to be read when creating other",
-        "\t`.trans_opt' files has been lost. The information can be",
-        "\trecreated by running `mmake <mainmodule>.depend'",
-        "--warn-inconsistent-pred-order-clauses",
-        "\tGenerate a warning if the order of the definitions does not match",
-        "\tthe order of the declarations for either the exported predicates",
-        "\tand functions of the module, or for the nonexported predicates",
-        "\tand functions of the module. Applies for definitions by",
-        "\tMercury clauses.",
-        "--warn-inconsistent-pred-order-foreign-procs",
-        "\tGenerate a warning if the order of the definitions does not match",
-        "\tthe order of the declarations for either the exported predicates",
-        "\tand functions of the module, or for the nonexported predicates",
-        "\tand functions of the module. Applies for definitions by either",
-        "\tMercury clauses or foreign_proc pragmas.",
-        "--no-warn-non-contiguous-decls",
-        "\tDo not generate a warning if the mode declarations of a",
-        "\tpredicate or function don't all immediately follow its",
-        "\tpredicate or function declaration.",
-        "--no-warn-non-contiguous-clauses",
-        "\tDo not generate a warning if the clauses of a predicate or",
-        "\tfunction are not contiguous.",
-        "--warn-non-contiguous-foreign-procs",
-        "\tGenerate a warning if the clauses and foreign_procs of a",
-        "\tpredicate or function are not contiguous.",
-        "--warn-non-stratification",
-        "\tWarn about possible non-stratification of the predicates and/or",
-        "\tfunctions in the module.",
-        "\tNon-stratification occurs when a predicate or function can call",
-        "\titself negatively through some path along its call graph.",
-        "--no-warn-unification-cannot-succeed",
-        "\tDisable warnings about unifications which cannot succeed.",
-        "--no-warn-simple-code",
-        "\tDisable warnings about constructs which are so",
-        "\tsimple that they are likely to be programming errors.",
-        "--warn-duplicate-calls",
-        "\tWarn about multiple calls to a predicate with the",
-        "\tsame input arguments.",
-        "--warn-implicit-stream-calls",
-        "\tWarn about calls to I/O predicates that could take explicit",
-        "\tstream arguments, but do not do so.",
-        "--no-warn-missing-module-name",
-        "\tDisable warnings for modules that do not start with",
-        "\ta `:- module' declaration.",
-        "--no-warn-wrong-module-name",
-        "\tDisable warnings for modules whose `:- module'",
-        "\tdeclaration does not match the module's file name.",
-        "--no-warn-smart-recompilation",
-        "\tDisable warnings from the smart recompilation system.",
-        "--no-warn-undefined-options-vars",
-        "--no-warn-undefined-options-variables",
-        "\tDo not warn about references to undefined variables in",
-        "\toptions files with `--make'.",
-        "--warn-suspicious-recursion",
-        "\tWarn about recursive calls which are likely to have problems,",
-        "\tsuch as leading to infinite recursion.",
-% These are the internal options that implement --warn-non-tail-recursion.
-%       "--warn-non-tail-recursion-self",
-%       "\tWarn about any self recursive calls that are not tail recursive.",
-%       "--warn-non-tail-recursion-mutual",
-%       "\tWarn about any mutually recursive calls that are not",
-%       "\ttail recursive.",
-        "--warn-non-tail-recursion <type>",
-        "\tWarn about recursive calls that are not tail calls,",
-        "\t<type> may be ""self"", ""self-and-mutual"" or ""none"".",
-        "--warn-obvious-non-tail-recursion",
-        "\tWarn about recursive calls that are not tail calls",
-        "\teven if they obviously cannot be tail calls,",
-        "\tbecause they are followed by other recursive calls.",
-        "--no-warn-up-to-date",
-        "\tDo not warn if targets specified on the command line",
-        "\twith `--make' are already up-to-date.",
-        "--no-warn-stubs",
-        "\tDisable warnings about procedures for which there are no",
-        "\tclauses. Note that this option only has any effect if",
-        "\tthe `--allow-stubs' option (described in the ""Language",
-        "\tSemantics Options"" section below) is enabled.",
-        "--warn-dead-procs",
-        "\tWarn about procedures which are never called.",
-        "--warn-dead-preds",
-        "\tWarn about predicates that have no procedures which are",
-        "\tever called.",
-        "--no-warn-target-code",
-        "\tDisable warnings from the compiler used to process the",
-        "\ttarget code (e.g. gcc).",
-        "--no-warn-table-with-inline",
-        "\tDisable warnings about tabled procedures that also have",
-        "\ta `pragma inline' declaration.",
-        "--no-warn-non-term-special-preds",
-        "\tDo not warn about types that have user-defined equality or",
-        "\tcomparison predicates that cannot be proved to terminate.",
-        "\tThis option is only enabled when termination analysis is enabled.",
-        "\t(See the ""Termination Analysis Options"" section below).",
-        "--no-warn-known-bad-format-calls",
-        "\tDo not warn about calls to string.format or io.format that",
-        "\tthe compiler knows for sure contain mismatches between the",
-        "\tformat string and the supplied values.",
-        "--no-warn-only-one-format-string-error",
-        "\tIf a format string has more one than mismatch with the supplied,",
-        "\tvalues, generate a warning for all mismatches, not just the first.",
-        "\tThe later mismatches may be avalanche errors caused by earlier",
-        "\tmismatches.",
-        "--warn-unknown-format-calls",
-        "\tWarn about calls to string.format, io.format or",
-        "\tstream.string_writer.format for which the compiler cannot tell",
-        "\twhether there are any mismatches between the format string and",
-        "\tthe supplied values.",
-        "--no-warn-obsolete",
-        "\tDo not warn about calls to predicates or functions that have",
-        "\tbeen marked as obsolete.",
-        "--inform-ite-instead-of-switch",
-        "\tGenerate informational messages for if-then-elses that could be",
-        "\treplaced by switches.",
-        "--inform-incomplete-switch",
-        "\tGenerate informational messages for switches that do not cover",
-        "\tall the function symbols that the switched-on variable could be",
-        "\tbound to.",
-        "--inform-incomplete-switch-threshold <N>",
-        "\tHave the --inform-incomplete-switch option generate its messages",
-        "\tonly for switches that *do* cover at least N% of the function",
-        "\tsymbols that the switched-on variable could be bound to.",
-        "--no-warn-unresolved-polymorphism",
-        "\tDo not warn about unresolved polymorphism.",
-        "--warn-suspicious-foreign-procs",
-        "\tWarn about possible errors in the bodies of foreign",
-        "\tprocedures.",
-        "--warn-suspicious-foreign-code",
-        "\tWarn about possible errors in the bodies of foreign code",
-        "\tpragmas.",
-        "--no-warn-state-var-shadowing",
-        "\tDo not warn about one state variable shadowing another.",
-        "--no-warn-unneeded-mode-specific-clause",
-        "\tDo not warn about clauses that needlessly specify",
-        "\tthe modes of their arguments.",
-        "--no-warn-suspected-occurs-check-failure",
-        "\tDo not warn about code that looks like it unifies a variable",
-        "\twith a term that contains that same variable. Such code cannot",
-        "\tsucceed because it fails what is called the `occurs check'.",
-        "--warn-potentially-ambiguous-pragma",
-        "\tGenerate warnings for pragmas that do not specify whether they are",
-        "\tfor a predicate or a function.",
-        "--no-warn-ambiguous-pragma",
-        "\tDo not generate warnings for pragmas that do not specify whether",
-        "\tthey are for a predicate or a function, even when there is both",
-        "\ta predicate and a function with the given name and arity.",
-        "--no-warn-stdlib-shadowing",
-        "\tDo not generate warnings for module names that either duplicate",
-        "\tthe name of a module in the Mercury standard library, or contain",
-        "\ta subsequence of name components that do so.",
-%       "--inform-incomplete-color-scheme",
-%       "\tReport if the argument if either the value of the",
-%       "\t--color-scheme option, or the value of MERCURY_COLOR_SCHEME",
-%       "\tenvironment variable, does not specify a color for some role.",
-        "--no-inform-inferred",
-        "\tDo not generate messages about inferred types or modes.",
-        "--no-inform-inferred-types",
-        "\tDo not generate messages about inferred types.",
-        "--no-inform-inferred-modes",
-        "\tDo not generate messages about inferred modes.",
-        "--inform-suboptimal-packing",
-        "\tGenerate messages if the arguments of a data constructor",
-        "\tcould be packed more tightly if they were reordered.",
-%       "--print-error-spec-id",
-%       "\tAfter each error message is printed, print its id, which",
-%       "\tby convention is the $pred of the code that constructs it."
-%       "--inform-ignored-pragma-errors",
-%       "\tPrint an informational message for each otherwise-ignored error",
-%       "\tthat reports an inability to find the procedure that a pragma",
-%       "\trefers to."
-%       "--inform-generated-type-spec-pragmas",
-%       "\tPrint an informational message for each type_spec pragma that"
-%       "\tthe compiler generates to implement a type_spec_constrained_pred"
-%       "\tpragma.",
-        "--no-warn-redundant-coerce",
-        "\tDo not warn about redundant type conversions.",
-        "---warn-can-fail-function",
-        "\tWarn about functions that can fail.",
-        "--warn-unsorted-import-block, --warn-unsorted-import-blocks",
-        "\tWarn about two import and/or use declarations on the same line,",
-        "\tor if a sequence of such declarations on consecutive lines",
-        "\tare not sorted on module name."
-    ], !IO).
+        priv_help("warn-unused-interface-imports", [
+            "Warn about modules that are imported in the interface",
+            "but not used there."]),
+
+        help("no-warn-nothing-exported", [
+            "Do not warn about modules which export nothing."]),
+
+        help("warn-unused-args", [
+            "Warn about predicate arguments which are not used."]),
+
+        help("no-warn-unneeded-initial-statevars", [
+            "Do not warn about state variables in clause heads",
+            "that could be ordinary variables."]),
+
+        help("no-warn-unneeded-initial-statevars-lambda", [
+            "Do not warn about state variables in lambda expressions",
+            "that could be ordinary variables."]),
+
+        help("no-warn-unneeded-final-statevars", [
+            "Do not warn about !:S state variables in clause heads",
+            "whose value will always be the same as !.S."]),
+
+        help("no-warn-unneeded-final-statevars-lambda", [
+            "Do not warn about !:S state variables in lambda expressions",
+            "whose value will always be the same as !.S."]),
+
+        help("no-warn-interface-imports", [
+            "Do not warn about modules imported in the interface, but",
+            "which are not used in the interface."]),
+
+        help("warn-interface-imports-in-parents", [
+            "Warn about modules that are imported in the interface of",
+            "a parent module, but not used in the interface of that module."]),
+
+        help("no-warn-missing-opt-files", [
+            "Disable warnings about `.opt' files which cannot be opened."]),
+
+        help("warn-missing-trans-opt-files", [
+            "Enable warnings about `.trans_opt' files which cannot",
+            "be opened."]),
+
+        help("no-warn-missing-trans-opt-deps", [
+            "Disable warnings produced when the information required",
+            "to allow `.trans_opt' files to be read when creating other",
+            "`.trans_opt' files has been lost. The information can be",
+            "recreated by running `mmake <mainmodule>.depend'"]),
+
+        help("warn-inconsistent-pred-order-clauses", [
+            "Generate a warning if the order of the definitions does not match",
+            "the order of the declarations for either the exported predicates",
+            "and functions of the module, or for the nonexported predicates",
+            "and functions of the module. Applies for definitions by",
+            "Mercury clauses."]),
+
+        help("warn-inconsistent-pred-order-foreign-procs", [
+            "Generate a warning if the order of the definitions does not match",
+            "the order of the declarations for either the exported predicates",
+            "and functions of the module, or for the nonexported predicates",
+            "and functions of the module. Applies for definitions by either",
+            "Mercury clauses or foreign_proc pragmas."]),
+
+        help("no-warn-non-contiguous-decls", [
+            "Do not generate a warning if the mode declarations of a",
+            "predicate or function don't all immediately follow its",
+            "predicate or function declaration."]),
+
+        help("no-warn-non-contiguous-clauses", [
+            "Do not generate a warning if the clauses of a predicate or",
+            "function are not contiguous."]),
+
+        help("warn-non-contiguous-foreign-procs", [
+            "Generate a warning if the clauses and foreign_procs of a",
+            "predicate or function are not contiguous."]),
+
+        help("warn-non-stratification", [
+            "Warn about possible non-stratification of the predicates and/or",
+            "functions in the module.",
+            "Non-stratification occurs when a predicate or function can call",
+            "itself negatively through some path along its call graph."]),
+
+        help("no-warn-unification-cannot-succeed", [
+            "Disable warnings about unifications which cannot succeed."]),
+
+        help("no-warn-simple-code", [
+            "Disable warnings about constructs which are so",
+            "simple that they are likely to be programming errors."]),
+
+        help("warn-duplicate-calls", [
+            "Warn about multiple calls to a predicate with the",
+            "same input arguments."]),
+
+        help("warn-implicit-stream-calls", [
+            "Warn about calls to I/O predicates that could take explicit",
+            "stream arguments, but do not do so."]),
+
+        help("no-warn-missing-module-name", [
+            "Disable warnings for modules that do not start with",
+            "a `:- module' declaration."]),
+
+        help("no-warn-wrong-module-name", [
+            "Disable warnings for modules whose `:- module'",
+            "declaration does not match the module's file name."]),
+
+        help("no-warn-smart-recompilation", [
+            "Disable warnings from the smart recompilation system."]),
+
+        alt_help("no-warn-undefined-options-vars",
+                ["no-warn-undefined-options-variables"], [
+            "Do not warn about references to undefined variables in",
+            "options files with `--make'."]),
+
+        help("warn-suspicious-recursion", [
+            "Warn about recursive calls which are likely to have problems,",
+            "such as leading to infinite recursion."]),
+
+        % These are the internal options that implement
+        % --warn-non-tail-recursion.
+        priv_help("warn-non-tail-recursion-self", [
+            "Warn about any self recursive calls that are not tail
+            recursive."]),
+        priv_help("warn-non-tail-recursion-mutual", [
+            "Warn about any mutually recursive calls that are not",
+            "tail recursive."]),
+
+        help("warn-non-tail-recursion <type>", [
+            "Warn about recursive calls that are not tail calls,",
+            "<type> may be ""self"", ""self-and-mutual"" or ""none""."]),
+
+        help("warn-obvious-non-tail-recursion", [
+            "Warn about recursive calls that are not tail calls",
+            "even if they obviously cannot be tail calls,",
+        "because they are followed by other recursive calls."]),
+
+        help("no-warn-up-to-date", [
+            "Do not warn if targets specified on the command line",
+            "with `--make' are already up-to-date."]),
+
+        help("no-warn-stubs", [
+            "Disable warnings about procedures for which there are no",
+            "clauses. Note that this option only has any effect if",
+            "the `--allow-stubs' option (described in the ""Language",
+            "Semantics Options"" section below) is enabled."]),
+
+        help("warn-dead-procs", [
+            "Warn about procedures which are never called."]),
+
+        help("warn-dead-preds", [
+            "Warn about predicates that have no procedures which are",
+            "ever called."]),
+
+        help("no-warn-target-code", [
+            "Disable warnings from the compiler used to process the",
+            "target code (e.g. gcc)."]),
+
+        help("no-warn-table-with-inline", [
+            "Disable warnings about tabled procedures that also have",
+            "a `pragma inline' declaration."]),
+
+        help("no-warn-non-term-special-preds", [
+            "Do not warn about types that have user-defined equality or",
+            "comparison predicates that cannot be proved to terminate.",
+            "This option is only enabled when termination analysis is enabled.",
+            "(See the ""Termination Analysis Options"" section below)."]),
+
+        help("no-warn-known-bad-format-calls", [
+            "Do not warn about calls to string.format or io.format that",
+            "the compiler knows for sure contain mismatches between the",
+            "format string and the supplied values."]),
+
+        help("no-warn-only-one-format-string-error", [
+            "If a format string has more one than mismatch with the supplied,",
+            "values, generate a warning for all mismatches, not just the first.",
+            "The later mismatches may be avalanche errors caused by earlier",
+            "mismatches."]),
+
+        help("warn-unknown-format-calls", [
+            "Warn about calls to string.format, io.format or",
+            "stream.string_writer.format for which the compiler cannot tell",
+            "whether there are any mismatches between the format string and",
+            "the supplied values."]),
+
+        help("no-warn-obsolete", [
+            "Do not warn about calls to predicates or functions that have",
+            "been marked as obsolete."]),
+
+        help("inform-ite-instead-of-switch", [
+            "Generate informational messages for if-then-elses that could be",
+            "replaced by switches."]),
+
+        help("inform-incomplete-switch", [
+            "Generate informational messages for switches that do not cover",
+            "all the function symbols that the switched-on variable could be",
+            "bound to."]),
+
+        help("inform-incomplete-switch-threshold <N>", [
+            "Have the --inform-incomplete-switch option generate its messages",
+            "only for switches that *do* cover at least N% of the function",
+            "symbols that the switched-on variable could be bound to."]),
+
+        help("no-warn-unresolved-polymorphism", [
+            "Do not warn about unresolved polymorphism."]),
+
+        help("warn-suspicious-foreign-procs", [
+            "Warn about possible errors in the bodies of foreign",
+            "procedures."]),
+
+        help("warn-suspicious-foreign-code", [
+            "Warn about possible errors in the bodies of foreign code",
+            "pragmas."]),
+
+        help("no-warn-state-var-shadowing", [
+            "Do not warn about one state variable shadowing another."]),
+
+        help("no-warn-unneeded-mode-specific-clause", [
+            "Do not warn about clauses that needlessly specify",
+            "the modes of their arguments."]),
+
+        help("no-warn-suspected-occurs-check-failure", [
+            "Do not warn about code that looks like it unifies a variable",
+            "with a term that contains that same variable. Such code cannot",
+            "succeed because it fails what is called the `occurs check'."]),
+
+        help("warn-potentially-ambiguous-pragma", [
+            "Generate warnings for pragmas that do not specify whether they are",
+            "for a predicate or a function."]),
+
+        help("no-warn-ambiguous-pragma", [
+            "Do not generate warnings for pragmas that do not specify whether",
+            "they are for a predicate or a function, even when there is both",
+            "a predicate and a function with the given name and arity."]),
+
+        help("no-warn-stdlib-shadowing", [
+            "Do not generate warnings for module names that either duplicate",
+            "the name of a module in the Mercury standard library, or contain",
+            "a subsequence of name components that do so."]),
+
+        priv_help("inform-incomplete-color-scheme", [
+            "Report if the argument if either the value of the",
+            "--color-scheme option, or the value of MERCURY_COLOR_SCHEME",
+            "environment variable, does not specify a color for some role."]),
+
+        help("no-inform-inferred", [
+            "Do not generate messages about inferred types or modes."]),
+
+        help("no-inform-inferred-types", [
+            "Do not generate messages about inferred types."]),
+
+        help("no-inform-inferred-modes", [
+            "Do not generate messages about inferred modes."]),
+
+        help("inform-suboptimal-packing", [
+            "Generate messages if the arguments of a data constructor",
+            "could be packed more tightly if they were reordered."]),
+
+        priv_help("print-error-spec-id", [
+            "After each error message is printed, print its id, which",
+            "by convention is the $pred of the code that constructs it."]),
+
+        priv_help("inform-ignored-pragma-errors", [
+            "Print an informational message for each otherwise-ignored error",
+            "that reports an inability to find the procedure that a pragma",
+            "refers to."]),
+
+        priv_help("inform-generated-type-spec-pragmas", [
+            "Print an informational message for each type_spec pragma that",
+            "the compiler generates to implement a type_spec_constrained_pred",
+            "pragma."]),
+
+        help("no-warn-redundant-coerce", [
+            "Do not warn about redundant type conversions."]),
+
+        help("-warn-can-fail-function", [
+            "Warn about functions that can fail."]),
+
+        alt_help("warn-unsorted-import-block",
+                ["warn-unsorted-import-blocks"], [
+            "Warn about two import and/or use declarations on the same line,",
+            "or if a sequence of such declarations on consecutive lines",
+            "are not sorted on module name."])
+    ],
+    output_help_messages(Stream, HelpStructs, !IO).
 
 :- pred options_help_verbosity(io.text_output_stream::in,
     io::di, io::uo) is det.
@@ -7319,6 +7402,15 @@ options_help_misc(Stream, !IO) :-
     ;       help(
                 h_long_name             :: string,
                 h_description           :: list(string)
+            )
+    ;       alt_help(
+                ah_long_name            :: string,
+                ah_alt_long_names       :: list(string),
+                ah_description          :: list(string)
+            )
+    ;       priv_help(
+                ph_long_name            :: string,
+                ph_description          :: list(string)
             ).
 
 :- type maybe_opt_arg
@@ -7341,6 +7433,7 @@ output_help_messages(Stream, [OptHelp | OptHelps], !IO) :-
     io::di, io::uo) is det.
 
 output_help_message(Stream, OptHelp, !IO) :-
+    OptNameLineMaxLen = 71,
     (
         OptHelp = gen_help(LongName, AltLongNames, ShortNames, MaybeArg,
             PublicOrPrivate, DescLines),
@@ -7348,20 +7441,33 @@ output_help_message(Stream, OptHelp, !IO) :-
         LongNames = [LongName | AltLongNames],
         ShortNameStrs = list.map(short_name_to_str(ArgSuffix), ShortNames),
         LongNameStrs = list.map(long_name_to_str(ArgSuffix), LongNames),
-        FirstLine = string.join_list(", ", ShortNameStrs ++ LongNameStrs)
+        OptNameLines = join_options(OptNameLineMaxLen,
+            ShortNameStrs ++ LongNameStrs)
     ;
         OptHelp = help(LongName, DescLines),
-        FirstLine = "--" ++ LongName,
+        OptNameLines = ["--" ++ LongName],
         PublicOrPrivate = help_public
+    ;
+        OptHelp = alt_help(LongName, AltLongNames, DescLines),
+        LongNames = [LongName | AltLongNames],
+        LongNameStrs = list.map(long_name_to_str(""), LongNames),
+        OptNameLines = join_options(OptNameLineMaxLen, LongNameStrs),
+        PublicOrPrivate = help_public
+    ;
+        OptHelp = priv_help(LongName, DescLines),
+        OptNameLines = ["--" ++ LongName],
+        PublicOrPrivate = help_private
     ),
     (
         PublicOrPrivate = help_public,
         % Until all options are documented using help structures,
         % maintain the existing indentation.
-        % io.write_prefixed_lines(Stream, "    ", [FirstLine], !IO),
-        % io.write_prefixed_lines(Stream, "        ", DescLines, !IO)
-        io.write_prefixed_lines(Stream, "\t", [FirstLine], !IO),
-        io.write_prefixed_lines(Stream, "\t\t", DescLines, !IO)
+        % OptNamePrefix = "    ",
+        % DescPrefix    = "        ",
+        OptNamePrefix = "\t",
+        DescPrefix = "\t\t",
+        io.write_prefixed_lines(Stream, OptNamePrefix, OptNameLines, !IO),
+        io.write_prefixed_lines(Stream, DescPrefix, DescLines, !IO)
     ;
         PublicOrPrivate = help_private
     ).
@@ -7380,6 +7486,23 @@ short_name_to_str(ArgSuffix, ShortName) =
 
 opt_arg_to_suffix(no_arg) = "".
 opt_arg_to_suffix(arg(Arg)) = " <" ++ Arg ++ ">".
+
+    % join_options(OptNameLineMaxLen, OptionStrs) = Lines :-
+    % Given a list of short and/or long option strings, of the form
+    % -X or --Y, return one or more lines containing those option strings.
+    % If all option strings fit together on one when separated by commas,
+    % we will return that line. If they do *not* fit, then
+    % we will return one line for each option string, whether short or long.
+    %
+:- func join_options(int, list(string)) = list(string).
+
+join_options(OptNameLineMaxLen, OptionStrs) = Lines :-
+    OneLine = string.join_list(", ", OptionStrs),
+    ( if string.count_code_points(OneLine) =< OptNameLineMaxLen then
+        Lines = [OneLine]
+    else
+        Lines = OptionStrs
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module libs.options.
