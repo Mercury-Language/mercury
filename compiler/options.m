@@ -5707,55 +5707,6 @@ options_help_semantics = Section :-
     ],
     Section = help_section(yes(SectionName), SectionCommentLines, HelpStructs).
 
-:- func options_help_ctgc = help_section.
-
-options_help_ctgc = Section :-
-    SectionName = "Compile Time Garbage Collection Options",
-    HelpStructs = [
-        help("structure-sharing", [
-            "Perform structure sharing analysis."]),
-
-        help("structure-sharing-widening <n>", [
-            "Perform widening when the set of structure sharing pairs becomes",
-            "larger than <n>. When n=0, widening is not enabled.",
-            "(default: 0)."]),
-
-        alt_help("structure-reuse", pos_sep_lines, ["ctgc"], [
-            "Perform structure reuse analysis (Compile Time Garbage",
-            "Collection)."]),
-
-        alt_help("structure-reuse-constraint " ++
-                "{same_cons_id, within_n_cells_difference}", pos_sep_lines,
-                ["ctgc-constraint " ++
-                "{same_cons_id, within_n_cells_difference}"], [
-            "Constraint on the way we allow structure reuse. `same_cons_id'",
-            "specifies that reuse is only allowed between terms of the same",
-            "type and constructor. `within_n_cells_difference' states that",
-            "reuse is allowed as long as the arities between the reused term",
-            "and new term does not exceed a certain threshold. The threshold",
-            "needs to be set using `--structure-reuse-constraint-arg'.",
-            "(default: within_n_cells_difference, with threshold 0)"]),
-
-        alt_help("structure-reuse-constraint-arg", pos_sep_lines,
-                ["ctgc-constraint-arg"], [
-            "Specify the maximum difference in arities between the terms that",
-            "can be reused, and the terms that reuse these terms.",
-            "(default: 0)"]),
-
-        % This option is for developers only.
-        priv_help("structure-reuse-max-conditions", [
-            "Soft limit on the number of reuse conditions to accumulate",
-            "for a procedure. (default: 10)"]),
-
-        % This option is likely to break many optimisations
-        % which haven't been updated.
-        priv_help("structure-reuse-free-cells", [
-            "Immediately free cells which are known to be dead but which",
-            "cannot be reused."])
-
-    ],
-    Section = help_section(yes(SectionName), [], HelpStructs).
-
 :- func options_help_termination = help_section.
 
 options_help_termination = Section :-
@@ -5859,6 +5810,55 @@ options_help_termination = Section :-
                 ["term2-arg-size-analysis-only"], [
             "Perform argument size analysis on each SCC but do not",
             "attempt to infer termination,"])
+
+    ],
+    Section = help_section(yes(SectionName), [], HelpStructs).
+
+:- func options_help_ctgc = help_section.
+
+options_help_ctgc = Section :-
+    SectionName = "Compile Time Garbage Collection Options",
+    HelpStructs = [
+        help("structure-sharing", [
+            "Perform structure sharing analysis."]),
+
+        help("structure-sharing-widening <n>", [
+            "Perform widening when the set of structure sharing pairs becomes",
+            "larger than <n>. When n=0, widening is not enabled.",
+            "(default: 0)."]),
+
+        alt_help("structure-reuse", pos_sep_lines, ["ctgc"], [
+            "Perform structure reuse analysis (Compile Time Garbage",
+            "Collection)."]),
+
+        alt_help("structure-reuse-constraint " ++
+                "{same_cons_id, within_n_cells_difference}", pos_sep_lines,
+                ["ctgc-constraint " ++
+                "{same_cons_id, within_n_cells_difference}"], [
+            "Constraint on the way we allow structure reuse. `same_cons_id'",
+            "specifies that reuse is only allowed between terms of the same",
+            "type and constructor. `within_n_cells_difference' states that",
+            "reuse is allowed as long as the arities between the reused term",
+            "and new term does not exceed a certain threshold. The threshold",
+            "needs to be set using `--structure-reuse-constraint-arg'.",
+            "(default: within_n_cells_difference, with threshold 0)"]),
+
+        alt_help("structure-reuse-constraint-arg", pos_sep_lines,
+                ["ctgc-constraint-arg"], [
+            "Specify the maximum difference in arities between the terms that",
+            "can be reused, and the terms that reuse these terms.",
+            "(default: 0)"]),
+
+        % This option is for developers only.
+        priv_help("structure-reuse-max-conditions", [
+            "Soft limit on the number of reuse conditions to accumulate",
+            "for a procedure. (default: 10)"]),
+
+        % This option is likely to break many optimisations
+        % which haven't been updated.
+        priv_help("structure-reuse-free-cells", [
+            "Immediately free cells which are known to be dead but which",
+            "cannot be reused."])
 
     ],
     Section = help_section(yes(SectionName), [], HelpStructs).
