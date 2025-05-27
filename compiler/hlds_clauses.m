@@ -156,6 +156,11 @@
                 % Did this predicate/function have clauses with syntax errors
                 % in their bodies (so we could know, despite the error, that
                 % the clause was for them)?
+                % XXX This field is, as of 2025 may 28, not useful, because
+                % even though two compiler modules base some decision on its
+                % value, that value will always be the same, because this field
+                % is never set to "some_clause_syntax_errors". I commented out
+                % the set predicate for this field to reflect this.
                 cli_had_syntax_errors       :: maybe_clause_syntax_errors
         ).
 
@@ -212,8 +217,8 @@
     clauses_info::in, clauses_info::out) is det.
 :- pred clauses_info_set_have_foreign_clauses(maybe_foreign_lang_clauses::in,
     clauses_info::in, clauses_info::out) is det.
-:- pred clauses_info_set_had_syntax_errors(maybe_clause_syntax_errors::in,
-    clauses_info::in, clauses_info::out) is det.
+% :- pred clauses_info_set_had_syntax_errors(maybe_clause_syntax_errors::in,
+%     clauses_info::in, clauses_info::out) is det.
 
     % Return the headvars as a list rather than as a proc_arg_vector.
     % New code should avoid using this, and should instead be written to
@@ -544,8 +549,8 @@ clauses_info_set_clauses_rep(X, Y, !CI) :-
     !CI ^ cli_item_numbers := Y.
 clauses_info_set_have_foreign_clauses(X, !CI) :-
     !CI ^ cli_have_foreign_clauses := X.
-clauses_info_set_had_syntax_errors(X, !CI) :-
-    !CI ^ cli_had_syntax_errors := X.
+% clauses_info_set_had_syntax_errors(X, !CI) :-
+%     !CI ^ cli_had_syntax_errors := X.
 
 %-----------------------------------------------------------------------------%
 

@@ -11,7 +11,6 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
@@ -30,19 +29,13 @@
     set_tree234(pred_id)::in, list(pred_id)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred maybe_check_for_and_report_any_non_contiguous_clauses(module_info::in,
-    pred_id::in, pred_info::in, clause_item_numbers::in, list(error_spec)::out)
-    is det.
-
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.pred_table.
 :- import_module libs.
-:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -55,7 +48,6 @@
 
 :- import_module bool.
 :- import_module edit_seq.
-:- import_module int.
 :- import_module maybe.
 :- import_module string.
 :- import_module varset.
@@ -257,109 +249,6 @@ arg_decl_lines(PredOrFuncStr, TVarSet, NonLastArgTypes, LastArgType, Suffix,
 :- func one_indent = string.
 
 one_indent = "    ".
-
-%---------------------------------------------------------------------------%
-
-maybe_check_for_and_report_any_non_contiguous_clauses(ModuleInfo,
-        PredId, PredInfo, ItemNumbers, Specs) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, warn_non_contiguous_foreign_procs,
-        WarnNonContiguousForeignProcs),
-    (
-        WarnNonContiguousForeignProcs = yes,
-        Specs = report_any_non_contiguous_clauses(ModuleInfo,
-            PredId, PredInfo, ItemNumbers, clauses_and_foreign_procs)
-    ;
-        WarnNonContiguousForeignProcs = no,
-        globals.lookup_bool_option(Globals, warn_non_contiguous_clauses,
-            WarnNonContiguousClauses),
-        (
-            WarnNonContiguousClauses = yes,
-            Specs = report_any_non_contiguous_clauses(ModuleInfo,
-                PredId, PredInfo, ItemNumbers, only_clauses)
-        ;
-            WarnNonContiguousClauses = no,
-            Specs = []
-        )
-    ).
-
-:- func report_any_non_contiguous_clauses(module_info, pred_id, pred_info,
-    clause_item_numbers, clause_item_number_types) = list(error_spec).
-
-report_any_non_contiguous_clauses(ModuleInfo, PredId, PredInfo, ItemNumbers,
-        NumberTypes) = Specs :-
-    ( if
-        clauses_are_non_contiguous(ItemNumbers, NumberTypes,
-            FirstRegion, SecondRegion, LaterRegions)
-    then
-        Spec = report_non_contiguous_clauses(ModuleInfo, PredId,
-            PredInfo, FirstRegion, SecondRegion, LaterRegions),
-        Specs = [Spec]
-    else
-        Specs = []
-    ).
-
-:- func report_non_contiguous_clauses(module_info, pred_id, pred_info,
-    clause_item_number_region, clause_item_number_region,
-    list(clause_item_number_region)) = error_spec.
-
-report_non_contiguous_clauses(ModuleInfo, PredId, PredInfo,
-        FirstRegion, SecondRegion, LaterRegions) = Spec :-
-    PredDotPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
-        should_not_module_qualify, [suffix(".")], PredId),
-    FrontPieces = [words("Warning:")] ++
-        color_as_incorrect([words("non-contiguous clauses")]) ++
-        [words("for")] ++ PredDotPieces ++ [nl],
-    pred_info_get_context(PredInfo, Context),
-    FrontMsg = msg(Context, FrontPieces),
-    PredPieces = describe_unqual_pred_name(ModuleInfo, PredId),
-    report_non_contiguous_clause_contexts(PredPieces, 1,
-        FirstRegion, SecondRegion, LaterRegions, ContextMsgs),
-    Msgs = [FrontMsg | ContextMsgs],
-    Spec = error_spec($pred, severity_warning, phase_type_check, Msgs).
-
-:- pred report_non_contiguous_clause_contexts(list(format_piece)::in,
-    int::in, clause_item_number_region::in, clause_item_number_region::in,
-    list(clause_item_number_region)::in, list(error_msg)::out) is det.
-
-report_non_contiguous_clause_contexts(PredPieces, GapNumber,
-        FirstRegion, SecondRegion, LaterRegions, Msgs) :-
-    FirstRegion =
-        clause_item_number_region(_FirstLowerNumber, _FirstUpperNumber,
-        _FirstLowerContext, FirstUpperContext),
-    SecondRegion =
-        clause_item_number_region(_SecondLowerNumber, _SecondUpperNumber,
-        SecondLowerContext, _SecondUpperContext),
-    ( if
-        GapNumber = 1,
-        LaterRegions = []
-    then
-        % There is only one gap, so don't number it.
-        GapPieces = []
-    else
-        GapPieces = [int_fixed(GapNumber)]
-    ),
-    % The wording here is chosen be non-confusing even if a clause has a gap
-    % both before and after it, so that gaps both end and start at the context
-    % of that clause. We could do better if we had separate contexts for the
-    % start and the end of the clause, but we don't.
-    FirstPieces = [words("Gap") | GapPieces] ++
-        [words("in clauses of") | PredPieces] ++
-        [words("starts after this clause."), nl],
-    SecondPieces = [words("Gap") | GapPieces] ++
-        [words("in clauses of") | PredPieces] ++
-        [words("ends with this clause."), nl],
-    FirstMsg = msg(FirstUpperContext, FirstPieces),
-    SecondMsg = msg(SecondLowerContext, SecondPieces),
-    (
-        LaterRegions = [],
-        Msgs = [FirstMsg, SecondMsg]
-    ;
-        LaterRegions = [FirstLaterRegion | LaterLaterRegions],
-        report_non_contiguous_clause_contexts(PredPieces, GapNumber + 1,
-            SecondRegion, FirstLaterRegion, LaterLaterRegions, LaterMsgs),
-        Msgs = [FirstMsg, SecondMsg | LaterMsgs]
-    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_msgs.

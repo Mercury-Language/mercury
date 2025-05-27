@@ -340,8 +340,8 @@ typecheck_pred_if_needed(ProgressStream, ModuleInfo, PredId, !PredInfo,
     else
         pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
         clauses_info_get_had_syntax_errors(ClausesInfo0, FoundSyntaxError),
-        handle_stubs_and_non_contiguous_clauses(ModuleInfo, PredId, !PredInfo,
-            FoundSyntaxError, !:Specs, MaybeNeedTypecheck),
+        handle_stubs(ModuleInfo, PredId, !PredInfo, FoundSyntaxError,
+            !:Specs, MaybeNeedTypecheck),
         (
             MaybeNeedTypecheck = do_not_need_typecheck(ContainsErrors,
                 NextIteration)
@@ -398,32 +398,22 @@ is_pred_created_type_correct(ModuleInfo, !PredInfo) :-
             )
     ;       do_need_typecheck.
 
-    % This predicate has two tasks.
-    %
-    % One is to handle stubs, and in particular the --allow-stubs and
-    % --warn-stubs options.
+    % This predicate handles stubs, and implements the --allow-stubs
+    % and --warn-stubs options.
     %
     % If --allow-stubs is set, and there are no clauses, then
     % - issue a warning (if --warn-stubs is set), and then
     % - generate a "stub" clause that just throws an exception.
     %
-    % The other is to generate warnings for non-contiguous clauses.
-    %
-    % The two tasks are done together because they are complementary:
-    % the first handles only empty clause lists, the second handles
-    % only nonempty clause lists. Instead of two separate traversals,
-    % one to handle stubs and one to handle non-contiguous clauses,
-    % this predicate enables one traversal to do both tasks.
-    %
-:- pred handle_stubs_and_non_contiguous_clauses(module_info::in, pred_id::in,
+:- pred handle_stubs(module_info::in, pred_id::in,
     pred_info::in, pred_info::out, maybe_clause_syntax_errors::in,
     list(error_spec)::out, maybe_need_typecheck::out) is det.
 
-handle_stubs_and_non_contiguous_clauses(ModuleInfo, PredId, !PredInfo,
-        FoundSyntaxError, !:Specs, MaybeNeedTypecheck) :-
+handle_stubs(ModuleInfo, PredId, !PredInfo, FoundSyntaxError,
+        !:Specs, MaybeNeedTypecheck) :-
     pred_info_get_markers(!.PredInfo, Markers0),
     pred_info_get_clauses_info(!.PredInfo, ClausesInfo0),
-    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, ItemNumbers0),
+    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0, _ItemNumbers0),
     clause_list_is_empty(ClausesRep0) = ClausesRep0IsEmpty,
     (
         ClausesRep0IsEmpty = yes,
@@ -447,9 +437,7 @@ handle_stubs_and_non_contiguous_clauses(ModuleInfo, PredId, !PredInfo,
         )
     ;
         ClausesRep0IsEmpty = no,
-        % There are clauses, so there can be no need to add stub clauses.
-        maybe_check_for_and_report_any_non_contiguous_clauses(ModuleInfo,
-            PredId, !.PredInfo, ItemNumbers0, !:Specs)
+        !:Specs = []
     ),
 
     % The above code may add stub clauses to the predicate, which would

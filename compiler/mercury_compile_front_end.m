@@ -824,6 +824,11 @@ frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS, FoundError,
             maybe_dump_hlds(ProgressStream, !.HLDS, 65, "frontend_simplify",
                 !DumpInfo, !IO),
 
+            % We generate any style warnings after all the semantic checks
+            % so that if a predicate has real semantic errors and is thus
+            % marked invalid, we can avoid distracting the user from them
+            % by adding messages about style, which, in that case, would be
+            % just clutter.
             maybe_generate_style_warnings(ProgressStream, ErrorStream,
                 Verbose, Stats, !.HLDS, !Specs, !IO),
 
