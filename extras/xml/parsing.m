@@ -694,7 +694,8 @@ list(P) -->
 
 get_global(Key, Val, !PS) :-
     map.lookup(!.PS ^ globals, univ(Key), Val0),
-    det_univ_to_type(Val0, Val).
+    det_univ_to_type(Val0, Val),
+    !:PS = !.PS.
 
 set_global(Key, Val, !PS) :-
     map.set(univ(Key), univ(Val), !.PS ^ globals, Globals),
