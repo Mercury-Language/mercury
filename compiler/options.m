@@ -5288,7 +5288,7 @@ options_help_aux_output = Section :-
 
         priv_help("recompile-output-suffix .xyz", [
             "This is intended to direct the output from the test cases in
-            tests/reccompilation to file."]),
+            tests/recompilation to a file."]),
 
         help("smart-recompilation", [
             "When compiling, write program dependency information",
@@ -5874,7 +5874,7 @@ options_help_compilation_model = NestedSection :-
     % XXX The structure of this predicate should mirror
     % the structure of the "Invocation" chapter of the user's guide,
     % probably with a sub-predicate for each section in that chapter.
-    % Currently, the user's guide chapter and the help messsage we output
+    % Currently, the user's guide chapter and the help message we output
     % are similar in many ways, but they also have substantial differences,
     % many of which are unnecessary.
 
@@ -7603,7 +7603,7 @@ options_help_build_system = Section :-
         alt_help("libgrade <grade>", pos_sep_lines, ["--no-libgrade"], [
             "The first form adds <grade> to the list of compilation grades",
             "in which a library to be installed should be built.",
-            "The secod form clears the list of compilation grades in which",
+            "The second form clears the list of compilation grades in which",
             "a library to be installed should be built."]),
 
         alt_help("libgrades-include-component <component>", pos_sep_lines,
@@ -7927,7 +7927,7 @@ options_help_misc = Section :-
                 % in the output.
                 %
                 % We use a char because all options using gen_help
-                % have short names that havee no argument.
+                % have short names that have no argument.
                 % (Some options using the other function symbols below
                 % *do* have short names that take arguments, and for these,
                 % we use strings, the first character of which is the short
