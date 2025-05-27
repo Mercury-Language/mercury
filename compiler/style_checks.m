@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016, 2019-2024 The Mercury team.
+% Copyright (C) 2016, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -10,9 +10,10 @@
 % Main author: zs.
 %
 % This module generates warnings for some aspects of bad style.
-% Specifically, it implements the following compiler options:
+% Specifically, it implements the following compiler options
+% (and their synonyms):
 %
-% --warn-inconsistent-pred-order
+% --warn-non-contiguous-decls
 % --warn-inconsistent-pred-order-clauses
 % --warn-inconsistent-pred-order-foreign-procs
 
@@ -21,12 +22,57 @@
 :- interface.
 
 :- import_module hlds.
-:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
 :- import_module list.
+
+%---------------------------------------------------------------------------%
+
+:- type warnings_we_want.
+
+:- type maybe_want_style_warnings
+    --->    do_not_want_style_warnings
+    ;       want_style_warnings(warnings_we_want).
+
+:- pred do_we_want_style_warnings(globals::in,
+    maybe_want_style_warnings::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- pred generate_any_style_warnings(module_info::in, warnings_we_want::in,
+    list(error_spec)::out) is det.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module hlds.hlds_clauses.
+:- import_module hlds.hlds_error_util.
+:- import_module hlds.hlds_pred.
+:- import_module libs.options.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.write_error_spec.
+
+:- import_module bool.
+:- import_module edit_seq.
+:- import_module int.
+:- import_module map.
+:- import_module maybe.
+
+%---------------------------------------------------------------------------%
+
+:- type warnings_we_want
+    --->    warnings_we_want(
+                maybe_warn_non_contiguous_pred_decls,
+                maybe_warn_pred_decl_vs_defn_order
+            ).
 
 :- type maybe_warn_non_contiguous_pred_decls
     --->    do_not_warn_non_contiguous_pred_decls
@@ -36,31 +82,51 @@
     --->    do_not_warn_pred_decl_vs_defn_order
     ;       warn_pred_decl_vs_defn_order(clause_item_number_types).
 
-:- pred generate_style_warnings(module_info::in,
-    maybe_warn_non_contiguous_pred_decls::in,
-    maybe_warn_pred_decl_vs_defn_order::in,
-    list(error_spec)::out) is det.
+do_we_want_style_warnings(Globals, DoWeWantStyleWarnings) :-
+    globals.lookup_bool_option(Globals,
+        warn_non_contiguous_decls, NonContiguousDecls),
+    globals.lookup_bool_option(Globals,
+        warn_inconsistent_pred_order_clauses, InconsistentPredOrderClauses),
+    globals.lookup_bool_option(Globals,
+        warn_inconsistent_pred_order_foreign_procs,
+        InconsistentPredOrderForeignProcs),
+    (
+        InconsistentPredOrderForeignProcs = no,
+        (
+            InconsistentPredOrderClauses = no,
+            WarnPredDeclDefnOrder = do_not_warn_pred_decl_vs_defn_order
+        ;
+            InconsistentPredOrderClauses = yes,
+            WarnPredDeclDefnOrder = warn_pred_decl_vs_defn_order(only_clauses)
+        )
+    ;
+        InconsistentPredOrderForeignProcs = yes,
+        WarnPredDeclDefnOrder =
+            warn_pred_decl_vs_defn_order(clauses_and_foreign_procs)
+    ),
+    ( if
+        NonContiguousDecls = no,
+        WarnPredDeclDefnOrder = do_not_warn_pred_decl_vs_defn_order
+    then
+        DoWeWantStyleWarnings = do_not_want_style_warnings
+    else
+        (
+            NonContiguousDecls = no,
+            WarnNonContigPreds = do_not_warn_non_contiguous_pred_decls
+        ;
+            NonContiguousDecls = yes,
+            WarnNonContigPreds = warn_non_contiguous_pred_decls
+        ),
+        WarningsWeWant =
+            warnings_we_want(WarnNonContigPreds, WarnPredDeclDefnOrder),
+        DoWeWantStyleWarnings = want_style_warnings(WarningsWeWant)
+    ).
 
 %---------------------------------------------------------------------------%
 
-:- implementation.
-
-:- import_module hlds.hlds_error_util.
-:- import_module hlds.hlds_pred.
-:- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_data.
-:- import_module parse_tree.write_error_spec.
-
-:- import_module edit_seq.
-:- import_module int.
-:- import_module map.
-:- import_module maybe.
-
-%---------------------------------------------------------------------------%
-
-generate_style_warnings(ModuleInfo, WarnNonContigPreds, WarnPredDeclDefnOrder,
-        !:Specs) :-
+generate_any_style_warnings(ModuleInfo, WarningsWeWant, !:Specs) :-
+    WarningsWeWant =
+        warnings_we_want(WarnNonContigPreds, WarnPredDeclDefnOrder),
     module_info_get_valid_pred_ids(ModuleInfo, ValidPredIds),
     StyleInfo0 = pred_style_info([], [], []),
     list.foldl(
@@ -71,8 +137,8 @@ generate_style_warnings(ModuleInfo, WarnNonContigPreds, WarnPredDeclDefnOrder,
     (
         WarnNonContigPreds = do_not_warn_non_contiguous_pred_decls,
         % Even though we are throwing away ModeDeclItemNumberSpecs,
-        % We still execute the code that computes it, because it also
-        % computes ExportedPreds and NonExportedPreds, which we need.
+        % we still had to execute the code that computes it, because it
+        % also computes ExportedPreds and NonExportedPreds, which we need.
         !:Specs = []
     ;
         WarnNonContigPreds = warn_non_contiguous_pred_decls,
@@ -92,18 +158,17 @@ generate_style_warnings(ModuleInfo, WarnNonContigPreds, WarnPredDeclDefnOrder,
 
 %---------------------------------------------------------------------------%
 
-    % The id and pred_info of a predicate together with the item number
-    % (which must be valid) of
-    %
-    % - its pred or func declaration, and
-    % - its first clause.
-    %
 :- type pred_item_numbers
     --->    pred_item_numbers(
-                piwin_pred_id                   :: pred_id,
-                piwin_pred_info                 :: pred_info,
-                piwin_decl_item_number          :: int,
-                piwin_first_defn_item_number    :: int
+                % The id and pred_info of a predicate together with ...
+                pin_pred_id                     :: pred_id,
+                pin_pred_info                   :: pred_info,
+
+                % ... the item number (which must be valid) of
+                % - its pred or func declaration, and
+                % - its first clause.
+                pin_decl_item_number            :: int,
+                pin_first_defn_item_number      :: int
             ).
 
 :- type pred_style_info
@@ -113,6 +178,12 @@ generate_style_warnings(ModuleInfo, WarnNonContigPreds, WarnPredDeclDefnOrder,
                 style_specs                     :: list(error_spec)
             ).
 
+    % In general, a predicate or function with N modes may have
+    % up to N+1 declarations: one declaring the types of its arguments,
+    % and N declaring the modes of those arguments. All these declarations
+    % should be next to each other. If they are not, generating a warning
+    % for each gap.
+    %
 :- pred detect_non_contiguous_pred_decls(module_info::in,
     maybe_warn_pred_decl_vs_defn_order::in, pred_id::in,
     pred_style_info::in, pred_style_info::out) is det.
@@ -129,10 +200,10 @@ detect_non_contiguous_pred_decls(ModuleInfo, WarnPredDeclDefnOrder, PredId,
     then
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.foldl3(gather_proc_item_numbers, ProcTable, 0, _,
-            [], UnsortedProcINCs, proc_contiguity_makes_sense, MakesSense),
+            [], UnsortedProcINCs, warning_makes_sense, MakesSense),
         list.sort(UnsortedProcINCs, ProcINCs),
         ( if
-            MakesSense = proc_contiguity_makes_sense,
+            MakesSense = warning_makes_sense,
             ProcINCs = [HeadProcINC | TailProcINCs]
         then
             pred_info_get_context(PredInfo, PredDeclContext),
@@ -142,43 +213,51 @@ detect_non_contiguous_pred_decls(ModuleInfo, WarnPredDeclDefnOrder, PredId,
         else
             true
         ),
-
-        (
-            WarnPredDeclDefnOrder = do_not_warn_pred_decl_vs_defn_order
-        ;
-            WarnPredDeclDefnOrder = warn_pred_decl_vs_defn_order(DefnKind),
-            % Gather information for our caller to use in generating warnings
-            % for --warn-inconsistent-pred-order if warranted.
-            pred_info_get_clauses_info(PredInfo, ClausesInfo),
-            clauses_info_get_clauses_rep(ClausesInfo, _ClausesRep,
-                ClauseItemNumbers),
-            clause_item_number_regions(ClauseItemNumbers, DefnKind, Regions),
-            (
-                Regions = []
-                % This can happen for predicates implemented via external code.
-                % For these, there is no visible "definition" to be
-                % out-of-order with respect to the declaration.
-            ;
-                Regions = [FirstRegion | _],
-                FirstRegion = clause_item_number_region(FirstClauseItemNumber,
-                    _, _, _),
-                PredItemNumbers = pred_item_numbers(PredId, PredInfo,
-                    PredDeclItemNumber, FirstClauseItemNumber),
-                (
-                    DeclSection = decl_interface,
-                    ExportedPINs0 = !.StyleInfo ^ style_exported_preds,
-                    ExportedPINs = [PredItemNumbers | ExportedPINs0],
-                    !StyleInfo ^ style_exported_preds := ExportedPINs
-                ;
-                    DeclSection = decl_implementation,
-                    NonExportedPINs0 = !.StyleInfo ^ style_nonexported_preds,
-                    NonExportedPINs = [PredItemNumbers | NonExportedPINs0],
-                    !StyleInfo ^ style_nonexported_preds := NonExportedPINs
-                )
-            )
-        )
+        maybe_gather_clause_order_info(WarnPredDeclDefnOrder, PredId, PredInfo,
+            DeclSection, PredDeclItemNumber, !StyleInfo)
     else
         true
+    ).
+
+:- pred maybe_gather_clause_order_info(maybe_warn_pred_decl_vs_defn_order::in,
+    pred_id::in, pred_info::in, decl_section::in, int::in,
+    pred_style_info::in, pred_style_info::out) is det.
+
+maybe_gather_clause_order_info(WarnPredDeclDefnOrder, PredId, PredInfo,
+        DeclSection, PredDeclItemNumber, !StyleInfo) :-
+    (
+        WarnPredDeclDefnOrder = do_not_warn_pred_decl_vs_defn_order
+    ;
+        WarnPredDeclDefnOrder = warn_pred_decl_vs_defn_order(DefnKind),
+        % Gather information for our caller to use in generating warnings
+        % for --warn-inconsistent-pred-order-clauses if warranted.
+        pred_info_get_clauses_info(PredInfo, ClausesInfo),
+        clauses_info_get_clauses_rep(ClausesInfo, _ClausesRep,
+            ClauseItemNumbers),
+        clause_item_number_regions(ClauseItemNumbers, DefnKind, Regions),
+        (
+            Regions = []
+            % This can happen for predicates implemented via external code.
+            % For these, there is no visible "definition" to be
+            % out-of-order with respect to the declaration.
+        ;
+            Regions = [FirstRegion | _],
+            FirstRegion = clause_item_number_region(FirstClauseItemNumber,
+                _, _, _),
+            PredItemNumbers = pred_item_numbers(PredId, PredInfo,
+                PredDeclItemNumber, FirstClauseItemNumber),
+            (
+                DeclSection = decl_interface,
+                ExportedPINs0 = !.StyleInfo ^ style_exported_preds,
+                ExportedPINs = [PredItemNumbers | ExportedPINs0],
+                !StyleInfo ^ style_exported_preds := ExportedPINs
+            ;
+                DeclSection = decl_implementation,
+                NonExportedPINs0 = !.StyleInfo ^ style_nonexported_preds,
+                NonExportedPINs = [PredItemNumbers | NonExportedPINs0],
+                !StyleInfo ^ style_nonexported_preds := NonExportedPINs
+            )
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -190,13 +269,13 @@ detect_non_contiguous_pred_decls(ModuleInfo, WarnPredDeclDefnOrder, PredId,
 :- type inc
     --->    inc(int, prog_context).
 
-:- type proc_contiguity
-    --->    proc_contiguity_makes_sense
-    ;       proc_contiguity_does_not_makes_sense.
+:- type does_warning_make_sense
+    --->    warning_makes_sense
+    ;       warning_does_not_makes_sense.
 
 :- pred gather_proc_item_numbers(proc_id::in, proc_info::in,
     int::in, int::out, list(inc)::in, list(inc)::out,
-    proc_contiguity::in, proc_contiguity::out) is det.
+    does_warning_make_sense::in, does_warning_make_sense::out) is det.
 
 gather_proc_item_numbers(ProcId, ProcInfo, !ExpectedProcNum,
         !ProcINCs, !MakesSense) :-
@@ -216,7 +295,7 @@ gather_proc_item_numbers(ProcId, ProcInfo, !ExpectedProcNum,
             % does not make sense, or the procedure was declared by the
             % compiler itself, in which case the notion of contiguity
             % in source code does not apply to this predicate.
-            !:MakesSense = proc_contiguity_does_not_makes_sense
+            !:MakesSense = warning_does_not_makes_sense
         )
     else
         % There is a missing procedure number in the sequence of procedures
@@ -234,7 +313,7 @@ gather_proc_item_numbers(ProcId, ProcInfo, !ExpectedProcNum,
         %
         % Given this fact, should we just generate warnings regardless of
         % the presence of any invalid modes?
-        !:MakesSense = proc_contiguity_does_not_makes_sense
+        !:MakesSense = warning_does_not_makes_sense
     ).
 
 :- pred report_any_inc_gaps(pred_info::in, inc::in, inc::in, list(inc)::in,

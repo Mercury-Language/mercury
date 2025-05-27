@@ -1625,44 +1625,14 @@ maybe_generate_style_warnings(ProgressStream, ErrorStream, Verbose, Stats,
     module_info_get_globals(HLDS, Globals),
     maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
 
-    globals.lookup_bool_option(Globals, warn_non_contiguous_decls,
-        NonContiguousDecls),
-    globals.lookup_bool_option(Globals, warn_inconsistent_pred_order_clauses,
-        InconsistentPredOrderClauses),
-    globals.lookup_bool_option(Globals,
-        warn_inconsistent_pred_order_foreign_procs,
-        InconsistentPredOrderForeignProcs),
+    do_we_want_style_warnings(Globals, DoWeWantStyleWarnings),
     (
-        InconsistentPredOrderForeignProcs = no,
-        (
-            InconsistentPredOrderClauses = no,
-            WarnPredDeclDefnOrder = do_not_warn_pred_decl_vs_defn_order
-        ;
-            InconsistentPredOrderClauses = yes,
-            WarnPredDeclDefnOrder = warn_pred_decl_vs_defn_order(only_clauses)
-        )
+        DoWeWantStyleWarnings = do_not_want_style_warnings
     ;
-        InconsistentPredOrderForeignProcs = yes,
-        WarnPredDeclDefnOrder =
-            warn_pred_decl_vs_defn_order(clauses_and_foreign_procs)
-    ),
-    ( if
-        NonContiguousDecls = no,
-        WarnPredDeclDefnOrder = do_not_warn_pred_decl_vs_defn_order
-    then
-        true
-    else
-        (
-            NonContiguousDecls = no,
-            WarnNonContigPreds = do_not_warn_non_contiguous_pred_decls
-        ;
-            NonContiguousDecls = yes,
-            WarnNonContigPreds = warn_non_contiguous_pred_decls
-        ),
+        DoWeWantStyleWarnings = want_style_warnings(WarningsWeWant),
         maybe_write_string(ProgressStream, Verbose,
             "% Generating style warnings...\n", !IO),
-        generate_style_warnings(HLDS, WarnNonContigPreds,
-            WarnPredDeclDefnOrder,  StyleSpecs),
+        generate_any_style_warnings(HLDS, WarningsWeWant, StyleSpecs),
         !:Specs = StyleSpecs ++ !.Specs,
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
