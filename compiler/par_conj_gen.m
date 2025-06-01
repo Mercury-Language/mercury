@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1998-2000, 2002-2011 The University of Melbourne.
-% Copyright (C) 2013-2016, 2018-2024 The Mercury team.
+% Copyright (C) 2013-2016, 2018-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -174,7 +174,8 @@ generate_par_conj(Conjuncts, GoalInfo, CodeModel, Code, !CI, !CLD) :-
     ),
 
     get_globals(!.CI, Globals),
-    globals.lookup_int_option(Globals, sync_term_size, STSize),
+    globals.lookup_int_option(Globals, sync_term_size_in_words,
+        SyncTermSizeInWords),
 
     % When entering a parallel conjunctions at the shallowest level in
     % the procedure, we have to set the parent_sp register to the value
@@ -214,7 +215,7 @@ generate_par_conj(Conjuncts, GoalInfo, CodeModel, Code, !CI, !CLD) :-
         [], Outputs),
 
     % Reserve a contiguous block on the stack to hold the synchronisation term.
-    Contents = list.duplicate(STSize, slot_sync_term),
+    Contents = list.duplicate(SyncTermSizeInWords, slot_sync_term),
     acquire_several_temp_slots(Contents, persistent_temp_slot, SyncTermSlots,
         StackId, _N, _M, !CI, !CLD),
     ( if

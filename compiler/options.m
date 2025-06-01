@@ -619,7 +619,7 @@
     ;       allow_packing_remote_sectags    % XXX bootstrapping option
     ;       allow_packing_mini_types        % XXX bootstrapping option
     ;       allow_packed_unify_compare      % XXX bootstrapping option
-    ;       sync_term_size % in words
+    ;       sync_term_size_in_words
 
     % LLDS back-end compilation model options
     ;       gcc_non_local_gotos
@@ -1683,7 +1683,7 @@ optdef(oc_grade, allow_packing_local_sectags,           bool(no)).
 optdef(oc_grade, allow_packing_remote_sectags,          bool(no)).
 optdef(oc_grade, allow_packing_mini_types,              bool(no)).
 optdef(oc_grade, allow_packed_unify_compare,            bool(no)).
-optdef(oc_grade, sync_term_size,                        int(8)).
+optdef(oc_grade, sync_term_size_in_words,               int(8)).
     % 8 is the size on linux (at the time of writing) - will usually be
     % overridden by a value from configure.
 
@@ -2773,7 +2773,8 @@ long_table("allow-packing-remote-sectags",
         allow_packing_remote_sectags).
 long_table("allow-packing-mini-types",     allow_packing_mini_types).
 long_table("allow-packed-unify-compare",   allow_packed_unify_compare).
-long_table("sync-term-size",       sync_term_size).
+long_table("sync-term-size",       sync_term_size_in_words).
+long_table("sync-term-size-in-words", sync_term_size_in_words).
 % LLDS back-end compilation model options
 long_table("gcc-non-local-gotos",  gcc_non_local_gotos).
 long_table("gcc-global-registers", gcc_global_registers).
@@ -4501,7 +4502,7 @@ options_help_help = Section :-
 :- func options_help_warning = help_section.
 
 options_help_warning = Section :-
-    SectionName = "Warning Options",
+    SectionName = "Warning options",
     HelpStructs = [
         short_help('w', "inhibit-warnings", [],
             ["Disable all warning messages."]),
@@ -4892,7 +4893,7 @@ options_help_warning = Section :-
 :- func options_help_verbosity = help_section.
 
 options_help_verbosity = Section :-
-    SectionName =  "Verbosity Options",
+    SectionName =  "Verbosity options",
     HelpStructs = [
         short_help('v', "verbose", [], [
             "Output progress messages at each stage in the compilation."]),
@@ -5103,7 +5104,7 @@ options_help_verbosity = Section :-
 :- func options_help_output = help_section.
 
 options_help_output = Section :-
-    SectionName = "Output Options",
+    SectionName = "Output options",
     SectionCommentLines = [
         "These options are mutually exclusive.",
         "Only the first one specified will apply.",
@@ -5274,7 +5275,7 @@ options_help_output = Section :-
 :- func options_help_aux_output = help_section.
 
 options_help_aux_output = Section :-
-    SectionName = "Auxiliary Output Options",
+    SectionName = "Auxiliary output options",
     HelpStructs = [
         % The next five options are private until the compiler consistently
         % does what these options say it should do when specified.
@@ -5838,7 +5839,7 @@ options_help_termination = Section :-
 :- func options_help_ctgc = help_section.
 
 options_help_ctgc = Section :-
-    SectionName = "Compile Time Garbage Collection Options",
+    SectionName = "Compile time garbage collection options",
     HelpStructs = [
         help("structure-sharing", [
             "Perform structure sharing analysis."]),
@@ -6579,7 +6580,7 @@ options_help_code_generation = NestedSection :-
 :- func options_help_optimization = help_section.
 
 options_help_optimization = Section :-
-    SectionName = "Optimization Options",
+    SectionName = "Optimization options",
     HelpStructs = [
 
         % This is for use by Mercury.config only.
@@ -7337,7 +7338,7 @@ options_help_target_code_compilation = Section :-
 :- func options_help_link = help_section.
 
 options_help_link = Section :-
-    SectionName = "Link Options",
+    SectionName = "Link options",
     HelpStructs = [
 
         short_arg_help("o <filename>", "output-file <filename>", [], [
@@ -7546,7 +7547,7 @@ options_help_link = Section :-
 :- func options_help_build_system = help_section.
 
 options_help_build_system = Section :-
-    SectionName = "Build System Options",
+    SectionName = "Build system options",
     HelpStructs = [
 
         short_help('m', "make", [], [
@@ -7773,7 +7774,7 @@ options_help_build_system = Section :-
 :- func options_help_misc = help_section.
 
 options_help_misc = Section :-
-    SectionName = "Miscellaneous Options",
+    SectionName = "Miscellaneous options",
     HelpStructs = [
 
         help("filenames-from-stdin", [
