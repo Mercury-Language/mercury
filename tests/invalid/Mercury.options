@@ -161,3 +161,9 @@ MCFLAGS-bug487                  += --no-warn-unneeded-final-statevars
 MCFLAGS-fbnf                    += --no-warn-unneeded-final-statevars
 MCFLAGS-multimode_missing_impure += --no-warn-unneeded-final-statevars
 MCFLAGS-typeclass_test_8        += --no-warn-unneeded-final-statevars
+
+MCFLAGS-bad_allow_non_contiguity_for += --warn-non-contiguous-clauses
+MCFLAGS-bad_allow_non_contiguity_for += --allow-non-contiguity-for p1
+MCFLAGS-bad_allow_non_contiguity_for += --allow-non-contiguity-for a1,p2,p3
+MCFLAGS-bad_allow_non_contiguity_for += --allow-non-contiguity-for q1,q2,p3
+MCFLAGS-bad_allow_non_contiguity_for += --allow-non-contiguity-for r1,r2,r3

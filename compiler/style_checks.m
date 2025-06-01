@@ -46,8 +46,6 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
@@ -61,8 +59,8 @@
     --->    do_not_want_style_warnings
     ;       want_style_warnings(warnings_we_want).
 
-:- pred do_we_want_style_warnings(globals::in,
-    maybe_want_style_warnings::out) is det.
+:- pred do_we_want_style_warnings(module_info::in,
+    maybe_want_style_warnings::out, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -77,18 +75,27 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_table.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.write_error_spec.
 
+:- import_module bag.
 :- import_module bool.
 :- import_module edit_seq.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module require.
+:- import_module set.
 :- import_module set_tree234.
+:- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -105,15 +112,21 @@
 
 :- type maybe_warn_non_contiguous_pred_defns
     --->    do_not_warn_non_contiguous_pred_defns
-    ;       warn_non_contiguous_pred_defns(clause_item_number_types).
+    ;       warn_non_contiguous_pred_defns(
+                clause_item_number_types,
+                allowed_non_contiguity
+            ).
+
+:- type allowed_non_contiguity == list(set(pred_id)).
 
 :- type maybe_warn_pred_decl_vs_defn_order
     --->    do_not_warn_pred_decl_vs_defn_order
     ;       warn_pred_decl_vs_defn_order(clause_item_number_types).
 
-do_we_want_style_warnings(Globals, DoWeWantStyleWarnings) :-
+do_we_want_style_warnings(ModuleInfo, DoWeWantStyleWarnings, Specs) :-
     % Task 1: generate warnings if the ":- pred/func" and ":- mode"
     % declarations of this predicate or function are not contiguous.
+    module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals,
         warn_non_contiguous_decls, NonContigDeclsOpt),
     (
@@ -128,17 +141,19 @@ do_we_want_style_warnings(Globals, DoWeWantStyleWarnings) :-
     % of this predicate or function.
     globals.lookup_bool_option(Globals, warn_non_contiguous_foreign_procs,
         WarnNonContigForeignProcs),
+    get_allowed_non_contiguity(ModuleInfo, AllowedNonContiguity, Specs),
     (
         WarnNonContigForeignProcs = yes,
-        NonContigDefns =
-            warn_non_contiguous_pred_defns(clauses_and_foreign_procs)
+        NonContigDefns = warn_non_contiguous_pred_defns(
+            clauses_and_foreign_procs, AllowedNonContiguity)
     ;
         WarnNonContigForeignProcs = no,
         globals.lookup_bool_option(Globals, warn_non_contiguous_clauses,
             WarnNonContigClauses),
         (
             WarnNonContigClauses = yes,
-            NonContigDefns = warn_non_contiguous_pred_defns(only_clauses)
+            NonContigDefns = warn_non_contiguous_pred_defns(only_clauses,
+                AllowedNonContiguity)
         ;
             WarnNonContigClauses = no,
             NonContigDefns = do_not_warn_non_contiguous_pred_defns
@@ -187,6 +202,142 @@ do_we_want_style_warnings(Globals, DoWeWantStyleWarnings) :-
         DoWeWantStyleWarnings = want_style_warnings(WarningsWeWant)
     ).
 
+:- pred get_allowed_non_contiguity(module_info::in,
+    allowed_non_contiguity::out, list(error_spec)::out) is det.
+
+get_allowed_non_contiguity(ModuleInfo, PredIdSets, !:Specs) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_accumulating_option(Globals, allow_non_contiguity_for,
+        AllowNonContiguityForOpts0),
+    filter_out_duplicate_options(set.init,
+        AllowNonContiguityForOpts0, AllowNonContiguityForOpts),
+    module_info_get_predicate_table(ModuleInfo, PredTable),
+    module_info_get_name(ModuleInfo, ModuleName),
+    !:Specs = [],
+    list.foldl4(parse_non_contig_name_group(PredTable, ModuleName),
+        AllowNonContiguityForOpts,
+        1u, _, [], PredIdSets, bag.init, AllNamesBag, !Specs),
+    bag.to_list_only_duplicates(AllNamesBag, DupNames),
+    (
+        DupNames = []
+    ;
+        DupNames = [_ | _],
+        NameNames = choose_number(DupNames, "name", "names"),
+        OccurOccurs = choose_number(DupNames, "occurs", "occur"),
+        Pieces =
+            [words("Error: the"), words(NameNames)] ++
+            quote_list_to_color_pieces(color_subject, "and", [], DupNames) ++
+            color_as_incorrect([words(OccurOccurs),
+                words("more than once")]) ++
+            [words("in"), quote("--allow-non-contiguity-for"),
+            words("options."), nl,
+            words("(The sets of predicates and/or functions"),
+            words("whose clauses may be intermingled"),
+            words("must all be disjoint.)"), nl],
+        Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+    % XXX This predicate should NOT be needed, but it is (for now).
+    %
+    % We specify the some --allow-non-contiguity-for options for
+    % e.g. the tests/invalid/bad_allow_non_contiguity_for test case
+    % in tests/invalid/Mercury.options. When you compile that test case
+    % by hand, it works fine. But for some reason, when it is executed
+    % by tools/bootcheck, it operates as if every one of those options
+    % is given *twice*, which of course triggers the error messages
+    % about non-disjoint sets of predicates.
+    %
+    % Does anyone know why this may be happening? Since there have been
+    % no changes to the bootcheck script lately, so if it is happening now,
+    % it was probably happening for a long time. It's just that for most
+    % options, having them set twice to the same value silently does
+    % the right thing.
+    %
+:- pred filter_out_duplicate_options(set(string)::in,
+    list(string)::in, list(string)::out) is det.
+
+filter_out_duplicate_options(_, [], []).
+filter_out_duplicate_options(!.SeenOpts,
+        [HeadOpt | TailOpts], NonDupOpts) :-
+    ( if set.contains(!.SeenOpts, HeadOpt) then
+        filter_out_duplicate_options(!.SeenOpts, TailOpts, NonDupOpts)
+    else
+        set.insert(HeadOpt, !SeenOpts),
+        filter_out_duplicate_options(!.SeenOpts, TailOpts, TailNonDupOpts),
+        NonDupOpts = [HeadOpt | TailNonDupOpts]
+    ).
+
+:- pred parse_non_contig_name_group(predicate_table::in, module_name::in,
+    string::in, uint::in, uint::out,
+    list(set(pred_id))::in, list(set(pred_id))::out,
+    bag(string)::in, bag(string)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+parse_non_contig_name_group(PredTable, ModuleName, GroupStr,
+        !OptNum, !GroupPredIdSets, !AllNamesBag, !Specs) :-
+    GroupNames = string.split_at_char(',', GroupStr),
+    (
+        GroupNames = [],
+        unexpected($pred, "GroupNames = []")
+    ;
+        GroupNames = [_],
+        Pieces =
+            [words("Warning: the"), unth_fixed(!.OptNum),
+            quote("--allow-non-contiguity-for option"),
+            words("contains just one name:")] ++
+            color_as_subject([quote(GroupStr), suffix(".")]) ++
+            [words("Such option values")] ++
+            color_as_incorrect([words("have not effect.")]) ++ [nl],
+        Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ;
+        GroupNames = [_, _ | _]
+        % This the expected case.
+    ),
+    bag.insert_list(GroupNames, !AllNamesBag),
+    list.foldl2(parse_non_contig_name(PredTable, ModuleName, !.OptNum),
+        GroupNames, set.init, GroupPredIdSet, [], GroupSpecs),
+    (
+        GroupSpecs = [],
+        !:GroupPredIdSets = [GroupPredIdSet | !.GroupPredIdSets]
+    ;
+        GroupSpecs = [_ | _],
+        !:Specs = GroupSpecs ++ !.Specs
+    ),
+    !:OptNum = !.OptNum + 1u.
+
+:- pred parse_non_contig_name(predicate_table::in, module_name::in, uint::in,
+    string::in, set(pred_id)::in, set(pred_id)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+parse_non_contig_name(PredTable, ModuleName, OptNum, Name, !PredIds, !Specs) :-
+    SymName = qualified(ModuleName, Name),
+    predicate_table_lookup_sym(PredTable, is_fully_qualified, SymName,
+        PredIds),
+    (
+        PredIds = [],
+        Pieces =
+            [words("Error in the"), unth_fixed(OptNum),
+            quote("--allow-non-contiguity-for"), words("option:"),
+            words("the name")] ++ color_as_subject([quote(Name)]) ++
+            [words("is")] ++ color_as_incorrect([words("unknown.")]) ++ [nl],
+        Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ;
+        PredIds = [PredId],
+        set.insert(PredId, !PredIds)
+    ;
+        PredIds = [_, _ | _],
+        Pieces =
+            [words("Error in the"), unth_fixed(OptNum),
+            quote("--allow-non-contiguity-for"), words("option:"),
+            words("the name")] ++ color_as_subject([quote(Name)]) ++
+            [words("is")] ++ color_as_incorrect([words("ambiguous.")]) ++ [nl],
+        Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
+
 %---------------------------------------------------------------------------%
 
 generate_any_style_warnings(ModuleInfo, WarningsWeWant, !:Specs) :-
@@ -194,12 +345,27 @@ generate_any_style_warnings(ModuleInfo, WarningsWeWant, !:Specs) :-
         PredDeclDefnOrder),
     module_info_get_valid_pred_id_set(ModuleInfo, ValidPredIds),
     StyleInfo0 = style_info(NonContigDecls, NonContigDefns, PredDeclDefnOrder,
-        ValidPredIds, [], [], [], []),
+        ValidPredIds, [], [], [], map.init),
     module_info_get_pred_id_table(ModuleInfo, PredIdTable),
     map.foldl(gather_style_info, PredIdTable, StyleInfo0, StyleInfo),
     StyleInfo = style_info(_, _, _, _, ExportedPreds, NonExportedPreds,
-        ModeDeclItemNumberSpecs, ClauseGapSpecs),
-    !:Specs = ModeDeclItemNumberSpecs ++ ClauseGapSpecs,
+        ModeDeclItemNumberSpecs, ClauseGapMap0),
+    !:Specs = ModeDeclItemNumberSpecs,
+    (
+        NonContigDefns = do_not_warn_non_contiguous_pred_defns
+    ;
+        NonContigDefns = warn_non_contiguous_pred_defns(_,
+            AllowedNonContiguity),
+        % First, process the sets of predicates and/or functions named by
+        % --allow-non-contiguity-for options, effectively treating each set
+        % as it were a single predicate.
+        list.foldl2(report_non_contiguous_clauses_beyond_group(ModuleInfo),
+            AllowedNonContiguity, ClauseGapMap0, ClauseGapMap, !Specs),
+        % Then process all the predicates and functions that are not named
+        % in any --allow-non-contiguity-for option.
+        map.foldl(report_non_contiguous_clauses(ModuleInfo, []),
+            ClauseGapMap, !Specs)
+    ),
     (
         PredDeclDefnOrder = do_not_warn_pred_decl_vs_defn_order
     ;
@@ -240,7 +406,7 @@ generate_any_style_warnings(ModuleInfo, WarningsWeWant, !:Specs) :-
                 style_exported_preds        :: list(pred_decl_item_numbers),
                 style_nonexported_preds     :: list(pred_decl_item_numbers),
                 style_decl_gap_specs        :: list(error_spec),
-                style_clause_gap_specs      :: list(error_spec)
+                style_clause_gaps           :: map(pred_id, regions_with_gaps)
             ).
 
 :- pred gather_style_info(pred_id::in, pred_info::in,
@@ -281,7 +447,7 @@ gather_style_info(PredId, PredInfo, !StyleInfo) :-
         % that this call generates, its predecessor used to be called
         % *before* typecheck deleted PredId from the set of valid PredIds.
         %
-        maybe_gather_clause_gap_info(PredInfo, ClauseItemNumbers, !StyleInfo),
+        maybe_gather_clause_gap_info(PredId, ClauseItemNumbers, !StyleInfo),
 
         % Task 3: gather info that will allow our ancestor to detect
         % situations in which the order of the declarations of predicates and
@@ -456,18 +622,18 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
 % Code for task 2.
 %
 
-:- pred maybe_gather_clause_gap_info(pred_info::in, clause_item_numbers::in,
+:- pred maybe_gather_clause_gap_info(pred_id::in, clause_item_numbers::in,
     style_info::in, style_info::out) is det.
 
-maybe_gather_clause_gap_info(PredInfo, ItemNumbers, !StyleInfo) :-
-    MaybeNonContigDefns = !.StyleInfo ^ style_non_contig_defns,
+maybe_gather_clause_gap_info(PredId, ItemNumbers, !StyleInfo) :-
+    NonContigDefns = !.StyleInfo ^ style_non_contig_defns,
     (
-        MaybeNonContigDefns = do_not_warn_non_contiguous_pred_defns
+        NonContigDefns = do_not_warn_non_contiguous_pred_defns
     ;
-        MaybeNonContigDefns = warn_non_contiguous_pred_defns(NumberTypes),
+        NonContigDefns = warn_non_contiguous_pred_defns(NumberTypes, _),
         ( if
             clauses_are_non_contiguous(ItemNumbers, NumberTypes,
-                FirstRegion, SecondRegion, LaterRegions)
+                RegionsWithGaps)
             % XXX Currently, despite the existence of a field in ClausesInfo
             % to record whether PredInfo had a clause that is NOT in
             % ClausesInfo because it had a syntax error, we never set
@@ -476,35 +642,141 @@ maybe_gather_clause_gap_info(PredInfo, ItemNumbers, !StyleInfo) :-
             % *if and only if* that malformed clause would cause a gap
             % in the item number sequence.
         then
-            Spec = report_non_contiguous_clauses(PredInfo,
-                FirstRegion, SecondRegion, LaterRegions),
-            ClauseGapSpecs0 = !.StyleInfo ^ style_clause_gap_specs,
-            ClauseGapSpecs = [Spec | ClauseGapSpecs0],
-            !StyleInfo ^ style_clause_gap_specs := ClauseGapSpecs
+            GapMap0 = !.StyleInfo ^ style_clause_gaps,
+            map.det_insert(PredId, RegionsWithGaps, GapMap0, GapMap),
+            !StyleInfo ^ style_clause_gaps := GapMap
         else
             true
         )
     ).
 
-:- func report_non_contiguous_clauses(pred_info,
-    clause_item_number_region, clause_item_number_region,
-    list(clause_item_number_region)) = error_spec.
+%---------------------%
 
-report_non_contiguous_clauses(PredInfo, FirstRegion, SecondRegion,
-        LaterRegions) = Spec :-
-    PredPieces = describe_one_pred_info_name(no,
-        should_not_module_qualify, [], PredInfo),
-    PredDotPieces = describe_one_pred_info_name(yes(color_subject),
-        should_not_module_qualify, [suffix(".")], PredInfo),
-    FrontPieces = [words("Warning:")] ++
-        color_as_incorrect([words("non-contiguous clauses")]) ++
-        [words("for")] ++ PredDotPieces ++ [nl],
-    pred_info_get_context(PredInfo, Context),
-    FrontMsg = msg(Context, FrontPieces),
-    report_non_contiguous_clause_contexts(PredPieces, 1,
+:- pred report_non_contiguous_clauses_beyond_group(module_info::in,
+    set(pred_id)::in,
+    map(pred_id, regions_with_gaps)::in,
+    map(pred_id, regions_with_gaps)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_non_contiguous_clauses_beyond_group(ModuleInfo, GroupPredIdSet,
+        !ClauseGapMap, !Specs) :-
+    set.foldl2(gather_regions_with_gaps, GroupPredIdSet,
+        [], RegionsWithGapsList, !ClauseGapMap),
+    MergedRegions = merge_regions_with_gaps(RegionsWithGapsList),
+    (
+        ( MergedRegions = []
+        ; MergedRegions = [_]
+        )
+        % There are no gaps to report.
+    ;
+        MergedRegions = [FirstMergedRegion,
+            SecondMergedRegion | LaterMergedRegions],
+        RegionsWithGaps = regions_with_gaps(FirstMergedRegion,
+            SecondMergedRegion, LaterMergedRegions),
+        set.to_sorted_list(GroupPredIdSet, GroupPredIds),
+        (
+            GroupPredIds = []
+        ;
+            GroupPredIds = [HeadPredId | TailPredIds],
+            report_non_contiguous_clauses(ModuleInfo, TailPredIds, HeadPredId,
+                RegionsWithGaps, !Specs)
+        )
+    ).
+
+:- pred gather_regions_with_gaps(pred_id::in,
+    list(regions_with_gaps)::in, list(regions_with_gaps)::out,
+    map(pred_id, regions_with_gaps)::in,
+    map(pred_id, regions_with_gaps)::out) is det.
+
+gather_regions_with_gaps(PredId, !RegionsWithGapsList, !ClauseGapMap) :-
+    ( if map.remove(PredId, PredRegionsWithGaps, !ClauseGapMap) then
+        !:RegionsWithGapsList = [PredRegionsWithGaps | !.RegionsWithGapsList]
+    else
+        true
+    ).
+
+%---------------------%
+
+:- func merge_regions_with_gaps(list(regions_with_gaps))
+    = list(clause_item_number_region).
+
+merge_regions_with_gaps(RegionsWithGapsList) = MergedRegions :-
+    RegionLists = list.map(regions_with_gaps_to_just_regions,
+        RegionsWithGapsList),
+    list.condense(RegionLists, Regions),
+    list.sort(Regions, SortedRegions),
+    (
+        SortedRegions = [],
+        MergedRegions = []
+    ;
+        SortedRegions = [HeadSortedRegion | TailSortedRegions],
+        merge_adjacent_regions(HeadSortedRegion, TailSortedRegions,
+            MergedRegions)
+    ).
+
+:- func regions_with_gaps_to_just_regions(regions_with_gaps)
+    = list(clause_item_number_region).
+
+regions_with_gaps_to_just_regions(RegionsWithGaps) = Regions :-
+    RegionsWithGaps =
+        regions_with_gaps(FirstRegion, SecondRegion, LaterRegions),
+    Regions = [FirstRegion, SecondRegion | LaterRegions].
+
+:- pred merge_adjacent_regions(
+    clause_item_number_region::in,
+    list(clause_item_number_region)::in,
+    list(clause_item_number_region)::out) is det.
+
+merge_adjacent_regions(CurRegion, [], [CurRegion]).
+merge_adjacent_regions(CurRegion, [NextRegion | LaterRegions],
+        MergedRegions) :-
+    CurRegion = clause_item_number_region(CurLoItemNum, CurHiItemNum,
+        CurLoCtxt, _CurHiCtxt),
+    NextRegion = clause_item_number_region(NextLoItemNum, NextHiItemNum,
+        _NextLoCtxt, NextHiCtxt),
+    ( if CurHiItemNum + 1 = NextLoItemNum then
+        CurNextRegion = clause_item_number_region(CurLoItemNum, NextHiItemNum,
+            CurLoCtxt, NextHiCtxt),
+        merge_adjacent_regions(CurNextRegion, LaterRegions, MergedRegions)
+    else
+        merge_adjacent_regions(NextRegion, LaterRegions, TailMergedRegions),
+        MergedRegions = [CurRegion | TailMergedRegions]
+    ).
+
+%---------------------%
+
+:- pred report_non_contiguous_clauses(module_info::in,
+    list(pred_id)::in, pred_id::in, regions_with_gaps::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_non_contiguous_clauses(ModuleInfo, OtherPredIds, MainPredId,
+        RegionsWithGaps, !Specs) :-
+    AllPredIds = [MainPredId | OtherPredIds],
+    (
+        OtherPredIds = [],
+        get_pred_context(ModuleInfo, MainPredId, FrontMsgContext),
+        GapPredPieces = describe_one_pred_name(ModuleInfo, no,
+            should_not_module_qualify, [], MainPredId)
+    ;
+        OtherPredIds = [_ | _],
+        list.map(get_pred_context(ModuleInfo), AllPredIds, AllPredContexts),
+        list.sort(AllPredContexts, SortedAllPredContexts),
+        list.det_head(SortedAllPredContexts, FrontMsgContext),
+        GapPredPieces = [words("the group")]
+    ),
+    AllPredsPieces = describe_several_pred_names(ModuleInfo,
+        yes(color_subject), should_not_module_qualify, AllPredIds),
+    FrontPieces = [words("Warning: the clauses for")] ++
+        AllPredsPieces ++
+        color_as_incorrect([words("are not contiguous.")]) ++ [nl],
+    FrontMsg = msg(FrontMsgContext, FrontPieces),
+    RegionsWithGaps =
+        regions_with_gaps(FirstRegion, SecondRegion, LaterRegions),
+    report_non_contiguous_clause_contexts(GapPredPieces, 1,
         FirstRegion, SecondRegion, LaterRegions, ContextMsgs),
     Msgs = [FrontMsg | ContextMsgs],
-    Spec = error_spec($pred, severity_warning, phase_type_check, Msgs).
+    Spec = error_spec($pred, severity_warning, phase_type_check, Msgs),
+    !:Specs = [Spec | !.Specs].
 
 :- pred report_non_contiguous_clause_contexts(list(format_piece)::in,
     int::in, clause_item_number_region::in, clause_item_number_region::in,
@@ -549,6 +821,12 @@ report_non_contiguous_clause_contexts(PredPieces, GapNumber,
         Msgs = [FirstMsg, SecondMsg | LaterMsgs]
     ).
 
+:- pred get_pred_context(module_info::in, pred_id::in,
+        prog_context::out) is det.
+
+get_pred_context(ModuleInfo, PredId, Context) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_context(PredInfo, Context).
 
 %---------------------------------------------------------------------------%
 %

@@ -418,6 +418,13 @@
     %
 :- type clause_item_numbers.
 
+:- type regions_with_gaps
+    --->    regions_with_gaps(
+                rwg_first_region        :: clause_item_number_region,
+                rwg_second_region       :: clause_item_number_region,
+                rwg_laterd_regions      :: list(clause_item_number_region)
+            ).
+
 :- type clause_item_number_region
     --->    clause_item_number_region(
                 cnr_lower_item_number   ::  int,
@@ -437,9 +444,7 @@
     clause_item_number_types::in, list(clause_item_number_region)::out) is det.
 
 :- pred clauses_are_non_contiguous(clause_item_numbers::in,
-    clause_item_number_types::in,
-    clause_item_number_region::out, clause_item_number_region::out,
-    list(clause_item_number_region)::out) is semidet.
+    clause_item_number_types::in, regions_with_gaps::out) is semidet.
 
 :- type clause_item_number_type
     --->    item_is_clause
@@ -632,8 +637,7 @@ clause_item_number_regions(ClauseItemNumbers, Type, Regions) :-
         )
     ).
 
-clauses_are_non_contiguous(ClauseItemNumbers, Type, FirstRegion, SecondRegion,
-        LaterRegions) :-
+clauses_are_non_contiguous(ClauseItemNumbers, Type, RegionsWithGaps) :-
     ClauseItemNumbers = user_clauses(MercuryRegions, BothRegions),
     (
         Type = only_clauses,
@@ -641,7 +645,9 @@ clauses_are_non_contiguous(ClauseItemNumbers, Type, FirstRegion, SecondRegion,
     ;
         Type = clauses_and_foreign_procs,
         BothRegions = [FirstRegion, SecondRegion | LaterRegions]
-    ).
+    ),
+    RegionsWithGaps =
+        regions_with_gaps(FirstRegion, SecondRegion, LaterRegions).
 
 add_clause_item_number(SeqNum, Context, Type, !ClauseItemNumbers) :-
     (

@@ -6823,6 +6823,19 @@ Generate a warning if the clauses and foreign_procs of a predicate
 or function are not contiguous.
 
 @sp 1
+@item --allow-non-contiguity-for @var{name1},@var{name2},...
+@findex --allow-non-contiguity-for
+Allow the clauses
+(or, with @code{--warn-non-contiguous-foreign-procs},
+the clauses and/or @code{foreign_proc} pragmas)
+of the named predicates and/or functions to be intermingled with each other,
+but not with those or any other predicates or functions.
+This option may be specified more than once,
+with each option value specifying
+a distinct set of predicates and/or function names that may be intermingled.
+Each name must uniquely specify a predicate or a function.
+
+@sp 1
 @item --warn-non-stratification
 @findex --warn-non-stratification
 Warn about possible non-stratification of the predicates and/or functions

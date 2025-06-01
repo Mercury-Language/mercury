@@ -10,6 +10,7 @@ MAYBE_J1 =
 
 ERRORCHECK_PROGS = \
 	abstract_type_decl \
+	allow_non_contiguity_for \
 	ambiguous_overloading \
 	arg_order_rearrangment \
 	bug311 \

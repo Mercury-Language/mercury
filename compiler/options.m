@@ -212,6 +212,7 @@
     ;       warn_non_contiguous_decls
     ;       warn_non_contiguous_clauses
     ;       warn_non_contiguous_foreign_procs
+    ;       allow_non_contiguity_for
     ;       warn_non_stratification
     ;       warn_unification_cannot_succeed
     ;       warn_simple_code
@@ -1330,6 +1331,7 @@ optdef(oc_warn_style, warn_non_contiguous_decls,           bool(yes)).
 optdef(oc_warn_style, warn_non_contiguous_clauses,         bool(no)).
     % XXX warn_non_contiguous_clauses should default to yes.
 optdef(oc_warn_style, warn_non_contiguous_foreign_procs,   bool(no)).
+optdef(oc_warn_ctrl,  allow_non_contiguity_for, accumulating([])).
 optdef(oc_warn_dodgy, warn_non_stratification,             bool(no)).
 optdef(oc_warn_dodgy, warn_missing_opt_files,              bool(yes)).
 optdef(oc_warn_dodgy, warn_missing_trans_opt_files,        bool(no)).
@@ -2328,6 +2330,8 @@ long_table("warn-non-contiguous-decls",    warn_non_contiguous_decls).
 long_table("warn-non-contiguous-clauses",  warn_non_contiguous_clauses).
 long_table("warn-non-contiguous-foreign-procs",
                                         warn_non_contiguous_foreign_procs).
+long_table("allow-non-contiguity-for",
+                                       allow_non_contiguity_for).
 long_table("warn-non-stratification",  warn_non_stratification).
 long_table("warn-missing-opt-files",   warn_missing_opt_files).
 long_table("warn-missing-trans-opt-files",
@@ -3545,6 +3549,8 @@ long_table("can-fail-function-obsolete-2024-08-10",
                                     compiler_sufficiently_recent).
 long_table("unused-statevar-warn-2025-05-16",
                                     compiler_sufficiently_recent).
+long_table("allow-non-contig-for-2025-06-01",
+                                    compiler_sufficiently_recent).
 long_table("experiment",            experiment).
 long_table("experiment1",           experiment1).
 long_table("experiment2",           experiment2).
@@ -4663,6 +4669,16 @@ options_help_warning = Section :-
         help("warn-non-contiguous-foreign-procs", [
             "Generate a warning if the clauses and foreign_procs of a",
             "predicate or function are not contiguous."]),
+
+        help("allow-non-contiguity-for <name1,name2,...>", [
+            "Allow the clauses (or, with --warn-non-contiguous-foreign-procs,",
+            "the clauses and/or foreign_proc pragmas) of the named predicates",
+            "and/or functions to be intermingled with each other, but not",
+            "with those or any other predicates or functions. This option",
+            "may be specified more than once, with each option value",
+            "specifying a distinct set of predicates and/or function names",
+            "that may be intermingled. Each name must uniquely specify",
+            "a predicate or a function."]),
 
         help("warn-non-stratification", [
             "Warn about possible non-stratification of the predicates and/or",

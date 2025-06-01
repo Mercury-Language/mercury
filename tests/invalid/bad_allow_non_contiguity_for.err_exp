@@ -1,0 +1,57 @@
+Error in the second `--allow-non-contiguity-for' option: the name [38;5;87m`a1'[39;49m is
+  [38;5;203munknown.[39;49m
+Error in the fourth `--allow-non-contiguity-for' option: the name [38;5;87m`r3'[39;49m is
+  [38;5;203mambiguous.[39;49m
+Error: the name [38;5;87m`p3'[39;49m [38;5;203moccurs more than once[39;49m in `--allow-non-contiguity-for'
+  options.
+  (The sets of predicates and/or functions whose clauses may be intermingled
+  must all be disjoint.)
+Warning: the first `--allow-non-contiguity-for option' contains just one name:
+  [38;5;87m`p1'.[39;49m Such option values [38;5;203mhave not effect.[39;49m
+bad_allow_non_contiguity_for.m:053: Warning: the clauses for predicate [38;5;87m`p1'/2[39;49m
+bad_allow_non_contiguity_for.m:053:   [38;5;203mare not contiguous.[39;49m
+bad_allow_non_contiguity_for.m:071:   Gap in clauses of predicate `p1'/2 starts
+bad_allow_non_contiguity_for.m:071:   after this clause.
+bad_allow_non_contiguity_for.m:073:   Gap in clauses of predicate `p1'/2 ends
+bad_allow_non_contiguity_for.m:073:   with this clause.
+bad_allow_non_contiguity_for.m:054: Warning: the clauses for predicate [38;5;87m`p2'/2[39;49m
+bad_allow_non_contiguity_for.m:054:   [38;5;203mare not contiguous.[39;49m
+bad_allow_non_contiguity_for.m:072:   Gap in clauses of predicate `p2'/2 starts
+bad_allow_non_contiguity_for.m:072:   after this clause.
+bad_allow_non_contiguity_for.m:074:   Gap in clauses of predicate `p2'/2 ends
+bad_allow_non_contiguity_for.m:074:   with this clause.
+bad_allow_non_contiguity_for.m:055: Warning: the clauses for predicate [38;5;87m`p3'/2[39;49m,
+bad_allow_non_contiguity_for.m:055:   predicate [38;5;87m`q1'/2[39;49m and predicate [38;5;87m`q2'/2[39;49m [38;5;203mare[39;49m
+bad_allow_non_contiguity_for.m:055:   [38;5;203mnot contiguous.[39;49m
+bad_allow_non_contiguity_for.m:079:   Gap 1 in clauses of the group starts
+bad_allow_non_contiguity_for.m:079:   after this clause.
+bad_allow_non_contiguity_for.m:081:   Gap 1 in clauses of the group ends with
+bad_allow_non_contiguity_for.m:081:   this clause.
+bad_allow_non_contiguity_for.m:081:   Gap 2 in clauses of the group starts
+bad_allow_non_contiguity_for.m:081:   after this clause.
+bad_allow_non_contiguity_for.m:083:   Gap 2 in clauses of the group ends with
+bad_allow_non_contiguity_for.m:083:   this clause.
+bad_allow_non_contiguity_for.m:059: Warning: the clauses for predicate [38;5;87m`q3'/2[39;49m
+bad_allow_non_contiguity_for.m:059:   [38;5;203mare not contiguous.[39;49m
+bad_allow_non_contiguity_for.m:080:   Gap in clauses of predicate `q3'/2 starts
+bad_allow_non_contiguity_for.m:080:   after this clause.
+bad_allow_non_contiguity_for.m:084:   Gap in clauses of predicate `q3'/2 ends
+bad_allow_non_contiguity_for.m:084:   with this clause.
+bad_allow_non_contiguity_for.m:061: Warning: the clauses for predicate [38;5;87m`r1'/2[39;49m
+bad_allow_non_contiguity_for.m:061:   [38;5;203mare not contiguous.[39;49m
+bad_allow_non_contiguity_for.m:086:   Gap in clauses of predicate `r1'/2 starts
+bad_allow_non_contiguity_for.m:086:   after this clause.
+bad_allow_non_contiguity_for.m:090:   Gap in clauses of predicate `r1'/2 ends
+bad_allow_non_contiguity_for.m:090:   with this clause.
+bad_allow_non_contiguity_for.m:062: Warning: the clauses for predicate [38;5;87m`r2'/2[39;49m
+bad_allow_non_contiguity_for.m:062:   [38;5;203mare not contiguous.[39;49m
+bad_allow_non_contiguity_for.m:087:   Gap in clauses of predicate `r2'/2 starts
+bad_allow_non_contiguity_for.m:087:   after this clause.
+bad_allow_non_contiguity_for.m:091:   Gap in clauses of predicate `r2'/2 ends
+bad_allow_non_contiguity_for.m:091:   with this clause.
+bad_allow_non_contiguity_for.m:063: Warning: the clauses for predicate [38;5;87m`r3'/2[39;49m
+bad_allow_non_contiguity_for.m:063:   [38;5;203mare not contiguous.[39;49m
+bad_allow_non_contiguity_for.m:089:   Gap in clauses of predicate `r3'/2 starts
+bad_allow_non_contiguity_for.m:089:   after this clause.
+bad_allow_non_contiguity_for.m:093:   Gap in clauses of predicate `r3'/2 ends
+bad_allow_non_contiguity_for.m:093:   with this clause.

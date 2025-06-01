@@ -1630,7 +1630,8 @@ maybe_generate_style_warnings(ProgressStream, ErrorStream, Verbose, Stats,
     module_info_get_globals(HLDS, Globals),
     maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
 
-    do_we_want_style_warnings(Globals, DoWeWantStyleWarnings),
+    do_we_want_style_warnings(HLDS, DoWeWantStyleWarnings, OptSpecs),
+    !:Specs = OptSpecs ++ !.Specs,
     (
         DoWeWantStyleWarnings = do_not_want_style_warnings
     ;

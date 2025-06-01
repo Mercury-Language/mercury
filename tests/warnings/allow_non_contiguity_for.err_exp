@@ -1,0 +1,18 @@
+allow_non_contiguity_for.m:052: Warning: the clauses for predicate [38;5;87m`q1'/2[39;49m,
+allow_non_contiguity_for.m:052:   predicate [38;5;87m`q2'/2[39;49m and predicate [38;5;87m`q3'/2[39;49m [38;5;203mare not[39;49m
+allow_non_contiguity_for.m:052:   [38;5;203mcontiguous.[39;49m
+allow_non_contiguity_for.m:074:   Gap in clauses of the group starts after this
+allow_non_contiguity_for.m:074:   clause.
+allow_non_contiguity_for.m:076:   Gap in clauses of the group ends with this
+allow_non_contiguity_for.m:076:   clause.
+allow_non_contiguity_for.m:056: Warning: the clauses for predicate [38;5;87m`r1'/2[39;49m,
+allow_non_contiguity_for.m:056:   predicate [38;5;87m`r2'/2[39;49m and predicate [38;5;87m`r3'/2[39;49m [38;5;203mare not[39;49m
+allow_non_contiguity_for.m:056:   [38;5;203mcontiguous.[39;49m
+allow_non_contiguity_for.m:080:   Gap 1 in clauses of the group starts after
+allow_non_contiguity_for.m:080:   this clause.
+allow_non_contiguity_for.m:082:   Gap 1 in clauses of the group ends with this
+allow_non_contiguity_for.m:082:   clause.
+allow_non_contiguity_for.m:084:   Gap 2 in clauses of the group starts after
+allow_non_contiguity_for.m:084:   this clause.
+allow_non_contiguity_for.m:086:   Gap 2 in clauses of the group ends with this
+allow_non_contiguity_for.m:086:   clause.

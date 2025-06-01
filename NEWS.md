@@ -1544,6 +1544,17 @@ Changes to the Mercury compiler
   argument was to set the value of the !:SV argument, then the !.SV
   argument should be deleted too. Both options are on by default.
 
+* We have added a new option, `--allow-non-continuity-for`, which modifies
+  the operation of two existing options, `--warn-non-contiguous-clauses` and
+  `--warn-non-contiguous-foreign-procs`. If either of those two options
+  is specified, the compiler will normally generate a warning if there is
+  a gap in the list of clauses for a given predicate. The new option allows
+  programmers to relax this requirement selectively. An option such as
+  `--allow-non-continuity-for p1,f2,p3` tells the compiler to allow
+  the clauses of the named predicates and/or functions to intermingled
+  with each other, but not with the clauses of any other predicates
+  or functions. This option may be given more than once.
+
 * The deprecated option `--trail-segments` has been deleted and the grade
   component `trseg` is no longer accepted as a synonym for `tr`.
 
