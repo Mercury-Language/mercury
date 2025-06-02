@@ -1814,9 +1814,6 @@ handle_op_mode_implications(OpMode, !Globals) :-
         )
     ;
         OpMode = opm_top_generate_source_file_mapping,
-        % Without an existing source file mapping, there is no "right"
-        % module name.
-        globals.set_option(warn_wrong_module_name, bool(no), !Globals),
         Smart = bool.no,
         Inform = bool.no
     ;

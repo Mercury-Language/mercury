@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2019-2021, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2019-2021, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -205,18 +205,8 @@ find_name_of_module_in_file(FileName, MaybeModuleName, !IO) :-
     io.open_input(FileName, OpenRes, !IO),
     (
         OpenRes = ok(FileStream),
-        ( if string.remove_suffix(FileName, ".m", PartialFileName0) then
-            PartialFileName = PartialFileName0
-        else
-            PartialFileName = FileName
-        ),
-        ( if dir.basename(PartialFileName, BaseName0) then
-            BaseName = BaseName0
-        else
-            BaseName = ""
-        ),
-        file_name_to_module_name(BaseName, DefaultModuleName),
-        peek_at_file(FileStream, FileName, DefaultModuleName,
+        MaybeDefaultModuleName = no,
+        peek_at_file(FileStream, FileName, MaybeDefaultModuleName,
             MaybeModuleName, !IO),
         io.close_input(FileStream, !IO)
     ;

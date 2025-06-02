@@ -6864,20 +6864,6 @@ Warn about calls to I/O predicates that could take explicit
 stream arguments, but do not do so.
 
 @sp 1
-@item --no-warn-missing-module-name
-@findex --no-warn-missing-module-name
-@findex --warn-missing-module-name
-Disable warnings for modules that do not start with a
-@samp{:- module} declaration.
-
-@sp 1
-@item --no-warn-wrong-module-name
-@findex --no-warn-wrong-module-name
-@findex --warn-wrong-module-name
-Disable warnings for modules whose @samp{:- module} declaration
-does not match the module's file name.
-
-@sp 1
 @item --no-warn-smart-recompilation
 @findex --warn-smart-recompilation
 @findex --no-warn-smart-recompilation

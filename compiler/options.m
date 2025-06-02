@@ -218,8 +218,6 @@
     ;       warn_simple_code
     ;       warn_duplicate_calls
     ;       warn_implicit_stream_calls
-    ;       warn_missing_module_name
-    ;       warn_wrong_module_name
     ;       warn_smart_recompilation
     ;       warn_undefined_options_variables
     ;       warn_suspicious_recursion
@@ -1340,8 +1338,6 @@ optdef(oc_warn_dodgy, warn_unification_cannot_succeed,     bool(yes)).
 optdef(oc_warn_style, warn_simple_code,                    bool(yes)).
 optdef(oc_warn_style, warn_duplicate_calls,                bool(no)).
 optdef(oc_warn_style, warn_implicit_stream_calls,          bool(no)).
-optdef(oc_warn_dodgy, warn_missing_module_name,            bool(yes)).
-optdef(oc_warn_dodgy, warn_wrong_module_name,              bool(yes)).
 optdef(oc_warn_ctrl,  error_output_suffix,                 string("")).
 optdef(oc_warn_ctrl,  progress_output_suffix,              string("")).
 optdef(oc_warn_ctrl,  inference_output_suffix,             string("")).
@@ -2342,8 +2338,6 @@ long_table("warn-unification-cannot-succeed",
 long_table("warn-simple-code",         warn_simple_code).
 long_table("warn-duplicate-calls",     warn_duplicate_calls).
 long_table("warn-implicit-stream-calls",   warn_implicit_stream_calls).
-long_table("warn-missing-module-name", warn_missing_module_name).
-long_table("warn-wrong-module-name",   warn_wrong_module_name).
 long_table("warn-smart-recompilation", warn_smart_recompilation).
 long_table("warn-undefined-options-variables",
                                         warn_undefined_options_variables).
@@ -4701,14 +4695,6 @@ options_help_warning = Section :-
         help("warn-implicit-stream-calls", [
             "Warn about calls to I/O predicates that could take explicit",
             "stream arguments, but do not do so."]),
-
-        help("no-warn-missing-module-name", [
-            "Disable warnings for modules that do not start with",
-            "a `:- module' declaration."]),
-
-        help("no-warn-wrong-module-name", [
-            "Disable warnings for modules whose `:- module'",
-            "declaration does not match the module's file name."]),
 
         help("no-warn-smart-recompilation", [
             "Disable warnings from the smart recompilation system."]),

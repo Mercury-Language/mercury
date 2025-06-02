@@ -97,7 +97,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % peek_at_file(FileStream, SourceFileName, DefaultModuleName,
+    % peek_at_file(FileStream, SourceFileName, MaybeDefaultModuleName,
     %   MaybeModuleName, !IO):
     %
     % "mmc -f", which creates the Mercury.module file that later compiler
@@ -110,8 +110,13 @@
     % If any part of this process fails, return error1(Spec) where Specs
     % describes the problem.
     %
-:- pred peek_at_file(io.text_input_stream::in, file_name::in, module_name::in,
-    maybe1(module_name)::out, io::di, io::uo) is det.
+    % NOTE At the moment (2025 jun 3), we have only one caller, in
+    % source_file_map.m, which always passes "no" as MaybeDefaultModuleName.
+    % We take the MaybeDefaultModuleName argument just in case we get
+    % another caller.
+    %
+:- pred peek_at_file(io.text_input_stream::in, file_name::in,
+    maybe(module_name)::in, maybe1(module_name)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -188,17 +193,13 @@
 :- import_module term_context.
 :- import_module varset.
 
-:- type maybe_require_module_decl
-    --->    do_not_require_module_decl
-    ;       require_module_decl.
-
 :- type missing_section_start_warning
     --->    have_not_given_missing_section_start_warning
     ;       have_given_missing_section_start_warning.
 
 %---------------------------------------------------------------------------%
 
-peek_at_file(FileStream, SourceFileName0, DefaultModuleName,
+peek_at_file(FileStream, SourceFileName0, MaybeDefaultModuleName,
         MaybeModuleName, !IO) :-
     io.read_file_as_string_and_num_code_units(FileStream, MaybeResult, !IO),
     (
@@ -208,10 +209,9 @@ peek_at_file(FileStream, SourceFileName0, DefaultModuleName,
         LineContext0 = line_context(1, 0),
         LinePosn0 = line_posn(0),
         parse_first_module_decl(FileString, FileStringLen,
-            do_not_require_module_decl, DefaultModuleName,
-            DefaultExpectationContexts, ModuleDeclPresent,
-            may_change_source_file_name, SourceFileName0, _SourceFileName,
-            SeqNumCounter0, _SeqNumCounter,
+            MaybeDefaultModuleName, DefaultExpectationContexts,
+            ModuleDeclPresent, may_change_source_file_name,
+            SourceFileName0, _SourceFileName, SeqNumCounter0, _SeqNumCounter,
             LineContext0, _LineContext, LinePosn0, _LinePosn),
         (
             ModuleDeclPresent = no_module_decl_present(_MaybeLookAhead,
@@ -411,18 +411,10 @@ report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
     list.delete_all(SortedExpectationContexts0, dummy_context,
         SortedExpectationContexts),
     list.map(expectation_context_to_msg, SortedExpectationContexts, SubMsgs),
-    % We make the warning conditional on the warn_wrong_module_name option.
-    % This option is turned on by default, and it is turned off automatically
-    % by the compiler only in situations where it clearly makes sense to do so
-    % (in handle_options.m and options.m). If it is turned off manually
-    % by the user, he/she presumably has a good reason.
-    %
-    % Despite the option name having the "warn_" prefix,
-    % the severity is an error. The severity is deliberate.
-    % XXX The option should be renamed, but there is no obvious
-    % non-misleading name.
-    Spec = conditional_spec($pred, warn_wrong_module_name, yes,
-        severity_error, phase_module_name, [MainMsg | SubMsgs]).
+    % We only get invoked if the module *has* an expected name.
+    % When invoked as "mmc -f", it doesn't have one.
+    Spec = error_spec($pred, severity_error, phase_module_name,
+        [MainMsg | SubMsgs]).
 
 :- pred expectation_context_to_msg(prog_context::in, error_msg::out) is det.
 
@@ -820,10 +812,9 @@ parse_src_file(!.SourceFileName, FileString, FileStringLen,
         % We handle the first module declaration specially. Read the
         % documentation on parse_first_module_decl for the reason.
         parse_first_module_decl(FileString, FileStringLen,
-            do_not_require_module_decl, DefaultModuleName,
-            DefaultExpectationContexts, ModuleDeclPresent,
-            may_change_source_file_name, !SourceFileName,
-            !SeqNumCounter, !LineContext, !LinePosn),
+            yes(DefaultModuleName), DefaultExpectationContexts,
+            ModuleDeclPresent, may_change_source_file_name,
+            !SourceFileName, !SeqNumCounter, !LineContext, !LinePosn),
         (
             ModuleDeclPresent = no_module_decl_present(InitLookAhead,
                 InitLookAheadContext, NoModuleSpec),
@@ -1247,8 +1238,8 @@ parse_module_header(FileString, FileStringLen,
         MaybeModuleHeader, !:SeqNumCounter,
         !LineContext, !LinePosn) :-
     counter.init(1, !:SeqNumCounter),
-    parse_first_module_decl(FileString, FileStringLen, require_module_decl,
-        DefaultModuleName, DefaultExpectationContexts, ModuleDeclPresent,
+    parse_first_module_decl(FileString, FileStringLen, yes(DefaultModuleName),
+        DefaultExpectationContexts, ModuleDeclPresent,
         may_not_change_source_file_name, SourceFileName, _SourceFileName,
         !SeqNumCounter, !LineContext, !LinePosn),
     (
@@ -1325,18 +1316,24 @@ parse_module_header(FileString, FileStringLen,
     % the actual module name matches the expected (default) module name.
     %
 :- pred parse_first_module_decl(string::in, int::in,
-    maybe_require_module_decl::in, module_name::in, list(prog_context)::in,
+    maybe(module_name)::in, list(prog_context)::in,
     maybe_module_decl_present::out, may_change_source_file_name::in,
     file_name::in, file_name::out, counter::in, counter::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-parse_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
-        DefaultModuleName, DefaultExpectationContexts,
+parse_first_module_decl(FileString, FileStringLen,
+        MaybeDefaultModuleName, DefaultExpectationContexts,
         ModuleDeclPresent, MayChangeSourceFileName, !SourceFileName,
         !SeqNumCounter, !LineContext, !LinePosn) :-
     mercury_term_parser.read_term_from_linestr(!.SourceFileName,
         FileString, FileStringLen, !LineContext, !LinePosn, FirstReadTerm),
-    read_term_to_iom_result(DefaultModuleName, !.SourceFileName,
+    % We can pass a dummy module name to read_term_to_iom_result
+    % because the two kinds of item_or_markers that we do not return
+    % for reprocessing are src file pragmas and ":- module" declarations,
+    % which contain neither sym_names to be module qualified, nor
+    % any error_specs that may contain the module name.
+    DummyDefaultModuleName = unqualified(""),
+    read_term_to_iom_result(DummyDefaultModuleName, !.SourceFileName,
         FirstReadTerm, MaybeFirstIOM, !SeqNumCounter),
     (
         MaybeFirstIOM = read_iom_ok(_FirstVarSet, FirstTerm, FirstIOM),
@@ -1353,25 +1350,28 @@ parse_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
                 % Apply and then skip `pragma source_file' decls, by calling
                 % ourselves recursively with the new source file name.
                 parse_first_module_decl(FileString, FileStringLen,
-                    RequireModuleDecl, DefaultModuleName,
-                    DefaultExpectationContexts, ModuleDeclPresent,
-                    MayChangeSourceFileName, !SourceFileName,
-                    !SeqNumCounter, !LineContext, !LinePosn)
+                    MaybeDefaultModuleName, DefaultExpectationContexts,
+                    ModuleDeclPresent, MayChangeSourceFileName,
+                    !SourceFileName, !SeqNumCounter, !LineContext, !LinePosn)
             )
         ;
             FirstIOM = iom_marker_module_start(StartModuleName,
                 ModuleNameContext, _ModuleNameSeqNum),
             % The first term is a `:- module' decl, as expected.
-            % Check whether it matches the expected module name.
-            ( if DefaultModuleName = StartModuleName then
-                ModuleDeclPresent = right_module_decl_present(StartModuleName,
-                    ModuleNameContext)
-            else
+            % Check whether it matches the expected module name,
+            % if there is one (for "mmc -f", there isn't one).
+            ( if
+                MaybeDefaultModuleName = yes(DefaultModuleName),
+                DefaultModuleName \= StartModuleName
+            then
                 report_module_has_unexpected_name(!.SourceFileName,
                     DefaultModuleName, DefaultExpectationContexts,
                     StartModuleName, yes(ModuleNameContext), NameSpec),
                 ModuleDeclPresent = wrong_module_decl_present(StartModuleName,
                     ModuleNameContext, NameSpec)
+            else
+                ModuleDeclPresent = right_module_decl_present(StartModuleName,
+                    ModuleNameContext)
             )
         ;
             ( FirstIOM = iom_marker_module_end(_, _, _)
@@ -1397,8 +1397,7 @@ parse_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
         MaybeFirstIOM = read_iom_parse_item_errors(_, FirstTerm, _),
         LookAhead = lookahead(MaybeFirstIOM),
         FirstContext = get_term_context(FirstTerm),
-        ModuleDeclPresent = no_module_decl_present(LookAhead,
-            get_term_context(FirstTerm),
+        ModuleDeclPresent = no_module_decl_present(LookAhead, FirstContext,
             report_missing_module_start(FirstContext))
     ;
         ( MaybeFirstIOM = read_iom_eof
