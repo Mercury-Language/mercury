@@ -218,7 +218,7 @@
     %
     % Generate two pseudo-random floats from a normal (i.e., Gaussian)
     % distribution with mean 0.0 and standard deviation 1.0, using the
-    % Nox-Muller method.
+    % Box-Muller method.
     %
     % We generate two at a time for efficiency; they are independent of
     % each other.
