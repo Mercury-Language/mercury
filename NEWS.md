@@ -37,7 +37,7 @@ Changes that may break compatibility
   The old contents of the `mercury_term_parser` module is still available as
   `extras/old_library_modules/old_mercury_term_parser`.
 
-* The `enum/1 typeclass` has been modified by having its `from_int` method
+* The `enum/1` typeclass has been modified by having its `from_int` method
   changed from a semidet function of arity one (plus the return value)
   to a semidet predicate of arity two.
 
