@@ -680,7 +680,7 @@ create_inner_proc(RecParConjIds, OldPredProcId, OldProcInfo,
 should_preserve_tail_recursion(ModuleInfo, PreserveTailRecursion) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals,
-        par_loop_control_preserve_tail_recursion, PreserveTailRecursionBool),
+        par_loop_control_keep_tail_rec, PreserveTailRecursionBool),
     (
         PreserveTailRecursionBool = yes,
         PreserveTailRecursion = preserve_tail_recursion

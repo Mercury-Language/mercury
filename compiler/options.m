@@ -1239,7 +1239,7 @@
     ;       implicit_parallelism
     ;       feedback_file
     ;       par_loop_control
-    ;       par_loop_control_preserve_tail_recursion.
+    ;       par_loop_control_keep_tail_rec.
 
 :- type option_table == option_table(option).
 :- type maybe_option_table == maybe_option_table(option).
@@ -2247,7 +2247,7 @@ optdef(oc_dev_ctrl, distance_granularity,               int(0)).
 optdef(oc_dev_ctrl, implicit_parallelism,               bool(no)).
 optdef(oc_dev_ctrl, feedback_file,                      string("")).
 optdef(oc_dev_ctrl, par_loop_control,                   bool(no)).
-optdef(oc_dev_ctrl, par_loop_control_preserve_tail_recursion, bool(no)).
+optdef(oc_dev_ctrl, par_loop_control_keep_tail_rec,     bool(no)).
 
 %---------------------------------------------------------------------------%
 
@@ -3595,7 +3595,7 @@ long_table("implicit-parallelism",  implicit_parallelism).
 long_table("feedback-file",         feedback_file).
 long_table("par-loop-control",      par_loop_control).
 long_table("par-loop-control-preserve-tail-recursion",
-                                    par_loop_control_preserve_tail_recursion).
+                                    par_loop_control_keep_tail_rec).
 
 %---------------------------------------------------------------------------%
 
