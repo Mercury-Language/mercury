@@ -103,6 +103,11 @@
     %
 :- func dodgy_code_warning_options = list(option).
 
+    % Return the options that warn about code that may be
+    % unnecessarily slower than the programmer intended.
+    %
+:- func slow_code_warning_options = list(option).
+
     % Return the options that warn about issues that are only stylistic,
     % i.e. do not affect the implementation of the programmer's intention.
     %
@@ -1267,22 +1272,50 @@ option_defaults(Opt, Data) :-
     optdef(_Category, Opt, Data).
 
 :- type option_category
-    --->    oc_warn_ctrl    % options that *control* warnings
-    ;       oc_warn_dodgy   % warnings about possible incorrectness
-    ;       oc_warn_style   % style warnings
-    ;       oc_inform       % requests for information
+    --->    oc_help
+
+    ;       oc_warn_dodgy
+            % Warnings about code that is possibly incorrect.
+    ;       oc_warn_perf
+            % Warnings about code that probably could be faster.
+    ;       oc_warn_style
+            % Warnings about programming style.
+    ;       oc_warn_ctrl
+            % OPtions that *control* warnings.
+    ;       oc_warn_halt 
+            % Options that specify when warnings should treated as errors.
+    ;       oc_inform
+            % Requests for information.
     ;       oc_verbosity
     ;       oc_opmode
+            % Options that are used only to select an invocation's op_mode.
     ;       oc_aux_output
     ;       oc_semantics
+            % Options that specify which semantics variant to use.
     ;       oc_grade
     ;       oc_internal
+            % Options that should not be used even by developers.
     ;       oc_codegen
     ;       oc_spec_opt
     ;       oc_opt
+    ;       oc_opt_ctrl
+            % Options that control optimization levels.
     ;       oc_target_comp
     ;       oc_link
     ;       oc_buildsys
+    ;       oc_dev_ctrl
+            % Options developers can use to control what the compiler does.
+    ;       oc_dev_debug
+            % Options developers can use to debug compiler components.
+    ;       oc_dev_dump
+            % Options to control dumps of internal code representations.
+    ;       oc_color
+            % Options to control the use of color in diagnostics.
+    ;       oc_config
+            % The results of autoconfiguration, or of executing
+            % tools/configure_cross.
+    ;       oc_analysis
+            % Options for user control of program analyses.
     ;       oc_misc.
 
 %---------------------------------------------------------------------------%
@@ -1304,12 +1337,12 @@ option_defaults(Opt, Data) :-
 optdef(oc_warn_ctrl,  inhibit_warnings,                    bool_special).
 optdef(oc_warn_ctrl,  inhibit_style_warnings,              bool_special).
 optdef(oc_warn_dodgy, warn_accumulator_swaps,              bool(yes)).
-optdef(oc_warn_ctrl,  halt_at_warn,                        bool(no)).
-optdef(oc_warn_ctrl,  halt_at_warn_make_int,               bool(no)).
-optdef(oc_warn_ctrl,  halt_at_warn_make_opt,               bool(no)).
-optdef(oc_warn_ctrl,  halt_at_syntax_errors,               bool(no)).
-optdef(oc_warn_ctrl,  halt_at_auto_parallel_failure,       bool(no)).
-optdef(oc_warn_ctrl,  halt_at_invalid_interface,           bool(yes)).
+optdef(oc_warn_halt,  halt_at_warn,                        bool(no)).
+optdef(oc_warn_halt,  halt_at_warn_make_int,               bool(no)).
+optdef(oc_warn_halt,  halt_at_warn_make_opt,               bool(no)).
+optdef(oc_warn_halt,  halt_at_syntax_errors,               bool(no)).
+optdef(oc_warn_halt,  halt_at_auto_parallel_failure,       bool(no)).
+optdef(oc_warn_halt,  halt_at_invalid_interface,           bool(yes)).
 optdef(oc_warn_dodgy, warn_singleton_vars,                 bool(yes)).
 optdef(oc_warn_dodgy, warn_repeated_singleton_vars,        bool(yes)).
 optdef(oc_warn_dodgy, warn_overlapping_scopes,             bool(yes)).
@@ -1319,8 +1352,8 @@ optdef(oc_warn_dodgy, warn_nothing_exported,               bool(yes)).
 optdef(oc_warn_dodgy, warn_unused_args,                    bool(no)).
 optdef(oc_warn_style, warn_unneeded_initial_statevars,     bool(yes)).
 optdef(oc_warn_style, warn_unneeded_initial_statevars_lambda, bool(yes)).
-optdef(oc_warn_dodgy, warn_unneeded_final_statevars,       bool(yes)).
-optdef(oc_warn_dodgy, warn_unneeded_final_statevars_lambda, bool(yes)).
+optdef(oc_warn_perf,  warn_unneeded_final_statevars,       bool(yes)).
+optdef(oc_warn_perf,  warn_unneeded_final_statevars_lambda, bool(yes)).
 optdef(oc_warn_dodgy, warn_interface_imports,              bool(yes)).
 optdef(oc_warn_dodgy, warn_interface_imports_in_parents,   bool(no)).
 optdef(oc_warn_style, warn_inconsistent_pred_order_clauses, bool(no)).
@@ -1357,12 +1390,12 @@ optdef(oc_warn_style, warn_dead_procs,                     bool(no)).
 optdef(oc_warn_style, warn_dead_preds,                     bool(no)).
 optdef(oc_warn_dodgy, warn_table_with_inline,              bool(yes)).
 optdef(oc_warn_dodgy, warn_non_term_special_preds,         bool(yes)).
-optdef(oc_warn_style, warn_known_bad_format_calls,         bool(yes)).
+optdef(oc_warn_dodgy, warn_known_bad_format_calls,         bool(yes)).
 optdef(oc_warn_ctrl,  warn_only_one_format_string_error,   bool(yes)).
 optdef(oc_warn_style, warn_unknown_format_calls,           bool(no)).
 optdef(oc_warn_dodgy, warn_obsolete,                       bool(yes)).
-optdef(oc_warn_style, warn_insts_without_matching_type,    bool(yes)).
-optdef(oc_warn_style, warn_insts_with_functors_without_type, bool(no)).
+optdef(oc_warn_dodgy, warn_insts_without_matching_type,    bool(yes)).
+optdef(oc_warn_dodgy, warn_insts_with_functors_without_type, bool(no)).
 optdef(oc_warn_dodgy, warn_unused_imports,                 bool(no)).
     % XXX warn_unused_imports is disabled by default until someone
     % removes all the unused imports from the compiler itself,
@@ -1393,9 +1426,9 @@ optdef(oc_inform,     inform_inferred,                     bool_special).
 optdef(oc_inform,     inform_inferred_types,               bool(yes)).
 optdef(oc_inform,     inform_inferred_modes,               bool(yes)).
 optdef(oc_inform,     inform_suboptimal_packing,           bool(no)).
-optdef(oc_warn_ctrl,  print_error_spec_id,                 bool(no)).
-optdef(oc_inform,     inform_ignored_pragma_errors,        bool(no)).
-optdef(oc_inform,     inform_generated_type_spec_pragmas,  bool(no)).
+optdef(oc_dev_debug,  print_error_spec_id,                 bool(no)).
+optdef(oc_dev_debug,  inform_ignored_pragma_errors,        bool(no)).
+optdef(oc_dev_debug,  inform_generated_type_spec_pragmas,  bool(no)).
 optdef(oc_warn_style, warn_redundant_coerce,               bool(yes)).
 optdef(oc_warn_style, warn_can_fail_function,              bool(no)).
 optdef(oc_warn_style, warn_unsorted_import_blocks,         bool(no)).
@@ -1410,57 +1443,57 @@ optdef(oc_verbosity, find_all_recompilation_reasons,    bool(no)).
 optdef(oc_verbosity, verbose_make,                      bool(yes)).
 optdef(oc_verbosity, verbose_commands,                  bool(no)).
 optdef(oc_verbosity, output_compile_error_lines,        maybe_int(yes(100))).
-optdef(oc_verbosity, report_cmd_line_args,              bool(no)).
-optdef(oc_verbosity, report_cmd_line_args_in_doterr,    bool(no)).
+optdef(oc_dev_debug, report_cmd_line_args,              bool(no)).
+optdef(oc_dev_debug, report_cmd_line_args_in_doterr,    bool(no)).
 optdef(oc_verbosity, statistics,                        bool(no)).
 optdef(oc_verbosity, detailed_statistics,               bool(no)).
-optdef(oc_verbosity, proc_size_statistics,              string("")).
-optdef(oc_verbosity, inst_statistics,                   string("")).
+optdef(oc_dev_debug, proc_size_statistics,              string("")).
+optdef(oc_dev_debug, inst_statistics,                   string("")).
 optdef(oc_verbosity, limit_error_contexts,              accumulating([])).
-optdef(oc_verbosity, config_default_color_diagnostics,  bool(yes)).
-optdef(oc_verbosity, color_diagnostics,                 bool_special).
-optdef(oc_verbosity, color_diagnostics_is_set,          bool(no)).
-optdef(oc_verbosity, color_diagnostics_is_set_to,       bool(no)).
-optdef(oc_verbosity, use_color_diagnostics,             bool(no)).
-optdef(oc_verbosity, color_scheme,                      string_special).
-optdef(oc_verbosity, color_scheme_envvar,               string_special).
-optdef(oc_verbosity, color_scheme_set_by,               string("default")).
-optdef(oc_verbosity, color_scheme_set_to,               string("light16")).
-optdef(oc_verbosity, ignore_color_scheme_envvar,        bool(no)).
-optdef(oc_verbosity, set_color_subject,                 string("")).
-optdef(oc_verbosity, set_color_correct,                 string("")).
-optdef(oc_verbosity, set_color_incorrect,               string("")).
-optdef(oc_verbosity, set_color_inconsistent,            string("")).
-optdef(oc_verbosity, set_color_hint,                    string("")).
-optdef(oc_verbosity, debug_types,                       bool(no)).
-optdef(oc_verbosity, debug_types_pred_name,             accumulating([])).
-optdef(oc_verbosity, debug_modes,                       bool(no)).
-optdef(oc_verbosity, debug_modes_statistics,            bool(no)).
-optdef(oc_verbosity, debug_modes_minimal,               bool(no)).
-optdef(oc_verbosity, debug_modes_delay_vars,            bool(yes)).
-optdef(oc_verbosity, debug_modes_goal_ids,              bool(yes)).
-optdef(oc_verbosity, debug_modes_verbose,               bool(no)).
-optdef(oc_verbosity, debug_modes_pred_id,               int(-1)).
-optdef(oc_verbosity, debug_dep_par_conj,                accumulating([])).
-optdef(oc_verbosity, debug_det,                         bool(no)).
-optdef(oc_verbosity, debug_code_gen_pred_id,            int(-1)).
-optdef(oc_verbosity, debug_term,                        bool(no)).
-optdef(oc_verbosity, debug_dead_proc_elim,              bool(no)).
-optdef(oc_verbosity, debug_higher_order_specialization, bool(no)).
-optdef(oc_verbosity, debug_opt,                         bool(no)).
-optdef(oc_verbosity, debug_opt_pred_id,                 accumulating([])).
-optdef(oc_verbosity, debug_opt_pred_name,               accumulating([])).
-optdef(oc_verbosity, debug_pd,                          bool(no)).
-optdef(oc_verbosity, debug_liveness,                    int(-1)).
-optdef(oc_verbosity, debug_stack_opt,                   int(-1)).
-optdef(oc_verbosity, debug_make,                        bool(no)).
-optdef(oc_verbosity, debug_closure,                     bool(no)).
-optdef(oc_verbosity, debug_trail_usage,                 bool(no)).
-optdef(oc_verbosity, debug_mode_constraints,            bool(no)).
-optdef(oc_verbosity, debug_intermodule_analysis,        bool(no)).
-optdef(oc_verbosity, debug_mm_tabling_analysis,         bool(no)).
-optdef(oc_verbosity, debug_indirect_reuse,              bool(no)).
-optdef(oc_verbosity, debug_type_rep,                    bool(no)).
+optdef(oc_color,     config_default_color_diagnostics,  bool(yes)).
+optdef(oc_color,     color_diagnostics,                 bool_special).
+optdef(oc_internal,  color_diagnostics_is_set,          bool(no)).
+optdef(oc_internal,  color_diagnostics_is_set_to,       bool(no)).
+optdef(oc_internal,  use_color_diagnostics,             bool(no)).
+optdef(oc_color,     color_scheme,                      string_special).
+optdef(oc_internal,  color_scheme_envvar,               string_special).
+optdef(oc_internal,  color_scheme_set_by,               string("default")).
+optdef(oc_internal,  color_scheme_set_to,               string("light16")).
+optdef(oc_internal,  ignore_color_scheme_envvar,        bool(no)).
+optdef(oc_internal,  set_color_subject,                 string("")).
+optdef(oc_internal,  set_color_correct,                 string("")).
+optdef(oc_internal,  set_color_incorrect,               string("")).
+optdef(oc_internal,  set_color_inconsistent,            string("")).
+optdef(oc_internal,  set_color_hint,                    string("")).
+optdef(oc_dev_debug, debug_types,                       bool(no)).
+optdef(oc_dev_debug, debug_types_pred_name,             accumulating([])).
+optdef(oc_dev_debug, debug_modes,                       bool(no)).
+optdef(oc_dev_debug, debug_modes_statistics,            bool(no)).
+optdef(oc_dev_debug, debug_modes_minimal,               bool(no)).
+optdef(oc_dev_debug, debug_modes_delay_vars,            bool(yes)).
+optdef(oc_dev_debug, debug_modes_goal_ids,              bool(yes)).
+optdef(oc_dev_debug, debug_modes_verbose,               bool(no)).
+optdef(oc_dev_debug, debug_modes_pred_id,               int(-1)).
+optdef(oc_dev_debug, debug_dep_par_conj,                accumulating([])).
+optdef(oc_dev_debug, debug_det,                         bool(no)).
+optdef(oc_dev_debug, debug_code_gen_pred_id,            int(-1)).
+optdef(oc_dev_debug, debug_term,                        bool(no)).
+optdef(oc_dev_debug, debug_dead_proc_elim,              bool(no)).
+optdef(oc_dev_debug, debug_higher_order_specialization, bool(no)).
+optdef(oc_dev_debug, debug_opt,                         bool(no)).
+optdef(oc_dev_debug, debug_opt_pred_id,                 accumulating([])).
+optdef(oc_dev_debug, debug_opt_pred_name,               accumulating([])).
+optdef(oc_dev_debug, debug_pd,                          bool(no)).
+optdef(oc_dev_debug, debug_liveness,                    int(-1)).
+optdef(oc_dev_debug, debug_stack_opt,                   int(-1)).
+optdef(oc_dev_debug, debug_make,                        bool(no)).
+optdef(oc_dev_debug, debug_closure,                     bool(no)).
+optdef(oc_dev_debug, debug_trail_usage,                 bool(no)).
+optdef(oc_dev_debug, debug_mode_constraints,            bool(no)).
+optdef(oc_dev_debug, debug_intermodule_analysis,        bool(no)).
+optdef(oc_dev_debug, debug_mm_tabling_analysis,         bool(no)).
+optdef(oc_dev_debug, debug_indirect_reuse,              bool(no)).
+optdef(oc_dev_debug, debug_type_rep,                    bool(no)).
 
     % Output options (mutually exclusive).
 
@@ -1502,9 +1535,9 @@ optdef(oc_opmode, only_opmode_output_stdlib_modules,    bool(no)).
 
     % Auxiliary output options.
 
-optdef(oc_aux_output, smart_recompilation,              bool(no)).
-optdef(oc_aux_output, generate_item_version_numbers,    bool(no)).
-optdef(oc_aux_output, generate_mmc_make_module_dependencies, bool(no)).
+optdef(oc_dev_ctrl,   smart_recompilation,              bool(no)).
+optdef(oc_internal,   generate_item_version_numbers,    bool(no)).
+optdef(oc_internal,   generate_mmc_make_module_dependencies, bool(no)).
 optdef(oc_aux_output, trace_level,                      string("default")).
 optdef(oc_aux_output, trace_optimized,                  bool(no)).
 optdef(oc_aux_output, trace_prof,                       bool(no)).
@@ -1540,33 +1573,33 @@ optdef(oc_aux_output, show_developer_type_repns,        bool(no)).
 optdef(oc_aux_output, show_dependency_graph,            bool(no)).
 optdef(oc_aux_output, show_pred_movability,             accumulating([])).
 optdef(oc_aux_output, imports_graph,                    bool(no)).
-optdef(oc_aux_output, trans_opt_deps_spec,              maybe_string(no)).
-optdef(oc_aux_output, dump_trace_counts,                accumulating([])).
-optdef(oc_aux_output, dump_hlds,                        accumulating([])).
-optdef(oc_aux_output, dump_hlds_pred_id,                accumulating([])).
-optdef(oc_aux_output, dump_hlds_pred_name,              accumulating([])).
-optdef(oc_aux_output, dump_hlds_pred_name_order,        bool(no)).
-optdef(oc_aux_output, dump_hlds_spec_preds,             bool(no)).
-optdef(oc_aux_output, dump_hlds_spec_preds_for,         accumulating([])).
-optdef(oc_aux_output, dump_hlds_alias,                  string("")).
-optdef(oc_aux_output, dump_hlds_options,                string("")).
-optdef(oc_aux_output, dump_hlds_inst_limit,             int(100)).
-optdef(oc_aux_output, dump_hlds_inst_size_limit,        int(40)).
-optdef(oc_aux_output, dump_hlds_file_suffix,            string("")).
-optdef(oc_aux_output, dump_same_hlds,                   bool(no)).
-optdef(oc_aux_output, dump_mlds,                        accumulating([])).
-optdef(oc_aux_output, dump_mlds_pred_name,              accumulating([])).
-optdef(oc_aux_output, verbose_dump_mlds,                accumulating([])).
-optdef(oc_aux_output, dump_options_file,                string("")).
-optdef(oc_aux_output, mode_constraints,                 bool(no)).
-optdef(oc_aux_output, simple_mode_constraints,          bool(no)).
-optdef(oc_aux_output, prop_mode_constraints,            bool(no)).
-optdef(oc_aux_output, compute_goal_modes,               bool(no)).
-optdef(oc_aux_output, benchmark_modes,                  bool(no)).
-optdef(oc_aux_output, benchmark_modes_repeat,           int(1)).
-optdef(oc_aux_output, unneeded_code_debug,              bool(no)).
-optdef(oc_aux_output, unneeded_code_debug_pred_name,    accumulating([])).
-optdef(oc_aux_output, common_struct_preds,              string("")).
+optdef(oc_spec_opt,   trans_opt_deps_spec,              maybe_string(no)).
+optdef(oc_dev_dump,   dump_trace_counts,                accumulating([])).
+optdef(oc_dev_dump,   dump_hlds,                        accumulating([])).
+optdef(oc_dev_dump,   dump_hlds_pred_id,                accumulating([])).
+optdef(oc_dev_dump,   dump_hlds_pred_name,              accumulating([])).
+optdef(oc_dev_dump,   dump_hlds_pred_name_order,        bool(no)).
+optdef(oc_dev_dump,   dump_hlds_spec_preds,             bool(no)).
+optdef(oc_dev_dump,   dump_hlds_spec_preds_for,         accumulating([])).
+optdef(oc_dev_dump,   dump_hlds_alias,                  string("")).
+optdef(oc_dev_dump,   dump_hlds_options,                string("")).
+optdef(oc_dev_dump,   dump_hlds_inst_limit,             int(100)).
+optdef(oc_dev_dump,   dump_hlds_inst_size_limit,        int(40)).
+optdef(oc_dev_dump,   dump_hlds_file_suffix,            string("")).
+optdef(oc_dev_dump,   dump_same_hlds,                   bool(no)).
+optdef(oc_dev_dump,   dump_mlds,                        accumulating([])).
+optdef(oc_dev_dump,   dump_mlds_pred_name,              accumulating([])).
+optdef(oc_dev_dump,   verbose_dump_mlds,                accumulating([])).
+optdef(oc_dev_dump,   dump_options_file,                string("")).
+optdef(oc_dev_ctrl,   mode_constraints,                 bool(no)).
+optdef(oc_dev_ctrl,   simple_mode_constraints,          bool(no)).
+optdef(oc_dev_ctrl,   prop_mode_constraints,            bool(no)).
+optdef(oc_dev_ctrl,   compute_goal_modes,               bool(no)).
+optdef(oc_dev_ctrl,   benchmark_modes,                  bool(no)).
+optdef(oc_dev_ctrl,   benchmark_modes_repeat,           int(1)).
+optdef(oc_dev_debug,  unneeded_code_debug,              bool(no)).
+optdef(oc_dev_debug,  unneeded_code_debug_pred_name,    accumulating([])).
+optdef(oc_dev_debug,  common_struct_preds,              string("")).
 
     % Language semantics options.
 
@@ -1684,17 +1717,17 @@ optdef(oc_grade, sync_term_size_in_words,               int(8)).
     % overridden by a value from configure.
 
     % LLDS back-end compilation model options
-optdef(oc_grade, gcc_non_local_gotos,                   bool(yes)).
-optdef(oc_grade, gcc_global_registers,                  bool(yes)).
-optdef(oc_grade, asm_labels,                            bool(yes)).
-optdef(oc_grade, use_float_registers,                   bool(yes)).
+optdef(oc_grade,    gcc_non_local_gotos,                   bool(yes)).
+optdef(oc_grade,    gcc_global_registers,                  bool(yes)).
+optdef(oc_grade,    asm_labels,                            bool(yes)).
+optdef(oc_grade,    use_float_registers,                   bool(yes)).
 
     % MLDS back-end compilation model options
-optdef(oc_grade, highlevel_code,                        bool(no)).
-optdef(oc_grade, c_debug_grade,                         bool(no)).
-optdef(oc_grade, det_copy_out,                          bool(no)).
-optdef(oc_grade, nondet_copy_out,                       bool(no)).
-optdef(oc_grade, put_commit_in_own_func,                bool(no)).
+optdef(oc_grade,    highlevel_code,                        bool(no)).
+optdef(oc_grade,    c_debug_grade,                         bool(no)).
+optdef(oc_internal, det_copy_out,                          bool(no)).
+optdef(oc_internal, nondet_copy_out,                       bool(no)).
+optdef(oc_internal, put_commit_in_own_func,                bool(no)).
 
     % Options for internal use only.
 
@@ -1736,59 +1769,59 @@ optdef(oc_internal, type_check_constraints,             bool(no)).
 
     % Code generation options.
 
-optdef(oc_codegen, table_debug,                         bool(no)).
-optdef(oc_codegen, trad_passes,                         bool(yes)).
-optdef(oc_codegen, parallel_liveness,                   bool(no)).
-optdef(oc_codegen, parallel_code_gen,                   bool(no)).
-optdef(oc_codegen, reclaim_heap_on_failure,             bool_special).
-optdef(oc_codegen, reclaim_heap_on_semidet_failure,     bool(yes)).
-optdef(oc_codegen, reclaim_heap_on_nondet_failure,      bool(yes)).
-optdef(oc_codegen, have_delay_slot,                     bool(no)).
+optdef(oc_dev_debug, table_debug,                         bool(no)).
+optdef(oc_codegen,  trad_passes,                         bool(yes)).
+optdef(oc_dev_ctrl, parallel_liveness,                   bool(no)).
+optdef(oc_dev_ctrl, parallel_code_gen,                   bool(no)).
+optdef(oc_internal, reclaim_heap_on_failure,             bool_special).
+optdef(oc_internal, reclaim_heap_on_semidet_failure,     bool(yes)).
+optdef(oc_internal, reclaim_heap_on_nondet_failure,      bool(yes)).
+optdef(oc_config,   have_delay_slot,                     bool(no)).
     % The `mmc' script may override the above default if configure says
     % the machine has branch delay slots.
-optdef(oc_codegen, num_real_r_regs,                     int(5)).
-optdef(oc_codegen, num_real_f_regs,                     int(0)).
-optdef(oc_codegen, num_real_r_temps,                    int(5)).
-optdef(oc_codegen, num_real_f_temps,                    int(0)).
+optdef(oc_config,   num_real_r_regs,                     int(5)).
+optdef(oc_config,   num_real_f_regs,                     int(0)).
+optdef(oc_config,   num_real_r_temps,                    int(5)).
+optdef(oc_config,   num_real_f_temps,                    int(0)).
     % The `mmc' script will override the above defaults with
     % values determined at configuration time.
-optdef(oc_codegen, max_jump_table_size,                 int(0)).
+optdef(oc_codegen,  max_jump_table_size,                 int(0)).
     % 0 indicates any size.
-optdef(oc_codegen, max_specialized_do_call_closure,     int(5)).
+optdef(oc_internal, max_specialized_do_call_closure,     int(5)).
     % mercury.do_call_closure_N exists for N <= option_value;
     % set to -1 to disable. Should be less than or equal to
     % max_spec_explicit_arg in tools/make_spec_ho_call.
-optdef(oc_codegen, max_specialized_do_call_class_method, int(6)).
+optdef(oc_internal, max_specialized_do_call_class_method, int(6)).
     % mercury.do_call_class_method_N exists for N <= option_value;
     % set to -1 to disable. Should be less than or equal to
     % max_spec_explicit_arg in tools/make_spec_method_call.
-optdef(oc_codegen, compare_specialization,              int(-1)).
+optdef(oc_internal, compare_specialization,              int(-1)).
     % -1 asks handle_options.m to give the value, which may be grade dependent.
-optdef(oc_codegen, should_pretest_equality,             bool(yes)).
-optdef(oc_codegen, fact_table_max_array_size,           int(1024)).
-optdef(oc_codegen, fact_table_hash_percent_full,        int(90)).
-optdef(oc_codegen, prefer_switch,                       bool(yes)).
-optdef(oc_codegen, prefer_while_loop_over_jump_self,    bool(yes)).
-optdef(oc_codegen, prefer_while_loop_over_jump_mutual,  bool(no)).
-optdef(oc_codegen, opt_no_return_calls,                 bool(yes)).
-optdef(oc_codegen, debug_class_init,                    bool(no)).
+optdef(oc_dev_ctrl, should_pretest_equality,             bool(yes)).
+optdef(oc_dev_ctrl, fact_table_max_array_size,           int(1024)).
+optdef(oc_dev_ctrl, fact_table_hash_percent_full,        int(90)).
+optdef(oc_dev_ctrl, prefer_switch,                       bool(yes)).
+optdef(oc_dev_ctrl, prefer_while_loop_over_jump_self,    bool(yes)).
+optdef(oc_dev_ctrl, prefer_while_loop_over_jump_mutual,  bool(no)).
+optdef(oc_dev_ctrl, opt_no_return_calls,                 bool(yes)).
+optdef(oc_dev_debug, debug_class_init,                   bool(no)).
 
     % Special optimization options.
     % These ones are not affected by `-O<n>'.
 
-optdef(oc_spec_opt, default_opt_level,                  string("-O2")).
-optdef(oc_spec_opt, opt_level,                          int_special).
-optdef(oc_spec_opt, opt_space,                          special).
-optdef(oc_spec_opt, intermodule_optimization,           bool(no)).
-optdef(oc_spec_opt, read_opt_files_transitively,        bool(yes)).
-optdef(oc_spec_opt, use_opt_files,                      bool(no)).
-optdef(oc_spec_opt, use_trans_opt_files,                bool(no)).
-optdef(oc_spec_opt, transitive_optimization,            bool(no)).
-optdef(oc_spec_opt, intermodule_analysis,               bool(no)).
-optdef(oc_spec_opt, analysis_repeat,                    int(0)).
-optdef(oc_spec_opt, analysis_file_cache,                bool(no)).
-optdef(oc_spec_opt, termination_check,                  bool(no)).
-optdef(oc_spec_opt, termination_check_verbose,          bool(no)).
+optdef(oc_opt_ctrl, default_opt_level,                  string("-O2")).
+optdef(oc_opt_ctrl, opt_level,                          int_special).
+optdef(oc_opt_ctrl, opt_space,                          special).
+optdef(oc_opt_ctrl, intermodule_optimization,           bool(no)).
+optdef(oc_opt_ctrl, read_opt_files_transitively,        bool(yes)).
+optdef(oc_opt_ctrl, use_opt_files,                      bool(no)).
+optdef(oc_opt_ctrl, use_trans_opt_files,                bool(no)).
+optdef(oc_opt_ctrl, transitive_optimization,            bool(no)).
+optdef(oc_opt_ctrl, intermodule_analysis,               bool(no)).
+optdef(oc_opt_ctrl, analysis_repeat,                    int(0)).
+optdef(oc_opt_ctrl, analysis_file_cache,                bool(no)).
+optdef(oc_analysis, termination_check,                  bool(no)).
+optdef(oc_analysis, termination_check_verbose,          bool(no)).
 optdef(oc_spec_opt, structure_sharing_analysis,         bool(no)).
 optdef(oc_spec_opt, structure_sharing_widening,         int(0)).
 optdef(oc_spec_opt, structure_reuse_analysis,           bool(no)).
@@ -1798,26 +1831,26 @@ optdef(oc_spec_opt, structure_reuse_constraint_arg,     int(0)).
 optdef(oc_spec_opt, structure_reuse_max_conditions,     int(10)).
 optdef(oc_spec_opt, structure_reuse_repeat,             int(0)).
 optdef(oc_spec_opt, structure_reuse_free_cells,         bool(no)).
-optdef(oc_spec_opt, termination,                        bool(no)).
-optdef(oc_spec_opt, termination_single_args,            int(0)).
-optdef(oc_spec_opt, termination_norm,                   string("total")).
-optdef(oc_spec_opt, termination_error_limit,            int(3)).
-optdef(oc_spec_opt, termination_path_limit,             int(256)).
-optdef(oc_spec_opt, termination2,                       bool(no)).
-optdef(oc_spec_opt, termination2_norm,                  string("total")).
-optdef(oc_spec_opt, termination2_check,                 bool(no)).
-optdef(oc_spec_opt, termination2_check_verbose,         bool(no)).
-optdef(oc_spec_opt, widening_limit,                     int(4)).
-optdef(oc_spec_opt, arg_size_analysis_only,             bool(no)).
-optdef(oc_spec_opt, propagate_failure_constrs,          bool(yes)).
-optdef(oc_spec_opt, term2_maximum_matrix_size,          int(70)).
+optdef(oc_analysis, termination,                        bool(no)).
+optdef(oc_analysis, termination_single_args,            int(0)).
+optdef(oc_analysis, termination_norm,                   string("total")).
+optdef(oc_analysis, termination_error_limit,            int(3)).
+optdef(oc_analysis, termination_path_limit,             int(256)).
+optdef(oc_analysis, termination2,                       bool(no)).
+optdef(oc_analysis, termination2_norm,                  string("total")).
+optdef(oc_analysis, termination2_check,                 bool(no)).
+optdef(oc_analysis, termination2_check_verbose,         bool(no)).
+optdef(oc_analysis, widening_limit,                     int(4)).
+optdef(oc_analysis, arg_size_analysis_only,             bool(no)).
+optdef(oc_analysis, propagate_failure_constrs,          bool(yes)).
+optdef(oc_analysis, term2_maximum_matrix_size,          int(70)).
     % XXX This matrix size is just a guess.
-optdef(oc_spec_opt, analyse_exceptions,                 bool(no)).
-optdef(oc_spec_opt, analyse_closures,                   bool(no)).
-optdef(oc_spec_opt, analyse_trail_usage,                bool(no)).
-optdef(oc_spec_opt, optimize_trail_usage,               bool(no)).
-optdef(oc_spec_opt, optimize_region_ops,                bool(no)).
-optdef(oc_spec_opt, analyse_mm_tabling,                 bool(no)).
+optdef(oc_analysis, analyse_exceptions,                 bool(no)).
+optdef(oc_analysis, analyse_closures,                   bool(no)).
+optdef(oc_analysis, analyse_trail_usage,                bool(no)).
+optdef(oc_analysis, optimize_trail_usage,               bool(no)).
+optdef(oc_analysis, optimize_region_ops,                bool(no)).
+optdef(oc_analysis, analyse_mm_tabling,                 bool(no)).
 
     % Optimization options
     % IMPORTANT: the default here should be all optimizations OFF.
@@ -2190,31 +2223,31 @@ optdef(oc_buildsys, target_env_type,                    string("posix")).
 
     % Miscellaneous options
 
-optdef(oc_misc, filenames_from_stdin,                   bool(no)).
-optdef(oc_misc, typecheck_ambiguity_warn_limit,         int(50)).
-optdef(oc_misc, typecheck_ambiguity_error_limit,        int(3000)).
-optdef(oc_misc, help,                                   bool(no)).
-optdef(oc_misc, version,                                bool(no)).
-optdef(oc_misc, target_arch,                            string("")).
-optdef(oc_misc, cross_compiling,                        bool(no)).
-optdef(oc_misc, local_module_id,                        accumulating([])).
-optdef(oc_misc, analysis_file_cache_dir,                string("")).
-optdef(oc_misc, default_globals,                        bool(no)).
-optdef(oc_misc, compiler_sufficiently_recent,           bool(no)).
-optdef(oc_misc, experiment,                             string("")).
-optdef(oc_misc, experiment1,                            bool(no)).
-optdef(oc_misc, experiment2,                            bool(no)).
-optdef(oc_misc, experiment3,                            bool(no)).
-optdef(oc_misc, experiment4,                            bool(no)).
-optdef(oc_misc, experiment5,                            bool(no)).
-optdef(oc_misc, allow_ho_insts_as_modes,                bool(yes)).
-optdef(oc_misc, ignore_par_conjunctions,                bool(no)).
-optdef(oc_misc, control_granularity,                    bool(no)).
-optdef(oc_misc, distance_granularity,                   int(0)).
-optdef(oc_misc, implicit_parallelism,                   bool(no)).
-optdef(oc_misc, feedback_file,                          string("")).
-optdef(oc_misc, par_loop_control,                       bool(no)).
-optdef(oc_misc, par_loop_control_preserve_tail_recursion, bool(no)).
+optdef(oc_misc,     filenames_from_stdin,               bool(no)).
+optdef(oc_misc,     typecheck_ambiguity_warn_limit,     int(50)).
+optdef(oc_misc,     typecheck_ambiguity_error_limit,    int(3000)).
+optdef(oc_help,     help,                               bool(no)).
+optdef(oc_misc,     version,                            bool(no)).
+optdef(oc_misc,     target_arch,                        string("")).
+optdef(oc_misc,     cross_compiling,                    bool(no)).
+optdef(oc_misc,     local_module_id,                    accumulating([])).
+optdef(oc_misc,     analysis_file_cache_dir,            string("")).
+optdef(oc_internal, default_globals,                    bool(no)).
+optdef(oc_dev_ctrl, compiler_sufficiently_recent,       bool(no)).
+optdef(oc_dev_ctrl, experiment,                         string("")).
+optdef(oc_dev_ctrl, experiment1,                        bool(no)).
+optdef(oc_dev_ctrl, experiment2,                        bool(no)).
+optdef(oc_dev_ctrl, experiment3,                        bool(no)).
+optdef(oc_dev_ctrl, experiment4,                        bool(no)).
+optdef(oc_dev_ctrl, experiment5,                        bool(no)).
+optdef(oc_dev_ctrl, allow_ho_insts_as_modes,            bool(yes)).
+optdef(oc_dev_ctrl, ignore_par_conjunctions,            bool(no)).
+optdef(oc_dev_ctrl, control_granularity,                bool(no)).
+optdef(oc_dev_ctrl, distance_granularity,               int(0)).
+optdef(oc_dev_ctrl, implicit_parallelism,               bool(no)).
+optdef(oc_dev_ctrl, feedback_file,                      string("")).
+optdef(oc_dev_ctrl, par_loop_control,                   bool(no)).
+optdef(oc_dev_ctrl, par_loop_control_preserve_tail_recursion, bool(no)).
 
 %---------------------------------------------------------------------------%
 
@@ -2434,8 +2467,8 @@ long_table("config-default-color-diagnostics",
                                        config_default_color_diagnostics).
 long_table("config-default-colour-diagnostics",
                                        config_default_color_diagnostics).
-long_table("color-diagnostics",         color_diagnostics).
-long_table("colour-diagnostics",        color_diagnostics).
+long_table("color-diagnostics",        color_diagnostics).
+long_table("colour-diagnostics",       color_diagnostics).
 % use_color_diagnostics is an internal-use-only option.
 long_table("color-scheme",             color_scheme).
 long_table("colour-scheme",            color_scheme).
@@ -3708,10 +3741,12 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Inhibit),
             bool.not(Inhibit, Enable),
             DodgyOptions = dodgy_code_warning_options,
+            SlowOptions = slow_code_warning_options,
             StyleOptions = style_warning_options,
             InformOptions = info_request_options,
-            set_all_options_to(DodgyOptions, bool(Enable), !OptionTable),
-            set_all_options_to(StyleOptions, bool(Enable), !OptionTable),
+            set_all_options_to(DodgyOptions,  bool(Enable), !OptionTable),
+            set_all_options_to(SlowOptions,   bool(Enable), !OptionTable),
+            set_all_options_to(StyleOptions,  bool(Enable), !OptionTable),
             set_all_options_to(InformOptions, bool(Enable), !OptionTable)
         ;
             Option = inhibit_style_warnings,
@@ -4373,6 +4408,13 @@ dodgy_code_warning_options = DodgyWarnOptions :-
             optdef(oc_warn_dodgy, Opt, _Data)
         ),
     solutions(FindOptionsPred, DodgyWarnOptions).
+
+slow_code_warning_options = SlowWarnOptions :-
+    FindOptionsPred =
+        ( pred(Opt::out) is nondet :-
+            optdef(oc_warn_perf, Opt, _Data)
+        ),
+    solutions(FindOptionsPred, SlowWarnOptions).
 
 style_warning_options = StyleWarnOptions :-
     FindOptionsPred =
