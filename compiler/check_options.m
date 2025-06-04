@@ -72,10 +72,10 @@
 
 check_option_values(!OptionTable, Target, WordSize, GC_Method,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
-        MaybeThreadSafe,
-        C_CompilerType, CSharp_CompilerType, ReuseStrategy, MaybeFeedbackInfo,
-        HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
-        LinkExtMap, !:Specs, !IO) :-
+        MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+        ReuseStrategy, MaybeFeedbackInfo,
+        HostEnvType, SystemEnvType, TargetEnvType,
+        LimitErrorContextsMap, LinkExtMap, !:Specs, !IO) :-
     !:Specs = [],
     check_grade_options(!.OptionTable, Target, WordSize, GC_Method, !Specs),
     check_codegen_options(!.OptionTable,

@@ -216,7 +216,7 @@ middle_pass(ProgressStream, ErrorStream, OpModeFrontAndMiddle,
     maybe_dump_hlds(ProgressStream, !.HLDS, 135, "higher_order",
         !DumpInfo, !IO),
 
-    maybe_ssdb(ProgressStream, Verbose, Stats, !HLDS, !IO),
+    maybe_source_to_source_debug(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 137, "ssdb", !DumpInfo, !IO),
 
     maybe_introduce_accumulators(ProgressStream, Verbose, Stats,
@@ -975,10 +975,11 @@ maybe_higher_order(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_ssdb(io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred maybe_source_to_source_debug(io.text_output_stream::in,
+    bool::in, bool::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-maybe_ssdb(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_source_to_source_debug(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, force_disable_ssdebug,
         ForceDisableSSDB),

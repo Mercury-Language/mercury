@@ -124,10 +124,10 @@ augment_and_process_source_file(ProgressStream, ErrorStream, Globals,
         )
     then
         % Some predicates in the builtin modules are missing typeinfo
-        % arguments, which means that execution tracing will not work
-        % on them. Predicates defined there should never be part of
-        % an execution trace anyway; they are effectively language
-        % primitives. (They may still be parts of stack traces.)
+        % arguments, which means that execution tracing will not work on them.
+        % Predicates defined there should never be part of an execution trace
+        % anyway; they are effectively language primitives.
+        % (They may still be parts of stack traces.)
         globals.set_option(trace_stack_layout, bool(no), Globals, Globals1),
         globals.set_trace_level_none(Globals1, GlobalsToUse)
     else
