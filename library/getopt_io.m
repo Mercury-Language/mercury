@@ -137,6 +137,8 @@
 :- inst option_default_value_nondet ==      (pred(out, out) is nondet).
 :- inst option_default_value_multi ==       (pred(out, out) is multi).
 
+:- type option_default_value_map(OptionType) == map(OptionType, option_data).
+
 :- type special_handler(OptionType) ==
     (pred(OptionType, special_data,
         option_table(OptionType), maybe_option_table(OptionType))).
@@ -158,8 +160,8 @@
     % - if there are any special options, how they should be handled.
     %
     % The job of the option_ops type is to hold the three or four predicates
-    % used to categorize a set of options. Their interfaces should be
-    % like these:
+    % used to categorize a set of options. (One of these may be replaced
+    % by a map). Their interfaces should be like these:
     %
     %   % True if the character names a valid single-character short option.
     %   %
@@ -173,6 +175,11 @@
     %   % corresponding types and default values.
     %   %
     % :- pred option_default(option::out, option_data::out) is multi.
+    %
+    % The option_default predicate may be replaced, in the option_ops values
+    % whose names include "default_map", with data structure that maps
+    % each and every option to its default value. (This is normally useful
+    % if the caller itself needs the same data in map form.)
     %
     %   % This predicate is invoked whenever getopt finds an option
     %   % designated as special (by either a short or long name),
@@ -188,10 +195,12 @@
     % :- pred special_handler(option::in, special_data::in,
     %   option_table::in, maybe_option_table(_)::out) is semidet.
     %
-    % The four function symbols in the option_ops type differ in
+    % The six function symbols in the option_ops type differ in
     %
     % - whether they contain a special_handler or not, and
-    % - whether the determinism of option_default is nondet or multi.
+    % - whether option default values are defined by a predicate or a map,
+    % - and if they are defined by a predicate, whether the determinism
+    %   of that predicate is nondet or multi,
     %
 :- type option_ops(OptionType)
     --->    option_ops(
@@ -214,6 +223,17 @@
                 short_option(OptionType),
                 long_option(OptionType),
                 option_default_value(OptionType),
+                special_handler(OptionType)
+            )
+    ;       option_ops_default_map(
+                short_option(OptionType),
+                long_option(OptionType),
+                option_default_value_map(OptionType)
+            )
+    ;       option_ops_default_map(
+                short_option(OptionType),
+                long_option(OptionType),
+                option_default_value_map(OptionType),
                 special_handler(OptionType)
             ).
 
@@ -238,6 +258,17 @@
                 short_option,
                 long_option,
                 option_default_value_multi,
+                special_handler
+            )
+    ;       option_ops_default_map(
+                short_option,
+                long_option,
+                ground
+            )
+    ;       option_ops_default_map(
+                short_option,
+                long_option,
+                ground,
                 special_handler
             ).
 
@@ -903,6 +934,12 @@ option_ops_to_internal_and_option_table(OptionOps, Short, Long, MaybeSpecial,
         OptionOps = option_ops_multi(Short, Long, Defaults, Special),
         MaybeSpecial = notrack(Special),
         init_option_table_multi(Defaults, OptionTable0)
+    ;
+        OptionOps = option_ops_default_map(Short, Long, OptionTable0),
+        MaybeSpecial = none
+    ;
+        OptionOps = option_ops_default_map(Short, Long, OptionTable0, Special),
+        MaybeSpecial = notrack(Special)
     ).
 
 :- pred return_option_table_if_ok(maybe_option_error(OptionType)::in,
