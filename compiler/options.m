@@ -52,6 +52,65 @@
 % a help message and an entry in the users' guide, for use by developers,
 % but these should be commented out.
 %
+% XXX We should move towards a new arrangement where we have just two areas
+% that need to be kept in sync:
+%
+% - the definition of the "option" type, and
+%
+% - the definition of a new predicate (named maybe opt_db)
+%   whose arguments are
+%
+%   - an option,
+%   - that option's option_category (this will be the first arg, for grouping),
+%   - that option's initial value, and
+%   - that option's help structure, with the names of any args separated out.
+%
+% The help structure itself will contain all the short and/or long names
+% of the option. (Having the option's initial value in this structure
+% will allow us, for accumulating and maybe options, to include the option name
+% only in the documentation of the positive version, and not in the
+% documentation of the negated version.)
+%
+% NOTE Unlike the current design, this would *require every option to be
+% documented*, even if the documetation is kept private.
+%
+% NOTE It would also enforce that the help text for an option include
+% the exact same set of option names as we give to getopt for that option.
+% m
+%
+% Invoking solutions on opt_db, we can process the result to
+% automatically generate
+%
+% - a map from short option names to options (ShortOptionMap),
+% - a map from long option names to options (LongOptionMap),and
+% - a list which maps each option to its initial value (OptionInitValuesList).
+%
+% We can then pass closures for map.search(ShortOptionMap),
+% map.search(LongOptionMap) and list.member(OptionInitValuesList)
+% as the inputs to getopt.
+% XXX getopt uses the last argument to create a map from option
+% to initial value, which we can easily construct directly.
+% We can, and should, modify getopt.m/getopt_io.m to allow this map to be
+% supplied directly, through new function symbols in the option_ops type.
+%
+% We can also process the result of invoking solutions on opt_db by
+%
+% - classifying each opt_db entry to one or other of the sections
+%   of the help text (a single section could contain e.g. both oc_warn_style
+%   options *and* the oc_warn_style_c options, if that is what we call
+%   the category of those oc_warn_ctrl options that control oc_warn_style
+%   options),
+%
+% - sorting the opt_db entries in each section, and
+%
+% - printing the help text of each section, with appropriate headings
+%   between the sections.
+%
+% Note that this would give a guiding principle for where new options
+% should be added to the option type. This would be at the point where
+% their help text should go, which should always be somewhere near,
+% and hopefully in a logical relation to, the options related to them.
+%
 %---------------------------------------------------------------------------%
 
 :- module libs.options.
@@ -1195,7 +1254,6 @@
     ;       help
     ;       version
     ;       target_arch
-    ;       cross_compiling
     ;       local_module_id
     ;       analysis_file_cache_dir
     ;       default_globals
@@ -1273,6 +1331,7 @@ option_defaults(Opt, Data) :-
 
 :- type option_category
     --->    oc_help
+            % The one option that calls for output of help text.
 
     ;       oc_warn_dodgy
             % Warnings about code that is possibly incorrect.
@@ -1282,27 +1341,61 @@ option_defaults(Opt, Data) :-
             % Warnings about programming style.
     ;       oc_warn_ctrl
             % OPtions that *control* warnings.
-    ;       oc_warn_halt 
+            % XXX Split into subparts, one for each of oc_warn_*
+            % that some now-oc_warn_ctrl option controls.
+            % This should enable us to put the documentation of e.g.
+            % inform_incomplete_switch_threshold, immediately after
+            % the documentation of inform_incomplete_switch.
+    ;       oc_warn_halt
             % Options that specify when warnings should treated as errors.
     ;       oc_inform
             % Requests for information.
     ;       oc_verbosity
+            % Options that users can use to control how many progress updates
+            % they want the compiler to give them.
     ;       oc_opmode
             % Options that are used only to select an invocation's op_mode.
     ;       oc_aux_output
+            % Options that ask the compiler to modify some aspect
+            % of the generated target code.
+            % XXX This name is non-descriptive.
+            % XXX We now also use it for things that the above description
+            % does not cover. We should put them into other categories.
     ;       oc_semantics
             % Options that specify which semantics variant to use.
     ;       oc_grade
+            % Options that affect binary compatibility.
     ;       oc_internal
-            % Options that should not be used even by developers.
-    ;       oc_codegen
-    ;       oc_spec_opt
+            % Options for compiler use only, that should not be used
+            % even by developers.
     ;       oc_opt
+            % Optimization options that are enabled at -O<N> for some N.
+            % XXX Rename to oc_level_opt?
+            % XXX We should subdivide into HLDS->HLDS, HLDS->MLDS, HLDS->LLDS,
+            % MLDS->MLDS, LLDS->LLDS, MLDS->target, LLDS->target,
+            % maybe indicated by _hh, _hm, _hl etc suffixes,
+            % to allow automatic generation of the existing help subsections.
+    ;       oc_spec_opt
+            % Optimization options that are not enabled at -O<N> for any N.
+            % XXX Rename to oc_sep_opt, with "sep" standing for "separate
+            % from optimization levels", or oc_sa_opt, with "sa" being short
+            % for "stand-alone"?
+            % XXX Subdidivde as with oc_opt.
     ;       oc_opt_ctrl
             % Options that control optimization levels.
     ;       oc_target_comp
+            % Options that control how the target language files we generate
+            % are further compiled.
+            % XXX Subdivide into oc_target_c/oc_target_java/oc_target_csharp.
     ;       oc_link
+            % Options that control how executables, or their equivalents
+            % for some target languages, are generated.
+            % XXX Subdivide into oc_link_c/oc_link_java/oc_link_csharp.
+            % XXX Are the oc_link options that apply to more than one target?
     ;       oc_buildsys
+            % XXX Document me.
+            % XXX We should separate search path options (the majority)
+            % from everything else.
     ;       oc_dev_ctrl
             % Options developers can use to control what the compiler does.
     ;       oc_dev_debug
@@ -1317,6 +1410,7 @@ option_defaults(Opt, Data) :-
     ;       oc_analysis
             % Options for user control of program analyses.
     ;       oc_misc.
+            % A few options that do not fit anywhere else.
 
 %---------------------------------------------------------------------------%
 
@@ -1540,29 +1634,33 @@ optdef(oc_internal,   generate_item_version_numbers,    bool(no)).
 optdef(oc_internal,   generate_mmc_make_module_dependencies, bool(no)).
 optdef(oc_aux_output, trace_level,                      string("default")).
 optdef(oc_aux_output, trace_optimized,                  bool(no)).
-optdef(oc_aux_output, trace_prof,                       bool(no)).
-optdef(oc_aux_output, trace_table_io,                   bool(no)).
-optdef(oc_aux_output, trace_table_io_only_retry,        bool(no)).
-optdef(oc_aux_output, trace_table_io_states,            bool(no)).
-optdef(oc_aux_output, trace_table_io_require,           bool(no)).
-optdef(oc_aux_output, trace_table_io_all,               bool(no)).
+optdef(oc_dev_debug,  trace_prof,                       bool(no)).
+optdef(oc_dev_ctrl,   trace_table_io,                   bool(no)).
+optdef(oc_dev_ctrl,   trace_table_io_only_retry,        bool(no)).
+optdef(oc_dev_ctrl,   trace_table_io_states,            bool(no)).
+optdef(oc_dev_ctrl,   trace_table_io_require,           bool(no)).
+optdef(oc_dev_ctrl,   trace_table_io_all,               bool(no)).
+% XXX This is about trace goals, not execution tracing, so move it, but where?
 optdef(oc_aux_output, trace_goal_flags,                 accumulating([])).
 optdef(oc_aux_output, prof_optimized,                   bool(no)).
 optdef(oc_aux_output, exec_trace_tail_rec,              bool(no)).
-optdef(oc_aux_output, suppress_trace,                   string("")).
-optdef(oc_aux_output, force_disable_tracing,            bool(no)).
+optdef(oc_dev_ctrl,   suppress_trace,                   string("")).
+optdef(oc_dev_ctrl,   force_disable_tracing,            bool(no)).
 optdef(oc_aux_output, delay_death,                      bool(yes)).
 optdef(oc_aux_output, delay_death_max_vars,             int(1000)).
 optdef(oc_aux_output, stack_trace_higher_order,         bool(no)).
-optdef(oc_aux_output, force_disable_ssdebug,            bool(no)).
+optdef(oc_dev_ctrl,   force_disable_ssdebug,            bool(no)).
 optdef(oc_aux_output, line_numbers,                     bool(no)).
 optdef(oc_aux_output, line_numbers_around_foreign_code, bool(yes)).
 optdef(oc_aux_output, line_numbers_for_c_headers,       bool(no)).
 optdef(oc_aux_output, type_repns_for_humans,            bool(no)).
-optdef(oc_aux_output, auto_comments,                    bool(no)).
-optdef(oc_aux_output, frameopt_comments,                bool(no)).
+optdef(oc_dev_debug,  auto_comments,                    bool(no)).
+optdef(oc_dev_debug,  frameopt_comments,                bool(no)).
 optdef(oc_aux_output, max_error_line_width,             maybe_int(yes(79))).
 optdef(oc_aux_output, reverse_error_order,              bool(no)).
+% XXX These ask for additional files. Move them to new category?
+% XXX Should at least the internal names include "file"?
+% XXX Rename imports_graph to follow the naming convention used by the others.
 optdef(oc_aux_output, show_definitions,                 bool(no)).
 optdef(oc_aux_output, show_definition_line_counts,      bool(no)).
 optdef(oc_aux_output, show_definition_extents,          bool(no)).
@@ -1571,8 +1669,9 @@ optdef(oc_aux_output, show_local_type_repns,            bool(no)).
 optdef(oc_aux_output, show_all_type_repns,              bool(no)).
 optdef(oc_aux_output, show_developer_type_repns,        bool(no)).
 optdef(oc_aux_output, show_dependency_graph,            bool(no)).
-optdef(oc_aux_output, show_pred_movability,             accumulating([])).
 optdef(oc_aux_output, imports_graph,                    bool(no)).
+% This is a report to output, not a new file.
+optdef(oc_aux_output, show_pred_movability,             accumulating([])).
 optdef(oc_spec_opt,   trans_opt_deps_spec,              maybe_string(no)).
 optdef(oc_dev_dump,   dump_trace_counts,                accumulating([])).
 optdef(oc_dev_dump,   dump_hlds,                        accumulating([])).
@@ -1608,6 +1707,7 @@ optdef(oc_semantics, reorder_conj,                      bool(yes)).
 optdef(oc_semantics, reorder_disj,                      bool(yes)).
 optdef(oc_semantics, fully_strict,                      bool(yes)).
 optdef(oc_semantics, allow_stubs,                       bool(no)).
+% XXX These stretch the definition of "semantics" beyond the breaking point.
 optdef(oc_semantics, infer_types,                       bool(no)).
 optdef(oc_semantics, infer_modes,                       bool(no)).
 optdef(oc_semantics, infer_det,                         bool(yes)).
@@ -1769,8 +1869,8 @@ optdef(oc_internal, type_check_constraints,             bool(no)).
 
     % Code generation options.
 
-optdef(oc_dev_debug, table_debug,                         bool(no)).
-optdef(oc_codegen,  trad_passes,                         bool(yes)).
+optdef(oc_dev_debug, table_debug,                        bool(no)).
+optdef(oc_dev_ctrl, trad_passes,                         bool(yes)).
 optdef(oc_dev_ctrl, parallel_liveness,                   bool(no)).
 optdef(oc_dev_ctrl, parallel_code_gen,                   bool(no)).
 optdef(oc_internal, reclaim_heap_on_failure,             bool_special).
@@ -1785,8 +1885,11 @@ optdef(oc_config,   num_real_r_temps,                    int(5)).
 optdef(oc_config,   num_real_f_temps,                    int(0)).
     % The `mmc' script will override the above defaults with
     % values determined at configuration time.
-optdef(oc_codegen,  max_jump_table_size,                 int(0)).
-    % 0 indicates any size.
+optdef(oc_config,   max_jump_table_size,                 int(0)).
+    % 0 indicates jump tables can be any size.
+    % XXX This option works around limitations in 1998 C compilers.
+    % Its value should be set automatically by handle_options.m
+    % based on the value of the c_compiler_type option.
 optdef(oc_internal, max_specialized_do_call_closure,     int(5)).
     % mercury.do_call_closure_N exists for N <= option_value;
     % set to -1 to disable. Should be less than or equal to
@@ -2224,14 +2327,17 @@ optdef(oc_buildsys, target_env_type,                    string("posix")).
     % Miscellaneous options
 
 optdef(oc_misc,     filenames_from_stdin,               bool(no)).
+% XXX Should we add new category, named maybe oc_errors, for options
+% that control how and/or when the compiler generates diagnostics?
+% Include options that reverse the order of errors, or limit error contexts.
 optdef(oc_misc,     typecheck_ambiguity_warn_limit,     int(50)).
 optdef(oc_misc,     typecheck_ambiguity_error_limit,    int(3000)).
 optdef(oc_help,     help,                               bool(no)).
 optdef(oc_misc,     version,                            bool(no)).
 optdef(oc_misc,     target_arch,                        string("")).
-optdef(oc_misc,     cross_compiling,                    bool(no)).
-optdef(oc_misc,     local_module_id,                    accumulating([])).
-optdef(oc_misc,     analysis_file_cache_dir,            string("")).
+optdef(oc_internal, local_module_id,                    accumulating([])).
+% XXX Why is this NOT next to analysis_file_cache?
+optdef(oc_opt_ctrl, analysis_file_cache_dir,            string("")).
 optdef(oc_internal, default_globals,                    bool(no)).
 optdef(oc_dev_ctrl, compiler_sufficiently_recent,       bool(no)).
 optdef(oc_dev_ctrl, experiment,                         string("")).
@@ -2588,9 +2694,9 @@ long_table("output-stdlib-modules",    only_opmode_output_stdlib_modules).
 % aux output options
 long_table("smart-recompilation",      smart_recompilation).
 long_table("generate-mmc-make-module-dependencies",
-                                        generate_mmc_make_module_dependencies).
+                                       generate_mmc_make_module_dependencies).
 long_table("generate-mmc-deps",
-                                        generate_mmc_make_module_dependencies).
+                                       generate_mmc_make_module_dependencies).
 long_table("ssdb-trace",               ssdb_trace_level).
 long_table("link-ssdb-libs",           link_ssdb_libs).
 long_table("link-ssdebug-libs",        link_ssdb_libs).
@@ -3473,7 +3579,6 @@ long_table("help",                 help).
 long_table("version",              version).
 long_table("filenames-from-stdin", filenames_from_stdin).
 long_table("target-arch",          target_arch).
-long_table("cross-compiling",      cross_compiling).
 long_table("local-module-id",      local_module_id).
 long_table("analysis-file-cache-dir",  analysis_file_cache_dir).
 long_table("bug-intermod-2002-06-13",  compiler_sufficiently_recent).
@@ -5354,7 +5459,7 @@ options_help_aux_output = Section :-
             "Link the source to source debugging libraries into the",
             "the executable."]),
 
-        priv_help("ss-trace {none, shallow, deep}", [
+        priv_help("ssdb-trace {none, shallow, deep}", [
             "The trace level to use for source to source debugging of",
             "the given module."]),
 
