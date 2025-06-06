@@ -408,7 +408,7 @@
     ;       debug_indirect_reuse
     ;       debug_type_rep
 
-    % Output options
+    % Opmode options
     ;       only_opmode_make_short_interface
     ;       only_opmode_make_interface
     ;       only_opmode_make_private_interface
@@ -420,14 +420,12 @@
     ;       only_opmode_generate_dependency_file
     ;       only_opmode_generate_dependencies
     ;       only_opmode_generate_dependencies_ints
-    ;       generate_module_order
-    ;       generate_standalone_interface
+    ;       only_opmode_generate_standalone_interface
     ;       only_opmode_convert_to_mercury
     ;       only_opmode_typecheck_only
     ;       only_opmode_errorcheck_only
     ;       only_opmode_target_code_only
     ;       only_opmode_compile_only
-    ;       compile_to_shared_lib
     ;       only_opmode_output_grade_string
     ;       only_opmode_output_link_command
     ;       only_opmode_output_shared_lib_link_command
@@ -451,6 +449,9 @@
     ;       inference_output_suffix
     ;       debug_output_suffix
     ;       recompile_output_suffix
+
+    ;       generate_module_order
+    ;       compile_to_shared_lib
 
     ;       smart_recompilation
             % Even if this option is set to `yes', smart recompilation may
@@ -2285,17 +2286,16 @@ optdb(oc_verb_dbg,  debug_intermodule_analysis,         bool(no),
 
 %---------------------------------------------------------------------------%
 
-    % Opmode options (mutually exclusive).
+    % Opmode options. These are all mutually exclusive.
 
 optdef(oc_opmode, only_opmode_generate_source_file_mapping, bool(no)).
-optdef(oc_opmode, only_opmode_generate_dependency_file, bool(no)).
 optdef(oc_opmode, only_opmode_generate_dependencies,    bool(no)).
 optdef(oc_opmode, only_opmode_generate_dependencies_ints, bool(no)).
-optdef(oc_opmode, generate_module_order,                bool(no)).
-optdef(oc_opmode, generate_standalone_interface,        maybe_string(no)).
+optdef(oc_opmode, only_opmode_generate_dependency_file, bool(no)).
+optdef(oc_opmode, only_opmode_generate_standalone_interface, maybe_string(no)).
 optdef(oc_opmode, only_opmode_make_short_interface,     bool(no)).
-optdef(oc_opmode, only_opmode_make_interface,           bool(no)).
 optdef(oc_opmode, only_opmode_make_private_interface,   bool(no)).
+optdef(oc_opmode, only_opmode_make_interface,           bool(no)).
 optdef(oc_opmode, only_opmode_make_optimization_interface, bool(no)).
 optdef(oc_opmode, only_opmode_make_transitive_opt_interface, bool(no)).
 optdef(oc_opmode, only_opmode_make_analysis_registry,   bool(no)).
@@ -2305,23 +2305,170 @@ optdef(oc_opmode, only_opmode_typecheck_only,           bool(no)).
 optdef(oc_opmode, only_opmode_errorcheck_only,          bool(no)).
 optdef(oc_opmode, only_opmode_target_code_only,         bool(no)).
 optdef(oc_opmode, only_opmode_compile_only,             bool(no)).
-optdef(oc_opmode, compile_to_shared_lib,                bool(no)).
 optdef(oc_opmode, only_opmode_output_grade_string,      bool(no)).
-optdef(oc_opmode, only_opmode_output_link_command,      bool(no)).
-optdef(oc_opmode, only_opmode_output_shared_lib_link_command, bool(no)).
+optdef(oc_opmode, only_opmode_output_target_arch,       bool(no)).
+optdef(oc_opmode, only_opmode_output_stdlib_modules,    bool(no)).
 optdef(oc_opmode, only_opmode_output_stdlib_grades,     bool(no)).
 optdef(oc_opmode, only_opmode_output_libgrades,         bool(no)).
 optdef(oc_opmode, only_opmode_output_cc,                bool(no)).
 optdef(oc_opmode, only_opmode_output_c_compiler_type,   bool(no)).
+optdef(oc_opmode, only_opmode_output_cflags,            bool(no)).
+optdef(oc_opmode, only_opmode_output_c_include_directory_flags, bool(no)).
+optdef(oc_opmode, only_opmode_output_grade_defines,     bool(no)).
 optdef(oc_opmode, only_opmode_output_csharp_compiler,   bool(no)).
 optdef(oc_opmode, only_opmode_output_csharp_compiler_type, bool(no)).
-optdef(oc_opmode, only_opmode_output_cflags,            bool(no)).
-optdef(oc_opmode, only_opmode_output_library_link_flags, bool(no)).
-optdef(oc_opmode, only_opmode_output_grade_defines,     bool(no)).
-optdef(oc_opmode, only_opmode_output_c_include_directory_flags, bool(no)).
-optdef(oc_opmode, only_opmode_output_target_arch,       bool(no)).
 optdef(oc_opmode, only_opmode_output_java_class_dir,    bool(no)).
-optdef(oc_opmode, only_opmode_output_stdlib_modules,    bool(no)).
+optdef(oc_opmode, only_opmode_output_link_command,      bool(no)).
+optdef(oc_opmode, only_opmode_output_shared_lib_link_command, bool(no)).
+optdef(oc_opmode, only_opmode_output_library_link_flags, bool(no)).
+
+optdb(oc_opmode, only_opmode_generate_source_file_mapping, bool(no),
+    short_help('f', "generate-source-file-mapping", [], [
+        "Output the module name to file name mapping for the list",
+        "of source files given as non-option arguments to mmc",
+        "to `Mercury.modules'. This must be done before",
+        "`mmc --generate-dependencies' if there are any modules",
+        "for which the file name does not match the module name.",
+        "If there are no such modules the mapping need not be",
+        "generated."])).
+optdb(oc_opmode, only_opmode_generate_dependencies,    bool(no),
+    % XXX This leaves out important details, such as .dv and .d files.
+    short_help('M', "generate-dependencies", [], [
+        "Output `Make'-style dependencies for the module",
+        "and all of its dependencies to `<module>.dep'."])).
+optdb(oc_opmode, only_opmode_generate_dependencies_ints, bool(no),
+    help("generate-dependencies-ints", [
+        "Does the same job as --generate-dependencies, but also",
+        "outputs .int3, .int0, .int and .int2 files for all the modules",
+        "in the program."])).
+optdb(oc_opmode, only_opmode_generate_dependency_file, bool(no),
+    help("generate-dependency-file", [
+        "Output `Make'-style dependencies for the module",
+        "to `<module>.d'."])).
+optdb(oc_opmode, only_opmode_generate_standalone_interface, maybe_string(no),
+    help("generate-standalone-interface <basename>", [
+        "Output a stand-alone interface.",
+        "<basename> is used as the basename of any files generated for",
+        "the stand-alone interface. (See the Stand-alone Interface",
+        "chapter of the Mercury User's Guide for further details.)"])).
+optdb(oc_opmode, only_opmode_make_short_interface,     bool(no),
+    alt_help("make-short-int", pos_sep_lines, ["make-short-interface"], [
+        "Write the unqualified short interface to `<module>.int3'.",
+        "This option should only be used by mmake."])).
+optdb(oc_opmode, only_opmode_make_private_interface,   bool(no),
+    alt_help("make-priv-int", pos_sep_lines, ["make-private-interface"], [
+        "Write the private interface to `<module>.int0'.",
+        "This option should only be used by mmake."])).
+optdb(oc_opmode, only_opmode_make_interface,           bool(no),
+    short_help('i', "make-int", ["make-interface"], [
+        "Write the module interface to `<module>.int',",
+        "and write the short interface to `<module>.int2'",
+        "This option should only be used by mmake."])).
+optdb(oc_opmode, only_opmode_make_optimization_interface, bool(no),
+    alt_help("make-opt-int", pos_sep_lines,
+            ["make-optimization-interface"], [
+        "Write inter-module optimization information to `<module>.opt'.",
+        "This option should only be used by mmake."])).
+optdb(oc_opmode, only_opmode_make_transitive_opt_interface, bool(no),
+    alt_help("make-trans-opt", pos_sep_lines,
+            ["make-transitive-optimization-interface"], [
+        "Output transitive optimization information",
+        "into the `<module>.trans_opt' file.",
+        "This option should only be used by mmake."])).
+optdb(oc_opmode, only_opmode_make_analysis_registry,   bool(no), no_help).
+optdb(oc_opmode, only_opmode_make_xml_documentation,   bool(no),
+    short_help('x', "make-xml-doc", ["make-xml-documentation"], [
+        "Output XML documentation of the module",
+        "into the `<module>.xml' file.",
+        "This option should only be used by mmake."])).
+optdb(oc_opmode, only_opmode_convert_to_mercury,       bool(no),
+    short_help('P', "convert-to-mercury", [], [
+        "Convert to Mercury. Output to file `<module>.ugly'",
+        "This option acts as a Mercury ugly-printer."])).
+optdb(oc_opmode, only_opmode_typecheck_only,           bool(no),
+    short_help('t', "typecheck-only", [], [
+        "Just check that the code is syntactically correct and",
+        "type-correct. Don't check modes or determinism,",
+        "and don't generate any code."])).
+optdb(oc_opmode, only_opmode_errorcheck_only,          bool(no),
+    short_help('e', "errorcheck-only", [], [
+        "Check the module for errors, but do not generate any code."])).
+optdb(oc_opmode, only_opmode_target_code_only,         bool(no),
+    short_help('C', "target-code-only", [], [
+        "Generate target code (i.e. C code in `<module>.c',",
+        "C# code in `<module>.cs', or Java code in",
+        "`<module>.java'), but not object code."])).
+optdb(oc_opmode, only_opmode_compile_only,             bool(no),
+    short_help('c', "compile-only", [], [
+        "Generate C code in `<module>.c' and object code in `<module>.o'",
+        "but do not attempt to link the named modules."])).
+optdb(oc_opmode, only_opmode_output_grade_string,      bool(no),
+    help("output-grade-string", [
+        "Compute the canonical string representing the currently",
+        "selected grade, and print it on the standard output."])).
+optdb(oc_opmode, only_opmode_output_stdlib_modules,    bool(no),
+    help("output-stdlib-modules", [
+        "Print to standard output the names of the modules in the",
+        "Mercury standard library."])).
+optdb(oc_opmode, only_opmode_output_stdlib_grades,     bool(no),
+    help("output-stdlib-grades", [
+        "Print to standard output the list of compilation grades in which",
+        "the Mercury standard library is available with this compiler."])).
+optdb(oc_opmode, only_opmode_output_libgrades,         bool(no),
+    help("output-libgrades", [
+        "Print to standard output the list of compilation grades in which",
+        "a library to be installed should be built."])).
+optdb(oc_opmode, only_opmode_output_cc,                bool(no),
+    help("output-cc", [
+        "Print to standard output the command used to invoke the",
+        "C compiler."])).
+optdb(oc_opmode, only_opmode_output_c_compiler_type,   bool(no),
+    alt_help("output-cc-type", pos_sep_lines, ["output-c-compiler-type"], [
+        "Print the C compiler type to the standard output."])).
+optdb(oc_opmode, only_opmode_output_cflags,            bool(no),
+    help("output-cflags", [
+        "Print to standard output the flags with which the C compiler",
+        "will be invoked."])).
+optdb(oc_opmode, only_opmode_output_c_include_directory_flags, bool(no),
+    alt_help("output-c-include-dir-flags", pos_sep_lines,
+            ["output-c-include-directory-flags"], [
+        "Print to standard output the flags that are passed to the",
+        "C compiler to specify which directories to search for",
+        "C header files. This includes the C header files from the",
+        "standard library."])).
+optdb(oc_opmode, only_opmode_output_grade_defines,     bool(no),
+    help("output-grade-defines", [
+        "Print to standard output the flags that are passed to the",
+        "C compiler to define the macros whose values specify the",
+        "compilation grade."])).
+optdb(oc_opmode, only_opmode_output_csharp_compiler,   bool(no),
+    help("output-csharp-compiler", [
+        "Print to standard output the command used to invoke the C#",
+        "compiler."])).
+optdb(oc_opmode, only_opmode_output_csharp_compiler_type, bool(no),
+    help("output-csharp-compiler-type", [
+        "Print the C# compiler type to the standard output."])).
+optdb(oc_opmode, only_opmode_output_target_arch,       bool(no),
+    help("output-target-arch", [
+        "Print the target architecture to the standard output."])).
+optdb(oc_opmode, only_opmode_output_java_class_dir,    bool(no),
+    alt_help("output-class-dir", pos_sep_lines, ["output-class-directory",
+            "output-java-class-dir", "output-java-class-directory"], [
+        "Print to standard output the name of the directory in which",
+        "generated Java class files will be placed."])).
+optdb(oc_opmode, only_opmode_output_link_command,      bool(no),
+    help("output-link-command", [
+        "Print to standard output the command used to link executables."])).
+optdb(oc_opmode, only_opmode_output_shared_lib_link_command, bool(no),
+    help("output-shared-lib-link-command", [
+        "Print to standard output the command used to link",
+        "shared libraries"])).
+optdb(oc_opmode, only_opmode_output_library_link_flags, bool(no),
+    help("output-library-link-flags", [
+        "Print to standard output the flags that are passed to linker",
+        "in order to link against the current set of libraries.",
+        "This includes the standard library, as well as any other",
+        "libraries specified via the --ml option."])).
 
 %---------------------------------------------------------------------------%
 
@@ -2332,6 +2479,22 @@ optdef(oc_dev_ctrl, error_output_suffix,                 string("")).
 optdef(oc_dev_ctrl, inference_output_suffix,             string("")).
 optdef(oc_dev_ctrl, progress_output_suffix,              string("")).
 optdef(oc_dev_ctrl, recompile_output_suffix,             string("")).
+
+optdef(oc_opmode, generate_module_order,                bool(no)).
+optdef(oc_opmode, compile_to_shared_lib,                bool(no)).
+
+optdb(oc_opmode, generate_module_order,                bool(no),
+    help("generate-module-order", [
+        "Output the strongly connected components of the module",
+        "dependency graph in top-down order to `<module>.order'.",
+        "Effective only if --generate-dependencies is also specified."])).
+optdb(oc_opmode, compile_to_shared_lib,                bool(no),
+    % XXX This is NOT an opmode option, because it is NOT mutually exclusive
+    % with the others.
+    % XXX Improve this documentation.
+    priv_help("compile-to-shared-lib", [
+        "This option is intended only for use by the debugger's",
+        "interactive query facility."])).
 
 optdef(oc_dev_ctrl,   smart_recompilation,              bool(no)).
 optdef(oc_internal,   generate_item_version_numbers,    bool(no)).
@@ -3339,10 +3502,10 @@ long_table("generate-dependency-file",
     only_opmode_generate_dependency_file).
 long_table("generate-dependencies",  only_opmode_generate_dependencies).
 long_table("generate-dependencies-ints",
-                                    only_opmode_generate_dependencies_ints).
-long_table("generate-module-order",    generate_module_order).
+                                     only_opmode_generate_dependencies_ints).
+long_table("generate-module-order",   generate_module_order).
 long_table("generate-standalone-interface",
-    generate_standalone_interface).
+                                     only_opmode_generate_standalone_interface).
 long_table("make-short-interface",   only_opmode_make_short_interface).
 long_table("make-short-int",         only_opmode_make_short_interface).
 long_table("make-interface",         only_opmode_make_interface).

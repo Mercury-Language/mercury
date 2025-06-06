@@ -789,12 +789,10 @@ check_for_incompatibilities(Globals, OpMode, !Specs) :-
         true
     ),
 
-    globals.lookup_maybe_string_option(Globals,
-        generate_standalone_interface, MaybeStandaloneInt),
     globals.lookup_bool_option(Globals,
         extra_initialization_functions, ExtraInitFunctions),
     ( if
-        MaybeStandaloneInt = maybe.yes(_),
+        OpMode = opm_top_generate_standalone_interface(_),
         ExtraInitFunctions = bool.yes
     then
         ExtraInitsSpec =
