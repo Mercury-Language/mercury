@@ -673,7 +673,7 @@ maybe_read_experimental_complexity_file(ErrorStream, !HLDS, !IO) :-
 %       ;
 %           RecordTermSizes = no
 %       )
-            true
+        true
     else
         complexity.read_spec_file(FileName, MaybeNumProcMap, !IO),
         (
