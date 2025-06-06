@@ -604,7 +604,7 @@ EOF
         $BOOTSTRAP_MC \
             --verbose \
             $link_static_opt conftest \
-            --unused-statevar-warn-2025-05-16 \
+            --allow-non-contiguity-for check_int64,preferred_switch_var \
             --allow-ho-insts-as-modes \
             --no-ssdb \
             </dev/null >&AS_MESSAGE_LOG_FD 2>&1 &&

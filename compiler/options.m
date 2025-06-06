@@ -1420,15 +1420,15 @@ option_defaults(Opt, Data) :-
 :- mode optdef(in, out, out) is multi.
 :- mode optdef(out, out, out) is multi.
 
-/*
-:- pred opt_db(option_category, option, option_data, help).
-% The switch on the option should eventually be complete,
-% making the first mode det.
-:- mode opt_db(out, in, out, out) is semidet.
-:- mode opt_db(in, out, out, out) is multi.
-:- mode opt_db(out, out, out, out) is multi.
-:- pragma consider_used(pred(opt_db/4)).
-*/
+:- pred optdb(option_category, option, option_data, help).
+% XXX The switches on the first two arguments should eventually be complete,
+% making the first mode det, and the second multi.
+:- mode optdb(out, in, out, out) is semidet.
+:- mode optdb(in, out, out, out) is nondet.
+:- mode optdb(out, out, out, out) is multi.
+:- pragma consider_used(pred(optdb/4)).
+
+%---------------------------------------------------------------------------%
 
     % Warning and information-request options.
     %
@@ -1456,7 +1456,8 @@ option_defaults(Opt, Data) :-
 
 %---------------------%
 
-    % Warnings about module-level issues.
+% Warnings about module-level issues.
+
 optdef(oc_warn_dodgy, warn_nothing_exported,               bool(yes)).
 optdef(oc_warn_dodgy, warn_unused_imports,                 bool(no)).
 optdef(oc_warn_dodgy, warn_unused_interface_imports,       bool(yes)).
@@ -1464,7 +1465,34 @@ optdef(oc_warn_dodgy, warn_interface_imports,              bool(yes)).
 optdef(oc_warn_dodgy, warn_interface_imports_in_parents,   bool(no)).
 optdef(oc_warn_dodgy, warn_stdlib_shadowing,               bool(yes)).
 
-    % Warnings about goal-level issues.
+optdb(oc_warn_dodgy, warn_nothing_exported,               bool(yes),
+    help("no-warn-nothing-exported", [
+        "Do not warn about modules which export nothing."])).
+optdb(oc_warn_dodgy, warn_unused_imports,                 bool(no),
+    help("warn-unused-imports", [
+        "Warn about modules that are imported but not used."])).
+optdb(oc_warn_dodgy, warn_unused_interface_imports,       bool(yes),
+    % Not documented because its relationship with --warn-unused-imports
+    % is too complicated for users (and maybe even developers ...).
+    priv_help("warn-unused-interface-imports", [
+        "Warn about modules that are imported in the interface",
+        "but not used there."])).
+optdb(oc_warn_dodgy, warn_interface_imports,              bool(yes),
+    help("no-warn-interface-imports", [
+        "Do not warn about modules imported in the interface, but",
+        "which are not used in the interface."])).
+optdb(oc_warn_dodgy, warn_interface_imports_in_parents,   bool(no),
+    help("warn-interface-imports-in-parents", [
+        "Warn about modules that are imported in the interface of",
+        "a parent module, but not used in the interface of that module."])).
+optdb(oc_warn_dodgy, warn_stdlib_shadowing,               bool(yes),
+        help("no-warn-stdlib-shadowing", [
+            "Do not generate warnings for module names that either duplicate",
+            "the name of a module in the Mercury standard library, or contain",
+            "a subsequence of name components that do so."])).
+
+% Warnings about goal-level issues.
+
 optdef(oc_warn_dodgy, warn_singleton_vars,                 bool(yes)).
 optdef(oc_warn_dodgy, warn_repeated_singleton_vars,        bool(yes)).
 optdef(oc_warn_dodgy, warn_unification_cannot_succeed,     bool(yes)).
@@ -1476,47 +1504,205 @@ optdef(oc_warn_dodgy, warn_suspicious_recursion,           bool(no)).
 optdef(oc_warn_dodgy, warn_unresolved_polymorphism,        bool(yes)).
 optdef(oc_warn_dodgy, warn_unused_args,                    bool(no)).
 
-    % Warnings about predicate determinism issues.
+optdb(oc_warn_dodgy, warn_singleton_vars,                 bool(yes),
+    alt_help("no-warn-singleton-vars", pos_sep_lines,
+            ["no-warn-singleton-variables"], [
+        "Do not warn about variables which only occur once, despite",
+        "their names not starting with an underscore."])).
+optdb(oc_warn_dodgy, warn_repeated_singleton_vars,        bool(yes),
+    alt_help("no-warn-repeated-singleton-vars", pos_sep_lines,
+            ["no-warn-repeated-singleton-variables"], [
+        "Do not warn about variables which occur more than once, despite",
+        "their names starting with an underscore."])).
+optdb(oc_warn_dodgy, warn_unification_cannot_succeed,     bool(yes),
+    help("no-warn-unification-cannot-succeed", [
+        "Disable warnings about unifications which cannot succeed."])).
+optdb(oc_warn_dodgy, warn_known_bad_format_calls,         bool(yes),
+    help("no-warn-known-bad-format-calls", [
+        "Do not warn about calls to string.format or io.format that",
+        "the compiler knows for sure contain mismatches between the",
+        "format string and the supplied values."])).
+optdb(oc_warn_dodgy, warn_obsolete,                       bool(yes),
+    help("no-warn-obsolete", [
+        "Do not warn about calls to predicates or functions that have",
+        "been marked as obsolete."])).
+optdb(oc_warn_dodgy, warn_overlapping_scopes,             bool(yes),
+    help("no-warn-overlapping-scopes", [
+        "Do not warn about variables which occur in overlapping scopes."])).
+optdb(oc_warn_dodgy, warn_suspected_occurs_check_failure, bool(yes),
+    help("no-warn-suspected-occurs-check-failure", [
+        "Do not warn about code that looks like it unifies a variable",
+        "with a term that contains that same variable. Such code cannot",
+        "succeed because it fails what is called the `occurs check'."])).
+optdb(oc_warn_dodgy, warn_suspicious_recursion,           bool(no),
+    help("warn-suspicious-recursion", [
+        "Warn about recursive calls which are likely to have problems,",
+        "such as leading to infinite recursion."])).
+optdb(oc_warn_dodgy, warn_unresolved_polymorphism,        bool(yes),
+    help("no-warn-unresolved-polymorphism", [
+        "Do not warn about unresolved polymorphism."])).
+optdb(oc_warn_dodgy, warn_unused_args,                    bool(no),
+    help("warn-unused-args", [
+        "Warn about predicate arguments which are not used."])).
+
+% Warnings about predicate determinism issues.
+
 optdef(oc_warn_dodgy, warn_det_decls_too_lax,              bool(yes)).
 optdef(oc_warn_dodgy, warn_inferred_erroneous,             bool(yes)).
 
-    % Warnings about predicate pragma issues.
+optdb(oc_warn_dodgy, warn_det_decls_too_lax,              bool(yes),
+    help("no-warn-det-decls-too-lax", [
+        "Do not warn about determinism declarations",
+        "which could have been stricter."])).
+optdb(oc_warn_dodgy, warn_inferred_erroneous,             bool(yes),
+    help("no-warn-inferred-erroneous", [
+        "Do not warn about procedures whose determinism is inferred",
+        "erroneous but whose determinism declarations are laxer."])).
+
+% Warnings about predicate pragma issues.
+
 optdef(oc_warn_dodgy, warn_ambiguous_pragma,               bool(yes)).
 optdef(oc_warn_dodgy, warn_potentially_ambiguous_pragma,   bool(no)).
 optdef(oc_warn_dodgy, warn_table_with_inline,              bool(yes)).
 
-    % Warnings about other predicate-level issues.
+optdb(oc_warn_dodgy, warn_ambiguous_pragma,               bool(yes),
+    help("no-warn-ambiguous-pragma", [
+        "Do not generate warnings for pragmas that do not specify whether",
+        "they are for a predicate or a function, even when there is both",
+        "a predicate and a function with the given name and arity."])).
+optdb(oc_warn_dodgy, warn_potentially_ambiguous_pragma,   bool(no),
+    help("warn-potentially-ambiguous-pragma", [
+        "Generate warnings for pragmas that do not specify whether they are",
+        "for a predicate or a function."])).
+optdb(oc_warn_dodgy, warn_table_with_inline,              bool(yes),
+    help("no-warn-table-with-inline", [
+        "Disable warnings about tabled procedures that also have",
+        "a `pragma inline' declaration."])).
+
+% Warnings about other predicate-level issues.
+
 optdef(oc_warn_dodgy, warn_stubs,                          bool(yes)).
 optdef(oc_warn_dodgy, warn_non_term_special_preds,         bool(yes)).
 optdef(oc_warn_dodgy, warn_non_stratification,             bool(no)).
 
-    % Warnings about issues with insts.
-optdef(oc_warn_dodgy, warn_insts_with_functors_without_type, bool(no)).
-optdef(oc_warn_dodgy, warn_insts_without_matching_type,    bool(yes)).
+optdb(oc_warn_dodgy, warn_stubs,                          bool(yes),
+    help("no-warn-stubs", [
+        "Disable warnings about procedures for which there are no",
+        "clauses. Note that this option only has any effect if",
+        "the `--allow-stubs' option (described in the ""Language",
+        "Semantics Options"" section below) is enabled."])).
+optdb(oc_warn_dodgy, warn_non_term_special_preds,         bool(yes),
+    help("no-warn-non-term-special-preds", [
+        "Do not warn about types that have user-defined equality or",
+        "comparison predicates that cannot be proved to terminate.",
+        "This option is only enabled when termination analysis is enabled.",
+        "(See the ""Termination Analysis Options"" section below)."])).
+optdb(oc_warn_dodgy, warn_non_stratification,             bool(no),
+    help("warn-non-stratification", [
+        "Warn about possible non-stratification of the predicates and/or",
+        "functions in the module.",
+        "Non-stratification occurs when a predicate or function can call",
+        "itself negatively through some path along its call graph."])).
 
-    % Warnings about issues with files.
+% Warnings about issues with insts.
+
+optdef(oc_warn_dodgy, warn_insts_without_matching_type,    bool(yes)).
+optdef(oc_warn_dodgy, warn_insts_with_functors_without_type, bool(no)).
+
+optdb(oc_warn_dodgy, warn_insts_without_matching_type,    bool(yes),
+    help("no-warn-insts-without-matching-type", [
+        "Do not warn about insts that are not consistent with any",
+        "of the types in scope."])).
+optdb(oc_warn_dodgy, warn_insts_with_functors_without_type, bool(no),
+    help("warn-insts-with-functors-without-type", [
+        "Warn about insts that do specify functors but do not specify",
+        "what type they are for."])).
+
+% Warnings about issues with files.
+
 optdef(oc_warn_dodgy, warn_undefined_options_variables,    bool(yes)).
 optdef(oc_warn_dodgy, warn_missing_opt_files,              bool(yes)).
 optdef(oc_warn_dodgy, warn_missing_trans_opt_deps,         bool(yes)).
 optdef(oc_warn_dodgy, warn_missing_trans_opt_files,        bool(no)).
+
+optdb(oc_warn_dodgy, warn_undefined_options_variables,    bool(yes),
+    alt_help("no-warn-undefined-options-vars", pos_sep_lines,
+            ["no-warn-undefined-options-variables"], [
+        "Do not warn about references to undefined variables in",
+        "options files with `--make'."])).
+optdb(oc_warn_dodgy, warn_missing_opt_files,              bool(yes),
+    help("no-warn-missing-opt-files", [
+        "Disable warnings about `.opt' files which cannot be opened."])).
+optdb(oc_warn_dodgy, warn_missing_trans_opt_deps,         bool(yes),
+    help("warn-missing-trans-opt-files", [
+        "Enable warnings about `.trans_opt' files which cannot",
+        "be opened."])).
+optdb(oc_warn_dodgy, warn_missing_trans_opt_files,        bool(no),
+    help("no-warn-missing-trans-opt-deps", [
+        "Disable warnings produced when the information required",
+        "to allow `.trans_opt' files to be read when creating other",
+        "`.trans_opt' files has been lost. The information can be",
+        "recreated by running `mmake <mainmodule>.depend'"])).
 
 %---------------------%
 
 optdef(oc_warn_perf,  warn_accumulator_swaps,              bool(yes)).
 optdef(oc_warn_perf,  warn_unneeded_final_statevars,       bool(yes)).
 optdef(oc_warn_perf,  warn_unneeded_final_statevars_lambda, bool(yes)).
-optdef(oc_warn_perf,  warn_non_tail_recursion_mutual,      bool(no)).
-optdef(oc_warn_perf,  warn_non_tail_recursion_self,        bool(no)).
 optdef(oc_warn_perf,  warn_obvious_non_tail_recursion,     bool(no)).
+optdef(oc_warn_perf,  warn_non_tail_recursion_self,        bool(no)).
+optdef(oc_warn_perf,  warn_non_tail_recursion_mutual,      bool(no)).
 optdef(oc_warn_perf_c, warn_non_tail_recursion,          maybe_string_special).
+
+optdb(oc_warn_perf,  warn_accumulator_swaps,              bool(yes),
+    help("no-warn-accumulator-swaps", [
+        "Do not warn about argument order rearrangement caused",
+        "by `--introduce-accumulators'."])).
+optdb(oc_warn_perf,  warn_unneeded_final_statevars,       bool(yes),
+    help("no-warn-unneeded-final-statevars", [
+        "Do not warn about !:S state variables in clause heads",
+        "whose value will always be the same as !.S."])).
+optdb(oc_warn_perf,  warn_unneeded_final_statevars_lambda, bool(yes),
+    help("no-warn-unneeded-final-statevars-lambda", [
+        "Do not warn about !:S state variables in lambda expressions",
+        "whose value will always be the same as !.S."])).
+optdb(oc_warn_perf,  warn_obvious_non_tail_recursion,     bool(no),
+    help("warn-obvious-non-tail-recursion", [
+        "Warn about recursive calls that are not tail calls",
+        "even if they obviously cannot be tail calls,",
+        "because they are followed by other recursive calls."])).
+% These are the internal options that implement
+% --warn-non-tail-recursion.
+optdb(oc_warn_perf,  warn_non_tail_recursion_self,        bool(no),
+    priv_help("warn-non-tail-recursion-self", [
+        "Warn about any self recursive calls that are not tail
+        recursive."])).
+optdb(oc_warn_perf,  warn_non_tail_recursion_mutual,      bool(no),
+    priv_help("warn-non-tail-recursion-mutual", [
+        "Warn about any mutually recursive calls that are not",
+        "tail recursive."])).
+optdb(oc_warn_perf_c, warn_non_tail_recursion,          maybe_string_special,
+    help("warn-non-tail-recursion <type>", [
+        "Warn about recursive calls that are not tail calls,",
+        "<type> may be ""self"", ""self-and-mutual"" or ""none""."])).
 
 %---------------------%
 
-    % Warnings about dead code.
+% Warnings about dead code.
+
 optdef(oc_warn_style, warn_dead_preds,                     bool(no)).
 optdef(oc_warn_style, warn_dead_procs,                     bool(no)).
 
-    % Warnings about simple style mistakes.
+optdb(oc_warn_style, warn_dead_preds,                     bool(no),
+    help("warn-dead-preds", [
+        "Warn about predicates that have no procedures which are",
+        "ever called."])).
+optdb(oc_warn_style, warn_dead_procs,                     bool(no),
+    help("warn-dead-procs", [
+        "Warn about procedures which are never called."])).
+
+% Warnings about simple style mistakes.
+
 optdef(oc_warn_style, warn_simple_code,                    bool(yes)).
 optdef(oc_warn_style, inform_ite_instead_of_switch,        bool(no)).
 optdef(oc_warn_style, inform_incomplete_switch,            bool(no)).
@@ -1524,41 +1710,178 @@ optdef(oc_warn_style_c, inform_incomplete_switch_threshold, int(0)).
 optdef(oc_warn_style, warn_duplicate_calls,                bool(no)).
 optdef(oc_warn_style, warn_redundant_coerce,               bool(yes)).
 
-    % Warnings about state vars.
+optdb(oc_warn_style, warn_simple_code,                    bool(yes),
+    help("no-warn-simple-code", [
+        "Disable warnings about constructs which are so",
+        "simple that they are likely to be programming errors."])).
+optdb(oc_warn_style, inform_ite_instead_of_switch,        bool(no),
+    help("inform-ite-instead-of-switch", [
+        "Generate informational messages for if-then-elses that could be",
+        "replaced by switches."])).
+optdb(oc_warn_style, inform_incomplete_switch,            bool(no),
+    help("inform-incomplete-switch", [
+        "Generate informational messages for switches that do not cover",
+        "all the function symbols that the switched-on variable could be",
+        "bound to."])).
+optdb(oc_warn_style_c, inform_incomplete_switch_threshold, int(0),
+    help("inform-incomplete-switch-threshold <N>", [
+        "Have the --inform-incomplete-switch option generate its messages",
+        "only for switches that *do* cover at least N% of the function",
+        "symbols that the switched-on variable could be bound to."])).
+optdb(oc_warn_style, warn_duplicate_calls,                bool(no),
+    help("warn-duplicate-calls", [
+        "Warn about multiple calls to a predicate with the",
+        "same input arguments."])).
+optdb(oc_warn_style, warn_redundant_coerce,               bool(yes),
+    help("no-warn-redundant-coerce", [
+        "Do not warn about redundant type conversions."])).
+
+% Warnings about state vars.
+
 optdef(oc_warn_style, warn_state_var_shadowing,            bool(yes)).
 optdef(oc_warn_style, warn_unneeded_initial_statevars,     bool(yes)).
 optdef(oc_warn_style, warn_unneeded_initial_statevars_lambda, bool(yes)).
 
-    % Warnings about I/O predicates.
+optdb(oc_warn_style, warn_state_var_shadowing,            bool(yes),
+    help("no-warn-state-var-shadowing", [
+        "Do not warn about one state variable shadowing another."])).
+optdb(oc_warn_style, warn_unneeded_initial_statevars,     bool(yes),
+    help("no-warn-unneeded-initial-statevars", [
+        "Do not warn about state variables in clause heads",
+        "that could be ordinary variables."])).
+optdb(oc_warn_style, warn_unneeded_initial_statevars_lambda, bool(yes),
+    help("no-warn-unneeded-initial-statevars-lambda", [
+        "Do not warn about state variables in lambda expressions",
+        "that could be ordinary variables."])).
+
+% Warnings about I/O predicates.
+
 optdef(oc_warn_style, warn_implicit_stream_calls,          bool(no)).
 optdef(oc_warn_style, warn_unknown_format_calls,           bool(no)).
 
-    % Warnings about predicate level issues.
+optdb(oc_warn_style, warn_implicit_stream_calls,          bool(no),
+    help("warn-implicit-stream-calls", [
+        "Warn about calls to I/O predicates that could take explicit",
+        "stream arguments, but do not do so."])).
+optdb(oc_warn_style, warn_unknown_format_calls,           bool(no),
+    help("warn-unknown-format-calls", [
+        "Warn about calls to string.format, io.format or",
+        "stream.string_writer.format for which the compiler cannot tell",
+        "whether there are any mismatches between the format string and",
+        "the supplied values."])).
+
+% Warnings about predicate level issues.
+
 optdef(oc_warn_style, warn_can_fail_function,              bool(no)).
 optdef(oc_warn_style, warn_unneeded_mode_specific_clause,  bool(yes)).
 
-    % Warnings about missing order.
+optdb(oc_warn_style, warn_can_fail_function,              bool(no),
+    help("-warn-can-fail-function", [
+        "Warn about functions that can fail."])).
+optdb(oc_warn_style, warn_unneeded_mode_specific_clause,  bool(yes),
+    help("no-warn-unneeded-mode-specific-clause", [
+        "Do not warn about clauses that needlessly specify",
+        "the modes of their arguments."])).
+
+% Warnings about missing order.
+
 optdef(oc_warn_style, warn_unsorted_import_blocks,         bool(no)).
 optdef(oc_warn_style, warn_inconsistent_pred_order_clauses, bool(no)).
 optdef(oc_warn_style, warn_inconsistent_pred_order_foreign_procs, bool(no)).
 
-    % Warnings about missing contiguity.
-optdef(oc_warn_style, warn_non_contiguous_clauses,         bool(no)).
+optdb(oc_warn_style, warn_unsorted_import_blocks,         bool(no),
+    alt_help("warn-unsorted-import-block", pos_sep_lines,
+            ["warn-unsorted-import-blocks"], [
+        "Warn about two import and/or use declarations on the same line,",
+        "or if a sequence of such declarations on consecutive lines",
+        "are not sorted on module name."])).
+optdb(oc_warn_style, warn_inconsistent_pred_order_clauses, bool(no),
+    help("warn-inconsistent-pred-order-clauses", [
+        "Generate a warning if the order of the definitions does not match",
+        "the order of the declarations for either the exported predicates",
+        "and functions of the module, or for the nonexported predicates",
+        "and functions of the module. Applies for definitions by",
+        "Mercury clauses."])).
+optdb(oc_warn_style, warn_inconsistent_pred_order_foreign_procs, bool(no),
+    help("warn-inconsistent-pred-order-foreign-procs", [
+        "Generate a warning if the order of the definitions does not match",
+        "the order of the declarations for either the exported predicates",
+        "and functions of the module, or for the nonexported predicates",
+        "and functions of the module. Applies for definitions by either",
+        "Mercury clauses or foreign_proc pragmas."])).
+
+% Warnings about missing contiguity.
+
 optdef(oc_warn_style, warn_non_contiguous_decls,           bool(yes)).
+optdef(oc_warn_style, warn_non_contiguous_clauses,         bool(no)).
 optdef(oc_warn_style, warn_non_contiguous_foreign_procs,   bool(no)).
 optdef(oc_warn_style_c, allow_non_contiguity_for, accumulating([])).
 
-    % Warnings about foreign code.
+optdb(oc_warn_style, warn_non_contiguous_decls,           bool(yes),
+    help("no-warn-non-contiguous-decls", [
+        "Do not generate a warning if the mode declarations of a",
+        "predicate or function don't all immediately follow its",
+        "predicate or function declaration."])).
+optdb(oc_warn_style, warn_non_contiguous_clauses,         bool(no),
+    help("no-warn-non-contiguous-clauses", [
+        "Do not generate a warning if the clauses of a predicate or",
+        "function are not contiguous."])).
+optdb(oc_warn_style, warn_non_contiguous_foreign_procs,   bool(no),
+    help("warn-non-contiguous-foreign-procs", [
+        "Generate a warning if the clauses and foreign_procs of a",
+        "predicate or function are not contiguous."])).
+optdb(oc_warn_style_c, allow_non_contiguity_for, accumulating([]),
+    help("allow-non-contiguity-for <name1,name2,...>", [
+        "Allow the clauses (or, with --warn-non-contiguous-foreign-procs,",
+        "the clauses and/or foreign_proc pragmas) of the named predicates",
+        "and/or functions to be intermingled with each other, but not",
+        "with those or any other predicates or functions. This option",
+        "may be specified more than once, with each option value",
+        "specifying a distinct set of predicates and/or function names",
+        "that may be intermingled. Each name must uniquely specify",
+        "a predicate or a function."])).
+
+% Warnings about foreign code.
+
 optdef(oc_warn_style, warn_suspicious_foreign_code,        bool(no)).
 optdef(oc_warn_style, warn_suspicious_foreign_procs,       bool(no)).
 
+optdb(oc_warn_style, warn_suspicious_foreign_code,        bool(no),
+    help("warn-suspicious-foreign-code", [
+        "Warn about possible errors in the bodies of foreign code",
+        "pragmas."])).
+optdb(oc_warn_style, warn_suspicious_foreign_procs,       bool(no),
+    help("warn-suspicious-foreign-procs", [
+        "Warn about possible errors in the bodies of foreign",
+        "procedures."])).
+
 %---------------------%
 
-optdef(oc_warn_ctrl,  inhibit_style_warnings,              bool_special).
 optdef(oc_warn_ctrl,  inhibit_warnings,                    bool_special).
+optdef(oc_warn_ctrl,  inhibit_style_warnings,              bool_special).
 optdef(oc_warn_ctrl,  warn_only_one_format_string_error,   bool(yes)).
 optdef(oc_warn_ctrl,  warn_smart_recompilation,            bool(yes)).
 optdef(oc_warn_ctrl,  warn_up_to_date,                     bool(yes)).
+
+optdb(oc_warn_ctrl,  inhibit_warnings,                    bool_special,
+    short_help('w', "inhibit-warnings", [],
+        ["Disable all warning messages."])).
+optdb(oc_warn_ctrl,  inhibit_style_warnings,              bool_special,
+    help("inhibit-style-warnings",
+        ["Disable all warning messages about programming style."])).
+optdb(oc_warn_ctrl,  warn_only_one_format_string_error,   bool(yes),
+    help("no-warn-only-one-format-string-error", [
+        "If a format string has more one than mismatch with the supplied,",
+        "values, generate a warning for all mismatches, not just the first.",
+        "The later mismatches may be avalanche errors caused by earlier",
+        "mismatches."])).
+optdb(oc_warn_ctrl,  warn_smart_recompilation,            bool(yes),
+    help("no-warn-smart-recompilation", [
+        "Disable warnings from the smart recompilation system."])).
+optdb(oc_warn_ctrl,  warn_up_to_date,                     bool(yes),
+    help("no-warn-up-to-date", [
+        "Do not warn if targets specified on the command line",
+        "with `--make' are already up-to-date."])).
 
 optdef(oc_inform,     inform_inferred,                     bool_special).
 optdef(oc_inform,     inform_inferred_types,               bool(yes)).
@@ -1566,12 +1889,78 @@ optdef(oc_inform,     inform_inferred_modes,               bool(yes)).
 optdef(oc_inform,     inform_incomplete_color_scheme,      bool(no)).
 optdef(oc_inform,     inform_suboptimal_packing,           bool(no)).
 
-optdef(oc_warn_halt,  halt_at_auto_parallel_failure,       bool(no)).
-optdef(oc_warn_halt,  halt_at_invalid_interface,           bool(yes)).
-optdef(oc_warn_halt,  halt_at_syntax_errors,               bool(no)).
+optdb(oc_inform,     inform_inferred,                     bool_special,
+    help("no-inform-inferred", [
+        "Do not generate messages about inferred types or modes."])).
+optdb(oc_inform,     inform_inferred_types,               bool(yes),
+    help("no-inform-inferred-types", [
+        "Do not generate messages about inferred types."])).
+optdb(oc_inform,     inform_inferred_modes,               bool(yes),
+    help("no-inform-inferred-modes", [
+        "Do not generate messages about inferred modes."])).
+optdb(oc_inform,     inform_incomplete_color_scheme,      bool(no),
+    priv_help("inform-incomplete-color-scheme", [
+        "Report if the argument if either the value of the",
+        "--color-scheme option, or the value of MERCURY_COLOR_SCHEME",
+        "environment variable, does not specify a color for some role."])).
+optdb(oc_inform,     inform_suboptimal_packing,           bool(no),
+    help("inform-suboptimal-packing", [
+        "Generate messages if the arguments of a data constructor",
+        "could be packed more tightly if they were reordered."])).
+
 optdef(oc_warn_halt,  halt_at_warn,                        bool(no)).
 optdef(oc_warn_halt,  halt_at_warn_make_int,               bool(no)).
 optdef(oc_warn_halt,  halt_at_warn_make_opt,               bool(no)).
+optdef(oc_warn_halt,  halt_at_syntax_errors,               bool(no)).
+optdef(oc_warn_halt,  halt_at_invalid_interface,           bool(yes)).
+optdef(oc_warn_halt,  halt_at_auto_parallel_failure,       bool(no)).
+
+optdb(oc_warn_halt,  halt_at_warn,                        bool(no),
+    help("halt-at-warn", [
+        "This option causes the compiler to treat all warnings",
+        "as if they were errors when generating target code.",
+        "This means that if the compiler issues any warning,",
+        "it will not generate target code; instead, it will",
+        "return a non-zero exit status."])).
+optdb(oc_warn_halt,  halt_at_warn_make_int,               bool(no),
+    help("halt-at-warn-make-interface", [
+        "This option causes the compiler to treat all warnings",
+        "as if they were errors when generating an interface file",
+        "(a .int, .int0, .int2 or .int3 file). This means that",
+        "if the compiler issues any warnings at that time,",
+        "it will not generate the interface file; instead,",
+        "it will return a non-zero exit status."])).
+optdb(oc_warn_halt,  halt_at_warn_make_opt,               bool(no),
+    help("halt-at-warn-make-opt", [
+        "This option causes the compiler to treat all warnings",
+        "as if they were errors when generating an optimization file",
+        "(.opt or .trans_opt file.) This means that if the compiler",
+        "issues any warnings at that time, it will not generate the",
+        "optimization file; instead, it will return a non-zero",
+        "exit status."])).
+optdb(oc_warn_halt,  halt_at_syntax_errors,               bool(no),
+    help("halt-at-syntax-errors", [
+        "This option causes the compiler to halt immediately",
+        "after syntax checking and not do any semantic checking",
+        "if it finds any syntax errors in the program."])).
+optdb(oc_warn_halt,  halt_at_invalid_interface,           bool(yes),
+    % --halt-at-invalid-interface is a temporary developer-only option.
+    help("no-halt-at-invalid-interface", [
+        "This option operates when the compiler is invoked with the",
+        "--make--interface option to generate .int and .int2 files",
+        "for one or more modules. In its default setting,",
+        "--halt-at-invalid-interface, it causes the compiler to check",
+        "the consistency of those parts of each of those modules",
+        "that are intended to end up in the .int and .int2 files.",
+        "If these checks find any problems, the compiler will stop",
+        "without generating those files after printing an error message",
+        "for each problem. Users can prevent this behavior,",
+        "and thus allow the generation of invalid interface files,",
+        "by specifying --no-halt-at-invalid-interface."])).
+optdb(oc_warn_halt,  halt_at_auto_parallel_failure,       bool(no),
+    priv_help("halt-at-auto-parallel-failure", [
+        "This option causes the compiler to halt if it cannot perform",
+        "an auto-parallelization requested by a feedback file."])).
 
 optdef(oc_dev_debug,  print_error_spec_id,                 bool(no)).
 optdef(oc_dev_debug,  inform_ignored_pragma_errors,        bool(no)).
@@ -8092,7 +8481,8 @@ options_help_misc = Section :-
 %
 
 :- type help
-    --->    gen_help(
+    --->    no_help
+    ;       gen_help(
                 % The name of the option, minus the "--" prefix, but
                 % including any "no-" prefix. If the option takes an argument,
                 % then the option name should be followed by " <argdesc>".
@@ -8301,6 +8691,11 @@ output_help_message(Stream, What, OptHelp, !IO) :-
     % the option may be relevant to non-developers.
     OptNameLineMaxLen = 71,
     (
+        OptHelp = no_help,
+        PublicOrPrivate = help_private,
+        OptNameLines = [],
+        DescLines = []
+    ;
         OptHelp = gen_help(LongName, AltNamePos, AltLongNames, ShortNames,
             PublicOrPrivate, DescLines),
         LongNames = [LongName | AltLongNames],
