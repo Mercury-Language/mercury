@@ -510,8 +510,8 @@
     ;       show_all_type_repns
     ;       show_developer_type_repns
     ;       show_dependency_graph
+    ;       show_imports_graph
     ;       show_pred_movability
-    ;       imports_graph
     ;       trans_opt_deps_spec
     ;       dump_trace_counts
     ;       dump_hlds
@@ -536,9 +536,9 @@
     ;       compute_goal_modes
     ;       benchmark_modes
     ;       benchmark_modes_repeat
-    ;       unneeded_code_debug
-    ;       unneeded_code_debug_pred_name
-    ;       common_struct_preds
+    ;       debug_unneeded_code
+    ;       debug_unneeded_code_pred_name
+    ;       debug_common_struct_preds
 
     % Language semantics options
     ;       reorder_conj
@@ -1355,8 +1355,8 @@ option_defaults(Opt, Data) :-
     ;       oc_verbosity
             % Options that users can use to control how many progress updates
             % they want the compiler to give them.
-    ;       oc_verb_int
-            % Internal-use-only kinds of oc_verbosity options.
+    ;       oc_verb_dev
+            % Developer-only kinds of oc_verbosity options.
     ;       oc_verb_dbg
             % Oc_verbosity options intended only for use by developers
             % to debug the compiler.
@@ -1378,12 +1378,19 @@ option_defaults(Opt, Data) :-
             % Options that control trace goals.
     ;       oc_mdprof
             % Options that control deep profiling.
-    ;       oc_aux_output
+    ;       oc_output_mod
             % Options that ask the compiler to modify some aspect
             % of the generated target code.
-            % XXX This name is non-descriptive.
-            % XXX We now also use it for things that the above description
-            % does not cover. We should put them into other categories.
+    ;       oc_output_dev
+            % Developer-only ptions that ask the compiler to modify some aspect
+            % of the generated target code.
+    ;       oc_file_req
+            % Options that request the compiler to generate files
+            % containing information derived from the module being compiled.
+    ;       oc_make
+            % Options controlling mmc --make.
+    ;       oc_make_int
+            % Internal-use-only options controlling mmc --make.
     ;       oc_semantics
             % Options that specify which semantics variant to use.
     ;       oc_infer
@@ -1408,6 +1415,9 @@ option_defaults(Opt, Data) :-
             % XXX Subdidivde as with oc_opt.
     ;       oc_opt_ctrl
             % Options that control optimization levels.
+    ;       oc_trans_opt
+            % Options that control the operation of transitive intermodule
+            % optimization.
     ;       oc_target_comp
             % Options that control how the target language files we generate
             % are further compiled.
@@ -2077,12 +2087,15 @@ optdb(oc_diag_int,  set_color_hint,                    string(""), no_help).
 optdef(oc_verbosity, verbose,                           bool(no)).
 optdef(oc_verbosity, very_verbose,                      bool(no)).
 optdef(oc_verbosity, statistics,                        bool(no)).
-optdef(oc_verb_int,  detailed_statistics,               bool(no)).
+optdef(oc_verb_dev,  detailed_statistics,               bool(no)).
+optdef(oc_verb_dev,  benchmark_modes,                   bool(no)).
+optdef(oc_verb_dev,  benchmark_modes_repeat,            int(1)).
 optdef(oc_verbosity, verbose_make,                      bool(yes)).
 optdef(oc_verbosity, output_compile_error_lines,        maybe_int(yes(100))).
 optdef(oc_verbosity, verbose_recompilation,             bool(no)).
 optdef(oc_verbosity, find_all_recompilation_reasons,    bool(no)).
 optdef(oc_verbosity, verbose_commands,                  bool(no)).
+optdef(oc_verbosity, show_pred_movability,              accumulating([])).
 
 optdb(oc_verbosity, verbose,                           bool(no),
     short_help('v', "verbose", [], [
@@ -2095,13 +2108,21 @@ optdb(oc_verbosity, statistics,                        bool(no),
         "Output messages about the compiler's time/space usage.",
         "At the moment this option implies `--no-trad-passes', so you get",
         "information at the boundaries between phases of the compiler."])).
-optdb(oc_verb_int,  detailed_statistics,               bool(no),
+optdb(oc_verb_dev,  detailed_statistics,               bool(no),
     % The only sensible way to use --detailed-statistics, based on
     % --very-verbose, is implemented automatically in handle_options,
     % so users shouldn't need to be aware of it.
     priv_help("detailed-statistics", [
         "Output more detailed messages about the compiler's",
         "time/space usage."])).
+optdb(oc_verb_dev,  benchmark_modes,                   bool(no),
+    priv_help("benchmark-modes", [
+        "Benchmark mode analysis, including its experimental version,",
+        "if it is enabled."])).
+optdb(oc_verb_dev,  benchmark_modes_repeat,            int(1),
+    priv_help("benchmark-modes-repeat", [
+        "The number of times to execute mode analysis, if",
+        "--benchmark-modes is enabled."])).
 optdb(oc_verbosity, verbose_make,                      bool(yes),
     help("no-verbose-make", [
         "Disable messages about the progress of builds using",
@@ -2124,6 +2145,15 @@ optdb(oc_verbosity, verbose_commands,                  bool(no),
     help("verbose-commands", [
         "Output each external command before it is run.",
         "Note that some commands will only be printed with `--verbose'."])).
+optdb(oc_verbosity, show_pred_movability,              accumulating([]),
+    help("show-pred-movability <pred_or_func_name>", [
+        "Write out a short report on the effect of moving the code of",
+        "the named predicate or function (or the named several predicates",
+        "and/or functions, if the option is given several times)",
+        "to a new module. This includes listing the other predicates",
+        "and/or functions that would have to be moved with them, and",
+        "whether the move would cause unwanted coupling between",
+        "the new module and the old."])).
 
 optdef(oc_verb_dbg,  inform_ignored_pragma_errors,        bool(no)).
 optdef(oc_verb_dbg,  inform_generated_type_spec_pragmas,  bool(no)).
@@ -2144,6 +2174,7 @@ optdef(oc_verb_dbg,  debug_modes_goal_ids,              bool(yes)).
 optdef(oc_verb_dbg,  debug_modes_pred_id,               int(-1)).
 optdef(oc_verb_dbg,  debug_mode_constraints,            bool(no)).
 optdef(oc_verb_dbg,  debug_det,                         bool(no)).
+optdef(oc_verb_dbg,  debug_common_struct_preds,         string("")).
 optdef(oc_verb_dbg,  debug_closure,                     bool(no)).
 optdef(oc_verb_dbg,  debug_term,                        bool(no)).
 optdef(oc_verb_dbg,  debug_dead_proc_elim,              bool(no)).
@@ -2151,6 +2182,8 @@ optdef(oc_verb_dbg,  debug_higher_order_specialization, bool(no)).
 optdef(oc_verb_dbg,  debug_pd,                          bool(no)).
 optdef(oc_verb_dbg,  debug_indirect_reuse,              bool(no)).
 optdef(oc_verb_dbg,  debug_trail_usage,                 bool(no)).
+optdef(oc_verb_dbg,  debug_unneeded_code,               bool(no)).
+optdef(oc_verb_dbg,  debug_unneeded_code_pred_name,     accumulating([])).
 optdef(oc_verb_dbg,  debug_mm_tabling_analysis,         bool(no)).
 optdef(oc_verb_dbg,  debug_dep_par_conj,                accumulating([])).
 optdef(oc_verb_dbg,  debug_liveness,                    int(-1)).
@@ -2233,6 +2266,10 @@ optdb(oc_verb_dbg,  debug_mode_constraints,             bool(no),
 optdb(oc_verb_dbg,  debug_det,                          bool(no),
     alt_help("debug-det", pos_sep_lines, ["debug-determinism"], [
         "Output detailed debugging traces of determinism analysis."])).
+optdb(oc_verb_dbg,  debug_common_struct_preds,          string(""),
+    priv_help("debug-common-struct-preds <predids>", [
+        "Limit common struct optimization to the preds with",
+        "the given ids."])).
 optdb(oc_verb_dbg,  debug_closure,                      bool(no),
     % This can be make public together with the '--analyse-closures' option.
     priv_help("debug-closure", [
@@ -2261,6 +2298,14 @@ optdb(oc_verb_dbg,  debug_trail_usage,                  bool(no),
     help("debug-trail-usage", [
         "Output detailed debugging traces of the `--analyse-trail-usage'",
         "option."])).
+optdb(oc_verb_dbg,  debug_unneeded_code,                bool(no),
+    priv_help("unneeded-code-debug", [
+        "Print progress messages during the unneeded code elimination",
+        "passes."])).
+optdb(oc_verb_dbg,  debug_unneeded_code_pred_name,      accumulating([]),
+    priv_help("unneeded-code-debug-pred-name <predname>", [
+        "Print the definition of <predname> at the start of each pass",
+        "of the unneeded code elimination algorithm."])).
 optdb(oc_verb_dbg,  debug_mm_tabling_analysis,          bool(no), no_help).
 optdb(oc_verb_dbg,  debug_dep_par_conj,                 accumulating([]),
     priv_help("debug-dep-par-conj <n>", [
@@ -2301,6 +2346,8 @@ optdb(oc_verb_dbg,  debug_intermodule_analysis,         bool(no),
     % Opmode options. These are all mutually exclusive.
 
 optdef(oc_opmode, only_opmode_generate_source_file_mapping, bool(no)).
+optdef(oc_opmode, only_opmode_make,                     bool(no)).
+optdef(oc_opmode, only_opmode_invoked_by_mmc_make,      bool(no)).
 optdef(oc_opmode, only_opmode_generate_dependencies,    bool(no)).
 optdef(oc_opmode, only_opmode_generate_dependencies_ints, bool(no)).
 optdef(oc_opmode, only_opmode_generate_dependency_file, bool(no)).
@@ -2343,6 +2390,17 @@ optdb(oc_opmode, only_opmode_generate_source_file_mapping, bool(no),
         "for which the file name does not match the module name.",
         "If there are no such modules the mapping need not be",
         "generated."])).
+optdb(oc_opmode, only_opmode_make,                     bool(no),
+    short_help('m', "make", [], [
+        "Treat the non-option arguments to `mmc' as files to make,",
+        "rather than source files. Build or rebuild the specified files",
+        "if they do not exist or are not up-to-date.",
+        "Note that this option also enables `--use-subdirs'."])).
+optdb(oc_opmode, only_opmode_invoked_by_mmc_make,      bool(no),
+    priv_help("--invoked-by-mmc-make", [
+        "This option is only for internal use by the compiler.",
+        "`mmc --make' passes it as the first argument when",
+        "compiling a module."])).
 optdb(oc_opmode, only_opmode_generate_dependencies,    bool(no),
     % XXX This leaves out important details, such as .dv and .d files.
     short_help('M', "generate-dependencies", [], [
@@ -2511,7 +2569,7 @@ optdb(oc_mdb,     trace_level,                      string("default"),
         "of execution tracing.",
         "See the Debugging chapter of the Mercury User's Guide",
         "for details."])).
-optdb(oc_aux_output, exec_trace_tail_rec,              bool(no),
+optdb(oc_mdb,     exec_trace_tail_rec,              bool(no),
     help("exec-trace-tail-rec", [
         "Generate TAIL events for self-tail-recursive calls instead of",
         "EXIT events. This allows these recursive calls to reuse",
@@ -2612,7 +2670,147 @@ optdb(oc_mdprof, prof_optimized,                   bool(no),
 
 %---------------------------------------------------------------------------%
 
-    % Auxiliary output options.
+    % Options to control transitive intermodule optimization.
+
+optdef(oc_trans_opt, generate_module_order,           bool(no)).
+optdef(oc_trans_opt, trans_opt_deps_spec,             maybe_string(no)).
+
+optdb(oc_trans_opt, generate_module_order,            bool(no),
+    help("generate-module-order", [
+        "Output the strongly connected components of the module",
+        "dependency graph in top-down order to `<module>.order'.",
+        "Effective only if --generate-dependencies is also specified."])).
+optdb(oc_trans_opt, trans_opt_deps_spec,              maybe_string(no),
+    % This option is for developers only for now.
+    priv_help("trans-opt-deps-spec <filename>", [
+        "Specify a file to remove edges from the trans-opt dependency",
+        "graph."])).
+
+%---------------------------------------------------------------------------%
+
+    % Options that ask for small modifications to generated files.
+
+optdef(oc_output_mod, line_numbers,                     bool(no)).
+optdef(oc_output_mod, line_numbers_around_foreign_code, bool(yes)).
+optdef(oc_output_mod, line_numbers_for_c_headers,       bool(no)).
+optdef(oc_output_dev, type_repns_for_humans,            bool(no)).
+optdef(oc_output_dev, auto_comments,                    bool(no)).
+optdef(oc_output_dev, frameopt_comments,                bool(no)).
+
+optdb(oc_output_mod, line_numbers,                     bool(no),
+    short_help('n', "line-numbers", [], [
+        "Put source line numbers into the generated code.",
+        "The generated code may be in C (the usual case),",
+        "or in Mercury (with the option --convert-to-mercury)."])).
+optdb(oc_output_mod, line_numbers_around_foreign_code, bool(yes),
+    help("no-line-numbers-around-foreign-code", [
+        "Do not put source line numbers into the generated code",
+        "around inclusions of foreign language code."])).
+optdb(oc_output_mod, line_numbers_for_c_headers,       bool(no),
+    help("line-numbers-for-c-headers", [
+        "Put source line numbers in the generated C header files.",
+        "This can make it easier to track down any problems with",
+        "C code in foreign_decl pragmas, but may cause unnecessary",
+        "recompilations of other modules if any of these line numbers",
+        "changes (e.g. because the location of a predicate declaration",
+        "changes in the Mercury source file)."])).
+optdb(oc_output_dev, type_repns_for_humans,            bool(no),
+    % This option is for developers only.
+    priv_help("type-repns-for-humans", [
+        "Format type_repn items in automatically generated interface files",
+        "to be more easily read by humans."])).
+optdb(oc_output_dev, auto_comments,                    bool(no),
+    help("auto-comments", [
+        "Output comments in the generated target language file.",
+        "(The code may be easier to understand if you also",
+        "use the `--no-llds-optimize' option.)"])).
+optdb(oc_output_dev, frameopt_comments,                bool(no),
+    % This option is for developers only. Since it can include one C comment
+    % inside another, the resulting code is not guaranteed to be valid C.
+    priv_help("frameopt-comments", [
+        "Get frameopt.m to generate comments describing its operation.",
+        "(The code may be easier to understand if you also",
+        "use the `--no-llds-optimize' option.)"])).
+
+optdef(oc_file_req, show_definitions,                 bool(no)).
+optdef(oc_file_req, show_definition_line_counts,      bool(no)).
+optdef(oc_file_req, show_definition_extents,          bool(no)).
+optdef(oc_file_req, show_local_call_tree,             bool(no)).
+optdef(oc_file_req, show_local_type_repns,            bool(no)).
+optdef(oc_file_req, show_all_type_repns,              bool(no)).
+optdef(oc_file_req, show_developer_type_repns,        bool(no)).
+optdef(oc_file_req, show_dependency_graph,            bool(no)).
+optdef(oc_file_req, show_imports_graph,               bool(no)).
+
+optdb(oc_file_req, show_definitions,                 bool(no),
+    help("show-definitions", [
+        "Write out a list of the types, insts, modes, predicates, functions",
+        "typeclasses and instances defined in the module to",
+        "`<module>.defns'."])).
+optdb(oc_file_req, show_definition_line_counts,      bool(no),
+    help("show-definition-line-counts", [
+        "Write out a list of the predicates and functions defined in",
+        "the module, together with the names of the files containing them",
+        "and their approximate line counts, to `<module>.defn_line_counts'.",
+        "The list will be ordered on the names and arities of the",
+        "predicates and functions."])).
+optdb(oc_file_req, show_definition_extents,          bool(no),
+    help("show-definition-extents", [
+        "Write out a list of the predicates and functions defined in",
+        "the module, together with the approximate line numbers of their",
+        "first and last lines, to `<module>.defn_extents'.",
+        "The list will be ordered on the starting line numbers",
+        "of the predicates and functions."])).
+optdb(oc_file_req, show_local_call_tree,             bool(no),
+    help("show-local-call-tree", [
+        "Construct the local call tree of the predicates and functions",
+        "defined in the module. Each node of this tree is a local",
+        "predicate or function, and each node has edges linking it to the",
+        "nodes of the other local predicates and functions it directly",
+        "refers to. Write out to `<module>.local_call_tree' a list of",
+        "these nodes. Put these nodes into the order in which they are",
+        "encountered by a depth-first left-to-right traversal of the bodies",
+        "(as reordered by mode analysis), of the first procedure of",
+        "each predicate or function, starting the traversal at the",
+        "exported predicates and/or functions of the module.",
+        "List the callees of each node in the same order.",
+        "Write a flattened form of this call tree, containing just",
+        "the predicates and functions in the same traversal order,",
+        "to `<module>.local_call_tree_order'.",
+        "Construct another call tree of the predicates and functions",
+        "defined in the module in which each entry lists",
+        "not just the local predicates/functions directly referred to,",
+        "but all directly or indirectly referenced predicates/functions,",
+        "whether or not they are defined in the current module.",
+        "The one restriction is that we consider only references",
+        "that occur in the body of the current module.",
+        "Write out this tree to `<module>.local_call_full'."])).
+optdb(oc_file_req, show_local_type_repns,            bool(no),
+    help("show-local-type-representations", [
+        "Write out information about the representations of all types",
+        "defined in the module being compiled to `<module>.type_repns'."])).
+optdb(oc_file_req, show_all_type_repns,              bool(no),
+    help("show-all-type-representations", [
+        "Write out information about the representations of all types",
+        "visible in the module being compiled to `<module>.type_repns'."])).
+optdb(oc_file_req, show_developer_type_repns,        bool(no),
+    priv_help("show-developer-type-representations", [
+        "When writing out information about the representations of types,",
+        "include information that is of interest to mmc developers only."])).
+optdb(oc_file_req, show_dependency_graph,            bool(no),
+    help("show-dependency-graph", [
+        "Write out the dependency graph to `<module>.dependency_graph'."])).
+optdb(oc_file_req, show_imports_graph,               bool(no),
+    alt_help("imports-graph", pos_sep_lines, ["show-imports-graph"], [
+        "If --generate-dependencies is specified, then write out",
+        "the imports graph to `<module>.imports_graph' in a format",
+        "that can be processed by the graphviz tools.",
+        "The graph will contain an edge from the node of module A",
+        "to the node of module B if module A imports module B."])).
+
+%---------------------------------------------------------------------------%
+
+    % Options that developmers can use to ask for optional compiler actions.
 
 optdef(oc_dev_ctrl, debug_output_suffix,                 string("")).
 optdef(oc_dev_ctrl, error_output_suffix,                 string("")).
@@ -2620,59 +2818,87 @@ optdef(oc_dev_ctrl, inference_output_suffix,             string("")).
 optdef(oc_dev_ctrl, progress_output_suffix,              string("")).
 optdef(oc_dev_ctrl, recompile_output_suffix,             string("")).
 
-optdef(oc_opmode, generate_module_order,                bool(no)).
-optdef(oc_opmode, compile_to_shared_lib,                bool(no)).
-
-optdb(oc_opmode, generate_module_order,                bool(no),
-    help("generate-module-order", [
-        "Output the strongly connected components of the module",
-        "dependency graph in top-down order to `<module>.order'.",
-        "Effective only if --generate-dependencies is also specified."])).
-optdb(oc_opmode, compile_to_shared_lib,                bool(no),
-    % XXX This is NOT an opmode option, because it is NOT mutually exclusive
-    % with the others.
-    % XXX Improve this documentation.
-    priv_help("compile-to-shared-lib", [
-        "This option is intended only for use by the debugger's",
-        "interactive query facility."])).
-
-optdef(oc_dev_ctrl,   smart_recompilation,              bool(no)).
-optdef(oc_internal,   generate_item_version_numbers,    bool(no)).
-optdef(oc_internal,   generate_mmc_make_module_dependencies, bool(no)).
-
-optdef(oc_aux_output, line_numbers,                     bool(no)).
-optdef(oc_aux_output, line_numbers_around_foreign_code, bool(yes)).
-optdef(oc_aux_output, line_numbers_for_c_headers,       bool(no)).
-optdef(oc_aux_output, type_repns_for_humans,            bool(no)).
-optdef(oc_dev_debug,  auto_comments,                    bool(no)).
-optdef(oc_dev_debug,  frameopt_comments,                bool(no)).
-% XXX These ask for additional files. Move them to new category?
-% XXX Should at least the internal names include "file"?
-% XXX Rename imports_graph to follow the naming convention used by the others.
-optdef(oc_aux_output, show_definitions,                 bool(no)).
-optdef(oc_aux_output, show_definition_line_counts,      bool(no)).
-optdef(oc_aux_output, show_definition_extents,          bool(no)).
-optdef(oc_aux_output, show_local_call_tree,             bool(no)).
-optdef(oc_aux_output, show_local_type_repns,            bool(no)).
-optdef(oc_aux_output, show_all_type_repns,              bool(no)).
-optdef(oc_aux_output, show_developer_type_repns,        bool(no)).
-optdef(oc_aux_output, show_dependency_graph,            bool(no)).
-optdef(oc_aux_output, imports_graph,                    bool(no)).
-% This is a report to output, not a new file.
-optdef(oc_aux_output, show_pred_movability,             accumulating([])).
-optdef(oc_spec_opt,   trans_opt_deps_spec,              maybe_string(no)).
+optdb(oc_dev_ctrl, debug_output_suffix,                 string(""),
+    priv_help("error-output-suffix .xyz", [
+        "When compiling module M, output any error, warning and/or",
+        "informational messages about the module to a file named `M.xyz'.",
+        "The default is for such output to go to standard error."])).
+optdb(oc_dev_ctrl, error_output_suffix,                 string(""),
+    priv_help("progress-output-suffix .xyz", [
+        "When compiling module M, output messages about the progress",
+        "of the compilation to a file named `M.xyz'. This includes any",
+        "statistics about the performance of compiler passes, if enabled.",
+        "The default is for such output to go to standard error."])).
+optdb(oc_dev_ctrl, inference_output_suffix,             string(""),
+    priv_help("inference-output-suffix .xyz", [
+        "When compiling module M, output the results of any type and/or",
+        "mode inference to a file named `M.xyz'.",
+        "The default is for such output to go to standard error."])).
+optdb(oc_dev_ctrl, progress_output_suffix,              string(""),
+    % These are also commented out because they are intended
+    % only for developers.
+    priv_help("debug-output-suffix .xyz", [
+        "When compiling module M, direct output that is intended to",
+        "help debug the compiler to a file named `M.xyz'.",
+        "The default is for such output to go to standard error."])).
+optdb(oc_dev_ctrl, recompile_output_suffix,             string(""),
+    priv_help("recompile-output-suffix .xyz", [
+        "This is intended to direct the output from the test cases in
+        tests/recompilation to a file."])).
 
 optdef(oc_dev_ctrl,   mode_constraints,                 bool(no)).
 optdef(oc_dev_ctrl,   simple_mode_constraints,          bool(no)).
 optdef(oc_dev_ctrl,   prop_mode_constraints,            bool(no)).
 optdef(oc_dev_ctrl,   compute_goal_modes,               bool(no)).
-optdef(oc_dev_ctrl,   benchmark_modes,                  bool(no)).
-optdef(oc_dev_ctrl,   benchmark_modes_repeat,           int(1)).
-optdef(oc_dev_debug,  unneeded_code_debug,              bool(no)).
-optdef(oc_dev_debug,  unneeded_code_debug_pred_name,    accumulating([])).
-optdef(oc_dev_debug,  common_struct_preds,              string("")).
 
-optdef(oc_dev_dump,   dump_trace_counts,                accumulating([])).
+optdb(oc_dev_ctrl,   mode_constraints,                 bool(no),
+    priv_help("mode-constraints", [
+        "Run constraint based mode analysis. The default is to use",
+        "the robdd solution using the full (subtyping) constraints,",
+        "and to dump its results."])).
+optdb(oc_dev_ctrl,   simple_mode_constraints,          bool(no),
+    priv_help("simple-mode-constraints", [
+        "Use only the simplified constraint system when running",
+        "the robdd solver constraints based mode analysis."])).
+optdb(oc_dev_ctrl,   prop_mode_constraints,            bool(no),
+    priv_help("prop-mode-constraints", [
+        "Use the new propagation solver for constraints based",
+        "mode analysis."])).
+optdb(oc_dev_ctrl,   compute_goal_modes,               bool(no),
+    priv_help("compute-goal-modes", [
+        "Compute goal modes."])).
+
+%---------------------------------------------------------------------------%
+
+    % Options controlling mmc --make.
+
+optdef(oc_make,     smart_recompilation,                   bool(no)).
+optdef(oc_make_int, generate_item_version_numbers,         bool(no)).
+optdef(oc_make_int, generate_mmc_make_module_dependencies, bool(no)).
+
+optdb(oc_dev_ctrl,   smart_recompilation,              bool(no),
+    help("smart-recompilation", [
+        "When compiling, write program dependency information",
+        "to be used to avoid unnecessary recompilations if an",
+        "imported module's interface changes in a way which does",
+        "not invalidate the compiled code. `--smart-recompilation'",
+        "does not yet work with `--intermodule-optimization'."])).
+optdb(oc_make_int, generate_item_version_numbers,         bool(no),
+    unnamed_help([
+        "This option is used to control output of version numbers",
+        "in interface files. It is implied by --smart-recompilation,",
+        "and cannot be set explicitly by the user.",
+        "Even if this option is set to `yes', version numbers may have",
+        "been disabled with io_set_disable_generate_item_version_numbers.",
+        "Before using the value of this option, call",
+        "io_get_disable_generate_item_version_numbers to see whether this",
+        "has been done."])).
+optdb(oc_make_int, generate_mmc_make_module_dependencies, bool(no), no_help).
+
+%---------------------------------------------------------------------------%
+
+    % Options for creating dumps of the compiler's internal data structures.
+
 optdef(oc_dev_dump,   dump_hlds,                        accumulating([])).
 optdef(oc_dev_dump,   dump_hlds_pred_id,                accumulating([])).
 optdef(oc_dev_dump,   dump_hlds_pred_name,              accumulating([])).
@@ -2688,7 +2914,97 @@ optdef(oc_dev_dump,   dump_same_hlds,                   bool(no)).
 optdef(oc_dev_dump,   dump_mlds,                        accumulating([])).
 optdef(oc_dev_dump,   dump_mlds_pred_name,              accumulating([])).
 optdef(oc_dev_dump,   verbose_dump_mlds,                accumulating([])).
+optdef(oc_dev_dump,   dump_trace_counts,                accumulating([])).
 optdef(oc_dev_dump,   dump_options_file,                string("")).
+
+optdb(oc_dev_dump,   dump_hlds,                        accumulating([]),
+    short_arg_help("d <n>", "dump-hlds <stage number or name>", [], [
+        "Dump the HLDS (high level intermediate representation) after",
+        "the specified stage to `<module>.hlds_dump.<num>-<name>'.",
+        "Stage numbers range from 1-599.",
+        "Multiple dump options accumulate."])).
+optdb(oc_dev_dump,   dump_hlds_pred_id,                accumulating([]),
+    help("dump-hlds-pred-id <n>", [
+        "Dump the HLDS only of the predicate/function with the given",
+        "pred id."])).
+optdb(oc_dev_dump,   dump_hlds_pred_name,              accumulating([]),
+    help("dump-hlds-pred-name <name>", [
+        "Dump the HLDS only of the predicate/function with the given",
+        "name."])).
+optdb(oc_dev_dump,   dump_hlds_pred_name_order,        bool(no),
+    priv_help("dump-hlds-pred-name-order", [
+        "Dump the predicates in the HLDS ordered by name",
+        "not ordered by pred id."])).
+optdb(oc_dev_dump,   dump_hlds_spec_preds,             bool(no),
+    priv_help("dump-hlds-spec-preds", [
+        "With `--dump-hlds', dump the special (unify, compare, and index)",
+        "predicates not in pred-id order, but in alphabetical order",
+        "by type constructor."])).
+optdb(oc_dev_dump,   dump_hlds_spec_preds_for,         accumulating([]),
+    priv_help("dump-hlds-spec-preds-for <typename>", [
+        "Dump only the special (unify, compare, and index) predicates",
+        "for the types named by the (possibly multiple) occurrences",
+        "of this option."])).
+optdb(oc_dev_dump,   dump_hlds_alias,                  string(""),
+    priv_short_arg_help("D <dump_alias>",
+            "dump-hlds-alias <dump-alias>", [], [
+        "With `--dump-hlds', include extra detail in the dump.",
+        "Each dump alias is shorthand for a set of option letters.",
+        "The list of aliases is in handle_options.m"])).
+optdb(oc_dev_dump,   dump_hlds_options,                string(""),
+    help("dump-hlds-options <options>", [
+        "With `--dump-hlds', include extra detail in the dump.",
+        "Each type of detail is included in the dump if its",
+        "corresponding letter occurs in the option argument",
+        "(see the Mercury User's Guide for details)."])).
+optdb(oc_dev_dump,   dump_hlds_inst_limit,             int(100),
+    help("dump-hlds-inst-limit <N>", [
+        "Dump at most N insts in each inst table."])).
+optdb(oc_dev_dump,   dump_hlds_inst_size_limit,        int(40),
+    help("dump-hlds-inst-size-limit <N>", [
+        "Dump insts in an inst table only if their size does not exceed N."])).
+optdb(oc_dev_dump,   dump_hlds_file_suffix,            string(""),
+    help("dump-hlds-file-suffix <suffix>", [
+        "Append the given suffix to the names of the files created by",
+        "the `--dump-hlds' option."])).
+optdb(oc_dev_dump,   dump_same_hlds,                   bool(no),
+    help("dump-same-hlds", [
+        "Create a file for a HLDS stage even if the file notes only that",
+        "this stage is identical to the previously dumped HLDS stage."])).
+optdb(oc_dev_dump,   dump_mlds,                        accumulating([]),
+    help("dump-mlds <stage number or name>", [
+        "Dump the MLDS (medium level intermediate representation)",
+        "after the specified stage, as C code,",
+        "to`<module>.c_dump.<num>-<name>',",
+        "and `<module>.mih_dump.<num>-<name>'.",
+        "Stage numbers range from 1-99.",
+        "Multiple dump options accumulate.",
+        "This option works only in MLDS grades that target C."])).
+optdb(oc_dev_dump,   dump_mlds_pred_name,              accumulating([]),
+    help("dump-mlds-pred-name <pred or func name>", [
+        "Dump the MLDS (medium level intermediate representation)",
+        "of the predicate or function with the specified name",
+        "at the stages specified by the --dump-mlds option.",
+        "The dump file will consist of the predicates and functions",
+        "named by all the occurrences of this option (there may be",
+        "more than one), and nothing else."])).
+optdb(oc_dev_dump,   verbose_dump_mlds,                accumulating([]),
+    help("verbose-dump-mlds <stage number or name>", [
+        "Dump the internal compiler representation of the MLDS, after",
+        "the specified stage, to `<module>.mlds_dump.<num>-<name>'.",
+        "This option works in all MLDS grades."])).
+optdb(oc_dev_dump,   dump_trace_counts,                accumulating([]),
+    % This option is for developers only.
+    priv_help("dump-trace-counts <stage number or name>", [
+        "If the compiler was compiled with debugging enabled and is being",
+        "run with trace counting enabled, write out the trace counts file",
+        "after the specified stage to `<module>.trace_counts.<num>-<name>'.",
+        "Stage numbers range from 1-599.",
+        "Multiple dump options accumulate."])).
+optdb(oc_dev_dump,   dump_options_file,                string(""),
+    priv_help("dump-options-file output_file", [
+        "Dump the internal compiler representation of files named in",
+        "options-file options to output_file."])).
 
 %---------------------------------------------------------------------------%
 
@@ -2755,6 +3071,8 @@ optdb(oc_infer, allow_stubs,                       bool(no),
         "in the ""Warning Options"" section.)"])).
 
 %---------------------------------------------------------------------------%
+
+% ZZZ
 
     % Compilation model options (ones that affect binary compatibility).
 
@@ -2824,7 +3142,7 @@ optdef(oc_grade, source_to_source_debug,                bool(no)).
 optdef(oc_grade, ssdb_trace_level,                      string("default")).
 optdef(oc_grade, link_ssdb_libs,                        bool(no)).
 
-    % D representation compilation model options
+    % (d) representation compilation model options
 optdef(oc_grade, num_ptag_bits,                         int(-1)).
     % -1 is a special value which means use the value
     % of conf_low_ptag_bits instead.
@@ -3212,6 +3530,14 @@ optdef(oc_target_comp, cli_interpreter,                 string("")).
 
     % Link Options.
 
+optdef(oc_link, compile_to_shared_lib,                bool(no)).
+
+optdb(oc_link, compile_to_shared_lib,                bool(no),
+    % XXX Improve this documentation.
+    priv_help("compile-to-shared-lib", [
+        "This option is intended only for use by the debugger's",
+        "interactive query facility."])).
+
 optdef(oc_link, output_file_name,                       string("")).
     % If the output_file_name is an empty string, we use the name
     % of the first module on the command line.
@@ -3313,8 +3639,6 @@ optdef(oc_link, java_archive_command,                   string("jar")).
 
     % Build system options.
 
-optdef(oc_buildsys, only_opmode_make,                   bool(no)).
-optdef(oc_buildsys, only_opmode_invoked_by_mmc_make,    bool(no)).
 optdef(oc_buildsys, rebuild,                            bool(no)).
 optdef(oc_buildsys, keep_going,                         bool(no)).
 optdef(oc_buildsys, jobs,                               int(1)).
@@ -3799,7 +4123,8 @@ long_table("show-developer-type-representations",
 long_table("show-dependency-graph",    show_dependency_graph).
 long_table("show-pred-movability",     show_pred_movability).
 long_table("show-pred-moveability",    show_pred_movability).
-long_table("imports-graph",            imports_graph).
+long_table("show-imports-graph",       show_imports_graph).
+long_table("imports-graph",            show_imports_graph).
 long_table("trans-opt-deps-spec",      trans_opt_deps_spec).
 long_table("dump-trace-counts",        dump_trace_counts).
 long_table("dump-hlds",                dump_hlds).
@@ -3828,10 +4153,9 @@ long_table("compute-goal-modes",       compute_goal_modes).
 long_table("propagate-mode-constraints",   prop_mode_constraints).
 long_table("benchmark-modes",          benchmark_modes).
 long_table("benchmark-modes-repeat",   benchmark_modes_repeat).
-long_table("unneeded-code-debug",      unneeded_code_debug).
-long_table("unneeded-code-debug-pred-name",
-    unneeded_code_debug_pred_name).
-long_table("common-struct-preds",      common_struct_preds).
+long_table("debug-unneeded-code",      debug_unneeded_code).
+long_table("debug-unneeded-code-pred-name", debug_unneeded_code_pred_name).
+long_table("debug-common-struct-preds", debug_common_struct_preds).
 
 % language semantics options
 long_table("reorder-conj",         reorder_conj).
@@ -6724,12 +7048,12 @@ options_help_aux_output = Section :-
             "whether the move would cause unwanted coupling between",
             "the new module and the old."]),
 
-        help("imports-graph", [
-            "Write out the imports graph to `<module>.imports_graph'.",
-            "The imports graph contains the directed graph module A",
-            "imports module B.",
-            "The resulting file can be processed by the graphviz tools.",
-            "Effective only if --generate-dependencies is also specified."]),
+        alt_help("imports-graph", pos_sep_lines, ["show-imports-graph"], [
+            "If --generate-dependencies is specified, then write out",
+            "the imports graph to `<module>.imports_graph' in a format",
+            "that can be processed by the graphviz tools.",
+            "The graph will contain an edge from the node of module A",
+            "to the node of module B if module A imports module B."]),
 
         % This option is for developers only for now.
         priv_help("trans-opt-deps-spec <filename>", [
@@ -6849,15 +7173,17 @@ options_help_aux_output = Section :-
 
         % These options are only intended to be used for debugging
         % the compiler.
-        priv_help("unneeded-code-debug", [
+        priv_help("debug-unneeded-code", [
             "Print progress messages during the unneeded code elimination",
             "passes."]),
 
-        priv_help("unneeded-code-debug-pred-name <predname>", [
+        priv_help("debug-unneeded-code-pred-name <predname>", [
             "Print the definition of <predname> at the start of each pass",
-            "of the unneeded code elimination algorithm.",
-            "--common-struct-preds <predids>",
-            "Limit common struct optimization to the preds with the given ids."])
+            "of the unneeded code elimination algorithm."]),
+
+        priv_help("debug-common-struct-preds <predids>", [
+            "Limit common struct optimization to the preds with",
+            "the given ids."])
 
     ],
     Section = help_section(SectionName, [], HelpStructs).
@@ -9196,6 +9522,12 @@ options_help_misc = Section :-
                 psah_long_name          :: string,
                 psah_alt_long_names     :: list(string),
                 psah_description        :: list(string)
+            )
+    ;       unnamed_help(
+                % Help for an internal-use-only option that has no visible
+                % name, and therefore cannot be given on the command line
+                % even by developers.
+                uh_description          :: list(string)
             ).
 
 :- type help_public_or_private
@@ -9359,6 +9691,14 @@ output_help_message(Stream, What, OptHelp, !IO) :-
         OptNameLines0 = join_options(pos_one_line, OptNameLineMaxLen,
             [ShortNameStr, LongNameStr]),
         OptNameLines = OptNameLines0 ++ AltLongNameStrs
+    ;
+        OptHelp = unnamed_help(DescLines),
+        % XXX It is quite likely that many options that do not have entries
+        % in the long_table predicate, which therefore should be in optdb
+        % with unnamed_help, are there with some other help structure,
+        % such as priv_help.
+        PublicOrPrivate = help_private,
+        OptNameLines = []
     ),
     ( if
         (

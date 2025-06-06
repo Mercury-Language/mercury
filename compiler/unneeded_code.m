@@ -331,7 +331,7 @@ unneeded_process_proc(ProgressStream, PredId, Pass,
     globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
     globals.get_opt_tuple(Globals, OptTuple),
     Limit = OptTuple ^ ot_opt_unneeded_code_copy_limit,
-    globals.lookup_bool_option(Globals, unneeded_code_debug, Debug),
+    globals.lookup_bool_option(Globals, debug_unneeded_code, Debug),
     (
         Debug = no,
         MaybeDebugStream = no
@@ -349,7 +349,7 @@ unneeded_process_proc(ProgressStream, PredId, Pass,
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
             PredName = pred_info_name(PredInfo),
             globals.lookup_accumulating_option(Globals,
-                unneeded_code_debug_pred_name, DebugPredNames),
+                debug_unneeded_code_pred_name, DebugPredNames),
             (
                 DebugPredNames = [],
                 io.format(ProgressStream,

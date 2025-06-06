@@ -2862,12 +2862,12 @@ handle_compiler_developer_options(!Globals, !IO) :-
     ),
 
     globals.lookup_accumulating_option(!.Globals,
-        unneeded_code_debug_pred_name, DebugUnneededCodePredNames),
+        debug_unneeded_code_pred_name, DebugUnneededCodePredNames),
     (
         DebugUnneededCodePredNames = []
     ;
         DebugUnneededCodePredNames = [_ | _],
-        globals.set_option(unneeded_code_debug, bool(yes), !Globals)
+        globals.set_option(debug_unneeded_code, bool(yes), !Globals)
     ),
 
     globals.lookup_accumulating_option(!.Globals, debug_opt_pred_id,

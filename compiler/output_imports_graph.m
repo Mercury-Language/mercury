@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2015-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -45,12 +45,12 @@
 
 maybe_output_imports_graph(ProgressStream, Globals, ModuleName,
         IntDepsGraph, ImpDepsGraph, !IO) :-
-    globals.lookup_bool_option(Globals, imports_graph, ImportsGraph),
-    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, show_imports_graph, ShowImportsGraph),
     (
-        ImportsGraph = yes,
+        ShowImportsGraph = yes,
         module_name_to_cur_dir_file_name(ext_cur_user_imports_graph,
             ModuleName, ImportsGraphFileName),
+        globals.lookup_bool_option(Globals, verbose, Verbose),
         (
             Verbose = no
         ;
@@ -62,11 +62,12 @@ maybe_output_imports_graph(ProgressStream, Globals, ModuleName,
         io.open_output(ImportsGraphFileName, ImportsGraphOpenResult, !IO),
         (
             ImportsGraphOpenResult = ok(ImportsGraphStream),
-            Deps0 = list.foldl(filter_imports_graph,
-                digraph.to_assoc_list(IntDepsGraph), digraph.init),
-            Deps = list.foldl(filter_imports_graph,
-                digraph.to_assoc_list(ImpDepsGraph), Deps0),
-            write_graph(ImportsGraphStream, "imports", Deps, !IO),
+            digraph.init(DepsGraph0),
+            list.foldl(filter_imports_graph,
+                digraph.to_assoc_list(IntDepsGraph), DepsGraph0, DepsGraph1),
+            list.foldl(filter_imports_graph,
+                digraph.to_assoc_list(ImpDepsGraph), DepsGraph1, DepsGraph),
+            write_graph(ImportsGraphStream, "imports", DepsGraph, !IO),
             io.close_output(ImportsGraphStream, !IO),
             (
                 Verbose = no
@@ -89,13 +90,13 @@ maybe_output_imports_graph(ProgressStream, Globals, ModuleName,
             report_error(ProgressStream, ImpMessage, !IO)
         )
     ;
-        ImportsGraph = no
+        ShowImportsGraph = no
     ).
 
-:- func filter_imports_graph(pair(sym_name, sym_name), digraph(sym_name)) =
-    digraph(sym_name).
+:- pred filter_imports_graph(pair(sym_name, sym_name)::in,
+    digraph(sym_name)::in, digraph(sym_name)::out) is det.
 
-filter_imports_graph(A - B, DepsGraph) =
+filter_imports_graph(A - B, !DepsGraph) :-
     ( if
         % Don't keep the edge if it points to a builtin module,
         % or if the relationship is between two standard library modules.
@@ -108,9 +109,9 @@ filter_imports_graph(A - B, DepsGraph) =
             is_std_lib_module_name(B, _)
         )
     then
-        DepsGraph
+        true
     else
-        digraph.add_vertices_and_edge(A, B, DepsGraph)
+        digraph.add_vertices_and_edge(A, B, !DepsGraph)
     ).
 
 :- pred write_graph(io.text_output_stream::in, string::in,

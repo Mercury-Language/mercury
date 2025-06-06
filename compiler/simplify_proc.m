@@ -354,12 +354,13 @@ simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
 simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
         !SimplifyTasks) :-
     module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_string_option(Globals, common_struct_preds,
-        CommonStructPreds),
-    ( if CommonStructPreds = "" then
+    globals.lookup_string_option(Globals, debug_common_struct_preds,
+        DebugCommonStructPreds),
+    ( if DebugCommonStructPreds = "" then
         TurnOffCommonStructByRequest = no
     else
-        CommonStructPredIdStrs = string.split_at_char(',', CommonStructPreds),
+        CommonStructPredIdStrs =
+            string.split_at_char(',', DebugCommonStructPreds),
         ( if
             list.map(string.to_int, CommonStructPredIdStrs,
                 CommonStructPredIdInts)
