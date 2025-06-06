@@ -1368,6 +1368,16 @@ option_defaults(Opt, Data) :-
             % Options for controlling color in diagnostics.
     ;       oc_diag_int
             % Internal-use-only options for controlling diagnostics.
+    ;       oc_mdb
+            % Options that control how the compiler prepares for mdb debugging.
+    ;       oc_mdb_dev
+            % Developer-only options about mdb debugging.
+            % XXX Some of these may be internal-use-only, not intended
+            % even for developers.
+    ;       oc_tracegoal
+            % Options that control trace goals.
+    ;       oc_mdprof
+            % Options that control deep profiling.
     ;       oc_aux_output
             % Options that ask the compiler to modify some aspect
             % of the generated target code.
@@ -1376,6 +1386,8 @@ option_defaults(Opt, Data) :-
             % does not cover. We should put them into other categories.
     ;       oc_semantics
             % Options that specify which semantics variant to use.
+    ;       oc_infer
+            % Options that tell the compiler what to infer.
     ;       oc_grade
             % Options that affect binary compatibility.
     ;       oc_internal
@@ -2472,6 +2484,134 @@ optdb(oc_opmode, only_opmode_output_library_link_flags, bool(no),
 
 %---------------------------------------------------------------------------%
 
+    % Options that control how the compiler prepares for mdb debugging.
+
+optdef(oc_mdb,     trace_level,                      string("default")).
+optdef(oc_mdb,     trace_optimized,                  bool(no)).
+optdef(oc_mdb,     exec_trace_tail_rec,              bool(no)).
+optdef(oc_mdb,     event_set_file_name,              string("")).
+optdef(oc_mdb,     delay_death,                      bool(yes)).
+optdef(oc_mdb,     delay_death_max_vars,             int(1000)).
+optdef(oc_mdb,     stack_trace_higher_order,         bool(no)).
+optdef(oc_mdb_dev, trace_prof,                       bool(no)).
+optdef(oc_mdb_dev, trace_table_io,                   bool(no)).
+optdef(oc_mdb_dev, trace_table_io_only_retry,        bool(no)).
+optdef(oc_mdb_dev, trace_table_io_states,            bool(no)).
+optdef(oc_mdb_dev, trace_table_io_require,           bool(no)).
+optdef(oc_mdb_dev, trace_table_io_all,               bool(no)).
+optdef(oc_mdb_dev, suppress_trace,                   string("")).
+optdef(oc_mdb_dev, force_disable_tracing,            bool(no)).
+optdef(oc_mdb_dev, force_disable_ssdebug,            bool(no)).
+
+optdb(oc_mdb,     trace_level,                      string("default"),
+    % "--trace decl" is not documented, because it is for backwards
+    % compatibility only. It is now equivalent to `--trace rep'.
+    help("trace {minimum, shallow, deep, rep, default}", [
+        "Generate code that includes the specified level",
+        "of execution tracing.",
+        "See the Debugging chapter of the Mercury User's Guide",
+        "for details."])).
+optdb(oc_aux_output, exec_trace_tail_rec,              bool(no),
+    help("exec-trace-tail-rec", [
+        "Generate TAIL events for self-tail-recursive calls instead of",
+        "EXIT events. This allows these recursive calls to reuse",
+        "their parent call's stack frame, but it also means that",
+        "the debugger won't have access to the contents of the reused",
+        "stack frames"])).
+optdb(oc_mdb,     trace_optimized,                  bool(no),
+    help("trace-optimized", [
+        "Do not disable optimizations that can change the trace."])).
+optdb(oc_mdb_dev, trace_prof,                       bool(no),
+    % "--trace-prof" is not documented because it is intended
+    % only for developers of the deep profiler.
+    priv_help("trace-prof", [
+        "Enable tracing of deep profiling service predicates."])).
+optdb(oc_mdb,     event_set_file_name,              string(""),
+    help("event-set-file-name <filename>", [
+        "Get the specification of user-defined events from <filename>."])).
+optdb(oc_mdb,        delay_death,                      bool(yes),
+    help("no-delay-death", [
+        "When the trace level is `deep', the compiler normally",
+        "preserves the values of variables as long as possible, even",
+        "beyond the point of their last use, in order to make them",
+        "accessible from as many debugger events as possible.",
+        "However, it will not do this if this option is given."])).
+optdb(oc_mdb,        delay_death_max_vars,             int(1000),
+    help("delay-death-max-vars <N>", [
+        "Delay the deaths of variables only when the number of variables",
+        "in the procedure is no more than N. The default value is 1000."])).
+optdb(oc_mdb,        stack_trace_higher_order,         bool(no),
+    help("stack-trace-higher-order", [
+        "Enable stack traces through predicates and functions with",
+        "higher-order arguments, even if stack tracing is not",
+        "supported in general."])).
+    % I/O tabling is deliberately not documented. It is meant to be
+    % switched on, with consistent parameters, in debugging grades,
+    % and to be consistently switched off in non-debugging grades.
+    % Inconsistent use of the options governing I/O tabling
+    % can yield core dumps from the debugger, so these options
+    % are for implementors only.
+optdb(oc_mdb_dev, trace_table_io,                   bool(no),
+    priv_help("trace-table-io", [
+        "Enable the tabling of I/O actions, to allow the debugger",
+        "to execute retry commands across I/O actions."])).
+optdb(oc_mdb_dev, trace_table_io_only_retry,        bool(no),
+    priv_help("trace-table-io-only-retry", [
+        "Set up I/O tabling to support only retries across I/O",
+        "actions, not the printing of actions or declarative",
+        "debugging. This reduces the size of the I/O action table."])).
+optdb(oc_mdb_dev, trace_table_io_states,            bool(no),
+    priv_help("trace-table-io-states", [
+        "When tabling I/O actions, table the io.state arguments",
+        "together with the others. This should be required iff",
+        "values of type io.state actually contain information."])).
+optdb(oc_mdb_dev, trace_table_io_require,           bool(no),
+    priv_help("trace-table-io-require", [
+        "Require the tabling of I/O actions, i.e. generate an error",
+        "if an I/O primitive does not have the tabled_for_io",
+        "annotation."])).
+optdb(oc_mdb_dev, trace_table_io_all,               bool(no),
+    priv_help("trace-table-io-all", [
+        "Table all I/O actions even in the absence of annotations.",
+        "If a primitive has no annotation specifying the type of",
+        "tabling required, deduce it from the values of the other",
+        "annotations."])).
+optdb(oc_mdb_dev,    suppress_trace,                   string(""),
+    priv_help("suppress-trace <suppress-items>,", [
+        "Suppress the named aspects of the execution tracing system."])).
+optdb(oc_mdb_dev,    force_disable_tracing,            bool(no),
+    priv_help("force-disable-trace", [
+        "Force tracing to be set to trace level none.",
+        "This overrides all other tracing/grade options.",
+        "Its main use is to turn off tracing in the browser",
+        "directory, even for .debug and .decldebug grades."])).
+optdb(oc_mdb_dev,    force_disable_ssdebug,            bool(no),
+    % This is a developer-only option:
+    priv_help("force-disable-ssdebug", [
+        "Disable ssdebug transformation even in ssdebug grades."])).
+
+%---------------------------------------------------------------------------%
+
+    % Options that control trace goals.
+
+optdef(oc_tracegoal, trace_goal_flags,                 accumulating([])).
+
+optdb(oc_tracegoal, trace_goal_flags,                 accumulating([]),
+    help("trace-flag <keyword>", [
+        "Enable the trace goals that depend on the <keyword> trace flag."])).
+
+%---------------------------------------------------------------------------%
+
+    % Options that control profiling.
+
+optdef(oc_mdprof, prof_optimized,                   bool(no)).
+
+optdb(oc_mdprof, prof_optimized,                   bool(no),
+    help("profile-optimized", [
+        "Do not disable optimizations that can distort deep profiles."])).
+
+%---------------------------------------------------------------------------%
+
     % Auxiliary output options.
 
 optdef(oc_dev_ctrl, debug_output_suffix,                 string("")).
@@ -2499,24 +2639,7 @@ optdb(oc_opmode, compile_to_shared_lib,                bool(no),
 optdef(oc_dev_ctrl,   smart_recompilation,              bool(no)).
 optdef(oc_internal,   generate_item_version_numbers,    bool(no)).
 optdef(oc_internal,   generate_mmc_make_module_dependencies, bool(no)).
-optdef(oc_aux_output, trace_level,                      string("default")).
-optdef(oc_aux_output, trace_optimized,                  bool(no)).
-optdef(oc_dev_debug,  trace_prof,                       bool(no)).
-optdef(oc_dev_ctrl,   trace_table_io,                   bool(no)).
-optdef(oc_dev_ctrl,   trace_table_io_only_retry,        bool(no)).
-optdef(oc_dev_ctrl,   trace_table_io_states,            bool(no)).
-optdef(oc_dev_ctrl,   trace_table_io_require,           bool(no)).
-optdef(oc_dev_ctrl,   trace_table_io_all,               bool(no)).
-% XXX This is about trace goals, not execution tracing, so move it, but where?
-optdef(oc_aux_output, trace_goal_flags,                 accumulating([])).
-optdef(oc_aux_output, prof_optimized,                   bool(no)).
-optdef(oc_aux_output, exec_trace_tail_rec,              bool(no)).
-optdef(oc_dev_ctrl,   suppress_trace,                   string("")).
-optdef(oc_dev_ctrl,   force_disable_tracing,            bool(no)).
-optdef(oc_aux_output, delay_death,                      bool(yes)).
-optdef(oc_aux_output, delay_death_max_vars,             int(1000)).
-optdef(oc_aux_output, stack_trace_higher_order,         bool(no)).
-optdef(oc_dev_ctrl,   force_disable_ssdebug,            bool(no)).
+
 optdef(oc_aux_output, line_numbers,                     bool(no)).
 optdef(oc_aux_output, line_numbers_around_foreign_code, bool(yes)).
 optdef(oc_aux_output, line_numbers_for_c_headers,       bool(no)).
@@ -2538,6 +2661,17 @@ optdef(oc_aux_output, imports_graph,                    bool(no)).
 % This is a report to output, not a new file.
 optdef(oc_aux_output, show_pred_movability,             accumulating([])).
 optdef(oc_spec_opt,   trans_opt_deps_spec,              maybe_string(no)).
+
+optdef(oc_dev_ctrl,   mode_constraints,                 bool(no)).
+optdef(oc_dev_ctrl,   simple_mode_constraints,          bool(no)).
+optdef(oc_dev_ctrl,   prop_mode_constraints,            bool(no)).
+optdef(oc_dev_ctrl,   compute_goal_modes,               bool(no)).
+optdef(oc_dev_ctrl,   benchmark_modes,                  bool(no)).
+optdef(oc_dev_ctrl,   benchmark_modes_repeat,           int(1)).
+optdef(oc_dev_debug,  unneeded_code_debug,              bool(no)).
+optdef(oc_dev_debug,  unneeded_code_debug_pred_name,    accumulating([])).
+optdef(oc_dev_debug,  common_struct_preds,              string("")).
+
 optdef(oc_dev_dump,   dump_trace_counts,                accumulating([])).
 optdef(oc_dev_dump,   dump_hlds,                        accumulating([])).
 optdef(oc_dev_dump,   dump_hlds_pred_id,                accumulating([])).
@@ -2555,15 +2689,6 @@ optdef(oc_dev_dump,   dump_mlds,                        accumulating([])).
 optdef(oc_dev_dump,   dump_mlds_pred_name,              accumulating([])).
 optdef(oc_dev_dump,   verbose_dump_mlds,                accumulating([])).
 optdef(oc_dev_dump,   dump_options_file,                string("")).
-optdef(oc_dev_ctrl,   mode_constraints,                 bool(no)).
-optdef(oc_dev_ctrl,   simple_mode_constraints,          bool(no)).
-optdef(oc_dev_ctrl,   prop_mode_constraints,            bool(no)).
-optdef(oc_dev_ctrl,   compute_goal_modes,               bool(no)).
-optdef(oc_dev_ctrl,   benchmark_modes,                  bool(no)).
-optdef(oc_dev_ctrl,   benchmark_modes_repeat,           int(1)).
-optdef(oc_dev_debug,  unneeded_code_debug,              bool(no)).
-optdef(oc_dev_debug,  unneeded_code_debug_pred_name,    accumulating([])).
-optdef(oc_dev_debug,  common_struct_preds,              string("")).
 
 %---------------------------------------------------------------------------%
 
@@ -2573,15 +2698,61 @@ optdef(oc_semantics, strict_sequential,                 special).
 optdef(oc_semantics, reorder_conj,                      bool(yes)).
 optdef(oc_semantics, reorder_disj,                      bool(yes)).
 optdef(oc_semantics, fully_strict,                      bool(yes)).
-optdef(oc_semantics, allow_stubs,                       bool(no)).
-% XXX These stretch the definition of "semantics" beyond the breaking point.
-optdef(oc_semantics, infer_types,                       bool(no)).
-optdef(oc_semantics, infer_modes,                       bool(no)).
-optdef(oc_semantics, infer_det,                         bool(yes)).
-optdef(oc_semantics, infer_all,                         bool_special).
-optdef(oc_semantics, type_inference_iteration_limit,    int(60)).
-optdef(oc_semantics, mode_inference_iteration_limit,    int(30)).
-optdef(oc_semantics, event_set_file_name,               string("")).
+
+optdb(oc_semantics, strict_sequential,                 special, no_help).
+optdb(oc_semantics, reorder_conj,                      bool(yes),
+    help("no-reorder-conj", [
+        "Execute conjunctions left-to-right except where the modes imply",
+        "that reordering is unavoidable."])).
+optdb(oc_semantics, reorder_disj,                      bool(yes),
+    help("no-reorder-disj", [
+        "Execute disjunctions strictly left-to-right."])).
+optdb(oc_semantics, fully_strict,                      bool(yes),
+    help("no-fully-strict", [
+        "Allow infinite loops or goals with determinism erroneous to be",
+        "optimised away."])).
+
+%---------------------------------------------------------------------------%
+
+    % Inference control options.
+
+optdef(oc_infer, infer_types,                       bool(no)).
+optdef(oc_infer, infer_modes,                       bool(no)).
+optdef(oc_infer, infer_det,                         bool(yes)).
+optdef(oc_infer, infer_all,                         bool_special).
+optdef(oc_infer, type_inference_iteration_limit,    int(60)).
+optdef(oc_infer, mode_inference_iteration_limit,    int(30)).
+optdef(oc_infer, allow_stubs,                       bool(no)).
+
+optdb(oc_infer, infer_all,                         bool_special,
+    help("infer-all", [
+        "Abbreviation for `--infer-types --infer-modes --infer-det'."])).
+optdb(oc_infer, infer_types,                       bool(no),
+    help("infer-types", [
+        "If there is no type declaration for a predicate or function,",
+        "try to infer the type, rather than just reporting an error."])).
+optdb(oc_infer, infer_modes,                       bool(no),
+    help("infer-modes", [
+        "If there is no mode declaration for a predicate,",
+        "try to infer the modes, rather than just reporting an error."])).
+optdb(oc_infer, infer_det,                         bool(yes),
+    alt_help("no-infer-det", pos_sep_lines, ["no-infer-determinism"], [
+        "If there is no determinism declaration for a procedure,",
+        "don't try to infer the determinism, just report an error."])).
+optdb(oc_infer, type_inference_iteration_limit,    int(60),
+    help("type-inference-iteration-limit <n>", [
+        "Perform at most <n> passes of type inference (default: 60)."])).
+optdb(oc_infer, mode_inference_iteration_limit,    int(30),
+    help("mode-inference-iteration-limit <n>", [
+        "Perform at most <n> passes of mode inference (default: 30)."])).
+optdb(oc_infer, allow_stubs,                       bool(no),
+    % A stub is sort-of like inferring a clause body, right ?-)
+    help("allow-stubs", [
+        "Allow procedures to have no clauses. Any calls to",
+        "such procedures will raise an exception at run-time.",
+        "This option is sometimes useful during program development.",
+        "(See also the documentation for the `--warn-stubs' option",
+        "in the ""Warning Options"" section.)"])).
 
 %---------------------------------------------------------------------------%
 
