@@ -1354,8 +1354,19 @@ option_defaults(Opt, Data) :-
     ;       oc_verbosity
             % Options that users can use to control how many progress updates
             % they want the compiler to give them.
+    ;       oc_verb_int
+            % Internal-use-only kinds of oc_verbosity options.
+    ;       oc_verb_dbg
+            % Oc_verbosity options intended only for use by developers
+            % to debug the compiler.
     ;       oc_opmode
             % Options that are used only to select an invocation's op_mode.
+    ;       oc_diag_gen
+            % Options for controlling diagnostics generally.
+    ;       oc_diag_color
+            % Options for controlling color in diagnostics.
+    ;       oc_diag_int
+            % Internal-use-only options for controlling diagnostics.
     ;       oc_aux_output
             % Options that ask the compiler to modify some aspect
             % of the generated target code.
@@ -1403,8 +1414,6 @@ option_defaults(Opt, Data) :-
             % Options developers can use to debug compiler components.
     ;       oc_dev_dump
             % Options to control dumps of internal code representations.
-    ;       oc_color
-            % Options to control the use of color in diagnostics.
     ;       oc_config
             % The results of autoconfiguration, or of executing
             % tools/configure_cross.
@@ -1962,75 +1971,321 @@ optdb(oc_warn_halt,  halt_at_auto_parallel_failure,       bool(no),
         "This option causes the compiler to halt if it cannot perform",
         "an auto-parallelization requested by a feedback file."])).
 
-optdef(oc_dev_debug,  print_error_spec_id,                 bool(no)).
-optdef(oc_dev_debug,  inform_ignored_pragma_errors,        bool(no)).
-optdef(oc_dev_debug,  inform_generated_type_spec_pragmas,  bool(no)).
+%---------------------------------------------------------------------------%
 
-%---------------------%
+    % Options that control diagnostics.
+
+optdef(oc_diag_gen, verbose_errors,                    bool(no)).
+optdef(oc_diag_gen, reverse_error_order,               bool(no)).
+optdef(oc_diag_gen, max_error_line_width,              maybe_int(yes(79))).
+optdef(oc_diag_gen, limit_error_contexts,              accumulating([])).
+
+% XXX Internal/external mismatch: verbose_errors vs verbose-error-messages
+optdb(oc_diag_gen, verbose_errors,                    bool(no),
+    short_help('E', "verbose-error-messages", [], [
+        "Explain error messages. Asks the compiler to give you a more",
+        "detailed explanation of any errors it finds in your program."])).
+optdb(oc_diag_gen, reverse_error_order,               bool(no),
+    help("reverse-error-order", [
+        "Print error messages in descending order of their line numbers,",
+        "instead of the usual ascending order. This is useful if you want",
+        "to work on the last errors in a file first."])).
+optdb(oc_diag_gen, max_error_line_width,              maybe_int(yes(79)),
+    help("max-error-line-width <n>", [
+        "Set the maximum width of an error message line to <n> characters",
+        "(unless a long single word forces the line over this limit).",
+        "Specifying --no-max-error-line-width removes the limit."])).
+optdb(oc_diag_gen, limit_error_contexts,              accumulating([]),
+    help("limit-error-contexts filename:minline1-maxline1,minline2-maxline2", [
+        "Print errors and warnings for the named file only when their",
+        "line number is in one of the specified ranges.",
+        "The minimum or maximum line number in each range may be omitted,",
+        "in which case the range has no lower or upper bound respectively.",
+        "Multiple --limit-error-context options accumulate.",
+        "If more than one --limit-error-context option is given for",
+        "the same file, only the last one will have an effect.",
+        "If the file name and colon are missing, the limit will apply",
+        "to all files."])).
+
+optdef(oc_diag_color, color_diagnostics,                bool_special).
+optdef(oc_diag_color, config_default_color_diagnostics, bool(yes)).
+optdef(oc_diag_int,   color_diagnostics_is_set,         bool(no)).
+optdef(oc_diag_int,   color_diagnostics_is_set_to,      bool(no)).
+optdef(oc_diag_int,   use_color_diagnostics,            bool(no)).
+optdef(oc_diag_color, color_scheme,                     string_special).
+optdef(oc_diag_int,   color_scheme_envvar,              string_special).
+optdef(oc_diag_int,   color_scheme_set_by,              string("default")).
+optdef(oc_diag_int,   color_scheme_set_to,              string("light16")).
+optdef(oc_diag_int,   ignore_color_scheme_envvar,       bool(no)).
+optdef(oc_diag_int,   set_color_subject,                string("")).
+optdef(oc_diag_int,   set_color_correct,                string("")).
+optdef(oc_diag_int,   set_color_incorrect,              string("")).
+optdef(oc_diag_int,   set_color_inconsistent,           string("")).
+optdef(oc_diag_int,   set_color_hint,                   string("")).
+
+optdb(oc_diag_color, color_diagnostics,                bool_special,
+    help("no-color-diagnostics", [
+        "Disable the use of colors in diagnostic messages. Please see",
+        "the section named \"Enabling the use of color\" section in the",
+        "Mercury Users's Guide for details."])).
+optdb(oc_diag_color, config_default_color_diagnostics, bool(yes),
+    % This option should be used only by the configure script.
+    priv_help("config-default-color-diagnostics", [
+        "The default value of the --color-diagnostics option,",
+        "set by the configure script."])).
+optdb(oc_diag_int,   color_diagnostics_is_set,         bool(no), no_help).
+optdb(oc_diag_int,   color_diagnostics_is_set_to,      bool(no), no_help).
+optdb(oc_diag_int,   use_color_diagnostics,            bool(no), no_help).
+optdb(oc_diag_color, color_scheme,                     string_special,
+    help("color-scheme <ColorScheme>", [
+        "Specify the color scheme to use for diagnostics, if the use of",
+        "color in diagnostics is enabled. For information about how the",
+        "compiler uses colors in diagnostic messages, and about the",
+        "syntax of color scheme specifications, please see the",
+        "section named \"Color schemes\" in the Mercury user's Guide",
+        "for the details."])).
+optdb(oc_diag_int,  color_scheme_envvar,          string_special, no_help).
+optdb(oc_diag_int,  color_scheme_set_by,          string("default"), no_help).
+optdb(oc_diag_int,  color_scheme_set_to,          string("light16"), no_help).
+optdb(oc_diag_int,  ignore_color_scheme_envvar,        bool(no),
+    % This option should be used only by our test suite.
+    priv_help("ignore-color-envvars", [
+        "Ignore the --color-scheme-envvar option."])).
+optdb(oc_diag_int,  set_color_subject,                 string(""), no_help).
+optdb(oc_diag_int,  set_color_correct,                 string(""), no_help).
+optdb(oc_diag_int,  set_color_incorrect,               string(""), no_help).
+optdb(oc_diag_int,  set_color_inconsistent,            string(""), no_help).
+optdb(oc_diag_int,  set_color_hint,                    string(""), no_help).
+
+%---------------------------------------------------------------------------%
 
     % Verbosity options.
 
 optdef(oc_verbosity, verbose,                           bool(no)).
 optdef(oc_verbosity, very_verbose,                      bool(no)).
-optdef(oc_verbosity, verbose_errors,                    bool(no)).
+optdef(oc_verbosity, statistics,                        bool(no)).
+optdef(oc_verb_int,  detailed_statistics,               bool(no)).
+optdef(oc_verbosity, verbose_make,                      bool(yes)).
+optdef(oc_verbosity, output_compile_error_lines,        maybe_int(yes(100))).
 optdef(oc_verbosity, verbose_recompilation,             bool(no)).
 optdef(oc_verbosity, find_all_recompilation_reasons,    bool(no)).
-optdef(oc_verbosity, verbose_make,                      bool(yes)).
 optdef(oc_verbosity, verbose_commands,                  bool(no)).
-optdef(oc_verbosity, output_compile_error_lines,        maybe_int(yes(100))).
-optdef(oc_dev_debug, report_cmd_line_args,              bool(no)).
-optdef(oc_dev_debug, report_cmd_line_args_in_doterr,    bool(no)).
-optdef(oc_verbosity, statistics,                        bool(no)).
-optdef(oc_verbosity, detailed_statistics,               bool(no)).
-optdef(oc_dev_debug, proc_size_statistics,              string("")).
-optdef(oc_dev_debug, inst_statistics,                   string("")).
-optdef(oc_verbosity, limit_error_contexts,              accumulating([])).
-optdef(oc_color,     config_default_color_diagnostics,  bool(yes)).
-optdef(oc_color,     color_diagnostics,                 bool_special).
-optdef(oc_internal,  color_diagnostics_is_set,          bool(no)).
-optdef(oc_internal,  color_diagnostics_is_set_to,       bool(no)).
-optdef(oc_internal,  use_color_diagnostics,             bool(no)).
-optdef(oc_color,     color_scheme,                      string_special).
-optdef(oc_internal,  color_scheme_envvar,               string_special).
-optdef(oc_internal,  color_scheme_set_by,               string("default")).
-optdef(oc_internal,  color_scheme_set_to,               string("light16")).
-optdef(oc_internal,  ignore_color_scheme_envvar,        bool(no)).
-optdef(oc_internal,  set_color_subject,                 string("")).
-optdef(oc_internal,  set_color_correct,                 string("")).
-optdef(oc_internal,  set_color_incorrect,               string("")).
-optdef(oc_internal,  set_color_inconsistent,            string("")).
-optdef(oc_internal,  set_color_hint,                    string("")).
-optdef(oc_dev_debug, debug_types,                       bool(no)).
-optdef(oc_dev_debug, debug_types_pred_name,             accumulating([])).
-optdef(oc_dev_debug, debug_modes,                       bool(no)).
-optdef(oc_dev_debug, debug_modes_statistics,            bool(no)).
-optdef(oc_dev_debug, debug_modes_minimal,               bool(no)).
-optdef(oc_dev_debug, debug_modes_delay_vars,            bool(yes)).
-optdef(oc_dev_debug, debug_modes_goal_ids,              bool(yes)).
-optdef(oc_dev_debug, debug_modes_verbose,               bool(no)).
-optdef(oc_dev_debug, debug_modes_pred_id,               int(-1)).
-optdef(oc_dev_debug, debug_dep_par_conj,                accumulating([])).
-optdef(oc_dev_debug, debug_det,                         bool(no)).
-optdef(oc_dev_debug, debug_code_gen_pred_id,            int(-1)).
-optdef(oc_dev_debug, debug_term,                        bool(no)).
-optdef(oc_dev_debug, debug_dead_proc_elim,              bool(no)).
-optdef(oc_dev_debug, debug_higher_order_specialization, bool(no)).
-optdef(oc_dev_debug, debug_opt,                         bool(no)).
-optdef(oc_dev_debug, debug_opt_pred_id,                 accumulating([])).
-optdef(oc_dev_debug, debug_opt_pred_name,               accumulating([])).
-optdef(oc_dev_debug, debug_pd,                          bool(no)).
-optdef(oc_dev_debug, debug_liveness,                    int(-1)).
-optdef(oc_dev_debug, debug_stack_opt,                   int(-1)).
-optdef(oc_dev_debug, debug_make,                        bool(no)).
-optdef(oc_dev_debug, debug_closure,                     bool(no)).
-optdef(oc_dev_debug, debug_trail_usage,                 bool(no)).
-optdef(oc_dev_debug, debug_mode_constraints,            bool(no)).
-optdef(oc_dev_debug, debug_intermodule_analysis,        bool(no)).
-optdef(oc_dev_debug, debug_mm_tabling_analysis,         bool(no)).
-optdef(oc_dev_debug, debug_indirect_reuse,              bool(no)).
-optdef(oc_dev_debug, debug_type_rep,                    bool(no)).
 
-    % Output options (mutually exclusive).
+optdb(oc_verbosity, verbose,                           bool(no),
+    short_help('v', "verbose", [], [
+        "Output progress messages at each stage in the compilation."])).
+optdb(oc_verbosity, very_verbose,                      bool(no),
+    short_help('V', "very-verbose", [], [
+        "Output very verbose progress messages."])).
+optdb(oc_verbosity, statistics,                        bool(no),
+    short_help('S', "statistics", [], [
+        "Output messages about the compiler's time/space usage.",
+        "At the moment this option implies `--no-trad-passes', so you get",
+        "information at the boundaries between phases of the compiler."])).
+optdb(oc_verb_int,  detailed_statistics,               bool(no),
+    % The only sensible way to use --detailed-statistics, based on
+    % --very-verbose, is implemented automatically in handle_options,
+    % so users shouldn't need to be aware of it.
+    priv_help("detailed-statistics", [
+        "Output more detailed messages about the compiler's",
+        "time/space usage."])).
+optdb(oc_verbosity, verbose_make,                      bool(yes),
+    help("no-verbose-make", [
+        "Disable messages about the progress of builds using",
+        "the `--make' option."])).
+optdb(oc_verbosity, output_compile_error_lines,        maybe_int(yes(100)),
+    alt_help("output-compile-error-lines <n>", pos_sep_lines,
+            ["no-output-compile-error-lines"], [
+        "With `--make', output the first <n> lines of the `.err'",
+        "file after compiling a module (default: 100).",
+        "Specifying --no-output-compile-error-lines removes the limit."])).
+optdb(oc_verbosity, verbose_recompilation,             bool(no),
+    help("verbose-recompilation", [
+        "When using `--smart-recompilation', output messages",
+        "explaining why a module needs to be recompiled."])).
+optdb(oc_verbosity, find_all_recompilation_reasons,    bool(no),
+    help("find-all-recompilation-reasons", [
+        "Find all the reasons why a module needs to be recompiled,",
+        "not just the first. Implies `--verbose-recompilation'."])).
+optdb(oc_verbosity, verbose_commands,                  bool(no),
+    help("verbose-commands", [
+        "Output each external command before it is run.",
+        "Note that some commands will only be printed with `--verbose'."])).
+
+optdef(oc_verb_dbg,  inform_ignored_pragma_errors,        bool(no)).
+optdef(oc_verb_dbg,  inform_generated_type_spec_pragmas,  bool(no)).
+optdef(oc_verb_dbg,  report_cmd_line_args,              bool(no)).
+optdef(oc_verb_dbg,  report_cmd_line_args_in_doterr,    bool(no)).
+optdef(oc_verb_dbg,  proc_size_statistics,              string("")).
+optdef(oc_verb_dbg,  inst_statistics,                   string("")).
+optdef(oc_verb_dbg,  print_error_spec_id,                 bool(no)).
+optdef(oc_verb_dbg,  debug_types,                       bool(no)).
+optdef(oc_verb_dbg,  debug_types_pred_name,             accumulating([])).
+optdef(oc_verb_dbg,  debug_type_rep,                    bool(no)).
+optdef(oc_verb_dbg,  debug_modes,                       bool(no)).
+optdef(oc_verb_dbg,  debug_modes_minimal,               bool(no)).
+optdef(oc_verb_dbg,  debug_modes_verbose,               bool(no)).
+optdef(oc_verb_dbg,  debug_modes_statistics,            bool(no)).
+optdef(oc_verb_dbg,  debug_modes_delay_vars,            bool(yes)).
+optdef(oc_verb_dbg,  debug_modes_goal_ids,              bool(yes)).
+optdef(oc_verb_dbg,  debug_modes_pred_id,               int(-1)).
+optdef(oc_verb_dbg,  debug_mode_constraints,            bool(no)).
+optdef(oc_verb_dbg,  debug_det,                         bool(no)).
+optdef(oc_verb_dbg,  debug_closure,                     bool(no)).
+optdef(oc_verb_dbg,  debug_term,                        bool(no)).
+optdef(oc_verb_dbg,  debug_dead_proc_elim,              bool(no)).
+optdef(oc_verb_dbg,  debug_higher_order_specialization, bool(no)).
+optdef(oc_verb_dbg,  debug_pd,                          bool(no)).
+optdef(oc_verb_dbg,  debug_indirect_reuse,              bool(no)).
+optdef(oc_verb_dbg,  debug_trail_usage,                 bool(no)).
+optdef(oc_verb_dbg,  debug_mm_tabling_analysis,         bool(no)).
+optdef(oc_verb_dbg,  debug_dep_par_conj,                accumulating([])).
+optdef(oc_verb_dbg,  debug_liveness,                    int(-1)).
+optdef(oc_verb_dbg,  debug_stack_opt,                   int(-1)).
+optdef(oc_verb_dbg,  debug_code_gen_pred_id,            int(-1)).
+optdef(oc_verb_dbg,  debug_opt,                         bool(no)).
+optdef(oc_verb_dbg,  debug_opt_pred_id,                 accumulating([])).
+optdef(oc_verb_dbg,  debug_opt_pred_name,               accumulating([])).
+optdef(oc_verb_dbg,  debug_make,                        bool(no)).
+optdef(oc_verb_dbg,  debug_intermodule_analysis,        bool(no)).
+
+optdb(oc_verb_dbg,  inform_ignored_pragma_errors,       bool(no),
+    priv_help("inform-ignored-pragma-errors", [
+        "Print an informational message for each otherwise-ignored error",
+        "that reports an inability to find the procedure that a pragma",
+        "refers to."])).
+optdb(oc_verb_dbg,  inform_generated_type_spec_pragmas, bool(no),
+    priv_help("inform-generated-type-spec-pragmas", [
+        "Print an informational message for each type_spec pragma that",
+        "the compiler generates to implement a type_spec_constrained_pred",
+        "pragma."])).
+optdb(oc_verb_dbg,  report_cmd_line_args,               bool(no),
+    help("report-cmd-line-args", [
+        "Report the command line arguments."])).
+optdb(oc_verb_dbg,  report_cmd_line_args_in_doterr,     bool(no),
+    help("report-cmd-line-args-in-doterr", [
+        "Report the command line arguments for compilations whose output",
+        "mmake normally redirects to a `.err' file."])).
+optdb(oc_verb_dbg,  proc_size_statistics,               string(""),
+    help("proc-size-statistics <filename>", [
+        "Append information about the size of each procedure in the",
+        "module in terms of goals and variables to the end of the",
+        "named file."])).
+optdb(oc_verb_dbg,  inst_statistics,                    string(""),
+    priv_help("inst-statistics <filename>", [
+        "Append a count of each kind of insts in the procedures in the",
+        "module to the end of the named file."])).
+optdb(oc_verb_dbg,  print_error_spec_id,                bool(no),
+    priv_help("print-error-spec-id", [
+        "After each error message is printed, print its id, which",
+        "by convention is the $pred of the code that constructs it."])).
+optdb(oc_verb_dbg,  debug_types,                        bool(no),
+    priv_short_help('T', "debug-types", [], [
+        "Output detailed debugging traces of type checking.",
+        "Effective only with --trace-flag type_checkpoint."])).
+optdb(oc_verb_dbg,  debug_types_pred_name,              accumulating([]),
+    priv_help("--debug-types-pred-name <pred_or_func_name>", [
+        "Output detailed debugging traces of type checking",
+        "only for predicates and functions named by one of these options."])).
+optdb(oc_verb_dbg,  debug_type_rep,                     bool(no),
+    help("debug-type-rep", [
+        "Output debugging traces of type representation choices."])).
+optdb(oc_verb_dbg,  debug_modes,                        bool(no),
+    short_help('N', "debug-modes", [], [
+        "Output debugging traces of the mode checking."])).
+optdb(oc_verb_dbg,  debug_modes_verbose,                bool(no),
+    help("debug-modes-verbose", [
+        "Output detailed debugging traces of the mode checking."])).
+optdb(oc_verb_dbg,  debug_modes_minimal,                bool(no),
+    help("debug-modes-minimal", [
+        "Output only minimal debugging traces of the mode checking."])).
+optdb(oc_verb_dbg,  debug_modes_statistics,             bool(no),
+    help("debug-modes-statistics", [
+        "Output statistics after each step of mode checking."])).
+optdb(oc_verb_dbg,  debug_modes_delay_vars,             bool(yes),
+    priv_help("debug-modes-delay-vars", [
+        "Output info about the variables involved in delayed goals."])).
+optdb(oc_verb_dbg,  debug_modes_goal_ids,               bool(yes),
+    priv_help("debug-modes-goal-ids", [
+        "Output the id of the goal at all mode debug checkpoints."])).
+optdb(oc_verb_dbg,  debug_modes_pred_id,                int(-1),
+    help("debug-modes-pred-id <n>", [
+        "With `--debug-modes', restrict the debugging traces to the",
+        "mode checking of the predicate or function with the specified",
+        "pred id."])).
+optdb(oc_verb_dbg,  debug_mode_constraints,             bool(no),
+    priv_help("debug-mode-constraints", [
+        "Output detailed debugging traces of the `--prop-mode-constraints'",
+        "option."])).
+optdb(oc_verb_dbg,  debug_det,                          bool(no),
+    alt_help("debug-det", pos_sep_lines, ["debug-determinism"], [
+        "Output detailed debugging traces of determinism analysis."])).
+optdb(oc_verb_dbg,  debug_closure,                      bool(no),
+    % This can be make public together with the '--analyse-closures' option.
+    priv_help("debug-closure", [
+        "Output detailed debugging traces of the closure analysis."])).
+optdb(oc_verb_dbg,  debug_term,                         bool(no),
+    % The new termination analyser is currently a work-in-progress.
+    priv_alt_help("debug-term", pos_sep_lines, ["debug-termination"], [
+        "Output detailed debugging traces of the termination2 analysis."])).
+optdb(oc_verb_dbg,  debug_dead_proc_elim,               bool(no),
+    priv_help("debug-dead-proc-elim", [
+        "Output the needed-entity-map generated by dead procedure",
+        "elimination."])).
+optdb(oc_verb_dbg,  debug_higher_order_specialization,  bool(no),
+    priv_help("debug-higher-order-specialization", [
+        "Output messages about the procedure specializations done",
+        "by higher_order.m."])).
+optdb(oc_verb_dbg,  debug_pd,                           bool(no),
+    help("debug-pd", [
+        "Output detailed debugging traces of the partial",
+        "deduction and deforestation process."])).
+optdb(oc_verb_dbg,  debug_indirect_reuse,               bool(no),
+    help("debug-indirect-reuse", [
+        "Output detailed debugging traces of the indirect reuse pass of",
+        "the `--structure-reuse' option."])).
+optdb(oc_verb_dbg,  debug_trail_usage,                  bool(no),
+    help("debug-trail-usage", [
+        "Output detailed debugging traces of the `--analyse-trail-usage'",
+        "option."])).
+optdb(oc_verb_dbg,  debug_mm_tabling_analysis,          bool(no), no_help).
+optdb(oc_verb_dbg,  debug_dep_par_conj,                 accumulating([]),
+    priv_help("debug-dep-par-conj <n>", [
+        "Output detailed debugging traces during the dependent",
+        "AND-parallelism transformation of the predicate with the given",
+        "predicate id. Efective only with the right --trace-flags."])).
+optdb(oc_verb_dbg,  debug_liveness,                     int(-1),
+    help("debug-liveness <pred_id>", [
+        "Output detailed debugging traces of the liveness analysis",
+        "of the predicate with the given predicate id."])).
+optdb(oc_verb_dbg,  debug_stack_opt,                    int(-1), no_help).
+optdb(oc_verb_dbg,  debug_code_gen_pred_id,             int(-1),
+    priv_help("debug-code-gen-pred-id <n>", [
+        "Output detailed debugging traces of code generation for the",
+        "predicate or function with the given pred id.",
+        "Effectively only with the right trace flags."])).
+optdb(oc_verb_dbg,  debug_opt,                          bool(no),
+    help("debug-opt", [
+        "Output detailed debugging traces of the optimization process."])).
+optdb(oc_verb_dbg,  debug_opt_pred_id,                  accumulating([]),
+    help("debug-opt-pred-id <n>", [
+        "Output detailed debugging traces of the optimization process",
+        "only for the predicate/function with the specified pred id."])).
+optdb(oc_verb_dbg,  debug_opt_pred_name,                accumulating([]),
+    help("debug-opt-pred-name <name>", [
+        "Output detailed debugging traces of the optimization process",
+        "only for the predicate/function with the specified name."])).
+optdb(oc_verb_dbg,  debug_make,                         bool(no),
+    help("debug-make", [
+        "Output detailed debugging traces of the `--make' option."])).
+optdb(oc_verb_dbg,  debug_intermodule_analysis,         bool(no),
+    help("debug-intermodule-analysis", [
+        "Output detailed debugging traces of the `--intermodule-analysis'",
+        "option."])).
+
+%---------------------------------------------------------------------------%
+
+    % Opmode options (mutually exclusive).
 
 optdef(oc_opmode, only_opmode_generate_source_file_mapping, bool(no)).
 optdef(oc_opmode, only_opmode_generate_dependency_file, bool(no)).
@@ -2068,6 +2323,8 @@ optdef(oc_opmode, only_opmode_output_target_arch,       bool(no)).
 optdef(oc_opmode, only_opmode_output_java_class_dir,    bool(no)).
 optdef(oc_opmode, only_opmode_output_stdlib_modules,    bool(no)).
 
+%---------------------------------------------------------------------------%
+
     % Auxiliary output options.
 
 optdef(oc_dev_ctrl, debug_output_suffix,                 string("")).
@@ -2103,8 +2360,6 @@ optdef(oc_aux_output, line_numbers_for_c_headers,       bool(no)).
 optdef(oc_aux_output, type_repns_for_humans,            bool(no)).
 optdef(oc_dev_debug,  auto_comments,                    bool(no)).
 optdef(oc_dev_debug,  frameopt_comments,                bool(no)).
-optdef(oc_aux_output, max_error_line_width,             maybe_int(yes(79))).
-optdef(oc_aux_output, reverse_error_order,              bool(no)).
 % XXX These ask for additional files. Move them to new category?
 % XXX Should at least the internal names include "file"?
 % XXX Rename imports_graph to follow the naming convention used by the others.
@@ -2147,6 +2402,8 @@ optdef(oc_dev_debug,  unneeded_code_debug,              bool(no)).
 optdef(oc_dev_debug,  unneeded_code_debug_pred_name,    accumulating([])).
 optdef(oc_dev_debug,  common_struct_preds,              string("")).
 
+%---------------------------------------------------------------------------%
+
     % Language semantics options.
 
 optdef(oc_semantics, strict_sequential,                 special).
@@ -2162,6 +2419,8 @@ optdef(oc_semantics, infer_all,                         bool_special).
 optdef(oc_semantics, type_inference_iteration_limit,    int(60)).
 optdef(oc_semantics, mode_inference_iteration_limit,    int(30)).
 optdef(oc_semantics, event_set_file_name,               string("")).
+
+%---------------------------------------------------------------------------%
 
     % Compilation model options (ones that affect binary compatibility).
 
@@ -2276,6 +2535,8 @@ optdef(oc_internal, det_copy_out,                          bool(no)).
 optdef(oc_internal, nondet_copy_out,                       bool(no)).
 optdef(oc_internal, put_commit_in_own_func,                bool(no)).
 
+%---------------------------------------------------------------------------%
+
     % Options for internal use only.
 
 optdef(oc_internal, backend_foreign_languages,          accumulating([])).
@@ -2313,6 +2574,8 @@ optdef(oc_internal, size_region_disj_snapshot,          int(3)).
 optdef(oc_internal, size_region_commit_entry,           int(1)).
 optdef(oc_internal, allow_multi_arm_switches,           bool(yes)).
 optdef(oc_internal, type_check_constraints,             bool(no)).
+
+%---------------------------------------------------------------------------%
 
     % Code generation options.
 
@@ -2552,6 +2815,8 @@ optdef(oc_opt, optopt_local_thread_engine_base,         bool_special).
 optdef(oc_opt, optopt_inline_alloc,                     bool_special).
 optdef(oc_opt, optopt_c_optimize,                       bool_special).
 
+%---------------------------------------------------------------------------%
+
     % Target code compilation options.
 
 optdef(oc_target_comp, target_debug,                    bool(no)).
@@ -2608,6 +2873,8 @@ optdef(oc_target_comp, csharp_compiler,                 string("csc")).
 optdef(oc_target_comp, csharp_flags,                    accumulating([])).
 optdef(oc_target_comp, quoted_csharp_flag,              string_special).
 optdef(oc_target_comp, cli_interpreter,                 string("")).
+
+%---------------------------------------------------------------------------%
 
     % Link Options.
 
@@ -2708,6 +2975,8 @@ optdef(oc_link, strip_executable_shared_flags,          string("")).
 optdef(oc_link, strip_executable_static_flags,          string("")).
 optdef(oc_link, java_archive_command,                   string("jar")).
 
+%---------------------------------------------------------------------------%
+
     % Build system options.
 
 optdef(oc_buildsys, only_opmode_make,                   bool(no)).
@@ -2771,6 +3040,8 @@ optdef(oc_buildsys, env_type,                           string_special).
 optdef(oc_buildsys, host_env_type,                      string("posix")).
 optdef(oc_buildsys, system_env_type,                    string("")).
 optdef(oc_buildsys, target_env_type,                    string("posix")).
+
+%---------------------------------------------------------------------------%
 
     % Miscellaneous options
 
@@ -5508,7 +5779,7 @@ options_help_verbosity = Section :-
             "file after compiling a module (default: 100).",
             "Specifying --no-output-compile-error-lines removes the limit."]),
 
-        help("report-cmd-line-args-doterr", [
+        help("report-cmd-line-args", [
             "Report the command line arguments."]),
 
         help("report-cmd-line-args-in-doterr", [
@@ -5549,7 +5820,7 @@ options_help_verbosity = Section :-
 
         % This option should be used only by the configure script.
         priv_help("config-default-color-diagnostics", [
-            "The default value of the --use-color-diagnostics option,",
+            "The default value of the --color-diagnostics option,",
             "set by the configure script."]),
 
         % This option should be used only by our test suite.
