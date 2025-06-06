@@ -115,21 +115,22 @@ output_c_mlds(ProgressStream, MLDS, Globals, TargetOrDump, Suffix,
     ModuleName = mlds_get_module_name(MLDS),
     module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
     Opts = init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump),
-    output_c_file_opts(ProgressStream, MLDS, Opts, Suffix, Succeeded0, !IO),
+    output_c_src_file_opts(ProgressStream, MLDS, Opts, Suffix,
+        Succeeded0, !IO),
     (
         Succeeded0 = succeeded,
-        output_c_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
+        output_c_mih_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
             Succeeded, !IO)
     ;
         Succeeded0 = did_not_succeed,
         Succeeded = did_not_succeed
     ).
 
-:- pred output_c_file_opts(io.text_output_stream::in, mlds::in,
+:- pred output_c_src_file_opts(io.text_output_stream::in, mlds::in,
     mlds_to_c_opts::in, string::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-output_c_file_opts(ProgressStream, MLDS, Opts, Suffix, Succeeded, !IO) :-
+output_c_src_file_opts(ProgressStream, MLDS, Opts, Suffix, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
     % XXX LEGACY
@@ -141,11 +142,11 @@ output_c_file_opts(ProgressStream, MLDS, Opts, Suffix, Succeeded, !IO) :-
     output_to_file_stream(ProgressStream, Globals, SourceFileName,
         mlds_output_src_file(Opts, Indent, MLDS), Succeeded, !IO).
 
-:- pred output_c_header_file_opts(io.text_output_stream::in, mlds::in,
+:- pred output_c_mih_header_file_opts(io.text_output_stream::in, mlds::in,
     mlds_to_c_opts::in, string::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-output_c_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
+output_c_mih_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
         !:Succeeded, !IO) :-
     % We write the header file out to <module>.mih.tmp and then call
     % `copy_dot_tmp_to_base_file_report_any_error' to move the
@@ -217,10 +218,8 @@ output_c_dump_func_defns(Opts, ModuleName, [FuncDefn | FuncDefns],
 
 %---------------------------------------------------------------------------%
 
-:- pred mlds_output_mih_hdr_file(mlds_to_c_opts::in, indent::in, mlds::in,
-    io.text_output_stream::in, list(string)::out, io::di, io::uo) is det.
-
-mlds_output_mih_hdr_file(Opts, Indent, MLDS, Stream, Errors, !IO) :-
+    % Output the module's .mih header file.
+    %
     % The .mih header file must contain _definitions_ of all public types,
     % but only _declarations_ of all public variables, constants,
     % and functions.
@@ -242,7 +241,15 @@ mlds_output_mih_hdr_file(Opts, Indent, MLDS, Stream, Errors, !IO) :-
     %   using low level data; and
     % - as of 2020 apr 11, the MLDS backend does not generate C code
     %   using high level data.
+    %
+    % Note that the module's .mh file, which contains declarations for
+    % the predicates and/or functions for which the module contains
+    % a foreign_export pragma, is output by outut_mh_header_file in export.m.
+    %
+:- pred mlds_output_mih_hdr_file(mlds_to_c_opts::in, indent::in, mlds::in,
+    io.text_output_stream::in, list(string)::out, io::di, io::uo) is det.
 
+mlds_output_mih_hdr_file(Opts, Indent, MLDS, Stream, Errors, !IO) :-
     MLDS = mlds(ModuleName, Imports, GlobalData,
         ClassDefns, EnumDefns, _EnvDefns, TableStructDefns, ProcDefns,
         InitPreds, FinalPreds, AllForeignCode, ExportEnums),

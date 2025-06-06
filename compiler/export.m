@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,12 +47,15 @@
 :- pred get_foreign_export_defns(module_info::in,
     list(foreign_export_defn)::out) is det.
 
-    % Produce an interface file containing declarations for the exported
+    % Output the .mh header file containing declarations for the exported
     % foreign functions (if required in this foreign language).
     %
     % This procedure is used for both the MLDS and LLDS back-ends.
     %
-:- pred produce_header_file(io.text_output_stream::in, module_info::in,
+    % The .mih header file, which is used only by the MLDS backend,
+    % is output by mlds_output_mih_hdr_file in mlds_to_c_file.m.
+    %
+:- pred output_mh_header_file(io.text_output_stream::in, module_info::in,
     foreign_export_decls::in, module_name::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -641,7 +644,7 @@ arg_loc_to_string(reg(RegType, RegNum), RegName) :-
 % Code to create the .mh files.
 %
 
-produce_header_file(ProgressStream, ModuleInfo, ForeignExportDecls,
+output_mh_header_file(ProgressStream, ModuleInfo, ForeignExportDecls,
         ModuleName, !IO) :-
     % We always produce a .mh file because with intermodule optimization
     % enabled, the .o file depends on all the .mh files of the imported

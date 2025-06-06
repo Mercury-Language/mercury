@@ -774,7 +774,7 @@ llds_output_pass(ProgressStream, OpModeCodeGen, HLDS,
         TargetCodeSucceeded = succeeded,
 
         C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _),
-        export.produce_header_file(ProgressStream, HLDS, C_ExportDecls,
+        export.output_mh_header_file(ProgressStream, HLDS, C_ExportDecls,
             ModuleName, !IO),
 
         % Finally we invoke the C compiler on the generated C files,

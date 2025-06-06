@@ -473,7 +473,7 @@ choose_and_execute_backend_passes(ProgressStream, ErrorStream, Globals,
         % containing function prototypes for the procedures referred to
         % by foreign_export pragmas.
         export.get_foreign_export_decls(!.HLDS, ExportDecls),
-        export.produce_header_file(ProgressStream, !.HLDS, ExportDecls,
+        export.output_mh_header_file(ProgressStream, !.HLDS, ExportDecls,
             ModuleName, !IO),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
