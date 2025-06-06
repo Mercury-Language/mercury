@@ -444,8 +444,7 @@ choose_and_execute_backend_passes(ProgressStream, ErrorStream, Globals,
     ;
         Target = target_java,
         mlds_backend(ProgressStream, !.HLDS, MLDS, !Specs, !DumpInfo, !IO),
-        mlds_to_java(ProgressStream, !.HLDS, MLDS, TargetCodeSucceeded,
-            !IO),
+        mlds_to_java(ProgressStream, !.HLDS, MLDS, TargetCodeSucceeded, !IO),
         (
             OpModeCodeGen = opfam_target_code_only,
             Succeeded = TargetCodeSucceeded
