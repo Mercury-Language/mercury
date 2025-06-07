@@ -524,7 +524,7 @@ read_and_erase_resume_point(CondStr, ResumeVars, ResumeLocs,
 
 make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         PNegElseCode) :-
-    globals.lookup_bool_option(Globals, use_minimal_model_stack_copy_pneg,
+    globals.lookup_bool_option(Globals, use_mmsc_pneg,
         UseMinimalModelStackCopyPNeg),
     ( if
         UseMinimalModelStackCopyPNeg = yes,
@@ -534,11 +534,9 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         ( if is_dummy_context(Context) then
             CtxtStr = "NULL"
         else
-            File = term_context.context_file(Context),
-            Line = term_context.context_line(Context),
+            Context = context(File, Line),
             CtxtStr = "\"" ++ File ++ ":" ++ int_to_string(Line) ++ "\""
         ),
-
         PNegCondComponents = [
             foreign_proc_raw_code(cannot_branch_away,
                 proc_does_not_affect_liveness, live_lvals_info(set.init),

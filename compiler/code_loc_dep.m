@@ -1420,7 +1420,7 @@ prepare_for_semi_commit(AddTrailOps, AddRegionOps, ForwardLiveVarsBeforeGoal,
         create_temp_frame(StackLabel,
             "prepare for temp frame commit", TempFrameCode, !CI, !CLD),
         get_globals(!.CI, Globals),
-        globals.lookup_bool_option(Globals, use_minimal_model_stack_copy_cut,
+        globals.lookup_bool_option(Globals, use_mmsc_cut,
             UseMinimalModelStackCopyCut),
         HijackInfo = commit_temp_frame(MaxfrSlot, UseMinimalModelStackCopyCut),
         (

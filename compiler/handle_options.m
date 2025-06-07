@@ -1326,16 +1326,13 @@ handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs) :-
     % these extra pieces of code to be disabled. The disabled program will
     % work only if the program doesn't actually use minimal model tabling,
     % which makes it useful only for performance testing.
-    globals.lookup_bool_option(!.Globals,
-        disable_minimal_model_stack_copy_pneg, DisablePneg),
-    globals.lookup_bool_option(!.Globals,
-        disable_minimal_model_stack_copy_cut, DisableCut),
+    globals.lookup_bool_option(!.Globals, disable_mmsc_pneg, DisablePneg),
+    globals.lookup_bool_option(!.Globals, disable_mmsc_cut, DisableCut),
     ( if
         UseMinimalModelStackCopy = bool.yes,
         DisablePneg = bool.no
     then
-        globals.set_option(use_minimal_model_stack_copy_pneg, bool(yes),
-            !Globals)
+        globals.set_option(use_mmsc_pneg, bool(yes), !Globals)
     else
         true
     ),
@@ -1343,8 +1340,7 @@ handle_minimal_model_options(!Globals, AllowHijacksMMSC, !Specs) :-
         UseMinimalModelStackCopy = bool.yes,
         DisableCut = bool.no
     then
-        globals.set_option(use_minimal_model_stack_copy_cut, bool(yes),
-            !Globals)
+        globals.set_option(use_mmsc_cut, bool(yes), !Globals)
     else
         true
     ).

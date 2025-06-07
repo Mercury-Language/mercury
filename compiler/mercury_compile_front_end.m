@@ -361,10 +361,10 @@ do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
         "% Type-checking...\n", !IO),
     maybe_write_string(ProgressStream, Verbose,
         "% Type-checking clauses...\n", !IO),
-    globals.lookup_bool_option(Globals, type_check_constraints,
-        TypeCheckConstraints),
+    globals.lookup_bool_option(Globals, type_check_using_constraints,
+        TypeCheckUsingConstraints),
     (
-        TypeCheckConstraints = yes,
+        TypeCheckUsingConstraints = yes,
         globals.lookup_string_option(Globals, experiment, Experiment),
         ( if Experiment = "old_type_constraints" then
             old_typecheck_constraints(!HLDS, TypeCheckSpecs)
@@ -375,7 +375,7 @@ do_typecheck(ProgressStream, ErrorStream, Verbose, Stats, Globals,
         FoundSyntaxError = no_clause_syntax_errors,
         DidWeExceedIterationLimit = within_iteration_limit
     ;
-        TypeCheckConstraints = no,
+        TypeCheckUsingConstraints = no,
         prepare_for_typecheck_module(!HLDS, !Specs),
         % This dump opportunity is here mostly to allow observation of
         % the effects of the transformation for regularizing headvar names.
