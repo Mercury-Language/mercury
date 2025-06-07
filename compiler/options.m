@@ -110,6 +110,13 @@
 % their help text should go, which should always be somewhere near,
 % and hopefully in a logical relation to, the options related to them.
 %
+% XXX We should have a policy that says "when an option is supported
+% only on a subset of all backends, its help text should list the
+% *supported* backends, NOT the *unsupported* backends".
+%
+% XXX We should delete copies of "(This option is not for general use)"
+% from all help texts; instead, the help text should just be set to private.
+%
 %---------------------------------------------------------------------------%
 
 :- module libs.options.
@@ -1397,6 +1404,9 @@ option_defaults(Opt, Data) :-
             % Options that tell the compiler what to infer.
     ;       oc_grade
             % Options that affect binary compatibility.
+            % This category should subdivided into separate subcategories
+            % for mdb, ssd, mprof, mdprof etc, but only after moving
+            % the non-grade options out of the category altogether.
     ;       oc_internal
             % Options for compiler use only, that should not be used
             % even by developers.
@@ -3072,15 +3082,35 @@ optdb(oc_infer, allow_stubs,                       bool(no),
 
 %---------------------------------------------------------------------------%
 
-% ZZZ
-
     % Compilation model options (ones that affect binary compatibility).
+    %
+    % XXX Many of the options in this section are NOT grade options.
+    % Some merely control *how* a grade's functionality operates;
+    % others are internal-use-only.
 
 optdef(oc_grade, grade,                                 string_special).
     % The `mmc' script will pass the default grade determined
     % at configuration time.
 
+optdb(oc_grade, grade,                                 string_special,
+    % The `mmc' script will pass the default grade determined
+    % at configuration time.
+    short_arg_help("s <grade>", "grade <grade>", [], [
+        "Select the compilation model. The <grade> should consist of",
+        "one of the base grades `none', `reg', `asm_fast', `hlc', `java'",
+        "or `csharp',",
+        "followed by zero or more of the grade modifiers",
+        "`.gc', `.prof', `.memprof', `.profdeep', `.tr',",
+        "`.spf', `.stseg', `.debug', and `.par'.",
+        "Depending on your particular installation, only a subset",
+        "of these possible grades will have been installed.",
+        "Attempting to use a grade which has not been installed",
+        "will result in an error at link time."])).
+
+%---------------------%
+
     % Target selection compilation model options.
+
 optdef(oc_grade, target,                                string("c")).
 optdef(oc_grade, compile_to_c,                          special).
 optdef(oc_grade, csharp,                                special).
@@ -3088,22 +3118,135 @@ optdef(oc_grade, csharp_only,                           special).
 optdef(oc_grade, java,                                  special).
 optdef(oc_grade, java_only,                             special).
 
+optdb(oc_grade, target,                                string("c"),
+    alt_help("target c\t\t\t(grades: none, reg, asm_fast, hlc)", pos_sep_lines,
+            ["target csharp\t\t\t(grades: csharp)",
+            "target java\t\t\t(grades: java)"], [
+        "Specify the target language: C, C# or Java.",
+        "The default is C.",
+        "Targets other than C imply `--high-level-code' (see below)."])).
+optdb(oc_grade, compile_to_c,                          special,
+    help("compile-to-c", [
+        "An abbreviation for `--target c --target-code-only'.",
+        "Generate C code in `<module>.c', but do not generate object",
+        "code."])).
+optdb(oc_grade, csharp,                                special,
+    help("csharp", [
+        "An abbreviation for `--target csharp'."])).
+optdb(oc_grade, csharp_only,                           special,
+    % XXX Using "object code" for C# is iffy.
+    help("csharp-only", [
+        "An abbreviation for `--target csharp --target-code-only'.",
+        "Generate C# code in `<module>.cs', but do not generate",
+        "object code."])).
+optdb(oc_grade, java,                                  special,
+    help("java", [
+        "An abbreviation for `--target java'."])).
+optdb(oc_grade, java_only,                             special,
+    % XXX Using "object code" for Java is iffy.
+    help("java-only", [
+        "An abbreviation for `--target java --target-code-only'.",
+        "Generate Java code in `<module>.java', but do not generate",
+        "object code."])).
+
+%---------------------%
+
     % Optional feature compilation model options:
-    % (a) Debugging
+    % (a1) Mdb debugging
+
 optdef(oc_grade, exec_trace,                            bool(no)).
 optdef(oc_grade, decl_debug,                            bool(no)).
-    % (b) Profiling
+
+optdb(oc_grade, exec_trace,                            bool(no),
+    % Yes, the internal and external names of this option are THAT different.
+    help("debug\t\t\t\t(grade modifier: `.debug')", [
+        "Enable Mercury-level debugging.",
+        "See the Debugging chapter of the Mercury User's Guide",
+        "for details.",
+        "This option is not yet supported for the `--high-level-code'",
+        "back-ends."])).
+optdb(oc_grade, decl_debug,                            bool(no),
+    help("decl-debug\t\t\t\t(grade modifier: `.decldebug')", [
+        "Enable full support for declarative debugging.",
+        "This allows subterm dependency tracking in the declarative",
+        "debugger.",
+        "See the Debugging chapter of the Mercury User's Guide",
+        "for details.",
+        "This option is not yet supported for the `--high-level-code'",
+        "back-ends."])).
+
+%---------------------%
+
+    % Optional feature compilation model options:
+    % (a2) Ssdb debugging
+
+optdef(oc_grade, source_to_source_debug,                bool(no)).
+
+optdb(oc_grade, source_to_source_debug,                bool(no),
+    % XXX Source-to-source debugging is not ready for the public.
+    priv_alt_help("ss-debug\t\t\t\t(grade modifier: `.ssdebug')",
+            pos_sep_lines, [
+            "source-to-source--debug\t\t\t\t(grade modifier: `.ssdebug')"], [
+        "Enable the source-to-source debugging transform."])).
+
+%---------------------%
+
+    % Optional feature compilation model options:
+    % (b1) Mprof rofiling
+
 optdef(oc_grade, profiling,                             bool_special).
 optdef(oc_grade, time_profiling,                        special).
 optdef(oc_grade, memory_profiling,                      special).
-optdef(oc_grade, deep_profiling,                        special).
 optdef(oc_grade, profile_calls,                         bool(no)).
 optdef(oc_grade, profile_time,                          bool(no)).
 optdef(oc_grade, profile_memory,                        bool(no)).
+
+% XXX The profiling and time_profiling options are ALMOST identical;
+% the only difference is that profiling can be negated, while
+% time_profiling cannot. I (zs) do not understand what need there is
+% for time_profiling, especially since it is not documented.
+optdb(oc_grade, profiling,                             bool_special,
+    short_help('p', "profiling",
+            ["time-profiling\t\t(grade modifier: `.prof')"], [
+        "Enable time and call profiling. Insert profiling hooks in the",
+        "generated code, and also output some profiling",
+        "information (the static call graph) to the file",
+        "`<module>.prof'.",
+        "This option is not supported for the C# or Java back-ends."])).
+optdb(oc_grade, time_profiling,                        special, no_help).
+optdb(oc_grade, memory_profiling,                      special,
+    help("memory-profiling\t\t(grade modifier: `.memprof')", [
+        "Enable memory and call profiling.",
+        "This option is not supported for the C# or Java back-ends."])).
+    % XXX The next three options are private, because they are not useful.
+    % The idea was for you to be able to use --profile-calls and
+    % --profile-time separately, but that doesn't work because compiling
+    % with --profile-time instead of --profile-calls results in
+    % different code addresses, so you can't combine the data
+    % from versions of your program compiled with different options.
+optdb(oc_grade, profile_calls,                         bool(no),
+    priv_help("profile-calls\t\t(grade modifier: `.profcalls')", [
+        "Similar to `--profiling', except that only gathers",
+        "call counts, not timing information.",
+        "Useful on systems where time profiling is not supported,",
+        "but not as useful as `--memory-profiling'."])).
+optdb(oc_grade, profile_time,                          bool(no),
+    priv_help("profile-time\t\t(grade modifier: `.proftime')", [
+        "Similar to `--profiling', except that it only gathers",
+        "timing information, not call counts."])).
+optdb(oc_grade, profile_memory,                        bool(no),
+    priv_help("profile-memory\t\t(grade modifier: `.profmem')", [
+        "Similar to `--memory-profiling', except that it only",
+        "gathers memory usage information, not call counts."])).
+
+%---------------------%
+
+    % Optional feature compilation model options:
+    % (b2) Mdprof rofiling
+
+optdef(oc_grade, deep_profiling,                        special).
 optdef(oc_grade, profile_deep,                          bool(no)).
 optdef(oc_grade, use_activation_counts,                 bool(no)).
-optdef(oc_grade, pre_prof_transforms_simplify,          bool(no)).
-optdef(oc_grade, pre_implicit_parallelism_simplify,     bool(no)).
 optdef(oc_grade, coverage_profiling,                    bool(yes)).
 optdef(oc_grade, coverage_profiling_via_calls,          bool(no)).
 optdef(oc_grade, coverage_profiling_static,             bool(no)).
@@ -3117,42 +3260,255 @@ optdef(oc_grade, profile_for_feedback,                  bool(no)).
 optdef(oc_grade, use_zeroing_for_ho_cycles,             bool(yes)).
 optdef(oc_grade, use_lots_of_ho_specialization,         bool(no)).
 optdef(oc_grade, deep_profile_tail_recursion,           bool(no)).
+optdef(oc_dev_ctrl, pre_prof_transforms_simplify,       bool(no)).
+optdef(oc_internal, pre_implicit_parallelism_simplify,  bool(no)).
+
+optdb(oc_grade, deep_profiling,                        special,
+    help("deep-profiling\t\t(grade modifier: `.profdeep')", [
+        "Enable deep profiling.",
+        "This option is not supported for the high-level C, C#",
+        "or Java back-ends."])).
+optdb(oc_grade, profile_deep,                          bool(no), no_help).
+    % This the *actual* grade option that switches on deep profiling.
+    % The deep_profiling option sets profile_deep to "yes", *and* sets
+    % the grade options for mprof profiling to "no".
+optdb(oc_grade, use_activation_counts,                 bool(no), no_help).
+    % use_activation_counts is an experimental feature.
+    % It *is* a grade option.
+optdb(oc_grade, coverage_profiling,                    bool(yes),
+        help("no-coverage-profiling", [
+            "Disable coverage profiling."])).
+% The next two options are intended for experiments.
+optdb(oc_grade, coverage_profiling_via_calls,          bool(no),
+    priv_help("coverage-profiling-via-calls", [
+        "Use calls to implement coverage points, not inline foreign code."])).
+optdb(oc_grade, coverage_profiling_static,             bool(no),
+    priv_help("coverage-profiling-static", [
+        "Disable dynamic coverage profiling, this uses less memory and may",
+        "be faster."])).
+% The next four options control coverage profiling (part of deep profiling):
+% they enable different types of coverage points.
+optdb(oc_grade, profile_deep_coverage_after_goal,      bool(yes),
+    priv_help("no-profile-deep-coverage-after-goal", [
+        "Disable coverage points after goals."])).
+optdb(oc_grade, profile_deep_coverage_branch_ite,      bool(yes),
+    priv_help("no-profile-deep-coverage-branch-ite", [
+        "Disable coverage points at the beginning of then and else",
+        "branches."])).
+optdb(oc_grade, profile_deep_coverage_branch_switch,   bool(yes),
+    priv_help("no-profile-deep-coverage-branch-switch", [
+        "Disable coverage points at the beginning of switch branches."])).
+optdb(oc_grade, profile_deep_coverage_branch_disj,     bool(yes),
+    priv_help("no-profile-deep-coverage-branch-disj", [
+        "Disable coverage points at the beginning of disjunction branches."])).
+% The next two options tune the coverage profiling pass, useful for debugging.
+% I believe these options are broken - pbone.
+optdb(oc_grade, profile_deep_coverage_use_portcounts,  bool(no),
+    priv_help("no-profile-deep-coverage-use-portcounts", [
+        "Turn off usage of port counts in the deep profiler to provide",
+        "some coverage information."])).
+optdb(oc_grade, profile_deep_coverage_use_trivial,     bool(no),
+    priv_help("no-profile-deep-coverage-use-trivial", [
+        "Turn off usage of trivial goal information"])).
+optdb(oc_grade, profile_for_feedback,                  bool(no),
+    help("profile-for-feedback", [
+        "Select deep profiling options suitable for profiler directed",
+        "implicit parallelism.",
+        "--profile-for-implicit-parallelism is a deprecated synonym for",
+        "this option."])).
+% The next three options are developer-only non-grade options.
+optdb(oc_grade, use_zeroing_for_ho_cycles,             bool(yes), no_help).
+optdb(oc_grade, use_lots_of_ho_specialization,         bool(no), no_help).
+optdb(oc_grade, deep_profile_tail_recursion,           bool(no), no_help).
+optdb(oc_dev_ctrl, pre_prof_transforms_simplify,       bool(no),
+    % This option is not a grade option. It is for developers only.
+    priv_help("pre-prof-transforms-simplify", [
+        "Force the pre-profiling simplification pass that is usually",
+        "enabled when building a profiling version of a program. This",
+        "allows a developer to enable this pass when using a",
+        "non-profiling build. It can be used to test that generated code",
+        "introduced in earlier passes is well-formed before it is",
+        "potentially removed by the later dead procedure elimination pass."])).
+optdb(oc_internal, pre_implicit_parallelism_simplify,  bool(no), no_help).
+    % pre_implicit_parallelism_simplify is not a grade option;
+    % it is internal-use-only.
+
+%---------------------%
+
+    % Optional feature compilation model options:
+    % (b3) Complexity profiling
+
 optdef(oc_grade, record_term_sizes_as_words,            bool(no)).
 optdef(oc_grade, record_term_sizes_as_cells,            bool(no)).
 optdef(oc_grade, experimental_complexity,               string("")).
-    % (c) Miscellaneous optional features
-optdef(oc_grade, gc,                                    string("boehm")).
-optdef(oc_grade, parallel,                              bool(no)).
+
+optdb(oc_grade, record_term_sizes_as_words,            bool(no),
+    priv_help("record-term-sizes-as-words\t\t(grade modifier: `.tsw')", [
+        "Augment each heap cell with its size in words."])).
+optdb(oc_grade, record_term_sizes_as_cells,            bool(no),
+    priv_help("record-term-sizes-as-cells\t\t(grade modifier: `.tsc')", [
+        "Augment each heap cell with its size in cells."])).
+optdb(oc_grade, experimental_complexity,               string(""),
+    % This is NOT a grade option; it only takes advantage of a grade.
+    priv_help("experimental-complexity <filename>", [
+        "Enable experimental complexity analysis for the predicates",
+        "listed in the given file.",
+        "This option is supported only for the C back-end with",
+        "`--no-highlevel-code'."])).
+
+%---------------------%
+
+    % Optional feature compilation model options:
+    % (b4) Threadscope profiling
+
 optdef(oc_grade, threadscope,                           bool(no)).
-optdef(oc_grade, use_trail,                             bool(no)).
-optdef(oc_grade, maybe_thread_safe_opt,                 string("no")).
-optdef(oc_grade, extend_stacks_when_needed,             bool(no)).
+
+optdb(oc_grade, threadscope,                           bool(no),
+    % XXX Threadscope profiling has not been maintained since Paul stopped
+    % working on Mercury. It has almost certainly suffered bit rot by now.
+    help("threadscope\t\t(grade modifier: `.threadscope')", [
+        "Enable support for profiling parallel execution.",
+        "This option is supported by the low-level C back-end parallel",
+        "grades on some processors. See README.ThreadScope for details."])).
+
+%---------------------%
+
+    % Optional feature compilation model options:
+    % (c) Miscellaneous optional features
+
+optdef(oc_grade, gc,                                    string("boehm")).
 optdef(oc_grade, stack_segments,                        bool(no)).
+optdef(oc_grade, extend_stacks_when_needed,             bool(no)).
+optdef(oc_grade, use_trail,                             bool(no)).
+optdef(oc_grade, pregenerated_dist,                     bool(no)).
+optdef(oc_grade, single_prec_float,                     bool(no)).
+optdef(oc_grade, parallel,                              bool(no)).
+optdef(oc_grade, maybe_thread_safe_opt,                 string("no")).
+optdef(oc_grade, use_minimal_model_stack_copy,          bool(no)).
+optdef(oc_grade, use_minimal_model_own_stacks,          bool(no)).
+optdef(oc_grade, minimal_model_debug,                   bool(no)).
 optdef(oc_grade, use_regions,                           bool(no)).
 optdef(oc_grade, use_alloc_regions,                     bool(yes)).
 optdef(oc_grade, use_regions_debug,                     bool(no)).
 optdef(oc_grade, use_regions_profiling,                 bool(no)).
-optdef(oc_grade, use_minimal_model_stack_copy,          bool(no)).
-optdef(oc_grade, use_minimal_model_own_stacks,          bool(no)).
-optdef(oc_grade, minimal_model_debug,                   bool(no)).
-optdef(oc_grade, pregenerated_dist,                     bool(no)).
-optdef(oc_grade, single_prec_float,                     bool(no)).
-optdef(oc_grade, type_layout,                           bool(yes)).
-optdef(oc_grade, source_to_source_debug,                bool(no)).
 optdef(oc_grade, ssdb_trace_level,                      string("default")).
 optdef(oc_grade, link_ssdb_libs,                        bool(no)).
+optdef(oc_internal, type_layout,                           bool(yes)).
 
+optdb(oc_grade, gc,                                    string("boehm"),
+    % We do not document the "accurate" and "hgc" GC methods,
+    % as those methods are still experimental.
+    alt_help("gc {none, boehm, automatic}", pos_sep_lines,
+            ["garbage-collection {none, boehm, automatic}"], [
+        "\t\t\t(`java' and `csharp' grades",
+        "\t\t\t\t use `--gc automatic',",
+        "\t\t\t`.gc' grades use `--gc boehm',",
+        %"\t\t\t`.hgc' grades use `--gc hgc',",
+        "\t\t\tother grades use `--gc none'.)",
+        "Specify which method of garbage collection to use",
+        "(default: boehm).",
+        "`boehm' is Hans Boehm et al's conservative collector.",
+        %"`hgc' is our own conservative collector;",
+        %"`accurate' is our own type-accurate copying GC;",
+        %"it requires `--high-level-code'.",
+        "`automatic' means the target language provides it.",
+        "This is the case for the C# and Java back-ends,",
+        "which always use the garbage collector of the underlying",
+        "implementation."])).
+optdb(oc_grade, stack_segments,                        bool(no),
+    help("stack-segments\t\t(grade modifier: `.stseg')", [
+        "Specify whether to use dynamically sized stacks that are",
+        "composed of small segments. This can help to avoid stack",
+        "exhaustion at the cost of increased execution time.",
+        "This option is not supported by the `--high-level-code'",
+        "back-ends."])).
+optdb(oc_grade, extend_stacks_when_needed,             bool(no),
+    % This is private as this feature is still experimental.
+    priv_help("extend-stacks-when-needed", [
+        "Specify that code that increments a stack pointer must",
+        "extend the stack when this is needed."])).
+optdb(oc_grade, use_trail,                             bool(no),
+    help("use-trail\t\t\t(grade modifier: `.tr')", [
+        "Enable use of a trail.",
+        "This is necessary for interfacing with constraint solvers,",
+        "or for backtrackable destructive update.",
+        "This option is not yet supported for the C# or Java backends."])).
+optdb(oc_grade, pregenerated_dist,                     bool(no), no_help).
+    % XXX The pregen grade component *should* be documented.
+optdb(oc_grade, single_prec_float,                     bool(no),
+    help("single-prec-float\t\t(grade modifier: `.spf')", [
+        "Use single precision floats so that, on 32-bit machines,",
+        "floating point values don't need to be boxed. Double",
+        "precision floats are used by default.",
+        "This option is not supported for the C# or Java back-ends."])).
+optdb(oc_grade, parallel,                              bool(no),
+    help("parallel\t\t(grade modifier: `.par')", [
+        "Enable parallel execution support for the low-level C grades.",
+        "Enable concurrency (via pthreads) for the high-level C grades."])).
+optdb(oc_grade, maybe_thread_safe_opt,                 string("no"),
+    help("maybe-thread-safe {yes, no}", [
+        "Specify how to treat the `maybe_thread_safe' foreign code",
+        "attribute. `yes' means that a foreign procedure with the",
+        "`maybe_thread_safe' option is treated as though it has a",
+        "`thread_safe' attribute. `no' means that the foreign",
+        "procedure is treated as though it has a `not_thread_safe'",
+        "attribute. The default is `no'."])).
+optdb(oc_grade, use_minimal_model_stack_copy,          bool(no),
+    % This controls the .mmsc grade component.
+    priv_help("use-minimal-model-stack-copy", [
+        "Enable the use of the standard form of minimal model tabling."])).
+optdb(oc_grade, use_minimal_model_own_stacks,          bool(no),
+    % This controls the .mmos grade component.
+    priv_help("use-minimal-model-own-stacks", [
+        "Enable the use of an experimental form of minimal model tabling."])).
+optdb(oc_grade, minimal_model_debug,                   bool(no),
+    % This turns .mmos into .dmmos and .mmsc into .dmmsc.
+    priv_help("minimal-model-debug", [
+        "Enables extra data structures that assist in debugging",
+        "minimal model tabling."])).
+% RBMM is undocumented since it is still experimental.
+optdb(oc_grade, use_regions,                           bool(no),
+    priv_help("use-regions\t\t(grade modifier: `.rbmm')", [
+        "Enable support for region-based memory management."])).
+optdb(oc_grade, use_alloc_regions,                     bool(yes),
+    priv_help("use-alloc-regions", [
+        "Compute and use the exact set of regions",
+        "that may be allocated into by a call."])).
+% use_regions_debug and use_regions_profiling *are* (private) grade options.
+% XXX They should be documented.
+optdb(oc_grade, use_regions_debug,                     bool(no), no_help).
+optdb(oc_grade, use_regions_profiling,                 bool(no), no_help).
+% XXX Source-to-source debugging is not ready for the public.
+% XXX Neither of the following two options is a grade option.
+optdb(oc_grade, ssdb_trace_level,                      string("default"),
+    priv_help("ssdb-trace {none, shallow, deep}", [
+        "The trace level to use for source to source debugging of",
+        "the given module."])).
+optdb(oc_grade, link_ssdb_libs,                        bool(no),
+    priv_alt_help("link-ssdebug-libs", pos_sep_lines, ["link-ssdb-libs"], [
+        "Link the source to source debugging libraries into the",
+        "executable."])).
+optdb(oc_grade, type_layout,                           bool(yes),
+    priv_help("no-type-layout", [
+        "Don't output type_ctor_layout structures or references",
+        "to them. (The C code also needs to be compiled with",
+        "`-DNO_TYPE_LAYOUT')."])).
+
+%---------------------%
+
+    % Optional feature compilation model options:
     % (d) representation compilation model options
+
 optdef(oc_grade, num_ptag_bits,                         int(-1)).
     % -1 is a special value which means use the value
     % of conf_low_ptag_bits instead.
+optdef(oc_grade, conf_low_ptag_bits,                    int(2)).
+    % The `mmc' script will override the above default with
+    % a value determined at configuration time.
 optdef(oc_grade, bits_per_word,                         int(32)).
     % A good default for the current generation of architectures.
 optdef(oc_grade, bytes_per_word,                        int(4)).
     % A good default for the current generation of architectures.
-optdef(oc_grade, conf_low_ptag_bits,                    int(2)).
-    % The `mmc' script will override the above default with
-    % a value determined at configuration time.
 optdef(oc_grade, unboxed_float,                         bool(no)).
 optdef(oc_grade, unboxed_int64s,                        bool(no)).
 optdef(oc_grade, unboxed_no_tag_types,                  bool(yes)).
@@ -3174,18 +3530,168 @@ optdef(oc_grade, sync_term_size_in_words,               int(8)).
     % 8 is the size on linux (at the time of writing) - will usually be
     % overridden by a value from configure.
 
+optdb(oc_grade, num_ptag_bits,                         int(-1),
+    % -1 is a special value which means use the value
+    % of conf_low_ptag_bits instead.
+    %
+    % Normally, the --num-tag-bits option is used only by the compiler.
+    % By default, its value is set to the value of the --conf-low-tag-bits
+    % option when targeting C, and to zero when targeting other languages.
+    % Its only legitimate use by non-developers is for cross-compilation.
+    % XXX That fact should be included in the help text.
+    help("num-ptag-bits <n>", [
+        "(This option is not for general use.)",
+        "Use <n> primary tag bits."])).
+optdb(oc_grade, conf_low_ptag_bits,                    int(2),
+    % The `mmc' script will override the above default with
+    % a value determined at configuration time.
+    priv_help("conf-low-tag-bits", [
+        "Reserved for use by the `mmc' script"])).
+optdb(oc_grade, bits_per_word,                         int(32),
+    % A good default for the current generation of architectures.
+    priv_help("bits-per-word", [
+        "Reserved for use by the `mmc' script"])).
+optdb(oc_grade, bytes_per_word,                        int(4),
+    % A good default for the current generation of architectures.
+    priv_help("bytes-per-word", [
+        "Reserved for use by the `mmc' script"])).
+optdb(oc_grade, unboxed_float,                         bool(no),
+    priv_help("unboxed-float", [
+        "(This option is not for general use.)",
+        "Do not box floating point numbers.",
+        "This assumes that a Mercury float will fit in a word.",
+        "The C code needs to be compiled with `-UMR_BOXED_FLOAT'.",
+        "It may also need to be compiled with",
+        "`-DMR_USE_SINGLE_PREC_FLOAT', if double precision",
+        "floats don't fit into a word."])).
+optdb(oc_grade, unboxed_int64s,                        bool(no),
+    priv_help("unboxed-int64s", [
+        "(This option is not for general use.)",
+        "Do not box 64-bit integer numbers",
+        "This assumes that word size of the target machine is at least",
+        "64-bits in size.",
+        "The C code needs to be compiled with `-UMR_BOXED_INT64S'."])).
+optdb(oc_grade, unboxed_no_tag_types,                  bool(yes),
+    priv_help("no-unboxed-no-tag-types", [
+        "(This option is not for general use.)",
+        "Box no-tag types. This option is disabled by default.])"])).
+optdb(oc_grade, arg_pack_bits,                         int(-1),
+    % -1 is a special value which means use all word bits
+    % for argument packing.
+    priv_help("arg-pack-bits <n>", [
+        "(This option is not for general use.)",
+        "The number of bits in a word in which to pack constructor",
+        "arguments."])).
+optdb(oc_grade, pack_everything,                       bool(no),
+    priv_help("pack-everything", [
+        "Tell decide_type_repn.m to pack everything that can be packed."])).
+optdb(oc_grade, allow_direct_args,                     bool(yes),
+    priv_help("allow-direct-args", [
+        "Allow the direct arg optimization."])).
+optdb(oc_grade, allow_double_word_fields,              bool(yes),
+    priv_help("no-allow-double-word-fields", [
+        "Disallow storing a single constructor argument in two words",
+        "(namely, double-precision floats)."])).
+optdb(oc_grade, allow_double_word_ints,                bool(no), no_help).
+optdb(oc_grade, allow_packing_dummies,                 bool(no), no_help).
+optdb(oc_grade, allow_packing_ints,                    bool(no), no_help).
+optdb(oc_grade, allow_packing_chars,                   bool(no), no_help).
+optdb(oc_grade, allow_packing_local_sectags,           bool(no), no_help).
+optdb(oc_grade, allow_packing_remote_sectags,          bool(no), no_help).
+optdb(oc_grade, allow_packing_mini_types,              bool(no), no_help).
+optdb(oc_grade, allow_packed_unify_compare,            bool(no), no_help).
+optdb(oc_grade, sync_term_size_in_words,               int(8), no_help).
+    % 8 is the size on linux (at the time of writing) - will usually be
+    % overridden by a value from configure.
+
+%---------------------%
+
+    % Optional feature compilation model options:
     % LLDS back-end compilation model options
-optdef(oc_grade,    gcc_non_local_gotos,                   bool(yes)).
+
 optdef(oc_grade,    gcc_global_registers,                  bool(yes)).
+optdef(oc_grade,    gcc_non_local_gotos,                   bool(yes)).
 optdef(oc_grade,    asm_labels,                            bool(yes)).
 optdef(oc_grade,    use_float_registers,                   bool(yes)).
 
+optdb(oc_grade,    gcc_global_registers,                  bool(yes),
+    % We do not document "fast".
+    alt_help("gcc-global-registers\t\t(grades: reg, asm_fast)",
+            pos_sep_lines,
+            ["no-gcc-global-registers\t(grades: none)"], [
+        "Specify whether or not to use GNU C's",
+        "global register variables extension.",
+        "This option is ignored if the `--high-level-code' option is",
+        "enabled."])).
+optdb(oc_grade,    gcc_non_local_gotos,                   bool(yes),
+    % We do not document "jump", "fast", "asm_jump".
+    alt_help("gcc-non-local-gotos\t\t(grades: asm_fast)", pos_sep_lines,
+            ["no-gcc-non-local-gotos\t(grades: none, reg)"], [
+        "Specify whether or not to use GNU C's",
+        """labels as values"" extension.",
+        "This option is ignored if the `--high-level-code' option is",
+        "enabled."])).
+optdb(oc_grade,    asm_labels,                            bool(yes),
+    % We do not document "asm_jump".
+    alt_help("asm-labels\t\t\t(grades: asm_fast)", pos_sep_lines,
+            ["no-asm-labels\t\t\t(grades: none, reg)"], [
+        "Specify whether or not to use GNU C's",
+        "asm extensions for inline assembler labels.",
+        "This option is ignored if the `--high-level-code' option is",
+        "enabled."])).
+optdb(oc_grade,    use_float_registers,                   bool(yes),
+    priv_help("use-float-registers", [
+        "Use float registers for argument passing."])).
+
+%---------------------%
+
+    % Optional feature compilation model options:
     % MLDS back-end compilation model options
+
 optdef(oc_grade,    highlevel_code,                        bool(no)).
 optdef(oc_grade,    c_debug_grade,                         bool(no)).
 optdef(oc_internal, det_copy_out,                          bool(no)).
 optdef(oc_internal, nondet_copy_out,                       bool(no)).
 optdef(oc_internal, put_commit_in_own_func,                bool(no)).
+
+optdb(oc_grade,    highlevel_code,                        bool(no),
+    short_help('H', "high-level-code\t\t\t(grades: hlc, csharp, java)", [], [
+        "Use an alternative back-end that generates high-level code",
+        "rather than the very low-level code that is generated by our",
+        "original back-end."])).
+optdb(oc_grade,    c_debug_grade,                         bool(no),
+    help("c-debug-grade\t\t\t(grades: hlc)", [
+        "Require that all modules in the program be compiled to object code",
+        "in a way that allows the program executable to be debuggable",
+        "with debuggers for C, such as gdb. This option is intended mainly",
+        "for the developers of Mercury, though it can also help to debug",
+        "C code included in Mercury programs."])).
+% The next two options are not documented,
+% because they are not yet tested much, and are probably not very useful,
+% except for Java, where they are the default.
+optdb(oc_internal, det_copy_out,                          bool(no),
+    priv_help("det-copy-out", [
+        "Specify whether to handle output arguments for det/semidet",
+        "procedures using return-by-value rather than pass-by-reference.",
+        "This option is ignored if the `--high-level-code' option",
+        "is not enabled."])).
+optdb(oc_internal, nondet_copy_out,                       bool(no),
+    priv_help("nondet-copy-out", [
+        "Specify whether to handle output arguments for nondet",
+        "procedures using pass-by-value rather than pass-by-reference.",
+        "This option is ignored if the `--high-level-code' option",
+        "is not enabled."])).
+% The --put-commit-in-own-func option is not documented because
+% it is enabled automatically (by handle_options) in the situations
+% where it is needed; the user should never need to set it.
+optdb(oc_internal, put_commit_in_own_func,                bool(no),
+    priv_help("put-commit-in-own-func", [
+        "Put each commit in its own C function.",
+        "This option only affects the MLDS back-ends.",
+        "It is needed for the high-level C back-end,",
+        "where commits are implemented via setjmp()/longjmp(),",
+        "since longjmp() may clobber any non-volatile local vars",
+        "in the function that called setjmp()."])).
 
 %---------------------------------------------------------------------------%
 
@@ -6834,7 +7340,7 @@ options_help_aux_output = Section :-
         % consumption.
         priv_alt_help("link-ssdebug-libs", pos_sep_lines, ["link-ssdb-libs"], [
             "Link the source to source debugging libraries into the",
-            "the executable."]),
+            "executable."]),
 
         priv_help("ssdb-trace {none, shallow, deep}", [
             "The trace level to use for source to source debugging of",
@@ -7620,7 +8126,7 @@ options_help_compilation_model = NestedSection :-
         help("threadscope\t\t(grade modifier: `.threadscope')", [
             "Enable support for profiling parallel execution.",
             "This option is supported by the low-level C back-end parallel",
-            "grades on some processors, See README.ThreadScope for details."])
+            "grades on some processors. See README.ThreadScope for details."])
 
     ],
     SectionProf = help_section(SectionNameProf, [], HelpStructsProf),
