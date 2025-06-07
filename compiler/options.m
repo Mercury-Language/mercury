@@ -1429,9 +1429,12 @@ option_defaults(Opt, Data) :-
             % Options that control the operation of transitive intermodule
             % optimization.
     ;       oc_target_comp
+    ;       oc_target_c
+    ;       oc_target_java
+    ;       oc_target_csharp
             % Options that control how the target language files we generate
             % are further compiled.
-            % XXX Subdivide into oc_target_c/oc_target_java/oc_target_csharp.
+            % Subdivided for C, Java and C#.
     ;       oc_link
             % Options that control how executables, or their equivalents
             % for some target languages, are generated.
@@ -4203,57 +4206,188 @@ optdef(oc_opt, optopt_c_optimize,                       bool_special).
 optdef(oc_target_comp, target_debug,                    bool(no)).
 optdef(oc_target_comp, warn_target_code,                bool(yes)).
 
-    % C
-optdef(oc_target_comp, cc,                              string("gcc")).
-    % The `mmc' script will override the default with a value
-    % determined at configuration time.
-optdef(oc_target_comp, c_include_directories,           accumulating([])).
-    % The `mmc' script will override the default with a value
-    % determined at configuration time.
-optdef(oc_target_comp, ansi_c,                          bool(yes)).
-optdef(oc_target_comp, cflags,                          accumulating([])).
-optdef(oc_target_comp, quoted_cflag,                    string_special).
-optdef(oc_target_comp, gcc_flags,                       accumulating([])).
-optdef(oc_target_comp, quoted_gcc_flag,                 string_special).
-optdef(oc_target_comp, clang_flags,                     accumulating([])).
-optdef(oc_target_comp, quoted_clang_flag,               string_special).
-optdef(oc_target_comp, msvc_flags,                      accumulating([])).
-optdef(oc_target_comp, quoted_msvc_flag,                string_special).
+optdb(oc_target_comp, target_debug,                    bool(no),
+    help("target-debug", [
+        "Enable debugging of the generated target code.",
+        "If the target language is C, this has the same effect as",
+        "`--c-debug' (see below).",
+        "If the target language is C#, this causes the compiler to",
+        "pass `/debug' to the C# compiler.)"])).
+optdb(oc_target_comp, warn_target_code,                bool(yes),
+    % XXX Does this apply to Java and C# too?
+    help("no-warn-target-code", [
+        "Disable warnings from the compiler used to process the",
+        "target code (e.g. gcc)."])).
 
-optdef(oc_target_comp, cflags_for_warnings,             string("")).
+%---------------------%
+
+    % C
+
+optdef(oc_target_c, cc,                              string("gcc")).
+    % The `mmc' script will override the default with a value
+    % determined at configuration time.
+optdef(oc_target_c, c_compiler_type,                 string("gcc")).
+optdef(oc_target_c, c_include_directories,           accumulating([])).
+    % The `mmc' script will override the default with a value
+    % determined at configuration time.
+optdef(oc_target_c, ansi_c,                          bool(yes)).
+optdef(oc_target_c, cflags,                          accumulating([])).
+optdef(oc_target_c, quoted_cflag,                    string_special).
+optdef(oc_target_c, gcc_flags,                       accumulating([])).
+optdef(oc_target_c, quoted_gcc_flag,                 string_special).
+optdef(oc_target_c, clang_flags,                     accumulating([])).
+optdef(oc_target_c, quoted_clang_flag,               string_special).
+optdef(oc_target_c, msvc_flags,                      accumulating([])).
+optdef(oc_target_c, quoted_msvc_flag,                string_special).
+optdef(oc_target_c, cflags_for_warnings,             string("")).
     % The `mmc' script will override the default with values
     % determined at configuration time.
-optdef(oc_target_comp, cflags_for_sanitizers,           string("")).
-optdef(oc_target_comp, cflags_for_optimization,         string("-O")).
-optdef(oc_target_comp, cflags_for_ansi,                 string("")).
-optdef(oc_target_comp, cflags_for_regs,                 string("")).
-optdef(oc_target_comp, cflags_for_gotos,                string("")).
-optdef(oc_target_comp, cflags_for_threads,              string("")).
-optdef(oc_target_comp, cflags_for_debug,                string("-g")).
-optdef(oc_target_comp, cflags_for_pic,                  string("")).
-optdef(oc_target_comp, cflags_for_lto,                  string("")).
-optdef(oc_target_comp, c_flag_to_name_object_file,      string("-o ")).
-optdef(oc_target_comp, object_file_extension,           string(".o")).
-optdef(oc_target_comp, pic_object_file_extension,       string(".o")).
-optdef(oc_target_comp, c_compiler_type,                 string("gcc")).
-optdef(oc_target_comp, csharp_compiler_type,            string("mono")).
+optdef(oc_target_c, cflags_for_sanitizers,           string("")).
+optdef(oc_target_c, cflags_for_optimization,         string("-O")).
+optdef(oc_target_c, cflags_for_regs,                 string("")).
+optdef(oc_target_c, cflags_for_gotos,                string("")).
+optdef(oc_target_c, cflags_for_threads,              string("")).
+optdef(oc_target_c, cflags_for_debug,                string("-g")).
+optdef(oc_target_c, cflags_for_pic,                  string("")).
+optdef(oc_target_c, cflags_for_lto,                  string("")).
+optdef(oc_target_c, c_flag_to_name_object_file,      string("-o ")).
+optdef(oc_target_c, object_file_extension,           string(".o")).
+optdef(oc_target_c, pic_object_file_extension,       string(".o")).
+optdef(oc_target_c, cflags_for_ansi,                 string("")).
+
+optdb(oc_target_c, cc,                              string("gcc"),
+    % The `mmc' script will override the default with a value
+    % determined at configuration time.
+    help("cc <compiler-name>", [
+        "Specify which C compiler to use."])).
+optdb(oc_target_c, c_compiler_type,                 string("gcc"), no_help).
     % The `mmc' script will override the default with a value
     % determined at configuration time for the above two options.
+    % XXX That argues for this option being oc_config.
+optdb(oc_target_c, c_include_directories,           accumulating([]),
+    % The `mmc' script will override the default with a value
+    % determined at configuration time.
+    alt_help("c-include-directory <dir>", pos_sep_lines,
+            ["c-include-dir <dir>"], [
+        "Append <dir> to the list of directories to be searched for",
+        "C header files. Note that if you want to override",
+        "this list, rather than append to it, then you can set the",
+        "`MERCURY_MC_ALL_C_INCL_DIRS' environment variable to a",
+        "sequence of `--c-include-directory' options."])).
+optdb(oc_target_c, ansi_c,                          bool(yes),
+    help("no-ansi-c", [
+        "This option is deprecated and does not have any effect."])).
+optdb(oc_target_c, cflags,                          accumulating([]),
+    help("cflags <options>", [
+        "Specify options to be passed to the C compiler.",
+        "These options will not be quoted when passed to the shell."])).
+optdb(oc_target_c, quoted_cflag,                    string_special,
+    help("cflag <option>", [
+        "Specify a single word option to be passed to the C compiler.",
+        "The word will be quoted when passed to the shell."])).
+optdb(oc_target_c, gcc_flags,                       accumulating([]), no_help).
+    % XXX part of mmc --make; but needs more detail.
+optdb(oc_target_c, quoted_gcc_flag,                 string_special, no_help).
+    % XXX document me.
+optdb(oc_target_c, clang_flags,                     accumulating([]), no_help).
+    % XXX part of mmc --make; but needs more detail.
+optdb(oc_target_c, quoted_clang_flag,               string_special, no_help).
+    % XXX document me.
+optdb(oc_target_c, msvc_flags,                      accumulating([]), no_help).
+    % XXX part of mmc --make; but needs more detail.
+optdb(oc_target_c, quoted_msvc_flag,                string_special, no_help).
+    % XXX document me.
+% XXX All of the following options are reserved for the mmc script,
+% but they nevertheless should have private help text.
+optdb(oc_target_c, cflags_for_warnings,             string(""), no_help).
+    % The `mmc' script will override the default with values
+    % determined at configuration time.
+optdb(oc_target_c, cflags_for_sanitizers,           string(""), no_help).
+optdb(oc_target_c, cflags_for_optimization,         string("-O"), no_help).
+optdb(oc_target_c, cflags_for_regs,                 string(""), no_help).
+optdb(oc_target_c, cflags_for_gotos,                string(""), no_help).
+optdb(oc_target_c, cflags_for_threads,              string(""), no_help).
+optdb(oc_target_c, cflags_for_debug,                string("-g"), no_help).
+optdb(oc_target_c, cflags_for_pic,                  string(""), no_help).
+optdb(oc_target_c, cflags_for_lto,                  string(""), no_help).
+optdb(oc_target_c, c_flag_to_name_object_file,      string("-o "), no_help).
+optdb(oc_target_c, object_file_extension,           string(".o"), no_help).
+optdb(oc_target_c, pic_object_file_extension,       string(".o"), no_help).
+% XXX cflags_for_ansi is deprecated; it no longer has any effect.
+optdb(oc_target_c, cflags_for_ansi,                 string(""), no_help).
+
+%---------------------%
 
     % Java
-optdef(oc_target_comp, java_compiler,                   string("javac")).
-optdef(oc_target_comp, java_interpreter,                string("java")).
-optdef(oc_target_comp, java_compiler_flags,             accumulating([])).
-optdef(oc_target_comp, quoted_java_compiler_flag,       string_special).
-optdef(oc_target_comp, java_classpath,                  accumulating([])).
-optdef(oc_target_comp, java_runtime_flags,              accumulating([])).
-optdef(oc_target_comp, quoted_java_runtime_flag,        string_special).
+
+optdef(oc_target_java, java_compiler,                   string("javac")).
+optdef(oc_target_java, java_interpreter,                string("java")).
+optdef(oc_target_java, java_compiler_flags,             accumulating([])).
+optdef(oc_target_java, quoted_java_compiler_flag,       string_special).
+optdef(oc_target_java, java_classpath,                  accumulating([])).
+optdef(oc_target_java, java_runtime_flags,              accumulating([])).
+optdef(oc_target_java, quoted_java_runtime_flag,        string_special).
+
+optdb(oc_target_java, java_compiler,                   string("javac"),
+    alt_help("javac <javac>", pos_sep_lines,
+            ["java-compiler <javac>"], [
+        "Specify which Java compiler to use. The default is `javac'."])).
+optdb(oc_target_java, java_interpreter,                string("java"),
+    help("java-interpreter <java>", [
+        "Specify which Java interpreter to use.",
+        "The default is `java'"])).
+optdb(oc_target_java, java_compiler_flags,             accumulating([]),
+    alt_help("javac-flags <options>", pos_sep_lines,
+            ["java-flags <options>"], [
+        "Specify options to be passed to the Java compiler.",
+        "These options will not be quoted when passed to the shell."])).
+optdb(oc_target_java, quoted_java_compiler_flag,       string_special,
+    alt_help("javac-flag <option>", pos_sep_lines,
+            ["java-flag <option>"], [
+        "Specify a single word option to be passed to the Java compiler.",
+        "The word will be quoted when passed to the shell."])).
+optdb(oc_target_java, java_classpath,                  accumulating([]),
+    help("java-classpath <path>", [
+        "Set the classpath for the Java compiler and interpreter."])).
+optdb(oc_target_java, java_runtime_flags,              accumulating([]),
+    help("java-runtime-flags <options>", [
+        "Specify options to be passed to the Java interpreter.",
+        "These options will not be quoted when passed to the shell."])).
+optdb(oc_target_java, quoted_java_runtime_flag,        string_special,
+    help("java-runtime-flag <option>", [
+        "Specify a single word option to be passed to the Java interpreter.",
+        "The word will be quoted when passed to the shell."])).
+
+%---------------------%
 
     % C#
-optdef(oc_target_comp, csharp_compiler,                 string("csc")).
-optdef(oc_target_comp, csharp_flags,                    accumulating([])).
-optdef(oc_target_comp, quoted_csharp_flag,              string_special).
-optdef(oc_target_comp, cli_interpreter,                 string("")).
+
+optdef(oc_target_csharp, csharp_compiler,                 string("csc")).
+optdef(oc_target_csharp, cli_interpreter,                 string("")).
+optdef(oc_target_csharp, csharp_compiler_type,            string("mono")).
+    % The `mmc' script will override the default with a value
+    % determined at configuration time for the above two options.
+optdef(oc_target_csharp, csharp_flags,                    accumulating([])).
+optdef(oc_target_csharp, quoted_csharp_flag,              string_special).
+
+optdb(oc_target_csharp, csharp_compiler,                 string("csc"),
+    help("csharp-compiler <csc>", [
+        "Specify the name of the C# Compiler. The default is `csc'."])).
+optdb(oc_target_csharp, cli_interpreter,                 string(""),
+    help("cli-interpreter <prog>", [
+        "Specify the program that implements the Common Language",
+        "Infrastructure (CLI) execution environment, e.g. `mono'."])).
+optdb(oc_target_csharp, csharp_compiler_type,         string("mono"), no_help).
+    % The `mmc' script will override the default with a value
+    % determined at configuration time for the above two options.
+optdb(oc_target_csharp, csharp_flags,                    accumulating([]),
+    help("csharp-flags <options>", [
+        "Specify options to be passed to the C# compiler.",
+        "These options will not be quoted when passed to the shell."])).
+optdb(oc_target_csharp, quoted_csharp_flag,              string_special,
+    help("csharp-flag <option>", [
+        "Specify a single word option to be passed to the C# compiler.",
+        "The word will be quoted when passed to the shell."])).
 
 %---------------------------------------------------------------------------%
 
