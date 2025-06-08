@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1997,1999-2000,2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -699,6 +699,15 @@
 :- mode map_values_foldl(in(pred(in, out, in, out) is semidet),
     in, out, in, out) is semidet.
 
+:- pred map_values_only_foldl(pred(V, W, A, A),
+    tree234(K, V), tree234(K, W), A, A).
+:- mode map_values_only_foldl(in(pred(in, out, di, uo) is det),
+    in, out, di, uo) is det.
+:- mode map_values_only_foldl(in(pred(in, out, in, out) is det),
+    in, out, in, out) is det.
+:- mode map_values_only_foldl(in(pred(in, out, in, out) is semidet),
+    in, out, in, out) is semidet.
+
 :- pred map_values_foldl2(pred(V, W, A, A, B, B),
     tree234(K, V), tree234(K, W), A, A, B, B).
 :- mode map_values_foldl2(in(pred(in, out, di, uo, di, uo) is det),
@@ -708,6 +717,17 @@
 :- mode map_values_foldl2(in(pred(in, out, in, out, in, out) is det),
     in, out, in, out, in, out) is det.
 :- mode map_values_foldl2(in(pred(in, out, in, out, in, out) is semidet),
+    in, out, in, out, in, out) is semidet.
+
+:- pred map_values_only_foldl2(pred(V, W, A, A, B, B),
+    tree234(K, V), tree234(K, W), A, A, B, B).
+:- mode map_values_only_foldl2(in(pred(in, out, di, uo, di, uo) is det),
+    in, out, di, uo, di, uo) is det.
+:- mode map_values_only_foldl2(in(pred(in, out, in, out, di, uo) is det),
+    in, out, in, out, di, uo) is det.
+:- mode map_values_only_foldl2(in(pred(in, out, in, out, in, out) is det),
+    in, out, in, out, in, out) is det.
+:- mode map_values_only_foldl2(in(pred(in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out) is semidet.
 
 :- pred map_values_foldl3(pred(V, W, A, A, B, B, C, C),
@@ -725,6 +745,24 @@
     in(pred(in, out, in, out, in, out, in, out) is det),
     in, out, in, out, in, out, in, out) is det.
 :- mode map_values_foldl3(
+    in(pred(in, out, in, out, in, out, in, out) is semidet),
+    in, out, in, out, in, out, in, out) is semidet.
+
+:- pred map_values_only_foldl3(pred(V, W, A, A, B, B, C, C),
+    tree234(K, V), tree234(K, W), A, A, B, B, C, C).
+:- mode map_values_only_foldl3(
+    in(pred(in, out, di, uo, di, uo, di, uo) is det),
+    in, out, di, uo, di, uo, di, uo) is det.
+:- mode map_values_only_foldl3(
+    in(pred(in, out, in, out, di, uo, di, uo) is det),
+    in, out, in, out, di, uo, di, uo) is det.
+:- mode map_values_only_foldl3(
+    in(pred(in, out, in, out, in, out, di, uo) is det),
+    in, out, in, out, in, out, di, uo) is det.
+:- mode map_values_only_foldl3(
+    in(pred(in, out, in, out, in, out, in, out) is det),
+    in, out, in, out, in, out, in, out) is det.
+:- mode map_values_only_foldl3(
     in(pred(in, out, in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out, in, out) is semidet.
 
@@ -4690,6 +4728,32 @@ map_values_foldl(Pred, Tree0, Tree, !A) :-
     tree234.map_values_foldl(Pred, Right0, Right, !A),
     Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
 
+map_values_only_foldl(_Pred, empty, empty, !A).
+map_values_only_foldl(Pred, Tree0, Tree, !A) :-
+    Tree0 = two(K0, V0, Left0, Right0),
+    tree234.map_values_only_foldl(Pred, Left0, Left, !A),
+    Pred(V0, W0, !A),
+    tree234.map_values_only_foldl(Pred, Right0, Right, !A),
+    Tree = two(K0, W0, Left, Right).
+map_values_only_foldl(Pred, Tree0, Tree, !A) :-
+    Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
+    tree234.map_values_only_foldl(Pred, Left0, Left, !A),
+    Pred(V0, W0, !A),
+    tree234.map_values_only_foldl(Pred, Middle0, Middle, !A),
+    Pred(V1, W1, !A),
+    tree234.map_values_only_foldl(Pred, Right0, Right, !A),
+    Tree = three(K0, W0, K1, W1, Left, Middle, Right).
+map_values_only_foldl(Pred, Tree0, Tree, !A) :-
+    Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
+    tree234.map_values_only_foldl(Pred, Left0, Left, !A),
+    Pred(V0, W0, !A),
+    tree234.map_values_only_foldl(Pred, LMid0, LMid, !A),
+    Pred(V1, W1, !A),
+    tree234.map_values_only_foldl(Pred, RMid0, RMid, !A),
+    Pred(V2, W2, !A),
+    tree234.map_values_only_foldl(Pred, Right0, Right, !A),
+    Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
+
 map_values_foldl2(_Pred, empty, empty, !A, !B).
 map_values_foldl2(Pred, Tree0, Tree, !A, !B) :-
     Tree0 = two(K0, V0, Left0, Right0),
@@ -4716,6 +4780,32 @@ map_values_foldl2(Pred, Tree0, Tree, !A, !B) :-
     tree234.map_values_foldl2(Pred, Right0, Right, !A, !B),
     Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
 
+map_values_only_foldl2(_Pred, empty, empty, !A, !B).
+map_values_only_foldl2(Pred, Tree0, Tree, !A, !B) :-
+    Tree0 = two(K0, V0, Left0, Right0),
+    tree234.map_values_only_foldl2(Pred, Left0, Left, !A, !B),
+    Pred(V0, W0, !A, !B),
+    tree234.map_values_only_foldl2(Pred, Right0, Right, !A, !B),
+    Tree = two(K0, W0, Left, Right).
+map_values_only_foldl2(Pred, Tree0, Tree, !A, !B) :-
+    Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
+    tree234.map_values_only_foldl2(Pred, Left0, Left, !A, !B),
+    Pred(V0, W0, !A, !B),
+    tree234.map_values_only_foldl2(Pred, Middle0, Middle, !A, !B),
+    Pred(V1, W1, !A, !B),
+    tree234.map_values_only_foldl2(Pred, Right0, Right, !A, !B),
+    Tree = three(K0, W0, K1, W1, Left, Middle, Right).
+map_values_only_foldl2(Pred, Tree0, Tree, !A, !B) :-
+    Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
+    tree234.map_values_only_foldl2(Pred, Left0, Left, !A, !B),
+    Pred(V0, W0, !A, !B),
+    tree234.map_values_only_foldl2(Pred, LMid0, LMid, !A, !B),
+    Pred(V1, W1, !A, !B),
+    tree234.map_values_only_foldl2(Pred, RMid0, RMid, !A, !B),
+    Pred(V2, W2, !A, !B),
+    tree234.map_values_only_foldl2(Pred, Right0, Right, !A, !B),
+    Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
+
 map_values_foldl3(_Pred, empty, empty, !A, !B, !C).
 map_values_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
     Tree0 = two(K0, V0, Left0, Right0),
@@ -4740,6 +4830,32 @@ map_values_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
     tree234.map_values_foldl3(Pred, RMid0, RMid, !A, !B, !C),
     Pred(V2, W2, !A, !B, !C),
     tree234.map_values_foldl3(Pred, Right0, Right, !A, !B, !C),
+    Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
+
+map_values_only_foldl3(_Pred, empty, empty, !A, !B, !C).
+map_values_only_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
+    Tree0 = two(K0, V0, Left0, Right0),
+    tree234.map_values_only_foldl3(Pred, Left0, Left, !A, !B, !C),
+    Pred(V0, W0, !A, !B, !C),
+    tree234.map_values_only_foldl3(Pred, Right0, Right, !A, !B, !C),
+    Tree = two(K0, W0, Left, Right).
+map_values_only_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
+    Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
+    tree234.map_values_only_foldl3(Pred, Left0, Left, !A, !B, !C),
+    Pred(V0, W0, !A, !B, !C),
+    tree234.map_values_only_foldl3(Pred, Middle0, Middle, !A, !B, !C),
+    Pred(V1, W1, !A, !B, !C),
+    tree234.map_values_only_foldl3(Pred, Right0, Right, !A, !B, !C),
+    Tree = three(K0, W0, K1, W1, Left, Middle, Right).
+map_values_only_foldl3(Pred, Tree0, Tree, !A, !B, !C) :-
+    Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
+    tree234.map_values_only_foldl3(Pred, Left0, Left, !A, !B, !C),
+    Pred(V0, W0, !A, !B, !C),
+    tree234.map_values_only_foldl3(Pred, LMid0, LMid, !A, !B, !C),
+    Pred(V1, W1, !A, !B, !C),
+    tree234.map_values_only_foldl3(Pred, RMid0, RMid, !A, !B, !C),
+    Pred(V2, W2, !A, !B, !C),
+    tree234.map_values_only_foldl3(Pred, Right0, Right, !A, !B, !C),
     Tree = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
 
 %---------------------------------------------------------------------------%

@@ -1180,6 +1180,10 @@ semidet),
 %---------------------%
 
     % As map_foldl, but without passing the key to the predicate.
+    % NOTE: For consistency with the naming schemes of related predicates,
+    % mainly map_values and map_values_only, this predicate is intended
+    % to change in the future by having the predicate argument
+    % take a key argument.
     %
 :- pred map_values_foldl(pred(V, W, A, A), map(K, V), map(K, W), A, A).
 :- mode map_values_foldl(in(pred(in, out, di, uo) is det),
@@ -1189,7 +1193,17 @@ semidet),
 :- mode map_values_foldl(in(pred(in, out, in, out) is semidet),
     in, out, in, out) is semidet.
 
-    % As map_values_foldl, but with two accumulators.
+    % As map_foldl, but without passing the key to the predicate.
+    %
+:- pred map_values_only_foldl(pred(V, W, A, A), map(K, V), map(K, W), A, A).
+:- mode map_values_only_foldl(in(pred(in, out, di, uo) is det),
+    in, out, di, uo) is det.
+:- mode map_values_only_foldl(in(pred(in, out, in, out) is det),
+    in, out, in, out) is det.
+:- mode map_values_only_foldl(in(pred(in, out, in, out) is semidet),
+    in, out, in, out) is semidet.
+
+    % As map_values_only_foldl, but with two accumulators.
     %
 :- pred map_values_foldl2(pred(V, W, A, A, B, B), map(K, V), map(K, W),
     A, A, B, B).
@@ -1202,7 +1216,20 @@ semidet),
 :- mode map_values_foldl2(in(pred(in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out) is semidet.
 
-    % As map_values_foldl, but with three accumulators.
+    % As map_values_only_foldl, but with two accumulators.
+    %
+:- pred map_values_only_foldl2(pred(V, W, A, A, B, B), map(K, V), map(K, W),
+    A, A, B, B).
+:- mode map_values_only_foldl2(in(pred(in, out, di, uo, di, uo) is det),
+    in, out, di, uo, di, uo) is det.
+:- mode map_values_only_foldl2(in(pred(in, out, in, out, di, uo) is det),
+    in, out, in, out, di, uo) is det.
+:- mode map_values_only_foldl2(in(pred(in, out, in, out, in, out) is det),
+    in, out, in, out, in, out) is det.
+:- mode map_values_only_foldl2(in(pred(in, out, in, out, in, out) is semidet),
+    in, out, in, out, in, out) is semidet.
+
+    % As map_values_only_foldl, but with three accumulators.
     %
 :- pred map_values_foldl3(pred(V, W, A, A, B, B, C, C),
     map(K, V), map(K, W), A, A, B, B, C, C).
@@ -1219,6 +1246,26 @@ semidet),
     in(pred(in, out, in, out, in, out, in, out) is det),
     in, out, in, out, in, out, in, out) is det.
 :- mode map_values_foldl3(
+    in(pred(in, out, in, out, in, out, in, out) is semidet),
+    in, out, in, out, in, out, in, out) is semidet.
+
+    % As map_values_only_foldl, but with three accumulators.
+    %
+:- pred map_values_only_foldl3(pred(V, W, A, A, B, B, C, C),
+    map(K, V), map(K, W), A, A, B, B, C, C).
+:- mode map_values_only_foldl3(
+    in(pred(in, out, di, uo, di, uo, di, uo) is det),
+    in, out, di, uo, di, uo, di, uo) is det.
+:- mode map_values_only_foldl3(
+    in(pred(in, out, in, out, di, uo, di, uo) is det),
+    in, out, in, out, di, uo, di, uo) is det.
+:- mode map_values_only_foldl3(
+    in(pred(in, out, in, out, in, out, di, uo) is det),
+    in, out, in, out, in, out, di, uo) is det.
+:- mode map_values_only_foldl3(
+    in(pred(in, out, in, out, in, out, in, out) is det),
+    in, out, in, out, in, out, in, out) is det.
+:- mode map_values_only_foldl3(
     in(pred(in, out, in, out, in, out, in, out) is semidet),
     in, out, in, out, in, out, in, out) is semidet.
 
@@ -2300,11 +2347,20 @@ map_foldl4(Pred, !Map, !AccA, !AccB, !AccC, !AccD) :-
 map_values_foldl(Pred, !Map, !AccA) :-
     tree234.map_values_foldl(Pred, !Map, !AccA).
 
+map_values_only_foldl(Pred, !Map, !AccA) :-
+    tree234.map_values_only_foldl(Pred, !Map, !AccA).
+
 map_values_foldl2(Pred, !Map, !AccA, !AccB) :-
     tree234.map_values_foldl2(Pred, !Map, !AccA, !AccB).
 
+map_values_only_foldl2(Pred, !Map, !AccA, !AccB) :-
+    tree234.map_values_only_foldl2(Pred, !Map, !AccA, !AccB).
+
 map_values_foldl3(Pred, !Map, !AccA, !AccB, !AccC) :-
     tree234.map_values_foldl3(Pred, !Map, !AccA, !AccB, !AccC).
+
+map_values_only_foldl3(Pred, !Map, !AccA, !AccB, !AccC) :-
+    tree234.map_values_only_foldl3(Pred, !Map, !AccA, !AccB, !AccC).
 
 %---------------------------------------------------------------------------%
 
