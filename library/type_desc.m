@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -108,9 +108,9 @@
 
     % type_ctor_and_args(Type, TypeCtor, TypeArgs):
     %
-    % True iff TypeCtor is a representation of the top-level type constructor
-    % for Type, and TypeArgs is a list of the corresponding type arguments
-    % to TypeCtor, and TypeCtor is not an equivalence type.
+    % True if-and-only-if TypeCtor is a representation of the top-level
+    % type constructor for Type, and TypeArgs is a list of the corresponding
+    % type arguments to TypeCtor, and TypeCtor is not an equivalence type.
     %
     % For example, type_ctor_and_args(type_of([2,3]), TypeCtor, TypeArgs)
     % will bind TypeCtor to a representation of the type constructor list/1,
@@ -129,9 +129,9 @@
 
     % pseudo_type_ctor_and_args(Type, TypeCtor, TypeArgs):
     %
-    % True iff TypeCtor is a representation of the top-level type constructor
-    % for Type, and TypeArgs is a list of the corresponding type arguments
-    % to TypeCtor, and TypeCtor is not an equivalence type.
+    % True if-and-only-if TypeCtor is a representation of the top-level
+    % type constructor for Type, and TypeArgs is a list of the corresponding
+    % type arguments to TypeCtor, and TypeCtor is not an equivalence type.
     %
     % Similar to type_ctor_and_args, but works on pseudo_type_infos.
     % Fails if the input pseudo_type_info is a variable.
@@ -192,8 +192,8 @@
     % make_type(TypeCtor, TypeArgs) = Type:
     % make_type(TypeCtor, TypeArgs, Type):
     %
-    % True iff Type is a type constructed by applying the type constructor
-    % TypeCtor to the type arguments TypeArgs.
+    % True if-and-only-if Type is a type constructed by applying
+    % the type constructor TypeCtor to the type arguments TypeArgs.
     %
     % Operationally, the forwards mode returns the type formed by applying
     % the specified type constructor to the specified argument types, or fails

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 1999-2001, 2004-2006, 2010-2011 The University of Melbourne.
-% Copyright (C) 2013-2023 The Mercury team.
+% Copyright (C) 2013-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -164,7 +164,8 @@
 
     % filter(Pred, List, TrueList) takes a closure with one input argument,
     % and for each key-value pair in List, calls the closure on the key K.
-    % The key-value pair is included in TrueList iff Pred(K) is true.
+    % The key-value pair is included in TrueList if-and-only-if
+    % Pred(K) is true.
     %
 :- func filter(pred(K)::in(pred(in) is semidet),
     assoc_list(K, V)::in) = (assoc_list(K, V)::out) is det.
@@ -173,7 +174,7 @@
 
     % negated_filter(Pred, List, FalseList) takes a closure with one
     % input argument, and for each key-value pair in List, calls the closure
-    % on the key K. The key-value pair is included in TrueList iff
+    % on the key K. The key-value pair is included in TrueList if-and-only-if
     % Pred(K) is false.
     %
 :- func negated_filter(pred(K)::in(pred(in) is semidet),

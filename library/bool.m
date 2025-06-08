@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-1997,2000,2002-2007,2009-2010 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018, 2022 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -25,7 +25,7 @@
 
     % The boolean type.
     % Unlike most languages, we use `yes' and `no' as boolean constants
-    % rather than `true' and `false'.  This is to avoid confusion
+    % rather than `true' and `false'. This is to avoid confusion
     % with the predicates `true' and `fail'.
 :- type bool
     --->    no
@@ -33,32 +33,32 @@
 
 :- instance enum(bool).
 
-    % not(A) = yes iff A = no.
+    % not(A) = yes if-and-only-if A = no.
     %
 :- func not(bool) = bool.
 :- pred not(bool::in, bool::out) is det.
 
-    % or(A, B) = yes iff A = yes, or B = yes, or both.
+    % or(A, B) = yes if-and-only-if A = yes, or B = yes, or both.
     %
 :- func or(bool, bool) = bool.
 :- pred or(bool::in, bool::in, bool::out) is det.
 
-    % xor(A, B) = yes iff A = yes, or B = yes, but not both.
+    % xor(A, B) = yes if-and-only-if A = yes, or B = yes, but not both.
     %
 :- func xor(bool, bool) = bool.
 
-    % and(A, B) = yes iff A = yes and B = yes.
+    % and(A, B) = yes if-and-only-if A = yes and B = yes.
     %
 :- func and(bool, bool) = bool.
 :- pred and(bool::in, bool::in, bool::out) is det.
 
-    % or_list(As) = yes iff there exists an element of As equal to yes.
+    % or_list(As) = yes if-and-only-if some element of As is yes.
     % (Note that or_list([]) = no.)
     %
 :- func or_list(list(bool)) = bool.
 :- pred or_list(list(bool)::in, bool::out) is det.
 
-    % and_list(As) = yes iff every element of As is equal to yes.
+    % and_list(As) = yes if-and-only-if every element of As is yes.
     % (Note that and_list([]) = yes.)
     %
 :- func and_list(list(bool)) = bool.

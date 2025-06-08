@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-1995, 1997-2012 The University of Melbourne.
-% Copyright (C) 2013-2023 The Mercury team.
+% Copyright (C) 2013-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -368,7 +368,7 @@
 
     % is_empty(Array):
     %
-    % True iff Array is an array of size zero.
+    % True if-and-only-if Array is an array of size zero.
     %
 :- pred is_empty(array(_T)).
 %:- mode is_empty(array_ui) is semidet.
@@ -591,7 +591,7 @@
 
     % all_true(Pred, Array):
     %
-    % True iff Pred is true for every element of Array.
+    % True if-and-only-if Pred is true for every element of Array.
     %
 :- pred all_true(pred(T), array(T)).
 %:- mode all_true(in(pred(in) is semidet), array_ui) is semidet.
@@ -599,7 +599,7 @@
 
     % all_false(Pred, Array):
     %
-    % True iff Pred is false for every element of Array.
+    % True if-and-only-if Pred is false for every element of Array.
     %
 :- pred all_false(pred(T), array(T)).
 %:- mode all_false(in(pred(in) is semidet), array_ui) is semidet.

@@ -47,8 +47,8 @@
     --->    doc
     ;       undoc.
 
-    % Succeeds iff the string is the (unqualified) name of one of the
-    % modules in the Mercury standard library.
+    % Succeeds if-and-only-if the string is the (unqualified) name
+    % of one of the modules in the Mercury standard library.
     %
 :- pred mercury_std_library_module(string::in) is semidet.
 

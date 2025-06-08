@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2007, 2010 The University of Melbourne.
-% Copyright (C) 2014-2022 The Mercury team.
+% Copyright (C) 2014-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -610,9 +610,9 @@ table_memo_non_return_all_shortcut(_) :-
 
     % This procedure should be called exactly once for each I/O action
     % for which table_io_in_range returns true. Given the trie node
-    % for a given I/O action number, it returns true iff that action has
-    % been carried out before (i.e. the action is now being reexecuted
-    % after a retry command in the debugger).
+    % for a given I/O action number, it returns true if-and-only-if
+    % that action has been carried out before (i.e. the action is now
+    % being reexecuted after a retry command in the debugger).
     %
 :- impure pred table_io_has_occurred(ml_trie_node::in) is semidet.
 

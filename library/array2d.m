@@ -78,7 +78,7 @@
 :- mode from_array(in, in, array_di) = array2d_uo is det.
 
     % is_empty(Array):
-    % True iff Array contains zero elements.
+    % True if-and-only-if Array contains zero elements.
     %
 :- pred is_empty(array2d(T)).
 % :- mode is_empty(array2d_ui) is semidet.

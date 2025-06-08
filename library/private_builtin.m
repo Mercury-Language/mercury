@@ -164,7 +164,7 @@
     %
 :- pred typed_compare(comparison_result::uo, T1::in, T2::in) is det.
 
-    % True iff the two terms occupy the same address in memory.
+    % True if-and-only-if the two terms occupy the same address in memory.
     % This is useful as a cheap but incomplete test of equality
     % when implementing user-defined equality.
     %
@@ -1420,8 +1420,8 @@ __Compare__private_builtin__ref_1_0(
 
     % unify_remote_arg_words(TermX, TermY, Ptag, CellOffset):
     %
-    % Succeed iff the argument words at the given offset are the same
-    % in TermX and TermY.
+    % Succeed if-and-only-if the argument words at the given offset
+    % are the same in TermX and TermY.
     %
 :- pred unify_remote_arg_words(T::in, T::in, int::in, int::in) is semidet.
 

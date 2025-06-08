@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2019, 2021-2022, 2024 The Mercury Team
+% Copyright (C) 2014-2019, 2021-2022, 2024-2025 The Mercury Team
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -55,7 +55,7 @@
 :- func init = psqueue(P, K).
 :- pred init(psqueue(P, K)::out) is det.
 
-    % True iff the priority search queue is empty.
+    % True if-and-only-if the priority search queue is empty.
     %
 :- pred is_empty(psqueue(P, K)::in) is semidet.
 
@@ -180,7 +180,8 @@
 % If the implementation is working correctly, then is_semi_heap,
 % is_search_tree, has_key_condition and is_finite_map should always succeed.
 
-    % Succeed iff the priority search queue respects the semi heap properties:
+    % Succeed if-and-only-if the priority search queue respects
+    % the semi heap properties:
     %
     %   1) the top element has the highest priority and
     %   2) for each node of the loser tree, the priority of the loser is higher
@@ -189,7 +190,7 @@
     %
 :- pred is_semi_heap(psqueue(P, K)::in) is semidet.
 
-    % Succeed iff the loser tree in the given priority search queue
+    % Succeed if-and-only-if the loser tree in the given priority search queue
     % respects the search tree properties:
     %
     %   1) for each node, the keys in the left subtree are smaller than
@@ -198,12 +199,12 @@
     %
 :- pred is_search_tree(psqueue(P, K)::in) is semidet.
 
-    % Succeed iff the maximal key in the winner structure and the split keys
-    % in loser nodes are all present in the search tree.
+    % Succeed if-and-only-if the maximal key in the winner structure
+    % and the split keys in loser nodes are all present in the search tree.
     %
 :- pred has_key_condition(psqueue(P, K)::in) is semidet.
 
-    % Succeed iff all keys in the queue are present just once.
+    % Succeed if-and-only-if all keys in the queue are present just once.
     %
 :- pred is_finite_map(psqueue(P, K)::in) is semidet.
 
@@ -1090,7 +1091,7 @@ is_semi_heap(PSQ) :-
         all_nodes_obey_semi_heap(LTree)
     ).
 
-    % Succeed iff all priorities in the given ltree are numerically
+    % Succeed if-and-only-if all priorities in the given ltree are numerically
     % at least as high as the given priority.
     %
 :- pred all_prios_in_loser_tree_at_or_above_prio(P::in, loser_tree(P, K)::in)
@@ -1329,9 +1330,9 @@ has_key_condition(PSQ) :-
 
     % loser_split_keys_are_present(PSQ, LTree):
     %
-    % Succeed iff all the split keys in LTree are present *somewhere* in PSQ.
-    % They do not have to be present in LTree itself, and in fact, they often
-    % won't be.
+    % Succeed if-and-only-if all the split keys in LTree are present
+    % *somewhere* in PSQ. They do not have to be present in LTree itself,
+    % and in fact, they often won't be.
     %
 :- pred loser_split_keys_are_present(psqueue(P, K)::in, loser_tree(P, K)::in)
     is semidet.

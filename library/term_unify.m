@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000,2003-2009,2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2022 The Mercury team.
+% Copyright (C) 2014-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -68,8 +68,9 @@
 
     % first_term_list_subsumes_second(TermsA, TermsB, Subst):
     %
-    % Succeeds iff the list TermsA subsumes (is more general than) TermsB,
-    % producing a substitution which, when applied to TermsA, will give TermsB.
+    % Succeeds if-and-only-if the list TermsA subsumes (is more general than)
+    % TermsB, producing a substitution which, when applied to TermsA,
+    % will give TermsB.
     %
 :- pred first_term_list_subsumes_second(list(term(T))::in, list(term(T))::in,
     substitution(T)::out) is semidet.
@@ -263,7 +264,7 @@ unify_terms_bound_var(X, BoundY, DontBindVars, !Subst) :-
 %---------------------------------------------------------------------------%
 
 first_term_list_subsumes_second(Terms1, Terms2, Subst) :-
-    % Terms1 subsumes Terms2 iff Terms1 can be unified with Terms2
+    % Terms1 subsumes Terms2 if-and-only-if Terms1 can be unified with Terms2
     % without binding any of the variables in Terms2.
     vars_in_terms(Terms2, Terms2Vars),
     map.init(Subst0),

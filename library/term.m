@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000,2003-2009,2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -146,7 +146,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % generic_term(Term) is true iff Term is a term of type
+    % generic_term(Term) is true if-and-only-if Term is a term of type
     % `term' i.e. `term(generic)'. It is useful because in some instances
     % it doesn't matter what the type of a term is, and passing it to this
     % predicate will ground the type avoiding unbound type variable warnings.
@@ -282,8 +282,8 @@
 
     % occurs(Term, Var, Substitution):
     %
-    % True iff Var occurs in the term resulting after applying Substitution
-    % to Term. Var must not be mapped by Substitution.
+    % True if-and-only-if Var occurs in the term resulting after
+    % applying Substitution Term. Var must not be mapped by Substitution.
     %
 :- pred occurs(term(T)::in, var(T)::in, substitution(T)::in) is semidet.
 :- pragma obsolete(pred(occurs/3),
@@ -296,13 +296,13 @@
 :- pragma obsolete(pred(occurs_list/3),
     [term_subst.var_occurs_in_subst_terms/3]).
 
-    % is_ground(Term) is true iff Term contains no variables.
+    % is_ground(Term) is true if-and-only-if Term contains no variables.
     %
 :- pred is_ground(term(T)::in) is semidet.
 :- pragma obsolete(pred(is_ground/1),
     [term_subst.term_is_ground/1]).
 
-    % is_ground_in_bindings(Term, Bindings) is true iff
+    % is_ground_in_bindings(Term, Bindings) is true if-and-only-if
     % all variables contained in Term are mapped to ground terms by Bindings.
     %
 :- pred is_ground_in_bindings(term(T)::in, substitution(T)::in) is semidet.
@@ -554,8 +554,9 @@
 
     % list_subsumes(TermsA, TermsB, Subst):
     %
-    % Succeeds iff the list TermsA subsumes (is more general than) TermsB,
-    % producing a substitution which, when applied to TermsA, will give TermsB.
+    % Succeeds if-and-only-if the list TermsA subsumes (is more general than)
+    % TermsB, producing a substitution which, when applied to TermsA,
+    % will give TermsB.
     %
 :- pred list_subsumes(list(term(T))::in, list(term(T))::in,
     substitution(T)::out) is semidet.

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2006, 2009, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -813,7 +813,8 @@ format_later_list_elements(Stream, OpTable, Term, !VarSet, !Anon, !State) :-
         format_term_anon_vars(Stream, OpTable, Term, !VarSet, !Anon, !State)
     ).
 
-    % Succeeds iff outputting the given term would start with a digit.
+    % Succeeds if-and-only-if outputting the given term would start
+    % with a digit.
     % (This is a safe, conservative approximation and is used to decide
     % whether or not to quote infix '.'/2.)
     %
@@ -1362,8 +1363,8 @@ encode_escaped_char(Char::out, Str::in) :-
         mercury_escape_special_char(Char, EscapedChar)
     ).
 
-    % mercury_escape_special_char(Char, EscapeChar) is true iff Char
-    % is character for which there is a special backslash-escape character
+    % mercury_escape_special_char(Char, EscapeChar) is true if-and-only-if
+    % Char is character for which there is a special backslash-escape character
     % EscapeChar that can be used after a backslash in string literals or
     % atoms to represent Char.
     %

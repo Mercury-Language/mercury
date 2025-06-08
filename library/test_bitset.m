@@ -187,8 +187,8 @@
 % Standard higher order functions on collections.
 %
 
-    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
-    % for all the elements of Set.
+    % all_true(Pred, Set) succeeds if-and-only-if
+    % Pred(Element) succeeds for all the elements of Set.
     %
 :- pred all_true(pred(T)::in(pred(in) is semidet), test_bitset(T)::in)
     is semidet <= uenum(T).

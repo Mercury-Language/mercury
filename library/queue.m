@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995, 1997-1999, 2003-2006, 2011 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018, 2022 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -30,56 +30,56 @@
 
 :- type queue(T).
 
-    % init(Queue) is true iff Queue is an empty queue.
+    % init(Queue) is true if-and-only-if Queue is an empty queue.
     %
 :- func init = queue(T).
 :- pred init(queue(T)::out) is det.
 
-    % 'queue_equal(Q1, Q2)' is true iff Q1 and Q2 contain the same
+    % 'queue_equal(Q1, Q2)' is true if-and-only-if Q1 and Q2 contain the same
     % elements in the same order.
     %
 :- pred equal(queue(T)::in, queue(T)::in) is semidet.
 
-    % is_empty(Queue) is true iff Queue is an empty queue.
+    % is_empty(Queue) is true if-and-only-if Queue is an empty queue.
     %
 :- pred is_empty(queue(T)::in) is semidet.
 
-    % is_full(Queue) is intended to be true iff Queue is a queue
+    % is_full(Queue) is intended to be true if-and-only-if Queue is a queue
     % whose capacity is exhausted. This implementation allows arbitrary-sized
     % queues, so is_full always fails.
     %
 :- pred is_full(queue(T)::in) is semidet.
 
-    % put(Elem, Queue0, Queue) is true iff Queue is the queue
+    % put(Elem, Queue0, Queue) is true if-and-only-if Queue is the queue
     % which results from appending Elem onto the end of Queue0.
     %
 :- func put(queue(T), T) = queue(T).
 :- pred put(T::in, queue(T)::in, queue(T)::out) is det.
 
-    % put_list(Elems, Queue0, Queue) is true iff Queue is the queue
+    % put_list(Elems, Queue0, Queue) is true if-and-only-if Queue is the queue
     % which results from inserting the items in the list Elems into Queue0.
     %
 :- func put_list(queue(T), list(T)) = queue(T).
 :- pred put_list(list(T)::in, queue(T)::in, queue(T)::out) is det.
 
-    % first(Queue, Elem) is true iff Queue is a non-empty queue
+    % first(Queue, Elem) is true if-and-only-if Queue is a non-empty queue
     % whose first element is Elem.
     %
 :- pred first(queue(T)::in, T::out) is semidet.
 
-    % get(Elem, Queue0, Queue) is true iff Queue0 is a non-empty
+    % get(Elem, Queue0, Queue) is true if-and-only-if Queue0 is a non-empty
     % queue whose first element is Elem, and Queue the queue which results
     % from removing that element from the front of Queue0.
     %
 :- pred get(T::out, queue(T)::in, queue(T)::out) is semidet.
 
-    % length(Queue, Length) is true iff Queue is a queue
+    % length(Queue, Length) is true if-and-only-if Queue is a queue
     % containing Length elements.
     %
 :- func length(queue(T)) = int.
 :- pred length(queue(T)::in, int::out) is det.
 
-    % list_to_queue(List, Queue) is true iff Queue is a queue
+    % list_to_queue(List, Queue) is true if-and-only-if Queue is a queue
     % containing the elements of List, with the first element of List at
     % the head of the queue.
     %
@@ -94,7 +94,7 @@
     %
 :- func to_list(queue(T)) = list(T).
 
-    % delete_all(Elem, Queue0, Queue) is true iff Queue is the same
+    % delete_all(Elem, Queue0, Queue) is true if-and-only-if Queue is the same
     % queue as Queue0 with all occurrences of Elem removed from it.
     %
 :- func delete_all(queue(T), T) = queue(T).

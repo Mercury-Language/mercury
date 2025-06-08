@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2008, 2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2022, 2024 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2022, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -97,11 +97,13 @@
 
 %---------------------------------------------------------------------------%
 
-    % True iff the character is a lowercase letter (a-z) in the ASCII range.
+    % True if-and-only-if the character is a lowercase letter (a-z)
+    % in the ASCII range.
     %
 :- pred is_lower(char::in) is semidet.
 
-    % True iff the character is an uppercase letter (A-Z) in the ASCII range.
+    % True if-and-only-if the character is an uppercase letter (A-Z)
+    % in the ASCII range.
     %
 :- pred is_upper(char::in) is semidet.
 
@@ -117,7 +119,7 @@
 :- func to_upper(char) = char.
 :- pred to_upper(char::in, char::out) is det.
 
-    % lower_upper(Lower, Upper) is true iff
+    % lower_upper(Lower, Upper) is true if-and-only-if
     % Lower is a lowercase letter (a-z) and Upper is the corresponding
     % uppercase letter (A-Z) in the ASCII range.
     %
@@ -127,11 +129,12 @@
 
 %---------------------------------------------------------------------------%
 
-    % True iff the character is in the ASCII range (0-127).
+    % True if-and-only-if the character is in the ASCII range (0-127).
     %
 :- pred is_ascii(char::in) is semidet.
 
-    % True iff the character is a whitespace character in the ASCII range:
+    % True if-and-only-if the character is a whitespace character
+    % in the ASCII range:
     %
     %   U+0020  space
     %   U+0009  character tabulation (horizontal tab)
@@ -142,51 +145,55 @@
     %
 :- pred is_whitespace(char::in) is semidet.
 
-    % True iff the character is a letter (A-Z, a-z) in the ASCII range.
+    % True if-and-only-if the character is a letter (A-Z, a-z)
+    % in the ASCII range.
     %
 :- pred is_alpha(char::in) is semidet.
 
-    % True iff the character is a letter (A-Z, a-z) or digit (0-9)
+    % True if-and-only-if the character is a letter (A-Z, a-z) or digit (0-9)
     % in the ASCII range.
     %
 :- pred is_alnum(char::in) is semidet.
 
-    % True iff the character is a letter (A-Z, a-z) or an underscore (_)
-    % in the ASCII range.
+    % True if-and-only-if the character is a letter (A-Z, a-z)
+    % or an underscore (_) in the ASCII range.
     %
 :- pred is_alpha_or_underscore(char::in) is semidet.
 
-    % True iff the character is a letter (A-Z, a-z), a digit (0-9) or an
-    % underscore (_) in the ASCII range.
+    % True if-and-only-if the character is a letter (A-Z, a-z),
+    % a digit (0-9) or an underscore (_) in the ASCII range.
     %
 :- pred is_alnum_or_underscore(char::in) is semidet.
 
 %---------------------------------------------------------------------------%
 
-    % True iff the character is a decimal digit (0-9) in the ASCII range.
+    % True if-and-only-if the character is a decimal digit (0-9)
+    % in the ASCII range.
     %
 :- pred is_digit(char::in) is semidet.
 
-    % True iff the character is a binary digit (0 or 1) in the ASCII range.
+    % True if-and-only-if the character is a binary digit (0 or 1)
+    % in the ASCII range.
     %
 :- pred is_binary_digit(char::in) is semidet.
 
-    % True iff the character is an octal digit (0-7) in the ASCII range.
+    % True if-and-only-if the character is an octal digit (0-7)
+    % in the ASCII range.
     %
 :- pred is_octal_digit(char::in) is semidet.
 
-    % True iff the character is a decimal digit (0-9) in the ASCII range.
-    % Synonym for is_digit/1.
+    % True if-and-only-if the character is a decimal digit (0-9)
+    % in the ASCII range. Synonym for is_digit/1.
     %
 :- pred is_decimal_digit(char::in) is semidet.
 
-    % True iff the character is a hexadecimal digit (0-9, a-f, A-F) in the
-    % ASCII range.
+    % True if-and-only-if the character is a hexadecimal digit (0-9, a-f, A-F)
+    % in the ASCII range.
     %
 :- pred is_hex_digit(char::in) is semidet.
 
     % is_base_digit(Base, Digit):
-    % True iff Digit is a digit in the given Base (0-9, a-z, A-Z).
+    % True if-and-only-if Digit is a digit in the given Base (0-9, a-z, A-Z).
     % Throws an exception if Base < 2 or Base > 36.
     %
 :- pred is_base_digit(int::in, char::in) is semidet.
@@ -194,7 +201,8 @@
 %---------------------%
 
     % binary_digit_to_int(Char, Int):
-    % True iff Char is a binary digit (0-1) representing the value Int.
+    % True if-and-only-if Char is a binary digit (0-1) representing
+    % the value Int.
     %
 :- pred binary_digit_to_int(char::in, int::out) is semidet.
 
@@ -203,7 +211,8 @@
 :- func det_binary_digit_to_int(char) = int.
 
     % octal_digit_to_int(Char, Int):
-    % True iff Char is an octal digit (0-7) representing the value Int.
+    % True if-and-only-if Char is an octal digit (0-7) representing
+    % the value Int.
     %
 :- pred octal_digit_to_int(char::in, int::out) is semidet.
 
@@ -212,7 +221,8 @@
 :- func det_octal_digit_to_int(char) = int.
 
     % decimal_digit_to_int(Char, Int):
-    % True iff Char is a decimal digit (0-9) representing the value Int.
+    % True if-and-only-if Char is a decimal digit (0-9) representing
+    % the value Int.
     %
 :- pred decimal_digit_to_int(char::in, int::out) is semidet.
 
@@ -221,8 +231,8 @@
 :- func det_decimal_digit_to_int(char) = int.
 
     % hex_digit_to_int(Char, Int):
-    % True iff Char is a hexadecimal digit (0-9, a-z or A-F) representing the
-    % value Int.
+    % True if-and-only-if Char is a hexadecimal digit (0-9, a-z or A-F)
+    % representing the value Int.
     %
 :- pred hex_digit_to_int(char::in, int::out) is semidet.
 
@@ -231,7 +241,7 @@
 :- func det_hex_digit_to_int(char) = int.
 
     % base_digit_to_int(Base, Char, Int):
-    % True iff Char is a decimal digit (0-9) or a letter (a-z, A-Z)
+    % True if-and-only-if Char is a decimal digit (0-9) or a letter (a-z, A-Z)
     % representing the value Int (0-35) in the given base.
     % Throws an exception if Base < 2 or Base > 36.
     %
@@ -283,8 +293,8 @@
 :- func det_int_to_hex_digit(int) = char.
 
     % base_int_to_digit(Base, Int, Char):
-    % True iff Char is a decimal digit (0-9) or an uppercase letter (A-Z)
-    % representing the value Int (0-35) in the given base.
+    % True if-and-only-if Char is a decimal digit (0-9) or an uppercase letter
+    % (A-Z) representing the value Int (0-35) in the given base.
     % Throws an exception if Base < 2 or Base > 36.
     %
 :- pred base_int_to_digit(int::in, int::in, char::out) is semidet.
@@ -313,54 +323,56 @@
     %
 :- pred to_utf16_uint16(char::in, list(uint16)::out) is semidet.
 
-    % True iff the character is a Unicode Surrogate code point, that is a code
-    % point in General Category `Other,surrogate' (`Cs').
+    % True if-and-only-if the character is a Unicode Surrogate code point,
+    % that is a code point in General Category `Other,surrogate' (`Cs').
     % In UTF-16, a code point with a scalar value greater than 0xffff is
     % encoded with a pair of surrogate code points.
     %
 :- pred is_surrogate(char::in) is semidet.
 
-    % True iff the character is a Unicode leading surrogate code point.
-    % A leading surrogate code point is in the inclusive range from
-    % 0xd800 to 0xdbff.
+    % True if-and-only-if the character is a Unicode leading surrogate
+    % code point. A leading surrogate code point is in the inclusive range
+    % from 0xd800 to 0xdbff.
     %
 :- pred is_leading_surrogate(char::in) is semidet.
 
-    % True iff the character is a Unicode trailing surrogate code point.
-    % A trailing surrogate code point is in the inclusive range from
-    % 0xdc00 to 0xdfff.
+    % True if-and-only-if the character is a Unicode trailing surrogate
+    % code point. A trailing surrogate code point is in the inclusive range
+    % from 0xdc00 to 0xdfff.
     %
 :- pred is_trailing_surrogate(char::in) is semidet.
 
-    % True iff the character is a Unicode Noncharacter code point.
+    % True if-and-only-if the character is a Unicode Noncharacter code point.
     % Sixty-six code points are not used to encode characters.
     % These code points should not be used for interchange, but may be used
     % internally.
     %
 :- pred is_noncharacter(char::in) is semidet.
 
-    % True iff the character is a Unicode Control code point, that is a code
-    % point in General Category `Other,control' (`Cc').
+    % True if-and-only-if the character is a Unicode Control code point,
+    % that is a code point in General Category `Other,control' (`Cc').
     %
 :- pred is_control(char::in) is semidet.
 
-    % True iff the character is a Unicode Space Separator code point, that is a
-    % code point in General Category `Separator,space' (`Zs').
+    % True if-and-only-if the character is a Unicode Space Separator
+    % code point, that is a code point in General Category
+    % `Separator,space' (`Zs').
     %
 :- pred is_space_separator(char::in) is semidet.
 
-    % True iff the character is a Unicode Line Separator code point, that is a
-    % code point in General Category `Separator,line' (`Zl').
+    % True if-and-only-if the character is a Unicode Line Separator code point,
+    % that is a code point in General Category `Separator,line' (`Zl').
     %
 :- pred is_line_separator(char::in) is semidet.
 
-    % True iff the character is a Unicode Paragraph Separator code point, that
-    % is a code point in General Category `Separator,paragraph' (`Zp').
+    % True if-and-only-if the character is a Unicode Paragraph Separator
+    % code point, that is a code point in General Category
+    % `Separator,paragraph' (`Zp').
     %
 :- pred is_paragraph_separator(char::in) is semidet.
 
-    % True iff the character is a Unicode Private-use code point, that is a
-    % code point in General Category `Other,private use' (`Co').
+    % True if-and-only-if the character is a Unicode Private-use code point,
+    % that is a code point in General Category `Other,private use' (`Co').
     %
 :- pred is_private_use(char::in) is semidet.
 

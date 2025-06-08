@@ -31,13 +31,13 @@
 % Initial creation of sets.
 %
 
-    % init(Set) is true iff Set is an empty set.
+    % init(Set) is true if-and-only-if Set is an empty set.
     %
 :- func init = set_ordlist(T).
 :- pred init(set_ordlist(_T)::uo) is det.
 
-    % singleton_set(Elem, Set) is true iff Set is the set containing just
-    % the single element Elem.
+    % singleton_set(Elem, Set) is true if-and-only-if
+    % Set is the set containing just the single element Elem.
     %
 :- pred singleton_set(T, set_ordlist(T)).
 :- mode singleton_set(in, out) is det.
@@ -50,11 +50,11 @@
 % Emptiness and singleton-ness tests.
 %
 
-    % is_empty(Set) is true iff Set is an empty set.
+    % is_empty(Set) is true if-and-only-if Set is an empty set.
     %
 :- pred is_empty(set_ordlist(T)::in) is semidet.
 
-    % is_non_empty(Set) is true iff Set is not an empty set.
+    % is_non_empty(Set) is true if-and-only-if Set is not an empty set.
     %
 :- pred is_non_empty(set_ordlist(T)::in) is semidet.
 
@@ -65,18 +65,18 @@
 % Membership tests.
 %
 
-    % member(X, Set) is true iff X is a member of Set.
+    % member(X, Set) is true if-and-only-if X is a member of Set.
     %
 :- pred member(T, set_ordlist(T)).
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
-    % is_member(X, Set, Result) returns `Result = yes' iff X is a member of
-    % Set.
+    % is_member(X, Set, Result) returns `Result = yes' if-and-only-if
+    % X is a member of Set.
     %
 :- pred is_member(T::in, set_ordlist(T)::in, bool::out) is det.
 
-    % contains(Set, X) is true iff X is a member of Set.
+    % contains(Set, X) is true if-and-only-if X is a member of Set.
     %
 :- pred contains(set_ordlist(T)::in, T::in) is semidet.
 
@@ -92,41 +92,42 @@
 % Insertions and deletions.
 %
 
-    % insert(X, Set0, Set) is true iff Set is the union
+    % insert(X, Set0, Set) is true if-and-only-if Set is the union
     % of Set0 and the set containing only X.
     %
 :- func insert(set_ordlist(T), T) = set_ordlist(T).
 :- pred insert(T::in, set_ordlist(T)::in, set_ordlist(T)::out) is det.
 
-    % insert_new(X, Set0, Set) is true iff Set0 does not contain X, while
-    % Set is the union of Set0 and the set containing only X.
+    % insert_new(X, Set0, Set) is true if-and-only-if
+    % Set0 does not contain X, while Set is the union of Set0 and
+    % the set containing only X.
     %
 :- pred insert_new(T::in,
     set_ordlist(T)::in, set_ordlist(T)::out) is semidet.
 
-    % insert_list(Xs, Set0, Set) is true iff Set is the union of Set0 and
-    % the set containing only the members of Xs.
+    % insert_list(Xs, Set0, Set) is true if-and-only-if
+    % Set is the union of Set0 and the set containing only the members of Xs.
     %
 :- func insert_list(set_ordlist(T), list(T)) = set_ordlist(T).
 :- pred insert_list(list(T)::in, set_ordlist(T)::in, set_ordlist(T)::out)
     is det.
 
-    % delete(X, Set0, Set) is true iff Set is the
+    % delete(X, Set0, Set) is true if-and-only-if Set is the
     % relative complement of Set0 and the set containing only X, i.e.
-    % if Set is the set which contains all the elements of Set0
-    % except X.
+    % if Set is the set which contains all the elements of Set0 except X.
     %
 :- func delete(set_ordlist(T), T) = set_ordlist(T).
 :- pred delete(T::in, set_ordlist(T)::in, set_ordlist(T)::out) is det.
 
-    % delete_list(Xs, Set0, Set) is true iff Set is the relative complement
-    % of Set0 and the set containing only the members of Xs.
+    % delete_list(Xs, Set0, Set) is true if-and-only-if
+    % Set is the relative complement of Set0 and the set containing
+    % only the members of Xs.
     %
 :- func delete_list(set_ordlist(T), list(T)) = set_ordlist(T).
 :- pred delete_list(list(T)::in, set_ordlist(T)::in, set_ordlist(T)::out)
     is det.
 
-    % remove(X, Set0, Set) is true iff Set0 contains X,
+    % remove(X, Set0, Set) is true if-and-only-if Set0 contains X,
     % and Set is the relative complement of Set0 and the set
     % containing only X, i.e. if Set is the set which contains
     % all the elements of Set0 except X.
@@ -136,10 +137,10 @@
 :- pred remove(T::in, set_ordlist(T)::in, set_ordlist(T)::out) is semidet.
 :- pred det_remove(T::in, set_ordlist(T)::in, set_ordlist(T)::out) is det.
 
-    % remove_list(Xs, Set0, Set) is true iff Xs does not contain any
-    % duplicates, Set0 contains every member of Xs, and Set is the
-    % relative complement of Set0 and the set containing only the members of
-    % Xs.
+    % remove_list(Xs, Set0, Set) is true if-and-only-if
+    % Xs does not contain any duplicates, Set0 contains every member of Xs,
+    % and Set is the relative complement of Set0 and the set containing
+    % only the members of Xs.
     %
     % The det_remove_list version throws an exception instead of failing.
     %
@@ -148,9 +149,9 @@
 :- pred det_remove_list(list(T)::in, set_ordlist(T)::in, set_ordlist(T)::out)
     is det.
 
-    % remove_least(X, Set0, Set) is true iff X is the least element in
-    % Set0, and Set is the set which contains all the elements of Set0
-    % except X.
+    % remove_least(X, Set0, Set) is true if-and-only-if
+    % X is the least element in Set0, and Set is the set which contains
+    % all the elements of Set0 except X.
     %
 :- pred remove_least(T::out, set_ordlist(T)::in, set_ordlist(T)::out)
     is semidet.
@@ -160,16 +161,16 @@
 % Comparisons between sets.
 %
 
-    % equal(SetA, SetB) is true iff SetA and SetB contain the same
+    % equal(SetA, SetB) is true if-and-only-if SetA and SetB contain the same
     % elements.
     %
 :- pred equal(set_ordlist(T)::in, set_ordlist(T)::in) is semidet.
 
-    % subset(SetA, SetB) is true iff SetA is a subset of SetB.
+    % subset(SetA, SetB) is true if-and-only-if SetA is a subset of SetB.
     %
 :- pred subset(set_ordlist(T)::in, set_ordlist(T)::in) is semidet.
 
-    % superset(SetA, SetB) is true iff SetA is a superset of SetB.
+    % superset(SetA, SetB) is true if-and-only-if SetA is a superset of SetB.
     %
 :- pred superset(set_ordlist(T)::in, set_ordlist(T)::in) is semidet.
 
@@ -178,50 +179,52 @@
 % Operations on two or more sets.
 %
 
-    % union(SetA, SetB, Set) is true iff Set is the union
-    % of SetA and SetB. The efficiency of the union operation is
-    % O(card(SetA)+card(SetB)) and is not sensitive to the argument
+    % union(SetA, SetB, Set) is true if-and-only-if
+    % Set is the union of SetA and SetB. The efficiency of the union operation
+    % is O(card(SetA)+card(SetB)), and is not sensitive to the argument
     % ordering.
     %
 :- func union(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
 :- pred union(set_ordlist(T)::in, set_ordlist(T)::in, set_ordlist(T)::out)
     is det.
 
-    % union_list(A, B) is true iff B is the union of all the sets in A.
+    % union_list(A, B) is true if-and-only-if
+    % B is the union of all the sets in A.
     %
 :- func union_list(list(set_ordlist(T))) = set_ordlist(T).
 :- pred union_list(list(set_ordlist(T))::in, set_ordlist(T)::out) is det.
 
-    % power_union(A, B) is true iff B is the union of all the sets in A,
+    % power_union(A, B) is true if-and-only-if
+    % B is the union of all the sets in A,
     %
 :- func power_union(set_ordlist(set_ordlist(T))) = set_ordlist(T).
 :- pred power_union(set_ordlist(set_ordlist(T))::in,
     set_ordlist(T)::out) is det.
 
-    % intersect(SetA, SetB, Set) is true iff Set is the intersection of
-    % SetA and SetB. The efficiency of the intersection operation is not
-    % influenced by the argument order.
+    % intersect(SetA, SetB, Set) is true if-and-only-if
+    % Set is the intersection of SetA and SetB. The efficiency
+    % of the intersection operation is not influenced by the argument order.
     %
 :- func intersect(set_ordlist(T), set_ordlist(T)) = set_ordlist(T).
 :- pred intersect(set_ordlist(T), set_ordlist(T), set_ordlist(T)).
 :- mode intersect(in, in, out) is det.
 :- mode intersect(in, in, in) is semidet.
 
-    % intersect_list(A) = B' is true iff B is the intersection of all the
-    % sets in A.
+    % intersect_list(A) = B' is true if-and-only-if
+    % B is the intersection of all the sets in A.
     %
 :- func intersect_list(list(set_ordlist(T))) = set_ordlist(T).
 :- pred intersect_list(list(set_ordlist(T))::in, set_ordlist(T)::out) is det.
 
-    % power_intersect(A, B) is true iff B is the intersection of all the
-    % sets in A.
+    % power_intersect(A, B) is true if-and-only-if
+    % B is the intersection of all the sets in A.
     %
 :- func power_intersect(set_ordlist(set_ordlist(T)))
     = set_ordlist(T).
 :- pred power_intersect(set_ordlist(set_ordlist(T))::in,
     set_ordlist(T)::out) is det.
 
-    % difference(SetA, SetB, Set) is true iff Set is the
+    % difference(SetA, SetB, Set) is true if-and-only-if Set is the
     % set containing all the elements of SetA except those that
     % occur in SetB.
     %
@@ -260,7 +263,7 @@
 % Converting lists to sets.
 %
 
-    % list_to_set(List, Set) is true iff Set is the set
+    % list_to_set(List, Set) is true if-and-only-if Set is the set
     % containing only the members of List.
     %
 :- func list_to_set(list(T)) = set_ordlist(T).
@@ -270,7 +273,7 @@
     %
 :- func from_list(list(T)) = set_ordlist(T).
 
-    % sorted_list_to_set(List, Set) is true iff Set is the set
+    % sorted_list_to_set(List, Set) is true if-and-only-if Set is the set
     % containing only the members of List. List must be sorted
     % in ascending order.
     % NOTE_TO_IMPLEMENTORS We do *not* say "must not contain any duplicates",
@@ -283,7 +286,7 @@
     %
 :- func from_sorted_list(list(T)) = set_ordlist(T).
 
-    % rev_sorted_list_to_set(List, Set) is true iff Set is the set
+    % rev_sorted_list_to_set(List, Set) is true if-and-only-if Set is the set
     % containing only the members of List. List must be sorted
     % in descending order and must not contain any duplicates.
     % NOTE_TO_IMPLEMENTORS Unlike sorted_list_to_set, this predicate has
@@ -297,8 +300,8 @@
 % Converting sets to lists.
 %
 
-    % to_sorted_list(Set, List) is true iff List is the list of all the
-    % members of Set, in sorted order.
+    % to_sorted_list(Set, List) is true if-and-only-if
+    % List is the list of all the members of Set, in sorted order.
     %
 :- func to_sorted_list(set_ordlist(T)) = list(T).
 :- pred to_sorted_list(set_ordlist(T)::in, list(T)::out) is det.
@@ -308,7 +311,7 @@
 % Counting.
 %
 
-    % count(Set, Count) is true iff Set has Count elements.
+    % count(Set, Count) is true if-and-only-if Set has Count elements.
     %
 :- func count(set_ordlist(T)) = int.
 :- pred count(set_ordlist(T)::in, int::out) is det.
@@ -318,8 +321,8 @@
 % Standard higher order functions on collections.
 %
 
-    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds for all the
-    % elements of Set.
+    % all_true(Pred, Set) succeeds if-and-only-if
+    % Pred(Element) succeeds for all the elements of Set.
     %
 :- pred all_true(pred(T)::in(pred(in) is semidet), set_ordlist(T)::in)
     is semidet.
@@ -723,7 +726,7 @@ delete_list(D, !Set) :-
     list.sort_and_remove_dups(D, DS),
     difference(!.Set, sol(DS), !:Set).
 
-    % sort_no_dups(List, Set) is true iff
+    % sort_no_dups(List, Set) is true if-and-only-if
     % List is a list with the same elements as Set and
     % List contains no duplicates.
     %
@@ -738,7 +741,7 @@ sort_no_dups(List, sol(Set)) :-
         no_dups(Elem, Elems)
     ).
 
-    % no_dups(Elem, Set) is true iff Set does not contain Elem,
+    % no_dups(Elem, Set) is true if-and-only-if Set does not contain Elem,
     % and Set does not contains duplicates.
     %
 :- pred no_dups(T::in, list(T)::in) is semidet.

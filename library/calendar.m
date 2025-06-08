@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2010 The University of Melbourne.
-% Copyright (C) 2013-2019 The Mercury team.
+% Copyright (C) 2013-2019, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -172,8 +172,8 @@
 :- func unix_epoch = date.
 
     % same_date(A, B):
-    % True iff A and B are equal with respect to only their date components.
-    % The time components are ignored.
+    % True if-and-only-if A and B are equal with respect to
+    % only their date components. The time components are ignored.
     %
 :- pred same_date(date::in, date::in) is semidet.
 
@@ -279,8 +279,8 @@
 :- pred add_duration(duration::in, date::in, date::out) is det.
 
     % This predicate implements a partial order relation on durations.
-    % DurationA is less than or equal to DurationB iff for all of the
-    % dates list below, adding DurationA to the date results in a date
+    % DurationA is less than or equal to DurationB if-and-only-if for all
+    % of the dates list below, adding DurationA to the date results in a date
     % less than or equal to the date obtained by adding DurationB.
     %
     %    1696-09-01 00:00:00

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997, 2000, 2003, 2005-2006 The University of Melbourne.
-% Copyright (C) 2014-2015, 2021-2024 The Mercury team.
+% Copyright (C) 2014-2015, 2021-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -72,17 +72,17 @@
 % Tests on ra_lists.
 %
 
-    % Succeed iff the given random access list is empty.
+    % Succeed if-and-only-if the given random access list is empty.
     %
 :- pred is_empty(ra_list(T)::in) is semidet.
 
-    % Succeed iff the given random access list is not empty.
+    % Succeed if-and-only-if the given random access list is not empty.
     %
 :- pred is_non_empty(ra_list(T)::in) is semidet.
 :- pred is_not_empty(ra_list(T)::in) is semidet.
 
-    % Succeed iff the given random access list contains only one item.
-    % Return that item.
+    % Succeed if-and-only-if the given random access list contains
+    % only one item. Return that item.
     %
 :- pred is_singleton(ra_list(T)::in, T::out) is semidet.
 

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007 The University of Melbourne.
-% Copyright (C) 2014-2019 The Mercury team.
+% Copyright (C) 2014-2019, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -35,11 +35,12 @@
 
 :- typeclass region(K) where [
 
-        % Succeeds iff two regions intersect.
+        % Succeeds if-and-only-if two regions intersect.
         %
     pred intersects(K::in, K::in) is semidet,
 
-        % Succeeds iff the first region is contained within the second.
+        % Succeeds if-and-only-if the first region
+        % is contained within the second.
         %
     pred contains(K::in, K::in) is semidet,
 
@@ -78,7 +79,7 @@
     %
 :- func init = (rtree(K, V)::uo) is det <= region(K).
 
-    % Succeeds iff the given rtree is empty.
+    % Succeeds if-and-only-if the given rtree is empty.
     %
 :- pred is_empty(rtree(K, V)::in) is semidet.
 

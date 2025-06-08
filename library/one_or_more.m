@@ -60,7 +60,7 @@
 %---------------------------------------------------------------------------%
 
     % Standard append predicate:
-    % append(Start, End, List) is true iff
+    % append(Start, End, List) is true if-and-only-if
     % List is the result of concatenating Start and End.
     %
 :- pred append(one_or_more(T), one_or_more(T), one_or_more(T)).
@@ -103,16 +103,16 @@
 
     % length(List, Length):
     %
-    % True iff Length is the length of List, i.e. if List contains
-    % Length elements.
+    % True if-and-only-if Length is the length of List,
+    % i.e. if List contains Length elements.
     %
 :- func length(one_or_more(T)) = int.
 :- pred length(one_or_more(T)::in, int::out) is det.
 
     % same_length(ListA, ListB):
     %
-    % True iff ListA and ListB have the same length,
-    % i.e. iff they both contain the same number of elements.
+    % True if-and-only-if ListA and ListB have the same length,
+    % i.e. if-and-only-if they both contain the same number of elements.
     %
 :- pred same_length(one_or_more(T1)::in, one_or_more(T2)::in) is semidet.
 
@@ -125,7 +125,7 @@
 
     % member(Elem, List):
     %
-    % True iff List contains Elem.
+    % True if-and-only-if List contains Elem.
     %
 :- pred member(T, one_or_more(T)).
 :- mode member(in, in) is semidet.
@@ -133,7 +133,7 @@
 
     % member_index0(Elem, List, Index).
     %
-    % True iff List contains Elem at the zero-based index Index.
+    % True if-and-only-if List contains Elem at the zero-based index Index.
     %
 :- pred member_index0(T, one_or_more(T), int).
 :- mode member_index0(in, in, in) is semidet.
@@ -142,12 +142,12 @@
 
     % member_indexes0(Elem, List, Indexes).
     %
-    % True iff List contains Elem at the zero-based indexes Indexes.
+    % True if-and-only-if List contains Elem at the zero-based indexes Indexes.
     % Indexes will be sorted.
     %
 :- pred member_indexes0(T::in, one_or_more(T)::in, list(int)::out) is det.
 
-    % contains(List, Elem) iff member(Elem, List).
+    % contains(List, Elem) if-and-only-if member(Elem, List).
     % Sometimes you need the arguments in this order, because you want to
     % construct a closure with only the list.
     %
@@ -226,17 +226,18 @@
 
     % delete(List, Elem, Remainder):
     %
-    % True iff Elem occurs in List, and Remainder is the result of
+    % True if-and-only-if Elem occurs in List, and Remainder is the result of
     % deleting one occurrence of Elem from List.
     %
 :- pred delete(one_or_more(T)::in, T::in, list(T)::out) is nondet.
 
-    % delete_first(List0, Elem, List) is true iff Elem occurs in List0
-    % and List is List0 with the first occurrence of Elem removed.
+    % delete_first(List0, Elem, List) is true if-and-only-if
+    % Elem occurs in List0, and List is List0 with the first occurrence
+    % of Elem removed.
     %
 :- pred delete_first(one_or_more(T)::in, T::in, list(T)::out) is semidet.
 
-    % delete_all(List0, Elem) = List is true iff List is List0 with
+    % delete_all(List0, Elem) = List is true if-and-only-if List is List0 with
     % all occurrences of Elem removed.
     %
 :- func delete_all(one_or_more(T), T) = list(T).
@@ -244,8 +245,8 @@
 :- mode delete_all(di, in, uo) is det.
 :- mode delete_all(in, in, out) is det.
 
-    % delete_elems(List0, Elems) = List is true iff List is List0 with
-    % all occurrences of all elements of Elems removed.
+    % delete_elems(List0, Elems) = List is true if-and-only-if
+    % List is List0 with all occurrences of all elements of Elems removed.
     %
 :- func delete_elems(one_or_more(T), list(T)) = list(T).
 :- pred delete_elems(one_or_more(T)::in, list(T)::in, list(T)::out) is det.
@@ -257,27 +258,27 @@
 
 %---------------------------------------------------------------------------%
 
-    % replace(List0, D, R, List) is true iff List is List0
+    % replace(List0, D, R, List) is true if-and-only-if List is List0
     % with an occurrence of D replaced with R.
     %
 :- pred replace(one_or_more(T), T, T, one_or_more(T)).
 :- mode replace(in, in, in, in) is semidet.
 :- mode replace(in, in, in, out) is nondet.
 
-    % replace_first(List0, D, R, List) is true iff List is List0
+    % replace_first(List0, D, R, List) is true if-and-only-if List is List0
     % with the first occurrence of D replaced with R.
     %
 :- pred replace_first(one_or_more(T)::in, T::in, T::in, one_or_more(T)::out)
     is semidet.
 
-    % replace_all(List0, D, R) = List is true iff List is List0
+    % replace_all(List0, D, R) = List is true if-and-only-if List is List0
     % with all occurrences of D replaced with R.
     %
 :- func replace_all(one_or_more(T), T, T) = one_or_more(T).
 :- pred replace_all(one_or_more(T)::in, T::in, T::in, one_or_more(T)::out)
     is det.
 
-    % replace_nth(List0, N, R, List) is true iff List is List0
+    % replace_nth(List0, N, R, List) is true if-and-only-if List is List0
     % with N'th element replaced with R.
     % Fails if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
@@ -285,7 +286,7 @@
 :- pred replace_nth(one_or_more(T)::in, int::in, T::in, one_or_more(T)::out)
     is semidet.
 
-    % det_replace_nth(List0, N, R) = List is true iff List is List0
+    % det_replace_nth(List0, N, R) = List is true if-and-only-if List is List0
     % with N'th element replaced with R.
     % Throws an exception if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
@@ -312,7 +313,7 @@
 :- func remove_adjacent_dups(one_or_more(T)) = one_or_more(T).
 :- pred remove_adjacent_dups(one_or_more(T)::in, one_or_more(T)::out) is det.
 
-    % remove_adjacent_dups(P, L0, L) is true iff L is the result
+    % remove_adjacent_dups(P, L0, L) is true if-and-only-if L is the result
     % of replacing every sequence of elements in L0 which are equivalent
     % with respect to the ordering, with the first occurrence in L0 of
     % such an element.
@@ -331,7 +332,7 @@
 :- pred merge(one_or_more(T)::in, one_or_more(T)::in, one_or_more(T)::out)
     is det.
 
-    % merge(Compare, As, Bs) = Sorted is true iff, assuming As and
+    % merge(Compare, As, Bs) = Sorted is true if-and-only-if, assuming As and
     % Bs are sorted with respect to the ordering defined by Compare,
     % Sorted is a list containing the elements of As and Bs which is
     % also sorted. For elements which are equivalent in the ordering,
@@ -354,7 +355,7 @@
 :- pred merge_and_remove_dups(one_or_more(T)::in, one_or_more(T)::in,
     one_or_more(T)::out) is det.
 
-    % merge_and_remove_dups(Compare, As, Bs) = Sorted is true iff,
+    % merge_and_remove_dups(Compare, As, Bs) = Sorted is true if-and-only-if,
     % assuming As and Bs are sorted with respect to the ordering defined
     % by Compare and neither contains any duplicates, Sorted is a list
     % containing the elements of As and Bs which is also sorted and
@@ -386,9 +387,9 @@
 
 %---------------------------------------------------------------------------%
 
-    % sort(Compare, Unsorted) = Sorted is true iff Sorted is a
-    % list containing the same elements as Unsorted, where Sorted is
-    % sorted with respect to the ordering defined by Compare,
+    % sort(Compare, Unsorted) = Sorted is true if-and-only-if
+    % Sorted is a list containing the same elements as Unsorted,
+    % where Sorted is sorted with respect to the ordering defined by Compare,
     % and the elements that are equivalent in this ordering appear
     % in the same sequence in Sorted as they do in Unsorted
     % (that is, the sort is stable).
@@ -397,7 +398,7 @@
 :- pred sort(comparison_pred(T)::in(comparison_pred),
     one_or_more(T)::in, one_or_more(T)::out) is det.
 
-    % sort_and_remove_dups(Compare, Unsorted, Sorted) is true iff
+    % sort_and_remove_dups(Compare, Unsorted, Sorted) is true if-and-only-if
     % Sorted is a list containing the same elements as Unsorted, where
     % Sorted is sorted with respect to the ordering defined by the
     % predicate term Compare, except that if two elements in Unsorted
@@ -492,7 +493,7 @@
 
     % perm(List0, List):
     %
-    % True iff List is a permutation of List0.
+    % True if-and-only-if List is a permutation of List0.
     %
 :- pred perm(one_or_more(T)::in, one_or_more(T)::out) is multi.
 
@@ -520,14 +521,14 @@
     T::out) is semidet.
 
     % any_true(Pred, List):
-    % Succeeds iff Pred succeeds for at least one element of List.
+    % Succeeds if-and-only-if Pred succeeds for at least one element of List.
     % Same as `not all_false(Pred, List)'.
     %
 :- pred any_true(pred(T)::in(pred(in) is semidet), one_or_more(T)::in)
     is semidet.
 
     % any_false(Pred, List):
-    % Succeeds iff Pred fails for at least one element of List.
+    % Succeeds if-and-only-if Pred fails for at least one element of List.
     % Same as `not all_true(Pred, List)'.
     %
 :- pred any_false(pred(T)::in(pred(in) is semidet), one_or_more(T)::in)
@@ -571,7 +572,7 @@
 
     % filter(Pred, List) = TrueList takes a closure with one
     % input argument and for each member X of List, calls the closure.
-    % X is included in TrueList iff Pred(X) is true.
+    % X is included in TrueList if-and-only-if Pred(X) is true.
     %
 :- func filter(pred(T)::in(pred(in) is semidet), one_or_more(T)::in)
     = (list(T)::out) is det.
@@ -580,15 +581,15 @@
 
     % filter(Pred, List, TrueList, FalseList) takes a closure with one
     % input argument and for each member X of List, calls the closure.
-    % X is included in TrueList iff Pred(T) is true.
-    % X is included in FalseList iff Pred(T) is false.
+    % X is included in TrueList if-and-only-if Pred(T) is true.
+    % X is included in FalseList if-and-only-if Pred(T) is false.
     %
 :- pred filter(pred(T)::in(pred(in) is semidet), one_or_more(T)::in,
     list(T)::out, list(T)::out) is det.
 
     % negated_filter(Pred, List) = FalseList takes a closure with one
     % input argument and for each member of List X, calls the closure.
-    % X is included in FalseList iff Pred(X) is false.
+    % X is included in FalseList if-and-only-if Pred(X) is false.
     %
 :- func negated_filter(pred(T)::in(pred(in) is semidet), one_or_more(T)::in)
     = (list(T)::out) is det.
@@ -1666,23 +1667,23 @@
 :- pred map_corresponding_foldl3(pred(A, B, C, D, D, E, E, F, F),
     one_or_more(A), one_or_more(B), one_or_more(C), D, D, E, E, F, F).
 :- mode map_corresponding_foldl3(
-    in(pred(in, in, out, in, out, in, out, in, out) is det), in, in, out, in, out,
-    in, out, in, out) is det.
+    in(pred(in, in, out, in, out, in, out, in, out) is det),
+    in, in, out, in, out, in, out, in, out) is det.
 :- mode map_corresponding_foldl3(
-    in(pred(in, in, out, in, out, in, out, mdi, muo) is det), in, in, out, in, out,
-    in, out, mdi, muo) is det.
+    in(pred(in, in, out, in, out, in, out, mdi, muo) is det),
+    in, in, out, in, out, in, out, mdi, muo) is det.
 :- mode map_corresponding_foldl3(
-    in(pred(in, in, out, in, out, in, out, di, uo) is det), in, in, out, in, out,
-    in, out, di, uo) is det.
+    in(pred(in, in, out, in, out, in, out, di, uo) is det),
+    in, in, out, in, out, in, out, di, uo) is det.
 :- mode map_corresponding_foldl3(
-    in(pred(in, in, out, in, out, in, out, in, out) is semidet), in, in, out,
-    in, out, in, out, in, out) is semidet.
+    in(pred(in, in, out, in, out, in, out, in, out) is semidet),
+    in, in, out, in, out, in, out, in, out) is semidet.
 :- mode map_corresponding_foldl3(
-    in(pred(in, in, out, in, out, in, out, mdi, muo) is semidet), in, in, out,
-    in, out, in, out, mdi, muo) is semidet.
+    in(pred(in, in, out, in, out, in, out, mdi, muo) is semidet),
+    in, in, out, in, out, in, out, mdi, muo) is semidet.
 :- mode map_corresponding_foldl3(
-    in(pred(in, in, out, in, out, in, out, di, uo) is semidet), in, in, out,
-    in, out, in, out, di, uo) is semidet.
+    in(pred(in, in, out, in, out, in, out, di, uo) is semidet),
+    in, in, out, in, out, in, out, di, uo) is semidet.
 
     % map_corresponding3_foldl/7 is like map_corresponding3 except
     % that it has an accumulator threaded through it.

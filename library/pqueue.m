@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995, 1997, 1999, 2003-2007, 2009 The University of
 % Melbourne.
-% Copyright (C) 2013-2018, 2023 The Mercury team.
+% Copyright (C) 2013-2018, 2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -39,7 +39,7 @@
 :- func init = pqueue(K, V).
 :- pred init(pqueue(K, V)::out) is det.
 
-    % Succeed iff the priority queue is empty.
+    % Succeed if-and-only-if the priority queue is empty.
     %
 :- pred is_empty(pqueue(K, V)::in) is semidet.
 

@@ -163,8 +163,8 @@
 
 :- interface.
 
-    % graphic_token_char(Char): true iff Char
-    % is a "graphic token char" (ISO Prolog 6.4.2).
+    % graphic_token_char(Char): true if-and-only-if
+    % Char is a "graphic token char" (ISO Prolog 6.4.2).
     % This is exported for use by term_io.quote_atom.
     %
 :- pred graphic_token_char(char::in) is semidet.

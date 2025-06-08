@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1998,2001-2008,2010, 2012 The University of Melbourne.
-% Copyright (C) 2013-2016, 2018-2022 The Mercury team.
+% Copyright (C) 2013-2016, 2018-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -231,7 +231,7 @@
 % Classification.
 %
 
-    % True iff the argument is of infinite magnitude.
+    % True if-and-only-if the argument is of infinite magnitude.
     %
 :- pred is_infinite(float::in) is semidet.
 
@@ -239,11 +239,12 @@
     %
 :- pred is_inf(float::in) is semidet.
 
-    % True iff the argument is not-a-number (NaN).
+    % True if-and-only-if the argument is not-a-number (NaN).
     %
 :- pred is_nan(float::in) is semidet.
 
-    % True iff the argument is of infinite magnitude or not-a-number (NaN).
+    % True if-and-only-if the argument is of infinite magnitude
+    % or not-a-number (NaN).
     %
 :- pred is_nan_or_infinite(float::in) is semidet.
 
@@ -251,12 +252,12 @@
     %
 :- pred is_nan_or_inf(float::in) is semidet.
 
-    % True iff the argument is not of infinite magnitude and is not a
-    % not-a-number (NaN) value.
+    % True if-and-only-if the argument is not of infinite magnitude
+    % and is not a not-a-number (NaN) value.
     %
 :- pred is_finite(float::in) is semidet.
 
-    % True iff the argument is of zero magnitude.
+    % True if-and-only-if the argument is of zero magnitude.
     %
 :- pred is_zero(float::in) is semidet.
 

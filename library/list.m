@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -117,7 +117,7 @@
 %---------------------------------------------------------------------------%
 
     % Standard append predicate:
-    % append(Start, End, List) is true iff
+    % append(Start, End, List) is true if-and-only-if
     % List is the result of concatenating Start and End.
     %
 :- pred append(list(T), list(T), list(T)).
@@ -164,7 +164,7 @@
     % length(List) = Length:
     % length(List, Length):
     %
-    % True iff Length is the length of List, i.e. if List contains
+    % True if-and-only-if Length is the length of List, i.e. if List contains
     % Length elements.
     %
 :- func length(list(T)) = int.
@@ -176,8 +176,8 @@
 
     % same_length(ListA, ListB):
     %
-    % True iff ListA and ListB have the same length,
-    % i.e. iff they both contain the same number of elements.
+    % True if-and-only-if ListA and ListB have the same length,
+    % i.e. if-and-only-if they both contain the same number of elements.
     %
     % Does not traverse *either* list further than the length
     % of the shorter list.
@@ -205,7 +205,7 @@
 
     % member(Elem, List):
     %
-    % True iff List contains Elem.
+    % True if-and-only-if List contains Elem.
     %
 :- pred member(T, list(T)).
 :- mode member(in, in) is semidet.
@@ -213,7 +213,7 @@
 
     % member(Elem, List, SubList):
     %
-    % True iff List contains Elem, and SubList is a suffix of List
+    % True if-and-only-if List contains Elem, and SubList is a suffix of List
     % beginning with Elem.
     % Same as `SubList = [Elem | _], append(_, SubList, List)'.
     %
@@ -221,7 +221,7 @@
 
     % member_index0(Elem, List, Index):
     %
-    % True iff List contains Elem at the zero-based index Index.
+    % True if-and-only-if List contains Elem at the zero-based index Index.
     %
 :- pred member_index0(T, list(T), int).
 :- mode member_index0(in, in, in) is semidet.
@@ -230,7 +230,7 @@
 
     % member_indexes0(Elem, List, Indexes):
     %
-    % True iff List contains Elem at the zero-based indexes Indexes.
+    % True if-and-only-if List contains Elem at the zero-based indexes Indexes.
     % Indexes will be sorted.
     %
 :- pred member_indexes0(T::in, list(T)::in, list(int)::out) is det.
@@ -337,7 +337,7 @@
 
     % delete(List, Elem, Remainder):
     %
-    % True iff Elem occurs in List, and Remainder is the result of
+    % True if-and-only-if Elem occurs in List, and Remainder is the result of
     % deleting one occurrence of Elem from List.
     %
 :- pred delete(list(T), T, list(T)).
@@ -348,14 +348,14 @@
 
     % delete_first(List0, Elem, List):
     %
-    % True iff Elem occurs in List0
+    % True if-and-only-if Elem occurs in List0
     % and List is List0 with the first occurrence of Elem removed.
     %
 :- pred delete_first(list(T)::in, T::in, list(T)::out) is semidet.
 
     % delete_all(List0, Elem) = List:
     %
-    % True iff List is List0 with all occurrences of Elem removed.
+    % True if-and-only-if List is List0 with all occurrences of Elem removed.
     %
 :- func delete_all(list(T), T) = list(T).
 :- pred delete_all(list(T), T, list(T)).
@@ -364,15 +364,15 @@
 
     % delete_nth(List0, N, List):
     %
-    % True iff List0 has an N'th element,
+    % True if-and-only-if List0 has an N'th element,
     % and List is List0 with this element deleted.
     %
 :- pred delete_nth(list(T)::in, int::in, list(T)::out) is semidet.
 
     % delete_elems(List0, Elems) = List:
     %
-    % True iff List is List0 with all occurrences of all elements of Elems
-    % removed.
+    % True if-and-only-if List is List0 with all occurrences
+    % of all elements of Elems removed.
     %
 :- func delete_elems(list(T), list(T)) = list(T).
 :- pred delete_elems(list(T)::in, list(T)::in, list(T)::out) is det.
@@ -388,7 +388,8 @@
 
     % replace(List0, D, R, List):
     %
-    % True iff List is List0 with an occurrence of D replaced with R.
+    % True if-and-only-if List is List0 with an occurrence of D
+    % replaced with R.
     %
 :- pred replace(list(T), T, T, list(T)).
 :- mode replace(in, in, in, in) is semidet.
@@ -396,20 +397,22 @@
 
     % replace_first(List0, D, R, List):
     %
-    % True iff List is List0 with the first occurrence of D replaced with R.
+    % True if-and-only-if List is List0 with the first occurrence of D
+    % replaced with R.
     %
 :- pred replace_first(list(T)::in, T::in, T::in, list(T)::out) is semidet.
 
     % replace_all(List0, D, R) = List:
     %
-    % True iff List is List0 with all occurrences of D replaced with R.
+    % True if-and-only-if List is List0 with all occurrences of D
+    % replaced with R.
     %
 :- func replace_all(list(T), T, T) = list(T).
 :- pred replace_all(list(T)::in, T::in, T::in, list(T)::out) is det.
 
     % replace_nth(List0, N, R, List):
     %
-    % True iff List is List0 with its N'th element replaced with R.
+    % True if-and-only-if List is List0 with its N'th element replaced with R.
     % Fails if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
     %
@@ -417,7 +420,7 @@
 
     % det_replace_nth(List0, N, R) = List:
     %
-    % True iff List is List0 with its N'th element replaced with R.
+    % True if-and-only-if List is List0 with its N'th element replaced with R.
     % Throws an exception if N < 1 or if length of List0 < N.
     % (Position numbers start from 1.)
     %
@@ -461,9 +464,9 @@
 
     % remove_adjacent_dups(P, L0, L):
     %
-    % True iff L is the result of replacing every sequence of elements in L0
-    % which are equivalent with respect to the ordering, with the first
-    % occurrence in L0 of such an element.
+    % True if-and-only-if L is the result of replacing every sequence
+    % of elements in L0 which are equivalent with respect to the ordering,
+    % with the first occurrence in L0 of such an element.
     %
 :- pred remove_adjacent_dups(comparison_pred(T)::in(comparison_pred),
     list(T)::in, list(T)::out) is det.
@@ -599,10 +602,10 @@
 
     % sort(Compare, Unsorted) = Sorted:
     %
-    % True iff Sorted is a list containing the same elements as Unsorted,
-    % where Sorted is sorted with respect to the ordering defined by Compare,
-    % and the elements that are equivalent in this ordering appear
-    % in the same sequence in Sorted as they do in Unsorted
+    % True if-and-only-if Sorted is a list containing the same elements
+    % as Unsorted, where Sorted is sorted with respect to the ordering
+    % defined by Compare, and the elements that are equivalent in this
+    % ordering appear in the same sequence in Sorted as they do in Unsorted
     % (that is, the sort is stable).
     %
 :- func sort(comparison_func(T), list(T)) = list(T).
@@ -611,11 +614,11 @@
 
     % sort_and_remove_dups(Compare, Unsorted, Sorted):
     %
-    % True iff Sorted is a list containing the same elements as Unsorted,
-    % where Sorted is sorted with respect to the ordering defined by the
-    % predicate term Compare, except that if two elements in Unsorted
-    % are equivalent with respect to this ordering only the one which
-    % occurs first will be in Sorted.
+    % True if-and-only-if Sorted is a list containing the same elements
+    % as Unsorted, where Sorted is sorted with respect to the ordering
+    % defined by the predicate term Compare, except that if two elements
+    % in Unsorted are equivalent with respect to this ordering,
+    % only the one which occurs first will be in Sorted.
     %
 :- pred sort_and_remove_dups(comparison_pred(T)::in(comparison_pred),
     list(T)::in, list(T)::out) is det.
@@ -809,7 +812,8 @@
 
     % duplicate(Count, Elem) = List:
     %
-    % True iff List is a list containing Count duplicate copies of Elem.
+    % True if-and-only-if List is a list containing Count duplicate copies
+    % of Elem.
     %
 :- func duplicate(int, T) = list(T).
 :- pred duplicate(int::in, T::in, list(T)::out) is det.
@@ -857,7 +861,7 @@
 
     % perm(List0, List):
     %
-    % True iff List is a permutation of List0.
+    % True if-and-only-if List is a permutation of List0.
     %
 :- pred perm(list(T)::in, list(T)::out) is multi.
 
@@ -888,14 +892,14 @@
 
     % any_true(Pred, List):
     %
-    % Succeeds iff Pred succeeds for at least one element of List.
+    % Succeeds if-and-only-if Pred succeeds for at least one element of List.
     % Same as `not all_false(Pred, List)'.
     %
 :- pred any_true(pred(T)::in(pred(in) is semidet), list(T)::in) is semidet.
 
     % any_false(Pred, List):
     %
-    % Succeeds iff Pred fails for at least one element of List.
+    % Succeeds if-and-only-if Pred fails for at least one element of List.
     % Same as `not all_true(Pred, List)'.
     %
 :- pred any_false(pred(T)::in(pred(in) is semidet), list(T)::in) is semidet.
@@ -943,7 +947,8 @@
     % filter(Pred, List) = TrueList:
     %
     % Takes a closure Pred with one input argument. It calls Pred(X)
-    % on each member X of List, and includes X in TrueList iff Pred(X) is true.
+    % on each member X of List, and includes X in TrueList if-and-only-if
+    % Pred(X) is true.
     %
 :- func filter(pred(T)::in(pred(in) is semidet), list(T)::in)
     = (list(T)::out) is det.
@@ -953,8 +958,9 @@
     % filter(Pred, List, TrueList, FalseList):
     %
     % Takes a closure Pred with one input argument. It calls Pred(X)
-    % on each member X of List. Includes X in TrueList iff Pred(X) is true,
-    % and includes X in FalseList iff Pred(X) is false.
+    % on each member X of List. Includes X in TrueList if-and-only-if
+    % Pred(X) is true, and includes X in FalseList if-and-only-if
+    % Pred(X) is false.
     %
 :- pred filter(pred(T)::in(pred(in) is semidet), list(T)::in,
     list(T)::out, list(T)::out) is det.
@@ -962,8 +968,8 @@
     % negated_filter(Pred, List) = FalseList:
     %
     % Takes a closure Pred with one input argument. It calls Pred(X)
-    % on each member X of List, and includes X in FalseList iff Pred(X)
-    % is false.
+    % on each member X of List, and includes X in FalseList if-and-only-if
+    % Pred(X) is false.
     %
 :- func negated_filter(pred(T)::in(pred(in) is semidet), list(T)::in)
     = (list(T)::out) is det.

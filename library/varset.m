@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000,2002-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -206,8 +206,9 @@
 
     % Combine two different varsets, renaming apart:
     % merge_renaming(VarSet0, NewVarSet, VarSet, Renaming) is true
-    % iff VarSet is the varset that results from joining a suitably renamed
-    % version of NewVarSet to VarSet0. (Any bindings in NewVarSet are ignored.)
+    % if-and-only-if VarSet is the varset that results from joining
+    % a suitably renamed version of NewVarSet to VarSet0.
+    % (Any bindings in NewVarSet are ignored.)
     % Renaming will map each variable in NewVarSet to the corresponding
     % fresh variable in VarSet.
     %

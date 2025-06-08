@@ -136,7 +136,7 @@
     % Is the path name syntactically an absolute path
     % (this does not check whether the path exists).
     %
-    % A path is absolute iff it begins with a root directory
+    % A path is absolute if-and-only-if it begins with a root directory
     % (see path_name_is_root_directory).
     %
 :- pred path_name_is_absolute(string::in) is semidet.

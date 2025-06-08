@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1995,1997,1999,2004-2006,2008,2011-2012 The University of Melbourne.
-% Copyright (C) 2013-2019, 2022-2023 The Mercury team.
+% Copyright (C) 2013-2019, 2022-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -86,11 +86,11 @@
 :- func reverse_lookup(bimap(K, V), V) = K.
 :- pred reverse_lookup(bimap(K, V)::in, K::out, V::in) is det.
 
-    % Succeeds iff the bimap contains the given key.
+    % Succeeds if-and-only-if the bimap contains the given key.
     %
 :- pred contains_key(bimap(K, V)::in, K::in) is semidet.
 
-    % Succeeds iff the bimap contains the given value.
+    % Succeeds if-and-only-if the bimap contains the given value.
     %
 :- pred contains_value(bimap(K, V)::in, V::in) is semidet.
 

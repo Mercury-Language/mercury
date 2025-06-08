@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2023 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -442,7 +442,7 @@
 :- pred nondet_int_in_range(int::in, int::in, int::out) is nondet.
 
     % all_true_in_range(P, Low, High):
-    % True iff P is true for every integer in Low to High.
+    % True if-and-only-if P is true for every integer in Low to High.
     %
     % NOTE: all_true_in_range/3 is undefined if High = max_int.
     %

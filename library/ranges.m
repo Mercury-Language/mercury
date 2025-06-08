@@ -65,20 +65,21 @@
 % Emptiness and other tests.
 %
 
-    % is_empty(Set) is true iff Set is the empty set.
+    % is_empty(Set) is true if-and-only-if Set is the empty set.
     %
 :- pred is_empty(ranges::in) is semidet.
 
-    % is_non_empty(Set) is true iff Set is not the empty set.
+    % is_non_empty(Set) is true if-and-only-if Set is not the empty set.
     %
 :- pred is_non_empty(ranges::in) is semidet.
 
-    % is_contiguous(Set, Lo, Hi) is true iff Set is the set of all integers
-    % from Lo to Hi, both inclusive.
+    % is_contiguous(Set, Lo, Hi) is true if-and-only-if Set
+    % is the set of all integers from Lo to Hi, both inclusive.
     %
 :- pred is_contiguous(ranges::in, int::out, int::out) is semidet.
 
-    % is_singleton(Set, Elem) is true iff Set contains the single element Elem.
+    % is_singleton(Set, Elem) is true if-and-only-if Set contains
+    % the single element Elem.
     %
 :- pred is_singleton(ranges::in, int::out) is semidet.
 
@@ -87,11 +88,11 @@
 % Membership tests.
 %
 
-    % member(X, Set) is true iff X is a member of Set.
+    % member(X, Set) is true if-and-only-if X is a member of Set.
     %
 :- pred member(int::in, ranges::in) is semidet.
 
-    % contains(Set, X) is true iff X is a member of Set.
+    % contains(Set, X) is true if-and-only-if X is a member of Set.
     %
 :- pred contains(ranges::in, int::in) is semidet.
 
@@ -120,22 +121,22 @@
 % Insertions and deletions.
 %
 
-    % insert(X, Set0, Set) is true iff Set is the union of Set0 and
+    % insert(X, Set0, Set) is true if-and-only-if Set is the union of Set0 and
     % the set containing only X.
     % Throws an exception if X = min_int.
     %
 :- func insert(int, ranges) = ranges.
 :- pred insert(int::in, ranges::in, ranges::out) is det.
 
-    % insert_list(Xs, Set0, Set) is true iff Set is the union of Set0 and
-    % the set containing only the members of Xs.
+    % insert_list(Xs, Set0, Set) is true if-and-only-if Set is
+    % the union of Set0 and the set containing only the members of Xs.
     %
 :- func insert_list(list(int), ranges) = ranges.
 :- pred insert_list(list(int)::in, ranges::in, ranges::out) is det.
 
-    % delete(X, Set0, Set) is true iff Set is the relative complement
-    % of Set0 and the set containing only X, i.e. if Set is the set
-    % which contains all the elements of Set0 except X.
+    % delete(X, Set0, Set) is true if-and-only-if Set is
+    % the relative complement of Set0 and the set containing only X,
+    % i.e. if Set is the set which contains all the elements of Set0 except X.
     % Throws an exception if X = min_int.
     %
 :- func delete(int, ranges) = ranges.
@@ -143,8 +144,9 @@
 % NOTE_TO_IMPLEMENTORS XXX add semidet remove predicate,
 % NOTE_TO_IMPLEMENTORS which fails if the item to delete is not in the set
 
-    % delete_list(Xs, Set0, Set) is true iff Set is the relative complement
-    % of Set0 and the set containing only the members of Xs.
+    % delete_list(Xs, Set0, Set) is true if-and-only-if Set is
+    % the relative complement of Set0 and the set containing
+    % only the members of Xs.
     %
 :- func delete_list(list(int), ranges) = ranges.
 :- pred delete_list(list(int)::in, ranges::in, ranges::out) is det.
@@ -154,11 +156,12 @@
 % Comparisons between sets.
 %
 
-    % subset(SetA, SetB) is true iff every value in SetA is in SetB.
+    % subset(SetA, SetB) is true if-and-only-if every value in SetA is in SetB.
     %
 :- pred subset(ranges::in, ranges::in) is semidet.
 
-    % disjoint(SetA, SetB) is true iff SetA and SetB have no values in common.
+    % disjoint(SetA, SetB) is true if-and-only-if SetA and SetB
+    % have no values in common.
     %
 :- pred disjoint(ranges::in, ranges::in) is semidet.
 
@@ -200,7 +203,7 @@
 % Operations that divide a set into two parts.
 %
 
-    % split(Set, Lo, Hi, Rest) is true iff Lo..Hi is the first range
+    % split(Set, Lo, Hi, Rest) is true if-and-only-if Lo..Hi is the first range
     % (i.e. the range containing the smallest integers) in Set, and
     % Rest is the set Set with this range removed.
     %
@@ -287,17 +290,17 @@
     %
 :- func median(ranges) = int.
 
-    % least(Set, X) is true iff X is the smallest element of Set.
+    % least(Set, X) is true if-and-only-if X is the smallest element of Set.
     % Fails if the set is empty.
     %
 :- pred least(ranges::in, int::out) is semidet.
 
-    % greatest(Set, X) is true iff X is the greatest element of Set.
+    % greatest(Set, X) is true if-and-only-if X is the greatest element of Set.
     % Fails if the set is empty.
     %
 :- pred greatest(ranges::in, int::out) is semidet.
 
-    % next(Set, X0, X) is true iff X is the least element of Set
+    % next(Set, X0, X) is true if-and-only-if X is the least element of Set
     % greater than X0.
     %
 :- pred next(ranges::in, int::in, int::out) is semidet.
@@ -469,7 +472,7 @@
 %   Return the set of integers from `l' to `h' inclusive.
 %
 % int ML_ranges_is_empty(ML_Ranges r)
-%   Return true iff `r` is the empty set.
+%   Return true if-and-only-if `r` is the empty set.
 %
 % MR_Integer ML_ranges_count(ML_Ranges r)
 %  Return the number of distinct integers in `r`.
@@ -510,7 +513,7 @@
 %   Return the set of integers from `l' to `h' inclusive.
 %
 % boolean is_empty(ranges.Ranges_0 r)
-%   Return true iff `r' is the empty set.
+%   Return true if-and-only-if `r' is the empty set.
 %
 % int count(ranges.Ranges_0 r)
 %   Return the number of distinct integers in `r'.

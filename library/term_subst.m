@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000,2003-2009,2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2022 The Mercury team.
+% Copyright (C) 2014-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -29,8 +29,8 @@
 
     % var_occurs_in_subst_term(Var, Substitution, Term):
     %
-    % True iff Var occurs in the term resulting after applying Substitution
-    % to Term. Var must not be mapped by Substitution.
+    % True if-and-only-if Var occurs in the term resulting after
+    % applying Substitution to Term. Var must not be mapped by Substitution.
     %
 :- pred var_occurs_in_subst_term(var(T)::in, substitution(T)::in,
     term(T)::in) is semidet.
@@ -40,11 +40,11 @@
 :- pred var_occurs_in_subst_terms(var(T)::in, substitution(T)::in,
     list(term(T))::in)   is semidet.
 
-    % term_is_ground(Term) is true iff Term contains no variables.
+    % term_is_ground(Term) is true if-and-only-if Term contains no variables.
     %
 :- pred term_is_ground(term(T)::in) is semidet.
 
-    % term_is_ground_in_bindings(Term, Bindings) is true iff
+    % term_is_ground_in_bindings(Term, Bindings) is true if-and-only-if
     % all variables contained in Term are mapped to ground terms by Bindings.
     %
 :- pred term_is_ground_in_bindings(term(T)::in, substitution(T)::in)

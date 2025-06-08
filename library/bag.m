@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1999, 2003-2007, 2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2024 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -59,7 +59,7 @@
 
     % member(X, Bag):
     %
-    % True iff Bag contains at least one occurrence of X.
+    % True if-and-only-if Bag contains at least one occurrence of X.
     %
 :- pred member(T::in, bag(T)::in) is semidet.
 
@@ -1184,7 +1184,7 @@ subset_compare_loop(Res, AXNs, BXNs) :-
 
     % subset_compare_verify_le(AXNs, BXNs):
     %
-    % Succeed iff AXNs represents a bag that is "less than or equal"
+    % Succeed if-and-only-if AXNs represents a bag that is "less than or equal"
     % than the bag represented by BXNs.
     %
 :- pred subset_compare_verify_le(

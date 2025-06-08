@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997,1999-2000,2002-2003,2005-2006 The University of Melbourne.
-% Copyright (C) 2014-2022, 2024 The Mercury team.
+% Copyright (C) 2014-2022, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -37,14 +37,14 @@
 % Creating arrays.
 %
 
-    % init(Low, High, Init, Array) is true iff Array is a
-    % bt_array with bounds from Low to High whose elements each equal Init.
+    % init(Low, High, Init, Array) is true if-and-only-if Array is a bt_array
+    % with bounds from Low to High whose elements each equal Init.
     %
 :- func init(int, int, T) = bt_array(T).
 :- pred init(int::in, int::in, T::in, bt_array(T)::out) is det.
 
-    % make_empty_array(Low, Array) is true iff Array is a
-    % bt_array of size zero starting at index Low.
+    % make_empty_array(Low, Array) is true if-and-only-if Array is a bt_array
+    % of size zero starting at index Low.
     %
 :- func make_empty_array(int) = bt_array(T).
 :- pred make_empty_array(int::in, bt_array(T)::out) is det.

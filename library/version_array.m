@@ -112,7 +112,7 @@
     %
 :- func from_reverse_list(list(T)) = version_array(T).
 
-    % lookup(A, I) = X iff the I'th member of A is X.
+    % lookup(A, I) = X if-and-only-if the I'th member of A is X.
     % (The first item has index 0).
     %
 :- func lookup(version_array(T), int) = T.
@@ -142,7 +142,7 @@
     %
 :- func max(version_array(T)) = int.
 
-    % is_empty(Array) is true iff Array is the empty array.
+    % is_empty(Array) is true if-and-only-if Array is the empty array.
     %
 :- pred is_empty(version_array(T)::in) is semidet.
 
@@ -233,14 +233,14 @@
 
     % all_true(Pred, Array):
     %
-    % True iff Pred is true for every element of Array.
+    % True if-and-only-if Pred is true for every element of Array.
     %
 :- pred all_true(pred(T)::in(pred(in) is semidet), version_array(T)::in)
     is semidet.
 
     % all_false(Pred, Array):
     %
-    % True iff Pred is false for every element of Array.
+    % True if-and-only-if Pred is false for every element of Array.
     %
 :- pred all_false(pred(T)::in(pred(in) is semidet), version_array(T)::in)
     is semidet.

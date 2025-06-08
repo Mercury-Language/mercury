@@ -84,10 +84,12 @@
 :- func flip(version_bitmap, int) = version_bitmap.
 :- pred flip(int::in, version_bitmap::in, version_bitmap::out) is det.
 
-    % is_set(BM, I) and is_clear(BM, I) succeed iff bit I in BM
-    % is set or clear respectively.
+    % is_set(BM, I) succeeds if-and-only-if bit I in BM is set.
     %
 :- pred is_set(version_bitmap::in, int::in) is semidet.
+
+    % is_clear(BM, I) succeeds if-and-only-if bit I in BM is clear.
+    %
 :- pred is_clear(version_bitmap::in, int::in) is semidet.
 
     % Create a new copy of a version_bitmap.

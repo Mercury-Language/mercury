@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2002, 2004-2007, 2009-2011 The University of Melbourne
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -122,7 +122,7 @@
 :- func bits_per_byte = int.
 
     % is_empty(Bitmap):
-    % True iff Bitmap is a bitmap containing zero bits.
+    % True if-and-only-if Bitmap is a bitmap containing zero bits.
     %
 :- pred is_empty(bitmap).
 %:- mode is_empty(bitmap_ui) is semidet.
@@ -320,13 +320,14 @@
 :- pred clear(bit_index, bitmap, bitmap).
 :- mode clear(in, bitmap_di, bitmap_uo) is det.
 
-    % is_set(BM, I) and is_clear(BM, I) succeed iff bit I in BM
-    % is set or clear respectively.
+    % is_set(BM, I) succeeds if-and-only-if bit I in BM is set.
     %
 :- pred is_set(bitmap, bit_index).
 % :- mode is_set(bitmap_ui, in) is semidet.
 :- mode is_set(in, in) is semidet.
 
+    % is_clear(BM, I) succeeds if-and-only-if bit I in BM is clear.
+    %
 :- pred is_clear(bitmap, bit_index).
 % :- mode is_clear(bitmap_ui, in) is semidet.
 :- mode is_clear(in, in) is semidet.

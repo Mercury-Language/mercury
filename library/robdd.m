@@ -39,7 +39,7 @@
 %   R2 = R3.
 %
 % ROBDDs are implemented so that two ROBDDs, R1 and R2, represent
-% the same Boolean constraint if and only iff `R1 = R2'. Checking
+% the same Boolean constraint if and only if-and-only-if `R1 = R2'. Checking
 % equivalence of ROBDDs is fast since it involves only a single
 % pointer comparison.
 %
@@ -81,7 +81,7 @@
 :- func one = robdd(T).
 :- func zero = robdd(T).
 
-    % var(X) is the ROBDD that is true iff X is true.
+    % var(X) is the ROBDD that is true if-and-only-if X is true.
     %
 :- func var(var(T)) = robdd(T).
 
@@ -175,13 +175,13 @@
 
     % X `entails` Y:
     %
-    % Succeed iff X entails Y.
+    % Succeed if-and-only-if X entails Y.
     % Does not create any new ROBDD nodes.
     %
 :- pred robdd(T) `entails` robdd(T).
 :- mode in `entails` in is semidet.
 
-    % Succeed iff the var is entailed by the ROBDD.
+    % Succeed if-and-only-if the var is entailed by the ROBDD.
     %
 :- pred var_entailed(robdd(T)::in, var(T)::in) is semidet.
 
@@ -330,15 +330,16 @@
     %
 :- func rename_vars(func(var(T)) = var(T), robdd(T)) = robdd(T).
 
-    % Succeed iff ROBDD = one or ROBDD = zero.
+    % Succeed if-and-only-if ROBDD = one or ROBDD = zero.
     %
 :- pred is_terminal(robdd(T)::in) is semidet.
 
-    % Succeed iff the var is constrained by the ROBDD.
+    % Succeed if-and-only-if the var is constrained by the ROBDD.
     %
 :- pred var_is_constrained(robdd(T)::in, var(T)::in) is semidet.
 
-    % Succeed iff all the vars in the set are constrained by the ROBDD.
+    % Succeed if-and-only-if all the vars in the set
+    % are constrained by the ROBDD.
     %
 :- pred vars_are_constrained(robdd(T)::in, vars(T)::in) is semidet.
 

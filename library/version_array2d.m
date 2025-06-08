@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2019, 2022, 2024 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2019, 2022, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -51,7 +51,7 @@
 :- pred bounds(version_array2d(T)::in, int::out, int::out) is det.
 
     % in_bounds(version_array2d([[X11, ..., X1N], ..., [XM1, ..., XMN]), I, J)
-    % succeeds iff 0 =< I < M, 0 =< J < N.
+    % succeeds if-and-only-if 0 =< I < M, 0 =< J < N.
     %
 :- pred in_bounds(version_array2d(T)::in, int::in, int::in) is semidet.
 

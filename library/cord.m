@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
-% Copyright (C) 2013-2018, 2021-2022, 2024 The Mercury team.
+% Copyright (C) 2013-2018, 2021-2022, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -50,11 +50,11 @@
     %
 :- func empty = cord(T).
 
-    % Succeed iff the given cord is empty.
+    % Succeed if-and-only-if the given cord is empty.
     %
 :- pred is_empty(cord(T)::in) is semidet.
 
-    % Succeed iff the given cord is not empty.
+    % Succeed if-and-only-if the given cord is not empty.
     %
 :- pred is_non_empty(cord(T)::in) is semidet.
 

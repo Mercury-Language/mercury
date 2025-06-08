@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019-2020, 2023-2024 The Mercury team.
+% Copyright (C) 2019-2020, 2023-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -574,8 +574,8 @@ scan_change_hunk_diffs(ContextSize, Diffs, LeftOverDiffs, !RevCHunkDiffs,
     % Our caller calls us when it finds ContextLines consecutive unchanged
     % lines. Our caller wants to extend its change hunk *if and only if*
     % this is followed by (a) ContextLines or fewer consecutive unchanged
-    % lines, and then (b) a deletion or insertion. We succeed iff this
-    % is the case. We return the unchanged lines by adding them to
+    % lines, and then (b) a deletion or insertion. We succeed if-and-only-if
+    % this is the case. We return the unchanged lines by adding them to
     % !RevUnchangedDiffs, counting them in !NumUnchanged. We leave the
     % changed items in LeftOverDiffs.
     %

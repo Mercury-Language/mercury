@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2012-2014 YesLogic Pty. Ltd.
-% Copyright (C) 2014-2015, 2017-2018, 2022-2023 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2022-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -33,7 +33,7 @@
 :- type diet(T). % <= diet_element(T).
 
 :- typeclass diet_element(T) where [
-    % less_than(X, Y) succeeds iff X < Y.
+    % less_than(X, Y) succeeds if-and-only-if X < Y.
     pred less_than(T::in, T::in) is semidet,
 
     % successor(X) returns the successor of X, e.g. X + 1.
@@ -74,8 +74,8 @@
 
 :- pred is_non_empty(diet(T)::in) is semidet.
 
-    % is_singleton(Set, X) is true iff Set is a singleton containing the
-    % element X.
+    % is_singleton(Set, X) is true if-and-only-if Set
+    % is a singleton containing the element X.
     %
 :- pred is_singleton(diet(T)::in, T::out) is semidet <= diet_element(T).
 
@@ -84,13 +84,13 @@
 % Membership tests.
 %
 
-    % member(X, Set) is true iff X is a member of Set.
+    % member(X, Set) is true if-and-only-if X is a member of Set.
     %
 :- pred member(T, diet(T)) <= diet_element(T).
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
-    % contains(Set, X) is true iff X is a member of Set.
+    % contains(Set, X) is true if-and-only-if X is a member of Set.
     %
 :- pred contains(diet(T)::in, T::in) is semidet <= diet_element(T).
 
@@ -106,33 +106,33 @@
 % Insertions and deletions.
 %
 
-    % insert(X, Set0, Set) is true iff Set is the union of
+    % insert(X, Set0, Set) is true if-and-only-if Set is the union of
     % Set0 and the set containing only X.
     %
 :- func insert(diet(T), T) = diet(T) <= diet_element(T).
 :- pred insert(T::in, diet(T)::in, diet(T)::out) is det <= diet_element(T).
 
-    % insert_interval(X, Y, Set0, Set) is true iff Set is the union of
-    % Set0 and the set containing only the elements of the interval [X, Y].
-    % Throws an exception if Y < X.
+    % insert_interval(X, Y, Set0, Set) is true if-and-only-if
+    % Set is the union of Set0 and the set containing only the elements
+    % of the interval [X, Y]. Throws an exception if Y < X.
     %
 :- pred insert_interval(T::in, T::in, diet(T)::in, diet(T)::out) is det
     <= diet_element(T).
 
-    % insert_new(X, Set0, Set) is true iff Set0 does not contain
+    % insert_new(X, Set0, Set) is true if-and-only-if Set0 does not contain
     % X, and Set is the union of Set0 and the set containing only X.
     %
 :- pred insert_new(T::in, diet(T)::in, diet(T)::out) is semidet
     <= diet_element(T).
 
-    % insert_list(Xs, Set0, Set) is true iff Set is the union of
+    % insert_list(Xs, Set0, Set) is true if-and-only-if Set is the union of
     % Set0 and the set containing only the members of Xs.
     %
 :- func insert_list(diet(T), list(T)) = diet(T) <= diet_element(T).
 :- pred insert_list(list(T)::in, diet(T)::in, diet(T)::out) is det
     <= diet_element(T).
 
-    % delete(X, Set0, Set) is true iff Set is the relative
+    % delete(X, Set0, Set) is true if-and-only-if Set is the relative
     % complement of Set0 and the set containing only X, i.e.
     % if Set is the set which contains all the elements of Set0
     % except X.
@@ -148,7 +148,7 @@
 :- pred delete_list(list(T)::in, diet(T)::in, diet(T)::out) is det
     <= diet_element(T).
 
-    % remove(X, Set0, Set) is true iff Set0 contains X,
+    % remove(X, Set0, Set) is true if-and-only-if Set0 contains X,
     % and Set is the relative complement of Set0 and the set
     % containing only X, i.e.  if Set is the set which contains
     % all the elements of Set0 except X.
@@ -163,9 +163,9 @@
 :- pred remove_list(list(T)::in, diet(T)::in, diet(T)::out) is semidet
     <= diet_element(T).
 
-    % remove_least(X, Set0, Set) is true iff X is the least element in
-    % Set0, and Set is the set which contains all the elements of Set0
-    % except X.
+    % remove_least(X, Set0, Set) is true if-and-only-if X is
+    % the least element in Set0, and Set is the set which contains
+    % all the elements of Set0 except X.
     %
 :- pred remove_least(T::out, diet(T)::in, diet(T)::out) is semidet
     <= diet_element(T).
@@ -175,16 +175,17 @@
 % Comparisons between sets.
 %
 
-    % equal(SetA, SetB) is true iff SetA and SetB contain the same
+    % equal(SetA, SetB) is true if-and-only-if SetA and SetB contain the same
     % elements.
     %
 :- pred equal(diet(T)::in, diet(T)::in) is semidet <= diet_element(T).
 
-    % subset(Subset, Set) is true iff Subset is a subset of Set.
+    % subset(Subset, Set) is true if-and-only-if Subset is a subset of Set.
     %
 :- pred subset(diet(T)::in, diet(T)::in) is semidet <= diet_element(T).
 
-    % superset(Superset, Set) is true iff Superset is a superset of Set.
+    % superset(Superset, Set) is true if-and-only-if
+    % Superset is a superset of Set.
     %
 :- pred superset(diet(T)::in, diet(T)::in) is semidet <= diet_element(T).
 
@@ -193,7 +194,8 @@
 % Operations on two or more sets.
 %
 
-    % union(SetA, SetB, Set) is true iff Set is the union of SetA and SetB.
+    % union(SetA, SetB, Set) is true if-and-only-if
+    % Set is the union of SetA and SetB.
     %
 :- func union(diet(T), diet(T)) = diet(T) <= diet_element(T).
 :- pred union(diet(T)::in, diet(T)::in, diet(T)::out) is det
@@ -204,7 +206,7 @@
 :- func union_list(list(diet(T))) = diet(T) <= diet_element(T).
 :- pred union_list(list(diet(T))::in, diet(T)::out) is det <= diet_element(T).
 
-    % intersect(SetA, SetB, Set) is true iff Set is the
+    % intersect(SetA, SetB, Set) is true if-and-only-if Set is the
     % intersection of SetA and SetB.
     %
 :- func intersect(diet(T), diet(T)) = diet(T) <= diet_element(T).
@@ -230,7 +232,7 @@
 % Operations that divide a set into two parts.
 %
 
-    % split(X, Set, Lesser, IsPresent, Greater) is true iff
+    % split(X, Set, Lesser, IsPresent, Greater) is true if-and-only-if
     % Lesser is the set of elements in Set which are less than X and
     % Greater is the set of elements in Set which are greater than X.
     % IsPresent is `yes' if Set contains X, and `no' otherwise.
@@ -316,7 +318,7 @@
 % Standard higher order functions on collections.
 %
 
-    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
+    % all_true(Pred, Set) succeeds if-and-only-if Pred(Element) succeeds
     % for all the elements of Set.
     %
 :- pred all_true(pred(T)::in(pred(in) is semidet), diet(T)::in) is semidet

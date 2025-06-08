@@ -616,9 +616,11 @@
 
     % True if the string is a valid UTF-8 or UTF-16 string.
     % In target languages that use UTF-8 string encoding, `is_well_formed(S)'
-    % is true iff S consists of a well-formed UTF-8 code unit sequence.
+    % is true if-and-only-if S consists of a well-formed UTF-8 code unit
+    % sequence.
     % In target languages that use UTF-16 string encoding, `is_well_formed(S)'
-    % is true iff S consists of a well-formed UTF-16 code unit sequence.
+    % is true if-and-only-if S consists of a well-formed UTF-16 code unit
+    % sequence.
     %
 :- pred is_well_formed(string::in) is semidet.
 
@@ -663,16 +665,16 @@
 
     % all_match(TestPred, String):
     %
-    % True iff all code points in String satisfy TestPred, and String contains
-    % no ill-formed code unit sequences.
+    % True if-and-only-if all code points in String satisfy TestPred,
+    % and String contains no ill-formed code unit sequences.
     %
 :- pred all_match(pred(char)::in(pred(in) is semidet), string::in) is semidet.
 
     % contains_match(TestPred, String):
     %
-    % True iff String contains at least one code point that satisfies
-    % TestPred. Any ill-formed code unit sequences in String are ignored
-    % as they do not encode code points.
+    % True if-and-only-if String contains at least one code point
+    % that satisfies TestPred. Any ill-formed code unit sequences in String
+    % are ignored as they do not encode code points.
     %
 :- pred contains_match(pred(char)::in(pred(in) is semidet), string::in)
     is semidet.
@@ -882,8 +884,8 @@
 % Splitting up strings.
 %
 
-    % first_char(String, Char, Rest) is true iff String begins with a
-    % well-formed code unit sequence, Char is the code point encoded by
+    % first_char(String, Char, Rest) is true if-and-only-if String begins
+    % with a well-formed code unit sequence, Char is the code point encoded by
     % that sequence, and Rest is the rest of String after that sequence.
     %
     % The (uo, in, in) mode throws an exception if Char cannot be encoded in
@@ -1103,12 +1105,14 @@
 % Dealing with prefixes and suffixes.
 %
 
-    % prefix(String, Prefix) is true iff Prefix is a prefix of String.
+    % prefix(String, Prefix) is true if-and-only-if
+    % Prefix is a prefix of String.
     % Same as append(Prefix, _, String).
     %
 :- pred prefix(string::in, string::in) is semidet.
 
-    % suffix(String, Suffix) is true iff Suffix is a suffix of String.
+    % suffix(String, Suffix) is true if-and-only-if
+    % Suffix is a suffix of String.
     % Same as append(_, Suffix, String).
     %
 :- pred suffix(string::in, string::in) is semidet.

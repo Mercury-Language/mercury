@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2024 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -75,7 +75,7 @@
 % Searching for a key.
 %
 
-    % Succeed iff the map contains the given key.
+    % Succeed if-and-only-if the map contains the given key.
     %
 :- pred contains(map(K, _V)::in, K::in) is semidet.
 

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1999,2002-2007,2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2018, 2022-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -243,22 +243,23 @@
 :- func vertices(digraph(T)) = set(T).
 :- pred vertices(digraph(T)::in, set(T)::out) is det.
 
-    % inverse(G, G') is true iff the domains of G and G' are equal,
-    % and for all x, y in this domain, (x,y) is an edge in G iff (y,x) is
-    % an edge in G'.
+    % inverse(G, G') is true if-and-only-if the domains of G and G' are equal,
+    % and for all x, y in this domain, (x,y) is an edge in G if-and-only-if
+    % (y,x) is an edge in G'.
     %
 :- func inverse(digraph(T)) = digraph(T).
 :- pred inverse(digraph(T)::in, digraph(T)::out) is det.
 
     % compose(G1, G2, G) is true if G is the composition
     % of the digraphs G1 and G2. This means that there is an edge (x,y) in G
-    % iff there exists vertex m such that (x,m) is in G1 and (m,y) is in G2.
+    % if-and-only-if there exists vertex m such that (x,m) is in G1 and
+    % (m,y) is in G2.
     %
 :- func compose(digraph(T), digraph(T)) = digraph(T).
 :- pred compose(digraph(T)::in, digraph(T)::in, digraph(T)::out)
     is det.
 
-    % is_dag(G) is true iff G is a directed acyclic graph.
+    % is_dag(G) is true if-and-only-if G is a directed acyclic graph.
     %
 :- pred is_dag(digraph(T)::in) is semidet.
 
@@ -331,7 +332,7 @@
 :- func return_sccs_in_to_from_order(digraph(T)) = list(set(T)).
 
     % sc(G, SC) is true if SC is the symmetric closure of G.
-    % That is, (x,y) is in SC iff either (x,y) or (y,x) is in G.
+    % That is, (x,y) is in SC if-and-only-if either (x,y) or (y,x) is in G.
     %
 :- func sc(digraph(T)) = digraph(T).
 :- pred sc(digraph(T)::in, digraph(T)::out) is det.

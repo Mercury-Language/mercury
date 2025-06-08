@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -2143,7 +2143,8 @@
 
     % get_system_error(Error, SystemError):
     %
-    % Succeeds iff SystemError is a system error associated with Error.
+    % Succeeds if-and-only-if SystemError is a system error
+    % associated with Error.
     %
 :- pred get_system_error(io.error::in, io.system_error::out) is semidet.
 
@@ -2297,15 +2298,16 @@
 % For use by dir.m.
 %
 
-    % Succeeds iff the Win32 API is available.
+    % Succeeds if-and-only-if the Win32 API is available.
     %
 :- pred have_win32 is semidet.
 
-    % Succeeds iff the current process was compiled against the Cygwin library.
+    % Succeeds if-and-only-if the current process was compiled
+    % against the Cygwin library.
     %
 :- pred have_cygwin is semidet.
 
-    % Succeeds iff the .NET class library is available.
+    % Succeeds if-and-only-if the .NET class library is available.
     %
 :- pred have_dotnet is semidet.
 
@@ -5623,7 +5625,8 @@ with_output_stream(Stream, Pred, !IO) :-
 call_pred_no_result(Pred, {}, !IO) :-
     Pred(!IO).
 
-:- pred restore_output_stream(pred(io, io), text_output_stream, io.res, io, io).
+:- pred restore_output_stream(pred(io, io),
+    text_output_stream, io.res, io, io).
 :- mode restore_output_stream(in(pred(di, uo) is det),
     in, out, di, uo) is det.
 :- mode restore_output_stream(in(pred(di, uo) is cc_multi),

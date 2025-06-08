@@ -31,8 +31,8 @@
 
     % type_to_univ(Object, Univ).
     %
-    % True iff the type stored in `Univ' is the same as the type of Object,
-    % and the value stored in Univ is equal to the value of Object.
+    % True if-and-only-if the type stored in `Univ' is the same as the type
+    % of Object, and the value stored in Univ is equal to the value of Object.
     %
     % Operationally,
     %

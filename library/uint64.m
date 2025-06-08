@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018-2023 The Mercury team.
+% Copyright (C) 2018-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -413,7 +413,7 @@
 :- func unchecked_flip_bit(uint64, uint) = uint64.
 
     % bit_is_set(U, I):
-    % True iff the I'th bit (the bit worth 2^I) of U is one.
+    % True if-and-only-if the I'th bit (the bit worth 2^I) of U is one.
     % An exception is thrown if I is not in the range [0, 63].
     %
 :- pred bit_is_set(uint64::in, uint::in) is semidet.
@@ -425,7 +425,7 @@
 :- pred unchecked_bit_is_set(uint64::in, uint::in) is semidet.
 
     % bit_is_clear(U, I):
-    % True iff the I'th bit (the bit worth 2^I) of U is zero.
+    % True if-and-only-if the I'th bit (the bit worth 2^I) of U is zero.
     % An exception is thrown if I is not in the range [0, 63].
     %
 :- pred bit_is_clear(uint64::in, uint::in) is semidet.

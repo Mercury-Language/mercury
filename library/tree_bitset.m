@@ -96,14 +96,14 @@
 % Membership tests.
 %
 
-    % member(X, Set) is true iff X is a member of Set.
+    % member(X, Set) is true if-and-only-if X is a member of Set.
     % Takes O(card(Set)) time for the semidet mode.
     %
 :- pred member(T, tree_bitset(T)) <= uenum(T).
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
-    % contains(Set, X) is true iff X is a member of Set.
+    % contains(Set, X) is true if-and-only-if X is a member of Set.
     % Takes O(log(card(Set))) time.
     %
 :- pred contains(tree_bitset(T)::in, T::in) is semidet <= uenum(T).
@@ -187,9 +187,9 @@
 :- pred remove_gt(T::in, tree_bitset(T)::in, tree_bitset(T)::out) is det
     <= uenum(T).
 
-    % remove_least(Set0, X, Set) is true iff X is the least element in
-    % Set0, and Set is the set which contains all the elements of Set0
-    % except X. Takes O(1) time and space.
+    % remove_least(Set0, X, Set) is true if-and-only-if
+    % X is the least element in Set0, and Set is the set which contains
+    % all the elements of Set0 except X. Takes O(1) time and space.
     %
 :- pred remove_least(T::out, tree_bitset(T)::in, tree_bitset(T)::out)
     is semidet <= uenum(T).
@@ -199,17 +199,18 @@
 % Comparisons between sets.
 %
 
-    % equal(SetA, SetB) is true iff SetA and SetB contain the same
+    % equal(SetA, SetB) is true if-and-only-if SetA and SetB contain the same
     % elements. Takes O(min(card(SetA), card(SetB))) time.
     %
 :- pred equal(tree_bitset(T)::in, tree_bitset(T)::in) is semidet <= uenum(T).
 
-    % subset(Subset, Set) is true iff Subset is a subset of Set.
+    % subset(Subset, Set) is true if-and-only-if Subset is a subset of Set.
     % Same as `intersect(Set, Subset, Subset)', but may be more efficient.
     %
 :- pred subset(tree_bitset(T)::in, tree_bitset(T)::in) is semidet.
 
-    % superset(Superset, Set) is true iff Superset is a superset of Set.
+    % superset(Superset, Set) is true if-and-only-if
+    % Superset is a superset of Set.
     % Same as `intersect(Superset, Set, Set)', but may be more efficient.
     %
 :- pred superset(tree_bitset(T)::in, tree_bitset(T)::in) is semidet.
@@ -349,8 +350,8 @@
 % Standard higher order functions on collections.
 %
 
-    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
-    % for all the elements of Set.
+    % all_true(Pred, Set) succeeds if-and-only-if
+    % Pred(Element) succeeds for all the elements of Set.
     %
 :- pred all_true(pred(T)::in(pred(in) is semidet), tree_bitset(T)::in)
     is semidet <= uenum(T).

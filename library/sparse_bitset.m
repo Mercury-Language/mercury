@@ -115,14 +115,14 @@
 % Membership tests.
 %
 
-    % member(Item, Set) is true iff Item is a member of Set.
+    % member(Item, Set) is true if-and-only-if Item is a member of Set.
     % Takes O(rep_size(Set)) time.
     %
 :- pred member(T, sparse_bitset(T)) <= uenum(T).
 :- mode member(in, in) is semidet.
 :- mode member(out, in) is nondet.
 
-    % contains(Set, Item) is true iff Item is a member of Set.
+    % contains(Set, Item) is true if-and-only-if Item is a member of Set.
     % Takes O(rep_size(Set)) time.
     %
 :- pred contains(sparse_bitset(T)::in, T::in) is semidet <= uenum(T).
@@ -208,7 +208,7 @@
 :- pred remove_gt(T::in, sparse_bitset(T)::in, sparse_bitset(T)::out)
     is det <= uenum(T).
 
-    % remove_least(Set0, Item, Set) is true iff Item is the element
+    % remove_least(Set0, Item, Set) is true if-and-only-if Item is the element
     % whose enum form is the smallest in Set0, and Set is the set
     % which contains all the elements of Set0 except Item. Takes O(1) time
     % and space.
@@ -221,17 +221,19 @@
 % Comparisons between sets.
 %
 
-    % equal(SetA, SetB) is true iff SetA and SetB contain the same elements.
+    % equal(SetA, SetB) is true if-and-only-if SetA and SetB contain
+    % the same elements.
     % Takes O(min(rep_size(SetA), rep_size(SetB))) time.
     %
 :- pred equal(sparse_bitset(T)::in, sparse_bitset(T)::in) is semidet.
 
-    % subset(Subset, Set) is true iff Subset is a subset of Set.
+    % subset(Subset, Set) is true if-and-only-if Subset is a subset of Set.
     % Same as `intersect(Set, Subset, Subset)', but may be more efficient.
     %
 :- pred subset(sparse_bitset(T)::in, sparse_bitset(T)::in) is semidet.
 
-    % superset(Superset, Set) is true iff Superset is a superset of Set.
+    % superset(Superset, Set) is true if-and-only-if
+    % Superset is a superset of Set.
     % Same as `intersect(Superset, Set, Set)', but may be more efficient.
     %
 :- pred superset(sparse_bitset(T)::in, sparse_bitset(T)::in) is semidet.
@@ -374,8 +376,8 @@
 % Standard higher order functions on collections.
 %
 
-    % all_true(Pred, Set) succeeds iff Pred(Element) succeeds
-    % for all the elements of Set.
+    % all_true(Pred, Set) succeeds if-and-only-if
+    % Pred(Element) succeeds for all the elements of Set.
     %
 :- pred all_true(pred(T)::in(pred(in) is semidet), sparse_bitset(T)::in)
     is semidet <= uenum(T).

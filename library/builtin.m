@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2022 The Mercury team.
+% Copyright (C) 2014-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -183,7 +183,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % unify(X, Y) is true iff X = Y.
+    % unify(X, Y) is true if-and-only-if X = Y.
     %
 :- pred unify(T::in, T::in) is semidet.
 
@@ -349,9 +349,9 @@
 
 %---------------------------------------------------------------------------%
 
-    % dynamic_cast(X, Y) succeeds with Y = X iff X has the same ground type
-    % as Y (so this may succeed if Y is of type list(int), say, but not if
-    % Y is of type list(T)).
+    % dynamic_cast(X, Y) succeeds with Y = X if-and-only-if
+    % X has the same ground type as Y (so this may succeed
+    % if Y is of type list(int), say, but not if Y is of type list(T)).
     %
 :- pred dynamic_cast(T1::in, T2::out) is semidet.
 

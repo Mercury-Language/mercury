@@ -421,7 +421,7 @@ parse(InputString, SkipWS, Parser, Result) :-
             Result0 = error(Msg, Line, Col),
             % We make parse/4 cc_multi because declaratively
             % parse(Str, SkipWS, Parser, error(MaybeMsg, Line, Col)) is true
-            % for all MaybeMsg, Line and Col iff
+            % for all MaybeMsg, Line and Col if-and-only-if
             %   new_src_and_ps(Str, SkipWS, Src, PS0),
             %   Parser(Src, _, PS0, _)
             % is false, but operationally MaybeMsg, Line and Col are
