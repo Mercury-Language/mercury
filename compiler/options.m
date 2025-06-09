@@ -72,7 +72,7 @@
 % documentation of the negated version.)
 %
 % NOTE Unlike the current design, this would *require every option to be
-% documented*, even if the documetation is kept private.
+% documented*, even if the documentation is kept private.
 %
 % NOTE It would also enforce that the help text for an option include
 % the exact same set of option names as we give to getopt for that option.
@@ -1349,7 +1349,7 @@ option_defaults(Opt, Data) :-
     ;       oc_warn_style_c
             % Warnings about programming style.
     ;       oc_warn_ctrl
-            % OPtions that *control* warnings.
+            % Options that *control* warnings.
             % XXX Split into subparts, one for each of oc_warn_*
             % that some now-oc_warn_ctrl option controls.
             % This should enable us to put the documentation of e.g.
@@ -1389,7 +1389,7 @@ option_defaults(Opt, Data) :-
             % Options that ask the compiler to modify some aspect
             % of the generated target code.
     ;       oc_output_dev
-            % Developer-only ptions that ask the compiler to modify some aspect
+            % Developer-only options that ask the compiler to modify some aspect
             % of the generated target code.
     ;       oc_file_req
             % Options that request the compiler to generate files
@@ -2324,7 +2324,7 @@ optdb(oc_verb_dbg,  debug_dep_par_conj,                 accumulating([]),
     priv_help("debug-dep-par-conj <n>", [
         "Output detailed debugging traces during the dependent",
         "AND-parallelism transformation of the predicate with the given",
-        "predicate id. Efective only with the right --trace-flags."])).
+        "predicate id. Effective only with the right --trace-flags."])).
 optdb(oc_verb_dbg,  debug_liveness,                     int(-1),
     help("debug-liveness <pred_id>", [
         "Output detailed debugging traces of the liveness analysis",
@@ -2823,7 +2823,7 @@ optdb(oc_file_req, show_imports_graph,               bool(no),
 
 %---------------------------------------------------------------------------%
 
-    % Options that developmers can use to ask for optional compiler actions.
+    % Options that developers can use to ask for optional compiler actions.
 
 optdef(oc_dev_ctrl, debug_output_suffix,                 string("")).
 optdef(oc_dev_ctrl, error_output_suffix,                 string("")).
@@ -3195,7 +3195,7 @@ optdb(oc_grade, source_to_source_debug,                bool(no),
 %---------------------%
 
     % Optional feature compilation model options:
-    % (b1) Mprof rofiling
+    % (b1) Mprof profiling
 
 optdef(oc_grade, profiling,                             bool_special).
 optdef(oc_grade, time_profiling,                        special).
@@ -3245,7 +3245,7 @@ optdb(oc_grade, profile_memory,                        bool(no),
 %---------------------%
 
     % Optional feature compilation model options:
-    % (b2) Mdprof rofiling
+    % (b2) Mdprof profiling
 
 optdef(oc_grade, deep_profiling,                        special).
 optdef(oc_grade, profile_deep,                          bool(no)).
@@ -3702,7 +3702,7 @@ optdb(oc_internal, put_commit_in_own_func,                bool(no),
     % XXX NO, MOST ARE NOT.
     % We need a separate category (maybe named oc_int_dev?) for options
     % - whose main intended use is internal-use-only,
-    % - but which can be command-loine enabled by developers for experiments.
+    % - but which can be command-line enabled by developers for experiments.
     % OR we could just delete the possibility of those experiments,
     % whose time has long passed.
 
