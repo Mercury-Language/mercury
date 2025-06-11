@@ -201,9 +201,10 @@ MR_trace_event_internal(MR_TraceCmdInfo *cmd, MR_bool interactive,
     }
 
     // We want to make sure that the Mercury code used to implement some
-    // of the debugger's commands (a) doesn't generate any trace events,
-    // (b) doesn't generate any unwanted debugging output, and (c) doesn't
-    // do any I/O tabling.
+    // of the debugger's commands
+    // (a) does not generate any trace events,
+    // (b) does not generate any unwanted debugging output, and
+    // (c) does not do any I/O tabling.
 
     MR_turn_off_debug(&MR_saved_debug_state, MR_FALSE);
 
@@ -213,8 +214,10 @@ MR_trace_event_internal(MR_TraceCmdInfo *cmd, MR_bool interactive,
 
     if (MR_spy_point_cond_problem != NULL) {
         fprintf(MR_mdb_err, "mdb: couldn't evaluate break point condition\n");
+        fprintf(MR_mdb_err, "    ");
         MR_print_spy_cond(MR_mdb_err, MR_spy_point_cond_bad);
-        fprintf(MR_mdb_err, ": %s.\n", MR_spy_point_cond_problem);
+        fprintf(MR_mdb_err, ".\n");
+        fprintf(MR_mdb_err, "The error is: %s.\n", MR_spy_point_cond_problem);
         MR_spy_point_cond_bad = NULL;
         MR_spy_point_cond_problem = NULL;
     }

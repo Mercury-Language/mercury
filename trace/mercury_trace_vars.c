@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1999-2011 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This file contains the code for managing information about the
@@ -2031,6 +2031,19 @@ MR_lookup_var_spec(MR_VarSpec var_spec, MR_TypeInfo *type_info_ptr,
             }
 
             if (! found) {
+#if 0
+                // Enable this code if necessary for debugging.
+                fprintf(stdout, "searching for %s\n",
+                    var_spec.MR_var_spec_name);
+                for (vn = 0; vn < MR_point.MR_point_var_count; vn++) {
+                    value = &MR_point.MR_point_vars[vn];
+                    if (value->MR_value_kind == MR_VALUE_PROG_VAR) {
+                        fprintf(stdout, "var %d: %s\n",
+                            vn, value->MR_value_var.MR_var_fullname);
+                    }
+                }
+                fflush(stdout);
+#endif
                 return "there is no such variable";
             }
 
