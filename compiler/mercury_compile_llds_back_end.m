@@ -783,11 +783,11 @@ llds_output_pass(ProgressStream, OpModeCodeGen, HLDS,
             ( OpModeCodeGen = opfam_target_and_object_code_only
             ; OpModeCodeGen = opfam_target_object_and_executable
             ),
-            llds_c_to_obj(Globals, ProgressStream, ModuleName,
+            llds_c_to_obj(ProgressStream, Globals, ModuleName,
                 CompileSucceeded, !IO),
             module_info_get_fact_table_file_names(HLDS, FactTableBaseFiles),
             list.map2_foldl(
-                compile_fact_table_file(Globals, ProgressStream),
+                compile_fact_table_file(ProgressStream, Globals),
                 FactTableBaseFiles, FactTableObjFiles,
                 FactTableCompileSucceededs, !IO),
             Succeeded =
@@ -928,30 +928,30 @@ output_llds_file(ProgressStream, Globals, LLDS0, Succeeded, !IO) :-
     transform_llds(Globals, LLDS0, LLDS),
     output_llds(ProgressStream, Globals, LLDS, Succeeded, !IO).
 
-:- pred llds_c_to_obj(globals::in, io.text_output_stream::in, module_name::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+:- pred llds_c_to_obj(io.text_output_stream::in, globals::in,
+    module_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-llds_c_to_obj(Globals, ProgressStream, ModuleName, Succeeded, !IO) :-
-    get_linked_target_type(Globals, LinkedTargetType),
+llds_c_to_obj(ProgressStream, Globals, ModuleName, Succeeded, !IO) :-
+    get_linked_target_type_for_c(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
-    maybe_pic_object_file_extension(PIC, ObjExt, _),
+    maybe_pic_object_file_extension(PIC, ExtObj, _),
     % XXX Why not _create_dirs?
     % XXX LEGACY
     module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName,
         C_File, _C_FileProposed),
     module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gas(ObjExt), ModuleName,
+        ext_cur_ngs_gas(ExtObj), ModuleName,
         O_File, _O_FileProposed, !IO),
     compile_target_code.do_compile_c_file(Globals, ProgressStream,
         PIC, C_File, O_File, Succeeded, !IO).
 
-:- pred compile_fact_table_file(globals::in, io.text_output_stream::in,
+:- pred compile_fact_table_file(io.text_output_stream::in, globals::in,
     string::in, string::out, maybe_succeeded::out, io::di, io::uo) is det.
 
-compile_fact_table_file(Globals, ProgressStream, BaseName, O_FileName,
+compile_fact_table_file(ProgressStream, Globals, BaseName, O_FileName,
         Succeeded, !IO) :-
-    get_linked_target_type(Globals, LinkedTargetType),
+    get_linked_target_type_for_c(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
     maybe_pic_object_file_extension(PIC, ExtObj, _),
     % XXX EXT

@@ -273,7 +273,8 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
                 BuildDepsSucceeded0, !Info, !IO),
             (
                 BuildDepsSucceeded0 = succeeded,
-                ( if ObjectTargetType = module_target_java_class_code then
+                (
+                    ObjectTargetType = module_target_java_class_code,
                     make_java_files(ProgressStream, Globals,
                         MainModuleName, ObjModules, BuildJavaSucceeded,
                         !Info, !IO),
@@ -290,7 +291,10 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
                         BuildJavaSucceeded = did_not_succeed,
                         BuildDepsSucceeded1 = did_not_succeed
                     )
-                else
+                ;
+                    ( ObjectTargetType = module_target_object_code(_)
+                    ; ObjectTargetType = module_target_csharp_code
+                    ),
                     foldl2_make_module_targets_maybe_parallel(KeepGoing, [],
                         ProgressStream, Globals, ObjTargets,
                         BuildDepsSucceeded1, !Info, !IO)

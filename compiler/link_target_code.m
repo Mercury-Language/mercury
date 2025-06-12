@@ -42,12 +42,13 @@
     ;       java_executable
     ;       java_archive.
 
-    % get_linked_target_type(Globals, LinkedTargetType):
+    % get_linked_target_type_for_c(Globals, LinkedTargetType):
     %
     % Work out whether we should be generating an executable or a shared
     % object.
     %
-:- pred get_linked_target_type(globals::in, linked_target_type::out) is det.
+:- pred get_linked_target_type_for_c(globals::in,
+    linked_target_type::out(bound(executable ; shared_library))) is det.
 
     % get_object_code_type(Globals, LinkedTargetType, PIC):
     %
@@ -226,14 +227,11 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-get_linked_target_type(Globals, LinkedTargetType) :-
-    globals.lookup_bool_option(Globals, compile_to_shared_lib, MakeSharedLib),
-    (
-        MakeSharedLib = yes,
-        LinkedTargetType = shared_library
-    ;
-        MakeSharedLib = no,
-        LinkedTargetType = executable
+get_linked_target_type_for_c(Globals, LinkedTargetType) :-
+    globals.lookup_bool_option(Globals, shared_lib_not_executable,
+        MakeSharedLib),
+    ( MakeSharedLib = yes, LinkedTargetType = shared_library
+    ; MakeSharedLib = no,  LinkedTargetType = executable
     ).
 
 get_object_code_type(Globals, FileType, PIC) :-
@@ -311,11 +309,7 @@ link_modules_into_executable_or_shared_library_for_c(ProgressStream, Globals,
         file_name_to_module_name(OutputFileName, MainModuleName)
     ),
 
-    globals.lookup_bool_option(Globals, compile_to_shared_lib,
-        CompileToSharedLib),
-    ( CompileToSharedLib = yes, LinkedTargetType = shared_library
-    ; CompileToSharedLib = no,  LinkedTargetType = executable
-    ),
+    get_linked_target_type_for_c(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
     maybe_pic_object_file_extension(PIC, ObjExt, _),
     % XXX LEGACY
@@ -430,8 +424,8 @@ link_exe_or_shared_lib_for_c(Globals, ProgressStream, LinkedTargetType,
                 UndefOpt)
         ;
             AllowUndef = bool.no,
-            globals.lookup_string_option(Globals,
-                linker_error_undefined_flag, UndefOpt)
+            globals.lookup_string_option(Globals, linker_error_undefined_flag,
+                UndefOpt)
         ),
         ReserveStackSizeOpt = ""
     ;
@@ -505,7 +499,7 @@ link_exe_or_shared_lib_for_c(Globals, ProgressStream, LinkedTargetType,
         RpathFlagOpt, RpathSepOpt, RpathOpts),
 
     % Set up any framework search paths.
-    get_framework_directories(Globals, FrameworkDirectories),
+    get_framework_directories_flags(Globals, FrameworkDirectoriesOpts),
 
     % Set up the install name for shared libraries.
     get_install_name_opt_for_c(Globals, ModuleName, LinkedTargetType,
@@ -543,6 +537,10 @@ link_exe_or_shared_lib_for_c(Globals, ProgressStream, LinkedTargetType,
                 OutputOpt),
             globals.lookup_string_option(Globals, linker_opt_separator,
                 LinkOptSep),
+            % XXX At least one (FrameworkDirectoriesOpts) and probably
+            % others of the option strings being appended here
+            % already contain a final space, so adding another is redundant,
+            % and makes the command *less idiomatic* for any human readers.
             string.append_list([
                 Command, " ",
                 StaticOpts, " ",
@@ -557,7 +555,7 @@ link_exe_or_shared_lib_for_c(Globals, ProgressStream, LinkedTargetType,
                 LinkOptSep, " ",
                 LinkLibraryDirectories, " ",
                 RpathOpts, " ",
-                FrameworkDirectories, " ",
+                FrameworkDirectoriesOpts, " ",
                 InstallNameOpt, " ",
                 DebugOpts, " ",
                 SanitizerOpts, " ",
@@ -668,8 +666,9 @@ get_thread_flags_for_c(Globals, ThreadFlagsOpt, Linkage,
         UseThreadLibs = bool.yes,
         globals.lookup_string_option(Globals, ThreadFlagsOpt, ThreadOpts),
 
-        % Determine which options are needed to link to libhwloc, if
-        % libhwloc is not used then the string option will be empty.
+        % Determine which options are needed to link to libhwloc.
+        % If libhwloc is not used (XXX by whom), then the string option
+        % (XXX which string option?) will be empty.
         ( if Linkage = "shared" then
             HwlocFlagsOpt = hwloc_libs
         else if Linkage = "static" then
@@ -706,15 +705,12 @@ get_mercury_std_libs_for_c_cs(Globals, LinkedTargetType, StdLibs) :-
             ( LinkedTargetType = executable
             ; LinkedTargetType = shared_library
             ),
-            LibExt = ext_cur_gas(ext_cur_gas_lib_lib_opt),
-            globals.lookup_string_option(Globals, mercury_linkage,
-                MercuryOrCsharpLinkage)
+            LibExt = ext_cur_gas(ext_cur_gas_lib_lib_opt)
         ;
             ( LinkedTargetType = csharp_executable
             ; LinkedTargetType = csharp_library
             ),
-            LibExt = ext_cur_gs(ext_cur_gs_lib_cil_dll),
-            MercuryOrCsharpLinkage = "csharp"
+            LibExt = ext_cur_gs(ext_cur_gs_lib_cil_dll)
         ),
         globals.get_grade_dir(Globals, GradeDir),
 
@@ -827,30 +823,40 @@ get_mercury_std_libs_for_c_cs(Globals, LinkedTargetType, StdLibs) :-
             LibExt, "mer_std", StaticStdLib, StdLib),
         link_lib_args_for_c_cs(Globals, LinkedTargetType, StdLibDir, GradeDir,
             LibExt, "mer_rt", StaticRuntimeLib, RuntimeLib),
-        ( if MercuryOrCsharpLinkage = "static" then
-            StdLibs = string.join_list(" ", [
-                StaticTraceLibs,
-                StaticSourceDebugLibs,
-                StaticStdLib,
-                StaticRuntimeLib,
-                StaticGCLibs
-            ])
-        else if MercuryOrCsharpLinkage = "shared" then
-            StdLibs = string.join_list(" ", [
-                SharedTraceLibs,
-                SharedSourceDebugLibs,
-                StdLib,
-                RuntimeLib,
-                SharedGCLibs
-            ])
-        else if MercuryOrCsharpLinkage = "csharp" then
+        (
+            ( LinkedTargetType = executable
+            ; LinkedTargetType = shared_library
+            ),
+            globals.lookup_string_option(Globals, mercury_linkage,
+                MercuryLinkage),
+            ( if MercuryLinkage = "static" then
+                StdLibs = string.join_list(" ", [
+                    StaticTraceLibs,
+                    StaticSourceDebugLibs,
+                    StaticStdLib,
+                    StaticRuntimeLib,
+                    StaticGCLibs
+                ])
+            else if MercuryLinkage = "shared" then
+                StdLibs = string.join_list(" ", [
+                    SharedTraceLibs,
+                    SharedSourceDebugLibs,
+                    StdLib,
+                    RuntimeLib,
+                    SharedGCLibs
+                ])
+            else
+                unexpected($pred, "unknown mercury_linkage " ++ MercuryLinkage)
+            )
+        ;
+            ( LinkedTargetType = csharp_executable
+            ; LinkedTargetType = csharp_library
+            ),
             StdLibs = string.join_list(" ", [
                 SharedTraceLibs,
                 SharedSourceDebugLibs,
                 StdLib
             ])
-        else
-            unexpected($pred, "unknown linkage " ++ MercuryOrCsharpLinkage)
         )
     ;
         MaybeStdLibDir = no,

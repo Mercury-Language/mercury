@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -419,9 +419,9 @@ output_src_start_for_java(Info, Stream, MercuryModuleName, Imports,
 
     output_debug_class_init(Info, Stream, MercuryModuleName, "start", !IO),
 
-    % Check if this module contains a `main' predicate and if it does insert
-    % a `main' method in the resulting Java class that calls the `main'
-    % predicate.
+    % Check whether this module contains a `main' predicate, and if it does,
+    % insert a `main' method in the resulting Java class that
+    % calls the `main' predicate.
     ( if func_defns_contain_main(FuncDefns) then
         write_main_driver_for_java(Stream, 1u, ClassName, !IO)
     else

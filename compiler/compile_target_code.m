@@ -183,7 +183,7 @@
     %
 :- pred get_c_include_dir_flags(globals::in, string::out) is det.
 
-:- pred get_framework_directories(globals::in, string::out) is det.
+:- pred get_framework_directories_flags(globals::in, string::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -280,7 +280,7 @@ do_compile_c_file(Globals, ProgressStream, PIC, C_File, O_File,
 gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     globals.lookup_accumulating_option(Globals, cflags, C_Flags_List),
     join_string_list(C_Flags_List, "", "", " ", CFLAGS),
-    gather_compiler_specific_flags(Globals, CC_Specific_CFLAGS),
+    gather_specific_c_compiler_flags(Globals, CC_Specific_CFLAGS),
 
     globals.get_subdir_setting(Globals, SubdirSetting),
     (
@@ -298,7 +298,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     ),
 
     get_c_include_dir_flags(Globals, InclOpt),
-    get_framework_directories(Globals, FrameworkInclOpt),
+    get_framework_directories_flags(Globals, FrameworkInclOpt),
     get_c_grade_defines(Globals, GradeDefinesOpts),
 
     globals.lookup_bool_option(Globals, gcc_global_registers, GCC_Regs),
@@ -495,9 +495,9 @@ arch_is_apple_darwin(FullArch) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred gather_compiler_specific_flags(globals::in, string::out) is det.
+:- pred gather_specific_c_compiler_flags(globals::in, string::out) is det.
 
-gather_compiler_specific_flags(Globals, Flags) :-
+gather_specific_c_compiler_flags(Globals, Flags) :-
     globals.get_c_compiler_type(Globals, C_CompilerType),
     (
         C_CompilerType = cc_gcc(_, _, _),
@@ -563,10 +563,8 @@ compile_java_files(Globals, ProgressStream, HeadJavaFile, TailJavaFiles,
         % to ensure that it is always passed on the command line.
         list.filter(is_minus_j_flag, JavaFlagsList,
             JRT_JavaFlagsList, NonJRT_JavaFlagsList),
-        join_string_list(JRT_JavaFlagsList, "", "", " ",
-            NonAtFileJAVAFLAGS),
-        join_string_list(NonJRT_JavaFlagsList, "", "", " ",
-            JAVAFLAGS)
+        join_string_list(JRT_JavaFlagsList, "", "", " ", NonAtFileJAVAFLAGS),
+        join_string_list(NonJRT_JavaFlagsList, "", "", " ", JAVAFLAGS)
     ;
         RestrictedCommandLine = no,
         join_string_list(JavaFlagsList, "", "", " ", JAVAFLAGS),
@@ -575,29 +573,28 @@ compile_java_files(Globals, ProgressStream, HeadJavaFile, TailJavaFiles,
 
     get_mercury_std_libs_for_java(Globals, MercuryStdLibs),
     globals.lookup_accumulating_option(Globals, java_classpath, UserClasspath),
-    Java_Incl_Dirs = MercuryStdLibs ++ UserClasspath,
+    JavaInclDirs = MercuryStdLibs ++ UserClasspath,
     % We prepend the current CLASSPATH (if any) to preserve the accumulating
     % nature of this variable.
     get_env_classpath(EnvClasspath, !IO),
     ( if EnvClasspath = "" then
-        ClassPathList = Java_Incl_Dirs
+        ClassPathList = JavaInclDirs
     else
-        ClassPathList = [EnvClasspath | Java_Incl_Dirs]
+        ClassPathList = [EnvClasspath | JavaInclDirs]
     ),
     ClassPath = string.join_list(java_classpath_separator, ClassPathList),
     ( if ClassPath = "" then
-        InclOpt = ""
+        InclOpts = ""
     else
-        InclOpt = string.append_list([
-            "-classpath ", quote_shell_cmd_arg(ClassPath), " "])
+        InclOpts = "-classpath " ++ quote_shell_cmd_arg(ClassPath) ++ " "
     ),
 
     globals.lookup_bool_option(Globals, target_debug, TargetDebug),
     globals.lookup_bool_option(Globals, c_debug_grade, CDebugGrade),
     ( if ( TargetDebug = yes ; CDebugGrade = yes ) then
-        TargetDebugOpt = "-g "
+        TargetDebugOpts = "-g "
     else
-        TargetDebugOpt = ""
+        TargetDebugOpts = ""
     ),
 
     % XXX LEGACY
@@ -618,10 +615,8 @@ compile_java_files(Globals, ProgressStream, HeadJavaFile, TailJavaFiles,
         % so we need to do it.
         dir.make_directory(DestDirName, _, !IO),
         % Set directories for source and class files.
-        DirOpts = string.append_list([
-            "-sourcepath ", SourceDirName, " ",
-            "-d ", DestDirName, " "
-        ])
+        DirOpts = "-sourcepath " ++ SourceDirName ++ " " ++
+            "-d " ++ DestDirName ++ " "
     ),
 
     globals.lookup_string_option(Globals, filterjavac_command, MFilterJavac),
@@ -635,8 +630,8 @@ compile_java_files(Globals, ProgressStream, HeadJavaFile, TailJavaFiles,
     % Be careful with the order here! Some options may override others.
     % Also be careful that each option is separated by spaces.
     JoinedJavaFiles = string.join_list(" ", [HeadJavaFile | TailJavaFiles]),
-    string.append_list([InclOpt, DirOpts,
-        TargetDebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], CommandArgs),
+    string.append_list([InclOpts, DirOpts,
+        TargetDebugOpts, JAVAFLAGS, " ", JoinedJavaFiles], CommandArgs),
     invoke_long_system_command_maybe_filter_output(Globals,
         ProgressStream, ProgressStream, cmd_verbose_commands,
         JavaCompiler, NonAtFileCommandArgs, CommandArgs, MaybeMFilterJavac,
@@ -718,7 +713,7 @@ compile_csharp_file(Globals, ProgressStream, ModuleDepInfo,
     module_dep_info_get_imp_deps(ModuleDepInfo, ImpDeps),
     set.union(IntDeps, ImpDeps, IntImpDeps),
     set.insert_list(ForeignDeps, IntImpDeps, IntImpForeignDeps),
-    ReferencedDlls = referenced_dlls(ModuleName, IntImpForeignDeps),
+    ReferencedDlls = referenced_csharp_dlls(ModuleName, IntImpForeignDeps),
     list.map(
         ( pred(Mod::in, Result::out) is det :-
             % XXX LEGACY
@@ -744,9 +739,10 @@ compile_csharp_file(Globals, ProgressStream, ModuleDepInfo,
     % outside the library we should just reference mercury.dll (which will
     % contain all the DLLs).
     %
-:- func referenced_dlls(module_name, set(module_name)) = set(module_name).
+:- func referenced_csharp_dlls(module_name, set(module_name))
+    = set(module_name).
 
-referenced_dlls(Module, DepModules0) = Modules :-
+referenced_csharp_dlls(Module, DepModules0) = Modules :-
     set.insert(Module, DepModules0, DepModules),
 
     % If we are not compiling a module in the mercury std library, then
@@ -1662,10 +1658,10 @@ get_c_include_dir_flags(Globals, InclOpts) :-
 
 %---------------------%
 
-get_framework_directories(Globals, FrameworkDirs) :-
+get_framework_directories_flags(Globals, FrameworkDirOpts) :-
     globals.lookup_accumulating_option(Globals, framework_directories,
         FrameworkDirs0),
-    join_quoted_string_list(FrameworkDirs0, "-F", "", " ", FrameworkDirs).
+    join_quoted_string_list(FrameworkDirs0, "-F", "", " ", FrameworkDirOpts).
 
 %---------------------------------------------------------------------------%
 

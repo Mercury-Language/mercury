@@ -458,7 +458,7 @@
     ;       recompile_output_suffix
 
     ;       generate_module_order
-    ;       compile_to_shared_lib
+    ;       shared_lib_not_executable
 
     ;       smart_recompilation
             % Even if this option is set to `yes', smart recompilation may
@@ -1157,7 +1157,6 @@
     ;       ranlib_command
     ;       ranlib_flags
     ;       mkinit_command
-    ;       mkinit_erl_command
     ;       demangle_command
     ;       filtercc_command
     ;       filterjavac_command
@@ -1435,11 +1434,15 @@ option_defaults(Opt, Data) :-
             % Options that control how the target language files we generate
             % are further compiled.
             % Subdivided for C, Java and C#.
-    ;       oc_link
+    ;       oc_link_c
+    ;       oc_link_java
+    ;       oc_link_csharp
+    ;       oc_link_c_cs
+    ;       oc_link_c_cs_j
             % Options that control how executables, or their equivalents
             % for some target languages, are generated.
-            % XXX Subdivide into oc_link_c/oc_link_java/oc_link_csharp.
-            % XXX Are the oc_link options that apply to more than one target?
+            % Subdivided for C, Java and C#, and for the combinations
+            % that actually apply to some option.
     ;       oc_buildsys
             % XXX Document me.
             % XXX We should separate search path options (the majority)
@@ -4393,110 +4396,139 @@ optdb(oc_target_csharp, quoted_csharp_flag,              string_special,
 
     % Link Options.
 
-optdef(oc_link, compile_to_shared_lib,                bool(no)).
+optdef(oc_link_c, shared_lib_not_executable,                bool(no)).
 
-optdb(oc_link, compile_to_shared_lib,                bool(no),
+optdb(oc_link_c, shared_lib_not_executable,                bool(no),
     % XXX Improve this documentation.
+    % XXX The name of the option is misleading about its purpose.
     priv_help("compile-to-shared-lib", [
         "This option is intended only for use by the debugger's",
         "interactive query facility."])).
 
-optdef(oc_link, output_file_name,                       string("")).
+% XXX Several of the following options do not affect linking, but instead
+% affect compilation (of things other than Mercury modules). These include
+% init_files, trace_init_files, runtime_flags, extra_initialization_functions,
+% mkinit_command, and maybe more.
+
+optdef(oc_link_c,      output_file_name,                       string("")).
     % If the output_file_name is an empty string, we use the name
     % of the first module on the command line.
-optdef(oc_link, ld_flags,                               accumulating([])).
-optdef(oc_link, quoted_ld_flag,                         string_special).
-optdef(oc_link, ld_libflags,                            accumulating([])).
-optdef(oc_link, quoted_ld_libflag,                      string_special).
-optdef(oc_link, link_library_directories,               accumulating([])).
-optdef(oc_link, runtime_link_library_directories,       accumulating([])).
-optdef(oc_link, default_runtime_library_directory,      bool(yes)).
-optdef(oc_link, link_libraries,                         accumulating([])).
-optdef(oc_link, link_objects,                           accumulating([])).
-optdef(oc_link, mercury_library_directory_special,      string_special).
-optdef(oc_link, mercury_library_directories,            accumulating([])).
-optdef(oc_link, search_library_files_directory_special, string_special).
-optdef(oc_link, search_library_files_directories,       accumulating([])).
-optdef(oc_link, mercury_library_special,                string_special).
-optdef(oc_link, mercury_libraries,                      accumulating([])).
-optdef(oc_link, mercury_standard_library_directory,     maybe_string(no)).
+optdef(oc_link_c,      ld_flags,                          accumulating([])).
+optdef(oc_link_c,      quoted_ld_flag,                    string_special).
+optdef(oc_link_c,      ld_libflags,                       accumulating([])).
+optdef(oc_link_c,      quoted_ld_libflag,                 string_special).
+optdef(oc_link_c_cs,   link_library_directories,          accumulating([])).
+optdef(oc_link_c,      runtime_link_library_directories,  accumulating([])).
+% The default_runtime_library_directory option is only ever used to decide
+% whether to modify the value of the runtime_link_library_directories option.
+optdef(oc_link_c,      default_runtime_library_directory, bool(yes)).
+optdef(oc_link_c_cs,   link_libraries,                    accumulating([])).
+optdef(oc_link_c_cs_j, link_objects,                      accumulating([])).
+% NOTE mercury_library_directory_special sets search_directories,
+% c_include_directories and mercury_library_directories.
+optdef(oc_link_c_cs_j, mercury_library_directory_special, string_special).
+optdef(oc_link_c_cs_j, mercury_library_directories,       accumulating([])).
+% NOTE search_library_files_directory_special sets search_directories,
+% c_include_directories and search_library_files_directories.
+optdef(oc_link_c_cs_j, search_library_files_directory_special, string_special).
+optdef(oc_link_c_cs_j, search_library_files_directories,  accumulating([])).
+% NOTE mercury_library_special adds to the values of link_libraries,
+% mercury_libraries and init_files.
+optdef(oc_link_c_cs_j, mercury_library_special,           string_special).
+optdef(oc_link_c_cs_j, mercury_libraries,                 accumulating([])).
+% XXX chosen_stdlib_dir belongs with the following options.
+% NOTE mercury_standard_library_directory_special sets
+% mercury_standard_library_directory and mercury_configuration_directory.
+optdef(oc_link_c_cs_j, mercury_standard_library_directory_special,
+                                                         maybe_string_special).
+optdef(oc_link_c_cs_j, mercury_standard_library_directory, maybe_string(no)).
     % The Mercury.config file will set the default
     % standard library directory.
-optdef(oc_link, mercury_standard_library_directory_special,
-                                                        maybe_string_special).
-optdef(oc_link, init_file_directories,                  accumulating([])).
-optdef(oc_link, init_files,                             accumulating([])).
-optdef(oc_link, trace_init_files,                       accumulating([])).
-optdef(oc_link, linkage,                                string("shared")).
-optdef(oc_link, linkage_special,                        string_special).
-optdef(oc_link, mercury_linkage,                        string("shared")).
-optdef(oc_link, mercury_linkage_special,                string_special).
-optdef(oc_link, demangle,                               bool(yes)).
-optdef(oc_link, strip,                                  bool(yes)).
-optdef(oc_link, main,                                   bool(yes)).
-optdef(oc_link, allow_undefined,                        bool(yes)).
-optdef(oc_link, use_readline,                           bool(yes)).
-optdef(oc_link, runtime_flags,                          accumulating([])).
-optdef(oc_link, extra_initialization_functions,         bool(no)).
-optdef(oc_link, frameworks,                             accumulating([])).
-optdef(oc_link, framework_directories,                  accumulating([])).
-optdef(oc_link, sign_assembly,                          string("")).
-optdef(oc_link, cstack_reserve_size,                    int(-1)).
+optdef(oc_link_c,      init_file_directories,             accumulating([])).
+optdef(oc_link_c,      init_files,                        accumulating([])).
+optdef(oc_link_c,      trace_init_files,                  accumulating([])).
+% XXX The options
+%   linkage_special
+%   linkage
+%   mercury_linkage_special
+%   mercury_linkage
+%   lib_linkages
+% are all stringly typed. We should fix this.
+% XXX lib_linkages belongs with the following options.
+% NOTE linkage_special first checks and then sets linkage and mercury_linkage.
+optdef(oc_link_c,      linkage_special,                 string_special).
+optdef(oc_link_c,      linkage,                         string("shared")).
+% NOTE mercury_linkage_special first checks and then sets mercury_linkage.
+optdef(oc_link_c,      mercury_linkage_special,         string_special).
+optdef(oc_link_c,      mercury_linkage,                 string("shared")).
+optdef(oc_link_c,      demangle,                        bool(yes)).
+optdef(oc_link_c,      strip,                           bool(yes)).
+optdef(oc_link_c,      main,                            bool(yes)).
+optdef(oc_link_c,      allow_undefined,                 bool(yes)).
+optdef(oc_link_c,      use_readline,                    bool(yes)).
+optdef(oc_link_c,      runtime_flags,                   accumulating([])).
+optdef(oc_link_c,      extra_initialization_functions,  bool(no)).
+optdef(oc_link_c,      frameworks,                      accumulating([])).
+optdef(oc_link_c,      framework_directories,           accumulating([])).
+optdef(oc_link_c,      cstack_reserve_size,             int(-1)).
 
-optdef(oc_link, shared_library_extension,               string(".so")).
+optdef(oc_link_c,      shared_library_extension,        string(".so")).
     % The `mmc' script will override the default with a value
     % determined at configuration time.
-optdef(oc_link, library_extension,                      string(".a")).
-optdef(oc_link, executable_file_extension,              string("")).
-optdef(oc_link, link_executable_command,                string("gcc")).
-optdef(oc_link, link_shared_lib_command,                string("gcc -shared")).
-optdef(oc_link, create_archive_command,                 string("ar")).
-optdef(oc_link, create_archive_command_output_flag,     string("")).
-optdef(oc_link, create_archive_command_flags,           accumulating([])).
-    % "cr"
-optdef(oc_link, ranlib_command,                         string("")).
-optdef(oc_link, ranlib_flags,                           string("")).
-optdef(oc_link, mkinit_command,                         string("mkinit")).
-optdef(oc_link, mkinit_erl_command,                     string("mkinit_erl")).
-optdef(oc_link, demangle_command,                       string("mdemangle")).
-optdef(oc_link, filtercc_command,                       string("mfiltercc")).
-optdef(oc_link, filterjavac_command,                string("mfilterjavac")).
-optdef(oc_link, trace_libs,                             string("")).
-optdef(oc_link, thread_libs,                            string("")).
-optdef(oc_link, hwloc_libs,                             string("")).
-optdef(oc_link, hwloc_static_libs,                      string("")).
-optdef(oc_link, shared_libs,                            string("")).
-optdef(oc_link, math_lib,                               string("")).
-optdef(oc_link, readline_libs,                          string("")).
-optdef(oc_link, linker_opt_separator,                   string("")).
-optdef(oc_link, linker_debug_flags,                     string("-g")).
-optdef(oc_link, shlib_linker_debug_flags,               string("-g")).
-optdef(oc_link, linker_sanitizer_flags,                 string("")).
-optdef(oc_link, linker_trace_flags,                     string("")).
-optdef(oc_link, shlib_linker_trace_flags,               string("")).
-optdef(oc_link, linker_thread_flags,                    string("")).
-optdef(oc_link, shlib_linker_thread_flags,              string("")).
-optdef(oc_link, linker_lto_flags,                       string("")).
-optdef(oc_link, linker_static_flags,                    string("-static")).
-optdef(oc_link, linker_strip_flag,                      string("-s")).
-optdef(oc_link, linker_link_lib_flag,                   string("-l")).
-optdef(oc_link, linker_link_lib_suffix,                 string("")).
-optdef(oc_link, shlib_linker_link_lib_flag,             string("-l")).
-optdef(oc_link, shlib_linker_link_lib_suffix,           string("")).
-optdef(oc_link, linker_path_flag,                       string("-L")).
-optdef(oc_link, linker_rpath_flag,                      string("-Wl,-rpath")).
-optdef(oc_link, linker_rpath_separator,                 string(" -Wl,-rpath")).
-optdef(oc_link, shlib_linker_rpath_flag,                string("-Wl,-rpath")).
-optdef(oc_link, shlib_linker_rpath_separator,           string(" -Wl,-rpath")).
-optdef(oc_link, linker_allow_undefined_flag,            string("")).
-optdef(oc_link, linker_error_undefined_flag,      string("-Wl,-no-undefined")).
-optdef(oc_link, shlib_linker_use_install_name,          bool(no)).
-optdef(oc_link, shlib_linker_install_name_flag,   string("-install_name ")).
-optdef(oc_link, shlib_linker_install_name_path,         string("")).
-optdef(oc_link, strip_executable_command,               string("")).
-optdef(oc_link, strip_executable_shared_flags,          string("")).
-optdef(oc_link, strip_executable_static_flags,          string("")).
-optdef(oc_link, java_archive_command,                   string("jar")).
+optdef(oc_link_c,      library_extension,               string(".a")).
+% XXX The value of executable_file_extension is not used for linking.
+optdef(oc_link_c,      executable_file_extension,       string("")).
+optdef(oc_link_c,      link_executable_command,         string("gcc")).
+optdef(oc_link_c,      link_shared_lib_command,         string("gcc -shared")).
+optdef(oc_link_c,      create_archive_command,          string("ar")).
+optdef(oc_link_c,      create_archive_command_output_flag, string("")).
+optdef(oc_link_c,      create_archive_command_flags,  accumulating([])). % "cr"
+optdef(oc_link_c,      ranlib_command,                  string("")).
+optdef(oc_link_c,      ranlib_flags,                    string("")).
+optdef(oc_link_c,      mkinit_command,                  string("mkinit")).
+optdef(oc_link_c,      demangle_command,                string("mdemangle")).
+optdef(oc_link_c,      filtercc_command,                string("mfiltercc")).
+optdef(oc_link_c,      trace_libs,                      string("")).
+optdef(oc_link_c,      thread_libs,                     string("")).
+optdef(oc_link_c,      hwloc_libs,                      string("")).
+optdef(oc_link_c,      hwloc_static_libs,               string("")).
+optdef(oc_link_c,      shared_libs,                     string("")).
+optdef(oc_link_c,      math_lib,                        string("")).
+optdef(oc_link_c,      readline_libs,                   string("")).
+optdef(oc_link_c,      linker_opt_separator,            string("")).
+optdef(oc_link_c,      linker_debug_flags,              string("-g")).
+optdef(oc_link_c,      shlib_linker_debug_flags,        string("-g")).
+optdef(oc_link_c,      linker_sanitizer_flags,          string("")).
+optdef(oc_link_c,      linker_trace_flags,              string("")).
+optdef(oc_link_c,      shlib_linker_trace_flags,        string("")).
+optdef(oc_link_c,      linker_thread_flags,             string("")).
+optdef(oc_link_c,      shlib_linker_thread_flags,       string("")).
+optdef(oc_link_c,      linker_lto_flags,                string("")).
+optdef(oc_link_c,      linker_static_flags,             string("-static")).
+optdef(oc_link_c,      linker_strip_flag,               string("-s")).
+optdef(oc_link_c,      linker_link_lib_flag,            string("-l")).
+optdef(oc_link_c,      shlib_linker_link_lib_flag,      string("-l")).
+optdef(oc_link_c,      linker_link_lib_suffix,          string("")).
+optdef(oc_link_c,      shlib_linker_link_lib_suffix,    string("")).
+optdef(oc_link_c,      linker_path_flag,                string("-L")).
+optdef(oc_link_c,      linker_rpath_flag,               string("-Wl,-rpath")).
+optdef(oc_link_c,      linker_rpath_separator,          string(" -Wl,-rpath")).
+optdef(oc_link_c,      shlib_linker_rpath_flag,         string("-Wl,-rpath")).
+optdef(oc_link_c,      shlib_linker_rpath_separator,    string(" -Wl,-rpath")).
+optdef(oc_link_c,      linker_allow_undefined_flag,     string("")).
+optdef(oc_link_c,      linker_error_undefined_flag,
+                                                string("-Wl,-no-undefined")).
+optdef(oc_link_c,      shlib_linker_use_install_name,   bool(no)).
+optdef(oc_link_c,      shlib_linker_install_name_flag,
+                                                string("-install_name ")).
+optdef(oc_link_c,      shlib_linker_install_name_path,  string("")).
+optdef(oc_link_c,      strip_executable_command,        string("")).
+optdef(oc_link_c,      strip_executable_shared_flags,   string("")).
+optdef(oc_link_c,      strip_executable_static_flags,   string("")).
+
+optdef(oc_link_csharp, sign_assembly,                   string("")).
+optdef(oc_link_java,   java_archive_command,            string("jar")).
+optdef(oc_link_java,   filterjavac_command,            string("mfilterjavac")).
 
 %---------------------------------------------------------------------------%
 
@@ -4897,7 +4929,7 @@ long_table("typecheck-only",           only_opmode_typecheck_only).
 long_table("errorcheck-only",          only_opmode_errorcheck_only).
 long_table("target-code-only",         only_opmode_target_code_only).
 long_table("compile-only",             only_opmode_compile_only).
-long_table("compile-to-shared-lib",    compile_to_shared_lib).
+long_table("compile-to-shared-lib",    shared_lib_not_executable).
 long_table("output-grade-string",      only_opmode_output_grade_string).
 long_table("output-link-command",      only_opmode_output_link_command).
 long_table("output-shared-lib-link-command",
@@ -5662,7 +5694,6 @@ long_table("link-shared-lib-command",  link_shared_lib_command).
 long_table("ranlib-command",       ranlib_command).
 long_table("ranlib-flags",         ranlib_flags).
 long_table("mkinit-command",       mkinit_command).
-long_table("mkinit-erl-command",   mkinit_erl_command).
 long_table("demangle-command",     demangle_command).
 long_table("filtercc-command",     filtercc_command).
 long_table("filterjavac-command",  filterjavac_command).
@@ -6792,6 +6823,7 @@ option_table_add_mercury_library_directory(Dir, !OptionTable) :-
     % The init_file_directories and link_library_directories for Mercury
     % libraries are grade dependent, so they need to be handled in
     % handle_options.m after we know the grade.
+    % XXX LEGACY
     list.foldl(append_to_accumulating_option, [
         search_directories          - dir.make_path_name(Dir, "ints"),
         c_include_directories       - dir.make_path_name(Dir, "inc"),
@@ -6801,6 +6833,7 @@ option_table_add_mercury_library_directory(Dir, !OptionTable) :-
 option_table_add_search_library_files_directory(Dir, !OptionTable) :-
     % Grade dependent directories need to be handled in handle_options.m
     % after we know the grade.
+    % XXX LEGACY
     list.foldl(append_to_accumulating_option, [
         search_directories          - Dir,
         c_include_directories       - Dir,
@@ -6813,14 +6846,14 @@ option_table_add_search_library_files_directory(Dir, !OptionTable) :-
 append_to_accumulating_option(Option - Value, !OptionTable) :-
     getopt.lookup_accumulating_option(!.OptionTable, Option, Values0),
     Values = Values0 ++ [Value],
-    map.set(Option, accumulating(Values), !OptionTable).
+    map.det_update(Option, accumulating(Values), !OptionTable).
 
 :- pred override_options(list(pair(option, option_data))::in,
     option_table::in, option_table::out) is det.
 
 override_options([], !OptionTable).
 override_options([Option - Value | OptionsValues], !OptionTable) :-
-    map.set(Option, Value, !OptionTable),
+    map.det_update(Option, Value, !OptionTable),
     override_options(OptionsValues, !OptionTable).
 
 set_all_options_to([], _Value, !OptionTable).

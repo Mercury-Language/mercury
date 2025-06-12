@@ -499,7 +499,7 @@ choose_and_execute_backend_passes(ProgressStream, ErrorStream, Globals,
                     module_name_to_file_name(Globals, $pred,
                         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
                         ModuleName, C_File, _C_FileProposed),
-                    get_linked_target_type(Globals, TargetType),
+                    get_linked_target_type_for_c(Globals, TargetType),
                     get_object_code_type(Globals, TargetType, PIC),
                     maybe_pic_object_file_extension(PIC, ObjExt, _),
                     % XXX LEGACY
