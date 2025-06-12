@@ -304,7 +304,7 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, !IO) :-
         io.print_line(StdOutStream, LinkCommand, !IO)
     ;
         OpModeQuery = opmq_output_library_link_flags,
-        output_library_link_flags(Globals, StdOutStream, Specs, !IO),
+        output_library_link_flags_for_c(Globals, StdOutStream, Specs, !IO),
         write_error_specs(ErrorStream, Globals, Specs, !IO)
     ;
         OpModeQuery = opmq_output_grade_string,
@@ -476,8 +476,9 @@ generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
         (
             InvokedByMmcMake = op_mode_invoked_by_mmc_make,
             % `mmc --make' has already set up the options.
-            link_modules_into_executable_or_shared_library(ProgressStream,
-                Globals, ModulesToLink, ExtraObjFiles, Specs, Succeeded, !IO)
+            link_modules_into_executable_or_shared_library_for_c(
+                ProgressStream, Globals, ModulesToLink, ExtraObjFiles,
+                Specs, Succeeded, !IO)
         ;
             InvokedByMmcMake = op_mode_not_invoked_by_mmc_make,
             get_default_options(Globals, DefaultOptionTable),
@@ -491,8 +492,8 @@ generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
                 Succeeded = did_not_succeed
             ;
                 MayBuild = may_build(_AllOptionArgs, BuildGlobals),
-                link_modules_into_executable_or_shared_library(ProgressStream,
-                    BuildGlobals, ModulesToLink, ExtraObjFiles,
+                link_modules_into_executable_or_shared_library_for_c(
+                    ProgressStream, BuildGlobals, ModulesToLink, ExtraObjFiles,
                     Specs, Succeeded, !IO)
             )
         ),

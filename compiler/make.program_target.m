@@ -811,8 +811,9 @@ get_module_foreign_object_files(ProgressStream, Globals, PIC,
 
 link_and_write_error_specs(Globals, ProgressStream,
         LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
-    link_files_into_executable_or_library(ProgressStream, Globals,
-        LinkTargetType, ModuleName, ObjectsList, Specs, Succeeded, !IO),
+    link_files_into_executable_or_library_for_c_cs_java(ProgressStream,
+        Globals, LinkTargetType, ModuleName, ObjectsList,
+        Specs, Succeeded, !IO),
     % The errors we can get here are not specific to any Mercury module.
     write_error_specs(ProgressStream, Globals, Specs, !IO).
 

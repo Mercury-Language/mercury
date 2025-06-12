@@ -65,8 +65,8 @@
 
 %---------------------%
 
-    % link_modules_into_executable_or_shared_library(ProgressStream, Globals,
-    %   ModulesToLink, ExtraObjFileNames, Specs, Succeeded, !IO):
+    % link_modules_into_executable_or_shared_library_for_c(ProgressStream,
+    %   Globals, ModulesToLink, ExtraObjFileNames, Specs, Succeeded, !IO):
     %
     % Link the (PIC or non-PIC) object files of the given modules
     % into either an executable or a shared library (depending on the value
@@ -78,13 +78,14 @@
     % invocations which do NOT use "mmc --make". This means that it is used
     % only during compiler invocations where the target language is C.
     %
-:- pred link_modules_into_executable_or_shared_library(
+:- pred link_modules_into_executable_or_shared_library_for_c(
     io.text_output_stream::in, globals::in,
     list(module_name)::in, list(string)::in,
     list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
-    % link_files_into_executable_or_library(ProgressStream, Globals,
-    %   LinkedTargetType, MainModuleName, FilesToLink, Specs, Succeeded, !IO):
+    % link_files_into_executable_or_library_for_c_cs_java(ProgressStream,
+    %   Globals, LinkedTargetType, MainModuleName, FilesToLink,
+    %   Specs, Succeeded, !IO):
     %
     % Link the given list of object files or object-like files into an
     % executable or library of some kind, which should be named after
@@ -120,8 +121,9 @@
     % the other predicate above. We would still need to export something like
     % this to make.module_target.m for creating .dll files.
     %
-:- pred link_files_into_executable_or_library(io.text_output_stream::in,
-    globals::in, linked_target_type::in, module_name::in, list(string)::in,
+:- pred link_files_into_executable_or_library_for_c_cs_java(
+    io.text_output_stream::in, globals::in,
+    linked_target_type::in, module_name::in, list(string)::in,
     list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
 %---------------------%
@@ -167,7 +169,7 @@
     % but it does do a search in the filesystem for libraries that are
     % named in the values of options, and those searches can fail.
     %
-:- pred output_library_link_flags(globals::in, io.text_output_stream::in,
+:- pred output_library_link_flags_for_c(globals::in, io.text_output_stream::in,
     list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -300,7 +302,7 @@ linked_target_file_name_full_curdir(Globals, ModuleName, LinkedTargetType,
 
 %---------------------------------------------------------------------------%
 
-link_modules_into_executable_or_shared_library(ProgressStream, Globals,
+link_modules_into_executable_or_shared_library_for_c(ProgressStream, Globals,
         ModuleNames, ExtraObjFileNames, Specs, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, output_file_name, OutputFileName),
     ( if OutputFileName = "" then
@@ -316,8 +318,10 @@ link_modules_into_executable_or_shared_library(ProgressStream, Globals,
     ),
     get_object_code_type(Globals, LinkedTargetType, PIC),
     maybe_pic_object_file_extension(PIC, ObjExt, _),
-    module_names_to_file_names(Globals, ext_cur_ngs_gas(ObjExt),
-        ModuleNames, ModuleObjectFileNames),
+    % XXX LEGACY
+    list.map2(
+        module_name_to_file_name(Globals, $pred, ext_cur_ngs_gas(ObjExt)),
+        ModuleNames, ModuleObjectFileNames, _ModuleObjectFileNamesProposed),
     globals.lookup_accumulating_option(Globals, link_objects,
         ExtraLinkFileNames),
     AllNonInitObjectFileNames =
@@ -330,9 +334,9 @@ link_modules_into_executable_or_shared_library(ProgressStream, Globals,
         (
             InitObjResult = yes(InitObjFileName),
             AllObjectFileNames = [InitObjFileName | AllNonInitObjectFileNames],
-            link_files_into_executable_or_library(ProgressStream, Globals,
-                LinkedTargetType, MainModuleName, AllObjectFileNames,
-                Specs, Succeeded, !IO)
+            link_files_into_executable_or_library_for_c_cs_java(ProgressStream,
+                Globals, LinkedTargetType, MainModuleName,
+                AllObjectFileNames, Specs, Succeeded, !IO)
         ;
             InitObjResult = no,
             Specs = [],
@@ -340,32 +344,17 @@ link_modules_into_executable_or_shared_library(ProgressStream, Globals,
         )
     ;
         LinkedTargetType = shared_library,
-        link_files_into_executable_or_library(ProgressStream, Globals,
-            LinkedTargetType, MainModuleName, AllNonInitObjectFileNames,
-            Specs, Succeeded, !IO)
+        link_files_into_executable_or_library_for_c_cs_java(ProgressStream,
+            Globals, LinkedTargetType, MainModuleName,
+            AllNonInitObjectFileNames, Specs, Succeeded, !IO)
     ).
-
-    % module_names_to_file_names(Globals, Ext, ModuleNames, ExtFileNames):
-    %
-    % Convert each ModuleName to the name of the associated Ext file.
-    %
-:- pred module_names_to_file_names(globals::in, ext::in,
-    list(module_name)::in, list(string)::out) is det.
-
-module_names_to_file_names(_Globals, _Ext, [], []).
-module_names_to_file_names(Globals, Ext,
-        [ModuleName | ModuleNames], [ExtFileName | ExtFileNames]) :-
-    % XXX LEGACY
-    module_name_to_file_name(Globals, $pred, Ext,
-        ModuleName, ExtFileName, _ExtFileNameProposed),
-    module_names_to_file_names(Globals, Ext, ModuleNames, ExtFileNames).
 
 %---------------------------------------------------------------------------%
 
 % WARNING: The code here duplicates the functionality of scripts/ml.in.
 % Any changes there may also require changes here, and vice versa.
 
-link_files_into_executable_or_library(ProgressStream, Globals,
+link_files_into_executable_or_library_for_c_cs_java(ProgressStream, Globals,
         LinkedTargetType, ModuleName, FilesToLink, Specs, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -377,12 +366,12 @@ link_files_into_executable_or_library(ProgressStream, Globals,
         ( LinkedTargetType = executable
         ; LinkedTargetType = shared_library
         ),
-        link_exe_or_shared_lib(Globals, ProgressStream,
+        link_exe_or_shared_lib_for_c(Globals, ProgressStream,
             LinkedTargetType, ModuleName, FullOutputFileName, FilesToLink,
             Specs, LinkSucceeded, !IO)
     ;
         LinkedTargetType = static_library,
-        create_archive(Globals, ProgressStream,
+        create_archive_for_c(Globals, ProgressStream,
             FullOutputFileName, yes, FilesToLink, LinkSucceeded, !IO),
         Specs = []
     ;
@@ -390,14 +379,14 @@ link_files_into_executable_or_library(ProgressStream, Globals,
         ; LinkedTargetType = csharp_library
         ),
         % XXX C# see also older predicate compile_csharp_file
-        create_csharp_exe_or_lib(Globals, ProgressStream,
+        create_exe_or_lib_for_csharp(Globals, ProgressStream,
             LinkedTargetType, ModuleName, FullOutputFileName, FilesToLink,
             Specs, LinkSucceeded, !IO)
     ;
         ( LinkedTargetType = java_executable
         ; LinkedTargetType = java_archive
         ),
-        create_java_exe_or_lib(Globals, ProgressStream,
+        create_exe_or_lib_for_java(Globals, ProgressStream,
             LinkedTargetType, ModuleName, FullOutputFileName, FilesToLink,
             LinkSucceeded, !IO),
         Specs = []
@@ -418,12 +407,12 @@ link_files_into_executable_or_library(ProgressStream, Globals,
 % Linking for C executables and shared libraries.
 %
 
-:- pred link_exe_or_shared_lib(globals::in, io.text_output_stream::in,
+:- pred link_exe_or_shared_lib_for_c(globals::in, io.text_output_stream::in,
     linked_target_type::in(c_exe_or_shared_lib),
     module_name::in, file_name::in, list(string)::in,
     list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
-link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
+link_exe_or_shared_lib_for_c(Globals, ProgressStream, LinkedTargetType,
         ModuleName, FullOutputFileName, ObjectsList, Specs, Succeeded, !IO) :-
     (
         LinkedTargetType = shared_library,
@@ -455,13 +444,13 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
         DebugFlagsOpt = linker_debug_flags,
         TraceFlagsOpt = linker_trace_flags,
         UndefOpt = "",
-        ReserveStackSizeOpt = get_reserve_stack_size_flags(Globals)
+        ReserveStackSizeOpt = get_reserve_stack_size_flags_for_c(Globals)
     ),
 
     globals.lookup_string_option(Globals, linker_lto_flags, LTOOpts),
 
     % Should the executable be stripped?
-    get_strip_flags(Globals, LinkedTargetType,
+    get_strip_flags_for_c(Globals, LinkedTargetType,
         LinkerStripOpt, StripExeCommand, StripExeFlags),
 
     globals.lookup_bool_option(Globals, target_debug, TargetDebug),
@@ -488,19 +477,19 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
     ),
 
     % Are the thread libraries needed?
-    get_thread_flags(Globals, ThreadFlagsOpt, Linkage, ThreadOpts, HwlocOpts),
+    get_thread_flags_for_c(Globals, ThreadFlagsOpt, Linkage,
+        ThreadOpts, HwlocOpts),
 
     % Find the Mercury standard libraries.
-    get_mercury_std_libs(Globals, LinkedTargetType, MercuryStdLibs),
+    get_mercury_std_libs_for_c_cs(Globals, LinkedTargetType, MercuryStdLibs),
 
     % Find which system libraries are needed.
-    get_system_libs(Globals, LinkedTargetType, SystemLibs),
+    get_system_libs_for_c(Globals, LinkedTargetType, SystemLibs),
 
     % With --restricted-command-line we may need to some additional
-    % options to the linker.
-    % (See the comment above get_restricted_command_lin_link_opts/3 for
-    % details.)
-    get_restricted_command_line_link_opts(Globals, LinkedTargetType,
+    % options to the linker. (For details, see the predicate comment for
+    % get_restricted_command_lin_link_opts_for_c/3).
+    get_restricted_command_line_link_opts_for_c(Globals, LinkedTargetType,
         RestrictedCmdLinkOpts),
 
     globals.lookup_accumulating_option(Globals, LDFlagsOpt, LDFlagsList),
@@ -512,14 +501,14 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
         " ", LinkLibraryDirectories),
 
     % Set up the runtime library path.
-    get_runtime_library_path_opts(Globals, LinkedTargetType,
+    get_runtime_library_path_opts_for_c(Globals, LinkedTargetType,
         RpathFlagOpt, RpathSepOpt, RpathOpts),
 
     % Set up any framework search paths.
     get_framework_directories(Globals, FrameworkDirectories),
 
     % Set up the install name for shared libraries.
-    get_install_name_opt(Globals, ModuleName, LinkedTargetType,
+    get_install_name_opt_for_c(Globals, ModuleName, LinkedTargetType,
         InstallNameOpt),
 
     globals.get_trace_level(Globals, TraceLevel),
@@ -535,12 +524,13 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
     globals.lookup_accumulating_option(Globals, frameworks, Frameworks),
     join_quoted_string_list(Frameworks, "-framework ", "", " ", FrameworkOpts),
 
-    get_link_opts_for_libraries(Globals, MaybeLinkLibraries, Specs, !IO),
+    get_link_opts_for_libraries_for_c_cs(Globals, MaybeLinkLibraries,
+        Specs, !IO),
     (
         MaybeLinkLibraries = maybe.yes(LinkLibrariesList),
         join_quoted_string_list(LinkLibrariesList, "", "", " ",
             LinkLibraries),
-        prepare_for_link_exe_or_shared_lib_cmd(ProgressStream, Globals,
+        prepare_for_link_exe_or_shared_lib_cmd_for_c(ProgressStream, Globals,
             ObjectsList, PrepareResult, !IO),
         (
             PrepareResult = prepare_succeeded(Objects, MaybeDemangleCmd,
@@ -549,7 +539,8 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
             % Note that LDFlags may contain `-l' options so it should come
             % after Objects.
             globals.lookup_string_option(Globals, CommandOpt, Command),
-            get_linker_output_option(Globals, LinkedTargetType, OutputOpt),
+            get_linker_output_option_for_c(Globals, LinkedTargetType,
+                OutputOpt),
             globals.lookup_string_option(Globals, linker_opt_separator,
                 LinkOptSep),
             string.append_list([
@@ -613,9 +604,9 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkedTargetType,
 
 %---------------------%
 
-:- func get_reserve_stack_size_flags(globals) = string.
+:- func get_reserve_stack_size_flags_for_c(globals) = string.
 
-get_reserve_stack_size_flags(Globals) = Flags :-
+get_reserve_stack_size_flags_for_c(Globals) = Flags :-
     globals.lookup_int_option(Globals, cstack_reserve_size, ReserveStackSize),
     ( if ReserveStackSize = -1 then
         Flags = ""
@@ -637,10 +628,10 @@ get_reserve_stack_size_flags(Globals) = Flags :-
 
 %---------------------%
 
-:- pred get_strip_flags(globals::in, linked_target_type::in,
+:- pred get_strip_flags_for_c(globals::in, linked_target_type::in,
     string::out, string::out, string::out) is det.
 
-get_strip_flags(Globals, LinkedTargetType,
+get_strip_flags_for_c(Globals, LinkedTargetType,
         LinkerStripOpt, StripExeCommand, StripExeFlags) :-
     % Should the executable be stripped?
     globals.lookup_bool_option(Globals, strip, Strip),
@@ -667,11 +658,12 @@ get_strip_flags(Globals, LinkedTargetType,
 
 %---------------------%
 
-:- pred get_thread_flags(globals::in, option::in, string::in,
+:- pred get_thread_flags_for_c(globals::in, option::in, string::in,
     string::out, string::out) is det.
 
-get_thread_flags(Globals, ThreadFlagsOpt, Linkage, ThreadOpts, HwlocOpts) :-
-    use_thread_libs(Globals, UseThreadLibs),
+get_thread_flags_for_c(Globals, ThreadFlagsOpt, Linkage,
+        ThreadOpts, HwlocOpts) :-
+    use_thread_libs_for_c(Globals, UseThreadLibs),
     (
         UseThreadLibs = bool.yes,
         globals.lookup_string_option(Globals, ThreadFlagsOpt, ThreadOpts),
@@ -699,11 +691,12 @@ get_thread_flags(Globals, ThreadFlagsOpt, Linkage, ThreadOpts, HwlocOpts) :-
     % Return the empty string if --mercury-standard-library-directory
     % is not set.
     % NOTE: changes here may require changes to get_mercury_std_libs_for_java.
+    % XXX Then why aren't this predicate and that one next to each other?
     %
-:- pred get_mercury_std_libs(globals::in,
+:- pred get_mercury_std_libs_for_c_cs(globals::in,
     linked_target_type::in(c_or_csharp_exe_or_lib), string::out) is det.
 
-get_mercury_std_libs(Globals, LinkedTargetType, StdLibs) :-
+get_mercury_std_libs_for_c_cs(Globals, LinkedTargetType, StdLibs) :-
     globals.lookup_maybe_string_option(Globals,
         mercury_standard_library_directory, MaybeStdLibDir),
     (
@@ -774,7 +767,7 @@ get_mercury_std_libs(Globals, LinkedTargetType, StdLibs) :-
                 Parallel = no,
                 GCGrade = GCGrade2
             ),
-            link_lib_args(Globals, LinkedTargetType, StdLibDir, "",
+            link_lib_args_for_c_cs(Globals, LinkedTargetType, StdLibDir, "",
                 LibExt, GCGrade, StaticGCLibs, SharedGCLibs)
         ;
             GCMethod = gc_accurate,
@@ -791,14 +784,16 @@ get_mercury_std_libs(Globals, LinkedTargetType, StdLibs) :-
             SharedTraceLibs = ""
         ;
             TraceEnabled = exec_trace_is_enabled,
-            link_lib_args(Globals, LinkedTargetType, StdLibDir, GradeDir,
-                LibExt, "mer_trace", StaticTraceLib, TraceLib),
-            link_lib_args(Globals, LinkedTargetType, StdLibDir, GradeDir,
-                LibExt, "mer_eventspec", StaticEventSpecLib, EventSpecLib),
-            link_lib_args(Globals, LinkedTargetType, StdLibDir, GradeDir,
+            link_lib_args_for_c_cs(Globals, LinkedTargetType, StdLibDir,
+                GradeDir, LibExt, "mer_trace", StaticTraceLib, TraceLib),
+            link_lib_args_for_c_cs(Globals, LinkedTargetType, StdLibDir,
+                GradeDir, LibExt, "mer_eventspec", StaticEventSpecLib,
+                EventSpecLib),
+            link_lib_args_for_c_cs(Globals, LinkedTargetType, StdLibDir,
+                GradeDir,
                 LibExt, "mer_browser", StaticBrowserLib, BrowserLib),
-            link_lib_args(Globals, LinkedTargetType, StdLibDir, GradeDir,
-                LibExt, "mer_mdbcomp", StaticMdbCompLib, MdbCompLib),
+            link_lib_args_for_c_cs(Globals, LinkedTargetType, StdLibDir,
+                GradeDir, LibExt, "mer_mdbcomp", StaticMdbCompLib, MdbCompLib),
             StaticTraceLibs = string.join_list(" ",
                 [StaticTraceLib, StaticEventSpecLib, StaticBrowserLib,
                 StaticMdbCompLib]),
@@ -810,12 +805,14 @@ get_mercury_std_libs(Globals, LinkedTargetType, StdLibs) :-
         globals.lookup_bool_option(Globals, link_ssdb_libs, SourceDebug),
         (
             SourceDebug = yes,
-            link_lib_args(Globals, LinkedTargetType, StdLibDir, GradeDir,
-                LibExt, "mer_ssdb", StaticSsdbLib, SsdbLib),
-            link_lib_args(Globals, LinkedTargetType, StdLibDir, GradeDir,
-                LibExt, "mer_browser", StaticBrowserLib2, BrowserLib2),
-            link_lib_args(Globals, LinkedTargetType, StdLibDir, GradeDir,
-                LibExt, "mer_mdbcomp", StaticMdbCompLib2, MdbCompLib2),
+            link_lib_args_for_c_cs(Globals, LinkedTargetType, StdLibDir,
+                GradeDir, LibExt, "mer_ssdb", StaticSsdbLib, SsdbLib),
+            link_lib_args_for_c_cs(Globals, LinkedTargetType, StdLibDir,
+                GradeDir, LibExt, "mer_browser",
+                StaticBrowserLib2, BrowserLib2),
+            link_lib_args_for_c_cs(Globals, LinkedTargetType,
+                StdLibDir, GradeDir, LibExt, "mer_mdbcomp",
+                StaticMdbCompLib2, MdbCompLib2),
             StaticSourceDebugLibs = string.join_list(" ",
                 [StaticSsdbLib, StaticBrowserLib2, StaticMdbCompLib2]),
             SharedSourceDebugLibs = string.join_list(" ",
@@ -826,9 +823,9 @@ get_mercury_std_libs(Globals, LinkedTargetType, StdLibs) :-
             SharedSourceDebugLibs = ""
         ),
 
-        link_lib_args(Globals, LinkedTargetType, StdLibDir, GradeDir,
+        link_lib_args_for_c_cs(Globals, LinkedTargetType, StdLibDir, GradeDir,
             LibExt, "mer_std", StaticStdLib, StdLib),
-        link_lib_args(Globals, LinkedTargetType, StdLibDir, GradeDir,
+        link_lib_args_for_c_cs(Globals, LinkedTargetType, StdLibDir, GradeDir,
             LibExt, "mer_rt", StaticRuntimeLib, RuntimeLib),
         ( if MercuryOrCsharpLinkage = "static" then
             StdLibs = string.join_list(" ", [
@@ -860,11 +857,11 @@ get_mercury_std_libs(Globals, LinkedTargetType, StdLibs) :-
         StdLibs = ""
     ).
 
-:- pred link_lib_args(globals::in,
+:- pred link_lib_args_for_c_cs(globals::in,
     linked_target_type::in(c_or_csharp_exe_or_lib), string::in,
     string::in, ext::in, string::in, string::out, string::out) is det.
 
-link_lib_args(Globals, LinkedTargetType, StdLibDir, GradeDir, Ext,
+link_lib_args_for_c_cs(Globals, LinkedTargetType, StdLibDir, GradeDir, Ext,
         Name, StaticArg, SharedArg) :-
     (
         ( LinkedTargetType = executable
@@ -879,13 +876,13 @@ link_lib_args(Globals, LinkedTargetType, StdLibDir, GradeDir, Ext,
     ),
     StaticLibName = LibPrefix ++ Name ++ extension_to_string(Globals, Ext),
     StaticArg = quote_shell_cmd_arg(StdLibDir/"lib"/GradeDir/StaticLibName),
-    make_link_lib(Globals, LinkedTargetType, Name, SharedArg).
+    make_link_lib_for_c_cs(Globals, LinkedTargetType, Name, SharedArg).
 
-:- pred make_link_lib(globals::in,
+:- pred make_link_lib_for_c_cs(globals::in,
     linked_target_type::in(c_or_csharp_exe_or_lib),
     string::in, string::out) is det.
 
-make_link_lib(Globals, LinkedTargetType, LibName, LinkOpt) :-
+make_link_lib_for_c_cs(Globals, LinkedTargetType, LibName, LinkOpt) :-
     (
         (
             LinkedTargetType = executable,
@@ -918,10 +915,10 @@ make_link_lib(Globals, LinkedTargetType, LibName, LinkOpt) :-
     % target machine type. link.exe will print a warning (#4001) when this
     % occurs so we also need to shut that up.
     %
-:- pred get_restricted_command_line_link_opts(globals::in,
+:- pred get_restricted_command_line_link_opts_for_c(globals::in,
     linked_target_type::in(c_exe_or_shared_lib), string::out) is det.
 
-get_restricted_command_line_link_opts(Globals, LinkedTargetType,
+get_restricted_command_line_link_opts_for_c(Globals, LinkedTargetType,
         RestrictedCmdLinkOpts) :-
     globals.lookup_bool_option(Globals, restricted_command_line,
         RestrictedCommandLine),
@@ -972,12 +969,13 @@ get_restricted_command_line_link_opts(Globals, LinkedTargetType,
 
 %---------------------%
 
-:- pred get_runtime_library_path_opts(globals::in, linked_target_type::in,
+:- pred get_runtime_library_path_opts_for_c(globals::in,
+    linked_target_type::in,
     option::in(bound(shlib_linker_rpath_flag ; linker_rpath_flag)),
     option::in(bound(shlib_linker_rpath_separator ; linker_rpath_separator)),
     string::out) is det.
 
-get_runtime_library_path_opts(Globals, LinkedTargetType,
+get_runtime_library_path_opts_for_c(Globals, LinkedTargetType,
         RpathFlagOpt, RpathSepOpt, RpathOpts) :-
     globals.lookup_bool_option(Globals, shlib_linker_use_install_name,
         UseInstallName),
@@ -1009,21 +1007,21 @@ get_runtime_library_path_opts(Globals, LinkedTargetType,
 
 %---------------------%
 
-:- pred get_install_name_opt(globals::in, module_name::in,
+:- pred get_install_name_opt_for_c(globals::in, module_name::in,
     linked_target_type::in, string::out) is det.
 
-get_install_name_opt(Globals, ModuleName, LinkedTargetType, InstallNameOpt) :-
+get_install_name_opt_for_c(Globals, ModuleName, LinkedTargetType,
+        InstallNameOpt) :-
     globals.lookup_bool_option(Globals, shlib_linker_use_install_name,
         UseInstallName),
     ( if
         UseInstallName = bool.yes,
         LinkedTargetType = shared_library
     then
-        % NOTE: `ShLibFileName' must *not* be prefixed with a directory.
-        %       get_install_name_option will prefix it with the correct
-        %       directory which is the one where the library is going to
-        %       be installed, *not* where it is going to be built.
-        %
+        % NOTE: ShLibFileName must *not* be prefixed with a directory.
+        % The call to get_install_name_option below will prefix it
+        % with the correct directory, which is the one where the library
+        % is going to be installed, *not* where it is going to be built.
         BaseFileName = sym_name_to_string(ModuleName),
         globals.lookup_string_option(Globals, shared_library_extension,
             SharedLibExt),
@@ -1038,30 +1036,30 @@ get_install_name_opt(Globals, ModuleName, LinkedTargetType, InstallNameOpt) :-
     % Filter list of files into those with and without known object file
     % extensions.
     %
-:- pred filter_object_files(globals::in, list(string)::in,
+:- pred filter_object_files_for_c(globals::in, list(string)::in,
     list(string)::out, list(string)::out) is det.
 
-filter_object_files(Globals, Files, ObjectFiles, NonObjectFiles) :-
+filter_object_files_for_c(Globals, Files, ObjectFiles, NonObjectFiles) :-
     globals.lookup_string_option(Globals, object_file_extension, ObjExt),
     globals.lookup_string_option(Globals, pic_object_file_extension,
         PicObjExt),
-    list.filter(has_object_file_extension(ObjExt, PicObjExt), Files,
+    list.filter(has_object_file_extension_for_c(ObjExt, PicObjExt), Files,
         ObjectFiles, NonObjectFiles).
 
-:- pred has_object_file_extension(string::in, string::in, string::in)
+:- pred has_object_file_extension_for_c(string::in, string::in, string::in)
     is semidet.
 
-has_object_file_extension(ObjExt, PicObjExt, FileName) :-
+has_object_file_extension_for_c(ObjExt, PicObjExt, FileName) :-
     ( string.suffix(FileName, ObjExt)
     ; string.suffix(FileName, PicObjExt)
     ).
 
 %---------------------%
 
-:- pred get_linker_output_option(globals::in,
+:- pred get_linker_output_option_for_c(globals::in,
     linked_target_type::in(c_exe_or_shared_lib), string::out) is det.
 
-get_linker_output_option(Globals, LinkedTargetType, OutputOpt) :-
+get_linker_output_option_for_c(Globals, LinkedTargetType, OutputOpt) :-
     get_c_compiler_type(Globals, C_CompilerType),
     % XXX we should allow the user to override the compiler's choice of
     % output option here.
@@ -1098,12 +1096,12 @@ get_linker_output_option(Globals, LinkedTargetType, OutputOpt) :-
     ;       prepare_failed.
             % Any error messages have already been printed.
 
-:- pred prepare_for_link_exe_or_shared_lib_cmd(io.text_output_stream::in,
+:- pred prepare_for_link_exe_or_shared_lib_cmd_for_c(io.text_output_stream::in,
     globals::in, list(string)::in,
     prepare_to_link_result::out, io::di, io::uo) is det.
 
-prepare_for_link_exe_or_shared_lib_cmd(ProgressStream, Globals, ObjectsList,
-        PrepareResult, !IO) :-
+prepare_for_link_exe_or_shared_lib_cmd_for_c(ProgressStream, Globals,
+        ObjectsList, PrepareResult, !IO) :-
     globals.lookup_bool_option(Globals, demangle, Demangle),
     (
         Demangle = yes,
@@ -1131,12 +1129,12 @@ prepare_for_link_exe_or_shared_lib_cmd(ProgressStream, Globals, ObjectsList,
             TmpArchiveResult = ok(TmpArchive),
             % Only include actual object files in the temporary archive,
             % not other files such as other archives.
-            filter_object_files(Globals, ObjectsList,
+            filter_object_files_for_c(Globals, ObjectsList,
                 ProperObjectFiles, NonObjectFiles),
             % Delete the currently empty output file first, otherwise ar
             % will fail to recognise its file format.
             io.file.remove_file(TmpArchive, _, !IO),
-            create_archive(Globals, ProgressStream, TmpArchive, yes,
+            create_archive_for_c(Globals, ProgressStream, TmpArchive, yes,
                 ProperObjectFiles, ArchiveSucceeded, !IO),
             (
                 ArchiveSucceeded = succeeded,
@@ -1170,11 +1168,11 @@ prepare_for_link_exe_or_shared_lib_cmd(ProgressStream, Globals, ObjectsList,
 % Linking for C static libraries.
 %
 
-:- pred create_archive(globals::in, io.text_output_stream::in, file_name::in,
-    bool::in, list(file_name)::in, maybe_succeeded::out,
+:- pred create_archive_for_c(globals::in, io.text_output_stream::in,
+    file_name::in, bool::in, list(file_name)::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-create_archive(Globals, ProgressStream, FullLibFileName, Quote,
+create_archive_for_c(Globals, ProgressStream, FullLibFileName, Quote,
         ObjectList, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, create_archive_command, ArCmd),
     globals.lookup_accumulating_option(Globals, create_archive_command_flags,
@@ -1241,12 +1239,12 @@ create_archive(Globals, ProgressStream, FullLibFileName, Quote,
 % Linking for C#, both executables and libraries.
 %
 
-:- pred create_csharp_exe_or_lib(globals::in, io.text_output_stream::in,
+:- pred create_exe_or_lib_for_csharp(globals::in, io.text_output_stream::in,
     linked_target_type::in(csharp_linked_target_type),
     module_name::in, file_name::in, list(file_name)::in,
     list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
-create_csharp_exe_or_lib(Globals, ProgressStream, LinkedTargetType,
+create_exe_or_lib_for_csharp(Globals, ProgressStream, LinkedTargetType,
         MainModuleName, FullOutputFileName0, SourceList0,
         Specs, Succeeded, !IO) :-
     get_system_env_type(Globals, EnvType),
@@ -1315,7 +1313,8 @@ create_csharp_exe_or_lib(Globals, ProgressStream, LinkedTargetType,
     join_quoted_string_list(LinkLibraryDirectoriesList, LinkerPathFlag, "",
         " ", LinkLibraryDirectories),
 
-    get_link_opts_for_libraries(Globals, MaybeLinkLibraries, Specs, !IO),
+    get_link_opts_for_libraries_for_c_cs(Globals, MaybeLinkLibraries,
+        Specs, !IO),
     (
         MaybeLinkLibraries = yes(LinkLibrariesList0),
         LinkLibrariesList =
@@ -1329,7 +1328,7 @@ create_csharp_exe_or_lib(Globals, ProgressStream, LinkedTargetType,
     ),
 
     globals.lookup_string_option(Globals, csharp_compiler, CSharpCompilerCmd),
-    get_mercury_std_libs(Globals, LinkedTargetType, MercuryStdLibs),
+    get_mercury_std_libs_for_c_cs(Globals, LinkedTargetType, MercuryStdLibs),
     globals.lookup_accumulating_option(Globals, csharp_flags, CSCFlagsList),
     CmdArgs = string.join_list(" ", [
         NoLogoOpt,
@@ -1355,7 +1354,8 @@ create_csharp_exe_or_lib(Globals, ProgressStream, LinkedTargetType,
         CLI \= "",
         TargetEnvType = env_type_posix
     then
-        construct_cli_shell_script(Globals, FullOutputFileName, ContentStr),
+        construct_cli_shell_script_for_csharp(Globals, FullOutputFileName,
+            ContentStr),
         create_launcher_shell_script(ProgressStream, Globals, MainModuleName,
             ContentStr, Succeeded, !IO)
     else
@@ -1410,10 +1410,10 @@ convert_to_windows_path_format(FileName) =
 
 %---------------------%
 
-:- pred construct_cli_shell_script(globals::in, string::in,
+:- pred construct_cli_shell_script_for_csharp(globals::in, string::in,
     string::out) is det.
 
-construct_cli_shell_script(Globals, ExeFileName, ContentStr) :-
+construct_cli_shell_script_for_csharp(Globals, ExeFileName, ContentStr) :-
     globals.lookup_string_option(Globals, cli_interpreter, CLI),
     globals.lookup_accumulating_option(Globals, link_library_directories,
         LinkLibraryDirectoriesList),
@@ -1433,12 +1433,12 @@ construct_cli_shell_script(Globals, ExeFileName, ContentStr) :-
 % Linking for Java, both executables and archives.
 %
 
-:- pred create_java_exe_or_lib(globals::in, io.text_output_stream::in,
+:- pred create_exe_or_lib_for_java(globals::in, io.text_output_stream::in,
     linked_target_type::in(java_linked_target_type),
     module_name::in, file_name::in, list(file_name)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
-create_java_exe_or_lib(Globals, ProgressStream, LinkedTargetType,
+create_exe_or_lib_for_java(Globals, ProgressStream, LinkedTargetType,
         MainModuleName, FullJarFileName, ObjectList, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, java_archive_command, Jar),
 
@@ -1619,13 +1619,14 @@ do_full_curdir_timestamps_match(FullFileName, CurDirFileName,
     % Pass either `-llib' or `PREFIX/lib/GRADE/liblib.a', depending on
     % whether we are linking with static or shared Mercury libraries.
     %
-:- pred get_link_opts_for_libraries(globals::in, maybe(list(string))::out,
-    list(error_spec)::out, io::di, io::uo) is det.
+:- pred get_link_opts_for_libraries_for_c_cs(globals::in,
+    maybe(list(string))::out, list(error_spec)::out, io::di, io::uo) is det.
 
-get_link_opts_for_libraries(Globals, MaybeLinkLibraries, Specs, !IO) :-
+get_link_opts_for_libraries_for_c_cs(Globals, MaybeLinkLibraries,
+        Specs, !IO) :-
     globals.lookup_accumulating_option(Globals, link_libraries,
         LinkLibrariesList0),
-    list.map2_foldl2(get_link_opts_for_library(Globals),
+    list.map2_foldl2(get_link_opts_for_library_for_c_cs(Globals),
         LinkLibrariesList0, LinkLibrariesList, SpecsList,
         succeeded, LibrariesSucceeded, !IO),
     list.condense(SpecsList, Specs),
@@ -1637,11 +1638,11 @@ get_link_opts_for_libraries(Globals, MaybeLinkLibraries, Specs, !IO) :-
         MaybeLinkLibraries = no
     ).
 
-:- pred get_link_opts_for_library(globals::in, string::in, string::out,
-    list(error_spec)::out, maybe_succeeded::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+:- pred get_link_opts_for_library_for_c_cs(globals::in, string::in,
+    string::out, list(error_spec)::out,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-get_link_opts_for_library(Globals, LibName, LinkerOpt,
+get_link_opts_for_library_for_c_cs(Globals, LibName, LinkerOpt,
         !:Specs, !Succeeded, !IO) :-
     !:Specs = [],
     globals.get_target(Globals, Target),
@@ -1727,7 +1728,7 @@ are_shared_libraries_supported(Globals, Supported) :-
 % Library link flags.
 %
 
-output_library_link_flags(Globals, Stream, Specs, !IO) :-
+output_library_link_flags_for_c(Globals, Stream, Specs, !IO) :-
     % We output the library link flags as they are for when we are linking
     % an executable.
     LinkedTargetType = executable,
@@ -1739,9 +1740,10 @@ output_library_link_flags(Globals, Stream, Specs, !IO) :-
     globals.lookup_string_option(Globals, linker_path_flag, LinkerPathFlag),
     join_quoted_string_list(LinkLibraryDirectoriesList, LinkerPathFlag, "",
         " ", LinkLibraryDirectories),
-    get_runtime_library_path_opts(Globals, LinkedTargetType,
+    get_runtime_library_path_opts_for_c(Globals, LinkedTargetType,
         RpathFlagOpt, RpathSepOpt, RpathOpts),
-    get_link_opts_for_libraries(Globals, MaybeLinkLibraries, Specs, !IO),
+    get_link_opts_for_libraries_for_c_cs(Globals, MaybeLinkLibraries,
+        Specs, !IO),
     (
         MaybeLinkLibraries = yes(LinkLibrariesList),
         join_string_list(LinkLibrariesList, "", "", " ", LinkLibraries)
@@ -1750,16 +1752,16 @@ output_library_link_flags(Globals, Stream, Specs, !IO) :-
         LinkLibraries = ""
     ),
     % Find the Mercury standard libraries.
-    get_mercury_std_libs(Globals, LinkedTargetType, MercuryStdLibs),
-    get_system_libs(Globals, LinkedTargetType, SystemLibs),
+    get_mercury_std_libs_for_c_cs(Globals, LinkedTargetType, MercuryStdLibs),
+    get_system_libs_for_c(Globals, LinkedTargetType, SystemLibs),
     io.format(Stream, "%s %s %s %s %s\n",
         [s(LinkLibraryDirectories), s(RpathOpts), s(LinkLibraries),
         s(MercuryStdLibs), s(SystemLibs)], !IO).
 
-:- pred get_system_libs(globals::in,
+:- pred get_system_libs_for_c(globals::in,
     linked_target_type::in(c_exe_or_shared_lib), string::out) is det.
 
-get_system_libs(Globals, LinkedTargetType, SystemLibs) :-
+get_system_libs_for_c(Globals, LinkedTargetType, SystemLibs) :-
     % System libraries used when tracing.
     globals.get_trace_level(Globals, TraceLevel),
     TraceEnabled = is_exec_trace_enabled_at_given_trace_level(TraceLevel),
@@ -1780,7 +1782,7 @@ get_system_libs(Globals, LinkedTargetType, SystemLibs) :-
         )
     ),
     % Thread libraries
-    use_thread_libs(Globals, UseThreadLibs),
+    use_thread_libs_for_c(Globals, UseThreadLibs),
     (
         UseThreadLibs = yes,
         globals.lookup_string_option(Globals, thread_libs, ThreadLibs)
@@ -1799,9 +1801,9 @@ get_system_libs(Globals, LinkedTargetType, SystemLibs) :-
     SystemLibs = string.join_list(" ",
         [SystemTraceLibs, OtherSystemLibs, ThreadLibs]).
 
-:- pred use_thread_libs(globals::in, bool::out) is det.
+:- pred use_thread_libs_for_c(globals::in, bool::out) is det.
 
-use_thread_libs(Globals, UseThreadLibs) :-
+use_thread_libs_for_c(Globals, UseThreadLibs) :-
     globals.lookup_bool_option(Globals, parallel, UseThreadLibs).
 
 %---------------------------------------------------------------------------%
