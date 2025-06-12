@@ -213,11 +213,22 @@ MR_trace_event_internal(MR_TraceCmdInfo *cmd, MR_bool interactive,
     MR_trace_listing_path_ensure_init();
 
     if (MR_spy_point_cond_problem != NULL) {
+        const char *cond_var_name;
+
         fprintf(MR_mdb_err, "mdb: couldn't evaluate break point condition\n");
         fprintf(MR_mdb_err, "    ");
-        MR_print_spy_cond(MR_mdb_err, MR_spy_point_cond_bad);
+        MR_print_spy_cond(MR_mdb_err, MR_spy_point_cond_bad, &cond_var_name);
         fprintf(MR_mdb_err, ".\n");
-        fprintf(MR_mdb_err, "The error is: %s.\n", MR_spy_point_cond_problem);
+        if (MR_streq(MR_spy_point_cond_problem, "there is no such variable") &&
+            cond_var_name != NULL)
+        {
+            fprintf(MR_mdb_err,
+                "The error is: there is no variable named %s.\n",
+                cond_var_name);
+        } else {
+            fprintf(MR_mdb_err,
+                "The error is: %s.\n", MR_spy_point_cond_problem);
+        }
         MR_spy_point_cond_bad = NULL;
         MR_spy_point_cond_problem = NULL;
     }

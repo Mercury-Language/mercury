@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2002, 2005-2008, 2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This file contains code to manage spy points for both
@@ -1076,6 +1076,7 @@ MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
     MR_SpyPoint     *point;
     MR_SpyCond      *cond;
     MR_TracePort    port;
+    const char      *ignored_cond_var_name;
 
     point = MR_spy_points[spy_point_num];
     fprintf(fp, "%2d: %1s %-5s %-9s ",
@@ -1157,7 +1158,7 @@ MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
             fprintf(fp, "-p ");
         }
 
-        MR_print_spy_cond(fp, cond);
+        MR_print_spy_cond(fp, cond, &ignored_cond_var_name);
         fprintf(fp, "\n");
     }
 
@@ -1216,24 +1217,28 @@ MR_print_spy_point(FILE *fp, int spy_point_num, MR_bool verbose)
 }
 
 void
-MR_print_spy_cond(FILE *fp, MR_SpyCond *cond)
+MR_print_spy_cond(FILE *fp, MR_SpyCond *cond, const char **name)
 {
     switch (cond->MR_cond_var_spec.MR_var_spec_kind) {
         case MR_VAR_SPEC_NUMBER:
             fprintf(fp, "%" MR_INTEGER_LENGTH_MODIFIER "u",
                 cond->MR_cond_var_spec.MR_var_spec_number);
+            *name = NULL;
             break;
 
         case MR_VAR_SPEC_NAME:
-            fprintf(fp, "%s", cond->MR_cond_var_spec.MR_var_spec_name);
+            *name = cond->MR_cond_var_spec.MR_var_spec_name;
+            fprintf(fp, "%s", *name);
             break;
 
         case MR_VAR_SPEC_HELD_NAME:
-            fprintf(fp, "$%s", cond->MR_cond_var_spec.MR_var_spec_name);
+            *name = cond->MR_cond_var_spec.MR_var_spec_name;
+            fprintf(fp, "$%s", *name);
             break;
 
         case MR_VAR_SPEC_ATTRIBUTE:
             fprintf(fp, "!%s", cond->MR_cond_var_spec.MR_var_spec_name);
+            *name = NULL;
             break;
     }
 

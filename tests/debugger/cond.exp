@@ -106,14 +106,16 @@ mdb> condition Y^1^2 = 1
             Y ^1^2 = 1
 mdb> continue
 mdb: couldn't evaluate break point condition
-Y ^1^2 = 1: there is no such variable.
+    Y ^1^2 = 1.
+The error is: there is no variable named Y.
      E15:    C15 CALL pred cond.r/2-0 (det)
 mdb> condition -p Y^1^2 = 1
  0: + stop  interface pred cond.r/2-0 (det)
             -p Y ^1^2 = 1
 mdb> continue
 mdb: couldn't evaluate break point condition
-Y ^1^2 = 1: there is no such variable.
+    Y ^1^2 = 1.
+The error is: there is no variable named Y.
      E16:    C16 CALL pred cond.r/2-0 (det)
 mdb> delete *
  0: E stop  interface pred cond.r/2-0 (det)
@@ -159,7 +161,8 @@ mdb> condition X^4 = 1
             X ^4 = 1
 mdb> continue
 mdb: couldn't evaluate break point condition
-X ^4 = 1: the path 4 does not exist.
+    X ^4 = 1.
+The error is: the path 4 does not exist.
      E22:    C21 CALL pred cond.r/2-0 (det)
 mdb> print
 r(1, _)

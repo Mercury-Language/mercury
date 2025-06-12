@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2001, 2005-2007 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This file contains the declarations of the types and functions that
@@ -187,8 +187,11 @@ extern  void            MR_delete_spy_point(int point_table_slot);
 extern  void            MR_print_spy_point(FILE *fp, int i, MR_bool verbose);
 
 // Print the given spy point condition in a user-friendly manner.
+// If the condition involves a named variable, set *name to point to that name.
+// Otherwise, set it to NULL.
 
-extern  void            MR_print_spy_cond(FILE *fp, MR_SpyCond *cond);
+extern  void            MR_print_spy_cond(FILE *fp, MR_SpyCond *cond,
+                            const char **name);
 
 // Print the set of current spy points (including those that are currently
 // disabled) to fp in a format that, when sourced by mdb, recreates those
