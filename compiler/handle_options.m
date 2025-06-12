@@ -421,7 +421,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     maybe_disable_smart_recompilation(ProgressStream, OpMode, !Globals, !IO),
 
     handle_chosen_stdlib_dir(MaybeEnvOptFileMerStdLibDir, !Globals, !Specs),
-    handle_libgrades(!Globals, !Specs, !IO),
+    handle_libgrades(ProgressStream, !Globals, !Specs, !IO),
     handle_subdir_setting(OpMode, !Globals),
     handle_directory_options(OpMode, !Globals),
     handle_target_compile_link_symlink_options(!Globals),
@@ -2116,10 +2116,10 @@ handle_chosen_stdlib_dir(MaybeEnvOptFileMerStdLibDir, !Globals, !Specs) :-
     % Other globals fields updated:
     %   maybe_stdlib_grades
     %
-:- pred handle_libgrades(globals::in, globals::out,
+:- pred handle_libgrades(io.text_output_stream::in, globals::in, globals::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-handle_libgrades(!Globals, !Specs, !IO) :-
+handle_libgrades(ProgressStream, !Globals, !Specs, !IO) :-
     globals.get_maybe_stdlib_grades(!.Globals, MaybeStdLibGrades0),
     (
         MaybeStdLibGrades0 = stdlib_grades_known(StdLibGradeSet0),
@@ -2129,7 +2129,8 @@ handle_libgrades(!Globals, !Specs, !IO) :-
         globals.lookup_bool_option(!.Globals, detect_stdlib_grades, Detect),
         (
             Detect = yes,
-            detect_stdlib_grades(!.Globals, MaybeStdLibGradeSet, !IO),
+            detect_stdlib_grades(ProgressStream, !.Globals,
+                MaybeStdLibGradeSet, !IO),
             (
                 MaybeStdLibGradeSet = ok1(StdLibGradeSet),
                 MaybeStdLibGrades = stdlib_grades_known(StdLibGradeSet),

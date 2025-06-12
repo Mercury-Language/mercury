@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2009 The University of Melbourne.
-% Copyright (C) 2015-2016, 2019-2024 The Mercury team.
+% Copyright (C) 2015-2016, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -71,8 +71,8 @@
     % "mmc --output-libgrades" instead of consulting the configured set
     % of grades in Mmake.vars.
     %
-:- pred detect_stdlib_grades(globals::in, maybe1(set(string))::out,
-    io::di, io::uo) is det.
+:- pred detect_stdlib_grades(io.text_output_stream::in, globals::in,
+    maybe1(set(string))::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -111,14 +111,13 @@
 
 %---------------------------------------------------------------------------%
 
-detect_stdlib_grades(Globals, MaybeStdLibGrades, !IO) :-
+detect_stdlib_grades(ProgressStream, Globals, MaybeStdLibGrades, !IO) :-
     % Enable the compile-time trace flag "debug-detect-libgrades" to enable
     % debugging messages for library grade detection in the very verbose
     % output.
-    io.stdout_stream(StdOut, !IO),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
-        maybe_write_string(StdOut, Verbose,
+        maybe_write_string(ProgressStream, Verbose,
             "% Detecting library grades ...\n", !TIO)
     ),
     globals.lookup_maybe_string_option(Globals,
@@ -130,8 +129,9 @@ detect_stdlib_grades(Globals, MaybeStdLibGrades, !IO) :-
         trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
             (
                 Verbose = yes,
-                set.fold(report_detected_libgrade(StdOut), StdLibGrades, !TIO),
-                io.write_string(StdOut, "% done.\n", !TIO)
+                set.fold(report_detected_libgrade(ProgressStream),
+                    StdLibGrades, !TIO),
+                io.write_string(ProgressStream, "% done.\n", !TIO)
             ;
                 Verbose = no
             )
@@ -141,7 +141,7 @@ detect_stdlib_grades(Globals, MaybeStdLibGrades, !IO) :-
     ;
         MaybeMerStdLibDir = error1(Specs),
         trace [io(!TIO), compile_time(flag("debug-detect-libgrades"))] (
-            maybe_write_string(StdOut, Verbose, "% failed.\n", !TIO)
+            maybe_write_string(ProgressStream, Verbose, "% failed.\n", !TIO)
         ),
         MaybeStdLibGrades = error1(Specs)
     ).
