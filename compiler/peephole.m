@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1998, 2002-2007, 2010-2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2020, 2022, 2024 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2020, 2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -27,7 +27,7 @@
 
     % Peephole optimize a list of instructions.
     %
-:- pred peephole_optimize(gc_method::in, maybe_opt_peep_mkword::in,
+:- pred peephole_optimize(gc_method::in, maybe_peep_llds_mkword::in,
     list(instruction)::in, list(instruction)::out, bool::out) is det.
 
     % A peephole optimization completely separate from peephole_optimize.
@@ -78,7 +78,7 @@ peephole_optimize(GC_Method, OptPeepMkword, Instrs0, Instrs, Mod) :-
 
     % Given a GC method, return the list of invalid peephole optimizations.
     %
-:- pred invalid_peephole_opts(gc_method::in, maybe_opt_peep_mkword::in,
+:- pred invalid_peephole_opts(gc_method::in, maybe_peep_llds_mkword::in,
     list(pattern)::out) is det.
 
 invalid_peephole_opts(GC_Method, OptPeepMkword, InvalidPatterns) :-
@@ -95,10 +95,10 @@ invalid_peephole_opts(GC_Method, OptPeepMkword, InvalidPatterns) :-
         InvalidPatterns0 = []
     ),
     (
-        OptPeepMkword = opt_peep_mkword,
+        OptPeepMkword = peep_llds_mkword,
         InvalidPatterns = InvalidPatterns0
     ;
-        OptPeepMkword = do_not_opt_peep_mkword,
+        OptPeepMkword = do_not_peep_llds_mkword,
         InvalidPatterns = [pattern_mkword | InvalidPatterns0]
     ).
 

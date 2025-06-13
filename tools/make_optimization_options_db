@@ -98,9 +98,11 @@ bool   n    eliminate_local_vars                elim_local_vars
 bool   y    generate_trail_ops_inline           gen_trail_ops_inline
 bool   n    common_data                         use_common_data
 bool   y    common_layout_data                  use_common_layout_data
-bool   n    optimize
-bool   n    peep                                opt_peep
-bool   n    peep_mkword                         opt_peep_mkword
+bool   n    optimize_llds
+bool   n    optimize_mlds
+bool   n    peep_llds
+bool   n    peep_llds_mkword
+bool   n    peep_mlds
 bool   n    jumps                               opt_jumps
 bool   n    fulljumps                           opt_fulljumps
 bool   n    pessimize_tailcalls

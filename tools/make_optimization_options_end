@@ -57,10 +57,12 @@ set_opts_for_space(!OptTuple) :-
 opts_enabled_at_level(0, [
     % Optimization level 0: aim to minimize overall compilation time.
     oo_use_common_data(yes),
-    oo_optimize(yes),
+    oo_optimize_llds(yes),
+    oo_optimize_mlds(yes),
     oo_opt_repeat(1),
-    oo_opt_peep(yes),
-    oo_opt_peep_mkword(yes),
+    oo_peep_llds(yes),
+    oo_peep_llds_mkword(yes),
+    oo_peep_mlds(yes),
     oo_use_static_ground_cells(yes),
     oo_use_smart_indexing(yes),
     oo_opt_jumps(yes),

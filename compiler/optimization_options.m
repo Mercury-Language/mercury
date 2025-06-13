@@ -225,15 +225,21 @@
 :- type maybe_use_common_layout_data
     --->    use_common_layout_data
     ;       do_not_use_common_layout_data.
-:- type maybe_optimize
-    --->    optimize
-    ;       do_not_optimize.
-:- type maybe_opt_peep
-    --->    opt_peep
-    ;       do_not_opt_peep.
-:- type maybe_opt_peep_mkword
-    --->    opt_peep_mkword
-    ;       do_not_opt_peep_mkword.
+:- type maybe_optimize_llds
+    --->    optimize_llds
+    ;       do_not_optimize_llds.
+:- type maybe_optimize_mlds
+    --->    optimize_mlds
+    ;       do_not_optimize_mlds.
+:- type maybe_peep_llds
+    --->    peep_llds
+    ;       do_not_peep_llds.
+:- type maybe_peep_llds_mkword
+    --->    peep_llds_mkword
+    ;       do_not_peep_llds_mkword.
+:- type maybe_peep_mlds
+    --->    peep_mlds
+    ;       do_not_peep_mlds.
 :- type maybe_opt_jumps
     --->    opt_jumps
     ;       do_not_opt_jumps.
@@ -358,9 +364,11 @@
     ;       oo_gen_trail_ops_inline(bool)
     ;       oo_use_common_data(bool)
     ;       oo_use_common_layout_data(bool)
-    ;       oo_optimize(bool)
-    ;       oo_opt_peep(bool)
-    ;       oo_opt_peep_mkword(bool)
+    ;       oo_optimize_llds(bool)
+    ;       oo_optimize_mlds(bool)
+    ;       oo_peep_llds(bool)
+    ;       oo_peep_llds_mkword(bool)
+    ;       oo_peep_mlds(bool)
     ;       oo_opt_jumps(bool)
     ;       oo_opt_fulljumps(bool)
     ;       oo_pessimize_tailcalls(bool)
@@ -490,9 +498,11 @@
                 ot_gen_trail_ops_inline       :: maybe_gen_trail_ops_inline,
                 ot_use_common_data            :: maybe_use_common_data,
                 ot_use_common_layout_data     :: maybe_use_common_layout_data,
-                ot_optimize                   :: maybe_optimize,
-                ot_opt_peep                   :: maybe_opt_peep,
-                ot_opt_peep_mkword            :: maybe_opt_peep_mkword,
+                ot_optimize_llds              :: maybe_optimize_llds,
+                ot_optimize_mlds              :: maybe_optimize_mlds,
+                ot_peep_llds                  :: maybe_peep_llds,
+                ot_peep_llds_mkword           :: maybe_peep_llds_mkword,
+                ot_peep_mlds                  :: maybe_peep_mlds,
                 ot_opt_jumps                  :: maybe_opt_jumps,
                 ot_opt_fulljumps              :: maybe_opt_fulljumps,
                 ot_pessimize_tailcalls        :: maybe_pessimize_tailcalls,
@@ -650,9 +660,11 @@ init_opt_tuple = opt_tuple(
         gen_trail_ops_inline,
         do_not_use_common_data,
         use_common_layout_data,
-        do_not_optimize,
-        do_not_opt_peep,
-        do_not_opt_peep_mkword,
+        do_not_optimize_llds,
+        do_not_optimize_mlds,
+        do_not_peep_llds,
+        do_not_peep_llds_mkword,
+        do_not_peep_mlds,
         do_not_opt_jumps,
         do_not_opt_fulljumps,
         do_not_pessimize_tailcalls,
@@ -927,14 +939,20 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
         OptOption = oo_use_common_layout_data(Bool),
         update_opt_tuple_bool_use_common_layout_data(Bool, !OptTuple)
     ;
-        OptOption = oo_optimize(Bool),
-        update_opt_tuple_bool_optimize(Bool, !OptTuple)
+        OptOption = oo_optimize_llds(Bool),
+        update_opt_tuple_bool_optimize_llds(Bool, !OptTuple)
     ;
-        OptOption = oo_opt_peep(Bool),
-        update_opt_tuple_bool_opt_peep(Bool, !OptTuple)
+        OptOption = oo_optimize_mlds(Bool),
+        update_opt_tuple_bool_optimize_mlds(Bool, !OptTuple)
     ;
-        OptOption = oo_opt_peep_mkword(Bool),
-        update_opt_tuple_bool_opt_peep_mkword(Bool, !OptTuple)
+        OptOption = oo_peep_llds(Bool),
+        update_opt_tuple_bool_peep_llds(Bool, !OptTuple)
+    ;
+        OptOption = oo_peep_llds_mkword(Bool),
+        update_opt_tuple_bool_peep_llds_mkword(Bool, !OptTuple)
+    ;
+        OptOption = oo_peep_mlds(Bool),
+        update_opt_tuple_bool_peep_mlds(Bool, !OptTuple)
     ;
         OptOption = oo_opt_jumps(Bool),
         update_opt_tuple_bool_opt_jumps(Bool, !OptTuple)
@@ -2630,72 +2648,118 @@ update_opt_tuple_bool_use_common_layout_data(Bool, !OptTuple) :-
         )
     ).
 
-:- pred update_opt_tuple_bool_optimize(bool::in,
+:- pred update_opt_tuple_bool_optimize_llds(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_optimize(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_optimize,
+update_opt_tuple_bool_optimize_llds(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_optimize_llds,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_optimize,
-            !OptTuple ^ ot_optimize := optimize
+            OldValue = do_not_optimize_llds,
+            !OptTuple ^ ot_optimize_llds := optimize_llds
         ;
-            OldValue = optimize
+            OldValue = optimize_llds
         )
     else
         (
-            OldValue = do_not_optimize
+            OldValue = do_not_optimize_llds
         ;
-            OldValue = optimize,
-            !OptTuple ^ ot_optimize := do_not_optimize
+            OldValue = optimize_llds,
+            !OptTuple ^ ot_optimize_llds := do_not_optimize_llds
         )
     ).
 
-:- pred update_opt_tuple_bool_opt_peep(bool::in,
+:- pred update_opt_tuple_bool_optimize_mlds(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_opt_peep(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_opt_peep,
+update_opt_tuple_bool_optimize_mlds(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_optimize_mlds,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_opt_peep,
-            !OptTuple ^ ot_opt_peep := opt_peep
+            OldValue = do_not_optimize_mlds,
+            !OptTuple ^ ot_optimize_mlds := optimize_mlds
         ;
-            OldValue = opt_peep
+            OldValue = optimize_mlds
         )
     else
         (
-            OldValue = do_not_opt_peep
+            OldValue = do_not_optimize_mlds
         ;
-            OldValue = opt_peep,
-            !OptTuple ^ ot_opt_peep := do_not_opt_peep
+            OldValue = optimize_mlds,
+            !OptTuple ^ ot_optimize_mlds := do_not_optimize_mlds
         )
     ).
 
-:- pred update_opt_tuple_bool_opt_peep_mkword(bool::in,
+:- pred update_opt_tuple_bool_peep_llds(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_opt_peep_mkword(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_opt_peep_mkword,
+update_opt_tuple_bool_peep_llds(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_peep_llds,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_opt_peep_mkword,
-            !OptTuple ^ ot_opt_peep_mkword := opt_peep_mkword
+            OldValue = do_not_peep_llds,
+            !OptTuple ^ ot_peep_llds := peep_llds
         ;
-            OldValue = opt_peep_mkword
+            OldValue = peep_llds
         )
     else
         (
-            OldValue = do_not_opt_peep_mkword
+            OldValue = do_not_peep_llds
         ;
-            OldValue = opt_peep_mkword,
-            !OptTuple ^ ot_opt_peep_mkword := do_not_opt_peep_mkword
+            OldValue = peep_llds,
+            !OptTuple ^ ot_peep_llds := do_not_peep_llds
+        )
+    ).
+
+:- pred update_opt_tuple_bool_peep_llds_mkword(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_peep_llds_mkword(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_peep_llds_mkword,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_peep_llds_mkword,
+            !OptTuple ^ ot_peep_llds_mkword := peep_llds_mkword
+        ;
+            OldValue = peep_llds_mkword
+        )
+    else
+        (
+            OldValue = do_not_peep_llds_mkword
+        ;
+            OldValue = peep_llds_mkword,
+            !OptTuple ^ ot_peep_llds_mkword := do_not_peep_llds_mkword
+        )
+    ).
+
+:- pred update_opt_tuple_bool_peep_mlds(bool::in,
+    opt_tuple::in, opt_tuple::out) is det.
+
+update_opt_tuple_bool_peep_mlds(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_peep_mlds,
+    ( if
+        Bool = yes
+    then
+        (
+            OldValue = do_not_peep_mlds,
+            !OptTuple ^ ot_peep_mlds := peep_mlds
+        ;
+            OldValue = peep_mlds
+        )
+    else
+        (
+            OldValue = do_not_peep_mlds
+        ;
+            OldValue = peep_mlds,
+            !OptTuple ^ ot_peep_mlds := do_not_peep_mlds
         )
     ).
 
@@ -3691,10 +3755,12 @@ set_opts_for_space(!OptTuple) :-
 opts_enabled_at_level(0, [
     % Optimization level 0: aim to minimize overall compilation time.
     oo_use_common_data(yes),
-    oo_optimize(yes),
+    oo_optimize_llds(yes),
+    oo_optimize_mlds(yes),
     oo_opt_repeat(1),
-    oo_opt_peep(yes),
-    oo_opt_peep_mkword(yes),
+    oo_peep_llds(yes),
+    oo_peep_llds_mkword(yes),
+    oo_peep_mlds(yes),
     oo_use_static_ground_cells(yes),
     oo_use_smart_indexing(yes),
     oo_opt_jumps(yes),

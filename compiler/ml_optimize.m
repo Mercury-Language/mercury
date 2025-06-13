@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2011 The University of Melbourne.
-% Copyright (C) 2014-2021, 2024 The Mercury team.
+% Copyright (C) 2014-2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -127,11 +127,11 @@ optimize_in_stmts(OptInfo, !Stmts) :-
     list.map(optimize_in_stmt(OptInfo), !Stmts),
     Globals = OptInfo ^ oi_globals,
     globals.get_opt_tuple(Globals, OptTuple),
-    OptPeep = OptTuple ^ ot_opt_peep,
+    OptPeep = OptTuple ^ ot_peep_mlds,
     (
-        OptPeep = do_not_opt_peep
+        OptPeep = do_not_peep_mlds
     ;
-        OptPeep = opt_peep,
+        OptPeep = peep_mlds,
         peephole_opt_statements(!Stmts)
     ).
 

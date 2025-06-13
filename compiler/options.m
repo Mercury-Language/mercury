@@ -969,6 +969,8 @@
     ;       optopt_allow_hijacks
 
     %   - MLDS
+    ;       optopt_optimize_mlds
+    ;       optopt_peep_mlds
     ;       optopt_mlds_tailcalls
     ;       optopt_initializations
     ;       optopt_eliminate_unused_mlds_assigns
@@ -978,9 +980,9 @@
     %   - LLDS
     ;       optopt_common_data
     ;       optopt_common_layout_data
-    ;       optopt_optimize           % Also used for MLDS->MLDS optimizations.
-    ;       optopt_peep
-    ;       optopt_peep_mkword
+    ;       optopt_optimize_llds
+    ;       optopt_peep_llds
+    ;       optopt_peep_llds_mkword
     ;       optopt_jumps
     ;       optopt_fulljumps
     ;       optopt_pessimize_tailcalls
@@ -1409,21 +1411,19 @@ option_defaults(Opt, Data) :-
     ;       oc_internal
             % Options for compiler use only, that should not be used
             % even by developers.
-    ;       oc_opt
-            % Optimization options that are enabled at -O<N> for some N.
-            % XXX Rename to oc_level_opt?
-            % XXX We should subdivide into HLDS->HLDS, HLDS->MLDS, HLDS->LLDS,
-            % MLDS->MLDS, LLDS->LLDS, MLDS->target, LLDS->target,
-            % maybe indicated by _hh, _hm, _hl etc suffixes,
-            % to allow automatic generation of the existing help subsections.
+    ;       oc_opt_hh
+    ;       oc_opt_hh_exp
+            % HLDS->HLDS optimizations. The _exp suffix indicates that
+            % the optimization is experimental.
+    ;       oc_opt_hlm
     ;       oc_opt_hm
     ;       oc_opt_hl
-    ;       oc_spec_opt
-            % Optimization options that are not enabled at -O<N> for any N.
-            % XXX Rename to oc_sep_opt, with "sep" standing for "separate
-            % from optimization levels", or oc_sa_opt, with "sa" being short
-            % for "stand-alone"?
-            % XXX Subdidivde as with oc_opt.
+            % HLDS->{LLDS,MLDS}, HLDS->LLDS and HLDS->MLDS optimizations.
+    ;       oc_opt_ll
+    ;       oc_opt_mm
+            % MLDS->MLDS and LLDS->LLDS optimizations.
+    ;       oc_opt_lc
+            % LLDS-> C optimizations. (There are no MLDS->C optimizations.)
     ;       oc_opt_ctrl
             % Options that control optimization levels.
     ;       oc_trans_opt
@@ -4019,15 +4019,15 @@ optdef(oc_opt_ctrl, intermodule_analysis,               bool(no)).
 optdef(oc_opt_ctrl, analysis_repeat,                    int(0)).
 optdef(oc_opt_ctrl, analysis_file_cache,                bool(no)).
 
-optdef(oc_spec_opt, structure_sharing_analysis,         bool(no)).
-optdef(oc_spec_opt, structure_sharing_widening,         int(0)).
-optdef(oc_spec_opt, structure_reuse_analysis,           bool(no)).
-optdef(oc_spec_opt, structure_reuse_constraint,
+optdef(oc_opt_hh_exp, structure_sharing_analysis,         bool(no)).
+optdef(oc_opt_hh_exp, structure_sharing_widening,         int(0)).
+optdef(oc_opt_hh_exp, structure_reuse_analysis,           bool(no)).
+optdef(oc_opt_hh_exp, structure_reuse_constraint,
                                         string("within_n_cells_difference")).
-optdef(oc_spec_opt, structure_reuse_constraint_arg,     int(0)).
-optdef(oc_spec_opt, structure_reuse_max_conditions,     int(10)).
-optdef(oc_spec_opt, structure_reuse_repeat,             int(0)).
-optdef(oc_spec_opt, structure_reuse_free_cells,         bool(no)).
+optdef(oc_opt_hh_exp, structure_reuse_constraint_arg,     int(0)).
+optdef(oc_opt_hh_exp, structure_reuse_max_conditions,     int(10)).
+optdef(oc_opt_hh_exp, structure_reuse_repeat,             int(0)).
+optdef(oc_opt_hh_exp, structure_reuse_free_cells,         bool(no)).
 
 optdef(oc_analysis, termination_check,                  bool(no)).
 optdef(oc_analysis, termination_check_verbose,          bool(no)).
@@ -4061,145 +4061,151 @@ optdef(oc_opt_hl, optimize_region_ops,                bool(no)).
     % in the opt_level table.
 
     % HLDS
-optdef(oc_opt, optopt_allow_inlining,                   bool_special).
-optdef(oc_opt, inlining,                                bool_special).
-optdef(oc_opt, optopt_inline_simple,                    bool_special).
-optdef(oc_opt, optopt_inline_builtins,                  bool_special).
-optdef(oc_opt, optopt_inline_single_use,                bool_special).
-optdef(oc_opt, optopt_inline_call_cost,                 int_special).
-optdef(oc_opt, optopt_inline_compound_threshold,        int_special).
-optdef(oc_opt, optopt_inline_simple_threshold,          int_special).
+optdef(oc_opt_hh, optopt_allow_inlining,                   bool_special).
+optdef(oc_opt_hh, inlining,                                bool_special).
+optdef(oc_opt_hh, optopt_inline_simple,                    bool_special).
+optdef(oc_opt_hh, optopt_inline_builtins,                  bool_special).
+optdef(oc_opt_hh, optopt_inline_single_use,                bool_special).
+optdef(oc_opt_hh, optopt_inline_call_cost,                 int_special).
+optdef(oc_opt_hh, optopt_inline_compound_threshold,        int_special).
+optdef(oc_opt_hh, optopt_inline_simple_threshold,          int_special).
     % Has no effect until --inline-simple is enabled.
-optdef(oc_opt, optopt_inline_vars_threshold,            int_special).
-optdef(oc_opt, optopt_intermod_inline_simple_threshold, int_special).
+optdef(oc_opt_hh, optopt_inline_vars_threshold,            int_special).
+optdef(oc_opt_hh, optopt_intermod_inline_simple_threshold, int_special).
     % Has no effect until --intermodule-optimization.
-optdef(oc_opt, optopt_inline_tr_sccs,      bool_special).
-optdef(oc_opt, optopt_inline_tr_sccs_max_extra, int_special).
-optdef(oc_opt, optopt_from_ground_term_threshold,       int_special).
-optdef(oc_opt, optopt_enable_const_struct_poly,         bool_special).
-optdef(oc_opt, optopt_enable_const_struct_user,         bool_special).
-optdef(oc_opt, optopt_common_struct,                    bool_special).
-optdef(oc_opt, optopt_constraint_propagation,           bool_special).
-optdef(oc_opt, optopt_local_constraint_propagation,     bool_special).
-optdef(oc_opt, optopt_duplicate_calls,         bool_special).
-optdef(oc_opt, optopt_constant_propagation,             bool_special).
-optdef(oc_opt, optopt_excess_assign,                    bool_special).
-optdef(oc_opt, optopt_merge_code_after_switch,          bool_special).
-optdef(oc_opt, optopt_format_calls,            bool_special).
-optdef(oc_opt, optopt_split_switch_arms,                bool_special).
-optdef(oc_opt, optopt_loop_invariants,                  bool_special).
-optdef(oc_opt, optopt_saved_vars_const,        bool_special).
-optdef(oc_opt, optopt_svcell,         bool_special).
-optdef(oc_opt, optopt_svcell_loop,    bool_special).
-optdef(oc_opt, optopt_svcell_full_path, bool_special).
-optdef(oc_opt, optopt_svcell_on_stack, bool_special).
-optdef(oc_opt, optopt_svcell_candidate_headvars, bool_special).
-optdef(oc_opt, optopt_svcell_cv_store_cost, int_special).
-optdef(oc_opt, optopt_svcell_cv_load_cost, int_special).
-optdef(oc_opt, optopt_svcell_fv_store_cost, int_special).
-optdef(oc_opt, optopt_svcell_fv_load_cost, int_special).
-optdef(oc_opt, optopt_svcell_op_ratio, int_special).
-optdef(oc_opt, optopt_svcell_node_ratio, int_special).
-optdef(oc_opt, optopt_svcell_all_path_node_ratio, int_special).
-optdef(oc_opt, optopt_svcell_all_candidates, bool_special).
-optdef(oc_opt, optimize_saved_vars,                     bool_special).
-optdef(oc_opt, optopt_delay_construct,                  bool_special).
-optdef(oc_opt, optopt_follow_code,                      bool_special).
-optdef(oc_opt, optopt_unused_args,             bool_special).
-optdef(oc_opt, optopt_intermod_unused_args,             bool_special).
-optdef(oc_opt, optopt_higher_order,            bool_special).
-optdef(oc_opt, optopt_higher_order_size_limit,          int_special).
-optdef(oc_opt, optopt_higher_order_arg_limit,           int_special).
-optdef(oc_opt, optopt_unneeded_code,                    bool_special).
-optdef(oc_opt, optopt_unneeded_code_copy_limit,         int_special).
-optdef(oc_opt, optopt_type_specialization,              bool_special).
-optdef(oc_opt, optopt_user_guided_type_specialization,  bool_special).
-optdef(oc_opt, optopt_introduce_accumulators,           bool_special).
-optdef(oc_opt, optopt_lcmc_accumulator, bool_special).
-optdef(oc_opt, optopt_lcmc_null, bool_special).
-optdef(oc_opt, optopt_lcmc,   bool_special).
-optdef(oc_opt, optopt_dead_procs,              bool_special).
-optdef(oc_opt, optopt_deforestation,                    bool_special).
-optdef(oc_opt, optopt_deforestation_depth_limit,        int_special).
-optdef(oc_opt, optopt_deforestation_cost_factor,        int_special).
-optdef(oc_opt, optopt_deforestation_vars_threshold,     int_special).
-optdef(oc_opt, optopt_deforestation_size_threshold,     int_special).
-optdef(oc_opt, optopt_untuple,                          bool_special).
-optdef(oc_opt, optopt_tuple,                            bool_special).
-optdef(oc_opt, optopt_tuple_trace_counts_file,          string_special).
-optdef(oc_opt, optopt_tuple_costs_ratio,                int_special).
-optdef(oc_opt, optopt_tuple_min_args,                   int_special).
-optdef(oc_opt, optopt_inline_par_builtins,              bool_special).
-optdef(oc_opt, optopt_always_spec_dep_par_conjs, bool_special).
-optdef(oc_opt, optopt_allow_some_paths_only_waits,      bool_special).
-optdef(oc_opt, optopt_region_analysis,                  bool_special).
+optdef(oc_opt_hh, optopt_inline_tr_sccs,                   bool_special).
+optdef(oc_opt_hh, optopt_inline_tr_sccs_max_extra,         int_special).
+optdef(oc_opt_hh, optopt_from_ground_term_threshold,       int_special).
+optdef(oc_opt_hh, optopt_enable_const_struct_poly,         bool_special).
+optdef(oc_opt_hh, optopt_enable_const_struct_user,         bool_special).
+optdef(oc_opt_hh, optopt_common_struct,                    bool_special).
+optdef(oc_opt_hh, optopt_constraint_propagation,           bool_special).
+optdef(oc_opt_hh, optopt_local_constraint_propagation,     bool_special).
+optdef(oc_opt_hh, optopt_duplicate_calls,                  bool_special).
+optdef(oc_opt_hh, optopt_constant_propagation,             bool_special).
+optdef(oc_opt_hh, optopt_excess_assign,                    bool_special).
+optdef(oc_opt_hh, optopt_merge_code_after_switch,          bool_special).
+optdef(oc_opt_hh, optopt_format_calls,                     bool_special).
+optdef(oc_opt_hh, optopt_split_switch_arms,                bool_special).
+optdef(oc_opt_hh, optopt_loop_invariants,                  bool_special).
+optdef(oc_opt_hh, optopt_saved_vars_const,                 bool_special).
+optdef(oc_opt_hh, optopt_svcell,                           bool_special).
+optdef(oc_opt_hh, optopt_svcell_loop,                      bool_special).
+optdef(oc_opt_hh, optopt_svcell_full_path,                 bool_special).
+optdef(oc_opt_hh, optopt_svcell_on_stack,                  bool_special).
+optdef(oc_opt_hh, optopt_svcell_candidate_headvars,        bool_special).
+optdef(oc_opt_hh, optopt_svcell_cv_store_cost,             int_special).
+optdef(oc_opt_hh, optopt_svcell_cv_load_cost,              int_special).
+optdef(oc_opt_hh, optopt_svcell_fv_store_cost,             int_special).
+optdef(oc_opt_hh, optopt_svcell_fv_load_cost,              int_special).
+optdef(oc_opt_hh, optopt_svcell_op_ratio,                  int_special).
+optdef(oc_opt_hh, optopt_svcell_node_ratio,                int_special).
+optdef(oc_opt_hh, optopt_svcell_all_path_node_ratio,       int_special).
+optdef(oc_opt_hh, optopt_svcell_all_candidates,            bool_special).
+optdef(oc_opt_hh, optimize_saved_vars,                     bool_special).
+optdef(oc_opt_hh, optopt_delay_construct,                  bool_special).
+optdef(oc_opt_hh, optopt_follow_code,                      bool_special).
+optdef(oc_opt_hh, optopt_unused_args,                      bool_special).
+optdef(oc_opt_hh, optopt_intermod_unused_args,             bool_special).
+optdef(oc_opt_hh, optopt_higher_order,                     bool_special).
+optdef(oc_opt_hh, optopt_higher_order_size_limit,          int_special).
+optdef(oc_opt_hh, optopt_higher_order_arg_limit,           int_special).
+optdef(oc_opt_hh, optopt_unneeded_code,                    bool_special).
+optdef(oc_opt_hh, optopt_unneeded_code_copy_limit,         int_special).
+optdef(oc_opt_hh, optopt_type_specialization,              bool_special).
+optdef(oc_opt_hh, optopt_user_guided_type_specialization,  bool_special).
+optdef(oc_opt_hh, optopt_introduce_accumulators,           bool_special).
+optdef(oc_opt_hh, optopt_lcmc_accumulator,                 bool_special).
+optdef(oc_opt_hh, optopt_lcmc_null,                        bool_special).
+optdef(oc_opt_hh, optopt_lcmc,                             bool_special).
+optdef(oc_opt_hh, optopt_dead_procs,                       bool_special).
+optdef(oc_opt_hh, optopt_deforestation,                    bool_special).
+optdef(oc_opt_hh, optopt_deforestation_depth_limit,        int_special).
+optdef(oc_opt_hh, optopt_deforestation_cost_factor,        int_special).
+optdef(oc_opt_hh, optopt_deforestation_vars_threshold,     int_special).
+optdef(oc_opt_hh, optopt_deforestation_size_threshold,     int_special).
+optdef(oc_opt_hh, optopt_untuple,                          bool_special).
+optdef(oc_opt_hh, optopt_tuple,                            bool_special).
+optdef(oc_opt_hh, optopt_tuple_trace_counts_file,          string_special).
+optdef(oc_opt_hh, optopt_tuple_costs_ratio,                int_special).
+optdef(oc_opt_hh, optopt_tuple_min_args,                   int_special).
+optdef(oc_opt_hh, optopt_inline_par_builtins,              bool_special).
+optdef(oc_opt_hh, optopt_always_spec_dep_par_conjs,        bool_special).
+optdef(oc_opt_hh, optopt_allow_some_paths_only_waits,      bool_special).
+optdef(oc_opt_hh, optopt_region_analysis,                  bool_special).
 
     % HLDS -> LLDS
-optdef(oc_opt, optopt_smart_indexing,                   bool_special).
-optdef(oc_opt, optopt_smart_atomic_indexing,            bool_special).
-optdef(oc_opt, optopt_smart_string_indexing,            bool_special).
-optdef(oc_opt, optopt_smart_tag_indexing,               bool_special).
-optdef(oc_opt, optopt_smart_float_indexing,             bool_special).
-optdef(oc_opt, optopt_dense_switch_req_density,         int_special).
+optdef(oc_opt_hlm, optopt_smart_indexing,                  bool_special).
+optdef(oc_opt_hlm, optopt_smart_atomic_indexing,           bool_special).
+optdef(oc_opt_hlm, optopt_smart_string_indexing,           bool_special).
+optdef(oc_opt_hlm, optopt_smart_tag_indexing,              bool_special).
+optdef(oc_opt_hlm, optopt_smart_float_indexing,            bool_special).
+optdef(oc_opt_hlm, optopt_dense_switch_req_density,        int_special).
     % Minimum density before using a dense switch.
-optdef(oc_opt, optopt_lookup_switch_req_density,        int_special).
+optdef(oc_opt_hlm, optopt_lookup_switch_req_density,       int_special).
     % Minimum density before using a lookup switch.
-optdef(oc_opt, optopt_dense_switch_size,                int_special).
-optdef(oc_opt, optopt_lookup_switch_size,               int_special).
-optdef(oc_opt, optopt_string_trie_switch_size,          int_special).
-optdef(oc_opt, optopt_string_hash_switch_size,          int_special).
-optdef(oc_opt, optopt_string_binary_switch_size,        int_special).
-optdef(oc_opt, optopt_tag_switch_size,                  int_special).
-optdef(oc_opt, optopt_try_switch_size,                  int_special).
-optdef(oc_opt, optopt_binary_switch_size,               int_special).
-optdef(oc_opt, optopt_switch_single_rec_base_first,     bool_special).
-optdef(oc_opt, optopt_switch_multi_rec_base_first,      bool_special).
-optdef(oc_opt, optopt_static_ground_cells,              bool_special).
-optdef(oc_opt, optopt_static_ground_floats,             bool_special).
-optdef(oc_opt, optopt_static_ground_int64s,             bool_special).
-optdef(oc_opt, optopt_static_code_addresses,            bool_special).
-optdef(oc_opt, optopt_use_atomic_cells,                 bool_special).
-optdef(oc_opt, optopt_middle_rec,                       bool_special).
-optdef(oc_opt, optopt_simple_neg,                       bool_special).
-optdef(oc_opt, optopt_allow_hijacks,                    bool_special).
+optdef(oc_opt_hlm, optopt_dense_switch_size,               int_special).
+optdef(oc_opt_hlm, optopt_lookup_switch_size,              int_special).
+optdef(oc_opt_hlm, optopt_string_trie_switch_size,         int_special).
+optdef(oc_opt_hlm, optopt_string_hash_switch_size,         int_special).
+optdef(oc_opt_hlm, optopt_string_binary_switch_size,       int_special).
+optdef(oc_opt_hlm, optopt_tag_switch_size,                 int_special).
+optdef(oc_opt_hl, optopt_try_switch_size,                  int_special).
+optdef(oc_opt_hl, optopt_binary_switch_size,               int_special).
+optdef(oc_opt_hlm, optopt_switch_single_rec_base_first,    bool_special).
+optdef(oc_opt_hlm, optopt_switch_multi_rec_base_first,     bool_special).
+optdef(oc_opt_hlm, optopt_static_ground_cells,             bool_special).
+optdef(oc_opt_hl, optopt_static_ground_floats,             bool_special).
+optdef(oc_opt_hl, optopt_static_ground_int64s,             bool_special).
+optdef(oc_opt_hl, optopt_static_code_addresses,            bool_special).
+optdef(oc_opt_hlm, optopt_use_atomic_cells,                bool_special).
+optdef(oc_opt_hl, optopt_middle_rec,                       bool_special).
+optdef(oc_opt_hl, optopt_simple_neg,                       bool_special).
+optdef(oc_opt_hl, optopt_allow_hijacks,                    bool_special).
 
     % MLDS
-optdef(oc_opt, optopt_mlds_tailcalls,          bool_special).
-optdef(oc_opt, optopt_initializations,         bool_special).
-optdef(oc_opt, optopt_eliminate_unused_mlds_assigns,    bool_special).
-optdef(oc_opt, optopt_eliminate_local_vars,             bool_special).
-optdef(oc_opt, optopt_generate_trail_ops_inline,        bool_special).
+optdef(oc_opt_mm, optopt_optimize_mlds,                    bool_special).
+optdef(oc_opt_mm, optopt_peep_mlds,                        bool_special).
+optdef(oc_opt_hm, optopt_mlds_tailcalls,                   bool_special).
+optdef(oc_opt_mm, optopt_initializations,                  bool_special).
+optdef(oc_opt_mm, optopt_eliminate_unused_mlds_assigns,    bool_special).
+optdef(oc_opt_mm, optopt_eliminate_local_vars,             bool_special).
+optdef(oc_opt_hh, optopt_generate_trail_ops_inline,        bool_special).
 
     % LLDS
-optdef(oc_opt, optopt_common_data,                      bool_special).
-optdef(oc_opt, optopt_common_layout_data,               bool_special).
-optdef(oc_opt, optopt_optimize,                         bool_special).
-optdef(oc_opt, optopt_peep,                    bool_special).
-optdef(oc_opt, optopt_peep_mkword,             bool_special).
-optdef(oc_opt, optopt_jumps,                   bool_special).
-optdef(oc_opt, optopt_fulljumps,               bool_special).
-optdef(oc_opt, optopt_pessimize_tailcalls,              bool_special).
-optdef(oc_opt, optopt_checked_nondet_tailcalls,         bool_special).
-optdef(oc_opt, optopt_use_local_vars,                   bool_special).
-optdef(oc_opt, optopt_local_var_access_threshold,       int_special).
-optdef(oc_opt, optopt_standardize_labels,               bool_special).
-optdef(oc_opt, optopt_labels,                  bool_special).
-optdef(oc_opt, optopt_dups,                    bool_special).
-optdef(oc_opt, optopt_proc_dups,               bool_special).
-optdef(oc_opt, optopt_frames,                  bool_special).
-optdef(oc_opt, optopt_delay_slot,              bool_special).
-optdef(oc_opt, optopt_reassign,                bool_special).
-optdef(oc_opt, optopt_repeat_opts,                  int_special).
-optdef(oc_opt, optopt_layout_compression_limit,         int_special).
+optdef(oc_opt_ll, optopt_common_data,                      bool_special).
+optdef(oc_opt_ll, optopt_common_layout_data,               bool_special).
+optdef(oc_opt_ll, optopt_optimize_llds,                    bool_special).
+optdef(oc_opt_ll, optopt_peep_llds,                        bool_special).
+optdef(oc_opt_ll, optopt_peep_llds_mkword,                 bool_special).
+optdef(oc_opt_ll, optopt_jumps,                            bool_special).
+optdef(oc_opt_ll, optopt_fulljumps,                        bool_special).
+optdef(oc_opt_ll, optopt_pessimize_tailcalls,              bool_special).
+optdef(oc_opt_ll, optopt_checked_nondet_tailcalls,         bool_special).
+optdef(oc_opt_ll, optopt_use_local_vars,                   bool_special).
+optdef(oc_opt_ll, optopt_local_var_access_threshold,       int_special).
+optdef(oc_opt_ll, optopt_standardize_labels,               bool_special).
+optdef(oc_opt_ll, optopt_labels,                           bool_special).
+optdef(oc_opt_ll, optopt_dups,                             bool_special).
+optdef(oc_opt_ll, optopt_proc_dups,                        bool_special).
+optdef(oc_opt_ll, optopt_frames,                           bool_special).
+optdef(oc_opt_ll, optopt_delay_slot,                       bool_special).
+optdef(oc_opt_ll, optopt_reassign,                         bool_special).
+optdef(oc_opt_ll, optopt_repeat_opts,                      int_special).
+optdef(oc_opt_ll, optopt_layout_compression_limit,         int_special).
 
     % LLDS -> C
-optdef(oc_opt, optopt_use_macro_for_redo_fail,          bool_special).
-optdef(oc_opt, optopt_emit_c_loops,                     bool_special).
-optdef(oc_opt, optopt_procs_per_c_function,             int_special).
-optdef(oc_opt, optopt_everything_in_one_c_function,     bool_special).
-optdef(oc_opt, optopt_local_thread_engine_base,         bool_special).
-optdef(oc_opt, optopt_inline_alloc,                     bool_special).
-optdef(oc_opt, optopt_c_optimize,                       bool_special).
+optdef(oc_opt_lc, optopt_use_macro_for_redo_fail,          bool_special).
+optdef(oc_opt_lc, optopt_emit_c_loops,                     bool_special).
+optdef(oc_opt_lc, optopt_procs_per_c_function,             int_special).
+optdef(oc_opt_lc, optopt_everything_in_one_c_function,     bool_special).
+optdef(oc_opt_lc, optopt_local_thread_engine_base,         bool_special).
+% optopt_inline_alloc works by giving a flag to the C compiler, but
+% from the user's point of view, it is about giving different code
+% to the C compiler.
+optdef(oc_opt_lc, optopt_inline_alloc,               bool_special).
+
+optdef(oc_target_c, optopt_c_optimize,               bool_special).
 
 %---------------------------------------------------------------------------%
 
@@ -5453,9 +5459,9 @@ long_table("allow-hijacks",        optopt_allow_hijacks).
 % MLDS optimizations
 % Option `optimize' is used for both MLDS and LLDS optimizations, but since
 % you can't use both at the same time it doesn't really matter.
-long_table("mlds-optimize",        optopt_optimize).
-long_table("mlds-optimise",        optopt_optimize).
-long_table("mlds-peephole",        optopt_peep).
+long_table("mlds-optimize",        optopt_optimize_mlds).
+long_table("mlds-optimise",        optopt_optimize_mlds).
+long_table("mlds-peephole",        optopt_peep_mlds).
 long_table("optimize-tailcalls",   optopt_mlds_tailcalls).
 long_table("optimise-tailcalls",   optopt_mlds_tailcalls).
 long_table("optimize-initializations", optopt_initializations).
@@ -5468,12 +5474,12 @@ long_table("generate-trail-ops-inline", optopt_generate_trail_ops_inline).
 % LLDS optimizations
 long_table("common-data",          optopt_common_data).
 long_table("common-layout-data",   optopt_common_layout_data).
-long_table("llds-optimize",        optopt_optimize).
-long_table("llds-optimise",        optopt_optimize).
-long_table("optimize-peep",        optopt_peep).
-long_table("optimise-peep",        optopt_peep).
-long_table("optimize-peep-mkword", optopt_peep_mkword).
-long_table("optimise-peep-mkword", optopt_peep_mkword).
+long_table("llds-optimize",        optopt_optimize_llds).
+long_table("llds-optimise",        optopt_optimize_llds).
+long_table("optimize-peep",        optopt_peep_llds).
+long_table("optimise-peep",        optopt_peep_llds).
+long_table("optimize-peep-mkword", optopt_peep_llds_mkword).
+long_table("optimise-peep-mkword", optopt_peep_llds_mkword).
 long_table("optimize-jumps",       optopt_jumps).
 long_table("optimise-jumps",       optopt_jumps).
 long_table("optimize-fulljumps",   optopt_fulljumps).
@@ -6529,17 +6535,25 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_use_common_layout_data(Bool)
         ;
-            Option = optopt_optimize,
+            Option = optopt_optimize_llds,
             SpecialData = bool(Bool),
-            OptOption = oo_optimize(Bool)
+            OptOption = oo_optimize_llds(Bool)
         ;
-            Option = optopt_peep,
+            Option = optopt_optimize_mlds,
             SpecialData = bool(Bool),
-            OptOption = oo_opt_peep(Bool)
+            OptOption = oo_optimize_mlds(Bool)
         ;
-            Option = optopt_peep_mkword,
+            Option = optopt_peep_llds,
             SpecialData = bool(Bool),
-            OptOption = oo_opt_peep_mkword(Bool)
+            OptOption = oo_peep_llds(Bool)
+        ;
+            Option = optopt_peep_llds_mkword,
+            SpecialData = bool(Bool),
+            OptOption = oo_peep_llds_mkword(Bool)
+        ;
+            Option = optopt_peep_mlds,
+            SpecialData = bool(Bool),
+            OptOption = oo_peep_mlds(Bool)
         ;
             Option = optopt_jumps,
             SpecialData = bool(Bool),

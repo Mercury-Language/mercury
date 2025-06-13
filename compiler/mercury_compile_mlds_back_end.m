@@ -150,9 +150,9 @@ mlds_backend(ProgressStream, !.HLDS, !:MLDS, !Specs, !DumpInfo, !IO) :-
     % However, we need to disable optimize_initializations, because
     % ml_elim_nested doesn't correctly handle code containing initializations.
     globals.get_opt_tuple(Globals, OptTuple),
-    Optimize = OptTuple ^ ot_optimize,
+    Optimize = OptTuple ^ ot_optimize_mlds,
     (
-        Optimize = optimize,
+        Optimize = optimize_mlds,
         NoInitOptTuple = OptTuple ^ ot_opt_initializations
             := do_not_opt_initializations,
         globals.set_opt_tuple(NoInitOptTuple, Globals, NoInitOptGlobals),
@@ -161,7 +161,7 @@ mlds_backend(ProgressStream, !.HLDS, !:MLDS, !Specs, !DumpInfo, !IO) :-
         mlds_optimize(NoInitOptGlobals, !MLDS),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
     ;
-        Optimize = do_not_optimize
+        Optimize = do_not_optimize_mlds
     ),
     maybe_report_stats(ProgressStream, Stats, !IO),
     maybe_dump_mlds(ProgressStream, Globals, !.MLDS, 25, "optimize1", !IO),
@@ -202,13 +202,13 @@ mlds_backend(ProgressStream, !.HLDS, !:MLDS, !Specs, !DumpInfo, !IO) :-
     % optimize_initializations. (It may also help pick up some additional
     % optimization opportunities for the other optimizations in this pass.)
     (
-        Optimize = optimize,
+        Optimize = optimize_mlds,
         maybe_write_string(ProgressStream, Verbose,
             "% Optimizing MLDS again...\n", !IO),
         mlds_optimize(Globals, !MLDS),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
     ;
-        Optimize = do_not_optimize
+        Optimize = do_not_optimize_mlds
     ),
     maybe_report_stats(ProgressStream, Stats, !IO),
     maybe_dump_mlds(ProgressStream, Globals, !.MLDS, 40, "optimize2", !IO),

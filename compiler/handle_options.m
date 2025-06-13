@@ -317,7 +317,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     OT_OptMiddleRec0 =              OptTuple0 ^ ot_opt_middle_rec,
     OT_AllowHijacks0 =              OptTuple0 ^ ot_allow_hijacks,
     OT_OptMLDSTailCalls0 =          OptTuple0 ^ ot_opt_mlds_tailcalls,
-    OT_Optimize0 =                  OptTuple0 ^ ot_optimize,
+    OT_OptimizeMlds0 =              OptTuple0 ^ ot_optimize_mlds,
     OT_StdLabels0 =                 OptTuple0 ^ ot_standardize_labels,
     OT_OptDups0 =                   OptTuple0 ^ ot_opt_dups,
     OT_OptFrames0 =                 OptTuple0 ^ ot_opt_frames,
@@ -438,11 +438,11 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     handle_colors(!Globals),
 
     (
-        OT_Optimize0 = do_not_optimize,
+        OT_OptimizeMlds0 = do_not_optimize_mlds,
         % --no-mlds-optimize implies --no-optimize-tailcalls.
         OT_OptMLDSTailCalls = do_not_opt_mlds_tailcalls
     ;
-        OT_Optimize0 = optimize,
+        OT_OptimizeMlds0 = optimize_mlds,
         OT_OptMLDSTailCalls = OT_OptMLDSTailCalls0
     ),
     handle_non_tail_rec_warnings(!.Globals, OptTuple0, OT_OptMLDSTailCalls,

@@ -429,7 +429,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
     ),
     Peephole = Info ^ lopt_opt_peep,
     (
-        Peephole = opt_peep,
+        Peephole = peep_llds,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
@@ -446,7 +446,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "peep", "after peephole", ProcLabel, !OptDebugInfo)
     ;
-        Peephole = do_not_opt_peep,
+        Peephole = do_not_peep_llds,
         Mod2 = no
     ),
     OptLabels = Info ^ lopt_opt_labels,
@@ -819,8 +819,8 @@ escape_dir_char(Char, !Str) :-
                 lopt_opt_jumps                  :: maybe_opt_jumps,
                 lopt_opt_fulljumps              :: maybe_opt_fulljumps,
                 lopt_opt_labels                 :: maybe_opt_labels,
-                lopt_opt_peep                   :: maybe_opt_peep,
-                lopt_opt_peep_mkword            :: maybe_opt_peep_mkword,
+                lopt_opt_peep                   :: maybe_peep_llds,
+                lopt_opt_peep_mkword            :: maybe_peep_llds_mkword,
                 lopt_opt_reassign               :: maybe_opt_reassign,
                 lopt_pes_tailcalls              :: maybe_pessimize_tailcalls,
                 lopt_std_labels                 :: maybe_standardize_labels,
@@ -860,8 +860,8 @@ init_llds_opt_info(ProgressStream, Globals, ModuleName) = Info :-
     OptJumps = OptTuple ^ ot_opt_jumps,
     OptFullJumps = OptTuple ^ ot_opt_fulljumps,
     OptLabels = OptTuple ^ ot_opt_labels,
-    OptPeep = OptTuple ^ ot_opt_peep,
-    OptPeepMkword = OptTuple ^ ot_opt_peep_mkword,
+    OptPeep = OptTuple ^ ot_peep_llds,
+    OptPeepMkword = OptTuple ^ ot_peep_llds_mkword,
     OptReassign = OptTuple ^ ot_opt_reassign,
     PessimizeTailCalls = OptTuple ^ ot_pessimize_tailcalls,
     StdLabels = OptTuple ^ ot_standardize_labels,

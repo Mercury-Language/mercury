@@ -464,14 +464,14 @@ llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
     ),
     generate_proc_code(ProgressStream, !.HLDS, ConstStructMap,
         PredId, PredInfo, ProcId, !.ProcInfo, CProc0, !GlobalData),
-    Optimize = OptTuple ^ ot_optimize,
+    Optimize = OptTuple ^ ot_optimize_llds,
     (
-        Optimize = optimize,
+        Optimize = optimize_llds,
         module_info_get_name(!.HLDS, ModuleName),
         optimize_proc(ProgressStream, Globals, ModuleName, !.GlobalData,
             CProc0, CProc)
     ;
-        Optimize = do_not_optimize,
+        Optimize = do_not_optimize_llds,
         CProc = CProc0
     ),
     trace [io(!IO)] (
@@ -638,9 +638,9 @@ maybe_optimize_llds(ProgressStream, HLDS, GlobalData, Verbose, Stats,
         !LLDS, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
-    Optimize = OptTuple ^ ot_optimize,
+    Optimize = OptTuple ^ ot_optimize_llds,
     (
-        Optimize = optimize,
+        Optimize = optimize_llds,
         maybe_write_string(ProgressStream, Verbose,
             "% Doing optimizations...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
@@ -649,7 +649,7 @@ maybe_optimize_llds(ProgressStream, HLDS, GlobalData, Verbose, Stats,
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
-        Optimize = do_not_optimize
+        Optimize = do_not_optimize_llds
     ).
 
 :- pred maybe_generate_stack_layouts(io.text_output_stream::in,
