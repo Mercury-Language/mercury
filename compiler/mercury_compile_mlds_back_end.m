@@ -240,7 +240,6 @@ maybe_add_trail_ops(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     ),
     (
         EmitTrailOps = yes,
-        globals.lookup_bool_option(Globals, optimize_trail_usage, OptTrailUse),
         globals.get_target(Globals, Target),
         (
             Target = target_c,
@@ -258,6 +257,7 @@ maybe_add_trail_ops(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(ProgressStream, Verbose,
             "% Adding trailing operations...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
+        globals.lookup_bool_option(Globals, optimize_trail_usage, OptTrailUse),
         process_valid_nonimported_procs(
             update_proc(add_trail_ops(OptTrailUse, GenerateInline)), !HLDS),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),

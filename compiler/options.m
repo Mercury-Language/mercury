@@ -1049,10 +1049,10 @@
     ;       termination2_check
     ;       termination2_check_verbose
     ;       termination2_norm
-    ;       widening_limit
-    ;       arg_size_analysis_only
-    ;       propagate_failure_constrs
-    ;       term2_maximum_matrix_size
+    ;       termination2_widening_limit
+    ;       termination2_arg_size_only
+    ;       termination2_prop_fail_constrs
+    ;       termination2_maximum_matrix_size
 
     ;       analyse_exceptions
     ;       analyse_closures
@@ -1416,6 +1416,8 @@ option_defaults(Opt, Data) :-
             % MLDS->MLDS, LLDS->LLDS, MLDS->target, LLDS->target,
             % maybe indicated by _hh, _hm, _hl etc suffixes,
             % to allow automatic generation of the existing help subsections.
+    ;       oc_opt_hm
+    ;       oc_opt_hl
     ;       oc_spec_opt
             % Optimization options that are not enabled at -O<N> for any N.
             % XXX Rename to oc_sep_opt, with "sep" standing for "separate
@@ -4038,17 +4040,18 @@ optdef(oc_analysis, termination2,                       bool(no)).
 optdef(oc_analysis, termination2_norm,                  string("total")).
 optdef(oc_analysis, termination2_check,                 bool(no)).
 optdef(oc_analysis, termination2_check_verbose,         bool(no)).
-optdef(oc_analysis, widening_limit,                     int(4)).
-optdef(oc_analysis, arg_size_analysis_only,             bool(no)).
-optdef(oc_analysis, propagate_failure_constrs,          bool(yes)).
-optdef(oc_analysis, term2_maximum_matrix_size,          int(70)).
+optdef(oc_analysis, termination2_widening_limit,        int(4)).
+optdef(oc_analysis, termination2_arg_size_only,         bool(no)).
+optdef(oc_analysis, termination2_prop_fail_constrs,     bool(yes)).
+optdef(oc_analysis, termination2_maximum_matrix_size,   int(70)).
     % XXX This matrix size is just a guess.
 optdef(oc_analysis, analyse_exceptions,                 bool(no)).
 optdef(oc_analysis, analyse_closures,                   bool(no)).
 optdef(oc_analysis, analyse_trail_usage,                bool(no)).
-optdef(oc_analysis, optimize_trail_usage,               bool(no)).
-optdef(oc_analysis, optimize_region_ops,                bool(no)).
 optdef(oc_analysis, analyse_mm_tabling,                 bool(no)).
+
+optdef(oc_opt_hm, optimize_trail_usage,               bool(no)).
+optdef(oc_opt_hl, optimize_region_ops,                bool(no)).
 
 %---------------------------------------------------------------------------%
 
@@ -5538,19 +5541,20 @@ long_table("chk-term2",            termination2_check).
 long_table("verbose-check-termination2", termination2_check_verbose).
 long_table("verb-check-term2",     termination2_check_verbose).
 long_table("verb-chk-term2",       termination2_check_verbose).
-long_table("termination2-widening-limit", widening_limit).
-long_table("term2-widening-limit",     widening_limit).
-long_table("arg-size-analysis-only",   arg_size_analysis_only).
+long_table("termination2-widening-limit", termination2_widening_limit).
+long_table("term2-widening-limit",     termination2_widening_limit).
+long_table("arg-size-analysis-only",   termination2_arg_size_only).
 long_table("termination2-propagate-failure-constraints",
-                    propagate_failure_constrs).
+                    termination2_prop_fail_constrs).
 long_table("term2-propagate-failure-constraints",
-                    propagate_failure_constrs).
+                    termination2_prop_fail_constrs).
 long_table("term2-propagate-failure-constrs",
-                    propagate_failure_constrs).
-long_table("termination2-norm", termination2_norm).
-long_table("term2-norm", termination2_norm).
-long_table("termination2-maximum-matrix-size", term2_maximum_matrix_size).
-long_table("term2-max-matrix-size", term2_maximum_matrix_size).
+                    termination2_prop_fail_constrs).
+long_table("termination2-norm",    termination2_norm).
+long_table("term2-norm",           termination2_norm).
+long_table("termination2-maximum-matrix-size",
+                                   termination2_maximum_matrix_size).
+long_table("term2-max-matrix-size", termination2_maximum_matrix_size).
 long_table("analyse-exceptions",   analyse_exceptions).
 long_table("analyse-closures",     analyse_closures).
 long_table("analyse-local-closures",   analyse_closures).

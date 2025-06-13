@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997, 2002-2012 The University of Melbourne.
-% Copyright (C) 2014-2017, 2022, 2024 The Mercury Team.
+% Copyright (C) 2014-2017, 2022, 2024-2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -132,8 +132,9 @@ term2_analyse_module(!ModuleInfo, Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_termination2_norm(Globals, Norm),
     FunctorInfo = set_functor_info(!.ModuleInfo, Norm),
-    globals.lookup_bool_option(Globals, propagate_failure_constrs, Fail),
-    globals.lookup_bool_option(Globals, arg_size_analysis_only, ArgSizeOnly),
+    globals.lookup_bool_option(Globals, termination2_prop_fail_constrs, Fail),
+    globals.lookup_bool_option(Globals, termination2_arg_size_only,
+        ArgSizeOnly),
     BuildOptions = term_build_options_init(FunctorInfo, Fail, ArgSizeOnly),
 
     % Get options required by the fixpoint pass.
@@ -141,8 +142,9 @@ term2_analyse_module(!ModuleInfo, Specs) :-
     %   - what cutoff value we are using
     %   - the maximum allowable matrix size
     %     (this is also used in pass 2).
-    globals.lookup_int_option(Globals, term2_maximum_matrix_size, MaxSize),
-    globals.lookup_int_option(Globals, widening_limit, CutOff),
+    globals.lookup_int_option(Globals, termination2_maximum_matrix_size,
+        MaxSize),
+    globals.lookup_int_option(Globals, termination2_widening_limit, CutOff),
 
     % NOTE: We may eventually allow other types of widening.
     Widening = after_fixed_cutoff(CutOff),
@@ -250,7 +252,8 @@ term2_analyse_scc(BuildOpts, FixpointOpts, Pass2Opts, SCCEntryPoints,
         MaybeEarlyPass2Result = yes(can_loop(Pass1Errors))
     ),
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, arg_size_analysis_only, ArgSizeOnly),
+    globals.lookup_bool_option(Globals, termination2_arg_size_only,
+        ArgSizeOnly),
     (
         ArgSizeOnly = no,
         set.filter(isnt(has_term_info(!.ModuleInfo)), NeedsAR, NeedsTerm),
