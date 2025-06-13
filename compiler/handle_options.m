@@ -423,8 +423,14 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     handle_chosen_stdlib_dir(MaybeEnvOptFileMerStdLibDir, !Globals, !Specs),
     handle_libgrades(ProgressStream, !Globals, !Specs, !IO),
     handle_subdir_setting(OpMode, !Globals),
-    % XXX handle_directory_options USES mercury_linkage, BUT
-    % handle_target_compile_link_symlink_options can then CHANGE it.
+    % Set up options for position independent code.
+    % Shared libraries always use `--linkage shared'.
+    % These implications used to be handle_target_compile_link_symlink_options,
+    % but handle_directory_options uses the value of mercury_linkage.
+    option_implies(shared_lib_not_executable, linkage,
+        string("shared"), !Globals),
+    option_implies(shared_lib_not_executable, mercury_linkage,
+        string("shared"), !Globals),
     handle_directory_options(OpMode, !Globals),
     handle_target_compile_link_symlink_options(!Globals),
     handle_compiler_developer_options(!Globals, !IO),
@@ -2762,8 +2768,6 @@ make_proposed_search_path_ngs(SubdirSetting, ExtSubDir,
 %---------------------%
 
     % Options updated:
-    %   linkage
-    %   mercury_linkage
     %   lib_linkages
     %   strip
     %   use_symlinks
@@ -2772,13 +2776,6 @@ make_proposed_search_path_ngs(SubdirSetting, ExtSubDir,
     is det.
 
 handle_target_compile_link_symlink_options(!Globals) :-
-    % Set up options for position independent code.
-    % Shared libraries always use `--linkage shared'.
-    option_implies(shared_lib_not_executable, linkage,
-        string("shared"), !Globals),
-    option_implies(shared_lib_not_executable, mercury_linkage,
-        string("shared"), !Globals),
-
     % If no --lib-linkage option has been specified, default to the
     % set of all possible linkages.
     globals.lookup_accumulating_option(!.Globals, lib_linkages, LibLinkages0),
