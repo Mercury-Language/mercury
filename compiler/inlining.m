@@ -201,8 +201,7 @@
                 ip_progress_stream              :: io.text_output_stream,
                 ip_simple                       :: maybe_inline_simple,
                 ip_single_use                   :: maybe_inline_single_use,
-                ip_linear_tail_rec              ::
-                                            maybe_inline_linear_tail_rec_sccs,
+                ip_linear_tail_rec              :: maybe_inline_tr_sccs,
 
                 ip_highlevel_code               :: bool,
 
@@ -312,9 +311,8 @@ inline_in_module(ProgressStream, !ModuleInfo) :-
     globals.get_opt_tuple(Globals, OptTuple),
     Simple = OptTuple ^ ot_inline_simple,
     SingleUse = OptTuple ^ ot_inline_single_use,
-    LinearTailRec = OptTuple ^ ot_inline_linear_tail_rec_sccs,
-    LinearTailRecMaxExtra =
-        OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra,
+    LinearTailRec = OptTuple ^ ot_inline_tr_sccs,
+    LinearTailRecMaxExtra = OptTuple ^ ot_inline_tr_sccs_max_extra,
     CallCost = OptTuple ^ ot_inline_call_cost,
     CompoundThreshold = OptTuple ^ ot_inline_compound_threshold,
     SimpleThreshold = OptTuple ^ ot_inline_simple_threshold,
@@ -343,10 +341,10 @@ inline_in_module(ProgressStream, !ModuleInfo) :-
     % calls where the callee is in the *same* SCC as the caller.
 
     (
-        LinearTailRec = do_not_inline_linear_tail_rec_sccs,
+        LinearTailRec = do_not_inline_tr_sccs,
         module_info_ensure_dependency_info(!ModuleInfo, DepInfo)
     ;
-        LinearTailRec = inline_linear_tail_rec_sccs,
+        LinearTailRec = inline_tr_sccs,
         % For this, we need *accurate* information about SCCs.
         % I (zs) am not 100% certain that every pass before this one
         % that invalidates any existing dependency info also clobbers
@@ -399,11 +397,11 @@ inline_in_scc(ProgressStream, Params, SCCEntryPoints,
         SCCProcs = [_, _ | _],
         LinearTailRec = Params ^ ip_linear_tail_rec,
         (
-            LinearTailRec = do_not_inline_linear_tail_rec_sccs,
+            LinearTailRec = do_not_inline_tr_sccs,
             inline_in_simple_non_singleton_scc(ProgressStream, Params,
                 SCCProcs, !ShouldInlineProcs, !ModuleInfo)
         ;
-            LinearTailRec = inline_linear_tail_rec_sccs,
+            LinearTailRec = inline_tr_sccs,
             inline_in_maybe_linear_tail_rec_scc(ProgressStream, Params,
                 SCCEntryPoints, SCCProcs, !ShouldInlineProcs, !ModuleInfo)
         )

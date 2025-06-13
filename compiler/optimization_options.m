@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2020 The Mercury team.
+% Copyright (C) 2020,2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -39,9 +39,9 @@
 :- type maybe_inline_single_use
     --->    inline_single_use
     ;       do_not_inline_single_use.
-:- type maybe_inline_linear_tail_rec_sccs
-    --->    inline_linear_tail_rec_sccs
-    ;       do_not_inline_linear_tail_rec_sccs.
+:- type maybe_inline_tr_sccs
+    --->    inline_tr_sccs
+    ;       do_not_inline_tr_sccs.
 :- type maybe_enable_const_struct_poly
     --->    enable_const_struct_poly
     ;       do_not_enable_const_struct_poly.
@@ -296,7 +296,7 @@
     ;       oo_inline_simple(bool)
     ;       oo_inline_builtins(bool)
     ;       oo_inline_single_use(bool)
-    ;       oo_inline_linear_tail_rec_sccs(bool)
+    ;       oo_inline_tr_sccs(bool)
     ;       oo_enable_const_struct_poly(bool)
     ;       oo_enable_const_struct_user(bool)
     ;       oo_opt_common_structs(bool)
@@ -384,7 +384,7 @@
     ;       oo_inline_simple_threshold(int)
     ;       oo_inline_vars_threshold(int)
     ;       oo_intermod_inline_simple_threshold(int)
-    ;       oo_inline_linear_tail_rec_sccs_max_extra(int)
+    ;       oo_inline_tr_sccs_max_extra(int)
     ;       oo_from_ground_term_threshold(int)
     ;       oo_opt_svcell_cv_store_cost(int)
     ;       oo_opt_svcell_cv_load_cost(int)
@@ -428,7 +428,7 @@
                 ot_inline_simple              :: maybe_inline_simple,
                 ot_inline_builtins            :: maybe_inline_builtins,
                 ot_inline_single_use          :: maybe_inline_single_use,
-                ot_inline_linear_tail_rec_sccs :: maybe_inline_linear_tail_rec_sccs,
+                ot_inline_tr_sccs             :: maybe_inline_tr_sccs,
                 ot_enable_const_struct_poly   :: maybe_enable_const_struct_poly,
                 ot_enable_const_struct_user   :: maybe_enable_const_struct_user,
                 ot_opt_common_structs         :: maybe_opt_common_structs,
@@ -516,7 +516,7 @@
                 ot_inline_simple_threshold    :: int,
                 ot_inline_vars_threshold      :: int,
                 ot_intermod_inline_simple_threshold :: int,
-                ot_inline_linear_tail_rec_sccs_max_extra :: int,
+                ot_inline_tr_sccs_max_extra   :: int,
                 ot_from_ground_term_threshold :: int,
                 ot_opt_svcell_cv_store_cost   :: int,
                 ot_opt_svcell_cv_load_cost    :: int,
@@ -588,7 +588,7 @@ init_opt_tuple = opt_tuple(
         do_not_inline_simple,
         inline_builtins,
         do_not_inline_single_use,
-        do_not_inline_linear_tail_rec_sccs,
+        do_not_inline_tr_sccs,
         enable_const_struct_poly,
         enable_const_struct_user,
         do_not_opt_common_structs,
@@ -741,8 +741,8 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
         OptOption = oo_inline_single_use(Bool),
         update_opt_tuple_bool_inline_single_use(Bool, !OptTuple)
     ;
-        OptOption = oo_inline_linear_tail_rec_sccs(Bool),
-        update_opt_tuple_bool_inline_linear_tail_rec_sccs(Bool, !OptTuple)
+        OptOption = oo_inline_tr_sccs(Bool),
+        update_opt_tuple_bool_inline_tr_sccs(Bool, !OptTuple)
     ;
         OptOption = oo_enable_const_struct_poly(Bool),
         update_opt_tuple_bool_enable_const_struct_poly(Bool, !OptTuple)
@@ -1005,8 +1005,8 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
         OptOption = oo_intermod_inline_simple_threshold(N),
         update_opt_tuple_int_intermod_inline_simple_threshold(FromOptLevel, N, !OptTuple)
     ;
-        OptOption = oo_inline_linear_tail_rec_sccs_max_extra(N),
-        update_opt_tuple_int_inline_linear_tail_rec_sccs_max_extra(FromOptLevel, N, !OptTuple)
+        OptOption = oo_inline_tr_sccs_max_extra(N),
+        update_opt_tuple_int_inline_tr_sccs_max_extra(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_from_ground_term_threshold(N),
         update_opt_tuple_int_from_ground_term_threshold(FromOptLevel, N, !OptTuple)
@@ -1204,26 +1204,26 @@ update_opt_tuple_bool_inline_single_use(Bool, !OptTuple) :-
         )
     ).
 
-:- pred update_opt_tuple_bool_inline_linear_tail_rec_sccs(bool::in,
+:- pred update_opt_tuple_bool_inline_tr_sccs(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_inline_linear_tail_rec_sccs(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_inline_linear_tail_rec_sccs,
+update_opt_tuple_bool_inline_tr_sccs(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_inline_tr_sccs,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_inline_linear_tail_rec_sccs,
-            !OptTuple ^ ot_inline_linear_tail_rec_sccs := inline_linear_tail_rec_sccs
+            OldValue = do_not_inline_tr_sccs,
+            !OptTuple ^ ot_inline_tr_sccs := inline_tr_sccs
         ;
-            OldValue = inline_linear_tail_rec_sccs
+            OldValue = inline_tr_sccs
         )
     else
         (
-            OldValue = do_not_inline_linear_tail_rec_sccs
+            OldValue = do_not_inline_tr_sccs
         ;
-            OldValue = inline_linear_tail_rec_sccs,
-            !OptTuple ^ ot_inline_linear_tail_rec_sccs := do_not_inline_linear_tail_rec_sccs
+            OldValue = inline_tr_sccs,
+            !OptTuple ^ ot_inline_tr_sccs := do_not_inline_tr_sccs
         )
     ).
 
@@ -3184,18 +3184,18 @@ update_opt_tuple_int_intermod_inline_simple_threshold(FromOptLevel, N, !OptTuple
         !OptTuple ^ ot_intermod_inline_simple_threshold := int.max(OldN, N)
     ).
 
-:- pred update_opt_tuple_int_inline_linear_tail_rec_sccs_max_extra(
+:- pred update_opt_tuple_int_inline_tr_sccs_max_extra(
     maybe_from_opt_level::in, int::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_int_inline_linear_tail_rec_sccs_max_extra(FromOptLevel, N, !OptTuple) :-
+update_opt_tuple_int_inline_tr_sccs_max_extra(FromOptLevel, N, !OptTuple) :-
     (
         FromOptLevel = not_from_opt_level,
-        !OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra := N
+        !OptTuple ^ ot_inline_tr_sccs_max_extra := N
     ;
         FromOptLevel = from_opt_level,
-        OldN = !.OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra,
-        !OptTuple ^ ot_inline_linear_tail_rec_sccs_max_extra := int.max(OldN, N)
+        OldN = !.OptTuple ^ ot_inline_tr_sccs_max_extra,
+        !OptTuple ^ ot_inline_tr_sccs_max_extra := int.max(OldN, N)
     ).
 
 :- pred update_opt_tuple_int_from_ground_term_threshold(
