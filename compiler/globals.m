@@ -99,6 +99,7 @@
 %---------------------%
 
     % We support these two word sizes.
+    %
 :- type word_size
     --->    word_size_32
     ;       word_size_64.
@@ -179,10 +180,15 @@
     ;       csharp_mono
     ;       csharp_unknown.
 
+:- type static_or_shared
+    --->    sos_static
+    ;       sos_shared.
+
 %---------------------%
 
     % Which subdirectories should we put new files in, and which subdirectories
     % should we assume existing files are in?
+    %
 :- type subdir_setting
     --->    use_cur_dir
             % All files are always in the current directory.
@@ -353,6 +359,8 @@
     is semidet.
 :- pred convert_csharp_compiler_type(string::in, csharp_compiler_type::out)
     is semidet.
+:- pred convert_static_or_shared(string::in, static_or_shared::out)
+    is semidet.
 :- pred convert_reuse_strategy(string::in, int::in, reuse_strategy::out)
     is semidet.
 :- pred convert_env_type(string::in, env_type::out) is semidet.
@@ -395,6 +403,7 @@
     trace_suppress_items::in, reuse_strategy::in,
     limit_error_contexts_map::in, linked_target_ext_info_map::in,
     c_compiler_type::in, csharp_compiler_type::in,
+    static_or_shared::in, static_or_shared::in, set(static_or_shared)::in,
     maybe_stdlib_grades::in, compilation_target::in, subdir_setting::in,
     word_size::in, gc_method::in, termination_norm::in, termination_norm::in,
     trace_level::in, ssdb_trace_level::in, may_be_thread_safe::in,
@@ -420,6 +429,9 @@
 :- pred get_c_compiler_type(globals::in, c_compiler_type::out) is det.
 :- pred get_csharp_compiler_type(globals::in, csharp_compiler_type::out)
     is det.
+:- pred get_linkage(globals::in, static_or_shared::out) is det.
+:- pred get_mercury_linkage(globals::in, static_or_shared::out) is det.
+:- pred get_lib_linkages(globals::in, set(static_or_shared)::out) is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
 :- pred get_subdir_setting(globals::in, subdir_setting::out) is det.
 :- pred get_word_size(globals::in, word_size::out) is det.
@@ -786,6 +798,9 @@ convert_csharp_compiler_type("microsoft", csharp_microsoft).
 convert_csharp_compiler_type("mono", csharp_mono).
 convert_csharp_compiler_type("unknown", csharp_unknown).
 
+convert_static_or_shared("static", sos_static).
+convert_static_or_shared("shared", sos_shared).
+
 convert_reuse_strategy("same_cons_id", _, same_cons_id).
 convert_reuse_strategy("within_n_cells_difference", NCells,
     within_n_cells_difference(NCells)).
@@ -905,6 +920,11 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
                 % The sub-word-sized arguments, clustered together
                 % to allow them to be packed together.
                 g_csharp_compiler_type      :: csharp_compiler_type,
+                % g_linkage holds the value of the --linkage option, while
+                % g_mercury_linkage does the same for --mercury-linkage.
+                g_linkage                   :: static_or_shared,
+                g_mercury_linkage           :: static_or_shared,
+                g_lib_linkages              :: set(static_or_shared),
                 g_target                    :: compilation_target,
                 g_subdir_setting            :: subdir_setting,
                 g_word_size                 :: word_size,
@@ -923,8 +943,10 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
 globals_init(DefaultOptions, Options, OptTuple, OpMode,
         MaybeFeedback, FileInstallCmd, TraceSuppress, ReuseStrategy,
         LimitErrorContextsMap, LinkedTargetExtInfoMap,
-        C_CompilerType, CSharp_CompilerType, MaybeStdLibGradeSet, Target,
-        SubdirSetting, WordSize, GC_Method, TerminationNorm, Termination2Norm,
+        C_CompilerType, CSharp_CompilerType,
+        Linkage, MercuryLinkage, LibLinkages,
+        MaybeStdLibGradeSet, Target, SubdirSetting, WordSize, GC_Method,
+        TerminationNorm, Termination2Norm,
         TraceLevel, SSTraceLevel, MaybeThreadSafe,
         HostEnvType, SystemEnvType, TargetEnvType, InstallMethod, Globals) :-
     ExtDirsMaps0 = ext_dirs_maps(map.init, map.init, map.init,
@@ -933,8 +955,10 @@ globals_init(DefaultOptions, Options, OptTuple, OpMode,
          LimitErrorContextsMap, LinkedTargetExtInfoMap, "", C_CompilerType),
     Globals0 = globals(DefaultOptions, Options, OptTuple, OpMode,
         MaybeFeedback, FileInstallCmd, ExtDirsMaps0, MaybeStdLibGradeSet,
-        ReadOnlyGlobals0, CSharp_CompilerType, Target, SubdirSetting,
-        WordSize, GC_Method, TerminationNorm, Termination2Norm,
+        ReadOnlyGlobals0, CSharp_CompilerType,
+        Linkage, MercuryLinkage, LibLinkages,
+        Target, SubdirSetting, WordSize, GC_Method,
+        TerminationNorm, Termination2Norm,
         TraceLevel, SSTraceLevel, MaybeThreadSafe,
         HostEnvType, SystemEnvType, TargetEnvType, InstallMethod),
     compute_grade(Globals0, GradeDir),
@@ -974,6 +998,12 @@ get_c_compiler_type(Globals, X) :-
     X = Globals ^ g_read_only ^ rog_c_compiler_type.
 get_csharp_compiler_type(Globals, X) :-
     X = Globals ^ g_csharp_compiler_type.
+get_linkage(Globals, X) :-
+    X = Globals ^ g_linkage.
+get_mercury_linkage(Globals, X) :-
+    X = Globals ^ g_mercury_linkage.
+get_lib_linkages(Globals, X) :-
+    X = Globals ^ g_lib_linkages.
 get_target(Globals, X) :-
     X = Globals ^ g_target.
 get_subdir_setting(Globals, X) :-

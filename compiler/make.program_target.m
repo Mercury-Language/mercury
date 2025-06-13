@@ -120,14 +120,14 @@ make_linked_target(ProgressStream, Globals, LinkedTargetFile,
         ),
         ExtraOptions = []
     ),
-    globals.lookup_accumulating_option(Globals, lib_linkages, LibLinkages),
+    globals.get_lib_linkages(Globals, LibLinkages),
     ( if
         (
             LinkedTargetType = static_library,
-            not list.member("static", LibLinkages)
+            not set.member(sos_static, LibLinkages)
         ;
             LinkedTargetType = shared_library,
-            not list.member("shared", LibLinkages)
+            not set.member(sos_shared, LibLinkages)
         )
     then
         % XXX What is the justification for this?

@@ -798,13 +798,13 @@ legacy_install_library_grade_specific_files_for_grade(ProgressStream,
                 "lib", ExtSo, MainModuleName,
                 SharedLibFileName, _SharedLibFileNameProposed, !IO),
             legacy_maybe_install_static_or_dynamic_archive(ProgressStream,
-                Globals, "static", StaticLibFileName, GradeLibDir,
+                Globals, sos_static, StaticLibFileName, GradeLibDir,
                 !Succeeded, !IO),
             ( if StaticLibFileName = SharedLibFileName then
                 true
             else
                 legacy_maybe_install_static_or_dynamic_archive(ProgressStream,
-                    Globals, "shared", SharedLibFileName, GradeLibDir,
+                    Globals, sos_shared, SharedLibFileName, GradeLibDir,
                     !Succeeded, !IO)
             ),
             legacy_install_grade_init(ProgressStream, Globals, GradeDir,
@@ -1092,7 +1092,7 @@ proposed_install_library_grade_specific_files_for_grade_c(ProgressStream,
     ;
         MakeStaticInstallDirSucceeded = succeeded,
         proposed_maybe_install_static_or_dynamic_archive(ProgressStream,
-            Globals, "static", StaticInstallDir, StaticLibFileName,
+            Globals, sos_static, StaticInstallDir, StaticLibFileName,
             !Succeeded, !IO),
         ( if StaticLibFileName = SharedLibFileName then
             true
@@ -1108,7 +1108,7 @@ proposed_install_library_grade_specific_files_for_grade_c(ProgressStream,
             ;
                 MakeSharedInstallDirSucceeded = succeeded,
                 proposed_maybe_install_static_or_dynamic_archive(
-                    ProgressStream, Globals, "shared",
+                    ProgressStream, Globals, sos_shared,
                     SharedInstallDir, SharedLibFileName, !Succeeded, !IO)
             )
         )
@@ -1266,14 +1266,14 @@ legacy_install_subdir_file(ProgressStream, Globals, LibDirMap, InstallDir,
 %---------------------%
 
 :- pred legacy_maybe_install_static_or_dynamic_archive(
-    io.text_output_stream::in, globals::in, string::in,
+    io.text_output_stream::in, globals::in, static_or_shared::in,
     file_name::in, dir_name::in, maybe_succeeded::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
 legacy_maybe_install_static_or_dynamic_archive(ProgressStream, Globals,
         Linkage, FileName, InstallDir, !Succeeded, !IO) :-
-    globals.lookup_accumulating_option(Globals, lib_linkages, LibLinkages),
-    ( if list.member(Linkage, LibLinkages) then
+    globals.get_lib_linkages(Globals, LibLinkages),
+    ( if set.member(Linkage, LibLinkages) then
         install_file(ProgressStream, Globals, FileName, InstallDir,
             succeeded, InstallSucceeded0, !IO),
 
@@ -1281,7 +1281,7 @@ legacy_maybe_install_static_or_dynamic_archive(ProgressStream, Globals,
         % installation directory, because the linkers on some OSs complain
         % if we don't.
         ( if
-            Linkage = "static",
+            Linkage = sos_static,
             InstallSucceeded0 = succeeded
         then
             BaseFileName = dir.det_basename(FileName),
@@ -1438,21 +1438,21 @@ gather_module_dep_infos_loop(ProgressStream, Globals,
 %---------------------%
 
 :- pred proposed_maybe_install_static_or_dynamic_archive(
-    io.text_output_stream::in, globals::in, string::in,
+    io.text_output_stream::in, globals::in, static_or_shared::in,
     dir_name::in, file_name::in, maybe_succeeded::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
 proposed_maybe_install_static_or_dynamic_archive(ProgressStream, Globals,
         Linkage, InstallDir, FileName, !Succeeded, !IO) :-
-    globals.lookup_accumulating_option(Globals, lib_linkages, LibLinkages),
-    ( if list.member(Linkage, LibLinkages) then
+    globals.get_lib_linkages(Globals, LibLinkages),
+    ( if set.member(Linkage, LibLinkages) then
         install_file_to(ProgressStream, Globals, InstallDir, FileName,
             succeeded, InstallSucceeded0, !IO),
         % We need to update the archive index after we copy it to the
         % installation directory, because the linkers on some OSs complain
         % if we don't.
         ( if
-            Linkage = "static",
+            Linkage = sos_static,
             InstallSucceeded0 = succeeded
         then
             BaseFileName = dir.det_basename(FileName),

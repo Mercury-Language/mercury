@@ -94,6 +94,7 @@
 :- import_module library.
 :- import_module map.
 :- import_module maybe.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 
@@ -217,6 +218,36 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
             ReuseStrategy, MaybeFeedbackInfo,
             HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
             LinkExtMap, !:Specs, !IO),
+        % Shared libraries always use `--linkage shared'.
+        % Apply this implication here, since it hurts nothing and avoids
+        % having to provide a setter for the linkage and mercury_linkage
+        % fields of the globals.
+        lookup_bool_option(OptionTable, shared_lib_not_executable,
+            SharedLibNotExecutable),
+        (
+            SharedLibNotExecutable = yes,
+            Linkage = sos_shared,
+            MercuryLinkage = sos_shared
+        ;
+            SharedLibNotExecutable = no,
+            convert_checked_linkage(OptionTable, only_globals_linkage,
+                Linkage),
+            convert_checked_linkage(OptionTable, only_globals_mercury_linkage,
+                MercuryLinkage)
+        ),
+
+        % If no --lib-linkage option has been specified, default to the
+        % set of all possible linkages.
+        lookup_accumulating_option(OptionTable, only_globals_lib_linkages,
+            LibLinkageStrs),
+        (
+            LibLinkageStrs = [],
+            set.list_to_set([sos_static, sos_shared], LibLinkages)
+        ;
+            LibLinkageStrs = [_ | _],
+            convert_lib_linkages(LibLinkageStrs, set.init, LibLinkages, !Specs)
+        ),
+
         decide_op_mode(OptionTable, OpMode, OtherOpModes),
         (
             OtherOpModes = []
@@ -254,6 +285,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
                 OptTuple, OpMode, Target, WordSize, GC_Method,
                 TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
                 MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
+                Linkage, MercuryLinkage, LibLinkages,
                 ReuseStrategy, MaybeFeedbackInfo,
                 HostEnvType, SystemEnvType, TargetEnvType,
                 LimitErrorContextsMap, LinkExtMap, !Specs, Globals, !IO)
@@ -262,6 +294,36 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
                 Globals, !IO)
         )
     ).
+
+:- pred convert_checked_linkage(option_table::in, option::in,
+    static_or_shared::out) is det.
+
+convert_checked_linkage(OptionTable, Option, StaticOrShared) :-
+    lookup_string_option(OptionTable, Option, OptionValue),
+    ( if convert_static_or_shared(OptionValue, StaticOrSharedPrime) then
+        StaticOrShared = StaticOrSharedPrime
+    else
+        % This shouldn't happen, because the option value should have been
+        % already checked by the special option handler.
+        unexpected($pred, "neither static nor shared")
+    ).
+
+:- pred convert_lib_linkages(list(string)::in,
+    set(static_or_shared)::in, set(static_or_shared)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+convert_lib_linkages([], !LibLinkages, !Specs).
+convert_lib_linkages([Str | Strs], !LibLinkages, !Specs) :-
+    ( if convert_static_or_shared(Str, StaticOrSharedPrime) then
+        set.insert(StaticOrSharedPrime, !LibLinkages)
+    else
+        Pieces = [words("Error: the"), quote("--library-linkage"),
+            words("option expects"), words("either"), quote("static"),
+            words("or"), quote("shared"), words("as its argument;"),
+            words("got"), quote(Str), words("instead."), nl],
+        add_error(phase_options, Pieces, !Specs)
+    ),
+    convert_lib_linkages(Strs, !LibLinkages, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -275,6 +337,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
     gc_method::in, termination_norm::in, termination_norm::in,
     trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
+    static_or_shared::in, static_or_shared::in, set(static_or_shared)::in,
     reuse_strategy::in, maybe(feedback_info)::in,
     env_type::in, env_type::in, env_type::in, limit_error_contexts_map::in,
     linked_target_ext_info_map::in,
@@ -286,7 +349,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         OpMode, Target, WordSize, GC_Method, TermNorm, Term2Norm,
         TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
-        ReuseStrategy, MaybeFeedbackInfo,
+        Linkage, MercuryLinkage, LibLinkages, ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
         LinkExtMap, !Specs, !:Globals, !IO) :-
     OptTuple0 = !.OptTuple,
@@ -355,8 +418,9 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     globals_init(DefaultOptionTable, OptionTable0, !.OptTuple, OpMode,
         MaybeFeedbackInfo, FileInstallCmd, TraceSuppress, ReuseStrategy,
         LimitErrorContextsMap, LinkExtMap, C_CompilerType, CSharp_CompilerType,
-        MaybeStdLibGrades, Target, use_cur_dir, WordSize, GC_Method,
-        TermNorm, Term2Norm, TraceLevel, SSTraceLevel, MaybeThreadSafe,
+        Linkage, MercuryLinkage, LibLinkages, MaybeStdLibGrades, Target,
+        use_cur_dir, WordSize, GC_Method, TermNorm, Term2Norm,
+        TraceLevel, SSTraceLevel, MaybeThreadSafe,
         HostEnvType, SystemEnvType, TargetEnvType, InstallMethod, !:Globals),
 
     globals.lookup_bool_option(!.Globals, experiment2, Experiment2),
@@ -423,14 +487,6 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     handle_chosen_stdlib_dir(MaybeEnvOptFileMerStdLibDir, !Globals, !Specs),
     handle_libgrades(ProgressStream, !Globals, !Specs, !IO),
     handle_subdir_setting(OpMode, !Globals),
-    % Set up options for position independent code.
-    % Shared libraries always use `--linkage shared'.
-    % These implications used to be handle_target_compile_link_symlink_options,
-    % but handle_directory_options uses the value of mercury_linkage.
-    option_implies(shared_lib_not_executable, linkage,
-        string("shared"), !Globals),
-    option_implies(shared_lib_not_executable, mercury_linkage,
-        string("shared"), !Globals),
     handle_directory_options(OpMode, !Globals),
     handle_target_compile_link_symlink_options(!Globals),
     handle_compiler_developer_options(!Globals, !IO),
@@ -2252,12 +2308,14 @@ handle_directory_options(OpMode, !Globals) :-
         globals.set_option(libgrade_install_check, bool(no), !Globals)
     ),
 
-    globals.lookup_string_option(!.Globals, mercury_linkage, MercuryLinkage),
-    ( if MercuryLinkage = "static" then
+    globals.get_mercury_linkage(!.Globals, MercuryLinkage),
+    (
+        MercuryLinkage = sos_static,
         DefaultRuntimeLibraryDirs = bool.no,
         globals.set_option(default_runtime_library_directory, bool(no),
             !Globals)
-    else
+    ;
+        MercuryLinkage = sos_shared,
         globals.lookup_bool_option(!.Globals,
             default_runtime_library_directory, DefaultRuntimeLibraryDirs)
     ),
@@ -2768,7 +2826,6 @@ make_proposed_search_path_ngs(SubdirSetting, ExtSubDir,
 %---------------------%
 
     % Options updated:
-    %   lib_linkages
     %   strip
     %   use_symlinks
     %
@@ -2776,17 +2833,6 @@ make_proposed_search_path_ngs(SubdirSetting, ExtSubDir,
     is det.
 
 handle_target_compile_link_symlink_options(!Globals) :-
-    % If no --lib-linkage option has been specified, default to the
-    % set of all possible linkages.
-    globals.lookup_accumulating_option(!.Globals, lib_linkages, LibLinkages0),
-    (
-        LibLinkages0 = [],
-        globals.set_option(lib_linkages,
-            accumulating(["static", "shared"]), !Globals)
-    ;
-        LibLinkages0 = [_ | _]
-    ),
-
     option_implies(target_debug, strip, bool(no), !Globals),
 
     ( if io.file.have_symlinks then

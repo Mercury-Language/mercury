@@ -1131,9 +1131,9 @@
     ;       init_file_directories
     ;       init_files
     ;       trace_init_files
-    ;       linkage
+    ;       only_globals_linkage
     ;       linkage_special
-    ;       mercury_linkage
+    ;       only_globals_mercury_linkage
     ;       mercury_linkage_special
     ;       strip
     ;       demangle
@@ -1219,7 +1219,7 @@
     ;       libgrades
     ;       libgrades_include_components
     ;       libgrades_exclude_components
-    ;       lib_linkages
+    ;       only_globals_lib_linkages
     ;       flags_file
     ;       options_files
     ;       config_file
@@ -4454,18 +4454,22 @@ optdef(oc_link_c,      init_files,                        accumulating([])).
 optdef(oc_link_c,      trace_init_files,                  accumulating([])).
 % XXX The options
 %   linkage_special
-%   linkage
+%   only_globals_linkage
 %   mercury_linkage_special
-%   mercury_linkage
-%   lib_linkages
-% are all stringly typed. We should fix this.
-% XXX lib_linkages belongs with the following options.
-% NOTE linkage_special first checks and then sets linkage and mercury_linkage.
+%   only_globals_mercury_linkage
+%   only_globals_lib_linkages
+% are all stringly typed. As the name says, we use the only_globals_* options
+% only switch to construct the globals; after that point, we use three strongly
+% typed fields in the globals.
+% XXX only_globals_lib_linkages belongs with the following options.
+% NOTE linkage_special first checks and then sets only_globals_linkage and
+% only_globals_mercury_linkage.
 optdef(oc_link_c,      linkage_special,                 string_special).
-optdef(oc_link_c,      linkage,                         string("shared")).
-% NOTE mercury_linkage_special first checks and then sets mercury_linkage.
+optdef(oc_link_c,      only_globals_linkage,            string("shared")).
+% NOTE mercury_linkage_special first checks and then sets
+% only_globals_mercury_linkage.
 optdef(oc_link_c,      mercury_linkage_special,         string_special).
-optdef(oc_link_c,      mercury_linkage,                 string("shared")).
+optdef(oc_link_c,      only_globals_mercury_linkage,    string("shared")).
 optdef(oc_link_c,      demangle,                        bool(yes)).
 optdef(oc_link_c,      strip,                           bool(yes)).
 optdef(oc_link_c,      main,                            bool(yes)).
@@ -4561,7 +4565,7 @@ optdef(oc_buildsys, libgrades,
                                             accumulating(["stdlib"])).
 optdef(oc_buildsys, libgrades_include_components,       accumulating([])).
 optdef(oc_buildsys, libgrades_exclude_components,       accumulating([])).
-optdef(oc_buildsys, lib_linkages,                       accumulating([])).
+optdef(oc_buildsys, only_globals_lib_linkages,          accumulating([])).
 optdef(oc_buildsys, flags_file,                         file_special).
 optdef(oc_buildsys, options_files,          accumulating(["Mercury.options"])).
 
@@ -5774,8 +5778,8 @@ long_table("libgrades-include-component", libgrades_include_components).
 long_table("libgrades-include",           libgrades_include_components).
 long_table("libgrades-exclude-component", libgrades_exclude_components).
 long_table("libgrades-exclude",           libgrades_exclude_components).
-long_table("library-linkage",      lib_linkages).
-long_table("lib-linkage",          lib_linkages).
+long_table("library-linkage",      only_globals_lib_linkages).
+long_table("lib-linkage",          only_globals_lib_linkages).
 long_table("flags",                flags_file).
 long_table("flags-file",           flags_file).
 long_table("options-file",         options_files).
@@ -5996,8 +6000,10 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             Option = linkage_special,
             SpecialData = string(Flag),
             ( if ( Flag = "shared" ; Flag = "static" ) then
-                map.det_update(mercury_linkage, string(Flag), !OptionTable),
-                map.det_update(linkage, string(Flag), !OptionTable),
+                map.det_update(only_globals_mercury_linkage, string(Flag),
+                    !OptionTable),
+                map.det_update(only_globals_linkage, string(Flag),
+                    !OptionTable),
                 Result = ok(!.OptionTable)
             else
                 Result = error("argument of `--linkage' should be " ++
@@ -6007,7 +6013,8 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             Option = mercury_linkage_special,
             SpecialData = string(Flag),
             ( if ( Flag = "shared" ; Flag = "static" ) then
-                map.det_update(mercury_linkage, string(Flag), !OptionTable),
+                map.det_update(only_globals_mercury_linkage, string(Flag),
+                    !OptionTable),
                 Result = ok(!.OptionTable)
             else
                 Result = error("argument of `--mercury-linkage' should be " ++

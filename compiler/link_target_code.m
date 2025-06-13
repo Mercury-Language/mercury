@@ -460,10 +460,10 @@ link_exe_or_shared_lib_for_c(Globals, ProgressStream, LinkedTargetType,
         SanitizerOpts),
 
     % Should the executable be statically linked?
-    globals.lookup_string_option(Globals, linkage, Linkage),
+    globals.get_linkage(Globals, Linkage),
     ( if
         LinkedTargetType = executable,
-        Linkage = "static"
+        Linkage = sos_static
     then
         globals.lookup_string_option(Globals, linker_static_flags, StaticOpts)
     else
@@ -641,10 +641,12 @@ get_strip_flags_for_c(Globals, LinkedTargetType,
             LinkerStripOpt),
         globals.lookup_string_option(Globals, strip_executable_command,
             StripExeCommand),
-        globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
-        ( if MercuryLinkage = "shared" then
+        globals.get_mercury_linkage(Globals, MercuryLinkage),
+        (
+            MercuryLinkage = sos_shared,
             StripExeFlagsOpt = strip_executable_shared_flags
-        else
+        ;
+            MercuryLinkage = sos_static,
             StripExeFlagsOpt = strip_executable_static_flags
         ),
         globals.lookup_string_option(Globals, StripExeFlagsOpt, StripExeFlags)
@@ -656,7 +658,7 @@ get_strip_flags_for_c(Globals, LinkedTargetType,
 
 %---------------------%
 
-:- pred get_thread_flags_for_c(globals::in, option::in, string::in,
+:- pred get_thread_flags_for_c(globals::in, option::in, static_or_shared::in,
     string::out, string::out) is det.
 
 get_thread_flags_for_c(Globals, ThreadFlagsOpt, Linkage,
@@ -669,12 +671,12 @@ get_thread_flags_for_c(Globals, ThreadFlagsOpt, Linkage,
         % Determine which options are needed to link to libhwloc.
         % If libhwloc is not used (XXX by whom), then the string option
         % (XXX which string option?) will be empty.
-        ( if Linkage = "shared" then
+        (
+            Linkage = sos_shared,
             HwlocFlagsOpt = hwloc_libs
-        else if Linkage = "static" then
+        ;
+            Linkage = sos_static,
             HwlocFlagsOpt = hwloc_static_libs
-        else
-            unexpected($pred, "Invalid linkage")
         ),
         globals.lookup_string_option(Globals, HwlocFlagsOpt, HwlocOpts)
     ;
@@ -827,9 +829,9 @@ get_mercury_std_libs_for_c_cs(Globals, LinkedTargetType, StdLibs) :-
             ( LinkedTargetType = executable
             ; LinkedTargetType = shared_library
             ),
-            globals.lookup_string_option(Globals, mercury_linkage,
-                MercuryLinkage),
-            ( if MercuryLinkage = "static" then
+            globals.get_mercury_linkage(Globals, MercuryLinkage),
+            (
+                MercuryLinkage = sos_static,
                 StdLibs = string.join_list(" ", [
                     StaticTraceLibs,
                     StaticSourceDebugLibs,
@@ -837,7 +839,8 @@ get_mercury_std_libs_for_c_cs(Globals, LinkedTargetType, StdLibs) :-
                     StaticRuntimeLib,
                     StaticGCLibs
                 ])
-            else if MercuryLinkage = "shared" then
+            ;
+                MercuryLinkage = sos_shared,
                 StdLibs = string.join_list(" ", [
                     SharedTraceLibs,
                     SharedSourceDebugLibs,
@@ -845,8 +848,6 @@ get_mercury_std_libs_for_c_cs(Globals, LinkedTargetType, StdLibs) :-
                     RuntimeLib,
                     SharedGCLibs
                 ])
-            else
-                unexpected($pred, "unknown mercury_linkage " ++ MercuryLinkage)
             )
         ;
             ( LinkedTargetType = csharp_executable
@@ -986,11 +987,11 @@ get_runtime_library_path_opts_for_c(Globals, LinkedTargetType,
     globals.lookup_bool_option(Globals, shlib_linker_use_install_name,
         UseInstallName),
     are_shared_libraries_supported(Globals, SharedLibsSupported),
-    globals.lookup_string_option(Globals, linkage, Linkage),
+    globals.get_linkage(Globals, Linkage),
     ( if
         UseInstallName = no,
         SharedLibsSupported = shared_libraries_supported,
-        ( Linkage = "shared"
+        ( Linkage = sos_shared
         ; LinkedTargetType = shared_library
         )
     then
@@ -1654,7 +1655,7 @@ get_link_opts_for_library_for_c_cs(Globals, LibName, LinkerOpt,
     globals.get_target(Globals, Target),
     (
         Target = target_c,
-        globals.lookup_string_option(Globals, mercury_linkage, MercuryLinkage),
+        globals.get_mercury_linkage(Globals, MercuryLinkage),
         globals.get_c_compiler_type(Globals, CCompilerType),
         (
             ( CCompilerType = cc_gcc(_, _, _)
@@ -1672,7 +1673,7 @@ get_link_opts_for_library_for_c_cs(Globals, LibName, LinkerOpt,
         )
     ;
         Target = target_csharp,
-        MercuryLinkage = "shared",
+        MercuryLinkage = sos_shared,
         LinkOpt = "-r:",
         LibSuffix = ".dll"
     ;
@@ -1683,7 +1684,7 @@ get_link_opts_for_library_for_c_cs(Globals, LibName, LinkerOpt,
     globals.lookup_accumulating_option(Globals, mercury_libraries,
         MercuryLibs),
     ( if
-        MercuryLinkage = "static",
+        MercuryLinkage = sos_static,
         list.member(LibName, MercuryLibs)
     then
         % If we are linking statically with Mercury libraries,
