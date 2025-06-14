@@ -26,7 +26,7 @@
 % in the constraints.
 %
 % A lot of this code is based on that in termination.m that does the
-% equivalent jobs for the old termination analyser.
+% equivalent job for the old termination analyser.
 %
 %----------------------------------------------------------------------------%
 

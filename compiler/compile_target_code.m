@@ -90,17 +90,10 @@
     module_name::in, list(module_name)::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-    % make_init_obj_file(Globals, ProgressStream,
-    %   MainModuleName, AllModuleNames, MaybeInitObjFileName, !IO)
+    % make_init_obj_file(ProgressStream, Globals, MustCompile,
+    %   MainModuleName, AllModuleNames, MaybeInitObjFileName, !IO):
     %
-:- pred make_init_obj_file(globals::in, io.text_output_stream::in,
-    module_name::in, list(module_name)::in, maybe(file_name)::out,
-    io::di, io::uo) is det.
-
-    % do_make_init_obj_file(Globals, ProgressStream, MustCompile,
-    %   ModuleName, ModuleNames, Result, !IO)
-    %
-:- pred do_make_init_obj_file(globals::in, io.text_output_stream::in, bool::in,
+:- pred make_init_obj_file(io.text_output_stream::in, globals::in, bool::in,
     module_name::in, list(module_name)::in, maybe(file_name)::out,
     io::di, io::uo) is det.
 
@@ -872,17 +865,11 @@ invoke_mkinit(Globals, ProgressStream, InitFileStream, Verbosity,
 
 %---------------------------------------------------------------------------%
 
-make_init_obj_file(Globals, ProgressStream, ModuleName, ModuleNames,
-        Result, !IO) :-
-    globals.lookup_bool_option(Globals, rebuild, MustCompile),
-    do_make_init_obj_file(Globals, ProgressStream,
-        MustCompile, ModuleName, ModuleNames, Result, !IO).
-
 % WARNING: The code here duplicates the functionality of scripts/c2init.in.
 % Any changes there may also require changes here, and vice versa.
 % The code of make_standalone_interface/5 may also require updating.
 
-do_make_init_obj_file(Globals, ProgressStream, MustCompile,
+make_init_obj_file(ProgressStream, Globals, MustCompile,
         ModuleName, ModuleNames, Result, !IO) :-
     globals.lookup_maybe_string_option(Globals,
         mercury_standard_library_directory, MaybeStdLibDir),
@@ -998,8 +985,7 @@ make_init_target_file(Globals, ProgressStream, MkInit,
         RuntimeFlagsList),
     join_quoted_string_list(RuntimeFlagsList, "-r ", "", " ", RuntimeFlags),
 
-    globals.lookup_bool_option(Globals, extra_initialization_functions,
-        ExtraInits),
+    globals.lookup_bool_option(Globals, extra_init_functions, ExtraInits),
     (
         ExtraInits = yes,
         ExtraInitsOpt = "-x"

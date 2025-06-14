@@ -544,7 +544,8 @@ install_library_grade_specific_files_for_all_libgrades(ProgressStream,
 
     % XXX With Mmake, LIBGRADES is target-specific; with this code in
     % mmc --make, it isn't.
-    globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
+    globals.lookup_accumulating_option(Globals, library_install_grades,
+        LibGrades),
     NonCurLibGrades = list.delete_all(LibGrades, CurGrade),
     KeepGoing = make_info_get_keep_going(!.Info),
     setup_make_and_install_grade_specific_files_for_grades(ProgressStream,
@@ -1272,7 +1273,7 @@ legacy_install_subdir_file(ProgressStream, Globals, LibDirMap, InstallDir,
 
 legacy_maybe_install_static_or_dynamic_archive(ProgressStream, Globals,
         Linkage, FileName, InstallDir, !Succeeded, !IO) :-
-    globals.get_lib_linkages(Globals, LibLinkages),
+    globals.get_library_install_linkages(Globals, LibLinkages),
     ( if set.member(Linkage, LibLinkages) then
         install_file(ProgressStream, Globals, FileName, InstallDir,
             succeeded, InstallSucceeded0, !IO),
@@ -1444,7 +1445,7 @@ gather_module_dep_infos_loop(ProgressStream, Globals,
 
 proposed_maybe_install_static_or_dynamic_archive(ProgressStream, Globals,
         Linkage, InstallDir, FileName, !Succeeded, !IO) :-
-    globals.get_lib_linkages(Globals, LibLinkages),
+    globals.get_library_install_linkages(Globals, LibLinkages),
     ( if set.member(Linkage, LibLinkages) then
         install_file_to(ProgressStream, Globals, InstallDir, FileName,
             succeeded, InstallSucceeded0, !IO),

@@ -437,7 +437,7 @@
     ;       only_opmode_output_link_command
     ;       only_opmode_output_shared_lib_link_command
     ;       only_opmode_output_stdlib_grades
-    ;       only_opmode_output_libgrades
+    ;       only_opmode_output_library_install_grades
     ;       only_opmode_output_cc
     ;       only_opmode_output_c_compiler_type
     ;       only_opmode_output_csharp_compiler
@@ -1141,7 +1141,7 @@
     ;       allow_undefined
     ;       use_readline
     ;       runtime_flags
-    ;       extra_initialization_functions
+    ;       extra_init_functions
     ;       frameworks
     ;       framework_directories
     ;       sign_assembly
@@ -1202,12 +1202,12 @@
     % Build system options
     ;       only_opmode_make
     ;       only_opmode_invoked_by_mmc_make
-    ;       rebuild
+    ;       part_opmode_rebuild
     ;       keep_going
-    ;       jobs
-    ;       track_flags
+    ;       make_max_jobs
+    ;       make_track_flags
     ;       extra_init_command
-    ;       pre_link_command
+    ;       make_pre_link_command
     ;       install_prefix
     ;       use_symlinks
     ;       mercury_configuration_directory
@@ -1216,10 +1216,10 @@
     ;       install_command
     ;       install_command_dir_option
     ;       detect_stdlib_grades
-    ;       libgrades
-    ;       libgrades_include_components
-    ;       libgrades_exclude_components
-    ;       only_globals_lib_linkages
+    ;       library_install_grades
+    ;       library_install_grades_incl_components
+    ;       library_install_grades_excl_components
+    ;       only_globals_library_install_linkages
     ;       flags_file
     ;       options_files
     ;       config_file
@@ -1372,6 +1372,9 @@ option_defaults(Opt, Data) :-
             % Options that are used only to select an invocation's op_mode.
     ;       oc_diag_gen
             % Options for controlling diagnostics generally.
+            % One class tells the compiler either under what circumstances
+            % it should generate diagnostic output; another class specifies
+            % how diagnostic output should be presented.
     ;       oc_diag_color
             % Options for controlling color in diagnostics.
     ;       oc_diag_int
@@ -1449,6 +1452,11 @@ option_defaults(Opt, Data) :-
             % XXX Document me.
             % XXX We should separate search path options (the majority)
             % from everything else.
+    ;       oc_search
+            % XXX Document me.
+    ;       oc_env
+            % Options that tell the compiler something about the environment,
+            % or platform, on which it is operating.
     ;       oc_dev_ctrl
             % Options developers can use to control what the compiler does.
     ;       oc_dev_debug
@@ -1460,8 +1468,14 @@ option_defaults(Opt, Data) :-
             % tools/configure_cross.
     ;       oc_analysis
             % Options for user control of program analyses.
-    ;       oc_misc.
+    ;       oc_misc
             % A few options that do not fit anywhere else.
+    ;       oc_unused.
+            % options that are now unused, and which are kept around
+            % only for backward compatibility.
+            % XXX Is this a good idea? If users want the effect of an
+            % old option, then deleting the option and breaking their code
+            % is less likely to mislead than keeping the option as a noop.
 
 %---------------------------------------------------------------------------%
 
@@ -2386,7 +2400,7 @@ optdef(oc_opmode, only_opmode_output_grade_string,      bool(no)).
 optdef(oc_opmode, only_opmode_output_target_arch,       bool(no)).
 optdef(oc_opmode, only_opmode_output_stdlib_modules,    bool(no)).
 optdef(oc_opmode, only_opmode_output_stdlib_grades,     bool(no)).
-optdef(oc_opmode, only_opmode_output_libgrades,         bool(no)).
+optdef(oc_opmode, only_opmode_output_library_install_grades, bool(no)).
 optdef(oc_opmode, only_opmode_output_cc,                bool(no)).
 optdef(oc_opmode, only_opmode_output_c_compiler_type,   bool(no)).
 optdef(oc_opmode, only_opmode_output_cflags,            bool(no)).
@@ -2502,8 +2516,9 @@ optdb(oc_opmode, only_opmode_output_stdlib_grades,     bool(no),
     help("output-stdlib-grades", [
         "Print to standard output the list of compilation grades in which",
         "the Mercury standard library is available with this compiler."])).
-optdb(oc_opmode, only_opmode_output_libgrades,         bool(no),
-    help("output-libgrades", [
+optdb(oc_opmode, only_opmode_output_library_install_grades, bool(no),
+    alt_help("output-libgrades", pos_sep_lines,
+            ["output-library-install-grades"], [
         "Print to standard output the list of compilation grades in which",
         "a library to be installed should be built."])).
 optdb(oc_opmode, only_opmode_output_cc,                bool(no),
@@ -4412,7 +4427,7 @@ optdb(oc_link_c, shared_lib_not_executable,                bool(no),
 
 % XXX Several of the following options do not affect linking, but instead
 % affect compilation (of things other than Mercury modules). These include
-% init_files, trace_init_files, runtime_flags, extra_initialization_functions,
+% init_files, trace_init_files, runtime_flags, extra_init_functions,
 % mkinit_command, and maybe more.
 
 optdef(oc_link_c,      output_file_name,                       string("")).
@@ -4457,11 +4472,11 @@ optdef(oc_link_c,      trace_init_files,                  accumulating([])).
 %   only_globals_linkage
 %   mercury_linkage_special
 %   only_globals_mercury_linkage
-%   only_globals_lib_linkages
+%   only_globals_library_install_linkages
 % are all stringly typed. As the name says, we use the only_globals_* options
 % only switch to construct the globals; after that point, we use three strongly
 % typed fields in the globals.
-% XXX only_globals_lib_linkages belongs with the following options.
+% XXX only_globals_library_install_linkages belongs with the following options.
 % NOTE linkage_special first checks and then sets only_globals_linkage and
 % only_globals_mercury_linkage.
 optdef(oc_link_c,      linkage_special,                 string_special).
@@ -4476,7 +4491,7 @@ optdef(oc_link_c,      main,                            bool(yes)).
 optdef(oc_link_c,      allow_undefined,                 bool(yes)).
 optdef(oc_link_c,      use_readline,                    bool(yes)).
 optdef(oc_link_c,      runtime_flags,                   accumulating([])).
-optdef(oc_link_c,      extra_initialization_functions,  bool(no)).
+optdef(oc_link_c,      extra_init_functions,            bool(no)).
 optdef(oc_link_c,      frameworks,                      accumulating([])).
 optdef(oc_link_c,      framework_directories,           accumulating([])).
 optdef(oc_link_c,      cstack_reserve_size,             int(-1)).
@@ -4543,79 +4558,81 @@ optdef(oc_link_java,   filterjavac_command,            string("mfilterjavac")).
 
     % Build system options.
 
-optdef(oc_buildsys, rebuild,                            bool(no)).
-optdef(oc_buildsys, keep_going,                         bool(no)).
-optdef(oc_buildsys, jobs,                               int(1)).
-optdef(oc_buildsys, track_flags,                        bool(no)).
-optdef(oc_buildsys, pre_link_command,                   maybe_string(no)).
-optdef(oc_buildsys, extra_init_command,                 maybe_string(no)).
-optdef(oc_buildsys, install_prefix,                     string("/usr/local/")).
-optdef(oc_buildsys, use_symlinks,                       bool(yes)).
+optdef(oc_make, part_opmode_rebuild,                bool(no)).
+optdef(oc_make, keep_going,                         bool(no)).
+optdef(oc_make, order_make_by_timestamp,            bool(no)).
+optdef(oc_make, show_make_times,                    bool(no)).
+optdef(oc_make, make_max_jobs,                      int(1)).
+optdef(oc_make, make_track_flags,                   bool(no)).
+optdef(oc_make, make_pre_link_command,              maybe_string(no)).
+optdef(oc_buildsys, extra_init_command,             maybe_string(no)).
+optdef(oc_buildsys, install_prefix,                 string("/usr/local/")).
+optdef(oc_buildsys, use_symlinks,                   bool(yes)).
 
     % If `--mercury-stdlib-dir' is set, `--mercury-config-dir'
     % must also be set. This invariant is maintained by the `special' variants
     % of the options.
-optdef(oc_buildsys, mercury_configuration_directory_special, string_special).
-optdef(oc_buildsys, mercury_configuration_directory,    maybe_string(no)).
-optdef(oc_buildsys, install_method,                     string("external")).
-optdef(oc_buildsys, install_command,                    string("cp")).
-optdef(oc_buildsys, install_command_dir_option,         string("-R")).
-optdef(oc_buildsys, detect_stdlib_grades,               bool(yes)).
-optdef(oc_buildsys, libgrades,
-                                            accumulating(["stdlib"])).
-optdef(oc_buildsys, libgrades_include_components,       accumulating([])).
-optdef(oc_buildsys, libgrades_exclude_components,       accumulating([])).
-optdef(oc_buildsys, only_globals_lib_linkages,          accumulating([])).
-optdef(oc_buildsys, flags_file,                         file_special).
-optdef(oc_buildsys, options_files,          accumulating(["Mercury.options"])).
+optdef(oc_env, mercury_configuration_directory_special, string_special).
+optdef(oc_env, mercury_configuration_directory,    maybe_string(no)).
+optdef(oc_env, install_method,                     string("external")).
+optdef(oc_env, install_command,                    string("cp")).
+optdef(oc_unused, install_command_dir_option,      string("-R")).
+optdef(oc_buildsys, detect_stdlib_grades,          bool(yes)).
+optdef(oc_buildsys, library_install_grades,        accumulating(["stdlib"])).
+optdef(oc_buildsys, library_install_grades_incl_components,
+                                                   accumulating([])).
+optdef(oc_buildsys, library_install_grades_excl_components,
+                                                   accumulating([])).
+optdef(oc_buildsys, only_globals_library_install_linkages,
+                                                   accumulating([])).
+optdef(oc_env, options_files,              accumulating(["Mercury.options"])).
 
-optdef(oc_buildsys, config_file,                        maybe_string(yes(""))).
+optdef(oc_env, config_file,                   maybe_string(yes(""))).
     % yes("") means unset.
-optdef(oc_buildsys, options_search_directories,         accumulating(["."])).
-optdef(oc_buildsys, setting_only_use_subdirs,           bool(no)).
-optdef(oc_buildsys, setting_only_use_grade_subdirs,     bool(no)).
-optdef(oc_buildsys, error_files_in_subdir,              bool(no)).
-optdef(oc_buildsys, std_int_file_not_written_msgs,      bool(no)).
-optdef(oc_buildsys, search_directories,                 accumulating(["."])).
-optdef(oc_buildsys, intermod_directories,               accumulating([])).
-optdef(oc_buildsys, use_search_directories_for_intermod, bool(yes)).
-optdef(oc_buildsys, interface_dirs_same_subdir_setting, accumulating([])).
-optdef(oc_buildsys, interface_dirs_indep_subdir_setting, accumulating([])).
-optdef(oc_buildsys, interface_dirs_installed_library,   accumulating([])).
-optdef(oc_buildsys, intermod_dirs_same_subdir_setting,  accumulating([])).
-optdef(oc_buildsys, intermod_dirs_indep_subdir_setting, accumulating([])).
-optdef(oc_buildsys, intermod_dirs_installed_library,    accumulating([])).
-optdef(oc_buildsys, c_incl_dirs_same_subdir_setting,    accumulating([])).
-optdef(oc_buildsys, c_incl_dirs_indep_subdir_setting,   accumulating([])).
-optdef(oc_buildsys, c_incl_dirs_installed_library,      accumulating([])).
-optdef(oc_buildsys, c_incl_dirs_external,               accumulating([])).
-optdef(oc_buildsys, mer_lib_dirs_same_subdir_setting,   accumulating([])).
-optdef(oc_buildsys, mer_lib_dirs_indep_subdir_setting,  accumulating([])).
-optdef(oc_buildsys, mer_lib_dirs_installed_library,     accumulating([])).
-optdef(oc_buildsys, chosen_stdlib_dir,                  maybe_string(no)).
+optdef(oc_search, options_search_directories,         accumulating(["."])).
+optdef(oc_search, setting_only_use_subdirs,           bool(no)).
+optdef(oc_search, setting_only_use_grade_subdirs,     bool(no)).
+optdef(oc_diag_gen, error_files_in_subdir,            bool(no)).
+optdef(oc_diag_gen, std_int_file_not_written_msgs,    bool(no)).
+optdef(oc_search, search_directories,                 accumulating(["."])).
+optdef(oc_search, intermod_directories,               accumulating([])).
+optdef(oc_search, use_search_directories_for_intermod, bool(yes)).
+optdef(oc_search, interface_dirs_same_subdir_setting, accumulating([])).
+optdef(oc_search, interface_dirs_indep_subdir_setting, accumulating([])).
+optdef(oc_search, interface_dirs_installed_library,   accumulating([])).
+optdef(oc_search, intermod_dirs_same_subdir_setting,  accumulating([])).
+optdef(oc_search, intermod_dirs_indep_subdir_setting, accumulating([])).
+optdef(oc_search, intermod_dirs_installed_library,    accumulating([])).
+optdef(oc_search, c_incl_dirs_same_subdir_setting,    accumulating([])).
+optdef(oc_search, c_incl_dirs_indep_subdir_setting,   accumulating([])).
+optdef(oc_search, c_incl_dirs_installed_library,      accumulating([])).
+optdef(oc_search, c_incl_dirs_external,               accumulating([])).
+optdef(oc_search, mer_lib_dirs_same_subdir_setting,   accumulating([])).
+optdef(oc_search, mer_lib_dirs_indep_subdir_setting,  accumulating([])).
+optdef(oc_search, mer_lib_dirs_installed_library,     accumulating([])).
+optdef(oc_internal, chosen_stdlib_dir,                  maybe_string(no)).
 optdef(oc_buildsys, libgrade_install_check,             bool(yes)).
-optdef(oc_buildsys, order_make_by_timestamp,            bool(no)).
-optdef(oc_buildsys, show_make_times,                    bool(no)).
 optdef(oc_buildsys, extra_library_header,               accumulating([])).
-optdef(oc_buildsys, restricted_command_line,            bool(no)).
-optdef(oc_buildsys, env_type,                           string_special).
-optdef(oc_buildsys, host_env_type,                      string("posix")).
-optdef(oc_buildsys, system_env_type,                    string("")).
-optdef(oc_buildsys, target_env_type,                    string("posix")).
+optdef(oc_env, restricted_command_line,            bool(no)).
+optdef(oc_env, env_type,                           string_special).
+optdef(oc_env, host_env_type,                      string("posix")).
+optdef(oc_env, system_env_type,                    string("")).
+optdef(oc_env, target_env_type,                    string("posix")).
 
 %---------------------------------------------------------------------------%
 
     % Miscellaneous options
 
 optdef(oc_misc,     filenames_from_stdin,               bool(no)).
+optdef(oc_misc,     flags_file,                         file_special).
 % XXX Should we add new category, named maybe oc_errors, for options
 % that control how and/or when the compiler generates diagnostics?
 % Include options that reverse the order of errors, or limit error contexts.
 optdef(oc_misc,     typecheck_ambiguity_warn_limit,     int(50)).
 optdef(oc_misc,     typecheck_ambiguity_error_limit,    int(3000)).
 optdef(oc_help,     help,                               bool(no)).
-optdef(oc_misc,     version,                            bool(no)).
-optdef(oc_misc,     target_arch,                        string("")).
+optdef(oc_help,     version,                            bool(no)).
+optdef(oc_env,      target_arch,                        string("")).
 optdef(oc_internal, local_module_id,                    accumulating([])).
 % XXX Why is this NOT next to analysis_file_cache?
 optdef(oc_opt_ctrl, analysis_file_cache_dir,            string("")).
@@ -4650,7 +4667,7 @@ short_option('F', framework_directories).
 short_option('h', help).
 short_option('H', highlevel_code).
 short_option('i', only_opmode_make_interface).
-short_option('j', jobs).
+short_option('j', make_max_jobs).
 short_option('I', search_directories).
 short_option('k', keep_going).
 short_option('l', link_libraries).
@@ -4663,7 +4680,7 @@ short_option('o', output_file_name).
 short_option('O', opt_level).
 short_option('p', profiling).
 short_option('P', only_opmode_convert_to_mercury).
-short_option('r', rebuild).
+short_option('r', part_opmode_rebuild).
 short_option('R', runtime_link_library_directories).
 short_option('s', grade).
 short_option('S', statistics).
@@ -4945,7 +4962,10 @@ long_table("output-shared-lib-link-command",
     only_opmode_output_shared_lib_link_command).
 long_table("output-stdlib-grades",
     only_opmode_output_stdlib_grades).
-long_table("output-libgrades",         only_opmode_output_libgrades).
+long_table("output-libgrades",
+                                    only_opmode_output_library_install_grades).
+long_table("output-library-install-grades",
+                                    only_opmode_output_library_install_grades).
 long_table("output-cc",                only_opmode_output_cc).
 long_table("output-cc-type",
     only_opmode_output_c_compiler_type).
@@ -5683,9 +5703,8 @@ long_table("main",                 main).
 long_table("allow-undefined",      allow_undefined).
 long_table("use-readline",         use_readline).
 long_table("runtime-flags",        runtime_flags).
-long_table("extra-initialization-functions",
-                    extra_initialization_functions).
-long_table("extra-inits",      extra_initialization_functions).
+long_table("extra-initialization-functions", extra_init_functions).
+long_table("extra-inits",      extra_init_functions).
 long_table("framework",        frameworks).
 long_table("framework-directory", framework_directories).
 long_table("sign-assembly", sign_assembly).
@@ -5755,11 +5774,11 @@ long_table("java-archive-command", java_archive_command).
 long_table("make",                 only_opmode_make).
 long_table("invoked-by-mmc-make",  only_opmode_invoked_by_mmc_make).
 long_table("keep-going",           keep_going).
-long_table("rebuild",              rebuild).
-long_table("jobs",                 jobs).
-long_table("track-flags",          track_flags).
-long_table("track-options",        track_flags).
-long_table("pre-link-command",     pre_link_command).
+long_table("rebuild",              part_opmode_rebuild).
+long_table("jobs",                 make_max_jobs).
+long_table("track-flags",          make_track_flags).
+long_table("track-options",        make_track_flags).
+long_table("pre-link-command",     make_pre_link_command).
 long_table("extra-init-command",   extra_init_command).
 long_table("mercury-configuration-directory",
                 mercury_configuration_directory_special).
@@ -5770,16 +5789,18 @@ long_table("install-method",       install_method).
 long_table("install-command",      install_command).
 long_table("install-command-dir-option", install_command_dir_option).
 long_table("use-symlinks",         use_symlinks).
-long_table("detect-libgrades",     detect_stdlib_grades). % misleading name
+long_table("detect-libgrades",     detect_stdlib_grades). % XXX misleading name
 long_table("detect-stdlib-grades", detect_stdlib_grades).
-long_table("library-grade",        libgrades).
-long_table("libgrade",             libgrades).
-long_table("libgrades-include-component", libgrades_include_components).
-long_table("libgrades-include",           libgrades_include_components).
-long_table("libgrades-exclude-component", libgrades_exclude_components).
-long_table("libgrades-exclude",           libgrades_exclude_components).
-long_table("library-linkage",      only_globals_lib_linkages).
-long_table("lib-linkage",          only_globals_lib_linkages).
+long_table("library-grade",        library_install_grades).
+long_table("libgrade",             library_install_grades).
+long_table("libgrades-include-component",
+                                    library_install_grades_incl_components).
+long_table("libgrades-include",     library_install_grades_incl_components).
+long_table("libgrades-exclude-component",
+                                   library_install_grades_excl_components).
+long_table("libgrades-exclude",    library_install_grades_excl_components).
+long_table("library-linkage",      only_globals_library_install_linkages).
+long_table("lib-linkage",          only_globals_library_install_linkages).
 long_table("flags",                flags_file).
 long_table("flags-file",           flags_file).
 long_table("options-file",         options_files).
@@ -10064,7 +10085,8 @@ options_help_build_system = Section :-
                 ["libgrades-exclude <component>"], [
             "Remove grades that contain the specified component from the",
             "set of library grades to be installed.",
-            "(This option does not work with Mmake, only `mmc --make'.)"]),
+            "(This option works only `mmc --make'; it does not work",
+            "with Mmake.)"]),
 
         help("lib-linkage {shared, static}", [
             "Specify whether libraries should be installed for shared",
@@ -10154,7 +10176,7 @@ options_help_build_system = Section :-
 
         help("no-libgrade-install-check", [
             "Do not check that libraries have been installed before",
-            "attempting to use them. (This option is only meaningful with",
+            "attempting to use them. (This option is meaningful only with",
             "`mmc --make'.)"]),
 
         help("order-make-by-timestamp", [

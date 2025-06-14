@@ -231,7 +231,7 @@ make_top_targets(ProgressStream, Globals, KeepGoing, [Target | Targets],
 
 make_top_target(ProgressStream, Globals, Target, Succeeded, !Info, !IO) :-
     Target = top_target_file(ModuleName, TargetType),
-    globals.lookup_bool_option(Globals, track_flags, TrackFlags),
+    globals.lookup_bool_option(Globals, make_track_flags, TrackFlags),
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
     (
         TrackFlags = no,

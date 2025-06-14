@@ -313,8 +313,9 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, !IO) :-
         globals.get_grade_dir(Globals, Grade),
         io.print_line(StdOutStream, Grade, !IO)
     ;
-        OpModeQuery = opmq_output_libgrades,
-        globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
+        OpModeQuery = opmq_output_library_install_grades,
+        globals.lookup_accumulating_option(Globals, library_install_grades,
+            LibGrades),
         list.foldl(io.print_line(StdOutStream), LibGrades, !IO)
     ;
         OpModeQuery = opmq_output_stdlib_grades,

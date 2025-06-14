@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023-2024 The Mercury team.
+% Copyright (C) 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -423,7 +423,7 @@ should_we_rebuild_lhs_given_timestamps(ProgressStream, Globals, TargetFileName,
             )
         ;
             FoundError = not_found_error,
-            globals.lookup_bool_option(Globals, rebuild, Rebuild),
+            globals.lookup_bool_option(Globals, part_opmode_rebuild, Rebuild),
             (
                 Rebuild = yes,
                 % With `--rebuild', we always consider the lhs files to be

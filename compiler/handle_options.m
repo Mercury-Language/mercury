@@ -238,14 +238,15 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
 
         % If no --lib-linkage option has been specified, default to the
         % set of all possible linkages.
-        lookup_accumulating_option(OptionTable, only_globals_lib_linkages,
-            LibLinkageStrs),
+        lookup_accumulating_option(OptionTable,
+            only_globals_library_install_linkages, LibraryInstallLinkageStrs),
         (
-            LibLinkageStrs = [],
-            set.list_to_set([sos_static, sos_shared], LibLinkages)
+            LibraryInstallLinkageStrs = [],
+            set.list_to_set([sos_static, sos_shared], LibraryInstallLinkages)
         ;
-            LibLinkageStrs = [_ | _],
-            convert_lib_linkages(LibLinkageStrs, set.init, LibLinkages, !Specs)
+            LibraryInstallLinkageStrs = [_ | _],
+            convert_library_install_linkages(LibraryInstallLinkageStrs,
+                set.init, LibraryInstallLinkages, !Specs)
         ),
 
         decide_op_mode(OptionTable, OpMode, OtherOpModes),
@@ -285,7 +286,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
                 OptTuple, OpMode, Target, WordSize, GC_Method,
                 TermNorm, Term2Norm, TraceLevel, TraceSuppress, SSTraceLevel,
                 MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
-                Linkage, MercuryLinkage, LibLinkages,
+                Linkage, MercuryLinkage, LibraryInstallLinkages,
                 ReuseStrategy, MaybeFeedbackInfo,
                 HostEnvType, SystemEnvType, TargetEnvType,
                 LimitErrorContextsMap, LinkExtMap, !Specs, Globals, !IO)
@@ -308,14 +309,15 @@ convert_checked_linkage(OptionTable, Option, StaticOrShared) :-
         unexpected($pred, "neither static nor shared")
     ).
 
-:- pred convert_lib_linkages(list(string)::in,
+:- pred convert_library_install_linkages(list(string)::in,
     set(static_or_shared)::in, set(static_or_shared)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-convert_lib_linkages([], !LibLinkages, !Specs).
-convert_lib_linkages([Str | Strs], !LibLinkages, !Specs) :-
+convert_library_install_linkages([], !LibraryInstallLinkages, !Specs).
+convert_library_install_linkages([Str | Strs],
+        !LibraryInstallLinkages, !Specs) :-
     ( if convert_static_or_shared(Str, StaticOrSharedPrime) then
-        set.insert(StaticOrSharedPrime, !LibLinkages)
+        set.insert(StaticOrSharedPrime, !LibraryInstallLinkages)
     else
         Pieces = [words("Error: the"), quote("--library-linkage"),
             words("option expects"), words("either"), quote("static"),
@@ -323,7 +325,7 @@ convert_lib_linkages([Str | Strs], !LibLinkages, !Specs) :-
             words("got"), quote(Str), words("instead."), nl],
         add_error(phase_options, Pieces, !Specs)
     ),
-    convert_lib_linkages(Strs, !LibLinkages, !Specs).
+    convert_library_install_linkages(Strs, !LibraryInstallLinkages, !Specs).
 
 %---------------------------------------------------------------------------%
 
@@ -853,8 +855,8 @@ check_for_incompatibilities(Globals, OpMode, !Specs) :-
         true
     ),
 
-    globals.lookup_bool_option(Globals,
-        extra_initialization_functions, ExtraInitFunctions),
+    globals.lookup_bool_option(Globals, extra_init_functions,
+        ExtraInitFunctions),
     ( if
         OpMode = opm_top_generate_standalone_interface(_),
         ExtraInitFunctions = bool.yes
@@ -1877,7 +1879,7 @@ handle_op_mode_implications(OpMode, !Globals) :-
     ;
         OpMode = opm_top_query(OpModeQuery),
         (
-            ( OpModeQuery = opmq_output_libgrades
+            ( OpModeQuery = opmq_output_library_install_grades
             ; OpModeQuery = opmq_output_stdlib_grades
             ),
             globals.set_option(detect_stdlib_grades, bool(yes), !Globals)
@@ -2210,10 +2212,12 @@ handle_libgrades(ProgressStream, !Globals, !Specs, !IO) :-
         )
     ),
 
-    globals.lookup_accumulating_option(!.Globals, libgrades, LibGrades0),
+    globals.lookup_accumulating_option(!.Globals,
+        library_install_grades, LibGrades0),
     ( if LibGrades0 = ["stdlib" | SpecifiedLibGrades] then
         LibGrades = StdLibGrades ++ SpecifiedLibGrades,
-        globals.set_option(libgrades, accumulating(LibGrades), !Globals)
+        globals.set_option(library_install_grades, accumulating(LibGrades),
+            !Globals)
     else
         true
     ),

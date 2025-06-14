@@ -399,7 +399,7 @@ compiled_code_dependencies(Globals, PrereqSpecs) :-
     % We build up PrereqSpecs in stages.
 
     % Stage 0: dependencies on flags.
-    globals.lookup_bool_option(Globals, track_flags, TrackFlags),
+    globals.lookup_bool_option(Globals, make_track_flags, TrackFlags),
     (
         TrackFlags = yes,
         PrereqSpecsTracks = [self(module_target_track_flags)]

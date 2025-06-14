@@ -323,7 +323,7 @@ link_modules_into_executable_or_shared_library_for_c(ProgressStream, Globals,
     (
         LinkedTargetType = executable,
         MustCompile = yes,
-        do_make_init_obj_file(Globals, ProgressStream, MustCompile,
+        make_init_obj_file(ProgressStream, Globals, MustCompile,
             MainModuleName, ModuleNames, InitObjResult, !IO),
         (
             InitObjResult = yes(InitObjFileName),

@@ -61,7 +61,7 @@
     ;       opmq_output_library_link_flags
 
     ;       opmq_output_grade_string                % Grade information.
-    ;       opmq_output_libgrades
+    ;       opmq_output_library_install_grades
 
     ;       opmq_output_stdlib_grades               % Library information.
     ;       opmq_output_stdlib_modules
@@ -308,8 +308,8 @@ bool_op_modes(InvokedByMMCMake) = [
     % of --make is suppressed by the compiler's internally-generated
     % --invoked-by-mmc-make, the value of --rebuild still affects the actions
     % of the other op_modes. This is why the compiler's internal name
-    % of the --rebuild option is not only_opmode_rebuild.
-    rebuild -
+    % of the --rebuild option is not *only*_opmode_rebuild.
+    part_opmode_rebuild -
         opm_top_make,
 
     only_opmode_generate_source_file_mapping -
@@ -343,8 +343,8 @@ bool_op_modes(InvokedByMMCMake) = [
 
     only_opmode_output_grade_string -
         opm_top_query(opmq_output_grade_string),
-    only_opmode_output_libgrades -
-        opm_top_query(opmq_output_libgrades),
+    only_opmode_output_library_install_grades -
+        opm_top_query(opmq_output_library_install_grades),
     only_opmode_output_stdlib_grades -
         opm_top_query(opmq_output_stdlib_grades),
 
@@ -403,7 +403,7 @@ bool_op_modes(InvokedByMMCMake) = [
 op_mode_to_option_string(OptionTable, MOP) = Str :-
     (
         MOP = opm_top_make,
-        map.lookup(OptionTable, rebuild, RebuildOption),
+        map.lookup(OptionTable, part_opmode_rebuild, RebuildOption),
         ( if RebuildOption = bool(Rebuild) then
             (
                 Rebuild = no,
@@ -460,7 +460,9 @@ op_mode_to_option_string(OptionTable, MOP) = Str :-
             MOPQ = opmq_output_grade_string,
             Str = "--output-grade-string"
         ;
-            MOPQ = opmq_output_libgrades,
+            MOPQ = opmq_output_library_install_grades,
+            % XXX After bootstrapping, change this to
+            % --output-library-install-grades.
             Str = "--output-libgrades"
         ;
             MOPQ = opmq_output_stdlib_grades,

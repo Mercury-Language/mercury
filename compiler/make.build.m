@@ -490,7 +490,8 @@ foldl2_make_module_targets_maybe_parallel(KeepGoing, ExtraOpts,
             Succeeded0 = succeeded,
             % Disable the `--rebuild' option during the sequential pass,
             % to prevent all the targets being rebuilt a second time.
-            globals.set_option(rebuild, bool(no), Globals, NoRebuildGlobals),
+            globals.set_option(part_opmode_rebuild, bool(no),
+                Globals, NoRebuildGlobals),
             foldl2_make_module_targets(KeepGoing, ExtraOpts,
                 ProgressStream, NoRebuildGlobals, Targets, Succeeded,
                 !Info, !IO)
@@ -515,9 +516,9 @@ foldl2_make_module_targets_maybe_parallel_build2(KeepGoing, ExtraOpts,
     maybe({int, job_ctl})::out, io::di, io::uo) is det.
 
 should_we_use_parallel_fold(Globals, Targets, UseParallel, !IO) :-
-    globals.lookup_int_option(Globals, jobs, NumJobs),
+    globals.lookup_int_option(Globals, make_max_jobs, MaxNumJobs),
     ( if
-        NumJobs > 1,
+        MaxNumJobs > 1,
         process_util.can_fork,
         have_job_ctl_ipc
     then
@@ -528,7 +529,7 @@ should_we_use_parallel_fold(Globals, Targets, UseParallel, !IO) :-
             UseParallel = no
         ;
             MaybeJobCtl = yes(JobCtl),
-            UseParallel = yes({NumJobs, JobCtl})
+            UseParallel = yes({MaxNumJobs, JobCtl})
         )
     else
         UseParallel = no

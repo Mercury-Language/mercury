@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2022, 2024 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -246,23 +246,25 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
 %---------------------------------------------------------------------------%
 
 handle_libgrade_component_incl_excl(!Globals, !Specs) :-
-    globals.lookup_accumulating_option(!.Globals, libgrades_include_components,
-        IncludeComponentStrs),
-    globals.lookup_accumulating_option(!.Globals, libgrades_exclude_components,
-        OmitComponentStrs),
+    globals.lookup_accumulating_option(!.Globals,
+        library_install_grades_incl_components, IncludeComponentStrs),
+    globals.lookup_accumulating_option(!.Globals,
+        library_install_grades_excl_components, OmitComponentStrs),
     list.foldl2(string_to_grade_component("included"),
         IncludeComponentStrs, [], IncludeComponents, !Specs),
     list.foldl2(string_to_grade_component("excluded"),
         OmitComponentStrs, [], OmitComponents, !Specs),
     some [!LibGrades] (
-        globals.lookup_accumulating_option(!.Globals, libgrades, !:LibGrades),
+        globals.lookup_accumulating_option(!.Globals, library_install_grades,
+            !:LibGrades),
         % NOTE: the two calls to foldl2 here will preserve the original
         % relative ordering of the library grades.
         list.foldl2(filter_grade(must_contain, IncludeComponents),
             !.LibGrades, [], !:LibGrades, !Specs),
         list.foldl2(filter_grade(must_not_contain, OmitComponents),
             !.LibGrades, [], !:LibGrades, !Specs),
-        globals.set_option(libgrades, accumulating(!.LibGrades), !Globals)
+        globals.set_option(library_install_grades, accumulating(!.LibGrades),
+            !Globals)
     ).
 
     % string_to_grade_component(OptionStr, Comp, !Comps, !Specs):

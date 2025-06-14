@@ -120,14 +120,14 @@ make_linked_target(ProgressStream, Globals, LinkedTargetFile,
         ),
         ExtraOptions = []
     ),
-    globals.get_lib_linkages(Globals, LibLinkages),
+    globals.get_library_install_linkages(Globals, LibraryInstallLinkages),
     ( if
         (
             LinkedTargetType = static_library,
-            not set.member(sos_static, LibLinkages)
+            not set.member(sos_static, LibraryInstallLinkages)
         ;
             LinkedTargetType = shared_library,
-            not set.member(sos_shared, LibLinkages)
+            not set.member(sos_shared, LibraryInstallLinkages)
         )
     then
         % XXX What is the justification for this?
@@ -282,7 +282,7 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
                         BuildJavaSucceeded = succeeded,
                         % Disable the `--rebuild' option during this pass,
                         % otherwise all the Java classes will be built again.
-                        globals.set_option(rebuild, bool(no),
+                        globals.set_option(part_opmode_rebuild, bool(no),
                             Globals, NoRebuildGlobals),
                         foldl2_make_module_targets_maybe_parallel(KeepGoing,
                             [], ProgressStream, NoRebuildGlobals, ObjTargets,
@@ -526,7 +526,7 @@ build_linked_target(ProgressStream, Globals, MainModuleName, LinkedTargetType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         MaybeOldestLhsTimestamp, AllModules, ObjModules,
         CompilationTarget, PIC, ShouldRebuildLhs, Succeeded, !Info, !IO) :-
-    globals.lookup_maybe_string_option(Globals, pre_link_command,
+    globals.lookup_maybe_string_option(Globals, make_pre_link_command,
         MaybePreLinkCommand),
     (
         MaybePreLinkCommand = yes(PreLinkCommand),
@@ -655,7 +655,9 @@ build_linked_target_2(ProgressStream, Globals0, MainModuleName,
 
 make_init_obj_file_check_result(ProgressStream, NoLinkObjsGlobals,
         MainModuleName, AllModulesList, Succeeded, InitObjects, !Info, !IO) :-
-    make_init_obj_file(NoLinkObjsGlobals, ProgressStream,
+    globals.lookup_bool_option(NoLinkObjsGlobals, part_opmode_rebuild,
+        MustRecompile),
+    make_init_obj_file(ProgressStream, NoLinkObjsGlobals, MustRecompile,
         MainModuleName, AllModulesList, InitObjectResult, !IO),
     (
         InitObjectResult = yes(InitObject),

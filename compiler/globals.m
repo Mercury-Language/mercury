@@ -431,7 +431,8 @@
     is det.
 :- pred get_linkage(globals::in, static_or_shared::out) is det.
 :- pred get_mercury_linkage(globals::in, static_or_shared::out) is det.
-:- pred get_lib_linkages(globals::in, set(static_or_shared)::out) is det.
+:- pred get_library_install_linkages(globals::in, set(static_or_shared)::out)
+    is det.
 :- pred get_target(globals::in, compilation_target::out) is det.
 :- pred get_subdir_setting(globals::in, subdir_setting::out) is det.
 :- pred get_word_size(globals::in, word_size::out) is det.
@@ -924,7 +925,7 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
                 % g_mercury_linkage does the same for --mercury-linkage.
                 g_linkage                   :: static_or_shared,
                 g_mercury_linkage           :: static_or_shared,
-                g_lib_linkages              :: set(static_or_shared),
+                g_library_install_linkages  :: set(static_or_shared),
                 g_target                    :: compilation_target,
                 g_subdir_setting            :: subdir_setting,
                 g_word_size                 :: word_size,
@@ -1002,8 +1003,8 @@ get_linkage(Globals, X) :-
     X = Globals ^ g_linkage.
 get_mercury_linkage(Globals, X) :-
     X = Globals ^ g_mercury_linkage.
-get_lib_linkages(Globals, X) :-
-    X = Globals ^ g_lib_linkages.
+get_library_install_linkages(Globals, X) :-
+    X = Globals ^ g_library_install_linkages.
 get_target(Globals, X) :-
     X = Globals ^ g_target.
 get_subdir_setting(Globals, X) :-

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2008-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -20,7 +20,7 @@
 %    for that file not into the file with its intended name, but into a file
 %    with a .tmp suffix, and will copy that file to the originally intended
 %    file name only if the new file differs from the old contents of the
-%    target file. This allows us to avoid rebuild all the files that
+%    target file. This allows us to avoid rebuilding all the files that
 %    depend on *that* file.
 %
 % 2  "mmc --make", after constructing some kinds of files (such as executables)

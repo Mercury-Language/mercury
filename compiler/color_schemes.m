@@ -68,7 +68,7 @@
 
     % This function is intended to be used by write_error_spec.m
     % to find out the colors it should use in the diagnostics it writes out.
-    % Its jobs is to convert the values of the options which record
+    % Its job is to convert the values of the options which record
     % the color shades write_error_spec.m should use for each color name
     % (color_subject, color_correct, color_incorrect, color_inconsistent, and
     % color_hint). These colors could have been chosen by the user, in which
