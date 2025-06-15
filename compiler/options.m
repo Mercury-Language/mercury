@@ -1117,7 +1117,7 @@
     ;       quoted_ld_libflag
     ;       link_library_directories
     ;       runtime_link_library_directories
-    ;       default_runtime_library_directory
+    ;       use_default_runtime_library_directory
     ;       link_libraries
     ;       link_objects
     ;       mercury_library_directories
@@ -1464,6 +1464,8 @@ option_defaults(Opt, Data) :-
     ;       oc_config
             % The results of autoconfiguration, or of executing
             % tools/configure_cross.
+    ;       oc_mconfig
+            % Options which are reserved for use by the Mercury.config file.
     ;       oc_analysis
             % Options for user control of program analyses.
     ;       oc_misc
@@ -4703,35 +4705,12 @@ optdb(oc_target_csharp, quoted_csharp_flag,              string_special,
 %---------------------------------------------------------------------------%
 
     % Link Options.
+    %
+    % XXX Several of the options in this section do not affect linking, but
+    % instead affect compilation (of things other than Mercury modules).
+    % These include init_files, trace_init_files, runtime_flags,
+    % extra_init_functions, mkinit_command, and maybe more.
 
-optdef(oc_link_c, shared_lib_not_executable,                bool(no)).
-
-optdb(oc_link_c, shared_lib_not_executable,                bool(no),
-    % XXX Improve this documentation.
-    % XXX The name of the option is misleading about its purpose.
-    priv_help("compile-to-shared-lib", [
-        "This option is intended only for use by the debugger's",
-        "interactive query facility."])).
-
-% XXX Several of the following options do not affect linking, but instead
-% affect compilation (of things other than Mercury modules). These include
-% init_files, trace_init_files, runtime_flags, extra_init_functions,
-% mkinit_command, and maybe more.
-
-optdef(oc_link_c,      output_file_name,                       string("")).
-    % If the output_file_name is an empty string, we use the name
-    % of the first module on the command line.
-optdef(oc_link_c,      ld_flags,                          accumulating([])).
-optdef(oc_link_c,      quoted_ld_flag,                    string_special).
-optdef(oc_link_c,      ld_libflags,                       accumulating([])).
-optdef(oc_link_c,      quoted_ld_libflag,                 string_special).
-optdef(oc_link_c_cs,   link_library_directories,          accumulating([])).
-optdef(oc_link_c,      runtime_link_library_directories,  accumulating([])).
-% The default_runtime_library_directory option is only ever used to decide
-% whether to modify the value of the runtime_link_library_directories option.
-optdef(oc_link_c,      default_runtime_library_directory, bool(yes)).
-optdef(oc_link_c_cs,   link_libraries,                    accumulating([])).
-optdef(oc_link_c_cs_j, link_objects,                      accumulating([])).
 % NOTE mercury_library_directory_special sets search_directories,
 % c_include_directories and mercury_library_directories.
 optdef(oc_link_c_cs_j, mercury_library_directory_special, string_special).
@@ -4752,9 +4731,85 @@ optdef(oc_link_c_cs_j, mercury_standard_library_directory_special,
 optdef(oc_link_c_cs_j, mercury_standard_library_directory, maybe_string(no)).
     % The Mercury.config file will set the default
     % standard library directory.
-optdef(oc_link_c,      init_file_directories,             accumulating([])).
-optdef(oc_link_c,      init_files,                        accumulating([])).
-optdef(oc_link_c,      trace_init_files,                  accumulating([])).
+
+optdb(oc_link_c_cs_j, mercury_library_directory_special, string_special,
+    % NOTE mercury_library_directory_special sets search_directories,
+    % c_include_directories and mercury_library_directories.
+    alt_help("mld <directory>", pos_sep_lines,
+            ["mercury-library-directory <directory>"], [
+        "Append <directory> to the list of directories to",
+        "be searched for Mercury libraries. This will add",
+        "`--search-directory', `--library-directory',",
+        "`--init-file-directory' and `--c-include-directory'",
+        "options as needed."])).
+optdb(oc_link_c_cs_j, mercury_library_directories,       accumulating([]),
+    no_help).
+optdb(oc_link_c_cs_j, search_library_files_directory_special, string_special,
+    % NOTE search_library_files_directory_special sets search_directories,
+    % c_include_directories and search_library_files_directories.
+    % XXX This list just above DIFFERS from the list below.
+    alt_help("search-lib-files-dir <directory>", pos_sep_lines,
+            ["search-library-files-directory <directory>"], [
+        "Search <directory> for Mercury library files that have not yet",
+        "been installed. Similar to adding <directory> using all of the",
+        "`--search-directory', `--intermod-directory',",
+        "`--library-directory', `--init-file-directory' and",
+        "`--c-include-directory' options."])).
+optdb(oc_link_c_cs_j, search_library_files_directories,  accumulating([]),
+    no_help).
+optdb(oc_link_c_cs_j, mercury_library_special,           string_special,
+    % NOTE mercury_library_special adds to the values of link_libraries,
+    % mercury_libraries and init_files.
+    alt_help("ml <library>", pos_sep_lines,
+            ["mercury-library <library>"], [
+        "Link with the specified Mercury library."])).
+optdb(oc_link_c_cs_j, mercury_libraries,                 accumulating([]),
+    no_help).
+optdb(oc_link_c_cs_j, mercury_standard_library_directory_special,
+                                                     maybe_string_special,
+    % NOTE mercury_standard_library_directory_special sets
+    % mercury_standard_library_directory and mercury_configuration_directory.
+    alt_help("mercury-standard-library-directory <directory>",
+            pos_sep_lines, ["mercury-stdlib-dir <directory>"], [
+        "Search <directory> for the Mercury standard library.",
+        "Implies `--mercury-library-directory <directory>'",
+        "and `--mercury-configuration-directory <directory>'.",
+        "The negative version, --no-mercury-standard-library-directory",
+        "tells the compiler not to use the Mercury standard library,",
+        "and also implies `--no-mercury-configuration-directory'."])).
+optdb(oc_link_c_cs_j, mercury_standard_library_directory, maybe_string(no),
+    % The Mercury.config file will set the default
+    % standard library directory.
+    no_help).
+
+optdef(oc_link_c_cs,   link_library_directories,          accumulating([])).
+optdef(oc_link_c_cs,   link_libraries,                    accumulating([])).
+
+% XXX The internal and external names of the next two options
+% seem to be different for no good reason.
+optdb(oc_link_c_cs,   link_library_directories,          accumulating([]),
+    short_arg_help("L <directory>", "library-directory <directory>", [], [
+        "Append <directory> to the list of directories in which",
+        "to search for libraries."])).
+optdb(oc_link_c_cs,   link_libraries,                    accumulating([]),
+    short_arg_help("l <library>", "library <library>", [], [
+        "Link with the specified library."])).
+
+optdef(oc_link_c,  output_file_name,                       string("")).
+    % If the output_file_name is an empty string, we use the name
+    % of the first module on the command line.
+optdef(oc_link_c,  link_objects,                      accumulating([])).
+optdef(oc_link_c,  ld_flags,                          accumulating([])).
+optdef(oc_link_c,  quoted_ld_flag,                    string_special).
+optdef(oc_link_c,  ld_libflags,                       accumulating([])).
+optdef(oc_link_c,  quoted_ld_libflag,                 string_special).
+optdef(oc_link_c,  runtime_link_library_directories,  accumulating([])).
+% The use_default_runtime_library_directory option is only ever used to decide
+% whether to modify the value of the runtime_link_library_directories option.
+optdef(oc_link_c,  use_default_runtime_library_directory, bool(yes)).
+optdef(oc_link_c,  init_file_directories,             accumulating([])).
+optdef(oc_link_c,  init_files,                        accumulating([])).
+optdef(oc_link_c,  trace_init_files,                  accumulating([])).
 % XXX The options
 %   linkage_special
 %   only_globals_linkage
@@ -4766,80 +4821,343 @@ optdef(oc_link_c,      trace_init_files,                  accumulating([])).
 % typed fields in the globals.
 % NOTE linkage_special first checks and then sets only_globals_linkage and
 % only_globals_mercury_linkage.
-optdef(oc_link_c,      linkage_special,                 string_special).
-optdef(oc_link_c,      only_globals_linkage,            string("shared")).
+optdef(oc_link_c,  linkage_special,                 string_special).
+optdef(oc_link_c,  only_globals_linkage,            string("shared")).
 % NOTE mercury_linkage_special first checks and then sets
 % only_globals_mercury_linkage.
-optdef(oc_link_c,      mercury_linkage_special,         string_special).
-optdef(oc_link_c,      only_globals_mercury_linkage,    string("shared")).
-optdef(oc_link_c,      demangle,                        bool(yes)).
-optdef(oc_link_c,      strip,                           bool(yes)).
-optdef(oc_link_c,      main,                            bool(yes)).
-optdef(oc_link_c,      allow_undefined,                 bool(yes)).
-optdef(oc_link_c,      use_readline,                    bool(yes)).
-optdef(oc_link_c,      runtime_flags,                   accumulating([])).
-optdef(oc_link_c,      extra_init_functions,            bool(no)).
-optdef(oc_link_c,      frameworks,                      accumulating([])).
-optdef(oc_link_c,      framework_directories,           accumulating([])).
-optdef(oc_link_c,      cstack_reserve_size,             int(-1)).
+optdef(oc_link_c,  mercury_linkage_special,         string_special).
+optdef(oc_link_c,  only_globals_mercury_linkage,    string("shared")).
+optdef(oc_link_c,  demangle,                        bool(yes)).
+optdef(oc_link_c,  strip,                           bool(yes)).
+optdef(oc_link_c,  main,                            bool(yes)).
+optdef(oc_link_c,  allow_undefined,                 bool(yes)).
+optdef(oc_link_c,  use_readline,                    bool(yes)).
+optdef(oc_link_c,  runtime_flags,                   accumulating([])).
+optdef(oc_link_c,  extra_init_functions,            bool(no)).
+optdef(oc_link_c,  frameworks,                      accumulating([])).
+optdef(oc_link_c,  framework_directories,           accumulating([])).
+optdef(oc_link_c,  cstack_reserve_size,             int(-1)).
+optdef(oc_link_c,  link_executable_command,         string("gcc")).
+optdef(oc_link_c,  link_shared_lib_command,         string("gcc -shared")).
+optdef(oc_link_c,  shlib_linker_install_name_path,  string("")).
+optdef(oc_link_c,  strip_executable_command,        string("")).
+optdef(oc_link_c,  strip_executable_shared_flags,   string("")).
+optdef(oc_link_c,  strip_executable_static_flags,   string("")).
+optdef(oc_link_c, shared_lib_not_executable,        bool(no)).
 
-optdef(oc_link_c,      shared_library_extension,        string(".so")).
-    % The `mmc' script will override the default with a value
-    % determined at configuration time.
-optdef(oc_link_c,      library_extension,               string(".a")).
-% XXX The value of executable_file_extension is not used for linking.
-optdef(oc_link_c,      executable_file_extension,       string("")).
-optdef(oc_link_c,      link_executable_command,         string("gcc")).
-optdef(oc_link_c,      link_shared_lib_command,         string("gcc -shared")).
-optdef(oc_link_c,      create_archive_command,          string("ar")).
-optdef(oc_link_c,      create_archive_command_output_flag, string("")).
-optdef(oc_link_c,      create_archive_command_flags,  accumulating([])). % "cr"
-optdef(oc_link_c,      ranlib_command,                  string("")).
-optdef(oc_link_c,      ranlib_flags,                    string("")).
-optdef(oc_link_c,      mkinit_command,                  string("mkinit")).
-optdef(oc_link_c,      demangle_command,                string("mdemangle")).
-optdef(oc_link_c,      filtercc_command,                string("mfiltercc")).
-optdef(oc_link_c,      trace_libs,                      string("")).
-optdef(oc_link_c,      thread_libs,                     string("")).
-optdef(oc_link_c,      hwloc_libs,                      string("")).
-optdef(oc_link_c,      hwloc_static_libs,               string("")).
-optdef(oc_link_c,      shared_libs,                     string("")).
-optdef(oc_link_c,      math_lib,                        string("")).
-optdef(oc_link_c,      readline_libs,                   string("")).
-optdef(oc_link_c,      linker_opt_separator,            string("")).
-optdef(oc_link_c,      linker_debug_flags,              string("-g")).
-optdef(oc_link_c,      shlib_linker_debug_flags,        string("-g")).
-optdef(oc_link_c,      linker_sanitizer_flags,          string("")).
-optdef(oc_link_c,      linker_trace_flags,              string("")).
-optdef(oc_link_c,      shlib_linker_trace_flags,        string("")).
-optdef(oc_link_c,      linker_thread_flags,             string("")).
-optdef(oc_link_c,      shlib_linker_thread_flags,       string("")).
-optdef(oc_link_c,      linker_lto_flags,                string("")).
-optdef(oc_link_c,      linker_static_flags,             string("-static")).
-optdef(oc_link_c,      linker_strip_flag,               string("-s")).
-optdef(oc_link_c,      linker_link_lib_flag,            string("-l")).
-optdef(oc_link_c,      shlib_linker_link_lib_flag,      string("-l")).
-optdef(oc_link_c,      linker_link_lib_suffix,          string("")).
-optdef(oc_link_c,      shlib_linker_link_lib_suffix,    string("")).
-optdef(oc_link_c,      linker_path_flag,                string("-L")).
-optdef(oc_link_c,      linker_rpath_flag,               string("-Wl,-rpath")).
-optdef(oc_link_c,      linker_rpath_separator,          string(" -Wl,-rpath")).
-optdef(oc_link_c,      shlib_linker_rpath_flag,         string("-Wl,-rpath")).
-optdef(oc_link_c,      shlib_linker_rpath_separator,    string(" -Wl,-rpath")).
-optdef(oc_link_c,      linker_allow_undefined_flag,     string("")).
-optdef(oc_link_c,      linker_error_undefined_flag,
-                                                string("-Wl,-no-undefined")).
-optdef(oc_link_c,      shlib_linker_use_install_name,   bool(no)).
-optdef(oc_link_c,      shlib_linker_install_name_flag,
-                                                string("-install_name ")).
-optdef(oc_link_c,      shlib_linker_install_name_path,  string("")).
-optdef(oc_link_c,      strip_executable_command,        string("")).
-optdef(oc_link_c,      strip_executable_shared_flags,   string("")).
-optdef(oc_link_c,      strip_executable_static_flags,   string("")).
+optdb(oc_link_c,      output_file_name,                       string(""),
+    % If the output_file_name is an empty string, we use the name
+    % of the first module on the command line.
+    short_arg_help("o <filename>", "output-file <filename>", [], [
+        "Specify the name of the final executable.",
+        "(The default executable name is the same as the name",
+        "of the first module on the command line.)",
+        "This option is ignored by `mmc --make'."])).
+optdb(oc_link_c,      link_objects,                      accumulating([]),
+    help("link-object <file>", [
+        "Link with the specified object or archive file."])).
+optdb(oc_link_c,      ld_flags,                          accumulating([]),
+    help("ld-flags <options>", [
+        "Specify options to be passed to the linker command",
+        "invoked by ml to link an executable.",
+        "These options will not be quoted when passed to the shell.",
+        "Use `ml --print-link-command' to find out which",
+        "command is used."])).
+optdb(oc_link_c,      quoted_ld_flag,                    string_special,
+    help("ld-flag <option>", [
+        "Specify a single word option to be passed to the linker command",
+        "invoked by ml to link an executable.",
+        "The word will be quoted when passed to the shell.",
+        "Use `ml --print-link-command' to find out which",
+        "command is used."])).
+optdb(oc_link_c,      ld_libflags,                       accumulating([]),
+    help("ld-libflags <options>", [
+        "Specify options to be passed to the linker command",
+        "invoked by ml to link a shared library.",
+        "These options will not be quoted when passed to the shell.",
+        "Use `ml --print-shared-lib-link-command' to find out",
+        "which command is used."])).
+optdb(oc_link_c,      quoted_ld_libflag,                 string_special,
+    help("ld-libflag <option>", [
+        "Specify a single word option to be passed to the linker command",
+        "invoked by ml to link a shared library.",
+        "The word will be quoted when passed to the shell.",
+        "Use `ml --print-shared-lib-link-command' to find out",
+        "which command is used."])).
+optdb(oc_link_c,      runtime_link_library_directories,  accumulating([]),
+    short_arg_help("R <directory>",
+            "runtime-library-directory <directory>", [], [
+        "Append <directory> to the list of directories in which",
+        "to search for shared libraries at runtime."])).
+optdb(oc_link_c,      use_default_runtime_library_directory, bool(yes),
+    % The use_default_runtime_library_directory option is only ever used
+    % to decide whether to modify the value of the
+    % runtime_link_library_directories option.
+    help("no-default-runtime-library-directory", [
+        "Do not add any directories to the runtime search path",
+        "automatically."])).
+optdb(oc_link_c,      init_file_directories,             accumulating([]),
+    help("init-file-directory <directory>", [
+        "Append <directory> to the list of directories to",
+        "be searched for `.init' files by c2init."])).
+optdb(oc_link_c,      init_files,                        accumulating([]),
+    help("init-file <init-file>", [
+        "Append <init-file> to the list of `.init' files to",
+        "be passed to c2init."])).
+optdb(oc_link_c,      trace_init_files,                  accumulating([]),
+    help("trace-init-file <init-file>", [
+        "Append <init-file> to the list of `.init' files to",
+        "be passed to c2init when tracing is enabled."])).
+% XXX The options
+%   linkage_special
+%   only_globals_linkage
+%   mercury_linkage_special
+%   only_globals_mercury_linkage
+%   only_globals_library_install_linkages
+% are all stringly typed. As the name says, we use the only_globals_* options
+% only to construct the globals; after that point, we use three strongly
+% typed fields in the globals.
+% NOTE linkage_special first checks and then sets only_globals_linkage and
+% only_globals_mercury_linkage.
+optdb(oc_link_c,      linkage_special,                 string_special,
+    help("linkage {shared, static}", [
+        "Specify whether to use shared or static linking for",
+        "executables. Shared libraries are always linked",
+        "with `--linkage shared'."])).
+optdb(oc_link_c,      only_globals_linkage,            string("shared"),
+    no_help).
+% NOTE mercury_linkage_special first checks and then sets
+% only_globals_mercury_linkage.
+optdb(oc_link_c,      mercury_linkage_special,         string_special,
+    help("mercury-linkage {shared, static}", [
+        "Specify whether to use shared or static linking when",
+        "linking an executable with Mercury libraries.",
+        "Shared libraries are always linked with",
+        "`--mercury-linkage shared'."])).
+optdb(oc_link_c,      only_globals_mercury_linkage,    string("shared"),
+    no_help).
+optdb(oc_link_c,      demangle,                        bool(yes),
+    help("no-demangle", [
+        "Don't pipe link errors through the Mercury demangler."])).
+optdb(oc_link_c,      strip,                           bool(yes),
+    help("no-strip", [
+        "Do not strip executables."])).
+optdb(oc_link_c,      main,                            bool(yes),
+    help("no-main", [
+        "Don't generate a C main() function. The user's code must",
+        "provide a main() function."])).
+optdb(oc_link_c,      allow_undefined,                 bool(yes),
+    help("no-allow-undefined", [
+        "Do not allow undefined symbols in shared libraries."])).
+optdb(oc_link_c,      use_readline,                    bool(yes),
+    help("no-use-readline", [
+        "Disable use of the readline library in the debugger."])).
+optdb(oc_link_c,      runtime_flags,                   accumulating([]),
+    help("runtime-flags <flags>", [
+        "Specify flags to pass to the Mercury runtime."])).
+optdb(oc_link_c,      extra_init_functions,            bool(no),
+    alt_help("extra-initialization-functions", pos_sep_lines,
+            ["extra-inits"], [
+        "Search `.c' files for extra initialization functions.",
+        "(This may be necessary if the C files contain",
+        "hand-coded C code with `INIT' comments, rather than",
+        "containing only C code that was automatically generated",
+        "by the Mercury compiler.)"])).
+optdb(oc_link_c,      frameworks,                      accumulating([]),
+    help("framework <framework>", [
+        "Build and link against the specified framework.",
+        "(Mac OS X only.)"])).
+optdb(oc_link_c,      framework_directories,           accumulating([]),
+    short_arg_help("F <directory>",
+            "framework-directory <directory>", [], [
+        "Append the specified directory to the framework search path.",
+        "(Mac OS X only.)"])).
+optdb(oc_link_c,      cstack_reserve_size,             int(-1),
+    help("cstack-reserve-size <size>", [
+        "Set the total size of the C stack in virtual memory for",
+        "executables. The stack size is given in bytes.",
+        "(Microsoft Windows only.)"])).
+optdb(oc_link_c,      link_executable_command,         string("gcc"),
+    help("link-executable-command <command>", [
+        "Specify the command used to invoke the linker when linking",
+        "an executable."])).
+optdb(oc_link_c,      link_shared_lib_command,         string("gcc -shared"),
+    help("link-shared-lib-command <command>", [
+        "Specify the command used to invoke the linker when linking",
+        "a shared library."])).
+optdb(oc_link_c,  shlib_linker_install_name_path,  string(""),
+    help("shlib-linker-install-name-path <directory>", [
+        "Specify the path where a shared library will be installed.",
+        "This option is useful on systems where the runtime search",
+        "path is obtained from the shared library and not via the",
+        "-R option above (such as Mac OS X)."])).
+optdb(oc_link_c,  strip_executable_command,        string(""),
+    help("strip-executable-command <command>", [
+        "Specify the command used to strip executables if no linker",
+        "flag to do so is available. This option has no effect on ml."])).
+optdb(oc_link_c,  strip_executable_shared_flags,   string(""),
+    help("strip-executable-shared-flags <options>", [
+        "Specify options to pass to the strip executable command when",
+        "linking against Mercury shared libraries."])).
+optdb(oc_link_c,  strip_executable_static_flags,   string(""),
+    help("strip-executable-static-flags <options>", [
+        "Specify options to pass to the strip executable command when",
+        "linking against Mercury static libraries."])).
+optdb(oc_link_c, shared_lib_not_executable,                bool(no),
+    % XXX Improve this documentation.
+    % XXX The name of the option is misleading about its purpose.
+    priv_help("compile-to-shared-lib", [
+        "This option is intended only for use by the debugger's",
+        "interactive query facility."])).
 
 optdef(oc_link_csharp, sign_assembly,                   string("")).
-optdef(oc_link_java,   java_archive_command,            string("jar")).
-optdef(oc_link_java,   filterjavac_command,            string("mfilterjavac")).
+
+optdb(oc_link_csharp, sign_assembly,                   string(""),
+    help("sign-assembly <keyfile>", [
+        "Sign the current assembly with the strong name contained",
+        "in the specified key file.",
+        "(This option is only meaningful when generating library",
+        "assemblies with the C# back-end.)"])).
+
+optdef(oc_link_java,   java_archive_command,           string("jar")).
+
+optdb(oc_link_java,   java_archive_command,            string("jar"),
+    help("java-archive-command <command>", [
+        "Specify the command used to produce Java archive (JAR) files."])).
+
+optdef(oc_mconfig,  create_archive_command,          string("ar")).
+optdef(oc_mconfig,  create_archive_command_flags,  accumulating([])). % "cr"
+optdef(oc_mconfig,  create_archive_command_output_flag, string("")).
+optdef(oc_mconfig,  demangle_command,                string("mdemangle")).
+optdef(oc_mconfig,  executable_file_extension,       string("")).
+optdef(oc_mconfig,  filtercc_command,                string("mfiltercc")).
+optdef(oc_mconfig,  filterjavac_command,             string("mfilterjavac")).
+optdef(oc_mconfig,  hwloc_libs,                      string("")).
+optdef(oc_mconfig,  hwloc_static_libs,               string("")).
+optdef(oc_mconfig,  library_extension,               string(".a")).
+optdef(oc_mconfig,  linker_allow_undefined_flag,     string("")).
+optdef(oc_mconfig,  linker_debug_flags,              string("-g")).
+optdef(oc_mconfig,  linker_error_undefined_flag, string("-Wl,-no-undefined")).
+optdef(oc_mconfig,  linker_link_lib_flag,            string("-l")).
+optdef(oc_mconfig,  linker_link_lib_suffix,          string("")).
+optdef(oc_mconfig,  linker_lto_flags,                string("")).
+optdef(oc_mconfig,  linker_opt_separator,            string("")).
+optdef(oc_mconfig,  linker_path_flag,                string("-L")).
+optdef(oc_mconfig,  linker_rpath_flag,               string("-Wl,-rpath")).
+optdef(oc_mconfig,  linker_rpath_separator,          string(" -Wl,-rpath")).
+optdef(oc_mconfig,  linker_sanitizer_flags,          string("")).
+optdef(oc_mconfig,  linker_static_flags,             string("-static")).
+optdef(oc_mconfig,  linker_strip_flag,               string("-s")).
+optdef(oc_mconfig,  linker_thread_flags,             string("")).
+optdef(oc_mconfig,  linker_trace_flags,              string("")).
+optdef(oc_mconfig,  math_lib,                        string("")).
+optdef(oc_mconfig,  mkinit_command,                  string("mkinit")).
+optdef(oc_mconfig,  ranlib_command,                  string("")).
+optdef(oc_mconfig,  ranlib_flags,                    string("")).
+optdef(oc_mconfig,  readline_libs,                   string("")).
+optdef(oc_mconfig,  shared_library_extension,        string(".so")).
+optdef(oc_mconfig,  shared_libs,                     string("")).
+optdef(oc_mconfig,  shlib_linker_debug_flags,        string("-g")).
+optdef(oc_mconfig,  shlib_linker_install_name_flag,  string("-install_name ")).
+optdef(oc_mconfig,  shlib_linker_link_lib_flag,      string("-l")).
+optdef(oc_mconfig,  shlib_linker_link_lib_suffix,    string("")).
+optdef(oc_mconfig,  shlib_linker_rpath_flag,         string("-Wl,-rpath")).
+optdef(oc_mconfig,  shlib_linker_rpath_separator,    string(" -Wl,-rpath")).
+optdef(oc_mconfig,  shlib_linker_thread_flags,       string("")).
+optdef(oc_mconfig,  shlib_linker_trace_flags,        string("")).
+optdef(oc_mconfig,  shlib_linker_use_install_name,   bool(no)).
+optdef(oc_mconfig,  thread_libs,                     string("")).
+optdef(oc_mconfig,  trace_libs,                      string("")).
+
+optdb(oc_mconfig,  create_archive_command,          string("ar"),
+    priv_help("create-archive-command", [])).
+optdb(oc_mconfig,  create_archive_command_flags,    accumulating([]), % "cr"
+    priv_help("create-archive-command-flags", [])).
+optdb(oc_mconfig,  create_archive_command_output_flag, string(""),
+    priv_help("create-archive-command-output-flag", [])).
+optdb(oc_mconfig,  demangle_command,                string("mdemangle"),
+    priv_help("demangle-command", [])).
+optdb(oc_mconfig,  executable_file_extension,       string(""),
+    priv_help("executable-file-extension", [])).
+optdb(oc_mconfig,  filtercc_command,                string("mfiltercc"),
+    priv_help("filtercc-command", [])).
+optdb(oc_config,   filterjavac_command,             string("mfilterjavac"),
+    priv_help("filterjavac-command", [])).
+optdb(oc_mconfig,  hwloc_libs,                      string(""),
+    priv_help("hwloc-libs", [])).
+optdb(oc_mconfig,  hwloc_static_libs,               string(""),
+    priv_help("hwloc-static-libs", [])).
+optdb(oc_mconfig,  library_extension,               string(".a"),
+    priv_help("library-extension", [])).
+optdb(oc_mconfig,  linker_allow_undefined_flag,     string(""),
+    priv_help("linker-allow-undefined-flag", [])).
+optdb(oc_mconfig,  linker_debug_flags,              string("-g"),
+    priv_help("linker-debug-flags", [])).
+optdb(oc_mconfig,  linker_error_undefined_flag,    string("-Wl,-no-undefined"),
+    priv_help("linker-error-undefined-flag", [])).
+optdb(oc_mconfig,  linker_link_lib_flag,            string("-l"),
+    priv_help("linker-link-lib-flag", [])).
+optdb(oc_mconfig,  linker_link_lib_suffix,          string(""),
+    priv_help("linker-link-lib-suffix", [])).
+optdb(oc_mconfig,  linker_lto_flags,                string(""),
+    priv_help("linker-lto-flags", [])).
+optdb(oc_mconfig,  linker_opt_separator,            string(""),
+    priv_help("linker-opt-separator", [])).
+optdb(oc_mconfig,  linker_path_flag,                string("-L"),
+    priv_help("linker-path-flag", [])).
+optdb(oc_mconfig,  linker_rpath_flag,               string("-Wl,-rpath"),
+    priv_help("linker-rpath-flag", [])).
+optdb(oc_mconfig,  linker_rpath_separator,          string(" -Wl,-rpath"),
+    priv_help("linker-rpath-separator", [])).
+optdb(oc_mconfig,  linker_sanitizer_flags,          string(""),
+    priv_help("linker-sanitizer-flags", [])).
+optdb(oc_mconfig,  linker_static_flags,             string("-static"),
+    priv_help("linker-static-flags", [])).
+optdb(oc_mconfig,  linker_strip_flag,               string("-s"),
+    priv_help("linker-strip-flag", [])).
+optdb(oc_mconfig,  linker_thread_flags,             string(""),
+    priv_help("linker-thread-flags", [])).
+optdb(oc_mconfig,  linker_trace_flags,              string(""),
+    priv_help("linker-trace-flags", [])).
+optdb(oc_mconfig,  math_lib,                        string(""),
+    priv_help("math-lib", [])).
+optdb(oc_mconfig,  mkinit_command,                  string("mkinit"),
+    priv_help("mkinit-command", [])).
+optdb(oc_mconfig,  ranlib_command,                  string(""),
+    priv_help("ranlib-command", [])).
+optdb(oc_mconfig,  ranlib_flags,                    string(""),
+    priv_help("ranlib-flags", [])).
+optdb(oc_mconfig,  readline_libs,                   string(""),
+    priv_help("readline-libs", [])).
+optdb(oc_mconfig,  shared_library_extension,        string(".so"),
+    % The `mmc' script will override the default with a value
+    % determined at configuration time.
+    % XXX *Which* "configuration time" does this mean?
+    priv_help("shared-library-extension", [])).
+optdb(oc_mconfig,  shared_libs,                     string(""),
+    priv_help("shared-libs", [])).
+optdb(oc_mconfig,  shlib_linker_debug_flags,        string("-g"),
+    priv_help("shlib-linker-debug-flags", [])).
+optdb(oc_mconfig,  shlib_linker_install_name_flag,  string("-install_name "),
+    priv_help("shlib-linker-install-name-flag", [])).
+optdb(oc_mconfig,  shlib_linker_link_lib_flag,      string("-l"),
+    priv_help("shlib-linker-link-lib-flag", [])).
+optdb(oc_mconfig,  shlib_linker_link_lib_suffix,    string(""),
+    priv_help("shlib-linker-link-lib-suffix", [])).
+optdb(oc_mconfig,  shlib_linker_rpath_flag,         string("-Wl,-rpath"),
+    priv_help("shlib-linker-rpath-flag", [])).
+optdb(oc_mconfig,  shlib_linker_rpath_separator,    string(" -Wl,-rpath"),
+    priv_help("shlib-linker-rpath-separator", [])).
+optdb(oc_mconfig,  shlib_linker_thread_flags,       string(""),
+    priv_help("shlib-linker-thread-flags", [])).
+optdb(oc_mconfig,  shlib_linker_trace_flags,        string(""),
+    priv_help("shlib-linker-trace-flags", [])).
+optdb(oc_mconfig,  shlib_linker_use_install_name,   bool(no),
+    priv_help("shlib-linker-use-install-name", [])).
+optdb(oc_mconfig,  thread_libs,                     string(""),
+    priv_help("thread-libs", [])).
+optdb(oc_mconfig,  trace_libs,                      string(""),
+    priv_help("trace-libs", [])).
 
 %---------------------------------------------------------------------------%
 
@@ -6529,7 +6847,7 @@ long_table("ld-libflag",           quoted_ld_libflag).
 long_table("library-directory",    link_library_directories).
 long_table("runtime-library-directory", runtime_link_library_directories).
 long_table("default-runtime-library-directory",
-                                    default_runtime_library_directory).
+                                   use_default_runtime_library_directory).
 long_table("library",              link_libraries).
 long_table("link-object",          link_objects).
 long_table("mercury-library",      mercury_library_special).
@@ -10807,32 +11125,53 @@ options_help_link = Section :-
             "executables. The stack size is given in bytes.",
             "(Microsoft Windows only.)"])
 
-        % The --shared-library-extension,
-        % --library-extension, --executable-file-extension
-        % --create-archive-command, --create-archive-command-flags
-        % --create-archive-command-output-flag, --ranlib-command,
-        % --ranlib-flags,
-        % --mkinit-command, --demangle-command, --filtercc-command,
-        % --filterjavac-command --trace-libs,
-        % --thread-libs, --shared-libs, --math-lib, --readline-libs,
-        % --hwloc-libs, --hwloc-static-libs,
-        % --linker-opt-separator,
-        % --linker-debug-flags, --shlib-linker-debug-flags,
-        % --linker-sanitizer-flags, --linker-lto-flags
-        % --linker-trace-flags, --shlib-linker-trace-flags,
-        % --linker-thread-flags, --shlib-linker-thread-flags,
-        % --linker-static-flags, --linker-strip-flag,
-        % --linker-link-lib-flag, --linker-link-lib-suffix,
-        % --shlib-linker-link-lib-flag, --shlib-linker-link-lib-suffix,
-        % --linker-path-flag, --linker-link-with-lib-flag,
-        % --linker-rpath-flag, --linker-rpath-separator,
-        % --shlib-linker-link-with-lib-flag,
-        % --shlib-linker-rpath-flag, --shlib-linker-rpath-separator,
-        % --linker-allow-undefined-flag and
-        % --linker-error-undefined-flag,
-        % --shlib-linker-install-name-flag,
-        % --shlib-linker-use-install-name,
-        % options are reserved for use by the `Mercury.config' file;
+        % The options
+        %
+        %   --create-archive-command
+        %   --create-archive-command-flags
+        %   --create-archive-command-output-flag
+        %   --demangle-command
+        %   --executable-file-extension
+        %   --filtercc-command
+        %   --filterjavac-command
+        %   --hwloc-libs
+        %   --hwloc-static-libs
+        %   --library-extension
+        %   --linker-allow-undefined-flag
+        %   --linker-debug-flags
+        %   --linker-error-undefined-flag
+        %   --linker-link-lib-flag
+        %   --linker-link-lib-suffix
+        %   --linker-lto-flags
+        %   --linker-opt-separator
+        %   --linker-path-flag
+        %   --linker-rpath-flag
+        %   --linker-rpath-separator
+        %   --linker-sanitizer-flags
+        %   --linker-static-flags
+        %   --linker-strip-flag
+        %   --linker-thread-flags
+        %   --linker-trace-flags
+        %   --math-lib
+        %   --mkinit-command
+        %   --ranlib-command
+        %   --ranlib-flags
+        %   --readline-libs
+        %   --shared-library-extension
+        %   --shared-libs
+        %   --shlib-linker-debug-flags
+        %   --shlib-linker-install-name-flag
+        %   --shlib-linker-link-lib-flag
+        %   --shlib-linker-link-lib-suffix
+        %   --shlib-linker-rpath-flag
+        %   --shlib-linker-rpath-separator
+        %   --shlib-linker-thread-flags
+        %   --shlib-linker-trace-flags
+        %   --shlib-linker-use-install-name
+        %   --thread-libs
+        %   --trace-libs
+        %
+        % are reserved for use by the `Mercury.config' file;
         % they are deliberately not documented.
 
     ],

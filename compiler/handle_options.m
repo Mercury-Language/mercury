@@ -2317,13 +2317,14 @@ handle_directory_options(OpMode, !Globals) :-
     globals.get_mercury_linkage(!.Globals, MercuryLinkage),
     (
         MercuryLinkage = sos_static,
-        DefaultRuntimeLibraryDirs = bool.no,
-        globals.set_option(default_runtime_library_directory, bool(no),
+        UseDefaultRuntimeLibraryDirs = bool.no,
+        globals.set_option(use_default_runtime_library_directory, bool(no),
             !Globals)
     ;
         MercuryLinkage = sos_shared,
         globals.lookup_bool_option(!.Globals,
-            default_runtime_library_directory, DefaultRuntimeLibraryDirs)
+            use_default_runtime_library_directory,
+            UseDefaultRuntimeLibraryDirs)
     ),
 
     % Add the standard library directory.
@@ -2393,14 +2394,14 @@ handle_directory_options(OpMode, !Globals) :-
             accumulating([StdLibDir / "lib" | LinkLibDirs0]), !Globals),
 
         (
-            DefaultRuntimeLibraryDirs = bool.yes,
+            UseDefaultRuntimeLibraryDirs = bool.yes,
             globals.lookup_accumulating_option(!.Globals,
                 runtime_link_library_directories, Rpath0),
             % XXX LEGACY
             globals.set_option(runtime_link_library_directories,
                 accumulating([StdLibDir / "lib" | Rpath0]), !Globals)
         ;
-            DefaultRuntimeLibraryDirs = bool.no
+            UseDefaultRuntimeLibraryDirs = bool.no
         )
     ;
         MaybeStdLibDir = no,
@@ -2441,14 +2442,14 @@ handle_directory_options(OpMode, !Globals) :-
             accumulating(LinkLibDirs1 ++ ExtraLinkLibDirs), !Globals),
 
         (
-            DefaultRuntimeLibraryDirs = bool.yes,
+            UseDefaultRuntimeLibraryDirs = bool.yes,
             globals.lookup_accumulating_option(!.Globals,
                 runtime_link_library_directories, Rpath),
             % XXX LEGACY
             globals.set_option(runtime_link_library_directories,
                 accumulating(Rpath ++ ExtraLinkLibDirs), !Globals)
         ;
-            DefaultRuntimeLibraryDirs = bool.no
+            UseDefaultRuntimeLibraryDirs = bool.no
         ),
 
         ExtraIncludeDirs = list.map(
