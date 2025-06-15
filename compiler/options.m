@@ -1038,7 +1038,7 @@
     ;           structure_reuse_free_cells
 
     % Stuff for the old termination analyser.
-    ;       termination
+    ;       termination_enable
     ;       termination_check
     ;       termination_check_verbose
     ;       termination_single_args
@@ -1047,7 +1047,7 @@
     ;       termination_path_limit
 
     % Stuff for the new termination analyser.
-    ;       termination2
+    ;       termination2_enable
     ;       termination2_check
     ;       termination2_check_verbose
     ;       termination2_norm
@@ -3542,13 +3542,76 @@ optdef(oc_opt_ctrl, default_opt_level,                  string("-O2")).
 optdef(oc_opt_ctrl, opt_level,                          int_special).
 optdef(oc_opt_ctrl, opt_space,                          special).
 optdef(oc_opt_ctrl, intermodule_optimization,           bool(no)).
+optdef(oc_opt_ctrl, transitive_optimization,            bool(no)).
 optdef(oc_opt_ctrl, read_opt_files_transitively,        bool(yes)).
 optdef(oc_opt_ctrl, use_opt_files,                      bool(no)).
 optdef(oc_opt_ctrl, use_trans_opt_files,                bool(no)).
-optdef(oc_opt_ctrl, transitive_optimization,            bool(no)).
 optdef(oc_opt_ctrl, intermodule_analysis,               bool(no)).
 optdef(oc_opt_ctrl, analysis_repeat,                    int(0)).
 optdef(oc_opt_ctrl, analysis_file_cache,                bool(no)).
+
+optdb(oc_opt_ctrl, default_opt_level,                  string("-O2"),
+    % This is for use by Mercury.config only.
+    priv_help("default-opt-level -O<n>", [
+        "Set the default optimization level to <n>."])).
+optdb(oc_opt_ctrl, opt_level,                          int_special,
+    short_arg_help("-O <n>", "opt-level <n>",
+            ["optimization-level <n>"], [
+        "Set optimization level to <n>.",
+        "Optimization level -1 means no optimization",
+        "while optimization level 6 means full optimization."])).
+        % "For a full description of each optimization level,",
+        % "see the Mercury User's Guide.",
+optdb(oc_opt_ctrl, opt_space,                          special,
+    alt_help("opt-space", pos_sep_lines, ["optimize-space"], [
+        "Turn on optimizations that reduce code size",
+        "and turn off optimizations that significantly",
+        "increase code size."])).
+optdb(oc_opt_ctrl, intermodule_optimization,           bool(no),
+    alt_help("intermod-opt", pos_sep_lines,
+            ["intermodule-optimization"], [
+        "Perform inlining and higher-order specialization of",
+        "the code for predicates imported from other modules.",
+        "This option must be set throughout the compilation process."])).
+optdb(oc_opt_ctrl, transitive_optimization,            bool(no),
+    alt_help("trans-intermod-opt", pos_sep_lines,
+            ["transitive-intermodule-optimization"], [
+        "Import the transitive intermodule optimization data.",
+        "This data is imported from `<module>.trans_opt' files.",
+        "Note that `--transitive-intermodule-optimization' does not",
+        "work with `mmc --make'."])).
+optdb(oc_opt_ctrl, read_opt_files_transitively,        bool(yes),
+    help("no-read-opt-files-transitively", [
+        "Only read the inter-module optimization information",
+        "for directly imported modules, not the transitive",
+        "closure of the imports."])).
+optdb(oc_opt_ctrl, use_opt_files,                      bool(no),
+    help("use-opt-files", [
+        "Perform inter-module optimization using any",
+        "`.opt' files which are already built,",
+        "e.g. those for the standard library, but do",
+        "not build any others."])).
+optdb(oc_opt_ctrl, use_trans_opt_files,                bool(no),
+    help("use-trans-opt-files", [
+        "Perform inter-module optimization using any",
+        "`.trans_opt' files which are already built,",
+        "e.g. those for the standard library, but do",
+        "not build any others."])).
+optdb(oc_opt_ctrl, intermodule_analysis,               bool(no),
+    help("intermodule-analysis", [
+        "Perform analyses such as termination analysis and",
+        "unused argument elimination across module boundaries.",
+        "This option is not yet fully implemented."])).
+optdb(oc_opt_ctrl, analysis_repeat,                    int(0),
+    help("analysis-repeat <n>", [
+        "The maximum number of times to repeat analyses of",
+        "suboptimal modules with `--intermodule-analysis'",
+        "(default: 0)."])).
+optdb(oc_opt_ctrl, analysis_file_cache,                bool(no),
+    % This feature is still experimental.
+    priv_help("analysis-file-cache", [
+        "Enable caching of parsed analysis files. This may",
+        "improve compile times with `--intermodule-analysis'."])).
 
 %---------------------------------------------------------------------------%
 
@@ -3573,7 +3636,6 @@ optdef(oc_opt_hh, optopt_intermod_inline_simple_threshold, int_special).
 optdef(oc_opt_hh, optopt_inline_tr_sccs,                   bool_special).
 optdef(oc_opt_hh, optopt_inline_tr_sccs_max_extra,         int_special).
 optdef(oc_opt_hh, optopt_from_ground_term_threshold,       int_special).
-optdef(oc_opt_hh, optopt_enable_const_struct_poly,         bool_special).
 optdef(oc_opt_hh, optopt_enable_const_struct_user,         bool_special).
 optdef(oc_opt_hh, optopt_common_struct,                    bool_special).
 optdef(oc_opt_hh, optopt_constraint_propagation,           bool_special).
@@ -3585,6 +3647,7 @@ optdef(oc_opt_hh, optopt_merge_code_after_switch,          bool_special).
 optdef(oc_opt_hh, optopt_format_calls,                     bool_special).
 optdef(oc_opt_hh, optopt_split_switch_arms,                bool_special).
 optdef(oc_opt_hh, optopt_loop_invariants,                  bool_special).
+optdef(oc_opt_hh, optimize_saved_vars,                     bool_special).
 optdef(oc_opt_hh, optopt_saved_vars_const,                 bool_special).
 optdef(oc_opt_hh, optopt_svcell,                           bool_special).
 optdef(oc_opt_hh, optopt_svcell_loop,                      bool_special).
@@ -3599,7 +3662,6 @@ optdef(oc_opt_hh, optopt_svcell_op_ratio,                  int_special).
 optdef(oc_opt_hh, optopt_svcell_node_ratio,                int_special).
 optdef(oc_opt_hh, optopt_svcell_all_path_node_ratio,       int_special).
 optdef(oc_opt_hh, optopt_svcell_all_candidates,            bool_special).
-optdef(oc_opt_hh, optimize_saved_vars,                     bool_special).
 optdef(oc_opt_hh, optopt_delay_construct,                  bool_special).
 optdef(oc_opt_hh, optopt_follow_code,                      bool_special).
 optdef(oc_opt_hh, optopt_unused_args,                      bool_special).
@@ -3631,6 +3693,306 @@ optdef(oc_opt_hh, optopt_always_spec_dep_par_conjs,        bool_special).
 optdef(oc_opt_hh, optopt_allow_some_paths_only_waits,      bool_special).
 optdef(oc_opt_hh, optopt_region_analysis,                  bool_special).
 
+optdb(oc_opt_hh, optopt_allow_inlining,                   bool_special,
+    priv_help("no-allow-inlining", [
+        "Disable all forms of inlining."])).
+optdb(oc_opt_hh, inlining,                                bool_special,
+    help("no-inlining", [
+        "Disable all forms of inlining."])).
+optdb(oc_opt_hh, optopt_inline_simple,                    bool_special,
+    help("no-inline-simple", [
+        "Disable the inlining of simple procedures."])).
+optdb(oc_opt_hh, optopt_inline_builtins,                  bool_special,
+    help("no-inline-builtins", [
+        "Generate builtins (e.g. arithmetic operators) as calls to",
+        "out-of-line procedures. This is done by default when",
+        "debugging, as without this option, the execution of",
+        "builtins would not be traced."])).
+optdb(oc_opt_hh, optopt_inline_single_use,                bool_special,
+    help("no-inline-single-use", [
+        "Disable the inlining of procedures called only once."])).
+optdb(oc_opt_hh, optopt_inline_call_cost,                 int_special,
+    help("inline-call-cost <cost>", [
+        "Assume that the cost of a call is the given parameter.",
+        "Used only in conjunction with `--inline-compound-threshold'."])).
+optdb(oc_opt_hh, optopt_inline_compound_threshold,        int_special,
+    help("inline-compound-threshold <threshold>", [
+        "Inline a procedure if its size (measured roughly",
+        "in terms of the number of connectives in its internal form)",
+        "less the assumed call cost, multiplied by the number of times",
+        "it is called is below the given threshold."])).
+optdb(oc_opt_hh, optopt_inline_simple_threshold,          int_special,
+    % Has no effect until --inline-simple is enabled.
+    help("inline-simple-threshold <threshold>", [
+        "Inline a procedure if its size is less than the",
+        "given threshold."])).
+optdb(oc_opt_hh, optopt_intermod_inline_simple_threshold, int_special,
+    help("intermod-inline-simple-threshold", [
+        "Similar to `--inline-simple-threshold', except used to",
+        "determine which predicates should be included in",
+        "`.opt' files. Note that changing this between writing",
+        "the `.opt' file and compiling to C may cause link errors,",
+        "and too high a value may result in reduced performance."])).
+optdb(oc_opt_hh, optopt_inline_vars_threshold,            int_special,
+    % Has no effect until --intermodule-optimization.
+    help("inline-vars-threshold <threshold>", [
+        "Don't inline a call if it would result in a procedure",
+        "containing more than <threshold> variables. Procedures",
+        "containing large numbers of variables can cause",
+        "slow compilation."])).
+optdb(oc_opt_hh, optopt_inline_tr_sccs,                   bool_special,
+    help("inline-linear-tail-rec-sccs", [
+        "Given a set of mutually recursive procedures (an SCC, or strongly",
+        "connected component, of the call graph) in which each procedure",
+        "contains exactly tail call to a procedure in the SCC, so that",
+        "the tail recursive calls form a linear chain through the SCC,",
+        "inline the callee at every one of those mutually tail recursive",
+        "call sites. This converts mutual tail recursion into self tail",
+        "recursion, which the MLDS backend can turn into code that runs",
+        "in constant stack space."])).
+optdb(oc_opt_hh, optopt_inline_tr_sccs_max_extra,         int_special,
+    priv_help("inline-linear-tail-rec-sccs-max-extra <E>", [
+        "When considering whether to apply --inline-linear-tail-rec-sccs",
+        "to an SCC containing N procedures, allow the SCC to contain",
+        "up to N+E mutually recursive tail calls."])).
+optdb(oc_opt_hh, optopt_inline_par_builtins,              bool_special,
+    % This is for measurements by implementors only.
+    priv_help("no-inline-par-builtins", [
+        "Generate calls to the predicates of par_builtin.m, instead of",
+        "bodily including their definitions as C code."])).
+optdb(oc_opt_hh, optopt_from_ground_term_threshold,       int_special,
+    priv_help("from-ground-term-threshold <n>", [
+        "Wrap a from_ground_term scope around the expanded,",
+        "superhomogeneous form of a ground term that involves at least.",
+        "the given number of function symbols."])).
+optdb(oc_opt_hh, optopt_enable_const_struct_user,         bool_special,
+    help("no-const-struct", [
+        "Disable the gathering of constant structures in a separate",
+        "table."])).
+optdb(oc_opt_hh, optopt_common_struct,                    bool_special,
+    help("no-common-struct", [
+        "Disable optimization of common term structures."])).
+optdb(oc_opt_hh, optopt_constraint_propagation,           bool_special,
+    help("constraint-propagation", [
+        "Enable the constraint propagation transformation,",
+        "which attempts to transform the code so that goals",
+        "which can fail are executed as early as possible."])).
+optdb(oc_opt_hh, optopt_local_constraint_propagation,     bool_special,
+    help("local-constraint-propagation", [
+        "Enable the constraint propagation transformation,",
+        "but only rearrange goals within each procedure.",
+        "Specialized versions of procedures will not be created."])).
+optdb(oc_opt_hh, optopt_duplicate_calls,                  bool_special,
+    help("optimize-duplicate-calls", [
+        "Optimize away multiple calls to a predicate",
+        "with the same input arguments."])).
+optdb(oc_opt_hh, optopt_constant_propagation,             bool_special,
+    help("optimize-constant-propagation", [
+        "Given calls to some frequently used library functions and",
+        "predicates, mainly those that do arithmetic, evaluate them",
+        "at compile time, if all their input arguments are constants."])).
+optdb(oc_opt_hh, optopt_excess_assign,                    bool_special,
+    help("excess-assign", [
+        "Remove excess assignment unifications."])).
+optdb(oc_opt_hh, optopt_merge_code_after_switch,          bool_special,
+    priv_help("merge-code-after-switch", [
+        "Merge the goal after a switch into the switch, if we can.",
+        "Two cases in which we can are when that goal just tests",
+        "the value of a variable set in the switch, and when that goal",
+        "is a switch on the same variable."])).
+optdb(oc_opt_hh, optopt_format_calls,                     bool_special,
+    help("no-optimize-format-calls", [
+        "Do not attempt to interpret the format string in calls to",
+        "string.format and related predicates at compile time;",
+        "always leave this to be done at runtime."])).
+optdb(oc_opt_hh, optopt_split_switch_arms,                bool_special,
+    help("split-switch-arms", [
+        "When a switch on a variable has an inner switch on that",
+        "same variable inside one of its arms, split up that arm of the",
+        "outer switch along the same lines, effectively inlining",
+        "the inner switch."])).
+optdb(oc_opt_hh, optopt_loop_invariants,                  bool_special,
+    help("loop-invariants", [
+        "Hoist loop invariants out of loops."])).
+
+optdb(oc_opt_hh, optimize_saved_vars,                     bool_special,
+    help("optimize-saved-vars", [
+        "Minimize the number of variables saved across calls."])).
+optdb(oc_opt_hh, optopt_saved_vars_const,                 bool_special,
+    priv_help("optimize-saved-vars-const", [
+        "Minimize the number of variables saved across calls by",
+        "introducing duplicate copies of variables bound to",
+        "constants in each interval between flushes where they",
+        "are needed."])).
+optdb(oc_opt_hh, optopt_svcell,                           bool_special,
+    priv_help("optimize-saved-vars-cell", [
+        "Minimize the number of variables saved across calls by",
+        "trying to use saved variables pointing to cells to reach",
+        "the variables stored in those cells."])).
+optdb(oc_opt_hh, optopt_svcell_loop,                      bool_special,
+    priv_help("osv-loop", [])).
+optdb(oc_opt_hh, optopt_svcell_full_path,                 bool_special,
+    priv_help("osv-full-path", [])).
+optdb(oc_opt_hh, optopt_svcell_on_stack,                  bool_special,
+    priv_help("osv-on-stack", [])).
+optdb(oc_opt_hh, optopt_svcell_candidate_headvars,        bool_special,
+    priv_help("osv-cand-head", [])).
+% The next four options are used by tupling.m as well; changes to them
+% may require changes there as well.
+optdb(oc_opt_hh, optopt_svcell_cv_store_cost,             int_special,
+    priv_help("osv-cvstore-cost", [])).
+optdb(oc_opt_hh, optopt_svcell_cv_load_cost,              int_special,
+    priv_help("osv-cvload-cost", [])).
+optdb(oc_opt_hh, optopt_svcell_fv_store_cost,             int_special,
+    priv_help("osv-fvstore-cost", [])).
+optdb(oc_opt_hh, optopt_svcell_fv_load_cost,              int_special,
+    priv_help("osv-fvload-cost", [])).
+optdb(oc_opt_hh, optopt_svcell_op_ratio,                  int_special,
+    priv_help("osv-op-ratio", [])).
+optdb(oc_opt_hh, optopt_svcell_node_ratio,                int_special,
+    priv_help("osv-node-ratio", [])).
+optdb(oc_opt_hh, optopt_svcell_all_path_node_ratio,       int_special,
+    priv_help("osv-allpath-node-ratio", [])).
+optdb(oc_opt_hh, optopt_svcell_all_candidates,            bool_special,
+    priv_help("osv-all-cand", [])).
+optdb(oc_opt_hh, optopt_delay_construct,                  bool_special,
+    help("delay-constructs", [
+        "Reorder goals to move construction unifications after",
+        "primitive goals that can fail."])).
+optdb(oc_opt_hh, optopt_follow_code,                      bool_special,
+    help("no-follow-code", [
+        "Don't migrate into the end of branched goals."])).
+optdb(oc_opt_hh, optopt_unused_args,                      bool_special,
+    help("optimize-unused-args", [
+        "Remove unused predicate arguments.",
+        "This will cause the compiler to generate more",
+        "efficient code for many polymorphic predicates."])).
+optdb(oc_opt_hh, optopt_intermod_unused_args,             bool_special,
+    help("intermod-unused-args", [
+        "Perform unused argument removal across module boundaries.",
+        "This option implies `--optimize-unused-args' and",
+        "`--intermodule-optimization'."])).
+optdb(oc_opt_hh, optopt_higher_order,                     bool_special,
+    help("optimize-higher-order", [
+        "Enable specialization of higher-order predicates."])).
+optdb(oc_opt_hh, optopt_higher_order_size_limit,          int_special,
+    help("higher-order-size-limit", [
+        "Set the maximum goal size of specialized versions created by",
+        "`--optimize-higher-order' and `--type-specialization'.",
+        "Goal size is measured as the number of calls, unifications",
+        "and branched goals."])).
+optdb(oc_opt_hh, optopt_higher_order_arg_limit,           int_special,
+    help("higher-order-arg-limit <limit>", [
+        "Set the maximum size of higher-order arguments to",
+        "be specialized by `--optimize-higher-order' and",
+        "`--type-specialization'."])).
+optdb(oc_opt_hh, optopt_unneeded_code,                    bool_special,
+    help("unneeded-code", [
+        "Remove goals from computation paths where their outputs are",
+        "not needed, provided the semantics options allow the deletion",
+        "or movement of the goal."])).
+optdb(oc_opt_hh, optopt_unneeded_code_copy_limit,         int_special,
+    help("unneeded-code-copy-limit", [
+        "Gives the maximum number of places to which a goal may be copied",
+        "when removing it from computation paths on which its outputs are",
+        "not needed. A value of zero forbids goal movement and allows",
+        "only goal deletion; a value of one prevents any increase in the",
+        "size of the code."])).
+optdb(oc_opt_hh, optopt_type_specialization,              bool_special,
+    help("type-specialization", [
+        "Enable specialization of polymorphic predicates where the",
+        "polymorphic types are known."])).
+optdb(oc_opt_hh, optopt_user_guided_type_specialization,  bool_special,
+    help("user-guided-type-specialization", [
+        "Enable specialization of polymorphic predicates for which",
+        "there are `:- pragma type_spec' declarations."])).
+optdb(oc_opt_hh, optopt_introduce_accumulators,           bool_special,
+    help("introduce-accumulators", [
+        "Attempt to introduce accumulating variables into",
+        "procedures, so as to make them tail recursive."])).
+optdb(oc_opt_hh, optopt_lcmc,                             bool_special,
+    help("optimize-constructor-last-call", [
+        "Enable the optimization of ""last"" calls that are followed by",
+        "constructor application."])).
+optdb(oc_opt_hh, optopt_lcmc_accumulator,                 bool_special,
+    priv_help("optimize-constructor-last-call-accumulator", [
+        "Enable the optimization via accumulators of ""last"" calls",
+        "that are followed by constructor application."])).
+optdb(oc_opt_hh, optopt_lcmc_null,                        bool_special,
+    priv_help("optimize-constructor-last-call-null", [
+        "When --optimize-constructor-last-call is enabled, put NULL in",
+        "uninitialized fields (to prevent the garbage collector from",
+        "looking at and following a random bit pattern)."])).
+optdb(oc_opt_hh, optopt_dead_procs,                       bool_special,
+    help("optimize-dead-procs", [
+        "Enable dead predicate elimination."])).
+optdb(oc_opt_hh, optopt_deforestation,                    bool_special,
+    help("deforestation", [
+        "Enable deforestation. Deforestation is a program",
+        "transformation whose aim is to avoid the construction of",
+        "intermediate data structures and to avoid repeated traversals",
+        "over data structures within a conjunction."])).
+optdb(oc_opt_hh, optopt_deforestation_depth_limit,        int_special,
+    help("deforestation-depth-limit <limit>", [
+        "Specify a depth limit to prevent infinite loops in the",
+        "deforestation algorithm.",
+        "A value of -1 specifies no depth limit. The default is 4."])).
+optdb(oc_opt_hh, optopt_deforestation_cost_factor,       int_special,
+    priv_help("deforestation-cost-factor", [])).
+optdb(oc_opt_hh, optopt_deforestation_vars_threshold,     int_special,
+    help("deforestation-vars-threshold <threshold>", [
+        "Specify a rough limit on the number of variables",
+        "in a procedure created by deforestation.",
+        "A value of -1 specifies no limit. The default is 200."])).
+optdb(oc_opt_hh, optopt_deforestation_size_threshold,     int_special,
+    help("deforestation-size-threshold <threshold>", [
+        "Specify a rough limit on the size of a goal",
+        "to be optimized by deforestation.",
+        "A value of -1 specifies no limit. The default is 15."])).
+optdb(oc_opt_hh, optopt_untuple,                          bool_special,
+    priv_help("untuple", [
+        "Expand out procedure arguments when the argument type",
+        "is a tuple or a type with exactly one functor.",
+        "Note: this is almost always a pessimization."])).
+optdb(oc_opt_hh, optopt_tuple,                            bool_special,
+    priv_help("tuple", [
+        "Try to find opportunities for procedures to pass some",
+        "arguments to each other as a tuple rather than as",
+        "individual arguments.",
+        "Note: so far this has mostly a detrimental effect."])).
+optdb(oc_opt_hh, optopt_tuple_trace_counts_file,          string_special,
+    priv_help("tuple-trace-counts-file <filename>", [
+        "Supply a trace counts summary file for the tupling",
+        "transformation. The summary should be made from a sample",
+        "run of the program you are compiling, compiled without",
+        "optimizations."])).
+optdb(oc_opt_hh, optopt_tuple_costs_ratio,                int_special,
+    priv_help("tuple-costs-ratio", [
+        "A value of 110 for this parameter means the tupling",
+        "transformation will transform a procedure if it thinks",
+        "that procedure would be 10% worse, on average, than",
+        "whatever transformed version of the procedure it has in",
+        "mind. The default is 100."])).
+optdb(oc_opt_hh, optopt_tuple_min_args,                   int_special,
+    priv_help("tuple-min-args", [
+        "The minimum number of input arguments that the tupling",
+        "transformation will consider passing together as a",
+        "tuple. This is mostly to speed up the compilation",
+        "process by not pursuing (presumably) unfruitful searches."])).
+optdb(oc_opt_hh, optopt_always_spec_dep_par_conjs,        bool_special,
+    % This is for measurements by implementors only.
+    priv_help("always-specialize-in-dep-par-conjs", [
+        "When the transformation for handling dependent parallel",
+        "conjunctions adds waits and/or signals around a call,",
+        "create a specialized version of the called procedure, even if",
+        "this is not profitable."])).
+optdb(oc_opt_hh, optopt_allow_some_paths_only_waits,      bool_special,
+    priv_help("allow-some-paths-only-waits", [])).
+optdb(oc_opt_hh, optopt_region_analysis,                  bool_special,
+    % This option is not documented because it is still experimental.
+    priv_help("region-analysis", [
+        "Enable the analysis for region-based memory management."])).
+
 optdef(oc_opt_hh_exp, structure_sharing_analysis,         bool(no)).
 optdef(oc_opt_hh_exp, structure_sharing_widening,         int(0)).
 optdef(oc_opt_hh_exp, structure_reuse_analysis,           bool(no)).
@@ -3640,6 +4002,51 @@ optdef(oc_opt_hh_exp, structure_reuse_constraint_arg,     int(0)).
 optdef(oc_opt_hh_exp, structure_reuse_max_conditions,     int(10)).
 optdef(oc_opt_hh_exp, structure_reuse_repeat,             int(0)).
 optdef(oc_opt_hh_exp, structure_reuse_free_cells,         bool(no)).
+
+% XXX All the help text for these experimental options should be private.
+optdb(oc_opt_hh_exp, structure_sharing_analysis,         bool(no),
+    help("structure-sharing", [
+        "Perform structure sharing analysis."])).
+optdb(oc_opt_hh_exp, structure_sharing_widening,         int(0),
+    help("structure-sharing-widening <n>", [
+        "Perform widening when the set of structure sharing pairs becomes",
+        "larger than <n>. When n=0, widening is not enabled.",
+        "(default: 0)."])).
+optdb(oc_opt_hh_exp, structure_reuse_analysis,           bool(no),
+    alt_help("structure-reuse", pos_sep_lines, ["ctgc"], [
+        "Perform structure reuse analysis (Compile Time Garbage",
+        "Collection)."])).
+optdb(oc_opt_hh_exp, structure_reuse_constraint,
+                                        string("within_n_cells_difference"),
+    alt_help("structure-reuse-constraint " ++
+            "{same_cons_id, within_n_cells_difference}", pos_sep_lines,
+            ["ctgc-constraint " ++
+            "{same_cons_id, within_n_cells_difference}"], [
+        "Constraint on the way we allow structure reuse. `same_cons_id'",
+        "specifies that reuse is only allowed between terms of the same",
+        "type and constructor. `within_n_cells_difference' states that",
+        "reuse is allowed as long as the arities between the reused term",
+        "and new term does not exceed a certain threshold. The threshold",
+        "needs to be set using `--structure-reuse-constraint-arg'.",
+        "(default: within_n_cells_difference, with threshold 0)"])).
+optdb(oc_opt_hh_exp, structure_reuse_constraint_arg,     int(0),
+    alt_help("structure-reuse-constraint-arg", pos_sep_lines,
+            ["ctgc-constraint-arg"], [
+        "Specify the maximum difference in arities between the terms that",
+        "can be reused, and the terms that reuse these terms.",
+        "(default: 0)"])).
+optdb(oc_opt_hh_exp, structure_reuse_max_conditions,     int(10),
+    priv_help("structure-reuse-max-conditions", [
+        "Soft limit on the number of reuse conditions to accumulate",
+        "for a procedure. (default: 10)"])).
+optdb(oc_opt_hh_exp, structure_reuse_repeat,             int(0),
+    priv_help("structure-reuse-repeat", [])).
+optdb(oc_opt_hh_exp, structure_reuse_free_cells,         bool(no),
+    % This option is likely to break many optimisations
+    % which haven't been updated.
+    priv_help("structure-reuse-free-cells", [
+        "Immediately free cells which are known to be dead but which",
+        "cannot be reused."])).
 
     % HLDS -> {LLDS,MLDS}
 optdef(oc_opt_hlm, optopt_smart_indexing,                  bool_special).
@@ -3662,6 +4069,78 @@ optdef(oc_opt_hlm, optopt_switch_multi_rec_base_first,     bool_special).
 optdef(oc_opt_hlm, optopt_static_ground_cells,             bool_special).
 optdef(oc_opt_hlm, optopt_use_atomic_cells,                bool_special).
 
+optdb(oc_opt_hlm, optopt_smart_indexing,                  bool_special,
+    help("no-smart-indexing", [
+        "Generate switches as simple if-then-else chains;",
+        "disable string hashing and integer table-lookup indexing."])).
+% The following options are for developers only --they provide
+% finer grained control over smart indexing.
+optdb(oc_opt_hlm, optopt_smart_atomic_indexing,           bool_special,
+    priv_help("no-smart-atomic-indexing", [
+        "Do not generate smart switches on atomic types."])).
+optdb(oc_opt_hlm, optopt_smart_string_indexing,           bool_special,
+    priv_help("no-smart-string-indexing", [
+        "Do not generate smart switches on strings."])).
+optdb(oc_opt_hlm, optopt_smart_tag_indexing,              bool_special,
+    priv_help("no-smart-tag-indexing", [
+        "Do not generate smart switches on discriminated union types."])).
+optdb(oc_opt_hlm, optopt_smart_float_indexing,            bool_special,
+    priv_help("no-smart-float-indexing", [
+        "Do not generate smart switches on floats."])).
+optdb(oc_opt_hlm, optopt_dense_switch_req_density,        int_special,
+    help("dense-switch-req-density <percentage>", [
+        "The jump table generated for an atomic switch",
+        "must have at least this percentage of full slots (default: 25)."])).
+optdb(oc_opt_hlm, optopt_lookup_switch_req_density,       int_special,
+    help("lookup-switch-req-density <percentage>", [
+        "The jump table generated for an atomic switch",
+        "in which all the outputs are constant terms",
+        "must have at least this percentage of full slots (default: 25)."])).
+optdb(oc_opt_hlm, optopt_dense_switch_size,               int_special,
+    help("dense-switch-size <n>", [
+        "The jump table generated for an atomic switch",
+        "must have at least this many entries (default: 4)."])).
+optdb(oc_opt_hlm, optopt_lookup_switch_size,              int_special,
+    help("lookup-switch-size <n>", [
+        "The lookup table generated for an atomic switch",
+        "must have at least this many entries (default: 4)."])).
+optdb(oc_opt_hlm, optopt_string_trie_switch_size,         int_special,
+    help("string-trie-switch-size <n>", [
+        "The trie generated for a string switch",
+        "must have at least this many entries (default: 16)."])).
+optdb(oc_opt_hlm, optopt_string_hash_switch_size,         int_special,
+    help("string-hash-switch-size <n>", [
+        "The hash table generated for a string switch",
+        "must have at least this many entries (default: 8)."])).
+optdb(oc_opt_hlm, optopt_string_binary_switch_size,       int_special,
+    help("string-binary-switch-size <n>", [
+        "The binary search table generated for a string switch",
+        "must have at least this many entries (default: 4)."])).
+optdb(oc_opt_hlm, optopt_tag_switch_size,                 int_special,
+    help("tag-switch-size <n>", [
+        "The number of alternatives in a tag switch",
+        "must be at least this number (default: 3)."])).
+% The next two options are only for performance tests.
+optdb(oc_opt_hlm, optopt_switch_single_rec_base_first,    bool_special,
+    priv_help("switch-single-rec-base-first", [
+        "In a switch with two arms, one a base case and one with a single",
+        "recursive call, put the base case first."])).
+optdb(oc_opt_hlm, optopt_switch_multi_rec_base_first,     bool_special,
+    priv_help("switch-multi-rec-base-first", [
+        "In a switch with two arms, one a base case and one with multiple",
+        "recursive calls, put the base case first."])).
+optdb(oc_opt_hlm, optopt_static_ground_cells,             bool_special,
+    help("no-static-ground-terms", [
+        "Disable the optimization of constructing constant ground terms",
+        "at compile time and storing them as static constants.",
+        "Note that auxiliary data structures created by the compiler",
+        "for purposes such as debugging will still be created as",
+        "static constants."])).
+optdb(oc_opt_hlm, optopt_use_atomic_cells,                bool_special,
+    help("no-use-atomic-cells", [
+        "Don't use the atomic variants of the Boehm gc allocator calls,",
+        "even when this would otherwise be possible."])).
+
     % MLDS -> MLDS
 optdef(oc_opt_mm, optopt_optimize_mlds,                    bool_special).
 optdef(oc_opt_mm, optopt_peep_mlds,                        bool_special).
@@ -3673,16 +4152,75 @@ optdef(oc_opt_mm, optopt_eliminate_local_vars,             bool_special).
 optdef(oc_opt_hh, optopt_generate_trail_ops_inline,        bool_special).
 optdef(oc_opt_hm, optimize_trail_usage,                    bool(no)).
 
+optdb(oc_opt_mm, optopt_optimize_mlds,                    bool_special,
+    help("no-mlds-optimize", [
+        "Disable the MLDS->MLDS optimization passes."])).
+optdb(oc_opt_mm, optopt_peep_mlds,                        bool_special,
+    help("no-mlds-peephole", [
+        "Do not perform peephole optimization of the MLDS."])).
+optdb(oc_opt_hm, optopt_mlds_tailcalls,                   bool_special,
+    help("no-optimize-tailcalls", [
+        "Treat tailcalls as ordinary calls, rather than",
+        "turning self-tailcalls into loops."])).
+optdb(oc_opt_mm, optopt_initializations,                  bool_special,
+    help("no-optimize-initializations", [
+        "Leave initializations of local variables as",
+        "assignment statements, rather than converting such",
+        "assignment statements into initializers."])).
+optdb(oc_opt_mm, optopt_eliminate_unused_mlds_assigns,    bool_special,
+    % This is useful for developers only.
+    priv_help("eliminate-unused-mlds-assigns", [
+        "Eliminate assignments to dead variables in the MLDS."])).
+optdb(oc_opt_mm, optopt_eliminate_local_vars,             bool_special,
+    help("eliminate-local-vars", [
+        "Eliminate local variables with known values, where possible,",
+        "by replacing occurrences of such variables with their values."])).
+% From the user point of view, the next options control an MLDS optimization.
+optdb(oc_opt_hh, optopt_generate_trail_ops_inline,        bool_special,
+    help("no-generate-trail-ops-inline", [
+        "Do not generate trailing operations inline,",
+        "but instead insert calls to the versions of these operations",
+        "in the standard library."])).
+optdb(oc_opt_hm, optimize_trail_usage,                    bool(no),
+    % This option is developer-only.
+    % It is intended for the benchmarking of trail usage optimization.
+    % Otherwise, it should not be turned off, as doing so interferes with
+    % the results of the trail usage analysis.
+    priv_help("no-optimize-trail-usage", [
+        "Do not try and restrict trailing to those parts",
+        "of the program that actually use it."])).
+
     % HLDS -> LLDS
 optdef(oc_opt_hl, optopt_try_switch_size,                  int_special).
 optdef(oc_opt_hl, optopt_binary_switch_size,               int_special).
-optdef(oc_opt_hl, optopt_static_ground_floats,             bool_special).
-optdef(oc_opt_hl, optopt_static_ground_int64s,             bool_special).
-optdef(oc_opt_hl, optopt_static_code_addresses,            bool_special).
 optdef(oc_opt_hl, optopt_middle_rec,                       bool_special).
 optdef(oc_opt_hl, optopt_simple_neg,                       bool_special).
 optdef(oc_opt_hl, optopt_allow_hijacks,                    bool_special).
 optdef(oc_opt_hl, optimize_region_ops,                     bool(no)).
+
+optdb(oc_opt_hl, optopt_try_switch_size,                  int_special,
+    help("try-switch-size <n>", [
+        "The number of alternatives in a try/retry chain switch",
+        "must be at least this number (default: 3)."])).
+optdb(oc_opt_hl, optopt_binary_switch_size,               int_special,
+    help("binary-switch-size <n>", [
+        "The number of alternatives in a binary search switch",
+        "must be at least this number (default: 4)."])).
+optdb(oc_opt_hl, optopt_middle_rec,                       bool_special,
+    help("no-middle-rec", [
+        "Disable the middle recursion optimization."])).
+optdb(oc_opt_hl, optopt_simple_neg,                       bool_special,
+    help("no-simple-neg", [
+        "Don't generate simplified code for simple negations."])).
+optdb(oc_opt_hl, optopt_allow_hijacks,                    bool_special,
+    priv_help("no-allow-hijacks", [
+        "Do not generate code in which a procedure hijacks",
+        "a nondet stack frame that possibly belongs to",
+        "another procedure invocation"])).
+optdb(oc_opt_hl, optimize_region_ops,                     bool(no),
+    priv_help("no-optimize-region-ops", [
+        "Do not try and restrict region operations to those parts",
+        "of the program that actually use it."])).
 
     % LLDS -> LLDS
 optdef(oc_opt_ll, optopt_common_data,                      bool_special).
@@ -3706,6 +4244,76 @@ optdef(oc_opt_ll, optopt_reassign,                         bool_special).
 optdef(oc_opt_ll, optopt_repeat_opts,                      int_special).
 optdef(oc_opt_ll, optopt_layout_compression_limit,         int_special).
 
+optdb(oc_opt_ll, optopt_common_data,                      bool_special,
+    help("no-common-data", [
+        "Disable optimization of common data structures."])).
+optdb(oc_opt_ll, optopt_common_layout_data,               bool_special,
+    help("no-common-layout-data", [
+        "Disable optimization of common subsequences in layout",
+        "structures."])).
+optdb(oc_opt_ll, optopt_optimize_llds,                    bool_special,
+    help("no-llds-optimize", [
+        "Disable the low-level optimization passes."])).
+optdb(oc_opt_ll, optopt_peep_llds,                        bool_special,
+    help("no-optimize-peep", [
+        "Disable local peephole optimizations."])).
+optdb(oc_opt_ll, optopt_peep_llds_mkword,                 bool_special,
+    % This is useful for developers only, to test whether a gcc bug
+    % has been fixed.
+    priv_help("no-optimize-peep-mkword", [
+        "Disable peephole optimizations of words created by mkword."])).
+optdb(oc_opt_ll, optopt_jumps,                            bool_special,
+    help("no-optimize-jumps", [
+        "Disable elimination of jumps to jumps."])).
+optdb(oc_opt_ll, optopt_fulljumps,                        bool_special,
+    help("no-optimize-fulljumps", [
+        "Disable elimination of jumps to ordinary code."])).
+optdb(oc_opt_ll, optopt_pessimize_tailcalls,              bool_special,
+    help("pessimize-tailcalls", [
+        "Disable the optimization of tailcalls."])).
+optdb(oc_opt_ll, optopt_checked_nondet_tailcalls,         bool_special,
+    help("checked-nondet-tailcalls", [
+        "Convert nondet calls into tail calls whenever possible, even",
+        "when this requires a runtime check. This option tries to",
+        "minimize stack consumption, possibly at the expense of speed."])).
+optdb(oc_opt_ll, optopt_use_local_vars,                   bool_special,
+    help("no-use-local-vars", [
+        "Disable the transformation to use local variables in C code",
+        "blocks wherever possible."])).
+optdb(oc_opt_ll, optopt_local_var_access_threshold,       int_special,
+    priv_help("local-var-access-threshold", [])).
+optdb(oc_opt_ll, optopt_standardize_labels,               bool_special,
+    % This is useful for developers only.
+    priv_help("standardize-labels", [
+        "Standardize internal labels in the generated code."])).
+optdb(oc_opt_ll, optopt_labels,                           bool_special,
+    help("no-optimize-labels", [
+        "Disable elimination of dead labels and code."])).
+optdb(oc_opt_ll, optopt_dups,                             bool_special,
+    help("optimize-dups", [
+        "Enable elimination of duplicate code within procedures."])).
+optdb(oc_opt_ll, optopt_proc_dups,                        bool_special,
+    help("optimize-proc-dups", [
+        "Enable elimination of duplicate procedures."])).
+optdb(oc_opt_ll, optopt_frames,                           bool_special,
+    help("no-optimize-frames", [
+        "Disable stack frame optimizations."])).
+optdb(oc_opt_ll, optopt_delay_slot,                       bool_special,
+    help("no-optimize-delay-slot", [
+        "Disable branch delay slot optimizations."])).
+optdb(oc_opt_ll, optopt_reassign,                         bool_special,
+    help("optimize-reassign", [
+        "Optimize away assignments to locations that already hold",
+        "the assigned value."])).
+optdb(oc_opt_ll, optopt_repeat_opts,                      int_special,
+    help("optimize-repeat <n>", [
+        "Iterate most optimizations at most <n> times (default: 3)."])).
+optdb(oc_opt_ll, optopt_layout_compression_limit,         int_special,
+    help("layout-compression-limit <n>", [
+        "Attempt to compress the layout structures used by the debugger",
+        "only as long as the arrays involved have at most <n> elements",
+        "(default: 4000)."])).
+
     % LLDS -> C
 optdef(oc_opt_lc, optopt_use_macro_for_redo_fail,          bool_special).
 optdef(oc_opt_lc, optopt_emit_c_loops,                     bool_special).
@@ -3717,26 +4325,189 @@ optdef(oc_opt_lc, optopt_local_thread_engine_base,         bool_special).
 % to the C compiler.
 optdef(oc_opt_lc, optopt_inline_alloc,                     bool_special).
 
+optdb(oc_opt_lc, optopt_use_macro_for_redo_fail,          bool_special,
+    help("use-macro-for-redo-fail", [
+        "Emit the fail or redo macro instead of a branch",
+        "to the fail or redo code in the runtime system.",
+        "This produces slightly bigger but slightly faster code."])).
+optdb(oc_opt_lc, optopt_emit_c_loops,                     bool_special,
+    help("no-emit-c-loops", [
+        "Use only gotos, don't emit C loop constructs."])).
+optdb(oc_opt_lc, optopt_procs_per_c_function,             int_special,
+    help("procs-per-c-function <n>", [
+        "Put the code for up to <n> Mercury",
+        "procedures in a single C function. The default",
+        "value of <n> is one. Increasing <n> can produce",
+        "slightly more efficient code, but makes compilation slower."])).
+optdb(oc_opt_lc, optopt_everything_in_one_c_function,     bool_special,
+    help("everything-in-one-c-function", [
+        "This option has the effect of putting the code for all",
+        "the Mercury procedures in a single C function,",
+        "which produces the most efficient code but tends to",
+        "severely stress the C compiler on large modules."])).
+optdb(oc_opt_lc, optopt_local_thread_engine_base,         bool_special,
+    help("no-local-thread-engine-base", [
+        "Do not copy the thread-local Mercury engine base address",
+        "into local variables. This option only affects low-level",
+        "parallel grades not using the GNU C global register variables",
+        "extension."])).
+% optopt_inline_alloc works by giving a flag to the C compiler, but
+% from the user's point of view, it is about giving different code
+% to the C compiler.
+optdb(oc_opt_lc, optopt_inline_alloc,                     bool_special,
+    help("inline-alloc", [
+        "Inline calls to GC_malloc().",
+        "This can improve performance a fair bit,",
+        "but may significantly increase code size.",
+        "This option has no effect if `--gc boehm'",
+        "is not set or if the C compiler is not GNU C."])).
+
+optdef(oc_analysis, termination_enable,                 bool(no)).
 optdef(oc_analysis, termination_check,                  bool(no)).
 optdef(oc_analysis, termination_check_verbose,          bool(no)).
-optdef(oc_analysis, termination,                        bool(no)).
 optdef(oc_analysis, termination_single_args,            int(0)).
 optdef(oc_analysis, termination_norm,                   string("total")).
 optdef(oc_analysis, termination_error_limit,            int(3)).
 optdef(oc_analysis, termination_path_limit,             int(256)).
-optdef(oc_analysis, termination2,                       bool(no)).
-optdef(oc_analysis, termination2_norm,                  string("total")).
+optdef(oc_analysis, termination2_enable,                bool(no)).
 optdef(oc_analysis, termination2_check,                 bool(no)).
 optdef(oc_analysis, termination2_check_verbose,         bool(no)).
+optdef(oc_analysis, termination2_norm,                  string("total")).
 optdef(oc_analysis, termination2_widening_limit,        int(4)).
-optdef(oc_analysis, termination2_arg_size_only,         bool(no)).
 optdef(oc_analysis, termination2_prop_fail_constrs,     bool(yes)).
 optdef(oc_analysis, termination2_maximum_matrix_size,   int(70)).
+optdef(oc_analysis, termination2_arg_size_only,         bool(no)).
     % XXX This matrix size is just a guess.
 optdef(oc_analysis, analyse_exceptions,                 bool(no)).
 optdef(oc_analysis, analyse_closures,                   bool(no)).
 optdef(oc_analysis, analyse_trail_usage,                bool(no)).
 optdef(oc_analysis, analyse_mm_tabling,                 bool(no)).
+
+optdb(oc_analysis, termination_enable,                 bool(no),
+    alt_help("enable-term", pos_sep_lines, ["enable-termination"], [
+        "Analyse each predicate to discover if it terminates."])).
+optdb(oc_analysis, termination_check,                  bool(no),
+    alt_help("chk-term", pos_sep_lines,
+            ["check-term", "check-termination"], [
+        "Enable termination analysis, and emit warnings for some",
+        "predicates or functions that cannot be proved to terminate.",
+        "In many cases where the compiler is unable to prove termination",
+        "the problem is either a lack of information about the",
+        "termination properties of other predicates, or because language",
+        "constructs (such as higher order calls) were used which could",
+        "not be analysed. In these cases the compiler does not emit a",
+        "warning of non-termination, as it is likely to be spurious."])).
+optdb(oc_analysis, termination_check_verbose,          bool(no),
+    alt_help("verb-chk-term", pos_sep_lines,
+            ["verb-check-term", "verbose-check-termination"], [
+        "Enable termination analysis, and emit warnings for all",
+        "predicates or functions that cannot be proved to terminate."])).
+optdb(oc_analysis, termination_single_args,            int(0),
+    alt_help("term-single-arg <n>", pos_sep_lines,
+            ["termination-single-argument-analysis <n>"], [
+        "When performing termination analysis, try analyzing",
+        "recursion on single arguments in strongly connected",
+        "components of the call graph that have up to <n> procedures.",
+        "Setting this limit to zero disables single argument analysis."])).
+optdb(oc_analysis, termination_norm,                   string("total"),
+    help("termination-norm {simple, total, num-data-elems}", [
+        "The norm defines how termination analysis measures the size",
+        "of a memory cell. The `simple' norm says that size is always",
+        "one. The `total' norm says that it is the number of words",
+        "in the cell. The `num-data-elems' norm says that it is the",
+        "number of words in the cell that contain something other",
+        "than pointers to cells of the same type."])).
+optdb(oc_analysis, termination_error_limit,            int(3),
+    alt_help("term-err-limit <n>", pos_sep_lines,
+            ["termination-error-limit <n>"], [
+        "Print at most <n> reasons for any single termination error",
+        "(default: 3)."])).
+optdb(oc_analysis, termination_path_limit,             int(256),
+    alt_help("term-path-limit <n>", pos_sep_lines,
+            ["termination-path-limit <n>"], [
+        "Perform termination analysis only on predicates",
+        "with at most <n> paths (default: 256)."])).
+    % The termination2_* options are used to control the new termination
+    % analyser. They are currently undocumented because that is still
+    % a work-in-progress. XXX Or is it?
+optdb(oc_analysis, termination2_enable,                bool(no),
+    priv_alt_help("enable-term2", pos_sep_lines, ["enable-termination2"], [
+        "Analyse each predicate to discover if it terminates.",
+        "This uses an alternative termination analysis based",
+        "on convex constraints."])).
+optdb(oc_analysis, termination2_check,                 bool(no),
+    priv_alt_help("chk-term2", pos_sep_lines, ["check-termination2"], [
+        "Enable the alternative termination analysis, and emit warnings for",
+        "some predicates or functions that cannot be proved to terminate.",
+        "In many cases where the compiler is unable to prove termination",
+        "the problem is either a lack of information about the",
+        "termination properties of other predicates, or because language",
+        "constructs (such as higher order calls) were used which could",
+        "not be analysed. In these cases the compiler does not emit a",
+        "warning of non-termination, as it is likely to be spurious."])).
+optdb(oc_analysis, termination2_check_verbose,         bool(no),
+    priv_alt_help("verb-chk-term2", pos_sep_lines,
+            ["verb-check-term2", "verbose-check-termination2"], [
+        % XXX These options used to have no documentation at all.
+        % The following is my guess (zs).
+        "Report more verbose errors from the alternative termination",
+        "analysis algorithm"])).
+optdb(oc_analysis, termination2_norm,                  string("total"),
+    priv_help("termination2-norm {simple, total, num-data-elems}", [
+        "Tell the alternative termination analyser which norm to use.",
+        "See the description of the `--termination-norm' option for a",
+        "description of the different types of norm available."])).
+optdb(oc_analysis, termination2_widening_limit,        int(4),
+    priv_alt_help("term2-widening-limit <n>", pos_sep_lines,
+            ["termination2-widening-limit <n>"], [
+        "Set the threshold for the number of iterations after which the",
+        "argument size analyser invokes widening."])).
+optdb(oc_analysis, termination2_prop_fail_constrs,     bool(yes),
+    priv_alt_help("term2-propagate-failure-constrs", pos_sep_lines,
+        ["termination2-propagate-failure-constraints"], [
+        "Make the argument analyser infer information about the sizes of",
+        "any inputs to a goal in contexts where that goal fails."])).
+optdb(oc_analysis, termination2_maximum_matrix_size,   int(70),
+    % XXX This matrix size is just a guess.
+    priv_alt_help("term2-max-matrix-size <n>", pos_sep_lines,
+            ["termination2-maximum-matrix-size <n>"], [
+        "Limit the sizes of constraints systems in the analyser to <n>",
+        "constraints. Use approximations of some constraint operations,",
+        "such as projection, if this threshold is exceeded. This will",
+        "speed up the analysis at the cost of reduced precision."])).
+optdb(oc_analysis, termination2_arg_size_only,         bool(no),
+    % This option is for developers only.
+    % It is useful for benchmarking the argument size analysis.
+    priv_alt_help("term2-argument-size-analysis-only", pos_sep_lines,
+            ["term2-arg-size-analysis-only"], [
+        "Perform argument size analysis on each SCC but do not",
+        "attempt to infer termination,"])).
+
+optdb(oc_analysis, analyse_exceptions,                 bool(no),
+    help("analyse-exceptions", [
+        "Enable exception analysis. Identify those",
+        "procedures that will not throw an exception.",
+        "Some optimizations can make use of this information."])).
+optdb(oc_analysis, analyse_closures,                   bool(no),
+    % XXX The options controlling closure analysis are currently
+    % commented out because it isn't useful. It can be uncommented when
+    % we actually have something that uses it.
+    priv_help("analyse-closures", [
+        "Enable closure analysis. Try to identify the possible",
+        "values that higher-order valued variables can take.",
+        "Some optimizations can make use of this information."])).
+optdb(oc_analysis, analyse_trail_usage,                bool(no),
+    help("analyse-trail-usage", [
+        "Enable trail usage analysis. Identify those",
+        "procedures that will not modify the trail.",
+        "This information is used to reduce the overhead",
+        "of trailing."])).
+optdb(oc_analysis, analyse_mm_tabling,                 bool(no),
+    help("analyse-mm-tabling", [
+        "Identify those goals that do not call procedures",
+        "that are evaluated using minimal model tabling.",
+        "This information is used to reduce the overhead",
+        "of minimal model tabling."])).
 
 %---------------------------------------------------------------------------%
 
@@ -4214,6 +4985,9 @@ optdef(oc_internal, default_globals,                    bool(no)).
 optdef(oc_internal, local_module_id,                    accumulating([])).
 optdef(oc_internal, generate_item_version_numbers,      bool(no)).
 optdef(oc_internal, generate_mmc_make_module_dependencies, bool(no)).
+optdef(oc_internal, optopt_static_ground_floats,             bool_special).
+optdef(oc_internal, optopt_static_ground_int64s,             bool_special).
+optdef(oc_internal, optopt_static_code_addresses,            bool_special).
 
 optdb(oc_internal, pre_implicit_parallelism_simplify,    bool(no), no_help).
 optdb(oc_internal, type_layout,                          bool(yes),
@@ -4346,6 +5120,9 @@ optdb(oc_internal, generate_item_version_numbers,         bool(no),
         "io_get_disable_generate_item_version_numbers to see whether this",
         "has been done."])).
 optdb(oc_internal, generate_mmc_make_module_dependencies, bool(no), no_help).
+optdb(oc_internal, optopt_static_ground_floats,         bool_special, no_help).
+optdb(oc_internal, optopt_static_ground_int64s,         bool_special, no_help).
+optdb(oc_internal, optopt_static_code_addresses,        bool_special, no_help).
 
 %---------------------------------------------------------------------------%
 
@@ -4527,6 +5304,7 @@ optdef(oc_dev_ctrl, implicit_parallelism,               bool(no)).
 optdef(oc_dev_ctrl, feedback_file,                      string("")).
 optdef(oc_dev_ctrl, par_loop_control,                   bool(no)).
 optdef(oc_dev_ctrl, par_loop_control_keep_tail_rec,     bool(no)).
+optdef(oc_dev_ctrl, optopt_enable_const_struct_poly,    bool_special).
 
 optdb(oc_dev_ctrl, compiler_sufficiently_recent,       bool(no),
     alt_help("subtype-opt-2022-02-19", pos_sep_lines, [
@@ -4583,6 +5361,10 @@ optdb(oc_dev_ctrl, feedback_file,                      string(""),
         "only be processed for implicit parallelism."])).
 optdb(oc_dev_ctrl, par_loop_control,                   bool(no), no_help).
 optdb(oc_dev_ctrl, par_loop_control_keep_tail_rec,     bool(no), no_help).
+optdb(oc_dev_ctrl, optopt_enable_const_struct_poly,    bool_special,
+    unnamed_help([
+        "Disable the gathering of constant structures holding",
+        "typeinfos and typeclass_infos in global_data structures."])).
 
 %---------------------------------------------------------------------------%
 
@@ -5454,7 +6236,7 @@ long_table("osv-node-ratio",
 long_table("osv-allpath-node-ratio",
                         optopt_svcell_all_path_node_ratio).
 long_table("osv-all-cand",
-                    optopt_svcell_all_candidates).
+                        optopt_svcell_all_candidates).
 long_table("delay-construct",      optopt_delay_construct).
 long_table("delay-constructs",     optopt_delay_construct).
 long_table("follow-code",          optopt_follow_code).
@@ -5617,8 +6399,8 @@ long_table("everything-in-one-C-function",
 long_table("inline-alloc",         optopt_inline_alloc).
 long_table("local-thread-engine-base", optopt_local_thread_engine_base).
 
-long_table("enable-termination",   termination).
-long_table("enable-term",          termination).
+long_table("enable-termination",   termination_enable).
+long_table("enable-term",          termination_enable).
 long_table("check-termination",    termination_check).
 long_table("check-term",           termination_check).
 long_table("chk-term",             termination_check).
@@ -5634,8 +6416,8 @@ long_table("termination-error-limit",  termination_error_limit).
 long_table("term-err-limit",       termination_error_limit).
 long_table("termination-path-limit",   termination_path_limit).
 long_table("term-path-limit",      termination_path_limit).
-long_table("enable-termination2",  termination2).
-long_table("enable-term2",         termination2).
+long_table("enable-termination2",  termination2_enable).
+long_table("enable-term2",         termination2_enable).
 long_table("check-termination2",   termination2_check).
 long_table("check-term2",          termination2_check).
 long_table("chk-term2",            termination2_check).
@@ -9248,16 +10030,6 @@ options_help_hlds_hlds_optimization = Section :-
 
         help("no-common-struct", [
             "Disable optimization of common term structures."]),
-
-        % Common goal optimization should not be turned off, since it can
-        % break programs that would otherwise compile properly (e.g.,
-        % benchmarks/icfp2000). This is kept as a developer-only option.
-        priv_help("no-common-goal", [
-            "Disable optimization of common goals.",
-            "At the moment this optimization",
-            "detects only common deconstruction unifications.",
-            "Disabling this optimization reduces the class of predicates",
-            "that the compiler considers to be deterministic."]),
 
         help("constraint-propagation", [
             "Enable the constraint propagation transformation,",

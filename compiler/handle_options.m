@@ -2010,8 +2010,10 @@ handle_option_to_option_implications(OpMode, !Globals) :-
         !Globals),
     option_implies(termination2_check_verbose, termination2_check,
         bool(yes), !Globals),
-    option_implies(termination_check, termination, bool(yes), !Globals),
-    option_implies(termination2_check, termination2, bool(yes), !Globals),
+    option_implies(termination_check, termination_enable,
+        bool(yes), !Globals),
+    option_implies(termination2_check, termination2_enable,
+        bool(yes), !Globals),
     % Note that setting warn_missing_trans_opt_files to yes can be
     % overridden below.
     option_implies(termination_check, warn_missing_trans_opt_files,

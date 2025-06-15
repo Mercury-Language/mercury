@@ -89,7 +89,7 @@ run_post_term_analysis(ModuleInfo, Specs) :-
 warn_non_term_user_special_preds(ModuleInfo, !:Specs) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_op_mode(Globals, OpMode),
-    globals.lookup_bool_option(Globals, termination, Termination),
+    globals.lookup_bool_option(Globals, termination_enable, Termination),
     globals.lookup_bool_option(Globals, warn_non_term_special_preds,
         WarnSpecialPreds),
     globals.lookup_bool_option(Globals, transitive_optimization,

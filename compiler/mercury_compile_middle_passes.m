@@ -806,7 +806,7 @@ maybe_exception_analysis(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 maybe_termination(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, termination, Termination),
+    globals.lookup_bool_option(Globals, termination_enable, Termination),
     (
         Termination = yes,
         maybe_write_string(ProgressStream, Verbose,
@@ -828,7 +828,7 @@ maybe_termination(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
 
 maybe_termination2(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.lookup_bool_option(Globals, termination2, Termination2),
+    globals.lookup_bool_option(Globals, termination2_enable, Termination2),
     (
         Termination2 = yes,
         maybe_write_string(ProgressStream, Verbose,
