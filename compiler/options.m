@@ -1400,8 +1400,6 @@ option_defaults(Opt, Data) :-
             % containing information derived from the module being compiled.
     ;       oc_make
             % Options controlling mmc --make.
-    ;       oc_make_int
-            % Internal-use-only options controlling mmc --make.
     ;       oc_semantics
             % Options that specify which semantics variant to use.
     ;       oc_infer
@@ -2379,6 +2377,7 @@ optdb(oc_verb_dbg,  debug_intermodule_analysis,         bool(no),
 
 optdef(oc_opmode, only_opmode_generate_source_file_mapping, bool(no)).
 optdef(oc_opmode, only_opmode_make,                     bool(no)).
+optdef(oc_opmode, part_opmode_rebuild,                  bool(no)).
 optdef(oc_opmode, only_opmode_invoked_by_mmc_make,      bool(no)).
 optdef(oc_opmode, only_opmode_generate_dependencies,    bool(no)).
 optdef(oc_opmode, only_opmode_generate_dependencies_ints, bool(no)).
@@ -2428,6 +2427,14 @@ optdb(oc_opmode, only_opmode_make,                     bool(no),
         "rather than source files. Build or rebuild the specified files",
         "if they do not exist or are not up-to-date.",
         "Note that this option also enables `--use-subdirs'."])).
+% NOTE part_opmode_rebuild should be only_opmode_rebuild, but make.*.m
+% look up its value as an ordinary option, NOT as a part of the op_mode.
+% In one place, we clear this option, but we do it effectively because
+% we want a different op_mode for a recursive invocation of the compiler.
+optdb(oc_opmode, part_opmode_rebuild,                  bool(no),
+    short_help('r', "rebuild", [], [
+        "Same as `--make', but always rebuild the target files",
+        "even if they are up-to-date."])).
 optdb(oc_opmode, only_opmode_invoked_by_mmc_make,      bool(no),
     priv_help("--invoked-by-mmc-make", [
         "This option is only for internal use by the compiler.",
@@ -2843,204 +2850,6 @@ optdb(oc_file_req, show_imports_graph,               bool(no),
 
 %---------------------------------------------------------------------------%
 
-    % Options that developers can use to ask for optional compiler actions.
-
-optdef(oc_dev_ctrl, debug_output_suffix,                 string("")).
-optdef(oc_dev_ctrl, error_output_suffix,                 string("")).
-optdef(oc_dev_ctrl, inference_output_suffix,             string("")).
-optdef(oc_dev_ctrl, progress_output_suffix,              string("")).
-optdef(oc_dev_ctrl, recompile_output_suffix,             string("")).
-
-optdb(oc_dev_ctrl, debug_output_suffix,                 string(""),
-    priv_help("error-output-suffix .xyz", [
-        "When compiling module M, output any error, warning and/or",
-        "informational messages about the module to a file named `M.xyz'.",
-        "The default is for such output to go to standard error."])).
-optdb(oc_dev_ctrl, error_output_suffix,                 string(""),
-    priv_help("progress-output-suffix .xyz", [
-        "When compiling module M, output messages about the progress",
-        "of the compilation to a file named `M.xyz'. This includes any",
-        "statistics about the performance of compiler passes, if enabled.",
-        "The default is for such output to go to standard error."])).
-optdb(oc_dev_ctrl, inference_output_suffix,             string(""),
-    priv_help("inference-output-suffix .xyz", [
-        "When compiling module M, output the results of any type and/or",
-        "mode inference to a file named `M.xyz'.",
-        "The default is for such output to go to standard error."])).
-optdb(oc_dev_ctrl, progress_output_suffix,              string(""),
-    % These are also commented out because they are intended
-    % only for developers.
-    priv_help("debug-output-suffix .xyz", [
-        "When compiling module M, direct output that is intended to",
-        "help debug the compiler to a file named `M.xyz'.",
-        "The default is for such output to go to standard error."])).
-optdb(oc_dev_ctrl, recompile_output_suffix,             string(""),
-    priv_help("recompile-output-suffix .xyz", [
-        "This is intended to direct the output from the test cases in
-        tests/recompilation to a file."])).
-
-optdef(oc_dev_ctrl,   mode_constraints,                 bool(no)).
-optdef(oc_dev_ctrl,   simple_mode_constraints,          bool(no)).
-optdef(oc_dev_ctrl,   prop_mode_constraints,            bool(no)).
-optdef(oc_dev_ctrl,   compute_goal_modes,               bool(no)).
-
-optdb(oc_dev_ctrl,   mode_constraints,                 bool(no),
-    priv_help("mode-constraints", [
-        "Run constraint based mode analysis. The default is to use",
-        "the robdd solution using the full (subtyping) constraints,",
-        "and to dump its results."])).
-optdb(oc_dev_ctrl,   simple_mode_constraints,          bool(no),
-    priv_help("simple-mode-constraints", [
-        "Use only the simplified constraint system when running",
-        "the robdd solver constraints based mode analysis."])).
-optdb(oc_dev_ctrl,   prop_mode_constraints,            bool(no),
-    priv_help("prop-mode-constraints", [
-        "Use the new propagation solver for constraints based",
-        "mode analysis."])).
-optdb(oc_dev_ctrl,   compute_goal_modes,               bool(no),
-    priv_help("compute-goal-modes", [
-        "Compute goal modes."])).
-
-%---------------------------------------------------------------------------%
-
-    % Options controlling mmc --make.
-
-optdef(oc_make,     smart_recompilation,                   bool(no)).
-optdef(oc_make_int, generate_item_version_numbers,         bool(no)).
-optdef(oc_make_int, generate_mmc_make_module_dependencies, bool(no)).
-
-optdb(oc_dev_ctrl,   smart_recompilation,              bool(no),
-    help("smart-recompilation", [
-        "When compiling, write program dependency information",
-        "to be used to avoid unnecessary recompilations if an",
-        "imported module's interface changes in a way which does",
-        "not invalidate the compiled code. `--smart-recompilation'",
-        "does not yet work with `--intermodule-optimization'."])).
-optdb(oc_make_int, generate_item_version_numbers,         bool(no),
-    unnamed_help([
-        "This option is used to control output of version numbers",
-        "in interface files. It is implied by --smart-recompilation,",
-        "and cannot be set explicitly by the user.",
-        "Even if this option is set to `yes', version numbers may have",
-        "been disabled with io_set_disable_generate_item_version_numbers.",
-        "Before using the value of this option, call",
-        "io_get_disable_generate_item_version_numbers to see whether this",
-        "has been done."])).
-optdb(oc_make_int, generate_mmc_make_module_dependencies, bool(no), no_help).
-
-%---------------------------------------------------------------------------%
-
-    % Options for creating dumps of the compiler's internal data structures.
-
-optdef(oc_dev_dump,   dump_hlds,                        accumulating([])).
-optdef(oc_dev_dump,   dump_hlds_pred_id,                accumulating([])).
-optdef(oc_dev_dump,   dump_hlds_pred_name,              accumulating([])).
-optdef(oc_dev_dump,   dump_hlds_pred_name_order,        bool(no)).
-optdef(oc_dev_dump,   dump_hlds_spec_preds,             bool(no)).
-optdef(oc_dev_dump,   dump_hlds_spec_preds_for,         accumulating([])).
-optdef(oc_dev_dump,   dump_hlds_alias,                  string("")).
-optdef(oc_dev_dump,   dump_hlds_options,                string("")).
-optdef(oc_dev_dump,   dump_hlds_inst_limit,             int(100)).
-optdef(oc_dev_dump,   dump_hlds_inst_size_limit,        int(40)).
-optdef(oc_dev_dump,   dump_hlds_file_suffix,            string("")).
-optdef(oc_dev_dump,   dump_same_hlds,                   bool(no)).
-optdef(oc_dev_dump,   dump_mlds,                        accumulating([])).
-optdef(oc_dev_dump,   dump_mlds_pred_name,              accumulating([])).
-optdef(oc_dev_dump,   verbose_dump_mlds,                accumulating([])).
-optdef(oc_dev_dump,   dump_trace_counts,                accumulating([])).
-optdef(oc_dev_dump,   dump_options_file,                string("")).
-
-optdb(oc_dev_dump,   dump_hlds,                        accumulating([]),
-    short_arg_help("d <n>", "dump-hlds <stage number or name>", [], [
-        "Dump the HLDS (high level intermediate representation) after",
-        "the specified stage to `<module>.hlds_dump.<num>-<name>'.",
-        "Stage numbers range from 1-599.",
-        "Multiple dump options accumulate."])).
-optdb(oc_dev_dump,   dump_hlds_pred_id,                accumulating([]),
-    help("dump-hlds-pred-id <n>", [
-        "Dump the HLDS only of the predicate/function with the given",
-        "pred id."])).
-optdb(oc_dev_dump,   dump_hlds_pred_name,              accumulating([]),
-    help("dump-hlds-pred-name <name>", [
-        "Dump the HLDS only of the predicate/function with the given",
-        "name."])).
-optdb(oc_dev_dump,   dump_hlds_pred_name_order,        bool(no),
-    priv_help("dump-hlds-pred-name-order", [
-        "Dump the predicates in the HLDS ordered by name",
-        "not ordered by pred id."])).
-optdb(oc_dev_dump,   dump_hlds_spec_preds,             bool(no),
-    priv_help("dump-hlds-spec-preds", [
-        "With `--dump-hlds', dump the special (unify, compare, and index)",
-        "predicates not in pred-id order, but in alphabetical order",
-        "by type constructor."])).
-optdb(oc_dev_dump,   dump_hlds_spec_preds_for,         accumulating([]),
-    priv_help("dump-hlds-spec-preds-for <typename>", [
-        "Dump only the special (unify, compare, and index) predicates",
-        "for the types named by the (possibly multiple) occurrences",
-        "of this option."])).
-optdb(oc_dev_dump,   dump_hlds_alias,                  string(""),
-    priv_short_arg_help("D <dump_alias>",
-            "dump-hlds-alias <dump-alias>", [], [
-        "With `--dump-hlds', include extra detail in the dump.",
-        "Each dump alias is shorthand for a set of option letters.",
-        "The list of aliases is in handle_options.m"])).
-optdb(oc_dev_dump,   dump_hlds_options,                string(""),
-    help("dump-hlds-options <options>", [
-        "With `--dump-hlds', include extra detail in the dump.",
-        "Each type of detail is included in the dump if its",
-        "corresponding letter occurs in the option argument",
-        "(see the Mercury User's Guide for details)."])).
-optdb(oc_dev_dump,   dump_hlds_inst_limit,             int(100),
-    help("dump-hlds-inst-limit <N>", [
-        "Dump at most N insts in each inst table."])).
-optdb(oc_dev_dump,   dump_hlds_inst_size_limit,        int(40),
-    help("dump-hlds-inst-size-limit <N>", [
-        "Dump insts in an inst table only if their size does not exceed N."])).
-optdb(oc_dev_dump,   dump_hlds_file_suffix,            string(""),
-    help("dump-hlds-file-suffix <suffix>", [
-        "Append the given suffix to the names of the files created by",
-        "the `--dump-hlds' option."])).
-optdb(oc_dev_dump,   dump_same_hlds,                   bool(no),
-    help("dump-same-hlds", [
-        "Create a file for a HLDS stage even if the file notes only that",
-        "this stage is identical to the previously dumped HLDS stage."])).
-optdb(oc_dev_dump,   dump_mlds,                        accumulating([]),
-    help("dump-mlds <stage number or name>", [
-        "Dump the MLDS (medium level intermediate representation)",
-        "after the specified stage, as C code,",
-        "to`<module>.c_dump.<num>-<name>',",
-        "and `<module>.mih_dump.<num>-<name>'.",
-        "Stage numbers range from 1-99.",
-        "Multiple dump options accumulate.",
-        "This option works only in MLDS grades that target C."])).
-optdb(oc_dev_dump,   dump_mlds_pred_name,              accumulating([]),
-    help("dump-mlds-pred-name <pred or func name>", [
-        "Dump the MLDS (medium level intermediate representation)",
-        "of the predicate or function with the specified name",
-        "at the stages specified by the --dump-mlds option.",
-        "The dump file will consist of the predicates and functions",
-        "named by all the occurrences of this option (there may be",
-        "more than one), and nothing else."])).
-optdb(oc_dev_dump,   verbose_dump_mlds,                accumulating([]),
-    help("verbose-dump-mlds <stage number or name>", [
-        "Dump the internal compiler representation of the MLDS, after",
-        "the specified stage, to `<module>.mlds_dump.<num>-<name>'.",
-        "This option works in all MLDS grades."])).
-optdb(oc_dev_dump,   dump_trace_counts,                accumulating([]),
-    % This option is for developers only.
-    priv_help("dump-trace-counts <stage number or name>", [
-        "If the compiler was compiled with debugging enabled and is being",
-        "run with trace counting enabled, write out the trace counts file",
-        "after the specified stage to `<module>.trace_counts.<num>-<name>'.",
-        "Stage numbers range from 1-599.",
-        "Multiple dump options accumulate."])).
-optdb(oc_dev_dump,   dump_options_file,                string(""),
-    priv_help("dump-options-file output_file", [
-        "Dump the internal compiler representation of files named in",
-        "options-file options to output_file."])).
-
-%---------------------------------------------------------------------------%
-
     % Language semantics options.
 
 optdef(oc_semantics, strict_sequential,                 special).
@@ -3283,8 +3092,6 @@ optdef(oc_grade, profile_for_feedback,                  bool(no)).
 optdef(oc_grade, use_zeroing_for_ho_cycles,             bool(yes)).
 optdef(oc_grade, use_lots_of_ho_specialization,         bool(no)).
 optdef(oc_grade, deep_profile_tail_recursion,           bool(no)).
-optdef(oc_dev_ctrl, pre_prof_transforms_simplify,       bool(no)).
-optdef(oc_internal, pre_implicit_parallelism_simplify,  bool(no)).
 
 optdb(oc_grade, deep_profiling,                        special,
     help("deep-profiling\t\t(grade modifier: `.profdeep')", [
@@ -3343,18 +3150,6 @@ optdb(oc_grade, profile_for_feedback,                  bool(no),
 optdb(oc_grade, use_zeroing_for_ho_cycles,             bool(yes), no_help).
 optdb(oc_grade, use_lots_of_ho_specialization,         bool(no), no_help).
 optdb(oc_grade, deep_profile_tail_recursion,           bool(no), no_help).
-optdb(oc_dev_ctrl, pre_prof_transforms_simplify,       bool(no),
-    % This option is not a grade option. It is for developers only.
-    priv_help("pre-prof-transforms-simplify", [
-        "Force the pre-profiling simplification pass that is usually",
-        "enabled when building a profiling version of a program. This",
-        "allows a developer to enable this pass when using a",
-        "non-profiling build. It can be used to test that generated code",
-        "introduced in earlier passes is well-formed before it is",
-        "potentially removed by the later dead procedure elimination pass."])).
-optdb(oc_internal, pre_implicit_parallelism_simplify,  bool(no), no_help).
-    % pre_implicit_parallelism_simplify is not a grade option;
-    % it is internal-use-only.
 
 %---------------------%
 
@@ -3416,7 +3211,6 @@ optdef(oc_grade, use_regions_debug,                     bool(no)).
 optdef(oc_grade, use_regions_profiling,                 bool(no)).
 optdef(oc_grade, ssdb_trace_level,                      string("default")).
 optdef(oc_grade, link_ssdb_libs,                        bool(no)).
-optdef(oc_internal, type_layout,                           bool(yes)).
 
 optdb(oc_grade, gc,                                    string("boehm"),
     % We do not document the "accurate" and "hgc" GC methods,
@@ -3511,11 +3305,6 @@ optdb(oc_grade, link_ssdb_libs,                        bool(no),
     priv_alt_help("link-ssdebug-libs", pos_sep_lines, ["link-ssdb-libs"], [
         "Link the source to source debugging libraries into the",
         "executable."])).
-optdb(oc_grade, type_layout,                           bool(yes),
-    priv_help("no-type-layout", [
-        "Don't output type_ctor_layout structures or references",
-        "to them. (The C code also needs to be compiled with",
-        "`-DNO_TYPE_LAYOUT')."])).
 
 %---------------------%
 
@@ -3673,9 +3462,6 @@ optdb(oc_grade,    use_float_registers,                   bool(yes),
 
 optdef(oc_grade,    highlevel_code,                        bool(no)).
 optdef(oc_grade,    c_debug_grade,                         bool(no)).
-optdef(oc_internal, det_copy_out,                          bool(no)).
-optdef(oc_internal, nondet_copy_out,                       bool(no)).
-optdef(oc_internal, put_commit_in_own_func,                bool(no)).
 
 optdb(oc_grade,    highlevel_code,                        bool(no),
     short_help('H', "high-level-code\t\t\t(grades: hlc, csharp, java)", [], [
@@ -3689,166 +3475,11 @@ optdb(oc_grade,    c_debug_grade,                         bool(no),
         "with debuggers for C, such as gdb. This option is intended mainly",
         "for the developers of Mercury, though it can also help to debug",
         "C code included in Mercury programs."])).
-% The next two options are not documented,
-% because they are not yet tested much, and are probably not very useful,
-% except for Java, where they are the default.
-optdb(oc_internal, det_copy_out,                          bool(no),
-    priv_help("det-copy-out", [
-        "Specify whether to handle output arguments for det/semidet",
-        "procedures using return-by-value rather than pass-by-reference.",
-        "This option is ignored if the `--high-level-code' option",
-        "is not enabled."])).
-optdb(oc_internal, nondet_copy_out,                       bool(no),
-    priv_help("nondet-copy-out", [
-        "Specify whether to handle output arguments for nondet",
-        "procedures using pass-by-value rather than pass-by-reference.",
-        "This option is ignored if the `--high-level-code' option",
-        "is not enabled."])).
-% The --put-commit-in-own-func option is not documented because
-% it is enabled automatically (by handle_options) in the situations
-% where it is needed; the user should never need to set it.
-optdb(oc_internal, put_commit_in_own_func,                bool(no),
-    priv_help("put-commit-in-own-func", [
-        "Put each commit in its own C function.",
-        "This option only affects the MLDS back-ends.",
-        "It is needed for the high-level C back-end,",
-        "where commits are implemented via setjmp()/longjmp(),",
-        "since longjmp() may clobber any non-volatile local vars",
-        "in the function that called setjmp()."])).
-
-%---------------------------------------------------------------------------%
-
-    % Options for internal use only.
-    % XXX NO, MOST ARE NOT.
-    % We need a separate category (maybe named oc_int_dev?) for options
-    % - whose main intended use is internal-use-only,
-    % - but which can be command-line enabled by developers for experiments.
-    % OR we could just delete the possibility of those experiments,
-    % whose time has long passed.
-
-optdef(oc_internal, backend_foreign_languages,          accumulating([])).
-    % The backend_foreign_languages option depends on the target,
-    % and is set in handle_options.
-optdef(oc_internal, stack_trace,                        bool(no)).
-optdef(oc_internal, basic_stack_layout,                 bool(no)).
-optdef(oc_internal, agc_stack_layout,                   bool(no)).
-optdef(oc_internal, procid_stack_layout,                bool(no)).
-optdef(oc_internal, trace_stack_layout,                 bool(no)).
-optdef(oc_internal, body_typeinfo_liveness,             bool(no)).
-optdef(oc_internal, can_compare_constants_as_ints,      bool(no)).
-optdef(oc_internal, pretest_equality_cast_pointers,     bool(no)).
-optdef(oc_internal, delay_partial_instantiations,       bool(no)).
-optdef(oc_internal, allow_defn_of_builtins,             bool(no)).
-optdef(oc_internal, type_ctor_info,                     bool(yes)).
-optdef(oc_internal, type_ctor_layout,                   bool(yes)).
-optdef(oc_internal, type_ctor_functors,                 bool(yes)).
-optdef(oc_internal, rtti_line_numbers,                  bool(yes)).
-optdef(oc_internal, new_type_class_rtti,                bool(no)).
-optdef(oc_internal, use_mmsc_pneg,                      bool(no)).
-optdef(oc_internal, use_mmsc_cut,                       bool(no)).
-    % The size_* values below *must* be consistent with the corresponding
-    % values or data structures in mercury_region.h.
-optdef(oc_internal, size_region_ite_fixed,              int(4)).
-optdef(oc_internal, size_region_disj_fixed,             int(4)).
-optdef(oc_internal, size_region_commit_fixed,           int(5)).
-optdef(oc_internal, size_region_ite_protect,            int(1)).
-optdef(oc_internal, size_region_ite_snapshot,           int(3)).
-optdef(oc_internal, size_region_semi_disj_protect,      int(1)).
-optdef(oc_internal, size_region_disj_snapshot,          int(3)).
-optdef(oc_internal, size_region_commit_entry,           int(1)).
-optdef(oc_internal, allow_multi_arm_switches,           bool(yes)).
-
-optdb(oc_internal, backend_foreign_languages,       accumulating([]), no_help).
-    % The backend_foreign_languages option depends on the target,
-    % and is set in handle_options, BUT can be set on the command line.
-    % It makes no sense to do so, but ...
-optdb(oc_internal, stack_trace,                     bool(no), no_help).
-optdb(oc_internal, basic_stack_layout,              bool(no),
-    priv_help("basic-stack-layout", [
-        "Generate the simple stack_layout structures required",
-        "for stack traces."])).
-optdb(oc_internal, agc_stack_layout,                bool(no),
-    priv_help("agc-stack-layout", [
-        "Generate the stack_layout structures required for",
-        "accurate garbage collection."])).
-optdb(oc_internal, procid_stack_layout,             bool(no),
-    priv_help("procid-stack-layout", [
-        "Generate the stack_layout structures required for",
-        "looking up procedure identification information."])).
-optdb(oc_internal, trace_stack_layout,              bool(no),
-    priv_help("trace-stack-layout", [
-        "(This option is not for general use.)",
-        "Generate the stack_layout structures required for",
-        "execution tracing."])).
-optdb(oc_internal, body_typeinfo_liveness,          bool(no),
-    priv_help("body-typeinfo-liveness", [
-        "(This option is not for general use.)"])).
-optdb(oc_internal, can_compare_constants_as_ints,   bool(no),
-    priv_help("can-compare-constants-as-ints", [])).
-optdb(oc_internal, pretest_equality_cast_pointers,  bool(no),
-    priv_help("pretest-equality-cast-pointers", [])).
-optdb(oc_internal, delay_partial_instantiations,    bool(no),
-    priv_help("can-compare-compound-values", [])).
-optdb(oc_internal, allow_defn_of_builtins,          bool(no),
-    priv_help("allow-defn-of-builtins", [])).
-optdb(oc_internal, type_ctor_info,                  bool(yes), no_help).
-optdb(oc_internal, type_ctor_layout,                bool(yes), no_help).
-optdb(oc_internal, type_ctor_functors,              bool(yes), no_help).
-optdb(oc_internal, rtti_line_numbers,               bool(yes), no_help).
-optdb(oc_internal, new_type_class_rtti,             bool(no), no_help).
-optdb(oc_internal, use_mmsc_pneg,                   bool(no), no_help).
-optdb(oc_internal, use_mmsc_cut,                    bool(no), no_help).
-    % The size_* values below *must* be consistent with the corresponding
-    % values or data structures in runtime/mercury_region.h.
-optdb(oc_internal, size_region_ite_fixed,           int(4),
-    priv_help("size-region-ite-fixed", [])).
-optdb(oc_internal, size_region_disj_fixed,          int(4),
-    priv_help("size-region-disj-fixed", [])).
-optdb(oc_internal, size_region_commit_fixed,        int(5),
-    priv_help("size-region-commit-fixed", [])).
-optdb(oc_internal, size_region_ite_protect,         int(1),
-    priv_help("size-region-ite-protect", [])).
-optdb(oc_internal, size_region_ite_snapshot,        int(3),
-    priv_help("size-region-ite-snapshot", [])).
-optdb(oc_internal, size_region_semi_disj_protect,   int(1),
-    priv_help("size-region-disj-protect", [])).
-optdb(oc_internal, size_region_disj_snapshot,       int(3),
-    priv_help("size-region-disj-snapshot", [])).
-optdb(oc_internal, size_region_commit_entry,        int(1),
-    priv_help("size-region-commit-entry", [])).
-optdb(oc_internal, allow_multi_arm_switches,        bool(yes),
-    priv_help("allow-multi-arm-switches", [
-        "Allow the compiler to generate switches in which one arm handles",
-        "more than one cons_id."])).
-
-    % These options were NEVER intended to be internal-use-only.
-
-optdef(oc_dev_ctrl, disable_mmsc_pneg,              bool(no)).
-optdef(oc_dev_ctrl, disable_mmsc_cut,               bool(no)).
-optdef(oc_dev_ctrl, disable_trail_ops,              bool(no)).
-optdef(oc_dev_ctrl, type_check_using_constraints,   bool(no)).
-
-optdb(oc_dev_ctrl, disable_mmsc_pneg,               bool(no),
-    priv_help("disable-mmsc-pneg", [])).
-optdb(oc_dev_ctrl, disable_mmsc_cut,                bool(no),
-    priv_help("disable-mmsc-cut", [])).
-optdb(oc_dev_ctrl, disable_trail_ops,               bool(no),
-    priv_help("disable-trail-ops", [])).
-optdb(oc_dev_ctrl, type_check_using_constraints,    bool(no),
-    priv_help("type-check-constraints", [
-        "Use the constraint based type checker instead of the old one."])).
 
 %---------------------------------------------------------------------------%
 
     % Code generation options.
 
-optdef(oc_dev_debug, table_debug,                        bool(no)).
-optdef(oc_dev_ctrl, trad_passes,                         bool(yes)).
-optdef(oc_dev_ctrl, parallel_liveness,                   bool(no)).
-optdef(oc_dev_ctrl, parallel_code_gen,                   bool(no)).
-optdef(oc_internal, reclaim_heap_on_semidet_failure,     bool(yes)).
-optdef(oc_internal, reclaim_heap_on_nondet_failure,      bool(yes)).
-optdef(oc_internal, reclaim_heap_on_failure,             bool_special).
 optdef(oc_config,   have_delay_slot,                     bool(no)).
     % The `mmc' script may override the above default if configure says
     % the machine has branch delay slots.
@@ -3863,57 +3494,7 @@ optdef(oc_config,   max_jump_table_size,                 int(0)).
     % XXX This option works around limitations in 1998 C compilers.
     % Its value should be set automatically by handle_options.m
     % based on the value of the c_compiler_type option.
-optdef(oc_internal, max_specialized_do_call_closure,     int(5)).
-    % mercury.do_call_closure_N exists for N <= option_value;
-    % set to -1 to disable. Should be less than or equal to
-    % max_spec_explicit_arg in tools/make_spec_ho_call.
-optdef(oc_internal, max_specialized_do_call_class_method, int(6)).
-    % mercury.do_call_class_method_N exists for N <= option_value;
-    % set to -1 to disable. Should be less than or equal to
-    % max_spec_explicit_arg in tools/make_spec_method_call.
-optdef(oc_internal, compare_specialization,              int(-1)).
-    % -1 asks handle_options.m to give the value, which may be grade dependent.
-optdef(oc_dev_ctrl, should_pretest_equality,             bool(yes)).
-optdef(oc_dev_ctrl, fact_table_max_array_size,           int(1024)).
-optdef(oc_dev_ctrl, fact_table_hash_percent_full,        int(90)).
-optdef(oc_dev_ctrl, prefer_switch,                       bool(yes)).
-optdef(oc_dev_ctrl, prefer_while_loop_over_jump_self,    bool(yes)).
-optdef(oc_dev_ctrl, prefer_while_loop_over_jump_mutual,  bool(no)).
-optdef(oc_dev_ctrl, opt_no_return_calls,                 bool(yes)).
-optdef(oc_dev_debug, debug_class_init,                   bool(no)).
 
-optdb(oc_dev_debug, table_debug,                        bool(no),
-    priv_help("table-debug", [
-        "Enables the generation of code that helps to debug tabling",
-        "primitives."])).
-optdb(oc_dev_ctrl, trad_passes,                         bool(yes),
-    help("no-trad-passes", [
-        "The default `--trad-passes' completely processes each predicate",
-        "before going on to the next predicate.",
-        "This option tells the compiler",
-        "to complete each phase of code generation on all predicates",
-        "before going on the next phase on all predicates."])).
-optdb(oc_dev_ctrl, parallel_liveness,                   bool(no),
-    priv_help("parallel-liveness", [
-        "Use multiple threads when computing liveness.",
-        "At the moment this option implies `--no-trad-passes',",
-        "and requires the compiler to be built in a",
-        "low-level parallel grade and running with multiple engines."])).
-optdb(oc_dev_ctrl, parallel_code_gen,                   bool(no),
-    priv_help("parallel-code-gen", [
-        "Use multiple threads when generating code.",
-        "At the moment this option implies `--no-trad-passes',",
-        "and requires the compiler to be built in a",
-        "low-level parallel grade and running with multiple engines."])).
-optdb(oc_internal, reclaim_heap_on_semidet_failure,     bool(yes),
-    help("no-reclaim-heap-on-semidet-failure", [
-        "Don't reclaim heap on backtracking in semidet code."])).
-optdb(oc_internal, reclaim_heap_on_nondet_failure,      bool(yes),
-    help("no-reclaim-heap-on-nondet-failure", [
-        "Don't reclaim heap on backtracking in nondet code."])).
-optdb(oc_internal, reclaim_heap_on_failure,             bool_special,
-    help("no-reclaim-heap-on-failure", [
-        "Combines the effect of the two options above."])).
 optdb(oc_config,   have_delay_slot,                     bool(no),
     % The `mmc' script may override the default if configure says
     % the machine has branch delay slots.
@@ -3951,71 +3532,6 @@ optdb(oc_config,   max_jump_table_size,                 int(0),
         "The special value 0 indicates the table size is unlimited.",
         "This option can be useful to avoid exceeding fixed limits",
         "imposed by some C compilers."])).
-optdb(oc_internal, max_specialized_do_call_closure,     int(5), no_help).
-    % mercury.do_call_closure_N exists for N <= option_value;
-    % set to -1 to disable. Should be less than or equal to
-    % max_spec_explicit_arg in tools/make_spec_ho_call.
-optdb(oc_internal, max_specialized_do_call_class_method, int(6), no_help).
-    % mercury.do_call_class_method_N exists for N <= option_value;
-    % set to -1 to disable. Should be less than or equal to
-    % max_spec_explicit_arg in tools/make_spec_method_call.
-optdb(oc_internal, compare_specialization,              int(-1),
-    % -1 asks handle_options.m to give the value, which may be grade dependent.
-    priv_help("compare-specialization=<n>", [
-        "Generate quadratic instead of linear compare predicates for",
-        "types with up to n function symbols. Higher values of n lead to",
-        "faster but also bigger compare predicates."])).
-optdb(oc_dev_ctrl, should_pretest_equality,             bool(yes),
-    priv_help("no-should-pretest-equality", [
-        "If specified, do not add a test for the two values being equal",
-        "as words to the starts of potentially expensive unify and compare",
-        "predicates."])).
-optdb(oc_dev_ctrl, fact_table_max_array_size,           int(1024),
-    help("fact-table-max-array-size <n>", [
-        "Specify the maximum number of elements in a single",
-        "`:- pragma fact_table' data array (default: 1024)."])).
-optdb(oc_dev_ctrl, fact_table_hash_percent_full,        int(90),
-    help("fact-table-hash-percent-full <percentage>", [
-        "Specify how full the `:- pragma fact_table' hash tables",
-        "should be allowed to get. Given as an integer percentage",
-        "(valid range: 1 to 100, default: 90)."])).
-optdb(oc_dev_ctrl, prefer_switch,                       bool(yes),
-    % This option is private because it is not yet useful; currently
-    % we don't take advantage of GNU C's computed gotos extension.
-    priv_help("no-prefer-switch", [
-        "Generate code using computed gotos rather than switches.",
-        "This makes the generated code less readable, but potentially",
-        "slightly more efficient.",
-        "This option has no effect unless the `--high-level-code' option",
-        "is enabled."])).
-optdb(oc_dev_ctrl, prefer_while_loop_over_jump_self,    bool(yes),
-    % This option is intended for testing and benchmarking.
-    priv_help("prefer-while-loop-over-jump-self", [
-        "Generate code for tail-recursive single procedures using an",
-        "infinite while loop, with tail calls being done by a continue.",
-        "The alternative is a label at the start of the procedure,",
-        "with tail calls being done by a jump to the label.",
-        "This option has no effect unless the `--high-level-code' option",
-        "is enabled."])).
-optdb(oc_dev_ctrl, prefer_while_loop_over_jump_mutual,  bool(no),
-    priv_help("prefer-while-loop-over-jump-mutual", [
-        "Generate code for tail-recursive-SCCs using an infinite while loop",
-        "wrapped around a switch, with one switch arm for each procedure",
-        "in the TSCC, with tail calls being done by setting the value of",
-        "the switched-on variable and a continue. The alternative is",
-        "a simple label before the code of each procedure, with tail calls",
-        "being done by a jump to the label.",
-        "This option has no effect unless the `--high-level-code' option",
-        "is enabled."])).
-optdb(oc_dev_ctrl, opt_no_return_calls,                 bool(yes),
-    % This option provides the fairest test of --optimize-saved-vars-cell.
-    priv_help("no-opt-no-return-calls", [
-        "Do not optimize the stack usage of calls that cannot return."])).
-optdb(oc_dev_debug, debug_class_init,                   bool(no),
-    priv_help("debug-class-init", [
-        "In Java grades, generate code that causes a trace of class",
-        "initialization to be printed to the standard output when the",
-        "environment variable MERCURY_DEBUG_CLASS_INIT is defined."])).
 
 %---------------------------------------------------------------------------%
 
@@ -4034,40 +3550,6 @@ optdef(oc_opt_ctrl, intermodule_analysis,               bool(no)).
 optdef(oc_opt_ctrl, analysis_repeat,                    int(0)).
 optdef(oc_opt_ctrl, analysis_file_cache,                bool(no)).
 
-optdef(oc_opt_hh_exp, structure_sharing_analysis,         bool(no)).
-optdef(oc_opt_hh_exp, structure_sharing_widening,         int(0)).
-optdef(oc_opt_hh_exp, structure_reuse_analysis,           bool(no)).
-optdef(oc_opt_hh_exp, structure_reuse_constraint,
-                                        string("within_n_cells_difference")).
-optdef(oc_opt_hh_exp, structure_reuse_constraint_arg,     int(0)).
-optdef(oc_opt_hh_exp, structure_reuse_max_conditions,     int(10)).
-optdef(oc_opt_hh_exp, structure_reuse_repeat,             int(0)).
-optdef(oc_opt_hh_exp, structure_reuse_free_cells,         bool(no)).
-
-optdef(oc_analysis, termination_check,                  bool(no)).
-optdef(oc_analysis, termination_check_verbose,          bool(no)).
-optdef(oc_analysis, termination,                        bool(no)).
-optdef(oc_analysis, termination_single_args,            int(0)).
-optdef(oc_analysis, termination_norm,                   string("total")).
-optdef(oc_analysis, termination_error_limit,            int(3)).
-optdef(oc_analysis, termination_path_limit,             int(256)).
-optdef(oc_analysis, termination2,                       bool(no)).
-optdef(oc_analysis, termination2_norm,                  string("total")).
-optdef(oc_analysis, termination2_check,                 bool(no)).
-optdef(oc_analysis, termination2_check_verbose,         bool(no)).
-optdef(oc_analysis, termination2_widening_limit,        int(4)).
-optdef(oc_analysis, termination2_arg_size_only,         bool(no)).
-optdef(oc_analysis, termination2_prop_fail_constrs,     bool(yes)).
-optdef(oc_analysis, termination2_maximum_matrix_size,   int(70)).
-    % XXX This matrix size is just a guess.
-optdef(oc_analysis, analyse_exceptions,                 bool(no)).
-optdef(oc_analysis, analyse_closures,                   bool(no)).
-optdef(oc_analysis, analyse_trail_usage,                bool(no)).
-optdef(oc_analysis, analyse_mm_tabling,                 bool(no)).
-
-optdef(oc_opt_hm, optimize_trail_usage,               bool(no)).
-optdef(oc_opt_hl, optimize_region_ops,                bool(no)).
-
 %---------------------------------------------------------------------------%
 
     % Optimization options
@@ -4075,7 +3557,7 @@ optdef(oc_opt_hl, optimize_region_ops,                bool(no)).
     % Optimizations should be enabled by the appropriate optimization level
     % in the opt_level table.
 
-    % HLDS
+    % HLDS -> HLDS
 optdef(oc_opt_hh, optopt_allow_inlining,                   bool_special).
 optdef(oc_opt_hh, inlining,                                bool_special).
 optdef(oc_opt_hh, optopt_inline_simple,                    bool_special).
@@ -4149,7 +3631,17 @@ optdef(oc_opt_hh, optopt_always_spec_dep_par_conjs,        bool_special).
 optdef(oc_opt_hh, optopt_allow_some_paths_only_waits,      bool_special).
 optdef(oc_opt_hh, optopt_region_analysis,                  bool_special).
 
-    % HLDS -> LLDS
+optdef(oc_opt_hh_exp, structure_sharing_analysis,         bool(no)).
+optdef(oc_opt_hh_exp, structure_sharing_widening,         int(0)).
+optdef(oc_opt_hh_exp, structure_reuse_analysis,           bool(no)).
+optdef(oc_opt_hh_exp, structure_reuse_constraint,
+                                        string("within_n_cells_difference")).
+optdef(oc_opt_hh_exp, structure_reuse_constraint_arg,     int(0)).
+optdef(oc_opt_hh_exp, structure_reuse_max_conditions,     int(10)).
+optdef(oc_opt_hh_exp, structure_reuse_repeat,             int(0)).
+optdef(oc_opt_hh_exp, structure_reuse_free_cells,         bool(no)).
+
+    % HLDS -> {LLDS,MLDS}
 optdef(oc_opt_hlm, optopt_smart_indexing,                  bool_special).
 optdef(oc_opt_hlm, optopt_smart_atomic_indexing,           bool_special).
 optdef(oc_opt_hlm, optopt_smart_string_indexing,           bool_special).
@@ -4165,29 +3657,34 @@ optdef(oc_opt_hlm, optopt_string_trie_switch_size,         int_special).
 optdef(oc_opt_hlm, optopt_string_hash_switch_size,         int_special).
 optdef(oc_opt_hlm, optopt_string_binary_switch_size,       int_special).
 optdef(oc_opt_hlm, optopt_tag_switch_size,                 int_special).
-optdef(oc_opt_hl, optopt_try_switch_size,                  int_special).
-optdef(oc_opt_hl, optopt_binary_switch_size,               int_special).
 optdef(oc_opt_hlm, optopt_switch_single_rec_base_first,    bool_special).
 optdef(oc_opt_hlm, optopt_switch_multi_rec_base_first,     bool_special).
 optdef(oc_opt_hlm, optopt_static_ground_cells,             bool_special).
-optdef(oc_opt_hl, optopt_static_ground_floats,             bool_special).
-optdef(oc_opt_hl, optopt_static_ground_int64s,             bool_special).
-optdef(oc_opt_hl, optopt_static_code_addresses,            bool_special).
 optdef(oc_opt_hlm, optopt_use_atomic_cells,                bool_special).
-optdef(oc_opt_hl, optopt_middle_rec,                       bool_special).
-optdef(oc_opt_hl, optopt_simple_neg,                       bool_special).
-optdef(oc_opt_hl, optopt_allow_hijacks,                    bool_special).
 
-    % MLDS
+    % MLDS -> MLDS
 optdef(oc_opt_mm, optopt_optimize_mlds,                    bool_special).
 optdef(oc_opt_mm, optopt_peep_mlds,                        bool_special).
 optdef(oc_opt_hm, optopt_mlds_tailcalls,                   bool_special).
 optdef(oc_opt_mm, optopt_initializations,                  bool_special).
 optdef(oc_opt_mm, optopt_eliminate_unused_mlds_assigns,    bool_special).
 optdef(oc_opt_mm, optopt_eliminate_local_vars,             bool_special).
+% From the user point of view, the next options control an MLDS optimization.
 optdef(oc_opt_hh, optopt_generate_trail_ops_inline,        bool_special).
+optdef(oc_opt_hm, optimize_trail_usage,                    bool(no)).
 
-    % LLDS
+    % HLDS -> LLDS
+optdef(oc_opt_hl, optopt_try_switch_size,                  int_special).
+optdef(oc_opt_hl, optopt_binary_switch_size,               int_special).
+optdef(oc_opt_hl, optopt_static_ground_floats,             bool_special).
+optdef(oc_opt_hl, optopt_static_ground_int64s,             bool_special).
+optdef(oc_opt_hl, optopt_static_code_addresses,            bool_special).
+optdef(oc_opt_hl, optopt_middle_rec,                       bool_special).
+optdef(oc_opt_hl, optopt_simple_neg,                       bool_special).
+optdef(oc_opt_hl, optopt_allow_hijacks,                    bool_special).
+optdef(oc_opt_hl, optimize_region_ops,                     bool(no)).
+
+    % LLDS -> LLDS
 optdef(oc_opt_ll, optopt_common_data,                      bool_special).
 optdef(oc_opt_ll, optopt_common_layout_data,               bool_special).
 optdef(oc_opt_ll, optopt_optimize_llds,                    bool_special).
@@ -4218,9 +3715,28 @@ optdef(oc_opt_lc, optopt_local_thread_engine_base,         bool_special).
 % optopt_inline_alloc works by giving a flag to the C compiler, but
 % from the user's point of view, it is about giving different code
 % to the C compiler.
-optdef(oc_opt_lc, optopt_inline_alloc,               bool_special).
+optdef(oc_opt_lc, optopt_inline_alloc,                     bool_special).
 
-optdef(oc_target_c, optopt_c_optimize,               bool_special).
+optdef(oc_analysis, termination_check,                  bool(no)).
+optdef(oc_analysis, termination_check_verbose,          bool(no)).
+optdef(oc_analysis, termination,                        bool(no)).
+optdef(oc_analysis, termination_single_args,            int(0)).
+optdef(oc_analysis, termination_norm,                   string("total")).
+optdef(oc_analysis, termination_error_limit,            int(3)).
+optdef(oc_analysis, termination_path_limit,             int(256)).
+optdef(oc_analysis, termination2,                       bool(no)).
+optdef(oc_analysis, termination2_norm,                  string("total")).
+optdef(oc_analysis, termination2_check,                 bool(no)).
+optdef(oc_analysis, termination2_check_verbose,         bool(no)).
+optdef(oc_analysis, termination2_widening_limit,        int(4)).
+optdef(oc_analysis, termination2_arg_size_only,         bool(no)).
+optdef(oc_analysis, termination2_prop_fail_constrs,     bool(yes)).
+optdef(oc_analysis, termination2_maximum_matrix_size,   int(70)).
+    % XXX This matrix size is just a guess.
+optdef(oc_analysis, analyse_exceptions,                 bool(no)).
+optdef(oc_analysis, analyse_closures,                   bool(no)).
+optdef(oc_analysis, analyse_trail_usage,                bool(no)).
+optdef(oc_analysis, analyse_mm_tabling,                 bool(no)).
 
 %---------------------------------------------------------------------------%
 
@@ -4250,6 +3766,7 @@ optdef(oc_target_c, cc,                              string("gcc")).
     % The `mmc' script will override the default with a value
     % determined at configuration time.
 optdef(oc_target_c, c_compiler_type,                 string("gcc")).
+optdef(oc_target_c, optopt_c_optimize,               bool_special).
 optdef(oc_target_c, c_include_directories,           accumulating([])).
     % The `mmc' script will override the default with a value
     % determined at configuration time.
@@ -4276,7 +3793,6 @@ optdef(oc_target_c, cflags_for_lto,                  string("")).
 optdef(oc_target_c, c_flag_to_name_object_file,      string("-o ")).
 optdef(oc_target_c, object_file_extension,           string(".o")).
 optdef(oc_target_c, pic_object_file_extension,       string(".o")).
-optdef(oc_target_c, cflags_for_ansi,                 string("")).
 
 optdb(oc_target_c, cc,                              string("gcc"),
     % The `mmc' script will override the default with a value
@@ -4287,6 +3803,9 @@ optdb(oc_target_c, c_compiler_type,                 string("gcc"), no_help).
     % The `mmc' script will override the default with a value
     % determined at configuration time for the above two options.
     % XXX That argues for this option being oc_config.
+optdb(oc_target_c, optopt_c_optimize,               bool_special,
+    help("no-c-optimize", [
+        "Don't enable the C compiler's optimizations."])).
 optdb(oc_target_c, c_include_directories,           accumulating([]),
     % The `mmc' script will override the default with a value
     % determined at configuration time.
@@ -4336,8 +3855,6 @@ optdb(oc_target_c, cflags_for_lto,                  string(""), no_help).
 optdb(oc_target_c, c_flag_to_name_object_file,      string("-o "), no_help).
 optdb(oc_target_c, object_file_extension,           string(".o"), no_help).
 optdb(oc_target_c, pic_object_file_extension,       string(".o"), no_help).
-% XXX cflags_for_ansi is deprecated; it no longer has any effect.
-optdb(oc_target_c, cflags_for_ansi,                 string(""), no_help).
 
 %---------------------%
 
@@ -4474,9 +3991,8 @@ optdef(oc_link_c,      trace_init_files,                  accumulating([])).
 %   only_globals_mercury_linkage
 %   only_globals_library_install_linkages
 % are all stringly typed. As the name says, we use the only_globals_* options
-% only switch to construct the globals; after that point, we use three strongly
+% only to construct the globals; after that point, we use three strongly
 % typed fields in the globals.
-% XXX only_globals_library_install_linkages belongs with the following options.
 % NOTE linkage_special first checks and then sets only_globals_linkage and
 % only_globals_mercury_linkage.
 optdef(oc_link_c,      linkage_special,                 string_special).
@@ -4558,7 +4074,6 @@ optdef(oc_link_java,   filterjavac_command,            string("mfilterjavac")).
 
     % Build system options.
 
-optdef(oc_make, part_opmode_rebuild,                bool(no)).
 optdef(oc_make, keep_going,                         bool(no)).
 optdef(oc_make, order_make_by_timestamp,            bool(no)).
 optdef(oc_make, show_make_times,                    bool(no)).
@@ -4576,7 +4091,6 @@ optdef(oc_env, mercury_configuration_directory_special, string_special).
 optdef(oc_env, mercury_configuration_directory,    maybe_string(no)).
 optdef(oc_env, install_method,                     string("external")).
 optdef(oc_env, install_command,                    string("cp")).
-optdef(oc_unused, install_command_dir_option,      string("-R")).
 optdef(oc_buildsys, detect_stdlib_grades,          bool(yes)).
 optdef(oc_buildsys, library_install_grades,        accumulating(["stdlib"])).
 optdef(oc_buildsys, library_install_grades_incl_components,
@@ -4610,7 +4124,6 @@ optdef(oc_search, c_incl_dirs_external,               accumulating([])).
 optdef(oc_search, mer_lib_dirs_same_subdir_setting,   accumulating([])).
 optdef(oc_search, mer_lib_dirs_indep_subdir_setting,  accumulating([])).
 optdef(oc_search, mer_lib_dirs_installed_library,     accumulating([])).
-optdef(oc_internal, chosen_stdlib_dir,                  maybe_string(no)).
 optdef(oc_buildsys, libgrade_install_check,             bool(yes)).
 optdef(oc_buildsys, extra_library_header,               accumulating([])).
 optdef(oc_env, restricted_command_line,            bool(no)).
@@ -4633,10 +4146,372 @@ optdef(oc_misc,     typecheck_ambiguity_error_limit,    int(3000)).
 optdef(oc_help,     help,                               bool(no)).
 optdef(oc_help,     version,                            bool(no)).
 optdef(oc_env,      target_arch,                        string("")).
-optdef(oc_internal, local_module_id,                    accumulating([])).
 % XXX Why is this NOT next to analysis_file_cache?
 optdef(oc_opt_ctrl, analysis_file_cache_dir,            string("")).
+
+%---------------------------------------------------------------------------%
+
+    % Miscellaneous internal-use-only options.
+    %
+    % XXX NO, MOST ARE NOT.
+    % We need a separate category (maybe named oc_int_dev?) for options
+    % - whose main intended use is internal-use-only,
+    % - but which can be command-line enabled by developers for experiments.
+    % OR we could just delete the possibility of those experiments,
+    % whose time has long passed.
+
+optdef(oc_internal, pre_implicit_parallelism_simplify,  bool(no)).
+optdef(oc_internal, type_layout,                        bool(yes)).
+optdef(oc_internal, det_copy_out,                       bool(no)).
+optdef(oc_internal, nondet_copy_out,                    bool(no)).
+optdef(oc_internal, put_commit_in_own_func,             bool(no)).
+optdef(oc_internal, backend_foreign_languages,          accumulating([])).
+    % The backend_foreign_languages option depends on the target,
+    % and is set in handle_options.
+optdef(oc_internal, stack_trace,                        bool(no)).
+optdef(oc_internal, basic_stack_layout,                 bool(no)).
+optdef(oc_internal, agc_stack_layout,                   bool(no)).
+optdef(oc_internal, procid_stack_layout,                bool(no)).
+optdef(oc_internal, trace_stack_layout,                 bool(no)).
+optdef(oc_internal, body_typeinfo_liveness,             bool(no)).
+optdef(oc_internal, can_compare_constants_as_ints,      bool(no)).
+optdef(oc_internal, pretest_equality_cast_pointers,     bool(no)).
+optdef(oc_internal, delay_partial_instantiations,       bool(no)).
+optdef(oc_internal, allow_defn_of_builtins,             bool(no)).
+optdef(oc_internal, type_ctor_info,                     bool(yes)).
+optdef(oc_internal, type_ctor_layout,                   bool(yes)).
+optdef(oc_internal, type_ctor_functors,                 bool(yes)).
+optdef(oc_internal, rtti_line_numbers,                  bool(yes)).
+optdef(oc_internal, new_type_class_rtti,                bool(no)).
+optdef(oc_internal, use_mmsc_pneg,                      bool(no)).
+optdef(oc_internal, use_mmsc_cut,                       bool(no)).
+    % The size_* values below *must* be consistent with the corresponding
+    % values or data structures in mercury_region.h.
+optdef(oc_internal, size_region_ite_fixed,              int(4)).
+optdef(oc_internal, size_region_disj_fixed,             int(4)).
+optdef(oc_internal, size_region_commit_fixed,           int(5)).
+optdef(oc_internal, size_region_ite_protect,            int(1)).
+optdef(oc_internal, size_region_ite_snapshot,           int(3)).
+optdef(oc_internal, size_region_semi_disj_protect,      int(1)).
+optdef(oc_internal, size_region_disj_snapshot,          int(3)).
+optdef(oc_internal, size_region_commit_entry,           int(1)).
+optdef(oc_internal, allow_multi_arm_switches,           bool(yes)).
+optdef(oc_internal, reclaim_heap_on_semidet_failure,    bool(yes)).
+optdef(oc_internal, reclaim_heap_on_nondet_failure,     bool(yes)).
+optdef(oc_internal, reclaim_heap_on_failure,            bool_special).
+optdef(oc_internal, max_specialized_do_call_closure,    int(5)).
+    % mercury.do_call_closure_N exists for N <= option_value;
+    % set to -1 to disable. Should be less than or equal to
+    % max_spec_explicit_arg in tools/make_spec_ho_call.
+optdef(oc_internal, max_specialized_do_call_class_method, int(6)).
+    % mercury.do_call_class_method_N exists for N <= option_value;
+    % set to -1 to disable. Should be less than or equal to
+    % max_spec_explicit_arg in tools/make_spec_method_call.
+optdef(oc_internal, compare_specialization,             int(-1)).
+    % -1 asks handle_options.m to give the value, which may be grade dependent.
+optdef(oc_internal, chosen_stdlib_dir,                  maybe_string(no)).
 optdef(oc_internal, default_globals,                    bool(no)).
+optdef(oc_internal, local_module_id,                    accumulating([])).
+optdef(oc_internal, generate_item_version_numbers,      bool(no)).
+optdef(oc_internal, generate_mmc_make_module_dependencies, bool(no)).
+
+optdb(oc_internal, pre_implicit_parallelism_simplify,    bool(no), no_help).
+optdb(oc_internal, type_layout,                          bool(yes),
+    priv_help("no-type-layout", [
+        "Don't output type_ctor_layout structures or references",
+        "to them. (The C code also needs to be compiled with",
+        "`-DNO_TYPE_LAYOUT')."])).
+% The next two options are not documented,
+% because they are not yet tested much, and are probably not very useful,
+% except for Java, where they are the default.
+optdb(oc_internal, det_copy_out,                         bool(no),
+    priv_help("det-copy-out", [
+        "Specify whether to handle output arguments for det/semidet",
+        "procedures using return-by-value rather than pass-by-reference.",
+        "This option is ignored if the `--high-level-code' option",
+        "is not enabled."])).
+optdb(oc_internal, nondet_copy_out,                     bool(no),
+    priv_help("nondet-copy-out", [
+        "Specify whether to handle output arguments for nondet",
+        "procedures using pass-by-value rather than pass-by-reference.",
+        "This option is ignored if the `--high-level-code' option",
+        "is not enabled."])).
+% The --put-commit-in-own-func option is not documented because
+% it is enabled automatically (by handle_options) in the situations
+% where it is needed; the user should never need to set it.
+optdb(oc_internal, put_commit_in_own_func,              bool(no),
+    priv_help("put-commit-in-own-func", [
+        "Put each commit in its own C function.",
+        "This option only affects the MLDS back-ends.",
+        "It is needed for the high-level C back-end,",
+        "where commits are implemented via setjmp()/longjmp(),",
+        "since longjmp() may clobber any non-volatile local vars",
+        "in the function that called setjmp()."])).
+optdb(oc_internal, backend_foreign_languages,       accumulating([]), no_help).
+    % The backend_foreign_languages option depends on the target,
+    % and is set in handle_options, BUT can be set on the command line.
+    % It makes no sense to do so, but ...
+optdb(oc_internal, stack_trace,                     bool(no), no_help).
+optdb(oc_internal, basic_stack_layout,              bool(no),
+    priv_help("basic-stack-layout", [
+        "Generate the simple stack_layout structures required",
+        "for stack traces."])).
+optdb(oc_internal, agc_stack_layout,                bool(no),
+    priv_help("agc-stack-layout", [
+        "Generate the stack_layout structures required for",
+        "accurate garbage collection."])).
+optdb(oc_internal, procid_stack_layout,             bool(no),
+    priv_help("procid-stack-layout", [
+        "Generate the stack_layout structures required for",
+        "looking up procedure identification information."])).
+optdb(oc_internal, trace_stack_layout,              bool(no),
+    priv_help("trace-stack-layout", [
+        "(This option is not for general use.)",
+        "Generate the stack_layout structures required for",
+        "execution tracing."])).
+optdb(oc_internal, body_typeinfo_liveness,          bool(no),
+    priv_help("body-typeinfo-liveness", [
+        "(This option is not for general use.)"])).
+optdb(oc_internal, can_compare_constants_as_ints,   bool(no),
+    priv_help("can-compare-constants-as-ints", [])).
+optdb(oc_internal, pretest_equality_cast_pointers,  bool(no),
+    priv_help("pretest-equality-cast-pointers", [])).
+optdb(oc_internal, delay_partial_instantiations,    bool(no),
+    priv_help("can-compare-compound-values", [])).
+optdb(oc_internal, allow_defn_of_builtins,          bool(no),
+    priv_help("allow-defn-of-builtins", [])).
+optdb(oc_internal, type_ctor_info,                  bool(yes), no_help).
+optdb(oc_internal, type_ctor_layout,                bool(yes), no_help).
+optdb(oc_internal, type_ctor_functors,              bool(yes), no_help).
+optdb(oc_internal, rtti_line_numbers,               bool(yes), no_help).
+optdb(oc_internal, new_type_class_rtti,             bool(no), no_help).
+optdb(oc_internal, use_mmsc_pneg,                   bool(no), no_help).
+optdb(oc_internal, use_mmsc_cut,                    bool(no), no_help).
+    % The size_* values below *must* be consistent with the corresponding
+    % values or data structures in runtime/mercury_region.h.
+optdb(oc_internal, size_region_ite_fixed,           int(4),
+    priv_help("size-region-ite-fixed", [])).
+optdb(oc_internal, size_region_disj_fixed,          int(4),
+    priv_help("size-region-disj-fixed", [])).
+optdb(oc_internal, size_region_commit_fixed,        int(5),
+    priv_help("size-region-commit-fixed", [])).
+optdb(oc_internal, size_region_ite_protect,         int(1),
+    priv_help("size-region-ite-protect", [])).
+optdb(oc_internal, size_region_ite_snapshot,        int(3),
+    priv_help("size-region-ite-snapshot", [])).
+optdb(oc_internal, size_region_semi_disj_protect,   int(1),
+    priv_help("size-region-disj-protect", [])).
+optdb(oc_internal, size_region_disj_snapshot,       int(3),
+    priv_help("size-region-disj-snapshot", [])).
+optdb(oc_internal, size_region_commit_entry,        int(1),
+    priv_help("size-region-commit-entry", [])).
+optdb(oc_internal, allow_multi_arm_switches,        bool(yes),
+    priv_help("allow-multi-arm-switches", [
+        "Allow the compiler to generate switches in which one arm handles",
+        "more than one cons_id."])).
+optdb(oc_internal, reclaim_heap_on_semidet_failure,     bool(yes),
+    help("no-reclaim-heap-on-semidet-failure", [
+        "Don't reclaim heap on backtracking in semidet code."])).
+optdb(oc_internal, reclaim_heap_on_nondet_failure,      bool(yes),
+    help("no-reclaim-heap-on-nondet-failure", [
+        "Don't reclaim heap on backtracking in nondet code."])).
+optdb(oc_internal, reclaim_heap_on_failure,             bool_special,
+    help("no-reclaim-heap-on-failure", [
+        "Combines the effect of the two options above."])).
+optdb(oc_internal, max_specialized_do_call_closure,     int(5), no_help).
+    % mercury.do_call_closure_N exists for N <= option_value;
+    % set to -1 to disable. Should be less than or equal to
+    % max_spec_explicit_arg in tools/make_spec_ho_call.
+optdb(oc_internal, max_specialized_do_call_class_method, int(6), no_help).
+    % mercury.do_call_class_method_N exists for N <= option_value;
+    % set to -1 to disable. Should be less than or equal to
+    % max_spec_explicit_arg in tools/make_spec_method_call.
+optdb(oc_internal, compare_specialization,              int(-1),
+    % -1 asks handle_options.m to give the value, which may be grade dependent.
+    priv_help("compare-specialization=<n>", [
+        "Generate quadratic instead of linear compare predicates for",
+        "types with up to n function symbols. Higher values of n lead to",
+        "faster but also bigger compare predicates."])).
+optdb(oc_internal, chosen_stdlib_dir,               maybe_string(no), no_help).
+optdb(oc_internal, default_globals,                    bool(no), no_help).
+optdb(oc_internal, local_module_id,                 accumulating([]), no_help).
+optdb(oc_internal, generate_item_version_numbers,         bool(no),
+    unnamed_help([
+        "This option is used to control output of version numbers",
+        "in interface files. It is implied by --smart-recompilation,",
+        "and cannot be set explicitly by the user.",
+        "Even if this option is set to `yes', version numbers may have",
+        "been disabled with io_set_disable_generate_item_version_numbers.",
+        "Before using the value of this option, call",
+        "io_get_disable_generate_item_version_numbers to see whether this",
+        "has been done."])).
+optdb(oc_internal, generate_mmc_make_module_dependencies, bool(no), no_help).
+
+%---------------------------------------------------------------------------%
+
+    % Options that developers can use to ask for optional compiler actions.
+
+optdef(oc_dev_ctrl, debug_output_suffix,                 string("")).
+optdef(oc_dev_ctrl, error_output_suffix,                 string("")).
+optdef(oc_dev_ctrl, inference_output_suffix,             string("")).
+optdef(oc_dev_ctrl, progress_output_suffix,              string("")).
+optdef(oc_dev_ctrl, recompile_output_suffix,             string("")).
+
+optdb(oc_dev_ctrl, debug_output_suffix,                 string(""),
+    priv_help("error-output-suffix .xyz", [
+        "When compiling module M, output any error, warning and/or",
+        "informational messages about the module to a file named `M.xyz'.",
+        "The default is for such output to go to standard error."])).
+optdb(oc_dev_ctrl, error_output_suffix,                 string(""),
+    priv_help("progress-output-suffix .xyz", [
+        "When compiling module M, output messages about the progress",
+        "of the compilation to a file named `M.xyz'. This includes any",
+        "statistics about the performance of compiler passes, if enabled.",
+        "The default is for such output to go to standard error."])).
+optdb(oc_dev_ctrl, inference_output_suffix,             string(""),
+    priv_help("inference-output-suffix .xyz", [
+        "When compiling module M, output the results of any type and/or",
+        "mode inference to a file named `M.xyz'.",
+        "The default is for such output to go to standard error."])).
+optdb(oc_dev_ctrl, progress_output_suffix,              string(""),
+    % These are also commented out because they are intended
+    % only for developers.
+    priv_help("debug-output-suffix .xyz", [
+        "When compiling module M, direct output that is intended to",
+        "help debug the compiler to a file named `M.xyz'.",
+        "The default is for such output to go to standard error."])).
+optdb(oc_dev_ctrl, recompile_output_suffix,             string(""),
+    priv_help("recompile-output-suffix .xyz", [
+        "This is intended to direct the output from the test cases in
+        tests/recompilation to a file."])).
+
+optdef(oc_dev_ctrl,   mode_constraints,                 bool(no)).
+optdef(oc_dev_ctrl,   simple_mode_constraints,          bool(no)).
+optdef(oc_dev_ctrl,   prop_mode_constraints,            bool(no)).
+optdef(oc_dev_ctrl,   compute_goal_modes,               bool(no)).
+optdef(oc_dev_ctrl, smart_recompilation,                   bool(no)).
+optdef(oc_dev_ctrl, pre_prof_transforms_simplify,       bool(no)).
+optdef(oc_dev_ctrl, disable_mmsc_pneg,              bool(no)).
+optdef(oc_dev_ctrl, disable_mmsc_cut,               bool(no)).
+optdef(oc_dev_ctrl, disable_trail_ops,              bool(no)).
+optdef(oc_dev_ctrl, type_check_using_constraints,   bool(no)).
+optdef(oc_dev_ctrl, trad_passes,                         bool(yes)).
+optdef(oc_dev_ctrl, parallel_liveness,                   bool(no)).
+optdef(oc_dev_ctrl, parallel_code_gen,                   bool(no)).
+optdef(oc_dev_ctrl, should_pretest_equality,             bool(yes)).
+optdef(oc_dev_ctrl, fact_table_max_array_size,           int(1024)).
+optdef(oc_dev_ctrl, fact_table_hash_percent_full,        int(90)).
+optdef(oc_dev_ctrl, prefer_switch,                       bool(yes)).
+optdef(oc_dev_ctrl, prefer_while_loop_over_jump_self,    bool(yes)).
+optdef(oc_dev_ctrl, prefer_while_loop_over_jump_mutual,  bool(no)).
+optdef(oc_dev_ctrl, opt_no_return_calls,                 bool(yes)).
+
+optdb(oc_dev_ctrl,   mode_constraints,                 bool(no),
+    priv_help("mode-constraints", [
+        "Run constraint based mode analysis. The default is to use",
+        "the robdd solution using the full (subtyping) constraints,",
+        "and to dump its results."])).
+optdb(oc_dev_ctrl,   simple_mode_constraints,          bool(no),
+    priv_help("simple-mode-constraints", [
+        "Use only the simplified constraint system when running",
+        "the robdd solver constraints based mode analysis."])).
+optdb(oc_dev_ctrl,   prop_mode_constraints,            bool(no),
+    priv_help("prop-mode-constraints", [
+        "Use the new propagation solver for constraints based",
+        "mode analysis."])).
+optdb(oc_dev_ctrl,   compute_goal_modes,               bool(no),
+    priv_help("compute-goal-modes", [
+        "Compute goal modes."])).
+optdb(oc_dev_ctrl,   smart_recompilation,              bool(no),
+    help("smart-recompilation", [
+        "When compiling, write program dependency information",
+        "to be used to avoid unnecessary recompilations if an",
+        "imported module's interface changes in a way which does",
+        "not invalidate the compiled code. `--smart-recompilation'",
+        "does not yet work with `--intermodule-optimization'."])).
+optdb(oc_dev_ctrl, pre_prof_transforms_simplify,       bool(no),
+    priv_help("pre-prof-transforms-simplify", [
+        "Force the pre-profiling simplification pass that is usually",
+        "enabled when building a profiling version of a program. This",
+        "allows a developer to enable this pass when using a",
+        "non-profiling build. It can be used to test that generated code",
+        "introduced in earlier passes is well-formed before it is",
+        "potentially removed by the later dead procedure elimination pass."])).
+optdb(oc_dev_ctrl, disable_mmsc_pneg,               bool(no),
+    priv_help("disable-mmsc-pneg", [])).
+optdb(oc_dev_ctrl, disable_mmsc_cut,                bool(no),
+    priv_help("disable-mmsc-cut", [])).
+optdb(oc_dev_ctrl, disable_trail_ops,               bool(no),
+    priv_help("disable-trail-ops", [])).
+optdb(oc_dev_ctrl, type_check_using_constraints,    bool(no),
+    priv_help("type-check-constraints", [
+        "Use the constraint based type checker instead of the old one."])).
+optdb(oc_dev_ctrl, trad_passes,                         bool(yes),
+    help("no-trad-passes", [
+        "The default `--trad-passes' completely processes each predicate",
+        "before going on to the next predicate.",
+        "This option tells the compiler",
+        "to complete each phase of code generation on all predicates",
+        "before going on the next phase on all predicates."])).
+optdb(oc_dev_ctrl, parallel_liveness,                   bool(no),
+    priv_help("parallel-liveness", [
+        "Use multiple threads when computing liveness.",
+        "At the moment this option implies `--no-trad-passes',",
+        "and requires the compiler to be built in a",
+        "low-level parallel grade and running with multiple engines."])).
+optdb(oc_dev_ctrl, parallel_code_gen,                   bool(no),
+    priv_help("parallel-code-gen", [
+        "Use multiple threads when generating code.",
+        "At the moment this option implies `--no-trad-passes',",
+        "and requires the compiler to be built in a",
+        "low-level parallel grade and running with multiple engines."])).
+optdb(oc_dev_ctrl, should_pretest_equality,             bool(yes),
+    priv_help("no-should-pretest-equality", [
+        "If specified, do not add a test for the two values being equal",
+        "as words to the starts of potentially expensive unify and compare",
+        "predicates."])).
+optdb(oc_dev_ctrl, fact_table_max_array_size,           int(1024),
+    help("fact-table-max-array-size <n>", [
+        "Specify the maximum number of elements in a single",
+        "`:- pragma fact_table' data array (default: 1024)."])).
+optdb(oc_dev_ctrl, fact_table_hash_percent_full,        int(90),
+    help("fact-table-hash-percent-full <percentage>", [
+        "Specify how full the `:- pragma fact_table' hash tables",
+        "should be allowed to get. Given as an integer percentage",
+        "(valid range: 1 to 100, default: 90)."])).
+optdb(oc_dev_ctrl, prefer_switch,                       bool(yes),
+    % This option is private because it is not yet useful; currently
+    % we don't take advantage of GNU C's computed gotos extension.
+    priv_help("no-prefer-switch", [
+        "Generate code using computed gotos rather than switches.",
+        "This makes the generated code less readable, but potentially",
+        "slightly more efficient.",
+        "This option has no effect unless the `--high-level-code' option",
+        "is enabled."])).
+optdb(oc_dev_ctrl, prefer_while_loop_over_jump_self,    bool(yes),
+    % This option is intended for testing and benchmarking.
+    priv_help("prefer-while-loop-over-jump-self", [
+        "Generate code for tail-recursive single procedures using an",
+        "infinite while loop, with tail calls being done by a continue.",
+        "The alternative is a label at the start of the procedure,",
+        "with tail calls being done by a jump to the label.",
+        "This option has no effect unless the `--high-level-code' option",
+        "is enabled."])).
+optdb(oc_dev_ctrl, prefer_while_loop_over_jump_mutual,  bool(no),
+    priv_help("prefer-while-loop-over-jump-mutual", [
+        "Generate code for tail-recursive-SCCs using an infinite while loop",
+        "wrapped around a switch, with one switch arm for each procedure",
+        "in the TSCC, with tail calls being done by setting the value of",
+        "the switched-on variable and a continue. The alternative is",
+        "a simple label before the code of each procedure, with tail calls",
+        "being done by a jump to the label.",
+        "This option has no effect unless the `--high-level-code' option",
+        "is enabled."])).
+optdb(oc_dev_ctrl, opt_no_return_calls,                 bool(yes),
+    % This option provides the fairest test of --optimize-saved-vars-cell.
+    priv_help("no-opt-no-return-calls", [
+        "Do not optimize the stack usage of calls that cannot return."])).
+
 optdef(oc_dev_ctrl, compiler_sufficiently_recent,       bool(no)).
 optdef(oc_dev_ctrl, experiment,                         string("")).
 optdef(oc_dev_ctrl, experiment1,                        bool(no)).
@@ -4652,6 +4527,202 @@ optdef(oc_dev_ctrl, implicit_parallelism,               bool(no)).
 optdef(oc_dev_ctrl, feedback_file,                      string("")).
 optdef(oc_dev_ctrl, par_loop_control,                   bool(no)).
 optdef(oc_dev_ctrl, par_loop_control_keep_tail_rec,     bool(no)).
+
+optdb(oc_dev_ctrl, compiler_sufficiently_recent,       bool(no),
+    alt_help("subtype-opt-2022-02-19", pos_sep_lines, [
+            "typespec-pragma-2022-07-20",
+            "ushift-2022-12-06",
+            "ushift-2022-12-07",
+            "strtrie-2022-12-08",
+            "term-pass2-2022-12-28",
+            "format-2023-01-27",
+            "singleton-2023-06-10",
+            "warn-obsolete-transform-2023-07-03",
+            "gen-dep-ints-2023-10-15",
+            "tscp-2024-02-07",
+            "format-2024-02-07",
+            "dym-2024-02-08",
+            "wne-2024-02-21",
+            "escape-2024-04-28",
+            "can-fail-function-obsolete-2024-08-10",
+            "unused-statevar-warn-2025-05-16",
+            "allow-non-contig-for-2025-06-01"], [])).
+optdb(oc_dev_ctrl, experiment,                         string(""), no_help).
+optdb(oc_dev_ctrl, experiment1,                        bool(no), no_help).
+optdb(oc_dev_ctrl, experiment2,                        bool(no), no_help).
+optdb(oc_dev_ctrl, experiment3,                        bool(no), no_help).
+optdb(oc_dev_ctrl, experiment4,                        bool(no), no_help).
+optdb(oc_dev_ctrl, experiment5,                        bool(no), no_help).
+optdb(oc_dev_ctrl, allow_ho_insts_as_modes,            bool(yes),
+    priv_help("no-allow-ho-insts-as-modes", [
+        "Do not allow higher order insts to be used as modes."])).
+optdb(oc_dev_ctrl, ignore_par_conjunctions,            bool(no),
+    priv_help("ignore-parallel-conjunctions", [
+        "Replace parallel conjunctions with plain ones, this is useful",
+        "for benchmarking. Note that it does not affect implicit",
+        "parallelism"])).
+optdb(oc_dev_ctrl, control_granularity,                bool(no),
+    help("control-granularity", [
+        "Don't try to generate more parallelism than the machine can",
+        "handle, which may be specified at runtime or detected",
+        "automatically."])).
+optdb(oc_dev_ctrl, distance_granularity,               int(0),
+    help("distance-granularity <distance>", [
+        "Control the granularity of parallel execution using the",
+        "specified distance value."])).
+optdb(oc_dev_ctrl, implicit_parallelism,               bool(no),
+    help("implicit-parallelism", [
+        "Introduce parallel conjunctions where it could be worthwhile",
+        "(implicit parallelism) using information generated by",
+        "mdprof_create_feedback.",
+        "The profiling feedback file can be specified using the",
+        "`--feedback-file' option."])).
+optdb(oc_dev_ctrl, feedback_file,                      string(""),
+    help("feedback-file <file>", [
+        "Use the specified profiling feedback file which may currently",
+        "only be processed for implicit parallelism."])).
+optdb(oc_dev_ctrl, par_loop_control,                   bool(no), no_help).
+optdb(oc_dev_ctrl, par_loop_control_keep_tail_rec,     bool(no), no_help).
+
+%---------------------------------------------------------------------------%
+
+    % Options for helping to debuug the compiler's operations.
+    % Most such options are in option class oc_verb_dbg; the options here
+    % are the ones that do NOT work by adding to the compiler output stream.
+
+optdef(oc_dev_debug, table_debug,                        bool(no)).
+optdef(oc_dev_debug, debug_class_init,                   bool(no)).
+
+optdb(oc_dev_debug, table_debug,                        bool(no),
+    priv_help("table-debug", [
+        "Enables the generation of code that helps to debug tabling",
+        "primitives."])).
+optdb(oc_dev_debug, debug_class_init,                   bool(no),
+    priv_help("debug-class-init", [
+        "In Java grades, generate code that causes a trace of class",
+        "initialization to be printed to the standard output when the",
+        "environment variable MERCURY_DEBUG_CLASS_INIT is defined."])).
+
+%---------------------------------------------------------------------------%
+
+    % Options that the compiler does not use anymore.
+
+optdef(oc_unused, cflags_for_ansi,                 string("")).
+optdef(oc_unused, install_command_dir_option,      string("-R")).
+
+optdb(oc_unused, cflags_for_ansi,                 string(""), no_help).
+optdb(oc_unused, install_command_dir_option,      string("-R"), no_help).
+
+%---------------------------------------------------------------------------%
+
+    % Options for creating dumps of the compiler's internal data structures.
+
+optdef(oc_dev_dump,   dump_hlds,                        accumulating([])).
+optdef(oc_dev_dump,   dump_hlds_pred_id,                accumulating([])).
+optdef(oc_dev_dump,   dump_hlds_pred_name,              accumulating([])).
+optdef(oc_dev_dump,   dump_hlds_pred_name_order,        bool(no)).
+optdef(oc_dev_dump,   dump_hlds_spec_preds,             bool(no)).
+optdef(oc_dev_dump,   dump_hlds_spec_preds_for,         accumulating([])).
+optdef(oc_dev_dump,   dump_hlds_alias,                  string("")).
+optdef(oc_dev_dump,   dump_hlds_options,                string("")).
+optdef(oc_dev_dump,   dump_hlds_inst_limit,             int(100)).
+optdef(oc_dev_dump,   dump_hlds_inst_size_limit,        int(40)).
+optdef(oc_dev_dump,   dump_hlds_file_suffix,            string("")).
+optdef(oc_dev_dump,   dump_same_hlds,                   bool(no)).
+optdef(oc_dev_dump,   dump_mlds,                        accumulating([])).
+optdef(oc_dev_dump,   dump_mlds_pred_name,              accumulating([])).
+optdef(oc_dev_dump,   verbose_dump_mlds,                accumulating([])).
+optdef(oc_dev_dump,   dump_trace_counts,                accumulating([])).
+optdef(oc_dev_dump,   dump_options_file,                string("")).
+
+optdb(oc_dev_dump,   dump_hlds,                        accumulating([]),
+    short_arg_help("d <n>", "dump-hlds <stage number or name>", [], [
+        "Dump the HLDS (high level intermediate representation) after",
+        "the specified stage to `<module>.hlds_dump.<num>-<name>'.",
+        "Stage numbers range from 1-599.",
+        "Multiple dump options accumulate."])).
+optdb(oc_dev_dump,   dump_hlds_pred_id,                accumulating([]),
+    help("dump-hlds-pred-id <n>", [
+        "Dump the HLDS only of the predicate/function with the given",
+        "pred id."])).
+optdb(oc_dev_dump,   dump_hlds_pred_name,              accumulating([]),
+    help("dump-hlds-pred-name <name>", [
+        "Dump the HLDS only of the predicate/function with the given",
+        "name."])).
+optdb(oc_dev_dump,   dump_hlds_pred_name_order,        bool(no),
+    priv_help("dump-hlds-pred-name-order", [
+        "Dump the predicates in the HLDS ordered by name",
+        "not ordered by pred id."])).
+optdb(oc_dev_dump,   dump_hlds_spec_preds,             bool(no),
+    priv_help("dump-hlds-spec-preds", [
+        "With `--dump-hlds', dump the special (unify, compare, and index)",
+        "predicates not in pred-id order, but in alphabetical order",
+        "by type constructor."])).
+optdb(oc_dev_dump,   dump_hlds_spec_preds_for,         accumulating([]),
+    priv_help("dump-hlds-spec-preds-for <typename>", [
+        "Dump only the special (unify, compare, and index) predicates",
+        "for the types named by the (possibly multiple) occurrences",
+        "of this option."])).
+optdb(oc_dev_dump,   dump_hlds_alias,                  string(""),
+    priv_short_arg_help("D <dump_alias>",
+            "dump-hlds-alias <dump-alias>", [], [
+        "With `--dump-hlds', include extra detail in the dump.",
+        "Each dump alias is shorthand for a set of option letters.",
+        "The list of aliases is in handle_options.m"])).
+optdb(oc_dev_dump,   dump_hlds_options,                string(""),
+    help("dump-hlds-options <options>", [
+        "With `--dump-hlds', include extra detail in the dump.",
+        "Each type of detail is included in the dump if its",
+        "corresponding letter occurs in the option argument",
+        "(see the Mercury User's Guide for details)."])).
+optdb(oc_dev_dump,   dump_hlds_inst_limit,             int(100),
+    help("dump-hlds-inst-limit <N>", [
+        "Dump at most N insts in each inst table."])).
+optdb(oc_dev_dump,   dump_hlds_inst_size_limit,        int(40),
+    help("dump-hlds-inst-size-limit <N>", [
+        "Dump insts in an inst table only if their size does not exceed N."])).
+optdb(oc_dev_dump,   dump_hlds_file_suffix,            string(""),
+    help("dump-hlds-file-suffix <suffix>", [
+        "Append the given suffix to the names of the files created by",
+        "the `--dump-hlds' option."])).
+optdb(oc_dev_dump,   dump_same_hlds,                   bool(no),
+    help("dump-same-hlds", [
+        "Create a file for a HLDS stage even if the file notes only that",
+        "this stage is identical to the previously dumped HLDS stage."])).
+optdb(oc_dev_dump,   dump_mlds,                        accumulating([]),
+    help("dump-mlds <stage number or name>", [
+        "Dump the MLDS (medium level intermediate representation)",
+        "after the specified stage, as C code,",
+        "to`<module>.c_dump.<num>-<name>',",
+        "and `<module>.mih_dump.<num>-<name>'.",
+        "Stage numbers range from 1-99.",
+        "Multiple dump options accumulate.",
+        "This option works only in MLDS grades that target C."])).
+optdb(oc_dev_dump,   dump_mlds_pred_name,              accumulating([]),
+    help("dump-mlds-pred-name <pred or func name>", [
+        "Dump the MLDS (medium level intermediate representation)",
+        "of the predicate or function with the specified name",
+        "at the stages specified by the --dump-mlds option.",
+        "The dump file will consist of the predicates and functions",
+        "named by all the occurrences of this option (there may be",
+        "more than one), and nothing else."])).
+optdb(oc_dev_dump,   verbose_dump_mlds,                accumulating([]),
+    help("verbose-dump-mlds <stage number or name>", [
+        "Dump the internal compiler representation of the MLDS, after",
+        "the specified stage, to `<module>.mlds_dump.<num>-<name>'.",
+        "This option works in all MLDS grades."])).
+optdb(oc_dev_dump,   dump_trace_counts,                accumulating([]),
+    % This option is for developers only.
+    priv_help("dump-trace-counts <stage number or name>", [
+        "If the compiler was compiled with debugging enabled and is being",
+        "run with trace counting enabled, write out the trace counts file",
+        "after the specified stage to `<module>.trace_counts.<num>-<name>'.",
+        "Stage numbers range from 1-599.",
+        "Multiple dump options accumulate."])).
+optdb(oc_dev_dump,   dump_options_file,                string(""),
+    priv_help("dump-options-file output_file", [
+        "Dump the internal compiler representation of files named in",
+        "options-file options to output_file."])).
 
 %---------------------------------------------------------------------------%
 

@@ -583,10 +583,11 @@ compile_java_files(Globals, ProgressStream, HeadJavaFile, TailJavaFiles,
     ),
 
     globals.lookup_bool_option(Globals, target_debug, TargetDebug),
-    globals.lookup_bool_option(Globals, c_debug_grade, CDebugGrade),
-    ( if ( TargetDebug = yes ; CDebugGrade = yes ) then
+    (
+        TargetDebug = yes,
         TargetDebugOpts = "-g "
-    else
+    ;
+        TargetDebug = no,
         TargetDebugOpts = ""
     ),
 
@@ -638,9 +639,9 @@ java_classpath_separator = PathSeparator :-
         ; io.have_cygwin
         )
     then
-        PathSeparator = ";"
+        PathSeparator = ";" % semicolon
     else
-        PathSeparator = ":"
+        PathSeparator = ":" % colon
     ).
 
 :- pred is_minus_j_flag(string::in) is semidet.
