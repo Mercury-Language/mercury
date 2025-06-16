@@ -1488,10 +1488,8 @@ option_defaults(Opt, Data) :-
 :- mode optdef(out, out, out) is multi.
 
 :- pred optdb(option_category, option, option_data, help).
-% XXX The switches on the first two arguments should eventually be complete,
-% making the first mode det, and the second multi.
-:- mode optdb(out, in, out, out) is semidet.
-:- mode optdb(in, out, out, out) is nondet.
+:- mode optdb(out, in, out, out) is det.
+:- mode optdb(in, out, out, out) is multi.
 :- mode optdb(out, out, out, out) is multi.
 :- pragma consider_used(pred(optdb/4)).
 
@@ -5134,6 +5132,9 @@ optdef(oc_mconfig,  shlib_linker_trace_flags,        string("")).
 optdef(oc_mconfig,  shlib_linker_use_install_name,   bool(no)).
 optdef(oc_mconfig,  thread_libs,                     string("")).
 optdef(oc_mconfig,  trace_libs,                      string("")).
+optdef(oc_mconfig,  install_method,                  string("external")).
+optdef(oc_mconfig,  use_symlinks,                    bool(yes)).
+optdef(oc_mconfig,  target_arch,                     string("")).
 
 optdb(oc_mconfig,  create_archive_command,          string("ar"),
     priv_help("create-archive-command", [])).
@@ -5224,6 +5225,12 @@ optdb(oc_mconfig,  thread_libs,                     string(""),
     priv_help("thread-libs", [])).
 optdb(oc_mconfig,  trace_libs,                      string(""),
     priv_help("trace-libs", [])).
+optdb(oc_mconfig,  install_method,                  string("external"),
+    priv_help("install-method", [])).
+optdb(oc_mconfig,  use_symlinks,                    bool(yes),
+    priv_help("use-symlinks", [])).
+optdb(oc_mconfig, target_arch,                       string(""),
+    priv_help("target-arch", [])).
 
 %---------------------------------------------------------------------------%
 
@@ -5268,31 +5275,8 @@ optdb(oc_make, make_pre_link_command,              maybe_string(no),
 
 %---------------------------------------------------------------------------%
 
-    % Build system options.
+    % Search options
 
-optdef(oc_buildsys, extra_init_command,             maybe_string(no)).
-optdef(oc_buildsys, install_prefix,                 string("/usr/local/")).
-optdef(oc_buildsys, use_symlinks,                   bool(yes)).
-
-    % If `--mercury-stdlib-dir' is set, `--mercury-config-dir'
-    % must also be set. This invariant is maintained by the `special' variants
-    % of the options.
-optdef(oc_env, mercury_configuration_directory_special, string_special).
-optdef(oc_env, mercury_configuration_directory,    maybe_string(no)).
-optdef(oc_env, install_method,                     string("external")).
-optdef(oc_env, install_command,                    string("cp")).
-optdef(oc_buildsys, detect_stdlib_grades,          bool(yes)).
-optdef(oc_buildsys, library_install_grades,        accumulating(["stdlib"])).
-optdef(oc_buildsys, library_install_grades_incl_components,
-                                                   accumulating([])).
-optdef(oc_buildsys, library_install_grades_excl_components,
-                                                   accumulating([])).
-optdef(oc_buildsys, only_globals_library_install_linkages,
-                                                   accumulating([])).
-optdef(oc_env, options_files,              accumulating(["Mercury.options"])).
-
-optdef(oc_env, config_file,                   maybe_string(yes(""))).
-    % yes("") means unset.
 optdef(oc_search, options_search_directories,         accumulating(["."])).
 optdef(oc_search, setting_only_use_subdirs,           bool(no)).
 optdef(oc_search, setting_only_use_grade_subdirs,     bool(no)).
@@ -5312,14 +5296,219 @@ optdef(oc_search, c_incl_dirs_external,               accumulating([])).
 optdef(oc_search, mer_lib_dirs_same_subdir_setting,   accumulating([])).
 optdef(oc_search, mer_lib_dirs_indep_subdir_setting,  accumulating([])).
 optdef(oc_search, mer_lib_dirs_installed_library,     accumulating([])).
-optdef(oc_buildsys, libgrade_install_check,             bool(yes)).
-optdef(oc_buildsys, extra_library_header,               accumulating([])).
-optdef(oc_env, target_arch,                        string("")).
+
+optdb(oc_search, options_search_directories,          accumulating(["."]),
+    help("options-search-directory <dir>", [
+        "Add <dir> to the list of directories to be searched for",
+        "options files."])).
+optdb(oc_search, setting_only_use_subdirs,            bool(no),
+    help("use-subdirs", [
+        "Generate intermediate files in a `Mercury' subdirectory,",
+        "rather than generating them in the current directory."])).
+optdb(oc_search, setting_only_use_grade_subdirs,      bool(no),
+    help("use-grade-subdirs", [
+        "Generate intermediate files in a `Mercury' subdirectory,",
+        "laid out so that multiple grades can be built simultaneously.",
+        "Executables and libraries will be symlinked or copied into",
+        "the current directory.",
+        "`--use-grade-subdirs' does not work with Mmake (it does",
+        "work with `mmc --make')."])).
+optdb(oc_search, search_directories,                  accumulating(["."]),
+    short_arg_help("-I <dir>", "search-directory <dir>", [], [
+        "Append <dir> to the list of directories to be searched",
+        "for `.int*' and `.module_dep' files."])).
+optdb(oc_search, intermod_directories,                accumulating([]),
+    help("intermod-directory <dir>", [
+        "Add <dir> to the list of directories to be searched",
+        "for `.opt' and `.trans_opt' files."])).
+optdb(oc_search, use_search_directories_for_intermod, bool(yes),
+    help("no-use-search-directories-for-intermod", [
+        "Do not add the arguments of `--search-directory' options to",
+        "the list of directories to search for `.opt' files; use only the",
+        "arguments of `--intermod-directory' options."])).
+optdb(oc_search, interface_dirs_same_subdir_setting,  accumulating([]),
+    priv_alt_help("interface-dir-same-workspace", pos_sep_lines,
+        ["interface-dir-same-ws"], [])).
+optdb(oc_search, interface_dirs_indep_subdir_setting, accumulating([]),
+    priv_alt_help("interface-dir-independent-workspace", pos_sep_lines,
+        ["interface-dir-indep-ws"], [])).
+optdb(oc_search, interface_dirs_installed_library,    accumulating([]),
+    priv_alt_help("interface-dir-installed-library", pos_sep_lines,
+        ["interface-dir-installed-lib"], [])).
+optdb(oc_search, intermod_dirs_same_subdir_setting,   accumulating([]),
+    priv_alt_help("intermod-dir-same-workspace", pos_sep_lines,
+        ["intermod-dir-same-ws"], [])).
+optdb(oc_search, intermod_dirs_indep_subdir_setting,  accumulating([]),
+    priv_alt_help("intermod-dir-independent-workspace", pos_sep_lines,
+        ["intermod-dir-indep-ws"], [])).
+optdb(oc_search, intermod_dirs_installed_library,     accumulating([]),
+    priv_alt_help("intermod-dir-installed-library", pos_sep_lines,
+        ["intermod-dir-installed-lib"], [])).
+optdb(oc_search, c_incl_dirs_same_subdir_setting,     accumulating([]),
+    priv_alt_help("c-include-dir-same-workspace", pos_sep_lines,
+        ["c-incl-dir-same-ws"], [])).
+optdb(oc_search, c_incl_dirs_indep_subdir_setting,    accumulating([]),
+    priv_alt_help("c-include-dir-independent-workspace", pos_sep_lines,
+        ["c-incl-dir-indep-ws"], [])).
+optdb(oc_search, c_incl_dirs_installed_library,       accumulating([]),
+    priv_alt_help("c-include-dir-installed-library", pos_sep_lines,
+        ["c-incl-dir-installed-lib"], [])).
+optdb(oc_search, c_incl_dirs_external,                accumulating([]),
+    priv_alt_help("c-include-dir-external", pos_sep_lines,
+        ["c-incl-dir-external"], [])).
+optdb(oc_search, mer_lib_dirs_same_subdir_setting,    accumulating([]),
+    priv_alt_help("mercury-library-dir-same-workspace", pos_sep_lines,
+        ["mer-lib-dir-same-ws"], [])).
+optdb(oc_search, mer_lib_dirs_indep_subdir_setting,   accumulating([]),
+    priv_alt_help("mercury-library-dir-independent-workspace", pos_sep_lines,
+        ["mer-lib-dir-indep-ws"], [])).
+optdb(oc_search, mer_lib_dirs_installed_library,      accumulating([]),
+    priv_alt_help("mercury-library-dir-installed-library", pos_sep_lines,
+        ["mer-lib-dir-installed-lib"], [])).
+
+%---------------------------------------------------------------------------%
+
+    % Build system options.
+
+optdef(oc_buildsys, extra_init_command,             maybe_string(no)).
+optdef(oc_buildsys, install_prefix,                 string("/usr/local/")).
+optdef(oc_buildsys, detect_stdlib_grades,           bool(yes)).
+optdef(oc_buildsys, library_install_grades,         accumulating(["stdlib"])).
+optdef(oc_buildsys, library_install_grades_incl_components,
+                                                    accumulating([])).
+optdef(oc_buildsys, library_install_grades_excl_components,
+                                                    accumulating([])).
+optdef(oc_buildsys, only_globals_library_install_linkages,
+                                                    accumulating([])).
+optdef(oc_buildsys, libgrade_install_check,         bool(yes)).
+optdef(oc_buildsys, extra_library_header,           accumulating([])).
+
+optdb(oc_buildsys, extra_init_command,             maybe_string(no),
+    help("extra-init-command <command>", [
+        "Specify a command to produce extra entries in the `.init'",
+        "file for a library.",
+        "The command will be passed the names of all of the source",
+        "files in the program or library, with the source file",
+        "containing the main module given first."])).
+optdb(oc_buildsys, install_prefix,                 string("/usr/local/"),
+    help("install-prefix <dir>", [
+        "The directory under which to install Mercury libraries."])).
+optdb(oc_buildsys, detect_stdlib_grades,           bool(yes),
+    alt_help("no-detect-libgrades", pos_sep_lines,
+            ["no-detect-stdlib-grades"], [
+        "Do not scan the installation directory to determine which",
+        "standard library grades are available."])).
+optdb(oc_buildsys, library_install_grades,         accumulating(["stdlib"]),
+    alt_help("libgrade <grade>", pos_sep_lines, ["--no-libgrade"], [
+        "The first form adds <grade> to the list of compilation grades",
+        "in which a library to be installed should be built.",
+        "The second form clears the list of compilation grades in which",
+        "a library to be installed should be built."])).
+optdb(oc_buildsys, library_install_grades_incl_components, accumulating([]),
+    alt_help("libgrades-include-component <component>", pos_sep_lines,
+            ["libgrades-include <component>"], [
+        "Remove grades that do not contain the specified component from",
+        "the set of library grades to be installed.",
+        "(This option works only `mmc --make'; it does not work",
+        "with Mmake.)"])).
+optdb(oc_buildsys, library_install_grades_excl_components, accumulating([]),
+    alt_help("libgrades-exclude-component <component>", pos_sep_lines,
+            ["libgrades-exclude <component>"], [
+        "Remove grades that contain the specified component from the",
+        "set of library grades to be installed.",
+        "(This option works only `mmc --make'; it does not work",
+        "with Mmake.)"])).
+optdb(oc_buildsys, only_globals_library_install_linkages, accumulating([]),
+    help("lib-linkage {shared, static}", [
+        "Specify whether libraries should be installed for shared",
+        "or static linking. This option can be specified multiple",
+        "times. By default, libraries will be installed for",
+        "both shared and static linking."])).
+optdb(oc_buildsys, libgrade_install_check,         bool(yes),
+    help("no-libgrade-install-check", [
+        "Do not check that libraries have been installed before",
+        "attempting to use them. (This option is meaningful only with",
+        "`mmc --make'.)"])).
+optdb(oc_buildsys, extra_library_header,           accumulating([]),
+    alt_help("extra-library-header <file>", pos_sep_lines,
+            ["extra-lib-header <file>"], [
+        "Install the specified C header file with along with",
+        "a Mercury library.",
+        "(This option is only supported by `mmc --make'.)"])).
+
+%---------------------------------------------------------------------------%
+
+    % Options specifying properties of the environment.
+
+    % If `--mercury-stdlib-dir' is set, `--mercury-config-dir'
+    % must also be set. This invariant is maintained by the `special' variants
+    % of the options.
+optdef(oc_env, mercury_configuration_directory_special, string_special).
+optdef(oc_env, mercury_configuration_directory,    maybe_string(no)).
+optdef(oc_env, install_command,                    string("cp")).
+optdef(oc_env, options_files,              accumulating(["Mercury.options"])).
+optdef(oc_env, config_file,                   maybe_string(yes(""))).
+    % yes("") means unset.
 optdef(oc_env, env_type,                           string_special).
 optdef(oc_env, host_env_type,                      string("posix")).
 optdef(oc_env, system_env_type,                    string("")).
 optdef(oc_env, target_env_type,                    string("posix")).
 optdef(oc_env, restricted_command_line,            bool(no)).
+
+optdb(oc_env, mercury_configuration_directory_special, string_special,
+    alt_help("mercury-configuration-directory <directory>", pos_sep_lines,
+            ["mercury-config-dir <directory>"], [
+        "Search <directory> for Mercury system's configuration files."])).
+optdb(oc_env, mercury_configuration_directory,         maybe_string(no),
+    % "--mercury-config-dir argdir" sets this option to yes(argdir).
+    no_help).
+optdb(oc_env, install_command,                         string("cp"),
+    help("install-command <command>", [
+        "Specify the command to use to install the files in",
+        "Mercury libraries. The given command will be invoked as",
+        "`<command> <source> <target>' to install each file",
+        "in a Mercury library. The default command is `cp'."])).
+optdb(oc_env, options_files,      accumulating(["Mercury.options"]),
+    help("options-file <file>", [
+        "Add <file> to the list of options files to be processed.",
+        "If <file> is `-', an options file will be read from the",
+        "standard input. By default the file `Mercury.options'",
+        "in the current directory will be read."])).
+optdb(oc_env, config_file,        maybe_string(yes("")), % yes("") means unset.
+    help("config-file <file>", [
+        "Read the Mercury compiler's configuration information",
+        "from <file>. If the `--config-file' option is not set,",
+        "a default configuration will be used, unless",
+        "`--no-mercury-stdlib-dir' is passed to mmc.",
+        "The configuration file is just an options file."])).
+optdb(oc_env, env_type,                                string_special,
+    help("env-type <type>", [
+        "Specify the environment type in which the compiler and generated",
+        "programs will be invoked.",
+        "The <type> should be one of `posix', `cygwin', `msys', or",
+        "`windows'.",
+        "This option is equivalent to setting all of `--host-env-type',",
+        "`--system-env-type' and `--target-env-type' to <type>."])).
+optdb(oc_env, host_env_type,                           string("posix"),
+    help("host-env-type <type>", [
+        "Specify the environment type in which the compiler will be",
+        "invoked."])).
+optdb(oc_env, system_env_type,                         string(""),
+    help("system-env-type <type>", [
+        "Specify the environment type in which external programs invoked",
+        "by the compiler will run.",
+        "If not specified, this defaults to the value given by",
+        "`--host-env-type'."])).
+optdb(oc_env, target_env_type,                         string("posix"),
+    help("target-env-type <type>", [
+        "Specify the environment type in which generated programs will be",
+        "invoked."])).
+optdb(oc_env, restricted_command_line,                 bool(no),
+    help("restricted-command-line", [
+        "Enable this option if your shell doesn't support long",
+        "command lines. This option uses temporary files to pass arguments",
+        "to sub-commands.",
+        "(This option is only supported by `mmc --make'.)"])).
 
 %---------------------------------------------------------------------------%
 
