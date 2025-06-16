@@ -244,9 +244,13 @@
     %
     % At the moment, there are considerable deviations from such consistency.
 :- type option
+    % Help options.
+    --->    help
+    ;       help_alt
+    ;       version
 
     % Warning options
-    --->    inhibit_warnings
+    ;       inhibit_warnings
     ;       inhibit_style_warnings
     ;       warn_accumulator_swaps
     ;       halt_at_warn
@@ -1259,8 +1263,6 @@
     ;       filenames_from_stdin
     ;       typecheck_ambiguity_warn_limit
     ;       typecheck_ambiguity_error_limit
-    ;       help
-    ;       version
     ;       target_arch
     ;       local_module_id
     ;       analysis_file_cache_dir
@@ -1339,7 +1341,10 @@ option_defaults(Opt, Data) :-
 
 :- type option_category
     --->    oc_help
-            % The one option that calls for output of help text.
+            % Options that call for the output of help text.
+
+    ;       oc_cmdline
+            % Options that manipulate the command line itself.
 
     ;       oc_warn_dodgy
             % Warnings about code that is possibly incorrect.
@@ -1468,8 +1473,6 @@ option_defaults(Opt, Data) :-
             % Options which are reserved for use by the Mercury.config file.
     ;       oc_analysis
             % Options for user control of program analyses.
-    ;       oc_misc
-            % A few options that do not fit anywhere else.
     ;       oc_unused.
             % options that are now unused, and which are kept around
             % only for backward compatibility.
@@ -1491,6 +1494,39 @@ option_defaults(Opt, Data) :-
 :- mode optdb(in, out, out, out) is nondet.
 :- mode optdb(out, out, out, out) is multi.
 :- pragma consider_used(pred(optdb/4)).
+
+%---------------------------------------------------------------------------%
+
+    % Help options.
+
+optdef(oc_help,     help,                               bool(no)).
+optdef(oc_help,     help_alt,                           bool(no)).
+optdef(oc_help,     version,                            bool(no)).
+
+optdb(oc_help,     help,                               bool(no),
+    gen_help("help", pos_one_line, [], ['?', 'h'], help_public,
+        ["Print this usage message."])).
+optdb(oc_help,     help_alt,                           bool(no),
+    priv_help("help-alt", ["Print the usage message."])).
+optdb(oc_help,     version,                            bool(no),
+    help("version", ["Display the compiler version."])).
+
+%---------------------------------------------------------------------------%
+
+optdef(oc_cmdline,  filenames_from_stdin,               bool(no)).
+optdef(oc_cmdline,  flags_file,                         file_special).
+
+optdb(oc_cmdline,  filenames_from_stdin,               bool(no),
+    help("filenames-from-stdin", [
+        "Read then compile a newline terminated module name or",
+        "file name from the standard input. Repeat this until EOF",
+        "is reached. (This allows a program or user to interactively",
+        "compile several modules without the overhead of process",
+        "creation for each one.)"])).
+optdb(oc_cmdline,  flags_file,                         file_special,
+    alt_help("flags <file>", pos_sep_lines, ["flags-file <file>"], [
+        "Take options from the specified file, and handle them",
+        "as if they were specified on the command line."])).
 
 %---------------------------------------------------------------------------%
 
@@ -2034,6 +2070,10 @@ optdef(oc_diag_gen, verbose_errors,                    bool(no)).
 optdef(oc_diag_gen, reverse_error_order,               bool(no)).
 optdef(oc_diag_gen, max_error_line_width,              maybe_int(yes(79))).
 optdef(oc_diag_gen, limit_error_contexts,              accumulating([])).
+optdef(oc_diag_gen, error_files_in_subdir,             bool(no)).
+optdef(oc_diag_gen, std_int_file_not_written_msgs,     bool(no)).
+optdef(oc_diag_gen, typecheck_ambiguity_warn_limit,    int(50)).
+optdef(oc_diag_gen, typecheck_ambiguity_error_limit,   int(3000)).
 
 % XXX Internal/external mismatch: verbose_errors vs verbose-error-messages
 optdb(oc_diag_gen, verbose_errors,                    bool(no),
@@ -2061,6 +2101,28 @@ optdb(oc_diag_gen, limit_error_contexts,              accumulating([]),
         "the same file, only the last one will have an effect.",
         "If the file name and colon are missing, the limit will apply",
         "to all files."])).
+optdb(oc_diag_gen, error_files_in_subdir,             bool(no),
+    help("error-files-in-subdir", [
+        "This option causes `mmc --make' to put .err files into the",
+        "`Mercury' subdirectory instead of the current directory.",
+        "(This option has no effect on Mmake.)"])).
+optdb(oc_diag_gen, std_int_file_not_written_msgs,     bool(no),
+    % We use this option to eliminate the need for a .int_err_exp file for the
+    % -use-subdir case for every test in the tests/invalid_make_int
+    % directory.
+    priv_help("std-int-file-not-written-msgs", [
+        "Standardize messages about interface files not being written",
+        "by omitting any directory name components from file names."])).
+optdb(oc_diag_gen, typecheck_ambiguity_warn_limit,    int(50),
+    help("typecheck-ambiguity-warn-limit <n>", [
+        "Set the number of type assignments required to generate a",
+        "warning about highly ambiguous overloading to <n>."])).
+optdb(oc_diag_gen, typecheck_ambiguity_error_limit,   int(3000),
+    help("typecheck-ambiguity-error-limit <n>", [
+        "Set the number of type assignments required to generate an error",
+        "about excessively ambiguous overloading to <n>. If this limit is",
+        "reached, the typechecker will not process the predicate or",
+        "function any further."])).
 
 optdef(oc_diag_color, color_diagnostics,                bool_special).
 optdef(oc_diag_color, config_default_color_diagnostics, bool(yes)).
@@ -3551,6 +3613,7 @@ optdef(oc_opt_ctrl, use_trans_opt_files,                bool(no)).
 optdef(oc_opt_ctrl, intermodule_analysis,               bool(no)).
 optdef(oc_opt_ctrl, analysis_repeat,                    int(0)).
 optdef(oc_opt_ctrl, analysis_file_cache,                bool(no)).
+optdef(oc_opt_ctrl, analysis_file_cache_dir,            string("")).
 
 optdb(oc_opt_ctrl, default_opt_level,                  string("-O2"),
     % This is for use by Mercury.config only.
@@ -3614,6 +3677,9 @@ optdb(oc_opt_ctrl, analysis_file_cache,                bool(no),
     priv_help("analysis-file-cache", [
         "Enable caching of parsed analysis files. This may",
         "improve compile times with `--intermodule-analysis'."])).
+optdb(oc_opt_ctrl, analysis_file_cache_dir,            string(""),
+    % The `--analysis-file-cache-dir' option is used by `mmc --make'.
+    priv_help("analysis-file-cache-dir", [])).
 
 %---------------------------------------------------------------------------%
 
@@ -5161,7 +5227,7 @@ optdb(oc_mconfig,  trace_libs,                      string(""),
 
 %---------------------------------------------------------------------------%
 
-    % Build system options.
+    % "mmc --make" options.
 
 optdef(oc_make, keep_going,                         bool(no)).
 optdef(oc_make, order_make_by_timestamp,            bool(no)).
@@ -5169,6 +5235,41 @@ optdef(oc_make, show_make_times,                    bool(no)).
 optdef(oc_make, make_max_jobs,                      int(1)).
 optdef(oc_make, make_track_flags,                   bool(no)).
 optdef(oc_make, make_pre_link_command,              maybe_string(no)).
+
+optdb(oc_make, keep_going,                         bool(no),
+    short_help('k', "keep-going", [], [
+        "With `--make', keep going as far as possible",
+        "even if an error is detected."])).
+optdb(oc_make, order_make_by_timestamp,            bool(no),
+    help("order-make-by-timestamp", [
+        "Make `mmc --make' compile more recently modified source files",
+        "first."])).
+optdb(oc_make, show_make_times,                    bool(no),
+    help("show-make-times", [
+        "Report run times for commands executed by `mmc --make'."])).
+optdb(oc_make, make_max_jobs,                      int(1),
+    short_arg_help("j <n>", "jobs <n>", [], [
+        "With `--make', attempt to perform up to <n> jobs concurrently."])).
+optdb(oc_make, make_track_flags,                   bool(no),
+    help("track-flags", [
+        "With `--make', keep track of the options used when compiling",
+        "each module. If an option for a module is added or removed,",
+        "`mmc --make' will then know to recompile the module even if the",
+        "timestamp on the file itself has not changed. Warning,",
+        "verbosity and build system options are not tracked."])).
+optdb(oc_make, make_pre_link_command,              maybe_string(no),
+    help("pre-link-command <command>", [
+        "Specify a command to run before linking with `mmc --make'.",
+        "This can be used to compile C source files which rely on",
+        "header files generated by the Mercury compiler.",
+        "The command will be passed the names of all of the source",
+        "files in the program or library, with the source file",
+        "containing the main module given first."])).
+
+%---------------------------------------------------------------------------%
+
+    % Build system options.
+
 optdef(oc_buildsys, extra_init_command,             maybe_string(no)).
 optdef(oc_buildsys, install_prefix,                 string("/usr/local/")).
 optdef(oc_buildsys, use_symlinks,                   bool(yes)).
@@ -5195,8 +5296,6 @@ optdef(oc_env, config_file,                   maybe_string(yes(""))).
 optdef(oc_search, options_search_directories,         accumulating(["."])).
 optdef(oc_search, setting_only_use_subdirs,           bool(no)).
 optdef(oc_search, setting_only_use_grade_subdirs,     bool(no)).
-optdef(oc_diag_gen, error_files_in_subdir,            bool(no)).
-optdef(oc_diag_gen, std_int_file_not_written_msgs,    bool(no)).
 optdef(oc_search, search_directories,                 accumulating(["."])).
 optdef(oc_search, intermod_directories,               accumulating([])).
 optdef(oc_search, use_search_directories_for_intermod, bool(yes)).
@@ -5215,28 +5314,12 @@ optdef(oc_search, mer_lib_dirs_indep_subdir_setting,  accumulating([])).
 optdef(oc_search, mer_lib_dirs_installed_library,     accumulating([])).
 optdef(oc_buildsys, libgrade_install_check,             bool(yes)).
 optdef(oc_buildsys, extra_library_header,               accumulating([])).
-optdef(oc_env, restricted_command_line,            bool(no)).
+optdef(oc_env, target_arch,                        string("")).
 optdef(oc_env, env_type,                           string_special).
 optdef(oc_env, host_env_type,                      string("posix")).
 optdef(oc_env, system_env_type,                    string("")).
 optdef(oc_env, target_env_type,                    string("posix")).
-
-%---------------------------------------------------------------------------%
-
-    % Miscellaneous options
-
-optdef(oc_misc,     filenames_from_stdin,               bool(no)).
-optdef(oc_misc,     flags_file,                         file_special).
-% XXX Should we add new category, named maybe oc_errors, for options
-% that control how and/or when the compiler generates diagnostics?
-% Include options that reverse the order of errors, or limit error contexts.
-optdef(oc_misc,     typecheck_ambiguity_warn_limit,     int(50)).
-optdef(oc_misc,     typecheck_ambiguity_error_limit,    int(3000)).
-optdef(oc_help,     help,                               bool(no)).
-optdef(oc_help,     version,                            bool(no)).
-optdef(oc_env,      target_arch,                        string("")).
-% XXX Why is this NOT next to analysis_file_cache?
-optdef(oc_opt_ctrl, analysis_file_cache_dir,            string("")).
+optdef(oc_env, restricted_command_line,            bool(no)).
 
 %---------------------------------------------------------------------------%
 
@@ -7049,6 +7132,7 @@ long_table("typecheck-ambiguity-warn-limit",
 long_table("typecheck-ambiguity-error-limit",
                                     typecheck_ambiguity_error_limit).
 long_table("help",                 help).
+long_table("help-alt",             help_alt).
 long_table("version",              version).
 long_table("filenames-from-stdin", filenames_from_stdin).
 long_table("target-arch",          target_arch).
