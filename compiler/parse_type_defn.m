@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
 % Copyright (C) 2008-2011 The University of Melbourne.
-% Copyright (C) 2016-2024 The Mercury team.
+% Copyright (C) 2016-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -231,54 +231,9 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             [], ErrorSpecs0),
         (
             MaybeSuperType = subtype_of(SuperType),
-            DetailsSub = type_details_sub(SuperType, OneOrMoreCtors),
-            TypeDefn = parse_tree_sub_type(DetailsSub),
-            check_supertype_vars(Params, VarSet, SuperType, SuperTypeContext,
-                ErrorSpecs0, ErrorSpecs),
-            % By returning a meaningful type definition when we read in
-            % a "where equality/comparison is" or "where direct_arg is" clause
-            % for a subtype definition, we allow the compiler to find other
-            % errors in the module *without* generating misleading error
-            % messages about TypeSymName being undefined. This is the case
-            % e.g. with tests/invalid/subtype_user_compare.m.
-            (
-                MaybeCanonical = canon,
-                RecoverableSpecs0 = []
-            ;
-                MaybeCanonical = noncanon(_),
-                CanonTypeCtor = type_ctor(TypeSymName, list.length(Params)),
-                CanonPieces = [words("Error: the")] ++
-                    color_as_subject([words("subtype"),
-                        unqual_type_ctor(CanonTypeCtor)]) ++
-                    color_as_incorrect(
-                        [words("is not allowed to have its own"),
-                        words("user-defined equality or comparison;")]) ++
-                    [words("it must inherit any user-defined"),
-                    words("equality and comparison predicates"),
-                    words("from its supertype."), nl],
-                CanonSpec = spec($pred, severity_error, phase_pt2h,
-                    Context, CanonPieces),
-                RecoverableSpecs0 = [CanonSpec]
-            ),
-            (
-                MaybeDirectArgIs = no,
-                RecoverableSpecs = RecoverableSpecs0
-            ;
-                MaybeDirectArgIs = yes(_),
-                DirectArgTypeCtor =
-                    type_ctor(TypeSymName, list.length(Params)),
-                DirectArgPieces = [words("Error: the")] ++
-                    color_as_subject([words("subtype"),
-                        unqual_type_ctor(DirectArgTypeCtor)]) ++
-                    color_as_incorrect(
-                        [words("is not allowed to have its own"),
-                        quote("where direct_arg is"), words("annotation;")]) ++
-                    [words("it must inherit its representation"),
-                    words("from its supertype."), nl],
-                DirectArgSpec = spec($pred, severity_error, phase_pt2h,
-                    Context, DirectArgPieces),
-                RecoverableSpecs = [DirectArgSpec | RecoverableSpecs0]
-            )
+            check_subtype(VarSet, Context, TypeSymName, Params, OneOrMoreCtors,
+                MaybeCanonical, MaybeDirectArgIs, SuperType, SuperTypeContext,
+                TypeDefn, ErrorSpecs0, ErrorSpecs, RecoverableSpecs)
         ;
             MaybeSuperType = not_a_subtype,
             DetailsDu = type_details_du(OneOrMoreCtors, MaybeCanonical,
@@ -321,6 +276,8 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeIOM = error1(Specs)
     ).
 
+%---------------------%
+
 :- pred du_type_rhs_ctors_and_where_terms(term::in,
     term::out, maybe(term)::out) is det.
 
@@ -335,6 +292,8 @@ du_type_rhs_ctors_and_where_terms(Term, CtorsTerm, MaybeWhereTerm) :-
         CtorsTerm = Term,
         MaybeWhereTerm = no
     ).
+
+%---------------------%
 
     % Convert a list of terms separated by semicolons (known as a
     % "disjunction", even thought the terms aren't goals in this case)
@@ -385,6 +344,8 @@ parse_maybe_exist_quant_constructors_loop(ModuleName, VarSet, CurOrdinal,
             MaybeConstructors = error1(Specs)
         )
     ).
+
+%---------------------%
 
 :- pred parse_maybe_exist_quant_constructor(module_name::in, varset::in,
     uint32::in, term::in, maybe1(constructor)::out) is det.
@@ -528,6 +489,8 @@ parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
         )
     ).
 
+%---------------------%
+
 :- pred get_existential_constraints_from_term(module_name::in, varset::in,
     term::in, term::out, maybe1(list(prog_constraint))::out) is det.
 
@@ -542,6 +505,8 @@ get_existential_constraints_from_term(ModuleName, VarSet, !PredTypeTerm,
     else
         MaybeExistentialConstraints = ok1([])
     ).
+
+%---------------------%
 
 :- func convert_constructor_arg_list(module_name, varset, list(term)) =
     maybe1(list(constructor_arg)).
@@ -607,30 +572,7 @@ convert_constructor_arg_list_2(ModuleName, VarSet, MaybeCtorFieldName,
         MaybeArgs = error1(Specs)
     ).
 
-:- pred check_supertype_vars(list(type_param)::in, varset::in, mer_type::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-check_supertype_vars(Params, VarSet, SuperType, Context, !Specs) :-
-    type_vars_in_type(SuperType, VarsInSuperType0),
-    list.sort_and_remove_dups(VarsInSuperType0, VarsInSuperType),
-    list.delete_elems(VarsInSuperType, Params, FreeVars),
-    (
-        FreeVars = []
-    ;
-        FreeVars = [_ | _],
-        varset.coerce(VarSet, GenericVarSet),
-        FreeVarPieces = list.map(var_to_quote_piece(GenericVarSet), FreeVars),
-        Pieces = [words("Error:")] ++
-            color_as_subject([words("free type"),
-                words(choose_number(FreeVars, "parameter", "parameters"))]) ++
-            [words("such as")] ++
-            color_as_subject(piece_list_to_color_pieces(color_subject,
-                "and", [], FreeVarPieces)) ++
-            color_as_incorrect([words("may not appear")]) ++
-            [words("in the supertype of a subtype definition."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        !:Specs = [Spec | !.Specs]
-    ).
+%---------------------%
 
 :- pred process_du_ctors(list(type_param)::in, varset::in, term::in,
     list(constructor)::in, list(error_spec)::in, list(error_spec)::out) is det.
@@ -847,6 +789,93 @@ find_constructor([Ctor | Ctors], SymName, Arity, NamedCtor) :-
         NamedCtor = Ctor
     else
         find_constructor(Ctors, SymName, Arity, NamedCtor)
+    ).
+
+%---------------------%
+
+:- pred check_subtype(varset::in, prog_context::in,
+    sym_name::in, list(tvar)::in, one_or_more(constructor)::in,
+    maybe_canonical::in, maybe(list(sym_name_arity))::in,
+    mer_type::in, prog_context::in, type_defn::out,
+    list(error_spec)::in, list(error_spec)::out, list(error_spec)::out) is det.
+
+check_subtype(VarSet, Context, TypeSymName, Params, OneOrMoreCtors,
+        MaybeCanonical, MaybeDirectArgIs, SuperType, SuperTypeContext,
+        TypeDefn, !ErrorSpecs, RecoverableSpecs) :-
+    DetailsSub = type_details_sub(SuperType, OneOrMoreCtors),
+    TypeDefn = parse_tree_sub_type(DetailsSub),
+    check_supertype_vars(Params, VarSet, SuperType, SuperTypeContext,
+        !ErrorSpecs),
+    % By returning a meaningful type definition when we read in
+    % a "where equality/comparison is" or "where direct_arg is" clause
+    % for a subtype definition, we allow the compiler to find other
+    % errors in the module *without* generating misleading error
+    % messages about TypeSymName being undefined. This is the case
+    % e.g. with tests/invalid/subtype_user_compare.m.
+    (
+        MaybeCanonical = canon,
+        RecoverableSpecs0 = []
+    ;
+        MaybeCanonical = noncanon(_),
+        CanonTypeCtor = type_ctor(TypeSymName, list.length(Params)),
+        CanonPieces = [words("Error: the")] ++
+            color_as_subject([words("subtype"),
+                unqual_type_ctor(CanonTypeCtor)]) ++
+            color_as_incorrect(
+                [words("is not allowed to have its own"),
+                words("user-defined equality or comparison;")]) ++
+            [words("it must inherit any user-defined"),
+            words("equality and comparison predicates"),
+            words("from its supertype."), nl],
+        CanonSpec = spec($pred, severity_error, phase_pt2h,
+            Context, CanonPieces),
+        RecoverableSpecs0 = [CanonSpec]
+    ),
+    (
+        MaybeDirectArgIs = no,
+        RecoverableSpecs = RecoverableSpecs0
+    ;
+        MaybeDirectArgIs = yes(_),
+        DirectArgTypeCtor =
+            type_ctor(TypeSymName, list.length(Params)),
+        DirectArgPieces = [words("Error: the")] ++
+            color_as_subject([words("subtype"),
+                unqual_type_ctor(DirectArgTypeCtor)]) ++
+            color_as_incorrect(
+                [words("is not allowed to have its own"),
+                quote("where direct_arg is"), words("annotation;")]) ++
+            [words("it must inherit its representation"),
+            words("from its supertype."), nl],
+        DirectArgSpec = spec($pred, severity_error, phase_pt2h,
+            Context, DirectArgPieces),
+        RecoverableSpecs = [DirectArgSpec | RecoverableSpecs0]
+    ).
+
+%---------------------%
+
+:- pred check_supertype_vars(list(type_param)::in, varset::in, mer_type::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+check_supertype_vars(Params, VarSet, SuperType, Context, !Specs) :-
+    type_vars_in_type(SuperType, VarsInSuperType0),
+    list.sort_and_remove_dups(VarsInSuperType0, VarsInSuperType),
+    list.delete_elems(VarsInSuperType, Params, FreeVars),
+    (
+        FreeVars = []
+    ;
+        FreeVars = [_ | _],
+        varset.coerce(VarSet, GenericVarSet),
+        FreeVarPieces = list.map(var_to_quote_piece(GenericVarSet), FreeVars),
+        Pieces = [words("Error:")] ++
+            color_as_subject([words("free type"),
+                words(choose_number(FreeVars, "parameter", "parameters"))]) ++
+            [words("such as")] ++
+            color_as_subject(piece_list_to_color_pieces(color_subject,
+                "and", [], FreeVarPieces)) ++
+            color_as_incorrect([words("may not appear")]) ++
+            [words("in the supertype of a subtype definition."), nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+        !:Specs = [Spec | !.Specs]
     ).
 
 %---------------------------------------------------------------------------%
