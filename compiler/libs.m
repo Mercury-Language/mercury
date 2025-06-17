@@ -23,6 +23,7 @@
 :- include_module compute_grade.
 :- include_module trace_params.
 :- include_module color_schemes.
+:- include_module print_help_old.
 
 % Error handling.
 :- include_module compiler_util.
