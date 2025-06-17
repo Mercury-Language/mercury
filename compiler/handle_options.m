@@ -44,11 +44,6 @@
     list(string)::out, list(string)::out, list(error_spec)::out, globals::out,
     io::di, io::uo) is det.
 
-    % Display the compiler version.
-    %
-:- pred display_compiler_version(io.text_output_stream::in,
-    io::di, io::uo) is det.
-
     % usage_errors(Globals, Specs, !IO)
     %
     % Print the list of error messages, and then the usage message.
@@ -63,6 +58,9 @@
     % Display long usage message for help.
     %
 :- pred long_usage(io.text_output_stream::in, io::di, io::uo) is det.
+
+:- pred write_copyright_notice(io.text_output_stream::in, io::di, io::uo)
+    is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -91,7 +89,6 @@
 :- import_module int.
 :- import_module io.environment.
 :- import_module io.file.
-:- import_module library.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -3354,18 +3351,6 @@ disable_smart_recompilation(ProgressStream, OptionDescr, !Globals, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-display_compiler_version(ProgressStream, !IO) :-
-    Version = library.mercury_version,
-    io.format(ProgressStream, "Mercury Compiler, version %s", [s(Version)],
-        !IO),
-    Package = library.package_version,
-    ( if Package = "" then
-        io.nl(ProgressStream, !IO)
-    else
-        io.format(ProgressStream, " (%s)\n", [s(Package)], !IO)
-    ),
-    write_copyright_notice(ProgressStream, !IO).
-
 usage_errors(ProgressStream, Globals, Specs, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     io.format(ProgressStream, "%s:\n", [s(ProgName)], !IO),
@@ -3409,9 +3394,6 @@ long_usage(ProgressStream, !IO) :-
     ], !IO),
     io.write_string(ProgressStream, "\nOptions:\n", !IO),
     options_help(ProgressStream, !IO).
-
-:- pred write_copyright_notice(io.text_output_stream::in, io::di, io::uo)
-    is det.
 
 write_copyright_notice(Stream, !IO) :-
     io.write_strings(Stream, [

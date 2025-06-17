@@ -155,6 +155,7 @@ main_after_setup(ProgressStream, ErrorStream, Globals, EnvOptFileVariables,
         EnvVarArgs, OptionArgs, Args, !IO) :-
     globals.lookup_bool_option(Globals, version, Version),
     globals.lookup_bool_option(Globals, help, Help),
+    globals.lookup_bool_option(Globals, help_alt, HelpAlt),
 
     % NOTE: --help takes precedence over any other modes of operation as we do
     % not wish to place unnecessary obstacles before users who want help.
@@ -165,9 +166,21 @@ main_after_setup(ProgressStream, ErrorStream, Globals, EnvOptFileVariables,
     ( if Help = yes then
         io.stdout_stream(StdOutStream, !IO),
         long_usage(StdOutStream, !IO)
+    else if HelpAlt = yes then
+        io.stdout_stream(StdOutStream, !IO),
+        options_help_alt(StdOutStream, !IO)
     else if Version = yes then
         io.stdout_stream(StdOutStream, !IO),
-        display_compiler_version(StdOutStream, !IO)
+        LibraryVersion = library.mercury_version,
+        PackageVersion = library.package_version,
+        io.format(StdOutStream, "Mercury Compiler, version %s",
+            [s(LibraryVersion)], !IO),
+        ( if PackageVersion = "" then
+            io.nl(StdOutStream, !IO)
+        else
+            io.format(StdOutStream, " (%s)\n", [s(PackageVersion)], !IO)
+        ),
+        write_copyright_notice(StdOutStream, !IO)
     else
         globals.get_op_mode(Globals, OpMode),
         HaveParseTreeMaps0 = init_have_parse_tree_maps,

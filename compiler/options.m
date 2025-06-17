@@ -214,6 +214,8 @@
 
 :- pred options_help(io.text_output_stream::in, io::di, io::uo) is det.
 
+:- pred options_help_alt(io.text_output_stream::in, io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 
     % NOTE: ALL OPTIONS SHOULD BE DOCUMENTED!
@@ -6124,42 +6126,49 @@ optdb(oc_dev_dump,   dump_options_file,                string(""),
 
 %---------------------------------------------------------------------------%
 
+short_option(Char, Option) :-
+    short_table(Char, Option).
+
+:- pred short_table(char, option).
+:- mode short_table(in, out) is semidet.
+:- mode short_table(out, out) is multi.
+
     % Please keep this in alphabetic order.
-short_option('c', only_opmode_compile_only).
-short_option('C', only_opmode_target_code_only).
-short_option('d', dump_hlds).
-short_option('D', dump_hlds_alias).
-short_option('e', only_opmode_errorcheck_only).
-short_option('E', verbose_errors).
-short_option('f', only_opmode_generate_source_file_mapping).
-short_option('F', framework_directories).
-short_option('h', help).
-short_option('H', highlevel_code).
-short_option('i', only_opmode_make_interface).
-short_option('j', make_max_jobs).
-short_option('I', search_directories).
-short_option('k', keep_going).
-short_option('l', link_libraries).
-short_option('L', link_library_directories).
-short_option('m', only_opmode_make).
-short_option('M', only_opmode_generate_dependencies).
-short_option('n', line_numbers).
-short_option('N', debug_modes).
-short_option('o', output_file_name).
-short_option('O', opt_level).
-short_option('p', profiling).
-short_option('P', only_opmode_convert_to_mercury).
-short_option('r', part_opmode_rebuild).
-short_option('R', runtime_link_library_directories).
-short_option('s', grade).
-short_option('S', statistics).
-short_option('T', debug_types).
-short_option('t', only_opmode_typecheck_only).
-short_option('v', verbose).
-short_option('V', very_verbose).
-short_option('w', inhibit_warnings).
-short_option('x', only_opmode_make_xml_documentation).
-short_option('?', help).
+short_table('c', only_opmode_compile_only).
+short_table('C', only_opmode_target_code_only).
+short_table('d', dump_hlds).
+short_table('D', dump_hlds_alias).
+short_table('e', only_opmode_errorcheck_only).
+short_table('E', verbose_errors).
+short_table('f', only_opmode_generate_source_file_mapping).
+short_table('F', framework_directories).
+short_table('h', help).
+short_table('H', highlevel_code).
+short_table('i', only_opmode_make_interface).
+short_table('j', make_max_jobs).
+short_table('I', search_directories).
+short_table('k', keep_going).
+short_table('l', link_libraries).
+short_table('L', link_library_directories).
+short_table('m', only_opmode_make).
+short_table('M', only_opmode_generate_dependencies).
+short_table('n', line_numbers).
+short_table('N', debug_modes).
+short_table('o', output_file_name).
+short_table('O', opt_level).
+short_table('p', profiling).
+short_table('P', only_opmode_convert_to_mercury).
+short_table('r', part_opmode_rebuild).
+short_table('R', runtime_link_library_directories).
+short_table('s', grade).
+short_table('S', statistics).
+short_table('T', debug_types).
+short_table('t', only_opmode_typecheck_only).
+short_table('v', verbose).
+short_table('V', very_verbose).
+short_table('w', inhibit_warnings).
+short_table('x', only_opmode_make_xml_documentation).
+short_table('?', help).
 
 long_option(String, Option) :-
     long_table(String, Option).
@@ -11771,6 +11780,132 @@ options_help_misc = Section :-
 
     ],
     Section = help_section(SectionName, [], HelpStructs).
+
+%---------------------------------------------------------------------------%
+
+options_help_alt(Stream, !IO) :-
+    ShortOptionPred =
+        ( pred(ShortPair::out) is multi :-
+            short_table(Name, Opt),
+            ShortPair = Opt - Name
+        ),
+    LongOptionPred =
+        ( pred(LongPair::out) is multi :-
+            long_table(Name, Opt),
+            LongPair = Opt - Name
+        ),
+
+    solutions_set(ShortOptionPred, ShortOldPairs),
+    solutions_set(LongOptionPred, LongOldPairs),
+
+    OptdbPred =
+        ( pred(OptHelpPair::out) is multi :-
+            optdb(_Cat, Opt, _OptData, Help),
+            OptHelpPair = Opt - Help
+        ),
+    solutions_set(OptdbPred, OptHelpPairs),
+    set.foldl2(acc_new_option_names, OptHelpPairs,
+        set.init, ShortNewPairs, set.init, LongNewPairs),
+
+    set.difference(ShortOldPairs, ShortNewPairs, ShortOldButNotNewPairs),
+    set.difference(ShortNewPairs, ShortOldPairs, ShortNewButNotOldPairs),
+
+    set.difference(LongOldPairs, LongNewPairs, LongOldButNotNewPairs),
+    set.difference(LongNewPairs, LongOldPairs, LongNewButNotOldPairs),
+
+    set.map(short_pair_to_line, ShortOldButNotNewPairs,
+        ShortOldButNotNewLines),
+    set.map(short_pair_to_line, ShortNewButNotOldPairs,
+        ShortNewButNotOldLines),
+
+    set.map(long_pair_to_line, LongOldButNotNewPairs,
+        LongOldButNotNewLines),
+    set.map(long_pair_to_line, LongNewButNotOldPairs,
+        LongNewButNotOldLines),
+
+    io.write_string(Stream, "old but not new short options:\n\n", !IO),
+    set.foldl(io.write_string(Stream), ShortOldButNotNewLines, !IO),
+    io.nl(Stream, !IO),
+    io.write_string(Stream, "new but not old short options:\n\n", !IO),
+    set.foldl(io.write_string(Stream), ShortNewButNotOldLines, !IO),
+
+    io.nl(Stream, !IO),
+    io.write_string(Stream, "old but not new long options:\n\n", !IO),
+    set.foldl(io.write_string(Stream), LongOldButNotNewLines, !IO),
+    io.nl(Stream, !IO),
+    io.write_string(Stream, "new but not old long options:\n\n", !IO),
+    set.foldl(io.write_string(Stream), LongNewButNotOldLines, !IO).
+
+:- pred short_pair_to_line(pair(option, char)::in, string::out) is det.
+
+short_pair_to_line(Opt - Name, Line) :-
+    string.format("%c %s\n", [c(Name), s(string(Opt))], Line).
+
+:- pred long_pair_to_line(pair(option, string)::in, string::out) is det.
+
+long_pair_to_line(Opt - Name, Line) :-
+    string.format("%-34s %s\n", [s(string(Opt)), s(Name)], Line).
+
+%---------------------%
+
+:- pred acc_new_option_names(pair(option, print_help.help)::in,
+    set(pair(option, char))::in, set(pair(option, char))::out,
+    set(pair(option, string))::in, set(pair(option, string))::out) is det.
+
+acc_new_option_names(Opt - Help, !ShortPairs, !LongPairs) :-
+    (
+        ( Help = no_help
+        ; Help = xunnamed_help(_)
+        )
+    ;
+        Help = xgen_help(Long1, _, Longs, Shorts, _, _),
+        list.foldl(insert_short(Opt), Shorts, !ShortPairs),
+        insert_long(Opt, Long1, !LongPairs),
+        list.foldl(insert_long(Opt), Longs, !LongPairs)
+    ;
+        ( Help = xshort_alt_align_help(Short, Long1, _, Longs, _, _)
+        ; Help = xshort_help(Short, Long1, Longs, _)
+        ; Help = xpriv_short_help(Short, Long1, Longs, _)
+        ; Help = xshort_arg_help(Short, Long1, Longs, _, _)
+        ; Help = xpriv_short_arg_help(Short, Long1, Longs, _, _)
+        ),
+        insert_short(Opt, Short, !ShortPairs),
+        insert_long(Opt, Long1, !LongPairs),
+        list.foldl(insert_long(Opt), Longs, !LongPairs)
+    ;
+        ( Help = xhelp(Long, _)
+        ; Help = xarg_help(Long, _, _)
+        ; Help = xpriv_help(Long, _)
+        ; Help = xpriv_arg_help(Long, _, _)
+        ; Help = xalt_arg_align_help(Long, _, _, _)
+        ; Help = xno_align_help(Long, _, _, _)
+        ),
+        insert_long(Opt, Long, !LongPairs)
+    ;
+        ( Help = xalt_help(Long1, _, Longs, _)
+        ; Help = xpriv_alt_help(Long1, _, Longs, _)
+        ; Help = xalt_align_help(Long1, _, Longs, _, _)
+        ; Help = xpriv_alt_align_help(Long1, _, Longs, _, _)
+        ; Help = xalt_arg_help(Long1, _, Longs, _, _)
+        ; Help = xpriv_alt_arg_help(Long1, _, Longs, _, _)
+        ),
+        insert_long(Opt, Long1, !LongPairs),
+        list.foldl(insert_long(Opt), Longs, !LongPairs)
+    ).
+
+%---------------------%
+
+:- pred insert_short(option::in, char::in,
+    set(pair(option, char))::in, set(pair(option, char))::out) is det.
+
+insert_short(Option, Name, !ShortPairs) :-
+    set.insert(Option - Name, !ShortPairs).
+
+:- pred insert_long(option::in, string::in,
+    set(pair(option, string))::in, set(pair(option, string))::out) is det.
+
+insert_long(Option, Name, !LongPairs) :-
+    set.insert(Option - Name, !LongPairs).
 
 %---------------------------------------------------------------------------%
 :- end_module libs.options.
