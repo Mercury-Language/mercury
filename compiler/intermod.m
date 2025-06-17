@@ -846,6 +846,7 @@ intermod_gather_pred_marker_pragmas_loop(PredOrFunc, PredSymName, UserArity,
         ; Marker = marker_heuristic_inline
         ; Marker = marker_mmc_marked_no_inline
         ; Marker = marker_consider_used
+        ; Marker = marker_type_order_switch
         ; Marker = marker_calls_are_fully_qualified
         ; Marker = marker_mutable_access_pred
         ; Marker = marker_has_require_scope

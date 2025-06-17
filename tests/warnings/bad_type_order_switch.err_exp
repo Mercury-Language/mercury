@@ -1,0 +1,26 @@
+bad_type_order_switch.m:037: Warning: the order of the cases of this [38;5;87mswitch on[39;49m
+bad_type_order_switch.m:037:   [38;5;87m`T'[39;49m [38;5;203mdiffers[39;49m from [38;5;40mthe order of the constructors[39;49m
+bad_type_order_switch.m:037:   [38;5;40min the definition of the `t'/0 type.[39;49m
+bad_type_order_switch.m:037:   The difference between the type definition order
+bad_type_order_switch.m:037:   and the switch case order is the following:
+bad_type_order_switch.m:037:   @@ -1,8 +1,8 @@
+bad_type_order_switch.m:037:    bad_type_order_switch.f01/0
+bad_type_order_switch.m:037:   [38;5;203m+bad_type_order_switch.f14/0[39;49m
+bad_type_order_switch.m:037:    bad_type_order_switch.f02/0
+bad_type_order_switch.m:037:    bad_type_order_switch.f03/0
+bad_type_order_switch.m:037:    bad_type_order_switch.f04/0
+bad_type_order_switch.m:037:   [38;5;40m-bad_type_order_switch.f05/0[39;49m
+bad_type_order_switch.m:037:    bad_type_order_switch.f06/0
+bad_type_order_switch.m:037:    bad_type_order_switch.f07/0
+bad_type_order_switch.m:037:    bad_type_order_switch.f08/0
+bad_type_order_switch.m:037:   @@ -11,9 +11,9 @@
+bad_type_order_switch.m:037:    bad_type_order_switch.f11/0
+bad_type_order_switch.m:037:    bad_type_order_switch.f12/0
+bad_type_order_switch.m:037:    bad_type_order_switch.f13/0
+bad_type_order_switch.m:037:   [38;5;40m-bad_type_order_switch.f14/0[39;49m
+bad_type_order_switch.m:037:    bad_type_order_switch.f15/0
+bad_type_order_switch.m:037:    bad_type_order_switch.f16/0
+bad_type_order_switch.m:037:   [38;5;203m+bad_type_order_switch.f05/0[39;49m
+bad_type_order_switch.m:037:    bad_type_order_switch.f17/0
+bad_type_order_switch.m:037:    bad_type_order_switch.f18/0
+bad_type_order_switch.m:037:    bad_type_order_switch.f19/0

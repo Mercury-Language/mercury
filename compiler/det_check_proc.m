@@ -336,7 +336,7 @@ cse_nopull_pieces =
 make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         !Specs) :-
     pred_info_get_markers(PredInfo, Markers),
-    ( if
+    some [!NeedReqScope] (
         ( if
             marker_is_present(Markers, marker_has_incomplete_switch),
             module_info_get_globals(ModuleInfo, Globals),
@@ -344,26 +344,38 @@ make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         then
             % If this option is specified, it acts as an implicit
             % require_complete_switch scope around all switches.
+            !:NeedReqScope = yes,
             InformIncompleteSwitches = inform_incomplete_switches
-        else if
-            marker_is_present(Markers, marker_has_require_scope)
-        then
-            InformIncompleteSwitches = do_not_inform_incomplete_switches
         else
-            fail
-        )
-    then
+            !:NeedReqScope = no,
+            InformIncompleteSwitches = do_not_inform_incomplete_switches
+        ),
+        ( if marker_is_present(Markers, marker_has_require_scope) then
+            !:NeedReqScope = yes
+        else
+            true
+        ),
+        ( if marker_is_present(Markers, marker_type_order_switch) then
+            !:NeedReqScope = yes,
+            TypeOrderSwitch = type_order_switch
+        else
+            TypeOrderSwitch = no_type_order_switch
+        ),
+        NeedReqScope = !.NeedReqScope
+    ),
+    (
+        NeedReqScope = yes,
         proc_info_get_goal(ProcInfo, Goal),
         proc_info_get_var_table(ProcInfo, VarTable),
         proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap0),
         det_info_init(ModuleInfo, PredProcId, VarTable,
             pess_extra_vars_ignore, [], DetInfo0),
-        reqscope_check_goal(Goal, InstMap0, InformIncompleteSwitches, no,
-            [], DetInfo0, DetInfo),
+        Params = reqscope_params(InformIncompleteSwitches, TypeOrderSwitch),
+        reqscope_check_goal(Params, InstMap0, no, [], Goal, DetInfo0, DetInfo),
         det_info_get_error_specs(DetInfo, RCSSpecs),
         !:Specs = RCSSpecs ++ !.Specs
-    else
-        true
+    ;
+        NeedReqScope = no
     ).
 
 :- func detism_decl_name(detism_decl) = string.

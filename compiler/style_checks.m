@@ -890,11 +890,22 @@ generate_inconsistent_pred_order_warnings(ModuleContext, ExportedOrNotStr,
         CostDelete = 1,
         CostInsert = 1,
         CostReplace = 1,
-        Params = edit_params(CostDelete, CostInsert, CostReplace),
-        find_shortest_edit_seq(Params, DeclStrs, DefnStrs, EditSeq),
-        find_diff_seq(DeclStrs, EditSeq, DiffSeq),
-        find_change_hunks(3, DiffSeq, ChangeHunks),
-        chunks_to_spec(ModuleContext, ExportedOrNotStr, ChangeHunks, WarnSpec),
+        EditParams = edit_params(CostDelete, CostInsert, CostReplace),
+        construct_diff_for_string_seqs(EditParams, DeclStrs, DefnStrs,
+            DiffPieces),
+        Pieces = [words("Warning:")] ++
+            color_as_subject([words("the order of"),
+                words("the declarations and definitions")]) ++
+            [words("of the"), words(ExportedOrNotStr), words("predicates"),
+                words("is")] ++
+            color_as_incorrect([words("inconsistent,")]) ++
+            [words("as shown by this diff:"), nl,
+            blank_line,
+            fixed("--- declaration order"), nl,
+            fixed("+++ definition order"), nl] ++
+            DiffPieces,
+        WarnSpec = spec($pred, severity_warning, phase_style,
+            ModuleContext, Pieces),
         !:Specs = [WarnSpec | !.Specs]
     ).
 
@@ -928,27 +939,6 @@ desc_pred_decl_item_numbers(PredItemNumbers, PredDescStr) :-
     PredPieces = describe_one_pred_info_name(no, should_not_module_qualify,
         [], PredInfo),
     PredDescStr = error_pieces_to_one_line_string(PredPieces).
-
-%---------------------%
-
-:- pred chunks_to_spec(prog_context::in, string::in,
-    list(change_hunk(string))::in, error_spec::out) is det.
-
-chunks_to_spec(ModuleContext, ExportedOrNotStr, ChangeHunks, Spec) :-
-    HeadPieces = [words("Warning:")] ++
-        color_as_subject([words("the order of"),
-            words("the declarations and definitions")]) ++
-        [words("of the"), words(ExportedOrNotStr), words("predicates"),
-            words("is")] ++
-        color_as_incorrect([words("inconsistent,")]) ++
-        [words("as shown by this diff:"), nl,
-        blank_line,
-        fixed("--- declaration order"), nl,
-        fixed("+++ definition order"), nl],
-    list.map(change_hunk_to_pieces, ChangeHunks, ChangeHunkPieceLists),
-    list.condense(ChangeHunkPieceLists, ChangeHunkPieces),
-    Pieces = HeadPieces ++ ChangeHunkPieces,
-    Spec = spec($pred, severity_warning, phase_style, ModuleContext, Pieces).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.style_checks.

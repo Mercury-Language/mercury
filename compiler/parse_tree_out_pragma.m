@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2016, 2018-2024 The Mercury team.
+% Copyright (C) 2015-2016, 2018-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -259,6 +259,9 @@ mercury_format_item_impl_marker(Stream, ImplMarker, !IO) :-
     ;
         MarkerKind = ipmk_consider_used,
         MarkerKindStr = "consider_used"
+    ;
+        MarkerKind = ipmk_type_order_switch,
+        MarkerKindStr = "type_order_switch"
     ;
         MarkerKind = ipmk_mode_check_clauses,
         MarkerKindStr = "mode_check_clauses"

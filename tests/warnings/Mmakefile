@@ -13,6 +13,7 @@ ERRORCHECK_PROGS = \
 	allow_non_contiguity_for \
 	ambiguous_overloading \
 	arg_order_rearrangment \
+	bad_type_order_switch \
 	bug311 \
 	bug412 \
 	bug477 \

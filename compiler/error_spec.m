@@ -619,11 +619,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % Convert the output of find_change_hunks from library/edit_seq.m
-    % to a diff we can include in error messages.
-    %
-:- pred change_hunk_to_pieces(change_hunk(string)::in,
-    list(format_piece)::out) is det.
+:- pred construct_diff_for_string_seqs(edit_params::in,
+    list(string)::in, list(string)::in, list(format_piece)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1094,6 +1091,19 @@ maybe_add_error_spec_id(OptionTable, Id, Msgs0, Msgs) :-
     ).
 
 %---------------------------------------------------------------------------%
+
+construct_diff_for_string_seqs(Params, StrsA, StrsB, Pieces) :-
+    find_shortest_edit_seq(Params, StrsA, StrsB, EditSeq),
+    find_diff_seq(StrsA, EditSeq, DiffSeq),
+    find_change_hunks(3, DiffSeq, ChangeHunks),
+    list.map(change_hunk_to_pieces, ChangeHunks, PieceLists),
+    list.condense(PieceLists, Pieces).
+
+    % Convert the output of find_change_hunks from library/edit_seq.m
+    % to a diff we can include in error messages.
+    %
+:- pred change_hunk_to_pieces(change_hunk(string)::in,
+    list(format_piece)::out) is det.
 
 change_hunk_to_pieces(ChangeHunk, ChangeHunkPieces) :-
     ChangeHunk = change_hunk(StartA, LenA, StartB, LenB, Diffs),

@@ -68,14 +68,26 @@
                 list(case)
             ).
 
+    % Do we need to check switches to see whether the cons_ids in their arms
+    % follow the order of those cons_ids in their type definition?
+:- type maybe_type_order_switch
+    --->    no_type_order_switch
+    ;       type_order_switch.
+
+:- type reqscope_params
+    --->    reqscope_params(
+                maybe_inform_incomplete_switches,
+                maybe_type_order_switch
+            ).
+
     % Check that the switches in all require_complete_switch scopes are
     % actually complete. If they are not, add an error message to !DetInfo.
     %
     % If IIS = inform_incomplete_switches, do this for *all* switches.
     %
-:- pred reqscope_check_goal(hlds_goal::in, instmap::in,
-    maybe_inform_incomplete_switches::in, maybe(reported_switch)::in,
-    list(switch_context)::in, det_info::in, det_info::out) is det.
+:- pred reqscope_check_goal(reqscope_params::in, instmap::in,
+    maybe(reported_switch)::in, list(switch_context)::in, hlds_goal::in,
+    det_info::in, det_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -186,6 +198,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_misc.
+:- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_mode.
@@ -195,7 +208,9 @@
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
+:- import_module edit_seq.
 :- import_module int.
+:- import_module map.
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
@@ -205,8 +220,8 @@
 
 %---------------------------------------------------------------------------%
 
-reqscope_check_goal(Goal, InstMap0, IIS, MaybeReportedSwitch,
-        SwitchContexts, !DetInfo) :-
+reqscope_check_goal(Params, InstMap0, MaybeReportedSwitch, SwitchContexts,
+        Goal, !DetInfo) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = unify(_, RHS, _, _, _),
@@ -220,8 +235,8 @@ reqscope_check_goal(Goal, InstMap0, IIS, MaybeReportedSwitch,
             det_info_get_module_info(!.DetInfo, ModuleInfo),
             lambda_update_instmap(ModuleInfo, ArgVarsModes,
                 InstMap0, LambdaInstMap0),
-            reqscope_check_goal(LambdaGoal, LambdaInstMap0, IIS, no,
-                [], !DetInfo)
+            reqscope_check_goal(Params, LambdaInstMap0, no, [],
+                LambdaGoal, !DetInfo)
         )
     ;
         ( GoalExpr = plain_call(_, _, _, _, _, _)
@@ -230,13 +245,14 @@ reqscope_check_goal(Goal, InstMap0, IIS, MaybeReportedSwitch,
         )
     ;
         GoalExpr = conj(_, Goals),
-        reqscope_check_conj(Goals, InstMap0, IIS, MaybeReportedSwitch,
-            SwitchContexts, !DetInfo)
+        reqscope_check_conj(Params, InstMap0,
+            MaybeReportedSwitch, SwitchContexts, Goals, !DetInfo)
     ;
         GoalExpr = disj(Goals),
-        reqscope_check_disj(Goals, InstMap0, IIS, SwitchContexts, !DetInfo)
+        reqscope_check_disj(Params, InstMap0, SwitchContexts, Goals, !DetInfo)
     ;
         GoalExpr = switch(Var, CanFail, Cases),
+        Params = reqscope_params(IIS, TypeOrderSwitch),
         (
             CanFail = cannot_fail
         ;
@@ -263,40 +279,51 @@ reqscope_check_goal(Goal, InstMap0, IIS, MaybeReportedSwitch,
             )
         ),
         det_info_get_var_table(!.DetInfo, VarTable),
-        lookup_var_type(VarTable, Var, VarType),
-        reqscope_check_cases(Var, VarType, Cases, InstMap0,
-            IIS, SwitchContexts, !DetInfo)
+        lookup_var_entry(VarTable, Var, VarEntry),
+        VarEntry = vte(VarName, VarType, _VarIsDummy),
+        ( if
+            TypeOrderSwitch = type_order_switch,
+            does_switch_violate_type_order(!.DetInfo, VarType, Cases,
+                VarTypeCtor, TypeSNAs, CaseSNAs)
+        then
+            generate_type_order_switch_spec(GoalInfo, VarTypeCtor, VarName,
+                TypeSNAs, CaseSNAs, !DetInfo)
+        else
+            true
+        ),
+        reqscope_check_cases(Params, InstMap0, SwitchContexts,
+            Var, VarType, Cases, !DetInfo)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
-        reqscope_check_goal(Cond, InstMap0, IIS, no,
-            SwitchContexts, !DetInfo),
+        reqscope_check_goal(Params, InstMap0, no, SwitchContexts,
+            Cond, !DetInfo),
         apply_goal_instmap_delta(Cond, InstMap0, InstMap1),
-        reqscope_check_goal(Then, InstMap1, IIS, no,
-            SwitchContexts, !DetInfo),
-        reqscope_check_goal(Else, InstMap0, IIS, no,
-            SwitchContexts, !DetInfo)
+        reqscope_check_goal(Params, InstMap1, no, SwitchContexts,
+            Then, !DetInfo),
+        reqscope_check_goal(Params, InstMap0, no, SwitchContexts,
+            Else, !DetInfo)
     ;
         GoalExpr = negation(SubGoal),
-        reqscope_check_goal(SubGoal, InstMap0, IIS, no,
-            SwitchContexts, !DetInfo)
+        reqscope_check_goal(Params, InstMap0, no, SwitchContexts,
+            SubGoal, !DetInfo)
     ;
         GoalExpr = scope(Reason, SubGoal),
         reqscope_check_scope(SwitchContexts, Reason, SubGoal, GoalInfo,
             InstMap0, ScopeMaybeReportedSwitch, !DetInfo),
-        reqscope_check_goal(SubGoal, InstMap0, IIS, ScopeMaybeReportedSwitch,
-            SwitchContexts, !DetInfo)
+        reqscope_check_goal(Params, InstMap0, ScopeMaybeReportedSwitch,
+            SwitchContexts, SubGoal, !DetInfo)
     ;
         GoalExpr = shorthand(ShortHand),
         (
             ShortHand = atomic_goal(_, _, _, _, MainGoal, OrElseGoals, _),
-            reqscope_check_goal(MainGoal, InstMap0, IIS, no,
-                SwitchContexts, !DetInfo),
-            reqscope_check_disj(OrElseGoals, InstMap0, IIS,
-                SwitchContexts, !DetInfo)
+            reqscope_check_goal(Params, InstMap0, no, SwitchContexts,
+                MainGoal, !DetInfo),
+            reqscope_check_disj(Params, InstMap0, SwitchContexts,
+                OrElseGoals, !DetInfo)
         ;
             ShortHand = try_goal(_, _, SubGoal),
-            reqscope_check_goal(SubGoal, InstMap0, IIS, no,
-                SwitchContexts, !DetInfo)
+            reqscope_check_goal(Params, InstMap0, no, SwitchContexts,
+                SubGoal, !DetInfo)
         ;
             ShortHand = bi_implication(_, _),
             % These should have been expanded out by now.
@@ -317,43 +344,42 @@ lambda_update_instmap(ModuleInfo, [Var - Mode | VarsModes], !InstMap) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred reqscope_check_conj(list(hlds_goal)::in, instmap::in,
-    maybe_inform_incomplete_switches::in, maybe(reported_switch)::in,
-    list(switch_context)::in,
+:- pred reqscope_check_conj(reqscope_params::in, instmap::in,
+    maybe(reported_switch)::in, list(switch_context)::in, list(hlds_goal)::in,
     det_info::in, det_info::out) is det.
 
-reqscope_check_conj([], _InstMap0, _IIS,
-        _MaybeReportedSwitch, _SwitchContexts, !DetInfo).
-reqscope_check_conj([Goal | Goals], InstMap0, IIS,
-        MaybeReportedSwitch, SwitchContexts, !DetInfo) :-
-    reqscope_check_goal(Goal, InstMap0, IIS,
-        MaybeReportedSwitch, SwitchContexts, !DetInfo),
+reqscope_check_conj(_Params, _InstMap0, _MaybeReportedSwitch, _SwitchContexts,
+        [], !DetInfo).
+reqscope_check_conj(Params, InstMap0, MaybeReportedSwitch, SwitchContexts,
+        [Goal | Goals], !DetInfo) :-
+    reqscope_check_goal(Params, InstMap0, MaybeReportedSwitch, SwitchContexts,
+        Goal, !DetInfo),
     apply_goal_instmap_delta(Goal, InstMap0, InstMap1),
-    reqscope_check_conj(Goals, InstMap1, IIS,
-        MaybeReportedSwitch, SwitchContexts, !DetInfo).
+    reqscope_check_conj(Params, InstMap1, MaybeReportedSwitch, SwitchContexts,
+        Goals, !DetInfo).
 
 %---------------------------------------------------------------------------%
 
-:- pred reqscope_check_disj(list(hlds_goal)::in, instmap::in,
-    maybe_inform_incomplete_switches::in, list(switch_context)::in,
+:- pred reqscope_check_disj(reqscope_params::in, instmap::in,
+    list(switch_context)::in, list(hlds_goal)::in,
     det_info::in, det_info::out) is det.
 
-reqscope_check_disj([], _InstMap0, _IIS, _SwitchContexts, !DetInfo).
-reqscope_check_disj([Goal | Goals], InstMap0, IIS, SwitchContexts,
+reqscope_check_disj(_Params, _InstMap0, _SwitchContexts, [], !DetInfo).
+reqscope_check_disj(Params, InstMap0, SwitchContexts, [Goal | Goals],
         !DetInfo) :-
-    reqscope_check_goal(Goal, InstMap0, IIS, no, SwitchContexts, !DetInfo),
-    reqscope_check_disj(Goals, InstMap0, IIS, SwitchContexts, !DetInfo).
+    reqscope_check_goal(Params, InstMap0, no, SwitchContexts, Goal, !DetInfo),
+    reqscope_check_disj(Params, InstMap0, SwitchContexts, Goals, !DetInfo).
 
 %---------------------------------------------------------------------------%
 
-:- pred reqscope_check_cases(prog_var::in, mer_type::in, list(case)::in,
-    instmap::in, maybe_inform_incomplete_switches::in,
-    list(switch_context)::in, det_info::in, det_info::out) is det.
+:- pred reqscope_check_cases(reqscope_params::in, instmap::in,
+    list(switch_context)::in, prog_var::in, mer_type::in, list(case)::in,
+    det_info::in, det_info::out) is det.
 
-reqscope_check_cases(_Var, _VarType, [], _InstMap0, _IIS,
-        _SwitchContexts0, !DetInfo).
-reqscope_check_cases(Var, VarType, [Case | Cases], InstMap0, IIS,
-        SwitchContexts0, !DetInfo) :-
+reqscope_check_cases(_Params, _InstMap0, _SwitchContexts0, _Var, _VarType,
+        [], !DetInfo).
+reqscope_check_cases(Params, InstMap0, SwitchContexts0, Var, VarType,
+        [Case | Cases], !DetInfo) :-
     Case = case(MainConsId, OtherConsIds, Goal),
     goal_to_conj_list(Goal, GoalSeq),
     find_switch_var_matches(GoalSeq, [Var], MainConsId, OtherConsIds,
@@ -364,9 +390,48 @@ reqscope_check_cases(Var, VarType, [Case | Cases], InstMap0, IIS,
     bind_var_to_functors(Var, VarType, MainConsId, OtherConsIds,
         InstMap0, InstMap1, ModuleInfo0, ModuleInfo),
     det_info_set_module_info(ModuleInfo, !DetInfo),
-    reqscope_check_goal(Goal, InstMap1, IIS, no, SwitchContexts1, !DetInfo),
-    reqscope_check_cases(Var, VarType, Cases, InstMap0, IIS,
-        SwitchContexts0, !DetInfo).
+    reqscope_check_goal(Params, InstMap1, no, SwitchContexts1, Goal, !DetInfo),
+    reqscope_check_cases(Params, InstMap0, SwitchContexts0, Var, VarType,
+        Cases, !DetInfo).
+
+%---------------------------------------------------------------------------%
+
+:- pred gather_switch_arms_cons_ids_in_order(list(case)::in,
+    map(prog_context, list(cons_id))::in,
+    map(prog_context, list(cons_id))::out) is det.
+
+gather_switch_arms_cons_ids_in_order([], !ContextMap).
+gather_switch_arms_cons_ids_in_order([Case | Cases], !ContextMap) :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    CaseConsIds = [MainConsId | OtherConsIds],
+    Goal = hlds_goal(_, GoalInfo),
+    Context = goal_info_get_context(GoalInfo),
+    ( if map.search(!.ContextMap, Context, OldConsIds) then
+        NewConsIds = OldConsIds ++ CaseConsIds,
+        map.det_update(Context, NewConsIds, !ContextMap)
+    else
+        map.det_insert(Context, CaseConsIds, !ContextMap)
+    ),
+    gather_switch_arms_cons_ids_in_order(Cases, !ContextMap).
+
+:- pred constructor_to_sym_name_arity(constructor::in,
+    sym_name_arity::out) is det.
+
+constructor_to_sym_name_arity(Ctor, SNA) :-
+    Ctor = ctor(_Ordinal, _MaybeExist, SymName, _Args, Arity, _Context),
+    SNA = sym_name_arity(SymName, Arity).
+
+:- pred cons_id_to_sym_name_arity(cons_id::in, sym_name_arity::out) is det.
+
+cons_id_to_sym_name_arity(ConsId, SNA) :-
+    % This may fail if ConsId is not from a du type, but we have already
+    % checked that they come from a du type ...
+    ( if ConsId = du_data_ctor(DuCtor) then
+        DuCtor = du_ctor(SymName, Arity, _TypeCtor),
+        SNA = sym_name_arity(SymName, Arity)
+    else
+        unexpected($pred, "not du_data_ctor")
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -439,6 +504,66 @@ generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
     ;
         MaybeSeverityComponents = no
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred does_switch_violate_type_order(det_info::in, mer_type::in,
+    list(case)::in, type_ctor::out,
+    list(sym_name_arity)::out, list(sym_name_arity)::out) is semidet.
+
+does_switch_violate_type_order(DetInfo, VarType, Cases,
+        VarTypeCtor, TypeSNAs, CaseSNAs) :-
+    det_info_get_module_info(DetInfo, ModuleInfo),
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    type_to_ctor_det(VarType, VarTypeCtor),
+    search_type_ctor_defn(TypeTable, VarTypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+    TypeBody = hlds_du_type(TypeBodyDu),
+    TypeBodyDu = type_body_du(OoMTypeConstructors, _, _, _, _),
+    TypeConstructors = one_or_more_to_list(OoMTypeConstructors),
+    gather_switch_arms_cons_ids_in_order(Cases,
+        map.init, ContextMap),
+    map.values(ContextMap, ContextConsIdLists),
+    list.condense(ContextConsIdLists, CaseConsIds),
+    list.map(constructor_to_sym_name_arity,
+        TypeConstructors, TypeSNAs),
+    list.map(cons_id_to_sym_name_arity,
+        CaseConsIds, CaseSNAs),
+    TypeSNAs \= CaseSNAs.
+
+:- pred generate_type_order_switch_spec(hlds_goal_info::in, type_ctor::in,
+    string::in, list(sym_name_arity)::in, list(sym_name_arity)::in,
+    det_info::in, det_info::out) is det.
+
+generate_type_order_switch_spec(GoalInfo, TypeCtor, VarName,
+        TypeSNAs, CaseSNAs, !DetInfo) :-
+    Context = goal_info_get_context(GoalInfo),
+    TypeSNAStrs = list.map(mercury_sym_name_arity_to_string, TypeSNAs),
+    CaseSNAStrs = list.map(mercury_sym_name_arity_to_string, CaseSNAs),
+    EditParams = edit_params(1, 1, 2),
+    construct_diff_for_string_seqs(EditParams, TypeSNAStrs, CaseSNAStrs,
+        DiffPieces),
+%   Pieces = [words("Warning: the cases of the")] ++
+%       color_as_subject([words("switch on"), quote(VarName)]) ++
+%       [words("process the constructors of the"), unqual_type_ctor(TypeCtor),
+%       words("type")] ++
+%       color_as_incorrect([words("in an order that differs"),
+%           words("from the type definition.")]) ++ [nl,
+%       words("The difference between the type order"),
+%       words("and the switch case order is the following:"), nl] ++
+%       DiffPieces,
+    Pieces = [words("Warning: the order of the cases of this")] ++
+        color_as_subject([words("switch on"), quote(VarName)]) ++
+        color_as_incorrect([words("differs")]) ++ [words("from")] ++
+        color_as_correct([words("the order of the constructors"),
+            words("in the definition of the"), unqual_type_ctor(TypeCtor),
+            words("type.")]) ++ [nl,
+        words("The difference between the type definition order"),
+        words("and the switch case order is the following:"), nl] ++
+        DiffPieces,
+    Spec = spec($pred, severity_warning, phase_detism_check,
+        Context, Pieces),
+    det_info_add_error_spec(Spec, !DetInfo).
 
 %---------------------------------------------------------------------------%
 

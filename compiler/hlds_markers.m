@@ -95,6 +95,12 @@
             % nor the other procedures they call, directly or indirectly,
             % should get dead procedure warnings.
 
+    ;       marker_type_order_switch
+            % The user has requested that all switches in the predicate body
+            % should be checked to see that the order of the switch arms
+            % matches the order of the corresponding cons_ids in the definition
+            % of their type.
+
     ;       marker_class_method
             % Requests that this predicate be transformed into the appropriate
             % call to a class method.
@@ -477,6 +483,7 @@ marker_name(marker_no_pred_decl, "no_pred_decl").
 marker_name(marker_user_marked_no_inline, "no_inline").
 marker_name(marker_mmc_marked_no_inline, "mmc_no_inline").
 marker_name(marker_consider_used, "consider_used").
+marker_name(marker_type_order_switch, "type_order_switch").
 marker_name(marker_no_detism_warning, "no_determinism_warning").
 marker_name(marker_class_method, "class_method").
 marker_name(marker_class_instance_method, "class_instance_method").

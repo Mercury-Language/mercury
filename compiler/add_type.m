@@ -2049,12 +2049,12 @@ check_subtype_ctors_order(TypeCtor, Ctors, SuperTypeCtor, SuperCtors, Context,
 :- pred compute_subtype_ctors_diff(list(constructor)::in,
     list(constructor)::in, list(format_piece)::out) is det.
 
-compute_subtype_ctors_diff(Ctors, SuperCtors, ChangeHunkPieces) :-
+compute_subtype_ctors_diff(Ctors, SuperCtors, DiffPieces) :-
     (
         ( Ctors = []
         ; Ctors = [_]
         ),
-        ChangeHunkPieces = []
+        DiffPieces = []
     ;
         Ctors = [_, _ | _],
         list.map(ctor_to_string, Ctors, CtorStrs0),
@@ -2062,11 +2062,8 @@ compute_subtype_ctors_diff(Ctors, SuperCtors, ChangeHunkPieces) :-
         list.filter(list.contains(SuperCtorStrs0), CtorStrs0, CtorStrs),
         list.filter(list.contains(CtorStrs0), SuperCtorStrs0, SuperCtorStrs),
         EditParams = edit_params(1, 1, 1),
-        find_shortest_edit_seq(EditParams, SuperCtorStrs, CtorStrs, EditSeq),
-        find_diff_seq(SuperCtorStrs, EditSeq, DiffSeq),
-        find_change_hunks(3, DiffSeq, ChangeHunks),
-        list.map(change_hunk_to_pieces, ChangeHunks, ChangeHunkPieceLists),
-        list.condense(ChangeHunkPieceLists, ChangeHunkPieces)
+        construct_diff_for_string_seqs(EditParams, SuperCtorStrs, CtorStrs,
+            DiffPieces)
     ).
 
 :- pred ctor_to_string(constructor::in, string::out) is det.

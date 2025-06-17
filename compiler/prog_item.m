@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1960,7 +1960,8 @@
     ;       ipmk_no_detism_warning
     ;       ipmk_promise_pure
     ;       ipmk_promise_semipure
-    ;       ipmk_promise_eqv_clauses.
+    ;       ipmk_promise_eqv_clauses
+    ;       ipmk_type_order_switch.
 
     % These are the kinds of impl markers that we put into .opt files.
 :- type impl_pragma_marker_kind_opt =< impl_pragma_marker_kind
