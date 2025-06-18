@@ -50,6 +50,7 @@
 :- import_module libs.maybe_util.
 :- import_module libs.op_mode.
 :- import_module libs.options.
+:- import_module libs.print_help.
 :- import_module libs.timestamp.
 :- import_module make.
 :- import_module make.build.
@@ -168,7 +169,11 @@ main_after_setup(ProgressStream, ErrorStream, Globals, EnvOptFileVariables,
         long_usage(StdOutStream, !IO)
     else if HelpAlt = yes then
         io.stdout_stream(StdOutStream, !IO),
-        options_help_alt(StdOutStream, !IO)
+        ( if semidet_succeed then
+            options_help_new(StdOutStream, !IO)
+        else
+            compare_old_vs_new(StdOutStream, !IO)
+        )
     else if Version = yes then
         io.stdout_stream(StdOutStream, !IO),
         LibraryVersion = library.mercury_version,

@@ -122,6 +122,7 @@
 :- module libs.options.
 :- interface.
 
+:- import_module libs.optdb_help.
 :- import_module libs.optimization_options.
 
 :- import_module char.
@@ -130,6 +131,13 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
+
+%---------------------------------------------------------------------------%
+
+:- pred optdb(option_category, option, option_data, libs.optdb_help.help).
+:- mode optdb(out, in, out, out) is det.
+:- mode optdb(in, out, out, out) is multi.
+:- mode optdb(out, out, out, out) is multi.
 
 %---------------------------------------------------------------------------%
 
@@ -219,7 +227,7 @@
 
 :- pred options_help(io.text_output_stream::in, io::di, io::uo) is det.
 
-:- pred options_help_alt(io.text_output_stream::in, io::di, io::uo) is det.
+:- pred compare_old_vs_new(io.text_output_stream::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1320,30 +1328,6 @@
 :- type maybe_option_table == maybe_option_table(option).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- implementation.
-
-:- import_module libs.compute_grade.
-:- import_module libs.print_help.
-:- import_module libs.print_help_old.
-:- import_module libs.shell_util.
-
-:- import_module assoc_list.
-:- import_module bool.
-:- import_module dir.
-:- import_module maybe.
-:- import_module pair.
-:- import_module set.
-:- import_module solutions.
-:- import_module string.
-
-%---------------------------------------------------------------------------%
-
-:- pred option_defaults(option::out, option_data::out) is multi.
-
-option_defaults(Opt, Data) :-
-    optdef(_Category, Opt, Data).
 
 :- type option_category
     --->    oc_help
@@ -1487,17 +1471,36 @@ option_defaults(Opt, Data) :-
             % is less likely to mislead than keeping the option as a noop.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- implementation.
+
+:- import_module libs.compute_grade.
+:- import_module libs.print_help_old.
+:- import_module libs.shell_util.
+
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module dir.
+:- import_module maybe.
+:- import_module pair.
+:- import_module set.
+:- import_module solutions.
+:- import_module string.
+
+%---------------------------------------------------------------------------%
+
+:- pred option_defaults(option::out, option_data::out) is multi.
+
+option_defaults(Opt, Data) :-
+    optdef(_Category, Opt, Data).
+
+%---------------------------------------------------------------------------%
 
 :- pred optdef(option_category, option, option_data).
 :- mode optdef(out, in, out) is det.
 :- mode optdef(in, out, out) is multi.
 :- mode optdef(out, out, out) is multi.
-
-:- pred optdb(option_category, option, option_data, libs.print_help.help).
-:- mode optdb(out, in, out, out) is det.
-:- mode optdb(in, out, out, out) is multi.
-:- mode optdb(out, out, out, out) is multi.
-:- pragma consider_used(pred(optdb/4)).
 
 %---------------------------------------------------------------------------%
 
@@ -12061,7 +12064,7 @@ options_help_misc = Section :-
 
 %---------------------------------------------------------------------------%
 
-options_help_alt(Stream, !IO) :-
+compare_old_vs_new(Stream, !IO) :-
     ShortOptionPred =
         ( pred(ShortPair::out) is multi :-
             short_table(Name, Opt),
@@ -12156,7 +12159,7 @@ value_pair_to_line(Opt - Value, Line) :-
 %---------------------%
 
 :- type optdb_tuple
-    --->    optdb_tuple(option, option_data, print_help.help).
+    --->    optdb_tuple(option, option_data, optdb_help.help).
 
 :- pred acc_optdb_data(optdb_tuple::in,
     assoc_list(char, option)::in, assoc_list(char, option)::out,
