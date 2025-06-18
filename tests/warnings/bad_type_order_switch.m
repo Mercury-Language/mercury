@@ -31,7 +31,7 @@
 
 :- implementation.
 
-:- pragma type_order_switch(pred(p/2)).
+:- pragma require_switch_arms_in_type_order(pred(p/2)).
 
 p(T, N) :-
     ( T = f14, N = 42

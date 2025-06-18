@@ -516,8 +516,9 @@ impl_marker_desc_pieces(Marker) = Pieces :-
         MarkerKind = ipmk_consider_used,
         Pieces = [pragma_decl("consider_used"), words("declaration")]
     ;
-        MarkerKind = ipmk_type_order_switch,
-        Pieces = [pragma_decl("type_order_switch"), words("declaration")]
+        MarkerKind = ipmk_req_sw_arms_type_order,
+        Pieces = [pragma_decl("require_switch_arms_in_type_order"),
+            words("declaration")]
     ;
         MarkerKind = ipmk_mode_check_clauses,
         Pieces = [pragma_decl("mode_check_clauses"), words("declaration")]

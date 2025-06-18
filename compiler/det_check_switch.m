@@ -70,14 +70,14 @@
 
     % Do we need to check switches to see whether the cons_ids in their arms
     % follow the order of those cons_ids in their type definition?
-:- type maybe_type_order_switch
-    --->    no_type_order_switch
-    ;       type_order_switch.
+:- type maybe_req_arms_in_type_order
+    --->    no_req_arms_in_type_order
+    ;       req_arms_in_type_order.
 
 :- type reqscope_params
     --->    reqscope_params(
                 maybe_inform_incomplete_switches,
-                maybe_type_order_switch
+                maybe_req_arms_in_type_order
             ).
 
     % Check that the switches in all require_complete_switch scopes are
@@ -252,7 +252,7 @@ reqscope_check_goal(Params, InstMap0, MaybeReportedSwitch, SwitchContexts,
         reqscope_check_disj(Params, InstMap0, SwitchContexts, Goals, !DetInfo)
     ;
         GoalExpr = switch(Var, CanFail, Cases),
-        Params = reqscope_params(IIS, TypeOrderSwitch),
+        Params = reqscope_params(IIS, ReqArmsTypeOrder),
         (
             CanFail = cannot_fail
         ;
@@ -282,7 +282,7 @@ reqscope_check_goal(Params, InstMap0, MaybeReportedSwitch, SwitchContexts,
         lookup_var_entry(VarTable, Var, VarEntry),
         VarEntry = vte(VarName, VarType, _VarIsDummy),
         ( if
-            TypeOrderSwitch = type_order_switch,
+            ReqArmsTypeOrder = req_arms_in_type_order,
             does_switch_violate_type_order(!.DetInfo, VarType, Cases,
                 VarTypeCtor, TypeSNAs, CaseSNAs)
         then
@@ -543,23 +543,24 @@ generate_type_order_switch_spec(GoalInfo, TypeCtor, VarName,
     EditParams = edit_params(1, 1, 2),
     construct_diff_for_string_seqs(EditParams, TypeSNAStrs, CaseSNAStrs,
         DiffPieces),
-%   Pieces = [words("Warning: the cases of the")] ++
+% Possible alternate wording.
+%   Pieces = [words("Warning: the arms of the")] ++
 %       color_as_subject([words("switch on"), quote(VarName)]) ++
 %       [words("process the constructors of the"), unqual_type_ctor(TypeCtor),
 %       words("type")] ++
 %       color_as_incorrect([words("in an order that differs"),
 %           words("from the type definition.")]) ++ [nl,
 %       words("The difference between the type order"),
-%       words("and the switch case order is the following:"), nl] ++
+%       words("and the switch arm order is the following:"), nl] ++
 %       DiffPieces,
-    Pieces = [words("Warning: the order of the cases of this")] ++
+    Pieces = [words("Warning: the order of the arms of this")] ++
         color_as_subject([words("switch on"), quote(VarName)]) ++
         color_as_incorrect([words("differs")]) ++ [words("from")] ++
         color_as_correct([words("the order of the constructors"),
-            words("in the definition of the"), unqual_type_ctor(TypeCtor),
-            words("type.")]) ++ [nl,
+            words("in the definition of the"),
+            unqual_type_ctor(TypeCtor), words("type.")]) ++ [nl,
         words("The difference between the type definition order"),
-        words("and the switch case order is the following:"), nl] ++
+        words("and the switch arm order is the following:"), nl] ++
         DiffPieces,
     Spec = spec($pred, severity_warning, phase_detism_check,
         Context, Pieces),

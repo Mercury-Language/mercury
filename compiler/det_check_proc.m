@@ -355,11 +355,11 @@ make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         else
             true
         ),
-        ( if marker_is_present(Markers, marker_type_order_switch) then
+        ( if marker_is_present(Markers, marker_req_sw_arms_type_order) then
             !:NeedReqScope = yes,
-            TypeOrderSwitch = type_order_switch
+            ReqArmsTypeOrder = req_arms_in_type_order
         else
-            TypeOrderSwitch = no_type_order_switch
+            ReqArmsTypeOrder = no_req_arms_in_type_order
         ),
         NeedReqScope = !.NeedReqScope
     ),
@@ -370,7 +370,7 @@ make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap0),
         det_info_init(ModuleInfo, PredProcId, VarTable,
             pess_extra_vars_ignore, [], DetInfo0),
-        Params = reqscope_params(InformIncompleteSwitches, TypeOrderSwitch),
+        Params = reqscope_params(InformIncompleteSwitches, ReqArmsTypeOrder),
         reqscope_check_goal(Params, InstMap0, no, [], Goal, DetInfo0, DetInfo),
         det_info_get_error_specs(DetInfo, RCSSpecs),
         !:Specs = RCSSpecs ++ !.Specs

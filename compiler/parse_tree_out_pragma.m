@@ -260,8 +260,8 @@ mercury_format_item_impl_marker(Stream, ImplMarker, !IO) :-
         MarkerKind = ipmk_consider_used,
         MarkerKindStr = "consider_used"
     ;
-        MarkerKind = ipmk_type_order_switch,
-        MarkerKindStr = "type_order_switch"
+        MarkerKind = ipmk_req_sw_arms_type_order,
+        MarkerKindStr = "require_switch_arms_in_type_order"
     ;
         MarkerKind = ipmk_mode_check_clauses,
         MarkerKindStr = "mode_check_clauses"

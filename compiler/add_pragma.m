@@ -1568,9 +1568,10 @@ add_impl_marker(ItemMercuryStatus, ImplMarker, !ModuleInfo, !Specs) :-
             ItemMercuryStatus, Context, marker_promised_equivalent_clauses,
             [], !ModuleInfo, !Specs)
     ;
-        MarkerKind = ipmk_type_order_switch,
-        add_pred_marker(PFUNameArity, "type_order_switch", psc_impl,
-            ItemMercuryStatus, Context, marker_type_order_switch,
+        MarkerKind = ipmk_req_sw_arms_type_order,
+        add_pred_marker(PFUNameArity,
+            "require_switch_arms_in_type_order", psc_impl,
+            ItemMercuryStatus, Context, marker_req_sw_arms_type_order,
             [], !ModuleInfo, !Specs)
     ).
 

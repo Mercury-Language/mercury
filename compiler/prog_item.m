@@ -1961,7 +1961,7 @@
     ;       ipmk_promise_pure
     ;       ipmk_promise_semipure
     ;       ipmk_promise_eqv_clauses
-    ;       ipmk_type_order_switch.
+    ;       ipmk_req_sw_arms_type_order.
 
     % These are the kinds of impl markers that we put into .opt files.
 :- type impl_pragma_marker_kind_opt =< impl_pragma_marker_kind

@@ -202,8 +202,8 @@ parse_named_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
             PragmaName = "promise_equivalent_clauses",
             MarkerKind = ipmk_promise_eqv_clauses
         ;
-            PragmaName = "type_order_switch",
-            MarkerKind = ipmk_type_order_switch
+            PragmaName = "require_switch_arms_in_type_order",
+            MarkerKind = ipmk_req_sw_arms_type_order
         ),
         parse_name_arity_impl_pragma(ModuleName, PragmaName, MarkerKind,
             VarSet, ErrorTerm, PragmaTerms, Context, SeqNum, MaybeIOM)

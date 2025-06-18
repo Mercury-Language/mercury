@@ -1232,7 +1232,7 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
             !:ImplMarkers = [coerce(SubImplMarker) | !.ImplMarkers]
         ;
             ( Marker = ipmk_consider_used
-            ; Marker = ipmk_type_order_switch
+            ; Marker = ipmk_req_sw_arms_type_order
             ; Marker = ipmk_no_detism_warning
             ),
             Pieces = [words("A .opt file may not contain")] ++
