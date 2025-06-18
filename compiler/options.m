@@ -129,12 +129,17 @@
 :- import_module getopt.
 :- import_module io.
 :- import_module list.
+:- import_module map.
 
 %---------------------------------------------------------------------------%
 
-:- pred option_defaults(option::out, option_data::out) is nondet.
-:- pred short_option(char::in, option::out) is semidet.
-:- pred long_option(string::in, option::out) is semidet.
+:- pred get_short_option(short_option(option)::out(short_option)) is det.
+
+:- pred get_long_option(long_option(option)::out(long_option)) is det.
+
+:- pred get_option_default_table(option_default_value_map(option)::out) is det.
+
+%---------------------------------------------------------------------------%
 
     % Return the list of all long option strings excluding the "--"
     % or "--no-" prefixes.
@@ -1324,9 +1329,9 @@
 :- import_module libs.print_help_old.
 :- import_module libs.shell_util.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module dir.
-:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
@@ -1335,9 +1340,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pragma no_determinism_warning(pred(option_defaults/2)).
-% getopt and hence handle_options.m expect a nondet predicate,
-% so we declare option_defaults to be nondet, even though it is multi.
+:- pred option_defaults(option::out, option_data::out) is multi.
 
 option_defaults(Opt, Data) :-
     optdef(_Category, Opt, Data).
@@ -6299,6 +6302,89 @@ optdb(oc_dev_dump,   dump_options_file,                string(""),
 
 %---------------------------------------------------------------------------%
 
+:- type getopt_maps
+    --->    getopt_maps(
+                % The map from short option names to options.
+                gom_short_name_map      :: map(char, option),
+
+                % The map from long option names to options.
+                gom_long_name_map       :: map(string, option),
+
+                % The map from options to their default values.
+                gom_default_value_map   :: map(option, option_data),
+
+                gom_short_option        :: short_option(option),
+                gom_long_option         :: long_option(option),
+                gom_default_value       :: option_default_value(option)
+            ).
+
+:- inst getopt_maps for getopt_maps/0
+    --->    getopt_maps(
+                ground,
+                ground,
+                ground,
+                short_option,
+                long_option,
+                option_default_value_multi
+            ).
+
+:- mutable(getopt_maps_mutable, getopt_maps, get_getopt_maps, getopt_maps,
+    [untrailed, constant]).
+
+:- func get_getopt_maps = (getopt_maps::out(getopt_maps)) is det.
+
+get_getopt_maps = GetoptMaps :-
+    OptdbPred =
+        ( pred(OptdbTuple::out) is multi :-
+            optdb(_Cat, Opt, OptData, Help),
+            OptdbTuple = optdb_tuple(Opt, OptData, Help)
+        ),
+    solutions_set(OptdbPred, OptdbTuples),
+    set.foldl3(acc_optdb_data, OptdbTuples,
+        [], ShortNamePairs, [], LongNamePairs, [], OptionDefaultPairs),
+    list.sort(ShortNamePairs, SortedShortNamePairs),
+    list.sort(LongNamePairs, SortedLongNamePairs),
+    list.sort(OptionDefaultPairs, SortedOptionDefaultPairs),
+    map.from_sorted_assoc_list(SortedShortNamePairs, ShortNameMap),
+    map.from_sorted_assoc_list(SortedLongNamePairs, LongNameMap),
+    map.from_sorted_assoc_list(SortedOptionDefaultPairs, DefaultValueMap),
+    GetoptMaps = getopt_maps(ShortNameMap, LongNameMap, DefaultValueMap,
+        short_option, long_option, option_defaults).
+
+get_short_option(ShortOption) :-
+    get_getopt_maps_mutable(GetoptMaps),
+    GetoptMaps = getopt_maps(ShortNameMap, _LongNameMap, _DefaultValueMap,
+        ShortNamePred, _LongNamePred, _DefaultValuePred),
+    ( if semidet_succeed then
+        ShortOption = map.search(ShortNameMap)
+    else
+        ShortOption = ShortNamePred
+    ).
+
+get_long_option(LongOption) :-
+    get_getopt_maps_mutable(GetoptMaps),
+    GetoptMaps = getopt_maps(_ShortNameMap, LongNameMap, _DefaultValueMap,
+        _ShortNamePred, LongNamePred, _DefaultValuePred),
+    ( if semidet_succeed then
+        LongOption = map.search(LongNameMap)
+    else
+        LongOption = LongNamePred
+    ).
+
+get_option_default_table(DefaultOptionTable) :-
+    get_getopt_maps_mutable(GetoptMaps),
+    GetoptMaps = getopt_maps(_ShortNameMap, _LongNameMap, DefaultValueMap,
+        _ShortNamePred, _LongNamePred, DefaultValuePred),
+    ( if semidet_succeed then
+        DefaultOptionTable = DefaultValueMap
+    else
+        getopt.init_option_table_multi(DefaultValuePred, DefaultOptionTable)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred short_option(char::in, option::out) is semidet.
+
 short_option(Char, Option) :-
     short_table(Char, Option).
 
@@ -6342,6 +6428,8 @@ short_table('V', very_verbose).
 short_table('w', inhibit_warnings).
 short_table('x', only_opmode_make_xml_documentation).
 short_table('?', help).
+
+:- pred long_option(string::in, option::out) is semidet.
 
 long_option(String, Option) :-
     long_table(String, Option).
@@ -11977,31 +12065,43 @@ options_help_alt(Stream, !IO) :-
     ShortOptionPred =
         ( pred(ShortPair::out) is multi :-
             short_table(Name, Opt),
-            ShortPair = Opt - Name
+            ShortPair = Name - Opt
         ),
     LongOptionPred =
         ( pred(LongPair::out) is multi :-
             long_table(Name, Opt),
-            LongPair = Opt - Name
+            LongPair = Name - Opt
+        ),
+    OptionValuePred =
+        ( pred(ValuePair::out) is multi :-
+            option_defaults(Opt, Value),
+            ValuePair = Opt - Value
         ),
 
     solutions_set(ShortOptionPred, ShortOldPairs),
     solutions_set(LongOptionPred, LongOldPairs),
+    solutions_set(OptionValuePred, ValueOldPairs),
 
     OptdbPred =
-        ( pred(OptHelpPair::out) is multi :-
-            optdb(_Cat, Opt, _OptData, Help),
-            OptHelpPair = Opt - Help
+        ( pred(OptdbTuple::out) is multi :-
+            optdb(_Cat, Opt, OptData, Help),
+            OptdbTuple = optdb_tuple(Opt, OptData, Help)
         ),
-    solutions_set(OptdbPred, OptHelpPairs),
-    set.foldl2(acc_new_option_names, OptHelpPairs,
-        set.init, ShortNewPairs, set.init, LongNewPairs),
+    solutions_set(OptdbPred, OptdbTuples),
+    set.foldl3(acc_optdb_data, OptdbTuples,
+        [], ShortNewPairsList, [], LongNewPairsList, [], NewOptionDefaultList),
+    set.list_to_set(ShortNewPairsList, ShortNewPairs),
+    set.list_to_set(LongNewPairsList, LongNewPairs),
+    set.list_to_set(NewOptionDefaultList, ValueNewPairs),
 
     set.difference(ShortOldPairs, ShortNewPairs, ShortOldButNotNewPairs),
     set.difference(ShortNewPairs, ShortOldPairs, ShortNewButNotOldPairs),
 
     set.difference(LongOldPairs, LongNewPairs, LongOldButNotNewPairs),
     set.difference(LongNewPairs, LongOldPairs, LongNewButNotOldPairs),
+
+    set.difference(ValueOldPairs, ValueNewPairs, ValueOldButNotNewPairs),
+    set.difference(ValueNewPairs, ValueOldPairs, ValueNewButNotOldPairs),
 
     set.map(short_pair_to_line, ShortOldButNotNewPairs,
         ShortOldButNotNewLines),
@@ -12012,6 +12112,11 @@ options_help_alt(Stream, !IO) :-
         LongOldButNotNewLines),
     set.map(long_pair_to_line, LongNewButNotOldPairs,
         LongNewButNotOldLines),
+
+    set.map(value_pair_to_line, ValueOldButNotNewPairs,
+        ValueOldButNotNewLines),
+    set.map(value_pair_to_line, ValueNewButNotOldPairs,
+        ValueNewButNotOldLines),
 
     io.write_string(Stream, "old but not new short options:\n\n", !IO),
     set.foldl(io.write_string(Stream), ShortOldButNotNewLines, !IO),
@@ -12024,25 +12129,44 @@ options_help_alt(Stream, !IO) :-
     set.foldl(io.write_string(Stream), LongOldButNotNewLines, !IO),
     io.nl(Stream, !IO),
     io.write_string(Stream, "new but not old long options:\n\n", !IO),
-    set.foldl(io.write_string(Stream), LongNewButNotOldLines, !IO).
+    set.foldl(io.write_string(Stream), LongNewButNotOldLines, !IO),
 
-:- pred short_pair_to_line(pair(option, char)::in, string::out) is det.
+    io.nl(Stream, !IO),
+    io.write_string(Stream, "old but not new option valuess:\n\n", !IO),
+    set.foldl(io.write_string(Stream), ValueOldButNotNewLines, !IO),
+    io.nl(Stream, !IO),
+    io.write_string(Stream, "new but not old option values:\n\n", !IO),
+    set.foldl(io.write_string(Stream), ValueNewButNotOldLines, !IO).
 
-short_pair_to_line(Opt - Name, Line) :-
+:- pred short_pair_to_line(pair(char, option)::in, string::out) is det.
+
+short_pair_to_line(Name - Opt, Line) :-
     string.format("%c %s\n", [c(Name), s(string(Opt))], Line).
 
-:- pred long_pair_to_line(pair(option, string)::in, string::out) is det.
+:- pred long_pair_to_line(pair(string, option)::in, string::out) is det.
 
-long_pair_to_line(Opt - Name, Line) :-
+long_pair_to_line(Name - Opt, Line) :-
     string.format("%-34s %s\n", [s(string(Opt)), s(Name)], Line).
+
+:- pred value_pair_to_line(pair(option, option_data)::in, string::out) is det.
+
+value_pair_to_line(Opt - Value, Line) :-
+    string.format("%-34s %s\n", [s(string(Opt)), s(string(Value))], Line).
 
 %---------------------%
 
-:- pred acc_new_option_names(pair(option, print_help.help)::in,
-    set(pair(option, char))::in, set(pair(option, char))::out,
-    set(pair(option, string))::in, set(pair(option, string))::out) is det.
+:- type optdb_tuple
+    --->    optdb_tuple(option, option_data, print_help.help).
 
-acc_new_option_names(Opt - Help, !ShortPairs, !LongPairs) :-
+:- pred acc_optdb_data(optdb_tuple::in,
+    assoc_list(char, option)::in, assoc_list(char, option)::out,
+    assoc_list(string, option)::in, assoc_list(string, option)::out,
+    assoc_list(option, option_data)::in,
+    assoc_list(option, option_data)::out) is det.
+
+acc_optdb_data(OptdbTuple, !ShortPairs, !LongPairs, !DataPairs) :-
+    OptdbTuple = optdb_tuple(Opt, Data, Help),
+    !:DataPairs = [Opt - Data | !.DataPairs],
     (
         ( Help = no_help
         ; Help = xunnamed_help(_)
@@ -12086,16 +12210,16 @@ acc_new_option_names(Opt - Help, !ShortPairs, !LongPairs) :-
 %---------------------%
 
 :- pred insert_short(option::in, char::in,
-    set(pair(option, char))::in, set(pair(option, char))::out) is det.
+    assoc_list(char, option)::in, assoc_list(char, option)::out) is det.
 
 insert_short(Option, Name, !ShortPairs) :-
-    set.insert(Option - Name, !ShortPairs).
+    !:ShortPairs = [Name - Option | !.ShortPairs].
 
 :- pred insert_long(option::in, string::in,
-    set(pair(option, string))::in, set(pair(option, string))::out) is det.
+    assoc_list(string, option)::in, assoc_list(string, option)::out) is det.
 
 insert_long(Option, Name, !LongPairs) :-
-    set.insert(Option - Name, !LongPairs).
+    !:LongPairs = [Name - Option | !.LongPairs].
 
 %---------------------------------------------------------------------------%
 :- end_module libs.options.

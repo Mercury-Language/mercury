@@ -103,7 +103,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module dir.
-:- import_module getopt.
 :- import_module list.
 :- import_module map.
 :- import_module pair.

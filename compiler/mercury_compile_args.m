@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2017-2024 The Mercury Team.
+% Copyright (C) 2017-2025 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -81,7 +81,8 @@ setup_all_args(ProgressStream, ErrorStream, CmdLineArgs, ArgResult, !IO) :-
     expand_at_file_arguments(CmdLineArgs, ExpandResult, !IO),
     (
         ExpandResult = ok(ExpandedCmdLineArgs),
-        getopt.init_option_table(option_defaults, DefaultOptionTable),
+        get_option_default_table(DefaultOptionTable),
+        % XXX Eventually we shouldn't have to pass DefaultOptionTable.
         ( if ExpandedCmdLineArgs = ["--arg-file", ArgFile | ExtraArgs] then
             % Diagnose bad invocations, such as shell redirection operators
             % treated as command line arguments.
@@ -272,8 +273,10 @@ process_options_arg_file(ProgressStream, DefaultOptionTable, ArgFile,
     EnvOptFileVariables = env_optfile_variables_init(EnvVarMap),
     (
         MaybeArgs1 = yes(Args1),
+        get_short_option(ShortOption),
+        get_long_option(LongOption),
         % Separate the option args from the non-option args.
-        getopt.record_arguments(short_option, long_option, DefaultOptionTable,
+        getopt.record_arguments(ShortOption, LongOption, DefaultOptionTable,
             Args1, NonOptionArgs, OptionArgs, MaybeError, _OptionValues),
         (
             MaybeError = found_option_error(OptionError),
@@ -305,9 +308,9 @@ process_options_std(ProgressStream, ErrorStream, DefaultOptionTable,
     % Find out which options files to read.
     % Don't report errors yet, as the errors may no longer exist
     % after we have read in options files.
-
-    OptionOps =
-        option_ops_userdata(short_option, long_option, special_handler),
+    get_short_option(ShortOption),
+    get_long_option(LongOption),
+    OptionOps = option_ops_userdata(ShortOption, LongOption, special_handler),
     getopt.process_options_userdata_io(OptionOps, CmdLineArgs,
         OptionArgs, NonOptionArgs, MaybeError, _OptionsSet,
         DefaultOptionTable, ArgsOptionTable, cord.init, _UserData, !IO),

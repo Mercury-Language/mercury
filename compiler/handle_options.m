@@ -24,6 +24,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 
+:- import_module getopt.
 :- import_module io.
 :- import_module list.
 
@@ -85,7 +86,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module dir.
-:- import_module getopt.
 :- import_module int.
 :- import_module io.environment.
 :- import_module io.file.
@@ -168,8 +168,9 @@ handle_given_options(ProgressStream, DefaultOptionTable, MaybeStdLibGrades,
 
 process_given_options(DefaultOptionTable, RawArgs, OptionArgs, NonOptionArgs,
         MaybeError, OptionTable, OptOptionsCord, !IO) :-
-    OptionOps =
-        option_ops_userdata(short_option, long_option, special_handler),
+    get_short_option(ShortOption),
+    get_long_option(LongOption),
+    OptionOps = option_ops_userdata(ShortOption, LongOption, special_handler),
     getopt.process_options_userdata_io(OptionOps, RawArgs,
         OptionArgs, NonOptionArgs, MaybeError, _OptionsSet,
         DefaultOptionTable, OptionTable, cord.init, OptOptionsCord, !IO).
