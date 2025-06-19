@@ -2180,7 +2180,7 @@ optdb(oc_diag_color, color_scheme,                     string_special,
         "section named \"Color schemes\" in the Mercury user's Guide",
         "for the details."])).
 optdb(oc_diag_int,  color_scheme_envvar,          string_special,
-    xpriv_help("color-scheme-envvar", [])).
+    xpriv_arg_help("color-scheme-envvar", "ColorScheme", [])).
 optdb(oc_diag_int,  color_scheme_set_by,          string("default"), no_help).
 optdb(oc_diag_int,  color_scheme_set_to,          string("light16"), no_help).
 optdb(oc_diag_int,  ignore_color_scheme_envvar,        bool(no),
@@ -2233,7 +2233,7 @@ optdb(oc_verb_dev,  benchmark_modes,                   bool(no),
         "Benchmark mode analysis, including its experimental version,",
         "if it is enabled."])).
 optdb(oc_verb_dev,  benchmark_modes_repeat,            int(1),
-    xpriv_help("benchmark-modes-repeat", [
+    xpriv_arg_help("benchmark-modes-repeat", "num_repeats", [
         "The number of times to execute mode analysis, if",
         "--benchmark-modes is enabled."])).
 optdb(oc_verbosity, verbose_make,                      bool(yes),
@@ -2431,7 +2431,9 @@ optdb(oc_verb_dbg,  debug_liveness,                     int(-1),
         "Output detailed debugging traces of the liveness analysis",
         "of the predicate with the given predicate id."])).
 optdb(oc_verb_dbg,  debug_stack_opt,                    int(-1),
-    xpriv_help("debug-stack-opt", [])).
+    xpriv_arg_help("debug-stack-opt", "pred-id", [
+        "Generate debug messages when performing stack slot optimization",
+        "on the predicate with the given id."])).
 optdb(oc_verb_dbg,  debug_code_gen_pred_id,             int(-1),
     xpriv_arg_help("debug-code-gen-pred-id", "n", [
         "Output detailed debugging traces of code generation for the",
@@ -3551,8 +3553,8 @@ optdb(oc_grade, allow_packed_unify_compare,            bool(no),
 optdb(oc_grade, sync_term_size_in_words,               int(8),
     % 8 is the size on linux (at the time of writing) - will usually be
     % overridden by a value from configure.
-    xpriv_alt_help("sync-term-size-in-words",
-        ["sync-term-size"], [])).
+    xpriv_alt_arg_help("sync-term-size-in-words", ["sync-term-size"],
+        "num_words", [])).
 
 %---------------------%
 
@@ -3761,7 +3763,7 @@ optdb(oc_opt_ctrl, analysis_file_cache,                bool(no),
         "improve compile times with `--intermodule-analysis'."])).
 optdb(oc_opt_ctrl, analysis_file_cache_dir,            string(""),
     % The `--analysis-file-cache-dir' option is used by `mmc --make'.
-    xpriv_help("analysis-file-cache-dir", [])).
+    xpriv_arg_help("analysis-file-cache-dir", "dir", [])).
 
 %---------------------------------------------------------------------------%
 
@@ -3994,19 +3996,19 @@ optdb(oc_opt_hh, optopt_svcell_candidate_headvars,        bool_special,
 % The next four options are used by tupling.m as well; changes to them
 % may require changes there as well.
 optdb(oc_opt_hh, optopt_svcell_cv_store_cost,             int_special,
-    xpriv_help("osv-cvstore-cost", [])).
+    xpriv_arg_help("osv-cvstore-cost", "cost", [])).
 optdb(oc_opt_hh, optopt_svcell_cv_load_cost,              int_special,
-    xpriv_help("osv-cvload-cost", [])).
+    xpriv_arg_help("osv-cvload-cost", "cost", [])).
 optdb(oc_opt_hh, optopt_svcell_fv_store_cost,             int_special,
-    xpriv_help("osv-fvstore-cost", [])).
+    xpriv_arg_help("osv-fvstore-cost", "cost", [])).
 optdb(oc_opt_hh, optopt_svcell_fv_load_cost,              int_special,
-    xpriv_help("osv-fvload-cost", [])).
+    xpriv_arg_help("osv-fvload-cost", "cost", [])).
 optdb(oc_opt_hh, optopt_svcell_op_ratio,                  int_special,
-    xpriv_help("osv-op-ratio", [])).
+    xpriv_arg_help("osv-op-ratio", "percentage", [])).
 optdb(oc_opt_hh, optopt_svcell_node_ratio,                int_special,
-    xpriv_help("osv-node-ratio", [])).
+    xpriv_arg_help("osv-node-ratio", "percentage", [])).
 optdb(oc_opt_hh, optopt_svcell_all_path_node_ratio,       int_special,
-    xpriv_help("osv-allpath-node-ratio", [])).
+    xpriv_arg_help("osv-allpath-node-ratio", "percentage", [])).
 optdb(oc_opt_hh, optopt_svcell_all_candidates,            bool_special,
     xpriv_help("osv-all-cand", [])).
 optdb(oc_opt_hh, optopt_delay_construct,                  bool_special,
@@ -4076,7 +4078,6 @@ optdb(oc_opt_hh, optopt_lcmc,                             bool_special,
         "constructor application."])).
 optdb(oc_opt_hh, optopt_lcmc_accumulator,                 bool_special,
     xpriv_alt_help("optimize-constructor-last-call-accumulator",
-           
             ["optimise-constructor-last-call-accumulator"], [
         "Enable the optimization via accumulators of ""last"" calls",
         "that are followed by constructor application."])).
@@ -4102,7 +4103,7 @@ optdb(oc_opt_hh, optopt_deforestation_depth_limit,        int_special,
         "deforestation algorithm.",
         "A value of -1 specifies no depth limit. The default is 4."])).
 optdb(oc_opt_hh, optopt_deforestation_cost_factor,       int_special,
-    xpriv_help("deforestation-cost-factor", [])).
+    xpriv_arg_help("deforestation-cost-factor", "fudge-factor", [])).
 optdb(oc_opt_hh, optopt_deforestation_vars_threshold,     int_special,
     xarg_help("deforestation-vars-threshold", "threshold", [
         "Specify a rough limit on the number of variables",
@@ -4193,17 +4194,17 @@ optdb(oc_opt_hh_exp, structure_reuse_constraint,
         "needs to be set using `--structure-reuse-constraint-arg'.",
         "(default: within_n_cells_difference, with threshold 0)"])).
 optdb(oc_opt_hh_exp, structure_reuse_constraint_arg,     int(0),
-    xalt_help("structure-reuse-constraint-arg",
-            ["ctgc-constraint-arg"], [
+    xalt_arg_help("structure-reuse-constraint-arg",
+            ["ctgc-constraint-arg"], "max_difference", [
         "Specify the maximum difference in arities between the terms that",
         "can be reused, and the terms that reuse these terms.",
         "(default: 0)"])).
 optdb(oc_opt_hh_exp, structure_reuse_max_conditions,     int(10),
-    xpriv_help("structure-reuse-max-conditions", [
+    xpriv_arg_help("structure-reuse-max-conditions", "max_num_conditions", [
         "Soft limit on the number of reuse conditions to accumulate",
         "for a procedure. (default: 10)"])).
 optdb(oc_opt_hh_exp, structure_reuse_repeat,             int(0),
-    xpriv_help("structure-reuse-repeat", [])).
+    xpriv_arg_help("structure-reuse-repeat", "num_repeats", [])).
 optdb(oc_opt_hh_exp, structure_reuse_free_cells,         bool(no),
     % This option is likely to break many optimisations
     % which haven't been updated.
@@ -4455,7 +4456,7 @@ optdb(oc_opt_ll, optopt_use_local_vars,                   bool_special,
         "Disable the transformation to use local variables in C code",
         "blocks wherever possible."])).
 optdb(oc_opt_ll, optopt_local_var_access_threshold,       int_special,
-    xpriv_help("local-var-access-threshold", [])).
+    xpriv_arg_help("local-var-access-threshold", "XXX document me", [])).
 optdb(oc_opt_ll, optopt_standardize_labels,               bool_special,
     % This is useful for developers only.
     xpriv_alt_help("standardize-labels",
@@ -4651,7 +4652,6 @@ optdb(oc_analysis, termination2_widening_limit,        int(4),
         "argument size analyser invokes widening."])).
 optdb(oc_analysis, termination2_prop_fail_constrs,     bool(yes),
     xpriv_alt_help("termination2-propagate-failure-constraints",
-           
             ["term2-propagate-failure-constraints",
             "term2-propagate-failure-constrs"], [
         "Make the argument analyser infer information about the sizes of",
@@ -4711,13 +4711,17 @@ optdb(oc_target_comp, target_debug,                    bool(no),
     % for each target language that actually supports
     % useful target language debugging. I have no idea whether Java
     % and C# do.
+    % XXX The "java-debug" name exists, but the description does not mention
+    % Java.
+    % XXX The description *does* mention C#, but the "csharp-debug" name
+    % does NOT exist.
     xalt_help("target-debug",
             ["c-debug", "java-debug"], [
         "Enable debugging of the generated target code.",
         "If the target language is C, this has the same effect as",
         "`--c-debug' (see below).",
         "If the target language is C#, this causes the compiler to",
-        "pass `/debug' to the C# compiler.)"])).
+        "pass `/debug' to the C# compiler."])).
 optdb(oc_target_comp, warn_target_code,                bool(yes),
     % XXX Does this apply to Java and C# too?
     xhelp("warn-target-code", [                             % NO
@@ -4765,7 +4769,8 @@ optdb(oc_target_c, cc,                              string("gcc"),
     xarg_help("cc", "compiler-name", [
         "Specify which C compiler to use."])).
 optdb(oc_target_c, c_compiler_type,                 string("gcc"),
-    xpriv_help("c-compiler-type", [])).
+    xpriv_arg_help("c-compiler-type",
+        "{gcc,clang,msvc_x86,msvc_x64,unknown}", [])).
     % The `mmc' script will override the default with a value
     % determined at configuration time for the above two options.
     % XXX That argues for this option being oc_config.
@@ -4793,50 +4798,50 @@ optdb(oc_target_c, quoted_cflag,                    string_special,
         "The word will be quoted when passed to the shell."])).
 optdb(oc_target_c, gcc_flags,                       accumulating([]),
     % XXX part of mmc --make; but needs more detail.
-    xpriv_help("gcc-flags", [])).
+    xpriv_arg_help("gcc-flags", "flags", [])).
 optdb(oc_target_c, quoted_gcc_flag,                 string_special,
     % XXX document me.
-    xpriv_help("gcc-flag", [])).
+    xpriv_arg_help("gcc-flag", "flag", [])).
 optdb(oc_target_c, clang_flags,                     accumulating([]),
     % XXX part of mmc --make; but needs more detail.
-    xpriv_help("clang-flags", [])).
+    xpriv_arg_help("clang-flags", "flags", [])).
 optdb(oc_target_c, quoted_clang_flag,               string_special,
     % XXX document me.
-    xpriv_help("clang-flag", [])).
+    xpriv_arg_help("clang-flag", "flag", [])).
 optdb(oc_target_c, msvc_flags,                      accumulating([]),
     % XXX part of mmc --make; but needs more detail.
-    xpriv_help("msvc-flags", [])).
+    xpriv_arg_help("msvc-flags", "flags", [])).
 optdb(oc_target_c, quoted_msvc_flag,                string_special,
     % XXX document me.
-    xpriv_help("msvc-flag", [])).
+    xpriv_arg_help("msvc-flag", "flag", [])).
 % XXX All of the following options are reserved for the mmc script,
 % but they nevertheless should have private help text.
 optdb(oc_target_c, cflags_for_warnings,             string(""),
     % The `mmc' script will override the default with values
     % determined at configuration time.
-    xpriv_help("cflags-for-warnings", [])).
+    xpriv_arg_help("cflags-for-warnings", "flags", [])).
 optdb(oc_target_c, cflags_for_sanitizers,           string(""),
-    xpriv_help("cflags-for-sanitizers", [])).
+    xpriv_arg_help("cflags-for-sanitizers", "flags", [])).
 optdb(oc_target_c, cflags_for_optimization,         string("-O"),
-    xpriv_help("cflags-for-optimization", [])).
+    xpriv_arg_help("cflags-for-optimization", "flags", [])).
 optdb(oc_target_c, cflags_for_regs,                 string(""),
-    xpriv_help("cflags-for-regs", [])).
+    xpriv_arg_help("cflags-for-regs", "flags", [])).
 optdb(oc_target_c, cflags_for_gotos,                string(""),
-    xpriv_help("cflags-for-gotos", [])).
+    xpriv_arg_help("cflags-for-gotos", "flags", [])).
 optdb(oc_target_c, cflags_for_threads,              string(""),
-    xpriv_help("cflags-for-threads", [])).
+    xpriv_arg_help("cflags-for-threads", "flags", [])).
 optdb(oc_target_c, cflags_for_debug,                string("-g"),
-    xpriv_help("cflags-for-debug", [])).
+    xpriv_arg_help("cflags-for-debug", "flags", [])).
 optdb(oc_target_c, cflags_for_pic,                  string(""),
-    xpriv_help("cflags-for-pic", [])).
+    xpriv_arg_help("cflags-for-pic", "flags", [])).
 optdb(oc_target_c, cflags_for_lto,                  string(""),
-    xpriv_help("cflags-for-lto", [])).
+    xpriv_arg_help("cflags-for-lto", "flags", [])).
 optdb(oc_target_c, c_flag_to_name_object_file,      string("-o "),
-    xpriv_help("c-flag-to-name-object-file", [])).
+    xpriv_arg_help("c-flag-to-name-object-file", "flags", [])).
 optdb(oc_target_c, object_file_extension,           string(".o"),
-    xpriv_help("object-file-extension", [])).
+    xpriv_arg_help("object-file-extension", "extension", [])).
 optdb(oc_target_c, pic_object_file_extension,       string(".o"),
-    xpriv_help("pic-object-file-extension", [])).
+    xpriv_arg_help("pic-object-file-extension", "extension", [])).
 
 %---------------------%
 
@@ -4900,7 +4905,7 @@ optdb(oc_target_csharp, cli_interpreter,                 string(""),
 optdb(oc_target_csharp, csharp_compiler_type,         string("mono"),
     % The `mmc' script will override the default with a value
     % determined at configuration time for the above two options.
-    xpriv_help("csharp-compiler-type", [])).
+    xpriv_arg_help("csharp-compiler-type", "{microsoft,mono,unknown}", [])).
 optdb(oc_target_csharp, csharp_flags,                    accumulating([]),
     xarg_help("csharp-flags", "options", [
         "Specify options to be passed to the C# compiler.",
@@ -5278,100 +5283,100 @@ optdef(oc_mconfig,  use_symlinks,                    bool(yes)).
 optdef(oc_mconfig,  target_arch,                     string("")).
 
 optdb(oc_mconfig,  create_archive_command,          string("ar"),
-    xpriv_help("create-archive-command", [])).
+    xpriv_arg_help("create-archive-command", "command", [])).
 optdb(oc_mconfig,  create_archive_command_flags,    accumulating([]), % "cr"
-    xpriv_help("create-archive-command-flags", [])).
+    xpriv_arg_help("create-archive-command-flags", "flags", [])).
 optdb(oc_mconfig,  create_archive_command_output_flag, string(""),
-    xpriv_help("create-archive-command-output-flag", [])).
+    xpriv_arg_help("create-archive-command-output-flag", "flag", [])).
 optdb(oc_mconfig,  demangle_command,                string("mdemangle"),
-    xpriv_help("demangle-command", [])).
+    xpriv_arg_help("demangle-command", "command", [])).
 optdb(oc_mconfig,  executable_file_extension,       string(""),
-    xpriv_help("executable-file-extension", [])).
+    xpriv_arg_help("executable-file-extension", "extension", [])).
 optdb(oc_mconfig,  filtercc_command,                string("mfiltercc"),
-    xpriv_help("filtercc-command", [])).
+    xpriv_arg_help("filtercc-command", "command", [])).
 optdb(oc_config,   filterjavac_command,             string("mfilterjavac"),
-    xpriv_help("filterjavac-command", [])).
+    xpriv_arg_help("filterjavac-command", "command", [])).
 optdb(oc_mconfig,  hwloc_libs,                      string(""),
-    xpriv_help("hwloc-libs", [])).
+    xpriv_arg_help("hwloc-libs", "XXX document me", [])).
 optdb(oc_mconfig,  hwloc_static_libs,               string(""),
-    xpriv_help("hwloc-static-libs", [])).
+    xpriv_arg_help("hwloc-static-libs", "XXX document me", [])).
 optdb(oc_mconfig,  library_extension,               string(".a"),
-    xpriv_help("library-extension", [])).
+    xpriv_arg_help("library-extension", "extension", [])).
 optdb(oc_mconfig,  linker_allow_undefined_flag,     string(""),
-    xpriv_help("linker-allow-undefined-flag", [])).
+    xpriv_arg_help("linker-allow-undefined-flag", "flag", [])).
 optdb(oc_mconfig,  linker_debug_flags,              string("-g"),
-    xpriv_help("linker-debug-flags", [])).
+    xpriv_arg_help("linker-debug-flags", "flags", [])).
 optdb(oc_mconfig,  linker_error_undefined_flag,    string("-Wl,-no-undefined"),
-    xpriv_help("linker-error-undefined-flag", [])).
+    xpriv_arg_help("linker-error-undefined-flag", "flag", [])).
 optdb(oc_mconfig,  linker_link_lib_flag,            string("-l"),
-    xpriv_help("linker-link-lib-flag", [])).
+    xpriv_arg_help("linker-link-lib-flag", "flag", [])).
 optdb(oc_mconfig,  linker_link_lib_suffix,          string(""),
-    xpriv_help("linker-link-lib-suffix", [])).
+    xpriv_arg_help("linker-link-lib-suffix", "extension", [])).
 optdb(oc_mconfig,  linker_lto_flags,                string(""),
-    xpriv_help("linker-lto-flags", [])).
+    xpriv_arg_help("linker-lto-flags", "flags", [])).
 optdb(oc_mconfig,  linker_opt_separator,            string(""),
-    xpriv_help("linker-opt-separator", [])).
+    xpriv_arg_help("linker-opt-separator", "separator", [])).
 optdb(oc_mconfig,  linker_path_flag,                string("-L"),
-    xpriv_help("linker-path-flag", [])).
+    xpriv_arg_help("linker-path-flag", "flag", [])).
 optdb(oc_mconfig,  linker_rpath_flag,               string("-Wl,-rpath"),
-    xpriv_help("linker-rpath-flag", [])).
+    xpriv_arg_help("linker-rpath-flag", "flag", [])).
 optdb(oc_mconfig,  linker_rpath_separator,          string(" -Wl,-rpath"),
-    xpriv_help("linker-rpath-separator", [])).
+    xpriv_arg_help("linker-rpath-separator", "separator", [])).
 optdb(oc_mconfig,  linker_sanitizer_flags,          string(""),
-    xpriv_help("linker-sanitizer-flags", [])).
+    xpriv_arg_help("linker-sanitizer-flags", "flag", [])).
 optdb(oc_mconfig,  linker_static_flags,             string("-static"),
-    xpriv_help("linker-static-flags", [])).
+    xpriv_arg_help("linker-static-flags", "flags", [])).
 optdb(oc_mconfig,  linker_strip_flag,               string("-s"),
-    xpriv_help("linker-strip-flag", [])).
+    xpriv_arg_help("linker-strip-flag", "flag", [])).
 optdb(oc_mconfig,  linker_thread_flags,             string(""),
-    xpriv_help("linker-thread-flags", [])).
+    xpriv_arg_help("linker-thread-flags", "flags", [])).
 optdb(oc_mconfig,  linker_trace_flags,              string(""),
-    xpriv_help("linker-trace-flags", [])).
+    xpriv_arg_help("linker-trace-flags", "flags", [])).
 optdb(oc_mconfig,  math_lib,                        string(""),
-    xpriv_help("math-lib", [])).
+    xpriv_arg_help("math-lib", "library", [])).
 optdb(oc_mconfig,  mkinit_command,                  string("mkinit"),
-    xpriv_help("mkinit-command", [])).
+    xpriv_arg_help("mkinit-command", "command", [])).
 optdb(oc_mconfig,  ranlib_command,                  string(""),
-    xpriv_help("ranlib-command", [])).
+    xpriv_arg_help("ranlib-command", "command", [])).
 optdb(oc_mconfig,  ranlib_flags,                    string(""),
-    xpriv_help("ranlib-flags", [])).
+    xpriv_arg_help("ranlib-flags", "flags", [])).
 optdb(oc_mconfig,  readline_libs,                   string(""),
-    xpriv_help("readline-libs", [])).
+    xpriv_arg_help("readline-libs", "XXX document me", [])).
 optdb(oc_mconfig,  shared_library_extension,        string(".so"),
     % The `mmc' script will override the default with a value
     % determined at configuration time.
     % XXX *Which* "configuration time" does this mean?
-    xpriv_help("shared-library-extension", [])).
+    xpriv_arg_help("shared-library-extension", "extension", [])).
 optdb(oc_mconfig,  shared_libs,                     string(""),
-    xpriv_help("shared-libs", [])).
+    xpriv_arg_help("shared-libs", "XXX document me", [])).
 optdb(oc_mconfig,  shlib_linker_debug_flags,        string("-g"),
-    xpriv_help("shlib-linker-debug-flags", [])).
+    xpriv_arg_help("shlib-linker-debug-flags", "flags", [])).
 optdb(oc_mconfig,  shlib_linker_install_name_flag,  string("-install_name "),
-    xpriv_help("shlib-linker-install-name-flag", [])).
+    xpriv_arg_help("shlib-linker-install-name-flag", "flag", [])).
 optdb(oc_mconfig,  shlib_linker_link_lib_flag,      string("-l"),
-    xpriv_help("shlib-linker-link-lib-flag", [])).
+    xpriv_arg_help("shlib-linker-link-lib-flag", "flag", [])).
 optdb(oc_mconfig,  shlib_linker_link_lib_suffix,    string(""),
-    xpriv_help("shlib-linker-link-lib-suffix", [])).
+    xpriv_arg_help("shlib-linker-link-lib-suffix", "extension", [])).
 optdb(oc_mconfig,  shlib_linker_rpath_flag,         string("-Wl,-rpath"),
-    xpriv_help("shlib-linker-rpath-flag", [])).
+    xpriv_arg_help("shlib-linker-rpath-flag", "flags", [])).
 optdb(oc_mconfig,  shlib_linker_rpath_separator,    string(" -Wl,-rpath"),
-    xpriv_help("shlib-linker-rpath-separator", [])).
+    xpriv_arg_help("shlib-linker-rpath-separator", "separator", [])).
 optdb(oc_mconfig,  shlib_linker_thread_flags,       string(""),
-    xpriv_help("shlib-linker-thread-flags", [])).
+    xpriv_arg_help("shlib-linker-thread-flags", "flags", [])).
 optdb(oc_mconfig,  shlib_linker_trace_flags,        string(""),
-    xpriv_help("shlib-linker-trace-flags", [])).
+    xpriv_arg_help("shlib-linker-trace-flags", "flags", [])).
 optdb(oc_mconfig,  shlib_linker_use_install_name,   bool(no),
     xpriv_help("shlib-linker-use-install-name", [])).
 optdb(oc_mconfig,  thread_libs,                     string(""),
-    xpriv_help("thread-libs", [])).
+    xpriv_arg_help("thread-libs", "library", [])).
 optdb(oc_mconfig,  trace_libs,                      string(""),
-    xpriv_help("trace-libs", [])).
+    xpriv_arg_help("trace-libs", "library", [])).
 optdb(oc_mconfig,  install_method,                  string("external"),
-    xpriv_help("install-method", [])).
+    xpriv_arg_help("install-method", "XXX document me", [])).
 optdb(oc_mconfig,  use_symlinks,                    bool(yes),
     xpriv_help("use-symlinks", [])).
-optdb(oc_mconfig, target_arch,                       string(""),
-    xpriv_help("target-arch", [])).
+optdb(oc_mconfig, target_arch,                      string(""),
+    xpriv_arg_help("target-arch", "architecture", [])).
 
 %---------------------------------------------------------------------------%
 
@@ -5468,44 +5473,44 @@ optdb(oc_search, use_search_directories_for_intermod, bool(yes),
         "the list of directories to search for `.opt' files; use only the",
         "arguments of `--intermod-directory' options."])).
 optdb(oc_search, interface_dirs_same_subdir_setting,  accumulating([]),
-    xpriv_alt_help("interface-dir-same-workspace",
-        ["interface-dir-same-ws"], [])).
+    xpriv_alt_arg_help("interface-dir-same-workspace",
+        ["interface-dir-same-ws"], "dir", [])).
 optdb(oc_search, interface_dirs_indep_subdir_setting, accumulating([]),
-    xpriv_alt_help("interface-dir-independent-workspace",
-        ["interface-dir-indep-ws"], [])).
+    xpriv_alt_arg_help("interface-dir-independent-workspace",
+        ["interface-dir-indep-ws"], "dir", [])).
 optdb(oc_search, interface_dirs_installed_library,    accumulating([]),
-    xpriv_alt_help("interface-dir-installed-library",
-        ["interface-dir-installed-lib"], [])).
+    xpriv_alt_arg_help("interface-dir-installed-library",
+        ["interface-dir-installed-lib"], "dir", [])).
 optdb(oc_search, intermod_dirs_same_subdir_setting,   accumulating([]),
-    xpriv_alt_help("intermod-dir-same-workspace",
-        ["intermod-dir-same-ws"], [])).
+    xpriv_alt_arg_help("intermod-dir-same-workspace",
+        ["intermod-dir-same-ws"], "dir", [])).
 optdb(oc_search, intermod_dirs_indep_subdir_setting,  accumulating([]),
-    xpriv_alt_help("intermod-dir-independent-workspace",
-        ["intermod-dir-indep-ws"], [])).
+    xpriv_alt_arg_help("intermod-dir-independent-workspace",
+        ["intermod-dir-indep-ws"], "dir", [])).
 optdb(oc_search, intermod_dirs_installed_library,     accumulating([]),
-    xpriv_alt_help("intermod-dir-installed-library",
-        ["intermod-dir-installed-lib"], [])).
+    xpriv_alt_arg_help("intermod-dir-installed-library",
+        ["intermod-dir-installed-lib"], "dir", [])).
 optdb(oc_search, c_incl_dirs_same_subdir_setting,     accumulating([]),
-    xpriv_alt_help("c-include-dir-same-workspace",
-        ["c-incl-dir-same-ws"], [])).
+    xpriv_alt_arg_help("c-include-dir-same-workspace",
+        ["c-incl-dir-same-ws"], "dir", [])).
 optdb(oc_search, c_incl_dirs_indep_subdir_setting,    accumulating([]),
-    xpriv_alt_help("c-include-dir-independent-workspace",
-        ["c-incl-dir-indep-ws"], [])).
+    xpriv_alt_arg_help("c-include-dir-independent-workspace",
+        ["c-incl-dir-indep-ws"], "dir", [])).
 optdb(oc_search, c_incl_dirs_installed_library,       accumulating([]),
-    xpriv_alt_help("c-include-dir-installed-library",
-        ["c-incl-dir-installed-lib"], [])).
+    xpriv_alt_arg_help("c-include-dir-installed-library",
+        ["c-incl-dir-installed-lib"], "dir", [])).
 optdb(oc_search, c_incl_dirs_external,                accumulating([]),
-    xpriv_alt_help("c-include-dir-external",
-        ["c-incl-dir-external"], [])).
+    xpriv_alt_arg_help("c-include-dir-external",
+        ["c-incl-dir-external"], "dir", [])).
 optdb(oc_search, mer_lib_dirs_same_subdir_setting,    accumulating([]),
-    xpriv_alt_help("mercury-library-dir-same-workspace",
-        ["mer-lib-dir-same-ws"], [])).
+    xpriv_alt_arg_help("mercury-library-dir-same-workspace",
+        ["mer-lib-dir-same-ws"], "dir", [])).
 optdb(oc_search, mer_lib_dirs_indep_subdir_setting,   accumulating([]),
-    xpriv_alt_help("mercury-library-dir-independent-workspace",
-        ["mer-lib-dir-indep-ws"], [])).
+    xpriv_alt_arg_help("mercury-library-dir-independent-workspace",
+        ["mer-lib-dir-indep-ws"], "dir", [])).
 optdb(oc_search, mer_lib_dirs_installed_library,      accumulating([]),
-    xpriv_alt_help("mercury-library-dir-installed-library",
-        ["mer-lib-dir-installed-lib"], [])).
+    xpriv_alt_arg_help("mercury-library-dir-installed-library",
+        ["mer-lib-dir-installed-lib"], "dir", [])).
 
 %---------------------------------------------------------------------------%
 
@@ -5765,7 +5770,7 @@ optdb(oc_internal, backend_foreign_languages,       accumulating([]),
     % The backend_foreign_languages option depends on the target,
     % and is set in handle_options, BUT can be set on the command line.
     % It makes no sense to do so, but ...
-    xpriv_help("backend-foreign-languages", [])).
+    xpriv_arg_help("backend-foreign-languages", "{c/c#/csharp/java}", [])).
 optdb(oc_internal, stack_trace,                     bool(no), no_help).
 optdb(oc_internal, basic_stack_layout,              bool(no),
     xpriv_help("basic-stack-layout", [
@@ -5810,21 +5815,21 @@ optdb(oc_internal, use_mmsc_cut,                    bool(no), no_help).
     % The size_* values below *must* be consistent with the corresponding
     % values or data structures in runtime/mercury_region.h.
 optdb(oc_internal, size_region_ite_fixed,           int(4),
-    xpriv_help("size-region-ite-fixed", [])).
+    xpriv_arg_help("size-region-ite-fixed", "num_words", [])).
 optdb(oc_internal, size_region_disj_fixed,          int(4),
-    xpriv_help("size-region-disj-fixed", [])).
+    xpriv_arg_help("size-region-disj-fixed", "num_words", [])).
 optdb(oc_internal, size_region_commit_fixed,        int(5),
-    xpriv_help("size-region-commit-fixed", [])).
+    xpriv_arg_help("size-region-commit-fixed", "num_words", [])).
 optdb(oc_internal, size_region_ite_protect,         int(1),
-    xpriv_help("size-region-ite-protect", [])).
+    xpriv_arg_help("size-region-ite-protect", "num_words", [])).
 optdb(oc_internal, size_region_ite_snapshot,        int(3),
-    xpriv_help("size-region-ite-snapshot", [])).
+    xpriv_arg_help("size-region-ite-snapshot", "num_words", [])).
 optdb(oc_internal, size_region_semi_disj_protect,   int(1),
-    xpriv_help("size-region-semi-disj-protect", [])).
+    xpriv_arg_help("size-region-semi-disj-protect", "num_words", [])).
 optdb(oc_internal, size_region_disj_snapshot,       int(3),
-    xpriv_help("size-region-disj-snapshot", [])).
+    xpriv_arg_help("size-region-disj-snapshot", "num_words", [])).
 optdb(oc_internal, size_region_commit_entry,        int(1),
-    xpriv_help("size-region-commit-entry", [])).
+    xpriv_arg_help("size-region-commit-entry", "num_words", [])).
 optdb(oc_internal, allow_multi_arm_switches,        bool(yes),
     xpriv_help("allow-multi-arm-switches", [
         "Allow the compiler to generate switches in which one arm handles",
@@ -5855,7 +5860,7 @@ optdb(oc_internal, compare_specialization,              int(-1),
 optdb(oc_internal, chosen_stdlib_dir,               maybe_string(no), no_help).
 optdb(oc_internal, default_globals,                    bool(no), no_help).
 optdb(oc_internal, local_module_id,                 accumulating([]),
-    xpriv_help("local-module-id", [])).
+    xpriv_arg_help("local-module-id", "XXX document me", [])).
 optdb(oc_internal, generate_item_version_numbers,         bool(no),
     xunnamed_help([
         "This option is used to control output of version numbers",
@@ -6187,9 +6192,9 @@ optdb(oc_unused, ansi_c,                          bool(yes),
     xhelp("ansi-c", [                                       % NO
         "This option is deprecated and does not have any effect."])).
 optdb(oc_unused, cflags_for_ansi,                 string(""),
-    xpriv_help("cflags-for-ansi", [])).
+    xpriv_arg_help("cflags-for-ansi", "flags", [])).
 optdb(oc_unused, install_command_dir_option,      string("-R"),
-    xpriv_help("install-command-dir-option", [])).
+    xpriv_arg_help("install-command-dir-option", "flag", [])).
 
 %---------------------------------------------------------------------------%
 
@@ -10936,7 +10941,8 @@ options_help_hlds_hlds_optimization = Section :-
             "Specialized versions of procedures will not be created."]),
 
         help("no-follow-code", [
-            "Don't migrate into the end of branched goals."]),
+            "Don't migrate code into the ends of the branches of",
+            "branched goals."]),
 
         help("excess-assign", [
             "Remove excess assignment unifications."]),

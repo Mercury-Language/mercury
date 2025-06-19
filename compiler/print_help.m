@@ -48,7 +48,18 @@ options_help_new(Stream, What, !IO) :-
         ),
     solutions(OptdbPred, OptdbRecords),
     list.foldl(acc_help_message(What), OptdbRecords, cord.init, LineCord),
-    io.write_strings(Stream, cord.list(LineCord), !IO).
+    write_lines(Stream, cord.list(LineCord), !IO).
+
+:- pred write_lines(io.text_output_stream::in, list(string)::in,
+    io::di, io::uo) is det.
+
+write_lines(_, [], !IO).
+write_lines(Stream, [Line | Lines], !IO) :-
+    io.write_string(Stream, Line, !IO),
+    io.nl(Stream, !IO),
+    write_lines(Stream, Lines, !IO).
+
+%---------------------------------------------------------------------------%
 
 :- type optdb_record
     --->    optdb_record(
@@ -71,7 +82,11 @@ options_help_new(Stream, What, !IO) :-
     ;       add_negative_version.
 
 :- type option_params
-    --->    option_params(maybe_expect_arg, maybe_negate, maybe_add_negative).
+    --->    option_params(
+                op_expect       :: maybe_expect_arg,
+                op_negate       :: maybe_negate,
+                op_add_negative :: maybe_add_negative
+            ).
 
 %---------------------------------------------------------------------------%
 
@@ -127,7 +142,7 @@ get_optdb_record_params(OptdbRecord, Params) :-
 :- pred acc_help_message(print_what_help::in, optdb_record::in,
     cord(string)::in, cord(string)::out) is det.
 
-acc_help_message(What, OptdbRecord, !LineCord) :-
+acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
     get_optdb_record_params(OptdbRecord, Params),
     % XXX We could automatically add "(This option is not for general use.)"
     % to the start of the description of every private option, to save
@@ -140,157 +155,194 @@ acc_help_message(What, OptdbRecord, !LineCord) :-
     % cases it gives non-developer readers useless information. To make
     % the message useful, the message would have to say *in what situations*
     % the option may be relevant to non-developers.
-    LineCord0 = !.LineCord,
     OptdbRecord = optdb_record(_Cat, Option, OptionData, Help),
+    some [!LineCord]
     (
-        Help = no_help,
-        PublicOrPrivate = help_private,
-        DescLines = []
-    ;
-        Help = xunnamed_help(DescLines),
-        % XXX It is quite likely that many options that do not have entries
-        % in the long_table predicate, which therefore should be in optdb
-        % with unnamed_help, are there with some other help structure,
-        % such as priv_help.
-        PublicOrPrivate = help_private
-    ;
-        Help = xgen_help(ShortNames, LongName, AltLongNames,
-            PublicOrPrivate, DescLines),
-        acc_short_option_names(Params, Option, no_arg, no_align,
-            ShortNames, !LineCord),
-        acc_long_option_name(Params, Option, no_arg, no_align,
-            LongName, !LineCord),
-        acc_long_option_names(Params, Option, no_arg, no_align,
-            AltLongNames, !LineCord)
-    ;
+        !:LineCord = cord.init,
         (
-            Help = xhelp(LongName, DescLines),
-            MaybeArg = no_arg,
-            PublicOrPrivate = help_public
-        ;
-            Help = xarg_help(LongName, ArgName, DescLines),
-            MaybeArg = arg_name(ArgName),
-            PublicOrPrivate = help_public
-        ;
-            Help = xpriv_help(LongName, DescLines),
-            MaybeArg = no_arg,
-            PublicOrPrivate = help_private
-        ;
-            Help = xpriv_arg_help(LongName, ArgName, DescLines),
-            MaybeArg = arg_name(ArgName),
-            PublicOrPrivate = help_private
-        ),
-        acc_long_option_name(Params, Option, MaybeArg, no_align,
-            LongName, !LineCord)
-    ;
-        (
-            Help = xalt_help(LongName, AltLongNames, DescLines),
-            MaybeArg = no_arg,
-            PublicOrPrivate = help_public
-        ;
-            Help = xalt_arg_help(LongName, AltLongNames, ArgName, DescLines),
-            MaybeArg = arg_name(ArgName),
-            PublicOrPrivate = help_public
-        ;
-            Help = xpriv_alt_help(LongName, AltLongNames, DescLines),
-            MaybeArg = no_arg,
-            PublicOrPrivate = help_private
-        ;
-            Help = xpriv_alt_arg_help(LongName, AltLongNames, ArgName,
-                DescLines),
-            MaybeArg = arg_name(ArgName),
-            PublicOrPrivate = help_private
-        ),
-        acc_long_option_name(Params, Option, MaybeArg, no_align,
-            LongName, !LineCord),
-        acc_long_option_names(Params, Option, MaybeArg, no_align,
-            AltLongNames, !LineCord)
-    ;
-        (
-            Help = xshort_help(ShortName, LongName, AltLongNames,
-                DescLines),
-            MaybeArg = no_arg,
-            PublicOrPrivate = help_public
-        ;
-            Help = xshort_arg_help(ShortName, LongName, AltLongNames,
-                ArgName, DescLines),
-            MaybeArg = arg_name(ArgName),
-            PublicOrPrivate = help_public
-        ;
-            Help = xpriv_short_help(ShortName, LongName, AltLongNames,
-                DescLines),
-            MaybeArg = no_arg,
-            PublicOrPrivate = help_private
-        ;
-            Help = xpriv_short_arg_help(ShortName, LongName, AltLongNames,
-                ArgName, DescLines),
-            MaybeArg = arg_name(ArgName),
-            PublicOrPrivate = help_private
-        ),
-        acc_short_option_name(Params, Option, MaybeArg, no_align,
-            ShortName, !LineCord),
-        acc_long_option_name(Params, Option, MaybeArg, no_align,
-            LongName, !LineCord),
-        acc_long_option_names(Params, Option, MaybeArg, no_align,
-            AltLongNames, !LineCord)
-    ;
-        (
-            Help = xalt_align_help(LongName, AltLongNames, AlignedText,
-                DescLines),
-            PublicOrPrivate = help_public
-        ;
-            Help = xpriv_alt_align_help(LongName, AltLongNames, AlignedText,
-                DescLines),
-            PublicOrPrivate = help_private
-        ),
-        MaybeArg = no_arg,
-        Align = aligned_text(AlignedText),
-        acc_long_option_name(Params, Option, MaybeArg, Align,
-            LongName, !LineCord),
-        % The aligned text is added only to the first option name line.
-        acc_long_option_names(Params, Option, MaybeArg, no_align,
-            AltLongNames, !LineCord)
-    ;
-        Help = xshort_alt_align_help(ShortName, LongName, AltLongNames,
-            AlignedText, DescLines),
-        PublicOrPrivate = help_public,
-        acc_short_option_name(Params, Option, no_arg,
-            aligned_text(AlignedText), ShortName, !LineCord),
-        % The aligned text is added only to the first option name line.
-        acc_long_option_name(Params, Option, no_arg, no_align,
-            LongName, !LineCord),
-        acc_long_option_names(Params, Option, no_arg, no_align,
-            AltLongNames, !LineCord)
-    ;
-        Help = xno_align_help(LongName, AlignedText, NoAlignedText, DescLines),
-        PublicOrPrivate = help_public,
-        expect(is_bool(OptionData), $pred, "unexpected use of xno_align_help"),
-        FirstLine0 = long_option_name_line(Params, Option, no_arg, LongName),
-        SecondLine0 = long_negated_option_name_line(LongName),
-        % In this case, we add *different* aligned text to each line.
-        add_aligned_text(AlignedText, FirstLine0, FirstLine),
-        add_aligned_text(NoAlignedText, SecondLine0, SecondLine),
-        cord.snoc(FirstLine, !LineCord),
-        cord.snoc(SecondLine, !LineCord)
-    ;
-        Help = xalt_arg_align_help(LongName, ArgAligns, DescLines),
-        PublicOrPrivate = help_public,
-        % In this case, we add *different* aligned text to each line.
-        list.foldl(acc_arg_align_text(Params, Option, LongName),
-            ArgAligns, !LineCord)
-    ),
-    ( if
-        (
-            PublicOrPrivate = help_public
-        ;
+            Help = no_help,
             PublicOrPrivate = help_private,
-            What = print_public_and_private_help
+            DescLines = []
+        ;
+            Help = xunnamed_help(DescLines),
+            % XXX It is quite likely that many options that do not have entries
+            % in the long_table predicate, which therefore should be in optdb
+            % with unnamed_help, are there with some other help structure,
+            % such as priv_help.
+            PublicOrPrivate = help_private,
+            string.format("%sUNNAMED OPTION %s",
+                [s(option_name_indent), s(string(Option))], NameLine),
+            cord.snoc(NameLine, !LineCord)
+        ;
+            Help = xgen_help(ShortNames, LongName, AltLongNames,
+                PublicOrPrivate, DescLines),
+            acc_short_option_names(Params, Option, no_arg, no_align,
+                ShortNames, !LineCord),
+            acc_long_option_name(Params, Option, no_arg, no_align,
+                LongName, !LineCord),
+            acc_long_option_names(Params, Option, no_arg, no_align,
+                AltLongNames, !LineCord)
+        ;
+            (
+                Help = xhelp(LongName, DescLines),
+                MaybeArg = no_arg,
+                PublicOrPrivate = help_public
+            ;
+                Help = xarg_help(LongName, ArgName, DescLines),
+                MaybeArg = arg_name(ArgName),
+                PublicOrPrivate = help_public
+            ;
+                Help = xpriv_help(LongName, DescLines),
+                MaybeArg = no_arg,
+                PublicOrPrivate = help_private
+            ;
+                Help = xpriv_arg_help(LongName, ArgName, DescLines),
+                MaybeArg = arg_name(ArgName),
+                PublicOrPrivate = help_private
+            ),
+            acc_long_option_name(Params, Option, MaybeArg, no_align,
+                LongName, !LineCord)
+        ;
+            (
+                Help = xalt_help(LongName, AltLongNames, DescLines),
+                MaybeArg = no_arg,
+                PublicOrPrivate = help_public
+            ;
+                Help = xalt_arg_help(LongName, AltLongNames, ArgName,
+                    DescLines),
+                MaybeArg = arg_name(ArgName),
+                PublicOrPrivate = help_public
+            ;
+                Help = xpriv_alt_help(LongName, AltLongNames, DescLines),
+                MaybeArg = no_arg,
+                PublicOrPrivate = help_private
+            ;
+                Help = xpriv_alt_arg_help(LongName, AltLongNames, ArgName,
+                    DescLines),
+                MaybeArg = arg_name(ArgName),
+                PublicOrPrivate = help_private
+            ),
+            acc_long_option_name(Params, Option, MaybeArg, no_align,
+                LongName, !LineCord),
+            acc_long_option_names(Params, Option, MaybeArg, no_align,
+                AltLongNames, !LineCord)
+        ;
+            (
+                Help = xshort_help(ShortName, LongName, AltLongNames,
+                    DescLines),
+                MaybeArg = no_arg,
+                PublicOrPrivate = help_public
+            ;
+                Help = xshort_arg_help(ShortName, LongName, AltLongNames,
+                    ArgName, DescLines),
+                MaybeArg = arg_name(ArgName),
+                PublicOrPrivate = help_public
+            ;
+                Help = xpriv_short_help(ShortName, LongName, AltLongNames,
+                    DescLines),
+                MaybeArg = no_arg,
+                PublicOrPrivate = help_private
+            ;
+                Help = xpriv_short_arg_help(ShortName, LongName, AltLongNames,
+                    ArgName, DescLines),
+                MaybeArg = arg_name(ArgName),
+                PublicOrPrivate = help_private
+            ),
+            acc_short_option_name(Params, Option, MaybeArg, no_align,
+                ShortName, !LineCord),
+            acc_long_option_name(Params, Option, MaybeArg, no_align,
+                LongName, !LineCord),
+            acc_long_option_names(Params, Option, MaybeArg, no_align,
+                AltLongNames, !LineCord)
+        ;
+            (
+                Help = xalt_align_help(LongName, AltLongNames,
+                    AlignedText, DescLines),
+                PublicOrPrivate = help_public
+            ;
+                Help = xpriv_alt_align_help(LongName, AltLongNames,
+                    AlignedText, DescLines),
+                PublicOrPrivate = help_private
+            ),
+            MaybeArg = no_arg,
+            Align = aligned_text(AlignedText),
+            acc_long_option_name(Params, Option, MaybeArg, Align,
+                LongName, !LineCord),
+            % The aligned text is added only to the first option name line.
+            acc_long_option_names(Params, Option, MaybeArg, no_align,
+                AltLongNames, !LineCord)
+        ;
+            Help = xshort_alt_align_help(ShortName, LongName, AltLongNames,
+                AlignedText, DescLines),
+            PublicOrPrivate = help_public,
+            acc_short_option_name(Params, Option, no_arg,
+                aligned_text(AlignedText), ShortName, !LineCord),
+            % The aligned text is added only to the first option name line.
+            acc_long_option_name(Params, Option, no_arg, no_align,
+                LongName, !LineCord),
+            acc_long_option_names(Params, Option, no_arg, no_align,
+                AltLongNames, !LineCord)
+        ;
+            Help = xno_align_help(LongName, AlignedText, NoAlignedText,
+                DescLines),
+            PublicOrPrivate = help_public,
+            expect(is_bool(OptionData), $pred,
+                "unexpected use of xno_align_help"),
+            ParamsNN = Params ^ op_negate := do_not_negate,
+            FirstLine0 = long_option_name_line(ParamsNN, Option, no_arg,
+                LongName),
+            SecondLine0 = long_negated_option_name_line(LongName),
+            % In this case, we add *different* aligned text to each line.
+            add_aligned_text(AlignedText, FirstLine0, FirstLine),
+            add_aligned_text(NoAlignedText, SecondLine0, SecondLine),
+            cord.snoc(FirstLine, !LineCord),
+            cord.snoc(SecondLine, !LineCord)
+        ;
+            Help = xalt_arg_align_help(LongName, ArgAligns, DescLines),
+            PublicOrPrivate = help_public,
+            % In this case, we add *different* aligned text to each line.
+            list.foldl(acc_arg_align_text(Params, Option, LongName),
+                ArgAligns, !LineCord)
+        ),
+        ( if
+            (
+                PublicOrPrivate = help_public
+            ;
+                PublicOrPrivate = help_private,
+                What = print_public_and_private_help
+            )
+        then
+            ( if
+                cord.is_empty(!.LineCord),
+                DescLines = []
+            then
+                true
+            else
+                DescPrefix = option_desc_indent,
+                (
+                    DescLines = [],
+                    acc_prefixed_line(DescPrefix,
+                        "There is no help text available.", !LineCord)
+                ;
+                    DescLines = [_ | _],
+                    list.foldl(acc_prefixed_line(DescPrefix), DescLines,
+                        !LineCord)
+                ),
+                BlankLineCord = cord.singleton(""),
+                (
+                    PublicOrPrivate = help_public,
+                    PrivatePrefixCord = cord.init
+                ;
+                    PublicOrPrivate = help_private,
+                    PrivatePrefixCord =
+                        cord.singleton(option_name_indent ++ "PRIVATE OPTION")
+                ),
+                !:EffectiveLinesCord = !.EffectiveLinesCord ++
+                    BlankLineCord ++ PrivatePrefixCord ++ !.LineCord
+            )
+        else
+            true
         )
-    then
-        DescPrefix = option_desc_indent,
-        list.foldl(acc_prefixed_line(DescPrefix), DescLines, !LineCord)
-    else
-        !:LineCord = LineCord0
     ).
 
 :- pred acc_arg_align_text(option_params::in, option::in, string::in,
@@ -437,8 +489,9 @@ long_option_name_line(Params, Option, MaybeArgName, LongName0) = Line :-
         ;
             MaybeArgName = arg_name(ArgName),
             have_arg(MaybeExpectArg, Option, LongName0, LongName),
-            string.format("%s--%s <%s>",
-                [s(Indent), s(LongName), s(ArgName)], Line)
+            MaybeWrappedArgName = maybe_wrap_arg_name(Option, ArgName),
+            string.format("%s--%s %s",
+                [s(Indent), s(LongName), s(MaybeWrappedArgName)], Line)
         )
     ).
 
@@ -462,8 +515,9 @@ short_option_name_line(Params, Option, MaybeArgName, ShortName0) = Line :-
         ;
             MaybeArgName = arg_name(ArgName),
             have_arg(MaybeExpectArg, Option, ShortName0, ShortName),
-            string.format("%s-%c <%s>",
-                [s(Indent), c(ShortName), s(ArgName)], Line)
+            MaybeWrappedArgName = maybe_wrap_arg_name(Option, ArgName),
+            string.format("%s-%c %s",
+                [s(Indent), c(ShortName), s(MaybeWrappedArgName)], Line)
         )
     ).
 
@@ -480,6 +534,30 @@ long_negated_option_name_line(LongName) = Line :-
 short_negated_option_name_line(ShortName) = Line :-
     Indent = option_name_indent,
     string.format("%s-%c-", [s(Indent), c(ShortName)], Line).
+
+%---------------------%
+
+:- func maybe_wrap_arg_name(option, string) = string.
+
+maybe_wrap_arg_name(Option, ArgName) = MaybeWrappedArgName :-
+    ( if
+        ArgName = ""
+    then
+        unexpected($pred, string(Option) ++ " has empty arg name")
+    else if
+        % Do not put <>s around argument "names" that are actually not names,
+        % but instead are either
+        %
+        % - sets of the allowed values wrapped in {}s, or
+        % - default optimization levels, such as -O2.
+        ( string.find_first_char(ArgName, '{', _)
+        ; string.find_first_char(ArgName, '-', _)
+        )
+    then
+        MaybeWrappedArgName = ArgName
+    else
+        MaybeWrappedArgName = "<" ++ ArgName ++ ">"
+    ).
 
 %---------------------------------------------------------------------------%
 

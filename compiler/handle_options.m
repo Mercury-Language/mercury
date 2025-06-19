@@ -876,7 +876,6 @@ check_for_incompatibilities(Globals, OpMode, !Specs) :-
     %   allow_packing_dummies
     %   allow_packing_ints
     %   arg_pack_bits
-    %   backend_foreign_languages
     %   asm_labels
     %   can_compare_constants_as_ints
     %   delay_partial_instantiations
@@ -899,6 +898,9 @@ check_for_incompatibilities(Globals, OpMode, !Specs) :-
     %   unboxed_int64s
     %   unboxed_no_tag_types
     %   use_float_registers
+    %
+    % Other globals fields updated:
+    %   backend_foreign_languages
     %
 :- pred handle_implications_of_pregen_target_spf(globals::in, globals::out,
     compilation_target::in, int::in, int::out,

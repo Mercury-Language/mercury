@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2007-2009, 2011 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018 The Mercury team.
+// Copyright (C) 2015-2016, 2018, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // File: mercury_region.h
@@ -25,9 +25,9 @@
 #define     MR_REGION_NUM_PAGES_TO_REQUEST                  100
 #define     MR_REGION_PAGE_SPACE_SIZE                       2047
 
-// NOTE: The following constants *must match* the values of the Mercury
-// compiler options with corresponding names (compiler/options.m). Otherwise,
-// runtime errors likely happen.
+// NOTE: The following constants, which define sizes in words, *must match*
+// the values of the Mercury compiler options with corresponding names
+// (compiler/options.m). Otherwise, runtime errors will likely happen.
 
 #define     MR_REGION_ITE_FRAME_FIXED_SIZE                  4
 #define     MR_REGION_DISJ_FRAME_FIXED_SIZE                 4

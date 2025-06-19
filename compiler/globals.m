@@ -635,6 +635,7 @@ convert_foreign_language_det(String, ForeignLang) :-
     ).
 
 convert_foreign_language(String, ForeignLanguage) :-
+    % XXX What is the point of allowing JaVa or CshArP as language names?
     convert_foreign_language_2(string.to_lower(String), ForeignLanguage).
 
 :- pred convert_foreign_language_2(string::in, foreign_language::out)
@@ -643,6 +644,7 @@ convert_foreign_language(String, ForeignLanguage) :-
 convert_foreign_language_2("c", lang_c).
 convert_foreign_language_2("c#", lang_csharp).
 convert_foreign_language_2("csharp", lang_csharp).
+% XXX What the hell is the space for?
 convert_foreign_language_2("c sharp", lang_csharp).
 convert_foreign_language_2("java", lang_java).
 

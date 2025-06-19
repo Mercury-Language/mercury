@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2001-2011 The University of Melbourne.
-% Copyright (C) 2015-2016, 2018-2021, 2024 The Mercury team.
+% Copyright (C) 2015-2016, 2018-2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -117,8 +117,9 @@ use_local_vars_proc(Instrs0, Instrs, NumRealRRegs, AccessThreshold,
         build_livemap(TentativeInstrs, MaybeLiveMap),
         extend_basic_blocks(LabelSeq, EBBLabelSeq, BlockMap0, EBBBlockMap0,
             NewLabels),
-        list.foldl(use_local_vars_block(MaybeLiveMap, NumRealRRegs,
-            AccessThreshold), EBBLabelSeq, EBBBlockMap0, EBBBlockMap),
+        list.foldl(
+            use_local_vars_block(MaybeLiveMap, NumRealRRegs, AccessThreshold),
+            EBBLabelSeq, EBBBlockMap0, EBBBlockMap),
         flatten_basic_blocks(EBBLabelSeq, EBBBlockMap, Instrs1, _),
 
         ( if
