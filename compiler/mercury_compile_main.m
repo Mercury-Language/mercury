@@ -170,7 +170,7 @@ main_after_setup(ProgressStream, ErrorStream, Globals, EnvOptFileVariables,
     else if HelpAlt = yes then
         io.stdout_stream(StdOutStream, !IO),
         ( if semidet_succeed then
-            options_help_new(StdOutStream, !IO)
+            options_help_new(StdOutStream, print_public_and_private_help, !IO)
         else
             compare_old_vs_new(StdOutStream, !IO)
         )

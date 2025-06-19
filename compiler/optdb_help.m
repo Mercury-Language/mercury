@@ -21,6 +21,18 @@
 :- type help
     --->    no_help
     ;       xgen_help(
+                % Every character in this field is a short name of the option.
+                % The order of these short options here will be preserved
+                % in the output.
+                %
+                % We use a char because all options using gen_help
+                % have short names that have no argument.
+                % (Some options using the other function symbols below
+                % *do* have short names that take arguments, and for these,
+                % we use strings, the first character of which is the short
+                % name, and the rest is the argument description suffix.
+                gh_short_names          :: list(char),
+
                 % The name of the option, minus the "--" prefix, but
                 % including any "no-" prefix. If the option takes an argument,
                 % then the option name should be followed by " <argdesc>".
@@ -44,9 +56,6 @@
                 % be stripped off for any bijection check.)
                 gh_long_name            :: string,
 
-                % Should we try to print all the names on one line, or not?
-                gh_alt_name_pos         :: alt_name_pos,
-
                 % Any alternate names of the option.
                 % We have many options that have both British and American
                 % spelling of the option name, and some have both
@@ -58,18 +67,6 @@
                 % The order of these alt options here will be preserved
                 % in the output. They will all follow gh_long_name.
                 gh_alt_long_names       :: list(string),
-
-                % Every character in this field is a short name of the option.
-                % The order of these short options here will be preserved
-                % in the output.
-                %
-                % We use a char because all options using gen_help
-                % have short names that have no argument.
-                % (Some options using the other function symbols below
-                % *do* have short names that take arguments, and for these,
-                % we use strings, the first character of which is the short
-                % name, and the rest is the argument description suffix.
-                gh_short_names          :: list(char),
 
                 % Is the option's documentation printed for users, or not?
                 gh_public_or_private    :: help_public_or_private,
@@ -109,19 +106,16 @@
             )
     ;       xalt_help(
                 ah_long_name            :: string,
-                ah_alt_name_pos         :: alt_name_pos,
                 ah_alt_long_names       :: list(string),
                 ah_description          :: list(string)
             )
     ;       xalt_arg_align_help(
                 arlh_long_name          :: string,
-                arlh_alt_arg_pos        :: alt_name_pos,
                 arlh_arg_aligns         :: list(arg_align),
                 arlh_description        :: list(string)
             )
     ;       xalt_align_help(
                 alh_long_name           :: string,
-                alh_alt_name_pos        :: alt_name_pos,
                 alh_alt_long_names      :: list(string),
                 alh_aligned_text        :: string,
                 alh_description         :: list(string)
@@ -134,7 +128,6 @@
             )
     ;       xpriv_alt_align_help(
                 palh_long_name          :: string,
-                palh_alt_name_pos       :: alt_name_pos,
                 palh_alt_long_names     :: list(string),
                 palh_aligned_text       :: string,
                 palh_description        :: list(string)
@@ -142,27 +135,23 @@
     ;       xshort_alt_align_help(
                 salh_short_name         :: char,
                 salh_long_name          :: string,
-                salh_alt_name_pos       :: alt_name_pos,
                 salh_alt_long_names     :: list(string),
                 salh_aligned_text       :: string,
                 salh_description        :: list(string)
             )
     ;       xalt_arg_help(
                 aah_long_name           :: string,
-                aah_alt_name_pos        :: alt_name_pos,
                 aah_alt_long_names      :: list(string),
                 aah_arg_name            :: string,
                 aah_description         :: list(string)
             )
     ;       xpriv_alt_help(
                 pah_long_name           :: string,
-                pah_alt_name_pos        :: alt_name_pos,
                 pah_alt_long_names      :: list(string),
                 pah_description         :: list(string)
             )
     ;       xpriv_alt_arg_help(
                 paah_long_name          :: string,
-                paah_alt_name_pos       :: alt_name_pos,
                 paah_alt_long_names     :: list(string),
                 paah_arg_name           :: string,
                 paah_description        :: list(string)
@@ -203,14 +192,6 @@
 :- type help_public_or_private
     --->    help_public
     ;       help_private.
-
-:- type alt_name_pos
-    --->    xpos_one_line
-    ;       xpos_sep_lines.
-
-:- type print_what_help
-    --->    print_public_help
-    ;       print_public_and_private_help.
 
 :- type arg_align
     --->    arg_align(

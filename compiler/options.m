@@ -1511,7 +1511,7 @@ optdef(oc_help,     help_alt,                           bool(no)).
 optdef(oc_help,     version,                            bool(no)).
 
 optdb(oc_help,     help,                               bool(no),
-    xgen_help("help", xpos_one_line, [], ['?', 'h'], help_public,
+    xgen_help(['?', 'h'], "help", [], help_public,
         ["Print this usage message."])).
 optdb(oc_help,     help_alt,                           bool(no),
     xpriv_help("help-alt", ["Print the usage message."])).
@@ -1531,7 +1531,7 @@ optdb(oc_cmdline,  filenames_from_stdin,               bool(no),
         "compile several modules without the overhead of process",
         "creation for each one.)"])).
 optdb(oc_cmdline,  flags_file,                         file_special,
-    xalt_arg_help("flags-file", xpos_sep_lines, ["flags"], "file", [
+    xalt_arg_help("flags-file", ["flags"], "file", [
         "Take options from the specified file, and handle them",
         "as if they were specified on the command line."])).
 
@@ -1612,12 +1612,12 @@ optdef(oc_warn_dodgy, warn_unresolved_polymorphism,        bool(yes)).
 optdef(oc_warn_dodgy, warn_unused_args,                    bool(no)).
 
 optdb(oc_warn_dodgy, warn_singleton_vars,                 bool(yes),
-    xalt_help("warn-singleton-variables", xpos_sep_lines,    % NO
+    xalt_help("warn-singleton-variables",                    % NO
             ["warn-singleton-vars"], [
         "Do not warn about variables which only occur once, despite",
         "their names not starting with an underscore."])).
 optdb(oc_warn_dodgy, warn_repeated_singleton_vars,        bool(yes),
-    xalt_help("warn-repeated-singleton-variables", xpos_sep_lines, % NO
+    xalt_help("warn-repeated-singleton-variables",          % NO
             ["warn-repeated-singleton-vars"], [
         "Do not warn about variables which occur more than once, despite",
         "their names starting with an underscore."])).
@@ -1637,7 +1637,7 @@ optdb(oc_warn_dodgy, warn_overlapping_scopes,             bool(yes),
     xhelp("warn-overlapping-scopes", [                      % NO
         "Do not warn about variables which occur in overlapping scopes."])).
 optdb(oc_warn_dodgy, warn_suspected_occurs_check_failure, bool(yes),
-    xalt_help("warn-suspected-occurs-check-failure", xpos_sep_lines, % NO
+    xalt_help("warn-suspected-occurs-check-failure",        % NO
             ["warn-suspected-occurs-failure"], [
         "Do not warn about code that looks like it unifies a variable",
         "with a term that contains that same variable. Such code cannot",
@@ -1674,13 +1674,13 @@ optdef(oc_warn_dodgy, warn_potentially_ambiguous_pragma,   bool(no)).
 optdef(oc_warn_dodgy, warn_table_with_inline,              bool(yes)).
 
 optdb(oc_warn_dodgy, warn_ambiguous_pragma,               bool(yes),
-    xalt_help("warn-ambiguous-pragmas", xpos_sep_lines,      % NO
+    xalt_help("warn-ambiguous-pragmas",                     % NO
             ["warn-ambiguous-pragma"], [
         "Do not generate warnings for pragmas that do not specify whether",
         "they are for a predicate or a function, even when there is both",
         "a predicate and a function with the given name and arity."])).
 optdb(oc_warn_dodgy, warn_potentially_ambiguous_pragma,   bool(no),
-    xalt_help("warn-potentially-ambiguous-pragmas", xpos_sep_lines,
+    xalt_help("warn-potentially-ambiguous-pragmas",
             ["warn-potentially-ambiguous-pragma"], [
         "Generate warnings for pragmas that do not specify whether they are",
         "for a predicate or a function."])).
@@ -1736,7 +1736,7 @@ optdef(oc_warn_dodgy, warn_missing_trans_opt_files,        bool(no)).
 optdef(oc_warn_dodgy, warn_missing_trans_opt_deps,         bool(yes)).
 
 optdb(oc_warn_dodgy, warn_undefined_options_variables,    bool(yes),
-    xalt_help("warn-undefined-options-variables", xpos_sep_lines,    % NO
+    xalt_help("warn-undefined-options-variables", % NO
             ["warn-undefined-options-vars"], [
         "Do not warn about references to undefined variables in",
         "options files with `--make'."])).
@@ -1804,12 +1804,12 @@ optdef(oc_warn_style, warn_dead_preds,                     bool(no)).
 optdef(oc_warn_style, warn_dead_procs,                     bool(no)).
 
 optdb(oc_warn_style, warn_dead_preds,                     bool(no),
-    xalt_help("warn-dead-predicates", xpos_sep_lines,
+    xalt_help("warn-dead-predicates",
             ["warn-dead-preds"], [
         "Warn about predicates that have no procedures which are",
         "ever called."])).
 optdb(oc_warn_style, warn_dead_procs,                     bool(no),
-    xalt_help("warn-dead-procedures", xpos_sep_lines,
+    xalt_help("warn-dead-procedures",
             ["warn-dead-procs"], [
         "Warn about procedures which are never called."])).
 
@@ -1902,13 +1902,13 @@ optdef(oc_warn_style, warn_inconsistent_pred_order_clauses, bool(no)).
 optdef(oc_warn_style, warn_inconsistent_pred_order_foreign_procs, bool(no)).
 
 optdb(oc_warn_style, warn_unsorted_import_blocks,         bool(no),
-    xalt_help("warn-unsorted-import-blocks", xpos_sep_lines,
+    xalt_help("warn-unsorted-import-blocks",
             ["warn-unsorted-import-block"], [
         "Warn about two import and/or use declarations on the same line,",
         "or if a sequence of such declarations on consecutive lines",
         "are not sorted on module name."])).
 optdb(oc_warn_style, warn_inconsistent_pred_order_clauses, bool(no),
-    xalt_help("warn-inconsistent-pred-order-clauses", xpos_sep_lines,
+    xalt_help("warn-inconsistent-pred-order-clauses",
             ["warn-inconsistent-pred-order"], [
         "Generate a warning if the order of the definitions does not match",
         "the order of the declarations for either the exported predicates",
@@ -2036,7 +2036,7 @@ optdb(oc_warn_halt,  halt_at_warn,                        bool(no),
         "it will not generate target code; instead, it will",
         "return a non-zero exit status."])).
 optdb(oc_warn_halt,  halt_at_warn_make_int,               bool(no),
-    xalt_help("halt-at-warn-make-interface", xpos_sep_lines,
+    xalt_help("halt-at-warn-make-interface",
             ["halt-at-warn-make-int"], [
         "This option causes the compiler to treat all warnings",
         "as if they were errors when generating an interface file",
@@ -2156,14 +2156,14 @@ optdef(oc_diag_int,   set_color_inconsistent,           string("")).
 optdef(oc_diag_int,   set_color_hint,                   string("")).
 
 optdb(oc_diag_color, color_diagnostics,                bool_special,
-    xalt_help("color-diagnostics", xpos_sep_lines,          % NO
+    xalt_help("color-diagnostics",          % NO
             ["colour-diagnostics"], [
         "Disable the use of colors in diagnostic messages. Please see",
         "the section named \"Enabling the use of color\" section in the",
         "Mercury Users's Guide for details."])).
 optdb(oc_diag_color, config_default_color_diagnostics, bool(yes),
     % This option should be used only by the configure script.
-    xpriv_alt_help("config-default-color-diagnostics", xpos_sep_lines,
+    xpriv_alt_help("config-default-color-diagnostics",
             ["config-default-colour-diagnostics"], [
         "The default value of the --color-diagnostics option,",
         "set by the configure script."])).
@@ -2171,7 +2171,7 @@ optdb(oc_diag_int,   color_diagnostics_is_set,         bool(no), no_help).
 optdb(oc_diag_int,   color_diagnostics_is_set_to,      bool(no), no_help).
 optdb(oc_diag_int,   use_color_diagnostics,            bool(no), no_help).
 optdb(oc_diag_color, color_scheme,                     string_special,
-    xalt_arg_help("color-scheme", xpos_sep_lines,
+    xalt_arg_help("color-scheme",
             ["colour-scheme"], "ColorScheme", [
         "Specify the color scheme to use for diagnostics, if the use of",
         "color in diagnostics is enabled. For information about how the",
@@ -2258,7 +2258,7 @@ optdb(oc_verbosity, verbose_commands,                  bool(no),
         "Output each external command before it is run.",
         "Note that some commands will only be printed with `--verbose'."])).
 optdb(oc_verbosity, show_pred_movability,              accumulating([]),
-    xalt_arg_help("show-pred-moveability", xpos_sep_lines,
+    xalt_arg_help("show-pred-moveability",
             ["show-pred-movability"], "pred_or_func_name", [
         "Write out a short report on the effect of moving the code of",
         "the named predicate or function (or the named several predicates",
@@ -2377,7 +2377,7 @@ optdb(oc_verb_dbg,  debug_mode_constraints,             bool(no),
         "Output detailed debugging traces of the `--prop-mode-constraints'",
         "option."])).
 optdb(oc_verb_dbg,  debug_det,                          bool(no),
-    xalt_help("debug-determinism", xpos_sep_lines, ["debug-det"], [
+    xalt_help("debug-determinism", ["debug-det"], [
         "Output detailed debugging traces of determinism analysis."])).
 optdb(oc_verb_dbg,  debug_common_struct_preds,          string(""),
     xpriv_arg_help("debug-common-struct-preds", "predids", [
@@ -2389,7 +2389,7 @@ optdb(oc_verb_dbg,  debug_closure,                      bool(no),
         "Output detailed debugging traces of the closure analysis."])).
 optdb(oc_verb_dbg,  debug_term,                         bool(no),
     % The new termination analyser is currently a work-in-progress.
-    xpriv_alt_help("debug-termination", xpos_sep_lines, ["debug-term"], [
+    xpriv_alt_help("debug-termination", ["debug-term"], [
         "Output detailed debugging traces of the termination2 analysis."])).
 optdb(oc_verb_dbg,  debug_dead_proc_elim,               bool(no),
     xpriv_help("debug-dead-proc-elim", [
@@ -2546,11 +2546,11 @@ optdb(oc_opmode, only_opmode_generate_standalone_interface, maybe_string(no),
         "the stand-alone interface. (See the Stand-alone Interface",
         "chapter of the Mercury User's Guide for further details.)"])).
 optdb(oc_opmode, only_opmode_make_short_interface,     bool(no),
-    xalt_help("make-short-interface", xpos_sep_lines, ["make-short-int"], [
+    xalt_help("make-short-interface", ["make-short-int"], [
         "Write the unqualified short interface to `<module>.int3'.",
         "This option should only be used by mmake."])).
 optdb(oc_opmode, only_opmode_make_private_interface,   bool(no),
-    xalt_help("make-private-interface", xpos_sep_lines, ["make-priv-int"], [
+    xalt_help("make-private-interface", ["make-priv-int"], [
         "Write the private interface to `<module>.int0'.",
         "This option should only be used by mmake."])).
 optdb(oc_opmode, only_opmode_make_interface,           bool(no),
@@ -2559,12 +2559,12 @@ optdb(oc_opmode, only_opmode_make_interface,           bool(no),
         "and write the short interface to `<module>.int2'",
         "This option should only be used by mmake."])).
 optdb(oc_opmode, only_opmode_make_optimization_interface, bool(no),
-    xalt_help("make-optimization-interface", xpos_sep_lines,
+    xalt_help("make-optimization-interface",
             ["make-optimisation-interface", "make-opt-int"], [
         "Write inter-module optimization information to `<module>.opt'.",
         "This option should only be used by mmake."])).
 optdb(oc_opmode, only_opmode_make_transitive_opt_interface, bool(no),
-    xalt_help("make-transitive-optimization-interface", xpos_sep_lines,
+    xalt_help("make-transitive-optimization-interface",
             ["make-transitive-optimisation-interface", "make-trans-opt"], [
         "Output transitive optimization information",
         "into the `<module>.trans_opt' file.",
@@ -2611,7 +2611,7 @@ optdb(oc_opmode, only_opmode_output_stdlib_grades,     bool(no),
         "Print to standard output the list of compilation grades in which",
         "the Mercury standard library is available with this compiler."])).
 optdb(oc_opmode, only_opmode_output_library_install_grades, bool(no),
-    xalt_help("output-libgrades", xpos_sep_lines,
+    xalt_help("output-libgrades",
             ["output-library-install-grades"], [
         "Print to standard output the list of compilation grades in which",
         "a library to be installed should be built."])).
@@ -2620,14 +2620,14 @@ optdb(oc_opmode, only_opmode_output_cc,                bool(no),
         "Print to standard output the command used to invoke the",
         "C compiler."])).
 optdb(oc_opmode, only_opmode_output_c_compiler_type,   bool(no),
-    xalt_help("output-c-compiler-type", xpos_sep_lines, ["output-cc-type"], [
+    xalt_help("output-c-compiler-type", ["output-cc-type"], [
         "Print the C compiler type to the standard output."])).
 optdb(oc_opmode, only_opmode_output_cflags,            bool(no),
     xhelp("output-cflags", [
         "Print to standard output the flags with which the C compiler",
         "will be invoked."])).
 optdb(oc_opmode, only_opmode_output_c_include_directory_flags, bool(no),
-    xalt_help("output-c-include-directory-flags", xpos_sep_lines,
+    xalt_help("output-c-include-directory-flags",
             ["output-c-include-dir-flags"], [
         "Print to standard output the flags that are passed to the",
         "C compiler to specify which directories to search for",
@@ -2649,7 +2649,7 @@ optdb(oc_opmode, only_opmode_output_target_arch,       bool(no),
     xhelp("output-target-arch", [
         "Print the target architecture to the standard output."])).
 optdb(oc_opmode, only_opmode_output_java_class_dir,    bool(no),
-    xalt_help("output-java-class-directory", xpos_sep_lines,
+    xalt_help("output-java-class-directory",
             ["output-class-directory", "output-java-class-dir",
             "output-class-dir"], [
         "Print to standard output the name of the directory in which",
@@ -2705,7 +2705,7 @@ optdb(oc_mdb,     exec_trace_tail_rec,              bool(no),
         "the debugger won't have access to the contents of the reused",
         "stack frames"])).
 optdb(oc_mdb,     trace_optimized,                  bool(no),
-    xalt_help("trace-optimized", xpos_sep_lines,
+    xalt_help("trace-optimized",
             ["trace-optimised"], [
         "Do not disable optimizations that can change the trace."])).
 optdb(oc_mdb_dev, trace_prof,                       bool(no),
@@ -2794,7 +2794,7 @@ optdb(oc_tracegoal, trace_goal_flags,                 accumulating([]),
 optdef(oc_mdprof, prof_optimized,                   bool(no)).
 
 optdb(oc_mdprof, prof_optimized,                   bool(no),
-    xalt_help("profile-optimized", xpos_sep_lines,
+    xalt_help("profile-optimized",
             ["profile-optimised"], [
         "Do not disable optimizations that can distort deep profiles."])).
 
@@ -2873,13 +2873,13 @@ optdef(oc_file_req, show_dependency_graph,            bool(no)).
 optdef(oc_file_req, show_imports_graph,               bool(no)).
 
 optdb(oc_file_req, show_definitions,                 bool(no),
-    xalt_help("show-definitions", xpos_sep_lines,
+    xalt_help("show-definitions",
             ["show-defns"], [
         "Write out a list of the types, insts, modes, predicates, functions",
         "typeclasses and instances defined in the module to",
         "`<module>.defns'."])).
 optdb(oc_file_req, show_definition_line_counts,      bool(no),
-    xalt_help("show-definition-line-counts", xpos_sep_lines,
+    xalt_help("show-definition-line-counts",
             ["show-defn-line-counts"], [
         "Write out a list of the predicates and functions defined in",
         "the module, together with the names of the files containing them",
@@ -2887,7 +2887,7 @@ optdb(oc_file_req, show_definition_line_counts,      bool(no),
         "The list will be ordered on the names and arities of the",
         "predicates and functions."])).
 optdb(oc_file_req, show_definition_extents,          bool(no),
-    xalt_help("show-definition-extents", xpos_sep_lines,
+    xalt_help("show-definition-extents",
             ["show-defn-extents"], [
         "Write out a list of the predicates and functions defined in",
         "the module, together with the approximate line numbers of their",
@@ -2919,17 +2919,17 @@ optdb(oc_file_req, show_local_call_tree,             bool(no),
         "that occur in the body of the current module.",
         "Write out this tree to `<module>.local_call_full'."])).
 optdb(oc_file_req, show_local_type_repns,            bool(no),
-    xalt_help("show-local-type-representations", xpos_sep_lines,
+    xalt_help("show-local-type-representations",
             ["show-local-type-repns"], [
         "Write out information about the representations of all types",
         "defined in the module being compiled to `<module>.type_repns'."])).
 optdb(oc_file_req, show_all_type_repns,              bool(no),
-    xalt_help("show-all-type-representations", xpos_sep_lines,
+    xalt_help("show-all-type-representations",
             ["show-all-type-repns"], [
         "Write out information about the representations of all types",
         "visible in the module being compiled to `<module>.type_repns'."])).
 optdb(oc_file_req, show_developer_type_repns,        bool(no),
-    xpriv_alt_help("show-developer-type-representations", xpos_sep_lines,
+    xpriv_alt_help("show-developer-type-representations",
             ["show-developer-type-repns"], [
         "When writing out information about the representations of types,",
         "include information that is of interest to mmc developers only."])).
@@ -2937,7 +2937,7 @@ optdb(oc_file_req, show_dependency_graph,            bool(no),
     xhelp("show-dependency-graph", [
         "Write out the dependency graph to `<module>.dependency_graph'."])).
 optdb(oc_file_req, show_imports_graph,               bool(no),
-    xalt_help("show-imports-graph", xpos_sep_lines, ["imports-graph"], [
+    xalt_help("show-imports-graph", ["imports-graph"], [
         "If --generate-dependencies is specified, then write out",
         "the imports graph to `<module>.imports_graph' in a format",
         "that can be processed by the graphviz tools.",
@@ -2992,7 +2992,7 @@ optdb(oc_infer, infer_modes,                       bool(no),
         "If there is no mode declaration for a predicate,",
         "try to infer the modes, rather than just reporting an error."])).
 optdb(oc_infer, infer_det,                         bool(yes),
-    xalt_help("infer-determinism", xpos_sep_lines, ["infer-det"], [  % NO
+    xalt_help("infer-determinism", ["infer-det"], [  % NO
         "If there is no determinism declaration for a procedure,",
         "don't try to infer the determinism, just report an error."])).
 optdb(oc_infer, type_inference_iteration_limit,    int(60),
@@ -3049,7 +3049,7 @@ optdef(oc_grade, java,                                  special).
 optdef(oc_grade, java_only,                             special).
 
 optdb(oc_grade, target,                                string("c"),
-    xalt_arg_align_help("target", xpos_sep_lines, [
+    xalt_arg_align_help("target", [
             arg_align("c",      "(grades: none, reg, asm_fast, hlc)"),
             arg_align("csharp", "(grades: csharp)"),
             arg_align("java",   "(grades: java)")], [
@@ -3057,25 +3057,25 @@ optdb(oc_grade, target,                                string("c"),
         "The default is C.",
         "Targets other than C imply `--high-level-code' (see below)."])).
 optdb(oc_grade, compile_to_c,                          special,
-    xalt_help("compile-to-c", xpos_sep_lines, ["compile-to-C"], [
+    xalt_help("compile-to-c", ["compile-to-C"], [
         "An abbreviation for `--target c --target-code-only'.",
         "Generate C code in `<module>.c', but do not generate object",
         "code."])).
 optdb(oc_grade, csharp,                                special,
-    xalt_help("csharp", xpos_sep_lines, ["C#"], [
+    xalt_help("csharp", ["C#"], [
         "An abbreviation for `--target csharp'."])).
 optdb(oc_grade, csharp_only,                           special,
     % XXX Using "object code" for C# is iffy.
-    xalt_help("csharp-only", xpos_sep_lines, ["C#-only"], [
+    xalt_help("csharp-only", ["C#-only"], [
         "An abbreviation for `--target csharp --target-code-only'.",
         "Generate C# code in `<module>.cs', but do not generate",
         "object code."])).
 optdb(oc_grade, java,                                  special,
-    xalt_help("java", xpos_sep_lines, ["Java"], [
+    xalt_help("java", ["Java"], [
         "An abbreviation for `--target java'."])).
 optdb(oc_grade, java_only,                             special,
     % XXX Using "object code" for Java is iffy.
-    xalt_help("java-only", xpos_sep_lines, ["Java-only"], [
+    xalt_help("java-only", ["Java-only"], [
         "An abbreviation for `--target java --target-code-only'.",
         "Generate Java code in `<module>.java', but do not generate",
         "object code."])).
@@ -3090,7 +3090,7 @@ optdef(oc_grade, decl_debug,                            bool(no)).
 
 optdb(oc_grade, exec_trace,                            bool(no),
     % Yes, the internal and external names of this option are THAT different.
-    xalt_align_help("debug", xpos_sep_lines, [],
+    xalt_align_help("debug", [],
             "(grade modifier: `.debug')", [
         "Enable Mercury-level debugging.",
         "See the Debugging chapter of the Mercury User's Guide",
@@ -3098,7 +3098,7 @@ optdb(oc_grade, exec_trace,                            bool(no),
         "This option is not yet supported for the `--high-level-code'",
         "back-ends."])).
 optdb(oc_grade, decl_debug,                            bool(no),
-    xalt_align_help("decl-debug", xpos_sep_lines, [],
+    xalt_align_help("decl-debug", [],
             "(grade modifier: `.decldebug')", [
         "Enable full support for declarative debugging.",
         "This allows subterm dependency tracking in the declarative",
@@ -3117,7 +3117,7 @@ optdef(oc_grade, source_to_source_debug,                bool(no)).
 
 optdb(oc_grade, source_to_source_debug,                bool(no),
     % XXX Source-to-source debugging is not ready for the public.
-    xpriv_alt_align_help("source-to-source-debug", xpos_sep_lines,
+    xpriv_alt_align_help("source-to-source-debug",
             ["ss-debug", "ssdb"], "(grade modifier: `.ssdebug')", [
         "Enable the source-to-source debugging transform."])).
 
@@ -3139,7 +3139,7 @@ optdef(oc_grade, profile_memory,                        bool(no)).
 % for time_profiling, especially since it is not documented.
 % XXX ORDER
 optdb(oc_grade, profiling,                             bool_special,
-    xshort_alt_align_help('p', "profiling", xpos_sep_lines, [],
+    xshort_alt_align_help('p', "profiling", [],
             "(grade modifier: `.prof')", [
         "Enable time and call profiling. Insert profiling hooks in the",
         "generated code, and also output some profiling",
@@ -3150,7 +3150,7 @@ optdb(oc_grade, time_profiling,                        special,
     % XXX This option should not be visible even to developers.
     xpriv_help("time-profiling", [])).
 optdb(oc_grade, memory_profiling,                      special,
-    xalt_align_help("memory-profiling", xpos_sep_lines, [],
+    xalt_align_help("memory-profiling", [],
             "(grade modifier: `.memprof')", [
         "Enable memory and call profiling.",
         "This option is not supported for the C# or Java back-ends."])).
@@ -3161,19 +3161,19 @@ optdb(oc_grade, memory_profiling,                      special,
     % different code addresses, so you can't combine the data
     % from versions of your program compiled with different options.
 optdb(oc_grade, profile_calls,                         bool(no),
-    xpriv_alt_align_help("profile-calls", xpos_sep_lines, [],
+    xpriv_alt_align_help("profile-calls", [],
             "(grade modifier: `.profcalls')", [
         "Similar to `--profiling', except that only gathers",
         "call counts, not timing information.",
         "Useful on systems where time profiling is not supported,",
         "but not as useful as `--memory-profiling'."])).
 optdb(oc_grade, profile_time,                          bool(no),
-    xpriv_alt_align_help("profile-time", xpos_sep_lines, [],
+    xpriv_alt_align_help("profile-time", [],
             "(grade modifier: `.proftime')", [
         "Similar to `--profiling', except that it only gathers",
         "timing information, not call counts."])).
 optdb(oc_grade, profile_memory,                        bool(no),
-    xpriv_alt_align_help("profile-memory", xpos_sep_lines, [],
+    xpriv_alt_align_help("profile-memory", [],
             "(grade modifier: `.profmem')", [
         "Similar to `--memory-profiling', except that it only",
         "gathers memory usage information, not call counts."])).
@@ -3201,7 +3201,7 @@ optdef(oc_grade, use_lots_of_ho_specialization,         bool(no)).
 optdef(oc_grade, deep_profile_tail_recursion,           bool(no)).
 
 optdb(oc_grade, deep_profiling,                        special,
-    xalt_align_help("deep-profiling", xpos_sep_lines, [],
+    xalt_align_help("deep-profiling", [],
             "(grade modifier: `.profdeep')", [
         "Enable deep profiling.",
         "This option is not supported for the high-level C, C#",
@@ -3251,7 +3251,7 @@ optdb(oc_grade, profile_deep_coverage_use_trivial,     bool(no),
     xpriv_help("profile-deep-coverage-use-trivial", [       % NO
         "Turn off usage of trivial goal information"])).
 optdb(oc_grade, profile_for_feedback,                  bool(no),
-    xalt_help("profile-for-feedback", xpos_sep_lines,
+    xalt_help("profile-for-feedback",
             ["profile-for-implicit-parallelism"], [
         "Select deep profiling options suitable for profiler directed",
         "implicit parallelism.",
@@ -3275,11 +3275,11 @@ optdef(oc_grade, record_term_sizes_as_cells,            bool(no)).
 optdef(oc_grade, experimental_complexity,               string("")).
 
 optdb(oc_grade, record_term_sizes_as_words,            bool(no),
-    xpriv_alt_align_help("record-term-sizes-as-words", xpos_sep_lines, [],
+    xpriv_alt_align_help("record-term-sizes-as-words", [],
             "(grade modifier: `.tsw')", [
         "Augment each heap cell with its size in words."])).
 optdb(oc_grade, record_term_sizes_as_cells,            bool(no),
-    xpriv_alt_align_help("record-term-sizes-as-cells", xpos_sep_lines, [],
+    xpriv_alt_align_help("record-term-sizes-as-cells", [],
             "(grade modifier: `.tsc')", [
         "Augment each heap cell with its size in cells."])).
 optdb(oc_grade, experimental_complexity,               string(""),
@@ -3300,7 +3300,7 @@ optdef(oc_grade, threadscope,                           bool(no)).
 optdb(oc_grade, threadscope,                           bool(no),
     % XXX Threadscope profiling has not been maintained since Paul stopped
     % working on Mercury. It has almost certainly suffered bit rot by now.
-    xalt_align_help("threadscope", xpos_sep_lines, [],
+    xalt_align_help("threadscope", [],
             "(grade modifier: `.threadscope')", [
         "Enable support for profiling parallel execution.",
         "This option is supported by the low-level C back-end parallel",
@@ -3332,7 +3332,7 @@ optdef(oc_grade, link_ssdb_libs,                        bool(no)).
 optdb(oc_grade, gc,                                    string("boehm"),
     % We do not document the "accurate" and "hgc" GC methods,
     % as those methods are still experimental.
-    xalt_arg_help("garbage-collection", xpos_sep_lines, ["gc"],
+    xalt_arg_help("garbage-collection", ["gc"],
             "{none, boehm, automatic}", [
         % "`hgc' is our own conservative collector;",
         % "`accurate' is our own type-accurate copying GC;",
@@ -3349,7 +3349,7 @@ optdb(oc_grade, gc,                                    string("boehm"),
         "meaning there is no garbage collector",
         "This works only for programs with very short runtimes."])).
 optdb(oc_grade, stack_segments,                        bool(no),
-    xalt_align_help("stack-segments", xpos_sep_lines, [],
+    xalt_align_help("stack-segments", [],
             "(grade modifier: `.stseg')", [
         "Specify whether to use dynamically sized stacks that are",
         "composed of small segments. This can help to avoid stack",
@@ -3362,7 +3362,7 @@ optdb(oc_grade, extend_stacks_when_needed,             bool(no),
         "Specify that code that increments a stack pointer must",
         "extend the stack when this is needed."])).
 optdb(oc_grade, use_trail,                             bool(no),
-    xalt_align_help("use-trail", xpos_sep_lines, [],
+    xalt_align_help("use-trail", [],
             "(grade modifier: `.tr')", [
         "Enable use of a trail.",
         "This is necessary for interfacing with constraint solvers,",
@@ -3372,14 +3372,14 @@ optdb(oc_grade, pregenerated_dist,                     bool(no),
     % XXX The pregen grade component *should* be documented.
     xpriv_help("pregenerated-dist", [])).
 optdb(oc_grade, single_prec_float,                     bool(no),
-    xalt_align_help("single-precision-float", xpos_sep_lines,
+    xalt_align_help("single-precision-float",
             ["single-prec-float"], "(grade modifier: `.spf')", [
         "Use single precision floats so that, on 32-bit machines,",
         "floating point values don't need to be boxed. Double",
         "precision floats are used by default.",
         "This option is not supported for the C# or Java back-ends."])).
 optdb(oc_grade, parallel,                              bool(no),
-    xalt_align_help("parallel", xpos_sep_lines, [],
+    xalt_align_help("parallel", [],
             "(grade modifier: `.par')", [
         "Enable parallel execution support for the low-level C grades.",
         "Enable concurrency (via pthreads) for the high-level C grades."])).
@@ -3407,7 +3407,7 @@ optdb(oc_grade, minimal_model_debug,                   bool(no),
         "minimal model tabling."])).
 % RBMM is undocumented since it is still experimental.
 optdb(oc_grade, use_regions,                           bool(no),
-    xpriv_alt_align_help("use-regions", xpos_sep_lines, [],
+    xpriv_alt_align_help("use-regions", [],
             "(grade modifier: `.rbmm')", [
         "Enable support for region-based memory management."])).
 optdb(oc_grade, use_alloc_regions,                     bool(yes),
@@ -3427,7 +3427,7 @@ optdb(oc_grade, ssdb_trace_level,                      string("default"),
         "The trace level to use for source to source debugging of",
         "the given module."])).
 optdb(oc_grade, link_ssdb_libs,                        bool(no),
-    xpriv_alt_help("link-ssdebug-libs", xpos_sep_lines, ["link-ssdb-libs"], [
+    xpriv_alt_help("link-ssdebug-libs", ["link-ssdb-libs"], [
         "Link the source to source debugging libraries into the",
         "executable."])).
 
@@ -3476,14 +3476,14 @@ optdb(oc_grade, num_ptag_bits,                         int(-1),
     % option when targeting C, and to zero when targeting other languages.
     % Its only legitimate use by non-developers is for cross-compilation.
     % XXX That fact should be included in the help text.
-    xalt_arg_help("num-ptag-bits", xpos_sep_lines,
+    xalt_arg_help("num-ptag-bits",
             ["num-tag-bits"], "n", [
         "(This option is not for general use.)",
         "Use <n> primary tag bits."])).
 optdb(oc_grade, conf_low_ptag_bits,                    int(2),
     % The `mmc' script will override the above default with
     % a value determined at configuration time.
-    xpriv_alt_arg_help("conf-low-ptag-bits", xpos_sep_lines,
+    xpriv_alt_arg_help("conf-low-ptag-bits",
             ["conf-low-tag-bits"], "n", [
         "Reserved for use by the `mmc' script"])).
 optdb(oc_grade, bits_per_word,                         int(32),
@@ -3551,7 +3551,7 @@ optdb(oc_grade, allow_packed_unify_compare,            bool(no),
 optdb(oc_grade, sync_term_size_in_words,               int(8),
     % 8 is the size on linux (at the time of writing) - will usually be
     % overridden by a value from configure.
-    xpriv_alt_help("sync-term-size-in-words", xpos_sep_lines,
+    xpriv_alt_help("sync-term-size-in-words",
         ["sync-term-size"], [])).
 
 %---------------------%
@@ -3604,7 +3604,7 @@ optdef(oc_grade,    highlevel_code,                        bool(no)).
 optdef(oc_grade,    c_debug_grade,                         bool(no)).
 
 optdb(oc_grade,    highlevel_code,                        bool(no),
-    xshort_alt_align_help('H', "high-level-code", xpos_sep_lines,
+    xshort_alt_align_help('H', "high-level-code",
             ["high-level-c", "high-level-C",
             "highlevel-code", "highlevel-c", "highlevel-C"],
             "(grades: hlc, csharp, java)", [
@@ -3612,7 +3612,7 @@ optdb(oc_grade,    highlevel_code,                        bool(no),
         "rather than the very low-level code that is generated by our",
         "original back-end."])).
 optdb(oc_grade,    c_debug_grade,                         bool(no),
-    xalt_align_help("c-debug-grade", xpos_sep_lines, [],
+    xalt_align_help("c-debug-grade", [],
             "(grades: hlc)", [
         "Require that all modules in the program be compiled to object code",
         "in a way that allows the program executable to be debuggable",
@@ -3642,7 +3642,7 @@ optdef(oc_config,   max_jump_table_size,                 int(0)).
 optdb(oc_config,   have_delay_slot,                     bool(no),
     % The `mmc' script may override the default if configure says
     % the machine has branch delay slots.
-    xalt_help("branch-delay-slot", xpos_sep_lines, ["have-delay-slot"], [
+    xalt_help("branch-delay-slot", ["have-delay-slot"], [
         "(This option is not for general use.)",
         "Assume that branch instructions have a delay slot."])).
 % The `mmc' script will override the next four options' defaults
@@ -3658,7 +3658,7 @@ optdb(oc_config,   num_real_f_regs,                     int(0),
         "Assume registers f1 up to f<n> are real floating point",
         "registers."])).
 optdb(oc_config,   num_real_r_temps,                    int(5),
-    xalt_arg_help("num-real-r-temps", xpos_sep_lines,
+    xalt_arg_help("num-real-r-temps",
             ["num-real-temps"], "n", [
         "(This option is not for general use.)",
         "Assume that <n> non-float temporaries will fit into",
@@ -3709,19 +3709,19 @@ optdb(oc_opt_ctrl, opt_level,                          int_special,
         % "For a full description of each optimization level,",
         % "see the Mercury User's Guide.",
 optdb(oc_opt_ctrl, opt_space,                          special,
-    xalt_help("optimize-space", xpos_sep_lines,
+    xalt_help("optimize-space",
             ["optimise-space", "opt-space"], [
         "Turn on optimizations that reduce code size",
         "and turn off optimizations that significantly",
         "increase code size."])).
 optdb(oc_opt_ctrl, intermodule_optimization,           bool(no),
-    xalt_help("intermodule-optimization", xpos_sep_lines,
+    xalt_help("intermodule-optimization",
             ["intermodule-optimisation", "intermod-opt"], [
         "Perform inlining and higher-order specialization of",
         "the code for predicates imported from other modules.",
         "This option must be set throughout the compilation process."])).
 optdb(oc_opt_ctrl, transitive_optimization,            bool(no),
-    xalt_help("transitive-intermodule-optimization", xpos_sep_lines,
+    xalt_help("transitive-intermodule-optimization",
             ["transitive-intermodule-optimisation", "trans-intermod-opt"], [
         "Import the transitive intermodule optimization data.",
         "This data is imported from `<module>.trans_opt' files.",
@@ -3933,12 +3933,12 @@ optdb(oc_opt_hh, optopt_local_constraint_propagation,     bool_special,
         "but only rearrange goals within each procedure.",
         "Specialized versions of procedures will not be created."])).
 optdb(oc_opt_hh, optopt_duplicate_calls,                  bool_special,
-    xalt_help("optimize-duplicate-calls", xpos_sep_lines,
+    xalt_help("optimize-duplicate-calls",
             ["optimise-duplicate-calls"], [
         "Optimize away multiple calls to a predicate",
         "with the same input arguments."])).
 optdb(oc_opt_hh, optopt_constant_propagation,             bool_special,
-    xalt_help("optimize-constant-propagation", xpos_sep_lines,
+    xalt_help("optimize-constant-propagation",
             ["optimise-constant-propagation"], [
         "Given calls to some frequently used library functions and",
         "predicates, mainly those that do arithmetic, evaluate them",
@@ -3967,18 +3967,18 @@ optdb(oc_opt_hh, optopt_loop_invariants,                  bool_special,
     xhelp("loop-invariants", [
         "Hoist loop invariants out of loops."])).
 optdb(oc_opt_hh, optimize_saved_vars,                     bool_special,
-    xalt_help("optimize-saved-vars", xpos_sep_lines,
+    xalt_help("optimize-saved-vars",
             ["optimise-saved-vars"], [
         "Minimize the number of variables saved across calls."])).
 optdb(oc_opt_hh, optopt_saved_vars_const,                 bool_special,
-    xpriv_alt_help("optimize-saved-vars-const", xpos_sep_lines,
+    xpriv_alt_help("optimize-saved-vars-const",
             ["optimise-saved-vars-const"], [
         "Minimize the number of variables saved across calls by",
         "introducing duplicate copies of variables bound to",
         "constants in each interval between flushes where they",
         "are needed."])).
 optdb(oc_opt_hh, optopt_svcell,                           bool_special,
-    xpriv_alt_help("optimize-saved-vars-cell", xpos_sep_lines,
+    xpriv_alt_help("optimize-saved-vars-cell",
             ["optimise-saved-vars-cell"], [
         "Minimize the number of variables saved across calls by",
         "trying to use saved variables pointing to cells to reach",
@@ -4010,7 +4010,7 @@ optdb(oc_opt_hh, optopt_svcell_all_path_node_ratio,       int_special,
 optdb(oc_opt_hh, optopt_svcell_all_candidates,            bool_special,
     xpriv_help("osv-all-cand", [])).
 optdb(oc_opt_hh, optopt_delay_construct,                  bool_special,
-    xalt_help("delay-constructs", xpos_sep_lines,
+    xalt_help("delay-constructs",
             ["delay-construct"], [
         "Reorder goals to move construction unifications after",
         "primitive goals that can fail."])).
@@ -4018,7 +4018,7 @@ optdb(oc_opt_hh, optopt_follow_code,                      bool_special,
     xhelp("follow-code", [                                  % NO
         "Don't migrate into the end of branched goals."])).
 optdb(oc_opt_hh, optopt_unused_args,                      bool_special,
-    xalt_help("optimize-unused-args", xpos_sep_lines,
+    xalt_help("optimize-unused-args",
             ["optimise-unused-args"], [
         "Remove unused predicate arguments.",
         "This will cause the compiler to generate more",
@@ -4029,7 +4029,7 @@ optdb(oc_opt_hh, optopt_intermod_unused_args,             bool_special,
         "This option implies `--optimize-unused-args' and",
         "`--intermodule-optimization'."])).
 optdb(oc_opt_hh, optopt_higher_order,                     bool_special,
-    xalt_help("optimize-higher-order", xpos_sep_lines,
+    xalt_help("optimize-higher-order",
             ["optimise-higher-order"], [
         "Enable specialization of higher-order predicates."])).
 optdb(oc_opt_hh, optopt_higher_order_size_limit,          int_special,
@@ -4056,12 +4056,12 @@ optdb(oc_opt_hh, optopt_unneeded_code_copy_limit,         int_special,
         "only goal deletion; a value of one prevents any increase in the",
         "size of the code."])).
 optdb(oc_opt_hh, optopt_type_specialization,              bool_special,
-    xalt_help("type-specialization", xpos_sep_lines,
+    xalt_help("type-specialization",
             ["type-specialisation"], [
         "Enable specialization of polymorphic predicates where the",
         "polymorphic types are known."])).
 optdb(oc_opt_hh, optopt_user_guided_type_specialization,  bool_special,
-    xalt_help("user-guided-type-specialization", xpos_sep_lines,
+    xalt_help("user-guided-type-specialization",
             ["user-guided-type-specialisation"], [
         "Enable specialization of polymorphic predicates for which",
         "there are `:- pragma type_spec' declarations."])).
@@ -4070,24 +4070,24 @@ optdb(oc_opt_hh, optopt_introduce_accumulators,           bool_special,
         "Attempt to introduce accumulating variables into",
         "procedures, so as to make them tail recursive."])).
 optdb(oc_opt_hh, optopt_lcmc,                             bool_special,
-    xalt_help("optimize-constructor-last-call", xpos_sep_lines,
+    xalt_help("optimize-constructor-last-call",
             ["optimise-constructor-last-call"], [
         "Enable the optimization of ""last"" calls that are followed by",
         "constructor application."])).
 optdb(oc_opt_hh, optopt_lcmc_accumulator,                 bool_special,
     xpriv_alt_help("optimize-constructor-last-call-accumulator",
-            xpos_sep_lines,
+           
             ["optimise-constructor-last-call-accumulator"], [
         "Enable the optimization via accumulators of ""last"" calls",
         "that are followed by constructor application."])).
 optdb(oc_opt_hh, optopt_lcmc_null,                        bool_special,
-    xpriv_alt_help("optimize-constructor-last-call-null", xpos_sep_lines,
+    xpriv_alt_help("optimize-constructor-last-call-null",
             ["optimise-constructor-last-call-null"], [
         "When --optimize-constructor-last-call is enabled, put NULL in",
         "uninitialized fields (to prevent the garbage collector from",
         "looking at and following a random bit pattern)."])).
 optdb(oc_opt_hh, optopt_dead_procs,                       bool_special,
-    xalt_help("optimize-dead-procs", xpos_sep_lines,
+    xalt_help("optimize-dead-procs",
             ["optimise-dead-procs"], [
         "Enable dead predicate elimination."])).
 optdb(oc_opt_hh, optopt_deforestation,                    bool_special,
@@ -4177,12 +4177,12 @@ optdb(oc_opt_hh_exp, structure_sharing_widening,         int(0),
         "larger than <n>. When n=0, widening is not enabled.",
         "(default: 0)."])).
 optdb(oc_opt_hh_exp, structure_reuse_analysis,           bool(no),
-    xalt_help("structure-reuse", xpos_sep_lines, ["ctgc"], [
+    xalt_help("structure-reuse", ["ctgc"], [
         "Perform structure reuse analysis (Compile Time Garbage",
         "Collection)."])).
 optdb(oc_opt_hh_exp, structure_reuse_constraint,
                                         string("within_n_cells_difference"),
-    xalt_arg_help("structure-reuse-constraint", xpos_sep_lines,
+    xalt_arg_help("structure-reuse-constraint",
             ["ctgc-constraint"],
             "{same_cons_id, within_n_cells_difference}", [
         "Constraint on the way we allow structure reuse. `same_cons_id'",
@@ -4193,7 +4193,7 @@ optdb(oc_opt_hh_exp, structure_reuse_constraint,
         "needs to be set using `--structure-reuse-constraint-arg'.",
         "(default: within_n_cells_difference, with threshold 0)"])).
 optdb(oc_opt_hh_exp, structure_reuse_constraint_arg,     int(0),
-    xalt_help("structure-reuse-constraint-arg", xpos_sep_lines,
+    xalt_help("structure-reuse-constraint-arg",
             ["ctgc-constraint-arg"], [
         "Specify the maximum difference in arities between the terms that",
         "can be reused, and the terms that reuse these terms.",
@@ -4268,12 +4268,12 @@ optdb(oc_opt_hlm, optopt_lookup_switch_size,              int_special,
         "The lookup table generated for an atomic switch",
         "must have at least this many entries (default: 4)."])).
 optdb(oc_opt_hlm, optopt_string_trie_switch_size,         int_special,
-    xalt_arg_help("string-trie-switch-size", xpos_sep_lines,
+    xalt_arg_help("string-trie-switch-size",
             ["string-trie-size"], "n", [
         "The trie generated for a string switch",
         "must have at least this many entries (default: 16)."])).
 optdb(oc_opt_hlm, optopt_string_hash_switch_size,         int_special,
-    xalt_arg_help("string-hash-switch-size", xpos_sep_lines,
+    xalt_arg_help("string-hash-switch-size",
             ["string-switch-size"], "n", [
         "The hash table generated for a string switch",
         "must have at least this many entries (default: 8)."])).
@@ -4318,19 +4318,19 @@ optdef(oc_opt_hh, optopt_generate_trail_ops_inline,        bool_special).
 optdef(oc_opt_hm, optimize_trail_usage,                    bool(no)).
 
 optdb(oc_opt_mm, optopt_optimize_mlds,                    bool_special,
-    xalt_help("mlds-optimize", xpos_sep_lines,              % NO
+    xalt_help("mlds-optimize",              % NO
             ["mlds-optimise"], [
         "Disable the MLDS->MLDS optimization passes."])).
 optdb(oc_opt_mm, optopt_peep_mlds,                        bool_special,
     xhelp("mlds-peephole", [                                % NO
         "Do not perform peephole optimization of the MLDS."])).
 optdb(oc_opt_hm, optopt_mlds_tailcalls,                   bool_special,
-    xalt_help("optimize-tailcalls", xpos_sep_lines,         % NO
+    xalt_help("optimize-tailcalls",         % NO
             ["optimise-tailcalls"], [
         "Treat tailcalls as ordinary calls, rather than",
         "turning self-tailcalls into loops."])).
 optdb(oc_opt_mm, optopt_initializations,                  bool_special,
-    xalt_help("optimize-initializations", xpos_sep_lines,   % NO
+    xalt_help("optimize-initializations",   % NO
             ["optimise-initializations"], [
         "Leave initializations of local variables as",
         "assignment statements, rather than converting such",
@@ -4421,25 +4421,25 @@ optdb(oc_opt_ll, optopt_common_layout_data,               bool_special,
         "Disable optimization of common subsequences in layout",
         "structures."])).
 optdb(oc_opt_ll, optopt_optimize_llds,                    bool_special,
-    xalt_help("llds-optimize", xpos_sep_lines,              % NO
+    xalt_help("llds-optimize",              % NO
             ["llds-optimise"], [
         "Disable the low-level optimization passes."])).
 optdb(oc_opt_ll, optopt_peep_llds,                        bool_special,
-    xalt_help("optimize-peep", xpos_sep_lines,              % NO
+    xalt_help("optimize-peep",              % NO
             ["optimise-peep"], [
         "Disable local peephole optimizations."])).
 optdb(oc_opt_ll, optopt_peep_llds_mkword,                 bool_special,
     % This is useful for developers only, to test whether a gcc bug
     % has been fixed.
-    xpriv_alt_help("optimize-peep-mkword", xpos_sep_lines,  % NO
+    xpriv_alt_help("optimize-peep-mkword",  % NO
             ["optimise-peep-mkword"], [
         "Disable peephole optimizations of words created by mkword."])).
 optdb(oc_opt_ll, optopt_jumps,                            bool_special,
-    xalt_help("optimize-jumps", xpos_sep_lines,             % NO
+    xalt_help("optimize-jumps",             % NO
             ["optimise-jumps"], [
         "Disable elimination of jumps to jumps."])).
 optdb(oc_opt_ll, optopt_fulljumps,                        bool_special,
-    xalt_help("optimize-fulljumps", xpos_sep_lines,         % NO
+    xalt_help("optimize-fulljumps",         % NO
             ["optimise-fulljumps"], [
         "Disable elimination of jumps to ordinary code."])).
 optdb(oc_opt_ll, optopt_pessimize_tailcalls,              bool_special,
@@ -4458,36 +4458,36 @@ optdb(oc_opt_ll, optopt_local_var_access_threshold,       int_special,
     xpriv_help("local-var-access-threshold", [])).
 optdb(oc_opt_ll, optopt_standardize_labels,               bool_special,
     % This is useful for developers only.
-    xpriv_alt_help("standardize-labels", xpos_sep_lines,
+    xpriv_alt_help("standardize-labels",
             ["standardise-labels"], [
         "Standardize internal labels in the generated code."])).
 optdb(oc_opt_ll, optopt_labels,                           bool_special,
-    xalt_help("optimize-labels", xpos_sep_lines,            % NO
+    xalt_help("optimize-labels",            % NO
             ["optimise-labels"], [
         "Disable elimination of dead labels and code."])).
 optdb(oc_opt_ll, optopt_dups,                             bool_special,
-    xalt_help("optimize-dups", xpos_sep_lines,
+    xalt_help("optimize-dups",
             ["optimise-dups"], [
         "Enable elimination of duplicate code within procedures."])).
 optdb(oc_opt_ll, optopt_proc_dups,                        bool_special,
-    xalt_help("optimize-proc-dups", xpos_sep_lines,
+    xalt_help("optimize-proc-dups",
             ["optimise-proc-dups"], [
         "Enable elimination of duplicate procedures."])).
 optdb(oc_opt_ll, optopt_frames,                           bool_special,
-    xalt_help("optimize-frames", xpos_sep_lines,            % NO
+    xalt_help("optimize-frames",            % NO
             ["optimise-frames"], [
         "Disable stack frame optimizations."])).
 optdb(oc_opt_ll, optopt_delay_slot,                       bool_special,
-    xalt_help("optimize-delay-slot", xpos_sep_lines,        % NO
+    xalt_help("optimize-delay-slot",        % NO
             ["optimise-delay-slot"], [
         "Disable branch delay slot optimizations."])).
 optdb(oc_opt_ll, optopt_reassign,                         bool_special,
-    xalt_help("optimize-reassign", xpos_sep_lines,
+    xalt_help("optimize-reassign",
             ["optimise-reassign"], [
         "Optimize away assignments to locations that already hold",
         "the assigned value."])).
 optdb(oc_opt_ll, optopt_repeat_opts,                      int_special,
-    xalt_arg_help("optimize-repeat", xpos_sep_lines,
+    xalt_arg_help("optimize-repeat",
             ["optimise-repeat"], "n", [
         "Iterate most optimizations at most <n> times (default: 3)."])).
 optdb(oc_opt_ll, optopt_layout_compression_limit,         int_special,
@@ -4516,14 +4516,14 @@ optdb(oc_opt_lc, optopt_emit_c_loops,                     bool_special,
     xhelp("emit-c-loops", [                                 % NO
         "Use only gotos, don't emit C loop constructs."])).
 optdb(oc_opt_lc, optopt_procs_per_c_function,             int_special,
-    xalt_arg_help("procs-per-c-function", xpos_sep_lines,
+    xalt_arg_help("procs-per-c-function",
             ["procs-per-C-function"], "n", [
         "Put the code for up to <n> Mercury",
         "procedures in a single C function. The default",
         "value of <n> is one. Increasing <n> can produce",
         "slightly more efficient code, but makes compilation slower."])).
 optdb(oc_opt_lc, optopt_everything_in_one_c_function,     bool_special,
-    xalt_help("everything-in-one-c-function", xpos_sep_lines,
+    xalt_help("everything-in-one-c-function",
             ["everything-in-one-C-function"], [
         "This option has the effect of putting the code for all",
         "the Mercury procedures in a single C function,",
@@ -4568,10 +4568,10 @@ optdef(oc_analysis, analyse_trail_usage,                bool(no)).
 optdef(oc_analysis, analyse_mm_tabling,                 bool(no)).
 
 optdb(oc_analysis, termination_enable,                 bool(no),
-    xalt_help("enable-termination", xpos_sep_lines, ["enable-term"], [
+    xalt_help("enable-termination", ["enable-term"], [
         "Analyse each predicate to discover if it terminates."])).
 optdb(oc_analysis, termination_check,                  bool(no),
-    xalt_help("check-termination", xpos_sep_lines,
+    xalt_help("check-termination",
             ["check-term", "chk-term"], [
         "Enable termination analysis, and emit warnings for some",
         "predicates or functions that cannot be proved to terminate.",
@@ -4582,19 +4582,19 @@ optdb(oc_analysis, termination_check,                  bool(no),
         "not be analysed. In these cases the compiler does not emit a",
         "warning of non-termination, as it is likely to be spurious."])).
 optdb(oc_analysis, termination_check_verbose,          bool(no),
-    xalt_help("verbose-check-termination", xpos_sep_lines,
+    xalt_help("verbose-check-termination",
             ["verb-check-term", "verb-chk-term"], [
         "Enable termination analysis, and emit warnings for all",
         "predicates or functions that cannot be proved to terminate."])).
 optdb(oc_analysis, termination_single_args,            int(0),
-    xalt_arg_help("termination-single-argument-analysis", xpos_sep_lines,
+    xalt_arg_help("termination-single-argument-analysis",
             ["term-single-arg"], "n", [
         "When performing termination analysis, try analyzing",
         "recursion on single arguments in strongly connected",
         "components of the call graph that have up to <n> procedures.",
         "Setting this limit to zero disables single argument analysis."])).
 optdb(oc_analysis, termination_norm,                   string("total"),
-    xalt_arg_help("termination-norm", xpos_sep_lines,
+    xalt_arg_help("termination-norm",
             ["term-norm"], "{simple, total, num-data-elems}", [
         "The norm defines how termination analysis measures the size",
         "of a memory cell. The `simple' norm says that size is always",
@@ -4603,12 +4603,12 @@ optdb(oc_analysis, termination_norm,                   string("total"),
         "number of words in the cell that contain something other",
         "than pointers to cells of the same type."])).
 optdb(oc_analysis, termination_error_limit,            int(3),
-    xalt_arg_help("termination-error-limit", xpos_sep_lines,
+    xalt_arg_help("termination-error-limit",
             ["term-err-limit"], "n", [
         "Print at most <n> reasons for any single termination error",
         "(default: 3)."])).
 optdb(oc_analysis, termination_path_limit,             int(256),
-    xalt_arg_help("termination-path-limit", xpos_sep_lines,
+    xalt_arg_help("termination-path-limit",
             ["term-path-limit"], "n", [
         "Perform termination analysis only on predicates",
         "with at most <n> paths (default: 256)."])).
@@ -4616,12 +4616,12 @@ optdb(oc_analysis, termination_path_limit,             int(256),
     % analyser. They are currently undocumented because that is still
     % a work-in-progress. XXX Or is it?
 optdb(oc_analysis, termination2_enable,                bool(no),
-    xpriv_alt_help("enable-termination2", xpos_sep_lines, ["enable-term2"], [
+    xpriv_alt_help("enable-termination2", ["enable-term2"], [
         "Analyse each predicate to discover if it terminates.",
         "This uses an alternative termination analysis based",
         "on convex constraints."])).
 optdb(oc_analysis, termination2_check,                 bool(no),
-    xpriv_alt_help("check-termination2", xpos_sep_lines,
+    xpriv_alt_help("check-termination2",
             ["check-term2", "chk-term2"], [
         "Enable the alternative termination analysis, and emit warnings for",
         "some predicates or functions that cannot be proved to terminate.",
@@ -4632,33 +4632,33 @@ optdb(oc_analysis, termination2_check,                 bool(no),
         "not be analysed. In these cases the compiler does not emit a",
         "warning of non-termination, as it is likely to be spurious."])).
 optdb(oc_analysis, termination2_check_verbose,         bool(no),
-    xpriv_alt_help("verbose-check-termination2", xpos_sep_lines,
+    xpriv_alt_help("verbose-check-termination2",
             ["verb-check-term2", "verb-chk-term2"], [
         % XXX These options used to have no documentation at all.
         % The following is my guess (zs).
         "Report more verbose errors from the alternative termination",
         "analysis algorithm"])).
 optdb(oc_analysis, termination2_norm,                  string("total"),
-    xpriv_alt_arg_help("termination2-norm", xpos_sep_lines,
+    xpriv_alt_arg_help("termination2-norm",
             ["term2-norm"], "{simple, total, num-data-elems}", [
         "Tell the alternative termination analyser which norm to use.",
         "See the description of the `--termination-norm' option for a",
         "description of the different types of norm available."])).
 optdb(oc_analysis, termination2_widening_limit,        int(4),
-    xpriv_alt_arg_help("termination2-widening-limit", xpos_sep_lines,
+    xpriv_alt_arg_help("termination2-widening-limit",
             ["term2-widening-limit"], "n", [
         "Set the threshold for the number of iterations after which the",
         "argument size analyser invokes widening."])).
 optdb(oc_analysis, termination2_prop_fail_constrs,     bool(yes),
     xpriv_alt_help("termination2-propagate-failure-constraints",
-            xpos_sep_lines,
+           
             ["term2-propagate-failure-constraints",
             "term2-propagate-failure-constrs"], [
         "Make the argument analyser infer information about the sizes of",
         "any inputs to a goal in contexts where that goal fails."])).
 optdb(oc_analysis, termination2_maximum_matrix_size,   int(70),
     % XXX This matrix size is just a guess.
-    xpriv_alt_arg_help("termination2-maximum-matrix-size", xpos_sep_lines,
+    xpriv_alt_arg_help("termination2-maximum-matrix-size",
             ["term2-max-matrix-size"], "n", [
         "Limit the sizes of constraints systems in the analyser to <n>",
         "constraints. Use approximations of some constraint operations,",
@@ -4667,7 +4667,7 @@ optdb(oc_analysis, termination2_maximum_matrix_size,   int(70),
 optdb(oc_analysis, termination2_arg_size_only,         bool(no),
     % This option is for developers only.
     % It is useful for benchmarking the argument size analysis.
-    xpriv_alt_help("term2-argument-size-analysis-only", xpos_sep_lines,
+    xpriv_alt_help("term2-argument-size-analysis-only",
             ["term2-arg-size-analysis-only", "arg-size-analysis-only"], [
         "Perform argument size analysis on each SCC but do not",
         "attempt to infer termination,"])).
@@ -4681,7 +4681,7 @@ optdb(oc_analysis, analyse_closures,                   bool(no),
     % XXX The options controlling closure analysis are currently
     % commented out because it isn't useful. It can be uncommented when
     % we actually have something that uses it.
-    xpriv_alt_help("analyse-local-closures", xpos_sep_lines,
+    xpriv_alt_help("analyse-local-closures",
             ["analyse-closures"], [
         "Enable closure analysis. Try to identify the possible",
         "values that higher-order valued variables can take.",
@@ -4711,7 +4711,7 @@ optdb(oc_target_comp, target_debug,                    bool(no),
     % for each target language that actually supports
     % useful target language debugging. I have no idea whether Java
     % and C# do.
-    xalt_help("target-debug", xpos_sep_lines,
+    xalt_help("target-debug",
             ["c-debug", "java-debug"], [
         "Enable debugging of the generated target code.",
         "If the target language is C, this has the same effect as",
@@ -4770,13 +4770,13 @@ optdb(oc_target_c, c_compiler_type,                 string("gcc"),
     % determined at configuration time for the above two options.
     % XXX That argues for this option being oc_config.
 optdb(oc_target_c, optopt_c_optimize,               bool_special,
-    xalt_help("c-optimize", xpos_sep_lines,                 % NO
+    xalt_help("c-optimize",                 % NO
             ["c-optimise"], [
         "Don't enable the C compiler's optimizations."])).
 optdb(oc_target_c, c_include_directories,           accumulating([]),
     % The `mmc' script will override the default with a value
     % determined at configuration time.
-    xalt_arg_help("c-include-directory", xpos_sep_lines,
+    xalt_arg_help("c-include-directory",
             ["c-include-dir"], "dir", [
         "Append <dir> to the list of directories to be searched for",
         "C header files. Note that if you want to override",
@@ -4851,18 +4851,18 @@ optdef(oc_target_java, java_runtime_flags,              accumulating([])).
 optdef(oc_target_java, quoted_java_runtime_flag,        string_special).
 
 optdb(oc_target_java, java_compiler,                   string("javac"),
-    xalt_arg_help("java-compiler", xpos_sep_lines, ["javac"], "javac", [
+    xalt_arg_help("java-compiler", ["javac"], "javac", [
         "Specify which Java compiler to use. The default is `javac'."])).
 optdb(oc_target_java, java_interpreter,                string("java"),
     xarg_help("java-interpreter", "java", [
         "Specify which Java interpreter to use.",
         "The default is `java'"])).
 optdb(oc_target_java, java_compiler_flags,             accumulating([]),
-    xalt_arg_help("javac-flags", xpos_sep_lines, ["java-flags"], "options", [
+    xalt_arg_help("javac-flags", ["java-flags"], "options", [
         "Specify options to be passed to the Java compiler.",
         "These options will not be quoted when passed to the shell."])).
 optdb(oc_target_java, quoted_java_compiler_flag,       string_special,
-    xalt_arg_help("javac-flag", xpos_sep_lines,
+    xalt_arg_help("javac-flag",
             ["java-flag"], "option", [
         "Specify a single word option to be passed to the Java compiler.",
         "The word will be quoted when passed to the shell."])).
@@ -4943,7 +4943,7 @@ optdef(oc_link_c_cs_j, mercury_standard_library_directory, maybe_string(no)).
 optdb(oc_link_c_cs_j, mercury_library_directory_special, string_special,
     % NOTE mercury_library_directory_special sets search_directories,
     % c_include_directories and mercury_library_directories.
-    xalt_arg_help("mercury-library-directory", xpos_sep_lines,
+    xalt_arg_help("mercury-library-directory",
             ["mld"], "directory", [
         "Append <directory> to the list of directories to",
         "be searched for Mercury libraries. This will add",
@@ -4956,7 +4956,7 @@ optdb(oc_link_c_cs_j, search_library_files_directory_special, string_special,
     % NOTE search_library_files_directory_special sets search_directories,
     % c_include_directories and search_library_files_directories.
     % XXX This list just above DIFFERS from the list below.
-    xalt_arg_help("search-library-files-directory", xpos_sep_lines,
+    xalt_arg_help("search-library-files-directory",
             ["search-lib-files-dir"], "directory", [
         "Search <directory> for Mercury library files that have not yet",
         "been installed. Similar to adding <directory> using all of the",
@@ -4968,7 +4968,7 @@ optdb(oc_link_c_cs_j, search_library_files_directories,  accumulating([]),
 optdb(oc_link_c_cs_j, mercury_library_special,           string_special,
     % NOTE mercury_library_special adds to the values of link_libraries,
     % mercury_libraries and init_files.
-    xalt_arg_help("mercury-library", xpos_sep_lines, ["ml"], "library", [
+    xalt_arg_help("mercury-library", ["ml"], "library", [
         "Link with the specified Mercury library."])).
 optdb(oc_link_c_cs_j, mercury_libraries,                 accumulating([]),
     no_help).
@@ -4976,7 +4976,7 @@ optdb(oc_link_c_cs_j, mercury_standard_library_directory_special,
                                                      maybe_string_special,
     % NOTE mercury_standard_library_directory_special sets
     % mercury_standard_library_directory and mercury_configuration_directory.
-    xalt_arg_help("mercury-standard-library-directory", xpos_sep_lines,
+    xalt_arg_help("mercury-standard-library-directory",
             ["mercury-stdlib-dir"], "directory", [
         "Search <directory> for the Mercury standard library.",
         "Implies `--mercury-library-directory <directory>'",
@@ -5162,7 +5162,7 @@ optdb(oc_link_c,      runtime_flags,                   accumulating([]),
     xarg_help("runtime-flags", "flags", [
         "Specify flags to pass to the Mercury runtime."])).
 optdb(oc_link_c,      extra_init_functions,            bool(no),
-    xalt_help("extra-initialization-functions", xpos_sep_lines,
+    xalt_help("extra-initialization-functions",
             ["extra-inits"], [
         "Search `.c' files for extra initialization functions.",
         "(This may be necessary if the C files contain",
@@ -5399,7 +5399,7 @@ optdb(oc_make, make_max_jobs,                      int(1),
     xshort_arg_help('j', "jobs", [], "n", [
         "With `--make', attempt to perform up to <n> jobs concurrently."])).
 optdb(oc_make, make_track_flags,                   bool(no),
-    xalt_help("track-flags", xpos_sep_lines, ["track-options"], [
+    xalt_help("track-flags", ["track-options"], [
         "With `--make', keep track of the options used when compiling",
         "each module. If an option for a module is added or removed,",
         "`mmc --make' will then know to recompile the module even if the",
@@ -5468,43 +5468,43 @@ optdb(oc_search, use_search_directories_for_intermod, bool(yes),
         "the list of directories to search for `.opt' files; use only the",
         "arguments of `--intermod-directory' options."])).
 optdb(oc_search, interface_dirs_same_subdir_setting,  accumulating([]),
-    xpriv_alt_help("interface-dir-same-workspace", xpos_sep_lines,
+    xpriv_alt_help("interface-dir-same-workspace",
         ["interface-dir-same-ws"], [])).
 optdb(oc_search, interface_dirs_indep_subdir_setting, accumulating([]),
-    xpriv_alt_help("interface-dir-independent-workspace", xpos_sep_lines,
+    xpriv_alt_help("interface-dir-independent-workspace",
         ["interface-dir-indep-ws"], [])).
 optdb(oc_search, interface_dirs_installed_library,    accumulating([]),
-    xpriv_alt_help("interface-dir-installed-library", xpos_sep_lines,
+    xpriv_alt_help("interface-dir-installed-library",
         ["interface-dir-installed-lib"], [])).
 optdb(oc_search, intermod_dirs_same_subdir_setting,   accumulating([]),
-    xpriv_alt_help("intermod-dir-same-workspace", xpos_sep_lines,
+    xpriv_alt_help("intermod-dir-same-workspace",
         ["intermod-dir-same-ws"], [])).
 optdb(oc_search, intermod_dirs_indep_subdir_setting,  accumulating([]),
-    xpriv_alt_help("intermod-dir-independent-workspace", xpos_sep_lines,
+    xpriv_alt_help("intermod-dir-independent-workspace",
         ["intermod-dir-indep-ws"], [])).
 optdb(oc_search, intermod_dirs_installed_library,     accumulating([]),
-    xpriv_alt_help("intermod-dir-installed-library", xpos_sep_lines,
+    xpriv_alt_help("intermod-dir-installed-library",
         ["intermod-dir-installed-lib"], [])).
 optdb(oc_search, c_incl_dirs_same_subdir_setting,     accumulating([]),
-    xpriv_alt_help("c-include-dir-same-workspace", xpos_sep_lines,
+    xpriv_alt_help("c-include-dir-same-workspace",
         ["c-incl-dir-same-ws"], [])).
 optdb(oc_search, c_incl_dirs_indep_subdir_setting,    accumulating([]),
-    xpriv_alt_help("c-include-dir-independent-workspace", xpos_sep_lines,
+    xpriv_alt_help("c-include-dir-independent-workspace",
         ["c-incl-dir-indep-ws"], [])).
 optdb(oc_search, c_incl_dirs_installed_library,       accumulating([]),
-    xpriv_alt_help("c-include-dir-installed-library", xpos_sep_lines,
+    xpriv_alt_help("c-include-dir-installed-library",
         ["c-incl-dir-installed-lib"], [])).
 optdb(oc_search, c_incl_dirs_external,                accumulating([]),
-    xpriv_alt_help("c-include-dir-external", xpos_sep_lines,
+    xpriv_alt_help("c-include-dir-external",
         ["c-incl-dir-external"], [])).
 optdb(oc_search, mer_lib_dirs_same_subdir_setting,    accumulating([]),
-    xpriv_alt_help("mercury-library-dir-same-workspace", xpos_sep_lines,
+    xpriv_alt_help("mercury-library-dir-same-workspace",
         ["mer-lib-dir-same-ws"], [])).
 optdb(oc_search, mer_lib_dirs_indep_subdir_setting,   accumulating([]),
-    xpriv_alt_help("mercury-library-dir-independent-workspace", xpos_sep_lines,
+    xpriv_alt_help("mercury-library-dir-independent-workspace",
         ["mer-lib-dir-indep-ws"], [])).
 optdb(oc_search, mer_lib_dirs_installed_library,      accumulating([]),
-    xpriv_alt_help("mercury-library-dir-installed-library", xpos_sep_lines,
+    xpriv_alt_help("mercury-library-dir-installed-library",
         ["mer-lib-dir-installed-lib"], [])).
 
 %---------------------------------------------------------------------------%
@@ -5535,13 +5535,13 @@ optdb(oc_buildsys, install_prefix,                 string("/usr/local/"),
     xarg_help("install-prefix", "dir", [
         "The directory under which to install Mercury libraries."])).
 optdb(oc_buildsys, detect_stdlib_grades,           bool(yes),
-    xalt_help("detect-stdlib-grades", xpos_sep_lines,       % NO
+    xalt_help("detect-stdlib-grades",       % NO
             ["detect-libgrades"], [
         "Do not scan the installation directory to determine which",
         "standard library grades are available."])).
 % XXX Add more descriptive names for the libgrade* options.
 optdb(oc_buildsys, library_install_grades,         accumulating(["stdlib"]),
-    xalt_arg_help("library-grade", xpos_sep_lines,          % NOA
+    xalt_arg_help("library-grade",          % NOA
             ["libgrade"], "grade", [
         "The positive form adds <grade> to the list of compilation grades",
         "in which a library to be installed should be built.",
@@ -5550,21 +5550,21 @@ optdb(oc_buildsys, library_install_grades,         accumulating(["stdlib"]),
         "The negative form clears the list of compilation grades in which",
         "a library to be installed should be built."])).
 optdb(oc_buildsys, library_install_grades_incl_components, accumulating([]),
-    xalt_arg_help("libgrades-include-component", xpos_sep_lines,
+    xalt_arg_help("libgrades-include-component",
             ["libgrades-include"], "grade_component", [
         "Remove grades that do not contain the specified component from",
         "the set of library grades to be installed.",
         "(This option works only `mmc --make'; it does not work",
         "with Mmake.)"])).
 optdb(oc_buildsys, library_install_grades_excl_components, accumulating([]),
-    xalt_arg_help("libgrades-exclude-component", xpos_sep_lines,
+    xalt_arg_help("libgrades-exclude-component",
             ["libgrades-exclude"], "grade_component", [
         "Remove grades that contain the specified component from the",
         "set of library grades to be installed.",
         "(This option works only `mmc --make'; it does not work",
         "with Mmake.)"])).
 optdb(oc_buildsys, only_globals_library_install_linkages, accumulating([]),
-    xalt_arg_help("library-install-linkage", xpos_sep_lines,
+    xalt_arg_help("library-install-linkage",
             ["library-linkage", "lib-linkage"], "{shared, static}", [
         "Specify whether libraries should be installed for shared",
         "or static linking. This option can be specified multiple",
@@ -5576,7 +5576,7 @@ optdb(oc_buildsys, libgrade_install_check,         bool(yes),
         "attempting to use them. (This option is meaningful only with",
         "`mmc --make'.)"])).
 optdb(oc_buildsys, extra_library_header,           accumulating([]),
-    xalt_arg_help("extra-library-header", xpos_sep_lines,
+    xalt_arg_help("extra-library-header",
             ["extra-lib-header"], "file", [
         "Install the specified C header file with along with",
         "a Mercury library.",
@@ -5605,7 +5605,7 @@ optdef(oc_env, restricted_command_line,            bool(no)).
 % XXX We should standardize on either "file" or "filename" as arg name.
 % XXX We should standardize on either "n" or "N" as arg name.
 optdb(oc_env, mercury_configuration_directory_special, string_special,
-    xalt_arg_help("mercury-configuration-directory", xpos_sep_lines,
+    xalt_arg_help("mercury-configuration-directory",
             ["mercury-config-dir"], "directory", [
         "Search <directory> for Mercury system's configuration files."])).
 optdb(oc_env, mercury_configuration_directory,         maybe_string(no),
@@ -5867,7 +5867,7 @@ optdb(oc_internal, generate_item_version_numbers,         bool(no),
         "io_get_disable_generate_item_version_numbers to see whether this",
         "has been done."])).
 optdb(oc_internal, generate_mmc_make_module_dependencies, bool(no),
-    xpriv_alt_help("generate-mmc-make-module-dependencies", xpos_sep_lines,
+    xpriv_alt_help("generate-mmc-make-module-dependencies",
             ["generate-mmc-deps"], [])).
 optdb(oc_internal, optopt_static_ground_floats,         bool_special, no_help).
 optdb(oc_internal, optopt_static_ground_int64s,         bool_special, no_help).
@@ -5940,7 +5940,7 @@ optdb(oc_dev_ctrl,   simple_mode_constraints,          bool(no),
         "Use only the simplified constraint system when running",
         "the robdd solver constraints based mode analysis."])).
 optdb(oc_dev_ctrl,   prop_mode_constraints,            bool(no),
-    xpriv_alt_help("propagate-mode-constraints", xpos_sep_lines,
+    xpriv_alt_help("propagate-mode-constraints",
             ["prop-mode-constraints"], [
         "Use the new propagation solver for constraints based",
         "mode analysis."])).
@@ -6055,7 +6055,7 @@ optdef(oc_dev_ctrl, par_loop_control_keep_tail_rec,     bool(no)).
 optdef(oc_dev_ctrl, optopt_enable_const_struct_poly,    bool_special).
 
 optdb(oc_dev_ctrl, compiler_sufficiently_recent,       bool(no),
-    xalt_help("bug-intermod-2002-06-13", xpos_sep_lines, [
+    xalt_help("bug-intermod-2002-06-13", [
         "bug-intermod-2006-09-28",
         "bug-foreign_import-2002-08-06",
         "install-opt-files-2002-08-30",
@@ -6267,8 +6267,7 @@ optdb(oc_dev_dump,   dump_same_hlds,                   bool(no),
         "Create a file for a HLDS stage even if the file notes only that",
         "this stage is identical to the previously dumped HLDS stage."])).
 optdb(oc_dev_dump,   dump_mlds,                        accumulating([]),
-    xalt_arg_help("dump-mlds", xpos_sep_lines,
-            ["mlds-dump"], "stage number or name", [
+    xalt_arg_help("dump-mlds", ["mlds-dump"], "stage number or name", [
         "Dump the MLDS (medium level intermediate representation)",
         "after the specified stage, as C code,",
         "to`<module>.c_dump.<num>-<name>',",
@@ -6285,8 +6284,8 @@ optdb(oc_dev_dump,   dump_mlds_pred_name,              accumulating([]),
         "named by all the occurrences of this option (there may be",
         "more than one), and nothing else."])).
 optdb(oc_dev_dump,   verbose_dump_mlds,                accumulating([]),
-    xalt_arg_help("verbose-dump-mlds", xpos_sep_lines,
-            ["verbose-mlds-dump"], "stage number or name", [
+    xalt_arg_help("verbose-dump-mlds", ["verbose-mlds-dump"],
+            "stage number or name", [
         "Dump the internal compiler representation of the MLDS, after",
         "the specified stage, to `<module>.mlds_dump.<num>-<name>'.",
         "This option works in all MLDS grades."])).
@@ -12175,12 +12174,12 @@ acc_optdb_data(OptdbTuple, !ShortPairs, !LongPairs, !DataPairs) :-
         ; Help = xunnamed_help(_)
         )
     ;
-        Help = xgen_help(Long1, _, Longs, Shorts, _, _),
+        Help = xgen_help(Shorts, Long1, Longs, _, _),
         list.foldl(insert_short(Opt), Shorts, !ShortPairs),
         insert_long(Opt, Long1, !LongPairs),
         list.foldl(insert_long(Opt), Longs, !LongPairs)
     ;
-        ( Help = xshort_alt_align_help(Short, Long1, _, Longs, _, _)
+        ( Help = xshort_alt_align_help(Short, Long1, Longs, _, _)
         ; Help = xshort_help(Short, Long1, Longs, _)
         ; Help = xpriv_short_help(Short, Long1, Longs, _)
         ; Help = xshort_arg_help(Short, Long1, Longs, _, _)
@@ -12194,17 +12193,17 @@ acc_optdb_data(OptdbTuple, !ShortPairs, !LongPairs, !DataPairs) :-
         ; Help = xarg_help(Long, _, _)
         ; Help = xpriv_help(Long, _)
         ; Help = xpriv_arg_help(Long, _, _)
-        ; Help = xalt_arg_align_help(Long, _, _, _)
+        ; Help = xalt_arg_align_help(Long, _, _)
         ; Help = xno_align_help(Long, _, _, _)
         ),
         insert_long(Opt, Long, !LongPairs)
     ;
-        ( Help = xalt_help(Long1, _, Longs, _)
-        ; Help = xpriv_alt_help(Long1, _, Longs, _)
-        ; Help = xalt_align_help(Long1, _, Longs, _, _)
-        ; Help = xpriv_alt_align_help(Long1, _, Longs, _, _)
-        ; Help = xalt_arg_help(Long1, _, Longs, _, _)
-        ; Help = xpriv_alt_arg_help(Long1, _, Longs, _, _)
+        ( Help = xalt_help(Long1, Longs, _)
+        ; Help = xpriv_alt_help(Long1, Longs, _)
+        ; Help = xalt_align_help(Long1, Longs, _, _)
+        ; Help = xpriv_alt_align_help(Long1, Longs, _, _)
+        ; Help = xalt_arg_help(Long1, Longs, _, _)
+        ; Help = xpriv_alt_arg_help(Long1, Longs, _, _)
         ),
         insert_long(Opt, Long1, !LongPairs),
         list.foldl(insert_long(Opt), Longs, !LongPairs)
