@@ -35,29 +35,353 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 :- import_module solutions.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
 options_help_new(Stream, What, !IO) :-
-     OptdbPred =
+     ( if semidet_fail then
+         OptdbPred =
+            ( pred(OptdbRecord::out) is multi :-
+                optdb(Cat, Opt, OptData, Help),
+                OptdbRecord = optdb_record(Cat, Opt, OptData, Help)
+            ),
+        solutions(OptdbPred, OptdbRecords),
+        list.foldl(acc_help_message(What), OptdbRecords, cord.init, LineCord),
+        write_lines(Stream, cord.list(LineCord), !IO)
+    else
+        % We check whether we have covered all possible option categories
+        %
+        % - getting a set containing all of those categories;
+        % - deleting each category from the set as it is handled; and then
+        % - checking that what remains is the empty set.
+        CategoryPred =
+            ( pred(Cat::out) is multi :-
+                option_categories(Cat, _)
+            ),
+        solutions_set(CategoryPred, AllCategoriesSet),
+        list.foldl2(print_help_chapter(Stream, What),
+            all_chapters, AllCategoriesSet, UndoneCategoriesSet, !IO),
+        set.to_sorted_list(UndoneCategoriesSet, UndoneCategories),
+        (
+            UndoneCategories = []
+        ;
+            UndoneCategories = [_ | _],
+            unexpected($pred, "undone: " ++ string(UndoneCategories))
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- type help_chapter
+    --->    one_level_chapter(
+                chapter_section             :: help_section
+            )
+    ;       two_level_chapter(
+                chapter_name                :: string,
+                chapter_comment_lines       :: list(string),
+                chapter_sections            :: list(help_section)
+            ).
+
+:- type help_section
+    --->    help_section(
+                section_name                :: string,
+                section_comment_lines       :: list(string),
+                section_categories          :: list(option_category)
+            ).
+
+%---------------------------------------------------------------------------%
+
+:- func all_chapters = list(help_chapter).
+
+all_chapters = AllChapters :-
+    ChapterHelp = one_level_chapter(
+        help_section("Help options",
+        [], [oc_help])),
+
+    ChapterCmdLine = one_level_chapter(
+        help_section("Options for modifying the command line",
+        [], [oc_cmdline])),
+
+    SectionWarnDodgy = help_section("Warnings about possible incorrectness",
+        [], [oc_warn_dodgy]),
+    SectionWarnPerf = help_section(
+        "Warnings about possible performance issues",
+        [], [oc_warn_perf, oc_warn_perf_c]),
+    SectionWarnStyle = help_section("Warnings about programming style",
+        [], [oc_warn_style, oc_warn_style_c]),
+    SectionWarnCtrl = help_section("Options that control warnings",
+        [], [oc_warn_ctrl]),
+    SectionWarnHalt = help_section("Options about halting for warnings",
+        [], [oc_warn_halt]),
+    ChapterWarn = two_level_chapter("Warning options",
+        [],
+        [SectionWarnDodgy, SectionWarnPerf, SectionWarnStyle,
+        SectionWarnCtrl, SectionWarnHalt]),
+
+    ChapterInform = one_level_chapter(
+        help_section("Options that request information",
+        [], [oc_inform])),
+
+    SectionDiagGen = help_section("Options that control diagnostics",
+        [], [oc_diag_gen]),
+    SectionDiagColor = help_section(
+        "Options that control color in diagnostics",
+        [], [oc_diag_color, oc_diag_int]),
+    ChapterDiag = two_level_chapter("Diagnostics options",
+        [],
+        [SectionDiagGen, SectionDiagColor]),
+
+    ChapterVerbosity = one_level_chapter(
+        help_section("Verbosity options",
+        [], [oc_verbosity, oc_verb_dev, oc_verb_dbg])),
+
+    ChapterOpmode = one_level_chapter(
+        help_section("Options that give the compiler its overall task",
+        [], [oc_opmode])),
+
+    ChapterDebug = one_level_chapter(
+        help_section("Preparing code for mdb debugging",
+        [], [oc_mdb, oc_mdb_dev])),
+
+    ChapterTraceGoal = one_level_chapter(
+        help_section("Controlling trace goals",
+        [], [oc_tracegoal])),
+
+    ChapterProfiling = one_level_chapter(
+        help_section("Preparing code for mdprof profiling",
+        [], [oc_mdprof])),
+
+    ChapterTransOpt = one_level_chapter(
+        help_section(
+            "Options that control transitive intermodule optimization",
+        [], [oc_trans_opt])),
+
+    ChapterModOutput = one_level_chapter(
+        help_section("Options that ask for modified output",
+        [], [oc_output_mod, oc_output_dev])),
+
+    % ZZZ cf ChapterInform
+    ChapterFileReq = one_level_chapter(
+        help_section("Options that ask for informational files",
+        [], [oc_file_req])),
+
+    ChapterSemantics = one_level_chapter(
+        help_section("Options specifying the intended semantics",
+        [], [oc_semantics])),
+
+    ChapterInfer = one_level_chapter(
+        help_section("Options that control inference",
+        [], [oc_infer])),
+
+    ChapterGrade = one_level_chapter(
+        help_section("Grade options",
+        [], [oc_grade])),
+
+    ChapterConfig = one_level_chapter(
+        help_section("Options that record autoconfigured parameters",
+        [], [oc_config])),
+
+    SectionOptCtrl = help_section("Overall control of optimizations",
+        [], [oc_opt_ctrl]),
+    SectionOptHH = help_section("Source-to-Source optimizations",
+        [], [oc_opt_hh]),
+    SectionOptHHE = help_section("Experimental source-to-Source optimizations",
+        [], [oc_opt_hh_exp]),
+    SectionOptHLM = help_section("Optimizations during code generation",
+        [], [oc_opt_hlm]),
+    % ZZZ should these be separate sections?
+    SectionOptMM = help_section("Optimizations specific to high level code",
+        [], [oc_opt_hm, oc_opt_mm]),
+    % ZZZ should these be separate sections?
+    SectionOptLL = help_section("Optimizations specific to low level code",
+        [], [oc_opt_hl, oc_opt_ll, oc_opt_lc]),
+    ChapterOpt = two_level_chapter("Optimization options",
+        [], [SectionOptCtrl, SectionOptHH, SectionOptHHE, SectionOptHLM,
+            SectionOptMM, SectionOptLL]),
+
+    ChapterAnalysis = one_level_chapter(
+        help_section("Options that control program analyses",
+        [], [oc_analysis])),
+
+    SectionCompileGen = help_section(
+        "General options for compiling target language code",
+        [], [oc_target_comp]),
+    SectionCompileC = help_section("Options for compiling C code",
+        [], [oc_target_c]),
+    SectionCompileJava = help_section("Options for compiling Java code",
+        [], [oc_target_java]),
+    SectionCompileCsharp = help_section("Options for compiling C# code",
+        [], [oc_target_csharp]),
+    ChapterCompile = two_level_chapter(
+        "Options for target language compilation",
+        [], [SectionCompileGen, SectionCompileC, SectionCompileJava,
+            SectionCompileCsharp]),
+
+    SectionLinkGen = help_section("General options for linking",
+        [], [oc_link_c_cs_j]),
+    SectionLinkCCsharp = help_section("Options for linking C or C# code",
+        [], [oc_link_c_cs]),
+    SectionLinkC = help_section("Options for linking just C code",
+        [], [oc_link_c]),
+    SectionLinkCsharp = help_section("Options for linking just C# code",
+        [], [oc_link_csharp]),
+    SectionLinkJava = help_section("Options for linking just Java code",
+        [], [oc_link_java]),
+    ChapterLink = two_level_chapter(
+        "Options for linking",
+        [], [SectionLinkGen, SectionLinkCCsharp, SectionLinkC, SectionLinkJava,
+            SectionLinkCsharp]),
+
+    ChapterMconfig = one_level_chapter(
+        help_section("Options reserved for Mercury.config files",
+        [], [oc_mconfig])),
+
+    ChapterMmcMake = one_level_chapter(
+        help_section("Options for controlling mmc --make",
+        [], [oc_make])),
+
+    ChapterFileSearch = one_level_chapter(
+        help_section("Options controlling searches for files",
+        [], [oc_search])),
+
+    ChapterBuild = one_level_chapter(
+        help_section("Options controlling the library installation process",
+        [], [oc_buildsys])),
+
+    ChapterEnv = one_level_chapter(
+        help_section("Options specifying properties of the environment",
+        [], [oc_env])),
+
+    SectionDevCtrl = help_section(
+        "Operation selection options for developers only",
+        [], [oc_dev_ctrl]),
+    SectionDevDebug = help_section(
+        "Options that can help debug the compiler",
+        [], [oc_dev_debug]),
+    SectionDevDump = help_section(
+        "Options for dumping internal compiler data structures",
+        [], [oc_dev_dump]),
+    SectionDevInternal =
+        help_section("Options intended for internal use by the compiler only",
+        [], [oc_internal]),
+    ChapterDev = two_level_chapter(
+        "Options for developers only",
+        [], [SectionDevCtrl, SectionDevDebug, SectionDevDump,
+            SectionDevInternal]),
+
+    ChapterUnused = one_level_chapter(
+        help_section("Now-unused former options kept for compatbility",
+        [], [oc_unused])),
+
+    % ZZZ Decide on order here; once agreed, make the code above match it.
+    AllChapters = [
+        ChapterHelp,
+        ChapterCmdLine,
+        ChapterOpmode,
+        ChapterGrade,
+        ChapterInfer,
+        ChapterSemantics,
+        ChapterVerbosity,
+
+        ChapterWarn,
+        ChapterInform,
+        ChapterFileReq,
+
+        ChapterTraceGoal,
+        ChapterDiag,
+        ChapterDebug,
+        ChapterProfiling,
+
+        ChapterOpt,
+        ChapterTransOpt,
+        ChapterAnalysis,
+
+        ChapterModOutput,
+        ChapterMmcMake,
+
+        ChapterCompile,
+        ChapterLink,
+        ChapterFileSearch,
+        ChapterBuild,
+
+        ChapterEnv,
+        ChapterConfig,
+        ChapterMconfig,
+
+        ChapterDev,
+        ChapterUnused
+    ].
+
+%---------------------------------------------------------------------------%
+
+:- pred print_help_chapter(io.text_output_stream::in, print_what_help::in,
+    help_chapter::in, set(option_category)::in, set(option_category)::out,
+    io::di, io::uo) is det.
+
+print_help_chapter(Stream, What, HelpChapter, !Categories, !IO) :-
+    (
+        HelpChapter = one_level_chapter(HelpSection),
+        print_help_section(Stream, What, "", HelpSection, !Categories, !IO)
+    ;
+        HelpChapter = two_level_chapter(ChapterName, ChapterCommentLines,
+            SubSections),
+        print_chapter_or_section_comment_lines(Stream, "",
+            ChapterCommentLines, !IO),
+        % ZZZ add another \n
+        io.format(Stream, "%s\n", [s(ChapterName)], !IO),
+        list.foldl2(print_help_section(Stream, What, option_name_indent),
+            SubSections, !Categories, !IO)
+    ).
+
+:- pred print_help_section(io.text_output_stream::in, print_what_help::in,
+    string::in, help_section::in,
+    set(option_category)::in, set(option_category)::out,
+    io::di, io::uo) is det.
+
+print_help_section(Stream, What, SectionNameIndent, HelpSection,
+        !Categories, !IO) :-
+    HelpSection = help_section(SectionName, SectionCommentLines,
+        SectionCategories),
+    set.det_remove_list(SectionCategories, !Categories),
+    list.map(get_optdb_records_in_category,
+        SectionCategories, OptdbRecordSets),
+    OptdbRecordSet = set.union_list(OptdbRecordSets),
+        % ZZZ add another \n
+    io.format(Stream, "%s%s\n", [s(SectionNameIndent), s(SectionName)], !IO),
+    print_chapter_or_section_comment_lines(Stream, SectionNameIndent,
+        SectionCommentLines, !IO),
+    % ZZZ
+    ( if semidet_succeed then
+        true
+        % io.format(Stream, "%s%d optdb records\n\n",
+        %     [s(option_desc_indent), i(set.count(OptdbRecordSet))], !IO)
+    else
+        list.foldl(acc_help_message(What), set.to_sorted_list(OptdbRecordSet),
+            cord.init, EffectiveLinesCord),
+        EffectiveLines = cord.list(EffectiveLinesCord),
+        % ZZZ Check for EffectiveLines = []
+        write_lines(Stream, EffectiveLines, !IO)
+    ).
+
+:- pred get_optdb_records_in_category(option_category::in,
+    set(optdb_record)::out) is det.
+
+get_optdb_records_in_category(Cat, OptdbRecordSet) :-
+    OptdbPred =
         ( pred(OptdbRecord::out) is multi :-
             optdb(Cat, Opt, OptData, Help),
             OptdbRecord = optdb_record(Cat, Opt, OptData, Help)
         ),
-    solutions(OptdbPred, OptdbRecords),
-    list.foldl(acc_help_message(What), OptdbRecords, cord.init, LineCord),
-    write_lines(Stream, cord.list(LineCord), !IO).
+    solutions_set(OptdbPred, OptdbRecordSet).
 
-:- pred write_lines(io.text_output_stream::in, list(string)::in,
-    io::di, io::uo) is det.
+:- pred print_chapter_or_section_comment_lines(io.text_output_stream::in,
+    string::in, list(string)::in, io::di, io::uo) is det.
 
-write_lines(_, [], !IO).
-write_lines(Stream, [Line | Lines], !IO) :-
-    io.write_string(Stream, Line, !IO),
-    io.nl(Stream, !IO),
-    write_lines(Stream, Lines, !IO).
+print_chapter_or_section_comment_lines(_, _, _, !IO).
+    % ZZZ nyi
 
 %---------------------------------------------------------------------------%
 
@@ -619,6 +943,17 @@ option_desc_indent = "        ".
 acc_prefixed_line(Prefix, LineBody, !LineCord) :-
     Line = Prefix ++ LineBody,
     cord.snoc(Line, !LineCord).
+
+%---------------------------------------------------------------------------%
+
+:- pred write_lines(io.text_output_stream::in, list(string)::in,
+    io::di, io::uo) is det.
+
+write_lines(_, [], !IO).
+write_lines(Stream, [Line | Lines], !IO) :-
+    io.write_string(Stream, Line, !IO),
+    io.nl(Stream, !IO),
+    write_lines(Stream, Lines, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module libs.print_help.

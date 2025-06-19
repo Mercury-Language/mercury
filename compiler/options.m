@@ -1470,6 +1470,18 @@
             % old option, then deleting the option and breaking their code
             % is less likely to mislead than keeping the option as a noop.
 
+    % The job of this predicate is to provide an authoritative list
+    % of all the option_categories for print_help.m. This is done by
+    % calling solutions on the second mode.
+    %
+    % The first mode is unused; it is there only to ensure completeness.
+    %
+    % The int output is a never-used argument.
+    %
+:- pred option_categories(option_category, int).
+:- mode option_categories(in, out) is det.
+:- mode option_categories(out, out) is multi.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -12228,6 +12240,67 @@ insert_short(Option, Name, !ShortPairs) :-
 
 insert_long(Option, Name, !LongPairs) :-
     !:LongPairs = [Name - Option | !.LongPairs].
+
+%---------------------------------------------------------------------------%
+
+option_categories(oc_help, 0).
+option_categories(oc_cmdline, 0).
+option_categories(oc_warn_dodgy, 0).
+option_categories(oc_warn_perf, 0).
+option_categories(oc_warn_perf_c, 0).
+option_categories(oc_warn_style, 0).
+option_categories(oc_warn_style_c, 0).
+option_categories(oc_warn_ctrl, 0).
+option_categories(oc_warn_halt, 0).
+option_categories(oc_inform, 0).
+option_categories(oc_verbosity, 0).
+option_categories(oc_verb_dev, 0).
+option_categories(oc_verb_dbg, 0).
+option_categories(oc_opmode, 0).
+option_categories(oc_diag_gen, 0).
+option_categories(oc_diag_color, 0).
+option_categories(oc_diag_int, 0).
+option_categories(oc_mdb, 0).
+option_categories(oc_mdb_dev, 0).
+option_categories(oc_tracegoal, 0).
+option_categories(oc_mdprof, 0).
+option_categories(oc_output_mod, 0).
+option_categories(oc_output_dev, 0).
+option_categories(oc_file_req, 0).
+option_categories(oc_make, 0).
+option_categories(oc_semantics, 0).
+option_categories(oc_infer, 0).
+option_categories(oc_grade, 0).
+option_categories(oc_internal, 0).
+option_categories(oc_opt_hh, 0).
+option_categories(oc_opt_hh_exp, 0).
+option_categories(oc_opt_hlm, 0).
+option_categories(oc_opt_hm, 0).
+option_categories(oc_opt_hl, 0).
+option_categories(oc_opt_ll, 0).
+option_categories(oc_opt_mm, 0).
+option_categories(oc_opt_lc, 0).
+option_categories(oc_opt_ctrl, 0).
+option_categories(oc_trans_opt, 0).
+option_categories(oc_target_comp, 0).
+option_categories(oc_target_c, 0).
+option_categories(oc_target_java, 0).
+option_categories(oc_target_csharp, 0).
+option_categories(oc_link_c, 0).
+option_categories(oc_link_java, 0).
+option_categories(oc_link_csharp, 0).
+option_categories(oc_link_c_cs, 0).
+option_categories(oc_link_c_cs_j, 0).
+option_categories(oc_buildsys, 0).
+option_categories(oc_search, 0).
+option_categories(oc_env, 0).
+option_categories(oc_dev_ctrl, 0).
+option_categories(oc_dev_debug, 0).
+option_categories(oc_dev_dump, 0).
+option_categories(oc_config, 0).
+option_categories(oc_mconfig, 0).
+option_categories(oc_analysis, 0).
+option_categories(oc_unused, 0).
 
 %---------------------------------------------------------------------------%
 :- end_module libs.options.
