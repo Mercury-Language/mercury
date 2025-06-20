@@ -6460,27 +6460,62 @@ short_table('?', help).
 long_option(String, Option) :-
     long_table(String, Option).
 
-all_long_option_strings(OptionStrings) :-
-    Pred =
-        ( pred(OptionString::out) is multi :-
-            long_table(OptionString, _)
-        ),
-    solutions(Pred, OptionStrings).
+all_long_option_strings(LongNames) :-
+    ( if semidet_succeed then
+        get_getopt_maps_mutable(GetoptMaps),
+        GetoptMaps = getopt_maps(_ShortNameMap, LongNameMap, _DefaultValueMap,
+            _ShortNamePred, _LongNamePred, _DefaultValuePred),
+        map.keys(LongNameMap, LongNames)
+    else
+        GetLongNamesPred =
+            ( pred(OptionString::out) is multi :-
+                long_table(OptionString, _)
+            ),
+        solutions(GetLongNamesPred, LongNames)
+    ).
 
-all_negatable_long_option_strings(OptionStrings) :-
-    Pred =
-        ( pred(OptionString::out) is nondet :-
-            long_table(OptionString, Option),
-            optdef(_, Option, OptionData),
-            ( OptionData = bool(_)
-            ; OptionData = maybe_int(_)
-            ; OptionData = maybe_string(_)
-            ; OptionData = accumulating(_)
-            ; OptionData = bool_special
-            ; OptionData = maybe_string_special
-            )
-        ),
-    solutions(Pred, OptionStrings).
+all_negatable_long_option_strings(NegateableLongNames) :-
+    ( if semidet_succeed then
+        get_getopt_maps_mutable(GetoptMaps),
+        GetoptMaps = getopt_maps(_ShortNameMap, LongNameMap, _DefaultValueMap,
+            _ShortNamePred, _LongNamePred, _DefaultValuePred),
+        AccNegateableLongNames =
+            ( pred(LongName::in, Option::in,
+                    NegateableLongNames0::in,
+                    NegateableLongNames1::out) is det :-
+                ( if
+                    optdb(_, Option, OptionData, _),
+                    ( OptionData = bool(_)
+                    ; OptionData = maybe_int(_)
+                    ; OptionData = maybe_string(_)
+                    ; OptionData = accumulating(_)
+                    ; OptionData = bool_special
+                    ; OptionData = maybe_string_special
+                    )
+                then
+                    NegateableLongNames1 = [LongName | NegateableLongNames0]
+                else
+                    NegateableLongNames1 = NegateableLongNames0
+                )
+            ),
+        map.foldl(AccNegateableLongNames, LongNameMap,
+            [], RevNegateableLongNames),
+        list.reverse(RevNegateableLongNames, NegateableLongNames)
+    else
+        GetNegateableLongNamesPred =
+            ( pred(OptionString::out) is nondet :-
+                long_table(OptionString, Option),
+                optdef(_, Option, OptionData),
+                ( OptionData = bool(_)
+                ; OptionData = maybe_int(_)
+                ; OptionData = maybe_string(_)
+                ; OptionData = accumulating(_)
+                ; OptionData = bool_special
+                ; OptionData = maybe_string_special
+                )
+            ),
+        solutions(GetNegateableLongNamesPred, NegateableLongNames)
+    ).
 
 :- pred long_table(string, option).
 :- mode long_table(in, out) is semidet.
