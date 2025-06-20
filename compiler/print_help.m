@@ -32,6 +32,7 @@
 :- import_module char.
 :- import_module cord.
 :- import_module getopt.
+:- import_module int.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
@@ -42,7 +43,7 @@
 %---------------------------------------------------------------------------%
 
 options_help_new(Stream, What, !IO) :-
-     ( if semidet_fail then
+     ( if semidet_succeed then
          OptdbPred =
             ( pred(OptdbRecord::out) is multi :-
                 optdb(Cat, Opt, OptData, Help),
@@ -50,7 +51,8 @@ options_help_new(Stream, What, !IO) :-
             ),
         solutions(OptdbPred, OptdbRecords),
         list.foldl(acc_help_message(What), OptdbRecords, cord.init, LineCord),
-        write_lines(Stream, cord.list(LineCord), !IO)
+        Lines = cord.list(LineCord),
+        write_lines(Stream, Lines, !IO)
     else
         % We check whether we have covered all possible option categories
         %
@@ -649,7 +651,9 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
                         "There is no help text available.", !LineCord)
                 ;
                     DescLines = [_ | _],
-                    list.foldl(acc_prefixed_line(DescPrefix), DescLines,
+                    % ZZZ 71
+                    reflow_lines(71, DescLines, ReflowLines),
+                    list.foldl(acc_prefixed_line(DescPrefix), ReflowLines,
                         !LineCord)
                 ),
                 BlankLineCord = cord.singleton(""),
@@ -943,6 +947,103 @@ option_desc_indent = "        ".
 acc_prefixed_line(Prefix, LineBody, !LineCord) :-
     Line = Prefix ++ LineBody,
     cord.snoc(Line, !LineCord).
+
+%---------------------------------------------------------------------------%
+
+:- pred reflow_lines(int::in, list(string)::in, list(string)::out) is det.
+
+reflow_lines(LineLen, InitialLines, FinishedLines) :-
+    % string.count_code_points(IndentStr, IndentLen),
+    % AvailLen = LineLen - IndentLen,
+    reflow_lines_loop_over_lines(LineLen, cord.init, 0, InitialLines,
+        cord.init, FinishedLineCord),
+    FinishedLines = cord.list(FinishedLineCord).
+
+    % The pieces of the current line.
+    % This will NOT contain the initial indent string.
+    % This WILL contain both the words put on this line so far, *and*
+    % the spaces between them.
+:- type cur_line == cord(string).
+
+    % The reflowed lines we have already constructed.
+:- type finished_lines == cord(string).
+
+:- pred reflow_lines_loop_over_lines(int::in, cur_line::in, int::in,
+    list(string)::in, finished_lines::in, finished_lines::out) is det.
+
+reflow_lines_loop_over_lines(LineLen, !.CurLine, !.CurLineLen, Lines,
+        !FinishedLineCord) :-
+    (
+        Lines = [],
+        finish_cur_line(!.CurLine, !FinishedLineCord)
+    ;
+        Lines = [HeadLine | TailLines0],
+        ( if HeadLine = "QUOTE" then
+            % Delete the "QUOTE" word, and do NOT break the next line, if any.
+            (
+                TailLines0 = [],
+                TailLines = []
+            ;
+                TailLines0 = [ProtectedLine | TailLines],
+                add_word(LineLen, !CurLine, !CurLineLen, ProtectedLine,
+                    !FinishedLineCord)
+            )
+        else
+            TailLines = TailLines0,
+            HeadLineWords = string.words(HeadLine),
+            reflow_lines_loop_over_words(LineLen, !CurLine, !CurLineLen,
+                HeadLineWords, !FinishedLineCord)
+        ),
+        reflow_lines_loop_over_lines(LineLen, !.CurLine, !.CurLineLen,
+            TailLines, !FinishedLineCord)
+    ).
+
+:- pred reflow_lines_loop_over_words(int::in, cur_line::in, cur_line::out,
+    int::in, int::out, list(string)::in,
+    finished_lines::in, finished_lines::out) is det.
+
+reflow_lines_loop_over_words(LineLen, !CurLine, !CurLineLen, Words,
+        !FinishedLineCord) :-
+    (
+        Words = []
+    ;
+        Words = [HeadWord | TailWords],
+        add_word(LineLen, !CurLine, !CurLineLen, HeadWord, !FinishedLineCord),
+        reflow_lines_loop_over_words(LineLen, !CurLine, !CurLineLen,
+            TailWords, !FinishedLineCord)
+    ).
+
+:- pred add_word(int::in, cur_line::in, cur_line::out, int::in, int::out,
+    string::in, finished_lines::in, finished_lines::out) is det.
+
+add_word(LineLen, !CurLine, !CurLineLen, Word, !FinishedLineCord) :-
+    string.count_code_points(Word, WordLen),
+    ( if !.CurLineLen = 0 then
+        !:CurLine = cord.singleton(Word),
+        !:CurLineLen = WordLen
+    else
+        NextLineLen = !.CurLineLen + 1 + WordLen,
+        ( if NextLineLen =< LineLen then
+            cord.snoc(" ", !CurLine),
+            cord.snoc(Word, !CurLine),
+            !:CurLineLen = NextLineLen
+        else
+            finish_cur_line(!.CurLine, !FinishedLineCord),
+            !:CurLine = cord.singleton(Word),
+            !:CurLineLen = WordLen
+        )
+    ).
+
+:- pred finish_cur_line(cur_line::in,
+    finished_lines::in, finished_lines::out) is det.
+
+finish_cur_line(CurLine, !FinishedLineCord) :-
+    FinishedLine = string.append_list(cord.list(CurLine)),
+    ( if FinishedLine = "" then
+        true
+    else
+        cord.snoc(FinishedLine, !FinishedLineCord)
+    ).
 
 %---------------------------------------------------------------------------%
 

@@ -1653,7 +1653,8 @@ optdb(oc_warn_dodgy, warn_suspected_occurs_check_failure, bool(yes),
             ["warn-suspected-occurs-failure"], [
         "Do not warn about code that looks like it unifies a variable",
         "with a term that contains that same variable. Such code cannot",
-        "succeed because it fails what is called the `occurs check'."])).
+        "succeed because it fails what is called the",
+        "QUOTE", "`occurs check'."])).
 optdb(oc_warn_dodgy, warn_suspicious_recursion,           bool(no),
     xhelp("warn-suspicious-recursion", [
         "Warn about recursive calls which are likely to have problems,",
@@ -2130,8 +2131,9 @@ optdb(oc_diag_gen, limit_error_contexts,              accumulating([]),
         "to all files."])).
 optdb(oc_diag_gen, error_files_in_subdir,             bool(no),
     xhelp("error-files-in-subdir", [
-        "This option causes `mmc --make' to put .err files into the",
-        "`Mercury' subdirectory instead of the current directory.",
+        "This option causes", "QUOTE", "`mmc --make'",
+        "to put .err files into the `Mercury' subdirectory",
+        "instead of the current directory.",
         "(This option has no effect on Mmake.)"])).
 optdb(oc_diag_gen, std_int_file_not_written_msgs,     bool(no),
     % We use this option to eliminate the need for a .int_err_exp file for the
@@ -2537,7 +2539,7 @@ optdb(oc_opmode, part_opmode_rebuild,                  bool(no),
 optdb(oc_opmode, only_opmode_invoked_by_mmc_make,      bool(no),
     xpriv_help("invoked-by-mmc-make", [
         "This option is only for internal use by the compiler.",
-        "`mmc --make' passes it as the first argument when",
+        "QUOTE", "`mmc --make'", "passes it as the first argument when",
         "compiling a module."])).
 optdb(oc_opmode, only_opmode_generate_dependencies,    bool(no),
     % XXX This leaves out important details, such as .dv and .d files.
@@ -3358,9 +3360,9 @@ optdb(oc_grade, gc,                                    string("boehm"),
         "When targeting C, the default is `boehm',",
         "which is Hans Boehm et al's conservative collector.",
         "The use of the `boehm' collector is indicated by",
-        "the `.gc' grade component",
+        "the `.gc' grade component.",
         "The other alternative when targeting C is `none'",
-        "meaning there is no garbage collector",
+        "meaning there is no garbage collector.",
         "This works only for programs with very short runtimes."])).
 optdb(oc_grade, stack_segments,                        bool(no),
     xalt_align_help("stack-segments", [],
@@ -3499,15 +3501,15 @@ optdb(oc_grade, conf_low_ptag_bits,                    int(2),
     % a value determined at configuration time.
     xpriv_alt_arg_help("conf-low-ptag-bits",
             ["conf-low-tag-bits"], "n", [
-        "Reserved for use by the `mmc' script"])).
+        "Reserved for use by the `mmc' script."])).
 optdb(oc_grade, bits_per_word,                         int(32),
     % A good default for the current generation of architectures.
     xpriv_arg_help("bits-per-word", "n", [
-        "Reserved for use by the `mmc' script"])).
+        "Reserved for use by the `mmc' script."])).
 optdb(oc_grade, bytes_per_word,                        int(4),
     % A good default for the current generation of architectures.
     xpriv_arg_help("bytes-per-word", "n", [
-        "Reserved for use by the `mmc' script"])).
+        "Reserved for use by the `mmc' script."])).
 optdb(oc_grade, unboxed_float,                         bool(no),
     % XXX Delete all occurrences of "This option is not for general use".
     xpriv_help("unboxed-float", [
@@ -3740,7 +3742,7 @@ optdb(oc_opt_ctrl, transitive_optimization,            bool(no),
         "Import the transitive intermodule optimization data.",
         "This data is imported from `<module>.trans_opt' files.",
         "Note that `--transitive-intermodule-optimization' does not",
-        "work with `mmc --make'."])).
+        "work with", "QUOTE", "`mmc --make'."])).
 optdb(oc_opt_ctrl, read_opt_files_transitively,        bool(yes),
     xhelp("read-opt-files-transitively", [                  % NO
         "Only read the inter-module optimization information",
@@ -4873,7 +4875,7 @@ optdb(oc_target_java, java_compiler,                   string("javac"),
 optdb(oc_target_java, java_interpreter,                string("java"),
     xarg_help("java-interpreter", "java", [
         "Specify which Java interpreter to use.",
-        "The default is `java'"])).
+        "The default is `java'."])).
 optdb(oc_target_java, java_compiler_flags,             accumulating([]),
     xalt_arg_help("javac-flags", ["java-flags"], "options", [
         "Specify options to be passed to the Java compiler.",
@@ -5076,7 +5078,7 @@ optdb(oc_link_c,      output_file_name,                       string(""),
         "Specify the name of the final executable.",
         "(The default executable name is the same as the name",
         "of the first module on the command line.)",
-        "This option is ignored by `mmc --make'."])).
+        "This option is ignored by", "QUOTE", "`mmc --make'."])).
 optdb(oc_link_c,      link_objects,                      accumulating([]),
     xarg_help("link-object", "file", [
         "Link with the specified object or archive file."])).
@@ -5407,11 +5409,12 @@ optdb(oc_make, keep_going,                         bool(no),
         "even if an error is detected."])).
 optdb(oc_make, order_make_by_timestamp,            bool(no),
     xhelp("order-make-by-timestamp", [
-        "Make `mmc --make' compile more recently modified source files",
-        "first."])).
+        "Make", "QUOTE", "`mmc --make'", "compile",
+        "more recently modified source files first."])).
 optdb(oc_make, show_make_times,                    bool(no),
     xhelp("show-make-times", [
-        "Report run times for commands executed by `mmc --make'."])).
+        "Report run times for commands executed by",
+        "QUOTE", "`mmc --make'."])).
 optdb(oc_make, make_max_jobs,                      int(1),
     xshort_arg_help('j', "jobs", [], "n", [
         "With `--make', attempt to perform up to <n> jobs concurrently."])).
@@ -5419,12 +5422,14 @@ optdb(oc_make, make_track_flags,                   bool(no),
     xalt_help("track-flags", ["track-options"], [
         "With `--make', keep track of the options used when compiling",
         "each module. If an option for a module is added or removed,",
-        "`mmc --make' will then know to recompile the module even if the",
-        "timestamp on the file itself has not changed. Warning,",
-        "verbosity and build system options are not tracked."])).
+        "QUOTE", "`mmc --make'", "will then know to recompile",
+        "the module even if the timestamp on the file itself",
+        "has not changed. Warning, verbosity and build system options",
+        "are not tracked."])).
 optdb(oc_make, make_pre_link_command,              maybe_string(no),
     xarg_help("pre-link-command", "command", [
-        "Specify a command to run before linking with `mmc --make'.",
+        "Specify a command to run before linking with",
+        "QUOTE", "`mmc --make'.",
         "This can be used to compile C source files which rely on",
         "header files generated by the Mercury compiler.",
         "The command will be passed the names of all of the source",
@@ -5470,7 +5475,7 @@ optdb(oc_search, setting_only_use_grade_subdirs,      bool(no),
         "Executables and libraries will be symlinked or copied into",
         "the current directory.",
         "`--use-grade-subdirs' does not work with Mmake (it does",
-        "work with `mmc --make')."])).
+        "work with", "QUOTE", "`mmc --make')."])).
 optdb(oc_search, search_directories,                  accumulating(["."]),
     xshort_arg_help('I', "search-directory", [], "dir", [
         "Append <dir> to the list of directories to be searched",
@@ -5571,15 +5576,15 @@ optdb(oc_buildsys, library_install_grades_incl_components, accumulating([]),
             ["libgrades-include"], "grade_component", [
         "Remove grades that do not contain the specified component from",
         "the set of library grades to be installed.",
-        "(This option works only `mmc --make'; it does not work",
-        "with Mmake.)"])).
+        "(This option works only with", "QUOTE", "`mmc --make';",
+        "it does not work with Mmake.)"])).
 optdb(oc_buildsys, library_install_grades_excl_components, accumulating([]),
     xalt_arg_help("libgrades-exclude-component",
             ["libgrades-exclude"], "grade_component", [
         "Remove grades that contain the specified component from the",
         "set of library grades to be installed.",
-        "(This option works only `mmc --make'; it does not work",
-        "with Mmake.)"])).
+        "(This option works only with", "QUOTE", "`mmc --make';",
+        "it does not work with Mmake.)"])).
 optdb(oc_buildsys, only_globals_library_install_linkages, accumulating([]),
     xalt_arg_help("library-install-linkage",
             ["library-linkage", "lib-linkage"], "{shared, static}", [
@@ -5591,13 +5596,13 @@ optdb(oc_buildsys, libgrade_install_check,         bool(yes),
     xhelp("libgrade-install-check", [                       % NO
         "Do not check that libraries have been installed before",
         "attempting to use them. (This option is meaningful only with",
-        "`mmc --make'.)"])).
+        "QUOTE", "`mmc --make'.)"])).
 optdb(oc_buildsys, extra_library_header,           accumulating([]),
     xalt_arg_help("extra-library-header",
             ["extra-lib-header"], "file", [
         "Install the specified C header file with along with",
         "a Mercury library.",
-        "(This option is only supported by `mmc --make'.)"])).
+        "(This option is supported only by", "QUOTE", "`mmc --make'.)"])).
 
 %---------------------------------------------------------------------------%
 
@@ -5674,7 +5679,7 @@ optdb(oc_env, restricted_command_line,                 bool(no),
         "Enable this option if your shell doesn't support long",
         "command lines. This option uses temporary files to pass arguments",
         "to sub-commands.",
-        "(This option is only supported by `mmc --make'.)"])).
+        "(This option is supported only by", "QUOTE", "`mmc --make'.)"])).
 
 %---------------------------------------------------------------------------%
 
@@ -6123,7 +6128,9 @@ optdb(oc_dev_ctrl, compiler_sufficiently_recent,       bool(no),
         "escape-2024-04-28",
         "can-fail-function-obsolete-2024-08-10",
         "unused-statevar-warn-2025-05-16",
-        "allow-non-contig-for-2025-06-01"], [])).
+        "allow-non-contig-for-2025-06-01"], [
+        "Is the compiler sufficiently recent to contain the new feature",
+        "or bugfix referred to by each name?"])).
 optdb(oc_dev_ctrl, experiment,                         string(""),
     xpriv_arg_help("experiment", "experiment_name", [])).
 optdb(oc_dev_ctrl, experiment1,                        bool(no),
@@ -10499,13 +10506,13 @@ options_help_compilation_model = NestedSection :-
 
         % The following are all developer only options.
         priv_help("conf-low-tag-bits", [
-            "Reserved for use by the `mmc' script"]),
+            "Reserved for use by the `mmc' script."]),
 
         priv_help("bits-per-word", [
-            "Reserved for use by the `mmc' script"]),
+            "Reserved for use by the `mmc' script."]),
 
         priv_help("bytes-per-word", [
-            "Reserved for use by the `mmc' script"]),
+            "Reserved for use by the `mmc' script."]),
 
         priv_help("unboxed-float", [
             "(This option is not for general use.)",
@@ -11518,7 +11525,7 @@ options_help_target_code_compilation = Section :-
 
         help("java-interpreter <java>", [
             "Specify which Java interpreter to use.",
-            "The default is `java'"]),
+            "The default is `java'."]),
 
         alt_help("javac-flags <options>", pos_sep_lines,
                 ["javac-flag <option>",
