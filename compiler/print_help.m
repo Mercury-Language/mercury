@@ -43,7 +43,7 @@
 %---------------------------------------------------------------------------%
 
 options_help_new(Stream, What, !IO) :-
-     ( if semidet_succeed then
+     ( if semidet_fail then
          OptdbPred =
             ( pred(OptdbRecord::out) is multi :-
                 optdb(Cat, Opt, OptData, Help),
@@ -107,6 +107,35 @@ all_chapters = AllChapters :-
         help_section("Options for modifying the command line",
         [], [oc_cmdline])),
 
+    ChapterOpmode = one_level_chapter(
+        help_section("Options that give the compiler its overall task",
+        [], [oc_opmode])),
+
+    ChapterGrade = one_level_chapter(
+        help_section("Grade options",
+        [], [oc_grade])),
+
+    ChapterInfer = one_level_chapter(
+        help_section("Options that control inference",
+        [], [oc_infer])),
+
+    ChapterSemantics = one_level_chapter(
+        help_section("Options specifying the intended semantics",
+        [], [oc_semantics])),
+
+    ChapterVerbosity = one_level_chapter(
+        help_section("Verbosity options",
+        [], [oc_verbosity, oc_verb_dev, oc_verb_dbg])),
+
+    SectionDiagGen = help_section("Options that control diagnostics",
+        [], [oc_diag_gen]),
+    SectionDiagColor = help_section(
+        "Options that control color in diagnostics",
+        [], [oc_diag_color, oc_diag_int]),
+    ChapterDiag = two_level_chapter("Diagnostics options",
+        [],
+        [SectionDiagGen, SectionDiagColor]),
+
     SectionWarnDodgy = help_section("Warnings about possible incorrectness",
         [], [oc_warn_dodgy]),
     SectionWarnPerf = help_section(
@@ -127,68 +156,26 @@ all_chapters = AllChapters :-
         help_section("Options that request information",
         [], [oc_inform])),
 
-    SectionDiagGen = help_section("Options that control diagnostics",
-        [], [oc_diag_gen]),
-    SectionDiagColor = help_section(
-        "Options that control color in diagnostics",
-        [], [oc_diag_color, oc_diag_int]),
-    ChapterDiag = two_level_chapter("Diagnostics options",
-        [],
-        [SectionDiagGen, SectionDiagColor]),
-
-    ChapterVerbosity = one_level_chapter(
-        help_section("Verbosity options",
-        [], [oc_verbosity, oc_verb_dev, oc_verb_dbg])),
-
-    ChapterOpmode = one_level_chapter(
-        help_section("Options that give the compiler its overall task",
-        [], [oc_opmode])),
-
-    ChapterDebug = one_level_chapter(
-        help_section("Preparing code for mdb debugging",
-        [], [oc_mdb, oc_mdb_dev])),
-
-    ChapterTraceGoal = one_level_chapter(
-        help_section("Controlling trace goals",
-        [], [oc_tracegoal])),
-
-    ChapterProfiling = one_level_chapter(
-        help_section("Preparing code for mdprof profiling",
-        [], [oc_mdprof])),
-
-    ChapterTransOpt = one_level_chapter(
-        help_section(
-            "Options that control transitive intermodule optimization",
-        [], [oc_trans_opt])),
-
-    ChapterModOutput = one_level_chapter(
-        help_section("Options that ask for modified output",
-        [], [oc_output_mod, oc_output_dev])),
-
     % ZZZ cf ChapterInform
     ChapterFileReq = one_level_chapter(
         help_section("Options that ask for informational files",
         [], [oc_file_req])),
 
-    ChapterSemantics = one_level_chapter(
-        help_section("Options specifying the intended semantics",
-        [], [oc_semantics])),
+    ChapterTraceGoal = one_level_chapter(
+        help_section("Controlling trace goals",
+        [], [oc_tracegoal])),
 
-    ChapterInfer = one_level_chapter(
-        help_section("Options that control inference",
-        [], [oc_infer])),
+    ChapterDebug = one_level_chapter(
+        help_section("Preparing code for mdb debugging",
+        [], [oc_mdb, oc_mdb_dev])),
 
-    ChapterGrade = one_level_chapter(
-        help_section("Grade options",
-        [], [oc_grade])),
-
-    ChapterConfig = one_level_chapter(
-        help_section("Options that record autoconfigured parameters",
-        [], [oc_config])),
+    ChapterProfiling = one_level_chapter(
+        help_section("Preparing code for mdprof profiling",
+        [], [oc_mdprof])),
 
     SectionOptCtrl = help_section("Overall control of optimizations",
         [], [oc_opt_ctrl]),
-    SectionOptHH = help_section("Source-to-Source optimizations",
+    SectionOptHH = help_section("Source-to-source optimizations",
         [], [oc_opt_hh]),
     SectionOptHHE = help_section("Experimental source-to-Source optimizations",
         [], [oc_opt_hh_exp]),
@@ -204,9 +191,22 @@ all_chapters = AllChapters :-
         [], [SectionOptCtrl, SectionOptHH, SectionOptHHE, SectionOptHLM,
             SectionOptMM, SectionOptLL]),
 
+    ChapterTransOpt = one_level_chapter(
+        help_section(
+            "Options that control transitive intermodule optimization",
+        [], [oc_trans_opt])),
+
     ChapterAnalysis = one_level_chapter(
         help_section("Options that control program analyses",
         [], [oc_analysis])),
+
+    ChapterModOutput = one_level_chapter(
+        help_section("Options that ask for modified output",
+        [], [oc_output_mod, oc_output_dev])),
+
+    ChapterMmcMake = one_level_chapter(
+        help_section("Options for controlling mmc --make",
+        [], [oc_make])),
 
     SectionCompileGen = help_section(
         "General options for compiling target language code",
@@ -237,14 +237,6 @@ all_chapters = AllChapters :-
         [], [SectionLinkGen, SectionLinkCCsharp, SectionLinkC, SectionLinkJava,
             SectionLinkCsharp]),
 
-    ChapterMconfig = one_level_chapter(
-        help_section("Options reserved for Mercury.config files",
-        [], [oc_mconfig])),
-
-    ChapterMmcMake = one_level_chapter(
-        help_section("Options for controlling mmc --make",
-        [], [oc_make])),
-
     ChapterFileSearch = one_level_chapter(
         help_section("Options controlling searches for files",
         [], [oc_search])),
@@ -256,6 +248,14 @@ all_chapters = AllChapters :-
     ChapterEnv = one_level_chapter(
         help_section("Options specifying properties of the environment",
         [], [oc_env])),
+
+    ChapterConfig = one_level_chapter(
+        help_section("Options that record autoconfigured parameters",
+        [], [oc_config])),
+
+    ChapterMconfig = one_level_chapter(
+        help_section("Options reserved for Mercury.config files",
+        [], [oc_mconfig])),
 
     SectionDevCtrl = help_section(
         "Operation selection options for developers only",
@@ -275,10 +275,9 @@ all_chapters = AllChapters :-
             SectionDevInternal]),
 
     ChapterUnused = one_level_chapter(
-        help_section("Now-unused former options kept for compatbility",
+        help_section("Now-unused former options kept for compatibility",
         [], [oc_unused])),
 
-    % ZZZ Decide on order here; once agreed, make the code above match it.
     AllChapters = [
         ChapterHelp,
         ChapterCmdLine,
@@ -288,12 +287,12 @@ all_chapters = AllChapters :-
         ChapterSemantics,
         ChapterVerbosity,
 
+        ChapterDiag,
         ChapterWarn,
         ChapterInform,
         ChapterFileReq,
 
         ChapterTraceGoal,
-        ChapterDiag,
         ChapterDebug,
         ChapterProfiling,
 
