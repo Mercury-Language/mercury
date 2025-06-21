@@ -1,7 +1,7 @@
 #!/usr/bin/awk -f
 # vim: ts=4 sw=4 et ft=awk
 #---------------------------------------------------------------------------#
-# Copyright (C) 2020 The Mercury team.
+# Copyright (C) 2020, 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -86,7 +86,10 @@ BEGIN {
         }
     }
 END {
+        doc_switch_type_name = "documented_optimization_option";
+        doc_switch_type_functor_name = "doc_oo";
         switch_type_name = "optimization_option";
+        doc_switch_var_name = "DocOptOption";
         switch_var_name = "OptOption";
         record_type_name = "opt_tuple";
         record_var_name = "OptTuple";
@@ -153,6 +156,18 @@ END {
         printf(":- pred process_optimization_options(option_table::in,\n");
         printf("%-4slist(%s)::in, %s::out) is det.\n",
             "", switch_type_name, record_type_name);
+        printf("\n");
+
+        printf(":- type %s\n", doc_switch_type_name);
+        printf("%-4s--->%-4s%s(\n", "", "", doc_switch_type_functor_name);
+        printf("%-16s%s,\n", "", switch_type_name);
+        printf("%-16soption,\n", "");
+        printf("%-16soption_data\n", "");
+        printf("%-12s).\n", "");
+        printf("\n");
+
+        printf(":- pred opts_enabled_at_level(int::in, list(string)::out,\n");
+        printf("%-4slist(%s)::out) is semidet.\n", "", doc_switch_type_name);
 
         printf("\n");
         printf("%%---------------------------------------------------------------------------%%\n");
@@ -161,7 +176,6 @@ END {
         printf(":- implementation.\n");
 
         printf("\n");
-        printf(":- import_module getopt.\n");
         printf(":- import_module int.\n");
         printf(":- import_module map.\n");
         printf(":- import_module string.\n");
@@ -188,7 +202,8 @@ END {
         printf("\n");
         printf(":- func init_opt_tuple = %s.\n\n", record_type_name);
 
-        printf("init_opt_tuple = %s(\n", record_type_name);
+        printf("init_opt_tuple =\n");
+        printf("%-4s%s(\n", "", record_type_name);
         for (i = 0; i < next_bool_opt; i++) {
             printf("%-8s%s,\n", "", bool_defaults[i]);
         }
@@ -239,7 +254,8 @@ END {
         for (i = 0; i < next_bool_opt; i++) {
             printf("%-4s%s\n", "", lparen_or_semi);
             lparen_or_semi = ";";
-            printf("%-8s%s = oo_%s(Bool),\n", "", switch_var_name, bool_field_names[i]);
+            printf("%-8s%s = oo_%s(Bool),\n", "",
+                switch_var_name, bool_field_names[i]);
             if (bool_field_names[i] == "opt_delay_slot") {
                 printf("%-8supdate_opt_tuple_bool_%s(OptionTable, Bool, !%s)\n",
                     "", bool_field_names[i], record_var_name);

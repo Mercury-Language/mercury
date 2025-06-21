@@ -1022,7 +1022,7 @@
     ;       optopt_use_macro_for_redo_fail
     ;       optopt_emit_c_loops
     ;       optopt_procs_per_c_function
-    ;       optopt_everything_in_one_c_function
+    ;       optopt_use_just_one_c_func
     ;       optopt_local_thread_engine_base
     ;       optopt_inline_alloc
     ;       optopt_c_optimize
@@ -4515,7 +4515,6 @@ optdb(oc_opt_ll, optopt_layout_compression_limit,         int_special,
 optdef(oc_opt_lc, optopt_use_macro_for_redo_fail,          bool_special).
 optdef(oc_opt_lc, optopt_emit_c_loops,                     bool_special).
 optdef(oc_opt_lc, optopt_procs_per_c_function,             int_special).
-optdef(oc_opt_lc, optopt_everything_in_one_c_function,     bool_special).
 optdef(oc_opt_lc, optopt_local_thread_engine_base,         bool_special).
 % optopt_inline_alloc works by giving a flag to the C compiler, but
 % from the user's point of view, it is about giving different code
@@ -4537,13 +4536,6 @@ optdb(oc_opt_lc, optopt_procs_per_c_function,             int_special,
         "procedures in a single C function. The default",
         "value of <n> is one. Increasing <n> can produce",
         "slightly more efficient code, but makes compilation slower."])).
-optdb(oc_opt_lc, optopt_everything_in_one_c_function,     bool_special,
-    xalt_help("everything-in-one-c-function",
-            ["everything-in-one-C-function"], [
-        "This option has the effect of putting the code for all",
-        "the Mercury procedures in a single C function,",
-        "which produces the most efficient code but tends to",
-        "severely stress the C compiler on large modules."])).
 optdb(oc_opt_lc, optopt_local_thread_engine_base,         bool_special,
     xhelp("local-thread-engine-base", [                     % NO
         "Do not copy the thread-local Mercury engine base address",
@@ -6206,14 +6198,19 @@ optdb(oc_dev_debug, debug_class_init,                   bool(no),
 optdef(oc_unused, ansi_c,                          bool(yes)).
 optdef(oc_unused, cflags_for_ansi,                 string("")).
 optdef(oc_unused, install_command_dir_option,      string("-R")).
+optdef(oc_unused, optopt_use_just_one_c_func,      bool_special).
 
 optdb(oc_unused, ansi_c,                          bool(yes),
-    xhelp("ansi-c", [                                       % NO
+    xhelp("ansi-c", [
         "This option is deprecated and does not have any effect."])).
 optdb(oc_unused, cflags_for_ansi,                 string(""),
     xpriv_arg_help("cflags-for-ansi", "flags", [])).
 optdb(oc_unused, install_command_dir_option,      string("-R"),
     xpriv_arg_help("install-command-dir-option", "flag", [])).
+optdb(oc_unused, optopt_use_just_one_c_func,              bool_special,
+    xalt_help("everything-in-one-c-function",
+            ["everything-in-one-C-function"], [
+        "This option is deprecated and does not have any effect."])).
 
 %---------------------------------------------------------------------------%
 
@@ -7335,9 +7332,9 @@ long_table("emit-c-loops",         optopt_emit_c_loops).
 long_table("procs-per-c-function", optopt_procs_per_c_function).
 long_table("procs-per-C-function", optopt_procs_per_c_function).
 long_table("everything-in-one-c-function",
-                                    optopt_everything_in_one_c_function).
+                                    optopt_use_just_one_c_func).
 long_table("everything-in-one-C-function",
-                                    optopt_everything_in_one_c_function).
+                                    optopt_use_just_one_c_func).
 long_table("inline-alloc",         optopt_inline_alloc).
 long_table("local-thread-engine-base", optopt_local_thread_engine_base).
 
@@ -8445,7 +8442,7 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_emit_c_loops(Bool)
         ;
-            Option = optopt_everything_in_one_c_function,
+            Option = optopt_use_just_one_c_func,
             SpecialData = bool(Bool),
             OptOption = oo_use_just_one_c_func(Bool)
         ;
