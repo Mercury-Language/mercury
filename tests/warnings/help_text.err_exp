@@ -306,7 +306,8 @@ Grade options
         There is no help text available.
 
     --no-coverage-profiling
-        Disable coverage profiling.
+        Do not gather profiling information that is useful only for coverage
+        profiling.
 
     PRIVATE OPTION
     --coverage-profiling-via-calls
@@ -314,8 +315,8 @@ Grade options
 
     PRIVATE OPTION
     --coverage-profiling-static
-        Disable dynamic coverage profiling, this uses less memory and may be
-        faster.
+        Disable coverage profiling of ProcDynamics; cover only ProcStatics.
+        This uses less memory, and may be faster.
 
     PRIVATE OPTION
     --no-profile-deep-coverage-after-goal
@@ -335,12 +336,11 @@ Grade options
 
     PRIVATE OPTION
     --profile-deep-coverage-use-portcounts
-        Turn off usage of port counts in the deep profiler to provide some
-        coverage information.
+        Use port counts to provide coverage information.
 
     PRIVATE OPTION
     --profile-deep-coverage-use-trivial
-        Turn off usage of trivial goal information
+        Use simple goal properties for coverage information.
 
     --profile-for-feedback
     --profile-for-implicit-parallelism
@@ -511,7 +511,7 @@ Grade options
 
     PRIVATE OPTION
     --no-unboxed-no-tag-types
-        Box no-tag types. This option is disabled by default. Note that the
+        Box no-tag types. (By default, no-tag types are unboxed.) Note that the
         value of this option is normally autoconfigured; its use should never
         be needed except for cross-compilation.
 
@@ -531,8 +531,9 @@ Grade options
 
     PRIVATE OPTION
     --no-allow-double-word-fields
-        Disallow storing a single constructor argument in two words (namely,
-        double-precision floats).
+        Disallow storing a single constructor argument in two words. (This
+        mainly applies to arguments that are double-precision floats or whose
+        type is int64 or uint64.
 
     PRIVATE OPTION
     --allow-double-word-ints
@@ -627,8 +628,8 @@ Options that control inference
 
     --no-infer-determinism
     --no-infer-det
-        If there is no determinism declaration for a procedure, don't try to
-        infer the determinism, just report an error.
+        If there is no determinism declaration for a procedure, just report an
+        error; do not try to infer the determinism.
 
     --infer-all
         Abbreviation for `--infer-types --infer-modes --infer-det'.
@@ -642,19 +643,19 @@ Options that control inference
 Options specifying the intended semantics
 
     --no-reorder-conj
-        Execute conjunctions left-to-right except where the modes imply that
-        reordering is unavoidable.
+        Execute conjunctions left-to-right. Do not reorder conjuncts, except
+        where the modes require it.
 
     --no-reorder-disj
-        Execute disjunctions strictly left-to-right.
+        Execute disjunctions strictly left-to-right; do not reorder disjuncts.
 
     --no-fully-strict
-        Allow infinite loops or goals with determinism erroneous to be
+        Allow infinite loops, and goals whose determinism is erroneous, to be
         optimised away.
 
-    PRIVATE OPTION
     --strict-sequential
-        There is no help text available.
+        --strict-sequential sets --no-reorder-conj, --no-reorder-disj and
+        --fully-strict.
 
 Verbosity options
 
@@ -675,8 +676,7 @@ Verbosity options
         first. Implies `--verbose-recompilation'.
 
     --no-verbose-make
-        Disable messages about the progress of builds using the `--make'
-        option.
+        Disable messages about the progress of builds when using `mmc --make'.
 
     --verbose-commands
         Output each external command before it is run. Note that some commands
@@ -973,13 +973,13 @@ Warning options
 
     --no-warn-singleton-variables
     --no-warn-singleton-vars
-        Do not warn about variables which only occur once, despite their names
-        not starting with an underscore.
+        Do not warn about variables which only occur once in a clause, but
+        whose names do not start with an underscore.
 
     --no-warn-repeated-singleton-variables
     --no-warn-repeated-singleton-vars
-        Do not warn about variables which occur more than once, despite their
-        names starting with an underscore.
+        Do not warn about variables which occur more than once in a clause, but
+        whose names do start with an underscore.
 
     --no-warn-overlapping-scopes
         Do not warn about variables which occur in overlapping scopes.
@@ -1007,13 +1007,13 @@ Warning options
         module, but not used in the interface of that module.
 
     --no-warn-missing-opt-files
-        Disable warnings about `.opt' files which cannot be opened.
+        Do not warn about `.opt' files which cannot be opened.
 
     --warn-missing-trans-opt-files
-        Enable warnings about `.trans_opt' files which cannot be opened.
+        Warn about `.trans_opt' files which cannot be opened.
 
     --no-warn-missing-trans-opt-deps
-        Disable warnings produced when the information required to allow
+        Do not generate a warning when the information required to allow
         `.trans_opt' files to be read when creating other `.trans_opt' files
         has been lost. The information can be recreated by running `mmake
         <mainmodule>.depend'
@@ -1021,11 +1021,11 @@ Warning options
     --warn-non-stratification
         Warn about possible non-stratification of the predicates and/or
         functions in the module. Non-stratification occurs when a predicate or
-        function can call itself negatively through some path along its call
+        function can call itself through negation through some path in its call
         graph.
 
     --no-warn-unification-cannot-succeed
-        Disable warnings about unifications which cannot succeed.
+        Do not warn about unifications which cannot succeed.
 
     --no-warn-undefined-options-variables
     --no-warn-undefined-options-vars
@@ -1037,28 +1037,26 @@ Warning options
         leading to infinite recursion.
 
     --no-warn-stubs
-        Disable warnings about procedures for which there are no clauses. Note
-        that this option only has any effect if the `--allow-stubs' option
-        (described in the "Language Semantics Options" section below) is
+        Do not warn about procedures for which there are no clauses. Note that
+        this option is meaningful only if the `--allow-stubs' option is
         enabled.
 
     --no-warn-table-with-inline
-        Disable warnings about tabled procedures that also have a `pragma
-        inline' declaration.
+        Do not warn about tabled procedures that also have a `pragma inline'
+        declaration. (This combination does not work, because inlined copies of
+        procedure bodies cannot be tabled.
 
     --no-warn-non-term-special-preds
         Do not warn about types that have user-defined equality or comparison
-        predicates that cannot be proved to terminate. This option is only
-        enabled when termination analysis is enabled. (See the "Termination
-        Analysis Options" section below).
+        predicates that cannot be proved to terminate. This option is
+        meaningful only if termination analysis is enabled.
 
     --no-warn-known-bad-format-calls
-        Do not warn about calls to string.format or io.format that the compiler
-        knows for sure contain mismatches between the format string and the
-        supplied values.
+        Do not warn about calls to string.format or io.format that contain
+        mismatches between the format string and the supplied values.
 
     --no-warn-obsolete
-        Do not warn about calls to predicates or functions that have been
+        Do not warn about calls to predicates and functions that have been
         marked as obsolete.
 
     --no-warn-insts-without-matching-type
@@ -1066,7 +1064,7 @@ Warning options
         in scope.
 
     --warn-insts-with-functors-without-type
-        Warn about insts that do specify functors but do not specify what type
+        Warn about insts that do specify functors, but do not specify what type
         they are for.
 
     --warn-unused-imports
@@ -1078,7 +1076,9 @@ Warning options
         there.
 
     --no-warn-unresolved-polymorphism
-        Do not warn about unresolved polymorphism.
+        Do not warn about unresolved polymorphism, which occurs when the type
+        of a variable contains a type variable that is not bound to an actual
+        type, even though it should be.
 
     --no-warn-suspected-occurs-check-failure
     --no-warn-suspected-occurs-failure
@@ -1088,14 +1088,14 @@ Warning options
 
     --warn-potentially-ambiguous-pragmas
     --warn-potentially-ambiguous-pragma
-        Generate warnings for pragmas that do not specify whether they are for
-        a predicate or a function.
+        Warn about pragmas that do not specify whether they are for a predicate
+        or a function.
 
     --no-warn-ambiguous-pragmas
     --no-warn-ambiguous-pragma
-        Do not generate warnings for pragmas that do not specify whether they
-        are for a predicate or a function, even when there is both a predicate
-        and a function with the given name and arity.
+        Do not warn about pragmas that do not specify whether they are for a
+        predicate or a function, even when there is both a predicate and a
+        function with the given name and arity.
 
     --no-warn-stdlib-shadowing
         Do not generate warnings for module names that either duplicate the
@@ -1141,8 +1141,8 @@ Warning options
         ordinary variables.
 
     --no-warn-unneeded-initial-statevars-lambda
-        Do not warn about state variables in lambda expressions that could be
-        ordinary variables.
+        Do not warn about state variables in the heads of lambda expressions
+        that could be ordinary variables.
 
     --warn-inconsistent-pred-order-clauses
     --warn-inconsistent-pred-order
@@ -1164,16 +1164,16 @@ Warning options
         declaration.
 
     --warn-non-contiguous-clauses
-        Do not generate a warning if the clauses of a predicate or function are
-        not contiguous.
+        Generate a warning if the clauses of a predicate or function are not
+        contiguous.
 
     --warn-non-contiguous-foreign-procs
         Generate a warning if the clauses and foreign_procs of a predicate or
         function are not contiguous.
 
     --no-warn-simple-code
-        Disable warnings about constructs which are so simple that they are
-        likely to be programming errors.
+        Do not warn about constructs which are so simple that they are likely
+        to be programming errors.
 
     --warn-duplicate-calls
         Warn about multiple calls to a predicate with the same input arguments.
@@ -1214,11 +1214,11 @@ Warning options
         Do not warn about one state variable shadowing another.
 
     --no-warn-unneeded-mode-specific-clause
-        Do not warn about clauses that needlessly specify the modes of their
-        arguments.
+        Do not warn about clauses that specify the modes of their arguments
+        unnecessarily.
 
     --no-warn-redundant-coerce
-        Do not warn about redundant type conversions.
+        Do not warn about redundant type coercions.
 
     --warn-can-fail-function
         Warn about functions that can fail.
@@ -1253,17 +1253,18 @@ Warning options
     --inhibit-style-warnings
         Disable all warning messages about programming style.
 
+    PRIVATE OPTION
     --no-warn-smart-recompilation
         Disable warnings from the smart recompilation system.
 
     --no-warn-up-to-date
-        Do not warn if targets specified on the command line with `--make' are
-        already up-to-date.
+        Do not warn if targets specified on the command line with `mmc --make'
+        are already up-to-date.
 
     --no-warn-only-one-format-string-error
-        If a format string has more one than mismatch with the supplied,
-        values, generate a warning for all mismatches, not just the first. The
-        later mismatches may be avalanche errors caused by earlier mismatches.
+        If a format string has more one than mismatch with the supplied values,
+        generate a warning for all mismatches, not just the first. (The later
+        mismatches may be avalanche errors caused by earlier mismatches.)
 
     Options about halting for warnings
 
@@ -1319,13 +1320,13 @@ Options that request information
         not specify a color for some role.
 
     --inform-inferred
-        Do not generate messages about inferred types or modes.
+        Do not print inferred types or modes.
 
     --no-inform-inferred-types
-        Do not generate messages about inferred types.
+        Do not print inferred types.
 
     --no-inform-inferred-modes
-        Do not generate messages about inferred modes.
+        Do not print inferred modes.
 
     --inform-suboptimal-packing
         Generate messages if the arguments of a data constructor could be
@@ -1425,7 +1426,9 @@ Preparing code for mdb debugging
         When the trace level is `deep', the compiler normally preserves the
         values of variables as long as possible, even beyond the point of their
         last use, in order to make them accessible from as many debugger events
-        as possible. However, it will not do this if this option is given.
+        as possible. However, it will not do so if the user specifies
+        `--no-delay-death'. This may be necessary if without it, the stack
+        frames of some procedures grow too big.
 
     --delay-death-max-vars <N>
         Delay the deaths of variables only when the number of variables in the
@@ -1562,21 +1565,23 @@ Optimization options
 
     PRIVATE OPTION
     --allow-inlining
-        Disable all forms of inlining.
+        Disallow all forms of inlining.
 
     --inlining
-        Disable all forms of inlining.
+        Ask the compiler to inline procedures using its usual heurisrics.
 
     --inline-simple
-        Disable the inlining of simple procedures.
+        Ask the compiler to inline simple procedures.
 
     --inline-builtins
-        Generate builtins (e.g. arithmetic operators) as calls to out-of-line
-        procedures. This is done by default when debugging, as without this
-        option, the execution of builtins would not be traced.
+        Normally, the compiler implements builtin operations (such as
+        arithmeetic) using inline code. With --no-inline-builtins, the compiler
+        will implement them as calls to out-of-line procedures. This latter is
+        done by default when debugging, since this allows the execution of
+        builtins to be traced.
 
     --inline-single-use
-        Disable the inlining of procedures called only once.
+        Inline procedures which are called only from one call site.
 
     --inline-call-cost <cost>
         Assume that the cost of a call is the given parameter. Used only in
@@ -1589,7 +1594,8 @@ Optimization options
         threshold.
 
     --inline-simple-threshold <threshold>
-        Inline a procedure if its size is less than the given threshold.
+        With --inline-simple, inline a procedure if its size is less than the
+        given threshold.
 
     --inline-vars-threshold <threshold>
         Don't inline a call if it would result in a procedure containing more
@@ -1624,15 +1630,17 @@ Optimization options
         function symbols.
 
     --const-struct
-        Disable the gathering of constant structures in a separate table.
+        Gather constant ground structures in a separate table. A structure will
+        be stored in this table just once even if it occurs in many different
+        procedures.
 
     --common-struct
-        Disable optimization of common term structures.
+        Replace two or more occurrences of the same term in a conjunction with
+        just one copy.
 
     --constraint-propagation
         Enable the constraint propagation transformation, which attempts to
-        transform the code so that goals which can fail are executed as early
-        as possible.
+        ensure that goals which can fail are executed as early as possible.
 
     --local-constraint-propagation
         Enable the constraint propagation transformation, but only rearrange
@@ -1725,9 +1733,9 @@ Optimization options
         in the switch, and when that goal is a switch on the same variable.
 
     --optimize-format-calls
-        Do not attempt to interpret the format string in calls to string.format
-        and related predicates at compile time; always leave this to be done at
-        runtime.
+        Interpret the format string in calls to string.format and related
+        predicates at compile time, replacing those calls with the sequence of
+        more primitive operations required to implement them.
 
     --split-switch-arms
         When a switch on a variable has an inner switch on that same variable
@@ -1808,8 +1816,13 @@ Optimization options
         Reorder goals to move construction unifications after primitive goals
         that can fail.
 
+    PRIVATE OPTION
     --follow-code
-        Don't migrate into the end of branched goals.
+        Move the code following a branched goal (if-then-else, disjunction, or
+        switch) until the next call into each branch of that goal. Having a
+        call as the goal just after the branched goal gives the LLDS code
+        generator a consistent set of places into which each branch should
+        store live variables.
 
     --optimize-dead-procs
     --optimise-dead-procs
@@ -1870,8 +1883,9 @@ Optimization options
 
     PRIVATE OPTION
     --inline-par-builtins
-        Generate calls to the predicates of par_builtin.m, instead of bodily
-        including their definitions as C code.
+        With `--inline-par-builtins', the compiler implements the operations of
+        par_builtin.m using inline code. With `--no-inline-par-builtins', it
+        implements them as calls.
 
     PRIVATE OPTION
     --always-specialize-in-dep-par-conjs
@@ -1888,8 +1902,9 @@ Optimization options
         Enable the analysis for region-based memory management.
 
     --generate-trail-ops-inline
-        Do not generate trailing operations inline, but instead insert calls to
-        the versions of these operations in the standard library.
+        Generate inline code for trailing operations. With
+        `--no-generate-trail-ops-inline', the compiler will implement them
+        using calls to those operations in the standard library.
 
     Experimental source-to-Source optimizations
 
@@ -1936,8 +1951,10 @@ Optimization options
     Optimizations during code generation
 
     --smart-indexing
-        Generate switches as simple if-then-else chains; disable string hashing
-        and integer table-lookup indexing.
+        Implement switches using the fastest applicable implementation method,
+        which may be e.g. binary search or a hash table. With
+        --no-smart-indexing, the default is to implement switches as simple
+        if-then-else chains.
 
     --dense-switch-req-density <percentage>
         The jump table generated for an atomic switch must have at least this
@@ -1986,53 +2003,52 @@ Optimization options
 
     PRIVATE OPTION
     --smart-atomic-indexing
-        Do not generate smart switches on atomic types.
+        Generate smart switches on atomic types when appropriate.
 
     PRIVATE OPTION
     --smart-string-indexing
-        Do not generate smart switches on strings.
+        Generate smart switches on strings when appropriate.
 
     PRIVATE OPTION
     --smart-tag-indexing
-        Do not generate smart switches on discriminated union types.
+        Generate smart switches on discriminated union types when appropriate.
 
     PRIVATE OPTION
     --smart-float-indexing
-        Do not generate smart switches on floats.
+        Generate smart switches on floats when appropriate.
 
     --static-ground-terms
-        Disable the optimization of constructing constant ground terms at
+        Enable the optimization of constructing constant ground terms at
         compile time and storing them as static constants. Note that auxiliary
         data structures created by the compiler for purposes such as debugging
-        will still be created as static constants.
+        will always be created as static constants.
 
     --use-atomic-cells
-        Don't use the atomic variants of the Boehm gc allocator calls, even
-        when this would otherwise be possible.
+        Use the atomic variants of the Boehm gc allocator calls when the cell
+        to be allocated cannot contain pointers.
 
     Optimizations specific to high level code
 
     --optimize-tailcalls
     --optimise-tailcalls
-        Treat tailcalls as ordinary calls, rather than turning self-tailcalls
-        into loops.
+        Turn self-tailcalls into loops.
 
     PRIVATE OPTION
     --optimize-trail-usage
-        Do not try and restrict trailing to those parts of the program that
-        actually use it.
+        Try to restrict trailing operations to those parts of the program that
+        actually use the trail.
 
     --mlds-optimize
     --mlds-optimise
-        Disable the MLDS->MLDS optimization passes.
+        Enable the MLDS->MLDS optimization passes.
 
     --mlds-peephole
-        Do not perform peephole optimization of the MLDS.
+        Perform peephole optimization of the MLDS.
 
     --optimize-initializations
     --optimise-initializations
-        Leave initializations of local variables as assignment statements,
-        rather than converting such assignment statements into initializers.
+        Whenever possible, convert the first assignment to each local variable
+        in the target code into an initializer on its declaration.
 
     PRIVATE OPTION
     --eliminate-unused-mlds-assigns
@@ -2053,47 +2069,47 @@ Optimization options
         this number (default: 4).
 
     --middle-rec
-        Disable the middle recursion optimization.
+        Enable the middle recursion optimization.
 
     --simple-neg
-        Don't generate simplified code for simple negations.
+        Generate simplified code for simple negations.
 
     PRIVATE OPTION
     --allow-hijacks
-        Do not generate code in which a procedure hijacks a nondet stack frame
-        that possibly belongs to another procedure invocation
+        When appropriate, generate code to hijack nondet stack frames that
+        possibly belongs to another procedure invocation.
 
     PRIVATE OPTION
     --optimize-region-ops
-        Do not try and restrict region operations to those parts of the program
-        that actually use it.
+        Try and restrict region operations to those parts of the program that
+        actually use regions.
 
     --common-data
-        Disable optimization of common data structures.
+        Enable optimization of common data structures.
 
     --common-layout-data
-        Disable optimization of common subsequences in layout structures.
+        Enable optimization of common subsequences in layout structures.
 
     --llds-optimize
     --llds-optimise
-        Disable the low-level optimization passes.
+        Enable the low-level optimization passes.
 
     --optimize-peep
     --optimise-peep
-        Disable local peephole optimizations.
+        Enable local peephole optimizations.
 
     PRIVATE OPTION
     --optimize-peep-mkword
     --optimise-peep-mkword
-        Disable peephole optimizations of words created by mkword.
+        Enable peephole optimizations of words created by mkword.
 
     --optimize-jumps
     --optimise-jumps
-        Disable elimination of jumps to jumps.
+        Enable the short-circuiting of jumps to jumps.
 
     --optimize-fulljumps
     --optimise-fulljumps
-        Disable elimination of jumps to ordinary code.
+        Enable the elimination of jumps to ordinary code.
 
     --pessimize-tailcalls
         Disable the optimization of tailcalls.
@@ -2104,8 +2120,7 @@ Optimization options
         consumption, possibly at the expense of speed.
 
     --use-local-vars
-        Disable the transformation to use local variables in C code blocks
-        wherever possible.
+        Use local variables in C code blocks wherever possible.
 
     PRIVATE OPTION
     --local-var-access-threshold <XXX document me>
@@ -2118,7 +2133,7 @@ Optimization options
 
     --optimize-labels
     --optimise-labels
-        Disable elimination of dead labels and code.
+        Delete dead labels and code.
 
     --optimize-dups
     --optimise-dups
@@ -2130,11 +2145,12 @@ Optimization options
 
     --optimize-frames
     --optimise-frames
-        Disable stack frame optimizations.
+        Optimize the operations that maintain stack frames.
 
     --optimize-delay-slot
     --optimise-delay-slot
-        Disable branch delay slot optimizations.
+        Disable branch delay slot optimizations, This option is meaningful only
+        if the target architecture has delay slots.
 
     --optimize-reassign
     --optimise-reassign
@@ -2155,7 +2171,8 @@ Optimization options
         faster code.
 
     --emit-c-loops
-        Use only gotos, don't emit C loop constructs.
+        Use C loop contstructs to implement loops. With `--no-emit-c-loops',
+        use only gotos.
 
     --procs-per-c-function <n>
     --procs-per-C-function <n>
@@ -2164,9 +2181,10 @@ Optimization options
         more efficient code, but makes compilation slower.
 
     --local-thread-engine-base
-        Do not copy the thread-local Mercury engine base address into local
-        variables. This option only affects low-level parallel grades not using
-        the GNU C global register variables extension.
+        Do not copy the thread-local Mercury engine base address into a local
+        variable, even when this would be appropriate. This option is effective
+        only in low-level parallel grades that do not use the GNU C global
+        register variables extension.
 
     --inline-alloc
         Inline calls to GC_malloc(). This can improve performance a fair bit,
@@ -2324,8 +2342,8 @@ Options that ask for modified output
         --convert-to-mercury).
 
     --no-line-numbers-around-foreign-code
-        Do not put source line numbers into the generated code around
-        inclusions of foreign language code.
+        Do not put source line numbers into the generated target language file
+        around inclusions of foreign language code.
 
     --line-numbers-for-c-headers
         Put source line numbers in the generated C header files. This can make
@@ -2387,8 +2405,8 @@ Options for target language compilation
     General options for compiling target language code
 
     --no-warn-target-code
-        Disable warnings from the compiler used to process the target code
-        (e.g. gcc).
+        Disable warnings from the compiler (e.g. gcc) that processes the target
+        code generated by mmc.
 
     --target-debug
     --c-debug
@@ -2402,7 +2420,7 @@ Options for target language compilation
 
     --c-optimize
     --c-optimise
-        Don't enable the C compiler's optimizations.
+        Do not enable optimizations by the C compiler.
 
     --cc compiler-name
         Specify which C compiler to use.
@@ -2683,14 +2701,17 @@ Options for linking
         with `--mercury-linkage shared'.
 
     --no-strip
-        Do not strip executables.
+        Do not invoke the strip command on executables. Stripping minimizes
+        executables' sizes, but also makes debugging them much harder.
 
     --no-demangle
-        Don't pipe link errors through the Mercury demangler.
+        Do not pipe the output of the linker through the Mercury demangler. The
+        demangler usually makes it easier to understand the diagnostics for any
+        link errors that involve code generated by mmc.
 
     --no-main
-        Don't generate a C main() function. The user's code must provide a
-        main() function.
+        Do not generate a C main() function. With `--no-main', the user's own
+        code must provide a main() function.
 
     --no-allow-undefined
         Do not allow undefined symbols in shared libraries.
@@ -2791,9 +2812,11 @@ Options controlling searches for files
         `.trans_opt' files.
 
     --no-use-search-directories-for-intermod
-        Do not add the arguments of `--search-directory' options to the list of
-        directories to search for `.opt' files; use only the arguments of
-        `--intermod-directory' options.
+        With `--use-search-directories-for-intermod', the compiler will add the
+        arguments of `--search-directory' options to the list of directories to
+        search for `.opt' files. With
+        `--no-use-search-directories-for-intermod', the compiler will use use
+        only the arguments of `--intermod-directory' options.
 
     PRIVATE OPTION
     --interface-dir-same-workspace <dir>
@@ -3306,11 +3329,12 @@ Options for developers only
     --type-check-constraints
         Use the constraint based type checker instead of the old one.
 
+    PRIVATE OPTION
     --no-trad-passes
-        The default `--trad-passes' completely processes each predicate before
-        going on to the next predicate. This option tells the compiler to
-        complete each phase of code generation on all predicates before going
-        on the next phase on all predicates.
+        The default `--trad-passes' completes code generaion each predicate
+        before going on to the next predicate. The --no-trad-passes option
+        tells the compiler to complete each phase of code generation on all
+        predicates before going on the next phase on all predicates.
 
     PRIVATE OPTION
     --parallel-liveness
@@ -3326,8 +3350,9 @@ Options for developers only
 
     PRIVATE OPTION
     --no-should-pretest-equality
-        If specified, do not add a test for the two values being equal as words
-        to the starts of potentially expensive unify and compare predicates.
+        Normally, the compiler adds to the starts of potentially expensive
+        unify and compare predicates a test for the two values being equal as
+        words. Specifying `--no-should-pretest-equality' prevents this.
 
     --fact-table-max-array-size <n>
         Specify the maximum number of elements in a single `:- pragma
@@ -3342,16 +3367,15 @@ Options for developers only
     --no-prefer-switch
         Generate code using computed gotos rather than switches. This makes the
         generated code less readable, but potentially slightly more efficient.
-        This option has no effect unless the `--high-level-code' option is
-        enabled.
+        This option is effective only with `--high-level-code'.
 
     PRIVATE OPTION
     --no-prefer-while-loop-over-jump-self
         Generate code for tail-recursive single procedures using an infinite
         while loop, with tail calls being done by a continue. The alternative
         is a label at the start of the procedure, with tail calls being done by
-        a jump to the label. This option has no effect unless the
-        `--high-level-code' option is enabled.
+        a jump to the label. This option is effective only with
+        `--high-level-code'.
 
     PRIVATE OPTION
     --prefer-while-loop-over-jump-mutual
@@ -3623,7 +3647,7 @@ Options for developers only
     PRIVATE OPTION
     --no-type-layout
         Don't output type_ctor_layout structures or references to them. (The C
-        code also needs to be compiled with `-DNO_TYPE_LAYOUT').
+        code must then be compiled with `-DNO_TYPE_LAYOUT').
 
     PRIVATE OPTION
     --det-copy-out
@@ -3743,17 +3767,20 @@ Options for developers only
 
     PRIVATE OPTION
     --no-allow-multi-arm-switches
-        Allow the compiler to generate switches in which one arm handles more
-        than one cons_id.
+        Do not allow the compiler to generate switches in which one arm handles
+        more than one cons_id.
 
+    PRIVATE OPTION
     --reclaim-heap-on-failure
         Combines the effect of the two options above.
 
+    PRIVATE OPTION
     --no-reclaim-heap-on-semidet-failure
-        Don't reclaim heap on backtracking in semidet code.
+        Do not reclaim heap on backtracking in semidet code.
 
+    PRIVATE OPTION
     --no-reclaim-heap-on-nondet-failure
-        Don't reclaim heap on backtracking in nondet code.
+        Do not reclaim heap on backtracking in nondet code.
 
     PRIVATE OPTION
     --compare-specialization <n>

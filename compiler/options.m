@@ -1584,7 +1584,7 @@ optdef(oc_warn_dodgy, warn_interface_imports_in_parents,   bool(no)).
 optdef(oc_warn_dodgy, warn_stdlib_shadowing,               bool(yes)).
 
 optdb(oc_warn_dodgy, warn_nothing_exported,               bool(yes),
-    xhelp("warn-nothing-exported", [                        % NO
+    xhelp("warn-nothing-exported", [
         "Do not warn about modules which export nothing."])).
 optdb(oc_warn_dodgy, warn_unused_imports,                 bool(no),
     xhelp("warn-unused-imports", [
@@ -1596,7 +1596,7 @@ optdb(oc_warn_dodgy, warn_unused_interface_imports,       bool(yes),
         "Warn about modules that are imported in the interface",
         "but not used there."])).
 optdb(oc_warn_dodgy, warn_interface_imports,              bool(yes),
-    xhelp("warn-interface-imports", [           % NO
+    xhelp("warn-interface-imports", [
         "Do not warn about modules imported in the interface, but",
         "which are not used in the interface."])).
 optdb(oc_warn_dodgy, warn_interface_imports_in_parents,   bool(no),
@@ -1604,7 +1604,7 @@ optdb(oc_warn_dodgy, warn_interface_imports_in_parents,   bool(no),
         "Warn about modules that are imported in the interface of",
         "a parent module, but not used in the interface of that module."])).
 optdb(oc_warn_dodgy, warn_stdlib_shadowing,               bool(yes),
-    xhelp("warn-stdlib-shadowing", [            % NO
+    xhelp("warn-stdlib-shadowing", [
         "Do not generate warnings for module names that either duplicate",
         "the name of a module in the Mercury standard library, or contain",
         "a subsequence of name components that do so."])).
@@ -1623,32 +1623,31 @@ optdef(oc_warn_dodgy, warn_unresolved_polymorphism,        bool(yes)).
 optdef(oc_warn_dodgy, warn_unused_args,                    bool(no)).
 
 optdb(oc_warn_dodgy, warn_singleton_vars,                 bool(yes),
-    xalt_help("warn-singleton-variables",                    % NO
+    xalt_help("warn-singleton-variables",
             ["warn-singleton-vars"], [
-        "Do not warn about variables which only occur once, despite",
-        "their names not starting with an underscore."])).
+        "Do not warn about variables which only occur once in a clause,",
+        "but whose names do not start with an underscore."])).
 optdb(oc_warn_dodgy, warn_repeated_singleton_vars,        bool(yes),
-    xalt_help("warn-repeated-singleton-variables",          % NO
+    xalt_help("warn-repeated-singleton-variables",
             ["warn-repeated-singleton-vars"], [
-        "Do not warn about variables which occur more than once, despite",
-        "their names starting with an underscore."])).
+        "Do not warn about variables which occur more than once in a clause,",
+        "but whose names do start with an underscore."])).
 optdb(oc_warn_dodgy, warn_unification_cannot_succeed,     bool(yes),
-    xhelp("warn-unification-cannot-succeed", [              % NO
-        "Disable warnings about unifications which cannot succeed."])).
+    xhelp("warn-unification-cannot-succeed", [
+        "Do not warn about unifications which cannot succeed."])).
 optdb(oc_warn_dodgy, warn_known_bad_format_calls,         bool(yes),
-    xhelp("warn-known-bad-format-calls", [                  % NO
-        "Do not warn about calls to string.format or io.format that",
-        "the compiler knows for sure contain mismatches between the",
-        "format string and the supplied values."])).
+    xhelp("warn-known-bad-format-calls", [
+        "Do not warn about calls to string.format or io.format that contain",
+        "mismatches between the format string and the supplied values."])).
 optdb(oc_warn_dodgy, warn_obsolete,                       bool(yes),
-    xhelp("warn-obsolete", [                                % NO
-        "Do not warn about calls to predicates or functions that have",
-        "been marked as obsolete."])).
+    xhelp("warn-obsolete", [
+        "Do not warn about calls to predicates and functions",
+        "that have been marked as obsolete."])).
 optdb(oc_warn_dodgy, warn_overlapping_scopes,             bool(yes),
-    xhelp("warn-overlapping-scopes", [                      % NO
+    xhelp("warn-overlapping-scopes", [
         "Do not warn about variables which occur in overlapping scopes."])).
 optdb(oc_warn_dodgy, warn_suspected_occurs_check_failure, bool(yes),
-    xalt_help("warn-suspected-occurs-check-failure",        % NO
+    xalt_help("warn-suspected-occurs-check-failure",
             ["warn-suspected-occurs-failure"], [
         "Do not warn about code that looks like it unifies a variable",
         "with a term that contains that same variable. Such code cannot",
@@ -1659,8 +1658,10 @@ optdb(oc_warn_dodgy, warn_suspicious_recursion,           bool(no),
         "Warn about recursive calls which are likely to have problems,",
         "such as leading to infinite recursion."])).
 optdb(oc_warn_dodgy, warn_unresolved_polymorphism,        bool(yes),
-    xhelp("warn-unresolved-polymorphism", [                 % NO
-        "Do not warn about unresolved polymorphism."])).
+    xhelp("warn-unresolved-polymorphism", [
+        "Do not warn about unresolved polymorphism, which occurs when",
+        "the type of a variable contains a type variable",
+        "that is not bound to an actual type, even though it should be."])).
 optdb(oc_warn_dodgy, warn_unused_args,                    bool(no),
     xhelp("warn-unused-args", [
         "Warn about predicate arguments which are not used."])).
@@ -1671,13 +1672,13 @@ optdef(oc_warn_dodgy, warn_det_decls_too_lax,              bool(yes)).
 optdef(oc_warn_dodgy, warn_inferred_erroneous,             bool(yes)).
 
 optdb(oc_warn_dodgy, warn_det_decls_too_lax,              bool(yes),
-    xhelp("warn-det-decls-too-lax", [                       % NO
+    xhelp("warn-det-decls-too-lax", [
         "Do not warn about determinism declarations",
         "which could have been stricter."])).
 optdb(oc_warn_dodgy, warn_inferred_erroneous,             bool(yes),
-    xhelp("warn-inferred-erroneous", [                      % NO
-        "Do not warn about procedures whose determinism is inferred",
-        "erroneous but whose determinism declarations are laxer."])).
+    xhelp("warn-inferred-erroneous", [
+        "Do not warn about procedures whose determinism is inferred erroneous",
+        "but whose determinism declarations are laxer."])).
 
 % Warnings about predicate pragma issues.
 
@@ -1686,20 +1687,21 @@ optdef(oc_warn_dodgy, warn_potentially_ambiguous_pragma,   bool(no)).
 optdef(oc_warn_dodgy, warn_table_with_inline,              bool(yes)).
 
 optdb(oc_warn_dodgy, warn_ambiguous_pragma,               bool(yes),
-    xalt_help("warn-ambiguous-pragmas",                     % NO
+    xalt_help("warn-ambiguous-pragmas",
             ["warn-ambiguous-pragma"], [
-        "Do not generate warnings for pragmas that do not specify whether",
+        "Do not warn about pragmas that do not specify whether",
         "they are for a predicate or a function, even when there is both",
         "a predicate and a function with the given name and arity."])).
 optdb(oc_warn_dodgy, warn_potentially_ambiguous_pragma,   bool(no),
     xalt_help("warn-potentially-ambiguous-pragmas",
             ["warn-potentially-ambiguous-pragma"], [
-        "Generate warnings for pragmas that do not specify whether they are",
+        "Warn about pragmas that do not specify whether they are",
         "for a predicate or a function."])).
 optdb(oc_warn_dodgy, warn_table_with_inline,              bool(yes),
-    xhelp("warn-table-with-inline", [                       % NO
-        "Disable warnings about tabled procedures that also have",
-        "a `pragma inline' declaration."])).
+    xhelp("warn-table-with-inline", [
+        "Do not warn about tabled procedures that also have",
+        "a `pragma inline' declaration. (This combination does not work,",
+        "because inlined copies of procedure bodies cannot be tabled."])).
 
 % Warnings about other predicate-level issues.
 
@@ -1708,23 +1710,22 @@ optdef(oc_warn_dodgy, warn_non_term_special_preds,         bool(yes)).
 optdef(oc_warn_dodgy, warn_non_stratification,             bool(no)).
 
 optdb(oc_warn_dodgy, warn_stubs,                          bool(yes),
-    xhelp("warn-stubs", [                                   % NO
-        "Disable warnings about procedures for which there are no",
-        "clauses. Note that this option only has any effect if",
-        "the `--allow-stubs' option (described in the ""Language",
-        "Semantics Options"" section below) is enabled."])).
+    xhelp("warn-stubs", [
+        "Do not warn about procedures for which there are no clauses.",
+        "Note that this option is meaningful only if",
+        "the `--allow-stubs' option is enabled."])).
 optdb(oc_warn_dodgy, warn_non_term_special_preds,         bool(yes),
-    xhelp("warn-non-term-special-preds", [                  % NO
+    xhelp("warn-non-term-special-preds", [
         "Do not warn about types that have user-defined equality or",
         "comparison predicates that cannot be proved to terminate.",
-        "This option is only enabled when termination analysis is enabled.",
-        "(See the ""Termination Analysis Options"" section below)."])).
+        "This option is meaningful only if",
+        "termination analysis is enabled."])).
 optdb(oc_warn_dodgy, warn_non_stratification,             bool(no),
     xhelp("warn-non-stratification", [
-        "Warn about possible non-stratification of the predicates and/or",
-        "functions in the module.",
+        "Warn about possible non-stratification",
+        "of the predicates and/or functions in the module.",
         "Non-stratification occurs when a predicate or function can call",
-        "itself negatively through some path along its call graph."])).
+        "itself through negation through some path in its call graph."])).
 
 % Warnings about issues with insts.
 
@@ -1732,12 +1733,12 @@ optdef(oc_warn_dodgy, warn_insts_without_matching_type,    bool(yes)).
 optdef(oc_warn_dodgy, warn_insts_with_functors_without_type, bool(no)).
 
 optdb(oc_warn_dodgy, warn_insts_without_matching_type,    bool(yes),
-    xhelp("warn-insts-without-matching-type", [             % NO
-        "Do not warn about insts that are not consistent with any",
-        "of the types in scope."])).
+    xhelp("warn-insts-without-matching-type", [
+        "Do not warn about insts that are not consistent",
+        "with any of the types in scope."])).
 optdb(oc_warn_dodgy, warn_insts_with_functors_without_type, bool(no),
     xhelp("warn-insts-with-functors-without-type", [
-        "Warn about insts that do specify functors but do not specify",
+        "Warn about insts that do specify functors, but do not specify",
         "what type they are for."])).
 
 % Warnings about issues with files.
@@ -1748,20 +1749,19 @@ optdef(oc_warn_dodgy, warn_missing_trans_opt_files,        bool(no)).
 optdef(oc_warn_dodgy, warn_missing_trans_opt_deps,         bool(yes)).
 
 optdb(oc_warn_dodgy, warn_undefined_options_variables,    bool(yes),
-    xalt_help("warn-undefined-options-variables", % NO
+    xalt_help("warn-undefined-options-variables",
             ["warn-undefined-options-vars"], [
-        "Do not warn about references to undefined variables in",
-        "options files with `--make'."])).
+        "Do not warn about references to undefined variables",
+        "in options files with `--make'."])).
 optdb(oc_warn_dodgy, warn_missing_opt_files,              bool(yes),
-    xhelp("warn-missing-opt-files", [                       % NO
-        "Disable warnings about `.opt' files which cannot be opened."])).
+    xhelp("warn-missing-opt-files", [
+        "Do not warn about `.opt' files which cannot be opened."])).
 optdb(oc_warn_dodgy, warn_missing_trans_opt_files,        bool(no),
     xhelp("warn-missing-trans-opt-files", [
-        "Enable warnings about `.trans_opt' files which cannot",
-        "be opened."])).
+        "Warn about `.trans_opt' files which cannot be opened."])).
 optdb(oc_warn_dodgy, warn_missing_trans_opt_deps,         bool(yes),
-    xhelp("warn-missing-trans-opt-deps", [                  % NO
-        "Disable warnings produced when the information required",
+    xhelp("warn-missing-trans-opt-deps", [
+        "Do not generate a warning when the information required",
         "to allow `.trans_opt' files to be read when creating other",
         "`.trans_opt' files has been lost. The information can be",
         "recreated by running `mmake <mainmodule>.depend'"])).
@@ -1777,15 +1777,15 @@ optdef(oc_warn_perf,  warn_non_tail_recursion_mutual,      bool(no)).
 optdef(oc_warn_perf_c, warn_non_tail_recursion,          maybe_string_special).
 
 optdb(oc_warn_perf,  warn_accumulator_swaps,              bool(yes),
-    xhelp("warn-accumulator-swaps", [                       % NO
+    xhelp("warn-accumulator-swaps", [
         "Do not warn about argument order rearrangement caused",
         "by `--introduce-accumulators'."])).
 optdb(oc_warn_perf,  warn_unneeded_final_statevars,       bool(yes),
-    xhelp("warn-unneeded-final-statevars", [                % NO
+    xhelp("warn-unneeded-final-statevars", [
         "Do not warn about !:S state variables in clause heads",
         "whose value will always be the same as !.S."])).
 optdb(oc_warn_perf,  warn_unneeded_final_statevars_lambda, bool(yes),
-    xhelp("warn-unneeded-final-statevars-lambda", [         % NO
+    xhelp("warn-unneeded-final-statevars-lambda", [
         "Do not warn about !:S state variables in lambda expressions",
         "whose value will always be the same as !.S."])).
 optdb(oc_warn_perf,  warn_obvious_non_tail_recursion,     bool(no),
@@ -1835,9 +1835,9 @@ optdef(oc_warn_style, warn_duplicate_calls,                bool(no)).
 optdef(oc_warn_style, warn_redundant_coerce,               bool(yes)).
 
 optdb(oc_warn_style, warn_simple_code,                    bool(yes),
-    xhelp("warn-simple-code", [                             % NO
-        "Disable warnings about constructs which are so",
-        "simple that they are likely to be programming errors."])).
+    xhelp("warn-simple-code", [
+        "Do not warn about constructs which are so simple",
+        "that they are likely to be programming errors."])).
 optdb(oc_warn_style, inform_ite_instead_of_switch,        bool(no),
     xhelp("inform-ite-instead-of-switch", [
         "Generate informational messages for if-then-elses that could be",
@@ -1857,8 +1857,8 @@ optdb(oc_warn_style, warn_duplicate_calls,                bool(no),
         "Warn about multiple calls to a predicate with the",
         "same input arguments."])).
 optdb(oc_warn_style, warn_redundant_coerce,               bool(yes),
-    xhelp("warn-redundant-coerce", [                        % NO
-        "Do not warn about redundant type conversions."])).
+    xhelp("warn-redundant-coerce", [
+        "Do not warn about redundant type coercions."])).
 
 % Warnings about state vars.
 
@@ -1867,15 +1867,15 @@ optdef(oc_warn_style, warn_unneeded_initial_statevars,     bool(yes)).
 optdef(oc_warn_style, warn_unneeded_initial_statevars_lambda, bool(yes)).
 
 optdb(oc_warn_style, warn_state_var_shadowing,            bool(yes),
-    xhelp("warn-state-var-shadowing", [                     % NO
+    xhelp("warn-state-var-shadowing", [
         "Do not warn about one state variable shadowing another."])).
 optdb(oc_warn_style, warn_unneeded_initial_statevars,     bool(yes),
-    xhelp("warn-unneeded-initial-statevars", [              % NO
+    xhelp("warn-unneeded-initial-statevars", [
         "Do not warn about state variables in clause heads",
         "that could be ordinary variables."])).
 optdb(oc_warn_style, warn_unneeded_initial_statevars_lambda, bool(yes),
-    xhelp("warn-unneeded-initial-statevars-lambda", [       % NO
-        "Do not warn about state variables in lambda expressions",
+    xhelp("warn-unneeded-initial-statevars-lambda", [
+        "Do not warn about state variables in the heads of lambda expressions",
         "that could be ordinary variables."])).
 
 % Warnings about I/O predicates.
@@ -1903,9 +1903,9 @@ optdb(oc_warn_style, warn_can_fail_function,              bool(no),
     xhelp("warn-can-fail-function", [
         "Warn about functions that can fail."])).
 optdb(oc_warn_style, warn_unneeded_mode_specific_clause,  bool(yes),
-    xhelp("warn-unneeded-mode-specific-clause", [           % NO
-        "Do not warn about clauses that needlessly specify",
-        "the modes of their arguments."])).
+    xhelp("warn-unneeded-mode-specific-clause", [
+        "Do not warn about clauses that specify the modes of their arguments",
+        "unnecessarily."])).
 
 % Warnings about missing order.
 
@@ -1943,13 +1943,13 @@ optdef(oc_warn_style, warn_non_contiguous_foreign_procs,   bool(no)).
 optdef(oc_warn_style_c, allow_non_contiguity_for, accumulating([])).
 
 optdb(oc_warn_style, warn_non_contiguous_decls,           bool(yes),
-    xhelp("warn-non-contiguous-decls", [                    % NO
+    xhelp("warn-non-contiguous-decls", [
         "Do not generate a warning if the mode declarations of a",
         "predicate or function don't all immediately follow its",
         "predicate or function declaration."])).
 optdb(oc_warn_style, warn_non_contiguous_clauses,         bool(no),
-    xhelp("warn-non-contiguous-clauses", [                  % NO
-        "Do not generate a warning if the clauses of a predicate or",
+    xhelp("warn-non-contiguous-clauses", [
+        "Generate a warning if the clauses of a predicate or",
         "function are not contiguous."])).
 optdb(oc_warn_style, warn_non_contiguous_foreign_procs,   bool(no),
     xhelp("warn-non-contiguous-foreign-procs", [
@@ -1995,18 +1995,21 @@ optdb(oc_warn_ctrl,  inhibit_style_warnings,              bool_special,
     xhelp("inhibit-style-warnings",
         ["Disable all warning messages about programming style."])).
 optdb(oc_warn_ctrl,  warn_only_one_format_string_error,   bool(yes),
-    xhelp("warn-only-one-format-string-error", [            % NO
-        "If a format string has more one than mismatch with the supplied,",
+    % XXX This options should be replaced by a new one named
+    % warn_all_format_string_errors, which the negation of this one.
+    xhelp("warn-only-one-format-string-error", [
+        "If a format string has more one than mismatch with the supplied",
         "values, generate a warning for all mismatches, not just the first.",
-        "The later mismatches may be avalanche errors caused by earlier",
-        "mismatches."])).
+        "(The later mismatches may be avalanche errors caused by earlier",
+        "mismatches.)"])).
 optdb(oc_warn_ctrl,  warn_smart_recompilation,            bool(yes),
-    xhelp("warn-smart-recompilation", [                     % NO
+    % XXX Private until smart recompilation works and is announced.
+    xpriv_help("warn-smart-recompilation", [
         "Disable warnings from the smart recompilation system."])).
 optdb(oc_warn_ctrl,  warn_up_to_date,                     bool(yes),
-    xhelp("warn-up-to-date", [                              % NO
+    xhelp("warn-up-to-date", [
         "Do not warn if targets specified on the command line",
-        "with `--make' are already up-to-date."])).
+        "with", "QUOTE", "`mmc --make'", "are already up-to-date."])).
 
 optdef(oc_inform,     inform_inferred,                     bool_special).
 optdef(oc_inform,     inform_inferred_types,               bool(yes)).
@@ -2015,14 +2018,14 @@ optdef(oc_inform,     inform_incomplete_color_scheme,      bool(no)).
 optdef(oc_inform,     inform_suboptimal_packing,           bool(no)).
 
 optdb(oc_inform,     inform_inferred,                     bool_special,
-    xhelp("inform-inferred", [                              % NO
-        "Do not generate messages about inferred types or modes."])).
+    xhelp("inform-inferred", [
+        "Do not print inferred types or modes."])).
 optdb(oc_inform,     inform_inferred_types,               bool(yes),
-    xhelp("inform-inferred-types", [                        % NO
-        "Do not generate messages about inferred types."])).
+    xhelp("inform-inferred-types", [
+        "Do not print inferred types."])).
 optdb(oc_inform,     inform_inferred_modes,               bool(yes),
-    xhelp("inform-inferred-modes", [                        % NO
-        "Do not generate messages about inferred modes."])).
+    xhelp("inform-inferred-modes", [
+        "Do not print inferred modes."])).
 optdb(oc_inform,     inform_incomplete_color_scheme,      bool(no),
     xpriv_help("inform-incomplete-color-scheme", [
         "Report if the argument if either the value of the",
@@ -2071,7 +2074,7 @@ optdb(oc_warn_halt,  halt_at_syntax_errors,               bool(no),
         "if it finds any syntax errors in the program."])).
 optdb(oc_warn_halt,  halt_at_invalid_interface,           bool(yes),
     % --halt-at-invalid-interface is a temporary developer-only option.
-    xhelp("halt-at-invalid-interface", [                    % NO
+    xhelp("halt-at-invalid-interface", [
         "This option operates when the compiler is invoked with the",
         "--make--interface option to generate .int and .int2 files",
         "for one or more modules. In its default setting,",
@@ -2169,7 +2172,7 @@ optdef(oc_diag_int,   set_color_inconsistent,           string("")).
 optdef(oc_diag_int,   set_color_hint,                   string("")).
 
 optdb(oc_diag_color, color_diagnostics,                bool_special,
-    xalt_help("color-diagnostics",          % NO
+    xalt_help("color-diagnostics",
             ["colour-diagnostics"], [
         "Disable the use of colors in diagnostic messages. Please see",
         "the section named \"Enabling the use of color\" section in the",
@@ -2250,9 +2253,9 @@ optdb(oc_verb_dev,  benchmark_modes_repeat,            int(1),
         "The number of times to execute mode analysis, if",
         "--benchmark-modes is enabled."])).
 optdb(oc_verbosity, verbose_make,                      bool(yes),
-    xhelp("verbose-make", [                                 % NO
-        "Disable messages about the progress of builds using",
-        "the `--make' option."])).
+    xhelp("verbose-make", [
+        "Disable messages about the progress of builds when using",
+        "QUOTE", "`mmc --make'."])).
 optdb(oc_verbosity, output_compile_error_lines,        maybe_int(yes(100)),
     xarg_help("output-compile-error-lines", "n", [
         "With `--make', output the first <n> lines of the `.err'",
@@ -2743,12 +2746,14 @@ optdb(oc_mdb,     event_set_file_name,              string(""),
     xarg_help("event-set-file-name", "filename", [
         "Get the specification of user-defined events from <filename>."])).
 optdb(oc_mdb,        delay_death,                      bool(yes),
-    xhelp("delay-death", [                                  % NO
+    xhelp("delay-death", [
         "When the trace level is `deep', the compiler normally",
         "preserves the values of variables as long as possible, even",
         "beyond the point of their last use, in order to make them",
         "accessible from as many debugger events as possible.",
-        "However, it will not do this if this option is given."])).
+        "However, it will not do so if the user specifies",
+        "`--no-delay-death'. This may be necessary if without it,",
+        "the stack frames of some procedures grow too big."])).
 optdb(oc_mdb,        delay_death_max_vars,             int(1000),
     xarg_help("delay-death-max-vars", "N", [
         "Delay the deaths of variables only when the number of variables",
@@ -2859,8 +2864,9 @@ optdb(oc_output_mod, line_numbers,                     bool(no),
         "The generated code may be in C (the usual case),",
         "or in Mercury (with the option --convert-to-mercury)."])).
 optdb(oc_output_mod, line_numbers_around_foreign_code, bool(yes),
-    xhelp("line-numbers-around-foreign-code", [             % NO
-        "Do not put source line numbers into the generated code",
+    xhelp("line-numbers-around-foreign-code", [
+        "Do not put source line numbers into the generated",
+        "target language file",
         "around inclusions of foreign language code."])).
 optdb(oc_output_mod, line_numbers_for_c_headers,       bool(no),
     xhelp("line-numbers-for-c-headers", [
@@ -2979,20 +2985,22 @@ optdef(oc_semantics, reorder_conj,                      bool(yes)).
 optdef(oc_semantics, reorder_disj,                      bool(yes)).
 optdef(oc_semantics, fully_strict,                      bool(yes)).
 
-% XXX --strict-sequential should be documented.
 optdb(oc_semantics, strict_sequential,                 special,
-    xpriv_help("strict-sequential", [])).
+    xhelp("strict-sequential", [
+        "--strict-sequential sets --no-reorder-conj, --no-reorder-disj",
+        "and --fully-strict."])).
 optdb(oc_semantics, reorder_conj,                      bool(yes),
-    xhelp("reorder-conj", [                                 % NO
-        "Execute conjunctions left-to-right except where the modes imply",
-        "that reordering is unavoidable."])).
+    xhelp("reorder-conj", [
+        "Execute conjunctions left-to-right. Do not reorder conjuncts,",
+        "except where the modes require it."])).
 optdb(oc_semantics, reorder_disj,                      bool(yes),
-    xhelp("reorder-disj", [                                 % NO
-        "Execute disjunctions strictly left-to-right."])).
+    xhelp("reorder-disj", [
+        "Execute disjunctions strictly left-to-right;",
+        "do not reorder disjuncts."])).
 optdb(oc_semantics, fully_strict,                      bool(yes),
-    xhelp("fully-strict", [                                 % NO
-        "Allow infinite loops or goals with determinism erroneous to be",
-        "optimised away."])).
+    xhelp("fully-strict", [
+        "Allow infinite loops, and goals whose determinism is erroneous,",
+        "to be optimised away."])).
 
 %---------------------------------------------------------------------------%
 
@@ -3018,9 +3026,9 @@ optdb(oc_infer, infer_modes,                       bool(no),
         "If there is no mode declaration for a predicate,",
         "try to infer the modes, rather than just reporting an error."])).
 optdb(oc_infer, infer_det,                         bool(yes),
-    xalt_help("infer-determinism", ["infer-det"], [  % NO
+    xalt_help("infer-determinism", ["infer-det"], [
         "If there is no determinism declaration for a procedure,",
-        "don't try to infer the determinism, just report an error."])).
+        "just report an error; do not try to infer the determinism."])).
 optdb(oc_infer, type_inference_iteration_limit,    int(60),
     xarg_help("type-inference-iteration-limit", "n", [
         "Perform at most <n> passes of type inference (default: 60)."])).
@@ -3242,27 +3250,29 @@ optdb(oc_grade, use_activation_counts,                 bool(no),
     % use_activation_counts is an experimental feature.
     % It *is* a grade option.
 optdb(oc_grade, coverage_profiling,                    bool(yes),
-    xhelp("coverage-profiling", [                           % NO
-        "Disable coverage profiling."])).
+    xhelp("coverage-profiling", [
+        "Do not gather profiling information that is useful",
+        "only for coverage profiling."])).
 % The next two options are intended for experiments.
 optdb(oc_grade, coverage_profiling_via_calls,          bool(no),
     xpriv_help("coverage-profiling-via-calls", [
         "Use calls to implement coverage points, not inline foreign code."])).
 optdb(oc_grade, coverage_profiling_static,             bool(no),
+    % This help text could be clearer.
     xpriv_help("coverage-profiling-static", [
-        "Disable dynamic coverage profiling, this uses less memory and may",
-        "be faster."])).
+        "Disable coverage profiling of ProcDynamics; cover only ProcStatics.",
+        "This uses less memory, and may be faster."])).
 % The next four options control coverage profiling (part of deep profiling):
 % they enable different types of coverage points.
 optdb(oc_grade, profile_deep_coverage_after_goal,      bool(yes),
-    xpriv_help("profile-deep-coverage-after-goal", [        % NO
+    xpriv_help("profile-deep-coverage-after-goal", [
         "Disable coverage points after goals."])).
 optdb(oc_grade, profile_deep_coverage_branch_ite,      bool(yes),
-    xpriv_help("profile-deep-coverage-branch-ite", [        % NO
+    xpriv_help("profile-deep-coverage-branch-ite", [
         "Disable coverage points at the beginning of then and else",
         "branches."])).
 optdb(oc_grade, profile_deep_coverage_branch_switch,   bool(yes),
-    xpriv_help("profile-deep-coverage-branch-switch", [     % NO
+    xpriv_help("profile-deep-coverage-branch-switch", [
         "Disable coverage points at the beginning of switch branches."])).
 optdb(oc_grade, profile_deep_coverage_branch_disj,     bool(yes),
     xpriv_help("profile-deep-coverage-branch-disj", [
@@ -3270,12 +3280,11 @@ optdb(oc_grade, profile_deep_coverage_branch_disj,     bool(yes),
 % The next two options tune the coverage profiling pass, useful for debugging.
 % I believe these options are broken - pbone.
 optdb(oc_grade, profile_deep_coverage_use_portcounts,  bool(no),
-    xpriv_help("profile-deep-coverage-use-portcounts", [    % NO
-        "Turn off usage of port counts in the deep profiler to provide",
-        "some coverage information."])).
+    xpriv_help("profile-deep-coverage-use-portcounts", [
+        "Use port counts to provide coverage information."])).
 optdb(oc_grade, profile_deep_coverage_use_trivial,     bool(no),
-    xpriv_help("profile-deep-coverage-use-trivial", [       % NO
-        "Turn off usage of trivial goal information"])).
+    xpriv_help("profile-deep-coverage-use-trivial", [
+        "Use simple goal properties for coverage information."])).
 optdb(oc_grade, profile_for_feedback,                  bool(no),
     xalt_help("profile-for-feedback",
             ["profile-for-implicit-parallelism"], [
@@ -3520,6 +3529,7 @@ optdb(oc_grade, bytes_per_word,                        int(4),
     % A good default for the current generation of architectures.
     xpriv_arg_help("bytes-per-word", "n", [
         "Reserved for use by the `mmc' script."])).
+% XXX All the unboxed_X options should be replaced by boxed_X options.
 optdb(oc_grade, unboxed_float,                         bool(no),
     xpriv_help("unboxed-float", [
         "Do not box floating point numbers.",
@@ -3539,8 +3549,8 @@ optdb(oc_grade, unboxed_int64s,                        bool(no),
         "Note that the value of this option is normally autoconfigured;",
         "its use should never be needed except for cross-compilation."])).
 optdb(oc_grade, unboxed_no_tag_types,                  bool(yes),
-    xpriv_help("unboxed-no-tag-types", [                    % NO
-        "Box no-tag types. This option is disabled by default.",
+    xpriv_help("unboxed-no-tag-types", [
+        "Box no-tag types. (By default, no-tag types are unboxed.)",
         "Note that the value of this option is normally autoconfigured;",
         "its use should never be needed except for cross-compilation."])).
 optdb(oc_grade, arg_pack_bits,                         int(-1),
@@ -3557,9 +3567,10 @@ optdb(oc_grade, allow_direct_args,                     bool(yes),
     xpriv_help("allow-direct-args", [
         "Allow the direct arg optimization."])).
 optdb(oc_grade, allow_double_word_fields,              bool(yes),
-    xpriv_help("allow-double-word-fields", [                % NO
-        "Disallow storing a single constructor argument in two words",
-        "(namely, double-precision floats)."])).
+    xpriv_help("allow-double-word-fields", [
+        "Disallow storing a single constructor argument in two words.",
+        "(This mainly applies to arguments that are",
+        "double-precision floats or whose type is int64 or uint64."])).
 optdb(oc_grade, allow_double_word_ints,                bool(no),
     xpriv_help("allow-double-word-ints", [])).
 optdb(oc_grade, allow_packing_dummies,                 bool(no),
@@ -3759,7 +3770,7 @@ optdb(oc_opt_ctrl, transitive_optimization,            bool(no),
         "Note that `--transitive-intermodule-optimization' does not",
         "work with", "QUOTE", "`mmc --make'."])).
 optdb(oc_opt_ctrl, read_opt_files_transitively,        bool(yes),
-    xhelp("read-opt-files-transitively", [                  % NO
+    xhelp("read-opt-files-transitively", [
         "Only read the inter-module optimization information",
         "for directly imported modules, not the transitive",
         "closure of the imports."])).
@@ -3875,23 +3886,25 @@ optdef(oc_opt_hh, optopt_allow_some_paths_only_waits,      bool_special).
 optdef(oc_opt_hh, optopt_region_analysis,                  bool_special).
 
 optdb(oc_opt_hh, optopt_allow_inlining,                   bool_special,
-    xpriv_help("allow-inlining", [                          % NO
-        "Disable all forms of inlining."])).
+    xpriv_help("allow-inlining", [
+        "Disallow all forms of inlining."])).
 optdb(oc_opt_hh, inlining,                                bool_special,
-    xhelp("inlining", [                                     % NO
-        "Disable all forms of inlining."])).
+    xhelp("inlining", [
+        "Ask the compiler to inline procedures using its usual heurisrics."])).
 optdb(oc_opt_hh, optopt_inline_simple,                    bool_special,
-    xhelp("inline-simple", [                                % NO
-        "Disable the inlining of simple procedures."])).
+    xhelp("inline-simple", [
+        "Ask the compiler to inline simple procedures."])).
 optdb(oc_opt_hh, optopt_inline_builtins,                  bool_special,
-    xhelp("inline-builtins", [                              % NO
-        "Generate builtins (e.g. arithmetic operators) as calls to",
-        "out-of-line procedures. This is done by default when",
-        "debugging, as without this option, the execution of",
-        "builtins would not be traced."])).
+    xhelp("inline-builtins", [
+        "Normally, the compiler implements builtin operations",
+        "(such as arithmeetic) using inline code.",
+        "With --no-inline-builtins, the compiler will implement them",
+        "as calls to out-of-line procedures.",
+        "This latter is done by default when debugging,",
+        "since this allows the execution of builtins to be traced."])).
 optdb(oc_opt_hh, optopt_inline_single_use,                bool_special,
-    xhelp("inline-single-use", [                            % NO
-        "Disable the inlining of procedures called only once."])).
+    xhelp("inline-single-use", [
+        "Inline procedures which are called only from one call site."])).
 optdb(oc_opt_hh, optopt_inline_call_cost,                 int_special,
     xarg_help("inline-call-cost", "cost", [
         "Assume that the cost of a call is the given parameter.",
@@ -3903,10 +3916,9 @@ optdb(oc_opt_hh, optopt_inline_compound_threshold,        int_special,
         "less the assumed call cost, multiplied by the number of times",
         "it is called is below the given threshold."])).
 optdb(oc_opt_hh, optopt_inline_simple_threshold,          int_special,
-    % Has no effect until --inline-simple is enabled.
     xarg_help("inline-simple-threshold", "threshold", [
-        "Inline a procedure if its size is less than the",
-        "given threshold."])).
+        "With --inline-simple, inline a procedure",
+        "if its size is less than the given threshold."])).
 optdb(oc_opt_hh, optopt_intermod_inline_simple_threshold, int_special,
     xarg_help("intermod-inline-simple-threshold", "threshold", [
         "Similar to `--inline-simple-threshold', except used to",
@@ -3916,6 +3928,7 @@ optdb(oc_opt_hh, optopt_intermod_inline_simple_threshold, int_special,
         "and too high a value may result in reduced performance."])).
 optdb(oc_opt_hh, optopt_inline_vars_threshold,            int_special,
     % Has no effect until --intermodule-optimization.
+    % XXX Is this true? If so, Why?
     xarg_help("inline-vars-threshold", "threshold", [
         "Don't inline a call if it would result in a procedure",
         "containing more than <threshold> variables. Procedures",
@@ -3938,26 +3951,29 @@ optdb(oc_opt_hh, optopt_inline_tr_sccs_max_extra,         int_special,
         "up to N+E mutually recursive tail calls."])).
 optdb(oc_opt_hh, optopt_inline_par_builtins,              bool_special,
     % This is for measurements by implementors only.
-    xpriv_help("inline-par-builtins", [                     % NO
-        "Generate calls to the predicates of par_builtin.m, instead of",
-        "bodily including their definitions as C code."])).
+    xpriv_help("inline-par-builtins", [
+        "With `--inline-par-builtins', the compiler",
+        "implements the operations of par_builtin.m using inline code.",
+        "With `--no-inline-par-builtins', it implements them as calls." ])).
 optdb(oc_opt_hh, optopt_from_ground_term_threshold,       int_special,
     xpriv_arg_help("from-ground-term-threshold", "n", [
         "Wrap a from_ground_term scope around the expanded,",
         "superhomogeneous form of a ground term that involves at least.",
         "the given number of function symbols."])).
 optdb(oc_opt_hh, optopt_enable_const_struct_user,         bool_special,
-    xhelp("const-struct", [                                 % NO
-        "Disable the gathering of constant structures in a separate",
-        "table."])).
+    xhelp("const-struct", [
+        "Gather constant ground structures in a separate table.",
+        "A structure will be stored in this table just once",
+        "even if it occurs in many different procedures."])).
 optdb(oc_opt_hh, optopt_common_struct,                    bool_special,
-    xhelp("common-struct", [                                % NO
-        "Disable optimization of common term structures."])).
+    xhelp("common-struct", [
+        "Replace two or more occurrences of the same term",
+        "in a conjunction with just one copy."])).
 optdb(oc_opt_hh, optopt_constraint_propagation,           bool_special,
     xhelp("constraint-propagation", [
         "Enable the constraint propagation transformation,",
-        "which attempts to transform the code so that goals",
-        "which can fail are executed as early as possible."])).
+        "which attempts to ensure that",
+        "goals which can fail are executed as early as possible."])).
 optdb(oc_opt_hh, optopt_local_constraint_propagation,     bool_special,
     xhelp("local-constraint-propagation", [
         "Enable the constraint propagation transformation,",
@@ -3984,10 +4000,11 @@ optdb(oc_opt_hh, optopt_merge_code_after_switch,          bool_special,
         "the value of a variable set in the switch, and when that goal",
         "is a switch on the same variable."])).
 optdb(oc_opt_hh, optopt_format_calls,                     bool_special,
-    xhelp("optimize-format-calls", [                        % NO
-        "Do not attempt to interpret the format string in calls to",
-        "string.format and related predicates at compile time;",
-        "always leave this to be done at runtime."])).
+    xhelp("optimize-format-calls", [
+        "Interpret the format string in calls to",
+        "string.format and related predicates at compile time,",
+        "replacing those calls with the sequence of more primitive operations",
+        "required to implement them."])).
 optdb(oc_opt_hh, optopt_split_switch_arms,                bool_special,
     xhelp("split-switch-arms", [
         "When a switch on a variable has an inner switch on that",
@@ -4046,8 +4063,12 @@ optdb(oc_opt_hh, optopt_delay_construct,                  bool_special,
         "Reorder goals to move construction unifications after",
         "primitive goals that can fail."])).
 optdb(oc_opt_hh, optopt_follow_code,                      bool_special,
-    xhelp("follow-code", [                                  % NO
-        "Don't migrate into the end of branched goals."])).
+    xpriv_help("follow-code", [
+        "Move the code following a branched goal (if-then-else, disjunction,",
+        "or switch) until the next call into each branch of that goal.",
+        "Having a call as the goal just after the branched goal",
+        "gives the LLDS code generator a consistent set of places",
+        "into which each branch should store live variables."])).
 optdb(oc_opt_hh, optopt_unused_args,                      bool_special,
     xalt_help("optimize-unused-args",
             ["optimise-unused-args"], [
@@ -4263,23 +4284,26 @@ optdef(oc_opt_hlm, optopt_static_ground_cells,             bool_special).
 optdef(oc_opt_hlm, optopt_use_atomic_cells,                bool_special).
 
 optdb(oc_opt_hlm, optopt_smart_indexing,                  bool_special,
-    xhelp("smart-indexing", [                               % NO
-        "Generate switches as simple if-then-else chains;",
-        "disable string hashing and integer table-lookup indexing."])).
+    xhelp("smart-indexing", [
+        "Implement switches using the fastest applicable",
+        "implementation method, which may be e.g. binary search",
+        "or a hash table. With --no-smart-indexing, the default is",
+        "to implement switches as simple if-then-else chains."])).
 % The following options are for developers only --they provide
 % finer grained control over smart indexing.
 optdb(oc_opt_hlm, optopt_smart_atomic_indexing,           bool_special,
-    xpriv_help("smart-atomic-indexing", [                   % NO
-        "Do not generate smart switches on atomic types."])).
+    xpriv_help("smart-atomic-indexing", [
+        "Generate smart switches on atomic types when appropriate."])).
 optdb(oc_opt_hlm, optopt_smart_string_indexing,           bool_special,
-    xpriv_help("smart-string-indexing", [                   % NO
-        "Do not generate smart switches on strings."])).
+    xpriv_help("smart-string-indexing", [
+        "Generate smart switches on strings when appropriate."])).
 optdb(oc_opt_hlm, optopt_smart_tag_indexing,              bool_special,
-    xpriv_help("smart-tag-indexing", [                      % NO
-        "Do not generate smart switches on discriminated union types."])).
+    xpriv_help("smart-tag-indexing", [
+        "Generate smart switches on discriminated union types",
+        "when appropriate."])).
 optdb(oc_opt_hlm, optopt_smart_float_indexing,            bool_special,
-    xpriv_help("smart-float-indexing", [                    % NO
-        "Do not generate smart switches on floats."])).
+    xpriv_help("smart-float-indexing", [
+        "Generate smart switches on floats when appropriate."])).
 optdb(oc_opt_hlm, optopt_dense_switch_req_density,        int_special,
     xarg_help("dense-switch-req-density", "percentage", [
         "The jump table generated for an atomic switch",
@@ -4325,16 +4349,17 @@ optdb(oc_opt_hlm, optopt_switch_multi_rec_base_first,     bool_special,
         "In a switch with two arms, one a base case and one with multiple",
         "recursive calls, put the base case first."])).
 optdb(oc_opt_hlm, optopt_static_ground_cells,             bool_special,
-    xhelp("static-ground-terms", [                          % NO
-        "Disable the optimization of constructing constant ground terms",
+    % XXX cf const-struct
+    xhelp("static-ground-terms", [
+        "Enable the optimization of constructing constant ground terms",
         "at compile time and storing them as static constants.",
         "Note that auxiliary data structures created by the compiler",
-        "for purposes such as debugging will still be created as",
+        "for purposes such as debugging will always be created as",
         "static constants."])).
 optdb(oc_opt_hlm, optopt_use_atomic_cells,                bool_special,
-    xhelp("use-atomic-cells", [                         % NO
-        "Don't use the atomic variants of the Boehm gc allocator calls,",
-        "even when this would otherwise be possible."])).
+    xhelp("use-atomic-cells", [
+        "Use the atomic variants of the Boehm gc allocator calls",
+        "when the cell to be allocated cannot contain pointers."])).
 
     % MLDS -> MLDS
 optdef(oc_opt_mm, optopt_optimize_mlds,                    bool_special).
@@ -4348,23 +4373,22 @@ optdef(oc_opt_hh, optopt_generate_trail_ops_inline,        bool_special).
 optdef(oc_opt_hm, optimize_trail_usage,                    bool(no)).
 
 optdb(oc_opt_mm, optopt_optimize_mlds,                    bool_special,
-    xalt_help("mlds-optimize",              % NO
+    xalt_help("mlds-optimize",
             ["mlds-optimise"], [
-        "Disable the MLDS->MLDS optimization passes."])).
+        "Enable the MLDS->MLDS optimization passes."])).
 optdb(oc_opt_mm, optopt_peep_mlds,                        bool_special,
-    xhelp("mlds-peephole", [                                % NO
-        "Do not perform peephole optimization of the MLDS."])).
+    xhelp("mlds-peephole", [
+        "Perform peephole optimization of the MLDS."])).
 optdb(oc_opt_hm, optopt_mlds_tailcalls,                   bool_special,
-    xalt_help("optimize-tailcalls",         % NO
+    xalt_help("optimize-tailcalls",
             ["optimise-tailcalls"], [
-        "Treat tailcalls as ordinary calls, rather than",
-        "turning self-tailcalls into loops."])).
+        "Turn self-tailcalls into loops."])).
 optdb(oc_opt_mm, optopt_initializations,                  bool_special,
-    xalt_help("optimize-initializations",   % NO
+    xalt_help("optimize-initializations",
             ["optimise-initializations"], [
-        "Leave initializations of local variables as",
-        "assignment statements, rather than converting such",
-        "assignment statements into initializers."])).
+        "Whenever possible,",
+        "convert the first assignment to each local variable",
+        "in the target code into an initializer on its declaration."])).
 optdb(oc_opt_mm, optopt_eliminate_unused_mlds_assigns,    bool_special,
     % This is useful for developers only.
     xpriv_help("eliminate-unused-mlds-assigns", [
@@ -4375,18 +4399,19 @@ optdb(oc_opt_mm, optopt_eliminate_local_vars,             bool_special,
         "by replacing occurrences of such variables with their values."])).
 % From the user point of view, the next options control an MLDS optimization.
 optdb(oc_opt_hh, optopt_generate_trail_ops_inline,        bool_special,
-    xhelp("generate-trail-ops-inline", [                    % NO
-        "Do not generate trailing operations inline,",
-        "but instead insert calls to the versions of these operations",
+    xhelp("generate-trail-ops-inline", [
+        "Generate inline code for trailing operations.",
+        "With `--no-generate-trail-ops-inline', the compiler",
+        "will implement them using calls to those operations",
         "in the standard library."])).
 optdb(oc_opt_hm, optimize_trail_usage,                    bool(no),
     % This option is developer-only.
     % It is intended for the benchmarking of trail usage optimization.
     % Otherwise, it should not be turned off, as doing so interferes with
     % the results of the trail usage analysis.
-    xpriv_help("optimize-trail-usage", [                    % NO
-        "Do not try and restrict trailing to those parts",
-        "of the program that actually use it."])).
+    xpriv_help("optimize-trail-usage", [
+        "Try to restrict trailing operations to those parts of the program",
+        "that actually use the trail."])).
 
     % HLDS -> LLDS
 optdef(oc_opt_hl, optopt_try_switch_size,                  int_special).
@@ -4406,20 +4431,19 @@ optdb(oc_opt_hl, optopt_binary_switch_size,               int_special,
         "The number of alternatives in a binary search switch",
         "must be at least this number (default: 4)."])).
 optdb(oc_opt_hl, optopt_middle_rec,                       bool_special,
-    xhelp("middle-rec", [                                   % NO
-        "Disable the middle recursion optimization."])).
+    xhelp("middle-rec", [
+        "Enable the middle recursion optimization."])).
 optdb(oc_opt_hl, optopt_simple_neg,                       bool_special,
-    xhelp("simple-neg", [                                   % NO
-        "Don't generate simplified code for simple negations."])).
+    xhelp("simple-neg", [
+        "Generate simplified code for simple negations."])).
 optdb(oc_opt_hl, optopt_allow_hijacks,                    bool_special,
-    xpriv_help("allow-hijacks", [                           % NO
-        "Do not generate code in which a procedure hijacks",
-        "a nondet stack frame that possibly belongs to",
-        "another procedure invocation"])).
+    xpriv_help("allow-hijacks", [
+        "When appropriate, generate code to hijack nondet stack frames",
+        "that possibly belongs to another procedure invocation."])).
 optdb(oc_opt_hl, optimize_region_ops,                     bool(no),
-    xpriv_help("optimize-region-ops", [                     % NO
-        "Do not try and restrict region operations to those parts",
-        "of the program that actually use it."])).
+    xpriv_help("optimize-region-ops", [
+        "Try and restrict region operations to those parts of the program",
+        "that actually use regions."])).
 
     % LLDS -> LLDS
 optdef(oc_opt_ll, optopt_common_data,                      bool_special).
@@ -4444,34 +4468,33 @@ optdef(oc_opt_ll, optopt_repeat_opts,                      int_special).
 optdef(oc_opt_ll, optopt_layout_compression_limit,         int_special).
 
 optdb(oc_opt_ll, optopt_common_data,                      bool_special,
-    xhelp("common-data", [                                  % NO
-        "Disable optimization of common data structures."])).
+    xhelp("common-data", [
+        "Enable optimization of common data structures."])).
 optdb(oc_opt_ll, optopt_common_layout_data,               bool_special,
-    xhelp("common-layout-data", [                           % NO
-        "Disable optimization of common subsequences in layout",
-        "structures."])).
+    xhelp("common-layout-data", [
+        "Enable optimization of common subsequences in layout structures."])).
 optdb(oc_opt_ll, optopt_optimize_llds,                    bool_special,
-    xalt_help("llds-optimize",              % NO
+    xalt_help("llds-optimize",
             ["llds-optimise"], [
-        "Disable the low-level optimization passes."])).
+        "Enable the low-level optimization passes."])).
 optdb(oc_opt_ll, optopt_peep_llds,                        bool_special,
-    xalt_help("optimize-peep",              % NO
+    xalt_help("optimize-peep",
             ["optimise-peep"], [
-        "Disable local peephole optimizations."])).
+        "Enable local peephole optimizations."])).
 optdb(oc_opt_ll, optopt_peep_llds_mkword,                 bool_special,
     % This is useful for developers only, to test whether a gcc bug
     % has been fixed.
-    xpriv_alt_help("optimize-peep-mkword",  % NO
+    xpriv_alt_help("optimize-peep-mkword",
             ["optimise-peep-mkword"], [
-        "Disable peephole optimizations of words created by mkword."])).
+        "Enable peephole optimizations of words created by mkword."])).
 optdb(oc_opt_ll, optopt_jumps,                            bool_special,
-    xalt_help("optimize-jumps",             % NO
+    xalt_help("optimize-jumps",
             ["optimise-jumps"], [
-        "Disable elimination of jumps to jumps."])).
+        "Enable the short-circuiting of jumps to jumps."])).
 optdb(oc_opt_ll, optopt_fulljumps,                        bool_special,
-    xalt_help("optimize-fulljumps",         % NO
+    xalt_help("optimize-fulljumps",
             ["optimise-fulljumps"], [
-        "Disable elimination of jumps to ordinary code."])).
+        "Enable the elimination of jumps to ordinary code."])).
 optdb(oc_opt_ll, optopt_pessimize_tailcalls,              bool_special,
     xhelp("pessimize-tailcalls", [
         "Disable the optimization of tailcalls."])).
@@ -4481,9 +4504,8 @@ optdb(oc_opt_ll, optopt_checked_nondet_tailcalls,         bool_special,
         "when this requires a runtime check. This option tries to",
         "minimize stack consumption, possibly at the expense of speed."])).
 optdb(oc_opt_ll, optopt_use_local_vars,                   bool_special,
-    xhelp("use-local-vars", [                               % NO
-        "Disable the transformation to use local variables in C code",
-        "blocks wherever possible."])).
+    xhelp("use-local-vars", [
+        "Use local variables in C code blocks wherever possible."])).
 optdb(oc_opt_ll, optopt_local_var_access_threshold,       int_special,
     xpriv_arg_help("local-var-access-threshold", "XXX document me", [])).
 optdb(oc_opt_ll, optopt_standardize_labels,               bool_special,
@@ -4492,9 +4514,9 @@ optdb(oc_opt_ll, optopt_standardize_labels,               bool_special,
             ["standardise-labels"], [
         "Standardize internal labels in the generated code."])).
 optdb(oc_opt_ll, optopt_labels,                           bool_special,
-    xalt_help("optimize-labels",            % NO
+    xalt_help("optimize-labels",
             ["optimise-labels"], [
-        "Disable elimination of dead labels and code."])).
+        "Delete dead labels and code."])).
 optdb(oc_opt_ll, optopt_dups,                             bool_special,
     xalt_help("optimize-dups",
             ["optimise-dups"], [
@@ -4504,13 +4526,15 @@ optdb(oc_opt_ll, optopt_proc_dups,                        bool_special,
             ["optimise-proc-dups"], [
         "Enable elimination of duplicate procedures."])).
 optdb(oc_opt_ll, optopt_frames,                           bool_special,
-    xalt_help("optimize-frames",            % NO
+    xalt_help("optimize-frames",
             ["optimise-frames"], [
-        "Disable stack frame optimizations."])).
+        "Optimize the operations that maintain stack frames."])).
 optdb(oc_opt_ll, optopt_delay_slot,                       bool_special,
-    xalt_help("optimize-delay-slot",        % NO
+    xalt_help("optimize-delay-slot",
             ["optimise-delay-slot"], [
-        "Disable branch delay slot optimizations."])).
+        "Disable branch delay slot optimizations,",
+        "This option is meaningful only if",
+        "the target architecture has delay slots."])).
 optdb(oc_opt_ll, optopt_reassign,                         bool_special,
     xalt_help("optimize-reassign",
             ["optimise-reassign"], [
@@ -4542,8 +4566,9 @@ optdb(oc_opt_lc, optopt_use_macro_for_redo_fail,          bool_special,
         "to the fail or redo code in the runtime system.",
         "This produces slightly bigger but slightly faster code."])).
 optdb(oc_opt_lc, optopt_emit_c_loops,                     bool_special,
-    xhelp("emit-c-loops", [                                 % NO
-        "Use only gotos, don't emit C loop constructs."])).
+    xhelp("emit-c-loops", [
+        "Use C loop contstructs to implement loops.",
+        "With `--no-emit-c-loops', use only gotos."])).
 optdb(oc_opt_lc, optopt_procs_per_c_function,             int_special,
     xalt_arg_help("procs-per-c-function",
             ["procs-per-C-function"], "n", [
@@ -4552,11 +4577,11 @@ optdb(oc_opt_lc, optopt_procs_per_c_function,             int_special,
         "value of <n> is one. Increasing <n> can produce",
         "slightly more efficient code, but makes compilation slower."])).
 optdb(oc_opt_lc, optopt_local_thread_engine_base,         bool_special,
-    xhelp("local-thread-engine-base", [                     % NO
+    xhelp("local-thread-engine-base", [
         "Do not copy the thread-local Mercury engine base address",
-        "into local variables. This option only affects low-level",
-        "parallel grades not using the GNU C global register variables",
-        "extension."])).
+        "into a local variable, even when this would be appropriate.",
+        "This option is effective only in low-level parallel grades",
+        "that do not use the GNU C global register variables extension."])).
 % optopt_inline_alloc works by giving a flag to the C compiler, but
 % from the user's point of view, it is about giving different code
 % to the C compiler.
@@ -4745,9 +4770,9 @@ optdb(oc_target_comp, target_debug,                    bool(no),
         "pass `/debug' to the C# compiler."])).
 optdb(oc_target_comp, warn_target_code,                bool(yes),
     % XXX Does this apply to Java and C# too?
-    xhelp("warn-target-code", [                             % NO
-        "Disable warnings from the compiler used to process the",
-        "target code (e.g. gcc)."])).
+    xhelp("warn-target-code", [
+        "Disable warnings from the compiler (e.g. gcc)",
+        "that processes the target code generated by mmc."])).
 
 %---------------------%
 
@@ -4796,9 +4821,9 @@ optdb(oc_target_c, c_compiler_type,                 string("gcc"),
     % determined at configuration time for the above two options.
     % XXX That argues for this option being oc_config.
 optdb(oc_target_c, optopt_c_optimize,               bool_special,
-    xalt_help("c-optimize",                 % NO
+    xalt_help("c-optimize",
             ["c-optimise"], [
-        "Don't enable the C compiler's optimizations."])).
+        "Do not enable optimizations by the C compiler."])).
 optdb(oc_target_c, c_include_directories,           accumulating([]),
     % The `mmc' script will override the default with a value
     % determined at configuration time.
@@ -5125,7 +5150,7 @@ optdb(oc_link_c,      use_default_runtime_library_directory, bool(yes),
     % The use_default_runtime_library_directory option is only ever used
     % to decide whether to modify the value of the
     % runtime_link_library_directories option.
-    xhelp("default-runtime-library-directory", [            % NO
+    xhelp("default-runtime-library-directory", [
         "Do not add any directories to the runtime search path",
         "automatically."])).
 optdb(oc_link_c,      init_file_directories,             accumulating([]),
@@ -5169,20 +5194,24 @@ optdb(oc_link_c,      mercury_linkage_special,         string_special,
 optdb(oc_link_c,      only_globals_mercury_linkage,    string("shared"),
     no_help).
 optdb(oc_link_c,      demangle,                        bool(yes),
-    xhelp("demangle", [                                     % NO
-        "Don't pipe link errors through the Mercury demangler."])).
+    xhelp("demangle", [
+        "Do not pipe the output of the linker through the Mercury demangler.",
+        "The demangler usually makes it easier to understand the diagnostics",
+        "for any link errors that involve code generated by mmc."])).
 optdb(oc_link_c,      strip,                           bool(yes),
-    xhelp("strip", [                                        % NO
-        "Do not strip executables."])).
+    xhelp("strip", [
+        "Do not invoke the strip command on executables.",
+        "Stripping minimizes executables' sizes,",
+        "but also makes debugging them much harder."])).
 optdb(oc_link_c,      main,                            bool(yes),
-    xhelp("main", [                                         % NO
-        "Don't generate a C main() function. The user's code must",
-        "provide a main() function."])).
+    xhelp("main", [
+        "Do not generate a C main() function. With `--no-main',",
+        "the user's own code must provide a main() function."])).
 optdb(oc_link_c,      allow_undefined,                 bool(yes),
-    xhelp("allow-undefined", [                              % NO
+    xhelp("allow-undefined", [
         "Do not allow undefined symbols in shared libraries."])).
 optdb(oc_link_c,      use_readline,                    bool(yes),
-    xhelp("use-readline", [                                 % NO
+    xhelp("use-readline", [
         "Disable use of the readline library in the debugger."])).
 optdb(oc_link_c,      runtime_flags,                   accumulating([]),
     xarg_help("runtime-flags", "flags", [
@@ -5492,10 +5521,13 @@ optdb(oc_search, intermod_directories,                accumulating([]),
         "Add <dir> to the list of directories to be searched",
         "for `.opt' and `.trans_opt' files."])).
 optdb(oc_search, use_search_directories_for_intermod, bool(yes),
-    xhelp("use-search-directories-for-intermod", [          % NO
-        "Do not add the arguments of `--search-directory' options to",
-        "the list of directories to search for `.opt' files; use only the",
-        "arguments of `--intermod-directory' options."])).
+    xhelp("use-search-directories-for-intermod", [
+        "With `--use-search-directories-for-intermod', the compiler",
+        "will add the arguments of `--search-directory' options",
+        "to the list of directories to search for `.opt' files.",
+        "With `--no-use-search-directories-for-intermod', the compiler",
+        "will use use only the arguments of",
+        "`--intermod-directory' options."])).
 optdb(oc_search, interface_dirs_same_subdir_setting,  accumulating([]),
     xpriv_alt_arg_help("interface-dir-same-workspace",
         ["interface-dir-same-ws"], "dir", [])).
@@ -5564,13 +5596,15 @@ optdb(oc_buildsys, install_prefix,                 string("/usr/local/"),
     xarg_help("install-prefix", "dir", [
         "The directory under which to install Mercury libraries."])).
 optdb(oc_buildsys, detect_stdlib_grades,           bool(yes),
-    xalt_help("detect-stdlib-grades",       % NO
+    xalt_help("detect-stdlib-grades",
             ["detect-libgrades"], [
-        "Do not scan the installation directory to determine which",
-        "standard library grades are available."])).
+        "Do not scan the installation directory to determine",
+        "which standard library grades are available."])).
 % XXX Add more descriptive names for the libgrade* options.
 optdb(oc_buildsys, library_install_grades,         accumulating(["stdlib"]),
-    xalt_arg_help("library-grade",          % NOA
+    % XXX We should add --library-install-grade as the *preferred* name
+    % of this option.
+    xalt_arg_help("library-grade",
             ["libgrade"], "grade", [
         "The positive form adds <grade> to the list of compilation grades",
         "in which a library to be installed should be built.",
@@ -5600,7 +5634,7 @@ optdb(oc_buildsys, only_globals_library_install_linkages, accumulating([]),
         "times. By default, libraries will be installed for",
         "both shared and static linking."])).
 optdb(oc_buildsys, libgrade_install_check,         bool(yes),
-    xhelp("libgrade-install-check", [                       % NO
+    xhelp("libgrade-install-check", [
         "Do not check that libraries have been installed before",
         "attempting to use them. (This option is meaningful only with",
         "QUOTE", "`mmc --make'.)"])).
@@ -5760,10 +5794,9 @@ optdef(oc_internal, optopt_static_code_addresses,            bool_special).
 optdb(oc_internal, pre_implicit_parallelism_simplify,    bool(no),
     xpriv_help("pre-implicit-parallelism-simplify", [])).
 optdb(oc_internal, type_layout,                          bool(yes),
-    xpriv_help("type-layout", [                             % NO
-        "Don't output type_ctor_layout structures or references",
-        "to them. (The C code also needs to be compiled with",
-        "`-DNO_TYPE_LAYOUT')."])).
+    xpriv_help("type-layout", [
+        "Don't output type_ctor_layout structures or references to them.",
+        "(The C code must then be compiled with `-DNO_TYPE_LAYOUT')."])).
 % The next two options are not documented,
 % because they are not yet tested much, and are probably not very useful,
 % except for Java, where they are the default.
@@ -5857,16 +5890,16 @@ optdb(oc_internal, size_region_commit_entry,        int(1),
     xpriv_arg_help("size-region-commit-entry", "num_words", [])).
 optdb(oc_internal, allow_multi_arm_switches,        bool(yes),
     xpriv_help("allow-multi-arm-switches", [
-        "Allow the compiler to generate switches in which one arm handles",
-        "more than one cons_id."])).
+        "Do not allow the compiler to generate switches",
+        "in which one arm handles more than one cons_id."])).
 optdb(oc_internal, reclaim_heap_on_semidet_failure,     bool(yes),
-    xhelp("reclaim-heap-on-semidet-failure", [              % NO
-        "Don't reclaim heap on backtracking in semidet code."])).
+    xpriv_help("reclaim-heap-on-semidet-failure", [
+        "Do not reclaim heap on backtracking in semidet code."])).
 optdb(oc_internal, reclaim_heap_on_nondet_failure,      bool(yes),
-    xhelp("reclaim-heap-on-nondet-failure", [               % NO
-        "Don't reclaim heap on backtracking in nondet code."])).
+    xpriv_help("reclaim-heap-on-nondet-failure", [
+        "Do not reclaim heap on backtracking in nondet code."])).
 optdb(oc_internal, reclaim_heap_on_failure,             bool_special,
-    xhelp("reclaim-heap-on-failure", [                      % NO
+    xpriv_help("reclaim-heap-on-failure", [
         "Combines the effect of the two options above."])).
 optdb(oc_internal, max_specialized_do_call_closure,     int(5), no_help).
     % mercury.do_call_closure_N exists for N <= option_value;
@@ -6002,10 +6035,10 @@ optdb(oc_dev_ctrl, type_check_using_constraints,    bool(no),
     xpriv_help("type-check-constraints", [
         "Use the constraint based type checker instead of the old one."])).
 optdb(oc_dev_ctrl, trad_passes,                         bool(yes),
-    xhelp("trad-passes", [                                  % NO
-        "The default `--trad-passes' completely processes each predicate",
+    xpriv_help("trad-passes", [
+        "The default `--trad-passes' completes code generaion each predicate",
         "before going on to the next predicate.",
-        "This option tells the compiler",
+        "The --no-trad-passes  option tells the compiler",
         "to complete each phase of code generation on all predicates",
         "before going on the next phase on all predicates."])).
 optdb(oc_dev_ctrl, parallel_liveness,                   bool(no),
@@ -6021,10 +6054,11 @@ optdb(oc_dev_ctrl, parallel_code_gen,                   bool(no),
         "and requires the compiler to be built in a",
         "low-level parallel grade and running with multiple engines."])).
 optdb(oc_dev_ctrl, should_pretest_equality,             bool(yes),
-    xpriv_help("should-pretest-equality", [                 % NO
-        "If specified, do not add a test for the two values being equal",
-        "as words to the starts of potentially expensive unify and compare",
-        "predicates."])).
+    xpriv_help("should-pretest-equality", [
+        "Normally, the compiler adds to the starts of",
+        "potentially expensive unify and compare predicates",
+        "a test for the two values being equal as words.",
+        "Specifying `--no-should-pretest-equality' prevents this."])).
 optdb(oc_dev_ctrl, fact_table_max_array_size,           int(1024),
     xarg_help("fact-table-max-array-size", "n", [
         "Specify the maximum number of elements in a single",
@@ -6037,12 +6071,11 @@ optdb(oc_dev_ctrl, fact_table_hash_percent_full,        int(90),
 optdb(oc_dev_ctrl, prefer_switch,                       bool(yes),
     % This option is private because it is not yet useful; currently
     % we don't take advantage of GNU C's computed gotos extension.
-    xpriv_help("prefer-switch", [                           % NO
+    xpriv_help("prefer-switch", [
         "Generate code using computed gotos rather than switches.",
-        "This makes the generated code less readable, but potentially",
-        "slightly more efficient.",
-        "This option has no effect unless the `--high-level-code' option",
-        "is enabled."])).
+        "This makes the generated code less readable,",
+        "but potentially slightly more efficient.",
+        "This option is effective only with `--high-level-code'."])).
 optdb(oc_dev_ctrl, prefer_while_loop_over_jump_self,    bool(yes),
     % This option is intended for testing and benchmarking.
     xpriv_help("prefer-while-loop-over-jump-self", [
@@ -6050,8 +6083,7 @@ optdb(oc_dev_ctrl, prefer_while_loop_over_jump_self,    bool(yes),
         "infinite while loop, with tail calls being done by a continue.",
         "The alternative is a label at the start of the procedure,",
         "with tail calls being done by a jump to the label.",
-        "This option has no effect unless the `--high-level-code' option",
-        "is enabled."])).
+        "This option is effective only with `--high-level-code'."])).
 optdb(oc_dev_ctrl, prefer_while_loop_over_jump_mutual,  bool(no),
     xpriv_help("prefer-while-loop-over-jump-mutual", [
         "Generate code for tail-recursive-SCCs using an infinite while loop",
@@ -6064,7 +6096,7 @@ optdb(oc_dev_ctrl, prefer_while_loop_over_jump_mutual,  bool(no),
         "is enabled."])).
 optdb(oc_dev_ctrl, opt_no_return_calls,                 bool(yes),
     % This option provides the fairest test of --optimize-saved-vars-cell.
-    xpriv_help("opt-no-return-calls", [                     % NO
+    xpriv_help("opt-no-return-calls", [
         "Do not optimize the stack usage of calls that cannot return."])).
 
 optdef(oc_dev_ctrl, compiler_sufficiently_recent,       bool(no)).
@@ -6152,7 +6184,7 @@ optdb(oc_dev_ctrl, experiment4,                        bool(no),
 optdb(oc_dev_ctrl, experiment5,                        bool(no),
     xpriv_help("experiment5", [])).
 optdb(oc_dev_ctrl, allow_ho_insts_as_modes,            bool(yes),
-    xpriv_help("allow-ho-insts-as-modes", [                 % NO
+    xpriv_help("allow-ho-insts-as-modes", [
         "Do not allow higher order insts to be used as modes."])).
 optdb(oc_dev_ctrl, ignore_par_conjunctions,            bool(no),
     xpriv_help("ignore-par-conjunctions", [
