@@ -68,15 +68,17 @@ options_help_new(Stream, What, !IO) :-
                 option_categories(Cat, _)
             ),
         solutions_set(CategoryPred, AllCategoriesSet),
-        list.foldl2(print_help_chapter(Stream, What),
-            all_chapters, AllCategoriesSet, UndoneCategoriesSet, !IO),
+        list.foldl2(acc_help_chapter(What), all_chapters,
+            AllCategoriesSet, UndoneCategoriesSet, cord.init, LineCord),
         set.to_sorted_list(UndoneCategoriesSet, UndoneCategories),
         (
             UndoneCategories = []
         ;
             UndoneCategories = [_ | _],
             unexpected($pred, "undone: " ++ string(UndoneCategories))
-        )
+        ),
+        Lines = cord.list(LineCord),
+        write_lines(Stream, Lines, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -322,53 +324,65 @@ all_chapters = AllChapters :-
 
 %---------------------------------------------------------------------------%
 
-:- pred print_help_chapter(io.text_output_stream::in, print_what_help::in,
-    help_chapter::in, set(option_category)::in, set(option_category)::out,
-    io::di, io::uo) is det.
+:- pred acc_help_chapter(print_what_help::in, help_chapter::in,
+    set(option_category)::in, set(option_category)::out,
+    cord(string)::in, cord(string)::out) is det.
 
-print_help_chapter(Stream, What, HelpChapter, !Categories, !IO) :-
+acc_help_chapter(What, HelpChapter, !Categories, !LineCord) :-
     (
         HelpChapter = one_level_chapter(HelpSection),
-        print_help_section(Stream, What, "", HelpSection, !Categories, !IO)
+        acc_help_section(What, "", HelpSection, !Categories, !LineCord)
     ;
         HelpChapter = two_level_chapter(ChapterName, ChapterCommentLines,
             SubSections),
-        print_chapter_or_section_comment_lines(Stream, "",
-            ChapterCommentLines, !IO),
-        io.format(Stream, "\n%s\n", [s(ChapterName)], !IO),
-        list.foldl2(print_help_section(Stream, What, option_name_indent),
-            SubSections, !Categories, !IO)
+        list.foldl2(acc_help_section(What, option_name_indent),
+            SubSections, !Categories, cord.init, SectionsLineCord),
+        ( if cord.is_empty(SectionsLineCord) then
+            true
+        else
+            cord.snoc("", !LineCord),
+            cord.snoc(ChapterName, !LineCord),
+            (
+                ChapterCommentLines = []
+            ;
+                ChapterCommentLines = [_ | _],
+                cord.snoc("", !LineCord),
+                list.foldl(acc_prefixed_line(""),
+                    ChapterCommentLines, !LineCord)
+            ),
+            !:LineCord = !.LineCord ++ SectionsLineCord
+        )
     ).
 
-:- pred print_help_section(io.text_output_stream::in, print_what_help::in,
-    string::in, help_section::in,
+:- pred acc_help_section(print_what_help::in, string::in, help_section::in,
     set(option_category)::in, set(option_category)::out,
-    io::di, io::uo) is det.
+    cord(string)::in, cord(string)::out) is det.
 
-print_help_section(Stream, What, SectionNameIndent, HelpSection,
-        !Categories, !IO) :-
+acc_help_section(What, SectionNameIndent, HelpSection,
+        !Categories, !LineCord) :-
     HelpSection = help_section(SectionName, SectionCommentLines,
         SectionCategories),
     set.det_remove_list(SectionCategories, !Categories),
     list.map(get_optdb_records_in_category,
         SectionCategories, OptdbRecordSets),
     OptdbRecordSet = set.union_list(OptdbRecordSets),
-    io.format(Stream, "\n%s%s\n", [s(SectionNameIndent), s(SectionName)], !IO),
-    print_chapter_or_section_comment_lines(Stream, SectionNameIndent,
-        SectionCommentLines, !IO),
-    ( if semidet_fail then
+
+    list.foldl(acc_help_message(What), set.to_sorted_list(OptdbRecordSet),
+        cord.init, HelpTextLinesCord),
+    ( if cord.is_empty(HelpTextLinesCord) then
         true
     else
-        list.foldl(acc_help_message(What), set.to_sorted_list(OptdbRecordSet),
-            cord.init, EffectiveLinesCord),
-        EffectiveLines = cord.list(EffectiveLinesCord),
+        cord.snoc("", !LineCord),
+        cord.snoc(SectionNameIndent ++ SectionName, !LineCord),
         (
-            EffectiveLines = [],
-            io.write_string(Stream, "This section is empty.\n", !IO)
+            SectionCommentLines = []
         ;
-            EffectiveLines = [_ | _],
-            write_lines(Stream, EffectiveLines, !IO)
-        )
+            SectionCommentLines = [_ | _],
+            cord.snoc("", !LineCord),
+            list.foldl(acc_prefixed_line(SectionNameIndent),
+                SectionCommentLines, !LineCord)
+        ),
+        !:LineCord = !.LineCord ++ HelpTextLinesCord
     ).
 
 :- pred get_optdb_records_in_category(option_category::in,
@@ -381,12 +395,6 @@ get_optdb_records_in_category(Cat, OptdbRecordSet) :-
             OptdbRecord = optdb_record(Cat, Opt, OptData, Help)
         ),
     solutions_set(OptdbPred, OptdbRecordSet).
-
-:- pred print_chapter_or_section_comment_lines(io.text_output_stream::in,
-    string::in, list(string)::in, io::di, io::uo) is det.
-
-print_chapter_or_section_comment_lines(Stream, Indent, CommentLines, !IO) :-
-    io.write_prefixed_lines(Stream, Indent, CommentLines, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1052,12 +1060,13 @@ finish_cur_line(CurLine, !FinishedLineCord) :-
 %---------------------------------------------------------------------------%
 
 list_optimization_options(Stream, MaybeUpTo, !IO) :-
-    list_optimization_options_loop(Stream, MaybeUpTo, 0, !IO).
+    acc_optimization_options_loop(MaybeUpTo, 0, cord.init, LineCord),
+    write_lines(Stream, cord.list(LineCord), !IO).
 
-:- pred list_optimization_options_loop(io.text_output_stream::in,
-    maybe(int)::in, int::in, io::di, io::uo) is det.
+:- pred acc_optimization_options_loop(maybe(int)::in, int::in,
+    cord(string)::in, cord(string)::out) is det.
 
-list_optimization_options_loop(Stream, MaybeUpTo, CurLevel, !IO) :-
+acc_optimization_options_loop(MaybeUpTo, CurLevel, !LineCord) :-
     ( if
         (
             MaybeUpTo = no
@@ -1067,24 +1076,37 @@ list_optimization_options_loop(Stream, MaybeUpTo, CurLevel, !IO) :-
         ),
         opts_enabled_at_level(CurLevel, LevelDescLines, DocumentedOpts)
     then
-        ( if CurLevel > 0 then
-            io.nl(Stream, !IO)
-        else
-            true
-        ),
-        io.format(Stream, "Optimization level %d:\n\n", [i(CurLevel)], !IO),
-        write_prefixed_lines(Stream, option_name_indent, LevelDescLines, !IO),
-        io.format(Stream,
-            "\n%sThe options set at this level are:\n\n",
-            [s(option_name_indent)], !IO),
+        string.format("Optimization level %d:", [i(CurLevel)],
+            LevelHeading),
+        string.format("%sThe options set at this level are:",
+            [s(option_name_indent)], SetAtLevel),
         list.foldl(document_one_optimization_option, DocumentedOpts,
             [], OptLines),
         % Sorting makes options slightly easier to find in a list of options.
         % It also makes the output look more systematic.
         list.sort(OptLines, SortedOptLines),
-        Indent = option_desc_indent,
-        io.write_prefixed_lines(Stream, Indent, SortedOptLines, !IO),
-        list_optimization_options_loop(Stream, MaybeUpTo, CurLevel + 1, !IO)
+
+        ( if CurLevel > 0 then
+            cord.snoc("", !LineCord)
+        else
+            true
+        ),
+        cord.snoc(LevelHeading, !LineCord),
+        (
+            LevelDescLines = []
+        ;
+            LevelDescLines = [_ | _],
+            cord.snoc("", !LineCord),
+            list.foldl(acc_prefixed_line(option_name_indent), LevelDescLines,
+                !LineCord)
+        ),
+        cord.snoc("", !LineCord),
+        cord.snoc(SetAtLevel, !LineCord),
+        cord.snoc("", !LineCord),
+        list.foldl(acc_prefixed_line(option_desc_indent), SortedOptLines,
+            !LineCord),
+
+        acc_optimization_options_loop(MaybeUpTo, CurLevel + 1, !LineCord)
     else
         true
     ).
