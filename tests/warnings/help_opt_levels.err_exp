@@ -1,0 +1,118 @@
+Optimization level 0:
+
+    Aim to minimize overall compilation time.
+
+    The options set at this level are:
+
+        --common-data
+        --excess-assign
+        --llds-optimize
+        --mlds-optimize
+        --mlds-peephole
+        --optimize-dead-procs
+        --optimize-jumps
+        --optimize-labels
+        --optimize-peep
+        --optimize-peep-mkword
+        --optimize-repeat=1
+        --smart-indexing
+        --static-ground-terms
+
+Optimization level 1:
+
+    Apply optimizations which are cheap and have a good payoff
+    while still keeping compilation time small.
+
+    The options set at this level are:
+
+        --c-optimize
+        --emit-c-loops
+        --middle-rec
+        --optimize-delay-slot
+        --optimize-frames
+        --optimize-tailcalls
+        --use-local-vars
+
+Optimization level 2:
+
+    Apply optimizations which have a good payoff relative to their cost;
+    but include optimizations which are more costly than with -O1.
+
+    The options set at this level are:
+
+        --common-struct
+        --follow-code
+        --inline-compound-threshold=10
+        --inline-simple
+        --inline-single-use
+        --merge-code-after-switch
+        --optimize-constant-propagation
+        --optimize-dups
+        --optimize-fulljumps
+        --optimize-initializations
+        --optimize-repeat=3
+        --simple-neg
+        --split-switch-arms
+        --user-guided-type-specialization
+
+Optimization level 3:
+
+    Apply optimizations which usually have a good payoff even if they
+    increase compilation time quite a bit.
+
+    The options set at this level are:
+
+        --constraint-propagation
+        --deforestation
+        --excess-assign
+        --optimize-higher-order
+        --optimize-reassign
+        --optimize-repeat=4
+        --optimize-saved-vars-const
+        --optimize-unused-args
+
+Optimization level 4:
+
+    Apply optimizations which may have some payoff even if they
+    increase compilation time quite a bit.
+    
+    Currently this enables the use of local variables
+    and increases the inlining thresholds.
+
+    The options set at this level are:
+
+        --higher-order-size-limit=30
+        --inline-compound-threshold=20
+        --inline-simple-threshold=8
+
+Optimization level 5:
+
+    Apply optimizations which may have some payoff even if they
+    increase compilation time a lot.
+    
+    Currently this enables the search for construction unifications that
+    can be delayed past failing computations, allows more passes of the
+    low-level optimizations, and increases the inlining thresholds
+    still further. We also enable eliminate_local_vars only at
+    this level, because that pass is implemented pretty inefficiently.
+
+    The options set at this level are:
+
+        --delay-constructs
+        --eliminate-local-vars
+        --higher-order-size-limit=40
+        --inline-compound-threshold=100
+        --loop-invariants
+        --optimize-repeat=5
+
+Optimization level 6:
+
+    apply optimizations which may have any payoff even if they
+    increase compilation time to completely unreasonable levels.
+    
+    Currently this just enables inlining of GC_malloc(), redo(), and fail().
+
+    The options set at this level are:
+
+        --inline-alloc
+        --use-macro-for-redo-fail

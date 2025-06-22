@@ -13,6 +13,7 @@
 :- interface.
 
 :- import_module io.
+:- import_module maybe.
 
 :- type print_what_help
     --->    print_public_help
@@ -21,11 +22,15 @@
 :- pred options_help_new(io.text_output_stream::in, print_what_help::in,
     io::di, io::uo) is det.
 
+:- pred list_optimization_options(io.text_output_stream::in, maybe(int)::in,
+    io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module libs.optdb_help.
+:- import_module libs.optimization_options.
 :- import_module libs.options.
 
 :- import_module bool.
@@ -34,7 +39,6 @@
 :- import_module getopt.
 :- import_module int.
 :- import_module list.
-:- import_module maybe.
 :- import_module require.
 :- import_module set.
 :- import_module solutions.
@@ -331,8 +335,7 @@ print_help_chapter(Stream, What, HelpChapter, !Categories, !IO) :-
             SubSections),
         print_chapter_or_section_comment_lines(Stream, "",
             ChapterCommentLines, !IO),
-        % ZZZ add another \n
-        io.format(Stream, "%s\n", [s(ChapterName)], !IO),
+        io.format(Stream, "\n%s\n", [s(ChapterName)], !IO),
         list.foldl2(print_help_section(Stream, What, option_name_indent),
             SubSections, !Categories, !IO)
     ).
@@ -350,21 +353,22 @@ print_help_section(Stream, What, SectionNameIndent, HelpSection,
     list.map(get_optdb_records_in_category,
         SectionCategories, OptdbRecordSets),
     OptdbRecordSet = set.union_list(OptdbRecordSets),
-        % ZZZ add another \n
-    io.format(Stream, "%s%s\n", [s(SectionNameIndent), s(SectionName)], !IO),
+    io.format(Stream, "\n%s%s\n", [s(SectionNameIndent), s(SectionName)], !IO),
     print_chapter_or_section_comment_lines(Stream, SectionNameIndent,
         SectionCommentLines, !IO),
-    % ZZZ
-    ( if semidet_succeed then
+    ( if semidet_fail then
         true
-        % io.format(Stream, "%s%d optdb records\n\n",
-        %     [s(option_desc_indent), i(set.count(OptdbRecordSet))], !IO)
     else
         list.foldl(acc_help_message(What), set.to_sorted_list(OptdbRecordSet),
             cord.init, EffectiveLinesCord),
         EffectiveLines = cord.list(EffectiveLinesCord),
-        % ZZZ Check for EffectiveLines = []
-        write_lines(Stream, EffectiveLines, !IO)
+        (
+            EffectiveLines = [],
+            io.write_string(Stream, "This section is empty.\n", !IO)
+        ;
+            EffectiveLines = [_ | _],
+            write_lines(Stream, EffectiveLines, !IO)
+        )
     ).
 
 :- pred get_optdb_records_in_category(option_category::in,
@@ -381,8 +385,8 @@ get_optdb_records_in_category(Cat, OptdbRecordSet) :-
 :- pred print_chapter_or_section_comment_lines(io.text_output_stream::in,
     string::in, list(string)::in, io::di, io::uo) is det.
 
-print_chapter_or_section_comment_lines(_, _, _, !IO).
-    % ZZZ nyi
+print_chapter_or_section_comment_lines(Stream, Indent, CommentLines, !IO) :-
+    io.write_prefixed_lines(Stream, Indent, CommentLines, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1044,6 +1048,123 @@ finish_cur_line(CurLine, !FinishedLineCord) :-
         cord.snoc(FinishedLine, !FinishedLineCord)
     ).
 
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+list_optimization_options(Stream, MaybeUpTo, !IO) :-
+    list_optimization_options_loop(Stream, MaybeUpTo, 0, !IO).
+
+:- pred list_optimization_options_loop(io.text_output_stream::in,
+    maybe(int)::in, int::in, io::di, io::uo) is det.
+
+list_optimization_options_loop(Stream, MaybeUpTo, CurLevel, !IO) :-
+    ( if
+        (
+            MaybeUpTo = no
+        ;
+            MaybeUpTo = yes(UpTo),
+            CurLevel =< UpTo
+        ),
+        opts_enabled_at_level(CurLevel, LevelDescLines, DocumentedOpts)
+    then
+        ( if CurLevel > 0 then
+            io.nl(Stream, !IO)
+        else
+            true
+        ),
+        io.format(Stream, "Optimization level %d:\n\n", [i(CurLevel)], !IO),
+        write_prefixed_lines(Stream, option_name_indent, LevelDescLines, !IO),
+        io.format(Stream,
+            "\n%sThe options set at this level are:\n\n",
+            [s(option_name_indent)], !IO),
+        list.foldl(document_one_optimization_option, DocumentedOpts,
+            [], OptLines),
+        % Sorting makes options slightly easier to find in a list of options.
+        % It also makes the output look more systematic.
+        list.sort(OptLines, SortedOptLines),
+        Indent = option_desc_indent,
+        io.write_prefixed_lines(Stream, Indent, SortedOptLines, !IO),
+        list_optimization_options_loop(Stream, MaybeUpTo, CurLevel + 1, !IO)
+    else
+        true
+    ).
+
+:- pred document_one_optimization_option(documented_optimization_option::in,
+    list(string)::in, list(string)::out) is det.
+
+document_one_optimization_option(DocOpt, !Lines) :-
+    DocOpt = doc_oo(_, Option, OptionData),
+    get_main_long_name(Option, MaybeLongName),
+    (
+        MaybeLongName = no
+    ;
+        MaybeLongName = yes(LongName),
+        (
+            OptionData = bool(Bool),
+            (
+                Bool = no,
+                string.format("--no-%s", [s(LongName)], Line)
+            ;
+                Bool = yes,
+                string.format("--%s", [s(LongName)], Line)
+            ),
+            !:Lines = [Line | !.Lines]
+        ;
+            OptionData = int(Int),
+            string.format("--%s=%d", [s(LongName), i(Int)], Line),
+            !:Lines = [Line | !.Lines]
+        ;
+            ( OptionData = string(_)
+            ; OptionData = maybe_int(_)
+            ; OptionData = maybe_string(_)
+            ; OptionData = accumulating(_)
+            ; OptionData = special
+            ; OptionData = bool_special
+            ; OptionData = int_special
+            ; OptionData = string_special
+            ; OptionData = maybe_string_special
+            ; OptionData = file_special
+            ),
+            % These kinds of options are never set automatically
+            % at any optimization level. Some (the special options)
+            % literally *cannot* be set there.
+            unexpected($pred, string(OptionData))
+        )
+    ).
+
+:- pred get_main_long_name(option::in, maybe(string)::out) is det.
+
+get_main_long_name(Option, MaybeLongName) :-
+    optdb(_, Option, _, Help),
+    (
+        ( Help = no_help
+        ; Help = xunnamed_help(_)
+        ),
+        MaybeLongName = no
+    ;
+        ( Help = xgen_help(_, LongName, _, _, _)
+        ; Help = xhelp(LongName, _)
+        ; Help = xarg_help(LongName, _, _)
+        ; Help = xpriv_help(LongName, _)
+        ; Help = xpriv_arg_help(LongName, _, _)
+        ; Help = xalt_help(LongName, _, _)
+        ; Help = xalt_arg_help(LongName, _, _, _)
+        ; Help = xpriv_alt_help(LongName, _, _)
+        ; Help = xpriv_alt_arg_help(LongName, _, _, _)
+        ; Help = xshort_help(_, LongName, _, _)
+        ; Help = xshort_arg_help(_, LongName, _, _, _)
+        ; Help = xpriv_short_help(_, LongName, _, _)
+        ; Help = xpriv_short_arg_help(_, LongName, _, _, _)
+        ; Help = xalt_align_help(LongName, _, _, _)
+        ; Help = xpriv_alt_align_help(LongName, _, _, _)
+        ; Help = xshort_alt_align_help(_, LongName, _, _, _)
+        ; Help = xno_align_help(LongName, _, _, _)
+        ; Help = xalt_arg_align_help(LongName, _, _)
+        ),
+        MaybeLongName = yes(LongName)
+    ).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pred write_lines(io.text_output_stream::in, list(string)::in,

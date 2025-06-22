@@ -16,7 +16,9 @@
 :- interface.
 
 :- import_module libs.options.
+
 :- import_module list.
+:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
@@ -66,7 +68,9 @@
     ;       opmq_output_stdlib_grades               % Library information.
     ;       opmq_output_stdlib_modules
 
-    ;       opmq_output_target_arch.                % System information.
+    ;       opmq_output_target_arch                 % System information.
+
+    ;       opmq_output_optimization_options(maybe(int)).
 
 %---------------------%
 
@@ -141,18 +145,19 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module getopt.
+:- import_module int.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
-decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
+decide_op_mode(OptionTable0, OpMode, OtherOpModes) :-
     some [!OpModeSet] (
-        getopt.lookup_bool_option(OptionTable, only_opmode_invoked_by_mmc_make,
-            InvokedByMMCMakeOpt),
+        getopt.lookup_bool_option(OptionTable0,
+            only_opmode_invoked_by_mmc_make, InvokedByMMCMakeOpt),
         (
             InvokedByMMCMakeOpt = yes,
             InvokedByMMCMake = op_mode_invoked_by_mmc_make
@@ -160,9 +165,20 @@ decide_op_mode(OptionTable, OpMode, OtherOpModes) :-
             InvokedByMMCMakeOpt = no,
             InvokedByMMCMake = op_mode_not_invoked_by_mmc_make
         ),
+        getopt.lookup_int_option(OptionTable0,
+            only_opmode_output_optimization_options_upto, ListOptOptsUpto),
+        ( if ListOptOptsUpto < 0 then
+            MaybeListOptOptsUpto = no,
+            OptionTable = OptionTable0
+        else
+            MaybeListOptOptsUpto = yes(ListOptOptsUpto),
+            map.det_update(only_opmode_output_optimization_options, bool(yes),
+                OptionTable0, OptionTable)
+        ),
+
         set.init(!:OpModeSet),
         list.foldl(gather_bool_op_mode(OptionTable),
-            bool_op_modes(InvokedByMMCMake), !OpModeSet),
+            bool_op_modes(InvokedByMMCMake, MaybeListOptOptsUpto), !OpModeSet),
 
         map.lookup(OptionTable, only_opmode_generate_standalone_interface,
             GenStandaloneOption),
@@ -298,10 +314,10 @@ gather_bool_op_mode(OptionTable, Option - OpMode, !OpModeSet) :-
         unexpected($pred, "not a boolean")
     ).
 
-:- func bool_op_modes(op_mode_invoked_by_mmc_make)
+:- func bool_op_modes(op_mode_invoked_by_mmc_make, maybe(int))
     = assoc_list(option, op_mode).
 
-bool_op_modes(InvokedByMMCMake) = [
+bool_op_modes(InvokedByMMCMake, MaybeListOptOptsUpto) = [
     only_opmode_make -
         opm_top_make,
     % Although --rebuild on the command line implies --make, once the effect
@@ -353,6 +369,10 @@ bool_op_modes(InvokedByMMCMake) = [
 
     only_opmode_output_target_arch -
         opm_top_query(opmq_output_target_arch),
+
+    only_opmode_output_optimization_options -
+        opm_top_query(opmq_output_optimization_options(
+            MaybeListOptOptsUpto)),
 
     only_opmode_generate_dependencies -
         opm_top_args(opma_generate_dependencies(do_not_make_ints),
@@ -473,6 +493,16 @@ op_mode_to_option_string(OptionTable, MOP) = Str :-
         ;
             MOPQ = opmq_output_target_arch,
             Str = "--output-target-arch"
+        ;
+            MOPQ = opmq_output_optimization_options(MaybeUpto),
+            (
+                MaybeUpto = no,
+                Str = "--output-optimization-options"
+            ;
+                MaybeUpto = yes(UpTo),
+                Str = "--output-optimization-options-upto=" ++
+                    int_to_string(UpTo)
+            )
         )
     ;
         MOP = opm_top_args(MOPA, _),

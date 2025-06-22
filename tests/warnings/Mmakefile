@@ -96,7 +96,7 @@ ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 	ERRORCHECK_PROGS += unused_args_analysis
 endif
 
-PROGS = $(ERRORCHECK_PROGS) up_to_date
+PROGS = $(ERRORCHECK_PROGS) help_opt_levels help_text up_to_date
 
 TESTS = $(sort $(PROGS))
 include ../Mmake.common
@@ -111,6 +111,19 @@ MCFLAGS += --color-diagnostics
 MCFLAGS += --infer-all
 
 $(ERRORCHECK_PROGS:%=%.runtest): %.runtest: %.err_res ;
+
+help_opt_levels.runtest:
+	$(MC) $(MCFLAGS) --output-optimization-options-upto 8 \
+		help_opt_levels.m > help_opt_levels.err 2>&1
+	diff $(DIFF_OPTS) help_opt_levels.err_exp help_opt_levels.err \
+		> help_opt_levels.res || \
+		{ cat help_opt_levels.res; exit 1; }
+
+help_text.runtest:
+	$(MC) $(MCFLAGS) --help-alt help_text.m > help_text.err 2>&1
+	diff $(DIFF_OPTS) help_text.err_exp help_text.err \
+		> help_text.res || \
+		{ cat help_text.res; exit 1; }
 
 # Build the `.analysis' file for unused_args_analysis_helper_1
 # before building unused_args_analysis.c.

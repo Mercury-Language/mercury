@@ -1898,6 +1898,7 @@ handle_op_mode_implications(OpMode, !Globals) :-
             ; OpModeQuery = opmq_output_grade_string
             ; OpModeQuery = opmq_output_stdlib_modules
             ; OpModeQuery = opmq_output_target_arch
+            ; OpModeQuery = opmq_output_optimization_options(_)
             )
         ),
         Smart = bool.no,

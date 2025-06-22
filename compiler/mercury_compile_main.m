@@ -371,6 +371,9 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, !IO) :-
         OpModeQuery = opmq_output_target_arch,
         globals.lookup_string_option(Globals, target_arch, TargetArch),
         io.print_line(StdOutStream, TargetArch, !IO)
+    ;
+        OpModeQuery = opmq_output_optimization_options(MaybeUpTo),
+        list_optimization_options(StdOutStream, MaybeUpTo, !IO)
     ).
 
 %---------------------------------------------------------------------------%

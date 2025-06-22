@@ -3763,7 +3763,7 @@ set_opts_for_space(!OptTuple) :-
     !OptTuple ^ ot_opt_loop_invariants := do_not_opt_loop_invariants.
 
 opts_enabled_at_level(0, [
-    "Optimization level 0: aim to minimize overall compilation time."
+    "Aim to minimize overall compilation time."
 ], [
     doc_oo(oo_use_common_data(yes),     optopt_common_data,     bool(yes)),
     doc_oo(oo_optimize_llds(yes),       optopt_optimize_llds,   bool(yes)),
@@ -3781,8 +3781,8 @@ opts_enabled_at_level(0, [
     doc_oo(oo_elim_excess_assigns(yes), optopt_excess_assign,   bool(yes))
 ]).
 opts_enabled_at_level(1, [
-    "Optimization level 1: apply optimizations which are cheap and",
-    "have a good payoff while still keeping compilation time small."
+    "Apply optimizations which are cheap and have a good payoff",
+    "while still keeping compilation time small."
 ], [
     doc_oo(oo_use_local_vars(yes),      optopt_use_local_vars,  bool(yes)),
     % XXX We want `gcc -O1'
@@ -3795,9 +3795,8 @@ opts_enabled_at_level(1, [
     doc_oo(oo_opt_mlds_tailcalls(yes),  optopt_mlds_tailcalls,  bool(yes))
 ]).
 opts_enabled_at_level(2, [
-    "Optimization level 2: apply optimizations which have a good payoff",
-    "relative to their cost; but include optimizations which are",
-    "more costly than with -O1."
+    "Apply optimizations which have a good payoff relative to their cost;",
+    "but include optimizations which are more costly than with -O1."
 ], [
     doc_oo(oo_opt_fulljumps(yes),       optopt_fulljumps,       bool(yes)),
     doc_oo(oo_opt_repeat(3),            optopt_repeat_opts,     int(3)),
@@ -3819,8 +3818,8 @@ opts_enabled_at_level(2, [
     doc_oo(oo_split_switch_arms(yes),   optopt_split_switch_arms, bool(yes))
 ]).
 opts_enabled_at_level(3, [
-    "Optimization level 3: apply optimizations which usually have a good",
-    "payoff even if they increase compilation time quite a bit."
+    "Apply optimizations which usually have a good payoff even if they",
+    "increase compilation time quite a bit."
 ], [
     doc_oo(oo_opt_saved_vars_const(yes), optopt_saved_vars_const, bool(yes)),
     doc_oo(oo_opt_unused_args(yes),     optopt_unused_args,     bool(yes)),
@@ -3833,8 +3832,8 @@ opts_enabled_at_level(3, [
     doc_oo(oo_opt_repeat(4),            optopt_repeat_opts,     int(4))
 ]).
 opts_enabled_at_level(4, [
-    "Optimization level 4: apply optimizations which may have some payoff",
-    "even if they increase compilation time quite a bit.",
+    "Apply optimizations which may have some payoff even if they",
+    "increase compilation time quite a bit.",
     "",
     "Currently this enables the use of local variables",
     "and increases the inlining thresholds."
@@ -3847,8 +3846,8 @@ opts_enabled_at_level(4, [
                             optopt_higher_order_size_limit,     int(30))
 ]).
 opts_enabled_at_level(5, [
-    "Optimization level 5: apply optimizations which may have some",
-    "payoff even if they increase compilation time a lot.",
+    "Apply optimizations which may have some payoff even if they",
+    "increase compilation time a lot.",
     "",
     "Currently this enables the search for construction unifications that",
     "can be delayed past failing computations, allows more passes of the",
@@ -3867,9 +3866,8 @@ opts_enabled_at_level(5, [
     doc_oo(oo_opt_loop_invariants(yes), optopt_loop_invariants, bool(yes))
 ]).
 opts_enabled_at_level(6, [
-    "Optimization level 6: apply optimizations which may have any payoff",
-    "even if they increase compilation time to completely unreasonable",
-    "levels.",
+    "apply optimizations which may have any payoff even if they",
+    "increase compilation time to completely unreasonable levels.",
     "",
     "Currently this just enables inlining of GC_malloc(), redo(), and fail()."
 ], [

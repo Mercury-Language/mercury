@@ -114,9 +114,6 @@
 % only on a subset of all backends, its help text should list the
 % *supported* backends, NOT the *unsupported* backends".
 %
-% XXX We should delete copies of "(This option is not for general use)"
-% from all help texts; instead, the help text should just be set to private.
-%
 %---------------------------------------------------------------------------%
 
 :- module libs.options.
@@ -468,6 +465,8 @@
     ;       only_opmode_output_target_arch
     ;       only_opmode_output_java_class_dir
     ;       only_opmode_output_stdlib_modules
+    ;       only_opmode_output_optimization_options
+    ;       only_opmode_output_optimization_options_upto
 
     % Auxiliary output options
     ;       error_output_suffix
@@ -2512,6 +2511,8 @@ optdef(oc_opmode, only_opmode_output_java_class_dir,    bool(no)).
 optdef(oc_opmode, only_opmode_output_link_command,      bool(no)).
 optdef(oc_opmode, only_opmode_output_shared_lib_link_command, bool(no)).
 optdef(oc_opmode, only_opmode_output_library_link_flags, bool(no)).
+optdef(oc_opmode, only_opmode_output_optimization_options, bool(no)).
+optdef(oc_opmode, only_opmode_output_optimization_options_upto, int(-1)).
 
 optdb(oc_opmode, only_opmode_generate_source_file_mapping, bool(no),
     xshort_help('f', "generate-source-file-mapping", [], [
@@ -2683,6 +2684,15 @@ optdb(oc_opmode, only_opmode_output_library_link_flags, bool(no),
         "in order to link against the current set of libraries.",
         "This includes the standard library, as well as any other",
         "libraries specified via the --ml option."])).
+optdb(oc_opmode, only_opmode_output_optimization_options, bool(no),
+    xalt_help("output-optimization-options",
+            ["output-opt-opts"], [
+        "Print a list of the optimization at each optimization level."])).
+optdb(oc_opmode, only_opmode_output_optimization_options_upto, int(-1),
+    xalt_arg_help("output-optimization-options-upto",
+            ["output-opt-opts-upto"], "max_level", [
+        "Print a list of the optimization at each optimization level",
+        "up to the given level."])).
 
 %---------------------------------------------------------------------------%
 
@@ -3484,8 +3494,7 @@ optdef(oc_grade, sync_term_size_in_words,               int(8)).
     % overridden by a value from configure.
 
 optdb(oc_grade, num_ptag_bits,                         int(-1),
-    % -1 is a special value which means use the value
-    % of conf_low_ptag_bits instead.
+    % -1 means: use the value of conf_low_ptag_bits instead.
     %
     % Normally, the --num-tag-bits option is used only by the compiler.
     % By default, its value is set to the value of the --conf-low-tag-bits
@@ -3494,8 +3503,9 @@ optdb(oc_grade, num_ptag_bits,                         int(-1),
     % XXX That fact should be included in the help text.
     xalt_arg_help("num-ptag-bits",
             ["num-tag-bits"], "n", [
-        "(This option is not for general use.)",
-        "Use <n> primary tag bits."])).
+        "Use <n> primary tag bits.",
+        "Note that the value of this option is normally autoconfigured;",
+        "its use should never be needed except for cross-compilation."])).
 optdb(oc_grade, conf_low_ptag_bits,                    int(2),
     % The `mmc' script will override the above default with
     % a value determined at configuration time.
@@ -3511,33 +3521,35 @@ optdb(oc_grade, bytes_per_word,                        int(4),
     xpriv_arg_help("bytes-per-word", "n", [
         "Reserved for use by the `mmc' script."])).
 optdb(oc_grade, unboxed_float,                         bool(no),
-    % XXX Delete all occurrences of "This option is not for general use".
     xpriv_help("unboxed-float", [
-        "(This option is not for general use.)",
         "Do not box floating point numbers.",
         "This assumes that a Mercury float will fit in a word.",
         "The C code needs to be compiled with `-UMR_BOXED_FLOAT'.",
         "It may also need to be compiled with",
         "`-DMR_USE_SINGLE_PREC_FLOAT', if double precision",
-        "floats don't fit into a word."])).
+        "floats don't fit into a word.",
+        "Note that the value of this option is normally autoconfigured;",
+        "its use should never be needed except for cross-compilation."])).
 optdb(oc_grade, unboxed_int64s,                        bool(no),
     xpriv_help("unboxed-int64s", [
-        "(This option is not for general use.)",
         "Do not box 64-bit integer numbers",
         "This assumes that word size of the target machine is at least",
         "64-bits in size.",
-        "The C code needs to be compiled with `-UMR_BOXED_INT64S'."])).
+        "The C code needs to be compiled with `-UMR_BOXED_INT64S'.",
+        "Note that the value of this option is normally autoconfigured;",
+        "its use should never be needed except for cross-compilation."])).
 optdb(oc_grade, unboxed_no_tag_types,                  bool(yes),
     xpriv_help("unboxed-no-tag-types", [                    % NO
-        "(This option is not for general use.)",
-        "Box no-tag types. This option is disabled by default.])"])).
+        "Box no-tag types. This option is disabled by default.",
+        "Note that the value of this option is normally autoconfigured;",
+        "its use should never be needed except for cross-compilation."])).
 optdb(oc_grade, arg_pack_bits,                         int(-1),
     % -1 is a special value which means use all word bits
     % for argument packing.
     xpriv_arg_help("arg-pack-bits", "n", [
-        "(This option is not for general use.)",
-        "The number of bits in a word in which to pack constructor",
-        "arguments."])).
+        "The number of bits in a word in which to pack constructor arguments.",
+        "Note that the value of this option is normally autoconfigured;",
+        "its use should never be needed except for cross-compilation."])).
 optdb(oc_grade, pack_everything,                       bool(no),
     xpriv_help("pack-everything", [
         "Tell decide_type_repn.m to pack everything that can be packed."])).
@@ -3603,8 +3615,8 @@ optdb(oc_grade,    asm_labels,                            bool(yes),
     xno_align_help("asm-labels",
             "(grades: asm_fast)",
             "(grades: none, reg)", [
-        "Specify whether or not to use GNU C's",
-        "asm extensions for inline assembler labels.",
+        "Specify whether or not to use GNU C's asm extensions for",
+        "inline assembler labels.",
         "This option is ignored if the `--high-level-code' option is",
         "enabled."])).
 optdb(oc_grade,    use_float_registers,                   bool(yes),
@@ -3659,31 +3671,34 @@ optdb(oc_config,   have_delay_slot,                     bool(no),
     % The `mmc' script may override the default if configure says
     % the machine has branch delay slots.
     xalt_help("branch-delay-slot", ["have-delay-slot"], [
-        "(This option is not for general use.)",
-        "Assume that branch instructions have a delay slot."])).
+        "Assume that branch instructions have a delay slot.",
+        "Note that the value of this option is normally autoconfigured;",
+        "its use should never be needed except for cross-compilation."])).
 % The `mmc' script will override the next four options' defaults
 % with values determined at configuration time.
 optdb(oc_config,   num_real_r_regs,                     int(5),
     xarg_help("num-real-r-regs", "n", [
-        "(This option is not for general use.)",
-        "Assume registers r1 up to r<n> are real general purpose",
-        "registers."])).
+        "Assume registers r1 up to r<n> are real general purpose registers.",
+        "Note that the value of this option is normally autoconfigured;",
+        "its use should never be needed except for cross-compilation."])).
 optdb(oc_config,   num_real_f_regs,                     int(0),
     xarg_help("num-real-f-regs", "n", [
-        "(This option is not for general use.)",
-        "Assume registers f1 up to f<n> are real floating point",
-        "registers."])).
+        "Assume registers f1 up to f<n> are real floating point registers.",
+        "Note that the value of this option is normally autoconfigured;",
+        "its use should never be needed except for cross-compilation."])).
 optdb(oc_config,   num_real_r_temps,                    int(5),
     xalt_arg_help("num-real-r-temps",
             ["num-real-temps"], "n", [
-        "(This option is not for general use.)",
         "Assume that <n> non-float temporaries will fit into",
-        "real machine registers."])).
+        "real machine registers.",
+        "Note that the value of this option is normally autoconfigured;",
+        "its use should never be needed except for cross-compilation."])).
 optdb(oc_config,   num_real_f_temps,                    int(0),
     xarg_help("num-real-f-temps", "n", [
-        "(This option is not for general use.)",
         "Assume that <n> float temporaries will fit into",
-        "real machine registers."])).
+        "real machine registers.",
+        "Note that the value of this option is normally autoconfigured;",
+        "its use should never be needed except for cross-compilation."])).
 optdb(oc_config,   max_jump_table_size,                 int(0),
     % XXX This option works around limitations in 1998 C compilers.
     % Its value should be set automatically by handle_options.m
@@ -5795,12 +5810,13 @@ optdb(oc_internal, procid_stack_layout,             bool(no),
         "looking up procedure identification information."])).
 optdb(oc_internal, trace_stack_layout,              bool(no),
     xpriv_help("trace-stack-layout", [
-        "(This option is not for general use.)",
         "Generate the stack_layout structures required for",
         "execution tracing."])).
 optdb(oc_internal, body_typeinfo_liveness,          bool(no),
     xpriv_help("body-typeinfo-liveness", [
-        "(This option is not for general use.)"])).
+        "Ensure that whenever a variable whose type contains",
+        "a type variable is live, the type_info for that type variable",
+        "is available."])).
 optdb(oc_internal, can_compare_constants_as_ints,   bool(no),
     xpriv_help("can-compare-constants-as-ints", [])).
 optdb(oc_internal, pretest_equality_cast_pointers,  bool(no),
