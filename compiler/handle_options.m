@@ -52,17 +52,6 @@
 :- pred usage_errors(io.text_output_stream::in, globals::in,
     list(error_spec)::in, io::di, io::uo) is det.
 
-    % Display short usage message.
-    %
-:- pred short_usage(io.text_output_stream::in, io::di, io::uo) is det.
-
-    % Display long usage message for help.
-    %
-:- pred long_usage(io.text_output_stream::in, io::di, io::uo) is det.
-
-:- pred write_copyright_notice(io.text_output_stream::in, io::di, io::uo)
-    is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -3359,51 +3348,6 @@ usage_errors(ProgressStream, Globals, Specs, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     io.format(ProgressStream, "%s:\n", [s(ProgName)], !IO),
     write_error_specs(ProgressStream, Globals, Specs, !IO).
-
-:- mutable(already_printed_usage, bool, no, ground,
-    [untrailed, attach_to_io_state]).
-
-short_usage(ProgressStream, !IO) :-
-    % short_usage is called from many places; ensure that we don't print the
-    % duplicate copies of the message.
-    % XXX The above doesn't seem to be true anymore.
-    get_already_printed_usage(AlreadyPrinted, !IO),
-    (
-        AlreadyPrinted = no,
-        io.write_strings(ProgressStream, [
-            "Usage: mmc [<options>] <arguments>\n",
-            "Use `mmc --help' for more information.\n"
-        ], !IO),
-        set_already_printed_usage(yes, !IO)
-    ;
-        AlreadyPrinted = yes
-    ).
-
-long_usage(ProgressStream, !IO) :-
-    % long_usage is called from only one place, so can't print duplicate
-    % copies of the long usage message. We can print both a short and along
-    % usage message, but there is no simple way to avoid that.
-    io.write_string(ProgressStream,
-        "Name: mmc - Melbourne Mercury Compiler\n", !IO),
-    write_copyright_notice(ProgressStream, !IO),
-    io.write_strings(ProgressStream, [
-        "Usage: mmc [<options>] <arguments>\n",
-        "Arguments:\n"
-    ], !IO),
-    io.write_prefixed_lines(ProgressStream, "\t", [
-        "Arguments ending in `.m' are assumed to be source file names.",
-        "Arguments that do not end in `.m' are assumed to be module names.",
-        "Arguments in the form @file are replaced with the contents of",
-        "the file."
-    ], !IO),
-    io.write_string(ProgressStream, "\nOptions:\n", !IO),
-    options_help(ProgressStream, !IO).
-
-write_copyright_notice(Stream, !IO) :-
-    io.write_strings(Stream, [
-        "Copyright (C) 1993-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2025 The Mercury team\n"
-    ], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module libs.handle_options.

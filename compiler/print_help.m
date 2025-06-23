@@ -15,12 +15,25 @@
 :- import_module io.
 :- import_module maybe.
 
+%---------------------------------------------------------------------------%
+
 :- type print_what_help
     --->    print_public_help
     ;       print_public_and_private_help.
 
-:- pred options_help_new(io.text_output_stream::in, print_what_help::in,
+    % Display short usage message.
+    %
+:- pred short_usage(io.text_output_stream::in, io::di, io::uo) is det.
+
+    % Display long usage message for help.
+    %
+:- pred long_usage(io.text_output_stream::in, print_what_help::in,
     io::di, io::uo) is det.
+
+:- pred write_copyright_notice(io.text_output_stream::in, io::di, io::uo)
+    is det.
+
+%---------------------------------------------------------------------------%
 
 :- pred list_optimization_options(io.text_output_stream::in, maybe(int)::in,
     io::di, io::uo) is det.
@@ -46,40 +59,91 @@
 
 %---------------------------------------------------------------------------%
 
-options_help_new(Stream, What, !IO) :-
-     ( if semidet_fail then
-         OptdbPred =
-            ( pred(OptdbRecord::out) is multi :-
-                optdb(Cat, Opt, OptData, Help),
-                OptdbRecord = optdb_record(Cat, Opt, OptData, Help)
-            ),
-        solutions(OptdbPred, OptdbRecords),
-        list.foldl(acc_help_message(What), OptdbRecords, cord.init, LineCord),
-        Lines = cord.list(LineCord),
-        write_lines(Stream, Lines, !IO)
-    else
-        % We check whether we have covered all possible option categories
-        %
-        % - getting a set containing all of those categories;
-        % - deleting each category from the set as it is handled; and then
-        % - checking that what remains is the empty set.
-        CategoryPred =
-            ( pred(Cat::out) is multi :-
-                option_categories(Cat, _)
-            ),
-        solutions_set(CategoryPred, AllCategoriesSet),
-        list.foldl2(acc_help_chapter(What), all_chapters,
-            AllCategoriesSet, UndoneCategoriesSet, cord.init, LineCord),
-        set.to_sorted_list(UndoneCategoriesSet, UndoneCategories),
-        (
-            UndoneCategories = []
-        ;
-            UndoneCategories = [_ | _],
-            unexpected($pred, "undone: " ++ string(UndoneCategories))
-        ),
-        Lines = cord.list(LineCord),
-        write_lines(Stream, Lines, !IO)
+:- mutable(already_printed_usage, bool, no, ground,
+    [untrailed, attach_to_io_state]).
+
+short_usage(ProgressStream, !IO) :-
+    % short_usage is called from many places; ensure that we don't print the
+    % duplicate copies of the message.
+    % XXX The above doesn't seem to be true anymore.
+    get_already_printed_usage(AlreadyPrinted, !IO),
+    (
+        AlreadyPrinted = no,
+        io.write_strings(ProgressStream, [
+            "Usage: mmc [<options>] <arguments>\n",
+            "Use `mmc --help' for more information.\n"
+        ], !IO),
+        set_already_printed_usage(yes, !IO)
+    ;
+        AlreadyPrinted = yes
     ).
+
+long_usage(ProgressStream, What, !IO) :-
+    % long_usage is called from only one place, so can't print duplicate
+    % copies of the long usage message. We can print both a short and along
+    % usage message, but there is no simple way to avoid that.
+    Lines = [compiler_id_line | copyright_notice_lines] ++
+        long_usage_header_lines,
+    io.write_strings(ProgressStream, Lines, !IO),
+    options_help(ProgressStream, What, !IO).
+
+write_copyright_notice(Stream, !IO) :-
+    io.write_strings(Stream, copyright_notice_lines, !IO).
+
+%---------------------------------------------------------------------------%
+
+:- func compiler_id_line = string.
+
+compiler_id_line = "Name: mmc - Melbourne Mercury Compiler\n".
+
+:- func copyright_notice_lines = list(string).
+
+copyright_notice_lines = [
+    "Copyright (C) 1993-2012 The University of Melbourne\n",
+    "Copyright (C) 2013-2025 The Mercury team\n"
+].
+
+:- func long_usage_header_lines = list(string).
+
+long_usage_header_lines = [
+    "Usage: mmc [<options>] <arguments>\n",
+    "\n",
+    "Arguments:\n",
+    "    Arguments ending in `.m' are assumed to be source file names.\n",
+    "    Arguments that do not end in `.m' are assumed to be module names.\n",
+    "    Arguments of the form `@file' are replaced with " ++
+        "the contents of the file.\n",
+    "\n",
+    "Options:\n"
+].
+
+%---------------------------------------------------------------------------%
+
+:- pred options_help(io.text_output_stream::in, print_what_help::in,
+    io::di, io::uo) is det.
+
+options_help(Stream, What, !IO) :-
+    % We check whether we have covered all possible option categories
+    %
+    % - getting a set containing all of those categories;
+    % - deleting each category from the set as it is handled; and then
+    % - checking that what remains is the empty set.
+    CategoryPred =
+        ( pred(Cat::out) is multi :-
+            option_categories(Cat, _)
+        ),
+    solutions_set(CategoryPred, AllCategoriesSet),
+    list.foldl2(acc_help_chapter(What), all_chapters,
+        AllCategoriesSet, UndoneCategoriesSet, cord.init, LineCord),
+    set.to_sorted_list(UndoneCategoriesSet, UndoneCategories),
+    (
+        UndoneCategories = []
+    ;
+        UndoneCategories = [_ | _],
+        unexpected($pred, "undone: " ++ string(UndoneCategories))
+    ),
+    Lines = cord.list(LineCord),
+    write_lines(Stream, Lines, !IO).
 
 %---------------------------------------------------------------------------%
 

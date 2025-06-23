@@ -46,7 +46,6 @@
 :- import_module hlds.instmap.
 :- import_module libs.check_libgrades.
 :- import_module libs.file_util.
-:- import_module libs.handle_options.
 :- import_module libs.maybe_util.
 :- import_module libs.op_mode.
 :- import_module libs.options.
@@ -166,14 +165,10 @@ main_after_setup(ProgressStream, ErrorStream, Globals, EnvOptFileVariables,
     % XXX Should we use ErrorStream (which is stderr) instead of StdOutStream?
     ( if Help = yes then
         io.stdout_stream(StdOutStream, !IO),
-        long_usage(StdOutStream, !IO)
+        long_usage(StdOutStream, print_public_help, !IO)
     else if HelpAlt = yes then
         io.stdout_stream(StdOutStream, !IO),
-        ( if semidet_succeed then
-            options_help_new(StdOutStream, print_public_and_private_help, !IO)
-        else
-            compare_old_vs_new(StdOutStream, !IO)
-        )
+        long_usage(StdOutStream, print_public_and_private_help, !IO)
     else if Version = yes then
         io.stdout_stream(StdOutStream, !IO),
         LibraryVersion = library.mercury_version,

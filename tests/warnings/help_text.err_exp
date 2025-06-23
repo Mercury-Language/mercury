@@ -1,3 +1,14 @@
+Name: mmc - Melbourne Mercury Compiler
+Copyright (C) 1993-2012 The University of Melbourne
+Copyright (C) 2013-2025 The Mercury team
+Usage: mmc [<options>] <arguments>
+
+Arguments:
+    Arguments ending in `.m' are assumed to be source file names.
+    Arguments that do not end in `.m' are assumed to be module names.
+    Arguments of the form `@file' are replaced with the contents of the file.
+
+Options:
 
 Help options
 
