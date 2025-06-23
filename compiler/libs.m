@@ -25,7 +25,6 @@
 :- include_module color_schemes.
 :- include_module optdb_help.
 :- include_module print_help.
-:- include_module print_help_old.
 
 % Error handling.
 :- include_module compiler_util.
