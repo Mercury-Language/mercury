@@ -528,6 +528,7 @@ then
             ;       i(string).
 
         :- pred p(tp::in, string::out) is det.
+        :- pragma require_switch_arms_in_type_order(pred(p/2)).
 
         p(T, U) :-
             (

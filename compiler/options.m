@@ -253,118 +253,256 @@
     %
     % At the moment, there are considerable deviations from such consistency.
 :- type option
-    % Help options.
+
+% Help options.
     --->    help
     ;       help_alt
     ;       version
 
-    % Warning options
-    ;       inhibit_warnings
-    ;       inhibit_style_warnings
-    ;       warn_accumulator_swaps
-    ;       halt_at_warn
-    ;       halt_at_warn_make_int
-    ;       halt_at_warn_make_opt
-            % Almost all code in the compiler should only look at the value
-            % of halt_at_warn. handle_options.m will overwrite its value
-            % with the value of halt_at_warn_make_int when making interface
-            % files and with the value of halt_at_warn_make_opt when making
-            % optimization files.
-    ;       halt_at_syntax_errors
-    ;       halt_at_auto_parallel_failure
-    ;       halt_at_invalid_interface
-    ;       warn_singleton_vars
-    ;       warn_repeated_singleton_vars
-    ;       warn_overlapping_scopes
-    ;       warn_det_decls_too_lax
-    ;       warn_inferred_erroneous
-    ;       warn_nothing_exported
-    ;       warn_unused_args
-    % XXX We should also warn about unused statevars in "some (...)" scopes.
-    ;       warn_unneeded_initial_statevars
-    ;       warn_unneeded_initial_statevars_lambda
-    ;       warn_unneeded_final_statevars
-    ;       warn_unneeded_final_statevars_lambda
-    ;       warn_interface_imports
-    ;       warn_interface_imports_in_parents
-    ;       warn_missing_opt_files
-    ;       warn_missing_trans_opt_files
-    ;       warn_missing_trans_opt_deps
-    ;       warn_inconsistent_pred_order_clauses
-    ;       warn_inconsistent_pred_order_foreign_procs
-    ;       warn_non_contiguous_decls
-    ;       warn_non_contiguous_clauses
-    ;       warn_non_contiguous_foreign_procs
-    ;       allow_non_contiguity_for
-    ;       warn_non_stratification
-    ;       warn_unification_cannot_succeed
-    ;       warn_simple_code
-    ;       warn_duplicate_calls
-    ;       warn_implicit_stream_calls
-    ;       warn_smart_recompilation
-    ;       warn_undefined_options_variables
-    ;       warn_suspicious_recursion
-    ;       warn_non_tail_recursion_self
-    ;       warn_non_tail_recursion_mutual
-    ;       warn_non_tail_recursion
-    ;       warn_obvious_non_tail_recursion
-    ;       warn_target_code
-    ;       warn_up_to_date
-    ;       warn_stubs
-    ;       warn_dead_procs
-    ;       warn_dead_preds
-    ;       warn_table_with_inline
-    ;       warn_non_term_special_preds
-    ;       warn_known_bad_format_calls
-    ;       warn_only_one_format_string_error
-    ;       warn_unknown_format_calls
-    ;       warn_obsolete
-    ;       warn_insts_without_matching_type
-    ;       warn_insts_with_functors_without_type
-    ;       warn_unused_imports
-    ;       warn_unused_interface_imports
-    ;       inform_ite_instead_of_switch
-    ;       inform_incomplete_switch
-    ;       inform_incomplete_switch_threshold
-    ;       warn_unresolved_polymorphism
-    ;       warn_suspicious_foreign_procs
-    ;       warn_suspicious_foreign_code
-    ;       warn_state_var_shadowing
-    ;       warn_unneeded_mode_specific_clause
-    ;       warn_suspected_occurs_check_failure
-    ;       warn_potentially_ambiguous_pragma
-    ;       warn_ambiguous_pragma
-    ;       warn_stdlib_shadowing
-    ;       inform_incomplete_color_scheme
-    ;       inform_inferred
-    ;       inform_inferred_types
-    ;       inform_inferred_modes
-    ;       inform_suboptimal_packing
-    ;       print_error_spec_id
-    ;       inform_ignored_pragma_errors
-    ;       inform_generated_type_spec_pragmas
-    ;       warn_redundant_coerce
-    ;       warn_can_fail_function
-    ;       warn_unsorted_import_blocks
+% Options for modifying the command line.
+    ;       flags_file
+    ;       filenames_from_stdin
 
-    % Verbosity options
+% Opmode options.
+    ;       only_opmode_generate_source_file_mapping
+    ;       only_opmode_generate_dependencies
+    ;       only_opmode_generate_dependencies_ints
+    ;       only_opmode_generate_dependency_file
+    ;       only_opmode_make_short_interface
+    ;       only_opmode_make_private_interface
+    ;       only_opmode_make_interface
+    ;       only_opmode_make_optimization_interface
+    ;       only_opmode_make_transitive_opt_interface
+    ;       only_opmode_typecheck_only
+    ;       only_opmode_errorcheck_only
+    ;       only_opmode_target_code_only
+    ;       only_opmode_compile_only
+
+    ;       only_opmode_generate_standalone_interface
+    ;       only_opmode_convert_to_mercury
+    ;       only_opmode_make_xml_documentation
+    ;       only_opmode_make_analysis_registry
+
+    ;       only_opmode_make
+    ;       part_opmode_rebuild
+    ;       only_opmode_invoked_by_mmc_make
+
+    ;       only_opmode_output_grade_string
+    ;       only_opmode_output_grade_defines
+    ;       only_opmode_output_stdlib_grades
+    ;       only_opmode_output_stdlib_modules
+    ;       only_opmode_output_library_install_grades
+
+    ;       only_opmode_output_target_arch
+    ;       only_opmode_output_cc
+    ;       only_opmode_output_c_compiler_type
+    ;       only_opmode_output_cflags
+    ;       only_opmode_output_c_include_directory_flags
+    ;       only_opmode_output_link_command
+    ;       only_opmode_output_shared_lib_link_command
+    ;       only_opmode_output_library_link_flags
+    ;       only_opmode_output_csharp_compiler
+    ;       only_opmode_output_csharp_compiler_type
+    ;       only_opmode_output_java_class_dir
+
+    ;       only_opmode_output_optimization_options
+    ;       only_opmode_output_optimization_options_upto
+
+% Grade options
+    ;       grade
+
+    % Grade options, part a: target selection
+    ;       target
+    ;       compile_to_c        % target c + target_code_only
+    ;       java                % target java
+    ;       java_only           % target java + target_code_only
+    ;       csharp              % target csharp
+    ;       csharp_only         % target csharp + target_code_only
+
+    % Grade options, part a: debugging
+
+    % Grade options, part a1: mdb debugging
+    % For documentation of the exec_trace and decl_debug options, see the
+    % documentation for MR_EXEC_TRACE and MR_DECL_DEBUG in
+    % runtime/mercury_conf_param.h.
+    ;       exec_trace
+    ;       decl_debug
+
+    % Grade options, part a2: ssdb debugging
+    ;       source_to_source_debug
+
+    % Grade options, part b: profiling
+
+    % Grade options, part b1: mprof profiling
+    ;       profiling           % profile_time + profile_calls
+    ;       time_profiling      % profile_time + profile_calls
+    ;       memory_profiling    % profile_mem + profile_calls
+    ;       profile_calls
+    ;       profile_time
+    ;       profile_memory
+
+    % Grade options, part b2: mdprof profiling
+    ;       deep_profiling
+    ;       profile_deep
+    ;       use_activation_counts
+    ;       use_zeroing_for_ho_cycles
+    ;       use_lots_of_ho_specialization
+    ;       deep_profile_tail_recursion
+
+    ;       coverage_profiling
+    ;       coverage_profiling_via_calls
+    ;       coverage_profiling_static
+    ;       profile_deep_coverage_after_goal
+    ;       profile_deep_coverage_branch_ite
+    ;       profile_deep_coverage_branch_switch
+    ;       profile_deep_coverage_branch_disj
+    ;       profile_deep_coverage_use_portcounts
+    ;       profile_deep_coverage_use_trivial
+    ;       profile_for_feedback
+
+    % Grade options, part b3: complexity profiling
+    ;       experimental_complexity
+    ;       record_term_sizes_as_words
+    ;       record_term_sizes_as_cells
+
+    % Grade options, part b4: threadscope profiling
+    ;       threadscope
+
+    % Grade options, part c: miscellaneous
+    ;       pregenerated_dist
+    ;       gc
+    ;       stack_segments
+    ;       extend_stacks_when_needed
+    ;       use_trail
+    ;       single_prec_float
+    ;       parallel
+    ;       maybe_thread_safe_opt
+    ;       use_minimal_model_stack_copy
+    ;       use_minimal_model_own_stacks
+    ;       minimal_model_debug
+    ;       use_regions
+    ;       use_alloc_regions
+    ;       use_regions_debug
+    ;       use_regions_profiling
+    ;           ssdb_trace_level
+    ;           link_ssdb_libs
+
+    % Grade options, part d: data representation
+    ;           conf_low_ptag_bits
+    ;       num_ptag_bits
+    ;       bits_per_word
+    ;       bytes_per_word
+    ;       unboxed_float
+    ;       unboxed_int64s
+    ;       unboxed_no_tag_types
+    ;       arg_pack_bits
+    ;       pack_everything
+    ;       allow_direct_args
+    ;       allow_double_word_fields
+    ;       allow_double_word_ints          % XXX bootstrapping option
+    ;       allow_packing_dummies           % XXX bootstrapping option
+    ;       allow_packing_ints              % XXX bootstrapping option
+    ;       allow_packing_chars             % XXX bootstrapping option
+    ;       allow_packing_local_sectags     % XXX bootstrapping option
+    ;       allow_packing_remote_sectags    % XXX bootstrapping option
+    ;       allow_packing_mini_types        % XXX bootstrapping option
+    ;       allow_packed_unify_compare      % XXX bootstrapping option
+    ;       sync_term_size_in_words
+
+    % Grade options, part e: LLDS compilation
+    ;       gcc_global_registers
+    ;       gcc_non_local_gotos
+    ;       asm_labels
+    ;       use_float_registers
+
+    % Grade options, part f: MLDS compilation
+    ;       highlevel_code
+    ;       c_debug_grade
+
+% Inference control options
+    ;       infer_all
+    ;       infer_types
+    ;       infer_modes
+    ;       infer_det
+    ;       type_inference_iteration_limit
+    ;       mode_inference_iteration_limit
+    ;       allow_stubs
+
+% Language semantics options
+    ;       strict_sequential
+    ;       reorder_conj
+    ;       reorder_disj
+    ;       fully_strict
+
+% Verbosity options
     ;       verbose
     ;       very_verbose
-    ;       verbose_errors
-    ;       verbose_recompilation
-    ;       find_all_recompilation_reasons
-    ;       verbose_make
-    ;       verbose_commands
-    ;       output_compile_error_lines
-    ;       report_cmd_line_args
-    ;       report_cmd_line_args_in_doterr
     ;       statistics
     ;       detailed_statistics
+    ;       benchmark_modes
+    ;       benchmark_modes_repeat
+    ;       verbose_make
+    ;       output_compile_error_lines
+    ;           verbose_recompilation
+    ;           find_all_recompilation_reasons
+    ;           show_pred_movability
+    ;       verbose_commands
+
+    ;       report_cmd_line_args
+    ;       report_cmd_line_args_in_doterr
+    ;       inform_ignored_pragma_errors
+    ;       inform_generated_type_spec_pragmas
     ;       proc_size_statistics
     ;       inst_statistics
+    ;       print_error_spec_id
+
+    ;       debug_types
+    ;       debug_types_pred_name
+    ;       debug_type_rep
+    ;       debug_modes
+    ;       debug_modes_verbose
+    ;       debug_modes_minimal
+    ;       debug_modes_statistics
+    ;       debug_modes_delay_vars
+    ;       debug_modes_goal_ids
+    ;       debug_modes_pred_id
+    ;       debug_mode_constraints
+    ;       debug_det
+    ;       debug_common_struct_preds
+    ;       debug_closure
+    ;       debug_term          % term = constraint termination analysis
+    ;       debug_dead_proc_elim
+    ;       debug_higher_order_specialization
+    ;       debug_pd            % pd = partial deduction/deforestation
+    ;       debug_indirect_reuse
+    ;       debug_trail_usage
+    ;       debug_unneeded_code
+    ;       debug_unneeded_code_pred_name
+    ;       debug_mm_tabling_analysis
+    ;       debug_dep_par_conj
+    ;       debug_liveness
+    ;       debug_stack_opt
+    ;       debug_code_gen_pred_id
+    ;       debug_opt
+    ;       debug_opt_pred_id
+    ;       debug_opt_pred_name
+    ;       debug_make
+    ;       debug_intermodule_analysis
+
+% Diagnostics.
+    % Diagnostics control.
+    ;       verbose_errors
+    ;       reverse_error_order
+    ;       max_error_line_width
     ;       limit_error_contexts
-    ;       config_default_color_diagnostics
+    ;       error_files_in_subdir
+    ;       std_int_file_not_written_msgs
+    ;       typecheck_ambiguity_warn_limit
+    ;       typecheck_ambiguity_error_limit
+
+    % Diagnostics color.
     ;       color_diagnostics
+    ;       config_default_color_diagnostics
     ;       color_diagnostics_is_set
     ;       color_diagnostics_is_set_to
     ;       use_color_diagnostics
@@ -398,132 +536,130 @@
     ;       set_color_incorrect
     ;       set_color_inconsistent
     ;       set_color_hint
-    ;       debug_types
-    ;       debug_types_pred_name
-    ;       debug_modes
-    ;       debug_modes_statistics
-    ;       debug_modes_minimal
-    ;       debug_modes_verbose
-    ;       debug_modes_delay_vars
-    ;       debug_modes_goal_ids
-    ;       debug_modes_pred_id
-    ;       debug_dep_par_conj
-    ;       debug_det
-    ;       debug_code_gen_pred_id
-    ;       debug_dead_proc_elim
-    ;       debug_higher_order_specialization
-    ;       debug_opt
-    ;       debug_term          % term = constraint termination analysis
-    ;       debug_opt_pred_id
-    ;       debug_opt_pred_name
-    ;       debug_pd            % pd = partial deduction/deforestation
-    ;       debug_liveness
-    ;       debug_stack_opt
-    ;       debug_make
-    ;       debug_closure
-    ;       debug_trail_usage
-    ;       debug_mode_constraints
-    ;       debug_intermodule_analysis
-    ;       debug_mm_tabling_analysis
-    ;       debug_indirect_reuse
-    ;       debug_type_rep
 
-    % Opmode options
-    ;       only_opmode_make_short_interface
-    ;       only_opmode_make_interface
-    ;       only_opmode_make_private_interface
-    ;       only_opmode_make_optimization_interface
-    ;       only_opmode_make_transitive_opt_interface
-    ;       only_opmode_make_analysis_registry
-    ;       only_opmode_make_xml_documentation
-    ;       only_opmode_generate_source_file_mapping
-    ;       only_opmode_generate_dependency_file
-    ;       only_opmode_generate_dependencies
-    ;       only_opmode_generate_dependencies_ints
-    ;       only_opmode_generate_standalone_interface
-    ;       only_opmode_convert_to_mercury
-    ;       only_opmode_typecheck_only
-    ;       only_opmode_errorcheck_only
-    ;       only_opmode_target_code_only
-    ;       only_opmode_compile_only
-    ;       only_opmode_output_grade_string
-    ;       only_opmode_output_link_command
-    ;       only_opmode_output_shared_lib_link_command
-    ;       only_opmode_output_stdlib_grades
-    ;       only_opmode_output_library_install_grades
-    ;       only_opmode_output_cc
-    ;       only_opmode_output_c_compiler_type
-    ;       only_opmode_output_csharp_compiler
-    ;       only_opmode_output_csharp_compiler_type
-    ;       only_opmode_output_cflags
-    ;       only_opmode_output_library_link_flags
-    ;       only_opmode_output_grade_defines
-    ;       only_opmode_output_c_include_directory_flags
-    ;       only_opmode_output_target_arch
-    ;       only_opmode_output_java_class_dir
-    ;       only_opmode_output_stdlib_modules
-    ;       only_opmode_output_optimization_options
-    ;       only_opmode_output_optimization_options_upto
+% Warning options.
+    % Warnings about dodgy code, at the module level.
+    ;       warn_nothing_exported
+    ;       warn_unused_imports
+    ;       warn_unused_interface_imports
+    ;       warn_interface_imports
+    ;       warn_interface_imports_in_parents
+    ;       warn_stdlib_shadowing
 
-    % Auxiliary output options
-    ;       error_output_suffix
-    ;       progress_output_suffix
-    ;       inference_output_suffix
-    ;       debug_output_suffix
-    ;       recompile_output_suffix
+    % Warnings about dodgy code, at the goal level.
+    ;       warn_singleton_vars
+    ;       warn_repeated_singleton_vars
+    ;       warn_unification_cannot_succeed
+    ;       warn_known_bad_format_calls
+    ;       warn_obsolete
+    ;       warn_overlapping_scopes
+    ;       warn_suspected_occurs_check_failure
+    ;       warn_suspicious_recursion
+    ;       warn_unused_args
 
-    ;       generate_module_order
-    ;       shared_lib_not_executable
+    % Warnings about dodgy code, involving determinism.
+    ;       warn_det_decls_too_lax
+    ;       warn_inferred_erroneous
 
-    ;       smart_recompilation
-            % Even if this option is set to `yes', smart recompilation may
-            % have been disabled with io_set_disable_smart_recompilation.
-            % Before using the value of this option, call
-            % io_get_disable_smart_recompilation to see whether this
-            % has been done.
+    % Warnings about dodgy code, specifically pragmas.
+    ;       warn_ambiguous_pragma
+    ;       warn_potentially_ambiguous_pragma
+    ;       warn_table_with_inline
 
-    ;       generate_item_version_numbers
-            % This option is used to control output of version numbers
-            % in interface files. It is implied by --smart-recompilation,
-            % and cannot be set explicitly by the user.
+    % Warnings about dodgy code, specifically predicates.
+    ;       warn_unresolved_polymorphism
+    ;       warn_stubs
+    ;       warn_non_term_special_preds
+    ;       warn_non_stratification
 
-            % Even if this option is set to `yes', version numbers may have
-            % been disabled with io_set_disable_generate_item_version_numbers.
-            % Before using the value of this option, call
-            % io_get_disable_generate_item_version_numbers to see whether this
-            % has been done.
+    % Warnings about dodgy code, involving insts.
+    ;       warn_insts_without_matching_type
+    ;       warn_insts_with_functors_without_type
 
-    ;       generate_mmc_make_module_dependencies
-    ;       trace_level
-    ;       trace_optimized
-    ;       trace_prof
-    ;       trace_table_io
-    ;       trace_table_io_only_retry
-    ;       trace_table_io_states
-    ;       trace_table_io_require
-    ;       trace_table_io_all
-    ;       trace_goal_flags
-    ;       prof_optimized
-    ;       exec_trace_tail_rec
-    ;       suppress_trace
-    ;       force_disable_tracing
-            % Force no tracing, even in .debug grades. This is used to turn off
-            % tracing in the browser directory while still allowing the browser
-            % library to be linked in with an executable compiled in a .debug
-            % grade.
-    ;       delay_death
-    ;       delay_death_max_vars
+    % Warnings about dodgy code, involving files.
+    ;       warn_undefined_options_variables
+    ;       warn_missing_opt_files
+    ;       warn_missing_trans_opt_files
+    ;       warn_missing_trans_opt_deps
 
-    ;       stack_trace_higher_order
-    ;       force_disable_ssdebug
-    ;       line_numbers
-    ;       line_numbers_around_foreign_code
-    ;       line_numbers_for_c_headers
-    ;       type_repns_for_humans
-    ;       auto_comments
-    ;       frameopt_comments
-    ;       max_error_line_width
-    ;       reverse_error_order
+    % Warnings about potential performance issues.
+    ;       warn_accumulator_swaps
+    ;       warn_unneeded_final_statevars
+    ;       warn_unneeded_final_statevars_lambda
+    ;       warn_obvious_non_tail_recursion
+    ;       warn_non_tail_recursion_self
+    ;       warn_non_tail_recursion_mutual
+    ;       warn_non_tail_recursion
+
+    % Warnings about programming style, involving dead code.
+    ;       warn_dead_preds
+    ;       warn_dead_procs
+
+    % Warnings about programming style, simple mistakes.
+    ;       warn_simple_code
+    ;       inform_ite_instead_of_switch
+    ;       inform_incomplete_switch
+    ;       inform_incomplete_switch_threshold
+    ;       warn_duplicate_calls
+    ;       warn_redundant_coerce
+
+    % Warnings about programming style, involving state vars.
+    ;       warn_state_var_shadowing
+    ;       warn_unneeded_initial_statevars
+    ;       warn_unneeded_initial_statevars_lambda
+    % XXX We should also warn about unused statevars in "some (...)" scopes.
+
+    % Warnings about programming style, involving I/O.
+    ;       warn_implicit_stream_calls
+    ;       warn_unknown_format_calls
+
+    % Warnings about programming style, at the predicate level.
+    ;       warn_can_fail_function
+    ;       warn_unneeded_mode_specific_clause
+
+    % Warnings about programming style, missing order.
+    ;       warn_unsorted_import_blocks
+    ;       warn_inconsistent_pred_order_clauses
+    ;       warn_inconsistent_pred_order_foreign_procs
+
+    % Warnings about programming style, missing contiguity.
+    ;       warn_non_contiguous_decls
+    ;       warn_non_contiguous_clauses
+    ;       warn_non_contiguous_foreign_procs
+    ;       allow_non_contiguity_for
+
+    % Warnings about programming style, foreign code.
+    ;       warn_suspicious_foreign_code
+    ;       warn_suspicious_foreign_procs
+
+    % Options that control warnings.
+    ;       inhibit_warnings
+    ;       inhibit_style_warnings
+    ;       warn_only_one_format_string_error
+    ;       warn_smart_recompilation
+    ;       warn_up_to_date
+
+    % Warnings treated as errors.
+    ;       halt_at_warn
+    ;       halt_at_warn_make_int
+    ;       halt_at_warn_make_opt
+            % Almost all code in the compiler should only look at the value
+            % of halt_at_warn. handle_options.m will overwrite its value
+            % with the value of halt_at_warn_make_int when making interface
+            % files and with the value of halt_at_warn_make_opt when making
+            % optimization files.
+    ;       halt_at_syntax_errors
+    ;       halt_at_invalid_interface
+    ;       halt_at_auto_parallel_failure
+
+% Options that request information.
+    ;       inform_inferred
+    ;       inform_inferred_types
+    ;       inform_inferred_modes
+    ;       inform_incomplete_color_scheme
+    ;       inform_suboptimal_packing
+
+% Options that request information in files.
     ;       show_definitions
     ;       show_definition_line_counts
     ;       show_definition_extents
@@ -533,392 +669,95 @@
     ;       show_developer_type_repns
     ;       show_dependency_graph
     ;       show_imports_graph
-    ;       show_pred_movability
-    ;       trans_opt_deps_spec
-    ;       dump_trace_counts
-    ;       dump_hlds
-    ;       dump_hlds_pred_id
-    ;       dump_hlds_pred_name
-    ;       dump_hlds_pred_name_order
-    ;       dump_hlds_spec_preds
-    ;       dump_hlds_spec_preds_for
-    ;       dump_hlds_alias
-    ;       dump_hlds_options
-    ;       dump_hlds_inst_limit
-    ;       dump_hlds_inst_size_limit
-    ;       dump_hlds_file_suffix
-    ;       dump_same_hlds
-    ;       dump_mlds
-    ;       dump_mlds_pred_name
-    ;       verbose_dump_mlds
-    ;       dump_options_file
-    ;       mode_constraints
-    ;       simple_mode_constraints
-    ;       prop_mode_constraints
-    ;       compute_goal_modes
-    ;       benchmark_modes
-    ;       benchmark_modes_repeat
-    ;       debug_unneeded_code
-    ;       debug_unneeded_code_pred_name
-    ;       debug_common_struct_preds
 
-    % Language semantics options
-    ;       reorder_conj
-    ;       reorder_disj
-    ;       fully_strict
-    ;       strict_sequential
-    ;       allow_stubs
-    ;       infer_types
-    ;       infer_modes
-    ;       infer_det
-    ;       infer_all
-    ;       type_inference_iteration_limit
-    ;       mode_inference_iteration_limit
+% Options that control trace goals.
+    ;       trace_goal_flags
+
+% Options that control debugging.
+    ;       trace_level
+    ;       exec_trace_tail_rec
+    ;       trace_optimized
+    ;       trace_prof
     ;       event_set_file_name
+    ;       trace_table_io
+    ;       trace_table_io_only_retry
+    ;       trace_table_io_states
+    ;       trace_table_io_require
+    ;       trace_table_io_all
+    ;       suppress_trace
+    ;       delay_death
+    ;       delay_death_max_vars
+    ;       stack_trace_higher_order
+    ;       force_disable_tracing
+    ;       force_disable_ssdebug
 
-    % Compilation Model options
-    ;       grade
+% Options that control profiling.
+    ;       prof_optimized
 
-    % Target selection options
-    ;       target
-    ;       compile_to_c        % target c + target_code_only
-    ;       java                % target java
-    ;       java_only           % target java + target_code_only
-    ;       csharp              % target csharp
-    ;       csharp_only         % target csharp + target_code_only
+% Options that control optimization.
 
-    % Compilation model options for optional features:
+    % Options that control the optimization process.
+    ;       default_opt_level
+    ;       opt_level
+    ;       opt_space                   % Default is to optimize time.
+    ;       intermodule_optimization
+    ;       transitive_optimization
+    ;       read_opt_files_transitively
+    ;       use_opt_files
+    ;       use_trans_opt_files
+    ;       intermodule_analysis
+    ;       analysis_repeat
+    ;       analysis_file_cache
+    ;       analysis_file_cache_dir
 
-    % (a) Debugging
-    % For documentation of the exec_trace and decl_debug options, see the
-    % documentation for MR_EXEC_TRACE and MR_DECL_DEBUG in
-    % runtime/mercury_conf_param.h.
-    ;       exec_trace
-    ;       decl_debug
+    % HLDS->HLDS optimizations.
+    ;       optopt_dead_procs
+    ;       optopt_unneeded_code
+    ;       optopt_unneeded_code_copy_limit
 
-    % (b) Profiling
-    ;       profiling           % profile_time + profile_calls
-    ;       time_profiling      % profile_time + profile_calls
-    ;       memory_profiling    % profile_mem + profile_calls
-    ;       deep_profiling      % profile_deep
-    ;       profile_calls
-    ;       profile_time
-    ;       profile_memory
-    ;       profile_deep
-    ;       use_activation_counts
-            % Use_activation_counts is used to determine which mechanism for
-            % cycle detection should be used for deep profiling. Actually,
-            % we only want to use the `yes' value, but we keep support for
-            % the `no' value for benchmarks for the paper.
-
-    ;       pre_prof_transforms_simplify
-            % Run the simplification pass at before profiling (stage 215) this
-            % is implied by some of the profiling settings. Specifying this
-            % option causes this simplification pass to run even when profiling
-            % is not enabled.
-
-    ;       pre_implicit_parallelism_simplify
-            % Run the simplification pass before the implicit parallelism pass
-            % to ensure that the HLDS more closely matches the feedback data.
-
-            % Perform coverage profiling, this affects only deep profiling
-            % grades.
-    ;       coverage_profiling
-    ;       coverage_profiling_via_calls
-    ;       coverage_profiling_static
-
-            % What types of coverage points to instrument the code with.
-    ;       profile_deep_coverage_after_goal
-    ;       profile_deep_coverage_branch_ite
-    ;       profile_deep_coverage_branch_switch
-    ;       profile_deep_coverage_branch_disj
-
-            % Tunables for the coverage profiling pass.
-            % XXX: Currently both these options are unsupported.
-    ;       profile_deep_coverage_use_portcounts
-    ;       profile_deep_coverage_use_trivial
-
-            % Turn on flags relevant for profiler directed feedback analysis.
-            % Currently the only feedback analysis is automatic parallelism.
-    ;       profile_for_feedback
-
-    ;       use_zeroing_for_ho_cycles
-    ;       use_lots_of_ho_specialization
-
-            % We do not currently enable (or publicly document) this option
-            % because its use results in significant overheads. Also, it is
-            % not compatible with coverage profiling, which is enabled by
-            % default. By default, all deep profiling grades are also built
-            % with --stack-segments in order to avoid problems caused by the
-            % lack of tail recursion.
-    ;       deep_profile_tail_recursion
-    ;       record_term_sizes_as_words
-    ;       record_term_sizes_as_cells
-    ;       experimental_complexity
-
-    % (c) Miscellaneous
-    ;       gc
-    ;       parallel
-    ;       threadscope
-    ;       use_trail
-    ;       use_minimal_model_stack_copy
-    ;       use_minimal_model_own_stacks
-    ;       minimal_model_debug
-    ;       pregenerated_dist
-    ;       single_prec_float
-    ;       type_layout
-    ;       maybe_thread_safe_opt
-    ;       extend_stacks_when_needed
-    ;       stack_segments
-    ;       use_regions
-    ;       use_alloc_regions
-    ;       use_regions_debug
-    ;       use_regions_profiling
-    ;       source_to_source_debug
-    ;       ssdb_trace_level
-    ;       link_ssdb_libs
-
-    % Data representation compilation model options
-    ;       num_ptag_bits
-    ;       bits_per_word
-    ;       bytes_per_word
-            % The undocumented conf_low_ptag_bits option is used by the `mmc'
-            % script to pass the default value for num_ptag_bits assuming
-            % target_c. The reason that `mmc' doesn't just pass a default
-            % value for --num-ptag-bits is that users need to be able to
-            % override this default when cross compiling.
-    ;       conf_low_ptag_bits
-    ;       unboxed_float
-    ;       unboxed_int64s
-    ;       unboxed_no_tag_types
-    ;       arg_pack_bits
-    ;       pack_everything
-    ;       allow_direct_args
-    ;       allow_double_word_fields
-    ;       allow_double_word_ints          % XXX bootstrapping option
-    ;       allow_packing_dummies           % XXX bootstrapping option
-    ;       allow_packing_ints              % XXX bootstrapping option
-    ;       allow_packing_chars             % XXX bootstrapping option
-    ;       allow_packing_local_sectags     % XXX bootstrapping option
-    ;       allow_packing_remote_sectags    % XXX bootstrapping option
-    ;       allow_packing_mini_types        % XXX bootstrapping option
-    ;       allow_packed_unify_compare      % XXX bootstrapping option
-    ;       sync_term_size_in_words
-
-    % LLDS back-end compilation model options
-    ;       gcc_non_local_gotos
-    ;       gcc_global_registers
-    ;       asm_labels
-    ;       use_float_registers
-
-    % MLDS back-end compilation model options
-    ;       highlevel_code
-    ;       c_debug_grade
-    ;       det_copy_out
-    ;       nondet_copy_out
-    ;       put_commit_in_own_func
-
-    % Options for internal use only (the values of these options are implied
-    % by the settings of other options)
-
-    ;       backend_foreign_languages
-            % The foreign programming languages that this backend can
-            % interface to.
-
-    ;       stack_trace
-            % Stack layout information required to do a stack trace.
-
-    ;       basic_stack_layout
-            % Stack layout information required to do accurate GC.
-
-    ;       agc_stack_layout
-            % Stack layout information required to do procedure identification.
-
-    ;       procid_stack_layout
-            % Stack layout information required to do execution tracing.
-
-    ;       trace_stack_layout
-
-    ;       body_typeinfo_liveness
-            % Use an alternate calculation of liveness where the typeinfo
-            % for a type variable must live at any point in the body of the
-            % procedure at which a live variable's type includes that type
-            % variable.
-            %
-            % Although this option governs whether the body of a procedure
-            % uses this liveness calculation, it is not the only consideration
-            % we have to take into account when deciding on the interface
-            % of any procedure whose address may be taken. We must include
-            % typeinfos describing the types of all arguments in the interface
-            % of a procedure if either this option is set *or* the procedure's
-            % address may be taken, otherwise, the layout structure we include
-            % in closures using that procedure may not have all the information
-            % required to reconstruct the types of all the values inside the
-            % closure.
-            %
-            % The only place in the compiler that should look at this option
-            % is the predicate body_should_use_typeinfo_liveness in
-            % hlds_pred.m; everything else, including the predicates deciding
-            % interface typeinfo liveness, should go through there.
-
-    ;       can_compare_constants_as_ints
-            % Should be set to yes if the target back end guarantees that
-            % comparing two values for equality, at least one of which is a
-            % constant, can be done by casting them both to integers and
-            % comparing the integers for equality.
-
-    ;       pretest_equality_cast_pointers
-            % Should be set to yes if the test of whether two input arguments
-            % are object identical should be done by casting the arguments to a
-            % generic pointer type. Otherwise they will be cast to integers.
-
-    ;       delay_partial_instantiations
-
-    % Options for internal use only (setting these options to non-default
-    % values can result in programs that do not link, or programs that dump
-    % core)
-    ;       allow_defn_of_builtins
-            % Do not generate errors for definitions of builtin predicates.
-            % When a new builtin is introduced, the installed compiler won't
-            % know about it, and thus when it sees its declaration, it wants a
-            % definition, but when the modified compiler is bootstrapped,
-            % it would normally generate an error when it sees that very same
-            % definition in the library (usually in builtin.m or
-            % private_builtin.m). When this option is set, it allows such
-            % definitions. Once the modified compiler is installed on all
-            % relevant machines, the option can be turned off again.
-
-%   ;       special_preds
-            % Generate unify and compare preds. For measurement only.
-            % Code generated with this set to `no' is unlikely to actually
-            % work.
-            % Disabled to allow the code paths for generating special preds
-            % to be simplified. If this option is ever needed again, which
-            % I (zs) do not think is likely, it should be implemented
-            % differently: by generating the special predicates, and then
-            % not writing them out. The logic for *that* should be a lot
-            % simpler.
-
-    ;       type_ctor_info
-            % Generate type_ctor_info structures. For measurement only --
-            % if you turn this off, then you're unlikely to be able to link.
-
-    ;       type_ctor_layout
-            % Generate type_ctor_layout structures. For measurement only --
-            % if you turn this off, then you're unlikely to be able to link.
-
-    ;       type_ctor_functors
-            % Generate type_ctor_functors structures. For measurement only --
-            % if you turn this off, then you're unlikely to be able to link.
-
-    ;       new_type_class_rtti
-            % XXX temporary option: enables the generation of new style static
-            % data structures for runtime information about type classes.
-            % These are not yet used. When we add code to generate the matching
-            % dynamic data structures and switch over to use them, we won't
-            % need this option anymore.
-
-    ;       rtti_line_numbers
-            % Generate line number information in the RTTI when debugging is
-            % enabled. For measurement only -- if you turn this off, then the
-            % debugger may dereference garbage pointers.
-
-    ;       disable_mmsc_pneg
-    ;       disable_mmsc_cut
-    ;       use_mmsc_pneg
-    ;       use_mmsc_cut
-            % These four are used to analyze the performance effects
-            % of minimal model tabling.
-
-    ;       disable_trail_ops
-            % This is used to analyze the performance effects of trailing.
-
-    ;       size_region_ite_fixed
-    ;       size_region_disj_fixed
-%   ;       size_region_semi_disj_fixed     % XXX unused, which may be a bug
-    ;       size_region_commit_fixed
-
-    ;       size_region_ite_protect
-    ;       size_region_ite_snapshot
-    ;       size_region_semi_disj_protect
-    ;       size_region_disj_snapshot
-    ;       size_region_commit_entry
-
-    ;       allow_multi_arm_switches
-
-    ;       type_check_using_constraints
-
-    % Code generation options
-    ;       table_debug
-    ;       trad_passes
-    ;       parallel_liveness
-    ;       parallel_code_gen
-    ;       reclaim_heap_on_failure
-    ;       reclaim_heap_on_semidet_failure
-    ;       reclaim_heap_on_nondet_failure
-    ;       have_delay_slot
-    ;       num_real_r_regs
-    ;       num_real_f_regs
-    ;       num_real_r_temps
-    ;       num_real_f_temps
-    ;       max_jump_table_size
-    ;       max_specialized_do_call_closure
-    ;       max_specialized_do_call_class_method
-    ;       compare_specialization
-    ;       should_pretest_equality
-    ;       fact_table_max_array_size
-            % Maximum number of elements in a single fact table data array.
-
-    ;       fact_table_hash_percent_full
-            % How full the fact table hash tables should be allowed to get,
-            % given as an integer percentage.
-
-    ;       prefer_switch
-    ;       prefer_while_loop_over_jump_self
-    ;       prefer_while_loop_over_jump_mutual
-    ;       opt_no_return_calls                     % XXX should be oc_opt
-    ;       debug_class_init
-
-    % Optimization Options
-
-    %   - HLDS
-    ;       optopt_allow_inlining
-    ;       inlining
-    ;       optopt_inline_simple
-    ;       optopt_inline_builtins
-    ;       optopt_inline_single_use
-    ;       optopt_inline_call_cost
-    ;       optopt_inline_compound_threshold
-    ;       optopt_inline_simple_threshold
-    ;       optopt_inline_vars_threshold
-    ;       optopt_intermod_inline_simple_threshold
-    ;       optopt_inline_tr_sccs
-    ;       optopt_inline_tr_sccs_max_extra
-    ;       optopt_from_ground_term_threshold
-    ;       optopt_enable_const_struct_poly
-    ;       optopt_enable_const_struct_user
-    ;       optopt_common_struct
-    ;       optopt_constraint_propagation
-    ;       optopt_local_constraint_propagation
     ;       optopt_unused_args
     ;       optopt_intermod_unused_args
+
+    ;       optopt_format_calls
+    ;       optopt_constant_propagation
+    ;       optopt_duplicate_calls
+    ;       optopt_excess_assign
+
+    ;       optopt_allow_inlining
+    ;       inlining
+    ;       optopt_inline_builtins
+    ;       optopt_inline_par_builtins
+    ;       optopt_inline_single_use
+    ;       optopt_inline_simple
+    ;       optopt_inline_simple_threshold
+    ;       optopt_intermod_inline_simple_threshold
+    ;       optopt_inline_compound_threshold
+    ;       optopt_inline_call_cost
+    ;       optopt_inline_vars_threshold
+    ;       optopt_inline_tr_sccs
+    ;       optopt_inline_tr_sccs_max_extra
+
     ;       optopt_higher_order
     ;       optopt_higher_order_size_limit
     ;       optopt_higher_order_arg_limit
-    ;       optopt_unneeded_code
-    ;       optopt_unneeded_code_copy_limit
+
     ;       optopt_type_specialization
     ;       optopt_user_guided_type_specialization
+
+    ;       optopt_loop_invariants
     ;       optopt_introduce_accumulators
+    ;       optopt_lcmc
     ;       optopt_lcmc_accumulator
     ;       optopt_lcmc_null
-    ;       optopt_lcmc
-    ;       optopt_duplicate_calls
-    ;       optopt_constant_propagation
-    ;       optopt_excess_assign
-    ;       optopt_merge_code_after_switch
-    ;       optopt_format_calls
+
     ;       optopt_split_switch_arms
+    ;       optopt_merge_code_after_switch
+
+    ;       optopt_from_ground_term_threshold
+    ;       optopt_enable_const_struct_user
+    ;       optopt_common_struct
+
+    ;       optimize_saved_vars
     ;       optopt_saved_vars_const
     ;       optopt_svcell
     ;       optopt_svcell_loop
@@ -933,114 +772,28 @@
     ;       optopt_svcell_node_ratio
     ;       optopt_svcell_all_path_node_ratio
     ;       optopt_svcell_all_candidates
-    ;       optimize_saved_vars
-    ;       optopt_loop_invariants
-    ;       optopt_delay_construct
-    ;       optopt_follow_code
-    ;       optopt_dead_procs
+
+    ;       optopt_constraint_propagation
+    ;       optopt_local_constraint_propagation
+
     ;       optopt_deforestation
     ;       optopt_deforestation_depth_limit
     ;       optopt_deforestation_cost_factor
     ;       optopt_deforestation_vars_threshold
     ;       optopt_deforestation_size_threshold
+
     ;       optopt_untuple
     ;       optopt_tuple
     ;       optopt_tuple_trace_counts_file
     ;       optopt_tuple_costs_ratio
     ;       optopt_tuple_min_args
-    ;       optopt_inline_par_builtins
+
+    ;       optopt_delay_construct
+
+    ;       optopt_follow_code
     ;       optopt_always_spec_dep_par_conjs
     ;       optopt_allow_some_paths_only_waits
     ;       optopt_region_analysis
-
-    %   - HLDS->LLDS
-    ;       optopt_smart_indexing
-    ;         optopt_dense_switch_req_density
-    ;         optopt_lookup_switch_req_density
-    ;         optopt_dense_switch_size
-    ;         optopt_lookup_switch_size
-    ;         optopt_string_trie_switch_size
-    ;         optopt_string_hash_switch_size
-    ;         optopt_string_binary_switch_size
-    ;         optopt_tag_switch_size
-    ;         optopt_try_switch_size
-    ;         optopt_binary_switch_size
-    ;         optopt_switch_single_rec_base_first
-    ;         optopt_switch_multi_rec_base_first
-
-    ;         optopt_smart_atomic_indexing
-    ;         optopt_smart_string_indexing
-    ;         optopt_smart_tag_indexing
-    ;         optopt_smart_float_indexing
-
-    ;       optopt_static_ground_cells
-    ;       optopt_static_ground_floats
-    ;       optopt_static_ground_int64s
-    ;       optopt_static_code_addresses
-
-    ;       optopt_use_atomic_cells
-    ;       optopt_middle_rec
-    ;       optopt_simple_neg
-    ;       optopt_allow_hijacks
-
-    %   - MLDS
-    ;       optopt_optimize_mlds
-    ;       optopt_peep_mlds
-    ;       optopt_mlds_tailcalls
-    ;       optopt_initializations
-    ;       optopt_eliminate_unused_mlds_assigns
-    ;       optopt_eliminate_local_vars
-    ;       optopt_generate_trail_ops_inline
-
-    %   - LLDS
-    ;       optopt_common_data
-    ;       optopt_common_layout_data
-    ;       optopt_optimize_llds
-    ;       optopt_peep_llds
-    ;       optopt_peep_llds_mkword
-    ;       optopt_jumps
-    ;       optopt_fulljumps
-    ;       optopt_pessimize_tailcalls
-    ;       optopt_checked_nondet_tailcalls
-    ;       optopt_use_local_vars
-    ;       optopt_local_var_access_threshold
-    ;       optopt_standardize_labels
-    ;       optopt_labels
-    ;       optopt_dups
-    ;       optopt_proc_dups
-    ;       optopt_frames
-    ;       optopt_delay_slot
-    ;       optopt_reassign
-    ;       optopt_repeat_opts
-    ;       optopt_layout_compression_limit
-
-    %   - C
-    ;       optopt_use_macro_for_redo_fail
-    ;       optopt_emit_c_loops
-    ;       optopt_procs_per_c_function
-    ;       optopt_use_just_one_c_func
-    ;       optopt_local_thread_engine_base
-    ;       optopt_inline_alloc
-    ;       optopt_c_optimize
-
-    % Special optimization options.
-
-    ;       default_opt_level
-    ;       opt_level
-    ;       opt_space                   % Default is to optimize time.
-    ;       intermodule_optimization
-    ;       read_opt_files_transitively
-    ;       use_opt_files
-    ;       use_trans_opt_files
-    ;       transitive_optimization
-    ;       intermodule_analysis
-    ;       analysis_repeat
-    ;       analysis_file_cache
-
-    ;       analyse_trail_usage
-    ;       optimize_trail_usage
-    ;       optimize_region_ops
-    ;       analyse_mm_tabling
 
     % Stuff for the CTGC system (structure sharing / structure reuse).
     ;       structure_sharing_analysis
@@ -1052,7 +805,79 @@
     ;           structure_reuse_repeat
     ;           structure_reuse_free_cells
 
-    % Stuff for the old termination analyser.
+    % HLDS->{LLDS,MLDS} optimizations.
+    ;       optopt_smart_indexing
+    ;         optopt_smart_atomic_indexing
+    ;         optopt_smart_string_indexing
+    ;         optopt_smart_tag_indexing
+    ;         optopt_smart_float_indexing
+
+    ;         optopt_dense_switch_req_density
+    ;         optopt_lookup_switch_req_density
+    ;         optopt_dense_switch_size
+    ;         optopt_lookup_switch_size
+    ;         optopt_string_trie_switch_size
+    ;         optopt_string_hash_switch_size
+    ;         optopt_string_binary_switch_size
+    ;         optopt_tag_switch_size
+    ;         optopt_switch_single_rec_base_first
+    ;         optopt_switch_multi_rec_base_first
+
+    ;       optopt_static_ground_cells
+    ;       optopt_use_atomic_cells
+
+    % HLDS->MLDS optimizations.
+    ;       optopt_optimize_mlds
+    ;       optopt_peep_mlds
+    ;       optopt_mlds_tailcalls
+    ;       optopt_initializations
+    ;       optopt_eliminate_unused_mlds_assigns
+    ;       optopt_eliminate_local_vars
+    ;       optopt_generate_trail_ops_inline
+    ;       optimize_trail_usage
+
+    % LLDS->LLDS optimizations.
+    ;       optopt_try_switch_size
+    ;       optopt_binary_switch_size
+    ;       optopt_middle_rec
+    ;       optopt_simple_neg
+    ;       optopt_allow_hijacks
+
+    ;       optopt_optimize_llds
+    ;       optopt_repeat_opts
+    ;       optopt_peep_llds
+    ;       optopt_peep_llds_mkword
+    ;       optopt_labels
+    ;       optopt_standardize_labels
+    ;       optopt_jumps
+    ;       optopt_fulljumps
+    ;       optopt_checked_nondet_tailcalls
+    ;       optopt_pessimize_tailcalls
+    ;       optopt_delay_slot
+    ;       optopt_frames
+    ;       optopt_reassign
+    ;       optopt_use_local_vars
+    ;       optopt_local_var_access_threshold
+    ;       optopt_dups
+    ;       optopt_proc_dups
+    ;       optopt_common_data
+    ;       optopt_common_layout_data
+    ;       optopt_layout_compression_limit
+    ;       optimize_region_ops
+
+    % LLDS->C optimizations.
+    ;       optopt_emit_c_loops
+    ;       optopt_procs_per_c_function
+    ;       optopt_local_thread_engine_base
+    ;       optopt_inline_alloc
+    ;       optopt_use_macro_for_redo_fail
+
+% Intermodule optimization options.
+    ;       generate_module_order
+    ;       trans_opt_deps_spec
+
+% Analysis options.
+    % Options for the old termination analyser.
     ;       termination_enable
     ;       termination_check
     ;       termination_check_verbose
@@ -1061,7 +886,7 @@
     ;       termination_error_limit
     ;       termination_path_limit
 
-    % Stuff for the new termination analyser.
+    % Options for the new termination analyser.
     ;       termination2_enable
     ;       termination2_check
     ;       termination2_check_verbose
@@ -1071,18 +896,40 @@
     ;       termination2_prop_fail_constrs
     ;       termination2_maximum_matrix_size
 
+    % Other analyses.
     ;       analyse_exceptions
     ;       analyse_closures
+    ;       analyse_trail_usage
+    ;       analyse_mm_tabling
 
+% Auxiliary output options.
+    ;       line_numbers
+    ;       line_numbers_around_foreign_code
+    ;       line_numbers_for_c_headers
+    ;       type_repns_for_humans
+    ;       auto_comments
+    ;       frameopt_comments
+
+% Options that control mmc --make.
+    ;       keep_going
+    ;       order_make_by_timestamp
+    ;       show_make_times
+    ;       make_max_jobs
+    ;       make_track_flags
+    ;       make_pre_link_command
+
+% Target code compilation options.
     % Target code compilation options
     ;       target_debug
+    ;       warn_target_code
 
     % C
     ;       cc
+    ;       c_compiler_type
+    ;       optopt_c_optimize
+    ;       c_include_directories
     ;       cflags
     ;       quoted_cflag
-    ;       c_include_directories
-    ;       ansi_c
 
     % Flags for specific C compilers.
     ;       gcc_flags
@@ -1095,19 +942,16 @@
     % Auto-configured C compilation options.
     ;       cflags_for_warnings
     ;       cflags_for_optimization
-    ;       cflags_for_ansi
+    ;       cflags_for_debug
     ;       cflags_for_regs
     ;       cflags_for_gotos
     ;       cflags_for_threads
-    ;       cflags_for_debug
-    ;       cflags_for_sanitizers
     ;       cflags_for_pic
+    ;       cflags_for_sanitizers
     ;       cflags_for_lto
     ;       c_flag_to_name_object_file
     ;       object_file_extension
     ;       pic_object_file_extension
-    ;       c_compiler_type
-    ;       csharp_compiler_type
 
     % Java
     ;       java_compiler
@@ -1120,129 +964,72 @@
 
     % C#
     ;       csharp_compiler
+    ;       cli_interpreter
+    ;       csharp_compiler_type
     ;       csharp_flags
     ;       quoted_csharp_flag
-    ;       cli_interpreter
 
-    % Link options
+% Link options.
+    % General link options.
+    ;       mercury_library_directory_special
+    ;       mercury_library_directories
+    ;       search_library_files_directory_special
+    ;       search_library_files_directories
+    ;       mercury_library_special
+    ;       mercury_libraries
+    ;       mercury_standard_library_directory_special
+    ;       mercury_standard_library_directory
+
+    % Link options for C and C#.
+    ;       link_library_directories
+    ;       link_libraries
+
+    % Link options for C.
     ;       output_file_name
+    ;       link_objects
     ;       ld_flags
     ;       quoted_ld_flag
     ;       ld_libflags
     ;       quoted_ld_libflag
-    ;       link_library_directories
     ;       runtime_link_library_directories
     ;       use_default_runtime_library_directory
-    ;       link_libraries
-    ;       link_objects
-    ;       mercury_library_directories
-    ;       mercury_library_directory_special
-    ;       search_library_files_directories
-    ;       search_library_files_directory_special
-    ;       mercury_libraries
-    ;       mercury_library_special
-    ;       mercury_standard_library_directory
-    ;       mercury_standard_library_directory_special
     ;       init_file_directories
     ;       init_files
     ;       trace_init_files
-    ;       only_globals_linkage
     ;       linkage_special
-    ;       only_globals_mercury_linkage
+    ;       only_globals_linkage
     ;       mercury_linkage_special
-    ;       strip
+    ;       only_globals_mercury_linkage
+
     ;       demangle
+    ;       strip
     ;       main
+
     ;       allow_undefined
     ;       use_readline
     ;       runtime_flags
     ;       extra_init_functions
     ;       frameworks
     ;       framework_directories
-    ;       sign_assembly
     ;       cstack_reserve_size
-
-    % Auto-configured options.
-    ;       shared_library_extension
-    ;       library_extension
-    ;       executable_file_extension
     ;       link_executable_command
     ;       link_shared_lib_command
-    ;       create_archive_command
-    ;       create_archive_command_output_flag
-    ;       create_archive_command_flags
-    ;       ranlib_command
-    ;       ranlib_flags
-    ;       mkinit_command
-    ;       demangle_command
-    ;       filtercc_command
-    ;       filterjavac_command
-    ;       trace_libs
-    ;       thread_libs
-    ;       hwloc_libs
-    ;       hwloc_static_libs
-    ;       shared_libs
-    ;       math_lib
-    ;       readline_libs
-    ;       linker_opt_separator
-    ;       linker_thread_flags
-    ;       shlib_linker_thread_flags
-    ;       linker_lto_flags
-    ;       linker_static_flags
-    ;       linker_strip_flag
-    ;       linker_link_lib_flag
-    ;       linker_link_lib_suffix
-    ;       shlib_linker_link_lib_flag
-    ;       shlib_linker_link_lib_suffix
-    ;       linker_debug_flags
-    ;       shlib_linker_debug_flags
-    ;       linker_sanitizer_flags
-    ;       linker_trace_flags
-    ;       shlib_linker_trace_flags
-    ;       linker_path_flag
-    ;       linker_rpath_flag
-    ;       linker_rpath_separator
-    ;       shlib_linker_rpath_flag
-    ;       shlib_linker_rpath_separator
-    ;       linker_allow_undefined_flag
-    ;       linker_error_undefined_flag
-    ;       shlib_linker_use_install_name
-    ;       shlib_linker_install_name_flag
     ;       shlib_linker_install_name_path
     ;       strip_executable_command
     ;       strip_executable_shared_flags
     ;       strip_executable_static_flags
+    ;       shared_lib_not_executable
+
+    % Link options for Java.
     ;       java_archive_command
 
-    % Build system options
-    ;       only_opmode_make
-    ;       only_opmode_invoked_by_mmc_make
-    ;       part_opmode_rebuild
-    ;       keep_going
-    ;       make_max_jobs
-    ;       make_track_flags
-    ;       extra_init_command
-    ;       make_pre_link_command
-    ;       install_prefix
-    ;       use_symlinks
-    ;       mercury_configuration_directory
-    ;       mercury_configuration_directory_special
-    ;       install_method
-    ;       install_command
-    ;       install_command_dir_option
-    ;       detect_stdlib_grades
-    ;       library_install_grades
-    ;       library_install_grades_incl_components
-    ;       library_install_grades_excl_components
-    ;       only_globals_library_install_linkages
-    ;       flags_file
-    ;       options_files
-    ;       config_file
+    % Link options for C#.
+    ;       sign_assembly
+
+% File search options.
     ;       options_search_directories
     ;       setting_only_use_subdirs
     ;       setting_only_use_grade_subdirs
-    ;       error_files_in_subdir
-    ;       std_int_file_not_written_msgs
     ;       search_directories
     ;       intermod_directories
     ;       use_search_directories_for_intermod
@@ -1259,58 +1046,127 @@
     ;       mer_lib_dirs_same_subdir_setting
     ;       mer_lib_dirs_indep_subdir_setting
     ;       mer_lib_dirs_installed_library
-    ;       chosen_stdlib_dir
+
+% Build system options.
+    ;       install_prefix
+    ;       library_install_grades
+    ;       library_install_grades_incl_components
+    ;       library_install_grades_excl_components
+    ;       only_globals_library_install_linkages
+    ;       detect_stdlib_grades
     ;       libgrade_install_check
-    ;       order_make_by_timestamp
-    ;       show_make_times
+    ;       extra_init_command
     ;       extra_library_header
-    ;       restricted_command_line
+
+% Options that specify the environment.
+    ;       mercury_configuration_directory_special
+    ;       mercury_configuration_directory
+    ;       install_command
+    ;       options_files
+    ;       config_file
     ;       env_type
     ;       host_env_type
     ;       system_env_type
     ;       target_env_type
+    ;       restricted_command_line
 
-    % Miscellaneous Options
-    ;       filenames_from_stdin
-    ;       typecheck_ambiguity_warn_limit
-    ;       typecheck_ambiguity_error_limit
+% Configuration options.
+    ;       have_delay_slot
+    ;       num_real_r_regs
+    ;       num_real_f_regs
+    ;       num_real_r_temps
+    ;       num_real_f_temps
+    ;       max_jump_table_size
+
+% Mercury.config options.
+    ;       mkinit_command
     ;       target_arch
-    ;       local_module_id
-    ;       analysis_file_cache_dir
-    ;       default_globals
-            % If set to "yes", default_globals tells the main body of
-            % handle_options.m that it is constructing the *default* globals,
-            % after the initial construction of the *intended* globals failed.
-    ;       compiler_sufficiently_recent
-            % This option is used to test that the compiler is sufficiently
-            % recent when no other test can easily be constructed in
-            % configure.in.
 
+    ;       executable_file_extension
+    ;       library_extension
+    ;       shared_library_extension
+
+    ;       create_archive_command
+    ;       create_archive_command_flags
+    ;       create_archive_command_output_flag
+    ;       ranlib_command
+    ;       ranlib_flags
+
+    ;       demangle_command
+    ;       filtercc_command
+    ;       filterjavac_command
+
+    ;       linker_allow_undefined_flag
+    ;       linker_debug_flags
+    ;       linker_error_undefined_flag
+    ;       linker_link_lib_flag
+    ;       linker_link_lib_suffix
+    ;       linker_lto_flags
+    ;       linker_opt_separator
+    ;       linker_path_flag
+    ;       linker_rpath_flag
+    ;       linker_rpath_separator
+    ;       linker_sanitizer_flags
+    ;       linker_static_flags
+    ;       linker_strip_flag
+    ;       linker_thread_flags
+    ;       linker_trace_flags
+    ;       shlib_linker_debug_flags
+    ;       shlib_linker_install_name_flag
+    ;       shlib_linker_link_lib_flag
+    ;       shlib_linker_link_lib_suffix
+    ;       shlib_linker_rpath_flag
+    ;       shlib_linker_rpath_separator
+    ;       shlib_linker_thread_flags
+    ;       shlib_linker_trace_flags
+    ;       shlib_linker_use_install_name
+
+    ;       hwloc_libs
+    ;       hwloc_static_libs
+    ;       math_lib
+    ;       readline_libs
+    ;       shared_libs
+    ;       thread_libs
+    ;       trace_libs
+
+    ;       install_method
+    ;       use_symlinks
+
+% Developer options.
+    % Developer control options.
+    ;       progress_output_suffix
+    ;       error_output_suffix
+    ;       inference_output_suffix
+    ;       debug_output_suffix
+    ;       recompile_output_suffix
+
+    ;       mode_constraints
+    ;       simple_mode_constraints
+    ;       prop_mode_constraints
+    ;       compute_goal_modes
+    ;       smart_recompilation
+    ;       pre_prof_transforms_simplify
+    ;       disable_mmsc_pneg
+    ;       disable_mmsc_cut
+    ;       disable_trail_ops
+    ;       type_check_using_constraints
+    ;       trad_passes
+    ;       parallel_liveness
+    ;       parallel_code_gen
+    ;       should_pretest_equality
+    ;       fact_table_max_array_size
+    ;       fact_table_hash_percent_full
+    ;       prefer_switch
+    ;       prefer_while_loop_over_jump_self
+    ;       prefer_while_loop_over_jump_mutual
+    ;       opt_no_return_calls                     % XXX should be oc_opt
+    ;       compiler_sufficiently_recent
     ;       experiment
     ;       experiment1
     ;       experiment2
     ;       experiment3
     ;       experiment4
     ;       experiment5
-            % These options are provided for use by implementors who want to
-            % compare a new way of doing something with the old way.
-            % The idea is that the code that switches between the two ways
-            % should consult one (or more) of these options and make its
-            % decision accordingly.
-            %
-            % Experiment[1-5] are booleans; experiment itself is a string.
-            %
-            % The intention is that most use of these options is
-            % within developer workspaces, with rare examples of code
-            % using some of these options being committed, but only
-            % for short lengths of time (a week or two at most;
-            % enough for all members of a team to try out the experiment).
-            %
-            % Of course, a developer could always create a purpose-specific
-            % option to control their code, but adding an option requires
-            % recompiling most of the modules in the compiler. Having these
-            % options permanently here should reduce the need for that.
-
     ;       allow_ho_insts_as_modes
     ;       ignore_par_conjunctions
     ;       control_granularity
@@ -1318,7 +1174,90 @@
     ;       implicit_parallelism
     ;       feedback_file
     ;       par_loop_control
-    ;       par_loop_control_keep_tail_rec.
+    ;       par_loop_control_keep_tail_rec
+    ;       optopt_enable_const_struct_poly
+
+    % Developer debug options.
+
+    ;       table_debug
+    ;       debug_class_init
+
+    % Developer dump options.
+
+    ;       dump_hlds
+    ;       dump_hlds_pred_id
+    ;       dump_hlds_pred_name
+    ;       dump_hlds_pred_name_order
+    ;       dump_hlds_spec_preds
+    ;       dump_hlds_spec_preds_for
+    ;       dump_hlds_alias
+    ;       dump_hlds_options
+    ;       dump_hlds_inst_limit
+    ;       dump_hlds_inst_size_limit
+    ;       dump_hlds_file_suffix
+    ;       dump_same_hlds
+
+    ;       dump_mlds
+    ;       dump_mlds_pred_name
+    ;       verbose_dump_mlds
+
+    ;       dump_trace_counts
+    ;       dump_options_file
+
+    % Internal-use-only options.
+    ;       pre_implicit_parallelism_simplify
+    ;       type_layout
+    ;       det_copy_out
+    ;       nondet_copy_out
+    ;       put_commit_in_own_func
+    ;       backend_foreign_languages
+    ;       stack_trace
+    ;       basic_stack_layout
+    ;       agc_stack_layout
+    ;       procid_stack_layout
+    ;       trace_stack_layout
+    ;       body_typeinfo_liveness
+    ;       can_compare_constants_as_ints
+    ;       pretest_equality_cast_pointers
+    ;       delay_partial_instantiations
+    ;       allow_defn_of_builtins
+    ;       type_ctor_info
+    ;       type_ctor_layout
+    ;       type_ctor_functors
+    ;       rtti_line_numbers
+    ;       new_type_class_rtti
+    ;       use_mmsc_pneg
+    ;       use_mmsc_cut
+    ;       size_region_ite_fixed
+    ;       size_region_disj_fixed
+%   ;       size_region_semi_disj_fixed     % XXX unused, which may be a bug
+    ;       size_region_commit_fixed
+    ;       size_region_ite_protect
+    ;       size_region_ite_snapshot
+    ;       size_region_semi_disj_protect
+    ;       size_region_disj_snapshot
+    ;       size_region_commit_entry
+    ;       allow_multi_arm_switches
+    ;       reclaim_heap_on_failure
+    ;       reclaim_heap_on_semidet_failure
+    ;       reclaim_heap_on_nondet_failure
+    ;       max_specialized_do_call_closure
+    ;       max_specialized_do_call_class_method
+    ;       compare_specialization
+    ;       chosen_stdlib_dir
+    ;       default_globals
+    ;       local_module_id
+    ;       generate_item_version_numbers
+    ;       generate_mmc_make_module_dependencies
+    ;       optopt_static_ground_floats
+    ;       optopt_static_ground_int64s
+    ;       optopt_static_code_addresses
+
+% Unused/deprecated options.
+    ;       ansi_c
+    ;       cflags_for_ansi
+    ;       install_command_dir_option
+    ;       optopt_use_just_one_c_func.
 
 :- type option_table == option_table(option).
 :- type maybe_option_table == maybe_option_table(option).
@@ -1328,10 +1267,36 @@
 :- type option_category
     --->    oc_help
             % Options that call for the output of help text.
-
     ;       oc_cmdline
             % Options that manipulate the command line itself.
-
+    ;       oc_opmode
+            % Options that are used only to select an invocation's op_mode.
+    ;       oc_grade
+            % Options that affect binary compatibility.
+            % This category should subdivided into separate subcategories
+            % for mdb, ssd, mprof, mdprof etc, but only after moving
+            % the non-grade options out of the category altogether.
+    ;       oc_infer
+            % Options that tell the compiler what to infer.
+    ;       oc_semantics
+            % Options that specify which semantics variant to use.
+    ;       oc_verbosity
+            % Options that users can use to control how many progress updates
+            % they want the compiler to give them.
+    ;       oc_verb_dev
+            % Developer-only kinds of oc_verbosity options.
+    ;       oc_verb_dbg
+            % Oc_verbosity options intended only for use by developers
+            % to debug the compiler.
+    ;       oc_diag_gen
+            % Options for controlling diagnostics generally.
+            % One class tells the compiler either under what circumstances
+            % it should generate diagnostic output; another class specifies
+            % how diagnostic output should be presented.
+    ;       oc_diag_color
+            % Options for controlling color in diagnostics.
+    ;       oc_diag_int
+            % Internal-use-only options for controlling diagnostics.
     ;       oc_warn_dodgy
             % Warnings about code that is possibly incorrect.
     ;       oc_warn_perf
@@ -1351,76 +1316,51 @@
             % Options that specify when warnings should treated as errors.
     ;       oc_inform
             % Requests for information.
-    ;       oc_verbosity
-            % Options that users can use to control how many progress updates
-            % they want the compiler to give them.
-    ;       oc_verb_dev
-            % Developer-only kinds of oc_verbosity options.
-    ;       oc_verb_dbg
-            % Oc_verbosity options intended only for use by developers
-            % to debug the compiler.
-    ;       oc_opmode
-            % Options that are used only to select an invocation's op_mode.
-    ;       oc_diag_gen
-            % Options for controlling diagnostics generally.
-            % One class tells the compiler either under what circumstances
-            % it should generate diagnostic output; another class specifies
-            % how diagnostic output should be presented.
-    ;       oc_diag_color
-            % Options for controlling color in diagnostics.
-    ;       oc_diag_int
-            % Internal-use-only options for controlling diagnostics.
+    ;       oc_file_req
+            % Options that request the compiler to generate files
+            % containing information derived from the module being compiled.
+    ;       oc_tracegoal
+            % Options that control trace goals.
+
     ;       oc_mdb
             % Options that control how the compiler prepares for mdb debugging.
     ;       oc_mdb_dev
             % Developer-only options about mdb debugging.
             % XXX Some of these may be internal-use-only, not intended
             % even for developers.
-    ;       oc_tracegoal
-            % Options that control trace goals.
     ;       oc_mdprof
             % Options that control deep profiling.
+    ;       oc_opt_ctrl
+            % Options that control optimization levels.
+    ;       oc_opt_hh
+    ;       oc_opt_hh_exp
+            % HLDS->HLDS optimizations. The _exp suffix indicates that
+            % the optimization is experimental.
+    ;       oc_opt_hlm
+            % HLDS->{LLDS,MLDS} optimizations.
+    ;       oc_opt_mm
+            % MLDS->MLDS optimizations.
+    ;       oc_opt_hm
+            % HLDS->MLDS optimizations.
+    ;       oc_opt_hl
+            % HLDS->LLDS optimizations.
+    ;       oc_opt_ll
+            % LLDS->LLDS optimizations.
+    ;       oc_opt_lc
+            % LLDS-> C optimizations. (There are no MLDS->C optimizations.)
+    ;       oc_trans_opt
+            % Options that control the operation of transitive intermodule
+            % optimization.
+    ;       oc_analysis
+            % Options for user control of program analyses.
     ;       oc_output_mod
             % Options that ask the compiler to modify some aspect
             % of the generated target code.
     ;       oc_output_dev
             % Developer-only options that ask the compiler to modify some aspect
             % of the generated target code.
-    ;       oc_file_req
-            % Options that request the compiler to generate files
-            % containing information derived from the module being compiled.
     ;       oc_make
             % Options controlling mmc --make.
-    ;       oc_semantics
-            % Options that specify which semantics variant to use.
-    ;       oc_infer
-            % Options that tell the compiler what to infer.
-    ;       oc_grade
-            % Options that affect binary compatibility.
-            % This category should subdivided into separate subcategories
-            % for mdb, ssd, mprof, mdprof etc, but only after moving
-            % the non-grade options out of the category altogether.
-    ;       oc_internal
-            % Options for compiler use only, that should not be used
-            % even by developers.
-    ;       oc_opt_hh
-    ;       oc_opt_hh_exp
-            % HLDS->HLDS optimizations. The _exp suffix indicates that
-            % the optimization is experimental.
-    ;       oc_opt_hlm
-    ;       oc_opt_hm
-    ;       oc_opt_hl
-            % HLDS->{LLDS,MLDS}, HLDS->LLDS and HLDS->MLDS optimizations.
-    ;       oc_opt_ll
-    ;       oc_opt_mm
-            % MLDS->MLDS and LLDS->LLDS optimizations.
-    ;       oc_opt_lc
-            % LLDS-> C optimizations. (There are no MLDS->C optimizations.)
-    ;       oc_opt_ctrl
-            % Options that control optimization levels.
-    ;       oc_trans_opt
-            % Options that control the operation of transitive intermodule
-            % optimization.
     ;       oc_target_comp
     ;       oc_target_c
     ;       oc_target_java
@@ -1428,37 +1368,37 @@
             % Options that control how the target language files we generate
             % are further compiled.
             % Subdivided for C, Java and C#.
+    ;       oc_link_c_cs_j
+    ;       oc_link_c_cs
     ;       oc_link_c
     ;       oc_link_java
     ;       oc_link_csharp
-    ;       oc_link_c_cs
-    ;       oc_link_c_cs_j
             % Options that control how executables, or their equivalents
             % for some target languages, are generated.
             % Subdivided for C, Java and C#, and for the combinations
             % that actually apply to some option.
+    ;       oc_search
+            % XXX Document me.
     ;       oc_buildsys
             % XXX Document me.
             % XXX We should separate search path options (the majority)
             % from everything else.
-    ;       oc_search
-            % XXX Document me.
     ;       oc_env
             % Options that tell the compiler something about the environment,
             % or platform, on which it is operating.
+    ;       oc_config
+            % The results of autoconfiguration, or of executing
+            % tools/configure_cross.
+    ;       oc_mconfig
+            % Options which are reserved for use by the Mercury.config file.
     ;       oc_dev_ctrl
             % Options developers can use to control what the compiler does.
     ;       oc_dev_debug
             % Options developers can use to debug compiler components.
     ;       oc_dev_dump
             % Options to control dumps of internal code representations.
-    ;       oc_config
-            % The results of autoconfiguration, or of executing
-            % tools/configure_cross.
-    ;       oc_mconfig
-            % Options which are reserved for use by the Mercury.config file.
-    ;       oc_analysis
-            % Options for user control of program analyses.
+    ;       oc_internal
+            % Options for internal (and developer) use only.
     ;       oc_unused.
             % options that are now unused, and which are kept around
             % only for backward compatibility.
@@ -1497,6 +1437,8 @@
 
 %---------------------------------------------------------------------------%
 
+:- pragma require_switch_arms_in_type_order(pred(optdb/4)).
+
     % Help options.
 
 optdb(oc_help,     help,                               bool(no),
@@ -1511,6 +1453,10 @@ optdb(oc_help,     version,                            bool(no),
 
     % Options for modifying the command line.
 
+optdb(oc_cmdline,  flags_file,                         file_special,
+    alt_arg_help("flags-file", ["flags"], "file", [
+        "Take options from the specified file, and handle them",
+        "as if they were specified on the command line."])).
 optdb(oc_cmdline,  filenames_from_stdin,               bool(no),
     help("filenames-from-stdin", [
         "Read then compile a newline terminated module name or",
@@ -1518,10 +1464,6 @@ optdb(oc_cmdline,  filenames_from_stdin,               bool(no),
         "is reached. (This allows a program or user to interactively",
         "compile several modules without the overhead of process",
         "creation for each one.)"])).
-optdb(oc_cmdline,  flags_file,                         file_special,
-    alt_arg_help("flags-file", ["flags"], "file", [
-        "Take options from the specified file, and handle them",
-        "as if they were specified on the command line."])).
 
 %---------------------------------------------------------------------------%
 
@@ -1536,25 +1478,6 @@ optdb(oc_opmode, only_opmode_generate_source_file_mapping, bool(no),
         "for which the file name does not match the module name.",
         "If there are no such modules the mapping need not be",
         "generated."])).
-optdb(oc_opmode, only_opmode_make,                     bool(no),
-    short_help('m', "make", [], [
-        "Treat the non-option arguments to `mmc' as files to make,",
-        "rather than source files. Build or rebuild the specified files",
-        "if they do not exist or are not up-to-date.",
-        "Note that this option also enables `--use-subdirs'."])).
-% NOTE part_opmode_rebuild should be only_opmode_rebuild, but make.*.m
-% look up its value as an ordinary option, NOT as a part of the op_mode.
-% In one place, we clear this option, but we do it effectively because
-% we want a different op_mode for a recursive invocation of the compiler.
-optdb(oc_opmode, part_opmode_rebuild,                  bool(no),
-    short_help('r', "rebuild", [], [
-        "Same as `--make', but always rebuild the target files",
-        "even if they are up-to-date."])).
-optdb(oc_opmode, only_opmode_invoked_by_mmc_make,      bool(no),
-    priv_help("invoked-by-mmc-make", [
-        "This option is only for internal use by the compiler.",
-        "QUOTE", "`mmc --make'", "passes it as the first argument when",
-        "compiling a module."])).
 optdb(oc_opmode, only_opmode_generate_dependencies,    bool(no),
     % XXX This leaves out important details, such as .dv and .d files.
     short_help('M', "generate-dependencies", [], [
@@ -1569,12 +1492,6 @@ optdb(oc_opmode, only_opmode_generate_dependency_file, bool(no),
     help("generate-dependency-file", [
         "Output `Make'-style dependencies for the module",
         "to `<module>.d'."])).
-optdb(oc_opmode, only_opmode_generate_standalone_interface, maybe_string(no),
-    arg_help("generate-standalone-interface", "basename", [
-        "Output a stand-alone interface.",
-        "<basename> is used as the basename of any files generated for",
-        "the stand-alone interface. (See the Stand-alone Interface",
-        "chapter of the Mercury User's Guide for further details.)"])).
 optdb(oc_opmode, only_opmode_make_short_interface,     bool(no),
     alt_help("make-short-interface", ["make-short-int"], [
         "Write the unqualified short interface to `<module>.int3'.",
@@ -1599,18 +1516,6 @@ optdb(oc_opmode, only_opmode_make_transitive_opt_interface, bool(no),
         "Output transitive optimization information",
         "into the `<module>.trans_opt' file.",
         "This option should only be used by mmake."])).
-optdb(oc_opmode, only_opmode_make_analysis_registry,   bool(no),
-    priv_help("make-analysis-registry", [])).
-optdb(oc_opmode, only_opmode_make_xml_documentation,   bool(no),
-    short_help('x', "make-xml-documentation", ["make-xml-doc"], [
-        "Output XML documentation of the module",
-        "into the `<module>.xml' file.",
-        "This option should only be used by mmake."])).
-optdb(oc_opmode, only_opmode_convert_to_mercury,       bool(no),
-    short_help('P', "convert-to-mercury",
-            ["convert-to-Mercury", "pretty-print"], [
-        "Convert to Mercury. Output to file `<module>.ugly'",
-        "This option acts as a Mercury ugly-printer."])).
 optdb(oc_opmode, only_opmode_typecheck_only,           bool(no),
     short_help('t', "typecheck-only", [], [
         "Just check that the code is syntactically correct and",
@@ -1628,23 +1533,69 @@ optdb(oc_opmode, only_opmode_compile_only,             bool(no),
     short_help('c', "compile-only", [], [
         "Generate C code in `<module>.c' and object code in `<module>.o'",
         "but do not attempt to link the named modules."])).
+optdb(oc_opmode, only_opmode_generate_standalone_interface, maybe_string(no),
+    arg_help("generate-standalone-interface", "basename", [
+        "Output a stand-alone interface.",
+        "<basename> is used as the basename of any files generated for",
+        "the stand-alone interface. (See the Stand-alone Interface",
+        "chapter of the Mercury User's Guide for further details.)"])).
+optdb(oc_opmode, only_opmode_convert_to_mercury,       bool(no),
+    short_help('P', "convert-to-mercury",
+            ["convert-to-Mercury", "pretty-print"], [
+        "Convert to Mercury. Output to file `<module>.ugly'",
+        "This option acts as a Mercury ugly-printer."])).
+optdb(oc_opmode, only_opmode_make_xml_documentation,   bool(no),
+    short_help('x', "make-xml-documentation", ["make-xml-doc"], [
+        "Output XML documentation of the module",
+        "into the `<module>.xml' file.",
+        "This option should only be used by mmake."])).
+optdb(oc_opmode, only_opmode_make_analysis_registry,   bool(no),
+    priv_help("make-analysis-registry", [])).
+optdb(oc_opmode, only_opmode_make,                     bool(no),
+    short_help('m', "make", [], [
+        "Treat the non-option arguments to `mmc' as files to make,",
+        "rather than source files. Build or rebuild the specified files",
+        "if they do not exist or are not up-to-date.",
+        "Note that this option also enables `--use-subdirs'."])).
+% NOTE part_opmode_rebuild should be only_opmode_rebuild, but make.*.m
+% look up its value as an ordinary option, NOT as a part of the op_mode.
+% In one place, we clear this option, but we do it effectively because
+% we want a different op_mode for a recursive invocation of the compiler.
+optdb(oc_opmode, part_opmode_rebuild,                  bool(no),
+    short_help('r', "rebuild", [], [
+        "Same as `--make', but always rebuild the target files",
+        "even if they are up-to-date."])).
+optdb(oc_opmode, only_opmode_invoked_by_mmc_make,      bool(no),
+    priv_help("invoked-by-mmc-make", [
+        "This option is only for internal use by the compiler.",
+        "QUOTE", "`mmc --make'", "passes it as the first argument when",
+        "compiling a module."])).
+
 optdb(oc_opmode, only_opmode_output_grade_string,      bool(no),
     help("output-grade-string", [
         "Compute the canonical string representing the currently",
         "selected grade, and print it on the standard output."])).
-optdb(oc_opmode, only_opmode_output_stdlib_modules,    bool(no),
-    help("output-stdlib-modules", [
-        "Print to standard output the names of the modules in the",
-        "Mercury standard library."])).
+optdb(oc_opmode, only_opmode_output_grade_defines,     bool(no),
+    help("output-grade-defines", [
+        "Print to standard output the flags that are passed to the",
+        "C compiler to define the macros whose values specify the",
+        "compilation grade."])).
 optdb(oc_opmode, only_opmode_output_stdlib_grades,     bool(no),
     help("output-stdlib-grades", [
         "Print to standard output the list of compilation grades in which",
         "the Mercury standard library is available with this compiler."])).
+optdb(oc_opmode, only_opmode_output_stdlib_modules,    bool(no),
+    help("output-stdlib-modules", [
+        "Print to standard output the names of the modules in the",
+        "Mercury standard library."])).
 optdb(oc_opmode, only_opmode_output_library_install_grades, bool(no),
     alt_help("output-libgrades",
             ["output-library-install-grades"], [
         "Print to standard output the list of compilation grades in which",
         "a library to be installed should be built."])).
+optdb(oc_opmode, only_opmode_output_target_arch,       bool(no),
+    help("output-target-arch", [
+        "Print the target architecture to the standard output."])).
 optdb(oc_opmode, only_opmode_output_cc,                bool(no),
     help("output-cc", [
         "Print to standard output the command used to invoke the",
@@ -1663,27 +1614,6 @@ optdb(oc_opmode, only_opmode_output_c_include_directory_flags, bool(no),
         "C compiler to specify which directories to search for",
         "C header files. This includes the C header files from the",
         "standard library."])).
-optdb(oc_opmode, only_opmode_output_grade_defines,     bool(no),
-    help("output-grade-defines", [
-        "Print to standard output the flags that are passed to the",
-        "C compiler to define the macros whose values specify the",
-        "compilation grade."])).
-optdb(oc_opmode, only_opmode_output_csharp_compiler,   bool(no),
-    help("output-csharp-compiler", [
-        "Print to standard output the command used to invoke the C#",
-        "compiler."])).
-optdb(oc_opmode, only_opmode_output_csharp_compiler_type, bool(no),
-    help("output-csharp-compiler-type", [
-        "Print the C# compiler type to the standard output."])).
-optdb(oc_opmode, only_opmode_output_target_arch,       bool(no),
-    help("output-target-arch", [
-        "Print the target architecture to the standard output."])).
-optdb(oc_opmode, only_opmode_output_java_class_dir,    bool(no),
-    alt_help("output-java-class-directory",
-            ["output-class-directory", "output-java-class-dir",
-            "output-class-dir"], [
-        "Print to standard output the name of the directory in which",
-        "generated Java class files will be placed."])).
 optdb(oc_opmode, only_opmode_output_link_command,      bool(no),
     help("output-link-command", [
         "Print to standard output the command used to link executables."])).
@@ -1697,6 +1627,19 @@ optdb(oc_opmode, only_opmode_output_library_link_flags, bool(no),
         "in order to link against the current set of libraries.",
         "This includes the standard library, as well as any other",
         "libraries specified via the --ml option."])).
+optdb(oc_opmode, only_opmode_output_csharp_compiler,   bool(no),
+    help("output-csharp-compiler", [
+        "Print to standard output the command used to invoke the C#",
+        "compiler."])).
+optdb(oc_opmode, only_opmode_output_csharp_compiler_type, bool(no),
+    help("output-csharp-compiler-type", [
+        "Print the C# compiler type to the standard output."])).
+optdb(oc_opmode, only_opmode_output_java_class_dir,    bool(no),
+    alt_help("output-java-class-directory",
+            ["output-class-directory", "output-java-class-dir",
+            "output-class-dir"], [
+        "Print to standard output the name of the directory in which",
+        "generated Java class files will be placed."])).
 optdb(oc_opmode, only_opmode_output_optimization_options, bool(no),
     alt_help("output-optimization-options",
             ["output-opt-opts"], [
@@ -1747,15 +1690,6 @@ optdb(oc_grade, compile_to_c,                          special,
         "An abbreviation for `--target c --target-code-only'.",
         "Generate C code in `<module>.c', but do not generate object",
         "code."])).
-optdb(oc_grade, csharp,                                special,
-    alt_help("csharp", ["C#"], [
-        "An abbreviation for `--target csharp'."])).
-optdb(oc_grade, csharp_only,                           special,
-    % XXX Using "object code" for C# is iffy.
-    alt_help("csharp-only", ["C#-only"], [
-        "An abbreviation for `--target csharp --target-code-only'.",
-        "Generate C# code in `<module>.cs', but do not generate",
-        "object code."])).
 optdb(oc_grade, java,                                  special,
     alt_help("java", ["Java"], [
         "An abbreviation for `--target java'."])).
@@ -1764,6 +1698,15 @@ optdb(oc_grade, java_only,                             special,
     alt_help("java-only", ["Java-only"], [
         "An abbreviation for `--target java --target-code-only'.",
         "Generate Java code in `<module>.java', but do not generate",
+        "object code."])).
+optdb(oc_grade, csharp,                                special,
+    alt_help("csharp", ["C#"], [
+        "An abbreviation for `--target csharp'."])).
+optdb(oc_grade, csharp_only,                           special,
+    % XXX Using "object code" for C# is iffy.
+    alt_help("csharp-only", ["C#-only"], [
+        "An abbreviation for `--target csharp --target-code-only'.",
+        "Generate C# code in `<module>.cs', but do not generate",
         "object code."])).
 
 %---------------------%
@@ -1869,9 +1812,26 @@ optdb(oc_grade, profile_deep,                          bool(no),
     % the grade options for mprof profiling to "no".
     priv_help("profile-deep", [])).
 optdb(oc_grade, use_activation_counts,                 bool(no),
-    priv_help("use-activation-counts", [])).
     % use_activation_counts is an experimental feature.
     % It *is* a grade option.
+    % Use_activation_counts is used to determine which mechanism for
+    % cycle detection should be used for deep profiling. Actually,
+    % we only want to use the `yes' value, but we keep support for
+    % the `no' value for benchmarks for the paper.
+    priv_help("use-activation-counts", [])).
+% The next three options are developer-only non-grade options.
+optdb(oc_grade, use_zeroing_for_ho_cycles,             bool(yes),
+    priv_help("use-zeroing-for-ho-cycles", [])).
+optdb(oc_grade, use_lots_of_ho_specialization,         bool(no),
+    priv_help("use-lots-of-ho-specialization", [])).
+optdb(oc_grade, deep_profile_tail_recursion,           bool(no),
+    % We do not currently enable (or publicly document) this option
+    % because its use results in significant overheads. Also, it is
+    % not compatible with coverage profiling, which is enabled by default.
+    % By default, all deep profiling grades are also built with
+    % --stack-segments in order to avoid *some* of the problems
+    % caused by the lack of tail recursion.
+    priv_help("deep-profile-tail-recursion", [])).
 optdb(oc_grade, coverage_profiling,                    bool(yes),
     help("coverage-profiling", [
         "Do not gather profiling information that is useful",
@@ -1909,25 +1869,27 @@ optdb(oc_grade, profile_deep_coverage_use_trivial,     bool(no),
     priv_help("profile-deep-coverage-use-trivial", [
         "Use simple goal properties for coverage information."])).
 optdb(oc_grade, profile_for_feedback,                  bool(no),
+    % Turns on flags relevant for profiler directed feedback analysis.
+    % Currently the only feedback analysis is automatic parallelism.
     alt_help("profile-for-feedback",
             ["profile-for-implicit-parallelism"], [
         "Select deep profiling options suitable for profiler directed",
         "implicit parallelism.",
         "--profile-for-implicit-parallelism is a deprecated synonym for",
         "this option."])).
-% The next three options are developer-only non-grade options.
-optdb(oc_grade, use_zeroing_for_ho_cycles,             bool(yes),
-    priv_help("use-zeroing-for-ho-cycles", [])).
-optdb(oc_grade, use_lots_of_ho_specialization,         bool(no),
-    priv_help("use-lots-of-ho-specialization", [])).
-optdb(oc_grade, deep_profile_tail_recursion,           bool(no),
-    priv_help("deep-profile-tail-recursion", [])).
 
 %---------------------%
 
     % Optional feature compilation model options:
     % (b3) Complexity profiling
 
+optdb(oc_grade, experimental_complexity,               string(""),
+    % XXX This is NOT a grade option; it only takes advantage of a grade.
+    priv_arg_help("experimental-complexity", "filename", [
+        "Enable experimental complexity analysis for the predicates",
+        "listed in the given file.",
+        "This option is supported only for the C back-end with",
+        "`--no-highlevel-code'."])).
 optdb(oc_grade, record_term_sizes_as_words,            bool(no),
     priv_alt_align_help("record-term-sizes-as-words", [],
             "(grade modifier: `.tsw')", [
@@ -1936,13 +1898,6 @@ optdb(oc_grade, record_term_sizes_as_cells,            bool(no),
     priv_alt_align_help("record-term-sizes-as-cells", [],
             "(grade modifier: `.tsc')", [
         "Augment each heap cell with its size in cells."])).
-optdb(oc_grade, experimental_complexity,               string(""),
-    % XXX This is NOT a grade option; it only takes advantage of a grade.
-    priv_arg_help("experimental-complexity", "filename", [
-        "Enable experimental complexity analysis for the predicates",
-        "listed in the given file.",
-        "This option is supported only for the C back-end with",
-        "`--no-highlevel-code'."])).
 
 %---------------------%
 
@@ -1963,6 +1918,9 @@ optdb(oc_grade, threadscope,                           bool(no),
     % Optional feature compilation model options:
     % (c) Miscellaneous optional features
 
+optdb(oc_grade, pregenerated_dist,                     bool(no),
+    % XXX The pregen grade component *should* be documented.
+    priv_help("pregenerated-dist", [])).
 optdb(oc_grade, gc,                                    string("boehm"),
     % We do not document the "accurate" and "hgc" GC methods,
     % as those methods are still experimental.
@@ -2002,9 +1960,6 @@ optdb(oc_grade, use_trail,                             bool(no),
         "This is necessary for interfacing with constraint solvers,",
         "or for backtrackable destructive update.",
         "This option is not yet supported for the C# or Java backends."])).
-optdb(oc_grade, pregenerated_dist,                     bool(no),
-    % XXX The pregen grade component *should* be documented.
-    priv_help("pregenerated-dist", [])).
 optdb(oc_grade, single_prec_float,                     bool(no),
     alt_align_help("single-precision-float",
             ["single-prec-float"], "(grade modifier: `.spf')", [
@@ -2068,8 +2023,17 @@ optdb(oc_grade, link_ssdb_libs,                        bool(no),
 %---------------------%
 
     % Optional feature compilation model options:
-    % (d) representation compilation model options
+    % (d) data representation compilation model options
 
+optdb(oc_grade, conf_low_ptag_bits,                    int(2),
+    % The undocumented conf_low_ptag_bits option is used by the `mmc' script
+    % to pass the default value for num_ptag_bits assuming target_c.
+    % The reason that `mmc' doesn't just pass a default value for
+    % --num-ptag-bits is that users need to be able to override this default
+    % when cross compiling.
+    priv_alt_arg_help("conf-low-ptag-bits",
+            ["conf-low-tag-bits"], "n", [
+        "Reserved for use by the `mmc' script."])).
 optdb(oc_grade, num_ptag_bits,                         int(-1),
     % -1 means: use the value of conf_low_ptag_bits instead.
     %
@@ -2083,12 +2047,6 @@ optdb(oc_grade, num_ptag_bits,                         int(-1),
         "Use <n> primary tag bits.",
         "Note that the value of this option is normally autoconfigured;",
         "its use should never be needed except for cross-compilation."])).
-optdb(oc_grade, conf_low_ptag_bits,                    int(2),
-    % The `mmc' script will override the above default with
-    % a value determined at configuration time.
-    priv_alt_arg_help("conf-low-ptag-bits",
-            ["conf-low-tag-bits"], "n", [
-        "Reserved for use by the `mmc' script."])).
 optdb(oc_grade, bits_per_word,                         int(32),
     % A good default for the current generation of architectures.
     priv_arg_help("bits-per-word", "n", [
@@ -2321,10 +2279,6 @@ optdb(oc_verbosity, find_all_recompilation_reasons,    bool(no),
     help("find-all-recompilation-reasons", [
         "Find all the reasons why a module needs to be recompiled,",
         "not just the first. Implies `--verbose-recompilation'."])).
-optdb(oc_verbosity, verbose_commands,                  bool(no),
-    help("verbose-commands", [
-        "Output each external command before it is run.",
-        "Note that some commands will only be printed with `--verbose'."])).
 optdb(oc_verbosity, show_pred_movability,              accumulating([]),
     alt_arg_help("show-pred-moveability",
             ["show-pred-movability"], "pred_or_func_name", [
@@ -2335,9 +2289,20 @@ optdb(oc_verbosity, show_pred_movability,              accumulating([]),
         "and/or functions that would have to be moved with them, and",
         "whether the move would cause unwanted coupling between",
         "the new module and the old."])).
+optdb(oc_verbosity, verbose_commands,                  bool(no),
+    help("verbose-commands", [
+        "Output each external command before it is run.",
+        "Note that some commands will only be printed with `--verbose'."])).
 
 %---------------------%
 
+optdb(oc_verb_dbg,  report_cmd_line_args,               bool(no),
+    help("report-cmd-line-args", [
+        "Report the command line arguments."])).
+optdb(oc_verb_dbg,  report_cmd_line_args_in_doterr,     bool(no),
+    help("report-cmd-line-args-in-doterr", [
+        "Report the command line arguments for compilations whose output",
+        "mmake normally redirects to a `.err' file."])).
 optdb(oc_verb_dbg,  inform_ignored_pragma_errors,       bool(no),
     priv_help("inform-ignored-pragma-errors", [
         "Print an informational message for each otherwise-ignored error",
@@ -2348,13 +2313,6 @@ optdb(oc_verb_dbg,  inform_generated_type_spec_pragmas, bool(no),
         "Print an informational message for each type_spec pragma that",
         "the compiler generates to implement a type_spec_constrained_pred",
         "pragma."])).
-optdb(oc_verb_dbg,  report_cmd_line_args,               bool(no),
-    help("report-cmd-line-args", [
-        "Report the command line arguments."])).
-optdb(oc_verb_dbg,  report_cmd_line_args_in_doterr,     bool(no),
-    help("report-cmd-line-args-in-doterr", [
-        "Report the command line arguments for compilations whose output",
-        "mmake normally redirects to a `.err' file."])).
 optdb(oc_verb_dbg,  proc_size_statistics,               string(""),
     arg_help("proc-size-statistics", "filename", [
         "Append information about the size of each procedure in the",
@@ -2674,11 +2632,6 @@ optdb(oc_warn_dodgy, warn_suspicious_recursion,           bool(no),
     help("warn-suspicious-recursion", [
         "Warn about recursive calls which are likely to have problems,",
         "such as leading to infinite recursion."])).
-optdb(oc_warn_dodgy, warn_unresolved_polymorphism,        bool(yes),
-    help("warn-unresolved-polymorphism", [
-        "Do not warn about unresolved polymorphism, which occurs when",
-        "the type of a variable contains a type variable",
-        "that is not bound to an actual type, even though it should be."])).
 optdb(oc_warn_dodgy, warn_unused_args,                    bool(no),
     help("warn-unused-args", [
         "Warn about predicate arguments which are not used."])).
@@ -2715,6 +2668,11 @@ optdb(oc_warn_dodgy, warn_table_with_inline,              bool(yes),
 
 % Warnings about other predicate-level issues.
 
+optdb(oc_warn_dodgy, warn_unresolved_polymorphism,        bool(yes),
+    help("warn-unresolved-polymorphism", [
+        "Do not warn about unresolved polymorphism, which occurs when",
+        "the type of a variable contains a type variable",
+        "that is not bound to an actual type, even though it should be."])).
 optdb(oc_warn_dodgy, warn_stubs,                          bool(yes),
     help("warn-stubs", [
         "Do not warn about procedures for which there are no clauses.",
@@ -3020,18 +2978,18 @@ optdb(oc_warn_halt,  halt_at_auto_parallel_failure,       bool(no),
 optdb(oc_inform,     inform_inferred,                     bool_special,
     help("inform-inferred", [
         "Do not print inferred types or modes."])).
-optdb(oc_inform,     inform_inferred_types,               bool(yes),
+optdb(oc_inform, inform_inferred_types,             bool(yes),
     help("inform-inferred-types", [
         "Do not print inferred types."])).
-optdb(oc_inform,     inform_inferred_modes,               bool(yes),
+optdb(oc_inform, inform_inferred_modes,             bool(yes),
     help("inform-inferred-modes", [
         "Do not print inferred modes."])).
-optdb(oc_inform,     inform_incomplete_color_scheme,      bool(no),
+optdb(oc_inform, inform_incomplete_color_scheme,    bool(no),
     priv_help("inform-incomplete-color-scheme", [
         "Report if the argument if either the value of the",
         "--color-scheme option, or the value of MERCURY_COLOR_SCHEME",
         "environment variable, does not specify a color for some role."])).
-optdb(oc_inform,     inform_suboptimal_packing,           bool(no),
+optdb(oc_inform, inform_suboptimal_packing,         bool(no),
     help("inform-suboptimal-packing", [
         "Generate messages if the arguments of a data constructor",
         "could be packed more tightly if they were reordered."])).
@@ -3151,31 +3109,13 @@ optdb(oc_mdb_dev, trace_prof,                       bool(no),
 optdb(oc_mdb,     event_set_file_name,              string(""),
     arg_help("event-set-file-name", "filename", [
         "Get the specification of user-defined events from <filename>."])).
-optdb(oc_mdb,        delay_death,                      bool(yes),
-    help("delay-death", [
-        "When the trace level is `deep', the compiler normally",
-        "preserves the values of variables as long as possible, even",
-        "beyond the point of their last use, in order to make them",
-        "accessible from as many debugger events as possible.",
-        "However, it will not do so if the user specifies",
-        "`--no-delay-death'. This may be necessary if without it,",
-        "the stack frames of some procedures grow too big."])).
-optdb(oc_mdb,        delay_death_max_vars,             int(1000),
-    arg_help("delay-death-max-vars", "N", [
-        "Delay the deaths of variables only when the number of variables",
-        "in the procedure is no more than N. The default value is 1000."])).
-optdb(oc_mdb,        stack_trace_higher_order,         bool(no),
-    help("stack-trace-higher-order", [
-        "Enable stack traces through predicates and functions with",
-        "higher-order arguments, even if stack tracing is not",
-        "supported in general."])).
+optdb(oc_mdb_dev, trace_table_io,                   bool(no),
     % I/O tabling is deliberately not documented. It is meant to be
     % switched on, with consistent parameters, in debugging grades,
     % and to be consistently switched off in non-debugging grades.
     % Inconsistent use of the options governing I/O tabling
     % can yield core dumps from the debugger, so these options
     % are for implementors only.
-optdb(oc_mdb_dev, trace_table_io,                   bool(no),
     priv_help("trace-table-io", [
         "Enable the tabling of I/O actions, to allow the debugger",
         "to execute retry commands across I/O actions."])).
@@ -3201,8 +3141,29 @@ optdb(oc_mdb_dev, trace_table_io_all,               bool(no),
         "tabling required, deduce it from the values of the other",
         "annotations."])).
 optdb(oc_mdb_dev,    suppress_trace,                   string(""),
+    % Force no tracing, even in .debug grades. This is used to turn off
+    % tracing in the browser directory while still allowing the browser
+    % library to be linked in with an executable compiled in a .debug grade.
     priv_arg_help("suppress-trace", "suppress-items,", [
         "Suppress the named aspects of the execution tracing system."])).
+optdb(oc_mdb,        delay_death,                      bool(yes),
+    help("delay-death", [
+        "When the trace level is `deep', the compiler normally",
+        "preserves the values of variables as long as possible, even",
+        "beyond the point of their last use, in order to make them",
+        "accessible from as many debugger events as possible.",
+        "However, it will not do so if the user specifies",
+        "`--no-delay-death'. This may be necessary if without it,",
+        "the stack frames of some procedures grow too big."])).
+optdb(oc_mdb,        delay_death_max_vars,             int(1000),
+    arg_help("delay-death-max-vars", "N", [
+        "Delay the deaths of variables only when the number of variables",
+        "in the procedure is no more than N. The default value is 1000."])).
+optdb(oc_mdb,        stack_trace_higher_order,         bool(no),
+    help("stack-trace-higher-order", [
+        "Enable stack traces through predicates and functions with",
+        "higher-order arguments, even if stack tracing is not",
+        "supported in general."])).
 optdb(oc_mdb_dev,    force_disable_tracing,            bool(no),
     priv_help("force-disable-tracing", [
         "Force tracing to be set to trace level none.",
@@ -3305,15 +3266,62 @@ optdb(oc_opt_ctrl, analysis_file_cache_dir,            string(""),
 
     % HLDS -> HLDS
 
+optdb(oc_opt_hh, optopt_dead_procs,                       bool_special,
+    alt_help("optimize-dead-procs",
+            ["optimise-dead-procs"], [
+        "Enable dead predicate elimination."])).
+optdb(oc_opt_hh, optopt_unneeded_code,                    bool_special,
+    help("unneeded-code", [
+        "Remove goals from computation paths where their outputs are",
+        "not needed, provided the semantics options allow the deletion",
+        "or movement of the goal."])).
+optdb(oc_opt_hh, optopt_unneeded_code_copy_limit,         int_special,
+    arg_help("unneeded-code-copy-limit", "copy_limit", [
+        "Gives the maximum number of places to which a goal may be copied",
+        "when removing it from computation paths on which its outputs are",
+        "not needed. A value of zero forbids goal movement and allows",
+        "only goal deletion; a value of one prevents any increase in the",
+        "size of the code."])).
+
+optdb(oc_opt_hh, optopt_unused_args,                      bool_special,
+    alt_help("optimize-unused-args",
+            ["optimise-unused-args"], [
+        "Remove unused predicate arguments.",
+        "This will cause the compiler to generate more",
+        "efficient code for many polymorphic predicates."])).
+optdb(oc_opt_hh, optopt_intermod_unused_args,             bool_special,
+    help("intermod-unused-args", [
+        "Perform unused argument removal across module boundaries.",
+        "This option implies `--optimize-unused-args' and",
+        "`--intermodule-optimization'."])).
+
+optdb(oc_opt_hh, optopt_format_calls,                     bool_special,
+    help("optimize-format-calls", [
+        "Interpret the format string in calls to",
+        "string.format and related predicates at compile time,",
+        "replacing those calls with the sequence of more primitive operations",
+        "required to implement them."])).
+optdb(oc_opt_hh, optopt_constant_propagation,             bool_special,
+    alt_help("optimize-constant-propagation",
+            ["optimise-constant-propagation"], [
+        "Given calls to some frequently used library functions and",
+        "predicates, mainly those that do arithmetic, evaluate them",
+        "at compile time, if all their input arguments are constants."])).
+optdb(oc_opt_hh, optopt_duplicate_calls,                  bool_special,
+    alt_help("optimize-duplicate-calls",
+            ["optimise-duplicate-calls"], [
+        "Optimize away multiple calls to a predicate",
+        "with the same input arguments."])).
+optdb(oc_opt_hh, optopt_excess_assign,                    bool_special,
+    help("excess-assign", [
+        "Remove excess assignment unifications."])).
+
 optdb(oc_opt_hh, optopt_allow_inlining,                   bool_special,
     priv_help("allow-inlining", [
         "Disallow all forms of inlining."])).
 optdb(oc_opt_hh, inlining,                                bool_special,
     help("inlining", [
         "Ask the compiler to inline procedures using its usual heurisrics."])).
-optdb(oc_opt_hh, optopt_inline_simple,                    bool_special,
-    help("inline-simple", [
-        "Ask the compiler to inline simple procedures."])).
 optdb(oc_opt_hh, optopt_inline_builtins,                  bool_special,
     help("inline-builtins", [
         "Normally, the compiler implements builtin operations",
@@ -3322,19 +3330,18 @@ optdb(oc_opt_hh, optopt_inline_builtins,                  bool_special,
         "as calls to out-of-line procedures.",
         "This latter is done by default when debugging,",
         "since this allows the execution of builtins to be traced."])).
+optdb(oc_opt_hh, optopt_inline_par_builtins,              bool_special,
+    % This is for measurements by implementors only.
+    priv_help("inline-par-builtins", [
+        "With `--inline-par-builtins', the compiler",
+        "implements the operations of par_builtin.m using inline code.",
+        "With `--no-inline-par-builtins', it implements them as calls." ])).
 optdb(oc_opt_hh, optopt_inline_single_use,                bool_special,
     help("inline-single-use", [
         "Inline procedures which are called only from one call site."])).
-optdb(oc_opt_hh, optopt_inline_call_cost,                 int_special,
-    arg_help("inline-call-cost", "cost", [
-        "Assume that the cost of a call is the given parameter.",
-        "Used only in conjunction with `--inline-compound-threshold'."])).
-optdb(oc_opt_hh, optopt_inline_compound_threshold,        int_special,
-    arg_help("inline-compound-threshold", "threshold", [
-        "Inline a procedure if its size (measured roughly",
-        "in terms of the number of connectives in its internal form)",
-        "less the assumed call cost, multiplied by the number of times",
-        "it is called is below the given threshold."])).
+optdb(oc_opt_hh, optopt_inline_simple,                    bool_special,
+    help("inline-simple", [
+        "Ask the compiler to inline simple procedures."])).
 optdb(oc_opt_hh, optopt_inline_simple_threshold,          int_special,
     arg_help("inline-simple-threshold", "threshold", [
         "With --inline-simple, inline a procedure",
@@ -3346,6 +3353,16 @@ optdb(oc_opt_hh, optopt_intermod_inline_simple_threshold, int_special,
         "`.opt' files. Note that changing this between writing",
         "the `.opt' file and compiling to C may cause link errors,",
         "and too high a value may result in reduced performance."])).
+optdb(oc_opt_hh, optopt_inline_compound_threshold,        int_special,
+    arg_help("inline-compound-threshold", "threshold", [
+        "Inline a procedure if its size (measured roughly",
+        "in terms of the number of connectives in its internal form)",
+        "less the assumed call cost, multiplied by the number of times",
+        "it is called is below the given threshold."])).
+optdb(oc_opt_hh, optopt_inline_call_cost,                 int_special,
+    arg_help("inline-call-cost", "cost", [
+        "Assume that the cost of a call is the given parameter.",
+        "Used only in conjunction with `--inline-compound-threshold'."])).
 optdb(oc_opt_hh, optopt_inline_vars_threshold,            int_special,
     % Has no effect until --intermodule-optimization.
     % XXX Is this true? If so, Why?
@@ -3369,12 +3386,71 @@ optdb(oc_opt_hh, optopt_inline_tr_sccs_max_extra,         int_special,
         "When considering whether to apply --inline-linear-tail-rec-sccs",
         "to an SCC containing N procedures, allow the SCC to contain",
         "up to N+E mutually recursive tail calls."])).
-optdb(oc_opt_hh, optopt_inline_par_builtins,              bool_special,
-    % This is for measurements by implementors only.
-    priv_help("inline-par-builtins", [
-        "With `--inline-par-builtins', the compiler",
-        "implements the operations of par_builtin.m using inline code.",
-        "With `--no-inline-par-builtins', it implements them as calls." ])).
+
+optdb(oc_opt_hh, optopt_higher_order,                     bool_special,
+    alt_help("optimize-higher-order",
+            ["optimise-higher-order"], [
+        "Enable specialization of higher-order predicates."])).
+optdb(oc_opt_hh, optopt_higher_order_size_limit,          int_special,
+    arg_help("higher-order-size-limit", "max_size", [
+        "Set the maximum goal size of specialized versions created by",
+        "`--optimize-higher-order' and `--type-specialization'.",
+        "Goal size is measured as the number of calls, unifications",
+        "and branched goals."])).
+optdb(oc_opt_hh, optopt_higher_order_arg_limit,           int_special,
+    arg_help("higher-order-arg-limit", "max_size", [
+        "Set the maximum size of higher-order arguments to",
+        "be specialized by `--optimize-higher-order' and",
+        "`--type-specialization'."])).
+
+optdb(oc_opt_hh, optopt_type_specialization,              bool_special,
+    alt_help("type-specialization",
+            ["type-specialisation"], [
+        "Enable specialization of polymorphic predicates where the",
+        "polymorphic types are known."])).
+optdb(oc_opt_hh, optopt_user_guided_type_specialization,  bool_special,
+    alt_help("user-guided-type-specialization",
+            ["user-guided-type-specialisation"], [
+        "Enable specialization of polymorphic predicates for which",
+        "there are `:- pragma type_spec' declarations."])).
+
+optdb(oc_opt_hh, optopt_loop_invariants,                  bool_special,
+    help("loop-invariants", [
+        "Hoist loop invariants out of loops."])).
+optdb(oc_opt_hh, optopt_introduce_accumulators,           bool_special,
+    help("introduce-accumulators", [
+        "Attempt to introduce accumulating variables into",
+        "procedures, so as to make them tail recursive."])).
+optdb(oc_opt_hh, optopt_lcmc,                             bool_special,
+    alt_help("optimize-constructor-last-call",
+            ["optimise-constructor-last-call"], [
+        "Enable the optimization of ""last"" calls that are followed by",
+        "constructor application."])).
+optdb(oc_opt_hh, optopt_lcmc_accumulator,                 bool_special,
+    priv_alt_help("optimize-constructor-last-call-accumulator",
+            ["optimise-constructor-last-call-accumulator"], [
+        "Enable the optimization via accumulators of ""last"" calls",
+        "that are followed by constructor application."])).
+optdb(oc_opt_hh, optopt_lcmc_null,                        bool_special,
+    priv_alt_help("optimize-constructor-last-call-null",
+            ["optimise-constructor-last-call-null"], [
+        "When --optimize-constructor-last-call is enabled, put NULL in",
+        "uninitialized fields (to prevent the garbage collector from",
+        "looking at and following a random bit pattern)."])).
+
+optdb(oc_opt_hh, optopt_split_switch_arms,                bool_special,
+    help("split-switch-arms", [
+        "When a switch on a variable has an inner switch on that",
+        "same variable inside one of its arms, split up that arm of the",
+        "outer switch along the same lines, effectively inlining",
+        "the inner switch."])).
+optdb(oc_opt_hh, optopt_merge_code_after_switch,          bool_special,
+    priv_help("merge-code-after-switch", [
+        "Merge the goal after a switch into the switch, if we can.",
+        "Two cases in which we can are when that goal just tests",
+        "the value of a variable set in the switch, and when that goal",
+        "is a switch on the same variable."])).
+
 optdb(oc_opt_hh, optopt_from_ground_term_threshold,       int_special,
     priv_arg_help("from-ground-term-threshold", "n", [
         "Wrap a from_ground_term scope around the expanded,",
@@ -3389,51 +3465,7 @@ optdb(oc_opt_hh, optopt_common_struct,                    bool_special,
     help("common-struct", [
         "Replace two or more occurrences of the same term",
         "in a conjunction with just one copy."])).
-optdb(oc_opt_hh, optopt_constraint_propagation,           bool_special,
-    help("constraint-propagation", [
-        "Enable the constraint propagation transformation,",
-        "which attempts to ensure that",
-        "goals which can fail are executed as early as possible."])).
-optdb(oc_opt_hh, optopt_local_constraint_propagation,     bool_special,
-    help("local-constraint-propagation", [
-        "Enable the constraint propagation transformation,",
-        "but only rearrange goals within each procedure.",
-        "Specialized versions of procedures will not be created."])).
-optdb(oc_opt_hh, optopt_duplicate_calls,                  bool_special,
-    alt_help("optimize-duplicate-calls",
-            ["optimise-duplicate-calls"], [
-        "Optimize away multiple calls to a predicate",
-        "with the same input arguments."])).
-optdb(oc_opt_hh, optopt_constant_propagation,             bool_special,
-    alt_help("optimize-constant-propagation",
-            ["optimise-constant-propagation"], [
-        "Given calls to some frequently used library functions and",
-        "predicates, mainly those that do arithmetic, evaluate them",
-        "at compile time, if all their input arguments are constants."])).
-optdb(oc_opt_hh, optopt_excess_assign,                    bool_special,
-    help("excess-assign", [
-        "Remove excess assignment unifications."])).
-optdb(oc_opt_hh, optopt_merge_code_after_switch,          bool_special,
-    priv_help("merge-code-after-switch", [
-        "Merge the goal after a switch into the switch, if we can.",
-        "Two cases in which we can are when that goal just tests",
-        "the value of a variable set in the switch, and when that goal",
-        "is a switch on the same variable."])).
-optdb(oc_opt_hh, optopt_format_calls,                     bool_special,
-    help("optimize-format-calls", [
-        "Interpret the format string in calls to",
-        "string.format and related predicates at compile time,",
-        "replacing those calls with the sequence of more primitive operations",
-        "required to implement them."])).
-optdb(oc_opt_hh, optopt_split_switch_arms,                bool_special,
-    help("split-switch-arms", [
-        "When a switch on a variable has an inner switch on that",
-        "same variable inside one of its arms, split up that arm of the",
-        "outer switch along the same lines, effectively inlining",
-        "the inner switch."])).
-optdb(oc_opt_hh, optopt_loop_invariants,                  bool_special,
-    help("loop-invariants", [
-        "Hoist loop invariants out of loops."])).
+
 optdb(oc_opt_hh, optimize_saved_vars,                     bool_special,
     alt_help("optimize-saved-vars",
             ["optimise-saved-vars"], [
@@ -3477,90 +3509,18 @@ optdb(oc_opt_hh, optopt_svcell_all_path_node_ratio,       int_special,
     priv_arg_help("osv-allpath-node-ratio", "percentage", [])).
 optdb(oc_opt_hh, optopt_svcell_all_candidates,            bool_special,
     priv_help("osv-all-cand", [])).
-optdb(oc_opt_hh, optopt_delay_construct,                  bool_special,
-    alt_help("delay-constructs",
-            ["delay-construct"], [
-        "Reorder goals to move construction unifications after",
-        "primitive goals that can fail."])).
-optdb(oc_opt_hh, optopt_follow_code,                      bool_special,
-    priv_help("follow-code", [
-        "Move the code following a branched goal (if-then-else, disjunction,",
-        "or switch) until the next call into each branch of that goal.",
-        "Having a call as the goal just after the branched goal",
-        "gives the LLDS code generator a consistent set of places",
-        "into which each branch should store live variables."])).
-optdb(oc_opt_hh, optopt_unused_args,                      bool_special,
-    alt_help("optimize-unused-args",
-            ["optimise-unused-args"], [
-        "Remove unused predicate arguments.",
-        "This will cause the compiler to generate more",
-        "efficient code for many polymorphic predicates."])).
-optdb(oc_opt_hh, optopt_intermod_unused_args,             bool_special,
-    help("intermod-unused-args", [
-        "Perform unused argument removal across module boundaries.",
-        "This option implies `--optimize-unused-args' and",
-        "`--intermodule-optimization'."])).
-optdb(oc_opt_hh, optopt_higher_order,                     bool_special,
-    alt_help("optimize-higher-order",
-            ["optimise-higher-order"], [
-        "Enable specialization of higher-order predicates."])).
-optdb(oc_opt_hh, optopt_higher_order_size_limit,          int_special,
-    arg_help("higher-order-size-limit", "max_size", [
-        "Set the maximum goal size of specialized versions created by",
-        "`--optimize-higher-order' and `--type-specialization'.",
-        "Goal size is measured as the number of calls, unifications",
-        "and branched goals."])).
-optdb(oc_opt_hh, optopt_higher_order_arg_limit,           int_special,
-    arg_help("higher-order-arg-limit", "max_size", [
-        "Set the maximum size of higher-order arguments to",
-        "be specialized by `--optimize-higher-order' and",
-        "`--type-specialization'."])).
-optdb(oc_opt_hh, optopt_unneeded_code,                    bool_special,
-    help("unneeded-code", [
-        "Remove goals from computation paths where their outputs are",
-        "not needed, provided the semantics options allow the deletion",
-        "or movement of the goal."])).
-optdb(oc_opt_hh, optopt_unneeded_code_copy_limit,         int_special,
-    arg_help("unneeded-code-copy-limit", "copy_limit", [
-        "Gives the maximum number of places to which a goal may be copied",
-        "when removing it from computation paths on which its outputs are",
-        "not needed. A value of zero forbids goal movement and allows",
-        "only goal deletion; a value of one prevents any increase in the",
-        "size of the code."])).
-optdb(oc_opt_hh, optopt_type_specialization,              bool_special,
-    alt_help("type-specialization",
-            ["type-specialisation"], [
-        "Enable specialization of polymorphic predicates where the",
-        "polymorphic types are known."])).
-optdb(oc_opt_hh, optopt_user_guided_type_specialization,  bool_special,
-    alt_help("user-guided-type-specialization",
-            ["user-guided-type-specialisation"], [
-        "Enable specialization of polymorphic predicates for which",
-        "there are `:- pragma type_spec' declarations."])).
-optdb(oc_opt_hh, optopt_introduce_accumulators,           bool_special,
-    help("introduce-accumulators", [
-        "Attempt to introduce accumulating variables into",
-        "procedures, so as to make them tail recursive."])).
-optdb(oc_opt_hh, optopt_lcmc,                             bool_special,
-    alt_help("optimize-constructor-last-call",
-            ["optimise-constructor-last-call"], [
-        "Enable the optimization of ""last"" calls that are followed by",
-        "constructor application."])).
-optdb(oc_opt_hh, optopt_lcmc_accumulator,                 bool_special,
-    priv_alt_help("optimize-constructor-last-call-accumulator",
-            ["optimise-constructor-last-call-accumulator"], [
-        "Enable the optimization via accumulators of ""last"" calls",
-        "that are followed by constructor application."])).
-optdb(oc_opt_hh, optopt_lcmc_null,                        bool_special,
-    priv_alt_help("optimize-constructor-last-call-null",
-            ["optimise-constructor-last-call-null"], [
-        "When --optimize-constructor-last-call is enabled, put NULL in",
-        "uninitialized fields (to prevent the garbage collector from",
-        "looking at and following a random bit pattern)."])).
-optdb(oc_opt_hh, optopt_dead_procs,                       bool_special,
-    alt_help("optimize-dead-procs",
-            ["optimise-dead-procs"], [
-        "Enable dead predicate elimination."])).
+
+optdb(oc_opt_hh, optopt_constraint_propagation,           bool_special,
+    help("constraint-propagation", [
+        "Enable the constraint propagation transformation,",
+        "which attempts to ensure that",
+        "goals which can fail are executed as early as possible."])).
+optdb(oc_opt_hh, optopt_local_constraint_propagation,     bool_special,
+    help("local-constraint-propagation", [
+        "Enable the constraint propagation transformation,",
+        "but only rearrange goals within each procedure.",
+        "Specialized versions of procedures will not be created."])).
+
 optdb(oc_opt_hh, optopt_deforestation,                    bool_special,
     help("deforestation", [
         "Enable deforestation. Deforestation is a program",
@@ -3584,6 +3544,7 @@ optdb(oc_opt_hh, optopt_deforestation_size_threshold,     int_special,
         "Specify a rough limit on the size of a goal",
         "to be optimized by deforestation.",
         "A value of -1 specifies no limit. The default is 15."])).
+
 optdb(oc_opt_hh, optopt_untuple,                          bool_special,
     priv_help("untuple", [
         "Expand out procedure arguments when the argument type",
@@ -3614,6 +3575,20 @@ optdb(oc_opt_hh, optopt_tuple_min_args,                   int_special,
         "transformation will consider passing together as a",
         "tuple. This is mostly to speed up the compilation",
         "process by not pursuing (presumably) unfruitful searches."])).
+
+optdb(oc_opt_hh, optopt_delay_construct,                  bool_special,
+    alt_help("delay-constructs",
+            ["delay-construct"], [
+        "Reorder goals to move construction unifications after",
+        "primitive goals that can fail."])).
+
+optdb(oc_opt_hh, optopt_follow_code,                      bool_special,
+    priv_help("follow-code", [
+        "Move the code following a branched goal (if-then-else, disjunction,",
+        "or switch) until the next call into each branch of that goal.",
+        "Having a call as the goal just after the branched goal",
+        "gives the LLDS code generator a consistent set of places",
+        "into which each branch should store live variables."])).
 optdb(oc_opt_hh, optopt_always_spec_dep_par_conjs,        bool_special,
     % This is for measurements by implementors only.
     priv_help("always-specialize-in-dep-par-conjs", [
@@ -3741,6 +3716,7 @@ optdb(oc_opt_hlm, optopt_switch_multi_rec_base_first,     bool_special,
     priv_help("switch-multi-rec-base-first", [
         "In a switch with two arms, one a base case and one with multiple",
         "recursive calls, put the base case first."])).
+
 optdb(oc_opt_hlm, optopt_static_ground_cells,             bool_special,
     % XXX cf const-struct
     help("static-ground-terms", [
@@ -3822,25 +3798,19 @@ optdb(oc_opt_hl, optopt_allow_hijacks,                    bool_special,
     priv_help("allow-hijacks", [
         "When appropriate, generate code to hijack nondet stack frames",
         "that possibly belongs to another procedure invocation."])).
-optdb(oc_opt_hl, optimize_region_ops,                     bool(no),
-    priv_help("optimize-region-ops", [
-        "Try and restrict region operations to those parts of the program",
-        "that actually use regions."])).
 
 %---------------------%
 
     % LLDS -> LLDS
 
-optdb(oc_opt_ll, optopt_common_data,                      bool_special,
-    help("common-data", [
-        "Enable optimization of common data structures."])).
-optdb(oc_opt_ll, optopt_common_layout_data,               bool_special,
-    help("common-layout-data", [
-        "Enable optimization of common subsequences in layout structures."])).
 optdb(oc_opt_ll, optopt_optimize_llds,                    bool_special,
     alt_help("llds-optimize",
             ["llds-optimise"], [
         "Enable the low-level optimization passes."])).
+optdb(oc_opt_ll, optopt_repeat_opts,                      int_special,
+    alt_arg_help("optimize-repeat",
+            ["optimise-repeat"], "n", [
+        "Iterate most optimizations at most <n> times (default: 3)."])).
 optdb(oc_opt_ll, optopt_peep_llds,                        bool_special,
     alt_help("optimize-peep",
             ["optimise-peep"], [
@@ -3851,6 +3821,15 @@ optdb(oc_opt_ll, optopt_peep_llds_mkword,                 bool_special,
     priv_alt_help("optimize-peep-mkword",
             ["optimise-peep-mkword"], [
         "Enable peephole optimizations of words created by mkword."])).
+optdb(oc_opt_ll, optopt_labels,                           bool_special,
+    alt_help("optimize-labels",
+            ["optimise-labels"], [
+        "Delete dead labels and code."])).
+optdb(oc_opt_ll, optopt_standardize_labels,               bool_special,
+    % This is useful for developers only.
+    priv_alt_help("standardize-labels",
+            ["standardise-labels"], [
+        "Standardize internal labels in the generated code."])).
 optdb(oc_opt_ll, optopt_jumps,                            bool_special,
     alt_help("optimize-jumps",
             ["optimise-jumps"], [
@@ -3859,28 +3838,34 @@ optdb(oc_opt_ll, optopt_fulljumps,                        bool_special,
     alt_help("optimize-fulljumps",
             ["optimise-fulljumps"], [
         "Enable the elimination of jumps to ordinary code."])).
-optdb(oc_opt_ll, optopt_pessimize_tailcalls,              bool_special,
-    help("pessimize-tailcalls", [
-        "Disable the optimization of tailcalls."])).
 optdb(oc_opt_ll, optopt_checked_nondet_tailcalls,         bool_special,
     help("checked-nondet-tailcalls", [
         "Convert nondet calls into tail calls whenever possible, even",
         "when this requires a runtime check. This option tries to",
         "minimize stack consumption, possibly at the expense of speed."])).
+optdb(oc_opt_ll, optopt_pessimize_tailcalls,              bool_special,
+    help("pessimize-tailcalls", [
+        "Disable the optimization of tailcalls."])).
+optdb(oc_opt_ll, optopt_delay_slot,                       bool_special,
+    alt_help("optimize-delay-slot",
+            ["optimise-delay-slot"], [
+        "Disable branch delay slot optimizations,",
+        "This option is meaningful only if",
+        "the target architecture has delay slots."])).
+optdb(oc_opt_ll, optopt_frames,                           bool_special,
+    alt_help("optimize-frames",
+            ["optimise-frames"], [
+        "Optimize the operations that maintain stack frames."])).
+optdb(oc_opt_ll, optopt_reassign,                         bool_special,
+    alt_help("optimize-reassign",
+            ["optimise-reassign"], [
+        "Optimize away assignments to locations that already hold",
+        "the assigned value."])).
 optdb(oc_opt_ll, optopt_use_local_vars,                   bool_special,
     help("use-local-vars", [
         "Use local variables in C code blocks wherever possible."])).
 optdb(oc_opt_ll, optopt_local_var_access_threshold,       int_special,
     priv_arg_help("local-var-access-threshold", "XXX document me", [])).
-optdb(oc_opt_ll, optopt_standardize_labels,               bool_special,
-    % This is useful for developers only.
-    priv_alt_help("standardize-labels",
-            ["standardise-labels"], [
-        "Standardize internal labels in the generated code."])).
-optdb(oc_opt_ll, optopt_labels,                           bool_special,
-    alt_help("optimize-labels",
-            ["optimise-labels"], [
-        "Delete dead labels and code."])).
 optdb(oc_opt_ll, optopt_dups,                             bool_special,
     alt_help("optimize-dups",
             ["optimise-dups"], [
@@ -3889,40 +3874,26 @@ optdb(oc_opt_ll, optopt_proc_dups,                        bool_special,
     alt_help("optimize-proc-dups",
             ["optimise-proc-dups"], [
         "Enable elimination of duplicate procedures."])).
-optdb(oc_opt_ll, optopt_frames,                           bool_special,
-    alt_help("optimize-frames",
-            ["optimise-frames"], [
-        "Optimize the operations that maintain stack frames."])).
-optdb(oc_opt_ll, optopt_delay_slot,                       bool_special,
-    alt_help("optimize-delay-slot",
-            ["optimise-delay-slot"], [
-        "Disable branch delay slot optimizations,",
-        "This option is meaningful only if",
-        "the target architecture has delay slots."])).
-optdb(oc_opt_ll, optopt_reassign,                         bool_special,
-    alt_help("optimize-reassign",
-            ["optimise-reassign"], [
-        "Optimize away assignments to locations that already hold",
-        "the assigned value."])).
-optdb(oc_opt_ll, optopt_repeat_opts,                      int_special,
-    alt_arg_help("optimize-repeat",
-            ["optimise-repeat"], "n", [
-        "Iterate most optimizations at most <n> times (default: 3)."])).
+optdb(oc_opt_ll, optopt_common_data,                      bool_special,
+    help("common-data", [
+        "Enable optimization of common data structures."])).
+optdb(oc_opt_ll, optopt_common_layout_data,               bool_special,
+    help("common-layout-data", [
+        "Enable optimization of common subsequences in layout structures."])).
 optdb(oc_opt_ll, optopt_layout_compression_limit,         int_special,
     arg_help("layout-compression-limit", "n", [
         "Attempt to compress the layout structures used by the debugger",
         "only as long as the arrays involved have at most <n> elements",
         "(default: 4000)."])).
+optdb(oc_opt_hl, optimize_region_ops,                     bool(no),
+    priv_help("optimize-region-ops", [
+        "Try and restrict region operations to those parts of the program",
+        "that actually use regions."])).
 
 %---------------------%
 
     % LLDS -> C
 
-optdb(oc_opt_lc, optopt_use_macro_for_redo_fail,          bool_special,
-    help("use-macro-for-redo-fail", [
-        "Emit the fail or redo macro instead of a branch",
-        "to the fail or redo code in the runtime system.",
-        "This produces slightly bigger but slightly faster code."])).
 optdb(oc_opt_lc, optopt_emit_c_loops,                     bool_special,
     help("emit-c-loops", [
         "Use C loop contstructs to implement loops.",
@@ -3950,6 +3921,11 @@ optdb(oc_opt_lc, optopt_inline_alloc,                     bool_special,
         "but may significantly increase code size.",
         "This option has no effect if `--gc boehm'",
         "is not set or if the C compiler is not GNU C."])).
+optdb(oc_opt_lc, optopt_use_macro_for_redo_fail,          bool_special,
+    help("use-macro-for-redo-fail", [
+        "Emit the fail or redo macro instead of a branch",
+        "to the fail or redo code in the runtime system.",
+        "This produces slightly bigger but slightly faster code."])).
 
 %---------------------------------------------------------------------------%
 
@@ -4018,6 +3994,7 @@ optdb(oc_analysis, termination_path_limit,             int(256),
     % The termination2_* options are used to control the new termination
     % analyser. They are currently undocumented because that is still
     % a work-in-progress. XXX Or is it?
+
 optdb(oc_analysis, termination2_enable,                bool(no),
     priv_alt_help("enable-termination2", ["enable-term2"], [
         "Analyse each predicate to discover if it terminates.",
@@ -4052,6 +4029,13 @@ optdb(oc_analysis, termination2_widening_limit,        int(4),
             ["term2-widening-limit"], "n", [
         "Set the threshold for the number of iterations after which the",
         "argument size analyser invokes widening."])).
+optdb(oc_analysis, termination2_arg_size_only,         bool(no),
+    % This option is for developers only.
+    % It is useful for benchmarking the argument size analysis.
+    priv_alt_help("term2-argument-size-analysis-only",
+            ["term2-arg-size-analysis-only", "arg-size-analysis-only"], [
+        "Perform argument size analysis on each SCC but do not",
+        "attempt to infer termination,"])).
 optdb(oc_analysis, termination2_prop_fail_constrs,     bool(yes),
     priv_alt_help("termination2-propagate-failure-constraints",
             ["term2-propagate-failure-constraints",
@@ -4066,13 +4050,7 @@ optdb(oc_analysis, termination2_maximum_matrix_size,   int(70),
         "constraints. Use approximations of some constraint operations,",
         "such as projection, if this threshold is exceeded. This will",
         "speed up the analysis at the cost of reduced precision."])).
-optdb(oc_analysis, termination2_arg_size_only,         bool(no),
-    % This option is for developers only.
-    % It is useful for benchmarking the argument size analysis.
-    priv_alt_help("term2-argument-size-analysis-only",
-            ["term2-arg-size-analysis-only", "arg-size-analysis-only"], [
-        "Perform argument size analysis on each SCC but do not",
-        "attempt to infer termination,"])).
+
 optdb(oc_analysis, analyse_exceptions,                 bool(no),
     help("analyse-exceptions", [
         "Enable exception analysis. Identify those",
@@ -4240,6 +4218,7 @@ optdb(oc_target_c, quoted_cflag,                    string_special,
     arg_help("cflag", "option", [
         "Specify a single word option to be passed to the C compiler.",
         "The word will be quoted when passed to the shell."])).
+
 optdb(oc_target_c, gcc_flags,                       accumulating([]),
     % XXX part of mmc --make; but needs more detail.
     priv_arg_help("gcc-flags", "flags", [])).
@@ -4258,26 +4237,27 @@ optdb(oc_target_c, msvc_flags,                      accumulating([]),
 optdb(oc_target_c, quoted_msvc_flag,                string_special,
     % XXX document me.
     priv_arg_help("msvc-flag", "flag", [])).
+
 % XXX All of the following options are reserved for the mmc script,
 % but they nevertheless should have private help text.
 optdb(oc_target_c, cflags_for_warnings,             string(""),
     % The `mmc' script will override the default with values
     % determined at configuration time.
     priv_arg_help("cflags-for-warnings", "flags", [])).
-optdb(oc_target_c, cflags_for_sanitizers,           string(""),
-    priv_arg_help("cflags-for-sanitizers", "flags", [])).
 optdb(oc_target_c, cflags_for_optimization,         string("-O"),
     priv_arg_help("cflags-for-optimization", "flags", [])).
+optdb(oc_target_c, cflags_for_debug,                string("-g"),
+    priv_arg_help("cflags-for-debug", "flags", [])).
 optdb(oc_target_c, cflags_for_regs,                 string(""),
     priv_arg_help("cflags-for-regs", "flags", [])).
 optdb(oc_target_c, cflags_for_gotos,                string(""),
     priv_arg_help("cflags-for-gotos", "flags", [])).
 optdb(oc_target_c, cflags_for_threads,              string(""),
     priv_arg_help("cflags-for-threads", "flags", [])).
-optdb(oc_target_c, cflags_for_debug,                string("-g"),
-    priv_arg_help("cflags-for-debug", "flags", [])).
 optdb(oc_target_c, cflags_for_pic,                  string(""),
     priv_arg_help("cflags-for-pic", "flags", [])).
+optdb(oc_target_c, cflags_for_sanitizers,           string(""),
+    priv_arg_help("cflags-for-sanitizers", "flags", [])).
 optdb(oc_target_c, cflags_for_lto,                  string(""),
     priv_arg_help("cflags-for-lto", "flags", [])).
 optdb(oc_target_c, c_flag_to_name_object_file,      string("-o "),
@@ -4513,6 +4493,7 @@ optdb(oc_link_c,      mercury_linkage_special,         string_special,
         "`--mercury-linkage shared'."])).
 optdb(oc_link_c,      only_globals_mercury_linkage,    string("shared"),
     no_help).
+
 optdb(oc_link_c,      demangle,                        bool(yes),
     help("demangle", [
         "Do not pipe the output of the linker through the Mercury demangler.",
@@ -4527,6 +4508,7 @@ optdb(oc_link_c,      main,                            bool(yes),
     help("main", [
         "Do not generate a C main() function. With `--no-main',",
         "the user's own code must provide a main() function."])).
+
 optdb(oc_link_c,      allow_undefined,                 bool(yes),
     help("allow-undefined", [
         "Do not allow undefined symbols in shared libraries."])).
@@ -4592,6 +4574,14 @@ optdb(oc_link_c, shared_lib_not_executable,                bool(no),
 
 %---------------------%
 
+    % Options that apply only to Java.
+
+optdb(oc_link_java,   java_archive_command,            string("jar"),
+    arg_help("java-archive-command", "command", [
+        "Specify the command used to produce Java archive (JAR) files."])).
+
+%---------------------%
+
     % Options that apply only to C#.
 
 optdb(oc_link_csharp, sign_assembly,                   string(""),
@@ -4600,14 +4590,6 @@ optdb(oc_link_csharp, sign_assembly,                   string(""),
         "in the specified key file.",
         "(This option is only meaningful when generating library",
         "assemblies with the C# back-end.)"])).
-
-%---------------------%
-
-    % Options that apply only to Java.
-
-optdb(oc_link_java,   java_archive_command,            string("jar"),
-    arg_help("java-archive-command", "command", [
-        "Specify the command used to produce Java archive (JAR) files."])).
 
 %---------------------------------------------------------------------------%
 
@@ -4689,21 +4671,9 @@ optdb(oc_search, mer_lib_dirs_installed_library,      accumulating([]),
 
     % Build system options.
 
-optdb(oc_buildsys, extra_init_command,             maybe_string(no),
-    arg_help("extra-init-command", "command", [
-        "Specify a command to produce extra entries in the `.init'",
-        "file for a library.",
-        "The command will be passed the names of all of the source",
-        "files in the program or library, with the source file",
-        "containing the main module given first."])).
 optdb(oc_buildsys, install_prefix,                 string("/usr/local/"),
     arg_help("install-prefix", "dir", [
         "The directory under which to install Mercury libraries."])).
-optdb(oc_buildsys, detect_stdlib_grades,           bool(yes),
-    alt_help("detect-stdlib-grades",
-            ["detect-libgrades"], [
-        "Do not scan the installation directory to determine",
-        "which standard library grades are available."])).
 % XXX Add more descriptive names for the libgrade* options.
 optdb(oc_buildsys, library_install_grades,         accumulating(["stdlib"]),
     % XXX We should add --library-install-grade as the *preferred* name
@@ -4737,11 +4707,23 @@ optdb(oc_buildsys, only_globals_library_install_linkages, accumulating([]),
         "or static linking. This option can be specified multiple",
         "times. By default, libraries will be installed for",
         "both shared and static linking."])).
+optdb(oc_buildsys, detect_stdlib_grades,           bool(yes),
+    alt_help("detect-stdlib-grades",
+            ["detect-libgrades"], [
+        "Do not scan the installation directory to determine",
+        "which standard library grades are available."])).
 optdb(oc_buildsys, libgrade_install_check,         bool(yes),
     help("libgrade-install-check", [
         "Do not check that libraries have been installed before",
         "attempting to use them. (This option is meaningful only with",
         "QUOTE", "`mmc --make'.)"])).
+optdb(oc_buildsys, extra_init_command,             maybe_string(no),
+    arg_help("extra-init-command", "command", [
+        "Specify a command to produce extra entries in the `.init'",
+        "file for a library.",
+        "The command will be passed the names of all of the source",
+        "files in the program or library, with the source file",
+        "containing the main module given first."])).
 optdb(oc_buildsys, extra_library_header,           accumulating([]),
     alt_arg_help("extra-library-header",
             ["extra-lib-header"], "file", [
@@ -4865,26 +4847,40 @@ optdb(oc_config,   max_jump_table_size,                 int(0),
 
     % Options reserved form Mercury.config files.
 
+optdb(oc_mconfig,  mkinit_command,                  string("mkinit"),
+    priv_arg_help("mkinit-command", "command", [])).
+
+optdb(oc_mconfig, target_arch,                      string(""),
+    priv_arg_help("target-arch", "architecture", [])).
+
+optdb(oc_mconfig,  executable_file_extension,       string(""),
+    priv_arg_help("executable-file-extension", "extension", [])).
+optdb(oc_mconfig,  library_extension,               string(".a"),
+    priv_arg_help("library-extension", "extension", [])).
+optdb(oc_mconfig,  shared_library_extension,        string(".so"),
+    % The `mmc' script will override the default with a value
+    % determined at configuration time.
+    % XXX *Which* "configuration time" does this mean?
+    priv_arg_help("shared-library-extension", "extension", [])).
+
 optdb(oc_mconfig,  create_archive_command,          string("ar"),
     priv_arg_help("create-archive-command", "command", [])).
 optdb(oc_mconfig,  create_archive_command_flags,    accumulating([]), % "cr"
     priv_arg_help("create-archive-command-flags", "flags", [])).
 optdb(oc_mconfig,  create_archive_command_output_flag, string(""),
     priv_arg_help("create-archive-command-output-flag", "flag", [])).
+optdb(oc_mconfig,  ranlib_command,                  string(""),
+    priv_arg_help("ranlib-command", "command", [])).
+optdb(oc_mconfig,  ranlib_flags,                    string(""),
+    priv_arg_help("ranlib-flags", "flags", [])).
+
 optdb(oc_mconfig,  demangle_command,                string("mdemangle"),
     priv_arg_help("demangle-command", "command", [])).
-optdb(oc_mconfig,  executable_file_extension,       string(""),
-    priv_arg_help("executable-file-extension", "extension", [])).
 optdb(oc_mconfig,  filtercc_command,                string("mfiltercc"),
     priv_arg_help("filtercc-command", "command", [])).
 optdb(oc_config,   filterjavac_command,             string("mfilterjavac"),
     priv_arg_help("filterjavac-command", "command", [])).
-optdb(oc_mconfig,  hwloc_libs,                      string(""),
-    priv_arg_help("hwloc-libs", "XXX document me", [])).
-optdb(oc_mconfig,  hwloc_static_libs,               string(""),
-    priv_arg_help("hwloc-static-libs", "XXX document me", [])).
-optdb(oc_mconfig,  library_extension,               string(".a"),
-    priv_arg_help("library-extension", "extension", [])).
+
 optdb(oc_mconfig,  linker_allow_undefined_flag,     string(""),
     priv_arg_help("linker-allow-undefined-flag", "flag", [])).
 optdb(oc_mconfig,  linker_debug_flags,              string("-g"),
@@ -4915,23 +4911,7 @@ optdb(oc_mconfig,  linker_thread_flags,             string(""),
     priv_arg_help("linker-thread-flags", "flags", [])).
 optdb(oc_mconfig,  linker_trace_flags,              string(""),
     priv_arg_help("linker-trace-flags", "flags", [])).
-optdb(oc_mconfig,  math_lib,                        string(""),
-    priv_arg_help("math-lib", "library", [])).
-optdb(oc_mconfig,  mkinit_command,                  string("mkinit"),
-    priv_arg_help("mkinit-command", "command", [])).
-optdb(oc_mconfig,  ranlib_command,                  string(""),
-    priv_arg_help("ranlib-command", "command", [])).
-optdb(oc_mconfig,  ranlib_flags,                    string(""),
-    priv_arg_help("ranlib-flags", "flags", [])).
-optdb(oc_mconfig,  readline_libs,                   string(""),
-    priv_arg_help("readline-libs", "XXX document me", [])).
-optdb(oc_mconfig,  shared_library_extension,        string(".so"),
-    % The `mmc' script will override the default with a value
-    % determined at configuration time.
-    % XXX *Which* "configuration time" does this mean?
-    priv_arg_help("shared-library-extension", "extension", [])).
-optdb(oc_mconfig,  shared_libs,                     string(""),
-    priv_arg_help("shared-libs", "XXX document me", [])).
+
 optdb(oc_mconfig,  shlib_linker_debug_flags,        string("-g"),
     priv_arg_help("shlib-linker-debug-flags", "flags", [])).
 optdb(oc_mconfig,  shlib_linker_install_name_flag,  string("-install_name "),
@@ -4950,16 +4930,26 @@ optdb(oc_mconfig,  shlib_linker_trace_flags,        string(""),
     priv_arg_help("shlib-linker-trace-flags", "flags", [])).
 optdb(oc_mconfig,  shlib_linker_use_install_name,   bool(no),
     priv_help("shlib-linker-use-install-name", [])).
+
+optdb(oc_mconfig,  hwloc_libs,                      string(""),
+    priv_arg_help("hwloc-libs", "XXX document me", [])).
+optdb(oc_mconfig,  hwloc_static_libs,               string(""),
+    priv_arg_help("hwloc-static-libs", "XXX document me", [])).
+optdb(oc_mconfig,  math_lib,                        string(""),
+    priv_arg_help("math-lib", "library", [])).
+optdb(oc_mconfig,  readline_libs,                   string(""),
+    priv_arg_help("readline-libs", "XXX document me", [])).
+optdb(oc_mconfig,  shared_libs,                     string(""),
+    priv_arg_help("shared-libs", "XXX document me", [])).
 optdb(oc_mconfig,  thread_libs,                     string(""),
     priv_arg_help("thread-libs", "library", [])).
 optdb(oc_mconfig,  trace_libs,                      string(""),
     priv_arg_help("trace-libs", "library", [])).
+
 optdb(oc_mconfig,  install_method,                  string("external"),
     priv_arg_help("install-method", "XXX document me", [])).
 optdb(oc_mconfig,  use_symlinks,                    bool(yes),
     priv_help("use-symlinks", [])).
-optdb(oc_mconfig, target_arch,                      string(""),
-    priv_arg_help("target-arch", "architecture", [])).
 
 %---------------------------------------------------------------------------%
 
@@ -5012,6 +5002,10 @@ optdb(oc_dev_ctrl,   compute_goal_modes,               bool(no),
     priv_help("compute-goal-modes", [
         "Compute goal modes."])).
 optdb(oc_dev_ctrl,   smart_recompilation,              bool(no),
+    % Even if this option is set to `yes', smart recompilation may have been
+    % disabled with io_set_disable_smart_recompilation. Before using the value
+    % of this option, call io_get_disable_smart_recompilation to see
+    % whether this has been done.
     help("smart-recompilation", [
         "When compiling, write program dependency information",
         "to be used to avoid unnecessary recompilations if an",
@@ -5031,7 +5025,9 @@ optdb(oc_dev_ctrl, disable_mmsc_pneg,               bool(no),
 optdb(oc_dev_ctrl, disable_mmsc_cut,                bool(no),
     priv_help("disable-mm-cut", [])).
 optdb(oc_dev_ctrl, disable_trail_ops,               bool(no),
-    priv_help("disable-trail-ops", [])).
+    priv_help("disable-trail-ops", [
+        "This option can be used to analyze",
+        "the performance effects of trailing."])).
 optdb(oc_dev_ctrl, type_check_using_constraints,    bool(no),
     priv_help("type-check-constraints", [
         "Use the constraint based type checker instead of the old one."])).
@@ -5154,6 +5150,22 @@ optdb(oc_dev_ctrl, compiler_sufficiently_recent,       bool(no),
         "allow-non-contig-for-2025-06-01"], [
         "Is the compiler sufficiently recent to contain the new feature",
         "or bugfix referred to by each name?"])).
+% These options are provided for use by implementors who want to compare
+% a new way of doing something with the old way. The idea is that
+% the code that switches between the two ways should consult one (or more)
+% of these options and make its decision accordingly.
+%
+% Experiment[1-5] are booleans; experiment itself is a string.
+%
+% The intention is that most use of these options is within developer
+% workspaces, with rare examples of code using some of these options
+% being committed, but only for short lengths of time (a week or two at most;
+% enough for all members of a team to try out the experiment).
+%
+% Of course, a developer could always create a purpose-specific option
+% to control their code, but adding an option requires recompiling
+% most of the modules in the compiler. Having these options permanently here
+% should reduce the need for that.
 optdb(oc_dev_ctrl, experiment,                         string(""),
     priv_arg_help("experiment", "experiment_name", [])).
 optdb(oc_dev_ctrl, experiment1,                        bool(no),
@@ -5322,9 +5334,14 @@ optdb(oc_dev_dump,   dump_options_file,                string(""),
     % - but which can be command-line enabled by developers for experiments.
     % OR we could just delete the possibility of those experiments,
     % whose time has long passed.
+    %
+    % For some of these options, setting them to non-default values
+    % can result in programs that do not link, or programs that dump core.
 
 optdb(oc_internal, pre_implicit_parallelism_simplify,    bool(no),
-    priv_help("pre-implicit-parallelism-simplify", [])).
+    priv_help("pre-implicit-parallelism-simplify", [
+        "Run the simplification pass before the implicit parallelism pass",
+        "to ensure that the HLDS more closely matches the feedback data."])).
 optdb(oc_internal, type_layout,                          bool(yes),
     priv_help("type-layout", [
         "Don't output type_ctor_layout structures or references to them.",
@@ -5356,11 +5373,14 @@ optdb(oc_internal, put_commit_in_own_func,              bool(no),
         "since longjmp() may clobber any non-volatile local vars",
         "in the function that called setjmp()."])).
 optdb(oc_internal, backend_foreign_languages,       accumulating([]),
+    % The foreign programming languages that this backend can interface to.
     % The backend_foreign_languages option depends on the target,
     % and is set in handle_options, BUT can be set on the command line.
     % It makes no sense to do so, but ...
     priv_arg_help("backend-foreign-languages", "{c/c#/csharp/java}", [])).
-optdb(oc_internal, stack_trace,                     bool(no), no_help).
+optdb(oc_internal, stack_trace,                     bool(no),
+    unnamed_help(["Generate the stack layout information required to do",
+        "a stack trace."])).
 optdb(oc_internal, basic_stack_layout,              bool(no),
     priv_help("basic-stack-layout", [
         "Generate the simple stack_layout structures required",
@@ -5377,29 +5397,91 @@ optdb(oc_internal, trace_stack_layout,              bool(no),
     priv_help("trace-stack-layout", [
         "Generate the stack_layout structures required for",
         "execution tracing."])).
+% Use an alternate calculation of liveness where the typeinfo for
+% a type variable must live at any point in the body of the procedure
+% at which a live variable's type includes that type variable.
+%
+% Although this option governs whether the body of a procedure uses
+% this liveness calculation, it is not the only consideration we have to
+% take into account when deciding on the interface of any procedure
+% whose address may be taken. We must include typeinfos describing
+% the types of all arguments in the interface of a procedure if either
+% this option is set *or* the procedure's address may be taken, otherwise,
+% the layout structure we include in closures using that procedure
+% may not have all the information required to reconstruct the types
+% of all the values inside the closure.
+%
+% The only place in the compiler that should look at this option is
+% the predicate body_should_use_typeinfo_liveness in hlds_pred.m;
+% everything else, including the predicates deciding interface
+% typeinfo liveness, should go through there.
 optdb(oc_internal, body_typeinfo_liveness,          bool(no),
     priv_help("body-typeinfo-liveness", [
         "Ensure that whenever a variable whose type contains",
         "a type variable is live, the type_info for that type variable",
         "is available."])).
+% Should be set to yes if the target back end guarantees that
+% comparing two values for equality, at least one of which is a constant,
+% can be done by casting them both to integers and comparing the integers
+% for equality.
 optdb(oc_internal, can_compare_constants_as_ints,   bool(no),
     priv_help("can-compare-constants-as-ints", [])).
+% Should be set to yes if the test of whether two input arguments
+% are object identical should be done by casting the arguments to a
+% generic pointer type. Otherwise they will be cast to integers.
 optdb(oc_internal, pretest_equality_cast_pointers,  bool(no),
     priv_help("pretest-equality-cast-pointers", [])).
 optdb(oc_internal, delay_partial_instantiations,    bool(no),
     priv_help("delay-partial-instantiations", [])).
+
 optdb(oc_internal, allow_defn_of_builtins,          bool(no),
-    priv_help("allow-defn-of-builtins", [])).
+    priv_help("allow-defn-of-builtins", [
+        "Do not generate errors for definitions of builtin predicates.",
+        "When a new builtin is introduced, the installed compiler won't",
+        "know about it, and thus when it sees its declaration, it wants a",
+        "definition, but when the modified compiler is bootstrapped,",
+        "it would normally generate an error when it sees that very same",
+        "definition in the library (usually in builtin.m or",
+        "private_builtin.m). When this option is set, it allows such",
+        "definitions. Once the modified compiler is installed on all",
+        "relevant machines, the option can be turned off again."])).
+% optdb(oc_internal, special_preds,                   bool(yes),
+%   priv_help("allow-defn-of-builtins", [
+%       "Do not generate unify and compare preds. For measurement only.",
+%       "Code generated with this set to `no' is unlikely to actually work.",
+%       "Disabled to allow the code paths for generating special preds",
+%       "to be simplified. If this option is ever needed again, which",
+%       "I (zs) do not think is likely, it should be implemented",
+%       "differently: by generating the special predicates, and then",
+%       "not writing them out. The logic for *that* should be a lot",
+%       "simpler."])).
 optdb(oc_internal, type_ctor_info,                  bool(yes),
-    priv_help("type-ctor-info", [])).
+    priv_help("type-ctor-info", [
+        "Do not generate type_ctor_info structures. For measurement only;",
+        "if you turn this off, then you're unlikely to be able to link."])).
 optdb(oc_internal, type_ctor_layout,                bool(yes),
-    priv_help("type-ctor-layout", [])).
+    priv_help("type-ctor-layout", [
+        "Do not generate type_ctor_layout structures. For measurement only;",
+        "if you turn this off, then you're unlikely to be able to link."])).
 optdb(oc_internal, type_ctor_functors,              bool(yes),
-    priv_help("type-ctor-functors", [])).
+    priv_help("type-ctor-functors", [
+        "Do not gGenerate type_ctor_functors structures.",
+        "For measurement only;",
+        "if you turn this off, then you're unlikely to be able to link."])).
 optdb(oc_internal, rtti_line_numbers,               bool(yes),
-    priv_help("rtti-line-numbers", [])).
+    priv_help("rtti-line-numbers", [
+        "Generate line number information in the RTTI when debugging is",
+        "enabled. For measurement only; if you turn this off, then the",
+        "debugger may dereference garbage pointers."])).
 optdb(oc_internal, new_type_class_rtti,             bool(no),
-    priv_help("new-type-class-rtti", [])).
+    priv_help("new-type-class-rtti", [
+        "Generate of new style static data structures",
+        "for runtime information about type classes.",
+        "These are not yet used. When we add code to generate the matching",
+        "dynamic data structures and switch over to use them, we won't",
+        "need this option anymore."])).
+% These two options are used to analyze the performance effects
+% of minimal model tabling.
 optdb(oc_internal, use_mmsc_pneg,                   bool(no), no_help).
 optdb(oc_internal, use_mmsc_cut,                    bool(no), no_help).
     % The size_* values below *must* be consistent with the corresponding
@@ -5424,15 +5506,15 @@ optdb(oc_internal, allow_multi_arm_switches,        bool(yes),
     priv_help("allow-multi-arm-switches", [
         "Do not allow the compiler to generate switches",
         "in which one arm handles more than one cons_id."])).
+optdb(oc_internal, reclaim_heap_on_failure,             bool_special,
+    priv_help("reclaim-heap-on-failure", [
+        "Combines the effect of the two options below."])).
 optdb(oc_internal, reclaim_heap_on_semidet_failure,     bool(yes),
     priv_help("reclaim-heap-on-semidet-failure", [
         "Do not reclaim heap on backtracking in semidet code."])).
 optdb(oc_internal, reclaim_heap_on_nondet_failure,      bool(yes),
     priv_help("reclaim-heap-on-nondet-failure", [
         "Do not reclaim heap on backtracking in nondet code."])).
-optdb(oc_internal, reclaim_heap_on_failure,             bool_special,
-    priv_help("reclaim-heap-on-failure", [
-        "Combines the effect of the two options above."])).
 optdb(oc_internal, max_specialized_do_call_closure,     int(5), no_help).
     % mercury.do_call_closure_N exists for N <= option_value;
     % set to -1 to disable. Should be less than or equal to
@@ -5447,8 +5529,12 @@ optdb(oc_internal, compare_specialization,              int(-1),
         "Generate quadratic instead of linear compare predicates for",
         "types with up to n function symbols. Higher values of n lead to",
         "faster but also bigger compare predicates."])).
-optdb(oc_internal, chosen_stdlib_dir,               maybe_string(no), no_help).
-optdb(oc_internal, default_globals,                    bool(no), no_help).
+optdb(oc_internal, chosen_stdlib_dir,              maybe_string(no), no_help).
+optdb(oc_internal, default_globals,                    bool(no),
+    unnamed_help([
+        "If set to 'yes', default_globals tells the main body of",
+        "handle_options.m that it is constructing the *default* globals,",
+        "after the initial construction of the *intended* globals failed."])).
 optdb(oc_internal, local_module_id,                 accumulating([]),
     priv_arg_help("local-module-id", "XXX document me", [])).
 optdb(oc_internal, generate_item_version_numbers,         bool(no),
