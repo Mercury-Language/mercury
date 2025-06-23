@@ -20,7 +20,7 @@
     % to the final form of this data structure.
 :- type help
     --->    no_help
-    ;       xgen_help(
+    ;       gen_help(
                 % Every character in this field is a short name of the option.
                 % The order of these short options here will be preserved
                 % in the output.
@@ -83,11 +83,11 @@
     % from the function symbol name.
     %
     % This design minimizes clutter in lists of help structures.
-    ;       xhelp(
+    ;       help(
                 h_long_name             :: string,
                 h_description           :: list(string)
             )
-    ;       xarg_help(
+    ;       arg_help(
                 hr_long_name            :: string,
                 % We will need to handle arg names of the form "{...}"
                 % and of the form "-..." specially, in that
@@ -95,94 +95,94 @@
                 hr_arg_name             :: string,
                 hr_description          :: list(string)
             )
-    ;       xpriv_help(
+    ;       priv_help(
                 ph_long_name            :: string,
                 ph_description          :: list(string)
             )
-    ;       xpriv_arg_help(
+    ;       priv_arg_help(
                 prh_long_name           :: string,
                 prh_arg_name            :: string,
                 prh_description         :: list(string)
             )
-    ;       xalt_help(
+    ;       alt_help(
                 ah_long_name            :: string,
                 ah_alt_long_names       :: list(string),
                 ah_description          :: list(string)
             )
-    ;       xalt_arg_align_help(
+    ;       alt_arg_align_help(
                 arlh_long_name          :: string,
                 arlh_arg_aligns         :: list(arg_align),
                 arlh_description        :: list(string)
             )
-    ;       xalt_align_help(
+    ;       alt_align_help(
                 alh_long_name           :: string,
                 alh_alt_long_names      :: list(string),
                 alh_aligned_text        :: string,
                 alh_description         :: list(string)
             )
-    ;       xno_align_help(
+    ;       no_align_help(
                 nlh_long_name           :: string,
                 nlh_aligned_text        :: string,
                 alh_no_aligned_text     :: string,  % for --no-long-name
                 nlh_description         :: list(string)
             )
-    ;       xpriv_alt_align_help(
+    ;       priv_alt_align_help(
                 palh_long_name          :: string,
                 palh_alt_long_names     :: list(string),
                 palh_aligned_text       :: string,
                 palh_description        :: list(string)
             )
-    ;       xshort_alt_align_help(
+    ;       short_alt_align_help(
                 salh_short_name         :: char,
                 salh_long_name          :: string,
                 salh_alt_long_names     :: list(string),
                 salh_aligned_text       :: string,
                 salh_description        :: list(string)
             )
-    ;       xalt_arg_help(
+    ;       alt_arg_help(
                 aah_long_name           :: string,
                 aah_alt_long_names      :: list(string),
                 aah_arg_name            :: string,
                 aah_description         :: list(string)
             )
-    ;       xpriv_alt_help(
+    ;       priv_alt_help(
                 pah_long_name           :: string,
                 pah_alt_long_names      :: list(string),
                 pah_description         :: list(string)
             )
-    ;       xpriv_alt_arg_help(
+    ;       priv_alt_arg_help(
                 paah_long_name          :: string,
                 paah_alt_long_names     :: list(string),
                 paah_arg_name           :: string,
                 paah_description        :: list(string)
             )
-    ;       xshort_help(
+    ;       short_help(
                 sh_short_name           :: char,
                 sh_long_name            :: string,
                 sh_alt_long_names       :: list(string),
                 sh_description          :: list(string)
             )
-    ;       xpriv_short_help(
+    ;       priv_short_help(
                 psh_short_name          :: char,
                 psh_long_name           :: string,
                 psh_alt_long_names      :: list(string),
                 psh_description         :: list(string)
             )
-    ;       xshort_arg_help(
+    ;       short_arg_help(
                 sah_short_name          :: char,
                 sah_long_name           :: string,
                 sah_alt_long_names      :: list(string),
                 sah_arg_name            :: string,
                 sah_description         :: list(string)
             )
-    ;       xpriv_short_arg_help(
+    ;       priv_short_arg_help(
                 psah_short_name         :: char,
                 psah_long_name          :: string,
                 psah_alt_long_names     :: list(string),
                 psah_arg_name           :: string,
                 psah_description        :: list(string)
             )
-    ;       xunnamed_help(
+    ;       unnamed_help(
                 % Help for an internal-use-only option that has no visible
                 % name, and therefore cannot be given on the command line
                 % even by developers.

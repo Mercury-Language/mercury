@@ -565,7 +565,7 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
             PublicOrPrivate = help_private,
             DescLines = []
         ;
-            Help = xunnamed_help(DescLines),
+            Help = unnamed_help(DescLines),
             % XXX It is quite likely that many options that do not have entries
             % in the long_table predicate, which therefore should be in optdb
             % with unnamed_help, are there with some other help structure,
@@ -575,7 +575,7 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
                 [s(option_name_indent), s(string(Option))], NameLine),
             cord.snoc(NameLine, !LineCord)
         ;
-            Help = xgen_help(ShortNames, LongName, AltLongNames,
+            Help = gen_help(ShortNames, LongName, AltLongNames,
                 PublicOrPrivate, DescLines),
             acc_short_option_names(Params, Option, no_arg, no_align,
                 ShortNames, !LineCord),
@@ -585,19 +585,19 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
                 AltLongNames, !LineCord)
         ;
             (
-                Help = xhelp(LongName, DescLines),
+                Help = help(LongName, DescLines),
                 MaybeArg = no_arg,
                 PublicOrPrivate = help_public
             ;
-                Help = xarg_help(LongName, ArgName, DescLines),
+                Help = arg_help(LongName, ArgName, DescLines),
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_public
             ;
-                Help = xpriv_help(LongName, DescLines),
+                Help = priv_help(LongName, DescLines),
                 MaybeArg = no_arg,
                 PublicOrPrivate = help_private
             ;
-                Help = xpriv_arg_help(LongName, ArgName, DescLines),
+                Help = priv_arg_help(LongName, ArgName, DescLines),
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_private
             ),
@@ -605,20 +605,20 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
                 LongName, !LineCord)
         ;
             (
-                Help = xalt_help(LongName, AltLongNames, DescLines),
+                Help = alt_help(LongName, AltLongNames, DescLines),
                 MaybeArg = no_arg,
                 PublicOrPrivate = help_public
             ;
-                Help = xalt_arg_help(LongName, AltLongNames, ArgName,
+                Help = alt_arg_help(LongName, AltLongNames, ArgName,
                     DescLines),
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_public
             ;
-                Help = xpriv_alt_help(LongName, AltLongNames, DescLines),
+                Help = priv_alt_help(LongName, AltLongNames, DescLines),
                 MaybeArg = no_arg,
                 PublicOrPrivate = help_private
             ;
-                Help = xpriv_alt_arg_help(LongName, AltLongNames, ArgName,
+                Help = priv_alt_arg_help(LongName, AltLongNames, ArgName,
                     DescLines),
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_private
@@ -629,22 +629,22 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
                 AltLongNames, !LineCord)
         ;
             (
-                Help = xshort_help(ShortName, LongName, AltLongNames,
+                Help = short_help(ShortName, LongName, AltLongNames,
                     DescLines),
                 MaybeArg = no_arg,
                 PublicOrPrivate = help_public
             ;
-                Help = xshort_arg_help(ShortName, LongName, AltLongNames,
+                Help = short_arg_help(ShortName, LongName, AltLongNames,
                     ArgName, DescLines),
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_public
             ;
-                Help = xpriv_short_help(ShortName, LongName, AltLongNames,
+                Help = priv_short_help(ShortName, LongName, AltLongNames,
                     DescLines),
                 MaybeArg = no_arg,
                 PublicOrPrivate = help_private
             ;
-                Help = xpriv_short_arg_help(ShortName, LongName, AltLongNames,
+                Help = priv_short_arg_help(ShortName, LongName, AltLongNames,
                     ArgName, DescLines),
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_private
@@ -657,11 +657,11 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
                 AltLongNames, !LineCord)
         ;
             (
-                Help = xalt_align_help(LongName, AltLongNames,
+                Help = alt_align_help(LongName, AltLongNames,
                     AlignedText, DescLines),
                 PublicOrPrivate = help_public
             ;
-                Help = xpriv_alt_align_help(LongName, AltLongNames,
+                Help = priv_alt_align_help(LongName, AltLongNames,
                     AlignedText, DescLines),
                 PublicOrPrivate = help_private
             ),
@@ -673,7 +673,7 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
             acc_long_option_names(Params, Option, MaybeArg, no_align,
                 AltLongNames, !LineCord)
         ;
-            Help = xshort_alt_align_help(ShortName, LongName, AltLongNames,
+            Help = short_alt_align_help(ShortName, LongName, AltLongNames,
                 AlignedText, DescLines),
             PublicOrPrivate = help_public,
             acc_short_option_name(Params, Option, no_arg,
@@ -684,11 +684,11 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
             acc_long_option_names(Params, Option, no_arg, no_align,
                 AltLongNames, !LineCord)
         ;
-            Help = xno_align_help(LongName, AlignedText, NoAlignedText,
+            Help = no_align_help(LongName, AlignedText, NoAlignedText,
                 DescLines),
             PublicOrPrivate = help_public,
             expect(is_bool(OptionData), $pred,
-                "unexpected use of xno_align_help"),
+                "unexpected use of no_align_help"),
             ParamsNN = Params ^ op_negate := do_not_negate,
             FirstLine0 = long_option_name_line(ParamsNN, Option, no_arg,
                 LongName),
@@ -699,7 +699,7 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
             cord.snoc(FirstLine, !LineCord),
             cord.snoc(SecondLine, !LineCord)
         ;
-            Help = xalt_arg_align_help(LongName, ArgAligns, DescLines),
+            Help = alt_arg_align_help(LongName, ArgAligns, DescLines),
             PublicOrPrivate = help_public,
             % In this case, we add *different* aligned text to each line.
             list.foldl(acc_arg_align_text(Params, Option, LongName),
@@ -1224,28 +1224,28 @@ get_main_long_name(Option, MaybeLongName) :-
     optdb(_, Option, _, Help),
     (
         ( Help = no_help
-        ; Help = xunnamed_help(_)
+        ; Help = unnamed_help(_)
         ),
         MaybeLongName = no
     ;
-        ( Help = xgen_help(_, LongName, _, _, _)
-        ; Help = xhelp(LongName, _)
-        ; Help = xarg_help(LongName, _, _)
-        ; Help = xpriv_help(LongName, _)
-        ; Help = xpriv_arg_help(LongName, _, _)
-        ; Help = xalt_help(LongName, _, _)
-        ; Help = xalt_arg_help(LongName, _, _, _)
-        ; Help = xpriv_alt_help(LongName, _, _)
-        ; Help = xpriv_alt_arg_help(LongName, _, _, _)
-        ; Help = xshort_help(_, LongName, _, _)
-        ; Help = xshort_arg_help(_, LongName, _, _, _)
-        ; Help = xpriv_short_help(_, LongName, _, _)
-        ; Help = xpriv_short_arg_help(_, LongName, _, _, _)
-        ; Help = xalt_align_help(LongName, _, _, _)
-        ; Help = xpriv_alt_align_help(LongName, _, _, _)
-        ; Help = xshort_alt_align_help(_, LongName, _, _, _)
-        ; Help = xno_align_help(LongName, _, _, _)
-        ; Help = xalt_arg_align_help(LongName, _, _)
+        ( Help = gen_help(_, LongName, _, _, _)
+        ; Help = help(LongName, _)
+        ; Help = arg_help(LongName, _, _)
+        ; Help = priv_help(LongName, _)
+        ; Help = priv_arg_help(LongName, _, _)
+        ; Help = alt_help(LongName, _, _)
+        ; Help = alt_arg_help(LongName, _, _, _)
+        ; Help = priv_alt_help(LongName, _, _)
+        ; Help = priv_alt_arg_help(LongName, _, _, _)
+        ; Help = short_help(_, LongName, _, _)
+        ; Help = short_arg_help(_, LongName, _, _, _)
+        ; Help = priv_short_help(_, LongName, _, _)
+        ; Help = priv_short_arg_help(_, LongName, _, _, _)
+        ; Help = alt_align_help(LongName, _, _, _)
+        ; Help = priv_alt_align_help(LongName, _, _, _)
+        ; Help = short_alt_align_help(_, LongName, _, _, _)
+        ; Help = no_align_help(LongName, _, _, _)
+        ; Help = alt_arg_align_help(LongName, _, _)
         ),
         MaybeLongName = yes(LongName)
     ).
