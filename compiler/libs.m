@@ -23,6 +23,7 @@
 :- include_module compute_grade.
 :- include_module trace_params.
 :- include_module color_schemes.
+:- include_module option_categories.
 :- include_module optdb_help.
 :- include_module print_help.
 
