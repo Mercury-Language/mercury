@@ -1,11 +1,12 @@
+# vim: ts=4 sw=4 expandtab ft=sh
 #
-# This file has no hash-bang line since it isn't intended to be executable,
+# This file has no hash-bang line since it isn't intended to be executable;
 # instead it is 'sourced' by other scripts.
 #
 # @configure_input@
 #---------------------------------------------------------------------------#
 # Copyright (C) 2003-2004, 2006-2007, 2010, 2012 The University of Melbourne.
-# Copyright (C) 2013, 2015, 2016, 2018 The Mercury team.
+# Copyright (C) 2013, 2015, 2016, 2018, 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -14,14 +15,19 @@
 #
 # Configuration file for the Melbourne Mercury Compiler.
 #
-# This file is used instead of Mercury.config when building the
-# stage1 compiler. It should only refer to options which are
-# understood by the installed compilers.
+# We use this file instead of Mercury.config when building stage 1.
+# It should refer only to options which are understood by the
+# installed compiler.
 #
-# Environment variables: MERCURY_STDLIB_DIR, MERCURY_C_COMPILER,
-# MERCURY_DEFAULT_GRADE, MERCURY_DEFAULT_OPT_LEVEL,
-# MERCURY_JAVA_COMPILER, MERCURY_JAVA_INTERPRETER,
-# MERCURY_CSHARP_COMPILER.
+# Environment variables:
+#
+#   MERCURY_CSHARP_COMPILER
+#   MERCURY_C_COMPILER
+#   MERCURY_DEFAULT_GRADE
+#   MERCURY_DEFAULT_OPT_LEVEL
+#   MERCURY_JAVA_COMPILER
+#   MERCURY_JAVA_INTERPRETER
+#   MERCURY_STDLIB_DIR
 
 # These settings won't override settings in the environment.
 MERCURY_STDLIB_DIR=@LIBDIR@
@@ -40,95 +46,104 @@ MERCURY_TARGET_ARCH=@FULLARCH@
 # be used by the substitution for SHARED_LIBS.
 MATH_LIB=$(MERCURY_MATH_LIB)
 
-# This needed for Java classpath.
-INSTALL_JAVA_LIBRARY_DIR=$(MERCURY_STDLIB_DIR)/lib/java
-
-# If you change these, you will also need to change the files indicated in
-# scripts/c2init.in.
+# If you change these, you will also need to change the files
+# indicated in scripts/c2init.in.
 RT_LIB_NAME=mer_rt
 STD_LIB_NAME=mer_std
 
 DEFAULT_MERCURY_LINKAGE=@DEFAULT_LINKAGE@
 
-# The default optimization level should be after
-# all the options that describe the machine configuration.
-DEFAULT_MCFLAGS=\
-		@ALL_LOCAL_C_INCL_DIR_MMC_OPTS@ \
-		@ALL_LOCAL_C_LIB_DIR_MMC_OPTS@ \
-		--cc "$(MERCURY_C_COMPILER)" \
-		--c-compiler-type "$(MERCURY_C_COMPILER_TYPE)" \
-		--java-compiler "$(MERCURY_JAVA_COMPILER)" \
-		--java-interpreter "$(MERCURY_JAVA_INTERPRETER)" \
-		--csharp-compiler "$(MERCURY_CSHARP_COMPILER)" \
-		--csharp-compiler-type "$(MERCURY_CSHARP_COMPILER_TYPE)" \
-		--cli-interpreter "$(MERCURY_CLI_INTERPRETER)" \
-		--grade "$(MERCURY_DEFAULT_GRADE)" \
-		--cflags-for-optimization "@CFLAGS_FOR_OPT@" \
-		--cflags-for-warnings "@CFLAGS_FOR_WARNINGS@" \
-		--cflags-for-threads "@CFLAGS_FOR_THREADS@" \
-		--cflags-for-debug "@CFLAGS_FOR_DEBUG@" \
-		--cflags-for-regs "@CFLAGS_FOR_REGS@" \
-		--cflags-for-gotos "@CFLAGS_FOR_GOTOS@" \
-		--cflags-for-pic "@CFLAGS_FOR_PIC@" \
-		--c-flag-to-name-object-file "@OBJFILE_OPT@" \
-		--java-classpath "$(INSTALL_JAVA_LIBRARY_DIR)/$(RT_LIB_NAME).jar" \
-		--java-classpath "$(INSTALL_JAVA_LIBRARY_DIR)/$(STD_LIB_NAME).jar" \
-		--java-flags "@JAVAC_FLAGS_FOR_HEAP_SIZE_CONFIG@" \
-		--object-file-extension ".@OBJ_SUFFIX@" \
-		--pic-object-file-extension ".@EXT_FOR_PIC_OBJECTS@" \
-		--executable-file-extension "@EXT_FOR_EXE@" \
-		--shared-library-extension ".@EXT_FOR_SHARED_LIB@" \
-		--library-extension ".@LIB_SUFFIX@" \
-		--create-archive-command "@AR@" \
-		--create-archive-command-output-flag "@AR_LIBFILE_OPT@" \
-		--create-archive-command-flags "@ARFLAGS@" \
-		--ranlib-command "@RANLIB@" \
-		--ranlib-flags "@RANLIBFLAGS@" \
-		--link-executable-command "@LINK_EXE@" \
-		--link-shared-lib-command "@LINK_SHARED_OBJ@" \
-		--trace-libs "@TRACE_BASE_LIBS_SYSTEM@" \
-		--thread-libs "@THREAD_LIBS@" \
-		--shared-libs "@SHARED_LIBS@" \
-		--math-lib "@MATH_LIB@" \
-		--readline-libs "@READLINE_LIBRARIES@" \
-		--linker-opt-separator "@LINK_OPT_SEP@" \
-		--linker-thread-flags "@LDFLAGS_FOR_THREADS@" \
-		--shlib-linker-thread-flags "@LD_LIBFLAGS_FOR_THREADS@" \
-		--linker-trace-flags "@LDFLAGS_FOR_TRACE@" \
-		--shlib-linker-trace-flags "@LD_LIBFLAGS_FOR_TRACE@" \
-		--linker-static-flags "@LD_STATIC_FLAGS@" \
-		--linker-strip-flag "@LD_STRIP_FLAG@" \
-		--linker-debug-flags "@LDFLAGS_FOR_DEBUG@" \
-		--shlib-linker-debug-flags "@LD_LIBFLAGS_FOR_DEBUG@" \
-		--linker-link-lib-flag "@LINK_LIB@" \
-		--linker-link-lib-suffix "@LINK_LIB_SUFFIX@" \
-		--shlib-linker-link-lib-flag "@LINK_LIB@" \
-		--shlib-linker-link-lib-suffix "@LINK_LIB_SUFFIX@" \
-		--linker-path-flag "@LIB_LIBPATH@" \
-		--linker-rpath-flag "@EXE_RPATH_OPT@" \
-		--linker-rpath-separator "@EXE_RPATH_SEP@" \
-		--shlib-linker-rpath-flag "@SHLIB_RPATH_OPT@" \
-		--shlib-linker-rpath-separator "@SHLIB_RPATH_SEP@" \
-		@SHLIB_USE_INSTALL_NAME@ \
-		--shlib-linker-install-name-flag "@SHLIB_INSTALL_NAME_FLAG@" \
-		--linker-allow-undefined-flag "@ALLOW_UNDEFINED@" \
-		--linker-error-undefined-flag "@ERROR_UNDEFINED@" \
-		--target-arch "$(MERCURY_TARGET_ARCH)" \
-		--install-prefix "@prefix@" \
-		--num-real-r-regs "@NUM_REAL_R_REGS@" \
-		--num-real-r-temps "@NUM_REAL_R_TEMPS@" \
-		--conf-low-tag-bits "@LOW_TAG_BITS@" \
-		--bits-per-word "@BITS_PER_WORD@" \
-		--bytes-per-word "@BYTES_PER_WORD@" \
-		--sync-term-size "@SYNC_TERM_SIZE@" \
-		--host-env-type "@HOST_ENV_TYPE@" \
-		--target-env-type "@TARGET_ENV_TYPE@" \
-		@RESTRICTED_COMMAND_LINE_OPT@ \
-		@HAVE_DELAY_SLOT@ \
-		@HAVE_BOXED_FLOATS@ \
-		@HAVE_BOXED_INT64S@ \
-		@MCFLAGS_FOR_CC@ \
-		$(MERCURY_DEFAULT_OPT_LEVEL) \
-		@MMC_USE_SYMLINKS_OPT@ \
-		@LIBGRADE_OPTS@ 
+DEFAULT_GRADEFLAGS=--grade "$(MERCURY_DEFAULT_GRADE)"
 
+# XXX Apparently, @LIBGRADE_OPTS@ does not need to be part of DEFAULT_MCFLAGS.
+
+# The default optimization level should be after
+# all the options that describe the machine configuration. XXX Why?
+#
+# The indentation should give an idea of the different groups
+# that these autoconfigured values can be classified into.
+DEFAULT_MCFLAGS=\
+    @ALL_LOCAL_C_INCL_DIR_MMC_OPTS@ \
+    @ALL_LOCAL_C_LIB_DIR_MMC_OPTS@ \
+    --cc "$(MERCURY_C_COMPILER)" \
+        --c-compiler-type "$(MERCURY_C_COMPILER_TYPE)" \
+        --java-compiler "$(MERCURY_JAVA_COMPILER)" \
+        --java-interpreter "$(MERCURY_JAVA_INTERPRETER)" \
+        --csharp-compiler "$(MERCURY_CSHARP_COMPILER)" \
+        --csharp-compiler-type "$(MERCURY_CSHARP_COMPILER_TYPE)" \
+        --cli-interpreter "$(MERCURY_CLI_INTERPRETER)" \
+    --java-flags "@JAVAC_FLAGS_FOR_HEAP_SIZE_CONFIG@" \
+    --cflags-for-optimization "@CFLAGS_FOR_OPT@" \
+        --cflags-for-warnings "@CFLAGS_FOR_WARNINGS@" \
+        --cflags-for-threads "@CFLAGS_FOR_THREADS@" \
+        --cflags-for-debug "@CFLAGS_FOR_DEBUG@" \
+        --cflags-for-sanitizers "@CFLAGS_FOR_SANITIZERS@" \
+        --cflags-for-regs "@CFLAGS_FOR_REGS@" \
+        --cflags-for-gotos "@CFLAGS_FOR_GOTOS@" \
+        --cflags-for-pic "@CFLAGS_FOR_PIC@" \
+        --cflags-for-lto "@CFLAGS_FOR_LTO@" \
+        --c-flag-to-name-object-file "@OBJFILE_OPT@" \
+    --object-file-extension ".@OBJ_SUFFIX@" \
+        --pic-object-file-extension ".@EXT_FOR_PIC_OBJECTS@" \
+        --executable-file-extension "@EXT_FOR_EXE@" \
+        --shared-library-extension ".@EXT_FOR_SHARED_LIB@" \
+        --library-extension ".@LIB_SUFFIX@" \
+    --create-archive-command "@AR@" \
+        --create-archive-command-output-flag "@AR_LIBFILE_OPT@" \
+        --create-archive-command-flags "@ARFLAGS@" \
+        --ranlib-command "@RANLIB@" \
+        --ranlib-flags "@RANLIBFLAGS@" \
+    --link-executable-command "@LINK_EXE@" \
+        --link-shared-lib-command "@LINK_SHARED_OBJ@" \
+        --strip-executable-command "@STRIP_EXE@" \
+        --strip-executable-shared-flags "@STRIP_EXE_SHARED_FLAGS@" \
+        --strip-executable-static-flags "@STRIP_EXE_STATIC_FLAGS@" \
+    --trace-libs "@TRACE_BASE_LIBS_SYSTEM@" \
+        --thread-libs "@THREAD_LIBS@" \
+        --shared-libs "@SHARED_LIBS@" \
+        --math-lib "@MATH_LIB@" \
+        --readline-libs "@READLINE_LIBRARIES@" \
+        --hwloc-libs "@HWLOC_LIBS@" \
+        --hwloc-static-libs "@HWLOC_STATIC_LIBS@" \
+    --linker-debug-flags "@LDFLAGS_FOR_DEBUG@" \
+        --linker-link-lib-flag "@LINK_LIB@" \
+        --linker-link-lib-suffix "@LINK_LIB_SUFFIX@" \
+        --linker-lto-flags "@LDFLAGS_FOR_LTO@" \
+        --linker-opt-separator "@LINK_OPT_SEP@" \
+        --linker-path-flag "@LIB_LIBPATH@" \
+        --linker-rpath-flag "@EXE_RPATH_OPT@" \
+        --linker-rpath-separator "@EXE_RPATH_SEP@" \
+        --linker-sanitizer-flags "@LDFLAGS_FOR_SANITIZERS@" \
+        --linker-static-flags "@LD_STATIC_FLAGS@" \
+        --linker-strip-flag "@LD_STRIP_FLAG@" \
+        --linker-thread-flags "@LDFLAGS_FOR_THREADS@" \
+        --linker-trace-flags "@LDFLAGS_FOR_TRACE@" \
+        --shlib-linker-debug-flags "@LD_LIBFLAGS_FOR_DEBUG@" \
+        --shlib-linker-link-lib-flag "@LINK_LIB@" \
+        --shlib-linker-link-lib-suffix "@LINK_LIB_SUFFIX@" \
+        --shlib-linker-rpath-flag "@SHLIB_RPATH_OPT@" \
+        --shlib-linker-rpath-separator "@SHLIB_RPATH_SEP@" \
+        --shlib-linker-thread-flags "@LD_LIBFLAGS_FOR_THREADS@" \
+        --shlib-linker-trace-flags "@LD_LIBFLAGS_FOR_TRACE@" \
+        @SHLIB_USE_INSTALL_NAME@ \
+        --shlib-linker-install-name-flag "@SHLIB_INSTALL_NAME_FLAG@" \
+        --linker-allow-undefined-flag "@ALLOW_UNDEFINED@" \
+        --linker-error-undefined-flag "@ERROR_UNDEFINED@" \
+    --install-prefix "@PREFIX@" \
+    --default-opt-level "$(MERCURY_DEFAULT_OPT_LEVEL)" \
+    --host-env-type "@HOST_ENV_TYPE@" \
+        --target-arch "$(MERCURY_TARGET_ARCH)" \
+        --target-env-type "@TARGET_ENV_TYPE@" \
+        --num-real-r-regs "@NUM_REAL_R_REGS@" \
+        --num-real-r-temps "@NUM_REAL_R_TEMPS@" \
+        --conf-low-tag-bits "@LOW_TAG_BITS@" \
+        --bits-per-word "@BITS_PER_WORD@" \
+        --bytes-per-word "@BYTES_PER_WORD@" \
+        --sync-term-size "@SYNC_TERM_SIZE@" \
+    @RESTRICTED_COMMAND_LINE_OPT@ \
+    @INSTALL_METHOD_OPT@ \
+    @HAVE_DELAY_SLOT@ \
+    @HAVE_BOXED_FLOATS@ \
+    @HAVE_BOXED_INT64S@ \
+    @MCFLAGS_FOR_CC@ \
+    @MMC_USE_SYMLINKS_OPT@
