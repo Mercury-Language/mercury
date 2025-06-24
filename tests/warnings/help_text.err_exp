@@ -701,6 +701,10 @@ Verbosity options
         Find all the reasons why a module needs to be recompiled, not just the
         first. Implies `--verbose-recompilation'.
 
+    --verbose-commands
+        Output each external command before it is run. Note that some commands
+        will only be printed with `--verbose'.
+
     --show-pred-moveability <pred_or_func_name>
     --no-show-pred-moveability
     --show-pred-movability <pred_or_func_name>
@@ -711,10 +715,6 @@ Verbosity options
         includes listing the other predicates and/or functions that would have
         to be moved with them, and whether the move would cause unwanted
         coupling between the new module and the old.
-
-    --verbose-commands
-        Output each external command before it is run. Note that some commands
-        will only be printed with `--verbose'.
 
     PRIVATE OPTION
     --detailed-statistics

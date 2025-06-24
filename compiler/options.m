@@ -202,21 +202,21 @@
     % Return the options that warn about code that may not be
     % what the programmer intended.
     %
-:- func dodgy_code_warning_options = list(option).
+:- func dodgy_code_warning_bool_options = list(option).
 
     % Return the options that warn about code that may be
     % unnecessarily slower than the programmer intended.
     %
-:- func slow_code_warning_options = list(option).
+:- func slow_code_warning_bool_options = list(option).
 
     % Return the options that warn about issues that are only stylistic,
     % i.e. do not affect the implementation of the programmer's intention.
     %
-:- func style_warning_options = list(option).
+:- func style_warning_bool_options = list(option).
 
     % Return the options that request information from the compiler.
     %
-:- func info_request_options = list(option).
+:- func info_request_bool_options = list(option).
 
     % Return the set of options which are inconsequential as far as the
     % `--track-flags' option is concerned. That is, adding or removing such
@@ -446,7 +446,6 @@
     ;       output_compile_error_lines
     ;           verbose_recompilation
     ;           find_all_recompilation_reasons
-    ;           show_pred_movability
     ;       verbose_commands
 
     ;       report_cmd_line_args
@@ -659,6 +658,7 @@
     ;       inform_inferred_modes
     ;       inform_incomplete_color_scheme
     ;       inform_suboptimal_packing
+    ;       show_pred_movability
 
 % Options that request information in files.
     ;       show_definitions
@@ -2127,16 +2127,6 @@ optdb(oc_verbosity, find_all_recompilation_reasons,    bool(no),
     help("find-all-recompilation-reasons", [
         "Find all the reasons why a module needs to be recompiled,",
         "not just the first. Implies `--verbose-recompilation'."])).
-optdb(oc_verbosity, show_pred_movability,              accumulating([]),
-    alt_arg_help("show-pred-moveability",
-            ["show-pred-movability"], "pred_or_func_name", [
-        "Write out a short report on the effect of moving the code of",
-        "the named predicate or function (or the named several predicates",
-        "and/or functions, if the option is given several times)",
-        "to a new module. This includes listing the other predicates",
-        "and/or functions that would have to be moved with them, and",
-        "whether the move would cause unwanted coupling between",
-        "the new module and the old."])).
 optdb(oc_verbosity, verbose_commands,                  bool(no),
     help("verbose-commands", [
         "Output each external command before it is run.",
@@ -2843,6 +2833,16 @@ optdb(oc_inform,    inform_suboptimal_packing,         bool(no),
     help("inform-suboptimal-packing", [
         "Generate messages if the arguments of a data constructor",
         "could be packed more tightly if they were reordered."])).
+optdb(oc_verbosity, show_pred_movability,              accumulating([]),
+    alt_arg_help("show-pred-moveability",
+            ["show-pred-movability"], "pred_or_func_name", [
+        "Write out a short report on the effect of moving the code of",
+        "the named predicate or function (or the named several predicates",
+        "and/or functions, if the option is given several times)",
+        "to a new module. This includes listing the other predicates",
+        "and/or functions that would have to be moved with them, and",
+        "whether the move would cause unwanted coupling between",
+        "the new module and the old."])).
 
 %---------------------------------------------------------------------------%
 
@@ -5720,10 +5720,10 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             Option = inhibit_warnings,
             SpecialData = bool(Inhibit),
             bool.not(Inhibit, Enable),
-            DodgyOptions = dodgy_code_warning_options,
-            SlowOptions = slow_code_warning_options,
-            StyleOptions = style_warning_options,
-            InformOptions = info_request_options,
+            DodgyOptions = dodgy_code_warning_bool_options,
+            SlowOptions = slow_code_warning_bool_options,
+            StyleOptions = style_warning_bool_options,
+            InformOptions = info_request_bool_options,
             set_all_options_to(DodgyOptions,  bool(Enable), !OptionTable),
             set_all_options_to(SlowOptions,   bool(Enable), !OptionTable),
             set_all_options_to(StyleOptions,  bool(Enable), !OptionTable),
@@ -5732,7 +5732,7 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             Option = inhibit_style_warnings,
             SpecialData = bool(Inhibit),
             bool.not(Inhibit, Enable),
-            StyleOptions = style_warning_options,
+            StyleOptions = style_warning_bool_options,
             set_all_options_to(StyleOptions, bool(Enable), !OptionTable)
         ;
             Option = warn_non_tail_recursion,
@@ -6445,31 +6445,31 @@ handle_quoted_flag(Option, Flag, !OptionTable) :-
 
 %---------------------------------------------------------------------------%
 
-dodgy_code_warning_options = DodgyWarnOptions :-
+dodgy_code_warning_bool_options = DodgyWarnOptions :-
     FindOptionsPred =
         ( pred(Opt::out) is nondet :-
-            optdb(oc_warn_dodgy, Opt, _Data, _Help)
+            optdb(oc_warn_dodgy, Opt, bool(_), _Help)
         ),
     solutions(FindOptionsPred, DodgyWarnOptions).
 
-slow_code_warning_options = SlowWarnOptions :-
+slow_code_warning_bool_options = SlowWarnOptions :-
     FindOptionsPred =
         ( pred(Opt::out) is nondet :-
-            optdb(oc_warn_perf, Opt, _Data, _Help)
+            optdb(oc_warn_perf, Opt, bool(_), _Help)
         ),
     solutions(FindOptionsPred, SlowWarnOptions).
 
-style_warning_options = StyleWarnOptions :-
+style_warning_bool_options = StyleWarnOptions :-
     FindOptionsPred =
         ( pred(Opt::out) is nondet :-
-            optdb(oc_warn_style, Opt, _Data, _Help)
+            optdb(oc_warn_style, Opt, bool(_), _Help)
         ),
     solutions(FindOptionsPred, StyleWarnOptions).
 
-info_request_options = InfoRequestOptions :-
+info_request_bool_options = InfoRequestOptions :-
     FindOptionsPred =
         ( pred(Opt::out) is nondet :-
-            optdb(oc_inform, Opt, _Data, _Help)
+            optdb(oc_inform, Opt, bool(_), _Help)
         ),
     solutions(FindOptionsPred, InfoRequestOptions).
 

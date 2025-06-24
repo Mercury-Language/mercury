@@ -1929,9 +1929,12 @@ turn_off_all_only_codegen_warnings(HaltAtWarnSrcOpt, !Globals) :-
         map.lookup(!.OptionTable, HaltAtWarnSrcOpt, HaltAtWarn),
         map.set(halt_at_warn, HaltAtWarn, !OptionTable),
 
-        set_all_options_to(dodgy_code_warning_options, bool(no), !OptionTable),
-        set_all_options_to(style_warning_options, bool(no), !OptionTable),
-        set_all_options_to(info_request_options, bool(no), !OptionTable),
+        set_all_options_to(dodgy_code_warning_bool_options, bool(no),
+            !OptionTable),
+        set_all_options_to(style_warning_bool_options, bool(no),
+            !OptionTable),
+        set_all_options_to(info_request_bool_options, bool(no),
+            !OptionTable),
 
         globals.set_options(!.OptionTable, !Globals)
     ).
