@@ -8,111 +8,69 @@
 %---------------------------------------------------------------------------%
 %
 % File: options.m.
-% Main author: fjh.
+% Main author: zs.
 %
 % This modules defines the set of options accepted by the Mercury compiler.
-% The definition takes the form of the types and predicates that getopt.m
-% needs to parse command-line options.
 %
-% IMPORTANT NOTE: any changes to the options should be reflected in
-% at least four places, and maybe more, in this module, with the order
-% of options being the same in each of these places:
+% NOTE: any changes to the options should be reflected in two places,
 %
-% - Every option must of course must appear in the definition of
-%   the type "option" itself.
+% = the option type, and
+% - the optdb predicate.
 %
-% - Every option should have its default value defined in a clause of
-%   the optdef predicate.
+% The order of the options must be the same in both places, and this is
+% enforced by the require_switch_arms_in_type_order pragma on optdb.
 %
-%   For optimization options that should be set automatically at a specific
-%   optimization level, there should also be an entry in opt_level.
+% The clauses of the optdb predicate are formatted in blocks of clauses
+% without blank lines between them. (The blocks themselves are separated
+% by comments and blank lines.)
 %
-%   For optimization options that should be set automatically if --opt-space
-%   is given, there should also be an entry in opt_space.
+% Each block should contain all the options in one section of the help text,
+% as shown by print_help.m. The order of the blocks should reflect exactly
+% the order of those sections in the help text.
 %
-% - Every option should have a clause in the long_table predicate
-%   that converts the user-visible name of the option into its internal
-%   representation as a value in the options type. For options whose names
-%   include words that whose spelling differs in American vs British English,
-%   there should normally be one entry for each spelling. In the rare case
-%   that the option is used very frequently, there may also be an entry
-%   for the option in the short_option predicate.
+% The order of the options in each block should be chosen to make
+% the help text as easy to read as possible. This means that
 %
-% - Every option should have a description in one of the options_help_x
-%   predicates, with the right predicate again depending on what category
-%   of options the option belongs to.
+% - related options should be grouped together, and
+% - if the meaning of option A is required to understand the meaning
+%   of option B, then option A should be listed first.
+%
+% The list of long names (of the form "--option-name") as well as any
+% short names (of the form "-x") of each option are listed in its optdb clause.
+%
+% For options whose long names include words that whose spelling differs
+% in American vs British English, there should normally be one long name
+% for each spelling.
+%
+% If the full option name is long enough that typing it is burdensome,
+% then we often have one (or sometimes more) abbreviated versions of the name
+% as well.
+%
+% If an option has more than one long name, then
+%
+% - the non-abbreviated names should come before the abbreviated ones, and
+% - the versions using American spelling should come before the British ones.
 %
 % Each option should also be documented in the Mercury User's Guide,
-% which is in ../doc/user_guide.texi.
-%
-% Normally, the documentation in the users' guide is a copy of the help
-% message, but it may also have additional detail.
-%
-% For options that should not be visible to users, there should still be
-% a help message and an entry in the users' guide, for use by developers,
-% but these should be commented out.
-%
-% XXX We should move towards a new arrangement where we have just two areas
-% that need to be kept in sync:
-%
-% - the definition of the "option" type, and
-%
-% - the definition of a new predicate (named maybe opt_db)
-%   whose arguments are
-%
-%   - an option,
-%   - that option's option_category (this will be the first arg, for grouping),
-%   - that option's initial value, and
-%   - that option's help structure, with the names of any args separated out.
-%
-% The help structure itself will contain all the short and/or long names
-% of the option. (Having the option's initial value in this structure
-% will allow us, for accumulating and maybe options, to include the option name
-% only in the documentation of the positive version, and not in the
-% documentation of the negated version.)
-%
-% NOTE Unlike the current design, this would *require every option to be
-% documented*, even if the documentation is kept private.
-%
-% NOTE It would also enforce that the help text for an option include
-% the exact same set of option names as we give to getopt for that option.
-%
-% Invoking solutions on opt_db, we can process the result to
-% automatically generate
-%
-% - a map from short option names to options (ShortOptionMap),
-% - a map from long option names to options (LongOptionMap),and
-% - a list which maps each option to its initial value (OptionInitValuesList).
-%
-% We can then pass closures for map.search(ShortOptionMap),
-% map.search(LongOptionMap) and list.member(OptionInitValuesList)
-% as the inputs to getopt.
-% XXX getopt uses the last argument to create a map from option
-% to initial value, which we can easily construct directly.
-% We can, and should, modify getopt.m/getopt_io.m to allow this map to be
-% supplied directly, through new function symbols in the option_ops type.
-%
-% We can also process the result of invoking solutions on opt_db by
-%
-% - classifying each opt_db entry to one or other of the sections
-%   of the help text (a single section could contain e.g. both oc_warn_style
-%   options *and* the oc_warn_style_c options, if that is what we call
-%   the category of those oc_warn_ctrl options that control oc_warn_style
-%   options),
-%
-% - sorting the opt_db entries in each section, and
-%
-% - printing the help text of each section, with appropriate headings
-%   between the sections.
-%
-% Note that this would give a guiding principle for where new options
-% should be added to the option type. This would be at the point where
-% their help text should go, which should always be somewhere near,
-% and hopefully in a logical relation to, the options related to them.
+% which is in ../doc/user_guide.texi. Normally, the documentation
+% in the users' guide is a copy of the help message, but it may also have
+% additional detail.
+% XXX This section of the Users' guide should soon be generated automatically.
 %
 % XXX We should have a policy that says "when an option is supported
 % only on a subset of all backends, its help text should list the
 % *supported* backends, NOT the *unsupported* backends".
+%
+% The set of options enabled at each optimization level is controlled by
+% the predicate named opts_enabled_at_level. This is defined in
+% compiler/optimization_options.m, but it cannot be edited there,
+% because that module's source code is generated automatically. Instead,
+% you need to edit tools/make_optimization_options_end, and then execute
+% tools/make_optimization_options to update compiler/optimization_options.m
+% (and the part of this file between the INCLUDE_HANDLER_FILE_* markers).
+%
+% Likewise, the set of optimization options that should be set automatically
+% to implement --opt-space is controlled from make_optimization_options_end.
 %
 %---------------------------------------------------------------------------%
 
@@ -228,31 +186,18 @@
 
     % NOTE: ALL OPTIONS SHOULD BE DOCUMENTED!
     %
-    % Officially supported options should be documented both in the
-    % help message output by options_help/2, and also in the
-    % "invocation" chapter of doc/user_guide.texi.
+    % Officially supported options should always be documented.
     %
-    % Options which are not officially supported (e.g. those used
-    % internally by the Mercury implementation, those which are not
-    % sufficiently useful to be worth mentioning in the User Guide,
-    % or options for experimental features that are not yet stable
-    % enough to be officially supported should still be documented).
-    % The documentation can go either next to the option definition
-    % here, or as commented-out code in the appropriate subroutine
-    % of options_help/2.
+    % Options which are not officially supported, such as
     %
-    % NOTE: We should ensure that the order of the options
-    % is consistent in all the following places:
+    % - those used internally by the Mercury implementation,
+    % - those which are not sufficiently useful to be worth mentioning
+    %   in the User Guide, or
+    % - options for experimental features that are not yet stable
+    %   enough to be officially supported
     %
-    % - in this definition of the `option' type
-    % - in the clauses of the `optdef' predicate
-    % - in the clauses of `long_table' predicate
-    %   (not in the clauses of the `short_option' predicate, since
-    %   that is sorted alphabetically on the option letter)
-    % - in the special_handler predicate, if they appear there
-    % - in the help predicates.
+    % should still be documented, but the documentation should be private.
     %
-    % At the moment, there are considerable deviations from such consistency.
 :- type option
 
 % Help options.
