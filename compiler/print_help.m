@@ -236,9 +236,15 @@ all_chapters = AllChapters :-
         help_section("Controlling trace goals",
         [], [oc_tracegoal])),
 
-    ChapterDebug = one_level_chapter(
+    % Once ssdb debugging is publicly documented, we should replace these
+    % two chapters (the second of which is not printed for non-developers)
+    % with a single two-section chapter.
+    ChapterDebugMdb = one_level_chapter(
         help_section("Preparing code for mdb debugging",
         [], [oc_mdb, oc_mdb_dev])),
+    ChapterDebugSsdb = one_level_chapter(
+        help_section("Preparing code for ssdb debugging",
+        [], [oc_ssdb, oc_ssdb_dev])),
 
     ChapterProfiling = one_level_chapter(
         help_section("Preparing code for mdprof profiling",
@@ -364,7 +370,8 @@ all_chapters = AllChapters :-
         ChapterFileReq,
 
         ChapterTraceGoal,
-        ChapterDebug,
+        ChapterDebugMdb,
+        ChapterDebugSsdb,
         ChapterProfiling,
 
         ChapterOpt,

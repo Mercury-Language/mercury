@@ -385,11 +385,8 @@
     ;       use_alloc_regions
     ;       use_regions_debug
     ;       use_regions_profiling
-    ;           ssdb_trace_level
-    ;           link_ssdb_libs
 
     % Grade options, part d: data representation
-    ;           conf_low_ptag_bits
     ;       num_ptag_bits
     ;       bits_per_word
     ;       bytes_per_word
@@ -444,8 +441,8 @@
     ;       benchmark_modes_repeat
     ;       verbose_make
     ;       output_compile_error_lines
-    ;           verbose_recompilation
-    ;           find_all_recompilation_reasons
+    ;       verbose_recompilation
+    ;       find_all_recompilation_reasons
     ;       verbose_commands
 
     ;       report_cmd_line_args
@@ -674,7 +671,7 @@
 % Options that control trace goals.
     ;       trace_goal_flags
 
-% Options that control debugging.
+% Options that control mdb debugging.
     ;       trace_level
     ;       exec_trace_tail_rec
     ;       trace_optimized
@@ -690,6 +687,9 @@
     ;       delay_death_max_vars
     ;       stack_trace_higher_order
     ;       force_disable_tracing
+
+% Options that control ssdb debugging.
+    ;       ssdb_trace_level
     ;       force_disable_ssdebug
 
 % Options that control profiling.
@@ -808,21 +808,21 @@
 
     % HLDS->{LLDS,MLDS} optimizations.
     ;       optopt_smart_indexing
-    ;         optopt_smart_atomic_indexing
-    ;         optopt_smart_string_indexing
-    ;         optopt_smart_tag_indexing
-    ;         optopt_smart_float_indexing
+    ;           optopt_smart_atomic_indexing
+    ;           optopt_smart_string_indexing
+    ;           optopt_smart_tag_indexing
+    ;           optopt_smart_float_indexing
 
-    ;         optopt_dense_switch_req_density
-    ;         optopt_lookup_switch_req_density
-    ;         optopt_dense_switch_size
-    ;         optopt_lookup_switch_size
-    ;         optopt_string_trie_switch_size
-    ;         optopt_string_hash_switch_size
-    ;         optopt_string_binary_switch_size
-    ;         optopt_tag_switch_size
-    ;         optopt_switch_single_rec_base_first
-    ;         optopt_switch_multi_rec_base_first
+    ;           optopt_dense_switch_req_density
+    ;           optopt_lookup_switch_req_density
+    ;           optopt_dense_switch_size
+    ;           optopt_lookup_switch_size
+    ;           optopt_string_trie_switch_size
+    ;           optopt_string_hash_switch_size
+    ;           optopt_string_binary_switch_size
+    ;           optopt_tag_switch_size
+    ;           optopt_switch_single_rec_base_first
+    ;           optopt_switch_multi_rec_base_first
 
     ;       optopt_static_ground_cells
     ;       optopt_use_atomic_cells
@@ -984,6 +984,7 @@
     % Link options for C and C#.
     ;       link_library_directories
     ;       link_libraries
+    ;       link_ssdb_libs
 
     % Link options for C.
     ;       output_file_name
@@ -1072,6 +1073,7 @@
     ;       restricted_command_line
 
 % Configuration options.
+    ;       conf_low_ptag_bits
     ;       have_delay_slot
     ;       num_real_r_regs
     ;       num_real_f_regs
@@ -1588,7 +1590,7 @@ optdb(oc_grade,     decl_debug,                        bool(no),
     % (a2) Ssdb debugging
 
 optdb(oc_grade,     source_to_source_debug,            bool(no),
-    % XXX Source-to-source debugging is not ready for the public.
+    % Source-to-source debugging is not ready for the public.
     priv_alt_align_help("source-to-source-debug",
             ["ss-debug", "ssdb"], "(grade modifier: `.ssdebug')", [
         "Enable the source-to-source debugging transform."])).
@@ -1857,31 +1859,12 @@ optdb(oc_grade,     use_regions_debug,                 bool(no),
     priv_help("use-regions-debug", [])).
 optdb(oc_grade,     use_regions_profiling,             bool(no),
     priv_help("use-regions-profiling", [])).
-% XXX Source-to-source debugging is not ready for the public.
-% XXX Neither of the following two options is a grade option.
-optdb(oc_grade,     ssdb_trace_level,                  string("default"),
-    priv_arg_help("ssdb-trace", "{none, shallow, deep}", [
-        "The trace level to use for source to source debugging of",
-        "the given module."])).
-optdb(oc_grade,     link_ssdb_libs,                    bool(no),
-    priv_alt_help("link-ssdebug-libs", ["link-ssdb-libs"], [
-        "Link the source to source debugging libraries into the",
-        "executable."])).
 
 %---------------------%
 
     % Optional feature compilation model options:
     % (d) data representation compilation model options
 
-optdb(oc_grade,     conf_low_ptag_bits,                int(2),
-    % The undocumented conf_low_ptag_bits option is used by the `mmc' script
-    % to pass the default value for num_ptag_bits assuming target_c.
-    % The reason that `mmc' doesn't just pass a default value for
-    % --num-ptag-bits is that users need to be able to override this default
-    % when cross compiling.
-    priv_alt_arg_help("conf-low-ptag-bits",
-            ["conf-low-tag-bits"], "n", [
-        "Reserved for use by the `mmc' script."])).
 optdb(oc_grade,     num_ptag_bits,                     int(-1),
     % -1 means: use the value of conf_low_ptag_bits instead.
     %
@@ -2120,11 +2103,11 @@ optdb(oc_verbosity, output_compile_error_lines,        maybe_int(yes(100)),
         "file after compiling a module (default: 100).",
         "Specifying --no-output-compile-error-lines removes the limit."])).
 optdb(oc_verbosity, verbose_recompilation,             bool(no),
-    help("verbose-recompilation", [
+    priv_help("verbose-recompilation", [
         "When using `--smart-recompilation', output messages",
         "explaining why a module needs to be recompiled."])).
 optdb(oc_verbosity, find_all_recompilation_reasons,    bool(no),
-    help("find-all-recompilation-reasons", [
+    priv_help("find-all-recompilation-reasons", [
         "Find all the reasons why a module needs to be recompiled,",
         "not just the first. Implies `--verbose-recompilation'."])).
 optdb(oc_verbosity, verbose_commands,                  bool(no),
@@ -3020,7 +3003,12 @@ optdb(oc_mdb_dev,   force_disable_tracing,             bool(no),
         "This overrides all other tracing/grade options.",
         "Its main use is to turn off tracing in the browser",
         "directory, even for .debug and .decldebug grades."])).
-optdb(oc_mdb_dev,   force_disable_ssdebug,             bool(no),
+
+optdb(oc_ssdb,      ssdb_trace_level,                  string("default"),
+    priv_arg_help("ssdb-trace", "{none, shallow, deep}", [
+        "The trace level to use for source to source debugging of",
+        "the given module."])).
+optdb(oc_ssdb_dev,   force_disable_ssdebug,             bool(no),
     % This is a developer-only option:
     priv_help("force-disable-ssdebug", [
         "Disable ssdebug transformation even in ssdebug grades."])).
@@ -4248,6 +4236,12 @@ optdb(oc_link_c_cs, link_library_directories,          accumulating([]),
 optdb(oc_link_c_cs, link_libraries,                    accumulating([]),
     short_arg_help('l', "library", [], "library", [
         "Link with the specified library."])).
+% XXX Source-to-source debugging is not ready for the public.
+% XXX And for some reason, it does not (yet) apply to Java.
+optdb(oc_link_c_cs, link_ssdb_libs,                    bool(no),
+    priv_alt_help("link-ssdebug-libs", ["link-ssdb-libs"], [
+        "Link the source to source debugging libraries into the",
+        "executable."])).
 
 %---------------------%
 
@@ -4651,6 +4645,15 @@ optdb(oc_env,       restricted_command_line,           bool(no),
 
     % Configuration options.
 
+optdb(oc_config,     conf_low_ptag_bits,                int(2),
+    % The undocumented conf_low_ptag_bits option is used by the `mmc' script
+    % to pass the default value for num_ptag_bits assuming target_c.
+    % The reason that `mmc' doesn't just pass a default value for
+    % --num-ptag-bits is that users need to be able to override this default
+    % when cross compiling.
+    priv_alt_arg_help("conf-low-ptag-bits",
+            ["conf-low-tag-bits"], "n", [
+        "Reserved for use by the `mmc' script."])).
 optdb(oc_config,    have_delay_slot,                   bool(no),
     % The `mmc' script may override the default if configure says
     % the machine has branch delay slots.

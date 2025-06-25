@@ -78,6 +78,9 @@
             % Developer-only options about mdb debugging.
             % XXX Some of these may be internal-use-only, not intended
             % even for developers.
+    ;       oc_ssdb
+    ;       oc_ssdb_dev
+            % Options that control how the compiler prepares for ssdb.
     ;       oc_mdprof
             % Options that control deep profiling.
     ;       oc_opt_ctrl
@@ -196,6 +199,8 @@ option_categories(oc_file_req, 0).
 option_categories(oc_tracegoal, 0).
 option_categories(oc_mdb, 0).
 option_categories(oc_mdb_dev, 0).
+option_categories(oc_ssdb, 0).
+option_categories(oc_ssdb_dev, 0).
 option_categories(oc_mdprof, 0).
 option_categories(oc_opt_ctrl, 0).
 option_categories(oc_opt_hh, 0).

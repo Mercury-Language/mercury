@@ -474,21 +474,6 @@ Grade options
     --use-regions-profiling
         There is no help text available.
 
-    PRIVATE OPTION
-    --ssdb-trace {none, shallow, deep}
-        The trace level to use for source to source debugging of the given
-        module.
-
-    PRIVATE OPTION
-    --link-ssdebug-libs
-    --link-ssdb-libs
-        Link the source to source debugging libraries into the executable.
-
-    PRIVATE OPTION
-    --conf-low-ptag-bits <n>
-    --conf-low-tag-bits <n>
-        Reserved for use by the `mmc' script.
-
     --num-ptag-bits <n>
     --num-tag-bits <n>
         Use <n> primary tag bits. Note that the value of this option is
@@ -693,10 +678,12 @@ Verbosity options
         compiling a module (default: 100). Specifying
         --no-output-compile-error-lines removes the limit.
 
+    PRIVATE OPTION
     --verbose-recompilation
         When using `--smart-recompilation', output messages explaining why a
         module needs to be recompiled.
 
+    PRIVATE OPTION
     --find-all-recompilation-reasons
         Find all the reasons why a module needs to be recompiled, not just the
         first. Implies `--verbose-recompilation'.
@@ -1493,6 +1480,13 @@ Preparing code for mdb debugging
         Force tracing to be set to trace level none. This overrides all other
         tracing/grade options. Its main use is to turn off tracing in the
         browser directory, even for .debug and .decldebug grades.
+
+Preparing code for ssdb debugging
+
+    PRIVATE OPTION
+    --ssdb-trace {none, shallow, deep}
+        The trace level to use for source to source debugging of the given
+        module.
 
     PRIVATE OPTION
     --force-disable-ssdebug
@@ -2637,6 +2631,11 @@ Options for linking
     --no-library
         Link with the specified library.
 
+    PRIVATE OPTION
+    --link-ssdebug-libs
+    --link-ssdb-libs
+        Link the source to source debugging libraries into the executable.
+
     Options for linking just C code
 
     -o <filename>
@@ -3033,6 +3032,11 @@ Options specifying properties of the environment
         (This option is supported only by `mmc --make'.)
 
 Options that record autoconfigured parameters
+
+    PRIVATE OPTION
+    --conf-low-ptag-bits <n>
+    --conf-low-tag-bits <n>
+        Reserved for use by the `mmc' script.
 
     --branch-delay-slot
     --have-delay-slot
