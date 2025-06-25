@@ -198,7 +198,8 @@
 
 % Help options.
     --->    help
-    ;       help_alt
+    ;       help_priv
+    ;       help_texinfo
     ;       version
 
 % Options for modifying the command line.
@@ -1234,8 +1235,12 @@
 optdb(oc_help,      help,                              bool(no),
     gen_help(['?', 'h'], "help", [], help_public,
         ["Print this usage message."])).
-optdb(oc_help,      help_alt,                          bool(no),
-    priv_help("help-alt", ["Print the usage message."])).
+optdb(oc_help,      help_priv,                         bool(no),
+    priv_help("help-priv",
+        ["Print the usage message, including private options."])).
+optdb(oc_help,      help_texinfo,                      bool(no),
+    priv_help("help-texinfo",
+        ["Print the documentation of all options for the user guide."])).
 optdb(oc_help,      version,                           bool(no),
     help("version", ["Display the compiler version."])).
 

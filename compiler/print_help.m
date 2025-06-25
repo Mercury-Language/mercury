@@ -30,6 +30,9 @@
 :- pred long_usage(io.text_output_stream::in, print_what_help::in,
     io::di, io::uo) is det.
 
+:- pred document_options_for_users_guide(io.text_output_stream::in,
+    io::di, io::uo) is det.
+
 :- pred write_copyright_notice(io.text_output_stream::in, io::di, io::uo)
     is det.
 
@@ -70,10 +73,11 @@ short_usage(ProgressStream, !IO) :-
     get_already_printed_usage(AlreadyPrinted, !IO),
     (
         AlreadyPrinted = no,
-        io.write_strings(ProgressStream, [
-            "Usage: mmc [<options>] <arguments>\n",
-            "Use `mmc --help' for more information.\n"
-        ], !IO),
+        ShortUsageLines = [
+            "Usage: mmc [<options>] <arguments>",
+            "Use `mmc --help' for more information."
+        ],
+        write_lines(ProgressStream, ShortUsageLines, !IO),
         set_already_printed_usage(yes, !IO)
     ;
         AlreadyPrinted = yes
@@ -83,68 +87,46 @@ long_usage(ProgressStream, What, !IO) :-
     % long_usage is called from only one place, so can't print duplicate
     % copies of the long usage message. We can print both a short and along
     % usage message, but there is no simple way to avoid that.
-    Lines = [compiler_id_line | copyright_notice_lines] ++
+    HeaderLines = [compiler_id_line | copyright_notice_lines] ++
         long_usage_header_lines,
-    io.write_strings(ProgressStream, Lines, !IO),
-    options_help(ProgressStream, What, !IO).
+    document_requested_options(help_plain_text, What, OptionsLines),
+    Lines = HeaderLines ++ OptionsLines,
+    write_lines(ProgressStream, Lines, !IO).
+
+document_options_for_users_guide(ProgressStream, !IO) :-
+    document_requested_options(help_texinfo, print_public_and_private_help,
+        OptionsLines),
+    write_lines(ProgressStream, OptionsLines, !IO).
 
 write_copyright_notice(Stream, !IO) :-
-    io.write_strings(Stream, copyright_notice_lines, !IO).
+    write_lines(Stream, copyright_notice_lines, !IO).
 
 %---------------------------------------------------------------------------%
 
 :- func compiler_id_line = string.
 
-compiler_id_line = "Name: mmc - Melbourne Mercury Compiler\n".
+compiler_id_line = "Name: mmc - Melbourne Mercury Compiler".
 
 :- func copyright_notice_lines = list(string).
 
 copyright_notice_lines = [
-    "Copyright (C) 1993-2012 The University of Melbourne\n",
-    "Copyright (C) 2013-2025 The Mercury team\n"
+    "Copyright (C) 1993-2012 The University of Melbourne",
+    "Copyright (C) 2013-2025 The Mercury team"
 ].
 
 :- func long_usage_header_lines = list(string).
 
 long_usage_header_lines = [
-    "Usage: mmc [<options>] <arguments>\n",
-    "\n",
-    "Arguments:\n",
-    "    Arguments ending in `.m' are assumed to be source file names.\n",
-    "    Arguments that do not end in `.m' are assumed to be module names.\n",
+    "Usage: mmc [<options>] <arguments>",
+    "",
+    "Arguments:",
+    "    Arguments ending in `.m' are assumed to be source file names.",
+    "    Arguments that do not end in `.m' are assumed to be module names.",
     "    Arguments of the form `@file' are replaced with " ++
-        "the contents of the file.\n",
-    "\n",
-    "Options:\n"
+        "the contents of the file.",
+    "",
+    "Options:"
 ].
-
-%---------------------------------------------------------------------------%
-
-:- pred options_help(io.text_output_stream::in, print_what_help::in,
-    io::di, io::uo) is det.
-
-options_help(Stream, What, !IO) :-
-    % We check whether we have covered all possible option categories
-    %
-    % - getting a set containing all of those categories;
-    % - deleting each category from the set as it is handled; and then
-    % - checking that what remains is the empty set.
-    CategoryPred =
-        ( pred(Cat::out) is multi :-
-            option_categories(Cat, _)
-        ),
-    solutions_set(CategoryPred, AllCategoriesSet),
-    list.foldl2(acc_help_chapter(What), all_chapters,
-        AllCategoriesSet, UndoneCategoriesSet, cord.init, LineCord),
-    set.to_sorted_list(UndoneCategoriesSet, UndoneCategories),
-    (
-        UndoneCategories = []
-    ;
-        UndoneCategories = [_ | _],
-        unexpected($pred, "undone: " ++ string(UndoneCategories))
-    ),
-    Lines = cord.list(LineCord),
-    write_lines(Stream, Lines, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -396,24 +378,87 @@ all_chapters = AllChapters :-
 
 %---------------------------------------------------------------------------%
 
-:- pred acc_help_chapter(print_what_help::in, help_chapter::in,
-    set(option_category)::in, set(option_category)::out,
-    cord(string)::in, cord(string)::out) is det.
+:- type help_format
+    --->    help_plain_text
+    ;       help_texinfo.
 
-acc_help_chapter(What, HelpChapter, !Categories, !LineCord) :-
+:- inst help_plain_text for help_format/0
+    --->    help_plain_text.
+:- inst help_texinfo for help_format/0
+    --->    help_texinfo.
+
+:- pred document_requested_options(help_format, print_what_help, list(string)).
+:- mode document_requested_options(in(help_plain_text), in, out) is det.
+:- mode document_requested_options(in(help_texinfo), in, out) is det.
+
+document_requested_options(Format, What, OptionsLines) :-
+    % We check whether we have covered all possible option categories
+    %
+    % - getting a set containing all of those categories;
+    % - deleting each category from the set as it is handled; and then
+    % - checking that what remains is the empty set.
+    CategoryPred =
+        ( pred(Cat::out) is multi :-
+            option_categories(Cat, _)
+        ),
+    solutions_set(CategoryPred, AllCategoriesSet),
+    acc_help_chapters(Format, What, all_chapters,
+        AllCategoriesSet, UndoneCategoriesSet, cord.init, OptionsLineCord),
+    set.to_sorted_list(UndoneCategoriesSet, UndoneCategories),
+    (
+        UndoneCategories = []
+    ;
+        UndoneCategories = [_ | _],
+        unexpected($pred, "undone: " ++ string(UndoneCategories))
+    ),
+    OptionsLines = cord.list(OptionsLineCord).
+
+%---------------------------------------------------------------------------%
+
+:- pred acc_help_chapters(help_format, print_what_help, list(help_chapter),
+    set(option_category), set(option_category), cord(string), cord(string)).
+:- mode acc_help_chapters(in(help_plain_text), in, in,
+    in, out, in, out) is det.
+:- mode acc_help_chapters(in(help_texinfo), in, in,
+    in, out, in, out) is det.
+
+acc_help_chapters(_, _, [], !Categories, !LineCord).
+acc_help_chapters(Format, What, [Chapter | Chapters],
+        !Categories, !LineCord) :-
+    acc_help_chapter(Format, What, Chapter, !Categories, !LineCord),
+    acc_help_chapters(Format, What, Chapters, !Categories, !LineCord).
+
+:- pred acc_help_chapter(help_format, print_what_help, help_chapter,
+    set(option_category), set(option_category), cord(string), cord(string)).
+:- mode acc_help_chapter(in(help_plain_text), in, in, in, out, in, out) is det.
+:- mode acc_help_chapter(in(help_texinfo), in, in, in, out, in, out) is det.
+
+acc_help_chapter(Format, What, HelpChapter, !Categories, !LineCord) :-
     (
         HelpChapter = one_level_chapter(HelpSection),
-        acc_help_section(What, "", HelpSection, !Categories, !LineCord)
+        acc_help_section(Format, What, "", HelpSection, !Categories, !LineCord)
     ;
         HelpChapter = two_level_chapter(ChapterName, ChapterCommentLines,
             SubSections),
-        list.foldl2(acc_help_section(What, option_name_indent),
-            SubSections, !Categories, cord.init, SectionsLineCord),
+        ( Format = help_plain_text, SectionIndent = single_indent
+        ; Format = help_texinfo,    SectionIndent = ""
+        ),
+        acc_help_sections(Format, What, SectionIndent, SubSections,
+            !Categories, cord.init, SectionsLineCord),
         ( if cord.is_empty(SectionsLineCord) then
             true
         else
             cord.snoc("", !LineCord),
-            cord.snoc(ChapterName, !LineCord),
+            (
+                Format = help_plain_text,
+                cord.snoc(ChapterName, !LineCord)
+            ;
+                Format = help_texinfo,
+                % ZZZ
+                cord.snoc("@node " ++ ChapterName, !LineCord),
+                cord.snoc("@subsection " ++ ChapterName, !LineCord),
+                cord.snoc("@cindex " ++ ChapterName, !LineCord)
+            ),
             (
                 ChapterCommentLines = []
             ;
@@ -426,11 +471,30 @@ acc_help_chapter(What, HelpChapter, !Categories, !LineCord) :-
         )
     ).
 
-:- pred acc_help_section(print_what_help::in, string::in, help_section::in,
-    set(option_category)::in, set(option_category)::out,
-    cord(string)::in, cord(string)::out) is det.
+:- pred acc_help_sections(help_format, print_what_help, string,
+    list(help_section), set(option_category), set(option_category),
+    cord(string), cord(string)).
+:- mode acc_help_sections(in(help_plain_text), in, in, in,
+    in, out, in, out) is det.
+:- mode acc_help_sections(in(help_texinfo), in, in, in,
+    in, out, in, out) is det.
 
-acc_help_section(What, SectionNameIndent, HelpSection,
+acc_help_sections(_, _, _, [], !Categories, !LineCord).
+acc_help_sections(Format, What, SectionNameIndent, [Section | Sections],
+        !Categories, !LineCord) :-
+    acc_help_section(Format, What, SectionNameIndent, Section,
+        !Categories, !LineCord),
+    acc_help_sections(Format, What, SectionNameIndent, Sections,
+        !Categories, !LineCord).
+
+:- pred acc_help_section(help_format, print_what_help, string, help_section,
+    set(option_category), set(option_category), cord(string), cord(string)).
+:- mode acc_help_section(in(help_plain_text), in, in, in,
+    in, out, in, out) is det.
+:- mode acc_help_section(in(help_texinfo), in, in, in,
+    in, out, in, out) is det.
+
+acc_help_section(Format, What, SectionNameIndent, HelpSection,
         !Categories, !LineCord) :-
     HelpSection = help_section(SectionName, SectionCommentLines,
         SectionCategories),
@@ -439,13 +503,22 @@ acc_help_section(What, SectionNameIndent, HelpSection,
         SectionCategories, OptdbRecordSets),
     OptdbRecordSet = set.union_list(OptdbRecordSets),
 
-    list.foldl(acc_help_message(What), set.to_sorted_list(OptdbRecordSet),
+    acc_help_messages(Format, What, set.to_sorted_list(OptdbRecordSet),
         cord.init, HelpTextLinesCord),
     ( if cord.is_empty(HelpTextLinesCord) then
         true
     else
         cord.snoc("", !LineCord),
-        cord.snoc(SectionNameIndent ++ SectionName, !LineCord),
+        (
+            Format = help_plain_text,
+            cord.snoc(SectionNameIndent ++ SectionName, !LineCord)
+        ;
+            Format = help_texinfo,
+            % ZZZ
+            cord.snoc("@node " ++ SectionName, !LineCord),
+            cord.snoc("@subsection " ++ SectionName, !LineCord),
+            cord.snoc("@cindex " ++ SectionName, !LineCord)
+        ),
         (
             SectionCommentLines = []
         ;
@@ -548,10 +621,23 @@ get_optdb_record_params(OptdbRecord, Params) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred acc_help_message(print_what_help::in, optdb_record::in,
-    cord(string)::in, cord(string)::out) is det.
+:- pred acc_help_messages(help_format, print_what_help, list(optdb_record),
+    cord(string), cord(string)).
+:- mode acc_help_messages(in(help_plain_text), in, in, in, out) is det.
+:- mode acc_help_messages(in(help_texinfo), in, in, in, out) is det.
 
-acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
+acc_help_messages(_, _, [], !EffectiveLinesCord).
+acc_help_messages(Format, What, [OptdbRecord | OptdbRecords],
+        !EffectiveLinesCord) :-
+    acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord),
+    acc_help_messages(Format, What, OptdbRecords, !EffectiveLinesCord).
+
+:- pred acc_help_message(help_format, print_what_help, optdb_record,
+    cord(string), cord(string)).
+:- mode acc_help_message(in(help_plain_text), in, in, in, out) is det.
+:- mode acc_help_message(in(help_texinfo), in, in, in, out) is det.
+
+acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord) :-
     get_optdb_record_params(OptdbRecord, Params),
     % XXX We could automatically add "(This option is not for general use.)"
     % to the start of the description of every private option, to save
@@ -580,7 +666,7 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
             % such as priv_help.
             PublicOrPrivate = help_private,
             string.format("%sUNNAMED OPTION %s",
-                [s(option_name_indent), s(string(Option))], NameLine),
+                [s(single_indent), s(string(Option))], NameLine),
             cord.snoc(NameLine, !LineCord)
         ;
             Help = gen_help(ShortNames, LongName, AltLongNames,
@@ -727,7 +813,7 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
             then
                 true
             else
-                DescPrefix = option_desc_indent,
+                DescPrefix = double_indent,
                 (
                     DescLines = [],
                     acc_prefixed_line(DescPrefix,
@@ -735,7 +821,7 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
                 ;
                     DescLines = [_ | _],
                     % ZZZ 71
-                    reflow_lines(71, DescLines, ReflowLines),
+                    reflow_lines(Format, 71, DescLines, ReflowLines),
                     list.foldl(acc_prefixed_line(DescPrefix), ReflowLines,
                         !LineCord)
                 ),
@@ -746,7 +832,7 @@ acc_help_message(What, OptdbRecord, !EffectiveLinesCord) :-
                 ;
                     PublicOrPrivate = help_private,
                     PrivatePrefixCord =
-                        cord.singleton(option_name_indent ++ "PRIVATE OPTION")
+                        cord.singleton(single_indent ++ "PRIVATE OPTION")
                 ),
                 !:EffectiveLinesCord = !.EffectiveLinesCord ++
                     BlankLineCord ++ PrivatePrefixCord ++ !.LineCord
@@ -884,7 +970,7 @@ acc_short_option_name(Params, Option, MaybeArgName, MaybeAlignedText,
     = string.
 
 long_option_name_line(Params, Option, MaybeArgName, LongName0) = Line :-
-    Indent = option_name_indent,
+    Indent = single_indent,
     Params = option_params(MaybeExpectArg, MaybeNegate, _MaybeAddNegVersion),
     (
         MaybeNegate = negate,
@@ -910,7 +996,7 @@ long_option_name_line(Params, Option, MaybeArgName, LongName0) = Line :-
     = string.
 
 short_option_name_line(Params, Option, MaybeArgName, ShortName0) = Line :-
-    Indent = option_name_indent,
+    Indent = single_indent,
     Params = option_params(MaybeExpectArg, MaybeNegate, _MaybeAddNegVersion),
     (
         MaybeNegate = negate,
@@ -937,13 +1023,13 @@ short_option_name_line(Params, Option, MaybeArgName, ShortName0) = Line :-
 :- func long_negated_option_name_line(string) = string.
 
 long_negated_option_name_line(LongName) = Line :-
-    Indent = option_name_indent,
+    Indent = single_indent,
     string.format("%s--no-%s", [s(Indent), s(LongName)], Line).
 
 :- func short_negated_option_name_line(char) = string.
 
 short_negated_option_name_line(ShortName) = Line :-
-    Indent = option_name_indent,
+    Indent = single_indent,
     string.format("%s-%c-", [s(Indent), c(ShortName)], Line).
 
 %---------------------%
@@ -1018,11 +1104,11 @@ add_aligned_text(AlignedText, Line0, Line) :-
 
 %---------------------------------------------------------------------------%
 
-:- func option_name_indent = string.
-:- func option_desc_indent = string.
+:- func single_indent = string.
+:- func double_indent = string.
 
-option_name_indent = "    ".
-option_desc_indent = "        ".
+single_indent = "    ".
+double_indent = "        ".
 
 :- pred acc_prefixed_line(string::in, string::in,
     cord(string)::in, cord(string)::out) is det.
@@ -1033,12 +1119,14 @@ acc_prefixed_line(Prefix, LineBody, !LineCord) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred reflow_lines(int::in, list(string)::in, list(string)::out) is det.
+:- pred reflow_lines(help_format, int, list(string), list(string)).
+:- mode reflow_lines(in(help_plain_text), in, in, out) is det.
+:- mode reflow_lines(in(help_texinfo), in, in, out) is det.
 
-reflow_lines(LineLen, InitialLines, FinishedLines) :-
+reflow_lines(Format, LineLen, InitialLines, FinishedLines) :-
     % string.count_code_points(IndentStr, IndentLen),
     % AvailLen = LineLen - IndentLen,
-    reflow_lines_loop_over_lines(LineLen, cord.init, 0, InitialLines,
+    reflow_lines_loop_over_lines(Format, LineLen, cord.init, 0, InitialLines,
         cord.init, FinishedLineCord),
     FinishedLines = cord.list(FinishedLineCord).
 
@@ -1051,10 +1139,14 @@ reflow_lines(LineLen, InitialLines, FinishedLines) :-
     % The reflowed lines we have already constructed.
 :- type finished_lines == cord(string).
 
-:- pred reflow_lines_loop_over_lines(int::in, cur_line::in, int::in,
-    list(string)::in, finished_lines::in, finished_lines::out) is det.
+:- pred reflow_lines_loop_over_lines(help_format, int, cur_line, int,
+    list(string), finished_lines, finished_lines).
+:- mode reflow_lines_loop_over_lines(in(help_plain_text), in, in, in,
+    in, in, out) is det.
+:- mode reflow_lines_loop_over_lines(in(help_texinfo), in, in, in,
+    in, in, out) is det.
 
-reflow_lines_loop_over_lines(LineLen, !.CurLine, !.CurLineLen, Lines,
+reflow_lines_loop_over_lines(Format, LineLen, !.CurLine, !.CurLineLen, Lines,
         !FinishedLineCord) :-
     (
         Lines = [],
@@ -1077,7 +1169,7 @@ reflow_lines_loop_over_lines(LineLen, !.CurLine, !.CurLineLen, Lines,
             reflow_lines_loop_over_words(LineLen, !CurLine, !CurLineLen,
                 HeadLineWords, !FinishedLineCord)
         ),
-        reflow_lines_loop_over_lines(LineLen, !.CurLine, !.CurLineLen,
+        reflow_lines_loop_over_lines(Format, LineLen, !.CurLine, !.CurLineLen,
             TailLines, !FinishedLineCord)
     ).
 
@@ -1151,7 +1243,7 @@ acc_optimization_options_loop(MaybeUpTo, CurLevel, !LineCord) :-
         string.format("Optimization level %d:", [i(CurLevel)],
             LevelHeading),
         string.format("%sThe options set at this level are:",
-            [s(option_name_indent)], SetAtLevel),
+            [s(single_indent)], SetAtLevel),
         list.foldl(document_one_optimization_option, DocumentedOpts,
             [], OptLines),
         % Sorting makes options slightly easier to find in a list of options.
@@ -1169,13 +1261,13 @@ acc_optimization_options_loop(MaybeUpTo, CurLevel, !LineCord) :-
         ;
             LevelDescLines = [_ | _],
             cord.snoc("", !LineCord),
-            list.foldl(acc_prefixed_line(option_name_indent), LevelDescLines,
+            list.foldl(acc_prefixed_line(single_indent), LevelDescLines,
                 !LineCord)
         ),
         cord.snoc("", !LineCord),
         cord.snoc(SetAtLevel, !LineCord),
         cord.snoc("", !LineCord),
-        list.foldl(acc_prefixed_line(option_desc_indent), SortedOptLines,
+        list.foldl(acc_prefixed_line(double_indent), SortedOptLines,
             !LineCord),
 
         acc_optimization_options_loop(MaybeUpTo, CurLevel + 1, !LineCord)

@@ -120,7 +120,7 @@ help_opt_levels.runtest:
 		{ cat help_opt_levels.res; exit 1; }
 
 help_text.runtest:
-	$(MC) $(MCFLAGS) --help-alt help_text.m > help_text.err 2>&1
+	$(MC) $(MCFLAGS) --help-priv help_text.m > help_text.err 2>&1
 	diff $(DIFF_OPTS) help_text.err_exp help_text.err \
 		> help_text.res || \
 		{ cat help_text.res; exit 1; }

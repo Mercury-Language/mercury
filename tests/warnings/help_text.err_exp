@@ -18,8 +18,12 @@ Help options
         Print this usage message.
 
     PRIVATE OPTION
-    --help-alt
-        Print the usage message.
+    --help-priv
+        Print the usage message, including private options.
+
+    PRIVATE OPTION
+    --help-texinfo
+        Print the documentation of all options for the user guide.
 
     --version
         Display the compiler version.

@@ -155,7 +155,8 @@ main_after_setup(ProgressStream, ErrorStream, Globals, EnvOptFileVariables,
         EnvVarArgs, OptionArgs, Args, !IO) :-
     globals.lookup_bool_option(Globals, version, Version),
     globals.lookup_bool_option(Globals, help, Help),
-    globals.lookup_bool_option(Globals, help_alt, HelpAlt),
+    globals.lookup_bool_option(Globals, help_priv, HelpPriv),
+    globals.lookup_bool_option(Globals, help_texinfo, HelpTexInfo),
 
     % NOTE: --help takes precedence over any other modes of operation as we do
     % not wish to place unnecessary obstacles before users who want help.
@@ -166,9 +167,12 @@ main_after_setup(ProgressStream, ErrorStream, Globals, EnvOptFileVariables,
     ( if Help = yes then
         io.stdout_stream(StdOutStream, !IO),
         long_usage(StdOutStream, print_public_help, !IO)
-    else if HelpAlt = yes then
+    else if HelpPriv = yes then
         io.stdout_stream(StdOutStream, !IO),
         long_usage(StdOutStream, print_public_and_private_help, !IO)
+    else if HelpTexInfo = yes then
+        io.stdout_stream(StdOutStream, !IO),
+        document_options_for_users_guide(StdOutStream, !IO)
     else if Version = yes then
         io.stdout_stream(StdOutStream, !IO),
         LibraryVersion = library.mercury_version,
