@@ -5504,7 +5504,6 @@ scripts/Mmake.vars
 scripts/parse_ml_options.sh-subr
 scripts/mdbrc
 scripts/Mercury.config
-scripts/Mercury.config.bootstrap
 bindist/bindist.INSTALL
 bindist/bindist.Makefile
 runtime/mercury_dotnet.cs
@@ -5540,6 +5539,19 @@ output_files="$nonexecutable_output_files $executable_output_files"
 
 AC_CONFIG_FILES($output_files)
 AC_CONFIG_COMMANDS([default],
+
+# NOTE If you add any options to scripts/Mercury.config.in that are not
+# understood by the installed compiler, then change this to something like
+#
+# grep -v NEWOPTION < scripts/Mercury.config > scripts/Mercury.config.bootstrap
+#
+# You should then make the same change to the rule in scripts/Mmakefile
+# that builds Mercury.config.bootstrap.
+#
+# NOTE You should ensure that filtering out the new option does not leave
+# a dangling backslash at the end of the now-last line of the file.
+cp scripts/Mercury.config scripts/Mercury.config.bootstrap
+
 [
 # Only do this when compiling the source, not when reconfiguring
 # an installation.

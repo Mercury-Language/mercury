@@ -16,9 +16,21 @@
 #
 # Configuration file for the Melbourne Mercury Compiler.
 #
-# Note to developers: when updating this file, consider whether
-# Mercury.config.bootstrap.in, which includes most of what is here,
-# should also be updated.
+# Note to developers: we automatically generate *two* files from
+# Mercury.config.in: Mercury.config, and Mercury.config.bootstrap.
+# The difference between two is that we use the latter to build the workspace
+# (though we happen to use it not just for stage 1, but later stages as well.)
+# This use requires that Mercury.config.bootstrap should contain
+# only options that are understood by the installed compiler.
+#
+# If you ever add any option to this file that the installed compiler
+# does NOT (yet) understand, then you should temporarily modify configure.ac,
+# at the spot that you will find if you search for NEWOPTION, to filter
+# any references to such options out of Mercury.config.bootstrap.
+#
+# Historical note: for a long time, we maintained separate Mercury.config.in
+# and Mercury.config.bootstrap.in files. This did not end well, because the
+# double maintenance this required was usually overlooked.
 #
 # Environment variables:
 #

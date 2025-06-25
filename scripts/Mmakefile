@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1996-2009, 2011 The University of Melbourne.
-# Copyright (C) 2013, 2015, 2017-2018, 2020, 2022-2024 The Mercury team.
+# Copyright (C) 2013, 2015, 2017-2018, 2020, 2022-2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -64,7 +64,6 @@ INSTALL_SCRIPTS = $(NONCONF_SH_SCRIPTS) $(CONF_SH_SCRIPTS)
 endif
 
 CONF_FILES = \
-	Mercury.config.bootstrap \
 	Mercury.config \
 	Mmake.vars \
 	parse_ml_options.sh-subr
@@ -126,6 +125,9 @@ CSHARP_WRAPPER_SCRIPTS = \
 		fi \
 	done
 
+Mercury.config.bootstrap: Mercury.config
+	cp Mercury.config Mercury.config.bootstrap
+
 # To allow a change to the debugger and/or to its documentation to be
 # matched by changes in the expected output files in the debugger and
 # declarative_debugger test directories, we must give the tests in those
@@ -149,7 +151,12 @@ test_mdbrc: mdbrc.in mdbrc
 #-----------------------------------------------------------------------------#
 
 .PHONY: all
-all: $(CONF_FILES) $(SCRIPTS) $(DEBUGGER_SCRIPTS) $(EMACS_SCRIPTS) test_mdbrc
+all: 	Mercury.config.bootstrap \
+	$(CONF_FILES) \
+	$(SCRIPTS) \
+	$(DEBUGGER_SCRIPTS) \
+	$(EMACS_SCRIPTS) \
+	test_mdbrc
 
 #-----------------------------------------------------------------------------#
 
@@ -243,7 +250,7 @@ realclean_local: clean_scripts
 .PHONY: clean_scripts
 clean_scripts:
 	for file in *.in; do rm -f `basename $$file .in`; done
-	rm -f test_mdbrc
+	rm -f test_mdbrc Mercury.config.bootstrap
 	rm -f config.log
 
 #-----------------------------------------------------------------------------#
