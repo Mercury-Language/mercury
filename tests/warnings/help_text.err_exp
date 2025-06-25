@@ -264,14 +264,14 @@ Grade options
 
     --debug                             (grade modifier: `.debug')
         Enable Mercury-level debugging. See the Debugging chapter of the
-        Mercury User's Guide for details. This option is not yet supported for
-        the `--high-level-code' back-ends.
+        Mercury User's Guide for details. This option is supported only when
+        targeting C with `--no-high-level-code'.
 
     --decl-debug                        (grade modifier: `.decldebug')
         Enable full support for declarative debugging. This allows subterm
         dependency tracking in the declarative debugger. See the Debugging
-        chapter of the Mercury User's Guide for details. This option is not yet
-        supported for the `--high-level-code' back-ends.
+        chapter of the Mercury User's Guide for details. This option is
+        supported only when targeting C with `--no-high-level-code'.
 
     PRIVATE OPTION
     --source-to-source-debug            (grade modifier: `.ssdebug')
@@ -283,16 +283,16 @@ Grade options
     --profiling
         Enable time and call profiling. Insert profiling hooks in the generated
         code, and also output some profiling information (the static call
-        graph) to the file `<module>.prof'. This option is not supported for
-        the C# or Java back-ends.
+        graph) to the file `<module>.prof'. This option is supported only when
+        targeting C.
 
     PRIVATE OPTION
     --time-profiling
         There is no help text available.
 
     --memory-profiling                  (grade modifier: `.memprof')
-        Enable memory and call profiling. This option is not supported for the
-        C# or Java back-ends.
+        Enable memory and call profiling. This option is supported only when
+        targeting C.
 
     PRIVATE OPTION
     --profile-calls                     (grade modifier: `.profcalls')
@@ -311,8 +311,8 @@ Grade options
         usage information, not call counts.
 
     --deep-profiling                    (grade modifier: `.profdeep')
-        Enable deep profiling. This option is not supported for the high-level
-        C, C# or Java back-ends.
+        Enable deep profiling. This option is supported only when targeting C
+        with `--no-high-level-code'.
 
     PRIVATE OPTION
     --profile-deep
@@ -380,8 +380,8 @@ Grade options
     PRIVATE OPTION
     --experimental-complexity <filename>
         Enable experimental complexity analysis for the predicates listed in
-        the given file. This option is supported only for the C back-end with
-        `--no-highlevel-code'.
+        the given file. This option is supported only when targeting C with
+        `--no-high-level-code'.
 
     PRIVATE OPTION
     --record-term-sizes-as-words        (grade modifier: `.tsw')
@@ -393,8 +393,9 @@ Grade options
 
     --threadscope                       (grade modifier: `.threadscope')
         Enable support for profiling parallel execution. This option is
-        supported by the low-level C back-end parallel grades on some
-        processors. See README.ThreadScope for details.
+        supported only when targeting C in parallel grades with
+        `--no-high-level-code', and only on some processors. See
+        README.ThreadScope for details.
 
     PRIVATE OPTION
     --pregenerated-dist
@@ -414,8 +415,8 @@ Grade options
     --stack-segments                    (grade modifier: `.stseg')
         Specify whether to use dynamically sized stacks that are composed of
         small segments. This can help to avoid stack exhaustion at the cost of
-        increased execution time. This option is not supported by the
-        `--high-level-code' back-ends.
+        increased execution time. This option is supported only when targeting
+        C with `--no-high-level-code'.
 
     PRIVATE OPTION
     --extend-stacks-when-needed
@@ -425,13 +426,13 @@ Grade options
     --use-trail                         (grade modifier: `.tr')
         Enable use of a trail. This is necessary for interfacing with
         constraint solvers, or for backtrackable destructive update. This
-        option is not yet supported for the C# or Java backends.
+        option is supported only when targeting C.
 
     --single-precision-float            (grade modifier: `.spf')
     --single-prec-float
         Use single precision floats so that, on 32-bit machines, floating point
         values don't need to be boxed. Double precision floats are used by
-        default. This option is not supported for the C# or Java back-ends.
+        default. This option is supported only when targeting C.
 
     --parallel                          (grade modifier: `.par')
         Enable parallel execution support for the low-level C grades. Enable
@@ -571,23 +572,24 @@ Grade options
     --gcc-global-registers              (grades: reg, asm_fast)
     --no-gcc-global-registers           (grades: none)
         Specify whether or not to use GNU C's global register variables
-        extension. This option is ignored if the `--high-level-code' option is
-        enabled.
+        extension. This option is used only when targeting C with
+        `--no-high-level-code'.
 
     --gcc-non-local-gotos               (grades: asm_fast)
     --no-gcc-non-local-gotos            (grades: none, reg)
         Specify whether or not to use GNU C's "labels as values" extension.
-        This option is ignored if the `--high-level-code' option is enabled.
+        This option is used only when targeting C with `--no-high-level-code'.
 
     --asm-labels                        (grades: asm_fast)
     --no-asm-labels                     (grades: none, reg)
         Specify whether or not to use GNU C's asm extensions for inline
-        assembler labels. This option is ignored if the `--high-level-code'
-        option is enabled.
+        assembler labels. This option is used only when targeting C with
+        `--no-high-level-code'.
 
     PRIVATE OPTION
     --no-use-float-registers
-        Use float registers for argument passing.
+        Use float registers for argument passing. This option is used only when
+        targeting C with `--no-high-level-code'.
 
     -H                                  (grades: hlc, csharp, java)
     --high-level-code
@@ -604,7 +606,8 @@ Grade options
         way that allows the program executable to be debuggable with debuggers
         for C, such as gdb. This option is intended mainly for the developers
         of Mercury, though it can also help to debug C code included in Mercury
-        programs.
+        programs. This option is used only when targeting C with
+        `--high-level-code'.
 
 Options that control inference
 

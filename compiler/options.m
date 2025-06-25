@@ -57,10 +57,6 @@
 % additional detail.
 % XXX This section of the Users' guide should soon be generated automatically.
 %
-% XXX We should have a policy that says "when an option is supported
-% only on a subset of all backends, its help text should list the
-% *supported* backends, NOT the *unsupported* backends".
-%
 % The set of options enabled at each optimization level is controlled by
 % the predicate named opts_enabled_at_level. This is defined in
 % compiler/optimization_options.m, but it cannot be edited there,
@@ -1514,20 +1510,17 @@ optdb(oc_grade,     exec_trace,                        bool(no),
     alt_align_help("debug", [],
             "(grade modifier: `.debug')", [
         "Enable Mercury-level debugging.",
-        "See the Debugging chapter of the Mercury User's Guide",
-        "for details.",
-        "This option is not yet supported for the `--high-level-code'",
-        "back-ends."])).
+        "See the Debugging chapter of the Mercury User's Guide for details.",
+        "This option is supported only when targeting C",
+        "with `--no-high-level-code'."])).
 optdb(oc_grade,     decl_debug,                        bool(no),
     alt_align_help("decl-debug", [],
             "(grade modifier: `.decldebug')", [
         "Enable full support for declarative debugging.",
-        "This allows subterm dependency tracking in the declarative",
-        "debugger.",
-        "See the Debugging chapter of the Mercury User's Guide",
-        "for details.",
-        "This option is not yet supported for the `--high-level-code'",
-        "back-ends."])).
+        "This allows subterm dependency tracking in the declarative debugger.",
+        "See the Debugging chapter of the Mercury User's Guide for details.",
+        "This option is supported only when targeting C",
+        "with `--no-high-level-code'."])).
 
 %---------------------%
 
@@ -1557,7 +1550,7 @@ optdb(oc_grade,     profiling,                         bool_special,
         "generated code, and also output some profiling",
         "information (the static call graph) to the file",
         "`<module>.prof'.",
-        "This option is not supported for the C# or Java back-ends."])).
+        "This option is supported only when targeting C."])).
 optdb(oc_grade,     time_profiling,                    special,
     % XXX This option should not be visible even to developers.
     priv_help("time-profiling", [])).
@@ -1565,7 +1558,7 @@ optdb(oc_grade,     memory_profiling,                  special,
     alt_align_help("memory-profiling", [],
             "(grade modifier: `.memprof')", [
         "Enable memory and call profiling.",
-        "This option is not supported for the C# or Java back-ends."])).
+        "This option is supported only when targeting C."])).
     % XXX The next three options are private, because they are not useful.
     % The idea was for you to be able to use --profile-calls and
     % --profile-time separately, but that doesn't work because compiling
@@ -1599,8 +1592,8 @@ optdb(oc_grade,     deep_profiling,                    special,
     alt_align_help("deep-profiling", [],
             "(grade modifier: `.profdeep')", [
         "Enable deep profiling.",
-        "This option is not supported for the high-level C, C#",
-        "or Java back-ends."])).
+        "This option is supported only when targeting C",
+        "with `--no-high-level-code'."])).
 optdb(oc_grade,     profile_deep,                      bool(no),
     % This the *actual* grade option that switches on deep profiling.
     % The deep_profiling option sets profile_deep to "yes", *and* sets
@@ -1683,8 +1676,8 @@ optdb(oc_grade,     experimental_complexity,           string(""),
     priv_arg_help("experimental-complexity", "filename", [
         "Enable experimental complexity analysis for the predicates",
         "listed in the given file.",
-        "This option is supported only for the C back-end with",
-        "`--no-highlevel-code'."])).
+        "This option is supported only when targeting C",
+        "with `--no-high-level-code'."])).
 optdb(oc_grade,     record_term_sizes_as_words,        bool(no),
     priv_alt_align_help("record-term-sizes-as-words", [],
             "(grade modifier: `.tsw')", [
@@ -1705,8 +1698,9 @@ optdb(oc_grade,     threadscope,                       bool(no),
     alt_align_help("threadscope", [],
             "(grade modifier: `.threadscope')", [
         "Enable support for profiling parallel execution.",
-        "This option is supported by the low-level C back-end parallel",
-        "grades on some processors. See README.ThreadScope for details."])).
+        "This option is supported only when targeting C",
+        "in parallel grades with `--no-high-level-code',",
+        "and only on some processors. See README.ThreadScope for details."])).
 
 %---------------------%
 
@@ -1741,8 +1735,8 @@ optdb(oc_grade,     stack_segments,                    bool(no),
         "Specify whether to use dynamically sized stacks that are",
         "composed of small segments. This can help to avoid stack",
         "exhaustion at the cost of increased execution time.",
-        "This option is not supported by the `--high-level-code'",
-        "back-ends."])).
+        "This option is supported only when targeting C",
+        "with `--no-high-level-code'."])).
 optdb(oc_grade,     extend_stacks_when_needed,         bool(no),
     % This is private as this feature is still experimental.
     priv_help("extend-stacks-when-needed", [
@@ -1754,14 +1748,14 @@ optdb(oc_grade,     use_trail,                         bool(no),
         "Enable use of a trail.",
         "This is necessary for interfacing with constraint solvers,",
         "or for backtrackable destructive update.",
-        "This option is not yet supported for the C# or Java backends."])).
+        "This option is supported only when targeting C."])).
 optdb(oc_grade,     single_prec_float,                 bool(no),
     alt_align_help("single-precision-float",
             ["single-prec-float"], "(grade modifier: `.spf')", [
         "Use single precision floats so that, on 32-bit machines,",
         "floating point values don't need to be boxed. Double",
         "precision floats are used by default.",
-        "This option is not supported for the C# or Java back-ends."])).
+        "This option is supported only when targeting C."])).
 optdb(oc_grade,     parallel,                          bool(no),
     alt_align_help("parallel", [],
             "(grade modifier: `.par')", [
@@ -1907,8 +1901,8 @@ optdb(oc_grade,     gcc_global_registers,              bool(yes),
             "(grades: none)", [
         "Specify whether or not to use GNU C's",
         "global register variables extension.",
-        "This option is ignored if the `--high-level-code' option is",
-        "enabled."])).
+        "This option is used only when targeting C",
+        "with `--no-high-level-code'."])).
 optdb(oc_grade,     gcc_non_local_gotos,               bool(yes),
     % We do not document "jump", "fast", "asm_jump".
     no_align_help("gcc-non-local-gotos",
@@ -1916,8 +1910,8 @@ optdb(oc_grade,     gcc_non_local_gotos,               bool(yes),
             "(grades: none, reg)", [
         "Specify whether or not to use GNU C's",
         """labels as values"" extension.",
-        "This option is ignored if the `--high-level-code' option is",
-        "enabled."])).
+        "This option is used only when targeting C",
+        "with `--no-high-level-code'."])).
 optdb(oc_grade,     asm_labels,                        bool(yes),
     % We do not document "asm_jump".
     no_align_help("asm-labels",
@@ -1925,11 +1919,13 @@ optdb(oc_grade,     asm_labels,                        bool(yes),
             "(grades: none, reg)", [
         "Specify whether or not to use GNU C's asm extensions for",
         "inline assembler labels.",
-        "This option is ignored if the `--high-level-code' option is",
-        "enabled."])).
+        "This option is used only when targeting C",
+        "with `--no-high-level-code'."])).
 optdb(oc_grade,     use_float_registers,               bool(yes),
     priv_help("use-float-registers", [
-        "Use float registers for argument passing."])).
+        "Use float registers for argument passing.",
+        "This option is used only when targeting C",
+        "with `--no-high-level-code'."])).
 
 %---------------------%
 
@@ -1951,7 +1947,9 @@ optdb(oc_grade,     c_debug_grade,                     bool(no),
         "in a way that allows the program executable to be debuggable",
         "with debuggers for C, such as gdb. This option is intended mainly",
         "for the developers of Mercury, though it can also help to debug",
-        "C code included in Mercury programs."])).
+        "C code included in Mercury programs.",
+        "This option is used only when targeting C",
+        "with `--high-level-code'."])).
 
 %---------------------------------------------------------------------------%
 
