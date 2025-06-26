@@ -184,6 +184,7 @@ OTHER_PROGS = \
 	func_in_head \
 	gh65 \
 	gh89 \
+	gh137 \
 	github_50 \
 	hawkins_switch_bug \
 	headvar_not_found \
@@ -351,5 +352,9 @@ OTHER_PROGS = \
 # It was disabled on 2024 July 2, since it caused problems for other code.
 #
 #	any_matches_bound
+#
+# The following test case has been disabled:
+#
+#	bug510
 
 include ../valid/Mmake.valid.common
