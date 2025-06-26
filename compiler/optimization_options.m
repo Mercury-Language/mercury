@@ -3866,7 +3866,7 @@ opts_enabled_at_level(5, [
     doc_oo(oo_opt_loop_invariants(yes), optopt_loop_invariants, bool(yes))
 ]).
 opts_enabled_at_level(6, [
-    "apply optimizations which may have any payoff even if they",
+    "Apply optimizations which may have any payoff even if they",
     "increase compilation time to completely unreasonable levels.",
     "",
     "Currently this just enables inlining of GC_malloc(), redo(), and fail()."
