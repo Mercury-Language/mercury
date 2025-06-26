@@ -1,9 +1,11 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% The .exp file is for when term size profiling is not enabled.
+% The .exp2 is for when term size profiling is enabled.
+%---------------------------------------------------------------------------%
 
 :- module tailrec1.
-
 :- interface.
 
 :- import_module io.
@@ -15,6 +17,8 @@
 :- import_module int.
 :- import_module list.
 :- import_module string.
+
+:- pragma foreign_import_module("C", io.primitives_read).
 
 main(!IO) :-
     io.open_input("tailrec1.data", Result, !IO),
