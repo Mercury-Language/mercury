@@ -1254,11 +1254,12 @@ optdb(oc_cmdline,   flags_file,                        file_special,
         "as if they were specified on the command line."])).
 optdb(oc_cmdline,   filenames_from_stdin,              bool(no),
     help("filenames-from-stdin", [
-        "Read then compile a newline terminated module name or",
-        "file name from the standard input. Repeat this until EOF",
-        "is reached. (This allows a program or user to interactively",
-        "compile several modules without the overhead of process",
-        "creation for each one.)"])).
+        "Read a newline terminated module name or file name",
+        "from the standard input, and compile that module or file.",
+        "Repeat this until reaching end-of-file.",
+        "(This allows a program or user to interactively compile",
+        "several modules without the overhead of creating a process",
+        "for each one.)"])).
 
 %---------------------------------------------------------------------------%
 
@@ -1266,7 +1267,7 @@ optdb(oc_cmdline,   filenames_from_stdin,              bool(no),
 
 optdb(oc_opmode,    only_opmode_generate_source_file_mapping, bool(no),
     short_help('f', "generate-source-file-mapping", [], [
-        "Output the module name to file name mapping for the list",
+        "Output the module-name-to-file-name mapping for the list",
         "of source files given as non-option arguments to mmc",
         "to `Mercury.modules'. This must be done before",
         "`mmc --generate-dependencies' if there are any modules",

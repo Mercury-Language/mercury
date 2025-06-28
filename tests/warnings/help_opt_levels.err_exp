@@ -107,7 +107,7 @@ Optimization level 5:
 
 Optimization level 6:
 
-    apply optimizations which may have any payoff even if they
+    Apply optimizations which may have any payoff even if they
     increase compilation time to completely unreasonable levels.
     
     Currently this just enables inlining of GC_malloc(), redo(), and fail().

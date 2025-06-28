@@ -36,16 +36,17 @@ Options for modifying the command line
         specified on the command line.
 
     --filenames-from-stdin
-        Read then compile a newline terminated module name or file name from
-        the standard input. Repeat this until EOF is reached. (This allows a
-        program or user to interactively compile several modules without the
-        overhead of process creation for each one.)
+        Read a newline terminated module name or file name from the standard
+        input, and compile that module or file. Repeat this until reaching
+        end-of-file. (This allows a program or user to interactively compile
+        several modules without the overhead of creating a process for each
+        one.)
 
 Options that give the compiler its overall task
 
     -f
     --generate-source-file-mapping
-        Output the module name to file name mapping for the list of source
+        Output the module-name-to-file-name mapping for the list of source
         files given as non-option arguments to mmc to `Mercury.modules'. This
         must be done before `mmc --generate-dependencies' if there are any
         modules for which the file name does not match the module name. If
