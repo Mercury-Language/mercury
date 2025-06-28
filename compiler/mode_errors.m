@@ -472,7 +472,6 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -1072,29 +1071,25 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
         [HeadMismatch | TailMismatches], 1, map.init, OkOrNotMap),
     map.foldl(is_any_extra_arg_bad(NumExtra), OkOrNotMap,
         all_extra_args_good, SomeExtraIsBad),
+    map.foldl(acc_not_ok_in_any_proc_args, OkOrNotMap, [], NeverOkArgNums),
     (
         SomeExtraIsBad = all_extra_args_good,
-        ArgNumMinus = NumExtra,
-        report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap,
-            PredOrFunc, NumExtra, ArgNumMinus, ArgTuples,
-            ArgNamePieceListsToPrint0, MaybeReturnValueNamePieces,
-            BadArgPieces),
-        list.det_drop(NumExtra,
-            ArgNamePieceListsToPrint0, ArgNamePieceListsToPrint1)
+        ArgNumMinus = NumExtra
     ;
         SomeExtraIsBad = some_extra_arg_is_bad,
-        ArgNumMinus = 0,
-        report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap,
-            PredOrFunc, NumExtra, ArgNumMinus, ArgTuples,
-            ArgNamePieceListsToPrint1, MaybeReturnValueNamePieces,
-            BadArgPieces)
+        ArgNumMinus = 0
     ),
+    report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap, NeverOkArgNums,
+        PredOrFunc, NumExtra, ArgNumMinus, ArgTuples,
+        ArgNamePieceListsToPrint1, MaybeReturnValueNamePieces, BadArgPieces),
+    list.det_drop(ArgNumMinus,
+        ArgNamePieceListsToPrint1, ArgNamePieceListsToPrint2),
     (
         MaybeReturnValueNamePieces = no,
-        ArgNamePieceListsToPrint = ArgNamePieceListsToPrint1
+        ArgNamePieceListsToPrint = ArgNamePieceListsToPrint2
     ;
         MaybeReturnValueNamePieces = yes(ReturnValueNamePieces),
-        ArgNamePieceListsToPrint = ArgNamePieceListsToPrint1 ++
+        ArgNamePieceListsToPrint = ArgNamePieceListsToPrint2 ++
             [ReturnValueNamePieces]
     ),
     % Use "insts" and "do not match" when we have two or more *entities*
@@ -1102,7 +1097,7 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
     % only if we have two actual arguments (which are *not* return values).
     InstOrInsts = choose_number(ArgNamePieceListsToPrint, "inst", "insts"),
     DoesOrDo = choose_number(ArgNamePieceListsToPrint, "does", "do"),
-    ArgOrArgs = choose_number(ArgNamePieceListsToPrint1,
+    ArgOrArgs = choose_number(ArgNamePieceListsToPrint2,
         "argument", "arguments"),
     ArgsNoMatchPieces = [words("the"), words(InstOrInsts),
         words("of"), words(ArgOrArgs)] ++
@@ -1201,8 +1196,24 @@ construct_argnum_var_type_inst_tuples(VarTable, InstMap, ArgNum,
     --->    oon_ok
     ;       oon_not_ok.
 
-:- type ok_or_not_map == map(int, arg_ok_or_not_map).
-:- type arg_ok_or_not_map == one_or_more_map(ok_or_not, int).
+    % For a given argument, collect together
+    % - all the proc_ids for which the arguments inst satisfies its mode, and
+    % - all the proc_ids for which the arguments inst does not satisfy it
+    % as the values corresponding to oon_ok and oon_not_ok respectively.
+    %
+:- type arg_ok_or_not
+    --->    arg_ok_or_not(
+                ok_procs        :: set(int),    % proc_ids
+                not_ok_procs    :: set(int)     % proc_ids
+            ).
+
+    % Map each argument (including the args added by the compiler),
+    % as identified by its argument number, to the info about
+    % which procedures' mode it satisfies.
+    %
+:- type ok_or_not_map == map(int, arg_ok_or_not).
+
+%---------------------%
 
 :- pred find_satisfied_initial_insts_in_procs(module_info::in,
     list(argnum_var_type_inst)::in, list(mode_mismatch)::in, int::in,
@@ -1239,25 +1250,39 @@ find_satisfied_initial_insts_in_proc(ModuleInfo,
         inst_matches_initial_sub(VarType, VarInst, ProcInitialInst,
             ModuleInfo, _UpdatedModuleInfo, map.init, _Subst)
     then
-        OkOrNot = oon_ok
+        record_ok_proc_num(ArgNum, ProcNum, !OkOrNotMap)
     else
-        OkOrNot = oon_not_ok
+        record_not_ok_proc_num(ArgNum, ProcNum, !OkOrNotMap)
     ),
-    record_ok_or_not_proc_num(OkOrNot, ArgNum, ProcNum, !OkOrNotMap),
     find_satisfied_initial_insts_in_proc(ModuleInfo,
         ArgTuples, ProcInitialInsts, ProcNum, !OkOrNotMap).
 
-:- pred record_ok_or_not_proc_num(ok_or_not::in, int::in, int::in,
+:- pred record_ok_proc_num(int::in, int::in,
     ok_or_not_map::in, ok_or_not_map::out) is det.
 
-record_ok_or_not_proc_num(OkOrNot, ArgNum, ProcNum, !OkOrNotMap) :-
-    ( if map.search(!.OkOrNotMap, ArgNum, ArgOkOrNotMap0) then
-        one_or_more_map.add(OkOrNot, ProcNum, ArgOkOrNotMap0, ArgOkOrNotMap),
-        map.det_update(ArgNum, ArgOkOrNotMap, !OkOrNotMap)
+record_ok_proc_num(ArgNum, ProcNum, !OkOrNotMap) :-
+    ( if map.search(!.OkOrNotMap, ArgNum, ArgOkOrNot0) then
+        ArgOkOrNot0 = arg_ok_or_not(OkProcs0, NotOkProcs0),
+        set.insert(ProcNum, OkProcs0, OkProcs),
+        ArgOkOrNot = arg_ok_or_not(OkProcs, NotOkProcs0),
+        map.det_update(ArgNum, ArgOkOrNot, !OkOrNotMap)
     else
-        one_or_more_map.add(OkOrNot, ProcNum,
-            one_or_more_map.init, ArgOkOrNotMap),
-        map.det_insert(ArgNum, ArgOkOrNotMap, !OkOrNotMap)
+        ArgOkOrNot = arg_ok_or_not(set.make_singleton_set(ProcNum), set.init),
+        map.det_insert(ArgNum, ArgOkOrNot, !OkOrNotMap)
+    ).
+
+:- pred record_not_ok_proc_num(int::in, int::in,
+    ok_or_not_map::in, ok_or_not_map::out) is det.
+
+record_not_ok_proc_num(ArgNum, ProcNum, !OkOrNotMap) :-
+    ( if map.search(!.OkOrNotMap, ArgNum, ArgOkOrNot0) then
+        ArgOkOrNot0 = arg_ok_or_not(OkProcs0, NotOkProcs0),
+        set.insert(ProcNum, NotOkProcs0, NotOkProcs),
+        ArgOkOrNot = arg_ok_or_not(OkProcs0, NotOkProcs),
+        map.det_update(ArgNum, ArgOkOrNot, !OkOrNotMap)
+    else
+        ArgOkOrNot = arg_ok_or_not(set.init, set.make_singleton_set(ProcNum)),
+        map.det_insert(ArgNum, ArgOkOrNot, !OkOrNotMap)
     ).
 
 %---------------------%
@@ -1266,11 +1291,11 @@ record_ok_or_not_proc_num(OkOrNot, ArgNum, ProcNum, !OkOrNotMap) :-
     --->    all_extra_args_good
     ;       some_extra_arg_is_bad.
 
-:- pred is_any_extra_arg_bad(int::in, int::in, arg_ok_or_not_map::in,
+:- pred is_any_extra_arg_bad(int::in, int::in, arg_ok_or_not::in,
     maybe_some_extra_arg_is_bad::in, maybe_some_extra_arg_is_bad::out) is det.
 
-is_any_extra_arg_bad(NumExtra, ArgNum, ArgOkOrNotMap, !SomeExtraIsBad) :-
-    ( if map.search(ArgOkOrNotMap, oon_not_ok, _OkProcNums) then
+is_any_extra_arg_bad(NumExtra, ArgNum, ArgOkOrNot, !SomeExtraIsBad) :-
+    ( if set.is_non_empty(ArgOkOrNot ^ not_ok_procs) then
         ( if ArgNum =< NumExtra then
             !:SomeExtraIsBad = some_extra_arg_is_bad
         else
@@ -1282,13 +1307,27 @@ is_any_extra_arg_bad(NumExtra, ArgNum, ArgOkOrNotMap, !SomeExtraIsBad) :-
 
 %---------------------%
 
+:- pred acc_not_ok_in_any_proc_args(int::in, arg_ok_or_not::in,
+    list(int)::in, list(int)::out) is det.
+
+acc_not_ok_in_any_proc_args(ArgNum, ArgOkOrNot, !NeverOkArgNums) :-
+    ArgOkOrNot = arg_ok_or_not(OkProcs, _NotOkProcs),
+    ( if set.is_empty(OkProcs) then
+        !:NeverOkArgNums = [ArgNum | !.NeverOkArgNums]
+    else
+        true
+    ).
+
+%---------------------%
+
 :- pred report_all_possibly_mismatched_args(mode_info::in, ok_or_not_map::in,
-    pred_or_func::in, int::in, int::in, list(argnum_var_type_inst)::in,
+    list(int)::in, pred_or_func::in, int::in, int::in,
+    list(argnum_var_type_inst)::in,
     list(list(format_piece))::out, maybe(list(format_piece))::out,
     list(format_piece)::out) is det.
 
-report_all_possibly_mismatched_args(_, _, _, _, _, [], [], no, []).
-report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap,
+report_all_possibly_mismatched_args(_, _, _, _, _, _, [], [], no, []).
+report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap, NeverOkArgNums,
         PredOrFunc, NumExtra, ArgNumMinus, [ArgTuple | ArgTuples],
         ArgNamePiecesList, MaybeReturnValueNamePieces, BadArgPieces) :-
     ArgTuple = argnum_var_type_inst(ArgNum, Var, _VarType, VarInst),
@@ -1306,7 +1345,7 @@ report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap,
         ArgNumCommaPieces = [words("return value")]
     else
         report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap,
-            PredOrFunc, NumExtra, ArgNumMinus, ArgTuples,
+            NeverOkArgNums, PredOrFunc, NumExtra, ArgNumMinus, ArgTuples,
             TailVarNamePiecesList, MaybeReturnValueNamePieces,
             TailBadArgPieces),
         HeadVarNamePieces = color_as_subject([VarNamePiece]),
@@ -1314,8 +1353,27 @@ report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap,
         ArgNumCommaPieces = [nth_fixed(ArgNum - NumExtra), words("argument,")]
     ),
 
-    map.lookup(OkOrNotMap, ArgNum, ArgOkOrNotMap),
-    ( if map.search(ArgOkOrNotMap, oon_not_ok, OoMBadProcNums) then
+    map.lookup(OkOrNotMap, ArgNum, ArgOkOrNot),
+    ArgOkOrNot = arg_ok_or_not(OkProcNumSet, NotOkProcNumSet),
+    set.to_sorted_list(NotOkProcNumSet, NotOkProcNums),
+    ( if
+        % Do not generate an error message about this argument if ...
+        (
+            % ... this argument is ok in all procedures, or ...
+            NotOkProcNums = []
+        ;
+            % ... this argument is compiler-generated, and we are ignoring
+            % compiler-generated arguments, or ...
+            ArgNum =< ArgNumMinus
+        ;
+            % ... this argument is ok in *at least one* procedure, and
+            % there are arguments that are not ok in *any* procedure.
+            set.is_non_empty(OkProcNumSet),
+            NeverOkArgNums = [_ | _]
+        )
+    then
+        BadArgPieces = TailBadArgPieces
+    else
         ( if ArgNum =< NumExtra then
             % An argument added by the polymorphism transformation cannot be
             % a function result.
@@ -1331,17 +1389,15 @@ report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap,
             color_as_incorrect(report_inst(ModeInfo, quote_short_inst,
                 [suffix(",")], [nl_indent_delta(1)],
                 [suffix(","), nl_indent_delta(-1)], VarInst)),
-        ( if map.search(ArgOkOrNotMap, oon_ok, _) then
-            BadProcNums = one_or_more_to_list(OoMBadProcNums),
-            list.sort(BadProcNums, SortedBadProcNums),
-            NthBadProcNums = list.map(nth_fixed_str, SortedBadProcNums),
+        ( if set.is_non_empty(OkProcNumSet) then
+            NthNotOkProcNums = list.map(nth_fixed_str, NotOkProcNums),
             DoesNotMatchWhatPieces = [words("the inst required by"),
                 words("some of the modes of the callee, namely the")] ++
-                fixed_list_to_pieces("and", NthBadProcNums) ++
-                [words(choose_number(NthBadProcNums, "mode.", "modes."))]
+                fixed_list_to_pieces("and", NthNotOkProcNums) ++
+                [words(choose_number(NthNotOkProcNums, "mode.", "modes."))]
         else
-            one_or_more.length(OoMBadProcNums, NumBadProcNums),
-            ( if NumBadProcNums = 1 then
+            list.length(NotOkProcNums, NumNotOkProcNums),
+            ( if NumNotOkProcNums = 1 then
                 DoesNotMatchWhatPieces = [words("the required inst.")]
             else
                 DoesNotMatchWhatPieces = [words("any of the required insts.")]
@@ -1368,8 +1424,6 @@ report_all_possibly_mismatched_args(ModeInfo, OkOrNotMap,
         HeadBadArgPieces = [blank_line] ++ ArgNumNamePieces ++
             WhichIsPieces ++ DoesNotMatchPieces ++ HOPieces,
         BadArgPieces = HeadBadArgPieces ++ TailBadArgPieces
-    else
-        BadArgPieces = TailBadArgPieces
     ).
 
 :- pred report_bound_inst_vars(inst_varset::in, list(mode_mismatch)::in,
