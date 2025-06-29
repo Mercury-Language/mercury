@@ -727,17 +727,6 @@ Verbosity options
         Output each external command before it is run. Note that some commands
         will only be printed with `--verbose'.
 
-    --show-pred-moveability <pred_or_func_name>
-    --no-show-pred-moveability
-    --show-pred-movability <pred_or_func_name>
-    --no-show-pred-movability
-        Write out a short report on the effect of moving the code of the named
-        predicate or function (or the named several predicates and/or
-        functions, if the option is given several times) to a new module. This
-        includes listing the other predicates and/or functions that would have
-        to be moved with them, and whether the move would cause unwanted
-        coupling between the new module and the old.
-
     PRIVATE OPTION
     --detailed-statistics
         Output more detailed messages about the compiler's time/space usage.
@@ -928,8 +917,11 @@ Diagnostics options
 
     -E
     --verbose-error-messages
-        Explain error messages. Asks the compiler to give you a more detailed
-        explanation of any errors it finds in your program.
+        Some error messages have two versions: a standard version intended for
+        experienced users, and a verbose version intended for new users. The
+        default is to print the first version. This option tells the compiler
+        to print the second version, which will offer a more detailed
+        explanation of any errors it finds in your code.
 
     --reverse-error-order
         Print error messages in descending order of their line numbers, instead
@@ -940,20 +932,20 @@ Diagnostics options
     --no-max-error-line-width
         Set the maximum width of an error message line to <n> characters
         (unless a long single word forces the line over this limit). Specifying
-        --no-max-error-line-width removes the limit.
+        `--no-max-error-line-width' removes the limit.
 
     --limit-error-contexts filename:minline1-maxline1,minline2-maxline2
     --no-limit-error-contexts
         Print errors and warnings for the named file only when their line
         number is in one of the specified ranges. The minimum or maximum line
         number in each range may be omitted, in which case the range has no
-        lower or upper bound respectively. Multiple --limit-error-context
-        options accumulate. If more than one --limit-error-context option is
+        lower or upper bound respectively. Multiple `--limit-error-context'
+        options accumulate. If more than one `--limit-error-context' option is
         given for the same file, only the last one will have an effect. If the
         file name and colon are missing, the limit will apply to all files.
 
     --error-files-in-subdir
-        This option causes `mmc --make' to put .err files into the `Mercury'
+        This option causes `mmc --make' to put `.err' files into the `Mercury'
         subdirectory instead of the current directory. (This option has no
         effect on Mmake.)
 
@@ -976,13 +968,13 @@ Diagnostics options
     --color-diagnostics
     --colour-diagnostics
         Disable the use of colors in diagnostic messages. Please see the
-        section named "Enabling the use of color" section in the Mercury
-        Users's Guide for details.
+        "Enabling the use of color" section in the Mercury Users's Guide for
+        details.
 
     PRIVATE OPTION
     --no-config-default-color-diagnostics
     --no-config-default-colour-diagnostics
-        The default value of the --color-diagnostics option, set by the
+        The default value of the `--color-diagnostics' option, set by the
         configure script.
 
     --color-scheme <ColorScheme>
@@ -990,8 +982,8 @@ Diagnostics options
         Specify the color scheme to use for diagnostics, if the use of color in
         diagnostics is enabled. For information about how the compiler uses
         colors in diagnostic messages, and about the syntax of color scheme
-        specifications, please see the section named "Color schemes" in the
-        Mercury user's Guide for the details.
+        specifications, please see the "Color schemes" section in the Mercury
+        user's Guide for details.
 
     PRIVATE OPTION
     --color-scheme-envvar <ColorScheme>
@@ -999,7 +991,7 @@ Diagnostics options
 
     PRIVATE OPTION
     --ignore-color-scheme-envvar
-        Ignore the --color-scheme-envvar option.
+        Ignore the `--color-scheme-envvar' option.
 
 Warning options
 
@@ -1365,6 +1357,17 @@ Options that request information
     --inform-suboptimal-packing
         Generate messages if the arguments of a data constructor could be
         packed more tightly if they were reordered.
+
+    --show-pred-moveability <pred_or_func_name>
+    --no-show-pred-moveability
+    --show-pred-movability <pred_or_func_name>
+    --no-show-pred-movability
+        Write out a short report on the effect of moving the code of the named
+        predicate or function (or the named several predicates and/or
+        functions, if the option is given several times) to a new module. This
+        includes listing the other predicates and/or functions that would have
+        to be moved with them, and whether the move would cause unwanted
+        coupling between the new module and the old.
 
 Options that ask for informational files
 

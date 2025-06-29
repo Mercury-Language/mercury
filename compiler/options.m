@@ -2307,8 +2307,13 @@ optdb(oc_verb_dbg,  debug_intermodule_analysis,        bool(no),
 % XXX Internal/external mismatch: verbose_errors vs verbose-error-messages
 optdb(oc_diag_gen,  verbose_errors,                    bool(no),
     short_help('E', "verbose-error-messages", [], [
-        w("Explain error messages. Asks the compiler to give you a more"),
-        w("detailed explanation of any errors it finds in your program.")])).
+        w("Some error messages have two versions:"),
+        w("a standard version intended for experienced users, and"),
+        w("a verbose version intended for new users."),
+        w("The default is to print the first version."),
+        w("This option tells the compiler to print the second version,"),
+        w("which will offer a more detailed explanation"),
+        w("of any errors it finds in your code.")])).
 optdb(oc_diag_gen,  reverse_error_order,               bool(no),
     help("reverse-error-order", [
         w("Print error messages in descending order of their line numbers,"),
@@ -2316,9 +2321,11 @@ optdb(oc_diag_gen,  reverse_error_order,               bool(no),
         w("to work on the last errors in a file first.")])).
 optdb(oc_diag_gen,  max_error_line_width,              maybe_int(yes(79)),
     arg_help("max-error-line-width", "n", [
-        w("Set the maximum width of an error message line to <n> characters"),
+        w("Set the maximum width of an error message line to"),
+        arg("n"), w("characters"),
         w("(unless a long single word forces the line over this limit)."),
-        w("Specifying --no-max-error-line-width removes the limit.")])).
+        w("Specifying"), opt("--no-max-error-line-width"),
+        w("removes the limit.")])).
 optdb(oc_diag_gen,  limit_error_contexts,              accumulating([]),
     arg_help("limit-error-contexts",
             "filename:minline1-maxline1,minline2-maxline2", [
@@ -2326,16 +2333,17 @@ optdb(oc_diag_gen,  limit_error_contexts,              accumulating([]),
         w("line number is in one of the specified ranges."),
         w("The minimum or maximum line number in each range may be omitted,"),
         w("in which case the range has no lower or upper bound respectively."),
-        w("Multiple --limit-error-context options accumulate."),
-        w("If more than one --limit-error-context option is given for"),
-        w("the same file, only the last one will have an effect."),
+        w("Multiple"), opt("--limit-error-context"), w("options accumulate."),
+        w("If more than one"), opt("--limit-error-context"),
+        w("option is given for the same file,"),
+        w("only the last one will have an effect."),
         w("If the file name and colon are missing, the limit will apply"),
         w("to all files.")])).
 optdb(oc_diag_gen,  error_files_in_subdir,             bool(no),
     help("error-files-in-subdir", [
         w("This option causes"), code("mmc --make"),
-        w("to put .err files into the `Mercury' subdirectory"),
-        w("instead of the current directory."),
+        w("to put"), file(".err"), w("files into the"),
+        file("Mercury"), w("subdirectory instead of the current directory."),
         w("(This option has no effect on Mmake.)")])).
 optdb(oc_diag_gen,  std_int_file_not_written_msgs,     bool(no),
     % We use this option to eliminate the need for a .int_err_exp file for the
@@ -2347,26 +2355,26 @@ optdb(oc_diag_gen,  std_int_file_not_written_msgs,     bool(no),
 optdb(oc_diag_gen,  typecheck_ambiguity_warn_limit,    int(50),
     arg_help("typecheck-ambiguity-warn-limit", "n", [
         w("Set the number of type assignments required to generate a"),
-        w("warning about highly ambiguous overloading to <n>.")])).
+        w("warning about highly ambiguous overloading to"), arg("n", ".")])).
 optdb(oc_diag_gen,  typecheck_ambiguity_error_limit,   int(3000),
     arg_help("typecheck-ambiguity-error-limit", "n", [
         w("Set the number of type assignments required to generate an error"),
-        w("about excessively ambiguous overloading to <n>. If this limit is"),
-        w("reached, the typechecker will not process the predicate or"),
-        w("function any further.")])).
+        w("about excessively ambiguous overloading to"), arg("n", "."),
+        w("If this limit is reached, the typechecker"),
+        w("will not process the predicate or function any further.")])).
 
 optdb(oc_diag_color, color_diagnostics,                 bool_special,
     alt_help("color-diagnostics",
             ["colour-diagnostics"], [
-        w("Disable the use of colors in diagnostic messages. Please see"),
-        w("the section named \"Enabling the use of color\" section in the"),
-        w("Mercury Users's Guide for details.")])).
+        w("Disable the use of colors in diagnostic messages. Please see the"),
+        ref("", "Enabling the use of color", "section"),
+        w("in the Mercury Users's Guide for details.")])).
 optdb(oc_diag_color, config_default_color_diagnostics,  bool(yes),
     % This option should be used only by the configure script.
     priv_alt_help("config-default-color-diagnostics",
             ["config-default-colour-diagnostics"], [
-        w("The default value of the --color-diagnostics option,"),
-        w("set by the configure script.")])).
+        w("The default value of the"), opt("--color-diagnostics"),
+        w("option, set by the configure script.")])).
 optdb(oc_diag_int,  color_diagnostics_is_set,          bool(no), no_help).
 optdb(oc_diag_int,  color_diagnostics_is_set_to,       bool(no), no_help).
 optdb(oc_diag_int,  use_color_diagnostics,             bool(no), no_help).
@@ -2377,8 +2385,8 @@ optdb(oc_diag_color, color_scheme,                      string_special,
         w("color in diagnostics is enabled. For information about how the"),
         w("compiler uses colors in diagnostic messages, and about the"),
         w("syntax of color scheme specifications, please see the"),
-        w("section named \"Color schemes\" in the Mercury user's Guide"),
-        w("for the details.")])).
+        ref("", "Color schemes", "section"),
+        w("in the Mercury user's Guide for details.")])).
 optdb(oc_diag_int,  color_scheme_envvar,               string_special,
     priv_arg_help("color-scheme-envvar", "ColorScheme", [])).
 optdb(oc_diag_int,  color_scheme_set_by,               string("default"),
@@ -2388,7 +2396,7 @@ optdb(oc_diag_int,  color_scheme_set_to,               string("light16"),
 optdb(oc_diag_int,  ignore_color_scheme_envvar,        bool(no),
     % This option should be used only by our test suite.
     priv_help("ignore-color-scheme-envvar", [
-        w("Ignore the --color-scheme-envvar option.")])).
+        w("Ignore the"), opt("--color-scheme-envvar"), w("option.")])).
 optdb(oc_diag_int,  set_color_subject,                 string(""), no_help).
 optdb(oc_diag_int,  set_color_correct,                 string(""), no_help).
 optdb(oc_diag_int,  set_color_incorrect,               string(""), no_help).
@@ -2854,7 +2862,7 @@ optdb(oc_inform,    inform_suboptimal_packing,         bool(no),
     help("inform-suboptimal-packing", [
         w("Generate messages if the arguments of a data constructor"),
         w("could be packed more tightly if they were reordered.")])).
-optdb(oc_verbosity, show_pred_movability,              accumulating([]),
+optdb(oc_inform, show_pred_movability,              accumulating([]),
     alt_arg_help("show-pred-moveability",
             ["show-pred-movability"], "pred_or_func_name", [
         w("Write out a short report on the effect of moving the code of"),
