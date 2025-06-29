@@ -862,7 +862,7 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
         % but each of its keys is unique, so the sort of the assoc_list
         % effectively sorts only on the keys. Each key is the list of
         % the module qualifiers in front of the base module name, followed
-        % by the base module name. Since the empty lists sorts before
+        % by the base module name. Since the empty list sorts before
         % any nonempty list, any comparison of a list of module name components
         % (representing an arbitrary module name) with any initial subsequence
         % of those components (representing the arbitrary module's ancestors)
