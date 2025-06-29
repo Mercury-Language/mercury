@@ -2447,8 +2447,8 @@ optdb(oc_warn_dodgy, warn_unused_interface_imports,     bool(yes),
         w("but not used there.")])).
 optdb(oc_warn_dodgy, warn_interface_imports,            bool(yes),
     help("warn-interface-imports", [
-        w("Do not warn about modules imported in the interface, but"),
-        w("which are not used in the interface.")])).
+        w("Do not warn about modules imported in the interface,"),
+        w("but which are not used in the interface.")])).
 optdb(oc_warn_dodgy, warn_interface_imports_in_parents, bool(no),
     help("warn-interface-imports-in-parents", [
         w("Warn about modules that are imported in the interface of"),
@@ -2477,8 +2477,8 @@ optdb(oc_warn_dodgy, warn_unification_cannot_succeed,   bool(yes),
         w("Do not warn about unifications which cannot succeed.")])).
 optdb(oc_warn_dodgy, warn_known_bad_format_calls,       bool(yes),
     help("warn-known-bad-format-calls", [
-        w("Do not warn about calls to string.format or io.format"),
-        w("that contain mismatches"),
+        w("Do not warn about calls to"), code("string.format"),
+        w("or"), code("io.format"), w("that contain mismatches"),
         w("between the format string and the supplied values.")])).
 optdb(oc_warn_dodgy, warn_obsolete,                     bool(yes),
     help("warn-obsolete", [
@@ -2512,7 +2512,7 @@ optdb(oc_warn_dodgy, warn_inferred_erroneous,           bool(yes),
     help("warn-inferred-erroneous", [
         w("Do not warn about procedures whose determinism"),
         w("is inferred erroneous"),
-        w("but whose determinism declarations are laxer.")])).
+        w("but whose determinism declarations are looser.")])).
 
 % Warnings about predicate pragma issues.
 
@@ -2529,9 +2529,10 @@ optdb(oc_warn_dodgy, warn_potentially_ambiguous_pragma, bool(no),
         w("for a predicate or a function.")])).
 optdb(oc_warn_dodgy, warn_table_with_inline,            bool(yes),
     help("warn-table-with-inline", [
-        w("Do not warn about tabled procedures that also have"),
-        w("a `pragma inline' declaration. (This combination does not work,"),
-        w("because inlined copies of procedure bodies cannot be tabled.")])).
+        w("Do not warn about tabled procedures that also have a"),
+        code("pragma inline"), w("declaration."),
+        w("(This combination does not work, because"),
+        w("inlined copies of procedure bodies cannot be tabled.")])).
 
 % Warnings about other predicate-level issues.
 
@@ -2543,8 +2544,8 @@ optdb(oc_warn_dodgy, warn_unresolved_polymorphism,      bool(yes),
 optdb(oc_warn_dodgy, warn_stubs,                        bool(yes),
     help("warn-stubs", [
         w("Do not warn about procedures for which there are no clauses."),
-        w("Note that this option is meaningful only if"),
-        w("the `--allow-stubs' option is enabled.")])).
+        w("Note that this option is meaningful only if the"),
+        opt("--allow-stubs"), w("option is enabled.")])).
 optdb(oc_warn_dodgy, warn_non_term_special_preds,       bool(yes),
     help("warn-non-term-special-preds", [
         w("Do not warn about types that have user-defined equality or"),
@@ -2575,34 +2576,41 @@ optdb(oc_warn_dodgy, warn_undefined_options_variables,  bool(yes),
     alt_help("warn-undefined-options-variables",
             ["warn-undefined-options-vars"], [
         w("Do not warn about references to undefined variables"),
-        w("in options files with `--make'.")])).
+        w("in options files with"), opt("--make", ".")])).
 optdb(oc_warn_dodgy, warn_missing_opt_files,            bool(yes),
     help("warn-missing-opt-files", [
-        w("Do not warn about `.opt' files which cannot be opened.")])).
+        w("Do not warn about"), file(".opt"), w("files"),
+        w("which cannot be opened.")])).
 optdb(oc_warn_dodgy, warn_missing_trans_opt_files,      bool(no),
     help("warn-missing-trans-opt-files", [
-        w("Warn about `.trans_opt' files which cannot be opened.")])).
+        w("Warn about"), file(".trans_opt"), w("files"),
+        w("which cannot be opened.")])).
 optdb(oc_warn_dodgy, warn_missing_trans_opt_deps,       bool(yes),
     help("warn-missing-trans-opt-deps", [
         w("Do not generate a warning when the information required"),
-        w("to allow `.trans_opt' files to be read when creating other"),
-        w("`.trans_opt' files has been lost. The information can be"),
-        w("recreated by running `mmake <mainmodule>.depend'")])).
+        w("to allow"), file(".trans_opt"), w("files to be read"),
+        w("when creating other"), file(".trans_opt"), w("files"),
+        w("has been lost. The information can be recreated by running"),
+        help_text_only([quote("mmake <mainmodule>.depend", ".")]),
+        texinfo_only([code("mmake"),
+        file_var("mainmodule", "depend", ".")])])).
 
 %---------------------%
 
 optdb(oc_warn_perf, warn_accumulator_swaps,            bool(yes),
     help("warn-accumulator-swaps", [
-        w("Do not warn about argument order rearrangement caused"),
-        w("by `--introduce-accumulators'.")])).
+        w("Do not warn about argument order rearrangement caused by"),
+        opt("--introduce-accumulators", ".")])).
 optdb(oc_warn_perf, warn_unneeded_final_statevars,     bool(yes),
     help("warn-unneeded-final-statevars", [
-        w("Do not warn about !:S state variables in clause heads"),
-        w("whose value will always be the same as !.S.")])).
+        w("Do not warn about"), code("!:S"),
+        w("state variables in clause heads"),
+        w("whose value will always be the same as"), code("!.S", ".")])).
 optdb(oc_warn_perf, warn_unneeded_final_statevars_lambda, bool(yes),
     help("warn-unneeded-final-statevars-lambda", [
-        w("Do not warn about !:S state variables in lambda expressions"),
-        w("whose value will always be the same as !.S.")])).
+        w("Do not warn about"), code("!:S"),
+        w("state variables in lambda expressions"),
+        w("whose value will always be the same as"), code("!.S", ".")])).
 optdb(oc_warn_perf, warn_obvious_non_tail_recursion,   bool(no),
     help("warn-obvious-non-tail-recursion", [
         w("Warn about recursive calls that are not tail calls"),
@@ -2619,9 +2627,12 @@ optdb(oc_warn_perf, warn_non_tail_recursion_mutual,    bool(no),
         w("Warn about any mutually recursive calls that are not"),
         w("tail recursive.")])).
 optdb(oc_warn_perf_c, warn_non_tail_recursion,           maybe_string_special,
-    arg_help("warn-non-tail-recursion", "type", [
-        w("Warn about recursive calls that are not tail calls,"),
-        w("<type> may be ""self"", ""self-and-mutual"" or ""none"".")])).
+    arg_help("warn-non-tail-recursion", "{none,self,self-and-mutual}", [
+        w("Specify when the compiler should warn"),
+        w("about recursive calls that are not tail calls."),
+        w("This option works by specifying the implied values for"),
+        opt("--warn-non-tail-recursion-self"), w("and"),
+        opt("--warn-non-tail-recursion-mutual", ".")])).
 
 %---------------------%
 
@@ -2630,8 +2641,8 @@ optdb(oc_warn_perf_c, warn_non_tail_recursion,           maybe_string_special,
 optdb(oc_warn_style, warn_dead_preds,                   bool(no),
     alt_help("warn-dead-predicates",
             ["warn-dead-preds"], [
-        w("Warn about predicates that have no procedures which are"),
-        w("ever called.")])).
+        w("Warn about predicates and functions that have"),
+        w("no procedures which are ever called.")])).
 optdb(oc_warn_style, warn_dead_procs,                   bool(no),
     alt_help("warn-dead-procedures",
             ["warn-dead-procs"], [
@@ -2654,13 +2665,14 @@ optdb(oc_warn_style, inform_incomplete_switch,          bool(no),
         w("bound to.")])).
 optdb(oc_warn_style_c, inform_incomplete_switch_threshold, int(0),
     arg_help("inform-incomplete-switch-threshold", "N", [
-        w("Have the --inform-incomplete-switch option generate its messages"),
-        w("only for switches that *do* cover at least N% of the function"),
-        w("symbols that the switched-on variable could be bound to.")])).
+        w("Have the"), opt("--inform-incomplete-switch"), w("option"),
+        w("generate its messages only for switches that"), emph("do"),
+        w("cover at least N% of the function symbols"),
+        w("that the switched-on variable could be bound to.")])).
 optdb(oc_warn_style, warn_duplicate_calls,              bool(no),
     help("warn-duplicate-calls", [
-        w("Warn about multiple calls to a predicate with the"),
-        w("same input arguments.")])).
+        w("Warn about multiple calls to a predicate or function"),
+        w("with the same input arguments.")])).
 optdb(oc_warn_style, warn_redundant_coerce,             bool(yes),
     help("warn-redundant-coerce", [
         w("Do not warn about redundant type coercions.")])).
@@ -2684,14 +2696,15 @@ optdb(oc_warn_style, warn_unneeded_initial_statevars_lambda, bool(yes),
 
 optdb(oc_warn_style, warn_implicit_stream_calls,        bool(no),
     help("warn-implicit-stream-calls", [
-        w("Warn about calls to I/O predicates that could take explicit"),
-        w("stream arguments, but do not do so.")])).
+        w("Warn about calls to I/O predicates that could take"),
+        w("explicit stream arguments, but do not do so.")])).
 optdb(oc_warn_style, warn_unknown_format_calls,         bool(no),
     help("warn-unknown-format-calls", [
-        w("Warn about calls to string.format, io.format or"),
-        w("stream.string_writer.format for which the compiler cannot tell"),
-        w("whether there are any mismatches between the format string and"),
-        w("the supplied values.")])).
+        w("Warn about calls to"), code("string.format", ","),
+        code("io.format"), w("or"), code("stream.string_writer.format"),
+        w("for which the compiler cannot tell whether"),
+        w("there are any mismatches between the format string"),
+        w("and the supplied values.")])).
 
 % Warnings about predicate level issues.
 
@@ -2700,15 +2713,16 @@ optdb(oc_warn_style, warn_can_fail_function,            bool(no),
         w("Warn about functions that can fail.")])).
 optdb(oc_warn_style, warn_unneeded_mode_specific_clause, bool(yes),
     help("warn-unneeded-mode-specific-clause", [
-        w("Do not warn about clauses that specify the modes"),
-        w("of their arguments unnecessarily.")])).
+        w("Do not warn about clauses that unnecessarily specify"),
+        w("the modes of their arguments.")])).
 
 % Warnings about missing order.
 
 optdb(oc_warn_style, warn_unsorted_import_blocks,       bool(no),
     alt_help("warn-unsorted-import-blocks",
             ["warn-unsorted-import-block"], [
-        w("Warn about two import and/or use declarations on the same line,"),
+        w("Generate a warning if two"), code("import_module"), w("and/or"),
+        code("use_module"), w("declarations occur on the same line,"),
         w("or if a sequence of such declarations on consecutive lines"),
         w("are not sorted on module name.")])).
 optdb(oc_warn_style, warn_inconsistent_pred_order_clauses, bool(no),
@@ -2733,18 +2747,19 @@ optdb(oc_warn_style, warn_non_contiguous_decls,         bool(yes),
     help("warn-non-contiguous-decls", [
         w("Do not generate a warning if the mode declarations of a"),
         w("predicate or function don't all immediately follow its"),
-        w("predicate or function declaration.")])).
+        code("pred"), w("or"), code("func"), w("declaration.")])).
 optdb(oc_warn_style, warn_non_contiguous_clauses,       bool(no),
     help("warn-non-contiguous-clauses", [
-        w("Generate a warning if the clauses of a predicate or"),
-        w("function are not contiguous.")])).
+        w("Generate a warning if the clauses of a predicate or function"),
+        w("are not contiguous.")])).
 optdb(oc_warn_style, warn_non_contiguous_foreign_procs, bool(no),
     help("warn-non-contiguous-foreign-procs", [
         w("Generate a warning if the clauses and foreign_procs of a"),
         w("predicate or function are not contiguous.")])).
 optdb(oc_warn_style_c, allow_non_contiguity_for,          accumulating([]),
     arg_help("allow-non-contiguity-for", "name1,name2,...", [
-        w("Allow the clauses (or, with --warn-non-contiguous-foreign-procs,"),
+        w("Allow the clauses (or, with"),
+        opt("--warn-non-contiguous-foreign-procs", ","),
         w("the clauses and/or foreign_proc pragmas) of the named predicates"),
         w("and/or functions to be intermingled with each other, but not"),
         w("with those or any other predicates or functions. This option"),
@@ -2761,8 +2776,8 @@ optdb(oc_warn_style, warn_suspicious_foreign_code,      bool(no),
         w("pragmas.")])).
 optdb(oc_warn_style, warn_suspicious_foreign_procs,     bool(no),
     help("warn-suspicious-foreign-procs", [
-        w("Warn about possible errors in the bodies of foreign"),
-        w("procedures.")])).
+        w("Warn about possible errors in the bodies of foreign_proc"),
+        w("pragmas.")])).
 
 %---------------------%
 
@@ -2779,8 +2794,8 @@ optdb(oc_warn_ctrl, warn_only_one_format_string_error, bool(yes),
         w("If a format string has more one than mismatch"),
         w("with the supplied values,"),
         w("generate a warning for all mismatches, not just the first."),
-        w("(The later mismatches may be avalanche errors caused by earlier"),
-        w("mismatches.)")])).
+        w("(The later mismatches may be avalanche errors"),
+        w("caused by earlier mismatches.)")])).
 optdb(oc_warn_ctrl, warn_smart_recompilation,          bool(yes),
     % XXX Private until smart recompilation works and is announced.
     priv_help("warn-smart-recompilation", [
@@ -2804,37 +2819,40 @@ optdb(oc_warn_halt, halt_at_warn_make_int,             bool(no),
             ["halt-at-warn-make-int"], [
         w("This option causes the compiler to treat all warnings"),
         w("as if they were errors when generating an interface file"),
-        w("(a .int, .int0, .int2 or .int3 file). This means that"),
-        w("if the compiler issues any warnings at that time,"),
+        w("(a"), file(".int", ","), file(".int0", ","),
+        file(".int2"), w("or"), file(".int3"), w("file)."),
+        w("This means that if the compiler issues any warnings at that time,"),
         w("it will not generate the interface file; instead,"),
         w("it will return a non-zero exit status.")])).
 optdb(oc_warn_halt, halt_at_warn_make_opt,             bool(no),
     help("halt-at-warn-make-opt", [
         w("This option causes the compiler to treat all warnings"),
         w("as if they were errors when generating an optimization file"),
-        w("(.opt or .trans_opt file.) This means that if the compiler"),
-        w("issues any warnings at that time, it will not generate the"),
-        w("optimization file; instead, it will return a non-zero"),
-        w("exit status.")])).
+        w("(a"), file(".opt"), w("or"), file(".trans_opt"), w("file.)"),
+        w("This means that if the compiler issues any warnings at that time,"),
+        w("it will not generate the optimization file;"),
+        w("instead, it will return a non-zero exit status.")])).
 optdb(oc_warn_halt, halt_at_syntax_errors,             bool(no),
     help("halt-at-syntax-errors", [
-        w("This option causes the compiler to halt immediately"),
-        w("after syntax checking and not do any semantic checking"),
+        w("This option causes the compiler to halt immediately,"),
+        w("without doing any semantic checking,"),
         w("if it finds any syntax errors in the program.")])).
 optdb(oc_warn_halt, halt_at_invalid_interface,         bool(yes),
     % --halt-at-invalid-interface is a temporary developer-only option.
     help("halt-at-invalid-interface", [
         w("This option operates when the compiler is invoked with the"),
-        w("--make--interface option to generate .int and .int2 files"),
+        opt("--make--interface"), w("option to generate"),
+        file(".int"), w("and"), file(".int2"), w("files"),
         w("for one or more modules. In its default setting,"),
-        w("--halt-at-invalid-interface, it causes the compiler to check"),
-        w("the consistency of those parts of each of those modules"),
-        w("that are intended to end up in the .int and .int2 files."),
-        w("If these checks find any problems, the compiler will stop"),
-        w("without generating those files after printing an error message"),
-        w("for each problem. Users can prevent this behavior,"),
+        opt("--halt-at-invalid-interface", ","),
+        w("it causes the compiler to check the consistency of those parts"),
+        w("of each of those modules that are intended to end up in the"),
+        file(".int"), w("and"), file(".int2"), w("files."),
+        w("If these checks find any problems, the compiler will print"),
+        w("an error message for each problem, but will then stop."),
+        w("Users can prevent this stop,"),
         w("and thus allow the generation of invalid interface files,"),
-        w("by specifying --no-halt-at-invalid-interface.")])).
+        w("by specifying"), opt("--no-halt-at-invalid-interface", ".")])).
 optdb(oc_warn_halt, halt_at_auto_parallel_failure,     bool(no),
     priv_help("halt-at-auto-parallel-failure", [
         w("This option causes the compiler to halt if it cannot perform"),
@@ -2856,8 +2874,9 @@ optdb(oc_inform,    inform_inferred_modes,             bool(yes),
 optdb(oc_inform,    inform_incomplete_color_scheme,    bool(no),
     priv_help("inform-incomplete-color-scheme", [
         w("Report if the argument if either the value of the"),
-        w("--color-scheme option, or the value of MERCURY_COLOR_SCHEME"),
-        w("environment variable, does not specify a color for some role.")])).
+        opt("--color-scheme"), w("option, or the value of the"),
+        code("MERCURY_COLOR_SCHEME"), w("environment variable,"),
+        w("does not specify a color for some role.")])).
 optdb(oc_inform,    inform_suboptimal_packing,         bool(no),
     help("inform-suboptimal-packing", [
         w("Generate messages if the arguments of a data constructor"),
@@ -2897,7 +2916,7 @@ optdb(oc_file_req,  show_definition_extents,           bool(no),
             ["show-defn-extents"], [
         w("Write out a list of the predicates and functions defined in"),
         w("the module, together with the approximate line numbers of their"),
-        w("first and last lines, to `<module>.defn_extents'."),
+        w("first and last lines, to"), file_var("module", "defn_extents", "."),
         w("The list will be ordered on the starting line numbers"),
         w("of the predicates and functions.")])).
 optdb(oc_file_req,  show_local_call_tree,              bool(no),
@@ -2906,16 +2925,17 @@ optdb(oc_file_req,  show_local_call_tree,              bool(no),
         w("defined in the module. Each node of this tree is a local"),
         w("predicate or function, and each node has edges linking it to the"),
         w("nodes of the other local predicates and functions it directly"),
-        w("refers to. Write out to `<module>.local_call_tree' a list of"),
-        w("these nodes. Put these nodes into the order in which they are"),
+        w("refers to. Write out to"), file_var("module", "local_call_tree"),
+        w("a list of these nodes."),
+        w("Put these nodes into the order in which they are"),
         w("encountered by a depth-first left-to-right traversal of the"),
         w("bodies (as reordered by mode analysis), of the first procedure of"),
         w("each predicate or function, starting the traversal at the"),
         w("exported predicates and/or functions of the module."),
         w("List the callees of each node in the same order."),
         w("Write a flattened form of this call tree, containing just"),
-        w("the predicates and functions in the same traversal order,"),
-        w("to `<module>.local_call_tree_order'."),
+        w("the predicates and functions in the same traversal order, to"),
+        file_var("module", "local_call_tree_order", "."),
         w("Construct another call tree of the predicates and functions"),
         w("defined in the module in which each entry lists"),
         w("not just the local predicates/functions directly referred to,"),
@@ -2929,26 +2949,30 @@ optdb(oc_file_req,  show_local_type_repns,             bool(no),
     alt_help("show-local-type-representations",
             ["show-local-type-repns"], [
         w("Write out information about the representations of all types"),
-        w("defined in the module being compiled to `<module>.type_repns'.")])).
+        w("defined in the module being compiled to"),
+        file_var("module", "type_repns", ".")])).
 optdb(oc_file_req,  show_all_type_repns,               bool(no),
     alt_help("show-all-type-representations",
             ["show-all-type-repns"], [
         w("Write out information about the representations of all types"),
-        w("visible in the module being compiled to `<module>.type_repns'.")])).
+        w("visible in the module being compiled to"),
+        file_var("module", "type_repns", ".")])).
 optdb(oc_file_req,  show_developer_type_repns,         bool(no),
     priv_alt_help("show-developer-type-representations",
             ["show-developer-type-repns"], [
         w("When writing out information about the representations of types,"),
         w("include information that is of interest"),
-        w("to mmc developers only.")])).
+        w("to Mercury developers only.")])).
 optdb(oc_file_req,  show_dependency_graph,             bool(no),
     help("show-dependency-graph", [
-        w("Write out the dependency graph to `<module>.dependency_graph'.")])).
+        w("Write out the dependency graph to"),
+        file_var("module", "dependency_graph", ".")])).
 optdb(oc_file_req,  show_imports_graph,                bool(no),
     alt_help("show-imports-graph", ["imports-graph"], [
-        w("If --generate-dependencies is specified, then write out"),
-        w("the imports graph to `<module>.imports_graph' in a format"),
-        w("that can be processed by the graphviz tools."),
+        w("If"), opt("--generate-dependencies"), w("is specified, then"),
+        w("write out the imports graph to"),
+        file_var("module", "imports_graph"),
+        w("in a format that can be processed by the graphviz tools."),
         w("The graph will contain an edge from the node of module A"),
         w("to the node of module B if module A imports module B.")])).
 
@@ -2958,8 +2982,8 @@ optdb(oc_file_req,  show_imports_graph,                bool(no),
 
 optdb(oc_tracegoal, trace_goal_flags,                  accumulating([]),
     arg_help("trace-flag", "keyword", [
-        w("Enable the trace goals that depend on"),
-        w("the <keyword> trace flag.")])).
+        w("Enable the trace goals that depend on the"),
+        arg("keyword"), w("trace flag.")])).
 
 %---------------------------------------------------------------------------%
 
@@ -2971,15 +2995,17 @@ optdb(oc_mdb,       trace_level,                       string("default"),
     arg_help("trace", "{minimum, shallow, deep, rep, default}", [
         w("Generate code that includes the specified level"),
         w("of execution tracing."),
-        w("See the Debugging chapter of the Mercury User's Guide"),
-        w("for details.")])).
+        help_text_only([
+            w("See the Debugging chapter of the Mercury User's Guide"),
+            w("for details.")]),
+        texinfo_only([xref("Debugging", ".")])])).
 optdb(oc_mdb,       exec_trace_tail_rec,               bool(no),
     help("exec-trace-tail-rec", [
         w("Generate TAIL events for self-tail-recursive calls instead of"),
         w("EXIT events. This allows these recursive calls to reuse"),
         w("their parent call's stack frame, but it also means that"),
         w("the debugger won't have access to the contents of the reused"),
-        w("stack frames")])).
+        w("stack frames.")])).
 optdb(oc_mdb,       trace_optimized,                   bool(no),
     alt_help("trace-optimized",
             ["trace-optimised"], [
@@ -2991,7 +3017,8 @@ optdb(oc_mdb_dev,   trace_prof,                        bool(no),
         w("Enable tracing of deep profiling service predicates.")])).
 optdb(oc_mdb,       event_set_file_name,               string(""),
     arg_help("event-set-file-name", "filename", [
-        w("Get the specification of user-defined events from <filename>.")])).
+        w("Get the specification of user-defined events from"),
+        arg("filename", ".")])).
 optdb(oc_mdb_dev,   trace_table_io,                    bool(no),
     % I/O tabling is deliberately not documented. It is meant to be
     % switched on, with consistent parameters, in debugging grades,
@@ -3004,18 +3031,19 @@ optdb(oc_mdb_dev,   trace_table_io,                    bool(no),
         w("to execute retry commands across I/O actions.")])).
 optdb(oc_mdb_dev,   trace_table_io_only_retry,         bool(no),
     priv_help("trace-table-io-only-retry", [
-        w("Set up I/O tabling to support only retries across I/O"),
-        w("actions, not the printing of actions or declarative"),
-        w("debugging. This reduces the size of the I/O action table.")])).
+        w("Set up I/O tabling to support only retries across I/O actions,"),
+        w("not the printing of actions or declarative debugging."),
+        w("This reduces the size of the I/O action table.")])).
 optdb(oc_mdb_dev,   trace_table_io_states,             bool(no),
     priv_help("trace-table-io-states", [
-        w("When tabling I/O actions, table the io.state arguments"),
-        w("together with the others. This should be required iff"),
-        w("values of type io.state actually contain information.")])).
+        w("When tabling I/O actions, table the"),
+        code("io.state"), w("arguments together with the others."),
+        w("This should be required iff values of type"), code("io.state"),
+        w("actually contain information.")])).
 optdb(oc_mdb_dev,   trace_table_io_require,            bool(no),
     priv_help("trace-table-io-require", [
         w("Require the tabling of I/O actions, i.e. generate an error"),
-        w("if an I/O primitive does not have the tabled_for_io"),
+        w("if an I/O primitive does not have the"), code("tabled_for_io"),
         w("annotation.")])).
 optdb(oc_mdb_dev,   trace_table_io_all,                bool(no),
     priv_help("trace-table-io-all", [
@@ -3031,17 +3059,19 @@ optdb(oc_mdb_dev,   suppress_trace,                    string(""),
         w("Suppress the named aspects of the execution tracing system.")])).
 optdb(oc_mdb,       delay_death,                       bool(yes),
     help("delay-death", [
-        w("When the trace level is `deep', the compiler normally"),
-        w("preserves the values of variables as long as possible, even"),
-        w("beyond the point of their last use, in order to make them"),
-        w("accessible from as many debugger events as possible."),
-        w("However, it will not do so if the user specifies"),
-        w("`--no-delay-death'. This may be necessary if without it,"),
+        w("When the trace level is"), samp("deep", ","),
+        w("the compiler normally preserves the values of variables"),
+        w("as long as possible, even beyond the point of their last use,"),
+        w("in order to make them accessible from as many debugger events"),
+        w("as possible. However, it will not do so if the user specifies"),
+        opt("--no-delay-death", "."),
+        w("This may be necessary if without it,"),
         w("the stack frames of some procedures grow too big.")])).
 optdb(oc_mdb,       delay_death_max_vars,              int(1000),
     arg_help("delay-death-max-vars", "N", [
         w("Delay the deaths of variables only when the number of variables"),
-        w("in the procedure is no more than N. The default value is 1000.")])).
+        w("in the procedure is no more than N."),
+        w("The default value is 1000.")])).
 optdb(oc_mdb,       stack_trace_higher_order,          bool(no),
     help("stack-trace-higher-order", [
         w("Enable stack traces through predicates and functions with"),
@@ -3051,8 +3081,9 @@ optdb(oc_mdb_dev,   force_disable_tracing,             bool(no),
     priv_help("force-disable-tracing", [
         w("Force tracing to be set to trace level none."),
         w("This overrides all other tracing/grade options."),
-        w("Its main use is to turn off tracing in the browser"),
-        w("directory, even for .debug and .decldebug grades.")])).
+        w("Its main use is to turn off tracing in the browser directory,"),
+        w("even for"), samp(".debug"), w("and"), samp(".decldebug"),
+        w("grades.")])).
 
 optdb(oc_ssdb,      ssdb_trace_level,                  string("default"),
     priv_arg_help("ssdb-trace", "{none, shallow, deep}", [
@@ -3061,7 +3092,8 @@ optdb(oc_ssdb,      ssdb_trace_level,                  string("default"),
 optdb(oc_ssdb_dev,   force_disable_ssdebug,             bool(no),
     % This is a developer-only option:
     priv_help("force-disable-ssdebug", [
-        w("Disable ssdebug transformation even in ssdebug grades.")])).
+        w("Disable the ssdebug transformation even in"),
+        samp(".ssdebug"), w("grades.")])).
 
 %---------------------------------------------------------------------------%
 
@@ -3086,15 +3118,15 @@ optdb(oc_mdprof,    prof_optimized,                    bool(no),
 optdb(oc_opt_ctrl,  default_opt_level,                 string("-O2"),
     % This is for use by Mercury.config only.
     priv_arg_help("default-opt-level", "-O<n>", [
-        w("Set the default optimization level to <n>.")])).
+        w("Set the default optimization level to"), arg("n", ".")])).
 optdb(oc_opt_ctrl,  opt_level,                         int_special,
     short_arg_help('O', "optimization-level",
             ["optimisation-level", "opt-level"], "n", [
-        w("Set optimization level to <n>."),
+        w("Set optimization level to"), arg("n", "."),
         w("Optimization level -1 means no optimization"),
-        w("while optimization level 6 means full optimization.")])).
-        % "For a full description of each optimization level,",
-        % "see the Mercury User's Guide.",
+        w("while optimization level 6 means full optimization."),
+        w("The option"), opt("--output-optimization-options"),
+        w("lists the optimizations enabled at each level.")])).
 optdb(oc_opt_ctrl,  opt_space,                         special,
     alt_help("optimize-space",
             ["optimise-space", "opt-space"], [
@@ -3111,9 +3143,10 @@ optdb(oc_opt_ctrl,  transitive_optimization,           bool(no),
     alt_help("transitive-intermodule-optimization",
             ["transitive-intermodule-optimisation", "trans-intermod-opt"], [
         w("Import the transitive intermodule optimization data."),
-        w("This data is imported from `<module>.trans_opt' files."),
-        w("Note that `--transitive-intermodule-optimization' does not"),
-        w("work with"), code("mmc --make", ".")])).
+        w("This data is imported from"),
+        file_var("module", "trans_opt"), w("files."),
+        w("Note that"), opt("--transitive-intermodule-optimization"),
+        w("does not work with"), code("mmc --make", ".")])).
 optdb(oc_opt_ctrl,  read_opt_files_transitively,       bool(yes),
     help("read-opt-files-transitively", [
         w("Only read the inter-module optimization information"),
@@ -3122,30 +3155,31 @@ optdb(oc_opt_ctrl,  read_opt_files_transitively,       bool(yes),
 optdb(oc_opt_ctrl,  use_opt_files,                     bool(no),
     help("use-opt-files", [
         w("Perform inter-module optimization using any"),
-        w("`.opt' files which are already built,"),
-        w("e.g. those for the standard library, but do"),
-        w("not build any others.")])).
+        file(".opt"), w("files which are already built,"),
+        w("e.g. those for the standard library,"),
+        w("but do not build any others.")])).
 optdb(oc_opt_ctrl,  use_trans_opt_files,               bool(no),
     help("use-trans-opt-files", [
         w("Perform inter-module optimization using any"),
-        w("`.trans_opt' files which are already built,"),
-        w("e.g. those for the standard library, but do"),
-        w("not build any others.")])).
+        file(".trans_opt"), w("files which are already built,"),
+        w("e.g. those for the standard library,"),
+        w("but do not build any others.")])).
 optdb(oc_opt_ctrl,  intermodule_analysis,              bool(no),
+    % XXX Make private until implemented.
     help("intermodule-analysis", [
         w("Perform analyses such as termination analysis and"),
         w("unused argument elimination across module boundaries."),
         w("This option is not yet fully implemented.")])).
 optdb(oc_opt_ctrl,  analysis_repeat,                   int(0),
     arg_help("analysis-repeat", "n", [
-        w("The maximum number of times to repeat analyses of"),
-        w("suboptimal modules with `--intermodule-analysis'"),
+        w("Specify the maximum number of times to repeat analyses"),
+        w("of suboptimal modules with"), opt("--intermodule-analysis"),
         w("(default: 0).")])).
 optdb(oc_opt_ctrl,  analysis_file_cache,               bool(no),
     % This feature is still experimental.
     priv_help("analysis-file-cache", [
         w("Enable caching of parsed analysis files. This may"),
-        w("improve compile times with `--intermodule-analysis'.")])).
+        w("improve compile times with"), opt("--intermodule-analysis", ".")])).
 optdb(oc_opt_ctrl,  analysis_file_cache_dir,           string(""),
     % The `--analysis-file-cache-dir' option is used by `mmc --make'.
     priv_arg_help("analysis-file-cache-dir", "dir", [])).
@@ -3157,7 +3191,7 @@ optdb(oc_opt_ctrl,  analysis_file_cache_dir,           string(""),
 optdb(oc_opt_hh,    optopt_dead_procs,                 bool_special,
     alt_help("optimize-dead-procs",
             ["optimise-dead-procs"], [
-        w("Enable dead predicate elimination.")])).
+        w("Delete all procedures that are never called.")])).
 optdb(oc_opt_hh,    optopt_unneeded_code,              bool_special,
     help("unneeded-code", [
         w("Remove goals from computation paths where their outputs are"),
@@ -3165,7 +3199,8 @@ optdb(oc_opt_hh,    optopt_unneeded_code,              bool_special,
         w("or movement of the goal.")])).
 optdb(oc_opt_hh,    optopt_unneeded_code_copy_limit,   int_special,
     arg_help("unneeded-code-copy-limit", "copy_limit", [
-        w("Gives the maximum number of places to which a goal may be copied"),
+        w("Specify the maximum number of places"),
+        w("to which a goal may be copied"),
         w("when removing it from computation paths on which its outputs are"),
         w("not needed. A value of zero forbids goal movement and allows"),
         w("only goal deletion; a value of one prevents any increase in the"),
@@ -3174,19 +3209,20 @@ optdb(oc_opt_hh,    optopt_unneeded_code_copy_limit,   int_special,
 optdb(oc_opt_hh,    optopt_unused_args,                bool_special,
     alt_help("optimize-unused-args",
             ["optimise-unused-args"], [
-        w("Remove unused predicate arguments."),
-        w("This will cause the compiler to generate more"),
-        w("efficient code for many polymorphic predicates.")])).
+        w("Delete unused arguments from predicates and functions."),
+        w("This will cause the compiler to generate more efficient code"),
+        w("for many polymorphic predicates.")])).
 optdb(oc_opt_hh,    optopt_intermod_unused_args,       bool_special,
     help("intermod-unused-args", [
-        w("Perform unused argument removal across module boundaries."),
+        w("Delete unused arguments from predicates and functions"),
+        w("even when the analysis required crosses module boundaries."),
         w("This option implies"), opt("--optimize-unused-args"), w("and"),
         opt("--intermodule-optimization", ".")])).
 
 optdb(oc_opt_hh,    optopt_format_calls,               bool_special,
     help("optimize-format-calls", [
         w("Interpret the format string in calls to"),
-        w("string.format and related predicates at compile time,"),
+        code("string.format"), w("and related predicates at compile time,"),
         w("replacing those calls with"),
         w("the sequence of more primitive operations"),
         w("required to implement them.")])).
@@ -3199,11 +3235,12 @@ optdb(oc_opt_hh,    optopt_constant_propagation,       bool_special,
 optdb(oc_opt_hh,    optopt_duplicate_calls,            bool_special,
     alt_help("optimize-duplicate-calls",
             ["optimise-duplicate-calls"], [
-        w("Optimize away multiple calls to a predicate"),
-        w("with the same input arguments.")])).
+        w("Given multiple calls to a predicate or function"),
+        w("with the same input arguments, optimize away all but one.")])).
 optdb(oc_opt_hh,    optopt_excess_assign,              bool_special,
     help("excess-assign", [
-        w("Remove excess assignment unifications.")])).
+        w("Remove assignment unifications whose only effect"),
+        w("is to give another name to the same value.")])).
 
 optdb(oc_opt_hh,    optopt_allow_inlining,             bool_special,
     priv_help("allow-inlining", [
@@ -3215,53 +3252,56 @@ optdb(oc_opt_hh,    inlining,                          bool_special,
 optdb(oc_opt_hh,    optopt_inline_builtins,            bool_special,
     help("inline-builtins", [
         w("Normally, the compiler implements builtin operations"),
-        w("(such as arithmeetic) using inline code."),
-        w("With --no-inline-builtins, the compiler will implement them"),
-        w("as calls to out-of-line procedures."),
+        w("(such as arithmetic) using inline code. With"),
+        opt("--no-inline-builtins", ","), w("the compiler will"),
+        w("implement them as calls to out-of-line procedures."),
         w("This latter is done by default when debugging,"),
         w("since this allows the execution of builtins to be traced.")])).
 optdb(oc_opt_hh,    optopt_inline_par_builtins,        bool_special,
     % This is for measurements by implementors only.
     priv_help("inline-par-builtins", [
-        w("With `--inline-par-builtins', the compiler"),
-        w("implements the operations of par_builtin.m using inline code."),
-        w("With `--no-inline-par-builtins', it implements them as calls." )])).
+        w("With"), opt("--inline-par-builtins", ","), w("the compiler"),
+        w("implements the parallel builtin operations using inline code."),
+        w("With"), opt("--no-inline-par-builtins", ","),
+        w("it implements them as calls.")])).
 optdb(oc_opt_hh,    optopt_inline_single_use,          bool_special,
     help("inline-single-use", [
         w("Inline procedures which are called only from one call site.")])).
 optdb(oc_opt_hh,    optopt_inline_simple,              bool_special,
     help("inline-simple", [
-        w("Ask the compiler to inline simple procedures.")])).
+        w("Inline all simple procedures.")])).
 optdb(oc_opt_hh,    optopt_inline_simple_threshold,    int_special,
     arg_help("inline-simple-threshold", "threshold", [
-        w("With --inline-simple, inline a procedure"),
+        w("With"), opt("--inline-simple", ","), w("inline a procedure"),
         w("if its size is less than the given threshold.")])).
 optdb(oc_opt_hh,    optopt_intermod_inline_simple_threshold, int_special,
     arg_help("intermod-inline-simple-threshold", "threshold", [
-        w("Similar to `--inline-simple-threshold', except used to"),
-        w("determine which predicates should be included in"),
-        w("`.opt' files. Note that changing this between writing"),
-        w("the `.opt' file and compiling to C may cause link errors,"),
+        w("Similar to"), opt("--inline-simple-threshold", ","),
+        w("except used to determine which predicates should be included in"),
+        file(".opt"), w("files. Note that changing this between writing the"),
+        file(".opt"), w("file and compiling to C may cause link errors,"),
         w("and too high a value may result in reduced performance.")])).
 optdb(oc_opt_hh,    optopt_inline_compound_threshold,  int_special,
     arg_help("inline-compound-threshold", "threshold", [
         w("Inline a procedure if its size (measured roughly"),
         w("in terms of the number of connectives in its internal form)"),
         w("less the assumed call cost, multiplied by the number of times"),
-        w("it is called is below the given threshold.")])).
+        w("it is called, is below the given threshold.")])).
 optdb(oc_opt_hh,    optopt_inline_call_cost,           int_special,
     arg_help("inline-call-cost", "cost", [
         w("Assume that the cost of a call is the given parameter."),
-        w("Used only in conjunction with `--inline-compound-threshold'.")])).
+        w("Used only in conjunction with"),
+        opt("--inline-compound-threshold", ".")])).
 optdb(oc_opt_hh,    optopt_inline_vars_threshold,      int_special,
     % Has no effect until --intermodule-optimization.
     % XXX Is this true? If so, Why?
     arg_help("inline-vars-threshold", "threshold", [
         w("Don't inline a call if it would result in a procedure"),
-        w("containing more than <threshold> variables. Procedures"),
-        w("containing large numbers of variables can cause"),
-        w("slow compilation.")])).
+        w("containing more than"), arg("threshold"), w("variables."),
+        w("Procedures containing large numbers of variables"),
+        w("can cause slow compilation.")])).
 optdb(oc_opt_hh,    optopt_inline_tr_sccs,             bool_special,
+    % XXX Delete this option?
     help("inline-linear-tail-rec-sccs", [
         w("Given a set of mutually recursive procedures (an SCC, or strongly"),
         w("connected component, of the call graph) in which each procedure"),
@@ -3272,9 +3312,12 @@ optdb(oc_opt_hh,    optopt_inline_tr_sccs,             bool_special,
         w("recursion, which the MLDS backend can turn into code that runs"),
         w("in constant stack space.")])).
 optdb(oc_opt_hh,    optopt_inline_tr_sccs_max_extra,   int_special,
+    % XXX Delete this option?
     priv_arg_help("inline-linear-tail-rec-sccs-max-extra", "E", [
-        w("When considering whether to apply --inline-linear-tail-rec-sccs"),
-        w("to an SCC containing N procedures, allow the SCC to contain"),
+        w("When considering whether to apply"),
+        opt("--inline-linear-tail-rec-sccs"),
+        w("to an SCC containing"), arg("N"), w(" procedures,"),
+        w("allow the SCC to contain"),
         w("up to N+E mutually recursive tail calls.")])).
 
 optdb(oc_opt_hh,    optopt_higher_order,               bool_special,
@@ -3284,14 +3327,15 @@ optdb(oc_opt_hh,    optopt_higher_order,               bool_special,
 optdb(oc_opt_hh,    optopt_higher_order_size_limit,    int_special,
     arg_help("higher-order-size-limit", "max_size", [
         w("Set the maximum goal size of specialized versions created by"),
-        w("`--optimize-higher-order' and `--type-specialization'."),
+        opt("--optimize-higher-order"), w("and"),
+        opt("--type-specialization", "."),
         w("Goal size is measured as the number of calls, unifications"),
         w("and branched goals.")])).
 optdb(oc_opt_hh,    optopt_higher_order_arg_limit,     int_special,
     arg_help("higher-order-arg-limit", "max_size", [
         w("Set the maximum size of higher-order arguments to"),
-        w("be specialized by `--optimize-higher-order' and"),
-        w("`--type-specialization'.")])).
+        w("be specialized by"), opt("--optimize-higher-order"), w("and"),
+        opt("--type-specialization", ".")])).
 
 optdb(oc_opt_hh,    optopt_type_specialization,        bool_special,
     alt_help("type-specialization",
@@ -3302,7 +3346,7 @@ optdb(oc_opt_hh,    optopt_user_guided_type_specialization, bool_special,
     alt_help("user-guided-type-specialization",
             ["user-guided-type-specialisation"], [
         w("Enable specialization of polymorphic predicates for which"),
-        w("there are `:- pragma type_spec' declarations.")])).
+        w("there are"), code(":- pragma type_spec"), w("declarations.")])).
 
 optdb(oc_opt_hh,    optopt_loop_invariants,            bool_special,
     help("loop-invariants", [
@@ -3314,19 +3358,20 @@ optdb(oc_opt_hh,    optopt_introduce_accumulators,     bool_special,
 optdb(oc_opt_hh,    optopt_lcmc,                       bool_special,
     alt_help("optimize-constructor-last-call",
             ["optimise-constructor-last-call"], [
-        w("Enable the optimization of ""last"" calls that are followed by"),
+        w("Enable the optimization of almost-last calls that are followed by"),
         w("constructor application.")])).
 optdb(oc_opt_hh,    optopt_lcmc_accumulator,           bool_special,
     priv_alt_help("optimize-constructor-last-call-accumulator",
             ["optimise-constructor-last-call-accumulator"], [
-        w("Enable the optimization via accumulators of ""last"" calls"),
+        w("Enable the optimization via accumulators of almost-last calls"),
         w("that are followed by constructor application.")])).
 optdb(oc_opt_hh,    optopt_lcmc_null,                  bool_special,
     priv_alt_help("optimize-constructor-last-call-null",
             ["optimise-constructor-last-call-null"], [
-        w("When --optimize-constructor-last-call is enabled, put NULL in"),
-        w("uninitialized fields (to prevent the garbage collector from"),
-        w("looking at and following a random bit pattern).")])).
+        w("When"), opt("--optimize-constructor-last-call"), w("is enabled,"),
+        w("put NULL in uninitialized fields"),
+        w("to prevent the garbage collector from"),
+        w("looking at and following a random bit pattern.")])).
 
 optdb(oc_opt_hh,    optopt_split_switch_arms,          bool_special,
     help("split-switch-arms", [
@@ -3364,9 +3409,8 @@ optdb(oc_opt_hh,    optopt_saved_vars_const,           bool_special,
     priv_alt_help("optimize-saved-vars-const",
             ["optimise-saved-vars-const"], [
         w("Minimize the number of variables saved across calls by"),
-        w("introducing duplicate copies of variables bound to"),
-        w("constants in each interval between flushes where they"),
-        w("are needed.")])).
+        w("introducing duplicate copies of variables bound to constants"),
+        w("in each interval between flushes where they are needed.")])).
 optdb(oc_opt_hh,    optopt_svcell,                     bool_special,
     priv_alt_help("optimize-saved-vars-cell",
             ["optimise-saved-vars-cell"], [
@@ -3402,20 +3446,20 @@ optdb(oc_opt_hh,    optopt_svcell_all_candidates,      bool_special,
 
 optdb(oc_opt_hh,    optopt_constraint_propagation,     bool_special,
     help("constraint-propagation", [
-        w("Enable the constraint propagation transformation,"),
+        w("Perform the constraint propagation transformation,"),
         w("which attempts to ensure that"),
         w("goals which can fail are executed as early as possible.")])).
 optdb(oc_opt_hh,    optopt_local_constraint_propagation, bool_special,
     help("local-constraint-propagation", [
-        w("Enable the constraint propagation transformation,"),
+        w("Perform the constraint propagation transformation,"),
         w("but only rearrange goals within each procedure."),
         w("Specialized versions of procedures will not be created.")])).
 
 optdb(oc_opt_hh,    optopt_deforestation,              bool_special,
     help("deforestation", [
-        w("Enable deforestation. Deforestation is a program"),
-        w("transformation whose aim is to avoid the construction of"),
-        w("intermediate data structures and to avoid repeated traversals"),
+        w("Perform deforestation, which is a program transformation"),
+        w("whose aims are to avoid the construction of"),
+        w("intermediate data structures, and to avoid repeated traversals"),
         w("over data structures within a conjunction.")])).
 optdb(oc_opt_hh,    optopt_deforestation_depth_limit,  int_special,
     arg_help("deforestation-depth-limit", "depth_limit", [
@@ -3438,39 +3482,60 @@ optdb(oc_opt_hh,    optopt_deforestation_size_threshold, int_special,
 optdb(oc_opt_hh,    optopt_untuple,                    bool_special,
     priv_help("untuple", [
         w("Expand out procedure arguments when the argument type"),
-        w("is a tuple or a type with exactly one functor."),
-        w("Note: this is almost always a pessimization.")])).
+        w("is either a tuple, or a type with exactly one functor."),
+        w("This increases the cost of parameter passing,"),
+        w("but reduces the cost of access to the individual fields"),
+        w("of the tuple or functor."),
+        w("Which effect is greater will depend greatly"),
+        w("on the relative frequency with which"),
+        w("execution takes different program paths,"),
+        w("which means that this transformation can cause"),
+        w("slowdowns as well as speedups."),
+        w("This means that detailed profiling data"),
+        w("is crucial for the proper use of this option.")])).
+        % w("Note: this transformation"),
+        % w("is almost always a pessimization on its own, but"),
+        % w("it can help other optimizations reach an overall speedup".)])).
 optdb(oc_opt_hh,    optopt_tuple,                      bool_special,
     priv_help("tuple", [
-        w("Try to find opportunities for procedures to pass some"),
-        w("arguments to each other as a tuple rather than as"),
-        w("individual arguments."),
-        w("Note: so far this has mostly a detrimental effect.")])).
+        w("Try to find opportunities for procedures to pass some arguments"),
+        w("to each other as a tuple rather than separately."),
+        w("This reduces the cost of parameter passing,"),
+        w("but increases the cost of access to each of the old arguments."),
+        % w("Note: so far this has mostly a detrimental effect.")])).
+        w("Which effect is greater will depend greatly"),
+        w("on the relative frequency with which"),
+        w("execution takes different program paths,"),
+        w("which means that this transformation can cause"),
+        w("slowdowns as well as speedups."),
+        w("This means that detailed profiling data"),
+        w("is crucial for the proper use of this option.")])).
 optdb(oc_opt_hh,    optopt_tuple_trace_counts_file,    string_special,
     priv_arg_help("tuple-trace-counts-file", "filename", [
-        w("Supply a trace counts summary file for the tupling"),
-        w("transformation. The summary should be made from a sample"),
-        w("run of the program you are compiling, compiled without"),
-        w("optimizations.")])).
+        w("This option tells the compiler that the profiling data"),
+        w("needed for the untupling and tupling transformations"),
+        w("is available in the named trace counts summary file."),
+        w("The summary should be made from a sample run of the program"),
+        w("you are compiling, compiled without optimizations.")])).
 optdb(oc_opt_hh,    optopt_tuple_costs_ratio,          int_special,
     priv_arg_help("tuple-costs-ratio", "ratio", [
         w("A value of 110 for this parameter means the tupling"),
         w("transformation will transform a procedure if it thinks"),
         w("that procedure would be 10% worse, on average, than"),
-        w("whatever transformed version of the procedure it has in"),
-        w("mind. The default is 100.")])).
+        w("whatever transformed version of the procedure it has in mind."),
+        w("The default is 100.")])).
 optdb(oc_opt_hh,    optopt_tuple_min_args,             int_special,
     priv_arg_help("tuple-min-args", "min-num-args", [
         w("The minimum number of input arguments that the tupling"),
-        w("transformation will consider passing together as a"),
-        w("tuple. This is mostly to speed up the compilation"),
-        w("process by not pursuing (presumably) unfruitful searches.")])).
+        w("transformation will consider passing together as a tuple."),
+        w("This is mostly to speed up the compilation process"),
+        w("by not pursuing (presumably) unfruitful searches.")])).
 
 optdb(oc_opt_hh,    optopt_delay_construct,            bool_special,
     alt_help("delay-constructs",
             ["delay-construct"], [
-        w("Reorder goals to move construction unifications after"),
-        w("primitive goals that can fail.")])).
+        w("Reorder goals to move construction unifications"),
+        w("after primitive goals that can fail.")])).
 
 optdb(oc_opt_hh,    optopt_follow_code,                bool_special,
     priv_help("follow-code", [
@@ -3485,8 +3550,8 @@ optdb(oc_opt_hh,    optopt_always_spec_dep_par_conjs,  bool_special,
     priv_help("always-specialize-in-dep-par-conjs", [
         w("When the transformation for handling dependent parallel"),
         w("conjunctions adds waits and/or signals around a call,"),
-        w("create a specialized version of the called procedure, even if"),
-        w("this is not profitable.")])).
+        w("create a specialized version of the called procedure,"),
+        w("even if this is not profitable.")])).
 optdb(oc_opt_hh,    optopt_allow_some_paths_only_waits, bool_special,
     priv_help("allow-some-paths-only-waits", [])).
 optdb(oc_opt_hh,    optopt_region_analysis,            bool_special,
@@ -3500,30 +3565,34 @@ optdb(oc_opt_hh_exp, structure_sharing_analysis,        bool(no),
         w("Perform structure sharing analysis.")])).
 optdb(oc_opt_hh_exp, structure_sharing_widening,        int(0),
     arg_help("structure-sharing-widening", "n", [
-        w("Perform widening when the set of structure sharing pairs becomes"),
-        w("larger than <n>. When n=0, widening is not enabled."),
+        w("Perform widening when the set of structure sharing pairs"),
+        w("becomes larger than"), arg("n", "."),
+        w("When n=0, widening is not enabled."),
         w("(default: 0).")])).
 optdb(oc_opt_hh_exp, structure_reuse_analysis,          bool(no),
     alt_help("structure-reuse", ["ctgc"], [
-        w("Perform structure reuse analysis (Compile Time Garbage"),
-        w("Collection).")])).
+        w("Perform structure reuse analysis"),
+        w("(Compile Time Garbage Collection).")])).
 optdb(oc_opt_hh_exp, structure_reuse_constraint,
                                         string("within_n_cells_difference"),
     alt_arg_help("structure-reuse-constraint",
             ["ctgc-constraint"],
             "{same_cons_id, within_n_cells_difference}", [
-        w("Constraint on the way we allow structure reuse. `same_cons_id'"),
-        w("specifies that reuse is only allowed between terms of the same"),
-        w("type and constructor. `within_n_cells_difference' states that"),
-        w("reuse is allowed as long as the arities between the reused term"),
-        w("and new term does not exceed a certain threshold. The threshold"),
-        w("needs to be set using `--structure-reuse-constraint-arg'."),
-        w("(default: within_n_cells_difference, with threshold 0)")])).
+        w("Constraint on the way we allow structure reuse."),
+        samp("same_cons_id"), w("specifies that reuse is only allowed"),
+        w("between terms of the same type and constructor."),
+        samp("within_n_cells_difference"), w("states that reuse"),
+        w("is allowed as long as the arities between the reused term"),
+        w("and new term does not exceed a certain threshold."),
+        w("The threshold needs to be set using"),
+        opt("--structure-reuse-constraint-arg", "."),
+        w("(The default is"), samp("within_n_cells_difference"),
+        w("with the threshold being 0.)")])).
 optdb(oc_opt_hh_exp, structure_reuse_constraint_arg,    int(0),
     alt_arg_help("structure-reuse-constraint-arg",
             ["ctgc-constraint-arg"], "max_difference", [
-        w("Specify the maximum difference in arities between the terms that"),
-        w("can be reused, and the terms that reuse these terms."),
+        w("Specify the maximum difference in arities between the terms"),
+        w("that can be reused, and the terms that reuse these terms."),
         w("(default: 0)")])).
 optdb(oc_opt_hh_exp, structure_reuse_max_conditions,    int(10),
     priv_arg_help("structure-reuse-max-conditions", "max_num_conditions", [
@@ -3535,8 +3604,8 @@ optdb(oc_opt_hh_exp, structure_reuse_free_cells,        bool(no),
     % This option is likely to break many optimisations
     % which haven't been updated.
     priv_help("structure-reuse-free-cells", [
-        w("Immediately free cells which are known to be dead but which"),
-        w("cannot be reused.")])).
+        w("Immediately free cells which are known to be dead"),
+        w("but which cannot be reused.")])).
 
 %---------------------%
 
@@ -3546,8 +3615,9 @@ optdb(oc_opt_hlm,   optopt_smart_indexing,             bool_special,
     help("smart-indexing", [
         w("Implement switches using the fastest applicable"),
         w("implementation method, which may be e.g. binary search"),
-        w("or a hash table. With --no-smart-indexing, the default is"),
-        w("to implement switches as simple if-then-else chains.")])).
+        w("or a hash table. With"), opt("--no-smart-indexing", ","),
+        w("the default is to implement switches"),
+        w("as simple if-then-else chains.")])).
 % The following options are for developers only --they provide
 % finer grained control over smart indexing.
 optdb(oc_opt_hlm,   optopt_smart_atomic_indexing,      bool_special,
@@ -3656,8 +3726,8 @@ optdb(oc_opt_mm,    optopt_eliminate_local_vars,       bool_special,
 optdb(oc_opt_hh,    optopt_generate_trail_ops_inline,  bool_special,
     help("generate-trail-ops-inline", [
         w("Generate inline code for trailing operations."),
-        w("With `--no-generate-trail-ops-inline', the compiler"),
-        w("will implement them using calls to those operations"),
+        w("With"), opt("--no-generate-trail-ops-inline", ","),
+        w("the compiler will implement them using calls to those operations"),
         w("in the standard library.")])).
 optdb(oc_opt_hm,    optimize_trail_usage,              bool(no),
     % This option is developer-only.
@@ -3703,7 +3773,8 @@ optdb(oc_opt_ll,    optopt_optimize_llds,              bool_special,
 optdb(oc_opt_ll,    optopt_repeat_opts,                int_special,
     alt_arg_help("optimize-repeat",
             ["optimise-repeat"], "n", [
-        w("Iterate most optimizations at most <n> times (default: 3).")])).
+        w("Iterate most optimizations at most"), arg("n"),
+        w("times (default: 3).")])).
 optdb(oc_opt_ll,    optopt_peep_llds,                  bool_special,
     alt_help("optimize-peep",
             ["optimise-peep"], [
@@ -3777,8 +3848,8 @@ optdb(oc_opt_ll,    optopt_common_layout_data,         bool_special,
 optdb(oc_opt_ll,    optopt_layout_compression_limit,   int_special,
     arg_help("layout-compression-limit", "n", [
         w("Attempt to compress the layout structures used by the debugger"),
-        w("only as long as the arrays involved have at most <n> elements"),
-        w("(default: 4000).")])).
+        w("only as long as the arrays involved have at most"),
+        arg("n"), w("elements (default: 4000).")])).
 optdb(oc_opt_hl,    optimize_region_ops,               bool(no),
     priv_help("optimize-region-ops", [
         w("Try and restrict region operations to those parts of the program"),
@@ -3791,13 +3862,14 @@ optdb(oc_opt_hl,    optimize_region_ops,               bool(no),
 optdb(oc_opt_lc,    optopt_emit_c_loops,               bool_special,
     help("emit-c-loops", [
         w("Use C loop contstructs to implement loops."),
-        w("With `--no-emit-c-loops', use only gotos.")])).
+        w("With"), opt("--no-emit-c-loops", ","), w("use only gotos.")])).
 optdb(oc_opt_lc,    optopt_procs_per_c_function,       int_special,
     alt_arg_help("procs-per-c-function",
             ["procs-per-C-function"], "n", [
-        w("Put the code for up to <n> Mercury"),
-        w("procedures in a single C function. The default"),
-        w("value of <n> is one. Increasing <n> can produce"),
+        w("Put the code for up to"), arg("n"),
+        w("Mercury procedures in a single C function."),
+        w("The default value of"), arg("n"), w("is one."),
+        w("Increasing"), arg("n"), w("can produce"),
         w("slightly more efficient code, but makes compilation slower.")])).
 optdb(oc_opt_lc,    optopt_local_thread_engine_base,   bool_special,
     help("local-thread-engine-base", [
@@ -3809,13 +3881,15 @@ optdb(oc_opt_lc,    optopt_local_thread_engine_base,   bool_special,
 % from the user's point of view, it is about giving different code
 % to the C compiler.
 optdb(oc_opt_lc,    optopt_inline_alloc,               bool_special,
+    % XXX The speedup from this option is dubious.
     help("inline-alloc", [
-        w("Inline calls to GC_malloc()."),
+        w("Inline calls to"), code("GC_malloc()", "."),
         w("This can improve performance a fair bit,"),
         w("but may significantly increase code size."),
-        w("This option has no effect if `--gc boehm'"),
-        w("is not set or if the C compiler is not GNU C.")])).
+        w("This option has no effect if the selected garbage collector"),
+        w("is not boehm, or if the C compiler is not GNU C.")])).
 optdb(oc_opt_lc,    optopt_use_macro_for_redo_fail,    bool_special,
+    % XXX The speedup from this option is dubious.
     help("use-macro-for-redo-fail", [
         w("Emit the fail or redo macro instead of a branch"),
         w("to the fail or redo code in the runtime system."),
@@ -3828,11 +3902,13 @@ optdb(oc_opt_lc,    optopt_use_macro_for_redo_fail,    bool_special,
 optdb(oc_trans_opt, generate_module_order,             bool(no),
     help("generate-module-order", [
         w("Output the strongly connected components of the module"),
-        w("dependency graph in top-down order to `<module>.order'."),
-        w("Effective only if --generate-dependencies is also specified.")])).
+        w("dependency graph in top-down order to"),
+        file_var("module", "order", "."), w("Effective only if"),
+        opt("--generate-dependencies"), w("is also specified.")])).
 optdb(oc_trans_opt, trans_opt_deps_spec,               maybe_string(no),
     % This option is for developers only for now.
     priv_arg_help("trans-opt-deps-spec", "filename", [
+        % XXX This sentence is missing some words.
         w("Specify a file to remove edges from the trans-opt dependency"),
         w("graph.")])).
 

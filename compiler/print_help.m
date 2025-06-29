@@ -1183,6 +1183,8 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
             ; HeadPiece = quote(_, _)
             ; HeadPiece = ref(_, _, _)
             ; HeadPiece = ref(_, _, _, _)
+            ; HeadPiece = xref(_)
+            ; HeadPiece = xref(_, _)
             ; HeadPiece = samp(_)
             ; HeadPiece = samp(_, _)
             ; HeadPiece = emph(_)
@@ -1251,6 +1253,19 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                     string.format("@ref{%s}%s", [s(RefName), s(Suffix)], Str)
                 )
             ;
+                ( HeadPiece = xref(RefName), Suffix = ""
+                ; HeadPiece = xref(RefName, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    % xref is a texinfo only piece. It should occur
+                    % only inside texinfo_only wrappers.
+                    Str = ""
+                ;
+                    Format = help_texinfo,
+                    string.format("@xref{%s}%s", [s(RefName), s(Suffix)], Str)
+                )
+            ;
                 ( HeadPiece = emph(Text), Suffix = ""
                 ; HeadPiece = emph(Text, Suffix)
                 ),
@@ -1309,6 +1324,15 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                 )
             ),
             add_word(LineLen, !CurLine, !CurLineLen, Str, !FinishedLineCord)
+        ;
+            HeadPiece = help_text_only(HelpTextPieces),
+            (
+                Format = help_plain_text,
+                reflow_lines_loop_over_lines(Format, LineLen, HelpTextPieces,
+                    !.CurLineLen, !CurLine, !FinishedLineCord)
+            ;
+                Format = help_texinfo
+            )
         ;
             HeadPiece = texinfo_only(TexInfoPieces),
             (

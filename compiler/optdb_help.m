@@ -210,6 +210,8 @@
     ;       quote(string, string)               % ``str1''str2
     ;       ref(string, string, string)         % @ref{str2}
     ;       ref(string, string, string, string) % @ref{str2}str4
+    ;       xref(string)                        % @xref{str1}      texinfo only
+    ;       xref(string, string)                % @xref{str1}str2  texinfo only
     ;       samp(string)                        % @samp{str1}
     ;       samp(string, string)                % @samp{str1}str2
     ;       emph(string)                        % @emph{str1}
@@ -222,6 +224,7 @@
     ;       code(string, string)                % @code{str1}str2
     ;       file_var(string, string)            % @file{@var{str1}.str2}
     ;       file_var(string, string, string)    % @file{@var{str1}.str2}str3
+    ;       help_text_only(list(help_piece))    %
     ;       texinfo_only(list(help_piece)).     %
 
 %---------------------------------------------------------------------------%
