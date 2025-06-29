@@ -2,7 +2,7 @@
 # vim: sw=4 ts=4 et
 #---------------------------------------------------------------------------#
 # Copyright (C) 1998-1999,2002, 2004-2006 The University of Melbourne.
-# Copyright (C) 2014, 2020, 2023 The Mercury team.
+# Copyright (C) 2014, 2020, 2023, 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -16,10 +16,18 @@
 # None of this is an issue on non-Windows systems since their versions of
 # awk are not affected.
 #
-platform=$(uname -a)
-case "$platform" in
-    MINGW*|MSYS*|CYGWIN*) export LC_ALL=C ;;
-esac
+# However, see the next comment ...
+#
+# platform=$(uname -a)
+# case "$platform" in
+#     MINGW*|MSYS*|CYGWIN*) export LC_ALL=C ;;
+# esac
+
+# Regardless of which kinds of quotes awk can or cannot handle,
+# our own util/info_to_mdb.c program understands *only* ASCII single quotes.
+# The info program can now generate non-ASCII quotes in non-C locales
+# even on Linux, so use the C locale on *all* systems.
+export LC_ALL=C
 
 # The info menu items that get us to the chapter on debugger commands.
 cat mdb_categories > mdb_doc

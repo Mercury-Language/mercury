@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1996-2007, 2009-2012 The University of Melbourne.
-# Copyright (C) 2013-2017, 2019-2020, 2022-2023 The Mercury team.
+# Copyright (C) 2013-2017, 2019-2020, 2022-2023, 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -41,9 +41,18 @@ mprof.1: ../profiler/mercury_profile.m ../profiler/options.m
 # The mapping of these names to `.info' file names is not regular,
 # so we also need to specify the names of the `.info' files.
 
-TEXINFO_FILES = user_guide reference_manual library faq transition_guide
-TEXINFO_INFO_FILES = mercury_ref.info mercury_user_guide.info \
-	mercury_library.info mercury_faq.info mercury_trans_guide.info
+TEXINFO_FILES = \
+	user_guide \
+	reference_manual \
+	library \
+	faq \
+	transition_guide
+TEXINFO_INFO_FILES = \
+	mercury_ref.info \
+	mercury_user_guide.info \
+	mercury_library.info \
+	mercury_faq.info \
+	mercury_trans_guide.info
 
 # The following variables specify which programs should be used to
 # to format the documentation.
@@ -201,15 +210,15 @@ help: $(MANPAGE_PROGS:%=%.help)
 #-----------------------------------------------------------------------------#
 
 mercury_user_guide.info: user_guide.texi_pp
-	"$(MAKEINFO)" $<
+	"$(MAKEINFO)" --no-split $<
 mercury_ref.info: reference_manual.texi_pp
-	"$(MAKEINFO)" $<
+	"$(MAKEINFO)" --no-split $<
 mercury_trans_guide.info: transition_guide.texi_pp
-	"$(MAKEINFO)" $<
+	"$(MAKEINFO)" --no-split $<
 mercury_faq.info: faq.texi_pp
-	"$(MAKEINFO)" $<
+	"$(MAKEINFO)" --no-split $<
 mercury_library.info: library.texi_pp
-	"$(MAKEINFO)" $<
+	"$(MAKEINFO)" --no-split $<
 
 mercury_user_guide.html: user_guide.texi_pp
 	$(TEXI2HTML) $<
