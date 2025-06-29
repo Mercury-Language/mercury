@@ -1177,6 +1177,10 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
         ;
             ( HeadPiece = opt(_)
             ; HeadPiece = opt(_, _)
+            ; HeadPiece = arg(_)
+            ; HeadPiece = arg(_, _)
+            ; HeadPiece = quote(_)
+            ; HeadPiece = quote(_, _)
             ; HeadPiece = samp(_)
             ; HeadPiece = samp(_, _)
             ; HeadPiece = emph(_)
@@ -1207,12 +1211,34 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                     string.format("@samp{%s}%s", [s(Option), s(Suffix)], Str)
                 )
             ;
+                ( HeadPiece = arg(Arg), Suffix = ""
+                ; HeadPiece = arg(Arg, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("<%s>%s", [s(Arg), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@samp{%s}%s", [s(Arg), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = quote(Text), Suffix = ""
+                ; HeadPiece = quote(Text, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("`%s'%s", [s(Text), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("``%s''%s", [s(Text), s(Suffix)], Str)
+                )
+            ;
                 ( HeadPiece = emph(Text), Suffix = ""
                 ; HeadPiece = emph(Text, Suffix)
                 ),
                 (
                     Format = help_plain_text,
-                    string.format("`%s'%s", [s(Text), s(Suffix)], Str)
+                    string.format("*%s*%s", [s(Text), s(Suffix)], Str)
                 ;
                     Format = help_texinfo,
                     string.format("@emph{%s}%s", [s(Text), s(Suffix)], Str)
@@ -1234,7 +1260,7 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                 ),
                 (
                     Format = help_plain_text,
-                    string.format("%s%s", [s(Var), s(Suffix)], Str)
+                    string.format("`%s'%s", [s(Var), s(Suffix)], Str)
                 ;
                     Format = help_texinfo,
                     string.format("@file{%s}%s", [s(Var), s(Suffix)], Str)

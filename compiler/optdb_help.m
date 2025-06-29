@@ -204,6 +204,10 @@
     --->    w(string)                           % words
     ;       opt(string)                         %
     ;       opt(string, string)                 %
+    ;       arg(string)                         % ?
+    ;       arg(string, string)                 % ?
+    ;       quote(string)                       % ``str1''
+    ;       quote(string, string)               % ``str1''str2
     ;       samp(string)                        % @samp{str1}
     ;       samp(string, string)                % @samp{str1}str2
     ;       emph(string)                        % @emph{str1}

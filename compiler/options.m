@@ -1267,116 +1267,172 @@ optdb(oc_cmdline,   filenames_from_stdin,              bool(no),
 
 optdb(oc_opmode,    only_opmode_generate_source_file_mapping, bool(no),
     short_help('f', "generate-source-file-mapping", [], [
-        w("Output the module-name-to-file-name mapping for the list"),
-        w("of source files given as non-option arguments to mmc"),
-        w("to `Mercury.modules'. This must be done before"),
-        w("`mmc --generate-dependencies' if there are any modules"),
-        w("for which the file name does not match the module name."),
-        w("If there are no such modules the mapping need not be"),
-        w("generated.")])).
+        w("Output to"), file("Mercury.modules"),
+        w("the module-name-to-file-name mapping for the"),
+        w("list of source files given as non-option arguments to mmc."),
+        w("This must be done before invoking"),
+        code("mmc --generate-dependencies"),
+        w("if there are any modules for which"),
+        w("the file name does not match the module name."),
+        w("(If there are no such modules, then"),
+        w("there is no need for this mapping to be generated.)")])).
 optdb(oc_opmode,    only_opmode_generate_dependencies, bool(no),
-    % XXX This leaves out important details, such as .dv and .d files.
     short_help('M', "generate-dependencies", [], [
-        w("Output `Make'-style dependencies for the module"),
-        w("and all of its dependencies to `<module>.dep'.")])).
+        w("Output"), quote("Make", "-style"), w("dependencies"),
+        w("for the given main module,"),
+        w("and all the other modules in the program"),
+        w("(i.e. all the other modules in this directory"),
+        w("that the main module imports either directly or indirectly)"),
+        w("to"), file_var("module", "dep", ","),
+        w("to"), file_var("module", "dv", ","),
+        w("and to the"), file(".d"), w("files"),
+        w("of all the modules in the program.")])).
 optdb(oc_opmode,    only_opmode_generate_dependencies_ints, bool(no),
     help("generate-dependencies-ints", [
-        w("Does the same job as --generate-dependencies, but also"),
-        w("outputs .int3, .int0, .int and .int2 files for all the modules"),
-        w("in the program.")])).
+        w("Does the same job as --generate-dependencies, but also outputs"),
+        file(".int3", ","), file(".int0", ","), file(".int"),
+        w("and"), file(".int2"),
+        w("files for all the modules in the program.")])).
 optdb(oc_opmode,    only_opmode_generate_dependency_file, bool(no),
     help("generate-dependency-file", [
-        w("Output `Make'-style dependencies for the module"),
-        w("to `<module>.d'.")])).
+        w("Output"), quote("Make", "-style"), w("dependencies"),
+        w("for the given module to"), file_var("module", "d", ".")])).
+% XXX Describe the purposes of the different .intN files.
 optdb(oc_opmode,    only_opmode_make_short_interface,  bool(no),
     alt_help("make-short-interface", ["make-short-int"], [
-        w("Write the unqualified short interface to `<module>.int3'."),
-        w("This option should only be used by mmake.")])).
+        w("Write to"), file_var("module", "int3"),
+        w("a list of the types, insts, modes, typeclasses and instances"),
+        w("defined in the interface section of the named module."),
+        w("The compiler uses these files to create"),
+        file(".int0", ","), file(".int"), w("and"), file(".int2"),
+        w("files.")])).
 optdb(oc_opmode,    only_opmode_make_private_interface, bool(no),
     alt_help("make-private-interface", ["make-priv-int"], [
-        w("Write the private interface to `<module>.int0'."),
-        w("This option should only be used by mmake.")])).
+        w("Write to"), file_var("module", "int0"),
+        w("the list of the entities"),
+        w("(including types, insts, modes, predicates and functions)"),
+        w("defined in the given module that its submodules have access to."),
+        w("(This will include even entities that are"),
+        emph("not"), w("exported from the module.)"),
+        w("Besides the code of the module itself,"),
+        w("the inputs to this task are the"), file(".int0"),
+        w("files of the given module's own ancestor modules,"),
+        w("and the"), file(".int3"), w("files of the modules"),
+        w("it imports directly or indirectly."),
+        w("Note that this command is unnecessary"),
+        w("for modules that have no submodules.")])).
 optdb(oc_opmode,    only_opmode_make_interface,        bool(no),
     short_help('i', "make-interface", ["make-int"], [
-        w("Write the module interface to `<module>.int',"),
-        w("and write the short interface to `<module>.int2'"),
-        w("This option should only be used by mmake.")])).
+        w("Write to"), file_var("module", "int"),
+        w("and to"), file_var("module", "int2"),
+        w("a list of entities"),
+        w("(including types, insts, modes, predicates and functions)"),
+        w("that the given module exports for use by other modules."),
+        w("When generaring code, the compiler reads the"),
+        file(".int"), w("file of every directly imported module,"),
+        w("and the"), file(".int2"), w("file"),
+        w("of every indirectly imported module."),
+        w("(Each"), file(".int2"), w("file"),
+        w("is a slightly shorter version"),
+        w("of the corresponding"), file(".int"), w("file,"),
+        w("because it is specialized for its intended use.)")])).
 optdb(oc_opmode,    only_opmode_make_optimization_interface, bool(no),
     alt_help("make-optimization-interface",
             ["make-optimisation-interface", "make-opt-int"], [
-        w("Write inter-module optimization information to `<module>.opt'."),
-        w("This option should only be used by mmake.")])).
+        w("Write to"), file_var("module", "opt"),
+        w("information about the semantically-private parts of"),
+        w("the named module that can be useful when optimizing"),
+        w("another module that imports this one."),
+        w("Note that"), file(".opt"), w("files are used by"),
+        opt("--intermodule-optimization", ".")])).
 optdb(oc_opmode,    only_opmode_make_transitive_opt_interface, bool(no),
     alt_help("make-transitive-optimization-interface",
             ["make-transitive-optimisation-interface", "make-trans-opt"], [
-        w("Output transitive optimization information"),
-        w("into the `<module>.trans_opt' file."),
-        w("This option should only be used by mmake.")])).
+        w("Write to"), file_var("module", "trans_opt"),
+        w("information about the named module"),
+        w("that can be useful when optimizing"),
+        w("another module that imports this one."),
+        w("The distinction from"), file(".opt"), w("files is that a"),
+        file(".trans_opt"), w("file can include information"),
+        w("not just from the source code of its module,"),
+        w("but also from the"), file(".opt"), w("and"), file(".trans_opt"),
+        w("files of other modules."),
+        w("Note that"), file(".trans_opt"), w("files are used by"),
+        opt("--transitive-intermodule-optimization", ".")])).
 optdb(oc_opmode,    only_opmode_typecheck_only,        bool(no),
     short_help('t', "typecheck-only", [], [
-        w("Just check that the code is syntactically correct and"),
-        w("type-correct. Don't check modes or determinism,"),
-        w("and don't generate any code.")])).
+        w("Check the module's code only for syntax- and type errors."),
+        w("Do not execute any other semantic checks,"),
+        w("and do not generate any code.")])).
 optdb(oc_opmode,    only_opmode_errorcheck_only,       bool(no),
     short_help('e', "errorcheck-only", [], [
-        w("Check the module for errors, but do not generate any code.")])).
+        w("Check the module's code for syntax- and semantic errors,"),
+        w("but do not generate any code.")])).
 optdb(oc_opmode,    only_opmode_target_code_only,      bool(no),
     short_help('C', "target-code-only", [], [
-        w("Generate target code (i.e. C code in `<module>.c',"),
-        w("C# code in `<module>.cs', or Java code in"),
-        w("`<module>.java'), but not object code.")])).
+        w("Generate target code"),
+        w("(meaning C code in"), file_var("module", "c", ","),
+        w("C# code in"), file_var("module", "cs", ","),
+        w("or Java code in"), file_var("module", "java", "),"),
+        w("but do not generate object code.")])).
 optdb(oc_opmode,    only_opmode_compile_only,          bool(no),
     short_help('c', "compile-only", [], [
-        w("Generate C code in `<module>.c' and object code in `<module>.o'"),
-        w("but do not attempt to link the named modules.")])).
+        w("Generate C code in"), file_var("module", "c"),
+        w("and object code in"), file_var("module", "o", ","),
+        w("but do not attempt to link the object files.")])).
 optdb(oc_opmode,    only_opmode_generate_standalone_interface,
                                                        maybe_string(no),
     arg_help("generate-standalone-interface", "basename", [
         w("Output a stand-alone interface."),
-        w("<basename> is used as the basename of any files generated for"),
-        w("the stand-alone interface. (See the Stand-alone Interface"),
-        w("chapter of the Mercury User's Guide for further details.)")])).
+        % XXX We should describe what this means exactly.
+        w("Use"), arg("basename"), w("as the basename"),
+        w("of any files generated for the stand-alone-interface."),
+        w("(See the Stand-alone Interface chapter"),
+        w("of the Mercury User's Guide for further details.)")])).
 optdb(oc_opmode,    only_opmode_convert_to_mercury,    bool(no),
     short_help('P', "convert-to-mercury",
             ["convert-to-Mercury", "pretty-print"], [
-        w("Convert to Mercury. Output to file `<module>.ugly'"),
+        w("Output the code of the module to"), file_var("module", "ugly"),
+        w("in a standard format."),
         w("This option acts as a Mercury ugly-printer.")])).
 optdb(oc_opmode,    only_opmode_make_xml_documentation, bool(no),
     short_help('x', "make-xml-documentation", ["make-xml-doc"], [
-        w("Output XML documentation of the module"),
-        w("into the `<module>.xml' file."),
-        w("This option should only be used by mmake.")])).
+        w("Output XML documentation for the module to"),
+        file_var("module", "xml", ".")])).
 optdb(oc_opmode,    only_opmode_make_analysis_registry, bool(no),
     priv_help("make-analysis-registry", [])).
 optdb(oc_opmode,    only_opmode_make,                  bool(no),
     short_help('m', "make", [], [
+        % XXX `mmc': should we delete the quotes, or replace with code("mmc")?
         w("Treat the non-option arguments to `mmc' as files to make,"),
         w("rather than source files. Build or rebuild the specified files"),
         w("if they do not exist or are not up-to-date."),
-        w("Note that this option also enables `--use-subdirs'.")])).
+        w("Note that this option also enables"),
+        opt("--use-subdirs", ".")])).
 % NOTE part_opmode_rebuild should be only_opmode_rebuild, but make.*.m
 % look up its value as an ordinary option, NOT as a part of the op_mode.
 % In one place, we clear this option, but we do it effectively because
 % we want a different op_mode for a recursive invocation of the compiler.
 optdb(oc_opmode,    part_opmode_rebuild,               bool(no),
     short_help('r', "rebuild", [], [
-        w("Same as `--make', but always rebuild the target files"),
+        w("Same as"), opt("--make", ","),
+        w("but always rebuild the target files,"),
         w("even if they are up-to-date.")])).
 optdb(oc_opmode,    only_opmode_invoked_by_mmc_make,   bool(no),
     priv_help("invoked-by-mmc-make", [
         w("This option is only for internal use by the compiler."),
-        code("mmc --make"), w("passes it as the first argument when"),
-        w("compiling a module.")])).
+        code("mmc --make"), w("passes it as the first argument"),
+        w("when compiling a module.")])).
 
 optdb(oc_opmode,    only_opmode_output_grade_string,   bool(no),
     help("output-grade-string", [
-        w("Compute the canonical string representing the currently"),
-        w("selected grade, and print it on the standard output.")])).
+        w("Print to standard output the canonical string"),
+        w("representing the currently selected grade.")])).
 optdb(oc_opmode,    only_opmode_output_grade_defines,  bool(no),
     help("output-grade-defines", [
-        w("Print to standard output the flags that are passed to the"),
-        w("C compiler to define the macros whose values specify the"),
-        w("compilation grade.")])).
+        w("Print to standard output the C compiler flags"),
+        w("that define the macros"),
+        w("which specify the selected compilation grade.")])).
 optdb(oc_opmode,    only_opmode_output_stdlib_grades,  bool(no),
     help("output-stdlib-grades", [
         w("Print to standard output the list of compilation grades in which"),
@@ -1395,11 +1451,11 @@ optdb(oc_opmode,    only_opmode_output_target_arch,    bool(no),
         w("Print the target architecture to the standard output.")])).
 optdb(oc_opmode,    only_opmode_output_cc,             bool(no),
     help("output-cc", [
-        w("Print to standard output the command used to invoke the"),
-        w("C compiler.")])).
+        w("Print to standard output the command for invoking"),
+        w("the C compiler.")])).
 optdb(oc_opmode,    only_opmode_output_c_compiler_type, bool(no),
     alt_help("output-c-compiler-type", ["output-cc-type"], [
-        w("Print the C compiler type to the standard output.")])).
+        w("Print to standard output the C compiler's type.")])).
 optdb(oc_opmode,    only_opmode_output_cflags,         bool(no),
     help("output-cflags", [
         w("Print to standard output the flags with which the C compiler"),
@@ -1407,45 +1463,47 @@ optdb(oc_opmode,    only_opmode_output_cflags,         bool(no),
 optdb(oc_opmode,    only_opmode_output_c_include_directory_flags, bool(no),
     alt_help("output-c-include-directory-flags",
             ["output-c-include-dir-flags"], [
-        w("Print to standard output the flags that are passed to the"),
-        w("C compiler to specify which directories to search for"),
-        w("C header files. This includes the C header files from the"),
-        w("standard library.")])).
+        w("Print to standard output the C compiler flags"),
+        w("that specify which directories to search for C header files."),
+        w("This includes the C header files from the standard library.")])).
 optdb(oc_opmode,    only_opmode_output_link_command,   bool(no),
     help("output-link-command", [
-        w("Print to standard output the command used to link executables.")])).
+        w("Print to standard output the link command"),
+        w("used to create executables.")])).
 optdb(oc_opmode,    only_opmode_output_shared_lib_link_command, bool(no),
     help("output-shared-lib-link-command", [
-        w("Print to standard output the command used to link"),
-        w("shared libraries")])).
+        w("Print to standard output the link command"),
+        w("used to create shared libraries.")])).
 optdb(oc_opmode,    only_opmode_output_library_link_flags, bool(no),
     help("output-library-link-flags", [
-        w("Print to standard output the flags that are passed to linker"),
-        w("in order to link against the current set of libraries."),
-        w("This includes the standard library, as well as any other"),
-        w("libraries specified via the --ml option.")])).
+        w("Print to standard output the flags"),
+        w("that must be passed to the linker in order to"),
+        w("link against the current set of libraries."),
+        w("This includes the Mercury standard library, as well as any other"),
+        w("libraries specified via the"), opt("--ml"), w("option.")])).
 optdb(oc_opmode,    only_opmode_output_csharp_compiler, bool(no),
     help("output-csharp-compiler", [
-        w("Print to standard output the command used to invoke the C#"),
-        w("compiler.")])).
+        w("Print to standard output the command for invoking"),
+        w("the C# compiler.")])).
 optdb(oc_opmode,    only_opmode_output_csharp_compiler_type, bool(no),
     help("output-csharp-compiler-type", [
-        w("Print the C# compiler type to the standard output.")])).
+        w("Print to standard output the C# compiler's type.")])).
 optdb(oc_opmode,    only_opmode_output_java_class_dir, bool(no),
     alt_help("output-java-class-directory",
             ["output-class-directory", "output-java-class-dir",
             "output-class-dir"], [
-        w("Print to standard output the name of the directory in which"),
-        w("generated Java class files will be placed.")])).
+        w("Print to standard output the name of the directory"),
+        w("in which we will place any generated Java class files.")])).
 optdb(oc_opmode,    only_opmode_output_optimization_options, bool(no),
     alt_help("output-optimization-options",
             ["output-opt-opts"], [
-        w("Print a list of the optimization at each optimization level.")])).
+        w("Print to standard output a list of the optimizations"),
+        w("enabled at each optimization level.")])).
 optdb(oc_opmode,    only_opmode_output_optimization_options_upto, int(-1),
     alt_arg_help("output-optimization-options-upto",
             ["output-opt-opts-upto"], "max_level", [
-        w("Print a list of the optimization at each optimization level"),
-        w("up to the given level.")])).
+        w("Print to standard output a list of the optimizations"),
+        w("enabled at each optimization level up to the given maximum.")])).
 
 %---------------------------------------------------------------------------%
 

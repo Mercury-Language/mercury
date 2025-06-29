@@ -46,89 +46,112 @@ Options that give the compiler its overall task
 
     -f
     --generate-source-file-mapping
-        Output the module-name-to-file-name mapping for the list of source
-        files given as non-option arguments to mmc to `Mercury.modules'. This
-        must be done before `mmc --generate-dependencies' if there are any
-        modules for which the file name does not match the module name. If
-        there are no such modules the mapping need not be generated.
+        Output to `Mercury.modules' the module-name-to-file-name mapping for
+        the list of source files given as non-option arguments to mmc. This
+        must be done before invoking `mmc --generate-dependencies' if there are
+        any modules for which the file name does not match the module name. (If
+        there are no such modules, then there is no need for this mapping to be
+        generated.)
 
     -M
     --generate-dependencies
-        Output `Make'-style dependencies for the module and all of its
-        dependencies to `<module>.dep'.
+        Output `Make'-style dependencies for the given main module, and all the
+        other modules in the program (i.e. all the other modules in this
+        directory that the main module imports either directly or indirectly)
+        to `<module>.dep', to `<module>.dv', and to the `.d' files of all the
+        modules in the program.
 
     --generate-dependencies-ints
-        Does the same job as --generate-dependencies, but also outputs .int3,
-        .int0, .int and .int2 files for all the modules in the program.
+        Does the same job as --generate-dependencies, but also outputs `.int3',
+        `.int0', `.int' and `.int2' files for all the modules in the program.
 
     --generate-dependency-file
-        Output `Make'-style dependencies for the module to `<module>.d'.
+        Output `Make'-style dependencies for the given module to `<module>.d'.
 
     --make-short-interface
     --make-short-int
-        Write the unqualified short interface to `<module>.int3'. This option
-        should only be used by mmake.
+        Write to `<module>.int3' a list of the types, insts, modes, typeclasses
+        and instances defined in the interface section of the named module. The
+        compiler uses these files to create `.int0', `.int' and `.int2' files.
 
     --make-private-interface
     --make-priv-int
-        Write the private interface to `<module>.int0'. This option should only
-        be used by mmake.
+        Write to `<module>.int0' the list of the entities (including types,
+        insts, modes, predicates and functions) defined in the given module
+        that its submodules have access to. (This will include even entities
+        that are *not* exported from the module.) Besides the code of the
+        module itself, the inputs to this task are the `.int0' files of the
+        given module's own ancestor modules, and the `.int3' files of the
+        modules it imports directly or indirectly. Note that this command is
+        unnecessary for modules that have no submodules.
 
     -i
     --make-interface
     --make-int
-        Write the module interface to `<module>.int', and write the short
-        interface to `<module>.int2' This option should only be used by mmake.
+        Write to `<module>.int' and to `<module>.int2' a list of entities
+        (including types, insts, modes, predicates and functions) that the
+        given module exports for use by other modules. When generaring code,
+        the compiler reads the `.int' file of every directly imported module,
+        and the `.int2' file of every indirectly imported module. (Each `.int2'
+        file is a slightly shorter version of the corresponding `.int' file,
+        because it is specialized for its intended use.)
 
     --make-optimization-interface
     --make-optimisation-interface
     --make-opt-int
-        Write inter-module optimization information to `<module>.opt'. This
-        option should only be used by mmake.
+        Write to `<module>.opt' information about the semantically-private
+        parts of the named module that can be useful when optimizing another
+        module that imports this one. Note that `.opt' files are used by
+        `--intermodule-optimization'.
 
     --make-transitive-optimization-interface
     --make-transitive-optimisation-interface
     --make-trans-opt
-        Output transitive optimization information into the
-        `<module>.trans_opt' file. This option should only be used by mmake.
+        Write to `<module>.trans_opt' information about the named module that
+        can be useful when optimizing another module that imports this one. The
+        distinction from `.opt' files is that a `.trans_opt' file can include
+        information not just from the source code of its module, but also from
+        the `.opt' and `.trans_opt' files of other modules. Note that
+        `.trans_opt' files are used by `--transitive-intermodule-optimization'.
 
     -t
     --typecheck-only
-        Just check that the code is syntactically correct and type-correct.
-        Don't check modes or determinism, and don't generate any code.
+        Check the module's code only for syntax- and type errors. Do not
+        execute any other semantic checks, and do not generate any code.
 
     -e
     --errorcheck-only
-        Check the module for errors, but do not generate any code.
+        Check the module's code for syntax- and semantic errors, but do not
+        generate any code.
 
     -C
     --target-code-only
-        Generate target code (i.e. C code in `<module>.c', C# code in
-        `<module>.cs', or Java code in `<module>.java'), but not object code.
+        Generate target code (meaning C code in `<module>.c', C# code in
+        `<module>.cs', or Java code in `<module>.java'), but do not generate
+        object code.
 
     -c
     --compile-only
-        Generate C code in `<module>.c' and object code in `<module>.o' but do
-        not attempt to link the named modules.
+        Generate C code in `<module>.c' and object code in `<module>.o', but do
+        not attempt to link the object files.
 
     --generate-standalone-interface <basename>
     --no-generate-standalone-interface
-        Output a stand-alone interface. <basename> is used as the basename of
-        any files generated for the stand-alone interface. (See the Stand-alone
+        Output a stand-alone interface. Use <basename> as the basename of any
+        files generated for the stand-alone-interface. (See the Stand-alone
         Interface chapter of the Mercury User's Guide for further details.)
 
     -P
     --convert-to-mercury
     --convert-to-Mercury
     --pretty-print
-        Convert to Mercury. Output to file `<module>.ugly' This option acts as
-        a Mercury ugly-printer.
+        Output the code of the module to `<module>.ugly' in a standard format.
+        This option acts as a Mercury ugly-printer.
 
     -x
     --make-xml-documentation
     --make-xml-doc
-        Output XML documentation of the module into the `<module>.xml' file.
-        This option should only be used by mmake.
+        Output XML documentation for the module to `<module>.xml'.
 
     PRIVATE OPTION
     --make-analysis-registry
@@ -143,7 +166,7 @@ Options that give the compiler its overall task
 
     -r
     --rebuild
-        Same as `--make', but always rebuild the target files even if they are
+        Same as `--make', but always rebuild the target files, even if they are
         up-to-date.
 
     PRIVATE OPTION
@@ -152,12 +175,12 @@ Options that give the compiler its overall task
         passes it as the first argument when compiling a module.
 
     --output-grade-string
-        Compute the canonical string representing the currently selected grade,
-        and print it on the standard output.
+        Print to standard output the canonical string representing the
+        currently selected grade.
 
     --output-grade-defines
-        Print to standard output the flags that are passed to the C compiler to
-        define the macros whose values specify the compilation grade.
+        Print to standard output the C compiler flags that define the macros
+        which specify the selected compilation grade.
 
     --output-stdlib-grades
         Print to standard output the list of compilation grades in which the
@@ -176,11 +199,11 @@ Options that give the compiler its overall task
         Print the target architecture to the standard output.
 
     --output-cc
-        Print to standard output the command used to invoke the C compiler.
+        Print to standard output the command for invoking the C compiler.
 
     --output-c-compiler-type
     --output-cc-type
-        Print the C compiler type to the standard output.
+        Print to standard output the C compiler's type.
 
     --output-cflags
         Print to standard output the flags with which the C compiler will be
@@ -188,43 +211,45 @@ Options that give the compiler its overall task
 
     --output-c-include-directory-flags
     --output-c-include-dir-flags
-        Print to standard output the flags that are passed to the C compiler to
-        specify which directories to search for C header files. This includes
-        the C header files from the standard library.
+        Print to standard output the C compiler flags that specify which
+        directories to search for C header files. This includes the C header
+        files from the standard library.
 
     --output-link-command
-        Print to standard output the command used to link executables.
+        Print to standard output the link command used to create executables.
 
     --output-shared-lib-link-command
-        Print to standard output the command used to link shared libraries
+        Print to standard output the link command used to create shared
+        libraries.
 
     --output-library-link-flags
-        Print to standard output the flags that are passed to linker in order
-        to link against the current set of libraries. This includes the
-        standard library, as well as any other libraries specified via the --ml
-        option.
+        Print to standard output the flags that must be passed to the linker in
+        order to link against the current set of libraries. This includes the
+        Mercury standard library, as well as any other libraries specified via
+        the `--ml' option.
 
     --output-csharp-compiler
-        Print to standard output the command used to invoke the C# compiler.
+        Print to standard output the command for invoking the C# compiler.
 
     --output-csharp-compiler-type
-        Print the C# compiler type to the standard output.
+        Print to standard output the C# compiler's type.
 
     --output-java-class-directory
     --output-class-directory
     --output-java-class-dir
     --output-class-dir
-        Print to standard output the name of the directory in which generated
-        Java class files will be placed.
+        Print to standard output the name of the directory in which we will
+        place any generated Java class files.
 
     --output-optimization-options
     --output-opt-opts
-        Print a list of the optimization at each optimization level.
+        Print to standard output a list of the optimizations enabled at each
+        optimization level.
 
     --output-optimization-options-upto <max_level>
     --output-opt-opts-upto <max_level>
-        Print a list of the optimization at each optimization level up to the
-        given level.
+        Print to standard output a list of the optimizations enabled at each
+        optimization level up to the given maximum.
 
 Grade options
 
@@ -1029,7 +1054,7 @@ Warning options
     --no-warn-suspected-occurs-failure
         Do not warn about code that looks like it unifies a variable with a
         term that contains that same variable. Such code cannot succeed because
-        it fails what is called the `occurs check'.
+        it fails what is called the *occurs check*.
 
     --warn-suspicious-recursion
         Warn about recursive calls which are likely to have problems, such as
