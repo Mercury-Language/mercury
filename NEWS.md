@@ -656,6 +656,7 @@ Changes to the Mercury standard library
 
 * The following predicates have been added:
 
+    - pred `is_non_empty/1`
     - pred `max_key/2`
     - pred `min_key/2`
     - pred `compose_maps/3`
@@ -1269,6 +1270,7 @@ Changes to the Mercury standard library
 
 * The following predicates have been added:
 
+    - pred `is_non_empty/1`
     - pred `max_key/2`
     - pred `min_key/2`
     - pred `sorted_keys_match/2`

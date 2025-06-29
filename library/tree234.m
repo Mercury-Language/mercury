@@ -36,6 +36,7 @@
 :- func singleton(K, V) = tree234(K, V).
 
 :- pred is_empty(tree234(K, V)::in) is semidet.
+:- pred is_non_empty(tree234(K, V)::in) is semidet.
 
     % True if both trees have the same set of key-value pairs, regardless of
     % how the trees were constructed.
@@ -920,7 +921,28 @@ init(empty).
 singleton(K, V) = two(K, V, empty, empty).
 
 is_empty(Tree) :-
-    Tree = empty.
+    require_complete_switch [Tree]
+    (
+        Tree = empty
+    ;
+        ( Tree = two(_, _, _, _)
+        ; Tree = three(_, _, _, _, _, _, _)
+        ; Tree = four(_, _, _, _, _, _, _, _, _, _)
+        ),
+        fail
+    ).
+
+is_non_empty(Tree) :-
+    require_complete_switch [Tree]
+    (
+        Tree = empty,
+        fail
+    ;
+        ( Tree = two(_, _, _, _)
+        ; Tree = three(_, _, _, _, _, _, _)
+        ; Tree = four(_, _, _, _, _, _, _, _, _, _)
+        )
+    ).
 
 equal(TreeA, TreeB) :-
     % We first try to see if the two trees are identical, since this can

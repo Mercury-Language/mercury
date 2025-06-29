@@ -69,6 +69,7 @@
     % Check whether a map is empty.
     %
 :- pred is_empty(map(_, _)::in) is semidet.
+:- pred is_non_empty(map(_, _)::in) is semidet.
 
 %---------------------------------------------------------------------------%
 %
@@ -1379,6 +1380,9 @@ singleton(K, V) =
 
 is_empty(M) :-
     tree234.is_empty(M).
+
+is_non_empty(M) :-
+    tree234.is_non_empty(M).
 
 %---------------------------------------------------------------------------%
 
