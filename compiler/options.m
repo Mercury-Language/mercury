@@ -1513,6 +1513,7 @@ optdb(oc_opmode,    only_opmode_output_optimization_options_upto, int(-1),
     % Some merely control *how* a grade's functionality operates;
     % others are internal-use-only.
 
+% ZZZ Come back to add semantic help_pieces to oc_grade options.
 optdb(oc_grade,     grade,                             string_special,
     % The `mmc' script will pass the default grade determined
     % at configuration time.
@@ -2031,33 +2032,39 @@ optdb(oc_grade,     c_debug_grade,                     bool(no),
 
 optdb(oc_infer,     infer_all,                         bool_special,
     help("infer-all", [
-        w("Abbreviation for `--infer-types --infer-modes --infer-det'.")])).
+        w("This option is an abbreviation for the combination of"),
+        opt("--infer-types", ","), opt("--infer-modes", ","),
+        w("and"), opt("--infer-det", ".")])).
 optdb(oc_infer,     infer_types,                       bool(no),
     help("infer-types", [
         w("If there is no type declaration for a predicate or function,"),
-        w("try to infer the type, rather than just reporting an error.")])).
+        w("try to infer its type, rather than just reporting an error.")])).
 optdb(oc_infer,     infer_modes,                       bool(no),
     help("infer-modes", [
         w("If there is no mode declaration for a predicate,"),
-        w("try to infer the modes, rather than just reporting an error.")])).
+        w("try to infer its mode (or modes),"),
+        w("rather than just reporting an error.")])).
 optdb(oc_infer,     infer_det,                         bool(yes),
     alt_help("infer-determinism", ["infer-det"], [
-        w("If there is no determinism declaration for a procedure,"),
-        w("just report an error; do not try to infer the determinism.")])).
+        w("If there is no determinism declaration for a procedure"),
+        w("(a mode of a predicate or of a function),"),
+        w("just report an error; do not try to infer its determinism.")])).
 optdb(oc_infer,     type_inference_iteration_limit,    int(60),
     arg_help("type-inference-iteration-limit", "n", [
-        w("Perform at most <n> passes of type inference (default: 60).")])).
+        w("Perform at most"), arg("n"),
+        w("passes of type inference (default: 60).")])).
 optdb(oc_infer,     mode_inference_iteration_limit,    int(30),
     arg_help("mode-inference-iteration-limit", "n", [
-        w("Perform at most <n> passes of mode inference (default: 30).")])).
+        w("Perform at most"), arg("n"),
+        w("passes of mode inference (default: 30).")])).
 optdb(oc_infer,     allow_stubs,                       bool(no),
     % A stub is sort-of like inferring a clause body, right ?-)
     help("allow-stubs", [
         w("Allow procedures to have no clauses. Any calls to"),
         w("such procedures will raise an exception at run-time."),
         w("This option is sometimes useful during program development."),
-        w("(See also the documentation for the `--warn-stubs' option"),
-        w("in the ""Warning Options"" section.)")])).
+        w("(See also the documentation for the"), opt("--warn-stubs"),
+        w("option in"), ref("the", "Warning Options", "section", ".)")])).
 
 %---------------------------------------------------------------------------%
 
@@ -2065,8 +2072,9 @@ optdb(oc_infer,     allow_stubs,                       bool(no),
 
 optdb(oc_semantics, strict_sequential,                 special,
     help("strict-sequential", [
-        w("--strict-sequential sets --no-reorder-conj, --no-reorder-disj"),
-        w("and --fully-strict.")])).
+        w("This option is an abbreviation for the combination of"),
+        opt("--no-reorder-conj", ","), opt("--no-reorder-disj", ","),
+        w("and"), opt("--fully-strict", ".")])).
 optdb(oc_semantics, reorder_conj,                      bool(yes),
     help("reorder-conj", [
         w("Execute conjunctions left-to-right. Do not reorder conjuncts,"),
@@ -2093,8 +2101,9 @@ optdb(oc_verbosity, very_verbose,                      bool(no),
 optdb(oc_verbosity, statistics,                        bool(no),
     short_help('S', "statistics", [], [
         w("Output messages about the compiler's time/space usage."),
-        w("At the moment this option implies `--no-trad-passes', so you get"),
-        w("information at the boundaries between phases of the compiler.")])).
+        w("At the moment this option implies"),
+        opt("--no-trad-passes", ","), w("so you get information"),
+        w("at the boundaries between phases of the compiler.")])).
 optdb(oc_verb_dev,  detailed_statistics,               bool(no),
     % The only sensible way to use --detailed-statistics, based on
     % --very-verbose, is implemented automatically in handle_options,
@@ -2109,28 +2118,33 @@ optdb(oc_verb_dev,  benchmark_modes,                   bool(no),
 optdb(oc_verb_dev,  benchmark_modes_repeat,            int(1),
     priv_arg_help("benchmark-modes-repeat", "num_repeats", [
         w("The number of times to execute mode analysis, if"),
-        w("--benchmark-modes is enabled.")])).
+        opt("--benchmark-modes"), w("is enabled.")])).
 optdb(oc_verbosity, verbose_make,                      bool(yes),
     help("verbose-make", [
         w("Disable messages about the progress of builds when using"),
         code("mmc --make", ".")])).
 optdb(oc_verbosity, output_compile_error_lines,        maybe_int(yes(100)),
     arg_help("output-compile-error-lines", "n", [
-        w("With `--make', output the first <n> lines of the `.err'"),
-        w("file after compiling a module (default: 100)."),
-        w("Specifying --no-output-compile-error-lines removes the limit.")])).
+        w("With"), opt("--make", ","),
+        w("output the first"), arg("n"), w("lines of the"),
+        file(".err"), w("file after compiling a module (default: 100)."),
+        w("Specifying"), opt("--no-output-compile-error-lines"),
+        w("removes the limit.")])).
 optdb(oc_verbosity, verbose_recompilation,             bool(no),
     priv_help("verbose-recompilation", [
-        w("When using `--smart-recompilation', output messages"),
-        w("explaining why a module needs to be recompiled.")])).
+        w("When using"), opt("--smart-recompilation", ","),
+        w("output messages explaining"),
+        w("why a module needs to be recompiled.")])).
 optdb(oc_verbosity, find_all_recompilation_reasons,    bool(no),
     priv_help("find-all-recompilation-reasons", [
         w("Find all the reasons why a module needs to be recompiled,"),
-        w("not just the first. Implies `--verbose-recompilation'.")])).
+        w("not just the first."),
+        w("Implies"), opt("--verbose-recompilation", ".")])).
 optdb(oc_verbosity, verbose_commands,                  bool(no),
     help("verbose-commands", [
         w("Output each external command before it is run."),
-        w("Note that some commands will only be printed with `--verbose'.")])).
+        w("Note that some commands will only be printed with"),
+        opt("--verbose", ".")])).
 
 %---------------------%
 
@@ -2140,7 +2154,7 @@ optdb(oc_verb_dbg,  report_cmd_line_args,              bool(no),
 optdb(oc_verb_dbg,  report_cmd_line_args_in_doterr,    bool(no),
     help("report-cmd-line-args-in-doterr", [
         w("Report the command line arguments for compilations whose output"),
-        w("mmake normally redirects to a `.err' file.")])).
+        w("mmake normally redirects to a"), file(".err"), w("file.")])).
 optdb(oc_verb_dbg,  inform_ignored_pragma_errors,      bool(no),
     priv_help("inform-ignored-pragma-errors", [
         w("Print an informational message for each otherwise-ignored error"),
@@ -2149,13 +2163,13 @@ optdb(oc_verb_dbg,  inform_ignored_pragma_errors,      bool(no),
 optdb(oc_verb_dbg,  inform_generated_type_spec_pragmas, bool(no),
     priv_help("inform-generated-type-spec-pragmas", [
         w("Print an informational message for each type_spec pragma that"),
-        w("the compiler generates to implement a type_spec_constrained_pred"),
-        w("pragma.")])).
+        w("the compiler generates to implement"),
+        w("a type_spec_constrained_pred pragma.")])).
 optdb(oc_verb_dbg,  proc_size_statistics,              string(""),
     arg_help("proc-size-statistics", "filename", [
-        w("Append information about the size of each procedure in the"),
-        w("module in terms of goals and variables to the end of the"),
-        w("named file.")])).
+        w("Append information about the size of each procedure"),
+        w("in the module in terms of goals and variables"),
+        w("to the end of the named file.")])).
 optdb(oc_verb_dbg,  inst_statistics,                   string(""),
     priv_arg_help("inst-statistics", "filename", [
         w("Append a count of each kind of insts in the procedures in the"),
@@ -2167,7 +2181,7 @@ optdb(oc_verb_dbg,  print_error_spec_id,               bool(no),
 optdb(oc_verb_dbg,  debug_types,                       bool(no),
     priv_short_help('T', "debug-types", [], [
         w("Output detailed debugging traces of type checking."),
-        w("Effective only with --trace-flag type_checkpoint.")])).
+        w("Effective only with the right trace flags.")])).
 optdb(oc_verb_dbg,  debug_types_pred_name,             accumulating([]),
     priv_arg_help("debug-types-pred-name", "pred_or_func_name", [
         w("Output detailed debugging traces of type checking only"),
@@ -2195,9 +2209,9 @@ optdb(oc_verb_dbg,  debug_modes_goal_ids,              bool(yes),
         w("Output the id of the goal at all mode debug checkpoints.")])).
 optdb(oc_verb_dbg,  debug_modes_pred_id,               int(-1),
     arg_help("debug-modes-pred-id", "n", [
-        w("With `--debug-modes', restrict the debugging traces to the"),
-        w("mode checking of the predicate or function with the specified"),
-        w("pred id.")])).
+        w("With"), opt("--debug-modes", ","),
+        w("restrict the debugging traces to the mode checking"),
+        w("of the predicate or function with the specified pred id.")])).
 optdb(oc_verb_dbg,  debug_mode_constraints,            bool(no),
     priv_help("debug-mode-constraints", [
         w("Output detailed debugging traces of the `--prop-mode-constraints'"),
@@ -2227,16 +2241,16 @@ optdb(oc_verb_dbg,  debug_higher_order_specialization, bool(no),
         w("by higher_order.m.")])).
 optdb(oc_verb_dbg,  debug_pd,                          bool(no),
     help("debug-pd", [
-        w("Output detailed debugging traces of the partial"),
-        w("deduction and deforestation process.")])).
+        w("Output detailed debugging traces of the partial deduction"),
+        w("and deforestation process.")])).
 optdb(oc_verb_dbg,  debug_indirect_reuse,              bool(no),
     help("debug-indirect-reuse", [
-        w("Output detailed debugging traces of the indirect reuse pass of"),
-        w("the `--structure-reuse' option.")])).
+        w("Output detailed debugging traces of the indirect reuse pass"),
+        w("of the"), opt("--structure-reuse"), w("option.")])).
 optdb(oc_verb_dbg,  debug_trail_usage,                 bool(no),
     help("debug-trail-usage", [
-        w("Output detailed debugging traces of the `--analyse-trail-usage'"),
-        w("option.")])).
+        w("Output detailed debugging traces of the"),
+        opt("--analyse-trail-usage"), w("option.")])).
 optdb(oc_verb_dbg,  debug_unneeded_code,               bool(no),
     priv_help("debug-unneeded-code", [
         w("Print progress messages during the unneeded code elimination"),
@@ -2251,7 +2265,7 @@ optdb(oc_verb_dbg,  debug_dep_par_conj,                accumulating([]),
     priv_arg_help("debug-dep-par-conj", "n", [
         w("Output detailed debugging traces during the dependent"),
         w("AND-parallelism transformation of the predicate with the given"),
-        w("predicate id. Effective only with the right --trace-flags.")])).
+        w("predicate id. Effective only with the right trace flags.")])).
 optdb(oc_verb_dbg,  debug_liveness,                    int(-1),
     arg_help("debug-liveness", "pred_id", [
         w("Output detailed debugging traces of the liveness analysis"),
@@ -2268,6 +2282,7 @@ optdb(oc_verb_dbg,  debug_code_gen_pred_id,            int(-1),
 optdb(oc_verb_dbg,  debug_opt,                         bool(no),
     help("debug-opt", [
         w("Output detailed debugging traces of the optimization process.")])).
+% XXX Shouldn't this be private? Users should not need to know about pred_ids.
 optdb(oc_verb_dbg,  debug_opt_pred_id,                 accumulating([]),
     arg_help("debug-opt-pred-id", "n", [
         w("Output detailed debugging traces of the optimization process"),
@@ -2278,11 +2293,12 @@ optdb(oc_verb_dbg,  debug_opt_pred_name,               accumulating([]),
         w("only for the predicate/function with the specified name.")])).
 optdb(oc_verb_dbg,  debug_make,                        bool(no),
     help("debug-make", [
-        w("Output detailed debugging traces of the `--make' option.")])).
+        w("Output detailed debugging traces of the operation of the"),
+        opt("--make"), w("option.")])).
 optdb(oc_verb_dbg,  debug_intermodule_analysis,        bool(no),
     help("debug-intermodule-analysis", [
-        w("Output detailed debugging traces of the `--intermodule-analysis'"),
-        w("option.")])).
+        w("Output detailed debugging traces of the operation of the"),
+        opt("--intermodule-analysis"), w("option.")])).
 
 %---------------------------------------------------------------------------%
 

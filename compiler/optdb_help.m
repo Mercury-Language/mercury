@@ -208,6 +208,8 @@
     ;       arg(string, string)                 % ?
     ;       quote(string)                       % ``str1''
     ;       quote(string, string)               % ``str1''str2
+    ;       ref(string, string, string)         % @ref{str2}
+    ;       ref(string, string, string, string) % @ref{str2}str4
     ;       samp(string)                        % @samp{str1}
     ;       samp(string, string)                % @samp{str1}str2
     ;       emph(string)                        % @emph{str1}

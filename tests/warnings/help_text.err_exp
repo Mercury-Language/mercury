@@ -642,20 +642,22 @@ Grade options
 Options that control inference
 
     --infer-all
-        Abbreviation for `--infer-types --infer-modes --infer-det'.
+        This option is an abbreviation for the combination of `--infer-types',
+        `--infer-modes', and `--infer-det'.
 
     --infer-types
         If there is no type declaration for a predicate or function, try to
-        infer the type, rather than just reporting an error.
+        infer its type, rather than just reporting an error.
 
     --infer-modes
-        If there is no mode declaration for a predicate, try to infer the
-        modes, rather than just reporting an error.
+        If there is no mode declaration for a predicate, try to infer its mode
+        (or modes), rather than just reporting an error.
 
     --no-infer-determinism
     --no-infer-det
-        If there is no determinism declaration for a procedure, just report an
-        error; do not try to infer the determinism.
+        If there is no determinism declaration for a procedure (a mode of a
+        predicate or of a function), just report an error; do not try to infer
+        its determinism.
 
     --type-inference-iteration-limit <n>
         Perform at most <n> passes of type inference (default: 60).
@@ -672,8 +674,8 @@ Options that control inference
 Options specifying the intended semantics
 
     --strict-sequential
-        --strict-sequential sets --no-reorder-conj, --no-reorder-disj and
-        --fully-strict.
+        This option is an abbreviation for the combination of
+        `--no-reorder-conj', `--no-reorder-disj', and `--fully-strict'.
 
     --no-reorder-conj
         Execute conjunctions left-to-right. Do not reorder conjuncts, except
@@ -709,7 +711,7 @@ Verbosity options
     --no-output-compile-error-lines
         With `--make', output the first <n> lines of the `.err' file after
         compiling a module (default: 100). Specifying
-        --no-output-compile-error-lines removes the limit.
+        `--no-output-compile-error-lines' removes the limit.
 
     PRIVATE OPTION
     --verbose-recompilation
@@ -747,7 +749,7 @@ Verbosity options
 
     PRIVATE OPTION
     --benchmark-modes-repeat <num_repeats>
-        The number of times to execute mode analysis, if --benchmark-modes is
+        The number of times to execute mode analysis, if `--benchmark-modes' is
         enabled.
 
     --report-cmd-line-args
@@ -785,7 +787,7 @@ Verbosity options
     -T
     --debug-types
         Output detailed debugging traces of type checking. Effective only with
-        --trace-flag type_checkpoint.
+        the right trace flags.
 
     PRIVATE OPTION
     --debug-types-pred-name <pred_or_func_name>
@@ -882,7 +884,7 @@ Verbosity options
     --no-debug-dep-par-conj
         Output detailed debugging traces during the dependent AND-parallelism
         transformation of the predicate with the given predicate id. Effective
-        only with the right --trace-flags.
+        only with the right trace flags.
 
     --debug-liveness <pred_id>
         Output detailed debugging traces of the liveness analysis of the
@@ -913,11 +915,12 @@ Verbosity options
         the predicate/function with the specified name.
 
     --debug-make
-        Output detailed debugging traces of the `--make' option.
+        Output detailed debugging traces of the operation of the `--make'
+        option.
 
     --debug-intermodule-analysis
-        Output detailed debugging traces of the `--intermodule-analysis'
-        option.
+        Output detailed debugging traces of the operation of the
+        `--intermodule-analysis' option.
 
 Diagnostics options
 

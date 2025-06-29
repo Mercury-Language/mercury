@@ -1181,6 +1181,8 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
             ; HeadPiece = arg(_, _)
             ; HeadPiece = quote(_)
             ; HeadPiece = quote(_, _)
+            ; HeadPiece = ref(_, _, _)
+            ; HeadPiece = ref(_, _, _, _)
             ; HeadPiece = samp(_)
             ; HeadPiece = samp(_, _)
             ; HeadPiece = emph(_)
@@ -1231,6 +1233,22 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                 ;
                     Format = help_texinfo,
                     string.format("``%s''%s", [s(Text), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = ref(Before0, RefName, After0), Suffix = ""
+                ; HeadPiece = ref(Before0, RefName, After0, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("%s\"%s\"%s%s",
+                        [s(before_str(Before0)), s(RefName),
+                        s(after_str(After0)), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    % We ignore Before0 and After0,
+                    % which are for help text only;
+                    % for texinfo, the @ref should supply them.
+                    string.format("@ref{%s}%s", [s(RefName), s(Suffix)], Str)
                 )
             ;
                 ( HeadPiece = emph(Text), Suffix = ""
@@ -1303,6 +1321,24 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
         ),
         reflow_lines_loop_over_lines(Format, LineLen, TailPieces,
             !.CurLineLen, !CurLine, !FinishedLineCord)
+    ).
+
+:- func before_str(string) = string.
+
+before_str(BeforeStr0) = BeforeStr :-
+    ( if BeforeStr0 = "" then
+        BeforeStr = ""
+    else
+        BeforeStr = BeforeStr0 ++ " "
+    ).
+
+:- func after_str(string) = string.
+
+after_str(AfterStr0) = AfterStr :-
+    ( if AfterStr0 = "" then
+        AfterStr = ""
+    else
+        AfterStr = " " ++ AfterStr0
     ).
 
 :- pred reflow_lines_loop_over_words(int::in, cur_line::in, cur_line::out,
