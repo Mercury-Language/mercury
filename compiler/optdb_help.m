@@ -72,7 +72,7 @@
                 gh_public_or_private    :: help_public_or_private,
 
                 % The lines describing the effect of the option.
-                gh_description          :: list(string)
+                gh_description          :: help_text
             )
     % The following function symbols (whose list may grow)
     % all have a subset of the fields of gen_help.
@@ -85,7 +85,7 @@
     % This design minimizes clutter in lists of help structures.
     ;       help(
                 h_long_name             :: string,
-                h_description           :: list(string)
+                h_description           :: help_text
             )
     ;       arg_help(
                 hr_long_name            :: string,
@@ -93,100 +93,100 @@
                 % and of the form "-..." specially, in that
                 % we don't want to put "<>" around them.
                 hr_arg_name             :: string,
-                hr_description          :: list(string)
+                hr_description          :: help_text
             )
     ;       priv_help(
                 ph_long_name            :: string,
-                ph_description          :: list(string)
+                ph_description          :: help_text
             )
     ;       priv_arg_help(
                 prh_long_name           :: string,
                 prh_arg_name            :: string,
-                prh_description         :: list(string)
+                prh_description         :: help_text
             )
     ;       alt_help(
                 ah_long_name            :: string,
                 ah_alt_long_names       :: list(string),
-                ah_description          :: list(string)
+                ah_description          :: help_text
             )
     ;       alt_arg_align_help(
                 arlh_long_name          :: string,
                 arlh_arg_aligns         :: list(arg_align),
-                arlh_description        :: list(string)
+                arlh_description        :: help_text
             )
     ;       alt_align_help(
                 alh_long_name           :: string,
                 alh_alt_long_names      :: list(string),
                 alh_aligned_text        :: string,
-                alh_description         :: list(string)
+                alh_description         :: help_text
             )
     ;       no_align_help(
                 nlh_long_name           :: string,
                 nlh_aligned_text        :: string,
                 alh_no_aligned_text     :: string,  % for --no-long-name
-                nlh_description         :: list(string)
+                nlh_description         :: help_text
             )
     ;       priv_alt_align_help(
                 palh_long_name          :: string,
                 palh_alt_long_names     :: list(string),
                 palh_aligned_text       :: string,
-                palh_description        :: list(string)
+                palh_description        :: help_text
             )
     ;       short_alt_align_help(
                 salh_short_name         :: char,
                 salh_long_name          :: string,
                 salh_alt_long_names     :: list(string),
                 salh_aligned_text       :: string,
-                salh_description        :: list(string)
+                salh_description        :: help_text
             )
     ;       alt_arg_help(
                 aah_long_name           :: string,
                 aah_alt_long_names      :: list(string),
                 aah_arg_name            :: string,
-                aah_description         :: list(string)
+                aah_description         :: help_text
             )
     ;       priv_alt_help(
                 pah_long_name           :: string,
                 pah_alt_long_names      :: list(string),
-                pah_description         :: list(string)
+                pah_description         :: help_text
             )
     ;       priv_alt_arg_help(
                 paah_long_name          :: string,
                 paah_alt_long_names     :: list(string),
                 paah_arg_name           :: string,
-                paah_description        :: list(string)
+                paah_description        :: help_text
             )
     ;       short_help(
                 sh_short_name           :: char,
                 sh_long_name            :: string,
                 sh_alt_long_names       :: list(string),
-                sh_description          :: list(string)
+                sh_description          :: help_text
             )
     ;       priv_short_help(
                 psh_short_name          :: char,
                 psh_long_name           :: string,
                 psh_alt_long_names      :: list(string),
-                psh_description         :: list(string)
+                psh_description         :: help_text
             )
     ;       short_arg_help(
                 sah_short_name          :: char,
                 sah_long_name           :: string,
                 sah_alt_long_names      :: list(string),
                 sah_arg_name            :: string,
-                sah_description         :: list(string)
+                sah_description         :: help_text
             )
     ;       priv_short_arg_help(
                 psah_short_name         :: char,
                 psah_long_name          :: string,
                 psah_alt_long_names     :: list(string),
                 psah_arg_name           :: string,
-                psah_description        :: list(string)
+                psah_description        :: help_text
             )
     ;       unnamed_help(
                 % Help for an internal-use-only option that has no visible
                 % name, and therefore cannot be given on the command line
                 % even by developers.
-                uh_description          :: list(string)
+                uh_description          :: help_text
             ).
 
 :- type help_public_or_private
@@ -198,6 +198,25 @@
                 aa_arg_name             :: string,
                 aa_aligned_text         :: string
             ).
+
+:- type help_text == list(help_piece).
+:- type help_piece
+    --->    w(string)                           % words
+    ;       opt(string)                         %
+    ;       opt(string, string)                 %
+    ;       samp(string)                        % @samp{str1}
+    ;       samp(string, string)                % @samp{str1}str2
+    ;       emph(string)                        % @emph{str1}
+    ;       emph(string, string)                % @emph{str1}str2
+    ;       var(string)                         % @var{str1}
+    ;       var(string, string)                 % @var{str1}str2
+    ;       file(string)                        % @file{str1}
+    ;       file(string, string)                % @file{str1}str2
+    ;       code(string)                        % @code{str1}
+    ;       code(string, string)                % @code{str1}str2
+    ;       file_var(string, string)            % @file{@var{str1}.str2}
+    ;       file_var(string, string, string)    % @file{@var{str1}.str2}str3
+    ;       texinfo_only(list(help_piece)).     %
 
 %---------------------------------------------------------------------------%
 :- end_module libs.optdb_help.

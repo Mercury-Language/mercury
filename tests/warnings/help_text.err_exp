@@ -1342,7 +1342,7 @@ Options that ask for informational files
 
     --show-definitions
     --show-defns
-        Write out a list of the types, insts, modes, predicates, functions
+        Write out a list of the types, insts, modes, predicates, functions,
         typeclasses and instances defined in the module to `<module>.defns'.
 
     --show-definition-line-counts
@@ -2275,7 +2275,7 @@ Options that control program analyses
     --check-term2
     --chk-term2
         Enable the alternative termination analysis, and emit warnings for some
-        predicates or functions that cannot be proved to terminate. In many
+        predicates or functions that cannot be proven to terminate. In many
         cases where the compiler is unable to prove termination the problem is
         either a lack of information about the termination properties of other
         predicates, or because language constructs (such as higher order calls)
@@ -3354,7 +3354,7 @@ Options for developers only
 
     PRIVATE OPTION
     --no-trad-passes
-        The default `--trad-passes' completes code generaion each predicate
+        The default `--trad-passes' completes code generation of each predicate
         before going on to the next predicate. The --no-trad-passes option
         tells the compiler to complete each phase of code generation on all
         predicates before going on the next phase on all predicates.

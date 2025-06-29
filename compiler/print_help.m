@@ -205,11 +205,10 @@ all_chapters = AllChapters :-
         [SectionWarnDodgy, SectionWarnPerf, SectionWarnStyle,
         SectionWarnCtrl, SectionWarnHalt]),
 
+    % XXX Should these two chapters instead be two sections in one chapter?
     ChapterInform = one_level_chapter(
         help_section("Options that request information",
         [], [oc_inform])),
-
-    % ZZZ cf ChapterInform
     ChapterFileReq = one_level_chapter(
         help_section("Options that ask for informational files",
         [], [oc_file_req])),
@@ -240,10 +239,10 @@ all_chapters = AllChapters :-
         [], [oc_opt_hh_exp]),
     SectionOptHLM = help_section("Optimizations during code generation",
         [], [oc_opt_hlm]),
-    % ZZZ should these be separate sections?
+    % XXX Should the categories here be separate sections?
     SectionOptMM = help_section("Optimizations specific to high level code",
         [], [oc_opt_hm, oc_opt_mm]),
-    % ZZZ should these be separate sections?
+    % XXX Should the categories here be separate sections?
     SectionOptLL = help_section("Optimizations specific to low level code",
         [], [oc_opt_hl, oc_opt_ll, oc_opt_lc]),
     ChapterOpt = two_level_chapter("Optimization options",
@@ -657,9 +656,9 @@ acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord) :-
         (
             Help = no_help,
             PublicOrPrivate = help_private,
-            DescLines = []
+            DescPieces = []
         ;
-            Help = unnamed_help(DescLines),
+            Help = unnamed_help(DescPieces),
             % XXX It is quite likely that many options that do not have entries
             % in the long_table predicate, which therefore should be in optdb
             % with unnamed_help, are there with some other help structure,
@@ -670,7 +669,7 @@ acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord) :-
             cord.snoc(NameLine, !LineCord)
         ;
             Help = gen_help(ShortNames, LongName, AltLongNames,
-                PublicOrPrivate, DescLines),
+                PublicOrPrivate, DescPieces),
             acc_short_option_names(Params, Option, no_arg, no_align,
                 ShortNames, !LineCord),
             acc_long_option_name(Params, Option, no_arg, no_align,
@@ -679,19 +678,19 @@ acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord) :-
                 AltLongNames, !LineCord)
         ;
             (
-                Help = help(LongName, DescLines),
+                Help = help(LongName, DescPieces),
                 MaybeArg = no_arg,
                 PublicOrPrivate = help_public
             ;
-                Help = arg_help(LongName, ArgName, DescLines),
+                Help = arg_help(LongName, ArgName, DescPieces),
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_public
             ;
-                Help = priv_help(LongName, DescLines),
+                Help = priv_help(LongName, DescPieces),
                 MaybeArg = no_arg,
                 PublicOrPrivate = help_private
             ;
-                Help = priv_arg_help(LongName, ArgName, DescLines),
+                Help = priv_arg_help(LongName, ArgName, DescPieces),
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_private
             ),
@@ -699,21 +698,21 @@ acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord) :-
                 LongName, !LineCord)
         ;
             (
-                Help = alt_help(LongName, AltLongNames, DescLines),
+                Help = alt_help(LongName, AltLongNames, DescPieces),
                 MaybeArg = no_arg,
                 PublicOrPrivate = help_public
             ;
                 Help = alt_arg_help(LongName, AltLongNames, ArgName,
-                    DescLines),
+                    DescPieces),
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_public
             ;
-                Help = priv_alt_help(LongName, AltLongNames, DescLines),
+                Help = priv_alt_help(LongName, AltLongNames, DescPieces),
                 MaybeArg = no_arg,
                 PublicOrPrivate = help_private
             ;
                 Help = priv_alt_arg_help(LongName, AltLongNames, ArgName,
-                    DescLines),
+                    DescPieces),
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_private
             ),
@@ -724,22 +723,22 @@ acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord) :-
         ;
             (
                 Help = short_help(ShortName, LongName, AltLongNames,
-                    DescLines),
+                    DescPieces),
                 MaybeArg = no_arg,
                 PublicOrPrivate = help_public
             ;
                 Help = short_arg_help(ShortName, LongName, AltLongNames,
-                    ArgName, DescLines),
+                    ArgName, DescPieces),
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_public
             ;
                 Help = priv_short_help(ShortName, LongName, AltLongNames,
-                    DescLines),
+                    DescPieces),
                 MaybeArg = no_arg,
                 PublicOrPrivate = help_private
             ;
                 Help = priv_short_arg_help(ShortName, LongName, AltLongNames,
-                    ArgName, DescLines),
+                    ArgName, DescPieces),
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_private
             ),
@@ -752,11 +751,11 @@ acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord) :-
         ;
             (
                 Help = alt_align_help(LongName, AltLongNames,
-                    AlignedText, DescLines),
+                    AlignedText, DescPieces),
                 PublicOrPrivate = help_public
             ;
                 Help = priv_alt_align_help(LongName, AltLongNames,
-                    AlignedText, DescLines),
+                    AlignedText, DescPieces),
                 PublicOrPrivate = help_private
             ),
             MaybeArg = no_arg,
@@ -768,7 +767,7 @@ acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord) :-
                 AltLongNames, !LineCord)
         ;
             Help = short_alt_align_help(ShortName, LongName, AltLongNames,
-                AlignedText, DescLines),
+                AlignedText, DescPieces),
             PublicOrPrivate = help_public,
             acc_short_option_name(Params, Option, no_arg,
                 aligned_text(AlignedText), ShortName, !LineCord),
@@ -779,7 +778,7 @@ acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord) :-
                 AltLongNames, !LineCord)
         ;
             Help = no_align_help(LongName, AlignedText, NoAlignedText,
-                DescLines),
+                DescPieces),
             PublicOrPrivate = help_public,
             expect(is_bool(OptionData), $pred,
                 "unexpected use of no_align_help"),
@@ -793,7 +792,7 @@ acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord) :-
             cord.snoc(FirstLine, !LineCord),
             cord.snoc(SecondLine, !LineCord)
         ;
-            Help = alt_arg_align_help(LongName, ArgAligns, DescLines),
+            Help = alt_arg_align_help(LongName, ArgAligns, DescPieces),
             PublicOrPrivate = help_public,
             % In this case, we add *different* aligned text to each line.
             list.foldl(acc_arg_align_text(Params, Option, LongName),
@@ -809,39 +808,56 @@ acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord) :-
         then
             ( if
                 cord.is_empty(!.LineCord),
-                DescLines = []
+                DescPieces = []
             then
                 true
             else
                 DescPrefix = double_indent,
                 (
-                    DescLines = [],
-                    acc_prefixed_line(DescPrefix,
-                        "There is no help text available.", !LineCord)
+                    DescPieces = [],
+                    EffDescPieces =
+                        [w("There is no help text available.")]
                 ;
-                    DescLines = [_ | _],
-                    % ZZZ 71
-                    reflow_lines(Format, 71, DescLines, ReflowLines),
-                    list.foldl(acc_prefixed_line(DescPrefix), ReflowLines,
-                        !LineCord)
+                    DescPieces = [_ | _],
+                    EffDescPieces = DescPieces
                 ),
+                % ZZZ 71
+                reflow_lines(Format, 71, EffDescPieces, ReflowLines),
                 BlankLineCord = cord.singleton(""),
                 (
-                    PublicOrPrivate = help_public,
-                    PrivatePrefixCord = cord.init
+                    Format = help_plain_text,
+                    list.foldl(acc_prefixed_line(DescPrefix), ReflowLines,
+                        !LineCord),
+                    (
+                        PublicOrPrivate = help_public,
+                        PrivatePrefixCord = cord.init
+                    ;
+                        PublicOrPrivate = help_private,
+                        PrivatePrefixCord =
+                            cord.singleton(single_indent ++ "PRIVATE OPTION")
+                    ),
+                    !:EffectiveLinesCord = !.EffectiveLinesCord ++
+                        BlankLineCord ++ PrivatePrefixCord ++ !.LineCord
                 ;
-                    PublicOrPrivate = help_private,
-                    PrivatePrefixCord =
-                        cord.singleton(single_indent ++ "PRIVATE OPTION")
-                ),
-                !:EffectiveLinesCord = !.EffectiveLinesCord ++
-                    BlankLineCord ++ PrivatePrefixCord ++ !.LineCord
+                    Format = help_texinfo,
+                    !:LineCord = !.LineCord ++ cord.from_list(ReflowLines),
+                    (
+                        PublicOrPrivate = help_public
+                    ;
+                        PublicOrPrivate = help_private,
+                        AddCommentPrefix = ( func(L) = "@c " ++ L ),
+                        !:LineCord = cord.map(AddCommentPrefix, !.LineCord)
+                    ),
+                    !:EffectiveLinesCord = !.EffectiveLinesCord ++
+                        BlankLineCord ++ !.LineCord
+                )
             )
         else
             true
         )
     ).
 
+    % ZZZ revisit for texinfo
 :- pred acc_arg_align_text(option_params::in, option::in, string::in,
     arg_align::in, cord(string)::in, cord(string)::out) is det.
 
@@ -1119,15 +1135,16 @@ acc_prefixed_line(Prefix, LineBody, !LineCord) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred reflow_lines(help_format, int, list(string), list(string)).
+:- pred reflow_lines(help_format, int, list(help_piece), list(string)).
 :- mode reflow_lines(in(help_plain_text), in, in, out) is det.
 :- mode reflow_lines(in(help_texinfo), in, in, out) is det.
 
-reflow_lines(Format, LineLen, InitialLines, FinishedLines) :-
+reflow_lines(Format, LineLen, InitialPieces, FinishedLines) :-
     % string.count_code_points(IndentStr, IndentLen),
     % AvailLen = LineLen - IndentLen,
-    reflow_lines_loop_over_lines(Format, LineLen, cord.init, 0, InitialLines,
-        cord.init, FinishedLineCord),
+    reflow_lines_loop_over_lines(Format, LineLen, InitialPieces,
+        0, cord.init, CurLine1, cord.init, FinishedLineCord1),
+    finish_cur_line(CurLine1, FinishedLineCord1, FinishedLineCord),
     FinishedLines = cord.list(FinishedLineCord).
 
     % The pieces of the current line.
@@ -1139,38 +1156,127 @@ reflow_lines(Format, LineLen, InitialLines, FinishedLines) :-
     % The reflowed lines we have already constructed.
 :- type finished_lines == cord(string).
 
-:- pred reflow_lines_loop_over_lines(help_format, int, cur_line, int,
-    list(string), finished_lines, finished_lines).
-:- mode reflow_lines_loop_over_lines(in(help_plain_text), in, in, in,
-    in, in, out) is det.
-:- mode reflow_lines_loop_over_lines(in(help_texinfo), in, in, in,
-    in, in, out) is det.
+:- pred reflow_lines_loop_over_lines(help_format, int, list(help_piece),
+    int, cur_line, cur_line, finished_lines, finished_lines).
+:- mode reflow_lines_loop_over_lines(in(help_plain_text), in, in,
+    in, in, out, in, out) is det.
+:- mode reflow_lines_loop_over_lines(in(help_texinfo), in, in,
+    in, in, out, in, out) is det.
 
-reflow_lines_loop_over_lines(Format, LineLen, !.CurLine, !.CurLineLen, Lines,
-        !FinishedLineCord) :-
+reflow_lines_loop_over_lines(Format, LineLen, Pieces,
+        !.CurLineLen, !CurLine, !FinishedLineCord) :-
     (
-        Lines = [],
-        finish_cur_line(!.CurLine, !FinishedLineCord)
+        Pieces = []
     ;
-        Lines = [HeadLine | TailLines0],
-        ( if HeadLine = "QUOTE" then
-            % Delete the "QUOTE" word, and do NOT break the next line, if any.
-            (
-                TailLines0 = [],
-                TailLines = []
-            ;
-                TailLines0 = [ProtectedLine | TailLines],
-                add_word(LineLen, !CurLine, !CurLineLen, ProtectedLine,
-                    !FinishedLineCord)
-            )
-        else
-            TailLines = TailLines0,
-            HeadLineWords = string.words(HeadLine),
+        Pieces = [HeadPiece | TailPieces],
+        (
+            HeadPiece = w(WordsStr),
+            Words = string.words(WordsStr),
             reflow_lines_loop_over_words(LineLen, !CurLine, !CurLineLen,
-                HeadLineWords, !FinishedLineCord)
+                Words, !FinishedLineCord)
+        ;
+            ( HeadPiece = opt(_)
+            ; HeadPiece = opt(_, _)
+            ; HeadPiece = samp(_)
+            ; HeadPiece = samp(_, _)
+            ; HeadPiece = emph(_)
+            ; HeadPiece = emph(_, _)
+            ; HeadPiece = var(_)
+            ; HeadPiece = var(_, _)
+            ; HeadPiece = file(_)
+            ; HeadPiece = file(_, _)
+            ; HeadPiece = code(_)
+            ; HeadPiece = code(_, _)
+            ; HeadPiece = file_var(_, _)
+            ; HeadPiece = file_var(_, _, _)
+            ),
+            (
+                ( HeadPiece = opt(Option), Suffix = ""
+                ; HeadPiece = opt(Option, Suffix)
+                ),
+                string.format("`%s'%s", [s(Option), s(Suffix)], Str)
+            ;
+                ( HeadPiece = samp(Option), Suffix = ""
+                ; HeadPiece = samp(Option, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("`%s'%s", [s(Option), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@samp{%s}%s", [s(Option), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = emph(Text), Suffix = ""
+                ; HeadPiece = emph(Text, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("`%s'%s", [s(Text), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@emph{%s}%s", [s(Text), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = var(Var), Suffix = ""
+                ; HeadPiece = var(Var, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("%s%s", [s(Var), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@var{%s}%s", [s(Var), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = file(Var), Suffix = ""
+                ; HeadPiece = file(Var, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("%s%s", [s(Var), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@file{%s}%s", [s(Var), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = code(Code), Suffix = ""
+                ; HeadPiece = code(Code, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("`%s'%s", [s(Code), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@code{%s}%s", [s(Code), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = file_var(File, Ext), Suffix = ""
+                ; HeadPiece = file_var(File, Ext, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("`<%s>.%s'%s",
+                        [s(File), s(Ext), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@file{@var{%s}.%s}%s",
+                        [s(File), s(Ext), s(Suffix)], Str)
+                )
+            ),
+            add_word(LineLen, !CurLine, !CurLineLen, Str, !FinishedLineCord)
+        ;
+            HeadPiece = texinfo_only(TexInfoPieces),
+            (
+                Format = help_plain_text
+            ;
+                Format = help_texinfo,
+                reflow_lines_loop_over_lines(Format, LineLen, TexInfoPieces,
+                    !.CurLineLen, !CurLine, !FinishedLineCord)
+            )
         ),
-        reflow_lines_loop_over_lines(Format, LineLen, !.CurLine, !.CurLineLen,
-            TailLines, !FinishedLineCord)
+        reflow_lines_loop_over_lines(Format, LineLen, TailPieces,
+            !.CurLineLen, !CurLine, !FinishedLineCord)
     ).
 
 :- pred reflow_lines_loop_over_words(int::in, cur_line::in, cur_line::out,
@@ -1193,7 +1299,9 @@ reflow_lines_loop_over_words(LineLen, !CurLine, !CurLineLen, Words,
 
 add_word(LineLen, !CurLine, !CurLineLen, Word, !FinishedLineCord) :-
     string.count_code_points(Word, WordLen),
-    ( if !.CurLineLen = 0 then
+    ( if WordLen = 0 then
+        true
+    else if !.CurLineLen = 0 then
         !:CurLine = cord.singleton(Word),
         !:CurLineLen = WordLen
     else
