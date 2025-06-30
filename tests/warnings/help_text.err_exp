@@ -48,10 +48,11 @@ Options that give the compiler its overall task
     --generate-source-file-mapping
         Output to `Mercury.modules' the module-name-to-file-name mapping for
         the list of source files given as non-option arguments to mmc. This
-        must be done before invoking `mmc --generate-dependencies' if there are
-        any modules for which the file name does not match the module name. (If
-        there are no such modules, then there is no need for this mapping to be
-        generated.)
+        mapping is needed if either for some modules, the file name does not
+        match the module name, or if some of the modules are outside the
+        current directory. In such cases, the mapping must be generated before
+        invoking any one of `mmc --generate-dependencies', `mmc --make', or
+        `mmake depend'.
 
     -M
     --generate-dependencies
@@ -90,7 +91,7 @@ Options that give the compiler its overall task
     --make-int
         Write to `<module>.int' and to `<module>.int2' a list of entities
         (including types, insts, modes, predicates and functions) that the
-        given module exports for use by other modules. When generaring code,
+        given module exports for use by other modules. When generating code,
         the compiler reads the `.int' file of every directly imported module,
         and the `.int2' file of every indirectly imported module. (Each `.int2'
         file is a slightly shorter version of the corresponding `.int' file,
@@ -226,7 +227,7 @@ Options that give the compiler its overall task
         Print to standard output the flags that must be passed to the linker in
         order to link against the current set of libraries. This includes the
         Mercury standard library, as well as any other libraries specified via
-        the `--ml' option.
+        either the `--ml' or `-l' option.
 
     --output-csharp-compiler
         Print to standard output the command for invoking the C# compiler.
@@ -647,11 +648,11 @@ Options that control inference
 
     --infer-types
         If there is no type declaration for a predicate or function, try to
-        infer its type, rather than just reporting an error.
+        infer its type, instead of just reporting an error.
 
     --infer-modes
         If there is no mode declaration for a predicate, try to infer its mode
-        (or modes), rather than just reporting an error.
+        (or modes), instead of just reporting an error.
 
     --no-infer-determinism
     --no-infer-det
@@ -1242,7 +1243,8 @@ Warning options
 
     --no-warn-non-contiguous-decls
         Do not generate a warning if the mode declarations of a predicate or
-        function don't all immediately follow its `pred' or `func' declaration.
+        function do not all immediately follow its `pred' or `func'
+        declaration.
 
     --warn-non-contiguous-clauses
         Generate a warning if the clauses of a predicate or function are not
@@ -1351,9 +1353,9 @@ Options that request information
 
     PRIVATE OPTION
     --inform-incomplete-color-scheme
-        Report if the argument if either the value of the `--color-scheme'
-        option, or the value of the `MERCURY_COLOR_SCHEME' environment
-        variable, does not specify a color for some role.
+        Report if either the value of the `--color-scheme' option, or the value
+        of the `MERCURY_COLOR_SCHEME' environment variable, is incomplete, in
+        that it does not specify a color for some role.
 
     --inform-suboptimal-packing
         Generate messages if the arguments of a data constructor could be

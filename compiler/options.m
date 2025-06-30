@@ -1270,12 +1270,13 @@ optdb(oc_opmode,    only_opmode_generate_source_file_mapping, bool(no),
         w("Output to"), file("Mercury.modules"),
         w("the module-name-to-file-name mapping for the"),
         w("list of source files given as non-option arguments to mmc."),
-        w("This must be done before invoking"),
-        code("mmc --generate-dependencies"),
-        w("if there are any modules for which"),
-        w("the file name does not match the module name."),
-        w("(If there are no such modules, then"),
-        w("there is no need for this mapping to be generated.)")])).
+        w("This mapping is needed if either"),
+        w("for some modules, the file name does not match the module name,"),
+        w("or if some of the modules are outside the current directory."),
+        w("In such cases, the mapping must be generated"),
+        w("before invoking any one of"),
+        code("mmc --generate-dependencies", ","),
+        code("mmc --make", ","), w("or"), code("mmake depend", ".")])).
 optdb(oc_opmode,    only_opmode_generate_dependencies, bool(no),
     short_help('M', "generate-dependencies", [], [
         w("Output"), quote("Make", "-style"), w("dependencies"),
@@ -1328,7 +1329,7 @@ optdb(oc_opmode,    only_opmode_make_interface,        bool(no),
         w("a list of entities"),
         w("(including types, insts, modes, predicates and functions)"),
         w("that the given module exports for use by other modules."),
-        w("When generaring code, the compiler reads the"),
+        w("When generating code, the compiler reads the"),
         file(".int"), w("file of every directly imported module,"),
         w("and the"), file(".int2"), w("file"),
         w("of every indirectly imported module."),
@@ -1480,7 +1481,8 @@ optdb(oc_opmode,    only_opmode_output_library_link_flags, bool(no),
         w("that must be passed to the linker in order to"),
         w("link against the current set of libraries."),
         w("This includes the Mercury standard library, as well as any other"),
-        w("libraries specified via the"), opt("--ml"), w("option.")])).
+        w("libraries specified via either the"), opt("--ml"),
+        w("or"), opt("-l"), w("option.")])).
 optdb(oc_opmode,    only_opmode_output_csharp_compiler, bool(no),
     help("output-csharp-compiler", [
         w("Print to standard output the command for invoking"),
@@ -2038,12 +2040,12 @@ optdb(oc_infer,     infer_all,                         bool_special,
 optdb(oc_infer,     infer_types,                       bool(no),
     help("infer-types", [
         w("If there is no type declaration for a predicate or function,"),
-        w("try to infer its type, rather than just reporting an error.")])).
+        w("try to infer its type, instead of just reporting an error.")])).
 optdb(oc_infer,     infer_modes,                       bool(no),
     help("infer-modes", [
         w("If there is no mode declaration for a predicate,"),
         w("try to infer its mode (or modes),"),
-        w("rather than just reporting an error.")])).
+        w("instead of just reporting an error.")])).
 optdb(oc_infer,     infer_det,                         bool(yes),
     alt_help("infer-determinism", ["infer-det"], [
         w("If there is no determinism declaration for a procedure"),
@@ -2746,7 +2748,7 @@ optdb(oc_warn_style, warn_inconsistent_pred_order_foreign_procs, bool(no),
 optdb(oc_warn_style, warn_non_contiguous_decls,         bool(yes),
     help("warn-non-contiguous-decls", [
         w("Do not generate a warning if the mode declarations of a"),
-        w("predicate or function don't all immediately follow its"),
+        w("predicate or function do not all immediately follow its"),
         code("pred"), w("or"), code("func"), w("declaration.")])).
 optdb(oc_warn_style, warn_non_contiguous_clauses,       bool(no),
     help("warn-non-contiguous-clauses", [
@@ -2873,10 +2875,10 @@ optdb(oc_inform,    inform_inferred_modes,             bool(yes),
         w("Do not print inferred modes.")])).
 optdb(oc_inform,    inform_incomplete_color_scheme,    bool(no),
     priv_help("inform-incomplete-color-scheme", [
-        w("Report if the argument if either the value of the"),
-        opt("--color-scheme"), w("option, or the value of the"),
-        code("MERCURY_COLOR_SCHEME"), w("environment variable,"),
-        w("does not specify a color for some role.")])).
+        w("Report if either the value of the"), opt("--color-scheme"),
+        w("option, or the value of the"), code("MERCURY_COLOR_SCHEME"),
+        w("environment variable, is incomplete,"),
+        w("in that it does not specify a color for some role.")])).
 optdb(oc_inform,    inform_suboptimal_packing,         bool(no),
     help("inform-suboptimal-packing", [
         w("Generate messages if the arguments of a data constructor"),
