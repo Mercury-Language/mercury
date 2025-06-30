@@ -4322,10 +4322,10 @@ optdb(oc_link_c_cs_j, mercury_library_directory_special, string_special,
     % c_include_directories and mercury_library_directories.
     alt_arg_help("mercury-library-directory",
             ["mld"], "directory", [
-        w("Append <directory> to the list of directories to"),
-        w("be searched for Mercury libraries. This will add"),
-        w("`--search-directory', `--library-directory',"),
-        w("`--init-file-directory' and `--c-include-directory'"),
+        w("Append"), arg("directory"), w("to the list of directories"),
+        w("to be searched for Mercury libraries. This will add"),
+        opt("--search-directory", ","), opt("--library-directory", ","),
+        opt("--init-file-directory"), w("and"), opt("--c-include-directory"),
         w("options as needed.")])).
 optdb(oc_link_c_cs_j, mercury_library_directories,       accumulating([]),
     no_help).
@@ -4335,11 +4335,12 @@ optdb(oc_link_c_cs_j, search_library_files_directory_special, string_special,
     % XXX This list just above DIFFERS from the list below.
     alt_arg_help("search-library-files-directory",
             ["search-lib-files-dir"], "directory", [
-        w("Search <directory> for Mercury library files that have not yet"),
-        w("been installed. Similar to adding <directory> using all of the"),
-        w("`--search-directory', `--intermod-directory',"),
-        w("`--library-directory', `--init-file-directory' and"),
-        w("`--c-include-directory' options.")])).
+        w("Search"), arg("directory"), w("for Mercury library files"),
+        w("that have not yet been installed. Similar to adding"),
+        arg("directory"), w("using all of the"),
+        opt("--search-directory", ","), opt("--intermod-directory", ","),
+        opt("--library-directory", ","), opt("--init-file-directory"),
+        w("and"), opt("--c-include-directory"), w("options.")])).
 optdb(oc_link_c_cs_j, search_library_files_directories,  accumulating([]),
     no_help).
 optdb(oc_link_c_cs_j, mercury_library_special,           string_special,
@@ -4355,12 +4356,15 @@ optdb(oc_link_c_cs_j, mercury_standard_library_directory_special,
     % mercury_standard_library_directory and mercury_configuration_directory.
     alt_arg_help("mercury-standard-library-directory",
             ["mercury-stdlib-dir"], "directory", [
-        w("Search <directory> for the Mercury standard library."),
-        w("Implies `--mercury-library-directory <directory>'"),
-        w("and `--mercury-configuration-directory <directory>'."),
-        w("The negative version, --no-mercury-standard-library-directory"),
+        w("Search"), arg("directory"), w("for the Mercury standard library."),
+        w("Implies"), opt_arg("--mercury-library-directory", "directory"),
+        w("and"),
+        opt_arg("--mercury-configuration-directory", "directory", "."),
+        w("The negative version,"),
+        opt("--no-mercury-standard-library-directory", ","),
         w("tells the compiler not to use the Mercury standard library,"),
-        w("and also implies `--no-mercury-configuration-directory'.")])).
+        w("and also implies"),
+        opt("--no-mercury-configuration-directory", ".")])).
 optdb(oc_link_c_cs_j, mercury_standard_library_directory, maybe_string(no),
     % The Mercury.config file will set the default
     % standard library directory.
@@ -4374,8 +4378,8 @@ optdb(oc_link_c_cs_j, mercury_standard_library_directory, maybe_string(no),
 % seem to be different for no good reason.
 optdb(oc_link_c_cs, link_library_directories,          accumulating([]),
     short_arg_help('L', "library-directory", [], "directory", [
-        w("Append <directory> to the list of directories in which"),
-        w("to search for libraries.")])).
+        w("Append"), arg("directory"), w("to the list of directories"),
+        w("in which to search for libraries.")])).
 optdb(oc_link_c_cs, link_libraries,                    accumulating([]),
     short_arg_help('l', "library", [], "library", [
         w("Link with the specified library.")])).
@@ -4404,35 +4408,35 @@ optdb(oc_link_c,    link_objects,                      accumulating([]),
 optdb(oc_link_c,    ld_flags,                          accumulating([]),
     arg_help("ld-flags", "options", [
         w("Specify options to be passed to the linker command"),
-        w("invoked by ml to link an executable."),
+        w("invoked by"), code("ml"), w("to link an executable."),
         w("These options will not be quoted when passed to the shell."),
-        w("Use `ml --print-link-command' to find out which"),
-        w("command is used.")])).
+        w("Use"), code("ml --print-link-command"),
+        w("to find out what the linker command is.")])).
 optdb(oc_link_c,    quoted_ld_flag,                    string_special,
     arg_help("ld-flag", "option", [
         w("Specify a single word option to be passed to the linker command"),
-        w("invoked by ml to link an executable."),
+        w("invoked by"), code("ml"), w("to link an executable."),
         w("The word will be quoted when passed to the shell."),
-        w("Use `ml --print-link-command' to find out which"),
-        w("command is used.")])).
+        w("Use"), code("ml --print-link-command"),
+        w("to find out what the linker command is.")])).
 optdb(oc_link_c,    ld_libflags,                       accumulating([]),
     arg_help("ld-libflags", "options", [
         w("Specify options to be passed to the linker command"),
-        w("invoked by ml to link a shared library."),
+        w("invoked by"), code("ml"), w("to link a shared library."),
         w("These options will not be quoted when passed to the shell."),
-        w("Use `ml --print-shared-lib-link-command' to find out"),
-        w("which command is used.")])).
+        w("Use"), code("ml --print-shared-lib-link-command"),
+        w("to find out what the linker command is.")])).
 optdb(oc_link_c,    quoted_ld_libflag,                 string_special,
     arg_help("ld-libflag", "option", [
         w("Specify a single word option to be passed to the linker command"),
-        w("invoked by ml to link a shared library."),
+        w("invoked by"), code("ml"), w("to link a shared library."),
         w("The word will be quoted when passed to the shell."),
-        w("Use `ml --print-shared-lib-link-command' to find out"),
-        w("which command is used.")])).
+        w("Use"), code("ml --print-shared-lib-link-command"),
+        w("to find out what the linker command is.")])).
 optdb(oc_link_c,    runtime_link_library_directories,  accumulating([]),
     short_arg_help('R', "runtime-library-directory", [], "directory", [
-        w("Append <directory> to the list of directories in which"),
-        w("to search for shared libraries at runtime.")])).
+        w("Append"), arg("directory"), w("to the list of directories"),
+        w("in which to search for shared libraries at runtime.")])).
 optdb(oc_link_c,    use_default_runtime_library_directory, bool(yes),
     % The use_default_runtime_library_directory option is only ever used
     % to decide whether to modify the value of the
@@ -4442,16 +4446,18 @@ optdb(oc_link_c,    use_default_runtime_library_directory, bool(yes),
         w("automatically.")])).
 optdb(oc_link_c,    init_file_directories,             accumulating([]),
     arg_help("init-file-directory", "directory", [
-        w("Append <directory> to the list of directories to"),
-        w("be searched for `.init' files by c2init.")])).
+        w("Append"), arg("directory"), w("to the list of directories"),
+        w("to be searched for"), file(".init"), w("files by"),
+        code("c2init", ".")])).
 optdb(oc_link_c,    init_files,                        accumulating([]),
     arg_help("init-file", "init-file", [
-        w("Append <init-file> to the list of `.init' files to"),
-        w("be passed to c2init.")])).
+        w("Append"), arg("init-file"), w("to the list of"), file(".init"),
+        w("files to be passed to"), code("c2init", ".")])).
 optdb(oc_link_c,    trace_init_files,                  accumulating([]),
     arg_help("trace-init-file", "init-file", [
-        w("Append <init-file> to the list of `.init' files to"),
-        w("be passed to c2init when tracing is enabled.")])).
+        w("Append"), arg("init-file"), w("to the list of"), file(".init"),
+        w("files to be passed to"), code("c2init"),
+        w("when tracing is enabled.")])).
 % XXX The options
 %   linkage_special
 %   only_globals_linkage
@@ -4465,9 +4471,9 @@ optdb(oc_link_c,    trace_init_files,                  accumulating([]),
 % only_globals_mercury_linkage.
 optdb(oc_link_c,    linkage_special,                   string_special,
     arg_help("linkage", "{shared, static}", [
-        w("Specify whether to use shared or static linking for"),
-        w("executables. Shared libraries are always linked"),
-        w("with `--linkage shared'.")])).
+        w("Specify whether to use shared or static linking for executables."),
+        w("Shared libraries are always linked with"),
+        opt("--linkage shared", ".")])).
 optdb(oc_link_c,    only_globals_linkage,              string("shared"),
     no_help).
 % NOTE mercury_linkage_special first checks and then sets
@@ -4477,7 +4483,7 @@ optdb(oc_link_c,    mercury_linkage_special,           string_special,
         w("Specify whether to use shared or static linking when"),
         w("linking an executable with Mercury libraries."),
         w("Shared libraries are always linked with"),
-        w("`--mercury-linkage shared'.")])).
+        opt("--mercury-linkage shared", ".")])).
 optdb(oc_link_c,    only_globals_mercury_linkage,      string("shared"),
     no_help).
 
@@ -4487,15 +4493,16 @@ optdb(oc_link_c,    demangle,                          bool(yes),
         w("the Mercury demangler."),
         w("The demangler usually makes it easier to understand"),
         w("the diagnostics for any link errors"),
-        w("that involve code generated by mmc.")])).
+        w("that involve code generated by the Mercury compiler.")])).
 optdb(oc_link_c,    strip,                             bool(yes),
     help("strip", [
-        w("Do not invoke the strip command on executables."),
+        w("Do not invoke the"), code("strip"), w("command on executables."),
         w("Stripping minimizes executables' sizes,"),
         w("but also makes debugging them much harder.")])).
 optdb(oc_link_c,    main,                              bool(yes),
     help("main", [
-        w("Do not generate a C main() function. With `--no-main',"),
+        w("Do not generate a C"), code("main()"), w("function. With"),
+        opt("--no-main", ","),
         w("the user's own code must provide a main() function.")])).
 
 optdb(oc_link_c,    allow_undefined,                   bool(yes),
@@ -4510,10 +4517,11 @@ optdb(oc_link_c,    runtime_flags,                     accumulating([]),
 optdb(oc_link_c,    extra_init_functions,              bool(no),
     alt_help("extra-initialization-functions",
             ["extra-inits"], [
-        w("Search `.c' files for extra initialization functions."),
-        w("(This may be necessary if the C files contain"),
-        w("hand-coded C code with `INIT' comments, rather than"),
-        w("containing only C code that was automatically generated"),
+        w("Search"), file(".c"),
+        w("files for extra initialization functions."),
+        w("(This may be necessary if the C files contain hand-written C code"),
+        w("with"), code("INIT"), w("comments, rather than containing"),
+        w("only C code that was automatically generated"),
         w("by the Mercury compiler.)")])).
 optdb(oc_link_c,    frameworks,                        accumulating([]),
     arg_help("framework", "framework", [
@@ -4539,9 +4547,9 @@ optdb(oc_link_c,    link_shared_lib_command,           string("gcc -shared"),
 optdb(oc_link_c,    shlib_linker_install_name_path,    string(""),
     arg_help("shlib-linker-install-name-path", "directory", [
         w("Specify the path where a shared library will be installed."),
-        w("This option is useful on systems where the runtime search"),
-        w("path is obtained from the shared library and not via the"),
-        w("-R option above (such as Mac OS X).")])).
+        w("This option is useful on systems where the runtime search path"),
+        w("is obtained from the shared library and not via the"),
+        opt("-R"), w("option above (such as Mac OS X).")])).
 optdb(oc_link_c,    strip_executable_command,          string(""),
     arg_help("strip-executable-command", "command", [
         w("Specify the command used to strip executables if no linker"),
@@ -4586,36 +4594,41 @@ optdb(oc_link_csharp, sign_assembly,                     string(""),
 
 optdb(oc_search,    options_search_directories,        accumulating(["."]),
     arg_help("options-search-directory", "dir", [
-        w("Add <dir> to the list of directories to be searched for"),
-        w("options files.")])).
+        w("Add"), arg("dir"), w("to the list of directories to be searched"),
+        w("for options files.")])).
 optdb(oc_search,    setting_only_use_subdirs,          bool(no),
     help("use-subdirs", [
-        w("Generate intermediate files in a `Mercury' subdirectory,"),
+        w("Generate intermediate files in a"), file("Mercury"),
+        w("subdirectory,"),
         w("rather than generating them in the current directory.")])).
 optdb(oc_search,    setting_only_use_grade_subdirs,    bool(no),
     help("use-grade-subdirs", [
-        w("Generate intermediate files in a `Mercury' subdirectory,"),
+        w("Generate intermediate files in a"), file("Mercury"),
+        w("subdirectory,"),
         w("laid out so that multiple grades can be built simultaneously."),
         w("Executables and libraries will be symlinked or copied into"),
         w("the current directory."),
-        w("`--use-grade-subdirs' does not work with Mmake (it does"),
-        w("work with"), code("mmc --make", ").")])).
+        opt("--use-grade-subdirs"), w("is supported only by"),
+        code("mmc --make", ";"), w("it does not work with Mmake.")])).
 optdb(oc_search,    search_directories,                accumulating(["."]),
     short_arg_help('I', "search-directory", [], "dir", [
-        w("Append <dir> to the list of directories to be searched"),
-        w("for `.int*' and `.module_dep' files.")])).
+        w("Append"), arg("dir"), w("to the list of directories to be"),
+        w("searched for"), file(".int*"), w("and"), file(".module_dep"),
+        w("files.")])).
 optdb(oc_search,    intermod_directories,              accumulating([]),
     arg_help("intermod-directory", "dir", [
-        w("Add <dir> to the list of directories to be searched"),
-        w("for `.opt' and `.trans_opt' files.")])).
+        w("Add"), arg("dir"), w("to the list of directories to be"),
+        w("searched for"), file(".opt"), w("and"), file(".trans_opt"),
+        w("files.")])).
 optdb(oc_search,    use_search_directories_for_intermod, bool(yes),
     help("use-search-directories-for-intermod", [
-        w("With `--use-search-directories-for-intermod', the compiler"),
-        w("will add the arguments of `--search-directory' options"),
-        w("to the list of directories to search for `.opt' files."),
-        w("With `--no-use-search-directories-for-intermod', the compiler"),
-        w("will use use only the arguments of"),
-        w("`--intermod-directory' options.")])).
+        w("With"), opt("--use-search-directories-for-intermod", ","),
+        w("the compiler will add the arguments of"),
+        opt("--search-directory"), w("options to the list of directories"),
+        w("to search for `.opt' files. With"),
+        opt("--no-use-search-directories-for-intermod", ","),
+        w("the compiler will use use only the arguments of"),
+        opt("--intermod-directory"), w("options.")])).
 optdb(oc_search,    interface_dirs_same_subdir_setting, accumulating([]),
     priv_alt_arg_help("interface-dir-same-workspace",
         ["interface-dir-same-ws"], "dir", [])).
@@ -4669,8 +4682,9 @@ optdb(oc_buildsys,  library_install_grades,           accumulating(["stdlib"]),
     % of this option.
     alt_arg_help("library-grade",
             ["libgrade"], "grade", [
-        w("The positive form adds <grade> to the list of compilation grades"),
-        w("in which a library to be installed should be built."),
+        w("The positive form adds"), arg("grade"), w("to the list of"),
+        w("compilation grades in which a library to be installed"),
+        w("should be built."),
         w("(The list is initialized to the set of grades in which"),
         w("the standard library is installed.)"),
         w("The negative form clears the list of compilation grades in which"),
@@ -4693,8 +4707,8 @@ optdb(oc_buildsys,  only_globals_library_install_linkages, accumulating([]),
     alt_arg_help("library-install-linkage",
             ["library-linkage", "lib-linkage"], "{shared, static}", [
         w("Specify whether libraries should be installed for shared"),
-        w("or static linking. This option can be specified multiple"),
-        w("times. By default, libraries will be installed for"),
+        w("or static linking. This option can be specified multiple times."),
+        w("By default, libraries will be installed for"),
         w("both shared and static linking.")])).
 optdb(oc_buildsys,  detect_stdlib_grades,              bool(yes),
     alt_help("detect-stdlib-grades",
@@ -4708,10 +4722,10 @@ optdb(oc_buildsys,  libgrade_install_check,            bool(yes),
         code("mmc --make", ".)")])).
 optdb(oc_buildsys,  extra_init_command,                maybe_string(no),
     arg_help("extra-init-command", "command", [
-        w("Specify a command to produce extra entries in the `.init'"),
-        w("file for a library."),
-        w("The command will be passed the names of all of the source"),
-        w("files in the program or library, with the source file"),
+        w("Specify a command to produce extra entries in the"),
+        file(".init"), w("file for a library."),
+        w("The command will be passed the names of all of the source files"),
+        w("in the program or library, with the source file"),
         w("containing the main module given first.")])).
 optdb(oc_buildsys,  extra_library_header,              accumulating([]),
     alt_arg_help("extra-library-header",

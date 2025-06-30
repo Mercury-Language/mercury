@@ -206,6 +206,8 @@
     ;       opt(string, string)                 %
     ;       arg(string)                         % ?
     ;       arg(string, string)                 % ?
+    ;       opt_arg(string, string)             % ?
+    ;       opt_arg(string, string, string)     % ?
     ;       quote(string)                       % ``str1''
     ;       quote(string, string)               % ``str1''str2
     ;       ref(string, string, string)         % @ref{str2}

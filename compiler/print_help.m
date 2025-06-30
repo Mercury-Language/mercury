@@ -1179,6 +1179,8 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
             ; HeadPiece = opt(_, _)
             ; HeadPiece = arg(_)
             ; HeadPiece = arg(_, _)
+            ; HeadPiece = opt_arg(_, _)
+            ; HeadPiece = opt_arg(_, _, _)
             ; HeadPiece = quote(_)
             ; HeadPiece = quote(_, _)
             ; HeadPiece = ref(_, _, _)
@@ -1224,6 +1226,19 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                 ;
                     Format = help_texinfo,
                     string.format("@samp{%s}%s", [s(Arg), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = opt_arg(Option, Arg), Suffix = ""
+                ; HeadPiece = opt_arg(Option, Arg, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("`%s <%s>'%s",
+                        [s(Option), s(Arg), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("`%s @samp{%s}'%s",
+                        [s(Option), s(Arg), s(Suffix)], Str)
                 )
             ;
                 ( HeadPiece = quote(Text), Suffix = ""
