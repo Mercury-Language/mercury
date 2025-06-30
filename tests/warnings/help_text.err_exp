@@ -2294,8 +2294,8 @@ Options that control program analyses
     --term-single-arg <n>
         When performing termination analysis, try analyzing recursion on single
         arguments in strongly connected components of the call graph that have
-        up to <n> procedures. Setting this limit to zero disables single
-        argument analysis.
+        up to the given number of procedures. Setting this limit to zero
+        disables single argument analysis.
 
     --termination-norm {simple, total, num-data-elems}
     --term-norm {simple, total, num-data-elems}
@@ -2307,13 +2307,13 @@ Options that control program analyses
 
     --termination-error-limit <n>
     --term-err-limit <n>
-        Print at most <n> reasons for any single termination error (default:
-        3).
+        Print at most this number of reasons for any single termination error
+        (default: 3).
 
     --termination-path-limit <n>
     --term-path-limit <n>
-        Perform termination analysis only on predicates with at most <n> paths
-        (default: 256).
+        Perform termination analysis only on predicates with at most this many
+        paths (default: 256).
 
     PRIVATE OPTION
     --enable-termination2
@@ -2327,11 +2327,12 @@ Options that control program analyses
     --chk-term2
         Enable the alternative termination analysis, and emit warnings for some
         predicates or functions that cannot be proven to terminate. In many
-        cases where the compiler is unable to prove termination the problem is
+        cases where the compiler is unable to prove termination, the problem is
         either a lack of information about the termination properties of other
         predicates, or because language constructs (such as higher order calls)
-        were used which could not be analysed. In these cases the compiler does
-        not emit a warning of non-termination, as it is likely to be spurious.
+        were used which could not be analysed. In these cases, the compiler
+        does not emit a warning of non-termination, as it is likely to be
+        spurious.
 
     PRIVATE OPTION
     --verbose-check-termination2
@@ -2345,7 +2346,7 @@ Options that control program analyses
     --term2-norm {simple, total, num-data-elems}
         Tell the alternative termination analyser which norm to use. See the
         description of the `--termination-norm' option for a description of the
-        different types of norm available.
+        different norms available.
 
     PRIVATE OPTION
     --termination2-widening-limit <n>
@@ -2357,7 +2358,7 @@ Options that control program analyses
     --term2-argument-size-analysis-only
     --term2-arg-size-analysis-only
     --arg-size-analysis-only
-        Perform argument size analysis on each SCC but do not attempt to infer
+        Perform argument size analysis on each SCC, but do not attempt to infer
         termination,
 
     PRIVATE OPTION
@@ -2370,40 +2371,40 @@ Options that control program analyses
     PRIVATE OPTION
     --termination2-maximum-matrix-size <n>
     --term2-max-matrix-size <n>
-        Limit the sizes of constraints systems in the analyser to <n>
-        constraints. Use approximations of some constraint operations, such as
-        projection, if this threshold is exceeded. This will speed up the
-        analysis at the cost of reduced precision.
+        Limit the sizes of constraints systems in the analyser to the given
+        number of constraints. Use approximations of some constraint
+        operations, such as projection, if this threshold is exceeded. This
+        will speed up the analysis at the cost of reduced precision.
 
     --analyse-exceptions
-        Enable exception analysis. Identify those procedures that will not
-        throw an exception. Some optimizations can make use of this
+        Enable exception analysis. which tries to identify procedures that will
+        not throw an exception. Some optimizations can make use of this
         information.
 
     PRIVATE OPTION
     --analyse-local-closures
     --analyse-closures
-        Enable closure analysis. Try to identify the possible values that
+        Enable closure analysis, which tries identify the possible values that
         higher-order valued variables can take. Some optimizations can make use
         of this information.
 
     --analyse-trail-usage
-        Enable trail usage analysis. Identify those procedures that will not
-        modify the trail. This information is used to reduce the overhead of
-        trailing.
+        Enable trail usage analysis, which tries to identify procedures that
+        will not modify the trail. The compiler can use this information to
+        reduce the overhead of trailing.
 
     --analyse-mm-tabling
         Identify those goals that do not call procedures that are evaluated
-        using minimal model tabling. This information is used to reduce the
-        overhead of minimal model tabling.
+        using minimal model tabling. The compiler can use this information to
+        reduce the overhead of minimal model tabling.
 
 Options that ask for modified output
 
     -n
     --line-numbers
         Put source line numbers into the generated code. The generated code may
-        be in C (the usual case), or in Mercury (with the option
-        --convert-to-mercury).
+        be in C, Java or C# (the usual cases), or in Mercury (with
+        `--convert-to-mercury').
 
     --no-line-numbers-around-foreign-code
         Do not put source line numbers into the generated target language file
@@ -2411,7 +2412,7 @@ Options that ask for modified output
 
     --line-numbers-for-c-headers
         Put source line numbers in the generated C header files. This can make
-        it easier to track down any problems with C code in foreign_decl
+        it easier to track down any problems with C code in `foreign_decl'
         pragmas, but may cause unnecessary recompilations of other modules if
         any of these line numbers changes (e.g. because the location of a
         predicate declaration changes in the Mercury source file).
@@ -2439,7 +2440,7 @@ Options for controlling mmc --make
         detected.
 
     --order-make-by-timestamp
-        Make `mmc --make' compile more recently modified source files first.
+        Tell `mmc --make' to compile more recently modified source files first.
 
     --show-make-times
         Report run times for commands executed by `mmc --make'.
@@ -2477,8 +2478,8 @@ Options for target language compilation
         C# compiler.
 
     --no-warn-target-code
-        Disable warnings from the compiler (e.g. gcc) that processes the target
-        code generated by mmc.
+        Disable warnings from the compiler (which may be e.g. gcc) that
+        processes the target code generated by mmc.
 
     Options for compiling C code
 
@@ -2498,9 +2499,9 @@ Options for target language compilation
     --c-include-dir <dir>
     --no-c-include-dir
         Append <dir> to the list of directories to be searched for C header
-        files. Note that if you want to override this list, rather than append
-        to it, then you can set the `MERCURY_MC_ALL_C_INCL_DIRS' environment
-        variable to a sequence of `--c-include-directory' options.
+        files. Note that if you want to override this list, instead of
+        appendding to it, then you can set the `MERCURY_MC_ALL_C_INCL_DIRS'
+        environment variable to a sequence of `--c-include-directory' options.
 
     --cflags <<options>
     --no-cflags

@@ -3941,32 +3941,33 @@ optdb(oc_analysis,  termination_single_args,           int(0),
     alt_arg_help("termination-single-argument-analysis",
             ["term-single-arg"], "n", [
         w("When performing termination analysis, try analyzing"),
-        w("recursion on single arguments in strongly connected"),
-        w("components of the call graph that have up to <n> procedures."),
+        w("recursion on single arguments in strongly connected components"),
+        w("of the call graph that have up to the given number of procedures."),
         w("Setting this limit to zero disables single argument analysis.")])).
 optdb(oc_analysis,  termination_norm,                  string("total"),
     alt_arg_help("termination-norm",
             ["term-norm"], "{simple, total, num-data-elems}", [
         w("The norm defines how termination analysis measures the size"),
-        w("of a memory cell. The `simple' norm says that size is always"),
-        w("one. The `total' norm says that it is the number of words"),
-        w("in the cell. The `num-data-elems' norm says that it is the"),
-        w("number of words in the cell that contain something other"),
-        w("than pointers to cells of the same type.")])).
+        w("of a memory cell. The"), samp("simple"), w("norm says that"),
+        w("size is always one. The"), samp("total"), w("norm says that"),
+        w("it is the number of words in the cell. The"),
+        samp("num-data-elems"), w("norm says that it is the number of words"),
+        w("in the cell that contain something other than pointers"),
+        w("to cells of the same type.")])).
 optdb(oc_analysis,  termination_error_limit,           int(3),
     alt_arg_help("termination-error-limit",
             ["term-err-limit"], "n", [
-        w("Print at most <n> reasons for any single termination error"),
-        w("(default: 3).")])).
+        w("Print at most this number of reasons for"),
+        w(" any single termination error (default: 3).")])).
 optdb(oc_analysis,  termination_path_limit,            int(256),
     alt_arg_help("termination-path-limit",
             ["term-path-limit"], "n", [
         w("Perform termination analysis only on predicates"),
-        w("with at most <n> paths (default: 256).")])).
+        w("with at most this many paths (default: 256).")])).
+
     % The termination2_* options are used to control the new termination
     % analyser. They are currently undocumented because that is still
     % a work-in-progress. XXX Or is it?
-
 optdb(oc_analysis,  termination2_enable,               bool(no),
     priv_alt_help("enable-termination2", ["enable-term2"], [
         w("Analyse each predicate to discover if it terminates."),
@@ -3978,11 +3979,11 @@ optdb(oc_analysis,  termination2_check,                bool(no),
         w("Enable the alternative termination analysis,"),
         w("and emit warnings for some predicates or functions"),
         w("that cannot be proven to terminate."),
-        w("In many cases where the compiler is unable to prove termination"),
+        w("In many cases where the compiler is unable to prove termination,"),
         w("the problem is either a lack of information about the"),
         w("termination properties of other predicates, or because language"),
         w("constructs (such as higher order calls) were used which could"),
-        w("not be analysed. In these cases the compiler does not emit a"),
+        w("not be analysed. In these cases, the compiler does not emit a"),
         w("warning of non-termination, as it is likely to be spurious.")])).
 optdb(oc_analysis,  termination2_check_verbose,        bool(no),
     priv_alt_help("verbose-check-termination2",
@@ -3995,19 +3996,19 @@ optdb(oc_analysis,  termination2_norm,                 string("total"),
     priv_alt_arg_help("termination2-norm",
             ["term2-norm"], "{simple, total, num-data-elems}", [
         w("Tell the alternative termination analyser which norm to use."),
-        w("See the description of the `--termination-norm' option for a"),
-        w("description of the different types of norm available.")])).
+        w("See the description of the"), opt("--termination-norm"),
+        w("option for a description of the different norms available.")])).
 optdb(oc_analysis,  termination2_widening_limit,       int(4),
     priv_alt_arg_help("termination2-widening-limit",
             ["term2-widening-limit"], "n", [
-        w("Set the threshold for the number of iterations after which the"),
-        w("argument size analyser invokes widening.")])).
+        w("Set the threshold for the number of iterations after which"),
+        w("the argument size analyser invokes widening.")])).
 optdb(oc_analysis,  termination2_arg_size_only,        bool(no),
     % This option is for developers only.
     % It is useful for benchmarking the argument size analysis.
     priv_alt_help("term2-argument-size-analysis-only",
             ["term2-arg-size-analysis-only", "arg-size-analysis-only"], [
-        w("Perform argument size analysis on each SCC but do not"),
+        w("Perform argument size analysis on each SCC, but do not"),
         w("attempt to infer termination,")])).
 optdb(oc_analysis,  termination2_prop_fail_constrs,    bool(yes),
     priv_alt_help("termination2-propagate-failure-constraints",
@@ -4019,14 +4020,15 @@ optdb(oc_analysis,  termination2_maximum_matrix_size,  int(70),
     % XXX This matrix size is just a guess.
     priv_alt_arg_help("termination2-maximum-matrix-size",
             ["term2-max-matrix-size"], "n", [
-        w("Limit the sizes of constraints systems in the analyser to <n>"),
-        w("constraints. Use approximations of some constraint operations,"),
-        w("such as projection, if this threshold is exceeded. This will"),
-        w("speed up the analysis at the cost of reduced precision.")])).
+        w("Limit the sizes of constraints systems in the analyser to the"),
+        w("given number of constraints. Use approximations of some"),
+        w("constraint operations, such as projection, if this threshold"),
+        w("is exceeded. This will speed up the analysis"),
+        w("at the cost of reduced precision.")])).
 
 optdb(oc_analysis,  analyse_exceptions,                bool(no),
     help("analyse-exceptions", [
-        w("Enable exception analysis. Identify those"),
+        w("Enable exception analysis. which tries to identify"),
         w("procedures that will not throw an exception."),
         w("Some optimizations can make use of this information.")])).
 optdb(oc_analysis,  analyse_closures,                  bool(no),
@@ -4035,20 +4037,20 @@ optdb(oc_analysis,  analyse_closures,                  bool(no),
     % we actually have something that uses it.
     priv_alt_help("analyse-local-closures",
             ["analyse-closures"], [
-        w("Enable closure analysis. Try to identify the possible"),
+        w("Enable closure analysis, which tries identify the possible"),
         w("values that higher-order valued variables can take."),
         w("Some optimizations can make use of this information.")])).
 optdb(oc_analysis,  analyse_trail_usage,               bool(no),
     help("analyse-trail-usage", [
-        w("Enable trail usage analysis. Identify those"),
+        w("Enable trail usage analysis, which tries to identify"),
         w("procedures that will not modify the trail."),
-        w("This information is used to reduce the overhead"),
+        w("The compiler can use this information to reduce the overhead"),
         w("of trailing.")])).
 optdb(oc_analysis,  analyse_mm_tabling,                bool(no),
     help("analyse-mm-tabling", [
         w("Identify those goals that do not call procedures"),
         w("that are evaluated using minimal model tabling."),
-        w("This information is used to reduce the overhead"),
+        w("The compiler can use this information to reduce the overhead"),
         w("of minimal model tabling.")])).
 
 %---------------------------------------------------------------------------%
@@ -4058,8 +4060,8 @@ optdb(oc_analysis,  analyse_mm_tabling,                bool(no),
 optdb(oc_output_mod, line_numbers,                      bool(no),
     short_help('n', "line-numbers", [], [
         w("Put source line numbers into the generated code."),
-        w("The generated code may be in C (the usual case),"),
-        w("or in Mercury (with the option --convert-to-mercury).")])).
+        w("The generated code may be in C, Java or C# (the usual cases),"),
+        w("or in Mercury (with"), opt("--convert-to-mercury", ").")])).
 optdb(oc_output_mod, line_numbers_around_foreign_code,  bool(yes),
     help("line-numbers-around-foreign-code", [
         w("Do not put source line numbers into the generated"),
@@ -4069,9 +4071,10 @@ optdb(oc_output_mod, line_numbers_for_c_headers,        bool(no),
     help("line-numbers-for-c-headers", [
         w("Put source line numbers in the generated C header files."),
         w("This can make it easier to track down any problems with"),
-        w("C code in foreign_decl pragmas, but may cause unnecessary"),
-        w("recompilations of other modules if any of these line numbers"),
-        w("changes (e.g. because the location of a predicate declaration"),
+        w("C code in"), code("foreign_decl"), w("pragmas, but may cause"),
+        w("unnecessary recompilations of other modules if"),
+        w("any of these line numbers changes"),
+        w("(e.g. because the location of a predicate declaration"),
         w("changes in the Mercury source file).")])).
 optdb(oc_output_dev, type_repns_for_humans,             bool(no),
     % This option is for developers only.
@@ -4089,7 +4092,7 @@ optdb(oc_output_dev, frameopt_comments,                 bool(no),
     priv_help("frameopt-comments", [
         w("Get frameopt.m to generate comments describing its operation."),
         w("(The code may be easier to understand if you also"),
-        w("use the `--no-llds-optimize' option.)")])).
+        w("use the"), opt("--no-llds-optimize"), w("option.)")])).
 
 %---------------------------------------------------------------------------%
 
@@ -4097,11 +4100,11 @@ optdb(oc_output_dev, frameopt_comments,                 bool(no),
 
 optdb(oc_make,      keep_going,                        bool(no),
     short_help('k', "keep-going", [], [
-        w("With `--make', keep going as far as possible"),
+        w("With"), opt("--make", ","), w("keep going as far as possible"),
         w("even if an error is detected.")])).
 optdb(oc_make,      order_make_by_timestamp,           bool(no),
     help("order-make-by-timestamp", [
-        w("Make"), code("mmc --make"), w("compile"),
+        w("Tell"), code("mmc --make"), w("to compile"),
         w("more recently modified source files first.")])).
 optdb(oc_make,      show_make_times,                   bool(no),
     help("show-make-times", [
@@ -4112,10 +4115,11 @@ optdb(oc_make,      make_max_jobs,                     int(1),
         w("With `--make', attempt to perform up to <n> jobs concurrently.")])).
 optdb(oc_make,      make_track_flags,                  bool(no),
     alt_help("track-flags", ["track-options"], [
-        w("With `--make', keep track of the options used when compiling"),
-        w("each module. If an option for a module is added or removed,"),
-        code("mmc --make"), w("will then know to recompile the module"),
-        w("even if the timestamp on the file itself has not changed."),
+        w("With"), opt("--make", ","), w("keep track of the options used"),
+        w("when compiling each module. If an option for a module"),
+        w("is added or removed,"), code("mmc --make"), w("will then know"),
+        w("to recompile the module even if"),
+        w("the timestamp on the file itself has not changed."),
         w("Warning, verbosity and build system options are not tracked.")])).
 optdb(oc_make,      make_pre_link_command,             maybe_string(no),
     arg_help("pre-link-command", "command", [
@@ -4144,13 +4148,13 @@ optdb(oc_target_comp, target_debug,                      bool(no),
             ["c-debug", "java-debug"], [
         w("Enable debugging of the generated target code."),
         w("If the target language is C, this has the same effect as"),
-        w("`--c-debug' (see below)."),
-        w("If the target language is C#, this causes the compiler to"),
-        w("pass `/debug' to the C# compiler.")])).
+        opt("--c-debug"), w("(see below)."),
+        w("If the target language is C#, this causes the compiler to pass"),
+        code("/debug"), w("to the C# compiler.")])).
 optdb(oc_target_comp, warn_target_code,                  bool(yes),
     % XXX Does this apply to Java and C# too?
     help("warn-target-code", [
-        w("Disable warnings from the compiler (e.g. gcc)"),
+        w("Disable warnings from the compiler (which may be e.g. gcc)"),
         w("that processes the target code generated by mmc.")])).
 
 %---------------------%
@@ -4177,11 +4181,12 @@ optdb(oc_target_c,  c_include_directories,             accumulating([]),
     % determined at configuration time.
     alt_arg_help("c-include-directory",
             ["c-include-dir"], "dir", [
-        w("Append <dir> to the list of directories to be searched for"),
-        w("C header files. Note that if you want to override"),
-        w("this list, rather than append to it, then you can set the"),
-        w("`MERCURY_MC_ALL_C_INCL_DIRS' environment variable to a"),
-        w("sequence of `--c-include-directory' options.")])).
+        w("Append"), arg("dir"), w("to the list of directories"),
+        w("to be searched for C header files."),
+        w("Note that if you want to override this list, instead of"),
+        w("appendding to it, then you can set the"),
+        samp("MERCURY_MC_ALL_C_INCL_DIRS"), w("environment variable to a"),
+        w("sequence of"), opt("--c-include-directory"), w("options.")])).
 optdb(oc_target_c,  cflags,                            accumulating([]),
     arg_help("cflags", "<options", [
         w("Specify options to be passed to the C compiler."),
@@ -4245,11 +4250,12 @@ optdb(oc_target_c,  pic_object_file_extension,         string(".o"),
 
 optdb(oc_target_java, java_compiler,                     string("javac"),
     alt_arg_help("java-compiler", ["javac"], "javac", [
-        w("Specify which Java compiler to use. The default is `javac'.")])).
+        w("Specify which Java compiler to use. The default is"),
+        samp("javac", ".")])).
 optdb(oc_target_java, java_interpreter,                  string("java"),
     arg_help("java-interpreter", "java", [
         w("Specify which Java interpreter to use."),
-        w("The default is `java'.")])).
+        w("The default is"), samp("java", ".")])).
 optdb(oc_target_java, java_compiler_flags,               accumulating([]),
     alt_arg_help("javac-flags", ["java-flags"], "options", [
         w("Specify options to be passed to the Java compiler."),
@@ -4278,11 +4284,13 @@ optdb(oc_target_java, quoted_java_runtime_flag,          string_special,
 
 optdb(oc_target_csharp, csharp_compiler,                   string("csc"),
     arg_help("csharp-compiler", "csc", [
-        w("Specify the name of the C# Compiler. The default is `csc'.")])).
+        w("Specify the name of the C# Compiler. The default is"),
+        samp("csc", ".")])).
 optdb(oc_target_csharp, cli_interpreter,                   string(""),
     arg_help("cli-interpreter", "prog", [
         w("Specify the program that implements the Common Language"),
-        w("Infrastructure (CLI) execution environment, e.g. `mono'.")])).
+        w("Infrastructure (CLI) execution environment, e.g."),
+        samp("mono", ".")])).
 optdb(oc_target_csharp, csharp_compiler_type,              string("mono"),
     % The `mmc' script will override the default with a value
     % determined at configuration time for the above two options.
