@@ -202,6 +202,7 @@
 :- type help_text == list(help_piece).
 :- type help_piece
     --->    w(string)                           % words
+    ;       fixed(string)                       % as in the format_piece
     ;       opt(string)                         %
     ;       opt(string, string)                 %
     ;       arg(string)                         % ?
@@ -227,7 +228,8 @@
     ;       file_var(string, string)            % @file{@var{str1}.str2}
     ;       file_var(string, string, string)    % @file{@var{str1}.str2}str3
     ;       help_text_only(list(help_piece))    %
-    ;       texinfo_only(list(help_piece)).     %
+    ;       texinfo_only(list(help_piece))      %
+    ;       help_text_texinfo(list(help_piece), list(help_piece)).
 
 %---------------------------------------------------------------------------%
 :- end_module libs.optdb_help.

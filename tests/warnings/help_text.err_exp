@@ -3060,37 +3060,37 @@ Options specifying properties of the environment
     --options-file <file>
     --no-options-file
         Add <file> to the list of options files to be processed. If <file> is
-        `-', an options file will be read from the standard input. By default
-        the file `Mercury.options' in the current directory will be read.
+        `-', an options file will be read from the standard input. By default,
+        the compiler will read the file named `Mercury.options' in the current
+        directory.
 
     --config-file <file>
     --no-config-file
         Read the Mercury compiler's configuration information from <file>. If
         the `--config-file' option is not set, a default configuration will be
-        used, unless `--no-mercury-stdlib-dir' is passed to mmc. The
+        used, unless `--no-mercury-stdlib-dir' is passed to `mmc'. The
         configuration file is just an options file.
 
-    --env-type <type>
+    --env-type {posix,cygwin,msys,windows}
         Specify the environment type in which the compiler and generated
-        programs will be invoked. The <type> should be one of `posix',
-        `cygwin', `msys', or `windows'. This option is equivalent to setting
-        all of `--host-env-type', `--system-env-type' and `--target-env-type'
-        to <type>.
+        programs will be invoked. This option is equivalent to setting all of
+        `--host-env-type', `--system-env-type' and `--target-env-type' to the
+        given environment type.
 
-    --host-env-type <type>
+    --host-env-type {posix,cygwin,msys,windows}
         Specify the environment type in which the compiler will be invoked.
 
-    --system-env-type <type>
+    --system-env-type {posix,cygwin,msys,windows}
         Specify the environment type in which external programs invoked by the
         compiler will run. If not specified, this defaults to the value given
         by `--host-env-type'.
 
-    --target-env-type <type>
+    --target-env-type {posix,cygwin,msys,windows}
         Specify the environment type in which generated programs will be
         invoked.
 
     --restricted-command-line
-        Enable this option if your shell doesn't support long command lines.
+        Enable this option if your shell does not support long command lines.
         This option uses temporary files to pass arguments to sub-commands.
         (This option is supported only by `mmc --make'.)
 
@@ -3107,29 +3107,31 @@ Options that record autoconfigured parameters
         of this option is normally autoconfigured; its use should never be
         needed except for cross-compilation.
 
-    --num-real-r-regs <n>
-        Assume registers r1 up to r<n> are real general purpose registers. Note
-        that the value of this option is normally autoconfigured; its use
-        should never be needed except for cross-compilation.
+    --num-real-r-regs <N>
+        Assume registers r1 up to rN are real (i.e. not virtual) general
+        purpose registers. Note that the value of this option is normally
+        autoconfigured; its use should never be needed except for
+        cross-compilation.
 
-    --num-real-f-regs <n>
-        Assume registers f1 up to f<n> are real floating point registers. Note
-        that the value of this option is normally autoconfigured; its use
-        should never be needed except for cross-compilation.
-
-    --num-real-r-temps <n>
-    --num-real-temps <n>
-        Assume that <n> non-float temporaries will fit into real machine
+    --num-real-f-regs <N>
+        Assume registers f1 up to fN are real (i.e. not virtual) floating point
         registers. Note that the value of this option is normally
         autoconfigured; its use should never be needed except for
         cross-compilation.
 
-    --num-real-f-temps <n>
-        Assume that <n> float temporaries will fit into real machine registers.
+    --num-real-r-temps <N>
+    --num-real-temps <N>
+        Assume that N non-float temporaries will fit into real machine
+        registers. Note that the value of this option is normally
+        autoconfigured; its use should never be needed except for
+        cross-compilation.
+
+    --num-real-f-temps <N>
+        Assume that N float temporaries will fit into real machine registers.
         Note that the value of this option is normally autoconfigured; its use
         should never be needed except for cross-compilation.
 
-    --max-jump-table-size <n>
+    --max-jump-table-size <N>
         The maximum number of entries a jump table can have. The special value
         0 indicates the table size is unlimited. This option can be useful to
         avoid exceeding fixed limits imposed by some C compilers.
@@ -3327,28 +3329,28 @@ Options for developers only
 
     PRIVATE OPTION
     --progress-output-suffix <.xyz>
-        When compiling module M, output messages about the progress of the
-        compilation to a file named `M.xyz'. This includes any statistics about
-        the performance of compiler passes, if enabled. The default is for such
-        output to go to standard error.
+        When compiling a module, output messages about the progress of the
+        compilation to a file named `<module>.xyz'. This includes any
+        statistics about the performance of compiler passes, if enabled. The
+        default is for such output to go to standard error.
 
     PRIVATE OPTION
     --error-output-suffix <.xyz>
-        When compiling module M, output any error, warning and/or informational
-        messages about the module to a file named `M.xyz'. The default is for
-        such output to go to standard error.
+        When compiling a module, output any error, warning and/or informational
+        messages about the module to a file named `<module>.xyz'. The default
+        is for such output to go to standard error.
 
     PRIVATE OPTION
     --inference-output-suffix <.xyz>
-        When compiling module M, output the results of any type and/or mode
-        inference to a file named `M.xyz'. The default is for such output to go
-        to standard error.
+        When compiling a module, output the results of any type and/or mode
+        inference to a file named `<module>.xyz'. The default is for such
+        output to go to standard error.
 
     PRIVATE OPTION
     --debug-output-suffix <.xyz>
-        When compiling module M, direct output that is intended to help debug
-        the compiler to a file named `M.xyz'. The default is for such output to
-        go to standard error.
+        When compiling a module, direct output that is intended to help debug
+        the compiler to a file named `<module>.xyz'. The default is for such
+        output to go to standard error.
 
     PRIVATE OPTION
     --recompile-output-suffix <.xyz>
@@ -3377,7 +3379,7 @@ Options for developers only
 
     --smart-recompilation
         When compiling, write program dependency information to be used to
-        avoid unnecessary recompilations if an imported module's interface
+        avoid unnecessary recompilations if the interface of an imported module
         changes in a way which does not invalidate the compiled code.
         `--smart-recompilation' does not yet work with
         `--intermodule-optimization'.
@@ -3410,9 +3412,9 @@ Options for developers only
     PRIVATE OPTION
     --no-trad-passes
         The default `--trad-passes' completes code generation of each predicate
-        before going on to the next predicate. The --no-trad-passes option
+        before going on to the next predicate. The `--no-trad-passes' option
         tells the compiler to complete each phase of code generation on all
-        predicates before going on the next phase on all predicates.
+        predicates before going on to the next phase on all predicates.
 
     PRIVATE OPTION
     --parallel-liveness
@@ -3433,13 +3435,13 @@ Options for developers only
         words. Specifying `--no-should-pretest-equality' prevents this.
 
     --fact-table-max-array-size <n>
-        Specify the maximum number of elements in a single `:- pragma
-        fact_table' data array (default: 1024).
+        Specify the maximum number of elements in a single
+        `:- pragma fact_table' data array (default: 1024).
 
     --fact-table-hash-percent-full <percentage>
-        Specify how full the `:- pragma fact_table' hash tables should be
-        allowed to get. Given as an integer percentage (valid range: 1 to 100,
-        default: 90).
+        Specify how full `:- pragma fact_table' hash tables should be allowed
+        to get. Given as an integer percentage (valid range: 1 to 100, default:
+        90).
 
     PRIVATE OPTION
     --no-prefer-switch
@@ -3462,8 +3464,7 @@ Options for developers only
         TSCC, with tail calls being done by setting the value of the
         switched-on variable and a continue. The alternative is a simple label
         before the code of each procedure, with tail calls being done by a jump
-        to the label. This option has no effect unless the `--high-level-code'
-        option is enabled.
+        to the label. This option is effective only with `--high-level-code'.
 
     PRIVATE OPTION
     --no-opt-no-return-calls
@@ -3555,7 +3556,7 @@ Options for developers only
     PRIVATE OPTION
     --ignore-par-conjunctions
         Replace parallel conjunctions with plain ones, this is useful for
-        benchmarking. Note that it does not affect implicit parallelism
+        benchmarking. Note that it does not affect implicit parallelism.
 
     --control-granularity
         Don't try to generate more parallelism than the machine can handle,
@@ -3572,8 +3573,8 @@ Options for developers only
         option.
 
     --feedback-file <file>
-        Use the specified profiling feedback file which may currently only be
-        processed for implicit parallelism.
+        Use the specified profiling feedback file to help make decisions about
+        where to introduce implicit parallelism.
 
     PRIVATE OPTION
     --par-loop-control
@@ -3598,7 +3599,7 @@ Options for developers only
     --debug-class-init
         In Java grades, generate code that causes a trace of class
         initialization to be printed to the standard output when the
-        environment variable MERCURY_DEBUG_CLASS_INIT is defined.
+        environment variable `MERCURY_DEBUG_CLASS_INIT' is defined.
 
     Options for dumping internal compiler data structures
 
@@ -3622,7 +3623,8 @@ Options for developers only
 
     PRIVATE OPTION
     --dump-hlds-pred-name-order
-        Dump the predicates in the HLDS ordered by name not ordered by pred id.
+        Dump the predicates in the HLDS ordered by name, not ordered by pred
+        id.
 
     PRIVATE OPTION
     --dump-hlds-spec-preds
@@ -3633,7 +3635,7 @@ Options for developers only
     PRIVATE OPTION
     --dump-hlds-spec-preds-for <typename>
     --no-dump-hlds-spec-preds-for
-        Dump only the special (unify, compare, and index) predicates for the
+        Dump the special (unify, compare, and index) predicates only for the
         types named by the (possibly multiple) occurrences of this option.
 
     PRIVATE OPTION
@@ -3641,7 +3643,7 @@ Options for developers only
     --dump-hlds-alias dump-alias
         With `--dump-hlds', include extra detail in the dump. Each dump alias
         is shorthand for a set of option letters. The list of aliases is in
-        handle_options.m
+        handle_options.m.
 
     --dump-hlds-options <options>
         With `--dump-hlds', include extra detail in the dump. Each type of
@@ -3667,7 +3669,7 @@ Options for developers only
     --mlds-dump <stage number or name>
     --no-mlds-dump
         Dump the MLDS (medium level intermediate representation) after the
-        specified stage, as C code, to`<module>.c_dump.<num>-<name>', and
+        specified stage, as C code, to `<module>.c_dump.<num>-<name>' and
         `<module>.mih_dump.<num>-<name>'. Stage numbers range from 1-99.
         Multiple dump options accumulate. This option works only in MLDS grades
         that target C.
@@ -3676,9 +3678,9 @@ Options for developers only
     --no-dump-mlds-pred-name
         Dump the MLDS (medium level intermediate representation) of the
         predicate or function with the specified name at the stages specified
-        by the --dump-mlds option. The dump file will consist of the predicates
-        and functions named by all the occurrences of this option (there may be
-        more than one), and nothing else.
+        by the `--dump-mlds' option. The dump file will consist of the
+        predicates and functions named by all the occurrences of this option
+        (there may be more than one), and nothing else.
 
     --verbose-dump-mlds <stage number or name>
     --no-verbose-dump-mlds
@@ -3717,21 +3719,21 @@ Options for developers only
     --det-copy-out
         Specify whether to handle output arguments for det/semidet procedures
         using return-by-value rather than pass-by-reference. This option is
-        ignored if the `--high-level-code' option is not enabled.
+        effective only with `--high-level-code'.
 
     PRIVATE OPTION
     --nondet-copy-out
         Specify whether to handle output arguments for nondet procedures using
-        pass-by-value rather than pass-by-reference. This option is ignored if
-        the `--high-level-code' option is not enabled.
+        pass-by-value rather than pass-by-reference. This option is effective
+        only with `--high-level-code'.
 
     PRIVATE OPTION
     --put-commit-in-own-func
         Put each commit in its own C function. This option only affects the
         MLDS back-ends. It is needed for the high-level C back-end, where
-        commits are implemented via setjmp()/longjmp(), since longjmp() may
+        commits are implemented via `setjmp()/longjmp()', since `longjmp()' may
         clobber any non-volatile local vars in the function that called
-        setjmp().
+        `setjmp()'.
 
     PRIVATE OPTION
     --backend-foreign-languages {c/c#/csharp/java}
@@ -3791,17 +3793,17 @@ Options for developers only
     PRIVATE OPTION
     --no-type-ctor-info
         Do not generate type_ctor_info structures. For measurement only; if you
-        turn this off, then you're unlikely to be able to link.
+        turn this off, then you will not be able to link.
 
     PRIVATE OPTION
     --no-type-ctor-layout
         Do not generate type_ctor_layout structures. For measurement only; if
-        you turn this off, then you're unlikely to be able to link.
+        you turn this off, then you will not to be able to link.
 
     PRIVATE OPTION
     --no-type-ctor-functors
         Do not gGenerate type_ctor_functors structures. For measurement only;
-        if you turn this off, then you're unlikely to be able to link.
+        if you turn this off, then you will not to be able to link.
 
     PRIVATE OPTION
     --no-rtti-line-numbers
@@ -3814,7 +3816,7 @@ Options for developers only
         Generate of new style static data structures for runtime information
         about type classes. These are not yet used. When we add code to
         generate the matching dynamic data structures and switch over to use
-        them, we won't need this option anymore.
+        them, we will not need this option anymore.
 
     PRIVATE OPTION
     --size-region-ite-fixed <num_words>
@@ -3866,9 +3868,9 @@ Options for developers only
         Do not reclaim heap on backtracking in nondet code.
 
     PRIVATE OPTION
-    --compare-specialization <n>
+    --compare-specialization <N>
         Generate quadratic instead of linear compare predicates for types with
-        up to n function symbols. Higher values of n lead to faster but also
+        up to N function symbols. Higher values of n lead to faster but also
         bigger compare predicates.
 
     PRIVATE OPTION
@@ -3885,7 +3887,7 @@ Options for developers only
     PRIVATE OPTION
     UNNAMED OPTION generate_item_version_numbers
         This option is used to control output of version numbers in interface
-        files. It is implied by --smart-recompilation, and cannot be set
+        files. It is implied by `--smart-recompilation', and cannot be set
         explicitly by the user. Even if this option is set to `yes', version
         numbers may have been disabled with
         io_set_disable_generate_item_version_numbers. Before using the value of

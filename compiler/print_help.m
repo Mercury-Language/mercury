@@ -1143,7 +1143,7 @@ reflow_lines(Format, LineLen, InitialPieces, FinishedLines) :-
     % string.count_code_points(IndentStr, IndentLen),
     % AvailLen = LineLen - IndentLen,
     reflow_lines_loop_over_lines(Format, LineLen, InitialPieces,
-        0, cord.init, CurLine1, cord.init, FinishedLineCord1),
+        0, _CurLineLen, cord.init, CurLine1, cord.init, FinishedLineCord1),
     finish_cur_line(CurLine1, FinishedLineCord1, FinishedLineCord),
     FinishedLines = cord.list(FinishedLineCord).
 
@@ -1157,14 +1157,14 @@ reflow_lines(Format, LineLen, InitialPieces, FinishedLines) :-
 :- type finished_lines == cord(string).
 
 :- pred reflow_lines_loop_over_lines(help_format, int, list(help_piece),
-    int, cur_line, cur_line, finished_lines, finished_lines).
+    int, int, cur_line, cur_line, finished_lines, finished_lines).
 :- mode reflow_lines_loop_over_lines(in(help_plain_text), in, in,
-    in, in, out, in, out) is det.
+    in, out, in, out, in, out) is det.
 :- mode reflow_lines_loop_over_lines(in(help_texinfo), in, in,
-    in, in, out, in, out) is det.
+    in, out, in, out, in, out) is det.
 
 reflow_lines_loop_over_lines(Format, LineLen, Pieces,
-        !.CurLineLen, !CurLine, !FinishedLineCord) :-
+        !CurLineLen, !CurLine, !FinishedLineCord) :-
     (
         Pieces = []
     ;
@@ -1172,8 +1172,12 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
         (
             HeadPiece = w(WordsStr),
             Words = string.words(WordsStr),
-            reflow_lines_loop_over_words(LineLen, !CurLine, !CurLineLen,
-                Words, !FinishedLineCord)
+            reflow_lines_loop_over_words(LineLen, Words, !CurLine, !CurLineLen,
+                !FinishedLineCord)
+        ;
+            HeadPiece = fixed(FixedStr),
+            add_word(LineLen, FixedStr, !CurLine, !CurLineLen,
+                !FinishedLineCord)
         ;
             ( HeadPiece = opt(_)
             ; HeadPiece = opt(_, _)
@@ -1338,13 +1342,13 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                         [s(File), s(Ext), s(Suffix)], Str)
                 )
             ),
-            add_word(LineLen, !CurLine, !CurLineLen, Str, !FinishedLineCord)
+            add_word(LineLen, Str, !CurLine, !CurLineLen, !FinishedLineCord)
         ;
             HeadPiece = help_text_only(HelpTextPieces),
             (
                 Format = help_plain_text,
                 reflow_lines_loop_over_lines(Format, LineLen, HelpTextPieces,
-                    !.CurLineLen, !CurLine, !FinishedLineCord)
+                    !CurLineLen, !CurLine, !FinishedLineCord)
             ;
                 Format = help_texinfo
             )
@@ -1355,11 +1359,22 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
             ;
                 Format = help_texinfo,
                 reflow_lines_loop_over_lines(Format, LineLen, TexInfoPieces,
-                    !.CurLineLen, !CurLine, !FinishedLineCord)
+                    !CurLineLen, !CurLine, !FinishedLineCord)
+            )
+        ;
+            HeadPiece = help_text_texinfo(HelpTextPieces, TexInfoPieces),
+            (
+                Format = help_plain_text,
+                reflow_lines_loop_over_lines(Format, LineLen, HelpTextPieces,
+                    !CurLineLen, !CurLine, !FinishedLineCord)
+            ;
+                Format = help_texinfo,
+                reflow_lines_loop_over_lines(Format, LineLen, TexInfoPieces,
+                    !CurLineLen, !CurLine, !FinishedLineCord)
             )
         ),
         reflow_lines_loop_over_lines(Format, LineLen, TailPieces,
-            !.CurLineLen, !CurLine, !FinishedLineCord)
+            !CurLineLen, !CurLine, !FinishedLineCord)
     ).
 
 :- func before_str(string) = string.
@@ -1380,25 +1395,26 @@ after_str(AfterStr0) = AfterStr :-
         AfterStr = " " ++ AfterStr0
     ).
 
-:- pred reflow_lines_loop_over_words(int::in, cur_line::in, cur_line::out,
-    int::in, int::out, list(string)::in,
+:- pred reflow_lines_loop_over_words(int::in, list(string)::in,
+    cur_line::in, cur_line::out, int::in, int::out,
     finished_lines::in, finished_lines::out) is det.
 
-reflow_lines_loop_over_words(LineLen, !CurLine, !CurLineLen, Words,
+reflow_lines_loop_over_words(LineLen, Words, !CurLine, !CurLineLen,
         !FinishedLineCord) :-
     (
         Words = []
     ;
         Words = [HeadWord | TailWords],
-        add_word(LineLen, !CurLine, !CurLineLen, HeadWord, !FinishedLineCord),
-        reflow_lines_loop_over_words(LineLen, !CurLine, !CurLineLen,
-            TailWords, !FinishedLineCord)
+        add_word(LineLen, HeadWord, !CurLine, !CurLineLen, !FinishedLineCord),
+        reflow_lines_loop_over_words(LineLen, TailWords, !CurLine, !CurLineLen,
+            !FinishedLineCord)
     ).
 
-:- pred add_word(int::in, cur_line::in, cur_line::out, int::in, int::out,
-    string::in, finished_lines::in, finished_lines::out) is det.
+:- pred add_word(int::in, string::in,
+    cur_line::in, cur_line::out, int::in, int::out,
+    finished_lines::in, finished_lines::out) is det.
 
-add_word(LineLen, !CurLine, !CurLineLen, Word, !FinishedLineCord) :-
+add_word(LineLen, Word, !CurLine, !CurLineLen, !FinishedLineCord) :-
     string.count_code_points(Word, WordLen),
     ( if WordLen = 0 then
         true
