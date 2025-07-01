@@ -22,7 +22,14 @@
             % Options that manipulate the command line itself.
     ;       oc_opmode
             % Options that are used only to select an invocation's op_mode.
-    ;       oc_grade
+    ;       oc_grade_gen
+    ;       oc_grade_target
+    ;       oc_grade_llds
+    ;       oc_grade_mlds
+    ;       oc_grade_dbg
+    ;       oc_grade_prof
+    ;       oc_grade_etc
+    ;       oc_grade_dev
             % Options that affect binary compatibility.
             % This category should subdivided into separate subcategories
             % for mdb, ssd, mprof, mdprof etc, but only after moving
@@ -178,7 +185,14 @@
 option_categories(oc_help, 0).
 option_categories(oc_cmdline, 0).
 option_categories(oc_opmode, 0).
-option_categories(oc_grade, 0).
+option_categories(oc_grade_gen, 0).
+option_categories(oc_grade_target, 0).
+option_categories(oc_grade_llds, 0).
+option_categories(oc_grade_mlds, 0).
+option_categories(oc_grade_dbg, 0).
+option_categories(oc_grade_prof, 0).
+option_categories(oc_grade_etc, 0).
+option_categories(oc_grade_dev, 0).
 option_categories(oc_infer, 0).
 option_categories(oc_semantics, 0).
 option_categories(oc_verbosity, 0).
