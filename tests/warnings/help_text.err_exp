@@ -1985,7 +1985,7 @@ Optimization options
         `--no-generate-trail-ops-inline', the compiler will implement them
         using calls to those operations in the standard library.
 
-    Experimental source-to-Source optimizations
+    Experimental source-to-source optimizations
 
     --structure-sharing
         Perform structure sharing analysis.

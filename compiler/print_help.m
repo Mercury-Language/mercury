@@ -130,18 +130,18 @@ long_usage_header_lines = [
 
 %---------------------------------------------------------------------------%
 
-:- type help_chapter
-    --->    one_level_chapter(
-                chapter_section             :: help_section
+:- type help_section
+    --->    one_level_section(
+                chapter_section             :: help_subsection
             )
-    ;       two_level_chapter(
+    ;       two_level_section(
                 chapter_name                :: string,
                 chapter_comment_lines       :: list(string),
-                chapter_sections            :: list(help_section)
+                chapter_sections            :: list(help_subsection)
             ).
 
-:- type help_section
-    --->    help_section(
+:- type help_subsection
+    --->    help_subsection(
                 section_name                :: string,
                 section_comment_lines       :: list(string),
                 section_categories          :: list(option_category)
@@ -149,249 +149,256 @@ long_usage_header_lines = [
 
 %---------------------------------------------------------------------------%
 
-:- func all_chapters = list(help_chapter).
+:- func all_chapters = list(help_section).
 
-all_chapters = AllChapters :-
-    ChapterHelp = one_level_chapter(
-        help_section("Help options",
+all_chapters = AllSections :-
+    SectionHelp = one_level_section(
+        help_subsection("Help options",
         [], [oc_help])),
 
-    ChapterCmdLine = one_level_chapter(
-        help_section("Options for modifying the command line",
+    SectionCmdLine = one_level_section(
+        help_subsection("Options for modifying the command line",
         [], [oc_cmdline])),
 
-    ChapterOpmode = one_level_chapter(
-        help_section("Options that give the compiler its overall task",
+    SectionOpmode = one_level_section(
+        help_subsection("Options that give the compiler its overall task",
         [], [oc_opmode])),
 
-    SectionGradeGen = help_section("Grades and grade components",
+    SubSectionGradeGen = help_subsection("Grades and grade components",
         [], [oc_grade_gen]),
-    SectionGradeTarget = help_section("Target options",
+    SubSectionGradeTarget = help_subsection("Target options",
         [], [oc_grade_target]),
-    SectionGradeLlds = help_section("LLDS backend grade options",
+    SubSectionGradeLlds = help_subsection("LLDS backend grade options",
         [], [oc_grade_llds]),
-    SectionGradeMlds = help_section("MLDS backend grade options",
+    SubSectionGradeMlds = help_subsection("MLDS backend grade options",
         [], [oc_grade_mlds]),
-    SectionGradeDbg = help_section("Debugging grade options",
+    SubSectionGradeDbg = help_subsection("Debugging grade options",
         [], [oc_grade_dbg]),
-    SectionGradeProf = help_section("Profiling grade options",
+    SubSectionGradeProf = help_subsection("Profiling grade options",
         [], [oc_grade_prof]),
-    SectionGradeEtc = help_section("Optional feature grade options",
+    SubSectionGradeEtc = help_subsection("Optional feature grade options",
         [], [oc_grade_etc]),
-    SectionGradeDev = help_section("Developer grade options",
+    SubSectionGradeDev = help_subsection("Developer grade options",
         [], [oc_grade_dev]),
-    ChapterGrade = two_level_chapter("Grade options",
+    SectionGrade = two_level_section("Grade options",
         [],
-        [SectionGradeGen, SectionGradeTarget,
-        SectionGradeLlds, SectionGradeMlds,
-        SectionGradeDbg, SectionGradeProf,
-        SectionGradeEtc, SectionGradeDev]),
+        [SubSectionGradeGen, SubSectionGradeTarget,
+        SubSectionGradeLlds, SubSectionGradeMlds,
+        SubSectionGradeDbg, SubSectionGradeProf,
+        SubSectionGradeEtc, SubSectionGradeDev]),
 
-    ChapterInfer = one_level_chapter(
-        help_section("Options that control inference",
+    SectionInfer = one_level_section(
+        help_subsection("Options that control inference",
         [], [oc_infer])),
 
-    ChapterSemantics = one_level_chapter(
-        help_section("Options specifying the intended semantics",
+    SectionSemantics = one_level_section(
+        help_subsection("Options specifying the intended semantics",
         [], [oc_semantics])),
 
-    ChapterVerbosity = one_level_chapter(
-        help_section("Verbosity options",
+    SectionVerbosity = one_level_section(
+        help_subsection("Verbosity options",
         [], [oc_verbosity, oc_verb_dev, oc_verb_dbg])),
 
-    SectionDiagGen = help_section("Options that control diagnostics",
+    SubSectionDiagGen = help_subsection("Options that control diagnostics",
         [], [oc_diag_gen]),
-    SectionDiagColor = help_section(
+    SubSectionDiagColor = help_subsection(
         "Options that control color in diagnostics",
         [], [oc_diag_color, oc_diag_int]),
-    ChapterDiag = two_level_chapter("Diagnostics options",
+    SectionDiag = two_level_section("Diagnostics options",
         [],
-        [SectionDiagGen, SectionDiagColor]),
+        [SubSectionDiagGen, SubSectionDiagColor]),
 
-    SectionWarnDodgy = help_section("Warnings about possible incorrectness",
+    SubSectionWarnDodgy = help_subsection(
+        "Warnings about possible incorrectness",
         [], [oc_warn_dodgy]),
-    SectionWarnPerf = help_section(
+    SubSectionWarnPerf = help_subsection(
         "Warnings about possible performance issues",
         [], [oc_warn_perf, oc_warn_perf_c]),
-    SectionWarnStyle = help_section("Warnings about programming style",
+    SubSectionWarnStyle = help_subsection("Warnings about programming style",
         [], [oc_warn_style, oc_warn_style_c]),
-    SectionWarnCtrl = help_section("Options that control warnings",
+    SubSectionWarnCtrl = help_subsection("Options that control warnings",
         [], [oc_warn_ctrl]),
-    SectionWarnHalt = help_section("Options about halting for warnings",
+    SubSectionWarnHalt = help_subsection("Options about halting for warnings",
         [], [oc_warn_halt]),
-    ChapterWarn = two_level_chapter("Warning options",
+    SectionWarn = two_level_section("Warning options",
         [],
-        [SectionWarnDodgy, SectionWarnPerf, SectionWarnStyle,
-        SectionWarnCtrl, SectionWarnHalt]),
+        [SubSectionWarnDodgy, SubSectionWarnPerf, SubSectionWarnStyle,
+        SubSectionWarnCtrl, SubSectionWarnHalt]),
 
     % XXX Should these two chapters instead be two sections in one chapter?
-    ChapterInform = one_level_chapter(
-        help_section("Options that request information",
+    SectionInform = one_level_section(
+        help_subsection("Options that request information",
         [], [oc_inform])),
-    ChapterFileReq = one_level_chapter(
-        help_section("Options that ask for informational files",
+    SectionFileReq = one_level_section(
+        help_subsection("Options that ask for informational files",
         [], [oc_file_req])),
 
-    ChapterTraceGoal = one_level_chapter(
-        help_section("Controlling trace goals",
+    SectionTraceGoal = one_level_section(
+        help_subsection("Controlling trace goals",
         [], [oc_tracegoal])),
 
     % Once ssdb debugging is publicly documented, we should replace these
     % two chapters (the second of which is not printed for non-developers)
     % with a single two-section chapter.
-    ChapterDebugMdb = one_level_chapter(
-        help_section("Preparing code for mdb debugging",
+    SectionDebugMdb = one_level_section(
+        help_subsection("Preparing code for mdb debugging",
         [], [oc_mdb, oc_mdb_dev])),
-    ChapterDebugSsdb = one_level_chapter(
-        help_section("Preparing code for ssdb debugging",
+    SectionDebugSsdb = one_level_section(
+        help_subsection("Preparing code for ssdb debugging",
         [], [oc_ssdb, oc_ssdb_dev])),
 
-    ChapterProfiling = one_level_chapter(
-        help_section("Preparing code for mdprof profiling",
+    SectionProfiling = one_level_section(
+        help_subsection("Preparing code for mdprof profiling",
         [], [oc_mdprof])),
 
-    SectionOptCtrl = help_section("Overall control of optimizations",
+    SubSectionOptCtrl = help_subsection("Overall control of optimizations",
         [], [oc_opt_ctrl]),
-    SectionOptHH = help_section("Source-to-source optimizations",
+    SubSectionOptHH = help_subsection("Source-to-source optimizations",
         [], [oc_opt_hh]),
-    SectionOptHHE = help_section("Experimental source-to-Source optimizations",
+    SubSectionOptHHE = help_subsection(
+        "Experimental source-to-source optimizations",
         [], [oc_opt_hh_exp]),
-    SectionOptHLM = help_section("Optimizations during code generation",
+    SubSectionOptHLM = help_subsection("Optimizations during code generation",
         [], [oc_opt_hlm]),
     % XXX Should the categories here be separate sections?
-    SectionOptMM = help_section("Optimizations specific to high level code",
+    SubSectionOptMM = help_subsection(
+        "Optimizations specific to high level code",
         [], [oc_opt_hm, oc_opt_mm]),
     % XXX Should the categories here be separate sections?
-    SectionOptLL = help_section("Optimizations specific to low level code",
+    SubSectionOptLL = help_subsection(
+        "Optimizations specific to low level code",
         [], [oc_opt_hl, oc_opt_ll, oc_opt_lc]),
-    ChapterOpt = two_level_chapter("Optimization options",
-        [], [SectionOptCtrl, SectionOptHH, SectionOptHHE, SectionOptHLM,
-            SectionOptMM, SectionOptLL]),
+    SectionOpt = two_level_section("Optimization options",
+        [],
+        [SubSectionOptCtrl, SubSectionOptHH, SubSectionOptHHE,
+        SubSectionOptHLM, SubSectionOptMM, SubSectionOptLL]),
 
-    ChapterTransOpt = one_level_chapter(
-        help_section(
+    SectionTransOpt = one_level_section(
+        help_subsection(
             "Options that control transitive intermodule optimization",
         [], [oc_trans_opt])),
 
-    ChapterAnalysis = one_level_chapter(
-        help_section("Options that control program analyses",
+    SectionAnalysis = one_level_section(
+        help_subsection("Options that control program analyses",
         [], [oc_analysis])),
 
-    ChapterModOutput = one_level_chapter(
-        help_section("Options that ask for modified output",
+    SectionModOutput = one_level_section(
+        help_subsection("Options that ask for modified output",
         [], [oc_output_mod, oc_output_dev])),
 
-    ChapterMmcMake = one_level_chapter(
-        help_section("Options for controlling mmc --make",
+    SectionMmcMake = one_level_section(
+        help_subsection("Options for controlling mmc --make",
         [], [oc_make])),
 
-    SectionCompileGen = help_section(
+    SubSectionCompileGen = help_subsection(
         "General options for compiling target language code",
         [], [oc_target_comp]),
-    SectionCompileC = help_section("Options for compiling C code",
+    SubSectionCompileC = help_subsection("Options for compiling C code",
         [], [oc_target_c]),
-    SectionCompileJava = help_section("Options for compiling Java code",
+    SubSectionCompileJava = help_subsection("Options for compiling Java code",
         [], [oc_target_java]),
-    SectionCompileCsharp = help_section("Options for compiling C# code",
+    SubSectionCompileCsharp = help_subsection("Options for compiling C# code",
         [], [oc_target_csharp]),
-    ChapterCompile = two_level_chapter(
+    SectionCompile = two_level_section(
         "Options for target language compilation",
-        [], [SectionCompileGen, SectionCompileC, SectionCompileJava,
-            SectionCompileCsharp]),
+        [],
+        [SubSectionCompileGen, SubSectionCompileC, SubSectionCompileJava,
+        SubSectionCompileCsharp]),
 
-    SectionLinkGen = help_section("General options for linking",
+    SubSectionLinkGen = help_subsection("General options for linking",
         [], [oc_link_c_cs_j]),
-    SectionLinkCCsharp = help_section("Options for linking C or C# code",
+    SubSectionLinkCCsharp = help_subsection("Options for linking C or C# code",
         [], [oc_link_c_cs]),
-    SectionLinkC = help_section("Options for linking just C code",
+    SubSectionLinkC = help_subsection("Options for linking just C code",
         [], [oc_link_c]),
-    SectionLinkCsharp = help_section("Options for linking just C# code",
+    SubSectionLinkCsharp = help_subsection("Options for linking just C# code",
         [], [oc_link_csharp]),
-    SectionLinkJava = help_section("Options for linking just Java code",
+    SubSectionLinkJava = help_subsection("Options for linking just Java code",
         [], [oc_link_java]),
-    ChapterLink = two_level_chapter(
-        "Options for linking",
-        [], [SectionLinkGen, SectionLinkCCsharp, SectionLinkC, SectionLinkJava,
-            SectionLinkCsharp]),
+    SectionLink = two_level_section("Options for linking",
+        [],
+        [SubSectionLinkGen, SubSectionLinkCCsharp,
+        SubSectionLinkC, SubSectionLinkJava, SubSectionLinkCsharp]),
 
-    ChapterFileSearch = one_level_chapter(
-        help_section("Options controlling searches for files",
+    SectionFileSearch = one_level_section(
+        help_subsection("Options controlling searches for files",
         [], [oc_search])),
 
-    ChapterBuild = one_level_chapter(
-        help_section("Options controlling the library installation process",
+    SectionBuild = one_level_section(
+        help_subsection("Options controlling the library installation process",
         [], [oc_buildsys])),
 
-    ChapterEnv = one_level_chapter(
-        help_section("Options specifying properties of the environment",
+    SectionEnv = one_level_section(
+        help_subsection("Options specifying properties of the environment",
         [], [oc_env])),
 
-    ChapterConfig = one_level_chapter(
-        help_section("Options that record autoconfigured parameters",
+    SectionConfig = one_level_section(
+        help_subsection("Options that record autoconfigured parameters",
         [], [oc_config])),
 
-    ChapterMconfig = one_level_chapter(
-        help_section("Options reserved for Mercury.config files",
+    SectionMconfig = one_level_section(
+        help_subsection("Options reserved for Mercury.config files",
         [], [oc_mconfig])),
 
-    SectionDevCtrl = help_section(
+    SubSectionDevCtrl = help_subsection(
         "Operation selection options for developers only",
         [], [oc_dev_ctrl]),
-    SectionDevDebug = help_section(
+    SubSectionDevDebug = help_subsection(
         "Options that can help debug the compiler",
         [], [oc_dev_debug]),
-    SectionDevDump = help_section(
+    SubSectionDevDump = help_subsection(
         "Options for dumping internal compiler data structures",
         [], [oc_dev_dump]),
-    SectionDevInternal =
-        help_section("Options intended for internal use by the compiler only",
+    SubSectionDevInternal = help_subsection(
+        "Options intended for internal use by the compiler only",
         [], [oc_internal]),
-    ChapterDev = two_level_chapter(
+    SectionDev = two_level_section(
         "Options for developers only",
-        [], [SectionDevCtrl, SectionDevDebug, SectionDevDump,
-            SectionDevInternal]),
+        [],
+        [SubSectionDevCtrl, SubSectionDevDebug, SubSectionDevDump,
+        SubSectionDevInternal]),
 
-    ChapterUnused = one_level_chapter(
-        help_section("Now-unused former options kept for compatibility",
+    SectionUnused = one_level_section(
+        help_subsection("Now-unused former options kept for compatibility",
         [], [oc_unused])),
 
-    AllChapters = [
-        ChapterHelp,
-        ChapterCmdLine,
-        ChapterOpmode,
-        ChapterGrade,
-        ChapterInfer,
-        ChapterSemantics,
-        ChapterVerbosity,
+    AllSections = [
+        SectionHelp,
+        SectionCmdLine,
+        SectionOpmode,
+        SectionGrade,
+        SectionInfer,
+        SectionSemantics,
+        SectionVerbosity,
 
-        ChapterDiag,
-        ChapterWarn,
-        ChapterInform,
-        ChapterFileReq,
+        SectionDiag,
+        SectionWarn,
+        SectionInform,
+        SectionFileReq,
 
-        ChapterTraceGoal,
-        ChapterDebugMdb,
-        ChapterDebugSsdb,
-        ChapterProfiling,
+        SectionTraceGoal,
+        SectionDebugMdb,
+        SectionDebugSsdb,
+        SectionProfiling,
 
-        ChapterOpt,
-        ChapterTransOpt,
-        ChapterAnalysis,
+        SectionOpt,
+        SectionTransOpt,
+        SectionAnalysis,
 
-        ChapterModOutput,
-        ChapterMmcMake,
+        SectionModOutput,
+        SectionMmcMake,
 
-        ChapterCompile,
-        ChapterLink,
-        ChapterFileSearch,
-        ChapterBuild,
+        SectionCompile,
+        SectionLink,
+        SectionFileSearch,
+        SectionBuild,
 
-        ChapterEnv,
-        ChapterConfig,
-        ChapterMconfig,
+        SectionEnv,
+        SectionConfig,
+        SectionMconfig,
 
-        ChapterDev,
-        ChapterUnused
+        SectionDev,
+        SectionUnused
     ].
 
 %---------------------------------------------------------------------------%
@@ -420,7 +427,7 @@ document_requested_options(Format, What, OptionsLines) :-
             option_categories(Cat, _)
         ),
     solutions_set(CategoryPred, AllCategoriesSet),
-    acc_help_chapters(Format, What, all_chapters,
+    acc_help_sections(Format, What, all_chapters,
         AllCategoriesSet, UndoneCategoriesSet, cord.init, OptionsLineCord),
     set.to_sorted_list(UndoneCategoriesSet, UndoneCategories),
     (
@@ -433,92 +440,94 @@ document_requested_options(Format, What, OptionsLines) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred acc_help_chapters(help_format, print_what_help, list(help_chapter),
+:- pred acc_help_sections(help_format, print_what_help, list(help_section),
     set(option_category), set(option_category), cord(string), cord(string)).
-:- mode acc_help_chapters(in(help_plain_text), in, in,
+:- mode acc_help_sections(in(help_plain_text), in, in,
     in, out, in, out) is det.
-:- mode acc_help_chapters(in(help_texinfo), in, in,
+:- mode acc_help_sections(in(help_texinfo), in, in,
     in, out, in, out) is det.
 
-acc_help_chapters(_, _, [], !Categories, !LineCord).
-acc_help_chapters(Format, What, [Chapter | Chapters],
+acc_help_sections(_, _, [], !Categories, !LineCord).
+acc_help_sections(Format, What, [Section | Sections],
         !Categories, !LineCord) :-
-    acc_help_chapter(Format, What, Chapter, !Categories, !LineCord),
-    acc_help_chapters(Format, What, Chapters, !Categories, !LineCord).
+    acc_help_section(Format, What, Section, !Categories, !LineCord),
+    acc_help_sections(Format, What, Sections, !Categories, !LineCord).
 
-:- pred acc_help_chapter(help_format, print_what_help, help_chapter,
+:- pred acc_help_section(help_format, print_what_help, help_section,
     set(option_category), set(option_category), cord(string), cord(string)).
-:- mode acc_help_chapter(in(help_plain_text), in, in, in, out, in, out) is det.
-:- mode acc_help_chapter(in(help_texinfo), in, in, in, out, in, out) is det.
+:- mode acc_help_section(in(help_plain_text), in, in, in, out, in, out) is det.
+:- mode acc_help_section(in(help_texinfo), in, in, in, out, in, out) is det.
 
-acc_help_chapter(Format, What, HelpChapter, !Categories, !LineCord) :-
+acc_help_section(Format, What, Section, !Categories, !LineCord) :-
     (
-        HelpChapter = one_level_chapter(HelpSection),
-        acc_help_section(Format, What, "", HelpSection, !Categories, !LineCord)
+        Section = one_level_section(SubSection),
+        acc_help_subsection(Format, What, "", SubSection,
+            !Categories, !LineCord)
     ;
-        HelpChapter = two_level_chapter(ChapterName, ChapterCommentLines,
+        Section = two_level_section(SectionName, SectionCommentLines,
             SubSections),
-        ( Format = help_plain_text, SectionIndent = single_indent
-        ; Format = help_texinfo,    SectionIndent = ""
+        ( Format = help_plain_text, SubSectionIndent = single_indent
+        ; Format = help_texinfo,    SubSectionIndent = ""
         ),
-        acc_help_sections(Format, What, SectionIndent, SubSections,
-            !Categories, cord.init, SectionsLineCord),
-        ( if cord.is_empty(SectionsLineCord) then
+        acc_help_subsections(Format, What, SubSectionIndent, SubSections,
+            !Categories, cord.init, SubSectionsLineCord),
+        ( if cord.is_empty(SubSectionsLineCord) then
             true
         else
             cord.snoc("", !LineCord),
             (
                 Format = help_plain_text,
-                cord.snoc(ChapterName, !LineCord)
+                cord.snoc(SectionName, !LineCord)
             ;
                 Format = help_texinfo,
                 % ZZZ
-                cord.snoc("@node " ++ ChapterName, !LineCord),
-                cord.snoc("@subsection " ++ ChapterName, !LineCord),
-                cord.snoc("@cindex " ++ ChapterName, !LineCord)
+                cord.snoc("@node " ++ SectionName, !LineCord),
+                cord.snoc("@subsection " ++ SectionName, !LineCord),
+                cord.snoc("@cindex " ++ SectionName, !LineCord)
             ),
             (
-                ChapterCommentLines = []
+                SectionCommentLines = []
             ;
-                ChapterCommentLines = [_ | _],
+                SectionCommentLines = [_ | _],
                 cord.snoc("", !LineCord),
                 list.foldl(acc_prefixed_line(""),
-                    ChapterCommentLines, !LineCord)
+                    SectionCommentLines, !LineCord)
             ),
-            !:LineCord = !.LineCord ++ SectionsLineCord
+            !:LineCord = !.LineCord ++ SubSectionsLineCord
         )
     ).
 
-:- pred acc_help_sections(help_format, print_what_help, string,
-    list(help_section), set(option_category), set(option_category),
+:- pred acc_help_subsections(help_format, print_what_help, string,
+    list(help_subsection), set(option_category), set(option_category),
     cord(string), cord(string)).
-:- mode acc_help_sections(in(help_plain_text), in, in, in,
+:- mode acc_help_subsections(in(help_plain_text), in, in, in,
     in, out, in, out) is det.
-:- mode acc_help_sections(in(help_texinfo), in, in, in,
+:- mode acc_help_subsections(in(help_texinfo), in, in, in,
     in, out, in, out) is det.
 
-acc_help_sections(_, _, _, [], !Categories, !LineCord).
-acc_help_sections(Format, What, SectionNameIndent, [Section | Sections],
+acc_help_subsections(_, _, _, [], !Categories, !LineCord).
+acc_help_subsections(Format, What, SubSectionNameIndent,
+        [SubSection | SubSections], !Categories, !LineCord) :-
+    acc_help_subsection(Format, What, SubSectionNameIndent,
+        SubSection, !Categories, !LineCord),
+    acc_help_subsections(Format, What, SubSectionNameIndent,
+        SubSections, !Categories, !LineCord).
+
+:- pred acc_help_subsection(help_format, print_what_help, string,
+    help_subsection, set(option_category), set(option_category),
+    cord(string), cord(string)).
+:- mode acc_help_subsection(in(help_plain_text), in, in, in,
+    in, out, in, out) is det.
+:- mode acc_help_subsection(in(help_texinfo), in, in, in,
+    in, out, in, out) is det.
+
+acc_help_subsection(Format, What, SubSectionNameIndent, SubSection,
         !Categories, !LineCord) :-
-    acc_help_section(Format, What, SectionNameIndent, Section,
-        !Categories, !LineCord),
-    acc_help_sections(Format, What, SectionNameIndent, Sections,
-        !Categories, !LineCord).
-
-:- pred acc_help_section(help_format, print_what_help, string, help_section,
-    set(option_category), set(option_category), cord(string), cord(string)).
-:- mode acc_help_section(in(help_plain_text), in, in, in,
-    in, out, in, out) is det.
-:- mode acc_help_section(in(help_texinfo), in, in, in,
-    in, out, in, out) is det.
-
-acc_help_section(Format, What, SectionNameIndent, HelpSection,
-        !Categories, !LineCord) :-
-    HelpSection = help_section(SectionName, SectionCommentLines,
-        SectionCategories),
-    set.det_remove_list(SectionCategories, !Categories),
+    SubSection = help_subsection(SubSectionName, SubSectionCommentLines,
+        SubSectionCategories),
+    set.det_remove_list(SubSectionCategories, !Categories),
     list.map(get_optdb_records_in_category,
-        SectionCategories, OptdbRecordSets),
+        SubSectionCategories, OptdbRecordSets),
     OptdbRecordSet = set.union_list(OptdbRecordSets),
 
     acc_help_messages(Format, What, set.to_sorted_list(OptdbRecordSet),
@@ -529,21 +538,21 @@ acc_help_section(Format, What, SectionNameIndent, HelpSection,
         cord.snoc("", !LineCord),
         (
             Format = help_plain_text,
-            cord.snoc(SectionNameIndent ++ SectionName, !LineCord)
+            cord.snoc(SubSectionNameIndent ++ SubSectionName, !LineCord)
         ;
             Format = help_texinfo,
             % ZZZ
-            cord.snoc("@node " ++ SectionName, !LineCord),
-            cord.snoc("@subsection " ++ SectionName, !LineCord),
-            cord.snoc("@cindex " ++ SectionName, !LineCord)
+            cord.snoc("@node " ++ SubSectionName, !LineCord),
+            cord.snoc("@subsection " ++ SubSectionName, !LineCord),
+            cord.snoc("@cindex " ++ SubSectionName, !LineCord)
         ),
         (
-            SectionCommentLines = []
+            SubSectionCommentLines = []
         ;
-            SectionCommentLines = [_ | _],
+            SubSectionCommentLines = [_ | _],
             cord.snoc("", !LineCord),
-            list.foldl(acc_prefixed_line(SectionNameIndent),
-                SectionCommentLines, !LineCord)
+            list.foldl(acc_prefixed_line(SubSectionNameIndent),
+                SubSectionCommentLines, !LineCord)
         ),
         !:LineCord = !.LineCord ++ HelpTextLinesCord
     ).
@@ -1198,47 +1207,47 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
             add_word(LineLen, FixedStr, !CurLine, !CurLineLen,
                 !FinishedLineCord)
         ;
-            ( HeadPiece = opt(_)
+            ( HeadPiece = quote(_)
+            ; HeadPiece = quote(_, _)
+            ; HeadPiece = opt(_)
             ; HeadPiece = opt(_, _)
             ; HeadPiece = arg(_)
             ; HeadPiece = arg(_, _)
             ; HeadPiece = opt_arg(_, _)
             ; HeadPiece = opt_arg(_, _, _)
-            ; HeadPiece = quote(_)
-            ; HeadPiece = quote(_, _)
-            ; HeadPiece = ref(_, _, _)
-            ; HeadPiece = ref(_, _, _, _)
-            ; HeadPiece = xref(_)
-            ; HeadPiece = xref(_, _)
             ; HeadPiece = samp(_)
             ; HeadPiece = samp(_, _)
             ; HeadPiece = emph(_)
             ; HeadPiece = emph(_, _)
-            ; HeadPiece = var(_)
-            ; HeadPiece = var(_, _)
-            ; HeadPiece = file(_)
-            ; HeadPiece = file(_, _)
             ; HeadPiece = code(_)
             ; HeadPiece = code(_, _)
+            ; HeadPiece = file(_)
+            ; HeadPiece = file(_, _)
+            ; HeadPiece = var(_)
+            ; HeadPiece = var(_, _)
             ; HeadPiece = file_var(_, _)
             ; HeadPiece = file_var(_, _, _)
+            ; HeadPiece = ref(_, _, _)
+            ; HeadPiece = ref(_, _, _, _)
+            ; HeadPiece = xref(_)
+            ; HeadPiece = xref(_, _)
             ),
             (
+                ( HeadPiece = quote(Text), Suffix = ""
+                ; HeadPiece = quote(Text, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("`%s'%s", [s(Text), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("``%s''%s", [s(Text), s(Suffix)], Str)
+                )
+            ;
                 ( HeadPiece = opt(Option), Suffix = ""
                 ; HeadPiece = opt(Option, Suffix)
                 ),
                 string.format("`%s'%s", [s(Option), s(Suffix)], Str)
-            ;
-                ( HeadPiece = samp(Option), Suffix = ""
-                ; HeadPiece = samp(Option, Suffix)
-                ),
-                (
-                    Format = help_plain_text,
-                    string.format("`%s'%s", [s(Option), s(Suffix)], Str)
-                ;
-                    Format = help_texinfo,
-                    string.format("@samp{%s}%s", [s(Option), s(Suffix)], Str)
-                )
             ;
                 ( HeadPiece = arg(Arg), Suffix = ""
                 ; HeadPiece = arg(Arg, Suffix)
@@ -1264,15 +1273,72 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                         [s(Option), s(Arg), s(Suffix)], Str)
                 )
             ;
-                ( HeadPiece = quote(Text), Suffix = ""
-                ; HeadPiece = quote(Text, Suffix)
+                ( HeadPiece = samp(Option), Suffix = ""
+                ; HeadPiece = samp(Option, Suffix)
                 ),
                 (
                     Format = help_plain_text,
-                    string.format("`%s'%s", [s(Text), s(Suffix)], Str)
+                    string.format("`%s'%s", [s(Option), s(Suffix)], Str)
                 ;
                     Format = help_texinfo,
-                    string.format("``%s''%s", [s(Text), s(Suffix)], Str)
+                    string.format("@samp{%s}%s", [s(Option), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = emph(Text), Suffix = ""
+                ; HeadPiece = emph(Text, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("*%s*%s", [s(Text), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@emph{%s}%s", [s(Text), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = code(Code), Suffix = ""
+                ; HeadPiece = code(Code, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("`%s'%s", [s(Code), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@code{%s}%s", [s(Code), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = file(Var), Suffix = ""
+                ; HeadPiece = file(Var, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("`%s'%s", [s(Var), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@file{%s}%s", [s(Var), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = var(Var), Suffix = ""
+                ; HeadPiece = var(Var, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("%s%s", [s(Var), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@var{%s}%s", [s(Var), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = file_var(File, Ext), Suffix = ""
+                ; HeadPiece = file_var(File, Ext, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("`<%s>.%s'%s",
+                        [s(File), s(Ext), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@file{@var{%s}.%s}%s",
+                        [s(File), s(Ext), s(Suffix)], Str)
                 )
             ;
                 ( HeadPiece = ref(Before0, RefName, After0), Suffix = ""
@@ -1302,63 +1368,6 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                 ;
                     Format = help_texinfo,
                     string.format("@xref{%s}%s", [s(RefName), s(Suffix)], Str)
-                )
-            ;
-                ( HeadPiece = emph(Text), Suffix = ""
-                ; HeadPiece = emph(Text, Suffix)
-                ),
-                (
-                    Format = help_plain_text,
-                    string.format("*%s*%s", [s(Text), s(Suffix)], Str)
-                ;
-                    Format = help_texinfo,
-                    string.format("@emph{%s}%s", [s(Text), s(Suffix)], Str)
-                )
-            ;
-                ( HeadPiece = var(Var), Suffix = ""
-                ; HeadPiece = var(Var, Suffix)
-                ),
-                (
-                    Format = help_plain_text,
-                    string.format("%s%s", [s(Var), s(Suffix)], Str)
-                ;
-                    Format = help_texinfo,
-                    string.format("@var{%s}%s", [s(Var), s(Suffix)], Str)
-                )
-            ;
-                ( HeadPiece = file(Var), Suffix = ""
-                ; HeadPiece = file(Var, Suffix)
-                ),
-                (
-                    Format = help_plain_text,
-                    string.format("`%s'%s", [s(Var), s(Suffix)], Str)
-                ;
-                    Format = help_texinfo,
-                    string.format("@file{%s}%s", [s(Var), s(Suffix)], Str)
-                )
-            ;
-                ( HeadPiece = code(Code), Suffix = ""
-                ; HeadPiece = code(Code, Suffix)
-                ),
-                (
-                    Format = help_plain_text,
-                    string.format("`%s'%s", [s(Code), s(Suffix)], Str)
-                ;
-                    Format = help_texinfo,
-                    string.format("@code{%s}%s", [s(Code), s(Suffix)], Str)
-                )
-            ;
-                ( HeadPiece = file_var(File, Ext), Suffix = ""
-                ; HeadPiece = file_var(File, Ext, Suffix)
-                ),
-                (
-                    Format = help_plain_text,
-                    string.format("`<%s>.%s'%s",
-                        [s(File), s(Ext), s(Suffix)], Str)
-                ;
-                    Format = help_texinfo,
-                    string.format("@file{@var{%s}.%s}%s",
-                        [s(File), s(Ext), s(Suffix)], Str)
                 )
             ),
             add_word(LineLen, Str, !CurLine, !CurLineLen, !FinishedLineCord)
