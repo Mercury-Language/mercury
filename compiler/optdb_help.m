@@ -227,6 +227,7 @@
     ;       code(string, string)                % @code{str1}str2
     ;       file_var(string, string)            % @file{@var{str1}.str2}
     ;       file_var(string, string, string)    % @file{@var{str1}.str2}str3
+    ;       blank_line
     ;       help_text_only(list(help_piece))    %
     ;       texinfo_only(list(help_piece))      %
     ;       help_text_texinfo(list(help_piece), list(help_piece)).

@@ -1516,23 +1516,45 @@ optdb(oc_opmode,    only_opmode_output_optimization_options_upto, int(-1),
     % Some merely control *how* a grade's functionality operates;
     % others are internal-use-only.
 
-% ZZZ Come back to add semantic help_pieces to oc_grade options.
-
 % Grade options, part a: specifying a complete grade
 
 optdb(oc_grade_gen, grade,                             string_special,
     % The `mmc' script will pass the default grade determined
     % at configuration time.
     short_arg_help('s', "grade", [], "grade", [
-        w("Select the compilation model. The <grade> should consist of"),
-        w("one of the base grades `none', `reg', `asm_fast', `hlc', `java'"),
-        w("or `csharp',"),
+        w("Select the compilation model."),
+        % XXX Should we add this?
+        % This model, which Mercury calls a *grade*, specifies
+        % what properties the resulting executable or library should have.
+        % (Properties such as "can be debugged with the Mercury debugger".)
+        % As such, it controls decisions that must be made the same way
+        % in all the modules of a program.
+        % For example, it does not make sense
+        % to compile some modules of a program to C and some to Java;
+        % nor does it make sense
+        % to compile some modules to support profiling
+        % and some to not support profiling.
+        w("The"), arg("grade"), w("should consist of one of the base grades"),
+        samp("none", ","), samp("reg", ","), samp("asm_fast", ","),
+        samp("hlc", ","), samp("java", ","), w("or"), samp("csharp", ","),
         w("followed by zero or more of the grade modifiers"),
-        w("`.gc', `.prof', `.memprof', `.profdeep', `.tr',"),
-        w("`.spf', `.stseg', `.debug', and `.par'."),
-        w("Depending on your particular installation, only a subset"),
-        w("of these possible grades will have been installed."),
-        w("Attempting to use a grade which has not been installed"),
+        w("in the following options."),
+        % "following options" because this old list is seriously incomplete:
+        % w("`.gc', `.prof', `.memprof', `.profdeep', `.tr',"),
+        % w("`.spf', `.stseg', `.debug', and `.par'."),
+        w("The names of all grade modifiers start with a period,"),
+        w("so a complete grade name consists of a list of name components"),
+        w("(the base grade and some grade modifiers) separated by periods."),
+        blank_line,
+        w("Note that not all combinations of components are allowed,"),
+        w("and that the Mercury standard library"),
+        w("will have been installed on your system"),
+        w("in only a subset of the set of all possible grades."),
+        blank_line,
+        w("Attempting to build a program"),
+        w("in a grade which has not been installed"),
+        w("or to link together modules"),
+        w("that have been compiled in different grades,"),
         w("will result in an error at link time.")])).
 
 %---------------------%
@@ -1546,30 +1568,36 @@ optdb(oc_grade_target, target,                         string("c"),
             arg_align("java",   "(grades: java)")], [
         w("Specify the target language: C, C# or Java."),
         w("The default is C."),
-        w("Targets other than C imply `--high-level-code' (see below).")])).
+        w("Targets other than C imply"), opt("--high-level-code"),
+        w("(see below).")])).
 optdb(oc_grade_target, compile_to_c,                   special,
     alt_help("compile-to-c", ["compile-to-C"], [
-        w("An abbreviation for `--target c --target-code-only'."),
-        w("Generate C code in `<module>.c', but do not generate object"),
-        w("code.")])).
+        w("An abbreviation for"),
+        opt("--target c"), opt("-target-code-only", "."),
+        w("Generate C code in"), file_var("module", "c", ","),
+        w("but do not generate object code.")])).
 optdb(oc_grade_target, java,                           special,
     alt_help("java", ["Java"], [
-        w("An abbreviation for `--target java'.")])).
+        w("An abbreviation for"), opt("--target java", ".")])).
 optdb(oc_grade_target, java_only,                      special,
     % XXX Using "object code" for Java is iffy.
+    % XXX Would replacing it with ".jar files" be better?
     alt_help("java-only", ["Java-only"], [
-        w("An abbreviation for `--target java --target-code-only'."),
-        w("Generate Java code in `<module>.java', but do not generate"),
-        w("object code.")])).
+        w("An abbreviation for"),
+        opt("--target java"), opt("--target-code-only", "."),
+        w("Generate Java code in"), file_var("module", "java", ","),
+        w("but do not generate object code.")])).
 optdb(oc_grade_target, csharp,                         special,
     alt_help("csharp", ["C#"], [
-        w("An abbreviation for `--target csharp'.")])).
+        w("An abbreviation for"), opt("--target csharp", ".")])).
 optdb(oc_grade_target, csharp_only,                    special,
     % XXX Using "object code" for C# is iffy.
+    % XXX Would replacing it with ".dll files" be better?
     alt_help("csharp-only", ["C#-only"], [
-        w("An abbreviation for `--target csharp --target-code-only'."),
-        w("Generate C# code in `<module>.cs', but do not generate"),
-        w("object code.")])).
+        w("An abbreviation for"),
+        opt("--target csharp"), opt("--target-code-only", "."),
+        w("Generate C# code in"), file_var("module", "cs", ","),
+        w("but do not generate object code.")])).
 
 %---------------------%
 
@@ -1582,17 +1610,17 @@ optdb(oc_grade_llds, gcc_global_registers,             bool(yes),
             "(grades: none)", [
         w("Specify whether or not to use GNU C's"),
         w("global register variables extension."),
-        w("This option is used only when targeting C"),
-        w("with `--no-high-level-code'.")])).
+        w("This option is used only when targeting C with"),
+        opt("--no-high-level-code", ".")])).
 optdb(oc_grade_llds, gcc_non_local_gotos,              bool(yes),
     % We do not document "jump", "fast", "asm_jump".
     no_align_help("gcc-non-local-gotos",
             "(grades: asm_fast)",
             "(grades: none, reg)", [
         w("Specify whether or not to use GNU C's"),
-        w("""labels as values"" extension."),
-        w("This option is used only when targeting C"),
-        w("with `--no-high-level-code'.")])).
+        quote("labels as values"), w("extension."),
+        w("This option is used only when targeting C with"),
+        opt("--no-high-level-code", ".")])).
 optdb(oc_grade_llds, asm_labels,                       bool(yes),
     % We do not document "asm_jump".
     no_align_help("asm-labels",
@@ -1600,13 +1628,13 @@ optdb(oc_grade_llds, asm_labels,                       bool(yes),
             "(grades: none, reg)", [
         w("Specify whether or not to use GNU C's asm extensions for"),
         w("inline assembler labels."),
-        w("This option is used only when targeting C"),
-        w("with `--no-high-level-code'.")])).
+        w("This option is used only when targeting C with"),
+        opt("--no-high-level-code", ".")])).
 optdb(oc_grade_llds, use_float_registers,              bool(yes),
     priv_help("use-float-registers", [
         w("Use float registers for argument passing."),
-        w("This option is used only when targeting C"),
-        w("with `--no-high-level-code'.")])).
+        w("This option is used only when targeting C with"),
+        opt("--no-high-level-code", ".")])).
 
 %---------------------%
 
@@ -1617,20 +1645,22 @@ optdb(oc_grade_mlds, highlevel_code,                   bool(no),
             ["high-level-c", "high-level-C",
             "highlevel-code", "highlevel-c", "highlevel-C"],
             "(grades: hlc, csharp, java)", [
-        w("Use an alternative back-end that generates high-level code"),
-        w("rather than the very low-level code that is generated by our"),
-        w("original back-end.")])).
+        w("Use the MLDS backend,"),
+        w("which generates idiomatic high-level-language code,"),
+        w("rather than the LLDS backend,"),
+        w("which generates assembly language code in C syntax.") ])).
 optdb(oc_grade_mlds, c_debug_grade,                    bool(no),
     alt_align_help("c-debug-grade", [],
             "(grades: hlc)", [
         w("Require that all modules in the program"),
         w("be compiled to object code"),
         w("in a way that allows the program executable to be debuggable"),
-        w("with debuggers for C, such as gdb. This option is intended mainly"),
-        w("for the developers of Mercury, though it can also help to debug"),
+        w("with debuggers for C, such as"), code("gdb", "."),
+        w("This option is intended mainly for the developers of Mercury,"),
+        w("though it can also help to debug"),
         w("C code included in Mercury programs."),
-        w("This option is used only when targeting C"),
-        w("with `--high-level-code'.")])).
+        w("This option is used only when targeting C with"),
+        opt("--high-level-code", ".")])).
 
 %---------------------%
 
@@ -1655,8 +1685,8 @@ optdb(oc_grade_dbg, decl_debug,                        bool(no),
         w("in the declarative debugger."),
         w("See the Debugging chapter of the Mercury User's Guide"),
         w("for details."),
-        w("This option is supported only when targeting C"),
-        w("with `--no-high-level-code'.")])).
+        w("This option is supported only when targeting C with"),
+        opt("--no-high-level-code", ".")])).
 
 %---------------------%
 
@@ -1682,10 +1712,16 @@ optdb(oc_grade_dbg, source_to_source_debug,            bool(no),
 optdb(oc_grade_prof, profiling,                        bool_special,
     short_alt_align_help('p', "profiling", [],
             "(grade modifier: `.prof')", [
-        w("Enable time and call profiling. Insert profiling hooks in the"),
-        w("generated code, and also output some profiling"),
-        w("information (the static call graph) to the file"),
-        file_var("module", "prof", "."),
+        w("Prepare the generated code for time profiling"),
+        w("by Mercury's version of the standard Unix profiler"),
+        code("gprof", ","),
+        w("which is a tool called"), code("mprof", "."),
+        w("In"), samp(".prof"), w("grades, the compiler will insert"),
+        w("profiling hooks into the generated code (e.g. to count calls),"),
+        w("and will also output the static call graph of the module to"),
+        file_var("module", "prof"), w("for use by"), code("mprof", "."),
+        % XXX Should we add an xref to one of the profiling chapter's sections?
+        % XXX If so, which one?
         w("This option is supported only when targeting C.")])).
 optdb(oc_grade_prof, time_profiling,                    special,
     % XXX This option should not be visible even to developers.
@@ -1693,7 +1729,9 @@ optdb(oc_grade_prof, time_profiling,                    special,
 optdb(oc_grade_prof, memory_profiling,                 special,
     alt_align_help("memory-profiling", [],
             "(grade modifier: `.memprof')", [
-        w("Enable memory and call profiling."),
+        w("Prepare the generated code for"),
+        w("profiling of memory usage and retention by mprof."),
+        % XXX Should we add an xref to the profiling chapter's memprof section?
         w("This option is supported only when targeting C.")])).
     % XXX The next three options are private, because they are not useful.
     % The idea was for you to be able to use --profile-calls and
@@ -1704,20 +1742,22 @@ optdb(oc_grade_prof, memory_profiling,                 special,
 optdb(oc_grade_prof, profile_calls,                    bool(no),
     priv_alt_align_help("profile-calls", [],
             "(grade modifier: `.profcalls')", [
-        w("Similar to `--profiling', except that only gathers"),
-        w("call counts, not timing information."),
+        w("Similar to"), opt("--profiling", ","),
+        w("except that it only gathers call counts, not timing information."),
         w("Useful on systems where time profiling is not supported,"),
-        w("but not as useful as `--memory-profiling'.")])).
+        w("but not as useful as"), opt("--memory-profiling", ".")])).
 optdb(oc_grade_prof, profile_time,                     bool(no),
     priv_alt_align_help("profile-time", [],
             "(grade modifier: `.proftime')", [
-        w("Similar to `--profiling', except that it only gathers"),
-        w("timing information, not call counts.")])).
+        w("Similar to"), opt("--profiling", ","),
+        w("except that it only gathers timing information,"),
+        w("not call counts.")])).
 optdb(oc_grade_prof, profile_memory,                   bool(no),
     priv_alt_align_help("profile-memory", [],
             "(grade modifier: `.profmem')", [
-        w("Similar to `--memory-profiling', except that it only"),
-        w("gathers memory usage information, not call counts.")])).
+        w("Similar to"), opt("--memory-profiling", ","),
+        w("except that it only gathers memory usage information,"),
+        w("not call counts.")])).
 
 %---------------------%
 
@@ -1726,9 +1766,16 @@ optdb(oc_grade_prof, profile_memory,                   bool(no),
 optdb(oc_grade_prof, deep_profiling,                   special,
     alt_align_help("deep-profiling", [],
             "(grade modifier: `.profdeep')", [
-        w("Enable deep profiling."),
-        w("This option is supported only when targeting C"),
-        w("with `--no-high-level-code'.")])).
+        w("Prepare the generated code for deep profiling."),
+        w("The Mercury deep profiling tool"), code("mdprof"),
+        w("(note the"), quote("d"), w("in the name)"),
+        w("associates much more context with each measurement than"),
+        code("mprof", ","), w("making it much more suitable"),
+        w("for handling polymorphic code and higher order code,"),
+        w("both of which are much more common"),
+        w("in typical Mercury code than in typical C code."),
+        w("This option is supported only when targeting C with"),
+        opt("--no-high-level-code", ".")])).
 optdb(oc_grade_prof, profile_deep,                     bool(no),
     % This the *actual* grade option that switches on deep profiling.
     % The deep_profiling option sets profile_deep to "yes", *and* sets
@@ -1799,10 +1846,10 @@ optdb(oc_grade_prof, profile_for_feedback,             bool(no),
     % Currently the only feedback analysis is automatic parallelism.
     alt_help("profile-for-feedback",
             ["profile-for-implicit-parallelism"], [
-        w("Select deep profiling options suitable for profiler directed"),
-        w("implicit parallelism."),
-        w("--profile-for-implicit-parallelism is a deprecated synonym for"),
-        w("this option.")])).
+        w("Select deep profiling options that are suitable"),
+        w("for profiler directed implicit parallelism."),
+        opt("--profile-for-implicit-parallelism"),
+        w("is a deprecated synonym for this option.")])).
 
 %---------------------%
 
@@ -1811,10 +1858,10 @@ optdb(oc_grade_prof, profile_for_feedback,             bool(no),
 optdb(oc_grade_prof, experimental_complexity,          string(""),
     % XXX This is NOT a grade option; it only takes advantage of a grade.
     priv_arg_help("experimental-complexity", "filename", [
-    w("Enable experimental complexity analysis for the predicates"),
+        w("Enable experimental complexity analysis for the predicates"),
         w("listed in the given file."),
-        w("This option is supported only when targeting C"),
-        w("with `--no-high-level-code'.")])).
+        w("This option is supported only when targeting C with"),
+        opt("--no-high-level-code", ".")])).
 optdb(oc_grade_prof, record_term_sizes_as_words,       bool(no),
     priv_alt_align_help("record-term-sizes-as-words", [],
             "(grade modifier: `.tsw')", [
@@ -1835,7 +1882,7 @@ optdb(oc_grade_prof, threadscope,                      bool(no),
             "(grade modifier: `.threadscope')", [
         w("Enable support for profiling parallel execution."),
         w("This option is supported only when targeting C"),
-        w("in parallel grades with `--no-high-level-code',"),
+        w("in parallel grades with"), opt("--no-high-level-code", ","),
         w("and only on some processors."),
         w("See README.ThreadScope for details.")])).
 
@@ -1855,29 +1902,31 @@ optdb(oc_grade_etc, gc,                                string("boehm"),
         % "`accurate' is our own type-accurate copying GC;",
         % "it requires `--high-level-code'.",
         w("Specify which method of garbage collection to use."),
-        w("When targeting Java or C#, the only possible choice"),
-        w("is `automatic', which means the garbage collector"),
+        w("When targeting Java or C#, the only possible choice is"),
+        samp("automatic", ","), w("which means the garbage collector"),
         w("built into the target language."),
-        w("When targeting C, the default is `boehm',"),
+        w("When targeting C, the usual choice is"), samp("boehm", ","),
         w("which is Hans Boehm et al's conservative collector."),
-        w("The use of the `boehm' collector is indicated by"),
-        w("the `.gc' grade component."),
-        w("The other alternative when targeting C is `none'"),
+        w("The use of the Boehm collector is indicated by the"),
+        samp(".gc"), w("grade component."),
+        w("The other alternative when targeting C is"), samp("none", ","),
         w("meaning there is no garbage collector."),
         w("This works only for programs with very short runtimes.")])).
 optdb(oc_grade_etc, stack_segments,                    bool(no),
     alt_align_help("stack-segments", [],
             "(grade modifier: `.stseg')", [
-        w("Specify whether to use dynamically sized stacks that are"),
+        w("Specify the use of dynamically sized stacks that are"),
         w("composed of small segments. This can help to avoid stack"),
         w("exhaustion at the cost of increased execution time."),
-        w("This option is supported only when targeting C"),
-        w("with `--no-high-level-code'.")])).
+        w("This option is supported only when targeting C with"),
+        opt("--no-high-level-code", ".")])).
 optdb(oc_grade_etc, extend_stacks_when_needed,         bool(no),
     % This is private as this feature is still experimental.
     priv_help("extend-stacks-when-needed", [
-        w("Specify that code that increments a stack pointer must"),
-        w("extend the stack when this is needed.")])).
+        w("Specify that code that increments the stack pointer"),
+        w("must extend the stack on demand."),
+        w("This option is supported only when targeting C with"),
+        opt("--no-high-level-code", ".")])).
 optdb(oc_grade_etc, use_trail,                         bool(no),
     alt_align_help("use-trail", [],
             "(grade modifier: `.tr')", [
@@ -1900,12 +1949,14 @@ optdb(oc_grade_etc, parallel,                          bool(no),
 optdb(oc_grade_etc, maybe_thread_safe_opt,             string("no"),
     % XXX How is a yes/no argument better than a no- prefix?
     arg_help("maybe-thread-safe", "{yes, no}", [
-        w("Specify how to treat the `maybe_thread_safe' foreign code"),
-        w("attribute. `yes' means that a foreign procedure with the"),
-        w("`maybe_thread_safe' option is treated as though it has a"),
-        w("`thread_safe' attribute. `no' means that the foreign"),
-        w("procedure is treated as though it has a `not_thread_safe'"),
-        w("attribute. The default is `no'.")])).
+        w("Specify how to treat the compiler should treat the"),
+        code("maybe_thread_safe"), w("foreign code attribute."),
+        quote("yes"), w("means that a foreign procedure with the"),
+        code("maybe_thread_safe"), w("attribute is treated"),
+        w("as if it has a"), code("thread_safe"), w("attribute."),
+        quote("no"), w("means that the foreign procedure is treated"),
+        w("as if it has a"), code("not_thread_safe"), w("attribute."),
+        w("The default is"), quote("no", ".")])).
 optdb(oc_grade_etc, use_minimal_model_stack_copy,      bool(no),
     % This controls the .mmsc grade component.
     priv_help("use-minimal-model-stack-copy", [
@@ -1949,27 +2000,28 @@ optdb(oc_grade_dev, num_ptag_bits,                     int(-1),
     % Its only legitimate use by non-developers is for cross-compilation.
     % XXX That fact should be included in the help text.
     alt_arg_help("num-ptag-bits",
-            ["num-tag-bits"], "n", [
-        w("Use <n> primary tag bits."),
+            ["num-tag-bits"], "N", [
+        w("Use N primary tag bits."),
         w("Note that the value of this option is normally autoconfigured;"),
         w("its use should never be needed except for cross-compilation.")])).
 optdb(oc_grade_dev, bits_per_word,                     int(32),
     % A good default for the current generation of architectures.
-    priv_arg_help("bits-per-word", "n", [
+    priv_arg_help("bits-per-word", "N", [
         w("Reserved for use by the `mmc' script.")])).
 optdb(oc_grade_dev, bytes_per_word,                    int(4),
     % A good default for the current generation of architectures.
-    priv_arg_help("bytes-per-word", "n", [
+    priv_arg_help("bytes-per-word", "N", [
         w("Reserved for use by the `mmc' script.")])).
 % XXX All the unboxed_X options should be replaced by boxed_X options.
 optdb(oc_grade_dev, unboxed_float,                     bool(no),
     priv_help("unboxed-float", [
         w("Do not box floating point numbers."),
         w("This assumes that a Mercury float will fit in a word."),
-        w("The C code needs to be compiled with `-UMR_BOXED_FLOAT'."),
+        w("The C code needs to be compiled with"),
+        code("-UMR_BOXED_FLOAT", "."),
         w("It may also need to be compiled with"),
-        w("`-DMR_USE_SINGLE_PREC_FLOAT', if double precision"),
-        w("floats don't fit into a word."),
+        code("-DMR_USE_SINGLE_PREC_FLOAT", ","),
+        w("if double precision floats do not fit into a word."),
         w("Note that the value of this option is normally autoconfigured;"),
         w("its use should never be needed except for cross-compilation.")])).
 optdb(oc_grade_dev, unboxed_int64s,                    bool(no),
@@ -1977,7 +2029,8 @@ optdb(oc_grade_dev, unboxed_int64s,                    bool(no),
         w("Do not box 64-bit integer numbers"),
         w("This assumes that word size of the target machine is at least"),
         w("64-bits in size."),
-        w("The C code needs to be compiled with `-UMR_BOXED_INT64S'."),
+        w("The C code needs to be compiled with"),
+        code("-UMR_BOXED_INT64S", "."),
         w("Note that the value of this option is normally autoconfigured;"),
         w("its use should never be needed except for cross-compilation.")])).
 optdb(oc_grade_dev, unboxed_no_tag_types,              bool(yes),

@@ -531,8 +531,8 @@ acc_help_subsection(Format, What, SubSectionNameIndent, SubSection,
     OptdbRecordSet = set.union_list(OptdbRecordSets),
 
     acc_help_messages(Format, What, set.to_sorted_list(OptdbRecordSet),
-        cord.init, HelpTextLinesCord),
-    ( if cord.is_empty(HelpTextLinesCord) then
+        cord.init, HelpTextLinesCord, 0, NumDocOpts),
+    ( if NumDocOpts = 0 then
         true
     else
         cord.snoc("", !LineCord),
@@ -649,22 +649,26 @@ get_optdb_record_params(OptdbRecord, Params) :-
 %---------------------------------------------------------------------------%
 
 :- pred acc_help_messages(help_format, print_what_help, list(optdb_record),
-    cord(string), cord(string)).
-:- mode acc_help_messages(in(help_plain_text), in, in, in, out) is det.
-:- mode acc_help_messages(in(help_texinfo), in, in, in, out) is det.
+    cord(string), cord(string), int, int).
+:- mode acc_help_messages(in(help_plain_text), in, in, in, out, in, out)
+    is det.
+:- mode acc_help_messages(in(help_texinfo), in, in, in, out, in, out) is det.
 
-acc_help_messages(_, _, [], !EffectiveLinesCord).
+acc_help_messages(_, _, [], !EffectiveLinesCord, !NumDocOpts).
 acc_help_messages(Format, What, [OptdbRecord | OptdbRecords],
-        !EffectiveLinesCord) :-
-    acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord),
-    acc_help_messages(Format, What, OptdbRecords, !EffectiveLinesCord).
+        !EffectiveLinesCord, !NumDocOpts) :-
+    acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord,
+        !NumDocOpts),
+    acc_help_messages(Format, What, OptdbRecords, !EffectiveLinesCord,
+        !NumDocOpts).
 
 :- pred acc_help_message(help_format, print_what_help, optdb_record,
-    cord(string), cord(string)).
-:- mode acc_help_message(in(help_plain_text), in, in, in, out) is det.
-:- mode acc_help_message(in(help_texinfo), in, in, in, out) is det.
+    cord(string), cord(string), int, int).
+:- mode acc_help_message(in(help_plain_text), in, in, in, out, in, out) is det.
+:- mode acc_help_message(in(help_texinfo), in, in, in, out, in, out) is det.
 
-acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord) :-
+acc_help_message(Format, What, OptdbRecord,
+        !EffectiveLinesCord, !NumDocOpts) :-
     get_optdb_record_params(OptdbRecord, Params),
     % XXX We could automatically add "(This option is not for general use.)"
     % to the start of the description of every private option, to save
@@ -834,6 +838,7 @@ acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord) :-
                 What = print_public_and_private_help
             )
         then
+            !:NumDocOpts = !.NumDocOpts + 1,
             ( if
                 cord.is_empty(!.LineCord),
                 DescPieces = []
@@ -1371,6 +1376,12 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                 )
             ),
             add_word(LineLen, Str, !CurLine, !CurLineLen, !FinishedLineCord)
+        ;
+            HeadPiece = blank_line,
+            finish_cur_line(!.CurLine, !FinishedLineCord),
+            cord.snoc("", !FinishedLineCord),
+            !:CurLine = cord.init,
+            !:CurLineLen = 0
         ;
             HeadPiece = help_text_only(HelpTextPieces),
             (
