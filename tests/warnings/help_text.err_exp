@@ -2516,7 +2516,7 @@ Options for target language compilation
     --no-c-include-dir
         Append <dir> to the list of directories to be searched for C header
         files. Note that if you want to override this list, instead of
-        appendding to it, then you can set the `MERCURY_MC_ALL_C_INCL_DIRS'
+        appending to it, then you can set the `MERCURY_MC_ALL_C_INCL_DIRS'
         environment variable to a sequence of `--c-include-directory' options.
 
     --cflags <<options>
@@ -2726,28 +2726,27 @@ Options for linking
 
     --ld-flags <options>
     --no-ld-flags
-        Specify options to be passed to the linker command invoked by `ml' to
-        link an executable. These options will not be quoted when passed to the
-        shell. Use `ml --print-link-command' to find out what the linker
-        command is.
+        Specify options to be passed to the linker command that will create an
+        executable. These options will not be quoted when passed to the shell.
+        Use `mmc --output-link-command' to find out what the linker command is.
 
     --ld-flag <option>
-        Specify a single word option to be passed to the linker command invoked
-        by `ml' to link an executable. The word will be quoted when passed to
-        the shell. Use `ml --print-link-command' to find out what the linker
+        Specify a single word option to be passed to the linker command that
+        will create an executable. The word will be quoted when passed to the
+        shell. Use `mmc --output-link-command' to find out what the linker
         command is.
 
     --ld-libflags <options>
     --no-ld-libflags
-        Specify options to be passed to the linker command invoked by `ml' to
-        link a shared library. These options will not be quoted when passed to
-        the shell. Use `ml --print-shared-lib-link-command' to find out what
-        the linker command is.
+        Specify options to be passed to the linker command that will create a
+        shared library. These options will not be quoted when passed to the
+        shell. Use `mmc --output-shared-lib-link-command' to find out what the
+        linker command is.
 
     --ld-libflag <option>
-        Specify a single word option to be passed to the linker command invoked
-        by `ml' to link a shared library. The word will be quoted when passed
-        to the shell. Use `ml --print-shared-lib-link-command' to find out what
+        Specify a single word option to be passed to the linker command that
+        will create a shared library. The word will be quoted when passed to
+        the shell. Use `mmc --output-shared-lib-link-command' to find out what
         the linker command is.
 
     -R <directory>
@@ -3818,8 +3817,8 @@ Options for developers only
 
     PRIVATE OPTION
     --no-type-ctor-functors
-        Do not gGenerate type_ctor_functors structures. For measurement only;
-        if you turn this off, then you will not to be able to link.
+        Do not generate type_ctor_functors structures. For measurement only; if
+        you turn this off, then you will not to be able to link.
 
     PRIVATE OPTION
     --no-rtti-line-numbers
@@ -3886,7 +3885,7 @@ Options for developers only
     PRIVATE OPTION
     --compare-specialization <N>
         Generate quadratic instead of linear compare predicates for types with
-        up to N function symbols. Higher values of n lead to faster but also
+        up to N function symbols. Higher values of N lead to faster but also
         bigger compare predicates.
 
     PRIVATE OPTION

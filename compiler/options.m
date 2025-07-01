@@ -4182,7 +4182,7 @@ optdb(oc_target_c,  c_include_directories,             accumulating([]),
         w("Append"), arg("dir"), w("to the list of directories"),
         w("to be searched for C header files."),
         w("Note that if you want to override this list, instead of"),
-        w("appendding to it, then you can set the"),
+        w("appending to it, then you can set the"),
         samp("MERCURY_MC_ALL_C_INCL_DIRS"), w("environment variable to a"),
         w("sequence of"), opt("--c-include-directory"), w("options.")])).
 optdb(oc_target_c,  cflags,                            accumulating([]),
@@ -4406,30 +4406,30 @@ optdb(oc_link_c,    link_objects,                      accumulating([]),
 optdb(oc_link_c,    ld_flags,                          accumulating([]),
     arg_help("ld-flags", "options", [
         w("Specify options to be passed to the linker command"),
-        w("invoked by"), code("ml"), w("to link an executable."),
+        w("that will create an executable."),
         w("These options will not be quoted when passed to the shell."),
-        w("Use"), code("ml --print-link-command"),
+        w("Use"), code("mmc --output-link-command"),
         w("to find out what the linker command is.")])).
 optdb(oc_link_c,    quoted_ld_flag,                    string_special,
     arg_help("ld-flag", "option", [
         w("Specify a single word option to be passed to the linker command"),
-        w("invoked by"), code("ml"), w("to link an executable."),
+        w("that will create an executable."),
         w("The word will be quoted when passed to the shell."),
-        w("Use"), code("ml --print-link-command"),
+        w("Use"), code("mmc --output-link-command"),
         w("to find out what the linker command is.")])).
 optdb(oc_link_c,    ld_libflags,                       accumulating([]),
     arg_help("ld-libflags", "options", [
         w("Specify options to be passed to the linker command"),
-        w("invoked by"), code("ml"), w("to link a shared library."),
+        w("that will create a shared library."),
         w("These options will not be quoted when passed to the shell."),
-        w("Use"), code("ml --print-shared-lib-link-command"),
+        w("Use"), code("mmc --output-shared-lib-link-command"),
         w("to find out what the linker command is.")])).
 optdb(oc_link_c,    quoted_ld_libflag,                 string_special,
     arg_help("ld-libflag", "option", [
         w("Specify a single word option to be passed to the linker command"),
-        w("invoked by"), code("ml"), w("to link a shared library."),
+        w("that will create a shared library."),
         w("The word will be quoted when passed to the shell."),
-        w("Use"), code("ml --print-shared-lib-link-command"),
+        w("Use"), code("mmc --output-shared-lib-link-command"),
         w("to find out what the linker command is.")])).
 optdb(oc_link_c,    runtime_link_library_directories,  accumulating([]),
     short_arg_help('R', "runtime-library-directory", [], "directory", [
@@ -5510,7 +5510,7 @@ optdb(oc_internal,  type_ctor_layout,                  bool(yes),
         w("if you turn this off, then you will not to be able to link.")])).
 optdb(oc_internal,  type_ctor_functors,                bool(yes),
     priv_help("type-ctor-functors", [
-        w("Do not gGenerate type_ctor_functors structures."),
+        w("Do not generate type_ctor_functors structures."),
         w("For measurement only;"),
         w("if you turn this off, then you will not to be able to link.")])).
 optdb(oc_internal,  rtti_line_numbers,                 bool(yes),
@@ -5572,7 +5572,7 @@ optdb(oc_internal,  compare_specialization,            int(-1),
     % -1 asks handle_options.m to give the value, which may be grade dependent.
     priv_arg_help("compare-specialization", "N", [
         w("Generate quadratic instead of linear compare predicates for"),
-        w("types with up to N function symbols. Higher values of n lead to"),
+        w("types with up to N function symbols. Higher values of N lead to"),
         w("faster but also bigger compare predicates.")])).
 optdb(oc_internal,  chosen_stdlib_dir,                 maybe_string(no),
     no_help).
