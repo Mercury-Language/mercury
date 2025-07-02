@@ -126,7 +126,7 @@ output_call_graph_headers(OutputStream, !IO) :-
         "\t\tthe program %s this procedure and its\n",
         [s(SpentIn)], !IO),
     io.write_string(OutputStream,
-        "\t\tdescendents.\n\n", !IO),
+        "\t\tdescendants.\n\n", !IO),
 
     io.format(OutputStream,
         "self\t\tthe number of %s actually %s\n",
@@ -135,10 +135,10 @@ output_call_graph_headers(OutputStream, !IO) :-
         "\t\tthe procedure's own code.\n\n", !IO),
 
     io.format(OutputStream,
-        "descendents\tthe number of %s %s the\n",
+        "descendants\tthe number of %s %s the\n",
         [s(Units), s(SpentIn)], !IO),
     io.write_string(OutputStream,
-        "\t\tdescendents of the current procedure.\n\n", !IO),
+        "\t\tdescendants of the current procedure.\n\n", !IO),
 
     io.write_string(OutputStream,
         "called\t\tthe number of times the current procedure is\n", !IO),
@@ -165,8 +165,8 @@ output_call_graph_headers(OutputStream, !IO) :-
         "\t\t%s due to calls from this parent.\n\n", [s(What)], !IO),
 
     io.format(OutputStream,
-        "descendents*\tthe number of %s of the current " ++
-        "procedure's descendent\n", [s(Units)], !IO),
+        "descendants*\tthe number of %s of the current " ++
+        "procedure's descendant\n", [s(Units)], !IO),
     io.format(OutputStream,
         "\t\t%s which is due to calls from this parent.\n\n", [s(What)], !IO),
 
@@ -196,7 +196,7 @@ output_call_graph_headers(OutputStream, !IO) :-
         "\t\tdue to being called by the current procedure.\n\n", !IO),
 
     io.format(OutputStream,
-        "descendent*\tthe number of %s of this child's descendent %s which\n",
+        "descendant*\tthe number of %s of this child's descendant %s which\n",
         [s(Units), s(What)], !IO),
     io.write_string(OutputStream,
         "\t\tis due to the current procedure.\n\n", !IO),
@@ -222,7 +222,7 @@ output_call_graph_headers(OutputStream, !IO) :-
     io.write_string(OutputStream,
         "       parents\n", !IO),
     io.format(OutputStream,
-        "index %6s    self descendents  called+self",
+        "index %6s    self descendants  called+self",
         [s("%" ++ ShortWhat)], !IO),
     io.write_string(OutputStream,
         "    name           index\n", !IO),
@@ -423,7 +423,7 @@ output_flat_headers(OutputStream, !IO) :-
        "total\t\tthe average number of %s %s this procedure and its\n",
         [s(MilliUnits), s(SpentIn)], !IO),
     io.format(OutputStream,
-        "%s  \tdescendents per call.\n\n",
+        "%s  \tdescendants per call.\n\n",
         [s(MilliUnitsPerCall)], !IO),
 
     io.write_string(OutputStream,

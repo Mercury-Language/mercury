@@ -4892,7 +4892,7 @@ questions about the correctness of calls executed in your program.
 Because pure Mercury code does not have any side effects, the declarative
 debugger can make inferences such as ``if a call produces incorrect output
 from correct input, then there must be a bug in the code executed by one of
-the descendents of the call''.
+the descendants of the call''.
 
 The declarative debugger is therefore able to automate much of the
 `detective work' that must be done manually when using the
@@ -6061,12 +6061,12 @@ For each procedure it shows
 the parents (callers) and children (callees) of that procedure,
 and shows the execution time and call counts for each parent and child.
 It is sorted on the total amount of time spent
-in the procedure and all of its descendents
+in the procedure and all of its descendants
 (i.e.@: all of the procedures that it calls, directly or indirectly.)
 
 @cindex Flat profile
 The flat profile presents the just execution time spent in each procedure.
-It does not count the time spent in descendents of a procedure.
+It does not count the time spent in descendants of a procedure.
 
 The alphabetic listing just lists the procedures in alphabetical order,
 along with their index number in the call graph profile,
@@ -6086,7 +6086,7 @@ that calls to a procedure from different callers have roughly similar costs
 is not true,
 the graph profile can be quite misleading.
 
-The time spent in a procedure and its descendents is calculated by
+The time spent in a procedure and its descendants is calculated by
 propagating the times up the call graph,
 assuming that each call to a procedure from a particular caller
 takes the same amount of time.
@@ -6105,7 +6105,7 @@ Here is a small portion of the call graph profile from an example program.
 
 @example
                                   called/total       parents
-index  %time    self descendents  called+self    name           index
+index  %time    self descendants  called+self    name           index
                                   called/total       children
 
                                                      <spontaneous>
@@ -6197,7 +6197,7 @@ a particular entry in the call graph.)
 
 @item
 The percentage of total execution time spent in the current procedure
-and all its descendents.
+and all its descendants.
 As noted above, this is only a statistical approximation.
 
 @item
@@ -6206,8 +6206,8 @@ part of current procedure.
 As noted above, this is only a statistical approximation.
 
 @item
-The descendent time: the time spent in the
-current procedure and all its descendents.
+The descendant time: the time spent in the
+current procedure and all its descendants.
 As noted above, this is only a statistical approximation.
 
 @item
@@ -6227,9 +6227,9 @@ declaration of that predicate in the source code.  For example,
 @samp{list.delete/3(3)} corresponds to the @samp{(out, out, in)} mode
 of @samp{list.delete/3}.
 
-Now for the parent and child procedures the self and descendent time have
-slightly different meanings.  For the parent procedures the self and descendent
-time represent the proportion of the current procedure's self and descendent
+Now for the parent and child procedures the self and descendant time have
+slightly different meanings.  For the parent procedures the self and descendant
+time represent the proportion of the current procedure's self and descendant
 time due to that parent.  These times are obtained using the assumption that
 each call contributes equally to the total time of the current procedure.
 
