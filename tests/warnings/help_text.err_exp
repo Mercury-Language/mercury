@@ -258,12 +258,22 @@ Grade options
 
     -s <grade>
     --grade <grade>
-        Select the compilation model. The <grade> should consist of one of the
-        base grades `none', `reg', `asm_fast', `hlc', `java', or `csharp',
-        followed by zero or more of the grade modifiers in the following
-        options. The names of all grade modifiers start with a period, so a
-        complete grade name consists of a list of name components (the base
-        grade and some grade modifiers) separated by periods.
+        Select the compilation model. This model, which Mercury calls a
+        *grade*, specifies what properties the resulting executable or library
+        should have. Properties such as `generates profiling data for `mprof'
+        when executed'. and `can be debugged with the Mercury debugger'. As
+        such, it controls decisions that must be made the same way in all the
+        modules of a program. For example, it does not make sense to compile
+        some modules of a program to C and some to Java; nor does it make sense
+        to compile some modules to support profiling and some to not support
+        profiling.
+        
+        The <grade> should consist of one of the base grades `none', `reg',
+        `asm_fast', `hlc', `java', or `csharp', followed by zero or more of the
+        grade modifiers in the following options. The names of all grade
+        modifiers start with a period, so a complete grade name consists of a
+        list of name components (the base grade and some grade modifiers)
+        separated by periods.
         
         Note that not all combinations of components are allowed, and that the
         Mercury standard library will have been installed on your system in
@@ -271,7 +281,7 @@ Grade options
         
         Attempting to build a program in a grade which has not been installed
         or to link together modules that have been compiled in different
-        grades, will result in an error at link time.
+        grades, will result in an error.
 
     Target options
 
@@ -293,7 +303,7 @@ Grade options
     --java-only
     --Java-only
         An abbreviation for `--target java' `--target-code-only'. Generate Java
-        code in `<module>.java', but do not generate object code.
+        code in `<module>.java', but do not generate Java bytecode.
 
     --csharp
     --C#
@@ -302,7 +312,7 @@ Grade options
     --csharp-only
     --C#-only
         An abbreviation for `--target csharp' `--target-code-only'. Generate C#
-        code in `<module>.cs', but do not generate object code.
+        code in `<module>.cs', but do not generate CIL bytecode.
 
     LLDS backend grade options
 
@@ -346,8 +356,7 @@ Grade options
         way that allows the program executable to be debuggable with debuggers
         for C, such as `gdb'. This option is intended mainly for the developers
         of Mercury, though it can also help to debug C code included in Mercury
-        programs. This option is used only when targeting C with
-        `--high-level-code'.
+        programs. This option is used only when targeting C.
 
     Debugging grade options
 
@@ -376,8 +385,11 @@ Grade options
         the standard Unix profiler `gprof', which is a tool called `mprof'. In
         `.prof' grades, the compiler will insert profiling hooks into the
         generated code (e.g. to count calls), and will also output the static
-        call graph of the module to `<module>.prof' for use by `mprof'. This
-        option is supported only when targeting C.
+        call graph of the module to `<module>.prof' for use by `mprof'. Please
+        see the "Building profiled applications" section in the Mercury User's
+        Guide for details.
+        
+        This option is supported only when targeting C.
 
     PRIVATE OPTION
     --time-profiling
@@ -385,7 +397,11 @@ Grade options
 
     --memory-profiling                  (grade modifier: `.memprof')
         Prepare the generated code for profiling of memory usage and retention
-        by mprof. This option is supported only when targeting C.
+        by mprof. Please see the
+        "Using mprof for profiling memory retention" section in the Mercury
+        User's Guide for details.
+        
+        This option is supported only when targeting C.
 
     PRIVATE OPTION
     --profile-calls                     (grade modifier: `.profcalls')
@@ -540,8 +556,8 @@ Grade options
         concurrency (via pthreads) for the high-level C grades.
 
     --maybe-thread-safe {yes, no}
-        Specify how to treat the compiler should treat the `maybe_thread_safe'
-        foreign code attribute. `yes' means that a foreign procedure with the
+        Specify how the compiler should treat the `maybe_thread_safe' foreign
+        code attribute. `yes' means that a foreign procedure with the
         `maybe_thread_safe' attribute is treated as if it has a `thread_safe'
         attribute. `no' means that the foreign procedure is treated as if it
         has a `not_thread_safe' attribute. The default is `no'.
@@ -1002,7 +1018,7 @@ Diagnostics options
     --color-diagnostics
     --colour-diagnostics
         Disable the use of colors in diagnostic messages. Please see the
-        "Enabling the use of color" section in the Mercury Users's Guide for
+        "Enabling the use of color" section in the Mercury User's Guide for
         details.
 
     PRIVATE OPTION

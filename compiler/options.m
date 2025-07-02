@@ -1523,17 +1523,26 @@ optdb(oc_grade_gen, grade,                             string_special,
     % at configuration time.
     short_arg_help('s', "grade", [], "grade", [
         w("Select the compilation model."),
-        % XXX Should we add this?
-        % This model, which Mercury calls a *grade*, specifies
-        % what properties the resulting executable or library should have.
-        % (Properties such as "can be debugged with the Mercury debugger".)
-        % As such, it controls decisions that must be made the same way
-        % in all the modules of a program.
-        % For example, it does not make sense
-        % to compile some modules of a program to C and some to Java;
-        % nor does it make sense
-        % to compile some modules to support profiling
-        % and some to not support profiling.
+        w("This model, which Mercury calls a"), emph("grade", ","),
+        w("specifies what properties the resulting executable or library"),
+        w("should have. Properties such as"),
+        help_text_texinfo(
+            [w("`generates profiling data for"), code("mprof"),
+                w("when executed'.")],
+            [w("@samp{generates profiling data for @code{mprof}"),
+                w("when executed}")]),
+        w("and"),
+        help_text_texinfo(
+            [w("`can be debugged with the Mercury debugger'.")],
+            [w("@samp{can be debugged with the Mercury debugger}.")]),
+        w("As such, it controls decisions that must be made the same way"),
+        w("in all the modules of a program."),
+        w("For example, it does not make sense"),
+        w("to compile some modules of a program to C and some to Java;"),
+        w("nor does it make sense"),
+        w("to compile some modules to support profiling"),
+        w("and some to not support profiling."),
+        blank_line,
         w("The"), arg("grade"), w("should consist of one of the base grades"),
         samp("none", ","), samp("reg", ","), samp("asm_fast", ","),
         samp("hlc", ","), samp("java", ","), w("or"), samp("csharp", ","),
@@ -1555,7 +1564,7 @@ optdb(oc_grade_gen, grade,                             string_special,
         w("in a grade which has not been installed"),
         w("or to link together modules"),
         w("that have been compiled in different grades,"),
-        w("will result in an error at link time.")])).
+        w("will result in an error.")])).
 
 %---------------------%
 
@@ -1580,24 +1589,20 @@ optdb(oc_grade_target, java,                           special,
     alt_help("java", ["Java"], [
         w("An abbreviation for"), opt("--target java", ".")])).
 optdb(oc_grade_target, java_only,                      special,
-    % XXX Using "object code" for Java is iffy.
-    % XXX Would replacing it with ".jar files" be better?
     alt_help("java-only", ["Java-only"], [
         w("An abbreviation for"),
         opt("--target java"), opt("--target-code-only", "."),
         w("Generate Java code in"), file_var("module", "java", ","),
-        w("but do not generate object code.")])).
+        w("but do not generate Java bytecode.")])).
 optdb(oc_grade_target, csharp,                         special,
     alt_help("csharp", ["C#"], [
         w("An abbreviation for"), opt("--target csharp", ".")])).
 optdb(oc_grade_target, csharp_only,                    special,
-    % XXX Using "object code" for C# is iffy.
-    % XXX Would replacing it with ".dll files" be better?
     alt_help("csharp-only", ["C#-only"], [
         w("An abbreviation for"),
         opt("--target csharp"), opt("--target-code-only", "."),
         w("Generate C# code in"), file_var("module", "cs", ","),
-        w("but do not generate object code.")])).
+        w("but do not generate CIL bytecode.")])).
 
 %---------------------%
 
@@ -1659,8 +1664,7 @@ optdb(oc_grade_mlds, c_debug_grade,                    bool(no),
         w("This option is intended mainly for the developers of Mercury,"),
         w("though it can also help to debug"),
         w("C code included in Mercury programs."),
-        w("This option is used only when targeting C with"),
-        opt("--high-level-code", ".")])).
+        w("This option is used only when targeting C.")])).
 
 %---------------------%
 
@@ -1720,8 +1724,10 @@ optdb(oc_grade_prof, profiling,                        bool_special,
         w("profiling hooks into the generated code (e.g. to count calls),"),
         w("and will also output the static call graph of the module to"),
         file_var("module", "prof"), w("for use by"), code("mprof", "."),
-        % XXX Should we add an xref to one of the profiling chapter's sections?
-        % XXX If so, which one?
+        w("Please see the"),
+        ref("", "Building profiled applications", "section"),
+        w("in the Mercury User's Guide for details."),
+        blank_line,
         w("This option is supported only when targeting C.")])).
 optdb(oc_grade_prof, time_profiling,                    special,
     % XXX This option should not be visible even to developers.
@@ -1732,6 +1738,10 @@ optdb(oc_grade_prof, memory_profiling,                 special,
         w("Prepare the generated code for"),
         w("profiling of memory usage and retention by mprof."),
         % XXX Should we add an xref to the profiling chapter's memprof section?
+        w("Please see the"),
+        ref("", "Using mprof for profiling memory retention", "section"),
+        w("in the Mercury User's Guide for details."),
+        blank_line,
         w("This option is supported only when targeting C.")])).
     % XXX The next three options are private, because they are not useful.
     % The idea was for you to be able to use --profile-calls and
@@ -1949,7 +1959,7 @@ optdb(oc_grade_etc, parallel,                          bool(no),
 optdb(oc_grade_etc, maybe_thread_safe_opt,             string("no"),
     % XXX How is a yes/no argument better than a no- prefix?
     arg_help("maybe-thread-safe", "{yes, no}", [
-        w("Specify how to treat the compiler should treat the"),
+        w("Specify how the compiler should treat the"),
         code("maybe_thread_safe"), w("foreign code attribute."),
         quote("yes"), w("means that a foreign procedure with the"),
         code("maybe_thread_safe"), w("attribute is treated"),
@@ -2421,7 +2431,7 @@ optdb(oc_diag_color, color_diagnostics,                 bool_special,
             ["colour-diagnostics"], [
         w("Disable the use of colors in diagnostic messages. Please see the"),
         ref("", "Enabling the use of color", "section"),
-        w("in the Mercury Users's Guide for details.")])).
+        w("in the Mercury User's Guide for details.")])).
 optdb(oc_diag_color, config_default_color_diagnostics,  bool(yes),
     % This option should be used only by the configure script.
     priv_alt_help("config-default-color-diagnostics",
