@@ -719,7 +719,7 @@ Options that control inference
         Allow procedures to have no clauses. Any calls to such procedures will
         raise an exception at run-time. This option is sometimes useful during
         program development. (See also the documentation for the `--warn-stubs'
-        option in the "Warning Options" section.)
+        option in the "Warning options" section.)
 
 Options specifying the intended semantics
 

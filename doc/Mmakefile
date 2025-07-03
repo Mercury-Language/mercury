@@ -141,6 +141,15 @@ mercury.html: mercury.html.in ../VERSION
 mercury.info: mercury.info.in ../VERSION
 	$(SED_CMD)
 
+.PHONY: new_opts
+new_opts: user_guide.texi update_opts ../compiler/mercury_compile
+	@cp user_guide.texi USER_GUIDE_TEXI_OLD
+	./update_opts
+	@-diff -u INVOCATION_OLD INVOCATION_NEW > INVOCATION_DIFF
+	@echo "The diff to invocation chapter is in INVOCATION_DIFF."
+	@-diff -u USER_GUIDE_TEXI_OLD user_guide.texi > USER_GUIDE_TEXI_DIFF
+	@echo "The diff to user_guide.texi is in USER_GUIDE_TEXI_DIFF."
+
 #-----------------------------------------------------------------------------#
 
 # Currently `mmake all' does not build the PostScript, PDF or plain-text

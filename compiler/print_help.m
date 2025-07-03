@@ -89,14 +89,20 @@ long_usage(ProgressStream, What, !IO) :-
     % usage message, but there is no simple way to avoid that.
     HeaderLines = [compiler_id_line | copyright_notice_lines] ++
         long_usage_header_lines,
-    document_requested_options(help_plain_text, What, OptionsLines),
+    document_requested_options(help_plain_text, What,
+        _SectionNames, OptionsLines),
     Lines = HeaderLines ++ OptionsLines,
     write_lines(ProgressStream, Lines, !IO).
 
 document_options_for_users_guide(ProgressStream, !IO) :-
     document_requested_options(help_texinfo, print_public_and_private_help,
-        OptionsLines),
-    write_lines(ProgressStream, OptionsLines, !IO).
+        MenuItemsTail, OptionsLines),
+    MenuItems = [menu_item("Invocation overview", "") | MenuItemsTail],
+    MenuLines = menu_items_to_menu(MenuItems),
+    OverviewLines = string.split_at_char('\n', invocation_overview_section),
+    % OverviewLines will start and end with blank lines.
+    AllLines = MenuLines ++ OverviewLines ++ OptionsLines,
+    write_lines(ProgressStream, AllLines, !IO).
 
 write_copyright_notice(Stream, !IO) :-
     write_lines(Stream, copyright_notice_lines, !IO).
@@ -128,24 +134,67 @@ long_usage_header_lines = [
     "Options:"
 ].
 
+:- func invocation_overview_section = string.
+
+invocation_overview_section =
+"
+@node Invocation overview
+@section Invocation overview
+@findex --no-
+
+@code{mmc} is invoked as
+@example
+mmc [@var{options}] @var{arguments}
+@end example
+
+Arguments can be either module names or file names.
+Arguments ending in @samp{.m} are assumed to be file names,
+while other arguments are assumed to be module names.
+The compiler will convert module names to file names
+by looking up the module name in the module-name-to-file-name map
+in the @file{Mercury.modules} file it if exists.
+(It can be created using a command such as @code{mmc -f *.m}.)
+It @file{Mercury.modules} does not exist, then the compiler
+will search for a module named e.g. @samp{foo.bar.baz}
+in the files @file{foo.bar.baz.m}, @file{bar.baz.m}, and @file{baz.m},
+in that order.
+
+Options are either short (single-letter) options preceded by a single @samp{-},
+or long options preceded by @samp{--}.
+Options are case-sensitive.
+We call options that do not take arguments @dfn{flags}.
+Single-letter flags may be grouped with a single @samp{-}, e.g.@: @samp{-vVc}.
+Single-letter flags may be negated
+by appending another trailing @samp{-}, e.g.@: @samp{-v-}.
+(You cannot both group @emph{and} negate single-letter flags at the same time.)
+Long flags may be negated by preceding them with @samp{no-},
+e.g.@: @samp{--no-verbose}.
+".
+
 %---------------------------------------------------------------------------%
 
 :- type help_section
     --->    one_level_section(
-                chapter_section             :: help_subsection
+                section_section             :: help_option_group
             )
     ;       two_level_section(
-                chapter_name                :: string,
-                chapter_comment_lines       :: list(string),
-                chapter_sections            :: list(help_subsection)
+                section_name                :: string,
+                section_menu_desc           :: string,
+                section_comment_lines       :: list(string),
+                section_sections            :: list(help_option_group)
             ).
 
-:- type help_subsection
-    --->    help_subsection(
-                section_name                :: string,
-                section_comment_lines       :: list(string),
-                section_categories          :: list(option_category)
+:- type help_option_group
+    --->    help_option_group(
+                hog_name                    :: string,
+                hog_menu_desc               :: string,
+                hog_comment_lines           :: list(string),
+                hog_categories              :: list(option_category)
             ).
+
+:- type section_or_subsection
+    --->    sos_section
+    ;       sos_subsection.
 
 %---------------------------------------------------------------------------%
 
@@ -153,214 +202,252 @@ long_usage_header_lines = [
 
 all_chapters = AllSections :-
     SectionHelp = one_level_section(
-        help_subsection("Help options",
-        [], [oc_help])),
+        help_option_group(
+            "Help options",
+            "", [], [oc_help])),
 
     SectionCmdLine = one_level_section(
-        help_subsection("Options for modifying the command line",
-        [], [oc_cmdline])),
+        help_option_group(
+            "Options for modifying the command line",
+            "", [], [oc_cmdline])),
 
     SectionOpmode = one_level_section(
-        help_subsection("Options that give the compiler its overall task",
-        [], [oc_opmode])),
+        help_option_group(
+            "Options that give the compiler its overall task",
+            "", [], [oc_opmode])),
 
-    SubSectionGradeGen = help_subsection("Grades and grade components",
-        [], [oc_grade_gen]),
-    SubSectionGradeTarget = help_subsection("Target options",
-        [], [oc_grade_target]),
-    SubSectionGradeLlds = help_subsection("LLDS backend grade options",
-        [], [oc_grade_llds]),
-    SubSectionGradeMlds = help_subsection("MLDS backend grade options",
-        [], [oc_grade_mlds]),
-    SubSectionGradeDbg = help_subsection("Debugging grade options",
-        [], [oc_grade_dbg]),
-    SubSectionGradeProf = help_subsection("Profiling grade options",
-        [], [oc_grade_prof]),
-    SubSectionGradeEtc = help_subsection("Optional feature grade options",
-        [], [oc_grade_etc]),
-    SubSectionGradeDev = help_subsection("Developer grade options",
-        [], [oc_grade_dev]),
+    SubSectionGradeGen = help_option_group(
+        "Grades and grade components",
+        "Setting the compilation model", [], [oc_grade_gen]),
+    SubSectionGradeTarget = help_option_group(
+        "Target options",
+        "Choosing the target language", [], [oc_grade_target]),
+    SubSectionGradeLlds = help_option_group(
+        "LLDS backend grade options",
+        "For the low-level C backend", [], [oc_grade_llds]),
+    SubSectionGradeMlds = help_option_group(
+        "MLDS backend grade options",
+        "For the high-level C/Java/C# backend", [], [oc_grade_mlds]),
+    SubSectionGradeDbg = help_option_group(
+        "Debugging grade options",
+        "", [], [oc_grade_dbg]),
+    SubSectionGradeProf = help_option_group(
+        "Profiling grade options",
+        "", [], [oc_grade_prof]),
+    SubSectionGradeEtc = help_option_group(
+        "Optional feature grade options",
+        "", [], [oc_grade_etc]),
+    SubSectionGradeDev = help_option_group(
+        "Developer grade options",
+        "Not for general use", [], [oc_grade_dev]),
     SectionGrade = two_level_section("Grade options",
-        [],
+        "", [],
         [SubSectionGradeGen, SubSectionGradeTarget,
         SubSectionGradeLlds, SubSectionGradeMlds,
         SubSectionGradeDbg, SubSectionGradeProf,
         SubSectionGradeEtc, SubSectionGradeDev]),
 
     SectionInfer = one_level_section(
-        help_subsection("Options that control inference",
-        [], [oc_infer])),
+        help_option_group(
+            "Options that control inference",
+            "", [], [oc_infer])),
 
     SectionSemantics = one_level_section(
-        help_subsection("Options specifying the intended semantics",
-        [], [oc_semantics])),
+        help_option_group(
+            "Options specifying the intended semantics",
+            "", [], [oc_semantics])),
 
     SectionVerbosity = one_level_section(
-        help_subsection("Verbosity options",
-        [], [oc_verbosity, oc_verb_dev, oc_verb_dbg])),
+        help_option_group(
+            "Verbosity options",
+            "", [], [oc_verbosity, oc_verb_dev, oc_verb_dbg])),
 
-    SubSectionDiagGen = help_subsection("Options that control diagnostics",
-        [], [oc_diag_gen]),
-    SubSectionDiagColor = help_subsection(
+    SubSectionDiagGen = help_option_group(
+        "Options that control diagnostics",
+        "", [], [oc_diag_gen]),
+    SubSectionDiagColor = help_option_group(
         "Options that control color in diagnostics",
-        [], [oc_diag_color, oc_diag_int]),
+        "", [], [oc_diag_color, oc_diag_int]),
     SectionDiag = two_level_section("Diagnostics options",
-        [],
+        "", [],
         [SubSectionDiagGen, SubSectionDiagColor]),
 
-    SubSectionWarnDodgy = help_subsection(
+    SubSectionWarnDodgy = help_option_group(
         "Warnings about possible incorrectness",
-        [], [oc_warn_dodgy]),
-    SubSectionWarnPerf = help_subsection(
+        "", [], [oc_warn_dodgy]),
+    SubSectionWarnPerf = help_option_group(
         "Warnings about possible performance issues",
-        [], [oc_warn_perf, oc_warn_perf_c]),
-    SubSectionWarnStyle = help_subsection("Warnings about programming style",
-        [], [oc_warn_style, oc_warn_style_c]),
-    SubSectionWarnCtrl = help_subsection("Options that control warnings",
-        [], [oc_warn_ctrl]),
-    SubSectionWarnHalt = help_subsection("Options about halting for warnings",
-        [], [oc_warn_halt]),
+        "", [], [oc_warn_perf, oc_warn_perf_c]),
+    SubSectionWarnStyle = help_option_group(
+        "Warnings about programming style",
+        "", [], [oc_warn_style, oc_warn_style_c]),
+    SubSectionWarnCtrl = help_option_group(
+        "Options that control warnings",
+        "", [], [oc_warn_ctrl]),
+    SubSectionWarnHalt = help_option_group(
+        "Options about halting for warnings",
+        "", [], [oc_warn_halt]),
     SectionWarn = two_level_section("Warning options",
-        [],
+        "", [],
         [SubSectionWarnDodgy, SubSectionWarnPerf, SubSectionWarnStyle,
         SubSectionWarnCtrl, SubSectionWarnHalt]),
 
     % XXX Should these two chapters instead be two sections in one chapter?
     SectionInform = one_level_section(
-        help_subsection("Options that request information",
-        [], [oc_inform])),
+        help_option_group("Options that request information",
+        "", [], [oc_inform])),
     SectionFileReq = one_level_section(
-        help_subsection("Options that ask for informational files",
-        [], [oc_file_req])),
+        help_option_group("Options that ask for informational files",
+        "", [], [oc_file_req])),
 
     SectionTraceGoal = one_level_section(
-        help_subsection("Controlling trace goals",
-        [], [oc_tracegoal])),
+        help_option_group("Controlling trace goals",
+        "", [], [oc_tracegoal])),
 
     % Once ssdb debugging is publicly documented, we should replace these
     % two chapters (the second of which is not printed for non-developers)
     % with a single two-section chapter.
     SectionDebugMdb = one_level_section(
-        help_subsection("Preparing code for mdb debugging",
-        [], [oc_mdb, oc_mdb_dev])),
+        help_option_group("Preparing code for mdb debugging",
+        "", [], [oc_mdb, oc_mdb_dev])),
     SectionDebugSsdb = one_level_section(
-        help_subsection("Preparing code for ssdb debugging",
-        [], [oc_ssdb, oc_ssdb_dev])),
+        help_option_group("Preparing code for ssdb debugging",
+        "", [], [oc_ssdb, oc_ssdb_dev])),
 
     SectionProfiling = one_level_section(
-        help_subsection("Preparing code for mdprof profiling",
-        [], [oc_mdprof])),
+        help_option_group("Preparing code for mdprof profiling",
+        "", [], [oc_mdprof])),
 
-    SubSectionOptCtrl = help_subsection("Overall control of optimizations",
-        [], [oc_opt_ctrl]),
-    SubSectionOptHH = help_subsection("Source-to-source optimizations",
-        [], [oc_opt_hh]),
-    SubSectionOptHHE = help_subsection(
+    SubSectionOptCtrl = help_option_group(
+        "Overall control of optimizations",
+        "", [], [oc_opt_ctrl]),
+    SubSectionOptHH = help_option_group(
+        "Source-to-source optimizations",
+        "", [], [oc_opt_hh]),
+    SubSectionOptHHE = help_option_group(
         "Experimental source-to-source optimizations",
-        [], [oc_opt_hh_exp]),
-    SubSectionOptHLM = help_subsection("Optimizations during code generation",
-        [], [oc_opt_hlm]),
+        "", [], [oc_opt_hh_exp]),
+    SubSectionOptHLM = help_option_group(
+        "Optimizations during code generation",
+        "", [], [oc_opt_hlm]),
     % XXX Should the categories here be separate sections?
-    SubSectionOptMM = help_subsection(
+    SubSectionOptMM = help_option_group(
         "Optimizations specific to high level code",
-        [], [oc_opt_hm, oc_opt_mm]),
+        "", [], [oc_opt_hm, oc_opt_mm]),
     % XXX Should the categories here be separate sections?
-    SubSectionOptLL = help_subsection(
+    SubSectionOptLL = help_option_group(
         "Optimizations specific to low level code",
-        [], [oc_opt_hl, oc_opt_ll, oc_opt_lc]),
+        "", [], [oc_opt_hl, oc_opt_ll, oc_opt_lc]),
     SectionOpt = two_level_section("Optimization options",
-        [],
+        "", [],
         [SubSectionOptCtrl, SubSectionOptHH, SubSectionOptHHE,
         SubSectionOptHLM, SubSectionOptMM, SubSectionOptLL]),
 
     SectionTransOpt = one_level_section(
-        help_subsection(
+        help_option_group(
             "Options that control transitive intermodule optimization",
-        [], [oc_trans_opt])),
+            "", [], [oc_trans_opt])),
 
     SectionAnalysis = one_level_section(
-        help_subsection("Options that control program analyses",
-        [], [oc_analysis])),
+        help_option_group(
+            "Options that control program analyses",
+            "", [], [oc_analysis])),
 
     SectionModOutput = one_level_section(
-        help_subsection("Options that ask for modified output",
-        [], [oc_output_mod, oc_output_dev])),
+        help_option_group(
+            "Options that ask for modified output",
+            "", [], [oc_output_mod, oc_output_dev])),
 
     SectionMmcMake = one_level_section(
-        help_subsection("Options for controlling mmc --make",
-        [], [oc_make])),
+        help_option_group(
+            "Options for controlling mmc --make",
+            "", [], [oc_make])),
 
-    SubSectionCompileGen = help_subsection(
+    SubSectionCompileGen = help_option_group(
         "General options for compiling target language code",
-        [], [oc_target_comp]),
-    SubSectionCompileC = help_subsection("Options for compiling C code",
-        [], [oc_target_c]),
-    SubSectionCompileJava = help_subsection("Options for compiling Java code",
-        [], [oc_target_java]),
-    SubSectionCompileCsharp = help_subsection("Options for compiling C# code",
-        [], [oc_target_csharp]),
+        "", [], [oc_target_comp]),
+    SubSectionCompileC = help_option_group(
+        "Options for compiling C code",
+        "", [], [oc_target_c]),
+    SubSectionCompileJava = help_option_group(
+        "Options for compiling Java code",
+        "", [], [oc_target_java]),
+    SubSectionCompileCsharp = help_option_group(
+        "Options for compiling C# code",
+        "", [], [oc_target_csharp]),
     SectionCompile = two_level_section(
         "Options for target language compilation",
-        [],
+        "", [],
         [SubSectionCompileGen, SubSectionCompileC, SubSectionCompileJava,
         SubSectionCompileCsharp]),
 
-    SubSectionLinkGen = help_subsection("General options for linking",
-        [], [oc_link_c_cs_j]),
-    SubSectionLinkCCsharp = help_subsection("Options for linking C or C# code",
-        [], [oc_link_c_cs]),
-    SubSectionLinkC = help_subsection("Options for linking just C code",
-        [], [oc_link_c]),
-    SubSectionLinkCsharp = help_subsection("Options for linking just C# code",
-        [], [oc_link_csharp]),
-    SubSectionLinkJava = help_subsection("Options for linking just Java code",
-        [], [oc_link_java]),
-    SectionLink = two_level_section("Options for linking",
-        [],
+    SubSectionLinkGen = help_option_group(
+        "General options for linking",
+        "", [], [oc_link_c_cs_j]),
+    SubSectionLinkCCsharp = help_option_group(
+        "Options for linking C or C# code",
+        "", [], [oc_link_c_cs]),
+    SubSectionLinkC = help_option_group(
+        "Options for linking just C code",
+        "", [], [oc_link_c]),
+    SubSectionLinkCsharp = help_option_group(
+        "Options for linking just C# code",
+        "", [], [oc_link_csharp]),
+    SubSectionLinkJava = help_option_group(
+        "Options for linking just Java code",
+        "", [], [oc_link_java]),
+    SectionLink = two_level_section(
+        "Options for linking",
+        "", [],
         [SubSectionLinkGen, SubSectionLinkCCsharp,
         SubSectionLinkC, SubSectionLinkJava, SubSectionLinkCsharp]),
 
     SectionFileSearch = one_level_section(
-        help_subsection("Options controlling searches for files",
-        [], [oc_search])),
+        help_option_group(
+            "Options controlling searches for files",
+            "", [], [oc_search])),
 
     SectionBuild = one_level_section(
-        help_subsection("Options controlling the library installation process",
-        [], [oc_buildsys])),
+        help_option_group(
+            "Options controlling the library installation process",
+            "", [], [oc_buildsys])),
 
     SectionEnv = one_level_section(
-        help_subsection("Options specifying properties of the environment",
-        [], [oc_env])),
+        help_option_group(
+            "Options specifying properties of the environment",
+            "", [], [oc_env])),
 
     SectionConfig = one_level_section(
-        help_subsection("Options that record autoconfigured parameters",
-        [], [oc_config])),
+        help_option_group(
+            "Options that record autoconfigured parameters",
+            "", [], [oc_config])),
 
     SectionMconfig = one_level_section(
-        help_subsection("Options reserved for Mercury.config files",
-        [], [oc_mconfig])),
+        help_option_group(
+            "Options reserved for Mercury.config files",
+            "", [], [oc_mconfig])),
 
-    SubSectionDevCtrl = help_subsection(
+    SubSectionDevCtrl = help_option_group(
         "Operation selection options for developers only",
-        [], [oc_dev_ctrl]),
-    SubSectionDevDebug = help_subsection(
+        "", [], [oc_dev_ctrl]),
+    SubSectionDevDebug = help_option_group(
         "Options that can help debug the compiler",
-        [], [oc_dev_debug]),
-    SubSectionDevDump = help_subsection(
+        "", [], [oc_dev_debug]),
+    SubSectionDevDump = help_option_group(
         "Options for dumping internal compiler data structures",
-        [], [oc_dev_dump]),
-    SubSectionDevInternal = help_subsection(
+        "", [], [oc_dev_dump]),
+    SubSectionDevInternal = help_option_group(
         "Options intended for internal use by the compiler only",
-        [], [oc_internal]),
-    SectionDev = two_level_section(
-        "Options for developers only",
-        [],
+        "", [], [oc_internal]),
+    SectionDev = two_level_section("Options for developers only",
+        "", [],
         [SubSectionDevCtrl, SubSectionDevDebug, SubSectionDevDump,
         SubSectionDevInternal]),
 
     SectionUnused = one_level_section(
-        help_subsection("Now-unused former options kept for compatibility",
-        [], [oc_unused])),
+        help_option_group(
+            "Now-unused former options kept for compatibility",
+            "", [], [oc_unused])),
 
     AllSections = [
         SectionHelp,
@@ -412,11 +499,12 @@ all_chapters = AllSections :-
 :- inst help_texinfo for help_format/0
     --->    help_texinfo.
 
-:- pred document_requested_options(help_format, print_what_help, list(string)).
-:- mode document_requested_options(in(help_plain_text), in, out) is det.
-:- mode document_requested_options(in(help_texinfo), in, out) is det.
+:- pred document_requested_options(help_format, print_what_help,
+    list(menu_item), list(string)).
+:- mode document_requested_options(in(help_plain_text), in, out, out) is det.
+:- mode document_requested_options(in(help_texinfo), in, out, out) is det.
 
-document_requested_options(Format, What, OptionsLines) :-
+document_requested_options(Format, What, SectionNames, OptionsLines) :-
     % We check whether we have covered all possible option categories
     %
     % - getting a set containing all of those categories;
@@ -428,7 +516,8 @@ document_requested_options(Format, What, OptionsLines) :-
         ),
     solutions_set(CategoryPred, AllCategoriesSet),
     acc_help_sections(Format, What, all_chapters,
-        AllCategoriesSet, UndoneCategoriesSet, cord.init, OptionsLineCord),
+        AllCategoriesSet, UndoneCategoriesSet,
+        cord.init, SectionNameCord, cord.init, OptionsLineCord),
     set.to_sorted_list(UndoneCategoriesSet, UndoneCategories),
     (
         UndoneCategories = []
@@ -436,125 +525,224 @@ document_requested_options(Format, What, OptionsLines) :-
         UndoneCategories = [_ | _],
         unexpected($pred, "undone: " ++ string(UndoneCategories))
     ),
+    SectionNames = cord.list(SectionNameCord),
     OptionsLines = cord.list(OptionsLineCord).
 
 %---------------------------------------------------------------------------%
 
-:- pred acc_help_sections(help_format, print_what_help, list(help_section),
-    set(option_category), set(option_category), cord(string), cord(string)).
-:- mode acc_help_sections(in(help_plain_text), in, in,
-    in, out, in, out) is det.
-:- mode acc_help_sections(in(help_texinfo), in, in,
-    in, out, in, out) is det.
+:- type menu_item
+    --->    menu_item(string, string).
+            % The name of the menu item, and its short description, if any.
+            % (Nonexistent descriptions are represented by an empy string.)
 
-acc_help_sections(_, _, [], !Categories, !LineCord).
+:- pred acc_help_sections(help_format, print_what_help, list(help_section),
+    set(option_category), set(option_category),
+    cord(menu_item), cord(menu_item), cord(string), cord(string)).
+:- mode acc_help_sections(in(help_plain_text), in, in,
+    in, out, in, out, in, out) is det.
+:- mode acc_help_sections(in(help_texinfo), in, in,
+    in, out, in, out, in, out) is det.
+
+acc_help_sections(_, _, [], !Categories, !SectionNameCord, !LineCord).
 acc_help_sections(Format, What, [Section | Sections],
-        !Categories, !LineCord) :-
-    acc_help_section(Format, What, Section, !Categories, !LineCord),
-    acc_help_sections(Format, What, Sections, !Categories, !LineCord).
+        !Categories, !MenuItemCord, !LineCord) :-
+    acc_help_section(Format, What, Section,
+        !Categories, !MenuItemCord, !LineCord),
+    acc_help_sections(Format, What, Sections,
+        !Categories, !MenuItemCord, !LineCord).
 
 :- pred acc_help_section(help_format, print_what_help, help_section,
-    set(option_category), set(option_category), cord(string), cord(string)).
-:- mode acc_help_section(in(help_plain_text), in, in, in, out, in, out) is det.
-:- mode acc_help_section(in(help_texinfo), in, in, in, out, in, out) is det.
+    set(option_category), set(option_category),
+    cord(menu_item), cord(menu_item), cord(string), cord(string)).
+:- mode acc_help_section(in(help_plain_text), in, in,
+    in, out, in, out, in, out) is det.
+:- mode acc_help_section(in(help_texinfo), in, in,
+    in, out, in, out, in, out) is det.
 
-acc_help_section(Format, What, Section, !Categories, !LineCord) :-
+acc_help_section(Format, What, Section,
+        !Categories, !MenuItemCord, !LineCord) :-
     (
         Section = one_level_section(SubSection),
-        acc_help_subsection(Format, What, "", SubSection,
-            !Categories, !LineCord)
-    ;
-        Section = two_level_section(SectionName, SectionCommentLines,
-            SubSections),
-        ( Format = help_plain_text, SubSectionIndent = single_indent
-        ; Format = help_texinfo,    SubSectionIndent = ""
-        ),
-        acc_help_subsections(Format, What, SubSectionIndent, SubSections,
-            !Categories, cord.init, SubSectionsLineCord),
-        ( if cord.is_empty(SubSectionsLineCord) then
-            true
+        SubSection = help_option_group(GroupName, MenuDesc, _, _),
+        acc_help_option_group(Format, What, sos_section, SubSection,
+            !Categories, cord.init, _MenuItemCord,
+            !LineCord, 0, NumDocOpts),
+        ( if NumDocOpts > 0 then
+            cord.snoc(menu_item(GroupName, MenuDesc), !MenuItemCord)
         else
-            cord.snoc("", !LineCord),
+            true
+        )
+    ;
+        Section = two_level_section(SectionName, SectionDesc,
+            CommentLines, SubSections),
+        acc_help_subsections(Format, What, SubSections,
+            !Categories, cord.init, SubMenuItemCord,
+            cord.init, SubSectionsLineCord, 0, NumDocOpts),
+        (
+            Format = help_plain_text,
+            ( if NumDocOpts = 0 then
+                true
+            else
+                some [!GroupLineCord]
+                (
+                    !:GroupLineCord = cord.init,
+                    cord.snoc("", !GroupLineCord),
+                    cord.snoc(SectionName, !GroupLineCord),
+                    (
+                        CommentLines = []
+                    ;
+                        CommentLines = [_ | _],
+                        cord.snoc("", !GroupLineCord),
+                        !:GroupLineCord = !.GroupLineCord ++
+                            cord.from_list(CommentLines)
+                    ),
+                    !:GroupLineCord = !.GroupLineCord ++ SubSectionsLineCord,
+                    !:LineCord = !.LineCord ++ !.GroupLineCord
+                )
+            )
+        ;
+            Format = help_texinfo,
+            some [!GroupLineCord]
             (
-                Format = help_plain_text,
-                cord.snoc(SectionName, !LineCord)
-            ;
-                Format = help_texinfo,
-                % ZZZ
-                cord.snoc("@node " ++ SectionName, !LineCord),
-                cord.snoc("@subsection " ++ SectionName, !LineCord),
-                cord.snoc("@cindex " ++ SectionName, !LineCord)
-            ),
-            (
-                SectionCommentLines = []
-            ;
-                SectionCommentLines = [_ | _],
-                cord.snoc("", !LineCord),
-                list.foldl(acc_prefixed_line(""),
-                    SectionCommentLines, !LineCord)
-            ),
-            !:LineCord = !.LineCord ++ SubSectionsLineCord
+                !:GroupLineCord = cord.init,
+                cord.snoc("", !GroupLineCord),
+                cord.snoc("@node " ++ SectionName, !GroupLineCord),
+                cord.snoc("@section " ++ SectionName, !GroupLineCord),
+                cord.snoc("@cindex " ++ SectionName, !GroupLineCord),
+                cord.snoc("", !GroupLineCord),
+                SubMenuLines = menu_items_to_menu(cord.list(SubMenuItemCord)),
+                !:GroupLineCord = !.GroupLineCord ++
+                    cord.from_list(SubMenuLines),
+                (
+                    CommentLines = []
+                ;
+                    CommentLines = [_ | _],
+                    cord.snoc("", !GroupLineCord),
+                    !:GroupLineCord = !.GroupLineCord ++
+                        cord.from_list(CommentLines)
+                ),
+                % If we did not gather any non-commented-out option help texts,
+                % then comment out the group header as well.
+                %
+                % Include a menu item for this section only if the section
+                % has *some* non-commented-out parts.
+                ( if NumDocOpts = 0 then
+                    comment_out_texinfo_lines(!GroupLineCord)
+                else
+                    cord.snoc(menu_item(SectionName, SectionDesc),
+                        !MenuItemCord)
+                ),
+                !:GroupLineCord = !.GroupLineCord ++ SubSectionsLineCord,
+                !:LineCord = !.LineCord ++ !.GroupLineCord
+            )
         )
     ).
 
-:- pred acc_help_subsections(help_format, print_what_help, string,
-    list(help_subsection), set(option_category), set(option_category),
-    cord(string), cord(string)).
-:- mode acc_help_subsections(in(help_plain_text), in, in, in,
-    in, out, in, out) is det.
-:- mode acc_help_subsections(in(help_texinfo), in, in, in,
-    in, out, in, out) is det.
+:- pred acc_help_subsections(help_format, print_what_help,
+    list(help_option_group), set(option_category), set(option_category),
+    cord(menu_item), cord(menu_item), cord(string), cord(string), int, int).
+:- mode acc_help_subsections(in(help_plain_text), in, in,
+    in, out, in, out, in, out, in, out) is det.
+:- mode acc_help_subsections(in(help_texinfo), in, in,
+    in, out, in, out, in, out, in, out) is det.
 
-acc_help_subsections(_, _, _, [], !Categories, !LineCord).
-acc_help_subsections(Format, What, SubSectionNameIndent,
-        [SubSection | SubSections], !Categories, !LineCord) :-
-    acc_help_subsection(Format, What, SubSectionNameIndent,
-        SubSection, !Categories, !LineCord),
-    acc_help_subsections(Format, What, SubSectionNameIndent,
-        SubSections, !Categories, !LineCord).
+acc_help_subsections(_, _, [],
+        !Categories, !MenuItemCord, !LineCord, !NumDocOpts).
+acc_help_subsections(Format, What, [SubSection | SubSections],
+        !Categories, !MenuItemCord, !LineCord, !NumDocOpts) :-
+    acc_help_option_group(Format, What, sos_subsection, SubSection,
+        !Categories, !MenuItemCord, !LineCord, !NumDocOpts),
+    acc_help_subsections(Format, What, SubSections,
+        !Categories, !MenuItemCord, !LineCord, !NumDocOpts).
 
-:- pred acc_help_subsection(help_format, print_what_help, string,
-    help_subsection, set(option_category), set(option_category),
-    cord(string), cord(string)).
-:- mode acc_help_subsection(in(help_plain_text), in, in, in,
-    in, out, in, out) is det.
-:- mode acc_help_subsection(in(help_texinfo), in, in, in,
-    in, out, in, out) is det.
+:- pred acc_help_option_group(help_format, print_what_help,
+    section_or_subsection, help_option_group,
+    set(option_category), set(option_category),
+    cord(menu_item), cord(menu_item), cord(string), cord(string), int, int).
+:- mode acc_help_option_group(in(help_plain_text), in, in, in,
+    in, out, in, out, in, out, in, out) is det.
+:- mode acc_help_option_group(in(help_texinfo), in, in, in,
+    in, out, in, out, in, out, in, out) is det.
 
-acc_help_subsection(Format, What, SubSectionNameIndent, SubSection,
-        !Categories, !LineCord) :-
-    SubSection = help_subsection(SubSectionName, SubSectionCommentLines,
-        SubSectionCategories),
-    set.det_remove_list(SubSectionCategories, !Categories),
-    list.map(get_optdb_records_in_category,
-        SubSectionCategories, OptdbRecordSets),
+acc_help_option_group(Format, What, SubOrNot, Group,
+        !Categories, !MenuItemCord, !LineCord, !NumDocOpts) :-
+    Group = help_option_group(GroupName, MenuDesc, CommentLines, Categories),
+    cord.snoc(menu_item(GroupName, MenuDesc), !MenuItemCord),
+    set.det_remove_list(Categories, !Categories),
+    list.map(get_optdb_records_in_category, Categories, OptdbRecordSets),
     OptdbRecordSet = set.union_list(OptdbRecordSets),
 
     acc_help_messages(Format, What, set.to_sorted_list(OptdbRecordSet),
-        cord.init, HelpTextLinesCord, 0, NumDocOpts),
-    ( if NumDocOpts = 0 then
-        true
-    else
-        cord.snoc("", !LineCord),
-        (
-            Format = help_plain_text,
-            cord.snoc(SubSectionNameIndent ++ SubSectionName, !LineCord)
-        ;
-            Format = help_texinfo,
-            % ZZZ
-            cord.snoc("@node " ++ SubSectionName, !LineCord),
-            cord.snoc("@subsection " ++ SubSectionName, !LineCord),
-            cord.snoc("@cindex " ++ SubSectionName, !LineCord)
+        cord.init, HelpTextLinesCord, 0, GroupNumDocOpts),
+    !:NumDocOpts = !.NumDocOpts + GroupNumDocOpts,
+    (
+        Format = help_plain_text,
+        ( if GroupNumDocOpts = 0 then
+            true
+        else
+            % Let section names start at the left margin, but
+            % indent the names of subsections.
+            ( SubOrNot = sos_section,    NameIndent = ""
+            ; SubOrNot = sos_subsection, NameIndent = single_indent
+            ),
+            some [!GroupLineCord]
+            (
+                !:GroupLineCord = cord.init,
+                cord.snoc("", !GroupLineCord),
+                cord.snoc(NameIndent ++ GroupName, !GroupLineCord),
+                (
+                    CommentLines = []
+                ;
+                    CommentLines = [_ | _],
+                    cord.snoc("", !GroupLineCord),
+                    list.foldl(acc_prefixed_line(NameIndent),
+                        CommentLines, !GroupLineCord)
+                ),
+                !:GroupLineCord = !.GroupLineCord ++ HelpTextLinesCord,
+                !:LineCord = !.LineCord ++ !.GroupLineCord
+            )
+        )
+    ;
+        Format = help_texinfo,
+        ( SubOrNot = sos_section,    SubOrNotStr = "@section "
+        ; SubOrNot = sos_subsection, SubOrNotStr = "@subsection "
         ),
+        some [!GroupStartLineCord, !GroupEndLineCord]
         (
-            SubSectionCommentLines = []
-        ;
-            SubSectionCommentLines = [_ | _],
-            cord.snoc("", !LineCord),
-            list.foldl(acc_prefixed_line(SubSectionNameIndent),
-                SubSectionCommentLines, !LineCord)
-        ),
-        !:LineCord = !.LineCord ++ HelpTextLinesCord
+            !:GroupStartLineCord = cord.init,
+            !:GroupEndLineCord = cord.init,
+            cord.snoc("", !GroupStartLineCord),
+            cord.snoc("@node " ++ GroupName, !GroupStartLineCord),
+            cord.snoc(SubOrNotStr ++ GroupName, !GroupStartLineCord),
+            cord.snoc("@cindex " ++ GroupName, !GroupStartLineCord),
+            (
+                CommentLines = []
+            ;
+                CommentLines = [_ | _],
+                cord.snoc("", !GroupStartLineCord),
+                !:GroupStartLineCord = !.GroupStartLineCord ++
+                    cord.from_list(CommentLines)
+            ),
+            cord.snoc("", !GroupStartLineCord),
+            cord.snoc("@table @asis", !GroupStartLineCord),
+
+            cord.snoc("", !GroupEndLineCord),
+            cord.snoc("@end table", !GroupEndLineCord),
+
+            % If we did not gather any non-commented-out option help texts,
+            % then comment out the group header as well.
+            ( if GroupNumDocOpts = 0 then
+                !:GroupStartLineCord = cord.map(comment_out_texinfo_line,
+                    !.GroupStartLineCord),
+                !:GroupEndLineCord = cord.map(comment_out_texinfo_line,
+                    !.GroupEndLineCord)
+            else
+                true
+            ),
+            GroupLineCord = !.GroupStartLineCord ++ HelpTextLinesCord ++
+                !.GroupEndLineCord,
+            !:LineCord = !.LineCord ++ GroupLineCord
+        )
     ).
 
 :- pred get_optdb_records_in_category(option_category::in,
@@ -657,30 +845,24 @@ get_optdb_record_params(OptdbRecord, Params) :-
 acc_help_messages(_, _, [], !EffectiveLinesCord, !NumDocOpts).
 acc_help_messages(Format, What, [OptdbRecord | OptdbRecords],
         !EffectiveLinesCord, !NumDocOpts) :-
-    acc_help_message(Format, What, OptdbRecord, !EffectiveLinesCord,
-        !NumDocOpts),
+    (
+        Format = help_plain_text,
+        acc_help_message_plain(What, OptdbRecord, !EffectiveLinesCord,
+            !NumDocOpts)
+    ;
+        Format = help_texinfo,
+        % For the user guide, we always add documentation for every option,
+        % though private ones are commented out.
+        acc_help_message_texinfo(OptdbRecord, !EffectiveLinesCord, !NumDocOpts)
+    ),
     acc_help_messages(Format, What, OptdbRecords, !EffectiveLinesCord,
         !NumDocOpts).
 
-:- pred acc_help_message(help_format, print_what_help, optdb_record,
-    cord(string), cord(string), int, int).
-:- mode acc_help_message(in(help_plain_text), in, in, in, out, in, out) is det.
-:- mode acc_help_message(in(help_texinfo), in, in, in, out, in, out) is det.
+:- pred acc_help_message_plain(print_what_help::in, optdb_record::in,
+    cord(string)::in, cord(string)::out, int::in, int::out) is det.
 
-acc_help_message(Format, What, OptdbRecord,
-        !EffectiveLinesCord, !NumDocOpts) :-
+acc_help_message_plain(What, OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
     get_optdb_record_params(OptdbRecord, Params),
-    % XXX We could automatically add "(This option is not for general use.)"
-    % to the start of the description of every private option, to save
-    % the repetition of including it in help_private structures.
-    %
-    % We currently handle this message quite badly. First, we do not include it
-    % in many help_private structures (which, to be fair, won't matter
-    % until we implement callers that specify print_public_and_private_help.
-    % Second, we *do* include it in a few help_public structures, in which
-    % cases it gives non-developer readers useless information. To make
-    % the message useful, the message would have to say *in what situations*
-    % the option may be relevant to non-developers.
     OptdbRecord = optdb_record(_Cat, Option, OptionData, Help),
     some [!LineCord]
     (
@@ -691,10 +873,6 @@ acc_help_message(Format, What, OptdbRecord,
             DescPieces = []
         ;
             Help = unnamed_help(DescPieces),
-            % XXX It is quite likely that many options that do not have entries
-            % in the long_table predicate, which therefore should be in optdb
-            % with unnamed_help, are there with some other help structure,
-            % such as priv_help.
             PublicOrPrivate = help_private,
             string.format("%sUNNAMED OPTION %s",
                 [s(single_indent), s(string(Option))], NameLine),
@@ -702,11 +880,11 @@ acc_help_message(Format, What, OptdbRecord,
         ;
             Help = gen_help(ShortNames, LongName, AltLongNames,
                 PublicOrPrivate, DescPieces),
-            acc_short_option_names(Params, Option, no_arg, no_align,
+            acc_short_option_names_plain(Params, Option, no_arg, no_align,
                 ShortNames, !LineCord),
-            acc_long_option_name(Params, Option, no_arg, no_align,
+            acc_long_option_name_plain(Params, Option, no_arg, no_align,
                 LongName, !LineCord),
-            acc_long_option_names(Params, Option, no_arg, no_align,
+            acc_long_option_names_plain(Params, Option, no_arg, no_align,
                 AltLongNames, !LineCord)
         ;
             (
@@ -726,7 +904,7 @@ acc_help_message(Format, What, OptdbRecord,
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_private
             ),
-            acc_long_option_name(Params, Option, MaybeArg, no_align,
+            acc_long_option_name_plain(Params, Option, MaybeArg, no_align,
                 LongName, !LineCord)
         ;
             (
@@ -748,9 +926,9 @@ acc_help_message(Format, What, OptdbRecord,
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_private
             ),
-            acc_long_option_name(Params, Option, MaybeArg, no_align,
+            acc_long_option_name_plain(Params, Option, MaybeArg, no_align,
                 LongName, !LineCord),
-            acc_long_option_names(Params, Option, MaybeArg, no_align,
+            acc_long_option_names_plain(Params, Option, MaybeArg, no_align,
                 AltLongNames, !LineCord)
         ;
             (
@@ -774,11 +952,11 @@ acc_help_message(Format, What, OptdbRecord,
                 MaybeArg = arg_name(ArgName),
                 PublicOrPrivate = help_private
             ),
-            acc_short_option_name(Params, Option, MaybeArg, no_align,
+            acc_short_option_name_plain(Params, Option, MaybeArg, no_align,
                 ShortName, !LineCord),
-            acc_long_option_name(Params, Option, MaybeArg, no_align,
+            acc_long_option_name_plain(Params, Option, MaybeArg, no_align,
                 LongName, !LineCord),
-            acc_long_option_names(Params, Option, MaybeArg, no_align,
+            acc_long_option_names_plain(Params, Option, MaybeArg, no_align,
                 AltLongNames, !LineCord)
         ;
             (
@@ -792,21 +970,21 @@ acc_help_message(Format, What, OptdbRecord,
             ),
             MaybeArg = no_arg,
             Align = aligned_text(AlignedText),
-            acc_long_option_name(Params, Option, MaybeArg, Align,
+            acc_long_option_name_plain(Params, Option, MaybeArg, Align,
                 LongName, !LineCord),
             % The aligned text is added only to the first option name line.
-            acc_long_option_names(Params, Option, MaybeArg, no_align,
+            acc_long_option_names_plain(Params, Option, MaybeArg, no_align,
                 AltLongNames, !LineCord)
         ;
             Help = short_alt_align_help(ShortName, LongName, AltLongNames,
                 AlignedText, DescPieces),
             PublicOrPrivate = help_public,
-            acc_short_option_name(Params, Option, no_arg,
+            acc_short_option_name_plain(Params, Option, no_arg,
                 aligned_text(AlignedText), ShortName, !LineCord),
             % The aligned text is added only to the first option name line.
-            acc_long_option_name(Params, Option, no_arg, no_align,
+            acc_long_option_name_plain(Params, Option, no_arg, no_align,
                 LongName, !LineCord),
-            acc_long_option_names(Params, Option, no_arg, no_align,
+            acc_long_option_names_plain(Params, Option, no_arg, no_align,
                 AltLongNames, !LineCord)
         ;
             Help = no_align_help(LongName, AlignedText, NoAlignedText,
@@ -815,9 +993,9 @@ acc_help_message(Format, What, OptdbRecord,
             expect(is_bool(OptionData), $pred,
                 "unexpected use of no_align_help"),
             ParamsNN = Params ^ op_negate := do_not_negate,
-            FirstLine0 = long_option_name_line(ParamsNN, Option, no_arg,
-                LongName),
-            SecondLine0 = long_negated_option_name_line(LongName),
+            FirstLine0 = long_option_name_line_plain(ParamsNN, Option,
+                no_arg, LongName),
+            SecondLine0 = long_negated_option_name_line_plain(LongName),
             % In this case, we add *different* aligned text to each line.
             add_aligned_text(AlignedText, FirstLine0, FirstLine),
             add_aligned_text(NoAlignedText, SecondLine0, SecondLine),
@@ -827,7 +1005,7 @@ acc_help_message(Format, What, OptdbRecord,
             Help = alt_arg_align_help(LongName, ArgAligns, DescPieces),
             PublicOrPrivate = help_public,
             % In this case, we add *different* aligned text to each line.
-            list.foldl(acc_arg_align_text(Params, Option, LongName),
+            list.foldl(acc_arg_align_text_plain(Params, Option, LongName),
                 ArgAligns, !LineCord)
         ),
         ( if
@@ -855,46 +1033,213 @@ acc_help_message(Format, What, OptdbRecord,
                     EffDescPieces = DescPieces
                 ),
                 % ZZZ 71
-                reflow_lines(Format, 71, EffDescPieces, ReflowLines),
+                reflow_lines(help_plain_text, 71, EffDescPieces, ReflowLines),
                 BlankLineCord = cord.singleton(""),
+                list.foldl(acc_prefixed_line(DescPrefix), ReflowLines,
+                    !LineCord),
                 (
-                    Format = help_plain_text,
-                    list.foldl(acc_prefixed_line(DescPrefix), ReflowLines,
-                        !LineCord),
-                    (
-                        PublicOrPrivate = help_public,
-                        PrivatePrefixCord = cord.init
-                    ;
-                        PublicOrPrivate = help_private,
-                        PrivatePrefixCord =
-                            cord.singleton(single_indent ++ "PRIVATE OPTION")
-                    ),
-                    !:EffectiveLinesCord = !.EffectiveLinesCord ++
-                        BlankLineCord ++ PrivatePrefixCord ++ !.LineCord
+                    PublicOrPrivate = help_public,
+                    PrivatePrefixCord = cord.init
                 ;
-                    Format = help_texinfo,
-                    !:LineCord = !.LineCord ++ cord.from_list(ReflowLines),
-                    (
-                        PublicOrPrivate = help_public
-                    ;
-                        PublicOrPrivate = help_private,
-                        AddCommentPrefix = ( func(L) = "@c " ++ L ),
-                        !:LineCord = cord.map(AddCommentPrefix, !.LineCord)
-                    ),
-                    !:EffectiveLinesCord = !.EffectiveLinesCord ++
-                        BlankLineCord ++ !.LineCord
-                )
+                    PublicOrPrivate = help_private,
+                    PrivatePrefixCord =
+                        cord.singleton(single_indent ++ "PRIVATE OPTION")
+                ),
+                !:EffectiveLinesCord = !.EffectiveLinesCord ++
+                    BlankLineCord ++ PrivatePrefixCord ++ !.LineCord
             )
         else
             true
         )
     ).
 
-    % ZZZ revisit for texinfo
-:- pred acc_arg_align_text(option_params::in, option::in, string::in,
+%---------------------%
+
+:- pred acc_help_message_texinfo(optdb_record::in,
+    cord(string)::in, cord(string)::out, int::in, int::out) is det.
+
+acc_help_message_texinfo(OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
+    get_optdb_record_params(OptdbRecord, Params),
+    OptdbRecord = optdb_record(_Cat, Option, OptionData, Help),
+    some [!LineCord, !OptLineCord, !IndexLineCord]
+    (
+        !:OptLineCord = cord.init,
+        !:IndexLineCord = cord.init,
+        (
+            Help = no_help,
+            PublicOrPrivate = help_private,
+            string.format("NO_HELP OPTION %s", [s(string(Option))], NameLine),
+            cord.snoc(NameLine, !OptLineCord),
+            DescPieces = []
+        ;
+            Help = unnamed_help(DescPieces),
+            PublicOrPrivate = help_private,
+            string.format("UNNAMED OPTION %s", [s(string(Option))], NameLine),
+            cord.snoc(NameLine, !OptLineCord)
+        ;
+            Help = gen_help(ShortNames, LongName, AltLongNames,
+                PublicOrPrivate, DescPieces),
+            acc_short_option_names_texinfo(Params, Option, no_arg, no_align,
+                ShortNames, !OptLineCord, !IndexLineCord),
+            acc_long_option_name_texinfo(Params, Option, no_arg, no_align,
+                LongName, !OptLineCord, !IndexLineCord),
+            acc_long_option_names_texinfo(Params, Option, no_arg, no_align,
+                AltLongNames, !OptLineCord, !IndexLineCord)
+        ;
+            (
+                Help = help(LongName, DescPieces),
+                MaybeArg = no_arg,
+                PublicOrPrivate = help_public
+            ;
+                Help = arg_help(LongName, ArgName, DescPieces),
+                MaybeArg = arg_name(ArgName),
+                PublicOrPrivate = help_public
+            ;
+                Help = priv_help(LongName, DescPieces),
+                MaybeArg = no_arg,
+                PublicOrPrivate = help_private
+            ;
+                Help = priv_arg_help(LongName, ArgName, DescPieces),
+                MaybeArg = arg_name(ArgName),
+                PublicOrPrivate = help_private
+            ),
+            acc_long_option_name_texinfo(Params, Option, MaybeArg, no_align,
+                LongName, !OptLineCord, !IndexLineCord)
+        ;
+            (
+                Help = alt_help(LongName, AltLongNames, DescPieces),
+                MaybeArg = no_arg,
+                PublicOrPrivate = help_public
+            ;
+                Help = alt_arg_help(LongName, AltLongNames, ArgName,
+                    DescPieces),
+                MaybeArg = arg_name(ArgName),
+                PublicOrPrivate = help_public
+            ;
+                Help = priv_alt_help(LongName, AltLongNames, DescPieces),
+                MaybeArg = no_arg,
+                PublicOrPrivate = help_private
+            ;
+                Help = priv_alt_arg_help(LongName, AltLongNames, ArgName,
+                    DescPieces),
+                MaybeArg = arg_name(ArgName),
+                PublicOrPrivate = help_private
+            ),
+            acc_long_option_name_texinfo(Params, Option, MaybeArg, no_align,
+                LongName, !OptLineCord, !IndexLineCord),
+            acc_long_option_names_texinfo(Params, Option, MaybeArg, no_align,
+                AltLongNames, !OptLineCord, !IndexLineCord)
+        ;
+            (
+                Help = short_help(ShortName, LongName, AltLongNames,
+                    DescPieces),
+                MaybeArg = no_arg,
+                PublicOrPrivate = help_public
+            ;
+                Help = short_arg_help(ShortName, LongName, AltLongNames,
+                    ArgName, DescPieces),
+                MaybeArg = arg_name(ArgName),
+                PublicOrPrivate = help_public
+            ;
+                Help = priv_short_help(ShortName, LongName, AltLongNames,
+                    DescPieces),
+                MaybeArg = no_arg,
+                PublicOrPrivate = help_private
+            ;
+                Help = priv_short_arg_help(ShortName, LongName, AltLongNames,
+                    ArgName, DescPieces),
+                MaybeArg = arg_name(ArgName),
+                PublicOrPrivate = help_private
+            ),
+            acc_short_option_name_texinfo(Params, Option, MaybeArg, no_align,
+                ShortName, !OptLineCord, !IndexLineCord),
+            acc_long_option_name_texinfo(Params, Option, MaybeArg, no_align,
+                LongName, !OptLineCord, !IndexLineCord),
+            acc_long_option_names_texinfo(Params, Option, MaybeArg, no_align,
+                AltLongNames, !OptLineCord, !IndexLineCord)
+        ;
+            (
+                Help = alt_align_help(LongName, AltLongNames,
+                    AlignedText, DescPieces),
+                PublicOrPrivate = help_public
+            ;
+                Help = priv_alt_align_help(LongName, AltLongNames,
+                    AlignedText, DescPieces),
+                PublicOrPrivate = help_private
+            ),
+            MaybeArg = no_arg,
+            Align = aligned_text(AlignedText),
+            acc_long_option_name_texinfo(Params, Option, MaybeArg, Align,
+                LongName, !OptLineCord, !IndexLineCord),
+            % The aligned text is added only to the first option name line.
+            acc_long_option_names_texinfo(Params, Option, MaybeArg, no_align,
+                AltLongNames, !OptLineCord, !IndexLineCord)
+        ;
+            Help = short_alt_align_help(ShortName, LongName, AltLongNames,
+                AlignedText, DescPieces),
+            PublicOrPrivate = help_public,
+            acc_short_option_name_texinfo(Params, Option, no_arg,
+                aligned_text(AlignedText), ShortName,
+                !OptLineCord, !IndexLineCord),
+            % The aligned text is added only to the first option name line.
+            acc_long_option_name_texinfo(Params, Option, no_arg, no_align,
+                LongName, !OptLineCord, !IndexLineCord),
+            acc_long_option_names_texinfo(Params, Option, no_arg, no_align,
+                AltLongNames, !OptLineCord, !IndexLineCord)
+        ;
+            Help = no_align_help(LongName, AlignedText, NoAlignedText,
+                DescPieces),
+            PublicOrPrivate = help_public,
+            expect(is_bool(OptionData), $pred,
+                "unexpected use of no_align_help"),
+            ParamsNN = Params ^ op_negate := do_not_negate,
+            long_option_name_lines_texinfo(ParamsNN, Option,
+                no_arg, LongName, FirstOptLine0, FirstIndexLine),
+            SecondOptLine0 = long_negated_option_name_texinfo(LongName),
+            SecondIndexLine = SecondOptLine0,
+            % In this case, we add *different* aligned text to each line.
+            FirstOptLine = FirstOptLine0 ++ " " ++ AlignedText,
+            SecondOptLine = SecondOptLine0 ++ " " ++ NoAlignedText,
+            add_option_line_texinfo(FirstOptLine, !OptLineCord),
+            add_option_line_texinfo(SecondOptLine, !OptLineCord),
+            add_index_line_texinfo(FirstIndexLine, !IndexLineCord),
+            add_index_line_texinfo(SecondIndexLine, !IndexLineCord)
+        ;
+            Help = alt_arg_align_help(LongName, ArgAligns, DescPieces),
+            PublicOrPrivate = help_public,
+            % In this case, we add *different* aligned text to each line.
+            list.foldl2(acc_arg_align_text_texinfo(Params, Option, LongName),
+                ArgAligns, !OptLineCord, !IndexLineCord)
+        ),
+        (
+            DescPieces = [],
+            EffDescPieces = [w("There is no help text available.")]
+        ;
+            DescPieces = [_ | _],
+            EffDescPieces = DescPieces
+        ),
+        % ZZZ 71
+        reflow_lines(help_texinfo, 71, EffDescPieces, ReflowLines),
+        BlankLineCord = cord.singleton(""),
+        !:LineCord = !.OptLineCord ++ !.IndexLineCord ++
+            cord.from_list(ReflowLines),
+        (
+            PublicOrPrivate = help_public,
+            !:NumDocOpts = !.NumDocOpts + 1
+        ;
+            PublicOrPrivate = help_private,
+            comment_out_texinfo_lines(!LineCord)
+        ),
+        !:EffectiveLinesCord = !.EffectiveLinesCord ++
+            BlankLineCord ++ !.LineCord
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred acc_arg_align_text_plain(option_params::in, option::in, string::in,
     arg_align::in, cord(string)::in, cord(string)::out) is det.
 
-acc_arg_align_text(Params, Option, LongName, ArgAlign, !LineCord) :-
+acc_arg_align_text_plain(Params, Option, LongName, ArgAlign, !LineCord) :-
     Params = option_params(MaybeExpectArg, MaybeNegate, MaybeAddNegVersion),
     expect(unify(MaybeExpectArg, expect_arg), $pred,
         "unexpected MaybeExpectArg"),
@@ -904,15 +1249,33 @@ acc_arg_align_text(Params, Option, LongName, ArgAlign, !LineCord) :-
         "unexpected MaybeAddNegVersion"),
 
     ArgAlign = arg_align(ArgName, AlignedText),
-    Line0 = long_option_name_line(Params, Option, arg_name(ArgName), LongName),
+    Line0 = long_option_name_line_plain(Params, Option,
+        arg_name(ArgName), LongName),
     add_aligned_text(AlignedText, Line0, Line),
     cord.snoc(Line, !LineCord).
 
-:- pred is_bool(option_data::in) is semidet.
+:- pred acc_arg_align_text_texinfo(option_params::in, option::in, string::in,
+    arg_align::in, cord(string)::in, cord(string)::out,
+    cord(string)::in, cord(string)::out) is det.
 
-is_bool(bool(_)).
+acc_arg_align_text_texinfo(Params, Option, LongName, ArgAlign,
+        !OptLineCord, !IndexLineCord) :-
+    Params = option_params(MaybeExpectArg, MaybeNegate, MaybeAddNegVersion),
+    expect(unify(MaybeExpectArg, expect_arg), $pred,
+        "unexpected MaybeExpectArg"),
+    expect(unify(MaybeNegate, do_not_negate), $pred,
+        "unexpected MaybeNegate"),
+    expect(unify(MaybeAddNegVersion, no_negative_version), $pred,
+        "unexpected MaybeAddNegVersion"),
 
-%---------------------------------------------------------------------------%
+    ArgAlign = arg_align(ArgName, AlignedText),
+    long_option_name_lines_texinfo(Params, Option, arg_name(ArgName), LongName,
+        OptLine0, IndexLine),
+    OptLine = OptLine0 ++ " " ++ AlignedText,
+    add_option_line_texinfo(OptLine, !OptLineCord),
+    add_index_line_texinfo(IndexLine, !IndexLineCord).
+
+%---------------------%
 
 :- type maybe_arg_name
     --->    no_arg
@@ -922,52 +1285,89 @@ is_bool(bool(_)).
     --->    no_align
     ;       aligned_text(string).
 
-% The next two predicates next are needed because folds over
-% acc_{long,short}_option_name do not preserve the inst of the
+%---------------------%
+
+% The next four predicates next are needed because folds over
+% acc_{long,short}_option_name_{plain,texinfo} do not preserve the inst of the
 % maybe_aligned_text argument.
 
-:- pred acc_long_option_names(option_params, option, maybe_arg_name,
+:- pred acc_long_option_names_plain(option_params, option, maybe_arg_name,
     maybe_aligned_text, list(string), cord(string), cord(string)).
-:- mode acc_long_option_names(in, in, in, in(bound(no_align)),
-    in, in, out) is det.
-:- mode acc_long_option_names(in, in, in, in(bound(aligned_text(ground))),
-    in, in, out) is det.
+:- mode acc_long_option_names_plain(in, in, in,
+    in(bound(no_align)), in, in, out) is det.
+:- mode acc_long_option_names_plain(in, in, in,
+    in(bound(aligned_text(ground))), in, in, out) is det.
 
-acc_long_option_names(_, _, _, _, [], !LineCord).
-acc_long_option_names(Params, Option, MaybeArgName, MaybeAlignedText,
-        [LongName | LongNames], !LineCord) :-
-    acc_long_option_name(Params, Option, MaybeArgName, MaybeAlignedText,
-        LongName, !LineCord),
-    acc_long_option_names(Params, Option, MaybeArgName, MaybeAlignedText,
-        LongNames, !LineCord).
+acc_long_option_names_plain(_, _, _, _, [], !LineCord).
+acc_long_option_names_plain(Params, Option, MaybeArgName,
+        MaybeAlignedText, [LongName | LongNames], !LineCord) :-
+    acc_long_option_name_plain(Params, Option, MaybeArgName,
+        MaybeAlignedText, LongName, !LineCord),
+    acc_long_option_names_plain(Params, Option, MaybeArgName,
+        MaybeAlignedText, LongNames, !LineCord).
 
-:- pred acc_short_option_names(option_params, option, maybe_arg_name,
+:- pred acc_short_option_names_plain(option_params, option, maybe_arg_name,
     maybe_aligned_text, list(char), cord(string), cord(string)).
-:- mode acc_short_option_names(in, in, in, in(bound(no_align)),
-    in, in, out) is det.
-:- mode acc_short_option_names(in, in, in, in(bound(aligned_text(ground))),
-    in, in, out) is det.
+:- mode acc_short_option_names_plain(in, in, in,
+    in(bound(no_align)), in, in, out) is det.
+:- mode acc_short_option_names_plain(in, in, in,
+    in(bound(aligned_text(ground))), in, in, out) is det.
 
-acc_short_option_names(_, _, _, _, [], !LineCord).
-acc_short_option_names(Params, Option, MaybeArgName, MaybeAlignedText,
-        [ShortName | ShortNames], !LineCord) :-
-    acc_short_option_name(Params, Option, MaybeArgName, MaybeAlignedText,
-        ShortName, !LineCord),
-    acc_short_option_names(Params, Option, MaybeArgName, MaybeAlignedText,
-        ShortNames, !LineCord).
+acc_short_option_names_plain(_, _, _, _, [], !LineCord).
+acc_short_option_names_plain(Params, Option, MaybeArgName,
+        MaybeAlignedText, [ShortName | ShortNames], !LineCord) :-
+    acc_short_option_name_plain(Params, Option, MaybeArgName,
+        MaybeAlignedText, ShortName, !LineCord),
+    acc_short_option_names_plain(Params, Option, MaybeArgName,
+        MaybeAlignedText, ShortNames, !LineCord).
 
-%---------------------------------------------------------------------------%
+:- pred acc_long_option_names_texinfo(option_params, option, maybe_arg_name,
+    maybe_aligned_text, list(string),
+    cord(string), cord(string), cord(string), cord(string)).
+:- mode acc_long_option_names_texinfo(in, in, in,
+    in(bound(no_align)), in, in, out, in, out) is det.
+:- mode acc_long_option_names_texinfo(in, in, in,
+    in(bound(aligned_text(ground))), in, in, out, in, out) is det.
 
-:- pred acc_long_option_name(option_params, option, maybe_arg_name,
+acc_long_option_names_texinfo(_, _, _, _, [], !OptLineCord, !IndexLineCord).
+acc_long_option_names_texinfo(Params, Option, MaybeArgName,
+        MaybeAlignedText, [LongName | LongNames],
+        !OptLineCord, !IndexLineCord) :-
+    acc_long_option_name_texinfo(Params, Option, MaybeArgName,
+        MaybeAlignedText, LongName, !OptLineCord, !IndexLineCord),
+    acc_long_option_names_texinfo(Params, Option, MaybeArgName,
+        MaybeAlignedText, LongNames, !OptLineCord, !IndexLineCord).
+
+:- pred acc_short_option_names_texinfo(option_params, option, maybe_arg_name,
+    maybe_aligned_text, list(char),
+    cord(string), cord(string), cord(string), cord(string)).
+:- mode acc_short_option_names_texinfo(in, in, in,
+    in(bound(no_align)), in, in, out, in, out) is det.
+:- mode acc_short_option_names_texinfo(in, in, in,
+    in(bound(aligned_text(ground))), in, in, out, in, out) is det.
+
+acc_short_option_names_texinfo(_, _, _, _, [], !OptLineCord, !IndexLineCord).
+acc_short_option_names_texinfo(Params, Option, MaybeArgName,
+        MaybeAlignedText, [ShortName | ShortNames],
+        !OptLineCord, !IndexLineCord) :-
+    acc_short_option_name_texinfo(Params, Option, MaybeArgName,
+        MaybeAlignedText, ShortName, !OptLineCord, !IndexLineCord),
+    acc_short_option_names_texinfo(Params, Option, MaybeArgName,
+        MaybeAlignedText, ShortNames, !OptLineCord, !IndexLineCord).
+
+%---------------------%
+
+:- pred acc_long_option_name_plain(option_params, option, maybe_arg_name,
     maybe_aligned_text, string, cord(string), cord(string)).
-:- mode acc_long_option_name(in, in, in, in(bound(no_align)),
-    in, in, out) is det.
-:- mode acc_long_option_name(in, in, in, in(bound(aligned_text(ground))),
-    in, in, out) is det.
+:- mode acc_long_option_name_plain(in, in, in,
+    in(bound(no_align)), in, in, out) is det.
+:- mode acc_long_option_name_plain(in, in, in,
+    in(bound(aligned_text(ground))), in, in, out) is det.
 
-acc_long_option_name(Params, Option, MaybeArgName, MaybeAlignedText,
+acc_long_option_name_plain(Params, Option, MaybeArgName, MaybeAlignedText,
         LongName, !LineCord) :-
-    FirstLine0 = long_option_name_line(Params, Option, MaybeArgName, LongName),
+    FirstLine0 = long_option_name_line_plain(Params, Option,
+        MaybeArgName, LongName),
     (
         MaybeAlignedText = no_align,
         FirstLine = FirstLine0
@@ -981,20 +1381,20 @@ acc_long_option_name(Params, Option, MaybeArgName, MaybeAlignedText,
         MaybeAddNegVersion = no_negative_version
     ;
         MaybeAddNegVersion = add_negative_version,
-        SecondLine = long_negated_option_name_line(LongName),
+        SecondLine = long_negated_option_name_line_plain(LongName),
         cord.snoc(SecondLine, !LineCord)
     ).
 
-:- pred acc_short_option_name(option_params, option, maybe_arg_name,
+:- pred acc_short_option_name_plain(option_params, option, maybe_arg_name,
     maybe_aligned_text, char, cord(string), cord(string)).
-:- mode acc_short_option_name(in, in, in, in(bound(no_align)),
-    in, in, out) is det.
-:- mode acc_short_option_name(in, in, in, in(bound(aligned_text(ground))),
-    in, in, out) is det.
+:- mode acc_short_option_name_plain(in, in, in,
+    in(bound(no_align)), in, in, out) is det.
+:- mode acc_short_option_name_plain(in, in, in,
+    in(bound(aligned_text(ground))), in, in, out) is det.
 
-acc_short_option_name(Params, Option, MaybeArgName, MaybeAlignedText,
+acc_short_option_name_plain(Params, Option, MaybeArgName, MaybeAlignedText,
         ShortName, !LineCord) :-
-    FirstLine0 = short_option_name_line(Params, Option, MaybeArgName,
+    FirstLine0 = short_option_name_line_plain(Params, Option, MaybeArgName,
         ShortName),
     (
         MaybeAlignedText = no_align,
@@ -1009,23 +1409,87 @@ acc_short_option_name(Params, Option, MaybeArgName, MaybeAlignedText,
         MaybeAddNegVersion = no_negative_version
     ;
         MaybeAddNegVersion = add_negative_version,
-        SecondLine = short_negated_option_name_line(ShortName),
+        SecondLine = short_negated_option_name_line_plain(ShortName),
         cord.snoc(SecondLine, !LineCord)
+    ).
+
+:- pred acc_long_option_name_texinfo(option_params, option, maybe_arg_name,
+    maybe_aligned_text, string,
+    cord(string), cord(string), cord(string), cord(string)).
+:- mode acc_long_option_name_texinfo(in, in, in,
+    in(bound(no_align)), in, in, out, in, out) is det.
+:- mode acc_long_option_name_texinfo(in, in, in,
+    in(bound(aligned_text(ground))), in, in, out, in, out) is det.
+
+acc_long_option_name_texinfo(Params, Option, MaybeArgName, MaybeAlignedText,
+        LongName, !OptLineCord, !IndexLineCord) :-
+    long_option_name_lines_texinfo(Params, Option, MaybeArgName, LongName,
+        FirstOptLine0, FirstIndexLine),
+    (
+        MaybeAlignedText = no_align,
+        FirstOptLine = FirstOptLine0
+    ;
+        MaybeAlignedText = aligned_text(AlignedText),
+        FirstOptLine = FirstOptLine0 ++ " " ++ AlignedText
+    ),
+    add_option_line_texinfo(FirstOptLine, !OptLineCord),
+    add_index_line_texinfo(FirstIndexLine, !IndexLineCord),
+    Params = option_params(_MaybeExpectArg, _MaybeNegate, MaybeAddNegVersion),
+    (
+        MaybeAddNegVersion = no_negative_version
+    ;
+        MaybeAddNegVersion = add_negative_version,
+        NegatedOptionName = long_negated_option_name_texinfo(LongName),
+        % ZZZ
+        add_option_line_texinfo(NegatedOptionName, !OptLineCord),
+        add_index_line_texinfo(NegatedOptionName, !IndexLineCord)
+    ).
+
+:- pred acc_short_option_name_texinfo(option_params, option, maybe_arg_name,
+    maybe_aligned_text, char,
+    cord(string), cord(string), cord(string), cord(string)).
+:- mode acc_short_option_name_texinfo(in, in, in,
+    in(bound(no_align)), in, in, out, in, out) is det.
+:- mode acc_short_option_name_texinfo(in, in, in,
+    in(bound(aligned_text(ground))), in, in, out, in, out) is det.
+
+acc_short_option_name_texinfo(Params, Option, MaybeArgName, MaybeAlignedText,
+        ShortName, !OptLineCord, !IndexLineCord) :-
+    short_option_name_lines_texinfo(Params, Option, MaybeArgName, ShortName,
+        FirstOptLine0, FirstIndexLine),
+    (
+        MaybeAlignedText = no_align,
+        FirstOptLine = FirstOptLine0
+    ;
+        MaybeAlignedText = aligned_text(AlignedText),
+        FirstOptLine = FirstOptLine0 ++ " " ++ AlignedText
+    ),
+    add_option_line_texinfo(FirstOptLine, !OptLineCord),
+    add_index_line_texinfo(FirstIndexLine, !IndexLineCord),
+    Params = option_params(_MaybeExpectArg, _MaybeNegate, MaybeAddNegVersion),
+    (
+        MaybeAddNegVersion = no_negative_version
+    ;
+        MaybeAddNegVersion = add_negative_version,
+        NegatedOptionName = short_negated_option_name_texinfo(ShortName),
+        % ZZZ
+        add_option_line_texinfo(NegatedOptionName, !OptLineCord),
+        add_index_line_texinfo(NegatedOptionName, !IndexLineCord)
     ).
 
 %---------------------%
 
-:- func long_option_name_line(option_params, option, maybe_arg_name, string)
-    = string.
+:- func long_option_name_line_plain(option_params, option, maybe_arg_name,
+    string) = string.
 
-long_option_name_line(Params, Option, MaybeArgName, LongName0) = Line :-
+long_option_name_line_plain(Params, Option, MaybeArgName, LongName0) = Line :-
     Indent = single_indent,
     Params = option_params(MaybeExpectArg, MaybeNegate, _MaybeAddNegVersion),
     (
         MaybeNegate = negate,
         maybe_have_arg(MaybeExpectArg, Option, MaybeArgName,
             LongName0, LongName),
-        Line = long_negated_option_name_line(LongName)
+        Line = long_negated_option_name_line_plain(LongName)
     ;
         MaybeNegate = do_not_negate,
         (
@@ -1035,23 +1499,24 @@ long_option_name_line(Params, Option, MaybeArgName, LongName0) = Line :-
         ;
             MaybeArgName = arg_name(ArgName),
             have_arg(MaybeExpectArg, Option, LongName0, LongName),
-            MaybeWrappedArgName = maybe_wrap_arg_name(Option, ArgName),
+            MaybeWrappedArgName = maybe_wrap_arg_name_plain(Option, ArgName),
             string.format("%s--%s %s",
                 [s(Indent), s(LongName), s(MaybeWrappedArgName)], Line)
         )
     ).
 
-:- func short_option_name_line(option_params, option, maybe_arg_name, char)
-    = string.
+:- func short_option_name_line_plain(option_params, option, maybe_arg_name,
+    char) = string.
 
-short_option_name_line(Params, Option, MaybeArgName, ShortName0) = Line :-
+short_option_name_line_plain(Params, Option, MaybeArgName, ShortName0)
+        = Line :-
     Indent = single_indent,
     Params = option_params(MaybeExpectArg, MaybeNegate, _MaybeAddNegVersion),
     (
         MaybeNegate = negate,
         maybe_have_arg(MaybeExpectArg, Option, MaybeArgName,
             ShortName0, ShortName),
-        Line = short_negated_option_name_line(ShortName)
+        Line = short_negated_option_name_line_plain(ShortName)
     ;
         MaybeNegate = do_not_negate,
         (
@@ -1061,41 +1526,109 @@ short_option_name_line(Params, Option, MaybeArgName, ShortName0) = Line :-
         ;
             MaybeArgName = arg_name(ArgName),
             have_arg(MaybeExpectArg, Option, ShortName0, ShortName),
-            MaybeWrappedArgName = maybe_wrap_arg_name(Option, ArgName),
+            MaybeWrappedArgName = maybe_wrap_arg_name_plain(Option, ArgName),
             string.format("%s-%c %s",
                 [s(Indent), c(ShortName), s(MaybeWrappedArgName)], Line)
         )
     ).
 
+:- pred long_option_name_lines_texinfo(option_params::in, option::in,
+    maybe_arg_name::in, string::in, string::out, string::out) is det.
+
+long_option_name_lines_texinfo(Params, Option, MaybeArgName, LongName0,
+        OptLine, IndexLine) :-
+    Params = option_params(MaybeExpectArg, MaybeNegate, _MaybeAddNegVersion),
+    (
+        MaybeNegate = negate,
+        maybe_have_arg(MaybeExpectArg, Option, MaybeArgName,
+            LongName0, LongName),
+        IndexLine = long_negated_option_name_texinfo(LongName),
+        string.format("@code{--no-%s}", [s(LongName)], OptLine)
+    ;
+        MaybeNegate = do_not_negate,
+        (
+            MaybeArgName = no_arg,
+            have_no_arg(MaybeExpectArg, Option, LongName0, LongName),
+            string.format("--%s", [s(LongName)], IndexLine),
+            string.format("@code{--%s}", [s(LongName)], OptLine)
+        ;
+            MaybeArgName = arg_name(ArgName),
+            have_arg(MaybeExpectArg, Option, LongName0, LongName),
+            MaybeWrappedArgName = maybe_wrap_arg_name_texinfo(Option, ArgName),
+            string.format("--%s", [s(LongName)], IndexLine),
+            string.format("@code{--%s %s}",
+                [s(LongName), s(MaybeWrappedArgName)], OptLine)
+        )
+    ).
+
+:- pred short_option_name_lines_texinfo(option_params::in, option::in,
+    maybe_arg_name::in, char::in, string::out, string::out) is det.
+
+short_option_name_lines_texinfo(Params, Option, MaybeArgName, ShortName0,
+        OptLine, IndexLine) :-
+    Params = option_params(MaybeExpectArg, MaybeNegate, _MaybeAddNegVersion),
+    (
+        MaybeNegate = negate,
+        maybe_have_arg(MaybeExpectArg, Option, MaybeArgName,
+            ShortName0, ShortName),
+        IndexLine = short_negated_option_name_texinfo(ShortName),
+        string.format("@code{-%c}", [c(ShortName)], OptLine)
+    ;
+        MaybeNegate = do_not_negate,
+        (
+            MaybeArgName = no_arg,
+            have_no_arg(MaybeExpectArg, Option, ShortName0, ShortName),
+            string.format("-%c", [c(ShortName)], IndexLine),
+            string.format("@code{-%c}", [c(ShortName)], OptLine)
+        ;
+            MaybeArgName = arg_name(ArgName),
+            have_arg(MaybeExpectArg, Option, ShortName0, ShortName),
+            MaybeWrappedArgName = maybe_wrap_arg_name_texinfo(Option, ArgName),
+            string.format("-%c", [c(ShortName)], IndexLine),
+            string.format("@code{-%c %s}",
+                [c(ShortName), s(MaybeWrappedArgName)], OptLine)
+        )
+    ).
+
 %---------------------%
 
-:- func long_negated_option_name_line(string) = string.
+:- func long_negated_option_name_line_plain(string) = string.
 
-long_negated_option_name_line(LongName) = Line :-
+long_negated_option_name_line_plain(LongName) = Line :-
     Indent = single_indent,
     string.format("%s--no-%s", [s(Indent), s(LongName)], Line).
 
-:- func short_negated_option_name_line(char) = string.
+:- func short_negated_option_name_line_plain(char) = string.
 
-short_negated_option_name_line(ShortName) = Line :-
+short_negated_option_name_line_plain(ShortName) = Line :-
     Indent = single_indent,
     string.format("%s-%c-", [s(Indent), c(ShortName)], Line).
 
+:- func long_negated_option_name_texinfo(string) = string.
+
+long_negated_option_name_texinfo(LongName) = NegatedLongName :-
+    string.format("--no-%s", [s(LongName)], NegatedLongName).
+
+:- func short_negated_option_name_texinfo(char) = string.
+
+short_negated_option_name_texinfo(ShortName) = NegatedShortName :-
+    string.format("-%c-", [c(ShortName)], NegatedShortName).
+
 %---------------------%
 
-:- func maybe_wrap_arg_name(option, string) = string.
+:- func maybe_wrap_arg_name_plain(option, string) = string.
 
-maybe_wrap_arg_name(Option, ArgName) = MaybeWrappedArgName :-
+maybe_wrap_arg_name_plain(Option, ArgName) = MaybeWrappedArgName :-
+    % Do not put <>s around argument "names" that are actually not names,
+    % but instead are either
+    %
+    % - sets of the allowed values wrapped in {}s, or
+    % - default optimization levels, such as -O2.
     ( if
         ArgName = ""
     then
         unexpected($pred, string(Option) ++ " has empty arg name")
     else if
-        % Do not put <>s around argument "names" that are actually not names,
-        % but instead are either
-        %
-        % - sets of the allowed values wrapped in {}s, or
-        % - default optimization levels, such as -O2.
         ( string.find_first_char(ArgName, '{', _)
         ; string.find_first_char(ArgName, '-', _)
         )
@@ -1105,7 +1638,51 @@ maybe_wrap_arg_name(Option, ArgName) = MaybeWrappedArgName :-
         MaybeWrappedArgName = "<" ++ ArgName ++ ">"
     ).
 
+:- func maybe_wrap_arg_name_texinfo(option, string) = string.
+
+maybe_wrap_arg_name_texinfo(Option, ArgName) = MaybeWrappedArgName :-
+    % Do not put @var{} around argument "names" that are actually not names,
+    % but instead are either
+    %
+    % - sets of the allowed values wrapped in {}s, or
+    % - default optimization levels, such as -O2.
+    ( if ArgName = "" then
+        unexpected($pred, string(Option) ++ " has empty arg name")
+    else if string.find_first_char(ArgName, '{', _) then
+        string.replace_all(ArgName, "{", "@{", ArgName1),
+        string.replace_all(ArgName1, "}", "@}", MaybeWrappedArgName)
+    else if string.find_first_char(ArgName, '-', _) then
+        MaybeWrappedArgName = ArgName
+    else
+        string.format("@var{%s}", [s(ArgName)], MaybeWrappedArgName)
+    ).
+
 %---------------------------------------------------------------------------%
+
+:- pred add_option_line_texinfo(string::in,
+    cord(string)::in, cord(string)::out) is det.
+
+add_option_line_texinfo(OptionStr, !OptLineCord) :-
+    ( if cord.is_empty(!.OptLineCord) then
+        ItemStr = "@item"
+    else
+        ItemStr = "@itemx"
+    ),
+    string.format("%s %s", [s(ItemStr), s(OptionStr)], OptLine),
+    cord.snoc(OptLine, !OptLineCord).
+
+:- pred add_index_line_texinfo(string::in,
+    cord(string)::in, cord(string)::out) is det.
+
+add_index_line_texinfo(OptionStr, !IndexLineCord) :-
+    string.format("@findex %s", [s(OptionStr)], IndexLine),
+    cord.snoc(IndexLine, !IndexLineCord).
+
+%---------------------------------------------------------------------------%
+
+% The next three predicates all return the last input argument unchanged
+% as their only output argument. The jobs of this output argument is simply
+% to prevent calls to these predicates from being optimized away.
 
 :- pred maybe_have_arg(maybe_expect_arg::in, option::in, maybe_arg_name::in,
     T::in, T::out) is det.
@@ -1143,28 +1720,6 @@ have_arg(MaybeExpectArg, Option, OptionName0, OptionName) :-
         MaybeExpectArg = expect_arg,
         OptionName = OptionName0
     ).
-
-%---------------------------------------------------------------------------%
-
-:- pred add_aligned_text(string::in, string::in, string::out) is det.
-
-add_aligned_text(AlignedText, Line0, Line) :-
-    string.format("%-39s %s", [s(Line0), s(AlignedText)], Line).
-
-%---------------------------------------------------------------------------%
-
-:- func single_indent = string.
-:- func double_indent = string.
-
-single_indent = "    ".
-double_indent = "        ".
-
-:- pred acc_prefixed_line(string::in, string::in,
-    cord(string)::in, cord(string)::out) is det.
-
-acc_prefixed_line(Prefix, LineBody, !LineCord) :-
-    Line = Prefix ++ LineBody,
-    cord.snoc(Line, !LineCord).
 
 %---------------------------------------------------------------------------%
 
@@ -1613,6 +2168,59 @@ get_main_long_name(Option, MaybeLongName) :-
         ),
         MaybeLongName = yes(LongName)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred add_aligned_text(string::in, string::in, string::out) is det.
+
+add_aligned_text(AlignedText, Line0, Line) :-
+    string.format("%-39s %s", [s(Line0), s(AlignedText)], Line).
+
+%---------------------------------------------------------------------------%
+
+:- func single_indent = string.
+:- func double_indent = string.
+
+single_indent = "    ".
+double_indent = "        ".
+
+:- pred acc_prefixed_line(string::in, string::in,
+    cord(string)::in, cord(string)::out) is det.
+
+acc_prefixed_line(Prefix, LineBody, !LineCord) :-
+    Line = Prefix ++ LineBody,
+    cord.snoc(Line, !LineCord).
+
+%---------------------------------------------------------------------------%
+
+:- pred is_bool(option_data::in) is semidet.
+
+is_bool(bool(_)).
+
+%---------------------------------------------------------------------------%
+
+:- func menu_items_to_menu(list(menu_item)) = list(string).
+
+menu_items_to_menu(MenuItems) = MenuLines :-
+    MenuItemLines = list.map(menu_item_to_menu_line, MenuItems),
+    MenuLines = ["@menu"] ++ MenuItemLines ++ ["@end menu"].
+
+:- func menu_item_to_menu_line(menu_item) = string.
+
+menu_item_to_menu_line(MenuItem) = Line :-
+    MenuItem = menu_item(Name, Desc),
+    string.format("* %s:: %s", [s(Name), s(Desc)], Line).
+
+%---------------------------------------------------------------------------%
+
+:- pred comment_out_texinfo_lines(cord(string)::in, cord(string)::out) is det.
+
+comment_out_texinfo_lines(!LineCord) :-
+    !:LineCord = cord.map(comment_out_texinfo_line, !.LineCord).
+
+:- func comment_out_texinfo_line(string) = string.
+
+comment_out_texinfo_line(Line) = "@c " ++ Line.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -2127,7 +2127,7 @@ optdb(oc_infer,     allow_stubs,                       bool(no),
         w("such procedures will raise an exception at run-time."),
         w("This option is sometimes useful during program development."),
         w("(See also the documentation for the"), opt("--warn-stubs"),
-        w("option in"), ref("the", "Warning Options", "section", ".)")])).
+        w("option in"), ref("the", "Warning options", "section", ".)")])).
 
 %---------------------------------------------------------------------------%
 
@@ -4819,7 +4819,7 @@ optdb(oc_env,       install_command,                   string("cp"),
         w("Mercury libraries. The given command will be invoked as"),
         help_text_texinfo(
             [quote("<command> <source> <target>")],
-            [code("@var{command} @var(source) @var(target)")]),
+            [code("@var{command} @var{source} @var{target}")]),
         w("to install each file in a Mercury library."),
         w("The default command is"), code("cp", ".")])).
 optdb(oc_env,       options_files,           accumulating(["Mercury.options"]),
