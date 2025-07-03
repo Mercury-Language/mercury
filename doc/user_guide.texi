@@ -250,6 +250,7 @@ to avoid conflicts with system header files.
 @file{.dll} files are library assemblies and,
 when compiling to C#, @file{.exe} files are process assemblies.
 
+@c XXX WILL-BE-DANGLING REF
 When smart recompilation (@pxref{Auxiliary output options}) is enabled,
 @file{.c_date}, @file{.cs_date} and @file{.java_date} files
 perform the same function for
@@ -262,6 +263,7 @@ but leaves the timestamp of the target file itself unchanged.
 @findex --smart-recompilation
 
 @file{.used} files contain dependency information for smart recompilation
+@c XXX WILL-BE-DANGLING REF
 (@pxref{Auxiliary output options}).
 @findex --smart-recompilation
 
@@ -291,9 +293,11 @@ or module names, with @samp{.} (rather than @samp{__})
 as the module qualifier.  For a module name such as @samp{foo.bar.baz},
 the compiler will look for the source in the file named @file{foo.bar.baz.m}.
 To make the compiler look for a module in another file,
-use @samp{mmc -f @var{sources-files}} to generate a mapping from module name
-to file name, where @var{sources-files} is the list of source files in
-the directory (@pxref{Output options}).
+use @samp{mmc -f @var{sources-files}} to generate
+a mapping from module name to file name,
+where @var{sources-files} is the list of source files in the directory
+@c XXX WILL-BE-DANGLING REF
+(@pxref{Output options}).
 
 Arguments to @samp{mmc} may also be in @samp{@@file}.
 The @samp{@@file} argument is replaced with arguments
@@ -623,8 +627,10 @@ Creates the files @file{@var{main-module}.dep} and
 @file{@var{main-module}.dv} from @file{@var{main-module}.m}
 and the modules it imports.
 This step must be performed first.
-It is also required whenever you wish to change the level of
-inter-module optimization performed (@pxref{Overall optimization options}).
+It is also required whenever you wish to change
+the level of inter-module optimization performed
+@c XXX WILL-BE-DANGLING REF
+(@pxref{Overall optimization options}).
 
 @item @var{main-module}.all_ints
 Ensure that the interface files for @var{main-module}
@@ -675,9 +681,11 @@ and @samp{.err} files
 belonging to the named @var{main-module} or its imported modules.
 Use this target whenever you wish to change compilation model
 (@pxref{Grade options}).
-This target is also recommended whenever you wish to change the level
-of inter-module optimization performed (@pxref{Overall optimization
-options}) in addition to the mandatory @var{main-module}.depend.
+This target is also recommended whenever you wish to change
+the level of inter-module optimization performed
+@c XXX WILL-BE-DANGLING REF
+(@pxref{Overall optimization options})
+in addition to the mandatory @var{main-module}.depend.
 
 @item @var{main-module}.realclean
 Removes all the automatically generated files.
