@@ -251,9 +251,9 @@ to avoid conflicts with system header files.
 when compiling to C#, @file{.exe} files are process assemblies.
 
 When smart recompilation (@pxref{Auxiliary output options}) is enabled,
-@file{.c_date}, @file{.cs_date}, @file{.java_date} and @file{.erl_date} files
+@file{.c_date}, @file{.cs_date} and @file{.java_date} files
 perform the same function for
-@file{.c}, @file{.cs}, @file{.java} and @file{.erl} files respectively
+@file{.c}, @file{.cs} and @file{.java} files respectively
 as e.g. @file{.date3} files do for @file{.int3} files:
 when smart recompilation works out
 that a module does not need to be recompiled,
