@@ -6532,6 +6532,7 @@ use @samp{mmc --help} to get the most up-to-date list.
 
 @node Invocation overview
 @section Invocation overview
+@findex --no-
 
 @code{mmc} is invoked as
 @example
@@ -6540,11 +6541,15 @@ mmc [@var{options}] @var{arguments}
 
 Arguments can be either module names or file names.
 Arguments ending in @samp{.m} are assumed to be file names,
-while other arguments are assumed to be module names, with
-@samp{.} (rather than @samp{__}) as module qualifier.
-If you specify a module name such as @samp{foo.bar.baz},
-the compiler will look for the source in files @file{foo.bar.baz.m},
-@file{bar.baz.m}, and @file{baz.m}, in that order.
+while other arguments are assumed to be module names.
+The compiler will convert module names to file names
+by looking up the module name in the module-name-to-file-name map
+in the @file{Mercury.modules} file it if exists.
+(It can be created using a command such as @code{mmc -f *.m}.)
+It @file{Mercury.modules} does not exist, then the compiler
+will search for a module named e.g. @samp{foo.bar.baz}
+in the files @file{foo.bar.baz.m}, @file{bar.baz.m}, and @file{baz.m},
+in that order.
 
 Options are either short (single-letter) options preceded by a single @samp{-},
 or long options preceded by @samp{--}.
@@ -6553,9 +6558,9 @@ We call options that do not take arguments @dfn{flags}.
 Single-letter flags may be grouped with a single @samp{-}, e.g.@: @samp{-vVc}.
 Single-letter flags may be negated
 by appending another trailing @samp{-}, e.g.@: @samp{-v-}.
+(You cannot both group @emph{and} negate single-letter flags at the same time.)
 Long flags may be negated by preceding them with @samp{no-},
 e.g.@: @samp{--no-verbose}.
-@findex --no-
 
 @node Warning options
 @section Warning options
