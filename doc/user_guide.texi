@@ -674,7 +674,7 @@ Specifically, this will remove all the @samp{.c}, @samp{.o},
 and @samp{.err} files
 belonging to the named @var{main-module} or its imported modules.
 Use this target whenever you wish to change compilation model
-(@pxref{Compilation model options}).
+(@pxref{Grade options}).
 This target is also recommended whenever you wish to change the level
 of inter-module optimization performed (@pxref{Overall optimization
 options}) in addition to the mandatory @var{main-module}.depend.
@@ -739,7 +739,7 @@ The executable that invokes the Mercury compiler.
 @item GRADEFLAGS and EXTRA_GRADEFLAGS
 @vindex GRADEFLAGS
 @vindex EXTRA_GRADEFLAGS
-Compilation model options (@pxref{Compilation model options})
+Compilation model options (@pxref{Grade options})
 to pass to the Mercury compiler, linker, and other tools
 (in particular @code{mmc}, @code{mgnuc}, @code{ml}, and @code{c2init}).
 
@@ -5931,7 +5931,7 @@ then you pass these options to all the relevant programs
 by setting the @samp{GRADEFLAGS} variable in your Mmakefile,
 e.g.@: by adding the line @samp{GRADEFLAGS=--profiling}.
 (For more information about the different grades,
-see @ref{Compilation model options}.)
+see @ref{Grade options}.)
 
 Enabling @samp{mprof} or @samp{mdprof} profiling has several effects.
 First, it causes the compiler to generate slightly modified code,
@@ -6513,6 +6513,8 @@ Sometimes this list is a little out-of-date;
 use @samp{mmc --help} to get the most up-to-date list.
 @findex --help
 
+@c INCLUDE_HELP_TEXT_START
+
 @menu
 * Invocation overview::
 * Warning options::
@@ -6521,7 +6523,7 @@ use @samp{mmc --help} to get the most up-to-date list.
 * Auxiliary output options::
 * Language semantics options::
 * Termination analysis options::
-* Compilation model options::
+* Grade options::
 * Code generation options::
 * Optimization options::
 * Target code compilation options::
@@ -8301,11 +8303,11 @@ Perform termination analysis only on predicates with at most @var{n} paths.
 
 @end table
 
-@node Compilation model options
-@section Compilation model options
+@node Grade options
+@section Grade options
 @cindex Link errors
 @cindex Undefined symbol
-@cindex Compilation model options
+@cindex Grade options
 @cindex Compilation models
 @cindex Compilation grades
 @cindex Grades
@@ -11111,6 +11113,8 @@ which may currently only be processed for automatic parallelism.
 @c It is intended for developers only.
 
 @end table
+
+@c INCLUDE_HELP_TEXT_END
 
 @c ----------------------------------------------------------------------------
 
