@@ -84,8 +84,8 @@
 :- import_module check_hlds.simplify.simplify_goal_scope.
 :- import_module check_hlds.simplify.simplify_goal_switch.
 :- import_module check_hlds.simplify.simplify_goal_unify.
-:- import_module hlds.goal_form.
 :- import_module hlds.goal_contains.
+:- import_module hlds.goal_form.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.

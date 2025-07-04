@@ -16,4 +16,5 @@
 --warn-potentially-ambiguous-pragma
 --warn-suspicious-foreign-code
 --warn-unknown-format-calls
+--warn-unsorted-import-blocks
 --warn-unused-imports

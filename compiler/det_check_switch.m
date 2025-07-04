@@ -182,8 +182,8 @@
 :- import_module check_hlds.det_check_goal.
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
-:- import_module hlds.goal_util.
 :- import_module hlds.goal_transform.
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_module.

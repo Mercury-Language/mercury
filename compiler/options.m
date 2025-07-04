@@ -74,8 +74,8 @@
 :- interface.
 
 :- import_module libs.optdb_help.
-:- import_module libs.option_categories.
 :- import_module libs.optimization_options.
+:- import_module libs.option_categories.
 
 :- import_module char.
 :- import_module cord.
