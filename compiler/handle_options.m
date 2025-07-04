@@ -1858,6 +1858,7 @@ handle_op_mode_implications(OpMode, !Globals) :-
             ; OpModeArgs = opma_generate_dependency_file
             ; OpModeArgs = opma_convert_to_mercury
             ),
+            turn_off_all_only_codegen_warnings(halt_at_warn, !Globals),
             Smart = bool.no,
             Inform = bool.no
         )
@@ -1930,6 +1931,8 @@ turn_off_all_only_codegen_warnings(HaltAtWarnSrcOpt, !Globals) :-
         map.set(halt_at_warn, HaltAtWarn, !OptionTable),
 
         set_all_options_to(dodgy_code_warning_bool_options, bool(no),
+            !OptionTable),
+        set_all_options_to(slow_code_warning_bool_options, bool(no),
             !OptionTable),
         set_all_options_to(style_warning_bool_options, bool(no),
             !OptionTable),
