@@ -533,7 +533,7 @@ document_requested_options(Format, What, SectionNames, OptionsLines) :-
 :- type menu_item
     --->    menu_item(string, string).
             % The name of the menu item, and its short description, if any.
-            % (Nonexistent descriptions are represented by an empy string.)
+            % (Nonexistent descriptions are represented by an empty string.)
 
 :- pred acc_help_sections(help_format, print_what_help, list(help_section),
     set(option_category), set(option_category),

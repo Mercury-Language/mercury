@@ -250,22 +250,20 @@ to avoid conflicts with system header files.
 @file{.dll} files are library assemblies and,
 when compiling to C#, @file{.exe} files are process assemblies.
 
-@c XXX WILL-BE-DANGLING REF
-When smart recompilation (@pxref{Auxiliary output options}) is enabled,
-@file{.c_date}, @file{.cs_date} and @file{.java_date} files
-perform the same function for
-@file{.c}, @file{.cs} and @file{.java} files respectively
-as e.g. @file{.date3} files do for @file{.int3} files:
-when smart recompilation works out
-that a module does not need to be recompiled,
-it updates the timestamp of the @emph{timestamp file} for the target file,
-but leaves the timestamp of the target file itself unchanged.
-@findex --smart-recompilation
+@c When smart recompilation (@pxref{Auxiliary output options}) is enabled,
+@c @file{.c_date}, @file{.cs_date} and @file{.java_date} files
+@c perform the same function for
+@c @file{.c}, @file{.cs} and @file{.java} files respectively
+@c as e.g. @file{.date3} files do for @file{.int3} files:
+@c when smart recompilation works out
+@c that a module does not need to be recompiled,
+@c it updates the timestamp of the @emph{timestamp file} for the target file,
+@c but leaves the timestamp of the target file itself unchanged.
+@c @findex --smart-recompilation
 
-@file{.used} files contain dependency information for smart recompilation
-@c XXX WILL-BE-DANGLING REF
-(@pxref{Auxiliary output options}).
-@findex --smart-recompilation
+@c @file{.used} files contain dependency information for smart recompilation
+@c (@pxref{Auxiliary output options}).
+@c @findex --smart-recompilation
 
 @c ----------------------------------------------------------------------------
 

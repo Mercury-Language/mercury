@@ -5091,7 +5091,7 @@ optdb(oc_dev_ctrl,  smart_recompilation,               bool(no),
     % disabled with io_set_disable_smart_recompilation. Before using the value
     % of this option, call io_get_disable_smart_recompilation to see
     % whether this has been done.
-    help("smart-recompilation", [
+    priv_help("smart-recompilation", [
         w("When compiling, write program dependency information"),
         w("to be used to avoid unnecessary recompilations if"),
         w("the interface of an imported module changes in a way which does"),

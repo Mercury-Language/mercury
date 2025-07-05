@@ -3425,6 +3425,7 @@ Options for developers only
     --compute-goal-modes
         Compute goal modes.
 
+    PRIVATE OPTION
     --smart-recompilation
         When compiling, write program dependency information to be used to
         avoid unnecessary recompilations if the interface of an imported module
