@@ -1,0 +1,5 @@
+bug576.m:030: In function `icu_normalize'/3:
+bug576.m:030:   warning: the third argument and the function return value,
+bug576.m:030:   represented by the state variable [38;5;87m`!S',[39;49m [38;5;203mcould be deleted,[39;49m
+bug576.m:030:   because they are not used, and because the final value is
+bug576.m:030:   always the same as the initial value.

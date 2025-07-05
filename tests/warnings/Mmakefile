@@ -17,6 +17,7 @@ ERRORCHECK_PROGS = \
 	bug311 \
 	bug412 \
 	bug477 \
+	bug576 \
 	det_infer_warning \
 	disabled_warning \
 	double_underscore \

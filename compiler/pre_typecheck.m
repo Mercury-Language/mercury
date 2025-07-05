@@ -649,7 +649,7 @@ arg_num_pieces(PredInfo, ArgNum) = ArgPieces :-
     UserArgs = proc_arg_vector_get_user_args(ArgVector),
     list.length(UserArgs, NumUserArgs),
     ( if uint.cast_to_int(ArgNum) > NumUserArgs then
-        expect(unify(uint.cast_to_int(ArgNum + 1u), NumUserArgs),
+        expect(unify(NumUserArgs + 1, uint.cast_to_int(ArgNum)),
             $pred, "ArgNum is not numbered correctly for return value"),
         expect(unify(pred_info_is_pred_or_func(PredInfo), pf_function),
             $pred, "PredInfo is not a function"),
