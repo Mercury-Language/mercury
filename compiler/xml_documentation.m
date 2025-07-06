@@ -73,13 +73,13 @@
 
     % Record all the locations of comments in a file.
     %
-:- type comments
-    --->    comments(
-                % For each line record what is on the line.
-                line_types  :: map(int, line_type)
+:- type line_type_map
+    --->    line_type_map(
+                % For each line number, record what is on that line.
+                line_types  :: map(int, typed_line)
             ).
 
-:- type line_type
+:- type typed_line
     --->    blank
             % A line containing only whitespace.
 
@@ -105,16 +105,17 @@ xml_documentation(ProgressStream, ModuleInfo, !IO) :-
         io.open_input(SrcFileName, SrcResult, !IO),
         (
             SrcResult = ok(SrcStream),
-            build_comments(SrcStream, comments(map.init), Comments, !IO),
+            build_line_type_map(SrcStream, map.init, RawLineTypeMap, !IO),
+            LineTypeMap = line_type_map(RawLineTypeMap),
 
             % XXX We should find the ":- module " declaration
             % and get the comment from there.
-            ModuleComment = get_comment_forwards(Comments, 1),
+            ModuleComment = get_comment_forwards(LineTypeMap, 1),
 
             io.open_output(XmlFileName, XmlOpenResult, !IO),
             (
                 XmlOpenResult = ok(XmlStream),
-                MIXmlDoc = module_info_xml_doc(Comments, ModuleComment,
+                MIXmlDoc = module_info_xml_doc(LineTypeMap, ModuleComment,
                     ModuleInfo),
                 write_xml_doc(XmlStream, MIXmlDoc, !IO)
             ;
@@ -135,19 +136,20 @@ xml_documentation(ProgressStream, ModuleInfo, !IO) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % Given the input_stream build the comments data structure which
-    % represents this stream.
+    % Build the line_type_map data structure representing the code read from
+    % the given this stream.
     %
-:- pred build_comments(io.text_input_stream::in, comments::in, comments::out,
+:- pred build_line_type_map(io.text_input_stream::in,
+    map(int, typed_line)::in, map(int, typed_line)::out,
     io::di, io::uo) is det.
 
-build_comments(S, comments(!.C), comments(!:C), !IO) :-
+build_line_type_map(S, !RawLineTypeMap, !IO) :-
     io.get_line_number(S, LineNumber, !IO),
     io.read_line(S, LineResult, !IO),
     (
         LineResult = ok(Line),
-        map.set(LineNumber, line_type(Line), !C),
-        build_comments(S, comments(!.C), comments(!:C), !IO)
+        map.set(LineNumber, type_the_line(Line), !RawLineTypeMap),
+        build_line_type_map(S, !RawLineTypeMap, !IO)
     ;
         LineResult = eof
     ;
@@ -157,15 +159,15 @@ build_comments(S, comments(!.C), comments(!:C), !IO) :-
     ).
 
     % Given a list of characters representing one line,
-    % return the type of the line.
+    % return the typed (classified) version of the line.
     %
     % Note this predicate is pretty stupid at the moment.
     % It only recognizes lines which contains % comments.
     % It also is confused by % characters in strings, etc. etc.
     %
-:- func line_type(list(character)) = line_type.
+:- func type_the_line(list(character)) = typed_line.
 
-line_type(Line) = LineType :-
+type_the_line(Line) = LineType :-
     list.drop_while(char.is_whitespace, Line, Rest),
     list.take_while(is_not_comment_char, Rest, Decl, Comment),
     (
@@ -201,11 +203,11 @@ is_not_comment_char(C) :-
     % If the prog_context given has a comment associated with it
     % add a child element which contains the comment to the given XML.
     %
-:- func maybe_add_comment(comments, prog_context, xml) = xml.
+:- func maybe_add_comment(line_type_map, prog_context, xml) = xml.
 
-maybe_add_comment(Comments, Context, Xml) =
+maybe_add_comment(LineTypeMap, Context, Xml) =
     ( if Xml = elem(N, As, Cs) then
-        ( if Comment = get_comment(Comments, Context), Comment \= "" then
+        ( if Comment = get_comment(LineTypeMap, Context), Comment \= "" then
             elem(N, As, [elem("comment", [], [data(Comment)]) | Cs])
         else
             Xml
@@ -216,15 +218,15 @@ maybe_add_comment(Comments, Context, Xml) =
 
     % Get the comment string associated with the given prog_context.
     %
-:- func get_comment(comments, prog_context) = string.
+:- func get_comment(line_type_map, prog_context) = string.
 
-get_comment(Comments, context(_, Line)) =
+get_comment(LineTypeMap, context(_, Line)) =
     % XXX At a later date this hard-coded strategy should be made
     % more flexible. What I imagine is that the user would pass a string
     % saying in what order they wish to search for comments.
-    ( if comment_on_current_line(Comments, Line, C) then
+    ( if comment_on_current_line(LineTypeMap, Line, C) then
         C
-    else if comment_directly_above(Comments, Line, C) then
+    else if comment_directly_above(LineTypeMap, Line, C) then
         C
     else
         ""
@@ -236,34 +238,36 @@ get_comment(Comments, context(_, Line)) =
     % The comment is extended with all the lines following
     % the current line which just contain a comment.
     %
-:- pred comment_on_current_line(comments::in, int::in, string::out) is semidet.
+:- pred comment_on_current_line(line_type_map::in, int::in, string::out)
+    is semidet.
 
-comment_on_current_line(Comments, Line, Comment) :-
-    map.search(Comments ^ line_types, Line, code_and_comment(Comment0)),
-    RestComment = get_comment_forwards(Comments, Line + 1),
+comment_on_current_line(LineTypeMap, Line, Comment) :-
+    map.search(LineTypeMap ^ line_types, Line, code_and_comment(Comment0)),
+    RestComment = get_comment_forwards(LineTypeMap, Line + 1),
     Comment = Comment0 ++ RestComment.
 
     % Succeeds if the comment is directly above the current line.
     % The comment above ends when we find a line above the current line
     % which doesn't just contain a comment.
     %
-:- pred comment_directly_above(comments::in, int::in, string::out) is semidet.
+:- pred comment_directly_above(line_type_map::in, int::in, string::out)
+    is semidet.
 
-comment_directly_above(Comments, Line, Comment) :-
-    map.search(Comments ^ line_types, Line - 1, comment(_)),
-    Comment = get_comment_backwards(Comments, Line - 1).
+comment_directly_above(LineTypeMap, Line, Comment) :-
+    map.search(LineTypeMap ^ line_types, Line - 1, comment(_)),
+    Comment = get_comment_backwards(LineTypeMap, Line - 1).
 
     % Return the string which represents the comment starting at the given
     % line.  The comment ends when a line which is not a plain comment line
     % is found.
     %
-:- func get_comment_forwards(comments, int) = string.
+:- func get_comment_forwards(line_type_map, int) = string.
 
-get_comment_forwards(Comments, Line) = Comment :-
-    ( if map.search(Comments ^ line_types, Line, LineType) then
+get_comment_forwards(LineTypeMap, Line) = Comment :-
+    ( if map.search(LineTypeMap ^ line_types, Line, LineType) then
         (
             LineType = comment(CurrentComment),
-            CommentBelow = get_comment_forwards(Comments, Line + 1),
+            CommentBelow = get_comment_forwards(LineTypeMap, Line + 1),
             Comment = CurrentComment ++ CommentBelow
         ;
             ( LineType = blank
@@ -280,13 +284,13 @@ get_comment_forwards(Comments, Line) = Comment :-
     % The comment extends backwards until the line above the given line is not
     % a comment only line.
     %
-:- func get_comment_backwards(comments, int) = string.
+:- func get_comment_backwards(line_type_map, int) = string.
 
-get_comment_backwards(Comments, Line) = Comment :-
-    ( if map.search(Comments ^ line_types, Line, LineType) then
+get_comment_backwards(LineTypeMap, Line) = Comment :-
+    ( if map.search(LineTypeMap ^ line_types, Line, LineType) then
         (
             LineType = comment(CurrentComment),
-            CommentAbove = get_comment_backwards(Comments, Line - 1),
+            CommentAbove = get_comment_backwards(LineTypeMap, Line - 1),
             Comment = CommentAbove ++ CurrentComment
         ;
             ( LineType = blank
@@ -303,10 +307,11 @@ get_comment_backwards(Comments, Line) = Comment :-
 %-----------------------------------------------------------------------------%
 
 :- type module_info_xml_doc
-    --->     module_info_xml_doc(comments, string, module_info).
+    --->     module_info_xml_doc(line_type_map, string, module_info).
 
 :- instance xmlable(module_info_xml_doc) where [
-    (to_xml(module_info_xml_doc(Comments, ModuleComment, ModuleInfo)) = Xml :-
+    (to_xml(module_info_xml_doc(LineTypeMap, ModuleComment, ModuleInfo))
+            = Xml :-
         CommentXml = elem("comment", [], [data(ModuleComment)]),
 
         module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
@@ -316,16 +321,16 @@ get_comment_backwards(Comments, Line) = Comment :-
         ImportXml = elem("imports", [], ImportsXml),
 
         module_info_get_type_table(ModuleInfo, TypeTable),
-        foldl_over_type_ctor_defns(type_documentation(Comments), TypeTable,
+        foldl_over_type_ctor_defns(type_documentation(LineTypeMap), TypeTable,
             [], TypeXmls),
         TypeXml = elem("types", [], TypeXmls),
 
         module_info_get_pred_id_table(ModuleInfo, PredIdTable),
-        map.foldl(pred_documentation(Comments), PredIdTable, [], PredXmls),
+        map.foldl(pred_documentation(LineTypeMap), PredIdTable, [], PredXmls),
         PredXml = elem("preds", [], PredXmls),
 
         module_info_get_class_table(ModuleInfo, ClassTable),
-        map.foldl(class_documentation(Comments, PredIdTable), ClassTable,
+        map.foldl(class_documentation(LineTypeMap, PredIdTable), ClassTable,
             [], ClassXmls),
         ClassXml = elem("typeclasses", [], ClassXmls),
 
@@ -373,8 +378,8 @@ maybe_add_import_documentation(BuiltinModuleNames, ModuleName, AvailEntry,
 
     % Output the documentation of one type.
     %
-:- pred type_documentation(comments::in, type_ctor::in, hlds_type_defn::in,
-    list(xml)::in, list(xml)::out) is det.
+:- pred type_documentation(line_type_map::in, type_ctor::in,
+    hlds_type_defn::in, list(xml)::in, list(xml)::out) is det.
 
 type_documentation(C, type_ctor(TypeName, TypeArity), TypeDefn, !Xmls) :-
     get_type_defn_status(TypeDefn, TypeStatus),
@@ -418,7 +423,7 @@ type_param_to_xml(TVarset, TVar) = Xml :-
     TVarName = varset.lookup_name(TVarset, TVar),
     Xml = tagged_string("type_variable", TVarName).
 
-:- func type_body_to_xml(comments, tvarset, hlds_type_body) = list(xml).
+:- func type_body_to_xml(line_type_map, tvarset, hlds_type_body) = list(xml).
 
 type_body_to_xml(C, TVarSet, TypeDefnBody) = Xmls :-
     (
@@ -444,7 +449,7 @@ type_body_to_xml(C, TVarSet, TypeDefnBody) = Xmls :-
         Xmls = [nyi("hlds_abstract_type")]
     ).
 
-:- func constructor_to_xml(comments, tvarset, constructor) = xml.
+:- func constructor_to_xml(line_type_map, tvarset, constructor) = xml.
 
 constructor_to_xml(C, TVarset, Ctor) = Xml :-
     Ctor = ctor(_Ordinal, MaybeExistConstraints, Name, Args, Arity, Context),
@@ -470,7 +475,7 @@ constructor_to_xml(C, TVarset, Ctor) = Xml :-
         [XmlName, XmlContext, XmlArgs, XmlExistQVars, XmlConstraints]),
     Xml = maybe_add_comment(C, Context, Xml0).
 
-:- func constructor_arg_to_xml(comments, tvarset, constructor_arg) = xml.
+:- func constructor_arg_to_xml(line_type_map, tvarset, constructor_arg) = xml.
 
 constructor_arg_to_xml(C, TVarset, CtorArg) = Xml :-
     CtorArg = ctor_arg(MaybeCtorFieldName, Type, Context),
@@ -529,7 +534,7 @@ mer_type_to_xml(_, kinded_type(_, _)) = nyi("kinded_type").
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred pred_documentation(comments::in, pred_id::in, pred_info::in,
+:- pred pred_documentation(line_type_map::in, pred_id::in, pred_info::in,
     list(xml)::in, list(xml)::out) is det.
 
 pred_documentation(C, _PredId, PredInfo, !Xml) :-
@@ -548,7 +553,7 @@ pred_documentation(C, _PredId, PredInfo, !Xml) :-
         true
     ).
 
-:- func predicate_documentation(comments, pred_info) = xml.
+:- func predicate_documentation(line_type_map, pred_info) = xml.
 
 predicate_documentation(C, PredInfo) = Xml :-
     pred_info_get_typevarset(PredInfo, TVarset),
@@ -626,7 +631,7 @@ univ_exist_constraints_to_xml(TVarset, Constraints) = Xml :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred pred_mode_documentation(comments::in, proc_id::in, proc_info::in,
+:- pred pred_mode_documentation(line_type_map::in, proc_id::in, proc_info::in,
     list(xml)::in, list(xml)::out) is det.
 
 pred_mode_documentation(_C, _ProcId, ProcInfo, !Xml) :-
@@ -772,7 +777,7 @@ determinism_to_xml(detism_failure) = tagged_string("determinism", "failure").
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred class_documentation(comments::in, pred_id_table::in,
+:- pred class_documentation(line_type_map::in, pred_id_table::in,
     class_id::in, hlds_class_defn::in,
     list(xml)::in, list(xml)::out) is det.
 
@@ -825,7 +830,8 @@ fundep_to_xml_2(Tag, TVarset, Vars, Set) =
     xml_list(Tag, type_param_to_xml(TVarset),
         restrict_list_elements(Set, Vars)).
 
-:- func class_methods_to_xml(comments, pred_id_table, list(method_info)) = xml.
+:- func class_methods_to_xml(line_type_map, pred_id_table, list(method_info))
+    = xml.
 
 class_methods_to_xml(C, PredTable, MethodInfos) = Xml :-
     MethodInfoPredId =
