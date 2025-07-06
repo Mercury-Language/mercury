@@ -99,7 +99,7 @@ Optimization level 5:
     The options set at this level are:
 
         --delay-constructs
-        --eliminate-local-vars
+        --eliminate-local-variables
         --higher-order-size-limit=40
         --inline-compound-threshold=100
         --loop-invariants

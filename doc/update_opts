@@ -9,6 +9,7 @@
 # command is in an action in a makefile, given that we actually want
 # the two characters $ and w, not the value of a shell or make variable
 # named w.
+cp user_guide.texi USER_GUIDE_TEXI_OLD
 /bin/rm -f USER_GUIDE_TEXI_START USER_GUIDE_TEXI_END > /dev/null 2>&1
 /bin/rm -f INVOCATION_OLD0 INVOCATION_OLD INVOCATION_NEW > /dev/null 2>&1
 echo > INVOCATION_NEW
@@ -29,3 +30,10 @@ cat USER_GUIDE_TEXI_START INVOCATION_NEW USER_GUIDE_TEXI_END \
 mv -f user_guide.texi.new user_guide.texi
 /bin/rm -f USER_GUIDE_TEXI_START USER_GUIDE_TEXI_END > /dev/null 2>&1
 /bin/rm -f INVOCATION_OLD0 > /dev/null 2>&1
+
+diff -u INVOCATION_OLD INVOCATION_NEW > INVOCATION_DIFF
+diff -u USER_GUIDE_TEXI_OLD user_guide.texi > USER_GUIDE_TEXI_DIFF
+
+echo "The diff to invocation chapter is in INVOCATION_DIFF."
+echo "The diff to user_guide.texi is in USER_GUIDE_TEXI_DIFF."
+exit 0

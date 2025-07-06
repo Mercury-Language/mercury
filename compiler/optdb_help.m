@@ -15,48 +15,23 @@
 :- import_module char.
 :- import_module list.
 
-    % XXX Most comments here all come print_help_old.m.
-    % Once this module is complete, they should be updated to refer
-    % to the final form of this data structure.
 :- type help
     --->    no_help
     ;       gen_help(
                 % Every character in this field is a short name of the option.
                 % The order of these short options here will be preserved
                 % in the output.
-                %
-                % We use a char because all options using gen_help
-                % have short names that have no argument.
-                % (Some options using the other function symbols below
-                % *do* have short names that take arguments, and for these,
-                % we use strings, the first character of which is the short
-                % name, and the rest is the argument description suffix.
                 gh_short_names          :: list(char),
 
-                % The name of the option, minus the "--" prefix, but
-                % including any "no-" prefix. If the option takes an argument,
-                % then the option name should be followed by " <argdesc>".
-                %
-                % The reason for including the "no-" prefix is that
-                % the description string has to be written differently
-                % depending on whether the option is default-on or default-off,
-                % and so requiring the documentation writer to add the prefix
-                % is a trivially small extra burden.
-                %
-                % The reason for including the " <argdesc>" suffix if the
-                % option has an argument is that for accumulating options,
-                % only the positive version takes an argument, but we must
-                % document the negative version as well. This makes we cannot
-                % add the argdesc suffix to all alternate names willy-nilly,
-                % and any automatic addition that is smart enough to always
-                % do the right thing would come with an unjustifiable amount
-                % of complexity.
-                %
-                % (Both "no-" prefixes and " <...>" suffixes will need to be
-                % be stripped off for any bijection check.)
+                % The long name of the option. This will not contain
+                % - the "--" prefix,
+                % - any "no-" prefix even if the option is negateable
+                %   and the default is negated, or
+                % - the name of an argument.
                 gh_long_name            :: string,
 
-                % Any alternate names of the option.
+                % Any alternate long names of the option.
+                %
                 % We have many options that have both British and American
                 % spelling of the option name, and some have both
                 % short and long versions.
@@ -74,24 +49,34 @@
                 % The lines describing the effect of the option.
                 gh_description          :: help_text
             )
+
     % The following function symbols (whose list may grow)
-    % all have a subset of the fields of gen_help.
+    % mostly contain a subset of the fields of gen_help.
+    % The main exceptions are the function symbols with "align"
+    % in the their names. These are intended for the documentation of
+    % grade options, which have the usual option description on the left,
+    % and a list of the relevant base grades or grade modifiers
+    % in an aligned block on the right.
     %
-    % The fields they contain have the same semantics as in gen_help.
+    % All such aligned text has two separate versions, with the first
+    % being intended for help text and the second intended for texinfo.
+    % This is simpler than trying to come up with algorithm for e.g.
+    % automatically deriving the help text version from the texinfo version.
+    %
+    % The fields that the function symbols below contain that do occur
+    % in gen_help, have the same semantics as in gen_help.
     % The fields they do not contain implicitly default to "[]" for
     % alternate names, and will get their public vs private status
     % from the function symbol name.
     %
     % This design minimizes clutter in lists of help structures.
+
     ;       help(
                 h_long_name             :: string,
                 h_description           :: help_text
             )
     ;       arg_help(
                 hr_long_name            :: string,
-                % We will need to handle arg names of the form "{...}"
-                % and of the form "-..." specially, in that
-                % we don't want to put "<>" around them.
                 hr_arg_name             :: string,
                 hr_description          :: help_text
             )
@@ -109,6 +94,7 @@
                 ah_alt_long_names       :: list(string),
                 ah_description          :: help_text
             )
+
     ;       alt_arg_align_help(
                 arlh_long_name          :: string,
                 arlh_arg_aligns         :: list(arg_align),
@@ -117,26 +103,31 @@
     ;       alt_align_help(
                 alh_long_name           :: string,
                 alh_alt_long_names      :: list(string),
-                alh_aligned_text        :: string,
+                alh_aligned_help_text   :: string,
+                alh_aligned_texinfo     :: string,
                 alh_description         :: help_text
             )
     ;       no_align_help(
                 nlh_long_name           :: string,
-                nlh_aligned_text        :: string,
-                alh_no_aligned_text     :: string,  % for --no-long-name
+                nlh_aligned_help_text   :: string,
+                alh_no_aligned_help_text :: string, % for --no-long-name
+                nlh_aligned_texinfo     :: string,
+                alh_no_aligned_texinfo  :: string,  % for --no-long-name
                 nlh_description         :: help_text
             )
     ;       priv_alt_align_help(
                 palh_long_name          :: string,
                 palh_alt_long_names     :: list(string),
-                palh_aligned_text       :: string,
+                palh_aligned_help_text  :: string,
+                palh_aligned_texinfo    :: string,
                 palh_description        :: help_text
             )
     ;       short_alt_align_help(
                 salh_short_name         :: char,
                 salh_long_name          :: string,
                 salh_alt_long_names     :: list(string),
-                salh_aligned_text       :: string,
+                salh_aligned_help_text  :: string,
+                salh_aligned_texinfo    :: string,
                 salh_description        :: help_text
             )
     ;       alt_arg_help(
@@ -196,7 +187,8 @@
 :- type arg_align
     --->    arg_align(
                 aa_arg_name             :: string,
-                aa_aligned_text         :: string
+                aa_aligned_help_text    :: string,
+                aa_aligned_texinfo      :: string
             ).
 
 :- type help_text == list(help_piece).
@@ -207,6 +199,8 @@
     ;       opt(string, string)                 %
     ;       arg(string)                         % ?
     ;       arg(string, string)                 % ?
+    ;       bare_arg(string)                         % ?
+    ;       bare_arg(string, string)                 % ?
     ;       opt_arg(string, string)             % ?
     ;       opt_arg(string, string, string)     % ?
     ;       quote(string)                       % ``str1''
@@ -219,18 +213,22 @@
     ;       samp(string, string)                % @samp{str1}str2
     ;       emph(string)                        % @emph{str1}
     ;       emph(string, string)                % @emph{str1}str2
-    ;       var(string)                         % @var{str1}
-    ;       var(string, string)                 % @var{str1}str2
-    ;       file(string)                        % @file{str1}
-    ;       file(string, string)                % @file{str1}str2
+    ;       env(string)                         % @env{str1}
+    ;       env(string, string)                 % @env{str1}str2
     ;       code(string)                        % @code{str1}
     ;       code(string, string)                % @code{str1}str2
+    ;       file(string)                        % @file{str1}
+    ;       file(string, string)                % @file{str1}str2
+    ;       var(string)                         % @var{str1}
+    ;       var(string, string)                 % @var{str1}str2
     ;       file_var(string, string)            % @file{@var{str1}.str2}
     ;       file_var(string, string, string)    % @file{@var{str1}.str2}str3
     ;       blank_line
     ;       help_text_only(list(help_piece))    %
     ;       texinfo_only(list(help_piece))      %
-    ;       help_text_texinfo(list(help_piece), list(help_piece)).
+    ;       help_text_texinfo(list(help_piece), list(help_piece))
+    ;       cindex(string)                      % @cindex{str}, out-of-line
+    ;       findex(string).                     % @findex{str}, out-of-line
 
 %---------------------------------------------------------------------------%
 :- end_module libs.optdb_help.

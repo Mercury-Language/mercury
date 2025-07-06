@@ -606,9 +606,9 @@ acc_help_section(Format, What, Section,
             (
                 !:GroupLineCord = cord.init,
                 cord.snoc("", !GroupLineCord),
-                cord.snoc("@node " ++ SectionName, !GroupLineCord),
-                cord.snoc("@section " ++ SectionName, !GroupLineCord),
-                cord.snoc("@cindex " ++ SectionName, !GroupLineCord),
+                add_node_line("@node",    SectionName, !GroupLineCord),
+                add_node_line("@section", SectionName, !GroupLineCord),
+                add_node_line("@cindex",  SectionName, !GroupLineCord),
                 cord.snoc("", !GroupLineCord),
                 SubMenuLines = menu_items_to_menu(cord.list(SubMenuItemCord)),
                 !:GroupLineCord = !.GroupLineCord ++
@@ -667,7 +667,6 @@ acc_help_subsections(Format, What, [SubSection | SubSections],
 acc_help_option_group(Format, What, SubOrNot, Group,
         !Categories, !MenuItemCord, !LineCord, !NumDocOpts) :-
     Group = help_option_group(GroupName, MenuDesc, CommentLines, Categories),
-    cord.snoc(menu_item(GroupName, MenuDesc), !MenuItemCord),
     set.det_remove_list(Categories, !Categories),
     list.map(get_optdb_records_in_category, Categories, OptdbRecordSets),
     OptdbRecordSet = set.union_list(OptdbRecordSets),
@@ -704,17 +703,17 @@ acc_help_option_group(Format, What, SubOrNot, Group,
         )
     ;
         Format = help_texinfo,
-        ( SubOrNot = sos_section,    SubOrNotStr = "@section "
-        ; SubOrNot = sos_subsection, SubOrNotStr = "@subsection "
+        ( SubOrNot = sos_section,    NodeCmd = "@section "
+        ; SubOrNot = sos_subsection, NodeCmd = "@subsection "
         ),
         some [!GroupStartLineCord, !GroupEndLineCord]
         (
             !:GroupStartLineCord = cord.init,
             !:GroupEndLineCord = cord.init,
             cord.snoc("", !GroupStartLineCord),
-            cord.snoc("@node " ++ GroupName, !GroupStartLineCord),
-            cord.snoc(SubOrNotStr ++ GroupName, !GroupStartLineCord),
-            cord.snoc("@cindex " ++ GroupName, !GroupStartLineCord),
+            add_node_line("@node",   GroupName, !GroupStartLineCord),
+            add_node_line(NodeCmd,   GroupName, !GroupStartLineCord),
+            add_node_line("@cindex", GroupName, !GroupStartLineCord),
             (
                 CommentLines = []
             ;
@@ -737,7 +736,7 @@ acc_help_option_group(Format, What, SubOrNot, Group,
                 !:GroupEndLineCord = cord.map(comment_out_texinfo_line,
                     !.GroupEndLineCord)
             else
-                true
+                cord.snoc(menu_item(GroupName, MenuDesc), !MenuItemCord)
             ),
             GroupLineCord = !.GroupStartLineCord ++ HelpTextLinesCord ++
                 !.GroupEndLineCord,
@@ -752,7 +751,7 @@ get_optdb_records_in_category(Cat, OptdbRecordSet) :-
     OptdbPred =
         ( pred(OptdbRecord::out) is multi :-
             optdb(Cat, Opt, OptData, Help),
-            OptdbRecord = optdb_record(Cat, Opt, OptData, Help)
+            OptdbRecord = optdb_record(Opt, Cat, OptData, Help)
         ),
     solutions_set(OptdbPred, OptdbRecordSet).
 
@@ -760,8 +759,13 @@ get_optdb_records_in_category(Cat, OptdbRecordSet) :-
 
 :- type optdb_record
     --->    optdb_record(
-                option_category,
+                % Put the option first, so that we can use the order
+                % of options in the option type to control the relative
+                % ordering of options in the help text even if they are
+                % in nominally-different option categories (such as
+                % oc_warn_style vs oc_warn_style_c).
                 option,
+                option_category,
                 option_data,
                 libs.optdb_help.help
             ).
@@ -778,11 +782,17 @@ get_optdb_records_in_category(Cat, OptdbRecordSet) :-
     --->    no_negative_version
     ;       add_negative_version.
 
+:- type index_versions
+    --->    index_positive_only
+    ;       index_negative_only
+    ;       index_positive_and_negative.
+
 :- type option_params
     --->    option_params(
-                op_expect       :: maybe_expect_arg,
-                op_negate       :: maybe_negate,
-                op_add_negative :: maybe_add_negative
+                op_expect_arg           :: maybe_expect_arg,
+                op_negate               :: maybe_negate,
+                op_add_negative_opt     :: maybe_add_negative,
+                op_index_versions       :: index_versions
             ).
 
 %---------------------------------------------------------------------------%
@@ -794,15 +804,30 @@ get_optdb_record_params(OptdbRecord, Params) :-
     (
         OptionData = bool(Bool),
         MaybeExpectArg = do_not_expect_arg,
-        ( Bool = no,  MaybeNegate = do_not_negate
-        ; Bool = yes, MaybeNegate = negate
+        (
+            Bool = no,
+            MaybeNegate = do_not_negate,
+            % The negative version is the default, so the absence
+            % of the option is just as good as its negation.
+            % We do not want to create index entries for e.g.
+            % --no-help, --no-make-int, etc.
+            IndexVersions = index_positive_only
+        ;
+            Bool = yes,
+            MaybeNegate = negate,
+            % The negative version is the default, so the absence
+            % of the option is just as good as its positive version.
+            % Nevertheless, if we have an index entry for -no-xyz,
+            % it would look strange to have no index entry for --xyz.
+            IndexVersions = index_positive_and_negative
         ),
-        MaybeAddNegVersion = no_negative_version
+        MaybeAddNegVersionOpt = no_negative_version
     ;
         OptionData = bool_special,
         MaybeExpectArg = do_not_expect_arg,
         MaybeNegate = do_not_negate,
-        MaybeAddNegVersion = no_negative_version
+        MaybeAddNegVersionOpt = no_negative_version,
+        IndexVersions = index_positive_and_negative
     ;
         ( OptionData = int(_)
         ; OptionData = string(_)
@@ -811,17 +836,20 @@ get_optdb_record_params(OptdbRecord, Params) :-
         ),
         MaybeExpectArg = expect_arg,
         MaybeNegate = do_not_negate,
-        MaybeAddNegVersion = no_negative_version
+        MaybeAddNegVersionOpt = no_negative_version,
+        IndexVersions = index_positive_only
     ;
         OptionData = special,
         MaybeExpectArg = do_not_expect_arg,
         MaybeNegate = do_not_negate,
-        MaybeAddNegVersion = no_negative_version
+        MaybeAddNegVersionOpt = no_negative_version,
+        IndexVersions = index_positive_only
     ;
         OptionData = file_special,
         MaybeExpectArg = expect_arg,
         MaybeNegate = do_not_negate,
-        MaybeAddNegVersion = no_negative_version
+        MaybeAddNegVersionOpt = no_negative_version,
+        IndexVersions = index_positive_only
     ;
         ( OptionData = accumulating(_)
         ; OptionData = maybe_int(_)
@@ -830,9 +858,11 @@ get_optdb_record_params(OptdbRecord, Params) :-
         ),
         MaybeExpectArg = expect_arg,
         MaybeNegate = do_not_negate,
-        MaybeAddNegVersion = add_negative_version
+        MaybeAddNegVersionOpt = add_negative_version,
+        IndexVersions = index_positive_and_negative
     ),
-    Params = option_params(MaybeExpectArg, MaybeNegate, MaybeAddNegVersion).
+    Params = option_params(MaybeExpectArg, MaybeNegate,
+        MaybeAddNegVersionOpt, IndexVersions).
 
 %---------------------------------------------------------------------------%
 
@@ -863,7 +893,7 @@ acc_help_messages(Format, What, [OptdbRecord | OptdbRecords],
 
 acc_help_message_plain(What, OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
     get_optdb_record_params(OptdbRecord, Params),
-    OptdbRecord = optdb_record(_Cat, Option, OptionData, Help),
+    OptdbRecord = optdb_record(Option, _Cat, OptionData, Help),
     some [!LineCord]
     (
         !:LineCord = cord.init,
@@ -961,11 +991,11 @@ acc_help_message_plain(What, OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
         ;
             (
                 Help = alt_align_help(LongName, AltLongNames,
-                    AlignedText, DescPieces),
+                    AlignedText, _, DescPieces),
                 PublicOrPrivate = help_public
             ;
                 Help = priv_alt_align_help(LongName, AltLongNames,
-                    AlignedText, DescPieces),
+                    AlignedText, _, DescPieces),
                 PublicOrPrivate = help_private
             ),
             MaybeArg = no_arg,
@@ -977,7 +1007,7 @@ acc_help_message_plain(What, OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
                 AltLongNames, !LineCord)
         ;
             Help = short_alt_align_help(ShortName, LongName, AltLongNames,
-                AlignedText, DescPieces),
+                AlignedText, _, DescPieces),
             PublicOrPrivate = help_public,
             acc_short_option_name_plain(Params, Option, no_arg,
                 aligned_text(AlignedText), ShortName, !LineCord),
@@ -988,7 +1018,7 @@ acc_help_message_plain(What, OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
                 AltLongNames, !LineCord)
         ;
             Help = no_align_help(LongName, AlignedText, NoAlignedText,
-                DescPieces),
+                _, _, DescPieces),
             PublicOrPrivate = help_public,
             expect(is_bool(OptionData), $pred,
                 "unexpected use of no_align_help"),
@@ -1033,7 +1063,8 @@ acc_help_message_plain(What, OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
                     EffDescPieces = DescPieces
                 ),
                 % ZZZ 71
-                reflow_lines(help_plain_text, 71, EffDescPieces, ReflowLines),
+                reflow_lines(help_plain_text, 71, EffDescPieces,
+                    _CindexTopics, _FindexTopics, ReflowLines),
                 BlankLineCord = cord.singleton(""),
                 list.foldl(acc_prefixed_line(DescPrefix), ReflowLines,
                     !LineCord),
@@ -1060,7 +1091,7 @@ acc_help_message_plain(What, OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
 
 acc_help_message_texinfo(OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
     get_optdb_record_params(OptdbRecord, Params),
-    OptdbRecord = optdb_record(_Cat, Option, OptionData, Help),
+    OptdbRecord = optdb_record(Option, _Cat, OptionData, Help),
     some [!LineCord, !OptLineCord, !IndexLineCord]
     (
         !:OptLineCord = cord.init,
@@ -1160,11 +1191,11 @@ acc_help_message_texinfo(OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
         ;
             (
                 Help = alt_align_help(LongName, AltLongNames,
-                    AlignedText, DescPieces),
+                    _, AlignedText, DescPieces),
                 PublicOrPrivate = help_public
             ;
                 Help = priv_alt_align_help(LongName, AltLongNames,
-                    AlignedText, DescPieces),
+                    _, AlignedText, DescPieces),
                 PublicOrPrivate = help_private
             ),
             MaybeArg = no_arg,
@@ -1176,7 +1207,7 @@ acc_help_message_texinfo(OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
                 AltLongNames, !OptLineCord, !IndexLineCord)
         ;
             Help = short_alt_align_help(ShortName, LongName, AltLongNames,
-                AlignedText, DescPieces),
+                _, AlignedText, DescPieces),
             PublicOrPrivate = help_public,
             acc_short_option_name_texinfo(Params, Option, no_arg,
                 aligned_text(AlignedText), ShortName,
@@ -1187,7 +1218,7 @@ acc_help_message_texinfo(OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
             acc_long_option_names_texinfo(Params, Option, no_arg, no_align,
                 AltLongNames, !OptLineCord, !IndexLineCord)
         ;
-            Help = no_align_help(LongName, AlignedText, NoAlignedText,
+            Help = no_align_help(LongName, _, _, AlignedText, NoAlignedText,
                 DescPieces),
             PublicOrPrivate = help_public,
             expect(is_bool(OptionData), $pred,
@@ -1195,21 +1226,27 @@ acc_help_message_texinfo(OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
             ParamsNN = Params ^ op_negate := do_not_negate,
             long_option_name_lines_texinfo(ParamsNN, Option,
                 no_arg, LongName, FirstOptLine0, FirstIndexLine),
-            SecondOptLine0 = long_negated_option_name_texinfo(LongName),
-            SecondIndexLine = SecondOptLine0,
+            SecondIndexLine = long_negated_option_name_texinfo(LongName),
+            string.format("@code{%s}", [s(SecondIndexLine)], SecondOptLine0),
             % In this case, we add *different* aligned text to each line.
             FirstOptLine = FirstOptLine0 ++ " " ++ AlignedText,
             SecondOptLine = SecondOptLine0 ++ " " ++ NoAlignedText,
             add_option_line_texinfo(FirstOptLine, !OptLineCord),
             add_option_line_texinfo(SecondOptLine, !OptLineCord),
-            add_index_line_texinfo(FirstIndexLine, !IndexLineCord),
-            add_index_line_texinfo(SecondIndexLine, !IndexLineCord)
+            add_findex_line_texinfo(FirstIndexLine, !IndexLineCord),
+            add_findex_line_texinfo(SecondIndexLine, !IndexLineCord)
         ;
             Help = alt_arg_align_help(LongName, ArgAligns, DescPieces),
             PublicOrPrivate = help_public,
             % In this case, we add *different* aligned text to each line.
             list.foldl2(acc_arg_align_text_texinfo(Params, Option, LongName),
-                ArgAligns, !OptLineCord, !IndexLineCord)
+                ArgAligns, !OptLineCord, !IndexLineCord),
+            % The option lines each contain both the option name and
+            % one of different arg names, but the index lines contain only
+            % the option name. We therefore need to get rid of duplicates.
+            AAIndexLines0 = cord.list(!.IndexLineCord),
+            list.sort_and_remove_dups(AAIndexLines0, AAIndexLines),
+            !:IndexLineCord = cord.from_list(AAIndexLines)
         ),
         (
             DescPieces = [],
@@ -1219,9 +1256,13 @@ acc_help_message_texinfo(OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
             EffDescPieces = DescPieces
         ),
         % ZZZ 71
-        reflow_lines(help_texinfo, 71, EffDescPieces, ReflowLines),
+        reflow_lines(help_texinfo, 71, EffDescPieces,
+            CindexTopics, FindexTopics, ReflowLines),
+        list.foldl(add_cindex_line_texinfo, CindexTopics, !IndexLineCord),
+        list.foldl(add_findex_line_texinfo, FindexTopics, !IndexLineCord),
         BlankLineCord = cord.singleton(""),
-        !:LineCord = !.OptLineCord ++ !.IndexLineCord ++
+        SpaceLine = cord.singleton("@sp 1"),
+        !:LineCord = SpaceLine ++ !.OptLineCord ++ !.IndexLineCord ++
             cord.from_list(ReflowLines),
         (
             PublicOrPrivate = help_public,
@@ -1240,15 +1281,18 @@ acc_help_message_texinfo(OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
     arg_align::in, cord(string)::in, cord(string)::out) is det.
 
 acc_arg_align_text_plain(Params, Option, LongName, ArgAlign, !LineCord) :-
-    Params = option_params(MaybeExpectArg, MaybeNegate, MaybeAddNegVersion),
+    Params = option_params(MaybeExpectArg, MaybeNegate,
+        MaybeAddNegVersionOpt, IndexVersions),
     expect(unify(MaybeExpectArg, expect_arg), $pred,
         "unexpected MaybeExpectArg"),
     expect(unify(MaybeNegate, do_not_negate), $pred,
         "unexpected MaybeNegate"),
-    expect(unify(MaybeAddNegVersion, no_negative_version), $pred,
-        "unexpected MaybeAddNegVersion"),
+    expect(unify(MaybeAddNegVersionOpt, no_negative_version), $pred,
+        "unexpected MaybeAddNegVersionOpt"),
+    expect(unify(IndexVersions, index_positive_only), $pred,
+        "unexpected IndexVersions"),
 
-    ArgAlign = arg_align(ArgName, AlignedText),
+    ArgAlign = arg_align(ArgName, AlignedText, _),
     Line0 = long_option_name_line_plain(Params, Option,
         arg_name(ArgName), LongName),
     add_aligned_text(AlignedText, Line0, Line),
@@ -1260,20 +1304,23 @@ acc_arg_align_text_plain(Params, Option, LongName, ArgAlign, !LineCord) :-
 
 acc_arg_align_text_texinfo(Params, Option, LongName, ArgAlign,
         !OptLineCord, !IndexLineCord) :-
-    Params = option_params(MaybeExpectArg, MaybeNegate, MaybeAddNegVersion),
+    Params = option_params(MaybeExpectArg, MaybeNegate,
+        MaybeAddNegVersionOpt, IndexVersions),
     expect(unify(MaybeExpectArg, expect_arg), $pred,
         "unexpected MaybeExpectArg"),
     expect(unify(MaybeNegate, do_not_negate), $pred,
         "unexpected MaybeNegate"),
-    expect(unify(MaybeAddNegVersion, no_negative_version), $pred,
-        "unexpected MaybeAddNegVersion"),
+    expect(unify(MaybeAddNegVersionOpt, no_negative_version), $pred,
+        "unexpected MaybeAddNegVersionOpt"),
+    expect(unify(IndexVersions, index_positive_only), $pred,
+        "unexpected IndexVersions"),
 
-    ArgAlign = arg_align(ArgName, AlignedText),
+    ArgAlign = arg_align(ArgName, _, AlignedText),
     long_option_name_lines_texinfo(Params, Option, arg_name(ArgName), LongName,
         OptLine0, IndexLine),
     OptLine = OptLine0 ++ " " ++ AlignedText,
     add_option_line_texinfo(OptLine, !OptLineCord),
-    add_index_line_texinfo(IndexLine, !IndexLineCord).
+    add_findex_line_texinfo(IndexLine, !IndexLineCord).
 
 %---------------------%
 
@@ -1376,11 +1423,12 @@ acc_long_option_name_plain(Params, Option, MaybeArgName, MaybeAlignedText,
         add_aligned_text(AlignedText, FirstLine0, FirstLine)
     ),
     cord.snoc(FirstLine, !LineCord),
-    Params = option_params(_MaybeExpectArg, _MaybeNegate, MaybeAddNegVersion),
+    Params = option_params(_MaybeExpectArg, _MaybeNegate,
+        MaybeAddNegVersionOpt, _IndexVersions),
     (
-        MaybeAddNegVersion = no_negative_version
+        MaybeAddNegVersionOpt = no_negative_version
     ;
-        MaybeAddNegVersion = add_negative_version,
+        MaybeAddNegVersionOpt = add_negative_version,
         SecondLine = long_negated_option_name_line_plain(LongName),
         cord.snoc(SecondLine, !LineCord)
     ).
@@ -1404,11 +1452,12 @@ acc_short_option_name_plain(Params, Option, MaybeArgName, MaybeAlignedText,
         add_aligned_text(AlignedText, FirstLine0, FirstLine)
     ),
     cord.snoc(FirstLine, !LineCord),
-    Params = option_params(_MaybeExpectArg, _MaybeNegate, MaybeAddNegVersion),
+    Params = option_params(_MaybeExpectArg, _MaybeNegate,
+        MaybeAddNegVersionOpt, _IndexVersions),
     (
-        MaybeAddNegVersion = no_negative_version
+        MaybeAddNegVersionOpt = no_negative_version
     ;
-        MaybeAddNegVersion = add_negative_version,
+        MaybeAddNegVersionOpt = add_negative_version,
         SecondLine = short_negated_option_name_line_plain(ShortName),
         cord.snoc(SecondLine, !LineCord)
     ).
@@ -1424,7 +1473,7 @@ acc_short_option_name_plain(Params, Option, MaybeArgName, MaybeAlignedText,
 acc_long_option_name_texinfo(Params, Option, MaybeArgName, MaybeAlignedText,
         LongName, !OptLineCord, !IndexLineCord) :-
     long_option_name_lines_texinfo(Params, Option, MaybeArgName, LongName,
-        FirstOptLine0, FirstIndexLine),
+        FirstOptLine0, _FirstIndexLine),
     (
         MaybeAlignedText = no_align,
         FirstOptLine = FirstOptLine0
@@ -1433,16 +1482,39 @@ acc_long_option_name_texinfo(Params, Option, MaybeArgName, MaybeAlignedText,
         FirstOptLine = FirstOptLine0 ++ " " ++ AlignedText
     ),
     add_option_line_texinfo(FirstOptLine, !OptLineCord),
-    add_index_line_texinfo(FirstIndexLine, !IndexLineCord),
-    Params = option_params(_MaybeExpectArg, _MaybeNegate, MaybeAddNegVersion),
+    Params = option_params(_MaybeExpectArg, _MaybeNegate,
+        MaybeAddNegVersionOpt, IndexVersions),
+    NegatedOptionName = long_negated_option_name_texinfo(LongName),
     (
-        MaybeAddNegVersion = no_negative_version
+        MaybeAddNegVersionOpt = no_negative_version
     ;
-        MaybeAddNegVersion = add_negative_version,
-        NegatedOptionName = long_negated_option_name_texinfo(LongName),
+        MaybeAddNegVersionOpt = add_negative_version,
         % ZZZ
-        add_option_line_texinfo(NegatedOptionName, !OptLineCord),
-        add_index_line_texinfo(NegatedOptionName, !IndexLineCord)
+        add_option_line_texinfo(NegatedOptionName, !OptLineCord)
+    ),
+    PosParams = Params ^ op_negate := do_not_negate,
+    NegParams = Params ^ op_negate := negate,
+    % XXX We *could avoid this call if Params ^ op_negate is do_not_negate,
+    % by simply setting PosIndexLine = _FirstIndexLine.
+    long_option_name_lines_texinfo(PosParams, Option, MaybeArgName,
+        LongName, _, PosIndexLine),
+    % We cannot move the calls that create of the NegIndexLine here,
+    % because that would lead to an assertion failure for non-negatable
+    % options.
+    (
+        IndexVersions = index_positive_only,
+        add_findex_line_texinfo(PosIndexLine, !IndexLineCord)
+    ;
+        IndexVersions = index_negative_only,
+        long_option_name_lines_texinfo(NegParams, Option, MaybeArgName,
+            LongName, _, NegIndexLine),
+        add_findex_line_texinfo(NegIndexLine, !IndexLineCord)
+    ;
+        IndexVersions = index_positive_and_negative,
+        long_option_name_lines_texinfo(NegParams, Option, MaybeArgName,
+            LongName, _, NegIndexLine),
+        add_findex_line_texinfo(PosIndexLine, !IndexLineCord),
+        add_findex_line_texinfo(NegIndexLine, !IndexLineCord)
     ).
 
 :- pred acc_short_option_name_texinfo(option_params, option, maybe_arg_name,
@@ -1456,7 +1528,7 @@ acc_long_option_name_texinfo(Params, Option, MaybeArgName, MaybeAlignedText,
 acc_short_option_name_texinfo(Params, Option, MaybeArgName, MaybeAlignedText,
         ShortName, !OptLineCord, !IndexLineCord) :-
     short_option_name_lines_texinfo(Params, Option, MaybeArgName, ShortName,
-        FirstOptLine0, FirstIndexLine),
+        FirstOptLine0, _FirstIndexLine),
     (
         MaybeAlignedText = no_align,
         FirstOptLine = FirstOptLine0
@@ -1465,16 +1537,39 @@ acc_short_option_name_texinfo(Params, Option, MaybeArgName, MaybeAlignedText,
         FirstOptLine = FirstOptLine0 ++ " " ++ AlignedText
     ),
     add_option_line_texinfo(FirstOptLine, !OptLineCord),
-    add_index_line_texinfo(FirstIndexLine, !IndexLineCord),
-    Params = option_params(_MaybeExpectArg, _MaybeNegate, MaybeAddNegVersion),
+    Params = option_params(_MaybeExpectArg, _MaybeNegate,
+        MaybeAddNegVersionOpt, IndexVersions),
+    NegatedOptionName = short_negated_option_name_texinfo(ShortName),
     (
-        MaybeAddNegVersion = no_negative_version
+        MaybeAddNegVersionOpt = no_negative_version
     ;
-        MaybeAddNegVersion = add_negative_version,
-        NegatedOptionName = short_negated_option_name_texinfo(ShortName),
+        MaybeAddNegVersionOpt = add_negative_version,
         % ZZZ
-        add_option_line_texinfo(NegatedOptionName, !OptLineCord),
-        add_index_line_texinfo(NegatedOptionName, !IndexLineCord)
+        add_option_line_texinfo(NegatedOptionName, !OptLineCord)
+    ),
+    PosParams = Params ^ op_negate := do_not_negate,
+    NegParams = Params ^ op_negate := negate,
+    % XXX We *could avoid this call if Params ^ op_negate is do_not_negate,
+    % by simply setting PosIndexLine = _FirstIndexLine.
+    short_option_name_lines_texinfo(PosParams, Option, MaybeArgName,
+        ShortName, _, PosIndexLine),
+    % We cannot move the calls that create of the NegIndexLine here,
+    % because that would lead to an assertion failure for non-negatable
+    % options.
+    (
+        IndexVersions = index_positive_only,
+        add_findex_line_texinfo(PosIndexLine, !IndexLineCord)
+    ;
+        IndexVersions = index_negative_only,
+        short_option_name_lines_texinfo(NegParams, Option, MaybeArgName,
+            ShortName, _, NegIndexLine),
+        add_findex_line_texinfo(NegIndexLine, !IndexLineCord)
+    ;
+        IndexVersions = index_positive_and_negative,
+        short_option_name_lines_texinfo(NegParams, Option, MaybeArgName,
+            ShortName, _, NegIndexLine),
+        add_findex_line_texinfo(PosIndexLine, !IndexLineCord),
+        add_findex_line_texinfo(NegIndexLine, !IndexLineCord)
     ).
 
 %---------------------%
@@ -1484,9 +1579,11 @@ acc_short_option_name_texinfo(Params, Option, MaybeArgName, MaybeAlignedText,
 
 long_option_name_line_plain(Params, Option, MaybeArgName, LongName0) = Line :-
     Indent = single_indent,
-    Params = option_params(MaybeExpectArg, MaybeNegate, _MaybeAddNegVersion),
+    Params = option_params(MaybeExpectArg, MaybeNegate,
+        _MaybeAddNegVersionOpt, _IndexVersions),
     (
         MaybeNegate = negate,
+        expect(unify(MaybeArgName, no_arg), $pred, "MaybeArgName != no_arg"),
         maybe_have_arg(MaybeExpectArg, Option, MaybeArgName,
             LongName0, LongName),
         Line = long_negated_option_name_line_plain(LongName)
@@ -1511,9 +1608,11 @@ long_option_name_line_plain(Params, Option, MaybeArgName, LongName0) = Line :-
 short_option_name_line_plain(Params, Option, MaybeArgName, ShortName0)
         = Line :-
     Indent = single_indent,
-    Params = option_params(MaybeExpectArg, MaybeNegate, _MaybeAddNegVersion),
+    Params = option_params(MaybeExpectArg, MaybeNegate,
+        _MaybeAddNegVersionOpt, _IndexVersions),
     (
         MaybeNegate = negate,
+        expect(unify(MaybeArgName, no_arg), $pred, "MaybeArgName != no_arg"),
         maybe_have_arg(MaybeExpectArg, Option, MaybeArgName,
             ShortName0, ShortName),
         Line = short_negated_option_name_line_plain(ShortName)
@@ -1537,7 +1636,8 @@ short_option_name_line_plain(Params, Option, MaybeArgName, ShortName0)
 
 long_option_name_lines_texinfo(Params, Option, MaybeArgName, LongName0,
         OptLine, IndexLine) :-
-    Params = option_params(MaybeExpectArg, MaybeNegate, _MaybeAddNegVersion),
+    Params = option_params(MaybeExpectArg, MaybeNegate,
+        _MaybeAddNegVersionOpt, _IndexVersions),
     (
         MaybeNegate = negate,
         maybe_have_arg(MaybeExpectArg, Option, MaybeArgName,
@@ -1566,7 +1666,8 @@ long_option_name_lines_texinfo(Params, Option, MaybeArgName, LongName0,
 
 short_option_name_lines_texinfo(Params, Option, MaybeArgName, ShortName0,
         OptLine, IndexLine) :-
-    Params = option_params(MaybeExpectArg, MaybeNegate, _MaybeAddNegVersion),
+    Params = option_params(MaybeExpectArg, MaybeNegate,
+        _MaybeAddNegVersionOpt, _IndexVersions),
     (
         MaybeNegate = negate,
         maybe_have_arg(MaybeExpectArg, Option, MaybeArgName,
@@ -1651,7 +1752,7 @@ maybe_wrap_arg_name_texinfo(Option, ArgName) = MaybeWrappedArgName :-
     else if string.find_first_char(ArgName, '{', _) then
         string.replace_all(ArgName, "{", "@{", ArgName1),
         string.replace_all(ArgName1, "}", "@}", MaybeWrappedArgName)
-    else if string.find_first_char(ArgName, '-', _) then
+    else if string.index(ArgName, 0, '-') then
         MaybeWrappedArgName = ArgName
     else
         string.format("@var{%s}", [s(ArgName)], MaybeWrappedArgName)
@@ -1671,11 +1772,18 @@ add_option_line_texinfo(OptionStr, !OptLineCord) :-
     string.format("%s %s", [s(ItemStr), s(OptionStr)], OptLine),
     cord.snoc(OptLine, !OptLineCord).
 
-:- pred add_index_line_texinfo(string::in,
+:- pred add_findex_line_texinfo(string::in,
     cord(string)::in, cord(string)::out) is det.
 
-add_index_line_texinfo(OptionStr, !IndexLineCord) :-
+add_findex_line_texinfo(OptionStr, !IndexLineCord) :-
     string.format("@findex %s", [s(OptionStr)], IndexLine),
+    cord.snoc(IndexLine, !IndexLineCord).
+
+:- pred add_cindex_line_texinfo(string::in,
+    cord(string)::in, cord(string)::out) is det.
+
+add_cindex_line_texinfo(Topic, !IndexLineCord) :-
+    string.format("@cindex %s", [s(Topic)], IndexLine),
     cord.snoc(IndexLine, !IndexLineCord).
 
 %---------------------------------------------------------------------------%
@@ -1723,15 +1831,20 @@ have_arg(MaybeExpectArg, Option, OptionName0, OptionName) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred reflow_lines(help_format, int, list(help_piece), list(string)).
-:- mode reflow_lines(in(help_plain_text), in, in, out) is det.
-:- mode reflow_lines(in(help_texinfo), in, in, out) is det.
+:- pred reflow_lines(help_format, int, list(help_piece),
+    list(string), list(string), list(string)).
+:- mode reflow_lines(in(help_plain_text), in, in, out, out, out) is det.
+:- mode reflow_lines(in(help_texinfo), in, in, out, out, out) is det.
 
-reflow_lines(Format, LineLen, InitialPieces, FinishedLines) :-
+reflow_lines(Format, LineLen, Pieces, CindexTopics, FindexTopics,
+        FinishedLines) :-
     % string.count_code_points(IndentStr, IndentLen),
     % AvailLen = LineLen - IndentLen,
-    reflow_lines_loop_over_lines(Format, LineLen, InitialPieces,
+    reflow_lines_loop_over_lines(Format, LineLen, Pieces,
+        cord.init, CindexCord, cord.init, FindexCord,
         0, _CurLineLen, cord.init, CurLine1, cord.init, FinishedLineCord1),
+    CindexTopics = cord.list(CindexCord),
+    FindexTopics = cord.list(FindexCord),
     finish_cur_line(CurLine1, FinishedLineCord1, FinishedLineCord),
     FinishedLines = cord.list(FinishedLineCord).
 
@@ -1745,13 +1858,14 @@ reflow_lines(Format, LineLen, InitialPieces, FinishedLines) :-
 :- type finished_lines == cord(string).
 
 :- pred reflow_lines_loop_over_lines(help_format, int, list(help_piece),
+    cord(string), cord(string), cord(string), cord(string),
     int, int, cur_line, cur_line, finished_lines, finished_lines).
 :- mode reflow_lines_loop_over_lines(in(help_plain_text), in, in,
-    in, out, in, out, in, out) is det.
+    in, out, in, out, in, out, in, out, in, out) is det.
 :- mode reflow_lines_loop_over_lines(in(help_texinfo), in, in,
-    in, out, in, out, in, out) is det.
+    in, out, in, out, in, out, in, out, in, out) is det.
 
-reflow_lines_loop_over_lines(Format, LineLen, Pieces,
+reflow_lines_loop_over_lines(Format, LineLen, Pieces, !CindexCord, !FindexCord,
         !CurLineLen, !CurLine, !FinishedLineCord) :-
     (
         Pieces = []
@@ -1773,12 +1887,16 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
             ; HeadPiece = opt(_, _)
             ; HeadPiece = arg(_)
             ; HeadPiece = arg(_, _)
+            ; HeadPiece = bare_arg(_)
+            ; HeadPiece = bare_arg(_, _)
             ; HeadPiece = opt_arg(_, _)
             ; HeadPiece = opt_arg(_, _, _)
             ; HeadPiece = samp(_)
             ; HeadPiece = samp(_, _)
             ; HeadPiece = emph(_)
             ; HeadPiece = emph(_, _)
+            ; HeadPiece = env(_)
+            ; HeadPiece = env(_, _)
             ; HeadPiece = code(_)
             ; HeadPiece = code(_, _)
             ; HeadPiece = file(_)
@@ -1807,7 +1925,13 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                 ( HeadPiece = opt(Option), Suffix = ""
                 ; HeadPiece = opt(Option, Suffix)
                 ),
-                string.format("`%s'%s", [s(Option), s(Suffix)], Str)
+                (
+                    Format = help_plain_text,
+                    string.format("`%s'%s", [s(Option), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@samp{%s}%s", [s(Option), s(Suffix)], Str)
+                )
             ;
                 ( HeadPiece = arg(Arg), Suffix = ""
                 ; HeadPiece = arg(Arg, Suffix)
@@ -1815,6 +1939,17 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                 (
                     Format = help_plain_text,
                     string.format("<%s>%s", [s(Arg), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@var{%s}%s", [s(Arg), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = bare_arg(Arg), Suffix = ""
+                ; HeadPiece = bare_arg(Arg, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("%s%s", [s(Arg), s(Suffix)], Str)
                 ;
                     Format = help_texinfo,
                     string.format("@samp{%s}%s", [s(Arg), s(Suffix)], Str)
@@ -1829,7 +1964,7 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                         [s(Option), s(Arg), s(Suffix)], Str)
                 ;
                     Format = help_texinfo,
-                    string.format("`%s @samp{%s}'%s",
+                    string.format("@samp{%s @var{%s}}%s",
                         [s(Option), s(Arg), s(Suffix)], Str)
                 )
             ;
@@ -1853,6 +1988,17 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                 ;
                     Format = help_texinfo,
                     string.format("@emph{%s}%s", [s(Text), s(Suffix)], Str)
+                )
+            ;
+                ( HeadPiece = env(Code), Suffix = ""
+                ; HeadPiece = env(Code, Suffix)
+                ),
+                (
+                    Format = help_plain_text,
+                    string.format("`%s'%s", [s(Code), s(Suffix)], Str)
+                ;
+                    Format = help_texinfo,
+                    string.format("@env{%s}%s", [s(Code), s(Suffix)], Str)
                 )
             ;
                 ( HeadPiece = code(Code), Suffix = ""
@@ -1900,7 +2046,15 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                     string.format("@file{@var{%s}.%s}%s",
                         [s(File), s(Ext), s(Suffix)], Str)
                 )
-            ;
+            ),
+            add_word(LineLen, Str, !CurLine, !CurLineLen, !FinishedLineCord)
+        ;
+            ( HeadPiece = ref(_, _, _)
+            ; HeadPiece = ref(_, _, _, _)
+            ; HeadPiece = xref(_)
+            ; HeadPiece = xref(_, _)
+            ),
+            (
                 ( HeadPiece = ref(Before0, RefName, After0), Suffix = ""
                 ; HeadPiece = ref(Before0, RefName, After0, Suffix)
                 ),
@@ -1930,11 +2084,20 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
                     string.format("@xref{%s}%s", [s(RefName), s(Suffix)], Str)
                 )
             ),
-            add_word(LineLen, Str, !CurLine, !CurLineLen, !FinishedLineCord)
+            Words = string.words(Str),
+            reflow_lines_loop_over_words(LineLen, Words, !CurLine, !CurLineLen,
+                !FinishedLineCord)
         ;
             HeadPiece = blank_line,
             finish_cur_line(!.CurLine, !FinishedLineCord),
-            cord.snoc("", !FinishedLineCord),
+            (
+                Format = help_plain_text,
+                cord.snoc("", !FinishedLineCord)
+            ;
+                Format = help_texinfo,
+                cord.snoc("", !FinishedLineCord),
+                cord.snoc("@sp 1", !FinishedLineCord)
+            ),
             !:CurLine = cord.init,
             !:CurLineLen = 0
         ;
@@ -1942,6 +2105,7 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
             (
                 Format = help_plain_text,
                 reflow_lines_loop_over_lines(Format, LineLen, HelpTextPieces,
+                    !CindexCord, !FindexCord,
                     !CurLineLen, !CurLine, !FinishedLineCord)
             ;
                 Format = help_texinfo
@@ -1953,6 +2117,7 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
             ;
                 Format = help_texinfo,
                 reflow_lines_loop_over_lines(Format, LineLen, TexInfoPieces,
+                    !CindexCord, !FindexCord,
                     !CurLineLen, !CurLine, !FinishedLineCord)
             )
         ;
@@ -1960,15 +2125,33 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces,
             (
                 Format = help_plain_text,
                 reflow_lines_loop_over_lines(Format, LineLen, HelpTextPieces,
+                    !CindexCord, !FindexCord,
                     !CurLineLen, !CurLine, !FinishedLineCord)
             ;
                 Format = help_texinfo,
                 reflow_lines_loop_over_lines(Format, LineLen, TexInfoPieces,
+                    !CindexCord, !FindexCord,
                     !CurLineLen, !CurLine, !FinishedLineCord)
+            )
+        ;
+            HeadPiece = cindex(Topic),
+            (
+                Format = help_plain_text
+            ;
+                Format = help_texinfo,
+                cord.snoc(Topic, !CindexCord)
+            )
+        ;
+            HeadPiece = findex(Topic),
+            (
+                Format = help_plain_text
+            ;
+                Format = help_texinfo,
+                cord.snoc(Topic, !FindexCord)
             )
         ),
         reflow_lines_loop_over_lines(Format, LineLen, TailPieces,
-            !CurLineLen, !CurLine, !FinishedLineCord)
+            !CindexCord, !FindexCord, !CurLineLen, !CurLine, !FinishedLineCord)
     ).
 
 :- func before_str(string) = string.
@@ -2160,10 +2343,10 @@ get_main_long_name(Option, MaybeLongName) :-
         ; Help = short_arg_help(_, LongName, _, _, _)
         ; Help = priv_short_help(_, LongName, _, _)
         ; Help = priv_short_arg_help(_, LongName, _, _, _)
-        ; Help = alt_align_help(LongName, _, _, _)
-        ; Help = priv_alt_align_help(LongName, _, _, _)
-        ; Help = short_alt_align_help(_, LongName, _, _, _)
-        ; Help = no_align_help(LongName, _, _, _)
+        ; Help = alt_align_help(LongName, _, _, _, _)
+        ; Help = priv_alt_align_help(LongName, _, _, _, _)
+        ; Help = short_alt_align_help(_, LongName, _, _, _, _)
+        ; Help = no_align_help(LongName, _, _, _, _, _)
         ; Help = alt_arg_align_help(LongName, _, _)
         ),
         MaybeLongName = yes(LongName)
@@ -2213,6 +2396,13 @@ menu_item_to_menu_line(MenuItem) = Line :-
 
 %---------------------------------------------------------------------------%
 
+:- pred add_node_line(string::in, string::in,
+    cord(string)::in, cord(string)::out) is det.
+
+add_node_line(NodeCmd, SectionName, !LineCord) :-
+    string.format("%-12s %s", [s(NodeCmd), s(SectionName)], Line),
+    cord.snoc(Line, !LineCord).
+
 :- pred comment_out_texinfo_lines(cord(string)::in, cord(string)::out) is det.
 
 comment_out_texinfo_lines(!LineCord) :-
@@ -2220,7 +2410,14 @@ comment_out_texinfo_lines(!LineCord) :-
 
 :- func comment_out_texinfo_line(string) = string.
 
-comment_out_texinfo_line(Line) = "@c " ++ Line.
+comment_out_texinfo_line(Line) = CommentedOutLine :-
+    % It is somewhat easier to read commented out sections of the user's guide
+    % if lines containing only "@c " do NOT obscure (sub)section boundaries.
+    ( if Line = "" then
+        CommentedOutLine = ""
+    else
+        CommentedOutLine = "@c " ++ Line
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

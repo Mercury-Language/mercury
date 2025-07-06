@@ -15,29 +15,29 @@ Help options
     -?
     -h
     --help
-        Print this usage message.
+        Print a usage message.
 
     PRIVATE OPTION
     --help-priv
-        Print the usage message, including private options.
+        Print a usage message, including private options.
 
     PRIVATE OPTION
     --help-texinfo
         Print the documentation of all options for the user guide.
 
     --version
-        Display the compiler version.
+        Print the compiler version.
 
 Options for modifying the command line
 
-    --flags-file <file>
-    --flags <file>
+    --flags-file <filename>
+    --flags <filename>
         Take options from the specified file, and handle them as if they were
         specified on the command line.
 
     --filenames-from-stdin
-        Read a newline terminated module name or file name from the standard
-        input, and compile that module or file. Repeat this until reaching
+        Read in from standard input a newline-terminated module name or file
+        name, compile that module or file, and repeat until reaching
         end-of-file. (This allows a program or user to interactively compile
         several modules without the overhead of creating a process for each
         one.)
@@ -63,7 +63,7 @@ Options that give the compiler its overall task
         modules in the program.
 
     --generate-dependencies-ints
-        Does the same job as --generate-dependencies, but also outputs `.int3',
+        Do the same job as --generate-dependencies, but also output `.int3',
         `.int0', `.int' and `.int2' files for all the modules in the program.
 
     --generate-dependency-file
@@ -118,7 +118,10 @@ Options that give the compiler its overall task
     -t
     --typecheck-only
         Check the module's code only for syntax- and type errors. Do not
-        execute any other semantic checks, and do not generate any code.
+        execute any other semantic checks, and do not generate any code. (When
+        converting Prolog code to Mercury, it can sometimes be useful to get
+        the types right first and worry about modes second; this option
+        supports that approach.)
 
     -e
     --errorcheck-only
@@ -139,20 +142,24 @@ Options that give the compiler its overall task
     --generate-standalone-interface <basename>
     --no-generate-standalone-interface
         Output a stand-alone interface. Use <basename> as the basename of any
-        files generated for the stand-alone-interface. (See the Stand-alone
-        Interface chapter of the Mercury User's Guide for further details.)
+        files generated for the stand-alone-interface. (See the "Stand-alone
+        interfaces" chapter of the Mercury User's Guide for further details.)
 
     -P
     --convert-to-mercury
     --convert-to-Mercury
     --pretty-print
         Output the code of the module to `<module>.ugly' in a standard format.
-        This option acts as a Mercury ugly-printer.
+        This option acts as a Mercury ugly-printer. (It would be a
+        pretty-printer, except that comments are stripped, and nested
+        if-then-elses are indented too much, so the result is rather ugly.)
 
     -x
     --make-xml-documentation
     --make-xml-doc
-        Output XML documentation for the module to `<module>.xml'.
+        Output an XML representation of all the declarations in the module to
+        `<module>.xml'. This XML file can then be transformed via a XSL
+        transform into another documentation format.
 
     PRIVATE OPTION
     --make-analysis-registry
@@ -167,8 +174,8 @@ Options that give the compiler its overall task
 
     -r
     --rebuild
-        Same as `--make', but always rebuild the target files, even if they are
-        up-to-date.
+        A variant of the `--make' option, with the difference being that it
+        always rebuilds the target files, even if they are up-to-date.
 
     PRIVATE OPTION
     --invoked-by-mmc-make
@@ -197,7 +204,7 @@ Options that give the compiler its overall task
         library to be installed should be built.
 
     --output-target-arch
-        Print the target architecture to the standard output.
+        Print to standard output the target architecture.
 
     --output-cc
         Print to standard output the command for invoking the C compiler.
@@ -239,8 +246,8 @@ Options that give the compiler its overall task
     --output-class-directory
     --output-java-class-dir
     --output-class-dir
-        Print to standard output the name of the directory in which we will
-        place any generated Java class files.
+        Print to standard output the name of the directory in which the
+        compiler will place any generated Java class files.
 
     --output-optimization-options
     --output-opt-opts
@@ -318,20 +325,18 @@ Grade options
 
     --gcc-global-registers              (grades: reg, asm_fast)
     --no-gcc-global-registers           (grades: none)
-        Specify whether or not to use GNU C's global register variables
-        extension. This option is used only when targeting C with
-        `--no-high-level-code'.
+        Specify whether to use GNU C's global register variables extension.
+        This option is used only when targeting C with `--no-high-level-code'.
 
     --gcc-non-local-gotos               (grades: asm_fast)
     --no-gcc-non-local-gotos            (grades: none, reg)
-        Specify whether or not to use GNU C's `labels as values' extension.
-        This option is used only when targeting C with `--no-high-level-code'.
+        Specify whether to use GNU C's `labels as values' extension. This
+        option is used only when targeting C with `--no-high-level-code'.
 
     --asm-labels                        (grades: asm_fast)
     --no-asm-labels                     (grades: none, reg)
-        Specify whether or not to use GNU C's asm extensions for inline
-        assembler labels. This option is used only when targeting C with
-        `--no-high-level-code'.
+        Specify whether GNU C's asm extensions for inline assembler labels.
+        This option is used only when targeting C with `--no-high-level-code'.
 
     PRIVATE OPTION
     --no-use-float-registers
@@ -361,13 +366,13 @@ Grade options
     Debugging grade options
 
     --debug                             (grade modifier: `.debug')
-        Enable Mercury-level debugging. See the Debugging chapter of the
+        Enable Mercury-level debugging. See the "Debugging" chapter of the
         Mercury User's Guide for details. This option is supported only when
         targeting C with `--no-high-level-code'.
 
     --decl-debug                        (grade modifier: `.decldebug')
         Enable full support for declarative debugging. This allows subterm
-        dependency tracking in the declarative debugger. See the Debugging
+        dependency tracking in the declarative debugger. See the "Debugging"
         chapter of the Mercury User's Guide for details. This option is
         supported only when targeting C with `--no-high-level-code'.
 
@@ -397,9 +402,8 @@ Grade options
 
     --memory-profiling                  (grade modifier: `.memprof')
         Prepare the generated code for profiling of memory usage and retention
-        by mprof. Please see the
-        "Using mprof for profiling memory retention" section in the Mercury
-        User's Guide for details.
+        by mprof. Please see the "Using mprof for profiling memory retention"
+        section in the Mercury User's Guide for details.
         
         This option is supported only when targeting C.
 
@@ -449,8 +453,8 @@ Grade options
         There is no help text available.
 
     --no-coverage-profiling
-        Do not gather profiling information that is useful only for coverage
-        profiling.
+        Do not gather deep profiling information that is useful only for
+        coverage profiling.
 
     PRIVATE OPTION
     --coverage-profiling-via-calls
@@ -506,10 +510,10 @@ Grade options
         Augment each heap cell with its size in cells.
 
     --threadscope                       (grade modifier: `.threadscope')
-        Enable support for profiling parallel execution. This option is
-        supported only when targeting C in parallel grades with
+        Enable support for profiling parallel execution. using Threadscope.
+        This option is supported only when targeting C in parallel grades with
         `--no-high-level-code', and only on some processors. See
-        README.ThreadScope for details.
+        README.ThreadScope and the "Using threadscope" section for details.
 
     Optional feature grade options
 
@@ -548,8 +552,8 @@ Grade options
     --single-precision-float            (grade modifier: `.spf')
     --single-prec-float
         Use single precision floats so that, on 32-bit machines, floating point
-        values don't need to be boxed. Double precision floats are used by
-        default. This option is supported only when targeting C.
+        values don't need to be boxed. The default is to use double precision
+        floats. This option is supported only when targeting C.
 
     --parallel                          (grade modifier: `.par')
         Enable parallel execution support for the low-level C grades. Enable
@@ -598,7 +602,8 @@ Grade options
     --num-tag-bits <N>
         Use N primary tag bits. Note that the value of this option is normally
         autoconfigured; its use should never be needed except for
-        cross-compilation.
+        cross-compilation to an architecture where autoconfiguration would
+        yield a different value.
 
     PRIVATE OPTION
     --bits-per-word <N>
@@ -633,7 +638,7 @@ Grade options
         be needed except for cross-compilation.
 
     PRIVATE OPTION
-    --arg-pack-bits <n>
+    --arg-pack-bits <N>
         The number of bits in a word in which to pack constructor arguments.
         Note that the value of this option is normally autoconfigured; its use
         should never be needed except for cross-compilation.
@@ -709,11 +714,11 @@ Options that control inference
         predicate or of a function), just report an error; do not try to infer
         its determinism.
 
-    --type-inference-iteration-limit <n>
-        Perform at most <n> passes of type inference (default: 60).
+    --type-inference-iteration-limit <N>
+        Perform at most <N> passes of type inference (default: 60).
 
-    --mode-inference-iteration-limit <n>
-        Perform at most <n> passes of mode inference (default: 30).
+    --mode-inference-iteration-limit <N>
+        Perform at most <N> passes of mode inference (default: 30).
 
     --allow-stubs
         Allow procedures to have no clauses. Any calls to such procedures will
@@ -729,7 +734,8 @@ Options specifying the intended semantics
 
     --no-reorder-conj
         Execute conjunctions left-to-right. Do not reorder conjuncts, except
-        where the modes require it.
+        where the modes require it (to put the producer of each variable before
+        all its consumers).
 
     --no-reorder-disj
         Execute disjunctions strictly left-to-right; do not reorder disjuncts.
@@ -750,16 +756,29 @@ Verbosity options
 
     -S
     --statistics
-        Output messages about the compiler's time/space usage. At the moment
-        this option implies `--no-trad-passes', so you get information at the
-        boundaries between phases of the compiler.
+        Output messages about the compiler's time/space usage at the boundaries
+        between phases of the compiler.
+
+    PRIVATE OPTION
+    --detailed-statistics
+        Output more detailed messages about the compiler's time/space usage.
+
+    PRIVATE OPTION
+    --benchmark-modes
+        Benchmark mode analysis, including its experimental version, if it is
+        enabled.
+
+    PRIVATE OPTION
+    --benchmark-modes-repeat <num_repeats>
+        The number of times to execute mode analysis, if `--benchmark-modes' is
+        enabled.
 
     --no-verbose-make
         Disable messages about the progress of builds when using `mmc --make'.
 
-    --output-compile-error-lines <n>
+    --output-compile-error-lines <N>
     --no-output-compile-error-lines
-        With `--make', output the first <n> lines of the `.err' file after
+        With `--make', output the first <N> lines of the `.err' file after
         compiling a module (default: 100). Specifying
         `--no-output-compile-error-lines' removes the limit.
 
@@ -776,20 +795,6 @@ Verbosity options
     --verbose-commands
         Output each external command before it is run. Note that some commands
         will only be printed with `--verbose'.
-
-    PRIVATE OPTION
-    --detailed-statistics
-        Output more detailed messages about the compiler's time/space usage.
-
-    PRIVATE OPTION
-    --benchmark-modes
-        Benchmark mode analysis, including its experimental version, if it is
-        enabled.
-
-    PRIVATE OPTION
-    --benchmark-modes-repeat <num_repeats>
-        The number of times to execute mode analysis, if `--benchmark-modes' is
-        enabled.
 
     --report-cmd-line-args
         Report the command line arguments.
@@ -858,7 +863,7 @@ Verbosity options
     --no-debug-modes-goal-ids
         Output the id of the goal at all mode debug checkpoints.
 
-    --debug-modes-pred-id <n>
+    --debug-modes-pred-id <pred_id>
         With `--debug-modes', restrict the debugging traces to the mode
         checking of the predicate or function with the specified pred id.
 
@@ -919,7 +924,7 @@ Verbosity options
         There is no help text available.
 
     PRIVATE OPTION
-    --debug-dep-par-conj <n>
+    --debug-dep-par-conj <pred_id>
     --no-debug-dep-par-conj
         Output detailed debugging traces during the dependent AND-parallelism
         transformation of the predicate with the given predicate id. Effective
@@ -935,7 +940,7 @@ Verbosity options
         predicate with the given id.
 
     PRIVATE OPTION
-    --debug-code-gen-pred-id <n>
+    --debug-code-gen-pred-id <pred_id>
         Output detailed debugging traces of code generation for the predicate
         or function with the given pred id. Effectively only with the right
         trace flags.
@@ -943,7 +948,7 @@ Verbosity options
     --debug-opt
         Output detailed debugging traces of the optimization process.
 
-    --debug-opt-pred-id <n>
+    --debug-opt-pred-id <pred_id>
     --no-debug-opt-pred-id
         Output detailed debugging traces of the optimization process only for
         the predicate/function with the specified pred id.
@@ -978,9 +983,9 @@ Diagnostics options
         of the usual ascending order. This is useful if you want to work on the
         last errors in a file first.
 
-    --max-error-line-width <n>
+    --max-error-line-width <N>
     --no-max-error-line-width
-        Set the maximum width of an error message line to <n> characters
+        Set the maximum width of an error message line to <N> characters
         (unless a long single word forces the line over this limit). Specifying
         `--no-max-error-line-width' removes the limit.
 
@@ -997,28 +1002,29 @@ Diagnostics options
     --error-files-in-subdir
         This option causes `mmc --make' to put `.err' files into the `Mercury'
         subdirectory instead of the current directory. (This option has no
-        effect on Mmake.)
+        effect on `mmake'.)
 
     PRIVATE OPTION
     --std-int-file-not-written-msgs
         Standardize messages about interface files not being written by
         omitting any directory name components from file names.
 
-    --typecheck-ambiguity-warn-limit <n>
+    --typecheck-ambiguity-warn-limit <N>
         Set the number of type assignments required to generate a warning about
-        highly ambiguous overloading to <n>.
+        highly ambiguous overloading to <N>. (Default: 50.)
 
-    --typecheck-ambiguity-error-limit <n>
+    --typecheck-ambiguity-error-limit <N>
         Set the number of type assignments required to generate an error about
-        excessively ambiguous overloading to <n>. If this limit is reached, the
+        excessively ambiguous overloading to <N>. If this limit is reached, the
         typechecker will not process the predicate or function any further.
+        (Default: 3000.)
 
     Options that control color in diagnostics
 
     --color-diagnostics
     --colour-diagnostics
         Disable the use of colors in diagnostic messages. Please see the
-        "Enabling the use of color" section in the Mercury User's Guide for
+        "Enabling the use of color" section in the Mercury User's Guide for the
         details.
 
     PRIVATE OPTION
@@ -1033,7 +1039,7 @@ Diagnostics options
         diagnostics is enabled. For information about how the compiler uses
         colors in diagnostic messages, and about the syntax of color scheme
         specifications, please see the "Color schemes" section in the Mercury
-        user's Guide for details.
+        User's Guide.
 
     PRIVATE OPTION
     --color-scheme-envvar <ColorScheme>
@@ -1085,8 +1091,9 @@ Warning options
         Do not warn about unifications which cannot succeed.
 
     --no-warn-known-bad-format-calls
-        Do not warn about calls to `string.format' or `io.format' that contain
-        mismatches between the format string and the supplied values.
+        Do not warn about calls to `string.format', `io.format', or
+        `stream.string_writer.format' that contain mismatches between the
+        format string and the supplied values.
 
     --no-warn-obsolete
         Do not warn about calls to predicates and functions that have been
@@ -1099,22 +1106,21 @@ Warning options
     --no-warn-suspected-occurs-failure
         Do not warn about code that looks like it unifies a variable with a
         term that contains that same variable. Such code cannot succeed because
-        it fails what is called the *occurs check*.
+        it fails the test called the *occurs check*.
 
     --warn-suspicious-recursion
         Warn about recursive calls which are likely to have problems, such as
         leading to infinite recursion.
 
     --warn-unused-args
-        Warn about predicate arguments which are not used.
+        Warn about predicate or function arguments which are not used.
 
     --no-warn-det-decls-too-lax
-        Do not warn about determinism declarations which could have been
-        stricter.
+        Do not warn about determinism declarations which could be stricter.
 
     --no-warn-inferred-erroneous
-        Do not warn about procedures whose determinism is inferred erroneous
-        but whose determinism declarations are looser.
+        Do not warn about procedures whose determinism is inferred to be
+        `erroneous', but whose determinism declarations are looser.
 
     --no-warn-ambiguous-pragmas
     --no-warn-ambiguous-pragma
@@ -1130,7 +1136,7 @@ Warning options
     --no-warn-table-with-inline
         Do not warn about tabled procedures that also have a `pragma inline'
         declaration. (This combination does not work, because inlined copies of
-        procedure bodies cannot be tabled.
+        procedure bodies cannot be tabled.)
 
     --no-warn-unresolved-polymorphism
         Do not warn about unresolved polymorphism, which occurs when the type
@@ -1181,7 +1187,7 @@ Warning options
     Warnings about possible performance issues
 
     --no-warn-accumulator-swaps
-        Do not warn about argument order rearrangement caused by
+        Do not warn about argument order rearrangements done by
         `--introduce-accumulators'.
 
     --no-warn-unneeded-final-statevars
@@ -1208,9 +1214,7 @@ Warning options
     --warn-non-tail-recursion {none,self,self-and-mutual}
     --no-warn-non-tail-recursion
         Specify when the compiler should warn about recursive calls that are
-        not tail calls. This option works by specifying the implied values for
-        `--warn-non-tail-recursion-self' and
-        `--warn-non-tail-recursion-mutual'.
+        not tail calls.
 
     Warnings about programming style
 
@@ -1225,7 +1229,8 @@ Warning options
 
     --no-warn-simple-code
         Do not warn about constructs which are so simple that they are likely
-        to be programming errors.
+        to be programming errors. (One example is if-then-elses whose condition
+        always succeeds.)
 
     --inform-ite-instead-of-switch
         Generate informational messages for if-then-elses that could be
@@ -1235,12 +1240,19 @@ Warning options
         Generate informational messages for switches that do not cover all the
         function symbols that the switched-on variable could be bound to.
 
+    --inform-incomplete-switch-threshold <N>
+        Have the `--inform-incomplete-switch' option generate its messages only
+        for switches that *do* cover at least N% of the function symbols that
+        the switched-on variable could be bound to.
+
     --warn-duplicate-calls
         Warn about multiple calls to a predicate or function with the same
         input arguments.
 
     --no-warn-redundant-coerce
-        Do not warn about redundant type coercions.
+        Do not warn about redundant type coercions, which occur when the type
+        of the result of the `coerce' expression is the same as the type of its
+        argument.
 
     --no-warn-state-var-shadowing
         Do not warn about one state variable shadowing another.
@@ -1264,7 +1276,8 @@ Warning options
         supplied values.
 
     --warn-can-fail-function
-        Warn about functions that can fail.
+        Warn about functions that can fail. (Such functions should be replaced
+        by semidet predicates.)
 
     --no-warn-unneeded-mode-specific-clause
         Do not warn about clauses that unnecessarily specify the modes of their
@@ -1303,17 +1316,6 @@ Warning options
         Generate a warning if the clauses and foreign_procs of a predicate or
         function are not contiguous.
 
-    --warn-suspicious-foreign-code
-        Warn about possible errors in the bodies of foreign code pragmas.
-
-    --warn-suspicious-foreign-procs
-        Warn about possible errors in the bodies of foreign_proc pragmas.
-
-    --inform-incomplete-switch-threshold <N>
-        Have the `--inform-incomplete-switch' option generate its messages only
-        for switches that *do* cover at least N% of the function symbols that
-        the switched-on variable could be bound to.
-
     --allow-non-contiguity-for <name1,name2,...>
     --no-allow-non-contiguity-for
         Allow the clauses (or, with `--warn-non-contiguous-foreign-procs', the
@@ -1323,6 +1325,24 @@ Warning options
         once, with each option value specifying a distinct set of predicates
         and/or function names that may be intermingled. Each name must uniquely
         specify a predicate or a function.
+
+    --warn-suspicious-foreign-code
+        Warn about possible errors in the bodies of foreign code pragmas.
+        
+        Note that since the compiler's ability to parse foreign language code
+        is limited, some warnings reported by this option may be spurious, and
+        some actual errors may not be detected at all.
+
+    --warn-suspicious-foreign-procs
+        Warn about possible errors in the bodies of foreign_proc pragmas. When
+        enabled, the compiler attempts to determine whether the success
+        indicator for a foreign procedure is correctly set, and whether the
+        foreign procedure body contains operations that it should not contain,
+        such as `return' statements in a C foreign procedure.
+        
+        Note that since the compiler's ability to parse foreign language code
+        is limited, some warnings reported by this option may be spurious, and
+        some actual errors may not be detected at all.
 
     Options that control warnings
 
@@ -1335,8 +1355,9 @@ Warning options
 
     --no-warn-only-one-format-string-error
         If a format string has more one than mismatch with the supplied values,
-        generate a warning for all mismatches, not just the first. (The later
-        mismatches may be avalanche errors caused by earlier mismatches.)
+        generate a warning for all mismatches, not just the first. (The default
+        is to report only the first, because later mismatches may be avalanche
+        errors caused by earlier mismatches.)
 
     PRIVATE OPTION
     --no-warn-smart-recompilation
@@ -1350,24 +1371,24 @@ Warning options
 
     --halt-at-warn
         This option causes the compiler to treat all warnings as if they were
-        errors when generating target code. This means that if the compiler
-        issues any warning, it will not generate target code; instead, it will
-        return a non-zero exit status.
+        errors when intending to generate target code. This means that if the
+        compiler issues any warnings, it will not generate target code;
+        instead, it will return a non-zero exit status.
 
     --halt-at-warn-make-interface
     --halt-at-warn-make-int
         This option causes the compiler to treat all warnings as if they were
-        errors when generating an interface file (a `.int', `.int0', `.int2' or
-        `.int3' file). This means that if the compiler issues any warnings at
-        that time, it will not generate the interface file; instead, it will
-        return a non-zero exit status.
+        errors when intending to generate an interface file (a `.int', `.int0',
+        `.int2' or `.int3' file). This means that if the compiler issues any
+        warnings at that time, it will not generate the interface file;
+        instead, it will return a non-zero exit status.
 
     --halt-at-warn-make-opt
         This option causes the compiler to treat all warnings as if they were
-        errors when generating an optimization file (a `.opt' or `.trans_opt'
-        file.) This means that if the compiler issues any warnings at that
-        time, it will not generate the optimization file; instead, it will
-        return a non-zero exit status.
+        errors when intending to generate an optimization file (a `.opt' or
+        `.trans_opt' file.) This means that if the compiler issues any warnings
+        at that time, it will not generate the optimization file; instead, it
+        will return a non-zero exit status.
 
     --halt-at-syntax-errors
         This option causes the compiler to halt immediately, without doing any
@@ -1380,9 +1401,12 @@ Warning options
         it causes the compiler to check the consistency of those parts of each
         of those modules that are intended to end up in the `.int' and `.int2'
         files. If these checks find any problems, the compiler will print an
-        error message for each problem, but will then stop. Users can prevent
-        this stop, and thus allow the generation of invalid interface files, by
-        specifying `--no-halt-at-invalid-interface'.
+        error message for each problem, but will then stop.
+        
+        Users can prevent this stop, and thus allow the generation of invalid
+        interface files, by specifying `--no-halt-at-invalid-interface'. (In
+        this case, the problems in the invalid information files will be
+        reported when compiling the modules that import them.)
 
     PRIVATE OPTION
     --halt-at-auto-parallel-failure
@@ -1434,6 +1458,11 @@ Options that ask for informational files
         together with the names of the files containing them and their
         approximate line counts, to `<module>.defn_line_counts'. The list will
         be ordered on the names and arities of the predicates and functions.
+        
+        The line counts are only approximate because the compiler does not
+        need, and therefore does not keep around, information such as the
+        context of a line that contains only a close parenthesis ending a
+        clause.
 
     --show-definition-extents
     --show-defn-extents
@@ -1441,6 +1470,11 @@ Options that ask for informational files
         together with the approximate line numbers of their first and last
         lines, to `<module>.defn_extents'. The list will be ordered on the
         starting line numbers of the predicates and functions.
+        
+        The line numbers are only approximate because the compiler does not
+        need, and therefore does not keep around, information such as the
+        context of a line that contains only a close parenthesis ending a
+        clause.
 
     --show-local-call-tree
         Construct the local call tree of the predicates and functions defined
@@ -1452,16 +1486,19 @@ Options that ask for informational files
         traversal of the bodies (as reordered by mode analysis), of the first
         procedure of each predicate or function, starting the traversal at the
         exported predicates and/or functions of the module. List the callees of
-        each node in the same order. Write a flattened form of this call tree,
-        containing just the predicates and functions in the same traversal
-        order, to `<module>.local_call_tree_order'. Construct another call tree
-        of the predicates and functions defined in the module in which each
-        entry lists not just the local predicates/functions directly referred
-        to, but all directly or indirectly referenced predicates/functions,
-        whether or not they are defined in the current module. The one
-        restriction is that we consider only references that occur in the body
-        of the current module. Write out this tree to
-        `<module>.local_call_full'.
+        each node in the same order.
+        
+        Write a flattened form of this call tree, containing just the
+        predicates and functions in the same traversal order, to
+        `<module>.local_call_tree_order'.
+        
+        Construct another call tree of the predicates and functions defined in
+        the module in which each entry lists not just the local
+        predicates/functions directly referred to, but all directly or
+        indirectly referenced predicates/functions, whether or not they are
+        defined in the current module. The one restriction is that we consider
+        only references that occur in the body of the current module. Write out
+        this tree to `<module>.local_call_full'.
 
     --show-local-type-representations
     --show-local-type-repns
@@ -1486,7 +1523,7 @@ Options that ask for informational files
     --imports-graph
         If `--generate-dependencies' is specified, then write out the imports
         graph to `<module>.imports_graph' in a format that can be processed by
-        the graphviz tools. The graph will contain an edge from the node of
+        the `graphviz' tools. The graph will contain an edge from the node of
         module A to the node of module B if module A imports module B.
 
 Controlling trace goals
@@ -1511,28 +1548,12 @@ Preparing code for mdb debugging
     --trace-optimised
         Do not disable optimizations that can change the trace.
 
-    --event-set-file-name <filename>
-        Get the specification of user-defined events from <filename>.
-
-    --no-delay-death
-        When the trace level is `deep', the compiler normally preserves the
-        values of variables as long as possible, even beyond the point of their
-        last use, in order to make them accessible from as many debugger events
-        as possible. However, it will not do so if the user specifies
-        `--no-delay-death'. This may be necessary if without it, the stack
-        frames of some procedures grow too big.
-
-    --delay-death-max-vars <N>
-        Delay the deaths of variables only when the number of variables in the
-        procedure is no more than N. The default value is 1000.
-
-    --stack-trace-higher-order
-        Enable stack traces through predicates and functions with higher-order
-        arguments, even if stack tracing is not supported in general.
-
     PRIVATE OPTION
     --trace-prof
         Enable tracing of deep profiling service predicates.
+
+    --event-set-file-name <filename>
+        Get the specification of user-defined events from <filename>.
 
     PRIVATE OPTION
     --trace-table-io
@@ -1566,6 +1587,22 @@ Preparing code for mdb debugging
     --suppress-trace suppress-items,
         Suppress the named aspects of the execution tracing system.
 
+    --no-delay-death
+        When the trace level is `deep', the compiler normally preserves the
+        values of variables as long as possible, even beyond the point of their
+        last use, in order to make them accessible from as many debugger events
+        as possible. However, it will not do so if the user specifies
+        `--no-delay-death'. This may be necessary if without it, the stack
+        frames of some procedures grow too big.
+
+    --delay-death-max-vars <N>
+        Delay the deaths of variables only when the number of variables in the
+        procedure is no more than N. The default value is 1000.
+
+    --stack-trace-higher-order
+        Enable stack traces through predicates and functions with higher-order
+        arguments, even if stack tracing is not supported in general.
+
     PRIVATE OPTION
     --force-disable-tracing
         Force tracing to be set to trace level none. This overrides all other
@@ -1595,37 +1632,66 @@ Optimization options
 
     PRIVATE OPTION
     --default-opt-level -O<n>
-        Set the default optimization level to <n>.
+        Set the default optimization level to <N>.
 
-    -O <n>
-    --optimization-level <n>
-    --optimisation-level <n>
-    --opt-level <n>
-        Set optimization level to <n>. Optimization level -1 means no
+    -O <N>
+    --optimization-level <N>
+    --optimisation-level <N>
+    --opt-level <N>
+        Set optimization level to <N>. Optimization level -1 means no
         optimization while optimization level 6 means full optimization. The
         option `--output-optimization-options' lists the optimizations enabled
         at each level.
+        
+        Note that some options are not enabled automatically at *any*
+        optimization level. These include options that are too new and
+        experimental for large scale use, and options that generate speedups in
+        some use cases, but slowdowns in others, require situation-specific
+        consideration of their use.
+        
+        Likewise, if you want the compiler to perform intermodule
+        optimizations, where the compiler exploits information about the
+        non-public parts of the modules it imports (which it gets from their
+        `.opt' files) for optimization purposes then you must enable that
+        separately, partially because they affect the compilation process in
+        ways that require special treatment by `mmake'. This goes double for
+        *transitive* intermodule optimizations, where the compiler exploits
+        information about the non-public parts of not just the modules it
+        imports, but also from the modules that *they)* import, directly or
+        indirectly. (It gets this info from the `.trans_opt' files of the
+        directly or indirectly imported modules.)
 
     --optimize-space
     --optimise-space
     --opt-space
-        Turn on optimizations that reduce code size and turn off optimizations
+        Turn on optimizations that reduce code size, and turn off optimizations
         that significantly increase code size.
 
     --intermodule-optimization
     --intermodule-optimisation
     --intermod-opt
-        Perform inlining and higher-order specialization of the code for
-        predicates imported from other modules. This option must be set
-        throughout the compilation process.
+        Perform inlining, higher-order specialization, and other optimizations
+        using knowledge of the otherwise non-public data of directly imported
+        modules. The compiler gets this data from the `<module>.opt' files of
+        the directly imported modules.
+        
+        This option must be set consistently throughout the compilation
+        process, starting with `mmc --generate-dependencies'.
 
     --transitive-intermodule-optimization
     --transitive-intermodule-optimisation
     --trans-intermod-opt
-        Import the transitive intermodule optimization data. This data is
-        imported from `<module>.trans_opt' files. Note that
-        `--transitive-intermodule-optimization' does not work with
-        `mmc --make'.
+        Perform inlining, higher-order specialization, and other optimizations
+        using knowledge of the otherwise non-public data of both directly and
+        indirectly imported modules. The compiler gets this data from the
+        `<module>.trans_opt' files of the directly and indirectly imported
+        modules.
+        
+        This option must be set consistently throughout the compilation
+        process, starting with `mmc --generate-dependencies'.
+        
+        Note that `--transitive-intermodule-optimization' works only with
+        `mmake'; it does not work with `mmc --make'.
 
     --no-read-opt-files-transitively
         Only read the inter-module optimization information for directly
@@ -1646,9 +1712,10 @@ Optimization options
         elimination across module boundaries. This option is not yet fully
         implemented.
 
-    --analysis-repeat <n>
+    --analysis-repeat <N>
         Specify the maximum number of times to repeat analyses of suboptimal
-        modules with `--intermodule-analysis' (default: 0).
+        modules with `--intermodule-analysis' (default: 0). (This option works
+        only with `mmc --make'.)
 
     PRIVATE OPTION
     --analysis-file-cache
@@ -1656,7 +1723,7 @@ Optimization options
         with `--intermodule-analysis'.
 
     PRIVATE OPTION
-    --analysis-file-cache-dir <dir>
+    --analysis-file-cache-dir <directory>
         There is no help text available.
 
     Source-to-source optimizations
@@ -1688,9 +1755,10 @@ Optimization options
         `--optimize-unused-args' and `--intermodule-optimization'.
 
     --optimize-format-calls
-        Interpret the format string in calls to `string.format' and related
-        predicates at compile time, replacing those calls with the sequence of
-        more primitive operations required to implement them.
+        Interpret the format string in calls to `string.format', `io.format',
+        and `stream.string_writer.format' at compile time, replacing those
+        calls with the sequence of more primitive operations required to
+        implement them.
 
     --optimize-constant-propagation
     --optimise-constant-propagation
@@ -1712,7 +1780,7 @@ Optimization options
         Disallow all forms of inlining.
 
     --inlining
-        Ask the compiler to inline procedures using its usual heurisrics.
+        Ask the compiler to inline procedures using its usual heuristics.
 
     --inline-builtins
         Normally, the compiler implements builtin operations (such as
@@ -1775,16 +1843,8 @@ Optimization options
 
     --optimize-higher-order
     --optimise-higher-order
-        Enable specialization of higher-order predicates.
-
-    --higher-order-size-limit <max_size>
-        Set the maximum goal size of specialized versions created by
-        `--optimize-higher-order' and `--type-specialization'. Goal size is
-        measured as the number of calls, unifications and branched goals.
-
-    --higher-order-arg-limit <max_size>
-        Set the maximum size of higher-order arguments to be specialized by
-        `--optimize-higher-order' and `--type-specialization'.
+        Create specialized variants of higher-order predicates and functions
+        for call sites where the values of the highe-order arguments are known.
 
     --type-specialization
     --type-specialisation
@@ -1796,23 +1856,32 @@ Optimization options
         Enable specialization of polymorphic predicates for which there are
         `:- pragma type_spec' declarations.
 
+    --higher-order-size-limit <max_size>
+        Set the maximum goal size of specialized versions created by
+        `--optimize-higher-order' and `--type-specialization'. Goal size is
+        measured as the number of calls, unifications and branched goals.
+
+    --higher-order-arg-limit <max_size>
+        Set the maximum size of higher-order arguments to be specialized by
+        `--optimize-higher-order' and `--type-specialization'.
+
     --loop-invariants
-        Hoist loop invariants out of loops.
+        Hoist loop invariant computations out of loops.
 
     --introduce-accumulators
-        Attempt to introduce accumulating variables into procedures, so as to
-        make them tail recursive.
+        Attempt to make procedures tail recursive by introducing accumulator
+        variables into them.
 
     --optimize-constructor-last-call
     --optimise-constructor-last-call
-        Enable the optimization of almost-last calls that are followed by
+        Enable the optimization of almost-last calls that are followed only by
         constructor application.
 
     PRIVATE OPTION
     --optimize-constructor-last-call-accumulator
     --optimise-constructor-last-call-accumulator
         Enable the optimization via accumulators of almost-last calls that are
-        followed by constructor application.
+        followed only by constructor application.
 
     PRIVATE OPTION
     --optimize-constructor-last-call-null
@@ -1833,15 +1902,15 @@ Optimization options
         in the switch, and when that goal is a switch on the same variable.
 
     PRIVATE OPTION
-    --from-ground-term-threshold <n>
+    --from-ground-term-threshold <N>
         Wrap a from_ground_term scope around the expanded, superhomogeneous
         form of a ground term that involves at least. the given number of
         function symbols.
 
     --const-struct
-        Gather constant ground structures in a separate table. A structure will
-        be stored in this table just once even if it occurs in many different
-        procedures.
+        Gather constant ground structures in a separate table. Each such
+        structure will be stored in this table just once, even if it occurs in
+        many different procedures.
 
     --common-struct
         Replace two or more occurrences of the same term in a conjunction with
@@ -2014,8 +2083,8 @@ Optimization options
         Enable the analysis for region-based memory management.
 
     --generate-trail-ops-inline
-        Generate inline code for trailing operations. With
-        `--no-generate-trail-ops-inline', the compiler will implement them
+        Normally, the compiler generates inline code for trailing operations.
+        With `--no-generate-trail-ops-inline', the compiler will implement them
         using calls to those operations in the standard library.
 
     Experimental source-to-source optimizations
@@ -2023,9 +2092,9 @@ Optimization options
     --structure-sharing
         Perform structure sharing analysis.
 
-    --structure-sharing-widening <n>
+    --structure-sharing-widening <N>
         Perform widening when the set of structure sharing pairs becomes larger
-        than <n>. When n=0, widening is not enabled. (default: 0).
+        than <N>. When n=0, widening is not enabled. (default: 0).
 
     --structure-reuse
     --ctgc
@@ -2043,8 +2112,9 @@ Optimization options
 
     --structure-reuse-constraint-arg <max_difference>
     --ctgc-constraint-arg <max_difference>
-        Specify the maximum difference in arities between the terms that can be
-        reused, and the terms that reuse these terms. (default: 0)
+        Specify the maximum difference in arities between the terms whose
+        memory cells can be reused on the one hand, and the terms that need
+        memory cells on the other hand. (default: 0)
 
     PRIVATE OPTION
     --structure-reuse-max-conditions <max_num_conditions>
@@ -2093,29 +2163,29 @@ Optimization options
         are constant terms must have at least this percentage of full slots
         (default: 25).
 
-    --dense-switch-size <n>
+    --dense-switch-size <N>
         The jump table generated for an atomic switch must have at least this
         many entries (default: 4).
 
-    --lookup-switch-size <n>
+    --lookup-switch-size <N>
         The lookup table generated for an atomic switch must have at least this
         many entries (default: 4).
 
-    --string-trie-switch-size <n>
-    --string-trie-size <n>
+    --string-trie-switch-size <N>
+    --string-trie-size <N>
         The trie generated for a string switch must have at least this many
         entries (default: 16).
 
-    --string-hash-switch-size <n>
-    --string-switch-size <n>
+    --string-hash-switch-size <N>
+    --string-switch-size <N>
         The hash table generated for a string switch must have at least this
         many entries (default: 8).
 
-    --string-binary-switch-size <n>
+    --string-binary-switch-size <N>
         The binary search table generated for a string switch must have at
         least this many entries (default: 4).
 
-    --tag-switch-size <n>
+    --tag-switch-size <N>
         The number of alternatives in a tag switch must be at least this number
         (default: 3).
 
@@ -2136,8 +2206,8 @@ Optimization options
         will always be created as static constants.
 
     --use-atomic-cells
-        Use the atomic variants of the Boehm gc allocator calls when the cell
-        to be allocated cannot contain pointers.
+        Use the atomic variants of the Boehm gc allocator calls when the memory
+        cell to be allocated cannot contain pointers.
 
     Optimizations specific to high level code
 
@@ -2148,22 +2218,24 @@ Optimization options
     --mlds-peephole
         Perform peephole optimization of the MLDS.
 
+    --optimize-tailcalls
+    --optimise-tailcalls
+        Turn self-tailcalls into loops.
+
     --optimize-initializations
     --optimise-initializations
         Whenever possible, convert the first assignment to each local variable
-        in the target code into an initializer on its declaration.
+        in the target code into an initializer on its declaration. Some target
+        language compilers can generate faster code that way.
 
     PRIVATE OPTION
     --eliminate-unused-mlds-assigns
         Eliminate assignments to dead variables in the MLDS.
 
+    --eliminate-local-variables
     --eliminate-local-vars
         Eliminate local variables with known values, where possible, by
         replacing occurrences of such variables with their values.
-
-    --optimize-tailcalls
-    --optimise-tailcalls
-        Turn self-tailcalls into loops.
 
     PRIVATE OPTION
     --optimize-trail-usage
@@ -2172,11 +2244,11 @@ Optimization options
 
     Optimizations specific to low level code
 
-    --try-switch-size <n>
+    --try-switch-size <N>
         The number of alternatives in a try/retry chain switch must be at least
         this number (default: 3).
 
-    --binary-switch-size <n>
+    --binary-switch-size <N>
         The number of alternatives in a binary search switch must be at least
         this number (default: 4).
 
@@ -2191,18 +2263,13 @@ Optimization options
         When appropriate, generate code to hijack nondet stack frames that
         possibly belongs to another procedure invocation.
 
-    PRIVATE OPTION
-    --optimize-region-ops
-        Try and restrict region operations to those parts of the program that
-        actually use regions.
-
     --llds-optimize
     --llds-optimise
-        Enable the low-level optimization passes.
+        Enable the LLDs->LLDS optimization passes.
 
-    --optimize-repeat <n>
-    --optimise-repeat <n>
-        Iterate most optimizations at most <n> times (default: 3).
+    --optimize-repeat <N>
+    --optimise-repeat <N>
+        Iterate most LLDS->LLDS optimizations at most <N> times (default: 3).
 
     --optimize-peep
     --optimise-peep
@@ -2215,7 +2282,7 @@ Optimization options
 
     --optimize-labels
     --optimise-labels
-        Delete dead labels and code.
+        Delete dead labels, and the unreachable code following them.
 
     PRIVATE OPTION
     --standardize-labels
@@ -2236,7 +2303,8 @@ Optimization options
         consumption, possibly at the expense of speed.
 
     --pessimize-tailcalls
-        Disable the optimization of tailcalls.
+        Disable the optimization of tailcalls. This option tries to minimize
+        code size at the expense of speed.
 
     --optimize-delay-slot
     --optimise-delay-slot
@@ -2249,8 +2317,8 @@ Optimization options
 
     --optimize-reassign
     --optimise-reassign
-        Optimize away assignments to locations that already hold the assigned
-        value.
+        Optimize away assignments to memory locations that already hold the
+        to-be-assigned value.
 
     --use-local-vars
         Use local variables in C code blocks wherever possible.
@@ -2273,18 +2341,23 @@ Optimization options
     --common-layout-data
         Enable optimization of common subsequences in layout structures.
 
-    --layout-compression-limit <n>
+    --layout-compression-limit <N>
         Attempt to compress the layout structures used by the debugger only as
-        long as the arrays involved have at most <n> elements (default: 4000).
+        long as the arrays involved have at most <N> elements (default: 4000).
+
+    PRIVATE OPTION
+    --optimize-region-ops
+        Try and restrict region operations to those parts of the program that
+        actually use regions.
 
     --emit-c-loops
         Use C loop contstructs to implement loops. With `--no-emit-c-loops',
         use only gotos.
 
-    --procs-per-c-function <n>
-    --procs-per-C-function <n>
-        Put the code for up to <n> Mercury procedures in a single C function.
-        The default value of <n> is one. Increasing <n> can produce slightly
+    --procs-per-c-function <N>
+    --procs-per-C-function <N>
+        Put the code for up to <N> Mercury procedures in a single C function.
+        The default value of <N> is one. Increasing <N> can produce slightly
         more efficient code, but makes compilation slower.
 
     --local-thread-engine-base
@@ -2295,9 +2368,9 @@ Optimization options
 
     --inline-alloc
         Inline calls to `GC_malloc()'. This can improve performance a fair bit,
-        but may significantly increase code size. This option has no effect if
-        the selected garbage collector is not boehm, or if the C compiler is
-        not GNU C.
+        but may significantly increase code size. This option is meaningful
+        only if the selected garbage collector is boehm, and if the C compiler
+        is gcc.
 
     --use-macro-for-redo-fail
         Emit the fail or redo macro instead of a branch to the fail or redo
@@ -2320,18 +2393,27 @@ Options that control program analyses
 
     --enable-termination
     --enable-term
-        Analyse each predicate to discover if it terminates.
+        Enable termination analysis, which analyses each mode of each predicate
+        or function to see whether it terminates. The `terminates',
+        `does_not_terminate', and `check_termination' pragmas have an effect
+        only when termination analysis is enabled.
+        
+        Note that both `--intermodule-optimization' and
+        `--transitive-intermodule-optimization' greatly improve the accuracy of
+        the analysis.
 
     --check-termination
     --check-term
     --chk-term
         Enable termination analysis, and emit warnings for some predicates or
-        functions that cannot be proved to terminate. In many cases where the
-        compiler is unable to prove termination the problem is either a lack of
-        information about the termination properties of other predicates, or
-        because language constructs (such as higher order calls) were used
-        which could not be analysed. In these cases the compiler does not emit
-        a warning of non-termination, as it is likely to be spurious.
+        functions that cannot be proved to terminate.
+        
+        In many cases where the compiler is unable to prove termination, the
+        problem is either a lack of information about the termination
+        properties of other predicates, or the use of language constructs (such
+        as higher order calls) which are beyond the capabilities of the
+        analyser. In these cases, the compiler does not emit a warning of
+        non-termination, as it is likely to be spurious.
 
     --verbose-check-termination
     --verb-check-term
@@ -2339,8 +2421,8 @@ Options that control program analyses
         Enable termination analysis, and emit warnings for all predicates or
         functions that cannot be proved to terminate.
 
-    --termination-single-argument-analysis <n>
-    --term-single-arg <n>
+    --termination-single-argument-analysis <N>
+    --term-single-arg <N>
         When performing termination analysis, try analyzing recursion on single
         arguments in strongly connected components of the call graph that have
         up to the given number of procedures. Setting this limit to zero
@@ -2354,13 +2436,13 @@ Options that control program analyses
         norm says that it is the number of words in the cell that contain
         something other than pointers to cells of the same type.
 
-    --termination-error-limit <n>
-    --term-err-limit <n>
+    --termination-error-limit <N>
+    --term-err-limit <N>
         Print at most this number of reasons for any single termination error
         (default: 3).
 
-    --termination-path-limit <n>
-    --term-path-limit <n>
+    --termination-path-limit <N>
+    --term-path-limit <N>
         Perform termination analysis only on predicates with at most this many
         paths (default: 256).
 
@@ -2398,8 +2480,8 @@ Options that control program analyses
         different norms available.
 
     PRIVATE OPTION
-    --termination2-widening-limit <n>
-    --term2-widening-limit <n>
+    --termination2-widening-limit <N>
+    --term2-widening-limit <N>
         Set the threshold for the number of iterations after which the argument
         size analyser invokes widening.
 
@@ -2418,8 +2500,8 @@ Options that control program analyses
         inputs to a goal in contexts where that goal fails.
 
     PRIVATE OPTION
-    --termination2-maximum-matrix-size <n>
-    --term2-max-matrix-size <n>
+    --termination2-maximum-matrix-size <N>
+    --term2-max-matrix-size <N>
         Limit the sizes of constraints systems in the analyser to the given
         number of constraints. Use approximations of some constraint
         operations, such as projection, if this threshold is exceeded. This
@@ -2472,8 +2554,11 @@ Options that ask for modified output
         more easily read by humans.
 
     --auto-comments
-        Output comments in the generated target language file. (The code may be
-        easier to understand if you also use the `--no-llds-optimize' option.)
+        Output comments in the generated target language file. This is
+        primarily useful for trying to understand how the generated target
+        language code relates to the source code, e.g.@: in order to debug the
+        compiler. (The code may be easier to understand if you also use the
+        `--no-llds-optimize' option.)
 
     PRIVATE OPTION
     --frameopt-comments
@@ -2494,17 +2579,17 @@ Options for controlling mmc --make
     --show-make-times
         Report run times for commands executed by `mmc --make'.
 
-    -j <n>
-    --jobs <n>
-        With `--make', attempt to perform up to <n> jobs concurrently.
+    -j <N>
+    --jobs <N>
+        With `--make', attempt to perform up to N jobs concurrently.
 
     --track-flags
     --track-options
         With `--make', keep track of the options used when compiling each
         module. If an option for a module is added or removed, `mmc --make'
         will then know to recompile the module even if the timestamp on the
-        file itself has not changed. Warning, verbosity and build system
-        options are not tracked.
+        file itself has not changed. Warning options, verbosity options, and
+        build system options are not tracked.
 
     --pre-link-command <command>
     --no-pre-link-command
@@ -2541,14 +2626,14 @@ Options for target language compilation
 
     --c-optimize
     --c-optimise
-        Do not enable optimizations by the C compiler.
+        Enable optimizations by the C compiler.
 
-    --c-include-directory <dir>
+    --c-include-directory <directory>
     --no-c-include-directory
-    --c-include-dir <dir>
+    --c-include-dir <directory>
     --no-c-include-dir
-        Append <dir> to the list of directories to be searched for C header
-        files. Note that if you want to override this list, instead of
+        Append <directory> to the list of directories to be searched for C
+        header files. Note that if you want to override this list, instead of
         appending to it, then you can set the `MERCURY_MC_ALL_C_INCL_DIRS'
         environment variable to a sequence of `--c-include-directory' options.
 
@@ -2753,9 +2838,9 @@ Options for linking
         is the same as the name of the first module on the command line.) This
         option is ignored by `mmc --make'.
 
-    --link-object <file>
+    --link-object <filename>
     --no-link-object
-        Link with the specified object or archive file.
+        Link with the specified object file, or archive of object files.
 
     --ld-flags <options>
     --no-ld-flags
@@ -2859,7 +2944,8 @@ Options for linking
 
     --cstack-reserve-size <size>
         Set the total size of the C stack in virtual memory for executables.
-        The stack size is given in bytes. (Microsoft Windows only.)
+        The stack size is given in bytes. This options is only sypported (and
+        indeed only necessary) on systems running Microsoft Windows.)
 
     --link-executable-command <command>
         Specify the command used to invoke the linker when linking an
@@ -2876,7 +2962,7 @@ Options for linking
 
     --strip-executable-command <command>
         Specify the command used to strip executables if no linker flag to do
-        so is available. This option has no effect on ml.
+        so is available. This option has no effect on `ml'.
 
     --strip-executable-shared-flags <options>
         Specify options to pass to the strip executable command when linking
@@ -2905,9 +2991,10 @@ Options for linking
 
 Options controlling searches for files
 
-    --options-search-directory <dir>
+    --options-search-directory <directory>
     --no-options-search-directory
-        Add <dir> to the list of directories to be searched for options files.
+        Add <directory> to the list of directories to be searched for options
+        files.
 
     --use-subdirs
         Generate intermediate files in a `Mercury' subdirectory, rather than
@@ -2918,19 +3005,19 @@ Options controlling searches for files
         that multiple grades can be built simultaneously. Executables and
         libraries will be symlinked or copied into the current directory.
         `--use-grade-subdirs' is supported only by `mmc --make'; it does not
-        work with Mmake.
+        work with `mmake'.
 
-    -I <dir>
+    -I <directory>
     -I-
-    --search-directory <dir>
+    --search-directory <directory>
     --no-search-directory
-        Append <dir> to the list of directories to be searched for `.int*' and
-        `.module_dep' files.
+        Append <directory> to the list of directories to be searched for
+        `.int*' and `.module_dep' files.
 
-    --intermod-directory <dir>
+    --intermod-directory <directory>
     --no-intermod-directory
-        Add <dir> to the list of directories to be searched for `.opt' and
-        `.trans_opt' files.
+        Add <directory> to the list of directories to be searched for `.opt'
+        and `.trans_opt' files.
 
     --no-use-search-directories-for-intermod
         With `--use-search-directories-for-intermod', the compiler will add the
@@ -2940,99 +3027,99 @@ Options controlling searches for files
         only the arguments of `--intermod-directory' options.
 
     PRIVATE OPTION
-    --interface-dir-same-workspace <dir>
+    --interface-dir-same-workspace <directory>
     --no-interface-dir-same-workspace
-    --interface-dir-same-ws <dir>
+    --interface-dir-same-ws <directory>
     --no-interface-dir-same-ws
         There is no help text available.
 
     PRIVATE OPTION
-    --interface-dir-independent-workspace <dir>
+    --interface-dir-independent-workspace <directory>
     --no-interface-dir-independent-workspace
-    --interface-dir-indep-ws <dir>
+    --interface-dir-indep-ws <directory>
     --no-interface-dir-indep-ws
         There is no help text available.
 
     PRIVATE OPTION
-    --interface-dir-installed-library <dir>
+    --interface-dir-installed-library <directory>
     --no-interface-dir-installed-library
-    --interface-dir-installed-lib <dir>
+    --interface-dir-installed-lib <directory>
     --no-interface-dir-installed-lib
         There is no help text available.
 
     PRIVATE OPTION
-    --intermod-dir-same-workspace <dir>
+    --intermod-dir-same-workspace <directory>
     --no-intermod-dir-same-workspace
-    --intermod-dir-same-ws <dir>
+    --intermod-dir-same-ws <directory>
     --no-intermod-dir-same-ws
         There is no help text available.
 
     PRIVATE OPTION
-    --intermod-dir-independent-workspace <dir>
+    --intermod-dir-independent-workspace <directory>
     --no-intermod-dir-independent-workspace
-    --intermod-dir-indep-ws <dir>
+    --intermod-dir-indep-ws <directory>
     --no-intermod-dir-indep-ws
         There is no help text available.
 
     PRIVATE OPTION
-    --intermod-dir-installed-library <dir>
+    --intermod-dir-installed-library <directory>
     --no-intermod-dir-installed-library
-    --intermod-dir-installed-lib <dir>
+    --intermod-dir-installed-lib <directory>
     --no-intermod-dir-installed-lib
         There is no help text available.
 
     PRIVATE OPTION
-    --c-include-dir-same-workspace <dir>
+    --c-include-dir-same-workspace <directory>
     --no-c-include-dir-same-workspace
-    --c-incl-dir-same-ws <dir>
+    --c-incl-dir-same-ws <directory>
     --no-c-incl-dir-same-ws
         There is no help text available.
 
     PRIVATE OPTION
-    --c-include-dir-independent-workspace <dir>
+    --c-include-dir-independent-workspace <directory>
     --no-c-include-dir-independent-workspace
-    --c-incl-dir-indep-ws <dir>
+    --c-incl-dir-indep-ws <directory>
     --no-c-incl-dir-indep-ws
         There is no help text available.
 
     PRIVATE OPTION
-    --c-include-dir-installed-library <dir>
+    --c-include-dir-installed-library <directory>
     --no-c-include-dir-installed-library
-    --c-incl-dir-installed-lib <dir>
+    --c-incl-dir-installed-lib <directory>
     --no-c-incl-dir-installed-lib
         There is no help text available.
 
     PRIVATE OPTION
-    --c-include-dir-external <dir>
+    --c-include-dir-external <directory>
     --no-c-include-dir-external
-    --c-incl-dir-external <dir>
+    --c-incl-dir-external <directory>
     --no-c-incl-dir-external
         There is no help text available.
 
     PRIVATE OPTION
-    --mercury-library-dir-same-workspace <dir>
+    --mercury-library-dir-same-workspace <directory>
     --no-mercury-library-dir-same-workspace
-    --mer-lib-dir-same-ws <dir>
+    --mer-lib-dir-same-ws <directory>
     --no-mer-lib-dir-same-ws
         There is no help text available.
 
     PRIVATE OPTION
-    --mercury-library-dir-independent-workspace <dir>
+    --mercury-library-dir-independent-workspace <directory>
     --no-mercury-library-dir-independent-workspace
-    --mer-lib-dir-indep-ws <dir>
+    --mer-lib-dir-indep-ws <directory>
     --no-mer-lib-dir-indep-ws
         There is no help text available.
 
     PRIVATE OPTION
-    --mercury-library-dir-installed-library <dir>
+    --mercury-library-dir-installed-library <directory>
     --no-mercury-library-dir-installed-library
-    --mer-lib-dir-installed-lib <dir>
+    --mer-lib-dir-installed-lib <directory>
     --no-mer-lib-dir-installed-lib
         There is no help text available.
 
 Options controlling the library installation process
 
-    --install-prefix <dir>
+    --install-prefix <directory>
         The directory under which to install Mercury libraries.
 
     --library-grade <grade>
@@ -3051,7 +3138,7 @@ Options controlling the library installation process
     --no-libgrades-include
         Remove grades that do not contain the specified component from the set
         of library grades to be installed. (This option works only with
-        `mmc --make'; it does not work with Mmake.)
+        `mmc --make'; it does not work with `mmake'.)
 
     --libgrades-exclude-component <grade_component>
     --no-libgrades-exclude-component
@@ -3059,7 +3146,7 @@ Options controlling the library installation process
     --no-libgrades-exclude
         Remove grades that contain the specified component from the set of
         library grades to be installed. (This option works only with
-        `mmc --make'; it does not work with Mmake.)
+        `mmc --make'; it does not work with `mmake'.)
 
     --library-install-linkage {shared, static}
     --no-library-install-linkage
@@ -3087,9 +3174,9 @@ Options controlling the library installation process
         files in the program or library, with the source file containing the
         main module given first.
 
-    --extra-library-header <file>
+    --extra-library-header <filename>
     --no-extra-library-header
-    --extra-lib-header <file>
+    --extra-lib-header <filename>
     --no-extra-lib-header
         Install the specified C header file with along with a Mercury library.
         (This option is supported only by `mmc --make'.)
@@ -3105,18 +3192,18 @@ Options specifying properties of the environment
         The given command will be invoked as `<command> <source> <target>' to
         install each file in a Mercury library. The default command is `cp'.
 
-    --options-file <file>
+    --options-file <filename>
     --no-options-file
-        Add <file> to the list of options files to be processed. If <file> is
-        `-', an options file will be read from the standard input. By default,
-        the compiler will read the file named `Mercury.options' in the current
-        directory.
+        Add <filename> to the list of options files to be processed. If
+        <filename> is `-', an options file will be read from the standard
+        input. By default, the compiler will read the file named
+        `Mercury.options' in the current directory.
 
-    --config-file <file>
+    --config-file <filename>
     --no-config-file
-        Read the Mercury compiler's configuration information from <file>. If
-        the `--config-file' option is not set, a default configuration will be
-        used, unless `--no-mercury-stdlib-dir' is passed to `mmc'. The
+        Read the Mercury compiler's configuration information from <filename>.
+        If the `--config-file' option is not set, a default configuration will
+        be used, unless `--no-mercury-stdlib-dir' is passed to `mmc'. The
         configuration file is just an options file.
 
     --env-type {posix,cygwin,msys,windows}
@@ -3145,8 +3232,8 @@ Options specifying properties of the environment
 Options that record autoconfigured parameters
 
     PRIVATE OPTION
-    --conf-low-ptag-bits <n>
-    --conf-low-tag-bits <n>
+    --conf-low-ptag-bits <N>
+    --conf-low-tag-bits <N>
         Reserved for use by the `mmc' script.
 
     --branch-delay-slot
@@ -3180,9 +3267,9 @@ Options that record autoconfigured parameters
         should never be needed except for cross-compilation.
 
     --max-jump-table-size <N>
-        The maximum number of entries a jump table can have. The special value
-        0 indicates the table size is unlimited. This option can be useful to
-        avoid exceeding fixed limits imposed by some C compilers.
+        Specify the maximum number of entries a jump table may have. The
+        special value 0 indicates the table size is unlimited. This option can
+        be useful to avoid exceeding fixed limits imposed by some C compilers.
 
     PRIVATE OPTION
     --filterjavac-command <command>
@@ -3483,7 +3570,7 @@ Options for developers only
         unify and compare predicates a test for the two values being equal as
         words. Specifying `--no-should-pretest-equality' prevents this.
 
-    --fact-table-max-array-size <n>
+    --fact-table-max-array-size <N>
         Specify the maximum number of elements in a single
         `:- pragma fact_table' data array (default: 1024).
 
@@ -3621,7 +3708,7 @@ Options for developers only
         profiling feedback file can be specified using the `--feedback-file'
         option.
 
-    --feedback-file <file>
+    --feedback-file <filename>
         Use the specified profiling feedback file to help make decisions about
         where to introduce implicit parallelism.
 
@@ -3662,7 +3749,7 @@ Options for developers only
         specified stage to `<module>.hlds_dump.<num>-<name>'. Stage numbers
         range from 1-599. Multiple dump options accumulate.
 
-    --dump-hlds-pred-id <n>
+    --dump-hlds-pred-id <pred_id>
     --no-dump-hlds-pred-id
         Dump the HLDS only of the predicate/function with the given pred id.
 
@@ -3762,7 +3849,7 @@ Options for developers only
     PRIVATE OPTION
     --no-type-layout
         Don't output type_ctor_layout structures or references to them. (The C
-        code must then be compiled with `-DNO_TYPE_LAYOUT').
+        code must then be compiled with `-DNO_TYPE_LAYOUT'.)
 
     PRIVATE OPTION
     --det-copy-out
@@ -3943,10 +4030,10 @@ Options for developers only
         this option, call io_get_disable_generate_item_version_numbers to see
         whether this has been done.
 
-    PRIVATE OPTION
     --generate-mmc-make-module-dependencies
     --generate-mmc-deps
-        There is no help text available.
+        Generate dependencies for use by `mmc --make' even when using `mmake'.
+        This is recommended when building a library for installation.
 
 Now-unused former options kept for compatibility
 

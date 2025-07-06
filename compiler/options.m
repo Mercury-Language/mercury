@@ -50,12 +50,10 @@
 %
 % - the non-abbreviated names should come before the abbreviated ones, and
 % - the versions using American spelling should come before the British ones.
-%
-% Each option should also be documented in the Mercury User's Guide,
-% which is in ../doc/user_guide.texi. Normally, the documentation
-% in the users' guide is a copy of the help message, but it may also have
-% additional detail.
-% XXX This section of the Users' guide should soon be generated automatically.
+
+% We have standardized on "directory" over "dir" as argument name.
+% We have standardized on "filename" over "file" as argument name.
+% We have standardized on "N" over "n" as argument name.
 %
 % The set of options enabled at each optimization level is controlled by
 % the predicate named opts_enabled_at_level. This is defined in
@@ -682,11 +680,10 @@
     ;       optopt_inline_tr_sccs_max_extra
 
     ;       optopt_higher_order
-    ;       optopt_higher_order_size_limit
-    ;       optopt_higher_order_arg_limit
-
     ;       optopt_type_specialization
     ;       optopt_user_guided_type_specialization
+    ;       optopt_higher_order_size_limit
+    ;       optopt_higher_order_arg_limit
 
     ;       optopt_loop_invariants
     ;       optopt_introduce_accumulators
@@ -1234,30 +1231,31 @@
     % Help options.
 
 optdb(oc_help,      help,                              bool(no),
-    gen_help(['?', 'h'], "help", [], help_public,
-        [w("Print this usage message.")])).
+    gen_help(['?', 'h'], "help", [], help_public, [
+        cindex("Help option"),
+        w("Print a usage message.")])).
 optdb(oc_help,      help_priv,                         bool(no),
-    priv_help("help-priv",
-        [w("Print the usage message, including private options.")])).
+    priv_help("help-priv", [
+        w("Print a usage message, including private options.")])).
 optdb(oc_help,      help_texinfo,                      bool(no),
-    priv_help("help-texinfo",
-        [w("Print the documentation of all options for the user guide.")])).
+    priv_help("help-texinfo", [
+        w("Print the documentation of all options for the user guide.")])).
 optdb(oc_help,      version,                           bool(no),
-    help("version", [w("Display the compiler version.")])).
+    help("version", [w("Print the compiler version.")])).
 
 %---------------------------------------------------------------------------%
 
     % Options for modifying the command line.
 
 optdb(oc_cmdline,   flags_file,                        file_special,
-    alt_arg_help("flags-file", ["flags"], "file", [
+    alt_arg_help("flags-file", ["flags"], "filename", [
         w("Take options from the specified file, and handle them"),
         w("as if they were specified on the command line.")])).
 optdb(oc_cmdline,   filenames_from_stdin,              bool(no),
     help("filenames-from-stdin", [
-        w("Read a newline terminated module name or file name"),
-        w("from the standard input, and compile that module or file."),
-        w("Repeat this until reaching end-of-file."),
+        w("Read in from standard input a newline-terminated"),
+        w("module name or file name, compile that module or file,"),
+        w("and repeat until reaching end-of-file."),
         w("(This allows a program or user to interactively compile"),
         w("several modules without the overhead of creating a process"),
         w("for each one.)")])).
@@ -1280,6 +1278,7 @@ optdb(oc_opmode,    only_opmode_generate_source_file_mapping, bool(no),
         code("mmc --make", ","), w("or"), code("mmake depend", ".")])).
 optdb(oc_opmode,    only_opmode_generate_dependencies, bool(no),
     short_help('M', "generate-dependencies", [], [
+        cindex("Dependencies"),
         w("Output"), quote("Make", "-style"), w("dependencies"),
         w("for the given main module,"),
         w("and all the other modules in the program"),
@@ -1291,7 +1290,7 @@ optdb(oc_opmode,    only_opmode_generate_dependencies, bool(no),
         w("of all the modules in the program.")])).
 optdb(oc_opmode,    only_opmode_generate_dependencies_ints, bool(no),
     help("generate-dependencies-ints", [
-        w("Does the same job as --generate-dependencies, but also outputs"),
+        w("Do the same job as --generate-dependencies, but also output"),
         file(".int3", ","), file(".int0", ","), file(".int"),
         w("and"), file(".int2"),
         w("files for all the modules in the program.")])).
@@ -1365,7 +1364,11 @@ optdb(oc_opmode,    only_opmode_typecheck_only,        bool(no),
     short_help('t', "typecheck-only", [], [
         w("Check the module's code only for syntax- and type errors."),
         w("Do not execute any other semantic checks,"),
-        w("and do not generate any code.")])).
+        w("and do not generate any code."),
+        w("(When converting Prolog code to Mercury,"),
+        w(" it can sometimes be useful to get the types right first"),
+        w("and worry about modes second;"),
+        w("this option supports that approach.)")])).
 optdb(oc_opmode,    only_opmode_errorcheck_only,       bool(no),
     short_help('e', "errorcheck-only", [], [
         w("Check the module's code for syntax- and semantic errors,"),
@@ -1389,25 +1392,32 @@ optdb(oc_opmode,    only_opmode_generate_standalone_interface,
         % XXX We should describe what this means exactly.
         w("Use"), arg("basename"), w("as the basename"),
         w("of any files generated for the stand-alone-interface."),
-        w("(See the Stand-alone Interface chapter"),
-        w("of the Mercury User's Guide for further details.)")])).
+        w("(See"), ref("the", "Stand-alone interfaces",
+            "chapter of the Mercury User's Guide"),
+        w("for further details.)")])).
 optdb(oc_opmode,    only_opmode_convert_to_mercury,    bool(no),
     short_help('P', "convert-to-mercury",
             ["convert-to-Mercury", "pretty-print"], [
         w("Output the code of the module to"), file_var("module", "ugly"),
         w("in a standard format."),
-        w("This option acts as a Mercury ugly-printer.")])).
+        w("This option acts as a Mercury ugly-printer."),
+        w("(It would be a pretty-printer, except that comments are stripped,"),
+        w("and nested if-then-elses are indented too much,"),
+        w("so the result is rather ugly.)")])).
 optdb(oc_opmode,    only_opmode_make_xml_documentation, bool(no),
     short_help('x', "make-xml-documentation", ["make-xml-doc"], [
-        w("Output XML documentation for the module to"),
-        file_var("module", "xml", ".")])).
+        w("Output an XML representation of all the declarations"),
+        w("in the module to"), file_var("module", "xml", "."),
+        w("This XML file can then be transformed via a XSL transform"),
+        w("into another documentation format.")])).
 optdb(oc_opmode,    only_opmode_make_analysis_registry, bool(no),
     priv_help("make-analysis-registry", [])).
 optdb(oc_opmode,    only_opmode_make,                  bool(no),
     short_help('m', "make", [], [
         % XXX `mmc': should we delete the quotes, or replace with code("mmc")?
-        w("Treat the non-option arguments to `mmc' as files to make,"),
-        w("rather than source files. Build or rebuild the specified files"),
+        w("Treat the non-option arguments to"), code("mmc"),
+        w("as files to make, rather than source files."),
+        w("Build or rebuild the specified files"),
         w("if they do not exist or are not up-to-date."),
         w("Note that this option also enables"),
         opt("--use-subdirs", ".")])).
@@ -1417,8 +1427,8 @@ optdb(oc_opmode,    only_opmode_make,                  bool(no),
 % we want a different op_mode for a recursive invocation of the compiler.
 optdb(oc_opmode,    part_opmode_rebuild,               bool(no),
     short_help('r', "rebuild", [], [
-        w("Same as"), opt("--make", ","),
-        w("but always rebuild the target files,"),
+        w("A variant of the"), opt("--make"), w("option, with the"),
+        w("difference being that it always rebuilds the target files,"),
         w("even if they are up-to-date.")])).
 optdb(oc_opmode,    only_opmode_invoked_by_mmc_make,   bool(no),
     priv_help("invoked-by-mmc-make", [
@@ -1450,7 +1460,7 @@ optdb(oc_opmode,    only_opmode_output_library_install_grades, bool(no),
         w("a library to be installed should be built.")])).
 optdb(oc_opmode,    only_opmode_output_target_arch,    bool(no),
     help("output-target-arch", [
-        w("Print the target architecture to the standard output.")])).
+        w("Print to standard output the target architecture.")])).
 optdb(oc_opmode,    only_opmode_output_cc,             bool(no),
     help("output-cc", [
         w("Print to standard output the command for invoking"),
@@ -1496,7 +1506,8 @@ optdb(oc_opmode,    only_opmode_output_java_class_dir, bool(no),
             ["output-class-directory", "output-java-class-dir",
             "output-class-dir"], [
         w("Print to standard output the name of the directory"),
-        w("in which we will place any generated Java class files.")])).
+        w("in which the compiler will place"),
+        w("any generated Java class files.")])).
 optdb(oc_opmode,    only_opmode_output_optimization_options, bool(no),
     alt_help("output-optimization-options",
             ["output-opt-opts"], [
@@ -1572,9 +1583,21 @@ optdb(oc_grade_gen, grade,                             string_special,
 
 optdb(oc_grade_target, target,                         string("c"),
     alt_arg_align_help("target", [
-            arg_align("c",      "(grades: none, reg, asm_fast, hlc)"),
-            arg_align("csharp", "(grades: csharp)"),
-            arg_align("java",   "(grades: java)")], [
+            arg_align("c",
+                "(grades: none, reg, asm_fast, hlc)",
+            "(grades: @samp{none}, @samp{reg}, @samp{asm_fast}, @samp{hlc})"),
+            arg_align("csharp",
+                "(grades: csharp)",
+                "(grades: @samp{csharp})"),
+            arg_align("java",
+                "(grades: java)",
+                "(grades: @samp{java})")], [
+        cindex("asm_fast (compilation grade"),
+        cindex("reg (compilation grade"),
+        cindex("none (compilation grade"),
+        cindex("hlc (compilation grade"),
+        cindex("java (compilation grade"),
+        cindex("csharp (compilation grade"),
         w("Specify the target language: C, C# or Java."),
         w("The default is C."),
         w("Targets other than C imply"), opt("--high-level-code"),
@@ -1612,8 +1635,10 @@ optdb(oc_grade_llds, gcc_global_registers,             bool(yes),
     % We do not document "fast".
     no_align_help("gcc-global-registers",
             "(grades: reg, asm_fast)",
-            "(grades: none)", [
-        w("Specify whether or not to use GNU C's"),
+            "(grades: none)",
+            "(grades: @samp{reg}, @samp{asm_fast})",
+            "(grades: @samp{none})", [
+        w("Specify whether to use GNU C's"),
         w("global register variables extension."),
         w("This option is used only when targeting C with"),
         opt("--no-high-level-code", ".")])).
@@ -1621,8 +1646,10 @@ optdb(oc_grade_llds, gcc_non_local_gotos,              bool(yes),
     % We do not document "jump", "fast", "asm_jump".
     no_align_help("gcc-non-local-gotos",
             "(grades: asm_fast)",
-            "(grades: none, reg)", [
-        w("Specify whether or not to use GNU C's"),
+            "(grades: none, reg)",
+            "(grades: @samp{asm_fast})",
+            "(grades: @samp{none}, @samp{reg})", [
+        w("Specify whether to use GNU C's"),
         quote("labels as values"), w("extension."),
         w("This option is used only when targeting C with"),
         opt("--no-high-level-code", ".")])).
@@ -1630,8 +1657,10 @@ optdb(oc_grade_llds, asm_labels,                       bool(yes),
     % We do not document "asm_jump".
     no_align_help("asm-labels",
             "(grades: asm_fast)",
-            "(grades: none, reg)", [
-        w("Specify whether or not to use GNU C's asm extensions for"),
+            "(grades: none, reg)",
+            "(grades: @samp{asm_fast})",
+            "(grades: @samp{none}, @samp{reg})", [
+        w("Specify whether GNU C's asm extensions for"),
         w("inline assembler labels."),
         w("This option is used only when targeting C with"),
         opt("--no-high-level-code", ".")])).
@@ -1649,14 +1678,18 @@ optdb(oc_grade_mlds, highlevel_code,                   bool(no),
     short_alt_align_help('H', "high-level-code",
             ["high-level-c", "high-level-C",
             "highlevel-code", "highlevel-c", "highlevel-C"],
-            "(grades: hlc, csharp, java)", [
+            "(grades: hlc, csharp, java)",
+            "(grades: @samp{hlc}, @samp{csharp}, @samp{java})",
+            [
         w("Use the MLDS backend,"),
         w("which generates idiomatic high-level-language code,"),
         w("rather than the LLDS backend,"),
         w("which generates assembly language code in C syntax.") ])).
 optdb(oc_grade_mlds, c_debug_grade,                    bool(no),
     alt_align_help("c-debug-grade", [],
-            "(grades: hlc)", [
+            "(grades: hlc)",
+            "(grades: @samp{hlc})", [
+        % XXX Why do we not document the grade *modifier*?
         w("Require that all modules in the program"),
         w("be compiled to object code"),
         w("in a way that allows the program executable to be debuggable"),
@@ -1675,19 +1708,27 @@ optdb(oc_grade_mlds, c_debug_grade,                    bool(no),
 optdb(oc_grade_dbg, exec_trace,                        bool(no),
     % Yes, the internal and external names of this option are THAT different.
     alt_align_help("debug", [],
-            "(grade modifier: `.debug')", [
+            "(grade modifier: `.debug')",
+            "(grade modifier: @samp{.debug})", [
+        cindex("Debugging"),
+        cindex(".debug (grade modifier"),
         w("Enable Mercury-level debugging."),
-        w("See the Debugging chapter of the Mercury User's Guide"),
+        w("See"), ref("the", "Debugging",
+            "chapter of the Mercury User's Guide", ""),
         w("for details."),
-        w("This option is supported only when targeting C"),
-        w("with `--no-high-level-code'.")])).
+        w("This option is supported only when targeting C with"),
+        opt("--no-high-level-code", ".")])).
 optdb(oc_grade_dbg, decl_debug,                        bool(no),
     alt_align_help("decl-debug", [],
-            "(grade modifier: `.decldebug')", [
+            "(grade modifier: `.decldebug')",
+            "(grade modifier: @samp{.decldebug})", [
+        cindex("Debugging"),
+        cindex(".decldebug (grade modifier"),
         w("Enable full support for declarative debugging."),
         w("This allows subterm dependency tracking"),
         w("in the declarative debugger."),
-        w("See the Debugging chapter of the Mercury User's Guide"),
+        w("See"), ref("the", "Debugging",
+            "chapter of the Mercury User's Guide", ""),
         w("for details."),
         w("This option is supported only when targeting C with"),
         opt("--no-high-level-code", ".")])).
@@ -1699,7 +1740,10 @@ optdb(oc_grade_dbg, decl_debug,                        bool(no),
 optdb(oc_grade_dbg, source_to_source_debug,            bool(no),
     % Source-to-source debugging is not ready for the public.
     priv_alt_align_help("source-to-source-debug",
-            ["ss-debug", "ssdb"], "(grade modifier: `.ssdebug')", [
+            ["ss-debug", "ssdb"],
+            "(grade modifier: `.ssdebug')",
+            "(grade modifier: @samp{.ssdebug})", [
+        cindex(".ssdebug (grade modifier"),
         w("Enable the source-to-source debugging transform.")])).
 
 %---------------------%
@@ -1715,7 +1759,11 @@ optdb(oc_grade_dbg, source_to_source_debug,            bool(no),
 % XXX ORDER
 optdb(oc_grade_prof, profiling,                        bool_special,
     short_alt_align_help('p', "profiling", [],
-            "(grade modifier: `.prof')", [
+            "(grade modifier: `.prof')",
+            "(grade modifier: @samp{.prof})", [
+        cindex("Profiling"),
+        cindex("Time profiling"),
+        cindex(".prof (grade modifier"),
         w("Prepare the generated code for time profiling"),
         w("by Mercury's version of the standard Unix profiler"),
         code("gprof", ","),
@@ -1734,7 +1782,13 @@ optdb(oc_grade_prof, time_profiling,                    special,
     priv_help("time-profiling", [])).
 optdb(oc_grade_prof, memory_profiling,                 special,
     alt_align_help("memory-profiling", [],
-            "(grade modifier: `.memprof')", [
+            "(grade modifier: `.memprof')",
+            "(grade modifier: @samp{.memprof})", [
+        cindex("Profiling"),
+        cindex("Memory profiling"),
+        cindex("Heap profiling"),
+        cindex("Allocation profiling"),
+        cindex(".memprof (grade modifier"),
         w("Prepare the generated code for"),
         w("profiling of memory usage and retention by mprof."),
         % XXX Should we add an xref to the profiling chapter's memprof section?
@@ -1751,20 +1805,26 @@ optdb(oc_grade_prof, memory_profiling,                 special,
     % from versions of your program compiled with different options.
 optdb(oc_grade_prof, profile_calls,                    bool(no),
     priv_alt_align_help("profile-calls", [],
-            "(grade modifier: `.profcalls')", [
+            "(grade modifier: `.profcalls')",
+            "(grade modifier: @samp{.profcalls})", [
+        cindex(".profcalls (grade modifier"),
         w("Similar to"), opt("--profiling", ","),
         w("except that it only gathers call counts, not timing information."),
         w("Useful on systems where time profiling is not supported,"),
         w("but not as useful as"), opt("--memory-profiling", ".")])).
 optdb(oc_grade_prof, profile_time,                     bool(no),
     priv_alt_align_help("profile-time", [],
-            "(grade modifier: `.proftime')", [
+            "(grade modifier: `.proftime')",
+            "(grade modifier: @samp{.proftime})", [
+        cindex(".proftime (grade modifier"),
         w("Similar to"), opt("--profiling", ","),
         w("except that it only gathers timing information,"),
         w("not call counts.")])).
 optdb(oc_grade_prof, profile_memory,                   bool(no),
     priv_alt_align_help("profile-memory", [],
-            "(grade modifier: `.profmem')", [
+            "(grade modifier: `.profmem')",
+            "(grade modifier: @samp{.profmem})", [
+        cindex(".profmem (grade modifier"),
         w("Similar to"), opt("--memory-profiling", ","),
         w("except that it only gathers memory usage information,"),
         w("not call counts.")])).
@@ -1775,7 +1835,10 @@ optdb(oc_grade_prof, profile_memory,                   bool(no),
 
 optdb(oc_grade_prof, deep_profiling,                   special,
     alt_align_help("deep-profiling", [],
-            "(grade modifier: `.profdeep')", [
+            "(grade modifier: `.profdeep')",
+            "(grade modifier: @samp{.profdeep})", [
+        cindex("Deep profiling"),
+        cindex(".profdeep (grade modifier"),
         w("Prepare the generated code for deep profiling."),
         w("The Mercury deep profiling tool"), code("mdprof"),
         w("(note the"), quote("d"), w("in the name)"),
@@ -1814,8 +1877,9 @@ optdb(oc_grade_prof, deep_profile_tail_recursion,      bool(no),
     priv_help("deep-profile-tail-recursion", [])).
 optdb(oc_grade_prof, coverage_profiling,               bool(yes),
     help("coverage-profiling", [
-        w("Do not gather profiling information that is useful"),
-        w("only for coverage profiling.")])).
+        cindex("Coverage profiling"),
+        w("Do not gather deep profiling information"),
+        w("that is useful only for coverage profiling.")])).
 % The next two options are intended for experiments.
 optdb(oc_grade_prof, coverage_profiling_via_calls,     bool(no),
     priv_help("coverage-profiling-via-calls", [
@@ -1856,6 +1920,9 @@ optdb(oc_grade_prof, profile_for_feedback,             bool(no),
     % Currently the only feedback analysis is automatic parallelism.
     alt_help("profile-for-feedback",
             ["profile-for-implicit-parallelism"], [
+        cindex("Coverage profiling"),
+        cindex("Profiler feedback"),
+        cindex("Automatic parallelism"),
         w("Select deep profiling options that are suitable"),
         w("for profiler directed implicit parallelism."),
         opt("--profile-for-implicit-parallelism"),
@@ -1874,11 +1941,15 @@ optdb(oc_grade_prof, experimental_complexity,          string(""),
         opt("--no-high-level-code", ".")])).
 optdb(oc_grade_prof, record_term_sizes_as_words,       bool(no),
     priv_alt_align_help("record-term-sizes-as-words", [],
-            "(grade modifier: `.tsw')", [
+            "(grade modifier: `.tsw')",
+            "(grade modifier: @samp{.tsw})", [
+        cindex(".tsw (grade modifier"),
         w("Augment each heap cell with its size in words.")])).
 optdb(oc_grade_prof, record_term_sizes_as_cells,       bool(no),
     priv_alt_align_help("record-term-sizes-as-cells", [],
-            "(grade modifier: `.tsc')", [
+            "(grade modifier: `.tsc')",
+            "(grade modifier: @samp{.tsc})", [
+        cindex(".tsc (grade modifier"),
         w("Augment each heap cell with its size in cells.")])).
 
 %---------------------%
@@ -1889,12 +1960,16 @@ optdb(oc_grade_prof, threadscope,                      bool(no),
     % XXX Threadscope profiling has not been maintained since Paul stopped
     % working on Mercury. It has almost certainly suffered bit rot by now.
     alt_align_help("threadscope", [],
-            "(grade modifier: `.threadscope')", [
+            "(grade modifier: `.threadscope')",
+            "(grade modifier: @samp{.threadscope})", [
+        cindex(".threadscope (grade modifier"),
         w("Enable support for profiling parallel execution."),
+        w("using Threadscope."),
         w("This option is supported only when targeting C"),
         w("in parallel grades with"), opt("--no-high-level-code", ","),
         w("and only on some processors."),
-        w("See README.ThreadScope for details.")])).
+        w("See README.ThreadScope and"),
+        ref("the", "Using threadscope", "section", ""), w("for details.")])).
 
 %---------------------%
 
@@ -1908,6 +1983,7 @@ optdb(oc_grade_etc, gc,                                string("boehm"),
     % as those methods are still experimental.
     alt_arg_help("garbage-collection", ["gc"],
             "{none, boehm, automatic}", [
+        cindex(".gc (grade modifier"),
         % "`hgc' is our own conservative collector;",
         % "`accurate' is our own type-accurate copying GC;",
         % "it requires `--high-level-code'.",
@@ -1924,7 +2000,9 @@ optdb(oc_grade_etc, gc,                                string("boehm"),
         w("This works only for programs with very short runtimes.")])).
 optdb(oc_grade_etc, stack_segments,                    bool(no),
     alt_align_help("stack-segments", [],
-            "(grade modifier: `.stseg')", [
+            "(grade modifier: `.stseg')",
+            "(grade modifier: @samp{.stseg})", [
+        cindex(".stseg (grade modifier"),
         w("Specify the use of dynamically sized stacks that are"),
         w("composed of small segments. This can help to avoid stack"),
         w("exhaustion at the cost of increased execution time."),
@@ -1933,27 +2011,35 @@ optdb(oc_grade_etc, stack_segments,                    bool(no),
 optdb(oc_grade_etc, extend_stacks_when_needed,         bool(no),
     % This is private as this feature is still experimental.
     priv_help("extend-stacks-when-needed", [
+        cindex(".exts (grade modifier"),
         w("Specify that code that increments the stack pointer"),
         w("must extend the stack on demand."),
         w("This option is supported only when targeting C with"),
         opt("--no-high-level-code", ".")])).
 optdb(oc_grade_etc, use_trail,                         bool(no),
     alt_align_help("use-trail", [],
-            "(grade modifier: `.tr')", [
+            "(grade modifier: `.tr')",
+            "(grade modifier: @samp{.tr})", [
+        cindex(".tr (grade modifier"),
         w("Enable use of a trail."),
         w("This is necessary for interfacing with constraint solvers,"),
         w("or for backtrackable destructive update."),
         w("This option is supported only when targeting C.")])).
 optdb(oc_grade_etc, single_prec_float,                 bool(no),
     alt_align_help("single-precision-float",
-            ["single-prec-float"], "(grade modifier: `.spf')", [
+            ["single-prec-float"],
+            "(grade modifier: `.spf')",
+            "(grade modifier: @samp{.spf})", [
         w("Use single precision floats so that, on 32-bit machines,"),
-        w("floating point values don't need to be boxed. Double"),
-        w("precision floats are used by default."),
+        w("floating point values don't need to be boxed."),
+        w("The default is to use double precision floats."),
         w("This option is supported only when targeting C.")])).
 optdb(oc_grade_etc, parallel,                          bool(no),
     alt_align_help("parallel", [],
-            "(grade modifier: `.par')", [
+            "(grade modifier: `.par')",
+            "(grade modifier: @samp{.par})", [
+        cindex(".par (grade modifier"),
+        % XXX These two should be *different* grade modifiers.
         w("Enable parallel execution support for the low-level C grades."),
         w("Enable concurrency (via pthreads) for the high-level C grades.")])).
 optdb(oc_grade_etc, maybe_thread_safe_opt,             string("no"),
@@ -1961,30 +2047,36 @@ optdb(oc_grade_etc, maybe_thread_safe_opt,             string("no"),
     arg_help("maybe-thread-safe", "{yes, no}", [
         w("Specify how the compiler should treat the"),
         code("maybe_thread_safe"), w("foreign code attribute."),
-        quote("yes"), w("means that a foreign procedure with the"),
+        samp("yes"), w("means that a foreign procedure with the"),
         code("maybe_thread_safe"), w("attribute is treated"),
         w("as if it has a"), code("thread_safe"), w("attribute."),
-        quote("no"), w("means that the foreign procedure is treated"),
+        samp("no"), w("means that the foreign procedure is treated"),
         w("as if it has a"), code("not_thread_safe"), w("attribute."),
-        w("The default is"), quote("no", ".")])).
+        w("The default is"), samp("no", ".")])).
 optdb(oc_grade_etc, use_minimal_model_stack_copy,      bool(no),
     % This controls the .mmsc grade component.
     priv_help("use-minimal-model-stack-copy", [
+        cindex(".mmsc (grade modifier"),
         w("Enable the use of the standard form of minimal model tabling.")])).
 optdb(oc_grade_etc, use_minimal_model_own_stacks,      bool(no),
     % This controls the .mmos grade component.
     priv_help("use-minimal-model-own-stacks", [
+        cindex(".mmos (grade modifier"),
         w("Enable the use of an experimental form of"),
         w("minimal model tabling.")])).
 optdb(oc_grade_etc, minimal_model_debug,               bool(no),
     % This turns .mmos into .dmmos and .mmsc into .dmmsc.
     priv_help("minimal-model-debug", [
+        cindex(".dmmsc (grade modifier"),
+        cindex(".dmmos (grade modifier"),
         w("Enables extra data structures that assist in debugging"),
         w("minimal model tabling.")])).
 % RBMM is undocumented since it is still experimental.
 optdb(oc_grade_etc, use_regions,                       bool(no),
     priv_alt_align_help("use-regions", [],
-            "(grade modifier: `.rbmm')", [
+            "(grade modifier: `.rbmm')",
+            "(grade modifier: @samp{.rbmm})", [
+        cindex(".rbmm (grade modifier"),
         w("Enable support for region-based memory management.")])).
 optdb(oc_grade_etc, use_alloc_regions,                 bool(yes),
     priv_help("use-alloc-regions", [
@@ -1993,8 +2085,10 @@ optdb(oc_grade_etc, use_alloc_regions,                 bool(yes),
 % use_regions_debug and use_regions_profiling *are* (private) grade options.
 % XXX They should be documented.
 optdb(oc_grade_etc, use_regions_debug,                 bool(no),
+    % This option affects the grade by appending to a grade modifier.
     priv_help("use-regions-debug", [])).
 optdb(oc_grade_etc, use_regions_profiling,             bool(no),
+    % This option affects the grade by appending to a grade modifier.
     priv_help("use-regions-profiling", [])).
 
 %---------------------%
@@ -2011,9 +2105,12 @@ optdb(oc_grade_dev, num_ptag_bits,                     int(-1),
     % XXX That fact should be included in the help text.
     alt_arg_help("num-ptag-bits",
             ["num-tag-bits"], "N", [
-        w("Use N primary tag bits."),
+        cindex("Tags"), cindex("Data representation"),
+        w("Use"), bare_arg("N"), w("primary tag bits."),
         w("Note that the value of this option is normally autoconfigured;"),
-        w("its use should never be needed except for cross-compilation.")])).
+        w("its use should never be needed except for cross-compilation"),
+        w("to an architecture where autoconfiguration would yield"),
+        w("a different value.")])).
 optdb(oc_grade_dev, bits_per_word,                     int(32),
     % A good default for the current generation of architectures.
     priv_arg_help("bits-per-word", "N", [
@@ -2051,7 +2148,7 @@ optdb(oc_grade_dev, unboxed_no_tag_types,              bool(yes),
 optdb(oc_grade_dev, arg_pack_bits,                     int(-1),
     % -1 is a special value which means use all word bits
     % for argument packing.
-    priv_arg_help("arg-pack-bits", "n", [
+    priv_arg_help("arg-pack-bits", "N", [
         w("The number of bits in a word in which to pack"),
         w("constructor arguments."),
         w("Note that the value of this option is normally autoconfigured;"),
@@ -2095,34 +2192,49 @@ optdb(oc_grade_dev, sync_term_size_in_words,           int(8),
 
 optdb(oc_infer,     infer_all,                         bool_special,
     help("infer-all", [
+        cindex("Inferemce"),
         w("This option is an abbreviation for the combination of"),
         opt("--infer-types", ","), opt("--infer-modes", ","),
         w("and"), opt("--infer-det", ".")])).
 optdb(oc_infer,     infer_types,                       bool(no),
     help("infer-types", [
+        cindex("Inferemce of types"),
+        cindex("Type inference"),
         w("If there is no type declaration for a predicate or function,"),
         w("try to infer its type, instead of just reporting an error.")])).
 optdb(oc_infer,     infer_modes,                       bool(no),
     help("infer-modes", [
+        cindex("Inferemce of mode"),
+        cindex("Mode inference"),
         w("If there is no mode declaration for a predicate,"),
         w("try to infer its mode (or modes),"),
         w("instead of just reporting an error.")])).
 optdb(oc_infer,     infer_det,                         bool(yes),
     alt_help("infer-determinism", ["infer-det"], [
+        cindex("Inferemce of determinism"),
+        cindex("Determinism inferemce"),
         w("If there is no determinism declaration for a procedure"),
         w("(a mode of a predicate or of a function),"),
         w("just report an error; do not try to infer its determinism.")])).
 optdb(oc_infer,     type_inference_iteration_limit,    int(60),
-    arg_help("type-inference-iteration-limit", "n", [
-        w("Perform at most"), arg("n"),
+    arg_help("type-inference-iteration-limit", "N", [
+        cindex("Inferemce of types"),
+        cindex("Type inference"),
+        w("Perform at most"), arg("N"),
         w("passes of type inference (default: 60).")])).
 optdb(oc_infer,     mode_inference_iteration_limit,    int(30),
-    arg_help("mode-inference-iteration-limit", "n", [
-        w("Perform at most"), arg("n"),
+    arg_help("mode-inference-iteration-limit", "N", [
+        cindex("Inferemce of mode"),
+        cindex("Mode inference"),
+        w("Perform at most"), arg("N"),
         w("passes of mode inference (default: 30).")])).
 optdb(oc_infer,     allow_stubs,                       bool(no),
     % A stub is sort-of like inferring a clause body, right ?-)
     help("allow-stubs", [
+        cindex("Stubs"),
+        cindex("Procedures with no clauses"),
+        cindex("No clauses, procedures with"),
+        cindex("Clauses, procedures without"),
         w("Allow procedures to have no clauses. Any calls to"),
         w("such procedures will raise an exception at run-time."),
         w("This option is sometimes useful during program development."),
@@ -2133,6 +2245,17 @@ optdb(oc_infer,     allow_stubs,                       bool(no),
 
     % Language semantics options.
 
+% XXX Add a mechanism to print_help.m that allows us to include
+% these lines from the old invocation chapter:
+%
+% @cindex Semantics options
+% @cindex Order of execution
+% @cindex Reordering
+% @cindex Optimization
+%
+% See the Mercury language reference manual for detailed explanations
+% of these options.
+
 optdb(oc_semantics, strict_sequential,                 special,
     help("strict-sequential", [
         w("This option is an abbreviation for the combination of"),
@@ -2141,7 +2264,8 @@ optdb(oc_semantics, strict_sequential,                 special,
 optdb(oc_semantics, reorder_conj,                      bool(yes),
     help("reorder-conj", [
         w("Execute conjunctions left-to-right. Do not reorder conjuncts,"),
-        w("except where the modes require it.")])).
+        w("except where the modes require it (to put the producer"),
+        w("of each variable before all its consumers).")])).
 optdb(oc_semantics, reorder_disj,                      bool(yes),
     help("reorder-disj", [
         w("Execute disjunctions strictly left-to-right;"),
@@ -2163,10 +2287,12 @@ optdb(oc_verbosity, very_verbose,                      bool(no),
         w("Output very verbose progress messages.")])).
 optdb(oc_verbosity, statistics,                        bool(no),
     short_help('S', "statistics", [], [
-        w("Output messages about the compiler's time/space usage."),
-        w("At the moment this option implies"),
-        opt("--no-trad-passes", ","), w("so you get information"),
+        w("Output messages about the compiler's time/space usage"),
         w("at the boundaries between phases of the compiler.")])).
+% Disable this part the help text while --trad-passes is private.
+%       w("At the moment this option implies"),
+%       opt("--no-trad-passes", ","), w("so you get information"),
+%       w("at the boundaries between phases of the compiler.")])).
 optdb(oc_verb_dev,  detailed_statistics,               bool(no),
     % The only sensible way to use --detailed-statistics, based on
     % --very-verbose, is implemented automatically in handle_options,
@@ -2187,9 +2313,9 @@ optdb(oc_verbosity, verbose_make,                      bool(yes),
         w("Disable messages about the progress of builds when using"),
         code("mmc --make", ".")])).
 optdb(oc_verbosity, output_compile_error_lines,        maybe_int(yes(100)),
-    arg_help("output-compile-error-lines", "n", [
+    arg_help("output-compile-error-lines", "N", [
         w("With"), opt("--make", ","),
-        w("output the first"), arg("n"), w("lines of the"),
+        w("output the first"), arg("N"), w("lines of the"),
         file(".err"), w("file after compiling a module (default: 100)."),
         w("Specifying"), opt("--no-output-compile-error-lines"),
         w("removes the limit.")])).
@@ -2211,6 +2337,8 @@ optdb(oc_verbosity, verbose_commands,                  bool(no),
 
 %---------------------%
 
+% XXX ALL the options in the oc_verb_dbg category should be private,
+% not just some.
 optdb(oc_verb_dbg,  report_cmd_line_args,              bool(no),
     help("report-cmd-line-args", [
         w("Report the command line arguments.")])).
@@ -2271,7 +2399,7 @@ optdb(oc_verb_dbg,  debug_modes_goal_ids,              bool(yes),
     priv_help("debug-modes-goal-ids", [
         w("Output the id of the goal at all mode debug checkpoints.")])).
 optdb(oc_verb_dbg,  debug_modes_pred_id,               int(-1),
-    arg_help("debug-modes-pred-id", "n", [
+    arg_help("debug-modes-pred-id", "pred_id", [
         w("With"), opt("--debug-modes", ","),
         w("restrict the debugging traces to the mode checking"),
         w("of the predicate or function with the specified pred id.")])).
@@ -2325,7 +2453,7 @@ optdb(oc_verb_dbg,  debug_unneeded_code_pred_name,     accumulating([]),
 optdb(oc_verb_dbg,  debug_mm_tabling_analysis,         bool(no),
     priv_help("debug-mm-tabling-analysis", [])).
 optdb(oc_verb_dbg,  debug_dep_par_conj,                accumulating([]),
-    priv_arg_help("debug-dep-par-conj", "n", [
+    priv_arg_help("debug-dep-par-conj", "pred_id", [
         w("Output detailed debugging traces during the dependent"),
         w("AND-parallelism transformation of the predicate with the given"),
         w("predicate id. Effective only with the right trace flags.")])).
@@ -2338,7 +2466,7 @@ optdb(oc_verb_dbg,  debug_stack_opt,                   int(-1),
         w("Generate debug messages when performing stack slot optimization"),
         w("on the predicate with the given id.")])).
 optdb(oc_verb_dbg,  debug_code_gen_pred_id,            int(-1),
-    priv_arg_help("debug-code-gen-pred-id", "n", [
+    priv_arg_help("debug-code-gen-pred-id", "pred_id", [
         w("Output detailed debugging traces of code generation for the"),
         w("predicate or function with the given pred id."),
         w("Effectively only with the right trace flags.")])).
@@ -2347,7 +2475,7 @@ optdb(oc_verb_dbg,  debug_opt,                         bool(no),
         w("Output detailed debugging traces of the optimization process.")])).
 % XXX Shouldn't this be private? Users should not need to know about pred_ids.
 optdb(oc_verb_dbg,  debug_opt_pred_id,                 accumulating([]),
-    arg_help("debug-opt-pred-id", "n", [
+    arg_help("debug-opt-pred-id", "pred_id", [
         w("Output detailed debugging traces of the optimization process"),
         w("only for the predicate/function with the specified pred id.")])).
 optdb(oc_verb_dbg,  debug_opt_pred_name,               accumulating([]),
@@ -2383,9 +2511,9 @@ optdb(oc_diag_gen,  reverse_error_order,               bool(no),
         w("instead of the usual ascending order. This is useful if you want"),
         w("to work on the last errors in a file first.")])).
 optdb(oc_diag_gen,  max_error_line_width,              maybe_int(yes(79)),
-    arg_help("max-error-line-width", "n", [
+    arg_help("max-error-line-width", "N", [
         w("Set the maximum width of an error message line to"),
-        arg("n"), w("characters"),
+        arg("N"), w("characters"),
         w("(unless a long single word forces the line over this limit)."),
         w("Specifying"), opt("--no-max-error-line-width"),
         w("removes the limit.")])).
@@ -2404,10 +2532,14 @@ optdb(oc_diag_gen,  limit_error_contexts,              accumulating([]),
         w("to all files.")])).
 optdb(oc_diag_gen,  error_files_in_subdir,             bool(no),
     help("error-files-in-subdir", [
+        cindex("File names"),
+        cindex("Directories"),
+        cindex("Subdirectories"),
+        cindex("@file{Mercury} subdirectory"),
         w("This option causes"), code("mmc --make"),
         w("to put"), file(".err"), w("files into the"),
         file("Mercury"), w("subdirectory instead of the current directory."),
-        w("(This option has no effect on Mmake.)")])).
+        w("(This option has no effect on"), code("mmake", ".)")])).
 optdb(oc_diag_gen,  std_int_file_not_written_msgs,     bool(no),
     % We use this option to eliminate the need for a .int_err_exp file for the
     % -use-subdir case for every test in the tests/invalid_make_int
@@ -2416,22 +2548,25 @@ optdb(oc_diag_gen,  std_int_file_not_written_msgs,     bool(no),
         w("Standardize messages about interface files not being written"),
         w("by omitting any directory name components from file names.")])).
 optdb(oc_diag_gen,  typecheck_ambiguity_warn_limit,    int(50),
-    arg_help("typecheck-ambiguity-warn-limit", "n", [
+    arg_help("typecheck-ambiguity-warn-limit", "N", [
         w("Set the number of type assignments required to generate a"),
-        w("warning about highly ambiguous overloading to"), arg("n", ".")])).
+        w("warning about highly ambiguous overloading to"), arg("N", "."),
+        w("(Default: 50.)")])).
 optdb(oc_diag_gen,  typecheck_ambiguity_error_limit,   int(3000),
-    arg_help("typecheck-ambiguity-error-limit", "n", [
+    arg_help("typecheck-ambiguity-error-limit", "N", [
         w("Set the number of type assignments required to generate an error"),
-        w("about excessively ambiguous overloading to"), arg("n", "."),
+        w("about excessively ambiguous overloading to"), arg("N", "."),
         w("If this limit is reached, the typechecker"),
-        w("will not process the predicate or function any further.")])).
+        w("will not process the predicate or function any further."),
+        w("(Default: 3000.)")])).
 
 optdb(oc_diag_color, color_diagnostics,                 bool_special,
     alt_help("color-diagnostics",
             ["colour-diagnostics"], [
-        w("Disable the use of colors in diagnostic messages. Please see the"),
-        ref("", "Enabling the use of color", "section"),
-        w("in the Mercury User's Guide for details.")])).
+        w("Disable the use of colors in diagnostic messages. Please see"),
+        ref("the", "Enabling the use of color",
+            "section in the Mercury User's Guide"),
+        w("for the details.")])).
 optdb(oc_diag_color, config_default_color_diagnostics,  bool(yes),
     % This option should be used only by the configure script.
     priv_alt_help("config-default-color-diagnostics",
@@ -2447,9 +2582,9 @@ optdb(oc_diag_color, color_scheme,                      string_special,
         w("Specify the color scheme to use for diagnostics, if the use of"),
         w("color in diagnostics is enabled. For information about how the"),
         w("compiler uses colors in diagnostic messages, and about the"),
-        w("syntax of color scheme specifications, please see the"),
-        ref("", "Color schemes", "section"),
-        w("in the Mercury user's Guide for details.")])).
+        w("syntax of color scheme specifications, please see"),
+        ref("the", "Color schemes",
+            "section in the Mercury User's Guide", ".")])).
 optdb(oc_diag_int,  color_scheme_envvar,               string_special,
     priv_arg_help("color-scheme-envvar", "ColorScheme", [])).
 optdb(oc_diag_int,  color_scheme_set_by,               string("default"),
@@ -2493,6 +2628,9 @@ optdb(oc_diag_int,  set_color_hint,                    string(""), no_help).
     % testing of a module B that imports A.
 
 %---------------------%
+
+% XXX Support a third level, subsections, in texinfo help,
+% to make these blocks of options visible in the user guide.
 
 % Warnings about module-level issues.
 
@@ -2540,9 +2678,10 @@ optdb(oc_warn_dodgy, warn_unification_cannot_succeed,   bool(yes),
         w("Do not warn about unifications which cannot succeed.")])).
 optdb(oc_warn_dodgy, warn_known_bad_format_calls,       bool(yes),
     help("warn-known-bad-format-calls", [
-        w("Do not warn about calls to"), code("string.format"),
-        w("or"), code("io.format"), w("that contain mismatches"),
-        w("between the format string and the supplied values.")])).
+        w("Do not warn about calls to"), code("string.format", ","),
+        code("io.format", ","), w("or"), code("stream.string_writer.format"),
+        w("that contain mismatches between"),
+        w("the format string and the supplied values.")])).
 optdb(oc_warn_dodgy, warn_obsolete,                     bool(yes),
     help("warn-obsolete", [
         w("Do not warn about calls to predicates and functions"),
@@ -2555,7 +2694,7 @@ optdb(oc_warn_dodgy, warn_suspected_occurs_check_failure, bool(yes),
             ["warn-suspected-occurs-failure"], [
         w("Do not warn about code that looks like it unifies a variable"),
         w("with a term that contains that same variable. Such code cannot"),
-        w("succeed because it fails what is called the"),
+        w("succeed because it fails the test called the"),
         emph("occurs check", ".")])).
 optdb(oc_warn_dodgy, warn_suspicious_recursion,         bool(no),
     help("warn-suspicious-recursion", [
@@ -2563,18 +2702,18 @@ optdb(oc_warn_dodgy, warn_suspicious_recursion,         bool(no),
         w("such as leading to infinite recursion.")])).
 optdb(oc_warn_dodgy, warn_unused_args,                  bool(no),
     help("warn-unused-args", [
-        w("Warn about predicate arguments which are not used.")])).
+        w("Warn about predicate or function arguments which are not used.")])).
 
 % Warnings about predicate determinism issues.
 
 optdb(oc_warn_dodgy, warn_det_decls_too_lax,            bool(yes),
     help("warn-det-decls-too-lax", [
         w("Do not warn about determinism declarations"),
-        w("which could have been stricter.")])).
+        w("which could be stricter.")])).
 optdb(oc_warn_dodgy, warn_inferred_erroneous,           bool(yes),
     help("warn-inferred-erroneous", [
         w("Do not warn about procedures whose determinism"),
-        w("is inferred erroneous"),
+        w("is inferred to be"), samp("erroneous", ","),
         w("but whose determinism declarations are looser.")])).
 
 % Warnings about predicate pragma issues.
@@ -2595,7 +2734,7 @@ optdb(oc_warn_dodgy, warn_table_with_inline,            bool(yes),
         w("Do not warn about tabled procedures that also have a"),
         code("pragma inline"), w("declaration."),
         w("(This combination does not work, because"),
-        w("inlined copies of procedure bodies cannot be tabled.")])).
+        w("inlined copies of procedure bodies cannot be tabled.)")])).
 
 % Warnings about other predicate-level issues.
 
@@ -2662,7 +2801,7 @@ optdb(oc_warn_dodgy, warn_missing_trans_opt_deps,       bool(yes),
 
 optdb(oc_warn_perf, warn_accumulator_swaps,            bool(yes),
     help("warn-accumulator-swaps", [
-        w("Do not warn about argument order rearrangement caused by"),
+        w("Do not warn about argument order rearrangements done by"),
         opt("--introduce-accumulators", ".")])).
 optdb(oc_warn_perf, warn_unneeded_final_statevars,     bool(yes),
     help("warn-unneeded-final-statevars", [
@@ -2692,10 +2831,11 @@ optdb(oc_warn_perf, warn_non_tail_recursion_mutual,    bool(no),
 optdb(oc_warn_perf_c, warn_non_tail_recursion,           maybe_string_special,
     arg_help("warn-non-tail-recursion", "{none,self,self-and-mutual}", [
         w("Specify when the compiler should warn"),
-        w("about recursive calls that are not tail calls."),
-        w("This option works by specifying the implied values for"),
-        opt("--warn-non-tail-recursion-self"), w("and"),
-        opt("--warn-non-tail-recursion-mutual", ".")])).
+        w("about recursive calls that are not tail calls.")])).
+        % Uncomment this if/when the two named options become public.
+        % w("This option works by specifying the implied values for"),
+        % opt("--warn-non-tail-recursion-self"), w("and"),
+        % opt("--warn-non-tail-recursion-mutual", ".")])).
 
 %---------------------%
 
@@ -2716,7 +2856,9 @@ optdb(oc_warn_style, warn_dead_procs,                   bool(no),
 optdb(oc_warn_style, warn_simple_code,                  bool(yes),
     help("warn-simple-code", [
         w("Do not warn about constructs which are so simple"),
-        w("that they are likely to be programming errors.")])).
+        w("that they are likely to be programming errors."),
+        w("(One example is if-then-elses"),
+        w("whose condition always succeeds.)")])).
 optdb(oc_warn_style, inform_ite_instead_of_switch,      bool(no),
     help("inform-ite-instead-of-switch", [
         w("Generate informational messages for if-then-elses that could be"),
@@ -2730,7 +2872,7 @@ optdb(oc_warn_style_c, inform_incomplete_switch_threshold, int(0),
     arg_help("inform-incomplete-switch-threshold", "N", [
         w("Have the"), opt("--inform-incomplete-switch"), w("option"),
         w("generate its messages only for switches that"), emph("do"),
-        w("cover at least N% of the function symbols"),
+        w("cover at least"), bare_arg("N", "%"), w("of the function symbols"),
         w("that the switched-on variable could be bound to.")])).
 optdb(oc_warn_style, warn_duplicate_calls,              bool(no),
     help("warn-duplicate-calls", [
@@ -2738,7 +2880,9 @@ optdb(oc_warn_style, warn_duplicate_calls,              bool(no),
         w("with the same input arguments.")])).
 optdb(oc_warn_style, warn_redundant_coerce,             bool(yes),
     help("warn-redundant-coerce", [
-        w("Do not warn about redundant type coercions.")])).
+        w("Do not warn about redundant type coercions,"),
+        w("which occur when the type of the result of the"), code("coerce"),
+        w("expression is the same as the type of its argument.")])).
 
 % Warnings about state vars.
 
@@ -2773,7 +2917,8 @@ optdb(oc_warn_style, warn_unknown_format_calls,         bool(no),
 
 optdb(oc_warn_style, warn_can_fail_function,            bool(no),
     help("warn-can-fail-function", [
-        w("Warn about functions that can fail.")])).
+        w("Warn about functions that can fail."),
+        w("(Such functions should be replaced by semidet predicates.)")])).
 optdb(oc_warn_style, warn_unneeded_mode_specific_clause, bool(yes),
     help("warn-unneeded-mode-specific-clause", [
         w("Do not warn about clauses that unnecessarily specify"),
@@ -2836,11 +2981,26 @@ optdb(oc_warn_style_c, allow_non_contiguity_for,          accumulating([]),
 optdb(oc_warn_style, warn_suspicious_foreign_code,      bool(no),
     help("warn-suspicious-foreign-code", [
         w("Warn about possible errors in the bodies of foreign code"),
-        w("pragmas.")])).
+        w("pragmas."),
+        blank_line,
+        w("Note that since the compiler's ability to parse"),
+        w("foreign language code is limited, some warnings"),
+        w("reported by this option may be spurious, and"),
+        w("some actual errors may not be detected at all.")])).
 optdb(oc_warn_style, warn_suspicious_foreign_procs,     bool(no),
     help("warn-suspicious-foreign-procs", [
         w("Warn about possible errors in the bodies of foreign_proc"),
-        w("pragmas.")])).
+        w("pragmas."),
+        w("When enabled, the compiler attempts to determine"),
+        w("whether the success indicator for a foreign procedure"),
+        w("is correctly set, and whether the foreign procedure body"),
+        w("contains operations that it should not contain, such as"),
+        code("return"), w("statements in a C foreign procedure."),
+        blank_line,
+        w("Note that since the compiler's ability to parse"),
+        w("foreign language code is limited, some warnings"),
+        w("reported by this option may be spurious, and"),
+        w("some actual errors may not be detected at all.")])).
 
 %---------------------%
 
@@ -2857,7 +3017,8 @@ optdb(oc_warn_ctrl, warn_only_one_format_string_error, bool(yes),
         w("If a format string has more one than mismatch"),
         w("with the supplied values,"),
         w("generate a warning for all mismatches, not just the first."),
-        w("(The later mismatches may be avalanche errors"),
+        w("(The default is to report only the first, because"),
+        w("later mismatches may be avalanche errors"),
         w("caused by earlier mismatches.)")])).
 optdb(oc_warn_ctrl, warn_smart_recompilation,          bool(yes),
     % XXX Private until smart recompilation works and is announced.
@@ -2873,15 +3034,16 @@ optdb(oc_warn_ctrl, warn_up_to_date,                   bool(yes),
 optdb(oc_warn_halt, halt_at_warn,                      bool(no),
     help("halt-at-warn", [
         w("This option causes the compiler to treat all warnings"),
-        w("as if they were errors when generating target code."),
-        w("This means that if the compiler issues any warning,"),
+        w("as if they were errors when intending to generate target code."),
+        w("This means that if the compiler issues any warnings,"),
         w("it will not generate target code; instead, it will"),
         w("return a non-zero exit status.")])).
 optdb(oc_warn_halt, halt_at_warn_make_int,             bool(no),
     alt_help("halt-at-warn-make-interface",
             ["halt-at-warn-make-int"], [
         w("This option causes the compiler to treat all warnings"),
-        w("as if they were errors when generating an interface file"),
+        w("as if they were errors when intending to generate"),
+        w("an interface file"),
         w("(a"), file(".int", ","), file(".int0", ","),
         file(".int2"), w("or"), file(".int3"), w("file)."),
         w("This means that if the compiler issues any warnings at that time,"),
@@ -2890,7 +3052,8 @@ optdb(oc_warn_halt, halt_at_warn_make_int,             bool(no),
 optdb(oc_warn_halt, halt_at_warn_make_opt,             bool(no),
     help("halt-at-warn-make-opt", [
         w("This option causes the compiler to treat all warnings"),
-        w("as if they were errors when generating an optimization file"),
+        w("as if they were errors when intending to generate"),
+        w("an optimization file"),
         w("(a"), file(".opt"), w("or"), file(".trans_opt"), w("file.)"),
         w("This means that if the compiler issues any warnings at that time,"),
         w("it will not generate the optimization file;"),
@@ -2913,9 +3076,12 @@ optdb(oc_warn_halt, halt_at_invalid_interface,         bool(yes),
         file(".int"), w("and"), file(".int2"), w("files."),
         w("If these checks find any problems, the compiler will print"),
         w("an error message for each problem, but will then stop."),
+        blank_line,
         w("Users can prevent this stop,"),
         w("and thus allow the generation of invalid interface files,"),
-        w("by specifying"), opt("--no-halt-at-invalid-interface", ".")])).
+        w("by specifying"), opt("--no-halt-at-invalid-interface", "."),
+        w("(In this case, the problems in the invalid information files"),
+        w("will be reported when compiling the modules that import them.)")])).
 optdb(oc_warn_halt, halt_at_auto_parallel_failure,     bool(no),
     priv_help("halt-at-auto-parallel-failure", [
         w("This option causes the compiler to halt if it cannot perform"),
@@ -2937,7 +3103,7 @@ optdb(oc_inform,    inform_inferred_modes,             bool(yes),
 optdb(oc_inform,    inform_incomplete_color_scheme,    bool(no),
     priv_help("inform-incomplete-color-scheme", [
         w("Report if either the value of the"), opt("--color-scheme"),
-        w("option, or the value of the"), code("MERCURY_COLOR_SCHEME"),
+        w("option, or the value of the"), env("MERCURY_COLOR_SCHEME"),
         w("environment variable, is incomplete,"),
         w("in that it does not specify a color for some role.")])).
 optdb(oc_inform,    inform_suboptimal_packing,         bool(no),
@@ -2973,7 +3139,12 @@ optdb(oc_file_req,  show_definition_line_counts,       bool(no),
         w("and their approximate line counts, to"),
         file_var("module", "defn_line_counts", "."),
         w("The list will be ordered on the names and arities of the"),
-        w("predicates and functions.")])).
+        w("predicates and functions."),
+        blank_line,
+        w("The line counts are only approximate because the compiler"),
+        w("does not need, and therefore does not keep around,"),
+        w("information such as the context of a line"),
+        w("that contains only a close parenthesis ending a clause.")])).
 optdb(oc_file_req,  show_definition_extents,           bool(no),
     alt_help("show-definition-extents",
             ["show-defn-extents"], [
@@ -2981,7 +3152,12 @@ optdb(oc_file_req,  show_definition_extents,           bool(no),
         w("the module, together with the approximate line numbers of their"),
         w("first and last lines, to"), file_var("module", "defn_extents", "."),
         w("The list will be ordered on the starting line numbers"),
-        w("of the predicates and functions.")])).
+        w("of the predicates and functions."),
+        blank_line,
+        w("The line numbers are only approximate because the compiler"),
+        w("does not need, and therefore does not keep around,"),
+        w("information such as the context of a line"),
+        w("that contains only a close parenthesis ending a clause.")])).
 optdb(oc_file_req,  show_local_call_tree,              bool(no),
     help("show-local-call-tree", [
         w("Construct the local call tree of the predicates and functions"),
@@ -2996,9 +3172,11 @@ optdb(oc_file_req,  show_local_call_tree,              bool(no),
         w("each predicate or function, starting the traversal at the"),
         w("exported predicates and/or functions of the module."),
         w("List the callees of each node in the same order."),
+        blank_line,
         w("Write a flattened form of this call tree, containing just"),
         w("the predicates and functions in the same traversal order, to"),
         file_var("module", "local_call_tree_order", "."),
+        blank_line,
         w("Construct another call tree of the predicates and functions"),
         w("defined in the module in which each entry lists"),
         w("not just the local predicates/functions directly referred to,"),
@@ -3028,14 +3206,15 @@ optdb(oc_file_req,  show_developer_type_repns,         bool(no),
         w("to Mercury developers only.")])).
 optdb(oc_file_req,  show_dependency_graph,             bool(no),
     help("show-dependency-graph", [
+        % XXX This help text is next to useless.
         w("Write out the dependency graph to"),
         file_var("module", "dependency_graph", ".")])).
 optdb(oc_file_req,  show_imports_graph,                bool(no),
     alt_help("show-imports-graph", ["imports-graph"], [
         w("If"), opt("--generate-dependencies"), w("is specified, then"),
         w("write out the imports graph to"),
-        file_var("module", "imports_graph"),
-        w("in a format that can be processed by the graphviz tools."),
+        file_var("module", "imports_graph"), w("in a format"),
+        w("that can be processed by the"), code("graphviz"), w("tools."),
         w("The graph will contain an edge from the node of module A"),
         w("to the node of module B if module A imports module B.")])).
 
@@ -3133,7 +3312,7 @@ optdb(oc_mdb,       delay_death,                       bool(yes),
 optdb(oc_mdb,       delay_death_max_vars,              int(1000),
     arg_help("delay-death-max-vars", "N", [
         w("Delay the deaths of variables only when the number of variables"),
-        w("in the procedure is no more than N."),
+        w("in the procedure is no more than"), bare_arg("N", "."),
         w("The default value is 1000.")])).
 optdb(oc_mdb,       stack_trace_higher_order,          bool(no),
     help("stack-trace-higher-order", [
@@ -3181,35 +3360,85 @@ optdb(oc_mdprof,    prof_optimized,                    bool(no),
 optdb(oc_opt_ctrl,  default_opt_level,                 string("-O2"),
     % This is for use by Mercury.config only.
     priv_arg_help("default-opt-level", "-O<n>", [
-        w("Set the default optimization level to"), arg("n", ".")])).
+        w("Set the default optimization level to"), arg("N", ".")])).
 optdb(oc_opt_ctrl,  opt_level,                         int_special,
     short_arg_help('O', "optimization-level",
-            ["optimisation-level", "opt-level"], "n", [
-        w("Set optimization level to"), arg("n", "."),
+            ["optimisation-level", "opt-level"], "N", [
+        cindex("Optimization levels"),
+        cindex("Compilation speed"),
+        cindex("Intermodule optimization"),
+        cindex("Cross-mrmodule optimization"),
+        w("Set optimization level to"), arg("N", "."),
         w("Optimization level -1 means no optimization"),
         w("while optimization level 6 means full optimization."),
         w("The option"), opt("--output-optimization-options"),
-        w("lists the optimizations enabled at each level.")])).
+        w("lists the optimizations enabled at each level."),
+        blank_line,
+        w("Note that some options are not enabled automatically at"),
+        emph("any"), w("optimization level."),
+        w("These include options that are"),
+        w("too new and experimental for large scale use,"),
+        w("and options that generate speedups in some use cases,"),
+        w("but slowdowns in others, require situation-specific"),
+        w("consideration of their use."),
+        blank_line,
+        w("Likewise, if you want the compiler to perform"),
+        w("intermodule optimizations, where the compiler"),
+        w("exploits information about the non-public parts"),
+        w("of the modules it imports"),
+        w("(which it gets from their"), file(".opt"), w("files)"),
+        w("for optimization purposes"),
+        w("then you must enable that separately,"),
+        w("partially because they affect the compilation process"),
+        w("in ways that require special treatment by"), code("mmake", "."),
+        w("This goes double for"), emph("transitive"),
+        w("intermodule optimizations, where the compiler"),
+        w("exploits information about the non-public parts"),
+        w("of not just the modules it imports, but also from"),
+        w("the modules that"), emph("they)"), w("import,"),
+        w("directly or indirectly."),
+        w("(It gets this info from the"), file(".trans_opt"), w("files"),
+        w("of the directly or indirectly imported modules.)")])).
+%       blank_line,
+%       w("In general, there is a tradeoff between compilation speed"),
+%       w("and the speed of the generated code."),
 optdb(oc_opt_ctrl,  opt_space,                         special,
     alt_help("optimize-space",
             ["optimise-space", "opt-space"], [
-        w("Turn on optimizations that reduce code size"),
+        w("Turn on optimizations that reduce code size,"),
         w("and turn off optimizations that significantly"),
         w("increase code size.")])).
 optdb(oc_opt_ctrl,  intermodule_optimization,          bool(no),
     alt_help("intermodule-optimization",
             ["intermodule-optimisation", "intermod-opt"], [
-        w("Perform inlining and higher-order specialization of"),
-        w("the code for predicates imported from other modules."),
-        w("This option must be set throughout the compilation process.")])).
+        w("Perform inlining, higher-order specialization,"),
+        w("and other optimizations using knowledge"),
+        w("of the otherwise non-public data of directly imported modules."),
+        w("The compiler gets this data from the"),
+        file_var("module", "opt"), w("files"),
+        w("of the directly imported modules."),
+        blank_line,
+        w("This option must be set consistently"),
+        w("throughout the compilation process, starting with"),
+        code("mmc --generate-dependencies", ".")])).
 optdb(oc_opt_ctrl,  transitive_optimization,           bool(no),
     alt_help("transitive-intermodule-optimization",
             ["transitive-intermodule-optimisation", "trans-intermod-opt"], [
-        w("Import the transitive intermodule optimization data."),
-        w("This data is imported from"),
-        file_var("module", "trans_opt"), w("files."),
+        w("Perform inlining, higher-order specialization,"),
+        w("and other optimizations using knowledge"),
+        w("of the otherwise non-public data of"),
+        w("both directly and indirectly imported modules."),
+        w("The compiler gets this data from the"),
+        file_var("module", "trans_opt"), w("files"),
+        w("of the directly and indirectly imported modules."),
+        blank_line,
+        w("This option must be set consistently"),
+        w("throughout the compilation process, starting with"),
+        code("mmc --generate-dependencies", "."),
+        blank_line,
         w("Note that"), opt("--transitive-intermodule-optimization"),
-        w("does not work with"), code("mmc --make", ".")])).
+        w("works only with"), code("mmake", ";"),
+        w("it does not work with"), code("mmc --make", ".")])).
 optdb(oc_opt_ctrl,  read_opt_files_transitively,       bool(yes),
     help("read-opt-files-transitively", [
         w("Only read the inter-module optimization information"),
@@ -3219,6 +3448,7 @@ optdb(oc_opt_ctrl,  use_opt_files,                     bool(no),
     help("use-opt-files", [
         w("Perform inter-module optimization using any"),
         file(".opt"), w("files which are already built,"),
+        % XXX In texinfo, we use e.g.@:
         w("e.g. those for the standard library,"),
         w("but do not build any others.")])).
 optdb(oc_opt_ctrl,  use_trans_opt_files,               bool(no),
@@ -3234,18 +3464,20 @@ optdb(oc_opt_ctrl,  intermodule_analysis,              bool(no),
         w("unused argument elimination across module boundaries."),
         w("This option is not yet fully implemented.")])).
 optdb(oc_opt_ctrl,  analysis_repeat,                   int(0),
-    arg_help("analysis-repeat", "n", [
+    % XXX Make private until implemented.
+    arg_help("analysis-repeat", "N", [
         w("Specify the maximum number of times to repeat analyses"),
         w("of suboptimal modules with"), opt("--intermodule-analysis"),
-        w("(default: 0).")])).
+        w("(default: 0)."),
+        w("(This option works only with"), code("mmc --make", ".)")])).
 optdb(oc_opt_ctrl,  analysis_file_cache,               bool(no),
-    % This feature is still experimental.
+    % XXX This feature is still experimental.
     priv_help("analysis-file-cache", [
         w("Enable caching of parsed analysis files. This may"),
         w("improve compile times with"), opt("--intermodule-analysis", ".")])).
 optdb(oc_opt_ctrl,  analysis_file_cache_dir,           string(""),
-    % The `--analysis-file-cache-dir' option is used by `mmc --make'.
-    priv_arg_help("analysis-file-cache-dir", "dir", [])).
+    % XXX The `--analysis-file-cache-dir' option is used by `mmc --make'.
+    priv_arg_help("analysis-file-cache-dir", "directory", [])).
 
 %---------------------%
 
@@ -3283,9 +3515,13 @@ optdb(oc_opt_hh,    optopt_intermod_unused_args,       bool_special,
         opt("--intermodule-optimization", ".")])).
 
 optdb(oc_opt_hh,    optopt_format_calls,               bool_special,
+    % XXX This is documented as if it were a default-off option,
+    % but in fact, it is define-on. The default value is just hidden
+    % behind the special_handler.
     help("optimize-format-calls", [
         w("Interpret the format string in calls to"),
-        code("string.format"), w("and related predicates at compile time,"),
+        code("string.format", ","), code("io.format", ","), w("and"),
+        code("stream.string_writer.format"), w("at compile time,"),
         w("replacing those calls with"),
         w("the sequence of more primitive operations"),
         w("required to implement them.")])).
@@ -3311,7 +3547,7 @@ optdb(oc_opt_hh,    optopt_allow_inlining,             bool_special,
 optdb(oc_opt_hh,    inlining,                          bool_special,
     help("inlining", [
         w("Ask the compiler to inline procedures"),
-        w("using its usual heurisrics.")])).
+        w("using its usual heuristics.")])).
 optdb(oc_opt_hh,    optopt_inline_builtins,            bool_special,
     help("inline-builtins", [
         w("Normally, the compiler implements builtin operations"),
@@ -3334,6 +3570,7 @@ optdb(oc_opt_hh,    optopt_inline_simple,              bool_special,
     help("inline-simple", [
         w("Inline all simple procedures.")])).
 optdb(oc_opt_hh,    optopt_inline_simple_threshold,    int_special,
+    % XXX Define "size".
     arg_help("inline-simple-threshold", "threshold", [
         w("With"), opt("--inline-simple", ","), w("inline a procedure"),
         w("if its size is less than the given threshold.")])).
@@ -3380,13 +3617,32 @@ optdb(oc_opt_hh,    optopt_inline_tr_sccs_max_extra,   int_special,
         w("When considering whether to apply"),
         opt("--inline-linear-tail-rec-sccs"),
         w("to an SCC containing"), arg("N"), w(" procedures,"),
-        w("allow the SCC to contain"),
-        w("up to N+E mutually recursive tail calls.")])).
+        w("allow the SCC to contain up to"),
+        bare_arg("N+E"), w("mutually recursive tail calls.")])).
 
 optdb(oc_opt_hh,    optopt_higher_order,               bool_special,
     alt_help("optimize-higher-order",
             ["optimise-higher-order"], [
-        w("Enable specialization of higher-order predicates.")])).
+        cindex("Higher-order specialization"),
+        cindex("Specialization of higher-order calls"),
+        w("Create specialized variants of"),
+        w("higher-order predicates and functions"),
+        w("for call sites where the values of the highe-order arguments"),
+        w("are known.")])).
+optdb(oc_opt_hh,    optopt_type_specialization,        bool_special,
+    alt_help("type-specialization",
+            ["type-specialisation"], [
+        w("Enable specialization of polymorphic predicates where the"),
+        w("polymorphic types are known.")])).
+optdb(oc_opt_hh,    optopt_user_guided_type_specialization, bool_special,
+    alt_help("user-guided-type-specialization",
+            ["user-guided-type-specialisation"], [
+        w("Enable specialization of polymorphic predicates for which"),
+        w("there are"), code(":- pragma type_spec"), w("declarations."),
+        texinfo_only(
+            [w("See the"), quote("Type specialization"), w("section"),
+            w("of the"), quote("Pragmas"), w("chapter of the"),
+            w("Mercury language Reference Manual for more details.")])])).
 optdb(oc_opt_hh,    optopt_higher_order_size_limit,    int_special,
     arg_help("higher-order-size-limit", "max_size", [
         w("Set the maximum goal size of specialized versions created by"),
@@ -3400,34 +3656,23 @@ optdb(oc_opt_hh,    optopt_higher_order_arg_limit,     int_special,
         w("be specialized by"), opt("--optimize-higher-order"), w("and"),
         opt("--type-specialization", ".")])).
 
-optdb(oc_opt_hh,    optopt_type_specialization,        bool_special,
-    alt_help("type-specialization",
-            ["type-specialisation"], [
-        w("Enable specialization of polymorphic predicates where the"),
-        w("polymorphic types are known.")])).
-optdb(oc_opt_hh,    optopt_user_guided_type_specialization, bool_special,
-    alt_help("user-guided-type-specialization",
-            ["user-guided-type-specialisation"], [
-        w("Enable specialization of polymorphic predicates for which"),
-        w("there are"), code(":- pragma type_spec"), w("declarations.")])).
-
 optdb(oc_opt_hh,    optopt_loop_invariants,            bool_special,
     help("loop-invariants", [
-        w("Hoist loop invariants out of loops.")])).
+        w("Hoist loop invariant computations out of loops.")])).
 optdb(oc_opt_hh,    optopt_introduce_accumulators,     bool_special,
     help("introduce-accumulators", [
-        w("Attempt to introduce accumulating variables into"),
-        w("procedures, so as to make them tail recursive.")])).
+        w("Attempt to make procedures tail recursive"),
+        w("by introducing accumulator variables into them.")])).
 optdb(oc_opt_hh,    optopt_lcmc,                       bool_special,
     alt_help("optimize-constructor-last-call",
             ["optimise-constructor-last-call"], [
-        w("Enable the optimization of almost-last calls that are followed by"),
-        w("constructor application.")])).
+        w("Enable the optimization of almost-last calls that are followed"),
+        w("only by constructor application.")])).
 optdb(oc_opt_hh,    optopt_lcmc_accumulator,           bool_special,
     priv_alt_help("optimize-constructor-last-call-accumulator",
             ["optimise-constructor-last-call-accumulator"], [
         w("Enable the optimization via accumulators of almost-last calls"),
-        w("that are followed by constructor application.")])).
+        w("that are followed only by constructor application.")])).
 optdb(oc_opt_hh,    optopt_lcmc_null,                  bool_special,
     priv_alt_help("optimize-constructor-last-call-null",
             ["optimise-constructor-last-call-null"], [
@@ -3450,14 +3695,14 @@ optdb(oc_opt_hh,    optopt_merge_code_after_switch,    bool_special,
         w("is a switch on the same variable.")])).
 
 optdb(oc_opt_hh,    optopt_from_ground_term_threshold, int_special,
-    priv_arg_help("from-ground-term-threshold", "n", [
+    priv_arg_help("from-ground-term-threshold", "N", [
         w("Wrap a from_ground_term scope around the expanded,"),
         w("superhomogeneous form of a ground term that involves at least."),
         w("the given number of function symbols.")])).
 optdb(oc_opt_hh,    optopt_enable_const_struct_user,   bool_special,
     help("const-struct", [
         w("Gather constant ground structures in a separate table."),
-        w("A structure will be stored in this table just once"),
+        w("Each such structure will be stored in this table just once,"),
         w("even if it occurs in many different procedures.")])).
 optdb(oc_opt_hh,    optopt_common_struct,              bool_special,
     help("common-struct", [
@@ -3525,6 +3770,7 @@ optdb(oc_opt_hh,    optopt_deforestation,              bool_special,
         w("intermediate data structures, and to avoid repeated traversals"),
         w("over data structures within a conjunction.")])).
 optdb(oc_opt_hh,    optopt_deforestation_depth_limit,  int_special,
+    % XXX Document what can result in infinite loops.
     arg_help("deforestation-depth-limit", "depth_limit", [
         w("Specify a depth limit to prevent infinite loops in the"),
         w("deforestation algorithm."),
@@ -3627,9 +3873,9 @@ optdb(oc_opt_hh_exp, structure_sharing_analysis,        bool(no),
     help("structure-sharing", [
         w("Perform structure sharing analysis.")])).
 optdb(oc_opt_hh_exp, structure_sharing_widening,        int(0),
-    arg_help("structure-sharing-widening", "n", [
+    arg_help("structure-sharing-widening", "N", [
         w("Perform widening when the set of structure sharing pairs"),
-        w("becomes larger than"), arg("n", "."),
+        w("becomes larger than"), arg("N", "."),
         w("When n=0, widening is not enabled."),
         w("(default: 0).")])).
 optdb(oc_opt_hh_exp, structure_reuse_analysis,          bool(no),
@@ -3654,8 +3900,9 @@ optdb(oc_opt_hh_exp, structure_reuse_constraint,
 optdb(oc_opt_hh_exp, structure_reuse_constraint_arg,    int(0),
     alt_arg_help("structure-reuse-constraint-arg",
             ["ctgc-constraint-arg"], "max_difference", [
-        w("Specify the maximum difference in arities between the terms"),
-        w("that can be reused, and the terms that reuse these terms."),
+        w("Specify the maximum difference in arities between"),
+        w("the terms whose memory cells can be reused on the one hand, and"),
+        w("the terms that need memory cells on the other hand."),
         w("(default: 0)")])).
 optdb(oc_opt_hh_exp, structure_reuse_max_conditions,    int(10),
     priv_arg_help("structure-reuse-max-conditions", "max_num_conditions", [
@@ -3708,29 +3955,29 @@ optdb(oc_opt_hlm,   optopt_lookup_switch_req_density,  int_special,
         w("must have at least this percentage of full slots"),
         w("(default: 25).")])).
 optdb(oc_opt_hlm,   optopt_dense_switch_size,          int_special,
-    arg_help("dense-switch-size", "n", [
+    arg_help("dense-switch-size", "N", [
         w("The jump table generated for an atomic switch"),
         w("must have at least this many entries (default: 4).")])).
 optdb(oc_opt_hlm,   optopt_lookup_switch_size,         int_special,
-    arg_help("lookup-switch-size", "n", [
+    arg_help("lookup-switch-size", "N", [
         w("The lookup table generated for an atomic switch"),
         w("must have at least this many entries (default: 4).")])).
 optdb(oc_opt_hlm,   optopt_string_trie_switch_size,    int_special,
     alt_arg_help("string-trie-switch-size",
-            ["string-trie-size"], "n", [
+            ["string-trie-size"], "N", [
         w("The trie generated for a string switch"),
         w("must have at least this many entries (default: 16).")])).
 optdb(oc_opt_hlm,   optopt_string_hash_switch_size,    int_special,
     alt_arg_help("string-hash-switch-size",
-            ["string-switch-size"], "n", [
+            ["string-switch-size"], "N", [
         w("The hash table generated for a string switch"),
         w("must have at least this many entries (default: 8).")])).
 optdb(oc_opt_hlm,   optopt_string_binary_switch_size,  int_special,
-    arg_help("string-binary-switch-size", "n", [
+    arg_help("string-binary-switch-size", "N", [
         w("The binary search table generated for a string switch"),
         w("must have at least this many entries (default: 4).")])).
 optdb(oc_opt_hlm,   optopt_tag_switch_size,            int_special,
-    arg_help("tag-switch-size", "n", [
+    arg_help("tag-switch-size", "N", [
         w("The number of alternatives in a tag switch"),
         w("must be at least this number (default: 3).")])).
 % The next two options are only for performance tests.
@@ -3754,12 +4001,14 @@ optdb(oc_opt_hlm,   optopt_static_ground_cells,        bool_special,
 optdb(oc_opt_hlm,   optopt_use_atomic_cells,           bool_special,
     help("use-atomic-cells", [
         w("Use the atomic variants of the Boehm gc allocator calls"),
-        w("when the cell to be allocated cannot contain pointers.")])).
+        w("when the memory cell to be allocated cannot contain pointers.")])).
 
 %---------------------%
 
     % MLDS -> MLDS
 
+% XXX The names of the options below, both internal and user-visible,
+% should include the "mlds" qualifier.
 optdb(oc_opt_mm,    optopt_optimize_mlds,              bool_special,
     alt_help("mlds-optimize",
             ["mlds-optimise"], [
@@ -3768,6 +4017,8 @@ optdb(oc_opt_mm,    optopt_peep_mlds,                  bool_special,
     help("mlds-peephole", [
         w("Perform peephole optimization of the MLDS.")])).
 optdb(oc_opt_hm,    optopt_mlds_tailcalls,             bool_special,
+    % XXX The option's names, both internal and user-visible,
+    % should include the "self" qualifier.
     alt_help("optimize-tailcalls",
             ["optimise-tailcalls"], [
         w("Turn self-tailcalls into loops.")])).
@@ -3776,19 +4027,22 @@ optdb(oc_opt_mm,    optopt_initializations,            bool_special,
             ["optimise-initializations"], [
         w("Whenever possible,"),
         w("convert the first assignment to each local variable"),
-        w("in the target code into an initializer on its declaration.")])).
+        w("in the target code into an initializer on its declaration."),
+        w("Some target language compilers"),
+        w("can generate faster code that way.")])).
 optdb(oc_opt_mm,    optopt_eliminate_unused_mlds_assigns, bool_special,
     % This is useful for developers only.
     priv_help("eliminate-unused-mlds-assigns", [
         w("Eliminate assignments to dead variables in the MLDS.")])).
 optdb(oc_opt_mm,    optopt_eliminate_local_vars,       bool_special,
-    help("eliminate-local-vars", [
+    alt_help("eliminate-local-variables", ["eliminate-local-vars"], [
         w("Eliminate local variables with known values, where possible,"),
         w("by replacing occurrences of such variables with their values.")])).
 % From the user point of view, the next options control an MLDS optimization.
 optdb(oc_opt_hh,    optopt_generate_trail_ops_inline,  bool_special,
     help("generate-trail-ops-inline", [
-        w("Generate inline code for trailing operations."),
+        w("Normally, the compiler generates inline code"),
+        w("for trailing operations."),
         w("With"), opt("--no-generate-trail-ops-inline", ","),
         w("the compiler will implement them using calls to those operations"),
         w("in the standard library.")])).
@@ -3805,20 +4059,25 @@ optdb(oc_opt_hm,    optimize_trail_usage,              bool(no),
 
     % HLDS -> LLDS
 
+% XXX The names of the options below, both internal and user-visible,
+% should include the "llds" qualifier.
+
 % XXX reword some of the following help texts.
 optdb(oc_opt_hl,    optopt_try_switch_size,            int_special,
-    arg_help("try-switch-size", "n", [
+    arg_help("try-switch-size", "N", [
         w("The number of alternatives in a try/retry chain switch"),
         w("must be at least this number (default: 3).")])).
 optdb(oc_opt_hl,    optopt_binary_switch_size,         int_special,
-    arg_help("binary-switch-size", "n", [
+    arg_help("binary-switch-size", "N", [
         w("The number of alternatives in a binary search switch"),
         w("must be at least this number (default: 4).")])).
 optdb(oc_opt_hl,    optopt_middle_rec,                 bool_special,
     help("middle-rec", [
+        % XXX This could benefit from more detail.
         w("Enable the middle recursion optimization.")])).
 optdb(oc_opt_hl,    optopt_simple_neg,                 bool_special,
     help("simple-neg", [
+        % XXX This could benefit from more detail.
         w("Generate simplified code for simple negations.")])).
 optdb(oc_opt_hl,    optopt_allow_hijacks,              bool_special,
     priv_help("allow-hijacks", [
@@ -3829,14 +4088,18 @@ optdb(oc_opt_hl,    optopt_allow_hijacks,              bool_special,
 
     % LLDS -> LLDS
 
+% XXX The names of the options below, both internal and user-visible,
+% should include the "llds" qualifier.
+% XXX Should we make an exception for the option names that do not
+% make sense for MLDS?
 optdb(oc_opt_ll,    optopt_optimize_llds,              bool_special,
     alt_help("llds-optimize",
             ["llds-optimise"], [
-        w("Enable the low-level optimization passes.")])).
+        w("Enable the LLDs->LLDS optimization passes.")])).
 optdb(oc_opt_ll,    optopt_repeat_opts,                int_special,
     alt_arg_help("optimize-repeat",
-            ["optimise-repeat"], "n", [
-        w("Iterate most optimizations at most"), arg("n"),
+            ["optimise-repeat"], "N", [
+        w("Iterate most LLDS->LLDS optimizations at most"), arg("N"),
         w("times (default: 3).")])).
 optdb(oc_opt_ll,    optopt_peep_llds,                  bool_special,
     alt_help("optimize-peep",
@@ -3851,7 +4114,7 @@ optdb(oc_opt_ll,    optopt_peep_llds_mkword,           bool_special,
 optdb(oc_opt_ll,    optopt_labels,                     bool_special,
     alt_help("optimize-labels",
             ["optimise-labels"], [
-        w("Delete dead labels and code.")])).
+        w("Delete dead labels, and the unreachable code following them.")])).
 optdb(oc_opt_ll,    optopt_standardize_labels,         bool_special,
     % This is useful for developers only.
     priv_alt_help("standardize-labels",
@@ -3872,7 +4135,9 @@ optdb(oc_opt_ll,    optopt_checked_nondet_tailcalls,   bool_special,
         w("minimize stack consumption, possibly at the expense of speed.")])).
 optdb(oc_opt_ll,    optopt_pessimize_tailcalls,        bool_special,
     help("pessimize-tailcalls", [
-        w("Disable the optimization of tailcalls.")])).
+        w("Disable the optimization of tailcalls."),
+        w("This option tries to minimize code size"),
+        w("at the expense of speed.")])).
 optdb(oc_opt_ll,    optopt_delay_slot,                 bool_special,
     alt_help("optimize-delay-slot",
             ["optimise-delay-slot"], [
@@ -3886,8 +4151,8 @@ optdb(oc_opt_ll,    optopt_frames,                     bool_special,
 optdb(oc_opt_ll,    optopt_reassign,                   bool_special,
     alt_help("optimize-reassign",
             ["optimise-reassign"], [
-        w("Optimize away assignments to locations that already hold"),
-        w("the assigned value.")])).
+        w("Optimize away assignments to memory locations"),
+        w("that already hold the to-be-assigned value.")])).
 optdb(oc_opt_ll,    optopt_use_local_vars,             bool_special,
     help("use-local-vars", [
         w("Use local variables in C code blocks wherever possible.")])).
@@ -3909,10 +4174,10 @@ optdb(oc_opt_ll,    optopt_common_layout_data,         bool_special,
         w("Enable optimization of common subsequences"),
         w("in layout structures.")])).
 optdb(oc_opt_ll,    optopt_layout_compression_limit,   int_special,
-    arg_help("layout-compression-limit", "n", [
+    arg_help("layout-compression-limit", "N", [
         w("Attempt to compress the layout structures used by the debugger"),
         w("only as long as the arrays involved have at most"),
-        arg("n"), w("elements (default: 4000).")])).
+        arg("N"), w("elements (default: 4000).")])).
 optdb(oc_opt_hl,    optimize_region_ops,               bool(no),
     priv_help("optimize-region-ops", [
         w("Try and restrict region operations to those parts of the program"),
@@ -3928,11 +4193,11 @@ optdb(oc_opt_lc,    optopt_emit_c_loops,               bool_special,
         w("With"), opt("--no-emit-c-loops", ","), w("use only gotos.")])).
 optdb(oc_opt_lc,    optopt_procs_per_c_function,       int_special,
     alt_arg_help("procs-per-c-function",
-            ["procs-per-C-function"], "n", [
-        w("Put the code for up to"), arg("n"),
+            ["procs-per-C-function"], "N", [
+        w("Put the code for up to"), arg("N"),
         w("Mercury procedures in a single C function."),
-        w("The default value of"), arg("n"), w("is one."),
-        w("Increasing"), arg("n"), w("can produce"),
+        w("The default value of"), arg("N"), w("is one."),
+        w("Increasing"), arg("N"), w("can produce"),
         w("slightly more efficient code, but makes compilation slower.")])).
 optdb(oc_opt_lc,    optopt_local_thread_engine_base,   bool_special,
     help("local-thread-engine-base", [
@@ -3949,8 +4214,8 @@ optdb(oc_opt_lc,    optopt_inline_alloc,               bool_special,
         w("Inline calls to"), code("GC_malloc()", "."),
         w("This can improve performance a fair bit,"),
         w("but may significantly increase code size."),
-        w("This option has no effect if the selected garbage collector"),
-        w("is not boehm, or if the C compiler is not GNU C.")])).
+        w("This option is meaningful only if the selected garbage collector"),
+        w("is boehm, and if the C compiler is gcc.")])).
 optdb(oc_opt_lc,    optopt_use_macro_for_redo_fail,    bool_special,
     % XXX The speedup from this option is dubious.
     help("use-macro-for-redo-fail", [
@@ -3960,9 +4225,16 @@ optdb(oc_opt_lc,    optopt_use_macro_for_redo_fail,    bool_special,
 
 %---------------------------------------------------------------------------%
 
+% XXX Either this section should be folded into the general optimization
+% section, or we should have separate sections for non-intermodule and
+% intermodule optimizations, with latter possibly split again
+% into non-transitive and transitive sections.
+
     % Options to control transitive intermodule optimization.
 
 optdb(oc_trans_opt, generate_module_order,             bool(no),
+    % XXX The connection between this option and transitive intermodule
+    % optimization is not made clear by this help text.
     help("generate-module-order", [
         w("Output the strongly connected components of the module"),
         w("dependency graph in top-down order to"),
@@ -3981,17 +4253,27 @@ optdb(oc_trans_opt, trans_opt_deps_spec,               maybe_string(no),
 
 optdb(oc_analysis,  termination_enable,                bool(no),
     alt_help("enable-termination", ["enable-term"], [
-        w("Analyse each predicate to discover if it terminates.")])).
+        w("Enable termination analysis, which analyses each mode"),
+        w("of each predicate or function to see whether it terminates."),
+        w("The"), code("terminates", ","), code("does_not_terminate", ","),
+        w("and"), code("check_termination"), w("pragmas have an effect"),
+        w("only when termination analysis is enabled."),
+        blank_line,
+        w("Note that both"), opt("--intermodule-optimization"),
+        w("and"), opt("--transitive-intermodule-optimization"),
+        w("greatly improve the accuracy of the analysis.")])).
 optdb(oc_analysis,  termination_check,                 bool(no),
     alt_help("check-termination",
             ["check-term", "chk-term"], [
         w("Enable termination analysis, and emit warnings for some"),
         w("predicates or functions that cannot be proved to terminate."),
-        w("In many cases where the compiler is unable to prove termination"),
+        blank_line,
+        w("In many cases where the compiler is unable to prove termination,"),
         w("the problem is either a lack of information about the"),
-        w("termination properties of other predicates, or because language"),
-        w("constructs (such as higher order calls) were used which could"),
-        w("not be analysed. In these cases the compiler does not emit a"),
+        w("termination properties of other predicates, or the use of"),
+        w("language constructs (such as higher order calls)"),
+        w("which are beyond the capabilities of the analyser."),
+        w("In these cases, the compiler does not emit a"),
         w("warning of non-termination, as it is likely to be spurious.")])).
 optdb(oc_analysis,  termination_check_verbose,         bool(no),
     alt_help("verbose-check-termination",
@@ -4000,7 +4282,7 @@ optdb(oc_analysis,  termination_check_verbose,         bool(no),
         w("predicates or functions that cannot be proved to terminate.")])).
 optdb(oc_analysis,  termination_single_args,           int(0),
     alt_arg_help("termination-single-argument-analysis",
-            ["term-single-arg"], "n", [
+            ["term-single-arg"], "N", [
         w("When performing termination analysis, try analyzing"),
         w("recursion on single arguments in strongly connected components"),
         w("of the call graph that have up to the given number of procedures."),
@@ -4017,12 +4299,12 @@ optdb(oc_analysis,  termination_norm,                  string("total"),
         w("to cells of the same type.")])).
 optdb(oc_analysis,  termination_error_limit,           int(3),
     alt_arg_help("termination-error-limit",
-            ["term-err-limit"], "n", [
+            ["term-err-limit"], "N", [
         w("Print at most this number of reasons for"),
         w(" any single termination error (default: 3).")])).
 optdb(oc_analysis,  termination_path_limit,            int(256),
     alt_arg_help("termination-path-limit",
-            ["term-path-limit"], "n", [
+            ["term-path-limit"], "N", [
         w("Perform termination analysis only on predicates"),
         w("with at most this many paths (default: 256).")])).
 
@@ -4061,7 +4343,7 @@ optdb(oc_analysis,  termination2_norm,                 string("total"),
         w("option for a description of the different norms available.")])).
 optdb(oc_analysis,  termination2_widening_limit,       int(4),
     priv_alt_arg_help("termination2-widening-limit",
-            ["term2-widening-limit"], "n", [
+            ["term2-widening-limit"], "N", [
         w("Set the threshold for the number of iterations after which"),
         w("the argument size analyser invokes widening.")])).
 optdb(oc_analysis,  termination2_arg_size_only,        bool(no),
@@ -4080,7 +4362,7 @@ optdb(oc_analysis,  termination2_prop_fail_constrs,    bool(yes),
 optdb(oc_analysis,  termination2_maximum_matrix_size,  int(70),
     % XXX This matrix size is just a guess.
     priv_alt_arg_help("termination2-maximum-matrix-size",
-            ["term2-max-matrix-size"], "n", [
+            ["term2-max-matrix-size"], "N", [
         w("Limit the sizes of constraints systems in the analyser to the"),
         w("given number of constraints. Use approximations of some"),
         w("constraint operations, such as projection, if this threshold"),
@@ -4145,8 +4427,11 @@ optdb(oc_output_dev, type_repns_for_humans,             bool(no),
 optdb(oc_output_dev, auto_comments,                     bool(no),
     help("auto-comments", [
         w("Output comments in the generated target language file."),
+        w("This is primarily useful for trying to understand"),
+        w("how the generated target language code relates"),
+        w("to the source code, e.g.@: in order to debug the compiler."),
         w("(The code may be easier to understand if you also"),
-        w("use the `--no-llds-optimize' option.)")])).
+        w("use the"), opt("--no-llds-optimize"), w("option.)")])).
 optdb(oc_output_dev, frameopt_comments,                 bool(no),
     % This option is for developers only. Since it can include one C comment
     % inside another, the resulting code is not guaranteed to be valid C.
@@ -4172,8 +4457,9 @@ optdb(oc_make,      show_make_times,                   bool(no),
         w("Report run times for commands executed by"),
         code("mmc --make", ".")])).
 optdb(oc_make,      make_max_jobs,                     int(1),
-    short_arg_help('j', "jobs", [], "n", [
-        w("With `--make', attempt to perform up to <n> jobs concurrently.")])).
+    short_arg_help('j', "jobs", [], "N", [
+        w("With"), opt("--make", ","), w("attempt to perform up to"),
+        bare_arg("N"), w("jobs concurrently.")])).
 optdb(oc_make,      make_track_flags,                  bool(no),
     alt_help("track-flags", ["track-options"], [
         w("With"), opt("--make", ","), w("keep track of the options used"),
@@ -4181,7 +4467,8 @@ optdb(oc_make,      make_track_flags,                  bool(no),
         w("is added or removed,"), code("mmc --make"), w("will then know"),
         w("to recompile the module even if"),
         w("the timestamp on the file itself has not changed."),
-        w("Warning, verbosity and build system options are not tracked.")])).
+        w("Warning options, verbosity options, and build system options"),
+        w("are not tracked.")])).
 optdb(oc_make,      make_pre_link_command,             maybe_string(no),
     arg_help("pre-link-command", "command", [
         w("Specify a command to run before linking with"),
@@ -4226,6 +4513,7 @@ optdb(oc_target_c,  cc,                                string("gcc"),
     % The `mmc' script will override the default with a value
     % determined at configuration time.
     arg_help("cc", "compiler-name", [
+        cindex("C compiler"),
         w("Specify which C compiler to use.")])).
 optdb(oc_target_c,  c_compiler_type,                   string("gcc"),
     priv_arg_help("c-compiler-type",
@@ -4236,20 +4524,21 @@ optdb(oc_target_c,  c_compiler_type,                   string("gcc"),
 optdb(oc_target_c,  optopt_c_optimize,                 bool_special,
     alt_help("c-optimize",
             ["c-optimise"], [
-        w("Do not enable optimizations by the C compiler.")])).
+        w("Enable optimizations by the C compiler.")])).
 optdb(oc_target_c,  c_include_directories,             accumulating([]),
     % The `mmc' script will override the default with a value
     % determined at configuration time.
     alt_arg_help("c-include-directory",
-            ["c-include-dir"], "dir", [
-        w("Append"), arg("dir"), w("to the list of directories"),
+            ["c-include-dir"], "directory", [
+        w("Append"), arg("directory"), w("to the list of directories"),
         w("to be searched for C header files."),
         w("Note that if you want to override this list, instead of"),
         w("appending to it, then you can set the"),
-        samp("MERCURY_MC_ALL_C_INCL_DIRS"), w("environment variable to a"),
+        env("MERCURY_MC_ALL_C_INCL_DIRS"), w("environment variable to a"),
         w("sequence of"), opt("--c-include-directory"), w("options.")])).
 optdb(oc_target_c,  cflags,                            accumulating([]),
     arg_help("cflags", "<options", [
+        cindex("C compiler options"),
         w("Specify options to be passed to the C compiler."),
         w("These options will not be quoted when passed to the shell.")])).
 optdb(oc_target_c,  quoted_cflag,                      string_special,
@@ -4311,14 +4600,17 @@ optdb(oc_target_c,  pic_object_file_extension,         string(".o"),
 
 optdb(oc_target_java, java_compiler,                     string("javac"),
     alt_arg_help("java-compiler", ["javac"], "javac", [
+        cindex("Java compiler"),
         w("Specify which Java compiler to use. The default is"),
         samp("javac", ".")])).
 optdb(oc_target_java, java_interpreter,                  string("java"),
     arg_help("java-interpreter", "java", [
+        cindex("Java interpreter"),
         w("Specify which Java interpreter to use."),
         w("The default is"), samp("java", ".")])).
 optdb(oc_target_java, java_compiler_flags,               accumulating([]),
     alt_arg_help("javac-flags", ["java-flags"], "options", [
+        cindex("Java compiler flags"),
         w("Specify options to be passed to the Java compiler."),
         w("These options will not be quoted when passed to the shell.")])).
 optdb(oc_target_java, quoted_java_compiler_flag,         string_special,
@@ -4328,9 +4620,12 @@ optdb(oc_target_java, quoted_java_compiler_flag,         string_special,
         w("The word will be quoted when passed to the shell.")])).
 optdb(oc_target_java, java_classpath,                    accumulating([]),
     arg_help("java-classpath", "path", [
+        cindex("classpath"),
+        cindex("Directories"),
         w("Set the classpath for the Java compiler and interpreter.")])).
 optdb(oc_target_java, java_runtime_flags,                accumulating([]),
     arg_help("java-runtime-flags", "options", [
+        cindex("Java runtime options"),
         w("Specify options to be passed to the Java interpreter."),
         w("These options will not be quoted when passed to the shell.")])).
 optdb(oc_target_java, quoted_java_runtime_flag,          string_special,
@@ -4345,10 +4640,12 @@ optdb(oc_target_java, quoted_java_runtime_flag,          string_special,
 
 optdb(oc_target_csharp, csharp_compiler,                   string("csc"),
     arg_help("csharp-compiler", "csc", [
+        cindex("C# compiler"),
         w("Specify the name of the C# Compiler. The default is"),
         samp("csc", ".")])).
 optdb(oc_target_csharp, cli_interpreter,                   string(""),
     arg_help("cli-interpreter", "prog", [
+        cindex("CIL interpreter"),
         w("Specify the program that implements the Common Language"),
         w("Infrastructure (CLI) execution environment, e.g."),
         samp("mono", ".")])).
@@ -4358,6 +4655,7 @@ optdb(oc_target_csharp, csharp_compiler_type,              string("mono"),
     priv_arg_help("csharp-compiler-type", "{microsoft,mono,unknown}", [])).
 optdb(oc_target_csharp, csharp_flags,                      accumulating([]),
     arg_help("csharp-flags", "options", [
+        cindex("C# compiler options"),
         w("Specify options to be passed to the C# compiler."),
         w("These options will not be quoted when passed to the shell.")])).
 optdb(oc_target_csharp, quoted_csharp_flag,                string_special,
@@ -4383,11 +4681,15 @@ optdb(oc_link_c_cs_j, mercury_library_directory_special, string_special,
     % c_include_directories and mercury_library_directories.
     alt_arg_help("mercury-library-directory",
             ["mld"], "directory", [
+        cindex("Directories for libraries"),
+        cindex("Search path for libraries"),
         w("Append"), arg("directory"), w("to the list of directories"),
         w("to be searched for Mercury libraries. This will add"),
         opt("--search-directory", ","), opt("--library-directory", ","),
         opt("--init-file-directory"), w("and"), opt("--c-include-directory"),
-        w("options as needed.")])).
+        w("options as needed."),
+        texinfo_only(
+            [xref("Using installed libraries with mmc --make", ".")])])).
 optdb(oc_link_c_cs_j, mercury_library_directories,       accumulating([]),
     no_help).
 optdb(oc_link_c_cs_j, search_library_files_directory_special, string_special,
@@ -4396,6 +4698,10 @@ optdb(oc_link_c_cs_j, search_library_files_directory_special, string_special,
     % XXX This list just above DIFFERS from the list below.
     alt_arg_help("search-library-files-directory",
             ["search-lib-files-dir"], "directory", [
+        cindex("Directories for libraries"),
+        cindex("Search path for libraries"),
+        % XXX Similar to, but in what respects exactly?
+        % And in what respects NOT similar?
         w("Search"), arg("directory"), w("for Mercury library files"),
         w("that have not yet been installed. Similar to adding"),
         arg("directory"), w("using all of the"),
@@ -4408,7 +4714,9 @@ optdb(oc_link_c_cs_j, mercury_library_special,           string_special,
     % NOTE mercury_library_special adds to the values of link_libraries,
     % mercury_libraries and init_files.
     alt_arg_help("mercury-library", ["ml"], "library", [
-        w("Link with the specified Mercury library.")])).
+        w("Link with the specified Mercury library."),
+        texinfo_only(
+            [xref("Using installed libraries with mmc --make", ".")])])).
 optdb(oc_link_c_cs_j, mercury_libraries,                 accumulating([]),
     no_help).
 optdb(oc_link_c_cs_j, mercury_standard_library_directory_special,
@@ -4439,10 +4747,13 @@ optdb(oc_link_c_cs_j, mercury_standard_library_directory, maybe_string(no),
 % seem to be different for no good reason.
 optdb(oc_link_c_cs, link_library_directories,          accumulating([]),
     short_arg_help('L', "library-directory", [], "directory", [
+        cindex("Directories for libraries"),
+        cindex("Search path for libraries"),
         w("Append"), arg("directory"), w("to the list of directories"),
         w("in which to search for libraries.")])).
 optdb(oc_link_c_cs, link_libraries,                    accumulating([]),
     short_arg_help('l', "library", [], "library", [
+        cindex("Libraries, linking with"),
         w("Link with the specified library.")])).
 % XXX Source-to-source debugging is not ready for the public.
 % XXX And for some reason, it does not (yet) apply to Java.
@@ -4462,10 +4773,13 @@ optdb(oc_link_c,    output_file_name,                  string(""),
         w("Specify the name of the final executable."),
         w("(The default executable name is the same as the name"),
         w("of the first module on the command line.)"),
+        % XXX So when *is* it effective?
         w("This option is ignored by"), code("mmc --make", ".")])).
 optdb(oc_link_c,    link_objects,                      accumulating([]),
-    arg_help("link-object", "file", [
-        w("Link with the specified object or archive file.")])).
+    arg_help("link-object", "filename", [
+        cindex("Object files, linking with"),
+        w("Link with the specified object file,"),
+        w("or archive of object files.")])).
 optdb(oc_link_c,    ld_flags,                          accumulating([]),
     arg_help("ld-flags", "options", [
         w("Specify options to be passed to the linker command"),
@@ -4531,6 +4845,8 @@ optdb(oc_link_c,    trace_init_files,                  accumulating([]),
 % NOTE linkage_special first checks and then sets only_globals_linkage and
 % only_globals_mercury_linkage.
 optdb(oc_link_c,    linkage_special,                   string_special,
+    % Both the external and internal names of this option
+    % should be more descriptive.
     arg_help("linkage", "{shared, static}", [
         w("Specify whether to use shared or static linking for executables."),
         w("Shared libraries are always linked with"),
@@ -4540,6 +4856,8 @@ optdb(oc_link_c,    only_globals_linkage,              string("shared"),
 % NOTE mercury_linkage_special first checks and then sets
 % only_globals_mercury_linkage.
 optdb(oc_link_c,    mercury_linkage_special,           string_special,
+    % Both the external and internal names of this option
+    % should be more descriptive.
     arg_help("mercury-linkage", "{shared, static}", [
         w("Specify whether to use shared or static linking when"),
         w("linking an executable with Mercury libraries."),
@@ -4573,6 +4891,8 @@ optdb(oc_link_c,    use_readline,                      bool(yes),
     help("use-readline", [
         w("Disable use of the readline library in the debugger.")])).
 optdb(oc_link_c,    runtime_flags,                     accumulating([]),
+    % Both the external and internal names of this option
+    % should be more descriptive.
     arg_help("runtime-flags", "flags", [
         w("Specify flags to pass to the Mercury runtime.")])).
 optdb(oc_link_c,    extra_init_functions,              bool(no),
@@ -4586,23 +4906,31 @@ optdb(oc_link_c,    extra_init_functions,              bool(no),
         w("by the Mercury compiler.)")])).
 optdb(oc_link_c,    frameworks,                        accumulating([]),
     arg_help("framework", "framework", [
+        % XXX Should we s/Mac OS X/Mac OS/g?
+        cindex("Mac OS X, Using frameworks"),
         w("Build and link against the specified framework."),
         w("(Mac OS X only.)")])).
 optdb(oc_link_c,    framework_directories,             accumulating([]),
     short_arg_help('F', "framework-directory", [], "directory", [
+        cindex("Directories for libraries"),
+        cindex("Search path for libraries"),
+        cindex("Mac OS X, Using frameworks"),
         w("Append the specified directory to the framework search path."),
         w("(Mac OS X only.)")])).
 optdb(oc_link_c,    cstack_reserve_size,               int(-1),
     arg_help("cstack-reserve-size", "size", [
         w("Set the total size of the C stack in virtual memory for"),
         w("executables. The stack size is given in bytes."),
-        w("(Microsoft Windows only.)")])).
+        w("This options is only sypported (and indeed only necessary)"),
+        w("on systems running Microsoft Windows.)")])).
 optdb(oc_link_c,    link_executable_command,           string("gcc"),
     arg_help("link-executable-command", "command", [
+        % XXX s/linking/creating/
         w("Specify the command used to invoke the linker when linking"),
         w("an executable.")])).
 optdb(oc_link_c,    link_shared_lib_command,           string("gcc -shared"),
     arg_help("link-shared-lib-command", "command", [
+        % XXX s/linking/creating/
         w("Specify the command used to invoke the linker when linking"),
         w("a shared library.")])).
 optdb(oc_link_c,    shlib_linker_install_name_path,    string(""),
@@ -4614,7 +4942,9 @@ optdb(oc_link_c,    shlib_linker_install_name_path,    string(""),
 optdb(oc_link_c,    strip_executable_command,          string(""),
     arg_help("strip-executable-command", "command", [
         w("Specify the command used to strip executables if no linker"),
-        w("flag to do so is available. This option has no effect on ml.")])).
+        w("flag to do so is available."),
+        % XXX Why *would* it affect ml?
+        w("This option has no effect on"), code("ml", ".")])).
 optdb(oc_link_c,    strip_executable_shared_flags,     string(""),
     arg_help("strip-executable-shared-flags", "options", [
         w("Specify options to pass to the strip executable command when"),
@@ -4654,35 +4984,51 @@ optdb(oc_link_csharp, sign_assembly,                     string(""),
     % File search options.
 
 optdb(oc_search,    options_search_directories,        accumulating(["."]),
-    arg_help("options-search-directory", "dir", [
-        w("Add"), arg("dir"), w("to the list of directories to be searched"),
-        w("for options files.")])).
+    arg_help("options-search-directory", "directory", [
+        w("Add"), arg("directory"), w("to the list of directories"),
+        w("to be searched for options files.")])).
 optdb(oc_search,    setting_only_use_subdirs,          bool(no),
     help("use-subdirs", [
+        cindex("File names"),
+        cindex("Directories"),
+        cindex("Subdirectories"),
+        cindex("@file{Mercury} subdirectory"),
         w("Generate intermediate files in a"), file("Mercury"),
         w("subdirectory,"),
         w("rather than generating them in the current directory.")])).
 optdb(oc_search,    setting_only_use_grade_subdirs,    bool(no),
     help("use-grade-subdirs", [
+        cindex("File names"),
+        cindex("Directories"),
+        cindex("Subdirectories"),
+        cindex("@file{Mercury} subdirectory"),
+        cindex("Grades"),
         w("Generate intermediate files in a"), file("Mercury"),
         w("subdirectory,"),
         w("laid out so that multiple grades can be built simultaneously."),
         w("Executables and libraries will be symlinked or copied into"),
         w("the current directory."),
         opt("--use-grade-subdirs"), w("is supported only by"),
-        code("mmc --make", ";"), w("it does not work with Mmake.")])).
+        code("mmc --make", ";"), w("it does not work with"),
+        code("mmake", ".")])).
 optdb(oc_search,    search_directories,                accumulating(["."]),
-    short_arg_help('I', "search-directory", [], "dir", [
-        w("Append"), arg("dir"), w("to the list of directories to be"),
+    short_arg_help('I', "search-directory", [], "directory", [
+        cindex("Directories"),
+        cindex("Search path"),
+        w("Append"), arg("directory"), w("to the list of directories to be"),
         w("searched for"), file(".int*"), w("and"), file(".module_dep"),
         w("files.")])).
 optdb(oc_search,    intermod_directories,              accumulating([]),
-    arg_help("intermod-directory", "dir", [
-        w("Add"), arg("dir"), w("to the list of directories to be"),
+    arg_help("intermod-directory", "directory", [
+        cindex("Directories"),
+        cindex("Search path"),
+        w("Add"), arg("directory"), w("to the list of directories to be"),
         w("searched for"), file(".opt"), w("and"), file(".trans_opt"),
         w("files.")])).
 optdb(oc_search,    use_search_directories_for_intermod, bool(yes),
     help("use-search-directories-for-intermod", [
+        cindex("Directories"),
+        cindex("Search path"),
         w("With"), opt("--use-search-directories-for-intermod", ","),
         w("the compiler will add the arguments of"),
         opt("--search-directory"), w("options to the list of directories"),
@@ -4692,50 +5038,50 @@ optdb(oc_search,    use_search_directories_for_intermod, bool(yes),
         opt("--intermod-directory"), w("options.")])).
 optdb(oc_search,    interface_dirs_same_subdir_setting, accumulating([]),
     priv_alt_arg_help("interface-dir-same-workspace",
-        ["interface-dir-same-ws"], "dir", [])).
+        ["interface-dir-same-ws"], "directory", [])).
 optdb(oc_search,    interface_dirs_indep_subdir_setting, accumulating([]),
     priv_alt_arg_help("interface-dir-independent-workspace",
-        ["interface-dir-indep-ws"], "dir", [])).
+        ["interface-dir-indep-ws"], "directory", [])).
 optdb(oc_search,    interface_dirs_installed_library,  accumulating([]),
     priv_alt_arg_help("interface-dir-installed-library",
-        ["interface-dir-installed-lib"], "dir", [])).
+        ["interface-dir-installed-lib"], "directory", [])).
 optdb(oc_search,    intermod_dirs_same_subdir_setting, accumulating([]),
     priv_alt_arg_help("intermod-dir-same-workspace",
-        ["intermod-dir-same-ws"], "dir", [])).
+        ["intermod-dir-same-ws"], "directory", [])).
 optdb(oc_search,    intermod_dirs_indep_subdir_setting, accumulating([]),
     priv_alt_arg_help("intermod-dir-independent-workspace",
-        ["intermod-dir-indep-ws"], "dir", [])).
+        ["intermod-dir-indep-ws"], "directory", [])).
 optdb(oc_search,    intermod_dirs_installed_library,   accumulating([]),
     priv_alt_arg_help("intermod-dir-installed-library",
-        ["intermod-dir-installed-lib"], "dir", [])).
+        ["intermod-dir-installed-lib"], "directory", [])).
 optdb(oc_search,    c_incl_dirs_same_subdir_setting,   accumulating([]),
     priv_alt_arg_help("c-include-dir-same-workspace",
-        ["c-incl-dir-same-ws"], "dir", [])).
+        ["c-incl-dir-same-ws"], "directory", [])).
 optdb(oc_search,    c_incl_dirs_indep_subdir_setting,  accumulating([]),
     priv_alt_arg_help("c-include-dir-independent-workspace",
-        ["c-incl-dir-indep-ws"], "dir", [])).
+        ["c-incl-dir-indep-ws"], "directory", [])).
 optdb(oc_search,    c_incl_dirs_installed_library,     accumulating([]),
     priv_alt_arg_help("c-include-dir-installed-library",
-        ["c-incl-dir-installed-lib"], "dir", [])).
+        ["c-incl-dir-installed-lib"], "directory", [])).
 optdb(oc_search,    c_incl_dirs_external,              accumulating([]),
     priv_alt_arg_help("c-include-dir-external",
-        ["c-incl-dir-external"], "dir", [])).
+        ["c-incl-dir-external"], "directory", [])).
 optdb(oc_search,    mer_lib_dirs_same_subdir_setting,  accumulating([]),
     priv_alt_arg_help("mercury-library-dir-same-workspace",
-        ["mer-lib-dir-same-ws"], "dir", [])).
+        ["mer-lib-dir-same-ws"], "directory", [])).
 optdb(oc_search,    mer_lib_dirs_indep_subdir_setting, accumulating([]),
     priv_alt_arg_help("mercury-library-dir-independent-workspace",
-        ["mer-lib-dir-indep-ws"], "dir", [])).
+        ["mer-lib-dir-indep-ws"], "directory", [])).
 optdb(oc_search,    mer_lib_dirs_installed_library,    accumulating([]),
     priv_alt_arg_help("mercury-library-dir-installed-library",
-        ["mer-lib-dir-installed-lib"], "dir", [])).
+        ["mer-lib-dir-installed-lib"], "directory", [])).
 
 %---------------------------------------------------------------------------%
 
     % Build system options.
 
 optdb(oc_buildsys,  install_prefix,                    string("/usr/local/"),
-    arg_help("install-prefix", "dir", [
+    arg_help("install-prefix", "directory", [
         w("The directory under which to install Mercury libraries.")])).
 % XXX Add more descriptive names for the libgrade* options.
 optdb(oc_buildsys,  library_install_grades,           accumulating(["stdlib"]),
@@ -4756,14 +5102,14 @@ optdb(oc_buildsys,  library_install_grades_incl_components, accumulating([]),
         w("Remove grades that do not contain the specified component from"),
         w("the set of library grades to be installed."),
         w("(This option works only with"), code("mmc --make", ";"),
-        w("it does not work with Mmake.)")])).
+        w("it does not work with"), code("mmake", ".)")])).
 optdb(oc_buildsys,  library_install_grades_excl_components, accumulating([]),
     alt_arg_help("libgrades-exclude-component",
             ["libgrades-exclude"], "grade_component", [
         w("Remove grades that contain the specified component from the"),
         w("set of library grades to be installed."),
         w("(This option works only with"), code("mmc --make", ";"),
-        w("it does not work with Mmake.)")])).
+        w("it does not work with"), code("mmake", ".)")])).
 optdb(oc_buildsys,  only_globals_library_install_linkages, accumulating([]),
     alt_arg_help("library-install-linkage",
             ["library-linkage", "lib-linkage"], "{shared, static}", [
@@ -4790,7 +5136,7 @@ optdb(oc_buildsys,  extra_init_command,                maybe_string(no),
         w("containing the main module given first.")])).
 optdb(oc_buildsys,  extra_library_header,              accumulating([]),
     alt_arg_help("extra-library-header",
-            ["extra-lib-header"], "file", [
+            ["extra-lib-header"], "filename", [
         w("Install the specified C header file with along with"),
         w("a Mercury library."),
         w("(This option is supported only by"), code("mmc --make", ".)")])).
@@ -4802,9 +5148,6 @@ optdb(oc_buildsys,  extra_library_header,              accumulating([]),
     % If `--mercury-stdlib-dir' is set, `--mercury-config-dir'
     % must also be set. This invariant is maintained by the `special' variants
     % of the options.
-% XXX We should standardize on either "dir" or "directory" as arg name.
-% XXX We should standardize on either "file" or "filename" as arg name.
-% XXX We should standardize on either "n" or "N" as arg name.
 optdb(oc_env,       mercury_configuration_directory_special, string_special,
     alt_arg_help("mercury-configuration-directory",
             ["mercury-config-dir"], "directory", [
@@ -4823,25 +5166,26 @@ optdb(oc_env,       install_command,                   string("cp"),
         w("to install each file in a Mercury library."),
         w("The default command is"), code("cp", ".")])).
 optdb(oc_env,       options_files,           accumulating(["Mercury.options"]),
-    arg_help("options-file", "file", [
-        w("Add"), arg("file"),
+    arg_help("options-file", "filename", [
+        w("Add"), arg("filename"),
         w("to the list of options files to be processed."),
-        w("If"), arg("file"), w("is"), quote("-", ","),
+        w("If"), arg("filename"), w("is"), samp("-", ","),
         w("an options file will be read from the standard input."),
         w("By default, the compiler will read the file named"),
         file("Mercury.options"), w("in the current directory.")])).
 optdb(oc_env,       config_file,                       maybe_string(yes("")),
     % yes("") means unset.
-    arg_help("config-file", "file", [
+    arg_help("config-file", "filename", [
         w("Read the Mercury compiler's configuration information from"),
-        arg("file", "."), w("If the"), opt("--config-file"),
+        arg("filename", "."), w("If the"), opt("--config-file"),
         w("option is not set, a default configuration will be used, unless"),
-        quote("--no-mercury-stdlib-dir"), w("is passed to"), code("mmc", "."),
-        w("The configuration file is just an options file.")])).
+        opt("--no-mercury-stdlib-dir"), w("is passed to"), code("mmc", "."),
+        w("The configuration file is just an options file."),
+        texinfo_only([xref("Using Mmake", ".")])])).
 optdb(oc_env,       env_type,                          string_special,
     arg_help("env-type", "{posix,cygwin,msys,windows}", [
-        w("Specify the environment type in which the compiler and generated"),
-        w("programs will be invoked."),
+        w("Specify the environment type in which the compiler and"),
+        w("generated programs will be invoked."),
         w("This option is equivalent to setting all of"),
         opt("--host-env-type", ","), opt("--system-env-type"), w("and"),
         opt("--target-env-type"), w("to the given environment type.")])).
@@ -4877,7 +5221,7 @@ optdb(oc_config,     conf_low_ptag_bits,                int(2),
     % --num-ptag-bits is that users need to be able to override this default
     % when cross compiling.
     priv_alt_arg_help("conf-low-ptag-bits",
-            ["conf-low-tag-bits"], "n", [
+            ["conf-low-tag-bits"], "N", [
         w("Reserved for use by the"), code("mmc"), w("script.")])).
 optdb(oc_config,    have_delay_slot,                   bool(no),
     % The `mmc' script may override the default if configure says
@@ -4890,27 +5234,27 @@ optdb(oc_config,    have_delay_slot,                   bool(no),
 % with values determined at configuration time.
 optdb(oc_config,    num_real_r_regs,                   int(5),
     arg_help("num-real-r-regs", "N", [
-        w("Assume registers r1 up to rN"),
+        w("Assume registers"), bare_arg("r1"), w("up to"), bare_arg("rN"),
         w("are real (i.e. not virtual)  general purpose registers."),
         w("Note that the value of this option is normally autoconfigured;"),
         w("its use should never be needed except for cross-compilation.")])).
 optdb(oc_config,    num_real_f_regs,                   int(0),
     arg_help("num-real-f-regs", "N", [
-        w("Assume registers f1 up to fN are real (i.e. not virtual)"),
-        w("floating point registers."),
+        w("Assume registers"), bare_arg("f1"), w("up to"), bare_arg("fN"),
+        w("are real (i.e. not virtual) floating point registers."),
         w("Note that the value of this option is normally autoconfigured;"),
         w("its use should never be needed except for cross-compilation.")])).
 optdb(oc_config,    num_real_r_temps,                  int(5),
     alt_arg_help("num-real-r-temps",
             ["num-real-temps"], "N", [
-        w("Assume that N non-float temporaries will fit into"),
-        w("real machine registers."),
+        w("Assume that"), bare_arg("N"), w("non-float temporaries"),
+        w("will fit into real machine registers."),
         w("Note that the value of this option is normally autoconfigured;"),
         w("its use should never be needed except for cross-compilation.")])).
 optdb(oc_config,    num_real_f_temps,                  int(0),
     arg_help("num-real-f-temps", "N", [
-        w("Assume that N float temporaries will fit into"),
-        w("real machine registers."),
+        w("Assume that"), bare_arg("N"), w("float temporaries"),
+        w("will fit into real machine registers."),
         w("Note that the value of this option is normally autoconfigured;"),
         w("its use should never be needed except for cross-compilation.")])).
 optdb(oc_config,    max_jump_table_size,               int(0),
@@ -4919,7 +5263,7 @@ optdb(oc_config,    max_jump_table_size,               int(0),
     % Its value should be set automatically by handle_options.m
     % based on the value of the c_compiler_type option.
     arg_help("max-jump-table-size", "N", [
-        w("The maximum number of entries a jump table can have."),
+        w("Specify the maximum number of entries a jump table may have."),
         w("The special value 0 indicates the table size is unlimited."),
         w("This option can be useful to avoid exceeding fixed limits"),
         w("imposed by some C compilers.")])).
@@ -5040,6 +5384,8 @@ optdb(oc_mconfig,   use_symlinks,                      bool(yes),
 
     % Options that developers can use to ask for optional compiler actions.
 
+% XXX Should we move the fact table options to LLDS codegen options?
+% XXX Make all other public options in this section private.
 optdb(oc_dev_ctrl,  progress_output_suffix,            string(""),
     priv_arg_help("progress-output-suffix", ".xyz", [
         w("When compiling a module, output messages about the"),
@@ -5143,7 +5489,7 @@ optdb(oc_dev_ctrl,  should_pretest_equality,           bool(yes),
         w("a test for the two values being equal as words. Specifying"),
         opt("--no-should-pretest-equality"), w("prevents this.")])).
 optdb(oc_dev_ctrl,  fact_table_max_array_size,         int(1024),
-    arg_help("fact-table-max-array-size", "n", [
+    arg_help("fact-table-max-array-size", "N", [
         w("Specify the maximum number of elements in a single"),
         code(":- pragma fact_table"), w("data array (default: 1024).")])).
 optdb(oc_dev_ctrl,  fact_table_hash_percent_full,      int(90),
@@ -5292,7 +5638,7 @@ optdb(oc_dev_ctrl,  implicit_parallelism,              bool(no),
         w("The profiling feedback file can be specified using the"),
         opt("--feedback-file"), w("option.")])).
 optdb(oc_dev_ctrl,  feedback_file,                     string(""),
-    arg_help("feedback-file", "file", [
+    arg_help("feedback-file", "filename", [
         w("Use the specified profiling feedback file to help make decisions"),
         w("about where to introduce implicit parallelism.")])).
 optdb(oc_dev_ctrl,  par_loop_control,                  bool(no),
@@ -5318,13 +5664,14 @@ optdb(oc_dev_debug, debug_class_init,                  bool(no),
     priv_help("debug-class-init", [
         w("In Java grades, generate code that causes a trace of class"),
         w("initialization to be printed to the standard output when the"),
-        w("environment variable"), code("MERCURY_DEBUG_CLASS_INIT"),
+        w("environment variable"), env("MERCURY_DEBUG_CLASS_INIT"),
         w("is defined.")])).
 
 %---------------------%
 
     % Options for creating dumps of the compiler's internal data structures.
 
+% XXX Make most options in this section private.
 optdb(oc_dev_dump,  dump_hlds,                         accumulating([]),
     short_arg_help('d', "dump-hlds", ["hlds-dump"], "stage number or name", [
         w("Dump the HLDS (high level intermediate representation) after"),
@@ -5335,7 +5682,7 @@ optdb(oc_dev_dump,  dump_hlds,                         accumulating([]),
         w("Stage numbers range from 1-599."),
         w("Multiple dump options accumulate.")])).
 optdb(oc_dev_dump,  dump_hlds_pred_id,                 accumulating([]),
-    arg_help("dump-hlds-pred-id", "n", [
+    arg_help("dump-hlds-pred-id", "pred_id", [
         w("Dump the HLDS only of the predicate/function with the given"),
         w("pred id.")])).
 optdb(oc_dev_dump,  dump_hlds_pred_name,               accumulating([]),
@@ -5450,7 +5797,7 @@ optdb(oc_internal,  type_layout,                       bool(yes),
     priv_help("type-layout", [
         w("Don't output type_ctor_layout structures or references to them."),
         w("(The C code must then be compiled with"),
-        code("-DNO_TYPE_LAYOUT", ").")])).
+        code("-DNO_TYPE_LAYOUT", ".)")])).
 % The next two options are not documented,
 % because they are not yet tested much, and are probably not very useful,
 % except for Java, where they are the default.
@@ -5659,9 +6006,14 @@ optdb(oc_internal,  generate_item_version_numbers,     bool(no),
         w("Before using the value of this option, call"),
         w("io_get_disable_generate_item_version_numbers to see whether this"),
         w("has been done.")])).
+% XXX reclassify this option, but to oc_opmode, or oc_output_mod?
 optdb(oc_internal,  generate_mmc_make_module_dependencies, bool(no),
-    priv_alt_help("generate-mmc-make-module-dependencies",
-            ["generate-mmc-deps"], [])).
+    alt_help("generate-mmc-make-module-dependencies",
+            ["generate-mmc-deps"], [
+        w("Generate dependencies for use by"), code("mmc --make"),
+        w("even when using"), code("mmake", "."),
+        w("This is recommended when building a library"),
+        w("for installation.")])).
 optdb(oc_internal,  optopt_static_ground_floats,       bool_special, no_help).
 optdb(oc_internal,  optopt_static_ground_int64s,       bool_special, no_help).
 optdb(oc_internal,  optopt_static_code_addresses,      bool_special, no_help).
@@ -5790,7 +6142,7 @@ acc_optdb_data(OptdbTuple, !ShortPairs, !LongPairs, !DataPairs) :-
         insert_long(Opt, Long1, !LongPairs),
         list.foldl(insert_long(Opt), Longs, !LongPairs)
     ;
-        ( Help = short_alt_align_help(Short, Long1, Longs, _, _)
+        ( Help = short_alt_align_help(Short, Long1, Longs, _, _, _)
         ; Help = short_help(Short, Long1, Longs, _)
         ; Help = priv_short_help(Short, Long1, Longs, _)
         ; Help = short_arg_help(Short, Long1, Longs, _, _)
@@ -5805,14 +6157,14 @@ acc_optdb_data(OptdbTuple, !ShortPairs, !LongPairs, !DataPairs) :-
         ; Help = priv_help(Long, _)
         ; Help = priv_arg_help(Long, _, _)
         ; Help = alt_arg_align_help(Long, _, _)
-        ; Help = no_align_help(Long, _, _, _)
+        ; Help = no_align_help(Long, _, _, _, _, _)
         ),
         insert_long(Opt, Long, !LongPairs)
     ;
         ( Help = alt_help(Long1, Longs, _)
         ; Help = priv_alt_help(Long1, Longs, _)
-        ; Help = alt_align_help(Long1, Longs, _, _)
-        ; Help = priv_alt_align_help(Long1, Longs, _, _)
+        ; Help = alt_align_help(Long1, Longs, _, _, _)
+        ; Help = priv_alt_align_help(Long1, Longs, _, _, _)
         ; Help = alt_arg_help(Long1, Longs, _, _)
         ; Help = priv_alt_arg_help(Long1, Longs, _, _)
         ),
