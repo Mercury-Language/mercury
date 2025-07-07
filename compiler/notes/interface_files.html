@@ -145,13 +145,13 @@ and its fully module qualified .int file)
 are not restricted to differences in qualification,
 and the two filtering algorithms have also diverged over time,
 so the differences between a module's .int2 and .int3 files
-are <em>not</em> be restricted to just qualification.
+are <em>not</em> restricted to just qualification.
 <p>
 Something to keep in mind:
 while the --make-short-interface compiler option
 calls for the creation of .int3 files,
 several predicate and variable names inside the compiler
-use the term "short interface files" to refer to .int2 files.
+used to use the term "short interface files" to refer to .int2 files.
 While sort-of justifiable, in that
 .int2 files are in fact shorter versions of .int files,
 it can nevertheless be extremely confusing.
@@ -502,7 +502,7 @@ Type definitions in the implementation section
 are transformed in two stages: before and after qualification.
 <p>
 In the first, pre-qualification stage,
-we transform such all type definitions as follows:
+we transform all such type definitions as follows:
     <ul>
     <li>
     Abstract type definitions (i.e. type declarations) are left unchanged.
@@ -520,12 +520,12 @@ we transform such all type definitions as follows:
     but the function symbols of most nonexported types
     are not named by any inst in scope.
     <li>
-    Definitions of foreign types are also included
+    Definitions of foreign types are also included,
     with the only change being the deletion of the names
     of any user-specified unification and/or comparison predicates.
     <li>
     Definitions that define a type to be equivalent to another type
-    are included as as, <em>without</em> being made abstract.
+    are included as is, <em>without</em> being made abstract.
     <em>XXX</em>
     To handle 64 bit floats on 32 bit platforms correctly,
     the compiler needs to be able to fully expand
@@ -538,6 +538,9 @@ we transform such all type definitions as follows:
     Solver type definitions are made fully abstract.
     There is an <em>XXX</em> by rafe on the relevant code,
     saying this may be the wrong thing to do.
+    <li>
+    This file was written before the addition of subtypes to the language,
+    so it does not describe how they are treated.
     </ul>
 <p>
 <em>XXX</em> This is done by make_canon_make_du_and_solver_types_abstract,
@@ -556,7 +559,7 @@ if the type constructor being defined
 satisfies any of the following conditions:
     <ul>
     <li>
-    The type constructor has a definition is a du type that is
+    The type constructor has a du definition that is
     either a direct dummy type or an abstract enum type.
     We preserve these because they provide information
     for decisions about type representation.
@@ -722,7 +725,7 @@ is that the compiler creates entries
 for e.g. the types we are imported from them
 only when it sees them defined, not when it sees them used.
 <em>XXX</em>
-XXX We should consider fixing that.
+We should consider fixing that.
 <p>
 The reason why we can turn what were originally import_module declarations
 into use_module declarations
@@ -764,7 +767,7 @@ are copied <em>from the .int file</em> (not the source file)
 with two changes:
     <ul>
     <li>
-    discriminated and solver types are made abstract
+    discriminated union and solver types are made abstract
     (though solver type definitions in interface sections
     ought to be abstract in the first place), and
     <li>

@@ -2789,7 +2789,9 @@ restrict_type_ctor_int_defn_for_int2(TypeDefnInfo0, TypeDefnInfo,
         % should not need to do anything with the types of those arguments,
         % but I would like to see a correctness argument for that.
     ;
-        TypeDefn0 = parse_tree_sub_type(_),
+        TypeDefn0 = parse_tree_sub_type(DetailsSub),
+        DetailsSub = type_details_sub(SuperType, _Ctors),
+        accumulate_modules_in_type(SuperType, !MaybeUnqual, !ModuleNames),
         % The consideration just above about the types of constructors
         % in du types applies also to subtypes.
         TypeDefnInfo = TypeDefnInfo0

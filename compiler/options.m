@@ -5587,7 +5587,8 @@ optdb(oc_dev_ctrl,  compiler_sufficiently_recent,      bool(no),
         "escape-2024-04-28",
         "can-fail-function-obsolete-2024-08-10",
         "unused-statevar-warn-2025-05-16",
-        "allow-non-contig-for-2025-06-01"], [
+        "allow-non-contig-for-2025-06-01",
+        "subtype-int2-2025-07-07"], [
         w("Is the compiler sufficiently recent to contain the new feature"),
         w("or bugfix referred to by each name?")])).
 % These options are provided for use by implementors who want to compare
