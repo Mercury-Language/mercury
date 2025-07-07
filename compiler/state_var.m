@@ -2795,7 +2795,7 @@ report_unused_svar_in_lambda(Context, _ArgNum, SVarArgDesc, !UrInfo) :-
         Pieces = [words("Warning: the argument")] ++
             color_as_subject([quote("!:" ++ SVarName)]) ++
             [words("in this lambda expression")] ++
-            color_as_incorrect([words("could be deleted,.")]) ++
+            color_as_incorrect([words("could be deleted,")]) ++
             [words("because its value"),
             words("is always the same as its initial value."), nl],
         Spec = conditional_spec($pred,
