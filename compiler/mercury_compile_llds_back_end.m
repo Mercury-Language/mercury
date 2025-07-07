@@ -122,7 +122,7 @@ llds_backend_pass(ProgressStream, ErrorStream, !HLDS, !:GlobalData, LLDS,
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, unboxed_float, OptUnboxFloat),
     globals.get_opt_tuple(Globals, OptTuple),
-    DoCommonData = OptTuple ^ ot_use_common_data,
+    DoCommonData = OptTuple ^ ot_use_llds_common_data,
     (
         OptUnboxFloat = yes,
         UnboxFloats = have_unboxed_floats
@@ -232,13 +232,13 @@ llds_backend_pass_by_preds(ProgressStream, !HLDS, LLDS, !GlobalData, !Specs) :-
     module_info_get_valid_pred_ids(!.HLDS, PredIds),
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
-    ProcDups = OptTuple ^ ot_opt_proc_dups,
+    ProcDups = OptTuple ^ ot_opt_dup_procs_llds,
     (
-        ProcDups = do_not_opt_proc_dups,
+        ProcDups = do_not_opt_dup_procs_llds,
         OrderedPredIds = PredIds,
         MaybeDupProcMap = no
     ;
-        ProcDups = opt_proc_dups,
+        ProcDups = opt_dup_procs_llds,
         PredDepInfo = build_pred_dependency_graph(!.HLDS, PredIds,
             do_not_include_imported),
         OrderedPredIds = dependency_info_get_condensed_bottom_up_sccs(

@@ -196,36 +196,36 @@
 :- type maybe_use_atomic_cells
     --->    use_atomic_cells
     ;       do_not_use_atomic_cells.
-:- type maybe_opt_middle_rec
-    --->    opt_middle_rec
-    ;       do_not_opt_middle_rec.
-:- type maybe_opt_simple_neg
-    --->    opt_simple_neg
-    ;       do_not_opt_simple_neg.
+:- type maybe_opt_middle_rec_llds
+    --->    opt_middle_rec_llds
+    ;       do_not_opt_middle_rec_llds.
+:- type maybe_opt_simple_neg_llds
+    --->    opt_simple_neg_llds
+    ;       do_not_opt_simple_neg_llds.
 :- type maybe_allow_hijacks
     --->    allow_hijacks
     ;       do_not_allow_hijacks.
 :- type maybe_opt_mlds_tailcalls
     --->    opt_mlds_tailcalls
     ;       do_not_opt_mlds_tailcalls.
-:- type maybe_opt_initializations
-    --->    opt_initializations
-    ;       do_not_opt_initializations.
+:- type maybe_opt_mlds_inits
+    --->    opt_mlds_inits
+    ;       do_not_opt_mlds_inits.
 :- type maybe_elim_unused_mlds_assigns
     --->    elim_unused_mlds_assigns
     ;       do_not_elim_unused_mlds_assigns.
-:- type maybe_elim_local_vars
-    --->    elim_local_vars
-    ;       do_not_elim_local_vars.
-:- type maybe_gen_trail_ops_inline
-    --->    gen_trail_ops_inline
-    ;       do_not_gen_trail_ops_inline.
-:- type maybe_use_common_data
-    --->    use_common_data
-    ;       do_not_use_common_data.
-:- type maybe_use_common_layout_data
-    --->    use_common_layout_data
-    ;       do_not_use_common_layout_data.
+:- type maybe_elim_local_vars_mlds
+    --->    elim_local_vars_mlds
+    ;       do_not_elim_local_vars_mlds.
+:- type maybe_gen_trail_ops_inline_mlds
+    --->    gen_trail_ops_inline_mlds
+    ;       do_not_gen_trail_ops_inline_mlds.
+:- type maybe_use_llds_common_data
+    --->    use_llds_common_data
+    ;       do_not_use_llds_common_data.
+:- type maybe_use_llds_common_layout_data
+    --->    use_llds_common_layout_data
+    ;       do_not_use_llds_common_layout_data.
 :- type maybe_optimize_llds
     --->    optimize_llds
     ;       do_not_optimize_llds.
@@ -247,36 +247,36 @@
 :- type maybe_opt_fulljumps
     --->    opt_fulljumps
     ;       do_not_opt_fulljumps.
-:- type maybe_pessimize_tailcalls
-    --->    pessimize_tailcalls
-    ;       do_not_pessimize_tailcalls.
+:- type maybe_pessimize_llds_tailcalls
+    --->    pessimize_llds_tailcalls
+    ;       do_not_pessimize_llds_tailcalls.
 :- type maybe_opt_checked_nondet_tailcalls
     --->    opt_checked_nondet_tailcalls
     ;       do_not_opt_checked_nondet_tailcalls.
-:- type maybe_use_local_vars
-    --->    use_local_vars
-    ;       do_not_use_local_vars.
+:- type maybe_use_local_vars_llds
+    --->    use_local_vars_llds
+    ;       do_not_use_local_vars_llds.
 :- type maybe_standardize_labels
     --->    standardize_labels
     ;       do_not_standardize_labels.
 :- type maybe_opt_labels
     --->    opt_labels
     ;       do_not_opt_labels.
-:- type maybe_opt_dups
-    --->    opt_dups
-    ;       do_not_opt_dups.
-:- type maybe_opt_proc_dups
-    --->    opt_proc_dups
-    ;       do_not_opt_proc_dups.
+:- type maybe_opt_dup_instrs_llds
+    --->    opt_dup_instrs_llds
+    ;       do_not_opt_dup_instrs_llds.
+:- type maybe_opt_dup_procs_llds
+    --->    opt_dup_procs_llds
+    ;       do_not_opt_dup_procs_llds.
 :- type maybe_opt_frames
     --->    opt_frames
     ;       do_not_opt_frames.
 :- type maybe_opt_delay_slot
     --->    opt_delay_slot
     ;       do_not_opt_delay_slot.
-:- type maybe_opt_reassign
-    --->    opt_reassign
-    ;       do_not_opt_reassign.
+:- type maybe_opt_llds_reassign
+    --->    opt_llds_reassign
+    ;       do_not_opt_llds_reassign.
 :- type maybe_use_macro_for_redo_fail
     --->    use_macro_for_redo_fail
     ;       do_not_use_macro_for_redo_fail.
@@ -355,16 +355,16 @@
     ;       oo_use_static_ground_int64s(bool)
     ;       oo_use_static_code_addresses(bool)
     ;       oo_use_atomic_cells(bool)
-    ;       oo_opt_middle_rec(bool)
-    ;       oo_opt_simple_neg(bool)
+    ;       oo_opt_middle_rec_llds(bool)
+    ;       oo_opt_simple_neg_llds(bool)
     ;       oo_allow_hijacks(bool)
     ;       oo_opt_mlds_tailcalls(bool)
-    ;       oo_opt_initializations(bool)
+    ;       oo_opt_mlds_inits(bool)
     ;       oo_elim_unused_mlds_assigns(bool)
-    ;       oo_elim_local_vars(bool)
-    ;       oo_gen_trail_ops_inline(bool)
-    ;       oo_use_common_data(bool)
-    ;       oo_use_common_layout_data(bool)
+    ;       oo_elim_local_vars_mlds(bool)
+    ;       oo_gen_trail_ops_inline_mlds(bool)
+    ;       oo_use_llds_common_data(bool)
+    ;       oo_use_llds_common_layout_data(bool)
     ;       oo_optimize_llds(bool)
     ;       oo_optimize_mlds(bool)
     ;       oo_peep_llds(bool)
@@ -372,16 +372,16 @@
     ;       oo_peep_mlds(bool)
     ;       oo_opt_jumps(bool)
     ;       oo_opt_fulljumps(bool)
-    ;       oo_pessimize_tailcalls(bool)
+    ;       oo_pessimize_llds_tailcalls(bool)
     ;       oo_opt_checked_nondet_tailcalls(bool)
-    ;       oo_use_local_vars(bool)
+    ;       oo_use_local_vars_llds(bool)
     ;       oo_standardize_labels(bool)
     ;       oo_opt_labels(bool)
-    ;       oo_opt_dups(bool)
-    ;       oo_opt_proc_dups(bool)
+    ;       oo_opt_dup_instrs_llds(bool)
+    ;       oo_opt_dup_procs_llds(bool)
     ;       oo_opt_frames(bool)
     ;       oo_opt_delay_slot(bool)
-    ;       oo_opt_reassign(bool)
+    ;       oo_opt_llds_reassign(bool)
     ;       oo_use_macro_for_redo_fail(bool)
     ;       oo_emit_c_loops(bool)
     ;       oo_use_just_one_c_func(bool)
@@ -421,9 +421,9 @@
     ;       oo_tag_switch_size(int)
     ;       oo_try_switch_size(int)
     ;       oo_binary_switch_size(int)
-    ;       oo_local_var_access_threshold(int)
+    ;       oo_llds_local_var_access_threshold(int)
     ;       oo_opt_repeat(int)
-    ;       oo_layout_compression_limit(int)
+    ;       oo_llds_layout_compression_limit(int)
     ;       oo_procs_per_c_function(int)
     ;       oo_tuple_trace_counts_file(string)
     ;       oo_opt_level(int)
@@ -489,16 +489,16 @@
                 ot_use_static_ground_int64s   :: maybe_use_static_ground_int64s,
                 ot_use_static_code_addresses  :: maybe_use_static_code_addresses,
                 ot_use_atomic_cells           :: maybe_use_atomic_cells,
-                ot_opt_middle_rec             :: maybe_opt_middle_rec,
-                ot_opt_simple_neg             :: maybe_opt_simple_neg,
+                ot_opt_middle_rec_llds        :: maybe_opt_middle_rec_llds,
+                ot_opt_simple_neg_llds        :: maybe_opt_simple_neg_llds,
                 ot_allow_hijacks              :: maybe_allow_hijacks,
                 ot_opt_mlds_tailcalls         :: maybe_opt_mlds_tailcalls,
-                ot_opt_initializations        :: maybe_opt_initializations,
+                ot_opt_mlds_inits             :: maybe_opt_mlds_inits,
                 ot_elim_unused_mlds_assigns   :: maybe_elim_unused_mlds_assigns,
-                ot_elim_local_vars            :: maybe_elim_local_vars,
-                ot_gen_trail_ops_inline       :: maybe_gen_trail_ops_inline,
-                ot_use_common_data            :: maybe_use_common_data,
-                ot_use_common_layout_data     :: maybe_use_common_layout_data,
+                ot_elim_local_vars_mlds       :: maybe_elim_local_vars_mlds,
+                ot_gen_trail_ops_inline_mlds  :: maybe_gen_trail_ops_inline_mlds,
+                ot_use_llds_common_data       :: maybe_use_llds_common_data,
+                ot_use_llds_common_layout_data :: maybe_use_llds_common_layout_data,
                 ot_optimize_llds              :: maybe_optimize_llds,
                 ot_optimize_mlds              :: maybe_optimize_mlds,
                 ot_peep_llds                  :: maybe_peep_llds,
@@ -506,16 +506,16 @@
                 ot_peep_mlds                  :: maybe_peep_mlds,
                 ot_opt_jumps                  :: maybe_opt_jumps,
                 ot_opt_fulljumps              :: maybe_opt_fulljumps,
-                ot_pessimize_tailcalls        :: maybe_pessimize_tailcalls,
+                ot_pessimize_llds_tailcalls   :: maybe_pessimize_llds_tailcalls,
                 ot_opt_checked_nondet_tailcalls :: maybe_opt_checked_nondet_tailcalls,
-                ot_use_local_vars             :: maybe_use_local_vars,
+                ot_use_local_vars_llds        :: maybe_use_local_vars_llds,
                 ot_standardize_labels         :: maybe_standardize_labels,
                 ot_opt_labels                 :: maybe_opt_labels,
-                ot_opt_dups                   :: maybe_opt_dups,
-                ot_opt_proc_dups              :: maybe_opt_proc_dups,
+                ot_opt_dup_instrs_llds        :: maybe_opt_dup_instrs_llds,
+                ot_opt_dup_procs_llds         :: maybe_opt_dup_procs_llds,
                 ot_opt_frames                 :: maybe_opt_frames,
                 ot_opt_delay_slot             :: maybe_opt_delay_slot,
-                ot_opt_reassign               :: maybe_opt_reassign,
+                ot_opt_llds_reassign          :: maybe_opt_llds_reassign,
                 ot_use_macro_for_redo_fail    :: maybe_use_macro_for_redo_fail,
                 ot_emit_c_loops               :: maybe_emit_c_loops,
                 ot_use_just_one_c_func        :: maybe_use_just_one_c_func,
@@ -555,9 +555,9 @@
                 ot_tag_switch_size            :: int,
                 ot_try_switch_size            :: int,
                 ot_binary_switch_size         :: int,
-                ot_local_var_access_threshold :: int,
+                ot_llds_local_var_access_threshold :: int,
                 ot_opt_repeat                 :: int,
-                ot_layout_compression_limit   :: int,
+                ot_llds_layout_compression_limit :: int,
                 ot_procs_per_c_function       :: int,
                 ot_tuple_trace_counts_file    :: string
             ).
@@ -661,16 +661,16 @@ init_opt_tuple =
         do_not_use_static_ground_int64s,
         do_not_use_static_code_addresses,
         do_not_use_atomic_cells,
-        do_not_opt_middle_rec,
-        do_not_opt_simple_neg,
+        do_not_opt_middle_rec_llds,
+        do_not_opt_simple_neg_llds,
         allow_hijacks,
         do_not_opt_mlds_tailcalls,
-        do_not_opt_initializations,
+        do_not_opt_mlds_inits,
         elim_unused_mlds_assigns,
-        do_not_elim_local_vars,
-        gen_trail_ops_inline,
-        do_not_use_common_data,
-        use_common_layout_data,
+        do_not_elim_local_vars_mlds,
+        gen_trail_ops_inline_mlds,
+        do_not_use_llds_common_data,
+        use_llds_common_layout_data,
         do_not_optimize_llds,
         do_not_optimize_mlds,
         do_not_peep_llds,
@@ -678,16 +678,16 @@ init_opt_tuple =
         do_not_peep_mlds,
         do_not_opt_jumps,
         do_not_opt_fulljumps,
-        do_not_pessimize_tailcalls,
+        do_not_pessimize_llds_tailcalls,
         do_not_opt_checked_nondet_tailcalls,
-        do_not_use_local_vars,
+        do_not_use_local_vars_llds,
         do_not_standardize_labels,
         do_not_opt_labels,
-        do_not_opt_dups,
-        do_not_opt_proc_dups,
+        do_not_opt_dup_instrs_llds,
+        do_not_opt_dup_procs_llds,
         do_not_opt_frames,
         do_not_opt_delay_slot,
-        do_not_opt_reassign,
+        do_not_opt_llds_reassign,
         do_not_use_macro_for_redo_fail,
         do_not_emit_c_loops,
         do_not_use_just_one_c_func,
@@ -920,11 +920,11 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
         OptOption = oo_use_atomic_cells(Bool),
         update_opt_tuple_bool_use_atomic_cells(Bool, !OptTuple)
     ;
-        OptOption = oo_opt_middle_rec(Bool),
-        update_opt_tuple_bool_opt_middle_rec(Bool, !OptTuple)
+        OptOption = oo_opt_middle_rec_llds(Bool),
+        update_opt_tuple_bool_opt_middle_rec_llds(Bool, !OptTuple)
     ;
-        OptOption = oo_opt_simple_neg(Bool),
-        update_opt_tuple_bool_opt_simple_neg(Bool, !OptTuple)
+        OptOption = oo_opt_simple_neg_llds(Bool),
+        update_opt_tuple_bool_opt_simple_neg_llds(Bool, !OptTuple)
     ;
         OptOption = oo_allow_hijacks(Bool),
         update_opt_tuple_bool_allow_hijacks(Bool, !OptTuple)
@@ -932,23 +932,23 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
         OptOption = oo_opt_mlds_tailcalls(Bool),
         update_opt_tuple_bool_opt_mlds_tailcalls(Bool, !OptTuple)
     ;
-        OptOption = oo_opt_initializations(Bool),
-        update_opt_tuple_bool_opt_initializations(Bool, !OptTuple)
+        OptOption = oo_opt_mlds_inits(Bool),
+        update_opt_tuple_bool_opt_mlds_inits(Bool, !OptTuple)
     ;
         OptOption = oo_elim_unused_mlds_assigns(Bool),
         update_opt_tuple_bool_elim_unused_mlds_assigns(Bool, !OptTuple)
     ;
-        OptOption = oo_elim_local_vars(Bool),
-        update_opt_tuple_bool_elim_local_vars(Bool, !OptTuple)
+        OptOption = oo_elim_local_vars_mlds(Bool),
+        update_opt_tuple_bool_elim_local_vars_mlds(Bool, !OptTuple)
     ;
-        OptOption = oo_gen_trail_ops_inline(Bool),
-        update_opt_tuple_bool_gen_trail_ops_inline(Bool, !OptTuple)
+        OptOption = oo_gen_trail_ops_inline_mlds(Bool),
+        update_opt_tuple_bool_gen_trail_ops_inline_mlds(Bool, !OptTuple)
     ;
-        OptOption = oo_use_common_data(Bool),
-        update_opt_tuple_bool_use_common_data(Bool, !OptTuple)
+        OptOption = oo_use_llds_common_data(Bool),
+        update_opt_tuple_bool_use_llds_common_data(Bool, !OptTuple)
     ;
-        OptOption = oo_use_common_layout_data(Bool),
-        update_opt_tuple_bool_use_common_layout_data(Bool, !OptTuple)
+        OptOption = oo_use_llds_common_layout_data(Bool),
+        update_opt_tuple_bool_use_llds_common_layout_data(Bool, !OptTuple)
     ;
         OptOption = oo_optimize_llds(Bool),
         update_opt_tuple_bool_optimize_llds(Bool, !OptTuple)
@@ -971,14 +971,14 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
         OptOption = oo_opt_fulljumps(Bool),
         update_opt_tuple_bool_opt_fulljumps(Bool, !OptTuple)
     ;
-        OptOption = oo_pessimize_tailcalls(Bool),
-        update_opt_tuple_bool_pessimize_tailcalls(Bool, !OptTuple)
+        OptOption = oo_pessimize_llds_tailcalls(Bool),
+        update_opt_tuple_bool_pessimize_llds_tailcalls(Bool, !OptTuple)
     ;
         OptOption = oo_opt_checked_nondet_tailcalls(Bool),
         update_opt_tuple_bool_opt_checked_nondet_tailcalls(Bool, !OptTuple)
     ;
-        OptOption = oo_use_local_vars(Bool),
-        update_opt_tuple_bool_use_local_vars(Bool, !OptTuple)
+        OptOption = oo_use_local_vars_llds(Bool),
+        update_opt_tuple_bool_use_local_vars_llds(Bool, !OptTuple)
     ;
         OptOption = oo_standardize_labels(Bool),
         update_opt_tuple_bool_standardize_labels(Bool, !OptTuple)
@@ -986,11 +986,11 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
         OptOption = oo_opt_labels(Bool),
         update_opt_tuple_bool_opt_labels(Bool, !OptTuple)
     ;
-        OptOption = oo_opt_dups(Bool),
-        update_opt_tuple_bool_opt_dups(Bool, !OptTuple)
+        OptOption = oo_opt_dup_instrs_llds(Bool),
+        update_opt_tuple_bool_opt_dup_instrs_llds(Bool, !OptTuple)
     ;
-        OptOption = oo_opt_proc_dups(Bool),
-        update_opt_tuple_bool_opt_proc_dups(Bool, !OptTuple)
+        OptOption = oo_opt_dup_procs_llds(Bool),
+        update_opt_tuple_bool_opt_dup_procs_llds(Bool, !OptTuple)
     ;
         OptOption = oo_opt_frames(Bool),
         update_opt_tuple_bool_opt_frames(Bool, !OptTuple)
@@ -998,8 +998,8 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
         OptOption = oo_opt_delay_slot(Bool),
         update_opt_tuple_bool_opt_delay_slot(OptionTable, Bool, !OptTuple)
     ;
-        OptOption = oo_opt_reassign(Bool),
-        update_opt_tuple_bool_opt_reassign(Bool, !OptTuple)
+        OptOption = oo_opt_llds_reassign(Bool),
+        update_opt_tuple_bool_opt_llds_reassign(Bool, !OptTuple)
     ;
         OptOption = oo_use_macro_for_redo_fail(Bool),
         update_opt_tuple_bool_use_macro_for_redo_fail(Bool, !OptTuple)
@@ -1118,14 +1118,14 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
         OptOption = oo_binary_switch_size(N),
         update_opt_tuple_int_binary_switch_size(FromOptLevel, N, !OptTuple)
     ;
-        OptOption = oo_local_var_access_threshold(N),
-        update_opt_tuple_int_local_var_access_threshold(FromOptLevel, N, !OptTuple)
+        OptOption = oo_llds_local_var_access_threshold(N),
+        update_opt_tuple_int_llds_local_var_access_threshold(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_opt_repeat(N),
         update_opt_tuple_int_opt_repeat(FromOptLevel, N, !OptTuple)
     ;
-        OptOption = oo_layout_compression_limit(N),
-        update_opt_tuple_int_layout_compression_limit(FromOptLevel, N, !OptTuple)
+        OptOption = oo_llds_layout_compression_limit(N),
+        update_opt_tuple_int_llds_layout_compression_limit(FromOptLevel, N, !OptTuple)
     ;
         OptOption = oo_procs_per_c_function(N),
         update_opt_tuple_int_procs_per_c_function(FromOptLevel, N, !OptTuple)
@@ -2429,49 +2429,49 @@ update_opt_tuple_bool_use_atomic_cells(Bool, !OptTuple) :-
         )
     ).
 
-:- pred update_opt_tuple_bool_opt_middle_rec(bool::in,
+:- pred update_opt_tuple_bool_opt_middle_rec_llds(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_opt_middle_rec(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_opt_middle_rec,
+update_opt_tuple_bool_opt_middle_rec_llds(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_middle_rec_llds,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_opt_middle_rec,
-            !OptTuple ^ ot_opt_middle_rec := opt_middle_rec
+            OldValue = do_not_opt_middle_rec_llds,
+            !OptTuple ^ ot_opt_middle_rec_llds := opt_middle_rec_llds
         ;
-            OldValue = opt_middle_rec
+            OldValue = opt_middle_rec_llds
         )
     else
         (
-            OldValue = do_not_opt_middle_rec
+            OldValue = do_not_opt_middle_rec_llds
         ;
-            OldValue = opt_middle_rec,
-            !OptTuple ^ ot_opt_middle_rec := do_not_opt_middle_rec
+            OldValue = opt_middle_rec_llds,
+            !OptTuple ^ ot_opt_middle_rec_llds := do_not_opt_middle_rec_llds
         )
     ).
 
-:- pred update_opt_tuple_bool_opt_simple_neg(bool::in,
+:- pred update_opt_tuple_bool_opt_simple_neg_llds(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_opt_simple_neg(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_opt_simple_neg,
+update_opt_tuple_bool_opt_simple_neg_llds(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_simple_neg_llds,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_opt_simple_neg,
-            !OptTuple ^ ot_opt_simple_neg := opt_simple_neg
+            OldValue = do_not_opt_simple_neg_llds,
+            !OptTuple ^ ot_opt_simple_neg_llds := opt_simple_neg_llds
         ;
-            OldValue = opt_simple_neg
+            OldValue = opt_simple_neg_llds
         )
     else
         (
-            OldValue = do_not_opt_simple_neg
+            OldValue = do_not_opt_simple_neg_llds
         ;
-            OldValue = opt_simple_neg,
-            !OptTuple ^ ot_opt_simple_neg := do_not_opt_simple_neg
+            OldValue = opt_simple_neg_llds,
+            !OptTuple ^ ot_opt_simple_neg_llds := do_not_opt_simple_neg_llds
         )
     ).
 
@@ -2521,26 +2521,26 @@ update_opt_tuple_bool_opt_mlds_tailcalls(Bool, !OptTuple) :-
         )
     ).
 
-:- pred update_opt_tuple_bool_opt_initializations(bool::in,
+:- pred update_opt_tuple_bool_opt_mlds_inits(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_opt_initializations(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_opt_initializations,
+update_opt_tuple_bool_opt_mlds_inits(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_mlds_inits,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_opt_initializations,
-            !OptTuple ^ ot_opt_initializations := opt_initializations
+            OldValue = do_not_opt_mlds_inits,
+            !OptTuple ^ ot_opt_mlds_inits := opt_mlds_inits
         ;
-            OldValue = opt_initializations
+            OldValue = opt_mlds_inits
         )
     else
         (
-            OldValue = do_not_opt_initializations
+            OldValue = do_not_opt_mlds_inits
         ;
-            OldValue = opt_initializations,
-            !OptTuple ^ ot_opt_initializations := do_not_opt_initializations
+            OldValue = opt_mlds_inits,
+            !OptTuple ^ ot_opt_mlds_inits := do_not_opt_mlds_inits
         )
     ).
 
@@ -2567,95 +2567,95 @@ update_opt_tuple_bool_elim_unused_mlds_assigns(Bool, !OptTuple) :-
         )
     ).
 
-:- pred update_opt_tuple_bool_elim_local_vars(bool::in,
+:- pred update_opt_tuple_bool_elim_local_vars_mlds(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_elim_local_vars(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_elim_local_vars,
+update_opt_tuple_bool_elim_local_vars_mlds(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_elim_local_vars_mlds,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_elim_local_vars,
-            !OptTuple ^ ot_elim_local_vars := elim_local_vars
+            OldValue = do_not_elim_local_vars_mlds,
+            !OptTuple ^ ot_elim_local_vars_mlds := elim_local_vars_mlds
         ;
-            OldValue = elim_local_vars
+            OldValue = elim_local_vars_mlds
         )
     else
         (
-            OldValue = do_not_elim_local_vars
+            OldValue = do_not_elim_local_vars_mlds
         ;
-            OldValue = elim_local_vars,
-            !OptTuple ^ ot_elim_local_vars := do_not_elim_local_vars
+            OldValue = elim_local_vars_mlds,
+            !OptTuple ^ ot_elim_local_vars_mlds := do_not_elim_local_vars_mlds
         )
     ).
 
-:- pred update_opt_tuple_bool_gen_trail_ops_inline(bool::in,
+:- pred update_opt_tuple_bool_gen_trail_ops_inline_mlds(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_gen_trail_ops_inline(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_gen_trail_ops_inline,
+update_opt_tuple_bool_gen_trail_ops_inline_mlds(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_gen_trail_ops_inline_mlds,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_gen_trail_ops_inline,
-            !OptTuple ^ ot_gen_trail_ops_inline := gen_trail_ops_inline
+            OldValue = do_not_gen_trail_ops_inline_mlds,
+            !OptTuple ^ ot_gen_trail_ops_inline_mlds := gen_trail_ops_inline_mlds
         ;
-            OldValue = gen_trail_ops_inline
+            OldValue = gen_trail_ops_inline_mlds
         )
     else
         (
-            OldValue = do_not_gen_trail_ops_inline
+            OldValue = do_not_gen_trail_ops_inline_mlds
         ;
-            OldValue = gen_trail_ops_inline,
-            !OptTuple ^ ot_gen_trail_ops_inline := do_not_gen_trail_ops_inline
+            OldValue = gen_trail_ops_inline_mlds,
+            !OptTuple ^ ot_gen_trail_ops_inline_mlds := do_not_gen_trail_ops_inline_mlds
         )
     ).
 
-:- pred update_opt_tuple_bool_use_common_data(bool::in,
+:- pred update_opt_tuple_bool_use_llds_common_data(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_use_common_data(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_use_common_data,
+update_opt_tuple_bool_use_llds_common_data(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_llds_common_data,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_use_common_data,
-            !OptTuple ^ ot_use_common_data := use_common_data
+            OldValue = do_not_use_llds_common_data,
+            !OptTuple ^ ot_use_llds_common_data := use_llds_common_data
         ;
-            OldValue = use_common_data
+            OldValue = use_llds_common_data
         )
     else
         (
-            OldValue = do_not_use_common_data
+            OldValue = do_not_use_llds_common_data
         ;
-            OldValue = use_common_data,
-            !OptTuple ^ ot_use_common_data := do_not_use_common_data
+            OldValue = use_llds_common_data,
+            !OptTuple ^ ot_use_llds_common_data := do_not_use_llds_common_data
         )
     ).
 
-:- pred update_opt_tuple_bool_use_common_layout_data(bool::in,
+:- pred update_opt_tuple_bool_use_llds_common_layout_data(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_use_common_layout_data(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_use_common_layout_data,
+update_opt_tuple_bool_use_llds_common_layout_data(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_llds_common_layout_data,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_use_common_layout_data,
-            !OptTuple ^ ot_use_common_layout_data := use_common_layout_data
+            OldValue = do_not_use_llds_common_layout_data,
+            !OptTuple ^ ot_use_llds_common_layout_data := use_llds_common_layout_data
         ;
-            OldValue = use_common_layout_data
+            OldValue = use_llds_common_layout_data
         )
     else
         (
-            OldValue = do_not_use_common_layout_data
+            OldValue = do_not_use_llds_common_layout_data
         ;
-            OldValue = use_common_layout_data,
-            !OptTuple ^ ot_use_common_layout_data := do_not_use_common_layout_data
+            OldValue = use_llds_common_layout_data,
+            !OptTuple ^ ot_use_llds_common_layout_data := do_not_use_llds_common_layout_data
         )
     ).
 
@@ -2820,26 +2820,26 @@ update_opt_tuple_bool_opt_fulljumps(Bool, !OptTuple) :-
         )
     ).
 
-:- pred update_opt_tuple_bool_pessimize_tailcalls(bool::in,
+:- pred update_opt_tuple_bool_pessimize_llds_tailcalls(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_pessimize_tailcalls(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_pessimize_tailcalls,
+update_opt_tuple_bool_pessimize_llds_tailcalls(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_pessimize_llds_tailcalls,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_pessimize_tailcalls,
-            !OptTuple ^ ot_pessimize_tailcalls := pessimize_tailcalls
+            OldValue = do_not_pessimize_llds_tailcalls,
+            !OptTuple ^ ot_pessimize_llds_tailcalls := pessimize_llds_tailcalls
         ;
-            OldValue = pessimize_tailcalls
+            OldValue = pessimize_llds_tailcalls
         )
     else
         (
-            OldValue = do_not_pessimize_tailcalls
+            OldValue = do_not_pessimize_llds_tailcalls
         ;
-            OldValue = pessimize_tailcalls,
-            !OptTuple ^ ot_pessimize_tailcalls := do_not_pessimize_tailcalls
+            OldValue = pessimize_llds_tailcalls,
+            !OptTuple ^ ot_pessimize_llds_tailcalls := do_not_pessimize_llds_tailcalls
         )
     ).
 
@@ -2866,26 +2866,26 @@ update_opt_tuple_bool_opt_checked_nondet_tailcalls(Bool, !OptTuple) :-
         )
     ).
 
-:- pred update_opt_tuple_bool_use_local_vars(bool::in,
+:- pred update_opt_tuple_bool_use_local_vars_llds(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_use_local_vars(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_use_local_vars,
+update_opt_tuple_bool_use_local_vars_llds(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_use_local_vars_llds,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_use_local_vars,
-            !OptTuple ^ ot_use_local_vars := use_local_vars
+            OldValue = do_not_use_local_vars_llds,
+            !OptTuple ^ ot_use_local_vars_llds := use_local_vars_llds
         ;
-            OldValue = use_local_vars
+            OldValue = use_local_vars_llds
         )
     else
         (
-            OldValue = do_not_use_local_vars
+            OldValue = do_not_use_local_vars_llds
         ;
-            OldValue = use_local_vars,
-            !OptTuple ^ ot_use_local_vars := do_not_use_local_vars
+            OldValue = use_local_vars_llds,
+            !OptTuple ^ ot_use_local_vars_llds := do_not_use_local_vars_llds
         )
     ).
 
@@ -2935,49 +2935,49 @@ update_opt_tuple_bool_opt_labels(Bool, !OptTuple) :-
         )
     ).
 
-:- pred update_opt_tuple_bool_opt_dups(bool::in,
+:- pred update_opt_tuple_bool_opt_dup_instrs_llds(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_opt_dups(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_opt_dups,
+update_opt_tuple_bool_opt_dup_instrs_llds(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_dup_instrs_llds,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_opt_dups,
-            !OptTuple ^ ot_opt_dups := opt_dups
+            OldValue = do_not_opt_dup_instrs_llds,
+            !OptTuple ^ ot_opt_dup_instrs_llds := opt_dup_instrs_llds
         ;
-            OldValue = opt_dups
+            OldValue = opt_dup_instrs_llds
         )
     else
         (
-            OldValue = do_not_opt_dups
+            OldValue = do_not_opt_dup_instrs_llds
         ;
-            OldValue = opt_dups,
-            !OptTuple ^ ot_opt_dups := do_not_opt_dups
+            OldValue = opt_dup_instrs_llds,
+            !OptTuple ^ ot_opt_dup_instrs_llds := do_not_opt_dup_instrs_llds
         )
     ).
 
-:- pred update_opt_tuple_bool_opt_proc_dups(bool::in,
+:- pred update_opt_tuple_bool_opt_dup_procs_llds(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_opt_proc_dups(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_opt_proc_dups,
+update_opt_tuple_bool_opt_dup_procs_llds(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_dup_procs_llds,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_opt_proc_dups,
-            !OptTuple ^ ot_opt_proc_dups := opt_proc_dups
+            OldValue = do_not_opt_dup_procs_llds,
+            !OptTuple ^ ot_opt_dup_procs_llds := opt_dup_procs_llds
         ;
-            OldValue = opt_proc_dups
+            OldValue = opt_dup_procs_llds
         )
     else
         (
-            OldValue = do_not_opt_proc_dups
+            OldValue = do_not_opt_dup_procs_llds
         ;
-            OldValue = opt_proc_dups,
-            !OptTuple ^ ot_opt_proc_dups := do_not_opt_proc_dups
+            OldValue = opt_dup_procs_llds,
+            !OptTuple ^ ot_opt_dup_procs_llds := do_not_opt_dup_procs_llds
         )
     ).
 
@@ -3028,26 +3028,26 @@ update_opt_tuple_bool_opt_delay_slot(OptionTable, Bool, !OptTuple) :-
         )
     ).
 
-:- pred update_opt_tuple_bool_opt_reassign(bool::in,
+:- pred update_opt_tuple_bool_opt_llds_reassign(bool::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_bool_opt_reassign(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_opt_reassign,
+update_opt_tuple_bool_opt_llds_reassign(Bool, !OptTuple) :-
+    OldValue = !.OptTuple ^ ot_opt_llds_reassign,
     ( if
         Bool = yes
     then
         (
-            OldValue = do_not_opt_reassign,
-            !OptTuple ^ ot_opt_reassign := opt_reassign
+            OldValue = do_not_opt_llds_reassign,
+            !OptTuple ^ ot_opt_llds_reassign := opt_llds_reassign
         ;
-            OldValue = opt_reassign
+            OldValue = opt_llds_reassign
         )
     else
         (
-            OldValue = do_not_opt_reassign
+            OldValue = do_not_opt_llds_reassign
         ;
-            OldValue = opt_reassign,
-            !OptTuple ^ ot_opt_reassign := do_not_opt_reassign
+            OldValue = opt_llds_reassign,
+            !OptTuple ^ ot_opt_llds_reassign := do_not_opt_llds_reassign
         )
     ).
 
@@ -3651,18 +3651,18 @@ update_opt_tuple_int_binary_switch_size(FromOptLevel, N, !OptTuple) :-
         !OptTuple ^ ot_binary_switch_size := int.max(OldN, N)
     ).
 
-:- pred update_opt_tuple_int_local_var_access_threshold(
+:- pred update_opt_tuple_int_llds_local_var_access_threshold(
     maybe_from_opt_level::in, int::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_int_local_var_access_threshold(FromOptLevel, N, !OptTuple) :-
+update_opt_tuple_int_llds_local_var_access_threshold(FromOptLevel, N, !OptTuple) :-
     (
         FromOptLevel = not_from_opt_level,
-        !OptTuple ^ ot_local_var_access_threshold := N
+        !OptTuple ^ ot_llds_local_var_access_threshold := N
     ;
         FromOptLevel = from_opt_level,
-        OldN = !.OptTuple ^ ot_local_var_access_threshold,
-        !OptTuple ^ ot_local_var_access_threshold := int.max(OldN, N)
+        OldN = !.OptTuple ^ ot_llds_local_var_access_threshold,
+        !OptTuple ^ ot_llds_local_var_access_threshold := int.max(OldN, N)
     ).
 
 :- pred update_opt_tuple_int_opt_repeat(
@@ -3679,18 +3679,18 @@ update_opt_tuple_int_opt_repeat(FromOptLevel, N, !OptTuple) :-
         !OptTuple ^ ot_opt_repeat := int.max(OldN, N)
     ).
 
-:- pred update_opt_tuple_int_layout_compression_limit(
+:- pred update_opt_tuple_int_llds_layout_compression_limit(
     maybe_from_opt_level::in, int::in,
     opt_tuple::in, opt_tuple::out) is det.
 
-update_opt_tuple_int_layout_compression_limit(FromOptLevel, N, !OptTuple) :-
+update_opt_tuple_int_llds_layout_compression_limit(FromOptLevel, N, !OptTuple) :-
     (
         FromOptLevel = not_from_opt_level,
-        !OptTuple ^ ot_layout_compression_limit := N
+        !OptTuple ^ ot_llds_layout_compression_limit := N
     ;
         FromOptLevel = from_opt_level,
-        OldN = !.OptTuple ^ ot_layout_compression_limit,
-        !OptTuple ^ ot_layout_compression_limit := int.max(OldN, N)
+        OldN = !.OptTuple ^ ot_llds_layout_compression_limit,
+        !OptTuple ^ ot_llds_layout_compression_limit := int.max(OldN, N)
     ).
 
 :- pred update_opt_tuple_int_procs_per_c_function(
@@ -3754,10 +3754,10 @@ set_opts_for_space(!OptTuple) :-
         int.min(UnneededCopyLimit, 1),
     !OptTuple ^ ot_opt_dead_procs := opt_dead_procs,
     !OptTuple ^ ot_opt_labels := opt_labels,
-    !OptTuple ^ ot_opt_dups := opt_dups,
-    !OptTuple ^ ot_opt_proc_dups := opt_proc_dups,
+    !OptTuple ^ ot_opt_dup_instrs_llds := opt_dup_instrs_llds,
+    !OptTuple ^ ot_opt_dup_procs_llds := opt_dup_procs_llds,
     !OptTuple ^ ot_opt_fulljumps := opt_fulljumps,
-    !OptTuple ^ ot_opt_reassign := opt_reassign,
+    !OptTuple ^ ot_opt_llds_reassign := opt_llds_reassign,
     !OptTuple ^ ot_inline_alloc := inline_alloc,
     !OptTuple ^ ot_use_macro_for_redo_fail := use_macro_for_redo_fail,
     !OptTuple ^ ot_opt_loop_invariants := do_not_opt_loop_invariants.
@@ -3765,7 +3765,8 @@ set_opts_for_space(!OptTuple) :-
 opts_enabled_at_level(0, [
     "Aim to minimize overall compilation time."
 ], [
-    doc_oo(oo_use_common_data(yes),     optopt_common_data,     bool(yes)),
+    doc_oo(oo_use_llds_common_data(yes),
+                        optopt_use_llds_common_data,            bool(yes)),
     doc_oo(oo_optimize_llds(yes),       optopt_optimize_llds,   bool(yes)),
     doc_oo(oo_optimize_mlds(yes),       optopt_optimize_mlds,   bool(yes)),
     doc_oo(oo_opt_repeat(1),            optopt_repeat_opts,     int(1)),
@@ -3773,62 +3774,62 @@ opts_enabled_at_level(0, [
     doc_oo(oo_peep_llds_mkword(yes),    optopt_peep_llds_mkword, bool(yes)),
     doc_oo(oo_peep_mlds(yes),           optopt_peep_mlds,       bool(yes)),
     doc_oo(oo_use_static_ground_cells(yes),
-                                        optopt_static_ground_cells, bool(yes)),
-    doc_oo(oo_use_smart_indexing(yes),  optopt_smart_indexing,  bool(yes)),
-    doc_oo(oo_opt_jumps(yes),           optopt_jumps,           bool(yes)),
-    doc_oo(oo_opt_labels(yes),          optopt_labels,          bool(yes)),
-    doc_oo(oo_opt_dead_procs(yes),      optopt_dead_procs,      bool(yes)),
-    doc_oo(oo_elim_excess_assigns(yes), optopt_excess_assign,   bool(yes))
+                        optopt_use_static_ground_cells,         bool(yes)),
+    doc_oo(oo_use_smart_indexing(yes),  optopt_use_smart_indexing,  bool(yes)),
+    doc_oo(oo_opt_jumps(yes),           optopt_opt_jumps,       bool(yes)),
+    doc_oo(oo_opt_labels(yes),          optopt_opt_labels,      bool(yes)),
+    doc_oo(oo_opt_dead_procs(yes),      optopt_opt_dead_procs,      bool(yes)),
+    doc_oo(oo_elim_excess_assigns(yes), optopt_elim_excess_assigns, bool(yes))
 ]).
 opts_enabled_at_level(1, [
     "Apply optimizations which are cheap and have a good payoff",
     "while still keeping compilation time small."
 ], [
-    doc_oo(oo_use_local_vars(yes),      optopt_use_local_vars,  bool(yes)),
+    doc_oo(oo_use_local_vars_llds(yes), optopt_use_local_vars_llds, bool(yes)),
     % XXX We want `gcc -O1'
     doc_oo(oo_opt_c(yes),               optopt_c_optimize,      bool(yes)),
-    doc_oo(oo_opt_frames(yes),          optopt_frames,          bool(yes)),
+    doc_oo(oo_opt_frames(yes),          optopt_opt_frames,      bool(yes)),
     % We ignore oo_opt_delay_slot if have_delay_slot = no.
-    doc_oo(oo_opt_delay_slot(yes),      optopt_delay_slot,      bool(yes)),
-    doc_oo(oo_opt_middle_rec(yes),      optopt_middle_rec,      bool(yes)),
+    doc_oo(oo_opt_delay_slot(yes),      optopt_opt_delay_slot,  bool(yes)),
+    doc_oo(oo_opt_middle_rec_llds(yes), optopt_opt_middle_rec_llds, bool(yes)),
     doc_oo(oo_emit_c_loops(yes),        optopt_emit_c_loops,    bool(yes)),
-    doc_oo(oo_opt_mlds_tailcalls(yes),  optopt_mlds_tailcalls,  bool(yes))
+    doc_oo(oo_opt_mlds_tailcalls(yes),  optopt_opt_mlds_tailcalls, bool(yes))
 ]).
 opts_enabled_at_level(2, [
     "Apply optimizations which have a good payoff relative to their cost;",
     "but include optimizations which are more costly than with -O1."
 ], [
-    doc_oo(oo_opt_fulljumps(yes),       optopt_fulljumps,       bool(yes)),
+    doc_oo(oo_opt_fulljumps(yes),       optopt_opt_fulljumps,   bool(yes)),
     doc_oo(oo_opt_repeat(3),            optopt_repeat_opts,     int(3)),
-    doc_oo(oo_opt_dups(yes),            optopt_dups,            bool(yes)),
-    doc_oo(oo_opt_follow_code(yes),     optopt_follow_code,     bool(yes)),
-    doc_oo(oo_prop_constants(yes),      optopt_constant_propagation,
-                                                                bool(yes)),
+    doc_oo(oo_opt_dup_instrs_llds(yes), optopt_opt_dup_instrs_llds, bool(yes)),
+    doc_oo(oo_opt_follow_code(yes),     optopt_opt_follow_code, bool(yes)),
+    doc_oo(oo_prop_constants(yes),      optopt_prop_constants,  bool(yes)),
     doc_oo(oo_inline_simple(yes),       optopt_inline_simple,   bool(yes)),
     doc_oo(oo_inline_single_use(yes),   optopt_inline_single_use, bool(yes)),
     doc_oo(oo_inline_compound_threshold(10),
                         optopt_inline_compound_threshold,       int(10)),
-    doc_oo(oo_opt_common_structs(yes),  optopt_common_struct,   bool(yes)),
+    doc_oo(oo_opt_common_structs(yes),  optopt_opt_common_structs,  bool(yes)),
     doc_oo(oo_spec_types_user_guided(yes),
-                        optopt_user_guided_type_specialization, bool(yes)),
-    doc_oo(oo_opt_simple_neg(yes),      optopt_simple_neg,      bool(yes)),
+                        optopt_spec_types_user_guided,          bool(yes)),
+    doc_oo(oo_opt_simple_neg_llds(yes), optopt_opt_simple_neg_llds, bool(yes)),
     doc_oo(oo_merge_code_after_switch(yes),
                         optopt_merge_code_after_switch,         bool(yes)),
-    doc_oo(oo_opt_initializations(yes), optopt_initializations, bool(yes)),
-    doc_oo(oo_split_switch_arms(yes),   optopt_split_switch_arms, bool(yes))
+    doc_oo(oo_opt_mlds_inits(yes),      optopt_opt_mlds_inits,  bool(yes)),
+    doc_oo(oo_split_switch_arms(yes),   optopt_split_switch_arms,   bool(yes))
 ]).
 opts_enabled_at_level(3, [
     "Apply optimizations which usually have a good payoff even if they",
     "increase compilation time quite a bit."
 ], [
-    doc_oo(oo_opt_saved_vars_const(yes), optopt_saved_vars_const, bool(yes)),
-    doc_oo(oo_opt_unused_args(yes),     optopt_unused_args,     bool(yes)),
-    doc_oo(oo_opt_higher_order(yes),    optopt_higher_order,    bool(yes)),
-    doc_oo(oo_deforest(yes),            optopt_deforestation,   bool(yes)),
-    doc_oo(oo_prop_constraints(yes),    optopt_excess_assign,   bool(yes)),
+    doc_oo(oo_opt_saved_vars_const(yes),
+                                optopt_opt_saved_vars_const,    bool(yes)),
+    doc_oo(oo_opt_unused_args(yes),     optopt_opt_unused_args,     bool(yes)),
+    doc_oo(oo_opt_higher_order(yes),    optopt_opt_higher_order,    bool(yes)),
+    doc_oo(oo_deforest(yes),            optopt_deforest,        bool(yes)),
+    doc_oo(oo_prop_constraints(yes),    optopt_prop_constraints,    bool(yes)),
     doc_oo(oo_prop_local_constraints(yes),
-                                optopt_constraint_propagation,  bool(yes)),
-    doc_oo(oo_opt_reassign(yes),        optopt_reassign,        bool(yes)),
+                                optopt_prop_local_constraints,  bool(yes)),
+    doc_oo(oo_opt_llds_reassign(yes),   optopt_opt_llds_reassign,   bool(yes)),
     doc_oo(oo_opt_repeat(4),            optopt_repeat_opts,     int(4))
 ]).
 opts_enabled_at_level(4, [
@@ -3856,14 +3857,14 @@ opts_enabled_at_level(5, [
     "this level, because that pass is implemented pretty inefficiently."
 ], [
     doc_oo(oo_opt_repeat(5),            optopt_repeat_opts,     int(5)),
-    doc_oo(oo_delay_constructs(yes),    optopt_delay_construct, bool(yes)),
+    doc_oo(oo_delay_constructs(yes),    optopt_delay_constructs, bool(yes)),
     doc_oo(oo_inline_compound_threshold(100),
                             optopt_inline_compound_threshold,   int(100)),
     doc_oo(oo_higher_order_size_limit(40),
                             optopt_higher_order_size_limit,     int(40)),
-    doc_oo(oo_elim_local_vars(yes),
-                            optopt_eliminate_local_vars,        bool(yes)),
-    doc_oo(oo_opt_loop_invariants(yes), optopt_loop_invariants, bool(yes))
+    doc_oo(oo_elim_local_vars_mlds(yes),
+                            optopt_elim_local_vars_mlds,        bool(yes)),
+    doc_oo(oo_opt_loop_invariants(yes), optopt_opt_loop_invariants, bool(yes))
 ]).
 opts_enabled_at_level(6, [
     "Apply optimizations which may have any payoff even if they",

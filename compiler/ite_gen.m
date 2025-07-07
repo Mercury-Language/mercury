@@ -328,7 +328,7 @@ generate_negation(CodeModel, Goal0, NotGoalInfo, Code, !CI, !CLD) :-
         failure_is_direct_branch(!.CLD, CodeAddr),
         get_globals(!.CI, Globals),
         globals.get_opt_tuple(Globals, OptTuple),
-        OptTuple ^ ot_opt_simple_neg = opt_simple_neg
+        OptTuple ^ ot_opt_simple_neg_llds = opt_simple_neg_llds
     then
         % Because we are generating the negated goal ourselves, we need to
         % apply the pre- and post-goal updates that would normally be applied

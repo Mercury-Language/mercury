@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2003-2012 The University of Melbourne.
-% Copyright (C) 2013-2020, 2024 The Mercury team.
+% Copyright (C) 2013-2020, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -95,7 +95,7 @@
 :- type static_cell_info.
 
 :- func init_static_cell_info(module_name, have_unboxed_floats,
-    have_unboxed_int64s, maybe_use_common_data) = static_cell_info.
+    have_unboxed_int64s, maybe_use_llds_common_data) = static_cell_info.
 
 :- pred add_scalar_static_cell_natural_types(list(rval)::in, data_id::out,
     static_cell_info::in, static_cell_info::out) is det.
@@ -350,7 +350,7 @@ make_alloc_id_map(AllocSite, Slot, Slot + 1, !Map) :-
                 scsi_module_name            :: module_name, % base file name
                 scsi_unbox_float            :: have_unboxed_floats,
                 scsi_unbox_int64s           :: have_unboxed_int64s,
-                scsi_common_data            :: maybe_use_common_data
+                scsi_common_data            :: maybe_use_llds_common_data
             ).
 
 :- type cell_type_bimap == bimap(common_cell_type, type_num).
@@ -435,7 +435,7 @@ do_add_scalar_static_cell(TypedArgs, CellType, CellValue, DataId, !Info) :-
 
         InsertCommonData = !.Info ^ sci_sub_info ^ scsi_common_data,
         (
-            InsertCommonData = use_common_data,
+            InsertCommonData = use_llds_common_data,
             MembersMap0 = !.CellGroup ^ scalar_cell_group_members,
             CellNumCounter0 = !.CellGroup ^ scalar_cell_counter,
             counter.allocate(CellNum, CellNumCounter0, CellNumCounter),
@@ -460,7 +460,7 @@ do_add_scalar_static_cell(TypedArgs, CellType, CellValue, DataId, !Info) :-
                 !Info ^ sci_scalar_cell_group_map := CellGroupMap
             )
         ;
-            InsertCommonData = do_not_use_common_data,
+            InsertCommonData = do_not_use_llds_common_data,
             MembersMap0 = !.CellGroup ^ scalar_cell_group_members,
             ( if bimap.search(MembersMap0, Args, DataIdPrime) then
                 DataId = DataIdPrime

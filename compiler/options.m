@@ -653,17 +653,17 @@
     ;       analysis_file_cache_dir
 
     % HLDS->HLDS optimizations.
-    ;       optopt_dead_procs
-    ;       optopt_unneeded_code
-    ;       optopt_unneeded_code_copy_limit
+    ;       optopt_opt_dead_procs
+    ;       optopt_opt_unneeded_code
+    ;       optopt_opt_unneeded_code_copy_limit
 
-    ;       optopt_unused_args
-    ;       optopt_intermod_unused_args
+    ;       optopt_opt_unused_args
+    ;       optopt_opt_unused_args_intermod
 
-    ;       optopt_format_calls
-    ;       optopt_constant_propagation
-    ;       optopt_duplicate_calls
-    ;       optopt_excess_assign
+    ;       optopt_opt_format_calls
+    ;       optopt_prop_constants
+    ;       optopt_opt_dup_calls
+    ;       optopt_elim_excess_assigns
 
     ;       optopt_allow_inlining
     ;       inlining
@@ -679,45 +679,45 @@
     ;       optopt_inline_tr_sccs
     ;       optopt_inline_tr_sccs_max_extra
 
-    ;       optopt_higher_order
-    ;       optopt_type_specialization
-    ;       optopt_user_guided_type_specialization
+    ;       optopt_opt_higher_order
+    ;       optopt_spec_types
+    ;       optopt_spec_types_user_guided
     ;       optopt_higher_order_size_limit
     ;       optopt_higher_order_arg_limit
 
-    ;       optopt_loop_invariants
+    ;       optopt_opt_loop_invariants
     ;       optopt_introduce_accumulators
-    ;       optopt_lcmc
-    ;       optopt_lcmc_accumulator
-    ;       optopt_lcmc_null
+    ;       optopt_opt_lcmc
+    ;       optopt_opt_lcmc_accumulator
+    ;       optopt_opt_lcmc_null
 
     ;       optopt_split_switch_arms
     ;       optopt_merge_code_after_switch
 
     ;       optopt_from_ground_term_threshold
     ;       optopt_enable_const_struct_user
-    ;       optopt_common_struct
+    ;       optopt_opt_common_structs
 
     ;       optimize_saved_vars
-    ;       optopt_saved_vars_const
-    ;       optopt_svcell
-    ;       optopt_svcell_loop
-    ;       optopt_svcell_full_path
-    ;       optopt_svcell_on_stack
-    ;       optopt_svcell_candidate_headvars
-    ;       optopt_svcell_cv_store_cost
-    ;       optopt_svcell_cv_load_cost
-    ;       optopt_svcell_fv_store_cost
-    ;       optopt_svcell_fv_load_cost
-    ;       optopt_svcell_op_ratio
-    ;       optopt_svcell_node_ratio
-    ;       optopt_svcell_all_path_node_ratio
-    ;       optopt_svcell_all_candidates
+    ;       optopt_opt_saved_vars_const
+    ;       optopt_opt_svcell
+    ;       optopt_opt_svcell_loop
+    ;       optopt_opt_svcell_full_path
+    ;       optopt_opt_svcell_on_stack
+    ;       optopt_opt_svcell_candidate_headvars
+    ;       optopt_opt_svcell_cv_store_cost
+    ;       optopt_opt_svcell_cv_load_cost
+    ;       optopt_opt_svcell_fv_store_cost
+    ;       optopt_opt_svcell_fv_load_cost
+    ;       optopt_opt_svcell_op_ratio
+    ;       optopt_opt_svcell_node_ratio
+    ;       optopt_opt_svcell_all_path_node_ratio
+    ;       optopt_opt_svcell_all_candidates
 
-    ;       optopt_constraint_propagation
-    ;       optopt_local_constraint_propagation
+    ;       optopt_prop_constraints
+    ;       optopt_prop_local_constraints
 
-    ;       optopt_deforestation
+    ;       optopt_deforest
     ;       optopt_deforestation_depth_limit
     ;       optopt_deforestation_cost_factor
     ;       optopt_deforestation_vars_threshold
@@ -729,12 +729,12 @@
     ;       optopt_tuple_costs_ratio
     ;       optopt_tuple_min_args
 
-    ;       optopt_delay_construct
+    ;       optopt_delay_constructs
 
-    ;       optopt_follow_code
-    ;       optopt_always_spec_dep_par_conjs
+    ;       optopt_opt_follow_code
+    ;       optopt_spec_in_all_dep_par_conjs
     ;       optopt_allow_some_paths_only_waits
-    ;       optopt_region_analysis
+    ;       optopt_analyse_regions
 
     % Stuff for the CTGC system (structure sharing / structure reuse).
     ;       structure_sharing_analysis
@@ -747,11 +747,11 @@
     ;           structure_reuse_free_cells
 
     % HLDS->{LLDS,MLDS} optimizations.
-    ;       optopt_smart_indexing
-    ;           optopt_smart_atomic_indexing
-    ;           optopt_smart_string_indexing
-    ;           optopt_smart_tag_indexing
-    ;           optopt_smart_float_indexing
+    ;       optopt_use_smart_indexing
+    ;           optopt_use_smart_indexing_atomic
+    ;           optopt_use_smart_indexing_string
+    ;           optopt_use_smart_indexing_tag
+    ;           optopt_use_smart_indexing_float
 
     ;           optopt_dense_switch_req_density
     ;           optopt_lookup_switch_req_density
@@ -761,55 +761,55 @@
     ;           optopt_string_hash_switch_size
     ;           optopt_string_binary_switch_size
     ;           optopt_tag_switch_size
-    ;           optopt_switch_single_rec_base_first
-    ;           optopt_switch_multi_rec_base_first
+    ;           optopt_put_base_first_single_rec
+    ;           optopt_put_base_first_multi_rec
 
-    ;       optopt_static_ground_cells
+    ;       optopt_use_static_ground_cells
     ;       optopt_use_atomic_cells
+    ;       optimize_trail_usage
 
     % HLDS->MLDS optimizations.
     ;       optopt_optimize_mlds
     ;       optopt_peep_mlds
-    ;       optopt_mlds_tailcalls
-    ;       optopt_initializations
-    ;       optopt_eliminate_unused_mlds_assigns
-    ;       optopt_eliminate_local_vars
-    ;       optopt_generate_trail_ops_inline
-    ;       optimize_trail_usage
+    ;       optopt_opt_mlds_tailcalls
+    ;       optopt_opt_mlds_inits
+    ;       optopt_elim_unused_mlds_assigns
+    ;       optopt_elim_local_vars_mlds
+    ;       optopt_gen_trail_ops_inline_mlds
 
     % LLDS->LLDS optimizations.
     ;       optopt_try_switch_size
     ;       optopt_binary_switch_size
-    ;       optopt_middle_rec
-    ;       optopt_simple_neg
+    ;       optopt_opt_middle_rec_llds
+    ;       optopt_opt_simple_neg_llds
     ;       optopt_allow_hijacks
 
     ;       optopt_optimize_llds
     ;       optopt_repeat_opts
     ;       optopt_peep_llds
     ;       optopt_peep_llds_mkword
-    ;       optopt_labels
+    ;       optopt_opt_labels
     ;       optopt_standardize_labels
-    ;       optopt_jumps
-    ;       optopt_fulljumps
-    ;       optopt_checked_nondet_tailcalls
-    ;       optopt_pessimize_tailcalls
-    ;       optopt_delay_slot
-    ;       optopt_frames
-    ;       optopt_reassign
-    ;       optopt_use_local_vars
-    ;       optopt_local_var_access_threshold
-    ;       optopt_dups
-    ;       optopt_proc_dups
-    ;       optopt_common_data
-    ;       optopt_common_layout_data
-    ;       optopt_layout_compression_limit
+    ;       optopt_opt_jumps
+    ;       optopt_opt_fulljumps
+    ;       optopt_opt_checked_nondet_tailcalls
+    ;       optopt_pessimize_llds_tailcalls
+    ;       optopt_opt_delay_slot
+    ;       optopt_opt_frames
+    ;       optopt_opt_llds_reassign
+    ;       optopt_use_local_vars_llds
+    ;       optopt_llds_local_var_access_threshold
+    ;       optopt_opt_dup_instrs_llds
+    ;       optopt_opt_dup_procs_llds
+    ;       optopt_use_llds_common_data
+    ;       optopt_use_llds_common_layout_data
+    ;       optopt_llds_layout_compression_limit
     ;       optimize_region_ops
 
     % LLDS->C optimizations.
     ;       optopt_emit_c_loops
     ;       optopt_procs_per_c_function
-    ;       optopt_local_thread_engine_base
+    ;       optopt_use_local_thread_engine_base
     ;       optopt_inline_alloc
     ;       optopt_use_macro_for_redo_fail
 
@@ -1192,9 +1192,9 @@
     ;       local_module_id
     ;       generate_item_version_numbers
     ;       generate_mmc_make_module_dependencies
-    ;       optopt_static_ground_floats
-    ;       optopt_static_ground_int64s
-    ;       optopt_static_code_addresses
+    ;       optopt_use_static_ground_floats
+    ;       optopt_use_static_ground_int64s
+    ;       optopt_use_static_code_addresses
 
 % Unused/deprecated options.
     ;       ansi_c
@@ -3483,16 +3483,16 @@ optdb(oc_opt_ctrl,  analysis_file_cache_dir,           string(""),
 
     % HLDS -> HLDS
 
-optdb(oc_opt_hh,    optopt_dead_procs,                 bool_special,
+optdb(oc_opt_hh,    optopt_opt_dead_procs,             bool_special,
     alt_help("optimize-dead-procs",
             ["optimise-dead-procs"], [
         w("Delete all procedures that are never called.")])).
-optdb(oc_opt_hh,    optopt_unneeded_code,              bool_special,
+optdb(oc_opt_hh,    optopt_opt_unneeded_code,          bool_special,
     help("unneeded-code", [
         w("Remove goals from computation paths where their outputs are"),
         w("not needed, provided the semantics options allow the deletion"),
         w("or movement of the goal.")])).
-optdb(oc_opt_hh,    optopt_unneeded_code_copy_limit,   int_special,
+optdb(oc_opt_hh,    optopt_opt_unneeded_code_copy_limit, int_special,
     arg_help("unneeded-code-copy-limit", "copy_limit", [
         w("Specify the maximum number of places"),
         w("to which a goal may be copied"),
@@ -3501,20 +3501,20 @@ optdb(oc_opt_hh,    optopt_unneeded_code_copy_limit,   int_special,
         w("only goal deletion; a value of one prevents any increase in the"),
         w("size of the code.")])).
 
-optdb(oc_opt_hh,    optopt_unused_args,                bool_special,
+optdb(oc_opt_hh,    optopt_opt_unused_args,            bool_special,
     alt_help("optimize-unused-args",
             ["optimise-unused-args"], [
         w("Delete unused arguments from predicates and functions."),
         w("This will cause the compiler to generate more efficient code"),
         w("for many polymorphic predicates.")])).
-optdb(oc_opt_hh,    optopt_intermod_unused_args,       bool_special,
+optdb(oc_opt_hh,    optopt_opt_unused_args_intermod,   bool_special,
     help("intermod-unused-args", [
         w("Delete unused arguments from predicates and functions"),
         w("even when the analysis required crosses module boundaries."),
         w("This option implies"), opt("--optimize-unused-args"), w("and"),
         opt("--intermodule-optimization", ".")])).
 
-optdb(oc_opt_hh,    optopt_format_calls,               bool_special,
+optdb(oc_opt_hh,    optopt_opt_format_calls,           bool_special,
     % XXX This is documented as if it were a default-off option,
     % but in fact, it is define-on. The default value is just hidden
     % behind the special_handler.
@@ -3525,18 +3525,18 @@ optdb(oc_opt_hh,    optopt_format_calls,               bool_special,
         w("replacing those calls with"),
         w("the sequence of more primitive operations"),
         w("required to implement them.")])).
-optdb(oc_opt_hh,    optopt_constant_propagation,       bool_special,
+optdb(oc_opt_hh,    optopt_prop_constants,             bool_special,
     alt_help("optimize-constant-propagation",
             ["optimise-constant-propagation"], [
         w("Given calls to some frequently used library functions and"),
         w("predicates, mainly those that do arithmetic, evaluate them"),
         w("at compile time, if all their input arguments are constants.")])).
-optdb(oc_opt_hh,    optopt_duplicate_calls,            bool_special,
+optdb(oc_opt_hh,    optopt_opt_dup_calls,              bool_special,
     alt_help("optimize-duplicate-calls",
             ["optimise-duplicate-calls"], [
         w("Given multiple calls to a predicate or function"),
         w("with the same input arguments, optimize away all but one.")])).
-optdb(oc_opt_hh,    optopt_excess_assign,              bool_special,
+optdb(oc_opt_hh,    optopt_elim_excess_assigns,        bool_special,
     help("excess-assign", [
         w("Remove assignment unifications whose only effect"),
         w("is to give another name to the same value.")])).
@@ -3620,7 +3620,7 @@ optdb(oc_opt_hh,    optopt_inline_tr_sccs_max_extra,   int_special,
         w("allow the SCC to contain up to"),
         bare_arg("N+E"), w("mutually recursive tail calls.")])).
 
-optdb(oc_opt_hh,    optopt_higher_order,               bool_special,
+optdb(oc_opt_hh,    optopt_opt_higher_order,           bool_special,
     alt_help("optimize-higher-order",
             ["optimise-higher-order"], [
         cindex("Higher-order specialization"),
@@ -3629,12 +3629,12 @@ optdb(oc_opt_hh,    optopt_higher_order,               bool_special,
         w("higher-order predicates and functions"),
         w("for call sites where the values of the higher-order arguments"),
         w("are known.")])).
-optdb(oc_opt_hh,    optopt_type_specialization,        bool_special,
+optdb(oc_opt_hh,    optopt_spec_types,                 bool_special,
     alt_help("type-specialization",
             ["type-specialisation"], [
         w("Enable specialization of polymorphic predicates where the"),
         w("polymorphic types are known.")])).
-optdb(oc_opt_hh,    optopt_user_guided_type_specialization, bool_special,
+optdb(oc_opt_hh,    optopt_spec_types_user_guided,     bool_special,
     alt_help("user-guided-type-specialization",
             ["user-guided-type-specialisation"], [
         w("Enable specialization of polymorphic predicates for which"),
@@ -3656,24 +3656,24 @@ optdb(oc_opt_hh,    optopt_higher_order_arg_limit,     int_special,
         w("be specialized by"), opt("--optimize-higher-order"), w("and"),
         opt("--type-specialization", ".")])).
 
-optdb(oc_opt_hh,    optopt_loop_invariants,            bool_special,
+optdb(oc_opt_hh,    optopt_opt_loop_invariants,        bool_special,
     help("loop-invariants", [
         w("Hoist loop invariant computations out of loops.")])).
 optdb(oc_opt_hh,    optopt_introduce_accumulators,     bool_special,
     help("introduce-accumulators", [
         w("Attempt to make procedures tail recursive"),
         w("by introducing accumulator variables into them.")])).
-optdb(oc_opt_hh,    optopt_lcmc,                       bool_special,
+optdb(oc_opt_hh,    optopt_opt_lcmc,                   bool_special,
     alt_help("optimize-constructor-last-call",
             ["optimise-constructor-last-call"], [
         w("Enable the optimization of almost-last calls that are followed"),
         w("only by constructor application.")])).
-optdb(oc_opt_hh,    optopt_lcmc_accumulator,           bool_special,
+optdb(oc_opt_hh,    optopt_opt_lcmc_accumulator,       bool_special,
     priv_alt_help("optimize-constructor-last-call-accumulator",
             ["optimise-constructor-last-call-accumulator"], [
         w("Enable the optimization via accumulators of almost-last calls"),
         w("that are followed only by constructor application.")])).
-optdb(oc_opt_hh,    optopt_lcmc_null,                  bool_special,
+optdb(oc_opt_hh,    optopt_opt_lcmc_null,              bool_special,
     priv_alt_help("optimize-constructor-last-call-null",
             ["optimise-constructor-last-call-null"], [
         w("When"), opt("--optimize-constructor-last-call"), w("is enabled,"),
@@ -3704,7 +3704,7 @@ optdb(oc_opt_hh,    optopt_enable_const_struct_user,   bool_special,
         w("Gather constant ground structures in a separate table."),
         w("Each such structure will be stored in this table just once,"),
         w("even if it occurs in many different procedures.")])).
-optdb(oc_opt_hh,    optopt_common_struct,              bool_special,
+optdb(oc_opt_hh,    optopt_opt_common_structs,         bool_special,
     help("common-struct", [
         w("Replace two or more occurrences of the same term"),
         w("in a conjunction with just one copy.")])).
@@ -3713,57 +3713,57 @@ optdb(oc_opt_hh,    optimize_saved_vars,               bool_special,
     alt_help("optimize-saved-vars",
             ["optimise-saved-vars"], [
         w("Minimize the number of variables saved across calls.")])).
-optdb(oc_opt_hh,    optopt_saved_vars_const,           bool_special,
+optdb(oc_opt_hh,    optopt_opt_saved_vars_const,       bool_special,
     priv_alt_help("optimize-saved-vars-const",
             ["optimise-saved-vars-const"], [
         w("Minimize the number of variables saved across calls by"),
         w("introducing duplicate copies of variables bound to constants"),
         w("in each interval between flushes where they are needed.")])).
-optdb(oc_opt_hh,    optopt_svcell,                     bool_special,
+optdb(oc_opt_hh,    optopt_opt_svcell,                 bool_special,
     priv_alt_help("optimize-saved-vars-cell",
             ["optimise-saved-vars-cell"], [
         w("Minimize the number of variables saved across calls by"),
         w("trying to use saved variables pointing to cells to reach"),
         w("the variables stored in those cells.")])).
-optdb(oc_opt_hh,    optopt_svcell_loop,                bool_special,
+optdb(oc_opt_hh,    optopt_opt_svcell_loop,            bool_special,
     priv_help("osv-loop", [])).
-optdb(oc_opt_hh,    optopt_svcell_full_path,           bool_special,
+optdb(oc_opt_hh,    optopt_opt_svcell_full_path,       bool_special,
     priv_help("osv-full-path", [])).
-optdb(oc_opt_hh,    optopt_svcell_on_stack,            bool_special,
+optdb(oc_opt_hh,    optopt_opt_svcell_on_stack,        bool_special,
     priv_help("osv-on-stack", [])).
-optdb(oc_opt_hh,    optopt_svcell_candidate_headvars,  bool_special,
+optdb(oc_opt_hh,    optopt_opt_svcell_candidate_headvars, bool_special,
     priv_help("osv-cand-head", [])).
 % The next four options are used by tupling.m as well; changes to them
 % may require changes there as well.
-optdb(oc_opt_hh,    optopt_svcell_cv_store_cost,       int_special,
+optdb(oc_opt_hh,    optopt_opt_svcell_cv_store_cost,   int_special,
     priv_arg_help("osv-cvstore-cost", "cost", [])).
-optdb(oc_opt_hh,    optopt_svcell_cv_load_cost,        int_special,
+optdb(oc_opt_hh,    optopt_opt_svcell_cv_load_cost,    int_special,
     priv_arg_help("osv-cvload-cost", "cost", [])).
-optdb(oc_opt_hh,    optopt_svcell_fv_store_cost,       int_special,
+optdb(oc_opt_hh,    optopt_opt_svcell_fv_store_cost,   int_special,
     priv_arg_help("osv-fvstore-cost", "cost", [])).
-optdb(oc_opt_hh,    optopt_svcell_fv_load_cost,        int_special,
+optdb(oc_opt_hh,    optopt_opt_svcell_fv_load_cost,    int_special,
     priv_arg_help("osv-fvload-cost", "cost", [])).
-optdb(oc_opt_hh,    optopt_svcell_op_ratio,            int_special,
+optdb(oc_opt_hh,    optopt_opt_svcell_op_ratio,        int_special,
     priv_arg_help("osv-op-ratio", "percentage", [])).
-optdb(oc_opt_hh,    optopt_svcell_node_ratio,          int_special,
+optdb(oc_opt_hh,    optopt_opt_svcell_node_ratio,      int_special,
     priv_arg_help("osv-node-ratio", "percentage", [])).
-optdb(oc_opt_hh,    optopt_svcell_all_path_node_ratio, int_special,
+optdb(oc_opt_hh,    optopt_opt_svcell_all_path_node_ratio, int_special,
     priv_arg_help("osv-allpath-node-ratio", "percentage", [])).
-optdb(oc_opt_hh,    optopt_svcell_all_candidates,      bool_special,
+optdb(oc_opt_hh,    optopt_opt_svcell_all_candidates,  bool_special,
     priv_help("osv-all-cand", [])).
 
-optdb(oc_opt_hh,    optopt_constraint_propagation,     bool_special,
+optdb(oc_opt_hh,    optopt_prop_constraints,           bool_special,
     help("constraint-propagation", [
         w("Perform the constraint propagation transformation,"),
         w("which attempts to ensure that"),
         w("goals which can fail are executed as early as possible.")])).
-optdb(oc_opt_hh,    optopt_local_constraint_propagation, bool_special,
+optdb(oc_opt_hh,    optopt_prop_local_constraints,     bool_special,
     help("local-constraint-propagation", [
         w("Perform the constraint propagation transformation,"),
         w("but only rearrange goals within each procedure."),
         w("Specialized versions of procedures will not be created.")])).
 
-optdb(oc_opt_hh,    optopt_deforestation,              bool_special,
+optdb(oc_opt_hh,    optopt_deforest,                   bool_special,
     help("deforestation", [
         w("Perform deforestation, which is a program transformation"),
         w("whose aims are to avoid the construction of"),
@@ -3840,13 +3840,13 @@ optdb(oc_opt_hh,    optopt_tuple_min_args,             int_special,
         w("This is mostly to speed up the compilation process"),
         w("by not pursuing (presumably) unfruitful searches.")])).
 
-optdb(oc_opt_hh,    optopt_delay_construct,            bool_special,
+optdb(oc_opt_hh,    optopt_delay_constructs,           bool_special,
     alt_help("delay-constructs",
             ["delay-construct"], [
         w("Reorder goals to move construction unifications"),
         w("after primitive goals that can fail.")])).
 
-optdb(oc_opt_hh,    optopt_follow_code,                bool_special,
+optdb(oc_opt_hh,    optopt_opt_follow_code,            bool_special,
     priv_help("follow-code", [
         w("Move the code following a branched goal"),
         w("(if-then-else, disjunction, or switch)"),
@@ -3854,7 +3854,7 @@ optdb(oc_opt_hh,    optopt_follow_code,                bool_special,
         w("Having a call as the goal just after the branched goal"),
         w("gives the LLDS code generator a consistent set of places"),
         w("into which each branch should store live variables.")])).
-optdb(oc_opt_hh,    optopt_always_spec_dep_par_conjs,  bool_special,
+optdb(oc_opt_hh,    optopt_spec_in_all_dep_par_conjs,  bool_special,
     % This is for measurements by implementors only.
     priv_help("always-specialize-in-dep-par-conjs", [
         w("When the transformation for handling dependent parallel"),
@@ -3863,7 +3863,7 @@ optdb(oc_opt_hh,    optopt_always_spec_dep_par_conjs,  bool_special,
         w("even if this is not profitable.")])).
 optdb(oc_opt_hh,    optopt_allow_some_paths_only_waits, bool_special,
     priv_help("allow-some-paths-only-waits", [])).
-optdb(oc_opt_hh,    optopt_region_analysis,            bool_special,
+optdb(oc_opt_hh,    optopt_analyse_regions,             bool_special,
     % This option is not documented because it is still experimental.
     priv_help("region-analysis", [
         w("Enable the analysis for region-based memory management.")])).
@@ -3921,7 +3921,7 @@ optdb(oc_opt_hh_exp, structure_reuse_free_cells,        bool(no),
 
     % HLDS -> {LLDS,MLDS}
 
-optdb(oc_opt_hlm,   optopt_smart_indexing,             bool_special,
+optdb(oc_opt_hlm,   optopt_use_smart_indexing,         bool_special,
     help("smart-indexing", [
         w("Implement switches using the fastest applicable"),
         w("implementation method, which may be e.g. binary search"),
@@ -3930,17 +3930,17 @@ optdb(oc_opt_hlm,   optopt_smart_indexing,             bool_special,
         w("as simple if-then-else chains.")])).
 % The following options are for developers only --they provide
 % finer grained control over smart indexing.
-optdb(oc_opt_hlm,   optopt_smart_atomic_indexing,      bool_special,
+optdb(oc_opt_hlm,   optopt_use_smart_indexing_atomic,  bool_special,
     priv_help("smart-atomic-indexing", [
         w("Generate smart switches on atomic types when appropriate.")])).
-optdb(oc_opt_hlm,   optopt_smart_string_indexing,      bool_special,
+optdb(oc_opt_hlm,   optopt_use_smart_indexing_string,  bool_special,
     priv_help("smart-string-indexing", [
         w("Generate smart switches on strings when appropriate.")])).
-optdb(oc_opt_hlm,   optopt_smart_tag_indexing,         bool_special,
+optdb(oc_opt_hlm,   optopt_use_smart_indexing_tag,     bool_special,
     priv_help("smart-tag-indexing", [
         w("Generate smart switches on discriminated union types"),
         w("when appropriate.")])).
-optdb(oc_opt_hlm,   optopt_smart_float_indexing,       bool_special,
+optdb(oc_opt_hlm,   optopt_use_smart_indexing_float,   bool_special,
     priv_help("smart-float-indexing", [
         w("Generate smart switches on floats when appropriate.")])).
 optdb(oc_opt_hlm,   optopt_dense_switch_req_density,   int_special,
@@ -3981,16 +3981,16 @@ optdb(oc_opt_hlm,   optopt_tag_switch_size,            int_special,
         w("The number of alternatives in a tag switch"),
         w("must be at least this number (default: 3).")])).
 % The next two options are only for performance tests.
-optdb(oc_opt_hlm,   optopt_switch_single_rec_base_first, bool_special,
+optdb(oc_opt_hlm,   optopt_put_base_first_single_rec,   bool_special,
     priv_help("switch-single-rec-base-first", [
         w("In a switch with two arms, one a base case and one with a single"),
         w("recursive call, put the base case first.")])).
-optdb(oc_opt_hlm,   optopt_switch_multi_rec_base_first, bool_special,
+optdb(oc_opt_hlm,   optopt_put_base_first_multi_rec,   bool_special,
     priv_help("switch-multi-rec-base-first", [
         w("In a switch with two arms, one a base case and one with multiple"),
         w("recursive calls, put the base case first.")])).
 
-optdb(oc_opt_hlm,   optopt_static_ground_cells,        bool_special,
+optdb(oc_opt_hlm,   optopt_use_static_ground_cells,    bool_special,
     % XXX cf const-struct
     help("static-ground-terms", [
         w("Enable the optimization of constructing constant ground terms"),
@@ -4002,51 +4002,7 @@ optdb(oc_opt_hlm,   optopt_use_atomic_cells,           bool_special,
     help("use-atomic-cells", [
         w("Use the atomic variants of the Boehm gc allocator calls"),
         w("when the memory cell to be allocated cannot contain pointers.")])).
-
-%---------------------%
-
-    % MLDS -> MLDS
-
-% XXX The names of the options below, both internal and user-visible,
-% should include the "mlds" qualifier.
-optdb(oc_opt_mm,    optopt_optimize_mlds,              bool_special,
-    alt_help("mlds-optimize",
-            ["mlds-optimise"], [
-        w("Enable the MLDS->MLDS optimization passes.")])).
-optdb(oc_opt_mm,    optopt_peep_mlds,                  bool_special,
-    help("mlds-peephole", [
-        w("Perform peephole optimization of the MLDS.")])).
-optdb(oc_opt_hm,    optopt_mlds_tailcalls,             bool_special,
-    % XXX The option's names, both internal and user-visible,
-    % should include the "self" qualifier.
-    alt_help("optimize-tailcalls",
-            ["optimise-tailcalls"], [
-        w("Turn self-tailcalls into loops.")])).
-optdb(oc_opt_mm,    optopt_initializations,            bool_special,
-    alt_help("optimize-initializations",
-            ["optimise-initializations"], [
-        w("Whenever possible,"),
-        w("convert the first assignment to each local variable"),
-        w("in the target code into an initializer on its declaration."),
-        w("Some target language compilers"),
-        w("can generate faster code that way.")])).
-optdb(oc_opt_mm,    optopt_eliminate_unused_mlds_assigns, bool_special,
-    % This is useful for developers only.
-    priv_help("eliminate-unused-mlds-assigns", [
-        w("Eliminate assignments to dead variables in the MLDS.")])).
-optdb(oc_opt_mm,    optopt_eliminate_local_vars,       bool_special,
-    alt_help("eliminate-local-variables", ["eliminate-local-vars"], [
-        w("Eliminate local variables with known values, where possible,"),
-        w("by replacing occurrences of such variables with their values.")])).
-% From the user point of view, the next options control an MLDS optimization.
-optdb(oc_opt_hh,    optopt_generate_trail_ops_inline,  bool_special,
-    help("generate-trail-ops-inline", [
-        w("Normally, the compiler generates inline code"),
-        w("for trailing operations."),
-        w("With"), opt("--no-generate-trail-ops-inline", ","),
-        w("the compiler will implement them using calls to those operations"),
-        w("in the standard library.")])).
-optdb(oc_opt_hm,    optimize_trail_usage,              bool(no),
+optdb(oc_opt_hlm,   optimize_trail_usage,              bool(no),
     % This option is developer-only.
     % It is intended for the benchmarking of trail usage optimization.
     % Otherwise, it should not be turned off, as doing so interferes with
@@ -4057,10 +4013,56 @@ optdb(oc_opt_hm,    optimize_trail_usage,              bool(no),
 
 %---------------------%
 
+    % MLDS -> MLDS
+
+% The internal names of the options below include an "mlds" qualifier.
+
+optdb(oc_opt_mm,    optopt_optimize_mlds,              bool_special,
+    alt_help("mlds-optimize",
+            ["mlds-optimise"], [
+        w("Enable the MLDS->MLDS optimization passes.")])).
+optdb(oc_opt_mm,    optopt_peep_mlds,                  bool_special,
+    help("mlds-peephole", [
+        w("Perform peephole optimization of the MLDS.")])).
+optdb(oc_opt_hm,    optopt_opt_mlds_tailcalls,         bool_special,
+    % XXX The option's names, both internal and user-visible,
+    % should include the "self" qualifier.
+    alt_help("optimize-tailcalls",
+            ["optimise-tailcalls"], [
+        w("Turn self-tailcalls into loops.")])).
+optdb(oc_opt_mm,    optopt_opt_mlds_inits,             bool_special,
+    alt_help("optimize-initializations",
+            ["optimise-initializations"], [
+        w("Whenever possible,"),
+        w("convert the first assignment to each local variable"),
+        w("in the target code into an initializer on its declaration."),
+        w("Some target language compilers"),
+        w("can generate faster code that way.")])).
+optdb(oc_opt_mm,    optopt_elim_unused_mlds_assigns,   bool_special,
+    % This is useful for developers only.
+    priv_help("eliminate-unused-mlds-assigns", [
+        w("Eliminate assignments to dead variables in the MLDS.")])).
+optdb(oc_opt_mm,    optopt_elim_local_vars_mlds,       bool_special,
+    alt_help("eliminate-local-variables", ["eliminate-local-vars"], [
+        w("Eliminate local variables with known values, where possible,"),
+        w("by replacing occurrences of such variables with their values.")])).
+% From the user point of view, the next options control an MLDS optimization.
+optdb(oc_opt_hh,    optopt_gen_trail_ops_inline_mlds,  bool_special,
+    help("generate-trail-ops-inline", [
+        w("Normally, the compiler generates inline code"),
+        w("for trailing operations."),
+        w("With"), opt("--no-generate-trail-ops-inline", ","),
+        w("the compiler will implement them using calls to those operations"),
+        w("in the standard library.")])).
+
+%---------------------%
+
     % HLDS -> LLDS
 
-% XXX The names of the options below, both internal and user-visible,
-% should include the "llds" qualifier.
+% The internal names of the options below include an "llds" qualifier,
+% with the exceptions being the option names that do not make sense for MLDS,
+% *and* the option names that *do* make sense for the MLDS, but there is
+% some chance of them being *implemented* there.
 
 % XXX reword some of the following help texts.
 optdb(oc_opt_hl,    optopt_try_switch_size,            int_special,
@@ -4071,11 +4073,11 @@ optdb(oc_opt_hl,    optopt_binary_switch_size,         int_special,
     arg_help("binary-switch-size", "N", [
         w("The number of alternatives in a binary search switch"),
         w("must be at least this number (default: 4).")])).
-optdb(oc_opt_hl,    optopt_middle_rec,                 bool_special,
+optdb(oc_opt_hl,    optopt_opt_middle_rec_llds,        bool_special,
     help("middle-rec", [
         % XXX This could benefit from more detail.
         w("Enable the middle recursion optimization.")])).
-optdb(oc_opt_hl,    optopt_simple_neg,                 bool_special,
+optdb(oc_opt_hl,    optopt_opt_simple_neg_llds,        bool_special,
     help("simple-neg", [
         % XXX This could benefit from more detail.
         w("Generate simplified code for simple negations.")])).
@@ -4088,10 +4090,9 @@ optdb(oc_opt_hl,    optopt_allow_hijacks,              bool_special,
 
     % LLDS -> LLDS
 
-% XXX The names of the options below, both internal and user-visible,
-% should include the "llds" qualifier.
-% XXX Should we make an exception for the option names that do not
-% make sense for MLDS?
+% The internal names of the options below include an "llds" qualifier,
+% with the exceptions being the option names that do not make sense for MLDS.
+
 optdb(oc_opt_ll,    optopt_optimize_llds,              bool_special,
     alt_help("llds-optimize",
             ["llds-optimise"], [
@@ -4111,7 +4112,7 @@ optdb(oc_opt_ll,    optopt_peep_llds_mkword,           bool_special,
     priv_alt_help("optimize-peep-mkword",
             ["optimise-peep-mkword"], [
         w("Enable peephole optimizations of words created by mkword.")])).
-optdb(oc_opt_ll,    optopt_labels,                     bool_special,
+optdb(oc_opt_ll,    optopt_opt_labels,                 bool_special,
     alt_help("optimize-labels",
             ["optimise-labels"], [
         w("Delete dead labels, and the unreachable code following them.")])).
@@ -4120,60 +4121,60 @@ optdb(oc_opt_ll,    optopt_standardize_labels,         bool_special,
     priv_alt_help("standardize-labels",
             ["standardise-labels"], [
         w("Standardize internal labels in the generated code.")])).
-optdb(oc_opt_ll,    optopt_jumps,                      bool_special,
+optdb(oc_opt_ll,    optopt_opt_jumps,                  bool_special,
     alt_help("optimize-jumps",
             ["optimise-jumps"], [
         w("Enable the short-circuiting of jumps to jumps.")])).
-optdb(oc_opt_ll,    optopt_fulljumps,                  bool_special,
+optdb(oc_opt_ll,    optopt_opt_fulljumps,              bool_special,
     alt_help("optimize-fulljumps",
             ["optimise-fulljumps"], [
         w("Enable the elimination of jumps to ordinary code.")])).
-optdb(oc_opt_ll,    optopt_checked_nondet_tailcalls,   bool_special,
+optdb(oc_opt_ll,    optopt_opt_checked_nondet_tailcalls, bool_special,
     help("checked-nondet-tailcalls", [
         w("Convert nondet calls into tail calls whenever possible, even"),
         w("when this requires a runtime check. This option tries to"),
         w("minimize stack consumption, possibly at the expense of speed.")])).
-optdb(oc_opt_ll,    optopt_pessimize_tailcalls,        bool_special,
+optdb(oc_opt_ll,    optopt_pessimize_llds_tailcalls,   bool_special,
     help("pessimize-tailcalls", [
         w("Disable the optimization of tailcalls."),
         w("This option tries to minimize code size"),
         w("at the expense of speed.")])).
-optdb(oc_opt_ll,    optopt_delay_slot,                 bool_special,
+optdb(oc_opt_ll,    optopt_opt_delay_slot,             bool_special,
     alt_help("optimize-delay-slot",
             ["optimise-delay-slot"], [
         w("Disable branch delay slot optimizations,"),
         w("This option is meaningful only if"),
         w("the target architecture has delay slots.")])).
-optdb(oc_opt_ll,    optopt_frames,                     bool_special,
+optdb(oc_opt_ll,    optopt_opt_frames,                 bool_special,
     alt_help("optimize-frames",
             ["optimise-frames"], [
         w("Optimize the operations that maintain stack frames.")])).
-optdb(oc_opt_ll,    optopt_reassign,                   bool_special,
+optdb(oc_opt_ll,    optopt_opt_llds_reassign,          bool_special,
     alt_help("optimize-reassign",
             ["optimise-reassign"], [
         w("Optimize away assignments to memory locations"),
         w("that already hold the to-be-assigned value.")])).
-optdb(oc_opt_ll,    optopt_use_local_vars,             bool_special,
+optdb(oc_opt_ll,    optopt_use_local_vars_llds,        bool_special,
     help("use-local-vars", [
         w("Use local variables in C code blocks wherever possible.")])).
-optdb(oc_opt_ll,    optopt_local_var_access_threshold, int_special,
+optdb(oc_opt_ll,    optopt_llds_local_var_access_threshold, int_special,
     priv_arg_help("local-var-access-threshold", "XXX document me", [])).
-optdb(oc_opt_ll,    optopt_dups,                       bool_special,
+optdb(oc_opt_ll,    optopt_opt_dup_instrs_llds,        bool_special,
     alt_help("optimize-dups",
             ["optimise-dups"], [
         w("Enable elimination of duplicate code within procedures.")])).
-optdb(oc_opt_ll,    optopt_proc_dups,                  bool_special,
+optdb(oc_opt_ll,    optopt_opt_dup_procs_llds,         bool_special,
     alt_help("optimize-proc-dups",
             ["optimise-proc-dups"], [
         w("Enable elimination of duplicate procedures.")])).
-optdb(oc_opt_ll,    optopt_common_data,                bool_special,
+optdb(oc_opt_ll,    optopt_use_llds_common_data,       bool_special,
     help("common-data", [
         w("Enable optimization of common data structures.")])).
-optdb(oc_opt_ll,    optopt_common_layout_data,         bool_special,
+optdb(oc_opt_ll,    optopt_use_llds_common_layout_data, bool_special,
     help("common-layout-data", [
         w("Enable optimization of common subsequences"),
         w("in layout structures.")])).
-optdb(oc_opt_ll,    optopt_layout_compression_limit,   int_special,
+optdb(oc_opt_ll,    optopt_llds_layout_compression_limit, int_special,
     arg_help("layout-compression-limit", "N", [
         w("Attempt to compress the layout structures used by the debugger"),
         w("only as long as the arrays involved have at most"),
@@ -4199,7 +4200,7 @@ optdb(oc_opt_lc,    optopt_procs_per_c_function,       int_special,
         w("The default value of"), arg("N"), w("is one."),
         w("Increasing"), arg("N"), w("can produce"),
         w("slightly more efficient code, but makes compilation slower.")])).
-optdb(oc_opt_lc,    optopt_local_thread_engine_base,   bool_special,
+optdb(oc_opt_lc,    optopt_use_local_thread_engine_base, bool_special,
     help("local-thread-engine-base", [
         w("Do not copy the thread-local Mercury engine base address"),
         w("into a local variable, even when this would be appropriate."),
@@ -4375,8 +4376,8 @@ optdb(oc_analysis,  analyse_exceptions,                bool(no),
         w("procedures that will not throw an exception."),
         w("Some optimizations can make use of this information.")])).
 optdb(oc_analysis,  analyse_closures,                  bool(no),
-    % XXX The options controlling closure analysis are currently
-    % commented out because it isn't useful. It can be uncommented when
+    % XXX The option controlling closure analysis are currently
+    % private because it isn't useful. It can be made public when
     % we actually have something that uses it.
     priv_alt_help("analyse-local-closures",
             ["analyse-closures"], [
@@ -6014,9 +6015,9 @@ optdb(oc_internal,  generate_mmc_make_module_dependencies, bool(no),
         w("even when using"), code("mmake", "."),
         w("This is recommended when building a library"),
         w("for installation.")])).
-optdb(oc_internal,  optopt_static_ground_floats,       bool_special, no_help).
-optdb(oc_internal,  optopt_static_ground_int64s,       bool_special, no_help).
-optdb(oc_internal,  optopt_static_code_addresses,      bool_special, no_help).
+optdb(oc_internal,  optopt_use_static_ground_floats,   bool_special, no_help).
+optdb(oc_internal,  optopt_use_static_ground_int64s,   bool_special, no_help).
+optdb(oc_internal,  optopt_use_static_code_addresses,  bool_special, no_help).
 
 %---------------------------------------------------------------------------%
 
@@ -6509,27 +6510,27 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_enable_const_struct_user(Bool)
         ;
-            Option = optopt_common_struct,
+            Option = optopt_opt_common_structs,
             SpecialData = bool(Bool),
             OptOption = oo_opt_common_structs(Bool)
         ;
-            Option = optopt_constraint_propagation,
+            Option = optopt_prop_constraints,
             SpecialData = bool(Bool),
             OptOption = oo_prop_constraints(Bool)
         ;
-            Option = optopt_local_constraint_propagation,
+            Option = optopt_prop_local_constraints,
             SpecialData = bool(Bool),
             OptOption = oo_prop_local_constraints(Bool)
         ;
-            Option = optopt_duplicate_calls,
+            Option = optopt_opt_dup_calls,
             SpecialData = bool(Bool),
             OptOption = oo_opt_dup_calls(Bool)
         ;
-            Option = optopt_constant_propagation,
+            Option = optopt_prop_constants,
             SpecialData = bool(Bool),
             OptOption = oo_prop_constants(Bool)
         ;
-            Option = optopt_excess_assign,
+            Option = optopt_elim_excess_assigns,
             SpecialData = bool(Bool),
             OptOption = oo_elim_excess_assigns(Bool)
         ;
@@ -6537,7 +6538,7 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_merge_code_after_switch(Bool)
         ;
-            Option = optopt_format_calls,
+            Option = optopt_opt_format_calls,
             SpecialData = bool(Bool),
             OptOption = oo_opt_format_calls(Bool)
         ;
@@ -6545,67 +6546,67 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_split_switch_arms(Bool)
         ;
-            Option = optopt_loop_invariants,
+            Option = optopt_opt_loop_invariants,
             SpecialData = bool(Bool),
             OptOption = oo_opt_loop_invariants(Bool)
         ;
-            Option = optopt_saved_vars_const,
+            Option = optopt_opt_saved_vars_const,
             SpecialData = bool(Bool),
             OptOption = oo_opt_saved_vars_const(Bool)
         ;
-            Option = optopt_svcell,
+            Option = optopt_opt_svcell,
             SpecialData = bool(Bool),
             OptOption = oo_opt_svcell(Bool)
         ;
-            Option = optopt_svcell_loop,
+            Option = optopt_opt_svcell_loop,
             SpecialData = bool(Bool),
             OptOption = oo_opt_svcell_loop(Bool)
         ;
-            Option = optopt_svcell_full_path,
+            Option = optopt_opt_svcell_full_path,
             SpecialData = bool(Bool),
             OptOption = oo_opt_svcell_full_path(Bool)
         ;
-            Option = optopt_svcell_on_stack,
+            Option = optopt_opt_svcell_on_stack,
             SpecialData = bool(Bool),
             OptOption = oo_opt_svcell_on_stack(Bool)
         ;
-            Option = optopt_svcell_candidate_headvars,
+            Option = optopt_opt_svcell_candidate_headvars,
             SpecialData = bool(Bool),
             OptOption = oo_opt_svcell_candidate_headvars(Bool)
         ;
-            Option = optopt_svcell_all_candidates,
+            Option = optopt_opt_svcell_all_candidates,
             SpecialData = bool(Bool),
             OptOption = oo_opt_svcell_all_candidates(Bool)
         ;
-            Option = optopt_delay_construct,
+            Option = optopt_delay_constructs,
             SpecialData = bool(Bool),
             OptOption = oo_delay_constructs(Bool)
         ;
-            Option = optopt_follow_code,
+            Option = optopt_opt_follow_code,
             SpecialData = bool(Bool),
             OptOption = oo_opt_follow_code(Bool)
         ;
-            Option = optopt_unused_args,
+            Option = optopt_opt_unused_args,
             SpecialData = bool(Bool),
             OptOption = oo_opt_unused_args(Bool)
         ;
-            Option = optopt_intermod_unused_args,
+            Option = optopt_opt_unused_args_intermod,
             SpecialData = bool(Bool),
             OptOption = oo_opt_unused_args_intermod(Bool)
         ;
-            Option = optopt_higher_order,
+            Option = optopt_opt_higher_order,
             SpecialData = bool(Bool),
             OptOption = oo_opt_higher_order(Bool)
         ;
-            Option = optopt_unneeded_code,
+            Option = optopt_opt_unneeded_code,
             SpecialData = bool(Bool),
             OptOption = oo_opt_unneeded_code(Bool)
         ;
-            Option = optopt_type_specialization,
+            Option = optopt_spec_types,
             SpecialData = bool(Bool),
             OptOption = oo_spec_types(Bool)
         ;
-            Option = optopt_user_guided_type_specialization,
+            Option = optopt_spec_types_user_guided,
             SpecialData = bool(Bool),
             OptOption = oo_spec_types_user_guided(Bool)
         ;
@@ -6613,23 +6614,23 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_introduce_accumulators(Bool)
         ;
-            Option = optopt_lcmc_accumulator,
+            Option = optopt_opt_lcmc_accumulator,
             SpecialData = bool(Bool),
             OptOption = oo_opt_lcmc_accumulator(Bool)
         ;
-            Option = optopt_lcmc_null,
+            Option = optopt_opt_lcmc_null,
             SpecialData = bool(Bool),
             OptOption = oo_opt_lcmc_null(Bool)
         ;
-            Option = optopt_lcmc,
+            Option = optopt_opt_lcmc,
             SpecialData = bool(Bool),
             OptOption = oo_opt_lcmc(Bool)
         ;
-            Option = optopt_dead_procs,
+            Option = optopt_opt_dead_procs,
             SpecialData = bool(Bool),
             OptOption = oo_opt_dead_procs(Bool)
         ;
-            Option = optopt_deforestation,
+            Option = optopt_deforest,
             SpecialData = bool(Bool),
             OptOption = oo_deforest(Bool)
         ;
@@ -6645,7 +6646,7 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_inline_par_builtins(Bool)
         ;
-            Option = optopt_always_spec_dep_par_conjs,
+            Option = optopt_spec_in_all_dep_par_conjs,
             SpecialData = bool(Bool),
             OptOption = oo_spec_in_all_dep_par_conjs(Bool)
         ;
@@ -6653,51 +6654,51 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_allow_some_paths_only_waits(Bool)
         ;
-            Option = optopt_region_analysis,
+            Option = optopt_analyse_regions,
             SpecialData = bool(Bool),
             OptOption = oo_analyse_regions(Bool)
         ;
-            Option = optopt_smart_indexing,
+            Option = optopt_use_smart_indexing,
             SpecialData = bool(Bool),
             OptOption = oo_use_smart_indexing(Bool)
         ;
-            Option = optopt_smart_atomic_indexing,
+            Option = optopt_use_smart_indexing_atomic,
             SpecialData = bool(Bool),
             OptOption = oo_use_smart_indexing_atomic(Bool)
         ;
-            Option = optopt_smart_string_indexing,
+            Option = optopt_use_smart_indexing_string,
             SpecialData = bool(Bool),
             OptOption = oo_use_smart_indexing_string(Bool)
         ;
-            Option = optopt_smart_tag_indexing,
+            Option = optopt_use_smart_indexing_tag,
             SpecialData = bool(Bool),
             OptOption = oo_use_smart_indexing_tag(Bool)
         ;
-            Option = optopt_smart_float_indexing,
+            Option = optopt_use_smart_indexing_float,
             SpecialData = bool(Bool),
             OptOption = oo_use_smart_indexing_float(Bool)
         ;
-            Option = optopt_switch_single_rec_base_first,
+            Option = optopt_put_base_first_single_rec,
             SpecialData = bool(Bool),
             OptOption = oo_put_base_first_single_rec(Bool)
         ;
-            Option = optopt_switch_multi_rec_base_first,
+            Option = optopt_put_base_first_multi_rec,
             SpecialData = bool(Bool),
             OptOption = oo_put_base_first_multi_rec(Bool)
         ;
-            Option = optopt_static_ground_cells,
+            Option = optopt_use_static_ground_cells,
             SpecialData = bool(Bool),
             OptOption = oo_use_static_ground_cells(Bool)
         ;
-            Option = optopt_static_ground_floats,
+            Option = optopt_use_static_ground_floats,
             SpecialData = bool(Bool),
             OptOption = oo_use_static_ground_floats(Bool)
         ;
-            Option = optopt_static_ground_int64s,
+            Option = optopt_use_static_ground_int64s,
             SpecialData = bool(Bool),
             OptOption = oo_use_static_ground_int64s(Bool)
         ;
-            Option = optopt_static_code_addresses,
+            Option = optopt_use_static_code_addresses,
             SpecialData = bool(Bool),
             OptOption = oo_use_static_code_addresses(Bool)
         ;
@@ -6705,45 +6706,45 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_use_atomic_cells(Bool)
         ;
-            Option = optopt_middle_rec,
+            Option = optopt_opt_middle_rec_llds,
             SpecialData = bool(Bool),
-            OptOption = oo_opt_middle_rec(Bool)
+            OptOption = oo_opt_middle_rec_llds(Bool)
         ;
-            Option = optopt_simple_neg,
+            Option = optopt_opt_simple_neg_llds,
             SpecialData = bool(Bool),
-            OptOption = oo_opt_simple_neg(Bool)
+            OptOption = oo_opt_simple_neg_llds(Bool)
         ;
             Option = optopt_allow_hijacks,
             SpecialData = bool(Bool),
             OptOption = oo_allow_hijacks(Bool)
         ;
-            Option = optopt_mlds_tailcalls,
+            Option = optopt_opt_mlds_tailcalls,
             SpecialData = bool(Bool),
             OptOption = oo_opt_mlds_tailcalls(Bool)
         ;
-            Option = optopt_initializations,
+            Option = optopt_opt_mlds_inits,
             SpecialData = bool(Bool),
-            OptOption = oo_opt_initializations(Bool)
+            OptOption = oo_opt_mlds_inits(Bool)
         ;
-            Option = optopt_eliminate_unused_mlds_assigns,
+            Option = optopt_elim_unused_mlds_assigns,
             SpecialData = bool(Bool),
             OptOption = oo_elim_unused_mlds_assigns(Bool)
         ;
-            Option = optopt_eliminate_local_vars,
+            Option = optopt_elim_local_vars_mlds,
             SpecialData = bool(Bool),
-            OptOption = oo_elim_local_vars(Bool)
+            OptOption = oo_elim_local_vars_mlds(Bool)
         ;
-            Option = optopt_generate_trail_ops_inline,
+            Option = optopt_gen_trail_ops_inline_mlds,
             SpecialData = bool(Bool),
-            OptOption = oo_gen_trail_ops_inline(Bool)
+            OptOption = oo_gen_trail_ops_inline_mlds(Bool)
         ;
-            Option = optopt_common_data,
+            Option = optopt_use_llds_common_data,
             SpecialData = bool(Bool),
-            OptOption = oo_use_common_data(Bool)
+            OptOption = oo_use_llds_common_data(Bool)
         ;
-            Option = optopt_common_layout_data,
+            Option = optopt_use_llds_common_layout_data,
             SpecialData = bool(Bool),
-            OptOption = oo_use_common_layout_data(Bool)
+            OptOption = oo_use_llds_common_layout_data(Bool)
         ;
             Option = optopt_optimize_llds,
             SpecialData = bool(Bool),
@@ -6765,53 +6766,53 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_peep_mlds(Bool)
         ;
-            Option = optopt_jumps,
+            Option = optopt_opt_jumps,
             SpecialData = bool(Bool),
             OptOption = oo_opt_jumps(Bool)
         ;
-            Option = optopt_fulljumps,
+            Option = optopt_opt_fulljumps,
             SpecialData = bool(Bool),
             OptOption = oo_opt_fulljumps(Bool)
         ;
-            Option = optopt_pessimize_tailcalls,
+            Option = optopt_pessimize_llds_tailcalls,
             SpecialData = bool(Bool),
-            OptOption = oo_pessimize_tailcalls(Bool)
+            OptOption = oo_pessimize_llds_tailcalls(Bool)
         ;
-            Option = optopt_checked_nondet_tailcalls,
+            Option = optopt_opt_checked_nondet_tailcalls,
             SpecialData = bool(Bool),
             OptOption = oo_opt_checked_nondet_tailcalls(Bool)
         ;
-            Option = optopt_use_local_vars,
+            Option = optopt_use_local_vars_llds,
             SpecialData = bool(Bool),
-            OptOption = oo_use_local_vars(Bool)
+            OptOption = oo_use_local_vars_llds(Bool)
         ;
             Option = optopt_standardize_labels,
             SpecialData = bool(Bool),
             OptOption = oo_standardize_labels(Bool)
         ;
-            Option = optopt_labels,
+            Option = optopt_opt_labels,
             SpecialData = bool(Bool),
             OptOption = oo_opt_labels(Bool)
         ;
-            Option = optopt_dups,
+            Option = optopt_opt_dup_instrs_llds,
             SpecialData = bool(Bool),
-            OptOption = oo_opt_dups(Bool)
+            OptOption = oo_opt_dup_instrs_llds(Bool)
         ;
-            Option = optopt_proc_dups,
+            Option = optopt_opt_dup_procs_llds,
             SpecialData = bool(Bool),
-            OptOption = oo_opt_proc_dups(Bool)
+            OptOption = oo_opt_dup_procs_llds(Bool)
         ;
-            Option = optopt_frames,
+            Option = optopt_opt_frames,
             SpecialData = bool(Bool),
             OptOption = oo_opt_frames(Bool)
         ;
-            Option = optopt_delay_slot,
+            Option = optopt_opt_delay_slot,
             SpecialData = bool(Bool),
             OptOption = oo_opt_delay_slot(Bool)
         ;
-            Option = optopt_reassign,
+            Option = optopt_opt_llds_reassign,
             SpecialData = bool(Bool),
-            OptOption = oo_opt_reassign(Bool)
+            OptOption = oo_opt_llds_reassign(Bool)
         ;
             Option = optopt_use_macro_for_redo_fail,
             SpecialData = bool(Bool),
@@ -6825,7 +6826,7 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_use_just_one_c_func(Bool)
         ;
-            Option = optopt_local_thread_engine_base,
+            Option = optopt_use_local_thread_engine_base,
             SpecialData = bool(Bool),
             OptOption = oo_use_local_thread_engine_base(Bool)
         ;
@@ -6865,31 +6866,31 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = int(N),
             OptOption = oo_from_ground_term_threshold(N)
         ;
-            Option = optopt_svcell_cv_store_cost,
+            Option = optopt_opt_svcell_cv_store_cost,
             SpecialData = int(N),
             OptOption = oo_opt_svcell_cv_store_cost(N)
         ;
-            Option = optopt_svcell_cv_load_cost,
+            Option = optopt_opt_svcell_cv_load_cost,
             SpecialData = int(N),
             OptOption = oo_opt_svcell_cv_load_cost(N)
         ;
-            Option = optopt_svcell_fv_store_cost,
+            Option = optopt_opt_svcell_fv_store_cost,
             SpecialData = int(N),
             OptOption = oo_opt_svcell_fv_store_cost(N)
         ;
-            Option = optopt_svcell_fv_load_cost,
+            Option = optopt_opt_svcell_fv_load_cost,
             SpecialData = int(N),
             OptOption = oo_opt_svcell_fv_load_cost(N)
         ;
-            Option = optopt_svcell_op_ratio,
+            Option = optopt_opt_svcell_op_ratio,
             SpecialData = int(N),
             OptOption = oo_opt_svcell_op_ratio(N)
         ;
-            Option = optopt_svcell_node_ratio,
+            Option = optopt_opt_svcell_node_ratio,
             SpecialData = int(N),
             OptOption = oo_opt_svcell_node_ratio(N)
         ;
-            Option = optopt_svcell_all_path_node_ratio,
+            Option = optopt_opt_svcell_all_path_node_ratio,
             SpecialData = int(N),
             OptOption = oo_opt_svcell_all_path_node_ratio(N)
         ;
@@ -6901,7 +6902,7 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = int(N),
             OptOption = oo_higher_order_arg_limit(N)
         ;
-            Option = optopt_unneeded_code_copy_limit,
+            Option = optopt_opt_unneeded_code_copy_limit,
             SpecialData = int(N),
             OptOption = oo_opt_unneeded_code_copy_limit(N)
         ;
@@ -6969,17 +6970,17 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = int(N),
             OptOption = oo_binary_switch_size(N)
         ;
-            Option = optopt_local_var_access_threshold,
+            Option = optopt_llds_local_var_access_threshold,
             SpecialData = int(N),
-            OptOption = oo_local_var_access_threshold(N)
+            OptOption = oo_llds_local_var_access_threshold(N)
         ;
             Option = optopt_repeat_opts,
             SpecialData = int(N),
             OptOption = oo_opt_repeat(N)
         ;
-            Option = optopt_layout_compression_limit,
+            Option = optopt_llds_layout_compression_limit,
             SpecialData = int(N),
-            OptOption = oo_layout_compression_limit(N)
+            OptOption = oo_llds_layout_compression_limit(N)
         ;
             Option = optopt_procs_per_c_function,
             SpecialData = int(N),

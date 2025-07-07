@@ -2519,8 +2519,8 @@ represent_determinism_rval(Detism,
 init_stack_layout_params(ModuleInfo) = Params :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
-    CommonLayoutData = OptTuple ^ ot_use_common_layout_data,
-    CompressLimit = OptTuple ^ ot_layout_compression_limit,
+    CommonLayoutData = OptTuple ^ ot_use_llds_common_layout_data,
+    CompressLimit = OptTuple ^ ot_llds_layout_compression_limit,
     globals.get_trace_level(Globals, TraceLevel),
     globals.get_trace_suppress(Globals, TraceSuppress),
     globals.lookup_bool_option(Globals, profile_deep, DeepProfiling),
@@ -2532,10 +2532,10 @@ init_stack_layout_params(ModuleInfo) = Params :-
     globals.lookup_bool_option(Globals, unboxed_int64s, UnboxedInt64sOpt),
     globals.lookup_bool_option(Globals, rtti_line_numbers, RttiLineNumbers),
     (
-        CommonLayoutData = do_not_use_common_layout_data,
+        CommonLayoutData = do_not_use_llds_common_layout_data,
         CompressArrays = no
     ;
-        CommonLayoutData = use_common_layout_data,
+        CommonLayoutData = use_llds_common_layout_data,
         CompressArrays = yes(CompressLimit)
     ),
     (

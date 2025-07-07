@@ -471,7 +471,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
     ),
     DupElim = Info ^ lopt_opt_dups,
     (
-        DupElim = opt_dups,
+        DupElim = opt_dup_instrs_llds,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
@@ -486,7 +486,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "dup", "after duplicates", ProcLabel, !OptDebugInfo)
     ;
-        DupElim = do_not_opt_dups
+        DupElim = do_not_opt_dup_instrs_llds
     ),
     ( if Mod1 = no, Mod2 = no, Mod3 = no, !.Instrs = InstrsAtStart then
         Mod = no
@@ -624,7 +624,7 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
     ),
     UseLocalVars = Info ^ lopt_use_local_vars,
     (
-        UseLocalVars = use_local_vars,
+        UseLocalVars = use_local_vars_llds,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
@@ -643,7 +643,7 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
         maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter, "use_local",
             "after use_local_vars", ProcLabel, !OptDebugInfo)
     ;
-        UseLocalVars = do_not_use_local_vars
+        UseLocalVars = do_not_use_local_vars_llds
     ).
 
 :- pred optimize_last(llds_opt_info::in, set_tree234(label)::in,
@@ -660,9 +660,9 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
     UseLocalVars = Info ^ lopt_use_local_vars,
     StdLabels = Info ^ lopt_std_labels,
     ( if
-        ( Reassign = opt_reassign
+        ( Reassign = opt_llds_reassign
         ; DelaySlot = opt_delay_slot
-        ; UseLocalVars = use_local_vars
+        ; UseLocalVars = use_local_vars_llds
         ; StdLabels = standardize_labels
         )
     then
@@ -685,7 +685,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         true
     ),
     (
-        Reassign = opt_reassign,
+        Reassign = opt_llds_reassign,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
@@ -700,7 +700,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "reassign", "after reassign", ProcLabel, !OptDebugInfo)
     ;
-        Reassign = do_not_opt_reassign
+        Reassign = do_not_opt_llds_reassign
     ),
     (
         DelaySlot = opt_delay_slot,
@@ -752,7 +752,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         StdLabels = do_not_standardize_labels
     ),
     (
-        UseLocalVars = use_local_vars,
+        UseLocalVars = use_local_vars_llds,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
@@ -767,7 +767,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "wrapblocks", "after wrap blocks", ProcLabel, !.OptDebugInfo, _)
     ;
-        UseLocalVars = do_not_use_local_vars
+        UseLocalVars = do_not_use_local_vars_llds
     ).
 
 %-----------------------------------------------------------------------------%
@@ -814,17 +814,17 @@ escape_dir_char(Char, !Str) :-
                 lopt_checked_nondet_tailcalls   ::
                                             maybe_opt_checked_nondet_tailcalls,
                 lopt_opt_delay_slots            :: maybe_opt_delay_slot,
-                lopt_opt_dups                   :: maybe_opt_dups,
+                lopt_opt_dups                   :: maybe_opt_dup_instrs_llds,
                 lopt_opt_frames                 :: maybe_opt_frames,
                 lopt_opt_jumps                  :: maybe_opt_jumps,
                 lopt_opt_fulljumps              :: maybe_opt_fulljumps,
                 lopt_opt_labels                 :: maybe_opt_labels,
                 lopt_opt_peep                   :: maybe_peep_llds,
                 lopt_opt_peep_mkword            :: maybe_peep_llds_mkword,
-                lopt_opt_reassign               :: maybe_opt_reassign,
-                lopt_pes_tailcalls              :: maybe_pessimize_tailcalls,
+                lopt_opt_reassign               :: maybe_opt_llds_reassign,
+                lopt_pes_tailcalls           :: maybe_pessimize_llds_tailcalls,
                 lopt_std_labels                 :: maybe_standardize_labels,
-                lopt_use_local_vars             :: maybe_use_local_vars
+                lopt_use_local_vars             :: maybe_use_local_vars_llds
             ).
 
 :- func init_llds_opt_info(io.text_output_stream, globals, module_name)
@@ -837,7 +837,7 @@ init_llds_opt_info(ProgressStream, Globals, ModuleName) = Info :-
         DebugOptPredNames),
     globals.lookup_int_option(Globals, num_real_r_regs, NumRealRRegs),
     globals.get_opt_tuple(Globals, OptTuple),
-    LocalVarAccessThreshold = OptTuple ^ ot_local_var_access_threshold,
+    LocalVarAccessThreshold = OptTuple ^ ot_llds_local_var_access_threshold,
     OptRepeat = OptTuple ^ ot_opt_repeat,
 
     globals.get_gc_method(Globals, GCMethod),
@@ -855,17 +855,17 @@ init_llds_opt_info(ProgressStream, Globals, ModuleName) = Info :-
 
     CheckedNondetTailCalls = OptTuple ^ ot_opt_checked_nondet_tailcalls,
     OptDelaySlots = OptTuple ^ ot_opt_delay_slot,
-    OptDups = OptTuple ^ ot_opt_dups,
+    OptDups = OptTuple ^ ot_opt_dup_instrs_llds,
     OptFrames = OptTuple ^ ot_opt_frames,
     OptJumps = OptTuple ^ ot_opt_jumps,
     OptFullJumps = OptTuple ^ ot_opt_fulljumps,
     OptLabels = OptTuple ^ ot_opt_labels,
     OptPeep = OptTuple ^ ot_peep_llds,
     OptPeepMkword = OptTuple ^ ot_peep_llds_mkword,
-    OptReassign = OptTuple ^ ot_opt_reassign,
-    PessimizeTailCalls = OptTuple ^ ot_pessimize_tailcalls,
+    OptReassign = OptTuple ^ ot_opt_llds_reassign,
+    PessimizeTailCalls = OptTuple ^ ot_pessimize_llds_tailcalls,
     StdLabels = OptTuple ^ ot_standardize_labels,
-    UseLocalVars = OptTuple ^ ot_use_local_vars,
+    UseLocalVars = OptTuple ^ ot_use_local_vars_llds,
 
     Info = llds_opt_info(DebugOptPredIdStrs, DebugOptPredNames,
         NumRealRRegs, LocalVarAccessThreshold, OptRepeat,

@@ -709,12 +709,12 @@ maybe_convert_assignments_into_initializers(OptInfo, !Defns, !Stmts) :-
     Globals = OptInfo ^ oi_globals,
     % Check if --optimize-initializations is enabled.
     globals.get_opt_tuple(Globals, OptTuple),
-    OptInit = OptTuple ^ ot_opt_initializations,
+    OptInit = OptTuple ^ ot_opt_mlds_inits,
     (
-        OptInit = opt_initializations,
+        OptInit = opt_mlds_inits,
         convert_assignments_into_initializers(OptInfo, !Defns, !Stmts)
     ;
-        OptInit = do_not_opt_initializations
+        OptInit = do_not_opt_mlds_inits
     ).
 
 :- pred convert_assignments_into_initializers(opt_info::in,
@@ -812,12 +812,12 @@ find_this_var_defn(VarName, [LocalVarDefn | LocalVarDefns], !RevPrevDefns,
 maybe_eliminate_locals(OptInfo, !LocalVarDefns, !FuncDefns, !Stmts) :-
     Globals = OptInfo ^ oi_globals,
     globals.get_opt_tuple(Globals, OptTuple),
-    EliminateLocalVars = OptTuple ^ ot_elim_local_vars,
+    EliminateLocalVars = OptTuple ^ ot_elim_local_vars_mlds,
     (
-        EliminateLocalVars = elim_local_vars,
+        EliminateLocalVars = elim_local_vars_mlds,
         eliminate_locals(OptInfo, !LocalVarDefns, !FuncDefns, !Stmts)
     ;
-        EliminateLocalVars = do_not_elim_local_vars
+        EliminateLocalVars = do_not_elim_local_vars_mlds
     ).
 
 :- pred eliminate_locals(opt_info::in,

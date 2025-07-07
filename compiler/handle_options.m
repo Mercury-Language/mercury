@@ -366,12 +366,12 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     OT_Deforest0 =                  OptTuple0 ^ ot_deforest,
     OT_Tuple0 =                     OptTuple0 ^ ot_tuple,
     OT_Untuple0 =                   OptTuple0 ^ ot_untuple,
-    OT_OptMiddleRec0 =              OptTuple0 ^ ot_opt_middle_rec,
+    OT_OptMiddleRec0 =              OptTuple0 ^ ot_opt_middle_rec_llds,
     OT_AllowHijacks0 =              OptTuple0 ^ ot_allow_hijacks,
     OT_OptMLDSTailCalls0 =          OptTuple0 ^ ot_opt_mlds_tailcalls,
     OT_OptimizeMlds0 =              OptTuple0 ^ ot_optimize_mlds,
     OT_StdLabels0 =                 OptTuple0 ^ ot_standardize_labels,
-    OT_OptDups0 =                   OptTuple0 ^ ot_opt_dups,
+    OT_OptDups0 =                   OptTuple0 ^ ot_opt_dup_instrs_llds,
     OT_OptFrames0 =                 OptTuple0 ^ ot_opt_frames,
     OT_StringBinarySwitchSize0 =    OptTuple0 ^ ot_string_binary_switch_size,
 
@@ -574,7 +574,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     then
         OT_OptMiddleRec = OT_OptMiddleRec0
     else
-        OT_OptMiddleRec = do_not_opt_middle_rec
+        OT_OptMiddleRec = do_not_opt_middle_rec_llds
     ),
 
     % Disable hijacks if debugging is enabled. The code we now use
@@ -771,11 +771,11 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     !OptTuple ^ ot_deforest :=                  OT_Deforest,
     !OptTuple ^ ot_tuple :=                     OT_Tuple,
     !OptTuple ^ ot_untuple :=                   OT_Untuple,
-    !OptTuple ^ ot_opt_middle_rec :=            OT_OptMiddleRec,
+    !OptTuple ^ ot_opt_middle_rec_llds :=       OT_OptMiddleRec,
     !OptTuple ^ ot_allow_hijacks :=             OT_AllowHijacks,
     !OptTuple ^ ot_opt_mlds_tailcalls :=        OT_OptMLDSTailCalls,
     !OptTuple ^ ot_standardize_labels :=        OT_StdLabels,
-    !OptTuple ^ ot_opt_dups :=                  OT_OptDups,
+    !OptTuple ^ ot_opt_dup_instrs_llds :=       OT_OptDups,
     !OptTuple ^ ot_opt_frames :=                OT_OptFrames,
     !OptTuple ^ ot_string_binary_switch_size := OT_StringBinarySwitchSize,
 
@@ -1722,7 +1722,7 @@ handle_record_term_sizes_options(!Globals, AllowOptLCMCTermSize, !Specs) :-
     %   procid_stack_layout
     %
 :- pred handle_stack_layout_options(globals::in, globals::out,
-    maybe_opt_dups::in, maybe_opt_dups::out,
+    maybe_opt_dup_instrs_llds::in, maybe_opt_dup_instrs_llds::out,
     maybe_standardize_labels::in, maybe_standardize_labels::out) is det.
 
 handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
@@ -1748,7 +1748,7 @@ handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
         ProcIdStackLayout),
     globals.lookup_bool_option(!.Globals, agc_stack_layout, AgcStackLayout),
     ( if (ProcIdStackLayout = yes ; AgcStackLayout = yes) then
-        OT_OptDups = do_not_opt_dups
+        OT_OptDups = do_not_opt_dup_instrs_llds
     else
         OT_OptDups = OT_OptDups0
     ),
@@ -3081,11 +3081,11 @@ handle_non_tail_rec_warnings(Globals, OptTuple0, OT_OptMLDSTailCalls,
         ; WarnNonTailRecMutual = bool.yes
         )
     then
-        OT_PessimizeTailCalls0 = OptTuple0 ^ ot_pessimize_tailcalls,
+        OT_PessimizeTailCalls0 = OptTuple0 ^ ot_pessimize_llds_tailcalls,
         (
-            OT_PessimizeTailCalls0 = do_not_pessimize_tailcalls
+            OT_PessimizeTailCalls0 = do_not_pessimize_llds_tailcalls
         ;
-            OT_PessimizeTailCalls0 = pessimize_tailcalls,
+            OT_PessimizeTailCalls0 = pessimize_llds_tailcalls,
             PessimizeWords = "--warn-non-tail-recursion is incompatible" ++
                  " with --pessimize-tailcalls",
             % XXX While these two options look diametrically opposed,
@@ -3198,7 +3198,7 @@ postprocess_options_lowlevel(!Globals, !OptTuple) :-
     SavedVarsCell = !.OptTuple ^ ot_opt_svcell,
     (
         SavedVarsCell = opt_svcell,
-        !OptTuple ^ ot_use_local_vars := use_local_vars
+        !OptTuple ^ ot_use_local_vars_llds := use_local_vars_llds
     ;
         SavedVarsCell = do_not_opt_svcell
     ),
@@ -3215,19 +3215,19 @@ postprocess_options_lowlevel(!Globals, !OptTuple) :-
     ),
 
     % --optimize-proc-dups is implemented only with --trad-passes.
-    OptProcDups = !.OptTuple ^ ot_opt_proc_dups,
+    OptProcDups = !.OptTuple ^ ot_opt_dup_procs_llds,
     (
-        OptProcDups = opt_proc_dups,
+        OptProcDups = opt_dup_procs_llds,
         globals.set_option(trad_passes, bool(yes), !Globals)
     ;
-        OptProcDups = do_not_opt_proc_dups
+        OptProcDups = do_not_opt_dup_procs_llds
     ),
 
-    UseLocalVars = !.OptTuple ^ ot_use_local_vars,
+    UseLocalVars = !.OptTuple ^ ot_use_local_vars_llds,
     OptRepeat = !.OptTuple ^ ot_opt_repeat,
     ( if
         ( OptFrames = opt_frames
-        ; UseLocalVars = use_local_vars
+        ; UseLocalVars = use_local_vars_llds
         ),
         OptRepeat < 1
     then

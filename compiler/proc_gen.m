@@ -727,9 +727,9 @@ generate_det_code(ProcContext, Goal, ResumePoint, TraceSlotInfo,
         Code, MaybeTraceCallLabel, ProcFrameSlots, !CI, !.CLD) :-
     get_globals(!.CI, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
-    MiddleRec = OptTuple ^ ot_opt_middle_rec,
+    MiddleRec = OptTuple ^ ot_opt_middle_rec_llds,
     ( if
-        MiddleRec = opt_middle_rec,
+        MiddleRec = opt_middle_rec_llds,
         middle_rec.match_and_generate(Goal, MiddleRecCode, !CI, !.CLD, _CLD)
     then
         Code = MiddleRecCode,

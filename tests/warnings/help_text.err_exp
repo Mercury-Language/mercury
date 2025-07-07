@@ -2210,6 +2210,11 @@ Optimization options
         Use the atomic variants of the Boehm gc allocator calls when the memory
         cell to be allocated cannot contain pointers.
 
+    PRIVATE OPTION
+    --optimize-trail-usage
+        Try to restrict trailing operations to those parts of the program that
+        actually use the trail.
+
     Optimizations specific to high level code
 
     --mlds-optimize
@@ -2237,11 +2242,6 @@ Optimization options
     --eliminate-local-vars
         Eliminate local variables with known values, where possible, by
         replacing occurrences of such variables with their values.
-
-    PRIVATE OPTION
-    --optimize-trail-usage
-        Try to restrict trailing operations to those parts of the program that
-        actually use the trail.
 
     Optimizations specific to low level code
 

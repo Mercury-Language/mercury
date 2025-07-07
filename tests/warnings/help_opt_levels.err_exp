@@ -64,7 +64,7 @@ Optimization level 3:
 
         --constraint-propagation
         --deforestation
-        --excess-assign
+        --local-constraint-propagation
         --optimize-higher-order
         --optimize-reassign
         --optimize-repeat=4

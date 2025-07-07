@@ -59,7 +59,7 @@
     %
 :- pred optimize_jumps_in_proc(set_tree234(label)::in, may_alter_rtti::in,
     proc_label::in, maybe_opt_fulljumps::in, bool::in,
-    maybe_pessimize_tailcalls::in, maybe_opt_checked_nondet_tailcalls::in,
+    maybe_pessimize_llds_tailcalls::in, maybe_opt_checked_nondet_tailcalls::in,
     counter::in, counter::out, list(instruction)::in, list(instruction)::out,
     bool::out) is det.
 
@@ -128,9 +128,9 @@ optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
             !ProcMap, !SdprocMap, !SuccMap),
         jump_opt_build_forkmap(!.Instrs, !.SdprocMap, map.init, !:ForkMap),
         (
-            PessimizeTailCalls = do_not_pessimize_tailcalls
+            PessimizeTailCalls = do_not_pessimize_llds_tailcalls
         ;
-            PessimizeTailCalls = pessimize_tailcalls,
+            PessimizeTailCalls = pessimize_llds_tailcalls,
             !:ProcMap = map.init,
             !:SdprocMap = map.init,
             !:SuccMap = map.init,

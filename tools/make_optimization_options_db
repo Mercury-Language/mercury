@@ -12,47 +12,47 @@ int    0    inline_tr_sccs_max_extra
 int    5    from_ground_term_threshold
 bool   y    enable_const_struct_poly
 bool   y    enable_const_struct_user
-bool   n    common_struct                       opt_common_structs
-bool   n    constraint_propagation              prop_constraints
-bool   n    local_constraint_propagation        prop_local_constraints
-bool   n    duplicate_calls                     opt_dup_calls
-bool   n    constant_propagation                prop_constants
-bool   n    excess_assign                       elim_excess_assigns
-bool   n    merge_code_after_switch             merge_code_after_switch
-bool   y    format_calls                        opt_format_calls
+bool   n    opt_common_structs
+bool   n    prop_constraints
+bool   n    prop_local_constraints
+bool   n    opt_dup_calls
+bool   n    prop_constants
+bool   n    elim_excess_assigns
+bool   n    merge_code_after_switch
+bool   y    opt_format_calls
 bool   y    split_switch_arms
-bool   n    loop_invariants                     opt_loop_invariants
-bool   n    saved_vars_const                    opt_saved_vars_const
-bool   n    svcell                              opt_svcell
-bool   y    svcell_loop                         opt_svcell_loop
-bool   y    svcell_full_path                    opt_svcell_full_path
-bool   y    svcell_on_stack                     opt_svcell_on_stack
-bool   y    svcell_candidate_headvars           opt_svcell_candidate_headvars
-int    3    svcell_cv_store_cost                opt_svcell_cv_store_cost
-int    1    svcell_cv_load_cost                 opt_svcell_cv_load_cost
-int    1    svcell_fv_store_cost                opt_svcell_fv_store_cost
-int    1    svcell_fv_load_cost                 opt_svcell_fv_load_cost
-int    100  svcell_op_ratio                     opt_svcell_op_ratio
-int    100  svcell_node_ratio                   opt_svcell_node_ratio
-int    100  svcell_all_path_node_ratio          opt_svcell_all_path_node_ratio
-bool   n    svcell_all_candidates               opt_svcell_all_candidates
-bool   n    delay_construct                     delay_constructs
-bool   n    follow_code                         opt_follow_code
-bool   n    unused_args                         opt_unused_args
-bool   n    intermod_unused_args                opt_unused_args_intermod
-bool   n    higher_order                        opt_higher_order
+bool   n    opt_loop_invariants
+bool   n    opt_saved_vars_const
+bool   n    opt_svcell
+bool   y    opt_svcell_loop
+bool   y    opt_svcell_full_path
+bool   y    opt_svcell_on_stack
+bool   y    opt_svcell_candidate_headvars
+int    3    opt_svcell_cv_store_cost
+int    1    opt_svcell_cv_load_cost
+int    1    opt_svcell_fv_store_cost
+int    1    opt_svcell_fv_load_cost
+int    100  opt_svcell_op_ratio
+int    100  opt_svcell_node_ratio
+int    100  opt_svcell_all_path_node_ratio
+bool   n    opt_svcell_all_candidates
+bool   n    delay_constructs
+bool   n    opt_follow_code
+bool   n    opt_unused_args
+bool   n    opt_unused_args_intermod
+bool   n    opt_higher_order
 int    20   higher_order_size_limit
 int    10   higher_order_arg_limit
-bool   n    unneeded_code                       opt_unneeded_code
-int    10   unneeded_code_copy_limit            opt_unneeded_code_copy_limit
-bool   n    type_specialization                 spec_types
-bool   n    user_guided_type_specialization     spec_types_user_guided
+bool   n    opt_unneeded_code
+int    10   opt_unneeded_code_copy_limit
+bool   n    spec_types
+bool   n    spec_types_user_guided
 bool   n    introduce_accumulators
-bool   n    lcmc_accumulator                    opt_lcmc_accumulator
-bool   n    lcmc_null                           opt_lcmc_null
-bool   n    lcmc                                opt_lcmc
-bool   n    dead_procs                          opt_dead_procs
-bool   n    deforestation                       deforest
+bool   n    opt_lcmc_accumulator
+bool   n    opt_lcmc_null
+bool   n    opt_lcmc
+bool   n    opt_dead_procs
+bool   n    deforest
 int    4    deforestation_depth_limit
 int    1000 deforestation_cost_factor
 int    200  deforestation_vars_threshold
@@ -63,14 +63,14 @@ string -    tuple_trace_counts_file
 int    100  tuple_costs_ratio
 int    4    tuple_min_args
 bool   n    inline_par_builtins
-bool   n    always_spec_dep_par_conjs           spec_in_all_dep_par_conjs
+bool   n    spec_in_all_dep_par_conjs
 bool   y    allow_some_paths_only_waits
-bool   n    region_analysis                     analyse_regions
-bool   n    smart_indexing                      use_smart_indexing
-bool   y    smart_atomic_indexing               use_smart_indexing_atomic
-bool   y    smart_string_indexing               use_smart_indexing_string
-bool   y    smart_tag_indexing                  use_smart_indexing_tag
-bool   y    smart_float_indexing                use_smart_indexing_float
+bool   n    analyse_regions
+bool   n    use_smart_indexing
+bool   y    use_smart_indexing_atomic
+bool   y    use_smart_indexing_string
+bool   y    use_smart_indexing_tag
+bool   y    use_smart_indexing_float
 int    25   dense_switch_req_density
 int    25   lookup_switch_req_density
 int    4    dense_switch_size
@@ -81,47 +81,47 @@ int    4    string_binary_switch_size
 int    3    tag_switch_size
 int    3    try_switch_size
 int    4    binary_switch_size
-bool   n    switch_single_rec_base_first        put_base_first_single_rec
-bool   y    switch_multi_rec_base_first         put_base_first_multi_rec
-bool   n    static_ground_cells                 use_static_ground_cells
-bool   n    static_ground_floats                use_static_ground_floats
-bool   n    static_ground_int64s                use_static_ground_int64s
-bool   n    static_code_addresses               use_static_code_addresses
+bool   n    put_base_first_single_rec
+bool   y    put_base_first_multi_rec
+bool   n    use_static_ground_cells
+bool   n    use_static_ground_floats
+bool   n    use_static_ground_int64s
+bool   n    use_static_code_addresses
 bool   n    use_atomic_cells
-bool   n    middle_rec                          opt_middle_rec
-bool   n    simple_neg                          opt_simple_neg
+bool   n    opt_middle_rec_llds
+bool   n    opt_simple_neg_llds
 bool   y    allow_hijacks
-bool   n    mlds_tailcalls                      opt_mlds_tailcalls
-bool   n    initializations                     opt_initializations
-bool   y    eliminate_unused_mlds_assigns       elim_unused_mlds_assigns
-bool   n    eliminate_local_vars                elim_local_vars
-bool   y    generate_trail_ops_inline           gen_trail_ops_inline
-bool   n    common_data                         use_common_data
-bool   y    common_layout_data                  use_common_layout_data
+bool   n    opt_mlds_tailcalls
+bool   n    opt_mlds_inits
+bool   y    elim_unused_mlds_assigns
+bool   n    elim_local_vars_mlds
+bool   y    gen_trail_ops_inline_mlds
+bool   n    use_llds_common_data
+bool   y    use_llds_common_layout_data
 bool   n    optimize_llds
 bool   n    optimize_mlds
 bool   n    peep_llds
 bool   n    peep_llds_mkword
 bool   n    peep_mlds
-bool   n    jumps                               opt_jumps
-bool   n    fulljumps                           opt_fulljumps
-bool   n    pessimize_tailcalls
-bool   n    checked_nondet_tailcalls            opt_checked_nondet_tailcalls
-bool   n    use_local_vars
-int    2    local_var_access_threshold
+bool   n    opt_jumps
+bool   n    opt_fulljumps
+bool   n    pessimize_llds_tailcalls
+bool   n    opt_checked_nondet_tailcalls
+bool   n    use_local_vars_llds
+int    2    llds_local_var_access_threshold
 bool   n    standardize_labels
-bool   n    labels                              opt_labels
-bool   n    dups                                opt_dups
-bool   n    proc_dups                           opt_proc_dups
-bool   n    frames                              opt_frames
-bool   n    delay_slot                          opt_delay_slot
-bool   n    reassign                            opt_reassign
+bool   n    opt_labels
+bool   n    opt_dup_instrs_llds
+bool   n    opt_dup_procs_llds
+bool   n    opt_frames
+bool   n    opt_delay_slot
+bool   n    opt_llds_reassign
 int    0    repeat_opts                         opt_repeat
-int    4000 layout_compression_limit
+int    4000 llds_layout_compression_limit
 bool   n    use_macro_for_redo_fail
 bool   n    emit_c_loops
 int    1    procs_per_c_function
 bool   n    use_just_one_c_func
-bool   y    local_thread_engine_base            use_local_thread_engine_base
+bool   y    use_local_thread_engine_base
 bool   n    inline_alloc
 bool   n    c_optimize                          opt_c

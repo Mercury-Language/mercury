@@ -153,8 +153,7 @@ mlds_backend(ProgressStream, !.HLDS, !:MLDS, !Specs, !DumpInfo, !IO) :-
     Optimize = OptTuple ^ ot_optimize_mlds,
     (
         Optimize = optimize_mlds,
-        NoInitOptTuple = OptTuple ^ ot_opt_initializations
-            := do_not_opt_initializations,
+        NoInitOptTuple = OptTuple ^ ot_opt_mlds_inits := do_not_opt_mlds_inits,
         globals.set_opt_tuple(NoInitOptTuple, Globals, NoInitOptGlobals),
         maybe_write_string(ProgressStream, Verbose,
             "% Optimizing MLDS...\n", !IO),
@@ -244,7 +243,7 @@ maybe_add_trail_ops(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         (
             Target = target_c,
             globals.get_opt_tuple(Globals, OptTuple),
-            GenerateInline = OptTuple ^ ot_gen_trail_ops_inline
+            GenerateInline = OptTuple ^ ot_gen_trail_ops_inline_mlds
         ;
             % XXX Currently, we can only generate trail ops inline for
             % the C backends.
@@ -252,7 +251,7 @@ maybe_add_trail_ops(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
             ( Target = target_csharp
             ; Target = target_java
             ),
-            GenerateInline = do_not_gen_trail_ops_inline
+            GenerateInline = do_not_gen_trail_ops_inline_mlds
         ),
         maybe_write_string(ProgressStream, Verbose,
             "% Adding trailing operations...\n", !IO),
