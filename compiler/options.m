@@ -3515,14 +3515,12 @@ optdb(oc_opt_hh,    optopt_opt_unused_args_intermod,   bool_special,
         opt("--intermodule-optimization", ".")])).
 
 optdb(oc_opt_hh,    optopt_opt_format_calls,           bool_special,
-    % XXX This is documented as if it were a default-off option,
-    % but in fact, it is define-on. The default value is just hidden
-    % behind the special_handler.
     help("optimize-format-calls", [
-        w("Interpret the format string in calls to"),
+        w("Do not optimize calls to"),
         code("string.format", ","), code("io.format", ","), w("and"),
-        code("stream.string_writer.format"), w("at compile time,"),
-        w("replacing those calls with"),
+        code("stream.string_writer.format"), w("at compile time."),
+        w("The default is to interpret the format string in such calls"),
+        w("at compile time, replacing those calls with"),
         w("the sequence of more primitive operations"),
         w("required to implement them.")])).
 optdb(oc_opt_hh,    optopt_prop_constants,             bool_special,
@@ -3684,9 +3682,10 @@ optdb(oc_opt_hh,    optopt_opt_lcmc_null,              bool_special,
 optdb(oc_opt_hh,    optopt_split_switch_arms,          bool_special,
     help("split-switch-arms", [
         w("When a switch on a variable has an inner switch on that"),
-        w("same variable inside one of its arms, split up that arm of the"),
-        w("outer switch along the same lines, effectively inlining"),
-        w("the inner switch.")])).
+        w("same variable inside one of its arms, the default is"),
+        w("to split up that arm of the outer switch along the same lines,"),
+        w("effectively inlining the inner switch."),
+        opt("--no-split-switch-arms"), w("prevents this split.")])).
 optdb(oc_opt_hh,    optopt_merge_code_after_switch,    bool_special,
     priv_help("merge-code-after-switch", [
         w("Merge the goal after a switch into the switch, if we can."),
@@ -3701,9 +3700,11 @@ optdb(oc_opt_hh,    optopt_from_ground_term_threshold, int_special,
         w("the given number of function symbols.")])).
 optdb(oc_opt_hh,    optopt_enable_const_struct_user,   bool_special,
     help("const-struct", [
-        w("Gather constant ground structures in a separate table."),
-        w("Each such structure will be stored in this table just once,"),
-        w("even if it occurs in many different procedures.")])).
+        w("By default, the compiler will gather constant ground structures"),
+        w("in a separate table, with each such structure being stored"),
+        w("in this table just once, even if it occurs"),
+        w("in many different procedures."),
+        opt("--no-const-struct"), w("prevents this behavior.")])).
 optdb(oc_opt_hh,    optopt_opt_common_structs,         bool_special,
     help("common-struct", [
         w("Replace two or more occurrences of the same term"),
@@ -3988,7 +3989,7 @@ optdb(oc_opt_hlm,   optopt_put_base_first_single_rec,   bool_special,
 optdb(oc_opt_hlm,   optopt_put_base_first_multi_rec,   bool_special,
     priv_help("switch-multi-rec-base-first", [
         w("In a switch with two arms, one a base case and one with multiple"),
-        w("recursive calls, put the base case first.")])).
+        w("recursive calls, do not put the base case first.")])).
 
 optdb(oc_opt_hlm,   optopt_use_static_ground_cells,    bool_special,
     % XXX cf const-struct
@@ -4083,8 +4084,11 @@ optdb(oc_opt_hl,    optopt_opt_simple_neg_llds,        bool_special,
         w("Generate simplified code for simple negations.")])).
 optdb(oc_opt_hl,    optopt_allow_hijacks,              bool_special,
     priv_help("allow-hijacks", [
-        w("When appropriate, generate code to hijack nondet stack frames"),
-        w("that possibly belongs to another procedure invocation.")])).
+        w("When appropriate, the compiler normally generates code"),
+        w("that temporarily hijacks an existing nondet stack frame"),
+        w("that probably belongs to another procedure invocation."),
+        opt("--no-allow-hijacks"), w("tells the compiler"),
+        w("to create a new nondet stack frame instead.")])).
 
 %---------------------%
 
@@ -4172,7 +4176,7 @@ optdb(oc_opt_ll,    optopt_use_llds_common_data,       bool_special,
         w("Enable optimization of common data structures.")])).
 optdb(oc_opt_ll,    optopt_use_llds_common_layout_data, bool_special,
     help("common-layout-data", [
-        w("Enable optimization of common subsequences"),
+        w("Disable optimization of common subsequences"),
         w("in layout structures.")])).
 optdb(oc_opt_ll,    optopt_llds_layout_compression_limit, int_special,
     arg_help("layout-compression-limit", "N", [

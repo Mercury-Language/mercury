@@ -7000,8 +7000,8 @@ Print the compiler version.
 @table @asis
 
 @sp 1
-@item @code{--flags-file @var{file}}
-@itemx @code{--flags @var{file}}
+@item @code{--flags-file @var{filename}}
+@itemx @code{--flags @var{filename}}
 @findex --flags-file
 @findex --flags
 Take options from the specified file, and handle them as if they were
@@ -9731,7 +9731,7 @@ works only with @code{mmc --make}.)
 @c with @samp{--intermodule-analysis}.
 
 @c @sp 1
-@c @item @code{--analysis-file-cache-dir @var{dir}}
+@c @item @code{--analysis-file-cache-dir @var{directory}}
 @c @findex --analysis-file-cache-dir
 @c There is no help text available.
 
@@ -9747,15 +9747,12 @@ works only with @code{mmc --make}.)
 @item @code{--optimize-dead-procs}
 @itemx @code{--optimise-dead-procs}
 @findex --optimize-dead-procs
-@findex --no-optimize-dead-procs
 @findex --optimise-dead-procs
-@findex --no-optimise-dead-procs
 Delete all procedures that are never called.
 
 @sp 1
 @item @code{--unneeded-code}
 @findex --unneeded-code
-@findex --no-unneeded-code
 Remove goals from computation paths where their outputs are not needed,
 provided the semantics options allow the deletion or movement of the
 goal.
@@ -9772,9 +9769,7 @@ value of one prevents any increase in the size of the code.
 @item @code{--optimize-unused-args}
 @itemx @code{--optimise-unused-args}
 @findex --optimize-unused-args
-@findex --no-optimize-unused-args
 @findex --optimise-unused-args
-@findex --no-optimise-unused-args
 Delete unused arguments from predicates and functions. This will cause
 the compiler to generate more efficient code for many polymorphic
 predicates.
@@ -9782,27 +9777,25 @@ predicates.
 @sp 1
 @item @code{--intermod-unused-args}
 @findex --intermod-unused-args
-@findex --no-intermod-unused-args
 Delete unused arguments from predicates and functions even when the
 analysis required crosses module boundaries. This option implies
 @samp{--optimize-unused-args} and @samp{--intermodule-optimization}.
 
 @sp 1
-@item @code{--optimize-format-calls}
+@item @code{--no-optimize-format-calls}
 @findex --optimize-format-calls
 @findex --no-optimize-format-calls
-Interpret the format string in calls to @code{string.format},
-@code{io.format}, and @code{stream.string_writer.format} at compile
-time, replacing those calls with the sequence of more primitive
-operations required to implement them.
+Do not optimize calls to @code{string.format}, @code{io.format}, and
+@code{stream.string_writer.format} at compile time. The default is to
+interpret the format string in such calls at compile time, replacing
+those calls with the sequence of more primitive operations required to
+implement them.
 
 @sp 1
 @item @code{--optimize-constant-propagation}
 @itemx @code{--optimise-constant-propagation}
 @findex --optimize-constant-propagation
-@findex --no-optimize-constant-propagation
 @findex --optimise-constant-propagation
-@findex --no-optimise-constant-propagation
 Given calls to some frequently used library functions and predicates,
 mainly those that do arithmetic, evaluate them at compile time, if all
 their input arguments are constants.
@@ -9811,21 +9804,18 @@ their input arguments are constants.
 @item @code{--optimize-duplicate-calls}
 @itemx @code{--optimise-duplicate-calls}
 @findex --optimize-duplicate-calls
-@findex --no-optimize-duplicate-calls
 @findex --optimise-duplicate-calls
-@findex --no-optimise-duplicate-calls
 Given multiple calls to a predicate or function with the same input
 arguments, optimize away all but one.
 
 @sp 1
 @item @code{--excess-assign}
 @findex --excess-assign
-@findex --no-excess-assign
 Remove assignment unifications whose only effect is to give another
 name to the same value.
 
 @c @sp 1
-@c @item @code{--allow-inlining}
+@c @item @code{--no-allow-inlining}
 @c @findex --allow-inlining
 @c @findex --no-allow-inlining
 @c Disallow all forms of inlining.
@@ -9837,7 +9827,7 @@ name to the same value.
 Ask the compiler to inline procedures using its usual heuristics.
 
 @sp 1
-@item @code{--inline-builtins}
+@item @code{--no-inline-builtins}
 @findex --inline-builtins
 @findex --no-inline-builtins
 Normally, the compiler implements builtin operations (such as
@@ -9849,7 +9839,6 @@ execution of builtins to be traced.
 @c @sp 1
 @c @item @code{--inline-par-builtins}
 @c @findex --inline-par-builtins
-@c @findex --no-inline-par-builtins
 @c With @samp{--inline-par-builtins}, the compiler implements the parallel
 @c builtin operations using inline code. With
 @c @samp{--no-inline-par-builtins}, it implements them as calls.
@@ -9857,13 +9846,11 @@ execution of builtins to be traced.
 @sp 1
 @item @code{--inline-single-use}
 @findex --inline-single-use
-@findex --no-inline-single-use
 Inline procedures which are called only from one call site.
 
 @sp 1
 @item @code{--inline-simple}
 @findex --inline-simple
-@findex --no-inline-simple
 Inline all simple procedures.
 
 @sp 1
@@ -9905,7 +9892,6 @@ variables can cause slow compilation.
 @sp 1
 @item @code{--inline-linear-tail-rec-sccs}
 @findex --inline-linear-tail-rec-sccs
-@findex --no-inline-linear-tail-rec-sccs
 Given a set of mutually recursive procedures (an SCC, or strongly
 connected component, of the call graph) in which each procedure
 contains exactly tail call to a procedure in the SCC, so that the tail
@@ -9925,21 +9911,18 @@ can turn into code that runs in constant stack space.
 @item @code{--optimize-higher-order}
 @itemx @code{--optimise-higher-order}
 @findex --optimize-higher-order
-@findex --no-optimize-higher-order
 @findex --optimise-higher-order
-@findex --no-optimise-higher-order
 @cindex Higher-order specialization
 @cindex Specialization of higher-order calls
 Create specialized variants of higher-order predicates and functions
-for call sites where the values of the highe-order arguments are known.
+for call sites where the values of the higher-order arguments are
+known.
 
 @sp 1
 @item @code{--type-specialization}
 @itemx @code{--type-specialisation}
 @findex --type-specialization
-@findex --no-type-specialization
 @findex --type-specialisation
-@findex --no-type-specialisation
 Enable specialization of polymorphic predicates where the polymorphic
 types are known.
 
@@ -9947,9 +9930,7 @@ types are known.
 @item @code{--user-guided-type-specialization}
 @itemx @code{--user-guided-type-specialisation}
 @findex --user-guided-type-specialization
-@findex --no-user-guided-type-specialization
 @findex --user-guided-type-specialisation
-@findex --no-user-guided-type-specialisation
 Enable specialization of polymorphic predicates for which there are
 @code{:- pragma type_spec} declarations. See the
 ``Type specialization'' section of the ``Pragmas'' chapter of the
@@ -9972,13 +9953,11 @@ Set the maximum size of higher-order arguments to be specialized by
 @sp 1
 @item @code{--loop-invariants}
 @findex --loop-invariants
-@findex --no-loop-invariants
 Hoist loop invariant computations out of loops.
 
 @sp 1
 @item @code{--introduce-accumulators}
 @findex --introduce-accumulators
-@findex --no-introduce-accumulators
 Attempt to make procedures tail recursive by introducing accumulator
 variables into them.
 
@@ -9986,9 +9965,7 @@ variables into them.
 @item @code{--optimize-constructor-last-call}
 @itemx @code{--optimise-constructor-last-call}
 @findex --optimize-constructor-last-call
-@findex --no-optimize-constructor-last-call
 @findex --optimise-constructor-last-call
-@findex --no-optimise-constructor-last-call
 Enable the optimization of almost-last calls that are followed only by
 constructor application.
 
@@ -9996,9 +9973,7 @@ constructor application.
 @c @item @code{--optimize-constructor-last-call-accumulator}
 @c @itemx @code{--optimise-constructor-last-call-accumulator}
 @c @findex --optimize-constructor-last-call-accumulator
-@c @findex --no-optimize-constructor-last-call-accumulator
 @c @findex --optimise-constructor-last-call-accumulator
-@c @findex --no-optimise-constructor-last-call-accumulator
 @c Enable the optimization via accumulators of almost-last calls that are
 @c followed only by constructor application.
 
@@ -10006,25 +9981,23 @@ constructor application.
 @c @item @code{--optimize-constructor-last-call-null}
 @c @itemx @code{--optimise-constructor-last-call-null}
 @c @findex --optimize-constructor-last-call-null
-@c @findex --no-optimize-constructor-last-call-null
 @c @findex --optimise-constructor-last-call-null
-@c @findex --no-optimise-constructor-last-call-null
 @c When @samp{--optimize-constructor-last-call} is enabled, put NULL in
 @c uninitialized fields to prevent the garbage collector from looking at
 @c and following a random bit pattern.
 
 @sp 1
-@item @code{--split-switch-arms}
+@item @code{--no-split-switch-arms}
 @findex --split-switch-arms
 @findex --no-split-switch-arms
 When a switch on a variable has an inner switch on that same variable
-inside one of its arms, split up that arm of the outer switch along the
-same lines, effectively inlining the inner switch.
+inside one of its arms, the default is to split up that arm of the
+outer switch along the same lines, effectively inlining the inner
+switch. @samp{--no-split-switch-arms} prevents this split.
 
 @c @sp 1
 @c @item @code{--merge-code-after-switch}
 @c @findex --merge-code-after-switch
-@c @findex --no-merge-code-after-switch
 @c Merge the goal after a switch into the switch, if we can. Two cases in
 @c which we can are when that goal just tests the value of a variable set
 @c in the switch, and when that goal is a switch on the same variable.
@@ -10037,17 +10010,17 @@ same lines, effectively inlining the inner switch.
 @c function symbols.
 
 @sp 1
-@item @code{--const-struct}
+@item @code{--no-const-struct}
 @findex --const-struct
 @findex --no-const-struct
-Gather constant ground structures in a separate table. Each such
-structure will be stored in this table just once, even if it occurs in
-many different procedures.
+By default, the compiler will gather constant ground structures in a
+separate table, with each such structure being stored in this table
+just once, even if it occurs in many different procedures.
+@samp{--no-const-struct} prevents this behavior.
 
 @sp 1
 @item @code{--common-struct}
 @findex --common-struct
-@findex --no-common-struct
 Replace two or more occurrences of the same term in a conjunction with
 just one copy.
 
@@ -10064,9 +10037,7 @@ Minimize the number of variables saved across calls.
 @c @item @code{--optimize-saved-vars-const}
 @c @itemx @code{--optimise-saved-vars-const}
 @c @findex --optimize-saved-vars-const
-@c @findex --no-optimize-saved-vars-const
 @c @findex --optimise-saved-vars-const
-@c @findex --no-optimise-saved-vars-const
 @c Minimize the number of variables saved across calls by introducing
 @c duplicate copies of variables bound to constants in each interval
 @c between flushes where they are needed.
@@ -10075,33 +10046,31 @@ Minimize the number of variables saved across calls.
 @c @item @code{--optimize-saved-vars-cell}
 @c @itemx @code{--optimise-saved-vars-cell}
 @c @findex --optimize-saved-vars-cell
-@c @findex --no-optimize-saved-vars-cell
 @c @findex --optimise-saved-vars-cell
-@c @findex --no-optimise-saved-vars-cell
 @c Minimize the number of variables saved across calls by trying to use
 @c saved variables pointing to cells to reach the variables stored in
 @c those cells.
 
 @c @sp 1
-@c @item @code{--osv-loop}
+@c @item @code{--no-osv-loop}
 @c @findex --osv-loop
 @c @findex --no-osv-loop
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--osv-full-path}
+@c @item @code{--no-osv-full-path}
 @c @findex --osv-full-path
 @c @findex --no-osv-full-path
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--osv-on-stack}
+@c @item @code{--no-osv-on-stack}
 @c @findex --osv-on-stack
 @c @findex --no-osv-on-stack
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--osv-cand-head}
+@c @item @code{--no-osv-cand-head}
 @c @findex --osv-cand-head
 @c @findex --no-osv-cand-head
 @c There is no help text available.
@@ -10144,20 +10113,17 @@ Minimize the number of variables saved across calls.
 @c @sp 1
 @c @item @code{--osv-all-cand}
 @c @findex --osv-all-cand
-@c @findex --no-osv-all-cand
 @c There is no help text available.
 
 @sp 1
 @item @code{--constraint-propagation}
 @findex --constraint-propagation
-@findex --no-constraint-propagation
 Perform the constraint propagation transformation, which attempts to
 ensure that goals which can fail are executed as early as possible.
 
 @sp 1
 @item @code{--local-constraint-propagation}
 @findex --local-constraint-propagation
-@findex --no-local-constraint-propagation
 Perform the constraint propagation transformation, but only rearrange
 goals within each procedure. Specialized versions of procedures will
 not be created.
@@ -10165,7 +10131,6 @@ not be created.
 @sp 1
 @item @code{--deforestation}
 @findex --deforestation
-@findex --no-deforestation
 Perform deforestation, which is a program transformation whose aims are
 to avoid the construction of intermediate data structures, and to avoid
 repeated traversals over data structures within a conjunction.
@@ -10196,7 +10161,6 @@ deforestation. A value of -1 specifies no limit. The default is 15.
 @c @sp 1
 @c @item @code{--untuple}
 @c @findex --untuple
-@c @findex --no-untuple
 @c Expand out procedure arguments when the argument type is either a
 @c tuple, or a type with exactly one functor. This increases the cost of
 @c parameter passing, but reduces the cost of access to the individual
@@ -10209,7 +10173,6 @@ deforestation. A value of -1 specifies no limit. The default is 15.
 @c @sp 1
 @c @item @code{--tuple}
 @c @findex --tuple
-@c @findex --no-tuple
 @c Try to find opportunities for procedures to pass some arguments to each
 @c other as a tuple rather than separately. This reduces the cost of
 @c parameter passing, but increases the cost of access to each of the old
@@ -10247,16 +10210,13 @@ deforestation. A value of -1 specifies no limit. The default is 15.
 @item @code{--delay-constructs}
 @itemx @code{--delay-construct}
 @findex --delay-constructs
-@findex --no-delay-constructs
 @findex --delay-construct
-@findex --no-delay-construct
 Reorder goals to move construction unifications after primitive goals
 that can fail.
 
 @c @sp 1
 @c @item @code{--follow-code}
 @c @findex --follow-code
-@c @findex --no-follow-code
 @c Move the code following a branched goal (if-then-else, disjunction, or
 @c switch) until the next call into each branch of that goal. Having a
 @c call as the goal just after the branched goal gives the LLDS code
@@ -10266,13 +10226,12 @@ that can fail.
 @c @sp 1
 @c @item @code{--always-specialize-in-dep-par-conjs}
 @c @findex --always-specialize-in-dep-par-conjs
-@c @findex --no-always-specialize-in-dep-par-conjs
 @c When the transformation for handling dependent parallel conjunctions
 @c adds waits and/or signals around a call, create a specialized version
 @c of the called procedure, even if this is not profitable.
 
 @c @sp 1
-@c @item @code{--allow-some-paths-only-waits}
+@c @item @code{--no-allow-some-paths-only-waits}
 @c @findex --allow-some-paths-only-waits
 @c @findex --no-allow-some-paths-only-waits
 @c There is no help text available.
@@ -10280,11 +10239,10 @@ that can fail.
 @c @sp 1
 @c @item @code{--region-analysis}
 @c @findex --region-analysis
-@c @findex --no-region-analysis
 @c Enable the analysis for region-based memory management.
 
 @sp 1
-@item @code{--generate-trail-ops-inline}
+@item @code{--no-generate-trail-ops-inline}
 @findex --generate-trail-ops-inline
 @findex --no-generate-trail-ops-inline
 Normally, the compiler generates inline code for trailing operations.
@@ -10367,7 +10325,6 @@ memory cells on the other hand. (default: 0)
 @sp 1
 @item @code{--smart-indexing}
 @findex --smart-indexing
-@findex --no-smart-indexing
 Implement switches using the fastest applicable implementation method,
 which may be e.g. binary search or a hash table. With
 @samp{--no-smart-indexing}, the default is to implement switches as
@@ -10376,25 +10333,21 @@ simple if-then-else chains.
 @c @sp 1
 @c @item @code{--smart-atomic-indexing}
 @c @findex --smart-atomic-indexing
-@c @findex --no-smart-atomic-indexing
 @c Generate smart switches on atomic types when appropriate.
 
 @c @sp 1
 @c @item @code{--smart-string-indexing}
 @c @findex --smart-string-indexing
-@c @findex --no-smart-string-indexing
 @c Generate smart switches on strings when appropriate.
 
 @c @sp 1
 @c @item @code{--smart-tag-indexing}
 @c @findex --smart-tag-indexing
-@c @findex --no-smart-tag-indexing
 @c Generate smart switches on discriminated union types when appropriate.
 
 @c @sp 1
 @c @item @code{--smart-float-indexing}
 @c @findex --smart-float-indexing
-@c @findex --no-smart-float-indexing
 @c Generate smart switches on floats when appropriate.
 
 @sp 1
@@ -10453,21 +10406,19 @@ The number of alternatives in a tag switch must be at least this number
 @c @sp 1
 @c @item @code{--switch-single-rec-base-first}
 @c @findex --switch-single-rec-base-first
-@c @findex --no-switch-single-rec-base-first
 @c In a switch with two arms, one a base case and one with a single
 @c recursive call, put the base case first.
 
 @c @sp 1
-@c @item @code{--switch-multi-rec-base-first}
+@c @item @code{--no-switch-multi-rec-base-first}
 @c @findex --switch-multi-rec-base-first
 @c @findex --no-switch-multi-rec-base-first
 @c In a switch with two arms, one a base case and one with multiple
-@c recursive calls, put the base case first.
+@c recursive calls, do not put the base case first.
 
 @sp 1
 @item @code{--static-ground-terms}
 @findex --static-ground-terms
-@findex --no-static-ground-terms
 Enable the optimization of constructing constant ground terms at
 compile time and storing them as static constants. Note that auxiliary
 data structures created by the compiler for purposes such as debugging
@@ -10476,9 +10427,14 @@ will always be created as static constants.
 @sp 1
 @item @code{--use-atomic-cells}
 @findex --use-atomic-cells
-@findex --no-use-atomic-cells
 Use the atomic variants of the Boehm gc allocator calls when the memory
 cell to be allocated cannot contain pointers.
+
+@c @sp 1
+@c @item @code{--optimize-trail-usage}
+@c @findex --optimize-trail-usage
+@c Try to restrict trailing operations to those parts of the program that
+@c actually use the trail.
 
 @end table
 
@@ -10492,39 +10448,32 @@ cell to be allocated cannot contain pointers.
 @item @code{--mlds-optimize}
 @itemx @code{--mlds-optimise}
 @findex --mlds-optimize
-@findex --no-mlds-optimize
 @findex --mlds-optimise
-@findex --no-mlds-optimise
 Enable the MLDS->MLDS optimization passes.
 
 @sp 1
 @item @code{--mlds-peephole}
 @findex --mlds-peephole
-@findex --no-mlds-peephole
 Perform peephole optimization of the MLDS.
 
 @sp 1
 @item @code{--optimize-tailcalls}
 @itemx @code{--optimise-tailcalls}
 @findex --optimize-tailcalls
-@findex --no-optimize-tailcalls
 @findex --optimise-tailcalls
-@findex --no-optimise-tailcalls
 Turn self-tailcalls into loops.
 
 @sp 1
 @item @code{--optimize-initializations}
 @itemx @code{--optimise-initializations}
 @findex --optimize-initializations
-@findex --no-optimize-initializations
 @findex --optimise-initializations
-@findex --no-optimise-initializations
 Whenever possible, convert the first assignment to each local variable
 in the target code into an initializer on its declaration. Some target
 language compilers can generate faster code that way.
 
 @c @sp 1
-@c @item @code{--eliminate-unused-mlds-assigns}
+@c @item @code{--no-eliminate-unused-mlds-assigns}
 @c @findex --eliminate-unused-mlds-assigns
 @c @findex --no-eliminate-unused-mlds-assigns
 @c Eliminate assignments to dead variables in the MLDS.
@@ -10533,17 +10482,9 @@ language compilers can generate faster code that way.
 @item @code{--eliminate-local-variables}
 @itemx @code{--eliminate-local-vars}
 @findex --eliminate-local-variables
-@findex --no-eliminate-local-variables
 @findex --eliminate-local-vars
-@findex --no-eliminate-local-vars
 Eliminate local variables with known values, where possible, by
 replacing occurrences of such variables with their values.
-
-@c @sp 1
-@c @item @code{--optimize-trail-usage}
-@c @findex --optimize-trail-usage
-@c Try to restrict trailing operations to those parts of the program that
-@c actually use the trail.
 
 @end table
 
@@ -10568,29 +10509,27 @@ this number (default: 4).
 @sp 1
 @item @code{--middle-rec}
 @findex --middle-rec
-@findex --no-middle-rec
 Enable the middle recursion optimization.
 
 @sp 1
 @item @code{--simple-neg}
 @findex --simple-neg
-@findex --no-simple-neg
 Generate simplified code for simple negations.
 
 @c @sp 1
-@c @item @code{--allow-hijacks}
+@c @item @code{--no-allow-hijacks}
 @c @findex --allow-hijacks
 @c @findex --no-allow-hijacks
-@c When appropriate, generate code to hijack nondet stack frames that
-@c possibly belongs to another procedure invocation.
+@c When appropriate, the compiler normally generates code that temporarily
+@c hijacks an existing nondet stack frame that probably belongs to another
+@c procedure invocation. @samp{--no-allow-hijacks} tells the compiler to
+@c create a new nondet stack frame instead.
 
 @sp 1
 @item @code{--llds-optimize}
 @itemx @code{--llds-optimise}
 @findex --llds-optimize
-@findex --no-llds-optimize
 @findex --llds-optimise
-@findex --no-llds-optimise
 Enable the LLDs->LLDS optimization passes.
 
 @sp 1
@@ -10605,60 +10544,47 @@ Iterate most LLDS->LLDS optimizations at most @var{N} times (default:
 @item @code{--optimize-peep}
 @itemx @code{--optimise-peep}
 @findex --optimize-peep
-@findex --no-optimize-peep
 @findex --optimise-peep
-@findex --no-optimise-peep
 Enable local peephole optimizations.
 
 @c @sp 1
 @c @item @code{--optimize-peep-mkword}
 @c @itemx @code{--optimise-peep-mkword}
 @c @findex --optimize-peep-mkword
-@c @findex --no-optimize-peep-mkword
 @c @findex --optimise-peep-mkword
-@c @findex --no-optimise-peep-mkword
 @c Enable peephole optimizations of words created by mkword.
 
 @sp 1
 @item @code{--optimize-labels}
 @itemx @code{--optimise-labels}
 @findex --optimize-labels
-@findex --no-optimize-labels
 @findex --optimise-labels
-@findex --no-optimise-labels
 Delete dead labels, and the unreachable code following them.
 
 @c @sp 1
 @c @item @code{--standardize-labels}
 @c @itemx @code{--standardise-labels}
 @c @findex --standardize-labels
-@c @findex --no-standardize-labels
 @c @findex --standardise-labels
-@c @findex --no-standardise-labels
 @c Standardize internal labels in the generated code.
 
 @sp 1
 @item @code{--optimize-jumps}
 @itemx @code{--optimise-jumps}
 @findex --optimize-jumps
-@findex --no-optimize-jumps
 @findex --optimise-jumps
-@findex --no-optimise-jumps
 Enable the short-circuiting of jumps to jumps.
 
 @sp 1
 @item @code{--optimize-fulljumps}
 @itemx @code{--optimise-fulljumps}
 @findex --optimize-fulljumps
-@findex --no-optimize-fulljumps
 @findex --optimise-fulljumps
-@findex --no-optimise-fulljumps
 Enable the elimination of jumps to ordinary code.
 
 @sp 1
 @item @code{--checked-nondet-tailcalls}
 @findex --checked-nondet-tailcalls
-@findex --no-checked-nondet-tailcalls
 Convert nondet calls into tail calls whenever possible, even when this
 requires a runtime check. This option tries to minimize stack
 consumption, possibly at the expense of speed.
@@ -10666,7 +10592,6 @@ consumption, possibly at the expense of speed.
 @sp 1
 @item @code{--pessimize-tailcalls}
 @findex --pessimize-tailcalls
-@findex --no-pessimize-tailcalls
 Disable the optimization of tailcalls. This option tries to minimize
 code size at the expense of speed.
 
@@ -10674,9 +10599,7 @@ code size at the expense of speed.
 @item @code{--optimize-delay-slot}
 @itemx @code{--optimise-delay-slot}
 @findex --optimize-delay-slot
-@findex --no-optimize-delay-slot
 @findex --optimise-delay-slot
-@findex --no-optimise-delay-slot
 Disable branch delay slot optimizations, This option is meaningful only
 if the target architecture has delay slots.
 
@@ -10684,25 +10607,20 @@ if the target architecture has delay slots.
 @item @code{--optimize-frames}
 @itemx @code{--optimise-frames}
 @findex --optimize-frames
-@findex --no-optimize-frames
 @findex --optimise-frames
-@findex --no-optimise-frames
 Optimize the operations that maintain stack frames.
 
 @sp 1
 @item @code{--optimize-reassign}
 @itemx @code{--optimise-reassign}
 @findex --optimize-reassign
-@findex --no-optimize-reassign
 @findex --optimise-reassign
-@findex --no-optimise-reassign
 Optimize away assignments to memory locations that already hold the
 to-be-assigned value.
 
 @sp 1
 @item @code{--use-local-vars}
 @findex --use-local-vars
-@findex --no-use-local-vars
 Use local variables in C code blocks wherever possible.
 
 @c @sp 1
@@ -10714,31 +10632,26 @@ Use local variables in C code blocks wherever possible.
 @item @code{--optimize-dups}
 @itemx @code{--optimise-dups}
 @findex --optimize-dups
-@findex --no-optimize-dups
 @findex --optimise-dups
-@findex --no-optimise-dups
 Enable elimination of duplicate code within procedures.
 
 @sp 1
 @item @code{--optimize-proc-dups}
 @itemx @code{--optimise-proc-dups}
 @findex --optimize-proc-dups
-@findex --no-optimize-proc-dups
 @findex --optimise-proc-dups
-@findex --no-optimise-proc-dups
 Enable elimination of duplicate procedures.
 
 @sp 1
 @item @code{--common-data}
 @findex --common-data
-@findex --no-common-data
 Enable optimization of common data structures.
 
 @sp 1
-@item @code{--common-layout-data}
+@item @code{--no-common-layout-data}
 @findex --common-layout-data
 @findex --no-common-layout-data
-Enable optimization of common subsequences in layout structures.
+Disable optimization of common subsequences in layout structures.
 
 @sp 1
 @item @code{--layout-compression-limit @var{N}}
@@ -10756,7 +10669,6 @@ long as the arrays involved have at most @var{N} elements (default:
 @sp 1
 @item @code{--emit-c-loops}
 @findex --emit-c-loops
-@findex --no-emit-c-loops
 Use C loop contstructs to implement loops. With
 @samp{--no-emit-c-loops}, use only gotos.
 
@@ -10770,7 +10682,7 @@ function. The default value of @var{N} is one. Increasing @var{N} can
 produce slightly more efficient code, but makes compilation slower.
 
 @sp 1
-@item @code{--local-thread-engine-base}
+@item @code{--no-local-thread-engine-base}
 @findex --local-thread-engine-base
 @findex --no-local-thread-engine-base
 Do not copy the thread-local Mercury engine base address into a local
@@ -10781,7 +10693,6 @@ register variables extension.
 @sp 1
 @item @code{--inline-alloc}
 @findex --inline-alloc
-@findex --no-inline-alloc
 Inline calls to @code{GC_malloc()}. This can improve performance a fair
 bit, but may significantly increase code size. This option is
 meaningful only if the selected garbage collector is boehm, and if the
@@ -10790,7 +10701,6 @@ C compiler is gcc.
 @sp 1
 @item @code{--use-macro-for-redo-fail}
 @findex --use-macro-for-redo-fail
-@findex --no-use-macro-for-redo-fail
 Emit the fail or redo macro instead of a branch to the fail or redo
 code in the runtime system. This produces slightly bigger but slightly
 faster code.
@@ -11193,22 +11103,20 @@ Specify which C compiler to use.
 @item @code{--c-optimize}
 @itemx @code{--c-optimise}
 @findex --c-optimize
-@findex --no-c-optimize
 @findex --c-optimise
-@findex --no-c-optimise
 Enable optimizations by the C compiler.
 
 @sp 1
-@item @code{--c-include-directory @var{dir}}
+@item @code{--c-include-directory @var{directory}}
 @itemx --no-c-include-directory
-@itemx @code{--c-include-dir @var{dir}}
+@itemx @code{--c-include-dir @var{directory}}
 @itemx --no-c-include-dir
 @findex --c-include-directory
 @findex --no-c-include-directory
 @findex --c-include-dir
 @findex --no-c-include-dir
-Append @var{dir} to the list of directories to be searched for C header
-files. Note that if you want to override this list, instead of
+Append @var{directory} to the list of directories to be searched for C
+header files. Note that if you want to override this list, instead of
 appending to it, then you can set the @env{MERCURY_MC_ALL_C_INCL_DIRS}
 environment variable to a sequence of @samp{--c-include-directory}
 options.
@@ -11577,7 +11485,7 @@ is the same as the name of the first module on the command line.) This
 option is ignored by @code{mmc --make}.
 
 @sp 1
-@item @code{--link-object @var{file}}
+@item @code{--link-object @var{filename}}
 @itemx --no-link-object
 @findex --link-object
 @findex --no-link-object
@@ -11762,7 +11670,7 @@ only.)
 @item @code{--cstack-reserve-size @var{size}}
 @findex --cstack-reserve-size
 Set the total size of the C stack in virtual memory for executables.
-The stack size is given in bytes. This options is only sypported (and
+The stack size is given in bytes. This option is only supported (and
 indeed only necessary) on systems running Microsoft Windows.)
 
 @sp 1
@@ -11846,12 +11754,12 @@ library assemblies with the C# back-end.)
 @table @asis
 
 @sp 1
-@item @code{--options-search-directory @var{dir}}
+@item @code{--options-search-directory @var{directory}}
 @itemx --no-options-search-directory
 @findex --options-search-directory
 @findex --no-options-search-directory
-Add @var{dir} to the list of directories to be searched for options
-files.
+Add @var{directory} to the list of directories to be searched for
+options files.
 
 @sp 1
 @item @code{--use-subdirs}
@@ -11878,9 +11786,9 @@ libraries will be symlinked or copied into the current directory.
 does not work with @code{mmake}.
 
 @sp 1
-@item @code{-I @var{dir}}
+@item @code{-I @var{directory}}
 @itemx -I-
-@itemx @code{--search-directory @var{dir}}
+@itemx @code{--search-directory @var{directory}}
 @itemx --no-search-directory
 @findex -I
 @findex -I-
@@ -11888,18 +11796,18 @@ does not work with @code{mmake}.
 @findex --no-search-directory
 @cindex Directories
 @cindex Search path
-Append @var{dir} to the list of directories to be searched for
+Append @var{directory} to the list of directories to be searched for
 @file{.int*} and @file{.module_dep} files.
 
 @sp 1
-@item @code{--intermod-directory @var{dir}}
+@item @code{--intermod-directory @var{directory}}
 @itemx --no-intermod-directory
 @findex --intermod-directory
 @findex --no-intermod-directory
 @cindex Directories
 @cindex Search path
-Add @var{dir} to the list of directories to be searched for @file{.opt}
-and @file{.trans_opt} files.
+Add @var{directory} to the list of directories to be searched for
+@file{.opt} and @file{.trans_opt} files.
 
 @sp 1
 @item @code{--no-use-search-directories-for-intermod}
@@ -11911,12 +11819,12 @@ With @samp{--use-search-directories-for-intermod}, the compiler will
 add the arguments of @samp{--search-directory} options to the list of
 directories to search for `.opt' files. With
 @samp{--no-use-search-directories-for-intermod}, the compiler will use
-use only the arguments of @samp{--intermod-directory} options.
+only the arguments of @samp{--intermod-directory} options.
 
 @c @sp 1
-@c @item @code{--interface-dir-same-workspace @var{dir}}
+@c @item @code{--interface-dir-same-workspace @var{directory}}
 @c @itemx --no-interface-dir-same-workspace
-@c @itemx @code{--interface-dir-same-ws @var{dir}}
+@c @itemx @code{--interface-dir-same-ws @var{directory}}
 @c @itemx --no-interface-dir-same-ws
 @c @findex --interface-dir-same-workspace
 @c @findex --no-interface-dir-same-workspace
@@ -11925,9 +11833,9 @@ use only the arguments of @samp{--intermod-directory} options.
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--interface-dir-independent-workspace @var{dir}}
+@c @item @code{--interface-dir-independent-workspace @var{directory}}
 @c @itemx --no-interface-dir-independent-workspace
-@c @itemx @code{--interface-dir-indep-ws @var{dir}}
+@c @itemx @code{--interface-dir-indep-ws @var{directory}}
 @c @itemx --no-interface-dir-indep-ws
 @c @findex --interface-dir-independent-workspace
 @c @findex --no-interface-dir-independent-workspace
@@ -11936,9 +11844,9 @@ use only the arguments of @samp{--intermod-directory} options.
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--interface-dir-installed-library @var{dir}}
+@c @item @code{--interface-dir-installed-library @var{directory}}
 @c @itemx --no-interface-dir-installed-library
-@c @itemx @code{--interface-dir-installed-lib @var{dir}}
+@c @itemx @code{--interface-dir-installed-lib @var{directory}}
 @c @itemx --no-interface-dir-installed-lib
 @c @findex --interface-dir-installed-library
 @c @findex --no-interface-dir-installed-library
@@ -11947,9 +11855,9 @@ use only the arguments of @samp{--intermod-directory} options.
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--intermod-dir-same-workspace @var{dir}}
+@c @item @code{--intermod-dir-same-workspace @var{directory}}
 @c @itemx --no-intermod-dir-same-workspace
-@c @itemx @code{--intermod-dir-same-ws @var{dir}}
+@c @itemx @code{--intermod-dir-same-ws @var{directory}}
 @c @itemx --no-intermod-dir-same-ws
 @c @findex --intermod-dir-same-workspace
 @c @findex --no-intermod-dir-same-workspace
@@ -11958,9 +11866,9 @@ use only the arguments of @samp{--intermod-directory} options.
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--intermod-dir-independent-workspace @var{dir}}
+@c @item @code{--intermod-dir-independent-workspace @var{directory}}
 @c @itemx --no-intermod-dir-independent-workspace
-@c @itemx @code{--intermod-dir-indep-ws @var{dir}}
+@c @itemx @code{--intermod-dir-indep-ws @var{directory}}
 @c @itemx --no-intermod-dir-indep-ws
 @c @findex --intermod-dir-independent-workspace
 @c @findex --no-intermod-dir-independent-workspace
@@ -11969,9 +11877,9 @@ use only the arguments of @samp{--intermod-directory} options.
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--intermod-dir-installed-library @var{dir}}
+@c @item @code{--intermod-dir-installed-library @var{directory}}
 @c @itemx --no-intermod-dir-installed-library
-@c @itemx @code{--intermod-dir-installed-lib @var{dir}}
+@c @itemx @code{--intermod-dir-installed-lib @var{directory}}
 @c @itemx --no-intermod-dir-installed-lib
 @c @findex --intermod-dir-installed-library
 @c @findex --no-intermod-dir-installed-library
@@ -11980,9 +11888,9 @@ use only the arguments of @samp{--intermod-directory} options.
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--c-include-dir-same-workspace @var{dir}}
+@c @item @code{--c-include-dir-same-workspace @var{directory}}
 @c @itemx --no-c-include-dir-same-workspace
-@c @itemx @code{--c-incl-dir-same-ws @var{dir}}
+@c @itemx @code{--c-incl-dir-same-ws @var{directory}}
 @c @itemx --no-c-incl-dir-same-ws
 @c @findex --c-include-dir-same-workspace
 @c @findex --no-c-include-dir-same-workspace
@@ -11991,9 +11899,9 @@ use only the arguments of @samp{--intermod-directory} options.
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--c-include-dir-independent-workspace @var{dir}}
+@c @item @code{--c-include-dir-independent-workspace @var{directory}}
 @c @itemx --no-c-include-dir-independent-workspace
-@c @itemx @code{--c-incl-dir-indep-ws @var{dir}}
+@c @itemx @code{--c-incl-dir-indep-ws @var{directory}}
 @c @itemx --no-c-incl-dir-indep-ws
 @c @findex --c-include-dir-independent-workspace
 @c @findex --no-c-include-dir-independent-workspace
@@ -12002,9 +11910,9 @@ use only the arguments of @samp{--intermod-directory} options.
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--c-include-dir-installed-library @var{dir}}
+@c @item @code{--c-include-dir-installed-library @var{directory}}
 @c @itemx --no-c-include-dir-installed-library
-@c @itemx @code{--c-incl-dir-installed-lib @var{dir}}
+@c @itemx @code{--c-incl-dir-installed-lib @var{directory}}
 @c @itemx --no-c-incl-dir-installed-lib
 @c @findex --c-include-dir-installed-library
 @c @findex --no-c-include-dir-installed-library
@@ -12013,9 +11921,9 @@ use only the arguments of @samp{--intermod-directory} options.
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--c-include-dir-external @var{dir}}
+@c @item @code{--c-include-dir-external @var{directory}}
 @c @itemx --no-c-include-dir-external
-@c @itemx @code{--c-incl-dir-external @var{dir}}
+@c @itemx @code{--c-incl-dir-external @var{directory}}
 @c @itemx --no-c-incl-dir-external
 @c @findex --c-include-dir-external
 @c @findex --no-c-include-dir-external
@@ -12024,9 +11932,9 @@ use only the arguments of @samp{--intermod-directory} options.
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--mercury-library-dir-same-workspace @var{dir}}
+@c @item @code{--mercury-library-dir-same-workspace @var{directory}}
 @c @itemx --no-mercury-library-dir-same-workspace
-@c @itemx @code{--mer-lib-dir-same-ws @var{dir}}
+@c @itemx @code{--mer-lib-dir-same-ws @var{directory}}
 @c @itemx --no-mer-lib-dir-same-ws
 @c @findex --mercury-library-dir-same-workspace
 @c @findex --no-mercury-library-dir-same-workspace
@@ -12035,9 +11943,9 @@ use only the arguments of @samp{--intermod-directory} options.
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--mercury-library-dir-independent-workspace @var{dir}}
+@c @item @code{--mercury-library-dir-independent-workspace @var{directory}}
 @c @itemx --no-mercury-library-dir-independent-workspace
-@c @itemx @code{--mer-lib-dir-indep-ws @var{dir}}
+@c @itemx @code{--mer-lib-dir-indep-ws @var{directory}}
 @c @itemx --no-mer-lib-dir-indep-ws
 @c @findex --mercury-library-dir-independent-workspace
 @c @findex --no-mercury-library-dir-independent-workspace
@@ -12046,9 +11954,9 @@ use only the arguments of @samp{--intermod-directory} options.
 @c There is no help text available.
 
 @c @sp 1
-@c @item @code{--mercury-library-dir-installed-library @var{dir}}
+@c @item @code{--mercury-library-dir-installed-library @var{directory}}
 @c @itemx --no-mercury-library-dir-installed-library
-@c @itemx @code{--mer-lib-dir-installed-lib @var{dir}}
+@c @itemx @code{--mer-lib-dir-installed-lib @var{directory}}
 @c @itemx --no-mer-lib-dir-installed-lib
 @c @findex --mercury-library-dir-installed-library
 @c @findex --no-mercury-library-dir-installed-library
@@ -12065,7 +11973,7 @@ use only the arguments of @samp{--intermod-directory} options.
 @table @asis
 
 @sp 1
-@item @code{--install-prefix @var{dir}}
+@item @code{--install-prefix @var{directory}}
 @findex --install-prefix
 The directory under which to install Mercury libraries.
 
@@ -12155,9 +12063,9 @@ files in the program or library, with the source file containing the
 main module given first.
 
 @sp 1
-@item @code{--extra-library-header @var{file}}
+@item @code{--extra-library-header @var{filename}}
 @itemx --no-extra-library-header
-@itemx @code{--extra-lib-header @var{file}}
+@itemx @code{--extra-lib-header @var{filename}}
 @itemx --no-extra-lib-header
 @findex --extra-library-header
 @findex --no-extra-library-header
@@ -12194,25 +12102,25 @@ The given command will be invoked as
 a Mercury library. The default command is @code{cp}.
 
 @sp 1
-@item @code{--options-file @var{file}}
+@item @code{--options-file @var{filename}}
 @itemx --no-options-file
 @findex --options-file
 @findex --no-options-file
-Add @var{file} to the list of options files to be processed. If
-@var{file} is @samp{-}, an options file will be read from the standard
-input. By default, the compiler will read the file named
+Add @var{filename} to the list of options files to be processed. If
+@var{filename} is @samp{-}, an options file will be read from the
+standard input. By default, the compiler will read the file named
 @file{Mercury.options} in the current directory.
 
 @sp 1
-@item @code{--config-file @var{file}}
+@item @code{--config-file @var{filename}}
 @itemx --no-config-file
 @findex --config-file
 @findex --no-config-file
-Read the Mercury compiler's configuration information from @var{file}.
-If the @samp{--config-file} option is not set, a default configuration
-will be used, unless @samp{--no-mercury-stdlib-dir} is passed to
-@code{mmc}. The configuration file is just an options file. @xref{Using
-Mmake}.
+Read the Mercury compiler's configuration information from
+@var{filename}. If the @samp{--config-file} option is not set, a
+default configuration will be used, unless
+@samp{--no-mercury-stdlib-dir} is passed to @code{mmc}. The
+configuration file is just an options file. @xref{Using Mmake}.
 
 @sp 1
 @item @code{--env-type @{posix,cygwin,msys,windows@}}
@@ -12921,7 +12829,7 @@ profiling feedback file can be specified using the
 @samp{--feedback-file} option.
 
 @sp 1
-@item @code{--feedback-file @var{file}}
+@item @code{--feedback-file @var{filename}}
 @findex --feedback-file
 Use the specified profiling feedback file to help make decisions about
 where to introduce implicit parallelism.
@@ -13387,15 +13295,15 @@ Generate dependencies for use by @code{mmc --make} even when using
 installation.
 
 @c @sp 1
-@c NO_HELP OPTION optopt_static_ground_floats
+@c NO_HELP OPTION optopt_use_static_ground_floats
 @c There is no help text available.
 
 @c @sp 1
-@c NO_HELP OPTION optopt_static_ground_int64s
+@c NO_HELP OPTION optopt_use_static_ground_int64s
 @c There is no help text available.
 
 @c @sp 1
-@c NO_HELP OPTION optopt_static_code_addresses
+@c NO_HELP OPTION optopt_use_static_code_addresses
 @c There is no help text available.
 
 @end table
@@ -13426,9 +13334,7 @@ This option is deprecated and does not have any effect.
 @item @code{--everything-in-one-c-function}
 @itemx @code{--everything-in-one-C-function}
 @findex --everything-in-one-c-function
-@findex --no-everything-in-one-c-function
 @findex --everything-in-one-C-function
-@findex --no-everything-in-one-C-function
 This option is deprecated and does not have any effect.
 
 @end table

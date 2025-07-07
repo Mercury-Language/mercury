@@ -38,6 +38,9 @@ BEGIN {
         next_bool_opt = 0;
         next_int_opt = 0;
         next_string_opt = 0;
+
+        next_bool_n_opt = 0;
+        next_bool_y_opt = 0;
     }
     {
         if (NF == 3 || NF == 4) {
@@ -55,11 +58,18 @@ BEGIN {
                 bool_field_names[next_bool_opt] = option_field_name;
                 if (initial_value == "y") {
                     bool_defaults[next_bool_opt] = option_field_name;
+
+                    bool_y_opts[next_bool_y_opt] = option_name;
+                    next_bool_y_opt++;
                 } else if (initial_value == "n") {
                     bool_defaults[next_bool_opt] = "do_not_" option_field_name;
+
+                    bool_n_opts[next_bool_n_opt] = option_name;
+                    next_bool_n_opt++;
                 } else {
-                    printf("ERROR: bad bool default<%s>\n", $0);
+                    printf("ERROR: bad bool default <%s>\n", $0);
                 }
+                bool_initial_value[next_bool_opt] = initial_value;
                 next_bool_opt++;
             } else if (kind == "int") {
                 int_opts[next_int_opt] = $3;
@@ -75,7 +85,7 @@ BEGIN {
                 if (initial_value == "-") {
                     string_defaults[next_int_opt] = "";
                 } else {
-                    printf("ERROR: bad string default<%s>\n", $0);
+                    printf("ERROR: bad string default <%s>\n", $0);
                 }
                 next_string_opt++;
             } else {
@@ -152,6 +162,18 @@ END {
         }
         printf("%-12s).\n", "");
 
+        # Put this predicate first, even though it is the least important
+        # exported predicate here and should therefore come last. The reason
+        # for that is that opts_enabled_at_level is not generated here.
+        # Instead, it is defined in make_optimization_options_db_end,
+        # which *guarantees* that it will come after any predicate defined
+        # by the output of this script. We put this predicate at the front
+        # to avoid putting it in the middle of a related-to-each-other
+        # predicates.
+        printf("\n");
+        printf(":- pred bool_option_initial_n_y(%s::out, %s::out) is det.\n",
+            "list(option)", "list(option)");
+
         printf("\n");
         printf(":- pred process_optimization_options(option_table::in,\n");
         printf("%-4slist(%s)::in, %s::out) is det.\n",
@@ -179,6 +201,29 @@ END {
         printf(":- import_module int.\n");
         printf(":- import_module map.\n");
         printf(":- import_module string.\n");
+
+        printf("\n%%---------------------%%\n");
+
+        printf("\n");
+        printf("bool_option_initial_n_y(No, Yes) :-\n");
+        printf("%-4sNo = [\n", "");
+        for (i = 0; i < next_bool_n_opt; i++) {
+            suffix = ",";
+            if (i == next_bool_n_opt-1) {
+                suffix = "";
+            }
+            printf("%-8soptopt_%s%s\n", "", bool_n_opts[i], suffix);
+        }
+        printf("%-4s],\n", "");
+        printf("%-4sYes = [\n", "");
+        for (i = 0; i < next_bool_y_opt; i++) {
+            suffix = ",";
+            if (i == next_bool_y_opt-1) {
+                suffix = "";
+            }
+            printf("%-8soptopt_%s%s\n", "", bool_y_opts[i], suffix);
+        }
+        printf("%-4s].\n", "");
 
         printf("\n%%---------------------%%\n\n");
 
@@ -360,8 +405,10 @@ END {
             printf("%-4s).\n\n", "");
         }
 
-        # The code from here to the end of the script generates code
-        # that should be included in the special_handler predicate in options.m.
+        ###################################################################
+
+        # The code from here to the end of the script generates code that
+        # should be included in the special_handler predicate in options.m.
 
         handler_file = "handler_file";
         arm_start = "(";

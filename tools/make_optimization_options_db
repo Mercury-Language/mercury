@@ -67,10 +67,10 @@ bool   n    spec_in_all_dep_par_conjs
 bool   y    allow_some_paths_only_waits
 bool   n    analyse_regions
 bool   n    use_smart_indexing
-bool   y    use_smart_indexing_atomic
-bool   y    use_smart_indexing_string
-bool   y    use_smart_indexing_tag
-bool   y    use_smart_indexing_float
+bool   n    use_smart_indexing_atomic
+bool   n    use_smart_indexing_string
+bool   n    use_smart_indexing_tag
+bool   n    use_smart_indexing_float
 int    25   dense_switch_req_density
 int    25   lookup_switch_req_density
 int    4    dense_switch_size

@@ -1754,10 +1754,11 @@ Optimization options
         analysis required crosses module boundaries. This option implies
         `--optimize-unused-args' and `--intermodule-optimization'.
 
-    --optimize-format-calls
-        Interpret the format string in calls to `string.format', `io.format',
-        and `stream.string_writer.format' at compile time, replacing those
-        calls with the sequence of more primitive operations required to
+    --no-optimize-format-calls
+        Do not optimize calls to `string.format', `io.format', and
+        `stream.string_writer.format' at compile time. The default is to
+        interpret the format string in such calls at compile time, replacing
+        those calls with the sequence of more primitive operations required to
         implement them.
 
     --optimize-constant-propagation
@@ -1776,13 +1777,13 @@ Optimization options
         name to the same value.
 
     PRIVATE OPTION
-    --allow-inlining
+    --no-allow-inlining
         Disallow all forms of inlining.
 
     --inlining
         Ask the compiler to inline procedures using its usual heuristics.
 
-    --inline-builtins
+    --no-inline-builtins
         Normally, the compiler implements builtin operations (such as
         arithmetic) using inline code. With `--no-inline-builtins', the
         compiler will implement them as calls to out-of-line procedures. This
@@ -1891,10 +1892,11 @@ Optimization options
         uninitialized fields to prevent the garbage collector from looking at
         and following a random bit pattern.
 
-    --split-switch-arms
+    --no-split-switch-arms
         When a switch on a variable has an inner switch on that same variable
-        inside one of its arms, split up that arm of the outer switch along the
-        same lines, effectively inlining the inner switch.
+        inside one of its arms, the default is to split up that arm of the
+        outer switch along the same lines, effectively inlining the inner
+        switch. `--no-split-switch-arms' prevents this split.
 
     PRIVATE OPTION
     --merge-code-after-switch
@@ -1908,10 +1910,11 @@ Optimization options
         form of a ground term that involves at least. the given number of
         function symbols.
 
-    --const-struct
-        Gather constant ground structures in a separate table. Each such
-        structure will be stored in this table just once, even if it occurs in
-        many different procedures.
+    --no-const-struct
+        By default, the compiler will gather constant ground structures in a
+        separate table, with each such structure being stored in this table
+        just once, even if it occurs in many different procedures.
+        `--no-const-struct' prevents this behavior.
 
     --common-struct
         Replace two or more occurrences of the same term in a conjunction with
@@ -1936,19 +1939,19 @@ Optimization options
         those cells.
 
     PRIVATE OPTION
-    --osv-loop
+    --no-osv-loop
         There is no help text available.
 
     PRIVATE OPTION
-    --osv-full-path
+    --no-osv-full-path
         There is no help text available.
 
     PRIVATE OPTION
-    --osv-on-stack
+    --no-osv-on-stack
         There is no help text available.
 
     PRIVATE OPTION
-    --osv-cand-head
+    --no-osv-cand-head
         There is no help text available.
 
     PRIVATE OPTION
@@ -2076,14 +2079,14 @@ Optimization options
         of the called procedure, even if this is not profitable.
 
     PRIVATE OPTION
-    --allow-some-paths-only-waits
+    --no-allow-some-paths-only-waits
         There is no help text available.
 
     PRIVATE OPTION
     --region-analysis
         Enable the analysis for region-based memory management.
 
-    --generate-trail-ops-inline
+    --no-generate-trail-ops-inline
         Normally, the compiler generates inline code for trailing operations.
         With `--no-generate-trail-ops-inline', the compiler will implement them
         using calls to those operations in the standard library.
@@ -2196,9 +2199,9 @@ Optimization options
         recursive call, put the base case first.
 
     PRIVATE OPTION
-    --switch-multi-rec-base-first
+    --no-switch-multi-rec-base-first
         In a switch with two arms, one a base case and one with multiple
-        recursive calls, put the base case first.
+        recursive calls, do not put the base case first.
 
     --static-ground-terms
         Enable the optimization of constructing constant ground terms at
@@ -2235,7 +2238,7 @@ Optimization options
         language compilers can generate faster code that way.
 
     PRIVATE OPTION
-    --eliminate-unused-mlds-assigns
+    --no-eliminate-unused-mlds-assigns
         Eliminate assignments to dead variables in the MLDS.
 
     --eliminate-local-variables
@@ -2260,9 +2263,11 @@ Optimization options
         Generate simplified code for simple negations.
 
     PRIVATE OPTION
-    --allow-hijacks
-        When appropriate, generate code to hijack nondet stack frames that
-        possibly belongs to another procedure invocation.
+    --no-allow-hijacks
+        When appropriate, the compiler normally generates code that temporarily
+        hijacks an existing nondet stack frame that probably belongs to another
+        procedure invocation. `--no-allow-hijacks' tells the compiler to create
+        a new nondet stack frame instead.
 
     --llds-optimize
     --llds-optimise
@@ -2339,8 +2344,8 @@ Optimization options
     --common-data
         Enable optimization of common data structures.
 
-    --common-layout-data
-        Enable optimization of common subsequences in layout structures.
+    --no-common-layout-data
+        Disable optimization of common subsequences in layout structures.
 
     --layout-compression-limit <N>
         Attempt to compress the layout structures used by the debugger only as
@@ -2361,7 +2366,7 @@ Optimization options
         The default value of <N> is one. Increasing <N> can produce slightly
         more efficient code, but makes compilation slower.
 
-    --local-thread-engine-base
+    --no-local-thread-engine-base
         Do not copy the thread-local Mercury engine base address into a local
         variable, even when this would be appropriate. This option is effective
         only in low-level parallel grades that do not use the GNU C global

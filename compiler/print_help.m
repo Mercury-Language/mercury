@@ -56,6 +56,7 @@
 :- import_module getopt.
 :- import_module int.
 :- import_module list.
+:- import_module map.
 :- import_module require.
 :- import_module set.
 :- import_module solutions.
@@ -505,6 +506,13 @@ all_chapters = AllSections :-
 :- mode document_requested_options(in(help_texinfo), in, out, out) is det.
 
 document_requested_options(Format, What, SectionNames, OptionsLines) :-
+    bool_option_initial_n_y(InitialNoOptions, InitialYesOptions),
+    map.init(InitialValueMap0),
+    list.foldl(insert_initial(no), InitialNoOptions,
+        InitialValueMap0, InitialValueMap1),
+    list.foldl(insert_initial(yes), InitialYesOptions,
+        InitialValueMap1, InitialValueMap),
+
     % We check whether we have covered all possible option categories
     %
     % - getting a set containing all of those categories;
@@ -515,7 +523,7 @@ document_requested_options(Format, What, SectionNames, OptionsLines) :-
             option_categories(Cat, _)
         ),
     solutions_set(CategoryPred, AllCategoriesSet),
-    acc_help_sections(Format, What, all_chapters,
+    acc_help_sections(InitialValueMap, Format, What, all_chapters,
         AllCategoriesSet, UndoneCategoriesSet,
         cord.init, SectionNameCord, cord.init, OptionsLineCord),
     set.to_sorted_list(UndoneCategoriesSet, UndoneCategories),
@@ -528,6 +536,16 @@ document_requested_options(Format, What, SectionNames, OptionsLines) :-
     SectionNames = cord.list(SectionNameCord),
     OptionsLines = cord.list(OptionsLineCord).
 
+    % Maps each bool option handled by optimization_options.m
+    % to its initial value.
+:- type initial_bool_value_map == map(option, bool).
+
+:- pred insert_initial(bool::in, option::in,
+    initial_bool_value_map::in, initial_bool_value_map::out) is det.
+
+insert_initial(InitialValue, Option, !InitialValueMap) :-
+    map.det_insert(Option, InitialValue, !InitialValueMap).
+
 %---------------------------------------------------------------------------%
 
 :- type menu_item
@@ -535,37 +553,37 @@ document_requested_options(Format, What, SectionNames, OptionsLines) :-
             % The name of the menu item, and its short description, if any.
             % (Nonexistent descriptions are represented by an empty string.)
 
-:- pred acc_help_sections(help_format, print_what_help, list(help_section),
-    set(option_category), set(option_category),
+:- pred acc_help_sections(initial_bool_value_map, help_format, print_what_help,
+    list(help_section), set(option_category), set(option_category),
     cord(menu_item), cord(menu_item), cord(string), cord(string)).
-:- mode acc_help_sections(in(help_plain_text), in, in,
+:- mode acc_help_sections(in, in(help_plain_text), in, in,
     in, out, in, out, in, out) is det.
-:- mode acc_help_sections(in(help_texinfo), in, in,
+:- mode acc_help_sections(in, in(help_texinfo), in, in,
     in, out, in, out, in, out) is det.
 
-acc_help_sections(_, _, [], !Categories, !SectionNameCord, !LineCord).
-acc_help_sections(Format, What, [Section | Sections],
+acc_help_sections(_, _, _, [], !Categories, !SectionNameCord, !LineCord).
+acc_help_sections(InitialValueMap, Format, What, [Section | Sections],
         !Categories, !MenuItemCord, !LineCord) :-
-    acc_help_section(Format, What, Section,
+    acc_help_section(InitialValueMap, Format, What, Section,
         !Categories, !MenuItemCord, !LineCord),
-    acc_help_sections(Format, What, Sections,
+    acc_help_sections(InitialValueMap, Format, What, Sections,
         !Categories, !MenuItemCord, !LineCord).
 
-:- pred acc_help_section(help_format, print_what_help, help_section,
-    set(option_category), set(option_category),
+:- pred acc_help_section(initial_bool_value_map, help_format, print_what_help,
+    help_section, set(option_category), set(option_category),
     cord(menu_item), cord(menu_item), cord(string), cord(string)).
-:- mode acc_help_section(in(help_plain_text), in, in,
+:- mode acc_help_section(in, in(help_plain_text), in, in,
     in, out, in, out, in, out) is det.
-:- mode acc_help_section(in(help_texinfo), in, in,
+:- mode acc_help_section(in, in(help_texinfo), in, in,
     in, out, in, out, in, out) is det.
 
-acc_help_section(Format, What, Section,
+acc_help_section(InitialValueMap, Format, What, Section,
         !Categories, !MenuItemCord, !LineCord) :-
     (
         Section = one_level_section(SubSection),
         SubSection = help_option_group(GroupName, MenuDesc, _, _),
-        acc_help_option_group(Format, What, sos_section, SubSection,
-            !Categories, cord.init, _MenuItemCord,
+        acc_help_option_group(InitialValueMap, Format, What, sos_section,
+            SubSection, !Categories, cord.init, _MenuItemCord,
             !LineCord, 0, NumDocOpts),
         ( if NumDocOpts > 0 then
             cord.snoc(menu_item(GroupName, MenuDesc), !MenuItemCord)
@@ -575,7 +593,7 @@ acc_help_section(Format, What, Section,
     ;
         Section = two_level_section(SectionName, SectionDesc,
             CommentLines, SubSections),
-        acc_help_subsections(Format, What, SubSections,
+        acc_help_subsections(InitialValueMap, Format, What, SubSections,
             !Categories, cord.init, SubMenuItemCord,
             cord.init, SubSectionsLineCord, 0, NumDocOpts),
         (
@@ -638,40 +656,42 @@ acc_help_section(Format, What, Section,
         )
     ).
 
-:- pred acc_help_subsections(help_format, print_what_help,
-    list(help_option_group), set(option_category), set(option_category),
-    cord(menu_item), cord(menu_item), cord(string), cord(string), int, int).
-:- mode acc_help_subsections(in(help_plain_text), in, in,
-    in, out, in, out, in, out, in, out) is det.
-:- mode acc_help_subsections(in(help_texinfo), in, in,
-    in, out, in, out, in, out, in, out) is det.
-
-acc_help_subsections(_, _, [],
-        !Categories, !MenuItemCord, !LineCord, !NumDocOpts).
-acc_help_subsections(Format, What, [SubSection | SubSections],
-        !Categories, !MenuItemCord, !LineCord, !NumDocOpts) :-
-    acc_help_option_group(Format, What, sos_subsection, SubSection,
-        !Categories, !MenuItemCord, !LineCord, !NumDocOpts),
-    acc_help_subsections(Format, What, SubSections,
-        !Categories, !MenuItemCord, !LineCord, !NumDocOpts).
-
-:- pred acc_help_option_group(help_format, print_what_help,
-    section_or_subsection, help_option_group,
+:- pred acc_help_subsections(initial_bool_value_map, help_format,
+    print_what_help, list(help_option_group),
     set(option_category), set(option_category),
     cord(menu_item), cord(menu_item), cord(string), cord(string), int, int).
-:- mode acc_help_option_group(in(help_plain_text), in, in, in,
+:- mode acc_help_subsections(in, in(help_plain_text), in, in,
     in, out, in, out, in, out, in, out) is det.
-:- mode acc_help_option_group(in(help_texinfo), in, in, in,
+:- mode acc_help_subsections(in, in(help_texinfo), in, in,
     in, out, in, out, in, out, in, out) is det.
 
-acc_help_option_group(Format, What, SubOrNot, Group,
+acc_help_subsections(_, _, _, [],
+        !Categories, !MenuItemCord, !LineCord, !NumDocOpts).
+acc_help_subsections(InitialValueMap, Format, What, [SubSection | SubSections],
+        !Categories, !MenuItemCord, !LineCord, !NumDocOpts) :-
+    acc_help_option_group(InitialValueMap, Format, What, sos_subsection,
+        SubSection, !Categories, !MenuItemCord, !LineCord, !NumDocOpts),
+    acc_help_subsections(InitialValueMap, Format, What,
+        SubSections, !Categories, !MenuItemCord, !LineCord, !NumDocOpts).
+
+:- pred acc_help_option_group(initial_bool_value_map, help_format,
+    print_what_help, section_or_subsection, help_option_group,
+    set(option_category), set(option_category),
+    cord(menu_item), cord(menu_item), cord(string), cord(string), int, int).
+:- mode acc_help_option_group(in, in(help_plain_text), in, in, in,
+    in, out, in, out, in, out, in, out) is det.
+:- mode acc_help_option_group(in, in(help_texinfo), in, in, in,
+    in, out, in, out, in, out, in, out) is det.
+
+acc_help_option_group(InitialValueMap, Format, What, SubOrNot, Group,
         !Categories, !MenuItemCord, !LineCord, !NumDocOpts) :-
     Group = help_option_group(GroupName, MenuDesc, CommentLines, Categories),
     set.det_remove_list(Categories, !Categories),
     list.map(get_optdb_records_in_category, Categories, OptdbRecordSets),
     OptdbRecordSet = set.union_list(OptdbRecordSets),
 
-    acc_help_messages(Format, What, set.to_sorted_list(OptdbRecordSet),
+    acc_help_messages(InitialValueMap, Format, What,
+        set.to_sorted_list(OptdbRecordSet),
         cord.init, HelpTextLinesCord, 0, GroupNumDocOpts),
     !:NumDocOpts = !.NumDocOpts + GroupNumDocOpts,
     (
@@ -797,10 +817,11 @@ get_optdb_records_in_category(Cat, OptdbRecordSet) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred get_optdb_record_params(optdb_record::in, option_params::out) is det.
+:- pred get_optdb_record_params(initial_bool_value_map::in, optdb_record::in,
+    option_params::out) is det.
 
-get_optdb_record_params(OptdbRecord, Params) :-
-    OptdbRecord = optdb_record(_Cat, _Option, OptionData, _Help),
+get_optdb_record_params(InitialValueMap, OptdbRecord, Params) :-
+    OptdbRecord = optdb_record(Option, _Cat, OptionData, _Help),
     (
         OptionData = bool(Bool),
         MaybeExpectArg = do_not_expect_arg,
@@ -825,9 +846,21 @@ get_optdb_record_params(OptdbRecord, Params) :-
     ;
         OptionData = bool_special,
         MaybeExpectArg = do_not_expect_arg,
-        MaybeNegate = do_not_negate,
-        MaybeAddNegVersionOpt = no_negative_version,
-        IndexVersions = index_positive_and_negative
+        ( if map.search(InitialValueMap, Option, InitialBool) then
+            (
+                InitialBool = no,
+                MaybeNegate = do_not_negate,
+                IndexVersions = index_positive_only
+            ;
+                InitialBool = yes,
+                MaybeNegate = negate,
+                IndexVersions = index_positive_and_negative
+            )
+        else
+            MaybeNegate = do_not_negate,
+            IndexVersions = index_positive_and_negative
+        ),
+        MaybeAddNegVersionOpt = no_negative_version
     ;
         ( OptionData = int(_)
         ; OptionData = string(_)
@@ -866,33 +899,37 @@ get_optdb_record_params(OptdbRecord, Params) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred acc_help_messages(help_format, print_what_help, list(optdb_record),
-    cord(string), cord(string), int, int).
-:- mode acc_help_messages(in(help_plain_text), in, in, in, out, in, out)
+:- pred acc_help_messages(initial_bool_value_map, help_format, print_what_help,
+    list(optdb_record), cord(string), cord(string), int, int).
+:- mode acc_help_messages(in, in(help_plain_text), in, in, in, out, in, out)
     is det.
-:- mode acc_help_messages(in(help_texinfo), in, in, in, out, in, out) is det.
+:- mode acc_help_messages(in, in(help_texinfo), in, in, in, out, in, out)
+    is det.
 
-acc_help_messages(_, _, [], !EffectiveLinesCord, !NumDocOpts).
-acc_help_messages(Format, What, [OptdbRecord | OptdbRecords],
+acc_help_messages(_, _, _, [], !EffectiveLinesCord, !NumDocOpts).
+acc_help_messages(InitialValueMap, Format, What, [OptdbRecord | OptdbRecords],
         !EffectiveLinesCord, !NumDocOpts) :-
     (
         Format = help_plain_text,
-        acc_help_message_plain(What, OptdbRecord, !EffectiveLinesCord,
-            !NumDocOpts)
+        acc_help_message_plain(InitialValueMap, What, OptdbRecord,
+            !EffectiveLinesCord, !NumDocOpts)
     ;
         Format = help_texinfo,
         % For the user guide, we always add documentation for every option,
         % though private ones are commented out.
-        acc_help_message_texinfo(OptdbRecord, !EffectiveLinesCord, !NumDocOpts)
+        acc_help_message_texinfo(InitialValueMap, OptdbRecord,
+            !EffectiveLinesCord, !NumDocOpts)
     ),
-    acc_help_messages(Format, What, OptdbRecords, !EffectiveLinesCord,
-        !NumDocOpts).
+    acc_help_messages(InitialValueMap, Format, What, OptdbRecords,
+        !EffectiveLinesCord, !NumDocOpts).
 
-:- pred acc_help_message_plain(print_what_help::in, optdb_record::in,
+:- pred acc_help_message_plain(initial_bool_value_map::in, print_what_help::in,
+    optdb_record::in,
     cord(string)::in, cord(string)::out, int::in, int::out) is det.
 
-acc_help_message_plain(What, OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
-    get_optdb_record_params(OptdbRecord, Params),
+acc_help_message_plain(InitialValueMap, What, OptdbRecord,
+        !EffectiveLinesCord, !NumDocOpts) :-
+    get_optdb_record_params(InitialValueMap, OptdbRecord, Params),
     OptdbRecord = optdb_record(Option, _Cat, OptionData, Help),
     some [!LineCord]
     (
@@ -1086,11 +1123,12 @@ acc_help_message_plain(What, OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
 
 %---------------------%
 
-:- pred acc_help_message_texinfo(optdb_record::in,
+:- pred acc_help_message_texinfo(initial_bool_value_map::in, optdb_record::in,
     cord(string)::in, cord(string)::out, int::in, int::out) is det.
 
-acc_help_message_texinfo(OptdbRecord, !EffectiveLinesCord, !NumDocOpts) :-
-    get_optdb_record_params(OptdbRecord, Params),
+acc_help_message_texinfo(InitialValueMap, OptdbRecord,
+        !EffectiveLinesCord, !NumDocOpts) :-
+    get_optdb_record_params(InitialValueMap, OptdbRecord, Params),
     OptdbRecord = optdb_record(Option, _Cat, OptionData, Help),
     some [!LineCord, !OptLineCord, !IndexLineCord]
     (

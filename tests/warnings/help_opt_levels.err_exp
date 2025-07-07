@@ -15,7 +15,11 @@ Optimization level 0:
         --optimize-peep
         --optimize-peep-mkword
         --optimize-repeat=1
+        --smart-atomic-indexing
+        --smart-float-indexing
         --smart-indexing
+        --smart-string-indexing
+        --smart-tag-indexing
         --static-ground-terms
 
 Optimization level 1:
