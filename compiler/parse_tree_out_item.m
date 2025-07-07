@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2021, 2024 The Mercury team.
+% Copyright (C) 2015-2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -643,9 +643,9 @@ mercury_format_ctor(TVarSet, Ctor, S, !U) :-
     ;
         Args = [HeadArg | TailArgs],
         mercury_format_sym_name(unqualified(Name), S, !U),
-        add_string("(", S, !U),
+        add_string("(\n", S, !U),
         mercury_format_ctor_args(S, TVarSet, HeadArg, TailArgs, !U),
-        add_string(")", S, !U)
+        add_string("            )", S, !U)
     ),
     add_string(BraceSuffix, S, !U),
     add_string(ExistConstraintsSuffix, S, !U).
@@ -693,10 +693,11 @@ maybe_brace_for_name_prefix_suffix(Arity, Name, Prefix, Suffix) :-
 mercury_format_ctor_args(S, TVarSet, HeadArg, TailArgs, !U) :-
     mercury_format_ctor_arg(S, TVarSet, HeadArg, !U),
     (
-        TailArgs = []
+        TailArgs = [],
+        add_string("\n", S, !U)
     ;
         TailArgs = [HeadTailArg | TailTailArgs],
-        add_string(", ", S, !U),
+        add_string(",\n", S, !U),
         mercury_format_ctor_args(S, TVarSet, HeadTailArg, TailTailArgs, !U)
     ).
 
@@ -705,6 +706,7 @@ mercury_format_ctor_args(S, TVarSet, HeadArg, TailArgs, !U) :-
 
 mercury_format_ctor_arg(S, TVarSet, Arg, !U) :-
     Arg = ctor_arg(Name, Type, _Context),
+    add_string("                 ", S, !U),
     mercury_format_ctor_arg_name_prefix(S, Name, !U),
     mercury_format_type(TVarSet, print_name_only, Type, S, !U).
 
@@ -713,8 +715,8 @@ mercury_format_ctor_arg(S, TVarSet, Arg, !U) :-
 
 mercury_format_ctor_arg_name_prefix(_S, no, !U).
 mercury_format_ctor_arg_name_prefix(S, yes(FieldName), !U) :-
-    FieldName = ctor_field_name(Name, _Ctxt),
-    mercury_format_bracketed_sym_name(Name, S, !U),
+    FieldName = ctor_field_name(SymName, _Ctxt),
+    mercury_format_bracketed_sym_name(SymName, S, !U),
     add_string(" :: ", S, !U).
 
 %---------------------------------------------------------------------------%

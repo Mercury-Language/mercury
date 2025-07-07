@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -603,18 +603,32 @@
 %---------------------%
 
     % The module_info stores a counter which is used to distinguish
-    % lambda predicates which appear on the same line in the same file.
-    % This predicate returns the next number for the given context
-    % and increments the counter for that context.
+    % lambda predicates which appear on the same line number
+    % *not necessarily in the same file*. We must allocate different
+    % counter values to contexts with the same line number in different files,
+    % because the name we construct for the predicate or function that
+    % implements the lambda expression will contain *only* the line number,
+    % and not the file name. Sometimes, very rarely, you will get
+    % two different lambda expressions at the same line number in
+    % two different files, and if you don't disambiguate them by counter,
+    % you will get an error from the target language compiler
+    % about attempting to define e.g. a function twice.
+    % This happened to me (zs) when compiling test_bitset.m, with line 214
+    % of both fat_sparse_bitset.opt and fatter_sparse_bitset.opt
+    % containing a lambda expression.
     %
-:- pred module_info_next_lambda_count(prog_context::in, int::out,
+    % This predicate returns the next number for the given line number
+    % and increments the counter for that line number.
+    %
+:- pred module_info_next_lambda_count(int::in, int::out,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_next_atomic_count(prog_context::in, int::out,
+:- pred module_info_next_loop_inv_count(int::in, int::out,
     module_info::in, module_info::out) is det.
 
-:- pred module_info_next_loop_inv_count(prog_context::in, int::out,
-    module_info::in, module_info::out) is det.
+% This is not yet used.
+% :- pred module_info_next_atomic_count(int::in, int::out,
+%     module_info::in, module_info::out) is det.
 
 %---------------------%
 
@@ -869,13 +883,7 @@
                 % How many lambda expressions there are at different contexts
                 % in the module. This is used to uniquely identify lambda
                 % expressions that appear on the same line of the same file.
-                mri_lambdas_per_context         :: map(prog_context, counter),
-
-                % How many STM atomic expressions there are at different
-                % contexts in the module. This is used to uniquely identify
-                % STM atomic expressions that appear on the same line of
-                % the same file.
-                mri_atomics_per_context         :: map(prog_context, counter),
+                mri_lambdas_per_line_number     :: map(int, counter),
 
                 % How many loop invariant optimizations we have done at
                 % different contexts in the module. This is used to provide
@@ -883,7 +891,15 @@
                 % using the loop invariant optimization, in the rare case
                 % that one line contains the definition of more than one
                 % predicate.
-                mri_loop_invs_per_context       :: map(prog_context, counter),
+                mri_loop_invs_per_line_number   :: map(int, counter),
+
+                % How many STM atomic expressions there are at different
+                % contexts in the module. This is used to uniquely identify
+                % STM atomic expressions that appear on the same line of
+                % the same file.
+                %
+                % This field is not yet used.
+                % mri_atomics_per_line_number     :: map(int, counter),
 
                 % The add_item_avails predicate in make_hlds_passes.m fills
                 % this field with information about all the import- and
@@ -1140,8 +1156,9 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
     map.init(UnusedArgInfo),
     map.init(TablingStructMap),
     map.init(LambdasPerContext),
-    map.init(AtomicsPerContext),
     map.init(LoopInvsPerContext),
+    % This field is not yet used.
+    % map.init(AtomicsPerContext),
 
     % XXX ITEM_LIST Given that we start with an aug_compilation_unit,
     % shouldn't the work of finding implicit dependencies have already
@@ -1207,8 +1224,8 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
         UnusedArgInfo,
         TablingStructMap,
         LambdasPerContext,
-        AtomicsPerContext,
         LoopInvsPerContext,
+        % AtomicsPerContext,
         AvailModuleMap,
         IndirectlyImportedModules,
         UsedModules,
@@ -1284,23 +1301,23 @@ module_info_optimize(!ModuleInfo) :-
 % module.
 %
 
-:- pred module_info_get_lambdas_per_context(module_info::in,
-    map(prog_context, counter)::out) is det.
-:- pred module_info_get_atomics_per_context(module_info::in,
-    map(prog_context, counter)::out) is det.
-:- pred module_info_get_loop_invs_per_context(module_info::in,
-    map(prog_context, counter)::out) is det.
+:- pred module_info_get_lambdas_per_line_number(module_info::in,
+    map(int, counter)::out) is det.
+:- pred module_info_get_loop_invs_per_line_number(module_info::in,
+    map(int, counter)::out) is det.
+% :- pred module_info_get_atomics_per_line_number(module_info::in,
+%     map(int, counter)::out) is det.
 :- pred module_info_get_indirectly_imported_modules(module_info::in,
     set(module_name)::out) is det.
 
 :- pred module_info_set_maybe_dependency_info(maybe(hlds_dependency_info)::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_lambdas_per_context(map(prog_context, counter)::in,
+:- pred module_info_set_lambdas_per_line_number(map(int, counter)::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_atomics_per_context(map(prog_context, counter)::in,
+:- pred module_info_set_loop_invs_per_line_number(map(int, counter)::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_loop_invs_per_context(map(prog_context, counter)::in,
-    module_info::in, module_info::out) is det.
+% :- pred module_info_set_atomics_per_line_number(map(int, counter)::in,
+%     module_info::in, module_info::out) is det.
 :- pred module_info_set_indirectly_imported_modules(set(module_name)::in,
     module_info::in, module_info::out) is det.
 
@@ -1385,12 +1402,12 @@ module_info_get_unused_arg_info(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_unused_arg_info.
 module_info_get_table_struct_map(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_table_struct_map.
-module_info_get_lambdas_per_context(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_lambdas_per_context.
-module_info_get_atomics_per_context(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_atomics_per_context.
-module_info_get_loop_invs_per_context(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_loop_invs_per_context.
+module_info_get_lambdas_per_line_number(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_lambdas_per_line_number.
+module_info_get_loop_invs_per_line_number(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_loop_invs_per_line_number.
+% module_info_get_atomics_per_line_number(MI, X) :-
+%     X = MI ^ mi_rare_info ^ mri_atomics_per_line_number.
 module_info_get_avail_module_map(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_avail_module_map.
 module_info_get_indirectly_imported_modules(MI, X) :-
@@ -1521,12 +1538,12 @@ module_info_set_unused_arg_info(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_unused_arg_info := X.
 module_info_set_table_struct_map(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_table_struct_map := X.
-module_info_set_lambdas_per_context(X, !MI) :-
-    !MI ^ mi_rare_info ^ mri_lambdas_per_context := X.
-module_info_set_atomics_per_context(X, !MI) :-
-    !MI ^ mi_rare_info ^ mri_atomics_per_context := X.
-module_info_set_loop_invs_per_context(X, !MI) :-
-    !MI ^ mi_rare_info ^ mri_loop_invs_per_context := X.
+module_info_set_lambdas_per_line_number(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_lambdas_per_line_number := X.
+module_info_set_loop_invs_per_line_number(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_loop_invs_per_line_number := X.
+% module_info_set_atomics_per_line_number(X, !MI) :-
+%     !MI ^ mi_rare_info ^ mri_atomics_per_line_number := X.
 module_info_set_indirectly_imported_modules(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_indirectly_imported_modules := X.
 module_info_set_used_modules(X, !MI) :-
@@ -1712,50 +1729,50 @@ module_info_clobber_dependency_info(!MI) :-
 
 %---------------------%
 
-module_info_next_lambda_count(Context, Count, !MI) :-
-    module_info_get_lambdas_per_context(!.MI, ContextCounter0),
+module_info_next_lambda_count(LineNumber, Count, !MI) :-
+    module_info_get_lambdas_per_line_number(!.MI, LineNumberMap0),
     ( if
-        map.insert(Context, counter.init(2),
-            ContextCounter0, FoundContextCounter)
+        map.insert(LineNumber, counter.init(2),
+            LineNumberMap0, LineNumberMapPrime)
     then
         Count = 1,
-        ContextCounter = FoundContextCounter
+        LineNumberMap = LineNumberMapPrime
     else
-        map.lookup(ContextCounter0, Context, Counter0),
+        map.lookup(LineNumberMap0, LineNumber, Counter0),
         counter.allocate(Count, Counter0, Counter),
-        map.det_update(Context, Counter, ContextCounter0, ContextCounter)
+        map.det_update(LineNumber, Counter, LineNumberMap0, LineNumberMap)
     ),
-    module_info_set_lambdas_per_context(ContextCounter, !MI).
+    module_info_set_lambdas_per_line_number(LineNumberMap, !MI).
 
-module_info_next_atomic_count(Context, Count, !MI) :-
-    module_info_get_atomics_per_context(!.MI, ContextCounter0),
+module_info_next_loop_inv_count(LineNumber, Count, !MI) :-
+    module_info_get_loop_invs_per_line_number(!.MI, LineNumberMap0),
     ( if
-        map.insert(Context, counter.init(2),
-            ContextCounter0, FoundContextCounter)
+        map.insert(LineNumber, counter.init(2),
+            LineNumberMap0, LineNumberMapPrime)
     then
         Count = 1,
-        ContextCounter = FoundContextCounter
+        LineNumberMap = LineNumberMapPrime
     else
-        map.lookup(ContextCounter0, Context, Counter0),
+        map.lookup(LineNumberMap0, LineNumber, Counter0),
         counter.allocate(Count, Counter0, Counter),
-        map.det_update(Context, Counter, ContextCounter0, ContextCounter)
+        map.det_update(LineNumber, Counter, LineNumberMap0, LineNumberMap)
     ),
-    module_info_set_atomics_per_context(ContextCounter, !MI).
+    module_info_set_loop_invs_per_line_number(LineNumberMap, !MI).
 
-module_info_next_loop_inv_count(Context, Count, !MI) :-
-    module_info_get_loop_invs_per_context(!.MI, ContextCounter0),
-    ( if
-        map.insert(Context, counter.init(2),
-            ContextCounter0, FoundContextCounter)
-    then
-        Count = 1,
-        ContextCounter = FoundContextCounter
-    else
-        map.lookup(ContextCounter0, Context, Counter0),
-        counter.allocate(Count, Counter0, Counter),
-        map.det_update(Context, Counter, ContextCounter0, ContextCounter)
-    ),
-    module_info_set_loop_invs_per_context(ContextCounter, !MI).
+% module_info_next_atomic_count(LineNumber, Count, !MI) :-
+%     module_info_get_atomics_per_line_number(!.MI, LineNumberMap0),
+%     ( if
+%         map.insert(LineNumber, counter.init(2),
+%             LineNumberMap0, LineNumberMapPrime)
+%     then
+%         Count = 1,
+%         LineNumberMap = LineNumberMapPrime
+%     else
+%         map.lookup(LineNumberMap0, LineNumber, Counter0),
+%         counter.allocate(Count, Counter0, Counter),
+%         map.det_update(LineNumber, Counter, LineNumberMap0, LineNumberMap)
+%     ),
+%     module_info_set_atomics_per_line_number(LineNumberMap, !MI).
 
 %---------------------%
 

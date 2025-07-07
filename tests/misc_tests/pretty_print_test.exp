@@ -6,11 +6,19 @@
 :- implementation.
 :- type foobar
     --->    foo 
-    ;       bar(int)
-    ;       baz(int, int).
+    ;       bar(
+                 int
+            )
+    ;       baz(
+                 int,
+                 int
+            ).
 :- type cont(T)
     --->    foo 
-    ;       cont(T, cont(T)).
+    ;       cont(
+                 T,
+                 cont(T)
+            ).
 :- type eq(T1, T2) == foobar.
 main(DCG_0, DCG_2) :-
 	io.write_int(type_num(42), DCG_0, DCG_1),
