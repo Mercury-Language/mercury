@@ -25,7 +25,7 @@
 
                 % The long name of the option. This will not contain
                 % - the "--" prefix,
-                % - any "no-" prefix even if the option is negateable
+                % - any "no-" prefix even if the option is negatable
                 %   and the default is negated, or
                 % - the name of an argument.
                 gh_long_name            :: string,

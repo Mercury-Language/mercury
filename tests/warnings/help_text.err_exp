@@ -1844,7 +1844,8 @@ Optimization options
     --optimize-higher-order
     --optimise-higher-order
         Create specialized variants of higher-order predicates and functions
-        for call sites where the values of the highe-order arguments are known.
+        for call sites where the values of the higher-order arguments are
+        known.
 
     --type-specialization
     --type-specialisation
@@ -2944,7 +2945,7 @@ Options for linking
 
     --cstack-reserve-size <size>
         Set the total size of the C stack in virtual memory for executables.
-        The stack size is given in bytes. This options is only sypported (and
+        The stack size is given in bytes. This option is only supported (and
         indeed only necessary) on systems running Microsoft Windows.)
 
     --link-executable-command <command>
@@ -3023,8 +3024,8 @@ Options controlling searches for files
         With `--use-search-directories-for-intermod', the compiler will add the
         arguments of `--search-directory' options to the list of directories to
         search for `.opt' files. With
-        `--no-use-search-directories-for-intermod', the compiler will use use
-        only the arguments of `--intermod-directory' options.
+        `--no-use-search-directories-for-intermod', the compiler will use only
+        the arguments of `--intermod-directory' options.
 
     PRIVATE OPTION
     --interface-dir-same-workspace <directory>

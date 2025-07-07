@@ -3011,8 +3011,8 @@ optdb(oc_warn_ctrl, inhibit_style_warnings,            bool_special,
     help("inhibit-style-warnings", [
         w("Disable all warning messages about programming style.")])).
 optdb(oc_warn_ctrl, warn_only_one_format_string_error, bool(yes),
-    % XXX This options should be replaced by a new one named
-    % warn_all_format_string_errors, which the negation of this one.
+    % XXX This option should be replaced by a new one named
+    % warn_all_format_string_errors, which is the negation of this one.
     help("warn-only-one-format-string-error", [
         w("If a format string has more one than mismatch"),
         w("with the supplied values,"),
@@ -3627,7 +3627,7 @@ optdb(oc_opt_hh,    optopt_higher_order,               bool_special,
         cindex("Specialization of higher-order calls"),
         w("Create specialized variants of"),
         w("higher-order predicates and functions"),
-        w("for call sites where the values of the highe-order arguments"),
+        w("for call sites where the values of the higher-order arguments"),
         w("are known.")])).
 optdb(oc_opt_hh,    optopt_type_specialization,        bool_special,
     alt_help("type-specialization",
@@ -4921,7 +4921,7 @@ optdb(oc_link_c,    cstack_reserve_size,               int(-1),
     arg_help("cstack-reserve-size", "size", [
         w("Set the total size of the C stack in virtual memory for"),
         w("executables. The stack size is given in bytes."),
-        w("This options is only sypported (and indeed only necessary)"),
+        w("This option is only supported (and indeed only necessary)"),
         w("on systems running Microsoft Windows.)")])).
 optdb(oc_link_c,    link_executable_command,           string("gcc"),
     arg_help("link-executable-command", "command", [
@@ -5034,7 +5034,7 @@ optdb(oc_search,    use_search_directories_for_intermod, bool(yes),
         opt("--search-directory"), w("options to the list of directories"),
         w("to search for `.opt' files. With"),
         opt("--no-use-search-directories-for-intermod", ","),
-        w("the compiler will use use only the arguments of"),
+        w("the compiler will use only the arguments of"),
         opt("--intermod-directory"), w("options.")])).
 optdb(oc_search,    interface_dirs_same_subdir_setting, accumulating([]),
     priv_alt_arg_help("interface-dir-same-workspace",
@@ -5378,7 +5378,7 @@ optdb(oc_mconfig,   use_symlinks,                      bool(yes),
 
 %---------------------------------------------------------------------------%
 
-    % Optionss for developers only.
+    % Options for developers only.
 
 %---------------------%
 
@@ -5652,7 +5652,7 @@ optdb(oc_dev_ctrl,  optopt_enable_const_struct_poly,   bool_special,
 
 %---------------------%
 
-    % Options for helping to debuug the compiler's operations.
+    % Options for helping to debug the compiler's operations.
     % Most such options are in option class oc_verb_dbg; the options here
     % are the ones that do NOT work by adding to the compiler output stream.
 
