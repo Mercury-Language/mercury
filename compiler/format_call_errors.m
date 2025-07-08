@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2024 The Mercury team.
+% Copyright (C) 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -129,13 +129,13 @@ report_format_mismatch(ModuleInfo, PredId, MaybePos, HeadError, TailErrors,
                 words("the values list as the"),
                 nth_fixed(ArgNumVL), words("argument"), suffix(".")]
         ),
-        globals.lookup_bool_option(Globals, warn_only_one_format_string_error,
-            WarnOnlyOneFormatStringError),
+        globals.lookup_bool_option(Globals, warn_all_format_string_errors,
+            WarnAllFormatStringErrors),
         (
-            WarnOnlyOneFormatStringError = yes,
+            WarnAllFormatStringErrors = no,
             ErrorPieces = string_format_error_to_pieces(HeadError)
         ;
-            WarnOnlyOneFormatStringError = no,
+            WarnAllFormatStringErrors = yes,
             ErrorPiecesLists = list.map(string_format_error_to_pieces,
                 [HeadError | TailErrors]),
             list.condense(ErrorPiecesLists, ErrorPieces)

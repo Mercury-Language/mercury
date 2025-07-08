@@ -573,7 +573,7 @@
     % Options that control warnings.
     ;       inhibit_warnings
     ;       inhibit_style_warnings
-    ;       warn_only_one_format_string_error
+    ;       warn_all_format_string_errors
     ;       warn_smart_recompilation
     ;       warn_up_to_date
 
@@ -2470,7 +2470,6 @@ optdb(oc_verb_dbg,  debug_code_gen_pred_id,            int(-1),
 optdb(oc_verb_dbg,  debug_opt,                         bool(no),
     priv_help("debug-opt", [
         w("Output detailed debugging traces of the optimization process.")])).
-% XXX Shouldn't this be private? Users should not need to know about pred_ids.
 optdb(oc_verb_dbg,  debug_opt_pred_id,                 accumulating([]),
     priv_arg_help("debug-opt-pred-id", "pred_id", [
         w("Output detailed debugging traces of the optimization process"),
@@ -2492,9 +2491,8 @@ optdb(oc_verb_dbg,  debug_intermodule_analysis,        bool(no),
 
     % Options that control diagnostics.
 
-% XXX Internal/external mismatch: verbose_errors vs verbose-error-messages
 optdb(oc_diag_gen,  verbose_errors,                    bool(no),
-    short_help('E', "verbose-error-messages", [], [
+    short_help('E', "verbose-error-messages", ["verbose-errors"], [
         w("Some error messages have two versions:"),
         w("a standard version intended for experienced users, and"),
         w("a verbose version intended for new users."),
@@ -3007,10 +3005,8 @@ optdb(oc_warn_ctrl, inhibit_warnings,                  bool_special,
 optdb(oc_warn_ctrl, inhibit_style_warnings,            bool_special,
     help("inhibit-style-warnings", [
         w("Disable all warning messages about programming style.")])).
-optdb(oc_warn_ctrl, warn_only_one_format_string_error, bool(yes),
-    % XXX This option should be replaced by a new one named
-    % warn_all_format_string_errors, which is the negation of this one.
-    help("warn-only-one-format-string-error", [
+optdb(oc_warn_ctrl, warn_all_format_string_errors,     bool(no),
+    help("warn-all-format-string-errors", [
         w("If a format string has more one than mismatch"),
         w("with the supplied values,"),
         w("generate a warning for all mismatches, not just the first."),
@@ -3455,25 +3451,23 @@ optdb(oc_opt_ctrl,  use_trans_opt_files,               bool(no),
         w("e.g. those for the standard library,"),
         w("but do not build any others.")])).
 optdb(oc_opt_ctrl,  intermodule_analysis,              bool(no),
-    % XXX Make private until implemented.
-    help("intermodule-analysis", [
+    priv_help("intermodule-analysis", [
         w("Perform analyses such as termination analysis and"),
         w("unused argument elimination across module boundaries."),
         w("This option is not yet fully implemented.")])).
 optdb(oc_opt_ctrl,  analysis_repeat,                   int(0),
-    % XXX Make private until implemented.
-    arg_help("analysis-repeat", "N", [
+    priv_arg_help("analysis-repeat", "N", [
         w("Specify the maximum number of times to repeat analyses"),
         w("of suboptimal modules with"), opt("--intermodule-analysis"),
         w("(default: 0)."),
         w("(This option works only with"), code("mmc --make", ".)")])).
 optdb(oc_opt_ctrl,  analysis_file_cache,               bool(no),
-    % XXX This feature is still experimental.
+    % This feature is still experimental.
     priv_help("analysis-file-cache", [
         w("Enable caching of parsed analysis files. This may"),
         w("improve compile times with"), opt("--intermodule-analysis", ".")])).
 optdb(oc_opt_ctrl,  analysis_file_cache_dir,           string(""),
-    % XXX The `--analysis-file-cache-dir' option is used by `mmc --make'.
+    % The `--analysis-file-cache-dir' option is used by `mmc --make'.
     priv_arg_help("analysis-file-cache-dir", "directory", [])).
 
 %---------------------%

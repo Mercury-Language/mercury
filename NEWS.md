@@ -78,9 +78,6 @@ Changes that may break compatibility
   additional options to be passed to the C compiler in order for it to find
   those header files.
 
-* We have added the option `--error-files-in-subdir` to place `.err` files
-  under the `Mercury` subdirectory when using `mmc --make`.
-
 * We have changed the meaning of `mmc --make name.cs`.
 
   The `mmc --make` target `name.cs` now means "build the .cs file
@@ -99,6 +96,9 @@ Changes that may break compatibility
         program.all_mhs     -> program.mhs_to_clean
         program.all_mihs    -> program.mihs_to_clean
         program.all_int0s   -> program.int3s_to_clean
+
+* We have replaced the --no-warn-only-one-format-string-error compiler option
+  with the new option named --warn-all-format-string-errors.
 
 Changes to the Mercury standard library
 ---------------------------------------
@@ -1484,6 +1484,9 @@ Changes to the Mercury compiler
   such variables were controlled by the  `--warn-singleton-variables` option.
   This option is enabled by default.
 
+* We have added the option `--error-files-in-subdir` to place `.err` files
+  under the `Mercury` subdirectory when using `mmc --make`.
+
 * We have raised the default value of `--output-compile-error-lines` to 100.
 
 * We have added a new option `--reverse-error-order` that tells the compiler
@@ -1556,6 +1559,9 @@ Changes to the Mercury compiler
   the clauses of the named predicates and/or functions to intermingled
   with each other, but not with the clauses of any other predicates
   or functions. This option may be given more than once.
+
+* We have replaced the --no-warn-only-one-format-string-error compiler option
+  with the new option named -warn-all-format-string-errors.
 
 * The deprecated option `--trail-segments` has been deleted and the grade
   component `trseg` is no longer accepted as a synonym for `tr`.

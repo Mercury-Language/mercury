@@ -992,6 +992,7 @@ Diagnostics options
 
     -E
     --verbose-error-messages
+    --verbose-errors
         Some error messages have two versions: a standard version intended for
         experienced users, and a verbose version intended for new users. The
         default is to print the first version. This option tells the compiler
@@ -1373,7 +1374,7 @@ Warning options
     --inhibit-style-warnings
         Disable all warning messages about programming style.
 
-    --no-warn-only-one-format-string-error
+    --warn-all-format-string-errors
         If a format string has more one than mismatch with the supplied values,
         generate a warning for all mismatches, not just the first. (The default
         is to report only the first, because later mismatches may be avalanche
@@ -1727,11 +1728,13 @@ Optimization options
         are already built, e.g. those for the standard library, but do not
         build any others.
 
+    PRIVATE OPTION
     --intermodule-analysis
         Perform analyses such as termination analysis and unused argument
         elimination across module boundaries. This option is not yet fully
         implemented.
 
+    PRIVATE OPTION
     --analysis-repeat <N>
         Specify the maximum number of times to repeat analyses of suboptimal
         modules with `--intermodule-analysis' (default: 0). (This option works
