@@ -605,7 +605,7 @@ EOF
         $BOOTSTRAP_MC \
             --verbose \
             $link_static_opt conftest \
-            --allow-non-contiguity-for check_int64,preferred_switch_var \
+            --subtype-int2-2025-07-07 \
             --allow-ho-insts-as-modes \
             --no-ssdb \
             </dev/null >&AS_MESSAGE_LOG_FD 2>&1 &&

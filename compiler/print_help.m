@@ -57,6 +57,8 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module require.
 :- import_module set.
 :- import_module solutions.
@@ -513,6 +515,11 @@ document_requested_options(Format, What, SectionNames, OptionsLines) :-
     list.foldl(insert_initial(yes), InitialYesOptions,
         InitialValueMap1, InitialValueMap),
 
+    list.foldl(build_set_at_opt_level_map, [0, 1, 2, 3, 4, 5, 6],
+        map.init, SetAtOptLevelMap),
+
+    OptionMaps = option_maps(InitialValueMap, SetAtOptLevelMap),
+
     % We check whether we have covered all possible option categories
     %
     % - getting a set containing all of those categories;
@@ -523,7 +530,7 @@ document_requested_options(Format, What, SectionNames, OptionsLines) :-
             option_categories(Cat, _)
         ),
     solutions_set(CategoryPred, AllCategoriesSet),
-    acc_help_sections(InitialValueMap, Format, What, all_chapters,
+    acc_help_sections(OptionMaps, Format, What, all_chapters,
         AllCategoriesSet, UndoneCategoriesSet,
         cord.init, SectionNameCord, cord.init, OptionsLineCord),
     set.to_sorted_list(UndoneCategoriesSet, UndoneCategories),
@@ -536,9 +543,30 @@ document_requested_options(Format, What, SectionNames, OptionsLines) :-
     SectionNames = cord.list(SectionNameCord),
     OptionsLines = cord.list(OptionsLineCord).
 
+%---------------------------------------------------------------------------%
+
+:- type option_maps
+    --->    option_maps(
+                initial_bool_value_map,
+                set_at_opt_level_map
+            ).
+
     % Maps each bool option handled by optimization_options.m
     % to its initial value.
 :- type initial_bool_value_map == map(option, bool).
+
+:- type set_at_opt_level_map == one_or_more_map(option, set_at_opt_level).
+
+:- type set_at_opt_level
+    --->    set_at_opt_level(
+                % At this optimization level, this option is ...
+                int,
+
+                % ... set to this value, which must be a bool or an int.
+                option_data_bool_int
+            ).
+
+%---------------------------------------------------------------------------%
 
 :- pred insert_initial(bool::in, option::in,
     initial_bool_value_map::in, initial_bool_value_map::out) is det.
@@ -548,12 +576,34 @@ insert_initial(InitialValue, Option, !InitialValueMap) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred build_set_at_opt_level_map(int::in,
+    set_at_opt_level_map::in, set_at_opt_level_map::out) is det.
+
+build_set_at_opt_level_map(Level, !SetAtOptLevelMap) :-
+    ( if opts_enabled_at_level(Level, _LevelDesc, DocOpts) then
+        list.foldl(record_option_at_opt_level_map(Level), DocOpts,
+            !SetAtOptLevelMap)
+    else
+        true
+    ).
+
+:- pred record_option_at_opt_level_map(int::in,
+    documented_optimization_option::in,
+    set_at_opt_level_map::in, set_at_opt_level_map::out) is det.
+
+record_option_at_opt_level_map(Level, DocOpt, !SetAtOptLevelMap) :-
+    DocOpt = doc_oo(_, Option, OptionData),
+    SetAtOptLevel = set_at_opt_level(Level, OptionData),
+    one_or_more_map.add(Option, SetAtOptLevel, !SetAtOptLevelMap).
+
+%---------------------------------------------------------------------------%
+
 :- type menu_item
     --->    menu_item(string, string).
             % The name of the menu item, and its short description, if any.
             % (Nonexistent descriptions are represented by an empty string.)
 
-:- pred acc_help_sections(initial_bool_value_map, help_format, print_what_help,
+:- pred acc_help_sections(option_maps, help_format, print_what_help,
     list(help_section), set(option_category), set(option_category),
     cord(menu_item), cord(menu_item), cord(string), cord(string)).
 :- mode acc_help_sections(in, in(help_plain_text), in, in,
@@ -562,14 +612,14 @@ insert_initial(InitialValue, Option, !InitialValueMap) :-
     in, out, in, out, in, out) is det.
 
 acc_help_sections(_, _, _, [], !Categories, !SectionNameCord, !LineCord).
-acc_help_sections(InitialValueMap, Format, What, [Section | Sections],
+acc_help_sections(OptionMaps, Format, What, [Section | Sections],
         !Categories, !MenuItemCord, !LineCord) :-
-    acc_help_section(InitialValueMap, Format, What, Section,
+    acc_help_section(OptionMaps, Format, What, Section,
         !Categories, !MenuItemCord, !LineCord),
-    acc_help_sections(InitialValueMap, Format, What, Sections,
+    acc_help_sections(OptionMaps, Format, What, Sections,
         !Categories, !MenuItemCord, !LineCord).
 
-:- pred acc_help_section(initial_bool_value_map, help_format, print_what_help,
+:- pred acc_help_section(option_maps, help_format, print_what_help,
     help_section, set(option_category), set(option_category),
     cord(menu_item), cord(menu_item), cord(string), cord(string)).
 :- mode acc_help_section(in, in(help_plain_text), in, in,
@@ -577,12 +627,12 @@ acc_help_sections(InitialValueMap, Format, What, [Section | Sections],
 :- mode acc_help_section(in, in(help_texinfo), in, in,
     in, out, in, out, in, out) is det.
 
-acc_help_section(InitialValueMap, Format, What, Section,
+acc_help_section(OptionMaps, Format, What, Section,
         !Categories, !MenuItemCord, !LineCord) :-
     (
         Section = one_level_section(SubSection),
         SubSection = help_option_group(GroupName, MenuDesc, _, _),
-        acc_help_option_group(InitialValueMap, Format, What, sos_section,
+        acc_help_option_group(OptionMaps, Format, What, sos_section,
             SubSection, !Categories, cord.init, _MenuItemCord,
             !LineCord, 0, NumDocOpts),
         ( if NumDocOpts > 0 then
@@ -593,7 +643,7 @@ acc_help_section(InitialValueMap, Format, What, Section,
     ;
         Section = two_level_section(SectionName, SectionDesc,
             CommentLines, SubSections),
-        acc_help_subsections(InitialValueMap, Format, What, SubSections,
+        acc_help_subsections(OptionMaps, Format, What, SubSections,
             !Categories, cord.init, SubMenuItemCord,
             cord.init, SubSectionsLineCord, 0, NumDocOpts),
         (
@@ -656,7 +706,7 @@ acc_help_section(InitialValueMap, Format, What, Section,
         )
     ).
 
-:- pred acc_help_subsections(initial_bool_value_map, help_format,
+:- pred acc_help_subsections(option_maps, help_format,
     print_what_help, list(help_option_group),
     set(option_category), set(option_category),
     cord(menu_item), cord(menu_item), cord(string), cord(string), int, int).
@@ -667,14 +717,14 @@ acc_help_section(InitialValueMap, Format, What, Section,
 
 acc_help_subsections(_, _, _, [],
         !Categories, !MenuItemCord, !LineCord, !NumDocOpts).
-acc_help_subsections(InitialValueMap, Format, What, [SubSection | SubSections],
+acc_help_subsections(OptionMaps, Format, What, [SubSection | SubSections],
         !Categories, !MenuItemCord, !LineCord, !NumDocOpts) :-
-    acc_help_option_group(InitialValueMap, Format, What, sos_subsection,
+    acc_help_option_group(OptionMaps, Format, What, sos_subsection,
         SubSection, !Categories, !MenuItemCord, !LineCord, !NumDocOpts),
-    acc_help_subsections(InitialValueMap, Format, What,
+    acc_help_subsections(OptionMaps, Format, What,
         SubSections, !Categories, !MenuItemCord, !LineCord, !NumDocOpts).
 
-:- pred acc_help_option_group(initial_bool_value_map, help_format,
+:- pred acc_help_option_group(option_maps, help_format,
     print_what_help, section_or_subsection, help_option_group,
     set(option_category), set(option_category),
     cord(menu_item), cord(menu_item), cord(string), cord(string), int, int).
@@ -683,14 +733,14 @@ acc_help_subsections(InitialValueMap, Format, What, [SubSection | SubSections],
 :- mode acc_help_option_group(in, in(help_texinfo), in, in, in,
     in, out, in, out, in, out, in, out) is det.
 
-acc_help_option_group(InitialValueMap, Format, What, SubOrNot, Group,
+acc_help_option_group(OptionMaps, Format, What, SubOrNot, Group,
         !Categories, !MenuItemCord, !LineCord, !NumDocOpts) :-
     Group = help_option_group(GroupName, MenuDesc, CommentLines, Categories),
     set.det_remove_list(Categories, !Categories),
     list.map(get_optdb_records_in_category, Categories, OptdbRecordSets),
     OptdbRecordSet = set.union_list(OptdbRecordSets),
 
-    acc_help_messages(InitialValueMap, Format, What,
+    acc_help_messages(OptionMaps, Format, What,
         set.to_sorted_list(OptdbRecordSet),
         cord.init, HelpTextLinesCord, 0, GroupNumDocOpts),
     !:NumDocOpts = !.NumDocOpts + GroupNumDocOpts,
@@ -817,10 +867,10 @@ get_optdb_records_in_category(Cat, OptdbRecordSet) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred get_optdb_record_params(initial_bool_value_map::in, optdb_record::in,
+:- pred get_optdb_record_params(option_maps::in, optdb_record::in,
     option_params::out) is det.
 
-get_optdb_record_params(InitialValueMap, OptdbRecord, Params) :-
+get_optdb_record_params(OptionMaps, OptdbRecord, Params) :-
     OptdbRecord = optdb_record(Option, _Cat, OptionData, _Help),
     (
         OptionData = bool(Bool),
@@ -846,6 +896,7 @@ get_optdb_record_params(InitialValueMap, OptdbRecord, Params) :-
     ;
         OptionData = bool_special,
         MaybeExpectArg = do_not_expect_arg,
+        OptionMaps = option_maps(InitialValueMap, _),
         ( if map.search(InitialValueMap, Option, InitialBool) then
             (
                 InitialBool = no,
@@ -899,7 +950,7 @@ get_optdb_record_params(InitialValueMap, OptdbRecord, Params) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred acc_help_messages(initial_bool_value_map, help_format, print_what_help,
+:- pred acc_help_messages(option_maps, help_format, print_what_help,
     list(optdb_record), cord(string), cord(string), int, int).
 :- mode acc_help_messages(in, in(help_plain_text), in, in, in, out, in, out)
     is det.
@@ -907,29 +958,29 @@ get_optdb_record_params(InitialValueMap, OptdbRecord, Params) :-
     is det.
 
 acc_help_messages(_, _, _, [], !EffectiveLinesCord, !NumDocOpts).
-acc_help_messages(InitialValueMap, Format, What, [OptdbRecord | OptdbRecords],
+acc_help_messages(OptionMaps, Format, What, [OptdbRecord | OptdbRecords],
         !EffectiveLinesCord, !NumDocOpts) :-
     (
         Format = help_plain_text,
-        acc_help_message_plain(InitialValueMap, What, OptdbRecord,
+        acc_help_message_plain(OptionMaps, What, OptdbRecord,
             !EffectiveLinesCord, !NumDocOpts)
     ;
         Format = help_texinfo,
         % For the user guide, we always add documentation for every option,
         % though private ones are commented out.
-        acc_help_message_texinfo(InitialValueMap, OptdbRecord,
+        acc_help_message_texinfo(OptionMaps, OptdbRecord,
             !EffectiveLinesCord, !NumDocOpts)
     ),
-    acc_help_messages(InitialValueMap, Format, What, OptdbRecords,
+    acc_help_messages(OptionMaps, Format, What, OptdbRecords,
         !EffectiveLinesCord, !NumDocOpts).
 
-:- pred acc_help_message_plain(initial_bool_value_map::in, print_what_help::in,
+:- pred acc_help_message_plain(option_maps::in, print_what_help::in,
     optdb_record::in,
     cord(string)::in, cord(string)::out, int::in, int::out) is det.
 
-acc_help_message_plain(InitialValueMap, What, OptdbRecord,
+acc_help_message_plain(OptionMaps, What, OptdbRecord,
         !EffectiveLinesCord, !NumDocOpts) :-
-    get_optdb_record_params(InitialValueMap, OptdbRecord, Params),
+    get_optdb_record_params(OptionMaps, OptdbRecord, Params),
     OptdbRecord = optdb_record(Option, _Cat, OptionData, Help),
     some [!LineCord]
     (
@@ -1123,12 +1174,12 @@ acc_help_message_plain(InitialValueMap, What, OptdbRecord,
 
 %---------------------%
 
-:- pred acc_help_message_texinfo(initial_bool_value_map::in, optdb_record::in,
+:- pred acc_help_message_texinfo(option_maps::in, optdb_record::in,
     cord(string)::in, cord(string)::out, int::in, int::out) is det.
 
-acc_help_message_texinfo(InitialValueMap, OptdbRecord,
+acc_help_message_texinfo(OptionMaps, OptdbRecord,
         !EffectiveLinesCord, !NumDocOpts) :-
-    get_optdb_record_params(InitialValueMap, OptdbRecord, Params),
+    get_optdb_record_params(OptionMaps, OptdbRecord, Params),
     OptdbRecord = optdb_record(Option, _Cat, OptionData, Help),
     some [!LineCord, !OptLineCord, !IndexLineCord]
     (
@@ -1288,10 +1339,27 @@ acc_help_message_texinfo(InitialValueMap, OptdbRecord,
         ),
         (
             DescPieces = [],
-            EffDescPieces = [w("There is no help text available.")]
+            EffDescPieces0 = [w("There is no help text available.")]
         ;
             DescPieces = [_ | _],
-            EffDescPieces = DescPieces
+            EffDescPieces0 = DescPieces
+        ),
+        OptionMaps = option_maps(_, SetAtOptLevelMap),
+        ( if
+            one_or_more_map.search(SetAtOptLevelMap, Option,
+                OoMSetAtOptLevels),
+            get_main_long_name(Option, yes(OptionLongName))
+        then
+            SetAtOptLevels = one_or_more_to_list(OoMSetAtOptLevels),
+            list.sort(SetAtOptLevels, SortedSetAtOptLevels),
+            list.reverse(SortedSetAtOptLevels, RevSortedSetAtOptLevels),
+            % 7 is the nonexistent "next level" after the highest *actual*
+            % optimization level, which is -O6.
+            acc_set_at_opt_level_pieces(OptionLongName,
+                RevSortedSetAtOptLevels, 7, [], SetAtLevelPieces),
+            EffDescPieces = EffDescPieces0 ++ SetAtLevelPieces
+        else
+            EffDescPieces = EffDescPieces0
         ),
         % ZZZ 71
         reflow_lines(help_texinfo, 71, EffDescPieces,
@@ -1312,6 +1380,39 @@ acc_help_message_texinfo(InitialValueMap, OptdbRecord,
         !:EffectiveLinesCord = !.EffectiveLinesCord ++
             BlankLineCord ++ !.LineCord
     ).
+
+:- pred acc_set_at_opt_level_pieces(string::in, list(set_at_opt_level)::in,
+    int::in,
+    list(help_piece)::in, list(help_piece)::out) is det.
+
+acc_set_at_opt_level_pieces(_, [], _, !HelpPieces).
+acc_set_at_opt_level_pieces(LongName, [SetAtOptLevel | LowerSetAtOptLevels],
+        NextLevel, !HelpPieces) :-
+    SetAtOptLevel = set_at_opt_level(Level, OptionData),
+    ( if Level = NextLevel - 1  then
+        string.format("Optimization level %d ",
+            [i(Level)], LevelText),
+        SetOrSets = "sets"
+    else
+        string.format("Optimization levels %d to %d ",
+            [i(Level), i(NextLevel - 1)], LevelText),
+        SetOrSets = "set"
+    ),
+    (
+        OptionData = bool(Bool),
+        ( Bool = no,  MaybeNoPrefix = "no-"
+        ; Bool = yes, MaybeNoPrefix = ""
+        ),
+        string.format("automatically %s --%s%s.",
+            [s(SetOrSets), s(MaybeNoPrefix), s(LongName)], SetText)
+    ;
+        OptionData = int(N),
+        string.format("automatically %s --%s=%d.",
+            [s(SetOrSets), s(LongName), i(N)], SetText)
+    ),
+    !:HelpPieces = [blank_line, w(LevelText ++ SetText) | !.HelpPieces],
+    acc_set_at_opt_level_pieces(LongName, LowerSetAtOptLevels,
+        Level, !HelpPieces).
 
 %---------------------------------------------------------------------------%
 
@@ -2339,22 +2440,6 @@ document_one_optimization_option(DocOpt, !Lines) :-
             OptionData = int(Int),
             string.format("--%s=%d", [s(LongName), i(Int)], Line),
             !:Lines = [Line | !.Lines]
-        ;
-            ( OptionData = string(_)
-            ; OptionData = maybe_int(_)
-            ; OptionData = maybe_string(_)
-            ; OptionData = accumulating(_)
-            ; OptionData = special
-            ; OptionData = bool_special
-            ; OptionData = int_special
-            ; OptionData = string_special
-            ; OptionData = maybe_string_special
-            ; OptionData = file_special
-            ),
-            % These kinds of options are never set automatically
-            % at any optimization level. Some (the special options)
-            % literally *cannot* be set there.
-            unexpected($pred, string(OptionData))
         )
     ).
 

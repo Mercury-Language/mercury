@@ -184,8 +184,13 @@ END {
         printf("%-4s--->%-4s%s(\n", "", "", doc_switch_type_functor_name);
         printf("%-16s%s,\n", "", switch_type_name);
         printf("%-16soption,\n", "");
-        printf("%-16soption_data\n", "");
+        printf("%-16soption_data_bool_int\n", "");
         printf("%-12s).\n", "");
+        printf("\n");
+
+        printf(":- type option_data_bool_int =< option_data\n");
+        printf("%-4s--->%-4s%s\n", "", "", "bool(bool)");
+        printf("%-4s;%-7s%s\n", "", "", "int(int).");
         printf("\n");
 
         printf(":- pred opts_enabled_at_level(int::in, list(string)::out,\n");

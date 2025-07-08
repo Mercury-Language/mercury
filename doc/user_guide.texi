@@ -7777,14 +7777,14 @@ deprecated synonym for this option.
 @c @cindex .tsc (grade modifier
 @c Augment each heap cell with its size in cells.
 
-@sp 1
-@item @code{--threadscope} (grade modifier: @samp{.threadscope})
-@findex --threadscope
-@cindex .threadscope (grade modifier
-Enable support for profiling parallel execution. using Threadscope.
-This option is supported only when targeting C in parallel grades with
-@samp{--no-high-level-code}, and only on some processors. See
-README.ThreadScope and @ref{Using threadscope} for details.
+@c @sp 1
+@c @item @code{--threadscope} (grade modifier: @samp{.threadscope})
+@c @findex --threadscope
+@c @cindex .threadscope (grade modifier
+@c Enable support for profiling parallel execution. using Threadscope.
+@c This option is supported only when targeting C in parallel grades with
+@c @samp{--no-high-level-code}, and only on some processors. See
+@c README.ThreadScope and @ref{Using threadscope} for details.
 
 @end table
 
@@ -7942,7 +7942,7 @@ yield a different value.
 @c @item @code{--unboxed-float}
 @c @findex --unboxed-float
 @c Do not box floating point numbers. This assumes that a Mercury float
-@c will fit in a word. The C code needs to be compiled with
+@c will fit in a word. The C code must be compiled with
 @c @code{-UMR_BOXED_FLOAT}. It may also need to be compiled with
 @c @code{-DMR_USE_SINGLE_PREC_FLOAT}, if double precision floats do not
 @c fit into a word. Note that the value of this option is normally
@@ -7952,11 +7952,11 @@ yield a different value.
 @c @sp 1
 @c @item @code{--unboxed-int64s}
 @c @findex --unboxed-int64s
-@c Do not box 64-bit integer numbers This assumes that word size of the
-@c target machine is at least 64-bits in size. The C code needs to be
-@c compiled with @code{-UMR_BOXED_INT64S}. Note that the value of this
-@c option is normally autoconfigured; its use should never be needed
-@c except for cross-compilation.
+@c Do not box 64-bit integer numbers. This assumes that word size of the
+@c target machine is at least 64-bits in size. The C code must be compiled
+@c with @code{-UMR_BOXED_INT64S}. Note that the value of this option is
+@c normally autoconfigured; its use should never be needed except for
+@c cross-compilation.
 
 @c @sp 1
 @c @item @code{--no-unboxed-no-tag-types}
@@ -8227,16 +8227,16 @@ file after compiling a module (default: 100). Specifying
 Output each external command before it is run. Note that some commands
 will only be printed with @samp{--verbose}.
 
-@sp 1
-@item @code{--report-cmd-line-args}
-@findex --report-cmd-line-args
-Report the command line arguments.
+@c @sp 1
+@c @item @code{--report-cmd-line-args}
+@c @findex --report-cmd-line-args
+@c Report the command line arguments.
 
-@sp 1
-@item @code{--report-cmd-line-args-in-doterr}
-@findex --report-cmd-line-args-in-doterr
-Report the command line arguments for compilations whose output mmake
-normally redirects to a @file{.err} file.
+@c @sp 1
+@c @item @code{--report-cmd-line-args-in-doterr}
+@c @findex --report-cmd-line-args-in-doterr
+@c Report the command line arguments for compilations whose output mmake
+@c normally redirects to a @file{.err} file.
 
 @c @sp 1
 @c @item @code{--inform-ignored-pragma-errors}
@@ -8250,11 +8250,11 @@ normally redirects to a @file{.err} file.
 @c Print an informational message for each type_spec pragma that the
 @c compiler generates to implement a type_spec_constrained_pred pragma.
 
-@sp 1
-@item @code{--proc-size-statistics @var{filename}}
-@findex --proc-size-statistics
-Append information about the size of each procedure in the module in
-terms of goals and variables to the end of the named file.
+@c @sp 1
+@c @item @code{--proc-size-statistics @var{filename}}
+@c @findex --proc-size-statistics
+@c Append information about the size of each procedure in the module in
+@c terms of goals and variables to the end of the named file.
 
 @c @sp 1
 @c @item @code{--inst-statistics @var{filename}}
@@ -8284,32 +8284,32 @@ terms of goals and variables to the end of the named file.
 @c Output detailed debugging traces of type checking only for predicates
 @c and functions named by one of these options.
 
-@sp 1
-@item @code{--debug-type-rep}
-@findex --debug-type-rep
-Output debugging traces of type representation choices.
+@c @sp 1
+@c @item @code{--debug-type-rep}
+@c @findex --debug-type-rep
+@c Output debugging traces of type representation choices.
 
-@sp 1
-@item @code{-N}
-@itemx @code{--debug-modes}
-@findex -N
-@findex --debug-modes
-Output debugging traces of the mode checking.
+@c @sp 1
+@c @item @code{-N}
+@c @itemx @code{--debug-modes}
+@c @findex -N
+@c @findex --debug-modes
+@c Output debugging traces of the mode checking.
 
-@sp 1
-@item @code{--debug-modes-verbose}
-@findex --debug-modes-verbose
-Output detailed debugging traces of the mode checking.
+@c @sp 1
+@c @item @code{--debug-modes-verbose}
+@c @findex --debug-modes-verbose
+@c Output detailed debugging traces of the mode checking.
 
-@sp 1
-@item @code{--debug-modes-minimal}
-@findex --debug-modes-minimal
-Output only minimal debugging traces of the mode checking.
+@c @sp 1
+@c @item @code{--debug-modes-minimal}
+@c @findex --debug-modes-minimal
+@c Output only minimal debugging traces of the mode checking.
 
-@sp 1
-@item @code{--debug-modes-statistics}
-@findex --debug-modes-statistics
-Output statistics after each step of mode checking.
+@c @sp 1
+@c @item @code{--debug-modes-statistics}
+@c @findex --debug-modes-statistics
+@c Output statistics after each step of mode checking.
 
 @c @sp 1
 @c @item @code{--no-debug-modes-delay-vars}
@@ -8323,11 +8323,11 @@ Output statistics after each step of mode checking.
 @c @findex --no-debug-modes-goal-ids
 @c Output the id of the goal at all mode debug checkpoints.
 
-@sp 1
-@item @code{--debug-modes-pred-id @var{pred_id}}
-@findex --debug-modes-pred-id
-With @samp{--debug-modes}, restrict the debugging traces to the mode
-checking of the predicate or function with the specified pred id.
+@c @sp 1
+@c @item @code{--debug-modes-pred-id @var{pred_id}}
+@c @findex --debug-modes-pred-id
+@c With @samp{--debug-modes}, restrict the debugging traces to the mode
+@c checking of the predicate or function with the specified pred id.
 
 @c @sp 1
 @c @item @code{--debug-mode-constraints}
@@ -8335,12 +8335,12 @@ checking of the predicate or function with the specified pred id.
 @c Output detailed debugging traces of the `--prop-mode-constraints'
 @c option.
 
-@sp 1
-@item @code{--debug-determinism}
-@itemx @code{--debug-det}
-@findex --debug-determinism
-@findex --debug-det
-Output detailed debugging traces of determinism analysis.
+@c @sp 1
+@c @item @code{--debug-determinism}
+@c @itemx @code{--debug-det}
+@c @findex --debug-determinism
+@c @findex --debug-det
+@c Output detailed debugging traces of determinism analysis.
 
 @c @sp 1
 @c @item @code{--debug-common-struct-preds @var{predids}}
@@ -8370,23 +8370,23 @@ Output detailed debugging traces of determinism analysis.
 @c Output messages about the procedure specializations done by
 @c higher_order.m.
 
-@sp 1
-@item @code{--debug-pd}
-@findex --debug-pd
-Output detailed debugging traces of the partial deduction and
-deforestation process.
+@c @sp 1
+@c @item @code{--debug-pd}
+@c @findex --debug-pd
+@c Output detailed debugging traces of the partial deduction and
+@c deforestation process.
 
-@sp 1
-@item @code{--debug-indirect-reuse}
-@findex --debug-indirect-reuse
-Output detailed debugging traces of the indirect reuse pass of the
-@samp{--structure-reuse} option.
+@c @sp 1
+@c @item @code{--debug-indirect-reuse}
+@c @findex --debug-indirect-reuse
+@c Output detailed debugging traces of the indirect reuse pass of the
+@c @samp{--structure-reuse} option.
 
-@sp 1
-@item @code{--debug-trail-usage}
-@findex --debug-trail-usage
-Output detailed debugging traces of the @samp{--analyse-trail-usage}
-option.
+@c @sp 1
+@c @item @code{--debug-trail-usage}
+@c @findex --debug-trail-usage
+@c Output detailed debugging traces of the @samp{--analyse-trail-usage}
+@c option.
 
 @c @sp 1
 @c @item @code{--debug-unneeded-code}
@@ -8415,11 +8415,11 @@ option.
 @c transformation of the predicate with the given predicate id. Effective
 @c only with the right trace flags.
 
-@sp 1
-@item @code{--debug-liveness @var{pred_id}}
-@findex --debug-liveness
-Output detailed debugging traces of the liveness analysis of the
-predicate with the given predicate id.
+@c @sp 1
+@c @item @code{--debug-liveness @var{pred_id}}
+@c @findex --debug-liveness
+@c Output detailed debugging traces of the liveness analysis of the
+@c predicate with the given predicate id.
 
 @c @sp 1
 @c @item @code{--debug-stack-opt @var{pred-id}}
@@ -8434,38 +8434,38 @@ predicate with the given predicate id.
 @c or function with the given pred id. Effectively only with the right
 @c trace flags.
 
-@sp 1
-@item @code{--debug-opt}
-@findex --debug-opt
-Output detailed debugging traces of the optimization process.
+@c @sp 1
+@c @item @code{--debug-opt}
+@c @findex --debug-opt
+@c Output detailed debugging traces of the optimization process.
 
-@sp 1
-@item @code{--debug-opt-pred-id @var{pred_id}}
-@itemx --no-debug-opt-pred-id
-@findex --debug-opt-pred-id
-@findex --no-debug-opt-pred-id
-Output detailed debugging traces of the optimization process only for
-the predicate/function with the specified pred id.
+@c @sp 1
+@c @item @code{--debug-opt-pred-id @var{pred_id}}
+@c @itemx --no-debug-opt-pred-id
+@c @findex --debug-opt-pred-id
+@c @findex --no-debug-opt-pred-id
+@c Output detailed debugging traces of the optimization process only for
+@c the predicate/function with the specified pred id.
 
-@sp 1
-@item @code{--debug-opt-pred-name @var{name}}
-@itemx --no-debug-opt-pred-name
-@findex --debug-opt-pred-name
-@findex --no-debug-opt-pred-name
-Output detailed debugging traces of the optimization process only for
-the predicate/function with the specified name.
+@c @sp 1
+@c @item @code{--debug-opt-pred-name @var{name}}
+@c @itemx --no-debug-opt-pred-name
+@c @findex --debug-opt-pred-name
+@c @findex --no-debug-opt-pred-name
+@c Output detailed debugging traces of the optimization process only for
+@c the predicate/function with the specified name.
 
-@sp 1
-@item @code{--debug-make}
-@findex --debug-make
-Output detailed debugging traces of the operation of the @samp{--make}
-option.
+@c @sp 1
+@c @item @code{--debug-make}
+@c @findex --debug-make
+@c Output detailed debugging traces of the operation of the @samp{--make}
+@c option.
 
-@sp 1
-@item @code{--debug-intermodule-analysis}
-@findex --debug-intermodule-analysis
-Output detailed debugging traces of the operation of the
-@samp{--intermodule-analysis} option.
+@c @sp 1
+@c @item @code{--debug-intermodule-analysis}
+@c @findex --debug-intermodule-analysis
+@c Output detailed debugging traces of the operation of the
+@c @samp{--intermodule-analysis} option.
 
 @end table
 
@@ -8487,8 +8487,10 @@ Output detailed debugging traces of the operation of the
 @sp 1
 @item @code{-E}
 @itemx @code{--verbose-error-messages}
+@itemx @code{--verbose-errors}
 @findex -E
 @findex --verbose-error-messages
+@findex --verbose-errors
 Some error messages have two versions: a standard version intended for
 experienced users, and a verbose version intended for new users. The
 default is to print the first version. This option tells the compiler
@@ -9161,9 +9163,8 @@ Disable all warning messages.
 Disable all warning messages about programming style.
 
 @sp 1
-@item @code{--no-warn-only-one-format-string-error}
-@findex --warn-only-one-format-string-error
-@findex --no-warn-only-one-format-string-error
+@item @code{--warn-all-format-string-errors}
+@findex --warn-all-format-string-errors
 If a format string has more one than mismatch with the supplied values,
 generate a warning for all mismatches, not just the first. (The default
 is to report only the first, because later mismatches may be avalanche
@@ -9587,7 +9588,6 @@ Do not disable optimizations that can distort deep profiles.
 @menu
 * Overall control of optimizations:: 
 * Source-to-source optimizations:: 
-* Experimental source-to-source optimizations:: 
 * Optimizations during code generation:: 
 * Optimizations specific to high level code:: 
 * Optimizations specific to low level code:: 
@@ -9710,19 +9710,19 @@ Perform inter-module optimization using any @file{.trans_opt} files
 which are already built, e.g. those for the standard library, but do
 not build any others.
 
-@sp 1
-@item @code{--intermodule-analysis}
-@findex --intermodule-analysis
-Perform analyses such as termination analysis and unused argument
-elimination across module boundaries. This option is not yet fully
-implemented.
+@c @sp 1
+@c @item @code{--intermodule-analysis}
+@c @findex --intermodule-analysis
+@c Perform analyses such as termination analysis and unused argument
+@c elimination across module boundaries. This option is not yet fully
+@c implemented.
 
-@sp 1
-@item @code{--analysis-repeat @var{N}}
-@findex --analysis-repeat
-Specify the maximum number of times to repeat analyses of suboptimal
-modules with @samp{--intermodule-analysis} (default: 0). (This option
-works only with @code{mmc --make}.)
+@c @sp 1
+@c @item @code{--analysis-repeat @var{N}}
+@c @findex --analysis-repeat
+@c Specify the maximum number of times to repeat analyses of suboptimal
+@c modules with @samp{--intermodule-analysis} (default: 0). (This option
+@c works only with @code{mmc --make}.)
 
 @c @sp 1
 @c @item @code{--analysis-file-cache}
@@ -9751,6 +9751,9 @@ works only with @code{mmc --make}.)
 Delete all procedures that are never called.
 
 @sp 1
+Optimization levels 0 to 6 automatically set --optimize-dead-procs.
+
+@sp 1
 @item @code{--unneeded-code}
 @findex --unneeded-code
 Remove goals from computation paths where their outputs are not needed,
@@ -9773,6 +9776,9 @@ value of one prevents any increase in the size of the code.
 Delete unused arguments from predicates and functions. This will cause
 the compiler to generate more efficient code for many polymorphic
 predicates.
+
+@sp 1
+Optimization levels 3 to 6 automatically set --optimize-unused-args.
 
 @sp 1
 @item @code{--intermod-unused-args}
@@ -9801,6 +9807,10 @@ mainly those that do arithmetic, evaluate them at compile time, if all
 their input arguments are constants.
 
 @sp 1
+Optimization levels 2 to 6 automatically set
+--optimize-constant-propagation.
+
+@sp 1
 @item @code{--optimize-duplicate-calls}
 @itemx @code{--optimise-duplicate-calls}
 @findex --optimize-duplicate-calls
@@ -9808,11 +9818,14 @@ their input arguments are constants.
 Given multiple calls to a predicate or function with the same input
 arguments, optimize away all but one.
 
-@sp 1
-@item @code{--excess-assign}
-@findex --excess-assign
-Remove assignment unifications whose only effect is to give another
-name to the same value.
+@c @sp 1
+@c @item @code{--excess-assign}
+@c @findex --excess-assign
+@c Remove assignment unifications whose only effect is to give another
+@c name to the same value.
+
+@c @sp 1
+@c Optimization levels 0 to 6 automatically set --excess-assign.
 
 @c @sp 1
 @c @item @code{--no-allow-inlining}
@@ -9826,15 +9839,15 @@ name to the same value.
 @findex --no-inlining
 Ask the compiler to inline procedures using its usual heuristics.
 
-@sp 1
-@item @code{--no-inline-builtins}
-@findex --inline-builtins
-@findex --no-inline-builtins
-Normally, the compiler implements builtin operations (such as
-arithmetic) using inline code. With @samp{--no-inline-builtins}, the
-compiler will implement them as calls to out-of-line procedures. This
-latter is done by default when debugging, since this allows the
-execution of builtins to be traced.
+@c @sp 1
+@c @item @code{--no-inline-builtins}
+@c @findex --inline-builtins
+@c @findex --no-inline-builtins
+@c Normally, the compiler implements builtin operations (such as
+@c arithmetic) using inline code. With @samp{--no-inline-builtins}, the
+@c compiler will implement them as calls to out-of-line procedures. This
+@c latter is done by default when debugging, since this allows the
+@c execution of builtins to be traced.
 
 @c @sp 1
 @c @item @code{--inline-par-builtins}
@@ -9849,15 +9862,25 @@ execution of builtins to be traced.
 Inline procedures which are called only from one call site.
 
 @sp 1
+Optimization levels 2 to 6 automatically set --inline-single-use.
+
+@sp 1
 @item @code{--inline-simple}
 @findex --inline-simple
 Inline all simple procedures.
+
+@sp 1
+Optimization levels 2 to 6 automatically set --inline-simple.
 
 @sp 1
 @item @code{--inline-simple-threshold @var{threshold}}
 @findex --inline-simple-threshold
 With @samp{--inline-simple}, inline a procedure if its size is less
 than the given threshold.
+
+@sp 1
+Optimization levels 4 to 6 automatically set
+--inline-simple-threshold=8.
 
 @sp 1
 @item @code{--intermod-inline-simple-threshold @var{threshold}}
@@ -9875,6 +9898,17 @@ Inline a procedure if its size (measured roughly in terms of the number
 of connectives in its internal form) less the assumed call cost,
 multiplied by the number of times it is called, is below the given
 threshold.
+
+@sp 1
+Optimization levels 2 to 3 automatically set
+--inline-compound-threshold=10.
+
+@sp 1
+Optimization level 4 automatically sets --inline-compound-threshold=20.
+
+@sp 1
+Optimization levels 5 to 6 automatically set
+--inline-compound-threshold=100.
 
 @sp 1
 @item @code{--inline-call-cost @var{cost}}
@@ -9919,6 +9953,9 @@ for call sites where the values of the higher-order arguments are
 known.
 
 @sp 1
+Optimization levels 3 to 6 automatically set --optimize-higher-order.
+
+@sp 1
 @item @code{--type-specialization}
 @itemx @code{--type-specialisation}
 @findex --type-specialization
@@ -9937,12 +9974,23 @@ Enable specialization of polymorphic predicates for which there are
 Mercury language Reference Manual for more details.
 
 @sp 1
+Optimization levels 2 to 6 automatically set
+--user-guided-type-specialization.
+
+@sp 1
 @item @code{--higher-order-size-limit @var{max_size}}
 @findex --higher-order-size-limit
 Set the maximum goal size of specialized versions created by
 @samp{--optimize-higher-order} and @samp{--type-specialization}. Goal
 size is measured as the number of calls, unifications and branched
 goals.
+
+@sp 1
+Optimization level 4 automatically sets --higher-order-size-limit=30.
+
+@sp 1
+Optimization levels 5 to 6 automatically set
+--higher-order-size-limit=40.
 
 @sp 1
 @item @code{--higher-order-arg-limit @var{max_size}}
@@ -9954,6 +10002,9 @@ Set the maximum size of higher-order arguments to be specialized by
 @item @code{--loop-invariants}
 @findex --loop-invariants
 Hoist loop invariant computations out of loops.
+
+@sp 1
+Optimization levels 5 to 6 automatically set --loop-invariants.
 
 @sp 1
 @item @code{--introduce-accumulators}
@@ -9995,12 +10046,18 @@ inside one of its arms, the default is to split up that arm of the
 outer switch along the same lines, effectively inlining the inner
 switch. @samp{--no-split-switch-arms} prevents this split.
 
+@sp 1
+Optimization levels 2 to 6 automatically set --split-switch-arms.
+
 @c @sp 1
 @c @item @code{--merge-code-after-switch}
 @c @findex --merge-code-after-switch
 @c Merge the goal after a switch into the switch, if we can. Two cases in
 @c which we can are when that goal just tests the value of a variable set
 @c in the switch, and when that goal is a switch on the same variable.
+
+@c @sp 1
+@c Optimization levels 2 to 6 automatically set --merge-code-after-switch.
 
 @c @sp 1
 @c @item @code{--from-ground-term-threshold @var{N}}
@@ -10025,6 +10082,9 @@ Replace two or more occurrences of the same term in a conjunction with
 just one copy.
 
 @sp 1
+Optimization levels 2 to 6 automatically set --common-struct.
+
+@sp 1
 @item @code{--optimize-saved-vars}
 @itemx @code{--optimise-saved-vars}
 @findex --optimize-saved-vars
@@ -10041,6 +10101,10 @@ Minimize the number of variables saved across calls.
 @c Minimize the number of variables saved across calls by introducing
 @c duplicate copies of variables bound to constants in each interval
 @c between flushes where they are needed.
+
+@c @sp 1
+@c Optimization levels 3 to 6 automatically set
+@c --optimize-saved-vars-const.
 
 @c @sp 1
 @c @item @code{--optimize-saved-vars-cell}
@@ -10122,6 +10186,9 @@ Perform the constraint propagation transformation, which attempts to
 ensure that goals which can fail are executed as early as possible.
 
 @sp 1
+Optimization levels 3 to 6 automatically set --constraint-propagation.
+
+@sp 1
 @item @code{--local-constraint-propagation}
 @findex --local-constraint-propagation
 Perform the constraint propagation transformation, but only rearrange
@@ -10129,11 +10196,18 @@ goals within each procedure. Specialized versions of procedures will
 not be created.
 
 @sp 1
+Optimization levels 3 to 6 automatically set
+--local-constraint-propagation.
+
+@sp 1
 @item @code{--deforestation}
 @findex --deforestation
 Perform deforestation, which is a program transformation whose aims are
 to avoid the construction of intermediate data structures, and to avoid
 repeated traversals over data structures within a conjunction.
+
+@sp 1
+Optimization levels 3 to 6 automatically set --deforestation.
 
 @sp 1
 @item @code{--deforestation-depth-limit @var{depth_limit}}
@@ -10214,6 +10288,9 @@ deforestation. A value of -1 specifies no limit. The default is 15.
 Reorder goals to move construction unifications after primitive goals
 that can fail.
 
+@sp 1
+Optimization levels 5 to 6 automatically set --delay-constructs.
+
 @c @sp 1
 @c @item @code{--follow-code}
 @c @findex --follow-code
@@ -10222,6 +10299,9 @@ that can fail.
 @c call as the goal just after the branched goal gives the LLDS code
 @c generator a consistent set of places into which each branch should
 @c store live variables.
+
+@c @sp 1
+@c Optimization levels 2 to 6 automatically set --follow-code.
 
 @c @sp 1
 @c @item @code{--always-specialize-in-dep-par-conjs}
@@ -10251,51 +10331,51 @@ them using calls to those operations in the standard library.
 
 @end table
 
-@node        Experimental source-to-source optimizations
-@subsection  Experimental source-to-source optimizations
-@cindex      Experimental source-to-source optimizations
+@c @node        Experimental source-to-source optimizations
+@c @subsection  Experimental source-to-source optimizations
+@c @cindex      Experimental source-to-source optimizations
 
-@table @asis
+@c @table @asis
 
-@sp 1
-@item @code{--structure-sharing}
-@findex --structure-sharing
-Perform structure sharing analysis.
+@c @sp 1
+@c @item @code{--structure-sharing}
+@c @findex --structure-sharing
+@c Perform structure sharing analysis.
 
-@sp 1
-@item @code{--structure-sharing-widening @var{N}}
-@findex --structure-sharing-widening
-Perform widening when the set of structure sharing pairs becomes larger
-than @var{N}. When n=0, widening is not enabled. (default: 0).
+@c @sp 1
+@c @item @code{--structure-sharing-widening @var{N}}
+@c @findex --structure-sharing-widening
+@c Perform widening when the set of structure sharing pairs becomes larger
+@c than @var{N}. When n=0, widening is not enabled. (default: 0).
 
-@sp 1
-@item @code{--structure-reuse}
-@itemx @code{--ctgc}
-@findex --structure-reuse
-@findex --ctgc
-Perform structure reuse analysis (Compile Time Garbage Collection).
+@c @sp 1
+@c @item @code{--structure-reuse}
+@c @itemx @code{--ctgc}
+@c @findex --structure-reuse
+@c @findex --ctgc
+@c Perform structure reuse analysis (Compile Time Garbage Collection).
 
-@sp 1
-@item @code{--structure-reuse-constraint @{same_cons_id, within_n_cells_difference@}}
-@itemx @code{--ctgc-constraint @{same_cons_id, within_n_cells_difference@}}
-@findex --structure-reuse-constraint
-@findex --ctgc-constraint
-Constraint on the way we allow structure reuse. @samp{same_cons_id}
-specifies that reuse is only allowed between terms of the same type and
-constructor. @samp{within_n_cells_difference} states that reuse is
-allowed as long as the arities between the reused term and new term
-does not exceed a certain threshold. The threshold needs to be set
-using @samp{--structure-reuse-constraint-arg}. (The default is
-@samp{within_n_cells_difference} with the threshold being 0.)
+@c @sp 1
+@c @item @code{--structure-reuse-constraint @{same_cons_id, within_n_cells_difference@}}
+@c @itemx @code{--ctgc-constraint @{same_cons_id, within_n_cells_difference@}}
+@c @findex --structure-reuse-constraint
+@c @findex --ctgc-constraint
+@c Constraint on the way we allow structure reuse. @samp{same_cons_id}
+@c specifies that reuse is only allowed between terms of the same type and
+@c constructor. @samp{within_n_cells_difference} states that reuse is
+@c allowed as long as the arities between the reused term and new term
+@c does not exceed a certain threshold. The threshold needs to be set
+@c using @samp{--structure-reuse-constraint-arg}. (The default is
+@c @samp{within_n_cells_difference} with the threshold being 0.)
 
-@sp 1
-@item @code{--structure-reuse-constraint-arg @var{max_difference}}
-@itemx @code{--ctgc-constraint-arg @var{max_difference}}
-@findex --structure-reuse-constraint-arg
-@findex --ctgc-constraint-arg
-Specify the maximum difference in arities between the terms whose
-memory cells can be reused on the one hand, and the terms that need
-memory cells on the other hand. (default: 0)
+@c @sp 1
+@c @item @code{--structure-reuse-constraint-arg @var{max_difference}}
+@c @itemx @code{--ctgc-constraint-arg @var{max_difference}}
+@c @findex --structure-reuse-constraint-arg
+@c @findex --ctgc-constraint-arg
+@c Specify the maximum difference in arities between the terms whose
+@c memory cells can be reused on the one hand, and the terms that need
+@c memory cells on the other hand. (default: 0)
 
 @c @sp 1
 @c @item @code{--structure-reuse-max-conditions @var{max_num_conditions}}
@@ -10314,7 +10394,7 @@ memory cells on the other hand. (default: 0)
 @c Immediately free cells which are known to be dead but which cannot be
 @c reused.
 
-@end table
+@c @end table
 
 @node        Optimizations during code generation
 @subsection  Optimizations during code generation
@@ -10330,10 +10410,16 @@ which may be e.g. binary search or a hash table. With
 @samp{--no-smart-indexing}, the default is to implement switches as
 simple if-then-else chains.
 
+@sp 1
+Optimization levels 0 to 6 automatically set --smart-indexing.
+
 @c @sp 1
 @c @item @code{--smart-atomic-indexing}
 @c @findex --smart-atomic-indexing
 @c Generate smart switches on atomic types when appropriate.
+
+@c @sp 1
+@c Optimization levels 0 to 6 automatically set --smart-atomic-indexing.
 
 @c @sp 1
 @c @item @code{--smart-string-indexing}
@@ -10341,14 +10427,23 @@ simple if-then-else chains.
 @c Generate smart switches on strings when appropriate.
 
 @c @sp 1
+@c Optimization levels 0 to 6 automatically set --smart-string-indexing.
+
+@c @sp 1
 @c @item @code{--smart-tag-indexing}
 @c @findex --smart-tag-indexing
 @c Generate smart switches on discriminated union types when appropriate.
 
 @c @sp 1
+@c Optimization levels 0 to 6 automatically set --smart-tag-indexing.
+
+@c @sp 1
 @c @item @code{--smart-float-indexing}
 @c @findex --smart-float-indexing
 @c Generate smart switches on floats when appropriate.
+
+@c @sp 1
+@c Optimization levels 0 to 6 automatically set --smart-float-indexing.
 
 @sp 1
 @item @code{--dense-switch-req-density @var{percentage}}
@@ -10425,6 +10520,9 @@ data structures created by the compiler for purposes such as debugging
 will always be created as static constants.
 
 @sp 1
+Optimization levels 0 to 6 automatically set --static-ground-terms.
+
+@sp 1
 @item @code{--use-atomic-cells}
 @findex --use-atomic-cells
 Use the atomic variants of the Boehm gc allocator calls when the memory
@@ -10452,9 +10550,15 @@ cell to be allocated cannot contain pointers.
 Enable the MLDS->MLDS optimization passes.
 
 @sp 1
+Optimization levels 0 to 6 automatically set --mlds-optimize.
+
+@sp 1
 @item @code{--mlds-peephole}
 @findex --mlds-peephole
 Perform peephole optimization of the MLDS.
+
+@sp 1
+Optimization levels 0 to 6 automatically set --mlds-peephole.
 
 @sp 1
 @item @code{--optimize-tailcalls}
@@ -10464,6 +10568,9 @@ Perform peephole optimization of the MLDS.
 Turn self-tailcalls into loops.
 
 @sp 1
+Optimization levels 1 to 6 automatically set --optimize-tailcalls.
+
+@sp 1
 @item @code{--optimize-initializations}
 @itemx @code{--optimise-initializations}
 @findex --optimize-initializations
@@ -10471,6 +10578,10 @@ Turn self-tailcalls into loops.
 Whenever possible, convert the first assignment to each local variable
 in the target code into an initializer on its declaration. Some target
 language compilers can generate faster code that way.
+
+@sp 1
+Optimization levels 2 to 6 automatically set
+--optimize-initializations.
 
 @c @sp 1
 @c @item @code{--no-eliminate-unused-mlds-assigns}
@@ -10485,6 +10596,10 @@ language compilers can generate faster code that way.
 @findex --eliminate-local-vars
 Eliminate local variables with known values, where possible, by
 replacing occurrences of such variables with their values.
+
+@sp 1
+Optimization levels 5 to 6 automatically set
+--eliminate-local-variables.
 
 @end table
 
@@ -10512,9 +10627,15 @@ this number (default: 4).
 Enable the middle recursion optimization.
 
 @sp 1
+Optimization levels 1 to 6 automatically set --middle-rec.
+
+@sp 1
 @item @code{--simple-neg}
 @findex --simple-neg
 Generate simplified code for simple negations.
+
+@sp 1
+Optimization levels 2 to 6 automatically set --simple-neg.
 
 @c @sp 1
 @c @item @code{--no-allow-hijacks}
@@ -10533,6 +10654,9 @@ Generate simplified code for simple negations.
 Enable the LLDs->LLDS optimization passes.
 
 @sp 1
+Optimization levels 0 to 6 automatically set --llds-optimize.
+
+@sp 1
 @item @code{--optimize-repeat @var{N}}
 @itemx @code{--optimise-repeat @var{N}}
 @findex --optimize-repeat
@@ -10541,11 +10665,26 @@ Iterate most LLDS->LLDS optimizations at most @var{N} times (default:
 3).
 
 @sp 1
+Optimization levels 0 to 1 automatically set --optimize-repeat=1.
+
+@sp 1
+Optimization level 2 automatically sets --optimize-repeat=3.
+
+@sp 1
+Optimization levels 3 to 4 automatically set --optimize-repeat=4.
+
+@sp 1
+Optimization levels 5 to 6 automatically set --optimize-repeat=5.
+
+@sp 1
 @item @code{--optimize-peep}
 @itemx @code{--optimise-peep}
 @findex --optimize-peep
 @findex --optimise-peep
 Enable local peephole optimizations.
+
+@sp 1
+Optimization levels 0 to 6 automatically set --optimize-peep.
 
 @c @sp 1
 @c @item @code{--optimize-peep-mkword}
@@ -10554,12 +10693,18 @@ Enable local peephole optimizations.
 @c @findex --optimise-peep-mkword
 @c Enable peephole optimizations of words created by mkword.
 
+@c @sp 1
+@c Optimization levels 0 to 6 automatically set --optimize-peep-mkword.
+
 @sp 1
 @item @code{--optimize-labels}
 @itemx @code{--optimise-labels}
 @findex --optimize-labels
 @findex --optimise-labels
 Delete dead labels, and the unreachable code following them.
+
+@sp 1
+Optimization levels 0 to 6 automatically set --optimize-labels.
 
 @c @sp 1
 @c @item @code{--standardize-labels}
@@ -10576,11 +10721,17 @@ Delete dead labels, and the unreachable code following them.
 Enable the short-circuiting of jumps to jumps.
 
 @sp 1
+Optimization levels 0 to 6 automatically set --optimize-jumps.
+
+@sp 1
 @item @code{--optimize-fulljumps}
 @itemx @code{--optimise-fulljumps}
 @findex --optimize-fulljumps
 @findex --optimise-fulljumps
 Enable the elimination of jumps to ordinary code.
+
+@sp 1
+Optimization levels 2 to 6 automatically set --optimize-fulljumps.
 
 @sp 1
 @item @code{--checked-nondet-tailcalls}
@@ -10604,11 +10755,17 @@ Disable branch delay slot optimizations, This option is meaningful only
 if the target architecture has delay slots.
 
 @sp 1
+Optimization levels 1 to 6 automatically set --optimize-delay-slot.
+
+@sp 1
 @item @code{--optimize-frames}
 @itemx @code{--optimise-frames}
 @findex --optimize-frames
 @findex --optimise-frames
 Optimize the operations that maintain stack frames.
+
+@sp 1
+Optimization levels 1 to 6 automatically set --optimize-frames.
 
 @sp 1
 @item @code{--optimize-reassign}
@@ -10619,9 +10776,15 @@ Optimize away assignments to memory locations that already hold the
 to-be-assigned value.
 
 @sp 1
+Optimization levels 3 to 6 automatically set --optimize-reassign.
+
+@sp 1
 @item @code{--use-local-vars}
 @findex --use-local-vars
 Use local variables in C code blocks wherever possible.
+
+@sp 1
+Optimization levels 1 to 6 automatically set --use-local-vars.
 
 @c @sp 1
 @c @item @code{--local-var-access-threshold @var{XXX document me}}
@@ -10636,6 +10799,9 @@ Use local variables in C code blocks wherever possible.
 Enable elimination of duplicate code within procedures.
 
 @sp 1
+Optimization levels 2 to 6 automatically set --optimize-dups.
+
+@sp 1
 @item @code{--optimize-proc-dups}
 @itemx @code{--optimise-proc-dups}
 @findex --optimize-proc-dups
@@ -10646,6 +10812,9 @@ Enable elimination of duplicate procedures.
 @item @code{--common-data}
 @findex --common-data
 Enable optimization of common data structures.
+
+@sp 1
+Optimization levels 0 to 6 automatically set --common-data.
 
 @sp 1
 @item @code{--no-common-layout-data}
@@ -10671,6 +10840,9 @@ long as the arrays involved have at most @var{N} elements (default:
 @findex --emit-c-loops
 Use C loop contstructs to implement loops. With
 @samp{--no-emit-c-loops}, use only gotos.
+
+@sp 1
+Optimization levels 1 to 6 automatically set --emit-c-loops.
 
 @sp 1
 @item @code{--procs-per-c-function @var{N}}
@@ -10699,11 +10871,17 @@ meaningful only if the selected garbage collector is boehm, and if the
 C compiler is gcc.
 
 @sp 1
+Optimization level 6 automatically sets --inline-alloc.
+
+@sp 1
 @item @code{--use-macro-for-redo-fail}
 @findex --use-macro-for-redo-fail
 Emit the fail or redo macro instead of a branch to the fail or redo
 code in the runtime system. This produces slightly bigger but slightly
 faster code.
+
+@sp 1
+Optimization level 6 automatically sets --use-macro-for-redo-fail.
 
 @end table
 
@@ -11105,6 +11283,9 @@ Specify which C compiler to use.
 @findex --c-optimize
 @findex --c-optimise
 Enable optimizations by the C compiler.
+
+@sp 1
+Optimization levels 1 to 6 automatically set --c-optimize.
 
 @sp 1
 @item @code{--c-include-directory @var{directory}}
@@ -12170,14 +12351,14 @@ This option uses temporary files to pass arguments to sub-commands.
 @c @findex --conf-low-tag-bits
 @c Reserved for use by the @code{mmc} script.
 
-@sp 1
-@item @code{--branch-delay-slot}
-@itemx @code{--have-delay-slot}
-@findex --branch-delay-slot
-@findex --have-delay-slot
-Assume that branch instructions have a delay slot. Note that the value
-of this option is normally autoconfigured; its use should never be
-needed except for cross-compilation.
+@c @sp 1
+@c @item @code{--branch-delay-slot}
+@c @itemx @code{--have-delay-slot}
+@c @findex --branch-delay-slot
+@c @findex --have-delay-slot
+@c Assume that branch instructions have a delay slot. Note that the value
+@c of this option is normally autoconfigured; its use should never be
+@c needed except for cross-compilation.
 
 @sp 1
 @item @code{--num-real-r-regs @var{N}}
@@ -12610,18 +12791,18 @@ be useful to avoid exceeding fixed limits imposed by some C compilers.
 @c unify and compare predicates a test for the two values being equal as
 @c words. Specifying @samp{--no-should-pretest-equality} prevents this.
 
-@sp 1
-@item @code{--fact-table-max-array-size @var{N}}
-@findex --fact-table-max-array-size
-Specify the maximum number of elements in a single
-@code{:- pragma fact_table} data array (default: 1024).
+@c @sp 1
+@c @item @code{--fact-table-max-array-size @var{N}}
+@c @findex --fact-table-max-array-size
+@c Specify the maximum number of elements in a single
+@c @code{:- pragma fact_table} data array (default: 1024).
 
-@sp 1
-@item @code{--fact-table-hash-percent-full @var{percentage}}
-@findex --fact-table-hash-percent-full
-Specify how full @code{:- pragma fact_table} hash tables should be
-allowed to get. Given as an integer percentage (valid range: 1 to 100,
-default: 90).
+@c @sp 1
+@c @item @code{--fact-table-hash-percent-full @var{percentage}}
+@c @findex --fact-table-hash-percent-full
+@c Specify how full @code{:- pragma fact_table} hash tables should be
+@c allowed to get. Given as an integer percentage (valid range: 1 to 100,
+@c default: 90).
 
 @c @sp 1
 @c @item @code{--no-prefer-switch}
@@ -12658,113 +12839,115 @@ default: 90).
 @c @findex --no-opt-no-return-calls
 @c Do not optimize the stack usage of calls that cannot return.
 
-@sp 1
-@item @code{--bug-intermod-2002-06-13}
-@itemx @code{--bug-intermod-2006-09-28}
-@itemx @code{--bug-foreign_import-2002-08-06}
-@itemx @code{--install-opt-files-2002-08-30}
-@itemx @code{--read-config-file-2003-03-01}
-@itemx @code{--no-noncompact-ho-call-2004-01-15}
-@itemx @code{--trace-io-builtins-2006-08-14}
-@itemx @code{--compound-compare-builtins-2007-07-09}
-@itemx @code{--no-det-warning-compound-compare-2007-07-17}
-@itemx @code{--foreign-enum-switch-fix}
-@itemx @code{--failing-disjunct-in-switch-dup-fix}
-@itemx @code{--store-at-ref-impure-2008-09-11}
-@itemx @code{--java-export-ref-out}
-@itemx @code{--java-generics-2010-04-13}
-@itemx @code{--strip-executable-2014-05-05}
-@itemx @code{--trace-goal-only-locals-2017-07-05}
-@itemx @code{--no-reserved-addrs}
-@itemx @code{--builtin-lt-gt-2018-10-08}
-@itemx @code{--fixed-contiguity-2018-10-19}
-@itemx @code{--simplest-msg-2019-09-22}
-@itemx @code{--unqual-foreign-enums-in-int-files-2019-10-04}
-@itemx @code{--obsolete-proc-2019-10-23}
-@itemx @code{--type-repn-int3-2020-03-22}
-@itemx @code{--github-85--2020-03-24}
-@itemx @code{--foreign-proc-typeinfo-2020-04-08}
-@itemx @code{--ushift-2020-04-30}
-@itemx @code{--unsigned_lt-2020-05-02}
-@itemx @code{--format-uint-2020-05-23}
-@itemx @code{--mmake-all-2020-05-25}
-@itemx @code{--unsigned-lt-2020-05-25}
-@itemx @code{--may-ignore-without-warning-2020-08-18}
-@itemx @code{--prolog-is-2020-08-21}
-@itemx @code{--partial-inst-copy-2021-01-04}
-@itemx @code{--mantis-bug-529-2021-02-25}
-@itemx @code{--subtype-opt-2022-02-19}
-@itemx @code{--typespec-pragma-2022-07-20}
-@itemx @code{--ushift-2022-12-06}
-@itemx @code{--ushift-2022-12-07}
-@itemx @code{--strtrie-2022-12-08}
-@itemx @code{--term-pass2-2022-12-28}
-@itemx @code{--format-2023-01-27}
-@itemx @code{--singleton-2023-06-10}
-@itemx @code{--warn-obsolete-transform-2023-07-03}
-@itemx @code{--gen-dep-ints-2023-10-15}
-@itemx @code{--tscp-2024-02-07}
-@itemx @code{--format-2024-02-07}
-@itemx @code{--dym-2024-02-08}
-@itemx @code{--wne-2024-02-21}
-@itemx @code{--escape-2024-04-28}
-@itemx @code{--can-fail-function-obsolete-2024-08-10}
-@itemx @code{--unused-statevar-warn-2025-05-16}
-@itemx @code{--allow-non-contig-for-2025-06-01}
-@findex --bug-intermod-2002-06-13
-@findex --bug-intermod-2006-09-28
-@findex --bug-foreign_import-2002-08-06
-@findex --install-opt-files-2002-08-30
-@findex --read-config-file-2003-03-01
-@findex --no-noncompact-ho-call-2004-01-15
-@findex --trace-io-builtins-2006-08-14
-@findex --compound-compare-builtins-2007-07-09
-@findex --no-det-warning-compound-compare-2007-07-17
-@findex --foreign-enum-switch-fix
-@findex --failing-disjunct-in-switch-dup-fix
-@findex --store-at-ref-impure-2008-09-11
-@findex --java-export-ref-out
-@findex --java-generics-2010-04-13
-@findex --strip-executable-2014-05-05
-@findex --trace-goal-only-locals-2017-07-05
-@findex --no-reserved-addrs
-@findex --builtin-lt-gt-2018-10-08
-@findex --fixed-contiguity-2018-10-19
-@findex --simplest-msg-2019-09-22
-@findex --unqual-foreign-enums-in-int-files-2019-10-04
-@findex --obsolete-proc-2019-10-23
-@findex --type-repn-int3-2020-03-22
-@findex --github-85--2020-03-24
-@findex --foreign-proc-typeinfo-2020-04-08
-@findex --ushift-2020-04-30
-@findex --unsigned_lt-2020-05-02
-@findex --format-uint-2020-05-23
-@findex --mmake-all-2020-05-25
-@findex --unsigned-lt-2020-05-25
-@findex --may-ignore-without-warning-2020-08-18
-@findex --prolog-is-2020-08-21
-@findex --partial-inst-copy-2021-01-04
-@findex --mantis-bug-529-2021-02-25
-@findex --subtype-opt-2022-02-19
-@findex --typespec-pragma-2022-07-20
-@findex --ushift-2022-12-06
-@findex --ushift-2022-12-07
-@findex --strtrie-2022-12-08
-@findex --term-pass2-2022-12-28
-@findex --format-2023-01-27
-@findex --singleton-2023-06-10
-@findex --warn-obsolete-transform-2023-07-03
-@findex --gen-dep-ints-2023-10-15
-@findex --tscp-2024-02-07
-@findex --format-2024-02-07
-@findex --dym-2024-02-08
-@findex --wne-2024-02-21
-@findex --escape-2024-04-28
-@findex --can-fail-function-obsolete-2024-08-10
-@findex --unused-statevar-warn-2025-05-16
-@findex --allow-non-contig-for-2025-06-01
-Is the compiler sufficiently recent to contain the new feature or
-bugfix referred to by each name?
+@c @sp 1
+@c @item @code{--bug-intermod-2002-06-13}
+@c @itemx @code{--bug-intermod-2006-09-28}
+@c @itemx @code{--bug-foreign_import-2002-08-06}
+@c @itemx @code{--install-opt-files-2002-08-30}
+@c @itemx @code{--read-config-file-2003-03-01}
+@c @itemx @code{--no-noncompact-ho-call-2004-01-15}
+@c @itemx @code{--trace-io-builtins-2006-08-14}
+@c @itemx @code{--compound-compare-builtins-2007-07-09}
+@c @itemx @code{--no-det-warning-compound-compare-2007-07-17}
+@c @itemx @code{--foreign-enum-switch-fix}
+@c @itemx @code{--failing-disjunct-in-switch-dup-fix}
+@c @itemx @code{--store-at-ref-impure-2008-09-11}
+@c @itemx @code{--java-export-ref-out}
+@c @itemx @code{--java-generics-2010-04-13}
+@c @itemx @code{--strip-executable-2014-05-05}
+@c @itemx @code{--trace-goal-only-locals-2017-07-05}
+@c @itemx @code{--no-reserved-addrs}
+@c @itemx @code{--builtin-lt-gt-2018-10-08}
+@c @itemx @code{--fixed-contiguity-2018-10-19}
+@c @itemx @code{--simplest-msg-2019-09-22}
+@c @itemx @code{--unqual-foreign-enums-in-int-files-2019-10-04}
+@c @itemx @code{--obsolete-proc-2019-10-23}
+@c @itemx @code{--type-repn-int3-2020-03-22}
+@c @itemx @code{--github-85--2020-03-24}
+@c @itemx @code{--foreign-proc-typeinfo-2020-04-08}
+@c @itemx @code{--ushift-2020-04-30}
+@c @itemx @code{--unsigned_lt-2020-05-02}
+@c @itemx @code{--format-uint-2020-05-23}
+@c @itemx @code{--mmake-all-2020-05-25}
+@c @itemx @code{--unsigned-lt-2020-05-25}
+@c @itemx @code{--may-ignore-without-warning-2020-08-18}
+@c @itemx @code{--prolog-is-2020-08-21}
+@c @itemx @code{--partial-inst-copy-2021-01-04}
+@c @itemx @code{--mantis-bug-529-2021-02-25}
+@c @itemx @code{--subtype-opt-2022-02-19}
+@c @itemx @code{--typespec-pragma-2022-07-20}
+@c @itemx @code{--ushift-2022-12-06}
+@c @itemx @code{--ushift-2022-12-07}
+@c @itemx @code{--strtrie-2022-12-08}
+@c @itemx @code{--term-pass2-2022-12-28}
+@c @itemx @code{--format-2023-01-27}
+@c @itemx @code{--singleton-2023-06-10}
+@c @itemx @code{--warn-obsolete-transform-2023-07-03}
+@c @itemx @code{--gen-dep-ints-2023-10-15}
+@c @itemx @code{--tscp-2024-02-07}
+@c @itemx @code{--format-2024-02-07}
+@c @itemx @code{--dym-2024-02-08}
+@c @itemx @code{--wne-2024-02-21}
+@c @itemx @code{--escape-2024-04-28}
+@c @itemx @code{--can-fail-function-obsolete-2024-08-10}
+@c @itemx @code{--unused-statevar-warn-2025-05-16}
+@c @itemx @code{--allow-non-contig-for-2025-06-01}
+@c @itemx @code{--subtype-int2-2025-07-07}
+@c @findex --bug-intermod-2002-06-13
+@c @findex --bug-intermod-2006-09-28
+@c @findex --bug-foreign_import-2002-08-06
+@c @findex --install-opt-files-2002-08-30
+@c @findex --read-config-file-2003-03-01
+@c @findex --no-noncompact-ho-call-2004-01-15
+@c @findex --trace-io-builtins-2006-08-14
+@c @findex --compound-compare-builtins-2007-07-09
+@c @findex --no-det-warning-compound-compare-2007-07-17
+@c @findex --foreign-enum-switch-fix
+@c @findex --failing-disjunct-in-switch-dup-fix
+@c @findex --store-at-ref-impure-2008-09-11
+@c @findex --java-export-ref-out
+@c @findex --java-generics-2010-04-13
+@c @findex --strip-executable-2014-05-05
+@c @findex --trace-goal-only-locals-2017-07-05
+@c @findex --no-reserved-addrs
+@c @findex --builtin-lt-gt-2018-10-08
+@c @findex --fixed-contiguity-2018-10-19
+@c @findex --simplest-msg-2019-09-22
+@c @findex --unqual-foreign-enums-in-int-files-2019-10-04
+@c @findex --obsolete-proc-2019-10-23
+@c @findex --type-repn-int3-2020-03-22
+@c @findex --github-85--2020-03-24
+@c @findex --foreign-proc-typeinfo-2020-04-08
+@c @findex --ushift-2020-04-30
+@c @findex --unsigned_lt-2020-05-02
+@c @findex --format-uint-2020-05-23
+@c @findex --mmake-all-2020-05-25
+@c @findex --unsigned-lt-2020-05-25
+@c @findex --may-ignore-without-warning-2020-08-18
+@c @findex --prolog-is-2020-08-21
+@c @findex --partial-inst-copy-2021-01-04
+@c @findex --mantis-bug-529-2021-02-25
+@c @findex --subtype-opt-2022-02-19
+@c @findex --typespec-pragma-2022-07-20
+@c @findex --ushift-2022-12-06
+@c @findex --ushift-2022-12-07
+@c @findex --strtrie-2022-12-08
+@c @findex --term-pass2-2022-12-28
+@c @findex --format-2023-01-27
+@c @findex --singleton-2023-06-10
+@c @findex --warn-obsolete-transform-2023-07-03
+@c @findex --gen-dep-ints-2023-10-15
+@c @findex --tscp-2024-02-07
+@c @findex --format-2024-02-07
+@c @findex --dym-2024-02-08
+@c @findex --wne-2024-02-21
+@c @findex --escape-2024-04-28
+@c @findex --can-fail-function-obsolete-2024-08-10
+@c @findex --unused-statevar-warn-2025-05-16
+@c @findex --allow-non-contig-for-2025-06-01
+@c @findex --subtype-int2-2025-07-07
+@c Is the compiler sufficiently recent to contain the new feature or
+@c bugfix referred to by each name?
 
 @c @sp 1
 @c @item @code{--experiment @var{experiment_name}}
@@ -12814,11 +12997,11 @@ bugfix referred to by each name?
 Don't try to generate more parallelism than the machine can handle,
 which may be specified at runtime or detected automatically.
 
-@sp 1
-@item @code{--distance-granularity @var{distance}}
-@findex --distance-granularity
-Control the granularity of parallel execution using the specified
-distance value.
+@c @sp 1
+@c @item @code{--distance-granularity @var{distance}}
+@c @findex --distance-granularity
+@c Control the granularity of parallel execution using the specified
+@c distance value.
 
 @sp 1
 @item @code{--implicit-parallelism}
@@ -12894,12 +13077,12 @@ Dump the HLDS (high level intermediate representation) after the
 specified stage to @samp{module}.hlds_dump.@samp{num}-@samp{name}.
 Stage numbers range from 1-599. Multiple dump options accumulate.
 
-@sp 1
-@item @code{--dump-hlds-pred-id @var{pred_id}}
-@itemx --no-dump-hlds-pred-id
-@findex --dump-hlds-pred-id
-@findex --no-dump-hlds-pred-id
-Dump the HLDS only of the predicate/function with the given pred id.
+@c @sp 1
+@c @item @code{--dump-hlds-pred-id @var{pred_id}}
+@c @itemx --no-dump-hlds-pred-id
+@c @findex --dump-hlds-pred-id
+@c @findex --no-dump-hlds-pred-id
+@c Dump the HLDS only of the predicate/function with the given pred id.
 
 @sp 1
 @item @code{--dump-hlds-pred-name @var{name}}
@@ -12945,21 +13128,21 @@ With @samp{--dump-hlds}, include extra detail in the dump. Each type of
 detail is included in the dump if its corresponding letter occurs in
 the option argument (see the Mercury User's Guide for details).
 
-@sp 1
-@item @code{--dump-hlds-inst-limit @var{N}}
-@findex --dump-hlds-inst-limit
-Dump at most N insts in each inst table.
+@c @sp 1
+@c @item @code{--dump-hlds-inst-limit @var{N}}
+@c @findex --dump-hlds-inst-limit
+@c Dump at most N insts in each inst table.
 
-@sp 1
-@item @code{--dump-hlds-inst-size-limit @var{N}}
-@findex --dump-hlds-inst-size-limit
-Dump insts in an inst table only if their size does not exceed N.
+@c @sp 1
+@c @item @code{--dump-hlds-inst-size-limit @var{N}}
+@c @findex --dump-hlds-inst-size-limit
+@c Dump insts in an inst table only if their size does not exceed N.
 
-@sp 1
-@item @code{--dump-hlds-file-suffix @var{suffix}}
-@findex --dump-hlds-file-suffix
-Append the given suffix to the names of the files created by the
-@samp{--dump-hlds} option.
+@c @sp 1
+@c @item @code{--dump-hlds-file-suffix @var{suffix}}
+@c @findex --dump-hlds-file-suffix
+@c Append the given suffix to the names of the files created by the
+@c @samp{--dump-hlds} option.
 
 @sp 1
 @item @code{--dump-same-hlds}
@@ -12967,45 +13150,45 @@ Append the given suffix to the names of the files created by the
 Create a file for a HLDS stage even if the file notes only that this
 stage is identical to the previously dumped HLDS stage.
 
-@sp 1
-@item @code{--dump-mlds @var{stage number or name}}
-@itemx --no-dump-mlds
-@itemx @code{--mlds-dump @var{stage number or name}}
-@itemx --no-mlds-dump
-@findex --dump-mlds
-@findex --no-dump-mlds
-@findex --mlds-dump
-@findex --no-mlds-dump
-Dump the MLDS (medium level intermediate representation) after the
-specified stage, as C code, to
-@samp{module}.c_dump.@samp{num}-@samp{name} and
-@samp{module}.mih_dump.@samp{num}-@samp{name}. Stage numbers range from
-1-99. Multiple dump options accumulate. This option works only in MLDS
-grades that target C.
+@c @sp 1
+@c @item @code{--dump-mlds @var{stage number or name}}
+@c @itemx --no-dump-mlds
+@c @itemx @code{--mlds-dump @var{stage number or name}}
+@c @itemx --no-mlds-dump
+@c @findex --dump-mlds
+@c @findex --no-dump-mlds
+@c @findex --mlds-dump
+@c @findex --no-mlds-dump
+@c Dump the MLDS (medium level intermediate representation) after the
+@c specified stage, as C code, to
+@c @samp{module}.c_dump.@samp{num}-@samp{name} and
+@c @samp{module}.mih_dump.@samp{num}-@samp{name}. Stage numbers range from
+@c 1-99. Multiple dump options accumulate. This option works only in MLDS
+@c grades that target C.
 
-@sp 1
-@item @code{--dump-mlds-pred-name @var{pred or func name}}
-@itemx --no-dump-mlds-pred-name
-@findex --dump-mlds-pred-name
-@findex --no-dump-mlds-pred-name
-Dump the MLDS (medium level intermediate representation) of the
-predicate or function with the specified name at the stages specified
-by the @samp{--dump-mlds} option. The dump file will consist of the
-predicates and functions named by all the occurrences of this option
-(there may be more than one), and nothing else.
+@c @sp 1
+@c @item @code{--dump-mlds-pred-name @var{pred or func name}}
+@c @itemx --no-dump-mlds-pred-name
+@c @findex --dump-mlds-pred-name
+@c @findex --no-dump-mlds-pred-name
+@c Dump the MLDS (medium level intermediate representation) of the
+@c predicate or function with the specified name at the stages specified
+@c by the @samp{--dump-mlds} option. The dump file will consist of the
+@c predicates and functions named by all the occurrences of this option
+@c (there may be more than one), and nothing else.
 
-@sp 1
-@item @code{--verbose-dump-mlds @var{stage number or name}}
-@itemx --no-verbose-dump-mlds
-@itemx @code{--verbose-mlds-dump @var{stage number or name}}
-@itemx --no-verbose-mlds-dump
-@findex --verbose-dump-mlds
-@findex --no-verbose-dump-mlds
-@findex --verbose-mlds-dump
-@findex --no-verbose-mlds-dump
-Dump the internal compiler representation of the MLDS, after the
-specified stage, to @samp{module}.mlds_dump.@samp{num}-@samp{name}.
-This option works in all MLDS grades.
+@c @sp 1
+@c @item @code{--verbose-dump-mlds @var{stage number or name}}
+@c @itemx --no-verbose-dump-mlds
+@c @itemx @code{--verbose-mlds-dump @var{stage number or name}}
+@c @itemx --no-verbose-mlds-dump
+@c @findex --verbose-dump-mlds
+@c @findex --no-verbose-dump-mlds
+@c @findex --verbose-mlds-dump
+@c @findex --no-verbose-mlds-dump
+@c Dump the internal compiler representation of the MLDS, after the
+@c specified stage, to @samp{module}.mlds_dump.@samp{num}-@samp{name}.
+@c This option works in all MLDS grades.
 
 @c @sp 1
 @c @item @code{--dump-trace-counts @var{stage number or name}}

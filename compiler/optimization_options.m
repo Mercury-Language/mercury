@@ -571,8 +571,12 @@
     --->    doc_oo(
                 optimization_option,
                 option,
-                option_data
+                option_data_bool_int
             ).
+
+:- type option_data_bool_int =< option_data
+    --->    bool(bool)
+    ;       int(int).
 
 :- pred opts_enabled_at_level(int::in, list(string)::out,
     list(documented_optimization_option)::out) is semidet.
