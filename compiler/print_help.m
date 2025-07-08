@@ -176,278 +176,365 @@ e.g.@: @samp{--no-verbose}.
 
 %---------------------------------------------------------------------------%
 
-:- type help_section
-    --->    one_level_section(
-                section_section             :: help_option_group
+:- type help_structure
+    --->    help_atomic(
+                help_atomic_group               :: help_option_group
             )
-    ;       two_level_section(
-                section_name                :: string,
-                section_menu_desc           :: string,
-                section_comment_lines       :: list(string),
-                section_sections            :: list(help_option_group)
+    ;       help_composite(
+                help_composite_name             :: string,
+                help_composite_menu_desc        :: string,
+                help_composite_comment_lines    :: list(string),
+                help_composite_parts            :: list(help_structure)
             ).
 
 :- type help_option_group
     --->    help_option_group(
-                hog_name                    :: string,
-                hog_menu_desc               :: string,
-                hog_comment_lines           :: list(string),
-                hog_categories              :: list(option_category)
+                hog_name                        :: string,
+                hog_menu_desc                   :: string,
+                hog_comment_lines               :: list(string),
+                hog_categories                  :: list(option_category)
             ).
 
-:- type section_or_subsection
-    --->    sos_section
-    ;       sos_subsection.
+:- type section_depth
+    --->    sd_section
+    ;       sd_subsection
+    ;       sd_subsubsection.
+
+:- pred section_marker(section_depth::in, string::out) is det.
+
+section_marker(Depth, Marker) :-
+    ( Depth = sd_section,       Marker = "@section"
+    ; Depth = sd_subsection,    Marker = "@subsection"
+    ; Depth = sd_subsubsection, Marker = "@subsubsection"
+    ).
+
+:- pred next_depth(section_depth::in, section_depth::out) is det.
+
+next_depth(Depth, SubDepth) :-
+    ( Depth = sd_section,       SubDepth = sd_subsection
+    ; Depth = sd_subsection,    SubDepth = sd_subsubsection
+    ; Depth = sd_subsubsection, unexpected($pred, "sd_subsubsection")
+    ).
+
+:- pred plain_text_header_indent(section_depth::in, string::out) is det.
+
+plain_text_header_indent(Depth, Indent) :-
+    % Let section names start at the left margin, but
+    % indent the names of smaller sections.
+    ( Depth = sd_section,        Indent = ""
+    ; Depth = sd_subsection,     Indent = "  "
+    ; Depth = sd_subsubsection,  Indent = single_indent
+    ).
 
 %---------------------------------------------------------------------------%
 
-:- func all_chapters = list(help_section).
+:- func all_chapters = list(help_structure).
 
 all_chapters = AllSections :-
-    SectionHelp = one_level_section(
+    SectionHelp = help_atomic(
         help_option_group(
             "Help options",
             "", [], [oc_help])),
 
-    SectionCmdLine = one_level_section(
+    SectionCmdLine = help_atomic(
         help_option_group(
             "Options for modifying the command line",
             "", [], [oc_cmdline])),
 
-    SectionOpmode = one_level_section(
+    SectionOpmode = help_atomic(
         help_option_group(
             "Options that give the compiler its overall task",
             "", [], [oc_opmode])),
 
-    SubSectionGradeGen = help_option_group(
+    SubSectionGradeGen = help_atomic(help_option_group(
         "Grades and grade components",
-        "Setting the compilation model", [], [oc_grade_gen]),
-    SubSectionGradeTarget = help_option_group(
+        "Setting the compilation model", [], [oc_grade_gen])),
+    SubSectionGradeTarget = help_atomic(help_option_group(
         "Target options",
-        "Choosing the target language", [], [oc_grade_target]),
-    SubSectionGradeLlds = help_option_group(
+        "Choosing the target language", [], [oc_grade_target])),
+    SubSectionGradeLlds = help_atomic(help_option_group(
         "LLDS backend grade options",
-        "For the low-level C backend", [], [oc_grade_llds]),
-    SubSectionGradeMlds = help_option_group(
+        "For the low-level C backend", [], [oc_grade_llds])),
+    SubSectionGradeMlds = help_atomic(help_option_group(
         "MLDS backend grade options",
-        "For the high-level C/Java/C# backend", [], [oc_grade_mlds]),
-    SubSectionGradeDbg = help_option_group(
-        "Debugging grade options",
-        "", [], [oc_grade_dbg]),
-    SubSectionGradeProf = help_option_group(
-        "Profiling grade options",
-        "", [], [oc_grade_prof]),
-    SubSectionGradeEtc = help_option_group(
+        "For the high-level C/Java/C# backend", [], [oc_grade_mlds])),
+
+    SubSubSectionGradeMdb = help_atomic(help_option_group(
+        "Mdb debugging grade options",
+        "", [], [oc_grade_mdb])),
+    SubSubSectionGradeSsdb = help_atomic(help_option_group(
+        "Ssdb debugging grade options",
+        "", [], [oc_grade_ssdb])),
+    SubSectionGradeDbg = help_composite("Debugging grade options",
+        "", [],
+        [SubSubSectionGradeMdb, SubSubSectionGradeSsdb]),
+
+    SubSubSectionGradeMprof = help_atomic(help_option_group(
+        "Mprof profiling grade options",
+        "", [], [oc_grade_mprof])),
+    SubSubSectionGradeMdprof = help_atomic(help_option_group(
+        "Deep profiling grade options",
+        "", [], [oc_grade_mdprof])),
+    SubSubSectionGradeClprof = help_atomic(help_option_group(
+        "Complexity profiling grade options",
+        "", [], [oc_grade_clprof])),
+    SubSubSectionGradeTsprof = help_atomic(help_option_group(
+        "Threadscope profiling grade options",
+        "", [], [oc_grade_tsprof])),
+    SubSectionGradeProf = help_composite("Profiling grade options",
+        "", [],
+        [SubSubSectionGradeMprof, SubSubSectionGradeMdprof,
+        SubSubSectionGradeClprof, SubSubSectionGradeTsprof]),
+
+    SubSectionGradeEtc = help_atomic(help_option_group(
         "Optional feature grade options",
-        "", [], [oc_grade_etc]),
-    SubSectionGradeDev = help_option_group(
+        "", [], [oc_grade_etc])),
+    SubSectionGradeDev = help_atomic(help_option_group(
         "Developer grade options",
-        "Not for general use", [], [oc_grade_dev]),
-    SectionGrade = two_level_section("Grade options",
+        "Not for general use", [], [oc_grade_dev])),
+    SectionGrade = help_composite("Grade options",
         "", [],
         [SubSectionGradeGen, SubSectionGradeTarget,
         SubSectionGradeLlds, SubSectionGradeMlds,
         SubSectionGradeDbg, SubSectionGradeProf,
         SubSectionGradeEtc, SubSectionGradeDev]),
 
-    SectionInfer = one_level_section(
+    SectionInfer = help_atomic(
         help_option_group(
             "Options that control inference",
             "", [], [oc_infer])),
 
-    SectionSemantics = one_level_section(
+    SectionSemantics = help_atomic(
         help_option_group(
             "Options specifying the intended semantics",
             "", [], [oc_semantics])),
 
-    SectionVerbosity = one_level_section(
+    SectionVerbosity = help_atomic(
         help_option_group(
             "Verbosity options",
             "", [], [oc_verbosity, oc_verb_dev, oc_verb_dbg])),
 
-    SubSectionDiagGen = help_option_group(
+    SubSectionDiagGen = help_atomic(help_option_group(
         "Options that control diagnostics",
-        "", [], [oc_diag_gen]),
-    SubSectionDiagColor = help_option_group(
+        "", [], [oc_diag_gen])),
+    SubSectionDiagColor = help_atomic(help_option_group(
         "Options that control color in diagnostics",
-        "", [], [oc_diag_color, oc_diag_int]),
-    SectionDiag = two_level_section("Diagnostics options",
+        "", [], [oc_diag_color, oc_diag_int])),
+    SectionDiag = help_composite("Diagnostics options",
         "", [],
         [SubSectionDiagGen, SubSectionDiagColor]),
 
-    SubSectionWarnDodgy = help_option_group(
+    SubSubSectionWarnDodgyMod = help_atomic(help_option_group(
+        "Warnings about possible module incorrectness",
+        "", [], [oc_warn_dodgy_mod])),
+    SubSubSectionWarnDodgyInst = help_atomic(help_option_group(
+        "Warnings about possible inst incorrectness",
+        "", [], [oc_warn_dodgy_inst])),
+    SubSubSectionWarnDodgyPred = help_atomic(help_option_group(
+        "Warnings about possible predicate incorrectness",
+        "", [], [oc_warn_dodgy_pred])),
+    SubSubSectionWarnDodgyPrg = help_atomic(help_option_group(
+        "Warnings about possible pragma incorrectness",
+        "", [], [oc_warn_dodgy_prg])),
+    SubSubSectionWarnDodgyGoal = help_atomic(help_option_group(
+        "Warnings about possible goal incorrectness",
+        "", [], [oc_warn_dodgy_goal])),
+    SubSubSectionWarnFile = help_atomic(help_option_group(
+        "Warnings about missing files",
+        "", [], [oc_warn_file])),
+    SubSectionWarnDodgy = help_composite(
         "Warnings about possible incorrectness",
-        "", [], [oc_warn_dodgy]),
-    SubSectionWarnPerf = help_option_group(
+        "", [],
+        [SubSubSectionWarnDodgyMod, SubSubSectionWarnDodgyInst,
+        SubSubSectionWarnDodgyPred, SubSubSectionWarnDodgyPrg,
+        SubSubSectionWarnDodgyGoal, SubSubSectionWarnFile]),
+
+    SubSectionWarnPerf = help_atomic(help_option_group(
         "Warnings about possible performance issues",
-        "", [], [oc_warn_perf, oc_warn_perf_c]),
-    SubSectionWarnStyle = help_option_group(
+        "", [], [oc_warn_perf, oc_warn_perf_c])),
+
+    SubSubSectionWarnStylePred = help_atomic(help_option_group(
+        "Warnings about style issues with predicates",
+        "", [], [oc_warn_style_pred])),
+    SubSubSectionWarnStyleGoal = help_atomic(help_option_group(
+        "Warnings about style issues with goals",
+        "", [], [oc_warn_style_goal, oc_warn_style_goal_c])),
+    SubSubSectionWarnStyleOrder = help_atomic(help_option_group(
+        "Warnings about missing order",
+        "", [], [oc_warn_style_order])),
+    SubSubSectionWarnStyleContig = help_atomic(help_option_group(
+        "Warnings about missing contiguity",
+        "", [], [oc_warn_style_ctg, oc_warn_style_ctg_c])),
+    SubSectionWarnStyle = help_composite(
         "Warnings about programming style",
-        "", [], [oc_warn_style, oc_warn_style_c]),
-    SubSectionWarnCtrl = help_option_group(
+        "", [],
+        [SubSubSectionWarnStylePred, SubSubSectionWarnStyleGoal,
+        SubSubSectionWarnStyleOrder, SubSubSectionWarnStyleContig]),
+
+    SubSectionWarnCtrl = help_atomic(help_option_group(
         "Options that control warnings",
-        "", [], [oc_warn_ctrl]),
-    SubSectionWarnHalt = help_option_group(
+        "", [], [oc_warn_ctrl])),
+    SubSectionWarnHalt = help_atomic(help_option_group(
         "Options about halting for warnings",
-        "", [], [oc_warn_halt]),
-    SectionWarn = two_level_section("Warning options",
+        "", [], [oc_warn_halt])),
+    SectionWarn = help_composite("Warning options",
         "", [],
         [SubSectionWarnDodgy, SubSectionWarnPerf, SubSectionWarnStyle,
         SubSectionWarnCtrl, SubSectionWarnHalt]),
 
     % XXX Should these two chapters instead be two sections in one chapter?
-    SectionInform = one_level_section(
+    SectionInform = help_atomic(
         help_option_group("Options that request information",
         "", [], [oc_inform])),
-    SectionFileReq = one_level_section(
+    SectionFileReq = help_atomic(
         help_option_group("Options that ask for informational files",
         "", [], [oc_file_req])),
 
-    SectionTraceGoal = one_level_section(
+    SectionTraceGoal = help_atomic(
         help_option_group("Controlling trace goals",
         "", [], [oc_tracegoal])),
 
     % Once ssdb debugging is publicly documented, we should replace these
     % two chapters (the second of which is not printed for non-developers)
     % with a single two-section chapter.
-    SectionDebugMdb = one_level_section(
+    SectionDebugMdb = help_atomic(
         help_option_group("Preparing code for mdb debugging",
         "", [], [oc_mdb, oc_mdb_dev])),
-    SectionDebugSsdb = one_level_section(
+    SectionDebugSsdb = help_atomic(
         help_option_group("Preparing code for ssdb debugging",
         "", [], [oc_ssdb, oc_ssdb_dev])),
 
-    SectionProfiling = one_level_section(
+    SectionProfiling = help_atomic(
         help_option_group("Preparing code for mdprof profiling",
         "", [], [oc_mdprof])),
 
-    SubSectionOptCtrl = help_option_group(
+    SubSectionOptCtrl = help_atomic(help_option_group(
         "Overall control of optimizations",
-        "", [], [oc_opt_ctrl]),
-    SubSectionOptHH = help_option_group(
+        "", [], [oc_opt_ctrl])),
+    SubSectionOptHH = help_atomic(help_option_group(
         "Source-to-source optimizations",
-        "", [], [oc_opt_hh]),
-    SubSectionOptHHE = help_option_group(
+        "", [], [oc_opt_hh])),
+    SubSectionOptHHE = help_atomic(help_option_group(
         "Experimental source-to-source optimizations",
-        "", [], [oc_opt_hh_exp]),
-    SubSectionOptHLM = help_option_group(
+        "", [], [oc_opt_hh_exp])),
+    SubSectionOptHLM = help_atomic(help_option_group(
         "Optimizations during code generation",
-        "", [], [oc_opt_hlm]),
+        "", [], [oc_opt_hlm])),
     % XXX Should the categories here be separate sections?
-    SubSectionOptMM = help_option_group(
+    SubSectionOptMM = help_atomic(help_option_group(
         "Optimizations specific to high level code",
-        "", [], [oc_opt_hm, oc_opt_mm]),
+        "", [], [oc_opt_hm, oc_opt_mm])),
     % XXX Should the categories here be separate sections?
-    SubSectionOptLL = help_option_group(
+    SubSectionOptLL = help_atomic(help_option_group(
         "Optimizations specific to low level code",
-        "", [], [oc_opt_hl, oc_opt_ll, oc_opt_lc]),
-    SectionOpt = two_level_section("Optimization options",
+        "", [], [oc_opt_hl, oc_opt_ll, oc_opt_lc])),
+    SectionOpt = help_composite("Optimization options",
         "", [],
         [SubSectionOptCtrl, SubSectionOptHH, SubSectionOptHHE,
         SubSectionOptHLM, SubSectionOptMM, SubSectionOptLL]),
 
-    SectionTransOpt = one_level_section(
+    SectionTransOpt = help_atomic(
         help_option_group(
             "Options that control transitive intermodule optimization",
             "", [], [oc_trans_opt])),
 
-    SectionAnalysis = one_level_section(
+    SectionAnalysis = help_atomic(
         help_option_group(
             "Options that control program analyses",
             "", [], [oc_analysis])),
 
-    SectionModOutput = one_level_section(
+    SectionModOutput = help_atomic(
         help_option_group(
             "Options that ask for modified output",
             "", [], [oc_output_mod, oc_output_dev])),
 
-    SectionMmcMake = one_level_section(
+    SectionMmcMake = help_atomic(
         help_option_group(
             "Options for controlling mmc --make",
             "", [], [oc_make])),
 
-    SubSectionCompileGen = help_option_group(
+    SubSectionCompileGen = help_atomic(help_option_group(
         "General options for compiling target language code",
-        "", [], [oc_target_comp]),
-    SubSectionCompileC = help_option_group(
+        "", [], [oc_target_comp])),
+    SubSectionCompileC = help_atomic(help_option_group(
         "Options for compiling C code",
-        "", [], [oc_target_c]),
-    SubSectionCompileJava = help_option_group(
+        "", [], [oc_target_c])),
+    SubSectionCompileJava = help_atomic(help_option_group(
         "Options for compiling Java code",
-        "", [], [oc_target_java]),
-    SubSectionCompileCsharp = help_option_group(
+        "", [], [oc_target_java])),
+    SubSectionCompileCsharp = help_atomic(help_option_group(
         "Options for compiling C# code",
-        "", [], [oc_target_csharp]),
-    SectionCompile = two_level_section(
+        "", [], [oc_target_csharp])),
+    SectionCompile = help_composite(
         "Options for target language compilation",
         "", [],
         [SubSectionCompileGen, SubSectionCompileC, SubSectionCompileJava,
         SubSectionCompileCsharp]),
 
-    SubSectionLinkGen = help_option_group(
+    SubSectionLinkGen = help_atomic(help_option_group(
         "General options for linking",
-        "", [], [oc_link_c_cs_j]),
-    SubSectionLinkCCsharp = help_option_group(
+        "", [], [oc_link_c_cs_j])),
+    SubSectionLinkCCsharp = help_atomic(help_option_group(
         "Options for linking C or C# code",
-        "", [], [oc_link_c_cs]),
-    SubSectionLinkC = help_option_group(
+        "", [], [oc_link_c_cs])),
+    SubSectionLinkC = help_atomic(help_option_group(
         "Options for linking just C code",
-        "", [], [oc_link_c]),
-    SubSectionLinkCsharp = help_option_group(
+        "", [], [oc_link_c])),
+    SubSectionLinkCsharp = help_atomic(help_option_group(
         "Options for linking just C# code",
-        "", [], [oc_link_csharp]),
-    SubSectionLinkJava = help_option_group(
+        "", [], [oc_link_csharp])),
+    SubSectionLinkJava = help_atomic(help_option_group(
         "Options for linking just Java code",
-        "", [], [oc_link_java]),
-    SectionLink = two_level_section(
+        "", [], [oc_link_java])),
+    SectionLink = help_composite(
         "Options for linking",
         "", [],
         [SubSectionLinkGen, SubSectionLinkCCsharp,
         SubSectionLinkC, SubSectionLinkJava, SubSectionLinkCsharp]),
 
-    SectionFileSearch = one_level_section(
+    SectionFileSearch = help_atomic(
         help_option_group(
             "Options controlling searches for files",
             "", [], [oc_search])),
 
-    SectionBuild = one_level_section(
+    SectionBuild = help_atomic(
         help_option_group(
             "Options controlling the library installation process",
             "", [], [oc_buildsys])),
 
-    SectionEnv = one_level_section(
+    SectionEnv = help_atomic(
         help_option_group(
             "Options specifying properties of the environment",
             "", [], [oc_env])),
 
-    SectionConfig = one_level_section(
+    SectionConfig = help_atomic(
         help_option_group(
             "Options that record autoconfigured parameters",
             "", [], [oc_config])),
 
-    SectionMconfig = one_level_section(
+    SectionMconfig = help_atomic(
         help_option_group(
             "Options reserved for Mercury.config files",
             "", [], [oc_mconfig])),
 
-    SubSectionDevCtrl = help_option_group(
+    SubSectionDevCtrl = help_atomic(help_option_group(
         "Operation selection options for developers only",
-        "", [], [oc_dev_ctrl]),
-    SubSectionDevDebug = help_option_group(
+        "", [], [oc_dev_ctrl])),
+    SubSectionDevDebug = help_atomic(help_option_group(
         "Options that can help debug the compiler",
-        "", [], [oc_dev_debug]),
-    SubSectionDevDump = help_option_group(
+        "", [], [oc_dev_debug])),
+    SubSectionDevDump = help_atomic(help_option_group(
         "Options for dumping internal compiler data structures",
-        "", [], [oc_dev_dump]),
-    SubSectionDevInternal = help_option_group(
+        "", [], [oc_dev_dump])),
+    SubSectionDevInternal = help_atomic(help_option_group(
         "Options intended for internal use by the compiler only",
-        "", [], [oc_internal]),
-    SectionDev = two_level_section("Options for developers only",
+        "", [], [oc_internal])),
+    SectionDev = help_composite("Options for developers only",
         "", [],
         [SubSectionDevCtrl, SubSectionDevDebug, SubSectionDevDump,
         SubSectionDevInternal]),
 
-    SectionUnused = one_level_section(
+    SectionUnused = help_atomic(
         help_option_group(
             "Now-unused former options kept for compatibility",
             "", [], [oc_unused])),
@@ -530,9 +617,10 @@ document_requested_options(Format, What, SectionNames, OptionsLines) :-
             option_categories(Cat, _)
         ),
     solutions_set(CategoryPred, AllCategoriesSet),
-    acc_help_sections(OptionMaps, Format, What, all_chapters,
+    acc_help_structures(OptionMaps, Format, What, sd_section, all_chapters,
         AllCategoriesSet, UndoneCategoriesSet,
-        cord.init, SectionNameCord, cord.init, OptionsLineCord),
+        cord.init, SectionNameCord, cord.init, OptionsLineCord,
+        0, _NumDocOpts),
     set.to_sorted_list(UndoneCategoriesSet, UndoneCategories),
     (
         UndoneCategories = []
@@ -603,59 +691,65 @@ record_option_at_opt_level_map(Level, DocOpt, !SetAtOptLevelMap) :-
             % The name of the menu item, and its short description, if any.
             % (Nonexistent descriptions are represented by an empty string.)
 
-:- pred acc_help_sections(option_maps, help_format, print_what_help,
-    list(help_section), set(option_category), set(option_category),
-    cord(menu_item), cord(menu_item), cord(string), cord(string)).
-:- mode acc_help_sections(in, in(help_plain_text), in, in,
-    in, out, in, out, in, out) is det.
-:- mode acc_help_sections(in, in(help_texinfo), in, in,
-    in, out, in, out, in, out) is det.
+:- pred acc_help_structures(option_maps, help_format, print_what_help,
+    section_depth, list(help_structure),
+    set(option_category), set(option_category),
+    cord(menu_item), cord(menu_item), cord(string), cord(string), int, int).
+:- mode acc_help_structures(in, in(help_plain_text), in, in, in,
+    in, out, in, out, in, out, in, out) is det.
+:- mode acc_help_structures(in, in(help_texinfo), in, in, in,
+    in, out, in, out, in, out, in, out) is det.
 
-acc_help_sections(_, _, _, [], !Categories, !SectionNameCord, !LineCord).
-acc_help_sections(OptionMaps, Format, What, [Section | Sections],
-        !Categories, !MenuItemCord, !LineCord) :-
-    acc_help_section(OptionMaps, Format, What, Section,
-        !Categories, !MenuItemCord, !LineCord),
-    acc_help_sections(OptionMaps, Format, What, Sections,
-        !Categories, !MenuItemCord, !LineCord).
+acc_help_structures(_, _, _, _, [],
+        !Categories, !MenuItemCord, !LineCord, !NumDocOpts).
+acc_help_structures(OptionMaps, Format, What, Depth, [Structure | Structures],
+        !Categories, !MenuItemCord, !LineCord, !NumDocOpts) :-
+    acc_help_structure(OptionMaps, Format, What, Depth, Structure,
+        !Categories, !MenuItemCord, !LineCord, !NumDocOpts),
+    acc_help_structures(OptionMaps, Format, What, Depth, Structures,
+        !Categories, !MenuItemCord, !LineCord, !NumDocOpts).
 
-:- pred acc_help_section(option_maps, help_format, print_what_help,
-    help_section, set(option_category), set(option_category),
-    cord(menu_item), cord(menu_item), cord(string), cord(string)).
-:- mode acc_help_section(in, in(help_plain_text), in, in,
-    in, out, in, out, in, out) is det.
-:- mode acc_help_section(in, in(help_texinfo), in, in,
-    in, out, in, out, in, out) is det.
+:- pred acc_help_structure(option_maps, help_format, print_what_help,
+    section_depth, help_structure, set(option_category), set(option_category),
+    cord(menu_item), cord(menu_item), cord(string), cord(string), int, int).
+:- mode acc_help_structure(in, in(help_plain_text), in, in, in,
+    in, out, in, out, in, out, in, out) is det.
+:- mode acc_help_structure(in, in(help_texinfo), in, in, in,
+    in, out, in, out, in, out, in, out) is det.
 
-acc_help_section(OptionMaps, Format, What, Section,
-        !Categories, !MenuItemCord, !LineCord) :-
+acc_help_structure(OptionMaps, Format, What, Depth, Structure,
+        !Categories, !MenuItemCord, !LineCord, !NumDocOpts) :-
     (
-        Section = one_level_section(SubSection),
+        Structure = help_atomic(SubSection),
         SubSection = help_option_group(GroupName, MenuDesc, _, _),
-        acc_help_option_group(OptionMaps, Format, What, sos_section,
+        acc_help_option_group(OptionMaps, Format, What, Depth,
             SubSection, !Categories, cord.init, _MenuItemCord,
-            !LineCord, 0, NumDocOpts),
-        ( if NumDocOpts > 0 then
+            !LineCord, 0, SubNumDocOpts),
+        !:NumDocOpts = !.NumDocOpts + SubNumDocOpts,
+        ( if SubNumDocOpts > 0 then
             cord.snoc(menu_item(GroupName, MenuDesc), !MenuItemCord)
         else
             true
         )
     ;
-        Section = two_level_section(SectionName, SectionDesc,
-            CommentLines, SubSections),
-        acc_help_subsections(OptionMaps, Format, What, SubSections,
+        Structure = help_composite(StructureName, StructureDesc,
+            CommentLines, SubStructures),
+        next_depth(Depth, SubDepth),
+        acc_help_structures(OptionMaps, Format, What, SubDepth, SubStructures,
             !Categories, cord.init, SubMenuItemCord,
-            cord.init, SubSectionsLineCord, 0, NumDocOpts),
+            cord.init, SubStructuresLineCord, 0, SubNumDocOpts),
+        !:NumDocOpts = !.NumDocOpts + SubNumDocOpts,
         (
             Format = help_plain_text,
-            ( if NumDocOpts = 0 then
+            ( if SubNumDocOpts = 0 then
                 true
             else
+                plain_text_header_indent(Depth, NameIndent),
                 some [!GroupLineCord]
                 (
                     !:GroupLineCord = cord.init,
                     cord.snoc("", !GroupLineCord),
-                    cord.snoc(SectionName, !GroupLineCord),
+                    cord.snoc(NameIndent ++ StructureName, !GroupLineCord),
                     (
                         CommentLines = []
                     ;
@@ -664,7 +758,7 @@ acc_help_section(OptionMaps, Format, What, Section,
                         !:GroupLineCord = !.GroupLineCord ++
                             cord.from_list(CommentLines)
                     ),
-                    !:GroupLineCord = !.GroupLineCord ++ SubSectionsLineCord,
+                    !:GroupLineCord = !.GroupLineCord ++ SubStructuresLineCord,
                     !:LineCord = !.LineCord ++ !.GroupLineCord
                 )
             )
@@ -673,10 +767,11 @@ acc_help_section(OptionMaps, Format, What, Section,
             some [!GroupLineCord]
             (
                 !:GroupLineCord = cord.init,
+                section_marker(Depth, SectionKind),
                 cord.snoc("", !GroupLineCord),
-                add_node_line("@node",    SectionName, !GroupLineCord),
-                add_node_line("@section", SectionName, !GroupLineCord),
-                add_node_line("@cindex",  SectionName, !GroupLineCord),
+                add_node_line("@node",     StructureName, !GroupLineCord),
+                add_node_line(SectionKind, StructureName, !GroupLineCord),
+                add_node_line("@cindex",   StructureName, !GroupLineCord),
                 cord.snoc("", !GroupLineCord),
                 SubMenuLines = menu_items_to_menu(cord.list(SubMenuItemCord)),
                 !:GroupLineCord = !.GroupLineCord ++
@@ -694,38 +789,20 @@ acc_help_section(OptionMaps, Format, What, Section,
                 %
                 % Include a menu item for this section only if the section
                 % has *some* non-commented-out parts.
-                ( if NumDocOpts = 0 then
+                ( if SubNumDocOpts = 0 then
                     comment_out_texinfo_lines(!GroupLineCord)
                 else
-                    cord.snoc(menu_item(SectionName, SectionDesc),
+                    cord.snoc(menu_item(StructureName, StructureDesc),
                         !MenuItemCord)
                 ),
-                !:GroupLineCord = !.GroupLineCord ++ SubSectionsLineCord,
+                !:GroupLineCord = !.GroupLineCord ++ SubStructuresLineCord,
                 !:LineCord = !.LineCord ++ !.GroupLineCord
             )
         )
     ).
 
-:- pred acc_help_subsections(option_maps, help_format,
-    print_what_help, list(help_option_group),
-    set(option_category), set(option_category),
-    cord(menu_item), cord(menu_item), cord(string), cord(string), int, int).
-:- mode acc_help_subsections(in, in(help_plain_text), in, in,
-    in, out, in, out, in, out, in, out) is det.
-:- mode acc_help_subsections(in, in(help_texinfo), in, in,
-    in, out, in, out, in, out, in, out) is det.
-
-acc_help_subsections(_, _, _, [],
-        !Categories, !MenuItemCord, !LineCord, !NumDocOpts).
-acc_help_subsections(OptionMaps, Format, What, [SubSection | SubSections],
-        !Categories, !MenuItemCord, !LineCord, !NumDocOpts) :-
-    acc_help_option_group(OptionMaps, Format, What, sos_subsection,
-        SubSection, !Categories, !MenuItemCord, !LineCord, !NumDocOpts),
-    acc_help_subsections(OptionMaps, Format, What,
-        SubSections, !Categories, !MenuItemCord, !LineCord, !NumDocOpts).
-
 :- pred acc_help_option_group(option_maps, help_format,
-    print_what_help, section_or_subsection, help_option_group,
+    print_what_help, section_depth, help_option_group,
     set(option_category), set(option_category),
     cord(menu_item), cord(menu_item), cord(string), cord(string), int, int).
 :- mode acc_help_option_group(in, in(help_plain_text), in, in, in,
@@ -733,10 +810,16 @@ acc_help_subsections(OptionMaps, Format, What, [SubSection | SubSections],
 :- mode acc_help_option_group(in, in(help_texinfo), in, in, in,
     in, out, in, out, in, out, in, out) is det.
 
-acc_help_option_group(OptionMaps, Format, What, SubOrNot, Group,
+acc_help_option_group(OptionMaps, Format, What, Depth, Group,
         !Categories, !MenuItemCord, !LineCord, !NumDocOpts) :-
     Group = help_option_group(GroupName, MenuDesc, CommentLines, Categories),
-    set.det_remove_list(Categories, !Categories),
+    ( if set.remove_list(Categories, !Categories) then
+        true
+    else
+        string.format("some category in %s is listed more than once",
+            [s(string(Categories))], Msg),
+        unexpected($pred, Msg)
+    ),
     list.map(get_optdb_records_in_category, Categories, OptdbRecordSets),
     OptdbRecordSet = set.union_list(OptdbRecordSets),
 
@@ -749,11 +832,7 @@ acc_help_option_group(OptionMaps, Format, What, SubOrNot, Group,
         ( if GroupNumDocOpts = 0 then
             true
         else
-            % Let section names start at the left margin, but
-            % indent the names of subsections.
-            ( SubOrNot = sos_section,    NameIndent = ""
-            ; SubOrNot = sos_subsection, NameIndent = single_indent
-            ),
+            plain_text_header_indent(Depth, NameIndent),
             some [!GroupLineCord]
             (
                 !:GroupLineCord = cord.init,
@@ -773,17 +852,15 @@ acc_help_option_group(OptionMaps, Format, What, SubOrNot, Group,
         )
     ;
         Format = help_texinfo,
-        ( SubOrNot = sos_section,    NodeCmd = "@section "
-        ; SubOrNot = sos_subsection, NodeCmd = "@subsection "
-        ),
         some [!GroupStartLineCord, !GroupEndLineCord]
         (
             !:GroupStartLineCord = cord.init,
             !:GroupEndLineCord = cord.init,
+            section_marker(Depth, SectionKind),
             cord.snoc("", !GroupStartLineCord),
-            add_node_line("@node",   GroupName, !GroupStartLineCord),
-            add_node_line(NodeCmd,   GroupName, !GroupStartLineCord),
-            add_node_line("@cindex", GroupName, !GroupStartLineCord),
+            add_node_line("@node",     GroupName, !GroupStartLineCord),
+            add_node_line(SectionKind, GroupName, !GroupStartLineCord),
+            add_node_line("@cindex",   GroupName, !GroupStartLineCord),
             (
                 CommentLines = []
             ;
@@ -2523,7 +2600,7 @@ menu_item_to_menu_line(MenuItem) = Line :-
     cord(string)::in, cord(string)::out) is det.
 
 add_node_line(NodeCmd, SectionName, !LineCord) :-
-    string.format("%-12s %s", [s(NodeCmd), s(SectionName)], Line),
+    string.format("%-15s %s", [s(NodeCmd), s(SectionName)], Line),
     cord.snoc(Line, !LineCord).
 
 :- pred comment_out_texinfo_lines(cord(string)::in, cord(string)::out) is det.

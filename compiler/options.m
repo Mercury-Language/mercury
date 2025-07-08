@@ -1226,7 +1226,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pragma require_switch_arms_in_type_order(pred(optdb/4)).
+% ZZZ just for review
+% :- pragma require_switch_arms_in_type_order(pred(optdb/4)).
 
     % Help options.
 
@@ -1704,7 +1705,7 @@ optdb(oc_grade_mlds, c_debug_grade,                    bool(no),
 
 % Grade options, part e1: mdb debugging
 
-optdb(oc_grade_dbg, exec_trace,                        bool(no),
+optdb(oc_grade_mdb, exec_trace,                        bool(no),
     % Yes, the internal and external names of this option are THAT different.
     alt_align_help("debug", [],
             "(grade modifier: `.debug')",
@@ -1717,7 +1718,7 @@ optdb(oc_grade_dbg, exec_trace,                        bool(no),
         w("for details."),
         w("This option is supported only when targeting C with"),
         opt("--no-high-level-code", ".")])).
-optdb(oc_grade_dbg, decl_debug,                        bool(no),
+optdb(oc_grade_mdb, decl_debug,                        bool(no),
     alt_align_help("decl-debug", [],
             "(grade modifier: `.decldebug')",
             "(grade modifier: @samp{.decldebug})", [
@@ -1736,7 +1737,7 @@ optdb(oc_grade_dbg, decl_debug,                        bool(no),
 
 % Grade options, part e2: ssdb debugging
 
-optdb(oc_grade_dbg, source_to_source_debug,            bool(no),
+optdb(oc_grade_ssdb, source_to_source_debug,           bool(no),
     % Source-to-source debugging is not ready for the public.
     priv_alt_align_help("source-to-source-debug",
             ["ss-debug", "ssdb"],
@@ -1756,7 +1757,7 @@ optdb(oc_grade_dbg, source_to_source_debug,            bool(no),
 % time_profiling cannot. I (zs) do not understand what need there is
 % for time_profiling, especially since it is not documented.
 % XXX ORDER
-optdb(oc_grade_prof, profiling,                        bool_special,
+optdb(oc_grade_mprof, profiling,                       bool_special,
     short_alt_align_help('p', "profiling", [],
             "(grade modifier: `.prof')",
             "(grade modifier: @samp{.prof})", [
@@ -1776,10 +1777,10 @@ optdb(oc_grade_prof, profiling,                        bool_special,
         w("in the Mercury User's Guide for details."),
         blank_line,
         w("This option is supported only when targeting C.")])).
-optdb(oc_grade_prof, time_profiling,                    special,
+optdb(oc_grade_mprof, time_profiling,                  special,
     % XXX This option should not be visible even to developers.
     priv_help("time-profiling", [])).
-optdb(oc_grade_prof, memory_profiling,                 special,
+optdb(oc_grade_mprof, memory_profiling,                special,
     alt_align_help("memory-profiling", [],
             "(grade modifier: `.memprof')",
             "(grade modifier: @samp{.memprof})", [
@@ -1802,7 +1803,7 @@ optdb(oc_grade_prof, memory_profiling,                 special,
     % with --profile-time instead of --profile-calls results in
     % different code addresses, so you can't combine the data
     % from versions of your program compiled with different options.
-optdb(oc_grade_prof, profile_calls,                    bool(no),
+optdb(oc_grade_mprof, profile_calls,                   bool(no),
     priv_alt_align_help("profile-calls", [],
             "(grade modifier: `.profcalls')",
             "(grade modifier: @samp{.profcalls})", [
@@ -1811,7 +1812,7 @@ optdb(oc_grade_prof, profile_calls,                    bool(no),
         w("except that it only gathers call counts, not timing information."),
         w("Useful on systems where time profiling is not supported,"),
         w("but not as useful as"), opt("--memory-profiling", ".")])).
-optdb(oc_grade_prof, profile_time,                     bool(no),
+optdb(oc_grade_mprof, profile_time,                    bool(no),
     priv_alt_align_help("profile-time", [],
             "(grade modifier: `.proftime')",
             "(grade modifier: @samp{.proftime})", [
@@ -1819,7 +1820,7 @@ optdb(oc_grade_prof, profile_time,                     bool(no),
         w("Similar to"), opt("--profiling", ","),
         w("except that it only gathers timing information,"),
         w("not call counts.")])).
-optdb(oc_grade_prof, profile_memory,                   bool(no),
+optdb(oc_grade_mprof, profile_memory,                  bool(no),
     priv_alt_align_help("profile-memory", [],
             "(grade modifier: `.profmem')",
             "(grade modifier: @samp{.profmem})", [
@@ -1832,7 +1833,7 @@ optdb(oc_grade_prof, profile_memory,                   bool(no),
 
 % Grade options, part f2: mdprof profiling
 
-optdb(oc_grade_prof, deep_profiling,                   special,
+optdb(oc_grade_mdprof, deep_profiling,                 special,
     alt_align_help("deep-profiling", [],
             "(grade modifier: `.profdeep')",
             "(grade modifier: @samp{.profdeep})", [
@@ -1848,12 +1849,12 @@ optdb(oc_grade_prof, deep_profiling,                   special,
         w("in typical Mercury code than in typical C code."),
         w("This option is supported only when targeting C with"),
         opt("--no-high-level-code", ".")])).
-optdb(oc_grade_prof, profile_deep,                     bool(no),
+optdb(oc_grade_mdprof, profile_deep,                   bool(no),
     % This the *actual* grade option that switches on deep profiling.
     % The deep_profiling option sets profile_deep to "yes", *and* sets
     % the grade options for mprof profiling to "no".
     priv_help("profile-deep", [])).
-optdb(oc_grade_prof, use_activation_counts,            bool(no),
+optdb(oc_grade_mdprof, use_activation_counts,          bool(no),
     % use_activation_counts is an experimental feature.
     % It *is* a grade option.
     % Use_activation_counts is used to determine which mechanism for
@@ -1862,11 +1863,12 @@ optdb(oc_grade_prof, use_activation_counts,            bool(no),
     % the `no' value for benchmarks for the paper.
     priv_help("use-activation-counts", [])).
 % The next three options are developer-only non-grade options.
-optdb(oc_grade_prof, use_zeroing_for_ho_cycles,        bool(yes),
+optdb(oc_grade_mdprof, use_zeroing_for_ho_cycles,      bool(yes),
     priv_help("use-zeroing-for-ho-cycles", [])).
-optdb(oc_grade_prof, use_lots_of_ho_specialization,    bool(no),
+optdb(oc_grade_mdprof, use_lots_of_ho_specialization,  bool(no),
     priv_help("use-lots-of-ho-specialization", [])).
-optdb(oc_grade_prof, deep_profile_tail_recursion,      bool(no),
+% XXX This is not a grade option.
+optdb(oc_grade_mdprof, deep_profile_tail_recursion,    bool(no),
     % We do not currently enable (or publicly document) this option
     % because its use results in significant overheads. Also, it is
     % not compatible with coverage profiling, which is enabled by default.
@@ -1874,17 +1876,18 @@ optdb(oc_grade_prof, deep_profile_tail_recursion,      bool(no),
     % --stack-segments in order to avoid *some* of the problems
     % caused by the lack of tail recursion.
     priv_help("deep-profile-tail-recursion", [])).
-optdb(oc_grade_prof, coverage_profiling,               bool(yes),
+optdb(oc_grade_mdprof, coverage_profiling,             bool(yes),
     help("coverage-profiling", [
         cindex("Coverage profiling"),
         w("Do not gather deep profiling information"),
         w("that is useful only for coverage profiling.")])).
 % The next two options are intended for experiments.
-optdb(oc_grade_prof, coverage_profiling_via_calls,     bool(no),
+% XXX They are not grade options.
+optdb(oc_grade_mdprof, coverage_profiling_via_calls,   bool(no),
     priv_help("coverage-profiling-via-calls", [
         w("Use calls to implement coverage points,"),
         w("not inline foreign code.")])).
-optdb(oc_grade_prof, coverage_profiling_static,        bool(no),
+optdb(oc_grade_mdprof, coverage_profiling_static,      bool(no),
     % This help text could be clearer.
     priv_help("coverage-profiling-static", [
         w("Disable coverage profiling of ProcDynamics;"),
@@ -1892,29 +1895,32 @@ optdb(oc_grade_prof, coverage_profiling_static,        bool(no),
         w("This uses less memory, and may be faster.")])).
 % The next four options control coverage profiling (part of deep profiling):
 % they enable different types of coverage points.
-optdb(oc_grade_prof, profile_deep_coverage_after_goal, bool(yes),
+% XXX They are not grade options.
+optdb(oc_grade_mdprof, profile_deep_coverage_after_goal, bool(yes),
     priv_help("profile-deep-coverage-after-goal", [
         w("Disable coverage points after goals.")])).
-optdb(oc_grade_prof, profile_deep_coverage_branch_ite, bool(yes),
+optdb(oc_grade_mdprof, profile_deep_coverage_branch_ite, bool(yes),
     priv_help("profile-deep-coverage-branch-ite", [
         w("Disable coverage points at the beginning of then and else"),
         w("branches.")])).
-optdb(oc_grade_prof, profile_deep_coverage_branch_switch, bool(yes),
+optdb(oc_grade_mdprof, profile_deep_coverage_branch_switch, bool(yes),
     priv_help("profile-deep-coverage-branch-switch", [
         w("Disable coverage points at the beginning of switch branches.")])).
-optdb(oc_grade_prof, profile_deep_coverage_branch_disj, bool(yes),
+optdb(oc_grade_mdprof, profile_deep_coverage_branch_disj, bool(yes),
     priv_help("profile-deep-coverage-branch-disj", [
         w("Disable coverage points at the beginning of"),
         w("disjunction branches.")])).
 % The next two options tune the coverage profiling pass, useful for debugging.
 % I believe these options are broken - pbone.
-optdb(oc_grade_prof, profile_deep_coverage_use_portcounts, bool(no),
+% XXX They are not grade options.
+optdb(oc_grade_mdprof, profile_deep_coverage_use_portcounts, bool(no),
     priv_help("profile-deep-coverage-use-portcounts", [
         w("Use port counts to provide coverage information.")])).
-optdb(oc_grade_prof, profile_deep_coverage_use_trivial, bool(no),
+optdb(oc_grade_mdprof, profile_deep_coverage_use_trivial, bool(no),
     priv_help("profile-deep-coverage-use-trivial", [
         w("Use simple goal properties for coverage information.")])).
-optdb(oc_grade_prof, profile_for_feedback,             bool(no),
+% XXX I (zs) don't think this is a grade option.
+optdb(oc_grade_mdprof, profile_for_feedback,           bool(no),
     % Turns on flags relevant for profiler directed feedback analysis.
     % Currently the only feedback analysis is automatic parallelism.
     alt_help("profile-for-feedback",
@@ -1931,20 +1937,20 @@ optdb(oc_grade_prof, profile_for_feedback,             bool(no),
 
 % Grade options, part f3: complexity profiling
 
-optdb(oc_grade_prof, experimental_complexity,          string(""),
+optdb(oc_grade_clprof, experimental_complexity,        string(""),
     % XXX This is NOT a grade option; it only takes advantage of a grade.
     priv_arg_help("experimental-complexity", "filename", [
         w("Enable experimental complexity analysis for the predicates"),
         w("listed in the given file."),
         w("This option is supported only when targeting C with"),
         opt("--no-high-level-code", ".")])).
-optdb(oc_grade_prof, record_term_sizes_as_words,       bool(no),
+optdb(oc_grade_clprof, record_term_sizes_as_words,     bool(no),
     priv_alt_align_help("record-term-sizes-as-words", [],
             "(grade modifier: `.tsw')",
             "(grade modifier: @samp{.tsw})", [
         cindex(".tsw (grade modifier"),
         w("Augment each heap cell with its size in words.")])).
-optdb(oc_grade_prof, record_term_sizes_as_cells,       bool(no),
+optdb(oc_grade_clprof, record_term_sizes_as_cells,     bool(no),
     priv_alt_align_help("record-term-sizes-as-cells", [],
             "(grade modifier: `.tsc')",
             "(grade modifier: @samp{.tsc})", [
@@ -1955,7 +1961,7 @@ optdb(oc_grade_prof, record_term_sizes_as_cells,       bool(no),
 
 % Grade options, part f4: threadscope profiling
 
-optdb(oc_grade_prof, threadscope,                      bool(no),
+optdb(oc_grade_tsprof, threadscope,                    bool(no),
     % XXX Threadscope profiling has not been maintained since Paul stopped
     % working on Mercury. It has almost certainly suffered bit rot by now.
     priv_alt_align_help("threadscope", [],
@@ -2629,27 +2635,27 @@ optdb(oc_diag_int,  set_color_hint,                    string(""), no_help).
 
 % Warnings about module-level issues.
 
-optdb(oc_warn_dodgy, warn_nothing_exported,             bool(yes),
+optdb(oc_warn_dodgy_mod, warn_nothing_exported,        bool(yes),
     help("warn-nothing-exported", [
         w("Do not warn about modules which export nothing.")])).
-optdb(oc_warn_dodgy, warn_unused_imports,               bool(no),
+optdb(oc_warn_dodgy_mod, warn_unused_imports,          bool(no),
     help("warn-unused-imports", [
         w("Warn about modules that are imported but not used.")])).
-optdb(oc_warn_dodgy, warn_unused_interface_imports,     bool(yes),
+optdb(oc_warn_dodgy_mod, warn_unused_interface_imports, bool(yes),
     % Not documented because its relationship with --warn-unused-imports
     % is too complicated for users (and maybe even developers ...).
     priv_help("warn-unused-interface-imports", [
         w("Warn about modules that are imported in the interface"),
         w("but not used there.")])).
-optdb(oc_warn_dodgy, warn_interface_imports,            bool(yes),
+optdb(oc_warn_dodgy_mod, warn_interface_imports,       bool(yes),
     help("warn-interface-imports", [
         w("Do not warn about modules imported in the interface,"),
         w("but which are not used in the interface.")])).
-optdb(oc_warn_dodgy, warn_interface_imports_in_parents, bool(no),
+optdb(oc_warn_dodgy_mod, warn_interface_imports_in_parents, bool(no),
     help("warn-interface-imports-in-parents", [
         w("Warn about modules that are imported in the interface of"),
         w("a parent module, but not used in the interface of that module.")])).
-optdb(oc_warn_dodgy, warn_stdlib_shadowing,             bool(yes),
+optdb(oc_warn_dodgy_mod, warn_stdlib_shadowing,        bool(yes),
     help("warn-stdlib-shadowing", [
         w("Do not generate warnings for module names that either duplicate"),
         w("the name of a module in the Mercury standard library, or contain"),
@@ -2657,55 +2663,55 @@ optdb(oc_warn_dodgy, warn_stdlib_shadowing,             bool(yes),
 
 % Warnings about goal-level issues.
 
-optdb(oc_warn_dodgy, warn_singleton_vars,               bool(yes),
+optdb(oc_warn_dodgy_goal, warn_singleton_vars,         bool(yes),
     alt_help("warn-singleton-variables",
             ["warn-singleton-vars"], [
         w("Do not warn about variables which only occur once in a clause,"),
         w("but whose names do not start with an underscore.")])).
-optdb(oc_warn_dodgy, warn_repeated_singleton_vars,      bool(yes),
+optdb(oc_warn_dodgy_goal, warn_repeated_singleton_vars, bool(yes),
     alt_help("warn-repeated-singleton-variables",
             ["warn-repeated-singleton-vars"], [
         w("Do not warn about variables which occur"),
         w("more than once in a clause,"),
         w("but whose names do start with an underscore.")])).
-optdb(oc_warn_dodgy, warn_unification_cannot_succeed,   bool(yes),
+optdb(oc_warn_dodgy_goal, warn_unification_cannot_succeed, bool(yes),
     help("warn-unification-cannot-succeed", [
         w("Do not warn about unifications which cannot succeed.")])).
-optdb(oc_warn_dodgy, warn_known_bad_format_calls,       bool(yes),
+optdb(oc_warn_dodgy_goal, warn_known_bad_format_calls, bool(yes),
     help("warn-known-bad-format-calls", [
         w("Do not warn about calls to"), code("string.format", ","),
         code("io.format", ","), w("or"), code("stream.string_writer.format"),
         w("that contain mismatches between"),
         w("the format string and the supplied values.")])).
-optdb(oc_warn_dodgy, warn_obsolete,                     bool(yes),
+optdb(oc_warn_dodgy_goal, warn_obsolete,               bool(yes),
     help("warn-obsolete", [
         w("Do not warn about calls to predicates and functions"),
         w("that have been marked as obsolete.")])).
-optdb(oc_warn_dodgy, warn_overlapping_scopes,           bool(yes),
+optdb(oc_warn_dodgy_goal, warn_overlapping_scopes,     bool(yes),
     help("warn-overlapping-scopes", [
         w("Do not warn about variables which occur in overlapping scopes.")])).
-optdb(oc_warn_dodgy, warn_suspected_occurs_check_failure, bool(yes),
+optdb(oc_warn_dodgy_goal, warn_suspected_occurs_check_failure, bool(yes),
     alt_help("warn-suspected-occurs-check-failure",
             ["warn-suspected-occurs-failure"], [
         w("Do not warn about code that looks like it unifies a variable"),
         w("with a term that contains that same variable. Such code cannot"),
         w("succeed because it fails the test called the"),
         emph("occurs check", ".")])).
-optdb(oc_warn_dodgy, warn_suspicious_recursion,         bool(no),
+optdb(oc_warn_dodgy_goal, warn_suspicious_recursion,   bool(no),
     help("warn-suspicious-recursion", [
         w("Warn about recursive calls which are likely to have problems,"),
         w("such as leading to infinite recursion.")])).
-optdb(oc_warn_dodgy, warn_unused_args,                  bool(no),
+optdb(oc_warn_dodgy_goal, warn_unused_args,            bool(no),
     help("warn-unused-args", [
         w("Warn about predicate or function arguments which are not used.")])).
 
 % Warnings about predicate determinism issues.
 
-optdb(oc_warn_dodgy, warn_det_decls_too_lax,            bool(yes),
+optdb(oc_warn_dodgy_pred, warn_det_decls_too_lax,      bool(yes),
     help("warn-det-decls-too-lax", [
         w("Do not warn about determinism declarations"),
         w("which could be stricter.")])).
-optdb(oc_warn_dodgy, warn_inferred_erroneous,           bool(yes),
+optdb(oc_warn_dodgy_pred, warn_inferred_erroneous,     bool(yes),
     help("warn-inferred-erroneous", [
         w("Do not warn about procedures whose determinism"),
         w("is inferred to be"), samp("erroneous", ","),
@@ -2713,18 +2719,18 @@ optdb(oc_warn_dodgy, warn_inferred_erroneous,           bool(yes),
 
 % Warnings about predicate pragma issues.
 
-optdb(oc_warn_dodgy, warn_ambiguous_pragma,             bool(yes),
+optdb(oc_warn_dodgy_prg, warn_ambiguous_pragma,        bool(yes),
     alt_help("warn-ambiguous-pragmas",
             ["warn-ambiguous-pragma"], [
         w("Do not warn about pragmas that do not specify whether"),
         w("they are for a predicate or a function, even when there is both"),
         w("a predicate and a function with the given name and arity.")])).
-optdb(oc_warn_dodgy, warn_potentially_ambiguous_pragma, bool(no),
+optdb(oc_warn_dodgy_prg, warn_potentially_ambiguous_pragma, bool(no),
     alt_help("warn-potentially-ambiguous-pragmas",
             ["warn-potentially-ambiguous-pragma"], [
         w("Warn about pragmas that do not specify whether they are"),
         w("for a predicate or a function.")])).
-optdb(oc_warn_dodgy, warn_table_with_inline,            bool(yes),
+optdb(oc_warn_dodgy_prg, warn_table_with_inline,       bool(yes),
     help("warn-table-with-inline", [
         w("Do not warn about tabled procedures that also have a"),
         code("pragma inline"), w("declaration."),
@@ -2733,23 +2739,23 @@ optdb(oc_warn_dodgy, warn_table_with_inline,            bool(yes),
 
 % Warnings about other predicate-level issues.
 
-optdb(oc_warn_dodgy, warn_unresolved_polymorphism,      bool(yes),
+optdb(oc_warn_dodgy_pred, warn_unresolved_polymorphism, bool(yes),
     help("warn-unresolved-polymorphism", [
         w("Do not warn about unresolved polymorphism, which occurs when"),
         w("the type of a variable contains a type variable"),
         w("that is not bound to an actual type, even though it should be.")])).
-optdb(oc_warn_dodgy, warn_stubs,                        bool(yes),
+optdb(oc_warn_dodgy_pred, warn_stubs,                  bool(yes),
     help("warn-stubs", [
         w("Do not warn about procedures for which there are no clauses."),
         w("Note that this option is meaningful only if the"),
         opt("--allow-stubs"), w("option is enabled.")])).
-optdb(oc_warn_dodgy, warn_non_term_special_preds,       bool(yes),
+optdb(oc_warn_dodgy_pred, warn_non_term_special_preds, bool(yes),
     help("warn-non-term-special-preds", [
         w("Do not warn about types that have user-defined equality or"),
         w("comparison predicates that cannot be proved to terminate."),
         w("This option is meaningful only if"),
         w("termination analysis is enabled.")])).
-optdb(oc_warn_dodgy, warn_non_stratification,           bool(no),
+optdb(oc_warn_dodgy_pred, warn_non_stratification,     bool(no),
     help("warn-non-stratification", [
         w("Warn about possible non-stratification"),
         w("of the predicates and/or functions in the module."),
@@ -2758,31 +2764,31 @@ optdb(oc_warn_dodgy, warn_non_stratification,           bool(no),
 
 % Warnings about issues with insts.
 
-optdb(oc_warn_dodgy, warn_insts_without_matching_type,  bool(yes),
+optdb(oc_warn_dodgy_inst, warn_insts_without_matching_type, bool(yes),
     help("warn-insts-without-matching-type", [
         w("Do not warn about insts that are not consistent"),
         w("with any of the types in scope.")])).
-optdb(oc_warn_dodgy, warn_insts_with_functors_without_type, bool(no),
+optdb(oc_warn_dodgy_inst, warn_insts_with_functors_without_type, bool(no),
     help("warn-insts-with-functors-without-type", [
         w("Warn about insts that do specify functors, but do not specify"),
         w("what type they are for.")])).
 
 % Warnings about issues with files.
 
-optdb(oc_warn_dodgy, warn_undefined_options_variables,  bool(yes),
+optdb(oc_warn_file, warn_undefined_options_variables,   bool(yes),
     alt_help("warn-undefined-options-variables",
             ["warn-undefined-options-vars"], [
         w("Do not warn about references to undefined variables"),
         w("in options files with"), opt("--make", ".")])).
-optdb(oc_warn_dodgy, warn_missing_opt_files,            bool(yes),
+optdb(oc_warn_file, warn_missing_opt_files,             bool(yes),
     help("warn-missing-opt-files", [
         w("Do not warn about"), file(".opt"), w("files"),
         w("which cannot be opened.")])).
-optdb(oc_warn_dodgy, warn_missing_trans_opt_files,      bool(no),
+optdb(oc_warn_file, warn_missing_trans_opt_files,       bool(no),
     help("warn-missing-trans-opt-files", [
         w("Warn about"), file(".trans_opt"), w("files"),
         w("which cannot be opened.")])).
-optdb(oc_warn_dodgy, warn_missing_trans_opt_deps,       bool(yes),
+optdb(oc_warn_file, warn_missing_trans_opt_deps,        bool(yes),
     help("warn-missing-trans-opt-deps", [
         w("Do not generate a warning when the information required"),
         w("to allow"), file(".trans_opt"), w("files to be read"),
@@ -2823,7 +2829,7 @@ optdb(oc_warn_perf, warn_non_tail_recursion_mutual,    bool(no),
     priv_help("warn-non-tail-recursion-mutual", [
         w("Warn about any mutually recursive calls that are not"),
         w("tail recursive.")])).
-optdb(oc_warn_perf_c, warn_non_tail_recursion,           maybe_string_special,
+optdb(oc_warn_perf_c, warn_non_tail_recursion,         maybe_string_special,
     arg_help("warn-non-tail-recursion", "{none,self,self-and-mutual}", [
         w("Specify when the compiler should warn"),
         w("about recursive calls that are not tail calls.")])).
@@ -2836,44 +2842,44 @@ optdb(oc_warn_perf_c, warn_non_tail_recursion,           maybe_string_special,
 
 % Warnings about dead code.
 
-optdb(oc_warn_style, warn_dead_preds,                   bool(no),
+optdb(oc_warn_style_pred, warn_dead_preds,             bool(no),
     alt_help("warn-dead-predicates",
             ["warn-dead-preds"], [
         w("Warn about predicates and functions that have"),
         w("no procedures which are ever called.")])).
-optdb(oc_warn_style, warn_dead_procs,                   bool(no),
+optdb(oc_warn_style_pred, warn_dead_procs,             bool(no),
     alt_help("warn-dead-procedures",
             ["warn-dead-procs"], [
         w("Warn about procedures which are never called.")])).
 
 % Warnings about simple style mistakes.
 
-optdb(oc_warn_style, warn_simple_code,                  bool(yes),
+optdb(oc_warn_style_goal, warn_simple_code,            bool(yes),
     help("warn-simple-code", [
         w("Do not warn about constructs which are so simple"),
         w("that they are likely to be programming errors."),
         w("(One example is if-then-elses"),
         w("whose condition always succeeds.)")])).
-optdb(oc_warn_style, inform_ite_instead_of_switch,      bool(no),
+optdb(oc_warn_style_goal, inform_ite_instead_of_switch, bool(no),
     help("inform-ite-instead-of-switch", [
         w("Generate informational messages for if-then-elses that could be"),
         w("replaced by switches.")])).
-optdb(oc_warn_style, inform_incomplete_switch,          bool(no),
+optdb(oc_warn_style_goal, inform_incomplete_switch,    bool(no),
     help("inform-incomplete-switch", [
         w("Generate informational messages for switches that do not cover"),
         w("all the function symbols that the switched-on variable could be"),
         w("bound to.")])).
-optdb(oc_warn_style_c, inform_incomplete_switch_threshold, int(0),
+optdb(oc_warn_style_goal_c, inform_incomplete_switch_threshold, int(0),
     arg_help("inform-incomplete-switch-threshold", "N", [
         w("Have the"), opt("--inform-incomplete-switch"), w("option"),
         w("generate its messages only for switches that"), emph("do"),
         w("cover at least"), bare_arg("N", "%"), w("of the function symbols"),
         w("that the switched-on variable could be bound to.")])).
-optdb(oc_warn_style, warn_duplicate_calls,              bool(no),
+optdb(oc_warn_style_goal, warn_duplicate_calls,        bool(no),
     help("warn-duplicate-calls", [
         w("Warn about multiple calls to a predicate or function"),
         w("with the same input arguments.")])).
-optdb(oc_warn_style, warn_redundant_coerce,             bool(yes),
+optdb(oc_warn_style_goal, warn_redundant_coerce,       bool(yes),
     help("warn-redundant-coerce", [
         w("Do not warn about redundant type coercions,"),
         w("which occur when the type of the result of the"), code("coerce"),
@@ -2881,14 +2887,14 @@ optdb(oc_warn_style, warn_redundant_coerce,             bool(yes),
 
 % Warnings about state vars.
 
-optdb(oc_warn_style, warn_state_var_shadowing,          bool(yes),
+optdb(oc_warn_style_goal, warn_state_var_shadowing,    bool(yes),
     help("warn-state-var-shadowing", [
         w("Do not warn about one state variable shadowing another.")])).
-optdb(oc_warn_style, warn_unneeded_initial_statevars,   bool(yes),
+optdb(oc_warn_style_goal, warn_unneeded_initial_statevars, bool(yes),
     help("warn-unneeded-initial-statevars", [
         w("Do not warn about state variables in clause heads"),
         w("that could be ordinary variables.")])).
-optdb(oc_warn_style, warn_unneeded_initial_statevars_lambda, bool(yes),
+optdb(oc_warn_style_goal, warn_unneeded_initial_statevars_lambda, bool(yes),
     help("warn-unneeded-initial-statevars-lambda", [
         w("Do not warn about state variables"),
         w("in the heads of lambda expressions"),
@@ -2896,11 +2902,11 @@ optdb(oc_warn_style, warn_unneeded_initial_statevars_lambda, bool(yes),
 
 % Warnings about I/O predicates.
 
-optdb(oc_warn_style, warn_implicit_stream_calls,        bool(no),
+optdb(oc_warn_style_goal, warn_implicit_stream_calls,  bool(no),
     help("warn-implicit-stream-calls", [
         w("Warn about calls to I/O predicates that could take"),
         w("explicit stream arguments, but do not do so.")])).
-optdb(oc_warn_style, warn_unknown_format_calls,         bool(no),
+optdb(oc_warn_style_goal, warn_unknown_format_calls,   bool(no),
     help("warn-unknown-format-calls", [
         w("Warn about calls to"), code("string.format", ","),
         code("io.format"), w("or"), code("stream.string_writer.format"),
@@ -2910,25 +2916,25 @@ optdb(oc_warn_style, warn_unknown_format_calls,         bool(no),
 
 % Warnings about predicate level issues.
 
-optdb(oc_warn_style, warn_can_fail_function,            bool(no),
+optdb(oc_warn_style_pred, warn_can_fail_function,      bool(no),
     help("warn-can-fail-function", [
         w("Warn about functions that can fail."),
         w("(Such functions should be replaced by semidet predicates.)")])).
-optdb(oc_warn_style, warn_unneeded_mode_specific_clause, bool(yes),
+optdb(oc_warn_style_pred, warn_unneeded_mode_specific_clause, bool(yes),
     help("warn-unneeded-mode-specific-clause", [
         w("Do not warn about clauses that unnecessarily specify"),
         w("the modes of their arguments.")])).
 
 % Warnings about missing order.
 
-optdb(oc_warn_style, warn_unsorted_import_blocks,       bool(no),
+optdb(oc_warn_style_order, warn_unsorted_import_blocks, bool(no),
     alt_help("warn-unsorted-import-blocks",
             ["warn-unsorted-import-block"], [
         w("Generate a warning if two"), code("import_module"), w("and/or"),
         code("use_module"), w("declarations occur on the same line,"),
         w("or if a sequence of such declarations on consecutive lines"),
         w("are not sorted on module name.")])).
-optdb(oc_warn_style, warn_inconsistent_pred_order_clauses, bool(no),
+optdb(oc_warn_style_order, warn_inconsistent_pred_order_clauses, bool(no),
     alt_help("warn-inconsistent-pred-order-clauses",
             ["warn-inconsistent-pred-order"], [
         w("Generate a warning if the order of the definitions does not match"),
@@ -2936,7 +2942,8 @@ optdb(oc_warn_style, warn_inconsistent_pred_order_clauses, bool(no),
         w("and functions of the module, or for the nonexported predicates"),
         w("and functions of the module. Applies for definitions by"),
         w("Mercury clauses.")])).
-optdb(oc_warn_style, warn_inconsistent_pred_order_foreign_procs, bool(no),
+optdb(oc_warn_style_order, warn_inconsistent_pred_order_foreign_procs,
+                                                       bool(no),
     help("warn-inconsistent-pred-order-foreign-procs", [
         w("Generate a warning if the order of the definitions does not match"),
         w("the order of the declarations for either the exported predicates"),
@@ -2946,20 +2953,20 @@ optdb(oc_warn_style, warn_inconsistent_pred_order_foreign_procs, bool(no),
 
 % Warnings about missing contiguity.
 
-optdb(oc_warn_style, warn_non_contiguous_decls,         bool(yes),
+optdb(oc_warn_style_ctg, warn_non_contiguous_decls,     bool(yes),
     help("warn-non-contiguous-decls", [
         w("Do not generate a warning if the mode declarations of a"),
         w("predicate or function do not all immediately follow its"),
         code("pred"), w("or"), code("func"), w("declaration.")])).
-optdb(oc_warn_style, warn_non_contiguous_clauses,       bool(no),
+optdb(oc_warn_style_ctg, warn_non_contiguous_clauses,   bool(no),
     help("warn-non-contiguous-clauses", [
         w("Generate a warning if the clauses of a predicate or function"),
         w("are not contiguous.")])).
-optdb(oc_warn_style, warn_non_contiguous_foreign_procs, bool(no),
+optdb(oc_warn_style_ctg, warn_non_contiguous_foreign_procs, bool(no),
     help("warn-non-contiguous-foreign-procs", [
         w("Generate a warning if the clauses and foreign_procs of a"),
         w("predicate or function are not contiguous.")])).
-optdb(oc_warn_style_c, allow_non_contiguity_for,          accumulating([]),
+optdb(oc_warn_style_ctg_c, allow_non_contiguity_for,   accumulating([]),
     arg_help("allow-non-contiguity-for", "name1,name2,...", [
         w("Allow the clauses (or, with"),
         opt("--warn-non-contiguous-foreign-procs", ","),
@@ -2973,7 +2980,7 @@ optdb(oc_warn_style_c, allow_non_contiguity_for,          accumulating([]),
 
 % Warnings about foreign code.
 
-optdb(oc_warn_style, warn_suspicious_foreign_code,      bool(no),
+optdb(oc_warn_style_goal, warn_suspicious_foreign_code, bool(no),
     help("warn-suspicious-foreign-code", [
         w("Warn about possible errors in the bodies of foreign code"),
         w("pragmas."),
@@ -2982,7 +2989,7 @@ optdb(oc_warn_style, warn_suspicious_foreign_code,      bool(no),
         w("foreign language code is limited, some warnings"),
         w("reported by this option may be spurious, and"),
         w("some actual errors may not be detected at all.")])).
-optdb(oc_warn_style, warn_suspicious_foreign_procs,     bool(no),
+optdb(oc_warn_style_goal, warn_suspicious_foreign_procs, bool(no),
     help("warn-suspicious-foreign-procs", [
         w("Warn about possible errors in the bodies of foreign_proc"),
         w("pragmas."),
@@ -7059,7 +7066,13 @@ handle_quoted_flag(Option, Flag, !OptionTable) :-
 dodgy_code_warning_bool_options = DodgyWarnOptions :-
     FindOptionsPred =
         ( pred(Opt::out) is nondet :-
-            optdb(oc_warn_dodgy, Opt, bool(_), _Help)
+            ( optdb(oc_warn_dodgy_mod,  Opt, bool(_), _Help)
+            ; optdb(oc_warn_dodgy_pred, Opt, bool(_), _Help)
+            ; optdb(oc_warn_dodgy_prg,  Opt, bool(_), _Help)
+            ; optdb(oc_warn_dodgy_goal, Opt, bool(_), _Help)
+            ; optdb(oc_warn_dodgy_inst, Opt, bool(_), _Help)
+            ; optdb(oc_warn_file,       Opt, bool(_), _Help)
+            )
         ),
     solutions(FindOptionsPred, DodgyWarnOptions).
 
@@ -7073,7 +7086,11 @@ slow_code_warning_bool_options = SlowWarnOptions :-
 style_warning_bool_options = StyleWarnOptions :-
     FindOptionsPred =
         ( pred(Opt::out) is nondet :-
-            optdb(oc_warn_style, Opt, bool(_), _Help)
+            ( optdb(oc_warn_style_pred,  Opt, bool(_), _Help)
+            ; optdb(oc_warn_style_order, Opt, bool(_), _Help)
+            ; optdb(oc_warn_style_ctg,   Opt, bool(_), _Help)
+            ; optdb(oc_warn_style_goal,  Opt, bool(_), _Help)
+            )
         ),
     solutions(FindOptionsPred, StyleWarnOptions).
 
@@ -7086,8 +7103,12 @@ info_request_bool_options = InfoRequestOptions :-
 
 options_not_to_track = InconsequentialOptions :-
     % XXX This needs to be updated when the oc_X changes are all done.
-    InconsequentialCategories = set.list_to_set([oc_warn_ctrl, oc_warn_dodgy,
-        oc_warn_style, oc_inform, oc_verbosity, oc_internal, oc_buildsys]),
+    InconsequentialCategories = set.list_to_set([oc_warn_ctrl,
+        oc_warn_dodgy_mod, oc_warn_dodgy_pred, oc_warn_dodgy_prg,
+        oc_warn_dodgy_goal, oc_warn_dodgy_inst, oc_warn_file,
+        oc_warn_style_pred, oc_warn_style_goal, oc_warn_style_goal_c,
+        oc_warn_style_order, oc_warn_style_ctg, oc_warn_style_ctg_c,
+        oc_inform, oc_verbosity, oc_internal, oc_buildsys]),
     FindOptionsPred =
         ( pred(Opt::out) is nondet :-
             optdb(Cat, Opt, _Data, _Help),

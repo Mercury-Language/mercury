@@ -26,8 +26,12 @@
     ;       oc_grade_target
     ;       oc_grade_llds
     ;       oc_grade_mlds
-    ;       oc_grade_dbg
-    ;       oc_grade_prof
+    ;       oc_grade_mdb
+    ;       oc_grade_ssdb
+    ;       oc_grade_mprof
+    ;       oc_grade_mdprof
+    ;       oc_grade_clprof
+    ;       oc_grade_tsprof
     ;       oc_grade_etc
     ;       oc_grade_dev
             % Options that affect binary compatibility.
@@ -55,13 +59,22 @@
             % Options for controlling color in diagnostics.
     ;       oc_diag_int
             % Internal-use-only options for controlling diagnostics.
-    ;       oc_warn_dodgy
+    ;       oc_warn_dodgy_mod
+    ;       oc_warn_dodgy_pred
+    ;       oc_warn_dodgy_prg
+    ;       oc_warn_dodgy_goal
+    ;       oc_warn_dodgy_inst
+    ;       oc_warn_file
             % Warnings about code that is possibly incorrect.
     ;       oc_warn_perf
     ;       oc_warn_perf_c
             % Warnings about code that probably could be faster.
-    ;       oc_warn_style
-    ;       oc_warn_style_c
+    ;       oc_warn_style_pred
+    ;       oc_warn_style_goal
+    ;       oc_warn_style_goal_c
+    ;       oc_warn_style_order
+    ;       oc_warn_style_ctg
+    ;       oc_warn_style_ctg_c
             % Warnings about programming style.
     ;       oc_warn_ctrl
             % Options that *control* warnings.
@@ -189,8 +202,12 @@ option_categories(oc_grade_gen, 0).
 option_categories(oc_grade_target, 0).
 option_categories(oc_grade_llds, 0).
 option_categories(oc_grade_mlds, 0).
-option_categories(oc_grade_dbg, 0).
-option_categories(oc_grade_prof, 0).
+option_categories(oc_grade_mdb, 0).
+option_categories(oc_grade_ssdb, 0).
+option_categories(oc_grade_mprof, 0).
+option_categories(oc_grade_mdprof, 0).
+option_categories(oc_grade_clprof, 0).
+option_categories(oc_grade_tsprof, 0).
 option_categories(oc_grade_etc, 0).
 option_categories(oc_grade_dev, 0).
 option_categories(oc_infer, 0).
@@ -201,11 +218,20 @@ option_categories(oc_verb_dbg, 0).
 option_categories(oc_diag_gen, 0).
 option_categories(oc_diag_color, 0).
 option_categories(oc_diag_int, 0).
-option_categories(oc_warn_dodgy, 0).
+option_categories(oc_warn_dodgy_mod, 0).
+option_categories(oc_warn_dodgy_pred, 0).
+option_categories(oc_warn_dodgy_prg, 0).
+option_categories(oc_warn_dodgy_goal, 0).
+option_categories(oc_warn_dodgy_inst, 0).
+option_categories(oc_warn_file, 0).
 option_categories(oc_warn_perf, 0).
 option_categories(oc_warn_perf_c, 0).
-option_categories(oc_warn_style, 0).
-option_categories(oc_warn_style_c, 0).
+option_categories(oc_warn_style_pred, 0).
+option_categories(oc_warn_style_order, 0).
+option_categories(oc_warn_style_ctg, 0).
+option_categories(oc_warn_style_ctg_c, 0).
+option_categories(oc_warn_style_goal, 0).
+option_categories(oc_warn_style_goal_c, 0).
 option_categories(oc_warn_ctrl, 0).
 option_categories(oc_warn_halt, 0).
 option_categories(oc_inform, 0).

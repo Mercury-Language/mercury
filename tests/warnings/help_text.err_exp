@@ -261,7 +261,7 @@ Options that give the compiler its overall task
 
 Grade options
 
-    Grades and grade components
+  Grades and grade components
 
     -s <grade>
     --grade <grade>
@@ -290,7 +290,7 @@ Grade options
         or to link together modules that have been compiled in different
         grades, will result in an error.
 
-    Target options
+  Target options
 
     --target <c>                        (grades: none, reg, asm_fast, hlc)
     --target <csharp>                   (grades: csharp)
@@ -321,7 +321,7 @@ Grade options
         An abbreviation for `--target csharp' `--target-code-only'. Generate C#
         code in `<module>.cs', but do not generate CIL bytecode.
 
-    LLDS backend grade options
+  LLDS backend grade options
 
     --gcc-global-registers              (grades: reg, asm_fast)
     --no-gcc-global-registers           (grades: none)
@@ -343,7 +343,7 @@ Grade options
         Use float registers for argument passing. This option is used only when
         targeting C with `--no-high-level-code'.
 
-    MLDS backend grade options
+  MLDS backend grade options
 
     -H                                  (grades: hlc, csharp, java)
     --high-level-code
@@ -363,7 +363,9 @@ Grade options
         of Mercury, though it can also help to debug C code included in Mercury
         programs. This option is used only when targeting C.
 
-    Debugging grade options
+  Debugging grade options
+
+    Mdb debugging grade options
 
     --debug                             (grade modifier: `.debug')
         Enable Mercury-level debugging. See the "Debugging" chapter of the
@@ -376,13 +378,17 @@ Grade options
         chapter of the Mercury User's Guide for details. This option is
         supported only when targeting C with `--no-high-level-code'.
 
+    Ssdb debugging grade options
+
     PRIVATE OPTION
     --source-to-source-debug            (grade modifier: `.ssdebug')
     --ss-debug
     --ssdb
         Enable the source-to-source debugging transform.
 
-    Profiling grade options
+  Profiling grade options
+
+    Mprof profiling grade options
 
     -p                                  (grade modifier: `.prof')
     --profiling
@@ -422,6 +428,8 @@ Grade options
     --profile-memory                    (grade modifier: `.profmem')
         Similar to `--memory-profiling', except that it only gathers memory
         usage information, not call counts.
+
+    Deep profiling grade options
 
     --deep-profiling                    (grade modifier: `.profdeep')
         Prepare the generated code for deep profiling. The Mercury deep
@@ -495,6 +503,8 @@ Grade options
         implicit parallelism. `--profile-for-implicit-parallelism' is a
         deprecated synonym for this option.
 
+    Complexity profiling grade options
+
     PRIVATE OPTION
     --experimental-complexity <filename>
         Enable experimental complexity analysis for the predicates listed in
@@ -509,6 +519,8 @@ Grade options
     --record-term-sizes-as-cells        (grade modifier: `.tsc')
         Augment each heap cell with its size in cells.
 
+    Threadscope profiling grade options
+
     PRIVATE OPTION
     --threadscope                       (grade modifier: `.threadscope')
         Enable support for profiling parallel execution. using Threadscope.
@@ -516,7 +528,7 @@ Grade options
         `--no-high-level-code', and only on some processors. See
         README.ThreadScope and the "Using threadscope" section for details.
 
-    Optional feature grade options
+  Optional feature grade options
 
     PRIVATE OPTION
     --pregenerated-dist
@@ -597,7 +609,7 @@ Grade options
     --use-regions-profiling
         There is no help text available.
 
-    Developer grade options
+  Developer grade options
 
     --num-ptag-bits <N>
     --num-tag-bits <N>
@@ -988,7 +1000,7 @@ Verbosity options
 
 Diagnostics options
 
-    Options that control diagnostics
+  Options that control diagnostics
 
     -E
     --verbose-error-messages
@@ -1040,7 +1052,7 @@ Diagnostics options
         typechecker will not process the predicate or function any further.
         (Default: 3000.)
 
-    Options that control color in diagnostics
+  Options that control color in diagnostics
 
     --color-diagnostics
     --colour-diagnostics
@@ -1072,7 +1084,9 @@ Diagnostics options
 
 Warning options
 
-    Warnings about possible incorrectness
+  Warnings about possible incorrectness
+
+    Warnings about possible module incorrectness
 
     --no-warn-nothing-exported
         Do not warn about modules which export nothing.
@@ -1097,6 +1111,66 @@ Warning options
         Do not generate warnings for module names that either duplicate the
         name of a module in the Mercury standard library, or contain a
         subsequence of name components that do so.
+
+    Warnings about possible inst incorrectness
+
+    --no-warn-insts-without-matching-type
+        Do not warn about insts that are not consistent with any of the types
+        in scope.
+
+    --warn-insts-with-functors-without-type
+        Warn about insts that do specify functors, but do not specify what type
+        they are for.
+
+    Warnings about possible predicate incorrectness
+
+    --no-warn-det-decls-too-lax
+        Do not warn about determinism declarations which could be stricter.
+
+    --no-warn-inferred-erroneous
+        Do not warn about procedures whose determinism is inferred to be
+        `erroneous', but whose determinism declarations are looser.
+
+    --no-warn-unresolved-polymorphism
+        Do not warn about unresolved polymorphism, which occurs when the type
+        of a variable contains a type variable that is not bound to an actual
+        type, even though it should be.
+
+    --no-warn-stubs
+        Do not warn about procedures for which there are no clauses. Note that
+        this option is meaningful only if the `--allow-stubs' option is
+        enabled.
+
+    --no-warn-non-term-special-preds
+        Do not warn about types that have user-defined equality or comparison
+        predicates that cannot be proved to terminate. This option is
+        meaningful only if termination analysis is enabled.
+
+    --warn-non-stratification
+        Warn about possible non-stratification of the predicates and/or
+        functions in the module. Non-stratification occurs when a predicate or
+        function can call itself through negation through some path in its call
+        graph.
+
+    Warnings about possible pragma incorrectness
+
+    --no-warn-ambiguous-pragmas
+    --no-warn-ambiguous-pragma
+        Do not warn about pragmas that do not specify whether they are for a
+        predicate or a function, even when there is both a predicate and a
+        function with the given name and arity.
+
+    --warn-potentially-ambiguous-pragmas
+    --warn-potentially-ambiguous-pragma
+        Warn about pragmas that do not specify whether they are for a predicate
+        or a function.
+
+    --no-warn-table-with-inline
+        Do not warn about tabled procedures that also have a `pragma inline'
+        declaration. (This combination does not work, because inlined copies of
+        procedure bodies cannot be tabled.)
+
+    Warnings about possible goal incorrectness
 
     --no-warn-singleton-variables
     --no-warn-singleton-vars
@@ -1136,57 +1210,7 @@ Warning options
     --warn-unused-args
         Warn about predicate or function arguments which are not used.
 
-    --no-warn-det-decls-too-lax
-        Do not warn about determinism declarations which could be stricter.
-
-    --no-warn-inferred-erroneous
-        Do not warn about procedures whose determinism is inferred to be
-        `erroneous', but whose determinism declarations are looser.
-
-    --no-warn-ambiguous-pragmas
-    --no-warn-ambiguous-pragma
-        Do not warn about pragmas that do not specify whether they are for a
-        predicate or a function, even when there is both a predicate and a
-        function with the given name and arity.
-
-    --warn-potentially-ambiguous-pragmas
-    --warn-potentially-ambiguous-pragma
-        Warn about pragmas that do not specify whether they are for a predicate
-        or a function.
-
-    --no-warn-table-with-inline
-        Do not warn about tabled procedures that also have a `pragma inline'
-        declaration. (This combination does not work, because inlined copies of
-        procedure bodies cannot be tabled.)
-
-    --no-warn-unresolved-polymorphism
-        Do not warn about unresolved polymorphism, which occurs when the type
-        of a variable contains a type variable that is not bound to an actual
-        type, even though it should be.
-
-    --no-warn-stubs
-        Do not warn about procedures for which there are no clauses. Note that
-        this option is meaningful only if the `--allow-stubs' option is
-        enabled.
-
-    --no-warn-non-term-special-preds
-        Do not warn about types that have user-defined equality or comparison
-        predicates that cannot be proved to terminate. This option is
-        meaningful only if termination analysis is enabled.
-
-    --warn-non-stratification
-        Warn about possible non-stratification of the predicates and/or
-        functions in the module. Non-stratification occurs when a predicate or
-        function can call itself through negation through some path in its call
-        graph.
-
-    --no-warn-insts-without-matching-type
-        Do not warn about insts that are not consistent with any of the types
-        in scope.
-
-    --warn-insts-with-functors-without-type
-        Warn about insts that do specify functors, but do not specify what type
-        they are for.
+    Warnings about missing files
 
     --no-warn-undefined-options-variables
     --no-warn-undefined-options-vars
@@ -1205,7 +1229,7 @@ Warning options
         has been lost. The information can be recreated by running
         `mmake <mainmodule>.depend'.
 
-    Warnings about possible performance issues
+  Warnings about possible performance issues
 
     --no-warn-accumulator-swaps
         Do not warn about argument order rearrangements done by
@@ -1237,7 +1261,9 @@ Warning options
         Specify when the compiler should warn about recursive calls that are
         not tail calls.
 
-    Warnings about programming style
+  Warnings about programming style
+
+    Warnings about style issues with predicates
 
     --warn-dead-predicates
     --warn-dead-preds
@@ -1247,6 +1273,16 @@ Warning options
     --warn-dead-procedures
     --warn-dead-procs
         Warn about procedures which are never called.
+
+    --warn-can-fail-function
+        Warn about functions that can fail. (Such functions should be replaced
+        by semidet predicates.)
+
+    --no-warn-unneeded-mode-specific-clause
+        Do not warn about clauses that unnecessarily specify the modes of their
+        arguments.
+
+    Warnings about style issues with goals
 
     --no-warn-simple-code
         Do not warn about constructs which are so simple that they are likely
@@ -1296,13 +1332,25 @@ Warning options
         whether there are any mismatches between the format string and the
         supplied values.
 
-    --warn-can-fail-function
-        Warn about functions that can fail. (Such functions should be replaced
-        by semidet predicates.)
+    --warn-suspicious-foreign-code
+        Warn about possible errors in the bodies of foreign code pragmas.
+        
+        Note that since the compiler's ability to parse foreign language code
+        is limited, some warnings reported by this option may be spurious, and
+        some actual errors may not be detected at all.
 
-    --no-warn-unneeded-mode-specific-clause
-        Do not warn about clauses that unnecessarily specify the modes of their
-        arguments.
+    --warn-suspicious-foreign-procs
+        Warn about possible errors in the bodies of foreign_proc pragmas. When
+        enabled, the compiler attempts to determine whether the success
+        indicator for a foreign procedure is correctly set, and whether the
+        foreign procedure body contains operations that it should not contain,
+        such as `return' statements in a C foreign procedure.
+        
+        Note that since the compiler's ability to parse foreign language code
+        is limited, some warnings reported by this option may be spurious, and
+        some actual errors may not be detected at all.
+
+    Warnings about missing order
 
     --warn-unsorted-import-blocks
     --warn-unsorted-import-block
@@ -1323,6 +1371,8 @@ Warning options
         functions of the module, or for the nonexported predicates and
         functions of the module. Applies for definitions by either Mercury
         clauses or foreign_proc pragmas.
+
+    Warnings about missing contiguity
 
     --no-warn-non-contiguous-decls
         Do not generate a warning if the mode declarations of a predicate or
@@ -1347,25 +1397,7 @@ Warning options
         and/or function names that may be intermingled. Each name must uniquely
         specify a predicate or a function.
 
-    --warn-suspicious-foreign-code
-        Warn about possible errors in the bodies of foreign code pragmas.
-        
-        Note that since the compiler's ability to parse foreign language code
-        is limited, some warnings reported by this option may be spurious, and
-        some actual errors may not be detected at all.
-
-    --warn-suspicious-foreign-procs
-        Warn about possible errors in the bodies of foreign_proc pragmas. When
-        enabled, the compiler attempts to determine whether the success
-        indicator for a foreign procedure is correctly set, and whether the
-        foreign procedure body contains operations that it should not contain,
-        such as `return' statements in a C foreign procedure.
-        
-        Note that since the compiler's ability to parse foreign language code
-        is limited, some warnings reported by this option may be spurious, and
-        some actual errors may not be detected at all.
-
-    Options that control warnings
+  Options that control warnings
 
     -w
     --inhibit-warnings
@@ -1388,7 +1420,7 @@ Warning options
         Do not warn if targets specified on the command line with `mmc --make'
         are already up-to-date.
 
-    Options about halting for warnings
+  Options about halting for warnings
 
     --halt-at-warn
         This option causes the compiler to treat all warnings as if they were
@@ -1649,7 +1681,7 @@ Preparing code for mdprof profiling
 
 Optimization options
 
-    Overall control of optimizations
+  Overall control of optimizations
 
     PRIVATE OPTION
     --default-opt-level -O<n>
@@ -1749,7 +1781,7 @@ Optimization options
     --analysis-file-cache-dir <directory>
         There is no help text available.
 
-    Source-to-source optimizations
+  Source-to-source optimizations
 
     --optimize-dead-procs
     --optimise-dead-procs
@@ -2116,7 +2148,7 @@ Optimization options
         With `--no-generate-trail-ops-inline', the compiler will implement them
         using calls to those operations in the standard library.
 
-    Experimental source-to-source optimizations
+  Experimental source-to-source optimizations
 
     PRIVATE OPTION
     --structure-sharing
@@ -2164,7 +2196,7 @@ Optimization options
         Immediately free cells which are known to be dead but which cannot be
         reused.
 
-    Optimizations during code generation
+  Optimizations during code generation
 
     --smart-indexing
         Implement switches using the fastest applicable implementation method,
@@ -2248,7 +2280,7 @@ Optimization options
         Try to restrict trailing operations to those parts of the program that
         actually use the trail.
 
-    Optimizations specific to high level code
+  Optimizations specific to high level code
 
     --mlds-optimize
     --mlds-optimise
@@ -2276,7 +2308,7 @@ Optimization options
         Eliminate local variables with known values, where possible, by
         replacing occurrences of such variables with their values.
 
-    Optimizations specific to low level code
+  Optimizations specific to low level code
 
     --try-switch-size <N>
         The number of alternatives in a try/retry chain switch must be at least
@@ -2637,7 +2669,7 @@ Options for controlling mmc --make
 
 Options for target language compilation
 
-    General options for compiling target language code
+  General options for compiling target language code
 
     --target-debug
     --c-debug
@@ -2651,7 +2683,7 @@ Options for target language compilation
         Disable warnings from the compiler (which may be e.g. gcc) that
         processes the target code generated by mmc.
 
-    Options for compiling C code
+  Options for compiling C code
 
     --cc compiler-name
         Specify which C compiler to use.
@@ -2757,7 +2789,7 @@ Options for target language compilation
     --pic-object-file-extension <extension>
         There is no help text available.
 
-    Options for compiling Java code
+  Options for compiling Java code
 
     --java-compiler <javac>
     --javac <javac>
@@ -2791,7 +2823,7 @@ Options for target language compilation
         Specify a single word option to be passed to the Java interpreter. The
         word will be quoted when passed to the shell.
 
-    Options for compiling C# code
+  Options for compiling C# code
 
     --csharp-compiler <csc>
         Specify the name of the C# Compiler. The default is `csc'.
@@ -2815,7 +2847,7 @@ Options for target language compilation
 
 Options for linking
 
-    General options for linking
+  General options for linking
 
     --mercury-library-directory <directory>
     --mld <directory>
@@ -2846,7 +2878,7 @@ Options for linking
         use the Mercury standard library, and also implies
         `--no-mercury-configuration-directory'.
 
-    Options for linking C or C# code
+  Options for linking C or C# code
 
     -L <directory>
     -L-
@@ -2866,7 +2898,7 @@ Options for linking
     --link-ssdb-libs
         Link the source to source debugging libraries into the executable.
 
-    Options for linking just C code
+  Options for linking just C code
 
     -o <filename>
     --output-file <filename>
@@ -3013,12 +3045,12 @@ Options for linking
         This option is intended only for use by the debugger's interactive
         query facility.
 
-    Options for linking just Java code
+  Options for linking just Java code
 
     --java-archive-command <command>
         Specify the command used to produce Java archive (JAR) files.
 
-    Options for linking just C# code
+  Options for linking just C# code
 
     --sign-assembly <keyfile>
         Sign the current assembly with the strong name contained in the
@@ -3497,7 +3529,7 @@ Options reserved for Mercury.config files
 
 Options for developers only
 
-    Operation selection options for developers only
+  Operation selection options for developers only
 
     PRIVATE OPTION
     --progress-output-suffix <.xyz>
@@ -3767,7 +3799,7 @@ Options for developers only
         Disable the gathering of constant structures holding typeinfos and
         typeclass_infos in global_data structures.
 
-    Options that can help debug the compiler
+  Options that can help debug the compiler
 
     PRIVATE OPTION
     --table-debug
@@ -3779,7 +3811,7 @@ Options for developers only
         initialization to be printed to the standard output when the
         environment variable `MERCURY_DEBUG_CLASS_INIT' is defined.
 
-    Options for dumping internal compiler data structures
+  Options for dumping internal compiler data structures
 
     -d <stage number or name>
     -d-
@@ -3888,7 +3920,7 @@ Options for developers only
         Dump the internal compiler representation of files named in
         options-file options to output_file.
 
-    Options intended for internal use by the compiler only
+  Options intended for internal use by the compiler only
 
     PRIVATE OPTION
     --pre-implicit-parallelism-simplify
