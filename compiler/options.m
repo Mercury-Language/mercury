@@ -1414,7 +1414,6 @@ optdb(oc_opmode,    only_opmode_make_analysis_registry, bool(no),
     priv_help("make-analysis-registry", [])).
 optdb(oc_opmode,    only_opmode_make,                  bool(no),
     short_help('m', "make", [], [
-        % XXX `mmc': should we delete the quotes, or replace with code("mmc")?
         w("Treat the non-option arguments to"), code("mmc"),
         w("as files to make, rather than source files."),
         w("Build or rebuild the specified files"),
@@ -1959,7 +1958,7 @@ optdb(oc_grade_prof, record_term_sizes_as_cells,       bool(no),
 optdb(oc_grade_prof, threadscope,                      bool(no),
     % XXX Threadscope profiling has not been maintained since Paul stopped
     % working on Mercury. It has almost certainly suffered bit rot by now.
-    alt_align_help("threadscope", [],
+    priv_alt_align_help("threadscope", [],
             "(grade modifier: `.threadscope')",
             "(grade modifier: @samp{.threadscope})", [
         cindex(".threadscope (grade modifier"),
@@ -2124,8 +2123,7 @@ optdb(oc_grade_dev, unboxed_float,                     bool(no),
     priv_help("unboxed-float", [
         w("Do not box floating point numbers."),
         w("This assumes that a Mercury float will fit in a word."),
-        w("The C code needs to be compiled with"),
-        code("-UMR_BOXED_FLOAT", "."),
+        w("The C code must be compiled with"), code("-UMR_BOXED_FLOAT", "."),
         w("It may also need to be compiled with"),
         code("-DMR_USE_SINGLE_PREC_FLOAT", ","),
         w("if double precision floats do not fit into a word."),
@@ -2133,11 +2131,10 @@ optdb(oc_grade_dev, unboxed_float,                     bool(no),
         w("its use should never be needed except for cross-compilation.")])).
 optdb(oc_grade_dev, unboxed_int64s,                    bool(no),
     priv_help("unboxed-int64s", [
-        w("Do not box 64-bit integer numbers"),
+        w("Do not box 64-bit integer numbers."),
         w("This assumes that word size of the target machine is at least"),
         w("64-bits in size."),
-        w("The C code needs to be compiled with"),
-        code("-UMR_BOXED_INT64S", "."),
+        w("The C code must be compiled with"), code("-UMR_BOXED_INT64S", "."),
         w("Note that the value of this option is normally autoconfigured;"),
         w("its use should never be needed except for cross-compilation.")])).
 optdb(oc_grade_dev, unboxed_no_tag_types,              bool(yes),
@@ -2337,13 +2334,13 @@ optdb(oc_verbosity, verbose_commands,                  bool(no),
 
 %---------------------%
 
-% XXX ALL the options in the oc_verb_dbg category should be private,
-% not just some.
+% ALL the options in the oc_verb_dbg category are private. Keep it that way.
+
 optdb(oc_verb_dbg,  report_cmd_line_args,              bool(no),
-    help("report-cmd-line-args", [
+    priv_help("report-cmd-line-args", [
         w("Report the command line arguments.")])).
 optdb(oc_verb_dbg,  report_cmd_line_args_in_doterr,    bool(no),
-    help("report-cmd-line-args-in-doterr", [
+    priv_help("report-cmd-line-args-in-doterr", [
         w("Report the command line arguments for compilations whose output"),
         w("mmake normally redirects to a"), file(".err"), w("file.")])).
 optdb(oc_verb_dbg,  inform_ignored_pragma_errors,      bool(no),
@@ -2357,7 +2354,7 @@ optdb(oc_verb_dbg,  inform_generated_type_spec_pragmas, bool(no),
         w("the compiler generates to implement"),
         w("a type_spec_constrained_pred pragma.")])).
 optdb(oc_verb_dbg,  proc_size_statistics,              string(""),
-    arg_help("proc-size-statistics", "filename", [
+    priv_arg_help("proc-size-statistics", "filename", [
         w("Append information about the size of each procedure"),
         w("in the module in terms of goals and variables"),
         w("to the end of the named file.")])).
@@ -2378,19 +2375,19 @@ optdb(oc_verb_dbg,  debug_types_pred_name,             accumulating([]),
         w("Output detailed debugging traces of type checking only"),
         w("for predicates and functions named by one of these options.")])).
 optdb(oc_verb_dbg,  debug_type_rep,                    bool(no),
-    help("debug-type-rep", [
+    priv_help("debug-type-rep", [
         w("Output debugging traces of type representation choices.")])).
 optdb(oc_verb_dbg,  debug_modes,                       bool(no),
-    short_help('N', "debug-modes", [], [
+    priv_short_help('N', "debug-modes", [], [
         w("Output debugging traces of the mode checking.")])).
 optdb(oc_verb_dbg,  debug_modes_verbose,               bool(no),
-    help("debug-modes-verbose", [
+    priv_help("debug-modes-verbose", [
         w("Output detailed debugging traces of the mode checking.")])).
 optdb(oc_verb_dbg,  debug_modes_minimal,               bool(no),
-    help("debug-modes-minimal", [
+    priv_help("debug-modes-minimal", [
         w("Output only minimal debugging traces of the mode checking.")])).
 optdb(oc_verb_dbg,  debug_modes_statistics,            bool(no),
-    help("debug-modes-statistics", [
+    priv_help("debug-modes-statistics", [
         w("Output statistics after each step of mode checking.")])).
 optdb(oc_verb_dbg,  debug_modes_delay_vars,            bool(yes),
     priv_help("debug-modes-delay-vars", [
@@ -2399,7 +2396,7 @@ optdb(oc_verb_dbg,  debug_modes_goal_ids,              bool(yes),
     priv_help("debug-modes-goal-ids", [
         w("Output the id of the goal at all mode debug checkpoints.")])).
 optdb(oc_verb_dbg,  debug_modes_pred_id,               int(-1),
-    arg_help("debug-modes-pred-id", "pred_id", [
+    priv_arg_help("debug-modes-pred-id", "pred_id", [
         w("With"), opt("--debug-modes", ","),
         w("restrict the debugging traces to the mode checking"),
         w("of the predicate or function with the specified pred id.")])).
@@ -2408,7 +2405,7 @@ optdb(oc_verb_dbg,  debug_mode_constraints,            bool(no),
         w("Output detailed debugging traces of the `--prop-mode-constraints'"),
         w("option.")])).
 optdb(oc_verb_dbg,  debug_det,                         bool(no),
-    alt_help("debug-determinism", ["debug-det"], [
+    priv_alt_help("debug-determinism", ["debug-det"], [
         w("Output detailed debugging traces of determinism analysis.")])).
 optdb(oc_verb_dbg,  debug_common_struct_preds,         string(""),
     priv_arg_help("debug-common-struct-preds", "predids", [
@@ -2431,15 +2428,15 @@ optdb(oc_verb_dbg,  debug_higher_order_specialization, bool(no),
         w("Output messages about the procedure specializations done"),
         w("by higher_order.m.")])).
 optdb(oc_verb_dbg,  debug_pd,                          bool(no),
-    help("debug-pd", [
+    priv_help("debug-pd", [
         w("Output detailed debugging traces of the partial deduction"),
         w("and deforestation process.")])).
 optdb(oc_verb_dbg,  debug_indirect_reuse,              bool(no),
-    help("debug-indirect-reuse", [
+    priv_help("debug-indirect-reuse", [
         w("Output detailed debugging traces of the indirect reuse pass"),
         w("of the"), opt("--structure-reuse"), w("option.")])).
 optdb(oc_verb_dbg,  debug_trail_usage,                 bool(no),
-    help("debug-trail-usage", [
+    priv_help("debug-trail-usage", [
         w("Output detailed debugging traces of the"),
         opt("--analyse-trail-usage"), w("option.")])).
 optdb(oc_verb_dbg,  debug_unneeded_code,               bool(no),
@@ -2458,7 +2455,7 @@ optdb(oc_verb_dbg,  debug_dep_par_conj,                accumulating([]),
         w("AND-parallelism transformation of the predicate with the given"),
         w("predicate id. Effective only with the right trace flags.")])).
 optdb(oc_verb_dbg,  debug_liveness,                    int(-1),
-    arg_help("debug-liveness", "pred_id", [
+    priv_arg_help("debug-liveness", "pred_id", [
         w("Output detailed debugging traces of the liveness analysis"),
         w("of the predicate with the given predicate id.")])).
 optdb(oc_verb_dbg,  debug_stack_opt,                   int(-1),
@@ -2471,23 +2468,23 @@ optdb(oc_verb_dbg,  debug_code_gen_pred_id,            int(-1),
         w("predicate or function with the given pred id."),
         w("Effectively only with the right trace flags.")])).
 optdb(oc_verb_dbg,  debug_opt,                         bool(no),
-    help("debug-opt", [
+    priv_help("debug-opt", [
         w("Output detailed debugging traces of the optimization process.")])).
 % XXX Shouldn't this be private? Users should not need to know about pred_ids.
 optdb(oc_verb_dbg,  debug_opt_pred_id,                 accumulating([]),
-    arg_help("debug-opt-pred-id", "pred_id", [
+    priv_arg_help("debug-opt-pred-id", "pred_id", [
         w("Output detailed debugging traces of the optimization process"),
         w("only for the predicate/function with the specified pred id.")])).
 optdb(oc_verb_dbg,  debug_opt_pred_name,               accumulating([]),
-    arg_help("debug-opt-pred-name", "name", [
+    priv_arg_help("debug-opt-pred-name", "name", [
         w("Output detailed debugging traces of the optimization process"),
         w("only for the predicate/function with the specified name.")])).
 optdb(oc_verb_dbg,  debug_make,                        bool(no),
-    help("debug-make", [
+    priv_help("debug-make", [
         w("Output detailed debugging traces of the operation of the"),
         opt("--make"), w("option.")])).
 optdb(oc_verb_dbg,  debug_intermodule_analysis,        bool(no),
-    help("debug-intermodule-analysis", [
+    priv_help("debug-intermodule-analysis", [
         w("Output detailed debugging traces of the operation of the"),
         opt("--intermodule-analysis"), w("option.")])).
 
@@ -3535,7 +3532,7 @@ optdb(oc_opt_hh,    optopt_opt_dup_calls,              bool_special,
         w("Given multiple calls to a predicate or function"),
         w("with the same input arguments, optimize away all but one.")])).
 optdb(oc_opt_hh,    optopt_elim_excess_assigns,        bool_special,
-    help("excess-assign", [
+    priv_help("excess-assign", [
         w("Remove assignment unifications whose only effect"),
         w("is to give another name to the same value.")])).
 
@@ -3547,7 +3544,7 @@ optdb(oc_opt_hh,    inlining,                          bool_special,
         w("Ask the compiler to inline procedures"),
         w("using its usual heuristics.")])).
 optdb(oc_opt_hh,    optopt_inline_builtins,            bool_special,
-    help("inline-builtins", [
+    priv_help("inline-builtins", [
         w("Normally, the compiler implements builtin operations"),
         w("(such as arithmetic) using inline code. With"),
         opt("--no-inline-builtins", ","), w("the compiler will"),
@@ -3871,21 +3868,21 @@ optdb(oc_opt_hh,    optopt_analyse_regions,             bool_special,
 
 % XXX All the help text for these experimental options should be private.
 optdb(oc_opt_hh_exp, structure_sharing_analysis,        bool(no),
-    help("structure-sharing", [
+    priv_help("structure-sharing", [
         w("Perform structure sharing analysis.")])).
 optdb(oc_opt_hh_exp, structure_sharing_widening,        int(0),
-    arg_help("structure-sharing-widening", "N", [
+    priv_arg_help("structure-sharing-widening", "N", [
         w("Perform widening when the set of structure sharing pairs"),
         w("becomes larger than"), arg("N", "."),
         w("When n=0, widening is not enabled."),
         w("(default: 0).")])).
 optdb(oc_opt_hh_exp, structure_reuse_analysis,          bool(no),
-    alt_help("structure-reuse", ["ctgc"], [
+    priv_alt_help("structure-reuse", ["ctgc"], [
         w("Perform structure reuse analysis"),
         w("(Compile Time Garbage Collection).")])).
 optdb(oc_opt_hh_exp, structure_reuse_constraint,
                                         string("within_n_cells_difference"),
-    alt_arg_help("structure-reuse-constraint",
+    priv_alt_arg_help("structure-reuse-constraint",
             ["ctgc-constraint"],
             "{same_cons_id, within_n_cells_difference}", [
         w("Constraint on the way we allow structure reuse."),
@@ -3899,7 +3896,7 @@ optdb(oc_opt_hh_exp, structure_reuse_constraint,
         w("(The default is"), samp("within_n_cells_difference"),
         w("with the threshold being 0.)")])).
 optdb(oc_opt_hh_exp, structure_reuse_constraint_arg,    int(0),
-    alt_arg_help("structure-reuse-constraint-arg",
+    priv_alt_arg_help("structure-reuse-constraint-arg",
             ["ctgc-constraint-arg"], "max_difference", [
         w("Specify the maximum difference in arities between"),
         w("the terms whose memory cells can be reused on the one hand, and"),
@@ -4008,6 +4005,8 @@ optdb(oc_opt_hlm,   optimize_trail_usage,              bool(no),
     % It is intended for the benchmarking of trail usage optimization.
     % Otherwise, it should not be turned off, as doing so interferes with
     % the results of the trail usage analysis.
+    % XXX Actually, this option is used in two completely different ways
+    % in the LLDS and MLDS backends. The lines above apply to the MLDS version.
     priv_help("optimize-trail-usage", [
         w("Try to restrict trailing operations to those parts of the program"),
         w("that actually use the trail.")])).
@@ -5231,7 +5230,7 @@ optdb(oc_config,     conf_low_ptag_bits,                int(2),
 optdb(oc_config,    have_delay_slot,                   bool(no),
     % The `mmc' script may override the default if configure says
     % the machine has branch delay slots.
-    alt_help("branch-delay-slot", ["have-delay-slot"], [
+    priv_alt_help("branch-delay-slot", ["have-delay-slot"], [
         w("Assume that branch instructions have a delay slot."),
         w("Note that the value of this option is normally autoconfigured;"),
         w("its use should never be needed except for cross-compilation.")])).
@@ -5494,11 +5493,11 @@ optdb(oc_dev_ctrl,  should_pretest_equality,           bool(yes),
         w("a test for the two values being equal as words. Specifying"),
         opt("--no-should-pretest-equality"), w("prevents this.")])).
 optdb(oc_dev_ctrl,  fact_table_max_array_size,         int(1024),
-    arg_help("fact-table-max-array-size", "N", [
+    priv_arg_help("fact-table-max-array-size", "N", [
         w("Specify the maximum number of elements in a single"),
         code(":- pragma fact_table"), w("data array (default: 1024).")])).
 optdb(oc_dev_ctrl,  fact_table_hash_percent_full,      int(90),
-    arg_help("fact-table-hash-percent-full", "percentage", [
+    priv_arg_help("fact-table-hash-percent-full", "percentage", [
         w("Specify how full"), code(":- pragma fact_table"), w("hash tables"),
         w("should be allowed to get. Given as an integer percentage"),
         w("(valid range: 1 to 100, default: 90).")])).
@@ -5536,7 +5535,7 @@ optdb(oc_dev_ctrl,  opt_no_return_calls,               bool(yes),
     priv_help("opt-no-return-calls", [
         w("Do not optimize the stack usage of calls that cannot return.")])).
 optdb(oc_dev_ctrl,  compiler_sufficiently_recent,      bool(no),
-    alt_help("bug-intermod-2002-06-13", [
+    priv_alt_help("bug-intermod-2002-06-13", [
         "bug-intermod-2006-09-28",
         "bug-foreign_import-2002-08-06",
         "install-opt-files-2002-08-30",
@@ -5633,7 +5632,7 @@ optdb(oc_dev_ctrl,  control_granularity,               bool(no),
         w("handle, which may be specified at runtime or detected"),
         w("automatically.")])).
 optdb(oc_dev_ctrl,  distance_granularity,              int(0),
-    arg_help("distance-granularity", "distance", [
+    priv_arg_help("distance-granularity", "distance", [
         w("Control the granularity of parallel execution using the"),
         w("specified distance value.")])).
 optdb(oc_dev_ctrl,  implicit_parallelism,              bool(no),
@@ -5688,7 +5687,7 @@ optdb(oc_dev_dump,  dump_hlds,                         accumulating([]),
         w("Stage numbers range from 1-599."),
         w("Multiple dump options accumulate.")])).
 optdb(oc_dev_dump,  dump_hlds_pred_id,                 accumulating([]),
-    arg_help("dump-hlds-pred-id", "pred_id", [
+    priv_arg_help("dump-hlds-pred-id", "pred_id", [
         w("Dump the HLDS only of the predicate/function with the given"),
         w("pred id.")])).
 optdb(oc_dev_dump,  dump_hlds_pred_name,               accumulating([]),
@@ -5721,14 +5720,14 @@ optdb(oc_dev_dump,  dump_hlds_options,                 string(""),
         w("corresponding letter occurs in the option argument"),
         w("(see the Mercury User's Guide for details).")])).
 optdb(oc_dev_dump,  dump_hlds_inst_limit,              int(100),
-    arg_help("dump-hlds-inst-limit", "N", [
+    priv_arg_help("dump-hlds-inst-limit", "N", [
         w("Dump at most N insts in each inst table.")])).
 optdb(oc_dev_dump,  dump_hlds_inst_size_limit,         int(40),
-    arg_help("dump-hlds-inst-size-limit", "N", [
+    priv_arg_help("dump-hlds-inst-size-limit", "N", [
         w("Dump insts in an inst table"),
         w("only if their size does not exceed N.")])).
 optdb(oc_dev_dump,  dump_hlds_file_suffix,             string(""),
-    arg_help("dump-hlds-file-suffix", "suffix", [
+    priv_arg_help("dump-hlds-file-suffix", "suffix", [
         w("Append the given suffix to the names of the files created by the"),
         opt("--dump-hlds"), w("option.")])).
 optdb(oc_dev_dump,  dump_same_hlds,                    bool(no),
@@ -5736,7 +5735,7 @@ optdb(oc_dev_dump,  dump_same_hlds,                    bool(no),
         w("Create a file for a HLDS stage even if the file notes only that"),
         w("this stage is identical to the previously dumped HLDS stage.")])).
 optdb(oc_dev_dump,  dump_mlds,                         accumulating([]),
-    alt_arg_help("dump-mlds", ["mlds-dump"], "stage number or name", [
+    priv_alt_arg_help("dump-mlds", ["mlds-dump"], "stage number or name", [
         w("Dump the MLDS (medium level intermediate representation)"),
         w("after the specified stage, as C code, to"),
         help_text_texinfo(
@@ -5748,7 +5747,7 @@ optdb(oc_dev_dump,  dump_mlds,                         accumulating([]),
         w("Multiple dump options accumulate."),
         w("This option works only in MLDS grades that target C.")])).
 optdb(oc_dev_dump,  dump_mlds_pred_name,               accumulating([]),
-    arg_help("dump-mlds-pred-name", "pred or func name", [
+    priv_arg_help("dump-mlds-pred-name", "pred or func name", [
         w("Dump the MLDS (medium level intermediate representation)"),
         w("of the predicate or function with the specified name"),
         w("at the stages specified by the"), opt("--dump-mlds"), w("option."),
@@ -5756,7 +5755,7 @@ optdb(oc_dev_dump,  dump_mlds_pred_name,               accumulating([]),
         w("named by all the occurrences of this option (there may be"),
         w("more than one), and nothing else.")])).
 optdb(oc_dev_dump,  verbose_dump_mlds,                 accumulating([]),
-    alt_arg_help("verbose-dump-mlds", ["verbose-mlds-dump"],
+    priv_alt_arg_help("verbose-dump-mlds", ["verbose-mlds-dump"],
             "stage number or name", [
         w("Dump the internal compiler representation of the MLDS, after"),
         w("the specified stage, to"),

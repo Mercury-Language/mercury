@@ -509,6 +509,7 @@ Grade options
     --record-term-sizes-as-cells        (grade modifier: `.tsc')
         Augment each heap cell with its size in cells.
 
+    PRIVATE OPTION
     --threadscope                       (grade modifier: `.threadscope')
         Enable support for profiling parallel execution. using Threadscope.
         This option is supported only when targeting C in parallel grades with
@@ -616,7 +617,7 @@ Grade options
     PRIVATE OPTION
     --unboxed-float
         Do not box floating point numbers. This assumes that a Mercury float
-        will fit in a word. The C code needs to be compiled with
+        will fit in a word. The C code must be compiled with
         `-UMR_BOXED_FLOAT'. It may also need to be compiled with
         `-DMR_USE_SINGLE_PREC_FLOAT', if double precision floats do not fit
         into a word. Note that the value of this option is normally
@@ -625,10 +626,10 @@ Grade options
 
     PRIVATE OPTION
     --unboxed-int64s
-        Do not box 64-bit integer numbers This assumes that word size of the
-        target machine is at least 64-bits in size. The C code needs to be
-        compiled with `-UMR_BOXED_INT64S'. Note that the value of this option
-        is normally autoconfigured; its use should never be needed except for
+        Do not box 64-bit integer numbers. This assumes that word size of the
+        target machine is at least 64-bits in size. The C code must be compiled
+        with `-UMR_BOXED_INT64S'. Note that the value of this option is
+        normally autoconfigured; its use should never be needed except for
         cross-compilation.
 
     PRIVATE OPTION
@@ -796,9 +797,11 @@ Verbosity options
         Output each external command before it is run. Note that some commands
         will only be printed with `--verbose'.
 
+    PRIVATE OPTION
     --report-cmd-line-args
         Report the command line arguments.
 
+    PRIVATE OPTION
     --report-cmd-line-args-in-doterr
         Report the command line arguments for compilations whose output mmake
         normally redirects to a `.err' file.
@@ -813,6 +816,7 @@ Verbosity options
         Print an informational message for each type_spec pragma that the
         compiler generates to implement a type_spec_constrained_pred pragma.
 
+    PRIVATE OPTION
     --proc-size-statistics <filename>
         Append information about the size of each procedure in the module in
         terms of goals and variables to the end of the named file.
@@ -839,19 +843,24 @@ Verbosity options
         Output detailed debugging traces of type checking only for predicates
         and functions named by one of these options.
 
+    PRIVATE OPTION
     --debug-type-rep
         Output debugging traces of type representation choices.
 
+    PRIVATE OPTION
     -N
     --debug-modes
         Output debugging traces of the mode checking.
 
+    PRIVATE OPTION
     --debug-modes-verbose
         Output detailed debugging traces of the mode checking.
 
+    PRIVATE OPTION
     --debug-modes-minimal
         Output only minimal debugging traces of the mode checking.
 
+    PRIVATE OPTION
     --debug-modes-statistics
         Output statistics after each step of mode checking.
 
@@ -863,6 +872,7 @@ Verbosity options
     --no-debug-modes-goal-ids
         Output the id of the goal at all mode debug checkpoints.
 
+    PRIVATE OPTION
     --debug-modes-pred-id <pred_id>
         With `--debug-modes', restrict the debugging traces to the mode
         checking of the predicate or function with the specified pred id.
@@ -872,6 +882,7 @@ Verbosity options
         Output detailed debugging traces of the `--prop-mode-constraints'
         option.
 
+    PRIVATE OPTION
     --debug-determinism
     --debug-det
         Output detailed debugging traces of determinism analysis.
@@ -898,14 +909,17 @@ Verbosity options
         Output messages about the procedure specializations done by
         higher_order.m.
 
+    PRIVATE OPTION
     --debug-pd
         Output detailed debugging traces of the partial deduction and
         deforestation process.
 
+    PRIVATE OPTION
     --debug-indirect-reuse
         Output detailed debugging traces of the indirect reuse pass of the
         `--structure-reuse' option.
 
+    PRIVATE OPTION
     --debug-trail-usage
         Output detailed debugging traces of the `--analyse-trail-usage' option.
 
@@ -930,6 +944,7 @@ Verbosity options
         transformation of the predicate with the given predicate id. Effective
         only with the right trace flags.
 
+    PRIVATE OPTION
     --debug-liveness <pred_id>
         Output detailed debugging traces of the liveness analysis of the
         predicate with the given predicate id.
@@ -945,23 +960,28 @@ Verbosity options
         or function with the given pred id. Effectively only with the right
         trace flags.
 
+    PRIVATE OPTION
     --debug-opt
         Output detailed debugging traces of the optimization process.
 
+    PRIVATE OPTION
     --debug-opt-pred-id <pred_id>
     --no-debug-opt-pred-id
         Output detailed debugging traces of the optimization process only for
         the predicate/function with the specified pred id.
 
+    PRIVATE OPTION
     --debug-opt-pred-name <name>
     --no-debug-opt-pred-name
         Output detailed debugging traces of the optimization process only for
         the predicate/function with the specified name.
 
+    PRIVATE OPTION
     --debug-make
         Output detailed debugging traces of the operation of the `--make'
         option.
 
+    PRIVATE OPTION
     --debug-intermodule-analysis
         Output detailed debugging traces of the operation of the
         `--intermodule-analysis' option.
@@ -1772,6 +1792,7 @@ Optimization options
         Given multiple calls to a predicate or function with the same input
         arguments, optimize away all but one.
 
+    PRIVATE OPTION
     --excess-assign
         Remove assignment unifications whose only effect is to give another
         name to the same value.
@@ -1783,6 +1804,7 @@ Optimization options
     --inlining
         Ask the compiler to inline procedures using its usual heuristics.
 
+    PRIVATE OPTION
     --no-inline-builtins
         Normally, the compiler implements builtin operations (such as
         arithmetic) using inline code. With `--no-inline-builtins', the
@@ -2093,17 +2115,21 @@ Optimization options
 
     Experimental source-to-source optimizations
 
+    PRIVATE OPTION
     --structure-sharing
         Perform structure sharing analysis.
 
+    PRIVATE OPTION
     --structure-sharing-widening <N>
         Perform widening when the set of structure sharing pairs becomes larger
         than <N>. When n=0, widening is not enabled. (default: 0).
 
+    PRIVATE OPTION
     --structure-reuse
     --ctgc
         Perform structure reuse analysis (Compile Time Garbage Collection).
 
+    PRIVATE OPTION
     --structure-reuse-constraint {same_cons_id, within_n_cells_difference}
     --ctgc-constraint {same_cons_id, within_n_cells_difference}
         Constraint on the way we allow structure reuse. `same_cons_id'
@@ -2114,6 +2140,7 @@ Optimization options
         `--structure-reuse-constraint-arg'. (The default is
         `within_n_cells_difference' with the threshold being 0.)
 
+    PRIVATE OPTION
     --structure-reuse-constraint-arg <max_difference>
     --ctgc-constraint-arg <max_difference>
         Specify the maximum difference in arities between the terms whose
@@ -3242,6 +3269,7 @@ Options that record autoconfigured parameters
     --conf-low-tag-bits <N>
         Reserved for use by the `mmc' script.
 
+    PRIVATE OPTION
     --branch-delay-slot
     --have-delay-slot
         Assume that branch instructions have a delay slot. Note that the value
@@ -3576,10 +3604,12 @@ Options for developers only
         unify and compare predicates a test for the two values being equal as
         words. Specifying `--no-should-pretest-equality' prevents this.
 
+    PRIVATE OPTION
     --fact-table-max-array-size <N>
         Specify the maximum number of elements in a single
         `:- pragma fact_table' data array (default: 1024).
 
+    PRIVATE OPTION
     --fact-table-hash-percent-full <percentage>
         Specify how full `:- pragma fact_table' hash tables should be allowed
         to get. Given as an integer percentage (valid range: 1 to 100, default:
@@ -3612,6 +3642,7 @@ Options for developers only
     --no-opt-no-return-calls
         Do not optimize the stack usage of calls that cannot return.
 
+    PRIVATE OPTION
     --bug-intermod-2002-06-13
     --bug-intermod-2006-09-28
     --bug-foreign_import-2002-08-06
@@ -3705,6 +3736,7 @@ Options for developers only
         Don't try to generate more parallelism than the machine can handle,
         which may be specified at runtime or detected automatically.
 
+    PRIVATE OPTION
     --distance-granularity <distance>
         Control the granularity of parallel execution using the specified
         distance value.
@@ -3756,6 +3788,7 @@ Options for developers only
         specified stage to `<module>.hlds_dump.<num>-<name>'. Stage numbers
         range from 1-599. Multiple dump options accumulate.
 
+    PRIVATE OPTION
     --dump-hlds-pred-id <pred_id>
     --no-dump-hlds-pred-id
         Dump the HLDS only of the predicate/function with the given pred id.
@@ -3793,12 +3826,15 @@ Options for developers only
         detail is included in the dump if its corresponding letter occurs in
         the option argument (see the Mercury User's Guide for details).
 
+    PRIVATE OPTION
     --dump-hlds-inst-limit <N>
         Dump at most N insts in each inst table.
 
+    PRIVATE OPTION
     --dump-hlds-inst-size-limit <N>
         Dump insts in an inst table only if their size does not exceed N.
 
+    PRIVATE OPTION
     --dump-hlds-file-suffix <suffix>
         Append the given suffix to the names of the files created by the
         `--dump-hlds' option.
@@ -3807,6 +3843,7 @@ Options for developers only
         Create a file for a HLDS stage even if the file notes only that this
         stage is identical to the previously dumped HLDS stage.
 
+    PRIVATE OPTION
     --dump-mlds <stage number or name>
     --no-dump-mlds
     --mlds-dump <stage number or name>
@@ -3817,6 +3854,7 @@ Options for developers only
         Multiple dump options accumulate. This option works only in MLDS grades
         that target C.
 
+    PRIVATE OPTION
     --dump-mlds-pred-name <pred or func name>
     --no-dump-mlds-pred-name
         Dump the MLDS (medium level intermediate representation) of the
@@ -3825,6 +3863,7 @@ Options for developers only
         predicates and functions named by all the occurrences of this option
         (there may be more than one), and nothing else.
 
+    PRIVATE OPTION
     --verbose-dump-mlds <stage number or name>
     --no-verbose-dump-mlds
     --verbose-mlds-dump <stage number or name>
