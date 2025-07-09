@@ -6960,9 +6960,9 @@ Long flags may be negated by preceding them with @samp{no-},
 e.g.@: @samp{--no-verbose}.
 
 
-@node        Help options
-@section     Help options
-@cindex      Help options
+@node           Help options
+@section        Help options
+@cindex         Help options
 
 @table @asis
 
@@ -6993,9 +6993,9 @@ Print the compiler version.
 
 @end table
 
-@node        Options for modifying the command line
-@section     Options for modifying the command line
-@cindex      Options for modifying the command line
+@node           Options for modifying the command line
+@section        Options for modifying the command line
+@cindex         Options for modifying the command line
 
 @table @asis
 
@@ -7018,9 +7018,9 @@ one.)
 
 @end table
 
-@node        Options that give the compiler its overall task
-@section     Options that give the compiler its overall task
-@cindex      Options that give the compiler its overall task
+@node           Options that give the compiler its overall task
+@section        Options that give the compiler its overall task
+@cindex         Options that give the compiler its overall task
 
 @table @asis
 
@@ -7351,9 +7351,9 @@ optimization level up to the given maximum.
 
 @end table
 
-@node        Grade options
-@section     Grade options
-@cindex      Grade options
+@node           Grade options
+@section        Grade options
+@cindex         Grade options
 
 @menu
 * Grades and grade components:: Setting the compilation model
@@ -7366,9 +7366,9 @@ optimization level up to the given maximum.
 * Developer grade options:: Not for general use
 @end menu
 
-@node        Grades and grade components
-@subsection  Grades and grade components
-@cindex      Grades and grade components
+@node           Grades and grade components
+@subsection     Grades and grade components
+@cindex         Grades and grade components
 
 @table @asis
 
@@ -7407,9 +7407,9 @@ grades, will result in an error.
 
 @end table
 
-@node        Target options
-@subsection  Target options
-@cindex      Target options
+@node           Target options
+@subsection     Target options
+@cindex         Target options
 
 @table @asis
 
@@ -7470,9 +7470,9 @@ bytecode.
 
 @end table
 
-@node        LLDS backend grade options
-@subsection  LLDS backend grade options
-@cindex      LLDS backend grade options
+@node           LLDS backend grade options
+@subsection     LLDS backend grade options
+@cindex         LLDS backend grade options
 
 @table @asis
 
@@ -7511,9 +7511,9 @@ This option is used only when targeting C with
 
 @end table
 
-@node        MLDS backend grade options
-@subsection  MLDS backend grade options
-@cindex      MLDS backend grade options
+@node           MLDS backend grade options
+@subsection     MLDS backend grade options
+@cindex         MLDS backend grade options
 
 @table @asis
 
@@ -7547,9 +7547,17 @@ in Mercury programs. This option is used only when targeting C.
 
 @end table
 
-@node        Debugging grade options
-@subsection  Debugging grade options
-@cindex      Debugging grade options
+@node           Debugging grade options
+@subsection     Debugging grade options
+@cindex         Debugging grade options
+
+@menu
+* Mdb debugging grade options:: 
+@end menu
+
+@node           Mdb debugging grade options
+@subsubsection  Mdb debugging grade options
+@cindex         Mdb debugging grade options
 
 @table @asis
 
@@ -7572,6 +7580,14 @@ dependency tracking in the declarative debugger. See @ref{Debugging}
 for details. This option is supported only when targeting C with
 @samp{--no-high-level-code}.
 
+@end table
+
+@c @node           Ssdb debugging grade options
+@c @subsubsection  Ssdb debugging grade options
+@c @cindex         Ssdb debugging grade options
+
+@c @table @asis
+
 @c @sp 1
 @c @item @code{--source-to-source-debug} (grade modifier: @samp{.ssdebug})
 @c @itemx @code{--ss-debug}
@@ -7582,11 +7598,20 @@ for details. This option is supported only when targeting C with
 @c @cindex .ssdebug (grade modifier
 @c Enable the source-to-source debugging transform.
 
-@end table
+@c @end table
 
-@node        Profiling grade options
-@subsection  Profiling grade options
-@cindex      Profiling grade options
+@node           Profiling grade options
+@subsection     Profiling grade options
+@cindex         Profiling grade options
+
+@menu
+* Mprof profiling grade options:: 
+* Deep profiling grade options:: 
+@end menu
+
+@node           Mprof profiling grade options
+@subsubsection  Mprof profiling grade options
+@cindex         Mprof profiling grade options
 
 @table @asis
 
@@ -7653,6 +7678,14 @@ This option is supported only when targeting C.
 @c @cindex .profmem (grade modifier
 @c Similar to @samp{--memory-profiling}, except that it only gathers
 @c memory usage information, not call counts.
+
+@end table
+
+@node           Deep profiling grade options
+@subsubsection  Deep profiling grade options
+@cindex         Deep profiling grade options
+
+@table @asis
 
 @sp 1
 @item @code{--deep-profiling} (grade modifier: @samp{.profdeep})
@@ -7758,6 +7791,14 @@ Select deep profiling options that are suitable for profiler directed
 implicit parallelism. @samp{--profile-for-implicit-parallelism} is a
 deprecated synonym for this option.
 
+@end table
+
+@c @node           Complexity profiling grade options
+@c @subsubsection  Complexity profiling grade options
+@c @cindex         Complexity profiling grade options
+
+@c @table @asis
+
 @c @sp 1
 @c @item @code{--experimental-complexity @var{filename}}
 @c @findex --experimental-complexity
@@ -7777,6 +7818,14 @@ deprecated synonym for this option.
 @c @cindex .tsc (grade modifier
 @c Augment each heap cell with its size in cells.
 
+@c @end table
+
+@c @node           Threadscope profiling grade options
+@c @subsubsection  Threadscope profiling grade options
+@c @cindex         Threadscope profiling grade options
+
+@c @table @asis
+
 @c @sp 1
 @c @item @code{--threadscope} (grade modifier: @samp{.threadscope})
 @c @findex --threadscope
@@ -7786,11 +7835,11 @@ deprecated synonym for this option.
 @c @samp{--no-high-level-code}, and only on some processors. See
 @c README.ThreadScope and @ref{Using threadscope} for details.
 
-@end table
+@c @end table
 
-@node        Optional feature grade options
-@subsection  Optional feature grade options
-@cindex      Optional feature grade options
+@node           Optional feature grade options
+@subsection     Optional feature grade options
+@cindex         Optional feature grade options
 
 @table @asis
 
@@ -7910,9 +7959,9 @@ The default is @samp{no}.
 
 @end table
 
-@node        Developer grade options
-@subsection  Developer grade options
-@cindex      Developer grade options
+@node           Developer grade options
+@subsection     Developer grade options
+@cindex         Developer grade options
 
 @table @asis
 
@@ -8041,9 +8090,9 @@ yield a different value.
 
 @end table
 
-@node        Options that control inference
-@section     Options that control inference
-@cindex      Options that control inference
+@node           Options that control inference
+@section        Options that control inference
+@cindex         Options that control inference
 
 @table @asis
 
@@ -8112,9 +8161,9 @@ program development. (See also the documentation for the
 
 @end table
 
-@node        Options specifying the intended semantics
-@section     Options specifying the intended semantics
-@cindex      Options specifying the intended semantics
+@node           Options specifying the intended semantics
+@section        Options specifying the intended semantics
+@cindex         Options specifying the intended semantics
 
 @table @asis
 
@@ -8148,9 +8197,9 @@ optimised away.
 
 @end table
 
-@node        Verbosity options
-@section     Verbosity options
-@cindex      Verbosity options
+@node           Verbosity options
+@section        Verbosity options
+@cindex         Verbosity options
 
 @table @asis
 
@@ -8469,18 +8518,18 @@ will only be printed with @samp{--verbose}.
 
 @end table
 
-@node        Diagnostics options
-@section     Diagnostics options
-@cindex      Diagnostics options
+@node           Diagnostics options
+@section        Diagnostics options
+@cindex         Diagnostics options
 
 @menu
 * Options that control diagnostics:: 
 * Options that control color in diagnostics:: 
 @end menu
 
-@node        Options that control diagnostics
-@subsection  Options that control diagnostics
-@cindex      Options that control diagnostics
+@node           Options that control diagnostics
+@subsection     Options that control diagnostics
+@cindex         Options that control diagnostics
 
 @table @asis
 
@@ -8560,9 +8609,9 @@ the typechecker will not process the predicate or function any further.
 
 @end table
 
-@node        Options that control color in diagnostics
-@subsection  Options that control color in diagnostics
-@cindex      Options that control color in diagnostics
+@node           Options that control color in diagnostics
+@subsection     Options that control color in diagnostics
+@cindex         Options that control color in diagnostics
 
 @table @asis
 
@@ -8648,9 +8697,9 @@ specifications, please see @ref{Color schemes}.
 
 @end table
 
-@node        Warning options
-@section     Warning options
-@cindex      Warning options
+@node           Warning options
+@section        Warning options
+@cindex         Warning options
 
 @menu
 * Warnings about possible incorrectness:: 
@@ -8660,9 +8709,22 @@ specifications, please see @ref{Color schemes}.
 * Options about halting for warnings:: 
 @end menu
 
-@node        Warnings about possible incorrectness
-@subsection  Warnings about possible incorrectness
-@cindex      Warnings about possible incorrectness
+@node           Warnings about possible incorrectness
+@subsection     Warnings about possible incorrectness
+@cindex         Warnings about possible incorrectness
+
+@menu
+* Warnings about possible module incorrectness:: 
+* Warnings about possible inst incorrectness:: 
+* Warnings about possible predicate incorrectness:: 
+* Warnings about possible pragma incorrectness:: 
+* Warnings about possible goal incorrectness:: 
+* Warnings about missing files:: 
+@end menu
+
+@node           Warnings about possible module incorrectness
+@subsubsection  Warnings about possible module incorrectness
+@cindex         Warnings about possible module incorrectness
 
 @table @asis
 
@@ -8704,6 +8766,123 @@ module, but not used in the interface of that module.
 Do not generate warnings for module names that either duplicate the
 name of a module in the Mercury standard library, or contain a
 subsequence of name components that do so.
+
+@end table
+
+@node           Warnings about possible inst incorrectness
+@subsubsection  Warnings about possible inst incorrectness
+@cindex         Warnings about possible inst incorrectness
+
+@table @asis
+
+@sp 1
+@item @code{--no-warn-insts-without-matching-type}
+@findex --warn-insts-without-matching-type
+@findex --no-warn-insts-without-matching-type
+Do not warn about insts that are not consistent with any of the types
+in scope.
+
+@sp 1
+@item @code{--warn-insts-with-functors-without-type}
+@findex --warn-insts-with-functors-without-type
+Warn about insts that do specify functors, but do not specify what type
+they are for.
+
+@end table
+
+@node           Warnings about possible predicate incorrectness
+@subsubsection  Warnings about possible predicate incorrectness
+@cindex         Warnings about possible predicate incorrectness
+
+@table @asis
+
+@sp 1
+@item @code{--no-warn-det-decls-too-lax}
+@findex --warn-det-decls-too-lax
+@findex --no-warn-det-decls-too-lax
+Do not warn about determinism declarations which could be stricter.
+
+@sp 1
+@item @code{--no-warn-inferred-erroneous}
+@findex --warn-inferred-erroneous
+@findex --no-warn-inferred-erroneous
+Do not warn about procedures whose determinism is inferred to be
+@samp{erroneous}, but whose determinism declarations are looser.
+
+@sp 1
+@item @code{--no-warn-unresolved-polymorphism}
+@findex --warn-unresolved-polymorphism
+@findex --no-warn-unresolved-polymorphism
+Do not warn about unresolved polymorphism, which occurs when the type
+of a variable contains a type variable that is not bound to an actual
+type, even though it should be.
+
+@sp 1
+@item @code{--no-warn-stubs}
+@findex --warn-stubs
+@findex --no-warn-stubs
+Do not warn about procedures for which there are no clauses. Note that
+this option is meaningful only if the @samp{--allow-stubs} option is
+enabled.
+
+@sp 1
+@item @code{--no-warn-non-term-special-preds}
+@findex --warn-non-term-special-preds
+@findex --no-warn-non-term-special-preds
+Do not warn about types that have user-defined equality or comparison
+predicates that cannot be proved to terminate. This option is
+meaningful only if termination analysis is enabled.
+
+@sp 1
+@item @code{--warn-non-stratification}
+@findex --warn-non-stratification
+Warn about possible non-stratification of the predicates and/or
+functions in the module. Non-stratification occurs when a predicate or
+function can call itself through negation through some path in its call
+graph.
+
+@end table
+
+@node           Warnings about possible pragma incorrectness
+@subsubsection  Warnings about possible pragma incorrectness
+@cindex         Warnings about possible pragma incorrectness
+
+@table @asis
+
+@sp 1
+@item @code{--no-warn-ambiguous-pragmas}
+@itemx @code{--no-warn-ambiguous-pragma}
+@findex --warn-ambiguous-pragmas
+@findex --no-warn-ambiguous-pragmas
+@findex --warn-ambiguous-pragma
+@findex --no-warn-ambiguous-pragma
+Do not warn about pragmas that do not specify whether they are for a
+predicate or a function, even when there is both a predicate and a
+function with the given name and arity.
+
+@sp 1
+@item @code{--warn-potentially-ambiguous-pragmas}
+@itemx @code{--warn-potentially-ambiguous-pragma}
+@findex --warn-potentially-ambiguous-pragmas
+@findex --warn-potentially-ambiguous-pragma
+Warn about pragmas that do not specify whether they are for a predicate
+or a function.
+
+@sp 1
+@item @code{--no-warn-table-with-inline}
+@findex --warn-table-with-inline
+@findex --no-warn-table-with-inline
+Do not warn about tabled procedures that also have a
+@code{pragma inline} declaration. (This combination does not work,
+because inlined copies of procedure bodies cannot be tabled.)
+
+@end table
+
+@node           Warnings about possible goal incorrectness
+@subsubsection  Warnings about possible goal incorrectness
+@cindex         Warnings about possible goal incorrectness
+
+@table @asis
 
 @sp 1
 @item @code{--no-warn-singleton-variables}
@@ -8774,90 +8953,13 @@ leading to infinite recursion.
 @findex --warn-unused-args
 Warn about predicate or function arguments which are not used.
 
-@sp 1
-@item @code{--no-warn-det-decls-too-lax}
-@findex --warn-det-decls-too-lax
-@findex --no-warn-det-decls-too-lax
-Do not warn about determinism declarations which could be stricter.
+@end table
 
-@sp 1
-@item @code{--no-warn-inferred-erroneous}
-@findex --warn-inferred-erroneous
-@findex --no-warn-inferred-erroneous
-Do not warn about procedures whose determinism is inferred to be
-@samp{erroneous}, but whose determinism declarations are looser.
+@node           Warnings about missing files
+@subsubsection  Warnings about missing files
+@cindex         Warnings about missing files
 
-@sp 1
-@item @code{--no-warn-ambiguous-pragmas}
-@itemx @code{--no-warn-ambiguous-pragma}
-@findex --warn-ambiguous-pragmas
-@findex --no-warn-ambiguous-pragmas
-@findex --warn-ambiguous-pragma
-@findex --no-warn-ambiguous-pragma
-Do not warn about pragmas that do not specify whether they are for a
-predicate or a function, even when there is both a predicate and a
-function with the given name and arity.
-
-@sp 1
-@item @code{--warn-potentially-ambiguous-pragmas}
-@itemx @code{--warn-potentially-ambiguous-pragma}
-@findex --warn-potentially-ambiguous-pragmas
-@findex --warn-potentially-ambiguous-pragma
-Warn about pragmas that do not specify whether they are for a predicate
-or a function.
-
-@sp 1
-@item @code{--no-warn-table-with-inline}
-@findex --warn-table-with-inline
-@findex --no-warn-table-with-inline
-Do not warn about tabled procedures that also have a
-@code{pragma inline} declaration. (This combination does not work,
-because inlined copies of procedure bodies cannot be tabled.)
-
-@sp 1
-@item @code{--no-warn-unresolved-polymorphism}
-@findex --warn-unresolved-polymorphism
-@findex --no-warn-unresolved-polymorphism
-Do not warn about unresolved polymorphism, which occurs when the type
-of a variable contains a type variable that is not bound to an actual
-type, even though it should be.
-
-@sp 1
-@item @code{--no-warn-stubs}
-@findex --warn-stubs
-@findex --no-warn-stubs
-Do not warn about procedures for which there are no clauses. Note that
-this option is meaningful only if the @samp{--allow-stubs} option is
-enabled.
-
-@sp 1
-@item @code{--no-warn-non-term-special-preds}
-@findex --warn-non-term-special-preds
-@findex --no-warn-non-term-special-preds
-Do not warn about types that have user-defined equality or comparison
-predicates that cannot be proved to terminate. This option is
-meaningful only if termination analysis is enabled.
-
-@sp 1
-@item @code{--warn-non-stratification}
-@findex --warn-non-stratification
-Warn about possible non-stratification of the predicates and/or
-functions in the module. Non-stratification occurs when a predicate or
-function can call itself through negation through some path in its call
-graph.
-
-@sp 1
-@item @code{--no-warn-insts-without-matching-type}
-@findex --warn-insts-without-matching-type
-@findex --no-warn-insts-without-matching-type
-Do not warn about insts that are not consistent with any of the types
-in scope.
-
-@sp 1
-@item @code{--warn-insts-with-functors-without-type}
-@findex --warn-insts-with-functors-without-type
-Warn about insts that do specify functors, but do not specify what type
-they are for.
+@table @asis
 
 @sp 1
 @item @code{--no-warn-undefined-options-variables}
@@ -8891,9 +8993,9 @@ by running @code{mmake} @file{@var{mainmodule}.depend}.
 
 @end table
 
-@node        Warnings about possible performance issues
-@subsection  Warnings about possible performance issues
-@cindex      Warnings about possible performance issues
+@node           Warnings about possible performance issues
+@subsection     Warnings about possible performance issues
+@cindex         Warnings about possible performance issues
 
 @table @asis
 
@@ -8945,9 +9047,20 @@ not tail calls.
 
 @end table
 
-@node        Warnings about programming style
-@subsection  Warnings about programming style
-@cindex      Warnings about programming style
+@node           Warnings about programming style
+@subsection     Warnings about programming style
+@cindex         Warnings about programming style
+
+@menu
+* Warnings about style issues with predicates:: 
+* Warnings about style issues with goals:: 
+* Warnings about missing order:: 
+* Warnings about missing contiguity:: 
+@end menu
+
+@node           Warnings about style issues with predicates
+@subsubsection  Warnings about style issues with predicates
+@cindex         Warnings about style issues with predicates
 
 @table @asis
 
@@ -8965,6 +9078,27 @@ ever called.
 @findex --warn-dead-procedures
 @findex --warn-dead-procs
 Warn about procedures which are never called.
+
+@sp 1
+@item @code{--warn-can-fail-function}
+@findex --warn-can-fail-function
+Warn about functions that can fail. (Such functions should be replaced
+by semidet predicates.)
+
+@sp 1
+@item @code{--no-warn-unneeded-mode-specific-clause}
+@findex --warn-unneeded-mode-specific-clause
+@findex --no-warn-unneeded-mode-specific-clause
+Do not warn about clauses that unnecessarily specify the modes of their
+arguments.
+
+@end table
+
+@node           Warnings about style issues with goals
+@subsubsection  Warnings about style issues with goals
+@cindex         Warnings about style issues with goals
+
+@table @asis
 
 @sp 1
 @item @code{--no-warn-simple-code}
@@ -9042,17 +9176,36 @@ whether there are any mismatches between the format string and the
 supplied values.
 
 @sp 1
-@item @code{--warn-can-fail-function}
-@findex --warn-can-fail-function
-Warn about functions that can fail. (Such functions should be replaced
-by semidet predicates.)
+@item @code{--warn-suspicious-foreign-code}
+@findex --warn-suspicious-foreign-code
+Warn about possible errors in the bodies of foreign code pragmas.
 
 @sp 1
-@item @code{--no-warn-unneeded-mode-specific-clause}
-@findex --warn-unneeded-mode-specific-clause
-@findex --no-warn-unneeded-mode-specific-clause
-Do not warn about clauses that unnecessarily specify the modes of their
-arguments.
+Note that since the compiler's ability to parse foreign language code
+is limited, some warnings reported by this option may be spurious, and
+some actual errors may not be detected at all.
+
+@sp 1
+@item @code{--warn-suspicious-foreign-procs}
+@findex --warn-suspicious-foreign-procs
+Warn about possible errors in the bodies of foreign_proc pragmas. When
+enabled, the compiler attempts to determine whether the success
+indicator for a foreign procedure is correctly set, and whether the
+foreign procedure body contains operations that it should not contain,
+such as @code{return} statements in a C foreign procedure.
+
+@sp 1
+Note that since the compiler's ability to parse foreign language code
+is limited, some warnings reported by this option may be spurious, and
+some actual errors may not be detected at all.
+
+@end table
+
+@node           Warnings about missing order
+@subsubsection  Warnings about missing order
+@cindex         Warnings about missing order
+
+@table @asis
 
 @sp 1
 @item @code{--warn-unsorted-import-blocks}
@@ -9081,6 +9234,14 @@ order of the declarations for either the exported predicates and
 functions of the module, or for the nonexported predicates and
 functions of the module. Applies for definitions by either Mercury
 clauses or foreign_proc pragmas.
+
+@end table
+
+@node           Warnings about missing contiguity
+@subsubsection  Warnings about missing contiguity
+@cindex         Warnings about missing contiguity
+
+@table @asis
 
 @sp 1
 @item @code{--no-warn-non-contiguous-decls}
@@ -9115,35 +9276,11 @@ once, with each option value specifying a distinct set of predicates
 and/or function names that may be intermingled. Each name must uniquely
 specify a predicate or a function.
 
-@sp 1
-@item @code{--warn-suspicious-foreign-code}
-@findex --warn-suspicious-foreign-code
-Warn about possible errors in the bodies of foreign code pragmas.
-
-@sp 1
-Note that since the compiler's ability to parse foreign language code
-is limited, some warnings reported by this option may be spurious, and
-some actual errors may not be detected at all.
-
-@sp 1
-@item @code{--warn-suspicious-foreign-procs}
-@findex --warn-suspicious-foreign-procs
-Warn about possible errors in the bodies of foreign_proc pragmas. When
-enabled, the compiler attempts to determine whether the success
-indicator for a foreign procedure is correctly set, and whether the
-foreign procedure body contains operations that it should not contain,
-such as @code{return} statements in a C foreign procedure.
-
-@sp 1
-Note that since the compiler's ability to parse foreign language code
-is limited, some warnings reported by this option may be spurious, and
-some actual errors may not be detected at all.
-
 @end table
 
-@node        Options that control warnings
-@subsection  Options that control warnings
-@cindex      Options that control warnings
+@node           Options that control warnings
+@subsection     Options that control warnings
+@cindex         Options that control warnings
 
 @table @asis
 
@@ -9185,9 +9322,9 @@ Do not warn if targets specified on the command line with
 
 @end table
 
-@node        Options about halting for warnings
-@subsection  Options about halting for warnings
-@cindex      Options about halting for warnings
+@node           Options about halting for warnings
+@subsection     Options about halting for warnings
+@cindex         Options about halting for warnings
 
 @table @asis
 
@@ -9252,9 +9389,9 @@ reported when compiling the modules that import them.)
 
 @end table
 
-@node        Options that request information
-@section     Options that request information
-@cindex      Options that request information
+@node           Options that request information
+@section        Options that request information
+@cindex         Options that request information
 
 @table @asis
 
@@ -9307,9 +9444,9 @@ coupling between the new module and the old.
 
 @end table
 
-@node        Options that ask for informational files
-@section     Options that ask for informational files
-@cindex      Options that ask for informational files
+@node           Options that ask for informational files
+@section        Options that ask for informational files
+@cindex         Options that ask for informational files
 
 @table @asis
 
@@ -9425,9 +9562,9 @@ imports module B.
 
 @end table
 
-@node        Controlling trace goals
-@section     Controlling trace goals
-@cindex      Controlling trace goals
+@node           Controlling trace goals
+@section        Controlling trace goals
+@cindex         Controlling trace goals
 
 @table @asis
 
@@ -9440,9 +9577,9 @@ Enable the trace goals that depend on the @var{keyword} trace flag.
 
 @end table
 
-@node        Preparing code for mdb debugging
-@section     Preparing code for mdb debugging
-@cindex      Preparing code for mdb debugging
+@node           Preparing code for mdb debugging
+@section        Preparing code for mdb debugging
+@cindex         Preparing code for mdb debugging
 
 @table @asis
 
@@ -9547,9 +9684,9 @@ arguments, even if stack tracing is not supported in general.
 
 @end table
 
-@c @node        Preparing code for ssdb debugging
-@c @section     Preparing code for ssdb debugging
-@c @cindex      Preparing code for ssdb debugging
+@c @node           Preparing code for ssdb debugging
+@c @section        Preparing code for ssdb debugging
+@c @cindex         Preparing code for ssdb debugging
 
 @c @table @asis
 
@@ -9566,9 +9703,9 @@ arguments, even if stack tracing is not supported in general.
 
 @c @end table
 
-@node        Preparing code for mdprof profiling
-@section     Preparing code for mdprof profiling
-@cindex      Preparing code for mdprof profiling
+@node           Preparing code for mdprof profiling
+@section        Preparing code for mdprof profiling
+@cindex         Preparing code for mdprof profiling
 
 @table @asis
 
@@ -9581,9 +9718,9 @@ Do not disable optimizations that can distort deep profiles.
 
 @end table
 
-@node        Optimization options
-@section     Optimization options
-@cindex      Optimization options
+@node           Optimization options
+@section        Optimization options
+@cindex         Optimization options
 
 @menu
 * Overall control of optimizations:: 
@@ -9593,9 +9730,9 @@ Do not disable optimizations that can distort deep profiles.
 * Optimizations specific to low level code:: 
 @end menu
 
-@node        Overall control of optimizations
-@subsection  Overall control of optimizations
-@cindex      Overall control of optimizations
+@node           Overall control of optimizations
+@subsection     Overall control of optimizations
+@cindex         Overall control of optimizations
 
 @table @asis
 
@@ -9737,9 +9874,9 @@ not build any others.
 
 @end table
 
-@node        Source-to-source optimizations
-@subsection  Source-to-source optimizations
-@cindex      Source-to-source optimizations
+@node           Source-to-source optimizations
+@subsection     Source-to-source optimizations
+@cindex         Source-to-source optimizations
 
 @table @asis
 
@@ -9922,24 +10059,6 @@ conjunction with @samp{--inline-compound-threshold}.
 Don't inline a call if it would result in a procedure containing more
 than @var{threshold} variables. Procedures containing large numbers of
 variables can cause slow compilation.
-
-@sp 1
-@item @code{--inline-linear-tail-rec-sccs}
-@findex --inline-linear-tail-rec-sccs
-Given a set of mutually recursive procedures (an SCC, or strongly
-connected component, of the call graph) in which each procedure
-contains exactly tail call to a procedure in the SCC, so that the tail
-recursive calls form a linear chain through the SCC, inline the callee
-at every one of those mutually tail recursive call sites. This converts
-mutual tail recursion into self tail recursion, which the MLDS backend
-can turn into code that runs in constant stack space.
-
-@c @sp 1
-@c @item @code{--inline-linear-tail-rec-sccs-max-extra @var{E}}
-@c @findex --inline-linear-tail-rec-sccs-max-extra
-@c When considering whether to apply @samp{--inline-linear-tail-rec-sccs}
-@c to an SCC containing @var{N} procedures, allow the SCC to contain up to
-@c @samp{N+E} mutually recursive tail calls.
 
 @sp 1
 @item @code{--optimize-higher-order}
@@ -10331,9 +10450,9 @@ them using calls to those operations in the standard library.
 
 @end table
 
-@c @node        Experimental source-to-source optimizations
-@c @subsection  Experimental source-to-source optimizations
-@c @cindex      Experimental source-to-source optimizations
+@c @node           Experimental source-to-source optimizations
+@c @subsection     Experimental source-to-source optimizations
+@c @cindex         Experimental source-to-source optimizations
 
 @c @table @asis
 
@@ -10396,9 +10515,9 @@ them using calls to those operations in the standard library.
 
 @c @end table
 
-@node        Optimizations during code generation
-@subsection  Optimizations during code generation
-@cindex      Optimizations during code generation
+@node           Optimizations during code generation
+@subsection     Optimizations during code generation
+@cindex         Optimizations during code generation
 
 @table @asis
 
@@ -10536,9 +10655,9 @@ cell to be allocated cannot contain pointers.
 
 @end table
 
-@node        Optimizations specific to high level code
-@subsection  Optimizations specific to high level code
-@cindex      Optimizations specific to high level code
+@node           Optimizations specific to high level code
+@subsection     Optimizations specific to high level code
+@cindex         Optimizations specific to high level code
 
 @table @asis
 
@@ -10603,9 +10722,9 @@ Optimization levels 5 to 6 automatically set
 
 @end table
 
-@node        Optimizations specific to low level code
-@subsection  Optimizations specific to low level code
-@cindex      Optimizations specific to low level code
+@node           Optimizations specific to low level code
+@subsection     Optimizations specific to low level code
+@cindex         Optimizations specific to low level code
 
 @table @asis
 
@@ -10885,9 +11004,9 @@ Optimization level 6 automatically sets --use-macro-for-redo-fail.
 
 @end table
 
-@node        Options that control transitive intermodule optimization
-@section     Options that control transitive intermodule optimization
-@cindex      Options that control transitive intermodule optimization
+@node           Options that control transitive intermodule optimization
+@section        Options that control transitive intermodule optimization
+@cindex         Options that control transitive intermodule optimization
 
 @table @asis
 
@@ -10907,9 +11026,9 @@ in top-down order to @file{@var{module}.order}. Effective only if
 
 @end table
 
-@node        Options that control program analyses
-@section     Options that control program analyses
-@cindex      Options that control program analyses
+@node           Options that control program analyses
+@section        Options that control program analyses
+@cindex         Options that control program analyses
 
 @table @asis
 
@@ -11110,9 +11229,9 @@ reduce the overhead of minimal model tabling.
 
 @end table
 
-@node        Options that ask for modified output
-@section     Options that ask for modified output
-@cindex      Options that ask for modified output
+@node           Options that ask for modified output
+@section        Options that ask for modified output
+@cindex         Options that ask for modified output
 
 @table @asis
 
@@ -11165,9 +11284,9 @@ compiler. (The code may be easier to understand if you also use the
 
 @end table
 
-@node        Options for controlling mmc --make
-@section     Options for controlling mmc --make
-@cindex      Options for controlling mmc --make
+@node           Options for controlling mmc --make
+@section        Options for controlling mmc --make
+@cindex         Options for controlling mmc --make
 
 @table @asis
 
@@ -11222,9 +11341,9 @@ file containing the main module given first.
 
 @end table
 
-@node        Options for target language compilation
-@section     Options for target language compilation
-@cindex      Options for target language compilation
+@node           Options for target language compilation
+@section        Options for target language compilation
+@cindex         Options for target language compilation
 
 @menu
 * General options for compiling target language code:: 
@@ -11233,9 +11352,9 @@ file containing the main module given first.
 * Options for compiling C# code:: 
 @end menu
 
-@node        General options for compiling target language code
-@subsection  General options for compiling target language code
-@cindex      General options for compiling target language code
+@node           General options for compiling target language code
+@subsection     General options for compiling target language code
+@cindex         General options for compiling target language code
 
 @table @asis
 
@@ -11260,9 +11379,9 @@ processes the target code generated by mmc.
 
 @end table
 
-@node        Options for compiling C code
-@subsection  Options for compiling C code
-@cindex      Options for compiling C code
+@node           Options for compiling C code
+@subsection     Options for compiling C code
+@cindex         Options for compiling C code
 
 @table @asis
 
@@ -11415,9 +11534,9 @@ will be quoted when passed to the shell.
 
 @end table
 
-@node        Options for compiling Java code
-@subsection  Options for compiling Java code
-@cindex      Options for compiling Java code
+@node           Options for compiling Java code
+@subsection     Options for compiling Java code
+@cindex         Options for compiling Java code
 
 @table @asis
 
@@ -11482,9 +11601,9 @@ word will be quoted when passed to the shell.
 
 @end table
 
-@node        Options for compiling C# code
-@subsection  Options for compiling C# code
-@cindex      Options for compiling C# code
+@node           Options for compiling C# code
+@subsection     Options for compiling C# code
+@cindex         Options for compiling C# code
 
 @table @asis
 
@@ -11523,9 +11642,9 @@ will be quoted when passed to the shell.
 
 @end table
 
-@node        Options for linking
-@section     Options for linking
-@cindex      Options for linking
+@node           Options for linking
+@section        Options for linking
+@cindex         Options for linking
 
 @menu
 * General options for linking:: 
@@ -11535,9 +11654,9 @@ will be quoted when passed to the shell.
 * Options for linking just C# code:: 
 @end menu
 
-@node        General options for linking
-@subsection  General options for linking
-@cindex      General options for linking
+@node           General options for linking
+@subsection     General options for linking
+@cindex         General options for linking
 
 @table @asis
 
@@ -11609,9 +11728,9 @@ compiler not to use the Mercury standard library, and also implies
 
 @end table
 
-@node        Options for linking C or C# code
-@subsection  Options for linking C or C# code
-@cindex      Options for linking C or C# code
+@node           Options for linking C or C# code
+@subsection     Options for linking C or C# code
+@cindex         Options for linking C or C# code
 
 @table @asis
 
@@ -11650,9 +11769,9 @@ Link with the specified library.
 
 @end table
 
-@node        Options for linking just C code
-@subsection  Options for linking just C code
-@cindex      Options for linking just C code
+@node           Options for linking just C code
+@subsection     Options for linking just C code
+@cindex         Options for linking just C code
 
 @table @asis
 
@@ -11900,9 +12019,9 @@ against Mercury static libraries.
 
 @end table
 
-@node        Options for linking just Java code
-@subsection  Options for linking just Java code
-@cindex      Options for linking just Java code
+@node           Options for linking just Java code
+@subsection     Options for linking just Java code
+@cindex         Options for linking just Java code
 
 @table @asis
 
@@ -11913,9 +12032,9 @@ Specify the command used to produce Java archive (JAR) files.
 
 @end table
 
-@node        Options for linking just C# code
-@subsection  Options for linking just C# code
-@cindex      Options for linking just C# code
+@node           Options for linking just C# code
+@subsection     Options for linking just C# code
+@cindex         Options for linking just C# code
 
 @table @asis
 
@@ -11928,9 +12047,9 @@ library assemblies with the C# back-end.)
 
 @end table
 
-@node        Options controlling searches for files
-@section     Options controlling searches for files
-@cindex      Options controlling searches for files
+@node           Options controlling searches for files
+@section        Options controlling searches for files
+@cindex         Options controlling searches for files
 
 @table @asis
 
@@ -12147,9 +12266,9 @@ only the arguments of @samp{--intermod-directory} options.
 
 @end table
 
-@node        Options controlling the library installation process
-@section     Options controlling the library installation process
-@cindex      Options controlling the library installation process
+@node           Options controlling the library installation process
+@section        Options controlling the library installation process
+@cindex         Options controlling the library installation process
 
 @table @asis
 
@@ -12257,9 +12376,9 @@ Install the specified C header file with along with a Mercury library.
 
 @end table
 
-@node        Options specifying properties of the environment
-@section     Options specifying properties of the environment
-@cindex      Options specifying properties of the environment
+@node           Options specifying properties of the environment
+@section        Options specifying properties of the environment
+@cindex         Options specifying properties of the environment
 
 @table @asis
 
@@ -12338,9 +12457,9 @@ This option uses temporary files to pass arguments to sub-commands.
 
 @end table
 
-@node        Options that record autoconfigured parameters
-@section     Options that record autoconfigured parameters
-@cindex      Options that record autoconfigured parameters
+@node           Options that record autoconfigured parameters
+@section        Options that record autoconfigured parameters
+@cindex         Options that record autoconfigured parameters
 
 @table @asis
 
@@ -12408,9 +12527,9 @@ be useful to avoid exceeding fixed limits imposed by some C compilers.
 
 @end table
 
-@c @node        Options reserved for Mercury.config files
-@c @section     Options reserved for Mercury.config files
-@c @cindex      Options reserved for Mercury.config files
+@c @node           Options reserved for Mercury.config files
+@c @section        Options reserved for Mercury.config files
+@c @cindex         Options reserved for Mercury.config files
 
 @c @table @asis
 
@@ -12644,9 +12763,9 @@ be useful to avoid exceeding fixed limits imposed by some C compilers.
 
 @c @end table
 
-@node        Options for developers only
-@section     Options for developers only
-@cindex      Options for developers only
+@node           Options for developers only
+@section        Options for developers only
+@cindex         Options for developers only
 
 @menu
 * Operation selection options for developers only:: 
@@ -12654,9 +12773,9 @@ be useful to avoid exceeding fixed limits imposed by some C compilers.
 * Options intended for internal use by the compiler only:: 
 @end menu
 
-@node        Operation selection options for developers only
-@subsection  Operation selection options for developers only
-@cindex      Operation selection options for developers only
+@node           Operation selection options for developers only
+@subsection     Operation selection options for developers only
+@cindex         Operation selection options for developers only
 
 @table @asis
 
@@ -13034,9 +13153,9 @@ where to introduce implicit parallelism.
 
 @end table
 
-@c @node        Options that can help debug the compiler
-@c @subsection  Options that can help debug the compiler
-@c @cindex      Options that can help debug the compiler
+@c @node           Options that can help debug the compiler
+@c @subsection     Options that can help debug the compiler
+@c @cindex         Options that can help debug the compiler
 
 @c @table @asis
 
@@ -13054,9 +13173,9 @@ where to introduce implicit parallelism.
 
 @c @end table
 
-@node        Options for dumping internal compiler data structures
-@subsection  Options for dumping internal compiler data structures
-@cindex      Options for dumping internal compiler data structures
+@node           Options for dumping internal compiler data structures
+@subsection     Options for dumping internal compiler data structures
+@cindex         Options for dumping internal compiler data structures
 
 @table @asis
 
@@ -13208,9 +13327,9 @@ stage is identical to the previously dumped HLDS stage.
 
 @end table
 
-@node        Options intended for internal use by the compiler only
-@subsection  Options intended for internal use by the compiler only
-@cindex      Options intended for internal use by the compiler only
+@node           Options intended for internal use by the compiler only
+@subsection     Options intended for internal use by the compiler only
+@cindex         Options intended for internal use by the compiler only
 
 @table @asis
 
@@ -13491,9 +13610,9 @@ installation.
 
 @end table
 
-@node        Now-unused former options kept for compatibility
-@section     Now-unused former options kept for compatibility
-@cindex      Now-unused former options kept for compatibility
+@node           Now-unused former options kept for compatibility
+@section        Now-unused former options kept for compatibility
+@cindex         Now-unused former options kept for compatibility
 
 @table @asis
 

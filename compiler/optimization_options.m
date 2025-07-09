@@ -40,9 +40,6 @@
 :- type maybe_inline_single_use
     --->    inline_single_use
     ;       do_not_inline_single_use.
-:- type maybe_inline_tr_sccs
-    --->    inline_tr_sccs
-    ;       do_not_inline_tr_sccs.
 :- type maybe_enable_const_struct_poly
     --->    enable_const_struct_poly
     ;       do_not_enable_const_struct_poly.
@@ -303,7 +300,6 @@
     ;       oo_inline_simple(bool)
     ;       oo_inline_builtins(bool)
     ;       oo_inline_single_use(bool)
-    ;       oo_inline_tr_sccs(bool)
     ;       oo_enable_const_struct_poly(bool)
     ;       oo_enable_const_struct_user(bool)
     ;       oo_opt_common_structs(bool)
@@ -393,7 +389,6 @@
     ;       oo_inline_simple_threshold(int)
     ;       oo_inline_vars_threshold(int)
     ;       oo_intermod_inline_simple_threshold(int)
-    ;       oo_inline_tr_sccs_max_extra(int)
     ;       oo_from_ground_term_threshold(int)
     ;       oo_opt_svcell_cv_store_cost(int)
     ;       oo_opt_svcell_cv_load_cost(int)
@@ -437,7 +432,6 @@
                 ot_inline_simple              :: maybe_inline_simple,
                 ot_inline_builtins            :: maybe_inline_builtins,
                 ot_inline_single_use          :: maybe_inline_single_use,
-                ot_inline_tr_sccs             :: maybe_inline_tr_sccs,
                 ot_enable_const_struct_poly   :: maybe_enable_const_struct_poly,
                 ot_enable_const_struct_user   :: maybe_enable_const_struct_user,
                 ot_opt_common_structs         :: maybe_opt_common_structs,
@@ -527,7 +521,6 @@
                 ot_inline_simple_threshold    :: int,
                 ot_inline_vars_threshold      :: int,
                 ot_intermod_inline_simple_threshold :: int,
-                ot_inline_tr_sccs_max_extra   :: int,
                 ot_from_ground_term_threshold :: int,
                 ot_opt_svcell_cv_store_cost   :: int,
                 ot_opt_svcell_cv_load_cost    :: int,
@@ -595,7 +588,6 @@ bool_option_initial_n_y(No, Yes) :-
     No = [
         optopt_inline_simple,
         optopt_inline_single_use,
-        optopt_inline_tr_sccs,
         optopt_opt_common_structs,
         optopt_prop_constraints,
         optopt_prop_local_constraints,
@@ -712,7 +704,6 @@ init_opt_tuple =
         do_not_inline_simple,
         inline_builtins,
         do_not_inline_single_use,
-        do_not_inline_tr_sccs,
         enable_const_struct_poly,
         enable_const_struct_user,
         do_not_opt_common_structs,
@@ -802,7 +793,6 @@ init_opt_tuple =
         5,
         100,
         5,
-        0,
         5,
         3,
         1,
@@ -866,9 +856,6 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
     ;
         OptOption = oo_inline_single_use(Bool),
         update_opt_tuple_bool_inline_single_use(Bool, !OptTuple)
-    ;
-        OptOption = oo_inline_tr_sccs(Bool),
-        update_opt_tuple_bool_inline_tr_sccs(Bool, !OptTuple)
     ;
         OptOption = oo_enable_const_struct_poly(Bool),
         update_opt_tuple_bool_enable_const_struct_poly(Bool, !OptTuple)
@@ -1137,9 +1124,6 @@ update_opt_tuple(FromOptLevel, OptionTable, OptOption, !OptTuple,
         OptOption = oo_intermod_inline_simple_threshold(N),
         update_opt_tuple_int_intermod_inline_simple_threshold(FromOptLevel, N, !OptTuple)
     ;
-        OptOption = oo_inline_tr_sccs_max_extra(N),
-        update_opt_tuple_int_inline_tr_sccs_max_extra(FromOptLevel, N, !OptTuple)
-    ;
         OptOption = oo_from_ground_term_threshold(N),
         update_opt_tuple_int_from_ground_term_threshold(FromOptLevel, N, !OptTuple)
     ;
@@ -1333,29 +1317,6 @@ update_opt_tuple_bool_inline_single_use(Bool, !OptTuple) :-
         ;
             OldValue = inline_single_use,
             !OptTuple ^ ot_inline_single_use := do_not_inline_single_use
-        )
-    ).
-
-:- pred update_opt_tuple_bool_inline_tr_sccs(bool::in,
-    opt_tuple::in, opt_tuple::out) is det.
-
-update_opt_tuple_bool_inline_tr_sccs(Bool, !OptTuple) :-
-    OldValue = !.OptTuple ^ ot_inline_tr_sccs,
-    ( if
-        Bool = yes
-    then
-        (
-            OldValue = do_not_inline_tr_sccs,
-            !OptTuple ^ ot_inline_tr_sccs := inline_tr_sccs
-        ;
-            OldValue = inline_tr_sccs
-        )
-    else
-        (
-            OldValue = do_not_inline_tr_sccs
-        ;
-            OldValue = inline_tr_sccs,
-            !OptTuple ^ ot_inline_tr_sccs := do_not_inline_tr_sccs
         )
     ).
 
@@ -3360,20 +3321,6 @@ update_opt_tuple_int_intermod_inline_simple_threshold(FromOptLevel, N, !OptTuple
         FromOptLevel = from_opt_level,
         OldN = !.OptTuple ^ ot_intermod_inline_simple_threshold,
         !OptTuple ^ ot_intermod_inline_simple_threshold := int.max(OldN, N)
-    ).
-
-:- pred update_opt_tuple_int_inline_tr_sccs_max_extra(
-    maybe_from_opt_level::in, int::in,
-    opt_tuple::in, opt_tuple::out) is det.
-
-update_opt_tuple_int_inline_tr_sccs_max_extra(FromOptLevel, N, !OptTuple) :-
-    (
-        FromOptLevel = not_from_opt_level,
-        !OptTuple ^ ot_inline_tr_sccs_max_extra := N
-    ;
-        FromOptLevel = from_opt_level,
-        OldN = !.OptTuple ^ ot_inline_tr_sccs_max_extra,
-        !OptTuple ^ ot_inline_tr_sccs_max_extra := int.max(OldN, N)
     ).
 
 :- pred update_opt_tuple_int_from_ground_term_threshold(

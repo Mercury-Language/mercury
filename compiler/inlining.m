@@ -161,7 +161,6 @@
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_proc_util.
-:- import_module hlds.mark_tail_calls.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.quantification.
@@ -201,11 +200,9 @@
                 ip_progress_stream              :: io.text_output_stream,
                 ip_simple                       :: maybe_inline_simple,
                 ip_single_use                   :: maybe_inline_single_use,
-                ip_linear_tail_rec              :: maybe_inline_tr_sccs,
 
                 ip_highlevel_code               :: bool,
 
-                ip_linear_tail_rec_max_extra    :: int,
                 ip_call_cost                    :: int,
                 ip_compound_size_threshold      :: int,
                 ip_simple_goal_threshold        :: int,
@@ -311,8 +308,6 @@ inline_in_module(ProgressStream, !ModuleInfo) :-
     globals.get_opt_tuple(Globals, OptTuple),
     Simple = OptTuple ^ ot_inline_simple,
     SingleUse = OptTuple ^ ot_inline_single_use,
-    LinearTailRec = OptTuple ^ ot_inline_tr_sccs,
-    LinearTailRecMaxExtra = OptTuple ^ ot_inline_tr_sccs_max_extra,
     CallCost = OptTuple ^ ot_inline_call_cost,
     CompoundThreshold = OptTuple ^ ot_inline_compound_threshold,
     SimpleThreshold = OptTuple ^ ot_inline_simple_threshold,
@@ -330,29 +325,16 @@ inline_in_module(ProgressStream, !ModuleInfo) :-
     else
         map.init(NeededMap)
     ),
-    Params = inline_params(ProgressStream, Simple, SingleUse, LinearTailRec,
-        HighLevelCode, LinearTailRecMaxExtra, CallCost,
-        CompoundThreshold, SimpleThreshold, VarThreshold, NeededMap),
+    Params = inline_params(ProgressStream, Simple, SingleUse, HighLevelCode,
+        CallCost, CompoundThreshold, SimpleThreshold, VarThreshold, NeededMap),
 
     % Build the call graph and extract the list of SCCs. We process
     % SCCs bottom up, so that if a caller wants to inline a callee
     % in a lower SCC, it gets the *already optimized* version of the callee.
-    % If LinearTailRec = no, we don't try to do anything special about
-    % calls where the callee is in the *same* SCC as the caller.
+    % We don't try to do anything special about calls where the callee
+    % is in the *same* SCC as the caller.
 
-    (
-        LinearTailRec = do_not_inline_tr_sccs,
-        module_info_ensure_dependency_info(!ModuleInfo, DepInfo)
-    ;
-        LinearTailRec = inline_tr_sccs,
-        % For this, we need *accurate* information about SCCs.
-        % I (zs) am not 100% certain that every pass before this one
-        % that invalidates any existing dependency info also clobbers
-        % that dependency info.
-        module_info_rebuild_dependency_info(!ModuleInfo, DepInfo),
-        mark_self_and_mutual_tail_rec_calls_in_module(DepInfo, !ModuleInfo)
-    ),
-
+    module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
     get_bottom_up_sccs_with_entry_points(!.ModuleInfo, DepInfo,
         BottomUpSCCsEntryPoints),
     set.init(ShouldInlineProcs0),
@@ -395,126 +377,9 @@ inline_in_scc(ProgressStream, Params, SCCEntryPoints,
             SCCProc, !ShouldInlineProcs)
     ;
         SCCProcs = [_, _ | _],
-        LinearTailRec = Params ^ ip_linear_tail_rec,
-        (
-            LinearTailRec = do_not_inline_tr_sccs,
-            inline_in_simple_non_singleton_scc(ProgressStream, Params,
-                SCCProcs, !ShouldInlineProcs, !ModuleInfo)
-        ;
-            LinearTailRec = inline_tr_sccs,
-            inline_in_maybe_linear_tail_rec_scc(ProgressStream, Params,
-                SCCEntryPoints, SCCProcs, !ShouldInlineProcs, !ModuleInfo)
-        )
+        inline_in_simple_non_singleton_scc(ProgressStream, Params,
+            SCCProcs, !ShouldInlineProcs, !ModuleInfo)
     ).
-
-:- pred inline_in_maybe_linear_tail_rec_scc(io.text_output_stream::in,
-    inline_params::in, scc_with_entry_points::in, list(pred_proc_id)::in,
-    set(pred_proc_id)::in, set(pred_proc_id)::out,
-    module_info::in, module_info::out) is det.
-
-inline_in_maybe_linear_tail_rec_scc(ProgressStream, Params,
-        SCCEntryPoints, SCCProcs, !ShouldInlineProcs, !ModuleInfo) :-
-    SCCEntryPoints = scc_with_entry_points(SCC,
-        CalledFromHigherSCCs, Exported),
-    TSCCDepInfo =
-        build_proc_dependency_graph(!.ModuleInfo, SCC, only_tail_calls),
-    get_bottom_up_sccs_with_entry_points(!.ModuleInfo, TSCCDepInfo,
-        TSCCsEntries),
-    % Read the comments on the following code assuming that
-    % LinearTailRecMaxExtra is zero, until you get to the part that explains
-    % what happens if it is not.
-    LinearTailRecMaxExtra = Params ^ ip_linear_tail_rec_max_extra,
-    ( if
-        % If there is only one TSSC, which means that every procedure
-        % in the SCC is reachable from every other procedure via
-        % *tail* recursive calls, ...
-        TSCCsEntries = [_],
-        % ... and the number of tail recursive calls in the SCC is equal
-        % to the number of procedures in the SCC, ...
-        TSCCArcs = dependency_info_get_arcs(TSCCDepInfo),
-        list.length(TSCCArcs, NumTSCCArcs),
-        list.length(SCCProcs, NumSCCProcs),
-        NumTSCCArcs =< NumSCCProcs + LinearTailRecMaxExtra
-    then
-        % ... then every procedure in the SCC is called from exactly
-        % one call site in some other procedure in the SCC.
-        %
-        % The optimization we apply to such SCCs is the following.
-        %
-        % Suppose the SCC consists of procedures A, B, C and D,
-        % with the tail calls among them being A->B->C->D->A,
-        % with A and B being entry points.
-        %
-        % For each entry point procedure of the SCC, such as A:
-        %
-        %   Inline the single tail recursive call site in its body.
-        %   In this case, this replaces the tail recursive call to B
-        %   with the body of B, which includes a single tail recursive
-        %   call to C.
-        %
-        %   We keep doing the same thing until the only tail recursive
-        %   call remaining is to the procedure we started with,
-        %   in this case A.
-        %
-        % This makes the code of each entry point self-tail-recursive.
-        %
-        % This algorithm leaves recursive calls in the SCC that are not
-        % tail calls unchanged. Each such call will consume a stack frame.
-        %
-        % This transformation may leave the procedures in the SCC
-        % that are *not* entry points in the SCC unused, after all
-        % calls to them have been inlined. They will be deleted by
-        % dead procedure elimination in the usual course of events.
-        %
-        % Any increase in the value of LinearTailRecMaxExtra allows the
-        % SCC to contain one more mutually-tail-recursive call site that
-        % we will inline. For example, having LinearTailRecMaxExtra = 1
-        % would allow the example SCC above to contain either two A->B calls,
-        % or two B->C calls, or two C->D calls, or two D->A calls.
-        %
-        % Suppose we are doing inlining inside A. With two D->A calls,
-        % there will be no code size increase, since recurive calls to A
-        % won't be inlined. With two C->D calls, there will be two copies
-        % of the body of D. With two B->C calls, there will be two copies
-        % of the bodies of both C and D, since the call to D will be inlined
-        % in both copies of C. With two A->B calls, there will be two copies
-        % of B, C and D. If the body of A itself is small, this may mean
-        % that the total size of the code after inlining may be close to
-        % double what it would be without the extra tail call permitted
-        % by LinearTailRecMaxExtra = 1.
-        %
-        % In general, the size of the resulting code may grow almost as
-        % fast as 2^LinearTailRecMaxExtra.
-        %
-        % (Since a TSCC with N procedures must have at least N tail recursive
-        % calls, negative values of LinearTailRecMaxExtra *will* cause the
-        % test above to fail, so execution will never get here.)
-        %
-        set.union(CalledFromHigherSCCs, Exported, EntryPoints),
-        list.foldl(
-            inline_in_linear_tail_rec_proc(Params, !.ShouldInlineProcs,
-                SCC, EntryPoints),
-            SCCProcs, !ModuleInfo)
-    else
-        inline_in_simple_non_singleton_scc(ProgressStream, Params, SCCProcs,
-            !ShouldInlineProcs, !ModuleInfo)
-    ).
-
-:- pred inline_in_linear_tail_rec_proc(inline_params::in,
-    set(pred_proc_id)::in, set(pred_proc_id)::in, set(pred_proc_id)::in,
-    pred_proc_id::in, module_info::in, module_info::out) is det.
-
-inline_in_linear_tail_rec_proc(Params, ShouldInlineProcs, SCC, EntryPoints,
-        PredProcId, !ModuleInfo) :-
-    ( if set.member(PredProcId, EntryPoints) then
-        % We should inline every tail recursive call in the body of
-        % procedure PredProcId, except the one that calls PredProcId itself.
-        set.delete(PredProcId, SCC, ShouldInlineTailProcs)
-    else
-        set.init(ShouldInlineTailProcs)
-    ),
-    inline_in_proc_if_allowed(Params, ShouldInlineProcs, ShouldInlineTailProcs,
-        PredProcId, !ModuleInfo).
 
 :- pred inline_in_simple_non_singleton_scc(io.text_output_stream::in,
     inline_params::in, list(pred_proc_id)::in,

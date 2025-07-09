@@ -1077,13 +1077,11 @@ maybe_do_inlining(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     Simple = OptTuple ^ ot_inline_simple,
     SingleUse = OptTuple ^ ot_inline_single_use,
     Threshold = OptTuple ^ ot_inline_compound_threshold,
-    LinearRec = OptTuple ^ ot_inline_tr_sccs,
     ( if
         Allow = allow_inlining,
         ( Simple = inline_simple
         ; SingleUse = inline_single_use
         ; Threshold > 0
-        ; LinearRec = inline_tr_sccs
         )
     then
         maybe_write_string(ProgressStream, Verbose, "% Inlining...\n", !IO),

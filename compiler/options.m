@@ -676,8 +676,6 @@
     ;       optopt_inline_compound_threshold
     ;       optopt_inline_call_cost
     ;       optopt_inline_vars_threshold
-    ;       optopt_inline_tr_sccs
-    ;       optopt_inline_tr_sccs_max_extra
 
     ;       optopt_opt_higher_order
     ;       optopt_spec_types
@@ -3594,25 +3592,6 @@ optdb(oc_opt_hh,    optopt_inline_vars_threshold,      int_special,
         w("containing more than"), arg("threshold"), w("variables."),
         w("Procedures containing large numbers of variables"),
         w("can cause slow compilation.")])).
-optdb(oc_opt_hh,    optopt_inline_tr_sccs,             bool_special,
-    % XXX Delete this option?
-    help("inline-linear-tail-rec-sccs", [
-        w("Given a set of mutually recursive procedures (an SCC, or strongly"),
-        w("connected component, of the call graph) in which each procedure"),
-        w("contains exactly tail call to a procedure in the SCC, so that"),
-        w("the tail recursive calls form a linear chain through the SCC,"),
-        w("inline the callee at every one of those mutually tail recursive"),
-        w("call sites. This converts mutual tail recursion into self tail"),
-        w("recursion, which the MLDS backend can turn into code that runs"),
-        w("in constant stack space.")])).
-optdb(oc_opt_hh,    optopt_inline_tr_sccs_max_extra,   int_special,
-    % XXX Delete this option?
-    priv_arg_help("inline-linear-tail-rec-sccs-max-extra", "E", [
-        w("When considering whether to apply"),
-        opt("--inline-linear-tail-rec-sccs"),
-        w("to an SCC containing"), arg("N"), w(" procedures,"),
-        w("allow the SCC to contain up to"),
-        bare_arg("N+E"), w("mutually recursive tail calls.")])).
 
 optdb(oc_opt_hh,    optopt_opt_higher_order,           bool_special,
     alt_help("optimize-higher-order",
@@ -4015,6 +3994,7 @@ optdb(oc_opt_hlm,   optimize_trail_usage,              bool(no),
     % MLDS -> MLDS
 
 % The internal names of the options below include an "mlds" qualifier.
+% XXX Their preferred external names should do the same.
 
 optdb(oc_opt_mm,    optopt_optimize_mlds,              bool_special,
     alt_help("mlds-optimize",
@@ -4024,8 +4004,8 @@ optdb(oc_opt_mm,    optopt_peep_mlds,                  bool_special,
     help("mlds-peephole", [
         w("Perform peephole optimization of the MLDS.")])).
 optdb(oc_opt_hm,    optopt_opt_mlds_tailcalls,         bool_special,
-    % XXX The option's names, both internal and user-visible,
-    % should include the "self" qualifier.
+    % The "self" qualifier is obsolete, and the user-visible option name
+    % should include "mlds".
     alt_help("optimize-tailcalls",
             ["optimise-tailcalls"], [
         w("Turn self-tailcalls into loops.")])).
@@ -6501,10 +6481,6 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             SpecialData = bool(Bool),
             OptOption = oo_inline_single_use(Bool)
         ;
-            Option = optopt_inline_tr_sccs,
-            SpecialData = bool(Bool),
-            OptOption = oo_inline_tr_sccs(Bool)
-        ;
             Option = optopt_enable_const_struct_poly,
             SpecialData = bool(Bool),
             OptOption = oo_enable_const_struct_poly(Bool)
@@ -6860,10 +6836,6 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             Option = optopt_intermod_inline_simple_threshold,
             SpecialData = int(N),
             OptOption = oo_intermod_inline_simple_threshold(N)
-        ;
-            Option = optopt_inline_tr_sccs_max_extra,
-            SpecialData = int(N),
-            OptOption = oo_inline_tr_sccs_max_extra(N)
         ;
             Option = optopt_from_ground_term_threshold,
             SpecialData = int(N),
