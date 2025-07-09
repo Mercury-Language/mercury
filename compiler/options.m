@@ -484,6 +484,21 @@
     ;       warn_interface_imports_in_parents
     ;       warn_stdlib_shadowing
 
+    % Warnings about dodgy code, involving determinism.
+    ;       warn_det_decls_too_lax
+    ;       warn_inferred_erroneous
+
+    % Warnings about dodgy code, specifically predicates.
+    ;       warn_unresolved_polymorphism
+    ;       warn_stubs
+    ;       warn_non_term_special_preds
+    ;       warn_non_stratification
+
+    % Warnings about dodgy code, specifically pragmas.
+    ;       warn_ambiguous_pragma
+    ;       warn_potentially_ambiguous_pragma
+    ;       warn_table_with_inline
+
     % Warnings about dodgy code, at the goal level.
     ;       warn_singleton_vars
     ;       warn_repeated_singleton_vars
@@ -494,21 +509,6 @@
     ;       warn_suspected_occurs_check_failure
     ;       warn_suspicious_recursion
     ;       warn_unused_args
-
-    % Warnings about dodgy code, involving determinism.
-    ;       warn_det_decls_too_lax
-    ;       warn_inferred_erroneous
-
-    % Warnings about dodgy code, specifically pragmas.
-    ;       warn_ambiguous_pragma
-    ;       warn_potentially_ambiguous_pragma
-    ;       warn_table_with_inline
-
-    % Warnings about dodgy code, specifically predicates.
-    ;       warn_unresolved_polymorphism
-    ;       warn_stubs
-    ;       warn_non_term_special_preds
-    ;       warn_non_stratification
 
     % Warnings about dodgy code, involving insts.
     ;       warn_insts_without_matching_type
@@ -533,6 +533,10 @@
     ;       warn_dead_preds
     ;       warn_dead_procs
 
+    % Warnings about programming style, at the predicate level.
+    ;       warn_can_fail_function
+    ;       warn_unneeded_mode_specific_clause
+
     % Warnings about programming style, simple mistakes.
     ;       warn_simple_code
     ;       inform_ite_instead_of_switch
@@ -551,9 +555,9 @@
     ;       warn_implicit_stream_calls
     ;       warn_unknown_format_calls
 
-    % Warnings about programming style, at the predicate level.
-    ;       warn_can_fail_function
-    ;       warn_unneeded_mode_specific_clause
+    % Warnings about programming style, foreign code.
+    ;       warn_suspicious_foreign_code
+    ;       warn_suspicious_foreign_procs
 
     % Warnings about programming style, missing order.
     ;       warn_unsorted_import_blocks
@@ -565,10 +569,6 @@
     ;       warn_non_contiguous_clauses
     ;       warn_non_contiguous_foreign_procs
     ;       allow_non_contiguity_for
-
-    % Warnings about programming style, foreign code.
-    ;       warn_suspicious_foreign_code
-    ;       warn_suspicious_foreign_procs
 
     % Options that control warnings.
     ;       inhibit_warnings
@@ -1226,8 +1226,7 @@
 
 %---------------------------------------------------------------------------%
 
-% ZZZ just for review
-% :- pragma require_switch_arms_in_type_order(pred(optdb/4)).
+:- pragma require_switch_arms_in_type_order(pred(optdb/4)).
 
     % Help options.
 
@@ -2661,6 +2660,63 @@ optdb(oc_warn_dodgy_mod, warn_stdlib_shadowing,        bool(yes),
         w("the name of a module in the Mercury standard library, or contain"),
         w("a subsequence of name components that do so.")])).
 
+% Warnings about predicate determinism issues.
+
+optdb(oc_warn_dodgy_pred, warn_det_decls_too_lax,      bool(yes),
+    help("warn-det-decls-too-lax", [
+        w("Do not warn about determinism declarations"),
+        w("which could be stricter.")])).
+optdb(oc_warn_dodgy_pred, warn_inferred_erroneous,     bool(yes),
+    help("warn-inferred-erroneous", [
+        w("Do not warn about procedures whose determinism"),
+        w("is inferred to be"), samp("erroneous", ","),
+        w("but whose determinism declarations are looser.")])).
+
+% Warnings about other predicate-level issues.
+
+optdb(oc_warn_dodgy_pred, warn_unresolved_polymorphism, bool(yes),
+    help("warn-unresolved-polymorphism", [
+        w("Do not warn about unresolved polymorphism, which occurs when"),
+        w("the type of a variable contains a type variable"),
+        w("that is not bound to an actual type, even though it should be.")])).
+optdb(oc_warn_dodgy_pred, warn_stubs,                  bool(yes),
+    help("warn-stubs", [
+        w("Do not warn about procedures for which there are no clauses."),
+        w("Note that this option is meaningful only if the"),
+        opt("--allow-stubs"), w("option is enabled.")])).
+optdb(oc_warn_dodgy_pred, warn_non_term_special_preds, bool(yes),
+    help("warn-non-term-special-preds", [
+        w("Do not warn about types that have user-defined equality or"),
+        w("comparison predicates that cannot be proved to terminate."),
+        w("This option is meaningful only if"),
+        w("termination analysis is enabled.")])).
+optdb(oc_warn_dodgy_pred, warn_non_stratification,     bool(no),
+    help("warn-non-stratification", [
+        w("Warn about possible non-stratification"),
+        w("of the predicates and/or functions in the module."),
+        w("Non-stratification occurs when a predicate or function can call"),
+        w("itself through negation through some path in its call graph.")])).
+
+% Warnings about predicate pragma issues.
+
+optdb(oc_warn_dodgy_prg, warn_ambiguous_pragma,        bool(yes),
+    alt_help("warn-ambiguous-pragmas",
+            ["warn-ambiguous-pragma"], [
+        w("Do not warn about pragmas that do not specify whether"),
+        w("they are for a predicate or a function, even when there is both"),
+        w("a predicate and a function with the given name and arity.")])).
+optdb(oc_warn_dodgy_prg, warn_potentially_ambiguous_pragma, bool(no),
+    alt_help("warn-potentially-ambiguous-pragmas",
+            ["warn-potentially-ambiguous-pragma"], [
+        w("Warn about pragmas that do not specify whether they are"),
+        w("for a predicate or a function.")])).
+optdb(oc_warn_dodgy_prg, warn_table_with_inline,       bool(yes),
+    help("warn-table-with-inline", [
+        w("Do not warn about tabled procedures that also have a"),
+        code("pragma inline"), w("declaration."),
+        w("(This combination does not work, because"),
+        w("inlined copies of procedure bodies cannot be tabled.)")])).
+
 % Warnings about goal-level issues.
 
 optdb(oc_warn_dodgy_goal, warn_singleton_vars,         bool(yes),
@@ -2704,63 +2760,6 @@ optdb(oc_warn_dodgy_goal, warn_suspicious_recursion,   bool(no),
 optdb(oc_warn_dodgy_goal, warn_unused_args,            bool(no),
     help("warn-unused-args", [
         w("Warn about predicate or function arguments which are not used.")])).
-
-% Warnings about predicate determinism issues.
-
-optdb(oc_warn_dodgy_pred, warn_det_decls_too_lax,      bool(yes),
-    help("warn-det-decls-too-lax", [
-        w("Do not warn about determinism declarations"),
-        w("which could be stricter.")])).
-optdb(oc_warn_dodgy_pred, warn_inferred_erroneous,     bool(yes),
-    help("warn-inferred-erroneous", [
-        w("Do not warn about procedures whose determinism"),
-        w("is inferred to be"), samp("erroneous", ","),
-        w("but whose determinism declarations are looser.")])).
-
-% Warnings about predicate pragma issues.
-
-optdb(oc_warn_dodgy_prg, warn_ambiguous_pragma,        bool(yes),
-    alt_help("warn-ambiguous-pragmas",
-            ["warn-ambiguous-pragma"], [
-        w("Do not warn about pragmas that do not specify whether"),
-        w("they are for a predicate or a function, even when there is both"),
-        w("a predicate and a function with the given name and arity.")])).
-optdb(oc_warn_dodgy_prg, warn_potentially_ambiguous_pragma, bool(no),
-    alt_help("warn-potentially-ambiguous-pragmas",
-            ["warn-potentially-ambiguous-pragma"], [
-        w("Warn about pragmas that do not specify whether they are"),
-        w("for a predicate or a function.")])).
-optdb(oc_warn_dodgy_prg, warn_table_with_inline,       bool(yes),
-    help("warn-table-with-inline", [
-        w("Do not warn about tabled procedures that also have a"),
-        code("pragma inline"), w("declaration."),
-        w("(This combination does not work, because"),
-        w("inlined copies of procedure bodies cannot be tabled.)")])).
-
-% Warnings about other predicate-level issues.
-
-optdb(oc_warn_dodgy_pred, warn_unresolved_polymorphism, bool(yes),
-    help("warn-unresolved-polymorphism", [
-        w("Do not warn about unresolved polymorphism, which occurs when"),
-        w("the type of a variable contains a type variable"),
-        w("that is not bound to an actual type, even though it should be.")])).
-optdb(oc_warn_dodgy_pred, warn_stubs,                  bool(yes),
-    help("warn-stubs", [
-        w("Do not warn about procedures for which there are no clauses."),
-        w("Note that this option is meaningful only if the"),
-        opt("--allow-stubs"), w("option is enabled.")])).
-optdb(oc_warn_dodgy_pred, warn_non_term_special_preds, bool(yes),
-    help("warn-non-term-special-preds", [
-        w("Do not warn about types that have user-defined equality or"),
-        w("comparison predicates that cannot be proved to terminate."),
-        w("This option is meaningful only if"),
-        w("termination analysis is enabled.")])).
-optdb(oc_warn_dodgy_pred, warn_non_stratification,     bool(no),
-    help("warn-non-stratification", [
-        w("Warn about possible non-stratification"),
-        w("of the predicates and/or functions in the module."),
-        w("Non-stratification occurs when a predicate or function can call"),
-        w("itself through negation through some path in its call graph.")])).
 
 % Warnings about issues with insts.
 
@@ -2852,6 +2851,17 @@ optdb(oc_warn_style_pred, warn_dead_procs,             bool(no),
             ["warn-dead-procs"], [
         w("Warn about procedures which are never called.")])).
 
+% Warnings about predicate level issues.
+
+optdb(oc_warn_style_pred, warn_can_fail_function,      bool(no),
+    help("warn-can-fail-function", [
+        w("Warn about functions that can fail."),
+        w("(Such functions should be replaced by semidet predicates.)")])).
+optdb(oc_warn_style_pred, warn_unneeded_mode_specific_clause, bool(yes),
+    help("warn-unneeded-mode-specific-clause", [
+        w("Do not warn about clauses that unnecessarily specify"),
+        w("the modes of their arguments.")])).
+
 % Warnings about simple style mistakes.
 
 optdb(oc_warn_style_goal, warn_simple_code,            bool(yes),
@@ -2914,16 +2924,31 @@ optdb(oc_warn_style_goal, warn_unknown_format_calls,   bool(no),
         w("there are any mismatches between the format string"),
         w("and the supplied values.")])).
 
-% Warnings about predicate level issues.
+% Warnings about foreign code.
 
-optdb(oc_warn_style_pred, warn_can_fail_function,      bool(no),
-    help("warn-can-fail-function", [
-        w("Warn about functions that can fail."),
-        w("(Such functions should be replaced by semidet predicates.)")])).
-optdb(oc_warn_style_pred, warn_unneeded_mode_specific_clause, bool(yes),
-    help("warn-unneeded-mode-specific-clause", [
-        w("Do not warn about clauses that unnecessarily specify"),
-        w("the modes of their arguments.")])).
+optdb(oc_warn_style_goal, warn_suspicious_foreign_code, bool(no),
+    help("warn-suspicious-foreign-code", [
+        w("Warn about possible errors in the bodies of foreign code"),
+        w("pragmas."),
+        blank_line,
+        w("Note that since the compiler's ability to parse"),
+        w("foreign language code is limited, some warnings"),
+        w("reported by this option may be spurious, and"),
+        w("some actual errors may not be detected at all.")])).
+optdb(oc_warn_style_goal, warn_suspicious_foreign_procs, bool(no),
+    help("warn-suspicious-foreign-procs", [
+        w("Warn about possible errors in the bodies of foreign_proc"),
+        w("pragmas."),
+        w("When enabled, the compiler attempts to determine"),
+        w("whether the success indicator for a foreign procedure"),
+        w("is correctly set, and whether the foreign procedure body"),
+        w("contains operations that it should not contain, such as"),
+        code("return"), w("statements in a C foreign procedure."),
+        blank_line,
+        w("Note that since the compiler's ability to parse"),
+        w("foreign language code is limited, some warnings"),
+        w("reported by this option may be spurious, and"),
+        w("some actual errors may not be detected at all.")])).
 
 % Warnings about missing order.
 
@@ -2951,8 +2976,7 @@ optdb(oc_warn_style_order, warn_inconsistent_pred_order_foreign_procs,
         w("and functions of the module. Applies for definitions by either"),
         w("Mercury clauses or foreign_proc pragmas.")])).
 
-% Warnings about missing contiguity.
-
+% Warnings about missing contiguity. 
 optdb(oc_warn_style_ctg, warn_non_contiguous_decls,     bool(yes),
     help("warn-non-contiguous-decls", [
         w("Do not generate a warning if the mode declarations of a"),
@@ -2977,32 +3001,6 @@ optdb(oc_warn_style_ctg_c, allow_non_contiguity_for,   accumulating([]),
         w("specifying a distinct set of predicates and/or function names"),
         w("that may be intermingled. Each name must uniquely specify"),
         w("a predicate or a function.")])).
-
-% Warnings about foreign code.
-
-optdb(oc_warn_style_goal, warn_suspicious_foreign_code, bool(no),
-    help("warn-suspicious-foreign-code", [
-        w("Warn about possible errors in the bodies of foreign code"),
-        w("pragmas."),
-        blank_line,
-        w("Note that since the compiler's ability to parse"),
-        w("foreign language code is limited, some warnings"),
-        w("reported by this option may be spurious, and"),
-        w("some actual errors may not be detected at all.")])).
-optdb(oc_warn_style_goal, warn_suspicious_foreign_procs, bool(no),
-    help("warn-suspicious-foreign-procs", [
-        w("Warn about possible errors in the bodies of foreign_proc"),
-        w("pragmas."),
-        w("When enabled, the compiler attempts to determine"),
-        w("whether the success indicator for a foreign procedure"),
-        w("is correctly set, and whether the foreign procedure body"),
-        w("contains operations that it should not contain, such as"),
-        code("return"), w("statements in a C foreign procedure."),
-        blank_line,
-        w("Note that since the compiler's ability to parse"),
-        w("foreign language code is limited, some warnings"),
-        w("reported by this option may be spurious, and"),
-        w("some actual errors may not be detected at all.")])).
 
 %---------------------%
 
