@@ -1560,8 +1560,8 @@ Changes to the Mercury compiler
   with each other, but not with the clauses of any other predicates
   or functions. This option may be given more than once.
 
-* We have replaced the --no-warn-only-one-format-string-error compiler option
-  with the new option named -warn-all-format-string-errors.
+* We have replaced the `--no-warn-only-one-format-string-error` compiler option
+  with the new option named `--warn-all-format-string-errors`.
 
 * The deprecated option `--trail-segments` has been deleted and the grade
   component `trseg` is no longer accepted as a synonym for `tr`.
