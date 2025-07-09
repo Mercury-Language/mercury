@@ -103,18 +103,28 @@ generate_default_globals(ProgressStream, DefaultOptionTable0,
 handle_given_options(ProgressStream, DefaultOptionTable, MaybeStdLibGrades,
         MaybeEnvOptFileMerStdLibDir, Args0, OptionArgs, Args,
         Specs, !:Globals, !IO) :-
-    trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
+    trace [
+        compile_time(flag("debug_handle_given_options")),
+        runtime(env("DEBUG_HANDLE_GIVEN_OPTIONS")),
+        io(!TIO)
+    ] (
         io.write_string(ProgressStream, "\noriginal arguments\n", !TIO),
         dump_arguments(ProgressStream, Args0, !TIO)
     ),
     process_given_options(DefaultOptionTable, Args0, OptionArgs, Args,
         MaybeError, OptionTable, OptOptions, !IO),
-    trace [compile_time(flag("debug_handle_given_options")), io(!TIO)] (
+    trace [
+        compile_time(flag("debug_handle_given_options")),
+        runtime(env("DEBUG_HANDLE_GIVEN_OPTIONS")),
+        io(!TIO)]
+    (
         io.write_string(ProgressStream, "\nfinal option arguments\n", !TIO),
         dump_arguments(ProgressStream, OptionArgs, !TIO),
-        io.write_string(ProgressStream, "\nfinal non-option arguments\n",
-            !TIO),
-        dump_arguments(ProgressStream, Args, !TIO)
+        io.write_string(ProgressStream, "\nfinal non-option args\n", !TIO),
+        dump_arguments(ProgressStream, Args, !TIO),
+        io.write_string(ProgressStream, "\nOptOptions\n", !TIO),
+        list.foldl(io.write_line(ProgressStream), cord.list(OptOptions), !TIO),
+        io.write_string(ProgressStream, "end OptOptions\n\n", !TIO)
     ),
     convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
         MaybeStdLibGrades, MaybeError, OptionTable, OptOptions,
