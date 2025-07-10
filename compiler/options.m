@@ -1753,7 +1753,6 @@ optdb(oc_grade_ssdb, source_to_source_debug,           bool(no),
 % the only difference is that profiling can be negated, while
 % time_profiling cannot. I (zs) do not understand what need there is
 % for time_profiling, especially since it is not documented.
-% XXX ORDER
 optdb(oc_grade_mprof, profiling,                       bool_special,
     short_alt_align_help('p', "profiling", [],
             "(grade modifier: `.prof')",
