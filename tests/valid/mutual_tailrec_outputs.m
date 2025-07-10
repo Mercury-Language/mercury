@@ -3,9 +3,9 @@
 %---------------------------------------------------------------------------%
 %
 % This test case triggered a problem in the code in mark_tail_calls.m
-% that checks for mutual recursion (part of the implementation of
-% --inline-linear-tail-rec-sccs): the compiler crashed, because
-% the callee and the caller had different number of parameters.
+% that checks for mutual recursion (part of the implementation of the
+% now-deleted option --inline-linear-tail-rec-sccs): the compiler crashed,
+% because the callee and the caller had different number of parameters.
 
 :- module mutual_tailrec_outputs.
 

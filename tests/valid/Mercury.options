@@ -105,7 +105,6 @@ MCFLAGS-mostly_uniq_mode_inf    += --infer-all
 MCFLAGS-mostly_uniq_neg         += --no-warn-singleton-vars
 MCFLAGS-mpj_6                   += --infer-all
 MCFLAGS-mpj_7                   += --infer-all
-MCFLAGS-mutual_tailrec_outputs  += --inline-linear-tail-rec-sccs
 MCFLAGS-neg_erroneous           += -O3
 MCFLAGS-negation_in_dupl_for_switch += --halt-at-warn
 MCFLAGS-no_warn_format_imports  += --warn-unused-imports --halt-at-warn
