@@ -1884,21 +1884,6 @@ Optimization options
         than <threshold> variables. Procedures containing large numbers of
         variables can cause slow compilation.
 
-    --inline-linear-tail-rec-sccs
-        Given a set of mutually recursive procedures (an SCC, or strongly
-        connected component, of the call graph) in which each procedure
-        contains exactly tail call to a procedure in the SCC, so that the tail
-        recursive calls form a linear chain through the SCC, inline the callee
-        at every one of those mutually tail recursive call sites. This converts
-        mutual tail recursion into self tail recursion, which the MLDS backend
-        can turn into code that runs in constant stack space.
-
-    PRIVATE OPTION
-    --inline-linear-tail-rec-sccs-max-extra <E>
-        When considering whether to apply `--inline-linear-tail-rec-sccs' to an
-        SCC containing <N> procedures, allow the SCC to contain up to N+E
-        mutually recursive tail calls.
-
     --optimize-higher-order
     --optimise-higher-order
         Create specialized variants of higher-order predicates and functions
