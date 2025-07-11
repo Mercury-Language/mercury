@@ -229,6 +229,13 @@ replace_principal_type_ctor_with_base(TypeTable, TVarSet, Type0, Type) :-
 
 :- type invariant_set == set(tvar).
 
+    % Return the set of type parameters of the given TypeCtor that must
+    % remain invariant during type conversion.
+    %
+    % If T (a type parameter in the common base type of a type conversion)
+    % is in the invariant set, then T must be bound to the same type on
+    % both sides of the conversion.
+    %
 :- pred build_type_param_variance_restrictions(type_table::in,
     type_ctor::in, invariant_set::out) is det.
 
@@ -313,8 +320,12 @@ build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable, CurTypeCtor,
                 type_vars_in_types(ArgTypes, TypeVars),
                 set.insert_list(TypeVars, !InvariantSet)
             ;
-                TypeBody = hlds_eqv_type(_),
-                unexpected($pred, "hlds_eqv_type")
+                TypeBody = hlds_eqv_type(EqvType0),
+                hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
+                map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
+                apply_subst_to_type(TSubst, EqvType0, EqvType),
+                build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable,
+                    CurTypeCtor, CurTypeParams, EqvType, !InvariantSet)
             )
         else
             unexpected($pred, "undefined type")

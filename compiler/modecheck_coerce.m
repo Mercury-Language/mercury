@@ -806,40 +806,37 @@ modecheck_coerce_from_ground_make_inst_for_subtype(ModuleInfo, TVarSet,
     % and if it would not lead to an infinite loop.
     ( if
         TypeX \= TypeY,
-        set.insert_new(TypeX, SeenTypes0, SeenTypes1)
+        set.insert_new(TypeX, SeenTypes0, SeenTypes1),
+        type_constructors(ModuleInfo, TypeX, CtorsX)
     then
-        modecheck_coerce_from_ground_make_bound_functor(ModuleInfo, TVarSet,
-            LiveX, UniqX, SeenTypes1, TypeX, TypeY, InstY)
+        modecheck_coerce_from_ground_make_bound_inst(ModuleInfo, TVarSet,
+            LiveX, UniqX, SeenTypes1, TypeX, TypeY, CtorsX, InstY)
     else
         UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
         InstY = ground(UniqY, none_or_default_func)
     ).
 
-:- pred modecheck_coerce_from_ground_make_bound_functor(module_info::in,
+:- pred modecheck_coerce_from_ground_make_bound_inst(module_info::in,
     tvarset::in, is_live::in, uniqueness::in, set(mer_type)::in,
-    mer_type::in, mer_type::in, mer_inst::out) is det.
+    mer_type::in, mer_type::in, list(constructor)::in, mer_inst::out) is det.
 
-modecheck_coerce_from_ground_make_bound_functor(ModuleInfo, TVarSet,
-        LiveX, UniqX, SeenTypes, TypeX, TypeY, InstY) :-
-    ( if type_constructors(ModuleInfo, TypeX, CtorsX) then
-        list.map(
-            modecheck_coerce_from_ground_make_bound_functor(ModuleInfo,
-                TVarSet, LiveX, UniqX, SeenTypes, TypeX, TypeY),
-            CtorsX, BoundFunctorsY),
-        UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
-        % XXX A better approximation of InstResults is probably possible.
-        InstResults = inst_test_results(
-            inst_result_is_ground,
-            inst_result_does_not_contain_any,
-            inst_result_contains_inst_names_unknown,
-            inst_result_contains_inst_vars_unknown,
-            inst_result_contains_types_unknown,
-            inst_result_no_type_ctor_propagated
-        ),
-        InstY = bound(UniqY, InstResults, BoundFunctorsY)
-    else
-        unexpected($pred, "missing constructors")
-    ).
+modecheck_coerce_from_ground_make_bound_inst(ModuleInfo, TVarSet,
+        LiveX, UniqX, SeenTypes, TypeX, TypeY, CtorsX, InstY) :-
+    list.map(
+        modecheck_coerce_from_ground_make_bound_functor(ModuleInfo,
+            TVarSet, LiveX, UniqX, SeenTypes, TypeX, TypeY),
+        CtorsX, BoundFunctorsY),
+    UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
+    % XXX A better approximation of InstResults is probably possible.
+    InstResults = inst_test_results(
+        inst_result_is_ground,
+        inst_result_does_not_contain_any,
+        inst_result_contains_inst_names_unknown,
+        inst_result_contains_inst_vars_unknown,
+        inst_result_contains_types_unknown,
+        inst_result_no_type_ctor_propagated
+    ),
+    InstY = bound(UniqY, InstResults, BoundFunctorsY).
 
 :- pred modecheck_coerce_from_ground_make_bound_functor(module_info::in,
     tvarset::in, is_live::in, uniqueness::in, set(mer_type)::in,
@@ -910,21 +907,25 @@ maybe_change_module_qualifier(ModuleName, SymName0, SymName) :-
     du_ctor::in, list(mer_type)::out) is semidet.
 
 get_ctor_arg_types_do_subst(ModuleInfo, Type, DuCtor, CtorArgTypes) :-
-    type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
-    module_info_get_cons_table(ModuleInfo, ConsTable),
-    search_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor,
-        ConsDefn),
-    require_det (
-        ConsDefn = hlds_cons_defn(_TypeCtor, _TVarSet, TypeParams, _KindMap,
-            _MaybeExistConstraints, CtorArgs, _Context),
-        get_ctor_arg_types(CtorArgs, CtorArgTypes0),
-        (
-            TypeParams = [],
-            CtorArgTypes = CtorArgTypes0
-        ;
-            TypeParams = [_ | _],
-            map.from_corresponding_lists(TypeParams, TypeArgs, Subst),
-            apply_subst_to_type_list(Subst, CtorArgTypes0, CtorArgTypes)
+    ( if Type = tuple_type(TypeArgs, _Kind) then
+        % Assume DuCtor is correct.
+        CtorArgTypes = TypeArgs
+    else
+        type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
+        module_info_get_cons_table(ModuleInfo, ConsTable),
+        search_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor, ConsDefn),
+        require_det (
+            ConsDefn = hlds_cons_defn(_TypeCtor, _TVarSet, TypeParams,
+                _KindMap, _MaybeExistConstraints, CtorArgs, _Context),
+            get_ctor_arg_types(CtorArgs, CtorArgTypes0),
+            (
+                TypeParams = [],
+                CtorArgTypes = CtorArgTypes0
+            ;
+                TypeParams = [_ | _],
+                map.from_corresponding_lists(TypeParams, TypeArgs, Subst),
+                apply_subst_to_type_list(Subst, CtorArgTypes0, CtorArgTypes)
+            )
         )
     ).
 

@@ -143,6 +143,7 @@ OTHER_PROGS = \
 	bug85 \
 	builtin_false \
 	call_failure \
+	coerce_modecheck_eqv \
 	common_struct_bug \
 	compl_unify_bug \
 	complete_int8_switch \
@@ -184,7 +185,6 @@ OTHER_PROGS = \
 	func_in_head \
 	gh65 \
 	gh89 \
-	gh137 \
 	github_50 \
 	hawkins_switch_bug \
 	headvar_not_found \

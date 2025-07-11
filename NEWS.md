@@ -1455,6 +1455,9 @@ Changes to the Mercury compiler
   C# and Java grades when a subtype type definition did not repeat the field
   names of its base type.
 
+* We have improved the typechecking and modechecking of type conversion
+  expressions.
+
 * We have fixed a bug where `--warn-unused-imports` did not warn about
   unused modules that are also imported by an ancestor of the current module.
 

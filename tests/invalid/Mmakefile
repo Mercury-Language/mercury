@@ -46,6 +46,7 @@ INTERMOD_SPECIAL_SINGLEMODULE_PROGS = \
 
 BORING_MULTIMODULE_PROGS = \
 	bad_exported_mode \
+	coerce_typecheck_eqv \
 	exported_unify \
 	ho_default_func_2 \
 	instances_pc.instances_pc_helper_1 \

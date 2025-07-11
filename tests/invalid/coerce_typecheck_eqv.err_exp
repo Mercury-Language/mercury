@@ -1,0 +1,5 @@
+coerce_typecheck_eqv.m:039: In clause for predicate `test2'/2:
+coerce_typecheck_eqv.m:039:   error: cannot coerce [38;5;87m`X'[39;49m from
+coerce_typecheck_eqv.m:039:   [38;5;171m`coerce_typecheck_eqv.bad(coerce_typecheck_eqv.citrus)'[39;49m
+coerce_typecheck_eqv.m:039:   to
+coerce_typecheck_eqv.m:039:   [38;5;171m`coerce_typecheck_eqv.bad(coerce_typecheck_eqv.fruit)'.[39;49m
