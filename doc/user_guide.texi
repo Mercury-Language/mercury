@@ -6914,7 +6914,7 @@ use @samp{mmc --help} to get the most up-to-date list.
 * Preparing code for mdprof profiling:: 
 * Optimization options:: 
 * Options that control transitive intermodule optimization:: 
-* Options that control program analyses:: 
+* Program analyses:: 
 * Options that ask for modified output:: 
 * Options for controlling mmc --make:: 
 * Options for target language compilation:: 
@@ -11026,9 +11026,18 @@ in top-down order to @file{@var{module}.order}. Effective only if
 
 @end table
 
-@node           Options that control program analyses
-@section        Options that control program analyses
-@cindex         Options that control program analyses
+@node           Program analyses
+@section        Program analyses
+@cindex         Program analyses
+
+@menu
+* The termination analyser based on linear inequality constraints:: 
+* Other program analyses:: 
+@end menu
+
+@node           The termination analyser based on linear inequality constraints
+@subsection     The termination analyser based on linear inequality constraints
+@cindex         The termination analyser based on linear inequality constraints
 
 @table @asis
 
@@ -11113,6 +11122,14 @@ Print at most this number of reasons for any single termination error
 Perform termination analysis only on predicates with at most this many
 paths (default: 256).
 
+@end table
+
+@c @node           The termination analyser based on convex constraints
+@c @subsection     The termination analyser based on convex constraints
+@c @cindex         The termination analyser based on convex constraints
+
+@c @table @asis
+
 @c @sp 1
 @c @item @code{--enable-termination2}
 @c @itemx @code{--enable-term2}
@@ -11196,6 +11213,14 @@ paths (default: 256).
 @c number of constraints. Use approximations of some constraint
 @c operations, such as projection, if this threshold is exceeded. This
 @c will speed up the analysis at the cost of reduced precision.
+
+@c @end table
+
+@node           Other program analyses
+@subsection     Other program analyses
+@cindex         Other program analyses
+
+@table @asis
 
 @sp 1
 @item @code{--analyse-exceptions}

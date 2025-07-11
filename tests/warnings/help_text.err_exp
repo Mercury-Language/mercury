@@ -2442,7 +2442,9 @@ Options that control transitive intermodule optimization
     --no-trans-opt-deps-spec
         Specify a file to remove edges from the trans-opt dependency graph.
 
-Options that control program analyses
+Program analyses
+
+  The termination analyser based on linear inequality constraints
 
     --enable-termination
     --enable-term
@@ -2498,6 +2500,8 @@ Options that control program analyses
     --term-path-limit <N>
         Perform termination analysis only on predicates with at most this many
         paths (default: 256).
+
+  The termination analyser based on convex constraints
 
     PRIVATE OPTION
     --enable-termination2
@@ -2559,6 +2563,8 @@ Options that control program analyses
         number of constraints. Use approximations of some constraint
         operations, such as projection, if this threshold is exceeded. This
         will speed up the analysis at the cost of reduced precision.
+
+  Other program analyses
 
     --analyse-exceptions
         Enable exception analysis. which tries to identify procedures that will

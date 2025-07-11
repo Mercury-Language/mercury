@@ -438,10 +438,18 @@ all_chapters = AllSections :-
             "Options that control transitive intermodule optimization",
             "", [], [oc_trans_opt])),
 
-    SectionAnalysis = help_atomic(
-        help_option_group(
-            "Options that control program analyses",
-            "", [], [oc_analysis])),
+    SubSectionPmTerm1 = help_atomic(help_option_group(
+        "The termination analyser based on linear inequality constraints",
+        "", [], [oc_pm_term1])),
+    SubSectionPmTerm2 = help_atomic(help_option_group(
+        "The termination analyser based on convex constraints",
+        "", [], [oc_pm_term2])),
+    SubSectionPmMisc = help_atomic(help_option_group(
+        "Other program analyses",
+        "", [], [oc_pm_misc])),
+    SectionAnalysis = help_composite("Program analyses",
+        "", [],
+        [SubSectionPmTerm1, SubSectionPmTerm2, SubSectionPmMisc]),
 
     SectionModOutput = help_atomic(
         help_option_group(

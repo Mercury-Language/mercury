@@ -124,7 +124,9 @@
     ;       oc_trans_opt
             % Options that control the operation of transitive intermodule
             % optimization.
-    ;       oc_analysis
+    ;       oc_pm_term1
+    ;       oc_pm_term2
+    ;       oc_pm_misc
             % Options for user control of program analyses.
     ;       oc_output_mod
             % Options that ask the compiler to modify some aspect
@@ -252,7 +254,9 @@ option_categories(oc_opt_hl, 0).
 option_categories(oc_opt_ll, 0).
 option_categories(oc_opt_lc, 0).
 option_categories(oc_trans_opt, 0).
-option_categories(oc_analysis, 0).
+option_categories(oc_pm_term1, 0).
+option_categories(oc_pm_term2, 0).
+option_categories(oc_pm_misc, 0).
 option_categories(oc_output_mod, 0).
 option_categories(oc_output_dev, 0).
 option_categories(oc_make, 0).

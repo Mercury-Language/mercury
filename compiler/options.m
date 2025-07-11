@@ -4233,7 +4233,7 @@ optdb(oc_trans_opt, trans_opt_deps_spec,               maybe_string(no),
 
     % Analysis options.
 
-optdb(oc_analysis,  termination_enable,                bool(no),
+optdb(oc_pm_term1,  termination_enable,                bool(no),
     alt_help("enable-termination", ["enable-term"], [
         w("Enable termination analysis, which analyses each mode"),
         w("of each predicate or function to see whether it terminates."),
@@ -4244,7 +4244,7 @@ optdb(oc_analysis,  termination_enable,                bool(no),
         w("Note that both"), opt("--intermodule-optimization"),
         w("and"), opt("--transitive-intermodule-optimization"),
         w("greatly improve the accuracy of the analysis.")])).
-optdb(oc_analysis,  termination_check,                 bool(no),
+optdb(oc_pm_term1,  termination_check,                 bool(no),
     alt_help("check-termination",
             ["check-term", "chk-term"], [
         w("Enable termination analysis, and emit warnings for some"),
@@ -4257,19 +4257,19 @@ optdb(oc_analysis,  termination_check,                 bool(no),
         w("which are beyond the capabilities of the analyser."),
         w("In these cases, the compiler does not emit a"),
         w("warning of non-termination, as it is likely to be spurious.")])).
-optdb(oc_analysis,  termination_check_verbose,         bool(no),
+optdb(oc_pm_term1,  termination_check_verbose,         bool(no),
     alt_help("verbose-check-termination",
             ["verb-check-term", "verb-chk-term"], [
         w("Enable termination analysis, and emit warnings for all"),
         w("predicates or functions that cannot be proved to terminate.")])).
-optdb(oc_analysis,  termination_single_args,           int(0),
+optdb(oc_pm_term1,  termination_single_args,           int(0),
     alt_arg_help("termination-single-argument-analysis",
             ["term-single-arg"], "N", [
         w("When performing termination analysis, try analyzing"),
         w("recursion on single arguments in strongly connected components"),
         w("of the call graph that have up to the given number of procedures."),
         w("Setting this limit to zero disables single argument analysis.")])).
-optdb(oc_analysis,  termination_norm,                  string("total"),
+optdb(oc_pm_term1,  termination_norm,                  string("total"),
     alt_arg_help("termination-norm",
             ["term-norm"], "{simple, total, num-data-elems}", [
         w("The norm defines how termination analysis measures the size"),
@@ -4279,12 +4279,12 @@ optdb(oc_analysis,  termination_norm,                  string("total"),
         samp("num-data-elems"), w("norm says that it is the number of words"),
         w("in the cell that contain something other than pointers"),
         w("to cells of the same type.")])).
-optdb(oc_analysis,  termination_error_limit,           int(3),
+optdb(oc_pm_term1,  termination_error_limit,           int(3),
     alt_arg_help("termination-error-limit",
             ["term-err-limit"], "N", [
         w("Print at most this number of reasons for"),
         w(" any single termination error (default: 3).")])).
-optdb(oc_analysis,  termination_path_limit,            int(256),
+optdb(oc_pm_term1,  termination_path_limit,            int(256),
     alt_arg_help("termination-path-limit",
             ["term-path-limit"], "N", [
         w("Perform termination analysis only on predicates"),
@@ -4293,12 +4293,12 @@ optdb(oc_analysis,  termination_path_limit,            int(256),
     % The termination2_* options are used to control the new termination
     % analyser. They are currently undocumented because that is still
     % a work-in-progress. XXX Or is it?
-optdb(oc_analysis,  termination2_enable,               bool(no),
+optdb(oc_pm_term2,  termination2_enable,               bool(no),
     priv_alt_help("enable-termination2", ["enable-term2"], [
         w("Analyse each predicate to discover if it terminates."),
         w("This uses an alternative termination analysis based"),
         w("on convex constraints.")])).
-optdb(oc_analysis,  termination2_check,                bool(no),
+optdb(oc_pm_term2,  termination2_check,                bool(no),
     priv_alt_help("check-termination2",
             ["check-term2", "chk-term2"], [
         w("Enable the alternative termination analysis,"),
@@ -4310,38 +4310,38 @@ optdb(oc_analysis,  termination2_check,                bool(no),
         w("constructs (such as higher order calls) were used which could"),
         w("not be analysed. In these cases, the compiler does not emit a"),
         w("warning of non-termination, as it is likely to be spurious.")])).
-optdb(oc_analysis,  termination2_check_verbose,        bool(no),
+optdb(oc_pm_term2,  termination2_check_verbose,        bool(no),
     priv_alt_help("verbose-check-termination2",
             ["verb-check-term2", "verb-chk-term2"], [
         % XXX These options used to have no documentation at all.
         % The following is my guess (zs).
         w("Report more verbose errors from the alternative termination"),
         w("analysis algorithm")])).
-optdb(oc_analysis,  termination2_norm,                 string("total"),
+optdb(oc_pm_term2,  termination2_norm,                 string("total"),
     priv_alt_arg_help("termination2-norm",
             ["term2-norm"], "{simple, total, num-data-elems}", [
         w("Tell the alternative termination analyser which norm to use."),
         w("See the description of the"), opt("--termination-norm"),
         w("option for a description of the different norms available.")])).
-optdb(oc_analysis,  termination2_widening_limit,       int(4),
+optdb(oc_pm_term2,  termination2_widening_limit,       int(4),
     priv_alt_arg_help("termination2-widening-limit",
             ["term2-widening-limit"], "N", [
         w("Set the threshold for the number of iterations after which"),
         w("the argument size analyser invokes widening.")])).
-optdb(oc_analysis,  termination2_arg_size_only,        bool(no),
+optdb(oc_pm_term2,  termination2_arg_size_only,        bool(no),
     % This option is for developers only.
     % It is useful for benchmarking the argument size analysis.
     priv_alt_help("term2-argument-size-analysis-only",
             ["term2-arg-size-analysis-only", "arg-size-analysis-only"], [
         w("Perform argument size analysis on each SCC, but do not"),
         w("attempt to infer termination,")])).
-optdb(oc_analysis,  termination2_prop_fail_constrs,    bool(yes),
+optdb(oc_pm_term2,  termination2_prop_fail_constrs,    bool(yes),
     priv_alt_help("termination2-propagate-failure-constraints",
             ["term2-propagate-failure-constraints",
             "term2-propagate-failure-constrs"], [
         w("Make the argument analyser infer information about the sizes of"),
         w("any inputs to a goal in contexts where that goal fails.")])).
-optdb(oc_analysis,  termination2_maximum_matrix_size,  int(70),
+optdb(oc_pm_term2,  termination2_maximum_matrix_size,  int(70),
     % XXX This matrix size is just a guess.
     priv_alt_arg_help("termination2-maximum-matrix-size",
             ["term2-max-matrix-size"], "N", [
@@ -4351,12 +4351,12 @@ optdb(oc_analysis,  termination2_maximum_matrix_size,  int(70),
         w("is exceeded. This will speed up the analysis"),
         w("at the cost of reduced precision.")])).
 
-optdb(oc_analysis,  analyse_exceptions,                bool(no),
+optdb(oc_pm_misc,  analyse_exceptions,                bool(no),
     help("analyse-exceptions", [
         w("Enable exception analysis. which tries to identify"),
         w("procedures that will not throw an exception."),
         w("Some optimizations can make use of this information.")])).
-optdb(oc_analysis,  analyse_closures,                  bool(no),
+optdb(oc_pm_misc,  analyse_closures,                  bool(no),
     % XXX The option controlling closure analysis are currently
     % private because it isn't useful. It can be made public when
     % we actually have something that uses it.
@@ -4365,13 +4365,13 @@ optdb(oc_analysis,  analyse_closures,                  bool(no),
         w("Enable closure analysis, which tries identify the possible"),
         w("values that higher-order valued variables can take."),
         w("Some optimizations can make use of this information.")])).
-optdb(oc_analysis,  analyse_trail_usage,               bool(no),
+optdb(oc_pm_misc,  analyse_trail_usage,               bool(no),
     help("analyse-trail-usage", [
         w("Enable trail usage analysis, which tries to identify"),
         w("procedures that will not modify the trail."),
         w("The compiler can use this information to reduce the overhead"),
         w("of trailing.")])).
-optdb(oc_analysis,  analyse_mm_tabling,                bool(no),
+optdb(oc_pm_misc,  analyse_mm_tabling,                bool(no),
     help("analyse-mm-tabling", [
         w("Identify those goals that do not call procedures"),
         w("that are evaluated using minimal model tabling."),
