@@ -45,11 +45,6 @@
     ;       oc_verbosity
             % Options that users can use to control how many progress updates
             % they want the compiler to give them.
-    ;       oc_verb_dev
-            % Developer-only kinds of oc_verbosity options.
-    ;       oc_verb_dbg
-            % Oc_verbosity options intended only for use by developers
-            % to debug the compiler.
     ;       oc_diag_gen
             % Options for controlling diagnostics generally.
             % One class tells the compiler either under what circumstances
@@ -169,6 +164,8 @@
             % Options which are reserved for use by the Mercury.config file.
     ;       oc_dev_ctrl
             % Options developers can use to control what the compiler does.
+    ;       oc_dev_verb
+            % Developer-only kinds of verbosity options.
     ;       oc_dev_debug
             % Options developers can use to debug compiler components.
     ;       oc_dev_dump
@@ -216,8 +213,6 @@ option_categories(oc_grade_dev, 0).
 option_categories(oc_infer, 0).
 option_categories(oc_semantics, 0).
 option_categories(oc_verbosity, 0).
-option_categories(oc_verb_dev, 0).
-option_categories(oc_verb_dbg, 0).
 option_categories(oc_diag_gen, 0).
 option_categories(oc_diag_color, 0).
 option_categories(oc_diag_int, 0).
@@ -278,6 +273,7 @@ option_categories(oc_env, 0).
 option_categories(oc_config, 0).
 option_categories(oc_mconfig, 0).
 option_categories(oc_dev_ctrl, 0).
+option_categories(oc_dev_verb, 0).
 option_categories(oc_dev_debug, 0).
 option_categories(oc_dev_dump, 0).
 option_categories(oc_internal, 0).

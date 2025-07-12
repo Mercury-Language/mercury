@@ -312,7 +312,7 @@ all_chapters = AllSections :-
     SectionVerbosity = help_atomic(
         help_option_group(
             "Verbosity options",
-            "", [], [oc_verbosity, oc_verb_dev, oc_verb_dbg])),
+            "", [], [oc_verbosity])),
 
     SubSectionDiagGen = help_atomic(help_option_group(
         "Options that control diagnostics",
@@ -539,19 +539,22 @@ all_chapters = AllSections :-
     SubSectionDevCtrl = help_atomic(help_option_group(
         "Operation selection options for developers only",
         "", [], [oc_dev_ctrl])),
+    SubSectionDevVerb = help_atomic(help_option_group(
+        "Verbosity options for developers only",
+        "", [], [oc_dev_verb])),
     SubSectionDevDebug = help_atomic(help_option_group(
         "Options that can help debug the compiler",
         "", [], [oc_dev_debug])),
     SubSectionDevDump = help_atomic(help_option_group(
-        "Options for dumping internal compiler data structures",
+        "Dumping out internal compiler data structures",
         "", [], [oc_dev_dump])),
     SubSectionDevInternal = help_atomic(help_option_group(
         "Options intended for internal use by the compiler only",
         "", [], [oc_internal])),
     SectionDev = help_composite("Options for developers only",
         "", [],
-        [SubSectionDevCtrl, SubSectionDevDebug, SubSectionDevDump,
-        SubSectionDevInternal]),
+        [SubSectionDevCtrl, SubSectionDevVerb, SubSectionDevDebug,
+        SubSectionDevDump, SubSectionDevInternal]),
 
     SectionUnused = help_atomic(
         help_option_group(

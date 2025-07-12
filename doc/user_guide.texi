@@ -8225,23 +8225,6 @@ Output very verbose progress messages.
 Output messages about the compiler's time/space usage at the boundaries
 between phases of the compiler.
 
-@c @sp 1
-@c @item @code{--detailed-statistics}
-@c @findex --detailed-statistics
-@c Output more detailed messages about the compiler's time/space usage.
-
-@c @sp 1
-@c @item @code{--benchmark-modes}
-@c @findex --benchmark-modes
-@c Benchmark mode analysis, including its experimental version, if it is
-@c enabled.
-
-@c @sp 1
-@c @item @code{--benchmark-modes-repeat @var{num_repeats}}
-@c @findex --benchmark-modes-repeat
-@c The number of times to execute mode analysis, if
-@c @samp{--benchmark-modes} is enabled.
-
 @sp 1
 @item @code{--no-verbose-make}
 @findex --verbose-make
@@ -8275,246 +8258,6 @@ file after compiling a module (default: 100). Specifying
 @findex --verbose-commands
 Output each external command before it is run. Note that some commands
 will only be printed with @samp{--verbose}.
-
-@c @sp 1
-@c @item @code{--report-cmd-line-args}
-@c @findex --report-cmd-line-args
-@c Report the command line arguments.
-
-@c @sp 1
-@c @item @code{--report-cmd-line-args-in-doterr}
-@c @findex --report-cmd-line-args-in-doterr
-@c Report the command line arguments for compilations whose output mmake
-@c normally redirects to a @file{.err} file.
-
-@c @sp 1
-@c @item @code{--inform-ignored-pragma-errors}
-@c @findex --inform-ignored-pragma-errors
-@c Print an informational message for each otherwise-ignored error that
-@c reports an inability to find the procedure that a pragma refers to.
-
-@c @sp 1
-@c @item @code{--inform-generated-type-spec-pragmas}
-@c @findex --inform-generated-type-spec-pragmas
-@c Print an informational message for each type_spec pragma that the
-@c compiler generates to implement a type_spec_constrained_pred pragma.
-
-@c @sp 1
-@c @item @code{--proc-size-statistics @var{filename}}
-@c @findex --proc-size-statistics
-@c Append information about the size of each procedure in the module in
-@c terms of goals and variables to the end of the named file.
-
-@c @sp 1
-@c @item @code{--inst-statistics @var{filename}}
-@c @findex --inst-statistics
-@c Append a count of each kind of insts in the procedures in the module to
-@c the end of the named file.
-
-@c @sp 1
-@c @item @code{--print-error-spec-id}
-@c @findex --print-error-spec-id
-@c After each error message is printed, print its id, which by convention
-@c is the $pred of the code that constructs it.
-
-@c @sp 1
-@c @item @code{-T}
-@c @itemx @code{--debug-types}
-@c @findex -T
-@c @findex --debug-types
-@c Output detailed debugging traces of type checking. Effective only with
-@c the right trace flags.
-
-@c @sp 1
-@c @item @code{--debug-types-pred-name @var{pred_or_func_name}}
-@c @itemx --no-debug-types-pred-name
-@c @findex --debug-types-pred-name
-@c @findex --no-debug-types-pred-name
-@c Output detailed debugging traces of type checking only for predicates
-@c and functions named by one of these options.
-
-@c @sp 1
-@c @item @code{--debug-type-rep}
-@c @findex --debug-type-rep
-@c Output debugging traces of type representation choices.
-
-@c @sp 1
-@c @item @code{-N}
-@c @itemx @code{--debug-modes}
-@c @findex -N
-@c @findex --debug-modes
-@c Output debugging traces of the mode checking.
-
-@c @sp 1
-@c @item @code{--debug-modes-verbose}
-@c @findex --debug-modes-verbose
-@c Output detailed debugging traces of the mode checking.
-
-@c @sp 1
-@c @item @code{--debug-modes-minimal}
-@c @findex --debug-modes-minimal
-@c Output only minimal debugging traces of the mode checking.
-
-@c @sp 1
-@c @item @code{--debug-modes-statistics}
-@c @findex --debug-modes-statistics
-@c Output statistics after each step of mode checking.
-
-@c @sp 1
-@c @item @code{--no-debug-modes-delay-vars}
-@c @findex --debug-modes-delay-vars
-@c @findex --no-debug-modes-delay-vars
-@c Output info about the variables involved in delayed goals.
-
-@c @sp 1
-@c @item @code{--no-debug-modes-goal-ids}
-@c @findex --debug-modes-goal-ids
-@c @findex --no-debug-modes-goal-ids
-@c Output the id of the goal at all mode debug checkpoints.
-
-@c @sp 1
-@c @item @code{--debug-modes-pred-id @var{pred_id}}
-@c @findex --debug-modes-pred-id
-@c With @samp{--debug-modes}, restrict the debugging traces to the mode
-@c checking of the predicate or function with the specified pred id.
-
-@c @sp 1
-@c @item @code{--debug-mode-constraints}
-@c @findex --debug-mode-constraints
-@c Output detailed debugging traces of the `--prop-mode-constraints'
-@c option.
-
-@c @sp 1
-@c @item @code{--debug-determinism}
-@c @itemx @code{--debug-det}
-@c @findex --debug-determinism
-@c @findex --debug-det
-@c Output detailed debugging traces of determinism analysis.
-
-@c @sp 1
-@c @item @code{--debug-common-struct-preds @var{predids}}
-@c @findex --debug-common-struct-preds
-@c Limit common struct optimization to the preds with the given ids.
-
-@c @sp 1
-@c @item @code{--debug-closure}
-@c @findex --debug-closure
-@c Output detailed debugging traces of the closure analysis.
-
-@c @sp 1
-@c @item @code{--debug-termination}
-@c @itemx @code{--debug-term}
-@c @findex --debug-termination
-@c @findex --debug-term
-@c Output detailed debugging traces of the termination2 analysis.
-
-@c @sp 1
-@c @item @code{--debug-dead-proc-elim}
-@c @findex --debug-dead-proc-elim
-@c Output the needed-entity-map generated by dead procedure elimination.
-
-@c @sp 1
-@c @item @code{--debug-higher-order-specialization}
-@c @findex --debug-higher-order-specialization
-@c Output messages about the procedure specializations done by
-@c higher_order.m.
-
-@c @sp 1
-@c @item @code{--debug-pd}
-@c @findex --debug-pd
-@c Output detailed debugging traces of the partial deduction and
-@c deforestation process.
-
-@c @sp 1
-@c @item @code{--debug-indirect-reuse}
-@c @findex --debug-indirect-reuse
-@c Output detailed debugging traces of the indirect reuse pass of the
-@c @samp{--structure-reuse} option.
-
-@c @sp 1
-@c @item @code{--debug-trail-usage}
-@c @findex --debug-trail-usage
-@c Output detailed debugging traces of the @samp{--analyse-trail-usage}
-@c option.
-
-@c @sp 1
-@c @item @code{--debug-unneeded-code}
-@c @findex --debug-unneeded-code
-@c Print progress messages during the unneeded code elimination passes.
-
-@c @sp 1
-@c @item @code{--debug-unneeded-code-pred-name @var{predname}}
-@c @itemx --no-debug-unneeded-code-pred-name
-@c @findex --debug-unneeded-code-pred-name
-@c @findex --no-debug-unneeded-code-pred-name
-@c Print the definition of <predname> at the start of each pass of the
-@c unneeded code elimination algorithm.
-
-@c @sp 1
-@c @item @code{--debug-mm-tabling-analysis}
-@c @findex --debug-mm-tabling-analysis
-@c There is no help text available.
-
-@c @sp 1
-@c @item @code{--debug-dep-par-conj @var{pred_id}}
-@c @itemx --no-debug-dep-par-conj
-@c @findex --debug-dep-par-conj
-@c @findex --no-debug-dep-par-conj
-@c Output detailed debugging traces during the dependent AND-parallelism
-@c transformation of the predicate with the given predicate id. Effective
-@c only with the right trace flags.
-
-@c @sp 1
-@c @item @code{--debug-liveness @var{pred_id}}
-@c @findex --debug-liveness
-@c Output detailed debugging traces of the liveness analysis of the
-@c predicate with the given predicate id.
-
-@c @sp 1
-@c @item @code{--debug-stack-opt @var{pred-id}}
-@c @findex --debug-stack-opt
-@c Generate debug messages when performing stack slot optimization on the
-@c predicate with the given id.
-
-@c @sp 1
-@c @item @code{--debug-code-gen-pred-id @var{pred_id}}
-@c @findex --debug-code-gen-pred-id
-@c Output detailed debugging traces of code generation for the predicate
-@c or function with the given pred id. Effectively only with the right
-@c trace flags.
-
-@c @sp 1
-@c @item @code{--debug-opt}
-@c @findex --debug-opt
-@c Output detailed debugging traces of the optimization process.
-
-@c @sp 1
-@c @item @code{--debug-opt-pred-id @var{pred_id}}
-@c @itemx --no-debug-opt-pred-id
-@c @findex --debug-opt-pred-id
-@c @findex --no-debug-opt-pred-id
-@c Output detailed debugging traces of the optimization process only for
-@c the predicate/function with the specified pred id.
-
-@c @sp 1
-@c @item @code{--debug-opt-pred-name @var{name}}
-@c @itemx --no-debug-opt-pred-name
-@c @findex --debug-opt-pred-name
-@c @findex --no-debug-opt-pred-name
-@c Output detailed debugging traces of the optimization process only for
-@c the predicate/function with the specified name.
-
-@c @sp 1
-@c @item @code{--debug-make}
-@c @findex --debug-make
-@c Output detailed debugging traces of the operation of the @samp{--make}
-@c option.
-
-@c @sp 1
-@c @item @code{--debug-intermodule-analysis}
-@c @findex --debug-intermodule-analysis
-@c Output detailed debugging traces of the operation of the
-@c @samp{--intermodule-analysis} option.
 
 @end table
 
@@ -12819,7 +12562,7 @@ be useful to avoid exceeding fixed limits imposed by some C compilers.
 
 @menu
 * Operation selection options for developers only:: 
-* Options for dumping internal compiler data structures:: 
+* Dumping out internal compiler data structures:: 
 * Options intended for internal use by the compiler only:: 
 @end menu
 
@@ -13172,19 +12915,19 @@ which may be specified at runtime or detected automatically.
 @c Control the granularity of parallel execution using the specified
 @c distance value.
 
-@sp 1
-@item @code{--implicit-parallelism}
-@findex --implicit-parallelism
-Introduce parallel conjunctions where it could be worthwhile (implicit
-parallelism) using information generated by mdprof_create_feedback. The
-profiling feedback file can be specified using the
-@samp{--feedback-file} option.
+@c @sp 1
+@c @item @code{--implicit-parallelism}
+@c @findex --implicit-parallelism
+@c Introduce parallel conjunctions where it could be worthwhile (implicit
+@c parallelism) using information generated by mdprof_create_feedback. The
+@c profiling feedback file can be specified using the
+@c @samp{--feedback-file} option.
 
-@sp 1
-@item @code{--feedback-file @var{filename}}
-@findex --feedback-file
-Use the specified profiling feedback file to help make decisions about
-where to introduce implicit parallelism.
+@c @sp 1
+@c @item @code{--feedback-file @var{filename}}
+@c @findex --feedback-file
+@c Use the specified profiling feedback file to help make decisions about
+@c where to introduce implicit parallelism.
 
 @c @sp 1
 @c @item @code{--par-loop-control}
@@ -13202,6 +12945,271 @@ where to introduce implicit parallelism.
 @c typeclass_infos in global_data structures.
 
 @end table
+
+@c @node           Verbosity options for developers only
+@c @subsection     Verbosity options for developers only
+@c @cindex         Verbosity options for developers only
+
+@c @table @asis
+
+@c @sp 1
+@c @item @code{--detailed-statistics}
+@c @findex --detailed-statistics
+@c Output more detailed messages about the compiler's time/space usage.
+
+@c @sp 1
+@c @item @code{--benchmark-modes}
+@c @findex --benchmark-modes
+@c Benchmark mode analysis, including its experimental version, if it is
+@c enabled.
+
+@c @sp 1
+@c @item @code{--benchmark-modes-repeat @var{num_repeats}}
+@c @findex --benchmark-modes-repeat
+@c The number of times to execute mode analysis, if
+@c @samp{--benchmark-modes} is enabled.
+
+@c @sp 1
+@c @item @code{--report-cmd-line-args}
+@c @findex --report-cmd-line-args
+@c Report the command line arguments.
+
+@c @sp 1
+@c @item @code{--report-cmd-line-args-in-doterr}
+@c @findex --report-cmd-line-args-in-doterr
+@c Report the command line arguments for compilations whose output mmake
+@c normally redirects to a @file{.err} file.
+
+@c @sp 1
+@c @item @code{--inform-ignored-pragma-errors}
+@c @findex --inform-ignored-pragma-errors
+@c Print an informational message for each otherwise-ignored error that
+@c reports an inability to find the procedure that a pragma refers to.
+
+@c @sp 1
+@c @item @code{--inform-generated-type-spec-pragmas}
+@c @findex --inform-generated-type-spec-pragmas
+@c Print an informational message for each type_spec pragma that the
+@c compiler generates to implement a type_spec_constrained_pred pragma.
+
+@c @sp 1
+@c @item @code{--proc-size-statistics @var{filename}}
+@c @findex --proc-size-statistics
+@c Append information about the size of each procedure in the module in
+@c terms of goals and variables to the end of the named file.
+
+@c @sp 1
+@c @item @code{--inst-statistics @var{filename}}
+@c @findex --inst-statistics
+@c Append a count of each kind of insts in the procedures in the module to
+@c the end of the named file.
+
+@c @sp 1
+@c @item @code{--print-error-spec-id}
+@c @findex --print-error-spec-id
+@c After each error message is printed, print its id, which by convention
+@c is the $pred of the code that constructs it.
+
+@c @sp 1
+@c @item @code{-T}
+@c @itemx @code{--debug-types}
+@c @findex -T
+@c @findex --debug-types
+@c Output detailed debugging traces of type checking. Effective only with
+@c the right trace flags.
+
+@c @sp 1
+@c @item @code{--debug-types-pred-name @var{pred_or_func_name}}
+@c @itemx --no-debug-types-pred-name
+@c @findex --debug-types-pred-name
+@c @findex --no-debug-types-pred-name
+@c Output detailed debugging traces of type checking only for predicates
+@c and functions named by one of these options.
+
+@c @sp 1
+@c @item @code{--debug-type-rep}
+@c @findex --debug-type-rep
+@c Output debugging traces of type representation choices.
+
+@c @sp 1
+@c @item @code{-N}
+@c @itemx @code{--debug-modes}
+@c @findex -N
+@c @findex --debug-modes
+@c Output debugging traces of the mode checking.
+
+@c @sp 1
+@c @item @code{--debug-modes-verbose}
+@c @findex --debug-modes-verbose
+@c Output detailed debugging traces of the mode checking.
+
+@c @sp 1
+@c @item @code{--debug-modes-minimal}
+@c @findex --debug-modes-minimal
+@c Output only minimal debugging traces of the mode checking.
+
+@c @sp 1
+@c @item @code{--debug-modes-statistics}
+@c @findex --debug-modes-statistics
+@c Output statistics after each step of mode checking.
+
+@c @sp 1
+@c @item @code{--no-debug-modes-delay-vars}
+@c @findex --debug-modes-delay-vars
+@c @findex --no-debug-modes-delay-vars
+@c Output info about the variables involved in delayed goals.
+
+@c @sp 1
+@c @item @code{--no-debug-modes-goal-ids}
+@c @findex --debug-modes-goal-ids
+@c @findex --no-debug-modes-goal-ids
+@c Output the id of the goal at all mode debug checkpoints.
+
+@c @sp 1
+@c @item @code{--debug-modes-pred-id @var{pred_id}}
+@c @findex --debug-modes-pred-id
+@c With @samp{--debug-modes}, restrict the debugging traces to the mode
+@c checking of the predicate or function with the specified pred id.
+
+@c @sp 1
+@c @item @code{--debug-mode-constraints}
+@c @findex --debug-mode-constraints
+@c Output detailed debugging traces of the `--prop-mode-constraints'
+@c option.
+
+@c @sp 1
+@c @item @code{--debug-determinism}
+@c @itemx @code{--debug-det}
+@c @findex --debug-determinism
+@c @findex --debug-det
+@c Output detailed debugging traces of determinism analysis.
+
+@c @sp 1
+@c @item @code{--debug-common-struct-preds @var{predids}}
+@c @findex --debug-common-struct-preds
+@c Limit common struct optimization to the preds with the given ids.
+
+@c @sp 1
+@c @item @code{--debug-closure}
+@c @findex --debug-closure
+@c Output detailed debugging traces of the closure analysis.
+
+@c @sp 1
+@c @item @code{--debug-termination}
+@c @itemx @code{--debug-term}
+@c @findex --debug-termination
+@c @findex --debug-term
+@c Output detailed debugging traces of the termination2 analysis.
+
+@c @sp 1
+@c @item @code{--debug-dead-proc-elim}
+@c @findex --debug-dead-proc-elim
+@c Output the needed-entity-map generated by dead procedure elimination.
+
+@c @sp 1
+@c @item @code{--debug-higher-order-specialization}
+@c @findex --debug-higher-order-specialization
+@c Output messages about the procedure specializations done by
+@c higher_order.m.
+
+@c @sp 1
+@c @item @code{--debug-pd}
+@c @findex --debug-pd
+@c Output detailed debugging traces of the partial deduction and
+@c deforestation process.
+
+@c @sp 1
+@c @item @code{--debug-indirect-reuse}
+@c @findex --debug-indirect-reuse
+@c Output detailed debugging traces of the indirect reuse pass of the
+@c @samp{--structure-reuse} option.
+
+@c @sp 1
+@c @item @code{--debug-trail-usage}
+@c @findex --debug-trail-usage
+@c Output detailed debugging traces of the @samp{--analyse-trail-usage}
+@c option.
+
+@c @sp 1
+@c @item @code{--debug-unneeded-code}
+@c @findex --debug-unneeded-code
+@c Print progress messages during the unneeded code elimination passes.
+
+@c @sp 1
+@c @item @code{--debug-unneeded-code-pred-name @var{predname}}
+@c @itemx --no-debug-unneeded-code-pred-name
+@c @findex --debug-unneeded-code-pred-name
+@c @findex --no-debug-unneeded-code-pred-name
+@c Print the definition of <predname> at the start of each pass of the
+@c unneeded code elimination algorithm.
+
+@c @sp 1
+@c @item @code{--debug-mm-tabling-analysis}
+@c @findex --debug-mm-tabling-analysis
+@c There is no help text available.
+
+@c @sp 1
+@c @item @code{--debug-dep-par-conj @var{pred_id}}
+@c @itemx --no-debug-dep-par-conj
+@c @findex --debug-dep-par-conj
+@c @findex --no-debug-dep-par-conj
+@c Output detailed debugging traces during the dependent AND-parallelism
+@c transformation of the predicate with the given predicate id. Effective
+@c only with the right trace flags.
+
+@c @sp 1
+@c @item @code{--debug-liveness @var{pred_id}}
+@c @findex --debug-liveness
+@c Output detailed debugging traces of the liveness analysis of the
+@c predicate with the given predicate id.
+
+@c @sp 1
+@c @item @code{--debug-stack-opt @var{pred-id}}
+@c @findex --debug-stack-opt
+@c Generate debug messages when performing stack slot optimization on the
+@c predicate with the given id.
+
+@c @sp 1
+@c @item @code{--debug-code-gen-pred-id @var{pred_id}}
+@c @findex --debug-code-gen-pred-id
+@c Output detailed debugging traces of code generation for the predicate
+@c or function with the given pred id. Effectively only with the right
+@c trace flags.
+
+@c @sp 1
+@c @item @code{--debug-opt}
+@c @findex --debug-opt
+@c Output detailed debugging traces of the optimization process.
+
+@c @sp 1
+@c @item @code{--debug-opt-pred-id @var{pred_id}}
+@c @itemx --no-debug-opt-pred-id
+@c @findex --debug-opt-pred-id
+@c @findex --no-debug-opt-pred-id
+@c Output detailed debugging traces of the optimization process only for
+@c the predicate/function with the specified pred id.
+
+@c @sp 1
+@c @item @code{--debug-opt-pred-name @var{name}}
+@c @itemx --no-debug-opt-pred-name
+@c @findex --debug-opt-pred-name
+@c @findex --no-debug-opt-pred-name
+@c Output detailed debugging traces of the optimization process only for
+@c the predicate/function with the specified name.
+
+@c @sp 1
+@c @item @code{--debug-make}
+@c @findex --debug-make
+@c Output detailed debugging traces of the operation of the @samp{--make}
+@c option.
+
+@c @sp 1
+@c @item @code{--debug-intermodule-analysis}
+@c @findex --debug-intermodule-analysis
+@c Output detailed debugging traces of the operation of the
+@c @samp{--intermodule-analysis} option.
+
+@c @end table
 
 @c @node           Options that can help debug the compiler
 @c @subsection     Options that can help debug the compiler
@@ -13223,9 +13231,9 @@ where to introduce implicit parallelism.
 
 @c @end table
 
-@node           Options for dumping internal compiler data structures
-@subsection     Options for dumping internal compiler data structures
-@cindex         Options for dumping internal compiler data structures
+@node           Dumping out internal compiler data structures
+@subsection     Dumping out internal compiler data structures
+@cindex         Dumping out internal compiler data structures
 
 @table @asis
 
