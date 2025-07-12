@@ -2,13 +2,14 @@
 # @configure_input@
 #---------------------------------------------------------------------------#
 # Copyright (C) 2003, 2005, 2008, 2010 The University of Melbourne.
+# Copyright (C) 2020, 2022, 2023, 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
 #
-# IMPORTANT: the manpage is produced automatically from this help
-# message, so if you change the help message, don't forget to check
-# that the manpage still looks OK.
+# IMPORTANT: the manpage is produced automatically from this help message,
+# so if you change the help message, don't forget to check that
+# the manpage still looks OK.
                 
 Help="\
 Name:   mercury_config - generate new configurations for a Mercury installation
