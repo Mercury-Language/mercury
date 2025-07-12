@@ -5508,18 +5508,18 @@ bindist/bindist.INSTALL
 bindist/bindist.Makefile
 runtime/mercury_dotnet.cs
 java/runtime/Constants.java
+browser/MDB_FLAGS
 compiler/COMP_FLAGS
+deep_profiler/DEEP_FLAGS
 grade_lib/GRADE_LIB_FLAGS
 library/LIB_FLAGS
 mdbcomp/MDBCOMP_FLAGS
-browser/MDB_FLAGS
-ssdb/SSDB_FLAGS
-slice/SLICE_FLAGS
-profiler/PROF_FLAGS
-deep_profiler/DEEP_FLAGS
-tests/TESTS_FLAGS
-tests/DEFNS_FOR_TESTS
 mfilterjavac/MFILTERJAVAC_FLAGS
+profiler/PROF_FLAGS
+slice/SLICE_FLAGS
+ssdb/SSDB_FLAGS
+tests/DEFNS_FOR_TESTS
+tests/TESTS_FLAGS
 '
 
 # The order in which we output files matters, because in some cases, one of the
