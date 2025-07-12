@@ -433,10 +433,21 @@ all_chapters = AllSections :-
         [SubSectionOptCtrl, SubSectionOptHH, SubSectionOptHHE,
         SubSectionOptHLM, SubSectionOptMM, SubSectionOptLL]),
 
-    SectionTransOpt = help_atomic(
+    SubSectionPlainOpt = help_atomic(
         help_option_group(
-            "Options that control transitive intermodule optimization",
+            "Non-transitive intermodule optimization",
+            "", [], [oc_plain_opt])),
+    SubSectionTransOpt = help_atomic(
+        help_option_group(
+            "Transitive intermodule optimization",
             "", [], [oc_trans_opt])),
+    SubSectionLatexOpt = help_atomic(
+        help_option_group(
+            "Intermodule optimization to a fixpoint",
+            "", [], [oc_latex_opt])),
+    SectionInterOpt = help_composite("Intermodule optimization",
+            "", [],
+            [SubSectionPlainOpt, SubSectionTransOpt, SubSectionLatexOpt]),
 
     SubSectionPmTerm1 = help_atomic(help_option_group(
         "The termination analyser based on linear inequality constraints",
@@ -567,7 +578,7 @@ all_chapters = AllSections :-
         SectionProfiling,
 
         SectionOpt,
-        SectionTransOpt,
+        SectionInterOpt,
         SectionAnalysis,
 
         SectionModOutput,

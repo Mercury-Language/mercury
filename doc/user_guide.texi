@@ -6913,7 +6913,7 @@ use @samp{mmc --help} to get the most up-to-date list.
 * Preparing code for mdb debugging:: 
 * Preparing code for mdprof profiling:: 
 * Optimization options:: 
-* Options that control transitive intermodule optimization:: 
+* Intermodule optimization:: 
 * Program analyses:: 
 * Options that ask for modified output:: 
 * Options for controlling mmc --make:: 
@@ -9789,89 +9789,6 @@ files of the directly or indirectly imported modules.)
 Turn on optimizations that reduce code size, and turn off optimizations
 that significantly increase code size.
 
-@sp 1
-@item @code{--intermodule-optimization}
-@itemx @code{--intermodule-optimisation}
-@itemx @code{--intermod-opt}
-@findex --intermodule-optimization
-@findex --intermodule-optimisation
-@findex --intermod-opt
-Perform inlining, higher-order specialization, and other optimizations
-using knowledge of the otherwise non-public data of directly imported
-modules. The compiler gets this data from the @file{@var{module}.opt}
-files of the directly imported modules.
-
-@sp 1
-This option must be set consistently throughout the compilation
-process, starting with @code{mmc --generate-dependencies}.
-
-@sp 1
-@item @code{--transitive-intermodule-optimization}
-@itemx @code{--transitive-intermodule-optimisation}
-@itemx @code{--trans-intermod-opt}
-@findex --transitive-intermodule-optimization
-@findex --transitive-intermodule-optimisation
-@findex --trans-intermod-opt
-Perform inlining, higher-order specialization, and other optimizations
-using knowledge of the otherwise non-public data of both directly and
-indirectly imported modules. The compiler gets this data from the
-@file{@var{module}.trans_opt} files of the directly and indirectly
-imported modules.
-
-@sp 1
-This option must be set consistently throughout the compilation
-process, starting with @code{mmc --generate-dependencies}.
-
-@sp 1
-Note that @samp{--transitive-intermodule-optimization} works only with
-@code{mmake}; it does not work with @code{mmc --make}.
-
-@sp 1
-@item @code{--no-read-opt-files-transitively}
-@findex --read-opt-files-transitively
-@findex --no-read-opt-files-transitively
-Only read the inter-module optimization information for directly
-imported modules, not the transitive closure of the imports.
-
-@sp 1
-@item @code{--use-opt-files}
-@findex --use-opt-files
-Perform inter-module optimization using any @file{.opt} files which are
-already built, e.g. those for the standard library, but do not build
-any others.
-
-@sp 1
-@item @code{--use-trans-opt-files}
-@findex --use-trans-opt-files
-Perform inter-module optimization using any @file{.trans_opt} files
-which are already built, e.g. those for the standard library, but do
-not build any others.
-
-@c @sp 1
-@c @item @code{--intermodule-analysis}
-@c @findex --intermodule-analysis
-@c Perform analyses such as termination analysis and unused argument
-@c elimination across module boundaries. This option is not yet fully
-@c implemented.
-
-@c @sp 1
-@c @item @code{--analysis-repeat @var{N}}
-@c @findex --analysis-repeat
-@c Specify the maximum number of times to repeat analyses of suboptimal
-@c modules with @samp{--intermodule-analysis} (default: 0). (This option
-@c works only with @code{mmc --make}.)
-
-@c @sp 1
-@c @item @code{--analysis-file-cache}
-@c @findex --analysis-file-cache
-@c Enable caching of parsed analysis files. This may improve compile times
-@c with @samp{--intermodule-analysis}.
-
-@c @sp 1
-@c @item @code{--analysis-file-cache-dir @var{directory}}
-@c @findex --analysis-file-cache-dir
-@c There is no help text available.
-
 @end table
 
 @node           Source-to-source optimizations
@@ -11004,11 +10921,86 @@ Optimization level 6 automatically sets --use-macro-for-redo-fail.
 
 @end table
 
-@node           Options that control transitive intermodule optimization
-@section        Options that control transitive intermodule optimization
-@cindex         Options that control transitive intermodule optimization
+@node           Intermodule optimization
+@section        Intermodule optimization
+@cindex         Intermodule optimization
+
+@menu
+* Non-transitive intermodule optimization:: 
+* Transitive intermodule optimization:: 
+@end menu
+
+@node           Non-transitive intermodule optimization
+@subsection     Non-transitive intermodule optimization
+@cindex         Non-transitive intermodule optimization
 
 @table @asis
+
+@sp 1
+@item @code{--intermodule-optimization}
+@itemx @code{--intermodule-optimisation}
+@itemx @code{--intermod-opt}
+@findex --intermodule-optimization
+@findex --intermodule-optimisation
+@findex --intermod-opt
+Perform inlining, higher-order specialization, and other optimizations
+using knowledge of the otherwise non-public data of directly imported
+modules. The compiler gets this data from the @file{@var{module}.opt}
+files of the directly imported modules.
+
+@sp 1
+This option must be set consistently throughout the compilation
+process, starting with @code{mmc --generate-dependencies}.
+
+@sp 1
+@item @code{--use-opt-files}
+@findex --use-opt-files
+Perform inter-module optimization using any @file{.opt} files which are
+already built, e.g. those for the standard library, but do not build
+any others.
+
+@sp 1
+@item @code{--no-read-opt-files-transitively}
+@findex --read-opt-files-transitively
+@findex --no-read-opt-files-transitively
+Only read the inter-module optimization information for directly
+imported modules, not the transitive closure of the imports.
+
+@end table
+
+@node           Transitive intermodule optimization
+@subsection     Transitive intermodule optimization
+@cindex         Transitive intermodule optimization
+
+@table @asis
+
+@sp 1
+@item @code{--transitive-intermodule-optimization}
+@itemx @code{--transitive-intermodule-optimisation}
+@itemx @code{--trans-intermod-opt}
+@findex --transitive-intermodule-optimization
+@findex --transitive-intermodule-optimisation
+@findex --trans-intermod-opt
+Perform inlining, higher-order specialization, and other optimizations
+using knowledge of the otherwise non-public data of both directly and
+indirectly imported modules. The compiler gets this data from the
+@file{@var{module}.trans_opt} files of the directly and indirectly
+imported modules.
+
+@sp 1
+This option must be set consistently throughout the compilation
+process, starting with @code{mmc --generate-dependencies}.
+
+@sp 1
+Note that @samp{--transitive-intermodule-optimization} works only with
+@code{mmake}; it does not work with @code{mmc --make}.
+
+@sp 1
+@item @code{--use-trans-opt-files}
+@findex --use-trans-opt-files
+Perform inter-module optimization using any @file{.trans_opt} files
+which are already built, e.g. those for the standard library, but do
+not build any others.
 
 @sp 1
 @item @code{--generate-module-order}
@@ -11025,6 +11017,39 @@ in top-down order to @file{@var{module}.order}. Effective only if
 @c Specify a file to remove edges from the trans-opt dependency graph.
 
 @end table
+
+@c @node           Intermodule optimization to a fixpoint
+@c @subsection     Intermodule optimization to a fixpoint
+@c @cindex         Intermodule optimization to a fixpoint
+
+@c @table @asis
+
+@c @sp 1
+@c @item @code{--intermodule-analysis}
+@c @findex --intermodule-analysis
+@c Perform analyses such as termination analysis and unused argument
+@c elimination across module boundaries. This option is not yet fully
+@c implemented.
+
+@c @sp 1
+@c @item @code{--analysis-repeat @var{N}}
+@c @findex --analysis-repeat
+@c Specify the maximum number of times to repeat analyses of suboptimal
+@c modules with @samp{--intermodule-analysis} (default: 0). (This option
+@c works only with @code{mmc --make}.)
+
+@c @sp 1
+@c @item @code{--analysis-file-cache}
+@c @findex --analysis-file-cache
+@c Enable caching of parsed analysis files. This may improve compile times
+@c with @samp{--intermodule-analysis}.
+
+@c @sp 1
+@c @item @code{--analysis-file-cache-dir @var{directory}}
+@c @findex --analysis-file-cache-dir
+@c There is no help text available.
+
+@c @end table
 
 @node           Program analyses
 @section        Program analyses

@@ -121,9 +121,10 @@
             % LLDS->LLDS optimizations.
     ;       oc_opt_lc
             % LLDS-> C optimizations. (There are no MLDS->C optimizations.)
+    ;       oc_plain_opt
     ;       oc_trans_opt
-            % Options that control the operation of transitive intermodule
-            % optimization.
+    ;       oc_latex_opt
+            % Options that control the operation of intermodule optimization.
     ;       oc_pm_term1
     ;       oc_pm_term2
     ;       oc_pm_misc
@@ -253,7 +254,9 @@ option_categories(oc_opt_hm, 0).
 option_categories(oc_opt_hl, 0).
 option_categories(oc_opt_ll, 0).
 option_categories(oc_opt_lc, 0).
+option_categories(oc_plain_opt, 0).
 option_categories(oc_trans_opt, 0).
+option_categories(oc_latex_opt, 0).
 option_categories(oc_pm_term1, 0).
 option_categories(oc_pm_term2, 0).
 option_categories(oc_pm_misc, 0).

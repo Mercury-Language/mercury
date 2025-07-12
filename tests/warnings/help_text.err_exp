@@ -1720,67 +1720,6 @@ Optimization options
         Turn on optimizations that reduce code size, and turn off optimizations
         that significantly increase code size.
 
-    --intermodule-optimization
-    --intermodule-optimisation
-    --intermod-opt
-        Perform inlining, higher-order specialization, and other optimizations
-        using knowledge of the otherwise non-public data of directly imported
-        modules. The compiler gets this data from the `<module>.opt' files of
-        the directly imported modules.
-        
-        This option must be set consistently throughout the compilation
-        process, starting with `mmc --generate-dependencies'.
-
-    --transitive-intermodule-optimization
-    --transitive-intermodule-optimisation
-    --trans-intermod-opt
-        Perform inlining, higher-order specialization, and other optimizations
-        using knowledge of the otherwise non-public data of both directly and
-        indirectly imported modules. The compiler gets this data from the
-        `<module>.trans_opt' files of the directly and indirectly imported
-        modules.
-        
-        This option must be set consistently throughout the compilation
-        process, starting with `mmc --generate-dependencies'.
-        
-        Note that `--transitive-intermodule-optimization' works only with
-        `mmake'; it does not work with `mmc --make'.
-
-    --no-read-opt-files-transitively
-        Only read the inter-module optimization information for directly
-        imported modules, not the transitive closure of the imports.
-
-    --use-opt-files
-        Perform inter-module optimization using any `.opt' files which are
-        already built, e.g. those for the standard library, but do not build
-        any others.
-
-    --use-trans-opt-files
-        Perform inter-module optimization using any `.trans_opt' files which
-        are already built, e.g. those for the standard library, but do not
-        build any others.
-
-    PRIVATE OPTION
-    --intermodule-analysis
-        Perform analyses such as termination analysis and unused argument
-        elimination across module boundaries. This option is not yet fully
-        implemented.
-
-    PRIVATE OPTION
-    --analysis-repeat <N>
-        Specify the maximum number of times to repeat analyses of suboptimal
-        modules with `--intermodule-analysis' (default: 0). (This option works
-        only with `mmc --make'.)
-
-    PRIVATE OPTION
-    --analysis-file-cache
-        Enable caching of parsed analysis files. This may improve compile times
-        with `--intermodule-analysis'.
-
-    PRIVATE OPTION
-    --analysis-file-cache-dir <directory>
-        There is no help text available.
-
   Source-to-source optimizations
 
     --optimize-dead-procs
@@ -2430,7 +2369,51 @@ Optimization options
         code in the runtime system. This produces slightly bigger but slightly
         faster code.
 
-Options that control transitive intermodule optimization
+Intermodule optimization
+
+  Non-transitive intermodule optimization
+
+    --intermodule-optimization
+    --intermodule-optimisation
+    --intermod-opt
+        Perform inlining, higher-order specialization, and other optimizations
+        using knowledge of the otherwise non-public data of directly imported
+        modules. The compiler gets this data from the `<module>.opt' files of
+        the directly imported modules.
+        
+        This option must be set consistently throughout the compilation
+        process, starting with `mmc --generate-dependencies'.
+
+    --use-opt-files
+        Perform inter-module optimization using any `.opt' files which are
+        already built, e.g. those for the standard library, but do not build
+        any others.
+
+    --no-read-opt-files-transitively
+        Only read the inter-module optimization information for directly
+        imported modules, not the transitive closure of the imports.
+
+  Transitive intermodule optimization
+
+    --transitive-intermodule-optimization
+    --transitive-intermodule-optimisation
+    --trans-intermod-opt
+        Perform inlining, higher-order specialization, and other optimizations
+        using knowledge of the otherwise non-public data of both directly and
+        indirectly imported modules. The compiler gets this data from the
+        `<module>.trans_opt' files of the directly and indirectly imported
+        modules.
+        
+        This option must be set consistently throughout the compilation
+        process, starting with `mmc --generate-dependencies'.
+        
+        Note that `--transitive-intermodule-optimization' works only with
+        `mmake'; it does not work with `mmc --make'.
+
+    --use-trans-opt-files
+        Perform inter-module optimization using any `.trans_opt' files which
+        are already built, e.g. those for the standard library, but do not
+        build any others.
 
     --generate-module-order
         Output the strongly connected components of the module dependency graph
@@ -2441,6 +2424,29 @@ Options that control transitive intermodule optimization
     --trans-opt-deps-spec <filename>
     --no-trans-opt-deps-spec
         Specify a file to remove edges from the trans-opt dependency graph.
+
+  Intermodule optimization to a fixpoint
+
+    PRIVATE OPTION
+    --intermodule-analysis
+        Perform analyses such as termination analysis and unused argument
+        elimination across module boundaries. This option is not yet fully
+        implemented.
+
+    PRIVATE OPTION
+    --analysis-repeat <N>
+        Specify the maximum number of times to repeat analyses of suboptimal
+        modules with `--intermodule-analysis' (default: 0). (This option works
+        only with `mmc --make'.)
+
+    PRIVATE OPTION
+    --analysis-file-cache
+        Enable caching of parsed analysis files. This may improve compile times
+        with `--intermodule-analysis'.
+
+    PRIVATE OPTION
+    --analysis-file-cache-dir <directory>
+        There is no help text available.
 
 Program analyses
 

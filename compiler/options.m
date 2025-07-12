@@ -642,15 +642,6 @@
     ;       default_opt_level
     ;       opt_level
     ;       opt_space                   % Default is to optimize time.
-    ;       intermodule_optimization
-    ;       transitive_optimization
-    ;       read_opt_files_transitively
-    ;       use_opt_files
-    ;       use_trans_opt_files
-    ;       intermodule_analysis
-    ;       analysis_repeat
-    ;       analysis_file_cache
-    ;       analysis_file_cache_dir
 
     % HLDS->HLDS optimizations.
     ;       optopt_opt_dead_procs
@@ -812,8 +803,19 @@
     ;       optopt_use_macro_for_redo_fail
 
 % Intermodule optimization options.
+    ;       intermodule_optimization
+    ;       use_opt_files
+    ;       read_opt_files_transitively
+
+    ;       transitive_optimization
+    ;       use_trans_opt_files
     ;       generate_module_order
     ;       trans_opt_deps_spec
+
+    ;       intermodule_analysis
+    ;       analysis_repeat
+    ;       analysis_file_cache
+    ;       analysis_file_cache_dir
 
 % Analysis options.
     % Options for the old termination analyser.
@@ -3403,74 +3405,6 @@ optdb(oc_opt_ctrl,  opt_space,                         special,
         w("Turn on optimizations that reduce code size,"),
         w("and turn off optimizations that significantly"),
         w("increase code size.")])).
-optdb(oc_opt_ctrl,  intermodule_optimization,          bool(no),
-    alt_help("intermodule-optimization",
-            ["intermodule-optimisation", "intermod-opt"], [
-        w("Perform inlining, higher-order specialization,"),
-        w("and other optimizations using knowledge"),
-        w("of the otherwise non-public data of directly imported modules."),
-        w("The compiler gets this data from the"),
-        file_var("module", "opt"), w("files"),
-        w("of the directly imported modules."),
-        blank_line,
-        w("This option must be set consistently"),
-        w("throughout the compilation process, starting with"),
-        code("mmc --generate-dependencies", ".")])).
-optdb(oc_opt_ctrl,  transitive_optimization,           bool(no),
-    alt_help("transitive-intermodule-optimization",
-            ["transitive-intermodule-optimisation", "trans-intermod-opt"], [
-        w("Perform inlining, higher-order specialization,"),
-        w("and other optimizations using knowledge"),
-        w("of the otherwise non-public data of"),
-        w("both directly and indirectly imported modules."),
-        w("The compiler gets this data from the"),
-        file_var("module", "trans_opt"), w("files"),
-        w("of the directly and indirectly imported modules."),
-        blank_line,
-        w("This option must be set consistently"),
-        w("throughout the compilation process, starting with"),
-        code("mmc --generate-dependencies", "."),
-        blank_line,
-        w("Note that"), opt("--transitive-intermodule-optimization"),
-        w("works only with"), code("mmake", ";"),
-        w("it does not work with"), code("mmc --make", ".")])).
-optdb(oc_opt_ctrl,  read_opt_files_transitively,       bool(yes),
-    help("read-opt-files-transitively", [
-        w("Only read the inter-module optimization information"),
-        w("for directly imported modules, not the transitive"),
-        w("closure of the imports.")])).
-optdb(oc_opt_ctrl,  use_opt_files,                     bool(no),
-    help("use-opt-files", [
-        w("Perform inter-module optimization using any"),
-        file(".opt"), w("files which are already built,"),
-        % XXX In texinfo, we use e.g.@:
-        w("e.g. those for the standard library,"),
-        w("but do not build any others.")])).
-optdb(oc_opt_ctrl,  use_trans_opt_files,               bool(no),
-    help("use-trans-opt-files", [
-        w("Perform inter-module optimization using any"),
-        file(".trans_opt"), w("files which are already built,"),
-        w("e.g. those for the standard library,"),
-        w("but do not build any others.")])).
-optdb(oc_opt_ctrl,  intermodule_analysis,              bool(no),
-    priv_help("intermodule-analysis", [
-        w("Perform analyses such as termination analysis and"),
-        w("unused argument elimination across module boundaries."),
-        w("This option is not yet fully implemented.")])).
-optdb(oc_opt_ctrl,  analysis_repeat,                   int(0),
-    priv_arg_help("analysis-repeat", "N", [
-        w("Specify the maximum number of times to repeat analyses"),
-        w("of suboptimal modules with"), opt("--intermodule-analysis"),
-        w("(default: 0)."),
-        w("(This option works only with"), code("mmc --make", ".)")])).
-optdb(oc_opt_ctrl,  analysis_file_cache,               bool(no),
-    % This feature is still experimental.
-    priv_help("analysis-file-cache", [
-        w("Enable caching of parsed analysis files. This may"),
-        w("improve compile times with"), opt("--intermodule-analysis", ".")])).
-optdb(oc_opt_ctrl,  analysis_file_cache_dir,           string(""),
-    % The `--analysis-file-cache-dir' option is used by `mmc --make'.
-    priv_arg_help("analysis-file-cache-dir", "directory", [])).
 
 %---------------------%
 
@@ -4207,13 +4141,58 @@ optdb(oc_opt_lc,    optopt_use_macro_for_redo_fail,    bool_special,
 
 %---------------------------------------------------------------------------%
 
-% XXX Either this section should be folded into the general optimization
-% section, or we should have separate sections for non-intermodule and
-% intermodule optimizations, with latter possibly split again
-% into non-transitive and transitive sections.
+    % Options to control intermodule optimization.
 
-    % Options to control transitive intermodule optimization.
+optdb(oc_plain_opt,  intermodule_optimization,         bool(no),
+    alt_help("intermodule-optimization",
+            ["intermodule-optimisation", "intermod-opt"], [
+        w("Perform inlining, higher-order specialization,"),
+        w("and other optimizations using knowledge"),
+        w("of the otherwise non-public data of directly imported modules."),
+        w("The compiler gets this data from the"),
+        file_var("module", "opt"), w("files"),
+        w("of the directly imported modules."),
+        blank_line,
+        w("This option must be set consistently"),
+        w("throughout the compilation process, starting with"),
+        code("mmc --generate-dependencies", ".")])).
+optdb(oc_plain_opt, use_opt_files,                     bool(no),
+    help("use-opt-files", [
+        w("Perform inter-module optimization using any"),
+        file(".opt"), w("files which are already built,"),
+        % XXX In texinfo, we use e.g.@:
+        w("e.g. those for the standard library,"),
+        w("but do not build any others.")])).
+optdb(oc_plain_opt, read_opt_files_transitively,       bool(yes),
+    help("read-opt-files-transitively", [
+        w("Only read the inter-module optimization information"),
+        w("for directly imported modules, not the transitive"),
+        w("closure of the imports.")])).
 
+optdb(oc_trans_opt, transitive_optimization,           bool(no),
+    alt_help("transitive-intermodule-optimization",
+            ["transitive-intermodule-optimisation", "trans-intermod-opt"], [
+        w("Perform inlining, higher-order specialization,"),
+        w("and other optimizations using knowledge"),
+        w("of the otherwise non-public data of"),
+        w("both directly and indirectly imported modules."),
+        w("The compiler gets this data from the"),
+        file_var("module", "trans_opt"), w("files"),
+        w("of the directly and indirectly imported modules."),
+        blank_line,
+        w("This option must be set consistently"),
+        w("throughout the compilation process, starting with"),
+        code("mmc --generate-dependencies", "."),
+        blank_line,
+        w("Note that"), opt("--transitive-intermodule-optimization"),
+        w("works only with"), code("mmake", ";"),
+        w("it does not work with"), code("mmc --make", ".")])).
+optdb(oc_trans_opt, use_trans_opt_files,               bool(no),
+    help("use-trans-opt-files", [
+        w("Perform inter-module optimization using any"),
+        file(".trans_opt"), w("files which are already built,"),
+        w("e.g. those for the standard library,"),
+        w("but do not build any others.")])).
 optdb(oc_trans_opt, generate_module_order,             bool(no),
     % XXX The connection between this option and transitive intermodule
     % optimization is not made clear by this help text.
@@ -4228,6 +4207,26 @@ optdb(oc_trans_opt, trans_opt_deps_spec,               maybe_string(no),
         % XXX This sentence is missing some words.
         w("Specify a file to remove edges from the trans-opt dependency"),
         w("graph.")])).
+
+optdb(oc_latex_opt, intermodule_analysis,              bool(no),
+    priv_help("intermodule-analysis", [
+        w("Perform analyses such as termination analysis and"),
+        w("unused argument elimination across module boundaries."),
+        w("This option is not yet fully implemented.")])).
+optdb(oc_latex_opt, analysis_repeat,                   int(0),
+    priv_arg_help("analysis-repeat", "N", [
+        w("Specify the maximum number of times to repeat analyses"),
+        w("of suboptimal modules with"), opt("--intermodule-analysis"),
+        w("(default: 0)."),
+        w("(This option works only with"), code("mmc --make", ".)")])).
+optdb(oc_latex_opt, analysis_file_cache,               bool(no),
+    % This feature is still experimental.
+    priv_help("analysis-file-cache", [
+        w("Enable caching of parsed analysis files. This may"),
+        w("improve compile times with"), opt("--intermodule-analysis", ".")])).
+optdb(oc_latex_opt, analysis_file_cache_dir,           string(""),
+    % The `--analysis-file-cache-dir' option is used by `mmc --make'.
+    priv_arg_help("analysis-file-cache-dir", "directory", [])).
 
 %---------------------------------------------------------------------------%
 
