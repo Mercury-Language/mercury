@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2003-2006, 2008-2012 The University of Melbourne.
-% Copyright (C) 2014-2020, 2022-2024 The Mercury team.
+% Copyright (C) 2014-2020, 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -67,7 +67,6 @@
 :- import_module io.
 :- import_module list.
 :- import_module maybe.
-:- import_module require.
 :- import_module unit.
 
 %-----------------------------------------------------------------------------%
@@ -156,18 +155,9 @@ module_name_func_id_from_pred_info(PredInfo, ProcId, PredModule, FuncId) :-
 func_id_to_ppid(ModuleInfo, ModuleName, FuncId, PPId) :-
     FuncId = func_id(PredOrFunc, FuncName, PredFormArity, ProcId),
     module_info_get_predicate_table(ModuleInfo, PredTable),
-    predicate_table_lookup_pf_m_n_a(PredTable, is_fully_qualified,
-        PredOrFunc, ModuleName, FuncName, PredFormArity, PredIds),
-    (
-        PredIds = [],
-        unexpected($pred, "no predicate")
-    ;
-        PredIds = [PredId],
-        PPId = proc(PredId, ProcId)
-    ;
-        PredIds = [_, _ | _],
-        unexpected($pred, "more than one predicate")
-    ).
+    predicate_table_lookup_pf_fqm_n_a(PredTable, PredOrFunc,
+        ModuleName, FuncName, PredFormArity, PredId),
+    PPId = proc(PredId, ProcId).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.mmc_analysis.

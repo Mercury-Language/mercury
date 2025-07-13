@@ -117,10 +117,12 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
     % If it is not there, print an error message and insert
     % a dummy declaration for the predicate.
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
-    predicate_table_lookup_pf_m_n_a(PredTable0, is_fully_qualified,
-        PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds),
+    predicate_table_search_pf_fqm_n_a(PredTable0, PredOrFunc,
+        PredModuleName, PredName, PredFormArity, MaybePredId),
     (
-        PredIds = [],
+        MaybePredId = yes(PredId)
+    ;
+        MaybePredId = no,
         Origin = origin_user(user_made_pred(PredOrFunc,
             PredSymName, UserArity)),
         add_implicit_pred_decl_report_error(PredOrFunc, PredModuleName,
@@ -128,24 +130,6 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
             Context, Origin,
             [pragma_decl("foreign_proc"), words("declaration")],
             PredId, !ModuleInfo, !Specs)
-    ;
-        PredIds = [PredId]
-    ;
-        PredIds = [PredId, _ | _],
-        % Any attempt to define more than one pred with the same PredOrFunc,
-        % PredSymName and Arity should have been caught earlier, and an error
-        % message generated. We continue so that we can try to find more
-        % errors.
-        AmbiPieces =
-            [words("Error: the"), p_or_f(PredOrFunc), words("name")] ++
-            color_as_subject([qual_sym_name_arity(SNA)]) ++
-            [words("in"), pragma_decl("foreign_proc"),
-            words("declaration is")] ++
-            color_as_incorrect([words("ambiguous.")]) ++
-            [nl],
-        AmbiSpec = spec($pred, severity_error, phase_pt2h,
-            Context, AmbiPieces),
-        !:Specs = [AmbiSpec | !.Specs]
     ),
 
     % Lookup the pred_info for this pred, add the pragma to the proc_info

@@ -105,14 +105,13 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
             ModesOrArity = moa_arity(UserArity),
             user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity)
         ),
-        UserArity = user_arity(UserArityInt),
         % Lookup the pred or func declaration in the predicate table.
         % If it is not there, print an error message and insert
         % a dummy declaration for it.
-        predicate_table_lookup_pf_m_n_a(PredicateTable0, is_fully_qualified,
-            PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds0),
+        predicate_table_search_pf_fqm_n_a(PredicateTable0, PredOrFunc,
+            PredModuleName, PredName, PredFormArity, MaybePredId),
         (
-            PredIds0 = [],
+            MaybePredId = no,
             Origin = origin_user(user_made_pred(PredOrFunc,
                 PredSymName, UserArity)),
             TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
@@ -123,15 +122,14 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
                 PredId, !ModuleInfo, !Specs),
             PredIds = [PredId]
         ;
-            PredIds0 = [_ | _],
-            PredIds = PredIds0
+            MaybePredId = yes(PredId),
+            PredIds = [PredId]
         )
     ;
         PFUMM = pfumm_unknown(UserArity),
         TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
         maybe_warn_about_pfumm_unknown(!.ModuleInfo, TabledMethodStr, PFUMM,
             PredSymName, Context, !Specs),
-        UserArity = user_arity(UserArityInt),
         predicate_table_lookup_m_n_a(PredicateTable0, is_fully_qualified,
             PredModuleName, PredName, UserArity, PredIds0),
         (
@@ -161,6 +159,7 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
             PredIds = [_]
         ;
             PredIds = [_, _ | _],
+            UserArity = user_arity(UserArityInt),
             SNA = sym_name_arity(PredSymName, UserArityInt),
             (
                 Statistics = table_gather_statistics,

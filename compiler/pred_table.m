@@ -261,9 +261,12 @@
     % NOTE This is opposite to what happens with the lookup predicates
     % declared above!!
     %
-:- pred predicate_table_lookup_pf_m_n_a(predicate_table::in,
-    is_fully_qualified::in, pred_or_func::in, module_name::in, string::in,
-    pred_form_arity::in, list(pred_id)::out) is det.
+:- pred predicate_table_search_pf_fqm_n_a(predicate_table::in,
+    pred_or_func::in, module_name::in, string::in, pred_form_arity::in,
+    maybe(pred_id)::out) is det.
+:- pred predicate_table_lookup_pf_fqm_n_a(predicate_table::in,
+    pred_or_func::in, module_name::in, string::in, pred_form_arity::in,
+    pred_id::out) is det.
 
     % Search the table for predicates or functions matching this pred_or_func
     % category, name, and arity. When searching for functions, the arity used
@@ -1063,6 +1066,39 @@ pred_id_matches_module(PredIdTable, ModuleName, PredId) :-
 
 %---------------------------------------------------------------------------%
 
+predicate_table_search_pf_fqm_n_a(PredicateTable, PredOrFunc, Module, Name,
+        PredFormArity, MaybePredId) :-
+    predicate_table_lookup_pf_m_n_a(PredicateTable, is_fully_qualified,
+        PredOrFunc, Module, Name, PredFormArity, PredIds),
+    (
+        PredIds = [],
+        MaybePredId = no
+    ;
+        PredIds = [PredId],
+        MaybePredId = yes(PredId)
+    ;
+        PredIds = [_, _ | _],
+        unexpected($pred, "more than one pred_id")
+    ).
+
+predicate_table_lookup_pf_fqm_n_a(PredicateTable, PredOrFunc, Module, Name,
+        PredFormArity, PredId) :-
+    predicate_table_lookup_pf_m_n_a(PredicateTable, is_fully_qualified,
+        PredOrFunc, Module, Name, PredFormArity, PredIds),
+    (
+        PredIds = [],
+        unexpected($pred, "no pred_id")
+    ;
+        PredIds = [PredId]
+    ;
+        PredIds = [_, _ | _],
+        unexpected($pred, "more than one pred_id")
+    ).
+
+:- pred predicate_table_lookup_pf_m_n_a(predicate_table::in,
+    is_fully_qualified::in, pred_or_func::in, module_name::in, string::in,
+    pred_form_arity::in, list(pred_id)::out) is det.
+
 predicate_table_lookup_pf_m_n_a(PredicateTable, IsFullyQualified,
         PredOrFunc, Module, Name, PredFormArity, PredIds) :-
     (
@@ -1076,6 +1112,8 @@ predicate_table_lookup_pf_m_n_a(PredicateTable, IsFullyQualified,
         predicate_table_lookup_func_m_n_a(PredicateTable, IsFullyQualified,
             Module, Name, UserArity, PredIds)
     ).
+
+%---------------------------------------------------------------------------%
 
 predicate_table_lookup_pf_name_arity(PredicateTable,
         PredOrFunc, Name, PredFormArity, PredIds) :-

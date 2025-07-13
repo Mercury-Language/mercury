@@ -417,12 +417,12 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
         Context, PredOrigin, PredStatus, MaybeCurUserDecl, GoalType,
         Markers, Types, TVarSet, ExistQVars, Constraints, Proofs,
         ConstraintMap, ClausesInfo, VarNameRemap, PredInfo0),
-    predicate_table_lookup_pf_m_n_a(PredTable0, is_fully_qualified,
-        PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds),
+    predicate_table_search_pf_fqm_n_a(PredTable0, PredOrFunc,
+        PredModuleName, PredName, PredFormArity, MaybeOrigPredId),
     (
-        PredIds = [OrigPred | _],
+        MaybeOrigPredId = yes(OrigPredId),
         MaybeNewPredId = no,
-        module_info_pred_info(!.ModuleInfo, OrigPred, OrigPredInfo),
+        module_info_pred_info(!.ModuleInfo, OrigPredId, OrigPredInfo),
         pred_info_get_context(OrigPredInfo, OrigContext),
         ( if PredStatus0 = pred_status(status_opt_imported) then
             true
@@ -433,7 +433,7 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
                 Context, OrigContext, [], !Specs)
         )
     ;
-        PredIds = [],
+        MaybeOrigPredId = no,
         module_info_get_partial_qualifier_info(!.ModuleInfo, PQInfo),
         predicate_table_insert_qual(PredInfo0, NeedQual, PQInfo, PredId,
             PredTable0, PredTable1),
@@ -799,11 +799,12 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         % will be inferred automatically.
         PredFormArity = arg_list_arity(Modes),
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-        predicate_table_lookup_pf_m_n_a(PredicateTable0, is_fully_qualified,
-            PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds),
-        ( if PredIds = [PredIdPrime] then
-            PredId = PredIdPrime
-        else
+        predicate_table_search_pf_fqm_n_a(PredicateTable0, PredOrFunc,
+            PredModuleName, PredName, PredFormArity, MaybePredId),
+        (
+            MaybePredId = yes(PredId)
+        ;
+            MaybePredId = no,
             user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
             Origin = origin_user(
                 user_made_pred(PredOrFunc, PredSymName, UserArity)),
@@ -1086,16 +1087,16 @@ add_implicit_pred_decl(PredOrFunc, PredModuleName, PredName, PredFormArity,
     add_marker(marker_no_pred_decl, Markers1, Markers),
     pred_info_set_markers(Markers, PredInfo0, PredInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-    predicate_table_lookup_pf_m_n_a(PredicateTable0, is_fully_qualified,
-        PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds),
+    predicate_table_search_pf_fqm_n_a(PredicateTable0, PredOrFunc,
+        PredModuleName, PredName, PredFormArity, MaybePredId),
     (
-        PredIds = [],
+        MaybePredId = no,
         module_info_get_partial_qualifier_info(!.ModuleInfo, MQInfo),
         predicate_table_insert_qual(PredInfo, may_be_unqualified, MQInfo,
             PredId, PredicateTable0, PredicateTable),
         module_info_set_predicate_table(PredicateTable, !ModuleInfo)
     ;
-        PredIds = [_ | _],
+        MaybePredId = yes(_),
         ( if PredOrigin = origin_user(user_made_assertion(_, _, _)) then
             % We add promises to the HLDS *after* we add all user predicate
             % declarations.
