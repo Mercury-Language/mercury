@@ -360,6 +360,7 @@ start_runtests_local:
 		rm -f *.trans_opt *.trans_opt_date > /dev/null 2>&1; \
 		rm -f .mercury_trace_counts* > /dev/null 2>&1; \
 		rm -f .date* > /dev/null 2>&1; \
+		rm -rf Mercury > /dev/null 2>&1; \
 	fi
 	@> FAILED_TESTS
 
@@ -396,6 +397,7 @@ start_runtests_local:
 TEST_LOGS = $(THIS_DIR_TESTS_TO_RUN:%=%.log)
 runtests_local:
 	+@ \
+	/bin/rm -fr Mercury lib/Mercury > /dev/null 2>&1; \
 	mmake -k $(MAYBE_J1) $(TEST_LOGS); \
 	touch DUMMY.log; \
 	cat *.log > $(ERROR_OUTPUT_FILE); \
@@ -405,9 +407,18 @@ runtests_local:
 		echo cleaning up the directory after the tests; \
 		mmake $(RM_JFACTOR) realclean_local > /dev/null 2>&1; \
 		rm core > /dev/null 2>&1; \
+		/bin/rm -fr Mercury lib/Mercury > /dev/null 2>&1; \
 		touch CLEAN; \
 	else \
 		echo "FAILED tests in $(THIS_DIR) $(PARAMS_MSG)"; \
+		/bin/rm -fr Mercury.failed lib/Mercury.failed \
+			> /dev/null 2>&1; \
+		if test -d Mercury; then \
+			mv -f Mercury Mercury.failed; \
+		fi; \
+		if test -d lib/Mercury; then \
+			mv -f lib/Mercury lib/Mercury.failed; \
+		fi; \
 		exit 1; \
 	fi
 
