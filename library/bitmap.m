@@ -157,7 +157,7 @@
 % :- mode unsafe_bit(in, bitmap_ui) = out is det.
 :- mode unsafe_bit(in, in) = out is det.
 
-    % set_bit(Index, NewBit, !BitMap:
+    % set_bit(Index, NewBit, !BitMap):
     % !.Bitmap ^ bit(Index) := NewBit:
     %
     % Set the indicated bit of !.Bitmap to NewBit.
@@ -169,7 +169,7 @@
 :- func 'bit :='(bit_index, bitmap, bool) = bitmap.
 :- mode 'bit :='(in, bitmap_di, in) = bitmap_uo is det.
 
-    % unsafe_set_bit(Index, NewBit, !BitMap:
+    % unsafe_set_bit(Index, NewBit, !BitMap):
     % !.Bitmap ^ unsafe_bit(Index) := NewBit:
     %
     % Does the same job as set_bit, but the result is undefined
