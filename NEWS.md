@@ -972,6 +972,7 @@ Changes to the Mercury standard library
     - pred `right_by_code_point/3`
     - pred `split_by_code_point/3`
     - pred `split_by_code_point/4`
+    - pred `replace_all_sv/4`
     - pred `unsafe_find_first_char_start/4`
 
 * The following obsolete modes have been removed from the following predicates:

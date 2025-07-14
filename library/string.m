@@ -1319,6 +1319,20 @@
 :- func replace_all(string::in, string::in, string::in) = (string::uo) is det.
 :- pred replace_all(string::in, string::in, string::in, string::uo) is det.
 
+    % replace_all_sv(Pattern, Subst, String0, String):
+    %
+    % Does the exact same job as replace_all, but takes the arguments
+    % in a different order. The advantage is that this order is easier to use
+    % with higher order code such as
+    %
+    %   list.map(replace_all(Pattern, Subst), Strings0, Strings)
+    %
+    % and with state variables, in code such as
+    %
+    %   list.map(replace_all(Pattern, Subst), !Strings)
+    %
+:- pred replace_all_sv(string::in, string::in, string::in, string::uo) is det.
+
     % word_wrap(Str, LineLen) = Wrapped:
     %
     % Wrapped is Str with newlines inserted between words (separated by ASCII
@@ -5135,6 +5149,9 @@ replace_all(Str, Pat, Subst, Result) :-
         list.reverse(RevPieces, Pieces),
         unsafe_append_string_pieces(Pieces, Result)
     ).
+
+replace_all_sv(Pat, Subst, Str, Result) :-
+    replace_all(Str, Pat, Subst, Result).
 
 :- pred replace_all_empty_pat(string::in, string::in, string::uo) is det.
 

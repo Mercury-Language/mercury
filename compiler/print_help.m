@@ -2111,7 +2111,14 @@ reflow_lines_loop_over_lines(Format, LineLen, Pieces, !CindexCord, !FindexCord,
         Pieces = [HeadPiece | TailPieces],
         (
             HeadPiece = w(WordsStr),
-            Words = string.words(WordsStr),
+            Words0 = string.words(WordsStr),
+            (
+                Format = help_plain_text,
+                Words = Words0
+            ;
+                Format = help_texinfo,
+                list.map(replace_all_sv("e.g.", "e.g.@:"), Words0, Words)
+            ),
             reflow_lines_loop_over_words(LineLen, Words, !CurLine, !CurLineLen,
                 !FinishedLineCord)
         ;
