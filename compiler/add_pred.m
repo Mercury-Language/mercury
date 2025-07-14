@@ -20,7 +20,6 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.make_hlds.make_hlds_types.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.
 :- import_module mdbcomp.
@@ -94,20 +93,16 @@
     goal_type::in, clauses_info::in, pred_id::out,
     module_info::in, module_info::out) is det.
 
-:- pred check_preds_if_field_access_function(module_info::in,
-    sec_list(item_pred_decl_info)::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module hlds.hlds_args.
-:- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.make_hlds.check_field_access_functions.
 :- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.
 :- import_module hlds.var_table_hlds.
@@ -793,10 +788,9 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
         !:Specs = [Spec | !.Specs]
     else
         % Lookup the pred or func declaration in the predicate table.
-        % If it is not there (or if it is ambiguous), optionally print
-        % a warning message and insert an implicit definition
-        % for the predicate; it is presumed to be local, and its type
-        % will be inferred automatically.
+        % If it is not there, generate a warning, and insert an implicit
+        % declaration for the predicate. We presum it to be local, and
+        % will infer its type automatically.
         PredFormArity = arg_list_arity(Modes),
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
         predicate_table_search_pf_fqm_n_a(PredicateTable0, PredOrFunc,
@@ -1112,93 +1106,6 @@ add_implicit_pred_decl(PredOrFunc, PredModuleName, PredName, PredFormArity,
             unexpected($pred, "search succeeded")
         )
     ).
-
-%---------------------------------------------------------------------------%
-
-check_preds_if_field_access_function(_ModuleInfo, [], !Specs).
-check_preds_if_field_access_function(ModuleInfo, [SecList | SecLists],
-        !Specs) :-
-    SecList = sec_sub_list(SectionInfo, ItemPredSecls),
-    SectionInfo = sec_info(ItemMercuryStatus, _NeedQual),
-    item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    list.foldl(check_pred_if_field_access_function(ModuleInfo, PredStatus),
-        ItemPredSecls, !Specs),
-    check_preds_if_field_access_function(ModuleInfo, SecLists, !Specs).
-
-:- pred check_pred_if_field_access_function(module_info::in, pred_status::in,
-    item_pred_decl_info::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_pred_if_field_access_function(ModuleInfo, PredStatus, ItemPredDecl,
-        !Specs) :-
-    ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc, TypesAndMaybeModes,
-        _, _, _, _, _, _, _, _, _, Context, _SeqNum),
-    (
-        PredOrFunc = pf_predicate
-    ;
-        PredOrFunc = pf_function,
-        PredFormArity = types_and_maybe_modes_arity(TypesAndMaybeModes),
-        user_arity_pred_form_arity(pf_function, UserArity, PredFormArity),
-        maybe_check_field_access_function(ModuleInfo, SymName, UserArity,
-            PredStatus, Context, !Specs)
-    ).
-
-:- pred maybe_check_field_access_function(module_info::in,
-    sym_name::in, user_arity::in, pred_status::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-maybe_check_field_access_function(ModuleInfo, FuncSymName, UserArity,
-        FuncStatus, Context, !Specs) :-
-    UserArity = user_arity(UserArityInt),
-    ( if
-        % XXX ARITY Make this take UserArity, not UserArityInt.
-        is_field_access_function_name(ModuleInfo, FuncSymName, UserArityInt,
-            AccessType, FieldName)
-    then
-        check_field_access_function(ModuleInfo, AccessType, FieldName,
-            FuncSymName, UserArity, FuncStatus, Context, !Specs)
-    else
-        true
-    ).
-
-:- pred check_field_access_function(module_info::in, field_access_type::in,
-    sym_name::in, sym_name::in, user_arity::in, pred_status::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
-
-check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncSymName,
-        UserArity, FuncStatus, Context, !Specs) :-
-    % Check that a function applied to an exported type is also exported.
-    module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
-    ( if
-        % Abstract types have status `abstract_exported', so errors won't be
-        % reported for local field access functions for them.
-        map.search(CtorFieldTable, FieldName, [FieldDefn]),
-        FieldDefn = hlds_ctor_field_defn(_, DefnStatus, _, _, _),
-        DefnStatus = type_status(status_exported),
-        FuncStatus \= pred_status(status_exported)
-    then
-        % XXX Our caller adjusted the arity one way; we now adjust it back.
-        % It should be possible to do without the double adjustment.
-        user_arity_pred_form_arity(pf_function, UserArity, PredFormArity),
-        PFSymNameArity =
-            pf_sym_name_arity(pf_function, FuncSymName, PredFormArity),
-        report_field_status_mismatch(Context, PFSymNameArity, !Specs)
-    else
-        true
-    ).
-
-:- pred report_field_status_mismatch(prog_context::in, pf_sym_name_arity::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-report_field_status_mismatch(Context, PFSymNameArity, !Specs) :-
-    Pieces = [words("In declaration of"),
-        unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl,
-        words("error:")] ++
-        color_as_subject(
-            [words("a field access function for an exported field")]) ++
-        color_as_incorrect([words("must also be exported.")]) ++ [nl],
-    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-    !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.add_pred.

@@ -69,6 +69,7 @@
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.add_solver.
 :- import_module hlds.make_hlds.add_type.
+:- import_module hlds.make_hlds.check_field_access_functions.
 :- import_module hlds.make_hlds.make_hlds_separate_items.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.pred_name.

@@ -55,6 +55,7 @@
 :- include_module add_pred.
 :- include_module add_solver.
 :- include_module add_type.
+:- include_module check_field_access_functions.
 :- include_module field_access.
 :- include_module goal_expr_to_goal.
 :- include_module make_hlds_separate_items.
