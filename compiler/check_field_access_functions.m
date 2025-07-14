@@ -14,8 +14,6 @@
 % We can do this only after we have processed every predicate declaration,
 % as well as everything that affects either the type table or the
 % constructor table.
-% XXX Except that we currently do this *before* we even start constructing
-% the constructor table.
 %
 %---------------------------------------------------------------------------%
 

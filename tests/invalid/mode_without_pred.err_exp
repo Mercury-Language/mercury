@@ -1,0 +1,9 @@
+mode_without_pred.m:017: Error: `:- mode' declaration for function [38;5;87m`f1'/1[39;49m
+mode_without_pred.m:017:   [38;5;203mwithout[39;49m a corresponding `:- func' declaration.
+mode_without_pred.m:017: Inferred :- func f1(mode_without_pred.t) = int.
+mode_without_pred.m:017: In declaration of function `f1'/1:
+mode_without_pred.m:017:   error: [38;5;87ma field access function for an exported field[39;49m
+mode_without_pred.m:017:   [38;5;203mmust also be exported.[39;49m
+mode_without_pred.m:019: In declaration of function `f1 :='/2:
+mode_without_pred.m:019:   error: [38;5;87ma field access function for an exported field[39;49m
+mode_without_pred.m:019:   [38;5;203mmust also be exported.[39;49m

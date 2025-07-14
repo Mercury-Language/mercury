@@ -228,6 +228,7 @@ BORING_SINGLEMODULE_PROGS = \
 	mode_error_arg_number \
 	mode_error_arg_number_ho \
 	mode_inf \
+	mode_without_pred \
 	modes_erroneous \
 	mostly_uniq_1 \
 	mostly_uniq_2 \

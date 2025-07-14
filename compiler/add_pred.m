@@ -1043,6 +1043,16 @@ add_implicit_pred_decl_report_error(PredOrFunc, PredModuleName, PredName,
     (
         PredOrFunc = pf_function,
         user_arity_pred_form_arity(pf_function, UserArity, PredFormArity),
+        % We perform this check here because the invocation of
+        % check_preds_if_field_access_function in make_hlds_passes.m
+        % will not cover this function, for the simple reason that
+        % it processes the list of all pred_decl items, but this function
+        % is being declared implicitly precisely because it is *missing*
+        % its pred_decl item.
+        %
+        % We could alter check_preds_if_field_access_function to process
+        % all the locally-declared functions in the pred_id_table, but
+        % this is solution is just as good.
         maybe_check_field_access_function(!.ModuleInfo, PredSymName, UserArity,
             Status, Context, !Specs)
     ;

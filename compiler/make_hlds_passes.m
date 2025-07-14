@@ -324,6 +324,61 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     check_mode_defns(!.ModuleInfo, ModeDefns,
         !FoundInvalidInstOrMode, !Specs),
 
+    % We want to invoke post-process the type table, after all the type
+    % definitions have been added to it, to do several tasks. These include
+    %
+    % 1 checking subtype definitions (to check compatibility
+    %   with their declared supertype),
+    %
+    % 2 checking whether foreign types exist for the current target language,
+    %
+    % 3 adding all data constructors to the cons_table,
+    %
+    % 4 adding all named fields to the ctor_field_table,
+    %
+    % 5 checking whether the predicates named as unify and compare predicates
+    %   exist. and have the appropriate signature for their role.
+    %
+    % The code of add_du_ctors_check_subtype_check_foreign_type does 1 to 4,
+    % but not 5, which is why we don't have to do this after adding all
+    % predicate declarations to the HLDS. However, it does matter
+    % when we do it compared to adding *mode* declarations; specifially,
+    % we need to do it *before* processing mode declarations.
+    %
+    % This is because adding mode declarations to the HLDS may require
+    % adding implicit pred declarations. With our current setup, this requires
+    % checking the "predicates" that happen to be functions whether they are
+    % field access functions. This in turn requires access to a completed
+    % ctor_field table. (The reason for this is that in the absence of
+    % an actual pred_decl, the call to check_preds_if_field_access_function
+    % below won't process these functions.)
+    %
+    % If we ever change check_preds_if_field_access_function to process
+    % all local "predicates" and not just the ones with explicit pred_decls,
+    % we could move this block of code after the addition of all pred_decls
+    % (explicit and implicit) to the HLDS, and have it do task 5 as well as
+    % tasks 1-4. This should allow us to generate better error messages.
+    % (Currently, we discover any such errors when we type and mode check
+    % the automatically created unify and compare predicates, whose bodies
+    % call the user-specified predicate names.)
+    (
+        !.FoundInvalidType = did_not_find_invalid_type,
+        % Add constructors for du types to the HLDS, check subtype definitions,
+        % and check that Mercury types defined solely by foreign types have a
+        % definition that works for the current target backend.
+        %
+        % This must be done after adding all type definitions, including all
+        % `:- pragma foreign_type' declarations. If there were errors
+        % in foreign type type declarations, doing this may cause
+        % a compiler abort.
+        module_info_get_type_table(!.ModuleInfo, TypeTable0),
+        foldl3_over_type_ctor_defns(
+            add_du_ctors_check_subtype_check_foreign_type(TypeTable0),
+            TypeTable0, !FoundInvalidType, !ModuleInfo, !Specs)
+    ;
+        !.FoundInvalidType = found_invalid_type
+    ),
+
     % A predicate declaration defines the type of the arguments of a predicate,
     % and may give the modes of those arguments. Since we have already seen
     % all type, inst and mode definitions, we could check whether the newly
@@ -394,33 +449,6 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % we may generate.
     list.foldl(module_add_item_fim, FIMs,
         !ModuleInfo),
-
-    % Since all declared predicates are in now the HLDS, we could check
-    % all type definitions that define type-specific unify and/or compare
-    % predicates whether the predicate names they give refer to predicates
-    % that (a) exist, and (b) have the right signature. However, we currently
-    % don't do that. Any such errors are discovered when we type and mode
-    % check that automatically created unify and compare predicates, whose
-    % bodies call the user-specified predicate names.
-    % XXX PASS STRUCTURE Maybe we *should* check that here, since doing so
-    % would allow us to generate better error messages.
-    (
-        !.FoundInvalidType = did_not_find_invalid_type,
-        % Add constructors for du types to the HLDS, check subtype definitions,
-        % and check that Mercury types defined solely by foreign types have a
-        % definition that works for the target backend.
-        %
-        % This must be done after adding all type definitions and all
-        % `:- pragma foreign_type' declarations. If there were errors
-        % in foreign type type declarations, doing this may cause
-        % a compiler abort.
-        module_info_get_type_table(!.ModuleInfo, TypeTable0),
-        foldl3_over_type_ctor_defns(
-            add_du_ctors_check_subtype_check_foreign_type(TypeTable0),
-            TypeTable0, !FoundInvalidType, !ModuleInfo, !Specs)
-    ;
-        !.FoundInvalidType = found_invalid_type
-    ),
 
     % Add the special preds for the builtin types which don't have a
     % type declaration, hence no hlds_type_defn is generated for them.
