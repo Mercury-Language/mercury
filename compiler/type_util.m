@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1059,19 +1059,19 @@ get_base_type_ctor(TypeTable, TypeCtor, BaseTypeCtor) :-
 
 %-----------------------------------------------------------------------------%
 
-get_supertype(TypeTable, TVarSet, TypeCtor, Args, SuperType) :-
+get_supertype(TypeTable, TVarSet, TypeCtor, ArgTypes, SuperType) :-
     hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     TypeBody = hlds_du_type(TypeBodyDu),
     TypeBodyDu = type_body_du(_, subtype_of(SuperType0), _, _, _),
     require_det (
-        % Create substitution from type parameters to Args.
+        % Create substitution from type parameters to ArgTypes.
         hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet0),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams0),
         tvarset_merge_renaming(TVarSet, TVarSet0, _NewTVarSet, Renaming),
         apply_variable_renaming_to_tvar_list(Renaming,
             TypeParams0, TypeParams),
-        map.from_corresponding_lists(TypeParams, Args, TSubst),
+        map.from_corresponding_lists(TypeParams, ArgTypes, TSubst),
 
         % Apply substitution to the declared supertype.
         apply_variable_renaming_to_type(Renaming, SuperType0, SuperType1),
@@ -1378,14 +1378,14 @@ update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic) :-
 %-----------------------------------------------------------------------------%
 
 type_constructors(ModuleInfo, Type, Constructors) :-
-    type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
+    type_to_ctor_and_args(Type, TypeCtor, ArgTypes),
     ( if type_ctor_is_tuple(TypeCtor) then
         % Tuples are never existentially typed.
         MaybeExistConstraints = no_exist_constraints,
         Context = dummy_context,
         CtorArgs = list.map(
             (func(ArgType) = ctor_arg(no, ArgType, Context)),
-            TypeArgs),
+            ArgTypes),
         Constructors = [ctor(0u32, MaybeExistConstraints, unqualified("{}"),
             CtorArgs, list.length(CtorArgs), Context)]
     else
@@ -1394,7 +1394,7 @@ type_constructors(ModuleInfo, Type, Constructors) :-
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         TypeBody = hlds_du_type(TypeBodyDu),
-        substitute_type_args(TypeParams, TypeArgs,
+        substitute_type_args(TypeParams, ArgTypes,
             one_or_more_to_list(TypeBodyDu ^ du_type_ctors),
             Constructors)
     ).
@@ -1406,13 +1406,13 @@ type_constructors(ModuleInfo, Type, Constructors) :-
 :- pred substitute_type_args(list(type_param)::in, list(mer_type)::in,
     list(constructor)::in, list(constructor)::out) is det.
 
-substitute_type_args(TypeParams, TypeArgs, Constructors0, Constructors) :-
+substitute_type_args(TypeParams, ArgTypes, Constructors0, Constructors) :-
     (
         TypeParams = [],
         Constructors = Constructors0
     ;
         TypeParams = [_ | _],
-        map.from_corresponding_lists(TypeParams, TypeArgs, Subst),
+        map.from_corresponding_lists(TypeParams, ArgTypes, Subst),
         substitute_type_args_ctors(Subst, Constructors0, Constructors)
     ).
 
@@ -1483,12 +1483,12 @@ get_cons_id_arg_types(ModuleInfo, Type, ConsId, ArgTypes) :-
         get_du_ctor_arg_types(ModuleInfo, Type, DuCtor, ArgTypes)
     else
         ( if
-            type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
+            type_to_ctor_and_args(Type, TypeCtor, ArgTypesPrime),
             type_ctor_is_tuple(TypeCtor)
         then
             % The argument types of a tuple cons_id are the arguments
             % of the tuple type constructor.
-            ArgTypes = TypeArgs
+            ArgTypes = ArgTypesPrime
         else
             ArgTypes = []
         )
@@ -1505,13 +1505,13 @@ get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsId,
             DuCtor, ArgTypes)
     else
         ( if
-            type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
+            type_to_ctor_and_args(Type, TypeCtor, ArgTypesPrime),
             type_ctor_is_tuple(TypeCtor)
         then
             % The argument types of a tuple cons_id are the arguments
             % of the tuple type constructor. None of them can be
             % existentially quantified.
-            ArgTypes = TypeArgs
+            ArgTypes = ArgTypesPrime
         else
             ArgTypes = []
         )
@@ -1597,8 +1597,7 @@ get_user_ctor_arg_types(ConsTable, TypeCtor, TypeArgs, Ctor,
     % and the info in Ctor? TypeParams should be available in TypeCtor's entry
     % in the type table; it should not need to be looked up separately
     % for every one of its data constructors.
-    search_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor,
-        ConsDefn),
+    search_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor, ConsDefn),
     ConsDefn =
         hlds_cons_defn(_, _, TypeParams, _, MaybeExistConstraints, Args, _),
 
@@ -1702,7 +1701,7 @@ type_is_no_tag_type(ModuleInfo, Type) :-
     type_is_no_tag_type(ModuleInfo, Type, _Ctor, _ArgType).
 
 type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
-    type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
+    type_to_ctor_and_args(Type, TypeCtor, ArgTypes),
     module_info_get_no_tag_types(ModuleInfo, NoTagTypes),
     map.search(NoTagTypes, TypeCtor, NoTagType),
     NoTagType = no_tag_type(TypeParams, Ctor, ArgType0),
@@ -1711,7 +1710,7 @@ type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
         ArgType = ArgType0
     ;
         TypeParams = [_ | _],
-        map.from_corresponding_lists(TypeParams, TypeArgs, Subn),
+        map.from_corresponding_lists(TypeParams, ArgTypes, Subn),
         apply_subst_to_type(Subn, ArgType0, ArgType)
     ).
 

@@ -1,14 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2023-2025 The Mercury team.
+% Copyright (C) 2021, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: typecheck_clauses.m.
-% Main author: fjh.
+% File: typecheck_coerce.m.
+% Main author: wangp.
 %
 % This file typechecks coerce operations.
 %
@@ -192,12 +191,12 @@ add_coerce_constraint(Coercion, !TypeAssign) :-
 typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
         !TypeAssign) :-
     % Type bindings must have been applied to FromType and ToType already.
-    replace_principal_type_ctor_with_base(TypeTable, TVarSet,
-        FromType, FromBaseType),
-    replace_principal_type_ctor_with_base(TypeTable, TVarSet,
-        ToType, ToBaseType),
-    type_to_ctor_and_args(FromBaseType, FromBaseTypeCtor, FromBaseTypeArgs),
-    type_to_ctor_and_args(ToBaseType, ToBaseTypeCtor, ToBaseTypeArgs),
+    compute_base_type(TypeTable, TVarSet, FromType, FromBaseType),
+    compute_base_type(TypeTable, TVarSet, ToType, ToBaseType),
+    type_to_ctor_and_args(FromBaseType,
+        FromBaseTypeCtor, FromBaseTypeArgTypes),
+    type_to_ctor_and_args(ToBaseType,
+        ToBaseTypeCtor, ToBaseTypeArgTypes),
 
     % The input type and result type must share a base type constructor.
     BaseTypeCtor = FromBaseTypeCtor,
@@ -206,94 +205,116 @@ typecheck_coerce_between_types(TypeTable, TVarSet, FromType, ToType,
     % Check the variance of type arguments.
     hlds_data.search_type_ctor_defn(TypeTable, BaseTypeCtor, BaseTypeDefn),
     hlds_data.get_type_defn_tparams(BaseTypeDefn, BaseTypeParams),
-    build_type_param_variance_restrictions(TypeTable, BaseTypeCtor,
-        InvariantSet),
-    check_coerce_type_params(TypeTable, TVarSet, InvariantSet,
-        BaseTypeParams, FromBaseTypeArgs, ToBaseTypeArgs, !TypeAssign).
+    compute_which_type_params_must_be_invariant(TypeTable, BaseTypeCtor,
+        BaseTypeDefn, BaseTypeParams, InvariantTVars),
+    are_type_params_as_related_as_needed(TypeTable, TVarSet, InvariantTVars,
+        BaseTypeParams, FromBaseTypeArgTypes, ToBaseTypeArgTypes, !TypeAssign).
 
-:- pred replace_principal_type_ctor_with_base(type_table::in, tvarset::in,
+:- pred compute_base_type(type_table::in, tvarset::in,
     mer_type::in, mer_type::out) is det.
 
-replace_principal_type_ctor_with_base(TypeTable, TVarSet, Type0, Type) :-
+compute_base_type(TypeTable, TVarSet, Type, BaseType) :-
     ( if
-        type_to_ctor_and_args(Type0, TypeCtor, Args),
-        get_supertype(TypeTable, TVarSet, TypeCtor, Args, SuperType)
+        type_to_ctor_and_args(Type, TypeCtor, ArgTypes),
+        get_supertype(TypeTable, TVarSet, TypeCtor, ArgTypes, SuperType)
     then
-        replace_principal_type_ctor_with_base(TypeTable, TVarSet,
-            SuperType, Type)
+        compute_base_type(TypeTable, TVarSet, SuperType, BaseType)
     else
-        Type = Type0
+        BaseType = Type
     ).
 
 %---------------------%
 
-:- type invariant_set == set(tvar).
+:- type invariant_tvars == set(tvar).
 
-    % Return the set of type parameters of the given TypeCtor that must
-    % remain invariant during type conversion.
+    % compute_which_type_params_must_be_invariant(TypeTable,
+    %     BaseTypeCtor, BaseTypeDefn, BaseTypeParams, InvariantTVars):
     %
-    % If T (a type parameter in the common base type of a type conversion)
-    % is in the invariant set, then T must be bound to the same type on
-    % both sides of the conversion.
+    % Our caller has checked that the from-type and the to-type
+    % in the coerce operation have the same base type, BaseTypeCtor.
+    % After we return, it will compare the arguments of the BaseTypeCtor
+    % in the from-type and the to-type. It needs to know which parameters
+    % of BaseTypeCtor (which are available here as BaseTypeParams) must be
+    % identical in the from-type and the to-type, and which need only be
+    % in a supertype/subtype relationship (in either direction.)
     %
-:- pred build_type_param_variance_restrictions(type_table::in,
-    type_ctor::in, invariant_set::out) is det.
+    % The elements of BaseTypeParams that we return in InvariantTVars
+    % fall into into the first category; the others fall into the second.
+    %
+:- pred compute_which_type_params_must_be_invariant(type_table::in,
+    type_ctor::in, hlds_type_defn::in, list(tvar)::in,
+    invariant_tvars::out) is det.
 
-build_type_param_variance_restrictions(TypeTable, TypeCtor, InvariantSet) :-
-    ( if
-        hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-        hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
-        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-        TypeBody = hlds_du_type(TypeBodyDu),
-        TypeBodyDu = type_body_du(OoMCtors, _MaybeSuperType, _MaybeCanonical,
-            _MaybeTypeRepn, _IsForeignType)
-    then
+compute_which_type_params_must_be_invariant(TypeTable,
+        BaseTypeCtor, BaseTypeDefn, BaseTypeParams, InvariantTVars) :-
+    hlds_data.get_type_defn_body(BaseTypeDefn, BaseTypeBody),
+    (
+        BaseTypeBody = hlds_du_type(BaseTypeBodyDu),
+        BaseTypeBodyDu = type_body_du(OoMCtors, _MaybeSuperType, _MaybeCanon,
+            _MaybeTypeRepn, _IsForeignType),
         Ctors = one_or_more_to_list(OoMCtors),
         list.foldl(
-            build_type_param_variance_restrictions_in_ctor(TypeTable,
-                TypeCtor, TypeParams),
-            Ctors, set.init, InvariantSet)
-    else
+            acc_invariant_tvars_in_ctor(TypeTable,
+                BaseTypeCtor, BaseTypeParams),
+            Ctors, set.init, InvariantTVars)
+    ;
+        ( BaseTypeBody = hlds_eqv_type(_)
+        ; BaseTypeBody = hlds_foreign_type(_)
+        ; BaseTypeBody = hlds_solver_type(_)
+        ; BaseTypeBody = hlds_abstract_type(_)
+        ),
         unexpected($pred, "not du type")
     ).
 
-:- pred build_type_param_variance_restrictions_in_ctor(type_table::in,
+:- pred acc_invariant_tvars_in_ctor(type_table::in,
     type_ctor::in, list(tvar)::in, constructor::in,
-    invariant_set::in, invariant_set::out) is det.
+    invariant_tvars::in, invariant_tvars::out) is det.
 
-build_type_param_variance_restrictions_in_ctor(TypeTable, CurTypeCtor,
-        CurTypeParams, Ctor, !InvariantSet) :-
-    Ctor = ctor(_Ordinal, _MaybeExistConstraints, _CtorName, CtorArgs, _Arity,
-        _Context),
+acc_invariant_tvars_in_ctor(TypeTable, BaseTypeCtor, BaseTypeParams, Ctor,
+        !InvariantTVars) :-
+    Ctor = ctor(_Ordinal, _MaybeExist, _CtorName, CtorArgs, _Arity, _Context),
     list.foldl(
-        build_type_param_variance_restrictions_in_ctor_arg(TypeTable,
-            CurTypeCtor, CurTypeParams),
-        CtorArgs, !InvariantSet).
+        acc_invariant_tvars_in_ctor_arg(TypeTable,
+            BaseTypeCtor, BaseTypeParams),
+        CtorArgs, !InvariantTVars).
 
-:- pred build_type_param_variance_restrictions_in_ctor_arg(type_table::in,
+:- pred acc_invariant_tvars_in_ctor_arg(type_table::in,
     type_ctor::in, list(tvar)::in, constructor_arg::in,
-    invariant_set::in, invariant_set::out) is det.
+    invariant_tvars::in, invariant_tvars::out) is det.
 
-build_type_param_variance_restrictions_in_ctor_arg(TypeTable, CurTypeCtor,
-        CurTypeParams, CtorArg, !InvariantSet) :-
+acc_invariant_tvars_in_ctor_arg(TypeTable, BaseTypeCtor,
+        BaseTypeParams, CtorArg, !InvariantTVars) :-
     CtorArg = ctor_arg(_MaybeFieldName, CtorArgType, _Context),
-    build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable,
-        CurTypeCtor, CurTypeParams, CtorArgType, !InvariantSet).
+    % Since acc_invariant_tvars_in_ctor_rhs_type is recursive,
+    % we cannot inline it here.
+    acc_invariant_tvars_in_ctor_rhs_type(TypeTable, BaseTypeCtor,
+        BaseTypeParams, CtorArgType, !InvariantTVars).
 
-:- pred build_type_param_variance_restrictions_in_ctor_arg_type(type_table::in,
+    % We have to scan pretty much all the types that occur
+    % on the right hand side of BaseTypeCtor's definition, whether they occur
+    % directly as argument types of a data constructor, or as components
+    % of such argument types. The only exceptions are types for which
+    % we know either that
+    %
+    % - they definitely *must* be identical in the from-type and the to-type
+    %   (as with higher order types), or that
+    %
+    % - they definitely *will* be identical (as with recursive types).
+    %
+:- pred acc_invariant_tvars_in_ctor_rhs_type(type_table::in,
     type_ctor::in, list(tvar)::in, mer_type::in,
-    invariant_set::in, invariant_set::out) is det.
+    invariant_tvars::in, invariant_tvars::out) is det.
 
-build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable, CurTypeCtor,
-        CurTypeParams, CtorArgType, !InvariantSet) :-
+acc_invariant_tvars_in_ctor_rhs_type(TypeTable, BaseTypeCtor, BaseTypeParams,
+        RhsType, !InvariantTVars) :-
     (
-        CtorArgType = builtin_type(_)
+        RhsType = builtin_type(_)
     ;
-        CtorArgType = type_variable(_TypeVar, _Kind)
+        RhsType = type_variable(_TypeVar, _Kind)
     ;
-        CtorArgType = defined_type(_SymName, ArgTypes, _Kind),
+        RhsType = defined_type(_SymName, ArgTypes, _Kind),
         ( if
-            type_to_ctor_and_args(CtorArgType, TypeCtor, TypeArgs),
+            type_to_ctor_and_args(RhsType, TypeCtor, TypeArgs),
             hlds_data.search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn)
         then
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
@@ -301,16 +322,19 @@ build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable, CurTypeCtor,
             (
                 TypeBody = hlds_du_type(_),
                 ( if
-                    TypeCtor = CurTypeCtor,
-                    type_list_to_var_list(TypeArgs, CurTypeParams)
+                    TypeCtor = BaseTypeCtor,
+                    type_list_to_var_list(TypeArgs, TypeArgVars),
+                    TypeArgVars = BaseTypeParams
                 then
-                    % A recursive type that matches exactly the current type
-                    % head does not impose any restrictions on the type
-                    % parameters.
+                    % A type in the RHS that matches exactly the base type
+                    % does not impose any restrictions on its type params.
+                    % Any difference that occurs between the from-type and
+                    % the to-type must by definition occur somewhere else
+                    % (i.e. other than RhsType) as well.
                     true
                 else
                     type_vars_in_types(ArgTypes, TypeVars),
-                    set.insert_list(TypeVars, !InvariantSet)
+                    set.insert_list(TypeVars, !InvariantTVars)
                 )
             ;
                 ( TypeBody = hlds_foreign_type(_)
@@ -318,77 +342,122 @@ build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable, CurTypeCtor,
                 ; TypeBody = hlds_solver_type(_)
                 ),
                 type_vars_in_types(ArgTypes, TypeVars),
-                set.insert_list(TypeVars, !InvariantSet)
+                set.insert_list(TypeVars, !InvariantTVars)
             ;
                 TypeBody = hlds_eqv_type(EqvType0),
+                % This a equivalence type was not expanded out by
+                % equiv_type.m, so the source of the equivalence must be
+                % outside the set of type definitions that equiv_type.m
+                % pays attention to, such as in the implementation section
+                % of an imported module.
+                %
+                % In these cases, expand out the type and process the result
+                % as if the equivalence *had* been expanded out.
                 hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
                 map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
                 apply_subst_to_type(TSubst, EqvType0, EqvType),
-                build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable,
-                    CurTypeCtor, CurTypeParams, EqvType, !InvariantSet)
+                acc_invariant_tvars_in_ctor_rhs_type(TypeTable,
+                    BaseTypeCtor, BaseTypeParams, EqvType, !InvariantTVars)
             )
         else
             unexpected($pred, "undefined type")
         )
     ;
-        CtorArgType = tuple_type(ArgTypes, _Kind),
+        RhsType = tuple_type(ArgTypes, _Kind),
         list.foldl(
-            build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable,
-                CurTypeCtor, CurTypeParams),
-            ArgTypes, !InvariantSet)
+            acc_invariant_tvars_in_ctor_rhs_type(TypeTable,
+                BaseTypeCtor, BaseTypeParams),
+            ArgTypes, !InvariantTVars)
     ;
-        CtorArgType = higher_order_type(_PredOrFunc, ArgTypes, _HOInstInfo,
-            _Purity),
+        RhsType = higher_order_type(_PoF, ArgTypes, _HOInstInfo, _Purity),
+        % We do not support any subtyping of higher order types.
+        % Therefore the higher order components on the right-hand side of a
+        % type definition must be identical in the from-type and the to-type,
+        % which means that all type parameters that occur in such
+        % higher order types must be bound to the exact same value
+        % in the from-type and to-type.
         type_vars_in_types(ArgTypes, TypeVars),
-        set.insert_list(TypeVars, !InvariantSet)
+        set.insert_list(TypeVars, !InvariantTVars)
     ;
-        CtorArgType = apply_n_type(_, _, _),
+        RhsType = apply_n_type(_, _, _),
         sorry($pred, "apply_n_type")
     ;
-        CtorArgType = kinded_type(CtorArgType1, _Kind),
-        build_type_param_variance_restrictions_in_ctor_arg_type(TypeTable,
-            CurTypeCtor, CurTypeParams, CtorArgType1, !InvariantSet)
+        RhsType = kinded_type(CtorArgType1, _Kind),
+        acc_invariant_tvars_in_ctor_rhs_type(TypeTable,
+            BaseTypeCtor, BaseTypeParams, CtorArgType1, !InvariantTVars)
     ).
 
 %---------------------%
 
-:- pred check_coerce_type_params(type_table::in, tvarset::in,
-    invariant_set::in, list(tvar)::in, list(mer_type)::in, list(mer_type)::in,
+    % are_type_params_as_related_as_needed(TypeTable, TVarSet, InvariantTVars,
+    %   TypeParams, FromArgTypes, ToArgTypes, !TypeAssign):
+    %
+    % FromArgTypes and ToArgTypes are the actual types bound to TypeParams
+    % in the from-type and to-type of the coercion respectively.
+    % If a given type parameter is in InvariantTVars, then the types bound
+    % to that parameter in the from-type and to-type must be identical,
+    % while for the type parameters that are not in InvariantTVars,
+    % it is enough that one is a subtype of the other (in either direction).
+    %
+    % If e.g. neither the first nor second TypeParam is in InvariantTVars,
+    % we can succeed if the first FromArgType is a subtype of the first
+    % ToArgType, but the second ToArgType is a subtype of the second
+    % FromArgType. The direction of which is the subtype of the other
+    % does NOT need to be consistent. This allows us to support coercion
+    % from any subtype of the base type to any other of its subtypes;
+    % the from-type and the to-type do not need to be in a subtype-supertype
+    % relationship.
+    %
+:- pred are_type_params_as_related_as_needed(type_table::in, tvarset::in,
+    invariant_tvars::in, list(tvar)::in,
+    list(mer_type)::in, list(mer_type)::in,
     type_assign::in, type_assign::out) is semidet.
 
-check_coerce_type_params(TypeTable, TVarSet, InvariantSet,
-        TypeParams, FromTypeArgs, ToTypeArgs, !TypeAssign) :-
-    (
+are_type_params_as_related_as_needed(TypeTable, TVarSet, InvariantTVars,
+        TypeParams, FromArgTypes, ToArgTypes, !TypeAssign) :-
+    ( if
         TypeParams = [],
-        FromTypeArgs = [],
-        ToTypeArgs = []
-    ;
-        TypeParams = [TypeVar | TailTypeParams],
-        FromTypeArgs = [FromType | TailFromTypes],
-        ToTypeArgs = [ToType | TailToTypes],
-        check_coerce_type_param(TypeTable, TVarSet, InvariantSet,
-            TypeVar, FromType, ToType, !TypeAssign),
-        check_coerce_type_params(TypeTable, TVarSet, InvariantSet,
-            TailTypeParams, TailFromTypes, TailToTypes, !TypeAssign)
+        FromArgTypes = [],
+        ToArgTypes = []
+    then
+        true
+    else if
+        TypeParams = [HeadTypeParam | TailTypeParams],
+        FromArgTypes = [HeadFromArgType | TailFromArgTypes],
+        ToArgTypes = [HeadToArgType | TailToArgTypes]
+    then
+        is_type_param_pair_as_related_as_needed(TypeTable, TVarSet,
+            InvariantTVars, HeadTypeParam, HeadFromArgType, HeadToArgType,
+            !TypeAssign),
+        are_type_params_as_related_as_needed(TypeTable, TVarSet,
+            InvariantTVars, TailTypeParams, TailFromArgTypes, TailToArgTypes,
+            !TypeAssign)
+    else
+        % FromArgTypes and ToArgTypes are the actual types bound to TypeParams
+        % in the from-type and to-type of the coercion respectively.
+        % If their length do not match, then some earlier compiler pass
+        % screwed up really badly.
+        unexpected($pred, "length mismatch")
     ).
 
-:- pred check_coerce_type_param(type_table::in, tvarset::in, invariant_set::in,
-    tvar::in, mer_type::in, mer_type::in, type_assign::in, type_assign::out)
-    is semidet.
+:- pred is_type_param_pair_as_related_as_needed(type_table::in, tvarset::in,
+    invariant_tvars::in, tvar::in, mer_type::in, mer_type::in,
+    type_assign::in, type_assign::out) is semidet.
 
-check_coerce_type_param(TypeTable, TVarSet, InvariantSet,
+is_type_param_pair_as_related_as_needed(TypeTable, TVarSet, InvariantTVars,
         TypeVar, FromType, ToType, !TypeAssign) :-
-    ( if set.contains(InvariantSet, TypeVar) then
-        compare_types(TypeTable, TVarSet, compare_equal, FromType, ToType,
+    ( if set.contains(InvariantTVars, TypeVar) then
+        types_compare_as_given(TypeTable, TVarSet, compare_equal,
+            FromType, ToType,
             !TypeAssign)
     else
         ( if
-            compare_types(TypeTable, TVarSet, compare_equal_lt,
+            types_compare_as_given(TypeTable, TVarSet, compare_equal_lt,
                 FromType, ToType, !TypeAssign)
         then
             true
         else
-            compare_types(TypeTable, TVarSet, compare_equal_lt,
+            types_compare_as_given(TypeTable, TVarSet, compare_equal_lt,
                 ToType, FromType, !TypeAssign)
         )
     ).
@@ -403,13 +472,14 @@ check_coerce_type_param(TypeTable, TVarSet, InvariantSet,
     % If Comparison is compare_equal_lt, then also succeed if TypeA =< TypeB
     % by subtype definitions.
     %
-    % Note: changes here may need to be made to compare_types in
-    % modecheck_coerce.m
+    % Note: changes here may need to be made also to types_compare_as_given_mc
+    % in modecheck_coerce.m.
     %
-:- pred compare_types(type_table::in, tvarset::in, types_comparison::in,
-    mer_type::in, mer_type::in, type_assign::in, type_assign::out) is semidet.
+:- pred types_compare_as_given(type_table::in, tvarset::in,
+    types_comparison::in, mer_type::in, mer_type::in,
+    type_assign::in, type_assign::out) is semidet.
 
-compare_types(TypeTable, TVarSet, Comparison, TypeA, TypeB,
+types_compare_as_given(TypeTable, TVarSet, Comparison, TypeA, TypeB,
         !TypeAssign) :-
     ( if
         ( TypeA = type_variable(_, _)
@@ -418,15 +488,16 @@ compare_types(TypeTable, TVarSet, Comparison, TypeA, TypeB,
     then
         type_assign_unify_type(TypeA, TypeB, !TypeAssign)
     else
-        compare_types_nonvar(TypeTable, TVarSet, Comparison, TypeA, TypeB,
-            !TypeAssign)
+        types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
+            TypeA, TypeB, !TypeAssign)
     ).
 
-:- pred compare_types_nonvar(type_table::in, tvarset::in, types_comparison::in,
-    mer_type::in, mer_type::in, type_assign::in, type_assign::out) is semidet.
+:- pred types_compare_as_given_nonvar(type_table::in, tvarset::in,
+    types_comparison::in, mer_type::in, mer_type::in,
+    type_assign::in, type_assign::out) is semidet.
 
-compare_types_nonvar(TypeTable, TVarSet, Comparison, TypeA, TypeB,
-        !TypeAssign) :-
+types_compare_as_given_nonvar(TypeTable, TVarSet, Comparison,
+        TypeA, TypeB, !TypeAssign) :-
     require_complete_switch [TypeA]
     (
         TypeA = builtin_type(BuiltinType),
@@ -437,49 +508,51 @@ compare_types_nonvar(TypeTable, TVarSet, Comparison, TypeA, TypeB,
         unexpected($pred, "type_variable")
     ;
         TypeA = defined_type(_, _, _),
-        type_to_ctor_and_args(TypeA, TypeCtorA, ArgsA),
-        type_to_ctor_and_args(TypeB, TypeCtorB, ArgsB),
+        type_to_ctor_and_args(TypeA, TypeCtorA, ArgTypesA),
+        type_to_ctor_and_args(TypeB, TypeCtorB, ArgTypesB),
         ( if TypeCtorA = TypeCtorB then
-            compare_types_corresponding(TypeTable, TVarSet, Comparison,
-                ArgsA, ArgsB, !TypeAssign)
+            corresponding_types_compare_as_given(TypeTable, TVarSet,
+                Comparison, ArgTypesA, ArgTypesB, !TypeAssign)
         else
             Comparison = compare_equal_lt,
-            get_supertype(TypeTable, TVarSet, TypeCtorA, ArgsA, SuperTypeA),
-            compare_types(TypeTable, TVarSet, Comparison, SuperTypeA, TypeB,
-                !TypeAssign)
+            get_supertype(TypeTable, TVarSet, TypeCtorA, ArgTypesA,
+                SuperTypeA),
+            types_compare_as_given(TypeTable, TVarSet, Comparison,
+                SuperTypeA, TypeB, !TypeAssign)
         )
     ;
-        TypeA = tuple_type(ArgsA, Kind),
-        TypeB = tuple_type(ArgsB, Kind),
-        compare_types_corresponding(TypeTable, TVarSet, Comparison,
-            ArgsA, ArgsB, !TypeAssign)
+        TypeA = tuple_type(ArgTypesA, Kind),
+        TypeB = tuple_type(ArgTypesB, Kind),
+        corresponding_types_compare_as_given(TypeTable, TVarSet, Comparison,
+            ArgTypesA, ArgTypesB, !TypeAssign)
     ;
-        TypeA = higher_order_type(PredOrFunc, ArgsA, _HOInstInfoA, Purity),
-        TypeB = higher_order_type(PredOrFunc, ArgsB, _HOInstInfoB, Purity),
+        TypeA = higher_order_type(PredOrFunc, ArgTypesA, _HOInstInfoA, Purity),
+        TypeB = higher_order_type(PredOrFunc, ArgTypesB, _HOInstInfoB, Purity),
         % We do not allow subtyping in higher order argument types.
-        compare_types_corresponding(TypeTable, TVarSet, compare_equal,
-            ArgsA, ArgsB, !TypeAssign)
+        corresponding_types_compare_as_given(TypeTable, TVarSet, compare_equal,
+            ArgTypesA, ArgTypesB, !TypeAssign)
     ;
         TypeA = apply_n_type(_, _, _),
         sorry($pred, "apply_n_type")
     ;
         TypeA = kinded_type(TypeA1, Kind),
         TypeB = kinded_type(TypeB1, Kind),
-        compare_types(TypeTable, TVarSet, Comparison, TypeA1, TypeB1,
-            !TypeAssign)
+        types_compare_as_given(TypeTable, TVarSet, Comparison,
+            TypeA1, TypeB1, !TypeAssign)
     ).
 
-:- pred compare_types_corresponding(type_table::in, tvarset::in,
+:- pred corresponding_types_compare_as_given(type_table::in, tvarset::in,
     types_comparison::in, list(mer_type)::in, list(mer_type)::in,
     type_assign::in, type_assign::out) is semidet.
 
-compare_types_corresponding(_TypeTable, _TVarSet, _Comparison,
+corresponding_types_compare_as_given(_TypeTable, _TVarSet, _Comparison,
         [], [], !TypeAssign).
-compare_types_corresponding(TypeTable, TVarSet, Comparison,
+corresponding_types_compare_as_given(TypeTable, TVarSet, Comparison,
         [TypeA | TypesA], [TypeB | TypesB], !TypeAssign) :-
-    compare_types(TypeTable, TVarSet, Comparison, TypeA, TypeB, !TypeAssign),
-    compare_types_corresponding(TypeTable, TVarSet, Comparison, TypesA, TypesB,
-        !TypeAssign).
+    types_compare_as_given(TypeTable, TVarSet, Comparison,
+        TypeA, TypeB, !TypeAssign),
+    corresponding_types_compare_as_given(TypeTable, TVarSet, Comparison,
+        TypesA, TypesB, !TypeAssign).
 
 %---------------------------------------------------------------------------%
 

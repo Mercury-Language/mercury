@@ -1019,36 +1019,53 @@ copy_inst_for_coerce_result(LiveX, InstX, InstY) :-
 
 is_subtype(ModuleInfo, TVarSet, TypeA, TypeB) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
-    compare_types(TypeTable, TVarSet, compare_equal_lt, TypeA, TypeB).
+    types_compare_as_given_mc(TypeTable, TVarSet, compare_equal_lt,
+        TypeA, TypeB).
 
-    % Succeed if TypeA unifies with TypeB.
+    % Succeed if TypeA is the same as TypeB.
     % If Comparison is compare_equal_lt, then also succeed if TypeA =< TypeB
     % by subtype definitions.
     %
-    % Note: this code is almost identical to compare_types in typecheck.m
-    % but since it is not part of the type checker, does not maintain
-    % type assignments.
+    % Note: the code this predicate and its call tree almost duplicate
+    % code in typecheck_coerce.m, but since they are not part of the
+    % type checker, they cannot and do not maintain type assignments.
+    % The _mc suffix distinguishes them from their typecheck_coerce.m
+    % near-equivalents.
     %
-:- pred compare_types(type_table::in, tvarset::in, types_comparison::in,
-    mer_type::in, mer_type::in) is semidet.
+    % In typecheck_coerce.m, the reason for allowing the Comparison parameter
+    % to be compare_equal is that types_compare_as_given (no _mc) can modify
+    % the type assignment to enforce equality. The code here does not do that,
+    % which means that calling types_compare_as_given_mc with compare_equal
+    % is equivalent to invoking "TypeA = TypeB".
+    %
+    % The only advantage of handling compare_equal is reducing the textual
+    % difference between the code in typecheck_coerce.m and the code here.
+    % However, this is enough, because even though "TypeA = TypeB" would be
+    % faster than calling this predicate with compare_equal, this does not
+    % matter, due to the rarity of coercion.
+    %
+:- pred types_compare_as_given_mc(type_table::in, tvarset::in,
+    types_comparison::in, mer_type::in, mer_type::in) is semidet.
 
-compare_types(TypeTable, TVarSet, Comparison, TypeA, TypeB) :-
+types_compare_as_given_mc(TypeTable, TVarSet, Comparison, TypeA, TypeB) :-
     ( if
         ( TypeA = type_variable(_, _)
         ; TypeB = type_variable(_, _)
         )
     then
-        % Unlike typecheck.compare_types which unifies two type variables,
-        % here we simply test for equality.
+        % Unlike typecheck.types_compare_as_given which unifies two type
+        % variables, here we simply test for equality.
         TypeA = TypeB
     else
-        compare_types_nonvar(TypeTable, TVarSet, Comparison, TypeA, TypeB)
+        types_compare_as_given_nonvar_mc(TypeTable, TVarSet, Comparison,
+            TypeA, TypeB)
     ).
 
-:- pred compare_types_nonvar(type_table::in, tvarset::in, types_comparison::in,
-    mer_type::in, mer_type::in) is semidet.
+:- pred types_compare_as_given_nonvar_mc(type_table::in, tvarset::in,
+    types_comparison::in, mer_type::in, mer_type::in) is semidet.
 
-compare_types_nonvar(TypeTable, TVarSet, Comparison, TypeA, TypeB) :-
+types_compare_as_given_nonvar_mc(TypeTable, TVarSet, Comparison,
+        TypeA, TypeB) :-
     require_complete_switch [TypeA]
     (
         TypeA = builtin_type(BuiltinType),
@@ -1059,45 +1076,48 @@ compare_types_nonvar(TypeTable, TVarSet, Comparison, TypeA, TypeB) :-
         unexpected($pred, "type_variable")
     ;
         TypeA = defined_type(_, _, _),
-        type_to_ctor_and_args(TypeA, TypeCtorA, ArgsA),
-        type_to_ctor_and_args(TypeB, TypeCtorB, ArgsB),
+        type_to_ctor_and_args(TypeA, TypeCtorA, ArgTypesA),
+        type_to_ctor_and_args(TypeB, TypeCtorB, ArgTypesB),
         ( if TypeCtorA = TypeCtorB then
-            compare_types_corresponding(TypeTable, TVarSet, Comparison,
-                ArgsA, ArgsB)
+            corresponding_types_compare_as_given_mc(TypeTable, TVarSet,
+                Comparison, ArgTypesA, ArgTypesB)
         else
             Comparison = compare_equal_lt,
-            get_supertype(TypeTable, TVarSet, TypeCtorA, ArgsA, SuperTypeA),
-            compare_types(TypeTable, TVarSet, Comparison, SuperTypeA, TypeB)
+            get_supertype(TypeTable, TVarSet, TypeCtorA, ArgTypesA,
+                SuperTypeA),
+            types_compare_as_given_mc(TypeTable, TVarSet, Comparison,
+                SuperTypeA, TypeB)
         )
     ;
-        TypeA = tuple_type(ArgsA, Kind),
-        TypeB = tuple_type(ArgsB, Kind),
-        compare_types_corresponding(TypeTable, TVarSet, Comparison,
-            ArgsA, ArgsB)
+        TypeA = tuple_type(ArgTypesA, Kind),
+        TypeB = tuple_type(ArgTypesB, Kind),
+        corresponding_types_compare_as_given_mc(TypeTable, TVarSet, Comparison,
+            ArgTypesA, ArgTypesB)
     ;
-        TypeA = higher_order_type(PredOrFunc, ArgsA, _HOInstInfoA, Purity),
-        TypeB = higher_order_type(PredOrFunc, ArgsB, _HOInstInfoB, Purity),
+        TypeA = higher_order_type(PredOrFunc, ArgTypesA, _HOInstInfoA, Purity),
+        TypeB = higher_order_type(PredOrFunc, ArgTypesB, _HOInstInfoB, Purity),
         % We do not allow subtyping in higher order argument types.
-        compare_types_corresponding(TypeTable, TVarSet, compare_equal,
-            ArgsA, ArgsB)
+        corresponding_types_compare_as_given_mc(TypeTable, TVarSet,
+            compare_equal, ArgTypesA, ArgTypesB)
     ;
         TypeA = apply_n_type(_, _, _),
         sorry($pred, "apply_n_type")
     ;
         TypeA = kinded_type(TypeA1, Kind),
         TypeB = kinded_type(TypeB1, Kind),
-        compare_types(TypeTable, TVarSet, Comparison, TypeA1, TypeB1)
+        types_compare_as_given_mc(TypeTable, TVarSet, Comparison,
+            TypeA1, TypeB1)
     ).
 
-:- pred compare_types_corresponding(type_table::in, tvarset::in,
+:- pred corresponding_types_compare_as_given_mc(type_table::in, tvarset::in,
     types_comparison::in, list(mer_type)::in, list(mer_type)::in) is semidet.
 
-compare_types_corresponding(_TypeTable, _TVarSet, _Comparison,
+corresponding_types_compare_as_given_mc(_TypeTable, _TVarSet, _Comparison,
         [], []).
-compare_types_corresponding(TypeTable, TVarSet, Comparison,
+corresponding_types_compare_as_given_mc(TypeTable, TVarSet, Comparison,
         [TypeA | TypesA], [TypeB | TypesB]) :-
-    compare_types(TypeTable, TVarSet, Comparison, TypeA, TypeB),
-    compare_types_corresponding(TypeTable, TVarSet, Comparison,
+    types_compare_as_given_mc(TypeTable, TVarSet, Comparison, TypeA, TypeB),
+    corresponding_types_compare_as_given_mc(TypeTable, TVarSet, Comparison,
         TypesA, TypesB).
 
 %---------------------------------------------------------------------------%
