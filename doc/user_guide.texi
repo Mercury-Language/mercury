@@ -190,6 +190,7 @@ However,
 if you use the @samp{--use-subdirs} option to @samp{mmc} or @samp{mmake},
 all these intermediate files will be created in a @file{Mercury} subdirectory,
 where you can happily ignore them.
+(With @samp{mmc --make}, @samp{--use-subdirs} is the default.)
 
 The rest of this chapter lists the extensions
 @c *most* of the kinds of files; there are many more now.
