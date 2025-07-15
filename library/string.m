@@ -1325,11 +1325,11 @@
     % in a different order. The advantage is that this order is easier to use
     % with higher order code such as
     %
-    %   list.map(replace_all(Pattern, Subst), Strings0, Strings)
+    %   list.map(replace_all_sv(Pattern, Subst), Strings0, Strings)
     %
     % and with state variables, in code such as
     %
-    %   list.map(replace_all(Pattern, Subst), !Strings)
+    %   list.map(replace_all_sv(Pattern, Subst), !Strings)
     %
 :- pred replace_all_sv(string::in, string::in, string::in, string::uo) is det.
 

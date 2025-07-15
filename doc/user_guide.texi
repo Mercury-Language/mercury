@@ -215,7 +215,7 @@ In the order of their usual creation,
 @findex --make-short-int
 @file{.int3} files are created by invoking @samp{mmc} with the
 @samp{--make-short-interface} (or @samp{--make-short-int}) option.
-Roughly, tThey contain basic information about the entities
+Roughly, they contain basic information about the entities
 defined in the interface section of the module,
 and exported from the module to all other modules importing this one.
 Their purpose is to provide the information needed

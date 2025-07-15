@@ -324,11 +324,11 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     check_mode_defns(!.ModuleInfo, ModeDefns,
         !FoundInvalidInstOrMode, !Specs),
 
-    % We want to invoke post-process the type table, after all the type
-    % definitions have been added to it, to do several tasks. These include
+    % We want to post-process the type table, after all the type definitions
+    % have been added to it, to do several tasks. These include
     %
-    % 1 checking subtype definitions (to check compatibility
-    %   with their declared supertype),
+    % 1 checking the compatibility of subtype definitions with their
+    %   declared supertype,
     %
     % 2 checking whether foreign types exist for the current target language,
     %
@@ -337,7 +337,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % 4 adding all named fields to the ctor_field_table,
     %
     % 5 checking whether the predicates named as unify and compare predicates
-    %   exist. and have the appropriate signature for their role.
+    %   exist, and have the appropriate signature for their role.
     %
     % The code of add_du_ctors_check_subtype_check_foreign_type does 1 to 4,
     % but not 5, which is why we don't have to do this after adding all
@@ -347,8 +347,8 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     %
     % This is because adding mode declarations to the HLDS may require
     % adding implicit pred declarations. With our current setup, this requires
-    % checking the "predicates" that happen to be functions whether they are
-    % field access functions. This in turn requires access to a completed
+    % checking the "predicates" that happen to be functions for whether they
+    % are field access functions. This in turn requires access to a completed
     % ctor_field table. (The reason for this is that in the absence of
     % an actual pred_decl, the call to check_preds_if_field_access_function
     % below won't process these functions.)
