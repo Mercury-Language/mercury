@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.add_class.
 :- interface.
@@ -18,7 +18,7 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred add_typeclass_defns(sec_list(item_typeclass_info)::in,
     module_info::in, module_info::out,
@@ -28,8 +28,8 @@
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -59,7 +59,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 add_typeclass_defns([], !ModuleInfo, !Specs).
 add_typeclass_defns([SecSubList | SecSubLists], !ModuleInfo, !Specs) :-
@@ -80,7 +80,7 @@ add_instance_defns([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
         !ModuleInfo, !Specs),
     add_instance_defns(ImsSubLists, !ModuleInfo, !Specs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred add_typeclass_defn(item_mercury_status::in,
     typeclass_status::in, need_qualifier::in, item_typeclass_info::in,
@@ -162,9 +162,9 @@ add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
             % This is a duplicate typeclass declaration that specifies
             % different superclasses and/or functional dependencies than
             % the original. Always report such errors, even in `.opt' files.
-            report_multiply_defined("typeclass", ClassName,
-                user_arity(ClassArity), Context, OldContext,
-                MismatchPieces, !Specs),
+            UserArity = user_arity(ClassArity),
+            report_multiply_defined("typeclass", ClassName, UserArity,
+                Context, OldContext, MismatchPieces, !Specs),
             HasIncompatibility = yes(OldDefn)
         )
     else
@@ -206,7 +206,7 @@ add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
             ClassMethodPredProcIds = OldClassMethodPredProcIds
         ),
 
-        % Ancestors is not set until check_typeclass.
+        % The ancestors field is not set until the check_typeclass phase.
         Ancestors = [],
         % XXX kind inference:
         % We set all the kinds to `star' at the moment. This should be
@@ -222,11 +222,11 @@ add_typeclass_defn(ItemMercuryStatus, TypeClassStatus0, NeedQual,
 
 :- func make_hlds_fundep(list(tvar), prog_fundep) = hlds_class_fundep.
 
-make_hlds_fundep(TVars, ProgFunDeps) = HLDSFunDeps :-
-    ProgFunDeps = fundep(ProgDomain, ProgRange),
+make_hlds_fundep(TVars, ProgFunDep) = HLDSFunDep :-
+    ProgFunDep = prog_fundep(ProgDomain, ProgRange),
     convert_vars_to_arg_posns(TVars, ProgDomain, HLDSDomain),
     convert_vars_to_arg_posns(TVars, ProgRange, HLDSRange),
-    HLDSFunDeps = fundep(HLDSDomain, HLDSRange).
+    HLDSFunDep = fundep(HLDSDomain, HLDSRange).
 
 :- pred convert_vars_to_arg_posns(list(tvar)::in, list(tvar)::in,
     set(hlds_class_argpos)::out) is det.
@@ -495,7 +495,7 @@ add_class_mode_decl(ItemMercuryStatus, PredStatus, MethodPredName, PredId,
     !:MethodProcNum = !.MethodProcNum + 1,
     cord.snoc(MethodInfo, !MethodInfosCord).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred add_instance_defn(instance_status::in, item_instance_info::in,
     module_info::in, module_info::out,
@@ -542,7 +542,7 @@ add_instance_defn(InstanceStatus0, ItemInstanceInfo, !ModuleInfo, !Specs) :-
         report_instance_for_undefined_typeclass(ClassId, Context, !Specs)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred pred_method_with_no_modes_error(pred_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -598,6 +598,6 @@ report_mode_decl_for_undeclared_method(MethodPredName, ModeInfo, !Specs) :-
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.add_class.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

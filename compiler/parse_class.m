@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2011 The University of Melbourne.
-% Copyright (C) 2016-2024 The Mercury team.
+% Copyright (C) 2016-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -297,7 +297,7 @@ tvars_in_fundeps(FunDeps) = list.condense(list.map(tvars_in_fundep, FunDeps)).
 
 :- func tvars_in_fundep(prog_fundep) = list(tvar).
 
-tvars_in_fundep(fundep(Domain, Range)) = Domain ++ Range.
+tvars_in_fundep(prog_fundep(Domain, Range)) = Domain ++ Range.
 
 :- pred parse_superclass_constraints(module_name::in, varset::in, term::in,
     maybe2(list(prog_constraint), list(prog_fundep))::out) is det.
@@ -1086,7 +1086,7 @@ parse_fundep(VarSet, Term, Result) :-
         MaybeDomain = ok1(Domain),
         MaybeRange = ok1(Range)
     then
-        Result = ok1(ac_fundep(fundep(Domain, Range), Context))
+        Result = ok1(ac_fundep(prog_fundep(Domain, Range), Context))
     else
         Specs = get_any_errors1(MaybeDomain) ++ get_any_errors1(MaybeRange),
         Result = error1(Specs)

@@ -632,7 +632,7 @@ unmake_hlds_class_fundep(TVars, HLDSFunDep) = ParseTreeFunDep :-
     HLDSFunDep = fundep(DomainArgPosns, RangeArgPosns),
     DomainTVars = unmake_hlds_class_fundep_arg_posns(TVars, DomainArgPosns),
     RangeTVars = unmake_hlds_class_fundep_arg_posns(TVars, RangeArgPosns),
-    ParseTreeFunDep = fundep(DomainTVars, RangeTVars).
+    ParseTreeFunDep = prog_fundep(DomainTVars, RangeTVars).
 
 :- func unmake_hlds_class_fundep_arg_posns(list(tvar), set(hlds_class_argpos))
     = list(tvar).
