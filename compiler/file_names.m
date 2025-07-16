@@ -132,8 +132,8 @@
 % whose files are both grade-specific and architecture-specific.
 %
 % We include "pgs" in the names of extensions whose files' *existence*
-% is grade-specific, but whose files' *contents* is not. The one such
-% extension is .mh. They exist only in C grades, but since they consists
+% is grade-specific, but whose files' *contents* are not. The one such
+% extension is .mh. They exist only in C grades, but since they consist
 % of the C declarations of the Mercury predicates and functions that
 % the program exports to C, their content will be the same in *all* C grades.
 % Because of this latter property, we treat pgs extensions the same way

@@ -361,7 +361,7 @@ lookup_source_file_module(FileName, ModuleName, !IO) :-
     %
     % The only module names in this map will be modules that are
     % the top module in the file that contains them. Any submodules nested
-    % within them will NOT appear in this bimap. Without this restruction,
+    % within them will NOT appear in this bimap. Without this restriction,
     % this map could not be a bijection.
     %
     % Both the code that constructs source_file_maps for Mercury.modules files,
