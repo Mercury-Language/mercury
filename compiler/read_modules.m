@@ -1146,7 +1146,7 @@ get_default_module_name_for_file(FileName, FileNameDotM,
         file_name_to_module_name(BaseFileName, DefaultModuleName)
     ;
         HaveMap = found,
-        lookup_source_file_module(FileNameDotM, MaybeModuleName, !IO),
+        lookup_source_file_maybe_module(FileNameDotM, MaybeModuleName, !IO),
         (
             MaybeModuleName = yes(DefaultModuleName)
         ;

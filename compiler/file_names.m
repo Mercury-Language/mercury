@@ -132,7 +132,7 @@
 % whose files are both grade-specific and architecture-specific.
 %
 % We include "pgs" in the names of extensions whose files' *existence*
-% is grade-specific, but whole files' *contents* is not. The one such
+% is grade-specific, but whose files' *contents* is not. The one such
 % extension is .mh. They exist only in C grades, but since they consists
 % of the C declarations of the Mercury predicates and functions that
 % the program exports to C, their content will be the same in *all* C grades.
@@ -1272,42 +1272,7 @@ module_name_to_base_file_name_no_ext_java(ModuleName) = BaseNameNoExt :-
 
 module_name_to_source_file_name(ModuleName, SourceFileName, !IO) :-
     % Look up the module in the module->file mapping.
-    source_file_map.lookup_module_source_file(ModuleName, MaybeFileName, !IO),
-    (
-        MaybeFileName = yes(SourceFileName)
-    ;
-        MaybeFileName = no,
-        % We get here only if
-        %
-        % - the source file map says that the default source file name
-        %   for ModuleName is actually being used to store a module
-        %   *other than* ModuleName, *and*
-        % - the source file map itself does not know in which file ModuleName
-        %   is stored.
-        %
-        % This can happen only if either the source file map was built from
-        % an incomplete list of source files, or if that list became incomplete
-        % later, as new source files were added.
-        %
-        % XXX What we do here is *seriously* suboptimal. Any programmer
-        % who is clueless enough to screw up the naming of source files
-        % this badly will be even more confused by the mess resulting
-        % from the code below.
-        %
-        % The old XXX suggested that we should propagate the fact that
-        % no source file name is available for the given module back to
-        % our caller, but I think it would be simpler for the code here
-        % to print an error message
-        %
-        % - describing the problem, and
-        % - suggest ways to fix it (put modules into files with non-colliding
-        %   names, or running mmc -f *.m),
-        %
-        % and then exit with an error status, *without* returning to our
-        % caller.
-        SourceFileName =
-            "Mercury/.missing." ++ default_source_file_name(ModuleName)
-    ).
+    source_file_map.lookup_module_source_file(ModuleName, SourceFileName, !IO).
 
 %---------------------------------------------------------------------------%
 

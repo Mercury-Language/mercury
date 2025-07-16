@@ -103,10 +103,10 @@
                 ncs_spec_pieces         :: list(format_piece)
             )
     ;       error_spec(
-                error_id                :: string,
-                error_severity          :: error_severity,
-                error_phase             :: error_phase,
-                error_msgs              :: list(error_msg)
+                es_id                   :: string,
+                es_severity             :: error_severity,
+                es_phase                :: error_phase,
+                es_msgs                 :: list(error_msg)
             )
     ;       conditional_spec(
                 cond_id                 :: string,

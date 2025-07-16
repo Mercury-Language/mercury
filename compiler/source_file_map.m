@@ -46,7 +46,7 @@
 % Part 2: constructing Mercury.modules files.
 %
 
-    % write_source_file_map(Globals, ProgressStream, FileNames, !IO):
+    % write_source_file_map(ErrorStream, Globals, FileNames, !IO):
     %
     % Given a list of file names, produce the Mercury.modules file.
     %
@@ -76,7 +76,7 @@
     % for ModuleName because the default file name for ModuleName is
     % mapped to another module.
     %
-:- pred lookup_module_source_file(module_name::in, maybe(file_name)::out,
+:- pred lookup_module_source_file(module_name::in, file_name::out,
     io::di, io::uo) is det.
 
     % lookup_source_file_module(FileName, MaybeModuleName, !IO):
@@ -86,7 +86,9 @@
     % module name is available for FileName because the default module name
     % for FileName is stored in another file.
     %
-:- pred lookup_source_file_module(file_name::in, maybe(module_name)::out,
+:- pred lookup_source_file_maybe_module(file_name::in, maybe(module_name)::out,
+    io::di, io::uo) is det.
+:- pred lookup_source_file_module(file_name::in, module_name::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -101,8 +103,10 @@
 :- import_module parse_tree.write_error_spec.
 
 :- import_module bimap.
+:- import_module cord.
 :- import_module dir.
 :- import_module int.
+:- import_module require.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -128,70 +132,94 @@ default_module_name_for_file(FileName, DefaultModuleName) :-
 % Part 2.
 %
 
-write_source_file_map(ProgressStream, Globals, FileNames, !IO) :-
-    ModulesFileName = modules_file_name,
-    io.open_output(ModulesFileName, MapFileResult, !IO),
+write_source_file_map(ErrorStream, Globals, FileNames, !IO) :-
+    list.foldl4(acc_source_file_map_line, FileNames,
+        bimap.init, _, cord.init, MapFileLineCord, [], Specs, !IO),
     (
-        MapFileResult = ok(MapFileStream),
-        list.foldl2(
-            write_source_file_map_line(ProgressStream, MapFileStream, Globals),
-            FileNames, bimap.init, _, !IO),
-        io.close_output(MapFileStream, !IO)
-    ;
-        MapFileResult = error(Error),
-        io.stderr_stream(StdErr, !IO),
-        io.format(StdErr,
-            "mercury_compile: error opening `%s' for output: %s",
-            [s(ModulesFileName), s(io.error_message(Error))], !IO),
-        io.set_exit_status(1, !IO)
-    ).
-
-:- pred write_source_file_map_line(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, file_name::in,
-    bimap(module_name, file_name)::in, bimap(module_name, file_name)::out,
-    io::di, io::uo) is det.
-
-write_source_file_map_line(ProgressStream, MapFileStream, Globals,
-        FileName, SeenModules0, SeenModules, !IO) :-
-    find_name_of_module_in_file(FileName, MaybeModuleName, !IO),
-    (
-        MaybeModuleName = ok1(ModuleName),
-        ( if
-            bimap.search(SeenModules0, ModuleName, PrevFileName),
-            PrevFileName \= FileName
-        then
-            io.format(ProgressStream,
-                "mercury_compile: " ++
-                "module `%s' defined in multiple files: %s, %s\n.",
-                [s(sym_name_to_string(ModuleName)),
-                s(PrevFileName), s(FileName)], !IO),
-            io.set_exit_status(1, !IO),
-            SeenModules = SeenModules0
-        else
-            bimap.set(ModuleName, FileName, SeenModules0, SeenModules)
-        ),
-        ( if string.remove_suffix(FileName, ".m", PartialFileName0) then
-            PartialFileName = PartialFileName0
-        else
-            PartialFileName = FileName
-        ),
-        file_name_to_module_name(dir.det_basename(PartialFileName),
-            DefaultModuleName),
-        ( if
-            % Only include a module in the mapping if the name doesn't match
-            % the default.
-            dir.dirname(PartialFileName) = dir.this_directory : string,
-            ModuleName = DefaultModuleName
-        then
-            true
-        else
-            io.format(MapFileStream, "%s\t%s\n",
-                [s(escaped_sym_name_to_string(ModuleName)), s(FileName)], !IO)
+        Specs = [],
+        ModulesFileName = modules_file_name,
+        io.open_output(ModulesFileName, ModulesFileResult, !IO),
+        (
+            ModulesFileResult = ok(ModulesFileStream),
+            MapFileLines = cord.list(MapFileLineCord),
+            io.write_strings(ModulesFileStream, MapFileLines, !IO),
+            io.close_output(ModulesFileStream, !IO)
+        ;
+            ModulesFileResult = error(Error),
+            ErrorMsg = io.error_message(Error),
+            io.progname_base("mercury_compile", Progname, !IO),
+            Pieces = [fixed(Progname), suffix(":"), words("error opening"),
+                quote(ModulesFileName), words("for output:"),
+                words(ErrorMsg), suffix("."), nl],
+            Spec = no_ctxt_spec($pred, severity_error, phase_read_files,
+                Pieces),
+            write_error_spec(ErrorStream, Globals, Spec, !IO)
         )
     ;
-        MaybeModuleName = error1(Specs),
-        write_error_specs(ProgressStream, Globals, Specs, !IO),
-        SeenModules = SeenModules0
+        Specs = [_ | _],
+        write_error_specs(ErrorStream, Globals, Specs, !IO)
+    ).
+
+:- pred acc_source_file_map_line(file_name::in,
+    source_file_map::in, source_file_map::out,
+    cord(string)::in, cord(string)::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+acc_source_file_map_line(FileName, Mn2FnMap0, Mn2FnMap,
+        !MapFileLineCord, !Specs, !IO) :-
+    ( if bimap.reverse_search(Mn2FnMap0, _, FileName) then
+        % We have already processed FileName.
+        % We could report an error here, but there is not much point;
+        % ignoring the issue here gets the same result as the the user
+        % invoking "mmc -f" again with a file name list from which
+        % any duplicates have been deleted.
+        Mn2FnMap = Mn2FnMap0
+    else
+        find_name_of_module_in_file(FileName, MaybeModuleName, !IO),
+        (
+            MaybeModuleName = ok1(ModuleName),
+            ( if bimap.search(Mn2FnMap0, ModuleName, PrevFileName) then
+                Pieces = [words("mercury_compile: the files named"),
+                    fixed(PrevFileName), words("and"), fixed(FileName),
+                    words("both contain the same module,"),
+                    qual_sym_name(ModuleName), suffix("."), nl],
+                Spec = no_ctxt_spec($pred, severity_error, phase_read_files,
+                    Pieces),
+                !:Specs = [Spec | !.Specs],
+                Mn2FnMap = Mn2FnMap0
+            else
+                % We have checked that nether ModuleName nor FileName
+                % appears in Mn2FnMap0.
+                bimap.det_insert(ModuleName, FileName, Mn2FnMap0, Mn2FnMap)
+            ),
+            ( if string.remove_suffix(FileName, ".m", PartialFileName0) then
+                PartialFileName = PartialFileName0
+            else
+                PartialFileName = FileName
+            ),
+            file_name_to_module_name(dir.det_basename(PartialFileName),
+                DefaultModuleName),
+            ( if
+                % Only include a module in the mapping if the name
+                % does not match the default.
+                %
+                % XXX This keeps the file size down, but I (zs)
+                % am far from sure that this saving is worthwhile.
+                dir.dirname(PartialFileName) = dir.this_directory : string,
+                ModuleName = DefaultModuleName
+            then
+                true
+            else
+                string.format("%s\t%s\n",
+                    [s(escaped_sym_name_to_string(ModuleName)), s(FileName)],
+                    MapFileLine),
+                cord.snoc(MapFileLine, !MapFileLineCord)
+            )
+        ;
+            MaybeModuleName = error1(MnSpecs),
+            Mn2FnMap = Mn2FnMap0,
+            !:Specs = !.Specs ++ MnSpecs
+        )
     ).
 
     % find_name_of_module_in_file(FileName, MaybeModuleName, !IO):
@@ -237,20 +265,33 @@ have_source_file_map(HaveMap, !IO) :-
 % Part 4.
 %
 
-lookup_module_source_file(ModuleName, MaybeFileName, !IO) :-
+lookup_module_source_file(ModuleName, FileName, !IO) :-
     get_source_file_map(SourceFileMap, !IO),
-    ( if bimap.search(SourceFileMap, ModuleName, FileName) then
-        MaybeFileName = yes(FileName)
+    ( if bimap.search(SourceFileMap, ModuleName, FileNamePrime) then
+        FileName = FileNamePrime
     else
         DefaultFileName = default_source_file_name(ModuleName),
         ( if bimap.reverse_search(SourceFileMap, _, DefaultFileName) then
-            MaybeFileName = no
+            io.progname_base("mercury_compile", Progname, !IO),
+            Pieces = [fixed(Progname), suffix(":"),
+                words("cannot find out which file contains"),
+                words("module"), qual_sym_name(ModuleName), suffix(","),
+                words("because its name does not appear in Mercury.modules,"),
+                words("and the file whose name is the default file name"),
+                words("for this module name, i.e."), fixed(FileName),
+                suffix(","), words("is recorded in Mercury.options"),
+                words("as containing a different module."), nl],
+            ErrorLines = error_pieces_to_std_lines(Pieces),
+            ErrorStr = error_lines_to_multi_line_string("", ErrorLines),
+            io.stderr_stream(StdErr, !IO),
+            io.write_string(StdErr, ErrorStr, !IO),
+            unexpected($pred, "cannot continue")
         else
-            MaybeFileName = yes(DefaultFileName)
+            FileName = DefaultFileName
         )
     ).
 
-lookup_source_file_module(FileName, MaybeModuleName, !IO) :-
+lookup_source_file_maybe_module(FileName, MaybeModuleName, !IO) :-
     get_source_file_map(SourceFileMap, !IO),
     ( if bimap.reverse_search(SourceFileMap, ModuleName, FileName) then
         MaybeModuleName = yes(ModuleName)
@@ -266,6 +307,50 @@ lookup_source_file_module(FileName, MaybeModuleName, !IO) :-
         )
     ).
 
+lookup_source_file_module(FileName, ModuleName, !IO) :-
+    get_source_file_map(SourceFileMap, !IO),
+    ( if bimap.reverse_search(SourceFileMap, ModuleNamePrime, FileName) then
+        ModuleName = ModuleNamePrime
+    else
+        ( if default_module_name_for_file(FileName, DefaultModuleName) then
+            ( if bimap.search(SourceFileMap, DefaultModuleName, _) then
+                io.progname_base("mercury_compile", Progname, !IO),
+                Pieces = [fixed(Progname), suffix(":"),
+                    words("cannot find out which module is contained in"),
+                    words("file"), fixed(FileName), suffix(","),
+                    words("because its name does not appear"),
+                    words("in Mercury.modules, and the module"),
+                    words("whose name is the file name minus the"),
+                    quote(".m"), words("suffix is recorded as"),
+                    words("being in a different file."), nl],
+                ErrorLines = error_pieces_to_std_lines(Pieces),
+                ErrorStr = error_lines_to_multi_line_string("", ErrorLines),
+                io.stderr_stream(StdErr, !IO),
+                io.write_string(StdErr, ErrorStr, !IO),
+                io.set_exit_status(1, !IO),
+                unexpected($pred, "cannot continue")
+            else
+                ModuleName = DefaultModuleName
+            )
+        else
+            io.progname_base("mercury_compile", Progname, !IO),
+            Pieces = [fixed(Progname), suffix(":"),
+                words("cannot find out which module is contained in"),
+                words("file"), fixed(FileName), suffix(","),
+                words("because its name does not appear in Mercury.modules,"),
+                words("and the file name does it end in"),
+                quote(".m"), suffix("."), nl],
+            % This is the only situation in which default_module_name_for_file
+            % fails.
+            ErrorLines = error_pieces_to_std_lines(Pieces),
+            ErrorStr = error_lines_to_multi_line_string("", ErrorLines),
+            io.stderr_stream(StdErr, !IO),
+            io.write_string(StdErr, ErrorStr, !IO),
+            io.set_exit_status(1, !IO),
+            unexpected($pred, "cannot continue")
+        )
+    ).
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 %
@@ -274,7 +359,17 @@ lookup_source_file_module(FileName, MaybeModuleName, !IO) :-
 
     % Bidirectional map between module names and file names.
     %
-:- type source_file_map == bimap(module_name, string).
+    % The only module names in this map will be modules that are
+    % the top module in the file that contains them. Any submodules nested
+    % within them will NOT appear in this bimap. Without this restruction,
+    % this map could not be a bijection.
+    %
+    % Both the code that constructs source_file_maps for Mercury.modules files,
+    % and the code that reads in Mercury.modules files, ensure that this map
+    % is a bijection. They do this by treating any possible deviation from
+    % being a bijection as an error to be reported.
+    %
+:- type source_file_map == bimap(module_name, file_name).
 
 %---------------------%
 
@@ -307,15 +402,32 @@ get_source_file_map(SourceFileMap, !IO) :-
         (
             ReadResult = ok(FileLines),
             bimap.init(SourceFileMap0),
-            parse_source_file_map(FileLines, ModulesFileName, 1, ErrorMsg,
-                SourceFileMap0, SourceFileMap1),
-            ( if ErrorMsg = "" then
+            parse_source_file_map(FileLines, ModulesFileName, 1,
+                cord.init, ErrorMsgCord, SourceFileMap0, SourceFileMap1),
+            ErrorMsgs = cord.list(ErrorMsgCord),
+            (
+                ErrorMsgs = [],
                 SourceFileMap = SourceFileMap1
-            else
+            ;
+                ErrorMsgs = [_ | _],
                 % If the file does exist but is malformed, then
-                % we *should* generate an error, but pretending that
-                % the file exists and is empty preserves old behavior.
-                bimap.init(SourceFileMap)
+                % we *should* print ErrorMsgs, but before 2025 jul 16,
+                % we did not do so. Granted, corrupted Mercury.modules files
+                % happen rarely, but precisely because of that, if it
+                % does happen, users probably won't connect the strange
+                % error messages that result from us returning an empty
+                % SourceFileMap here to such corruption in the absence of
+                % this kind of diagnostic.
+                %
+                % It would be nice if our callers told us the stream
+                % to which this error should be reported, but for many of them,
+                % this would require a nontrivial amount of complication
+                % that this very rare error probably does not deserve.
+                bimap.init(SourceFileMap),
+                io.stderr_stream(StdErr, !IO),
+                io.write_strings(StdErr, ErrorMsgs, !IO),
+                io.write_string(StdErr,
+                    "You need to rebuild Mercury.modules.\n", !IO)
             )
         ;
             ReadResult = error(_),
@@ -337,9 +449,10 @@ get_source_file_map(SourceFileMap, !IO) :-
     ).
 
 :- pred parse_source_file_map(list(string)::in, string::in, int::in,
-    string::out, source_file_map::in, source_file_map::out) is det.
+    cord(string)::in, cord(string)::out,
+    source_file_map::in, source_file_map::out) is det.
 
-parse_source_file_map(Lines, ModulesFileName, CurLineNumber, ErrorMsg,
+parse_source_file_map(Lines, ModulesFileName, CurLineNumber, !ErrorMsgCord,
         !SourceFileMap) :-
     (
         Lines = [HeadLine | TailLines],
@@ -349,35 +462,29 @@ parse_source_file_map(Lines, ModulesFileName, CurLineNumber, ErrorMsg,
             string.unsafe_between(HeadLine, TabIndex + 1, LineLength,
                 FileName),
             ModuleName = string_to_sym_name(ModuleNameStr),
-            % XXX A module cannot be contained in two files, which means that
-            % ModuleName should be a unique key in the forward map.
-            % However, with nested modules, a single file may contain
-            % more than one module, so FileName may *not* be a unique key
-            % in the backward map.
-            % XXX However, if Mercury.modules contains more than one line
-            % with the same filename, then this code has a bug, because
-            % the call sequence
-            %
-            %   bimap.set("module_a", "filename", !SourceFileMap)
-            %   bimap.set("module_a.sub1", "filename", !SourceFileMap)
-            %   bimap.set("module_a.sub2", "filename", !SourceFileMap)
-            %
-            % will leave only one key that maps to the value "filename",
-            % which will be the last one added ("module_a.sub2" in this case).
-            %
-            % XXX We should call bimap.det_insert here to abort in such
-            % situations, but I (zs) am not sure that output generated by
-            % write_source_file_map is guaranteed to be a bijection.
-            bimap.set(ModuleName, FileName, !SourceFileMap),
+            ( if bimap.insert(ModuleName, FileName, !SourceFileMap) then
+                true
+            else
+                ( if bimap.search(!.SourceFileMap, ModuleName, _) then
+                    string.format("line %d of %s duplicates" ++
+                        " an existing module name\n",
+                        [i(CurLineNumber), s(ModulesFileName)], ErrorMsg)
+                else
+                    string.format("line %d of %s duplicates" ++
+                        " an existing file name\n",
+                        [i(CurLineNumber), s(ModulesFileName)], ErrorMsg)
+                ),
+                cord.snoc(ErrorMsg, !ErrorMsgCord)
+            ),
             parse_source_file_map(TailLines, ModulesFileName,
-                CurLineNumber + 1, ErrorMsg, !SourceFileMap)
+                CurLineNumber + 1, !ErrorMsgCord, !SourceFileMap)
         else
-            string.format("line %d of %s is missing a tab character",
-                [i(CurLineNumber), s(ModulesFileName)], ErrorMsg)
+            string.format("line %d of %s is missing a tab character\n",
+                [i(CurLineNumber), s(ModulesFileName)], ErrorMsg),
+            cord.snoc(ErrorMsg, !ErrorMsgCord)
         )
     ;
-        Lines = [],
-        ErrorMsg = ""
+        Lines = []
     ).
 
 %---------------------------------------------------------------------------%

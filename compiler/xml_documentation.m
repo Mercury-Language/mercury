@@ -99,38 +99,32 @@ xml_documentation(ProgressStream, ModuleInfo, !IO) :-
     module_name_to_cur_dir_file_name(ext_cur_user_xml, ModuleName,
         XmlFileName),
 
-    lookup_module_source_file(ModuleName, MaybeSrcFileName, !IO),
+    lookup_module_source_file(ModuleName, SrcFileName, !IO),
+    io.open_input(SrcFileName, SrcResult, !IO),
     (
-        MaybeSrcFileName = yes(SrcFileName),
-        io.open_input(SrcFileName, SrcResult, !IO),
+        SrcResult = ok(SrcStream),
+        build_line_type_map(SrcStream, map.init, RawLineTypeMap, !IO),
+        LineTypeMap = line_type_map(RawLineTypeMap),
+
+        % XXX We should find the ":- module " declaration
+        % and get the comment from there.
+        ModuleComment = get_comment_forwards(LineTypeMap, 1),
+
+        io.open_output(XmlFileName, XmlOpenResult, !IO),
         (
-            SrcResult = ok(SrcStream),
-            build_line_type_map(SrcStream, map.init, RawLineTypeMap, !IO),
-            LineTypeMap = line_type_map(RawLineTypeMap),
-
-            % XXX We should find the ":- module " declaration
-            % and get the comment from there.
-            ModuleComment = get_comment_forwards(LineTypeMap, 1),
-
-            io.open_output(XmlFileName, XmlOpenResult, !IO),
-            (
-                XmlOpenResult = ok(XmlStream),
-                MIXmlDoc = module_info_xml_doc(LineTypeMap, ModuleComment,
-                    ModuleInfo),
-                write_xml_doc(XmlStream, MIXmlDoc, !IO)
-            ;
-                XmlOpenResult = error(Err),
-                report_unable_to_open_file(ProgressStream, XmlFileName,
-                    Err, !IO)
-            )
+            XmlOpenResult = ok(XmlStream),
+            MIXmlDoc = module_info_xml_doc(LineTypeMap, ModuleComment,
+                ModuleInfo),
+            write_xml_doc(XmlStream, MIXmlDoc, !IO)
         ;
-            SrcResult = error(SrcErr),
-            report_unable_to_open_file(ProgressStream, SrcFileName,
-                SrcErr, !IO)
+            XmlOpenResult = error(Err),
+            report_unable_to_open_file(ProgressStream, XmlFileName,
+                Err, !IO)
         )
     ;
-        MaybeSrcFileName = no,
-        unexpected($pred, "no source file name")
+        SrcResult = error(SrcErr),
+        report_unable_to_open_file(ProgressStream, SrcFileName,
+            SrcErr, !IO)
     ).
 
 %-----------------------------------------------------------------------------%

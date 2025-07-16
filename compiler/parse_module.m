@@ -100,7 +100,7 @@
     % peek_at_file(FileStream, SourceFileName, MaybeDefaultModuleName,
     %   MaybeModuleName, !IO):
     %
-    % "mmc -f", which creates the Mercury.module file that later compiler
+    % "mmc -f", which creates the Mercury.module file that all later
     % compiler invocations will use to map modules to the name of the file
     % containing them, uses this predicate to peek into a file to try to read
     % its first Mercury item.
