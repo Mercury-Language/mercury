@@ -415,22 +415,27 @@ by the alternative name @samp{mercury},
 or adjust your @env{PATH} to ensure that
 the Mercury @file{bin} directory precedes the Windows system directory.)
 
-Arguments to @samp{mmc} may be either file names (ending in @samp{.m}),
-or module names, with @samp{.} (rather than @samp{__})
-as the module qualifier.  For a module name such as @samp{foo.bar.baz},
+Arguments to @samp{mmc} may be either
+file names (all non-option arguments ending in @samp{.m}),
+or module names (all other non-option arguments).
+For a module name such as @samp{foo.bar.baz},
 the compiler will look for the source in the file named @file{foo.bar.baz.m}.
 To make the compiler look for a module in another file,
-use @samp{mmc -f @var{sources-files}} to generate
-a mapping from module name to file name,
-where @var{sources-files} is the list of source files in the directory
+use @samp{mmc -f @var{sources-files}},
+where @var{sources-files} is the list of source files in the directory,
+to generate a mapping from module name to file name
 (@pxref{Options that give the compiler its overall task}).
+That command will put the mapping into a file named @file{Mercury.modules},
+where all later invocations of use @samp{mmc} will look for it.
 
-Arguments to @samp{mmc} may also be in @samp{@@file}.
-The @samp{@@file} argument is replaced with arguments
-representing the contents of the file.
-This argument processing is done recursively.
-The contents of the @samp{@@file} is split into arguments
-one per line in the file.
+Any argument to @samp{mmc} that has the form @samp{@@file}
+will be replaced with the contents of the named file.
+That contents should be a list of arguments,
+with one argument per line.
+This argument processing is done recursively,
+so that some of these arguments may also have the form @file{file},
+though of course such a file should never include itself
+either directly or indirectly.
 
 There are two ways to compile a program that consists of a single source file.
 The first way, which works only when targeting C,
