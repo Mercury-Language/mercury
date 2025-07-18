@@ -1,4 +1,20 @@
+inconsistent_instances.m:015: Warning: the type class
+inconsistent_instances.m:015:   `inconsistent_instances.foo'/2 and the type
+inconsistent_instances.m:015:   constructor in the argument vector of this
+inconsistent_instances.m:015:   instance declaration for it, namely
+inconsistent_instances.m:015:   `list.list'/1, are all visible outside this
+inconsistent_instances.m:015:   module, which means that keeping this instance
+inconsistent_instances.m:015:   private to this module is [38;5;203mlikely to be a[39;49m
+inconsistent_instances.m:015:   [38;5;203mmistake.[39;49m
 inconsistent_instances.m:016: Error: [38;5;203minconsistent instance declaration[39;49m for
 inconsistent_instances.m:016:   typeclass [38;5;87m`inconsistent_instances.foo'/2[39;49m with
 inconsistent_instances.m:016:   functional dependency `(A -> B)'.
 inconsistent_instances.m:015: Here is the conflicting instance.
+inconsistent_instances.m:016: Warning: the type class
+inconsistent_instances.m:016:   `inconsistent_instances.foo'/2 and the type
+inconsistent_instances.m:016:   constructor in the argument vector of this
+inconsistent_instances.m:016:   instance declaration for it, namely
+inconsistent_instances.m:016:   `list.list'/1, are all visible outside this
+inconsistent_instances.m:016:   module, which means that keeping this instance
+inconsistent_instances.m:016:   private to this module is [38;5;203mlikely to be a[39;49m
+inconsistent_instances.m:016:   [38;5;203mmistake.[39;49m

@@ -51,7 +51,9 @@ MCFLAGS-gh72_errors             += --no-errorcheck-only
 MCFLAGS-illtyped_compare        += --no-intermodule-optimization \
                                     --verbose-error-messages
 MCFLAGS-impure_method_impl      += --no-intermodule-optimization \
-                                    --verbose-error-messages
+                                    --verbose-error-messages \
+                                    --warn-too-private-instances
+MCFLAGS-inconsistent_instances  += --warn-too-private-instances
 MCFLAGS-inline_conflict         += --no-warn-ambiguous-pragmas
 MCFLAGS-instances_pc            += --no-intermodule-optimization
 MCFLAGS-instances_pc.instances_pc_helper_1 += --no-intermodule-optimization
@@ -65,16 +67,20 @@ MCFLAGS-loopcheck               += --warn-inferred-erroneous \
 MCFLAGS-max_error_line_width    += --max-error-line-width 120 \
                                     --verbose-error-messages
 MCFLAGS-method_impl             += --no-intermodule-optimization \
-                                    --verbose-error-messages
+                                    --verbose-error-messages \
+                                    --warn-too-private-instances
 MCFLAGS-missing_det_decls       += --no-infer-det --verbose-error-messages
 MCFLAGS-missing_interface_import2 += --no-intermodule-optimization
 MCFLAGS-mode_inf                += --infer-all --verbose-error-messages
 MCFLAGS-mpj_1                   += --infer-all --verbose-error-messages
+MCFLAGS-mpj_3                   += --warn-too-private-instances
+MCFLAGS-mpj_4                   += --warn-too-private-instances
 MCFLAGS-multiply_star           += --verbose-error-messages
 MCFLAGS-multisoln_func          += --infer-types --verbose-error-messages
 MCFLAGS-nonexistent_import      += --no-verbose-make --make nonexistent_import
 MCFLAGS-overloading             += --no-intermodule-optimization
 MCFLAGS-pragma_c_code_no_det    += --warn-inferred-erroneous
+MCFLAGS-range_restrict          += --warn-too-private-instances
 MCFLAGS-record_syntax_errors    += --verbose-error-messages
 MCFLAGS-string_format_bad       += --halt-at-warn \
                                     --warn-known-bad-format-calls \
@@ -97,6 +103,7 @@ MCFLAGS-transitive_import2      += --no-intermodule-optimization
 MCFLAGS-transitive_import_class += --no-intermodule-optimization
 MCFLAGS-transitive_import_class_helper_1 += --no-intermodule-optimization
 MCFLAGS-transitive_import_class_helper_2 += --no-intermodule-optimization
+MCFLAGS-typeclass_constraint_extra_var += --no-warn-too-private-instances
 MCFLAGS-typeclass_mode          += --infer-all
 MCFLAGS-undef_symbol            += --no-intermodule-optimization
 

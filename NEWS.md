@@ -1564,6 +1564,12 @@ Changes to the Mercury compiler
   with each other, but not with the clauses of any other predicates
   or functions. This option may be given more than once.
 
+* We have added a new option, `--warn-too-private-instances`, which
+  asks the compiler to generate warnings for instance that are private
+  to the module containing them, even though both the typeclass they are for
+  and all the type constructors occurring in their argument vector
+  are visible outside that module.
+
 * We have replaced the `--no-warn-only-one-format-string-error` compiler option
   with the new option named `--warn-all-format-string-errors`.
 

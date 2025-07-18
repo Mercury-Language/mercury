@@ -1,3 +1,13 @@
+mpj_4.m:023: Warning: the type class `mpj_4.coll'/2 and the type constructor in
+mpj_4.m:023:   the argument vector of this instance declaration for it, namely
+mpj_4.m:023:   `mpj_4.intlist'/0, are all visible outside this module, which
+mpj_4.m:023:   means that keeping this instance private to this module is
+mpj_4.m:023:   [38;5;203mlikely to be a mistake.[39;49m
+mpj_4.m:024: Warning: the type class `mpj_4.coll'/2 and the type constructor in
+mpj_4.m:024:   the argument vector of this instance declaration for it, namely
+mpj_4.m:024:   `mpj_4.stringlist'/0, are all visible outside this module, which
+mpj_4.m:024:   means that keeping this instance private to this module is
+mpj_4.m:024:   [38;5;203mlikely to be a mistake.[39;49m
 mpj_4.m:028: In clause for function `g'/1:
 mpj_4.m:028:   in function result term of clause head:
 mpj_4.m:028:   in argument 2 of functor `f/3':

@@ -909,6 +909,12 @@ Warning options
         name of a module in the Mercury standard library, or contain a
         subsequence of name components that do so.
 
+    --warn-too-private-instances
+        Generate warnings for instance declarations which are private to the
+        module despite the fact that both the class the instance is for, and
+        all the type constructors mentioned in its argument vector, are visible
+        outside the module.
+
     Warnings about possible inst incorrectness
 
     --no-warn-insts-without-matching-type

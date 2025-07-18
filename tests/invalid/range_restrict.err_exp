@@ -3,3 +3,9 @@ range_restrict.m:015:   error: functional dependency not satisfied: type
 range_restrict.m:015:   variables [38;5;87m`Y'[39;49m and [38;5;87m`Z'[39;49m occur in the range of the
 range_restrict.m:015:   functional dependency, but [38;5;203mare not determined by the[39;49m
 range_restrict.m:015:   [38;5;203mdomain.[39;49m
+range_restrict.m:015: Warning: the type class `range_restrict.foo'/2 and the
+range_restrict.m:015:   type constructor in the argument vector of this
+range_restrict.m:015:   instance declaration for it, namely `map.map'/2, are
+range_restrict.m:015:   all visible outside this module, which means that
+range_restrict.m:015:   keeping this instance private to this module is [38;5;203mlikely[39;49m
+range_restrict.m:015:   [38;5;203mto be a mistake.[39;49m

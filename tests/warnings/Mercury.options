@@ -93,6 +93,7 @@ MCFLAGS-save                    += --warn-unsorted-import-block
 MCFLAGS-singleton_test          += --warn-unsorted-import-block
 MCFLAGS-unsorted_import_blocks  += --warn-unsorted-import-block
 MCFLAGS-unused_interface_import += --warn-unsorted-import-block
+MCFLAGS-unused_interface_import += --warn-too-private-instances
 
 MCFLAGS-allow_non_contiguity_for += --warn-non-contiguous-clauses
 MCFLAGS-allow_non_contiguity_for += --allow-non-contiguity-for p1,p2,p3

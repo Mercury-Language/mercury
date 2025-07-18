@@ -439,6 +439,7 @@
     ;       warn_interface_imports
     ;       warn_interface_imports_in_parents
     ;       warn_stdlib_shadowing
+    ;       warn_too_private_instances
 
     % Warnings about dodgy code, involving determinism.
     ;       warn_det_decls_too_lax
@@ -2490,6 +2491,13 @@ optdb(oc_warn_dodgy_mod, warn_stdlib_shadowing,        bool(yes),
         w("Do not generate warnings for module names that either duplicate"),
         w("the name of a module in the Mercury standard library, or contain"),
         w("a subsequence of name components that do so.")])).
+optdb(oc_warn_dodgy_mod, warn_too_private_instances,   bool(no),
+    help("warn-too-private-instances", [
+        w("Generate warnings for instance declarations which are"),
+        w("private to the module despite the fact that"),
+        w("both the class the instance is for, and"),
+        w("all the type constructors mentioned in its argument vector,"),
+        w("are visible outside the module.")])).
 
 % Warnings about predicate determinism issues.
 

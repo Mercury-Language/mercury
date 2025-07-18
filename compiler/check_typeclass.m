@@ -169,6 +169,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -195,9 +196,10 @@ check_typeclasses(ProgressStream, !ModuleInfo, !QualInfo, !:Specs) :-
         maybe_write_string(ProgressStream, Verbose,
             "% Checking instance declaration types...\n", !IO)
     ),
-    check_instance_declaration_types(!.ModuleInfo, [], InstanceDeclSpecs),
+    check_instance_declaration_types(!.ModuleInfo,
+        [], InstanceDeclErrorSpecs, [], InstanceDeclWarnSpecs),
 
-    !:Specs = CycleSpecs ++ InstanceDeclSpecs,
+    !:Specs = CycleSpecs ++ InstanceDeclErrorSpecs ++ InstanceDeclWarnSpecs,
 
     % If we encounter any errors while checking that the types in an
     % instance declaration are valid, then don't attempt the remaining passes.
@@ -212,7 +214,7 @@ check_typeclasses(ProgressStream, !ModuleInfo, !QualInfo, !:Specs) :-
     % point and then continue on with the valid instances.
 
     (
-        InstanceDeclSpecs = [],
+        InstanceDeclErrorSpecs = [],
         % Pass 3.
         trace [io(!IO)] (
             maybe_write_string(ProgressStream, Verbose,
@@ -250,7 +252,7 @@ check_typeclasses(ProgressStream, !ModuleInfo, !QualInfo, !:Specs) :-
         ),
         check_typeclass_constraints_on_data_ctors(!.ModuleInfo, !Specs)
     ;
-        InstanceDeclSpecs = [_ | _]
+        InstanceDeclErrorSpecs = [_ | _]
     ).
 
 %---------------------------------------------------------------------------%
@@ -390,36 +392,82 @@ find_class_cycle(ClassId, PathRemaining0, PathSoFar0, Cycle) :-
     % or a polymorphic type whose arguments are all distinct type variables.
     %
 :- pred check_instance_declaration_types(module_info::in,
+    list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_instance_declaration_types(ModuleInfo, !Specs) :-
+check_instance_declaration_types(ModuleInfo, !ErrorSpecs, !WarnSpecs) :-
     module_info_get_instance_table(ModuleInfo, InstanceTable),
-    map.foldl(check_instance_declaration_types_for_class(ModuleInfo),
-        InstanceTable, !Specs).
+    map.foldl2(check_instance_declaration_types_for_class(ModuleInfo),
+        InstanceTable, !ErrorSpecs, !WarnSpecs).
 
 :- pred check_instance_declaration_types_for_class(module_info::in,
     class_id::in, list(hlds_instance_defn)::in,
+    list(error_spec)::in, list(error_spec)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_instance_declaration_types_for_class(ModuleInfo, ClassId,
-        InstanceDefns, !Specs) :-
-    list.map(
+        InstanceDefns, !ErrorSpecs, !WarnSpecs) :-
+    list.foldl2(
         is_instance_type_vector_valid(ModuleInfo, ClassId),
-        InstanceDefns, InstanceSpecLists),
-    list.condense(InstanceSpecLists, ClassInstanceSpecs),
-    !:Specs = ClassInstanceSpecs ++ !.Specs.
+        InstanceDefns, !ErrorSpecs, map.init, TooPrivateMap),
+    map.foldl(report_any_too_private_instance(ModuleInfo, ClassId),
+        TooPrivateMap, !WarnSpecs).
+
+    % This type contains the information we need from a hlds_instance_defn
+    % to implement the --warn-too-private-instance option for that instance.
+    % Note that we need this info from *all* instance declarations for given
+    % class_id/arg_vector combo. There will often be two such declarations:
+    % an abstract instance in the interface section, and a concrete instance
+    % in the implementation section.
+    %
+    % XXX We need to know about all instance declarations because
+    % when we record a concrete instance declaration in the instance table,
+    % its status will NEVER say that the instance is exported, even if it is.
+    % This is because
+    %
+    % - the item_mercury_status of the concrete instance, which will occur
+    %   in the implementation, will say that this instance declaration
+    %   is not exported, and
+    %
+    % - we do NOT update this status even if an abstract version of the
+    %   same instance declaration exists in the interface section.
+    %
+:- type instance_too_private_info
+    --->    instance_too_private_info(
+                instance_body,
+                instance_status,
+                prog_context
+            ).
+
+:- type instance_too_private_map ==
+    one_or_more_map(list(mer_type), instance_too_private_info).
 
 :- pred is_instance_type_vector_valid(module_info::in,
-    class_id::in, hlds_instance_defn::in, list(error_spec)::out) is det.
+    class_id::in, hlds_instance_defn::in,
+    list(error_spec)::in, list(error_spec)::out,
+    instance_too_private_map::in, instance_too_private_map::out) is det.
 
-is_instance_type_vector_valid(ModuleInfo, ClassId, InstanceDefn, !:Specs) :-
+is_instance_type_vector_valid(ModuleInfo, ClassId, InstanceDefn,
+        !ErrorSpecs, !TooPrivateMap) :-
     OriginalTypes = InstanceDefn ^ instdefn_orig_types,
-    !:Specs = [],
+    InstanceErrorSpecs0 = [],
     list.foldl2(is_orig_type_non_eqv_type(ModuleInfo, ClassId, InstanceDefn),
-        OriginalTypes, 1, _, !Specs),
+        OriginalTypes, 1, _, InstanceErrorSpecs0, InstanceErrorSpecs1),
     Types = InstanceDefn ^ instdefn_types,
     list.foldl2(is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn),
-        Types, 1, _, !Specs).
+        Types, 1, _, InstanceErrorSpecs1, InstanceErrorSpecs),
+    (
+        InstanceErrorSpecs = [_ | _]
+    ;
+        InstanceErrorSpecs = [],
+        InstanceBody = InstanceDefn ^ instdefn_body,
+        InstanceStatus = InstanceDefn ^ instdefn_status,
+        InstanceContext = InstanceDefn ^ instdefn_context,
+        TooPrivateInfo = instance_too_private_info(InstanceBody,
+            InstanceStatus, InstanceContext),
+        one_or_more_map.add(OriginalTypes, TooPrivateInfo, !TooPrivateMap)
+    ),
+    !:ErrorSpecs = !.ErrorSpecs ++ InstanceErrorSpecs.
 
     % The only check we carry out on the original form of instance types
     % is that they are not equivalence types. All other checks we carry out
@@ -559,6 +607,148 @@ find_non_type_variables([ArgType | ArgTypes], ArgNum, NonTVarArgs) :-
         ),
         NonTVarArgs = [ArgNum - ArgType | TailNonTVarArgs]
     ).
+
+%---------------------%
+
+:- pred report_any_too_private_instance(module_info::in, class_id::in,
+    list(mer_type)::in, one_or_more(instance_too_private_info)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_any_too_private_instance(ModuleInfo, ClassId,
+        OrigTypes, OoMTooPrivateInfos, !WarnSpecs) :-
+    module_info_get_class_table(ModuleInfo, ClassTable),
+    map.lookup(ClassTable, ClassId, ClassDefn),
+    ClassStatus = ClassDefn ^ classdefn_status,
+    OoMTooPrivateInfos = one_or_more(HeadTooPrivateInfo, TailTooPrivateInfos),
+    is_any_instance_defn_exported(HeadTooPrivateInfo, TailTooPrivateInfos,
+        InstanceIsExported, no, MaybeLocalConcreteContext),
+    ( if
+        InstanceIsExported = no,
+        % If the typeclass is private, it is reasonable to keep its instances
+        % private, regardless of what type_ctors they refer to.
+        typeclass_status_is_exported(ClassStatus) = yes,
+        % If the instance is either defined in another module or is only
+        % abstract, then do not even try to generate warnings about it.
+        MaybeLocalConcreteContext = yes(LocalConcreteContext)
+    then
+        list.foldl(acc_type_ctors_in_type, OrigTypes,
+            set.init, TypeCtorsInTypes),
+        module_info_get_type_table(ModuleInfo, TypeTable),
+        set.filter(type_ctor_is_private(TypeTable), TypeCtorsInTypes,
+            PrivateTypeCtorsInTypes, NonPrivateTypeCtorsInTypes),
+        ( if
+            set.is_empty(PrivateTypeCtorsInTypes),
+            set.is_non_empty(NonPrivateTypeCtorsInTypes)
+        then
+            report_unnecessarily_private_instance(ClassId, TypeCtorsInTypes,
+                LocalConcreteContext, !WarnSpecs)
+        else
+            true
+        )
+    else
+        true
+    ).
+
+:- pred is_any_instance_defn_exported(instance_too_private_info::in,
+    list(instance_too_private_info)::in, bool::out,
+    maybe(context)::in, maybe(context)::out) is det.
+
+is_any_instance_defn_exported(HeadTooPrivateInfo, TailTooPrivateInfos,
+        IsExported, !MaybeLocalConcreteContext) :-
+    HeadTooPrivateInfo =
+        instance_too_private_info(HeadBody, HeadStatus, HeadContext),
+    ( if
+        instance_status_defined_in_this_module(HeadStatus) = yes,
+        HeadBody = instance_body_concrete(_)
+    then
+        !:MaybeLocalConcreteContext = yes(HeadContext)
+    else
+        true
+    ),
+    (
+        TailTooPrivateInfos = [],
+        TailIsExported = no
+    ;
+        TailTooPrivateInfos =
+            [HeadTailTooPrivateInfo | TailTailTooPrivateInfos],
+        is_any_instance_defn_exported(HeadTailTooPrivateInfo,
+            TailTailTooPrivateInfos, TailIsExported,
+            !MaybeLocalConcreteContext)
+    ),
+    HeadExported = instance_status_is_exported(HeadStatus),
+    (
+        HeadExported = yes,
+        IsExported = yes
+    ;
+        HeadExported = no,
+        IsExported = TailIsExported
+    ).
+
+:- pred acc_type_ctors_in_type(mer_type::in,
+    set(type_ctor)::in, set(type_ctor)::out) is det.
+
+acc_type_ctors_in_type(Type, !TypeCtorSet) :-
+    (
+        ( Type = builtin_type(_)
+        ; Type = type_variable(_, _)
+        )
+    ;
+        Type = defined_type(SymName, ArgTypes, _Kind),
+        list.length(ArgTypes, Arity),
+        TypeCtor = type_ctor(SymName, Arity),
+        set.insert(TypeCtor, !TypeCtorSet),
+        list.foldl(acc_type_ctors_in_type, ArgTypes, !TypeCtorSet)
+    ;
+        ( Type = tuple_type(ArgTypes, _Kind)
+        ; Type = higher_order_type(_, ArgTypes, _, _)
+        ; Type = apply_n_type(_, ArgTypes, _)
+        ),
+        list.foldl(acc_type_ctors_in_type, ArgTypes, !TypeCtorSet)
+    ;
+        Type = kinded_type(SubType, _Kind),
+        acc_type_ctors_in_type(SubType, !TypeCtorSet)
+    ).
+
+:- pred type_ctor_is_private(type_table::in, type_ctor::in) is semidet.
+
+type_ctor_is_private(TypeTable, TypeCtor) :-
+    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+    get_type_defn_status(TypeDefn, TypeStatus),
+    type_status_defined_in_this_module(TypeStatus) = yes,
+    type_status_is_exported(TypeStatus) = no.
+
+:- pred report_unnecessarily_private_instance(class_id::in, set(type_ctor)::in,
+    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+report_unnecessarily_private_instance(ClassId, TypeCtorsSet, Context,
+        !Specs) :-
+    set.to_sorted_list(TypeCtorsSet, TypeCtors),
+    TypeCtorPieces = list.map((func(TC) = qual_type_ctor(TC)), TypeCtors),
+    (
+        TypeCtorPieces = [],
+        TypeCtorsPieces = [words("is")]
+    ;
+        TypeCtorPieces = [TypeCtorPiece],
+        TypeCtorsPieces =
+            [words("and the type constructor in the argument vector"),
+            words("of this instance declaration for it, namely"),
+            TypeCtorPiece, suffix(","), words("are all")]
+    ;
+        TypeCtorPieces = [_, _ | _],
+        TypeCtorsPieces =
+            [words("and all the type constructors in the argument vector"),
+            words("of this instance declaration for it, namely")] ++
+            piece_list_to_pieces("and", TypeCtorPieces) ++
+            [suffix(","), words("are all")]
+    ),
+    Pieces = [words("Warning: the type class"), qual_class_id(ClassId)] ++
+        TypeCtorsPieces ++
+        [words("visible outside this module, which means that"),
+        words("keeping this instance private to this module is")] ++
+        color_as_incorrect([words("likely to be a mistake.")]) ++ [nl],
+    Spec = conditional_spec($pred, warn_too_private_instances, yes,
+        severity_warning, phase_pt2h, [msg(Context, Pieces)]),
+    !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
 % Pass 3.
