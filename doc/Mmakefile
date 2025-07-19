@@ -141,6 +141,42 @@ mercury.html: mercury.html.in ../VERSION
 mercury.info: mercury.info.in ../VERSION
 	$(SED_CMD)
 
+# user_guide.texi_pp @includes ug_invocation.texi, so all targets
+# that want to process user_guide.texi must make user_guide.texi first.
+# user_guide.texi_pp is the only such *direct* target; all the others
+# go through it.
+user_guide.texi_pp: ug_invocation.texi
+
+# The rule for ug_invocation.texi_date compares any existing
+# file ug_invocation.texi against its "new" intended contents, and
+# leaves it unchanged, including its timestamp, if the "new" contents
+# would be the same as the old. Then, after gmake executes  @:,
+# the silent do-nothing command, it will believe that ug_invocation.texi
+# is up-to-date regardless of whether the rule for ug_invocation.texi_date
+# updated it or not.
+#
+# This is the same scheme that scripts/Mmake.rules uses for e.g.
+# .int and .date files. Both copies of this scheme lead to strange errors
+# if the timestamp file exists but the file it is the timestamp OF has been
+# deleted. This is not usually a problem though, first because making
+# such deletions accidentally is rare, and second because an "mmake clean"
+# fixes the issue by deleting the timestamp file as well.
+ug_invocation.texi: ug_invocation.texi_date
+	@:
+
+ug_invocation.texi_date: ../compiler/mercury_compile$(EXT_FOR_EXE)
+	@echo checking whether ug_invocation.texi is up to date
+	@../compiler/mercury_compile --help-texinfo \
+		--no-mercury-stdlib-dir \
+		--config-file ../scripts/Mercury.config \
+		> ug_invocation.texi_new
+	@if cmp -s ug_invocation.texi ug_invocation.texi_new; then \
+		/bin/rm ug_invocation.texi_new; \
+	else \
+		mv -f ug_invocation.texi_new ug_invocation.texi; \
+	fi
+	@date > ug_invocation.texi_date
+
 .PHONY: new_opts
 new_opts: user_guide.texi update_opts ../compiler/mercury_compile
 	./update_opts
@@ -442,6 +478,7 @@ clean_texi:
 	rm -f mercury_*.info*
 	rm -f mercury_faq.html mercury_library.html mercury_ref.html \
 		mercury_trans_guide.html mercury_user_guide.html
+	rm -f ug_invocation.texi_date ug_invocation.texi
 	rm -rf $(TEXINFO_INFO_FILES:%.info=%)
 
 .PHONY: clean_text_files
