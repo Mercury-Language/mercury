@@ -1792,9 +1792,10 @@ optdb(oc_grade_mprof, memory_profiling,                special,
         cindex(".memprof (grade modifier"),
         w("Prepare the generated code for"),
         w("profiling of memory usage and retention by mprof."),
-        % XXX Should we add an xref to the profiling chapter's memprof section?
-        w("Please see the"),
-        ref("", "Using mprof for profiling memory retention", "section"),
+        w("Please see"),
+        ref("the", "Using mprof for profiling memory allocation", ""),
+        w("and"),
+        ref("", "Using mprof for profiling memory retention", "sections"),
         w("in the Mercury User's Guide for details."),
         blank_line,
         w("This option is supported only when targeting C.")])).
