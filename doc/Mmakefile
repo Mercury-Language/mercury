@@ -161,12 +161,25 @@ user_guide.texi_pp: ug_invocation.texi
 # deleted. This is not usually a problem though, first because making
 # such deletions accidentally is rare, and second because an "mmake clean"
 # fixes the issue by deleting the timestamp file as well.
+
 ug_invocation.texi: ug_invocation.texi_date
 	@:
 
-ug_invocation.texi_date: ../compiler/mercury_compile$(EXT_FOR_EXE)
+# If we are building the source distribution, then we will not have
+# a mercury_compile executable to generate ug_invocation.texi from.
+# In that case, we just use the bootstrap compiler to generate it
+# since it will be the same version anyway.
+ifdef BUILD_SRCDIST
+UG_INVOCATION_DEP=
+UG_INVOCATION_MC=$(MC)
+else
+UG_INVOCATION_DEP=../compiler/mercury_compile$(EXT_FOR_EXE)
+UG_INVOCATION_MC=../compiler/mercury_compile
+endif
+
+ug_invocation.texi_date: $(UG_INVOCATION_DEP)
 	@echo checking whether ug_invocation.texi is up to date
-	@../compiler/mercury_compile --help-texinfo \
+	@$(UG_INVOCATION_MC) --help-texinfo \
 		--no-mercury-stdlib-dir \
 		--config-file ../scripts/Mercury.config \
 		> ug_invocation.texi_new
