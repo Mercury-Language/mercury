@@ -180,9 +180,9 @@ else
 #
 # - will not be present on the launcher scripts generated in the non-C grades,
 # - will not be present on the executable in C grades on Unix-like systems, and
-# - while it will be present on the executables in C grades on Windows,
-#   gmake on Windows contains code to add it for us (on UG_INVOCATION_DEP and
-#   UG_INVOCATION_MC respectively).
+# - while it will be present on the executable in C grades on Windows,
+#   gmake on Windows contains code to add it for us, to both UG_INVOCATION_DEP
+#   and UG_INVOCATION_MC.
 #
 UG_INVOCATION_DEP=../compiler/mercury_compile
 UG_INVOCATION_MC=../compiler/mercury_compile
