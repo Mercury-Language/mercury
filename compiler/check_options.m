@@ -743,6 +743,7 @@ convert_dump_alias("statevar", "gvCP").
 convert_dump_alias("lco", "agiuvzD").
 convert_dump_alias("poly", "vxX").
 convert_dump_alias("du", "TL").
+convert_dump_alias("W", "W").
 
 %---------------------------------------------------------------------------%
 :- end_module libs.check_options.

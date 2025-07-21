@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2021, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -27,6 +27,7 @@
 :- import_module assoc_list.
 :- import_module list.
 :- import_module map.
+:- import_module multi_map.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
@@ -168,6 +169,9 @@
     % Return all the names in the cons_table.
     %
 :- pred cons_table_names(cons_table::in, set(string)::out) is det.
+
+:- pred get_cons_table_contents(cons_table::in,
+    multi_map(string, du_ctor)::out, map(du_ctor, list(du_ctor))::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -485,6 +489,29 @@ project_inner_cons_entry(Entry, Pair) :-
 
 cons_table_names(ConsTable, Names) :-
     map.keys_as_set(ConsTable, Names).
+
+%---------------------%
+
+get_cons_table_contents(ConsTable, NameMap, DuCtorMap) :-
+    map.foldl2(acc_cons_table_contents_inner, ConsTable,
+        map.init, NameMap, map.init, DuCtorMap).
+
+:- pred acc_cons_table_contents_inner(string::in, list(inner_cons_entry)::in,
+    multi_map(string, du_ctor)::in, multi_map(string, du_ctor)::out,
+    map(du_ctor, list(du_ctor))::in, map(du_ctor, list(du_ctor))::out) is det.
+
+acc_cons_table_contents_inner(Name, InnerConsEntries, !NameMap, !DuCtorMap) :-
+    list.foldl2(acc_cons_table_contents_du_ctor(Name), InnerConsEntries,
+        !NameMap, !DuCtorMap).
+
+:- pred acc_cons_table_contents_du_ctor(string::in, inner_cons_entry::in,
+    multi_map(string, du_ctor)::in, multi_map(string, du_ctor)::out,
+    map(du_ctor, list(du_ctor))::in, map(du_ctor, list(du_ctor))::out) is det.
+
+acc_cons_table_contents_du_ctor(Name, InnerConsEntry, !NameMap, !DuCtorMap) :-
+    InnerConsEntry = inner_cons_entry(FqDuCtor, OtherDuCtors, _),
+    multi_map.add(Name, FqDuCtor, !NameMap),
+    map.det_insert(FqDuCtor, OtherDuCtors, !DuCtorMap).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_cons.

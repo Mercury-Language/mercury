@@ -89,6 +89,7 @@
                 dump_struct_sharing_info        :: bool,    % S
                 dump_type_typeclass_tables      :: bool,    % T
                 dump_unify_compare_preds        :: bool,    % U
+                dump_cons_table                 :: bool,    % W
                 dump_constant_structures        :: bool,    % X
                 dump_structured_insts           :: bool,    % Y
                 dump_call_answer_tables         :: bool     % Z
@@ -368,7 +369,7 @@ empty_dump_options =
         bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no,
         bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no,
         bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no,
-        bool.no, bool.no, bool.no, bool.no, bool.no, bool.no
+        bool.no, bool.no, bool.no, bool.no, bool.no, bool.no, bool.no
     ).
 
 :- func setup_hlds_dump_options(string) = hlds_dump_options.
@@ -428,6 +429,7 @@ dump_opt('R', set_dump_use_reuse_info).
 dump_opt('S', set_dump_struct_sharing_info).
 dump_opt('T', set_dump_type_typeclass_tables).
 dump_opt('U', set_dump_unify_compare_preds).
+dump_opt('W', set_dump_cons_table).
 dump_opt('X', set_dump_constant_structures).
 dump_opt('Y', set_dump_structured_insts).
 dump_opt('Z', set_dump_call_answer_tables).
@@ -467,6 +469,7 @@ dump_opt('Z', set_dump_call_answer_tables).
 :- func set_dump_struct_sharing_info(hlds_dump_options) = hlds_dump_options.
 :- func set_dump_type_typeclass_tables(hlds_dump_options) = hlds_dump_options.
 :- func set_dump_unify_compare_preds(hlds_dump_options) = hlds_dump_options.
+:- func set_dump_cons_table(hlds_dump_options) = hlds_dump_options.
 :- func set_dump_constant_structures(hlds_dump_options) = hlds_dump_options.
 :- func set_dump_structured_insts(hlds_dump_options) = hlds_dump_options.
 :- func set_dump_call_answer_tables(hlds_dump_options) = hlds_dump_options.
@@ -506,6 +509,7 @@ set_dump_use_reuse_info(X) = X ^ dump_use_reuse_info := yes.
 set_dump_struct_sharing_info(X) = X ^ dump_struct_sharing_info := yes.
 set_dump_type_typeclass_tables(X) = X ^ dump_type_typeclass_tables := yes.
 set_dump_unify_compare_preds(X) = X ^ dump_unify_compare_preds := yes.
+set_dump_cons_table(X) = X ^ dump_cons_table := yes.
 set_dump_constant_structures(X) = X ^ dump_constant_structures := yes.
 set_dump_structured_insts(X) = X ^ dump_structured_insts := yes.
 set_dump_call_answer_tables(X) = X ^ dump_call_answer_tables := yes.

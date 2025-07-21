@@ -105,6 +105,7 @@
 
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_class.
+:- import_module hlds.hlds_cons.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_dependency_graph.
 :- import_module hlds.hlds_error_util.
@@ -245,6 +246,15 @@ format_hlds(ModuleInfo, !State) :-
             format_mode_table(ModeTable, !State)
         ;
             DumpInstsModes = no
+        ),
+
+        DumpConsTable = DumpOptions ^ dump_cons_table,
+        (
+            DumpConsTable = yes,
+            module_info_get_cons_table(ModuleInfo, ConsTable),
+            format_cons_table(ConsTable, !State)
+        ;
+            DumpConsTable = no
         ),
 
         DumpCallAnswerTables = DumpOptions ^ dump_call_answer_tables,
@@ -408,6 +418,83 @@ format_const_struct_args(HeadConstArg, TailConstArgs, !State) :-
         string.builder.append_string(",\n", !State),
         format_const_struct_args(HeadTailConstArg, TailTailConstArgs, !State)
     ).
+
+%---------------------------------------------------------------------------%
+%
+% Write out the cons_table.
+%
+% The tools/cons_table.awk script summarizes the cons tables we write out.
+% When run on a file containing all the cons tables from a stage2 directory
+% concatenated together, its results as of 2025 july 21 were:
+%
+% #names =  1729875, #ctors =     1729875, #ctors/name =      1.05, max = 24
+% #ctors =  1811508, #synonyms =  1811508, #synonyms/ctor =   3.30, max =  9
+%
+% The cons_table entry that had the longest list of du_ctors
+% for a given name was this one:
+%
+% DU_CTORS named error: 24
+%   FQ_DU_CTOR dir.error/0 for type dir.make_single_directory_status/0: #synonyms = 1
+%   FQ_DU_CTOR maybe.error/1 for type maybe.maybe_error/0: #synonyms = 3
+%   FQ_DU_CTOR maybe.error/1 for type maybe.maybe_error/2: #synonyms = 3
+%   FQ_DU_CTOR maybe.error/2 for type maybe.maybe_errors/2: #synonyms = 3
+%   FQ_DU_CTOR io.error/1 for type io.maybe_incomplete_result/1: #synonyms = 3
+%   FQ_DU_CTOR getopt.error/1 for type getopt.maybe_option_table/1: #synonyms = 3
+%   FQ_DU_CTOR getopt_io.error/1 for type getopt_io.maybe_option_table/1: #synonyms = 3
+%   FQ_DU_CTOR getopt.error/1 for type getopt.maybe_option_table_se/1: #synonyms = 3
+%   FQ_DU_CTOR getopt_io.error/1 for type getopt_io.maybe_option_table_se/1: #synonyms = 3
+%   FQ_DU_CTOR io.error/2 for type io.maybe_partial_res/1: #synonyms = 3
+%   FQ_DU_CTOR stream.error/2 for type stream.maybe_partial_res/2: #synonyms = 3
+%   FQ_DU_CTOR parsing_utils.error/3 for type parsing_utils.parse_result/1: #synonyms = 3
+%   FQ_DU_CTOR io.error/2 for type io.read_result/1: #synonyms = 3
+%   FQ_DU_CTOR mercury_term_parser.error/2 for type mercury_term_parser.read_term/1: #synonyms = 3
+%   FQ_DU_CTOR io.error/1 for type io.res/0: #synonyms = 3
+%   FQ_DU_CTOR io.error/1 for type io.res/1: #synonyms = 3
+%   FQ_DU_CTOR stream.error/1 for type stream.res/1: #synonyms = 3
+%   FQ_DU_CTOR stream.error/1 for type stream.res/2: #synonyms = 3
+%   FQ_DU_CTOR io.error/1 for type io.result/0: #synonyms = 3
+%   FQ_DU_CTOR io.error/1 for type io.result/1: #synonyms = 3
+%   FQ_DU_CTOR stream.error/1 for type stream.result/1: #synonyms = 3
+%   FQ_DU_CTOR stream.error/1 for type stream.result/2: #synonyms = 3
+%   FQ_DU_CTOR term_conversion.error/1 for type term_conversion.term_to_type_result/2: #synonyms = 3
+%   FQ_DU_CTOR mercury_term_lexer.error/1 for type mercury_term_lexer.token/0: #synonyms = 3
+%
+% Note that *all* of the names that had 18 or more du_ctors were either
+% "error" or "ok".
+
+:- pred format_cons_table(cons_table::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+format_cons_table(ConsTable, !State) :-
+    get_cons_table_contents(ConsTable, NameMap, DuCtorMap),
+    string.builder.append_string("%-------- Cons table --------\n", !State),
+    map.foldl(format_cons_table_for_name(DuCtorMap), NameMap, !State),
+    string.builder.append_string("\n", !State).
+
+:- pred format_cons_table_for_name(map(du_ctor, list(du_ctor))::in,
+    string::in, list(du_ctor)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+format_cons_table_for_name(DuCtorMap, Name, FqDuCtors, !State) :-
+    list.length(FqDuCtors, NumFqDuCtors),
+    string.builder.format("\n%% DU_CTORS named %s: %d\n",
+        [s(Name), i(NumFqDuCtors)], !State),
+    list.foldl(format_cons_table_for_fq_du_ctor(DuCtorMap), FqDuCtors, !State).
+
+:- pred format_cons_table_for_fq_du_ctor(map(du_ctor, list(du_ctor))::in,
+    du_ctor::in, string.builder.state::di, string.builder.state::uo) is det.
+
+format_cons_table_for_fq_du_ctor(DuCtorMap, FqDuCtor, !State) :-
+    map.lookup(DuCtorMap, FqDuCtor, OtherDuCtors),
+    FqDuCtor = du_ctor(DuCtorSymName, DuCtorArity, TypeCtor),
+    TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
+    DuCtorSymNameStr = sym_name_to_string(DuCtorSymName),
+    TypeCtorSymNameStr = sym_name_to_string(TypeCtorSymName),
+    list.length(OtherDuCtors, NumOtherDuCtors),
+    string.builder.format(
+        "%%   FQ_DU_CTOR %s/%d for type %s/%d: #synonyms = %d\n",
+        [s(DuCtorSymNameStr), i(DuCtorArity),
+        s(TypeCtorSymNameStr), i(TypeCtorArity), i(NumOtherDuCtors)], !State).
 
 %---------------------------------------------------------------------------%
 %

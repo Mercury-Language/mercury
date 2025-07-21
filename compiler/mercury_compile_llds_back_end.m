@@ -211,7 +211,7 @@ llds_backend_pass_by_phases(ProgressStream, !HLDS, !:LLDS, !GlobalData, !Specs,
     maybe_dump_hlds(ProgressStream, !.HLDS, 335, "stackvars", !DumpInfo, !IO),
 
     allocate_store_map(ProgressStream, Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(ProgressStream, !.HLDS, 340, "store_map", !DumpInfo, !IO),
+    maybe_dump_hlds(ProgressStream, !.HLDS, 340, "final", !DumpInfo, !IO),
 
     generate_llds_code_for_module(ProgressStream, !.HLDS, Verbose, Stats,
         !GlobalData, !:LLDS, !IO),
