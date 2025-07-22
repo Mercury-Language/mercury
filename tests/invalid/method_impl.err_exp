@@ -1,8 +1,10 @@
 method_impl.m:025: Warning: the type class `method_impl.c'/1 and the type
 method_impl.m:025:   constructor in the argument vector of this instance
 method_impl.m:025:   declaration for it, namely `method_impl.foo'/0, are all
-method_impl.m:025:   visible outside this module, which means that keeping this
-method_impl.m:025:   instance private to this module is [38;5;203mlikely to be a mistake.[39;49m
+method_impl.m:025:   visible outside this module, which means that this
+method_impl.m:025:   instance can be relevant outside this module. [38;5;87mKeeping it[39;49m
+method_impl.m:025:   [38;5;87mprivate[39;49m to this module is therefore [38;5;203mlikely to be a[39;49m
+method_impl.m:025:   [38;5;203mmistake.[39;49m
 method_impl.m:026: In clause for instance method predicate `m1'/2:
 method_impl.m:026:   in argument 2 of predicate `method_impl.foo_m1'/2:
 method_impl.m:026:   type error: [38;5;87mvariable `HeadVar__2'[39;49m has type
@@ -15,7 +17,9 @@ method_impl.m:026:     HeadVar__2_2: int
 method_impl.m:028: Warning: the type class `method_impl.c'/1 and the type
 method_impl.m:028:   constructor in the argument vector of this instance
 method_impl.m:028:   declaration for it, namely `method_impl.bar'/0, are all
-method_impl.m:028:   visible outside this module, which means that keeping this
-method_impl.m:028:   instance private to this module is [38;5;203mlikely to be a mistake.[39;49m
+method_impl.m:028:   visible outside this module, which means that this
+method_impl.m:028:   instance can be relevant outside this module. [38;5;87mKeeping it[39;49m
+method_impl.m:028:   [38;5;87mprivate[39;49m to this module is therefore [38;5;203mlikely to be a[39;49m
+method_impl.m:028:   [38;5;203mmistake.[39;49m
 method_impl.m:029: In clause for instance method predicate `m1'/2:
 method_impl.m:029:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`bar_m1'/2.[39;49m

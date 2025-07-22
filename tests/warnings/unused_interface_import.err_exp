@@ -13,6 +13,7 @@ unused_interface_import.m:017:   `unused_interface_import.tc1'/1 and the type
 unused_interface_import.m:017:   constructor in the argument vector of this
 unused_interface_import.m:017:   instance declaration for it, namely
 unused_interface_import.m:017:   `unit.unit'/0, are all visible outside this
-unused_interface_import.m:017:   module, which means that keeping this instance
-unused_interface_import.m:017:   private to this module is [38;5;203mlikely to be a[39;49m
-unused_interface_import.m:017:   [38;5;203mmistake.[39;49m
+unused_interface_import.m:017:   module, which means that this instance can be
+unused_interface_import.m:017:   relevant outside this module. [38;5;87mKeeping it[39;49m
+unused_interface_import.m:017:   [38;5;87mprivate[39;49m to this module is therefore [38;5;203mlikely to[39;49m
+unused_interface_import.m:017:   [38;5;203mbe a mistake.[39;49m

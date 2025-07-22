@@ -156,6 +156,7 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_out_type.
+:- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
@@ -303,7 +304,7 @@ find_class_cycles(Path, ClassId, !ClassTable, !Visited, !Cycles) :-
 
 find_class_cycles_2(Path0, ClassId, ClassParamTVars, FunDepAncestors,
         !ClassTable, !Visited, !Cycles) :-
-    ClassDefn0 = map.lookup(!.ClassTable, ClassId),
+    map.lookup(!.ClassTable, ClassId, ClassDefn0),
     ClassParamTVars = ClassDefn0 ^ classdefn_vars,
     Kinds = ClassDefn0 ^ classdefn_kinds,
     ( if set.member(ClassId, !.Visited) then
@@ -414,13 +415,13 @@ check_instance_declaration_types_for_class(ModuleInfo, ClassId,
         TooPrivateMap, !WarnSpecs).
 
     % This type contains the information we need from a hlds_instance_defn
-    % to implement the --warn-too-private-instance option for that instance.
+    % to implement the --warn-too-private-instances option for that instance.
     % Note that we need this info from *all* instance declarations for given
     % class_id/arg_vector combo. There will often be two such declarations:
     % an abstract instance in the interface section, and a concrete instance
     % in the implementation section.
     %
-    % XXX We need to know about all instance declarations because
+    % We need to know about all instance declarations because
     % when we record a concrete instance declaration in the instance table,
     % its status will NEVER say that the instance is exported, even if it is.
     % This is because
@@ -432,10 +433,13 @@ check_instance_declaration_types_for_class(ModuleInfo, ClassId,
     % - we do NOT update this status even if an abstract version of the
     %   same instance declaration exists in the interface section.
     %
+    % XXX We *should* update the status, and delete the abstract version.
+    %
 :- type instance_too_private_info
     --->    instance_too_private_info(
                 instance_body,
                 instance_status,
+                list(prog_constraint),
                 prog_context
             ).
 
@@ -462,9 +466,10 @@ is_instance_type_vector_valid(ModuleInfo, ClassId, InstanceDefn,
         InstanceErrorSpecs = [],
         InstanceBody = InstanceDefn ^ instdefn_body,
         InstanceStatus = InstanceDefn ^ instdefn_status,
+        InstanceConstraints = InstanceDefn ^ instdefn_constraints,
         InstanceContext = InstanceDefn ^ instdefn_context,
         TooPrivateInfo = instance_too_private_info(InstanceBody,
-            InstanceStatus, InstanceContext),
+            InstanceStatus, InstanceConstraints, InstanceContext),
         one_or_more_map.add(OriginalTypes, TooPrivateInfo, !TooPrivateMap)
     ),
     !:ErrorSpecs = !.ErrorSpecs ++ InstanceErrorSpecs.
@@ -621,7 +626,7 @@ report_any_too_private_instance(ModuleInfo, ClassId,
     ClassStatus = ClassDefn ^ classdefn_status,
     OoMTooPrivateInfos = one_or_more(HeadTooPrivateInfo, TailTooPrivateInfos),
     is_any_instance_defn_exported(HeadTooPrivateInfo, TailTooPrivateInfos,
-        InstanceIsExported, no, MaybeLocalConcreteContext),
+        InstanceIsExported, no, MaybeLocalConcretePair),
     ( if
         InstanceIsExported = no,
         % If the typeclass is private, it is reasonable to keep its instances
@@ -629,19 +634,25 @@ report_any_too_private_instance(ModuleInfo, ClassId,
         typeclass_status_is_exported(ClassStatus) = yes,
         % If the instance is either defined in another module or is only
         % abstract, then do not even try to generate warnings about it.
-        MaybeLocalConcreteContext = yes(LocalConcreteContext)
+        MaybeLocalConcretePair = yes(LocalConcretePair)
     then
+        LocalConcretePair = {InstanceConstraints, LocalConcreteContext},
+        list.foldl2(acc_classes_type_ctors_in_constraint, InstanceConstraints,
+            set.init, ConstraintClassIds, set.init, TypeCtorsInTypes1),
         list.foldl(acc_type_ctors_in_type, OrigTypes,
-            set.init, TypeCtorsInTypes),
-        module_info_get_type_table(ModuleInfo, TypeTable),
-        set.filter(type_ctor_is_private(TypeTable), TypeCtorsInTypes,
+            TypeCtorsInTypes1, TypeCtorsInTypes),
+        set.filter(type_ctor_is_private(ModuleInfo), TypeCtorsInTypes,
             PrivateTypeCtorsInTypes, NonPrivateTypeCtorsInTypes),
+        set.filter(class_is_private(ModuleInfo), ConstraintClassIds,
+            PrivateClassIds, _NonPrivateClassIds),
         ( if
             set.is_empty(PrivateTypeCtorsInTypes),
-            set.is_non_empty(NonPrivateTypeCtorsInTypes)
+            set.is_non_empty(NonPrivateTypeCtorsInTypes),
+            set.is_empty(PrivateClassIds)
         then
-            report_unnecessarily_private_instance(ClassId, TypeCtorsInTypes,
-                LocalConcreteContext, !WarnSpecs)
+            report_unnecessarily_private_instance(ClassId,
+                ConstraintClassIds, TypeCtorsInTypes, LocalConcreteContext,
+                !WarnSpecs)
         else
             true
         )
@@ -651,17 +662,18 @@ report_any_too_private_instance(ModuleInfo, ClassId,
 
 :- pred is_any_instance_defn_exported(instance_too_private_info::in,
     list(instance_too_private_info)::in, bool::out,
-    maybe(context)::in, maybe(context)::out) is det.
+    maybe({list(prog_constraint), prog_context})::in,
+    maybe({list(prog_constraint), prog_context})::out) is det.
 
 is_any_instance_defn_exported(HeadTooPrivateInfo, TailTooPrivateInfos,
-        IsExported, !MaybeLocalConcreteContext) :-
-    HeadTooPrivateInfo =
-        instance_too_private_info(HeadBody, HeadStatus, HeadContext),
+        IsExported, !MaybeLocalConcretePair) :-
+    HeadTooPrivateInfo = instance_too_private_info(HeadBody, HeadStatus,
+        HeadConstraints, HeadContext),
     ( if
         instance_status_defined_in_this_module(HeadStatus) = yes,
         HeadBody = instance_body_concrete(_)
     then
-        !:MaybeLocalConcreteContext = yes(HeadContext)
+        !:MaybeLocalConcretePair = yes({HeadConstraints, HeadContext})
     else
         true
     ),
@@ -673,7 +685,7 @@ is_any_instance_defn_exported(HeadTooPrivateInfo, TailTooPrivateInfos,
             [HeadTailTooPrivateInfo | TailTailTooPrivateInfos],
         is_any_instance_defn_exported(HeadTailTooPrivateInfo,
             TailTailTooPrivateInfos, TailIsExported,
-            !MaybeLocalConcreteContext)
+            !MaybeLocalConcretePair)
     ),
     HeadExported = instance_status_is_exported(HeadStatus),
     (
@@ -683,6 +695,17 @@ is_any_instance_defn_exported(HeadTooPrivateInfo, TailTooPrivateInfos,
         HeadExported = no,
         IsExported = TailIsExported
     ).
+
+:- pred acc_classes_type_ctors_in_constraint(prog_constraint::in,
+    set(class_id)::in, set(class_id)::out,
+    set(type_ctor)::in, set(type_ctor)::out) is det.
+
+acc_classes_type_ctors_in_constraint(Constraint,
+        !ClassNameSet, !TypeCtorSet) :-
+    Constraint = constraint(ClassName, ArgTypes),
+    list.length(ArgTypes, Arity),
+    set.insert(class_id(ClassName, Arity), !ClassNameSet),
+    list.foldl(acc_type_ctors_in_type, ArgTypes, !TypeCtorSet).
 
 :- pred acc_type_ctors_in_type(mer_type::in,
     set(type_ctor)::in, set(type_ctor)::out) is det.
@@ -709,21 +732,124 @@ acc_type_ctors_in_type(Type, !TypeCtorSet) :-
         acc_type_ctors_in_type(SubType, !TypeCtorSet)
     ).
 
-:- pred type_ctor_is_private(type_table::in, type_ctor::in) is semidet.
+:- pred type_ctor_is_private(module_info::in, type_ctor::in) is semidet.
 
-type_ctor_is_private(TypeTable, TypeCtor) :-
+type_ctor_is_private(ModuleInfo, TypeCtor) :-
+    module_info_get_type_table(ModuleInfo, TypeTable),
     lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_status(TypeDefn, TypeStatus),
-    type_status_defined_in_this_module(TypeStatus) = yes,
-    type_status_is_exported(TypeStatus) = no.
+    DefinedHere = type_status_defined_in_this_module(TypeStatus),
+    % A type_ctor is private if either ...
+    (
+        DefinedHere = yes,
+        % ... it is defined in this module, and not exported, ...
+        type_status_is_exported(TypeStatus) = no
+    ;
+        DefinedHere = no,
+        % ... or it is defined in a submodule nested inside this module,
+        % and that submodule is not visible from outside this module.
+        TypeCtor = type_ctor(TypeCtorSymName, _Arity),
+        TypeCtorSymName = qualified(TypeCtorModuleName, _),
+        module_name_is_private_submodule(ModuleInfo, TypeCtorModuleName)
+    ).
 
-:- pred report_unnecessarily_private_instance(class_id::in, set(type_ctor)::in,
+:- pred class_is_private(module_info::in, class_id::in) is semidet.
+
+class_is_private(ModuleInfo, ClassId) :-
+    module_info_get_class_table(ModuleInfo, ClassTable),
+    map.lookup(ClassTable, ClassId, ClassDefn),
+    ClassStatus = ClassDefn ^ classdefn_status,
+    DefinedHere = typeclass_status_defined_in_this_module(ClassStatus),
+    % A type_ctor is private if either ...
+    (
+        DefinedHere = yes,
+        % ... it is defined in this module, and not exported, ...
+        typeclass_status_is_exported(ClassStatus) = no
+    ;
+        DefinedHere = no,
+        % ... or it is defined in a submodule nested inside this module,
+        % and that submodule is not visible from outside this module.
+        ClassId = class_id(ClassSymName, _Arity),
+        ClassSymName = qualified(ClassModuleName, _),
+        module_name_is_private_submodule(ModuleInfo, ClassModuleName)
+    ).
+
+    % module_name_is_private_submodule(ModuleInfo, QueryModuleName):
+    %
+    % Is QueryModuleName the name of a privaye submodule of the module
+    % represented by ModuleInfo?
+    %
+:- pred module_name_is_private_submodule(module_info::in, module_name::in)
+    is semidet.
+
+module_name_is_private_submodule(ModuleInfo, QueryModuleName) :-
+    module_info_get_name(ModuleInfo, ModuleName),
+    % XXX Should the code that tests whether QueryModuleName is a submodule
+    % of ModuleName be in mdbcomp/sym_name.m? is_same_module_or_submodule
+    % is already there, but it does not return LeftOverComponents.
+    ModuleNameComponents = sym_name_to_list(ModuleName),
+    QueryModuleNameComponents = sym_name_to_list(QueryModuleName),
+    remove_prefix(ModuleNameComponents, QueryModuleNameComponents,
+        LeftOverComponents),
+    LeftOverComponents = [HeadSubComponent | _TailSubComponents],
+    HeadSubModuleName = qualified(ModuleName, HeadSubComponent),
+    % What we want to do here is
+    % - to fail if any component in [HeadSubComponent | TailSubComponents]
+    %   is in the interface section of ita parent, and conversely
+    % - to succeed only if all of them are in the implementation section.
+    % Unfortunately, while we can use IncludeMap to tell whether
+    % a *direct* submodule of ModuleName is visible outside ModuleName,
+    % we do not have the include_module_maps of ModuleName's submodules,
+    % and so we cannot tell whether an *indirect* submodule of ModuleName
+    % that is included in the interface section of ModuleName,
+    % is visible outside ModuleName. We have to guess. We always guess
+    % that it such indirect submodules are visible outside ModuleName,
+    % because we prefer to miss generating a valid warning in this
+    % rare circumstance over generating an invalid warning.
+    module_info_get_include_module_map(ModuleInfo, IncludeMap),
+    map.lookup(IncludeMap, HeadSubModuleName, HeadSubIncludeInfo),
+    HeadSubIncludeInfo = include_module_info(HeadSubSection, _),
+    HeadSubSection = ms_implementation.
+
+    % XXX Should this be library/list.m?
+    %
+:- pred remove_prefix(list(T)::in, list(T)::in, list(T)::out) is semidet.
+
+remove_prefix([], ListB, LeftOverB) :-
+    LeftOverB = ListB.
+remove_prefix([HeadA | TailA], [HeadB | TailB], LeftOverB) :-
+    HeadA = HeadB,
+    remove_prefix(TailA, TailB, LeftOverB).
+
+:- pred report_unnecessarily_private_instance(class_id::in,
+    set(class_id)::in, set(type_ctor)::in,
     prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-report_unnecessarily_private_instance(ClassId, TypeCtorsSet, Context,
-        !Specs) :-
+report_unnecessarily_private_instance(ClassId, ConstraintClassIdSet,
+        TypeCtorsSet, Context, !Specs) :-
+    set.to_sorted_list(ConstraintClassIdSet, ClassIds),
     set.to_sorted_list(TypeCtorsSet, TypeCtors),
+    ClassIdPieces = list.map((func(CI) = qual_class_id(CI)), ClassIds),
     TypeCtorPieces = list.map((func(TC) = qual_type_ctor(TC)), TypeCtors),
+    (
+        ClassIdPieces = [],
+        ClassIdsPieces = []
+    ;
+        ClassIdPieces = [ClassIdPiece],
+        ClassIdsPieces =
+            [(if TypeCtorPieces = [] then words("and") else suffix(",")),
+            words("the typeclass listed in the instance constraints"),
+            words("of this instance declaration for it, namely"),
+            ClassIdPiece, suffix(","), words("and its argument types,")]
+    ;
+        ClassIdPieces = [_, _ | _],
+        ClassIdsPieces =
+            [(if TypeCtorPieces = [] then words("and") else suffix(",")),
+            words("the typeclasses listed in the instance constraints"),
+            words("of this instance declaration for it, namely")] ++
+            piece_list_to_pieces("and", ClassIdPieces) ++ [suffix(","),
+            words("and their argument types")]
+    ),
     (
         TypeCtorPieces = [],
         TypeCtorsPieces = [words("is")]
@@ -732,19 +858,25 @@ report_unnecessarily_private_instance(ClassId, TypeCtorsSet, Context,
         TypeCtorsPieces =
             [words("and the type constructor in the argument vector"),
             words("of this instance declaration for it, namely"),
-            TypeCtorPiece, suffix(","), words("are all")]
+            TypeCtorPiece, suffix(",")]
     ;
         TypeCtorPieces = [_, _ | _],
         TypeCtorsPieces =
             [words("and all the type constructors in the argument vector"),
             words("of this instance declaration for it, namely")] ++
-            piece_list_to_pieces("and", TypeCtorPieces) ++
-            [suffix(","), words("are all")]
+            piece_list_to_pieces("and", TypeCtorPieces) ++ [suffix(",")]
+    ),
+    ( if ClassIdPieces = [], TypeCtorPieces = [] then
+        IsArePiece = words("is")
+    else
+        IsArePiece = words("are all")
     ),
     Pieces = [words("Warning: the type class"), qual_class_id(ClassId)] ++
-        TypeCtorsPieces ++
-        [words("visible outside this module, which means that"),
-        words("keeping this instance private to this module is")] ++
+        ClassIdsPieces ++ TypeCtorsPieces ++ [IsArePiece,
+        words("visible outside this module, which means that"),
+        words("this instance can be relevant outside this module.")] ++
+        color_as_subject([words("Keeping it private")]) ++
+        [words("to this module is therefore")] ++
         color_as_incorrect([words("likely to be a mistake.")]) ++ [nl],
     Spec = conditional_spec($pred, warn_too_private_instances, yes,
         severity_warning, phase_pt2h, [msg(Context, Pieces)]),

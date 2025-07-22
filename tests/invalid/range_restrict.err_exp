@@ -6,6 +6,7 @@ range_restrict.m:015:   [38;5;203mdomain.[39;49m
 range_restrict.m:015: Warning: the type class `range_restrict.foo'/2 and the
 range_restrict.m:015:   type constructor in the argument vector of this
 range_restrict.m:015:   instance declaration for it, namely `map.map'/2, are
-range_restrict.m:015:   all visible outside this module, which means that
-range_restrict.m:015:   keeping this instance private to this module is [38;5;203mlikely[39;49m
-range_restrict.m:015:   [38;5;203mto be a mistake.[39;49m
+range_restrict.m:015:   all visible outside this module, which means that this
+range_restrict.m:015:   instance can be relevant outside this module. [38;5;87mKeeping[39;49m
+range_restrict.m:015:   [38;5;87mit private[39;49m to this module is therefore [38;5;203mlikely to be a[39;49m
+range_restrict.m:015:   [38;5;203mmistake.[39;49m

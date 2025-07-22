@@ -911,10 +911,13 @@ Warning options
         subsequence of name components that do so.
 
     --warn-too-private-instances
-        Generate warnings for instance declarations which are private to the
-        module despite the fact that both the class the instance is for, and
-        all the type constructors mentioned in its argument vector, are visible
-        outside the module.
+        An instance declaration has to be private if it is for a private type
+        class (meaning a type class that is not visible outside the current
+        module), if some of its member types refer to private type
+        constructors, or if its class constraints refer to private type classes
+        or private type constructors. Such instances can only be relevant in
+        the current module. Generate a warning if an instance declaration that
+        can be relevant outside the current module is not exported.
 
     Warnings about possible inst incorrectness
 

@@ -2494,11 +2494,16 @@ optdb(oc_warn_dodgy_mod, warn_stdlib_shadowing,        bool(yes),
         w("a subsequence of name components that do so.")])).
 optdb(oc_warn_dodgy_mod, warn_too_private_instances,   bool(no),
     help("warn-too-private-instances", [
-        w("Generate warnings for instance declarations which are"),
-        w("private to the module despite the fact that"),
-        w("both the class the instance is for, and"),
-        w("all the type constructors mentioned in its argument vector,"),
-        w("are visible outside the module.")])).
+        w("An instance declaration has to be private"),
+        w("if it is for a private type class (meaning a type class"),
+        w("that is not visible outside the current module),"),
+        w("if some of its member types refer to private type constructors,"),
+        w("or if its class constraints refer to"),
+        w("private type classes or private type constructors."),
+        w("Such instances can only be relevant in the current module."),
+        w("Generate a warning if an instance declaration"),
+        w("that can be relevant outside the current module"),
+        w("is not exported.")])).
 
 % Warnings about predicate determinism issues.
 

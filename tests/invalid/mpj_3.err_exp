@@ -1,18 +1,21 @@
 mpj_3.m:025: Warning: the type class `mpj_3.coll'/2 and the type constructor in
 mpj_3.m:025:   the argument vector of this instance declaration for it, namely
 mpj_3.m:025:   `mpj_3.intlist'/0, are all visible outside this module, which
-mpj_3.m:025:   means that keeping this instance private to this module is
-mpj_3.m:025:   [38;5;203mlikely to be a mistake.[39;49m
+mpj_3.m:025:   means that this instance can be relevant outside this module.
+mpj_3.m:025:   [38;5;87mKeeping it private[39;49m to this module is therefore [38;5;203mlikely to be a[39;49m
+mpj_3.m:025:   [38;5;203mmistake.[39;49m
 mpj_3.m:026: Warning: the type class `mpj_3.coll'/2 and the type constructor in
 mpj_3.m:026:   the argument vector of this instance declaration for it, namely
 mpj_3.m:026:   `mpj_3.stringlist'/0, are all visible outside this module, which
-mpj_3.m:026:   means that keeping this instance private to this module is
-mpj_3.m:026:   [38;5;203mlikely to be a mistake.[39;49m
+mpj_3.m:026:   means that this instance can be relevant outside this module.
+mpj_3.m:026:   [38;5;87mKeeping it private[39;49m to this module is therefore [38;5;203mlikely to be a[39;49m
+mpj_3.m:026:   [38;5;203mmistake.[39;49m
 mpj_3.m:027: Error: [38;5;203minconsistent instance declaration[39;49m for typeclass
 mpj_3.m:027:   [38;5;87m`mpj_3.coll'/2[39;49m with functional dependency `(C -> E)'.
 mpj_3.m:025: Here is the conflicting instance.
 mpj_3.m:027: Warning: the type class `mpj_3.coll'/2 and the type constructor in
 mpj_3.m:027:   the argument vector of this instance declaration for it, namely
 mpj_3.m:027:   `mpj_3.intlist'/0, are all visible outside this module, which
-mpj_3.m:027:   means that keeping this instance private to this module is
-mpj_3.m:027:   [38;5;203mlikely to be a mistake.[39;49m
+mpj_3.m:027:   means that this instance can be relevant outside this module.
+mpj_3.m:027:   [38;5;87mKeeping it private[39;49m to this module is therefore [38;5;203mlikely to be a[39;49m
+mpj_3.m:027:   [38;5;203mmistake.[39;49m

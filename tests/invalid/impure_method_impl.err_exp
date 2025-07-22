@@ -2,8 +2,9 @@ impure_method_impl.m:025: Warning: the type class `impure_method_impl.c'/1 and
 impure_method_impl.m:025:   the type constructor in the argument vector of this
 impure_method_impl.m:025:   instance declaration for it, namely
 impure_method_impl.m:025:   `impure_method_impl.foo'/0, are all visible outside
-impure_method_impl.m:025:   this module, which means that keeping this instance
-impure_method_impl.m:025:   private to this module is [38;5;203mlikely to be a mistake.[39;49m
+impure_method_impl.m:025:   this module, which means that this instance can be
+impure_method_impl.m:025:   relevant outside this module. [38;5;87mKeeping it private[39;49m to
+impure_method_impl.m:025:   this module is therefore [38;5;203mlikely to be a mistake.[39;49m
 impure_method_impl.m:026: Error: instance method predicate [38;5;87m`m1'/2[39;49m is [38;5;203msemipure.[39;49m
 impure_method_impl.m:026:   It must either be [38;5;40mdeclared semipure,[39;49m or [38;5;40mpromised[39;49m
 impure_method_impl.m:026:   [38;5;40mpure.[39;49m
