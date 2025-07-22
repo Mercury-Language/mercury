@@ -471,7 +471,7 @@ format_cons_table(ConsTable, !State) :-
     map.foldl(format_cons_table_for_name(DuCtorMap), NameMap, !State),
     string.builder.append_string("\n", !State).
 
-:- pred format_cons_table_for_name(map(du_ctor, list(du_ctor))::in,
+:- pred format_cons_table_for_name(map(du_ctor, list(sym_name))::in,
     string::in, list(du_ctor)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -481,20 +481,20 @@ format_cons_table_for_name(DuCtorMap, Name, FqDuCtors, !State) :-
         [s(Name), i(NumFqDuCtors)], !State),
     list.foldl(format_cons_table_for_fq_du_ctor(DuCtorMap), FqDuCtors, !State).
 
-:- pred format_cons_table_for_fq_du_ctor(map(du_ctor, list(du_ctor))::in,
+:- pred format_cons_table_for_fq_du_ctor(map(du_ctor, list(sym_name))::in,
     du_ctor::in, string.builder.state::di, string.builder.state::uo) is det.
 
 format_cons_table_for_fq_du_ctor(DuCtorMap, FqDuCtor, !State) :-
-    map.lookup(DuCtorMap, FqDuCtor, OtherDuCtors),
+    map.lookup(DuCtorMap, FqDuCtor, OtherSymNames),
     FqDuCtor = du_ctor(DuCtorSymName, DuCtorArity, TypeCtor),
     TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
     DuCtorSymNameStr = sym_name_to_string(DuCtorSymName),
     TypeCtorSymNameStr = sym_name_to_string(TypeCtorSymName),
-    list.length(OtherDuCtors, NumOtherDuCtors),
+    list.length(OtherSymNames, NumOtherSymNames),
     string.builder.format(
         "%%   FQ_DU_CTOR %s/%d for type %s/%d: #synonyms = %d\n",
         [s(DuCtorSymNameStr), i(DuCtorArity),
-        s(TypeCtorSymNameStr), i(TypeCtorArity), i(NumOtherDuCtors)], !State).
+        s(TypeCtorSymNameStr), i(TypeCtorArity), i(NumOtherSymNames)], !State).
 
 %---------------------------------------------------------------------------%
 %

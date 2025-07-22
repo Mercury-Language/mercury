@@ -86,14 +86,17 @@
 :- func init_cons_table = cons_table.
 
     % Insert the given hlds_cons_defn into the cons_table as the definition
-    % for one or more user du_ctors. These du_ctors should represent the full
-    % range of possible qualifications of the *same* cons_id, from unqualified
-    % through all forms of possible qualification to fully qualified,
-    % and with both the actual type_ctor and the dummy type_ctor.
-    % The first argument should be the fully qualified version with
-    % the actual type_ctor.
+    % for the given fully qualified du_ctor, which must have the type_ctor
+    % field correctly filled in. Register that this hlds_cons_defn also
+    % applies for the given list of sym_names, which should represent
+    % the full range of possible qualifications of the *same* du_ctor,
+    % from unqualified through all forms of possible qualification to
+    % fully qualified. These entries are matches for any du_ctor which has
+    % - the sym_name in the du_ctor or one of the other sym_names,
+    % - the arity in the du_ctor, and
+    % - either the type_ctor in the du_ctor, or cons_id_dummy_type_ctor.
     %
-:- pred insert_into_cons_table(du_ctor::in, list(du_ctor)::in,
+:- pred insert_into_cons_table(du_ctor::in, list(sym_name)::in,
     hlds_cons_defn::in, cons_table::in, cons_table::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -171,7 +174,7 @@
 :- pred cons_table_names(cons_table::in, set(string)::out) is det.
 
 :- pred get_cons_table_contents(cons_table::in,
-    multi_map(string, du_ctor)::out, map(du_ctor, list(du_ctor))::out) is det.
+    multi_map(string, du_ctor)::out, map(du_ctor, list(sym_name))::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -220,24 +223,31 @@
 :- import_module require.
 :- import_module varset.
 
-    % Maps the raw, unqualified name of a functor to information about
-    % all the functors with that name.
+    % Maps the raw, unqualified name of a du_ctor to information about
+    % all the du_ctors with that name.
 :- type cons_table == map(string, inner_cons_table).
 
-    % Every visible constructor will have exactly one entry in the list,
-    % and this entry lists all the du_ctors by which that constructor
-    % may be known. The du_ctors listed for a given constructor may give
-    % fully, partially or not-at-all qualified versions of the symbol name,
-    % they must agree on the arity, and may give the actual type_ctor
-    % or the standard dummy type_ctor. The main cons_id must give the
-    % fully qualified symname and the right type_ctor.
+    % Every visible du_ctor will have exactly one entry in the list, and
+    % this entry implicitly lists all the du_ctors by which that constructor
+    % may be known. The ice_fully_qual_data_ctor field gives the
+    % fully qualified the symbol name, the arity, and the type_ctor
+    % to which this du_ctor belongs. The other du_ctor versions that
+    % also match this entry differ from ice_fully_qual_data_ctor in
+    % one or both these two ways:
     %
-    % The order of the list is not meaningful.
+    % - they can replace the sym_name part with one of the elements
+    %   of ice_other_sym_names, which should be partially or not-at-all
+    %   qualified versions of same sym_name, and
+    %
+    % - they may replace the type_ctor part with cons_id_dummy_type_ctor.
+    %
+    % The order of the list in the ice_other_sym_names field is not meaningful.
+    %
 :- type inner_cons_table == list(inner_cons_entry).
 :- type inner_cons_entry
     --->    inner_cons_entry(
                 ice_fully_qual_data_ctor    :: du_ctor,
-                ice_other_data_ctors        :: list(du_ctor),
+                ice_other_sym_names         :: list(sym_name),
                 ice_cons_defn               :: hlds_cons_defn
             ).
 
@@ -245,17 +255,16 @@
 
 init_cons_table = map.init.
 
-insert_into_cons_table(MainDuCtor, OtherDuCtors,
-        ConsDefn, !ConsTable) :-
-    MainDuCtor = du_ctor(MainSymName, _, _),
-    MainName = unqualify_name(MainSymName),
-    Entry = inner_cons_entry(MainDuCtor, OtherDuCtors, ConsDefn),
-    ( if map.search(!.ConsTable, MainName, InnerConsEntries0) then
+insert_into_cons_table(FqDuCtor, OtherSymNames, ConsDefn, !ConsTable) :-
+    FqDuCtor = du_ctor(FqSymName, _, _),
+    Name = unqualify_name(FqSymName),
+    Entry = inner_cons_entry(FqDuCtor, OtherSymNames, ConsDefn),
+    ( if map.search(!.ConsTable, Name, InnerConsEntries0) then
         InnerConsEntries = [Entry | InnerConsEntries0],
-        map.det_update(MainName, InnerConsEntries, !ConsTable)
+        map.det_update(Name, InnerConsEntries, !ConsTable)
     else
         InnerConsEntries = [Entry],
-        map.det_insert(MainName, InnerConsEntries, !ConsTable)
+        map.det_insert(Name, InnerConsEntries, !ConsTable)
     ).
 
 %---------------------------------------------------------------------------%
@@ -297,11 +306,11 @@ search_cons_table(ConsTable, DuCtor, ConsDefns) :-
     % many fewer main du_ctors than other du_ctors, it is fast as well.
     %
     % I (zs) don't think replacing a list with a different structure would
-    % help, since these lists should be very short.
+    % help, since these lists are almost always very short.
     ( if
-        search_inner_main_du_ctors(InnerConsTable, DuCtor, MainConsDefn)
+        search_inner_main_du_ctors(DuCtor, InnerConsTable, ConsDefn)
     then
-        ConsDefns = [MainConsDefn]
+        ConsDefns = [ConsDefn]
     else
         % Before and during typecheck, we may need to look up constructors
         % using du_ctors that may not be even partially module qualified,
@@ -321,29 +330,40 @@ search_cons_table(ConsTable, DuCtor, ConsDefns) :-
         %   an unknown cons_id in the program is a type error, which means
         %   the compiler should never get to the passes following
         %   post-typecheck.
-        search_inner_other_du_ctors(InnerConsTable, DuCtor, ConsDefns),
+        search_inner_other_du_ctors(DuCtor, InnerConsTable, ConsDefns),
         % Do not return empty lists; let the call fail in that case.
         ConsDefns = [_ | _]
     ).
 
-:- pred search_inner_main_du_ctors(list(inner_cons_entry)::in,
-    du_ctor::in, hlds_cons_defn::out) is semidet.
+:- pred search_inner_main_du_ctors(du_ctor::in, list(inner_cons_entry)::in,
+    hlds_cons_defn::out) is semidet.
 
-search_inner_main_du_ctors([Entry | Entries], DuCtor, ConsDefn) :-
+search_inner_main_du_ctors(DuCtor, [Entry | Entries], ConsDefn) :-
     ( if DuCtor = Entry ^ ice_fully_qual_data_ctor then
         ConsDefn = Entry ^ ice_cons_defn
     else
-        search_inner_main_du_ctors(Entries, DuCtor, ConsDefn)
+        search_inner_main_du_ctors(DuCtor, Entries, ConsDefn)
     ).
 
-:- pred search_inner_other_du_ctors(list(inner_cons_entry)::in,
-    du_ctor::in, list(hlds_cons_defn)::out) is det.
+:- pred search_inner_other_du_ctors(du_ctor::in, list(inner_cons_entry)::in,
+    list(hlds_cons_defn)::out) is det.
 
-search_inner_other_du_ctors([], _DuCtor, []).
-search_inner_other_du_ctors([Entry | Entries], DuCtor, !:ConsDefns) :-
-    search_inner_other_du_ctors(Entries, DuCtor, !:ConsDefns),
-    ( if list.member(DuCtor, Entry ^ ice_other_data_ctors) then
-        !:ConsDefns = [Entry ^ ice_cons_defn | !.ConsDefns]
+search_inner_other_du_ctors(_DuCtor, [], []).
+search_inner_other_du_ctors(DuCtor, [Entry | Entries], !:ConsDefns) :-
+    search_inner_other_du_ctors(DuCtor, Entries, !:ConsDefns),
+    Entry = inner_cons_entry(FqDuCtor, OtherSymNames, ConsDefn),
+    FqDuCtor = du_ctor(FqDuCtorSymName, FqDuCtorArity, FqDuCtorTypeCtor),
+    DuCtor = du_ctor(DuCtorSymName, DuCtorArity, DuCtorTypeCtor),
+    ( if
+        DuCtorArity = FqDuCtorArity,
+        ( DuCtorSymName = FqDuCtorSymName
+        ; list.member(DuCtorSymName, OtherSymNames)
+        ),
+        ( DuCtorTypeCtor = FqDuCtorTypeCtor
+        ; DuCtorTypeCtor = cons_id_dummy_type_ctor
+        )
+    then
+        !:ConsDefns = [ConsDefn | !.ConsDefns]
     else
         true
     ).
@@ -354,20 +374,27 @@ is_known_data_cons(ConsTable, DuCtor) :-
     DuCtor = du_ctor(SymName, _, _),
     Name = unqualify_name(SymName),
     map.search(ConsTable, Name, InnerConsTable),
-    is_known_data_cons_inner(InnerConsTable, DuCtor).
+    is_known_data_cons_inner(DuCtor, InnerConsTable).
 
-:- pred is_known_data_cons_inner(list(inner_cons_entry)::in,
-    du_ctor::in) is semidet.
+:- pred is_known_data_cons_inner(du_ctor::in, list(inner_cons_entry)::in)
+    is semidet.
 
-is_known_data_cons_inner([Entry | Entries], DuCtor) :-
+is_known_data_cons_inner(DuCtor, [Entry | Entries]) :-
+    Entry = inner_cons_entry(FqDuCtor, OtherSymNames, _ConsDefn),
+    FqDuCtor = du_ctor(FqDuCtorSymName, FqDuCtorArity, FqDuCtorTypeCtor),
+    DuCtor = du_ctor(DuCtorSymName, DuCtorArity, DuCtorTypeCtor),
     ( if
-        ( DuCtor = Entry ^ ice_fully_qual_data_ctor
-        ; list.member(DuCtor, Entry ^ ice_other_data_ctors)
+        DuCtorArity = FqDuCtorArity,
+        ( DuCtorSymName = FqDuCtorSymName
+        ; list.member(DuCtorSymName, OtherSymNames)
+        ),
+        ( DuCtorTypeCtor = FqDuCtorTypeCtor
+        ; DuCtorTypeCtor = cons_id_dummy_type_ctor
         )
     then
         true
     else
-        is_known_data_cons_inner(Entries, DuCtor)
+        is_known_data_cons_inner(DuCtor, Entries)
     ).
 
 %---------------------%
@@ -376,28 +403,37 @@ search_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor, ConsDefn) :-
     DuCtor = du_ctor(SymName, _, _),
     Name = unqualify_name(SymName),
     map.search(ConsTable, Name, InnerConsTable),
-    search_inner_du_ctors_type_ctor(InnerConsTable, TypeCtor, DuCtor,
+    search_inner_du_ctors_type_ctor(TypeCtor, DuCtor, InnerConsTable,
         ConsDefn).
 
-:- pred search_inner_du_ctors_type_ctor(list(inner_cons_entry)::in,
-    type_ctor::in, du_ctor::in, hlds_cons_defn::out) is semidet.
+:- pred search_inner_du_ctors_type_ctor(type_ctor::in, du_ctor::in,
+    list(inner_cons_entry)::in, hlds_cons_defn::out) is semidet.
 
-search_inner_du_ctors_type_ctor([Entry | Entries], TypeCtor, DuCtor,
+search_inner_du_ctors_type_ctor(TypeCtor, DuCtor, [Entry | Entries],
         ConsDefn) :-
-    EntryConsDefn = Entry ^ ice_cons_defn,
+    Entry = inner_cons_entry(FqDuCtor, OtherSymNames, EntryConsDefn),
+    FqDuCtor = du_ctor(FqDuCtorSymName, FqDuCtorArity, FqDuCtorTypeCtor),
+    DuCtor = du_ctor(DuCtorSymName, DuCtorArity, DuCtorTypeCtor),
     ( if
         % If a type has two functors with the same name but different arities,
         % then it is possible for the TypeCtor test to succeed and the DuCtor
         % tests to fail (due to the arity mismatch). In such cases, we need
         % to search the rest of the list.
         EntryConsDefn ^ cons_type_ctor = TypeCtor,
-        ( DuCtor = Entry ^ ice_fully_qual_data_ctor
-        ; list.member(DuCtor, Entry ^ ice_other_data_ctors)
+        DuCtorArity = FqDuCtorArity,
+        ( DuCtorSymName = FqDuCtorSymName
+        ; list.member(DuCtorSymName, OtherSymNames)
+        ),
+        ( DuCtorTypeCtor = FqDuCtorTypeCtor
+        ; DuCtorTypeCtor = cons_id_dummy_type_ctor
         )
     then
+        % Thie sanity check works, but is commented out because
+        % this fact does not need to be proven again and again.
+        % expect(unify(TypeCtor, FqDuCtorTypeCtor), $pred, "mismatch"),
         ConsDefn = EntryConsDefn
     else
-        search_inner_du_ctors_type_ctor(Entries, TypeCtor, DuCtor, ConsDefn)
+        search_inner_du_ctors_type_ctor(TypeCtor, DuCtor, Entries, ConsDefn)
     ).
 
 %---------------------%
@@ -417,35 +453,33 @@ lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor, ConsDefn) :-
 return_cons_arities(ConsTable, SymName, Arities) :-
     Name = unqualify_name(SymName),
     ( if map.search(ConsTable, Name, InnerConsTable) then
-        return_cons_arities_inner(InnerConsTable, SymName, [], Arities0),
+        return_cons_arities_inner(SymName, InnerConsTable, [], Arities0),
         list.sort_and_remove_dups(Arities0, Arities)
     else
         Arities = []
     ).
 
-:- pred return_cons_arities_inner(list(inner_cons_entry)::in,
-    sym_name::in, list(int)::in, list(int)::out) is det.
+:- pred return_cons_arities_inner(sym_name::in, list(inner_cons_entry)::in,
+    list(int)::in, list(int)::out) is det.
 
-return_cons_arities_inner([], _, !Arities).
-return_cons_arities_inner([Entry | Entries], SymName, !Arities) :-
-    MainDuCtor = Entry ^ ice_fully_qual_data_ctor,
-    OtherDuCtors = Entry ^ ice_other_data_ctors,
-    DuCtors = [MainDuCtor | OtherDuCtors],
-    return_cons_arities_inner_du_ctors(DuCtors, SymName, !Arities),
-    return_cons_arities_inner(Entries, SymName, !Arities).
-
-:- pred return_cons_arities_inner_du_ctors(list(du_ctor)::in,
-    sym_name::in, list(int)::in, list(int)::out) is det.
-
-return_cons_arities_inner_du_ctors([], _, !Arities).
-return_cons_arities_inner_du_ctors([DuCtor | DuCtors], SymName, !Arities) :-
-    DuCtor = du_ctor(ThisSymName, ThisArity, _),
-    ( if ThisSymName = SymName then
-        !:Arities = [ThisArity | !.Arities]
+return_cons_arities_inner(_, [], !Arities).
+return_cons_arities_inner(SymName, [Entry | Entries], !Arities) :-
+    % Note that we can ignore _OtherSymNames because they are just
+    % non-fully-qualified versions of FqSymName. Since FqDuCtor and
+    % OtherSymNames all represent the same du_ctor, they all also represent
+    % the same arity.
+    Entry = inner_cons_entry(FqDuCtor, OtherSymNames, _ConsDefn),
+    FqDuCtor = du_ctor(FqSymName, FqArity, _),
+    ( if
+        ( FqSymName = SymName
+        ; list.member(SymName, OtherSymNames)
+        )
+    then
+        !:Arities = [FqArity | !.Arities]
     else
         true
     ),
-    return_cons_arities_inner_du_ctors(DuCtors, SymName, !Arities).
+    return_cons_arities_inner(SymName, Entries, !Arities).
 
 %---------------------%
 
@@ -482,8 +516,8 @@ accumulate_all_inner_cons_defns(InnerConsTable, !AllConsDefns) :-
     pair(du_ctor, hlds_cons_defn)::out) is det.
 
 project_inner_cons_entry(Entry, Pair) :-
-    Entry = inner_cons_entry(MainDuCtor, _OtherDuCtors, ConsDefn),
-    Pair = MainDuCtor - ConsDefn.
+    Entry = inner_cons_entry(FqDuCtor, _OtherDuCtors, ConsDefn),
+    Pair = FqDuCtor - ConsDefn.
 
 %---------------------%
 
@@ -498,7 +532,8 @@ get_cons_table_contents(ConsTable, NameMap, DuCtorMap) :-
 
 :- pred acc_cons_table_contents_inner(string::in, list(inner_cons_entry)::in,
     multi_map(string, du_ctor)::in, multi_map(string, du_ctor)::out,
-    map(du_ctor, list(du_ctor))::in, map(du_ctor, list(du_ctor))::out) is det.
+    map(du_ctor, list(sym_name))::in, map(du_ctor, list(sym_name))::out)
+    is det.
 
 acc_cons_table_contents_inner(Name, InnerConsEntries, !NameMap, !DuCtorMap) :-
     list.foldl2(acc_cons_table_contents_du_ctor(Name), InnerConsEntries,
@@ -506,7 +541,8 @@ acc_cons_table_contents_inner(Name, InnerConsEntries, !NameMap, !DuCtorMap) :-
 
 :- pred acc_cons_table_contents_du_ctor(string::in, inner_cons_entry::in,
     multi_map(string, du_ctor)::in, multi_map(string, du_ctor)::out,
-    map(du_ctor, list(du_ctor))::in, map(du_ctor, list(du_ctor))::out) is det.
+    map(du_ctor, list(sym_name))::in, map(du_ctor, list(sym_name))::out)
+    is det.
 
 acc_cons_table_contents_du_ctor(Name, InnerConsEntry, !NameMap, !DuCtorMap) :-
     InnerConsEntry = inner_cons_entry(FqDuCtor, OtherDuCtors, _),

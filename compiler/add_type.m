@@ -1052,12 +1052,7 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
     Ctor = ctor(_Ordinal, MaybeExistConstraints, Name, Args, Arity, Context),
     BaseName = unqualify_name(Name),
     QualifiedName = qualified(TypeCtorModuleName, BaseName),
-    UnqualifiedName = unqualified(BaseName),
-    DummyTypeCtor = cons_id_dummy_type_ctor,
-    QualifiedDuA =   du_ctor(QualifiedName,   Arity, TypeCtor),
-    QualifiedDuB =   du_ctor(QualifiedName,   Arity, DummyTypeCtor),
-    UnqualifiedDuA = du_ctor(UnqualifiedName, Arity, TypeCtor),
-    UnqualifiedDuB = du_ctor(UnqualifiedName, Arity, DummyTypeCtor),
+    QualifiedDuCtor = du_ctor(QualifiedName,   Arity, TypeCtor),
 
     ConsDefn = hlds_cons_defn(TypeCtor, TVarSet, TypeParams, KindMap,
         MaybeExistConstraints, Args, Context),
@@ -1067,13 +1062,13 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
     % Check that there is at most one definition of a given cons_id
     % in each type.
     ( if
-        search_cons_table(!.ConsTable, QualifiedDuA, QualifiedConsDefnsA),
+        search_cons_table(!.ConsTable, QualifiedDuCtor, QualifiedConsDefnsA),
         some [OtherConsDefn] (
             list.member(OtherConsDefn, QualifiedConsDefnsA),
             OtherConsDefn ^ cons_type_ctor = TypeCtor
         )
     then
-        QualifiedConsIdA = du_data_ctor(QualifiedDuA),
+        QualifiedConsIdA = du_data_ctor(QualifiedDuCtor),
         Pieces = [words("Error: the function symbol")] ++
             color_as_subject(
                 [unqual_cons_id_and_maybe_arity(QualifiedConsIdA)]) ++
@@ -1084,44 +1079,43 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
-        some [!OtherDus] (
+        some [!OtherSymNames] (
             % Schedule the addition of the fully qualified cons_id
             % into the cons_table.
-            MainDu = QualifiedDuA,
-            !:OtherDus = [QualifiedDuB],
+            MainDu = QualifiedDuCtor,
 
             % Schedule the addition of the unqualified version of the cons_id
             % to the cons_table, if appropriate.
             (
                 NeedQual = may_be_unqualified,
-                !:OtherDus =
-                    [UnqualifiedDuA, UnqualifiedDuB | !.OtherDus]
+                UnqualifiedName = unqualified(BaseName),
+                !:OtherSymNames = [UnqualifiedName]
             ;
-                NeedQual = must_be_qualified
+                NeedQual = must_be_qualified,
+                !:OtherSymNames = []
             ),
 
             % Schedule the partially qualified versions of the cons_id.
-            list.foldl(add_ctor_to_list(TypeCtor, BaseName, Arity),
-                PartialQuals, !OtherDus),
+            list.foldl(add_ctor_to_list(BaseName), PartialQuals,
+                !OtherSymNames),
 
             % Do the scheduled additions.
-            insert_into_cons_table(MainDu, !.OtherDus, ConsDefn, !ConsTable)
+            insert_into_cons_table(MainDu, !.OtherSymNames, ConsDefn,
+                !ConsTable)
         )
     ),
 
     FieldNames = list.map(func(C) = C ^ arg_field_name, Args),
     FirstField = 1,
     add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,
-        QualifiedDuA, TypeStatus, FirstField, !FieldNameTable).
+        QualifiedDuCtor, TypeStatus, FirstField, !FieldNameTable).
 
-:- pred add_ctor_to_list(type_ctor::in, string::in, int::in, module_name::in,
-    list(du_ctor)::in, list(du_ctor)::out) is det.
+:- pred add_ctor_to_list(string::in, module_name::in,
+    list(sym_name)::in, list(sym_name)::out) is det.
 
-add_ctor_to_list(TypeCtor, ConsName, Arity, ModuleQual, !DuCtors) :-
-    DuA = du_ctor(qualified(ModuleQual, ConsName), Arity, TypeCtor),
-    DuB = du_ctor(qualified(ModuleQual, ConsName), Arity,
-        cons_id_dummy_type_ctor),
-    !:DuCtors = [DuA, DuB | !.DuCtors].
+add_ctor_to_list(ConsName, ModuleQual, !OtherSymNames) :-
+    SymName = qualified(ModuleQual, ConsName),
+    !:OtherSymNames = [SymName | !.OtherSymNames].
 
 :- pred add_ctor_field_names(list(maybe(ctor_field_name))::in,
     need_qualifier::in, list(module_name)::in, type_ctor::in,
