@@ -625,6 +625,7 @@ Changes to the Mercury standard library
     - pred `merge_lists_and_remove_dups/2`
     - pred `merge_lists_and_remove_dups/3`
     - pred `nondet_member/2`
+    - pred `remove_prefix/3`
     - func `take_while_not/2`
     - pred `take_while_not/3`
     - pred `take_while_not/4`

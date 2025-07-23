@@ -138,6 +138,14 @@
     %
 :- func list(T) ++ list(T) = list(T).
 
+    % remove_prefix(Prefix, List, Suffix):
+    %
+    % The same as append(Prefix, Suffix, List), but sometimes
+    % this predicate name more clearly expresses the intent of the code, and
+    % this argument order can be also be useful for higher-order programming.
+    %
+:- pred remove_prefix(list(T)::in, list(T)::in, list(T)::out) is semidet.
+
     % remove_suffix(List, Suffix, Prefix):
     %
     % The same as append(Prefix, Suffix, List) except that
@@ -2507,6 +2515,12 @@ append(Xs, Ys) = Zs :-
     list.append(Xs, Ys, Zs).
 
 L1 ++ L2 = list.append(L1, L2).
+
+remove_prefix([], ListB, LeftOverB) :-
+    LeftOverB = ListB.
+remove_prefix([HeadA | TailA], [HeadB | TailB], LeftOverB) :-
+    HeadA = HeadB,
+    remove_prefix(TailA, TailB, LeftOverB).
 
 remove_suffix(List, Suffix, Prefix) :-
     list.length(List, ListLength),

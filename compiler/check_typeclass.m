@@ -760,7 +760,7 @@ class_is_private(ModuleInfo, ClassId) :-
     map.lookup(ClassTable, ClassId, ClassDefn),
     ClassStatus = ClassDefn ^ classdefn_status,
     DefinedHere = typeclass_status_defined_in_this_module(ClassStatus),
-    % A type_ctor is private if either ...
+    % A class is private if either ...
     (
         DefinedHere = yes,
         % ... it is defined in this module, and not exported, ...
@@ -776,7 +776,7 @@ class_is_private(ModuleInfo, ClassId) :-
 
     % module_name_is_private_submodule(ModuleInfo, QueryModuleName):
     %
-    % Is QueryModuleName the name of a privaye submodule of the module
+    % Is QueryModuleName the name of a private submodule of the module
     % represented by ModuleInfo?
     %
 :- pred module_name_is_private_submodule(module_info::in, module_name::in)
@@ -803,23 +803,13 @@ module_name_is_private_submodule(ModuleInfo, QueryModuleName) :-
     % and so we cannot tell whether an *indirect* submodule of ModuleName
     % that is included in the interface section of ModuleName,
     % is visible outside ModuleName. We have to guess. We always guess
-    % that it such indirect submodules are visible outside ModuleName,
+    % that such indirect submodules are visible outside ModuleName,
     % because we prefer to miss generating a valid warning in this
     % rare circumstance over generating an invalid warning.
     module_info_get_include_module_map(ModuleInfo, IncludeMap),
     map.lookup(IncludeMap, HeadSubModuleName, HeadSubIncludeInfo),
     HeadSubIncludeInfo = include_module_info(HeadSubSection, _),
     HeadSubSection = ms_implementation.
-
-    % XXX Should this be library/list.m?
-    %
-:- pred remove_prefix(list(T)::in, list(T)::in, list(T)::out) is semidet.
-
-remove_prefix([], ListB, LeftOverB) :-
-    LeftOverB = ListB.
-remove_prefix([HeadA | TailA], [HeadB | TailB], LeftOverB) :-
-    HeadA = HeadB,
-    remove_prefix(TailA, TailB, LeftOverB).
 
 :- pred report_unnecessarily_private_instance(class_id::in,
     set(class_id)::in, set(type_ctor)::in,
