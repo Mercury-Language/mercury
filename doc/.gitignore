@@ -35,3 +35,5 @@ mdb_command_list
 mdb_command_test.inp
 Prof.MemoryCells
 Prof.MemoryWords
+ug_invocation.texi
+ug_invocation.texi_date

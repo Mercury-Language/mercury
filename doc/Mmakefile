@@ -165,11 +165,16 @@ user_guide.texi_pp: ug_invocation.texi
 ug_invocation.texi: ug_invocation.texi_date
 	@:
 
-# If we are building the source distribution, then we will not have
-# a mercury_compile executable to generate ug_invocation.texi from.
-# In that case, we just use the bootstrap compiler to generate it
-# since it will be the same version anyway.
+# If we are building the source distribution or if we are cross-compiling,
+# then either we will not have a mercury_compile executable, or we may not be
+# able to run it. In both cases, we just use the bootstrap compiler to generate
+# ug_invocation.texi, assuming the bootstrap compiler is the same or a similar
+# version.
 ifdef BUILD_SRCDIST
+UG_INVOCATION_DEP=
+UG_INVOCATION_MC=$(MC)
+else
+ifeq ($(CROSS_COMPILING),yes)
 UG_INVOCATION_DEP=
 UG_INVOCATION_MC=$(MC)
 else
@@ -186,6 +191,7 @@ else
 #
 UG_INVOCATION_DEP=../compiler/mercury_compile
 UG_INVOCATION_MC=../compiler/mercury_compile
+endif
 endif
 
 ug_invocation.texi_date: $(UG_INVOCATION_DEP)
