@@ -2649,6 +2649,13 @@ Options for target language compilation
         Specify a single word option to be passed to the C# compiler. The word
         will be quoted when passed to the shell.
 
+    --mono-path-directory <directory>
+    --no-mono-path-directory
+    --mono-path-dir <directory>
+    --no-mono-path-dir
+        Specify a directory to add to the runtime library assembly search path
+        passed to the Mono CLR using the `MONO_PATH' environment variable.
+
 Options for linking
 
   General options for linking
