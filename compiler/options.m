@@ -866,6 +866,7 @@
     ;       csharp_compiler_type
     ;       csharp_flags
     ;       quoted_csharp_flag
+    ;       mono_path_directories
 
 % Link options.
     % General link options.
@@ -4489,6 +4490,12 @@ optdb(oc_target_csharp, quoted_csharp_flag,                string_special,
     arg_help("csharp-flag", "option", [
         w("Specify a single word option to be passed to the C# compiler."),
         w("The word will be quoted when passed to the shell.")])).
+optdb(oc_target_csharp, mono_path_directories,           accumulating([]),
+    alt_arg_help("mono-path-directory",
+        ["mono-path-dir"], "directory", [
+        w("Specify a directory to add to the runtime library assembly"),
+        w("search path passed to the Mono CLR using the"),
+        env("MONO_PATH"), w("environment variable.")])).
 
 %---------------------------------------------------------------------------%
 

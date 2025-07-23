@@ -1424,12 +1424,15 @@ construct_cli_shell_script_for_csharp(Globals, ExeFileName, ContentStr) :-
     globals.lookup_string_option(Globals, cli_interpreter, CLI),
     globals.lookup_accumulating_option(Globals, link_library_directories,
         LinkLibraryDirectoriesList),
-    join_quoted_string_list(LinkLibraryDirectoriesList, "", "",
-        ":", LinkLibraryDirectories),
+    globals.lookup_accumulating_option(Globals, mono_path_directories,
+        MonoPathDirectoriesList),
+    AllSearchPaths = LinkLibraryDirectoriesList ++ MonoPathDirectoriesList,
+    join_quoted_string_list(AllSearchPaths, "", "",
+        ":", MonoPathDirectories),
     ContentStr = string.append_list([
         "#!/bin/sh\n",
         "DIR=${0%/*}\n",
-        "MONO_PATH=$MONO_PATH:", LinkLibraryDirectories, "\n",
+        "MONO_PATH=$MONO_PATH:", MonoPathDirectories, "\n",
         "export MONO_PATH\n",
         "CLI_INTERPRETER=${CLI_INTERPRETER:-", CLI, "}\n",
         "exec \"$CLI_INTERPRETER\" \"$DIR/", ExeFileName, "\" \"$@\"\n"
