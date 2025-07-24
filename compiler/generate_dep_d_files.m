@@ -61,41 +61,33 @@
                 trans_opt_order         :: list(module_name)
             ).
 
-:- pred compute_deps_for_d_files_gendep(io.text_output_stream::in, globals::in,
-    module_name::in, deps_map::in, dep_graphs::out,
-    list(burdened_module)::out, list(error_spec)::in, list(error_spec)::out,
-    io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-%
-% XXX The d_file_deps type should be documented. The problem is that
-% it is not at all clear what the meanings of the fields *are*.
-%
-% The fields started out life as three separate input arguments
-% to a long-ago predecessor of the generate_d_mmakefile_contents predicate
-% (which started out in the now-deleted modules.m file, and has been
-% repackaged, moved and renamed several times since). Those predecessors
-% have always been called in two separate kinds of contexts:
-%
-% - when the compiler is invoked with "mmc --generate-dependencies",
-%   or (more rarely) with "mmc --generate-dependency-file", and
-%
-% - when the compiler is auto-updating the .d file of a module that
-%   it has build a HLDS for, usually for semantic analysis followed
-%   by target code generation.
-%
-% This module and write_deps_file.m refer to the first context as the
-% "gendep" context, and the second as the "hlds" context. Predicates
-% and functions that are specific to one context should have the context name
-% at or near the end of the their name.
-%
-% The issue is that these contexts have long computed the data that is
-% now in the fields of the d_file_deps structure using two completely
-% separate algorithms in these two contexts. It is far from clear whether
-% there is *any* justification for this difference, and if there is,
-% whether it is any good.
-%
-
+    % XXX The d_file_deps type should be documented. The problem is that
+    % it is not at all clear what the meanings of the fields *are*.
+    %
+    % The fields started out life as three separate input arguments
+    % to a long-ago predecessor of the generate_d_mmakefile_contents predicate
+    % (which started out in the now-deleted modules.m file, and has been
+    % repackaged, moved and renamed several times since). Those predecessors
+    % have always been called in two separate kinds of contexts:
+    %
+    % - when the compiler is invoked with "mmc --generate-dependencies",
+    %   or (more rarely) with "mmc --generate-dependency-file", and
+    %
+    % - when the compiler is auto-updating the .d file of a module that
+    %   it has build a HLDS for, usually for semantic analysis followed
+    %   by target code generation.
+    %
+    % This module and write_deps_file.m refer to the first context as the
+    % "gendep" context, and the second as the "hlds" context. Predicates
+    % and functions that are specific to one context should have the context
+    % name at or near the end of the their name.
+    %
+    % The issue is that these contexts have long computed the data that is
+    % now in the fields of the d_file_deps structure using two completely
+    % separate algorithms in these two contexts. It is far from clear whether
+    % there is *any* justification for this difference, and if there is,
+    % whether it is any good.
+    %
 :- type d_file_deps
     --->    d_file_deps(
                 std_deps,
@@ -103,9 +95,11 @@
                 maybe_include_trans_opt_rule
             ).
 
-:- pred generate_d_mmakefile_contents(globals::in, burdened_aug_comp_unit::in,
-    d_file_deps::in, file_name::out, string::out,
-    module_file_name_cache::in, module_file_name_cache::out,
+%---------------------------------------------------------------------------%
+
+:- pred compute_deps_for_d_files_gendep(io.text_output_stream::in, globals::in,
+    module_name::in, deps_map::in, dep_graphs::out,
+    list(burdened_module)::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -124,11 +118,17 @@
 :- func construct_std_deps_hlds(globals, burdened_aug_comp_unit) = std_deps.
 
 %---------------------------------------------------------------------------%
+
+:- pred construct_intermod_deps(globals::in, parse_tree_module_src::in,
+    std_deps::in, intermod_deps::out,
+    module_file_name_cache::in, module_file_name_cache::out,
+    io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module libs.mmakefiles.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module parse_tree.file_names.
@@ -145,7 +145,6 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module bool.
-:- import_module cord.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -236,24 +235,6 @@ deps_list_to_deps_graph(DepsMap,
 lookup_burdened_module_in_deps_map(DepsMap, ModuleName) = ModuleDepInfo :-
     map.lookup(DepsMap, ModuleName, deps(_, BurdenedModule)),
     ModuleDepInfo = module_dep_info_full(BurdenedModule).
-
-%---------------------------------------------------------------------------%
-
-generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
-        FileNameD, FileContentsStrD, !Cache, !IO) :-
-    DFileDeps = d_file_deps(StdDeps, AllDeps, MaybeInclTransOptRule),
-    BurdenedAugCompUnit = burdened_aug_comp_unit(_, AugCompUnit),
-    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    % XXX LEGACY
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs(ext_cur_ngs_mf_d), ModuleName,
-        FileNameD, _FileNameDProposed, !IO),
-    construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, IntermodDeps,
-        !Cache, !IO),
-    generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, IntermodDeps,
-        AllDeps, MaybeInclTransOptRule, MmakeFileD, !Cache, !IO),
-    FileContentsStrD = mmakefile_to_string(MmakeFileD).
 
 %---------------------------------------------------------------------------%
 
@@ -389,7 +370,7 @@ construct_std_deps_hlds(Globals, BurdenedAugCompUnit) = StdDeps :-
     StdDeps = std_deps(DirectDeps, IndirectDeps,
         ForeignImportedModuleNamesSet, no_trans_opt_deps).
 
-%-----------%
+%---------------------%
 
 :- pred gather_fim_specs_in_ancestor_int_spec(ancestor_int_spec::in,
     set(fim_spec)::in, set(fim_spec)::out) is det.
@@ -459,11 +440,6 @@ gather_fim_specs_in_parse_tree_plain_opt(ParseTreePlainOpt, !FIMSpecs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred construct_intermod_deps(globals::in, parse_tree_module_src::in,
-    std_deps::in, intermod_deps::out,
-    module_file_name_cache::in, module_file_name_cache::out,
-    io::di, io::uo) is det.
-
 construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, IntermodDeps,
         !Cache, !IO) :-
     % XXX Note that currently, due to a design problem, handle_options.m
@@ -515,7 +491,7 @@ construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, IntermodDeps,
     ),
     IntermodDeps = intermod_deps(MaybeMhDeps, MaybeOptFileDeps).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
     % The idea that code looking for .opt files and maybe .trans_opt files
     % can be told to accept .m files as acceptable substitutes for them

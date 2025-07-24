@@ -30,10 +30,11 @@
 % - the standard Mmake.rules file
 %
 % This arrangement gives the Mmakefile access to the values of the
-% variables defined in the program's .dv file, for example as lists
-% of files on which a target depends. On the other hand, by including
-% the automatically generated .dep file *after* the Mmakefile, we allow
-% the rules in the .dep file to refer to variables defined in the Mmakefile
+% variables defined in the program's .dv file, such as prog.mods and
+% prog.parent_mods, which list all the modules and all the parent modules
+% in the program respectively. On the other hand, by including the
+% automatically generated .dep file *after* the Mmakefile, we allow
+% the rules in the .dep file to refer to variables defined in the Mmakefile.
 % (Usually the rules allow, but do not require, the Mmakefile to define
 % these variables.)
 %
@@ -60,12 +61,17 @@
     % generate_and_write_dep_file_gendep(ProgressStream, Globals,
     %   FileOrModule, DepsMap, Specs, !IO):
     %
-    % Generate the per-program makefile dependencies file (`.dep' file)
-    % for the program whose top-level module is specified by FileOrModule.
+    % Generate the per-program makefile dependencies files
+    % (`.dep' and `.dv' files) for the program whose top-level module
+    % is specified by FileOrModule.
+    %
     % This involves first transitively reading in all imported or ancestor
-    % modules. While we are at it, we also save the per-module makefile
-    % dependency files (`.d' files) for all those modules. Return any errors
-    % and/or warnings to be printed in Specs.
+    % modules. While we are at it, we also generate the per-module makefile
+    % dependency files (`.d' files) for all those modules. Return as Specs
+    % any errors and/or warnings we found along the way.
+    %
+    % This predicate implements "mmc --generate-dependencies <prog>",
+    % which is used very frequently.
     %
 :- pred generate_and_write_dep_file_gendep(io.text_output_stream::in,
     globals::in, file_or_module::in, deps_map::out, list(error_spec)::out,
@@ -76,6 +82,9 @@
     %
     % Generate the per-module makefile dependency file ('.d' file)
     % for the given module.
+    %
+    % This predicate implements "mmc --generate-dependency <module>",
+    % which is almost never used.
     %
 :- pred generate_and_write_d_file_gendep(io.text_output_stream::in,
     globals::in, file_or_module::in, deps_map::out, list(error_spec)::out,
@@ -93,6 +102,9 @@
     % via .opt or .trans_opt files, and including parent modules of nested
     % modules. MaybeInclTransOptRule controls whether to include a
     % trans_opt_deps rule in the file, and if so, what the rule should say.
+    %
+    % This predicate is invoked as part of every mmc invocation
+    % that is intended to generate target language code.
     %
 :- pred generate_and_write_d_file_hlds(io.text_output_stream::in, globals::in,
     burdened_aug_comp_unit::in, set(module_name)::in,
@@ -137,12 +149,12 @@ generate_and_write_dep_file_gendep(ProgressStream, Globals, FileOrModule,
     ;
         MaybeBurdenedModule = ok1(BurdenedModule),
         BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
-        generate_and_write_dep_dv_files(ProgressStream, Globals, ModuleName,
-            DepsMap, Baggage, !IO),
+        generate_and_write_dep_dv_files_gendep(ProgressStream, Globals,
+            DepsMap, ModuleName, Baggage, !IO),
         compute_deps_for_d_files_gendep(ProgressStream, Globals, ModuleName,
             DepsMap, DepGraphs, BurdenedModules, !Specs, !IO),
         generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
-            BurdenedModules, DepGraphs, !IO)
+            DepGraphs, BurdenedModules, !IO)
     ).
 
 generate_and_write_d_file_gendep(ProgressStream, Globals, FileOrModule,
@@ -160,49 +172,17 @@ generate_and_write_d_file_gendep(ProgressStream, Globals, FileOrModule,
         compute_deps_for_d_files_gendep(ProgressStream, Globals, ModuleName,
             DepsMap, DepGraphs, _BurdenedModules, !Specs, !IO),
         generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
-            [BurdenedModule], DepGraphs, !IO)
-    ).
-
-    % Check whether we could read the main `.m' file.
-    %
-:- pred do_we_have_a_valid_module_dep(deps_map::in, module_name::in,
-    maybe1(burdened_module)::out) is det.
-
-do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule) :-
-    ( if map.search(DepsMap, ModuleName, ModuleDep) then
-        ModuleDep = deps(_, BurdenedModule),
-        BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
-        Errors = Baggage ^ mb_errors,
-        FatalErrors = Errors ^ rm_fatal_errors,
-        ( if set.is_non_empty(FatalErrors) then
-            FatalErrorSpecs = Errors ^ rm_fatal_error_specs,
-            (
-                FatalErrorSpecs = [],
-                string.format("FatalErrorSpecs = [], with FatalErrors = %s\n",
-                    [s(string.string(FatalErrors))], UnexpectedMsg),
-                unexpected($pred, UnexpectedMsg)
-            ;
-                FatalErrorSpecs = [_ | _],
-                MaybeBurdenedModule = error1(FatalErrorSpecs)
-            )
-        else
-            MaybeBurdenedModule = ok1(BurdenedModule)
-        )
-    else
-        % We don't have an error message to return here, but we also
-        % neither want or need to return one, because if execution got here,
-        % then the compiler should have already tried to read in ModuleName,
-        % and printed a diagnostic for the failure of that attempt.
-        MaybeBurdenedModule = error1([])
+            DepGraphs, [BurdenedModule], !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_and_write_dep_dv_files(io.text_output_stream::in, globals::in,
-    module_name::in, deps_map::in, module_baggage::in, io::di, io::uo) is det.
+:- pred generate_and_write_dep_dv_files_gendep(io.text_output_stream::in,
+    globals::in, deps_map::in, module_name::in, module_baggage::in,
+    io::di, io::uo) is det.
 
-generate_and_write_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
-        Baggage, !IO) :-
+generate_and_write_dep_dv_files_gendep(ProgressStream, Globals, DepsMap,
+        ModuleName, Baggage, !IO) :-
     % First, build up a map of the dependencies.
     SourceFileName = Baggage ^ mb_source_file_name,
 
@@ -247,54 +227,43 @@ generate_and_write_dep_dv_files(ProgressStream, Globals, ModuleName, DepsMap,
 
 %---------------------------------------------------------------------------%
 
-generate_and_write_d_file_hlds(ProgressStream, Globals, BurdenedAugCompUnit,
-        AllDeps, MaybeInclTransOptRule, !IO) :-
-    map.init(Cache0),
-    StdDeps = construct_std_deps_hlds(Globals, BurdenedAugCompUnit),
-    DFileDeps = d_file_deps(StdDeps, AllDeps, MaybeInclTransOptRule),
-    generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
-        FileNameD, FileContentsStrD, Cache0, _Cache, !IO),
-    write_out_d_file(ProgressStream, Globals,
-        FileNameD, FileContentsStrD, !IO).
-
-%---------------------------------------------------------------------------%
-
     % generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
-    %   BurdenedModules, DepGraphs, !IO):
+    %   DepGraphs, BurdenedModules, !IO):
     %
     % This predicate writes out the .d files for all the modules in the
     % BurdenedModules list.
     %
 :- pred generate_and_write_d_file_gendep_depgraphs(io.text_output_stream::in,
-    globals::in, list(burdened_module)::in, dep_graphs::in,
-    io::di, io::uo) is det.
-
-generate_and_write_d_file_gendep_depgraphs(ProgressStream,
-        Globals, BurdenedModules, DepGraphs, !IO) :-
-    map.init(Cache0),
-    generate_and_write_d_file_gendep_depgraphs_loop(ProgressStream,
-        Globals, BurdenedModules, DepGraphs, Cache0, _Cache, !IO).
-
-:- pred generate_and_write_d_file_gendep_depgraphs_loop(
-    io.text_output_stream::in, globals::in, list(burdened_module)::in,
-    dep_graphs::in, module_file_name_cache::in, module_file_name_cache::out,
-    io::di, io::uo) is det.
-
-generate_and_write_d_file_gendep_depgraphs_loop(_, _, [], _, !Cache, !IO).
-generate_and_write_d_file_gendep_depgraphs_loop(ProgressStream, Globals,
-        [BurdenedModule | BurdenedModules], DepGraphs, !Cache, !IO) :-
-    generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
-        BurdenedModule, DepGraphs, !Cache, !IO),
-    generate_and_write_d_file_gendep_depgraphs_loop(ProgressStream, Globals,
-        BurdenedModules, DepGraphs, !Cache, !IO).
-
-:- pred generate_and_write_d_file_gendep_depgraphs(io.text_output_stream::in,
-    globals::in, burdened_module::in, dep_graphs::in,
-    module_file_name_cache::in, module_file_name_cache::out,
+    globals::in, dep_graphs::in, list(burdened_module)::in,
     io::di, io::uo) is det.
 
 generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
-        BurdenedModule, DepGraphs, !Cache, !IO) :-
+        DepGraphs, BurdenedModules, !IO) :-
+    map.init(Cache0),
+    generate_and_write_d_file_gendep_depgraphs_loop(ProgressStream, Globals,
+        DepGraphs, BurdenedModules, Cache0, _Cache, !IO).
+
+:- pred generate_and_write_d_file_gendep_depgraphs_loop(
+    io.text_output_stream::in, globals::in, dep_graphs::in,
+    list(burdened_module)::in,
+    module_file_name_cache::in, module_file_name_cache::out,
+    io::di, io::uo) is det.
+
+generate_and_write_d_file_gendep_depgraphs_loop(_, _, _, [], !Cache, !IO).
+generate_and_write_d_file_gendep_depgraphs_loop(ProgressStream, Globals,
+        DepGraphs, [BurdenedModule | BurdenedModules], !Cache, !IO) :-
+    generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
+        DepGraphs, BurdenedModule, !Cache, !IO),
+    generate_and_write_d_file_gendep_depgraphs_loop(ProgressStream, Globals,
+        DepGraphs, BurdenedModules, !Cache, !IO).
+
+:- pred generate_and_write_d_file_gendep_depgraphs(io.text_output_stream::in,
+    globals::in, dep_graphs::in, burdened_module::in,
+    module_file_name_cache::in, module_file_name_cache::out,
+    io::di, io::uo) is det.
+
+generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals, DepGraphs,
+        BurdenedModule, !Cache, !IO) :-
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
     % XXX DFILE Note that even if a fatal error occurred for one of the files
     % that the current Module depends on, a .d file is still produced,
@@ -317,6 +286,46 @@ generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
     else
         true
     ).
+
+%---------------------------------------------------------------------------%
+
+generate_and_write_d_file_hlds(ProgressStream, Globals, BurdenedAugCompUnit,
+        AllDeps, MaybeInclTransOptRule, !IO) :-
+    map.init(Cache0),
+    StdDeps = construct_std_deps_hlds(Globals, BurdenedAugCompUnit),
+    DFileDeps = d_file_deps(StdDeps, AllDeps, MaybeInclTransOptRule),
+    generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
+        FileNameD, FileContentsStrD, Cache0, _Cache, !IO),
+    write_out_d_file(ProgressStream, Globals,
+        FileNameD, FileContentsStrD, !IO).
+
+%---------------------------------------------------------------------------%
+
+    % generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
+    %   FileNameD, FileContentsStrD, !Cache, !IO):
+    %
+    % General FileContentsStrD as the new contents of FileNameD.
+    %
+:- pred generate_d_mmakefile_contents(globals::in, burdened_aug_comp_unit::in,
+    d_file_deps::in, file_name::out, string::out,
+    module_file_name_cache::in, module_file_name_cache::out,
+    io::di, io::uo) is det.
+
+generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
+        FileNameD, FileContentsStrD, !Cache, !IO) :-
+    BurdenedAugCompUnit = burdened_aug_comp_unit(_, AugCompUnit),
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+    % XXX LEGACY
+    ExtD = ext_cur_ngs(ext_cur_ngs_mf_d),
+    module_name_to_file_name_create_dirs(Globals, $pred, ExtD, ModuleName,
+        FileNameD, _FileNameDProposed, !IO),
+    DFileDeps = d_file_deps(StdDeps, AllDeps, MaybeInclTransOptRule),
+    construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, IntermodDeps,
+        !Cache, !IO),
+    generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
+        MaybeInclTransOptRule, IntermodDeps, MmakeFileD, !Cache, !IO),
+    FileContentsStrD = mmakefile_to_string(MmakeFileD).
 
 %---------------------------------------------------------------------------%
 
@@ -372,27 +381,27 @@ write_out_d_file(ProgressStream, Globals, FileNameD, FileContentsStrD, !IO) :-
                 % if any. So try again that way.
                 io.file.remove_file(FileNameD, RemoveResult, !IO),
                 (
-                    RemoveResult = error(Error4),
+                    RemoveResult = error(RemoveError),
                     maybe_write_string(ProgressStream, Verbose,
                         " failed.\n", !IO),
                     maybe_flush_output(ProgressStream, Verbose, !IO),
-                    io.error_message(Error4, ErrorMsg),
+                    io.error_message(RemoveError, RemoveErrorMsg),
                     string.format("can't remove file `%s': %s",
-                        [s(FileNameD), s(ErrorMsg)], Message),
+                        [s(FileNameD), s(RemoveErrorMsg)], Message),
                     report_error(ProgressStream, Message, !IO)
                 ;
                     RemoveResult = ok,
                     io.file.rename_file(TmpFileNameD,
                         FileNameD, SecondRenameResult, !IO),
                     (
-                        SecondRenameResult = error(Error5),
+                        SecondRenameResult = error(RenameError),
                         maybe_write_string(ProgressStream, Verbose,
                             " failed.\n", !IO),
                         maybe_flush_output(ProgressStream, Verbose, !IO),
-                        io.error_message(Error5, ErrorMsg),
+                        io.error_message(RenameError, RenameErrorMsg),
                         string.format("can't rename file `%s' as `%s': %s",
                             [s(TmpFileNameD), s(FileNameD),
-                            s(ErrorMsg)], Message),
+                            s(RenameErrorMsg)], Message),
                         report_error(ProgressStream, Message, !IO)
                     ;
                         SecondRenameResult = ok,
@@ -405,6 +414,41 @@ write_out_d_file(ProgressStream, Globals, FileNameD, FileContentsStrD, !IO) :-
                 maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
             )
         )
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % Check whether we could read the main `.m' file.
+    %
+:- pred do_we_have_a_valid_module_dep(deps_map::in, module_name::in,
+    maybe1(burdened_module)::out) is det.
+
+do_we_have_a_valid_module_dep(DepsMap, ModuleName, MaybeBurdenedModule) :-
+    ( if map.search(DepsMap, ModuleName, ModuleDep) then
+        ModuleDep = deps(_, BurdenedModule),
+        BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
+        Errors = Baggage ^ mb_errors,
+        FatalErrors = Errors ^ rm_fatal_errors,
+        ( if set.is_non_empty(FatalErrors) then
+            FatalErrorSpecs = Errors ^ rm_fatal_error_specs,
+            (
+                FatalErrorSpecs = [],
+                string.format("FatalErrorSpecs = [], with FatalErrors = %s\n",
+                    [s(string.string(FatalErrors))], UnexpectedMsg),
+                unexpected($pred, UnexpectedMsg)
+            ;
+                FatalErrorSpecs = [_ | _],
+                MaybeBurdenedModule = error1(FatalErrorSpecs)
+            )
+        else
+            MaybeBurdenedModule = ok1(BurdenedModule)
+        )
+    else
+        % We don't have an error message to return here, but we also
+        % neither want or need to return one, because if execution got here,
+        % then the compiler should have already tried to read in ModuleName,
+        % and printed a diagnostic for the failure of that attempt.
+        MaybeBurdenedModule = error1([])
     ).
 
 %---------------------------------------------------------------------------%
