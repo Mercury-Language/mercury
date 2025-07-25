@@ -20,6 +20,7 @@
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
+:- import_module mdbcomp.feedback.feedback_info.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 

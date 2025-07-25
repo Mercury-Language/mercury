@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2018, 2022-2023 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2018, 2022-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -32,10 +32,6 @@
 :- import_module set.
 
 %---------------------------------------------------------------------------%
-
-:- type stat_measure
-    --->    stat_mean
-    ;       stat_median.
 
 :- type candidate_par_conjunctions_params
     --->    candidate_par_conjunctions_params(
@@ -135,6 +131,63 @@
             % Use the complete brand-and-bound algorithm with no fallback.
     ;       affbp_greedy.
             % Use the linear greedy algorithm.
+
+%---------------------------------------------------------------------------%
+
+    % Represent the metrics of a parallel execution.
+    %
+:- type parallel_exec_metrics
+    --->    parallel_exec_metrics(
+                % The number of calls into this parallelisation.
+                pem_num_calls               :: int,
+
+                % The elapsed time of the original sequential execution.
+                pem_seq_time                :: float,
+
+                % The estimated elapsed time of the parallel execution.
+                pem_par_time                :: float,
+
+                % The overheads of parallel execution. These are already
+                % included in pem_par_time. Overheads are separated into
+                % different causes.
+                pem_par_overhead_spark_cost :: float,
+                pem_par_overhead_barrier    :: float,
+                pem_par_overhead_signals    :: float,
+                pem_par_overhead_waits      :: float,
+
+                % The amount of time the initial (left most) conjunct spends
+                % waiting for the other conjuncts. During this time,
+                % the context used by this conjunct must be kept alive
+                % because it will resume executing sequential code after
+                % the conjunct, however we know that it cannot be resumed
+                % before its children have completed.
+                pem_first_conj_dead_time    :: float,
+
+                % The amount of time all conjuncts spend blocked on the
+                % production of futures.
+                pem_future_dead_time        :: float
+            ).
+
+    % The speedup per call: SeqTime / ParTime. For example, a value of 2.0
+    % means that the goal is twice as fast when parallelised.
+    %
+:- func parallel_exec_metrics_get_speedup(parallel_exec_metrics) = float.
+
+    % The amount of time saved per-call: SeqTime - ParTime.
+    %
+:- func parallel_exec_metrics_get_time_saving(parallel_exec_metrics) = float.
+
+    % The amount of time spent 'on cpu', (seq time plus non-dead overheads).
+    %
+:- func parallel_exec_metrics_get_cpu_time(parallel_exec_metrics) = float.
+
+    % The overheads of parallel execution.
+    %
+    % Add these to pem_seq_time to get the 'time on cpu' of this execution.
+    %
+:- func parallel_exec_metrics_get_overheads(parallel_exec_metrics) = float.
+
+%---------------------------------------------------------------------------%
 
     % The set of candidate parallel conjunctions within a procedure.
     %
@@ -240,6 +293,10 @@
                 cpc_par_exec_metrics    :: parallel_exec_metrics
             ).
 
+:- type conjuncts_are_dependent
+    --->    conjuncts_are_dependent(set(var_rep))
+    ;       conjuncts_are_independent.
+
 :- type seq_conj(GoalType)
     --->    seq_conj(
                 sc_conjs            :: list(GoalType)
@@ -256,6 +313,8 @@
                 nc_module_name  :: string,
                 nc_proc_name    :: string
             ).
+
+%---------------------------------------------------------------------------%
 
     % A parallelised goal (pard_goal), a goal within a parallel conjunction.
     % We don't yet have to represent many types of goals or details about them.
@@ -284,9 +343,7 @@
             % We track it in the feedback information to help inform the
             % compiler about _how_ to parallelise calls around it.
 
-:- type conjuncts_are_dependent
-    --->    conjuncts_are_dependent(set(var_rep))
-    ;       conjuncts_are_independent.
+%---------------------------------------------------------------------------%
 
 :- pred convert_candidate_par_conjunctions_proc(
     pred(candidate_par_conjunction(A), A, B)::in(pred(in, in, out) is det),
@@ -303,66 +360,30 @@
     seq_conj(A)::in, seq_conj(B)::out) is det.
 
 %---------------------------------------------------------------------------%
-
-    % Represent the metrics of a parallel execution.
-    %
-:- type parallel_exec_metrics
-    --->    parallel_exec_metrics(
-                % The number of calls into this parallelisation.
-                pem_num_calls               :: int,
-
-                % The elapsed time of the original sequential execution.
-                pem_seq_time                :: float,
-
-                % The estimated elapsed time of the parallel execution.
-                pem_par_time                :: float,
-
-                % The overheads of parallel execution. These are already
-                % included in pem_par_time. Overheads are separated into
-                % different causes.
-                pem_par_overhead_spark_cost :: float,
-                pem_par_overhead_barrier    :: float,
-                pem_par_overhead_signals    :: float,
-                pem_par_overhead_waits      :: float,
-
-                % The amount of time the initial (left most) conjunct spends
-                % waiting for the other conjuncts. During this time,
-                % the context used by this conjunct must be kept alive
-                % because it will resume executing sequential code after
-                % the conjunct, however we know that it cannot be resumed
-                % before its children have completed.
-                pem_first_conj_dead_time    :: float,
-
-                % The amount of time all conjuncts spend blocked on the
-                % production of futures.
-                pem_future_dead_time        :: float
-            ).
-
-    % The speedup per call: SeqTime / ParTime. For example, a value of 2.0
-    % means that the goal is twice as fast when parallelised.
-    %
-:- func parallel_exec_metrics_get_speedup(parallel_exec_metrics) = float.
-
-    % The amount of time saved per-call: SeqTime - ParTime.
-    %
-:- func parallel_exec_metrics_get_time_saving(parallel_exec_metrics) = float.
-
-    % The amount of time spent 'on cpu', (seq time plus non-dead overheads).
-    %
-:- func parallel_exec_metrics_get_cpu_time(parallel_exec_metrics) = float.
-
-    % The overheads of parallel execution.
-    %
-    % Add these to pem_seq_time to get the 'time on cpu' of this execution.
-    %
-:- func parallel_exec_metrics_get_overheads(parallel_exec_metrics) = float.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module float.
+
+%---------------------------------------------------------------------------%
+
+parallel_exec_metrics_get_speedup(PEM) = SeqTime / ParTime :-
+    SeqTime = PEM ^ pem_seq_time,
+    ParTime = PEM ^ pem_par_time.
+
+parallel_exec_metrics_get_time_saving(PEM) = SeqTime - ParTime :-
+    SeqTime = PEM ^ pem_seq_time,
+    ParTime = PEM ^ pem_par_time.
+
+parallel_exec_metrics_get_cpu_time(PEM) = SeqTime + Overheads :-
+    SeqTime = PEM ^ pem_seq_time,
+    Overheads = parallel_exec_metrics_get_overheads(PEM).
+
+parallel_exec_metrics_get_overheads(PEM) =
+        SparkCosts + BarrierCosts + SignalCosts + WaitCosts :-
+    PEM = parallel_exec_metrics(_, _, _, SparkCosts, BarrierCosts,
+        SignalCosts, WaitCosts, _, _).
 
 %---------------------------------------------------------------------------%
 %
@@ -390,26 +411,6 @@ convert_candidate_par_conjunction(Conv0, CPC0, CPC) :-
 
 convert_seq_conj(Conv, seq_conj(Conjs0), seq_conj(Conjs)) :-
     list.map(Conv, Conjs0, Conjs).
-
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-parallel_exec_metrics_get_speedup(PEM) = SeqTime / ParTime :-
-    SeqTime = PEM ^ pem_seq_time,
-    ParTime = PEM ^ pem_par_time.
-
-parallel_exec_metrics_get_time_saving(PEM) = SeqTime - ParTime :-
-    SeqTime = PEM ^ pem_seq_time,
-    ParTime = PEM ^ pem_par_time.
-
-parallel_exec_metrics_get_cpu_time(PEM) = SeqTime + Overheads :-
-    SeqTime = PEM ^ pem_seq_time,
-    Overheads = parallel_exec_metrics_get_overheads(PEM).
-
-parallel_exec_metrics_get_overheads(PEM) =
-        SparkCosts + BarrierCosts + SignalCosts + WaitCosts :-
-    PEM = parallel_exec_metrics(_, _, _, SparkCosts, BarrierCosts,
-        SignalCosts, WaitCosts, _, _).
 
 %---------------------------------------------------------------------------%
 :- end_module mdbcomp.feedback.automatic_parallelism.

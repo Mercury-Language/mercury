@@ -22,6 +22,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.feedback.automatic_parallelism.
+:- import_module mdbcomp.feedback.feedback_info.
 :- import_module message.
 :- import_module profile.
 

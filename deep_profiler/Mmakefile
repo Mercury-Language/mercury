@@ -61,12 +61,14 @@ VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
 
 #-----------------------------------------------------------------------------#
 
-# The comments on MDBCOMP_MODULES in ../slice/Mmakefile apply here as well.
+# The comments on the .SECONDARY entry for MDBCOMP_MODULES
+# in ../slice/Mmakefile apply here as well.
 
 MDBCOMP_MODULES = \
 	builtin_modules.m \
-	feedback.automatic_parallelism.m \
 	feedback.m \
+	feedback.automatic_parallelism.m \
+	feedback.feedback_info.m \
 	mdbcomp.m \
 	mdbcomp.goal_path.m \
 	prim_data.m \
