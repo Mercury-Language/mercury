@@ -107,15 +107,16 @@
     % This function computes the whole d_file_deps structure for the gendep
     % context.
     %
-:- func construct_d_file_deps_gendep(globals, dep_graphs,
-    parse_tree_module_src) = d_file_deps.
+:- pred construct_d_file_deps_gendep(globals::in, dep_graphs::in,
+    burdened_aug_comp_unit::in, d_file_deps::out) is det.
 
-    % This function computes the std_deps field of the d_file_deps structure
-    % in the hlds context described above. Our caller gets the contents
-    % it puts into the other two fields from the code that constructs
-    % the HLDS.
+    % This function computes the d_file_deps structure in the hlds context
+    % described above. We get the contents we puts into the second and third
+    % fields of d_file_deps from the code that constructs the HLDS.
     %
-:- func construct_std_deps_hlds(globals, burdened_aug_comp_unit) = std_deps.
+:- pred construct_d_file_deps_hlds(globals::in, burdened_aug_comp_unit::in,
+    set(module_name)::in, maybe_include_trans_opt_rule::in, d_file_deps::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 
@@ -238,9 +239,17 @@ lookup_burdened_module_in_deps_map(DepsMap, ModuleName) = ModuleDepInfo :-
 
 %---------------------------------------------------------------------------%
 
-construct_d_file_deps_gendep(Globals, DepGraphs, ParseTreeModuleSrc)
-        = DFileDeps :-
-   DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph, IndirectDepsGraph,
+construct_d_file_deps_gendep(Globals, DepGraphs, BurdenedAugCompUnit,
+        DFileDeps) :-
+    BurdenedAugCompUnit = burdened_aug_comp_unit(_Baggage, AugCompUnit),
+    % XXX The reason why we ignore all the fields of AugCompUnit except
+    % ParseTreeModuleSrc is that our caller gives us a BurdenedAugCompUnit
+    % in which the AugCompUnit part contains nothing *but* the
+    % ParseTreeModuleSrc. The info in DepGraphs is supposed to replace
+    % this info, but it does not, and maybe cannot do so completely.
+    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
+        _, _, _, _, _, _, _, _),
+    DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph, IndirectDepsGraph,
         IndirectOptDepsGraph, TransOptDepsGraph, FullTransOptOrder),
 
     % Look up the interface/implementation/indirect dependencies
@@ -321,7 +330,8 @@ compute_allowable_trans_opt_deps(ModuleName,
 
 %---------------------------------------------------------------------------%
 
-construct_std_deps_hlds(Globals, BurdenedAugCompUnit) = StdDeps :-
+construct_d_file_deps_hlds(Globals, BurdenedAugCompUnit, AllDeps,
+        MaybeInclTransOptRule, DFileDeps) :-
     BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
     SourceFileModuleName = Baggage ^ mb_source_file_module_name,
     AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
@@ -368,7 +378,8 @@ construct_std_deps_hlds(Globals, BurdenedAugCompUnit) = StdDeps :-
         ), FIMSpecs, ForeignImportedModuleNamesSet),
 
     StdDeps = std_deps(DirectDeps, IndirectDeps,
-        ForeignImportedModuleNamesSet, no_trans_opt_deps).
+        ForeignImportedModuleNamesSet, no_trans_opt_deps),
+    DFileDeps = d_file_deps(StdDeps, AllDeps, MaybeInclTransOptRule).
 
 %---------------------%
 

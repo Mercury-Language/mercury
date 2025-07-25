@@ -273,14 +273,14 @@ generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals, DepGraphs,
     ( if set.is_empty(FatalErrors) then
         init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit),
         BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
-        DFileDeps = construct_d_file_deps_gendep(Globals, DepGraphs,
-            ParseTreeModuleSrc),
+        construct_d_file_deps_gendep(Globals, DepGraphs, BurdenedAugCompUnit,
+            DFileDeps),
         % XXX DFILE The way IndirectOptDeps is computed seems to have nothing
         % to do with the way the generate_d_file_fragment predicate's
         % corresponding argument is computed. This seems to me (zs)
         % to be a BUG.
-        generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit,
-            DFileDeps, FileNameD, FileContentsStrD, !Cache, !IO),
+        generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
+            FileNameD, FileContentsStrD, !Cache, !IO),
         write_out_d_file(ProgressStream, Globals,
             FileNameD, FileContentsStrD, !IO)
     else
@@ -292,8 +292,8 @@ generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals, DepGraphs,
 generate_and_write_d_file_hlds(ProgressStream, Globals, BurdenedAugCompUnit,
         AllDeps, MaybeInclTransOptRule, !IO) :-
     map.init(Cache0),
-    StdDeps = construct_std_deps_hlds(Globals, BurdenedAugCompUnit),
-    DFileDeps = d_file_deps(StdDeps, AllDeps, MaybeInclTransOptRule),
+    construct_d_file_deps_hlds(Globals, BurdenedAugCompUnit, AllDeps,
+        MaybeInclTransOptRule, DFileDeps),
     generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
         FileNameD, FileContentsStrD, Cache0, _Cache, !IO),
     write_out_d_file(ProgressStream, Globals,
