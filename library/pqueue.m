@@ -113,6 +113,13 @@
     %
 :- func length(pqueue(K, V)) = int.
 
+    % map the values of the pqueue using a function.
+    % The type of the mapped values is allowed to change.
+    % Note that this does not change the ordering of the pqueue.
+    %
+:- pred map_values((func(V1) = V2)::in, pqueue(K, V1)::in, pqueue(K, V2)::out)
+    is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -292,6 +299,12 @@ from_assoc_list(List) = PQueue :-
 
 length(empty) = 0.
 length(pqueue(D, _, _, _, _)) = D + 1.
+
+map_values(_, empty, empty).
+map_values(F, pqueue(D, K, V1, L0, R0), PQ) :-
+    pqueue_ext.map_values(F, L0, L1),
+    pqueue_ext.map_values(F, R0, R1),
+    PQ = pqueue(D, K, F(V1), L1, R1).
 
 %---------------------------------------------------------------------------%
 :- end_module pqueue.
