@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1999-2008, 2011 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018 The Mercury team.
+// Copyright (C) 2015-2016, 2018, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module looks after the debugger's information about the variables
@@ -181,6 +181,13 @@ extern  const char  *MR_trace_parse_var_path(char *word_spec,
 extern  const char  *MR_trace_parse_lookup_var_path(char *word_spec,
                         MR_TypeInfo *type_info, MR_Word *value,
                         MR_bool *bad_subterm);
+
+// This does the same job as the function above, but on success,
+// it also returns the name of the variable, and the path.
+
+extern  const char  *MR_trace_parse_lookup_and_return_var_path(char *word_spec,
+                        MR_TypeInfo *type_info, MR_Word *value,
+                        const char **name, char **path, MR_bool *bad_subterm);
 
 // Print the (names and) values of (the specified parts of) the specified
 // variable. (The variable is specified by either its name or its sequence

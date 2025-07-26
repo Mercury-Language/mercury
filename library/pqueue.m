@@ -301,7 +301,8 @@ length(empty) = 0.
 length(pqueue(D, _, _, _, _)) = D + 1.
 
 map_values(_, empty, empty).
-map_values(F, pqueue(D, K, V1, L0, R0), PQ) :-
+map_values(F, PQ0, PQ) :-
+    PQ0 = pqueue(D, K, V1, L0, R0),
     pqueue.map_values(F, L0, L1),
     pqueue.map_values(F, R0, R1),
     PQ = pqueue(D, K, F(V1), L1, R1).

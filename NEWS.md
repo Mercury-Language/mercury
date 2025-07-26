@@ -749,6 +749,12 @@ Changes to the Mercury standard library
     - pred `mercury_op_table_infix_op/5` to     `op_infos_infix_op/5`
     - pred `mercury_op_table_postfix_op/5` to   `op_infos_postfix_op/5`
 
+### Changes to the `pqueue` module
+
+* The following predicate has been added:
+
+    - pred `map_values/3`
+
 ### Changes to the `pretty_printer` module
 
 * The following predicates and functions have been added:
@@ -1608,6 +1614,9 @@ Changes to the Mercury debugger
 
 * The `dump` command has a new option: `dump -p Var` will dump the value
   of the given variable in a prettyprinted form.
+
+* The `dump` command can now also dump only the selected part
+  of a given variable.
 
 * The `stack` command now identifies cliques by drawing boxes next to them
   on the left hand side of the screen.

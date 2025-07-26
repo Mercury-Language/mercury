@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2008,2010,2012 The University of Melbourne.
-// Copyright (C) 2017-2018, 2020 The Mercury team.
+// Copyright (C) 2017-2018, 2020, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module implements the mdb commands in the "browsing" category.
@@ -790,6 +790,9 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
     MR_EventInfo *event_info, MR_Code **jumpaddr)
 {
     MR_Word         browser_term;
+    // If bad_path is true, then value_problem contains the problematic part
+    // of the path.
+    MR_bool         bad_path = MR_FALSE;
     const char      *value_problem = NULL;
     MR_bool         quiet = MR_FALSE;
     MR_bool         xml = MR_FALSE;
@@ -843,14 +846,13 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
                     (MR_TypeInfo) ML_proc_defn_rep_type(), rep);
             }
         } else {
-            MR_VarSpec  var_spec;
             MR_TypeInfo type_info;
             MR_Word     value;
             const char  *name;
+            char        *path;
 
-            MR_convert_arg_to_var_spec(words[1], &var_spec);
-            value_problem = MR_lookup_unambiguous_var_spec(var_spec,
-                &type_info, &value, &name);
+            value_problem = MR_trace_parse_lookup_and_return_var_path(words[1],
+                &type_info, &value, &name, &path, &bad_path);
             if (value_problem == NULL) {
                 browser_term = MR_type_value_to_browser_term(type_info, value);
             }
@@ -858,7 +860,8 @@ MR_trace_cmd_dump(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
         if (value_problem != NULL) {
             fflush(MR_mdb_out);
-            fprintf(MR_mdb_err, "mdb: %s.\n", value_problem);
+            fprintf(MR_mdb_err, "mdb: %s%s.\n",
+                (bad_path ? "there is no path " : ""), value_problem);
         } else {
             if (xml && prettyprint) {
                 fflush(MR_mdb_out);

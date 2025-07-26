@@ -122,7 +122,8 @@ remove_dump_files(!IO) :-
     io.file.remove_file("browser_test.save.1", _, !IO),
     io.file.remove_file("browser_test.save.2", _, !IO),
     io.file.remove_file("browser_test.save.3", _, !IO),
-    io.file.remove_file("browser_test.save.4", _, !IO).
+    io.file.remove_file("browser_test.save.4", _, !IO),
+    io.file.remove_file("browser_test.save.5", _, !IO).
 
 :- pred print_dump_files(io::di, io::uo) is det.
 
@@ -130,4 +131,5 @@ print_dump_files(!IO) :-
     print_file("browser_test.save.1", !IO),
     print_file("browser_test.save.2", !IO),
     print_file("browser_test.save.3", !IO),
-    print_file("browser_test.save.4", !IO).
+    print_file("browser_test.save.4", !IO),
+    print_file("browser_test.save.5", !IO).

@@ -1388,31 +1388,42 @@ const char *
 MR_trace_parse_lookup_var_path(char *word_spec, MR_TypeInfo *type_info_ptr,
     MR_Word *value_ptr, MR_bool *bad_subterm_ptr)
 {
-    MR_VarSpec var_spec;
+    const char  *ignored_name;
+    char        *ignored_path;
+
+    return MR_trace_parse_lookup_and_return_var_path(word_spec,
+        type_info_ptr, value_ptr, &ignored_name, &ignored_path,
+        bad_subterm_ptr);
+}
+
+const char *
+MR_trace_parse_lookup_and_return_var_path(char *word_spec,
+    MR_TypeInfo *type_info_ptr, MR_Word *value_ptr,
+    const char **name_ptr, char **path_ptr, MR_bool *bad_subterm_ptr)
+{
+    MR_VarSpec  var_spec;
     MR_TypeInfo var_type_info;
     MR_Word     var_value;
     MR_TypeInfo sub_type_info;
     MR_Word     *sub_value_ptr;
-    char        *path;
     const char  *problem;
     const char  *bad_path;
-    const char  *ignored_name;
 
     *bad_subterm_ptr = MR_FALSE;
 
-    problem = MR_trace_parse_var_path(word_spec, &var_spec, &path);
+    problem = MR_trace_parse_var_path(word_spec, &var_spec, path_ptr);
     if (problem != NULL) {
         return problem;
     }
 
     problem = MR_lookup_unambiguous_var_spec(var_spec, &var_type_info,
-        &var_value, &ignored_name);
+        &var_value, name_ptr);
     if (problem != NULL) {
         return problem;
     }
 
-    bad_path = MR_select_specified_subterm(path, var_type_info, &var_value,
-        &sub_type_info, &sub_value_ptr);
+    bad_path = MR_select_specified_subterm(*path_ptr,
+        var_type_info, &var_value, &sub_type_info, &sub_value_ptr);
     if (bad_path != NULL) {
         *bad_subterm_ptr = MR_TRUE;
         return bad_path;
@@ -1873,8 +1884,7 @@ MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
             saved_char = *path;
             *path = '\0';
 
-            if (! MR_named_arg_num(type_info, value, old_path, &arg_num))
-            {
+            if (! MR_named_arg_num(type_info, value, old_path, &arg_num)) {
                 *path = saved_char;
                 return old_path;
             }
@@ -1892,6 +1902,9 @@ MR_select_specified_subterm(char *path, MR_TypeInfo type_info, MR_Word *value,
         {
             type_info = arg_type_info;
             if (word_sized_arg_ptr == NULL) {
+                // XXX This is *very* strange code. However, this issue
+                // was not brought up during review in 2011, from Jun 27
+                // to Jul 5.
                 MR_Word storage;
 
                 MR_incr_hp(storage, 1);

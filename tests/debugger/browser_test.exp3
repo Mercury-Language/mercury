@@ -134,6 +134,10 @@ mdb> dump -x Data browser_test.save.3
 Dumped Data to browser_test.save.3
 mdb> dump -p Data browser_test.save.4
 Dumped Data to browser_test.save.4
+mdb> dump -p Data^2 browser_test.save.5
+Dumped Data to browser_test.save.5
+mdb> dump -p Data^42 browser_test.save.5
+mdb: there is no path 42.
 mdb> break a_func
  1: + stop  interface func browser_test.a_func/1-0 (det)
 mdb> continue
@@ -229,6 +233,9 @@ browser_test.save.4:
 seq(1, 
   [big(big(small, 1, small), 2, small), small, 
   big(small, 4, big(small, 5, small))], 5)
+browser_test.save.5:
+[big(big(small, 1, small), 2, small), small, 
+big(small, 4, big(small, 5, small))]
       E6:     C4 CALL func browser_test.a_func/1-0 (det) browser_test.m:116 (browser_test.m:35)
 mdb> finish
       E7:     C4 EXIT func browser_test.a_func/1-0 (det) browser_test.m:116 (browser_test.m:35)

@@ -51,6 +51,8 @@ finish
 dump Data browser_test.save.2
 dump -x Data browser_test.save.3
 dump -p Data browser_test.save.4
+dump -p Data^2 browser_test.save.5
+dump -p Data^42 browser_test.save.5
 break a_func
 continue
 finish
