@@ -2502,6 +2502,14 @@ Changes to the Mercury compiler
   but lack a `func()` or `pred()` wrapper around it to indicate whether they
   are intended to apply to a function or to a predicate.
 
+* The new option `--warn-include-and-non-include` causes the compiler to
+  generate a warning for all modules that contain both `:- include_module`
+  declarations for submodules, and other kinds of constructs. Since the
+  submodules have access to those other constructs, Changes to those constructs
+  require the recompilation of all the submodules to check that they
+  still work. Putting the `:- include_module` declarations and the other
+  constructs into different modules avoids the need for such recompilations.
+
 Portability improvements
 ------------------------
 

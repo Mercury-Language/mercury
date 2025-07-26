@@ -486,11 +486,12 @@
     ;       warn_non_tail_recursion_mutual
     ;       warn_non_tail_recursion
 
-    % Warnings about programming style, involving dead code.
-    ;       warn_dead_preds
-    ;       warn_dead_procs
+    % Warnings about programming style, at the module level.
+    ;       warn_include_and_non_include
 
     % Warnings about programming style, at the predicate level.
+    ;       warn_dead_preds
+    ;       warn_dead_procs
     ;       warn_can_fail_function
     ;       warn_unneeded_mode_specific_clause
 
@@ -2685,6 +2686,28 @@ optdb(oc_warn_perf_c, warn_non_tail_recursion,         maybe_string_special,
 
 %---------------------%
 
+% Warnings about module level issues.
+
+optdb(oc_warn_style_mod, warn_include_and_non_include,  bool(no),
+    help("warn-include-and-non-include", [
+        w("Warn about modules that contain both"), quote("include_module"),
+        w("declarations and other kinds of entities, such as"),
+        w("types or predicates."),
+        blank_line,
+        w("When a module contains both"), quote("include_module"),
+        w("declarations"), w("and other code, changes to that code"),
+        w("will often cause the recompilation"),
+        w("of all the included submodules."),
+        w("This is because those submodules have access to"),
+        w("the entities declared in their parent module,"),
+        w("so if the set of those entities changes in any way,"),
+        w("the submodules must be checked to see whether they relied"),
+        w("on some entity in the parent module that is not there anymore."),
+        blank_line,
+        w("Modules that contain"), quote("include_module"), w("declarations"),
+        w("and nothing else, which are often called"), quote("packages", ","),
+        w("do not have this problem.")])).
+
 % Warnings about dead code.
 
 optdb(oc_warn_style_pred, warn_dead_preds,             bool(no),
@@ -2822,7 +2845,8 @@ optdb(oc_warn_style_order, warn_inconsistent_pred_order_foreign_procs,
         w("and functions of the module. Applies for definitions by either"),
         w("Mercury clauses or foreign_proc pragmas.")])).
 
-% Warnings about missing contiguity. 
+% Warnings about missing contiguity.
+
 optdb(oc_warn_style_ctg, warn_non_contiguous_decls,     bool(yes),
     help("warn-non-contiguous-decls", [
         w("Do not generate a warning if the mode declarations of a"),
@@ -7077,7 +7101,8 @@ slow_code_warning_bool_options = SlowWarnOptions :-
 style_warning_bool_options = StyleWarnOptions :-
     FindOptionsPred =
         ( pred(Opt::out) is nondet :-
-            ( optdb(oc_warn_style_pred,  Opt, bool(_), _Help)
+            ( optdb(oc_warn_style_mod,   Opt, bool(_), _Help)
+            ; optdb(oc_warn_style_pred,  Opt, bool(_), _Help)
             ; optdb(oc_warn_style_order, Opt, bool(_), _Help)
             ; optdb(oc_warn_style_ctg,   Opt, bool(_), _Help)
             ; optdb(oc_warn_style_goal,  Opt, bool(_), _Help)
@@ -7097,8 +7122,9 @@ options_not_to_track = InconsequentialOptions :-
     InconsequentialCategories = set.list_to_set([oc_warn_ctrl,
         oc_warn_dodgy_mod, oc_warn_dodgy_pred, oc_warn_dodgy_prg,
         oc_warn_dodgy_goal, oc_warn_dodgy_inst, oc_warn_file,
-        oc_warn_style_pred, oc_warn_style_goal, oc_warn_style_goal_c,
-        oc_warn_style_order, oc_warn_style_ctg, oc_warn_style_ctg_c,
+        oc_warn_style_mod, oc_warn_style_pred, oc_warn_style_goal,
+        oc_warn_style_goal_c, oc_warn_style_order,
+        oc_warn_style_ctg, oc_warn_style_ctg_c,
         oc_inform, oc_verbosity, oc_internal, oc_buildsys]),
     FindOptionsPred =
         ( pred(Opt::out) is nondet :-

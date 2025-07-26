@@ -64,6 +64,7 @@
     ;       oc_warn_perf
     ;       oc_warn_perf_c
             % Warnings about code that probably could be faster.
+    ;       oc_warn_style_mod
     ;       oc_warn_style_pred
     ;       oc_warn_style_goal
     ;       oc_warn_style_goal_c
@@ -224,6 +225,7 @@ option_categories(oc_warn_dodgy_inst, 0).
 option_categories(oc_warn_file, 0).
 option_categories(oc_warn_perf, 0).
 option_categories(oc_warn_perf_c, 0).
+option_categories(oc_warn_style_mod, 0).
 option_categories(oc_warn_style_pred, 0).
 option_categories(oc_warn_style_order, 0).
 option_categories(oc_warn_style_ctg, 0).

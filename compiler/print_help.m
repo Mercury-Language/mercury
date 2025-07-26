@@ -353,6 +353,9 @@ all_chapters = AllSections :-
         "Warnings about possible performance issues",
         "", [], [oc_warn_perf, oc_warn_perf_c])),
 
+    SubSubSectionWarnStyleMod = help_atomic(help_option_group(
+        "Warnings about style issues with modules",
+        "", [], [oc_warn_style_mod])),
     SubSubSectionWarnStylePred = help_atomic(help_option_group(
         "Warnings about style issues with predicates",
         "", [], [oc_warn_style_pred])),
@@ -368,8 +371,9 @@ all_chapters = AllSections :-
     SubSectionWarnStyle = help_composite(
         "Warnings about programming style",
         "", [],
-        [SubSubSectionWarnStylePred, SubSubSectionWarnStyleGoal,
-        SubSubSectionWarnStyleOrder, SubSubSectionWarnStyleContig]),
+        [SubSubSectionWarnStyleMod, SubSubSectionWarnStylePred,
+        SubSubSectionWarnStyleGoal, SubSubSectionWarnStyleOrder,
+        SubSubSectionWarnStyleContig]),
 
     SubSectionWarnCtrl = help_atomic(help_option_group(
         "Options that control warnings",

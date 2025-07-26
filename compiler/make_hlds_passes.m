@@ -76,6 +76,7 @@
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module hlds.status.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
@@ -96,10 +97,12 @@
 :- import_module recompilation.item_types.
 :- import_module recompilation.record_uses.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module set_tree234.
@@ -113,6 +116,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
         MQInfo0, TypeEqvMap, UsedModules, !:QualInfo,
         !:FoundInvalidType, !:FoundInvalidInstOrMode, !:ModuleInfo, !:Specs) :-
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+    maybe_warn_include_and_non_include(Globals, ParseTreeModuleSrc, InclSpecs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleNameContext = ParseTreeModuleSrc ^ ptms_module_name_context,
     get_implicit_avail_needs_in_aug_compilation_unit(Globals, AugCompUnit,
@@ -147,7 +151,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
 
     TypeSpecs = ParseTreeModuleSrc ^ ptms_type_specs,
     InstModeSpecs = ParseTreeModuleSrc ^ ptms_inst_mode_specs,
-    !:Specs = TypeSpecs ++ InstModeSpecs,
+    !:Specs = InclSpecs ++ TypeSpecs ++ InstModeSpecs,
 
     IsInvalidTypeSpec =
         ( pred(Spec::in) is semidet :-
@@ -646,6 +650,113 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     else
         true
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_warn_include_and_non_include(globals::in,
+    parse_tree_module_src::in, list(error_spec)::out) is det.
+
+maybe_warn_include_and_non_include(Globals, ParseTreeModuleSrc, Specs) :-
+    globals.lookup_bool_option(Globals, warn_include_and_non_include,
+        WarnIncludeAndNonInclude),
+    ParseTreeModuleSrc = parse_tree_module_src(ModuleName, _MNC, InclMap,
+        ImportUseMap, IntFIMs, ImpFIMs, IntSelfFIMLangs, ImpSelfFIMLangs,
+        TypeDefnMap, InstDefnMap, ModeDefnMap, _TypeSpecs, _InstModeSpecs,
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntDeclPragmas, IntDeclMarkers, IntPromises, IntBadClauses,
+        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
+        ImpClauses, ImpForeignProcs, ImpFEEs, ImpDeclPragmas, ImpDeclMarkers,
+        ImpImplPragmas, ImpImplMarkers, ImpPromises,
+        ImpInitialises, ImpFinalises, ImpMutables),
+
+    ( if
+        WarnIncludeAndNonInclude = yes,
+        map.is_non_empty(InclMap),
+        ( map.is_non_empty(TypeDefnMap)
+        ; map.is_non_empty(InstDefnMap)
+        ; map.is_non_empty(ModeDefnMap)
+        ; IntTypeClasses = [_ | _]
+        ; IntInstances = [_ | _]
+        ; IntPredDecls = [_ | _]
+        ; IntModeDecls = [_ | _]
+        ; IntDeclPragmas = [_ | _]
+        ; IntDeclMarkers = [_ | _]
+        ; IntPromises = [_ | _]
+        ; set.is_non_empty(IntBadClauses)
+        ; ImpTypeClasses = [_ | _]
+        ; ImpInstances = [_ | _]
+        ; ImpPredDecls = [_ | _]
+        ; ImpModeDecls = [_ | _]
+        ; ImpClauses = [_ | _]
+        ; ImpForeignProcs = [_ | _]
+        ; ImpFEEs = [_ | _]
+        ; ImpDeclPragmas = [_ | _]
+        ; ImpDeclMarkers = [_ | _]
+        ; ImpImplPragmas = [_ | _]
+        ; ImpImplMarkers = [_ | _]
+        ; ImpPromises = [_ | _]
+        ; ImpInitialises = [_ | _]
+        ; ImpFinalises = [_ | _]
+        ; ImpMutables = [_ | _]
+        ; map.is_non_empty(IntFIMs)
+        ; map.is_non_empty(ImpFIMs)
+        ; set.is_non_empty(IntSelfFIMLangs)
+        ; set.is_non_empty(ImpSelfFIMLangs)
+        ; not imports_only_implicit_builtins(ImportUseMap)
+        )
+    then
+        trace [io(!IO)] (
+            io.stderr_stream(StdErr, !IO),
+            io.write_line(StdErr, ImportUseMap, !IO)
+        ),
+        map.foldl_values(acc_include_contexts, InclMap,
+            set.init, InclContextSet),
+        set.to_sorted_list(InclContextSet, InclContexts),
+        list.det_head(InclContexts, Context),
+        Pieces = [words("Warning:")] ++
+            color_as_subject([words("module"), qual_sym_name(ModuleName)]) ++
+            [words("contains")] ++
+            color_as_incorrect([words("both")]) ++
+            color_as_inconsistent(
+                [decl("include_module"), words("declarations")]) ++
+            [words("and")] ++
+            color_as_inconsistent([words("other kinds of entities.")]) ++
+            [words("This will result in the recompilation"),
+            words("of all the included submodules"),
+            words("for many kinds of changes to those other entities."),
+            words("Moving those entities to other modules can reduce"),
+            words("the number of modules needing to be recompiled"),
+            words("after a change."), nl],
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        Specs = [Spec]
+    else
+        Specs = []
+    ).
+
+:- pred imports_only_implicit_builtins(import_and_or_use_map::in) is semidet.
+
+imports_only_implicit_builtins(ImportUseMap) :-
+    map.to_sorted_assoc_list(ImportUseMap, ImportUseAL),
+    imports_only_implicit_builtins_test_all(ImportUseAL).
+
+:- pred imports_only_implicit_builtins_test_all(
+    assoc_list(module_name, maybe_implicit_import_and_or_use)::in) is semidet.
+
+imports_only_implicit_builtins_test_all([]).
+imports_only_implicit_builtins_test_all([Pair | Pairs]) :-
+    Pair = ModuleName - MaybeImplicit,
+    ( ModuleName = mercury_public_builtin_module
+    ; ModuleName = mercury_private_builtin_module
+    ),
+    MaybeImplicit = implicit_avail(_, _),
+    imports_only_implicit_builtins_test_all(Pairs).
+
+:- pred acc_include_contexts(include_module_info::in,
+    set(prog_context)::in, set(prog_context)::out) is det.
+
+acc_include_contexts(IncludeModuleInfo, !ContextSet) :-
+    IncludeModuleInfo = include_module_info(_, Context),
+    set.insert(Context, !ContextSet).
 
 %---------------------------------------------------------------------------%
 

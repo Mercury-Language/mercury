@@ -1070,6 +1070,23 @@ Warning options
 
   Warnings about programming style
 
+    Warnings about style issues with modules
+
+    --warn-include-and-non-include
+        Warn about modules that contain both `include_module' declarations and
+        other kinds of entities, such as types or predicates.
+        
+        When a module contains both `include_module' declarations and other
+        code, changes to that code will often cause the recompilation of all
+        the included submodules. This is because those submodules have access
+        to the entities declared in their parent module, so if the set of those
+        entities changes in any way, the submodules must be checked to see
+        whether they relied on some entity in the parent module that is not
+        there anymore.
+        
+        Modules that contain `include_module' declarations and nothing else,
+        which are often called `packages', do not have this problem.
+
     Warnings about style issues with predicates
 
     --warn-dead-predicates

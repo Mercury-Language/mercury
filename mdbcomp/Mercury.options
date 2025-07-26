@@ -16,3 +16,6 @@ MCFLAGS-mer_mdbcomp     += --no-warn-nothing-exported --no-warn-unused-imports
 MCFLAGS-mdbcomp.sym_name    += --no-optimize-constructor-last-call
 
 MCFLAGS-mdbcomp.feedback    += --no-warn-unneeded-initial-statevars
+
+# XXX PACKAGE
+# MCFLAGS-mdbcomp             += --no-warn-include-and-non-include

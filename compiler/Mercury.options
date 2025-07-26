@@ -116,3 +116,6 @@ MCFLAGS-check_hlds.mode_ordering         += --no-warn-unneeded-final-statevars
 MCFLAGS-parse_tree.parse_module          += --no-warn-unneeded-initial-statevars
 MCFLAGS-parse_tree.prog_event            += --no-warn-unneeded-final-statevars
 MCFLAGS-transform_hlds.stm_expand        += --no-warn-unneeded-final-statevars
+
+# XXX PACKAGE
+# MCFLAGS-mode_robdd                       += --no-warn-include-and-non-include
