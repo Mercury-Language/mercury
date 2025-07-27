@@ -1,5 +1,5 @@
+@c vim: ts=4 sw=4 expandtab ft=texinfo
 \input texinfo
-@c vim: expandtab
 @setfilename mercury_ref.info
 @settitle The Mercury Language Reference Manual
 
@@ -4711,7 +4711,7 @@ the two clauses have different semantics,
 so the predicate must be declared as impure:
 
 @example
-	:- impure pred var(T).
+        :- impure pred var(T).
 @end example
 
 @node Unique modes
@@ -7772,10 +7772,10 @@ The @var{Domain} and @var{Range} arguments are either single type variables,
 or conjunctions of distinct type variables separated by commas.
 
 @example
-	:- typeclass @var{Typeclass}(@var{Var}, @dots{})@
+        :- typeclass @var{Typeclass}(@var{Var}, @dots{})@
 <= ((@var{D} -> @var{R}), @dots{}) @dots{}
 
-	:- typeclass @var{Typeclass}(@var{Var}, @dots{})@
+        :- typeclass @var{Typeclass}(@var{Var}, @dots{})@
 <= (@var{D1}, @var{D2}, @dots{} -> @var{R1}, @var{R2}, @dots{}), @dots{}
 @end example
 
@@ -7787,8 +7787,8 @@ Mutually recursive functional dependencies are allowed,
 so the following examples are legal:
 
 @example
-	:- typeclass foo(A, B) <= ((A -> B), (B -> A)).
-	:- typeclass bar(A, B, C, D)@
+        :- typeclass foo(A, B) <= ((A -> B), (B -> A)).
+        :- typeclass bar(A, B, C, D)@
 <= ((A, B -> C), (B, C -> D), (D -> A, C)).
 @end example
 
@@ -8081,40 +8081,40 @@ using universal and existential types.
 
 :- pred foo(T).
 foo(_).
-	% ok
+        % ok
 
 :- pred call_foo.
 call_foo :- foo(42).
-	% ok (T = int)
+        % ok (T = int)
 
 :- some [T] pred e_foo(T).
 e_foo(X) :- X = 42.
-	% ok (T = int)
+        % ok (T = int)
 
 :- pred call_e_foo.
 call_e_foo :- e_foo(_).
-	% ok
+        % ok
 
 /* examples using higher-order functions */
 
 :- func bar(T, T, func(T) = int) = int.
 bar(X, Y, F) = F(X) + F(Y).
-	% ok
+        % ok
 
 :- func call_bar = int.
 call_bar = bar(2, 3, (func(X) = X*X)).
-	% ok (T = int)
-	% returns 13 (= 2*2 + 3*3)
+        % ok (T = int)
+        % returns 13 (= 2*2 + 3*3)
 
 :- some [T] pred e_bar(T, T, func(T) = int).
 :-          mode e_bar(out, out, out(func(in) = out is det)).
 e_bar(2, 3, (func(X) = X * X)).
-	% ok (T = int)
+        % ok (T = int)
 
 :- func call_e_bar = int.
 call_e_bar = F(X) + F(Y) :- e_bar(X, Y, F).
-	% ok
-	% returns 13 (= 2*2 + 3*3)
+        % ok
+        % returns 13 (= 2*2 + 3*3)
 
 @end example
 
@@ -8129,31 +8129,31 @@ that contains type errors.
 
 :- pred bad_foo(T).
 bad_foo(42).
-	% type error
+        % type error
 
 :- some [T] pred e_foo(T).
 e_foo(42).
-	% ok
+        % ok
 
 :- pred bad_call_e_foo.
 bad_call_e_foo :- e_foo(42).
-	% type error
+        % type error
 
 :- some [T] pred e_bar1(T).
 e_bar1(42).
 e_bar1(42).
 e_bar1(43).
-	% ok (T = int)
+        % ok (T = int)
 
 :- some [T] pred bad_e_bar2(T).
 bad_e_bar2(42).
 bad_e_bar2("blah").
-	% type error (cannot unify types `int' and `string')
+        % type error (cannot unify types `int' and `string')
 
 :- some [T] pred bad_e_bar3(T).
 bad_e_bar3(X) :- e_foo(X).
 bad_e_bar3(X) :- e_foo(X).
-	% type error (attempt to bind type variable `T' twice)
+        % type error (attempt to bind type variable `T' twice)
 
 @end example
 
@@ -8266,12 +8266,12 @@ all of which are instances of the @samp{showable} class
 
 :- func make_list = showable_list.
 make_list = List :-
-	Int = 42,
-	Float = 1.0,
-	String = "blah",
-	List =  'new cons'(Int,
-		'new cons'(Float,
-		'new cons'(String, nil))).
+        Int = 42,
+        Float = 1.0,
+        String = "blah",
+        List =  'new cons'(Int,
+                'new cons'(Float,
+                'new cons'(String, nil))).
 @end example
 
 @noindent
@@ -8466,7 +8466,7 @@ although in this case an intermediate predicate is required:
 :-          mode good_example3(in(bound("foo")), out) is det.
 :-          mode good_example3(in(bound("bar")), out) is det.
 good_example3(Name, univ_value(Univ)) :-
-	good_example3_univ(Name, Univ).
+        good_example3_univ(Name, Univ).
 
 :- pred good_example3_univ(string, univ).
 :- mode good_example3_univ(in(bound("foo")), out) is det.
@@ -9098,17 +9098,17 @@ semantics with a guaranteed fair search rule, and so forth.
 
 @menu
 * Calling foreign code from Mercury::  How to implement a Mercury predicate
-				       or function as a call to code
-				       written in a different
-				       programming language.
+                                       or function as a call to code
+                                       written in a different
+                                       programming language.
 * Calling Mercury from foreign code::  How to call a Mercury predicate
                                        or function from a different
                                        programming language.
-* Data passing conventions::	       How Mercury types are passed to
-				       different languages.
+* Data passing conventions::           How Mercury types are passed to
+                                       different languages.
 * Using foreign types from Mercury::   How to use a type defined in
-				       a different programming language
-				       in Mercury code.
+                                       a different programming language
+                                       in Mercury code.
 * Using foreign enumerations in Mercury code:: How to use an enumeration type
                                                 defined in a foreign language
                                                 in Mercury code.
@@ -9116,17 +9116,17 @@ semantics with a guaranteed fair search rule, and so forth.
                                                defined in Mercury in a
                                                different programming language.
 * Adding foreign declarations::        How to add declarations of
-  				       entities in other programming
-				       languages.
+                                       entities in other programming
+                                       languages.
 * Declaring Mercury exports to other modules::
                                        How to call Mercury procedures from a
                                        different programming language in
                                        another module.
 * Adding foreign definitions::         How to add definitions of
-  				       entities in other programming
-				       languages.
+                                       entities in other programming
+                                       languages.
 * Language specific bindings::         Information specific to each
-  				       foreign language.
+                                       foreign language.
 
 @end menu
 
@@ -9140,8 +9140,8 @@ using fragments of foreign language code using @samp{pragma foreign_proc}.
 
 @menu
 * pragma foreign_proc::         Defining Mercury procedures using foreign code.
-* Foreign code attributes::   	Describing properties of foreign
-				functions or code.
+* Foreign code attributes::     Describing properties of foreign
+                                functions or code.
 @end menu
 
 @node pragma foreign_proc
@@ -10526,9 +10526,9 @@ as dependencies of the module.
 @c Please keep this menu in alphabetical order
 
 @menu
-* Interfacing with C 		:: How to write code to interface with C
-* Interfacing with C# 		:: How to write code to interface with C#
-* Interfacing with Java 	:: How to write code to interface with Java
+* Interfacing with C            :: How to write code to interface with C
+* Interfacing with C#           :: How to write code to interface with C#
+* Interfacing with Java         :: How to write code to interface with Java
 @end menu
 
 All Mercury implementations should support interfacing with C.
@@ -10560,14 +10560,14 @@ Use the string @code{"Java"} to set the foreign language to Java.
 @subsection Interfacing with C
 
 @menu
-* Using pragma foreign_type for C 	 :: Declaring C types in Mercury
+* Using pragma foreign_type for C        :: Declaring C types in Mercury
 * Using pragma foreign_enum for C        :: Assigning Mercury enumerations
                                             values in C
 * Using pragma foreign_export_enum for C :: Using Mercury enumerations in C
-* Using pragma foreign_proc for C 	 :: Calling C code from Mercury
+* Using pragma foreign_proc for C        :: Calling C code from Mercury
 * Using pragma foreign_export for C      :: Calling Mercury code from C
-* Using pragma foreign_decl for C 	 :: Including C declarations in Mercury
-* Using pragma foreign_code for C 	 :: Including C code in Mercury
+* Using pragma foreign_decl for C        :: Including C declarations in Mercury
+* Using pragma foreign_code for C        :: Including C code in Mercury
 * Memory management for C                :: Caveats about passing dynamically
                                             allocated memory to or from C.
 * Linking with C object files            :: Linking with C object files and
@@ -11037,14 +11037,14 @@ see the ``Libraries'' chapter of the Mercury User's Guide.
 @subsection Interfacing with C#
 
 @menu
-* Using pragma foreign_type for C#	:: Declaring C# types in Mercury
+* Using pragma foreign_type for C#      :: Declaring C# types in Mercury
 * Using pragma foreign_enum for C#      :: Assigning Mercury enumerations
                                            values in C#
 * Using pragma foreign_export_enum for C# :: Using Mercury enumerations in C#
-* Using pragma foreign_proc for C# 	:: Calling C# code from Mercury
+* Using pragma foreign_proc for C#      :: Calling C# code from Mercury
 * Using pragma foreign_export for C#    :: Calling Mercury code from C#
-* Using pragma foreign_decl for C# 	:: Including C# declarations in Mercury
-* Using pragma foreign_code for C# 	:: Including C# code in Mercury
+* Using pragma foreign_decl for C#      :: Including C# declarations in Mercury
+* Using pragma foreign_code for C#      :: Including C# code in Mercury
 @end menu
 
 @node Using pragma foreign_type for C#
@@ -11180,7 +11180,7 @@ For example:
 
 @example
 :- pragma foreign_decl("C#", "
-	using System;
+        using System;
 ").
 :- pred hello(io.state::di, io.state::uo) is det.
 :- pragma foreign_proc("C#",
@@ -11478,14 +11478,14 @@ or the programmer's lack of familiarity with the standard library.
 Newcomers to Mercury are hence encouraged to @strong{skip this section}.
 
 @menu
-* Purity levels::       	Choosing the right level of purity.
-* Purity ordering::     	How purity levels are ordered
-* Impurity semantics::  	What impure code means.
-* Declaring impurity::  	Declaring predicates impure.
-* Impure goals::        	Marking a goal as impure.
-* Promising purity::    	Promising that a predicate is pure.
-* Impurity example::    	A simple example using impurity.
-* Higher-order impurity::    	Using impurity with higher-order code.
+* Purity levels::               Choosing the right level of purity.
+* Purity ordering::             How purity levels are ordered
+* Impurity semantics::          What impure code means.
+* Declaring impurity::          Declaring predicates impure.
+* Impure goals::                Marking a goal as impure.
+* Promising purity::            Promising that a predicate is pure.
+* Impurity example::            A simple example using impurity.
+* Higher-order impurity::       Using impurity with higher-order code.
 @end menu
 
 @node Purity levels
@@ -14234,7 +14234,7 @@ typedef struct @{
 @menu
 * [1]::         Spiers, Somogyi, and Sondergaard,
                 @cite{Termination Analysis for Mercury}.
-* [2]::        	Groger and Plumer, @cite{Handling of mutual recursion in
+* [2]::         Groger and Plumer, @cite{Handling of mutual recursion in
                 automatic termination proofs for logic programs}.
 * [3]::         Spiers, @cite{Termination Analysis for logic programs}.
 * [4]::         Sagonas, @cite{The SLG-WAM: A Search-Efficient Engine
