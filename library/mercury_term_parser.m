@@ -364,6 +364,8 @@ check_for_bad_token(TokenList, MaybeBadTokenMsg) :-
         MaybeBadTokenMsg = no
     ).
 
+%---------------------------------------------------------------------------%
+
 :- pred parse_whole_term(parse_result(term(T))::out,
     token_list::in, token_list::out,
     parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det
@@ -394,33 +396,7 @@ parse_term(Term, !TokensLeft, !PS) :-
     ArgPriority = ops.universal_priority(OpTable),
     do_parse_term(ArgPriority, ordinary_term, Term, !TokensLeft, !PS).
 
-:- pred parse_arg(parse_result(term(T))::out, token_list::in, token_list::out,
-    parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det
-    <= op_table(Ops).
-
-parse_arg(Term, !TokensLeft, !PS) :-
-    OpTable = parser_state_get_ops_table(!.PS),
-    % XXX We should do the following:
-    %   ArgPriority = ops.arg_priority(OpTable),
-    % but that would mean we can't, for example, parse '::'/2 in arguments
-    % the way we want to. Perhaps a better solution would be to change the
-    % priority of '::'/2, but we need to analyse the impact of that further.
-    ArgPriority = ops.universal_priority(OpTable),
-    do_parse_term(ArgPriority, argument, Term, !TokensLeft, !PS).
-
-:- pred parse_list_elem(parse_result(term(T))::out,
-    token_list::in, token_list::out,
-    parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det
-    <= op_table(Ops).
-
-parse_list_elem(Term, !TokensLeft, !PS) :-
-    OpTable = parser_state_get_ops_table(!.PS),
-    % XXX We should do the following:
-    %   ArgPriority = ops.arg_priority(OpTable),
-    % but that would mean we can't, for example, parse promise_pure/0 in
-    % foreign attribute lists.
-    ArgPriority = ops.universal_priority(OpTable),
-    do_parse_term(ArgPriority, list_elem, Term, !TokensLeft, !PS).
+%---------------------%
 
 :- pred do_parse_term(priority::in, term_kind::in,
     parse_result(term(T))::out, token_list::in, token_list::out,
@@ -637,6 +613,8 @@ parse_rest(MinPriority, TermKind, LeftPriority, LeftTerm, Term,
     else
         Term = pr_ok(LeftTerm)
     ).
+
+%---------------------------------------------------------------------------%
 
 :- pred parse_backquoted_operator(maybe(term(T))::out, string::out,
     list(term(T))::out, token_list::in, token_list::out,
@@ -876,9 +854,11 @@ parse_simple_term(Token, Context, Prec, TermParse, !TokensLeft, !PS) :-
         TermParse = BaseTermParse
     ).
 
+%---------------------%
+
     % As an extension to ISO Prolog syntax, we check for the syntax
     % "Term(Args)", and parse it as the term ''(Term, Args). The aim
-    % of this extension is to provide a nicer syntax for higher-order stuff.
+    % of this extension is to provide a nicer syntax for higher-order code.
     %
     % Our caller should call us after it has seen "Term("; we parse
     % the remainder, "Args)".
@@ -940,6 +920,64 @@ parse_special_atom(Atom, TermContext, Term, !TokensLeft, !PS) :-
         Term = pr_ok(term.functor(term.atom(Atom), [], TermContext))
     ).
 
+%---------------------------------------------------------------------------%
+
+:- pred parse_args(parse_result(list(term(T)))::out,
+    token_list::in, token_list::out,
+    parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det
+    <= op_table(Ops).
+
+parse_args(List, !TokensLeft, !PS) :-
+    parse_arg(Arg0, !TokensLeft, !PS),
+    (
+        Arg0 = pr_ok(Arg),
+        (
+            !.TokensLeft = token_cons(Token, Context, !:TokensLeft),
+            ( if Token = comma then
+                disable_warning [suspicious_recursion] (
+                    parse_args(Tail0, !TokensLeft, !PS)
+                ),
+                (
+                    Tail0 = pr_ok(Tail),
+                    List = pr_ok([Arg|Tail])
+                ;
+                    Tail0 = pr_error(_, _),
+                    % Propagate error upwards.
+                    List = Tail0
+                )
+            else if Token = close then
+                List = pr_ok([Arg])
+            else
+                parser_unexpected_tok(Token, Context,
+                    "expected `,', `)', or operator", List, !TokensLeft, !.PS)
+            )
+        ;
+            !.TokensLeft = token_nil,
+            List = pr_error("unexpected end-of-file in argument list",
+                !.TokensLeft)
+        )
+    ;
+        Arg0 = pr_error(Message, Tokens),
+        % Propagate error upwards.
+        List = pr_error(Message, Tokens)
+    ).
+
+:- pred parse_arg(parse_result(term(T))::out, token_list::in, token_list::out,
+    parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det
+    <= op_table(Ops).
+
+parse_arg(Term, !TokensLeft, !PS) :-
+    OpTable = parser_state_get_ops_table(!.PS),
+    % XXX We should do the following:
+    %   ArgPriority = ops.arg_priority(OpTable),
+    % but that would mean we can't, for example, parse '::'/2 in arguments
+    % the way we want to. Perhaps a better solution would be to change the
+    % priority of '::'/2, but we need to analyse the impact of that further.
+    ArgPriority = ops.universal_priority(OpTable),
+    do_parse_term(ArgPriority, argument, Term, !TokensLeft, !PS).
+
+%---------------------------------------------------------------------------%
+
 :- pred parse_list(parse_result(term(T))::out, token_list::in, token_list::out,
     parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det
     <= op_table(Ops).
@@ -954,6 +992,20 @@ parse_list(List, !TokensLeft, !PS) :-
         % Propagate error.
         List = Arg0
     ).
+
+:- pred parse_list_elem(parse_result(term(T))::out,
+    token_list::in, token_list::out,
+    parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det
+    <= op_table(Ops).
+
+parse_list_elem(Term, !TokensLeft, !PS) :-
+    OpTable = parser_state_get_ops_table(!.PS),
+    % XXX We should do the following:
+    %   ArgPriority = ops.arg_priority(OpTable),
+    % but that would mean we can't, for example, parse promise_pure/0 in
+    % foreign attribute lists.
+    ArgPriority = ops.universal_priority(OpTable),
+    do_parse_term(ArgPriority, list_elem, Term, !TokensLeft, !PS).
 
 :- pred parse_list_tail(term(T)::in, parse_result(term(T))::out,
     token_list::in, token_list::out,
@@ -1007,46 +1059,6 @@ parse_list_tail(Arg, List, !TokensLeft, !PS) :-
         !.TokensLeft = token_nil,
         % XXX The error message should state the line that the list started on.
         List = pr_error("unexpected end-of-file in list", !.TokensLeft)
-    ).
-
-:- pred parse_args(parse_result(list(term(T)))::out,
-    token_list::in, token_list::out,
-    parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det
-    <= op_table(Ops).
-
-parse_args(List, !TokensLeft, !PS) :-
-    parse_arg(Arg0, !TokensLeft, !PS),
-    (
-        Arg0 = pr_ok(Arg),
-        (
-            !.TokensLeft = token_cons(Token, Context, !:TokensLeft),
-            ( if Token = comma then
-                disable_warning [suspicious_recursion] (
-                    parse_args(Tail0, !TokensLeft, !PS)
-                ),
-                (
-                    Tail0 = pr_ok(Tail),
-                    List = pr_ok([Arg|Tail])
-                ;
-                    Tail0 = pr_error(_, _),
-                    % Propagate error upwards.
-                    List = Tail0
-                )
-            else if Token = close then
-                List = pr_ok([Arg])
-            else
-                parser_unexpected_tok(Token, Context,
-                    "expected `,', `)', or operator", List, !TokensLeft, !.PS)
-            )
-        ;
-            !.TokensLeft = token_nil,
-            List = pr_error("unexpected end-of-file in argument list",
-                !.TokensLeft)
-        )
-    ;
-        Arg0 = pr_error(Message, Tokens),
-        % Propagate error upwards.
-        List = pr_error(Message, Tokens)
     ).
 
 %---------------------------------------------------------------------------%
