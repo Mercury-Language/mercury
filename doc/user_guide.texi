@@ -1,3 +1,4 @@
+@c vim: ts=4 sw=4 expandtab ft=texinfo
 \input texinfo
 @setfilename mercury_user_guide.info
 @settitle The Mercury User's Guide
@@ -16,16 +17,16 @@
 
 @c We use the following indices in this document:
 @c
-@c	The "@cindex" / "cp" (concept) index:
-@c		for general concepts (e.g. "Determinism", "Debugging", etc.)
-@c	The "@pindex" / "pg" (program) index:
-@c		for programs or shell scripts (mmc, mgnuc, etc.).
-@c	The "@findex" / "fn" (function) index:
-@c		for command-line options.
-@c	The "@kindex" / "ky" (keystroke) index:
-@c		for mdb commands.
-@c	The "@vindex" / "vr" (variable) index:
-@c		for environment variables and Mmake variables.
+@c      The "@cindex" / "cp" (concept) index:
+@c              for general concepts (e.g. "Determinism", "Debugging", etc.)
+@c      The "@pindex" / "pg" (program) index:
+@c              for programs or shell scripts (mmc, mgnuc, etc.).
+@c      The "@findex" / "fn" (function) index:
+@c              for command-line options.
+@c      The "@kindex" / "ky" (keystroke) index:
+@c              for mdb commands.
+@c      The "@vindex" / "vr" (variable) index:
+@c              for environment variables and Mmake variables.
 @c
 @c That is in case we ever want to produce separate indices for the
 @c different categories.  Currently, however, we merge them all into
@@ -107,21 +108,31 @@ into another language, under the above conditions for modified versions.
 This guide describes the compilation environment of Mercury ---
 how to build and debug Mercury programs.
 
+This guide is currently undergoing extensive modifications,
+which means that some parts, particularly the ones that contain ZZZ markers,
+are not in state that is ready to be consumed.
+These modifications started on 2025 July 27,
+and will probably continue for around two weeks.
+During that time, we advise you to look at
+@emph{earlier} versions of this guide.
+
 @menu
-* Introduction::    General overview.
-* Filenames::       File naming conventions.
-* Using mmc::       Compiling and linking programs with the Mercury compiler.
-* Running::         Execution of programs built with the Mercury compiler.
-* Using Mmake::     ``Mercury Make'', a tool for building Mercury programs.
-* Libraries::       Creating and using libraries of Mercury modules.
-* Debugging::       The Mercury debugger @samp{mdb}.
-* Profiling::       Analyzing the performance of Mercury programs.
-* Invocation::      List of options for the Mercury compiler.
+* Introduction::        General overview.
+* Filenames::           File naming conventions.
+* Introduction to mmc:: Introduction to compiling Mercury program
+* Grades::              Mercury grades
+* Running::             Runninng Mercury programs
+* Compilation details:: The Mercury compilation process in detail
+* Using Mmake::         ``Mercury Make'', a tool for building Mercury programs.
+* Libraries::           Creating and using libraries of Mercury modules.
+* Debugging::           The Mercury debugger @samp{mdb}.
+* Profiling::           Analyzing the performance of Mercury programs.
+* Invocation::          List of options for the Mercury compiler.
 * Environment::     Environment variables used by the compiler and utilities.
-* Diagnostic output:: Controlling some aspects of compiler diagnostics.
-* C compilers::     How to use a C compiler other than GNU C.
+* Diagnostic output::   Controlling some aspects of compiler diagnostics.
+* C compilers::         How to use a C compiler other than GNU C.
 * Foreign language interface:: Interfacing to other programming
-		    languages from Mercury.
+                    languages from Mercury.
 * Stand-alone interfaces:: Calling procedures in Mercury libraries from
                            programs written in other languages.
 * Index::
@@ -166,7 +177,7 @@ The second is that targeting C yields the fastest executables.
 @cindex File extensions
 @cindex File names
 
-Mercury source files must have a name that ends with the @file{.m} @file{.m} extension.
+Mercury source files must have a name that ends with the @file{.m} extension.
 Each other kind of files (documented below) is identified by its own extension.
 
 For source files,
@@ -203,7 +214,8 @@ This is just in case you are interested.
 You don't actually need to know anything about them;
 if you want, you can skip now to the next chapter.
 
-@heading Interface files
+@node Interface files
+@section Interface files
 
 Files whose names end in
 @file{.int}, @file{.int2}, @file{.int0} and @file{.int3} are interface files.
@@ -248,7 +260,8 @@ that imports @samp{module_a} @emph{indirectly}.
 
 @end itemize
 
-@heading Optimization files
+@node Optimization files
+@section Optimization files
 
 Files whose names end in
 @file{.opt} and @file{.trans_opt}
@@ -274,7 +287,8 @@ and are created using the @samp{--make-transitive-optimization-interface}
 
 @end itemize
 
-@heading Timestamp files
+@node Timestamp files
+@section Timestamp files
 
 Since the interface of a module changes less often than its implementation,
 the @file{.int}, @file{.int0}, @file{.int2}, @file{.int3}, @file{.opt},
@@ -291,7 +305,8 @@ for both @file{.int} and @file{.int2} files.)
 The Mercury implementation uses these timestamp files
 when deciding whether the files they represent need to be rebuilt.
 
-@heading Mmakefile fragment files
+@node Mmakefile fragment files
+@section Mmakefile fragment files
 
 The @samp{mmake} build tool
 gets the information it needs about the program being built
@@ -317,7 +332,8 @@ when @samp{mmc} is invoked with @samp{--generate-dependencies}
 @file{.d} files contain information about a single module,
 and they are updated (if needed) by every recompilation of that module.
 
-@heading Files generated when targeting C
+@node Files generated when targeting C
+@section Files generated when targeting C
 
 @itemize
 
@@ -362,7 +378,8 @@ They are intended to be @code{#included} only by C source files
 that are generated automatically by the Mercury compiler.
 @end itemize
 
-@heading Files generated when targeting Java
+@node Files generated when targeting Java
+@section Files generated when targeting Java
 
 @itemize
 @item @file{.java} files are Java source code,
@@ -370,7 +387,8 @@ that are generated automatically by the Mercury compiler.
 @item @file{.jar} files are Java archives.
 @end itemize
 
-@heading Files generated when targeting C#
+@node Files generated when targeting c#
+@section Files generated when targeting c#
 
 @c when we support shared libraries on Windows .dll will also be used for them.
 @itemize
@@ -396,71 +414,596 @@ that are generated automatically by the Mercury compiler.
 
 @c ----------------------------------------------------------------------------
 
-@node Using mmc
-@chapter Using the Mercury compiler
-@cindex Microsoft Management Console
+@node Introduction to mmc
+@chapter Introduction to compiling Mercury programs
 
-The Mercury compiler is called @samp{mmc}
-(for ``Melbourne Mercury Compiler'').
 @pindex mmc
-Some of its options (e.g.@: @samp{-c}, @samp{-o}, and @samp{-I})
-have a similar meaning to that in other compilers.
+The Mercury compiler is called @command{mmc},
+which stands for ``Melbourne Mercury Compiler''.
 
-(Note that on Microsoft Windows systems,
-the name @samp{mmc} is also used by the executable
+@cindex Microsoft Management Console
+Note that on Microsoft Windows systems,
+the name @command{mmc} is also used by the executable
 for the Microsoft Management Console.
 To avoid the name clash on these systems,
 you can either invoke the Mercury compiler
-by the alternative name @samp{mercury},
+by its alternative name @samp{mercury},
 or adjust your @env{PATH} to ensure that
-the Mercury @file{bin} directory precedes the Windows system directory.)
+the Mercury @file{bin} directory precedes the Windows system directory.
 
-Arguments to @samp{mmc} may be either
-file names (all non-option arguments ending in @samp{.m}),
-or module names (all other non-option arguments).
-For a module name such as @samp{foo.bar.baz},
-the compiler will look for the source in the file named @file{foo.bar.baz.m}.
-To make the compiler look for a module in another file,
-use @samp{mmc -f @var{sources-files}},
-where @var{sources-files} is the list of source files in the directory,
-to generate a mapping from module name to file name
-(@pxref{Options that give the compiler its overall task}).
-That command will put the mapping into a file named @file{Mercury.modules},
-where all later invocations of use @samp{mmc} will look for it.
+@node Mmc arguments
+@section Mmc arguments
 
-Any argument to @samp{mmc} that has the form @samp{@@file}
+Any useful invocation of @command{mmc}
+will specify one or more command line arguments.
+How the compiler treats each argument depends on its form.
+
+@itemize
+@item
+Any command line argument that starts with @samp{-}
+specifies one or more @emph{options}.
+@item
+Any command line argument that starts with @samp{@@}
+is a shorthand for a list of other arguments.
+@item
+Any command line argument
+that does not start with either @samp{=} or @samp{@@}
+will be treated either as the argument of an option
+(if it immediately follows an option that takes an argument),
+or as the name of a file or of a module
+(if it does not immediately follow an option that takes an argument).
+The compiler assumes that arguments ending in @samp{.m} are file names,
+while all other arguments are module names.
+@end itemize
+
+@node Option arguments
+@subsection Option arguments
+
+The Mercury compiler follows the usual conventions around options.
+(Some of its options (e.g.@: @samp{-c}, @samp{-o}, and @samp{-I})
+have a similar meaning to that in compilers for other languages, 
+though of course most are specific to Mercury.)
+
+Like most other Unix programs,
+it supports both short (single-character) and long option names.
+
+On command lines, an option argument that starts with @samp{--}
+specifies a single long option.
+while an option argument that starts with only a single @samp{-}
+specifies one or more short options.
+For example, @samp{-v} asks the compiler to be verbose,
+printing a message each time it starts a new phase of the compilation process,
+while @samp{-w} asks it not to print any warnings.
+
+Some options do not take arguments (we call such @dfn{flags}), while some do.
+Single-letter flags may be grouped with a single @samp{-},
+so that e.g.@: users can ask for both verbose output and no warnings
+either by giving each short option in separate arguments, as in @samp{-v -w},
+or by giving them together in one argument, as in @samp{-vw}.
+This cannot be done with long option names:
+a single argument can specify just one long option name.
+
+All options that have a short name have a long name as well,
+and it does not matter which one is used.
+For example, @samp{-v} is interchangeable with @samp{--verbose},
+and @samp{-w} is interchangeable with @samp{--inhibit-warnings"}.
+
+In addition, many options have two or more long names.
+There are two common reasons for these synonyms.
+The reason why the option @samp{intermodule-optimization}
+can also be specified as @samp{intermodule-optimisation}
+is to allow users to choose either American or British spelling as they wish.
+And the reason why that same option
+can also be specified as @samp{intermod-opt}
+is to reduce the amount of typing required.
+
+Flag options specify a boolean value:
+they either ask for something specific to be done,
+or they ask for that specific something not to be done.
+Single-letter flags may be negated
+by appending a trailing @samp{-} after the short option name,
+as in e.g.@: @samp{-v-}.
+(You cannot both group @emph{and} negate single-letter flags at the same time.)
+Long flags may be negated by preceding them with @samp{no-},
+as in e.g.@: @samp{--no-verbose}.
+
+Other options specify integer or string values.
+For these options, the value can be specified
+in the same argument as the option name,
+following it immediately (if the option name is a short name),
+or separate from it by an equal sign (if the option name is a long name).
+Or it can be in the next argument.
+For example, the requested optimization level, which is an integer,
+can be specified as either as @samp{-O3} or as @samp{-O 3},
+using the short name of that option,
+or as @samp{--optimization-level=3} or as @samp{--optimization-level 3}
+using the long name of that option.
+The name of the color scheme to be used for diagnostics, which a string,
+can be specified
+either as @samp{--color-scheme=light16}
+or as @samp{--color-scheme light16}.
+
+Some options specify an @emph{optional} integer or string value.
+For example, you can specify the maximum line width
+as @samp{--max-error-line-width=71},
+or you can ask line widths to be unlimited
+with a @samp{no-} prefix instead of a value,
+as in @samp{--no-max-error-line-width},
+
+Some options let users specify a @emph{list} of strings, one string at a time,
+with each occurrence of the option adding one string to the end of the list.
+For example, the options @samp{--search-directory=foo --search-directory=bar}
+tell the compiler to the list of directories to be searched
+when looking for e.g.@: interface files @ref{Interface files}.
+(The default value of that lists consists of just the current directory.)
+Negating the option name, e.g.@: with @samp{--no-search-directory},
+clears the list, i.e.@: sets it to the empty list.
+
+All option names, both short and long, are case-sensitive.
+For example, the meanings of @samp{-e} and @samp{-E} are totally unrelated.
+
+@node @@filename arguments
+@subsection @@filename arguments
+
+Any command line argument that has the form @samp{@@filename}
 will be replaced with the contents of the named file.
 That contents should be a list of arguments,
 with one argument per line.
 This argument processing is done recursively,
-so that some of these arguments may also have the form @file{file},
-though of course such a file should never include itself
-either directly or indirectly.
+so that some of these arguments may also have the form @file{@@file}.
 
-There are two ways to compile a program that consists of a single source file.
-The first way, which works only when targeting C,
-is to issue the command
+Fairly obviously, a file named in an @samp{@@file} argument
+should never include itself, either directly or indirectly.
+The compiler will generate an error message
+for any file that violates this rule.
+
+Since @samp{@@filename} arguments are just shorthand
+for a list of other arguments,
+in the rest of this user guide
+we will usually classify all command line arguments
+as either option or non-option arguments,
+with the latter including only file names and module names.
+
+@node File name and module name arguments
+@subsection File name and module name arguments
+
+Non-option arguments can be either
+file names (if they end in @samp{.m})
+or modules names (if they don't).
+
+The compiler can convert module names to file names in one of two ways.
+In the absence of a file named @file{Mercury.modules} in the current directory,
+it relies on each module being stored in a file
+whose name is just the module name followed by @samp{.m}.
+For a module named e.g.@: @code{foo.bar.baz},
+it expects to find it in @file{foo.bar.baz.m}.
+@c Until commit a618ab31e16de507b66c4c0978a9b9f0c0fa2818 on 2020 jan 12,
+@c mmc also searched for module foo.bar.baz in bar.baz.m and baz.m as well.
+
+If any program of the program does not meet this requirement,
+then users must create a @file{Mercury.modules} file,
+which contains a map from module names to file names.
+This can be created using a command such as @code{mmc -f *.m}
+if that all the modules of the program are in the current directory.
+(@pxref{Options that give the compiler its overall task}).
+In the presence of the @file{Mercury.modules} file,
+the compiler will of course get the file name corresponding to a module name
+by looking up the module name in this file.
+
+@c Arguments to @samp{mmc} may be either
+@c file names (all non-option arguments ending in @samp{.m}),
+@c or module names (all other non-option arguments).
+@c For a module name such as @samp{foo.bar.baz},
+@c the compiler will look for the source
+@c in the file named @file{foo.bar.baz.m}.
+@c To make the compiler look for a module in another file,
+@c use @samp{mmc -f @var{sources-files}},
+@c where @var{sources-files} is the list of source files in the directory,
+@c to generate a mapping from module name to file name
+@c That command will put the mapping into a file named @file{Mercury.modules},
+@c where all later invocations of use @samp{mmc} will look for it.
+
+@node Compiling single-module programs
+@section Compiling single-module programs
+
+Given a Mercury program that consists of single module,
+which is stored in a file named e.g.@: @file{prog.m},
+you can compile it using the command
 
 @example
-mmc @var{filename}.m
+mmc @code{prog.m}
 @end example
 
-The second way, which works regardless of target language,
-is to issue the command
+or, more generally,
 
 @example
-mmc --make @var{filename}
+mmc @var{list of options} @code{prog.m}
 @end example
 
-There are also two ways to build programs
-that consist of more than one source file:
-using Mmake (@pxref{Using Mmake}), which only works when targeting C,
-or using @samp{mmc --make}.
+If the single module inside @file{prog.m} is also named @file{prog},
+then you can also compile it using
 
-We strongly recommend that programmers use @samp{mmc --make}
-rather than invoking @samp{mmc} directly,
-because @samp{mmc --make} is generally easier to use
-and avoids unnecessary recompilation.
+@example
+mmc @var{list of options} @code{prog}
+@end example
+
+which specifies the module name, not the (matching) file name.
+
+@node Compiling multi-module programs
+@section Compiling multi-module programs
+
+Compiling a program that consists of more than one module
+is a more complex task than
+compiling a program that consists of just one module,
+because it requires managing the connections between modules,
+and it requires keeping to the minimum the number of files to be recompiled
+with just a subset of the modules of the program is changed.
+
+@c Specifically, it requires managing how one module, say module @samp{A},
+@c accesses the entities exported by another module, say module @samp{B}.
+
+@node Managing connections between modules
+@subsection Managing connections between modules
+
+A Mercury module's source file contains
+both the interface and the implementation sections of that module.
+Given a module @var{A} which imports module @var{B},
+when compiling module @var{A},
+the compiler needs to know what entities (types, predicates, functions etc)
+module @var{B} exports.
+It could do that by reading module @var{B}'s source file
+and extracting its interface part.
+However, given that the interface of a module
+tends to be much more stable than its implementation,
+that would be incredibly wasteful:
+it would compute @var{B}'s interface, many, many times,
+getting the same result between each pair of changes to @var{B}'s interface.
+It is far more efficient to store @var{B}'s interface in a file,
+which only ever needs to be updated when @var{B}'s source module changes,
+and does so in way that @emph{affects its interface}.
+
+@c In programming languages which do not have an explicit module system,
+@c the role of module interfaces is taken by hand writen files,
+@c with the most frequently-seen example being @emph{header files} in C.
+
+In C and in some programming languages based on it,
+hand-written header files (@file{.h} files)
+usually store the interface of the source file (@file{.c} file)
+with the same base name.
+Mercury programming uses a similar file, the @file{.int} file,
+with the difference being that
+a module's @file{.int} file is @emph{not} hand-written,
+but is derived from the module's source file by the Mercury compiler.
+
+In fact, due to Mercury's module system
+being substantially more expressive than C's
+(not hard when C does not actually @emph{have} an explicit module system),
+each module module has three or four @emph{interface} files, not just one.
+@itemize
+@item
+@file{.int} files play the same role as C's @file{.h} files:
+they list the entities (types, insts, modes, typeclasses, instances,
+predicates, functions, and some others) that this module makes available
+to the other modules that import it.
+@item
+@file{.int2} files contain the subset of the information in @file{.int} files,
+the subset which the compiler needs from indirectly imported modules.
+(If module @var{A} imports module @var{B}
+and module @var{B} imports module @var{C},
+but module @var{A} contains
+no @code{:- import_module} or @code{:- use_module} declaration
+for module @var{C}, then
+module @var{A} imports module @var{C} @emph{indirectly}.)
+@item
+@file{.int3} files contain just the names of the types, insts, modes,
+typeclasses and instances exported by the module.
+The compiler needs these files to construct @file{A.int} and @file{A.int2}
+in the frequent case that
+module @var{A}'s interface uses a type named @var{foo}
+(maybe as the type of a predicate argument)
+that it does not define.
+If module @var{A}'s interface imports two modules, @var{B} and @var{C},
+the compiler needs to know for each of those modules
+whether they define a type named @var{foo},
+so it can put either @var{B.foo} @var{C.foo} as the type of that argument
+into e.g.@: @file{a.int} if just one of them defines it,
+and so that it can generate an error if either neither or both define it.
+@item
+@file{.int0} files contain the declarations of the entities
+that a module that includes submodules
+exports @emph{just} to those submodules, and to nowhere else.
+This includes entities such as predicates and functions
+that are declared in the implementation section of the parent module.
+Only parent modules, i.e.@: modules that include submodules,
+have @file{.int0} files;
+non-parent modules no dot.
+@end itemize
+
+As you may guess from that description,
+managing Mercury interface files is not trivial.
+It is not hard either, as shown by ZZZ @c ref,
+but it is even simpler to leave their management to automatic build tools.
+These build tools also take care of another issue:
+separate compilation.
+
+When C programmers update a header file,
+they must also recompile all the C source files
+that depend on that header file.
+Manually keeping track of @emph{which} source files these are
+is possible in theory, but very tedious, and extremely error-prone.
+This is even more true for Mercury.
+Yet the one simple but guaranteed-to-work method, recompiling everything,
+can slow down the think-edit-compile-test cycle to an unreasonable degree.
+Unlike humans, automatic build tools can be trusted
+to recompile only the modules that need recompilation,
+reusing the results of previous compilations whereever possible.
+
+The Mercury implementation supports two automatic build tools:
+@command{mmake}, and @command{mmc --make}.
+As their names imply, both are intended to work
+like the traditional Unix build tool @command{make}.
+The next two sections describe them in turn.
+They each have strengths and weaknesses
+(for example, @command{mmake} supports only compilation to C,
+not to Java or C#),
+and they support different subsets of the available functionality,
+though the overlap (the set of features they both support) is large.
+We recommend that projects using Mercury pick one, and use it consistently.
+
+If you can, you should pick @command{mmc --make},
+because this is the build tool
+that is likely to receive more development in the future.
+
+You can also use both tools, each for different parts of the same project,
+such as using @command{mmc --make} for the Mercury parts
+and @command{mmake} for typing those parts to the non-Mercury parts,
+but in general, you should do this only if you have to.
+
+@c We strongly recommend that programmers use @samp{mmc --make}
+@c rather than invoking @samp{mmc} directly,
+@c because @samp{mmc --make} is generally easier to use
+@c and avoids unnecessary recompilation.
+
+@node Introduction to mmake
+@subsection Introduction to mmake
+
+The Mercury build tool that was implemented first is @command{mmake},
+whose name is short for ``Mercury make''.
+If you have Mercury program containing three modules,
+maybe called @file{main_module.m}, @file{module_a.m} and @file{module_b.m},
+with the @code{main} predicate being in @file{main_module.m},
+you can use these commands to compile a program:
+
+@example
+mmc -f *.m
+mmake @var{main_module}.depend
+mmake @var{main_module}
+@end example
+
+The first step creates the @file{Mercury.modules} file
+that maps the name of each module inside each Mercury source file
+in the current directory to the name of the file containing it.
+It is not needed if all the modules are stored in files
+whose name is the module name plus the @file{.m} suffix.
+
+The second step creates some small files containing makefile fragments.
+These small files will include
+@file{mainmodule.dep} and @file{mainmodule.dv},
+which record whole-program-level information such as
+the intended executable name being @file{mainmodule}
+(@file{mainmodule.exe} on systems that use that extension, such as Windows),
+and the list of modules in this program.
+They will also one file with the suffix @file{.d}
+for each module in the program,
+with e.g.@: @file{module_a.d} recording which other modules 
+@file{module_a.m} imports.
+
+One important aspect of @file{.d} files is that
+every compilation of a Mercury module
+will implicitly update that module's @file{.d} file
+if its old contents are not up-to-date.
+This is not true for @file{.dep} and @file{.dep} files;
+those are updated only if you explicitly ask for it,
+e.g.@: via the second step command above.
+
+The third step then uses those small files
+to create all the necessary interface files in the proper order,
+to compile each Mercury module,
+and to then link the resulting object files together
+to yield the desired executable.
+
+In outline, @command{mmake} works by concatenating
+the set of makefile rules for Mercury compilation built into it,
+all the makefile fragments in
+@file{.dep}, @file{.dv} and @file{.d} files in the current directory,
+and the file named @file{Mmakefile} if it exists,
+@c I (zs) don't think we should mention here
+@c the fact that you can name this file "Mmake" instead, 
+@c since this would introduce an ambiguity.
+and invoking @command{gmake} on it,
+passing it the targets or targets that it itself was given.
+(@command{gmake} is the GNU version
+of the standard Unix @command{make} program.)
+
+This close relationship to @command{gmake}
+allows @command{mmake} to be used to control
+not just the compilation of Mercury code,
+but also the building of any other file,
+provided only that one can write makefile rules for their construction.
+
+Many small Mercury projects don't really need an @file{Mmakefile},
+but they have one anyway, usually looking something like this:
+
+@example
+PROGRAM_NAME = prog
+
+.PHONY: default_target
+default_target: $(PROGRAM_NAME)
+
+.PHONY: depend
+depend: Mercury.modules $(PROGRAM_NAME).depend
+
+Mercury.modules: $(wildcard *.m)
+        mmc -f $(wildcard *.m)
+
+.PHONY: install
+install:
+        test -d $(INSTALL_DIR) || mkdir -p $(INSTALL_DIR)
+        cp $(PROGRAM_NAME) $(INSTALL_DIR)
+
+.PHONY: clean
+clean:  $(PROGRAM_NAME).clean
+@end example
+
+If you have an @file{Mmakefile} like this, you can then type just
+
+@example
+mmake depend
+@end example
+
+instead of
+
+@example
+mmc -f *.m
+mmake @var{main_module}.depend
+@end example
+
+and you can type just
+
+@example
+mmake
+@end example
+
+instead of
+
+@example
+mmake @var{main_module}
+@end example
+
+And obviously, the @file{Mmakefile}
+also shortens the command you need to give to install the program, or
+to clean up the directory by deleting the automatically regenerable files.
+
+For more information on how to use this tool,
+please see @ref{Using Mmake}.
+
+@node Introduction to mmc --make
+@subsection Introduction to mmc --make
+
+The second Mercury build tool is @command{mmc --make},
+which, as the name says,
+integrates the functionality of a make-like build tool
+into the Mercury compiler.
+
+Like @command{mmake},
+@command{mmc --make} needs access
+to the module-name-to-file-name map in @file{Mercury.modules}
+if some module in the program is stored in a file
+whose name does not match the module name,
+which means that the first step in buildin an executable
+is usually @command{mmc -f *.m}.
+Unlike @command{mmake},
+when @command{mmc --make} is asked to build an executable for a program
+given the name of its main module,
+it can itself find out the the dependencies (importer-imported relationships)
+between the modules of the program;
+it does not need previously-built files
+containing makefile fragments to give it this information.
+It therefore has no need for any equivalent of the
+@command{mmake @var{main_module}.depend} command.
+
+This allows an executable to be built with just these two commands:
+
+@example
+mmc -f *.m
+mmc --make @var{main_module}
+@end example
+
+It also gives @command{mmc --make} a subtle advantage over @command{mmake}:
+while @command{mmake} uses (because it has to)
+module-to-module dependency information that was current
+when the relevant modules' were last (re)compiled
+(because that is when their @file{.d} files were last updated),
+@command{mmc --make} always uses @emph{current} dependency information,
+because it gets that information
+from the current versions of the modules' source files.
+Most of the time, the difference does not matter,
+for one of several reasons:
+
+@itemize
+@item
+because most changes to Mercury modules do not affect
+their @code{:- import_module} and @code{:- use_module} declarations;
+@item
+because deleting an @code{:- import_module} or @code{:- use_module}
+declaration cannot lead to obsolete versions of interface files being read
+(since they lead to @emph{fewer} interface files being read);
+@item
+because when an @code{:- import_module} and @code{:- use_module}
+declaration is added,
+which @emph{can} lead to obsolete versions of the interface files
+of the newly-imported modulees ubeing read,
+those interface files have a reasonably probability
+of of being brought up to date
+before being needed by the module that added the new import,
+due to some @emph{other} module already depending on them; and
+@item
+because a nontrivial fraction of the time,
+the part of the interface file that bringing it up-to-date would change
+is of no relevance to the newly-importing module.
+@end itemize
+
+Most of the time, one or more of mitigating circumstances apply.
+However, sometimes none of them do.
+In such cases, using @command{mmake} to build the selected target will fail,
+with the failure being caused by @command{mmake}'s reliance
+on out-of-date dependency information
+(this could mean e.g. @command{mmake} not knowing that
+it must update the @file{.int} file of a newly-imported module
+before generating target language code for the importing module).
+In pretty much all of the usual scenarios, the attempt to build the target
+will cause the out-of-date dependency information to be updated,
+so the @emph{nect} attempt to build that same target will succeed.
+Nevertheless the failure of the first attempt is usually annoying.
+
+Such transient failures won't happen with @command{mmc --make},
+because it @emph{always} works with up-to-date dependency information.
+
+@c Another difference between @command{mmake} and @command{mmc --make}
+@c is that by default, the former puts all the intermediate files it generates
+@c (interface files, optimization files, target language files, and so on)
+@c into the current directory, which usually leads to a lot of clutter.
+@c By contrast, @command{mmc --make} avoids this clutter
+@c by putting all intermediate files
+@c into a separate directory named @file{Mercury}.
+@c In fact, it minimizes clutter even inside the @file{Mercury} directory,
+@c by putting e.g.@:
+@c @itemize
+@c @item all @file{.int3} files into the @file{Mercury/int3s} subdirectory,
+@c @item all @file{.int} files into the @file{Mercury/ints} subdirectory,
+@c @item all @file{.c} files into the @file{Mercury/cs} subdirectory,
+@c @end itemize
+@c and so on.
+
+@c You can also choose to use this file organization with @command{mmake}
+@c by setting the makefile variable @code{MMAKE_USE_SUBDIRS} to @code{yes}.
+
+For more information on @command{mmc --make},
+please see ZZZ @c @ref
+
+@c ----------------------------------------------------------------------------
+
+@node Grades
+@chapter Mercury grades
+
+ZZZ TODO
+
+@c ----------------------------------------------------------------------------
+
+@node Running
+@chapter Running Mercury programs
+
+ZZZ TODO
 
 When targeting C on systems that do not require an executable file extension,
 @samp{mmc} will put the executable into a file called @file{@var{filename}};
@@ -495,10 +1038,15 @@ variable @var{MERCURY_JAVA_OPTIONS} in the environment.
 Classpath settings made using @samp{mmc}'s @samp{--java-classpath} option will
 also be included in the generated launcher shell script or batch file.
 
+@c ----------------------------------------------------------------------------
+
+@node Compilation details
+@chapter The Mercury compilation process in detail
+
 If you use Mmake or @samp{mmc --make},
 then you do not need to understand the details
 of how the Mercury implementation goes about building programs.
-Thus you may wish to skip the rest of this chapter.
+Thus you may wish to skip this chapter.
 
 To compile a source file to object code via C without creating an executable,
 use the command
@@ -627,8 +1175,9 @@ For the full set of options of @samp{mmc}, see @ref{Invocation}.
 
 @c ----------------------------------------------------------------------------
 
-@node Running
-@chapter Running programs
+@c ZZZ
+@c @node Running
+@c @chapter Running programs
 
 Once you have created an executable for a Mercury program,
 you can go ahead and execute it.
@@ -1262,8 +1811,8 @@ mmc --make --install-prefix <dir> libmypackage.install
 @samp{mmc} will create the directory @samp{<dir>/lib/mercury} and install the
 library there.
 The library will be compiled in all valid grades and with all interface files.
-Because several grades are usually compiled, installing the library can be a lengthy
-process.
+Because several grades are usually compiled,
+installing the library can be a lengthy process.
 You can specify the set of installed grades using the option
 @samp{--no-libgrade} followed by @samp{--libgrade <grade>} for all grades you
 wish to install.
@@ -1568,12 +2117,12 @@ file whose name has the form @file{@var{library-name}.jar}.
 @section Libraries and the C# grade
 @cindex C# libraries
 
-To create or install a library in the C# grade, specify that you want to use the
-C# grade and use @samp{mmc --make}.
+To create or install a library in the C# grade,
+specify that you want to use the C# grade and use @samp{mmc --make}.
 Mmake does @emph{not} support C# targets.
 
-Libraries are complied to a dynamic link library assembly whose name has the
-form @file{@var{library-name}.dll}.
+Libraries are complied to a dynamic link library assembly
+whose name has the form @file{@var{library-name}.dll}.
 
 @c ----------------------------------------------------------------------------
 
@@ -1960,7 +2509,8 @@ The path associated with the event specifies which negation goal this is.
 
 @cindex path
 @cindex goal path
-A goal path is a sequence of path components separated by semicolons.
+A goal path is a sequence of path components,
+each of which is followed by a semicolon.
 Each path component is one of the following:
 
 @table @code
@@ -1983,7 +2533,7 @@ The goal inside an existential quantification or other scope
 that changes the determinism of the goal.
 @item q
 The goal inside an existential quantification or other scope
-that doesn't change the determinism of the goal.
+that does not change the determinism of the goal.
 @end table
 
 A goal path describes the position of a goal
@@ -2648,16 +3198,16 @@ the types of that event's non-synthesized attributes.
 Given that B and N are integers and L is a list of integers,
 these event goals are fine,
 @example
-	event nodiag_fail("N - B", B, N, list.length, list.sort, [N | L]),
-	event safe_test([1, 2, 3])
+        event nodiag_fail("N - B", B, N, list.length, list.sort, [N | L]),
+        event safe_test([1, 2, 3])
 @end example
 but these goals
 @example
-	event nodiag_fail("N - B", B, N, list.sort, list.length, [N | L]),
-	event nodiag_fail("N - B", B, list.length, N, list.sort, [N | L]),
-	event safe_test([1], [2])
-	event safe_test(42)
-	event nonexistent_event(42)
+        event nodiag_fail("N - B", B, N, list.sort, list.length, [N | L]),
+        event nodiag_fail("N - B", B, list.length, N, list.sort, [N | L]),
+        event safe_test([1], [2])
+        event safe_test(42)
+        event nonexistent_event(42)
 @end example
 will all generate errors.
 
@@ -3172,12 +3722,12 @@ and display information about where the term was bound.
 Note that this command just invokes a script that is equivalent to running
 the following sequence of commands:
 @example
-	dd
-	browse @var{num}
-	cd @var{termpath}
-	track
-	info
-	pd
+        dd
+        browse @var{num}
+        cd @var{termpath}
+        track
+        info
+        pd
 @end example
 @end table
 
@@ -3564,8 +4114,8 @@ The option @samp{-p} (or @samp{--prettyprint}) causes the exception value
 to be output in a pretty-printed form.
 The option @samp{-x} (or @samp{--xml}) causes the output to be in XML.
 @sp 1
-@item dump [-pqx] @var{name} @var{filename}
-@itemx dump [-pqx] @var{num} @var{filename}
+@item dump [-pqx] @var{name}[@var{termpath}] @var{filename}
+@itemx dump [-pqx] @var{num}[@var{termpath}] @var{filename}
 Writes the value of the variable in the current environment
 with the given ordinal number or with the given name to the specified file,
 and outputs a message announcing this fact
@@ -3573,6 +4123,8 @@ unless the option @samp{-q} (or @samp{--quiet}) was given.
 The option @samp{-p} (or @samp{--prettyprint}) causes the variable's value
 to be output in a pretty-printed form.
 The option @samp{-x} (or @samp{--xml}) causes the output to be in XML.
+If the name or number is followed by a term path such as "^2",
+then only the specified subterm of the given variable is dumped.
 @sp 1
 @item open @var{term}
 Save @var{term} to a temporary file and open the file in an editor.
@@ -6583,10 +7135,10 @@ are below the exclusion contour.
 Here is an example of an exclusion contour file.
 
 @example
-all		bag
-all		list
-all		map
-internal	set
+all             bag
+all             list
+all             map
+internal        set
 @end example
 
 @node Using threadscope
