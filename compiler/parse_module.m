@@ -1327,11 +1327,11 @@ parse_first_module_decl(FileString, FileStringLen,
         !SeqNumCounter, !LineContext, !LinePosn) :-
     mercury_term_parser.read_term_from_linestr(!.SourceFileName,
         FileString, FileStringLen, !LineContext, !LinePosn, FirstReadTerm),
-    % We can pass a dummy module name to read_term_to_iom_result
-    % because the two kinds of item_or_markers that we do not return
-    % for reprocessing are src file pragmas and ":- module" declarations,
-    % which contain neither sym_names to be module qualified, nor
-    % any error_specs that may contain the module name.
+    % We can pass a dummy module name to read_term_to_iom_result because
+    % - there are only two kinds of item_or_markers that we do not return
+    %   for reprocessing, src file pragmas and ":- module" declarations, and
+    % - these contain neither sym_names to be module qualified, nor
+    %   any error_specs that may contain the module name.
     DummyDefaultModuleName = unqualified(""),
     read_term_to_iom_result(DummyDefaultModuleName, !.SourceFileName,
         FirstReadTerm, MaybeFirstIOM, !SeqNumCounter),
