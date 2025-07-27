@@ -4837,7 +4837,7 @@ det_remove_suffix(String, Suffix) = Prefix :-
     ( if remove_suffix(String, Suffix, PrefixPrime) then
         Prefix = PrefixPrime
     else
-        unexpected($pred, "string does not have given suffix")
+        unexpected($pred, "string does not have the given suffix")
     ).
 
 remove_suffix_if_present(Suffix, String) = Out :-
@@ -5722,7 +5722,9 @@ base_positive_int_accumulator(Base) = Pred :-
     else if 2 =< Base, Base =< 36 then
         Pred = accumulate_int(Base)
     else
-        unexpected($pred, "base is not in the range 2 .. 36")
+        string.format("the base must be between 2 and 36; %d is not",
+            [i(Base)], Msg),
+        unexpected($pred, Msg)
     ).
 
 :- pred accumulate_int(int::in, char::in, int::in, int::out) is semidet.
@@ -5751,7 +5753,9 @@ base_negative_int_accumulator(Base) = Pred :-
     else if 2 =< Base, Base =< 36 then
         Pred = accumulate_negative_int(Base)
     else
-        unexpected($pred, "base is not in the range 2 .. 36")
+        string.format("the base must be between 2 and 36; %d is not",
+            [i(Base)], Msg),
+        unexpected($pred, Msg)
     ).
 
 :- pred accumulate_negative_int(int::in, char::in,
@@ -5806,7 +5810,9 @@ base_uint_accumulator(Base) = Pred :-
     else if 2 =< Base, Base =< 36 then
         Pred = accumulate_uint(uint.det_from_int(Base), Base)
     else
-        unexpected($pred, "base is not in the range 2 .. 36")
+        string.format("the base must be between 2 and 36; %d is not",
+            [i(Base)], Msg),
+        unexpected($pred, Msg)
     ).
 
 :- pred accumulate_uint(uint::in, int::in, char::in, uint::in, uint::out)
@@ -5982,7 +5988,9 @@ int_to_base_string(N, Base, Str) :-
     ( if 2 =< Base, Base =< 36 then
         true
     else
-        unexpected($pred, "invalid base")
+        string.format("the base must be between 2 and 36; %d is not",
+            [i(Base)], Msg),
+        unexpected($pred, Msg)
     ),
     % Note that in order to handle MININT correctly, we need to do the
     % conversion of the absolute number into digits using negative numbers.
@@ -6021,7 +6029,9 @@ int_to_base_string_group(N, Base, GroupLength, Sep) = Str :-
     ( if 2 =< Base, Base =< 36 then
         true
     else
-        unexpected($pred, "invalid base")
+        string.format("the base must be between 2 and 36; %d is not",
+            [i(Base)], Msg),
+        unexpected($pred, Msg)
     ),
     % Note that in order to handle MININT correctly, we need to do
     % the conversion of the absolute number into digits using negative numbers.
