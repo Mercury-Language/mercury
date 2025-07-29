@@ -184,6 +184,15 @@ include Mercury.options
 %.runtest: %.res ;
 
 #-----------------------------------------------------------------------------#
+#
+# Note that the "|| { grep . $@ /dev/null; exit 1; }" at the ends of actions
+# prints the contents of the (presumably incomplete) .out file
+# if the process of building the .out file fails.
+# (The grep is executed only if the command before the || fails,
+# $@ expands to the target (left hand side) of the rule, i.e. the .out file,
+# "grep ." matches every line, and the '/dev/null' tells grep to print
+# the file name before each line.)
+#
 
 aadebug.out: aadebug aadebug.inp
 	$(MDB_STD) ./aadebug < aadebug.inp > aadebug.out 2>&1 \
