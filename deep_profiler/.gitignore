@@ -46,11 +46,13 @@ mdbcomp.m
 mdbcomp.goal_path.m
 prim_data.m
 program_representation.m
+read_trace_counts.m
 rtti_access.m
 shared_utilities.m
 slice_and_dice.m
 sym_name.m
 trace_counts.m
+write_trace_counts.m
 mdbcomp.int0
 mdbcomp.date0
 .deep_tags

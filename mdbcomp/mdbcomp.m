@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014, 2016, 2018 The Mercury team.
+% Copyright (C) 2014, 2016, 2018, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -36,11 +36,13 @@
 :- include_module goal_path.
 :- include_module prim_data.
 :- include_module program_representation.
+:- include_module read_trace_counts.
 :- include_module rtti_access.
 :- include_module shared_utilities.
 :- include_module slice_and_dice.
 :- include_module sym_name.
 :- include_module trace_counts.
+:- include_module write_trace_counts.
 
 :- implementation.
 
@@ -78,18 +80,20 @@
 
 :- pred mercury_mdbcomp_module(string::in) is semidet.
 
-mercury_mdbcomp_module("mdbcomp.builtin_modules").
 mercury_mdbcomp_module("mdbcomp").
-mercury_mdbcomp_module("mdbcomp.feedback.automatic_parallelism").
+mercury_mdbcomp_module("mdbcomp.builtin_modules").
 mercury_mdbcomp_module("mdbcomp.feedback").
+mercury_mdbcomp_module("mdbcomp.feedback.automatic_parallelism").
 mercury_mdbcomp_module("mdbcomp.goal_path").
 mercury_mdbcomp_module("mdbcomp.prim_data").
 mercury_mdbcomp_module("mdbcomp.program_representation").
+mercury_mdbcomp_module("mdbcomp.read_trace_counts").
 mercury_mdbcomp_module("mdbcomp.rtti_access").
 mercury_mdbcomp_module("mdbcomp.shared_utilities").
 mercury_mdbcomp_module("mdbcomp.slice_and_dice").
 mercury_mdbcomp_module("mdbcomp.sym_name").
 mercury_mdbcomp_module("mdbcomp.trace_counts").
+mercury_mdbcomp_module("mdbcomp.write_trace_counts").
 
 %---------------------------------------------------------------------------%
 :- end_module mdbcomp.

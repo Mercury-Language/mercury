@@ -27,8 +27,10 @@
 :- implementation.
 
 :- import_module mdbcomp.
+:- import_module mdbcomp.read_trace_counts.
 :- import_module mdbcomp.shared_utilities.
 :- import_module mdbcomp.trace_counts.
+:- import_module mdbcomp.write_trace_counts.
 
 :- import_module bool.
 :- import_module getopt.
