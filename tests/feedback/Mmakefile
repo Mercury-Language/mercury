@@ -19,8 +19,19 @@ REPORTS = $(patsubst %,autopar_%,$(AUTOPAR_REPORTS))
 TESTS = $(patsubst %,%-nodepend,$(sort $(REPORTS)))
 include ../Mmake.common
 
-# Try to use the feedback tools in this workspace if available;
-# otherwise, use the tools in $PATH.
+# Before 2012 Jan 9, we used to always test the versions of
+# mdprof_create_feedback and mdprof_report_feedback in the current workspace.
+# Then, in commit 66176a407eb71790e8608bc0ee25b15cf67f6ddf, Paul added code
+# here to test the installed versions in PATH instead if the current workspace
+# did not have these executables. His log message says:
+#
+#   The feedback tests on goliath were failing. The problem is that
+#   the test suite is run without first building the workspace, and
+#   the mdprof_create_feedback and tools are not available.
+#
+# This is why we try to use the feedback tools in this workspace if available;
+# and otherwise, we use the tools in $PATH.
+
 FB_CREATE_WS = ../../deep_profiler/mdprof_create_feedback
 FB_REPORT_WS = ../../deep_profiler/mdprof_report_feedback
 
