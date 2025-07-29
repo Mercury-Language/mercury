@@ -79,7 +79,8 @@
                 error_col     :: int
             ).
 
-    % parse(Input, SkipWS, Parser, Result).
+    % parse(Input, SkipWS, Parser, Result):
+    %
     % Try to parse Input using Parser and SkipWS to consume whitespace.
     % If Parser succeeds then return ok with the parsed value,
     % otherwise return error. If there were any calls to fail_with_message
@@ -140,9 +141,9 @@
 
 :- type line_numbers.
 
-    % Compute a structure from the parser source which can be used to
-    % convert offsets into line numbers and positions in the file (this
-    % is useful for error reporting).
+    % Compute a structure from the parser source which can be used
+    % to convert offsets into line numbers and positions in the file
+    % (this is useful for error reporting).
     %
 :- func src_to_line_numbers(src) = line_numbers.
 
@@ -178,14 +179,15 @@
     %
 :- pred punct(string::in, src::in, unit::out, ps::in, ps::out) is semidet.
 
-    % keyword(IdChars, Keyword, Src, _, !PS) matches Keyword exactly (i.e., it
-    % must not be followed by any character in IdChars) and any subsequent
-    % whitespace.
+    % keyword(IdChars, Keyword, Src, _, !PS) matches Keyword exactly
+    % (i.e., it must not be followed by any character in IdChars)
+    % and any subsequent whitespace.
     %
 :- pred keyword(string::in, string::in, src::in, unit::out,
     ps::in, ps::out) is semidet.
 
-    % ikeyword(IdChars, Keyword, Src, _, !PS)
+    % ikeyword(IdChars, Keyword, Src, _, !PS):
+    %
     % Case-insensitive version of keyword/6.
     % Only uppercase and lowercase letters in the ASCII range (A-Z, a-z)
     % are compared case insensitively.
@@ -256,7 +258,7 @@
 %---------------------------------------------------------------------------%
 
 % Each basic parser combinators has a version that has a separate state
-% argument is threaded through the computation, for parsers that e.g.
+% argument threaded through the computation, for parsers that e.g.
 % incrementally construct a symbol table.
 
     % optional(P, Src, Result, !PS) returns Result = yes(X) if P(Src, X, !PS),
