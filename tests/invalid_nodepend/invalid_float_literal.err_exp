@@ -8,12 +8,12 @@ invalid_float_literal.m:019: Error: function [38;5;87m`foo8'/0[39;49m [38;5;2
 invalid_float_literal.m:020: Error: function [38;5;87m`foo9'/0[39;49m [38;5;203mhas no clauses.[39;49m
 invalid_float_literal.m:022: Error: function [38;5;87m`foo11'/0[39;49m [38;5;203mhas no clauses.[39;49m
 invalid_float_literal.m:023: Error: function [38;5;87m`foo12'/0[39;49m [38;5;203mhas no clauses.[39;49m
-invalid_float_literal.m:027: Syntax error at token `. ': unexpected token at
-invalid_float_literal.m:027:   start of (sub)term.
+invalid_float_literal.m:027: Syntax error at token `. ': expected a token that
+invalid_float_literal.m:027:   can start a (sub)term.
 invalid_float_literal.m:027: Syntax error: fractional part of float terminated
 invalid_float_literal.m:027:   by underscore.
-invalid_float_literal.m:029: Syntax error at token `. ': unexpected token at
-invalid_float_literal.m:029:   start of (sub)term.
+invalid_float_literal.m:029: Syntax error at token `. ': expected a token that
+invalid_float_literal.m:029:   can start a (sub)term.
 invalid_float_literal.m:029: Syntax error: the exponent cannot end with an
 invalid_float_literal.m:029:   underscore.
 invalid_float_literal.m:033: In clause head:

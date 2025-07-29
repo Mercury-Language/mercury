@@ -1611,16 +1611,7 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult, ReadIOMResult,
     ;
         ReadTermResult = error(ErrorMsg, LineNumber),
         Context = term_context.context_init(FileName, LineNumber),
-        % XXX Do we need to add an "Error:" prefix?
-        % Answer: only if we update all the values of ErrorMsg
-        % that the lexer and the parser can generate to avoid text
-        % that would clash with that. For example, we do not want to stick
-        % "Error:" in front of messages of the form "Syntax error: ...".
-        %
-        % XXX It would be nice to add color to ErrorMsg, but that would
-        % require making the representation of lexer and parser errors
-        % more complex than a simple string.
-        Pieces = [words(ErrorMsg), suffix("."), nl],
+        read_term_msg_to_pieces(ErrorMsg, Pieces),
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         ReadIOMResult = read_iom_parse_term_error(Spec)
     ;
@@ -1636,6 +1627,35 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult, ReadIOMResult,
             ReadIOMResult = read_iom_parse_item_errors(VarSet, Term, Specs)
         )
     ).
+
+:- pred read_term_msg_to_pieces(string::in, list(format_piece)::out) is det.
+
+read_term_msg_to_pieces(ErrorMsg, Pieces) :-
+    % NOTE: I (zs) originally tried to add newlines between sentences
+    % by breaking up ErrorMsg at periods, but that does not work, because
+    % it also catches the periods that are part of the end-of-term token.
+    % Splitting at \n characters is not subject to such false matches,
+    % and is more flexible, in that mercury_term_parser.m can put them
+    % where it wants them, not just at the end of every sentence.
+    % (Though we probably will never want to use this capability.)
+    %
+    % It would be nice to add color to ErrorMsg, but that would require
+    %
+    % - either making the representation of lexer and parser errors
+    %   more complex than a simple string,
+    %
+    % - or looking for patterns such as "Syntax error at A: expected
+    %   B, C, or D", so that we could color A red and B, C and D green.
+    %
+    % Neither seems worthwhile.
+    Lines = string.words_separator(unify('\n'), ErrorMsg),
+    list.map(line_to_pieces, Lines, LinePieceLists),
+    list.condense(LinePieceLists, Pieces).
+
+:- pred line_to_pieces(string::in, list(format_piece)::out) is det.
+
+line_to_pieces(Line, Pieces) :-
+    Pieces = [words(Line), nl].
 
 %---------------------------------------------------------------------------%
 

@@ -10,8 +10,8 @@
 % Main author: fjh.
 % Stability: high.
 %
-% This file contains a `stack' ADT.
-% Stacks are implemented here using lists.
+% This file contains a stack abstract data type.
+% The concrete representation of each stack is a list.
 %
 %---------------------------------------------------------------------------%
 
@@ -95,6 +95,8 @@
 :- func depth(stack(T)) = int.
 :- pred depth(stack(T)::in, int::out) is det.
 
+:- func to_list(stack(T)) = list(T).
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -164,6 +166,8 @@ depth(Stack) = Depth :-
 depth(Stack, Depth) :-
     Stack = stack(Elems),
     list.length(Elems, Depth).
+
+to_list(stack(Elems)) = Elems.
 
 %---------------------------------------------------------------------------%
 :- end_module stack.

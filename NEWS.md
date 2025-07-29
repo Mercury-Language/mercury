@@ -663,6 +663,15 @@ Changes to the Mercury standard library
     - pred `compose_maps/3`
     - pred `sorted_keys_match/2`
 
+### Changes to the `mercury_term_lexer` module
+
+* The representation type of the tokens returned has been tightened.
+  Previously, the documented type of tokens contained two function symbols
+  that were needed only by the implementation of the lexer, and could
+  never be returned in the generated token lists. The new definition
+  differs from the old one only in the fact that it omits these two
+  function symbols.
+
 ### Changes to the `ops` module
 
 * The representation of operator priorities has been changed. Priorities
@@ -2100,6 +2109,12 @@ Changes to the Mercury standard library
 * The following obsolete predicate has been removed:
 
     - pred `test/4`                 (replacement: none)
+
+### Changes to the `stack` module
+
+* The following function has been added:
+
+    - func `to_list/1`
 
 ### Changes to the `std_util` module
 

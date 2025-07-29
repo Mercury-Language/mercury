@@ -156,7 +156,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module require.
+:- import_module stack.
 :- import_module string.
 :- import_module term_context.
 :- import_module uint.
@@ -165,7 +165,15 @@
 
 :- type parse_result(T)
     --->    pr_ok(T)
-    ;       pr_error(string, token_list).
+    ;       pr_error(pr_error_info).
+
+:- type pr_error_info
+    --->    pr_error_ctxt(int, string)
+            % The error was detected on the given line number,
+            % and the second field gives the error message.
+    ;       pr_error_nil(string).
+            % The error was detected as an end-of-file, with no line number
+            % available. The one field gives the error message.
 
     % Are we parsing an ordinary term, an argument or a list element?
 :- type term_kind
@@ -255,63 +263,34 @@ parse_tokens_with_op_table(Ops, FileName, Tokens, Result) :-
     ;
         Tokens = token_cons(_, _, _),
         init_parser_state(Ops, FileName, ParserState0),
-        parse_whole_term(Term, Tokens, LeftOverTokens,
-            ParserState0, ParserState),
+        parse_whole_term(TermResult, Tokens, ParserState0, ParserState),
         final_parser_state(ParserState, VarSet),
-        check_for_errors(Term, VarSet, Tokens, LeftOverTokens, Result)
+        check_for_errors(TermResult, VarSet, Tokens, Result)
     ).
 
 :- pred check_for_errors(parse_result(term(T))::in, varset(T)::in,
-    token_list::in, token_list::in, read_term(T)::out) is det.
+    token_list::in(token_cons), read_term(T)::out) is det.
 
-check_for_errors(Parse, VarSet, Tokens, LeftOverTokens, Result) :-
+check_for_errors(Parse, VarSet, Tokens, Result) :-
+    check_for_bad_token(Tokens, MaybeBadTokenMsg),
     (
-        Parse = pr_error(ErrorMessage, ErrorTokens),
-        % Check whether the error was caused by a bad token
-        % somewhere down the list.
-        check_for_bad_token(Tokens, MaybeBadTokenMsg),
-        (
-            MaybeBadTokenMsg = yes({Message, LineNum})
-        ;
-            MaybeBadTokenMsg = no,
-            % Report that the first token in ErrorTokens, or in Tokens,
-            % caused the error.
-            (
-                ErrorTokens = token_cons(ErrorTok, ErrorTokLineNum, _),
-                token_to_string(ErrorTok, TokString),
-                string.format("Syntax error at %s: %s",
-                    [s(TokString), s(ErrorMessage)], Message),
-                LineNum = ErrorTokLineNum
-            ;
-                ErrorTokens = token_nil,
-                (
-                    Tokens = token_cons(_, LineNum, _)
-                ;
-                    Tokens = token_nil,
-                    error("token_nil in check_for_errors")
-                ),
-                string.format("Syntax error: %s", [s(ErrorMessage)], Message)
-            )
-        ),
+        MaybeBadTokenMsg = yes({Message, LineNum}),
         Result = error(Message, LineNum)
     ;
-        Parse = pr_ok(Term),
-        check_for_bad_token(Tokens, MaybeBadTokenMsg),
+        MaybeBadTokenMsg = no,
         (
-            MaybeBadTokenMsg = yes({Message, LineNum}),
-            Result = error(Message, LineNum)
-        ;
-            MaybeBadTokenMsg = no,
+            Parse = pr_error(PrError),
             (
-                LeftOverTokens = token_cons(Token, LineNum, _),
-                token_to_string(Token, TokString),
-                string.format("Syntax error: unexpected %s",
-                    [s(TokString)], Message),
-                Result = error(Message, LineNum)
+                PrError = pr_error_ctxt(ErrorContext, ErrorMsg)
             ;
-                LeftOverTokens = token_nil,
-                Result = term(VarSet, Term)
-            )
+                PrError = pr_error_nil(ErrorMsg),
+                get_last_token_context(Tokens, ErrorContext)
+            ),
+            LineNum = ErrorContext,
+            Result = error(ErrorMsg, LineNum)
+        ;
+            Parse = pr_ok(Term),
+            Result = term(VarSet, Term)
         )
     ).
 
@@ -328,14 +307,15 @@ check_for_bad_token(TokenList, MaybeBadTokenMsg) :-
         ;
             Token = junk(Char),
             char.to_int(Char, Code),
-            string.int_to_base_string(Code, 10, Decimal),
             string.int_to_base_string(Code, 16, Hex),
-            string.format("Syntax error: illegal character 0x%s (%s) in input",
+            string.int_to_base_string(Code, 10, Decimal),
+            string.format(
+                "Syntax error: illegal character 0x%s (%s) in input.",
                 [s(Hex), s(Decimal)], Message),
             MaybeBadTokenMsg = yes({Message, LineNum0})
         ;
             Token = error(ErrorMessage),
-            string.format("Syntax error: %s", [s(ErrorMessage)], Message),
+            string.format("Syntax error: %s.", [s(ErrorMessage)], Message),
             MaybeBadTokenMsg = yes({Message, LineNum0})
         ;
             ( Token = name(_)
@@ -354,8 +334,6 @@ check_for_bad_token(TokenList, MaybeBadTokenMsg) :-
             ; Token = ht_sep
             ; Token = comma
             ; Token = end
-            ; Token = eof
-            ; Token = integer_dot(_)
             ),
             check_for_bad_token(Tokens, MaybeBadTokenMsg)
         )
@@ -366,25 +344,69 @@ check_for_bad_token(TokenList, MaybeBadTokenMsg) :-
 
 %---------------------------------------------------------------------------%
 
+:- inst token_cons for token_list/0
+    --->    token_cons(ground, ground, ground).
+
 :- pred parse_whole_term(parse_result(term(T))::out,
-    token_list::in, token_list::out,
+    token_list::in(token_cons),
     parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det
     <= op_table(Ops).
 
-parse_whole_term(Term, !TokensLeft, !PS) :-
-    parse_term(Term0, !TokensLeft, !PS),
+parse_whole_term(TermResult, !.TokensLeft, !PS) :-
+    parse_term(TermResult0, !TokensLeft, !PS),
     (
-        Term0 = pr_ok(_),
-        ( if !.TokensLeft = token_cons(end, _Context, !:TokensLeft) then
-            Term = Term0
-        else
-            parser_unexpected("operator or `.' expected", Term,
-                !TokensLeft, !.PS)
+        TermResult0 = pr_ok(Term0),
+        (
+            !.TokensLeft = token_cons(Token, Context, !:TokensLeft),
+            ( if Token = end then
+                (
+                    !.TokensLeft = token_nil,
+                    NestStack = parser_state_get_nest_stack(!.PS),
+                    Nests = stack.to_list(NestStack),
+                    (
+                        Nests = [],
+                        TermResult = pr_ok(Term0)
+                    ;
+                        Nests = [TopNest | _],
+                        TopNest = nest_open(TopNestToken, _),
+                        ( TopNestToken = open,       OpenName = "parenthesis"
+                        ; TopNestToken = open_list,  OpenName = "bracket"
+                        ; TopNestToken = open_curly, OpenName = "curly bracket"
+                        ),
+                        string.format(
+                            "Syntax error: end-of-term with unclosed %s.",
+                            [s(OpenName)], ErrorMsg0),
+                        ErrorMsg = ErrorMsg0 ++
+                            describe_all_open_nest_levels(NestStack),
+                        PrError = pr_error_ctxt(Context, ErrorMsg),
+                        TermResult = pr_error(PrError),
+                        % The end-of-term token implicitly closes
+                        % all open parentheses (round, square and curly).
+                        stack.init(EmptyNestStack),
+                        parser_state_set_nest_stack(EmptyNestStack, !PS)
+                    )
+                ;
+                    !.TokensLeft = token_cons(NextToken, NextContext, _),
+                    token_to_string(NextToken, NextTokenStr),
+                    string.format(
+                        "Syntax error: unexpected %s after the end of term.",
+                        [s(NextTokenStr)], ErrorMsg),
+                    TermResult = pr_error(pr_error_ctxt(NextContext, ErrorMsg))
+                )
+            else
+                report_unexpected_token(Token, Context,
+                    expected("an operator, or `.'"), TermResult,
+                    !.TokensLeft, _, !.PS)
+            )
+        ;
+            !.TokensLeft = token_nil,
+            report_unexpected_eof(expected("an operator, or `.'"),
+                TermResult, !.PS)
         )
     ;
-        Term0 = pr_error(_, _),
+        TermResult0 = pr_error(_),
         % Propagate error upwards.
-        Term = Term0
+        TermResult = TermResult0
     ).
 
 :- pred parse_term(parse_result(term(T))::out, token_list::in, token_list::out,
@@ -411,7 +433,7 @@ do_parse_term(MinPriority, TermKind, Term, !TokensLeft, !PS) :-
         parse_rest(MinPriority, TermKind, LeftPriority, LeftTerm, Term,
             !TokensLeft, !PS)
     ;
-        LeftTerm0 = pr_error(_, _),
+        LeftTerm0 = pr_error(_),
         % propagate error upwards
         Term = LeftTerm0
     ).
@@ -477,12 +499,12 @@ parse_left_term(MinPriority, TermKind, OpPriority, Term, !TokensLeft, !PS) :-
                         Term = pr_ok(term.functor(term.atom(TokenName),
                             [TermA, TermB], TermContext))
                     ;
-                        ResultB = pr_error(_, _),
+                        ResultB = pr_error(_),
                         % Propagate error upwards.
                         Term = ResultB
                     )
                 ;
-                    ResultA = pr_error(_, _),
+                    ResultA = pr_error(_),
                     % Propagate error upwards.
                     Term = ResultA
                 )
@@ -506,7 +528,7 @@ parse_left_term(MinPriority, TermKind, OpPriority, Term, !TokensLeft, !PS) :-
                     Term = pr_ok(term.functor(term.atom(TokenName),
                         [TermA], TermContext))
                 ;
-                    ResultA = pr_error(_, _),
+                    ResultA = pr_error(_),
                     % Propagate error upwards.
                     Term = ResultA
                 )
@@ -525,8 +547,8 @@ parse_left_term(MinPriority, TermKind, OpPriority, Term, !TokensLeft, !PS) :-
         )
     ;
         !.TokensLeft = token_nil,
-        Term = pr_error("unexpected end-of-file at start of sub-term",
-            !.TokensLeft),
+        report_unexpected_eof(expected("a token that can start of (sub)term"),
+            Term, !.PS),
         OpPriority = tightest_op_priority(OpTable)
     ).
 
@@ -594,7 +616,7 @@ parse_rest(MinPriority, TermKind, LeftPriority, LeftTerm, Term,
             parse_rest(MinPriority, TermKind, OpPriority, OpTerm, Term,
                 !TokensLeft, !PS)
         ;
-            RightTerm0 = pr_error(_, _),
+            RightTerm0 = pr_error(_),
             % Propagate error upwards.
             Term = RightTerm0
         )
@@ -701,15 +723,19 @@ parse_simple_term(Token, Context, Prec, TermParse, !TokensLeft, !PS) :-
         Token = name(Atom),
         parser_get_term_context(!.PS, Context, TermContext),
         ( if !.TokensLeft = token_cons(open_ct, _Context, !:TokensLeft) then
+            % For the purpose of checking nesting, we ignore the distinction
+            % between open_ct and open.
+            NestOpen = nest_open(open, Context),
+            push_nest_open(NestOpen, !PS),
             parse_args(ArgsParse, !TokensLeft, !PS),
             (
                 ArgsParse = pr_ok(Args),
                 BaseTerm = functor(atom(Atom), Args, TermContext),
                 BaseTermParse = pr_ok(BaseTerm)
             ;
-                ArgsParse = pr_error(Message, Tokens),
+                ArgsParse = pr_error(PrError),
                 % Propagate error upwards, after changing type.
-                BaseTermParse = pr_error(Message, Tokens)
+                BaseTermParse = pr_error(PrError)
             )
         else
             OpTable = parser_state_get_ops_table(!.PS),
@@ -717,8 +743,8 @@ parse_simple_term(Token, Context, Prec, TermParse, !TokensLeft, !PS) :-
                 ops.is_op(OpTable, Atom),
                 priority_ge(Prec, ops.loosest_op_priority(OpTable))
             then
-                parser_unexpected_tok(Token, Context,
-                    "unexpected token at start of (sub)term",
+                report_unexpected_token(Token, Context,
+                    expect_at_start_of_term,
                     BaseTermParse, !TokensLeft, !.PS)
             else
                 BaseTerm = functor(atom(Atom), [], TermContext),
@@ -771,17 +797,38 @@ parse_simple_term(Token, Context, Prec, TermParse, !TokensLeft, !PS) :-
         ( Token = open
         ; Token = open_ct
         ),
+        % For the purpose of checking nesting, we ignore the distinction
+        % between open_ct and open.
+        NestOpen = nest_open(open, Context),
+        push_nest_open(NestOpen, !PS),
         parse_term(SubTermParse, !TokensLeft, !PS),
         (
             SubTermParse = pr_ok(_),
-            ( if !.TokensLeft = token_cons(close, _Context, !:TokensLeft) then
-                BaseTermParse = SubTermParse
-            else
-                parser_unexpected("expecting `)' or operator", BaseTermParse,
-                    !TokensLeft, !.PS)
+            (
+                !.TokensLeft =
+                    token_cons(NextToken, NextContext, !:TokensLeft),
+                ( if NextToken = close then
+                    pop_nest_open(close, Context, MaybeErrorMsg, !PS),
+                    (
+                        MaybeErrorMsg = no,
+                        BaseTermParse = SubTermParse
+                    ;
+                        MaybeErrorMsg = yes(ErrorMsg),
+                        PrError = pr_error_ctxt(NextContext, ErrorMsg),
+                        BaseTermParse = pr_error(PrError)
+                    )
+                else
+                    report_unexpected_token(NextToken, NextContext,
+                        expected("`)', or an operator"), BaseTermParse,
+                        !TokensLeft, !.PS)
+                )
+            ;
+                !.TokensLeft = token_nil,
+                report_unexpected_eof(expected("`)', or an operator"),
+                    BaseTermParse, !.PS)
             )
         ;
-            SubTermParse = pr_error(_, _),
+            SubTermParse = pr_error(_),
             % Propagate error upwards.
             BaseTermParse = SubTermParse
         )
@@ -789,9 +836,13 @@ parse_simple_term(Token, Context, Prec, TermParse, !TokensLeft, !PS) :-
         Token = open_list,
         parser_get_term_context(!.PS, Context, TermContext),
         ( if !.TokensLeft = token_cons(close_list, _Context, !:TokensLeft) then
+            % Do not bother pushing open_list and popping close_list,
+            % since doing both is a noop.
             parse_special_atom("[]", TermContext, BaseTermParse,
                 !TokensLeft, !PS)
         else
+            NestOpen = nest_open(open_list, Context),
+            push_nest_open(NestOpen, !PS),
             parse_list(BaseTermParse, !TokensLeft, !PS)
         )
     ;
@@ -800,6 +851,8 @@ parse_simple_term(Token, Context, Prec, TermParse, !TokensLeft, !PS) :-
         ( if
             !.TokensLeft = token_cons(close_curly, _Context, !:TokensLeft)
         then
+            % Do not bother pushing open_curly and popping close_curly,
+            % since doing both is a noop.
             parse_special_atom("{}", TermContext, BaseTermParse,
                 !TokensLeft, !PS)
         else
@@ -807,22 +860,40 @@ parse_simple_term(Token, Context, Prec, TermParse, !TokensLeft, !PS) :-
             % parsing "{1,2,3}" as "'{}'(','(1, ','(2, 3)))", we parse it as
             % "'{}'(1,2,3)". This makes the structure of tuple functors
             % the same as other functors.
+            NestOpen = nest_open(open_curly, Context),
+            push_nest_open(NestOpen, !PS),
             parse_term(SubTermParse, !TokensLeft, !PS),
             (
                 SubTermParse = pr_ok(SubTerm),
                 conjunction_to_list(SubTerm, ArgTerms),
-                ( if
-                    !.TokensLeft = token_cons(close_curly, _Context,
-                        !:TokensLeft)
-                then
-                    BaseTerm = functor(atom("{}"), ArgTerms, TermContext),
-                    BaseTermParse = pr_ok(BaseTerm)
-                else
-                    parser_unexpected("expecting `}' or operator",
-                        BaseTermParse, !TokensLeft, !.PS)
+                (
+                    !.TokensLeft = token_cons(NextToken, NextContext,
+                        !:TokensLeft),
+                    ( if NextToken = close_curly then
+                        pop_nest_open(close_curly, NextContext,
+                            MaybeErrorMsg, !PS),
+                        (
+                            MaybeErrorMsg = no,
+                            BaseTerm = functor(atom("{}"), ArgTerms,
+                                TermContext),
+                            BaseTermParse = pr_ok(BaseTerm)
+                        ;
+                            MaybeErrorMsg = yes(ErrorMsg),
+                            PrError = pr_error_ctxt(NextContext, ErrorMsg),
+                            BaseTermParse = pr_error(PrError)
+                        )
+                    else
+                        report_unexpected_token(NextToken, NextContext,
+                            expected("`}', or an operator"), BaseTermParse,
+                            !TokensLeft, !.PS)
+                    )
+                ;
+                    !.TokensLeft = token_nil,
+                    report_unexpected_eof(expected("`}', or an operator"),
+                        BaseTermParse, !.PS)
                 )
             ;
-                SubTermParse = pr_error(_, _),
+                SubTermParse = pr_error(_),
                 % Propagate error upwards.
                 BaseTermParse = SubTermParse
             )
@@ -837,17 +908,16 @@ parse_simple_term(Token, Context, Prec, TermParse, !TokensLeft, !PS) :-
         ; Token = junk(_)
         ; Token = error(_)
         ; Token = io_error(_)
-        ; Token = eof
-        ; Token = integer_dot(_)
         ),
-        parser_unexpected_tok(Token, Context,
-            "unexpected token at start of (sub)term", BaseTermParse,
-            !TokensLeft, !.PS)
+        report_unexpected_token(Token, Context, expect_at_start_of_term,
+            BaseTermParse, !TokensLeft, !.PS)
     ),
     ( if
         BaseTermParse = pr_ok(BaseTermOpen),
-        !.TokensLeft = token_cons(open_ct, _OpenContext, !:TokensLeft)
+        !.TokensLeft = token_cons(open_ct, HoContext, !:TokensLeft)
     then
+        HoNestOpen = nest_open(open, HoContext),
+        push_nest_open(HoNestOpen, !PS),
         parse_higher_order_term_rest(BaseTermOpen, Context, TermParse,
             !TokensLeft, !PS)
     else
@@ -877,17 +947,19 @@ parse_higher_order_term_rest(BaseTerm, Context, TermParse, !TokensLeft, !PS) :-
         ArgsParse = pr_ok(Args),
         ApplyTerm = functor(atom(""), [BaseTerm | Args], TermContext),
         ( if
-            !.TokensLeft = token_cons(open_ct, _OpenContext, !:TokensLeft)
+            !.TokensLeft = token_cons(open_ct, HoContext, !:TokensLeft)
         then
+            HoNestOpen = nest_open(open, HoContext),
+            push_nest_open(HoNestOpen, !PS),
             parse_higher_order_term_rest(ApplyTerm, Context, TermParse,
                 !TokensLeft, !PS)
         else
             TermParse = pr_ok(ApplyTerm)
         )
     ;
-        ArgsParse = pr_error(Message, Tokens),
+        ArgsParse = pr_error(PrError),
         % Propagate error upwards, after changing type.
-        TermParse = pr_error(Message, Tokens)
+        TermParse = pr_error(PrError)
     ).
 
 :- pred conjunction_to_list(term(T)::in, list(term(T))::out) is det.
@@ -906,15 +978,17 @@ conjunction_to_list(Term, ArgTerms) :-
     <= op_table(Ops).
 
 parse_special_atom(Atom, TermContext, Term, !TokensLeft, !PS) :-
-    ( if !.TokensLeft = token_cons(open_ct, _Context, !:TokensLeft) then
+    ( if !.TokensLeft = token_cons(open_ct, Context, !:TokensLeft) then
+        NestOpen = nest_open(open, Context),
+        push_nest_open(NestOpen, !PS),
         parse_args(Args0, !TokensLeft, !PS),
         (
             Args0 = pr_ok(Args),
             Term = pr_ok(term.functor(term.atom(Atom), Args, TermContext))
         ;
-            Args0 = pr_error(Message, Tokens),
+            Args0 = pr_error(PrError),
             % Propagate error upwards.
-            Term = pr_error(Message, Tokens)
+            Term = pr_error(PrError)
         )
     else
         Term = pr_ok(term.functor(term.atom(Atom), [], TermContext))
@@ -939,27 +1013,34 @@ parse_args(List, !TokensLeft, !PS) :-
                 ),
                 (
                     Tail0 = pr_ok(Tail),
-                    List = pr_ok([Arg|Tail])
+                    List = pr_ok([Arg | Tail])
                 ;
-                    Tail0 = pr_error(_, _),
+                    Tail0 = pr_error(_),
                     % Propagate error upwards.
                     List = Tail0
                 )
             else if Token = close then
-                List = pr_ok([Arg])
+                pop_nest_open(close, Context, MaybeErrorMsg, !PS),
+                (
+                    MaybeErrorMsg = no,
+                    List = pr_ok([Arg])
+                ;
+                    MaybeErrorMsg = yes(ErrorMsg),
+                    List = pr_error(pr_error_ctxt(Context, ErrorMsg))
+                )
             else
-                parser_unexpected_tok(Token, Context,
-                    "expected `,', `)', or operator", List, !TokensLeft, !.PS)
+                report_unexpected_token(Token, Context,
+                    expected("`,', `)', or an operator"), List,
+                    !TokensLeft, !.PS)
             )
         ;
             !.TokensLeft = token_nil,
-            List = pr_error("unexpected end-of-file in argument list",
-                !.TokensLeft)
+            report_unexpected_eof(expected("a comma, or a `)'"), List, !.PS)
         )
     ;
-        Arg0 = pr_error(Message, Tokens),
+        Arg0 = pr_error(PrError),
         % Propagate error upwards.
-        List = pr_error(Message, Tokens)
+        List = pr_error(PrError)
     ).
 
 :- pred parse_arg(parse_result(term(T))::out, token_list::in, token_list::out,
@@ -988,7 +1069,7 @@ parse_list(List, !TokensLeft, !PS) :-
         Arg0 = pr_ok(Arg),
         parse_list_tail(Arg, List, !TokensLeft, !PS)
     ;
-        Arg0 = pr_error(_, _),
+        Arg0 = pr_error(_),
         % Propagate error.
         List = Arg0
     ).
@@ -1020,10 +1101,11 @@ parse_list_tail(Arg, List, !TokensLeft, !PS) :-
             parse_list(Tail0, !TokensLeft, !PS),
             (
                 Tail0 = pr_ok(Tail),
-                List = pr_ok(term.functor(term.atom("[|]"), [Arg, Tail],
-                    TermContext))
+                Term = term.functor(term.atom("[|]"), [Arg, Tail],
+                    TermContext),
+                List = pr_ok(Term)
             ;
-                Tail0 = pr_error(_, _),
+                Tail0 = pr_error(_),
                 % Propagate error.
                 List = Tail0
             )
@@ -1031,65 +1113,102 @@ parse_list_tail(Arg, List, !TokensLeft, !PS) :-
             parse_arg(Tail0, !TokensLeft, !PS),
             (
                 Tail0 = pr_ok(Tail),
-                ( if
-                    !.TokensLeft = token_cons(close_list, _Context,
-                        !:TokensLeft)
-                then
-                    List = pr_ok(term.functor(term.atom("[|]"), [Arg, Tail],
-                        TermContext))
-                else
-                    parser_unexpected("expecting ']' or operator", List,
-                        !TokensLeft, !.PS)
+                (
+                    !.TokensLeft = token_cons(NextToken, NextContext,
+                        !:TokensLeft),
+                    ( if NextToken = close_list then
+                        pop_nest_open(close_list, Context, MaybeErrorMsg, !PS),
+                        (
+                            MaybeErrorMsg = no,
+                            Term = term.functor(term.atom("[|]"), [Arg, Tail],
+                                TermContext),
+                            List = pr_ok(Term)
+                        ;
+                            MaybeErrorMsg = yes(ErrorMsg),
+                            List = pr_error(pr_error_ctxt(Context, ErrorMsg))
+                        )
+                    else
+                        report_unexpected_token(NextToken, NextContext,
+                            expected("`]', or an operator"), List,
+                            !TokensLeft, !.PS)
+                    )
+                ;
+                    !.TokensLeft = token_nil,
+                    report_unexpected_eof(expected("`]', or an operator"),
+                        List, !.PS)
                 )
             ;
-                Tail0 = pr_error(_, _),
+                Tail0 = pr_error(_),
                 % Propagate error.
                 List = Tail0
             )
         else if Token = close_list then
-            Tail = term.functor(term.atom("[]"), [], TermContext),
-            List = pr_ok(term.functor(term.atom("[|]"), [Arg, Tail],
-                TermContext))
+            pop_nest_open(close_list, Context, MaybeErrorMsg, !PS),
+            (
+                MaybeErrorMsg = no,
+                Tail = term.functor(term.atom("[]"), [], TermContext),
+                Term = term.functor(term.atom("[|]"), [Arg, Tail],
+                    TermContext),
+                List = pr_ok(Term)
+            ;
+                MaybeErrorMsg = yes(ErrorMsg),
+                List = pr_error(pr_error_ctxt(Context, ErrorMsg))
+            )
         else
-            parser_unexpected_tok(Token, Context,
-                "expected comma, `|', `]', or operator",
+            report_unexpected_token(Token, Context,
+                expected("comma, `|', `]', or an operator"),
                 List, !TokensLeft, !.PS)
         )
     ;
         !.TokensLeft = token_nil,
         % XXX The error message should state the line that the list started on.
-        List = pr_error("unexpected end-of-file in list", !.TokensLeft)
+        % ZZZ
+        report_unexpected_eof(expected("`,', `|', or `]'"), List, !.PS)
     ).
 
 %---------------------------------------------------------------------------%
+%
+% The report_* predicates in this section should be the only ones in this
+% module that *create* new pr_error terms. The code in the rest of the module
+% should only pass them on, possibly changing the type in the process
+% (since the pr_error data constructor of the parse_result(U) type
+% does not depend on the identity of the type bound to U, unlike the
+% pr_ok data constructor).
+%
 
-    % We encountered an error. See if the next token was an infix or postfix
-    % operator. If so, it would normally form part of the term, so the error
-    % must have been an operator precedence error. Otherwise, it was some
-    % other sort of error, so issue the usual error message.
+%---------------------%
+
+    % We encountered an end-of-file we did not expect.
     %
-:- pred parser_unexpected(string::in, parse_result(U)::out,
-    token_list::in, token_list::out, parser_state(Ops, T)::in) is det
-    <= op_table(Ops).
-
-parser_unexpected(UsualMessage, Error, !TokensLeft, PS) :-
-    (
-        !.TokensLeft = token_cons(Token, Context, !:TokensLeft),
-        parser_unexpected_tok(Token, Context, UsualMessage, Error,
-            !TokensLeft, PS)
-    ;
-        !.TokensLeft = token_nil,
-        Error = pr_error(UsualMessage, !.TokensLeft)
-    ).
-
-:- pred parser_unexpected_tok(token::in, token_context::in, string::in,
-    parse_result(U)::out, token_list::in, token_list::out,
+:- pred report_unexpected_eof(expected_info::in, parse_result(U)::out,
     parser_state(Ops, T)::in) is det <= op_table(Ops).
 
-parser_unexpected_tok(Token, Context, UsualMessage, Error, !TokensLeft, PS) :-
+report_unexpected_eof(ExpectedInfo, Result, PS) :-
+    NestStack = parser_state_get_nest_stack(PS),
+    string.format("Syntax error %s.",
+        [s(at_token_expected(ExpectedInfo, "end-of-file"))], ErrorMsg0),
+    ErrorMsg = ErrorMsg0 ++ describe_all_open_nest_levels(NestStack),
+    Result = pr_error(pr_error_nil(ErrorMsg)).
+
+%---------------------%
+
+    % We encountered a token we did not expect. See if the next token
+    % was an infix or postfix operator. If so, it would normally form
+    % part of the term, so the error must have been an operator
+    % precedence error. Otherwise, print an error message of the form
+    % "expected abc, got xyz", possibly with extra text describing
+    % any open/close mismatch.
+    %
+:- pred report_unexpected_token(token::in, token_context::in,
+    expected_info::in, parse_result(U)::out, token_list::in, token_list::out,
+    parser_state(Ops, T)::in) is det <= op_table(Ops).
+
+report_unexpected_token(Token, Context, ExpectedInfo, ErrorResult,
+        !TokensLeft, PS) :-
     % Push the token back, so that the error message points at *it*
     % rather than at the following token.
     !:TokensLeft = token_cons(Token, Context, !.TokensLeft),
+    token_to_string(Token, TokenStr),
     ( if
         ( Token = name(Op)
         ; Token = comma, Op = ","
@@ -1099,10 +1218,116 @@ parser_unexpected_tok(Token, Context, UsualMessage, Error, !TokensLeft, PS) :-
         ; ops.lookup_postfix_op(OpTable, Op, _, _)
         )
     then
-        Error = pr_error("operator precedence error", !.TokensLeft)
+        string.format("Syntax error at %s: operator precedence error.",
+            [s(TokenStr)], ErrorMsg),
+        ErrorResult = pr_error(pr_error_ctxt(Context, ErrorMsg))
     else
-        Error = pr_error(UsualMessage, !.TokensLeft)
+        string.format("Syntax error %s.",
+            [s(at_token_expected(ExpectedInfo, TokenStr))], ErrorMsg0),
+        NestStack = parser_state_get_nest_stack(PS),
+        Nests = stack.to_list(NestStack),
+        ( if
+            is_close_token(Token, CloseToken),
+            Nests = [TopNest | _]
+        then
+            open_close_pair(OpenTokenForClose, CloseToken),
+            open_token_char(OpenTokenForClose, OpenTokenForCloseChar),
+            TopNest = nest_open(TopNestOpenToken, TopNestContext),
+            ( if TopNestOpenToken = OpenTokenForClose then
+                Addendum = ""
+            else if find_top_open(OpenTokenForClose, Nests, OpenContext) then
+                open_token_char(TopNestOpenToken, TopNestOpenTokenChar),
+                close_token_char(CloseToken, CloseTokenChar),
+                string.format(
+                    "\nThere is an open `%c' on line %d between" ++
+                    " the open `%c' on line %d and the `%c' here.",
+                    [c(TopNestOpenTokenChar), i(TopNestContext),
+                    c(OpenTokenForCloseChar), i(OpenContext),
+                    c(CloseTokenChar)], Addendum)
+            else
+                string.format("\nThere is no open `%c' to close here.",
+                    [c(OpenTokenForCloseChar)], Addendum)
+            ),
+            ErrorMsg = ErrorMsg0 ++ Addendum
+        else if
+            Token = end,
+            Nests = [_ | _]
+        then
+            ErrorMsg = ErrorMsg0 ++ describe_all_open_nest_levels(NestStack)
+        else
+            ErrorMsg = ErrorMsg0
+        ),
+        PrError = pr_error_ctxt(Context, ErrorMsg),
+        ErrorResult = pr_error(PrError)
     ).
+
+:- pred find_top_open(nest_open_token::in, list(nest_open)::in,
+    token_context::out) is semidet.
+
+find_top_open(SearchOpenToken, !.StackList, OpenContext) :-
+    (
+        !.StackList = [],
+        fail
+    ;
+        !.StackList = [Top | !:StackList],
+        Top = nest_open(TopOpenToken, TopOpenContext),
+        ( if TopOpenToken = SearchOpenToken then
+            OpenContext = TopOpenContext
+        else
+            find_top_open(SearchOpenToken, !.StackList, OpenContext)
+        )
+    ).
+
+%---------------------%
+
+:- type expected_info
+    --->    expected(string)
+            % The string describes the kind(s) of tokens we expected.
+    ;       expect_at_start_of_term.
+            % The string describes the position in the code
+            % whose expectations were not met.
+
+:- func at_token_expected(expected_info, string) = string.
+
+at_token_expected(ExpectedInfo, Got) = ErrorMsg :-
+    (
+        ExpectedInfo = expected(Expected),
+        string.format("at %s: expected %s",
+            [s(Got), s(Expected)], ErrorMsg)
+    ;
+        ExpectedInfo = expect_at_start_of_term,
+        % XXX This should be more specific about what tokens can start a term.
+        string.format("at %s: expected a token that can start a (sub)term",
+            [s(Got)], ErrorMsg)
+    ).
+
+%---------------------%
+
+:- func describe_all_open_nest_levels(stack(nest_open)) = string.
+
+describe_all_open_nest_levels(NestStack) = NestsDesc :-
+    Nests = stack.to_list(NestStack),
+    % Nests list open nests from the most recent to the earliest.
+    % We want to print them out earliest to latest.
+    list.reverse(Nests, RevNests),
+    describe_open_nest_levels(RevNests, NestDescs),
+    string.append_list(NestDescs, NestsDesc).
+
+:- pred describe_open_nest_levels(list(nest_open)::in, list(string)::out)
+    is det.
+
+describe_open_nest_levels([], []).
+describe_open_nest_levels([NestOpen | NestOpens], [Desc | Descs]) :-
+    describe_open_nest_level(NestOpen, Desc),
+    describe_open_nest_levels(NestOpens, Descs).
+
+:- pred describe_open_nest_level(nest_open::in, string::out) is det.
+
+describe_open_nest_level(NestOpen, Desc) :-
+    NestOpen = nest_open(OpenToken, Context),
+    open_token_char(OpenToken, OpenChar),
+    string.format("\nThere is an open `%c' on line %d.",
+        [c(OpenChar), i(Context)], Desc).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1122,6 +1347,27 @@ check_priority(arg_gt, prio(OpPriority), prio(Priority)) :-
 parser_get_term_context(ParserState, TokenContext, TermContext) :-
     FileName = parser_state_get_stream_name(ParserState),
     TermContext = term_context.context_init(FileName, TokenContext).
+
+%---------------------------------------------------------------------------%
+
+:- pred get_last_token_context(token_list::in(token_cons), token_context::out)
+    is det.
+
+get_last_token_context(TokenList, LastContext) :-
+    TokenList = token_cons(_Token, Context, TokenListTail),
+    get_last_token_context_loop(Context, TokenListTail, LastContext).
+
+:- pred get_last_token_context_loop(token_context::in,
+    token_list::in, token_context::out) is det.
+
+get_last_token_context_loop(CurLastContext, TokenList, LastContext) :-
+    (
+        TokenList = token_nil,
+        LastContext = CurLastContext
+    ;
+        TokenList = token_cons(_Token, Context, TokenListTail),
+        get_last_token_context_loop(Context, TokenListTail, LastContext)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1146,8 +1392,6 @@ could_start_term(end, no).
 could_start_term(junk(_), no).
 could_start_term(error(_), no).
 could_start_term(io_error(_), no).
-could_start_term(eof, no).
-could_start_term(integer_dot(_), no).
 
 %---------------------------------------------------------------------------%
 
@@ -1180,6 +1424,23 @@ lexer_size_to_term_size(size_64_bit) = size_64_bit.
 % The representation of the parser state apart from the remaining token list.
 %
 
+:- type nest_stack == stack(nest_open).
+:- type nest_open
+    --->    nest_open(
+                open_token      :: nest_open_token,
+                open_line       :: token_context
+            ).
+
+:- type nest_open_token =< token
+   --->         open
+   ;            open_list
+   ;            open_curly.
+
+:- type nest_close_token =< token
+   --->         close
+   ;            close_list
+   ;            close_curly.
+
 :- type parser_state(Ops, T)   % <= op_table(Ops)
     --->    parser_state(
                 % The name of the stream being parsed.
@@ -1194,7 +1455,9 @@ lexer_size_to_term_size(size_64_bit) = size_64_bit.
                 % A map from variable names to variables. We use it to decide
                 % whether we have seen a variable before, or whether we have
                 % to create it.
-                ps_var_names    :: map(string, var(T))
+                ps_var_names    :: map(string, var(T)),
+
+                ps_nest_stack   :: nest_stack
             ).
 
 :- pred init_parser_state(Ops::in, string::in, parser_state(Ops, T)::out)
@@ -1203,7 +1466,8 @@ lexer_size_to_term_size(size_64_bit) = size_64_bit.
 init_parser_state(Ops, FileName, ParserState) :-
     varset.init(VarSet),
     map.init(Names),
-    ParserState = parser_state(FileName, Ops, VarSet, Names).
+    stack.init(NestStack),
+    ParserState = parser_state(FileName, Ops, VarSet, Names, NestStack).
 
 :- pred final_parser_state(parser_state(Ops, T)::in, varset(T)::out) is det.
 
@@ -1216,10 +1480,13 @@ final_parser_state(ParserState, VarSet) :-
 :- func parser_state_get_ops_table(parser_state(Ops, T)) = Ops.
 :- func parser_state_get_varset(parser_state(Ops, T)) = varset(T).
 :- func parser_state_get_var_names(parser_state(Ops, T)) = map(string, var(T)).
+:- func parser_state_get_nest_stack(parser_state(Ops, T)) = nest_stack.
 
 :- pred parser_state_set_varset(varset(T)::in,
     parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det.
 :- pred parser_state_set_var_names(map(string, var(T))::in,
+    parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det.
+:- pred parser_state_set_nest_stack(nest_stack::in,
     parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det.
 
 % If you want profiling to tell you the frequencies of these operations,
@@ -1229,9 +1496,11 @@ final_parser_state(ParserState, VarSet) :-
 :- pragma inline(func(parser_state_get_ops_table/1)).
 :- pragma inline(func(parser_state_get_varset/1)).
 :- pragma inline(func(parser_state_get_var_names/1)).
+:- pragma inline(func(parser_state_get_nest_stack/1)).
 
 :- pragma inline(pred(parser_state_set_varset/3)).
 :- pragma inline(pred(parser_state_set_var_names/3)).
+:- pragma inline(pred(parser_state_set_nest_stack/3)).
 
 parser_state_get_stream_name(ParserState) = X :-
     X = ParserState ^ ps_stream_name.
@@ -1241,11 +1510,15 @@ parser_state_get_varset(ParserState) = X :-
     X = ParserState ^ ps_varset.
 parser_state_get_var_names(ParserState) = X :-
     X = ParserState ^ ps_var_names.
+parser_state_get_nest_stack(ParserState) = X :-
+    X = ParserState ^ ps_nest_stack.
 
 parser_state_set_varset(X, !ParserState) :-
     !ParserState ^ ps_varset := X.
 parser_state_set_var_names(X, !ParserState) :-
     !ParserState ^ ps_var_names := X.
+parser_state_set_nest_stack(X, !ParserState) :-
+    !ParserState ^ ps_nest_stack := X.
 
 :- pred add_var(string::in, var(T)::out,
     parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det.
@@ -1266,6 +1539,81 @@ add_var(VarName, Var, !ParserState) :-
             parser_state_set_varset(VarSet, !ParserState),
             parser_state_set_var_names(Names, !ParserState)
         )
+    ).
+
+:- pred push_nest_open(nest_open::in,
+    parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det.
+
+push_nest_open(NestOpen, !ParserState) :-
+    NestStack0 = parser_state_get_nest_stack(!.ParserState),
+    stack.push(NestOpen, NestStack0, NestStack),
+    parser_state_set_nest_stack(NestStack, !ParserState).
+
+:- pred pop_nest_open(nest_close_token::in, token_context::in,
+    maybe(string)::out,
+    parser_state(Ops, T)::in, parser_state(Ops, T)::out) is det.
+
+pop_nest_open(CloseToken, CloseContext, MaybeErrorMsg, !ParserState) :-
+    NestStack0 = parser_state_get_nest_stack(!.ParserState),
+    ( if stack.pop(TopNestOpen, NestStack0, NestStack) then
+        TopNestOpen = nest_open(TopNestOpenToken, TopNestOpenContext),
+        ( if open_close_pair(TopNestOpenToken, CloseToken) then
+            parser_state_set_nest_stack(NestStack, !ParserState),
+            MaybeErrorMsg = no
+        else
+            % Whether we put the popped NestStack back into !ParserState
+            % in this branch is a choice between two unpalatable alternatives,
+            % since both choices can give rise to avalanche errors.
+            open_token_char(TopNestOpenToken, TopNestOpenChar),
+            close_token_char(CloseToken, CloseChar),
+            string.format(
+                "Syntax error: the '%c' on line %d is not closed" ++
+                    " before the '%c' on line %d.",
+                [c(TopNestOpenChar), i(TopNestOpenContext),
+                c(CloseChar), i(CloseContext)], ErrorMsg),
+            MaybeErrorMsg = yes(ErrorMsg)
+        )
+    else
+        open_close_pair(OpenToken, CloseToken),
+        open_token_char(OpenToken, OpenChar),
+        close_token_char(CloseToken, CloseChar),
+        string.format("no '%c' precedes the '%c' on line %d",
+            [c(OpenChar), c(CloseChar), i(CloseContext)], ErrorMsg),
+        MaybeErrorMsg = yes(ErrorMsg)
+    ).
+
+:- pred open_close_pair(nest_open_token, nest_close_token).
+:- mode open_close_pair(out, in) is det.
+:- mode open_close_pair(in, in) is semidet.
+
+open_close_pair(open, close).
+open_close_pair(open_list, close_list).
+open_close_pair(open_curly, close_curly).
+
+:- pred open_token_char(nest_open_token::in, char::out) is det.
+
+open_token_char(open, '(').
+open_token_char(open_list, '[').
+open_token_char(open_curly, '{').
+
+:- pred close_token_char(nest_close_token::in, char::out) is det.
+
+close_token_char(close, ')').
+close_token_char(close_list, ']').
+close_token_char(close_curly, '}').
+
+:- pred is_close_token(token::in, nest_close_token::out) is semidet.
+
+is_close_token(Token, CloseToken) :-
+    ( if
+        ( Token = close
+        ; Token = close_list
+        ; Token = close_curly
+        )
+    then
+        CloseToken = coerce(Token)
+    else
+        fail
     ).
 
 %---------------------------------------------------------------------------%

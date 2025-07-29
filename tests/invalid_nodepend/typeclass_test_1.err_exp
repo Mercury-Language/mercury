@@ -10,4 +10,5 @@ typeclass_test_1.m:019:   or
 typeclass_test_1.m:019:     [38;5;40m`func(<Name> / <Arity>) is <InstanceName>',[39;49m
 typeclass_test_1.m:019:   got
 typeclass_test_1.m:019:     [38;5;203m(type_num is foo_type_num).[39;49m
-typeclass_test_1.m:022: Syntax error at variable `_': operator or `.' expected.
+typeclass_test_1.m:022: Syntax error at variable `_': expected an operator, or
+typeclass_test_1.m:022:   `.'.

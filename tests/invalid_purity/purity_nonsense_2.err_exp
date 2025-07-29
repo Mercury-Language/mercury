@@ -1,7 +1,7 @@
-purity_nonsense_2.m:013: Syntax error at token 'type': unexpected token at
-purity_nonsense_2.m:013:   start of (sub)term.
-purity_nonsense_2.m:016: Syntax error at token 'mode': unexpected token at
-purity_nonsense_2.m:016:   start of (sub)term.
+purity_nonsense_2.m:013: Syntax error at token 'type': expected a token that
+purity_nonsense_2.m:013:   can start a (sub)term.
+purity_nonsense_2.m:016: Syntax error at token 'mode': expected a token that
+purity_nonsense_2.m:016:   can start a (sub)term.
 purity_nonsense_2.m:018: Error: predicate [38;5;87m`undefined'/0[39;49m [38;5;203mhas no clauses.[39;49m
 purity_nonsense_2.m:020: Error: `:- pragma promise_pure' declaration for
 purity_nonsense_2.m:020:   [38;5;87m`undefined2'/0[39;49m [38;5;203mwithout[39;49m a corresponding `:- pred' or

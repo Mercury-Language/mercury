@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -61,6 +61,10 @@
 :- import_module int.
 :- import_module int64.
 :- import_module io.primitives_read.
+
+% This foreign_import_module is needed with LIBRARY_INTERMODULE = no
+% to get access to the mercury_get_byte function.
+:- pragma foreign_import_module("C", io.primitives_read).
 
 %---------------------------------------------------------------------------%
 
