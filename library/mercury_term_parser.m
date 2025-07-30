@@ -1239,8 +1239,8 @@ report_unexpected_token(Token, Context, ExpectedInfo, ErrorResult,
                 open_token_char(TopNestOpenToken, TopNestOpenTokenChar),
                 close_token_char(CloseToken, CloseTokenChar),
                 string.format(
-                    "\nThere is an open `%c' on line %d between" ++
-                    " the open `%c' on line %d and the `%c' here.",
+                    "\nThere is an unclosed `%c' on line %d between" ++
+                    " the `%c' on line %d and the `%c' here.",
                     [c(TopNestOpenTokenChar), i(TopNestContext),
                     c(OpenTokenForCloseChar), i(OpenContext),
                     c(CloseTokenChar)], Addendum)
