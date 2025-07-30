@@ -20,7 +20,7 @@
 #
 # *************************************************************************
 # *** IMPORTANT NOTE: any changes to this file may also require similar ***
-# *** changes to compiler/compile_target_code.m and configure.ac        ***
+# *** changes to compiler/link_target_code.m and configure.ac        ***
 # *************************************************************************
 
 Usage="\
@@ -350,7 +350,7 @@ case "${ss_debug}" in
         ;;
 esac
 
-# compile_target_code.m falls back to calling `strip' separately if using a
+# link_target_code.m falls back to calling `strip' separately if using a
 # linker flag is not possible. That would be non-trivial in this script.
 case "${c_debug_grade},${strip}" in
     false,false)
