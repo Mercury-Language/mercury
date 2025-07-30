@@ -72,9 +72,12 @@
 :- import_module integer.
 :- import_module io.call_system.
 :- import_module mercury_term_lexer.
+:- import_module mercury_term_parser.
 :- import_module require.
 :- import_module string.
+:- import_module term_conversion.
 :- import_module univ.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -119,13 +122,18 @@ read_and_union_trace_counts_loop(ShowProgress, [FileName | FileNames],
 
 read_trace_counts_file(FileName, Result, !IO) :-
     read_trace_counts_base(FileName, ReadTCResult, !IO),
-    (
-        ReadTCResult = rtc_ok(FileType, TraceCount),
-        Result = rtcf_ok(FileType, TraceCount)
-    ;
-        ReadTCResult = rtc_error(ReadTCError),
-        ErrorMsg = read_trace_counts_error_to_str(FileName, ReadTCError),
-        Result = rtcf_error_message(ErrorMsg)
+    old_read_trace_counts_base(FileName, OldReadTCResult, !IO),
+    ( if ReadTCResult = OldReadTCResult then
+        (
+            ReadTCResult = rtc_ok(FileType, TraceCount),
+            Result = rtcf_ok(FileType, TraceCount)
+        ;
+            ReadTCResult = rtc_error(ReadTCError),
+            ErrorMsg = read_trace_counts_error_to_str(FileName, ReadTCError),
+            Result = rtcf_error_message(ErrorMsg)
+        )
+    else
+        unexpected($pred, "ReadTCResult != OldReadTCResult")
     ).
 
 :- func read_trace_counts_error_to_str(string, read_trace_counts_error)
@@ -197,6 +205,250 @@ read_trace_counts_base(FileName, ReadResult, !IO) :-
         ActualFileName = FileName,
         GzipCmd = ""
     ),
+    io.read_named_file_as_lines_wf(ActualFileName, Result, !IO),
+    (
+        Result = ok(Lines1),
+        ( if
+            Lines1 = [Line1 | Lines2],
+            Line1 = trace_count_file_id
+        then
+            promise_equivalent_solutions [ReadResult, !:IO] (
+                read_file_type_trace_counts(FileName, 2, Lines2,
+                    ReadResult, !IO)
+            )
+        else
+            ReadError = rtce_syntax_error("no trace count file id"),
+            ReadResult = rtc_error(ReadError)
+        )
+    ;
+        Result = error(IOError),
+        ReadError = rtce_open_error(IOError),
+        ReadResult = rtc_error(ReadError)
+    ),
+    ( if GzipCmd = "" then
+        true
+    else
+        io.call_system.call_system(GzipCmd, _ZipResult, !IO)
+    ).
+
+:- pred read_file_type_trace_counts(string::in, int::in, list(string)::in,
+    read_trace_counts_result::out, io::di, io::uo) is cc_multi.
+
+read_file_type_trace_counts(FileName, CurLineNum, Lines0, ReadResult, !IO) :-
+    (
+        Lines0 = [],
+        ReadError = rtce_syntax_error("no info on trace count file type"),
+        ReadResult = rtc_error(ReadError)
+    ;
+        Lines0 = [FileTypeLine | Lines1],
+        string.length(FileTypeLine, FileTypeLineLen),
+        StartPos = init_posn,
+        mercury_term_lexer.string_get_token_list_max(FileTypeLine,
+            FileTypeLineLen, FileTypeTokens, StartPos, _EndPos),
+        mercury_term_parser.parse_tokens(FileName, FileTypeTokens,
+            FileTypeResult),
+        ( if
+            FileTypeResult = term(_VarSet : varset, FileTypeTerm),
+            term_to_type(FileTypeTerm, FileType)
+        then
+            % The code in runtime/mercury_trace_counts.c always generates
+            % output that will cause read_proc_trace_counts below
+            % to override these dummy module and file names
+            % before they are referenced.
+            TCModuleNameSym0 = unqualified(""),
+            TCFileName0 = "",
+            try_io(
+                read_proc_trace_counts(FileName, CurLineNum + 1, Lines1,
+                    TCModuleNameSym0, TCFileName0, map.init),
+                Result, !IO),
+            (
+                Result = succeeded(TraceCounts),
+                ReadResult = rtc_ok(FileType, TraceCounts)
+            ;
+                Result = exception(Exception),
+                ( if Exception = univ(IOError) then
+                    ReadError = rtce_io_error(IOError)
+                else if Exception = univ(Message) then
+                    ReadError = rtce_error_message(Message)
+                else if Exception = univ(trace_count_syntax_error(Error)) then
+                    ReadError = rtce_syntax_error(Error)
+                else
+                    unexpected($pred,
+                        "unexpected exception type: " ++ string(Exception))
+                ),
+                ReadResult = rtc_error(ReadError)
+            )
+        else
+            ReadError = rtce_syntax_error("no info on trace count file type"),
+            ReadResult = rtc_error(ReadError)
+        )
+    ).
+
+:- type trace_count_syntax_error
+    --->    trace_count_syntax_error(string).
+
+:- pred read_proc_trace_counts(string::in, int::in, list(string)::in,
+    sym_name::in, string::in, trace_counts::in, trace_counts::out,
+    io::di, io::uo) is det.
+
+read_proc_trace_counts(FileName, LineNumber0, Lines0,
+        TCModuleNameSym0, TCFileName0, !TraceCounts, !IO) :-
+    (
+        Lines0 = []
+    ;
+        Lines0 = [Line0 | Lines1],
+        LineNumber1 = LineNumber0 + 1,
+        string.length(Line0, Line0Len),
+        StartPos = posn(LineNumber0, 1, 0),
+        mercury_term_lexer.string_get_token_list_max(Line0, Line0Len,
+            TokenList, StartPos, _EndPos),
+        ( if TokenList = token_cons(name(TokenName), _, TokenListRest) then
+            ( if
+                TokenName = "module",
+                TokenListRest =
+                    token_cons(name(NextModuleName), _,
+                    token_nil)
+            then
+                TCModuleNameSym1 = string_to_sym_name(NextModuleName),
+                read_proc_trace_counts(FileName, LineNumber1, Lines1,
+                    TCModuleNameSym1, TCFileName0, !TraceCounts, !IO)
+            else if
+                TokenName = "file",
+                TokenListRest =
+                    token_cons(name(TCFileName1), _,
+                    token_nil)
+            then
+                read_proc_trace_counts(FileName, LineNumber1, Lines1,
+                    TCModuleNameSym0, TCFileName1, !TraceCounts, !IO)
+            else if
+                % At the moment runtime/mercury_trace_base.c doesn't write out
+                % data for unify, compare, index or init procedures.
+                (
+                    TokenName = "pproc",
+                    TokenListRest =
+                        token_cons(name(Name), _,
+                        token_cons(ArityToken, _,
+                        token_cons(ModeToken, _,
+                        token_nil))),
+                    decimal_token_to_int(ArityToken, Arity),
+                    decimal_token_to_int(ModeToken, Mode),
+                    ProcLabel = ordinary_proc_label(TCModuleNameSym0,
+                        pf_predicate, TCModuleNameSym0, Name, Arity, Mode)
+                ;
+                    TokenName = "fproc",
+                    TokenListRest =
+                        token_cons(name(Name), _,
+                        token_cons(ArityToken, _,
+                        token_cons(ModeToken, _,
+                        token_nil))),
+                    decimal_token_to_int(ArityToken, Arity),
+                    decimal_token_to_int(ModeToken, Mode),
+                    ProcLabel = ordinary_proc_label(TCModuleNameSym0,
+                        pf_function, TCModuleNameSym0, Name, Arity, Mode)
+                ;
+                    TokenName = "pprocdecl",
+                    TokenListRest =
+                        token_cons(name(DeclModuleName), _,
+                        token_cons(name(Name), _,
+                        token_cons(ArityToken, _,
+                        token_cons(ModeToken, _,
+                        token_nil)))),
+                    decimal_token_to_int(ArityToken, Arity),
+                    decimal_token_to_int(ModeToken, Mode),
+                    DeclModuleNameSym = string_to_sym_name(DeclModuleName),
+                    ProcLabel = ordinary_proc_label(TCModuleNameSym0,
+                        pf_predicate, DeclModuleNameSym, Name, Arity, Mode)
+                ;
+                    TokenName = "fprocdecl",
+                    TokenListRest =
+                        token_cons(name(DeclModuleName), _,
+                        token_cons(name(Name), _,
+                        token_cons(ArityToken, _,
+                        token_cons(ModeToken, _,
+                        token_nil)))),
+                    decimal_token_to_int(ArityToken, Arity),
+                    decimal_token_to_int(ModeToken, Mode),
+                    DeclModuleNameSym = string_to_sym_name(DeclModuleName),
+                    ProcLabel = ordinary_proc_label(TCModuleNameSym0,
+                        pf_function, DeclModuleNameSym, Name, Arity, Mode)
+                )
+            then
+                ProcLabelInContext = proc_label_in_context(TCModuleNameSym0,
+                    TCFileName0, ProcLabel),
+                % For whatever reason, some of the trace counts for a single
+                % procedure or function can be split over multiple spans.
+                % We collate them as if they appeared in a single span.
+                ( if
+                    map.remove(ProcLabelInContext, ProbeCounts, !TraceCounts)
+                then
+                    StartCounts = ProbeCounts
+                else
+                    StartCounts = map.init
+                ),
+                read_proc_trace_counts_2(FileName, LineNumber1, Lines1,
+                    ProcLabelInContext, StartCounts, !TraceCounts, !IO)
+            else
+                string.format("parse error on line %d of execution trace",
+                    [i(LineNumber0)], Message),
+                throw(trace_count_syntax_error(Message))
+            )
+        else
+            string.format("parse error on line %d of execution trace",
+                [i(LineNumber0)], Message),
+            throw(trace_count_syntax_error(Message))
+        )
+    ).
+
+:- pred read_proc_trace_counts_2(string::in, int::in, list(string)::in,
+    proc_label_in_context::in, proc_trace_counts::in,
+    trace_counts::in, trace_counts::out, io::di, io::uo) is det.
+
+read_proc_trace_counts_2(FileName, LineNumber0, Lines0,
+        ProcLabelInContext, ProcCounts0, !TraceCounts, !IO) :-
+    (
+        Lines0 = [],
+        map.det_insert(ProcLabelInContext, ProcCounts0, !TraceCounts)
+    ;
+        Lines0 = [Line0 | Lines1],
+        LineNumber1 = LineNumber0 + 1,
+        ( if
+            parse_path_port_line(Line0, PathPort, TCLineNumber, ExecCount,
+                NumTests)
+        then
+            LineNoAndCount =
+                line_no_and_count(TCLineNumber, ExecCount, NumTests),
+            map.det_insert(PathPort, LineNoAndCount, ProcCounts0, ProcCounts),
+            read_proc_trace_counts_2(FileName, LineNumber1, Lines1,
+                ProcLabelInContext, ProcCounts, !TraceCounts, !IO)
+        else
+            map.det_insert(ProcLabelInContext, ProcCounts0, !TraceCounts),
+            TCModuleNameSym1 = ProcLabelInContext ^ context_module_symname,
+            TCFileName1 = ProcLabelInContext ^ context_filename,
+            read_proc_trace_counts(FileName, LineNumber1, Lines1,
+                TCModuleNameSym1, TCFileName1, !TraceCounts, !IO)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred old_read_trace_counts_base(string::in, read_trace_counts_result::out,
+    io::di, io::uo) is det.
+
+old_read_trace_counts_base(FileName, ReadResult, !IO) :-
+    % XXX We should be using zcat here, to avoid deleting the gzipped file
+    % and having to recreate it again. Unfortunately, Mercury does not have
+    % any facilities equivalent to popen in Unix, and I don't know how to
+    % write one in a way that is portable to Windows. zs.
+    % XXX ... and we certainly shouldn't be hardcoding the names of the
+    % gzip / gunzip executables. juliensf.
+    ( if string.remove_suffix(FileName, ".gz", BaseName) then
+        io.call_system.call_system("gunzip " ++ FileName, _UnzipResult, !IO),
+        ActualFileName = BaseName,
+        GzipCmd = "gzip " ++ BaseName
+    else
+        ActualFileName = FileName,
+        GzipCmd = ""
+    ),
     io.open_input(ActualFileName, Result, !IO),
     (
         Result = ok(FileStream),
@@ -206,7 +458,7 @@ read_trace_counts_base(FileName, ReadResult, !IO) :-
             string.rstrip(FirstLine) = trace_count_file_id
         then
             promise_equivalent_solutions [ReadResult, !:IO] (
-                read_trace_counts_from_stream(FileStream, ReadResult, !IO)
+                old_read_trace_counts_from_stream(FileStream, ReadResult, !IO)
             )
         else
             ReadError = rtce_syntax_error("no trace count file id"),
@@ -224,16 +476,16 @@ read_trace_counts_base(FileName, ReadResult, !IO) :-
         io.call_system.call_system(GzipCmd, _ZipResult, !IO)
     ).
 
-:- pred read_trace_counts_from_stream(io.text_input_stream::in,
+:- pred old_read_trace_counts_from_stream(io.text_input_stream::in,
     read_trace_counts_result::out, io::di, io::uo) is cc_multi.
 
-read_trace_counts_from_stream(InputStream, ReadResult, !IO) :-
+old_read_trace_counts_from_stream(InputStream, ReadResult, !IO) :-
     io.read(InputStream, FileTypeResult, !IO),
     (
         FileTypeResult = ok(FileType),
         io.read_line_as_string(InputStream, NewlineResult, !IO),
         ( if NewlineResult = ok("\n") then
-            try_io(read_trace_counts_setup(InputStream, map.init),
+            try_io(old_read_trace_counts_setup(InputStream, map.init),
                 Result, !IO),
             (
                 Result = succeeded(TraceCounts),
@@ -264,10 +516,10 @@ read_trace_counts_from_stream(InputStream, ReadResult, !IO) :-
         ReadResult = rtc_error(ReadError)
     ).
 
-:- pred read_trace_counts_setup(io.text_input_stream::in,
+:- pred old_read_trace_counts_setup(io.text_input_stream::in,
     trace_counts::in, trace_counts::out, io::di, io::uo) is det.
 
-read_trace_counts_setup(InputStream, !TraceCounts, !IO) :-
+old_read_trace_counts_setup(InputStream, !TraceCounts, !IO) :-
     io.get_line_number(InputStream, LineNumber, !IO),
     io.read_line_as_string(InputStream, Result, !IO),
     (
@@ -277,7 +529,7 @@ read_trace_counts_setup(InputStream, !TraceCounts, !IO) :-
         % and file names before they are referenced.
         CurModuleNameSym = unqualified(""),
         CurFileName = "",
-        read_proc_trace_counts(InputStream, LineNumber, Line,
+        old_read_proc_trace_counts(InputStream, LineNumber, Line,
             CurModuleNameSym, CurFileName, !TraceCounts, !IO)
     ;
         Result = eof
@@ -286,14 +538,12 @@ read_trace_counts_setup(InputStream, !TraceCounts, !IO) :-
         throw(Error)
     ).
 
-:- type trace_count_syntax_error
-    --->    trace_count_syntax_error(string).
-
-:- pred read_proc_trace_counts(io.text_input_stream::in, int::in, string::in,
+:- pred old_read_proc_trace_counts(io.text_input_stream::in,
+    int::in, string::in,
     sym_name::in, string::in, trace_counts::in, trace_counts::out,
     io::di, io::uo) is det.
 
-read_proc_trace_counts(InputStream, HeaderLineNumber, HeaderLine,
+old_read_proc_trace_counts(InputStream, HeaderLineNumber, HeaderLine,
         CurModuleNameSym, CurFileName, !TraceCounts, !IO) :-
     mercury_term_lexer.string_get_token_list_max(HeaderLine,
         string.length(HeaderLine), TokenList, posn(HeaderLineNumber, 1, 0), _),
@@ -309,7 +559,7 @@ read_proc_trace_counts(InputStream, HeaderLineNumber, HeaderLine,
             (
                 Result = ok(Line),
                 io.get_line_number(InputStream, LineNumber, !IO),
-                read_proc_trace_counts(InputStream, LineNumber, Line,
+                old_read_proc_trace_counts(InputStream, LineNumber, Line,
                     NextModuleNameSym, CurFileName, !TraceCounts, !IO)
             ;
                 Result = eof
@@ -327,7 +577,7 @@ read_proc_trace_counts(InputStream, HeaderLineNumber, HeaderLine,
             (
                 Result = ok(Line),
                 io.get_line_number(InputStream, LineNumber, !IO),
-                read_proc_trace_counts(InputStream, LineNumber, Line,
+                old_read_proc_trace_counts(InputStream, LineNumber, Line,
                     CurModuleNameSym, NextFileName, !TraceCounts, !IO)
             ;
                 Result = eof
@@ -398,7 +648,7 @@ read_proc_trace_counts(InputStream, HeaderLineNumber, HeaderLine,
             else
                 StartCounts = map.init
             ),
-            read_proc_trace_counts_2(InputStream, ProcLabelInContext,
+            old_read_proc_trace_counts_2(InputStream, ProcLabelInContext,
                 StartCounts, !TraceCounts, !IO)
         else
             string.format("parse error on line %d of execution trace",
@@ -411,11 +661,11 @@ read_proc_trace_counts(InputStream, HeaderLineNumber, HeaderLine,
         throw(trace_count_syntax_error(Message))
     ).
 
-:- pred read_proc_trace_counts_2(io.text_input_stream::in,
+:- pred old_read_proc_trace_counts_2(io.text_input_stream::in,
     proc_label_in_context::in, proc_trace_counts::in,
     trace_counts::in, trace_counts::out, io::di, io::uo) is det.
 
-read_proc_trace_counts_2(InputStream, ProcLabelInContext,
+old_read_proc_trace_counts_2(InputStream, ProcLabelInContext,
         ProcCounts0, !TraceCounts, !IO) :-
     io.read_line_as_string(InputStream, Result, !IO),
     (
@@ -427,14 +677,14 @@ read_proc_trace_counts_2(InputStream, ProcLabelInContext,
             LineNoAndCount =
                 line_no_and_count(LineNumber, ExecCount, NumTests),
             map.det_insert(PathPort, LineNoAndCount, ProcCounts0, ProcCounts),
-            read_proc_trace_counts_2(InputStream, ProcLabelInContext,
+            old_read_proc_trace_counts_2(InputStream, ProcLabelInContext,
                 ProcCounts, !TraceCounts, !IO)
         else
             map.det_insert(ProcLabelInContext, ProcCounts0, !TraceCounts),
             io.get_line_number(InputStream, LineNumber, !IO),
             CurModuleNameSym = ProcLabelInContext ^ context_module_symname,
             CurFileName = ProcLabelInContext ^ context_filename,
-            read_proc_trace_counts(InputStream, LineNumber, Line,
+            old_read_proc_trace_counts(InputStream, LineNumber, Line,
                 CurModuleNameSym, CurFileName, !TraceCounts, !IO)
         )
     ;
@@ -444,6 +694,8 @@ read_proc_trace_counts_2(InputStream, ProcLabelInContext,
         Result = error(Error),
         throw(Error)
     ).
+
+%---------------------------------------------------------------------------%
 
 :- pred parse_path_port_line(string::in, path_port::out, int::out, int::out,
     int::out) is semidet.
