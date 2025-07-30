@@ -381,12 +381,17 @@ read_proc_trace_counts(FileName, LineNumber0, Lines0,
                 ( if
                     map.remove(ProcLabelInContext, ProbeCounts, !TraceCounts)
                 then
-                    StartCounts = ProbeCounts
+                    ProcCounts1 = ProbeCounts
                 else
-                    StartCounts = map.init
+                    ProcCounts1 = map.init
                 ),
-                read_proc_trace_counts_2(FileName, LineNumber1, Lines1,
-                    ProcLabelInContext, StartCounts, !TraceCounts, !IO)
+                read_proc_path_trace_counts(LineNumber1, Lines1,
+                    LineNumber2, Lines2, ProcLabelInContext,
+                    ProcCounts1, ProcCounts, !IO),
+                map.det_insert(ProcLabelInContext, ProcCounts, !TraceCounts),
+
+                read_proc_trace_counts(FileName, LineNumber2, Lines2,
+                    TCModuleNameSym0, TCFileName0, !TraceCounts, !IO)
             else
                 string.format("parse error on line %d of execution trace",
                     [i(LineNumber0)], Message),
@@ -399,15 +404,17 @@ read_proc_trace_counts(FileName, LineNumber0, Lines0,
         )
     ).
 
-:- pred read_proc_trace_counts_2(string::in, int::in, list(string)::in,
-    proc_label_in_context::in, proc_trace_counts::in,
-    trace_counts::in, trace_counts::out, io::di, io::uo) is det.
+:- pred read_proc_path_trace_counts(int::in, list(string)::in,
+    int::out, list(string)::out, proc_label_in_context::in,
+    proc_trace_counts::in, proc_trace_counts::out, io::di, io::uo) is det.
 
-read_proc_trace_counts_2(FileName, LineNumber0, Lines0,
-        ProcLabelInContext, ProcCounts0, !TraceCounts, !IO) :-
+read_proc_path_trace_counts(LineNumber0, Lines0, LineNumber, Lines,
+        ProcLabelInContext, ProcCounts0, ProcCounts, !IO) :-
     (
         Lines0 = [],
-        map.det_insert(ProcLabelInContext, ProcCounts0, !TraceCounts)
+        LineNumber = LineNumber0,
+        Lines = Lines0,
+        ProcCounts = ProcCounts0
     ;
         Lines0 = [Line0 | Lines1],
         LineNumber1 = LineNumber0 + 1,
@@ -417,15 +424,14 @@ read_proc_trace_counts_2(FileName, LineNumber0, Lines0,
         then
             LineNoAndCount =
                 line_no_and_count(TCLineNumber, ExecCount, NumTests),
-            map.det_insert(PathPort, LineNoAndCount, ProcCounts0, ProcCounts),
-            read_proc_trace_counts_2(FileName, LineNumber1, Lines1,
-                ProcLabelInContext, ProcCounts, !TraceCounts, !IO)
+            map.det_insert(PathPort, LineNoAndCount, ProcCounts0, ProcCounts1),
+            read_proc_path_trace_counts(LineNumber1, Lines1,
+                LineNumber, Lines, ProcLabelInContext,
+                ProcCounts1, ProcCounts, !IO)
         else
-            map.det_insert(ProcLabelInContext, ProcCounts0, !TraceCounts),
-            TCModuleNameSym1 = ProcLabelInContext ^ context_module_symname,
-            TCFileName1 = ProcLabelInContext ^ context_filename,
-            read_proc_trace_counts(FileName, LineNumber1, Lines1,
-                TCModuleNameSym1, TCFileName1, !TraceCounts, !IO)
+            LineNumber = LineNumber0,
+            Lines = Lines0,
+            ProcCounts = ProcCounts0
         )
     ).
 
