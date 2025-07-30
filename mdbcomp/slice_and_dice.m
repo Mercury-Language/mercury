@@ -203,15 +203,15 @@
 %
 
 read_slice(File, Result, !IO) :-
-    read_trace_counts_source(File, ReadResult, !IO),
+    read_trace_counts_file(File, ReadResult, !IO),
     (
-        ReadResult = list_ok(FileType, TraceCounts),
+        ReadResult = rtcf_ok(FileType, TraceCounts),
         slice_merge_trace_counts(TraceCounts, map.init, SliceProcMap),
         NumTests = num_tests_for_file_type(FileType),
         Slice = slice(NumTests, SliceProcMap),
         Result = ok(Slice)
     ;
-        ReadResult = list_error_message(Problem),
+        ReadResult = rtcf_error_message(Problem),
         Result = error(Problem)
     ).
 
@@ -325,12 +325,12 @@ slice_add_trace_count(LineNoAndCount, ExecCounts0, ExecCounts) :-
     "MR_MDBCOMP_read_dice").
 
 read_dice(PassFile, FailFile, Result, !IO) :-
-    read_trace_counts_source(PassFile, ReadPassResult, !IO),
+    read_trace_counts_file(PassFile, ReadPassResult, !IO),
     (
-        ReadPassResult = list_ok(PassFileType, PassTraceCounts),
-        read_trace_counts_source(FailFile, ReadFailResult, !IO),
+        ReadPassResult = rtcf_ok(PassFileType, PassTraceCounts),
+        read_trace_counts_file(FailFile, ReadFailResult, !IO),
         (
-            ReadFailResult = list_ok(FailFileType, FailTraceCounts),
+            ReadFailResult = rtcf_ok(FailFileType, FailTraceCounts),
             dice_merge_trace_counts(pass_slice, PassTraceCounts,
                 map.init, PassDiceProcMap),
             dice_merge_trace_counts(fail_slice, FailTraceCounts,
@@ -340,11 +340,11 @@ read_dice(PassFile, FailFile, Result, !IO) :-
             Dice = dice(TotalPassTests, TotalFailTests, DiceProcMap),
             Result = ok(Dice)
         ;
-            ReadFailResult = list_error_message(Problem),
+            ReadFailResult = rtcf_error_message(Problem),
             Result = error(Problem)
         )
     ;
-        ReadPassResult = list_error_message(Problem),
+        ReadPassResult = rtcf_error_message(Problem),
         Result = error(Problem)
     ).
 

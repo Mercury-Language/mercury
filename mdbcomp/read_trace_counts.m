@@ -27,47 +27,19 @@
 :- import_module set.
 
 %---------------------------------------------------------------------------%
-% NOTE: read_trace_counts_source, read_trace_counts_list, and
-% read_and_union_trace_counts all build extra functionality
-% on the top of read_trace_counts.
-%---------------------------------------------------------------------------%
-
-:- type read_trace_counts_list_result
-    --->    list_ok(trace_count_file_type, trace_counts)
-    ;       list_error_message(string).
-
-    % read_trace_counts_source(FileName, Result, !IO):
-    %
-    % Read in trace counts stored in a given trace count file.
-    %
-:- pred read_trace_counts_source(string::in,
-    read_trace_counts_list_result::out, io::di, io::uo) is det.
-
-    % read_trace_counts_list(ShowProgress, FileName, Result, !IO):
-    %
-    % Read the trace_counts in the files whose names appear in FileName.
-    % The result is a union of all the trace counts.
-    % If ShowProgress is yes(Stream) then print to Stream the name of
-    % each file just before it is read.
-    %
-:- pred read_trace_counts_list(maybe(io.text_output_stream)::in, string::in,
-    read_trace_counts_list_result::out, io::di, io::uo) is det.
-
-%---------------------%
 
     % read_and_union_trace_counts(ShowProgress, FileNames, NumTests, TestKinds,
     %   TraceCounts, MaybeError, !IO):
     %
-    % Invoke read_trace_counts_source for each of the supplied filenames, and
+    % Invoke read_trace_counts_file for each of the supplied filenames, and
     % union the resulting trace counts. If there is a problem with reading in
     % the trace counts, MaybeError will be `yes' wrapped around the error
     % message. Otherwise, MaybeError will be `no', TraceCounts will contain
     % the union of the trace counts and NumTests will contain the number of
     % tests the trace counts come from.
     %
-    % If the source is a list of files and ShowProgress is yes then
-    % the name of each file read will be printed to the current output
-    % stream just before it is read.
+    % If ShowProgress is yes(Stream), then the name of each file
+    % will be printed to Stream just before it is read.
     %
 :- pred read_and_union_trace_counts(maybe(io.text_output_stream)::in,
     list(string)::in, int::out, set(trace_count_file_type)::out,
@@ -75,19 +47,16 @@
 
 %---------------------%
 
-:- type read_trace_counts_result
-    --->    ok(trace_count_file_type, trace_counts)
-    ;       syntax_error(string)
-    ;       error_message(string)
-    ;       open_error(io.error)
-    ;       io_error(io.error).
+:- type read_trace_counts_file_result
+    --->    rtcf_ok(trace_count_file_type, trace_counts)
+    ;       rtcf_error_message(string).
 
-    % read_trace_counts(FileName, Result, !IO):
+    % read_trace_counts_file(FileName, Result, !IO):
     %
-    % Read in the trace counts stored in FileName.
+    % Read in trace counts stored in a given trace count file.
     %
-:- pred read_trace_counts(string::in, read_trace_counts_result::out,
-    io::di, io::uo) is det.
+:- pred read_trace_counts_file(string::in,
+    read_trace_counts_file_result::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -109,154 +78,22 @@
 
 %---------------------------------------------------------------------------%
 
-read_trace_counts_source(FileName, Result, !IO) :-
-    read_trace_counts(FileName, ReadTCResult, !IO),
-    (
-        ReadTCResult = ok(FileType, TraceCount),
-        Result = list_ok(FileType, TraceCount)
-    ;
-        ReadTCResult = io_error(IOError),
-        IOErrorMsg = io.error_message(IOError),
-        string.format("I/O error reading file `%s': %s",
-            [s(FileName), s(IOErrorMsg)], ErrorMsg),
-        Result = list_error_message(ErrorMsg)
-    ;
-        ReadTCResult = open_error(IOError),
-        IOErrorMsg = io.error_message(IOError),
-        string.format("I/O error opening file `%s': %s",
-            [s(FileName), s(IOErrorMsg)], ErrorMsg),
-        Result = list_error_message(ErrorMsg)
-    ;
-        ReadTCResult = syntax_error(SyntaxMsg),
-        string.format("Syntax error in file `%s': %s",
-            [s(FileName), s(SyntaxMsg)], ErrorMsg),
-        Result = list_error_message(ErrorMsg)
-    ;
-        ReadTCResult = error_message(ErrMsg),
-        string.format("Error reading trace counts from in file `%s': %s",
-            [s(FileName), s(ErrMsg)], ErrorMsg),
-        Result = list_error_message(ErrorMsg)
-    ).
-
-read_trace_counts_list(ShowProgress, FileName, Result, !IO) :-
-    io.open_input(FileName, OpenResult, !IO),
-    (
-        OpenResult = ok(FileStream),
-        read_trace_counts_list_stream(ShowProgress, union_file(0, []),
-            map.init, FileName, FileStream, Result, !IO)
-        % XXX Is there some reason why we do not close FileStream?
-    ;
-        OpenResult = error(IOError),
-        IOErrorMsg = io.error_message(IOError),
-        string.format("Error opening file `%s': %s",
-            [s(FileName), s(IOErrorMsg)], ErrorMsg),
-        Result = list_error_message(ErrorMsg)
-    ).
-
-    % Same as read_trace_counts_list/5, but read the filenames containing
-    % the trace_counts from the given stream. MainFileName is the
-    % name of the file being read and is only used for error messages.
-    %
-:- pred read_trace_counts_list_stream(maybe(io.text_output_stream)::in,
-    trace_count_file_type::in, trace_counts::in, string::in,
-    io.text_input_stream::in, read_trace_counts_list_result::out,
-    io::di, io::uo) is det.
-
-read_trace_counts_list_stream(ShowProgress, FileType0, TraceCounts0,
-        MainFileName, Stream, Result, !IO) :-
-    io.read_line_as_string(Stream, ReadResult, !IO),
-    (
-        ReadResult = ok(Line),
-        % Remove trailing whitespace:
-        FileName = string.rstrip(Line),
-        ( if FileName = "" then
-            % Ignore blank lines.
-            read_trace_counts_list_stream(ShowProgress, FileType0,
-                TraceCounts0, MainFileName, Stream, Result, !IO)
-        else
-            (
-                ShowProgress = yes(ProgressStream),
-                io.write_string(ProgressStream, FileName, !IO),
-                io.nl(ProgressStream, !IO)
-            ;
-                ShowProgress = no
-            ),
-            read_trace_counts(FileName, ReadTCResult, !IO),
-            (
-                ReadTCResult = ok(FileType1, TraceCounts1),
-                summarize_trace_counts_list([TraceCounts0, TraceCounts1],
-                    TraceCounts),
-                FileType = sum_trace_count_file_type(FileType0, FileType1),
-                read_trace_counts_list_stream(ShowProgress, FileType,
-                    TraceCounts, MainFileName, Stream, Result, !IO)
-            ;
-                ReadTCResult = io_error(IOError),
-                ErrMsg = io.error_message(IOError),
-                Result = list_error_message("I/O error reading file " ++
-                    "`" ++ FileName ++ "': " ++ ErrMsg)
-            ;
-                ReadTCResult = open_error(IOError),
-                ErrMsg = io.error_message(IOError),
-                Result = list_error_message("I/O error opening file " ++
-                    "`" ++ FileName ++ "': " ++ ErrMsg)
-            ;
-                ReadTCResult = syntax_error(ErrMsg),
-                Result = list_error_message("Syntax error in file `" ++
-                    FileName ++ "': " ++ ErrMsg)
-            ;
-                ReadTCResult = error_message(ErrMsg),
-                Result = list_error_message("Error reading trace counts " ++
-                    "from file `" ++ FileName ++ "': " ++ ErrMsg)
-            )
-        )
-    ;
-        ReadResult = error(Error),
-        Result = list_error_message("IO error reading file " ++ "`" ++
-            MainFileName ++ "': " ++ string.string(Error))
-    ;
-        ReadResult = eof,
-        Result = list_ok(FileType0, TraceCounts0)
-    ).
-
-:- pred string_to_goal_path(string::in, reverse_goal_path::out) is semidet.
-
-string_to_goal_path(String, Path) :-
-    string.prefix(String, "<"),
-    string.suffix(String, ">"),
-    string.length(String, Length),
-    string.between(String, 1, Length - 1, SubString),
-    rev_goal_path_from_string(SubString, Path).
-
-:- pred decimal_token_to_int(token::in, int::out) is semidet.
-
-decimal_token_to_int(Token, Int) :-
-    Token = integer(base_10, Integer, signed, size_word),
-    integer.to_int(Integer, Int).
-
-%---------------------------------------------------------------------------%
-
 read_and_union_trace_counts(ShowProgress, Files, NumTests, TestKinds,
         TraceCounts, MaybeError, !IO) :-
-    read_and_union_trace_counts_2(ShowProgress, Files,
+    read_and_union_trace_counts_loop(ShowProgress, Files,
         union_file(0, []), FileType, map.init, TraceCounts, MaybeError, !IO),
-    (
-        FileType = union_file(NumTests, TestKindList),
-        set.list_to_set(TestKindList, TestKinds)
-    ;
-        FileType = single_file(_),
-        error("read_and_union_trace_counts: single_file")
-    ;
-        FileType = diff_file(_, _),
-        error("read_and_union_trace_counts: diff_file")
-    ).
+    FileType = union_file(NumTests, TestKindList),
+    set.list_to_set(TestKindList, TestKinds).
 
-:- pred read_and_union_trace_counts_2(maybe(io.text_output_stream)::in,
-    list(string)::in, trace_count_file_type::in, trace_count_file_type::out,
+:- pred read_and_union_trace_counts_loop(maybe(io.text_output_stream)::in,
+    list(string)::in,
+    trace_count_file_type::in(union_file),
+    trace_count_file_type::out(union_file),
     trace_counts::in, trace_counts::out, maybe(string)::out,
     io::di, io::uo) is det.
 
-read_and_union_trace_counts_2(_, [], !FileType, !TraceCounts, no, !IO).
-read_and_union_trace_counts_2(ShowProgress, [FileName | FileNames],
+read_and_union_trace_counts_loop(_, [], !FileType, !TraceCounts, no, !IO).
+read_and_union_trace_counts_loop(ShowProgress, [FileName | FileNames],
         !FileType, !TraceCounts, MaybeError, !IO) :-
     (
         ShowProgress = yes(ProgressStream),
@@ -265,22 +102,87 @@ read_and_union_trace_counts_2(ShowProgress, [FileName | FileNames],
     ;
         ShowProgress = no
     ),
-    read_trace_counts_source(FileName, TCResult, !IO),
+    read_trace_counts_file(FileName, TCResult, !IO),
     (
-        TCResult = list_ok(FileType, NewTraceCounts),
+        TCResult = rtcf_ok(FileType, NewTraceCounts),
         summarize_trace_counts_list([!.TraceCounts, NewTraceCounts],
             !:TraceCounts),
         !:FileType = sum_trace_count_file_type(!.FileType, FileType),
-        read_and_union_trace_counts_2(ShowProgress, FileNames,
+        read_and_union_trace_counts_loop(ShowProgress, FileNames,
             !FileType, !TraceCounts, MaybeError, !IO)
     ;
-        TCResult = list_error_message(Message),
+        TCResult = rtcf_error_message(Message),
         MaybeError = yes(Message)
     ).
 
 %---------------------------------------------------------------------------%
 
-read_trace_counts(FileName, ReadResult, !IO) :-
+read_trace_counts_file(FileName, Result, !IO) :-
+    read_trace_counts_base(FileName, ReadTCResult, !IO),
+    (
+        ReadTCResult = rtc_ok(FileType, TraceCount),
+        Result = rtcf_ok(FileType, TraceCount)
+    ;
+        ReadTCResult = rtc_error(ReadTCError),
+        ErrorMsg = read_trace_counts_error_to_str(FileName, ReadTCError),
+        Result = rtcf_error_message(ErrorMsg)
+    ).
+
+:- func read_trace_counts_error_to_str(string, read_trace_counts_error)
+    = string.
+
+read_trace_counts_error_to_str(FileName, ReadTCError) = ErrorMsg :-
+    (
+        ReadTCError = rtce_open_error(IOError),
+        IOErrorMsg = io.error_message(IOError),
+        string.format("I/O error opening file `%s': %s",
+            [s(FileName), s(IOErrorMsg)], ErrorMsg)
+    ;
+        ReadTCError = rtce_io_error(IOError),
+        IOErrorMsg = io.error_message(IOError),
+        string.format("I/O error reading file `%s': %s",
+            [s(FileName), s(IOErrorMsg)], ErrorMsg)
+    ;
+        ReadTCError = rtce_syntax_error(SyntaxMsg),
+        string.format("Syntax error in file `%s': %s",
+            [s(FileName), s(SyntaxMsg)], ErrorMsg)
+    ;
+        ReadTCError = rtce_error_message(ErrMsg),
+        string.format("Error reading trace counts from in file `%s': %s",
+            [s(FileName), s(ErrMsg)], ErrorMsg)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- type read_trace_counts_result
+    --->    rtc_ok(trace_count_file_type, trace_counts)
+    ;       rtc_error(read_trace_counts_error).
+
+:- type read_trace_counts_error
+    --->    rtce_open_error(io.error)
+    ;       rtce_io_error(io.error)
+    ;       rtce_syntax_error(string)
+    ;       rtce_error_message(string).
+
+    % read_trace_counts_base(FileName, Result, !IO):
+    %
+    % Read in the trace counts stored in FileName. Return detailed info
+    % about any errors.
+    %
+    % XXX The only caller of this predicate, read_trace_counts_file,
+    % throws away all the details in these errors. Therefore
+    % representing errors as simple strings inside this predicate
+    % would allow read_trace_counts_file and read_trace_counts_base
+    % to be merged into one predicate.
+    %
+    % XXX The code of the call tree of this predicate would be simpler
+    % if it returned error indications instead of throwing exceptions,
+    % and also if it read in the whole file at once.
+    %
+:- pred read_trace_counts_base(string::in, read_trace_counts_result::out,
+    io::di, io::uo) is det.
+
+read_trace_counts_base(FileName, ReadResult, !IO) :-
     % XXX We should be using zcat here, to avoid deleting the gzipped file
     % and having to recreate it again. Unfortunately, Mercury does not have
     % any facilities equivalent to popen in Unix, and I don't know how to
@@ -307,12 +209,14 @@ read_trace_counts(FileName, ReadResult, !IO) :-
                 read_trace_counts_from_stream(FileStream, ReadResult, !IO)
             )
         else
-            ReadResult = syntax_error("no trace count file id")
+            ReadError = rtce_syntax_error("no trace count file id"),
+            ReadResult = rtc_error(ReadError)
         ),
         io.close_input(FileStream, !IO)
     ;
         Result = error(IOError),
-        ReadResult = open_error(IOError)
+        ReadError = rtce_open_error(IOError),
+        ReadResult = rtc_error(ReadError)
     ),
     ( if GzipCmd = "" then
         true
@@ -333,28 +237,31 @@ read_trace_counts_from_stream(InputStream, ReadResult, !IO) :-
                 Result, !IO),
             (
                 Result = succeeded(TraceCounts),
-                ReadResult = ok(FileType, TraceCounts)
+                ReadResult = rtc_ok(FileType, TraceCounts)
             ;
                 Result = exception(Exception),
                 ( if Exception = univ(IOError) then
-                    ReadResult = io_error(IOError)
+                    ReadError = rtce_io_error(IOError)
                 else if Exception = univ(Message) then
-                    ReadResult = error_message(Message)
+                    ReadError = rtce_error_message(Message)
                 else if Exception = univ(trace_count_syntax_error(Error)) then
-                    ReadResult = syntax_error(Error)
+                    ReadError = rtce_syntax_error(Error)
                 else
                     unexpected($pred,
                         "unexpected exception type: " ++ string(Exception))
-                )
+                ),
+                ReadResult = rtc_error(ReadError)
             )
         else
-            ReadResult = syntax_error("no info on trace count file type")
+            ReadError = rtce_syntax_error("no info on trace count file type"),
+            ReadResult = rtc_error(ReadError)
         )
     ;
         ( FileTypeResult = eof
         ; FileTypeResult = error(_, _)
         ),
-        ReadResult = syntax_error("no info on trace count file type")
+        ReadError = rtce_syntax_error("no info on trace count file type"),
+        ReadResult = rtc_error(ReadError)
     ).
 
 :- pred read_trace_counts_setup(io.text_input_stream::in,
@@ -585,6 +492,21 @@ parse_path_port_line_rest(Rest, ExecCount, NumTests) :-
         string.to_int(ExecCountStr, ExecCount),
         string.to_int(NumTestsStr, NumTests)
     ).
+
+:- pred string_to_goal_path(string::in, reverse_goal_path::out) is semidet.
+
+string_to_goal_path(String, Path) :-
+    string.prefix(String, "<"),
+    string.suffix(String, ">"),
+    string.length(String, Length),
+    string.between(String, 1, Length - 1, SubString),
+    rev_goal_path_from_string(SubString, Path).
+
+:- pred decimal_token_to_int(token::in, int::out) is semidet.
+
+decimal_token_to_int(Token, Int) :-
+    Token = integer(base_10, Integer, signed, size_word),
+    integer.to_int(Integer, Int).
 
 %---------------------------------------------------------------------------%
 :- end_module mdbcomp.read_trace_counts.

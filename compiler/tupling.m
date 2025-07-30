@@ -177,13 +177,13 @@ tuple_arguments(ProgressStream, !ModuleInfo, !IO) :-
             "Warning: --tuple requires --tuple-trace-counts-file to work.\n",
             !IO)
     else
-        read_trace_counts_source(TraceCountsFile, Result, !IO),
+        read_trace_counts_file(TraceCountsFile, Result, !IO),
         (
-            Result = list_ok(_, TraceCounts),
+            Result = rtcf_ok(_, TraceCounts),
             tuple_arguments_with_trace_counts(ProgressStream,
                 !ModuleInfo, TraceCounts)
         ;
-            Result = list_error_message(Reason),
+            Result = rtcf_error_message(Reason),
             string.format(
                 "Warning: unable to read trace count summary from %s (%s)\n",
                 [s(TraceCountsFile), s(Reason)], Message),

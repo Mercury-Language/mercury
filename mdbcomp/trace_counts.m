@@ -56,8 +56,13 @@
     ;       diff_file(trace_count_file_type, trace_count_file_type).
             % The file is a difference between two other trace count files.
 
+:- inst union_file for trace_count_file_type/0
+    --->    union_file(ground, ground).
+
 :- func sum_trace_count_file_type(trace_count_file_type, trace_count_file_type)
     = trace_count_file_type.
+:- mode sum_trace_count_file_type(in(union_file), in) = out(union_file) is det.
+:- mode sum_trace_count_file_type(in, in) = out is det.
 
 :- type trace_counts == map(proc_label_in_context, proc_trace_counts).
 
@@ -68,7 +73,7 @@
                 proc_label              :: proc_label
             ).
 
-:- type proc_trace_counts   == map(path_port, line_no_and_count).
+:- type proc_trace_counts == map(path_port, line_no_and_count).
 
 :- type path_port
     --->    port_only(trace_port)
@@ -279,6 +284,11 @@ diff_counts_on_line(LC1, LC2) = LC :-
 
     % The number of tests field doesn't make sense in the result of a diff
     % operation. We signal this fact by using a plainly dummy value.
+    % XXX It would be better to use a different return type that
+    % lacks this meaningless field. Or, sort-of equivalently, we could make
+    % line_no_and_count take a type argument, which would specify the type
+    % of the third field. This would be set to "int" when the third field
+    % is meaningful, and to "unit" when it is not.
 
     LC1 = line_no_and_count(LineNumber1, Count1, _NumTests1),
     LC2 = line_no_and_count(_LineNumber, Count2, _NumTests2),

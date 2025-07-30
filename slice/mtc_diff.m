@@ -73,25 +73,25 @@ compute_and_output_diff(StdErrStream, OptionTable, Args, !IO) :-
         Args = [Arg1, Arg2],
         OutputFile \= ""
     then
-        read_trace_counts_source(Arg1, MaybeTraceCounts1, !IO),
+        read_trace_counts_file(Arg1, MaybeTraceCounts1, !IO),
         (
-            MaybeTraceCounts1 = list_ok(_, _)
+            MaybeTraceCounts1 = rtcf_ok(_, _)
         ;
-            MaybeTraceCounts1 = list_error_message(Msg1),
+            MaybeTraceCounts1 = rtcf_error_message(Msg1),
             io.write_string(StdErrStream, Msg1, !IO),
             io.nl(StdErrStream, !IO)
         ),
-        read_trace_counts_source(Arg2, MaybeTraceCounts2, !IO),
+        read_trace_counts_file(Arg2, MaybeTraceCounts2, !IO),
         (
-            MaybeTraceCounts2 = list_ok(_, _)
+            MaybeTraceCounts2 = rtcf_ok(_, _)
         ;
-            MaybeTraceCounts2 = list_error_message(Msg2),
+            MaybeTraceCounts2 = rtcf_error_message(Msg2),
             io.format(StdErrStream, "%s\n", [s(Msg2)], !IO),
             io.set_exit_status(1, !IO)
         ),
         ( if
-            MaybeTraceCounts1 = list_ok(Type1, TraceCounts1),
-            MaybeTraceCounts2 = list_ok(Type2, TraceCounts2)
+            MaybeTraceCounts1 = rtcf_ok(Type1, TraceCounts1),
+            MaybeTraceCounts2 = rtcf_ok(Type2, TraceCounts2)
         then
             diff_trace_counts(TraceCounts1, TraceCounts2, TraceCounts),
             write_trace_counts_to_file(diff_file(Type1, Type2),
