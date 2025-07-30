@@ -719,8 +719,27 @@ potentially_moveable_goal(Goal) :-
             potentially_moveable_goal(SubGoal)
         )
     ;
+        GoalExpr = generic_call(GenericCall, _, _, _, GenericDetism),
+        (
+            GenericCall = cast(CastKind),
+            % All cast kinds are now moveable, but list them all,
+            % to force this code to be looked at if we ever add a new kind.
+            ( CastKind = unsafe_type_cast
+            ; CastKind = unsafe_type_inst_cast
+            ; CastKind = equiv_type_cast
+            ; CastKind = exists_cast
+            ; CastKind = subtype_coerce
+            ),
+            GenericDetism = detism_det
+        ;
+            ( GenericCall = higher_order(_, _, _, _, _)
+            ; GenericCall = class_method(_, _, _, _)
+            ; GenericCall = event_call(_)
+            ),
+            fail
+        )
+    ;
         ( GoalExpr = plain_call(_, _, _, _, _, _)
-        ; GoalExpr = generic_call(_, _, _, _, _)
         ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ; GoalExpr = conj(_, _)
         ; GoalExpr = disj(_)
