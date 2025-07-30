@@ -911,7 +911,7 @@ input_arg_assignable_with_cast(Lang, HighLevelData,
                 MaybeForeignType = yes(ForeignType),
                 ForeignType = foreign_type_and_assertions(_, Assertions),
                 asserted_can_pass_as_mercury_type(Assertions),
-                Cast = "(" ++ TypeString ++ ")"
+                Cast = "(" ++ TypeString ++ ") "
             ;
                 MaybeForeignType = no,
                 Cast = ""
