@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1998-2001, 2003, 2005-2006, 2011 The University of Melbourne.
-% Copyright (C) 2015-2019, 2021-2023 The Mercury team.
+% Copyright (C) 2015-2019, 2021-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -334,7 +334,7 @@ dummy_pred_to_avoid_warning_about_nothing_exported.
 
 :- pred output_current_slots_user(event_number::in, call_number::in,
     depth_number::in, trace_port::in, pred_or_func::in,
-    /* declarated module name */ string::in,
+    /* declaration module name */ string::in,
     /* definition module name */ string::in, /* pred name */ string::in,
     arity::in, /* mode num */ int::in, determinism::in, goal_path_string::in,
     line_number::in, io.text_output_stream::in, io::di, io::uo) is det.
@@ -446,8 +446,8 @@ get_var_number(DebuggerRequest) = VarNumber :-
     "ML_DI_found_match_user").
 
 :- pred found_match_user(event_number::in, call_number::in, depth_number::in,
-    trace_port::in, pred_or_func::in, /* declarated module name */ string::in,
-    /* defined module name */ string::in, /* pred name */ string::in,
+    trace_port::in, pred_or_func::in, /* declaration module name */ string::in,
+    /* definition module name */ string::in, /* pred name */ string::in,
     arity::in, /* mode num */ int::in, determinism::in,
     /* the arguments */ list(univ)::in, goal_path_string::in,
     debugger_request::in) is semidet.
