@@ -8,6 +8,7 @@
 --no-mercury-stdlib-dir
 --warn-dead-preds
 --warn-implicit-stream-calls
+--warn-include-and-non-include
 --warn-inconsistent-pred-order-clauses
 --warn-insts-with-functors-without-type
 --warn-interface-imports-in-parents

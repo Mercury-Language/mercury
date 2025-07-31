@@ -606,6 +606,7 @@ EOF
             --verbose \
             $link_static_opt conftest \
             --subtype-int2-2025-07-07 \
+            --warn-include-and-non-include \
             --allow-ho-insts-as-modes \
             --no-ssdb \
             </dev/null >&AS_MESSAGE_LOG_FD 2>&1 &&

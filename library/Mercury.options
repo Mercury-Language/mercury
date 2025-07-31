@@ -106,10 +106,9 @@ MCFLAGS-thread.future           += --no-warn-unneeded-final-statevars
 MCFLAGS-thread.mvar             += --no-warn-unneeded-final-statevars
 MCFLAGS-thread.semaphore        += --no-warn-unneeded-final-statevars
 
-# XXX PACKAGE
-# MCFLAGS-bit_buffer              += --no-warn-include-and-non-include
-# MCFLAGS-io                      += --no-warn-include-and-non-include
-# MCFLAGS-random                  += --no-warn-include-and-non-include
-# MCFLAGS-stream                  += --no-warn-include-and-non-include
-# MCFLAGS-string                  += --no-warn-include-and-non-include
-# MCFLAGS-thread                  += --no-warn-include-and-non-include
+MCFLAGS-bit_buffer              += --no-warn-include-and-non-include
+MCFLAGS-io                      += --no-warn-include-and-non-include
+MCFLAGS-random                  += --no-warn-include-and-non-include
+MCFLAGS-stream                  += --no-warn-include-and-non-include
+MCFLAGS-string                  += --no-warn-include-and-non-include
+MCFLAGS-thread                  += --no-warn-include-and-non-include

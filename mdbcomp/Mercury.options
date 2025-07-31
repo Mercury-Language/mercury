@@ -17,5 +17,4 @@ MCFLAGS-mdbcomp.sym_name    += --no-optimize-constructor-last-call
 
 MCFLAGS-mdbcomp.feedback    += --no-warn-unneeded-initial-statevars
 
-# XXX PACKAGE
-# MCFLAGS-mdbcomp             += --no-warn-include-and-non-include
+MCFLAGS-mdbcomp             += --no-warn-include-and-non-include

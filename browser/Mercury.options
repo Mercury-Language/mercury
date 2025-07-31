@@ -32,8 +32,7 @@ MCFLAGS-mdb.interactive_query       += --no-warn-inferred-erroneous
 
 MCFLAGS-mdb.browser_info            += --no-warn-unneeded-final-statevars
 
-# XXX PACKAGE
-# MCFLAGS-mdb                         += --no-warn-include-and-non-include
+MCFLAGS-mdb                         += --no-warn-include-and-non-include
 
 # XXX This line is needed so that `mmake --use-mmc-make libmer_browser'
 # passes `-lmer_mdbcomp' to `mmc --make' in the MLLIBS variable.
