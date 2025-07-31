@@ -740,10 +740,7 @@ imports_only_implicit_builtins(ImportUseMap) :-
 
 imports_only_implicit_builtins_test_all([]).
 imports_only_implicit_builtins_test_all([Pair | Pairs]) :-
-    Pair = ModuleName - MaybeImplicit,
-    ( ModuleName = mercury_public_builtin_module
-    ; ModuleName = mercury_private_builtin_module
-    ),
+    Pair = _ModuleName - MaybeImplicit,
     MaybeImplicit = implicit_avail(_, _),
     imports_only_implicit_builtins_test_all(Pairs).
 
