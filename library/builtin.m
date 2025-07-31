@@ -188,8 +188,8 @@
 :- pred unify(T::in, T::in) is semidet.
 
     % For use in defining user-defined unification predicates.
-    % The relation defined by a value of type `unify', must be an
-    % equivalence relation; that is, it must be symmetric, reflexive,
+    % The relation defined by a value of type `unify' must be
+    % an equivalence relation, meaning that it must be symmetric, reflexive,
     % and transitive.
     %
 :- type unify(T) == pred(T, T).
@@ -219,7 +219,7 @@
     %
     % - the relation
     %   compare_eq(X, Y) :- ComparePred((=), X, Y).
-    %   must be an equivalence relation; that is, it must be symmetric,
+    %   must be an equivalence relation; meaning that it must be symmetric,
     %   reflexive, and transitive.
     %
     % - the relations
@@ -227,7 +227,7 @@
     %       ComparePred(R, X, Y), (R = (=) ; R = (<)).
     %   compare_geq(X, Y) :-
     %       ComparePred(R, X, Y), (R = (=) ; R = (>)).
-    %   must be total order relations: that is they must be antisymmetric,
+    %   must be total order relations: meaning that they must be antisymmetric,
     %   reflexive and transitive.
     %
 :- type compare(T) == pred(comparison_result, T, T).
@@ -395,8 +395,7 @@
 
 :- implementation.
 
-    % This import is needed by the Mercury clause for semidet_fail/0,
-    % and for e.g. {unify,compare}_tuple_pos.
+    % This import is needed for e.g. {unify,compare}_tuple_pos.
     %
 :- import_module int.
 
@@ -407,12 +406,12 @@ false :-
 
 %---------------------------------------------------------------------------%
 
-% IMPORTANT: any changes or additions to external predicates should be
-% reflected in the definition of pred_is_external in
+% IMPORTANT: any changes or additions to external predicates
+% should be reflected in the definition of pred_is_external in
 % mdbcomp/program_representation.m. The debugger needs to know what predicates
 % are defined externally, so that it knows not to expect events for those
 % predicates.
-%
+
 :- pragma external_pred(unify/2).
 :- pragma external_pred(compare/3).
 :- pragma external_pred(compare_representation/3).
@@ -893,11 +892,9 @@ __Compare____tuple_0_0(object x, object y)
 
 %---------------------------------------------------------------------------%
 
-%
-% A definition of the Mercury type void/0 is needed because we can generate
+% We need a definition of the Mercury type void/0 because we can generate
 % references to it in code. See tests/hard_coded/nullary_ho_func.m for an
 % example of code which does.
-%
 :- pragma foreign_code("C#", "
     [System.Serializable]
     public class Void_0
@@ -923,9 +920,8 @@ __Compare____tuple_0_0(object x, object y)
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_code("Java", "
-
     //
-    // Definitions of builtin types
+    // Definitions of builtin types.
     //
 
     public static class Tuple_0
@@ -944,7 +940,7 @@ __Compare____tuple_0_0(object x, object y)
     }
 
     //
-    // Generic unification/comparison routines
+    // Generic unification/comparison routines.
     //
 
     public static boolean
@@ -992,7 +988,7 @@ __Compare____tuple_0_0(object x, object y)
     }
 
     //
-    // Type-specific unification routines for builtin types
+    // Type-specific unification routines for builtin types.
     //
 
     public static boolean
@@ -1011,7 +1007,6 @@ __Compare____tuple_0_0(object x, object y)
             ""unify/2 for tuple types not implemented"");
     }
 
-
     public static boolean
     __Unify____c_pointer_0_0(java.lang.Object x, java.lang.Object y)
     {
@@ -1027,7 +1022,7 @@ __Compare____tuple_0_0(object x, object y)
     }
 
     //
-    // Type-specific comparison routines for builtin types
+    // Type-specific comparison routines for builtin types.
     //
 
     public static Comparison_result_0
@@ -1078,6 +1073,18 @@ __Compare____tuple_0_0(object x, object y)
 % But this optimization won't happen until after determinism analysis,
 % which doesn't know anything about integer arithmetic,
 % so this code won't provide a warning from determinism analysis.
+%
+% XXX Actually, the above is long out-of-date. We have been able to define
+% semidet_succeed as true, and semidet_fail as fail, since we added
+% no_determinism_warning pragmas to the language. However, if we *do*
+% define them that way, one of the test cases, general/test_parsing_utils,
+% fails, with the symtom being several differences that replace output
+% from the parser such as "expecting an operator" and "unterminated comment"
+% with just "syntax error", which seems to implicate the call to semidet_fail
+% in the implementation of the fail_with_message predicate as the cause,
+% since both of those strings are passed to fail_with_message.
+% However, there is no point in tracking down the precise cause,
+% since the potential gain is so minuscule.
 
 :- pragma foreign_proc("C",
     semidet_succeed,
@@ -1211,8 +1218,6 @@ dynamic_cast(X, Y) :-
 
 %---------------------------------------------------------------------------%
 
-init_runtime_hooks.
-
 :- pragma foreign_proc("C",
     init_runtime_hooks,
     [will_not_call_mercury, thread_safe, may_not_duplicate],
@@ -1230,6 +1235,9 @@ init_runtime_hooks.
         MR_ENTRY(mercury__builtin__compare_rep_tuple_3_0);
 #endif
 ").
+
+init_runtime_hooks.
+    % We have no runtime hooks for Java or C#.
 
 %---------------------------------------------------------------------------%
 :- end_module builtin.

@@ -427,12 +427,12 @@ builtin_compare_non_canonical_type(Res, X, _Y) :-
 builtin_unify_solver_type(_X, _Y) :-
     % Suppress determinism warning.
     ( if semidet_succeed then
-        % XXX ideally we should use the commented out code but looking up
+        % XXX Ideally we should use the commented out code, but looking up
         % the name of the solver type in RTTI currently gives us the name of
-        % the representation type - reporting the name of the latter is likely
-        % to be confusing since representation types will nearly always have
+        % the representation type. Reporting the name of the latter is likely
+        % to be confusing, since representation types will nearly always have
         % equality defined on them.
-        %Message = "call to unify/2 for solver type `"
+        % Message = "call to unify/2 for solver type `"
         %    ++ type_name(type_of(X)) ++ "'",
         Message = "call to generated unify/2 for solver type",
         error(Message)
@@ -445,7 +445,7 @@ builtin_unify_solver_type(_X, _Y) :-
 builtin_compare_solver_type(Res, _X, _Y) :-
     % Suppress determinism warning.
     ( if semidet_succeed then
-        % XXX see the comment above regarding RTTI.
+        % XXX See the comment above regarding RTTI.
         % Message = "call to compare/3 for solver type `"
         %    ++ type_name(type_of(X)) ++ "'",
         Message = "call to generated compare/3 for solver type",
@@ -1306,7 +1306,7 @@ __Compare____base_typeclass_info_1_0(
     mark_hp(SavedHeapPointer::out),
     [will_not_call_mercury, thread_safe],
 "
-    // We can't do heap reclamation on failure in the .NET back-end.
+    // We can't do heap reclamation on failure in the C# back-end.
     SavedHeapPointer = null;
 ").
 :- pragma foreign_proc("Java",
@@ -1332,7 +1332,7 @@ __Compare____base_typeclass_info_1_0(
     restore_hp(_SavedHeapPointer::in),
     [will_not_call_mercury, thread_safe],
 "
-    // We can't do heap reclamation on failure in the .NET back-end.
+    // We can't do heap reclamation on failure in the C# back-end.
 ").
 :- pragma foreign_proc("Java",
     restore_hp(_SavedHeapPointer::in),
@@ -1343,7 +1343,7 @@ __Compare____base_typeclass_info_1_0(
 
 %---------------------------------------------------------------------------%
 
-% Code to define the heap_pointer and ref types for the .NET back-end.
+% Code to define the heap_pointer and ref types for the C# back-end.
 % (For the C back-ends, they're defined in runtime/mercury_builtin_types.[ch].)
 
 :- pragma foreign_code("C#", "
@@ -1352,7 +1352,7 @@ public static bool
 __Unify__private_builtin__heap_pointer_0_0(object[] x, object[] y)
 {
     runtime.Errors.fatal_error(
-        ""called unify for type `private_builtin:heap_pointer'"");
+        ""called unify for type `private_builtin.heap_pointer'"");
     return false;
 }
 
@@ -1361,7 +1361,7 @@ __Compare__private_builtin__heap_pointer_0_0(
     ref object[] result, object[] x, object[] y)
 {
     runtime.Errors.fatal_error(
-        ""called compare/3 for type `private_builtin:heap_pointer'"");
+        ""called compare/3 for type `private_builtin.heap_pointer'"");
 }
 
 public static bool
@@ -1425,8 +1425,7 @@ __Compare__private_builtin__ref_1_0(
     %
 :- pred unify_remote_arg_words(T::in, T::in, int::in, int::in) is semidet.
 
-    % compare_remote_uint_words(TermX, TermY,
-    %   Ptag, CellOffset, Result):
+    % compare_remote_uint_words(TermX, TermY, Ptag, CellOffset, Result):
     %
     % Set Result to the result of the unsigned comparison between
     % two bitfields in the memory cells of TermX and TermY.
@@ -1473,8 +1472,7 @@ __Compare__private_builtin__ref_1_0(
 :- pred compare_local_uint_words(T::in, T::in,
     comparison_result::uo) is det.
 
-    % compare_local_uint_bitfields(TermX, TermY,
-    %   Shift, NumBits, Result):
+    % compare_local_uint_bitfields(TermX, TermY, Shift, NumBits, Result):
     %
     % Set Result to the result of the unsigned comparison between
     % two bitfields in TermX and TermY.
@@ -1485,8 +1483,7 @@ __Compare__private_builtin__ref_1_0(
 :- pred compare_local_uint_bitfields(T::in, T::in, int::in, int::in,
     comparison_result::uo) is det.
 
-    % compare_local_int{8,16,32}_bitfields(TermX, TermY,
-    %   Shift, Result):
+    % compare_local_int{8,16,32}_bitfields(TermX, TermY, Shift, Result):
     %
     % Set Result to the result of the signed comparison between two
     % {8,16,32} bit bitfields in TermX and TermY.
@@ -1608,7 +1605,14 @@ nyi_foreign_type_compare(Result, _, _) :-
 ").
 
 unify_remote_arg_words(_, _, _, _) :-
-    semidet_fail.
+    % This predicate should only ever be called when targeting C,
+    % in which case, its definition will the foreign_proc above,
+    % not this clause.
+    ( if semidet_fail then
+        true
+    else
+        error("unify_remote_arg_words called")
+    ).
 
 %---------------------%
 
@@ -1636,6 +1640,9 @@ unify_remote_arg_words(_, _, _, _) :-
 ").
 
 compare_remote_uint_words(_, _, _, _, Result) :-
+    % This predicate should only ever be called when targeting C,
+    % in which case, its definition will the foreign_proc above,
+    % not this clause.
     ( if semidet_fail then
         Result = (=)
     else
@@ -1670,6 +1677,9 @@ compare_remote_uint_words(_, _, _, _, Result) :-
 ").
 
 compare_remote_uint_bitfields(_, _, _, _, _, _, Result) :-
+    % This predicate should only ever be called when targeting C,
+    % in which case, its definition will the foreign_proc above,
+    % not this clause.
     ( if semidet_fail then
         Result = (=)
     else
@@ -1704,6 +1714,9 @@ compare_remote_uint_bitfields(_, _, _, _, _, _, Result) :-
 ").
 
 compare_remote_int8_bitfields(_, _, _, _, _, Result) :-
+    % This predicate should only ever be called when targeting C,
+    % in which case, its definition will the foreign_proc above,
+    % not this clause.
     ( if semidet_fail then
         Result = (=)
     else
@@ -1738,6 +1751,9 @@ compare_remote_int8_bitfields(_, _, _, _, _, Result) :-
 ").
 
 compare_remote_int16_bitfields(_, _, _, _, _, Result) :-
+    % This predicate should only ever be called when targeting C,
+    % in which case, its definition will the foreign_proc above,
+    % not this clause.
     ( if semidet_fail then
         Result = (=)
     else
@@ -1779,6 +1795,9 @@ compare_remote_int16_bitfields(_, _, _, _, _, Result) :-
 ").
 
 compare_remote_int32_bitfields(_, _, _, _, _, Result) :-
+    % This predicate should only ever be called when targeting C,
+    % in which case, its definition will the foreign_proc above,
+    % not this clause.
     ( if semidet_fail then
         Result = (=)
     else
@@ -1806,6 +1825,9 @@ compare_remote_int32_bitfields(_, _, _, _, _, Result) :-
 ").
 
 compare_local_uint_words(_, _, Result) :-
+    % This predicate should only ever be called when targeting C,
+    % in which case, its definition will the foreign_proc above,
+    % not this clause.
     ( if semidet_fail then
         Result = (=)
     else
@@ -1836,6 +1858,9 @@ compare_local_uint_words(_, _, Result) :-
 ").
 
 compare_local_uint_bitfields(_, _, _, _, Result) :-
+    % This predicate should only ever be called when targeting C,
+    % in which case, its definition will the foreign_proc above,
+    % not this clause.
     ( if semidet_fail then
         Result = (=)
     else
@@ -1865,6 +1890,9 @@ compare_local_uint_bitfields(_, _, _, _, Result) :-
 ").
 
 compare_local_int8_bitfields(_, _, _, Result) :-
+    % This predicate should only ever be called when targeting C,
+    % in which case, its definition will the foreign_proc above,
+    % not this clause.
     ( if semidet_fail then
         Result = (=)
     else
@@ -1894,6 +1922,9 @@ compare_local_int8_bitfields(_, _, _, Result) :-
 ").
 
 compare_local_int16_bitfields(_, _, _, Result) :-
+    % This predicate should only ever be called when targeting C,
+    % in which case, its definition will the foreign_proc above,
+    % not this clause.
     ( if semidet_fail then
         Result = (=)
     else
@@ -1930,6 +1961,9 @@ compare_local_int16_bitfields(_, _, _, Result) :-
 ").
 
 compare_local_int32_bitfields(_, _, _, Result) :-
+    % This predicate should only ever be called when targeting C,
+    % in which case, its definition will the foreign_proc above,
+    % not this clause.
     ( if semidet_fail then
         Result = (=)
     else
@@ -2315,7 +2349,6 @@ const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_pseudo_type_info = {
         throw new java.lang.Error
             (""compare/2 for type typeclass_info/0"");
     }
-
 ").
 
 %---------------------------------------------------------------------------%
