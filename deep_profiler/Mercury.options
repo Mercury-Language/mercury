@@ -30,3 +30,5 @@ MCFLAGS-canonical               += --no-warn-dead-preds
 # Uncomment this to see debug messages from the code that reads the Deep.data
 # files.
 # MCFLAGS-read_profile += --trace-flag debug_read_profdeep
+
+MCFLAGS-mdbcomp                 += --no-warn-include-and-non-include
