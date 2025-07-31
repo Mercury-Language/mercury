@@ -705,10 +705,6 @@ maybe_warn_include_and_non_include(Globals, ParseTreeModuleSrc, Specs) :-
         ; not imports_only_implicit_builtins(ImportUseMap)
         )
     then
-        trace [io(!IO)] (
-            io.stderr_stream(StdErr, !IO),
-            io.write_line(StdErr, ImportUseMap, !IO)
-        ),
         map.foldl_values(acc_include_contexts, InclMap,
             set.init, InclContextSet),
         set.to_sorted_list(InclContextSet, InclContexts),
