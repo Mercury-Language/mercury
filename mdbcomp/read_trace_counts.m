@@ -183,10 +183,6 @@ read_trace_counts_error_to_str(FileName, ReadTCError) = ErrorMsg :-
     % would allow read_trace_counts_file and read_trace_counts_base
     % to be merged into one predicate.
     %
-    % XXX The code of the call tree of this predicate would be simpler
-    % if it returned error indications instead of throwing exceptions,
-    % and also if it read in the whole file at once.
-    %
 :- pred read_trace_counts_base(string::in, read_trace_counts_result::out,
     io::di, io::uo) is det.
 
@@ -212,10 +208,7 @@ read_trace_counts_base(FileName, ReadResult, !IO) :-
             Lines1 = [Line1 | Lines2],
             Line1 = trace_count_file_id
         then
-            promise_equivalent_solutions [ReadResult, !:IO] (
-                read_file_type_trace_counts(FileName, 2, Lines2,
-                    ReadResult, !IO)
-            )
+            read_file_type_trace_counts(FileName, 2, Lines2, ReadResult, !IO)
         else
             ReadError = rtce_syntax_error("no trace count file id"),
             ReadResult = rtc_error(ReadError)
@@ -232,7 +225,7 @@ read_trace_counts_base(FileName, ReadResult, !IO) :-
     ).
 
 :- pred read_file_type_trace_counts(string::in, int::in, list(string)::in,
-    read_trace_counts_result::out, io::di, io::uo) is cc_multi.
+    read_trace_counts_result::out, io::di, io::uo) is det.
 
 read_file_type_trace_counts(FileName, CurLineNum, Lines0, ReadResult, !IO) :-
     (
@@ -257,25 +250,15 @@ read_file_type_trace_counts(FileName, CurLineNum, Lines0, ReadResult, !IO) :-
             % before they are referenced.
             TCModuleNameSym0 = unqualified(""),
             TCFileName0 = "",
-            try_io(
-                read_proc_trace_counts(FileName, CurLineNum + 1, Lines1,
-                    TCModuleNameSym0, TCFileName0, map.init),
-                Result, !IO),
+            map.init(TraceCounts0),
+            read_proc_trace_counts(FileName, CurLineNum + 1, Lines1,
+                TCModuleNameSym0, TCFileName0, MaybeError,
+                TraceCounts0, TraceCounts, !IO),
             (
-                Result = succeeded(TraceCounts),
+                MaybeError = no,
                 ReadResult = rtc_ok(FileType, TraceCounts)
             ;
-                Result = exception(Exception),
-                ( if Exception = univ(IOError) then
-                    ReadError = rtce_io_error(IOError)
-                else if Exception = univ(Message) then
-                    ReadError = rtce_error_message(Message)
-                else if Exception = univ(trace_count_syntax_error(Error)) then
-                    ReadError = rtce_syntax_error(Error)
-                else
-                    unexpected($pred,
-                        "unexpected exception type: " ++ string(Exception))
-                ),
+                MaybeError = yes(ReadError),
                 ReadResult = rtc_error(ReadError)
             )
         else
@@ -284,17 +267,15 @@ read_file_type_trace_counts(FileName, CurLineNum, Lines0, ReadResult, !IO) :-
         )
     ).
 
-:- type trace_count_syntax_error
-    --->    trace_count_syntax_error(string).
-
 :- pred read_proc_trace_counts(string::in, int::in, list(string)::in,
-    sym_name::in, string::in, trace_counts::in, trace_counts::out,
-    io::di, io::uo) is det.
+    sym_name::in, string::in, maybe(read_trace_counts_error)::out,
+    trace_counts::in, trace_counts::out, io::di, io::uo) is det.
 
 read_proc_trace_counts(FileName, LineNumber0, Lines0,
-        TCModuleNameSym0, TCFileName0, !TraceCounts, !IO) :-
+        TCModuleNameSym0, TCFileName0, MaybeError, !TraceCounts, !IO) :-
     (
-        Lines0 = []
+        Lines0 = [],
+        MaybeError = no
     ;
         Lines0 = [Line0 | Lines1],
         LineNumber1 = LineNumber0 + 1,
@@ -311,7 +292,8 @@ read_proc_trace_counts(FileName, LineNumber0, Lines0,
             then
                 TCModuleNameSym1 = string_to_sym_name(NextModuleName),
                 read_proc_trace_counts(FileName, LineNumber1, Lines1,
-                    TCModuleNameSym1, TCFileName0, !TraceCounts, !IO)
+                    TCModuleNameSym1, TCFileName0, MaybeError,
+                    !TraceCounts, !IO)
             else if
                 TokenName = "file",
                 TokenListRest =
@@ -319,7 +301,8 @@ read_proc_trace_counts(FileName, LineNumber0, Lines0,
                     token_nil)
             then
                 read_proc_trace_counts(FileName, LineNumber1, Lines1,
-                    TCModuleNameSym0, TCFileName1, !TraceCounts, !IO)
+                    TCModuleNameSym0, TCFileName1, MaybeError,
+                    !TraceCounts, !IO)
             else if
                 % At the moment runtime/mercury_trace_base.c doesn't write out
                 % data for unify, compare, index or init procedures.
@@ -391,16 +374,17 @@ read_proc_trace_counts(FileName, LineNumber0, Lines0,
                 map.det_insert(ProcLabelInContext, ProcCounts, !TraceCounts),
 
                 read_proc_trace_counts(FileName, LineNumber2, Lines2,
-                    TCModuleNameSym0, TCFileName0, !TraceCounts, !IO)
+                    TCModuleNameSym0, TCFileName0, MaybeError,
+                    !TraceCounts, !IO)
             else
                 string.format("parse error on line %d of execution trace",
                     [i(LineNumber0)], Message),
-                throw(trace_count_syntax_error(Message))
+                MaybeError = yes(rtce_syntax_error(Message))
             )
         else
             string.format("parse error on line %d of execution trace",
                 [i(LineNumber0)], Message),
-            throw(trace_count_syntax_error(Message))
+            MaybeError = yes(rtce_syntax_error(Message))
         )
     ).
 
@@ -481,6 +465,9 @@ old_read_trace_counts_base(FileName, ReadResult, !IO) :-
     else
         io.call_system.call_system(GzipCmd, _ZipResult, !IO)
     ).
+
+:- type trace_count_syntax_error
+    --->    trace_count_syntax_error(string).
 
 :- pred old_read_trace_counts_from_stream(io.text_input_stream::in,
     read_trace_counts_result::out, io::di, io::uo) is cc_multi.
