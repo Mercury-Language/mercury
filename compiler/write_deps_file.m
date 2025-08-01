@@ -237,7 +237,7 @@ generate_and_write_dep_dv_files_gendep(ProgressStream, Globals, DepsMap,
 
 generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
         DepGraphs, BurdenedModules, !IO) :-
-    map.init(Cache0),
+    Cache0 = init_module_file_name_cache,
     generate_and_write_d_file_gendep_depgraphs_loop(ProgressStream, Globals,
         DepGraphs, BurdenedModules, Cache0, _Cache, !IO).
 
@@ -289,7 +289,7 @@ generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals, DepGraphs,
 
 generate_and_write_d_file_hlds(ProgressStream, Globals, BurdenedAugCompUnit,
         AvailModuleSets, MaybeInclTransOptRule, !IO) :-
-    map.init(Cache0),
+    Cache0 = init_module_file_name_cache,
     construct_d_file_deps_hlds(Globals, BurdenedAugCompUnit, AvailModuleSets,
         MaybeInclTransOptRule, DFileDeps),
     generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,

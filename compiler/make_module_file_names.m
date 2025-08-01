@@ -33,7 +33,11 @@
 
 %---------------------------------------------------------------------------%
 
-:- type module_file_name_cache == map(ext, map(module_name, file_name)).
+:- type module_file_name_cache.
+
+:- func init_module_file_name_cache = module_file_name_cache.
+
+%---------------------------------------------------------------------------%
 
 :- pred make_module_file_name_group_with_ext(globals::in, string::in,
     ext::in, set(module_name)::in, list(mmake_file_name_group)::out,
@@ -58,6 +62,12 @@
 
 :- import_module string.
 :- import_module uint.
+
+%---------------------------------------------------------------------------%
+
+:- type module_file_name_cache == map(ext, map(module_name, file_name)).
+
+init_module_file_name_cache = map.init.
 
 %---------------------------------------------------------------------------%
 %

@@ -20,7 +20,6 @@
 :- interface.
 
 :- import_module libs.
-:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
