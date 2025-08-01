@@ -588,7 +588,7 @@ tuple_arg(_, _, -1) :-
 
 :- pragma foreign_code("C#", "
     //
-    // Generic unification/comparison routines
+    // Generic unification/comparison routines.
     //
 
     public static bool
@@ -797,9 +797,9 @@ __Compare____tuple_0_0(object x, object y)
             return clone;
         }
 
-        // We'll only copy objects of Mercury-defined types. We could copy
-        // more but that is what we do for C backends and it is enough.
-        // We don't copy enumeration instances.
+        // We will only copy objects of Mercury-defined types.
+        // We could copy more, but that is what we do for C backends,
+        // and it is enough. We don't copy enumeration instances.
         if (!(original instanceof jmercury.runtime.MercuryType)) {
             return original;
         }

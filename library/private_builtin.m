@@ -1606,10 +1606,15 @@ nyi_foreign_type_compare(Result, _, _) :-
 
 unify_remote_arg_words(_, _, _, _) :-
     % This predicate should only ever be called when targeting C,
-    % in which case, its definition will the foreign_proc above,
+    % in which case, its definition will be the foreign_proc above,
     % not this clause.
     ( if semidet_fail then
-        true
+        % Make this predicate semidet.
+        ( if semidet_fail then
+            true
+        else
+            fail
+        )
     else
         error("unify_remote_arg_words called")
     ).
@@ -1641,7 +1646,7 @@ unify_remote_arg_words(_, _, _, _) :-
 
 compare_remote_uint_words(_, _, _, _, Result) :-
     % This predicate should only ever be called when targeting C,
-    % in which case, its definition will the foreign_proc above,
+    % in which case, its definition will be the foreign_proc above,
     % not this clause.
     ( if semidet_fail then
         Result = (=)
@@ -1678,7 +1683,7 @@ compare_remote_uint_words(_, _, _, _, Result) :-
 
 compare_remote_uint_bitfields(_, _, _, _, _, _, Result) :-
     % This predicate should only ever be called when targeting C,
-    % in which case, its definition will the foreign_proc above,
+    % in which case, its definition will be the foreign_proc above,
     % not this clause.
     ( if semidet_fail then
         Result = (=)
@@ -1715,7 +1720,7 @@ compare_remote_uint_bitfields(_, _, _, _, _, _, Result) :-
 
 compare_remote_int8_bitfields(_, _, _, _, _, Result) :-
     % This predicate should only ever be called when targeting C,
-    % in which case, its definition will the foreign_proc above,
+    % in which case, its definition will be the foreign_proc above,
     % not this clause.
     ( if semidet_fail then
         Result = (=)
@@ -1752,7 +1757,7 @@ compare_remote_int8_bitfields(_, _, _, _, _, Result) :-
 
 compare_remote_int16_bitfields(_, _, _, _, _, Result) :-
     % This predicate should only ever be called when targeting C,
-    % in which case, its definition will the foreign_proc above,
+    % in which case, its definition will be the foreign_proc above,
     % not this clause.
     ( if semidet_fail then
         Result = (=)
@@ -1796,7 +1801,7 @@ compare_remote_int16_bitfields(_, _, _, _, _, Result) :-
 
 compare_remote_int32_bitfields(_, _, _, _, _, Result) :-
     % This predicate should only ever be called when targeting C,
-    % in which case, its definition will the foreign_proc above,
+    % in which case, its definition will be the foreign_proc above,
     % not this clause.
     ( if semidet_fail then
         Result = (=)
@@ -1826,7 +1831,7 @@ compare_remote_int32_bitfields(_, _, _, _, _, Result) :-
 
 compare_local_uint_words(_, _, Result) :-
     % This predicate should only ever be called when targeting C,
-    % in which case, its definition will the foreign_proc above,
+    % in which case, its definition will be the foreign_proc above,
     % not this clause.
     ( if semidet_fail then
         Result = (=)
@@ -1859,7 +1864,7 @@ compare_local_uint_words(_, _, Result) :-
 
 compare_local_uint_bitfields(_, _, _, _, Result) :-
     % This predicate should only ever be called when targeting C,
-    % in which case, its definition will the foreign_proc above,
+    % in which case, its definition will be the foreign_proc above,
     % not this clause.
     ( if semidet_fail then
         Result = (=)
@@ -1891,7 +1896,7 @@ compare_local_uint_bitfields(_, _, _, _, Result) :-
 
 compare_local_int8_bitfields(_, _, _, Result) :-
     % This predicate should only ever be called when targeting C,
-    % in which case, its definition will the foreign_proc above,
+    % in which case, its definition will be the foreign_proc above,
     % not this clause.
     ( if semidet_fail then
         Result = (=)
@@ -1923,7 +1928,7 @@ compare_local_int8_bitfields(_, _, _, Result) :-
 
 compare_local_int16_bitfields(_, _, _, Result) :-
     % This predicate should only ever be called when targeting C,
-    % in which case, its definition will the foreign_proc above,
+    % in which case, its definition will be the foreign_proc above,
     % not this clause.
     ( if semidet_fail then
         Result = (=)
@@ -1962,7 +1967,7 @@ compare_local_int16_bitfields(_, _, _, Result) :-
 
 compare_local_int32_bitfields(_, _, _, Result) :-
     % This predicate should only ever be called when targeting C,
-    % in which case, its definition will the foreign_proc above,
+    % in which case, its definition will be the foreign_proc above,
     % not this clause.
     ( if semidet_fail then
         Result = (=)
