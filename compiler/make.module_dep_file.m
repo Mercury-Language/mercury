@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 expandtab
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2009, 2011 The University of Melbourne.
-% Copyright (C) 2014-2017, 2019-2020, 2024 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2020, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -116,7 +116,7 @@ version_number(module_dep_file_v2, 2).
 write_module_dep_file(ProgressStream, Globals, BurdenedModule0, !IO) :-
     BurdenedModule0 = burdened_module(Baggage0, ParseTreeModuleSrc),
     Baggage0 = module_baggage(SourceFileName, _SourceFileDir,
-        SourceFileModuleName, MaybeTopModule,
+        SourceFileTopModuleName, MaybeTopModule,
         _MaybeTimestamp, _MaybeTimestampMap, _GrabbedFileMap, _Errors),
 
     MaybeTimestamp = maybe.no,
@@ -125,7 +125,7 @@ write_module_dep_file(ProgressStream, Globals, BurdenedModule0, !IO) :-
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     Errors = init_read_module_errors,
     Baggage = module_baggage(SourceFileName, dir.this_directory,
-        SourceFileModuleName, MaybeTopModule,
+        SourceFileTopModuleName, MaybeTopModule,
         MaybeTimestamp, MaybeTimestampMap, GrabbedFileMap, Errors),
 
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
@@ -161,9 +161,9 @@ do_write_module_dep_file_to_stream(Stream, Globals,
     Version = module_dep_file_v2,
     version_number(Version, VersionNumber),
     SourceFileName = Baggage ^ mb_source_file_name,
-    SourceFileModuleName = Baggage ^ mb_source_file_module_name,
-    SourceFileModuleNameStr =
-        mercury_bracketed_sym_name_to_string(SourceFileModuleName),
+    SourceFileTopModuleName = Baggage ^ mb_source_file_top_module_name,
+    SourceFileTopModuleNameStr =
+        mercury_bracketed_sym_name_to_string(SourceFileTopModuleName),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     Ancestors = set.to_sorted_list(get_ancestors_set(ModuleName)),
     IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
@@ -215,7 +215,7 @@ do_write_module_dep_file_to_stream(Stream, Globals,
             "\t{%s}\n" ++
         ").\n",
         [i(VersionNumber), s(SourceFileName),
-        s(SourceFileModuleNameStr),
+        s(SourceFileTopModuleNameStr),
         s(bracketed_sym_names_to_comma_list_string(Ancestors)),
         s(bracketed_sym_names_to_comma_list_string(IntDeps)),
         s(bracketed_sym_names_to_comma_list_string(ImpDeps)),
@@ -307,7 +307,7 @@ parse_module_dep_file_term(ModuleName, DepFileDir, Term, ModuleSummary) :-
     ModuleArgs = [
         VersionNumberTerm,
         SourceFileTerm,
-        SourceFileModuleNameTerm,
+        SourceFileTopModuleNameTerm,
         ParentsTerm,                % XXX Redundant term
         IntDepsTerm,
         ImpDepsTerm,
@@ -323,8 +323,8 @@ parse_module_dep_file_term(ModuleName, DepFileDir, Term, ModuleSummary) :-
 
     version_number_term(VersionNumberTerm, Version),
     string_term(SourceFileTerm, SourceFileName),
-    try_parse_sym_name_and_no_args(SourceFileModuleNameTerm,
-        SourceFileModuleName),
+    try_parse_sym_name_and_no_args(SourceFileTopModuleNameTerm,
+        SourceFileTopModuleName),
 
     sym_names_term(ParentsTerm, Parents),
     sym_names_term(IntDepsTerm, IntDeps),
@@ -350,7 +350,7 @@ parse_module_dep_file_term(ModuleName, DepFileDir, Term, ModuleSummary) :-
     ),
 
     require_det (
-        ( if ModuleName = SourceFileModuleName then
+        ( if ModuleName = SourceFileTopModuleName then
             MaybeTopModule = top_module(set.list_to_set(NestedSubModules0))
         else
             MaybeTopModule = not_top_module,
@@ -364,7 +364,7 @@ parse_module_dep_file_term(ModuleName, DepFileDir, Term, ModuleSummary) :-
         ContainsForeignCode =
             foreign_code_langs_known(set.list_to_set(ForeignLanguages)),
         ModuleSummary = module_dep_summary(SourceFileName, DepFileDir,
-            SourceFileModuleName, ModuleName, set.list_to_set(Children),
+            SourceFileTopModuleName, ModuleName, set.list_to_set(Children),
             MaybeTopModule,
             set.list_to_set(IntDeps), set.list_to_set(ImpDeps),
             set.list_to_set(FactDeps), set.list_to_set(ForeignImports),

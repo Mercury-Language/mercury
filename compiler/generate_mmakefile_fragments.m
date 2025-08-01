@@ -176,7 +176,7 @@ generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
     % discover their precise semantics :-(
     BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
     SourceFileName = Baggage ^ mb_source_file_name,
-    SourceFileModuleName = Baggage ^ mb_source_file_module_name,
+    SourceFileTopModuleName = Baggage ^ mb_source_file_top_module_name,
     MaybeTopModule = Baggage ^ mb_maybe_top_module,
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
@@ -303,7 +303,7 @@ generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
 
     have_source_file_map(HaveMap, !IO),
     construct_any_needed_pattern_rules(HaveMap,
-        ModuleName, SourceFileModuleName, SourceFileName,
+        ModuleName, SourceFileTopModuleName, SourceFileName,
         Date0FileName, DateFileName, Date3FileName,
         OptDateFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
         MmakeRulesPatterns),
@@ -919,7 +919,7 @@ construct_subdir_short_rules(Globals, ModuleName,
     list(mmake_entry)::out) is det.
 
 construct_any_needed_pattern_rules(HaveMap,
-        ModuleName, SourceFileModuleName, SourceFileName,
+        ModuleName, SourceFileTopModuleName, SourceFileName,
         Date0FileName, DateFileName, Date3FileName,
         OptDateFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
         MmakeRulesPatterns) :-
@@ -928,7 +928,7 @@ construct_any_needed_pattern_rules(HaveMap,
     % and the module name doesn't match the file name.
     (
         HaveMap = found,
-        module_name_to_file_name_stem(SourceFileModuleName, ModuleArg)
+        module_name_to_file_name_stem(SourceFileTopModuleName, ModuleArg)
     ;
         HaveMap = not_found,
         ModuleArg = SourceFileName

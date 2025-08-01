@@ -236,7 +236,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         % since it accesses only the parts of Baggage0 that identify
         % the properties of the source file containing the module.
         BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage0, AugCompUnit),
-        module_info_get_all_deps(HLDS0, AllDeps),
+        module_info_get_and_check_avail_module_sets(HLDS0, AvailModuleSets),
         (
             MaybeDFileTransOptDeps = yes(DFileTransOptDepsList),
             set.list_to_set(DFileTransOptDepsList, DFileTransOptDeps),
@@ -247,7 +247,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
             MaybeInclTransOptRule = do_not_include_trans_opt_rule
         ),
         generate_and_write_d_file_hlds(ProgressStream, Globals,
-            BurdenedAugCompUnit, AllDeps, MaybeInclTransOptRule, !IO),
+            BurdenedAugCompUnit, AvailModuleSets, MaybeInclTransOptRule, !IO),
         globals.lookup_bool_option(Globals,
             generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
         (

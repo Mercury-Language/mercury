@@ -637,9 +637,10 @@ output_analysis_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
         !DumpInfo, !IO),
 
     module_info_get_analysis_info(!.HLDS, AnalysisInfo),
-    module_info_get_all_deps(!.HLDS, ImportedModules),
+    module_info_get_all_avail_modules(!.HLDS, AllAvailModules),
+    % XXX Is AllAvailModules the right set of modules to pass here?
     analysis.operations.write_analysis_files(ProgressStream, mmc, !.HLDS,
-        ImportedModules, AnalysisInfo, AnalysisSpecs, !IO),
+        AllAvailModules, AnalysisInfo, AnalysisSpecs, !IO),
     !:Specs = AnalysisSpecs ++ !.Specs.
 
 %---------------------------------------------------------------------------%

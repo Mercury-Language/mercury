@@ -224,10 +224,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % The old pass 1.
 
     % Record the import_module and use_module declarations.
-    add_item_avails(Avails, set.init, AncestorAvailModules, !ModuleInfo),
-    module_info_get_ancestor_avail_modules(!.ModuleInfo, AncestorAvailSet0),
-    set.union(AncestorAvailModules, AncestorAvailSet0, AncestorAvailSet),
-    module_info_set_ancestor_avail_modules(AncestorAvailSet, !ModuleInfo),
+    add_item_avails(Avails, !ModuleInfo),
 
     % Record type definitions.
     %
@@ -778,21 +775,18 @@ add_builtin_type_ctor_special_preds_in_builtin_module(TypeCtor, !ModuleInfo) :-
 %---------------------------------------------------------------------------%
 
 :- pred add_item_avails(ims_list(item_avail)::in,
-    set(module_name)::in, set(module_name)::out,
     module_info::in, module_info::out) is det.
 
-add_item_avails([], !AncestorAvailModules, !ModuleInfo).
-add_item_avails([ImsList | ImsLists], !AncestorAvailModules, !ModuleInfo) :-
+add_item_avails([], !ModuleInfo).
+add_item_avails([ImsList | ImsLists], !ModuleInfo) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Avails),
-    list.foldl2(add_item_avail(ItemMercuryStatus), Avails,
-        !AncestorAvailModules, !ModuleInfo),
-    add_item_avails(ImsLists, !AncestorAvailModules, !ModuleInfo).
+    list.foldl(add_item_avail(ItemMercuryStatus), Avails, !ModuleInfo),
+    add_item_avails(ImsLists, !ModuleInfo).
 
 :- pred add_item_avail(item_mercury_status::in, item_avail::in,
-    set(module_name)::in, set(module_name)::out,
     module_info::in, module_info::out) is det.
 
-add_item_avail(ItemMercuryStatus, Avail, !AncestorAvailModules, !ModuleInfo) :-
+add_item_avail(ItemMercuryStatus, Avail, !ModuleInfo) :-
     (
         Avail = avail_import(avail_import_info(ModuleName, Context, _SeqNum)),
         ImportOrUse = import_decl
@@ -811,8 +805,8 @@ add_item_avail(ItemMercuryStatus, Avail, !AncestorAvailModules, !ModuleInfo) :-
             ),
             Section = ms_implementation
         ),
-        module_add_avail_module(ModuleName, Section, ImportOrUse, yes(Context),
-            !ModuleInfo)
+        module_add_avail_module_in_cur_module(ModuleName, Section,
+            ImportOrUse, Context, !ModuleInfo)
     ;
         ItemMercuryStatus = item_defined_in_other_module(ItemImport),
         (
@@ -825,9 +819,8 @@ add_item_avail(ItemMercuryStatus, Avail, !AncestorAvailModules, !ModuleInfo) :-
                     ImportLocn = import_locn_ancestor_int0_implementation,
                     Section = ms_implementation
                 ),
-                module_add_avail_module(ModuleName, Section, ImportOrUse, no,
-                    !ModuleInfo),
-                set.insert(ModuleName, !AncestorAvailModules)
+                module_add_avail_module_in_ancestor(ModuleName, Section,
+                    ImportOrUse, Context, !ModuleInfo)
             ;
                 ( ImportLocn = import_locn_interface
                 ; ImportLocn = import_locn_implementation
@@ -842,10 +835,11 @@ add_item_avail(ItemMercuryStatus, Avail, !AncestorAvailModules, !ModuleInfo) :-
                 module_add_indirectly_imported_module(ModuleName, !ModuleInfo)
             )
         ;
-            ( ItemImport = item_import_int_abstract
-            ; ItemImport = item_import_opt_int
-            ),
+            ItemImport = item_import_int_abstract,
             module_add_indirectly_imported_module(ModuleName, !ModuleInfo)
+        ;
+            ItemImport = item_import_opt_int,
+            module_add_imported_for_opt_module(ModuleName, !ModuleInfo)
         )
     ).
 

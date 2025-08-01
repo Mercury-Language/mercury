@@ -39,6 +39,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.generate_dep_d_files.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.prog_data.
@@ -73,12 +74,16 @@
 
 :- type pragma_exported_proc
     --->    pragma_exported_proc(
-                foreign_language,       % The language we are exporting to.
+                % The language we are exporting to.
+                foreign_language,
+
                 pred_id,
                 proc_id,
-                string,                 % The exported name of the procedure.
-                                        % i.e. the function name in C, method
-                                        % name in Java etc.
+
+                % The exported name of the procedure, i.e. the function name
+                % in C, method name in Java etc.
+                string,
+
                 prog_context
             ).
 
@@ -364,8 +369,6 @@
     avail_module_map::out) is det.
 :- pred module_info_get_used_modules(module_info::in,
     used_modules::out) is det.
-:- pred module_info_get_ancestor_avail_modules(module_info::in,
-    set(module_name)::out) is det.
 :- pred module_info_get_maybe_complexity_proc_map(module_info::in,
     maybe(pair(int, complexity_proc_map))::out) is det.
 :- pred module_info_get_complexity_proc_infos(module_info::in,
@@ -460,8 +463,6 @@
 :- pred module_info_set_table_struct_map(table_struct_map::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_used_modules(used_modules::in,
-    module_info::in, module_info::out) is det.
-:- pred module_info_set_ancestor_avail_modules(set(module_name)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_maybe_complexity_proc_map(
     maybe(pair(int, complexity_proc_map))::in,
@@ -632,11 +633,16 @@
 
 %---------------------%
 
-:- pred module_add_avail_module(module_name::in,
-    module_section::in, import_or_use::in, maybe(prog_context)::in,
+:- pred module_add_avail_module_in_cur_module(module_name::in,
+    module_section::in, import_or_use::in, prog_context::in,
+    module_info::in, module_info::out) is det.
+:- pred module_add_avail_module_in_ancestor(module_name::in,
+    module_section::in, import_or_use::in, prog_context::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_add_indirectly_imported_module(module_name::in,
+    module_info::in, module_info::out) is det.
+:- pred module_add_imported_for_opt_module(module_name::in,
     module_info::in, module_info::out) is det.
 
     % Return the set of the visible modules. These are
@@ -652,11 +658,23 @@
 :- pred module_info_get_visible_modules(module_info::in,
     set(module_name)::out) is det.
 
-    % This returns all the modules that this module's code depends on,
-    % i.e. all modules that have been used or imported by this module,
-    % directly or indirectly, including parent modules.
+    % module_info_get_and_check_avail_module_sets(ModuleInfo, AvailModuleSets):
     %
-:- pred module_info_get_all_deps(module_info::in,
+    % This returns all the modules that the given module uses or imports
+    % whether directly, indirectly, via ancestors, to make sense of .opt files.
+    % or implicitly.
+    %
+    % Check this against the avail_module_MAP.
+    %
+:- pred module_info_get_and_check_avail_module_sets(module_info::in,
+    avail_module_sets::out) is det.
+
+    % module_info_get_all_avail_modules(ModuleName, UnionModules):
+    %
+    % This returns in UnionModules the union of all the sets
+    % returned by module_info_get_and_check_avail_module_sets.
+    %
+:- pred module_info_get_all_avail_modules(module_info::in,
     set(module_name)::out) is det.
 
 :- pred module_info_add_module_to_public_used_modules(module_name::in,
@@ -951,32 +969,23 @@
                 %   of the module.
                 mri_avail_module_map            :: avail_module_map,
 
-                % The names of all the indirectly imported/used modules.
-                % This field never used on its own; it is always used together
-                % with the previous one, which records info about the
-                % directly imported/used modules, to compute the set of modules
-                % that are imported or used either directly or indirectly.
-                %
-                % This is used for purposes such as:
-                %
-                % - including references to those modules in .d files;
-                % - reading and writing the .analysis files of those modules;
-                % - #including the .mh and .mih files of those modules.
-                mri_indirectly_imported_modules :: set(module_name),
+                % The set of module imported by various means,
+                % categories by those means.
+                mri_avail_module_sets           :: avail_module_sets,
 
                 % The modules which have already been calculated as being used.
+                % (In the sense of "made use of", *not* in the sense of having
+                % a use_module declaration for them.)
+                %
                 % This slot is initialized to the set of modules that have
                 % been seen to be used during the expansion of equivalence
                 % types and insts.
-                mri_used_modules                :: used_modules,
-
-                % The set of modules imported by ancestor modules.
                 %
-                % We used to add these to mri_used_modules, but that prevented
-                % the compiler from generating useful warnings about unused
-                % local imports/uses of those modules. We now keep this info
-                % on a "may be useful later" basis; it is currently unused.
-                mri_ancestor_avail_modules      :: set(module_name),
+                % Note that we used to add the set of modules imported or used
+                % by ancestors to this field, but that prevented the compiler
+                % from generating useful warnings about unused local
+                % imports/uses of those modules.
+                mri_used_modules                :: used_modules,
 
                 % Information about the procedures we are performing
                 % complexity experiments on.
@@ -1171,10 +1180,18 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
         AvailModuleMap0, AvailModuleMap1),
     set.fold(add_implicit_avail_module(use_decl), ImplicitlyUsedModules,
         AvailModuleMap1, AvailModuleMap),
+    set.insert(mercury_public_builtin_module, ImplicitlyUsedModules,
+        ImplicitlyImportedModules),
 
+    Ancestors = get_ancestors_set(ModuleName),
+    set.init(DirectlyImportedModules),
+    set.init(ImportedInAncestorModules),
     set.init(IndirectlyImportedModules),
+    set.init(ImportedForOptModules),
+    AvailModuleSets = avail_module_sets(Ancestors, DirectlyImportedModules,
+        IndirectlyImportedModules, ImportedInAncestorModules,
+        ImportedForOptModules, ImplicitlyImportedModules),
 
-    set.init(AncestorAvailModules),
     MaybeComplexityMap = no,
     ComplexityProcInfos = [],
     set.init(ProcAnalysisKinds),
@@ -1227,9 +1244,8 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
         LoopInvsPerContext,
         % AtomicsPerContext,
         AvailModuleMap,
-        IndirectlyImportedModules,
+        AvailModuleSets,
         UsedModules,
-        AncestorAvailModules,
         MaybeComplexityMap,
         ComplexityProcInfos,
         ProcAnalysisKinds,
@@ -1307,8 +1323,8 @@ module_info_optimize(!ModuleInfo) :-
     map(int, counter)::out) is det.
 % :- pred module_info_get_atomics_per_line_number(module_info::in,
 %     map(int, counter)::out) is det.
-:- pred module_info_get_indirectly_imported_modules(module_info::in,
-    set(module_name)::out) is det.
+:- pred module_info_get_avail_module_sets(module_info::in,
+    avail_module_sets::out) is det.
 
 :- pred module_info_set_maybe_dependency_info(maybe(hlds_dependency_info)::in,
     module_info::in, module_info::out) is det.
@@ -1318,7 +1334,7 @@ module_info_optimize(!ModuleInfo) :-
     module_info::in, module_info::out) is det.
 % :- pred module_info_set_atomics_per_line_number(map(int, counter)::in,
 %     module_info::in, module_info::out) is det.
-:- pred module_info_set_indirectly_imported_modules(set(module_name)::in,
+:- pred module_info_set_avail_module_sets(avail_module_sets::in,
     module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -1410,12 +1426,10 @@ module_info_get_loop_invs_per_line_number(MI, X) :-
 %     X = MI ^ mi_rare_info ^ mri_atomics_per_line_number.
 module_info_get_avail_module_map(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_avail_module_map.
-module_info_get_indirectly_imported_modules(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_indirectly_imported_modules.
+module_info_get_avail_module_sets(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_avail_module_sets.
 module_info_get_used_modules(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_used_modules.
-module_info_get_ancestor_avail_modules(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_ancestor_avail_modules.
 module_info_get_maybe_complexity_proc_map(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_maybe_complexity_proc_map.
 module_info_get_complexity_proc_infos(MI, X) :-
@@ -1544,12 +1558,10 @@ module_info_set_loop_invs_per_line_number(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_loop_invs_per_line_number := X.
 % module_info_set_atomics_per_line_number(X, !MI) :-
 %     !MI ^ mi_rare_info ^ mri_atomics_per_line_number := X.
-module_info_set_indirectly_imported_modules(X, !MI) :-
-    !MI ^ mi_rare_info ^ mri_indirectly_imported_modules := X.
+module_info_set_avail_module_sets(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_avail_module_sets := X.
 module_info_set_used_modules(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_used_modules := X.
-module_info_set_ancestor_avail_modules(X, !MI) :-
-    !MI ^ mi_rare_info ^ mri_ancestor_avail_modules := X.
 module_info_set_maybe_complexity_proc_map(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_maybe_complexity_proc_map := X.
 module_info_set_complexity_proc_infos(X, !MI) :-
@@ -1776,6 +1788,32 @@ module_info_next_loop_inv_count(LineNumber, Count, !MI) :-
 
 %---------------------%
 
+module_add_avail_module_in_cur_module(ModuleName, NewSection, NewImportOrUse,
+        Context, !MI) :-
+    module_add_avail_module(ModuleName, NewSection, NewImportOrUse,
+        yes(Context), !MI),
+
+    module_info_get_avail_module_sets(!.MI, AvailModuleSets0),
+    DirectImports0 = AvailModuleSets0 ^ am_direct_imports,
+    set.insert(ModuleName, DirectImports0, DirectImports),
+    AvailModuleSets = AvailModuleSets0 ^ am_direct_imports := DirectImports,
+    module_info_set_avail_module_sets(AvailModuleSets, !MI).
+
+module_add_avail_module_in_ancestor(ModuleName, NewSection, NewImportOrUse,
+        _Context, !MI) :-
+    module_add_avail_module(ModuleName, NewSection, NewImportOrUse, no, !MI),
+
+    module_info_get_avail_module_sets(!.MI, AvailModuleSets0),
+    ImportsInAncestors0 = AvailModuleSets0 ^ am_imports_in_ancestors,
+    set.insert(ModuleName, ImportsInAncestors0, ImportsInAncestors),
+    AvailModuleSets = AvailModuleSets0 ^ am_imports_in_ancestors
+        := ImportsInAncestors,
+    module_info_set_avail_module_sets(AvailModuleSets, !MI).
+
+:- pred module_add_avail_module(module_name::in,
+    module_section::in, import_or_use::in, maybe(prog_context)::in,
+    module_info::in, module_info::out) is det.
+
 module_add_avail_module(ModuleName, NewSection, NewImportOrUse,
         MaybeContext, !MI) :-
     (
@@ -1831,10 +1869,21 @@ combine_old_new_avail_attrs(OldSection, NewSection,
         ImportOrUse = use_decl
     ).
 
-module_add_indirectly_imported_module(AddedModule, !MI) :-
-    module_info_get_indirectly_imported_modules(!.MI, Modules0),
-    set.insert(AddedModule, Modules0, Modules),
-    module_info_set_indirectly_imported_modules(Modules, !MI).
+module_add_indirectly_imported_module(ModuleName, !MI) :-
+    module_info_get_avail_module_sets(!.MI, AvailModuleSets0),
+    IndirectImports0 = AvailModuleSets0 ^ am_indirect_imports,
+    set.insert(ModuleName, IndirectImports0, IndirectImports),
+    AvailModuleSets = AvailModuleSets0 ^ am_indirect_imports
+        := IndirectImports,
+    module_info_set_avail_module_sets(AvailModuleSets, !MI).
+
+module_add_imported_for_opt_module(ModuleName, !MI) :-
+    module_info_get_avail_module_sets(!.MI, AvailModuleSets0),
+    IntForOptImports0 = AvailModuleSets0 ^ am_int_for_opt_imports,
+    set.insert(ModuleName, IntForOptImports0, IntForOptImports),
+    AvailModuleSets = AvailModuleSets0 ^ am_int_for_opt_imports
+        := IntForOptImports,
+    module_info_set_avail_module_sets(AvailModuleSets, !MI).
 
 module_info_get_visible_modules(ModuleInfo, !:VisibleModules) :-
     module_info_get_name(ModuleInfo, ThisModule),
@@ -1845,14 +1894,35 @@ module_info_get_visible_modules(ModuleInfo, !:VisibleModules) :-
     set.insert(ThisModule, !VisibleModules),
     set.insert_list(get_ancestors(ThisModule), !VisibleModules).
 
-module_info_get_all_deps(ModuleInfo, AllImports) :-
-    module_info_get_name(ModuleInfo, ModuleName),
-    Parents = get_ancestors(ModuleName),
+module_info_get_and_check_avail_module_sets(ModuleInfo, AvailModuleSets) :-
+    module_info_get_avail_module_sets(ModuleInfo, AvailModuleSets),
+    AvailModuleSets = avail_module_sets(_Ancestors, DirectImports,
+        _IndirectImports, ImportedInAncestors, _ImportedForOpts,
+        ImplicitlyImportedModules),
+
     module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
-    map.keys(AvailModuleMap, DirectImports),
-    module_info_get_indirectly_imported_modules(ModuleInfo, IndirectImports),
-    AllImports = set.union_list([IndirectImports,
-        set.list_to_set(DirectImports), set.list_to_set(Parents)]).
+    map.keys_as_set(AvailModuleMap, AvailModules),
+    AvailComparableModules = set.union_list([DirectImports,
+        ImportedInAncestors, ImplicitlyImportedModules]),
+    ( if AvailModules = AvailComparableModules then
+        true
+    else
+        trace [io(!IO)] (
+            io.stderr_stream(StdErr, !IO),
+            io.write_line(StdErr, AvailModules, !IO),
+            io.write_line(StdErr, AvailComparableModules, !IO),
+            io.flush_output(StdErr, !IO)
+        ),
+        unexpected($pred, "AvailModules != AvailComparableModules")
+    ).
+
+module_info_get_all_avail_modules(ModuleInfo, UnionModules) :-
+    module_info_get_and_check_avail_module_sets(ModuleInfo, AvailModuleSets),
+    AvailModuleSets = avail_module_sets(Ancestors, DirectImports,
+        IndirectImports, ImportedInAncestors, ImportedForOpts,
+        ImplicitlyImportedModules),
+    UnionModules = set.union_list([Ancestors, DirectImports, IndirectImports,
+        ImportedInAncestors, ImportedForOpts, ImplicitlyImportedModules]).
 
 module_info_add_module_to_public_used_modules(ModuleName, !MI) :-
     module_info_get_used_modules(!.MI, UsedModules0),

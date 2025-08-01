@@ -49,12 +49,12 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.deps_map.
 :- import_module parse_tree.error_spec.
+:- import_module parse_tree.generate_dep_d_files.
 :- import_module parse_tree.generate_mmakefile_fragments.
 :- import_module parse_tree.module_baggage.
 
 :- import_module io.
 :- import_module list.
-:- import_module set.
 
 %---------------------------------------------------------------------------%
 
@@ -93,21 +93,19 @@
 %---------------------------------------------------------------------------%
 
     % generate_and_write_d_file_hlds(ProgressStream, Globals,
-    %   BurdenedAugCompUnit, AllDeps, MaybeInclTransOptRule, !IO):
+    %   BurdenedAugCompUnit, AvailModuleSets, MaybeInclTransOptRule, !IO):
     %
     % Write out the per-module makefile dependencies (`.d') file for the
-    % specified module. AllDeps is the set of all module names which the
-    % generated code for this module might depend on, i.e. all that have been
-    % used or imported, directly or indirectly, into this module, including
-    % via .opt or .trans_opt files, and including parent modules of nested
-    % modules. MaybeInclTransOptRule controls whether to include a
-    % trans_opt_deps rule in the file, and if so, what the rule should say.
+    % specified module. AvailModuleSets gives the set of all module names
+    % on which the generated code of this module might depend.
+    % MaybeInclTransOptRule controls whether to include a trans_opt_deps rule
+    % in the file, and if so, what the rule should say.
     %
     % This predicate is invoked as part of every mmc invocation
     % that is intended to generate target language code.
     %
 :- pred generate_and_write_d_file_hlds(io.text_output_stream::in, globals::in,
-    burdened_aug_comp_unit::in, set(module_name)::in,
+    burdened_aug_comp_unit::in, avail_module_sets::in,
     maybe_include_trans_opt_rule::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -119,7 +117,6 @@
 :- import_module libs.mmakefiles.
 :- import_module libs.options.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.generate_dep_d_files.
 :- import_module parse_tree.make_module_file_names.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_cmds.
@@ -132,6 +129,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -290,9 +288,9 @@ generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals, DepGraphs,
 %---------------------------------------------------------------------------%
 
 generate_and_write_d_file_hlds(ProgressStream, Globals, BurdenedAugCompUnit,
-        AllDeps, MaybeInclTransOptRule, !IO) :-
+        AvailModuleSets, MaybeInclTransOptRule, !IO) :-
     map.init(Cache0),
-    construct_d_file_deps_hlds(Globals, BurdenedAugCompUnit, AllDeps,
+    construct_d_file_deps_hlds(Globals, BurdenedAugCompUnit, AvailModuleSets,
         MaybeInclTransOptRule, DFileDeps),
     generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
         FileNameD, FileContentsStrD, Cache0, _Cache, !IO),

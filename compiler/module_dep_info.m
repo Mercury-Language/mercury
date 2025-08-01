@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2022-2024 The Mercury team.
+% Copyright (C) 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -49,7 +49,7 @@
                 % to other directories.
                 mds_source_file_name        :: string,
                 mds_source_file_dir         :: string,
-                mds_source_file_module_name :: module_name,
+                mds_source_file_top_module_name :: module_name,
                 mds_module_name             :: module_name,
                 mds_children                :: set(module_name),
                 mds_maybe_top_module        :: maybe_top_module,
@@ -123,10 +123,10 @@ module_dep_info_get_source_file_module_name(ModuleDepInfo, X) :-
     (
         ModuleDepInfo = module_dep_info_full(BurdenedModule),
         Baggage = BurdenedModule ^ bm_baggage,
-        X = Baggage ^ mb_source_file_module_name
+        X = Baggage ^ mb_source_file_top_module_name
     ;
         ModuleDepInfo = module_dep_info_summary(Summary),
-        X = Summary ^ mds_source_file_module_name
+        X = Summary ^ mds_source_file_top_module_name
     ).
 
 module_dep_info_get_module_name(ModuleDepInfo, X) :-

@@ -110,13 +110,82 @@
 :- pred construct_d_file_deps_gendep(globals::in, dep_graphs::in,
     burdened_aug_comp_unit::in, d_file_deps::out) is det.
 
+    % The set of modules imported or used (i.e. made available)
+    % by the current modules by various means, categorized by those means.
+    % (We use "import" as shorthand for "import and/or use', given that
+    % for the purposes of the users of this type, which deal with dependencoes
+    % between files, the distinction does not matter.)
+    %
+    % Some of these fields contain module names that are straightforward
+    % to convert into the names of the files that the current module
+    % needs from them. For example, generating target language code
+    % for the current module needs the ancestor modules' .opt0 files,
+    % and the directly imported modules' .int files. However, this is
+    % not so for some of the other fields. For example, for the modules
+    % listed in the am_int_for_opt_imports field, we could need their
+    % .int0, .int or .int2 file. This is because add_item_avail predicate
+    % does not have the info it would need to make this distinction.
+    % XXX D_FILE_DEPS This should be fixed.
+:- type avail_module_sets
+    --->    avail_module_sets(
+                % The set of ancestors of the current module.
+                % We import their .int0 files.
+                am_ancestors                :: set(module_name),
+
+                % The set of modules for which the current module
+                % has an import_module or use_module declaration.
+                % We will want to read the .int files of these modules.
+                am_direct_imports           :: set(module_name),
+
+                % The names of all the indirectly imported/used modules,
+                % as computed by grab_qual_imported_modules_augment.
+                %
+                % This field never used on its own; it is always used together
+                % with the previous one, which records info about the
+                % directly imported/used modules, to compute the set of modules
+                % that are imported or used either directly or indirectly.
+                %
+                % This is used for purposes such as:
+                %
+                % - recording references to those modules' .int2 files
+                %   in the current module's .d file;
+                % - reading and writing the .analysis files of those modules;
+                % - #including the .mh and .mih files of those modules.
+                %
+                % This field *should* be disjoint with am_direct_imports.
+                am_indirect_imports         :: set(module_name),
+
+                % The set of modules that have an import_module or use_module
+                % declaration in an ancestor module.
+                %
+                % We mostly treat these modules as if they were imported
+                % or used by the current module itself.
+                am_imports_in_ancestors     :: set(module_name),
+
+                % The set of files whose .int files we need to read
+                % when compiling the current module in order to make sense
+                % of all the .opt files we have read in.
+                %
+                % This field may overlap with the other fields.
+                am_int_for_opt_imports      :: set(module_name),
+
+                % The set of modules that are implicitly imported or used
+                % by the current module. Examples include the public and
+                % private builtin modules, the table_builtin module
+                % in debug grades (for I/O tabling), and modules needed
+                % to implement e.g. io.format and string.format.
+                %
+                % This field may overlap with the other fields.
+                am_implicit_imports         :: set(module_name)
+            ).
+
     % This function computes the d_file_deps structure in the hlds context
     % described above. We get the contents we puts into the second and third
     % fields of d_file_deps from the code that constructs the HLDS.
     %
 :- pred construct_d_file_deps_hlds(globals::in, burdened_aug_comp_unit::in,
-    set(module_name)::in, maybe_include_trans_opt_rule::in, d_file_deps::out)
-    is det.
+    avail_module_sets::in, maybe_include_trans_opt_rule::in,
+    d_file_deps::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -330,10 +399,14 @@ compute_allowable_trans_opt_deps(ModuleName,
 
 %---------------------------------------------------------------------------%
 
-construct_d_file_deps_hlds(Globals, BurdenedAugCompUnit, AllDeps,
+construct_d_file_deps_hlds(Globals, BurdenedAugCompUnit, AvailModuleSets,
         MaybeInclTransOptRule, DFileDeps) :-
     BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
-    SourceFileModuleName = Baggage ^ mb_source_file_module_name,
+    % NOTE SourceFileTopModuleName will differ from the module name
+    % in ParseTreeModuleSrc if ParseTreeModuleSrc is a nested submodule,
+    % and if a file contains nested submodules, we do generate individual
+    % .d files for each one of them.
+    SourceFileTopModuleName = Baggage ^ mb_source_file_top_module_name,
     AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
         AncestorIntSpecs, DirectInt1Specs, IndirectInt2Specs,
         PlainOpts, _TransOpts, IntForOptSpecs, _TypeRepnSpecs,
@@ -371,7 +444,7 @@ construct_d_file_deps_hlds(Globals, BurdenedAugCompUnit, AllDeps,
     set.filter_map(
         ( pred(ForeignImportMod::in, ImportModuleName::out) is semidet :-
             ImportModuleName = fim_spec_module_name_from_module(
-                ForeignImportMod, SourceFileModuleName),
+                ForeignImportMod, SourceFileTopModuleName),
             % XXX We can't include mercury.dll as mmake can't find it,
             % but we know that it exists.
             ImportModuleName \= unqualified("mercury")
@@ -379,7 +452,15 @@ construct_d_file_deps_hlds(Globals, BurdenedAugCompUnit, AllDeps,
 
     StdDeps = std_deps(DirectDeps, IndirectDeps,
         ForeignImportedModuleNamesSet, no_trans_opt_deps),
-    DFileDeps = d_file_deps(StdDeps, AllDeps, MaybeInclTransOptRule).
+
+    AvailModuleSets = avail_module_sets(Ancestors, DirectImports,
+        IndirectImports, ImportedInAncestors, IntForOptImports,
+        ImplicitlyImortedModules),
+    DirectsIndirectsForOptsAncestors = set.union_list([Ancestors,
+        DirectImports, IndirectImports, ImportedInAncestors,
+        IntForOptImports, ImplicitlyImortedModules]),
+    DFileDeps = d_file_deps(StdDeps, DirectsIndirectsForOptsAncestors,
+        MaybeInclTransOptRule).
 
 %---------------------%
 
@@ -519,8 +600,8 @@ construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, IntermodDeps,
     % the target code files of the program's modules, and through them
     % the program's executable, *should* depend on. In this case,
     % the *current* existence of a source file indicates that in the future,
-    % there *should* exist a .opt and maybe a .trans_opt file for that
-    % module (depending on which intermodule optimization options are enabled).
+    % there *should* exist a .opt and maybe a .trans_opt file for that module
+    % (depending on which intermodule optimization options are enabled).
     %
     % There are two issues that this scheme does not handle well,
     % nested submodules, and --use-subdirs. This is not surprising,

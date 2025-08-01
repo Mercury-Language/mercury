@@ -350,7 +350,7 @@ prepare_for_intermodule_analysis(ProgressStream, Globals,
     maybe_write_string(ProgressStream, Verbose,
         "% Preparing for intermodule analysis...\n", !IO),
 
-    module_info_get_all_deps(!.HLDS, ModuleNames),
+    module_info_get_all_avail_modules(!.HLDS, AllAvailModules),
 
     globals.lookup_accumulating_option(Globals, local_module_id,
         LocalModulesList),
@@ -358,7 +358,7 @@ prepare_for_intermodule_analysis(ProgressStream, Globals,
     LocalModuleNames = set.list_to_set(SymNames),
 
     module_info_get_analysis_info(!.HLDS, AnalysisInfo0),
-    prepare_intermodule_analysis(ProgressStream, Globals, ModuleNames,
+    prepare_intermodule_analysis(ProgressStream, Globals, AllAvailModules,
         LocalModuleNames, Specs, AnalysisInfo0, AnalysisInfo, !IO),
     module_info_set_analysis_info(AnalysisInfo, !HLDS),
 

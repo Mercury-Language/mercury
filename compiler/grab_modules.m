@@ -682,11 +682,11 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, ErrorStream, Globals,
     grab_module_int1_files(ProgressStream, Globals,
         "opt_new_deps", rwi1_opt,
         set.to_sorted_list(NewDeps),
-        set.init, NewIndirectDeps, set.init, NewImplIndirectDeps,
+        set.init, NewIntIndirectDeps, set.init, NewImpIndirectDeps,
         !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
     grab_module_int2_files_and_impls_transitively(ProgressStream, Globals,
         "opt_new_indirect_deps", rwi2_opt,
-        set.union(NewIndirectDeps, NewImplIndirectDeps),
+        set.union(NewIntIndirectDeps, NewImpIndirectDeps),
         !HaveParseTreeMaps, !Baggage, !AugCompUnit, !IO),
 
     % Figure out whether anything went wrong.

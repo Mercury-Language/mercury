@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017-2023 The Mercury team.
+% Copyright (C) 2017-2023, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -50,6 +50,7 @@
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_unify_gen_construct.
 :- import_module ml_backend.ml_util.
+:- import_module parse_tree.generate_dep_d_files.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
@@ -142,13 +143,20 @@ ml_gen_foreign_code_lang(ModuleInfo, ForeignDeclCodes, ForeignBodyCodes,
 
 ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
     % Determine all the mercury imports.
-    % XXX This is overly conservative, i.e. we import more than we really need.
-    module_info_get_all_deps(ModuleInfo, AllImports0),
+    module_info_get_and_check_avail_module_sets(ModuleInfo, AvailModuleSets),
+    AvailModuleSets = avail_module_sets(Ancestors, DirectlyImportedModules,
+        IndirectlyImportedModules, ImportedInAncestorModules,
+        ImportedForOptModules, ImplicitlyImportedModules),
+    % XXX D_FILE_DEPS This is overly conservative, i.e. we import
+    % more than we really need.
+    HdrImports0 = set.union_list([Ancestors, DirectlyImportedModules,
+        IndirectlyImportedModules, ImportedInAncestorModules,
+        ImportedForOptModules, ImplicitlyImportedModules]),
     % No module needs to import itself.
     module_info_get_name(ModuleInfo, ThisModule),
-    AllImports = set.delete(AllImports0, ThisModule),
+    set.delete(ThisModule, HdrImports0, HdrImports),
     ImportMLDS = (func(Name) = mlds_import(compiler_visible_interface, Name)),
-    MLDS_ImportList = list.map(ImportMLDS, set.to_sorted_list(AllImports)).
+    MLDS_ImportList = list.map(ImportMLDS, set.to_sorted_list(HdrImports)).
 
 :- pred ml_gen_init_global_data(module_info::in, mlds_target_lang::in,
     ml_global_data::out) is det.

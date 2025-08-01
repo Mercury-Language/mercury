@@ -63,7 +63,7 @@
                 mb_source_file_dir          :: dir_name,
 
                 % The name of the top-level module in the above source file.
-                mb_source_file_module_name  :: module_name,
+                mb_source_file_top_module_name :: module_name,
 
                 % The other modules included in the same source file,
                 % if this module is the top-level module in its file.
