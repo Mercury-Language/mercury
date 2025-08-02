@@ -24,4 +24,8 @@
 --no-java-classpath
 --java-classpath ../library/mer_rt.jar
 --java-classpath ../library/mer_std.jar
+--mono-path-directory ../browser
+--mono-path-directory ../library
+--mono-path-directory ../mdbcomp
+--mono-path-directory ../ssdb
 --config-file ../scripts/Mercury.config.bootstrap
