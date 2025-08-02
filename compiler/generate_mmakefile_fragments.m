@@ -34,6 +34,40 @@
 
 %---------------------------------------------------------------------------%
 
+    % XXX The d_file_deps type should be documented. The problem is that
+    % it is not at all clear what the meanings of the fields *are*.
+    %
+    % The fields started out life as three separate input arguments
+    % to a long-ago predecessor of the generate_d_mmakefile_contents predicate
+    % (which started out in the now-deleted modules.m file, and has been
+    % repackaged, moved and renamed several times since). Those predecessors
+    % have always been called in two separate kinds of contexts:
+    %
+    % - when the compiler is invoked with "mmc --generate-dependencies",
+    %   or (more rarely) with "mmc --generate-dependency-file", and
+    %
+    % - when the compiler is auto-updating the .d file of a module that
+    %   it has build a HLDS for, usually for semantic analysis followed
+    %   by target code generation.
+    %
+    % This module and write_deps_file.m refer to the first context as the
+    % "gendep" context, and the second as the "hlds" context. Predicates
+    % and functions that are specific to one context should have the context
+    % name at or near the end of the their name.
+    %
+    % The issue is that these contexts have long computed the data that is
+    % now in the fields of the d_file_deps structure using two completely
+    % separate algorithms in these two contexts. It is far from clear whether
+    % there is *any* justification for this difference, and if there is,
+    % whether it is any good.
+    %
+:- type d_file_deps
+    --->    d_file_deps(
+                std_deps,
+                set(module_name),
+                maybe_include_trans_opt_rule
+            ).
+
 :- type std_deps
     --->    std_deps(
                 sd_direct_deps      :: set(module_name),
@@ -121,8 +155,7 @@
     % either :-(
     %
 :- pred generate_d_mmakefile(globals::in, burdened_aug_comp_unit::in,
-    std_deps::in, set(module_name)::in, maybe_include_trans_opt_rule::in,
-    intermod_deps::in, mmakefile::out,
+    d_file_deps::in, intermod_deps::in, mmakefile::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
@@ -168,12 +201,12 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
-        MaybeInclTransOptRule, IntermodDeps, !:MmakeFile, !Cache, !IO) :-
-    % NOTE The StdDeps, AllDeps and MaybeInclTransOptRule arguments
-    % come from our caller's d_file_deps argument. Please see the comment
-    % on the definition of that type for their semantics, *if* we ever
-    % discover their precise semantics :-(
+generate_d_mmakefile(Globals, BurdenedAugCompUnit, DFileDeps, IntermodDeps,
+            !:MmakeFile, !Cache, !IO) :-
+    DFileDeps = d_file_deps(StdDeps, AllDeps, MaybeInclTransOptRule),
+    StdDeps = std_deps(DirectDeps0, IndirectDeps0,
+        ForeignImportedModuleNamesSet, MaybeTransOptDeps),
+
     BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
     SourceFileName = Baggage ^ mb_source_file_name,
     SourceFileTopModuleName = Baggage ^ mb_source_file_top_module_name,
@@ -201,8 +234,6 @@ generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
             )
         ),
     map.foldl(AccPublicChildren, InclMap, set.init, PublicChildren),
-    StdDeps = std_deps(DirectDeps0, IndirectDeps0,
-        ForeignImportedModuleNamesSet, MaybeTransOptDeps),
 
     set.delete(ModuleName, DirectDeps0, DirectDeps),
     set.difference(IndirectDeps0, DirectDeps, IndirectDeps1),

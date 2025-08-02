@@ -60,40 +60,6 @@
                 trans_opt_order         :: list(module_name)
             ).
 
-    % XXX The d_file_deps type should be documented. The problem is that
-    % it is not at all clear what the meanings of the fields *are*.
-    %
-    % The fields started out life as three separate input arguments
-    % to a long-ago predecessor of the generate_d_mmakefile_contents predicate
-    % (which started out in the now-deleted modules.m file, and has been
-    % repackaged, moved and renamed several times since). Those predecessors
-    % have always been called in two separate kinds of contexts:
-    %
-    % - when the compiler is invoked with "mmc --generate-dependencies",
-    %   or (more rarely) with "mmc --generate-dependency-file", and
-    %
-    % - when the compiler is auto-updating the .d file of a module that
-    %   it has build a HLDS for, usually for semantic analysis followed
-    %   by target code generation.
-    %
-    % This module and write_deps_file.m refer to the first context as the
-    % "gendep" context, and the second as the "hlds" context. Predicates
-    % and functions that are specific to one context should have the context
-    % name at or near the end of the their name.
-    %
-    % The issue is that these contexts have long computed the data that is
-    % now in the fields of the d_file_deps structure using two completely
-    % separate algorithms in these two contexts. It is far from clear whether
-    % there is *any* justification for this difference, and if there is,
-    % whether it is any good.
-    %
-:- type d_file_deps
-    --->    d_file_deps(
-                std_deps,
-                set(module_name),
-                maybe_include_trans_opt_rule
-            ).
-
 %---------------------------------------------------------------------------%
 
 :- pred compute_deps_for_d_files_gendep(io.text_output_stream::in, globals::in,
@@ -189,7 +155,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred construct_intermod_deps(globals::in, parse_tree_module_src::in,
-    std_deps::in, intermod_deps::out,
+    d_file_deps::in, intermod_deps::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
@@ -531,7 +497,7 @@ gather_fim_specs_in_parse_tree_plain_opt(ParseTreePlainOpt, !FIMSpecs) :-
 
 %---------------------------------------------------------------------------%
 
-construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, IntermodDeps,
+construct_intermod_deps(Globals, ParseTreeModuleSrc, DFileDeps, IntermodDeps,
         !Cache, !IO) :-
     % XXX Note that currently, due to a design problem, handle_options.m
     % *always* sets use_opt_files to no.
@@ -557,6 +523,7 @@ construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, IntermodDeps,
         ( UseTransOpt = no,  LookForSrc = look_for_src
         ; UseTransOpt = yes, LookForSrc = do_not_look_for_src
         ),
+        DFileDeps = d_file_deps(StdDeps, _, _),
         StdDeps = std_deps(DirectDeps, _, _, _),
         ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
         BaseDeps = [ModuleName | set.to_sorted_list(DirectDeps)],

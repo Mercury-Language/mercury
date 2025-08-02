@@ -318,11 +318,10 @@ generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
     ExtD = ext_cur_ngs(ext_cur_ngs_mf_d),
     module_name_to_file_name_create_dirs(Globals, $pred, ExtD, ModuleName,
         FileNameD, _FileNameDProposed, !IO),
-    DFileDeps = d_file_deps(StdDeps, AllDeps, MaybeInclTransOptRule),
-    construct_intermod_deps(Globals, ParseTreeModuleSrc, StdDeps, IntermodDeps,
-        !Cache, !IO),
-    generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
-        MaybeInclTransOptRule, IntermodDeps, MmakeFileD, !Cache, !IO),
+    construct_intermod_deps(Globals, ParseTreeModuleSrc, DFileDeps,
+        IntermodDeps, !Cache, !IO),
+    generate_d_mmakefile(Globals, BurdenedAugCompUnit, DFileDeps, IntermodDeps,
+        MmakeFileD, !Cache, !IO),
     FileContentsStrD = mmakefile_to_string(MmakeFileD).
 
 %---------------------------------------------------------------------------%
