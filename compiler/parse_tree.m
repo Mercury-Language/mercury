@@ -139,7 +139,7 @@
 :- include_module write_module_interface_files.
 
 % Constructing .d, .dv and .dep files.
-:- include_module generate_dep_d_files.
+:- include_module d_file_deps.
 :- include_module generate_mmakefile_fragments.
 :- include_module make_module_file_names.
 :- include_module opt_deps_spec.

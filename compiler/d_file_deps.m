@@ -6,17 +6,17 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: generate_dep_d_files.m.
+% File: d_file_deps.m.
 % Original author: fjh (when this code was in modules.m)
 %
 % This module is a subcontractor to write_deps_file.m. Its job
 % is to figure out the what-depends-on-what information from which
-% generate_mmake_fragments.m generate mmake rules that write_deps_file.m
-% then writes out to .dep, .dv and .d files.
+% generate_mmake_fragments.m will generate mmake rules that
+% write_deps_file.m then writes out to .d files.
 %
 %---------------------------------------------------------------------------%
 
-:- module parse_tree.generate_dep_d_files.
+:- module parse_tree.d_file_deps.
 :- interface.
 
 :- import_module libs.
@@ -790,5 +790,5 @@ get_ext_opt_deps(Globals, LookForSrc, Ext, [ModuleName | ModuleNames],
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module parse_tree.generate_dep_d_files.
+:- end_module parse_tree.d_file_deps.
 %---------------------------------------------------------------------------%

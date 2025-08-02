@@ -10,7 +10,7 @@
 % File: write_deps_file.m.
 %
 % This module writes .dep, .dv and .d files, after getting its subcontractors
-% generate_dep_d_files.m and generate_mmakefile_fragments.m to figure out
+% d_file_deps.m and generate_mmakefile_fragments.m to figure out
 % what should go into them.
 %
 % We generate one .dep and one .dv file for each program, with those files
@@ -47,9 +47,9 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.d_file_deps.
 :- import_module parse_tree.deps_map.
 :- import_module parse_tree.error_spec.
-:- import_module parse_tree.generate_dep_d_files.
 :- import_module parse_tree.generate_mmakefile_fragments.
 :- import_module parse_tree.module_baggage.
 

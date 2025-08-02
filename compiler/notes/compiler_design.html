@@ -573,9 +573,9 @@ if the only change to a module is a reordering of some declarations
 <li>
 check_module_interface.m checks whether a module exports anything.
 <li>
-generate_dep_d_files.m generates the information from which
+d_file_deps.m generates the information from which
 generate_mmakefile_fragments.m constructs Makefile fragments
-that write_deps_file.m then writes out.
+that write_deps_file.m then writes out to .d files.
 <li>
 opt_deps_spec.m computes dependencies based on (.opt and) .trans_opt files
 for generate_dep_d_files.m.

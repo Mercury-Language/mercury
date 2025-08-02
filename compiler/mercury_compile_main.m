@@ -696,7 +696,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
     % that construct a module_and_imports structure in how they do it.
     %
     % The op modes that generate one or more dependency files call predicates
-    % in generate_dep_d_files.m, which all end up constructing that structure
+    % in d_file_deps.m, which all end up constructing that structure
     % by calling init_module_and_imports. On the other hand, the op modes
     % that augment the module call augment_and_process_module, which
     % calls grab_imported_modules, which constructs that structure

@@ -39,7 +39,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.generate_dep_d_files.
+:- import_module parse_tree.d_file_deps.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.prog_data.

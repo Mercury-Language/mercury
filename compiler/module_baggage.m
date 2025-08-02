@@ -237,7 +237,7 @@
     % This predicate is used by
     %
     %   deps_map.m
-    %   generate_dep_d_files.m
+    %   d_file_deps.m
     %   make.get_module_dep_info.m
     %
     % for building dependency maps between modules.
