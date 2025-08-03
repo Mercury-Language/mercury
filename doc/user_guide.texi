@@ -258,8 +258,8 @@ is to reduce the amount of typing required.
 Flag options specify a boolean value:
 they either ask for something specific to be done,
 or they ask for that specific something not to be done.
-Single-letter flags may be negated
-by appending a trailing @samp{-} after the short option name,
+If you want to negate a single-letter flag,
+you can do so by appending a trailing @samp{-} after the short option name,
 as in e.g.@: @samp{-v-}.
 (You cannot both group @emph{and} negate single-letter flags at the same time.)
 Long flags may be negated by preceding them with @samp{no-},
