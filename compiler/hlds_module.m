@@ -970,7 +970,7 @@
                 mri_avail_module_map            :: avail_module_map,
 
                 % The set of module imported by various means,
-                % categories by those means.
+                % categorised by those means.
                 mri_avail_module_sets           :: avail_module_sets,
 
                 % The modules which have already been calculated as being used.

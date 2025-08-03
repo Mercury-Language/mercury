@@ -76,9 +76,9 @@
     burdened_aug_comp_unit::in, d_file_deps::out) is det.
 
     % The set of modules imported or used (i.e. made available)
-    % by the current modules by various means, categorized by those means.
+    % by the current module by various means, categorized by those means.
     % (We use "import" as shorthand for "import and/or use', given that
-    % for the purposes of the users of this type, which deal with dependencoes
+    % for the purposes of the users of this type, which deal with dependencies
     % between files, the distinction does not matter.)
     %
     % Some of these fields contain module names that are straightforward
@@ -105,8 +105,8 @@
                 % The names of all the indirectly imported/used modules,
                 % as computed by grab_qual_imported_modules_augment.
                 %
-                % This field never used on its own; it is always used together
-                % with the previous one, which records info about the
+                % This field is never used on its own; it is always used
+                % together with the previous one, which records info about the
                 % directly imported/used modules, to compute the set of modules
                 % that are imported or used either directly or indirectly.
                 %

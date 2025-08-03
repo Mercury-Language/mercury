@@ -120,7 +120,7 @@ During that time, we advise you to look at
 * Introduction::        General overview.
 * Introduction to mmc:: Introduction to compiling Mercury program
 * Grades::              Mercury grades
-* Running::             Runninng Mercury programs
+* Running::             Running Mercury programs
 * Compilation details:: The Mercury compilation process in detail
 * Filenames::           File naming conventions.
 * Using Mmake::         ``Mercury Make'', a tool for building Mercury programs.
@@ -238,7 +238,7 @@ Single-letter flags may be grouped with a single @samp{-},
 so that e.g.@: users can ask for both verbose output and no warnings
 either by giving each short option in separate arguments, as in @samp{-v -w},
 or by giving them together in one argument, as in @samp{-vw}.
-This cannot be done with long option names:
+Such grouping cannot be done with long option names:
 a single argument can specify just one long option name.
 
 All options that have a short name have a long name as well,
@@ -269,7 +269,7 @@ Other options specify integer or string values.
 For these options, the value can be specified
 in the same argument as the option name,
 following it immediately (if the option name is a short name),
-or separate from it by an equal sign (if the option name is a long name).
+or separated from it by an equal sign (if the option name is a long name).
 Or it can be in the next argument.
 For example, the requested optimization level, which is an integer,
 can be specified as either as @samp{-O3} or as @samp{-O 3},
@@ -282,9 +282,9 @@ either as @samp{--color-scheme=light16}
 or as @samp{--color-scheme light16}.
 
 Some options specify an @emph{optional} integer or string value.
-For example, you can specify the maximum line width
+For example, you can specify the maximum line width for error messages
 as @samp{--max-error-line-width=71},
-or you can ask line widths to be unlimited
+or you can ask their line widths to be unlimited
 with a @samp{no-} prefix instead of a value,
 as in @samp{--no-max-error-line-width},
 
@@ -327,9 +327,9 @@ with the latter including only file names and module names.
 
 Non-option arguments can be either
 file names (if they end in @samp{.m})
-or modules names (if they don't).
+or module names (if they don't).
 
-The compiler can convert module names to file names in one of two ways.
+The compiler converts module names to file names in one of two ways.
 In the absence of a file named @file{Mercury.modules} in the current directory,
 it relies on each module being stored in a file
 whose name is just the module name followed by @samp{.m}.
@@ -338,11 +338,11 @@ it expects to find it in @file{foo.bar.baz.m}.
 @c Until commit a618ab31e16de507b66c4c0978a9b9f0c0fa2818 on 2020 jan 12,
 @c mmc also searched for module foo.bar.baz in bar.baz.m and baz.m as well.
 
-If any program of the program does not meet this requirement,
+If any module of the program does not meet this requirement,
 then users must create a @file{Mercury.modules} file,
 which contains a map from module names to file names.
 This can be created using a command such as @code{mmc -f *.m}
-if that all the modules of the program are in the current directory.
+if all the modules of the program are in the current directory.
 (@pxref{Options that give the compiler its overall task}).
 In the presence of the @file{Mercury.modules} file,
 the compiler will of course get the file name corresponding to a module name
@@ -436,7 +436,7 @@ but is derived from the module's source file by the Mercury compiler.
 In fact, due to Mercury's module system
 being substantially more expressive than C's
 (not hard when C does not actually @emph{have} an explicit module system),
-each module module has three or four @emph{interface} files, not just one.
+each module has three or four @emph{interface} files, not just one.
 @itemize
 @item
 @file{.int} files play the same role as C's @file{.h} files:
@@ -494,7 +494,7 @@ Yet the one simple but guaranteed-to-work method, recompiling everything,
 can slow down the think-edit-compile-test cycle to an unreasonable degree.
 Unlike humans, automatic build tools can be trusted
 to recompile only the modules that need recompilation,
-reusing the results of previous compilations whereever possible.
+reusing the results of previous compilations wherever possible.
 
 The Mercury implementation supports two automatic build tools:
 @command{mmake}, and @command{mmc --make}.
@@ -514,7 +514,7 @@ that is likely to receive more development in the future.
 
 You can also use both tools, each for different parts of the same project,
 such as using @command{mmc --make} for the Mercury parts
-and @command{mmake} for typing those parts to the non-Mercury parts,
+and @command{mmake} for tying those parts to the non-Mercury parts,
 but in general, you should do this only if you have to.
 
 @c We strongly recommend that programmers use @samp{mmc --make}
@@ -658,12 +658,12 @@ Like @command{mmake},
 to the module-name-to-file-name map in @file{Mercury.modules}
 if some module in the program is stored in a file
 whose name does not match the module name,
-which means that the first step in buildin an executable
+which means that the first step in building an executable
 is usually @command{mmc -f *.m}.
 Unlike @command{mmake},
 when @command{mmc --make} is asked to build an executable for a program
 given the name of its main module,
-it can itself find out the the dependencies (importer-imported relationships)
+it can itself find out the dependencies (importer-imported relationships)
 between the modules of the program;
 it does not need previously-built files
 containing makefile fragments to give it this information.
@@ -700,7 +700,7 @@ declaration cannot lead to obsolete versions of interface files being read
 because when an @code{:- import_module} and @code{:- use_module}
 declaration is added,
 which @emph{can} lead to obsolete versions of the interface files
-of the newly-imported modulees ubeing read,
+of the newly-imported modules being read,
 those interface files have a reasonably probability
 of of being brought up to date
 before being needed by the module that added the new import,
@@ -721,8 +721,8 @@ it must update the @file{.int} file of a newly-imported module
 before generating target language code for the importing module).
 In pretty much all of the usual scenarios, the attempt to build the target
 will cause the out-of-date dependency information to be updated,
-so the @emph{nect} attempt to build that same target will succeed.
-Nevertheless the failure of the first attempt is usually annoying.
+so the @emph{next} attempt to build that same target will succeed.
+Nevertheless, the failure of the first attempt is annoying.
 
 Such transient failures won't happen with @command{mmc --make},
 because it @emph{always} works with up-to-date dependency information.
