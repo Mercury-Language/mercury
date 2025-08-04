@@ -457,7 +457,8 @@
     % remove_dups(L0) = L:
     %
     % L is the result of deleting the second and subsequent occurrences
-    % of every element that occurs twice in L0.
+    % of every element that occurs twice in L0, regardless of whether
+    % the later occurrences are next to an earlier occurrence or not.
     %
 :- func remove_dups(list(T)) = list(T).
 :- pred remove_dups(list(T)::in, list(T)::out) is det.
