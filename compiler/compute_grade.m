@@ -348,24 +348,26 @@ must_not_contain(OmitComponents, GradeComponents) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 grade_string_to_comp_strings(GradeString, MaybeGrade, !Specs) :-
-    ( if
-        split_grade_string(GradeString, ComponentStrs),
-        StrToComp =
-            ( pred(Str::in, Str::out) is semidet :-
-                grade_component_table(Str, _, _, _, _)
-            ),
-        list.map(StrToComp, ComponentStrs, Components0)
-    then
-        list.sort_and_remove_dups(Components0, Components),
-        ( if list.length(Components0) > list.length(Components) then
+    split_grade_string(GradeString, Components),
+    IsValidComponent =
+        ( pred(Str::in) is semidet :-
+            grade_component_table(Str, _, _, _, _)
+        ),
+    list.filter(IsValidComponent, Components,
+        ValidComponents0, InvalidComponents),
+    (
+        InvalidComponents = [],
+        list.sort_and_remove_dups(ValidComponents0, ValidComponents),
+        ( if list.length(ValidComponents0) > list.length(ValidComponents) then
             GradeSpec =
                 [words("Invalid library grade:"), quote(GradeString), nl],
             add_error(phase_options, GradeSpec, !Specs),
             MaybeGrade = no
         else
-            MaybeGrade = yes(Components)
+            MaybeGrade = yes(ValidComponents)
         )
-    else
+    ;
+        InvalidComponents = [_ | _],
         GradeSpec =
             [words("Invalid library grade:"), quote(GradeString), nl],
         add_error(phase_options, GradeSpec, !Specs),
@@ -731,32 +733,10 @@ grade_start_values(use_regions_debug - bool(no)).
 grade_start_values(use_regions_profiling - bool(no)).
 grade_start_values(c_debug_grade - bool(no)).
 
-:- pred split_grade_string(string::in, list(string)::out) is semidet.
+:- pred split_grade_string(string::in, list(string)::out) is det.
 
 split_grade_string(GradeStr, Components) :-
-    string.to_char_list(GradeStr, Chars),
-    split_grade_string_2(Chars, Components).
-
-:- pred split_grade_string_2(list(char)::in, list(string)::out) is semidet.
-
-split_grade_string_2([], []).
-split_grade_string_2(Chars, Components) :-
-    Chars = [_ | _],
-    list.take_while(char_is_not('.'), Chars, ThisChars, RestChars0),
-    string.from_char_list(ThisChars, ThisComponent),
-    Components = [ThisComponent | RestComponents],
-    (
-        RestChars0 = [_ | RestChars],                       % Discard the `.'.
-        split_grade_string_2(RestChars, RestComponents)
-    ;
-        RestChars0 = [],
-        RestComponents = []
-    ).
-
-:- pred char_is_not(char::in, char::in) is semidet.
-
-char_is_not(A, B) :-
-    A \= B.
+    Components = string.split_at_char('.', GradeStr).
 
 %---------------------------------------------------------------------------%
 :- end_module libs.compute_grade.
