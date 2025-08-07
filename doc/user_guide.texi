@@ -764,7 +764,7 @@ please see ZZZ @c @ref
 @node The Mercury backends
 @section The Mercury backends
 
-The Mercury compiler was has two backends.
+The Mercury compiler has two backends.
 
 The first backend implemented by the Mercury team
 translates Mercury programs to
@@ -784,7 +784,7 @@ for both the source code and the target code.
 In compilers for imperative languages,
 these are usually called the abstract syntax tree (AST)
 and the intermediate representation (IR) respectively.
-The Mercury compiler's versions of the these are substantially different,
+The Mercury compiler's versions of these are substantially different,
 so we use different names for them:
 the high-level data structure (HLDS)
 and the low-level data structure (LLDS).
@@ -820,7 +820,7 @@ For example if you compile e.g.@:
 module @var{module_a} to @file{@var{module_a}.java}
 and module @var{module_b} to @file{@var{module_b}.c},
 which the Java and C implementations compile further
-to @file{@var{module_a}.jar} and @file{@var{module_b}.o}.
+to @file{@var{module_a}.class} and @file{@var{module_b}.o}.
 This is not just because JAR files and object files have different formats;
 the more fundamental reason is that the codes in them
 make fundamentally different assumptions
@@ -829,7 +829,7 @@ are supposed to communicate and cooperate with each other.
 This is why if you compile
 both module @var{module_a} and module @var{module_b} to C,
 but compile module @var{module_a} using the LLDS backend
-and and@var{module_b} using the MLDS backend,
+and @var{module_b} using the MLDS backend,
 any attempt to link @file{@var{module_a}.o} and @file{@var{module_b}.o}
 will still fail.
 It will fail because the two backends
@@ -844,15 +844,15 @@ by having the two backends use the same C naming scheme
 would address only @emph{incidental} incompatibilities;
 the @emph{fundamental} incompatibilities,
 such as the LLDS backend managing its own stacks (two of them)
-while the MLDS backend relies on the standard C stack,
+while the MLDS backend relies on the standard C call stack,
 would still remain.
 
-The @command{mmc} option @command{--target} controls
+The @command{mmc} option @option{--target} controls
 which of its target languages the Mercury compiler will generate code for.
-With @command{--target c}, Mercury will generate C code;
-with @command{--target java}, Mercury will generate Java code; and
-with @command{--target c#}, Mercury will generate C# code.
-When generating C, the option @command{--high-level-code} controls
+With @option{--target c}, Mercury will generate C code;
+with @option{--target java}, Mercury will generate Java code; and
+with @option{--target c#}, Mercury will generate C# code.
+When generating C, the option @option{--high-level-code} controls
 whether code generation will use the LLDS or the MLDS backend,
 generating assembly code in C syntax or idiomatic C code respectively.
 (Since you cannot write assembly-level code in either Java or C#,
@@ -863,30 +863,36 @@ if you compile all the modules of a program,
 an attempt to link the resulting files together can succeed
 @emph{only if} all the modules were compiled
 using the exact same values of 
-@command{--target} and @command{--high-level-code} options.
+@option{--target} and @option{--high-level-code} options.
 
 These are not the only options that have this property.
 There are other options as well,
 and in fact Mercury has more such options than most other languages.
 This is why unlike most other languages,
 Mercury has an explicit name for this concept:
-it calls each set of compatible values of those options a @emph{grade}.
+it calls each set of compatible values of those options a @dfn{grade}.
 
 A Mercury grade succinctly specifies the value of roughly twenty options
-(depending on when you count them; we add new ones from time to time).
+(depending on how exactly you count them,
+and when, since we add new ones from time to time).
 Each grade consists of a @emph{base grade} (which must be present)
-and zero or more other @emph{grade modifiers} (which are therefore optional).
+followed by zero or more other @emph{grade modifiers}
+(which are therefore optional).
+@c XXX This says we require the base grade to come first,
+@c but we do NOT enforce this.
+@c However, there is no point in telling people this,
+@c especially because it would give the lie to the next sentence,
+@c which *does* help us with explanations.
 The names of the grade modifiers all start with period;
 the names of the base grades do not.
 The name of a grade is a concatenation of the selected base grade
-and the selected grade modifiers.
+and the selected grade modifiers
+(the grade modifiers may be given in any order).
 For example, @command{hlc.tr.gc} specifies
 the base grade @command{hlc} (meaning high level C code)
 and the grade modifiers @command{.tr} and @command{.gc}
 (which respectively call for the use of trailing
 and of the Boehm-Demers-Weiser garbage collector).
-
-@c XXX Should require the base grade to come first?
 
 @node Base grades
 @section Base grades
@@ -901,11 +907,11 @@ The available MLDS base grades, and the option values they correspond to, are
 
 @table @code
 @item hlc
-@command{--target c} and @command{--high-level-code}
+@option{--target c} and @option{--high-level-code}
 @item java
-@command{--target java} and @command{--high-level-code}
+@option{--target java} and @option{--high-level-code}
 @item csharp
-@command{--target c} and @command{--high-level-code}
+@option{--target c} and @option{--high-level-code}
 @end table
 
 These base grades each call for the generation of
@@ -916,15 +922,15 @@ The available LLDS base grades, and the option values they correspond to, are
 
 @table @code
 @item none
-@command{--target c}, @command{--no-high-level-code},
-@command{--no-gcc-global-registers}, and @command{--no-gcc-non-local-gotos}
+@option{--target c}, @option{--no-high-level-code},
+@option{--no-gcc-global-registers}, and @option{--no-gcc-non-local-gotos}
 @item reg
-@command{--target c}, @command{--no-no-high-level-code},
-@command{--gcc-global-registers}, and @command{--no-gcc-non-local-gotos}
+@option{--target c}, @option{--no-no-high-level-code},
+@option{--gcc-global-registers}, and @option{--no-gcc-non-local-gotos}
 @item asm_fast
-@command{--target c}, @command{--no-high-level-code},
-@command{--gcc-global-registers}, @command{--gcc-non-local-gotos} and
-@command{--asm--labels}
+@option{--target c}, @option{--no-high-level-code},
+@option{--gcc-global-registers}, @option{--gcc-non-local-gotos} and
+@option{--asm--labels}
 @end table
 
 These base grades each call for the generation of
@@ -934,7 +940,7 @@ the generated code will use.
 There are three extensions that they can potentially use:
 
 @table @code
-@item @command{--gcc-global-registers}
+@item @option{--gcc-global-registers}
 specifies the use of a GNU extension
 that allows the generated code to tell @command{gcc}
 that a given global variable should be stored in a machine register.
@@ -946,7 +952,7 @@ such as the return address register
 and the pointer to the top of the det stack
 (which is used at the start and end of the code
 of all predicates that cannot succeed more than once).
-@item @command{--gcc-non-local-gotos}
+@item @option{--gcc-non-local-gotos}
 specifies the use of a GNU extension
 that allows the generated code to simply take the address of a C label,
 store that address somewhere,
@@ -954,7 +960,7 @@ and to later retrieve that address and jump to it.
 This speeds up transfers of control
 (conditional branches and unconditional jumps)
 within a single C function.
-@item @command{--asm--labels}
+@item @option{--asm--labels}
 specifies the use of a GNU extension
 that the address of a label to be made global,
 i.e. accessible from even outside the C function in which it occurs.
@@ -974,14 +980,14 @@ but some platforms, compilers or compiler versions
 do not support specific extensions.
 
 While it is in theory possible to combine
-@command{--gcc-non-local-gotos} with @command{--no-asm--labels},
+@option{--gcc-non-local-gotos} with @option{--no-asm--labels},
 in practice there is no advantage in doing so.
 And while it is also possible to combine
-@command{--gcc-non-local-gotos} @command{--asm--labels} with
-@command{--no-gcc-global-registers},
+@option{--gcc-non-local-gotos} @option{--asm--labels} with
+@option{--no-gcc-global-registers},
 we do not know of any platforms
-on which @command{--gcc-non-local-gotos} and @command{--asm--labels} work
-but @command{--gcc-global-registers} does not.
+on which @option{--gcc-non-local-gotos} and @option{--asm--labels} work
+but @option{--gcc-global-registers} does not.
 This is why we use only three out of the eight possible combinations
 of the values of these three options.
 
@@ -992,12 +998,526 @@ as these are the two fastest.
 @node Grade modifiers
 @section Grade modifiers
 
+The available grade modifiers
+each belong to a small group of grade modifiers
+that all govern the same aspect of compilation.
+Because each modifier calls for handling that aspect
+differently from what the other modifiers in the group call for,
+a grade may contain at most one modifier from each group.
+
+Note also that
+@itemize
+@item
+some grade modifiers are compatible
+only with some base grades (usually the ones that target C) and not others; and
+@item
+some grade modifiers in one group
+are incompatible not just with all other grade modifiers in the same group,
+but also with some grade modifiers from other groups.
+@end itemize
+
+Note also that the Mercury standard library
+will have been installed on your system
+in only a subset of the set of all possible grades.
+
+Each of the following subsections except the last
+documents one group of grade modifiers.
+The last subsection documents which grade modifiers
+are compatible with grade modifiers from other groups.
+
+@menu
+* Grade modifiers for debugging Mercury programs::
+* Grade modifiers for profiling Mercury programs::
+* Grade modifiers for trailing::
+* Grade modifiers for minimal model tabling::
+* Grade modifiers for parallelism::
+* Grade modifiers for flexible stack sizes::
+* Grade modifiers for garbage collection::
+* Grade modifiers for single precision floats::
+* Grade modifiers for C debugging::
+* Compatibility of grade modifiers::
+@end menu
+
+@c NODOC We do not document .pregen
+@c NODOC We do not document .rbmm*
+
+@c ----------------------------------------------------------------------------
+
+@node Grade modifiers for debugging Mercury programs
+@subsection Grade modifiers for debugging Mercury programs
+
+In the absence of both of the grade modifiers in this group,
+the Mercury compiler generates executables that cannot be debugged,
+because they do not include the information needed
+for the operation of the Mercury debugger,
+whose name is @command{mdb} @ref{Debugging}.
+
+@table @code
+@item .debug
+@item .decldebug
+Compiling programs in a grade that includes
+either @code{.debug} or the @code{.decldebug} grade modifier
+generates executables that can be debugged using @command{mdb}.
+Invoking @command{mdb} on such executables allows users to do
+the kinds of things that people do with C debuggers such as @command{gdb}
+(set breakpoints, step forward e.g. one call at a time,
+and print the values of variables, amongst others),
+as well as the kinds of things that people do with debug mode in Prolog:
+(such as jump back from the end of a call to its beginning).
+The difference between them is that
+the declarative debugging aspects of @samp{mdb}
+will work only with @samp{.decldebug}.
+While both @code{.debug} and @code{.decldebug}
+increase the size of the executable and reduce its speed,
+both the size increase and the speed reduction
+is larger with @code{.decldebug} than with @code{.debug}.
+@sp 1
+Both of these grade modifiers are compatible only with LLDS base grades.
+@end table
+
+@c NODOC We do not document ssdebug.
+
+@c ----------------------------------------------------------------------------
+
+@node Grade modifiers for profiling Mercury programs
+@subsection Grade modifiers for profiling Mercury programs
+
+In the absence of all of the grade modifiers in this group,
+the Mercury compiler generates executables that cannot be profiled.
+Mercury actually supports two completely separate profilers:
+@command{mprof} and @command{mdprof}.
+
+@command{mprof} is effectively a Mercury clone
+of one of the standard profilers for C, namely @command{gprof}.
+Like many (if not most) profilers,
+it operates by recording what part of the program was executing
+when its process is sent a periodic profiling signal by the OS.
+Like @command{gprof}, at each profiling signal,
+it records what predicate it was executing at the time
+and where it was called from, but no more than that.
+
+This works well for C, where each function typically has one job,
+but not for Mercury, which has many polymorphic predicates
+that can be used in the implementation of many different jobs,
+with many different performance behaviors.
+This is why Mercury also has @command{mdprof},
+the Mercury @emph{deep} profiler,
+which at each profiling signal records the identity
+of not just the immediate parent of the currently executing predicate,
+but effectively the identities of @emph{all} its other ancestors as well.
+(This is the ``deep context'' after which the profiler is named.)
+
+The two profilers operate differently
+and have different strengths and weaknesses.
+You can read more about both of them in @ref{Profiling}.
+
+@table @code
+@item .prof
+Compiling programs in a grade that includes the @code{.prof} grade modifier
+generates executables that, when executed,
+generate files containing information that @command{mprof},
+the @command{gprof}-style profiler,
+can use to tell you where the program is spending its time.
+@sp 1
+This grade modifier is compatible only with base grades that target C.
+@item .memprof
+Compiling programs in a grade that includes the @code{.memprof} grade modifier
+generates executables that, when executed,
+generate files containing information that @command{mprof},
+the @command{gprof}-style profiler,
+can use to tell you where the program is allocating memory.
+@sp 1
+This grade modifier is compatible only with base grades that target C.
+@item .profdeep
+Compiling programs in a grade that includes the @code{.profdeep} grade modifier
+generates executables that, when executed,
+generate files containing information that @command{mdprof},
+the Mercury deep profiler, can use to tell you
+both where the program is spending its time and where it is allocating memory.
+@sp 1
+This grade modifier is compatible only with LLDS base grades
+(which all target C).
+@end table
+
+@c NODOC We do not document .proftime, .profcalls, and .profall
+
+@c NODOC We do not document Threadscope (here, but we do elsewhere?).
+
+@c NODOC We do not document term size profiling.
+
+@c ----------------------------------------------------------------------------
+
+@node Grade modifiers for trailing
+@subsection Grade modifiers for trailing
+
+In the absence of the @code{.tr} grade modifier,
+the Mercury compiler generates executables that do not support trailing.
+
+Trailing is a technique that
+the implementations of logic programming languages use
+to support constraint solving.
+All Prolog implementations use it,
+because unification in standard Prolog is effectively a solver
+for constraints of the form ``are these two terms unifiable?''.
+(Such constraints are usually called @dfn{Herbrand} constraints.)
+In Mercury, the mode system imposes a requirement that
+when two terms are unified, one of them must be ground,
+which means that such questions are always trivially answerable.
+In fact, the design of Mercury was driven in large part by the intention
+to @emph{avoid} any requirement for constraint solving,
+because they make programs harder to understand
+both by humans, and by the compiler.
+Unlike Prolog, Mercury thus has no constraint solver built into it.
+However, Mercury @emph{can} be used to @emph{implement} constraint solvers.
+While the act of posting a constraint in such a program is a declarative action,
+its implementation requires updating a constraint store.
+This in turn requires that when execution backtracks
+past the goal that posted the constraint,
+the update to the constraint store must be undone.
+
+This is why in the right grades, mercury can support a trail.
+The trail is a stack-like data structure
+that consists of a sequence of entries,
+each of which effectively describes how to undo an update to a data structure.
+This can be used to implement constraint solvers like this:
+
+@itemize @bullet
+@item
+When execution is about to enter a disjunction or an if-then-else,
+the implementation records the address of the top of the trail,
+effectively as a snapshot.
+@item
+When the program adds a new constraint to the constraint store,
+it must also push a new entry on top of the trail that describes
+how to undo the addition of this new constraint.
+(That entry will consist of the address of the undo function,
+and an argument for it that identifies the specific addition to undo.)
+@item
+Whenever execution backtracks,
+either to a later disjunct in a disjunction
+or to the else part of an if-then-else,
+the implementation walks the trail
+from the current top of the trail down to the snapshot address
+that was recorded on entry to the current disjunction or if-then-else,
+and executes the undo actions that they encode.
+This is usually called @emph{unwinding} the trail.
+@end itemize
+
+@table @code
+@item .tr
+Compiling programs in a grade that includes the @code{.tr} grade modifier
+generates executables that support trailing.
+This means that the compiler-generated code
+will create the snapshots and unwind the trail as needed.
+@c The part in between,
+The addition of new constraints to the constraint store,
+and the addition of new entries to the trail to undo those additions,
+will be done by C code in @code{foreign_proc} pragmas written by the user.
+(Each trail entry consists of the address of a C function to call,
+and an argument to invoke that function with.)
+
+This grade modifier is compatible only with base grades that target C.
+Each trail entry consists of the address of a C function to call,
+and an argument to invoke that function with.
+@end table
+
+@c ----------------------------------------------------------------------------
+
+@node Grade modifiers for parallelism
+@subsection Grade modifiers for parallelism
+
 ZZZ TODO
 
-@sp 1
-Note that not all combinations of components are allowed, and that the
-Mercury standard library will have been installed on your system in
-only a subset of the set of all possible grades.
+@c ----------------------------------------------------------------------------
+
+@node Grade modifiers for minimal model tabling
+@subsection Grade modifiers for minimal model tabling
+
+Mercury supports several forms of tabling,
+most of which must be explicit enabled
+for each procedure that are intended to apply to.
+(Recall that a @dfn{procedure} is one mode of a predicate or function.)
+Tabling operates by recording (in a table, hence the name),
+for each vector of input values to a procedure,
+the set of vectors of output values the procedure returns as results.
+(For @code{det} code, the set will contain exactly one vector;
+for @code{semidet} code, the set will contain at most one vector.)
+For later calls to a tabled procedure,
+the Mercury implementation will automatically check whether
+the current vector of values of the input arguments has occurred before.
+If it has, it will return the recorded set of answers.
+If it has not, it will compute the result or results, and record it or them.
+
+This system has a problem if the tabled procedure calls itself recursively,
+either directly or indirectly,
+with the exact same vector of input values,
+@emph{before} its initial invocation has completed,
+because in that case,
+there will be an entry recording the input vector,
+but the corresponding set of output value vectors will not yet be available.
+With the most frequently used form of tabling, i.e. @emph{memoization},
+this is a fatal error,
+and the Mercury implementation will automatically abort the program.
+However, for @code{nondet} predicates, there is a way to avoid this abort,
+at the cost of a much more complicated execution model.
+
+This solution gets its name, @dfn{minimal model tabling},
+from the fact that it is intented to return,
+for each query, all the answers that match that query
+in the @dfn{minimal model} of the program.
+@c ZZZ I can't find a good wikipedia reference
+It consists of
+
+@itemize
+@item
+recording that state of the computation at the point of the recursive call;
+@item
+continuing execution as if the call failed;
+@item
+when the top-level call to the procedure
+with the given vector of input argument values
+finds a new solution,
+@emph{restoring} the recorded state of the computation,
+and restarting its execution, but this time behaving
+as if the recursive call just returned the new solution.
+@item
+This restarted execution may obviously return even more solutions,
+which have to be fed back to the recursive call
+(or in the general, the recursive calls, plural).
+The process ends when all restarted calls lead
+either to no solution, or to solutions that have all previously been
+not just recorded, but also fed back to all recursive call sites.
+@end itemize
+
+The execution mechanisms required for this are quite complicated,
+and impose significant overheads in both time and space,
+even on the parts of the program that do not benefit from it.
+This is why in the absence of the following grade modifiers,
+the Mercury compiler generates executables
+that do not support minimal model tabling.
+
+@table @code
+@item .mm
+Compiling programs in a grade that includes the @code{.mm} grade modifier
+generates executables that support minimal model tabling.
+
+This grade modifier is compatible only with LLDS base grades.
+@item .mmsc
+The grade modifier @samp{.mmsc} is a synonym for @samp{.mm},
+standing for ``minimal model via stack copying'',
+since the standard implementation works by copying parts of the stack.
+The synonym exists because Mercury also has
+another implementation of minimal model tabling.
+This other implementation, which is incomplete
+and was only ever useful for experiments,
+is based on a completely different implementation technique.
+@end table
+
+@c ----------------------------------------------------------------------------
+
+@node Grade modifiers for flexible stack sizes
+@subsection Grade modifiers for flexible stack sizes
+
+In MLDS grades, the code generated by the Mercury compiler
+uses the native call stack of the target language.
+In LLDS grades, on the other hand,
+the generated code manages its own two stacks:
+the @dfn{det stack}, which stores the data
+of procedures that @emph{cannot} succeed more than once,
+and the @dfn{nondet stack}, which stores the data
+of procedures that @emph{can} succeed more than once.
+(The two stacks are separate because
+for predicates that can succeed more than once, we cannot throw away
+the values of their input arguments and local variables when they succeed,
+while for predicates that cannot succeed more than once,
+we can throw them away, and for good performance, we @emph{must} do so.)
+
+By default, Mercury reserves a fixed size block of memory for each stack,
+and never increases their size during execution.
+To make this work even for programs that use relatively deep recursion,
+the default size of the det stack is
+16 megabytes on 32-bit machines, and 32 megabytes on 64-bit machines.
+These default sizes can be overridden using runtime options,
+but whatever pair of sizes one picks,
+for some programs, they will be wasteful overkill,
+while for some other programs, hopefully rarely,
+they nevertheless will not be enough.
+If the platform allows it, we make the top page of each stack inaccessible,
+so that a stack overflow,
+instead of accessing and overwriting memory effectively randomly,
+causes the operating system to send a signal to the program.
+If not caught and handled,
+this signal will abort the program, minimizing the damage.
+
+@c Each frame on the det stack contains
+@c a pointer to the stack frame just below it,
+@c the values of the input arguments and local variables of a call,
+@c and the return address to which the call will jump when done.
+@c Each frame on the nondet stack is similar,
+@c but it contains more information to manage the distinct actions
+@c that such procedures should take on success and on failure.
+
+We therefore have a grade modifier
+that makes the sizes of the two stacks dynamic,
+and able to respond to the actual requirements of the program being executed.
+
+@table @code
+@item .stseg
+Compiling programs in a grade that includes the @code{.stseg} grade modifier
+generates executables that use @dfn{stack segments},
+small memory areas whose size is 16 or 32 kilobytes
+on 32- and 64-bit systems respectively.
+In @code{.stseg} grades, the det and nondet stacks
+both consist of a linked list of one or more stack segments.
+Each stack grows by adding a new segment at a time on demand,
+and shrinks by putting segments back on a free list
+once they are no longer needed.
+
+Using stack segments does have a small performance penalty,
+because it requires code for checking
+@itemize @bullet
+@item
+whether the creation of a new stack frame
+requires the allocation of a new stack segment
+and adding it to the linked list, and
+@item
+whether a stack frame being popped off the stack
+was the last frame in its segment,
+allowing the segment to be removed from the stack's linked list,
+and made available for future allocations.
+@end itemize
+However, for many applications,
+this is a more than acceptable price to pay
+for not imposing any limit on stack sizes
+other than the amount of available memory.
+
+This grade modifier is relevant only for LLDS base grades,
+and is compatible only with them.
+@end table
+
+@c NODOC We do not document .exts
+
+@c When generating low-level C,
+@c Mercury implements its own stacks (two of them).
+@c The default is to make each stack a fixed size
+@c (usually a relatively large size,
+@c though the size of each stack can be controlled using runtime options).
+@c We make the page(s) at the tops of the stacks inaccessible,
+@c so that a stack overflow,
+@c instead of accessing and overwriting memory effectively randomly,
+@c causes the operating system to send a signal to the program.
+@c If not caught and handled, this signal will abort the program,
+@c minimizing the damage.
+
+@c However, for programs for which this is not acceptable,
+@c users can specify the @samp{.stseg} grade component.
+@c This calls for each stack to be composed of
+@c small memory segments chained together in a list.
+@c When there is no room in the current segment for a new stack frame,
+@c we simply allocate a new segment and add it to the list.
+@c This approach has higher overhead,
+@c since calls to, and returns from, procedures must execute more code,
+@c but it avoids imposing any limit on stack size
+@c other than the size of available memory.
+
+@c When targeting anything other than low-level C,
+@c the stack is always managed by the implementation of the target language,
+@c so for them, the @samp{.stseg} modifier is neither relevant nor supported.
+
+@c ----------------------------------------------------------------------------
+
+@node Grade modifiers for garbage collection
+@subsection Grade modifiers for garbage collection
+
+By default, the Mercury system provides no garbage collection
+beyond what the target language provides.
+C# and Java have their own builtin garbage collectors, but C does not.
+Since garbage collection is essential for all programs
+other than those with @emph{very} short runtimes,
+base grades that target C usually include a grade modifier
+that specifies which garbage collector to use.
+
+@table @code
+@item .gc
+Compiling programs in a grade that includes the @code{.gc} grade modifier
+generates executables that use the standard Mercury garbage collector,
+which is the Boehm-Demers-Weiser conservative collector for C.
+
+This grade modifier is relevant only for LLDS base grades,
+and is compatible only with them.
+@end table
+
+The reason why this is an explicit grade modifier is that
+over the years, we have tried out several collectors for C.
+These had their own grade modifiers, to allow users to specify their use.
+However, only the Boehm-Demers-Weiser collector has stood the test of time.
+
+@c NODOC We do not document .agc, .hgc, or other experimental gc systems.
+
+@c ----------------------------------------------------------------------------
+
+@node Grade modifiers for single precision floats
+@subsection Grade modifiers for single precision floats
+
+Many imperative languages have at least two floating point types,
+one single precision and one double precision,
+which usually means they are 32 bits and 64 bits in size respectively.
+Mercury has only one floating point type, @code{float},
+which by default is implemented
+as an IEEE 754 double-precision 64-bit floating point number.
+
+When targeting Java or C#,
+this default cannot be overridden:
+values of the Mercury type @code{float}
+are always represented by values of type @code{double}
+(which exists in both those languages).
+When targeting C, the default @emph{can} be overridden
+by using the following grade modifier.
+
+@table @code
+@item .spf
+Compiling programs in a grade that includes the @code{.spf} grade modifier
+(which stands for ``single-precision float'')
+generates executables that represent values of the Mercury @code{float} type
+as 32-bit values of C's @samp{float} type.
+
+This grade modifier was intended to be used on 32-bit platforms.
+On those platforms, 64-bit floats are twice the size of a machine word,
+which means that they cannot be stored the same way as all other values,
+and must instead be stored on the heap.
+This means that every operation
+that generates a new 64-bit floating point value
+must allocate a heap cell for it, and write those 64 bits to that cell.
+(This is usually called @dfn{boxing} the 64-bit value.)
+Representing Mercury @code{float}s as 32-bit single-precision values
+avoids this overhead, improving both memory consumption and speed.
+This made this grade modifier useful for programs
+that did not require the extra precision (or range) offered using 64-bits.
+
+@code{.spf} grades provide no performance advantage at all 64-bit platforms,
+because on those platforms, 64-bit values do not require boxing.
+On the other hand, they may simplify the use of C APIs
+that exclusively use single precision floats.
+
+This grade modifier is relevant only for base grades that target C,
+and is compatible only with them.
+@end table
+
+@c ----------------------------------------------------------------------------
+
+@node Grade modifiers for C debugging
+@subsection Grade modifiers for C debugging
+
+ZZZ TODO
+
+@c ----------------------------------------------------------------------------
+
+@node Compatibility of grade modifiers
+@subsection Compatibility of grade modifiers
+
+ZZZ TODO
+
+@c ----------------------------------------------------------------------------
 
 @ignore
 
@@ -1022,114 +1542,6 @@ for a new chapter on grades.
     @cindex .threadscope (grade modifier)
     @cindex .tr (grade modifier)
 
-    The grade modifiers may be given in any order.
-    Each grade modifier sets one or more compilation model options.
-    The available options each belong to a set of mutually exclusive alternatives
-    governing a single aspect of the compilation model.
-    The set of aspects and their alternatives are as follows.
-    Note that not all grade modifiers are applicable to all grades
-    (most apply only when targeting C),
-    and not all grade modifiers are compatible with each other.
-
-    @table @asis
-    @item garbage collection
-    The default is no garbage collection beyond what the target language provides.
-    C# and Java have their own builtin garbage collectors, but C does not.
-    Since garbage collection is essential for all programs
-    other than those with @emph{very} short runtimes,
-    base grades that target C
-    are usually followed by the @samp{.gc} grade modifier, which calls for
-    the use of the Boehm-Demers-Weiser conservative collector for C.
-    @c @samp{.agc}
-
-    @item profiling
-    The default is no profiling.
-    The grade modifier @samp{.prof} calls for gprof-style profiling;
-    the grade modifier @samp{.memprof} calls for profiling of memory usage;
-    while the grade modifier @samp{.profdeep} calls for deep profiling.
-    See @ref{Profiling} for an explanation
-    of the differences between these forms of profiling,
-    all of which are available only when targeting C.
-
-    @item trailing
-    The default is no trailing.
-    Applications that need trailing should specify the grade modifier @samp{.tr}.
-    Trailing is available only when targeting C.
-
-    (A trail is a data structure
-    that records changes to a mutable data store during normal execution
-    so that each of those changes can be unwound (undone)
-    when execution backtracks to the point in time before it was made.
-    Mercury normally needs a trail
-    only when executing programs that use constraint solvers.
-    While the act of posting a constraint in such a program
-    is a declarative action,
-    its implementation requires updating a constraint store.)
-
-    @item floating point precision
-    By default when targeting C,
-    the Mercury @samp{float} type is implemented
-    as an IEEE 754 double-precision floating point number,
-    which occupies 64 bits of space.
-    On platforms whose word size is 32 bits,
-    users whose programs do not require double precision
-    may improve memory consumption and speed
-    by specifying the grade modifier @samp{.spf}
-    (short for single-precision float),
-    which calls for implementing all Mercury floats
-    as IEEE 754 single-precision floating point numbers.
-    Note that on 64 bit platforms, using single-precision floats
-    definitely will @emph{not} improve memory consumption,
-    and will probably not improve speed.
-    On the other hand, it may simplify the use of C APIs
-    that exclusively use single precision floats.
-
-    For target languages other than C,
-    the Mercury @samp{float} type is always implemented
-    as a double-precision floating point number,
-    and the @samp{.spf} modifier is not supported.
-
-    @item stack size
-    When generating low-level C,
-    Mercury implements its own stacks (two of them).
-    The default is to make each stack a fixed size
-    (usually a relatively large size,
-    though the size of each stack can be controlled using runtime options).
-    We make the page(s) at the tops of the stacks inaccessible,
-    so that a stack overflow,
-    instead of accessing and overwriting memory effectively randomly,
-    causes the operating system to send a signal to the program.
-    If not caught and handled, this signal will abort the program,
-    minimizing the damage.
-
-    However, for programs for which this is not acceptable,
-    users can specify the @samp{.stseg} grade component.
-    This calls for each stack to be composed of
-    small memory segments chained together in a list.
-    When there is no room in the current segment for a new stack frame,
-    we simply allocate a new segment and add it to the list.
-    This approach has higher overhead,
-    since calls to, and returns from, procedures must execute more code,
-    but it avoids imposing any limit on stack size
-    other than the size of available memory.
-
-    When targeting anything other than low-level C,
-    the stack is always managed by the implementation of the target language,
-    so for them, the @samp{.stseg} modifier is neither relevant nor supported.
-
-    @item debugging
-    The default is to generate executables that do not support debugging.
-    However, when generating low-level C code,
-    specifying one of the grade modifiers @samp{.debug} and @samp{.decldebug}
-    will cause the compiler to generate executables
-    that can be debugged using the Mercury debugger @samp{mdb}.
-    The difference between them is that
-    the declarative debugging aspects of @samp{mdb}
-    will work only with @samp{.decldebug}.
-    The price of this is that @samp{.decldebug} results
-    in significantly larger executable files.
-    @c @samp{.ssdebug}
-
     @item threads
     The default is whatever thread support is provided by the target language.
     When targeting C,
@@ -1149,19 +1561,6 @@ for a new chapter on grades.
     The default is no support for thread profiling.
     Note that form of profiling is experimental,
     and it is not currently supported.
-
-    @item minimal model tabling
-    The default is no support for minimal model evaluation.
-    When targeting low-level C, users can specify the grade modifier @samp{.mm},
-    which enables support for minimal model tabled evaluation of procedures.
-    The grade component @samp{.mmsc} is a synonym for @samp{.mm},
-    standing for minimal model via stack copying,
-    since the standard implementation works by copying stack segments.
-    (The synonym exists because Mercury also has
-    another implementation of minimal model tabling.
-    This other implementation, which is incomplete
-    and was only ever useful for experiments,
-    is based on a completely different implementation technique.)
 
     @end table
 
@@ -7065,6 +7464,13 @@ then a progress message will be displayed as each file is read.
 @cindex Allocation profiling
 @cindex Deep profiling
 
+@c XXX
+@c This chapter should have just three or four sections:
+@c introduction, mprof, mdprof and possibly threadscope.
+@c Each of the post-introduction sections should have subsections
+@c for creating profiles, using profiles for x, using profiles for y etc,
+@c followed by any relevant caveats about e.g. dynamic linking.
+
 @menu
 * Profiling introduction::          What is profiling useful for?
 * Building profiled applications::  How to enable profiling.
@@ -7109,6 +7515,7 @@ that associates a lot more context with each measurement.
 but not both at the same time;
 @samp{mdprof} can profile both time and space at the same time.
 
+@c THREADSCOPE
 The parallel execution of Mercury programs can be analyzed with a third
 profiler called @samp{threadscope}.
 @samp{threadscope} allows programmers to visualise CPU utilisation for work,
@@ -7153,6 +7560,7 @@ pass the @samp{--memory-profiling} option to @samp{mmc},
 To build your program with deep profiling enabled (for @samp{mdprof}),
 pass the @samp{--deep-profiling} option to @samp{mmc},
 @samp{mgnuc} and @samp{ml}.
+@c ZZZ THREADSCOPE should we comment threadscope out?
 @item
 To build your program with threadscope profiling enabled
 (for @samp{threadscope}).
@@ -7224,6 +7632,7 @@ save profiling data in two files whose names will have form
 @file{@var{programname}_on_@var{date}_at_@var{time}.data} and
 @file{@var{programname}_on_@var{date}_at_@var{time}.procrep}.
 (On Windows, the @code{.exe} suffix will be omitted from @var{programname}.)
+@c THREADSCOPE
 Executables compiled with the @samp{--threadscope} option write profiling data
 to a file whose name is that of the program being profiled with the extension
 @samp{.eventlog}.
@@ -7603,7 +8012,8 @@ and some of which lead to further information.
 You explore the profile
 by clicking on links and looking at the resulting pages.
 
-The deep profiler can generate several kinds of pages.
+The deep profiler can generate several kinds of pages,
+including the following.
 
 @table @asis
 
@@ -7688,6 +8098,7 @@ all             map
 internal        set
 @end example
 
+@c THREADSCOPE
 @node Using threadscope
 @section Using threadscope
 
@@ -7702,15 +8113,14 @@ For information about how to install them please see the
 
 ThreadScope provides two programs that can be used to view profiles in
 @file{.eventlog} files.
-The first, @samp{show-ghc-events}, lists the ThreadScope events sorted from the
-earliest to the latest,
-while the second, @samp{threadscope} provides a graphical display for browsing
-the profile.
+The first, @samp{show-ghc-events},
+lists the ThreadScope events sorted from the earliest to the latest,
+while the second, @samp{threadscope} provides
+a graphical display for browsing the profile.
 
-Both programs accept the name of a @file{.eventlog} file on the command
-line.
-The @samp{threadscope} program also provides a menu from which users can choose
-a file to open.
+Both programs accept the name of a @file{.eventlog} file on the command line.
+The @samp{threadscope} program also provides
+a menu from which users can choose a file to open.
 
 @node Profiling and shared libraries
 @section Profiling and shared libraries
