@@ -998,11 +998,10 @@ as these are the two fastest.
 @node Grade modifiers
 @section Grade modifiers
 
-The available grade modifiers
-each belong to a small group of grade modifiers
-that all govern the same aspect of compilation.
+Every grade modifier belongs to a @dfn{grade modifier group}.
+Each grade modifier group governs a single aspect of compilation.
 Because each modifier calls for handling that aspect
-differently from what the other modifiers in the group call for,
+differently from what the other modifiers in its group call for,
 a grade may contain at most one modifier from each group.
 
 Note also that
@@ -1035,6 +1034,7 @@ are compatible with grade modifiers from other groups.
 * Grade modifiers for garbage collection::
 * Grade modifiers for single precision floats::
 * Grade modifiers for C debugging::
+* Grade modifiers for pregenerated source distributions::
 * Compatibility of grade modifiers::
 @end menu
 
@@ -1056,9 +1056,9 @@ whose name is @command{mdb} @ref{Debugging}.
 @item .debug
 @item .decldebug
 Compiling programs in a grade that includes
-either @code{.debug} or the @code{.decldebug} grade modifier
+either the @code{.debug} or the @code{.decldebug} grade modifier
 generates executables that can be debugged using @command{mdb}.
-Invoking @command{mdb} on such executables allows users to do
+Invoking @command{mdb} on such executables lets users do
 the kinds of things that people do with C debuggers such as @command{gdb}
 (set breakpoints, step forward e.g. one call at a time,
 and print the values of variables, amongst others),
@@ -1165,7 +1165,7 @@ when two terms are unified, one of them must be ground,
 which means that such questions are always trivially answerable.
 In fact, the design of Mercury was driven in large part by the intention
 to @emph{avoid} any requirement for constraint solving,
-because they make programs harder to understand
+because it makes programs harder to understand
 both by humans, and by the compiler.
 Unlike Prolog, Mercury thus has no constraint solver built into it.
 However, Mercury @emph{can} be used to @emph{implement} constraint solvers.
@@ -1175,7 +1175,10 @@ This in turn requires that when execution backtracks
 past the goal that posted the constraint,
 the update to the constraint store must be undone.
 
-This is why in the right grades, mercury can support a trail.
+This is why in the right grades, Mercury can support a trail.
+@c XXX CHECKME
+(@pxref{Trailing, , ,
+mercury_ref,The Mercury language Reference Manual}).
 The trail is a stack-like data structure
 that consists of a sequence of entries,
 each of which effectively describes how to undo an update to a data structure.
@@ -1200,6 +1203,9 @@ the implementation walks the trail
 from the current top of the trail down to the snapshot address
 that was recorded on entry to the current disjunction or if-then-else,
 and executes the undo actions that they encode.
+(For example, a trail entry can contain
+the address of a C function to call,
+and an argument to invoke that function with.)
 This is usually called @emph{unwinding} the trail.
 @end itemize
 
@@ -1217,8 +1223,6 @@ will be done by C code in @code{foreign_proc} pragmas written by the user.
 and an argument to invoke that function with.)
 
 This grade modifier is compatible only with base grades that target C.
-Each trail entry consists of the address of a C function to call,
-and an argument to invoke that function with.
 @end table
 
 @c ----------------------------------------------------------------------------
@@ -1235,7 +1239,10 @@ ZZZ TODO
 
 Mercury supports several forms of tabling,
 most of which must be explicit enabled
-for each procedure that are intended to apply to.
+for each procedure that are intended to apply to
+@c XXX CHECKME
+(@pxref{Tabled evaluation, , ,
+mercury_ref,The Mercury language Reference Manual}).
 (Recall that a @dfn{procedure} is one mode of a predicate or function.)
 Tabling operates by recording (in a table, hence the name),
 for each vector of input values to a procedure,
@@ -1262,7 +1269,7 @@ However, for @code{nondet} predicates, there is a way to avoid this abort,
 at the cost of a much more complicated execution model.
 
 This solution gets its name, @dfn{minimal model tabling},
-from the fact that it is intented to return,
+from the fact that it is intended to return,
 for each query, all the answers that match that query
 in the @dfn{minimal model} of the program.
 @c ZZZ I can't find a good wikipedia reference
@@ -1337,7 +1344,8 @@ and never increases their size during execution.
 To make this work even for programs that use relatively deep recursion,
 the default size of the det stack is
 16 megabytes on 32-bit machines, and 32 megabytes on 64-bit machines.
-These default sizes can be overridden using runtime options,
+These default sizes can be overridden using runtime options
+(@pxref{Environment variables affecting the Mercury runtime system}),
 but whatever pair of sizes one picks,
 for some programs, they will be wasteful overkill,
 while for some other programs, hopefully rarely,
@@ -1443,7 +1451,7 @@ Compiling programs in a grade that includes the @code{.gc} grade modifier
 generates executables that use the standard Mercury garbage collector,
 which is the Boehm-Demers-Weiser conservative collector for C.
 
-This grade modifier is relevant only for LLDS base grades,
+This grade modifier is relevant only for base grades that target C,
 and is compatible only with them.
 @end table
 
@@ -1507,6 +1515,13 @@ and is compatible only with them.
 
 @node Grade modifiers for C debugging
 @subsection Grade modifiers for C debugging
+
+ZZZ TODO
+
+@c ----------------------------------------------------------------------------
+
+@node Grade modifiers for pregenerated source distributions
+@subsection Grade modifiers for pregenerated source distributions
 
 ZZZ TODO
 
@@ -1892,13 +1907,11 @@ options via the @env{MERCURY_OPTIONS} environment variable.
 The most useful of these are the options that set the size of the stacks.
 (For the full list of available options, see @ref{Environment}.)
 
-@c XXX FIXME This is wrong for the case when --high-level-code is enabled.
-When targeting Java or C#,
-and when targeting high level C (@samp{mmc --high-level-code}),
+In MLDS grades,
 stack management is the responsibility of the target language's compiler.
-When targeting low level C (@samp{mmc} without --high-level code),
+In LLDS grades,
 stack management is the responsibility of @samp{mmc}
-and of the C runtime system.
+and of the Mercury runtime system for C.
 This backend uses two stacks, the det stack and the nondet stack.
 With @samp{mmc --stack-segments},
 both of these stacks will grow and shrink automatically as needed.
