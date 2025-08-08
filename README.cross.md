@@ -16,6 +16,8 @@ The following targets are currently supported using clang:
   * macOS x86-64
   * macOS AArch64 (ARM64)
   * Linux AArch64 (ARM64)
+  * Windows x86-64, using llvm-mingw (clang)
+  * Windows ARM64, using llvm-mingw (clang)
 
 Furthermore, instead of transferring the Mercury installation to the target
 system and running it there, you can augment the cross-compiled installation

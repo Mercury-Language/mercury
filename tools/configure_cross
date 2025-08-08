@@ -2,7 +2,7 @@
 # vim: ft=sh ts=4 sw=4 et
 #---------------------------------------------------------------------------#
 # Copyright (C) 2012 The University of Melbourne.
-# Copyright (C) 2014, 2018, 2021-2024 The Mercury team.
+# Copyright (C) 2014, 2018, 2021-2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -97,6 +97,23 @@ case "$cc_type:$host" in
         mercury_cv_gcc_model_reg=yes
         mercury_cv_cannot_use_structure_assignment=yes
         ;;
+    clang:x86_64-w64-mingw32 | clang:aarch64-w64-mingw32)
+        # Taken from the config.cache file after running configure -C in MSYS2
+        # (on x86-64 and ARM64), using llvm-mingw for the compiler.
+        mercury_cv_cc_type=clang
+        mercury_cv_siginfo_t=no
+        mercury_cv_pc_access=no
+        mercury_cv_is_bigender=no
+        mercury_cv_is_littleender=yes
+        mercury_cv_normal_system_retval=no
+        mercury_cv_can_do_pending_io=no
+        mercury_cv_gcc_labels=no
+        mercury_cv_asm_labels=no
+        mercury_cv_gcc_model_fast=no
+        mercury_cv_gcc_model_reg=no
+        mercury_cv_cannot_use_structure_assignment=yes
+        ;;
+
     gcc:aarch64-*linux-gnu | gcc:aarch64-*linux-musl)
         # Taken from the config.cache file after running configure -C
         # - in a Debian 10 arm64 environment (for glibc)
