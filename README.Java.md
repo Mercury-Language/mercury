@@ -267,17 +267,21 @@ However, if you want to give it a try, the required steps are:
 
    to a file named `Mmake.params` at the top-level of the source tree.
 
-4. Begin the build process using the following command:
+4. Build the dependencies using the following command:
+
+        $ mmake --use-mmc-make depend GRADE=java
+
+5. Compile using the following command:
 
         $ mmake --use-mmc-make GRADE=java
 
-   The Java version of the compiler MUST be built using `mmake`'s `--use-mmc-make`
-   option; the build will not work otherwise. Setting the variable `GRADE` in the
-   invocation of `mmake` is currently necessary in order to avoid variable
-   definition ordering problems in `Mmake.workspace`.
+6. To install the Java version of the compiler, do:
 
-5. To install the Java version of the compiler, do:
+        $ mmake --use-mmc-make install GRADE=java
 
-       $ mmake --use-mmc-make install GRADE=java
+The Java version of the compiler MUST be built using `mmake`'s `--use-mmc-make`
+option; the build will not work otherwise. Setting the variable `GRADE` in the
+invocations of `mmake` is currently required to avoid variable definition
+ordering problems in `Mmake.workspace`.
 
 -----------------------------------------------------------------------------
