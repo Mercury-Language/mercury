@@ -13,8 +13,8 @@
 # includes that file automatically, to make sure that we get the right
 # version of that file. The settings in that file include values set
 # by parameters to configure (e.g. --prefix), and we need to make sure
-# that we pick up the values from the Mmake.vars that we're going to install,
-# rather than from the old version of mmake that we're installing with,
+# that we pick up the values from the Mmake.vars that we are going to install,
+# rather than from the old version of mmake that we are installing with,
 # which may have been configured with a different --prefix.
 include scripts/Mmake.vars
 
@@ -33,24 +33,24 @@ include Mmake.common
 # before reinstalling the compiler in a more efficient grade.
 
 SUBDIRS = \
-		scripts \
-		util \
-		boehm_gc \
-		runtime \
-		robdd \
-		library \
-		trace \
-		ssdb \
-		mdbcomp \
-		browser \
-		grade_lib \
-		compiler \
-		doc \
-		slice \
-		profiler \
-		deep_profiler \
-		tools \
-		mfilterjavac
+	scripts \
+	util \
+	boehm_gc \
+	runtime \
+	robdd \
+	library \
+	trace \
+	ssdb \
+	mdbcomp \
+	browser \
+	grade_lib \
+	compiler \
+	doc \
+	slice \
+	profiler \
+	deep_profiler \
+	tools \
+	mfilterjavac
 
 MMAKEFLAGS =
 
@@ -61,8 +61,8 @@ ifneq ($(CROSS_COMPILING),yes)
 	SUBDIR_MMAKE_PATH=../scripts:../util:../mfilterjavac:../../mfilterjavac:$$PATH
 	SUBSUBDIR_MMAKE_PATH=../../scripts:../../util:../../mfilterjavac:$$PATH
 else
-	# When cross-compiling, exclude util and mfilterjavac from the PATH so
-	# mmake does not try to execute binaries from those directories.
+	# When cross-compiling, exclude util and mfilterjavac from the PATH,
+	# so mmake does not try to execute binaries from those directories.
 	SUBDIR_MMAKE_PATH=../scripts:$$PATH
 	SUBSUBDIR_MMAKE_PATH=../../scripts:$$PATH
 endif
@@ -225,7 +225,8 @@ mfilterjavac/$(deps_subdir)mfilterjavac.dep: \
 # depend_library MUST be done before depend_compiler and depend_profiler
 
 .PHONY: depend
-depend: depend_library \
+depend: \
+	depend_library \
 	depend_mdbcomp \
 	depend_browser \
 	depend_ssdb \
@@ -282,8 +283,8 @@ depend_mfilterjavac:
 # is the "util_no_rt" target (short for "util no runtime") and the second is the
 # "util" target. The first target builds those programs in the util directory
 # that do *not* depend on the runtime directory, at present just mfiltercc.
-# The second target builds the rest. Things are arranged in this fashion so
-# that when building the source distribution we can build mfiltercc before
+# The second target builds the rest. Things are arranged in this fashion
+# so that when building the source distribution, we can build mfiltercc before
 # it is required.
 
 .PHONY: all
@@ -435,8 +436,8 @@ tags_mfilterjavac:
 
 #-----------------------------------------------------------------------------#
 
-# Remove from each of the listed directories mmc-generated files that don't
-# belong there.
+# Remove from each of the listed directories mmc-generated files that
+# do not belong there.
 cleanint:
 	for dir in library mdbcomp browser ssdb grade_lib compiler \
 		slice profiler deep_profiler; \
@@ -649,10 +650,10 @@ install_runtime: runtime
 install_trace: trace
 	+cd trace && $(SUBDIR_MMAKE) install
 
-# When building the compiler in a non-C grade the header files for the Boehm GC
-# still need to be installed, otherwise an installed non-C grade compiler won't
-# be able to compile anything in .gc grades.
-#
+# When building the compiler in a non-C grade, the header files for
+# the Boehm GC system still need to be installed, because otherwise,
+# an installed non-C grade compiler will not be able to compile anything
+# in .gc grades.
 .PHONY: install_boehm_gc
 ifeq ("$(filter csharp% java%,$(GRADE))","")
 install_boehm_gc: boehm_gc
@@ -709,8 +710,8 @@ install_deep_profiler: deep_profiler
 ifeq ($(CROSS_COMPILING),yes)
 OVERRIDE_MC_FOR_LIBGRADE =
 else
-	# We must override the paths in the mmc script in case the compiler was
-	# installed to a temporary location, using DESTDIR.
+	# We must override the paths in the mmc script in case the compiler
+	# was installed to a temporary location, using DESTDIR.
 OVERRIDE_MC_FOR_LIBGRADE = MC=mmc \
 	MERCURY_COMPILER=$(INSTALL_BINDIR)/mercury_compile \
 	MERCURY_CONFIG_DIR=$(INSTALL_LIBDIR)
