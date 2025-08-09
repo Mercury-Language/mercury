@@ -34,7 +34,7 @@ In order to use Mercury's Java backend you will need:
 * The [Java SE platform](https://www.oracle.com/java/technologies/downloads/).
 
 * OR another compatible Java implementation, such as
-  [OpenJDK](https://openjdk.org) or [Amazon Coretto](https://asw.amazon.com/coretto/).
+  [OpenJDK](https://openjdk.org) or [Amazon Coretto](https://aws.amazon.com/coretto/).
 
 Installing the `java` grade
 ---------------------------
