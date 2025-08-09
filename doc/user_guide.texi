@@ -1,6 +1,7 @@
 \input texinfo
 @setfilename mercury_user_guide.info
 @settitle The Mercury User's Guide
+@c vim: ts=4 sw=4 expandtab ft=texinfo
 
 @dircategory The Mercury Programming Language
 @direntry
