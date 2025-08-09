@@ -2841,12 +2841,14 @@ make_proposed_search_path_ngs(SubdirSetting, ExtSubDir,
 
     % Options updated:
     %   strip
+    %   target_debug
     %   use_symlinks
     %
 :- pred handle_target_compile_link_symlink_options(globals::in, globals::out)
     is det.
 
 handle_target_compile_link_symlink_options(!Globals) :-
+    option_implies(target_debug_grade, target_debug, bool(yes), !Globals),
     option_implies(target_debug, strip, bool(no), !Globals),
 
     ( if io.file.have_symlinks then

@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab ft=sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 2005, 2010 The University of Melbourne.
-# Copyright (C) 2014, 2018, 2020, 2022 The Mercury team.
+# Copyright (C) 2014, 2018, 2020, 2022, 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -10,9 +10,11 @@
 # mgnuc_file_opts.sh-subr:
 #
 # An `sh' subroutine for processing the mgnuc options that can be set from
-# .mgnuc_opts files. It is included twice in mgnuc. Its implementation is
-# bound tightly to the code of mgnuc.in; all the variables it manipulates
-# come from there.
+# .mgnuc_opts files. It is included twice in mgnuc; once to process options
+# from the command line, and once to process options from .mgnuc_opts files.
+#
+# The code of this file is tightly bound to the code of mgnuc.in;
+# all the variables it manipulates come from there.
 #
 # At the moment, this includes only options that do not have arguments.
 # This is because processing options with arguments is hard to do without
@@ -45,10 +47,10 @@
             ;;
 
         -g|--c-debug)
-            c_debug=true
+            mgnuc_c_debug=true
             ;;
         -g-|--no-c-debug)
-            c_debug=false
+            mgnuc_c_debug=false
             ;;
 
         --c-optimize)

@@ -269,7 +269,7 @@
 
     % Grade options, part d: MLDS compilation
     ;       highlevel_code
-    ;       c_debug_grade
+    ;       target_debug_grade
 
     % Grade options, part e: debugging
 
@@ -1682,26 +1682,27 @@ optdb(oc_grade_mlds, highlevel_code,                   bool(no),
     short_alt_align_help('H', "high-level-code",
             ["high-level-c", "high-level-C",
             "highlevel-code", "highlevel-c", "highlevel-C"],
-            "(grades: hlc, csharp, java)",
-            "(grades: @samp{hlc}, @samp{csharp}, @samp{java})",
-            [
-        w("Use the MLDS backend,"),
+            "(grades: hlc, java, csharp)",
+            "(grades: @samp{hlc}, @samp{java}, @samp{csharp})",
+        [w("Use the MLDS backend,"),
         w("which generates idiomatic high-level-language code,"),
         w("rather than the LLDS backend,"),
         w("which generates assembly language code in C syntax.") ])).
-optdb(oc_grade_mlds, c_debug_grade,                    bool(no),
-    alt_align_help("c-debug-grade", [],
-            "(grades: hlc)",
-            "(grades: @samp{hlc})", [
+optdb(oc_grade_mlds, target_debug_grade,               bool(no),
+    alt_align_help("target-debug-grade", [],
+            "(grades: hlc, java, csharp)",
+            "(grades: @samp{hlc}, @samp{java}, @samp{csharp})",
         % XXX Why do we not document the grade *modifier*?
-        w("Require that all modules in the program"),
-        w("be compiled to object code"),
+        [w("Require that all modules in the program be compiled to"),
+        w("object code"), fixed("(for C)"),
+        file(".class"), w("files"), fixed("(for Java),"),
+        w("or"), file(".dll"), w("files"), fixed("(for C#)"),
         w("in a way that allows the program executable to be debuggable"),
-        w("with debuggers for C, such as"), code("gdb", "."),
+        w("with debuggers for the target language,"),
+        w("such as"), code("gdb"), w("for C."),
         w("This option is intended mainly for the developers of Mercury,"),
         w("though it can also help to debug"),
-        w("C code included in Mercury programs."),
-        w("This option is used only when targeting C.")])).
+        w("foreign language code included in Mercury programs.")])).
 
 %---------------------%
 

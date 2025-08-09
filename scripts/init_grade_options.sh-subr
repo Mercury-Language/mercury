@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab ft=sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 1997-2007, 2010 The University of Melbourne.
-# Copyright (C) 2013-2014, 2016-2017, 2020, 2022 The Mercury team.
+# Copyright (C) 2013-2014, 2016-2017, 2020, 2022, 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -51,7 +51,7 @@ Grade options:
     --debug
     --decl-debug
     --ss-debug
-    --c-debug-grade
+    --target-debug-grade
     --extend-stacks-when-needed
     --stack-segments
     --use-regions
@@ -59,7 +59,7 @@ Grade options:
         of the Mercury User's Guide."
 
 # --use-regions-debug and --use-regions-profiling are not yet documented
-# since they are not yet stable
+# since they are not yet stable.
 
 target=c
 highlevel_code=false
@@ -84,12 +84,14 @@ single_prec_float=false
 debug=false
 decl_debug=false
 ss_debug=false
-c_debug_grade=false
+target_debug_grade=false
 extend_stacks=false
 stack_segments=false
 use_regions=false
 use_regions_debug=false
 use_regions_profiling=false
+
+input_grade_string_len=0
 
 case "$#" in
     0)

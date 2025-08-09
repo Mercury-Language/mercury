@@ -1033,7 +1033,7 @@ are compatible with grade modifiers from other groups.
 * Grade modifiers for flexible stack sizes::
 * Grade modifiers for garbage collection::
 * Grade modifiers for single precision floats::
-* Grade modifiers for C debugging::
+* Grade modifiers for target language debugging::
 * Grade modifiers for pregenerated source distributions::
 * Compatibility of grade modifiers::
 @end menu
@@ -1513,8 +1513,8 @@ and is compatible only with them.
 
 @c ----------------------------------------------------------------------------
 
-@node Grade modifiers for C debugging
-@subsection Grade modifiers for C debugging
+@node Grade modifiers for target language debugging
+@subsection Grade modifiers for target language debugging
 
 ZZZ TODO
 

@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab ft=sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 1997-2007, 2010 The University of Melbourne.
-# Copyright (C) 2013-2014, 2016-2017, 2020 The Mercury team.
+# Copyright (C) 2013-2014, 2016-2017, 2020, 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -219,11 +219,11 @@
         ss_debug=false
         ;;
 
-    --c-debug-grade)
-        c_debug_grade=true
+    --target-debug-grade)
+        target_debug_grade=true
         ;;
-    --no-c-debug-grade)
-        c_debug_grade=false
+    --no-target-debug-grade)
+        target_debug_grade=false
         ;;
 
     --extend-stacks-when-needed)
@@ -261,6 +261,7 @@
     -s|--grade)
         shift
         grade="$1";
+        input_grade_string_len=${#grade}
 
         # Convert a grade to a set of options.
         #
@@ -290,7 +291,7 @@
         debug=false
         decl_debug=false
         ss_debug=false
-        c_debug_grade=false
+        target_debug_grade=false
         extend_stacks=false
         stack_segments=false
         use_regions=false
@@ -489,8 +490,8 @@
                     ss_debug=true
                     ;;
 
-                c_debug)
-                    c_debug_grade=true
+                target_debug)
+                    target_debug_grade=true
                     ;;
 
                 exts)

@@ -1513,18 +1513,18 @@ get_c_grade_defines(Globals, GradeDefines) :-
         ExtendOpt = unexpected($pred,
             "--extend-stacks-when-needed and --stack-segments")
     ),
-    globals.lookup_bool_option(Globals, c_debug_grade, CDebugGrade),
+    globals.lookup_bool_option(Globals, target_debug_grade, TargetDebugGrade),
     (
-        CDebugGrade = yes,
+        TargetDebugGrade = yes,
         % This grade option tells the C compiler to turn on the generation
         % of debugging symbols and to disable the optimizations that
         % would make the executable harder to debug in a C debugger
         % such as gdb. However, here we gather only *macro* definitions,
         % not general compiler flags.
-        CDebugGradeOpt = "-DMR_C_DEBUG_GRADE "
+        TargetDebugGradeOpt = "-DMR_TARGET_DEBUG_GRADE "
     ;
-        CDebugGrade = no,
-        CDebugGradeOpt = ""
+        TargetDebugGrade = no,
+        TargetDebugGradeOpt = ""
     ),
     globals.lookup_bool_option(Globals, use_trail, UseTrail),
     (
@@ -1625,7 +1625,7 @@ get_c_grade_defines(Globals, GradeDefines) :-
         RecordTermSizesOpt,
         NumPtagBitsOpt,
         ExtendOpt,
-        CDebugGradeOpt, DeclDebugOpt,
+        TargetDebugGradeOpt, DeclDebugOpt,
         SourceDebugOpt,
         ExecTraceOpt,
         UseTrailOpt,

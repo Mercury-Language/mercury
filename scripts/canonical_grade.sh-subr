@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab ft=sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 2000-2007, 2010 The University of Melbourne.
-# Copyright (C) 2013-2017, 2020 The Mercury team.
+# Copyright (C) 2013-2017, 2020, 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -225,9 +225,9 @@ case ${debug},${decl_debug},${ss_debug} in
         ;;
 esac
 
-case ${c_debug} in
+case ${target_debug_grade} in
     true)
-        GRADE="${GRADE}.c_debug"
+        GRADE="${GRADE}.target_debug"
         ;;
     *)
         ;;

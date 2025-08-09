@@ -5,7 +5,7 @@
 # @configure_input@
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2007, 2010-2012 The University of Melbourne.
-# Copyright (C) 2013-2020, 2022-2023 The Mercury team.
+# Copyright (C) 2013-2020, 2022-2023, 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -41,6 +41,7 @@ case "${C_COMPILER_TYPE}" in
             -Wall -Wwrite-strings
             -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wno-unused"
 
+# XXX The following comment is *very* old.
 # Note: we do not enable the following gcc warnings:
 # -Wredundant-decls     causes too many complaints in system header files
 # -Wpointer-arith       causes too many complaints in system header files
@@ -107,7 +108,7 @@ SPLIT_OPTS=""
 INLINE_ALLOC_OPTS=""
 
 verbose=false
-c_debug=false
+mgnu_c_debug=false
 c_optimize=true
 use_activation_counts=false
 preserve_tail_recursion=true
@@ -218,13 +219,12 @@ then
     done
 fi
 
-# include the file `final_grade_options.sh-subr'
+# Include the file `final_grade_options.sh-subr'.
 @FINAL_GRADE_OPTIONS@
 
-# compute the canonical grade name from the options settings
-#
+# Compute the canonical grade name from the options settings.
 
-# include the file `canonical_grade.sh-subr'
+# Include the file `canonical_grade.sh-subr'.
 @CANONICAL_GRADE@
 
 case "${mercury_stdlib_dir}" in
@@ -239,7 +239,7 @@ case "${mercury_stdlib_dir}" in
         ;;
 esac
 
-# add /usr/local/include to the default search path, if needed
+# Add /usr/local/include to the default search path, if needed.
 ALL_LOCAL_C_INCL_DIRS=${MERCURY_ALL_LOCAL_C_INCL_DIRS=@ALL_LOCAL_C_INCL_DIRS@}
 
 # Convert non-grade mgnuc options into gcc options.
@@ -247,19 +247,21 @@ ALL_LOCAL_C_INCL_DIRS=${MERCURY_ALL_LOCAL_C_INCL_DIRS=@ALL_LOCAL_C_INCL_DIRS@}
 # IMPORTANT: any changes here will require similar changes to
 # compiler/compile_target_code.m.
 
-case ${c_debug} in
-    # We set a variable named C_DEBUG_OPTS here, in the code that handles
-    # a -g or -cdebug-info option being given to mgnuc. Because below we handle
-    # the related but nevertheless separate c_debug grade component, and
-    # *that* code sets a variable named C_DEBUG_GRADE_OPTS.
+case ${mgnu_c_debug} in
+    # We set a variable named MGNUC_C_DEBUG_OPTS here, in the code that handles
+    # a -g or a --c-debug option being given to mgnuc.
+
     true)
-        C_DEBUG_OPTS="${DEBUG_OPTS}"
-        # Prevent that code below from including the *original* ${DEBUG_OPTS}
-        # in the final list of C compiler options *again*.
+        # Because below we handle the related but nevertheless separate
+        # target_debug grade component, and *that* code sets a variable
+        # named TARGET_DEBUG_GRADE_OPTS, we have to zero out ${DEBUG_OPTS}
+        # to prevent *that* code from including *another* copy of the
+        # *original* ${DEBUG_OPTS} in the final list of C compiler options.
+        MGNUC_C_DEBUG_OPTS="${DEBUG_OPTS}"
         DEBUG_OPTS=""
         ;;
     false)
-        C_DEBUG_OPTS=""
+        MGNUC_C_DEBUG_OPTS=""
         ;;
 esac
 
@@ -317,7 +319,7 @@ case ${threadscope} in
     false)      THREADSCOPE_OPTS="" ;;
 esac
 
-# Set the correct flags if we're to use the MS Visual C runtime.
+# Set the correct flags if we are to use the MS Visual C runtime.
 use_msvcrt=@USE_MSVCRT@
 if test ${use_msvcrt} = "yes"
 then
@@ -457,9 +459,9 @@ case ${ss_debug} in
     false)          SS_DEBUG_OPTS="" ;;
 esac
 
-case ${c_debug_grade} in
-    true)           C_DEBUG_GRADE_OPTS="-DMR_C_DEBUG_GRADE ${DEBUG_OPTS} ${DISABLE_OPTS_OPT}" ;;
-    false)          C_DEBUG_GRADE_OPTS="" ;;
+case ${target_debug_grade} in
+    true)           TARGET_DEBUG_GRADE_OPTS="-DMR_TARGET_DEBUG_GRADE ${DEBUG_OPTS} ${DISABLE_OPTS_OPT}" ;;
+    false)          TARGET_DEBUG_GRADE_OPTS="" ;;
 esac
 
 case ${extend_stacks} in
@@ -505,19 +507,19 @@ case ${COMPILER} in
         ;;
 esac
 
-# if we're using global registers, add CFLAGS_FOR_REGS
+# If we are using global registers, add CFLAGS_FOR_REGS.
 case ${global_regs} in
     true)       GCC_OPTS="${GCC_OPTS} ${CFLAGS_FOR_REGS}" ;;
     false)      ;;
 esac
 
-# if we're using non-local gotos, add CFLAGS_FOR_GOTOS
+# If we are using non-local gotos, add CFLAGS_FOR_GOTOS.
 case ${non_local_gotos} in
     true)       GCC_OPTS="${GCC_OPTS} ${CFLAGS_FOR_GOTOS}" ;;
     false)      ;;
 esac
 
-# if sanitizers were enabled at configure time, add CFLAGS_FOR_SANITIZERS
+# If sanitizers were enabled at configure time, add CFLAGS_FOR_SANITIZERS.
 SANITIZER_OPTS="${CFLAGS_FOR_SANITIZERS}"
 
 # Use any applicable LTO options
@@ -558,7 +560,7 @@ esac
 # We currently disable the warning for all versions of GCC > 8 since
 # the problem is not known to have been fixed in any later version (as of
 # 2022-06-18).
-# 
+
 case "${C_COMPILER_TYPE}" in
     gcc_9_*|gcc_1[0-9]_*)
         CHECK_OPTS="${CHECK_OPTS} -Wno-array-bounds"
@@ -597,7 +599,7 @@ case ${COMPILER} in gcc)
     ;;
 esac
 
-# On sparc-sun-solaris2, we need to use -fPIC rather than -fpic
+# On sparc-sun-solaris2, we need to use -fPIC rather than -fpic,
 # because otherwise the Mercury standard library overflows the fixed limit
 # on the number of "small pic" references.
 # Similarly, on sparc64 OpenBSD, no grades fit into the 13-bit GOT.
@@ -663,7 +665,7 @@ fi
 FILTERCC=""
 case ${asm_labels},${do_filter_cc} in
     true,true)
-        # Check if mfiltercc is available as we may be bootstrapping with
+        # Check if mfiltercc is available, as we may be bootstrapping with
         # an older compiler which did not have it.
         if test -n "${MKTEMP}" && mfiltercc </dev/null 2>/dev/null
         then
@@ -686,10 +688,10 @@ ALL_CC_OPTS="${MERC_ALL_C_INCL_DIRS}\
     ${TRACE_OPTS}\
     ${DECL_DEBUG_OPTS}\
     ${SS_DEBUG_OPTS}\
-    ${C_DEBUG_GRADE_OPTS}\
+    ${TARGET_DEBUG_GRADE_OPTS}\
     ${EXTEND_STACKS_OPTS}\
     ${STACK_SEGMENTS_OPTS}\
-    ${C_DEBUG_OPTS}\
+    ${MGNUC_C_DEBUG_OPTS}\
     ${PROF_TIME_OPTS}\
     ${PROF_CALLS_OPTS}\
     ${PROF_MEMORY_OPTS}\

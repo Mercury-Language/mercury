@@ -738,12 +738,13 @@ get_mercury_std_libs_for_c_cs(Globals, LinkedTargetType, StdLibs) :-
                 GCMethod = gc_boehm_debug,
                 GCGrade0 = "gc_debug"
             ),
-            globals.lookup_bool_option(Globals, c_debug_grade, CDebugGrade),
+            globals.lookup_bool_option(Globals, target_debug_grade,
+                TargetDebugGrade),
             (
-                CDebugGrade = yes,
-                GCGrade1 = GCGrade0 ++ "_c_debug"
+                TargetDebugGrade = yes,
+                GCGrade1 = GCGrade0 ++ "_target_debug"
             ;
-                CDebugGrade = no,
+                TargetDebugGrade = no,
                 GCGrade1 = GCGrade0
             ),
             globals.lookup_bool_option(Globals, profile_time, ProfTime),

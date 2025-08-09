@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016, 2018, 2020, 2022 The Mercury team.
+% Copyright (C) 2016, 2018, 2020, 2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -436,12 +436,13 @@ init_requirement_specs = [
         (svar_target `is_one_of` [svalue_target_c])
     ),
     requirement_spec(
-        "The .c_debug grade component is not supported by the LLDS backend.",
-        % We could possibly support it for grades that do not use any gcc
-        % extensions to C, but invoking gdb on object code that uses
-        % e.g. gcc extensions to execute gotos between modules without going
-        % through function prologues/epilogues is not going to be
-        % remotely useful.
+        "The .target_debug grade modifier requires the MLDS backend.",
+        % For LLDS grades that use gcc extensions to execute gotos
+        % between modules without going through function prologues/epilogues,
+        % using e.g. gdb is not going to be remotely useful.
+        % And for the LLDS grades that do *not* use such extensions,
+        % our use of threaded code will by very confusing for most anyone
+        % who is not a Mercury implementor.
         (svar_backend `being` svalue_backend_llds) `implies_that`
         (svar_target_debug `is_one_of` [svalue_target_debug_no])
     ),

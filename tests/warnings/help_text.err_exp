@@ -345,7 +345,7 @@ Grade options
 
   MLDS backend grade options
 
-    -H                                  (grades: hlc, csharp, java)
+    -H                                  (grades: hlc, java, csharp)
     --high-level-code
     --high-level-c
     --high-level-C
@@ -356,12 +356,13 @@ Grade options
         code, rather than the LLDS backend, which generates assembly language
         code in C syntax.
 
-    --c-debug-grade                     (grades: hlc)
-        Require that all modules in the program be compiled to object code in a
-        way that allows the program executable to be debuggable with debuggers
-        for C, such as `gdb'. This option is intended mainly for the developers
-        of Mercury, though it can also help to debug C code included in Mercury
-        programs. This option is used only when targeting C.
+    --target-debug-grade                (grades: hlc, java, csharp)
+        Require that all modules in the program be compiled to object code
+        (for C) `.class' files (for Java), or `.dll' files (for C#) in a way
+        that allows the program executable to be debuggable with debuggers for
+        the target language, such as `gdb' for C. This option is intended
+        mainly for the developers of Mercury, though it can also help to debug
+        foreign language code included in Mercury programs.
 
   Debugging grade options
 

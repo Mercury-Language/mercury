@@ -196,11 +196,11 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
     % Stack segments are only supported by the low level C back-end.
     %
     globals.lookup_bool_option(Globals, stack_segments, StackSegments),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     (
         StackSegments = yes,
         (
             Target = target_c,
-            globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
             (
                 HighLevelCode = yes,
                 StackSegmentpec =
@@ -241,6 +241,22 @@ check_grade_component_compatibility(Globals, Target, GC_Method, !Specs) :-
         )
     ;
         SinglePrecFloat = no
+    ),
+
+    globals.lookup_bool_option(Globals, target_debug_grade, TargetDebugGrade),
+    (
+        TargetDebugGrade = yes,
+        (
+            HighLevelCode = no,
+            TDGSpec =
+                [words("The target_debug grade modifier is incompatible with"),
+                words("the low level C backend."), nl],
+            add_error(phase_options, TDGSpec, !Specs)
+        ;
+            HighLevelCode = yes
+        )
+    ;
+        TargetDebugGrade = no
     ).
 
 %---------------------------------------------------------------------------%
@@ -666,8 +682,8 @@ grade_component_table("ssdebug", comp_trace,
     [source_to_source_debug - bool(yes)], no, yes).
 
     % Target level debugging components.
-grade_component_table("c_debug", comp_lowlevel,
-    [c_debug_grade - bool(yes)], no, yes).
+grade_component_table("target_debug", comp_lowlevel,
+    [target_debug_grade - bool(yes)], no, yes).
 
     % Stack extension components.
 grade_component_table("exts", comp_stack_extend,
@@ -731,7 +747,7 @@ grade_start_values(stack_segments - bool(no)).
 grade_start_values(use_regions - bool(no)).
 grade_start_values(use_regions_debug - bool(no)).
 grade_start_values(use_regions_profiling - bool(no)).
-grade_start_values(c_debug_grade - bool(no)).
+grade_start_values(target_debug_grade - bool(no)).
 
 :- pred split_grade_string(string::in, list(string)::out) is det.
 

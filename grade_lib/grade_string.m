@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016, 2018, 2020, 2022, 2024 The Mercury team.
+% Copyright (C) 2016, 2018, 2020, 2022, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -385,7 +385,7 @@ ssdebug_to_strs(grade_string_link_check, grade_var_ssdebug_yes) =
 :- func target_debug_to_strs(grade_var_target_debug) = list(string).
 
 target_debug_to_strs(grade_var_target_debug_no) = [].
-target_debug_to_strs(grade_var_target_debug_yes) = ["c_debug"].
+target_debug_to_strs(grade_var_target_debug_yes) = ["target_debug"].
 
 :- func mprof_to_str(grade_var_mprof_time, grade_var_mprof_memory) = string.
 
@@ -722,11 +722,9 @@ translate_grade_component(ComponentStr, Setting, Settings) :-
             [svar_target - svalue_target_c,
             svar_backend - svalue_backend_llds]
     ;
-        ComponentStr = "c_debug",
+        ComponentStr = "target_debug",
         Setting = svar_target_debug - svalue_target_debug_yes,
-        Settings =
-            [svar_target - svalue_target_c,
-            svar_backend - svalue_backend_mlds]
+        Settings = [svar_backend - svalue_backend_mlds]
     ;
         ComponentStr = "stseg",
         Setting = svar_stack_len - svalue_stack_len_segments,

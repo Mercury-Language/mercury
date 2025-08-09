@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2012 The University of Melbourne.
-// Copyright (C) 2013-2014, 2016-2018, 2020 The Mercury team.
+// Copyright (C) 2013-2014, 2016-2018, 2020, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // The main purpose of this file is to define the MR_GRADE_VAR macro,
@@ -436,9 +436,9 @@
     #endif
 #endif
 
-#if defined(MR_C_DEBUG_GRADE)
-  #define MR_GRADE_PART_15      MR_PASTE2(MR_GRADE_PART_14, _c_debug)
-  #define MR_GRADE_OPT_PART_15  MR_GRADE_OPT_PART_14 ".c_debug"
+#if defined(MR_TARGET_DEBUG_GRADE)
+  #define MR_GRADE_PART_15      MR_PASTE2(MR_GRADE_PART_14, _target_debug)
+  #define MR_GRADE_OPT_PART_15  MR_GRADE_OPT_PART_14 ".target_debug"
 #else
   #define MR_GRADE_PART_15      MR_GRADE_PART_14
   #define MR_GRADE_OPT_PART_15  MR_GRADE_OPT_PART_14

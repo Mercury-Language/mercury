@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# vim: ts=4 sw=4 expandtab
+# vim: ts=4 sw=4 expandtab ft=sh
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
 # Copyright (C) 2013-2025 The Mercury team.
@@ -3761,7 +3761,7 @@ fi
 
 # Add grades that support debugging using gdb and other debuggers for C.
 if test "$enable_hlc_gdb_grades" = yes; then
-    LIBGRADES="$LIBGRADES hlc.gcd.c_debug"
+    LIBGRADES="$LIBGRADES hlc.gcd.target_debug"
 fi
 
 # Add rbmm grades.
@@ -3833,7 +3833,15 @@ then
     DEFAULT_GRADE="$BEST_GRADE_FOR_COMPILER"
 fi
 
-# Allow the user to override the default list of library grades
+echo SETTING UP CANONICAL GRADES
+# Allow the user to override the default list of library grades.
+cat /dev/null > .canonical_grades
+# Record any bad grades both in the configured grade list (in .bad_conf_grades)
+# and in the override grade list (in .bad_added_grades).
+cat /dev/null > .bad_conf_grades
+cat /dev/null > .bad_added_grades
+conf_grade_error=false
+added_grade_error=false
 
 if test "$enable_libgrades_given" = no -a -f .enable_lib_grades ; then
     MERCURY_MSG("using .enable_libgrades as the source for the set of grades to install")
@@ -3855,10 +3863,9 @@ if test "$enable_libgrades_given" = yes; then
     else
         # Generate only the grades specified by the user.
         raw_grades=`echo $enable_libgrades | sed 's/,/ /g'`
-        cat /dev/null > .canonical_grades
-        grade_error=false
         for raw_grade in $raw_grades
         do
+            # echo TESTING LIBGRADE $raw_grade
             if ! test -x scripts/canonical_grade
             then
                 echo $raw_grade >> .canonical_grades
@@ -3867,14 +3874,19 @@ if test "$enable_libgrades_given" = yes; then
                 cat .confgrade >> .canonical_grades
             else
                 MERCURY_MSG("--enable-libgrades: $raw_grade is not a grade")
-                grade_error=true
+                added_grade_error=true
+                echo $raw_grade >> .bad_added_grades
             fi
+
+            # echo CANONICAL
+            # cat .canonical_grades
+            # echo END CANONICAL
         done
 
         canonical_grades=`sort -u .canonical_grades`
         rm -f .confgrade .canonical_grades > /dev/null 2>&1
 
-        if $grade_error
+        if $added_grade_error
         then
             AC_MSG_ERROR(
 [invalid grade(s) specified for --enable-libgrades])
@@ -3883,12 +3895,9 @@ if test "$enable_libgrades_given" = yes; then
         LIBGRADES=$canonical_grades
     fi
 else
-    cat /dev/null > .canonical_grades
-    conf_grade_error=false
-    added_grade_error=false
-
     for raw_grade in $LIBGRADES
     do
+        # echo TESTING AUTOCONFIGURED LIBGRADE $raw_grade
         if ! test -x scripts/canonical_grade
         then
             echo $raw_grade >> .canonical_grades
@@ -3897,6 +3906,7 @@ else
             cat .confgrade >> .canonical_grades
         else
             conf_grade_error=true
+            echo $raw_grade >> .bad_conf_grades
         fi
     done
 
@@ -3916,6 +3926,7 @@ else
             added_grades=`echo $enable_additional_libgrades | sed 's/,/ /g'`
             for raw_grade in $added_grades
             do
+                # echo TESTING ADDITIONAL LIBGRADE $raw_grade
                 if ! test -x scripts/canonical_grade
                 then
                     echo $raw_grade >> .canonical_grades
@@ -3925,6 +3936,7 @@ else
                 else
                     MERCURY_MSG("--enable-additional-libgrades: $raw_grade is not a grade")
                     added_grade_error=true
+                    echo $raw_grade >> .bad_added_grades
                 fi
             done
         fi
@@ -5583,7 +5595,7 @@ case $reconfiguring in no)
     # every time you run configure, and also (unfortunately) in the .so files.
     # The following rm commands are here to ensure that things will work
     # correctly if you rerun configure with a new --prefix and then
-    # don't do a `make clean' before running `make'.
+    # do not do a `make clean' before running `make'.
     rm -f runtime/libmer_rt.so library/libmer_std.so
     rm -f trace/libmer_trace.so browser/libmer_browser.so
     rm -f mdbcomp/libmer_mdbcomp.so
@@ -5628,6 +5640,18 @@ do
     num_installed_grades=`expr $num_installed_grades + 1`
 done
 MERCURY_MSG("")
+
+if test ! -s $bad_conf_grades
+then
+    MERCURY_MSG(["WARNING: unknown autoconfigured library grade(s) ${bad_conf_grades}"])
+    MERCURY_MSG("")
+fi
+
+if test ! -s $bad_added_grades
+then
+    MERCURY_MSG(["WARNING: unknown user-specified library grade(s) ${bad_added_grades}"])
+    MERCURY_MSG("")
+fi
 
 if test "$have_default_grade" = "no"
 then

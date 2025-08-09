@@ -210,17 +210,17 @@ esac
 
 # Compute the gc grade from the grade.
 case "${GRADE}" in
-    *.par*.gcd*.c_debug*.prof*)
-        gc_grade=par_gc_debug_c_debug_prof
+    *.par*.gcd*.target_debug*.prof*)
+        gc_grade=par_gc_debug_target_debug_prof
         ;;
-    *.gcd*.c_debug*.prof*)
-        gc_grade=gc_debug_c_debug_prof
+    *.gcd*.target_debug*.prof*)
+        gc_grade=gc_debug_target_debug_prof
         ;;
-    *.par*.gcd*.c_debug*)
-        gc_grade=par_gc_debug_c_debug
+    *.par*.gcd*.target_debug*)
+        gc_grade=par_gc_debug_target_debug
         ;;
-    *.gcd*.c_debug*)
-        gc_grade=gc_debug_c_debug
+    *.gcd*.target_debug*)
+        gc_grade=gc_debug_target_debug
         ;;
     *.par*.gcd*.prof*)
         gc_grade=par_gc_debug_prof
@@ -234,17 +234,17 @@ case "${GRADE}" in
     *.gcd*)
         gc_grade=gc_debug
         ;;
-    *.par*.gc*.c_debug*.prof*)
-        gc_grade=par_gc_c_debug_prof
+    *.par*.gc*.target_debug*.prof*)
+        gc_grade=par_gc_target_debug_prof
         ;;
-    *.par*.gc*.c_debug*)
-        gc_grade=par_gc_c_debug
+    *.par*.gc*.target_debug*)
+        gc_grade=par_gc_target_debug
         ;;
-    *.gc*.c_debug*.prof*)
-        gc_grade=gc_c_debug_prof
+    *.gc*.target_debug*.prof*)
+        gc_grade=gc_target_debug_prof
         ;;
-    *.gc*.c_debug*)
-        gc_grade=gc_c_debug
+    *.gc*.target_debug*)
+        gc_grade=gc_target_debug
         ;;
     *.par*.gc*.prof*)
         gc_grade=par_gc_prof
@@ -352,7 +352,7 @@ esac
 
 # link_target_code.m falls back to calling `strip' separately if using a
 # linker flag is not possible. That would be non-trivial in this script.
-case "${c_debug_grade},${strip}" in
+case "${target_debug_grade},${strip}" in
     false,false)
         STRIP_OPTS=""
         case "${C_COMPILER_TYPE}" in

@@ -50,5 +50,22 @@ fi
 # include the file `canonical_grade.sh-subr'
 @CANONICAL_GRADE@
 
+# You can enable this code if you modify the canonicalization process
+# and suspect that the new version is misbehaving.
+#
+# Note: this code cannot be left on permanently because it will report
+# a spurious error if e.g. we correctly canonicalize ".mm" to ".mmsc".
+#
+# if test "${input_grade_string_len}" != 0
+# then
+#     output_grade_string_len=${#GRADE}
+#     if test "${input_grade_string_len}" != "${output_grade_string_len}"
+#     then
+#         echo "internal error: canonicalization screws up some components:"
+#         echo "the canonical version of ${grade} is ${GRADE}."
+#         exit 1
+#     fi
+# fi
+
 echo ${GRADE}
 exit 0
