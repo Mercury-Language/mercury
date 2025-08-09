@@ -1,7 +1,7 @@
-@c vim: ts=4 sw=4 expandtab ft=texinfo
 \input texinfo
 @setfilename mercury_ref.info
 @settitle The Mercury Language Reference Manual
+@c vim: ts=4 sw=4 expandtab ft=texinfo
 
 @dircategory The Mercury Programming Language
 @direntry
