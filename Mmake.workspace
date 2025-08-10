@@ -31,6 +31,7 @@
 # and library directories to be included in MLFLAGS, MLLIBS and CFLAGS.
 
 #-----------------------------------------------------------------------------#
+
 # CROSS_COMPILING is set in Mmake.common but that is not used in the test
 # suite. We don't support testing when cross-compiling anyway.
 ifeq ($(origin CROSS_COMPILING),undefined)
@@ -116,9 +117,9 @@ ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 MCFLAGS      += --options-file $(WORKSPACE)/Mercury.options
 endif
 
-# now in FLAGS files
+# This is now in FLAGS files.
 # MCFLAGS    += -I$(LIBRARY_DIR)
-# no in .mgnuc_opt files
+# This is now in .mgnuc_opt files.
 # MGNUCFLAGS += --no-mercury-stdlib-dir
 
 # XXX browser.init and mdbcomp.init might need to be included even if tracing
@@ -130,10 +131,10 @@ C2INITARGS   += $(LIBRARY_DIR)/$(STD_LIB_NAME).init \
 		$(RUNTIME_DIR)/$(RT_LIB_NAME).init
 MLFLAGS      += --no-mercury-stdlib-dir
 
-# now in .mgnuc_copts files
-# #
+# The following are now in .mgnuc_copts files:
+#
 # # Work out the C include directories.
-# #
+#
 # C_INCL_DIRS   = -I$(BOEHM_GC_DIR) -I$(BOEHM_GC_DIR)/include
 # ifneq ($(LINK_BOEHM_GC_ONLY),yes)
 # C_INCL_DIRS  += -I$(RUNTIME_DIR)
@@ -147,22 +148,18 @@ MLFLAGS      += --no-mercury-stdlib-dir
 # endif
 # CFLAGS       += $(C_INCL_DIRS)
 
-# now in FLAGS files
+# This is now in FLAGS files.
 # MCFLAGS    += $(C_INCL_DIRS:-I%=--c-include-directory %)
 
-#
 # Work out the .NET directories
-#
 MERC_C_INCL_DIR = $(RUNTIME_DIR)
 MERC_DLL_DIR = $(LIBRARY_DIR)
 
-#
 # Work out which libraries to link with.
 # The $(shell) here is needed to allow the variable values in
-# ECHO_MERCURY_OPTIONS in Mmake.vars to be single-quoted when
-# passed to echo in order to preserve double-quotes (e.g. for
-# file names containing spaces).
-#
+# ECHO_MERCURY_OPTIONS in Mmake.vars to be single-quoted when passed
+# to echo in order to preserve double-quotes (e.g. for file names
+# containing spaces).
 GC_LIBS_0=`$(ML) --grade $(GRADE) --print-gc-grade`
 GC_LIBS=$(shell echo $(GC_LIBS_0))
 
@@ -201,6 +198,7 @@ STATIC_TRACE_LIBS = $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
 endif
 endif
 endif
+
 ifeq ("$(filter csharp% java%,$(GRADE))","")
 MLOBJS += $(STATIC_TRACE_LIBS) $(STATIC_STD_LIBS) \
 		$(STATIC_RT_LIBS) $(STATIC_GC_LIBS)
@@ -213,6 +211,7 @@ else # LINK_STATIC != yes
 LINK_RT_LIB_OPTS=
 LINK_STD_LIB_OPTS=
 LINK_TRACE_SSDB_LIB_OPTS=
+
 ifneq ($(LINK_BOEHM_GC_ONLY),yes)
 ifneq ("$(filter csharp%,$(GRADE))","")
 # There is no separate runtime library for C# grades.
@@ -236,7 +235,7 @@ LIB_DIR_OPTS = -L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR) \
 		-L$(BROWSER_DIR) -L$(SSDB_DIR)
 
 MLFLAGS      += $(LIB_DIR_OPTS)
-# now in FLAGS files
+# This is now in FLAGS files.
 # MCFLAGS    += $(LIB_DIR_OPTS)
 MLLIBS       += $(LINK_LIB_OPTS)
 
