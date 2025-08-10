@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2015, 2018-2019, 2021, 2024 The Mercury team.
+% Copyright (C) 2015, 2018-2019, 2021, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -93,7 +93,7 @@
 
     % Succeeds iff the given polyhedron is the `universe' polyhedron,
     % that is the one whose constraint representation corresponds to `true'.
-    % (ie. it is unbounded in all dimensions).
+    % (i.e. it is unbounded in all dimensions).
     %
 :- pred is_universe(polyhedron::in) is semidet.
 
@@ -116,13 +116,13 @@
 :- pred convex_union(lp_varset::in, polyhedron::in, polyhedron::in,
     polyhedron::out) is det.
 
-    % As above but takes an extra argument that weakens the approximation even
-    % further if the size of the internal matrices exceeds the supplied
-    % threshold
+    % Does the same job as convex_union, but takes an extra argument
+    % that weakens the approximation even further if the size of the
+    % internal matrices exceeds the supplied threshold.
     %
-:- func convex_union(lp_varset, maybe(int), polyhedron, polyhedron)
+:- func convex_union_max_size(lp_varset, maybe(int), polyhedron, polyhedron)
     = polyhedron.
-:- pred convex_union(lp_varset::in, maybe(int)::in, polyhedron::in,
+:- pred convex_union_max_size(lp_varset::in, maybe(int)::in, polyhedron::in,
     polyhedron::in, polyhedron::out) is det.
 
     % Approximate a (convex) polyhedron by a rectangular region
@@ -153,8 +153,11 @@
     % easy to do (at the moment) as the polyhedra are represented as
     % constraints anyway.
     %
-:- func substitute_vars(list(lp_var), list(lp_var), polyhedron) = polyhedron.
+    % XXX As of 2025 aug 10, substitute_corresponding_vars is unused.
+    %
 :- func substitute_vars(map(lp_var, lp_var), polyhedron) = polyhedron.
+:- func substitute_corresponding_vars(list(lp_var), list(lp_var),
+    polyhedron) = polyhedron.
 
     % polyhedron.zero_vars(Set, Polyhedron0) = Polyhedron <=>
     %
@@ -261,20 +264,22 @@ intersection(PolyA, PolyB, polyhedron.intersection(PolyA, PolyB)).
 %
 
 convex_union(VarSet, PolyhedronA, PolyhedronB) = Polyhedron :-
-    convex_union(VarSet, no, PolyhedronA, PolyhedronB, Polyhedron).
+    convex_union_max_size(VarSet, no, PolyhedronA, PolyhedronB, Polyhedron).
 
 convex_union(VarSet, PolyhedronA, PolyhedronB, Polyhedron) :-
-    convex_union(VarSet, no, PolyhedronA, PolyhedronB, Polyhedron).
+    convex_union_max_size(VarSet, no, PolyhedronA, PolyhedronB, Polyhedron).
 
-convex_union(VarSet, MaxMatrixSize, PolyhedronA, PolyhedronB) = Polyhedron :-
-    convex_union(VarSet, MaxMatrixSize, PolyhedronA, PolyhedronB, Polyhedron).
+convex_union_max_size(VarSet, MaxMatrixSize, PolyhedronA, PolyhedronB)
+        = Polyhedron :-
+    convex_union_max_size(VarSet, MaxMatrixSize,
+        PolyhedronA, PolyhedronB, Polyhedron).
 
-convex_union(_, _, empty_poly, empty_poly, empty_poly).
-convex_union(_, _, eqns(Constraints), empty_poly,
+convex_union_max_size(_, _, empty_poly, empty_poly, empty_poly).
+convex_union_max_size(_, _, eqns(Constraints), empty_poly,
     eqns(Constraints)).
-convex_union(_, _, empty_poly, eqns(Constraints),
+convex_union_max_size(_, _, empty_poly, eqns(Constraints),
     eqns(Constraints)).
-convex_union(VarSet, MaybeMaxSize, eqns(ConstraintsA),
+convex_union_max_size(VarSet, MaybeMaxSize, eqns(ConstraintsA),
         eqns(ConstraintsB), Hull) :-
     convex_hull([ConstraintsA, ConstraintsB], Hull, MaybeMaxSize, VarSet).
 
@@ -560,14 +565,15 @@ project_polyhedron(VarSet, Vars, eqns(Constraints0), Result) :-
 % Variable substitution.
 %
 
-substitute_vars(OldVars, NewVars, Polyhedron0) = Polyhedron :-
+substitute_vars(RenameMap, Polyhedron0) = Polyhedron :-
     Constraints0 = polyhedron.non_false_constraints(Polyhedron0),
-    Constraints = lp_rational.substitute_vars(OldVars, NewVars, Constraints0),
+    Constraints = lp_rational.substitute_vars(RenameMap, Constraints0),
     Polyhedron = polyhedron.from_constraints(Constraints).
 
-substitute_vars(SubstMap, Polyhedron0) = Polyhedron :-
+substitute_corresponding_vars(OldVars, NewVars, Polyhedron0) = Polyhedron :-
     Constraints0 = polyhedron.non_false_constraints(Polyhedron0),
-    Constraints = lp_rational.substitute_vars(SubstMap, Constraints0),
+    Constraints = lp_rational.substitute_corresponding_vars(OldVars, NewVars,
+        Constraints0),
     Polyhedron = polyhedron.from_constraints(Constraints).
 
 %---------------------------------------------------------------------------%

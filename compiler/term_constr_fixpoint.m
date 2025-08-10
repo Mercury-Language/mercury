@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002, 2005-2012 The University of Melbourne.
-% Copyright (C) 2015, 2017-2024 The Mercury team.
+% Copyright (C) 2015, 2017-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -385,8 +385,8 @@ term_traverse_abstract_disj_linearly_2(Info, Locals, Goal, !Polyhedron) :-
     SizeVarSet = Info ^ tcfi_varset,
     term_traverse_abstract_goal(Info, Goal, polyhedron.universe, Polyhedron0),
     project_polyhedron(SizeVarSet, Locals, Polyhedron0, Polyhedron1),
-    polyhedron.convex_union(SizeVarSet, yes(Info ^ tcfi_max_matrix_size),
-        Polyhedron1, !Polyhedron).
+    polyhedron.convex_union_max_size(SizeVarSet,
+        yes(Info ^ tcfi_max_matrix_size), Polyhedron1, !Polyhedron).
 
     % This version computes the convex hull pairwise. That is
     % ( A ; B ; C ; D) is processed as: (( A \/ B ) \/ ( C \/ D)).
@@ -394,7 +394,8 @@ term_traverse_abstract_disj_linearly_2(Info, Locals, Goal, !Polyhedron) :-
     % XXX This code is currently unused.
     %
 :- pred term_traverse_abstract_disj_pairwise(list(abstract_goal)::in,
-    list(size_var)::in, fixpoint_info::in, polyhedron::in, polyhedron::out) is det.
+    list(size_var)::in, fixpoint_info::in,
+    polyhedron::in, polyhedron::out) is det.
 :- pragma consider_used(pred(term_traverse_abstract_disj_pairwise/5)).
 
 term_traverse_abstract_disj_pairwise(Goals, Locals, Info, !Polyhedron) :-
@@ -413,7 +414,7 @@ term_traverse_abstract_disj_pairwise(Goals, Locals, Info, !Polyhedron) :-
     % Now pairwise convex hull them.
     HullOp =
         ( func(A, B) = C :-
-            polyhedron.convex_union(SizeVarSet,
+            polyhedron.convex_union_max_size(SizeVarSet,
                 yes(Info ^ tcfi_max_matrix_size), A, B, C)
         ),
     ConvexUnion = pairwise_map(HullOp, [ polyhedron.empty | Polyhedra0]),

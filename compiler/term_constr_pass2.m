@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002, 2005-2012 The University of Melbourne.
-% Copyright (C) 2015-2018, 2020-2024 The Mercury team.
+% Copyright (C) 2015-2018, 2020-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -215,7 +215,8 @@ find_edges_in_goal(Proc, AbstractSCC, ModuleInfo, MaxMatrixSize,
                 DisjConstrs = polyhedron.project_all(SizeVarSet, Locals,
                     DisjConstrs0),
                 Constrs2 = list.foldl(
-                    polyhedron.convex_union(SizeVarSet, yes(MaxMatrixSize)),
+                    polyhedron.convex_union_max_size(SizeVarSet,
+                        yes(MaxMatrixSize)),
                     DisjConstrs, polyhedron.empty),
                 polyhedron.intersection(Constrs2, !Polyhedron)
             ;

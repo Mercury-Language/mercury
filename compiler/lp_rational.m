@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2002, 2005-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2015-2021, 2023-2024 The Mercury team.
+% Copyright (C) 2015-2021, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -151,18 +151,22 @@
     %
 :- func simplify_constraints(lp_constraint_conj) = lp_constraint_conj.
 
-    % substitute_vars(VarsA, VarsB, Constraints0) = Constraints:
+    % substitute_vars(RenameMap, Constraints0) = Constraints:
+    % substitute_corresponding_vars(VarsA, VarsB, Constraints0) = Constraints:
     %
     % Perform variable substitution on the given system of constraints
-    % based upon the mapping that is implicit between the corresponding
-    % elements of the variable lists `VarsA' and `VarsB'.
-    %
+    % based upon either the explicitly-given RenameMap, or the mapping
+    % that is implicit between the corresponding elements of VarsA and VarsB.
     % If length(VarsA) \= length(VarsB), then throw an exception.
     %
-:- func substitute_vars(list(lp_var), list(lp_var), lp_constraint_conj) =
-    lp_constraint_conj.
+    % XXX As of 2025 aug 10, substitute_corresponding_vars is unused,
+    % except by polyhedron.substitute_corresponding_vars, which is
+    % itself unused.
+    %
 :- func substitute_vars(map(lp_var, lp_var), lp_constraint_conj) =
     lp_constraint_conj.
+:- func substitute_corresponding_vars(list(lp_var), list(lp_var),
+    lp_constraint_conj) = lp_constraint_conj.
 
     % Make the values of all the variables in the set zero.
     %
@@ -733,28 +737,32 @@ is_stronger(eq(Terms, ConstA), lte(negate_lp_terms(Terms), ConstB)) :-
 is_stronger(lte(Terms, ConstA), lte(Terms, ConstB)) :-
     ConstB =< zero, ConstA =< ConstB.
 
-substitute_vars(Old, New, Constraints0) = Constraints :-
-    SubstMap = map.from_corresponding_lists(Old, New),
-    Constraints = list.map(substitute_vars_2(SubstMap), Constraints0).
-substitute_vars(SubstMap, Constraints0) = Constraints :-
-    Constraints = list.map(substitute_vars_2(SubstMap), Constraints0).
+substitute_vars(RenameMap, Constraints0) = Constraints :-
+    Constraints = list.map(substitute_vars_in_constraint(RenameMap),
+        Constraints0).
 
-:- func substitute_vars_2(map(lp_var, lp_var), lp_constraint) = lp_constraint.
+substitute_corresponding_vars(Old, New, Constraints0) = Constraints :-
+    map.from_corresponding_lists(Old, New, RenameMap),
+    Constraints = list.map(substitute_vars_in_constraint(RenameMap),
+        Constraints0).
 
-substitute_vars_2(SubstMap, lte(Terms0, Const)) = Result :-
-    Terms = list.map(substitute_term(SubstMap), Terms0),
+:- func substitute_vars_in_constraint(map(lp_var, lp_var), lp_constraint)
+    = lp_constraint.
+
+substitute_vars_in_constraint(RenameMap, lte(Terms0, Const)) = Result :-
+    Terms = list.map(substitute_term(RenameMap), Terms0),
     Result = lte(sum_like_terms(Terms), Const).
-substitute_vars_2(SubstMap, eq(Terms0, Const)) = Result :-
-    Terms = list.map(substitute_term(SubstMap), Terms0),
+substitute_vars_in_constraint(RenameMap, eq(Terms0, Const)) = Result :-
+    Terms = list.map(substitute_term(RenameMap), Terms0),
     Result = eq(sum_like_terms(Terms), Const).
-substitute_vars_2(_, gte(_, _)) =
+    substitute_vars_in_constraint(_, gte(_, _)) =
     unexpected($pred, "gte").
 
 :- func substitute_term(map(lp_var, lp_var), lp_term) = lp_term.
 
-substitute_term(SubstMap, Term0) = Term :-
+substitute_term(RenameMap, Term0) = Term :-
     Term0 = Var0 - Coeff,
-    map.lookup(SubstMap, Var0, Var),
+    map.lookup(RenameMap, Var0, Var),
     Term = Var - Coeff.
 
 set_vars_to_zero(Vars, Constraints) =
