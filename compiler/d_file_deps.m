@@ -62,9 +62,9 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred compute_deps_for_d_files_gendep(io.text_output_stream::in, globals::in,
-    module_name::in, deps_map::in, dep_graphs::out,
-    list(burdened_module)::out, list(error_spec)::in, list(error_spec)::out,
+:- pred compute_dep_graphs_gendep(io.text_output_stream::in, globals::in,
+    module_name::in, deps_map::in, dep_graphs::out, list(burdened_module)::out,
+    list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -73,7 +73,7 @@
     % context.
     %
 :- pred construct_d_file_deps_gendep(globals::in, dep_graphs::in,
-    burdened_aug_comp_unit::in, d_file_deps::out) is det.
+    module_baggage::in, parse_tree_module_src::in, d_file_deps::out) is det.
 
     % The set of modules imported or used (i.e. made available)
     % by the current module by various means, categorized by those means.
@@ -190,13 +190,12 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-compute_deps_for_d_files_gendep(ProgressStream, Globals, ModuleName, DepsMap,
+compute_dep_graphs_gendep(ProgressStream, Globals, ModuleName, DepsMap,
         DepGraphs, BurdenedModules, !Specs, !IO) :-
-    % Compute the interface deps graph and the implementation deps graph
-    % from the deps map.
+    % Compute the interface and implementation deps graphs from the deps map.
+    map.values(DepsMap, DepsList),
     digraph.init(IntDepsGraph0),
     digraph.init(ImpDepsGraph0),
-    map.values(DepsMap, DepsList),
     deps_list_to_deps_graph(DepsMap, DepsList, BurdenedModules,
         IntDepsGraph0, IntDepsGraph, ImpDepsGraph0, ImpDepsGraph),
     maybe_output_imports_graph(ProgressStream, Globals, ModuleName,
@@ -235,8 +234,9 @@ compute_deps_for_d_files_gendep(ProgressStream, Globals, ModuleName, DepsMap,
     get_ext_opt_deps(Globals, look_for_src, ExtTransOpt,
         TransOptDepsOrdering, TransOptOrder, !IO),
 
-    DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph, IndirectDepsGraph,
-        IndirectOptDepsGraph, TransOptDepsGraph, TransOptOrder).
+    DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph,
+        IndirectDepsGraph, IndirectOptDepsGraph,
+        TransOptDepsGraph, TransOptOrder).
 
     % Construct a pair of dependency graphs (the interface dependencies
     % and the implementation dependencies) for all the modules in the program.
@@ -250,7 +250,7 @@ deps_list_to_deps_graph(DepsMap,
         [Deps | DepsList], [BurdenedModule | BurdenedModules],
         !IntDepsGraph, !ImpDepsGraph) :-
     Deps = deps(_, BurdenedModule),
-    Baggage = BurdenedModule ^ bm_baggage,
+    BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
     Errors = Baggage ^ mb_errors,
     FatalErrors = Errors ^ rm_fatal_errors,
     ( if set.is_empty(FatalErrors) then
@@ -273,18 +273,23 @@ lookup_burdened_module_in_deps_map(DepsMap, ModuleName) = ModuleDepInfo :-
 
 %---------------------------------------------------------------------------%
 
-construct_d_file_deps_gendep(Globals, DepGraphs, BurdenedAugCompUnit,
+construct_d_file_deps_gendep(Globals, DepGraphs, Baggage, ParseTreeModuleSrc,
         DFileDeps) :-
-    BurdenedAugCompUnit = burdened_aug_comp_unit(_Baggage, AugCompUnit),
-    % XXX The reason why we ignore all the fields of AugCompUnit except
-    % ParseTreeModuleSrc is that our caller gives us a BurdenedAugCompUnit
-    % in which the AugCompUnit part contains nothing *but* the
-    % ParseTreeModuleSrc. The info in DepGraphs is supposed to replace
-    % this info, but it does not, and maybe cannot do so completely.
-    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
-        _, _, _, _, _, _, _, _),
-    DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph, IndirectDepsGraph,
-        IndirectOptDepsGraph, TransOptDepsGraph, FullTransOptOrder),
+    % While construct_d_file_deps_hlds takes an AugCompUnit as input,
+    % we only get a ParseTreeModuleSrc. Some of the fields of an AugCompUnit,
+    % such as acu_ancestor_ints, are easily simulated here, while others,
+    % such as acu_indirect_int2s, would require substantial code to replicate,
+    % and at the moment, this predicate does not even attempt to do so.
+    % XXX The extent to which DepGraphs can replace the info needed from
+    % AugCompUnit is questionable.
+
+    DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph,
+        IndirectDepsGraph, IndirectOptDepsGraph,
+        TransOptDepsGraph, FullTransOptOrder),
+
+    get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDeps),
+    get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDeps),
+    set.union(IntDeps, ImpDeps, DirectDeps),
 
     % Look up the interface/implementation/indirect dependencies
     % for this module from the respective dependency graphs.
@@ -293,32 +298,68 @@ construct_d_file_deps_gendep(Globals, DepGraphs, BurdenedAugCompUnit,
     get_dependencies_from_graph(IndirectOptDepsGraph, ModuleName,
         IndirectOptDeps),
 
-    globals.lookup_bool_option(Globals, intermodule_optimization,
-        Intermod),
-    (
-        Intermod = yes,
+    globals.lookup_bool_option(Globals, intermodule_optimization, Intermod),
+    globals.lookup_bool_option(Globals, use_opt_files, UsePlainOpt),
+    ( if
+        ( Intermod = yes
+        ; UsePlainOpt = yes
+        )
+    then
         % Be conservative with inter-module optimization -- assume a
         % module depends on the `.int', `.int2' and `.opt' files
         % for all transitively imported modules.
-        DirectDeps = IndirectOptDeps,
-        IndirectDeps = IndirectOptDeps
-    ;
-        Intermod = no,
-        get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDeps),
-        get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDeps),
-        set.union(IntDeps, ImpDeps, DirectDeps),
+        StdDirectDeps = IndirectOptDeps,
+        StdIndirectDeps = IndirectOptDeps
+    else
+        StdDirectDeps = DirectDeps,
         get_dependencies_from_graph(IndirectDepsGraph, ModuleName,
-            IndirectDeps)
+            StdIndirectDeps)
     ),
+
+    SourceFileTopModuleName = Baggage ^ mb_source_file_top_module_name,
+    get_fim_specs(ParseTreeModuleSrc, OwnFIMSpecs),
+    fim_specs_to_fim_imports(Globals, SourceFileTopModuleName,
+        OwnFIMSpecs, OwnFIMImports),
+    OwnFIMDeps = module_own_fim_deps(OwnFIMImports),
 
     get_dependencies_from_graph(TransOptDepsGraph, ModuleName, TransOptDeps0),
     set.delete(ModuleName, TransOptDeps0, TransOptDeps),
 
-    % XXX DFILE The way IndirectOptDeps is computed seems to have nothing
-    % to do with foreign_import_module declarations. This seems to me (zs)
-    % to be a BUG.
-    StdDeps = std_deps(DirectDeps, IndirectDeps, IndirectOptDeps,
-        trans_opt_deps(TransOptDeps)),
+    compute_reachable_modules_from_dep_graphs(DepGraphs, ModuleName,
+        ReachableModules),
+    % In almost all cases, these will be gross overestimates,
+    % but they will also be *safe* overestimates. And since the .d files
+    % we now generate will typically have a short life (because they will
+    % be overwritten by the versions generated by construct_d_file_deps_hlds
+    % the first time they are compiled), there is not much point in
+    % doing better.
+    %
+    % NOTE The set of all modules compute_dep_graphs_gendep has processed
+    % while constructing DepGraphs would be faster to construct, but
+    % it would be *too loose* an overestimate. Specifically it would lead to
+    % a bootcheck failure in stage 2 while processing the browser directory,
+    % due to this sequence of events:
+    %
+    % - We make dependencies for not just mer_browser, the browser library,
+    %   but also for two executables intended to test that library,
+    %   one of which (declarative_test.m) does not compile anymore.
+    %   We invoke "mmc --generate-dependencies" first on mer_browser.m,
+    %   and then on browse_test and declarative_test.
+    %
+    % - The command "mmc --generate-dependencies mer_browser.m" will
+    %   create correct .d files for all the modules in the mdb package.
+    %
+    % - The command "mmc --generate-dependencies declarative_test.m" will
+    %   then *overwrite* all those .d files, including in them entries
+    %   that say that the .c files of the modules in the mdb package
+    %   depend on declarative_test.mih.
+    %
+    % - Any attempt to make the .o files of the modules in the mdb package,
+    %   (which are obviously required to build the library) will then fail,
+    %   because the attempt to build declarative_test.mih will try to
+    %   compile then no-longer-compilable declarative_test.m.
+    IntermodFIMDeps = intermod_only_fim_deps(ReachableModules),
+    AllMihDeps = all_mih_deps(ReachableModules),
 
     compute_allowable_trans_opt_deps(ModuleName,
         FullTransOptOrder, TransOptOrder),
@@ -326,7 +367,11 @@ construct_d_file_deps_gendep(Globals, DepGraphs, BurdenedAugCompUnit,
     TransOptRuleInfo = trans_opt_deps_from_order(TransOptOrderSet),
     MaybeInclTransOptRule = include_trans_opt_rule(TransOptRuleInfo),
 
-    DFileDeps = d_file_deps(StdDeps, IndirectOptDeps, MaybeInclTransOptRule).
+    DFileDeps = d_file_deps(StdDirectDeps, StdIndirectDeps,
+        OwnFIMDeps, IntermodFIMDeps, AllMihDeps,
+        MaybeInclTransOptRule, trans_opt_deps(TransOptDeps)).
+
+%---------------------%
 
 :- pred get_dependencies_from_graph(deps_graph::in, module_name::in,
     set(module_name)::out) is det.
@@ -344,6 +389,43 @@ get_dependencies_from_graph(DepsGraph, ModuleName, Dependencies) :-
     else
         set.init(Dependencies)
     ).
+
+%---------------------%
+
+:- pred compute_reachable_modules_from_dep_graphs(dep_graphs::in,
+    module_name::in, set(module_name)::out) is det.
+
+compute_reachable_modules_from_dep_graphs(DepGraphs, ModuleName,
+        ReachableModules) :-
+    DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph,
+        IndirectDepsGraph, IndirectOptDepsGraph,
+        TransOptDepsGraph, _FullTransOptOrder),
+    compute_reachable_modules_from_digraph(IntDepsGraph, ModuleName,
+        IntReachableModules),
+    compute_reachable_modules_from_digraph(ImpDepsGraph, ModuleName,
+        ImpReachableModules),
+    compute_reachable_modules_from_digraph(IndirectDepsGraph, ModuleName,
+        IndirectReachableModules),
+    compute_reachable_modules_from_digraph(IndirectOptDepsGraph, ModuleName,
+        IndirectOptReachableModules),
+    compute_reachable_modules_from_digraph(TransOptDepsGraph, ModuleName,
+        TransOptReachableModules),
+    ReachableModules = set.union_list(
+        [IntReachableModules, ImpReachableModules,
+        IndirectReachableModules, IndirectOptReachableModules,
+        TransOptReachableModules]).
+
+:- pred compute_reachable_modules_from_digraph(digraph(module_name)::in,
+    module_name::in, set(module_name)::out) is det.
+
+compute_reachable_modules_from_digraph(Digraph, ModuleName,
+        ReachableModuleSet) :-
+    digraph.lookup_key(Digraph, ModuleName, ModuleNameKey),
+    digraph.dfs(Digraph, ModuleNameKey, ReachableKeys),
+    list.map(lookup_vertex(Digraph), ReachableKeys, ReachableModules),
+    set.list_to_set(ReachableModules, ReachableModuleSet).
+
+%---------------------%
 
     % Compute the maximum allowable trans-opt dependencies for this module.
     % To avoid the possibility of cycles, each module is allowed to depend
@@ -379,53 +461,79 @@ construct_d_file_deps_hlds(Globals, BurdenedAugCompUnit, AvailModuleSets,
     map.keys_as_set(ParseTreeModuleSrc ^ ptms_import_use_map, DirectDeps),
     map.keys_as_set(IndirectInt2Specs, IndirectDeps),
 
-    some [!FIMSpecs] (
-        get_fim_specs(ParseTreeModuleSrc, !:FIMSpecs),
+    get_fim_specs(ParseTreeModuleSrc, OwnFIMSpecs),
+    fim_specs_to_fim_imports(Globals, SourceFileTopModuleName,
+        OwnFIMSpecs, OwnFIMImports),
+
+    some [!IntermodFIMSpecs] (
+        set.init(!:IntermodFIMSpecs),
         map.foldl_values(gather_fim_specs_in_ancestor_int_spec,
-            AncestorIntSpecs, !FIMSpecs),
+            AncestorIntSpecs, !IntermodFIMSpecs),
         map.foldl_values(gather_fim_specs_in_direct_int1_spec,
-            DirectInt1Specs, !FIMSpecs),
+            DirectInt1Specs, !IntermodFIMSpecs),
         map.foldl_values(gather_fim_specs_in_indirect_int2_spec,
-            IndirectInt2Specs, !FIMSpecs),
+            IndirectInt2Specs, !IntermodFIMSpecs),
         map.foldl_values(gather_fim_specs_in_parse_tree_plain_opt,
-            PlainOpts, !FIMSpecs),
+            PlainOpts, !IntermodFIMSpecs),
         % .trans_opt files cannot contain FIMs.
         map.foldl_values(gather_fim_specs_in_int_for_opt_spec,
-            IntForOptSpecs, !FIMSpecs),
+            IntForOptSpecs, !IntermodFIMSpecs),
         % Any FIMs in type_repn_specs are ignored.
-
-        % We restrict the set of FIMs to those that are valid
-        % for the current backend. This preserves old behavior,
-        % and makes sense in that the code below generates mmake rules
-        % only for the current backend, but it would be nice if we
-        % could generate dependency rules for *all* the backends.
-        globals.get_backend_foreign_languages(Globals, BackendLangs),
-        IsBackendFIM =
-            ( pred(FIMSpec::in) is semidet :-
-                list.member(FIMSpec ^ fimspec_lang, BackendLangs)
-            ),
-        set.filter(IsBackendFIM, !.FIMSpecs, FIMSpecs)
+        IntermodFIMSpecs = !.IntermodFIMSpecs
     ),
-    set.filter_map(
-        ( pred(ForeignImportMod::in, ImportModuleName::out) is semidet :-
-            ImportModuleName = fim_spec_module_name_from_module(
-                ForeignImportMod, SourceFileTopModuleName),
-            % XXX We can't include mercury.dll as mmake can't find it,
-            % but we know that it exists.
-            ImportModuleName \= unqualified("mercury")
-        ), FIMSpecs, ForeignImportedModuleNamesSet),
+    fim_specs_to_fim_imports(Globals, SourceFileTopModuleName,
+        IntermodFIMSpecs, IntermodFIMImports),
 
-    StdDeps = std_deps(DirectDeps, IndirectDeps,
-        ForeignImportedModuleNamesSet, no_trans_opt_deps),
+    % NOTE We used to include IntermodFIMImports in OwnFIMDeps as well.
+    OwnFIMDeps =
+        module_own_fim_deps(set.union(OwnFIMImports, IntermodFIMImports)),
+    IntermodOnlyFIMDeps = intermod_only_fim_deps(IntermodFIMImports),
 
     AvailModuleSets = avail_module_sets(Ancestors, DirectImports,
         IndirectImports, ImportedInAncestors, IntForOptImports,
         ImplicitlyImortedModules),
-    DirectsIndirectsForOptsAncestors = set.union_list([Ancestors,
-        DirectImports, IndirectImports, ImportedInAncestors,
-        IntForOptImports, ImplicitlyImortedModules]),
-    DFileDeps = d_file_deps(StdDeps, DirectsIndirectsForOptsAncestors,
-        MaybeInclTransOptRule).
+    AllAvailModules = set.union_list([Ancestors, DirectImports,
+        IndirectImports, ImportedInAncestors, IntForOptImports,
+        ImplicitlyImortedModules]),
+    AllMihDeps = all_mih_deps(AllAvailModules),
+    % XXX The no_trans_opt_deps here is strange, because it is NOT dependent
+    % on --no-transitive-intermodule-optimization.
+    DFileDeps = d_file_deps(DirectDeps, IndirectDeps,
+        OwnFIMDeps, IntermodOnlyFIMDeps, AllMihDeps,
+        MaybeInclTransOptRule, no_trans_opt_deps).
+
+%---------------------%
+
+:- pred fim_specs_to_fim_imports(globals::in, module_name::in,
+    set(fim_spec)::in, set(module_name)::out) is det.
+
+fim_specs_to_fim_imports(Globals, SourceFileTopModuleName,
+        FIMSpecSet, ImportModuleNameSet) :-
+    % We restrict the set of FIMs to those that are valid
+    % for the current backend. This preserves old behavior,
+    % and makes sense in that the code below generates mmake rules
+    % only for the current backend, but it would be nice if we
+    % could generate dependency rules for *all* the backends.
+    globals.get_backend_foreign_languages(Globals, BackendLangs),
+    set.filter_map(
+        fim_spec_to_maybe_fim_import(BackendLangs, SourceFileTopModuleName),
+        FIMSpecSet, ImportModuleNameSet).
+
+:- pred fim_spec_to_maybe_fim_import(list(foreign_language)::in,
+    module_name::in, fim_spec::in, module_name::out) is semidet.
+
+fim_spec_to_maybe_fim_import(BackendLangs, SourceFileTopModuleName,
+        FIMSpec, ImportModuleName) :-
+    list.member(FIMSpec ^ fimspec_lang, BackendLangs),
+    ImportModuleName = fim_spec_module_name_from_module(FIMSpec,
+        SourceFileTopModuleName),
+    % XXX We can't include mercury.dll as mmake can't find it,
+    % but we know that it exists.
+    % XXX We generate FIM dependencies for C and Java (though
+    % we generate *intermod* FIM dependencies only for C).
+    % We do NOT generate FIM dependencies, or any other dependencies,
+    % for C#, which is the only target for which .dll files are relevant.
+    ImportModuleName \= unqualified("mercury").
 
 %---------------------%
 
@@ -499,20 +607,24 @@ gather_fim_specs_in_parse_tree_plain_opt(ParseTreePlainOpt, !FIMSpecs) :-
 
 construct_intermod_deps(Globals, ParseTreeModuleSrc, DFileDeps, IntermodDeps,
         !Cache, !IO) :-
-    % XXX Note that currently, due to a design problem, handle_options.m
-    % *always* sets use_opt_files to no.
-    globals.lookup_bool_option(Globals, use_opt_files, UsePlainOpt),
     globals.lookup_bool_option(Globals, intermodule_optimization, Intermod),
-    (
-        Intermod = yes,
-        % If intermodule_optimization is enabled, then all the .mh files
-        % must exist, because it is possible that the .c file imports them
-        % directly or indirectly.
-        MaybeMhDeps = intermod_mh_deps
-    ;
-        Intermod = no,
-        MaybeMhDeps = no_intermod_mh_deps
-    ),
+    globals.lookup_bool_option(Globals, use_opt_files, UsePlainOpt),
+%   ( if
+%       ( Intermod = yes
+%       ; UsePlainOpt
+%       )
+%   then
+%       % If intermodule_optimization is enabled, then all the .mh files
+%       % must exist, because it is possible that the .c file imports them
+%       % directly or indirectly.
+%       MaybeMhDeps = add_all_mh_deps_for_intermod
+%   else
+%       MaybeMhDeps = do_not_add_all_mh_deps_for_intermod
+%   ),
+
+    % XXX Note that currently, due to a design problem, handle_options.m
+    % *always* sets use_opt_files to no. This means that the condition
+    % just below effectively just tests for "Intermod = yes".
     ( if
         ( Intermod = yes
         ; UsePlainOpt = yes
@@ -523,8 +635,7 @@ construct_intermod_deps(Globals, ParseTreeModuleSrc, DFileDeps, IntermodDeps,
         ( UseTransOpt = no,  LookForSrc = look_for_src
         ; UseTransOpt = yes, LookForSrc = do_not_look_for_src
         ),
-        DFileDeps = d_file_deps(StdDeps, _, _),
-        StdDeps = std_deps(DirectDeps, _, _, _),
+        DirectDeps = DFileDeps ^ dfd_direct_deps,
         ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
         BaseDeps = [ModuleName | set.to_sorted_list(DirectDeps)],
         ( if
@@ -543,11 +654,10 @@ construct_intermod_deps(Globals, ParseTreeModuleSrc, DFileDeps, IntermodDeps,
                 BaseDeps, PlainOptDeps, !IO),
             MaybeTransOptDeps = no
         ),
-        MaybeOptFileDeps = opt_file_deps(PlainOptDeps, MaybeTransOptDeps)
+        IntermodDeps = intermod_deps(PlainOptDeps, MaybeTransOptDeps)
     else
-        MaybeOptFileDeps = no_opt_file_deps
-    ),
-    IntermodDeps = intermod_deps(MaybeMhDeps, MaybeOptFileDeps).
+        IntermodDeps = no_intermod_deps
+    ).
 
 %---------------------%
 

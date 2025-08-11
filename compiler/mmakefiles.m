@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2017, 2019-2020, 2022-2024 The Mercury team.
+% Copyright (C) 2017, 2019-2020, 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -220,6 +220,8 @@
     % into Mmakefile fragments.
     %
 :- type mmake_action == string.
+
+:- func make_multiline_action(list(string)) = list(string).
 
 %---------------------------------------------------------------------------%
 
@@ -782,6 +784,31 @@ file_name_groups_files(FileNameGroups) = FileNames :-
     FileNamesList = list.map(file_name_group_files,
         [HeadFileNameGroup | TailFileNameGroups]),
     FileNames = list.condense(FileNamesList).
+
+%---------------------------------------------------------------------------%
+
+make_multiline_action(Lines0) = Lines :-
+    (
+        Lines0 = [],
+        Lines = []
+    ;
+        Lines0 = [HeadLine0 | TailLines0],
+        Lines = make_multiline_action_lag(HeadLine0, TailLines0)
+    ).
+
+:- func make_multiline_action_lag(string, list(string)) = list(string).
+
+make_multiline_action_lag(HeadLine0, TailLines0) = Lines :-
+    (
+        TailLines0 = [],
+        Lines = [HeadLine0]
+    ;
+        TailLines0 = [HeadTailLine0 | TailTailLines0],
+        HeadLine = HeadLine0 ++ " \\",
+        HeadTailLine1 = "\t" ++ HeadTailLine0,
+        TailLines = make_multiline_action_lag(HeadTailLine1, TailTailLines0),
+        Lines = [HeadLine | TailLines]
+    ).
 
 %---------------------------------------------------------------------------%
 

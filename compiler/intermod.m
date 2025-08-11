@@ -76,7 +76,7 @@
 % intermodule optimization.
 %
 % For a full list of what can appear in .opt files (in either half), see
-% the definition of the parse_tree_plain_opt type in prog_item.m.
+% the definition of the parse_tree_plain_opt type in prog_parse_tree.m.
 %
 %---------------------------------------------------------------------------%
 

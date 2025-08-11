@@ -1002,32 +1002,40 @@ mercury_format_item_foreign_enum(_Info, S, ItemForeignEnum, !U) :-
         S, !U),
     add_string("/", S, !U),
     add_int(TypeArity, S, !U),
-    add_string(", ", S, !U),
-    Values = one_or_more_to_list(OoMValues),
-    mercury_format_unqual_sym_name_string_assoc_list(Values, S, !U),
-    add_string(").\n", S, !U).
+    add_string(", [\n", S, !U),
+    OoMValues = one_or_more(HeadValue, TailValues),
+    mercury_format_unqual_sym_name_string_pairs(HeadValue, TailValues, S, !U),
+    add_string("]).\n", S, !U).
 
     % Output an association list of to-be-unqualified sym_names and strings.
+    % Our parent outputs the initial '[' and the final ']'.
     % The strings will be quoted in the output.
     %
-:- pred mercury_format_unqual_sym_name_string_assoc_list(
-    assoc_list(sym_name, string)::in, S::in,
+:- pred mercury_format_unqual_sym_name_string_pairs(
+    pair(sym_name, string)::in, assoc_list(sym_name, string)::in, S::in,
     U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_format_unqual_sym_name_string_assoc_list(AssocList, S, !U) :-
-    add_char('[', S, !U),
-    add_list(mercury_format_unqual_sym_name_string_pair, ", ",
-        AssocList, S, !U),
-    add_char(']', S, !U).
+mercury_format_unqual_sym_name_string_pairs(HeadPair, TailPairs, S, !U) :-
+    add_string("    ", S, !U),
+    mercury_format_unqual_sym_name_string_pair(HeadPair, S, !U),
+    (
+        TailPairs = [],
+        add_string("\n", S, !U)
+    ;
+        TailPairs = [HeadTailPair | TailTailPairs],
+        add_string(",\n", S, !U),
+        mercury_format_unqual_sym_name_string_pairs(HeadTailPair,
+            TailTailPairs, S, !U)
+    ).
 
 :- pred mercury_format_unqual_sym_name_string_pair(
     pair(sym_name, string)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_unqual_sym_name_string_pair(SymName0 - String, S, !U) :-
+    NGT = next_to_graphic_token,
     Name = unqualify_name(SymName0),
     SymName = unqualified(Name),
-    mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, SymName,
-        S, !U),
+    mercury_format_bracketed_sym_name_ngt(NGT, SymName, S, !U),
     add_string(" - ", S, !U),
     add_quoted_string(String, S, !U).
 

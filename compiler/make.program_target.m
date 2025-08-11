@@ -1538,14 +1538,14 @@ get_bottom_up_ordered_modules(ModuleDeps, Modules0, Modules) :-
     % and ImplDepsRel respectively. Dependencies are found using the
     % LookupModuleImports function.
     %
-:- pred add_module_relations(lookup_module_dep_info::in, module_name::in,
+:- pred add_module_relations(lookup_module_dep_info_func::in, module_name::in,
     digraph(module_name)::in, digraph(module_name)::out,
     digraph(module_name)::in, digraph(module_name)::out) is det.
 
-add_module_relations(LookupModuleImports, ModuleName,
+add_module_relations(LookupModuleImportsFunc, ModuleName,
         !IntDepsGraph, !ImplDepsGraph) :-
-    ModuleDepInfo = LookupModuleImports(ModuleName),
-    add_module_dep_info_to_deps_graph(ModuleDepInfo, LookupModuleImports,
+    ModuleDepInfo = LookupModuleImportsFunc(ModuleName),
+    add_module_dep_info_to_deps_graph(ModuleDepInfo, LookupModuleImportsFunc,
         !IntDepsGraph, !ImplDepsGraph).
 
 %---------------------------------------------------------------------------%

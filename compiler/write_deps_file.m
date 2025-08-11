@@ -149,7 +149,7 @@ generate_and_write_dep_file_gendep(ProgressStream, Globals, FileOrModule,
         BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
         generate_and_write_dep_dv_files_gendep(ProgressStream, Globals,
             DepsMap, ModuleName, Baggage, !IO),
-        compute_deps_for_d_files_gendep(ProgressStream, Globals, ModuleName,
+        compute_dep_graphs_gendep(ProgressStream, Globals, ModuleName,
             DepsMap, DepGraphs, BurdenedModules, !Specs, !IO),
         generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
             DepGraphs, BurdenedModules, !IO)
@@ -167,7 +167,7 @@ generate_and_write_d_file_gendep(ProgressStream, Globals, FileOrModule,
         !:Specs = FatalErrorSpecs ++ !.Specs
     ;
         MaybeBurdenedModule = ok1(BurdenedModule),
-        compute_deps_for_d_files_gendep(ProgressStream, Globals, ModuleName,
+        compute_dep_graphs_gendep(ProgressStream, Globals, ModuleName,
             DepsMap, DepGraphs, _BurdenedModules, !Specs, !IO),
         generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals,
             DepGraphs, [BurdenedModule], !IO)
@@ -269,16 +269,10 @@ generate_and_write_d_file_gendep_depgraphs(ProgressStream, Globals, DepGraphs,
     ModuleErrors = Baggage ^ mb_errors,
     FatalErrors = ModuleErrors ^ rm_fatal_errors,
     ( if set.is_empty(FatalErrors) then
-        init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit),
-        BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
-        construct_d_file_deps_gendep(Globals, DepGraphs, BurdenedAugCompUnit,
-            DFileDeps),
-        % XXX DFILE The way IndirectOptDeps is computed seems to have nothing
-        % to do with the way the generate_d_file_fragment predicate's
-        % corresponding argument is computed. This seems to me (zs)
-        % to be a BUG.
-        generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
-            FileNameD, FileContentsStrD, !Cache, !IO),
+        construct_d_file_deps_gendep(Globals, DepGraphs,
+            Baggage, ParseTreeModuleSrc, DFileDeps),
+        generate_d_mmakefile_contents(Globals, Baggage, ParseTreeModuleSrc,
+            DFileDeps, FileNameD, FileContentsStrD, !Cache, !IO),
         write_out_d_file(ProgressStream, Globals,
             FileNameD, FileContentsStrD, !IO)
     else
@@ -292,8 +286,10 @@ generate_and_write_d_file_hlds(ProgressStream, Globals, BurdenedAugCompUnit,
     Cache0 = init_module_file_name_cache,
     construct_d_file_deps_hlds(Globals, BurdenedAugCompUnit, AvailModuleSets,
         MaybeInclTransOptRule, DFileDeps),
-    generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
-        FileNameD, FileContentsStrD, Cache0, _Cache, !IO),
+    BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
+    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+    generate_d_mmakefile_contents(Globals, Baggage, ParseTreeModuleSrc,
+        DFileDeps, FileNameD, FileContentsStrD, Cache0, _Cache, !IO),
     write_out_d_file(ProgressStream, Globals,
         FileNameD, FileContentsStrD, !IO).
 
@@ -304,15 +300,14 @@ generate_and_write_d_file_hlds(ProgressStream, Globals, BurdenedAugCompUnit,
     %
     % General FileContentsStrD as the new contents of FileNameD.
     %
-:- pred generate_d_mmakefile_contents(globals::in, burdened_aug_comp_unit::in,
+:- pred generate_d_mmakefile_contents(globals::in,
+    module_baggage::in, parse_tree_module_src::in,
     d_file_deps::in, file_name::out, string::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
-        FileNameD, FileContentsStrD, !Cache, !IO) :-
-    BurdenedAugCompUnit = burdened_aug_comp_unit(_, AugCompUnit),
-    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+generate_d_mmakefile_contents(Globals, Baggage, ParseTreeModuleSrc,
+        DFileDeps, FileNameD, FileContentsStrD, !Cache, !IO) :-
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     % XXX LEGACY
     ExtD = ext_cur_ngs(ext_cur_ngs_mf_d),
@@ -320,8 +315,8 @@ generate_d_mmakefile_contents(Globals, BurdenedAugCompUnit, DFileDeps,
         FileNameD, _FileNameDProposed, !IO),
     construct_intermod_deps(Globals, ParseTreeModuleSrc, DFileDeps,
         IntermodDeps, !Cache, !IO),
-    generate_d_mmakefile(Globals, BurdenedAugCompUnit, DFileDeps, IntermodDeps,
-        MmakeFileD, !Cache, !IO),
+    generate_d_mmakefile(Globals, Baggage, ParseTreeModuleSrc,
+        DFileDeps, IntermodDeps, MmakeFileD, !Cache, !IO),
     FileContentsStrD = mmakefile_to_string(MmakeFileD).
 
 %---------------------------------------------------------------------------%

@@ -26,6 +26,7 @@
 :- import_module parse_tree.deps_map.
 :- import_module parse_tree.make_module_file_names.
 :- import_module parse_tree.module_baggage.
+:- import_module parse_tree.prog_parse_tree.
 
 :- import_module io.
 :- import_module list.
@@ -50,31 +51,104 @@
     %   it has build a HLDS for, usually for semantic analysis followed
     %   by target code generation.
     %
-    % This module and write_deps_file.m refer to the first context as the
-    % "gendep" context, and the second as the "hlds" context. Predicates
-    % and functions that are specific to one context should have the context
-    % name at or near the end of the their name.
+    % This module, d_file_deps.m and write_deps_file.m refer to the first
+    % context as the "gendep" context, and the second as the "hlds" context.
+    % Predicates and functions that are specific to one context should have
+    % the context name at or near the end of the their name.
     %
     % The issue is that these contexts have long computed the data that is
     % now in the fields of the d_file_deps structure using two completely
     % separate algorithms in these two contexts. It is far from clear whether
-    % there is *any* justification for this difference, and if there is,
-    % whether it is any good.
+    % there is *any* justification for the traditional difference, and
+    % if there is, whether it is any good.
     %
+    % There is one kind of difference between the dependencies computed
+    % in the gendep and hlds contexts that can be clearly justified.
+    % That kind of difference is when the gendep context records a
+    % *superset* of the dependencies computed by the hlds context.
+    % The justification goes like this.
+    %
+    % - While the absence of needed dependencies can lead to mmake
+    %   errors (as mmake attempts to use a file it has not built yet),
+    %   the presence of unneeded dependencies cannot lead to such errors.
+    %   At most, it can lead to somewhat increased build times through
+    %   reduced parallelism.
+    %
+    % - The .d files generated in the gendep context is very short,
+    %   because those files will be overwritten by the first compilation
+    %   (as well as all later compilations) of the relevant module.
+    %
+    % - Therefore any time that we invest in making the gendep context
+    %   generate as close (but still safe) an approximation to the true
+    %   set of dependencies of the program is likely to have very little,
+    %   if any, payoff.
 :- type d_file_deps
     --->    d_file_deps(
-                std_deps,
-                set(module_name),
-                maybe_include_trans_opt_rule
+                % The semantics of the next two fields depends not just
+                % on the gendep vs hlds context, but on whether we are
+                % using intermodule optimization. (The latter would include
+                % --use-opt-files, if we didn't force the value of that option
+                % to always be "no".)
+                %
+                % There are four combinations of those two binary choices.
+                % In three of those combinations, where
+                %
+                % - either we are in the hlds context,
+                % - or we are not using intermodule optimization,
+                %
+                % the meaning of the dfd_direct_deps field is the set of
+                % modules directly imported by the current module
+                % (i.e. the modules whose .int files a compilation
+                % of the current module will read in). Having the meaning
+                % of the dfd_indirect_deps field be the set of indirectly
+                % imported modules, i.e. the modules whose .int2 files
+                % that same compilation would read in would complement this,
+                % except I (zs) have doubts about whether either of
+                % construct_d_file_deps_{gendep,hlds} actually conform to this.
+                %
+                % In the fourth combination, which occurs when
+                %
+                % - we are in the gendep context, and
+                % - we are using intermodule optimization,
+                %
+                % all bets are off, and construct_d_file_deps_gendep
+                % fills in both of these fields with IndirectOptDeps,
+                % whose meaning is not at all clear :-(
+                dfd_direct_deps         :: set(module_name),
+                dfd_indirect_deps       :: set(module_name),
+
+                % Dependencies on .mh files are created partially by
+                % foreign_import_module (fim) declarations, both explicit
+                % and implicit.
+                %
+                % The .d file of module A should record that A.o and A.pic_o
+                % should depend on
+                %
+                % - the .mh files of the modules named in the dfd_own_fim_deps
+                %   field, always, and
+                %
+                % - the .mh files of the modules named in the
+                %   dfd_intermod_fim_deps field, *if* intermodule optimization
+                %   is enabled.
+                %
+                % XXX We record similar dependencies of .class files on
+                % .java files, but *only* for own fims, not intermod fims.
+                dfd_own_fim_deps        :: module_own_fim_deps,
+                dfd_intermod_fim_deps   :: intermod_only_fim_deps,
+
+                dfd_all_mih_deps        :: all_mih_deps,
+
+                dfd_trans_opt           :: maybe_include_trans_opt_rule,
+                dfd_trans_opt_deps      :: maybe_trans_opt_deps
             ).
 
-:- type std_deps
-    --->    std_deps(
-                sd_direct_deps      :: set(module_name),
-                sd_indirect_deps    :: set(module_name),
-                sd_fim_deps         :: set(module_name),
-                sd_trans_opt_deps   :: maybe_trans_opt_deps
-            ).
+:- type module_own_fim_deps
+    --->    module_own_fim_deps(set(module_name)).
+:- type intermod_only_fim_deps
+    --->    intermod_only_fim_deps(set(module_name)).
+
+:- type all_mih_deps
+    --->    all_mih_deps(set(module_name)).
 
 :- type maybe_trans_opt_deps
     --->    no_trans_opt_deps
@@ -89,18 +163,8 @@
 %---------------------%
 
 :- type intermod_deps
-    --->    intermod_deps(
-                maybe_intermod_mh_deps,
-                maybe_opt_file_deps
-            ).
-
-:- type maybe_intermod_mh_deps
-    --->    no_intermod_mh_deps
-    ;       intermod_mh_deps.
-
-:- type maybe_opt_file_deps
-    --->    no_opt_file_deps
-    ;       opt_file_deps(
+    --->    no_intermod_deps
+    ;       intermod_deps(
                 ofd_plain_opt_modules   :: list(module_name),
                 ofd_trans_opt_modules   :: maybe(list(module_name))
             ).
@@ -122,8 +186,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % generate_d_mmakefile(Globals, BurdenedAugCompUnit, StdDeps, AllDeps,
-    %   MaybeInclTransOptRule, IntermodDeps, !:MmakeFile, !Cache, !IO):
+    % generate_d_mmakefile(Globals, BurdenedAugCompUnit, DFileDeps,
+    %   IntermodDeps, !:MmakeFile, !Cache, !IO):
     %
     % Generate the contents of the module's .d file.
     %
@@ -143,7 +207,7 @@
     % Unfortunately, apparently there is no documentation of *which*
     % mmake rules for Java are required by --use-mmc-make.
     %
-    % XXX The StdDeps argument allows generate_dependencies_write_d_file
+    % XXX The DFileDeps argument allows generate_dependencies_write_d_file
     % to supply some information derived from the overall dependency graph
     % that is intended to override the values of some of the fields in
     % BurdenedAugCompUnit. These used to be passed in a ModuleAndImports
@@ -154,7 +218,8 @@
     % I am pretty sure that the original author (fjh) does not know anymore
     % either :-(
     %
-:- pred generate_d_mmakefile(globals::in, burdened_aug_comp_unit::in,
+:- pred generate_d_mmakefile(globals::in,
+    module_baggage::in, parse_tree_module_src::in,
     d_file_deps::in, intermod_deps::in, mmakefile::out,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
@@ -186,7 +251,6 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_parse_tree.
 :- import_module parse_tree.source_file_map.
 
 :- import_module bool.
@@ -201,19 +265,23 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_d_mmakefile(Globals, BurdenedAugCompUnit, DFileDeps, IntermodDeps,
-            !:MmakeFile, !Cache, !IO) :-
-    DFileDeps = d_file_deps(StdDeps, AllDeps, MaybeInclTransOptRule),
-    StdDeps = std_deps(DirectDeps0, IndirectDeps0,
-        ForeignImportedModuleNamesSet, MaybeTransOptDeps),
-
-    BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
+generate_d_mmakefile(Globals, Baggage, ParseTreeModuleSrc,
+        DFileDeps, IntermodDeps, !:MmakeFile, !Cache, !IO) :-
     SourceFileName = Baggage ^ mb_source_file_name,
     SourceFileTopModuleName = Baggage ^ mb_source_file_top_module_name,
     MaybeTopModule = Baggage ^ mb_maybe_top_module,
-    ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
+
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    ModuleNameString = sym_name_to_string(ModuleName),
+    ModuleNameStr = sym_name_to_string(ModuleName),
+
+    DFileDeps = d_file_deps(DirectDeps0, IndirectDeps0,
+        _ModuleOwnFIMSet, _IntermodOnlyFIMSet, AllMihDeps,
+        MaybeInclTransOptRule, MaybeTransOptDeps),
+
+    set.delete(ModuleName, DirectDeps0, DirectDeps),
+    set.difference(IndirectDeps0, DirectDeps, IndirectDeps1),
+    set.delete(ModuleName, IndirectDeps1, IndirectDeps),
+
     Ancestors = get_ancestors_set(ModuleName),
     InclMap = ParseTreeModuleSrc ^ ptms_include_map,
     AccPublicChildren =
@@ -235,17 +303,13 @@ generate_d_mmakefile(Globals, BurdenedAugCompUnit, DFileDeps, IntermodDeps,
         ),
     map.foldl(AccPublicChildren, InclMap, set.init, PublicChildren),
 
-    set.delete(ModuleName, DirectDeps0, DirectDeps),
-    set.difference(IndirectDeps0, DirectDeps, IndirectDeps1),
-    set.delete(ModuleName, IndirectDeps1, IndirectDeps),
-
     get_fact_tables(ParseTreeModuleSrc, FactTableFileNamesSet),
     get_foreign_include_file_infos(ParseTreeModuleSrc, ForeignIncludeFiles),
 
     library.version(Version, FullArch),
 
     MmakeStartComment = mmake_start_comment("module dependencies",
-        ModuleNameString, SourceFileName, Version, FullArch),
+        ModuleNameStr, SourceFileName, Version, FullArch),
 
     module_name_to_make_var_name(ModuleName, ModuleMakeVarName),
 
@@ -294,14 +358,14 @@ generate_d_mmakefile(Globals, BurdenedAugCompUnit, DFileDeps, IntermodDeps,
     construct_build_nested_children_first_rule(Globals,
         ModuleName, MaybeTopModule, MmakeRulesNestedDeps, !Cache),
 
-    construct_intermod_rules(Globals, IntermodDeps, AllDeps, ErrFileName,
-        TransOptDateFileName, CDateFileName, JavaDateFileName, ObjFileName,
+    construct_intermod_rules(Globals, IntermodDeps, ErrFileName,
+        TransOptDateFileName, CDateFileName, JavaDateFileName,
         MmakeRulesIntermod, !Cache),
 
     make_module_file_name(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
         ModuleName, CFileName, !Cache),
-    construct_c_header_rules(Globals, ModuleName, AllDeps,
+    construct_mih_header_rules(Globals, ModuleName, AllMihDeps,
         CFileName, ObjFileName, PicObjFileName, MmakeRulesCHeaders, !Cache),
 
     construct_module_dep_fragment(Globals, ModuleName, CFileName,
@@ -317,8 +381,8 @@ generate_d_mmakefile(Globals, BurdenedAugCompUnit, DFileDeps, IntermodDeps,
         Date0FileName, DateFileName, Ancestors, DirectDeps, IndirectDeps,
         MmakeRulesParentDates, !Cache),
 
-    construct_foreign_import_rules(Globals, ParseTreeModuleSrc,
-        ForeignImportedModuleNamesSet, ObjFileName, PicObjFileName,
+    construct_foreign_import_rules(Globals, ModuleName,
+        DFileDeps, IntermodDeps, ObjFileName, PicObjFileName,
         MmakeRulesForeignImports, !Cache),
 
     make_module_file_name(Globals, $pred,
@@ -575,33 +639,16 @@ construct_build_nested_children_first_rule(Globals, ModuleName, MaybeTopModule,
 
 %---------------------------------------------------------------------------%
 
-:- pred construct_intermod_rules(globals::in,
-    intermod_deps::in, set(module_name)::in,
-    string::in, string::in, string::in, string::in, string::in,
+:- pred construct_intermod_rules(globals::in, intermod_deps::in,
+    string::in, string::in, string::in, string::in,
     list(mmake_entry)::out,
     module_file_name_cache::in, module_file_name_cache::out) is det.
 
-construct_intermod_rules(Globals, IntermodDeps, AllDeps,
+construct_intermod_rules(Globals, IntermodDeps,
         ErrFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
-        ObjFileName, MmakeRulesIntermod, !Cache) :-
-    IntermodDeps = intermod_deps(MaybeMhDeps, MaybeOptFileDeps),
+        MmakeRulesIntermod, !Cache) :-
     (
-        MaybeMhDeps = intermod_mh_deps,
-        make_module_file_names_with_ext(Globals,
-            ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh),
-            set.to_sorted_list(AllDeps), AllDepsFileNames, !Cache),
-        MmakeRuleMhDeps = mmake_simple_rule("machine_dependent_header_deps",
-            mmake_rule_is_not_phony,
-            ObjFileName,
-            AllDepsFileNames,
-            []),
-        MmakeRulesMhDeps = [MmakeRuleMhDeps]
-    ;
-        MaybeMhDeps = no_intermod_mh_deps,
-        MmakeRulesMhDeps = []
-    ),
-    (
-        MaybeOptFileDeps = opt_file_deps(PlainOptDeps, MaybeTransOptDeps),
+        IntermodDeps = intermod_deps(PlainOptDeps, MaybeTransOptDeps),
 
         % The target (e.g. C) file only depends on the .opt files from the
         % current directory, so that inter-module optimization works when
@@ -645,25 +692,25 @@ construct_intermod_rules(Globals, IntermodDeps, AllDeps,
                 ErrDateTargets,
                 TransOptDepsOptFileNames,
                 []),
-            MmakeRulesIntermod = MmakeRulesMhDeps ++
+            MmakeRulesIntermod =
                 [MmakeRuleDateOptInt0Deps, MmakeRuleTransOptOpts]
         ;
             MaybeTransOptDeps = no,
-            MmakeRulesIntermod = MmakeRulesMhDeps ++ [MmakeRuleDateOptInt0Deps]
+            MmakeRulesIntermod = [MmakeRuleDateOptInt0Deps]
         )
     ;
-        MaybeOptFileDeps = no_opt_file_deps,
-        MmakeRulesIntermod = MmakeRulesMhDeps
+        IntermodDeps = no_intermod_deps,
+        MmakeRulesIntermod = []
     ).
 
 %---------------------%
 
-:- pred construct_c_header_rules(globals::in, module_name::in,
-    set(module_name)::in, string::in, string::in, string::in,
+:- pred construct_mih_header_rules(globals::in, module_name::in,
+    all_mih_deps::in, string::in, string::in, string::in,
     list(mmake_entry)::out,
     module_file_name_cache::in, module_file_name_cache::out) is det.
 
-construct_c_header_rules(Globals, ModuleName, AllDeps,
+construct_mih_header_rules(Globals, ModuleName, AllMihDeps,
         CFileName, ObjFileName, PicObjFileName, MmakeRulesCHeaders, !Cache) :-
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     globals.get_target(Globals, CompilationTarget),
@@ -674,14 +721,15 @@ construct_c_header_rules(Globals, ModuleName, AllDeps,
         % For --high-level-code with --target c, we need to make sure that
         % we generate the header files for imported modules before compiling
         % the C files, since the generated C files #include those header files.
-        Targets = one_or_more(PicObjFileName, [ObjFileName]),
+        Targets = one_or_more(ObjFileName, [PicObjFileName]),
+        AllMihDeps = all_mih_deps(AllMihModules),
         make_module_file_names_with_ext(Globals,
             ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih),
-            set.to_sorted_list(AllDeps), AllDepsFileNames, !Cache),
+            set.to_sorted_list(AllMihModules), AllMihFileNames, !Cache),
         MmakeRuleObjOnMihs = mmake_flat_rule("objs_on_mihs",
             mmake_rule_is_not_phony,
             Targets,
-            AllDepsFileNames,
+            AllMihFileNames,
             []),
         MmakeRulesObjOnMihs = [MmakeRuleObjOnMihs]
     else
@@ -812,49 +860,93 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
     % Handle dependencies introduced by
     % `:- pragma foreign_import_module' declarations.
     %
-:- pred construct_foreign_import_rules(globals::in, parse_tree_module_src::in,
-    set(module_name)::in, string::in, string::in, list(mmake_entry)::out,
+:- pred construct_foreign_import_rules(globals::in, module_name::in,
+    d_file_deps::in, intermod_deps::in, string::in, string::in,
+    list(mmake_entry)::out,
     module_file_name_cache::in, module_file_name_cache::out) is det.
 
-construct_foreign_import_rules(Globals, ParseTreeModuleSrc,
-        ForeignImportedModuleNamesSet,
+construct_foreign_import_rules(Globals, ModuleName, DFileDeps, IntermodDeps,
         ObjFileName, PicObjFileName, MmakeRulesForeignImports, !Cache) :-
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    ForeignImportedModuleNames =
-        set.to_sorted_list(ForeignImportedModuleNamesSet),
+    globals.get_target(Globals, Target),
     (
-        ForeignImportedModuleNames = [],
-        MmakeRulesForeignImports = []
-    ;
-        ForeignImportedModuleNames = [_ | _],
-        globals.get_target(Globals, Target),
         (
             Target = target_c,
             % NOTE: for C the possible targets might be a .o file _or_ a
             % .pic_o file. We need to include dependencies for the latter
-            % otherwise invoking mmake with a <module>.pic_o target will break.
-            ForeignImportTargets = one_or_more(ObjFileName, [PicObjFileName]),
-            ForeignImportExt = ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh),
-            gather_foreign_import_deps(Globals, ForeignImportExt,
-                ForeignImportTargets, ForeignImportedModuleNames,
-                MmakeRuleForeignImports, !Cache),
-            MmakeRulesForeignImports = [MmakeRuleForeignImports]
+            % as well in order for "mmake a <module>.pic_o" to work.
+            TargetGroup = mmake_file_name_group("object_files",
+                one_or_more(ObjFileName, [PicObjFileName])),
+            MhOrJavaExt = ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh)
         ;
             Target = target_java,
             make_module_file_name(Globals, $pred,
                 ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_class),
                 ModuleName, ClassFileName, !Cache),
-            ForeignImportTargets = one_or_more(ClassFileName, []),
-            ForeignImportExt = ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
-            gather_foreign_import_deps(Globals, ForeignImportExt,
-                ForeignImportTargets, ForeignImportedModuleNames,
-                MmakeRuleForeignImports, !Cache),
-            MmakeRulesForeignImports = [MmakeRuleForeignImports]
+            TargetGroup = mmake_file_name_group("class_files",
+                one_or_more(ClassFileName, [])),
+            MhOrJavaExt = ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)
+        ),
+
+        DFileDeps = d_file_deps(DirectModuleSet, IndirectModuleSet,
+            ModuleOwnFIMDeps, IntermodOnlyFIMDeps, _, _, _),
+        ModuleOwnFIMDeps = module_own_fim_deps(OwnFIMModuleSet),
+        % In the absence of intermodule optimization, we need to include
+        % another module's .mh file for one of two reasons:
+        %
+        % - either the current module has a foreign_import_module declaration
+        %   for the other module,
+        %
+        % - or this module includes the other module's .int or .int2 file,
+        %   which may (or may not) contain foreign language type definitions.
+        %
+        % DirectModuleSet and IndirectModuleSet take care of the latter,
+        % while OwnMhModuleSet takes care of the former.
+        OwnMhModuleSet = set.union_list([DirectModuleSet, IndirectModuleSet,
+            OwnFIMModuleSet]),
+        OwnMhModules = set.to_sorted_list(OwnMhModuleSet),
+        make_module_file_names_with_ext(Globals, MhOrJavaExt,
+            OwnMhModules, OwnMhFileNames, !Cache),
+        OwnMhGroups = make_file_name_group("own_mh_deps", OwnMhFileNames),
+        (
+            IntermodDeps = no_intermod_deps,
+            IntermodMhGroups = []
         ;
-            Target = target_csharp,
-            % Mmake does not support targeting csharp.
+            IntermodDeps = intermod_deps(_, _),
+            IntermodOnlyFIMDeps =
+                intermod_only_fim_deps(IntermodFIMModuleSet0),
+            % XXX Just as we add DirectModuleSet and IndirectModuleSet
+            % to OwnMhModuleSet to handle any foreign_type definitions
+            % in .int files, we should add the names of int-for-opt modules.
+            % Unfortunately, that info is not (yet) available in d_file_deps.
+            set.difference(IntermodFIMModuleSet0, OwnMhModuleSet,
+                IntermodMhModuleSet),
+            IntermodMhModules = set.to_sorted_list(IntermodMhModuleSet),
+            make_module_file_names_with_ext(Globals, MhOrJavaExt,
+                IntermodMhModules, IntermodMhFileNames, !Cache),
+            IntermodMhGroups = make_file_name_group(
+                "intermod_only_mh_deps", IntermodMhFileNames)
+        ),
+
+        AllMhGroups = OwnMhGroups ++ IntermodMhGroups,
+        (
+            AllMhGroups = [],
             MmakeRulesForeignImports = []
+        ;
+            AllMhGroups = [_ | _],
+            MhOrJavaExtStr = extension_to_string(Globals, MhOrJavaExt),
+            RuleName = "foreign_deps_for_" ++
+                string.remove_prefix_if_present(".", MhOrJavaExtStr),
+            MmakeRuleForeignImports = mmake_general_rule(RuleName,
+                mmake_rule_is_not_phony,
+                one_or_more(TargetGroup, []),
+                AllMhGroups,
+                []),
+            MmakeRulesForeignImports = [MmakeRuleForeignImports]
         )
+    ;
+        Target = target_csharp,
+        % Mmake does not support targeting csharp.
+        MmakeRulesForeignImports = []
     ).
 
 %---------------------%
@@ -1033,24 +1125,6 @@ gather_nested_deps(Globals, ModuleName, NestedDeps, Ext, MmakeRule, !Cache) :-
         NestedDepsFileNames,
         []).
 
-:- pred gather_foreign_import_deps(globals::in, ext::in,
-    one_or_more(string)::in, list(module_name)::in, mmake_entry::out,
-    module_file_name_cache::in, module_file_name_cache::out) is det.
-
-gather_foreign_import_deps(Globals, ForeignImportExt, ForeignImportTargets,
-        ForeignImportedModuleNames, MmakeRule, !Cache) :-
-    make_module_file_names_with_ext(Globals, ForeignImportExt,
-        ForeignImportedModuleNames, ForeignImportedFileNames, !Cache),
-    ForeignImportExtStr = extension_to_string(Globals,
-        ForeignImportExt),
-    RuleName = "foreign_deps_for_" ++
-        string.remove_prefix_if_present(".", ForeignImportExtStr),
-    MmakeRule = mmake_flat_rule(RuleName,
-        mmake_rule_is_not_phony,
-        ForeignImportTargets,
-        ForeignImportedFileNames,
-        []).
-
 %---------------------------------------------------------------------------%
 
 :- func foreign_include_file_path_name(file_name, foreign_include_file_info)
@@ -1081,10 +1155,10 @@ construct_subdirs_shorthand_rule(Globals, ModuleName, Ext,
 
 generate_dv_mmakefile(Globals, SourceFileName, ModuleName, DepsMap,
         MmakeFile) :-
-    ModuleNameString = sym_name_to_string(ModuleName),
+    ModuleNameStr = sym_name_to_string(ModuleName),
     library.version(Version, FullArch),
     MmakeStartComment = mmake_start_comment("dependency variables",
-        ModuleNameString, SourceFileName, Version, FullArch),
+        ModuleNameStr, SourceFileName, Version, FullArch),
 
     map.keys(DepsMap, Modules0),
     select_no_fatal_error_modules(DepsMap, Modules0, Modules1),
@@ -1542,11 +1616,11 @@ generate_dv_file_define_smart_recomp_vars(ModuleMakeVarName,
 
 generate_dep_mmakefile(Globals, SourceFileName, ModuleName, DepsMap,
         !:MmakeFile, !IO) :-
-    ModuleNameString = sym_name_to_string(ModuleName),
+    ModuleNameStr = sym_name_to_string(ModuleName),
     library.version(Version, FullArch),
 
     MmakeStartComment = mmake_start_comment("program dependencies",
-        ModuleNameString, SourceFileName, Version, FullArch),
+        ModuleNameStr, SourceFileName, Version, FullArch),
 
     module_name_to_make_var_name(ModuleName, ModuleMakeVarName),
 
@@ -1698,8 +1772,6 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
         "$(patsubst %.o,%.$(EXT_FOR_PIC_OBJECTS)," ++
         "$(foreach @," ++ ModuleMakeVarName ++ ",$(ALL_MLOBJS)))",
 
-    NL_All_MLObjs = "\\\n\t\t" ++ All_MLObjs,
-
     % When compiling to C, we want to include $(foo.cs) first in
     % the dependency list, before $(foo.os).
     % This is not strictly necessary, since the .$O files themselves depend
@@ -1712,26 +1784,25 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
     ModuleMakeVarNameClasses = "$(" ++ ModuleMakeVarName ++ ".classes)",
 
     ModuleMakeVarNameOs = "$(" ++ ModuleMakeVarName ++ ".all_os)",
-    NonJavaMainRuleAction1Line1 =
-        "$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- $(ALL_LDFLAGS) " ++
-            "$(EXEFILE_OPT)" ++ ExeFileName ++ "$(EXT_FOR_EXE) " ++
-            InitObjFileName ++ " \\",
-    NonJavaMainRuleAction1Line2 =
-        "\t" ++ ModuleMakeVarNameOs ++ " " ++ NL_All_MLObjs ++
-            " $(ALL_MLLIBS)",
+    CMainRuleAction1Lines = make_multiline_action([
+        "$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- $(ALL_LDFLAGS)",
+        "$(EXEFILE_OPT)" ++ ExeFileName ++ "$(EXT_FOR_EXE)",
+        InitObjFileName ++ " " ++ ModuleMakeVarNameOs,
+        All_MLObjs ++ " $(ALL_MLLIBS)"
+    ]),
     MmakeRuleExecutableJava = mmake_simple_rule("executable_java",
         mmake_rule_is_not_phony,
         ExeFileName,
         [ModuleMakeVarNameClasses],
         []),
-    MmakeRuleExecutableNonJava = mmake_simple_rule("executable_non_java",
+    MmakeRuleExecutableC = mmake_simple_rule("executable_c",
         mmake_rule_is_not_phony,
         ExeFileName ++ "$(EXT_FOR_EXE)",
         [ModuleMakeVarNameOs, InitObjFileName, All_MLObjs, All_MLLibsDep],
-        [NonJavaMainRuleAction1Line1, NonJavaMainRuleAction1Line2]),
+        CMainRuleAction1Lines),
     MmakeFragmentExecutable = mmf_conditional_entry(
         mmake_cond_grade_has_component("java"),
-        MmakeRuleExecutableJava, MmakeRuleExecutableNonJava),
+        MmakeRuleExecutableJava, MmakeRuleExecutableC),
 
     % Set up the installed name for shared libraries.
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2017, 2019, 2021-2022 The Mercury team.
+% Copyright (C) 2014-2015, 2017, 2019, 2021-2022, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -27,12 +27,17 @@
 %-----------------------------------------------------------------------------%
 
     % (Module1 -> Module2) means Module1 is imported by Module2.
+    % XXX Actually, the add_dep predicate and its callers behave
+    % as if it means "Module1 *imports* Module2".
 :- type deps_graph == digraph(module_name).
 
-:- type lookup_module_dep_info == (func(module_name) = module_dep_info).
+:- type lookup_module_dep_info_func == (func(module_name) = module_dep_info).
 
+    % add_module_dep_info_to_deps_graph(ModuleDepInfo, LookupModuleDepInfoFunc,
+    %  !IntDepsGraph, !ImpDepsGraph)
+    %
 :- pred add_module_dep_info_to_deps_graph(module_dep_info::in,
-    lookup_module_dep_info::in,
+    lookup_module_dep_info_func::in,
     deps_graph::in, deps_graph::out, deps_graph::in, deps_graph::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -46,7 +51,7 @@
 
 %-----------------------------------------------------------------------------%
 
-add_module_dep_info_to_deps_graph(ModuleDepInfo, LookupModuleDepInfo,
+add_module_dep_info_to_deps_graph(ModuleDepInfo, LookupModuleDepInfoFunc,
         !IntDepsGraph, !ImpDepsGraph) :-
     % Add interface dependencies to the interface deps graph.
     %
@@ -69,7 +74,7 @@ add_module_dep_info_to_deps_graph(ModuleDepInfo, LookupModuleDepInfo,
     Ancestors = get_ancestors_set(ModuleName),
     digraph.add_vertex(ModuleName, IntModuleKey, !IntDepsGraph),
     add_int_deps(IntModuleKey, ModuleDepInfo, !IntDepsGraph),
-    add_parent_imp_deps_set(LookupModuleDepInfo, IntModuleKey, Ancestors,
+    add_parent_imp_deps_set(LookupModuleDepInfoFunc, IntModuleKey, Ancestors,
         !IntDepsGraph),
 
     % Add implementation dependencies to the implementation deps graph.
@@ -82,7 +87,7 @@ add_module_dep_info_to_deps_graph(ModuleDepInfo, LookupModuleDepInfo,
 
     digraph.add_vertex(ModuleName, ImpModuleKey, !ImpDepsGraph),
     add_imp_deps(ImpModuleKey, ModuleDepInfo, !ImpDepsGraph),
-    add_parent_imp_deps_set(LookupModuleDepInfo, ImpModuleKey, Ancestors,
+    add_parent_imp_deps_set(LookupModuleDepInfoFunc, ImpModuleKey, Ancestors,
         !ImpDepsGraph).
 
     % Add interface dependencies to the interface deps graph.
@@ -115,21 +120,21 @@ add_imp_deps(ModuleKey, ModuleDepInfo, !DepsGraph) :-
     % Add parent implementation dependencies for the given Parent module
     % to the implementation deps graph values for the given ModuleKey.
     %
-:- pred add_parent_imp_deps(lookup_module_dep_info::in,
+:- pred add_parent_imp_deps(lookup_module_dep_info_func::in,
     deps_graph_key::in, module_name::in, deps_graph::in, deps_graph::out)
     is det.
 
-add_parent_imp_deps(LookupModuleDepInfo, ModuleKey, Parent, !DepsGraph) :-
-    ParentModuleDepInfo = LookupModuleDepInfo(Parent),
+add_parent_imp_deps(LookupModuleDepInfoFunc, ModuleKey, Parent, !DepsGraph) :-
+    ParentModuleDepInfo = LookupModuleDepInfoFunc(Parent),
     add_imp_deps(ModuleKey, ParentModuleDepInfo, !DepsGraph).
 
-:- pred add_parent_imp_deps_set(lookup_module_dep_info::in,
+:- pred add_parent_imp_deps_set(lookup_module_dep_info_func::in,
     deps_graph_key::in, set(module_name)::in, deps_graph::in, deps_graph::out)
     is det.
 
-add_parent_imp_deps_set(LookupModuleDepInfo, ModuleKey, Parents,
+add_parent_imp_deps_set(LookupModuleDepInfoFunc, ModuleKey, Parents,
         !DepsGraph) :-
-    set.fold(add_parent_imp_deps(LookupModuleDepInfo, ModuleKey), Parents,
+    set.fold(add_parent_imp_deps(LookupModuleDepInfoFunc, ModuleKey), Parents,
         !DepsGraph).
 
     % Add a single dependency to a graph.

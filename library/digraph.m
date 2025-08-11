@@ -48,6 +48,11 @@
 
 :- type digraph_key_set(T) == sparse_bitset(digraph_key(T)).
 
+%---------------------------------------------------------------------------%
+%
+% Constructing digraphs.
+%
+
     % init creates an empty digraph.
     %
 :- func init = digraph(T).
@@ -59,22 +64,6 @@
     %
 :- pred add_vertex(T::in, digraph_key(T)::out,
     digraph(T)::in, digraph(T)::out) is det.
-
-    % search_key returns the key associated with a vertex.
-    % Fails if the vertex is not in the graph.
-    %
-:- pred search_key(digraph(T)::in, T::in, digraph_key(T)::out) is semidet.
-
-    % lookup_key returns the key associated with a vertex.
-    % Throws an exception if the vertex is not in the graph.
-    %
-:- func lookup_key(digraph(T), T) = digraph_key(T).
-:- pred lookup_key(digraph(T)::in, T::in, digraph_key(T)::out) is det.
-
-    % lookup_vertex returns the vertex associated with a key.
-    %
-:- func lookup_vertex(digraph(T), digraph_key(T)) = T.
-:- pred lookup_vertex(digraph(T)::in, digraph_key(T)::in, T::out) is det.
 
     % add_edge adds an edge to the digraph if it doesn't already exist,
     % and leaves the digraph unchanged otherwise.
@@ -107,6 +96,11 @@
 :- pred add_assoc_list(assoc_list(digraph_key(T), digraph_key(T))::in,
     digraph(T)::in, digraph(T)::out) is det.
 
+%---------------------------------------------------------------------------%
+%
+% Deleting from digraphs.
+%
+
     % delete_edge deletes an edge from the digraph if it exists,
     % and leaves the digraph unchanged otherwise.
     %
@@ -122,18 +116,26 @@
     assoc_list(digraph_key(T), digraph_key(T))::in,
     digraph(T)::in, digraph(T)::out) is det.
 
-    % is_edge checks to see if an edge is in the digraph.
-    %
-:- pred is_edge(digraph(T), digraph_key(T), digraph_key(T)).
-:- mode is_edge(in, in, out) is nondet.
-:- mode is_edge(in, in, in) is semidet.
+%---------------------------------------------------------------------------%
+%
+% Searches and lookups.
+%
 
-    % is_edge_rev is equivalent to is_edge, except that
-    % the nondet mode works in the reverse direction.
+    % search_key returns the key associated with a vertex.
+    % Fails if the vertex is not in the graph.
     %
-:- pred is_edge_rev(digraph(T), digraph_key(T), digraph_key(T)).
-:- mode is_edge_rev(in, out, in) is nondet.
-:- mode is_edge_rev(in, in, in) is semidet.
+:- pred search_key(digraph(T)::in, T::in, digraph_key(T)::out) is semidet.
+
+    % lookup_key returns the key associated with a vertex.
+    % Throws an exception if the vertex is not in the graph.
+    %
+:- func lookup_key(digraph(T), T) = digraph_key(T).
+:- pred lookup_key(digraph(T)::in, T::in, digraph_key(T)::out) is det.
+
+    % lookup_vertex returns the vertex associated with a key.
+    %
+:- func lookup_vertex(digraph(T), digraph_key(T)) = T.
+:- pred lookup_vertex(digraph(T)::in, digraph_key(T)::in, T::out) is det.
 
     % Given key x, lookup_from returns the set of keys y such that
     % there is an edge (x,y) in the digraph.
@@ -161,7 +163,32 @@
 :- pred lookup_key_set_to(digraph(T)::in, digraph_key(T)::in,
     digraph_key_set(T)::out) is det.
 
+    % is_edge checks to see if an edge is in the digraph.
+    %
+:- pred is_edge(digraph(T), digraph_key(T), digraph_key(T)).
+:- mode is_edge(in, in, out) is nondet.
+:- mode is_edge(in, in, in) is semidet.
+
+    % is_edge_rev is equivalent to is_edge, except that
+    % the nondet mode works in the reverse direction.
+    %
+:- pred is_edge_rev(digraph(T), digraph_key(T), digraph_key(T)).
+:- mode is_edge_rev(in, out, in) is nondet.
+:- mode is_edge_rev(in, in, in) is semidet.
+
+    % vertices returns the set of vertices in a digraph.
+    %
+:- func vertices(digraph(T)) = set(T).
+:- pred vertices(digraph(T)::in, set(T)::out) is det.
+
+    % is_dag(G) is true if-and-only-if G is a directed acyclic graph.
+    %
+:- pred is_dag(digraph(T)::in) is semidet.
+
 %---------------------------------------------------------------------------%
+%
+% Conversion between digraphs and assoc_lists.
+%
 
     % to_assoc_list turns a digraph into a list of pairs of vertices,
     % one for each edge.
@@ -183,6 +210,9 @@
 :- pred from_assoc_list(assoc_list(T, T)::in, digraph(T)::out) is det.
 
 %---------------------------------------------------------------------------%
+%
+% Depth-first sorting.
+%
 
     % dfs(G, Key, Dfs) is true if Dfs is a depth-first sorting of G
     % starting at Key. The set of keys in the list Dfs is equal to the
@@ -237,11 +267,9 @@
     list(digraph_key(T))::out) is det.
 
 %---------------------------------------------------------------------------%
-
-    % vertices returns the set of vertices in a digraph.
-    %
-:- func vertices(digraph(T)) = set(T).
-:- pred vertices(digraph(T)::in, set(T)::out) is det.
+%
+% Transforming digraphs.
+%
 
     % inverse(G, G') is true if-and-only-if the domains of G and G' are equal,
     % and for all x, y in this domain, (x,y) is an edge in G if-and-only-if
@@ -259,9 +287,10 @@
 :- pred compose(digraph(T)::in, digraph(T)::in, digraph(T)::out)
     is det.
 
-    % is_dag(G) is true if-and-only-if G is a directed acyclic graph.
-    %
-:- pred is_dag(digraph(T)::in) is semidet.
+%---------------------------------------------------------------------------%
+%
+% Components of digraphs.
+%
 
     % components(G, Comp) is true if Comp is the set of the
     % connected components of G.
@@ -288,79 +317,103 @@
 :- pred reduced(digraph(T)::in, digraph(set(T))::out,
     map(digraph_key(T), digraph_key(set(T)))::out) is det.
 
-    % tsort(G, TS) is true if TS is a topological sorting of G.
+%---------------------------------------------------------------------------%
+%
+% Topological sorts.
+%
+
+    % Both
+    %   return_vertices_in_from_to_order(G, FromToVertices)
+    % and
+    %   return_vertices_in_to_from_order(G, ToFromVertices)
+    % do a topological sort of G, the difference being that they return
+    % the same list of vertices in opposite orders.
     %
     % If we view each edge in the digraph as representing a <from, to>
-    % relationship, then TS will contain a vertex "from" *before*
-    % all the other vertices "to" for which a <from, to> edge exists
-    % in the graph. In other words, TS will be in from-to order.
+    % relationship, then FromToVertices will contain a vertex "from"
+    % *before* all the other vertices "to" for which a <from, to> edge exists
+    % in the graph. In other words, FromToVertices will be in from-to order.
     %
-    % tsort fails if G is cyclic.
+    % ToFromVertices will be the reverse of FromToVertices.
     %
-:- pred tsort(digraph(T)::in, list(T)::out) is semidet.
-
-    % Both these predicates do a topological sort of G.
-    %
-    % return_vertices_in_from_to_order(G, TS) is a synonym for tsort(G, TS).
-    % return_vertices_in_to_from_order(G, TS) is identical to both
-    % except for the fact that it returns the vertices in the opposite order.
+    % Both these predicates will fail if G is cyclic.
     %
 :- pred return_vertices_in_from_to_order(digraph(T)::in, list(T)::out)
     is semidet.
 :- pred return_vertices_in_to_from_order(digraph(T)::in, list(T)::out)
     is semidet.
 
-    % atsort(G, ATS) is true if ATS is a topological sorting
-    % of the strongly connected components (SCCs) in G.
+    % A synonym for return_vertices_in_from_to_order.
+    %
+:- pred tsort(digraph(T)::in, list(T)::out) is semidet.
+
+%---------------------%
+
+    % Both
+    %   return_sccs_in_from_to_order(G, FromToSccs)
+    % and
+    %   return_sccs_in_to_from_order(G, ToFromSccs)
+    % do a topological sort of the strongly connected components (SCCs) of G,
+    % the difference being that they return the same list of SCCs
+    % in opposite orders.
     %
     % If we view each edge in the digraph as representing a <from, to>
-    % relationship, then ATS will contain SCC A before all SCCs B
+    % relationship, then FromToSccs will contain SCC A before all SCCs B
     % for which there is an edge <from, to> with "from" being in SCC A
-    % and "to" being in SCC B. In other words, ATS will be in from-to order.
+    % and "to" being in SCC B. In other words, FromToSccs will be in
+    % from-to order.
     %
-:- func atsort(digraph(T)) = list(set(T)).
-:- pred atsort(digraph(T)::in, list(set(T))::out) is det.
-
-    % Both these predicates do a topological sort of the strongly connected
-    % components (SCCs) of G.
-    %
-    % return_sccs_in_from_to_order(G) = ATS is a synonym for atsort(G) = ATS.
-    % return_sccs_in_to_from_order(G) = ATS is identical to both
-    % except for the fact that it returns the SCCs in the opposite order.
+    % ToFromSccs will be the reverse of FromToSccs.
     %
 :- func return_sccs_in_from_to_order(digraph(T)) = list(set(T)).
 :- func return_sccs_in_to_from_order(digraph(T)) = list(set(T)).
 
-    % sc(G, SC) is true if SC is the symmetric closure of G.
+    % A synonym for return_sccs_in_from_to_order.
+    %
+:- func atsort(digraph(T)) = list(set(T)).
+:- pred atsort(digraph(T)::in, list(set(T))::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Closures.
+%
+
+    % symmetric_closure(G) = SC is true if SC is the symmetric closure of G.
     % That is, (x,y) is in SC if-and-only-if either (x,y) or (y,x) is in G.
+    %
+:- func symmetric_closure(digraph(T)) = digraph(T).
+
+    % Synonyms for symmetric_closure/1.
     %
 :- func sc(digraph(T)) = digraph(T).
 :- pred sc(digraph(T)::in, digraph(T)::out) is det.
 
-    % A synonym for sc/1.
+    % transitive_closure(G) = TC is true if TC is the transitive closure of G.
     %
-:- func symmetric_closure(digraph(T)) = digraph(T).
+:- func transitive_closure(digraph(T)) = digraph(T).
 
-    % tc(G, TC) is true if TC is the transitive closure of G.
+    % Synonyms for transitive_closure/1.
     %
 :- func tc(digraph(T)) = digraph(T).
 :- pred tc(digraph(T)::in, digraph(T)::out) is det.
 
-    % A synonym for tc/1.
-    %
-:- func transitive_closure(digraph(T)) = digraph(T).
-
-    % rtc(G, RTC) is true if RTC is the reflexive transitive closure of G.
+    % reflexive_transitive_closure(G) = RTC is true
+    % if RTC is the reflexive transitive closure of G.
     %
     % RTC is the reflexive closure of the transitive closure of G,
     % or, equivalently, the transitive closure of the reflexive closure of G.
     %
+:- func reflexive_transitive_closure(digraph(T)) = digraph(T).
+
+    % Synonyms for reflexive_transitive_closure/1.
+    %
 :- func rtc(digraph(T)) = digraph(T).
 :- pred rtc(digraph(T)::in, digraph(T)::out) is det.
 
-    % A synonym for rtc/1.
-    %
-:- func reflexive_transitive_closure(digraph(T)) = digraph(T).
+%---------------------------------------------------------------------------%
+%
+% Traversals.
+%
 
     % traverse(G, ProcessVertex, ProcessEdge, !Acc) will traverse the digraph G
     % - calling ProcessVertex for each vertex in the digraph, and
@@ -477,6 +530,9 @@ key_set_map_delete(XI, Y, Map0, Map) :-
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Constructing digraphs.
+%
 
 init = G :-
     digraph.init(G).
@@ -486,7 +542,7 @@ init(digraph(0u, VMap, FwdMap, BwdMap)) :-
     map.init(FwdMap),
     map.init(BwdMap).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 add_vertex(Vertex, Key, !G) :-
     VertexMap0 = !.G ^ vertex_map,
@@ -505,32 +561,7 @@ allocate_key(digraph_key(I), !G) :-
     I = !.G ^ next_key,
     !G ^ next_key := I + 1u.
 
-%---------------------------------------------------------------------------%
-
-search_key(G, Vertex, Key) :-
-    bimap.search(G ^ vertex_map, Vertex, Key).
-
-lookup_key(G, Vertex) = Key :-
-    digraph.lookup_key(G, Vertex, Key).
-
-lookup_key(G, Vertex, Key) :-
-    ( if digraph.search_key(G, Vertex, Key0) then
-        Key = Key0
-    else
-        unexpected($module, $pred, "search for key failed")
-    ).
-
-lookup_vertex(G, Key) = Vertex :-
-    digraph.lookup_vertex(G, Key, Vertex).
-
-lookup_vertex(G, Key, Vertex) :-
-    ( if bimap.search(G ^ vertex_map, Vertex0, Key) then
-        Vertex = Vertex0
-    else
-        unexpected($module, $pred, "search for vertex failed")
-    ).
-
-%---------------------------------------------------------------------------%
+%---------------------%
 
 add_edge(X, Y, !.G) = !:G :-
     digraph.add_edge(X, Y, !G).
@@ -568,6 +599,9 @@ add_assoc_list([X - Y | Edges], !G) :-
     digraph.add_assoc_list(Edges, !G).
 
 %---------------------------------------------------------------------------%
+%
+% Deleting from digraphs.
+%
 
 delete_edge(X, Y, !.G) = !:G :-
     digraph.delete_edge(X, Y, !G).
@@ -591,16 +625,32 @@ delete_assoc_list([X - Y | Edges], !G) :-
     digraph.delete_assoc_list(Edges, !G).
 
 %---------------------------------------------------------------------------%
+%
+% Searches and lookups.
+%
 
-is_edge(G, digraph_key(XI), Y) :-
-    map.search(G ^ fwd_map, XI, YSet),
-    sparse_bitset.member(Y, YSet).
+search_key(G, Vertex, Key) :-
+    bimap.search(G ^ vertex_map, Vertex, Key).
 
-is_edge_rev(G, X, digraph_key(YI)) :-
-    map.search(G ^ bwd_map, YI, XSet),
-    sparse_bitset.member(X, XSet).
+lookup_key(G, Vertex) = Key :-
+    digraph.lookup_key(G, Vertex, Key).
 
-%---------------------------------------------------------------------------%
+lookup_key(G, Vertex, Key) :-
+    ( if digraph.search_key(G, Vertex, Key0) then
+        Key = Key0
+    else
+        unexpected($module, $pred, "search for key failed")
+    ).
+
+lookup_vertex(G, Key) = Vertex :-
+    digraph.lookup_vertex(G, Key, Vertex).
+
+lookup_vertex(G, Key, Vertex) :-
+    ( if bimap.search(G ^ vertex_map, Vertex0, Key) then
+        Vertex = Vertex0
+    else
+        unexpected($module, $pred, "search for vertex failed")
+    ).
 
 lookup_from(G, X) = Ys :-
     digraph.lookup_from(G, X, Ys).
@@ -634,8 +684,71 @@ lookup_key_set_to(G, digraph_key(YI), Xs) :-
         sparse_bitset.init(Xs)
     ).
 
+%---------------------%
+
+is_edge(G, digraph_key(XI), Y) :-
+    map.search(G ^ fwd_map, XI, YSet),
+    sparse_bitset.member(Y, YSet).
+
+is_edge_rev(G, X, digraph_key(YI)) :-
+    map.search(G ^ bwd_map, YI, XSet),
+    sparse_bitset.member(X, XSet).
+
+%---------------------%
+
+vertices(G) = Vs :-
+    digraph.vertices(G, Vs).
+
+vertices(G, Vs) :-
+    bimap.ordinates(G ^ vertex_map, VsList),
+    set.sorted_list_to_set(VsList, Vs).
+
+:- pred keys(digraph(T)::in, list(digraph_key(T))::out) is det.
+
+keys(G, Keys) :-
+    bimap.coordinates(G ^ vertex_map, Keys).
+
+%---------------------%
+
+is_dag(G) :-
+    % Traverses the digraph depth-first, keeping track of all ancestors.
+    % Fails if we encounter an ancestor during the traversal, otherwise
+    % succeeds.
+    %
+    % not is_dag(G) <=> we encounter an ancestor at some stage:
+    %
+    % (=>) By assumption there exists a cycle. Since all vertices are reached
+    % in the traversal, we reach all vertices in the cycle at some stage.
+    % Let x be the vertex in the cycle that is reached first, and let y be
+    % the vertex preceding x in the cycle. Since x was first, y has not
+    % been visited and must therefore be reached at some stage in the depth-
+    % first traversal beneath x. At this stage we encounter x as both a
+    % child and an ancestor.
+    %
+    % (<=) If we encounter an ancestor in any traversal, then we have a cycle.
+    %
+    digraph.keys(G, Keys),
+    list.foldl(digraph.is_dag_2(G, []), Keys, sparse_bitset.init, _).
+
+:- pred is_dag_2(digraph(T)::in, list(digraph_key(T))::in, digraph_key(T)::in,
+    digraph_key_set(T)::in, digraph_key_set(T)::out) is semidet.
+
+is_dag_2(G, Ancestors, X, !Visited) :-
+    ( if list.member(X, Ancestors) then
+        fail
+    else if sparse_bitset.insert_new(X, !Visited) then
+        digraph.lookup_key_set_from(G, X, SuccXs),
+        foldl(digraph.is_dag_2(G, [X | Ancestors]), SuccXs, !Visited)
+    else
+        % We have already visited X.
+        true
+    ).
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+%
+% Conversion between digraphs and assoc_lists.
+%
 
 to_assoc_list(G) = List :-
     digraph.to_assoc_list(G, List).
@@ -696,6 +809,9 @@ from_assoc_list(AL, G) :-
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+%
+% Depth-first sorting.
+%
 
 dfs(G, X) = Dfs :-
     digraph.dfs(G, X, Dfs).
@@ -749,20 +865,9 @@ dfs_2(G, X, !Visited, !DfsRev) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-vertices(G) = Vs :-
-    digraph.vertices(G, Vs).
-
-vertices(G, Vs) :-
-    bimap.ordinates(G ^ vertex_map, VsList),
-    set.sorted_list_to_set(VsList, Vs).
-
-:- pred keys(digraph(T)::in, list(digraph_key(T))::out) is det.
-
-keys(G, Keys) :-
-    bimap.coordinates(G ^ vertex_map, Keys).
-
-%---------------------------------------------------------------------------%
+%
+% Transforming digraphs.
+%
 
 inverse(G) = InvG :-
     digraph.inverse(G, InvG).
@@ -771,7 +876,7 @@ inverse(G, InvG) :-
     G = digraph(Next, VMap, Fwd, Bwd),
     InvG = digraph(Next, VMap, Bwd, Fwd).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 compose(G1, G2) = Comp :-
     digraph.compose(G1, G2, Comp).
@@ -831,42 +936,9 @@ add_to_key_set_map(Ys, X, !Map) :-
     key_set_map_union(XI, Ys, !Map).
 
 %---------------------------------------------------------------------------%
-
-is_dag(G) :-
-    % Traverses the digraph depth-first, keeping track of all ancestors.
-    % Fails if we encounter an ancestor during the traversal, otherwise
-    % succeeds.
-    %
-    % not is_dag(G) <=> we encounter an ancestor at some stage:
-    %
-    % (=>) By assumption there exists a cycle. Since all vertices are reached
-    % in the traversal, we reach all vertices in the cycle at some stage.
-    % Let x be the vertex in the cycle that is reached first, and let y be
-    % the vertex preceding x in the cycle. Since x was first, y has not
-    % been visited and must therefore be reached at some stage in the depth-
-    % first traversal beneath x. At this stage we encounter x as both a
-    % child and an ancestor.
-    %
-    % (<=) If we encounter an ancestor in any traversal, then we have a cycle.
-    %
-    digraph.keys(G, Keys),
-    list.foldl(digraph.is_dag_2(G, []), Keys, sparse_bitset.init, _).
-
-:- pred is_dag_2(digraph(T)::in, list(digraph_key(T))::in, digraph_key(T)::in,
-    digraph_key_set(T)::in, digraph_key_set(T)::out) is semidet.
-
-is_dag_2(G, Ancestors, X, !Visited) :-
-    ( if list.member(X, Ancestors) then
-        fail
-    else if sparse_bitset.insert_new(X, !Visited) then
-        digraph.lookup_key_set_from(G, X, SuccXs),
-        foldl(digraph.is_dag_2(G, [X | Ancestors]), SuccXs, !Visited)
-    else
-        % We have already visited X.
-        true
-    ).
-
-%---------------------------------------------------------------------------%
+%
+% Components of digraphs.
+%
 
 components(G) = Components :-
     digraph.components(G, Components).
@@ -908,7 +980,7 @@ reachable_from(G, Keys0, !Comp) :-
         true
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 cliques(G) = Cliques :-
     digraph.cliques(G, Cliques).
@@ -949,7 +1021,7 @@ cliques_2([X | Xs0], GInv, !.Visited, !Cliques) :-
     list.delete_elems(Xs0, CliqueList, Xs),
     digraph.cliques_2(Xs, GInv, !.Visited, !Cliques).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 reduced(G) = R :-
     digraph.reduced(G, R).
@@ -1004,37 +1076,34 @@ make_reduced_graph(CliqMap, [X - Y | Edges], !R) :-
     digraph.make_reduced_graph(CliqMap, Edges, !R).
 
 %---------------------------------------------------------------------------%
-
-tsort(G, FromToTsort) :-
-    return_vertices_in_from_to_order(G, FromToTsort).
+%
+% Topological sorts.
+%
 
 return_vertices_in_from_to_order(G, FromToTsort) :-
     digraph.dfsrev(G, Tsort0),
-    digraph.check_tsort(G, init, Tsort0),
+    digraph.check_from_to_order(G, init, Tsort0),
     FromToTsort = list.map(digraph.lookup_vertex(G), Tsort0).
 
 return_vertices_in_to_from_order(G, ToFromTsort) :-
     return_vertices_in_from_to_order(G, FromToTsort),
     list.reverse(FromToTsort, ToFromTsort).
 
-:- pred check_tsort(digraph(T)::in, digraph_key_set(T)::in,
+tsort(G, FromToTsort) :-
+    return_vertices_in_from_to_order(G, FromToTsort).
+
+:- pred check_from_to_order(digraph(T)::in, digraph_key_set(T)::in,
     list(digraph_key(T))::in) is semidet.
 
-check_tsort(_, _, []).
-check_tsort(G, Vis0, [X | Xs]) :-
+check_from_to_order(_, _, []).
+check_from_to_order(G, Vis0, [X | Xs]) :-
     sparse_bitset.insert(X, Vis0, Vis),
     digraph.lookup_key_set_from(G, X, SuccXs),
     sparse_bitset.intersect(Vis, SuccXs, BackPointers),
     sparse_bitset.is_empty(BackPointers),
-    digraph.check_tsort(G, Vis, Xs).
+    digraph.check_from_to_order(G, Vis, Xs).
 
-%---------------------------------------------------------------------------%
-
-atsort(G) = ATsort :-
-    ATsort = digraph.return_sccs_in_from_to_order(G).
-
-atsort(G, ATsort) :-
-    ATsort = digraph.return_sccs_in_from_to_order(G).
+%---------------------%
 
 return_sccs_in_from_to_order(G) = ATsort :-
     ATsort0 = digraph.return_sccs_in_to_from_order(G),
@@ -1050,13 +1119,19 @@ return_sccs_in_to_from_order(G) = ATsort :-
     digraph.dfsrev(G, DfsRev),
     digraph.inverse(G, GInv),
     sparse_bitset.init(Vis),
-    digraph.atsort_loop(DfsRev, GInv, Vis, [], ATsort).
+    digraph.to_from_order_loop(DfsRev, GInv, Vis, [], ATsort).
 
-:- pred atsort_loop(list(digraph_key(T))::in, digraph(T)::in,
+atsort(G) = ATsort :-
+    ATsort = digraph.return_sccs_in_from_to_order(G).
+
+atsort(G, ATsort) :-
+    ATsort = digraph.return_sccs_in_from_to_order(G).
+
+:- pred to_from_order_loop(list(digraph_key(T))::in, digraph(T)::in,
     digraph_key_set(T)::in, list(set(T))::in, list(set(T))::out) is det.
 
-atsort_loop([], _, _, !ATsort).
-atsort_loop([X | Xs], GInv, !.Vis, !ATsort) :-
+to_from_order_loop([], _, _, !ATsort).
+to_from_order_loop([X | Xs], GInv, !.Vis, !ATsort) :-
     ( if sparse_bitset.contains(!.Vis, X) then
         true
     else
@@ -1065,36 +1140,40 @@ atsort_loop([X | Xs], GInv, !.Vis, !ATsort) :-
         set.list_to_set(CliqList, Cliq),
         !:ATsort = [Cliq | !.ATsort]
     ),
-    digraph.atsort_loop(Xs, GInv, !.Vis, !ATsort).
+    digraph.to_from_order_loop(Xs, GInv, !.Vis, !ATsort).
 
 %---------------------------------------------------------------------------%
-
-sc(G) = symmetric_closure(G).
-
-sc(G, Sc) :-
-    Sc = symmetric_closure(G).
+%
+% Closures.
+%
 
 symmetric_closure(G) = Sc :-
     digraph.inverse(G, GInv),
     digraph.to_key_assoc_list(GInv, GInvList),
     digraph.add_assoc_list(GInvList, G, Sc).
 
-%---------------------------------------------------------------------------%
+sc(G) = symmetric_closure(G).
+
+sc(G, Sc) :-
+    Sc = symmetric_closure(G).
+
+%---------------------%
+
+transitive_closure(G) = Tc :-
+    basic_tc(G, Tc).
 
 tc(G) = transitive_closure(G).
 
 tc(G, Tc) :-
     Tc = transitive_closure(G).
 
-transitive_closure(G) = Tc :-
-    basic_tc(G, Tc).
-
-%---------------------------------------------------------------------------%
+%---------------------%
 
 % This implements the Basic_TC (BTC) algorithm described by Yannis Ioannidis
 % et al. in "Transitive Closure Algorithms Based on Graph Traversal"
 % ACM Transactions on Database Systems, Vol. 18, No. 3, Sept. 1993, pp. 512-576
-% <https://www.madgik.di.uoa.gr/publications/transitive-closure-algorithms-based-graph-traversal>
+% <https://www.madgik.di.uoa.gr/publications/
+%   transitive-closure-algorithms-based-graph-traversal>
 %
 % It is also helpful to read Esko Nuutila's doctoral thesis
 % "Efficient Transitive Closure Computation in Large Digraphs"
@@ -1152,7 +1231,7 @@ basic_tc(G, Tc) :-
     % Loop over components in reverse topological order
     % (descendants before parent).
     G = digraph(NextKey, VMap, FwdMap0, _BwdMap0),
-    list.foldl2(btc_process_component(FwdMap0), RevComps,
+    list.foldl2(basic_tc_process_component(FwdMap0), RevComps,
         map.init, SuccMap, map.init, PredMap),
     Tc = digraph(NextKey, VMap, SuccMap, PredMap).
 
@@ -1292,11 +1371,11 @@ pop_component(Root, NonRoots, !Stack) :-
 
 %---------------------%
 
-:- pred btc_process_component(key_set_map(T)::in, component(T)::in,
+:- pred basic_tc_process_component(key_set_map(T)::in, component(T)::in,
     key_set_map(T)::in, key_set_map(T)::out,
     key_set_map(T)::in, key_set_map(T)::out) is det.
 
-btc_process_component(OrigEdges, Comp, !SuccMap, !PredMap) :-
+basic_tc_process_component(OrigEdges, Comp, !SuccMap, !PredMap) :-
     % V is the root of a component that also contains Ws.
     Comp = component(V, Ws),
 
@@ -1374,15 +1453,15 @@ add_predecessor(Y, X, !Map) :-
     X = digraph_key(XI),
     key_set_map_add(XI, Y, !Map).
 
-%---------------------------------------------------------------------------%
+%---------------------%
+
+reflexive_transitive_closure(G) =
+    reflexive_closure(transitive_closure(G)).
 
 rtc(G) = reflexive_transitive_closure(G).
 
 rtc(G, Rtc) :-
     Rtc = reflexive_transitive_closure(G).
-
-reflexive_transitive_closure(G) =
-    reflexive_closure(transitive_closure(G)).
 
 :- func reflexive_closure(digraph(T)) = digraph(T).
 
@@ -1397,6 +1476,9 @@ add_reflexive(X, !G) :-
     add_edge(X, X, !G).
 
 %---------------------------------------------------------------------------%
+%
+% Traversals.
+%
 
 traverse(Graph, ProcessVertex, ProcessEdge, !Acc) :-
     VertexMap = Graph ^ vertex_map,
@@ -1428,6 +1510,10 @@ traverse_child(Graph, ProcessEdge, Parent, ChildKey, !Acc) :-
     ProcessEdge(Parent, Child, !Acc).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% For debugging.
+%
 
 slow_tc(G, TC) :-
     % First start with all the vertices in G, but no edges.
