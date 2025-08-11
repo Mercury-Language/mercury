@@ -38,7 +38,7 @@ mmc.1: ../compiler/handle_options.m ../compiler/options.m
 mprof.1: ../profiler/mercury_profile.m ../profiler/options.m
 
 # This variable specifies the (top-level) TexInfo files.
-
+# NOTE: any changes in these names will need to be reflected in the website.
 TEXINFO_FILES = \
 	mercury_user_guide \
 	mercury_reference_manual \
@@ -211,9 +211,12 @@ ug_invocation.texi_date: $(UG_INVOCATION_DEP)
 # Currently `mmake all' does not build the PostScript, PDF or plain-text
 # versions of the documentation. Nor does it build the formatted versions
 # of the man pages. But it might make sense to add them.
+# XXX As of 2025 aug 11, making the pdfs by default breaks the construction
+# of the source distribution, because testing.mercurylang.org is missing 
+# the necessary tools.
 .PHONY: all
-all: $(INFOPAGES) $(DVI) $(HTML) pdf manpages $(MDB_DOC)
-# all: ps text formatted_manpages
+all: $(INFOPAGES) $(DVI) $(HTML) manpages $(MDB_DOC)
+# all: ps pdf text formatted_manpages
 
 #-----------------------------------------------------------------------------#
 
