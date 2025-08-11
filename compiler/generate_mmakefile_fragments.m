@@ -397,7 +397,7 @@ generate_d_mmakefile(Globals, Baggage, ParseTreeModuleSrc,
         MmakeRulesSubDirShorthand, !Cache),
 
     have_source_file_map(HaveMap, !IO),
-    construct_any_needed_pattern_rules(HaveMap,
+    construct_any_rules_for_nondefault_file_names(HaveMap,
         ModuleName, SourceFileTopModuleName, SourceFileName,
         Date0FileName, DateFileName, Date3FileName,
         OptDateFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
@@ -1035,27 +1035,17 @@ construct_subdir_short_rules(Globals, ModuleName,
 
 %---------------------%
 
-:- pred construct_any_needed_pattern_rules(maybe_found::in,
+:- pred construct_any_rules_for_nondefault_file_names(maybe_found::in,
     module_name::in, module_name::in, string::in,
     string::in, string::in, string::in,
     string::in, string::in, string::in, string::in,
     list(mmake_entry)::out) is det.
 
-construct_any_needed_pattern_rules(HaveMap,
+construct_any_rules_for_nondefault_file_names(HaveMap,
         ModuleName, SourceFileTopModuleName, SourceFileName,
         Date0FileName, DateFileName, Date3FileName,
         OptDateFileName, TransOptDateFileName, CDateFileName, JavaDateFileName,
         MmakeRulesPatterns) :-
-    % If we can pass the module name rather than the file name, then do so.
-    % `--smart-recompilation' doesn't work if the file name is passed
-    % and the module name doesn't match the file name.
-    (
-        HaveMap = found,
-        module_name_to_file_name_stem(SourceFileTopModuleName, ModuleArg)
-    ;
-        HaveMap = not_found,
-        ModuleArg = SourceFileName
-    ),
     ( if SourceFileName = default_source_file_name(ModuleName) then
         MmakeRulesPatterns = []
     else
@@ -1072,6 +1062,18 @@ construct_any_needed_pattern_rules(HaveMap,
         % Any changes here will require corresponding changes to
         % scripts/Mmake.rules. See that file for documentation on these rules.
 
+        % If we can pass the module name rather than the file name, then do so.
+        % smart recompilation does not work if the file name is passed
+        % and the module name does not match the file name.
+        % XXX And now, neither does the rest of the compiler, and in any case,
+        % smart recompilation is based on mmc --make, NOT on mmake.
+        (
+            HaveMap = found,
+            module_name_to_file_name_stem(SourceFileTopModuleName, ModuleArg)
+        ;
+            HaveMap = not_found,
+            ModuleArg = SourceFileName
+        ),
         MmakeRulesPatterns = [
             mmake_simple_rule("date0_on_src",
                 mmake_rule_is_not_phony,
@@ -1550,11 +1552,11 @@ generate_dv_file_define_java_vars(ModuleMakeVarName, JavaFragments) :-
         string.format(
             "$(wildcard $(%s.mods:%%=$(classes_subdir)%%\\$$*.class))",
             [s(ModuleMakeVarName)])]),
-    MmakeVarClassesNonJava = mmake_var_defn(ModuleMakeVarName ++ ".classes",
-        ""),
+    % In C grades, there are no .class files.
+    MmakeVarClassesC = mmake_var_defn(ModuleMakeVarName ++ ".classes", ""),
     MmakeFragmentVarClasses = mmf_conditional_entry(
         mmake_cond_grade_has_component("java"),
-        MmakeVarClassesJava, MmakeVarClassesNonJava),
+        MmakeVarClassesJava, MmakeVarClassesC),
 
     JavaFragments =
         [mmake_entry_to_fragment(MmakeVarAllJavas),
@@ -1785,11 +1787,11 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
 
     ModuleMakeVarNameOs = "$(" ++ ModuleMakeVarName ++ ".all_os)",
     CMainRuleAction1Lines = make_multiline_action([
-        "$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- $(ALL_LDFLAGS)",
-        "$(EXEFILE_OPT)" ++ ExeFileName ++ "$(EXT_FOR_EXE)",
-        InitObjFileName ++ " " ++ ModuleMakeVarNameOs,
-        All_MLObjs ++ " $(ALL_MLLIBS)"
-    ]),
+            "$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- $(ALL_LDFLAGS)",
+            "$(EXEFILE_OPT)" ++ ExeFileName ++ "$(EXT_FOR_EXE)",
+            InitObjFileName ++ " " ++ ModuleMakeVarNameOs,
+            All_MLObjs ++ " $(ALL_MLLIBS)"
+        ]),
     MmakeRuleExecutableJava = mmake_simple_rule("executable_java",
         mmake_rule_is_not_phony,
         ExeFileName,
@@ -1819,49 +1821,52 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
     LibTargetName = "lib" ++ sym_name_to_string(ModuleName),
     ModuleMakeVarNameInts = "$(" ++ ModuleMakeVarName ++ ".ints)",
     ModuleMakeVarNameInt3s = "$(" ++ ModuleMakeVarName ++ ".int3s)",
-    IntsOptsInitVars = [ModuleMakeVarNameInts, ModuleMakeVarNameInt3s] ++
-        MaybeOptsVar ++ MaybeTransOptsVar ++ [InitFileName],
+    IntsOptsVars = [ModuleMakeVarNameInts, ModuleMakeVarNameInt3s] ++
+        MaybeOptsVar ++ MaybeTransOptsVar,
     MmakeRuleLibTargetJava = mmake_simple_rule("lib_target_java",
         mmake_rule_is_phony,
         LibTargetName,
-        [JarFileName | IntsOptsInitVars],
+        [JarFileName | IntsOptsVars],
         []),
-    MmakeRuleLibTargetNonJava = mmake_simple_rule("lib_target_non_java",
+    MmakeRuleLibTargetC = mmake_simple_rule("lib_target_c",
         mmake_rule_is_phony,
         LibTargetName,
-        [StaticLibFileName, SharedLibFileName | IntsOptsInitVars],
+        [StaticLibFileName, SharedLibFileName, InitFileName | IntsOptsVars],
         []),
     MmakeFragmentLibTarget = mmf_conditional_entry(
         mmake_cond_grade_has_component("java"),
-        MmakeRuleLibTargetJava, MmakeRuleLibTargetNonJava),
+        MmakeRuleLibTargetJava, MmakeRuleLibTargetC),
 
     ModuleMakeVarNamePicOs = "$(" ++ ModuleMakeVarName ++ ".all_pic_os)",
-    SharedLibAction1Line1 =
-        "$(ML) --make-shared-lib $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) " ++
-        "-- " ++ InstallNameOpt ++ " $(ALL_LD_LIBFLAGS) " ++
-        "-o " ++ SharedLibFileName ++ " \\",
-    SharedLibAction1Line2 = "\t" ++ ModuleMakeVarNamePicOs ++ " \\",
-    SharedLibAction1Line3 = "\t" ++ All_MLPicObjs ++ " $(ALL_MLLIBS)",
+    SharedLibAction1 = make_multiline_action([
+            "$(ML) --make-shared-lib $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- ",
+            InstallNameOpt ++ " $(ALL_LD_LIBFLAGS)",
+            "-o " ++ SharedLibFileName,
+            ModuleMakeVarNamePicOs,
+            All_MLPicObjs,
+            "$(ALL_MLLIBS)"
+        ]),
     MmakeRuleSharedLib = mmake_simple_rule("shared_lib",
         mmake_rule_is_not_phony,
         SharedLibFileName,
         [ModuleMakeVarNamePicOs, All_MLPicObjs, All_MLLibsDep],
-        [SharedLibAction1Line1, SharedLibAction1Line2, SharedLibAction1Line3]),
+        SharedLibAction1),
     MmakeFragmentSharedLib = mmf_conditional_fragments(
         mmake_cond_strings_not_equal("$(EXT_FOR_SHARED_LIB)", "$(A)"),
         [mmf_entry(MmakeRuleSharedLib)], []),
 
     LibAction1 = "rm -f " ++ StaticLibFileName,
-    LibAction2Line1 =
-        "$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)" ++ StaticLibFileName ++
-            " " ++ ModuleMakeVarNameOs ++ " \\",
-    LibAction2Line2 = "\t" ++ All_MLObjs,
+    LibAction2 = make_multiline_action([
+            "$(AR) $(ALL_ARFLAGS) $(AR_LIBFILE_OPT)" ++ StaticLibFileName,
+            ModuleMakeVarNameOs,
+            All_MLObjs
+        ]),
     LibAction3 = "$(RANLIB) $(ALL_RANLIBFLAGS) " ++ StaticLibFileName,
     MmakeRuleLib = mmake_simple_rule("lib",
         mmake_rule_is_not_phony,
         StaticLibFileName,
         [ModuleMakeVarNameOs, All_MLObjs],
-        [LibAction1, LibAction2Line1, LibAction2Line2, LibAction3]),
+        [LibAction1] ++ LibAction2 ++ [LibAction3]),
 
     list_class_files_for_jar_mmake(Globals, ModuleMakeVarNameClasses,
         ListClassFiles),
@@ -1922,16 +1927,17 @@ generate_dep_file_init_targets(Globals, ModuleName, ModuleMakeVarName,
 
     TmpInitCFileName = InitCFileName ++ ".tmp",
     ModuleMakeVarNameInitCs = "$(" ++ ModuleMakeVarName ++ ".init_cs)",
-    InitCAction1 =
-        "@$(C2INIT) $(ALL_GRADEFLAGS) $(ALL_C2INITFLAGS) " ++
-            "--init-c-file " ++ TmpInitCFileName ++ " " ++
-            ModuleMakeVarNameInitCs ++ " $(ALL_C2INITARGS)",
+    InitCAction1 = make_multiline_action([
+            "@$(C2INIT) $(ALL_GRADEFLAGS) $(ALL_C2INITFLAGS)",
+            "--init-c-file " ++ TmpInitCFileName,
+            ModuleMakeVarNameInitCs ++ " $(ALL_C2INITARGS)"
+        ]),
     InitCAction2 = "@mercury_update_interface " ++ InitCFileName,
     MmakeRuleInitCFile = mmake_simple_rule("init_c_file",
         mmake_rule_is_not_phony,
         InitCFileName,
         [ForceC2InitTarget, ModuleMakeVarNameCs],
-        [InitCAction1, InitCAction2]),
+        InitCAction1 ++ [InitCAction2]),
 
     add_mmake_entries(
         [MmakeRuleInitFile, MmakeRuleForceInitCFile, MmakeRuleInitCFile],
