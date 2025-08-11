@@ -1,11 +1,11 @@
 \input texinfo
-@setfilename mercury_trans_guide.info
+@setfilename mercury_transition_guide.info
 @settitle The Prolog to Mercury transition guide
 @c vim: ts=4 sw=4 expandtab ft=texinfo
 
 @dircategory The Mercury Programming Language
 @direntry
-* Mercury Transition Guide: (mercury_trans_guide). The Prolog to Mercury Transition Guide.
+* Mercury Transition Guide: (mercury_transition_guide). The Prolog to Mercury Transition Guide.
 @end direntry
 
 @c @smallbook

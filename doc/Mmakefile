@@ -38,21 +38,20 @@ mmc.1: ../compiler/handle_options.m ../compiler/options.m
 mprof.1: ../profiler/mercury_profile.m ../profiler/options.m
 
 # This variable specifies the (top-level) TexInfo files.
-# The mapping of these names to `.info' file names is not regular,
-# so we also need to specify the names of the `.info' files.
 
 TEXINFO_FILES = \
-	user_guide \
-	reference_manual \
-	library \
-	faq \
-	transition_guide
-TEXINFO_INFO_FILES = \
-	mercury_ref.info \
-	mercury_user_guide.info \
-	mercury_library.info \
-	mercury_faq.info \
-	mercury_trans_guide.info
+	mercury_user_guide \
+	mercury_reference_manual \
+	mercury_library_manual \
+	mercury_faq \
+	mercury_transition_guide
+# The old names of the TEXINFO_INFO_FILES:
+# 	mercury_user_guide.info
+# 	mercury_ref.info
+# 	mercury_library.info
+# 	mercury_faq.info
+# 	mercury_trans_guide.info
+TEXINFO_INFO_FILES = $(patsubst %,%.info,$(TEXINFO_FILES))
 
 # The following variables specify which programs should be used to
 # to format the documentation.
@@ -141,11 +140,11 @@ mercury.html: mercury.html.in ../VERSION
 mercury.info: mercury.info.in ../VERSION
 	$(SED_CMD)
 
-# user_guide.texi_pp @includes ug_invocation.texi, so all targets
-# that want to process user_guide.texi must make user_guide.texi first.
-# user_guide.texi_pp is the only such *direct* target; all the others
-# go through it.
-user_guide.texi_pp: ug_invocation.texi
+# mercury_user_guide.texi_pp @includes ug_invocation.texi, so all targets
+# that want to process mercury_user_guide.texi must make ug_invocation.texi
+# first. mercury_user_guide.texi_pp is the only such *direct* target;
+# all the others go through it.
+mercury_user_guide.texi_pp: ug_invocation.texi
 
 # The rule for ug_invocation.texi_date compares any existing
 # file ug_invocation.texi against its "new" intended contents, and
@@ -207,18 +206,14 @@ ug_invocation.texi_date: $(UG_INVOCATION_DEP)
 	fi
 	@date > ug_invocation.texi_date
 
-.PHONY: new_opts
-new_opts: user_guide.texi update_opts ../compiler/mercury_compile
-	./update_opts
-
 #-----------------------------------------------------------------------------#
 
 # Currently `mmake all' does not build the PostScript, PDF or plain-text
 # versions of the documentation. Nor does it build the formatted versions
 # of the man pages. But it might make sense to add them.
 .PHONY: all
-all: $(INFOPAGES) $(DVI) $(HTML) manpages $(MDB_DOC)
-#all: ps pdf text formatted_manpages
+all: $(INFOPAGES) $(DVI) $(HTML) pdf manpages $(MDB_DOC)
+# all: ps text formatted_manpages
 
 #-----------------------------------------------------------------------------#
 
@@ -279,37 +274,22 @@ help: $(MANPAGE_PROGS:%=%.help)
 
 #-----------------------------------------------------------------------------#
 
-mercury_user_guide.info: user_guide.texi_pp
-	"$(MAKEINFO)" --no-split $<
-mercury_ref.info: reference_manual.texi_pp
-	"$(MAKEINFO)" --no-split $<
-mercury_trans_guide.info: transition_guide.texi_pp
-	"$(MAKEINFO)" --no-split $<
-mercury_faq.info: faq.texi_pp
-	"$(MAKEINFO)" --no-split $<
-mercury_library.info: library.texi_pp
+%.info: %.texi_pp
 	"$(MAKEINFO)" --no-split $<
 
-mercury_user_guide.html: user_guide.texi_pp
-	$(TEXI2HTML) $<
-mercury_ref.html: reference_manual.texi_pp
-	$(TEXI2HTML) $<
-mercury_trans_guide.html: transition_guide.texi_pp
-	$(TEXI2HTML) $<
-mercury_faq.html: faq.texi_pp
-	$(TEXI2HTML) $<
-mercury_library.html: library.texi_pp
+%.html: %.texi_pp
 	$(TEXI2HTML) $<
 
-mercury_user_guide/index.html: user_guide.texi_pp
+# XXX Why is one, and only one, of these files split by chapter?
+mercury_user_guide/index.html: mercury_user_guide.texi_pp
 	$(TEXI2HTML_SPLIT) $<
-mercury_ref/index.html: reference_manual.texi_pp
+mercury_reference_manual/index.html: mercury_reference_manual.texi_pp
 	$(TEXI2HTML_SPLIT) --split=chapter --no-headers $<
-mercury_trans_guide/index.html: transition_guide.texi_pp
+mercury_transition_guide/index.html: mercury_transition_guide.texi_pp
 	$(TEXI2HTML_SPLIT) $<
-mercury_faq/index.html: faq.texi_pp
+mercury_faq/index.html: mercury_faq.texi_pp
 	$(TEXI2HTML_SPLIT) $<
-mercury_library/index.html: library.texi_pp
+mercury_library_manual/index.html: mercury_library_manual.texi_pp
 	$(TEXI2HTML_SPLIT) $<
 
 #-----------------------------------------------------------------------------#
@@ -341,18 +321,18 @@ mdb_command_test.inp: generate_mdb_command_test mdb_doc
 
 # The following rules automatically build the library documentation
 # by extracting the module interfaces from the library source code.
-# Note that some modules are just implementation details of the library,
-# so they are not documented.
+# Note that some modules are just implementation details of the Mercury
+# system, so they are not documented.
 
-library-menu.texi_pp: ../VERSION $(LIBRARY_DIR)/*.m
+mercury_library_menu.texi_pp: ../VERSION $(LIBRARY_DIR)/*.m
 	{ 								\
 	echo "";							\
 	for filename in `cat $(LIBRARY_DIR)/MODULES_DOC`; do		\
 		echo "* `basename $$filename .m`::";			\
 	done;								\
-	} > library-menu.texi_pp
+	} > mercury_library_menu.texi_pp
 
-library-chapters.texi_pp: ../VERSION $(LIBRARY_DIR)/*.m
+mercury_library_chapters.texi_pp: ../VERSION $(LIBRARY_DIR)/*.m
 	for filename in `cat $(LIBRARY_DIR)/MODULES_DOC`; do		\
 		file="`basename $$filename .m`"; 			\
 		echo "@node $$file"; 					\
@@ -369,12 +349,14 @@ library-chapters.texi_pp: ../VERSION $(LIBRARY_DIR)/*.m
 			$(LIBRARY_DIR)/"$$filename";			\
 		echo "@end example"; 					\
 		echo ""; 						\
-	done > library-chapters.texi_pp
+	done > mercury_library_chapters.texi_pp
 
-library.dvi_log library_toc.html library_1.html mercury_library.info \
-		mercury_library.html mercury_library/index.html \
-		library.dvi: \
-	library-menu.texi_pp library-chapters.texi_pp
+mercury_library_manual.dvi_log \
+		mercury_library_manual.info \
+		mercury_library_manual.html \
+		mercury_library_manual/index.html \
+		mercury_library_manual.dvi: \
+	mercury_library_menu.texi_pp mercury_library_chapters.texi_pp
 
 #-----------------------------------------------------------------------------#
 
@@ -395,7 +377,7 @@ doc.ps.tar.gz: ps
 # Currently `mmake all' does not build the PostScript or plain-text versions
 # of the documentation. If they are added they should be installed here.
 .PHONY: install
-install: install_info install_html install_dvi install_manpages \
+install: install_info install_html install_dvi install_pdf install_manpages \
 	install_mdb_doc
 	# install_text install_ps
 
@@ -422,7 +404,7 @@ install_info: $(INFOPAGES) install_dirs
 .PHONY: warn_no_install_info
 warn_no_install_info:
 	# Warning: Unable to install .info files.
-	# This is probably due to a missing `install-info'
+	# This is probably due to a missing `install-info'.
 
 .PHONY: install_html
 install_html: $(HTML) install_dirs
@@ -456,6 +438,10 @@ install_mdb_doc: $(MDB_DOC) install_dirs
 
 # The uninstall rule here only removes the info files; the others
 # are removed by the top-level uninstall rule.
+#
+# XXX What is the reason for this split, or indeed for any other split?
+#
+# XXX We also remove man pages here.
 .PHONY: uninstall
 uninstall:
 	-cd $(INSTALL_INFO_DIR); rm -f mercury*.info*
@@ -468,7 +454,7 @@ uninstall:
 # INSTALL_WEBPAGE_DIR).
 
 .PHONY: install_webpage
-install_webpage: library-chapters.texi_pp split_html ps pdf
+install_webpage: mercury_library_chapters.texi_pp split_html ps pdf
 	-test -d $(INSTALL_WEBPAGE_DIR) || mkdir -p $(INSTALL_WEBPAGE_DIR)
 	( \
 		. ../VERSION; \
@@ -502,19 +488,21 @@ realclean_local: distclean
 clean_texi:
 	rm -f *.aux *.cp *.cps *.fn *.ky *.log *.pg *.toc *.tp *.vr
 	rm -f *.dvi *.dvi_log *.pdf *.pdf_log *.ps *.ps_log *.text
-	rm -f library*.html user_guide*.html reference_manual*.html
-	rm -f faq*.html transition_guide*.html
+	rm -f library*.html mercury_library_manual*.html
+	rm -f mercury_user_guide*.html mercury_reference_manual*.html
+	rm -f mercuy_faq*.html mercuy_transition_guide*.html
 	rm -f mercury.html mercury.info
 	rm -f mercury_*.info*
-	rm -f mercury_faq.html mercury_library.html mercury_ref.html \
-		mercury_trans_guide.html mercury_user_guide.html
+	rm -f mercury_faq.html mercury_library_manual.html \
+		mercury_reference_manual.html \
+		mercury_transition_guide.html mercury_user_guide.html
 	rm -f ug_invocation.texi_date ug_invocation.texi
 	rm -rf $(TEXINFO_INFO_FILES:%.info=%)
 
 .PHONY: clean_text_files
 clean_text_files:
 	rm -f mdb_command_list mdb_command_test.inp mdb_doc
-	rm -f library-menu.texi library-chapters.texi *.texi_pp
+	rm -f mercury_library_menu.texi mercury_library_chapters.texi *.texi_pp
 
 .PHONY: clean_manpages
 clean_manpages:

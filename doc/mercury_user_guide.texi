@@ -1178,7 +1178,7 @@ the update to the constraint store must be undone.
 This is why in the right grades, Mercury can support a trail.
 @c XXX CHECKME
 (@pxref{Trailing, , ,
-mercury_ref,The Mercury language Reference Manual}).
+mercury_reference_manual,The Mercury language Reference Manual}).
 The trail is a stack-like data structure
 that consists of a sequence of entries,
 each of which effectively describes how to undo an update to a data structure.
@@ -1242,7 +1242,7 @@ most of which must be explicit enabled
 for each procedure that are intended to apply to
 @c XXX CHECKME
 (@pxref{Tabled evaluation, , ,
-mercury_ref,The Mercury language Reference Manual}).
+mercury_reference_manual,The Mercury language Reference Manual}).
 (Recall that a @dfn{procedure} is one mode of a predicate or function.)
 Tabling operates by recording (in a table, hence the name),
 for each vector of input values to a procedure,

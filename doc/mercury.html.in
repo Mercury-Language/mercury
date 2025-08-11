@@ -9,10 +9,10 @@
 <h1>Mercury documentation, version <VERSION></h1>
 <p>
 <ul>
-<li><a href="mercury_ref.html">Mercury Language Reference Manual</a>
+<li><a href="mercury_reference_manual.html">Mercury Language Reference Manual</a>
 <li><a href="mercury_user_guide.html">Mercury User's Guide</a>
-<li><a href="mercury_library.html">Mercury Library Reference Manual</a>
-<li><a href="mercury_trans_guide.html">Prolog to Mercury Transition Guide</a>
+<li><a href="mercury_library_manual.html">Mercury Library Reference Manual</a>
+<li><a href="mercury_transition_guide.html">Prolog to Mercury Transition Guide</a>
 <li><a href="mercury_faq.html">Frequently Asked Questions</a>
 </ul>
 <p>
