@@ -1,12 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019, 2020, 2022 The Mercury team.
+% Copyright (C) 2019-2020, 2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: random.sfc32.m
+% File: random.sfc32.m.
 % Main author: Mark Brown
+% Stability: high.
 %
 % 32-bit Small Fast Counting generator, by Chris Doty-Humphrey.
 %

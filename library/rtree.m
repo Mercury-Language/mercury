@@ -8,7 +8,7 @@
 %
 % File: rtree.m.
 % Main author: gjd.
-% Stability: low.
+% Stability: high.
 %
 % This module provides a region tree (R-tree) ADT. A region tree associates
 % values with regions in some space, e.g. rectangles in the 2D plane, or

@@ -8,6 +8,7 @@
 %
 % File: string.builder.m.
 % Main author: maclarty.
+% Stability: high.
 %
 % This module implements a string builder stream. It can be used
 % to build up a string using string or character writers.

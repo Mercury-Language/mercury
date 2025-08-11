@@ -1,11 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2018-2020 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2020, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: string.parse_runtime.m.
+% Stability: high.
 %
 % This module parses format strings for the runtime system.
 % The module string.parse_compiler.m does the same job for the compiler.

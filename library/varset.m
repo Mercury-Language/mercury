@@ -8,7 +8,7 @@
 %
 % File: varset.m.
 % Main author: fjh.
-% Stability: low.
+% Stability: high.
 %
 % This file provides facilities for manipulating collections of variables,
 % through the 'varset' abstract data type. These variables are object-level

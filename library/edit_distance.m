@@ -6,7 +6,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: edit_distance.m.
-% Stability: medium.
+% Stability: high.
 %
 % This module computes the edit distance between two sequences of items.
 % Its job is both similar to, and distinct from, the job of edit_seq.m.

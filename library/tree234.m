@@ -8,7 +8,7 @@
 %
 % File: tree234.m.
 % Main author: conway.
-% Stability: medium.
+% Stability: high.
 %
 % This module implements a map (dictionary) using 2-3-4 trees - see
 % map.m for further documentation.

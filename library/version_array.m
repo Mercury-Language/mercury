@@ -8,7 +8,7 @@
 %
 % File: version_array.m.
 % Author: Ralph Becket <rafe@cs.mu.oz.au>.
-% Stability: low.
+% Stability: medium.
 %
 % Version types are efficient pure implementations of typically imperative
 % structures, subject to the following caveat: efficient access is only

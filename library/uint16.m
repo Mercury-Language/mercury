@@ -7,7 +7,7 @@
 %
 % File: uint16.m
 % Main author: juliensf
-% Stability: low.
+% Stability: high.
 %
 % Predicates and functions for dealing with unsigned 16-bit integer numbers.
 %

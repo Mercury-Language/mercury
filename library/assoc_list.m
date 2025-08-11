@@ -8,7 +8,7 @@
 %
 % File: assoc_list.m.
 % Main authors: fjh, zs.
-% Stability: medium to high.
+% Stability: high.
 %
 % This file defines the type assoc_list(K, V), which holds a list of
 % key-value pairs, and some predicates which operate on assoc_lists.

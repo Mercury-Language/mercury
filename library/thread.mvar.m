@@ -2,13 +2,13 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2003, 2006-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014, 2016, 2018, 2020, 2022 The Mercury Team.
+% Copyright (C) 2014, 2016, 2018, 2020, 2022, 2025 The Mercury Team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: thread.mvar.m.
 % Main author: petdr, fjh.
-% Stability: low.
+% Stability: medium.
 %
 % This module provides a Mercury version of Haskell mutable variables.  A
 % mutable variable (mvar) is a reference to a mutable location which can

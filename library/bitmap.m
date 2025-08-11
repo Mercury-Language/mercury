@@ -8,7 +8,7 @@
 %
 % File: bitmap.m.
 % Main author: rafe, stayl.
-% Stability: low.
+% Stability: medium.
 %
 % Efficient bitmap implementation.
 %

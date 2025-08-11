@@ -7,7 +7,7 @@
 %
 % File: uint8.m
 % Main author: juliensf
-% Stability: low.
+% Stability: high.
 %
 % Predicates and functions for dealing with unsigned 8-bit integer numbers.
 %

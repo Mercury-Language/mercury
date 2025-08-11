@@ -2,13 +2,13 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1999,2001-2007 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018, 2021-2022 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2021-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: gc.m.
 % Author: fjh.
-% Stability: medium.
+% Stability: high.
 %
 % This module defines some procedures for controlling the actions of the
 % garbage collector.

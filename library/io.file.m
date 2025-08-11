@@ -7,6 +7,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: io.file.m.
+% Stability: high.
 %
 % This module provides operations on files other than input/output.
 %

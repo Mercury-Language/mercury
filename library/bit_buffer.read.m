@@ -8,7 +8,7 @@
 %
 % File: bit_buffer.read.m.
 % Main author: stayl.
-% Stability: low.
+% Stability: medium.
 %
 % A bit buffer provides an interface between bit-oriented input requests
 % and byte-oriented streams, getting a large chunk of bits with one call

@@ -8,7 +8,7 @@
 %
 % File: term_subst.m.
 % Main author: fjh.
-% Stability: medium.
+% Stability: high.
 %
 % This file provides operations that perform substitutions of various kinds
 % on terms.

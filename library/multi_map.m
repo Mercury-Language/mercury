@@ -2,13 +2,13 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995, 1997, 2000, 2002-2006, 2011 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: multi_map.m.
 % Main author: dylan.
-% Stability: medium.
+% Stability: high.
 %
 % This file provides the 'multi_map' ADT.
 % A map (also known as a dictionary or an associative array) is a collection

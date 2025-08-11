@@ -8,7 +8,7 @@
 %
 % File: rtti_implementation.m.
 % Main author: trd, petdr, wangp.
-% Stability: low.
+% Stability: medium.
 %
 % This file is intended to provide portable RTTI functionality by implementing
 % most of Mercury's RTTI functionality in Mercury.

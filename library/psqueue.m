@@ -7,7 +7,7 @@
 %
 % File: psqueue.m.
 % Main author: Matthias Güdemann.
-% Stability: low.
+% Stability: high.
 %
 % This module implements priority search queues. A priority search queue,
 % or psqueue for short, combines in a single ADT the functionality of both

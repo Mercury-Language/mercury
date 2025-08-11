@@ -2,12 +2,13 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007, 2011 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: stream.string_writer.m.
-% Authors: trd, fjh, stayl
+% Authors: trd, fjh, stayl.
+% Stability: high.
 %
 % Predicates to write to streams that accept strings.
 %

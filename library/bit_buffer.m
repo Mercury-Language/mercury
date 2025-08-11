@@ -7,7 +7,7 @@
 %---------------------------------------------------------------------------%
 % File: bit_buffer.m.
 % Main author: stayl.
-% Stability: low.
+% Stability: medium.
 %
 % A bit buffer provides an interface between bit-oriented I/O requests
 % and byte-oriented streams.  The useful part of the interface is defined

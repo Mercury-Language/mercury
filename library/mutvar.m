@@ -2,11 +2,12 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2010 The University of Melbourne.
-% Copyright (C) 2013-2016, 2018 The Mercury team.
+% Copyright (C) 2013-2016, 2018, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: mutvar.m.
+% Stability: high.
 %
 % This module is used in the implementation of all-solutions predicates
 % (solutions.m) and stores (store.m).  This module is a private part of the

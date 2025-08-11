@@ -8,7 +8,7 @@
 %
 % File: term_io.m.
 % Main author: fjh.
-% Stability: medium to high.
+% Stability: high.
 %
 % This module provides predicates to write out terms that use the ground
 % representation defined in term.m.

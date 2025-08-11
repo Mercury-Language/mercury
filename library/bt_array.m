@@ -8,7 +8,7 @@
 %
 % File: bt_array.m
 % Main author: bromage.
-% Stability: medium-low
+% Stability: medium.
 %
 % This file contains a set of predicates for generating and manipulating a
 % bt_array data structure. This implementation allows O(log n) access and

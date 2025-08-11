@@ -8,7 +8,7 @@
 %
 % File: version_array2d.m.
 % Author: Ralph Becket <rafe@cs.mu.oz.au>.
-% Stability: medium-low.
+% Stability: medium.
 %
 % Two-dimensional rectangular (i.e. not ragged) version arrays.
 %

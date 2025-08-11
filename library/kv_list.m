@@ -7,7 +7,7 @@
 %
 % File: kv_list.m.
 % Main author: zs.
-% Stability: medium to high.
+% Stability: high.
 %
 % This file defines the type kv_list(K, V), which represents lists of
 % key-value pairs, and provides a range of operations on such lists.

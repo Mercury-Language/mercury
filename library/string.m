@@ -8,7 +8,7 @@
 %
 % File: string.m.
 % Main authors: fjh, petdr, wangp.
-% Stability: medium to high.
+% Stability: high.
 %
 % This module provides basic string handling facilities.
 %

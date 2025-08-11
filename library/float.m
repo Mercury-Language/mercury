@@ -8,7 +8,7 @@
 %
 % File: float.m.
 % Main author: fjh.
-% Stability: medium.
+% Stability: high.
 %
 % Floating point support.
 %

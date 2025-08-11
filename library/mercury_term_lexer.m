@@ -6,7 +6,7 @@
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: lexer.m.
+% File: mercury_term_lexer.m.
 % Main author: fjh.
 % Stability: high.
 %

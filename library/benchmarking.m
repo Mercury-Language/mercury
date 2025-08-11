@@ -2,13 +2,13 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2011 The University of Melbourne.
-% Copyright (C) 2014-2016, 2018-2024 The Mercury team.
+% Copyright (C) 2014-2016, 2018-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: benchmarking.m.
 % Main author: zs.
-% Stability: medium.
+% Stability: high.
 %
 % This module contains predicates that deal with the CPU time requirements
 % of (various parts of) the program.

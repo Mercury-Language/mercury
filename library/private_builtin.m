@@ -8,7 +8,7 @@
 %
 % File: private_builtin.m.
 % Main authors: fjh, zs.
-% Stability: medium.
+% Stability: high.
 %
 % This file is automatically imported, as if via ":- use_module", into every
 % module. It is intended for builtins that are just implementation details,

@@ -8,7 +8,7 @@
 %
 % File: bimap.m.
 % Main author: conway.
-% Stability: medium.
+% Stability: high.
 %
 % This file provides a bijective map ADT.
 % A map (also known as a dictionary or an associative array) is a collection

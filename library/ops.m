@@ -2,13 +2,13 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2008, 2010, 2012 The University of Melbourne.
-% Copyright (C) 2014-2019, 2021-2022, 2024 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: ops.m.
 % Main author: fjh.
-% Stability: low.
+% Stability: medium.
 %
 % This module exports a typeclass `ops.op_table' which is used to define
 % operator precedence tables for use by

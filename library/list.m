@@ -8,7 +8,7 @@
 %
 % File: list.m.
 % Authors: fjh, conway, trd, zs, philip, warwick, ...
-% Stability: medium to high.
+% Stability: high.
 %
 % This module defines the list type, and various utility predicates that
 % operate on lists.

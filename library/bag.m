@@ -8,7 +8,7 @@
 %
 % File: bag.m.
 % Main authors: conway, crs.
-% Stability: medium.
+% Stability: high.
 %
 % An implementation of multisets.
 %

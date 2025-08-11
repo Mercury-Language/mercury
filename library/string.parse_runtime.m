@@ -6,6 +6,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: string.parse_runtime.m.
+% Stability: high.
 %
 % This module parses format strings for the runtime system;
 % the module compiler/parse_string_format.m does the same job for the compiler.

@@ -6,9 +6,9 @@
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: parsing_utils.m
-% Authors: Ralph Becket <rafe@csse.unimelb.edu.au>, maclarty
-% Stability: low
+% File: parsing_utils.m.
+% Authors: rafe, maclarty.
+% Stability: medium.
 %
 % Utilities for recursive descent parsers. Parsers take at least three
 % arguments: a source (src) containing the input string, and an input/output

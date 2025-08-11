@@ -6,9 +6,9 @@
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: pretty_printer.m
+% File: pretty_printer.m.
 % Main author: rafe
-% Stability: medium
+% Stability: high.
 %
 % This module defines a doc type for formatting and a pretty printer for
 % displaying docs.

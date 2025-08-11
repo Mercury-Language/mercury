@@ -8,10 +8,10 @@
 %
 % File: tree_bitset.m.
 % Author: zs, based on sparse_bitset.m by stayl.
-% Stability: medium.
+% Stability: high.
 %
 % This module provides an abstract data type for storing sets of items
-% that can each be represented by non-negative integers.
+% that can each be represented by unsigned integers.
 %
 % The tree_bitset representation is a variant of the representation used by
 % sparse_bitset.m, which is a list of Offset/Bits pairs, with the Bits

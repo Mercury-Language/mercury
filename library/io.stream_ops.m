@@ -2,11 +2,12 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: io.stream_ops.m.
+% Stability: high.
 %
 % This file handles the implementation of operations that operate
 % on streams as a whole, such as opening and closing streams, reading

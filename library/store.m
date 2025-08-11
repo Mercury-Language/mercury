@@ -2,13 +2,13 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1997, 2000-2008, 2010-2011 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: store.m.
 % Main author: fjh.
-% Stability: low.
+% Stability: medium.
 %
 % This file provides facilities for manipulating mutable stores.
 % A store can be considered a mapping from abstract keys to their values.

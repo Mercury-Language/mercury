@@ -8,7 +8,7 @@
 %
 % File: robdd.m.
 % Main author: dmo.
-% Stability: low.
+% Stability: high.
 %
 % This module contains a Mercury interface to Peter Schachte's C
 % implementation of Reduced Ordered Binary Decision Diagrams (ROBDDs).

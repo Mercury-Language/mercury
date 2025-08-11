@@ -2,12 +2,13 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1998,2001-2006, 2011 The University of Melbourne.
-% Copyright (C) 2015-2016, 2018-2023 The Mercury team.
+% Copyright (C) 2015-2016, 2018-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: random.m
+% File: random.m.
 % Main author: Mark Brown
+% Stability: medium.
 %
 % This module provides interfaces to several random number generators,
 % implementations of which can be found in the submodules.

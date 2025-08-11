@@ -8,7 +8,7 @@
 %
 % File: int.m.
 % Main authors: conway, fjh.
-% Stability: medium.
+% Stability: high.
 %
 % Predicates and functions for dealing with machine-size integer numbers.
 %

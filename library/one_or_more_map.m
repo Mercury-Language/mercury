@@ -6,6 +6,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: one_or_more_map.m.
+% Stability: high.
 %
 % This file provides another version of the multi_map(K, V) abstract data type.
 % A map (also known as a dictionary or an associative array) is a collection

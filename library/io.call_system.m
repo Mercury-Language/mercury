@@ -2,11 +2,12 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2024 The Mercury team.
+% Copyright (C) 2013-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: io.call_system.m.
+% Stability: high.
 %
 % This module provides predicates to invoke commands via the shell
 % of the underlying operating system.

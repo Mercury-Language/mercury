@@ -2,11 +2,12 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: io.environment.m.
+% Stability: high.
 %
 % This provides read and write access to the environment variables
 % inherited by this process from its parent process.

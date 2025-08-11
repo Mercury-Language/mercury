@@ -7,7 +7,7 @@
 %
 % File: thread.future.m.
 % Authors: pbone.
-% Stability: low.
+% Stability: medium.
 %
 % This module defines the data types future_io/1 and future/1 which are
 % useful for parallel and concurrent programming.

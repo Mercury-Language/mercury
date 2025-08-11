@@ -2,13 +2,13 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000,2003-2009,2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2022 The Mercury team.
+% Copyright (C) 2014-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: term_context.m.
 % Main author: fjh.
-% Stability: medium.
+% Stability: high.
 %
 % This file contains a type, term_context, that describes where each part
 % of a term occurs in a file, and the operations associated with it.

@@ -8,7 +8,7 @@
 %
 % File: digraph.m
 % Original authors: bromage, petdr
-% Stability: medium
+% Stability: high.
 %
 % This module defines a data type representing directed graphs. A directed
 % graph of type digraph(T) is logically equivalent to a set of vertices of

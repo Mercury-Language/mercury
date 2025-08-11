@@ -8,11 +8,11 @@
 %
 % File: builtin.m.
 % Main author: fjh.
-% Stability: low.
+% Stability: high.
 %
 % This file is automatically imported into every module.
 % It is intended for things that are part of the language,
-% but which are implemented just as normal user-level code
+% but which are implemented the same way as normal user-level code
 % rather than with special coding in the compiler.
 %
 %---------------------------------------------------------------------------%

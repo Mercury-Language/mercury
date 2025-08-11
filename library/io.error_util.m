@@ -5,7 +5,8 @@
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: io.error_util.m
+% File: io.error_util.m.
+% Stability: high.
 %
 % This module provides some predicates for dealing with I/O errors.
 %

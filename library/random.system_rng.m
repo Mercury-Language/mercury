@@ -1,12 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021-2022, 2024 The Mercury team.
+% Copyright (C) 2021-2022, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: random.system_rng.m.
 % Main author: Julien Fischer
+% Stability: medium.
 %
 % This module provides access to the system random number generator.
 % This is a platform specific cryptographically secure random number generator

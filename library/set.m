@@ -10,9 +10,10 @@
 % Main authors: conway, fjh, benyi.
 % Stability: high.
 %
-% This module provides a set ADT.
-% The implementation represents sets using ordered lists.
-% This file just calls the equivalent predicates in set_ordlist.
+% This module is one of several that implement the `set' abstract data type.
+% This module represents sets using ordered lists without duplicates.
+%
+% This module just calls the equivalent predicates in set_ordlist.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

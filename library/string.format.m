@@ -1,11 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2017-2023 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: string.format.m.
+% Stability: high.
 %
 % This module implements string.format.
 %

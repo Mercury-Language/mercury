@@ -10,7 +10,9 @@
 % Author: zs.
 % Stability: high.
 %
-% This module implements sets using 2-3-4 trees.
+% This module is one of several that implement the `set' abstract data type.
+% This module represents sets using 2-3-4 trees. These trees always stay
+% balanced.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

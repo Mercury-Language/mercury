@@ -1,12 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2018 The Mercury team.
+% Copyright (C) 2015-2018, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: term_conversion.m.
-% Stability: medium.
+% Stability: high.
 %
 % This file provides predicates to convert values of arbitrary types to terms,
 % and vice versa.

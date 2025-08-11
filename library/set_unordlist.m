@@ -8,10 +8,11 @@
 %
 % File: set_unordlist.m.
 % Main authors: conway, fjh.
-% Stability: medium.
+% Stability: high.
 %
-% This file contains a `set' ADT.
-% Sets are implemented here as unsorted lists, which may contain duplicates.
+% This module is one of several that implement the `set' abstract data type.
+% This module represents sets using unordered lists which may contain
+% duplicates.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

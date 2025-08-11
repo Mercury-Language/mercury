@@ -8,7 +8,7 @@
 %
 % File: io.m.
 % Main author: fjh.
-% Stability: medium to high.
+% Stability: high.
 %
 % This file encapsulates all the file I/O.
 %

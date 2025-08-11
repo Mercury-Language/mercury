@@ -2,13 +2,16 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007 The University of Melbourne.
-% Copyright (C) 2014-2021, 2024 The Mercury team.
+% Copyright (C) 2014-2021, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: solutions.m.
 % Main author: fjh.
-% Stability: medium.
+% Stability: high.
+%
+% This module provides operations that compute the set of solutions
+% of a predicate that can return more than one solution.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -24,10 +27,13 @@
 
     % solutions/2 collects all the solutions to a predicate and returns
     % them as a list in sorted order, with duplicates removed.
-    % solutions_set/2 returns them as a set. unsorted_solutions/2 returns
-    % them as an unsorted list with possible duplicates; since there are
-    % an infinite number of such lists, this must be called from a context
-    % in which only a single solution is required.
+    %
+    % solutions_set/2 returns them as a set.
+    %
+    % unsorted_solutions/2 returns them as an unsorted list with
+    % possible duplicates. Since there are an infinite number of such lists,
+    % this must be called from a context in which only a single solution
+    % is required.
     %
 :- pred solutions(pred(T), list(T)).
 :- mode solutions(in(pred(out) is multi), out(non_empty_list)) is det.

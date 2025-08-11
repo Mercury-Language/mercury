@@ -2,13 +2,13 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005, 2014 Mission Critical IT.
-% Copyright (C) 2014-2015, 2018, 2022, 2024 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2022, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: thread.barrier.m
+% File: thread.barrier.m.
 % Original author: Peter Ross
-% Stability: low
+% Stability: medium.
 %
 % This module provides a barrier implementation.
 %

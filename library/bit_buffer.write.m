@@ -2,13 +2,13 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2011 The University of Melbourne
-% Copyright (C) 2014-2016, 2018, 2024 The Mercury team.
+% Copyright (C) 2014-2016, 2018, 2024-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: bit_buffer.write.m.
 % Main author: stayl.
-% Stability: low.
+% Stability: medium.
 %
 % A bit buffer provides an interface between bit-oriented output requests
 % and byte-array-oriented streams, storing bits until there are enough bytes

@@ -8,7 +8,7 @@
 %
 % File: term_unify.m.
 % Main author: fjh.
-% Stability: medium.
+% Stability: high.
 %
 % This file provides predicates to unify terms.
 %

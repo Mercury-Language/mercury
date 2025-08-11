@@ -8,7 +8,7 @@
 %
 % File: array.m.
 % Main authors: fjh, bromage.
-% Stability: medium-low.
+% Stability: high.
 %
 % This module provides dynamically-sized one-dimensional arrays.
 % Array indices start at zero.

@@ -8,7 +8,7 @@
 %
 % File: bool.m.
 % Main authors: fjh, zs.
-% Stability: medium to high.
+% Stability: high.
 %
 % This module exports the boolean type `bool' and some operations on bools.
 %

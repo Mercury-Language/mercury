@@ -8,7 +8,7 @@
 %
 % File: table_builtin.m.
 % Main authors: zs, fjh, ohutch.
-% Stability: low.
+% Stability: high.
 %
 % This file is automatically imported, as if via ":- use_module:, into every
 % module that contains a tabling pragma (`pragma loopcheck', `pragma memo',

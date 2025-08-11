@@ -2,13 +2,13 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001, 2003-2006, 2010-2012 The University of Melbourne
-% Copyright (C) 2013-2023 The Mercury team.
+% Copyright (C) 2013-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: hash_table.m.
 % Main author: rafe, wangp.
-% Stability: low.
+% Stability: medium.
 %
 % Hash table implementation.
 %

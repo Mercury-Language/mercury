@@ -6,6 +6,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: string.to_string.m.
+% Stability: high.
 %
 % This module implements the related predicates
 %

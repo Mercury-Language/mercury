@@ -8,10 +8,10 @@
 %
 % File: sparse_bitset.m.
 % Author: stayl.
-% Stability: medium.
+% Stability: high.
 %
 % This module provides an abstract data type for storing sets of items
-% that can each be represented by non-negative integers.
+% that can each be represented by unsigned integers.
 % If the integers being stored are closely grouped, a sparse_bitset
 % will be much more compact than either the list-of-elements representations
 % provided by set.m, set_ordlist.m, and set_unordlist.m, or the

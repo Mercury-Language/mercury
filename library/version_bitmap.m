@@ -8,7 +8,7 @@
 %
 % File: version_bitmap.m.
 % Author: Ralph Becket <rafe@cs.mu.oz.au>.
-% Stability: low.
+% Stability: medium.
 %
 % (See the header comments in version_array.m for an explanation of version
 % types.)

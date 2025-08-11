@@ -8,10 +8,10 @@
 %
 % File: fat_sparse_bitset.m.
 % Author: zs.
-% Stability: medium.
+% Stability: high.
 %
 % This module provides an abstract data type for storing sets of items
-% that can each be represented by non-negative integers.
+% that can each be represented by unsigned integers.
 % If the integers being stored are closely grouped, a sparse_bitset
 % will be much more compact than either the list-of-elements representations
 % provided by set.m, set_ordlist.m, and set_unordlist.m, or the
@@ -596,8 +596,8 @@ is_singleton(fat_sparse_bitset(bitset_cons(Offset, Bits, bitset_nil)), Item) :-
     ( if from_uint(SetOffset, ItemPrime) then
         Item = ItemPrime
     else
-        % We only apply from_uint/2 to integers returned
-        % by to_uint/1, so it should never fail.
+        % We only apply from_uint/2 to integers returned by to_uint/1,
+        % so it should never fail.
         unexpected($pred, "`enum.from_uint/2' failed")
     ).
 

@@ -8,7 +8,7 @@
 %
 % File: calendar.m.
 % Main authors: maclarty
-% Stability: low.
+% Stability: high.
 %
 % Proleptic Gregorian calendar utilities.
 %

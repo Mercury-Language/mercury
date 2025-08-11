@@ -7,6 +7,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: io.text_read.m.
+% Stability: high.
 %
 % This module implements the predicates in io.m that read
 % words, lines and files.

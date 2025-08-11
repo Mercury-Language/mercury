@@ -10,7 +10,10 @@
 % Author: zs.
 % Stability: high.
 %
+% This module is one of several that implement the `set' abstract data type.
 % This module implements sets using 2-3-4 trees extended with element counts.
+% These trees always stay balanced.
+%
 % This representation has higher constant factors for most operations than
 % ordered lists, but it has much better worst-case complexity, and is likely
 % to be faster for large sets. Specifically,

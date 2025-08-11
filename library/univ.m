@@ -8,7 +8,7 @@
 %
 % File: univ.m.
 % Main author: fjh.
-% Stability: medium.
+% Stability: high.
 %
 % The universal type `univ', which can represent values of any type
 % chosen at runtime. This type is Mercury's mechanism to allow the

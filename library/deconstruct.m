@@ -2,13 +2,13 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2007 The University of Melbourne.
-% Copyright (C) 2014-2015, 2017-2022 The Mercury team.
+% Copyright (C) 2014-2015, 2017-2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: deconstruct.m.
 % Main author: zs.
-% Stability: low.
+% Stability: high.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

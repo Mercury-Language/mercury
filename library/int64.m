@@ -1,13 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018-2021 The Mercury team.
+% Copyright (C) 2018-2021, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: int64.m
 % Main author: juliensf
-% Stability: low.
+% Stability: high.
 %
 % Predicates and functions for dealing with signed 64-bit integer numbers.
 %

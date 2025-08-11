@@ -6,9 +6,9 @@
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: ra_list.m
+% File: ra_list.m.
 % Main author: bromage.
-% Stability: medium-low
+% Stability: medium.
 %
 % This module implements `random access lists', or ra_lists for short.
 % It is very similar to a list data type, and it supports O(1) head/tail/cons

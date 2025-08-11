@@ -2,13 +2,13 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2024 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: version_hash_table.m.
 % Main author: rafe, wangp.
-% Stability: low.
+% Stability: medium.
 %
 % (See the header comments in version_array.m for an explanation of version
 % types.)

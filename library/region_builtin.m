@@ -2,13 +2,13 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2009-2010 The University of Melbourne.
-% Copyright (C) 2014, 2018, 2022 The Mercury team.
+% Copyright (C) 2014, 2018, 2022, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: region_builtin.m.
 % Main authors: qph, juliensf.
-% Stability: low.
+% Stability: medium.
 %
 % This file is automatically imported into every module when region-based
 % memory management is enabled.  It contains support predicates used for

@@ -8,9 +8,10 @@
 %
 % File: set_bbbtree.m.
 % Main authors: benyi.
-% Stability: low.
+% Stability: high.
 %
-% This module implements sets using bounded balanced binary trees.
+% This module is one of several that implement the `set' abstract data type.
+% This module represents sets using bounded-balance binary trees.
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

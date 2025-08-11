@@ -2,13 +2,13 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2008, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2023 The Mercury team.
+% Copyright (C) 2014-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
 % File: exception.m.
 % Main author: fjh.
-% Stability: medium.
+% Stability: high.
 %
 % This module defines the Mercury interface for exception handling.
 %

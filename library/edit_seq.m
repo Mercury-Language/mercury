@@ -6,7 +6,7 @@
 %---------------------------------------------------------------------------%
 %
 % File: edit_seq.m.
-% Stability: medium.
+% Stability: high.
 %
 % This module finds an edit sequence, which means that given two sequences
 % of items, it finds the shortest sequence of edit operations (deletes,

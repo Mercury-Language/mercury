@@ -2,13 +2,13 @@
 % vim:ts=4 sw=4 expandtab ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2010-2011 The University of Melbourne
-% Copyright (C) 2014-2018, 2020, 2022-2023 The Mercury team.
+% Copyright (C) 2014-2018, 2020, 2022-2023, 2025 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
-% File: pprint.m
+% File: pprint.m.
 % Main author: rafe
-% Stability: medium
+% Stability: high.
 %
 % NOTE: this module has now been superceded by pretty_printer.m, which
 %
