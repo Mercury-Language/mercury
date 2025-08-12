@@ -32,8 +32,12 @@
 
 #-----------------------------------------------------------------------------#
 
-# CROSS_COMPILING is set in Mmake.common but that is not used in the test
-# suite. We don't support testing when cross-compiling anyway.
+# CROSS_COMPILING is always set in Mmake.common, but
+#
+# - the Mmakefiles of the test suite include this file but do not include
+#   Mmake.common, which leaves CROSS_COMPILING undefined for them; and
+#
+# - we do not support cross-compilation in the test suite anyway.
 ifeq ($(origin CROSS_COMPILING),undefined)
 CROSS_COMPILING = no
 endif
@@ -57,17 +61,17 @@ ifeq ($(origin EXTRA_MTAGSFLAGS),undefined)
 EXTRA_MTAGSFLAGS =
 endif
 
-SCRIPTS_DIR = $(WORKSPACE)/scripts
-RUNTIME_DIR = $(WORKSPACE)/runtime
-LIBRARY_DIR = $(WORKSPACE)/library
-TRACE_DIR = $(WORKSPACE)/trace
-SSDB_DIR = $(WORKSPACE)/ssdb
-MDBCOMP_DIR = $(WORKSPACE)/mdbcomp
-BROWSER_DIR = $(WORKSPACE)/browser
-BOEHM_GC_DIR = $(WORKSPACE)/boehm_gc
-COMPILER_DIR = $(WORKSPACE)/compiler
-UTIL_DIR = $(WORKSPACE)/util
-ROBDD_DIR = $(WORKSPACE)/robdd
+SCRIPTS_DIR	= $(WORKSPACE)/scripts
+RUNTIME_DIR	= $(WORKSPACE)/runtime
+LIBRARY_DIR	= $(WORKSPACE)/library
+TRACE_DIR	= $(WORKSPACE)/trace
+SSDB_DIR	= $(WORKSPACE)/ssdb
+MDBCOMP_DIR	= $(WORKSPACE)/mdbcomp
+BROWSER_DIR	= $(WORKSPACE)/browser
+BOEHM_GC_DIR	= $(WORKSPACE)/boehm_gc
+COMPILER_DIR	= $(WORKSPACE)/compiler
+UTIL_DIR	= $(WORKSPACE)/util
+ROBDD_DIR	= $(WORKSPACE)/robdd
 
 # The names of the various libraries.
 # The archives and shared object objects have a "lib" prefix and a ".a" or
@@ -77,13 +81,13 @@ ROBDD_DIR = $(WORKSPACE)/robdd
 #
 # If you change these, you will also need to change the files indicated
 # in scripts/c2init.in.
-RT_LIB_NAME = mer_rt
-STD_LIB_NAME = mer_std
-TRACE_LIB_NAME = mer_trace
-EVENTSPEC_LIB_NAME = mer_eventspec
-SSDB_LIB_NAME = mer_ssdb
-BROWSER_LIB_NAME = mer_browser
-MDBCOMP_LIB_NAME = mer_mdbcomp
+RT_LIB_NAME		= mer_rt
+STD_LIB_NAME		= mer_std
+TRACE_LIB_NAME		= mer_trace
+EVENTSPEC_LIB_NAME	= mer_eventspec
+SSDB_LIB_NAME		= mer_ssdb
+BROWSER_LIB_NAME	= mer_browser
+MDBCOMP_LIB_NAME	= mer_mdbcomp
 
 # This specifies the path to the so_locations file (or its equivalent),
 # which is used by the linker to help it to map different shared objects
@@ -95,12 +99,14 @@ export SO_LOCATIONS_DIR
 MC =		$(SCRIPTS_DIR)/mmc
 MGNUC =		$(SCRIPTS_DIR)/mgnuc
 ML =		$(SCRIPTS_DIR)/ml
+
 # We cannot use the binaries in util when cross-compiling.
 # Just assume that the default c2init and mkinit are usable.
 ifneq ($(CROSS_COMPILING),yes)
 C2INIT =	MERCURY_MKINIT=$(UTIL_DIR)/mkinit $(SCRIPTS_DIR)/c2init
 MKLIBINIT =	$(UTIL_DIR)/mkinit -k
 endif
+
 MTAGS =		$(SCRIPTS_DIR)/mtags
 MTAGSFLAGS +=	$(EXTRA_MTAGSFLAGS)
 
@@ -151,10 +157,6 @@ MLFLAGS      += --no-mercury-stdlib-dir
 # This is now in FLAGS files.
 # MCFLAGS    += $(C_INCL_DIRS:-I%=--c-include-directory %)
 
-# Work out the .NET directories
-MERC_C_INCL_DIR = $(RUNTIME_DIR)
-MERC_DLL_DIR = $(LIBRARY_DIR)
-
 # Work out which libraries to link with.
 # The $(shell) here is needed to allow the variable values in
 # ECHO_MERCURY_OPTIONS in Mmake.vars to be single-quoted when passed
@@ -190,7 +192,8 @@ STATIC_RT_LIBS = $(RUNTIME_DIR)/lib$(RT_LIB_NAME).$A
 ifneq ($(LINK_RUNTIME_ONLY),yes)
 STATIC_STD_LIBS = $(LIBRARY_DIR)/lib$(STD_LIB_NAME).$A
 ifneq ($(LINK_STDLIB_ONLY),yes)
-STATIC_TRACE_LIBS = $(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
+STATIC_TRACE_LIBS = \
+		$(TRACE_DIR)/lib$(TRACE_LIB_NAME).$A \
 		$(TRACE_DIR)/lib$(EVENTSPEC_LIB_NAME).$A \
 		$(SSDB_DIR)/lib$(SSDB_LIB_NAME).$A \
 		$(BROWSER_DIR)/lib$(BROWSER_LIB_NAME).$A \
@@ -200,8 +203,11 @@ endif
 endif
 
 ifeq ("$(filter csharp% java%,$(GRADE))","")
-MLOBJS += $(STATIC_TRACE_LIBS) $(STATIC_STD_LIBS) \
-		$(STATIC_RT_LIBS) $(STATIC_GC_LIBS)
+MLOBJS += \
+		$(STATIC_TRACE_LIBS) \
+		$(STATIC_STD_LIBS) \
+		$(STATIC_RT_LIBS) \
+		$(STATIC_GC_LIBS)
 endif
 
 MCFLAGS += --mercury-linkage static
@@ -222,17 +228,29 @@ endif
 ifneq ($(LINK_RUNTIME_ONLY),yes)
 LINK_STD_LIB_OPTS = -l$(STD_LIB_NAME)
 ifneq ($(LINK_STDLIB_ONLY),yes)
-LINK_TRACE_SSDB_LIB_OPTS = -l$(TRACE_LIB_NAME) -l$(EVENTSPEC_LIB_NAME) \
-	-l$(SSDB_LIB_NAME) -l$(BROWSER_LIB_NAME) -l$(MDBCOMP_LIB_NAME)
+LINK_TRACE_SSDB_LIB_OPTS = \
+		-l$(TRACE_LIB_NAME) \
+		-l$(EVENTSPEC_LIB_NAME) \
+		-l$(SSDB_LIB_NAME) \
+		-l$(BROWSER_LIB_NAME) \
+		-l$(MDBCOMP_LIB_NAME)
 endif
 endif
 endif
 
-LINK_LIB_OPTS = $(LINK_TRACE_SSDB_LIB_OPTS) $(LINK_STD_LIB_OPTS) \
-		$(LINK_RT_LIB_OPTS) $(SHARED_GC_LIBS)
-LIB_DIR_OPTS = -L$(BOEHM_GC_DIR) -L$(RUNTIME_DIR) \
-		-L$(LIBRARY_DIR) -L$(TRACE_DIR) -L$(MDBCOMP_DIR) \
-		-L$(BROWSER_DIR) -L$(SSDB_DIR)
+LINK_LIB_OPTS = \
+		$(LINK_TRACE_SSDB_LIB_OPTS) \
+		$(LINK_STD_LIB_OPTS) \
+		$(LINK_RT_LIB_OPTS) \
+		$(SHARED_GC_LIBS)
+LIB_DIR_OPTS = \
+		-L$(BOEHM_GC_DIR) \
+		-L$(RUNTIME_DIR) \
+		-L$(LIBRARY_DIR) \
+		-L$(TRACE_DIR) \
+		-L$(MDBCOMP_DIR) \
+		-L$(BROWSER_DIR) \
+		-L$(SSDB_DIR)
 
 MLFLAGS      += $(LIB_DIR_OPTS)
 # This is now in FLAGS files.

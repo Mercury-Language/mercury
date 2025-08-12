@@ -32,7 +32,8 @@ include $(MERCURY_DIR)/VERSION
 
 #---------------------#
 
-# This affects the tools set in Mmake.workspace, so must be set first.
+# This affects code in Mmake.workspace, so must be set before we include
+# that file.
 CROSS_COMPILING		= @CROSS_COMPILING@
 
 #---------------------#
@@ -100,6 +101,13 @@ EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
 
 # Specify EXT_FOR_EXE is `.exe' on MS-Windows and empty elsewhere.
 EXT_FOR_EXE		= @EXT_FOR_EXE@
+
+#---------------------#
+#
+# The autoconfigured bootstrap compiler.
+#
+
+BOOTSTRAP_MC		= @BOOTSTRAP_MC_COMPILER@
 
 #---------------------#
 #
@@ -311,7 +319,7 @@ include $(MERCURY_DIR)/Mmake.workspace
 # complicating things.
 # Some test cases assume that the library is compiled intermodule optimization,
 # so it is not a good idea to disable it in a bootcheck.
-LIBRARY_INTERMODULE = yes
+LIBRARY_INTERMODULE	= yes
 
 # Do we want to compile the library with --trace minimum?
 # By default yes, since the library is pretty well debugged. However,
@@ -320,7 +328,7 @@ LIBRARY_INTERMODULE = yes
 # However, the test cases assume that the library is compiled with --trace
 # minimum, so if you do that, expect test case failures in the debugger
 # directory.
-LIBRARY_TRACE_MINIMUM = yes
+LIBRARY_TRACE_MINIMUM	= yes
 
 # The Mmake.params file can be used to override definitions in this file
 -include $(MERCURY_DIR)/Mmake.params
@@ -341,16 +349,7 @@ $(MERCURY_DIR)/Mmake.params: ;
 #   that include Mmake.workspace but do NOT include this file.
 #
 
-# XXX We should have a definition BOOTSTRAP_MC=@BOOTSTRAP_MC_COMPILER@
-# before the inclusions of Mmake.workspace/Mmake.params, and then
-# MC = $(BOOTSTRAP_MC) after them. Likewise, Mmake.workspace should have
-# a definition WORKSPACE_MC=$(SCRIPTS_DIR)/mmc, followed by MC=$(WORKSPACE_MC).
-# This would give us names (handles) on the two possible definitions of MC,
-# both for us developers when talking about them, and for Mmakefiles
-# that include either Mmake.workspace, or this file, or both.
-
-# Specify the Mercury compiler to use for bootstrapping.
-MC		= @BOOTSTRAP_MC_COMPILER@
+MC		= $(BOOTSTRAP_MC)
 
 # Options to pass to the Mercury compiler.
 # This is now included in FLAGS files.
