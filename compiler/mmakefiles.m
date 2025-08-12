@@ -261,13 +261,13 @@
     % If FileNames names is the empty list, return an empty list
     % of file name groups.
     %
-:- func make_file_name_group(string, list(mmake_file_name))
+:- func construct_file_name_maybe_group(string, list(mmake_file_name))
     = list(mmake_file_name_group).
 
     % Return a file name group with the given name containing just
     % the given file name.
     %
-:- func make_singleton_file_name_group(string, mmake_file_name)
+:- func construct_singleton_file_name_group(string, mmake_file_name)
     = mmake_file_name_group.
 
     % Return an action that prints nothing and does nothing,
@@ -812,7 +812,7 @@ make_multiline_action_lag(HeadLine0, TailLines0) = Lines :-
 
 %---------------------------------------------------------------------------%
 
-make_file_name_group(GroupName, FileNames) = Groups :-
+construct_file_name_maybe_group(GroupName, FileNames) = Groups :-
     (
         FileNames = [],
         Groups = []
@@ -822,7 +822,7 @@ make_file_name_group(GroupName, FileNames) = Groups :-
             one_or_more(HeadFileName, TailFileNames))]
     ).
 
-make_singleton_file_name_group(GroupName, FileName) =
+construct_singleton_file_name_group(GroupName, FileName) =
     mmake_file_name_group(GroupName, one_or_more(FileName, [])).
 
 silent_noop_action = "@:".

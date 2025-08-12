@@ -39,15 +39,16 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred make_module_file_name_group_with_ext(globals::in, string::in,
-    ext::in, set(module_name)::in, list(mmake_file_name_group)::out,
+:- pred convert_module_names_to_file_name_group(globals::in,
+    string::in, ext::in,
+    set(module_name)::in, list(mmake_file_name_group)::out,
     module_file_name_cache::in, module_file_name_cache::out) is det.
 
-:- pred make_module_file_names_with_ext(globals::in, ext::in,
+:- pred convert_module_names_to_file_names(globals::in, ext::in,
     list(module_name)::in, list(mmake_file_name)::out,
     module_file_name_cache::in, module_file_name_cache::out) is det.
 
-:- pred make_module_file_name(globals::in, string::in, ext::in,
+:- pred convert_module_name_to_file_name(globals::in, string::in, ext::in,
     module_name::in, file_name::out,
     module_file_name_cache::in, module_file_name_cache::out) is det.
 
@@ -93,7 +94,7 @@ init_module_file_name_cache = map.init.
 %   % This code performs the job of
 %   %   module_name_to_file_name(Globals, From, Ext, ModuleName, FileName)
 %   % but with the directory path and extension string parts done just
-%   % once in make_module_file_names_with_ext, instead of being repeated
+%   % once in convert_module_names_to_file_names, instead of being repeated
 %   % each time here.
 %   BaseNameNoExt = module_name_to_base_file_name_no_ext(Ext, ModuleName),
 %   BaseName = BaseNameNoExt ++ ExtStr,
@@ -117,18 +118,20 @@ init_module_file_name_cache = map.init.
 % a double maintenance burden. This is why we don't use this approach.
 %
 
-make_module_file_name_group_with_ext(Globals, GroupName, Ext,
-        ModuleSet, Groups, !Cache) :-
-    set.to_sorted_list(ModuleSet, Modules),
-    make_module_file_names_with_ext(Globals, Ext, Modules, FileNames, !Cache),
-    Groups = make_file_name_group(GroupName, FileNames).
+convert_module_names_to_file_name_group(Globals, GroupName, Ext,
+        ModuleNameSet, Groups, !Cache) :-
+    set.to_sorted_list(ModuleNameSet, ModuleNames),
+    convert_module_names_to_file_names(Globals, Ext,
+        ModuleNames, FileNames, !Cache),
+    Groups = construct_file_name_maybe_group(GroupName, FileNames).
 
-make_module_file_names_with_ext(Globals, Ext, Modules, FileNames,
+convert_module_names_to_file_names(Globals, Ext,
+        ModuleNames, FileNames, !Cache) :-
+    list.map_foldl(convert_module_name_to_file_name(Globals, $pred, Ext),
+        ModuleNames, FileNames, !Cache).
+
+convert_module_name_to_file_name(Globals, From, Ext, ModuleName, FileName,
         !Cache) :-
-    list.map_foldl(make_module_file_name(Globals, $pred, Ext),
-        Modules, FileNames, !Cache).
-
-make_module_file_name(Globals, From, Ext, ModuleName, FileName, !Cache) :-
     % We cache result of the translation, in order to save on
     % temporary string construction.
     % See the analysis of gathered statistics below for why we use the cache

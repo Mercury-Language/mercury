@@ -313,7 +313,7 @@ generate_d_mmakefile(Globals, Baggage, ParseTreeModuleSrc,
 
     module_name_to_make_var_name(ModuleName, ModuleMakeVarName),
 
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_trans),
         ModuleName, TransOptDateFileName, !Cache),
     construct_trans_opt_deps_rule(Globals, MaybeInclTransOptRule,
@@ -329,24 +329,25 @@ generate_d_mmakefile(Globals, Baggage, ParseTreeModuleSrc,
         unexpected($pred, "source file name doesn't end in `.m'")
     ),
 
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_plain),
         ModuleName, OptDateFileName, !Cache),
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_c),
         ModuleName, CDateFileName, !Cache),
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gas(ext_cur_ngs_gas_obj_dollar_o),
         ModuleName, ObjFileName, !Cache),
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_date_java),
         ModuleName, JavaDateFileName, !Cache),
     % XXX Why is the extension hardcoded to .pic_o here?  That looks wrong.
     % It should probably be .$(EXT_FOR_PIC_OBJECT) - juliensf.
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gas(ext_cur_ngs_gas_obj_pic_o),
         ModuleName, PicObjFileName, !Cache),
-    make_module_file_name(Globals, $pred, ext_cur_ngs(ext_cur_ngs_int_int0),
+    convert_module_name_to_file_name(Globals, $pred,
+        ext_cur_ngs(ext_cur_ngs_int_int0),
         ModuleName, Int0FileName, !Cache),
 
     construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
@@ -362,7 +363,7 @@ generate_d_mmakefile(Globals, Baggage, ParseTreeModuleSrc,
         TransOptDateFileName, CDateFileName, JavaDateFileName,
         MmakeRulesIntermod, !Cache),
 
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
         ModuleName, CFileName, !Cache),
     construct_mih_header_rules(Globals, ModuleName, AllMihDeps,
@@ -371,10 +372,10 @@ generate_d_mmakefile(Globals, Baggage, ParseTreeModuleSrc,
     construct_module_dep_fragment(Globals, ModuleName, CFileName,
         MmakeFragmentModuleDep, !Cache),
 
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs(ext_cur_ngs_int_date_int12),
         ModuleName, DateFileName, !Cache),
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs(ext_cur_ngs_int_date_int0),
         ModuleName, Date0FileName, !Cache),
     construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
@@ -385,7 +386,7 @@ generate_d_mmakefile(Globals, Baggage, ParseTreeModuleSrc,
         DFileDeps, IntermodDeps, ObjFileName, PicObjFileName,
         MmakeRulesForeignImports, !Cache),
 
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs(ext_cur_ngs_int_date_int3),
         ModuleName, Date3FileName, !Cache),
     construct_install_shadow_rules(Globals, ModuleName,
@@ -475,7 +476,7 @@ construct_trans_opt_deps_rule(Globals, MaybeInclTransOptRule,
         % Note that maybe_read_dependency_file searches for
         % this exact pattern.
         % XXX LEGACY
-        make_module_file_names_with_ext(Globals,
+        convert_module_names_to_file_names(Globals,
             ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_trans),
             set.to_sorted_list(TransOptDeps), TransOptDepsFileNames, !Cache),
         MmakeRuleTransOpt = mmake_simple_rule("trans_opt_deps",
@@ -562,29 +563,29 @@ construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
     TargetGroups = one_or_more(TargetGroup, []),
 
     SourceFileNameGroup =
-        [make_singleton_file_name_group("source", SourceFileName)],
+        [construct_singleton_file_name_group("source", SourceFileName)],
     % If the module contains nested submodules, then the `.int0' file
     % must first be built.
     ( if set.is_empty(PublicChildren) then
         Int0FileNameGroups = []
     else
         Int0FileNameGroups =
-            [make_singleton_file_name_group("int0", Int0FileName)]
+            [construct_singleton_file_name_group("int0", Int0FileName)]
     ),
-    make_module_file_name_group_with_ext(Globals,
+    convert_module_names_to_file_name_group(Globals,
         "ancestors", ext_cur_ngs(ext_cur_ngs_int_int0),
         Ancestors, AncestorSourceGroups, !Cache),
-    make_module_file_name_group_with_ext(Globals,
+    convert_module_names_to_file_name_group(Globals,
         "direct deps", ext_cur_ngs(ext_cur_ngs_int_int1),
         DirectDeps, DirectDepsSourceGroups, !Cache),
-    make_module_file_name_group_with_ext(Globals,
+    convert_module_names_to_file_name_group(Globals,
         "indirect deps", ext_cur_ngs(ext_cur_ngs_int_int2),
         IndirectDeps, IndirectDepsSourceGroups, !Cache),
-    make_module_file_name_group_with_ext(Globals,
+    convert_module_names_to_file_name_group(Globals,
         "type_repn self dep", ext_cur_ngs(ext_cur_ngs_int_int1),
         set.make_singleton_set(ModuleName), TypeRepnSelfDepGroups,
         !Cache),
-    make_module_file_name_group_with_ext(Globals,
+    convert_module_names_to_file_name_group(Globals,
         "type_repn ancestor dep", ext_cur_ngs(ext_cur_ngs_int_int1),
         get_ancestors_set(ModuleName), TypeRepnAncestorsDepGroups,
         !Cache),
@@ -595,7 +596,8 @@ construct_date_file_deps_rule(Globals, ModuleName, SourceFileName,
         list.map(foreign_include_file_path_name(SourceFileName),
             ForeignIncludeFiles),
     ForeignImportFileNameGroup =
-        make_file_name_group("foreign imports", ForeignImportFileNames),
+        construct_file_name_maybe_group("foreign imports",
+            ForeignImportFileNames),
     SourceGroups = SourceFileNameGroup ++
         Int0FileNameGroups ++ AncestorSourceGroups ++
         DirectDepsSourceGroups ++ IndirectDepsSourceGroups ++
@@ -665,10 +667,10 @@ construct_intermod_rules(Globals, IntermodDeps,
         PlainOptInt0Deps =
             set.union_list(list.map(get_ancestors_set, PlainOptDeps)),
         % XXX LEGACY
-        make_module_file_names_with_ext(Globals,
+        convert_module_names_to_file_names(Globals,
             ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
             PlainOptDeps, PlainOptDepsFileNames, !Cache),
-        make_module_file_names_with_ext(Globals,
+        convert_module_names_to_file_names(Globals,
             ext_cur_ngs(ext_cur_ngs_int_int0),
             set.to_sorted_list(PlainOptInt0Deps), PlainOptInt0DepsFileNames,
             !Cache),
@@ -683,7 +685,7 @@ construct_intermod_rules(Globals, IntermodDeps,
             ErrDateTargets = one_or_more(ErrFileName,
                 [CDateFileName, JavaDateFileName]),
             % XXX LEGACY
-            make_module_file_names_with_ext(Globals,
+            convert_module_names_to_file_names(Globals,
                 ext_cur_ngs_gs_max_ngs(
                     ext_cur_ngs_gs_max_ngs_legacy_opt_trans),
                 TransOptDeps, TransOptDepsOptFileNames, !Cache),
@@ -723,7 +725,7 @@ construct_mih_header_rules(Globals, ModuleName, AllMihDeps,
         % the C files, since the generated C files #include those header files.
         Targets = one_or_more(ObjFileName, [PicObjFileName]),
         AllMihDeps = all_mih_deps(AllMihModules),
-        make_module_file_names_with_ext(Globals,
+        convert_module_names_to_file_names(Globals,
             ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih),
             set.to_sorted_list(AllMihModules), AllMihFileNames, !Cache),
         MmakeRuleObjOnMihs = mmake_flat_rule("objs_on_mihs",
@@ -743,10 +745,10 @@ construct_mih_header_rules(Globals, ModuleName, AllMihDeps,
     % `:- pragma foreign_import_module' declarations. In some grades the header
     % file won't actually be built (e.g. LLDS grades for modules not containing
     % `:- pragma export' declarations), but this rule won't do any harm.
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh),
         ModuleName, MhHeaderFileName, !Cache),
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gs_max_cur(ext_cur_ngs_gs_max_cur_mih),
         ModuleName, MihHeaderFileName, !Cache),
     MmakeRuleMhMihOnC = mmake_flat_rule("mh_and_mih_on_c",
@@ -769,10 +771,10 @@ construct_mih_header_rules(Globals, ModuleName, AllMihDeps,
 
 construct_module_dep_fragment(Globals, ModuleName, CFileName,
         MmakeFragmentModuleDep, !Cache) :-
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
         ModuleName, JavaFileName, !Cache),
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs(ext_cur_ngs_misc_module_dep),
         ModuleName, ModuleDepFileName, !Cache),
     MmakeFragmentModuleDep = mmf_conditional_entry(
@@ -813,16 +815,16 @@ construct_module_dep_fragment(Globals, ModuleName, CFileName,
 construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
         Date0FileName, DateFileName, Ancestors, DirectDeps, IndirectDeps,
         MmakeRulesParentDates, !Cache) :-
-    make_module_file_names_with_ext(Globals,
+    convert_module_names_to_file_names(Globals,
         ext_cur_ngs(ext_cur_ngs_int_date_int12),
         set.to_sorted_list(Ancestors), AncestorDateFileNames, !Cache),
-    make_module_file_names_with_ext(Globals,
+    convert_module_names_to_file_names(Globals,
         ext_cur_ngs(ext_cur_ngs_int_int0),
         set.to_sorted_list(Ancestors), AncestorInt0FileNames, !Cache),
-    make_module_file_names_with_ext(Globals,
+    convert_module_names_to_file_names(Globals,
         ext_cur_ngs(ext_cur_ngs_int_int3),
         set.to_sorted_list(DirectDeps), DirectDepInt3FileNames, !Cache),
-    make_module_file_names_with_ext(Globals,
+    convert_module_names_to_file_names(Globals,
         ext_cur_ngs(ext_cur_ngs_int_int3),
         set.to_sorted_list(IndirectDeps), IndirectDepInt3FileNames, !Cache),
 
@@ -833,13 +835,15 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
                 one_or_more(DateFileName,
                     [Date0FileName | AncestorDateFileNames])),
             []),
-        [make_singleton_file_name_group("source", SourceFileName)] ++
-            make_file_name_group("ancestor int0", AncestorInt0FileNames) ++
-            make_file_name_group("direct dep int3s", DirectDepInt3FileNames) ++
-            make_file_name_group("indirect dep int3s",
+        [construct_singleton_file_name_group("source", SourceFileName)] ++
+            construct_file_name_maybe_group("ancestor int0",
+                AncestorInt0FileNames) ++
+            construct_file_name_maybe_group("direct dep int3s",
+                DirectDepInt3FileNames) ++
+            construct_file_name_maybe_group("indirect dep int3s",
                 IndirectDepInt3FileNames),
         []),
-    make_module_file_names_with_ext(Globals,
+    convert_module_names_to_file_names(Globals,
         ext_cur_ngs(ext_cur_ngs_int_date_int0),
         set.to_sorted_list(Ancestors), AncestorDate0FileNames, !Cache),
     MmakeRuleParentDate0s = mmake_general_rule("self_and_parent_date0_deps",
@@ -848,9 +852,10 @@ construct_self_and_parent_date_date0_rules(Globals, SourceFileName,
             mmake_file_name_group("date0s",
                 one_or_more(Date0FileName, AncestorDate0FileNames)),
             []),
-        [make_singleton_file_name_group("source", SourceFileName)] ++
-            make_file_name_group("direct dep int3s", DirectDepInt3FileNames) ++
-            make_file_name_group("indirect dep int3s",
+        [construct_singleton_file_name_group("source", SourceFileName)] ++
+            construct_file_name_maybe_group("direct dep int3s",
+                DirectDepInt3FileNames) ++
+            construct_file_name_maybe_group("indirect dep int3s",
                 IndirectDepInt3FileNames),
         []),
     MmakeRulesParentDates = [MmakeRuleParentDates, MmakeRuleParentDate0s].
@@ -879,7 +884,7 @@ construct_foreign_import_rules(Globals, ModuleName, DFileDeps, IntermodDeps,
             MhOrJavaExt = ext_cur_pgs_max_cur(ext_cur_pgs_max_cur_mh)
         ;
             Target = target_java,
-            make_module_file_name(Globals, $pred,
+            convert_module_name_to_file_name(Globals, $pred,
                 ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_class),
                 ModuleName, ClassFileName, !Cache),
             TargetGroup = mmake_file_name_group("class_files",
@@ -904,9 +909,10 @@ construct_foreign_import_rules(Globals, ModuleName, DFileDeps, IntermodDeps,
         OwnMhModuleSet = set.union_list([DirectModuleSet, IndirectModuleSet,
             OwnFIMModuleSet]),
         OwnMhModules = set.to_sorted_list(OwnMhModuleSet),
-        make_module_file_names_with_ext(Globals, MhOrJavaExt,
+        convert_module_names_to_file_names(Globals, MhOrJavaExt,
             OwnMhModules, OwnMhFileNames, !Cache),
-        OwnMhGroups = make_file_name_group("own_mh_deps", OwnMhFileNames),
+        OwnMhGroups =
+            construct_file_name_maybe_group("own_mh_deps", OwnMhFileNames),
         (
             IntermodDeps = no_intermod_deps,
             IntermodMhGroups = []
@@ -921,9 +927,9 @@ construct_foreign_import_rules(Globals, ModuleName, DFileDeps, IntermodDeps,
             set.difference(IntermodFIMModuleSet0, OwnMhModuleSet,
                 IntermodMhModuleSet),
             IntermodMhModules = set.to_sorted_list(IntermodMhModuleSet),
-            make_module_file_names_with_ext(Globals, MhOrJavaExt,
+            convert_module_names_to_file_names(Globals, MhOrJavaExt,
                 IntermodMhModules, IntermodMhFileNames, !Cache),
-            IntermodMhGroups = make_file_name_group(
+            IntermodMhGroups = construct_file_name_maybe_group(
                 "intermod_only_mh_deps", IntermodMhFileNames)
         ),
 
@@ -969,18 +975,21 @@ construct_install_shadow_rules(Globals, ModuleName,
         Int0FileName, Date0FileName, DateFileName, Date3FileName,
         OptDateFileName, TransOptDateFileName,
         MmakeRulesInstallShadows, !Cache) :-
-    make_module_file_name(Globals, $pred, ext_cur_ngs(ext_cur_ngs_int_int1),
+    convert_module_name_to_file_name(Globals, $pred,
+        ext_cur_ngs(ext_cur_ngs_int_int1),
         ModuleName, IntFileName, !Cache),
-    make_module_file_name(Globals, $pred, ext_cur_ngs(ext_cur_ngs_int_int2),
+    convert_module_name_to_file_name(Globals, $pred,
+        ext_cur_ngs(ext_cur_ngs_int_int2),
         ModuleName, Int2FileName, !Cache),
-    make_module_file_name(Globals, $pred, ext_cur_ngs(ext_cur_ngs_int_int3),
+    convert_module_name_to_file_name(Globals, $pred,
+        ext_cur_ngs(ext_cur_ngs_int_int3),
         ModuleName, Int3FileName, !Cache),
     % XXX LEGACY
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_plain),
         ModuleName, OptFileName, !Cache),
     % XXX LEGACY
-    make_module_file_name(Globals, $pred,
+    convert_module_name_to_file_name(Globals, $pred,
         ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_legacy_opt_trans),
         ModuleName, TransOptFileName, !Cache),
 
@@ -1116,9 +1125,9 @@ construct_any_rules_for_nondefault_file_names(HaveMap,
     module_file_name_cache::in, module_file_name_cache::out) is det.
 
 gather_nested_deps(Globals, ModuleName, NestedDeps, Ext, MmakeRule, !Cache) :-
-    make_module_file_name(Globals, $pred, Ext,
+    convert_module_name_to_file_name(Globals, $pred, Ext,
         ModuleName, ModuleExtName, !Cache),
-    make_module_file_names_with_ext(Globals, Ext,
+    convert_module_names_to_file_names(Globals, Ext,
         NestedDeps, NestedDepsFileNames, !Cache),
     ExtStr = extension_to_string(Globals, Ext),
     MmakeRule = mmake_simple_rule("nested_deps_for_" ++ ExtStr,
@@ -1146,7 +1155,8 @@ foreign_include_file_path_name(SourceFileName, IncludeFile) = IncludePath :-
 construct_subdirs_shorthand_rule(Globals, ModuleName, Ext,
         MmakeRule, !Cache) :-
     module_name_to_file_name_stem(ModuleName, ModuleStr),
-    make_module_file_name(Globals, $pred, Ext, ModuleName, Target, !Cache),
+    convert_module_name_to_file_name(Globals, $pred, Ext,
+        ModuleName, Target, !Cache),
     ExtStr = extension_to_string(Globals, Ext),
     ShorthandTarget = ModuleStr ++ ExtStr,
     MmakeRule = mmake_simple_rule("subdir_shorthand_for_" ++ ExtStr,
