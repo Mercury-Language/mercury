@@ -84,7 +84,7 @@ Mercury compiler to generate a batch file that invokes the program, instead of
 a shell script.
 
 (See the "Using the Mercury compiler" section of the
-[The Mercury User's Guide](https://www.mercurylang.org/information/documentation.html)
+[The Mercury User's Guide](https://mercurylang.org/documentation/documentation.html)
 for further details.)
 
 Limitations
@@ -175,7 +175,7 @@ You can then call the predicate `to_string/2` exactly the same as if it were
 implemented using pure Mercury code.
 
 For more information about the foreign language interface, see the
-[Mercury Language Reference Manual](https://www.mercurylang.org/information/documentation.html).
+[Mercury Language Reference Manual](https://www.mercurylang.org/documentation/documentation.html).
 Additionally, the [samples/java_interface](samples/java_interface) directory in
 the Mercury distribution contains examples of how to use the foreign language
 interface with Java.
