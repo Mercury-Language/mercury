@@ -9,7 +9,9 @@
 %
 % File: make_module_file_names.m.
 %
-% This module constructs filenames for generate_mmakefile_fragments.m.
+% This module converts module_name/extension pairs into filenames
+% for generate_mmakefile_fragments.m.
+%
 % Since many filenames occur in more than one mmake entry, its main job
 % is to manage the *cache* of such filenames.
 %
@@ -39,12 +41,15 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred convert_module_names_to_file_name_group(globals::in,
+:- pred convert_module_name_set_to_file_name_group(globals::in,
     string::in, ext::in,
     set(module_name)::in, list(mmake_file_name_group)::out,
     module_file_name_cache::in, module_file_name_cache::out) is det.
 
-:- pred convert_module_names_to_file_names(globals::in, ext::in,
+:- pred convert_module_name_set_to_file_names(globals::in, ext::in,
+    set(module_name)::in, list(mmake_file_name)::out,
+    module_file_name_cache::in, module_file_name_cache::out) is det.
+:- pred convert_module_name_list_to_file_names(globals::in, ext::in,
     list(module_name)::in, list(mmake_file_name)::out,
     module_file_name_cache::in, module_file_name_cache::out) is det.
 
@@ -118,17 +123,23 @@ init_module_file_name_cache = map.init.
 % a double maintenance burden. This is why we don't use this approach.
 %
 
-convert_module_names_to_file_name_group(Globals, GroupName, Ext,
+convert_module_name_set_to_file_name_group(Globals, GroupName, Ext,
         ModuleNameSet, Groups, !Cache) :-
-    set.to_sorted_list(ModuleNameSet, ModuleNames),
-    convert_module_names_to_file_names(Globals, Ext,
-        ModuleNames, FileNames, !Cache),
+    convert_module_name_set_to_file_names(Globals, Ext,
+        ModuleNameSet, FileNames, !Cache),
     Groups = construct_file_name_maybe_group(GroupName, FileNames).
 
-convert_module_names_to_file_names(Globals, Ext,
+convert_module_name_set_to_file_names(Globals, Ext,
+        ModuleNameSet, FileNames, !Cache) :-
+    list.map_foldl(convert_module_name_to_file_name(Globals, $pred, Ext),
+        set.to_sorted_list(ModuleNameSet), FileNames, !Cache).
+
+convert_module_name_list_to_file_names(Globals, Ext,
         ModuleNames, FileNames, !Cache) :-
     list.map_foldl(convert_module_name_to_file_name(Globals, $pred, Ext),
         ModuleNames, FileNames, !Cache).
+
+%---------------------------------------------------------------------------%
 
 convert_module_name_to_file_name(Globals, From, Ext, ModuleName, FileName,
         !Cache) :-
@@ -136,6 +147,12 @@ convert_module_name_to_file_name(Globals, From, Ext, ModuleName, FileName,
     % temporary string construction.
     % See the analysis of gathered statistics below for why we use the cache
     % for filenames with *all* extensions.
+    %
+    % XXX The cache would be more effective if we separately cached the results
+    % of the call to module_name_to_base_file_name_no_ext_non_java
+    % embedded inside the call to module_name_to_file_name, *provided*
+    % that we add a version of module_name_to_file_name that can take
+    % such cached results as input.
     ( if map.search(!.Cache, Ext, ExtMap0) then
         ( if map.search(ExtMap0, ModuleName, CachedFileName) then
             trace [
@@ -178,7 +195,7 @@ convert_module_name_to_file_name(Globals, From, Ext, ModuleName, FileName,
 %---------------------------------------------------------------------------%
 %
 % The code in this section is invoked only if both the compile time and
-% the runtime conditions of the trace goals in make_module_file_name are met.
+% the runtime conditions of the trace goals above are met.
 % Its job is to gather statistics about
 %
 % - how many times we try to translate filenames with each extension, and
@@ -186,6 +203,7 @@ convert_module_name_to_file_name(Globals, From, Ext, ModuleName, FileName,
 %
 % The data gathered here, written out by record_write_deps_file_cache_stats,
 % can be summarized by tools/write_deps_file_stats.
+% (The code of this cache was originally in write_deps_file.m.)
 %
 % The output of that tool from one bootcheck (which was an asm_fast.gc
 % bootcheck with intermodule optimization) is as follows.
