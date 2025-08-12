@@ -29,35 +29,68 @@ include $(MERCURY_DIR)/VERSION
 # and *also* by Mmake.workspace, has its definition after the inclusion
 # of Mmake.workspace, in order to maintain the traditional ordering.
 #
-# XXX It would be nice if the definitions of related variables
-# in this section were next to each other.
-#
 
 #---------------------#
 
 # This affects the tools set in Mmake.workspace, so must be set first.
-CROSS_COMPILING=@CROSS_COMPILING@
+CROSS_COMPILING		= @CROSS_COMPILING@
 
 #---------------------#
-
-# The host triplet is used to configure libatomic_ops.
-FULLARCH=@FULLARCH@
+#
+# Autoconfigured parameters for building the Boehm collector.
+#
 
 # Specify a C compiler to build executables that can be executed on the build
 # system itself, as part of the Boehm GC build process. The name is confusing
 # because it conflicts with the autoconf meaning of "host", but it comes from
 # upstream.
-HOSTCC=@BUILD_C_PROGS_FOR_BUILD_SYSTEM@
+HOSTCC			= @BUILD_C_PROGS_FOR_BUILD_SYSTEM@
+
+# Options to pass to the C compiler when building Boehm-GC.
+BOEHM_CFLAGS = \
+	@ENABLE_BOEHM_LARGE_CONFIG@ \
+	@ENABLE_BOEHM_USE_MMAP@ \
+	@ENABLE_BOEHM_USE_MUNMAP@ \
+	@ENABLE_BOEHM_XOPEN_SOURCE@ \
+	@BOEHM_NO_GETCONTEXT@ \
+	@BOEHM_HAVE_DL_ITERATE_PTR@
+
+# Additional options to pass to the C compiler when
+# building Boehm-GC for threads.
+BOEHM_CFLAGS_FOR_THREADS = \
+	@BOEHM_CFLAGS_FOR_THREADS@ \
+	@ENABLE_BOEHM_THREAD_LOCAL_ALLOC@ \
+	@ENABLE_BOEHM_PARALLEL_MARK@
+
+# Whether Boehm-GC needs object files built from libatomic_ops .S files.
+BOEHM_NEED_ATOMIC_OPS_ASM = @BOEHM_NEED_ATOMIC_OPS_ASM@
+
+# The CPU type to pass via the "cpu" argument of boehm_gc/NT_MAKEFILE.
+# (This is only relevant when using MSVC.)
+BOEHM_WINDOWS_CPU_TYPE	= @BOEHM_WINDOWS_CPU_TYPE@
 
 #---------------------#
+#
+# Autoconfigured hardware properties of the host machine.
+#
 
-# Specify the compilation model to use for compiling the compiler.
-GRADE		= @GRADE@
+# The host triplet is used to configure libatomic_ops.
+FULLARCH		= @FULLARCH@
 
 #---------------------#
+#
+# Autoconfigured extensions on the host machine.
+#
 
-# Specify EXT_FOR_EXE is `.exe' on MS-Windows and empty elsewhere.
-EXT_FOR_EXE	= @EXT_FOR_EXE@
+# Extensions to use for object files and archives.
+O			= @OBJ_SUFFIX@
+A			= @LIB_SUFFIX@
+
+# Specify EXT_FOR_PIC_OBJECTS as `pic_o' if any special $(PIC) flags are
+# required (see above), and as `o' otherwise. This is used to ensure that
+# we don't bother to build the .pic_o files if $(PIC) is null, since we can
+# just reuse the .o files.
+EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
 
 # Specify EXT_FOR_SHARED_LIB as `so' if the operating system
 # supports `.so' shared libraries,
@@ -65,18 +98,19 @@ EXT_FOR_EXE	= @EXT_FOR_EXE@
 # or as `a' if it doesn't.
 EXT_FOR_SHARED_LIB	= @EXT_FOR_SHARED_LIB@
 
-# Specify USE_DLLs as `yes' if the OS supports Windows-style DLLs.
-USE_DLLS		= @USE_DLLS@
+# Specify EXT_FOR_EXE is `.exe' on MS-Windows and empty elsewhere.
+EXT_FOR_EXE		= @EXT_FOR_EXE@
 
-# Specify any special flags to pass to the C compiler when creating objects
-# for a shared library (e.g. -fpic or -fPIC for gcc).
-CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
+#---------------------#
+#
+# Autoconfigured properties of the host machine C compiler.
+#
 
-# Specify EXT_FOR_PIC_OBJECTS as `pic_o' if any special $(PIC) flags are
-# required (see above), and as `o' otherwise. This is used to ensure that
-# we don't bother to build the .pic_o files if $(PIC) is null, since we can
-# just reuse the .o files.
-EXT_FOR_PIC_OBJECTS	= @EXT_FOR_PIC_OBJECTS@
+# Are we compiling using the MS C compiler?
+USING_MICROSOFT_CL_COMPILER = @USING_MICROSOFT_CL_COMPILER@
+
+# NOTE: This file does not define $(CC), whose value is autoconfigured,
+# but it does use it.
 
 # Specify the Mmake command to link a shared library.
 # This is only used if EXT_FOR_SHARED_LIB was defined as `so' above.
@@ -91,22 +125,23 @@ LINK_SHARED_OBJ  	= @LINK_SHARED_OBJ@
 # rather than $(SO_LOCATIONS_DIR).
 LINK_SHARED_OBJ_SH  	= @LINK_SHARED_OBJ_SH@
 
-# The following variables specify options to $LINK_SHARED_OBJ to
-# allow/disallow unresolved symbols when building shared libraries.
-ALLOW_UNDEFINED	= @ALLOW_UNDEFINED@
-ERROR_UNDEFINED	= @ERROR_UNDEFINED@
+# Specify USE_DLLs as `yes' if the OS supports Windows-style DLLs.
+USE_DLLS		= @USE_DLLS@
 
-# The thread-safe version of the Boehm GC library links in lots
-# of system-specific libraries that we don't want to have to
-# explicitly link in when building the Mercury shared libraries,
-# so override ERROR_UNDEFINED in that case.
-ifeq "$(findstring .par,$(GRADE))$(findstring .gc,$(GRADE))" ".par.gc"
-ERROR_UNDEFINED	= $(ALLOW_UNDEFINED)
-endif
+# The option needed to name object files.
+# We need to use $(empty_string) here to prevent Make from truncating
+# any trailing spaces in -o
+# XXX In what exactly? The string "-o" has no trailing spaces.
+empty_string=
+OBJFILE_OPT		= @OBJFILE_OPT@$(empty_string)
+
+# Specify any special flags to pass to the C compiler when creating objects
+# for a shared library (e.g. -fpic or -fPIC for gcc).
+CFLAGS_FOR_PIC		= @CFLAGS_FOR_PIC@
 
 # Specify any options required when linking if AddressSanitizer and other
 # sanitizers are enabled.
-LDFLAGS_FOR_SANITIZERS = @LDFLAGS_FOR_SANITIZERS@
+LDFLAGS_FOR_SANITIZERS	= @LDFLAGS_FOR_SANITIZERS@
 
 # The following variables specify how to pass options to the $(CC) or
 # $(LINK_SHARED_OBJ) command to specify directories to be searched at
@@ -121,21 +156,50 @@ LDFLAGS_FOR_SANITIZERS = @LDFLAGS_FOR_SANITIZERS@
 # The EXE_ versions are used when linking executables.
 # The empty single quote pairs below are there to ensure that `make'
 # does not throw away any important trailing or leading whitespace.
-SHLIB_RPATH_OPT	= @SHLIB_RPATH_OPT@''
-SHLIB_RPATH_SEP	= ''@SHLIB_RPATH_SEP@''
-EXE_RPATH_OPT	= @EXE_RPATH_OPT@''
-EXE_RPATH_SEP	= ''@EXE_RPATH_SEP@''
+SHLIB_RPATH_OPT		= @SHLIB_RPATH_OPT@''
+SHLIB_RPATH_SEP		= ''@SHLIB_RPATH_SEP@''
+EXE_RPATH_OPT		= @EXE_RPATH_OPT@''
+EXE_RPATH_SEP		= ''@EXE_RPATH_SEP@''
 
 # These variables can be used to set the install-name for the Mercury
 # shared libraries on systems that use the install-name option (such as
 # Darwin). XXX The two-single-quotes in a row are very unusual, and
 # the reason why they are needed should be documented.
-SHLIB_USE_INSTALL_NAME = @SHLIB_USE_INSTALL_NAME@
-SHLIB_INSTALL_NAME_FLAG = @SHLIB_INSTALL_NAME_FLAG@''
+SHLIB_USE_INSTALL_NAME	= @SHLIB_USE_INSTALL_NAME@
+SHLIB_INSTALL_NAME_FLAG	= @SHLIB_INSTALL_NAME_FLAG@''
 
 # Specify any extra libraries that must be linked in when linking shared
 # objects.
 SHARED_LIBS		= @SHARED_LIBS@
+
+# Is getopt() available?
+# This is not *strictly* a property of the host compiler, but
+# it does not fit anywhere else either.
+HAVE_GETOPT		= @HAVE_GETOPT@
+
+#---------------------#
+#
+# Autoconfigured library names or locations.
+#
+
+# The linker option to use to link in the math library, if any.
+# Typically `-lm'.
+MATH_LIB		= @MATH_LIB@
+
+# More libraries to link.
+THREAD_LIBS		= @THREAD_LIBS@
+SOCKET_LIBRARY		= @SOCKET_LIBRARY@
+NSL_LIBRARY		= @NSL_LIBRARY@
+DL_LIBRARY		= @DL_LIBRARY@
+READLINE_LIBRARIES	= @READLINE_LIBRARIES@
+TERMCAP_LIBRARY		= @TERMCAP_LIBRARY@
+HWLOC_CFLAGS		= @HWLOC_CFLAGS@
+HWLOC_LIBS		= @HWLOC_LIBS@
+
+#---------------------#
+#
+# Configured installation parameters.
+#
 
 # Set the installation prefix. This is done here as well as
 # in scripts/Mmake.vars to avoid accidentally overwriting an
@@ -160,6 +224,21 @@ INSTALLABLE_PREFIX	= @INSTALLABLE_PREFIX@
 INSTALL_MERC_GC_LIB_DIR	= $(INSTALL_MERC_GRADELESS_LIB_DIR)
 FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_MERC_GRADELESS_LIB_DIR)
 
+# Should we install batch files (and other Windows specific files)?
+INSTALL_WINDOWS_SCRIPTS	= @INSTALL_WINDOWS_SCRIPTS@
+
+# Enable building of the deep profiler?
+# The value of ENABLE_DEEP_PROFILER is either yes or no.
+ENABLE_DEEP_PROFILER	= @ENABLE_DEEP_PROFILER@
+
+#---------------------#
+#
+# The default grade selected by autoconfiguration, and its implications.
+#
+
+# Specify the compilation model to use for compiling the compiler.
+GRADE			= @GRADE@
+
 # By default, GRADESTRING is defined as the result of invoking
 # `mmc --output-grade-string' with $(GRADE) and $(GRADEFLAGS).
 # But when installing the standard library, the compiler will not yet
@@ -169,86 +248,35 @@ FINAL_INSTALL_MERC_GC_LIB_DIR = $(FINAL_INSTALL_MERC_GRADELESS_LIB_DIR)
 # Note that the definition below does _not_ include GRADEFLAGS.
 # So any changes to the grade flags for the standard library or
 # compiler itself should be done by setting GRADE, not GRADEFLAGS.
-GRADESTRING = $(shell $(SCRIPTS_DIR)/canonical_grade $(ALL_GRADEFLAGS))
+GRADESTRING	= $(shell $(SCRIPTS_DIR)/canonical_grade $(ALL_GRADEFLAGS))
 
-# Options to pass to the Mercury compiler.
-# This is now included in FLAGS files.
-# MCFLAGS	+= --no-infer-all --halt-at-warn --no-warn-inferred-erroneous
+# The following variables specify options to $LINK_SHARED_OBJ to
+# allow/disallow unresolved symbols when building shared libraries.
+ALLOW_UNDEFINED		= @ALLOW_UNDEFINED@
+ERROR_UNDEFINED		= @ERROR_UNDEFINED@
 
-# Options to pass to the C compiler when building Boehm-GC.
-BOEHM_CFLAGS = @ENABLE_BOEHM_LARGE_CONFIG@ \
-	@ENABLE_BOEHM_USE_MMAP@ \
-	@ENABLE_BOEHM_USE_MUNMAP@ \
-	@ENABLE_BOEHM_XOPEN_SOURCE@ \
-	@BOEHM_NO_GETCONTEXT@ \
-	@BOEHM_HAVE_DL_ITERATE_PTR@
-
-# Additional options to pass to the C compiler when
-# building Boehm-GC for threads.
-BOEHM_CFLAGS_FOR_THREADS = @BOEHM_CFLAGS_FOR_THREADS@ \
-	@ENABLE_BOEHM_THREAD_LOCAL_ALLOC@ \
-	@ENABLE_BOEHM_PARALLEL_MARK@
-
-# Whether Boehm-GC needs object files built from libatomic_ops .S files.
-BOEHM_NEED_ATOMIC_OPS_ASM = @BOEHM_NEED_ATOMIC_OPS_ASM@
-
-# The CPU type to pass via the "cpu" argument of boehm_gc/NT_MAKEFILE.
-# (This is only relevant when using MSVC.)
-BOEHM_WINDOWS_CPU_TYPE = @BOEHM_WINDOWS_CPU_TYPE@
+# The thread-safe version of the Boehm GC library links in lots
+# of system-specific libraries that we don't want to have to
+# explicitly link in when building the Mercury shared libraries,
+# so override ERROR_UNDEFINED in that case.
+ifeq "$(findstring .par,$(GRADE))$(findstring .gc,$(GRADE))" ".par.gc"
+ERROR_UNDEFINED		= $(ALLOW_UNDEFINED)
+endif
 
 #---------------------#
+#
+# Autoconfigured commands, mostly to build documentation and tools.
+#
 
-INSTALL_INFO=@INSTALL_INFO@
-INFO=@INFO@
-TEXI2DVI=@TEXI2DVI@
-DVIPS=@DVIPS@
-PDFTEX=@PDFTEX@
-MAKEINFO=@MAKEINFO@
-LYNX=@LYNX@
-PERL=@PERL@
-NM=@NM@
-
-#---------------------#
-
-# Should we install batch files (and other Windows specific files)?
-INSTALL_WINDOWS_SCRIPTS=@INSTALL_WINDOWS_SCRIPTS@
-
-#---------------------#
-
-# The linker option to use to link in the math library, if any.
-# Typically `-lm'.
-MATH_LIB=@MATH_LIB@
-
-# More libraries to link
-THREAD_LIBS=@THREAD_LIBS@
-SOCKET_LIBRARY=@SOCKET_LIBRARY@
-NSL_LIBRARY=@NSL_LIBRARY@
-DL_LIBRARY=@DL_LIBRARY@
-READLINE_LIBRARIES=@READLINE_LIBRARIES@
-TERMCAP_LIBRARY=@TERMCAP_LIBRARY@
-HWLOC_CFLAGS=@HWLOC_CFLAGS@
-HWLOC_LIBS=@HWLOC_LIBS@
-
-# Extensions to use for object files and archives.
-O=@OBJ_SUFFIX@
-A=@LIB_SUFFIX@
-
-# The option needed to name object files.
-# We need to use $(empty_string) here to prevent Make from truncating
-# any trailing spaces in -o
-# XXX In what exactly? The string "-o" has no trailing spaces.
-empty_string=
-OBJFILE_OPT=@OBJFILE_OPT@$(empty_string)
-
-# Are we compiling using the MS C compiler?
-USING_MICROSOFT_CL_COMPILER=@USING_MICROSOFT_CL_COMPILER@
-
-# Is getopt() available?
-HAVE_GETOPT=@HAVE_GETOPT@
-
-# Enable building of the deep profiler?
-# The value of ENABLE_DEEP_PROFILER is either yes or no.
-ENABLE_DEEP_PROFILER=@ENABLE_DEEP_PROFILER@
+INSTALL_INFO 		= @INSTALL_INFO@
+INFO 			= @INFO@
+TEXI2DVI 		= @TEXI2DVI@
+DVIPS 			= @DVIPS@
+PDFTEX 			= @PDFTEX@
+MAKEINFO 		= @MAKEINFO@
+LYNX 			= @LYNX@
+PERL 			= @PERL@
+NM 			= @NM@
 
 #---------------------------------------------------------------------------#
 #
@@ -323,6 +351,10 @@ $(MERCURY_DIR)/Mmake.params: ;
 
 # Specify the Mercury compiler to use for bootstrapping.
 MC		= @BOOTSTRAP_MC_COMPILER@
+
+# Options to pass to the Mercury compiler.
+# This is now included in FLAGS files.
+# MCFLAGS	+= --no-infer-all --halt-at-warn --no-warn-inferred-erroneous
 
 #---------------------------------------------------------------------------#
 
