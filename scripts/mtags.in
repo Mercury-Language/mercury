@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 et ft=perl
 #---------------------------------------------------------------------------#
 # Copyright (C) 1994-2001, 2003, 2005-2007, 2009 The University of Melbourne.
-# Copyright (C) 2015, 2017, 2019 The Mercury team.
+# Copyright (C) 2015, 2017, 2019, 2025 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -311,7 +311,7 @@ sub output_name() {
             while ($name =~ /__/) {
                 $name =~ s/[^_]*(_[^_]+)*__//;
             }
-            output_single_tag();
+            output_single_tag_if_not_dup();
         }
     }
 }
@@ -327,93 +327,120 @@ sub output_single_module_qualified_name() {
             # Output tag using `__' as module qualifier.
             if ($underscore_qualified_names) {
                 $name = $underscore_name;
-                output_single_tag();
+                output_single_tag_if_not_dup();
             }
 
             # Output tag using `.' as module qualifier.
             $name = $dot_name;
-            output_single_tag();
+            output_single_tag_if_not_dup();
         }
         $name = $underscore_name;
     } else {
         # $name is unqualified.
-        output_single_tag();
+        output_single_tag_if_not_dup();
+    }
+}
+
+sub output_single_tag_if_not_dup() {
+    if ($seen{$name}) {
+        if ($emacs) {
+            # For emacs, we always include duplicates.
+            # XXX Why?
+            output_single_tag()
+        } else {
+            if ($keep_dups) {
+                # We want to keep duplicates in general, but
+                # do we want to keep this one?
+                if ($file eq $prev_file{$name} && $. < ($prev_line{$name} + 5))
+                {
+                    # The new tag would go to almost the same line as the old,
+                    # so the answer is: no, we do not.
+                    $prev_line{$name} = $.
+                } else {
+                    # Yes, we do.
+                    output_single_tag()
+                }
+            } else {
+                # Generate a warning only if we are generating warnings,
+                # *and* the warning itself would not be duplicate.
+                if ($warnings &&
+                    $file ne $prev_file{$name} &&
+                    $. != $prev_line{$name})
+                {
+                    printf STDOUT "%s:%03d: Warning: ignoring duplicate defn " .
+                        "for `$name'\n", $file, $., $name;
+                    printf STDOUT
+                        "%s:%03d:   (previous definition of `%s' was here).\n",
+                        $prev_file{$name}, $prev_line{$name}, $name;
+                }
+            }
+        }
+    } else {
+        output_single_tag()
     }
 }
 
 sub output_single_tag() {
-    if (!$emacs && !$keep_dups && $seen{$name}) {
-        if ($warnings &&
-            $file ne $prev_file{$name} &&
-            $. != $prev_line{$name})
-        {
-            printf STDOUT "%s:%03d: Warning: ignoring duplicate defn " .
-                "for `$name'\n", $file, $., $name;
-            printf STDOUT
-                "%s:%03d:   (previous definition of `%s' was here).\n",
-                $prev_file{$name}, $prev_line{$name}, $name;
-        }
+    if ($emacs) {
+        printf OUT "%s\177%s\001%d,%d\n", $_, $name, $., $.;
     } else {
-        if ($emacs) {
-            printf OUT "%s\177%s\001%d,%d\n", $_, $name, $., $.;
+        # Output basic tag line for vi/vim/elvis.
+        # If the match line for a pred or func contains a left parenthesis,
+        # then print it only up to and including that parenthesis, so that
+        # we can find the tag even if the part of the line after the
+        # parenthesis changes. This allows us to use the tag to find
+        # the predicate or function definition even after changes
+        # in the types of the arguments.
+        # We include the parenthesis so that the search pattern for
+        # e.g. the predicate tag "p" will find the declaration that starts
+        # with ":- pred p(" but not with ":- pred prepare_for_xxx(".
+        if (($kind eq "pred" || $kind eq "func") && $match_line =~ /\(/) {
+            # Delete everything after the *last* parenthesis.
+            # In some cases, such as the declarations of field access
+            # functions, there will be more than one parenthesis on the
+            # line. Since the name of the function itself can be between
+            # the first and the second parenthesis, we don't want to
+            # delete everything after the *first* parenthesis.
+            $match_line_start = $match_line;
+            $match_line_start =~ s|\([^\(]*$|\(|;
+            printf OUT "%s\t%s\t/^%s/", $name, $file, $match_line_start;
         } else {
-            # Output basic tag line for vi/vim/elvis.
-            # If the match line for a pred or func contains a left parenthesis,
-            # then print it only up to and including that parenthesis, so that
-            # we can find the tag even if the part of the line after the
-            # parenthesis changes. This allows us to use the tag to find
-            # the predicate or function definition even after changes
-            # in the types of the arguments.
-            # We include the parenthesis so that the search pattern for
-            # e.g. the predicate tag "p" will find the declaration that starts
-            # with ":- pred p(" but not with ":- pred prepare_for_xxx(".
-            if (($kind eq "pred" || $kind eq "func") && $match_line =~ /\(/) {
-                # Delete everything after the *last* parenthesis.
-                # In some cases, such as the declarations of field access
-                # functions, there will be more than one parenthesis on the
-                # line. Since the name of the function itself can be between
-                # the first and the second parenthesis, we don't want to
-                # delete everything after the *first* parenthesis.
-                $match_line_start = $match_line;
-                $match_line_start =~ s|\([^\(]*$|\(|;
-                printf OUT "%s\t%s\t/^%s/", $name, $file, $match_line_start;
-            } else {
-                printf OUT "%s\t%s\t/^%s\$/", $name, $file, $match_line;
-            }
-
-            # Output commands to alter the search buffer.
-            if ($search_definitions) {
-                if ($kind eq "pred" || $kind eq "func") {
-                    printf OUT ";kq|/^\\<%s\\>/;'q", $src_name;
-                } else {
-                    printf OUT ";kq|-;/\\<%s\\>/;'q", $name;
-                }
-            }
-
-            # Output extended attributes for vim and elvis.
-            if ($extended_attributes ne "none") {
-                if ($context =~ /\bimplementation\b/) {
-                    $static = "\tfile:";
-                    $sfile = $file;
-                } else {
-                    $static = "";
-                    $sfile = "";
-                }
-                printf OUT ";\"\tkind:%s%s", $kind, $static;
-                if ($extended_attributes eq "elvis") {
-                    printf OUT "%s", $sfile;
-                }
-            }
-
-            printf OUT "\n";
+            printf OUT "%s\t%s\t/^%s\$/", $name, $file, $match_line;
         }
-        $seen{$name} = 1;
-        $prev_file{$name} = $file;
-        $prev_line{$name} = $.;
 
-        $last_tag_name = $name;
-        $last_tag_kind = $kind;
+        # Output commands to alter the search buffer.
+        if ($search_definitions) {
+            if ($kind eq "pred" || $kind eq "func") {
+                printf OUT ";kq|/^\\<%s\\>/;'q", $src_name;
+            } else {
+                printf OUT ";kq|-;/\\<%s\\>/;'q", $name;
+            }
+        }
+
+        # Output extended attributes for vim and elvis.
+        if ($extended_attributes ne "none") {
+            if ($context =~ /\bimplementation\b/) {
+                $static = "\tfile:";
+                $sfile = $file;
+            } else {
+                $static = "";
+                $sfile = "";
+            }
+            printf OUT ";\"\tkind:%s%s", $kind, $static;
+            if ($extended_attributes eq "elvis") {
+                printf OUT "%s", $sfile;
+            }
+        }
+
+        printf OUT "\n";
     }
+
+    $seen{$name} = 1;
+    $prev_file{$name} = $file;
+    $prev_line{$name} = $.;
+
+    $last_tag_name = $name;
+    $last_tag_kind = $kind;
 }
 
 #---------------------------------------------------------------------------#
