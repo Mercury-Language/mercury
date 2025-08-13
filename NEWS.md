@@ -97,8 +97,8 @@ Changes that may break compatibility
         program.all_mihs    -> program.mihs_to_clean
         program.all_int0s   -> program.int3s_to_clean
 
-* We have replaced the --no-warn-only-one-format-string-error compiler option
-  with the new option named --warn-all-format-string-errors.
+* We have replaced the `--no-warn-only-one-format-string-error` compiler
+  option with the new option named `--warn-all-format-string-errors`.
 
 Changes to the Mercury standard library
 ---------------------------------------
