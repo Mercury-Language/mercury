@@ -268,6 +268,17 @@
 
 %---------------------------------------------------------------------------%
 %
+% Reachability.
+%
+
+    % reachable_vertices_from(G, FromVertex, ReachableVertices):
+    %
+    % Return the set of vertices that are reachable from FromVertex in G.
+    %
+:- pred reachable_vertices_from(digraph(T)::in, T::in, set(T)::out) is det.
+
+%---------------------------------------------------------------------------%
+%
 % Transforming digraphs.
 %
 
@@ -546,7 +557,7 @@ init(digraph(0u, VMap, FwdMap, BwdMap)) :-
 
 add_vertex(Vertex, Key, !G) :-
     VertexMap0 = !.G ^ vertex_map,
-    ( if bimap.search(VertexMap0, Vertex, Key0) then
+    ( if bimap.forward_search(VertexMap0, Vertex, Key0) then
         Key = Key0
     else
         allocate_key(Key, !G),
@@ -630,7 +641,7 @@ delete_assoc_list([X - Y | Edges], !G) :-
 %
 
 search_key(G, Vertex, Key) :-
-    bimap.search(G ^ vertex_map, Vertex, Key).
+    bimap.forward_search(G ^ vertex_map, Vertex, Key).
 
 lookup_key(G, Vertex) = Key :-
     digraph.lookup_key(G, Vertex, Key).
@@ -646,7 +657,7 @@ lookup_vertex(G, Key) = Vertex :-
     digraph.lookup_vertex(G, Key, Vertex).
 
 lookup_vertex(G, Key, Vertex) :-
-    ( if bimap.search(G ^ vertex_map, Vertex0, Key) then
+    ( if bimap.reverse_search(G ^ vertex_map, Vertex0, Key) then
         Vertex = Vertex0
     else
         unexpected($module, $pred, "search for vertex failed")
@@ -863,6 +874,42 @@ dfs_2(G, X, !Visited, !DfsRev) :-
         % We have already visited X.
         true
     ).
+
+%---------------------------------------------------------------------------%
+%
+% Reachability.
+%
+
+reachable_vertices_from(G, From, VisitedVerticesSet) :-
+    digraph.lookup_key(G, From, FromKey),
+    WorkKeySet = sparse_bitset.make_singleton_set(FromKey),
+    sparse_bitset.init(VisitedKeySet0),
+    reachable_vertices_from_loop(G, WorkKeySet, VisitedKeySet0, VisitedKeySet),
+    sparse_bitset.foldl(add_vertex_to_list(G), VisitedKeySet,
+        [], VisitedVertices),
+    set.list_to_set(VisitedVertices, VisitedVerticesSet).
+
+:- pred reachable_vertices_from_loop(digraph(T)::in, digraph_key_set(T)::in,
+    digraph_key_set(T)::in, digraph_key_set(T)::out) is det.
+
+reachable_vertices_from_loop(G, !.WorkKeySet, !VisitedKeySet) :-
+    ( if sparse_bitset.remove_least(CurWorkKey, !WorkKeySet) then
+        sparse_bitset.insert(CurWorkKey, !VisitedKeySet),
+        digraph.lookup_key_set_from(G, CurWorkKey, SuccKeys),
+        sparse_bitset.difference(SuccKeys, !.VisitedKeySet, NewSuccKeys),
+        sparse_bitset.union(NewSuccKeys, !WorkKeySet),
+        reachable_vertices_from_loop(G, !.WorkKeySet, !VisitedKeySet)
+    else
+        % !.WorkKeySet is empty; we are done.
+        true
+    ).
+
+:- pred add_vertex_to_list(digraph(T)::in, digraph_key(T)::in,
+    list(T)::in, list(T)::out) is det.
+
+add_vertex_to_list(G, VertexKey, !Vertices) :-
+    digraph.lookup_vertex(G, VertexKey, Vertex),
+    !:Vertices = [Vertex | !.Vertices].
 
 %---------------------------------------------------------------------------%
 %

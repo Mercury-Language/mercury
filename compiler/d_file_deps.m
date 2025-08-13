@@ -57,7 +57,11 @@
                 indirect_deps_graph     :: digraph(module_name),
                 indirect_opt_deps_graph :: digraph(module_name),
                 trans_opt_deps_graph    :: digraph(module_name),
-                trans_opt_order         :: list(module_name)
+
+                trans_opt_order         :: list(module_name),
+
+                % The union of all the previous five graphs.
+                all_deps_graph          :: digraph(module_name)
             ).
 
 %---------------------------------------------------------------------------%
@@ -234,9 +238,20 @@ compute_dep_graphs_gendep(ProgressStream, Globals, ModuleName, DepsMap,
     get_ext_opt_deps(Globals, look_for_src, ExtTransOpt,
         TransOptDepsOrdering, TransOptOrder, !IO),
 
+    digraph.to_assoc_list(IntDepsGraph, IntDepsGraphEdges),
+    digraph.to_assoc_list(ImpDepsGraph, ImpDepsGraphEdges),
+    digraph.to_assoc_list(IndirectDepsGraph, IndirectDepsGraphEdges),
+    digraph.to_assoc_list(IndirectOptDepsGraph, IndirectOptDepsGraphEdges),
+    digraph.to_assoc_list(TransOptDepsGraph, TransOptDepsGraphEdges),
+    AllDepsGraphsEdges0 = IntDepsGraphEdges ++ ImpDepsGraphEdges ++
+        IndirectDepsGraphEdges ++ IndirectOptDepsGraphEdges ++
+        TransOptDepsGraphEdges,
+    % ZZZ list.sort_and_remove_dups(FourDepsGraphsEdges0, AllDepsGraphsEdges),
+    digraph.from_assoc_list(AllDepsGraphsEdges0, AllDepsGraph),
+
     DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph,
-        IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptOrder).
+        IndirectDepsGraph, IndirectOptDepsGraph, TransOptDepsGraph,
+        TransOptOrder, AllDepsGraph).
 
     % Construct a pair of dependency graphs (the interface dependencies
     % and the implementation dependencies) for all the modules in the program.
@@ -285,7 +300,7 @@ construct_d_file_deps_gendep(Globals, DepGraphs, Baggage, ParseTreeModuleSrc,
 
     DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph,
         IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, FullTransOptOrder),
+        TransOptDepsGraph, FullTransOptOrder, _AllDepsGraph),
 
     get_dependencies_from_graph(IntDepsGraph, ModuleName, IntDeps),
     get_dependencies_from_graph(ImpDepsGraph, ModuleName, ImpDeps),
@@ -397,33 +412,11 @@ get_dependencies_from_graph(DepsGraph, ModuleName, Dependencies) :-
 
 compute_reachable_modules_from_dep_graphs(DepGraphs, ModuleName,
         ReachableModules) :-
-    DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph,
-        IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, _FullTransOptOrder),
-    compute_reachable_modules_from_digraph(IntDepsGraph, ModuleName,
-        IntReachableModules),
-    compute_reachable_modules_from_digraph(ImpDepsGraph, ModuleName,
-        ImpReachableModules),
-    compute_reachable_modules_from_digraph(IndirectDepsGraph, ModuleName,
-        IndirectReachableModules),
-    compute_reachable_modules_from_digraph(IndirectOptDepsGraph, ModuleName,
-        IndirectOptReachableModules),
-    compute_reachable_modules_from_digraph(TransOptDepsGraph, ModuleName,
-        TransOptReachableModules),
-    ReachableModules = set.union_list(
-        [IntReachableModules, ImpReachableModules,
-        IndirectReachableModules, IndirectOptReachableModules,
-        TransOptReachableModules]).
-
-:- pred compute_reachable_modules_from_digraph(digraph(module_name)::in,
-    module_name::in, set(module_name)::out) is det.
-
-compute_reachable_modules_from_digraph(Digraph, ModuleName,
-        ReachableModuleSet) :-
-    digraph.lookup_key(Digraph, ModuleName, ModuleNameKey),
-    digraph.dfs(Digraph, ModuleNameKey, ReachableKeys),
-    list.map(lookup_vertex(Digraph), ReachableKeys, ReachableModules),
-    set.list_to_set(ReachableModules, ReachableModuleSet).
+    DepGraphs = dep_graphs(_IntDepsGraph, _ImpDepsGraph,
+        _IndirectDepsGraph, _IndirectOptDepsGraph,
+        _TransOptDepsGraph, _FullTransOptOrder, AllDepsGraph),
+    digraph.reachable_vertices_from(AllDepsGraph, ModuleName,
+        ReachableModules).
 
 %---------------------%
 

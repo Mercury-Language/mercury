@@ -235,11 +235,12 @@ Changes to the Mercury standard library
     - The `digraph_key(T)` type is now an instance of the `uenum` typeclass,
      and is no longer an instance of the `enum` typeclass.
 
-* The following functions have been added:
+* The following predicates and functions have been added:
 
     - func `symmetric_closure/1`            (synonym for `sc/1`)
     - func `transitive_closure/1`           (synonym for `tc/1`)
     - func `reflexive_transitive_closure/1` (synonym for `rtc/1`)
+    - pred `reachable_vertices_from/3`
 
 * We have improved the implementations of transitive closure and reflexive
   transitive closure.
