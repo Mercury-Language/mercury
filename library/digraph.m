@@ -273,7 +273,9 @@
 
     % reachable_vertices_from(G, FromVertex, ReachableVertices):
     %
-    % Return the set of vertices that are reachable from FromVertex in G.
+    % Return the set of vertices that are reachable from FromVertex in G
+    % through zero or more edges. This means that the set will always
+    % include FromVertex.
     %
 :- pred reachable_vertices_from(digraph(T)::in, T::in, set(T)::out) is det.
 
