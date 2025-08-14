@@ -243,11 +243,14 @@ compute_dep_graphs_gendep(ProgressStream, Globals, ModuleName, DepsMap,
     digraph.to_assoc_list(IndirectDepsGraph, IndirectDepsGraphEdges),
     digraph.to_assoc_list(IndirectOptDepsGraph, IndirectOptDepsGraphEdges),
     digraph.to_assoc_list(TransOptDepsGraph, TransOptDepsGraphEdges),
-    AllDepsGraphsEdges0 = IntDepsGraphEdges ++ ImpDepsGraphEdges ++
+    AllDepsGraphsEdges = IntDepsGraphEdges ++ ImpDepsGraphEdges ++
         IndirectDepsGraphEdges ++ IndirectOptDepsGraphEdges ++
         TransOptDepsGraphEdges,
-    % ZZZ list.sort_and_remove_dups(FourDepsGraphsEdges0, AllDepsGraphsEdges),
-    digraph.from_assoc_list(AllDepsGraphsEdges0, AllDepsGraph),
+    % Many edges exist in more than one of these graphs. However,
+    % removing the duplicates by calling list.sort_and_remove_dups
+    % costs more time than would be saved by digraph.from_assoc_list
+    % not having to add the duplicate edges.
+    digraph.from_assoc_list(AllDepsGraphsEdges, AllDepsGraph),
 
     DepGraphs = dep_graphs(IntDepsGraph, ImpDepsGraph,
         IndirectDepsGraph, IndirectOptDepsGraph, TransOptDepsGraph,
