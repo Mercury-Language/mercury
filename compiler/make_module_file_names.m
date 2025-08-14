@@ -70,58 +70,43 @@
 :- import_module uint.
 
 %---------------------------------------------------------------------------%
+%
+% The cache we use to reduce the allocations needed to constructed file names.
+%
+% We used to use a map from extensions to module names to file names,
+% but we now use a map from module names to extensions to file names.
+% This can be, and is, a bit faster, because it allows us to convert
+% each module name to a string just once, at least when we want to
+% put a non-java extension after it. (For Java extensions, we put "__"
+% between module name components; for all other extensions, we use "."
+% as the separator.)
+%
+% At the moment, all the exported predicates of this module convert
+% all the module names that appear in the input arguments to strings.
+% However, the callers of those predicates pass those module names
+% in *many* calls to those predicates. With a suitable change to the
+% interface of this module, it should be possible to eliminate even
+% the step of checking the module-name-to-string part of the cache.
+%
 
-:- type module_file_name_cache == map(ext, map(module_name, file_name)).
+    % Conceptually, this is a map from module_names to module_name_infos,
+    % but adding an initial stage that operates on the base name of each
+    % module name speeds up access, because comparisons being faster on
+    % base names (which are plain strings) being faster then comparisons
+    % on module names gains in more time than we lose on having to compare
+    % the base names again as part of the second stage.
+:- type module_file_name_cache ==
+    map(string, map(module_name, module_name_info)).
+
+:- type module_name_info
+    --->    module_name_info(
+                base_file_name_no_ext_non_java  :: string,
+                ext_map                         :: map(ext, file_name)
+            ).
 
 init_module_file_name_cache = map.init.
 
 %---------------------------------------------------------------------------%
-%
-% The call to module_name_to_file_name in make_module_file_name below
-% constructs the filename from three components: the directory path,
-% the module name itself, and the extension string. The first and third
-% components depend only on Ext, not on ModuleName, which means that
-% we *could* compute those parts here with:
-%
-%   ext_to_dir_path(Globals, not_for_search, Ext, DirNames),
-%   (
-%       DirNames = [],
-%       MaybeDirPath = no
-%   ;
-%       DirNames = [_ | _],
-%       DirPath = dir.relative_path_name_from_components(DirNames),
-%       MaybeDirPath = yes(DirPath)
-%   ),
-%   ExtStr = extension_to_string(Globals, Ext),
-%
-% and then use
-%
-%   % This code performs the job of
-%   %   module_name_to_file_name(Globals, From, Ext, ModuleName, FileName)
-%   % but with the directory path and extension string parts done just
-%   % once in convert_module_names_to_file_names, instead of being repeated
-%   % each time here.
-%   BaseNameNoExt = module_name_to_base_file_name_no_ext(Ext, ModuleName),
-%   BaseName = BaseNameNoExt ++ ExtStr,
-%   (
-%       MaybeDirPath = no,
-%       FileName = BaseName
-%   ;
-%       MaybeDirPath = yes(DirPath),
-%       FileName =
-%           dir.relative_path_name_from_components([DirPath, BaseName])
-%   ),
-%
-% in make_module_file_name to construct FileName.
-%
-% We have tried this out. It works, but the performance of the updated
-% compiler is indistinguishable from the performance of the pre-update
-% compiler. (See the thread on m-rev on 2023 Sep 7.) And since this
-% approach requires two versions of make_module_file_name, one that has
-% the first and third components as arguments (for the call here)
-% and one that does not (for all the other calls above) would be
-% a double maintenance burden. This is why we don't use this approach.
-%
 
 convert_module_name_set_to_file_name_group(Globals, GroupName, Ext,
         ModuleNameSet, Groups, !Cache) :-
@@ -131,18 +116,83 @@ convert_module_name_set_to_file_name_group(Globals, GroupName, Ext,
 
 convert_module_name_set_to_file_names(Globals, Ext,
         ModuleNameSet, FileNames, !Cache) :-
-    list.map_foldl(convert_module_name_to_file_name(Globals, $pred, Ext),
+    % Compute the module-name-independent parts of the final FileNames
+    % just once.
+    % XXX LEGACY
+    ext_to_dir_path_extstr(Globals, not_for_search, Ext,
+        ExtDirNamesLegacy, _ExtDirNamesProposed, ExtStr),
+    list.map_foldl(
+        convert_module_name_to_file_name_base(Ext, ExtStr, ExtDirNamesLegacy),
         set.to_sorted_list(ModuleNameSet), FileNames, !Cache).
 
 convert_module_name_list_to_file_names(Globals, Ext,
         ModuleNames, FileNames, !Cache) :-
-    list.map_foldl(convert_module_name_to_file_name(Globals, $pred, Ext),
+    % Compute the module-name-independent parts of the final FileNames
+    % just once.
+    % XXX LEGACY
+    ext_to_dir_path_extstr(Globals, not_for_search, Ext,
+        ExtDirNamesLegacy, _ExtDirNamesProposed, ExtStr),
+    list.map_foldl(
+        convert_module_name_to_file_name_base(Ext, ExtStr, ExtDirNamesLegacy),
         ModuleNames, FileNames, !Cache).
 
 %---------------------------------------------------------------------------%
 
-convert_module_name_to_file_name(Globals, From, Ext, ModuleName, FileName,
+convert_module_name_to_file_name(Globals, _From, Ext, ModuleName, FileName,
         !Cache) :-
+    % XXX LEGACY
+    ext_to_dir_path_extstr(Globals, not_for_search, Ext,
+        ExtDirNamesLegacy, _ExtDirNamesProposed, ExtStr),
+    convert_module_name_to_file_name_base(Ext, ExtStr, ExtDirNamesLegacy,
+        ModuleName, FileName, !Cache).
+
+:- pred convert_module_name_to_file_name_base(ext::in, string::in,
+    list(dir_name)::in, module_name::in, file_name::out,
+    module_file_name_cache::in, module_file_name_cache::out) is det.
+
+convert_module_name_to_file_name_base(Ext, ExtStr, ExtDirNames,
+        ModuleName, FileName, !Cache) :-
+    ( ModuleName = unqualified(ModuleBaseName)
+    ; ModuleName = qualified(_, ModuleBaseName)
+    ),
+    ( if map.search(!.Cache, ModuleBaseName, ModuleNameMap0Prime) then
+        ModuleNameMap0 = ModuleNameMap0Prime,
+        ( if map.search(ModuleNameMap0, ModuleName, ModuleNameInfo0) then
+            trace [
+                compile_time(flag("write_deps_file_cache")),
+                run_time(env("WRITE_DEPS_FILE_CACHE")),
+                io(!TIO)
+            ] (
+                record_module_name_cache_hit(!TIO)
+            ),
+            ModuleNameInfo0 =
+                module_name_info(BaseFileNameNoExtNonJava, ExtMap0)
+        else
+            trace [
+                compile_time(flag("write_deps_file_cache")),
+                run_time(env("WRITE_DEPS_FILE_CACHE")),
+                io(!TIO)
+            ] (
+                record_module_name_cache_miss(!TIO)
+            ),
+            BaseFileNameNoExtNonJava =
+                module_name_to_base_file_name_no_ext_non_java(ModuleName),
+            map.init(ExtMap0)
+        )
+    else
+        trace [
+            compile_time(flag("write_deps_file_cache")),
+            run_time(env("WRITE_DEPS_FILE_CACHE")),
+            io(!TIO)
+        ] (
+            record_module_name_cache_miss(!TIO)
+        ),
+        BaseFileNameNoExtNonJava =
+            module_name_to_base_file_name_no_ext_non_java(ModuleName),
+        map.init(ModuleNameMap0),
+        map.init(ExtMap0)
+    ),
+
     % We cache result of the translation, in order to save on
     % temporary string construction.
     % See the analysis of gathered statistics below for why we use the cache
@@ -153,43 +203,50 @@ convert_module_name_to_file_name(Globals, From, Ext, ModuleName, FileName,
     % embedded inside the call to module_name_to_file_name, *provided*
     % that we add a version of module_name_to_file_name that can take
     % such cached results as input.
-    ( if map.search(!.Cache, Ext, ExtMap0) then
-        ( if map.search(ExtMap0, ModuleName, CachedFileName) then
-            trace [
-                compile_time(flag("write_deps_file_cache")),
-                run_time(env("WRITE_DEPS_FILE_CACHE")),
-                io(!TIO)
-            ] (
-                record_cache_hit(Ext, !TIO)
-            ),
-            FileName = CachedFileName
-        else
-            trace [
-                compile_time(flag("write_deps_file_cache")),
-                run_time(env("WRITE_DEPS_FILE_CACHE")),
-                io(!TIO)
-            ] (
-                record_cache_miss(Ext, !TIO)
-            ),
-            % XXX LEGACY
-            module_name_to_file_name(Globals, From, Ext, ModuleName,
-                FileName, _FileNameProposed),
-            map.det_insert(ModuleName, FileName, ExtMap0, ExtMap),
-            map.det_update(Ext, ExtMap, !Cache)
-        )
+    ( if map.search(ExtMap0, Ext, CachedFileName) then
+        trace [
+            compile_time(flag("write_deps_file_cache")),
+            run_time(env("WRITE_DEPS_FILE_CACHE")),
+            io(!TIO)
+        ] (
+            record_ext_cache_hit(Ext, !TIO)
+        ),
+        FileName = CachedFileName
     else
         trace [
             compile_time(flag("write_deps_file_cache")),
             run_time(env("WRITE_DEPS_FILE_CACHE")),
             io(!TIO)
         ] (
-            record_cache_miss(Ext, !TIO)
+            record_ext_cache_miss(Ext, !TIO)
         ),
-        % XXX LEGACY
-        module_name_to_file_name(Globals, From, Ext, ModuleName,
-            FileName, _FileNameProposed),
-        ExtMap = map.singleton(ModuleName, FileName),
-        map.det_insert(Ext, ExtMap, !Cache)
+        (
+            ( Ext = ext_cur(_)
+            ; Ext = ext_cur_ngs(_)
+            ; Ext = ext_cur_gs(_)
+            ; Ext = ext_cur_gas(_)
+            ; Ext = ext_cur_ngs_gs(_)
+            ; Ext = ext_cur_ngs_gas(_)
+            ; Ext = ext_cur_ngs_gs_err(_)
+            ; Ext = ext_cur_pgs_max_cur(_)
+            ; Ext = ext_cur_ngs_gs_max_cur(_)
+            ; Ext = ext_cur_ngs_gs_max_ngs(_)
+            ),
+            BaseFileNameNoExt = BaseFileNameNoExtNonJava
+        ;
+            Ext = ext_cur_ngs_gs_java(_),
+            BaseFileNameNoExt =
+                module_name_to_base_file_name_no_ext_java(ModuleName)
+        ),
+
+        % These two lines do the job of module_name_to_file_name().
+        CurDirFileName = BaseFileNameNoExt ++ ExtStr,
+        FileName = glue_dir_names_base_name(ExtDirNames, CurDirFileName),
+
+        map.det_insert(Ext, FileName, ExtMap0, ExtMap),
+        ModuleNameInfo = module_name_info(BaseFileNameNoExtNonJava, ExtMap),
+        map.set(ModuleName, ModuleNameInfo, ModuleNameMap0, ModuleNameMap),
+        map.set(ModuleBaseName, ModuleNameMap, !Cache)
     ).
 
 %---------------------------------------------------------------------------%
@@ -252,15 +309,38 @@ convert_module_name_to_file_name(Globals, From, Ext, ModuleName, FileName,
                 misses      :: uint
             ).
 
-:- type file_name_cache_stats == map(ext, cache_stats).
+:- type ext_stats == map(ext, cache_stats).
 
-:- mutable(module_file_name_cache_stats, file_name_cache_stats, map.init,
+:- mutable(module_name_cache_stats, cache_stats, cache_stats(0u, 0u),
     ground, [untrailed, attach_to_io_state]).
 
-:- pred record_cache_miss(ext::in, io::di, io::uo) is det.
+:- mutable(ext_cache_stats, ext_stats, map.init,
+    ground, [untrailed, attach_to_io_state]).
 
-record_cache_miss(Ext, !IO) :-
-    get_module_file_name_cache_stats(Map0, !IO),
+%---------------------%
+
+:- pred record_module_name_cache_miss(io::di, io::uo) is det.
+
+record_module_name_cache_miss(!IO) :-
+    get_module_name_cache_stats(ModuleNameStats0, !IO),
+    ModuleNameStats0 = cache_stats(Lookups0, Misses0),
+    ModuleNameStats = cache_stats(Lookups0 + 1u, Misses0 + 1u),
+    set_module_name_cache_stats(ModuleNameStats, !IO).
+
+:- pred record_module_name_cache_hit(io::di, io::uo) is det.
+
+record_module_name_cache_hit(!IO) :-
+    get_module_name_cache_stats(ModuleNameStats0, !IO),
+    ModuleNameStats0 = cache_stats(Lookups0, Misses0),
+    ModuleNameStats = cache_stats(Lookups0 + 1u, Misses0),
+    set_module_name_cache_stats(ModuleNameStats, !IO).
+
+%---------------------%
+
+:- pred record_ext_cache_miss(ext::in, io::di, io::uo) is det.
+
+record_ext_cache_miss(Ext, !IO) :-
+    get_ext_cache_stats(Map0, !IO),
     % The first access can, and will, be a miss.
     ( if map.search(Map0, Ext, Stats0) then
         Stats0 = cache_stats(Lookups0, Misses0),
@@ -270,25 +350,31 @@ record_cache_miss(Ext, !IO) :-
         Stats = cache_stats(1u, 1u),
         map.det_insert(Ext, Stats, Map0, Map)
     ),
-    set_module_file_name_cache_stats(Map, !IO).
+    set_ext_cache_stats(Map, !IO).
 
-:- pred record_cache_hit(ext::in, io::di, io::uo) is det.
+:- pred record_ext_cache_hit(ext::in, io::di, io::uo) is det.
 
-record_cache_hit(Ext, !IO) :-
-    get_module_file_name_cache_stats(Map0, !IO),
+record_ext_cache_hit(Ext, !IO) :-
+    get_ext_cache_stats(Map0, !IO),
     % A hit cannot be the first reference to Ext;
     % it must be preceded by a miss.
     map.lookup(Map0, Ext, Stats0),
     Stats0 = cache_stats(Lookups0, Misses0),
     Stats = cache_stats(Lookups0 + 1u, Misses0),
     map.det_update(Ext, Stats, Map0, Map),
-    set_module_file_name_cache_stats(Map, !IO).
+    set_ext_cache_stats(Map, !IO).
 
 %---------------------%
 
 record_write_deps_file_cache_stats(!IO) :-
-    get_module_file_name_cache_stats(Map, !IO),
-    ( if map.is_empty(Map) then
+    get_module_name_cache_stats(ModuleNameStats, !IO),
+    ModuleNameStats = cache_stats(MNLookups, MNMisses),
+    get_ext_cache_stats(ExtMap, !IO),
+    ( if
+        MNLookups = 0u,
+        MNMisses = 0u,
+        map.is_empty(ExtMap)
+    then
         true
     else
         io.open_append("/tmp/WRITE_DEPS_FILE_CACHE_STATS", Result, !IO),
@@ -296,7 +382,9 @@ record_write_deps_file_cache_stats(!IO) :-
             Result = error(_)
         ;
             Result = ok(OutStream),
-            map.foldl(write_cache_stats_entry(OutStream), Map, !IO),
+            io.format(OutStream, "%-55s %8u %8u\n",
+                [s("module_name"), u(MNLookups), u(MNMisses)], !IO),
+            map.foldl(write_cache_stats_entry(OutStream), ExtMap, !IO),
             io.close_output(OutStream, !IO)
         )
     ).
@@ -305,9 +393,25 @@ record_write_deps_file_cache_stats(!IO) :-
     ext::in, cache_stats::in, io::di, io::uo) is det.
 
 write_cache_stats_entry(OutStream, Ext, Stats, !IO) :-
+    % Strip off the outer wrapper to shorten ExtStr.
+    % This does not lose any information, because the function symbols
+    % of the argument types of ext_cur, ext_cur_ngs etc all start with
+    % a prefix that is identical to the name of their wrapper.
+    ( Ext = ext_cur(ExtSub),                ExtStr = string.string(ExtSub)
+    ; Ext = ext_cur_ngs(ExtSub),            ExtStr = string.string(ExtSub)
+    ; Ext = ext_cur_gs(ExtSub),             ExtStr = string.string(ExtSub)
+    ; Ext = ext_cur_gas(ExtSub),            ExtStr = string.string(ExtSub)
+    ; Ext = ext_cur_ngs_gs(ExtSub),         ExtStr = string.string(ExtSub)
+    ; Ext = ext_cur_ngs_gas(ExtSub),        ExtStr = string.string(ExtSub)
+    ; Ext = ext_cur_ngs_gs_err(ExtSub),     ExtStr = string.string(ExtSub)
+    ; Ext = ext_cur_ngs_gs_java(ExtSub),    ExtStr = string.string(ExtSub)
+    ; Ext = ext_cur_pgs_max_cur(ExtSub),    ExtStr = string.string(ExtSub)
+    ; Ext = ext_cur_ngs_gs_max_cur(ExtSub), ExtStr = string.string(ExtSub)
+    ; Ext = ext_cur_ngs_gs_max_ngs(ExtSub), ExtStr = string.string(ExtSub)
+    ),
     Stats = cache_stats(Lookups, Misses),
     io.format(OutStream, "%-55s %8u %8u\n",
-        [s(string.string(Ext)), u(Lookups), u(Misses)], !IO).
+        [s(ExtStr), u(Lookups), u(Misses)], !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.make_module_file_names.

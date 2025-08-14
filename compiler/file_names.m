@@ -827,6 +827,12 @@
 %---------------------------------------------------------------------------%
 
     % Return the directory path of the directory into which files
+    % with the given extension should be put, and the extension string.
+    %
+:- pred ext_to_dir_path_extstr(globals::in, maybe_for_search::in, ext::in,
+    list(dir_name)::out, list(dir_name)::out, string::out) is det.
+
+    % Return the directory path of the directory into which files
     % with the given extension should be put.
     %
 :- pred ext_to_dir_path(globals::in, maybe_for_search::in, ext::in,
@@ -910,6 +916,15 @@
     %
 :- pred make_all_proposed_dir_names_ngs(dir_name::in, dir_name::in,
     list(dir_name)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % glue_dir_names_base_name(DirComponents, CurDirFileName) = FullFileName:
+    %
+    % Add all zero or more DirComponents to the front of CurDirFileName,
+    % returning the result as FullFileName.
+    %
+:- func glue_dir_names_base_name(list(string), string) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -1646,6 +1661,9 @@ fact_table_file_name_return_dirs(Globals, From, Ext,
 
 module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         ModuleName, DirNamesLegacy, DirNamesProposed, CurDirFileName) :-
+    % NOTE convert_module_name_to_file_name_base in make_module_file_names.m
+    % has code that duplicates this logic, using name components computed
+    % at different times.
     ext_to_dir_path(Globals, Search, Ext, DirNamesLegacy, DirNamesProposed),
     BaseNameNoExt = module_name_to_base_file_name_no_ext(Ext, ModuleName),
     ExtStr = extension_to_string(Globals, Ext),
@@ -1658,6 +1676,13 @@ module_name_to_file_name_ext(Globals, From, Search, StatOnlyMkdir, Ext,
         record_translation(From, Search, StatOnlyMkdir,
             Ext, ModuleName, FullFileName, !TIO)
     ).
+
+%---------------------------------------------------------------------------%
+
+ext_to_dir_path_extstr(Globals, Search, Ext, DirNamesLegacy, DirNamesProposed,
+        ExtStr) :-
+    ext_to_dir_path(Globals, Search, Ext, DirNamesLegacy, DirNamesProposed),
+    ExtStr = extension_to_string(Globals, Ext).
 
 :- pragma inline(pred(ext_to_dir_path/5)).
 
@@ -2026,8 +2051,6 @@ make_all_proposed_dir_names_ngs(ExtSubDir, PrefixDir, Dirs) :-
     Dirs = [NgsDir, CurDir].
 
 %---------------------------------------------------------------------------%
-
-:- func glue_dir_names_base_name(list(string), string) = string.
 
 glue_dir_names_base_name(DirComponents, CurDirFileName) = FullFileName :-
     (
