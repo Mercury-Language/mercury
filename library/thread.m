@@ -1236,17 +1236,23 @@ num_processors(MaybeProcs, !IO) :-
     Success = (Procs > 0) ? MR_YES : MR_NO;
 ").
 
+:- pragma foreign_proc("C#",
+    num_processors(Procs::out, Success::out, _IO0::di, _IO::uo),
+    [promise_pure, thread_safe, will_not_call_mercury,
+     will_not_throw_exception],
+"
+    Procs = System.Environment.ProcessorCount;
+    Success = mr_bool.YES;
+").
+
 :- pragma foreign_proc("Java",
     num_processors(Procs::out, Success::out, _IO0::di, _IO::uo),
     [promise_pure, thread_safe, will_not_call_mercury,
-     will_not_throw_exception, tabled_for_io],
+     will_not_throw_exception],
 "
     Procs = Runtime.getRuntime().availableProcessors();
     Success = bool.YES;
 ").
-
-% On other backends se don't know how to determine this yet.
-num_processors(0, no, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module thread.
