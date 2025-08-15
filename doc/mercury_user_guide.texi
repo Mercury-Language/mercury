@@ -2351,8 +2351,8 @@ containing calls to automatically generated initialization functions
 contained in the C code of the modules of the program:
 
 @example
-c2init @var{module1}.c @var{module2}.c @dots{} > @var{main-module}_init.c,
-mgnuc -c @var{main-module}_init.c
+c2init @var{module1}.c @var{module2}.c @dots{} > @var{main_module}_init.c,
+mgnuc -c @var{main_module}_init.c
 @end example
 @pindex c2init
 @pindex mgnuc
@@ -2371,7 +2371,7 @@ You then link the object code of each module
 with the object code of the initialization file to yield the executable:
 
 @example
-ml -o @var{main-module} @var{module1}.o @var{module2}.o @dots{} @var{main_module}_init.o
+ml -o @var{main_module} @var{module1}.o @var{module2}.o @dots{} @var{main_module}_init.o
 @end example
 @pindex ml
 
@@ -2384,7 +2384,7 @@ so that any error messages refer to
 predicate and function names from the Mercury source code
 rather than to the names used in the intermediate C code.
 
-The above command puts the executable in the file @file{@var{main-module}}.
+The above command puts the executable in the file @file{@var{main_module}}.
 The same command line without the @samp{-o} option
 would put the executable into the file @file{a.out}.
 
@@ -2545,7 +2545,7 @@ these are generated automatically by the compiler.
 @item
 @findex --make-transitive-optimization-interface
 @findex --make-optimization-interface
-@file{.opt} files are used for inter-module optimization,
+@file{.opt} files are used for intermodule optimization,
 and are created using the @samp{--make-optimization-interface}
 (or @samp{--make-opt-int}) option.
 
@@ -2553,7 +2553,7 @@ and are created using the @samp{--make-optimization-interface}
 @findex --make-transitive-optimization-interface
 @findex --make-trans-opt
 @file{.trans_opt} files
-are used for transitive inter-module optimization,
+are used for transitive intermodule optimization,
 and are created using the @samp{--make-transitive-optimization-interface}
 (or @samp{--make-trans-opt}) option.
 
@@ -2699,7 +2699,7 @@ The same functionality is now provided in @samp{mmc} directly by using the
 @samp{--make} option:
 
 @example
-mmc --make @var{main-module}
+mmc --make @var{main_module}
 @end example
 
 @noindent
@@ -2712,8 +2712,8 @@ consisting of a number of modules is as simple as
 
 @example
 mmc -f @var{source-files}
-mmake @var{main-module}.depend
-mmake @var{main-module}
+mmake @var{main_module}.depend
+mmake @var{main_module}
 @end example
 
 Mmake only recompiles those files that need to be recompiled,
@@ -2724,8 +2724,8 @@ so they are never out-of-date.
 A little bit of the dependency information
 is stored in @file{.dep} and @file{.dv} files
 which are more expensive to recompute.
-The @samp{mmake @var{main-module}.depend} command which recreates
-the @file{@var{main-module}.dep} and @file{@var{main-module}.dv} files
+The @samp{mmake @var{main_module}.depend} command which recreates
+the @file{@var{main_module}.dep} and @file{@var{main_module}.dv} files
 needs to be repeated only when you either
 add a module to your program or remove a module from it.
 There is no danger of getting an inconsistent executable
@@ -2761,41 +2761,41 @@ as well as the rules and variables in the automatically generated
 These rules define the following targets:
 
 @table @file
-@item @var{main-module}.depend
-Creates the files @file{@var{main-module}.dep} and
-@file{@var{main-module}.dv} from @file{@var{main-module}.m}
+@item @var{main_module}.depend
+Creates the files @file{@var{main_module}.dep} and
+@file{@var{main_module}.dv} from @file{@var{main_module}.m}
 and the modules it imports.
 This step must be performed first.
 It is also required whenever you wish to change
-the level of inter-module optimization performed
+the level of intermodule optimization performed
 (@pxref{Overall control of optimizations}).
 
-@item @var{main-module}.all_ints
-Ensure that the interface files for @var{main-module}
+@item @var{main_module}.all_ints
+Ensure that the interface files for @var{main_module}
 and its imported modules are up-to-date.
 (If the underlying @samp{make} program does not handle transitive dependencies,
 this step may be necessary before
-attempting to make @file{@var{main-module}} or @file{@var{main-module}.check};
+attempting to make @file{@var{main_module}} or @file{@var{main_module}.check};
 if the underlying @samp{make} is GNU Make, this step should not be necessary.)
 
-@item @var{main-module}.check
-Perform semantic checking on @var{main-module} and its imported modules.
+@item @var{main_module}.check
+Perform semantic checking on @var{main_module} and its imported modules.
 Error messages are placed in @file{.err} files.
 
-@item @var{main-module}
-Compiles and links @var{main-module} using the Mercury compiler.
+@item @var{main_module}
+Compiles and links @var{main_module} using the Mercury compiler.
 Error messages are placed in @file{.err} files.
 
 @c XXX mention .dlls and .exe targets?
 
-@item lib@var{main-module}
-Builds a library whose top-level module is @var{main-module}.
+@item lib@var{main_module}
+Builds a library whose top-level module is @var{main_module}.
 This will build a static object library, a shared object library
 (for platforms that support it), and the necessary interface files.
 For more information, see @ref{Libraries}.
 
-@item lib@var{main-module}.install
-Builds and installs a library whose top-level module is @var{main-module}.
+@item lib@var{main_module}.install
+Builds and installs a library whose top-level module is @var{main_module}.
 This target will build and install a static object library and
 (for platforms that support it) a shared object library,
 for the default grade and also for the additional grades specified
@@ -2809,24 +2809,24 @@ to create directories, by default @samp{mkdir -p}.
 @vindex INSTALL
 @vindex INSTALL_MKDIR
 
-@item @var{main-module}.clean
+@item @var{main_module}.clean
 Removes the automatically generated files
 that contain the compiled code of the program
 and the error messages produced by the compiler.
 Specifically, this will remove all the @samp{.c}, @samp{.o},
 @samp{.pic_o}, @samp{.prof}, @samp{.used}, @samp{.mih},
 and @samp{.err} files
-belonging to the named @var{main-module} or its imported modules.
+belonging to the named @var{main_module} or its imported modules.
 Use this target whenever you wish to change compilation model
 (@pxref{Grade options}).
 This target is also recommended whenever you wish to change
-the level of inter-module optimization performed
+the level of intermodule optimization performed
 (@pxref{Overall control of optimizations})
-in addition to the mandatory @var{main-module}.depend.
+in addition to the mandatory @var{main_module}.depend.
 
-@item @var{main-module}.realclean
+@item @var{main_module}.realclean
 Removes all the automatically generated files.
-In addition to the files removed by @var{main-module}.clean, this
+In addition to the files removed by @var{main_module}.clean, this
 removes the @samp{.int}, @samp{.int0}, @samp{.int2},
 @samp{.int3}, @samp{.opt}, @samp{.trans_opt},
 @samp{.date}, @samp{.date0}, @samp{.date3}, @samp{.optdate},
@@ -2835,18 +2835,18 @@ removes the @samp{.int}, @samp{.int0}, @samp{.int2},
 belonging to one of the modules of the program,
 and also the various possible executables, libraries and dependency files
 for the program as a whole ---
-@samp{@var{main-module}},
-@samp{lib@var{main-module}.a},
-@samp{lib@var{main-module}.so},
-@samp{lib@var{main-module}.dylib},
-@samp{@var{main-module}.init},
-@samp{@var{main-module}.dep}
+@samp{@var{main_module}},
+@samp{lib@var{main_module}.a},
+@samp{lib@var{main_module}.so},
+@samp{lib@var{main_module}.dylib},
+@samp{@var{main_module}.init},
+@samp{@var{main_module}.dep}
 and
-@samp{@var{main-module}.dv}.
+@samp{@var{main_module}.dv}.
 
 @item clean
-This makes @samp{@var{main-module}.clean} for every @var{main-module}
-for which there is a @file{@var{main-module}.dep} file in the current
+This makes @samp{@var{main_module}.clean} for every @var{main_module}
+for which there is a @file{@var{main_module}.dep} file in the current
 directory, as well as deleting the profiling files
 @samp{Prof.CallPair},
 @samp{Prof.Counts},
@@ -2856,8 +2856,8 @@ and
 @samp{Prof.MemCells}.
 
 @item realclean
-This makes @samp{@var{main-module}.realclean} for every @var{main-module}
-for which there is a @file{@var{main-module}.dep} file in the current
+This makes @samp{@var{main_module}.realclean} for every @var{main_module}
+for which there is a @file{@var{main_module}.dep} file in the current
 directory, as well as deleting the profiling files as per the @samp{clean}
 target.
 
