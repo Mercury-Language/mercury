@@ -7104,9 +7104,9 @@ style_warning_bool_options = StyleWarnOptions :-
         ( pred(Opt::out) is nondet :-
             ( optdb(oc_warn_style_mod,   Opt, bool(_), _Help)
             ; optdb(oc_warn_style_pred,  Opt, bool(_), _Help)
+            ; optdb(oc_warn_style_goal,  Opt, bool(_), _Help)
             ; optdb(oc_warn_style_order, Opt, bool(_), _Help)
             ; optdb(oc_warn_style_ctg,   Opt, bool(_), _Help)
-            ; optdb(oc_warn_style_goal,  Opt, bool(_), _Help)
             )
         ),
     solutions(FindOptionsPred, StyleWarnOptions).
