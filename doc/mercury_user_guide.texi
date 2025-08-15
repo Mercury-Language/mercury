@@ -1230,7 +1230,36 @@ This grade modifier is compatible only with base grades that target C.
 @node Grade modifiers for parallelism
 @subsection Grade modifiers for parallelism
 
-ZZZ TODO
+In the absence of the @code{.par} grade modifier,
+the Mercury compiler generates executables
+that do not support parallel execution in any form.
+
+@table @code
+@item .par
+Compiling programs in a grade that includes the @code{.par} grade modifier
+generates executables that support parallel execution.
+What form of parallel execution is supported depends on the backend.
+
+@itemize
+@item
+With the MLDS backend, @code{.par} grades support user-managed parallelism,
+using whatever thread support is provided by the target language.
+Programmers can use the operations
+of the @code{thread} module of the Mercury standard library
+to spawn new threads, and to collect their results once they are done.
+@item
+With the LLDS backend, @code{.par} grades support compiler-managed parallelism.
+Programmers can ask the compiler to execute two goals in parallel
+simply by replacing the comma (the sequential conjunction operator)
+between them with an ampersand @samp{&}, the parallel conjunction operator.
+The compiler will take care of the rest.
+(Note that @samp{&} has this effect @emph{only} in LLDS @code{.par} grades;
+in all other grades, the compiler silently converts all @samp{&}s into commas.)
+
+Note: due to a code generation bug,
+at the moment LLDS parallelism does not work.
+@end itemize
+@end table
 
 @c ----------------------------------------------------------------------------
 
@@ -1271,9 +1300,16 @@ at the cost of a much more complicated execution model.
 This solution gets its name, @dfn{minimal model tabling},
 from the fact that it is intended to return,
 for each query, all the answers that match that query
-in the @dfn{minimal model} of the program.
-@c ZZZ I can't find a good wikipedia reference
-It consists of
+in a specific @dfn{minimal model} of the program,
+named the @dfn{perfect model}.
+(We call it ``minimal model tabling'' instead of ``perfect model tabling''
+because the former is the standard terminology for this kind of tabling
+in the logic programming literature.)
+@c ZZZ Wikipedia has no reference for perfect model semantics.
+@c We could point to Przymusinski's paper titled
+@c "On the declarative and procedural semantics of logic programs".
+
+Minimal model tabling consists of
 
 @itemize
 @item
@@ -8044,7 +8080,7 @@ the @samp{-r} option.
 
 Note that Mercury values which are dead may in fact be still reachable from the
 various execution stacks. This is particularly noticeable on the high-level C
-back-end, as the C compiler does not take conservative garbage collection into
+backend, as the C compiler does not take conservative garbage collection into
 account and Mercury values may linger on the C stack for longer than necessary.
 The low-level C grades should suffer to a lesser extent.
 
@@ -9300,9 +9336,9 @@ There are two environment variables
 that the Mercury compiler consults in its decision:
 @samp{MERCURY_ENABLE_COLOR}, and @samp{NO_COLOR}.
 As their names show, the first is specific to Mercury,
-while the second is not;
-it is in fact a defacto standard for disabling color.
-@samp{https://no-color.org}.
+while the second is not.
+It is in fact a defacto standard for disabling color;
+see @samp{https://no-color.org}.
 
 The rules the compiler uses to decide
 whether the use of color in diagnostics is enabled
@@ -9390,32 +9426,36 @@ code with @samp{--no-static-ground-terms}.
 @node Foreign language interface
 @chapter Foreign language interface
 
-The Mercury foreign language interfaces allows @samp{pragma foreign_proc} to
-specify multiple implementations (in different foreign programming
-languages) for a procedure.
+The Mercury allows the code of a procedure
+to be specified in a target language
+using a @code{pragma foreign_proc} declaration.
+A procedure may have more than one @code{pragma foreign_proc} declarations,
+provided they are in different languages.
+A procedure that has some @code{pragma foreign_proc} declarations
+may also have a Mercury definition.
 
-If the compiler generates code for a procedure using a back-end for which
-there are multiple applicable foreign languages, it will choose the
-foreign language to use for each procedure according to a builtin ordering.
+@c NOTE This rule has not been relevant for years, as of 2025.
+@c If the compiler generates code for a procedure
+@c using a backend for which there are multiple applicable foreign languages,
+@c it will choose the foreign language to use for each procedure
+@c according to a builtin ordering.
 
-If the language specified in a @samp{foreign_proc} is not available for a
-particular back-end, it will be ignored.
-
-If there are no suitable @samp{foreign_proc} clauses for a particular
-procedure but there are Mercury clauses, they will be used instead.
+If the language specified in a @samp{foreign_proc}
+is not available for the selected backend,
+it will be ignored,
+and the implementation will use the procedure's Mercury definition.
+If there isn't one, the compiler will generate an error.
 
 @table @asis
-
 @item @samp{C}
-This is the default foreign language on all back-ends which compile to C.
-Only available on back-ends that compile to C.
-
+This is the only foreign language
+whose @code{pragma foreign_proc}s are used when targeting C.
 @item @samp{C#}
-This is the only foreign language for back-ends which compile to C#.
-
+This is the only foreign language
+whose @code{pragma foreign_proc}s are used when targeting C#.
 @item @samp{Java}
-This is the only foreign language for back-ends which compile to Java.
-
+This is the only foreign language
+when whose @code{pragma foreign_proc}s are used targeting Java.
 @end table
 
 @c ----------------------------------------------------------------------------
@@ -9438,7 +9478,7 @@ A stand-alone interface provides a mechanism by which
 non-Mercury programs may initialise (and shut down)
 the Mercury runtime plus a specified set of Mercury libraries.
 
-A stand-alone interface is created by invoking the compiler
+You can create a stand-alone interface by invoking the compiler
 with the @samp{--generate-standalone-interface} option.
 The set of Mercury libraries to be included in the stand-alone interface
 is given via one of the usual mechanisms
@@ -9464,18 +9504,20 @@ Prototype:
 void mercury_init(int @var{argc}, char **@var{argv}, void *@var{stackbottom});
 @end example
 
-Initialise the Mercury runtime, standard library and any other Mercury
-libraries that were specified when the stand-alone interface was generated.
+Initialise the Mercury runtime, standard library,
+and any other Mercury libraries that were specified
+when the stand-alone interface was generated.
 @var{argc} and @var{argv} are the argument count and argument vector,
 as would be passed to the function @code{main()} in a C program.
 @var{stackbottom} is the address of the base of the stack.
-In grades that use conservative garbage collection this is used to
-tell the collector where to begin tracing.
-This function must be called before any Mercury procedures
+In grades that use conservative garbage collection,
+this is used to tell the collector where to begin tracing.
+This function must be called before any Mercury procedures,
 and must only be called once.
-It is recommended that the value of @var{stackbottom} be set by passing
-the address of a local variable in the @code{main()} function of a program,
-for example:
+It is recommended that the value of @var{stackbottom} be set
+by passing the address of a local variable
+in the @code{main()} function of a program,
+like this:
 @example
     int main(int argc, char **argv) @{
         void *dummy;
@@ -9483,16 +9525,17 @@ for example:
         @dots{}
     @}
 @end example
-Note that the address of the stack base should be word aligned as
-some garbage collectors rely upon this.
-(This is why the type of the dummy variable in the above example is
-@code{void *}.)
+Note that the address of the stack base should be word aligned,
+as some garbage collectors rely upon this.
+(This is why the type of the dummy variable in the above example
+is @code{void *}.)
 If the value of @var{stackbottom} is @code{NULL},
-then the collector will attempt
-to determine the address of the base of the stack itself.
-Note that modifying the argument vector, @var{argv}, after the Mercury runtime
-has been initialised will result in undefined behaviour since the runtime
-maintains a reference into @var{argv}.
+then the collector will itself attempt to determine
+the address of the base of the stack.
+Note that modifying the argument vector, @var{argv},
+after the Mercury runtime has been initialised
+will result in undefined behaviour,
+since the runtime maintains a reference into @var{argv}.
 
 @sp 1
 @item @bullet{} @code{mercury_terminate()}
@@ -9504,23 +9547,24 @@ int mercury_terminate(void);
 Shut down the Mercury runtime.
 The value returned by this function is Mercury's exit status
 (as set by the predicate @samp{io.set_exit_status/3}).
-This function will also invoke any finalisers contained in the set
-of libraries for which the stand-alone interface was generated.
+This function will also invoke any finalisers
+contained in the set of libraries
+for which the stand-alone interface was generated.
 @end table
 
-The basename of the object and header file are provided as
-the argument of @samp{--generate-standalone-interface} option.
+The basename of the object and header file are provided
+as the argument of @samp{--generate-standalone-interface} option.
 
 @c XXX Mention that stand-alone interfaces work with debugging or
 @c (deep) profiling?
 
-Stand-alone interfaces are not required if the target language is Java
-or C#.
-For those target languages the Mercury runtime will be automatically
-initialised when the classes or library assemblies containing code generated
-by the Mercury compiler are loaded.
+Stand-alone interfaces are not required if the target language is Java or C#.
+For those target languages,
+the Mercury runtime will be automatically initialised
+when the classes or library assemblies
+containing code generated by the Mercury compiler are loaded.
 
-For an example of using a stand-alone interface see the
+For an example of using a stand-alone interface, see the
 @samp{samples/c_interface/standalone_c} directory in the Mercury distribution.
 
 @c ----------------------------------------------------------------------------
