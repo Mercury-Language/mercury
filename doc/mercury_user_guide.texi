@@ -208,22 +208,31 @@ Any command line argument
 that does not start with either @samp{=} or @samp{@@}
 will be treated either as the argument of an option
 (if it immediately follows an option that takes an argument),
-or as the name of a file or of a module
+or as a @dfn{non-option argument}
 (if it does not immediately follow an option that takes an argument).
-The compiler assumes that arguments ending in @samp{.m} are file names,
-while all other arguments are module names.
 @end itemize
+
+In the absence of the @code{--make} option,
+whose description we will defer until @ref{Introduction to mmc --make},
+all non-option arguments should be either
+the name of a file, or the name of a module.
+@c XXX what about e.g. "mmc --make prog.clean"?
+The compiler assumes that
+non-option arguments ending in @samp{.m} are file names,
+while all other non-option arguments are module names.
+Both file names and module names tell the compiler
+what code it should operate on.
 
 @node Option arguments
 @subsection Option arguments
 
-The Mercury compiler follows the usual conventions around options.
+The Mercury compiler follows the usual Unix conventions around options.
 (Some of its options (e.g.@: @samp{-c}, @samp{-o}, and @samp{-I})
 have a similar meaning to that in compilers for other languages, 
 though of course most are specific to Mercury.)
 
-Like most other Unix programs,
-it supports both short (single-character) and long option names.
+Like most other Unix programs, it supports both
+short (single-character) and long (multi-character) option names.
 
 On command lines, an option argument that starts with @samp{--}
 specifies a single long option.
@@ -284,14 +293,15 @@ or as @samp{--color-scheme light16}.
 Some options specify an @emph{optional} integer or string value.
 For example, you can specify the maximum line width for error messages
 as @samp{--max-error-line-width=71},
-or you can ask their line widths to be unlimited
+or you can ask for error messages to have @emph{no} maximum line width
 with a @samp{no-} prefix instead of a value,
-as in @samp{--no-max-error-line-width},
+as in @samp{--no-max-error-line-width}.
 
 Some options let users specify a @emph{list} of strings, one string at a time,
 with each occurrence of the option adding one string to the end of the list.
 For example, the options @samp{--search-directory=foo --search-directory=bar}
-tell the compiler to the list of directories to be searched
+tell the compiler to add the named directories
+to the list of directories to be searched
 when looking for e.g.@: interface files @ref{Interface files}.
 (The default value of that lists consists of just the current directory.)
 Negating the option name, e.g.@: with @samp{--no-search-directory},
@@ -320,12 +330,14 @@ for a list of other arguments,
 in the rest of this user guide
 we will usually classify all command line arguments
 as either option or non-option arguments,
-with the latter including only file names and module names.
+with the latter including only file names and module names
+(in the absence of the @code{--make} option).
 
 @node File name and module name arguments
 @subsection File name and module name arguments
 
-Non-option arguments can be either
+In the absence of the @code{--make} option,
+non-option arguments can be either
 file names (if they end in @samp{.m})
 or module names (if they don't).
 
@@ -333,20 +345,22 @@ The compiler converts module names to file names in one of two ways.
 In the absence of a file named @file{Mercury.modules} in the current directory,
 it relies on each module being stored in a file
 whose name is just the module name followed by @samp{.m}.
-For a module named e.g.@: @code{foo.bar.baz},
-it expects to find it in @file{foo.bar.baz.m}.
+For example, given a module named e.g.@: @code{foo.bar.baz},
+the compiler expects to find it in @file{foo.bar.baz.m}.
 @c Until commit a618ab31e16de507b66c4c0978a9b9f0c0fa2818 on 2020 jan 12,
 @c mmc also searched for module foo.bar.baz in bar.baz.m and baz.m as well.
 
-If any module of the program does not meet this requirement,
-then users must create a @file{Mercury.modules} file,
+If any module of the program does not meet this expectation,
+then the user must create a @file{Mercury.modules} file,
 which contains a map from module names to file names.
+@c XXX ... though only for the modules that deviate from the expectation.
 This can be created using a command such as @code{mmc -f *.m}
-if all the modules of the program are in the current directory.
+if all the modules of the program are in the current directory
 (@pxref{Options that give the compiler its overall task}).
 In the presence of the @file{Mercury.modules} file,
 the compiler will of course get the file name corresponding to a module name
 by looking up the module name in this file.
+@c XXX ... falling back to the default module name if the lookup fails.
 
 @c Arguments to @samp{mmc} may be either
 @c file names (all non-option arguments ending in @samp{.m}),
@@ -374,6 +388,7 @@ mmc @code{prog.m}
 
 or, more generally,
 
+@c ZZZ @var{list of options} looks strange in the generated HTML.
 @example
 mmc @var{list of options} @code{prog.m}
 @end example
@@ -381,6 +396,7 @@ mmc @var{list of options} @code{prog.m}
 If the single module inside @file{prog.m} is also named @file{prog},
 then you can also compile it using
 
+@c XXX @var{list of options} looks strange in the generated HTML here as well.
 @example
 mmc @var{list of options} @code{prog}
 @end example
@@ -394,8 +410,8 @@ Compiling a program that consists of more than one module
 is a more complex task than
 compiling a program that consists of just one module,
 because it requires managing the connections between modules,
-and it requires keeping to the minimum the number of files to be recompiled
-with just a subset of the modules of the program is changed.
+and it requires minimizing the number of files needing to be recompiled
+after the user changes some but not all of the modules in the program.
 
 @c Specifically, it requires managing how one module, say module @samp{A},
 @c accesses the entities exported by another module, say module @samp{B}.
@@ -418,7 +434,7 @@ it would compute @var{B}'s interface, many, many times,
 getting the same result between each pair of changes to @var{B}'s interface.
 It is far more efficient to store @var{B}'s interface in a file,
 which only ever needs to be updated when @var{B}'s source module changes,
-and does so in way that @emph{affects its interface}.
+and does so in a way that @emph{affects its interface}.
 
 @c In programming languages which do not have an explicit module system,
 @c the role of module interfaces is taken by hand writen files,
@@ -436,7 +452,7 @@ but is derived from the module's source file by the Mercury compiler.
 In fact, due to Mercury's module system
 being substantially more expressive than C's
 (not hard when C does not actually @emph{have} an explicit module system),
-each module has three or four @emph{interface} files, not just one.
+each Mercury module has three or four @emph{interface} files, not just one.
 @itemize
 @item
 @file{.int} files play the same role as C's @file{.h} files:
@@ -444,7 +460,7 @@ they list the entities (types, insts, modes, typeclasses, instances,
 predicates, functions, and some others) that this module makes available
 to the other modules that import it.
 @item
-@file{.int2} files contain the subset of the information in @file{.int} files,
+@file{.int2} files contain a subset of the information in @file{.int} files,
 the subset which the compiler needs from indirectly imported modules.
 (If module @var{A} imports module @var{B}
 and module @var{B} imports module @var{C},
@@ -464,13 +480,13 @@ If module @var{A}'s interface imports two modules, @var{B} and @var{C},
 the compiler needs to know for each of those modules
 whether they define a type named @var{foo},
 so it can put either @var{B.foo} @var{C.foo} as the type of that argument
-into e.g.@: @file{a.int} if just one of them defines it,
+into e.g.@: @file{A.int} if just one of them defines it,
 and so that it can generate an error if either neither or both define it.
 @item
 @file{.int0} files contain the declarations of the entities
 that a module that includes submodules
 exports @emph{just} to those submodules, and to nowhere else.
-This includes entities such as predicates and functions
+This includes entities (such as predicates and functions)
 that are declared in the implementation section of the parent module.
 Only parent modules, i.e.@: modules that include submodules,
 have @file{.int0} files;
@@ -479,7 +495,7 @@ non-parent modules no dot.
 
 As you may guess from that description,
 managing Mercury interface files is not trivial.
-It is not hard either, as shown by ZZZ @c ref,
+It is not hard either, as shown by @ref{Compilation details},
 but it is even simpler to leave their management to automatic build tools.
 These build tools also take care of another issue:
 separate compilation.
@@ -500,7 +516,7 @@ The Mercury implementation supports two automatic build tools:
 @command{mmake}, and @command{mmc --make}.
 As their names imply, both are intended to work
 like the traditional Unix build tool @command{make}.
-The next two sections describe them in turn.
+The next two subsections describe them in turn.
 They each have strengths and weaknesses
 (for example, @command{mmake} supports only compilation to C,
 not to Java or C#),
@@ -546,12 +562,16 @@ whose name is the module name plus the @file{.m} suffix.
 
 The second step creates some small files containing makefile fragments.
 These small files will include
-@file{mainmodule.dep} and @file{mainmodule.dv},
-which record whole-program-level information such as
-the intended executable name being @file{mainmodule}
-(@file{mainmodule.exe} on systems that use that extension, such as Windows),
-and the list of modules in this program.
-They will also one file with the suffix @file{.d}
+@file{main_module.dep} and @file{main_module.dv},
+which record whole-program-level information,
+such as the list of modules in the program,
+and the intended executable name.
+In this case, that name will be @file{main_module},
+either without an extension,
+if the platform does not require one for executables,
+or with the required extension (such as @file{.exe} on Windows).
+
+The second step will also create one file with the suffix @file{.d}
 for each module in the program,
 with e.g.@: @file{module_a.d} recording which other modules 
 @file{module_a.m} imports.
@@ -581,7 +601,8 @@ and the file named @file{Mmakefile} if it exists,
 and invoking @command{gmake} on it,
 passing it the targets or targets that it itself was given.
 (@command{gmake} is the GNU version
-of the standard Unix @command{make} program.)
+of the standard Unix @command{make} program,
+though on many platforms it is installed as just plain @command{make}.)
 
 This close relationship to @command{gmake}
 allows @command{mmake} to be used to control
@@ -645,6 +666,10 @@ to clean up the directory by deleting the automatically regenerable files.
 For more information on how to use this tool,
 please see @ref{Using Mmake}.
 
+@c ZZZ
+@c tags: $(wildcard *.m)
+@c         mtags $(wildcard *.m)
+
 @node Introduction to mmc --make
 @subsection Introduction to mmc --make
 
@@ -657,9 +682,9 @@ Like @command{mmake},
 @command{mmc --make} needs access
 to the module-name-to-file-name map in @file{Mercury.modules}
 if some module in the program is stored in a file
-whose name does not match the module name,
-which means that the first step in building an executable
-is usually @command{mmc -f *.m}.
+whose name does not match the module name.
+This means that the first step in building an executable
+is still usually @command{mmc -f *.m}.
 Unlike @command{mmake},
 when @command{mmc --make} is asked to build an executable for a program
 given the name of its main module,
@@ -677,14 +702,29 @@ mmc -f *.m
 mmc --make @var{main_module}
 @end example
 
-It also gives @command{mmc --make} a subtle advantage over @command{mmake}:
-while @command{mmake} uses (because it has to)
+In this case, the @var{main_module} part of the second command is a file name:
+specifically, the name of the executable to be built.
+However, this non-option argument to @code{mmc --make}
+is not the name of a file to be @emph{compiled};
+it is the name of a file to be @emph{built}.
+In general, non-option arguments to @code{mmc --make}
+should be the names of @emph{targets},
+in the same sense of @command{make} targets.
+Most targets are files to be built, but some are not,
+the same way as @code{PHONY} targets in @command{make} do not represent files.
+For example, @command{mmc --make @var{main_module}.realclean}
+asks the compiler to delete all the automatically-regenerable files
+that are part of the @var{main_module} program.
+
+Note that @command{mmc --make} has a subtle advantage over @command{mmake}.
+While @command{mmake} uses (because it has to)
 module-to-module dependency information that was current
 when the relevant modules' were last (re)compiled
 (because that is when their @file{.d} files were last updated),
 @command{mmc --make} always uses @emph{current} dependency information,
 because it gets that information
 from the current versions of the modules' source files.
+
 Most of the time, the difference does not matter,
 for one of several reasons:
 
@@ -702,7 +742,7 @@ declaration is added,
 which @emph{can} lead to obsolete versions of the interface files
 of the newly-imported modules being read,
 those interface files have a reasonably probability
-of of being brought up to date
+of being brought up to date
 before being needed by the module that added the new import,
 due to some @emph{other} module already depending on them; and
 @item
@@ -711,14 +751,14 @@ the part of the interface file that bringing it up-to-date would change
 is of no relevance to the newly-importing module.
 @end itemize
 
-Most of the time, one or more of mitigating circumstances apply.
+Most of the time, one or more of these mitigating circumstances will apply.
 However, sometimes none of them do.
 In such cases, using @command{mmake} to build the selected target will fail,
 with the failure being caused by @command{mmake}'s reliance
-on out-of-date dependency information
-(this could mean e.g. @command{mmake} not knowing that
+on out-of-date dependency information.
+(This could mean e.g. @command{mmake} not knowing that
 it must update the @file{.int} file of a newly-imported module
-before generating target language code for the importing module).
+before generating target language code for the importing module.)
 In pretty much all of the usual scenarios, the attempt to build the target
 will cause the out-of-date dependency information to be updated,
 so the @emph{next} attempt to build that same target will succeed.
@@ -1864,68 +1904,426 @@ also be included in the generated launcher shell script or batch file.
 @node Compilation details
 @chapter The Mercury compilation process in detail
 
+ZZZ move target and object code to just before executables
+
+@menu
+* Creating target and object code files::
+* Creating interface files::
+* Creating optimization files::
+* Creating executables::
+@end menu
+
+@c ----------------------------------------------------------------------------
+
+@node Creating target and object code files
+@section Creating target and object code files
+
 If you use Mmake or @samp{mmc --make},
 then you do not need to understand the details
 of how the Mercury implementation goes about building programs.
 Thus you may wish to skip this chapter.
 
-To compile a source file to object code via C without creating an executable,
+To compile a Mercury source file to C code,
+use a command such as
+
+@example
+mmc --grade asm_fast.gc -C @var{module_name}.m
+@end example
+@findex -C
+@findex --target-code-only
+
+On that command line,
+the @code{--grade asm_fast.gc} part obviously specifies the grade,
+while the @code{-C} option,
+whose long name is @code{--target-code-only},
+tells the compiler to stop after generating the target language file
+(in this case, @file{@var{module_name}.c}).
+
+You can then compile @file{@var{module_name}.c} to @file{@var{module_name}.o},
+or you can tell the Mercury compiler to do this for you.
+To compile a source file not just to C code but to object code,
 use the command
 
 @example
-mmc -c @var{filename}.m
+mmc --grade asm_fast.gc -c @var{module_name}.m
 @end example
+@findex -c
+@findex --compile-only
 
-Since targeting C is the default,
-this tells @samp{mmc} to generate C code,
-and then invoke the configured C compiler to translate that to object code.
-@samp{mmc} puts the generated C code into a file called @file{@var{module}.c}
-and the generated object code into a file called @file{@var{module}.o},
-where @var{module} is the name of the Mercury module
-defined in @file{@var{filename}.m}.
+The @code{-c} option, whose long name is @code{--compile-only},
+tells the compiler to stop after compiling the Mercury code into object code.
+(In grades that target Java,
+it tells the compiler to stop after generating @file{@var{module_name}.class},
+and In grades that target C#,
+it tells the compiler to stop after generating @file{@var{module_name}.dll},
+since these file types are the equivalents of object files
+for these target languages.)
+
+@c Since targeting C is the default,
+@c this tells @samp{mmc} to generate C code,
+@c and then invoke the configured C compiler to translate that to object code.
+@c @samp{mmc} puts the generated C code into a file called @file{@var{module}.c}
+@c and the generated object code into a file called @file{@var{module}.o},
+@c where @var{module} is the name of the Mercury module
+@c defined in @file{@var{filename}.m}.
+@c If the source file contains nested modules,
+@c then each submodule will get compiled to separate C and object files.
+
 If the source file contains nested modules,
-then each submodule will get compiled to separate C and object files.
+then both the main module in the file,
+and all the submodules nested inside it, directly or indirect, 
+will all get compiled
+first to separate @file{.c} (or @file{.java}, or @file{.cs} files,
+and then to separate @file{.o} (or @file{.class}, or @file{.dll} files.
 
-Before you can compile a module,
-you must make the interface files
-for the modules that it imports (directly or indirectly).
+However, before you can compile a module,
+you must first make the interface files
+for the modules that it imports, either directly or indirectly.
+And if you want to compile the program with intermodule optimization,
+then you must first also create the files that enable that.
+The next two sections cover these in turn.
+
+@c ----------------------------------------------------------------------------
+
+@node Creating interface files
+@section Creating interface files
+
 You can create the interface files for one or more source files
 using the following commands:
 
 @example
-mmc --make-short-int @var{filename1}.m @var{filename2}.m @dots{}
-mmc --make-priv-int @var{filename1}.m @var{filename2}.m @dots{}
-mmc --make-int @var{filename1}.m @var{filename2}.m @dots{}
+mmc --make-short-interface @var{module_1}.m @var{module_2}.m @dots{}
+or, equivalently,
+mmc --make-short-int @var{module_1}.m @var{module_2}.m @dots{}
+
+mmc --make-private-interface @var{module_1}.m @var{module_2}.m @dots{}
+or, equivalently,
+mmc --make-priv-int @var{module_1}.m @var{module_2}.m @dots{}
+
+mmc --make-interface @var{module_1}.m @var{module_2}.m @dots{}
+or, equivalently,
+mmc --make-int @var{module_1}.m @var{module_2}.m @dots{}
 @end example
+@findex --make-short-interface
 @findex --make-short-int
+@findex --make-private-interface
 @findex --make-priv-int
+@findex --make-interface
 @findex --make-int
 
-The first command builds (or rebuilds)
+@itemize @bullet
+@item
+The commands in the first pair build (or rebuild)
 the @samp{.int3} file of each module contained in the named source files.
-The second command builds (or rebuilds)
+(@emph{Not} just the top module of each source file.)
+@item
+The commands in the second pair build (or rebuild)
 the @samp{.int0} file of each module contained in the named source files.
 (Note that only modules that have submodules need @samp{.int0} files.)
-The third command builds (or rebuilds)
+@item
+The commands in the third pair build (or rebuild)
 both the @samp{.int} and @samp{.int2} file
 of each module contained in the named source files.
+@end itemize
 
-If you are going to compile with @samp{--intermodule-optimization} enabled,
-then you also need to create the optimization interface files.
+There are constraints on the order in which these interface files can be built.
+
+@itemize
+
+@item
+Each @file{.int3} file depends only on the source code of the module it is for.
+Since 
+@file{.int0}, @file{.int} and @file{.int2} files
+all depend on @file{.int3} files,
+the building process must start off by building @file{.int3} files.
+The order in which they are built does not matter.
+
+@item
+Each @file{.int0} file depends only
+on the @file{.int3} files that the module it is for imports,
+directly or indirectly,
+@emph{and}
+on the @file{.int0} files of its ancestor modules (if any).
+Therefore the @file{.int0} files of the program must be built next,
+with the @file{.int0} files of ancestor modules being built
+before the @file{.int0} files of descendant modules.
+
+@item
+Each @file{.int} file, and its specialized @file{.int2} version,
+depends on the @file{.int3} files that the module it is for imports,
+directly or indirectly,
+and on the @file{.int0} files of its ancestor modules (if any).
+Therefore these files will in general be the last interface files built.
+The order in which they are built does not matter.
+
+@end itemize
+
+As the description above shows,
+interface files will in general be built in an order
+with the @file{.int3} files first, then the @file{.int0} files,
+and then the @file{.int}/@file{.int2} files.
+However, there is no hard-and-fast separation between these phases.
+For example, if neither @var{module_a} nor any of its ancestors
+import @var{module_z} either directly or indirectly,
+then it is ok
+@itemize
+@item
+to build @file{@var{module_a}.int0}
+before @file{@var{module_z}.int3}, and
+@item
+to build @file{@var{module_a}.int}
+before @file{@var{module_z}.int0} or @file{@var{module_z}.int3}.
+@end itemize
+
+@c ----------------------------------------------------------------------------
+
+@node Creating optimization files
+@section Creating optimization files
+
+By default, when @command{mmc} compiles a module, say @var{module_a},
+the only code it has access to is the code of @var{module_a} itself.
+The only source of information that @command{mmc} has
+about the modules imported by @var{module_a} are their @file{.int} files.
+Beyond the definitions of types, insts and modes,
+these contain the @emph{declarations} of predicates and functions,
+but their @emph{definitions}.
+
+However, the compiler usual optimizations could do a better job
+if they @emph{did} have access
+to the definitions of those predicates and functions.
+This is why the Mercury compiler has a mechanism for providing that access.
+This mechanism, intermodule optimization, has two faces:
+recording extra information about the nominally-private parts of each module
+in a file,
+and making use of that information while compiling other modules.
+
+Commands that do the first part look like this:
 
 @example
-mmc --make-opt-int @var{filename1}.m @var{filename2}.m @dots{}
+mmc --make-optimization-interface @var{module_1}.m @var{module_2}.m @dots{}
+or, equivalently,
+mmc --make-opt-int @var{module_1}.m @var{module_2}.m @dots{}
 @end example
+@findex --make-optimization-interface
 @findex --make-opt-int
 
-If you are going to compile with @samp{--transitive-intermodule-optimization}
-enabled, then you also need to create the transitive optimization files.
-@findex --transitive-intermodule-optimization
+Each of these commands
+will build @file{@var{module_1}.opt}, @file{@var{module_2}.opt},
+and in general a @file{.opt} file for each named module.
+These files contain information that is normally private to the module
+that the @file{.opt} file is for,
+but which may be useful for optimization.
+Mostly, this includes the definitions (i.e. the code)
+of both public and private predicates and functions of the module,
+if those definitions match one or more from a list of criteria,
+which include (but are not limited to) the following.
+
+@itemize
+@item
+Predicates and function definitions that are so simple
+that inlining calls to them
+(meaning replacing the call
+with an appropriately-renamed copy of the callee's definition)
+is likely to result in a speedup.
+@item
+Predicates and function definitions
+that contain switches on the values of arguments,
+meaning that after inlining calls to them
+at call sites that know the values of those arguments,
+the switch can be eliminated.
+@item
+Predicates and function definitions that have higher-order arguments,
+meaning that after inlining calls to them
+at call sites that know the values of those higher order arguments,
+the higher-order calls in the inlined version
+can be replaced by first order calls.
+@end itemize
+
+Beside such code, @file{.opt} files also contain
+definitions and declarations needed to make sense of that code,
+such as the definitions of the types, insts and modes they involve,
+and the declarations of both
+the predicates and functions they define.
+and the predicates and functions they call.
+
+After @file{.opt} files have been created,
+any invocation of @command{mmc} to compile say @var{module_1}
+with the @code{--intermodule-optimization} option
+(or @code{--intermod-opt} for short),
+will read in, and use,
+the @file{.opt} files of the modules that @var{module_1} imports.
+
+In some cases, when compiling e.g. @var{module_1},
+an optimization would like access to information that is derived
+not just from a module that @var{module_1} imports, call it @var{module_2},
+but also from modules that @var{module_2} imports,
+and they import, and so on.
+The information that these optimizations need
+is not so much the code of e.g. predicates
+defined in modules that @var{module_2} imports,
+but their effect on the properties
+of the predicates and functions of @var{module_2} itself.
+
+Consider a conjunction such as
+@example
+... p(...), q(...), r(...), ...
+@end example
+where the definition of @code{r}
+traverses a data structure created by @code{p}.
+The Mercury compiler contains an optimization
+that can fuse two traversals into one.
+The optimization is called @emph{deforestation},
+because it can eliminate the intermediate data structure
+created by @code{p} and consumed by @file{r},
+and in logic programming languages,
+data structures are terms, which can be viewed as trees.
+
+Deforestation can fuse two traversals only if they are next to each other,
+and in this case, the two calls to be fused are @emph{not} next to each other.
+The first step is therefor to replace
+@example
+... p(...), q(...), r(...), ...
+@end example
+with
+@example
+... p(...), r(...), q(...), ...
+@end example
+However, this is safe only in certain circumstances.
+
+One situation in which it is unsafe
+occurs when @code{q} is semidet, meaning it can fail. and
+@code{r} can throw an exception.
+This is because in this case, the reordering above
+can replace code that simply fails with code that throws an exception.
+This is an @emph{no observable effect} on the execution of the program,
+which optimizations are not allowed to make.
+
+To perform the above reordering,
+the compiler needs to know that @code{r} can never throw an exception.
+(It would also need to be able to rule out other situations
+that could cause the reordering to have an observable effect,
+but in this example, we are focusing on just this one.)
+For this, it needs to know not just
+that the code of @code{r} (which must be available
+if we are considering fusing it with the code of @code{p})
+contains no code to throw an exception,
+but also that the same is true for the predicates and functions it calls,
+and the predicates and functions they call, directly or indirectly.
+In effect, we need to know that no predicate or function
+in the call tree of @code{r} can throw an exception.
+
+ZZZ
+
+To make this possible in at least some cases,
+Mercury has a mechanism to make such information available:
+@code{.trans_opt} files.
+These files contain analysis results,
+with compiler options specifying the set of analyses
+whose results they contain.
+
+One of these analyses is exception analysis,
+which computes safe approximations to the set of exceptions
+that each predicate or function can possibly throw.
+If this approximations is the empty set,
+then we know for sure that
+the predicate or function cannot throw any exception.
+(An approximation can overestimate
+the set of actions that the predicate or function may perform,
+but it is safe only if will never underestimate that set.)
+
+Consider a call chain between functions where
+@code{f} calls @code{g},
+@code{g} calls @code{h}, and
+@code{h} calls @code{i}.
+with @code{f}, @code{g}, @code{h}, @code{i} being defined in
+@code{module_f}, @code{module_g}, @code{module_h} and @code{module_i}
+respectively.
+Suppose none of these functions contain
+any calls other than the ones listed here,
+and none of these modules contain anything else.
+In that case,
+
+@itemize
+@item
+to know whether @code{i} can throw exceptions,
+we need only the code of @code{i};
+@item
+to know whether @code{h} can throw exceptions,
+we need the code of @code{h} and the results of the analysis for @code{i};
+@item
+to know whether @code{g} can throw exceptions,
+we need the code of @code{g} and the results of the analysis for @code{h};
+@item
+to know whether @code{f} can throw exceptions,
+we need the code of @code{f} and the results of the analysis for @code{g}.
+@end itemize
+
+These dependencies transfor to the files involved:
+
+@itemize
+@item
+We record the result of exception analysis for @code{i}
+in @file{module_i.trans_opt}.
+Creating @file{module_i.trans_opt}
+does not require reading any other @file{.trans_opt} files.
+@item
+We record the result of exception analysis for @code{h}
+in @file{module_h.trans_opt}.
+Creating @file{module_h.trans_opt}
+requires reading @file{module_i.trans_opt}.
+@item
+We record the result of exception analysis for @code{g}
+in @file{module_g.trans_opt}.
+Creating @file{module_g.trans_opt}
+requires reading @file{module_h.trans_opt},
+which makes @file{module_g.trans_opt} depends on
+@file{module_h.trans_opt} directly, and on
+@file{module_i.trans_opt} indirectly.
+@item
+We record the result of exception analysis for @code{f}
+in @file{module_f.trans_opt}.
+Creating @file{module_f.trans_opt}
+requires reading @file{module_g.trans_opt},
+which makes @file{module_f.trans_opt} depends on
+@file{module_g.trans_opt} directly, and on
+@file{module_h.trans_opt} and @file{module_i.trans_opt} indirectly.
+@end itemize
+
+While we can build each @file{.opt} file
+independently of any other @file{.opt} file,
+this is not true for @file{.trans_opt} files.
+Not only is it the case that @file{.trans_opt} files
+@emph{can} depend on other @file{.trans_opt} files,
+that in fact is their @emph{job}.
+In this case, if e.g.@: @file{module_f.trans_opt} records
+that @code{f} cannot throw any exception,
+it can do so only because @file{module_i.trans_opt}, @file{module_h.trans_opt},
+and @file{module_g.trans_opt} all record that
+@code{g}, @code{h} and @code{i} respectively also have this property.
+And if code to possibly throw exceptions is ever added
+to any one of @file{module_i.m}, @file{module_h.m}, and @file{module_g.m},
+then both the @file{.trans_opt} file of the updated module,
+and all the @file{.trans_opt} files that depend on it,
+must all be rebuilt.
+
+ZZZ TODO
+
+no circular dependencies
 
 @example
-mmc --make-trans-opt @var{filename1}.m @var{filename2}.m @dots{}
+mmc --make-transitive-optimization-interface @var{module_1}.m @var{module_2}.m @dots{}
+or, equivalently,
+mmc --make-trans-opt @var{module_1}.m @var{module_2}.m @dots{}
 @end example
+@findex --make-transitive-optimization-interface
 @findex --make-trans-opt
+
+@c ----------------------------------------------------------------------------
+
+@node Creating executables
+@section Creating executables
+
+ZZZ TODO
 
 After you have made all the interface files,
 one way to create an executable for a multi-module program
