@@ -133,7 +133,7 @@ report_field_status_mismatch(Context, PFSymNameArity, !Specs) :-
         color_as_subject(
             [words("a field access function for an exported field")]) ++
         color_as_incorrect([words("must also be exported.")]) ++ [nl],
-        % ZZZ to ensure consistency
+        % XXX Should we add "to ensure consistency"?
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
