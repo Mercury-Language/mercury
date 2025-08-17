@@ -10,7 +10,10 @@
 % File: compile_target_code.m.
 % Main authors: fjh, stayl.
 %
-% Code to compile the generated `.c', `.java', etc files.
+% Code to compile the generated `.c' and `.java' files.
+%
+% (This module does *not* handle compilation of `.cs' files; that is done
+% in link_target_code.m.)
 %
 %---------------------------------------------------------------------------%
 
@@ -25,7 +28,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.module_dep_info.
 
 :- import_module bool.
 :- import_module io.
@@ -64,20 +66,16 @@
 
 %---------------------%
 
+% Compilation of C# files is done by create_exe_or_lib_for_csharp/10
+% in link_target_code.m.
+
+%---------------------%
+
     % compile_java_files(Globals, ProgressStream, HeadJavaFile, TailJavaFiles,
     %   Succeeded, !IO)
     %
 :- pred compile_java_files(globals::in, io.text_output_stream::in,
     string::in, list(string)::in, maybe_succeeded::out, io::di, io::uo) is det.
-
-%---------------------%
-
-    % compile_csharp_file(Globals, ProgressStream, ErrorStream,
-    %   CSharpFile, DLLFile, Succeeded, !IO)
-    %
-:- pred compile_csharp_file(globals::in, io.text_output_stream::in,
-    module_dep_info::in, file_name::in, file_name::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
 
 %---------------------%
 
@@ -143,7 +141,7 @@
 
 %---------------------------------------------------------------------------%
 %
-% used for standalone interfaces.
+% Used for standalone interfaces.
 %
 
     % make_standalone_interface(Globals, ProgressStream, BaseName, !IO):
@@ -211,13 +209,10 @@
 :- import_module libs.system_cmds.
 :- import_module libs.trace_params.
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.prog_data_foreign.
-:- import_module parse_tree.prog_foreign.
 
 :- import_module dir.
 :- import_module io.file.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -648,115 +643,6 @@ java_classpath_separator = PathSeparator :-
 
 is_minus_j_flag(FlagStr) :-
     string.prefix(FlagStr, "-J").
-
-%---------------------------------------------------------------------------%
-
-compile_csharp_file(Globals, ProgressStream, ModuleDepInfo,
-        CSharpFileName0, DLLFileName, Succeeded, !IO) :-
-    globals.lookup_bool_option(Globals, verbose, Verbose),
-    (
-        Verbose = no
-    ;
-        Verbose = yes,
-        io.format(ProgressStream, "%% Compiling `%s':\n",
-            [s(CSharpFileName)], !IO)
-    ),
-    globals.lookup_string_option(Globals, csharp_compiler, CSC),
-    globals.lookup_accumulating_option(Globals, csharp_flags, CSCFlagsList),
-    join_string_list(CSCFlagsList, "", "", " ", CSCFlags),
-
-    % XXX This is because the MS C# compiler doesn't understand
-    % / as a directory separator.
-    CSharpFileName = string.replace_all(CSharpFileName0, "/", "\\\\"),
-
-    globals.lookup_bool_option(Globals, target_debug, Debug),
-    (
-        Debug = yes,
-        % XXX This needs testing before it can be enabled (see the comments
-        % for install_debug_library in library/Mmakefile).
-
-        % DebugOpt = "-debug+ -debug:full "
-        DebugOpt = ""
-    ;
-        Debug = no,
-        DebugOpt = ""
-    ),
-
-    % XXX Should we use a separate dll_directories options?
-    % NOTE: we use the -option style options in preference to the /option
-    % style in order to avoid problems with POSIX style shells.
-    globals.lookup_accumulating_option(Globals, link_library_directories,
-        DLLDirs),
-    DLLDirOpts = "-lib:Mercury/dlls " ++
-        string.append_list(list.condense(list.map(
-            (func(DLLDir) = ["-lib:", DLLDir, " "]), DLLDirs))),
-
-    module_dep_info_get_module_name(ModuleDepInfo, ModuleName),
-    ( if mercury_std_library_module_name(ModuleName) then
-        Prefix = "-addmodule:"
-    else
-        Prefix = "-r:"
-    ),
-    module_dep_info_get_fims(ModuleDepInfo, FIMSpes),
-    list.filter_map(
-        ( pred(FS::in, M::out) is semidet :-
-            FS = fim_spec(lang_csharp, _),
-            M = fim_spec_module_name_from_module(FS, ModuleName)
-        ), set.to_sorted_list(FIMSpes), ForeignDeps),
-    module_dep_info_get_int_deps(ModuleDepInfo, IntDeps),
-    module_dep_info_get_imp_deps(ModuleDepInfo, ImpDeps),
-    set.union(IntDeps, ImpDeps, IntImpDeps),
-    set.insert_list(ForeignDeps, IntImpDeps, IntImpForeignDeps),
-    ReferencedDlls = referenced_csharp_dlls(ModuleName, IntImpForeignDeps),
-    list.map(
-        ( pred(Mod::in, Result::out) is det :-
-            % XXX LEGACY
-            module_name_to_file_name(Globals, $pred,
-                ext_cur_gs(ext_cur_gs_lib_cil_dll), Mod,
-                FileName, _FileNameProposed),
-            Result = [Prefix, FileName, " "]
-        ), set.to_sorted_list(ReferencedDlls), ReferencedDllsList),
-    ReferencedDllsStr = string.append_list(
-        list.condense(ReferencedDllsList)),
-
-    string.append_list([CSC, DebugOpt,
-        " -t:library ", DLLDirOpts, CSCFlags, ReferencedDllsStr,
-        " -out:", DLLFileName, " ", CSharpFileName], Command),
-    invoke_system_command(Globals, ProgressStream, ProgressStream,
-        cmd_verbose_commands, Command, Succeeded, !IO).
-
-    % Generate the list of .NET DLLs which could be referred to by this module
-    % (including the module itself).
-    %
-    % If we are compiling a module within the standard library we should
-    % reference the runtime DLLs and all other library DLLs. If we are
-    % outside the library we should just reference mercury.dll (which will
-    % contain all the DLLs).
-    %
-:- func referenced_csharp_dlls(module_name, set(module_name))
-    = set(module_name).
-
-referenced_csharp_dlls(Module, DepModules0) = Modules :-
-    set.insert(Module, DepModules0, DepModules),
-
-    % If we are not compiling a module in the mercury std library, then
-    % replace all the std library dlls with one reference to mercury.dll.
-    ( if mercury_std_library_module_name(Module) then
-        % In the standard library we need to add the runtime dlls.
-        AddedModules =
-            [unqualified("mercury_dotnet"), unqualified("mercury_il")],
-        set.insert_list(AddedModules, DepModules, Modules)
-    else
-        F = ( func(M) =
-                ( if mercury_std_library_module_name(M) then
-                    unqualified("mercury")
-                else
-                    % A sub module is located in the top level assembly.
-                    unqualified(outermost_qualifier(M))
-                )
-            ),
-        Modules = set.map(F, DepModules)
-    ).
 
 %---------------------------------------------------------------------------%
 

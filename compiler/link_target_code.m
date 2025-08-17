@@ -1377,6 +1377,9 @@ create_exe_or_lib_for_csharp(Globals, ProgressStream, LinkedTargetType,
     % Older MS C# compilers only allowed \ as the path separator, so we convert
     % all / into \ when using an MS C# compiler on Windows.
     %
+    % XXX do current MS C# compilers still have this behaviour?
+    % - juliensf, 2025-08-17
+    %
 :- func csharp_file_name(env_type, csharp_compiler_type, file_name)
     = file_name.
 

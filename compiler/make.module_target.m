@@ -479,7 +479,7 @@ build_target_2(ProgressStream, ErrorStream, Globals, Task, ModuleName,
         % if an interrupt arrives.
         call_in_forked_process(
             compile_foreign_code_file(Globals, ProgressStream, PIC,
-                ModuleDepInfo, FactTableForeignCode),
+                FactTableForeignCode),
             Succeeded, !IO)
     ).
 
@@ -506,6 +506,11 @@ build_object_code(ProgressStream, ErrorStream, Globals, Target, PIC,
         % XXX This code uses infrastructure we built for *linking several
         % files* as a way to *compile just one file*. It would be nice
         % to know the reasoning behind that decision.
+        %
+        % The reason for this is that C# has no direct analog of object
+        % or class files, so we have to fake the effect of building an
+        % object file by creating a .dll - juliensf.
+        %
         % XXX LEGACY
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs),
@@ -520,23 +525,20 @@ build_object_code(ProgressStream, ErrorStream, Globals, Target, PIC,
     ).
 
 :- pred compile_foreign_code_file(globals::in, io.text_output_stream::in,
-    pic::in, module_dep_info::in, foreign_code_file::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+    pic::in, foreign_code_file::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-compile_foreign_code_file(Globals, ProgressStream, PIC, ModuleDepInfo,
-        ForeignCodeFile, Succeeded, !IO) :-
+compile_foreign_code_file(Globals, ProgressStream, PIC, ForeignCodeFile,
+        Succeeded, !IO) :-
     (
         ForeignCodeFile = foreign_code_file(lang_c, CFile, ObjFile),
         do_compile_c_file(Globals, ProgressStream, PIC,
             CFile, ObjFile, Succeeded, !IO)
     ;
-        ForeignCodeFile = foreign_code_file(lang_java, JavaFile, _ClassFile),
-        compile_java_files(Globals, ProgressStream, JavaFile, [],
-            Succeeded, !IO)
+        ForeignCodeFile = foreign_code_file(lang_java, _, _),
+        unexpected($pred, "compiling Java foreign code file not supported")
     ;
-        ForeignCodeFile = foreign_code_file(lang_csharp, CSharpFile, DLLFile),
-        compile_csharp_file(Globals, ProgressStream, ModuleDepInfo,
-            CSharpFile, DLLFile, Succeeded, !IO)
+        ForeignCodeFile = foreign_code_file(lang_csharp, _, _),
+        unexpected($pred, "compiling C# foreign code file not supported")
     ).
 
 :- func do_task_in_separate_process(module_compilation_task_type) = bool.
