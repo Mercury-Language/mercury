@@ -518,11 +518,9 @@
     % And if none of its current uses are style issues,
     % then it should be moved to the dodgy code category.
     ;       warn_simple_code
-    % ZZZ These should be renamed s/inform_/warn_/ and the severity
-    % of their error_specs changed.
-    ;       inform_ite_instead_of_switch
-    ;       inform_incomplete_switch
-    ;       inform_incomplete_switch_threshold
+    ;       warn_ite_instead_of_switch
+    ;       warn_incomplete_switch
+    ;       warn_incomplete_switch_threshold
     ;       warn_duplicate_calls
     ;       warn_redundant_coerce
     ;       warn_requested_by_code
@@ -2864,18 +2862,19 @@ optdb(oc_warn_style_goal, warn_simple_code,            bool(yes),
         w("that they are likely to be programming errors."),
         w("(One example is if-then-elses"),
         w("whose condition always succeeds.)")])).
-optdb(oc_warn_style_goal, inform_ite_instead_of_switch, bool(no),
-    help("inform-ite-instead-of-switch", [
-        w("Generate informational messages for if-then-elses that could be"),
-        w("replaced by switches.")])).
-optdb(oc_warn_style_goal, inform_incomplete_switch,    bool(no),
-    help("inform-incomplete-switch", [
-        w("Generate informational messages for switches that do not cover"),
-        w("all the function symbols that the switched-on variable could be"),
+optdb(oc_warn_style_goal, warn_ite_instead_of_switch, bool(no),
+    alt_help("warn-ite-instead-of-switch", ["inform-ite-instead-of-switch"], [
+        w("Generate warnings for if-then-elses that could be replaced"),
+        w("by switches.")])).
+optdb(oc_warn_style_goal, warn_incomplete_switch,    bool(no),
+    alt_help("warn-incomplete-switch", ["inform-incomplete-switch"], [
+        w("Generate warnings for switches that do not cover all the"),
+        w("function symbols that the switched-on variable could be"),
         w("bound to.")])).
-optdb(oc_warn_style_goal_c, inform_incomplete_switch_threshold, int(0),
-    arg_help("inform-incomplete-switch-threshold", "N", [
-        w("Have the"), opt("--inform-incomplete-switch"), w("option"),
+optdb(oc_warn_style_goal_c, warn_incomplete_switch_threshold, int(0),
+    alt_arg_help("warn-incomplete-switch-threshold",
+            ["inform-incomplete-switch-threshold"], "N", [
+        w("Have the"), opt("--warn-incomplete-switch"), w("option"),
         w("generate its messages only for switches that"), emph("do"),
         w("cover at least"), bare_arg("N", "%"), w("of the function symbols"),
         w("that the switched-on variable could be bound to.")])).

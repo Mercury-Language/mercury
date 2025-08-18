@@ -929,8 +929,9 @@ Warning options
         in a different order than its supertype.
 
     PRIVATE OPTION
-    --no-warn-opt-deps-spec
-        XXX Peter, please document this warning.
+    --no-warn-trans-opt-deps-spec
+        Do not warn about missing or unknown module names in files named by
+        --trans-opt-deps-spec options.
 
     Warnings about possible inst incorrectness
 
@@ -1086,8 +1087,8 @@ Warning options
         the all-solutions predicate to consider them to be the *same* solution.
 
     --no-warn-unknown-warning-name
-        When processing disable_warning scopes, do not report unknown warning
-        names in the list of warnings to disable.
+        Do not report unknown warning names in the list of warnings to disable
+        in disable_warning(s) scopes.
 
     Warnings about missing files
 
@@ -1199,16 +1200,18 @@ Warning options
         to be programming errors. (One example is if-then-elses whose condition
         always succeeds.)
 
+    --warn-ite-instead-of-switch
     --inform-ite-instead-of-switch
-        Generate informational messages for if-then-elses that could be
-        replaced by switches.
+        Generate warnings for if-then-elses that could be replaced by switches.
 
+    --warn-incomplete-switch
     --inform-incomplete-switch
-        Generate informational messages for switches that do not cover all the
-        function symbols that the switched-on variable could be bound to.
+        Generate warnings for switches that do not cover all the function
+        symbols that the switched-on variable could be bound to.
 
+    --warn-incomplete-switch-threshold <N>
     --inform-incomplete-switch-threshold <N>
-        Have the `--inform-incomplete-switch' option generate its messages only
+        Have the `--warn-incomplete-switch' option generate its messages only
         for switches that *do* cover at least N% of the function symbols that
         the switched-on variable could be bound to.
 

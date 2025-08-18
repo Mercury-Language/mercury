@@ -1641,6 +1641,15 @@ Changes to the Mercury compiler
     --no-warn-unneeded-purity-pragma
     --no-warn-unneeded-purity-pred-decl
 
+* We have renamed three existing options:
+
+    --inform-ite-instead-of-switch       to --warn-ite-instead-of-switch
+    --inform-incomplete-switch           to --warn-incomplete-switch
+    --inform-incomplete-switch-threshold to --warn-incomplete-switch-threshold
+
+    These options will still be available under their old names
+    at least until the next release.
+
 Changes to the Mercury debugger
 -------------------------------
 

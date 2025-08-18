@@ -292,7 +292,7 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
                 color_as_incorrect([words("could be replaced by a switch")] ++
                     OnPieces ++ [suffix(".")]) ++
                 [nl],
-            Severity = severity_informational(inform_ite_instead_of_switch),
+            Severity = severity_warning(warn_ite_instead_of_switch),
             Spec = spec($pred, Severity, phase_simplify(report_in_any_mode),
                 Context, Pieces),
             simplify_info_add_message(Spec, !Info)

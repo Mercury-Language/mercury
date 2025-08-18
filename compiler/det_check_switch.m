@@ -36,24 +36,24 @@
     % is incomplete:
     %
     % - because the switch is wrapped in a require_complete_switch scope, and
-    % - because the --inform-incomplete-switch option is set.
+    % - because the --warn-incomplete-switch option is set.
     %
-    % This type says whether the --inform-incomplete-switch option is set.
+    % This type says whether the --warn-incomplete-switch option is set.
     %
-:- type maybe_inform_incomplete_switches
-    --->    do_not_inform_incomplete_switches
-    ;       inform_incomplete_switches.
+:- type maybe_warn_incomplete_switches
+    --->    do_not_warn_incomplete_switches
+    ;       warn_incomplete_switches.
 
     % This type says which of the above two reasons causes us to report
     % the given incomplete switch.
     %
 :- type why_report_incomplete_switch
     --->    switch_required_to_be_complete
-    ;       inform_incomplete_switch_option.
+    ;       warn_incomplete_switch_option.
 
     % It is possible for *both* reasons to apply to the same incomplete switch.
     % In such cases, we want to generate only the error required by the scope,
-    % and not the information message that the option calls for. We process
+    % and not the warning message that the option calls for. We process
     % procedure bodies top down, so we process the scope goal before
     % the switch it wraps, so when we generate an error report for an
     % incomplete switch, we pass along its details when we process the
@@ -76,14 +76,14 @@
 
 :- type reqscope_params
     --->    reqscope_params(
-                maybe_inform_incomplete_switches,
+                maybe_warn_incomplete_switches,
                 maybe_req_arms_in_type_order
             ).
 
     % Check that the switches in all require_complete_switch scopes are
     % actually complete. If they are not, add an error message to !DetInfo.
     %
-    % If IIS = inform_incomplete_switches, do this for *all* switches.
+    % If WIS = warn_incomplete_switches, do this for *all* switches.
     %
 :- pred reqscope_check_goal(reqscope_params::in, instmap::in,
     maybe(reported_switch)::in, list(switch_context)::in, hlds_goal::in,
@@ -252,7 +252,7 @@ reqscope_check_goal(Params, InstMap0, MaybeReportedSwitch, SwitchContexts,
         reqscope_check_disj(Params, InstMap0, SwitchContexts, Goals, !DetInfo)
     ;
         GoalExpr = switch(Var, CanFail, Cases),
-        Params = reqscope_params(IIS, ReqArmsTypeOrder),
+        Params = reqscope_params(WIS, ReqArmsTypeOrder),
         (
             CanFail = cannot_fail
         ;
@@ -260,7 +260,7 @@ reqscope_check_goal(Params, InstMap0, MaybeReportedSwitch, SwitchContexts,
             Context = goal_info_get_context(GoalInfo),
             ( if
                 (
-                    IIS = do_not_inform_incomplete_switches
+                    WIS = do_not_warn_incomplete_switches
                 ;
                     MaybeReportedSwitch = yes(ReportedSwitch),
                     ReportedSwitch = reported_switch(ReportedContext,
@@ -273,9 +273,9 @@ reqscope_check_goal(Params, InstMap0, MaybeReportedSwitch, SwitchContexts,
                 % We have already reported an error for this incomplete switch.
                 true
             else
-                generate_incomplete_switch_spec(
-                    inform_incomplete_switch_option, yes(10),
-                    InstMap0, SwitchContexts, Var, Cases, Context, !DetInfo)
+                generate_incomplete_switch_spec(warn_incomplete_switch_option,
+                    yes(10), InstMap0, SwitchContexts, Var, Cases, Context,
+                    !DetInfo)
             )
         ),
         det_info_get_var_table(!.DetInfo, VarTable),
@@ -460,11 +460,11 @@ generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
                 MainPieces, VerbosePieces, Component),
             MaybeSeverityComponents = yes({severity_error, [Component]})
         ;
-            Why = inform_incomplete_switch_option,
+            Why = warn_incomplete_switch_option,
             det_info_get_module_info(!.DetInfo, ModuleInfo),
             module_info_get_globals(ModuleInfo, Globals),
             globals.lookup_int_option(Globals,
-                inform_incomplete_switch_threshold, Threshold),
+                warn_incomplete_switch_threshold, Threshold),
             NumCoveredConsIds = NumPossibleConsIds - NumUncoveredConsIds,
             ( if NumCoveredConsIds * 100 >= NumPossibleConsIds * Threshold then
                 % The number of covered cons_ids is above the threshold,
@@ -475,7 +475,7 @@ generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
                     words("does not cover")],
                 append_prefix_and_maybe_verbose(no, NestingPieces,
                     NoCoverPieces, MainPieces, VerbosePieces, Component),
-                Severity0 = severity_informational(inform_incomplete_switch),
+                Severity0 = severity_warning(warn_incomplete_switch),
                 MaybeSeverityComponents = yes({Severity0, [Component]})
             else
                 MaybeSeverityComponents = no
@@ -492,7 +492,7 @@ generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
             Component = always(NestingPieces ++ NoCoverPieces),
             MaybeSeverityComponents = yes({severity_error, [Component]})
         ;
-            Why = inform_incomplete_switch_option,
+            Why = warn_incomplete_switch_option,
             MaybeSeverityComponents = no
         )
     ),

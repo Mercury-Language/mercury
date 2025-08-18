@@ -341,15 +341,15 @@ make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         ( if
             marker_is_present(Markers, marker_has_incomplete_switch),
             module_info_get_globals(ModuleInfo, Globals),
-            globals.lookup_bool_option(Globals, inform_incomplete_switch, yes)
+            globals.lookup_bool_option(Globals, warn_incomplete_switch, yes)
         then
             % If this option is specified, it acts as an implicit
             % require_complete_switch scope around all switches.
             !:NeedReqScope = yes,
-            InformIncompleteSwitches = inform_incomplete_switches
+            WarnIncompleteSwitches = warn_incomplete_switches
         else
             !:NeedReqScope = no,
-            InformIncompleteSwitches = do_not_inform_incomplete_switches
+            WarnIncompleteSwitches = do_not_warn_incomplete_switches
         ),
         ( if marker_is_present(Markers, marker_has_require_scope) then
             !:NeedReqScope = yes
@@ -371,7 +371,7 @@ make_reqscope_checks_if_needed(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         proc_info_get_initial_instmap(ModuleInfo, ProcInfo, InstMap0),
         det_info_init(ModuleInfo, PredProcId, VarTable,
             pess_extra_vars_ignore, [], DetInfo0),
-        Params = reqscope_params(InformIncompleteSwitches, ReqArmsTypeOrder),
+        Params = reqscope_params(WarnIncompleteSwitches, ReqArmsTypeOrder),
         reqscope_check_goal(Params, InstMap0, no, [], Goal, DetInfo0, DetInfo),
         det_info_get_error_specs(DetInfo, RCSSpecs),
         !:Specs = RCSSpecs ++ !.Specs

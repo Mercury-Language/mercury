@@ -513,7 +513,7 @@ check_hlds_dump_options(!OptionTable, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_diagnostics_options(OptionTable, LimitErrorContextsMap, !Specs) :-
-    lookup_int_option(OptionTable, inform_incomplete_switch_threshold,
+    lookup_int_option(OptionTable, warn_incomplete_switch_threshold,
         IncompleteSwitchThreshold),
     ( if
         IncompleteSwitchThreshold >= 0,
@@ -523,7 +523,7 @@ check_diagnostics_options(OptionTable, LimitErrorContextsMap, !Specs) :-
     else
         IncompleteSwitchThresholdSpec =
             [words("Invalid argument"), int_fixed(IncompleteSwitchThreshold),
-            words("to the"), quote("--inform-incomplete-switch-threshold"),
+            words("to the"), quote("--warn-incomplete-switch-threshold"),
             words("option; must be an integer between 0 and 100."), nl],
         add_error(phase_options, IncompleteSwitchThresholdSpec, !Specs)
     ),
