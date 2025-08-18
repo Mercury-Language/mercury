@@ -216,7 +216,7 @@ In the absence of the @code{--make} option,
 whose description we will defer until @ref{Introduction to mmc --make},
 all non-option arguments should be either
 the name of a file, or the name of a module.
-@c XXX what about e.g. "mmc --make prog.clean"?
+@c XXX Should we talk about about e.g. "mmc --make prog.clean" here?
 The compiler assumes that
 non-option arguments ending in @samp{.m} are file names,
 while all other non-option arguments are module names.
@@ -226,12 +226,13 @@ what code it should operate on.
 @node Option arguments
 @subsection Option arguments
 
-The Mercury compiler follows the usual Unix conventions around options.
+The Mercury compiler follows the usual GNU conventions around options,
+which are themselves based on Unix conventions.
 (Some of its options (e.g.@: @samp{-c}, @samp{-o}, and @samp{-I})
 have a similar meaning to that in compilers for other languages, 
 though of course most are specific to Mercury.)
 
-Like most other Unix programs, it supports both
+Like most other GNU programs, it supports both
 short (single-character) and long (multi-character) option names.
 
 On command lines, an option argument that starts with @samp{--}
@@ -388,17 +389,21 @@ mmc @code{prog.m}
 
 or, more generally,
 
-@c ZZZ @var{list of options} looks strange in the generated HTML.
 @example
-mmc @var{list of options} @code{prog.m}
+mmc @var{option ...} @code{prog.m}
+@end example
+
+with one concrete example being
+
+@example
+mmc --inhibit-warnings -O3 @code{prog.m}
 @end example
 
 If the single module inside @file{prog.m} is also named @file{prog},
 then you can also compile it using
 
-@c XXX @var{list of options} looks strange in the generated HTML here as well.
 @example
-mmc @var{list of options} @code{prog}
+mmc @var{option ...} @code{prog}
 @end example
 
 which specifies the module name, not the (matching) file name.
@@ -1971,7 +1976,7 @@ for these target languages.)
 
 If the source file contains nested modules,
 then both the main module in the file,
-and all the submodules nested inside it, directly or indirect, 
+and all the submodules nested inside it, directly or indirectly, 
 will all get compiled
 first to separate @file{.c} (or @file{.java}, or @file{.cs} files,
 and then to separate @file{.o} (or @file{.class}, or @file{.dll} files.
@@ -1993,16 +1998,8 @@ using the following commands:
 
 @example
 mmc --make-short-interface @var{module_1}.m @var{module_2}.m @dots{}
-or, equivalently,
-mmc --make-short-int @var{module_1}.m @var{module_2}.m @dots{}
-
 mmc --make-private-interface @var{module_1}.m @var{module_2}.m @dots{}
-or, equivalently,
-mmc --make-priv-int @var{module_1}.m @var{module_2}.m @dots{}
-
 mmc --make-interface @var{module_1}.m @var{module_2}.m @dots{}
-or, equivalently,
-mmc --make-int @var{module_1}.m @var{module_2}.m @dots{}
 @end example
 @findex --make-short-interface
 @findex --make-short-int
@@ -2013,15 +2010,15 @@ mmc --make-int @var{module_1}.m @var{module_2}.m @dots{}
 
 @itemize @bullet
 @item
-The commands in the first pair build (or rebuild)
+The first command builds (or rebuilds)
 the @samp{.int3} file of each module contained in the named source files.
 (@emph{Not} just the top module of each source file.)
 @item
-The commands in the second pair build (or rebuild)
+The second command builds (or rebuilds)
 the @samp{.int0} file of each module contained in the named source files.
 (Note that only modules that have submodules need @samp{.int0} files.)
 @item
-The commands in the third pair build (or rebuild)
+The third command builds (or rebuilds)
 both the @samp{.int} and @samp{.int2} file
 of each module contained in the named source files.
 @end itemize
@@ -2086,9 +2083,9 @@ The only source of information that @command{mmc} has
 about the modules imported by @var{module_a} are their @file{.int} files.
 Beyond the definitions of types, insts and modes,
 these contain the @emph{declarations} of predicates and functions,
-but their @emph{definitions}.
+but not their @emph{definitions}.
 
-However, the compiler usual optimizations could do a better job
+However, the compiler's usual optimizations could do a better job
 if they @emph{did} have access
 to the definitions of those predicates and functions.
 This is why the Mercury compiler has a mechanism for providing that access.
@@ -2101,18 +2098,16 @@ Commands that do the first part look like this:
 
 @example
 mmc --make-optimization-interface @var{module_1}.m @var{module_2}.m @dots{}
-or, equivalently,
-mmc --make-opt-int @var{module_1}.m @var{module_2}.m @dots{}
 @end example
 @findex --make-optimization-interface
 @findex --make-opt-int
 
-Each of these commands
+This command
 will build @file{@var{module_1}.opt}, @file{@var{module_2}.opt},
-and in general a @file{.opt} file for each named module.
+and generally the @file{.opt} file of each named module.
 These files contain information that is normally private to the module
 that the @file{.opt} file is for,
-but which may be useful for optimization.
+but which may be useful for the optimization of other modules.
 Mostly, this includes the definitions (i.e. the code)
 of both public and private predicates and functions of the module,
 if those definitions match one or more from a list of criteria,
@@ -2180,7 +2175,7 @@ data structures are terms, which can be viewed as trees.
 
 Deforestation can fuse two traversals only if they are next to each other,
 and in this case, the two calls to be fused are @emph{not} next to each other.
-The first step is therefor to replace
+The first step is therefore to replace
 @example
 ... p(...), q(...), r(...), ...
 @end example
@@ -2224,12 +2219,14 @@ whose results they contain.
 One of these analyses is exception analysis,
 which computes safe approximations to the set of exceptions
 that each predicate or function can possibly throw.
-If this approximations is the empty set,
+These approximations do not refer to the identities of specific exceptions,
+but they are nevertheless useful,
+becayse if this approximation is the empty set,
 then we know for sure that
 the predicate or function cannot throw any exception.
 (An approximation can overestimate
 the set of actions that the predicate or function may perform,
-but it is safe only if will never underestimate that set.)
+but it is @emph{safe} only if it will @emph{never underestimate} that set.)
 
 Consider a call chain between functions where
 @code{f} calls @code{g},
@@ -2258,7 +2255,7 @@ to know whether @code{f} can throw exceptions,
 we need the code of @code{f} and the results of the analysis for @code{g}.
 @end itemize
 
-These dependencies transfor to the files involved:
+These dependencies transfer to the files involved:
 
 @itemize
 @item
@@ -2294,26 +2291,56 @@ independently of any other @file{.opt} file,
 this is not true for @file{.trans_opt} files.
 Not only is it the case that @file{.trans_opt} files
 @emph{can} depend on other @file{.trans_opt} files,
-that in fact is their @emph{job}.
+that in fact is the @emph{reason for their existence}.
 In this case, if e.g.@: @file{module_f.trans_opt} records
 that @code{f} cannot throw any exception,
 it can do so only because @file{module_i.trans_opt}, @file{module_h.trans_opt},
 and @file{module_g.trans_opt} all record that
 @code{g}, @code{h} and @code{i} respectively also have this property.
-And if code to possibly throw exceptions is ever added
+And if code that can possibly throw exceptions is ever added
 to any one of @file{module_i.m}, @file{module_h.m}, and @file{module_g.m},
 then both the @file{.trans_opt} file of the updated module,
 and all the @file{.trans_opt} files that depend on it,
 must all be rebuilt.
 
-ZZZ TODO
+If the programmer adds
+a function named @code{f2} to @file{module_f.m}
+and a function named @code{h2} to @file{module_h.m},
+with @code{h2} calling @code{f2},
+then the compiler can fully analyze @code{h2}
+and put the results into @file{module_h.trans_opt}
+only if, when it is building @file{module_h.trans_opt},
+it has access to the contents of @file{module_f.trans_opt}.
+However, we cannot make
+@file{module_h.trans_opt} depend on @file{module_f.trans_opt}.
+@file{module_f.trans_opt} already depends on @file{module_h.trans_opt},
+because if we did that, we would make the dependency chain circular.
+This would mean that in order bring e.g.@:
+@file{module_h.trans_opt} up to date,
+we would first have to bring @file{module_f.trans_opt} up to date,
+which means that
+we would first have to bring @file{module_h.trans_opt} up to date,
+which means that
+we would first have to bring @file{module_f.trans_opt} up to date,
+and so on forever.
+This is why software build systems,
+including @command{mmake} and @command{mmc --make},
+require the absence of circular dependencies between files.
 
-no circular dependencies
+Mercury's first step
+towards avoiding circular dependencies between @file{.trans_opt} files
+is to impose an order on the modules of the program
+when the @command{mmc --generate-dependencies} command is executed for it.
+This order is recorded in the @file{.dv}
+The second step is to ensure that
+a @file{.trans_opt} file can only ever depend on
+@file{.trans_opt} files that @emph{follow} it in the order,
+never ones that @emph{precede} it.
+
+ZZZ TODO
 
 @example
 mmc --make-transitive-optimization-interface @var{module_1}.m @var{module_2}.m @dots{}
-or, equivalently,
-mmc --make-trans-opt @var{module_1}.m @var{module_2}.m @dots{}
 @end example
 @findex --make-transitive-optimization-interface
 @findex --make-trans-opt
