@@ -582,7 +582,9 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
         IsBuiltin, PredInfo, ProcInfo, GoalInfo, NestedContext, Common,
         !Info) :-
     ( if
-        simplify_do_warn_simple_code(!.Info),
+        ( simplify_do_warn_dodgy_simple_code(!.Info)
+        ; simplify_do_warn_suspicious_recursion(!.Info)
+        ),
 
         simplify_info_get_pred_proc_id(!.Info, CurPredProcId),
         % Is this a (directly) recursive call, i.e. is the procedure being
@@ -642,7 +644,8 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
                 Msgs = [simple_msg(goal_info_get_context(GoalInfo),
                     [always(MainPieces),
                     verbose_only(verbose_once, VerbosePieces)])],
-                Spec = error_spec($pred, severity_warning(warn_simple_code),
+                Spec = error_spec($pred,
+                    severity_warning(warn_dodgy_simple_code),
                     phase_simplify(report_in_any_mode), Msgs),
                 simplify_info_add_message(Spec, !Info)
             ;
@@ -657,7 +660,7 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
                     Msgs = [simple_msg(goal_info_get_context(GoalInfo),
                         [always(Pieces), shut_up_suspicious_recursion_msg])],
                     Spec = error_spec($pred,
-                        severity_warning(warn_simple_code),
+                        severity_warning(warn_dodgy_simple_code),
                         phase_simplify(report_in_any_mode), Msgs),
                     simplify_info_add_message(Spec, !Info)
                 else
@@ -875,7 +878,7 @@ maybe_generate_warning_for_useless_comparison(PredInfo, InstMap, Args,
         is_std_lib_module_name(ModuleSymName, ModuleName),
         Args = [ArgA, ArgB],
         pred_info_is_pred_or_func(PredInfo) = pf_predicate,
-        simplify_do_warn_simple_code(!.Info)
+        simplify_do_warn_dodgy_simple_code(!.Info)
     then
         pred_info_get_name(PredInfo, PredName),
         instmap_lookup_var(InstMap, ArgA, InstA),
@@ -888,8 +891,7 @@ maybe_generate_warning_for_useless_comparison(PredInfo, InstMap, Args,
             PredPieces = describe_one_pred_info_name(yes(color_subject),
                 should_module_qualify, [], PredInfo),
             Pieces = [words("Warning: call to")] ++ PredPieces ++ WarnPieces,
-            % XXX SEVERITY
-            Spec = spec($pred, severity_warning(warn_simple_code),
+            Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
                 phase_simplify(report_in_any_mode), GoalContext, Pieces),
             simplify_info_add_message(Spec, !Info)
         else

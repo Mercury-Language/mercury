@@ -2674,8 +2674,7 @@ mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Spec :-
         has_instantiatedness(ModeInfo, MaybeColor, InstX, ",") ++
         color_as_subject([quote(NameY)]) ++
         has_instantiatedness(ModeInfo, MaybeColor, InstY, "."),
-    % XXX SEVERITY
-    Spec = spec($pred, severity_warning(warn_simple_code),
+    Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
         phase_mode_check(report_only_if_in_all_modes),
         Context, Preamble ++ Pieces).
 
@@ -2709,8 +2708,7 @@ mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Spec :-
         [words("cannot succeed."), nl] ++
         color_as_subject([quote(NameX)]) ++
         has_instantiatedness(ModeInfo, yes(color_incorrect), InstX, "."),
-    % XXX SEVERITY
-    Spec = spec($pred, severity_warning(warn_simple_code),
+    Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
         phase_mode_check(report_only_if_in_all_modes),
         Context, Preamble ++ Pieces).
 
@@ -2733,8 +2731,7 @@ mode_warning_cannot_succeed_ground_occur_check(ModeInfo, X, ConsId) = Spec :-
         color_as_incorrect([quote(NameX), words("cannot be equal"),
             words("to a term containing itself.")]) ++
         [nl],
-    % XXX SEVERITY
-    Spec = spec($pred, severity_warning(warn_simple_code),
+    Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%

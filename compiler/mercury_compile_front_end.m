@@ -1603,8 +1603,8 @@ simplify_pred(ProgressStream, SimplifyTasks0, PredId,
     ProcIds = pred_info_all_non_imported_procids(!.PredInfo),
     % Don't warn for compiler-generated procedures.
     ( if is_unify_index_or_compare_pred(!.PredInfo) then
-        SimplifyTasks = SimplifyTasks0 ^ do_warn_simple_code
-            := do_not_warn_simple_code
+        SimplifyTasks = SimplifyTasks0 ^ do_warn_dodgy_simple_code
+            := do_not_warn_dodgy_simple_code
     else
         SimplifyTasks = SimplifyTasks0
     ),

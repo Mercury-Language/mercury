@@ -202,7 +202,7 @@ maybe_warn_about_condition(GoalInfo0, NestedContext0, Problem, !Info) :-
         Context = goal_info_get_context(GoalInfo0),
         Pieces = [words("Warning: the condition of this if-then-else")] ++
             color_as_incorrect([words(Problem), suffix(".")]) ++ [nl],
-        Spec = spec($pred, severity_warning(warn_simple_code),
+        Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
             phase_simplify(report_only_if_in_all_modes), Context, Pieces),
         simplify_info_add_message(Spec, !Info)
     ),
@@ -483,7 +483,7 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             Pieces = [words("Warning: the negated goal")] ++
                 color_as_incorrect([words("cannot fail.")]) ++
                 [nl],
-            Spec = spec($pred, severity_warning(warn_simple_code),
+            Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
                 phase_simplify(report_only_if_in_all_modes),
                 Context, Pieces),
             simplify_info_add_message(Spec, !Info)
@@ -491,7 +491,7 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             Pieces = [words("Warning: the negated goal")] ++
                 color_as_incorrect([words("cannot succeed.")]) ++
                 [nl],
-            Spec = spec($pred, severity_warning(warn_simple_code),
+            Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
                 phase_simplify(report_only_if_in_all_modes),
                 Context, Pieces),
             simplify_info_add_message(Spec, !Info)

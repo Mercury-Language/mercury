@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -243,7 +243,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred simplify_do_warn_simple_code(simplify_info::in) is semidet.
+:- pred simplify_do_warn_dodgy_simple_code(simplify_info::in) is semidet.
 :- pred simplify_do_warn_duplicate_calls(simplify_info::in) is semidet.
 :- pred simplify_do_warn_implicit_stream_calls(simplify_info::in) is semidet.
 :- pred simplify_do_format_calls(simplify_info::in) is semidet.
@@ -726,9 +726,9 @@ simplify_info_set_switch_arms_to_split(X, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-simplify_do_warn_simple_code(Info) :-
+simplify_do_warn_dodgy_simple_code(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
-    SimplifyTasks ^ do_warn_simple_code = warn_simple_code.
+    SimplifyTasks ^ do_warn_dodgy_simple_code = warn_dodgy_simple_code.
 simplify_do_warn_duplicate_calls(Info) :-
     simplify_info_get_simplify_tasks(Info, SimplifyTasks),
     SimplifyTasks ^ do_warn_duplicate_calls = warn_duplicate_calls.

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2017, 2019-2024 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,7 +25,7 @@
     % Each value of this type represents a task, or a group of related tasks,
     % that simplification should perform.
 :- type simplify_task
-    --->    simptask_warn_simple_code
+    --->    simptask_warn_dodgy_simple_code
             % --warn-simple-code
 
     ;       simptask_warn_duplicate_calls
@@ -114,9 +114,9 @@
 
 %---------------------%
 
-:- type maybe_warn_simple_code
-    --->    do_not_warn_simple_code
-    ;       warn_simple_code.
+:- type maybe_warn_dodgy_simple_code
+    --->    do_not_warn_dodgy_simple_code
+    ;       warn_dodgy_simple_code.
 
 :- type maybe_warn_duplicate_calls
     --->    do_not_warn_duplicate_calls
@@ -184,7 +184,7 @@
     % in extra complexity than it would gain.
 :- type simplify_tasks
     --->    simplify_tasks(
-                do_warn_simple_code             :: maybe_warn_simple_code,
+                do_warn_dodgy_simple_code   :: maybe_warn_dodgy_simple_code,
                 do_warn_duplicate_calls         :: maybe_warn_duplicate_calls,
                 do_warn_implicit_streams        :: maybe_warn_implicit_streams,
                 do_invoke_format_call           :: maybe_invoke_format_call,
@@ -237,7 +237,7 @@
 %---------------------------------------------------------------------------%
 
 simplify_tasks_to_list(SimplifyTasks) = !:List :-
-    SimplifyTasks = simplify_tasks(WarnSimpleCode, WarnDupCalls,
+    SimplifyTasks = simplify_tasks(WarnDodgySimple, WarnDupCalls,
         WarnImplicitStreamCalls, DoFormatCalls, WarnObsolete,
         MarkCodeModelChanges, AfterFrontEnd, ExcessAssign,
         MergeCodeAfterSwitch, ElimRemovableScopes,
@@ -245,8 +245,8 @@ simplify_tasks_to_list(SimplifyTasks) = !:List :-
         TryOptConstStructs, _OptConstStructs, IgnoreParConjs,
         WarnSuspiciousRecursion, WarnNoSolutionDisjunct, SplitSwitchArms),
     !:List = [],
-    ( if WarnSimpleCode = warn_simple_code
-        then list.cons(simptask_warn_simple_code, !List) else true ),
+    ( if WarnDodgySimple = warn_dodgy_simple_code
+        then list.cons(simptask_warn_dodgy_simple_code, !List) else true ),
     ( if WarnDupCalls = warn_duplicate_calls
         then list.cons(simptask_warn_duplicate_calls, !List) else true ),
     ( if WarnImplicitStreamCalls = warn_implicit_streams
@@ -287,8 +287,8 @@ simplify_tasks_to_list(SimplifyTasks) = !:List :-
 list_to_simplify_tasks(Globals, List) = Tasks :-
     globals.get_opt_tuple(Globals, OptTuple),
     Tasks = simplify_tasks(
-        ( if list.member(simptask_warn_simple_code, List)
-            then warn_simple_code else do_not_warn_simple_code ),
+        ( if list.member(simptask_warn_dodgy_simple_code, List)
+            then warn_dodgy_simple_code else do_not_warn_dodgy_simple_code ),
         ( if list.member(simptask_warn_duplicate_calls, List)
             then warn_duplicate_calls else do_not_warn_duplicate_calls ),
         ( if list.member(simptask_warn_implicit_stream_calls, List)
@@ -336,7 +336,8 @@ list_to_simplify_tasks(Globals, List) = Tasks :-
     ).
 
 find_simplify_tasks(Globals, WarnThisPass, SimplifyTasks) :-
-    globals.lookup_bool_option(Globals, warn_simple_code, WarnSimple),
+    globals.lookup_bool_option(Globals, warn_dodgy_simple_code,
+        WarnDodgySimple),
     globals.lookup_bool_option(Globals, warn_duplicate_calls, WarnDupCalls),
     globals.lookup_bool_option(Globals, warn_implicit_stream_calls,
         WarnImplicitStreamCalls),
@@ -377,8 +378,8 @@ find_simplify_tasks(Globals, WarnThisPass, SimplifyTasks) :-
     SplitSwitchArms = OptTuple ^ ot_split_switch_arms,
 
     SimplifyTasks = simplify_tasks(
-        ( if WarnSimple = yes, WarnThisPass = generate_warnings
-            then warn_simple_code else do_not_warn_simple_code ),
+        ( if WarnDodgySimple = yes, WarnThisPass = generate_warnings
+            then warn_dodgy_simple_code else do_not_warn_dodgy_simple_code ),
         ( if WarnDupCalls = yes, WarnThisPass = generate_warnings
             then warn_duplicate_calls else do_not_warn_duplicate_calls ),
         ( if WarnImplicitStreamCalls = yes, WarnThisPass = generate_warnings
@@ -403,7 +404,7 @@ find_simplify_tasks(Globals, WarnThisPass, SimplifyTasks) :-
             then warn_suspicious_rec else do_not_warn_suspicious_rec ),
         % Warnings about "no solution disjuncts" are a category of warnings
         % about simple code that happens to have its own disabling mechanism.
-        ( if WarnSimple = yes, WarnThisPass = generate_warnings
+        ( if WarnDodgySimple = yes, WarnThisPass = generate_warnings
             then warn_no_soln_disjunct else do_not_warn_no_soln_disjunct ),
         SplitSwitchArms
     ).

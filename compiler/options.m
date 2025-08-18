@@ -465,6 +465,7 @@
     ;       warn_nonexported_pragma
 
     % Warnings about dodgy code, at the goal level.
+    ;       warn_dodgy_simple_code
     ;       warn_singleton_vars
     ;       warn_repeated_singleton_vars
     ;       warn_unification_cannot_succeed
@@ -513,11 +514,7 @@
     ;       warn_unneeded_mode_specific_clause
 
     % Warnings about programming style, simple mistakes.
-    % ZZZ warn_simple_code should be split into two halves:
-    % one for style issues, and one for dodgy code.
-    % And if none of its current uses are style issues,
-    % then it should be moved to the dodgy code category.
-    ;       warn_simple_code
+    ;       warn_redundant_code
     ;       warn_ite_instead_of_switch
     ;       warn_incomplete_switch
     ;       warn_incomplete_switch_threshold
@@ -2633,6 +2630,13 @@ optdb(oc_warn_dodgy_prg, warn_nonexported_pragma,      bool(yes),
 
 % Warnings about goal-level issues.
 
+optdb(oc_warn_dodgy_goal, warn_dodgy_simple_code,      bool(yes),
+    % NOTE The external name is *much* older than the internal name.
+    help("warn-simple-code", [
+        w("Do not warn about constructs which are so simple"),
+        w("that they are likely to be programming errors."),
+        w("(One example is if-then-elses"),
+        w("whose condition always succeeds.)")])).
 optdb(oc_warn_dodgy_goal, warn_singleton_vars,         bool(yes),
     alt_help("warn-singleton-variables",
             ["warn-singleton-vars"], [
@@ -2856,17 +2860,15 @@ optdb(oc_warn_style_pred, warn_unneeded_mode_specific_clause, bool(yes),
 
 % Warnings about simple style mistakes.
 
-optdb(oc_warn_style_goal, warn_simple_code,            bool(yes),
-    help("warn-simple-code", [
-        w("Do not warn about constructs which are so simple"),
-        w("that they are likely to be programming errors."),
-        w("(One example is if-then-elses"),
-        w("whose condition always succeeds.)")])).
-optdb(oc_warn_style_goal, warn_ite_instead_of_switch, bool(no),
+optdb(oc_warn_style_goal, warn_redundant_code,         bool(yes),
+    help("warn-redundant-code", [
+        w("Do not warn about redundant constructs in Mercury code."),
+        w("(One example is importing a module more than once.)")])).
+optdb(oc_warn_style_goal, warn_ite_instead_of_switch,  bool(no),
     alt_help("warn-ite-instead-of-switch", ["inform-ite-instead-of-switch"], [
         w("Generate warnings for if-then-elses that could be replaced"),
         w("by switches.")])).
-optdb(oc_warn_style_goal, warn_incomplete_switch,    bool(no),
+optdb(oc_warn_style_goal, warn_incomplete_switch,      bool(no),
     alt_help("warn-incomplete-switch", ["inform-incomplete-switch"], [
         w("Generate warnings for switches that do not cover all the"),
         w("function symbols that the switched-on variable could be"),

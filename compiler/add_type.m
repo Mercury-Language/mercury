@@ -251,8 +251,7 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
             type_status_is_exported_to_non_submodules(SecondStatus),
         UTC = unqual_type_ctor(TypeCtor),
         ( if FirstIsExported = SecondIsExported then
-            % XXX SEVERITY
-            Severity = severity_warning(warn_simple_code),
+            Severity = severity_warning(warn_redundant_code),
             DupPieces = [words("Warning:")] ++
                 color_as_incorrect([words("duplicate declaration")]) ++
                 [words("for type")] ++ color_as_subject([UTC, suffix(".")]) ++

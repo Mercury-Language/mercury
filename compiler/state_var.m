@@ -1929,8 +1929,7 @@ svar_start_outer_atomic_scope(Context, OuterStateVar, OuterDIVar, OuterUOVar,
         !SVarState ^ state_status_map := StatusMap,
         (
             BeforeStatus = status_unknown,
-            % XXX SEVERITY
-            report_uninitialized_state_var(warn_simple_code, Context,
+            report_uninitialized_state_var(warn_dodgy_simple_code, Context,
                 OuterStateVar, !UrInfo),
             new_state_var_instance(OuterStateVar, name_middle, OuterDIVar,
                 !UrInfo),
@@ -2047,8 +2046,7 @@ lookup_dot_state_var(Context, StateVar, Var, !SVarState, !UrInfo) :-
     ( if map.search(StatusMap0, StateVar, Status) then
         (
             Status = status_unknown,
-            % XXX SEVERITY
-            report_uninitialized_state_var(warn_simple_code, Context,
+            report_uninitialized_state_var(warn_dodgy_simple_code, Context,
                 StateVar, !UrInfo),
             % We make StateVar known to avoid duplicate reports.
             new_state_var_instance(StateVar, name_middle, Var, !UrInfo),
@@ -2057,8 +2055,7 @@ lookup_dot_state_var(Context, StateVar, Var, !SVarState, !UrInfo) :-
             !SVarState ^ state_status_map := StatusMap
         ;
             Status = status_unknown_updated(NewVar),
-            % XXX SEVERITY
-            report_uninitialized_state_var(warn_simple_code, Context,
+            report_uninitialized_state_var(warn_dodgy_simple_code, Context,
                 StateVar, !UrInfo),
             % We make StateVar known to avoid duplicate reports.
             new_state_var_instance(StateVar, name_middle, Var, !UrInfo),

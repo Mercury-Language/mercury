@@ -1650,6 +1650,11 @@ Changes to the Mercury compiler
     These options will still be available under their old names
     at least until the next release.
 
+* We have added the new option --no-warn-redundant-code, which tells
+  the compiler not to generate warnings about redundant elements in
+  Mercury code, such as duplicate imports of the same module. These warnings
+  were previously controlled by the --no-warn-simple-code option.
+
 Changes to the Mercury debugger
 -------------------------------
 

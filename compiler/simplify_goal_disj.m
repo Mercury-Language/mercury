@@ -313,7 +313,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals,
                     words("of this"), p_or_f(PorF), suffix("."),
                     words("It may or may not apply to other modes."), nl]
             ),
-            Spec = spec($pred, severity_warning(warn_simple_code),
+            Spec = spec($pred, severity_warning(warn_dodgy_simple_code),
                 phase_simplify(report_in_any_mode), Context,
                 MainPieces ++ ModePieces),
             simplify_info_add_message(Spec, !Info)

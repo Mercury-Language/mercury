@@ -1203,7 +1203,8 @@ report_any_redundant_abstract_type_in_imp(TypeCtor, Section,
             [words("is")] ++ color_as_incorrect([words("redundant,")]) ++
             [words("since the type has a definition in the"),
             words(Section), words("section."), nl],
-        Spec = spec($pred, severity_warning(warn_simple_code), phase_tim_check,
+        Severity = severity_warning(warn_redundant_code),
+        Spec = spec($pred, Severity, phase_tim_check,
             ImpAbstractDefn ^ td_context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -1425,8 +1426,7 @@ report_duplicate_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
         DeclOrDefn = dd_decl,
         DeclOrDefnWord = "declaration",
         SeverityWord = "Warning",
-        % XXX SEVERITY
-        Severity = severity_warning(warn_simple_code)
+        Severity = severity_warning(warn_redundant_code)
     ;
         DeclOrDefn = dd_defn,
         DeclOrDefnWord = "definition",
@@ -1909,7 +1909,8 @@ report_any_redundant_abstract_inst_in_imp(InstCtor, DeclOrDefn, Section,
             [words("is")] ++ color_as_incorrect([words("redundant,")]) ++
             [words("since the inst has a"), words(DeclOrDefn),
             words("in the"), words(Section), words("section."), nl],
-        Spec = spec($pred, severity_warning(warn_simple_code), phase_tim_check,
+        Severity = severity_warning(warn_redundant_code),
+        Spec = spec($pred, Severity, phase_tim_check,
             ImpAbstractDefn ^ id_context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -2118,7 +2119,8 @@ report_any_redundant_abstract_mode_in_imp(TypeCtor, DeclOrDefn, Section,
             [words("is")] ++ color_as_incorrect([words("redundant,")]) ++
             [words("since the mode has a"), words(DeclOrDefn),
             words("in the"), words(Section), words("section."), nl],
-        Spec = spec($pred, severity_warning(warn_simple_code), phase_tim_check,
+        Severity = severity_warning(warn_redundant_code),
+        Spec = spec($pred, Severity, phase_tim_check,
             ImpAbstractDefn ^ md_context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).

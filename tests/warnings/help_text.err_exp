@@ -1020,6 +1020,11 @@ Warning options
 
     Warnings about possible goal incorrectness
 
+    --no-warn-simple-code
+        Do not warn about constructs which are so simple that they are likely
+        to be programming errors. (One example is if-then-elses whose condition
+        always succeeds.)
+
     --no-warn-singleton-variables
     --no-warn-singleton-vars
         Do not warn about variables which only occur once in a clause, but
@@ -1195,10 +1200,9 @@ Warning options
 
     Warnings about style issues with goals
 
-    --no-warn-simple-code
-        Do not warn about constructs which are so simple that they are likely
-        to be programming errors. (One example is if-then-elses whose condition
-        always succeeds.)
+    --no-warn-redundant-code
+        Do not warn about redundant constructs in Mercury code. (One example is
+        importing a module more than once.)
 
     --warn-ite-instead-of-switch
     --inform-ite-instead-of-switch

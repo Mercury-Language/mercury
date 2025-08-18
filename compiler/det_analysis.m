@@ -536,12 +536,12 @@ set_non_inferred_proc_determinism(proc(PredId, ProcId), !ModuleInfo) :-
 :- type options_to_restore == assoc_list(option, option_data).
 
 disable_det_warnings(OptionsToRestore, !Globals) :-
-    globals.lookup_option(!.Globals, warn_simple_code, WarnSimple),
+    globals.lookup_option(!.Globals, warn_dodgy_simple_code, WarnSimple),
     globals.lookup_option(!.Globals, warn_det_decls_too_lax, WarnDeclsTooLax),
-    globals.set_option(warn_simple_code, bool(no), !Globals),
+    globals.set_option(warn_dodgy_simple_code, bool(no), !Globals),
     globals.set_option(warn_det_decls_too_lax, bool(no), !Globals),
     OptionsToRestore = [
-        warn_simple_code - WarnSimple,
+        warn_dodgy_simple_code - WarnSimple,
         warn_det_decls_too_lax - WarnDeclsTooLax
     ].
 
