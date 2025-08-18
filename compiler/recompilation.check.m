@@ -1655,23 +1655,26 @@ get_ambiguity_checkables_int3(ParseTreeInt3, Checkables) :-
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+%
+% Code to generate messages about either progress or problems.
+%
 
-:- pred write_not_recompiling_message(module_name::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-write_not_recompiling_message(ModuleName, Stream, !IO) :-
-    io.format(Stream, "Not recompiling module %s.\n",
-        [s(escaped_sym_name_to_string(ModuleName))], !IO).
-
-:- pred write_reasons_message(globals::in, module_name::in,
-    list(recompile_reason)::in, io.text_output_stream::in,
+:- pred maybe_write_recompilation_message(io.text_output_stream::in,
+    globals::in,
+    pred(io.text_output_stream, io, io)::in(pred(in, di, uo) is det),
     io::di, io::uo) is det.
 
-write_reasons_message(Globals, ModuleName, Reasons, Stream, !IO) :-
-    list.foldl(write_recompile_reason(Globals, Stream, ModuleName),
-        Reasons, !IO).
+maybe_write_recompilation_message(ProgressStream, Globals, P, !IO) :-
+    globals.lookup_bool_option(Globals, verbose_recompilation, Verbose),
+    (
+        Verbose = yes,
+        P(ProgressStream, !IO)
+    ;
+        Verbose = no
+    ).
 
-% ZZZ move
+%---------------------%
+
 :- pred write_used_file_error(globals::in, module_name::in,
     used_file_error::in, io.text_output_stream::in, io::di, io::uo) is det.
 
@@ -1705,19 +1708,24 @@ write_used_file_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
     ),
     write_error_spec(Stream, Globals, Spec, !IO).
 
-:- pred maybe_write_recompilation_message(io.text_output_stream::in,
-    globals::in,
-    pred(io.text_output_stream, io, io)::in(pred(in, di, uo) is det),
+%---------------------%
+
+:- pred write_not_recompiling_message(module_name::in,
+    io.text_output_stream::in, io::di, io::uo) is det.
+
+write_not_recompiling_message(ModuleName, Stream, !IO) :-
+    io.format(Stream, "Not recompiling module %s.\n",
+        [s(escaped_sym_name_to_string(ModuleName))], !IO).
+
+%---------------------%
+
+:- pred write_reasons_message(globals::in, module_name::in,
+    list(recompile_reason)::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
-maybe_write_recompilation_message(ProgressStream, Globals, P, !IO) :-
-    globals.lookup_bool_option(Globals, verbose_recompilation, Verbose),
-    (
-        Verbose = yes,
-        P(ProgressStream, !IO)
-    ;
-        Verbose = no
-    ).
+write_reasons_message(Globals, ModuleName, Reasons, Stream, !IO) :-
+    list.foldl(write_recompile_reason(Globals, Stream, ModuleName),
+        Reasons, !IO).
 
 :- pred write_recompile_reason(globals::in, io.text_output_stream::in,
     module_name::in, recompile_reason::in, io::di, io::uo) is det.
