@@ -1123,7 +1123,7 @@ maybe_report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Specs :-
             Pieces = [words("Warning:")] ++ PredPieces ++
                 color_as_incorrect([words("has no clauses.")]) ++ [nl],
             pred_info_get_context(PredInfo, Context),
-            Spec = spec($pred, severity_warning, phase_type_check,
+            Spec = spec($pred, severity_warning(warn_stubs), phase_type_check,
                 Context, Pieces),
             Specs = [Spec]
         ;

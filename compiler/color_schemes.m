@@ -92,7 +92,6 @@
 
 :- import_module parse_tree.write_error_spec.
 
-:- import_module bool.
 :- import_module char.
 :- import_module getopt.
 :- import_module int.
@@ -238,9 +237,9 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable, !IO) :-
                     piece_list_to_pieces("and", MissingRoles) ++
                     [suffix("."), nl],
                 Msg = no_ctxt_msg(Pieces),
-                InformSpec = conditional_spec($pred,
-                    inform_incomplete_color_scheme, yes,
-                    severity_informational, phase_options, [Msg]),
+                Severity =
+                    severity_informational(inform_incomplete_color_scheme),
+                InformSpec = error_spec($pred, Severity, phase_options, [Msg]),
                 record_bad_color_scheme(InformSpec, !IO),
                 Specs = []
             )

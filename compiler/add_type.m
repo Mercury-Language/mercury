@@ -61,6 +61,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
@@ -250,7 +251,8 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
             type_status_is_exported_to_non_submodules(SecondStatus),
         UTC = unqual_type_ctor(TypeCtor),
         ( if FirstIsExported = SecondIsExported then
-            Severity = severity_warning,
+            % XXX SEVERITY
+            Severity = severity_warning(warn_simple_code),
             DupPieces = [words("Warning:")] ++
                 color_as_incorrect([words("duplicate declaration")]) ++
                 [words("for type")] ++ color_as_subject([UTC, suffix(".")]) ++
@@ -2036,7 +2038,8 @@ check_subtype_ctors_order(TypeCtor, Ctors, SuperTypeCtor, SuperCtors, Context,
             words("in the supertype, are as follows."), nl,
             blank_line] ++
             ChangeHunkPieces,
-        Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
+        Severity = severity_warning(warn_subtype_ctor_order),
+        Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 

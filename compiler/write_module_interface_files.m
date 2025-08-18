@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -633,9 +633,6 @@ insist_on_timestamp(MaybeTimestamp, Timestamp) :-
 
 report_file_not_written(Globals, PrefixPieces, ModuleName,
         ExtA, MaybeExtB, ExtDate, Specs0, Specs, !IO) :-
-    % We use write_error_spec to print the message the interface file or
-    % files not being written in order to wrap the message if it is
-    % longer than the line length.
     % XXX LEGACY
     module_name_to_file_name(Globals, $pred,
         ExtA, ModuleName, IntAFileName, _IntAFileNameProposed),
@@ -658,8 +655,9 @@ report_file_not_written(Globals, PrefixPieces, ModuleName,
     ),
     ModuleNameStr = sym_name_to_string(ModuleName),
     InvisPiece = invis_order_default_end(0, ModuleNameStr),
-    NotWrittenSpec = no_ctxt_spec($pred, severity_informational,
-        phase_make_int, [InvisPiece | PrefixPieces] ++ NotWrittenPieces),
+    Severity = severity_informational(report_not_written),
+    NotWrittenSpec = no_ctxt_spec($pred, Severity, phase_make_int,
+        [InvisPiece | PrefixPieces] ++ NotWrittenPieces),
     Specs = [NotWrittenSpec | Specs0],
     % We remove the interface file(s) the errors prevented us from generating,
     % as well as the file indicating when they were last successfully written,

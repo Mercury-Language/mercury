@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-2006, 2009-2010 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,15 +47,12 @@
 :- mode warning_or_error_string(in, out) is det.
 :- mode warning_or_error_string(out, in) is semidet.
 
-:- pred warning_or_error_severity(warning_or_error::in, error_severity::out)
-    is det.
-
 %-----------------------------------------------------------------------------%
 
 :- pred add_error(error_phase::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_warning(error_phase::in, list(format_piece)::in,
+:- pred add_warning(error_phase::in, option::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -89,17 +86,14 @@ maybe_is_error(error(Error), Error).
 warning_or_error_string(we_warning, "warn").
 warning_or_error_string(we_error, "error").
 
-warning_or_error_severity(we_warning, severity_warning).
-warning_or_error_severity(we_error, severity_error).
-
 %-----------------------------------------------------------------------------%
 
 add_error(Phase, Pieces, !Specs) :-
     Spec = no_ctxt_spec($pred, severity_error, Phase, Pieces),
     !:Specs = [Spec | !.Specs].
 
-add_warning(Phase, Pieces, !Specs) :-
-    Spec = no_ctxt_spec($pred, severity_warning, Phase, Pieces),
+add_warning(Phase, Option, Pieces, !Specs) :-
+    Spec = no_ctxt_spec($pred, severity_warning(Option), Phase, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%

@@ -354,28 +354,29 @@ generate_any_style_warnings(ModuleInfo, WarningsWeWant, !:Specs) :-
     (
         NonContigDefns = do_not_warn_non_contiguous_pred_defns
     ;
-        NonContigDefns = warn_non_contiguous_pred_defns(_,
+        NonContigDefns = warn_non_contiguous_pred_defns(ContigItemKind,
             AllowedNonContiguity),
         % First, process the sets of predicates and/or functions named by
         % --allow-non-contiguity-for options, effectively treating each set
         % as it were a single predicate.
-        list.foldl2(report_non_contiguous_clauses_beyond_group(ModuleInfo),
+        list.foldl2(
+            report_non_contiguous_clauses_beyond_group(ModuleInfo,
+                ContigItemKind),
             AllowedNonContiguity, ClauseGapMap0, ClauseGapMap, !Specs),
         % Then process all the predicates and functions that are not named
         % in any --allow-non-contiguity-for option.
-        map.foldl(report_non_contiguous_clauses(ModuleInfo, []),
+        map.foldl(
+            report_non_contiguous_clauses(ModuleInfo, ContigItemKind, []),
             ClauseGapMap, !Specs)
     ),
     (
         PredDeclDefnOrder = do_not_warn_pred_decl_vs_defn_order
     ;
-        PredDeclDefnOrder = warn_pred_decl_vs_defn_order(_DefnKind),
-        % We can ignore _DefnKind here because we paid attention to it
-        % when computing ExportedPreds and NonExportedPreds.
+        PredDeclDefnOrder = warn_pred_decl_vs_defn_order(OrderItemKind),
         module_info_get_name_context(ModuleInfo, ModuleContext),
-        generate_inconsistent_pred_order_warnings(ModuleContext,
+        generate_inconsistent_pred_order_warnings(ModuleContext, OrderItemKind,
             "exported", ExportedPreds, !Specs),
-        generate_inconsistent_pred_order_warnings(ModuleContext,
+        generate_inconsistent_pred_order_warnings(ModuleContext, OrderItemKind,
             "nonexported", NonExportedPreds, !Specs)
     ).
 
@@ -603,8 +604,8 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
         ),
         FirstMsg = msg(FirstContext, FirstPieces),
         SecondMsg = msg(SecondContext, SecondPieces),
-        Spec = error_spec($pred, severity_warning, phase_style,
-            [FirstMsg, SecondMsg]),
+        Severity = severity_warning(warn_non_contiguous_decls),
+        Spec = error_spec($pred, Severity, phase_style, [FirstMsg, SecondMsg]),
         Specs0 = !.StyleInfo ^ style_decl_gap_specs,
         Specs = [Spec | Specs0],
         !StyleInfo ^ style_decl_gap_specs := Specs
@@ -653,13 +654,13 @@ maybe_gather_clause_gap_info(PredId, ItemNumbers, !StyleInfo) :-
 %---------------------%
 
 :- pred report_non_contiguous_clauses_beyond_group(module_info::in,
-    set(pred_id)::in,
+    clause_item_number_types::in, set(pred_id)::in,
     map(pred_id, regions_with_gaps)::in,
     map(pred_id, regions_with_gaps)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_non_contiguous_clauses_beyond_group(ModuleInfo, GroupPredIdSet,
-        !ClauseGapMap, !Specs) :-
+report_non_contiguous_clauses_beyond_group(ModuleInfo, ItemKind,
+        GroupPredIdSet, !ClauseGapMap, !Specs) :-
     set.foldl2(gather_regions_with_gaps, GroupPredIdSet,
         [], RegionsWithGapsList, !ClauseGapMap),
     MergedRegions = merge_regions_with_gaps(RegionsWithGapsList),
@@ -678,8 +679,8 @@ report_non_contiguous_clauses_beyond_group(ModuleInfo, GroupPredIdSet,
             GroupPredIds = []
         ;
             GroupPredIds = [HeadPredId | TailPredIds],
-            report_non_contiguous_clauses(ModuleInfo, TailPredIds, HeadPredId,
-                RegionsWithGaps, !Specs)
+            report_non_contiguous_clauses(ModuleInfo, ItemKind,
+                TailPredIds, HeadPredId, RegionsWithGaps, !Specs)
         )
     ).
 
@@ -746,10 +747,11 @@ merge_adjacent_regions(CurRegion, [NextRegion | LaterRegions],
 %---------------------%
 
 :- pred report_non_contiguous_clauses(module_info::in,
+    clause_item_number_types::in,
     list(pred_id)::in, pred_id::in, regions_with_gaps::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_non_contiguous_clauses(ModuleInfo, OtherPredIds, MainPredId,
+report_non_contiguous_clauses(ModuleInfo, ItemKind, OtherPredIds, MainPredId,
         RegionsWithGaps, !Specs) :-
     AllPredIds = [MainPredId | OtherPredIds],
     (
@@ -775,7 +777,15 @@ report_non_contiguous_clauses(ModuleInfo, OtherPredIds, MainPredId,
     report_non_contiguous_clause_contexts(GapPredPieces, 1,
         FirstRegion, SecondRegion, LaterRegions, ContextMsgs),
     Msgs = [FrontMsg | ContextMsgs],
-    Spec = error_spec($pred, severity_warning, phase_type_check, Msgs),
+    (
+        ItemKind = only_clauses,
+        WarnOption = warn_non_contiguous_clauses
+    ;
+        ItemKind = clauses_and_foreign_procs,
+        WarnOption = warn_non_contiguous_foreign_procs
+    ),
+    Spec = error_spec($pred, severity_warning(WarnOption),
+        phase_type_check, Msgs),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_non_contiguous_clause_contexts(list(format_piece)::in,
@@ -875,11 +885,11 @@ maybe_gather_decl_vs_defn_order_info(PredId, PredInfo,
 %---------------------------------------------------------------------------%
 
 :- pred generate_inconsistent_pred_order_warnings(prog_context::in,
-    string::in, list(pred_decl_item_numbers)::in,
+    clause_item_number_types::in, string::in, list(pred_decl_item_numbers)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-generate_inconsistent_pred_order_warnings(ModuleContext, ExportedOrNotStr,
-        PredItemNumbers, !Specs) :-
+generate_inconsistent_pred_order_warnings(ModuleContext, ItemKind,
+        ExportedOrNotStr, PredItemNumbers, !Specs) :-
     list.sort(compare_decl_item_number, PredItemNumbers, DeclOrder),
     list.sort(compare_defn_item_number, PredItemNumbers, DefnOrder),
     ( if DeclOrder = DefnOrder then
@@ -904,7 +914,14 @@ generate_inconsistent_pred_order_warnings(ModuleContext, ExportedOrNotStr,
             fixed("--- declaration order"), nl,
             fixed("+++ definition order"), nl] ++
             DiffPieces,
-        WarnSpec = spec($pred, severity_warning, phase_style,
+        (
+            ItemKind = only_clauses,
+            WarnOption = warn_inconsistent_pred_order_clauses
+        ;
+            ItemKind = clauses_and_foreign_procs,
+            WarnOption = warn_inconsistent_pred_order_foreign_procs
+        ),
+        WarnSpec = spec($pred, severity_warning(WarnOption), phase_style,
             ModuleContext, Pieces),
         !:Specs = [WarnSpec | !.Specs]
     ).

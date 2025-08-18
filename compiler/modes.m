@@ -2028,9 +2028,9 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo,
                 Name, FuncArgModes, RetMode, !.MaybeDet)
         ),
         Pieces = [words(Verb), words(Detail), nl],
-        Spec = conditional_spec($pred, inform_inferred_modes, yes,
-            severity_informational, phase_mode_check(report_in_any_mode),
-            [msg(Context, Pieces)])
+        Severity = severity_informational(inform_inferred_modes),
+        Spec = spec($pred, Severity, phase_mode_check(report_in_any_mode),
+            Context, Pieces)
     ).
 
 %-----------------------------------------------------------------------------%

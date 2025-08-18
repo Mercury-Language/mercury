@@ -516,7 +516,7 @@ general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId, TabledMethod,
         Pieces = [words("Ignoring the"), pragma_decl(TabledMethodStr),
             words("declaration for")] ++ ProcPieces ++ [suffix(","),
             words("because tabling is")] ++ ReasonDesc ++ [nl],
-        Spec = spec($pred, severity_informational, phase_code_gen,
+        Spec = spec($pred, severity_warning(warn_cannot_table), phase_code_gen,
             Context, Pieces)
     ;
         TabledMethod = tabled_io(_, _),
@@ -526,7 +526,7 @@ general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId, TabledMethod,
             words("all predicates that perform I/O"),
             words("(to make the mdb command `retry' safe across I/O),"),
             words("but tabling is")] ++ ReasonDesc ++ [nl],
-        Spec = spec($pred, severity_informational, phase_code_gen,
+        Spec = spec($pred, severity_warning(warn_cannot_table), phase_code_gen,
             Context, Pieces)
     ;
         TabledMethod = tabled_minimal(_),

@@ -215,8 +215,8 @@ check_foreign_code_attributes_of_proc(ModuleInfo, PPId, Attributes,
                 color_as_inconsistent([quote("does_not_terminate"),
                     words("foreign code attribute")]) ++
                 [words("set."), nl],
-            Spec = spec($pred, severity_warning, phase_read_files,
-                Context, Pieces),
+            Severity = severity_warning(warn_requested_by_option),
+            Spec = spec($pred, Severity, phase_read_files, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
             ( ProcTerminates = proc_terminates
@@ -246,8 +246,8 @@ check_foreign_code_attributes_of_proc(ModuleInfo, PPId, Attributes,
                 color_as_inconsistent([quote("terminates"),
                     words("foreign code attribute")]) ++
                 [words("set."), nl],
-            Spec = spec($pred, severity_warning, phase_read_files,
-                Context, Pieces),
+            Severity = severity_warning(warn_requested_by_option),
+            Spec = spec($pred, Severity, phase_read_files, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
             ( ProcTerminates = proc_does_not_terminate
@@ -324,8 +324,8 @@ check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !Specs) :-
             words("but some of their termination pragmas are")] ++
             color_as_incorrect([words("inconsistent.")]) ++
             [nl],
-        Spec = spec($pred, severity_warning, phase_read_files,
-            LeastContext, Pieces),
+        Severity = severity_warning(warn_requested_by_option),
+        Spec = spec($pred, Severity, phase_read_files, LeastContext, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 

@@ -211,7 +211,7 @@ warn_about_any_problem_partial_vars(Innermost, GoalInfo, InstMap0,
             words("(since they are at the same address)"),
             words("are in fact all the same"),
             words("when invoked on"), words(ProcStr), suffix("."), nl],
-        Spec = spec($pred, severity_warning,
+        Spec = spec($pred, severity_warning(warn_disj_fills_partial_inst),
             phase_simplify(report_in_any_mode), Context, Pieces),
         simplify_info_add_message(Spec, !Info)
     ).
@@ -313,9 +313,9 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals,
                     words("of this"), p_or_f(PorF), suffix("."),
                     words("It may or may not apply to other modes."), nl]
             ),
-            Spec = conditional_spec($pred, warn_simple_code, yes,
-                severity_warning, phase_simplify(report_in_any_mode),
-                [msg(Context, MainPieces ++ ModePieces)]),
+            Spec = spec($pred, severity_warning(warn_simple_code),
+                phase_simplify(report_in_any_mode), Context,
+                MainPieces ++ ModePieces),
             simplify_info_add_message(Spec, !Info)
         else
             true

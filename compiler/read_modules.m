@@ -1475,7 +1475,8 @@ record_and_report_missing_timestamp(Globals, FileName, IOError,
             quote(FileName), suffix(":"), nl_indent_delta(1),
             words(IOErrorMsg), suffix("."), nl_indent_delta(-1),
             words("Smart recompilation will not work."), nl],
-        Spec = no_ctxt_spec($pred, severity_warning, phase_read_files, Pieces),
+        Severity = severity_warning(warn_smart_recompilation),
+        Spec = no_ctxt_spec($pred, Severity, phase_read_files, Pieces),
         add_nonfatal_error(rme_cannot_find_modify_time, [Spec], !Errors)
     ;
         Warn = no

@@ -409,8 +409,8 @@ report_unknown_module_names_in_allow_disallow(KnownModules,
     else
         Pieces = [words("Warning: the module name"), qual_sym_name(Module),
             words("does not occur in the dependency graph."), nl],
-        Spec = spec($pred, severity_warning, phase_read_files,
-            Context, Pieces),
+        Severity = severity_warning(warn_trans_opt_deps_spec),
+        Spec = spec($pred, Severity, phase_read_files, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ),
     report_unknown_module_names_in_module_names(KnownModules, AoD, 1,
@@ -434,16 +434,16 @@ report_unknown_module_names_in_module_names(KnownModules, AoD, N,
                 words("module name"), qual_sym_name(Module),
                 words("is the same as the"), nth_fixed(OldN), words(AoD),
                 words("module name."), nl],
-            Spec = spec($pred, severity_warning, phase_read_files,
-                Context, Pieces),
+            Severity = severity_warning(warn_trans_opt_deps_spec),
+            Spec = spec($pred, Severity, phase_read_files, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     else
         Pieces = [words("Warning: the"), nth_fixed(N), words(AoD),
             words("module name"), qual_sym_name(Module),
             words("does not occur in the dependency graph."), nl],
-        Spec = spec($pred, severity_warning, phase_read_files,
-            Context, Pieces),
+        Severity = severity_warning(warn_trans_opt_deps_spec),
+        Spec = spec($pred, Severity, phase_read_files, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ),
     report_unknown_module_names_in_module_names(KnownModules,

@@ -2,19 +2,19 @@ purity_warnings.m:030: In call to predicate [38;5;87m`io.write_string'/3:[39;4
 purity_warnings.m:030:   warning: the [38;5;87m`semipure' indicator[39;49m is [38;5;203munnecessary.[39;49m
 purity_warnings.m:031: In call to predicate [38;5;87m`io.print'/3:[39;49m
 purity_warnings.m:031:   warning: the [38;5;87m`impure' indicator[39;49m is [38;5;203munnecessary.[39;49m
-purity_warnings.m:033: Warning: predicate [38;5;87m`impure_pred1'/2[39;49m is declared [38;5;40mimpure,[39;49m
-purity_warnings.m:033:   but is actually [38;5;203mpure.[39;49m
-purity_warnings.m:037: Warning: predicate [38;5;87m`impure_pred2'/2[39;49m is declared [38;5;40mimpure,[39;49m
-purity_warnings.m:037:   but is actually [38;5;203msemipure.[39;49m
+purity_warnings.m:033: Warning: predicate [38;5;87m`impure_pred1'/2[39;49m is declared [38;5;171mimpure,[39;49m
+purity_warnings.m:033:   but is actually [38;5;171mpure.[39;49m
+purity_warnings.m:037: Warning: predicate [38;5;87m`impure_pred2'/2[39;49m is declared [38;5;171mimpure,[39;49m
+purity_warnings.m:037:   but is actually [38;5;171msemipure.[39;49m
 purity_warnings.m:045: Warning: predicate [38;5;87m`semipure_pred'/2[39;49m is declared
-purity_warnings.m:045:   [38;5;40msemipure,[39;49m but is actually [38;5;203mpure.[39;49m
+purity_warnings.m:045:   [38;5;171msemipure,[39;49m but is actually [38;5;171mpure.[39;49m
 purity_warnings.m:047: In call to predicate [38;5;87m`io.write_string'/3:[39;49m
 purity_warnings.m:047:   warning: the [38;5;87m`semipure' indicator[39;49m is [38;5;203munnecessary.[39;49m
 purity_warnings.m:077: Warning: predicate [38;5;87m`impure_method1a_impl'/2[39;49m is declared
-purity_warnings.m:077:   [38;5;40mimpure,[39;49m but is actually [38;5;203mpure.[39;49m
+purity_warnings.m:077:   [38;5;171mimpure,[39;49m but is actually [38;5;171mpure.[39;49m
 purity_warnings.m:079: In call to predicate [38;5;87m`io.print'/3:[39;49m
 purity_warnings.m:079:   warning: the [38;5;87m`impure' indicator[39;49m is [38;5;203munnecessary.[39;49m
 purity_warnings.m:089: Warning: predicate [38;5;87m`semipure_method_a_impl'/2[39;49m is
-purity_warnings.m:089:   declared [38;5;40msemipure,[39;49m but is actually [38;5;203mpure.[39;49m
+purity_warnings.m:089:   declared [38;5;171msemipure,[39;49m but is actually [38;5;171mpure.[39;49m
 purity_warnings.m:091: In call to predicate [38;5;87m`io.print'/3:[39;49m
 purity_warnings.m:091:   warning: the [38;5;87m`semipure' indicator[39;49m is [38;5;203munnecessary.[39;49m

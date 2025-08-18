@@ -123,6 +123,14 @@
     %
 :- type warning_spec == error_spec.
 
+:- type std_error_spec =< error_spec
+    --->    error_spec(
+                es_id                   :: string,
+                es_severity             :: error_severity,
+                es_phase                :: error_phase,
+                es_msgs                 :: list(std_error_msg)
+            ).
+
     % Many operations in the compiler may either succeed or fail.
     % When they succeed, they return some result(s); when they don't,
     % they return one or more errors.
@@ -137,26 +145,12 @@
     --->    severity_error
             % Always set the exit status to indicate an error.
 
-    ;       severity_warning
+    ;       severity_warning(option)
             % Only set the exit status to indicate an error if --halt-at-warn
             % is enabled.
 
-    ;       severity_informational
+    ;       severity_informational(option).
             % Don't set the exit status to indicate an error.
-
-    ;       severity_conditional(
-            % If the given boolean option has the given value, then the actual
-            % severity is given by the third argument; if it has the other
-            % value, then the actual severity is given by the fourth argument.
-            % If the fourth argument is `no', then the error_spec shouldn't
-            % actually print anything if cond_option doesn't have the value
-            % in cond_option_value.
-
-                cond_option             :: option,
-                cond_option_value       :: bool,
-                cond_if_match           :: error_severity,
-                cond_if_no_match        :: maybe(error_severity)
-            ).
 
 :- type actual_severity
     --->    actual_severity_error
@@ -261,6 +255,14 @@
                 blank_context           :: maybe(prog_context)
             ).
 
+:- type std_error_msg =< error_msg
+    --->    error_msg(
+                error_context           :: maybe(prog_context),
+                error_treat_as_first    :: maybe_always_treat_as_first,
+                error_extra_indent      :: uint,
+                error_components        :: list(std_error_msg_component)
+            ).
+
 :- type verbose_always_or_once
     --->    verbose_always
     ;       verbose_once.
@@ -289,6 +291,11 @@
             % and set the flag that triggers the printing of the message
             % reminding the user about --verbose-errors. The verbose part
             % is implicitly verbose_always.
+
+:- type std_error_msg_component =< error_msg_component
+    --->    always(list(format_piece))
+    ;       verbose_only(verbose_always_or_once, list(format_piece))
+    ;       verbose_and_nonverbose(list(format_piece), list(format_piece)).
 
 %---------------------------------------------------------------------------%
 
@@ -616,6 +623,8 @@
 
 :- pred maybe_add_error_spec_id(option_table::in, string::in,
     list(error_msg)::in, list(error_msg)::out) is det.
+:- pred maybe_add_error_spec_id_std(option_table::in, string::in,
+    list(std_error_msg)::in, list(std_error_msg)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1087,6 +1096,27 @@ maybe_add_error_spec_id(OptionTable, Id, Msgs0, Msgs) :-
             IdMsg = error_msg(MaybeHeadContext, treat_based_on_posn, 0u,
                 [always([words("error_spec id:"), fixed(Id), nl])]),
             Msgs = Msgs0 ++ [IdMsg]
+        )
+    ).
+
+maybe_add_error_spec_id_std(OptionTable, Id, StdMsgs0, StdMsgs) :-
+    getopt.lookup_bool_option(OptionTable, print_error_spec_id, PrintId),
+    (
+        PrintId = no,
+        StdMsgs = StdMsgs0
+    ;
+        PrintId = yes,
+        (
+            StdMsgs0 = [],
+            % Don't add a pred id message to an empty list of messages,
+            % since there is nothing to identify.
+            StdMsgs = StdMsgs0
+        ;
+            StdMsgs0 = [StdHeadMsg | _],
+            extract_msg_maybe_context(coerce(StdHeadMsg), MaybeHeadContext),
+            StdIdMsg = error_msg(MaybeHeadContext, treat_based_on_posn, 0u,
+                [always([words("error_spec id:"), fixed(Id), nl])]),
+            StdMsgs = StdMsgs0 ++ [StdIdMsg]
         )
     ).
 

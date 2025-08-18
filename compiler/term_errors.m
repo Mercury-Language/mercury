@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-2000, 2003-2006, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2022, 2024 The Mercury team.
+% Copyright (C) 2014-2022, 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -161,6 +161,8 @@
 :- implementation.
 
 :- import_module hlds.hlds_error_util.
+:- import_module libs.
+:- import_module libs.options.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.var_table.
 :- import_module transform_hlds.term_util.
@@ -211,8 +213,8 @@ report_term_errors(ModuleInfo, SCC, Errors, !Specs) :-
     ),
     ReasonMsgs = cord.list(ReasonMsgsCord),
     Msgs = [msg(Context, Pieces) | ReasonMsgs],
-    Spec = error_spec($pred, severity_warning, phase_termination_analysis,
-        Msgs),
+    Severity = severity_warning(warn_requested_by_option),
+    Spec = error_spec($pred, Severity, phase_termination_analysis, Msgs),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_arg_size_errors(module_info::in, scc::in, list(term_error)::in,
@@ -250,8 +252,8 @@ report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
     ),
     ReasonMsgs = cord.list(ReasonMsgsCord),
     Msgs = [msg(Context, Pieces) | ReasonMsgs],
-    Spec = error_spec($pred, severity_warning, phase_termination_analysis,
-        Msgs),
+    Severity = severity_warning(warn_requested_by_option),
+    Spec = error_spec($pred, Severity, phase_termination_analysis, Msgs),
     !:Specs = [Spec | !.Specs].
 
 :- pred describe_term_errors(module_info::in, maybe(pred_proc_id)::in,

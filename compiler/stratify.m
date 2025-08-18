@@ -123,7 +123,8 @@ first_order_check_sccs([HeadSCC | TailSCCs], MustBeStratifiedPreds, Warn,
         ; set.is_non_empty(MustBeStratifiedPredsInScc)
         )
     then
-        first_order_check_scc(HeadSCC, is_warning, ModuleInfo, !Specs)
+        first_order_check_scc(HeadSCC, is_warning(warn_non_stratification),
+            ModuleInfo, !Specs)
     else
         true
     ),
@@ -293,7 +294,6 @@ higher_order_check_scc([PredProcId | Remaining], WholeScc, HOInfo,
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, warn_non_stratification, Warn),
-    ErrorOrWarning = is_warning,
     ( if
         Warn = yes,
         map.search(HOInfo, PredProcId, HigherOrderInfo)
@@ -308,6 +308,7 @@ higher_order_check_scc([PredProcId | Remaining], WholeScc, HOInfo,
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, Proc),
         proc_info_get_goal(Proc, Goal),
+        ErrorOrWarning = is_warning(warn_non_stratification),
         higher_order_check_goal(Goal, no, WholeScc, PredProcId, HighOrderLoops,
             ErrorOrWarning, ModuleInfo, !Specs)
     else
@@ -1006,7 +1007,7 @@ stratify_get_called_procs_cases([Case | Cases], !Calls) :-
 
 :- type error_or_warning
     --->    is_error
-    ;       is_warning.
+    ;       is_warning(option).
 
 :- func generate_stratify_error(module_info, pred_proc_id, prog_context,
     string, error_or_warning) = error_spec.
@@ -1018,9 +1019,9 @@ generate_stratify_error(ModuleInfo, PredProcId, Context, Message,
         [suffix(":")], PredProcId),
     Preamble = [words("In")] ++ ProcColonPieces ++ [nl],
     (
-        ErrorOrWarning = is_warning,
+        ErrorOrWarning = is_warning(WarnOption),
         ErrOrWarnMsg = words("warning:"),
-        Severity = severity_warning
+        Severity = severity_warning(WarnOption)
     ;
         ErrorOrWarning = is_error,
         ErrOrWarnMsg = words("error:"),

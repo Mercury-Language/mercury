@@ -394,6 +394,12 @@ all_chapters = AllSections :-
         help_option_group("Options that ask for informational files",
         "", [], [oc_file_req])),
 
+    % As of the time of its creation, this section contains only
+    % private options.
+    SectionReport = help_atomic(
+        help_option_group("Options that control some compiler reports",
+        "", [], [oc_report])),
+
     SectionTraceGoal = help_atomic(
         help_option_group("Controlling trace goals",
         "", [], [oc_tracegoal])),
@@ -578,6 +584,7 @@ all_chapters = AllSections :-
         SectionWarn,
         SectionInform,
         SectionFileReq,
+        SectionReport,
 
         SectionTraceGoal,
         SectionDebugMdb,

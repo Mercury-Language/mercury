@@ -4226,8 +4226,8 @@ inform_about_any_suboptimal_packing(Params, CtorSymName, CtorContext,
         list.map(describe_sub_word_bin, SubWordBins, SubWordBinPieceLists),
         Pieces = StartPieces ++ list.condense(SubWordBinPieceLists)
             ++ EndPieces,
-        Spec = spec($pred, severity_informational, phase_type_check,
-            CtorContext, Pieces),
+        Spec = spec($pred, severity_informational(inform_suboptimal_packing),
+            phase_type_check, CtorContext, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true

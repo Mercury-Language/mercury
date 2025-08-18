@@ -158,8 +158,8 @@ quant_warning_to_spec(PfSymNameArity, VarSet, Warning) = Spec :-
                 [words("each have overlapping scopes."), nl]
         )
     ),
-    Spec = spec($pred, severity_warning, phase_pt2h, Context,
-        Pieces1 ++ Pieces2).
+    Spec = spec($pred, severity_warning(warn_overlapping_scopes), phase_pt2h,
+        Context, Pieces1 ++ Pieces2).
 
 %---------------------------------------------------------------------------%
 
@@ -681,22 +681,24 @@ generate_variable_warning(Params, Context, SingleMulti, PfSymNameArity,
         VarSet = Params ^ wp_varset,
         (
             SingleMulti = sm_single,
+            WarnOption = warn_singleton_vars,
             OnlyMoreThanOnce = "only once",
 
             varset.var_name_list(VarSet, AllVarNamesAL),
             assoc_list.values(AllVarNamesAL, AllVarNames),
             set.list_to_set(AllVarNames, AllVarNamesSet),
             generate_variable_warning_dyms(VarSet, Context,
-                PreamblePieces, OnlyMoreThanOnce, AllVarNamesSet, Vars,
-                [], NoDymVarNames, [], Specs0)
+                PreamblePieces, WarnOption, OnlyMoreThanOnce,
+                AllVarNamesSet, Vars, [], NoDymVarNames, [], Specs0)
         ;
             SingleMulti = sm_multi,
+            WarnOption = warn_repeated_singleton_vars,
             OnlyMoreThanOnce = "more than once",
             NoDymVarNames =
                 list.map(mercury_var_to_name_only_vs(VarSet), Vars),
             Specs0 = []
         ),
-        generate_variable_warning_no_dym(Context, PreamblePieces,
+        generate_variable_warning_no_dym(Context, PreamblePieces, WarnOption,
             OnlyMoreThanOnce, NoDymVarNames, Specs0, Specs)
     ).
 
@@ -712,13 +714,13 @@ generate_variable_warning(Params, Context, SingleMulti, PfSymNameArity,
     % *all* of the variables without their own "did you mean" suggestions.
     %
 :- pred generate_variable_warning_dyms(prog_varset::in,
-    prog_context::in, list(format_piece)::in, string::in,
+    prog_context::in, list(format_piece)::in, option::in, string::in,
     set(string)::in, list(prog_var)::in, list(string)::in, list(string)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-generate_variable_warning_dyms(_, _, _, _, _, [], !NoDymVarNames, !Specs).
+generate_variable_warning_dyms(_, _, _, _, _, _, [], !NoDymVarNames, !Specs).
 generate_variable_warning_dyms(VarSet, Context, PreamblePieces,
-        OnlyMoreThanOnce, AllVarNamesSet, [Var | Vars],
+        WarnOption, OnlyMoreThanOnce, AllVarNamesSet, [Var | Vars],
         !NoDymVarNames, !Specs) :-
     VarName = mercury_var_to_name_only_vs(VarSet, Var),
     ( if
@@ -775,20 +777,21 @@ generate_variable_warning_dyms(VarSet, Context, PreamblePieces,
         % DymPieces will be [] if we cannot suggest any likely replacement.
         DymPieces = [_ | _]
     then
-        generate_variable_warning_dym(Context, PreamblePieces,
+        generate_variable_warning_dym(Context, PreamblePieces, WarnOption,
             OnlyMoreThanOnce, VarName, DymPieces, DymSpec),
         !:Specs = [DymSpec | !.Specs]
     else
         !:NoDymVarNames = [VarName | !.NoDymVarNames]
     ),
     generate_variable_warning_dyms(VarSet, Context, PreamblePieces,
-        OnlyMoreThanOnce, AllVarNamesSet, Vars, !NoDymVarNames, !Specs).
+        WarnOption, OnlyMoreThanOnce, AllVarNamesSet, Vars,
+        !NoDymVarNames, !Specs).
 
 :- pred generate_variable_warning_no_dym(prog_context::in,
-    list(format_piece)::in, string::in, list(string)::in,
+    list(format_piece)::in, option::in, string::in, list(string)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-generate_variable_warning_no_dym(Context, PreamblePieces,
+generate_variable_warning_no_dym(Context, PreamblePieces, WarnOption,
         OnlyMoreThanOnce, VarNames0, !Specs) :-
     list.sort_and_remove_dups(VarNames0, VarNames),
     (
@@ -796,7 +799,7 @@ generate_variable_warning_no_dym(Context, PreamblePieces,
     ;
         (
             VarNames = [VarName],
-            WarnPieces = single_var_warning(VarName, OnlyMoreThanOnce)
+            WarnPieces = single_var_warning_pieces(VarName, OnlyMoreThanOnce)
         ;
             VarNames = [_, _ | _],
             VarsPieces = quote_list_to_color_pieces(color_subject, "and", [],
@@ -806,24 +809,24 @@ generate_variable_warning_no_dym(Context, PreamblePieces,
                     words(OnlyMoreThanOnce)]) ++
                 [words("in this scope."), nl]
         ),
-        Spec = spec($pred, severity_warning, phase_pt2h, Context,
+        Spec = spec($pred, severity_warning(WarnOption), phase_pt2h, Context,
             PreamblePieces ++ WarnPieces),
         !:Specs = [Spec | !.Specs]
     ).
 
 :- pred generate_variable_warning_dym(prog_context::in,
-    list(format_piece)::in, string::in, string::in, list(format_piece)::in,
-    error_spec::out) is det.
+    list(format_piece)::in, option::in, string::in, string::in,
+    list(format_piece)::in, error_spec::out) is det.
 
-generate_variable_warning_dym(Context, PreamblePieces,
+generate_variable_warning_dym(Context, PreamblePieces, WarnOption,
         OnlyMoreThanOnce, VarName, DymPieces, Spec) :-
-    WarnPieces = single_var_warning(VarName, OnlyMoreThanOnce),
-    Spec = spec($pred, severity_warning, phase_pt2h, Context,
+    WarnPieces = single_var_warning_pieces(VarName, OnlyMoreThanOnce),
+    Spec = spec($pred, severity_warning(WarnOption), phase_pt2h, Context,
         PreamblePieces ++ WarnPieces ++ DymPieces).
 
-:- func single_var_warning(string, string) = list(format_piece).
+:- func single_var_warning_pieces(string, string) = list(format_piece).
 
-single_var_warning(VarName, OnlyMoreThanOnce) = WarnPieces :-
+single_var_warning_pieces(VarName, OnlyMoreThanOnce) = WarnPieces :-
     WarnPieces = [words("warning: variable")] ++
         color_as_subject([quote(VarName)]) ++
         color_as_incorrect([words("occurs"), words(OnlyMoreThanOnce)]) ++
@@ -848,8 +851,8 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
             words("warning:")] ++ VarPieces ++
             color_as_incorrect([words(DoDoes), words("not occur")]) ++
             [words("in the"), words(LangStr), words("code."), nl],
-        Spec = conditional_spec($pred, warn_singleton_vars, yes,
-            severity_warning, phase_pt2h, [msg(Context, Pieces)]),
+        Spec = error_spec($pred, severity_warning(warn_singleton_vars),
+            phase_pt2h, [msg(Context, Pieces)]),
         !:Specs = [Spec | !.Specs]
     ),
     pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, PFSymNameArity,
@@ -996,8 +999,8 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
                         quote(SuccIndStr), suffix(",")]) ++
                     [words("but")] ++
                     color_as_inconsistent([words("it cannot fail.")]) ++ [nl],
-                Spec = conditional_spec($pred, warn_suspicious_foreign_procs,
-                    yes, severity_warning, phase_pt2h, [msg(Context, Pieces)]),
+                Severity = severity_warning(warn_suspicious_foreign_procs),
+                Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             else
                 true
@@ -1017,8 +1020,8 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
                         quote(SuccIndStr), suffix(",")]) ++
                     [words("but")] ++
                     color_as_inconsistent([words("it can fail.")]) ++ [nl],
-                Spec = conditional_spec($pred, warn_suspicious_foreign_procs,
-                    yes, severity_warning, phase_pt2h, [msg(Context, Pieces)]),
+                Severity = severity_warning(warn_suspicious_foreign_procs),
+                Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         ;
@@ -1044,9 +1047,8 @@ check_fp_body_for_return(Lang, Context, PFSymNameArity, BodyPieces, !Specs) :-
         Pieces = [words("Warning: the"), fixed(LangStr), words("code for"),
             unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
             words("may contain a"), quote("return"), words("statement."), nl],
-        Spec = conditional_spec($pred, warn_suspicious_foreign_procs, yes,
-            severity_warning, phase_pt2h,
-            [msg(Context, Pieces)]),
+        Severity = severity_warning(warn_suspicious_foreign_procs),
+        Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -1198,9 +1200,8 @@ warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs) :-
                     words("That macro is only defined within the body of"),
                     pragma_decl("foreign_proc"), words("declarations.")
                 ],
-                Spec = conditional_spec($pred, warn_suspicious_foreign_code,
-                    yes, severity_warning, phase_pt2h,
-                    [msg(Context, Pieces)]),
+                Severity = severity_warning(warn_suspicious_foreign_code),
+                Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             else
                 true

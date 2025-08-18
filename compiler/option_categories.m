@@ -86,6 +86,8 @@
     ;       oc_file_req
             % Options that request the compiler to generate files
             % containing information derived from the module being compiled.
+    ;       oc_report
+            % Options that control whether some compiler reports are printed.
     ;       oc_tracegoal
             % Options that control trace goals.
     ;       oc_mdb
@@ -236,6 +238,7 @@ option_categories(oc_warn_ctrl, 0).
 option_categories(oc_warn_halt, 0).
 option_categories(oc_inform, 0).
 option_categories(oc_file_req, 0).
+option_categories(oc_report, 0).
 option_categories(oc_tracegoal, 0).
 option_categories(oc_mdb, 0).
 option_categories(oc_mdb_dev, 0).

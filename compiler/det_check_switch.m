@@ -475,8 +475,8 @@ generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
                     words("does not cover")],
                 append_prefix_and_maybe_verbose(no, NestingPieces,
                     NoCoverPieces, MainPieces, VerbosePieces, Component),
-                MaybeSeverityComponents =
-                    yes({severity_informational, [Component]})
+                Severity0 = severity_informational(inform_incomplete_switch),
+                MaybeSeverityComponents = yes({Severity0, [Component]})
             else
                 MaybeSeverityComponents = no
             )
@@ -562,8 +562,8 @@ generate_type_order_switch_spec(GoalInfo, TypeCtor, VarName,
         words("The difference between the type definition order"),
         words("and the switch arm order is the following:"), nl] ++
         DiffPieces,
-    Spec = spec($pred, severity_warning, phase_detism_check,
-        Context, Pieces),
+    Spec = spec($pred, severity_warning(warn_requested_by_code),
+        phase_detism_check, Context, Pieces),
     det_info_add_error_spec(Spec, !DetInfo).
 
 %---------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015, 2017-2024 The Mercury team.
+% Copyright (C) 2015, 2017-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -45,6 +45,7 @@
 
 :- implementation.
 
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.convert_parse_tree.
@@ -894,7 +895,8 @@ warn_empty_submodule(ModuleName, Context, ParentModuleName, !Specs) :-
         words("is")] ++
         color_as_incorrect([words("empty.")]) ++
         [nl],
-    Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
+    Spec = spec($pred, severity_warning(warn_nothing_exported),
+        phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%
@@ -913,7 +915,8 @@ warn_duplicate_of_empty_submodule(ModuleName, ParentModuleName,
     Msg1 = msg(Context, Pieces1),
     Pieces2 = [words("This is the location of the empty submodule,"), nl],
     Msg2 = msg(EmptyContext, Pieces2),
-    Spec = error_spec($pred, severity_warning, phase_pt2h, [Msg1, Msg2]),
+    Spec = error_spec($pred, severity_warning(warn_nothing_exported),
+        phase_pt2h, [Msg1, Msg2]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%

@@ -182,6 +182,7 @@
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
 :- import_module libs.optimization_options.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
@@ -1500,13 +1501,20 @@ warn_pred_body_too_pure(ModuleInfo, PredInfo, PredId,
         should_not_module_qualify, [], PredId),
     purity_name(DeclaredPurity, DeclaredPurityName),
     purity_name(ActualPurity, ActualPurityName),
+    % The warning is about the body being purer than the declaration,
+    % so it is quite likely that the declaration is in error,
+    % However, the declaration's purity may be intentionally too pure
+    % in order to match an externally-defined interface.
+    % Since we don't know which is more likely to be at fault,
+    % we don't color either as correct or incorrect.
     Pieces = [words("Warning:")] ++ PredPieces ++
         [words("is declared")] ++
-            color_as_correct([fixed(DeclaredPurityName), suffix(",")]) ++
+            color_as_inconsistent([fixed(DeclaredPurityName), suffix(",")]) ++
         [words("but is actually")] ++
-            color_as_incorrect([fixed(ActualPurityName), suffix(".")]) ++
+            color_as_inconsistent([fixed(ActualPurityName), suffix(".")]) ++
         [nl],
-    Spec = spec($pred, severity_warning, phase_purity_check, Context, Pieces).
+    Spec = spec($pred, severity_warning(warn_unneeded_purity_pred_decl),
+        phase_purity_check, Context, Pieces).
 
 :- func warn_unnecessary_purity_promise(module_info, pred_info, pred_id,
     purity) = error_spec.
@@ -1539,7 +1547,8 @@ warn_unnecessary_purity_promise(ModuleInfo, PredInfo, PredId, PromisedPurity)
         nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec($pred, severity_warning, phase_purity_check, [Msg]).
+    Spec = error_spec($pred, severity_warning(warn_unneeded_purity_pragma),
+        phase_purity_check, [Msg]).
 
 :- func error_not_pure_enough(module_info, pred_info, pred_id, purity)
     = error_spec.
@@ -1624,8 +1633,8 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
         Pieces2 = [words("A purity indicator of"), quote(ActualPurityName),
             words("would be sufficient."), nl]
     ),
-    Spec = spec($pred, severity_warning, phase_purity_check, Context,
-        Pieces1 ++ Pieces2).
+    Spec = spec($pred, severity_warning(warn_unneeded_purity_indicator),
+        phase_purity_check, Context, Pieces1 ++ Pieces2).
 
 :- func report_error_lambda_purity(purity, purity, prog_context)
     = error_spec.

@@ -959,7 +959,7 @@ handle_not_found_files(Specs0, Specs, Continue) :-
         ),
         Pieces = NotFoundPieces ++
             [words("and thus could not create some interface files."), nl],
-        Spec = no_ctxt_spec($pred, severity_informational,
+        Spec = no_ctxt_spec($pred, severity_informational(report_not_written),
             phase_read_files, Pieces),
         Specs = [Spec | OtherSpecs],
         Continue = no

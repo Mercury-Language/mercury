@@ -300,8 +300,8 @@ generate_non_term_user_special_warning(Context, SpecialPred, TypeCtor,
         fixed(SpecialPredStr ++ " predicate"), words("for the type")] ++
         color_as_subject([qual_sym_name_arity(SNA)]) ++
         color_as_incorrect([words("cannot be proven to terminate.")]) ++ [nl],
-    Spec = spec($pred, severity_warning, phase_termination_analysis,
-        Context, Pieces),
+    Severity = severity_warning(warn_requested_by_option),
+    Spec = spec($pred, Severity, phase_termination_analysis, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %----------------------------------------------------------------------------%

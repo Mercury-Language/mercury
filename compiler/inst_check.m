@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2009, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -85,6 +85,8 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_inst_mode.
 :- import_module hlds.status.
+:- import_module libs.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
@@ -997,8 +999,8 @@ maybe_issue_no_matching_types_warning(WarnInstsWithoutMatchingType,
                 MismatchPieces),
 
             Pieces = NoMatchPieces ++ MismatchPieces,
-            Spec = spec($pred, severity_warning, phase_inst_check,
-                Context, Pieces),
+            Severity = severity_warning(warn_insts_without_matching_type),
+            Spec = spec($pred, Severity, phase_inst_check, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
             PossibleTypes = [_ | _],
@@ -1057,7 +1059,9 @@ maybe_issue_no_matching_types_warning(WarnInstsWithoutMatchingType,
                             words("outside this module.")]) ++
                         [nl]
                 ),
-                Spec = spec($pred, severity_warning, phase_inst_check,
+                Severity =
+                    severity_warning(warn_exported_inst_for_private_type),
+                Spec = spec($pred, Severity, phase_inst_check,
                     Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )

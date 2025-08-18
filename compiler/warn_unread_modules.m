@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2024 The Mercury team.
+% Copyright (C) 2024-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -27,6 +27,9 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module libs.
+:- import_module libs.options.
 
 %---------------------------------------------------------------------------%
 
@@ -109,7 +112,8 @@ warn_about_any_unread_modules_with_read_ancestors(ReadModules, UnreadModules,
             words("You need to rebuild it."),
             words("This is usually done using a command such as"),
             quote("mmc -f *.m"), suffix("."), nl],
-        Spec = no_ctxt_spec($pred, severity_warning, phase_read_files, Pieces),
+        Severity = severity_warning(warn_missing_descendant_modules),
+        Spec = no_ctxt_spec($pred, Severity, phase_read_files, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 

@@ -61,7 +61,6 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_test.
 
-:- import_module bool.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
@@ -306,8 +305,7 @@ report_redundant_coerce(ClauseContext, Context, FromVar, TVarSet, FromType) =
         color_as_subject([quote(FromVarStr)]) ++
         [words("from"), quote(FromTypeStr), words("to the same type is")] ++
         color_as_incorrect([words("redundant.")]) ++ [nl],
-    Severity = severity_conditional(warn_redundant_coerce, yes,
-        severity_warning, no),
+    Severity = severity_warning(warn_redundant_coerce),
     Spec = spec($pred, Severity, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
 

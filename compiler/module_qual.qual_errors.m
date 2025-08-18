@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2024 The Mercury team.
+% Copyright (C) 2015-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -496,8 +496,8 @@ warn_unused_interface_import(ParentModuleName,
     % unused_imports.m will also generate a warning for this import,
     % and it will be more precise than we can do here, because it will know
     % whether the imported module is used in the *implementation* section.
-    Spec = conditional_spec($pred, warn_unused_interface_imports, yes,
-        severity_warning, phase_pt2h, [HeadMsg | TailMsgs]),
+    Spec = error_spec($pred, severity_warning(warn_unused_interface_imports),
+        phase_pt2h, [HeadMsg | TailMsgs]),
     !:Specs = [Spec | !.Specs].
 
 :- pred warn_redundant_import_context(module_name::in, prog_context::in,

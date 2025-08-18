@@ -833,8 +833,9 @@ module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod,
     ItemModeDecl = item_mode_decl_info(_PredSymName, _MaybePredOrFunc,
         Modes, _WithInst, MaybeDetism, InstVarSet, Context, SeqNum),
     PredFormArity = arg_list_arity(Modes),
-    check_that_detism_is_declared(!.PredInfo, IsClassMethod, PredOrFunc,
-        PredName, PredFormArity, MaybeDetism, Context, DetismDecl, !Specs),
+    check_that_detism_is_declared(ModuleInfo, !.PredInfo, IsClassMethod,
+        PredOrFunc, PredName, PredFormArity, MaybeDetism, Context,
+        DetismDecl, !Specs),
     pred_info_get_cur_user_decl_info(!.PredInfo, MaybeCurUserDecl),
     (
         MaybeCurUserDecl = yes(CurUserDecl),
@@ -867,12 +868,12 @@ module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod,
 
 %---------------------%
 
-:- pred check_that_detism_is_declared(pred_info::in, maybe_class_method::in,
-    pred_or_func::in, string::in, pred_form_arity::in, maybe(determinism)::in,
-    prog_context::in, detism_decl::out,
+:- pred check_that_detism_is_declared(module_info::in, pred_info::in,
+    maybe_class_method::in, pred_or_func::in, string::in, pred_form_arity::in,
+    maybe(determinism)::in, prog_context::in, detism_decl::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_that_detism_is_declared(PredInfo, IsClassMethod, PredOrFunc,
+check_that_detism_is_declared(ModuleInfo, PredInfo, IsClassMethod, PredOrFunc,
         PredName, PredFormArity, MaybeDetism, Context, DetismDecl, !Specs) :-
     (
         MaybeDetism = no,
@@ -893,8 +894,8 @@ check_that_detism_is_declared(PredInfo, IsClassMethod, PredOrFunc,
                     PredFormArity, Context, !Specs)
             ;
                 IsExported = no,
-                report_unspecified_det_for_local(PredOrFunc, PredSymName,
-                    PredFormArity, Context, !Specs)
+                maybe_report_unspecified_det_for_local(ModuleInfo,
+                    PredOrFunc, PredSymName, PredFormArity, Context, !Specs)
             )
         )
     ;
@@ -1005,31 +1006,38 @@ report_unspecified_det_for_exported(PorF, SymName, PredFormArity, Context,
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred report_unspecified_det_for_local(pred_or_func::in, sym_name::in,
-    pred_form_arity::in, prog_context::in,
+:- pred maybe_report_unspecified_det_for_local(module_info::in,
+    pred_or_func::in, sym_name::in, pred_form_arity::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_unspecified_det_for_local(PorF, SymName, PredFormArity, Context,
-        !Specs) :-
-    user_arity_pred_form_arity(PorF, user_arity(UserArityInt), PredFormArity),
-    SNA = sym_name_arity(SymName, UserArityInt),
-    MainPieces = [words("Error:")] ++
-        color_as_incorrect([words("no determinism declaration")]) ++
-        [words("for local"), p_or_f(PorF)] ++
-        color_as_subject([unqual_sym_name_arity(SNA), suffix(".")]) ++
-        [nl],
-    VerbosePieces = [words("(This is an error because"),
-        words("you specified the"), quote("--no-infer-det"), words("option."),
-        words("Use the"), quote("--infer-det"),
-        words("option if you want the compiler"),
-        words("to automatically infer the determinism"),
-        words("of local predicates.)"), nl],
-    Msg = simple_msg(Context,
-        [always(MainPieces),
-        verbose_only(verbose_once, VerbosePieces)]),
-    Spec = conditional_spec($pred, infer_det, no, severity_error, phase_pt2h,
-        [Msg]),
-    !:Specs = [Spec | !.Specs].
+maybe_report_unspecified_det_for_local(ModuleInfo, PorF, SymName,
+        PredFormArity, Context, !Specs) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, infer_det, InferDet),
+    (
+        InferDet = yes
+    ;
+        InferDet = no,
+        user_arity_pred_form_arity(PorF,
+            user_arity(UserArityInt), PredFormArity),
+        SNA = sym_name_arity(SymName, UserArityInt),
+        MainPieces = [words("Error:")] ++
+            color_as_incorrect([words("no determinism declaration")]) ++
+            [words("for local"), p_or_f(PorF)] ++
+            color_as_subject([unqual_sym_name_arity(SNA), suffix(".")]) ++
+            [nl],
+        VerbosePieces = [words("(This is an error because"),
+            words("you specified the"), quote("--no-infer-det"),
+            words("option."),
+            words("Use the"), quote("--infer-det"), words("option"),
+            words("if you want the compiler to automatically infer"),
+            words("the determinism of local predicates.)"), nl],
+        Msg = simple_msg(Context,
+            [always(MainPieces),
+            verbose_only(verbose_once, VerbosePieces)]),
+        Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
+        !:Specs = [Spec | !.Specs]
+    ).
 
 %---------------------------------------------------------------------------%
 

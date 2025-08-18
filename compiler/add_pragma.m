@@ -1898,7 +1898,8 @@ get_matching_pred_ids(ModuleInfo, Pragma, RequireOneMatch, PragmaAllowsModes,
                             words("could refer to either"),
                             words("a predicate or a function.")]) ++
                         [nl],
-                    ActualSpec = spec($pred, severity_warning, phase_pt2h,
+                    Severity = severity_warning(warn_ambiguous_pragma),
+                    ActualSpec = spec($pred, Severity, phase_pt2h,
                         Context, ActualPieces),
                     % There is no point in printing WarnSpecs warning about
                     % *possible* ambiguity when ActualSpec reports a warning
@@ -2055,8 +2056,10 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
                 Specs = []
             ;
                 InformIgnored = yes,
-                Spec = report_ambiguous_pred_or_func(severity_informational,
-                    PragmaName, Context, PredOrFunc, SymName, UserArity),
+                Severity =
+                    severity_informational(inform_ignored_pragma_errors),
+                Spec = report_ambiguous_pred_or_func(Severity, PragmaName,
+                    Context, PredOrFunc, SymName, UserArity),
                 Specs = [Spec]
             )
         ),
@@ -2227,8 +2230,8 @@ check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
                         color_as_incorrect(
                             [words("should also be exported.")]) ++
                         [nl],
-                    Spec = spec($pred, severity_warning, phase_pt2h,
-                        Context, Pieces),
+                    Severity = severity_warning(warn_nonexported_pragma),
+                    Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
                     !:Specs = [Spec | !.Specs]
                 ;
                     StatusClass = psc_impl

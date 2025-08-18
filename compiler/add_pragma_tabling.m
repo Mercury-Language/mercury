@@ -282,7 +282,8 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
             [words("because tabled predicates cannot be inlined."), nl,
             words("You can use the"), quote("--no-warn-table-with-inline"),
             words("option to suppress this warning."), nl],
-        InlineWarningSpec = spec($pred, severity_warning, phase_pt2h,
+        Severity = severity_warning(warn_table_with_inline),
+        InlineWarningSpec = spec($pred, Severity, phase_pt2h,
             Context, InlineWarningPieces),
         !:Specs = [InlineWarningSpec | !.Specs]
     else

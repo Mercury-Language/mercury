@@ -50,6 +50,7 @@
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.prog_rep.
 :- import_module ll_backend.stack_layout.
@@ -565,10 +566,8 @@ report_failed_parallelisation(PredInfo, GoalPath, Error) = Spec :-
         words("Warning: could not auto-parallelise"),
         quote(GoalPath), suffix(":"), words(Error), nl],
     pred_info_get_context(PredInfo, Context),
-    % XXX Make this a warning or error if the user wants compilation to
-    % abort.
-    Spec = spec($pred, severity_informational, phase_auto_parallelism,
-        Context, Pieces).
+    Severity = severity_warning(warn_no_auto_parallel),
+    Spec = spec($pred, Severity, phase_auto_parallelism, Context, Pieces).
 
 :- func report_already_parallelised(pred_info) = error_spec.
 
@@ -583,10 +582,11 @@ report_already_parallelised(PredInfo) = Spec :-
     Pieces = [words("In"),
         qual_pf_sym_name_pred_form_arity(PFSNA), suffix(":"), nl,
         words("Warning: this procedure contains explicit parallel"),
-        words("conjunctions, it will not be automatically parallelised."), nl],
+        words("conjunctions, so it is not subject to"),
+        words("automatic parallelisation."), nl],
     pred_info_get_context(PredInfo, Context),
-    Spec = spec($pred, severity_warning, phase_auto_parallelism,
-        Context, Pieces).
+    Severity = severity_warning(warn_no_auto_parallel),
+    Spec = spec($pred, Severity, phase_auto_parallelism, Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 

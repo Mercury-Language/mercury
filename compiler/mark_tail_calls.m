@@ -1128,7 +1128,8 @@ add_message_for_nontail_self_recursive_call(PFSymNameArity, ProcId, Context,
         Reason, WarnOrError, !Specs) :-
     nontail_rec_call_reason_to_pieces(Reason, Context,
         ReasonPieces, VerboseMsgs),
-    woe_to_severity_and_string(WarnOrError, Severity, WarnOrErrorWord),
+    woe_to_severity_and_string(warn_non_tail_recursion_self, WarnOrError,
+        Severity, WarnOrErrorWord),
     proc_id_to_int(ProcId, ProcNumber0),
     ProcNumber = ProcNumber0 + 1,
     MainPieces = [words("In mode number"), int_fixed(ProcNumber),
@@ -1144,7 +1145,8 @@ add_message_for_nontail_mutual_recursive_call(CallerId, CallerProcId,
         CalleeId, Context, Reason, WarnOrError, !Specs) :-
     nontail_rec_call_reason_to_pieces(Reason, Context,
         ReasonPieces, VerboseMsgs),
-    woe_to_severity_and_string(WarnOrError, Severity, WarnOrErrorWord),
+    woe_to_severity_and_string(warn_non_tail_recursion_mutual, WarnOrError,
+        Severity, WarnOrErrorWord),
     proc_id_to_int(CallerProcId, ProcNumber0),
     ProcNumber = ProcNumber0 + 1,
     MainPieces = [words("In mode number"), int_fixed(ProcNumber), words("of"),
@@ -1156,15 +1158,22 @@ add_message_for_nontail_mutual_recursive_call(CallerId, CallerProcId,
         [MainMsg | VerboseMsgs]),
     !:Specs = [Spec | !.Specs].
 
-:- pred woe_to_severity_and_string(warning_or_error::in,
+:- pred woe_to_severity_and_string(option::in, warning_or_error::in,
     error_severity::out, format_piece::out) is det.
 
-woe_to_severity_and_string(we_warning, severity_warning, words("warning:")).
-woe_to_severity_and_string(we_error, severity_error, words("error:")).
+woe_to_severity_and_string(Option, WarnOrError, Severity, WarnOrErrorWord) :-
+    (
+        WarnOrError = we_warning,
+        Severity = severity_warning(Option),
+        WarnOrErrorWord = words("warning:")
+    ;
+        WarnOrError = we_error,
+        Severity = severity_error,
+        WarnOrErrorWord = words("error:")
+    ).
 
 :- pred nontail_rec_call_reason_to_pieces(nontail_rec_call_reason::in,
-    prog_context::in, list(format_piece)::out, list(error_msg)::out)
-    is det.
+    prog_context::in, list(format_piece)::out, list(error_msg)::out) is det.
 
 nontail_rec_call_reason_to_pieces(Reason, Context,
         ReasonPieces, VerboseMsgs) :-
@@ -1242,7 +1251,7 @@ report_no_tail_or_nontail_recursive_calls(PFSymNameArity, Context, !Specs) :-
         words("contains")] ++
         color_as_incorrect([words("no recursive calls at all,")]) ++
         [words("tail-recursive or otherwise."), nl],
-    Spec = spec($pred, severity_warning, phase_code_gen,
+    Spec = spec($pred, severity_warning(warn_no_recursion), phase_code_gen,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 

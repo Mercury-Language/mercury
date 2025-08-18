@@ -439,7 +439,10 @@
     ;       warn_interface_imports
     ;       warn_interface_imports_in_parents
     ;       warn_stdlib_shadowing
+    ;       warn_duplicate_abstract_instances
     ;       warn_too_private_instances
+    ;       warn_subtype_ctor_order
+    ;       warn_trans_opt_deps_spec
 
     % Warnings about dodgy code, involving determinism.
     ;       warn_det_decls_too_lax
@@ -448,13 +451,18 @@
     % Warnings about dodgy code, specifically predicates.
     ;       warn_unresolved_polymorphism
     ;       warn_stubs
+    ;       warn_cannot_table
     ;       warn_non_term_special_preds
     ;       warn_non_stratification
+    ;       warn_unneeded_purity_pred_decl
+    ;       warn_typecheck_ambiguity_limit
 
     % Warnings about dodgy code, specifically pragmas.
     ;       warn_ambiguous_pragma
     ;       warn_potentially_ambiguous_pragma
     ;       warn_table_with_inline
+    ;       warn_unneeded_purity_pragma
+    ;       warn_nonexported_pragma
 
     % Warnings about dodgy code, at the goal level.
     ;       warn_singleton_vars
@@ -466,13 +474,20 @@
     ;       warn_suspected_occurs_check_failure
     ;       warn_suspicious_recursion
     ;       warn_unused_args
+    ;       warn_unneeded_purity_indicator
+    ;       warn_missing_state_var_init
+    ;       warn_moved_trace_goal
+    ;       warn_disj_fills_partial_inst
+    ;       warn_unknown_warning_name
 
     % Warnings about dodgy code, involving insts.
     ;       warn_insts_without_matching_type
     ;       warn_insts_with_functors_without_type
+    ;       warn_exported_inst_for_private_type
 
     % Warnings about dodgy code, involving files.
     ;       warn_undefined_options_variables
+    ;       warn_missing_descendant_modules
     ;       warn_missing_opt_files
     ;       warn_missing_trans_opt_files
     ;       warn_missing_trans_opt_deps
@@ -481,10 +496,12 @@
     ;       warn_accumulator_swaps
     ;       warn_unneeded_final_statevars
     ;       warn_unneeded_final_statevars_lambda
+    ;       warn_no_auto_parallel
     ;       warn_obvious_non_tail_recursion
     ;       warn_non_tail_recursion_self
     ;       warn_non_tail_recursion_mutual
     ;       warn_non_tail_recursion
+    ;       warn_no_recursion
 
     % Warnings about programming style, at the module level.
     ;       warn_include_and_non_include
@@ -496,12 +513,20 @@
     ;       warn_unneeded_mode_specific_clause
 
     % Warnings about programming style, simple mistakes.
+    % ZZZ warn_simple_code should be split into two halves:
+    % one for style issues, and one for dodgy code.
+    % And if none of its current uses are style issues,
+    % then it should be moved to the dodgy code category.
     ;       warn_simple_code
+    % ZZZ These should be renamed s/inform_/warn_/ and the severity
+    % of their error_specs changed.
     ;       inform_ite_instead_of_switch
     ;       inform_incomplete_switch
     ;       inform_incomplete_switch_threshold
     ;       warn_duplicate_calls
     ;       warn_redundant_coerce
+    ;       warn_requested_by_code
+    ;       warn_requested_by_option
 
     % Warnings about programming style, involving state vars.
     ;       warn_state_var_shadowing
@@ -566,6 +591,12 @@
     ;       show_developer_type_repns
     ;       show_dependency_graph
     ;       show_imports_graph
+
+% Options that control whether some compiler reports are printed.
+    ;       report_noop
+    ;       report_not_written
+    ;       report_recompile_reason
+    ;       report_used_file_error
 
 % Options that control trace goals.
     ;       trace_goal_flags
@@ -2495,6 +2526,11 @@ optdb(oc_warn_dodgy_mod, warn_stdlib_shadowing,        bool(yes),
         w("Do not generate warnings for module names that either duplicate"),
         w("the name of a module in the Mercury standard library, or contain"),
         w("a subsequence of name components that do so.")])).
+optdb(oc_warn_dodgy_mod, warn_duplicate_abstract_instances,     bool(yes),
+    help("warn-duplicate-abstract-instances", [
+        w("Do not warn about duplicate abstract typeclass instances."),
+        w("(Duplicate concrete typeclass instances are errors,"),
+        w("and are always reported.)")])).
 optdb(oc_warn_dodgy_mod, warn_too_private_instances,   bool(no),
     help("warn-too-private-instances", [
         w("An instance declaration has to be private"),
@@ -2507,6 +2543,14 @@ optdb(oc_warn_dodgy_mod, warn_too_private_instances,   bool(no),
         w("Generate a warning if an instance declaration"),
         w("that can be relevant outside the current module"),
         w("is not exported.")])).
+optdb(oc_warn_dodgy_mod, warn_subtype_ctor_order,      bool(yes),
+    help("warn-subtype-ctor-order", [
+        w("Do not warn about a subtype definition that lists its"),
+        w("data constructors in a different order than its supertype.")])).
+optdb(oc_warn_dodgy_mod, warn_trans_opt_deps_spec,     bool(yes),
+    priv_help("warn-trans-opt-deps-spec", [
+        w("Do not warn about missing or unknown module names"),
+        w("in files named by --trans-opt-deps-spec options.")])).
 
 % Warnings about predicate determinism issues.
 
@@ -2532,6 +2576,10 @@ optdb(oc_warn_dodgy_pred, warn_stubs,                  bool(yes),
         w("Do not warn about procedures for which there are no clauses."),
         w("Note that this option is meaningful only if the"),
         opt("--allow-stubs"), w("option is enabled.")])).
+optdb(oc_warn_dodgy_pred, warn_cannot_table,           bool(yes),
+    help("warn-cannot-table", [
+        w("Do not warn about tabling pragmas which for some reason"),
+        w("cannot be applied to the specified procedure.")])).
 optdb(oc_warn_dodgy_pred, warn_non_term_special_preds, bool(yes),
     help("warn-non-term-special-preds", [
         w("Do not warn about types that have user-defined equality or"),
@@ -2544,6 +2592,16 @@ optdb(oc_warn_dodgy_pred, warn_non_stratification,     bool(no),
         w("of the predicates and/or functions in the module."),
         w("Non-stratification occurs when a predicate or function can call"),
         w("itself through negation through some path in its call graph.")])).
+optdb(oc_warn_dodgy_pred, warn_unneeded_purity_pred_decl, bool(yes),
+    help("warn-unneeded-purity-pred-decl", [
+        w("Do not warn about predicate and function declarations that"),
+        w("specify a purity level that is less pure than the predicate"),
+        w("or function definition.")])).
+optdb(oc_warn_dodgy_pred, warn_typecheck_ambiguity_limit, bool(yes),
+    help("warn-typecheck-ambiguity-limit", [
+        w("Do not generate a warning when the number of type assignments"),
+        w("needed to process the definition of a predicate or function"),
+        w("reaches or exceeds the typechecker's ambiguity warn limit.")])).
 
 % Warnings about predicate pragma issues.
 
@@ -2564,6 +2622,16 @@ optdb(oc_warn_dodgy_prg, warn_table_with_inline,       bool(yes),
         code("pragma inline"), w("declaration."),
         w("(This combination does not work, because"),
         w("inlined copies of procedure bodies cannot be tabled.)")])).
+optdb(oc_warn_dodgy_prg, warn_unneeded_purity_pragma,  bool(yes),
+    help("warn-unneeded-purity-pragma", [
+        w("Do not warn about purity promise pragmas that specify"),
+        w("a purity level that is less pure than the definition of"),
+        w("the predicate or function that they apply to.")])).
+optdb(oc_warn_dodgy_prg, warn_nonexported_pragma,      bool(yes),
+    help("warn-nonexported-pragma", [
+        w("Do not warn about non-exported pragmas that declare something"),
+        w("about an exported predicate or function (such as an assertion"),
+        w("that it terminates).")])).
 
 % Warnings about goal-level issues.
 
@@ -2608,6 +2676,43 @@ optdb(oc_warn_dodgy_goal, warn_suspicious_recursion,   bool(no),
 optdb(oc_warn_dodgy_goal, warn_unused_args,            bool(no),
     help("warn-unused-args", [
         w("Warn about predicate or function arguments which are not used.")])).
+optdb(oc_warn_dodgy_goal, warn_unneeded_purity_indicator, bool(yes),
+    help("warn-unneeded-purity-indicator", [
+        w("Do not warn about purity indicators on goals that specify"),
+        w("a purity level that is less pure than the declaration of"),
+        w("the called predicate or function.")])).
+optdb(oc_warn_dodgy_goal, warn_missing_state_var_init, bool(yes),
+    help("warn-missing-state-var-init", [
+        w("Do not print warnings about state variables that are initialized"),
+        w("on some but not all paths through a disjunction"),
+        w("or if-then-else.")])).
+optdb(oc_warn_dodgy_goal, warn_moved_trace_goal,       bool(yes),
+    help("warn-moved-trace-goal", [
+        w("Do not print warning about trace goals that were moved"),
+        w("after goals that follow them in the text of the program."),
+        w("Such reordering may mean that the trace goal will not be"),
+        w("executed if the goal moved before it fails, and even if"),
+        w("it does get executed, it may be executed in a different context"),
+        w("than the one expected by the programmer.")])).
+optdb(oc_warn_dodgy_goal, warn_disj_fills_partial_inst, bool(yes),
+    help("warn-disj-fills-partial-inst", [
+        w("Do not print warnings about disjunctions that"),
+        w("further instantiate some variables that enter the disjunction"),
+        w("in a partially-instantiated state. While such disjunctions"),
+        w("work fine in most contexts, if they constitute the body"),
+        w("of a predicate or a function, that predicate or function"),
+        w("will not work when passed to an all-solutions predicate."),
+        w("This is because while the solutions that the different disjuncts"),
+        w("in the disjunction can generate distinct values for"),
+        w("the affected variables, those values will be represented"),
+        w("as terms that have the exact same address, namely"),
+        w("the address of the initial partially-instantiated term."),
+        w("This fact will lead the all-solutions predicate to consider them"),
+        w("to be the *same* solution.")])).
+optdb(oc_warn_dodgy_goal, warn_unknown_warning_name, bool(yes),
+    help("warn-unknown-warning-name", [
+        w("Do not report unknown warning names in the list of warnings"),
+        w("to disable in disable_warning(s) scopes.")])).
 
 % Warnings about issues with insts.
 
@@ -2619,23 +2724,32 @@ optdb(oc_warn_dodgy_inst, warn_insts_with_functors_without_type, bool(no),
     help("warn-insts-with-functors-without-type", [
         w("Warn about insts that do specify functors, but do not specify"),
         w("what type they are for.")])).
+optdb(oc_warn_dodgy_inst, warn_exported_inst_for_private_type, bool(yes),
+    help("warn-exported-insts-for-private-type", [
+        w("Do not warn about exported insts that match"),
+        w("only private types.")])).
 
 % Warnings about issues with files.
 
-optdb(oc_warn_file, warn_undefined_options_variables,   bool(yes),
+optdb(oc_warn_file, warn_undefined_options_variables,  bool(yes),
     alt_help("warn-undefined-options-variables",
             ["warn-undefined-options-vars"], [
         w("Do not warn about references to undefined variables"),
         w("in options files with"), opt("--make", ".")])).
-optdb(oc_warn_file, warn_missing_opt_files,             bool(yes),
+optdb(oc_warn_file, warn_missing_descendant_modules,   bool(yes),
+    help("warn-missing-descendant-modules", [
+        w("Do not warn about modules which cannot be found,"),
+        w("even though some of their ancestor modules"),
+        w("exist in the current directory.")])).
+optdb(oc_warn_file, warn_missing_opt_files,            bool(yes),
     help("warn-missing-opt-files", [
         w("Do not warn about"), file(".opt"), w("files"),
         w("which cannot be opened.")])).
-optdb(oc_warn_file, warn_missing_trans_opt_files,       bool(no),
+optdb(oc_warn_file, warn_missing_trans_opt_files,      bool(no),
     help("warn-missing-trans-opt-files", [
         w("Warn about"), file(".trans_opt"), w("files"),
         w("which cannot be opened.")])).
-optdb(oc_warn_file, warn_missing_trans_opt_deps,        bool(yes),
+optdb(oc_warn_file, warn_missing_trans_opt_deps,       bool(yes),
     help("warn-missing-trans-opt-deps", [
         w("Do not generate a warning when the information required"),
         w("to allow"), file(".trans_opt"), w("files to be read"),
@@ -2661,6 +2775,11 @@ optdb(oc_warn_perf, warn_unneeded_final_statevars_lambda, bool(yes),
         w("Do not warn about"), code("!:S"),
         w("state variables in lambda expressions"),
         w("whose value will always be the same as"), code("!.S", ".")])).
+optdb(oc_warn_perf, warn_no_auto_parallel,            bool(yes),
+    alt_help("warn-no-auto-parallelisation",
+            ["warn-no-auto-parallelization"], [
+        w("Do not warn about procedures and goals that could not be"),
+        w("automatically parallelised.")])).
 optdb(oc_warn_perf, warn_obvious_non_tail_recursion,   bool(no),
     help("warn-obvious-non-tail-recursion", [
         w("Warn about recursive calls that are not tail calls"),
@@ -2684,6 +2803,11 @@ optdb(oc_warn_perf_c, warn_non_tail_recursion,         maybe_string_special,
         % w("This option works by specifying the implied values for"),
         % opt("--warn-non-tail-recursion-self"), w("and"),
         % opt("--warn-non-tail-recursion-mutual", ".")])).
+optdb(oc_warn_perf_c, warn_no_recursion,               bool(yes),
+    help("warn-no-recursion", [
+        w("Do not generate a warning when a predicate or function in which"),
+        w("the programmer requests warnings about non-tail recursion"),
+        w("has no recursive calls at all.")])).
 
 %---------------------%
 
@@ -2764,6 +2888,16 @@ optdb(oc_warn_style_goal, warn_redundant_coerce,       bool(yes),
         w("Do not warn about redundant type coercions,"),
         w("which occur when the type of the result of the"), code("coerce"),
         w("expression is the same as the type of its argument.")])).
+optdb(oc_warn_style_goal, warn_requested_by_code,      bool(yes),
+    help("warn-requested-by-code", [
+        w("Do not generate warnings that are specifically requested"),
+        w("by the code being compiled, such as"),
+        code("require_switch_arms_in_type_order"), w("pragmas.")])).
+optdb(oc_warn_style_goal, warn_requested_by_option,    bool(yes),
+    help("warn-requested-by-option", [
+        w("Do not generate warnings that are specifically requested"),
+        w("by compiler options, such as"),
+        quote("--enable-termination", ".")])).
 
 % Warnings about state vars.
 
@@ -3086,6 +3220,40 @@ optdb(oc_file_req,  show_imports_graph,                bool(no),
         w("that can be processed by the"), code("graphviz"), w("tools."),
         w("The graph will contain an edge from the node of module A"),
         w("to the node of module B if module A imports module B.")])).
+
+%---------------------------------------------------------------------------%
+
+    % Options that control whether some compiler reports are printed.
+
+optdb(oc_report,    report_noop,                       bool(yes), no_help).
+    % We use severity_informational(report_noop) error_specs when we
+    % - do NOT want to print anything or affect the process exit status,
+    % - but we do want the presence of an error_spec to signal that
+    %   something is wrong.
+    % This is not an ideal solution, but sometimes it is the best we can do.
+optdb(oc_report,    report_not_written,                bool(yes),
+    % This option exists only to satisfy the requirement that every
+    % severity_informational message specify an option. But actually
+    % turning off this option is *very* unlikely to be a good idea.
+    priv_help("report-not-written", [
+        w("Do not print a message when some files cannot be written out"),
+        w("due to previous errors.")])).
+optdb(oc_report,    report_recompile_reason,           bool(yes),
+    % This is private because smart recompilation is not yet ready
+    % for prime time. It nevertheless default to "yes" for the sake
+    % of tests/recompilation.
+    priv_help("report-recompile-reason", [
+        w("Do not print the reason why smart recompilation"),
+        w("recompiles a module.")])).
+optdb(oc_report,    report_used_file_error,            bool(yes),
+    % This is private because smart recompilation is not yet ready
+    % for prime time. It nevertheless default to "yes" for the sake
+    % of tests/recompilation.
+    % XXX The diagnostics that use this option are severity_informational.
+    % To me (zs) they look like they should be severity_error, but switching
+    % to that causes lots of failures in tests/recompilation.
+    priv_help("report-used-file-error", [
+        w("Do not print messages about problems with .used files.")])).
 
 %---------------------------------------------------------------------------%
 

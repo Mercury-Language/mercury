@@ -1198,9 +1198,9 @@ common_do_optimise_call(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 Msg = msg(Context, CurPieces),
                 PrevMsg = error_msg(yes(PrevContext), always_treat_as_first,
                     0u, [always(PrevPieces)]),
-                Spec = conditional_spec($pred, warn_duplicate_calls, yes,
-                    severity_warning, phase_simplify(report_in_any_mode),
-                    [Msg, PrevMsg]),
+                Severity = severity_warning(warn_duplicate_calls),
+                Spec = error_spec($pred, Severity,
+                    phase_simplify(report_in_any_mode), [Msg, PrevMsg]),
                 simplify_info_add_message(Spec, !Info)
             else
                 true

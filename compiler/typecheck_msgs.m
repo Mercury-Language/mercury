@@ -46,7 +46,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.
 
-:- import_module bool.
 :- import_module edit_seq.
 :- import_module maybe.
 :- import_module string.
@@ -135,9 +134,8 @@ construct_type_inference_message(ModuleInfo, PredId, PredInfo) = Spec :-
     list.filter(PredIsDeclared, AllOtherPredIds, AllOtherDeclaredPredIds),
     (
         AllOtherDeclaredPredIds = [],
-        Spec = conditional_spec($pred, inform_inferred_types, yes,
-            severity_informational, phase_type_check,
-            [msg(Context, InferredPieces)])
+        Spec = spec($pred, severity_informational(inform_inferred_types),
+            phase_type_check, Context, InferredPieces)
     ;
         AllOtherDeclaredPredIds = [_ | _],
         list.map(
@@ -145,8 +143,8 @@ construct_type_inference_message(ModuleInfo, PredId, PredInfo) = Spec :-
             AllOtherDeclaredPredIds, DiffPieceLists),
         Pieces = [invis_order_default_start(2, "")] ++ InferredPieces ++
             list.condense(DiffPieceLists),
-        Spec = spec($pred, severity_informational, phase_type_check,
-            Context, Pieces)
+        Spec = spec($pred, severity_informational(inform_inferred_types),
+            phase_type_check, Context, Pieces)
     ).
 
 :- pred construct_pred_decl_diff(module_info::in,

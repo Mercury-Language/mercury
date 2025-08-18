@@ -203,12 +203,12 @@ check_for_too_tight_or_loose_declared_determinism(PredProcId,
             Cmp = first_detism_looser_than,
             module_info_get_globals(!.ModuleInfo, Globals),
             globals.lookup_bool_option(Globals, warn_det_decls_too_lax,
-                ShouldIssueWarning),
+                WarnDetDeclTooLax),
             globals.lookup_bool_option(Globals, warn_inferred_erroneous,
-                WarnAboutInferredErroneous),
+                WarnInferredErroneous),
             pred_info_get_markers(PredInfo, Markers),
             ( if
-                ShouldIssueWarning = yes,
+                WarnDetDeclTooLax = yes,
 
                 % Don't report warnings for class method implementations --
                 % the determinism in the `:- typeclass' declaration will be
@@ -234,9 +234,9 @@ check_for_too_tight_or_loose_declared_determinism(PredProcId,
                 % when the appropriate option is set. This is to avoid warnings
                 % about unimplemented predicates.
                 (
-                    WarnAboutInferredErroneous = yes
+                    WarnInferredErroneous = yes
                 ;
-                    WarnAboutInferredErroneous = no,
+                    WarnInferredErroneous = no,
                     InferredDetism \= detism_erroneous
                 ),
 
@@ -251,7 +251,8 @@ check_for_too_tight_or_loose_declared_determinism(PredProcId,
                 report_determinism_problem(!.ModuleInfo, PredProcId,
                     "Warning", "could be tighter", [],
                     DeclaredDetism, InferredDetism, ReportMsg),
-                ReportSpec = error_spec($pred, severity_warning,
+                ReportSpec = error_spec($pred,
+                    severity_warning(warn_det_decls_too_lax),
                     phase_detism_check, [ReportMsg]),
                 !:Specs = [ReportSpec | !.Specs]
             else
@@ -748,8 +749,8 @@ report_can_fail_func(ModuleInfo, PredProcId, PredInfo, ProcInfo, ResultType0,
         words("or into a"), words(ProposedDetismStr), words("function"),
         words("by changing the return type from")] ++ ResultTypePieces ++
         [words("to")] ++ NewResultTypePieces ++ [suffix("."), nl],
-    Spec = spec($pred, severity_warning, phase_detism_check,
-        FuncContext, Pieces).
+    Spec = spec($pred, severity_warning(warn_can_fail_function),
+        phase_detism_check, FuncContext, Pieces).
 
 %---------------------------------------------------------------------------%
 

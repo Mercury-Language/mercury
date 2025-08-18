@@ -1929,7 +1929,9 @@ svar_start_outer_atomic_scope(Context, OuterStateVar, OuterDIVar, OuterUOVar,
         !SVarState ^ state_status_map := StatusMap,
         (
             BeforeStatus = status_unknown,
-            report_uninitialized_state_var(Context, OuterStateVar, !UrInfo),
+            % XXX SEVERITY
+            report_uninitialized_state_var(warn_simple_code, Context,
+                OuterStateVar, !UrInfo),
             new_state_var_instance(OuterStateVar, name_middle, OuterDIVar,
                 !UrInfo),
             new_state_var_instance(OuterStateVar, name_middle, OuterUOVar,
@@ -2045,7 +2047,9 @@ lookup_dot_state_var(Context, StateVar, Var, !SVarState, !UrInfo) :-
     ( if map.search(StatusMap0, StateVar, Status) then
         (
             Status = status_unknown,
-            report_uninitialized_state_var(Context, StateVar, !UrInfo),
+            % XXX SEVERITY
+            report_uninitialized_state_var(warn_simple_code, Context,
+                StateVar, !UrInfo),
             % We make StateVar known to avoid duplicate reports.
             new_state_var_instance(StateVar, name_middle, Var, !UrInfo),
             map.det_update(StateVar, status_known(Var),
@@ -2053,7 +2057,9 @@ lookup_dot_state_var(Context, StateVar, Var, !SVarState, !UrInfo) :-
             !SVarState ^ state_status_map := StatusMap
         ;
             Status = status_unknown_updated(NewVar),
-            report_uninitialized_state_var(Context, StateVar, !UrInfo),
+            % XXX SEVERITY
+            report_uninitialized_state_var(warn_simple_code, Context,
+                StateVar, !UrInfo),
             % We make StateVar known to avoid duplicate reports.
             new_state_var_instance(StateVar, name_middle, Var, !UrInfo),
             map.det_update(StateVar, status_known_updated(Var, NewVar),
@@ -2610,10 +2616,10 @@ report_non_visible_state_var(DorC, Context, StateVar, !UrInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred report_uninitialized_state_var(prog_context::in, svar::in,
+:- pred report_uninitialized_state_var(option::in, prog_context::in, svar::in,
     unravel_info::in, unravel_info::out) is det.
 
-report_uninitialized_state_var(Context, StateVar, !UrInfo) :-
+report_uninitialized_state_var(WarnOption, Context, StateVar, !UrInfo) :-
     VarSet = !.UrInfo ^ ui_varset,
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Warning: you cannot refer to")] ++
@@ -2621,7 +2627,8 @@ report_uninitialized_state_var(Context, StateVar, !UrInfo) :-
         [words("here, because that state variable has")] ++
         color_as_incorrect([words("not been initialized")]) ++
         [words("yet."), nl],
-    Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
+    Spec = spec($pred, severity_warning(WarnOption), phase_pt2h,
+        Context, Pieces),
     add_unravel_spec(Spec, !UrInfo).
 
 %---------------------------------------------------------------------------%
@@ -2649,8 +2656,8 @@ report_state_var_shadow(Context, StateVar, !UrInfo) :-
     Pieces = [words("Warning: new state variable")] ++
         color_as_subject([quote(Name)]) ++
         color_as_incorrect([words("shadows old one.")]) ++ [nl],
-    Spec = conditional_spec($pred, warn_state_var_shadowing, yes,
-        severity_warning, phase_pt2h, [msg(Context, Pieces)]),
+    Spec = spec($pred, severity_warning(warn_state_var_shadowing), phase_pt2h,
+        Context, Pieces),
     add_unravel_spec(Spec, !UrInfo).
 
 %---------------------------------------------------------------------------%
@@ -2668,7 +2675,8 @@ report_missing_inits_in_ite(Context, NextStateVars,
         NextStateVarsPieces ++
         [words("but when the condition"), words(WhenMissing), suffix(",")] ++
         color_as_inconsistent([words("it does not.")]) ++ [nl],
-    Spec = spec($pred, severity_informational, phase_pt2h, Context, Pieces),
+    Spec = spec($pred, severity_warning(warn_missing_state_var_init),
+        phase_pt2h, Context, Pieces),
     Specs0 = !.UrInfo ^ ui_state_var_store ^ store_missing_init_specs,
     Specs = [Spec | Specs0],
     !UrInfo ^ ui_state_var_store ^ store_missing_init_specs := Specs.
@@ -2681,7 +2689,8 @@ report_missing_inits_in_disjunct(Context, NextStateVars, !Specs) :-
         quote_list_to_color_pieces(color_subject, "and", [suffix(",")],
             NextStateVars) ++
         color_as_incorrect([words("but not this one.")]) ++ [nl],
-    Spec = spec($pred, severity_informational, phase_pt2h, Context, Pieces),
+    Spec = spec($pred, severity_warning(warn_missing_state_var_init),
+        phase_pt2h, Context, Pieces),
     % The intention is that our caller got !.Specs from the state var store's
     % store_missing_init_specs field, and will put the updated list back there.
     !:Specs = [Spec | !.Specs].
@@ -2785,9 +2794,8 @@ report_unused_svar_in_lambda(Context, _ArgNum, SVarArgDesc, !UrInfo) :-
             color_as_incorrect([words("never updated")]) ++
             [words("in this lambda expressions, so it should be"),
             words("replaced with an ordinary variable."), nl],
-        Spec = conditional_spec($pred,
-            warn_unneeded_initial_statevars_lambda, yes,
-            severity_warning, phase_pt2h, [msg(Context, Pieces)])
+        Severity = severity_warning(warn_unneeded_initial_statevars_lambda),
+        Spec = spec($pred, Severity, phase_pt2h, Context, Pieces)
     ;
         InitOrFinal = init_and_final_arg(_),
         % Please keep this wording in sync with the code of the
@@ -2798,9 +2806,8 @@ report_unused_svar_in_lambda(Context, _ArgNum, SVarArgDesc, !UrInfo) :-
             color_as_incorrect([words("could be deleted,")]) ++
             [words("because its value"),
             words("is always the same as its initial value."), nl],
-        Spec = conditional_spec($pred,
-            warn_unneeded_final_statevars_lambda, yes,
-            severity_warning, phase_pt2h, [msg(Context, Pieces)])
+        Severity = severity_warning(warn_unneeded_final_statevars_lambda),
+        Spec = spec($pred, Severity, phase_pt2h, Context, Pieces)
     ),
     add_unravel_spec(Spec, !UrInfo).
 

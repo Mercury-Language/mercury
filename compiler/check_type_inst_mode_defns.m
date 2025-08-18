@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2019-2024 The Mercury team.
+% Copyright (C) 2019-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -78,6 +78,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
@@ -1202,7 +1203,7 @@ report_any_redundant_abstract_type_in_imp(TypeCtor, Section,
             [words("is")] ++ color_as_incorrect([words("redundant,")]) ++
             [words("since the type has a definition in the"),
             words(Section), words("section."), nl],
-        Spec = spec($pred, severity_warning, phase_tim_check,
+        Spec = spec($pred, severity_warning(warn_simple_code), phase_tim_check,
             ImpAbstractDefn ^ td_context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -1424,7 +1425,8 @@ report_duplicate_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
         DeclOrDefn = dd_decl,
         DeclOrDefnWord = "declaration",
         SeverityWord = "Warning",
-        Severity = severity_warning
+        % XXX SEVERITY
+        Severity = severity_warning(warn_simple_code)
     ;
         DeclOrDefn = dd_defn,
         DeclOrDefnWord = "definition",
@@ -1907,7 +1909,7 @@ report_any_redundant_abstract_inst_in_imp(InstCtor, DeclOrDefn, Section,
             [words("is")] ++ color_as_incorrect([words("redundant,")]) ++
             [words("since the inst has a"), words(DeclOrDefn),
             words("in the"), words(Section), words("section."), nl],
-        Spec = spec($pred, severity_warning, phase_tim_check,
+        Spec = spec($pred, severity_warning(warn_simple_code), phase_tim_check,
             ImpAbstractDefn ^ id_context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -2116,7 +2118,7 @@ report_any_redundant_abstract_mode_in_imp(TypeCtor, DeclOrDefn, Section,
             [words("is")] ++ color_as_incorrect([words("redundant,")]) ++
             [words("since the mode has a"), words(DeclOrDefn),
             words("in the"), words(Section), words("section."), nl],
-        Spec = spec($pred, severity_warning, phase_tim_check,
+        Spec = spec($pred, severity_warning(warn_simple_code), phase_tim_check,
             ImpAbstractDefn ^ md_context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).

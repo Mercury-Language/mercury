@@ -387,9 +387,8 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
             % the converse of the possible cause of a problem.
             color_as_hint([words("explicitly specifying a stream.")]) ++
             [nl],
-        Spec = conditional_spec($pred, warn_implicit_stream_calls, yes,
-            severity_warning, phase_simplify(report_in_any_mode),
-            [msg(GoalContext, Pieces)]),
+        Spec = spec($pred, severity_warning(warn_implicit_stream_calls),
+            phase_simplify(report_in_any_mode), GoalContext, Pieces),
         MaybeSpec = yes(Spec)
     else if
         % We want to warn about calls to predicates that update
@@ -428,9 +427,8 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
             color_as_hint([words("could be made redundant")]) ++
             [words("by explicitly passing the"), words(Dir),
             words("stream it specifies to later I/O operations."), nl],
-        Spec = conditional_spec($pred, warn_implicit_stream_calls, yes,
-            severity_warning, phase_simplify(report_in_any_mode),
-            [msg(GoalContext, Pieces)]),
+        Spec = spec($pred, severity_warning(warn_implicit_stream_calls),
+            phase_simplify(report_in_any_mode), GoalContext, Pieces),
         MaybeSpec = yes(Spec)
     else
         MaybeSpec = no
@@ -541,9 +539,8 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
                 [words("The possible suggested replacements are")] ++
                 InFavourOfPieces ++ [nl]
         ),
-        Spec = conditional_spec($pred, warn_obsolete, yes, severity_warning,
-            phase_simplify(report_in_any_mode),
-            [msg(GoalContext, Pieces)]),
+        Spec = spec($pred, severity_warning(warn_obsolete),
+            phase_simplify(report_in_any_mode), GoalContext, Pieces),
         simplify_info_add_message(Spec, !Info)
     else
         true
@@ -645,7 +642,7 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
                 Msgs = [simple_msg(goal_info_get_context(GoalInfo),
                     [always(MainPieces),
                     verbose_only(verbose_once, VerbosePieces)])],
-                Spec = error_spec($pred, severity_warning,
+                Spec = error_spec($pred, severity_warning(warn_simple_code),
                     phase_simplify(report_in_any_mode), Msgs),
                 simplify_info_add_message(Spec, !Info)
             ;
@@ -659,7 +656,8 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
                         words("the call use state variable notation."), nl],
                     Msgs = [simple_msg(goal_info_get_context(GoalInfo),
                         [always(Pieces), shut_up_suspicious_recursion_msg])],
-                    Spec = error_spec($pred, severity_warning,
+                    Spec = error_spec($pred,
+                        severity_warning(warn_simple_code),
                         phase_simplify(report_in_any_mode), Msgs),
                     simplify_info_add_message(Spec, !Info)
                 else
@@ -682,9 +680,9 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
                     words("in the call than in the clause head."), nl],
                 Msg = simple_msg(goal_info_get_context(GoalInfo),
                     [always(Pieces), shut_up_suspicious_recursion_msg]),
-                Spec = conditional_spec($pred, warn_suspicious_recursion, yes,
-                    severity_warning, phase_simplify(report_in_any_mode),
-                    [Msg]),
+                Severity = severity_warning(warn_suspicious_recursion),
+                Spec = error_spec($pred, Severity,
+                    phase_simplify(report_in_any_mode), [Msg]),
                 simplify_info_add_message(Spec, !Info)
             else
                 true
@@ -890,7 +888,8 @@ maybe_generate_warning_for_useless_comparison(PredInfo, InstMap, Args,
             PredPieces = describe_one_pred_info_name(yes(color_subject),
                 should_module_qualify, [], PredInfo),
             Pieces = [words("Warning: call to")] ++ PredPieces ++ WarnPieces,
-            Spec = spec($pred, severity_warning,
+            % XXX SEVERITY
+            Spec = spec($pred, severity_warning(warn_simple_code),
                 phase_simplify(report_in_any_mode), GoalContext, Pieces),
             simplify_info_add_message(Spec, !Info)
         else

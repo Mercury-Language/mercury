@@ -50,6 +50,8 @@
 
 :- implementation.
 
+:- import_module libs.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_goal_util.
@@ -1856,8 +1858,13 @@ parse_warning(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
             [words("got")] ++
             color_as_incorrect([quote(TermStr), suffix(",")]) ++
             [nl],
-        Spec = spec($pred, severity_warning, phase_t2pt,
-            get_term_context(Term), Pieces),
+        % This is only a warning, not an error, to allow Mercury source files
+        % to include new warnings in disable_warning scopes, while still
+        % being able to be compiled with Mercury compiler versions from
+        % *before* the addition of the new warnings. See Mantis feature
+        % request #497.
+        Spec = spec($pred, severity_warning(warn_unknown_warning_name),
+            phase_t2pt, get_term_context(Term), Pieces),
         Warnings = [],
         WarningSpecs = [Spec]
     ).

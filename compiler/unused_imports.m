@@ -56,6 +56,8 @@
 :- import_module hlds.hlds_inst_mode.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.status.
+:- import_module libs.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
@@ -302,8 +304,8 @@ maybe_generate_redundant_avail_warnings(ModuleName, [Avail | Avails],
             color_as_incorrect([words("redundant.")]) ++
             [nl],
         MainMsg = msg(Context, MainPieces),
-        Spec = error_spec($pred, severity_informational, phase_code_gen,
-            [MainMsg | PrevMsgs]),
+        Spec = error_spec($pred, severity_informational(warn_unused_imports),
+            phase_code_gen, [MainMsg | PrevMsgs]),
         !:Specs = [Spec | !.Specs]
     ),
     maybe_generate_redundant_avail_warnings(ModuleName, Avails,
@@ -386,8 +388,8 @@ generate_unused_import_warning(ModuleName, MsgKind - OoMUnusedAvails0,
             color_as_incorrect([words("is not used"),
                 words(NotUsedInTheLocn), suffix(".")]) ++
             [nl],
-        Spec = spec($pred, severity_warning, phase_code_gen,
-            HeadContext, Pieces)
+        Spec = spec($pred, severity_warning(warn_unused_imports),
+            phase_code_gen, HeadContext, Pieces)
     ;
         TailUnusedAvails = [_ | _],
         MainPieces =
@@ -406,8 +408,8 @@ generate_unused_import_warning(ModuleName, MsgKind - OoMUnusedAvails0,
             ),
         ModuleMsgs = list.map(UnusedAvailToMsg,
             [HeadUnusedAvail | TailUnusedAvails]),
-        Spec = error_spec($pred, severity_warning, phase_code_gen,
-            [MainMsg | ModuleMsgs])
+        Spec = error_spec($pred, severity_warning(warn_unused_imports),
+            phase_code_gen, [MainMsg | ModuleMsgs])
     ),
     !:Specs = [Spec | !.Specs].
 

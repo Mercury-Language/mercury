@@ -285,8 +285,8 @@ maybe_warn_about_stdlib_shadowing(Globals, ParseTreeModuleSrc, !Specs) :-
                 words("but will get the other."), nl],
             maybe_mention_undoc(DocUndoc, Pieces0, Pieces),
             Context = ParseTreeModuleSrc ^ ptms_module_name_context,
-            Spec = spec($pred, severity_warning, phase_read_files,
-                Context, Pieces),
+            Severity = severity_warning(warn_stdlib_shadowing),
+            Spec = spec($pred, Severity, phase_read_files, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else if
             GetStdlibModules =
@@ -323,8 +323,8 @@ maybe_warn_about_stdlib_shadowing(Globals, ParseTreeModuleSrc, !Specs) :-
                 words("and vice versa."), nl],
             maybe_mention_undoc(DocUndoc, Pieces0, Pieces),
             Context = ParseTreeModuleSrc ^ ptms_module_name_context,
-            Spec = spec($pred, severity_warning, phase_read_files,
-                Context, Pieces),
+            Severity = severity_warning(warn_stdlib_shadowing),
+            Spec = spec($pred, Severity, phase_read_files, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else
             true
@@ -555,8 +555,8 @@ maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
                     words("for module"), qual_sym_name(ModuleName),
                     suffix("."), nl,
                     words("You need to remake the dependencies."), nl],
-                Spec = no_ctxt_spec($pred, severity_warning,
-                    phase_read_files, Pieces),
+                Severity = severity_warning(warn_missing_trans_opt_deps),
+                Spec = no_ctxt_spec($pred, Severity, phase_read_files, Pieces),
                 write_error_spec(ErrorStream, Globals, Spec, !IO)
             ;
                 WarnNoTransOptDeps = no

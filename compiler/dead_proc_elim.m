@@ -1296,12 +1296,8 @@ dead_proc_maybe_warn_proc(ModuleInfo, Needed, PredId, PredInfo,
             % if it is in the needed map.
             map.contains(Needed, entity_proc(proc(PredId, ProcId)))
         ;
-            WarnWithLiveSiblings = no,
-            some [OtherProcId] (
-                list.member(OtherProcId, AllProcsInPred),
-                map.contains(Needed, entity_proc(proc(PredId, OtherProcId)))
-            )
-        ;
+            % Don't warn about the procedure being unused
+            % if it was created by the compiler.
             pred_info_get_origin(PredInfo, Origin),
             Origin = origin_compiler(made_for_mutable(MutableModuleName,
                 MutableName, PredKind)),
@@ -1316,10 +1312,40 @@ dead_proc_maybe_warn_proc(ModuleInfo, Needed, PredId, PredInfo,
     then
         true
     else
-        map.lookup(ProcTable, ProcId, ProcInfo),
-        proc_info_get_context(ProcInfo, Context),
-        Spec = warn_dead_proc(ModuleInfo, PredId, ProcId, Context),
-        !:Specs = [Spec | !.Specs]
+        % This is a dead procedure. Is it in a live predicate?
+        ( if
+            some [OtherProcId] (
+                list.member(OtherProcId, AllProcsInPred),
+                map.contains(Needed, entity_proc(proc(PredId, OtherProcId)))
+            )
+        then
+            % It is a dead procedure in a live predicate.
+            (
+                WarnWithLiveSiblings = no
+            ;
+                WarnWithLiveSiblings = yes,
+                map.lookup(ProcTable, ProcId, ProcInfo),
+                proc_info_get_context(ProcInfo, Context),
+                Spec = warn_dead_proc(ModuleInfo, warn_dead_procs,
+                    PredId, ProcId, Context),
+                !:Specs = [Spec | !.Specs]
+            )
+        else
+            % It is a dead procedure in a dead predicate.
+            (
+                WarnWithLiveSiblings = no,
+                % The user must have specified --no-warn-dead-procs.
+                Option = warn_dead_preds
+            ;
+                WarnWithLiveSiblings = yes,
+                % The user specified --warn-dead-procs.
+                Option = warn_dead_procs
+            ),
+            map.lookup(ProcTable, ProcId, ProcInfo),
+            proc_info_get_context(ProcInfo, Context),
+            Spec = warn_dead_proc(ModuleInfo, Option, PredId, ProcId, Context),
+            !:Specs = [Spec | !.Specs]
+        )
     ).
 
     % Given the id of an unused access predicate for a mutable,
@@ -1395,16 +1421,17 @@ suppress_unused_mutable_access_pred(Unused, Suppress) :-
             mutable_pred_constant_get]
     ).
 
-:- func warn_dead_proc(module_info, pred_id, proc_id, prog_context)
+:- func warn_dead_proc(module_info, option, pred_id, proc_id, prog_context)
     = error_spec.
 
-warn_dead_proc(ModuleInfo, PredId, ProcId, Context) = Spec :-
+warn_dead_proc(ModuleInfo, Option, PredId, ProcId, Context) = Spec :-
     ProcPieces = describe_one_proc_name(ModuleInfo, yes(color_subject),
         should_not_module_qualify, proc(PredId, ProcId)),
     Pieces = [words("Warning:")] ++ ProcPieces ++
         color_as_incorrect([words("is never called.")]) ++
         [nl],
-    Spec = spec($pred, severity_warning, phase_dead_code, Context, Pieces).
+    Spec = spec($pred, severity_warning(Option), phase_dead_code,
+        Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -42,14 +42,6 @@
 :- func worst_severity(actual_severity, actual_severity)
     = actual_severity.
 
-    % Compute the actual severity of a message with the given severity
-    % (if it actually prints anything).
-    %
-:- func actual_error_severity(globals, error_severity)
-    = maybe(actual_severity).
-:- func actual_error_severity_opt_table(option_table, error_severity)
-    = maybe(actual_severity).
-
     % Compute the actual severity of an error_spec
     % (if it actually prints anything).
     %
@@ -244,59 +236,56 @@ worst_severity(actual_severity_informational, actual_severity_informational) =
 
 %---------------------%
 
-actual_error_severity(Globals, Severity) = MaybeActual :-
-    globals.get_options(Globals, OptionTable),
-    MaybeActual = actual_error_severity_opt_table(OptionTable, Severity).
-
-actual_error_severity_opt_table(OptionTable, Severity) = MaybeActual :-
-    (
-        Severity = severity_error,
-        MaybeActual = yes(actual_severity_error)
-    ;
-        Severity = severity_warning,
-        MaybeActual = yes(actual_severity_warning)
-    ;
-        Severity = severity_informational,
-        MaybeActual = yes(actual_severity_informational)
-    ;
-        Severity = severity_conditional(Option, MatchValue,
-            Match, MaybeNoMatch),
-        getopt.lookup_bool_option(OptionTable, Option, Value),
-        ( if Value = MatchValue then
-            MaybeActual = actual_error_severity_opt_table(OptionTable, Match)
-        else
-            (
-                MaybeNoMatch = no,
-                MaybeActual = no
-            ;
-                MaybeNoMatch = yes(NoMatch),
-                MaybeActual =
-                    actual_error_severity_opt_table(OptionTable, NoMatch)
-            )
-        )
-    ).
-
-%---------------------%
-
 actual_spec_severity(Globals, Spec) = MaybeSeverity :-
     globals.get_options(Globals, OptionTable),
     MaybeSeverity = actual_spec_severity_opt_table(OptionTable, Spec).
 
-actual_spec_severity_opt_table(OptionTable, Spec) = MaybeSeverity :-
+actual_spec_severity_opt_table(OptionTable, Spec) = MaybeActualSeverity :-
     (
         ( Spec = error_spec(_, Severity, _, _)
         ; Spec = spec(_, Severity, _, _, _)
         ; Spec = no_ctxt_spec(_, Severity, _, _)
         ),
-        MaybeSeverity = actual_error_severity_opt_table(OptionTable, Severity)
+        severity_to_maybe_actual_severity(OptionTable, Severity,
+            MaybeActualSeverity)
     ;
         Spec = conditional_spec(_, Option, MatchValue, Severity, _, _),
-        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
-        ( if OptionValue = MatchValue then
-            MaybeSeverity =
-                actual_error_severity_opt_table(OptionTable, Severity)
+        getopt.lookup_bool_option(OptionTable, Option, Value),
+        ( if Value = MatchValue then
+            severity_to_maybe_actual_severity(OptionTable, Severity,
+                MaybeActualSeverity)
         else
-            MaybeSeverity = no
+            MaybeActualSeverity = no
+        )
+    ).
+
+:- pred severity_to_maybe_actual_severity(option_table::in,
+    error_severity::in, maybe(actual_severity)::out) is det.
+
+severity_to_maybe_actual_severity(OptionTable, Severity,
+        MaybeActualSeverity) :-
+    (
+        Severity = severity_error,
+        MaybeActualSeverity = yes(actual_severity_error)
+    ;
+        Severity = severity_warning(Option),
+        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
+        (
+            OptionValue = yes,
+            MaybeActualSeverity = yes(actual_severity_warning)
+        ;
+            OptionValue = no,
+            MaybeActualSeverity = no
+        )
+    ;
+        Severity = severity_informational(Option),
+        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
+        (
+            OptionValue = yes,
+            MaybeActualSeverity = yes(actual_severity_informational)
+        ;
+            OptionValue = no,
+            MaybeActualSeverity = no
         )
     ).
 

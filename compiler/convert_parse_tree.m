@@ -1976,7 +1976,7 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
         words("pragma in the interface section is here."), nl],
     ImpMsg = msg(ImpContext, ImpPieces),
     IntMsg = msg(IntContext, IntPieces),
-    Spec = conditional_spec($pred, warn_simple_code, yes, severity_warning,
+    Spec = error_spec($pred, severity_warning(warn_simple_code),
         phase_pt2h, [ImpMsg, IntMsg]),
     !:Specs = [Spec | !.Specs].
 
@@ -2145,8 +2145,8 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
             words("pragma for the same module/language combination"),
             words("is here."), nl],
         PrevMsg = msg(PrevContext, PrevPieces),
-        Spec = conditional_spec($pred, warn_simple_code, yes,
-            severity_warning, phase_pt2h, [MainMsg, PrevMsg]),
+        Spec = error_spec($pred, severity_warning(warn_simple_code),
+            phase_pt2h, [MainMsg, PrevMsg]),
         !:Specs = [Spec | !.Specs]
     else
         map.det_insert(FIMSpec, Context, !FIMSpecMap)

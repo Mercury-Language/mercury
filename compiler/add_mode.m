@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2006, 2008, 2010-2011 The University of Melbourne.
-% Copyright (C) 2014-2024 The Mercury team.
+% Copyright (C) 2014-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -114,9 +114,9 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
                     words("includes references to function symbols, but")] ++
                     color_as_incorrect([words("does not declare")]) ++
                     [words("what type constructor it is for."), nl],
-                Option = warn_insts_with_functors_without_type,
-                Spec = conditional_spec($pred, Option, yes, severity_warning,
-                    phase_pt2h, [msg(Context, Pieces)]),
+                Severity =
+                    severity_warning(warn_insts_with_functors_without_type),
+                Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             ;
                 Here = no

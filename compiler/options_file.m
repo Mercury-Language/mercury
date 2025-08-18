@@ -1231,8 +1231,8 @@ report_any_undefined_variables(FileName, LineNumber, UndefVarNamesSet,
         Context = term_context.context_init(FileName, LineNumber),
         Pieces = [words("Warning:"), words(VarVars) | UndefVarNamesPieces] ++
             [words(IsAre), words("undefined."), nl],
-        Spec = spec($pred, severity_warning, phase_read_files,
-            Context, Pieces),
+        Severity = severity_warning(warn_undefined_options_variables),
+        Spec = spec($pred, Severity, phase_read_files, Context, Pieces),
         !:UndefSpecs = [Spec | !.UndefSpecs]
     ).
 

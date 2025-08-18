@@ -480,8 +480,9 @@ select_applicable_modes(ModuleInfo, MaybeAnnotatedArgTerms, VarSet,
                             color_as_incorrect([words("no need to restrict"),
                                 words("a clause for it to that mode.")]) ++
                             [nl],
-                        Spec = spec($pred, severity_warning, phase_pt2h,
-                            Context, Pieces),
+                        % XXX SEVERITY
+                        Spec = spec($pred, severity_warning(warn_simple_code),
+                            phase_pt2h, Context, Pieces),
                         !:Specs = [Spec | !.Specs]
                     ;
                         Warn = no

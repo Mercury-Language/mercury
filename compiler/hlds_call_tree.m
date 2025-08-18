@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022-2024 The Mercury team.
+% Copyright (C) 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -156,6 +156,8 @@
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
+:- import_module libs.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
@@ -1286,8 +1288,8 @@ construct_movability_report(ModuleInfo, Report, InfoSpec) :-
 
     InfoPieces = WantToMovePieces ++ ConflictExportedPieces ++ MovingPieces ++
         MovingTypePieces ++ MovingStayingPieces,
-    InfoSpec = no_ctxt_spec($pred, severity_informational, phase_style,
-        InfoPieces).
+    Severity = severity_informational(show_pred_movability),
+    InfoSpec = no_ctxt_spec($pred, Severity, phase_style, InfoPieces).
 
 %---------------------------------------------------------------------------%
 

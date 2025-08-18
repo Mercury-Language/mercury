@@ -911,6 +911,10 @@ Warning options
         name of a module in the Mercury standard library, or contain a
         subsequence of name components that do so.
 
+    --no-warn-duplicate-abstract-instances
+        Do not warn about duplicate abstract typeclass instances. (Duplicate
+        concrete typeclass instances are errors, and are always reported.)
+
     --warn-too-private-instances
         An instance declaration has to be private if it is for a private type
         class (meaning a type class that is not visible outside the current
@@ -919,6 +923,14 @@ Warning options
         or private type constructors. Such instances can only be relevant in
         the current module. Generate a warning if an instance declaration that
         can be relevant outside the current module is not exported.
+
+    --no-warn-subtype-ctor-order
+        Do not warn about a subtype definition that lists its data constructors
+        in a different order than its supertype.
+
+    PRIVATE OPTION
+    --no-warn-opt-deps-spec
+        XXX Peter, please document this warning.
 
     Warnings about possible inst incorrectness
 
@@ -929,6 +941,9 @@ Warning options
     --warn-insts-with-functors-without-type
         Warn about insts that do specify functors, but do not specify what type
         they are for.
+
+    --no-warn-exported-insts-for-private-type
+        Do not warn about exported insts that match only private types.
 
     Warnings about possible predicate incorrectness
 
@@ -949,6 +964,10 @@ Warning options
         this option is meaningful only if the `--allow-stubs' option is
         enabled.
 
+    --no-warn-cannot-table
+        Do not warn about tabling pragmas which for some reason cannot be
+        applied to the specified procedure.
+
     --no-warn-non-term-special-preds
         Do not warn about types that have user-defined equality or comparison
         predicates that cannot be proved to terminate. This option is
@@ -959,6 +978,16 @@ Warning options
         functions in the module. Non-stratification occurs when a predicate or
         function can call itself through negation through some path in its call
         graph.
+
+    --no-warn-unneeded-purity-pred-decl
+        Do not warn about predicate and function declarations that specify a
+        purity level that is less pure than the predicate or function
+        definition.
+
+    --no-warn-typecheck-ambiguity-limit
+        Do not generate a warning when the number of type assignments needed to
+        process the definition of a predicate or function reaches or exceeds
+        the typechecker's ambiguity warn limit.
 
     Warnings about possible pragma incorrectness
 
@@ -977,6 +1006,16 @@ Warning options
         Do not warn about tabled procedures that also have a `pragma inline'
         declaration. (This combination does not work, because inlined copies of
         procedure bodies cannot be tabled.)
+
+    --no-warn-unneeded-purity-pragma
+        Do not warn about purity promise pragmas that specify a purity level
+        that is less pure than the definition of the predicate or function that
+        they apply to.
+
+    --no-warn-nonexported-pragma
+        Do not warn about non-exported pragmas that declare something about an
+        exported predicate or function (such as an assertion that it
+        terminates).
 
     Warnings about possible goal incorrectness
 
@@ -1018,12 +1057,48 @@ Warning options
     --warn-unused-args
         Warn about predicate or function arguments which are not used.
 
+    --no-warn-unneeded-purity-indicator
+        Do not warn about purity indicators on goals that specify a purity
+        level that is less pure than the declaration of the called predicate or
+        function.
+
+    --no-warn-missing-state-var-init
+        Do not print warnings about state variables that are initialized on
+        some but not all paths through a disjunction or if-then-else.
+
+    --no-warn-moved-trace-goal
+        Do not print warning about trace goals that were moved after goals that
+        follow them in the text of the program. Such reordering may mean that
+        the trace goal will not be executed if the goal moved before it fails,
+        and even if it does get executed, it may be executed in a different
+        context than the one expected by the programmer.
+
+    --no-warn-disj-fills-partial-inst
+        Do not print warnings about disjunctions that further instantiate some
+        variables that enter the disjunction in a partially-instantiated state.
+        While such disjunctions work fine in most contexts, if they constitute
+        the body of a predicate or a function, that predicate or function will
+        not work when passed to an all-solutions predicate. This is because
+        while the solutions that the different disjuncts in the disjunction can
+        generate distinct values for the affected variables, those values will
+        be represented as terms that have the exact same address, namely the
+        address of the initial partially-instantiated term. This fact will lead
+        the all-solutions predicate to consider them to be the *same* solution.
+
+    --no-warn-unknown-warning-name
+        When processing disable_warning scopes, do not report unknown warning
+        names in the list of warnings to disable.
+
     Warnings about missing files
 
     --no-warn-undefined-options-variables
     --no-warn-undefined-options-vars
         Do not warn about references to undefined variables in options files
         with `--make'.
+
+    --no-warn-missing-descendant-modules
+        Do not warn about modules which cannot be found, even though some of
+        their ancestor modules exist in the current directory.
 
     --no-warn-missing-opt-files
         Do not warn about `.opt' files which cannot be opened.
@@ -1051,6 +1126,11 @@ Warning options
         Do not warn about `!:S' state variables in lambda expressions whose
         value will always be the same as `!.S'.
 
+    --no-warn-no-auto-parallelisation
+    --no-warn-no-auto-parallelization
+        Do not warn about procedures and goals that could not be automatically
+        parallelised.
+
     --warn-obvious-non-tail-recursion
         Warn about recursive calls that are not tail calls even if they
         obviously cannot be tail calls, because they are followed by other
@@ -1068,6 +1148,11 @@ Warning options
     --no-warn-non-tail-recursion
         Specify when the compiler should warn about recursive calls that are
         not tail calls.
+
+    --no-warn-no-recursion
+        Do not generate a warning when a predicate or function in which the
+        programmer requests warnings about non-tail recursion has no recursive
+        calls at all.
 
   Warnings about programming style
 
@@ -1135,6 +1220,14 @@ Warning options
         Do not warn about redundant type coercions, which occur when the type
         of the result of the `coerce' expression is the same as the type of its
         argument.
+
+    --no-warn-requested-by-code
+        Do not generate warnings that are specifically requested by the code
+        being compiled, such as `require_switch_arms_in_type_order' pragmas.
+
+    --no-warn-requested-by-option
+        Do not generate warnings that are specifically requested by compiler
+        options, such as `--enable-termination'.
 
     --no-warn-state-var-shadowing
         Do not warn about one state variable shadowing another.
@@ -1403,6 +1496,21 @@ Options that ask for informational files
         graph to `<module>.imports_graph' in a format that can be processed by
         the `graphviz' tools. The graph will contain an edge from the node of
         module A to the node of module B if module A imports module B.
+
+Options that control some compiler reports
+
+    PRIVATE OPTION
+    --no-report-not-written
+        Do not print a message when some files cannot be written out due to
+        previous errors.
+
+    PRIVATE OPTION
+    --no-report-recompile-reason
+        Do not print the reason why smart recompilation recompiles a module.
+
+    PRIVATE OPTION
+    --no-report-used-file-error
+        Do not print messages about problems with .used files.
 
 Controlling trace goals
 

@@ -723,8 +723,8 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         words("My apologies.)"), nl],
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
-    Spec = conditional_spec($pred, warn_unresolved_polymorphism, yes,
-        severity_warning, phase_type_check, [Msg | AnonVarMsgs]),
+    Spec = error_spec($pred, severity_warning(warn_unresolved_polymorphism),
+        phase_type_check, [Msg | AnonVarMsgs]),
     !:Specs = [Spec | !.Specs].
 
 :- type maybe_all_tvars

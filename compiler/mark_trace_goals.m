@@ -44,6 +44,8 @@
 
 :- import_module hlds.hlds_markers.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
@@ -141,7 +143,7 @@ set_goal_contains_trace_features_in_goal(Goal0, Goal, ContainsTrace,
                 Phase = phase_simplify(report_in_any_mode),
                 TracePieces = [words("Warning: this trace goal was")] ++
                     color_as_hint([words("reordered")]) ++
-                    [words("to execute after some goals that occur before it"),
+                    [words("to execute after some goals that follow it"),
                     words("in the text of the program."), nl],
                 LastPieces = [words("This is the location"),
                     words("of the last primitive goal that"),
@@ -155,8 +157,8 @@ set_goal_contains_trace_features_in_goal(Goal0, Goal, ContainsTrace,
                     words("that the trace goal was moved after."), nl],
                 TraceMsg = msg(Context, TracePieces),
                 LastMsg = msg(context(FileName, LastLineNumber), LastPieces),
-                Spec = error_spec($pred, severity_warning, Phase,
-                    [TraceMsg, LastMsg]),
+                Severity = severity_warning(warn_moved_trace_goal),
+                Spec = error_spec($pred, Severity, Phase, [TraceMsg, LastMsg]),
                 !:Specs = [Spec | !.Specs]
             else
                 true

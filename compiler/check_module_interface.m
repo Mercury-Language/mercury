@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2011-2024 The Mercury team.
+% Copyright (C) 2011-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -201,7 +201,8 @@ generate_no_exports_warning(ModuleName, Context, NumIntIncls, !Specs) :-
     Msg = simple_msg(Context,
         [always(AlwaysPieces),
         verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec($pred, severity_warning, phase_t2pt, [Msg]),
+    Spec = error_spec($pred, severity_warning(warn_nothing_exported),
+        phase_t2pt, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%

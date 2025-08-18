@@ -436,7 +436,8 @@ warn_about_pfu_unknown(ModuleInfo, PragmaName, PragmaAllowsModes,
                 quote("func(...)"), suffix(","),
                 words("or by specifying its argument modes.)"), nl]
         ),
-        Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
+        Severity = severity_warning(warn_potentially_ambiguous_pragma),
+        Spec = spec($pred, Severity, phase_pt2h, Context, Pieces),
         Specs = [Spec]
     else
         Specs = []

@@ -76,7 +76,8 @@ report_unknown_format_string(ModuleInfo, PredId, WarnUnknownFormat, Context)
             color_as_incorrect([words("unknown format string")]) ++
             [words("in call to")] ++ PredNameDotPieces ++ [nl],
         Phase = phase_simplify(report_in_any_mode),
-        Spec = spec($pred, severity_warning, Phase, Context, Pieces),
+        Spec = spec($pred, severity_warning(warn_unknown_format_calls), Phase,
+            Context, Pieces),
         Specs = [Spec]
     ).
 
@@ -94,7 +95,8 @@ report_unknown_format_values(ModuleInfo, PredId, WarnUnknownFormat, Context)
                 words("to be formatted")]) ++
             [words("in call to")] ++ PredNameDotPieces ++ [nl],
         Phase = phase_simplify(report_in_any_mode),
-        Spec = spec($pred, severity_warning, Phase, Context, Pieces),
+        Spec = spec($pred, severity_warning(warn_unknown_format_calls), Phase,
+            Context, Pieces),
         Specs = [Spec]
     ).
 
@@ -146,7 +148,8 @@ report_format_mismatch(ModuleInfo, PredId, MaybePos, HeadError, TailErrors,
             words("in call to")] ++ PredNameDotPieces ++ [nl] ++
             ErrorPieces,
         Phase = phase_simplify(report_in_any_mode),
-        Spec = spec($pred, severity_warning, Phase, Context, Pieces),
+        Spec = spec($pred, severity_warning(warn_known_bad_format_calls),
+            Phase, Context, Pieces),
         Specs = [Spec]
     ).
 

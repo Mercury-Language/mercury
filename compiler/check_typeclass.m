@@ -868,8 +868,8 @@ report_unnecessarily_private_instance(ClassId, ConstraintClassIdSet,
         color_as_subject([words("Keeping it private")]) ++
         [words("to this module is therefore")] ++
         color_as_incorrect([words("likely to be a mistake.")]) ++ [nl],
-    Spec = conditional_spec($pred, warn_too_private_instances, yes,
-        severity_warning, phase_pt2h, [msg(Context, Pieces)]),
+    Spec = spec($pred, severity_warning(warn_too_private_instances),
+        phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -1604,14 +1604,16 @@ check_for_missing_concrete_instances_in_class_and_vector(ClassId,
         severity_error, "Error", "imported concrete",
         NonLocalConcretes, MaybeNonLocalConcrete, [], NonLocalConcreteSpecs),
     report_any_duplicate_instance_defns_in_category(ClassId,
-        severity_warning, "Warning", "abstract",
+        severity_warning(warn_duplicate_abstract_instances),
+        "Warning", "abstract",
         LocalAbstracts, MaybeLocalAbstract, !Specs),
     % intermod.m can put an abstract instance declaration into a .opt file
     % even when an interface file contains that same abstract instance.
     % We still want to pick a single abstract nonlocal abstract instance,
     % but we don't want to report duplicates.
     report_any_duplicate_instance_defns_in_category(ClassId,
-        severity_warning, "Warning", "imported abstract",
+        severity_warning(warn_duplicate_abstract_instances),
+        "Warning", "imported abstract",
         NonLocalAbstracts, MaybeNonLocalAbstract, !.Specs, _),
     !:Specs = LocalConcreteSpecs ++ NonLocalConcreteSpecs ++ !.Specs,
 

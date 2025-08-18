@@ -1619,6 +1619,28 @@ Changes to the Mercury compiler
   removed in a future release. This option has not had any effect for a long
   time.
 
+* We have added more options to selectively turn off warnings that were
+  previously not under such control. These options are the following.
+
+    --no-warn-cannot-table
+    --no-warn-disj-fills-partial-inst
+    --no-warn-duplicate-abstract-instances
+    --no-warn-exported-insts-for-private-type
+    --no-warn-missing-descendant-modules
+    --no-warn-missing-state-var-init
+    --no-warn-moved-trace-goal
+    --no-warn-no-auto-parallelisation
+    --no-warn-no-recursion
+    --no-warn-nonexported-pragma
+    --no-warn-requested-by-code
+    --no-warn-requested-by-option
+    --no-warn-subtype-ctor-order
+    --no-warn-typecheck-ambiguity-limit
+    --no-warn-unknown-warning-name
+    --no-warn-unneeded-purity-indicator
+    --no-warn-unneeded-purity-pragma
+    --no-warn-unneeded-purity-pred-decl
+
 Changes to the Mercury debugger
 -------------------------------
 

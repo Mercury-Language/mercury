@@ -2381,8 +2381,8 @@ occurs_check(AncestorVarMap, Var, !UrInfo) :-
                 color_as_incorrect(
                     [words("unified with a term containing itself.")]) ++
                 [nl],
-            Spec = spec($pred, severity_warning, phase_pt2h,
-                AncestorContext, Pieces),
+            Severity = severity_warning(warn_suspected_occurs_check_failure),
+            Spec = spec($pred, Severity, phase_pt2h, AncestorContext, Pieces),
             add_unravel_spec(Spec, !UrInfo)
         )
     else

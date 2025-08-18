@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2022-2024 The Mercury team.
+% Copyright (C) 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -26,10 +26,29 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred sort_error_specs(globals::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-:- pred sort_error_specs_opt_table(option_table::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    % The purpose of standardizing error_specs is to remove differences
+    % between error_specs that exist only in the structure of the error_specs
+    % themselves, as opposed to the text that we output for them.
+    %
+    % For example, the compiler could in theory generate (and once upon a time,
+    % it did generate) error specs that differ in that some error msg
+    % components consist of
+    %
+    % - "always(...)" in one, and
+    % - "option_is_set(OptionName, yes, always(...))" in the other.
+    %
+    % But if OptionName is yes, then this difference has no effect.
+:- pred standardize_error_specs(globals::in,
+    list(error_spec)::in, list(std_error_spec)::out) is det.
+:- pred standardize_error_specs_option_table(option_table::in,
+    list(error_spec)::in, list(std_error_spec)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- pred sort_std_error_specs(globals::in,
+    list(std_error_spec)::in, list(std_error_spec)::out) is det.
+:- pred sort_std_error_specs_opt_table(option_table::in,
+    list(std_error_spec)::in, list(std_error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -38,6 +57,8 @@
 
 :- pred sort_error_msg_groups(list(error_msg_group)::in,
     list(error_msg_group)::out) is det.
+
+%---------------------------------------------------------------------------%
 
 :- func flatten_error_msg_groups(list(error_msg_group)) = list(error_msg).
 :- func flatten_error_msg_group(error_msg_group) = list(error_msg).
@@ -51,8 +72,6 @@
 
 :- implementation.
 
-:- import_module parse_tree.error_util.
-
 :- import_module bool.
 :- import_module cord.
 :- import_module getopt.
@@ -61,100 +80,75 @@
 
 %---------------------------------------------------------------------------%
 
-sort_error_specs(Globals, !Specs) :-
+standardize_error_specs(Globals, Specs, StdSpecs) :-
     globals.get_options(Globals, OptionTable),
-    sort_error_specs_opt_table(OptionTable, !Specs).
+    standardize_error_specs_option_table(OptionTable, Specs, StdSpecs).
 
-sort_error_specs_opt_table(OptionTable, !Specs) :-
-    % The purpose of remove_conditionals_in_spec is to remove differences
-    % between error_specs that exist only in the structure of the error_specs
-    % themselves, as opposed to the text that we output for them.
-    %
-    % For example, the parser can generate two error specs for a bad module
-    % name that differ in two things.
-    %
-    % - The first difference is that one has "severity_error", while the other
-    %   has "severity_conditional(warn_wrong_module_name, yes, severity_error,
-    %   no)". However, since warn_wrong_module_name is yes by default,
-    %   this difference has no effect.
-    %
-    % - The second difference is that some error_msg_components consist of
-    %   "always(...)" in one, and "option_is_set(warn_wrong_module_name, yes,
-    %   always(...))" in the other. But if warn_wrong_module_name is yes,
-    %   this difference has no effect either.
-    %
-    % (The parser should no longer generate duplicate error messages
-    % for bad module names, but we still keep this workaround in place,
-    % since the cost of doing so is trivial.)
-    %
-    list.filter_map(remove_conditionals_in_spec(OptionTable), !Specs),
+standardize_error_specs_option_table(OptionTable, Specs, StdSpecs) :-
+    list.filter_map(remove_conditionals_in_spec(OptionTable),
+        Specs, StdSpecs).
+
+%---------------------------------------------------------------------------%
+
+sort_std_error_specs(Globals, StdSpecs, SortedStdSpecs) :-
+    globals.get_options(Globals, OptionTable),
+    sort_std_error_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs).
+
+sort_std_error_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs) :-
     getopt.lookup_bool_option(OptionTable, reverse_error_order,
         ReverseErrorOrder),
     list.sort_and_remove_dups(
-        compare_error_specs(OptionTable, ReverseErrorOrder),
-        !Specs).
+        compare_std_error_specs(ReverseErrorOrder),
+        StdSpecs, SortedStdSpecs).
 
 :- pred remove_conditionals_in_spec(option_table::in,
-    error_spec::in, error_spec::out) is semidet.
+    error_spec::in, std_error_spec::out) is semidet.
 
-remove_conditionals_in_spec(OptionTable, Spec0, Spec) :-
+remove_conditionals_in_spec(OptionTable, Spec0, StdSpec) :-
     require_det (
         (
             Spec0 = error_spec(Id, Severity0, Phase, Msgs0),
-            MaybeActualSeverity =
-                actual_error_severity_opt_table(OptionTable, Severity0),
+            MaybeStdSeverity = yes(Severity0),
             list.filter_map(remove_conditionals_in_msg(OptionTable),
-                Msgs0, Msgs)
+                Msgs0, StdMsgs)
         ;
             Spec0 = spec(Id, Severity0, Phase, Context0, Pieces0),
-            MaybeActualSeverity =
-                actual_error_severity_opt_table(OptionTable, Severity0),
-            Msgs = [msg(Context0, Pieces0)]
+            MaybeStdSeverity = yes(Severity0),
+            StdMsgs = [error_msg(yes(Context0), treat_based_on_posn, 0u,
+                [always(Pieces0)])]
         ;
             Spec0 = no_ctxt_spec(Id, Severity0, Phase, Pieces0),
-            MaybeActualSeverity =
-                actual_error_severity_opt_table(OptionTable, Severity0),
-            Msgs = [no_ctxt_msg(Pieces0)]
+            MaybeStdSeverity = yes(Severity0),
+            StdMsgs = [error_msg(no, treat_based_on_posn, 0u,
+                [always(Pieces0)])]
         ;
             Spec0 = conditional_spec(Id, Option, MatchValue,
                 Severity0, Phase, Msgs0),
             getopt.lookup_bool_option(OptionTable, Option, OptionValue),
             ( if OptionValue = MatchValue then
-                MaybeActualSeverity =
-                    actual_error_severity_opt_table(OptionTable, Severity0),
-                Msgs = Msgs0
+                MaybeStdSeverity = yes(Severity0),
+                list.filter_map(remove_conditionals_in_msg(OptionTable),
+                    Msgs0, StdMsgs)
             else
-                MaybeActualSeverity = no,
-                Msgs = []
+                MaybeStdSeverity = no,
+                StdMsgs = []
             )
         )
     ),
     ( if
-        MaybeActualSeverity = yes(ActualSeverity),
-        Msgs = [_ | _]
+        MaybeStdSeverity = yes(StdSeverity),
+        StdMsgs = [_ | _]
     then
-        require_det (
-            (
-                ActualSeverity = actual_severity_error,
-                Severity = severity_error
-            ;
-                ActualSeverity = actual_severity_warning,
-                Severity = severity_warning
-            ;
-                ActualSeverity = actual_severity_informational,
-                Severity = severity_informational
-            ),
-            Spec = error_spec(Id, Severity, Phase, Msgs)
-        )
+        StdSpec = error_spec(Id, StdSeverity, Phase, StdMsgs)
     else
         % Spec0 would result in nothing being printed.
         fail
     ).
 
 :- pred remove_conditionals_in_msg(option_table::in,
-    error_msg::in, error_msg::out) is semidet.
+    error_msg::in, std_error_msg::out) is semidet.
 
-remove_conditionals_in_msg(OptionTable, Msg0, Msg) :-
+remove_conditionals_in_msg(OptionTable, Msg0, StdMsg) :-
     require_det (
         (
             Msg0 = msg(Context, Pieces0),
@@ -183,18 +177,21 @@ remove_conditionals_in_msg(OptionTable, Msg0, Msg) :-
             Components0 = [always([blank_line])]
         ),
         list.foldl(remove_conditionals_in_msg_component(OptionTable),
-            Components0, cord.init, ComponentCord),
-        Components = cord.list(ComponentCord),
-        Msg = error_msg(MaybeContext, TreatAsFirst, ExtraIndent, Components)
+            Components0, cord.init, StdComponentCord),
+        StdComponents = cord.list(StdComponentCord),
+        StdMsg = error_msg(MaybeContext, TreatAsFirst,
+            ExtraIndent, StdComponents)
     ),
-    % Don't include the Msg if Components is empty.
-    Components = [_ | _].
+    % Don't return StdMsg if StdComponents is empty.
+    StdComponents = [_ | _].
 
 :- pred remove_conditionals_in_msg_component(option_table::in,
     error_msg_component::in,
-    cord(error_msg_component)::in, cord(error_msg_component)::out) is det.
+    cord(std_error_msg_component)::in, cord(std_error_msg_component)::out)
+    is det.
 
-remove_conditionals_in_msg_component(OptionTable, Component, !ComponentCord) :-
+remove_conditionals_in_msg_component(OptionTable, Component,
+        !StdComponentCord) :-
     (
         Component = option_is_set(Option, MatchValue, EmbeddedComponents),
         % We could recurse down into EmbeddedComponents, but we currently
@@ -203,8 +200,9 @@ remove_conditionals_in_msg_component(OptionTable, Component, !ComponentCord) :-
         % no point.
         getopt.lookup_bool_option(OptionTable, Option, OptionValue),
         ( if OptionValue = MatchValue then
-            !:ComponentCord =
-                !.ComponentCord ++ cord.from_list(EmbeddedComponents)
+            list.foldl(remove_conditionals_in_msg_component(OptionTable),
+                EmbeddedComponents, cord.init, StdEmbeddedComponents),
+            !:StdComponentCord = !.StdComponentCord ++ StdEmbeddedComponents
         else
             true
         )
@@ -221,18 +219,18 @@ remove_conditionals_in_msg_component(OptionTable, Component, !ComponentCord) :-
         ; Component = verbose_only(_, _)
         ; Component = verbose_and_nonverbose(_, _)
         ),
-        !:ComponentCord = cord.snoc(!.ComponentCord, Component)
+        cord.snoc(coerce(Component), !StdComponentCord)
     ).
 
 %---------------------%
 
-:- pred compare_error_specs(option_table::in, bool::in,
-    error_spec::in, error_spec::in, comparison_result::out) is det.
+:- pred compare_std_error_specs(bool::in,
+    std_error_spec::in, std_error_spec::in, comparison_result::out) is det.
 
-compare_error_specs(OptionTable, ReverseErrorOrder, SpecA, SpecB, Result) :-
-    extract_spec_msgs_and_id_opt_table(OptionTable, SpecA, MsgsA, _IdA),
-    extract_spec_msgs_and_id_opt_table(OptionTable, SpecB, MsgsB, _IdB),
-    compare_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, MsgsResult),
+compare_std_error_specs(ReverseErrorOrder, SpecA, SpecB, Result) :-
+    SpecA = error_spec(_, _, _, MsgsA),
+    SpecB = error_spec(_, _, _, MsgsB),
+    compare_std_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, MsgsResult),
     (
         MsgsResult = (=),
         compare(Result, SpecA, SpecB)
@@ -243,10 +241,11 @@ compare_error_specs(OptionTable, ReverseErrorOrder, SpecA, SpecB, Result) :-
         Result = MsgsResult
     ).
 
-:- pred compare_error_msg_lists(bool::in,
-    list(error_msg)::in, list(error_msg)::in, comparison_result::out) is det.
+:- pred compare_std_error_msg_lists(bool::in,
+    list(std_error_msg)::in, list(std_error_msg)::in,
+    comparison_result::out) is det.
 
-compare_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, Result) :-
+compare_std_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, Result) :-
     (
         MsgsA = [],
         MsgsB = [],
@@ -262,12 +261,12 @@ compare_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, Result) :-
     ;
         MsgsA = [HeadMsgA | TailMsgsA],
         MsgsB = [HeadMsgB | TailMsgsB],
-        compare_error_msgs(ReverseErrorOrder, HeadMsgA, HeadMsgB,
-            HeadResult),
+        compare_error_msgs(ReverseErrorOrder,
+            coerce(HeadMsgA), coerce(HeadMsgB), HeadResult),
         (
             HeadResult = (=),
-            compare_error_msg_lists(ReverseErrorOrder, TailMsgsA, TailMsgsB,
-                Result)
+            compare_std_error_msg_lists(ReverseErrorOrder,
+                TailMsgsA, TailMsgsB, Result)
         ;
             ( HeadResult = (>)
             ; HeadResult = (<)

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2022-2024 The Mercury team.
+% Copyright (C) 2022-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -49,6 +49,8 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_type_util.
@@ -72,7 +74,8 @@ report_warning_too_much_overloading(ClauseContext, Context,
         OverloadedSymbolMap) = Spec :-
     Msgs = too_much_overloading_to_msgs(ClauseContext, Context,
         OverloadedSymbolMap, no),
-    Spec = error_spec($pred, severity_warning, phase_type_check, Msgs).
+    Spec = error_spec($pred, severity_warning(warn_typecheck_ambiguity_limit),
+        phase_type_check, Msgs).
 
 report_error_too_much_overloading(ClauseContext, Context,
         OverloadedSymbolMap) = Spec :-

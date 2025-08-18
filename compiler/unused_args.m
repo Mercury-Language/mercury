@@ -1950,8 +1950,8 @@ report_unused_args(_ModuleInfo, PredInfo, UnusedArgs) = Spec :-
         Pieces2 = [words("arguments")] ++ UnusedArgPieces ++
             [words("are")] ++ color_as_incorrect([words("unused.")]) ++ [nl]
     ),
-    Spec = spec($pred, severity_warning, phase_code_gen,
-        Context, Pieces1 ++ Pieces2).
+    Spec = spec($pred, severity_warning(warn_requested_by_option),
+        phase_code_gen, Context, Pieces1 ++ Pieces2).
 
 :- pred maybe_gather_unused_args_pragma(pred_info::in, proc_id::in,
     list(int)::in,

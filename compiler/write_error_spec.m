@@ -225,7 +225,6 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_sort.
-:- import_module parse_tree.error_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_misc.
@@ -261,124 +260,128 @@
 % of write_error_specs, in practice it won't happen.
 
 write_error_spec(Stream, Globals, Spec, !IO) :-
-    globals.get_options(Globals, OptionTable),
-    globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
-    ColorDb = init_color_db(OptionTable),
-    getopt.lookup_maybe_int_option(OptionTable, max_error_line_width,
-        MaybeMaxWidth),
-    do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap,
-        ColorDb, MaybeMaxWidth, Spec, set.init, _, !IO).
+    standardize_error_specs(Globals, [Spec], StdSpecs),
+    (
+        StdSpecs = []
+    ;
+        StdSpecs = [_ | _],
+        globals.get_options(Globals, OptionTable),
+        globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
+        sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
+            StdSpecs, !IO)
+    ).
 
 %---------------------%
 
 write_error_specs(Stream, Globals, Specs0, !IO) :-
+    standardize_error_specs(Globals, Specs0, StdSpecs),
     globals.get_options(Globals, OptionTable),
     globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
-    do_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
-        Specs0, !IO).
+    sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
+        StdSpecs, !IO).
 
 %---------------------%
 
-write_error_specs_opt_table(Stream, OptionTable, Specs0, !IO) :-
+write_error_specs_opt_table(Stream, OptionTable, Specs, !IO) :-
+    standardize_error_specs_option_table(OptionTable, Specs, StdSpecs),
     getopt.lookup_accumulating_option(OptionTable, limit_error_contexts,
         LimitErrorContexts),
     % There is nothing we can usefully do about _BadOptions.
     convert_limit_error_contexts(LimitErrorContexts, _BadOptions,
         LimitErrorContextsMap),
-    do_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
-        Specs0, !IO).
+    sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
+        StdSpecs, !IO).
 
-:- pred do_write_error_specs(io.text_output_stream::in, option_table::in,
-    limit_error_contexts_map::in, list(error_spec)::in, io::di, io::uo) is det.
+%---------------------------------------------------------------------------%
 
-do_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
-        Specs0, !IO) :-
-    sort_error_specs_opt_table(OptionTable, Specs0, Specs),
+:- pred sort_and_write_error_specs(io.text_output_stream::in, option_table::in,
+    limit_error_contexts_map::in, list(std_error_spec)::in,
+    io::di, io::uo) is det.
+
+sort_and_write_error_specs(Stream, OptionTable, LimitErrorContextsMap,
+        StdSpecs, !IO) :-
+    sort_std_error_specs_opt_table(OptionTable, StdSpecs, SortedStdSpecs),
     ColorDb = init_color_db(OptionTable),
     getopt.lookup_maybe_int_option(OptionTable, max_error_line_width,
         MaybeMaxWidth),
     list.foldl2(
         do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap,
             ColorDb, MaybeMaxWidth),
-        Specs, set.init, _, !IO).
+        SortedStdSpecs, set.init, _, !IO).
 
 %---------------------------------------------------------------------------%
 
 :- pred do_write_error_spec(io.text_output_stream::in, option_table::in,
-    limit_error_contexts_map::in, color_db::in, maybe(int)::in, error_spec::in,
+    limit_error_contexts_map::in, color_db::in, maybe(int)::in,
+    std_error_spec::in,
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
 
 do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
-        MaybeMaxWidth, Spec, !AlreadyPrintedVerbose, !IO) :-
+        MaybeMaxWidth, StdSpec, !AlreadyPrintedVerbose, !IO) :-
+    StdSpec = error_spec(Id, Severity, _Phase, StdMsgs1),
     (
-        Spec = error_spec(Id, Severity, _Phase, Msgs1),
-        MaybeActual = actual_error_severity_opt_table(OptionTable, Severity)
+        Severity = severity_error,
+        MaybeActualSeverity = yes(actual_severity_error)
     ;
-        Spec = spec(Id, Severity, _Phase, Context, Pieces),
-        MaybeActual = actual_error_severity_opt_table(OptionTable, Severity),
-        Msgs1 = [msg(Context, Pieces)]
+        Severity = severity_warning(Option),
+        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
+        (
+            OptionValue = no,
+            MaybeActualSeverity = no
+        ;
+            OptionValue = yes,
+            MaybeActualSeverity = yes(actual_severity_warning)
+        )
     ;
-        Spec = no_ctxt_spec(Id, Severity, _Phase, Pieces),
-        MaybeActual = actual_error_severity_opt_table(OptionTable, Severity),
-        Msgs1 = [no_ctxt_msg(Pieces)]
-    ;
-        Spec = conditional_spec(Id, Option, MatchValue,
-            Severity, _Phase, Msgs0),
-        getopt.lookup_bool_option(OptionTable, Option, Value),
-        ( if Value = MatchValue then
-            MaybeActual =
-                actual_error_severity_opt_table(OptionTable, Severity),
-            Msgs1 = Msgs0
-        else
-            MaybeActual = no,
-            Msgs1 = []
+        Severity = severity_informational(Option),
+        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
+        (
+            OptionValue = no,
+            MaybeActualSeverity = no
+        ;
+            OptionValue = yes,
+            MaybeActualSeverity = yes(actual_severity_informational)
         )
     ),
-    maybe_add_error_spec_id(OptionTable, Id, Msgs1, Msgs),
-    collect_msgs(OptionTable, LimitErrorContextsMap, Msgs, treat_as_first,
-        cord.init, AllMsgsCord, do_not_print_spec, MaybePrintSpec,
-        !.AlreadyPrintedVerbose, UpdatedAlreadyPrintedVerbose, !IO),
-    AllMsgs = cord.list(AllMsgsCord),
     (
-        MaybePrintSpec = do_not_print_spec
-        % There may be (and almost certainly will be) some messages in AllMsgs,
-        % but none of them are to be printed. This is
-        %
-        % - why we don't actually print any messages, and
-        % - why we leave !.AlreadyPrintedVerbose as it was before the call
-        %   to collect_msgs.
-        %
-        % XXX The following assertion is commented out because the compiler
-        % can generate error specs that consist only of conditional error
-        % messages whose conditions can all be false (in which case nothing
-        % will be printed). Such specs will cause the assertion to fail if
-        % they have a severity that means something *should* have been
-        % printed out. Error specs like this are generated by --debug-modes.
-        % expect(unify(MaybeActual, no), $pred, "MaybeActual isn't no")
+        MaybeActualSeverity = no
+        % We do not print StdSpec.
     ;
-        MaybePrintSpec = do_print_spec,
-        % If *some* messages in Spec are to be printed, then we print *all*
-        % the messages in Spec, even the ones whose contexts do not fall
-        % into a to-be-printed range.
-        list.foldl(write_msg_pieces(Stream, ColorDb, MaybeMaxWidth),
-            AllMsgs, !IO),
-        !:AlreadyPrintedVerbose = UpdatedAlreadyPrintedVerbose,
-        set_wrote_something(yes, !IO),
+        MaybeActualSeverity = yes(ActualSeverity),
+        % We do print StdSpec.
+        maybe_add_error_spec_id_std(OptionTable, Id, StdMsgs1, StdMsgs),
+        collect_msgs(OptionTable, LimitErrorContextsMap, StdMsgs,
+            treat_as_first, cord.init, AllMsgsCord,
+            do_not_print_spec, MaybePrintSpec,
+            !.AlreadyPrintedVerbose, UpdatedAlreadyPrintedVerbose, !IO),
         (
-            MaybeActual = yes(Actual),
+            MaybePrintSpec = do_not_print_spec
+            % There may be (and almost certainly will be) some messages
+            % in AllMsgsCord, but none of them are to be printed. This is
+            %
+            % - why we don't actually print any messages, and
+            % - why we leave !.AlreadyPrintedVerbose as it was before the call
+            %   to collect_msgs.
+        ;
+            MaybePrintSpec = do_print_spec,
+            % If *some* messages in Spec are to be printed, then we print *all*
+            % the messages in Spec, even the ones whose contexts do not fall
+            % into a to-be-printed range.
+            AllMsgs = cord.list(AllMsgsCord),
+            list.foldl(write_msg_pieces(Stream, ColorDb, MaybeMaxWidth),
+                AllMsgs, !IO),
+            !:AlreadyPrintedVerbose = UpdatedAlreadyPrintedVerbose,
+            set_wrote_something(yes, !IO),
             (
-                Actual = actual_severity_error,
+                ActualSeverity = actual_severity_error,
                 io.set_exit_status(1, !IO)
             ;
-                Actual = actual_severity_warning,
+                ActualSeverity = actual_severity_warning,
                 record_warning_opt_table(OptionTable, !IO)
             ;
-                Actual = actual_severity_informational
+                ActualSeverity = actual_severity_informational
             )
-        ;
-            MaybeActual = no,
-            unexpected($pred, "printed_something but MaybeActual = no")
         )
     ).
 
@@ -395,7 +398,7 @@ do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
 :- type already_printed_verbose == set(list(format_piece)).
 
 :- pred collect_msgs(option_table::in, limit_error_contexts_map::in,
-    list(error_msg)::in, maybe_treat_as_first::in,
+    list(std_error_msg)::in, maybe_treat_as_first::in,
     cord(msg_pieces)::in, cord(msg_pieces)::out,
     maybe_print_spec::in, maybe_print_spec::out,
     already_printed_verbose::in, already_printed_verbose::out,
@@ -403,34 +406,10 @@ do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, ColorDb,
 
 collect_msgs(_, _, [], _,
         !MsgsCord, !MaybePrintSpec, !AlreadyPrintedVerbose, !IO).
-collect_msgs(OptionTable, LimitErrorContextsMap, [Msg | Msgs], !.First,
+collect_msgs(OptionTable, LimitErrorContextsMap, [StdMsg | StdMsgs], !.First,
         !MsgsCord, !MaybePrintSpec, !AlreadyPrintedVerbose, !IO) :-
-    (
-        Msg = msg(SimpleContext, Pieces0),
-        Components = [always(Pieces0)],
-        MaybeContext = yes(SimpleContext),
-        TreatAsFirst = treat_based_on_posn,
-        Indent = 0u
-    ;
-        Msg = no_ctxt_msg(Pieces0),
-        Components = [always(Pieces0)],
-        MaybeContext = no,
-        TreatAsFirst = treat_based_on_posn,
-        Indent = 0u
-    ;
-        Msg = simple_msg(SimpleContext, Components),
-        MaybeContext = yes(SimpleContext),
-        TreatAsFirst = treat_based_on_posn,
-        Indent = 0u
-    ;
-        Msg = error_msg(MaybeContext, TreatAsFirst, ExtraIndent, Components),
-        Indent = ExtraIndent * indent2_increment
-    ;
-        Msg = blank_msg(MaybeContext),
-        Components = [always([blank_line])],
-        TreatAsFirst = treat_based_on_posn,
-        Indent = 0u
-    ),
+    StdMsg = error_msg(MaybeContext, TreatAsFirst, ExtraIndent, StdComponents),
+    Indent = ExtraIndent * indent2_increment,
     (
         TreatAsFirst = always_treat_as_first,
         !:First = treat_as_first
@@ -438,7 +417,7 @@ collect_msgs(OptionTable, LimitErrorContextsMap, [Msg | Msgs], !.First,
         TreatAsFirst = treat_based_on_posn
         % Leave !:First as it is, even if it is treat_as_first.
     ),
-    collect_msg_components(OptionTable, Components,
+    collect_msg_components(OptionTable, StdComponents,
         cord.init, PiecesCord, !AlreadyPrintedVerbose, !IO),
     Pieces = cord.list(PiecesCord),
     should_this_msg_be_printed(LimitErrorContextsMap, !.First, Indent,
@@ -457,7 +436,7 @@ collect_msgs(OptionTable, LimitErrorContextsMap, [Msg | Msgs], !.First,
         !:MaybePrintSpec = do_print_spec
     ),
     !:First = do_not_treat_as_first,
-    collect_msgs(OptionTable, LimitErrorContextsMap, Msgs, !.First,
+    collect_msgs(OptionTable, LimitErrorContextsMap, StdMsgs, !.First,
         !MsgsCord, !MaybePrintSpec, !AlreadyPrintedVerbose, !IO).
 
 %---------------------------------------------------------------------------%
@@ -468,7 +447,8 @@ collect_msgs(OptionTable, LimitErrorContextsMap, [Msg | Msgs], !.First,
     % *only* so that we can record in an I/O-linked mutable the fact that
     % the verbose components of some messages are not marked to be printed.
     %
-:- pred collect_msg_components(option_table::in, list(error_msg_component)::in,
+:- pred collect_msg_components(option_table::in,
+    list(std_error_msg_component)::in,
     cord(format_piece)::in, cord(format_piece)::out,
     already_printed_verbose::in, already_printed_verbose::out,
     io::di, io::uo) is det.
@@ -479,15 +459,6 @@ collect_msg_components(OptionTable, [Component | Components],
     (
         Component = always(Pieces),
         !:PiecesCord = !.PiecesCord ++ cord.from_list(Pieces)
-    ;
-        Component = option_is_set(Option, MatchValue, EmbeddedComponents),
-        getopt.lookup_bool_option(OptionTable, Option, OptionValue),
-        ( if OptionValue = MatchValue then
-            collect_msg_components(OptionTable, EmbeddedComponents,
-                !PiecesCord, !AlreadyPrintedVerbose, !IO)
-        else
-            true
-        )
     ;
         Component = verbose_only(AlwaysOrOnce, Pieces),
         getopt.lookup_bool_option(OptionTable, verbose_errors, VerboseErrors),

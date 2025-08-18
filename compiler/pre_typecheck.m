@@ -424,9 +424,8 @@ warn_about_any_unneeded_initial_statevars(PredInfo, HeadVars,
                 color_as_incorrect([words("never updated")]) ++
                 [words("in this clause, so it should be"),
                 words("replaced with an ordinary variable."), nl],
-            Spec = conditional_spec($pred,
-                warn_unneeded_initial_statevars, yes,
-                severity_warning, phase_pt2h, [msg(ClauseContext, Pieces)]),
+            Severity = severity_warning(warn_unneeded_initial_statevars),
+            Spec = spec($pred, Severity, phase_pt2h, ClauseContext, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -571,8 +570,8 @@ warn_about_unneeded_final_statevar(PredInfo, HeadClauseContext, TailClauses,
         color_as_incorrect([words("could be deleted,")]) ++
         [words("because its value")] ++ InEachClausePieces ++
         [words("is always the same as its initial value."), nl],
-    Spec = conditional_spec($pred, warn_unneeded_final_statevars, yes,
-        severity_warning, phase_pt2h, [msg(HeadClauseContext, Pieces)]),
+    Spec = spec($pred, severity_warning(warn_unneeded_final_statevars),
+        phase_pt2h, HeadClauseContext, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred warn_about_unneeded_initial_final_statevar(pred_info::in,
@@ -599,8 +598,8 @@ warn_about_unneeded_initial_final_statevar(PredInfo, HeadClauseContext,
         [words("because they are not used")] ++ InAnyClausePieces ++
         [suffix(","), words("and because the final value"),
         words("is always the same as the initial value."), nl],
-    Spec = conditional_spec($pred, warn_unneeded_final_statevars, yes,
-        severity_warning, phase_pt2h, [msg(HeadClauseContext, Pieces)]),
+    Spec = spec($pred, severity_warning(warn_unneeded_final_statevars),
+        phase_pt2h, HeadClauseContext, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%

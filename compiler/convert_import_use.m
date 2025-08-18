@@ -357,8 +357,8 @@ report_duplicate_avail_context(Section, DeclName, ModuleName, PrevContext,
         decl(DeclName), words("declaration was here."), nl],
     DupMsg = msg(DuplicateContext, DupPieces),
     PrevMsg = msg(PrevContext, PrevPieces),
-    Spec = conditional_spec($pred, warn_simple_code, yes,
-        severity_warning, phase_pt2h, [DupMsg, PrevMsg]),
+    Spec = error_spec($pred, severity_warning(warn_simple_code), phase_pt2h,
+        [DupMsg, PrevMsg]),
     !:Specs = [Spec | !.Specs].
 
 :- pred record_int_import(module_name::in, prog_context::in,
@@ -388,8 +388,8 @@ record_int_use(ModuleName, Context, !ImportUseMap, !Specs) :-
                 decl("use_module"), words("declaration was here."), nl],
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
-            Spec = conditional_spec($pred, warn_simple_code, yes,
-                severity_warning, phase_pt2h, [DupMsg, PrevMsg]),
+            Spec = error_spec($pred, severity_warning(warn_simple_code),
+                phase_pt2h, [DupMsg, PrevMsg]),
             !:Specs = [Spec | !.Specs]
         ;
             ( OldEntry = int_use(_)
@@ -426,8 +426,8 @@ record_imp_import(ModuleName, Context, !ImportUseMap, !Specs) :-
                 decl("import_module"), words("declaration was here."), nl],
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
-            Spec = conditional_spec($pred, warn_simple_code, yes,
-                severity_warning, phase_pt2h, [DupMsg, PrevMsg]),
+            Spec = error_spec($pred, severity_warning(warn_simple_code),
+                phase_pt2h, [DupMsg, PrevMsg]),
             !:Specs = [Spec | !.Specs]
         ;
             OldEntry = int_use(IntUseContext),
@@ -494,8 +494,8 @@ record_imp_use(ModuleName, Context, !ImportUseMap, !Specs) :-
                 decl(PrevDeclName), words("declaration was here."), nl],
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
-            Spec = conditional_spec($pred, warn_simple_code, yes,
-                severity_warning, phase_pt2h, [DupMsg, PrevMsg]),
+            Spec = error_spec($pred, severity_warning(warn_simple_code),
+                phase_pt2h, [DupMsg, PrevMsg]),
             !:Specs = [Spec | !.Specs]
         ;
             OldEntry = imp_use(_),
@@ -545,8 +545,8 @@ record_imp_use_only(ModuleName, Context, !UseMap, !Specs) :-
                 words("declaration is here."), nl],
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
-            Spec = conditional_spec($pred, warn_simple_code, yes,
-                severity_warning, phase_pt2h, [DupMsg, PrevMsg]),
+            Spec = error_spec($pred, severity_warning(warn_simple_code),
+                phase_pt2h, [DupMsg, PrevMsg]),
             !:Specs = [Spec | !.Specs]
         ;
             OldEntry = imp_use(_),
@@ -581,8 +581,8 @@ warn_if_avail_for_self(ModuleName, !SectionImportOrUseMap, !Specs) :-
                 words("declaration for itself!")]) ++
             [nl],
         Msg = msg(Context, Pieces),
-        Spec = conditional_spec($pred, warn_simple_code, yes,
-            severity_warning, phase_pt2h, [Msg]),
+        Spec = error_spec($pred, severity_warning(warn_simple_code),
+            phase_pt2h, [Msg]),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -613,8 +613,8 @@ warn_if_avail_for_ancestor(ModuleName, AncestorName,
             words("There is no need to explicitly import them."), nl],
         Msg = simple_msg(Context,
             [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
-        Spec = conditional_spec($pred, warn_simple_code, yes,
-            severity_warning, phase_pt2h, [Msg]),
+        Spec = error_spec($pred, severity_warning(warn_simple_code),
+            phase_pt2h, [Msg]),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -793,7 +793,8 @@ generate_unsorted_avail_block_warnings(FileName, PrevImportUseLine,
             decl(PrevAvailDecl), words("declaration for module"),
             quote(PrevModuleNameStr), suffix("."), nl],
         Context = context(FileName, CurLineNum),
-        Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
+        Spec = spec($pred, severity_warning(warn_unsorted_import_blocks),
+            phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else if
         CurLineNum = PrevLineNum + 1,
@@ -807,7 +808,8 @@ generate_unsorted_avail_block_warnings(FileName, PrevImportUseLine,
             decl(PrevAvailDecl), words("declaration for module"),
             quote(PrevModuleNameStr), suffix("."), nl],
         Context = context(FileName, CurLineNum),
-        Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
+        Spec = spec($pred, severity_warning(warn_unsorted_import_blocks),
+            phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true

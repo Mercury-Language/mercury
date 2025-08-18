@@ -203,8 +203,8 @@ typecheck_goal(Goal0, Goal, EnclosingContext, !TypeAssignSet, !Info) :-
     % unification of a variable with a function symbol that matches N type
     % declarations, we make N copies of the existing set of type assignments.
     % The consequence is that the worst case complexity of our algorithm,
-    % is exponential in the number of ambiguous symbols. Unfortunately,
-    % this is true for space complexity as well as time complexity,
+    % for both time and space, is exponential in the number of ambiguous
+    % symbols.
     %
     % We issue a warning whenever the number of type assignments exceeds
     % the warn limit, and stop typechecking (after generating an error)
