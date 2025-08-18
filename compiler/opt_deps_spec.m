@@ -54,6 +54,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module string.builder.
 :- import_module term.
 :- import_module term_context.
 :- import_module varset.
@@ -534,8 +535,10 @@ output_module_order(ProgressStream, Globals, ModuleName, ExtCur,
     io.open_output(OrdFileName, OrdResult, !IO),
     (
         OrdResult = ok(OrdStream),
-        io.write_list(OrdStream, DepsOrdering, "\n\n",
-            write_module_scc(OrdStream), !IO),
+        State0 = string.builder.init,
+        add_module_sccs(DepsOrdering, State0, State),
+        DepsOrderingStr = string.builder.to_string(State),
+        io.write_string(OrdStream, DepsOrderingStr, !IO),
         io.close_output(OrdStream, !IO),
         maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
     ;
@@ -548,14 +551,40 @@ output_module_order(ProgressStream, Globals, ModuleName, ExtCur,
         report_error(ProgressStream, OrdMessage, !IO)
     ).
 
-:- pred write_module_scc(io.text_output_stream::in, set(module_name)::in,
-    io::di, io::uo) is det.
+:- pred add_module_sccs(list(set(module_name))::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_module_scc(Stream, SCC0, !IO) :-
+add_module_sccs([], !SB).
+add_module_sccs([HeadSCC | TailSCCs], !SB) :-
+    add_module_sccs_lag(HeadSCC, TailSCCs, !SB).
+
+:- pred add_module_sccs_lag(set(module_name)::in, list(set(module_name))::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+add_module_sccs_lag(HeadSCC, TailSCCs, !SB) :-
+    add_module_scc(HeadSCC, !SB),
+    (
+        TailSCCs = []
+    ;
+        TailSCCs = [HeadTailSCC | TailTailSCCs],
+        % Add a blank line between SCCs.
+        append_char('\n', !SB),
+        add_module_sccs_lag(HeadTailSCC, TailTailSCCs, !SB)
+    ).
+
+:- pred add_module_scc(set(module_name)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+add_module_scc(SCC0, !SB) :-
     set.to_sorted_list(SCC0, SCC),
-    % XXX This is suboptimal (the stream should be specified once, not twice),
-    % but in the absence of a test case, I (zs) am leaving it alone for now.
-    io.write_list(Stream, SCC, "\n", write_escaped_sym_name(Stream), !IO).
+    list.foldl(add_module_name, SCC, !SB).
+
+:- pred add_module_name(module_name::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+add_module_name(ModuleName, !SB) :-
+    format_escaped_sym_name(string.builder.handle, ModuleName, !SB),
+    append_char('\n', !SB).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.opt_deps_spec.
