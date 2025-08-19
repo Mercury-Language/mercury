@@ -226,13 +226,12 @@ what code it should operate on.
 @node Option arguments
 @subsection Option arguments
 
-The Mercury compiler follows the usual GNU conventions around options,
-which are themselves based on Unix conventions.
-(Some of its options (e.g.@: @samp{-c}, @samp{-o}, and @samp{-I})
+The Mercury compiler follows the usual Unix conventions around options.
+Some of its options (e.g.@: @samp{-c}, @samp{-o}, and @samp{-I})
 have a similar meaning to that in compilers for other languages, 
-though of course most are specific to Mercury.)
+though of course most are specific to Mercury.
 
-Like most other GNU programs, it supports both
+Like many other programs, the Mercury compiler supports both
 short (single-character) and long (multi-character) option names.
 
 On command lines, an option argument that starts with @samp{--}
@@ -2221,7 +2220,7 @@ which computes safe approximations to the set of exceptions
 that each predicate or function can possibly throw.
 These approximations do not refer to the identities of specific exceptions,
 but they are nevertheless useful,
-becayse if this approximation is the empty set,
+because if this approximation is the empty set,
 then we know for sure that
 the predicate or function cannot throw any exception.
 (An approximation can overestimate
@@ -2353,21 +2352,31 @@ mmc --make-transitive-optimization-interface @var{module_1}.m @var{module_2}.m @
 ZZZ TODO
 
 After you have made all the interface files,
-one way to create an executable for a multi-module program
-is to compile all the modules at the same time
-using the command
+and any @file{.opt} and maybe @file{.trans_opt} files
+needed by your intermodule optimization options,
+you are ready to create an executable.
+
+One way to create an executable for a multi-module program
+is to compile all the modules at the same time,
+using a command such as
 
 @example
-mmc @var{filename1}.m @var{filename2}.m @dots{}
+mmc @file{@var{main_module}.m} @file{@var{module_1}.m} @file{@var{module_3}.m} @dots{}
 @end example
 
-This will by default put the resulting executable in @file{@var{filename1}},
+where @file{var{main_module}.m} should be the module that
+defines the predicate that serves as the program entry point, @code{main/2}.
+This command will put the resulting executable
+in the file named @file{@var{main_module}} by default ,
 though you can use the @samp{-o @var{filename}} option
-to specify a different name for the output file, if you so desire.
+to specify a different name for it, if you wish.
 @findex -o
 
 The other way to create an executable for a multi-module program
-is to compile each module separately using @samp{mmc -c},
+is to compile each module separately.
+When targeting C,
+
+using @samp{mmc -c},
 @findex -c
 and then link the resulting object files together.
 The linking is a two stage process.
@@ -2418,6 +2427,8 @@ would put the executable into the file @file{a.out}.
 @samp{mmc} and @samp{ml} both accept a @samp{-v} (verbose) option.
 You can use that option to see what is actually going on.
 For the full set of options of @samp{mmc}, see @ref{Invocation}.
+
+ZZZ TODO add pointer, or text, about creating libraries
 
 @c ----------------------------------------------------------------------------
 
