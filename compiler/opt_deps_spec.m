@@ -67,6 +67,9 @@ compute_opt_trans_opt_deps_graph(ProgressStream, Globals, ModuleName,
     globals.lookup_bool_option(Globals, generate_module_order, OutputOrder),
     (
         OutputOrder = yes,
+        % Note that we output the contents of ImpDepsGraph here,
+        % but we also output the contents of TransOptDepsGraph below,
+        % once we have computed it.
         ImpDepsOrdering = digraph.return_sccs_in_from_to_order(ImpDepsGraph),
         output_module_order(ProgressStream, Globals, ModuleName,
             ext_cur_user_order, ImpDepsOrdering, !IO)
@@ -82,7 +85,11 @@ compute_opt_trans_opt_deps_graph(ProgressStream, Globals, ModuleName,
     % and assume that the each module's `.opt' file might import any
     % of that module's implementation dependencies; in actual fact,
     % it will be some subset of that.
-    digraph.tc(ImpDepsGraph, IndirectOptDepsGraph),
+    %
+    % Note that IndirectOptDepsGraph is needed on only two of the three
+    % paths through the nested if-then-else below. This is why we compile
+    % this module with --unneeded-code.
+    IndirectOptDepsGraph = digraph.transitive_closure(ImpDepsGraph),
 
     % Compute the trans-opt deps for the purpose of making `.trans_opt'
     % files. This is normally equal to the transitive closure of the
@@ -118,16 +125,15 @@ compute_opt_trans_opt_deps_graph(ProgressStream, Globals, ModuleName,
         MaybeSpecFileName),
     (
         MaybeSpecFileName = yes(SpecFileName),
-        read_trans_opt_deps_spec_file(SpecFileName, MaybeEdgesToRemove,
-            !IO),
+        read_trans_opt_deps_spec_file(SpecFileName, MaybeEdgesToRemove, !IO),
         (
             MaybeEdgesToRemove = ok1(EdgesToRemove),
             report_unknown_module_names_in_deps_spec(ImpDepsGraph,
                 EdgesToRemove, UnknownModuleSpecs),
             !:Specs = UnknownModuleSpecs ++ !.Specs,
-            apply_trans_opt_deps_spec(EdgesToRemove, ImpDepsGraph,
-                TransOptDepsGraph0),
-            digraph.tc(TransOptDepsGraph0, TransOptDepsGraph)
+            apply_trans_opt_deps_spec(EdgesToRemove,
+                ImpDepsGraph, TrimmedImpDepsGraph),
+            TransOptDepsGraph = digraph.transitive_closure(TrimmedImpDepsGraph)
         ;
             MaybeEdgesToRemove = error1(EdgeSpecs),
             !:Specs = EdgeSpecs ++ !.Specs,
