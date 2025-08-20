@@ -2364,7 +2364,7 @@ using a command such as
 mmc @file{@var{main_module}.m} @file{@var{module_1}.m} @file{@var{module_3}.m} @dots{}
 @end example
 
-where @file{var{main_module}.m} should be the module that
+where @file{@var{main_module}.m} should be the module that
 defines the predicate that serves as the program entry point, @code{main/2}.
 This command will put the resulting executable
 in the file named @file{@var{main_module}} by default ,
