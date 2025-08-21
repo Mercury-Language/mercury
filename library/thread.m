@@ -251,7 +251,7 @@ can_spawn :-
     can_spawn_context,
     [will_not_call_mercury, promise_pure, thread_safe, may_not_duplicate],
 "
-#if !defined(MR_HIGHLEVEL_CODE)
+#if !defined(MR_HIGHLEVEL_CODE) && defined(MR_THREAD_SAFE)
     SUCCESS_INDICATOR = MR_TRUE;
 #else
     SUCCESS_INDICATOR = MR_FALSE;

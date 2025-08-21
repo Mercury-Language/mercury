@@ -1226,16 +1226,8 @@ current_grade_supports_concurrency(Globals, ThreadsSupported) :-
     globals.get_target(Globals, Target),
     (
         Target = target_c,
-        globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-        % In high-level C grades we only support threads in .par grades.
-        (
-            HighLevelCode = no,
-            ThreadsSupported = yes
-        ;
-            HighLevelCode = yes,
-            globals.lookup_bool_option(Globals, parallel, Parallel),
-            ThreadsSupported = Parallel
-        )
+        globals.lookup_bool_option(Globals, parallel, Parallel),
+        ThreadsSupported = Parallel
     ;
         ( Target = target_java
         ; Target = target_csharp

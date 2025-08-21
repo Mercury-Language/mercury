@@ -2076,7 +2076,8 @@ optdb(oc_grade_etc, parallel,                          bool(no),
             "(grade modifier: @samp{.par})", [
         cindex(".par (grade modifier"),
         % XXX These two should be *different* grade modifiers.
-        w("Enable parallel execution support for the low-level C grades."),
+        w("Enable concurrency and parallel conjunction support for the"),
+        w("low-level C grades."),
         w("Enable concurrency (via pthreads) for the high-level C grades.")])).
 optdb(oc_grade_etc, maybe_thread_safe_opt,             string("no"),
     % XXX How is a yes/no argument better than a no- prefix?

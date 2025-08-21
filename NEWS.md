@@ -100,6 +100,9 @@ Changes that may break compatibility
 * We have replaced the `--no-warn-only-one-format-string-error` compiler
   option with the new option named `--warn-all-format-string-errors`.
 
+* We have disabled support for concurrency in non-parallel low-level C grades.
+  It was never useful for anything other than trivial programs.
+
 Changes to the Mercury standard library
 ---------------------------------------
 

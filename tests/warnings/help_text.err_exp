@@ -571,8 +571,8 @@ Grade options
         floats. This option is supported only when targeting C.
 
     --parallel                          (grade modifier: `.par')
-        Enable parallel execution support for the low-level C grades. Enable
-        concurrency (via pthreads) for the high-level C grades.
+        Enable concurrency and parallel conjunction support for the low-level C
+        grades. Enable concurrency (via pthreads) for the high-level C grades.
 
     --maybe-thread-safe {yes, no}
         Specify how the compiler should treat the `maybe_thread_safe' foreign
