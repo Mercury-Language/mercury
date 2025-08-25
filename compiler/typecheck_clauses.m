@@ -919,7 +919,8 @@ typecheck_lambda_var_has_type_2([TypeAssign0 | TypeAssignSet0], Purity,
     type_assign_get_types_of_vars(ArgVars, ArgVarTypes,
         TypeAssign0, TypeAssign1),
     construct_higher_order_type(Purity, PredOrFunc, ArgVarTypes, LambdaType),
-    type_assign_var_has_type(TypeAssign1, Var, LambdaType, !TypeAssignSet),
+    acc_type_assign_if_var_can_have_type(TypeAssign1, Var, LambdaType,
+        !TypeAssignSet),
     typecheck_lambda_var_has_type_2(TypeAssignSet0,
         Purity, PredOrFunc, Var, ArgVars, !TypeAssignSet).
 
@@ -1140,7 +1141,8 @@ typecheck_vars_have_types_in_arg_vector(Info, Context, ArgVectorKind, ArgNum,
 typecheck_var_has_type_in_arg_vector(Info, Context, ArgVectorKind, ArgNum,
         Var, Type, TypeAssignSet0, TypeAssignSet, !Specs,
         !MaybeArgVectorTypeErrors) :-
-    typecheck_var_has_type_2(TypeAssignSet0, Var, Type, [], TypeAssignSet1),
+    keep_type_assigns_where_var_can_have_type(Var, Type,
+        TypeAssignSet0, TypeAssignSet1),
     ( if
         TypeAssignSet1 = [],
         TypeAssignSet0 = [_ | _]
@@ -1188,7 +1190,8 @@ typecheck_var_has_stm_atomic_type(Context, Var, !TypeAssignSet, !Info) :-
 
 typecheck_var_has_type(GoalContext, Context, Var, Type,
         TypeAssignSet0, TypeAssignSet, !Info) :-
-    typecheck_var_has_type_2(TypeAssignSet0, Var, Type, [], TypeAssignSet1),
+    keep_type_assigns_where_var_can_have_type(Var, Type,
+        TypeAssignSet0, TypeAssignSet1),
     ( if
         TypeAssignSet1 = [],
         TypeAssignSet0 = [_ | _]
@@ -1201,15 +1204,6 @@ typecheck_var_has_type(GoalContext, Context, Var, Type,
     else
         TypeAssignSet = TypeAssignSet1
     ).
-
-:- pred typecheck_var_has_type_2(type_assign_set::in, prog_var::in,
-    mer_type::in, type_assign_set::in, type_assign_set::out) is det.
-
-typecheck_var_has_type_2([], _, _, !TypeAssignSet).
-typecheck_var_has_type_2([TypeAssign0 | TypeAssigns0], Var, Type,
-        !TypeAssignSet) :-
-    type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet),
-    typecheck_var_has_type_2(TypeAssigns0, Var, Type, !TypeAssignSet).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

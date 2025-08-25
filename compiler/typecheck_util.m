@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2021, 2023-2024 The Mercury team.
+% Copyright (C) 2014-2021, 2023-2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -33,17 +33,27 @@
 :- pred type_assign_fresh_type_var(prog_var::in, mer_type::out,
     type_assign::in, type_assign::out) is det.
 
+%---------------------------------------------------------------------------%
+
     % Unify (with occurs check) two types in a type assignment
     % and update the type bindings.
     %
 :- pred type_assign_unify_type(mer_type::in, mer_type::in,
     type_assign::in, type_assign::out) is semidet.
 
+%---------------------------------------------------------------------------%
+
 :- pred type_assign_rename_apart(type_assign::in, tvarset::in,
     list(mer_type)::in, type_assign::out, list(mer_type)::out,
     tvar_renaming::out) is det.
 
-:- pred type_assign_var_has_type(type_assign::in, prog_var::in, mer_type::in,
+%---------------------------------------------------------------------------%
+
+:- pred keep_type_assigns_where_var_can_have_type(prog_var::in, mer_type::in,
+    type_assign_set::in, type_assign_set::out) is det.
+
+:- pred acc_type_assign_if_var_can_have_type(type_assign::in,
+    prog_var::in, mer_type::in,
     type_assign_set::in, type_assign_set::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -123,7 +133,23 @@ type_assign_rename_apart(TypeAssign0, PredTypeVarSet, PredArgTypes,
 
 %---------------------------------------------------------------------------%
 
-type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
+keep_type_assigns_where_var_can_have_type(Var, Type, !TypeAssignSet) :-
+    acc_type_assigns_where_var_can_have_type(!.TypeAssignSet, Var, Type,
+        [], !:TypeAssignSet).
+
+:- pred acc_type_assigns_where_var_can_have_type(type_assign_set::in,
+    prog_var::in, mer_type::in,
+    type_assign_set::in, type_assign_set::out) is det.
+
+acc_type_assigns_where_var_can_have_type([], _, _, !TypeAssignSet).
+acc_type_assigns_where_var_can_have_type([TypeAssign0 | TypeAssigns0],
+        Var, Type, !TypeAssignSet) :-
+    acc_type_assign_if_var_can_have_type(TypeAssign0, Var, Type,
+        !TypeAssignSet),
+    acc_type_assigns_where_var_can_have_type(TypeAssigns0,
+        Var, Type, !TypeAssignSet).
+
+acc_type_assign_if_var_can_have_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
     type_assign_get_var_types(TypeAssign0, VarTypes0),
     search_insert_var_type(Var, Type, MaybeOldVarType, VarTypes0, VarTypes),
     (

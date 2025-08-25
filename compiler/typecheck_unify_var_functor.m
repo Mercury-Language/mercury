@@ -895,7 +895,8 @@ type_assign_vars_have_types(_, _, [_ | _], [], _, _) :-
     unexpected($pred, "length mismatch").
 type_assign_vars_have_types(Info, TypeAssign0,
         [ArgVar | ArgVars], [Type | Types], TypeAssignSet0, TypeAssignSet) :-
-    type_assign_var_has_type(TypeAssign0, ArgVar, Type, [], TypeAssignSet1),
+    acc_type_assign_if_var_can_have_type(TypeAssign0, ArgVar, Type,
+        [], TypeAssignSet1),
     type_assigns_vars_have_types(Info, TypeAssignSet1,
         ArgVars, Types, TypeAssignSet0, TypeAssignSet).
 
