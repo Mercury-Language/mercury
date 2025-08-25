@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1998-2008, 2011 The University of Melbourne.
-// Copyright (C) 2013-2016, 2018 The Mercury team.
+// Copyright (C) 2013-2016, 2018, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module implements the mdb commands in the "developer" category.
@@ -369,8 +369,8 @@ MR_trace_cmd_subgoal(char **words, int word_count, MR_TraceCmdInfo *cmd,
 #ifdef  MR_USE_MINIMAL_MODEL_STACK_COPY
 
     MR_SubgoalDebug *subgoal_debug;
-    MR_Subgoal  *subgoal;
-    int     n;
+    MR_Subgoal      *subgoal;
+    MR_Unsigned     n;
 
     if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         MR_trace_init_modules();
@@ -403,7 +403,7 @@ MR_trace_cmd_consumer(char **words, int word_count, MR_TraceCmdInfo *cmd,
 
     MR_ConsumerDebug    *consumer_debug;
     MR_Consumer         *consumer;
-    int                 n;
+    MR_Unsigned         n;
 
     if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         MR_trace_init_modules();

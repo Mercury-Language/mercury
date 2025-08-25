@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2003-2006 The University of Melbourne.
-// Copyright (C) 2016, 2018 The Mercury team.
+// Copyright (C) 2016, 2018, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_minimal_model.h - definitions of some basic stuff used for the stack
@@ -189,14 +189,15 @@ extern  const MR_ProcLayout *MR_subgoal_debug_cur_proc;
 
 extern  void        MR_enter_consumer_debug(MR_Consumer *consumer);
 extern  MR_ConsumerDebug *MR_lookup_consumer_debug_addr(MR_Consumer *consumer);
-extern  MR_ConsumerDebug *MR_lookup_consumer_debug_num(int consumer_index);
+extern  MR_ConsumerDebug *MR_lookup_consumer_debug_num(
+                        MR_Unsigned consumer_index);
 extern  const char  *MR_consumer_debug_name(MR_ConsumerDebug *consumer_dbg);
 extern  const char  *MR_consumer_addr_name(MR_Consumer *consumer);
-extern  const char  *MR_consumer_num_name(int consumer_index);
+extern  const char  *MR_consumer_num_name(MR_Unsigned consumer_index);
 
 extern  void        MR_enter_subgoal_debug(MR_Subgoal *subgoal);
 extern  MR_SubgoalDebug *MR_lookup_subgoal_debug_addr(MR_Subgoal *subgoal);
-extern  MR_SubgoalDebug *MR_lookup_subgoal_debug_num(int subgoal_index);
+extern  MR_SubgoalDebug *MR_lookup_subgoal_debug_num(MR_Unsigned subgoal_index);
 extern  const char  *MR_subgoal_debug_name(MR_SubgoalDebug *subgoal_debug);
 extern  const char  *MR_subgoal_addr_name(MR_Subgoal *subgoal);
 extern  const char  *MR_subgoal_num_name(int subgoal_index);

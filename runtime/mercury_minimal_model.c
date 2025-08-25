@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2003-2006 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2025 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module contains the functions related specifically to the stack copy
@@ -188,9 +188,9 @@ MR_lookup_consumer_debug_addr(MR_Consumer *consumer)
 }
 
 MR_ConsumerDebug *
-MR_lookup_consumer_debug_num(int consumer_index)
+MR_lookup_consumer_debug_num(MR_Unsigned consumer_index)
 {
-    int i;
+    MR_Unsigned i;
 
     for (i = 0; i < MR_consumer_debug_info_next; i++) {
         if (MR_consumer_debug_infos[i].MR_cod_sequence_num == consumer_index) {
@@ -243,7 +243,7 @@ MR_consumer_addr_name(MR_Consumer *consumer)
 }
 
 const char *
-MR_consumer_num_name(int consumer_index)
+MR_consumer_num_name(MR_Unsigned consumer_index)
 {
     MR_ConsumerDebug *consumer_debug;
 
@@ -289,9 +289,9 @@ MR_lookup_subgoal_debug_addr(MR_Subgoal *subgoal)
 }
 
 MR_SubgoalDebug *
-MR_lookup_subgoal_debug_num(int subgoal_index)
+MR_lookup_subgoal_debug_num(MR_Unsigned subgoal_index)
 {
-    int i;
+    MR_Unsigned i;
 
     for (i = 0; i < MR_subgoal_debug_info_next; i++) {
         if (MR_subgoal_debug_infos[i].MR_sgd_sequence_num == subgoal_index) {
