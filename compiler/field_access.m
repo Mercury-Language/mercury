@@ -99,6 +99,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module hlds.make_hlds.superhomogeneous_util.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 

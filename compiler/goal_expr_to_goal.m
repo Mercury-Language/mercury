@@ -53,6 +53,7 @@
 :- import_module hlds.make_hlds.field_access.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module hlds.make_hlds.superhomogeneous_util.
 :- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.globals.

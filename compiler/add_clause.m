@@ -69,6 +69,7 @@
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.state_var.
 :- import_module hlds.make_hlds.superhomogeneous.
+:- import_module hlds.make_hlds.superhomogeneous_util.
 :- import_module hlds.make_hlds_error.
 :- import_module hlds.pre_quantification.
 :- import_module hlds.pred_name.

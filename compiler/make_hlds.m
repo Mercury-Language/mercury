@@ -61,6 +61,8 @@
 :- include_module make_hlds_separate_items.
 :- include_module make_hlds_warn.
 :- include_module superhomogeneous.
+:- include_module superhomogeneous_lambda.
+:- include_module superhomogeneous_util.
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.

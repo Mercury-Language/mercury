@@ -716,7 +716,10 @@ to the HLDS, it can rely on the fact that all items of another kind
 (e.g. predicate declarations) have already been processed.
 <li>
 superhomogeneous.m performs the conversion of unifications
-into superhomogeneous form.
+into superhomogeneous form,
+with the help of
+superhomogeneous_lambda.m (which handles the conversion of lambda expressions)
+and superhomogeneous_util.m (which provides utility predicates).
 <li>
 state_var.m expands away state variable syntax.
 <li>
