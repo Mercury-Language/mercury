@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
 % Copyright (C) 2014-2021, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: superhomogeneous_lambda.m.
 % Main author of the original version of this module: fjh.
@@ -14,7 +14,7 @@
 % This module performs the conversion of lambda expressions in clause bodies
 % to superhomogeneous form.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.superhomogeneous_lambda.
 :- interface.
@@ -37,8 +37,8 @@
     prog_term::in, maybe({lambda_body_kind, prog_term})::in, expansion::out,
     svar_state::in, unravel_info::in, unravel_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -631,7 +631,7 @@ default_mode_for_lambda_arg(Kind) = Mode :-
         out_mode(Mode)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred parse_purity_annotation(term(T)::in, purity::out, term(T)::out) is det.
 
@@ -666,7 +666,7 @@ parse_lambda_detism(VarSet, DetismTerm, MaybeDetism) :-
         MaybeDetism = error1([Spec])
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Code for building lambda expressions.
 %
@@ -990,6 +990,6 @@ qualify_lambda_arg_modes(InInt, [LambdaArg0 | LambdaArgs0],
     qualify_lambda_arg_modes(InInt, LambdaArgs0,
         LambdaArgs, Modes, !MQInfo, !Specs).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.superhomogeneous_lambda.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

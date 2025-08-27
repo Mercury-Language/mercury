@@ -1,18 +1,18 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
 % Copyright (C) 2014-2021, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: superhomogeneous_util.m.
 %
 % This module provides types and utility predicates that are used by
 % superhomogeneous.m and superhomogeneous_lambda.m.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.superhomogeneous_util.
 :- interface.
@@ -28,7 +28,7 @@
 :- import_module cord.
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type arg_context
     --->    ac_head(pred_or_func, pred_form_arity)
@@ -56,7 +56,7 @@
 :- pred pair_vars_with_terms(list(prog_var)::in, list(prog_term)::in,
     list(unify_var_term)::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % make_fresh_arg_vars_subst_svars(Args, Vars, VarsArgs,
     %   !SVarState, !UrInfo):
@@ -87,7 +87,7 @@
 :- pred make_fresh_arg_var_no_svar(prog_term::in, prog_var::out,
     list(prog_var)::in, unravel_info::in, unravel_info::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type maybe_fgti_var_size
     --->    not_fgti
@@ -99,15 +99,15 @@
                 cord(hlds_goal)
             ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module require.
 :- import_module term.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 pair_vars_with_terms([], [], []).
 pair_vars_with_terms([], [_ | _], _) :-
@@ -118,7 +118,7 @@ pair_vars_with_terms([Var | Vars], [Term | Terms], [VarTerm | VarsTerms]) :-
     VarTerm = unify_var_term(Var, Term),
     pair_vars_with_terms(Vars, Terms, VarsTerms).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_fresh_arg_vars_subst_svars(Args, Vars, VarsArgs, !SVarState, !UrInfo) :-
     % For efficiency, we construct `VarsArgs' backwards and then reverse it
@@ -184,6 +184,6 @@ make_fresh_arg_var_no_svar(Arg, Var, Vars0, !UrInfo) :-
         create_new_unravel_var(Var, !UrInfo)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.superhomogeneous_util.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
