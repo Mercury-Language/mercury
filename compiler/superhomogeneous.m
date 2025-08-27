@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
 % Copyright (C) 2014-2021, 2025 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: superhomogeneous.m.
 % Main author of the original version of this module: fjh.
@@ -20,7 +20,7 @@
 % - variables that refer to goals in the term we are parsing from
 % - variables that refer to goals in the HLDS we are building.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.superhomogeneous.
 :- interface.
@@ -33,38 +33,54 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-    % `insert_arg_unifications' takes a list of variables, a list of terms
-    % to unify them with, and a goal, and inserts the appropriate unifications
-    % onto the front of the goal. It calls `unravel_unification' to ensure that
-    % each unification gets reduced to superhomogeneous form. It also gets
-    % passed an `arg_context', which indicates where the terms came from.
+    % insert_arg_unifications(XVarsArgTerms0, Context, ArgContext, Goal0, Goal,
+    %   !SVarState, !UrInfo):
+    % insert_arg_unifications_with_contexts(XVarsArgTermsArgNumsContexts0,
+    %   Context, Goal0, Goal, !SVarState, !UrInfo):
+    %
+    % These two predicates both take as input
+    %
+    % - a list containing variables and the terms to unify them with,
+    %   (XVarsArgTerms0 and XVarsArgTermsArgNumsContexts0 respectively),
+    % - information about where they came from (Context and ArgContext), and
+    % - a goal (Goal0).
+    %
+    % They reduce the requested unifications to superhomogeneous form,
+    % and then insert them in front of Goal0, returning the result as Goal.
     %
     % We never insert unifications of the form X = X.
     %
-    % XXX We should have versions of these predicates that take the variables
-    % and the terms to unify them as a single assoc_list, instead of taking
-    % them as two separate lists whose lengths must be equal, but may not be.
+    % We use these predicates to implement the unifications implicit
+    % in both clause heads and in calls to functions and predicates,
+    % between the terms that appear there and the corresponding argument
+    % variables.
     %
 :- pred insert_arg_unifications(list(unify_var_term)::in,
     prog_context::in, arg_context::in, hlds_goal::in, hlds_goal::out,
     svar_state::in, svar_state::out,
     unravel_info::in, unravel_info::out) is det.
-
 :- pred insert_arg_unifications_with_contexts(
     list(unify_var_term_num_context)::in,
     prog_context::in, hlds_goal::in, hlds_goal::out,
     svar_state::in, svar_state::out,
     unravel_info::in, unravel_info::out) is det.
 
+    % unravel_unification(XTerm, YTerm, Context, MainContext, SubContext,
+    %   Purity, Goal, !SVarState, !UrInfo):
+    %
+    % Reduce the explicit unification XTerm = YTerm, whose context and purity
+    % are given by Context, MainContext, SubContext and Purity,
+    % to superhomogeneous form, and return it as Goal.
+    %
 :- pred unravel_unification(prog_term::in, prog_term::in, prog_context::in,
     unify_main_context::in, list(unify_sub_context)::in, purity::in,
     hlds_goal::out, svar_state::in, svar_state::out,
     unravel_info::in, unravel_info::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -106,11 +122,11 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type ancestor_var_map == map(prog_var, prog_context).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 insert_arg_unifications(XVarsArgTerms0, Context, ArgContext, Goal0, Goal,
         !SVarState, !UrInfo) :-
@@ -137,7 +153,7 @@ insert_arg_unifications_with_contexts(XVarsArgTermsArgNumsContexts0,
     insert_expansions_before_goal_top_not_fgti(!.UrInfo, GoalInfo0, Expansions,
         Goal0, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred substitute_state_var_mappings_unify_var_term(
     list(unify_var_term)::in, list(unify_var_term)::out,
@@ -169,176 +185,7 @@ substitute_state_var_mappings_unify_var_term_num_context(
     substitute_state_var_mappings_unify_var_term_num_context(UVTNCs0, UVTNCs,
         !SVarState, !UrInfo).
 
-%-----------------------------------------------------------------------------%
-
-unravel_unification(LHS0, RHS0, Context, MainContext, SubContext, Purity,
-        Goal, !SVarState, !UrInfo) :-
-    (
-        Purity = purity_pure,
-        Order = deconstruct_top_down
-    ;
-        ( Purity = purity_semipure
-        ; Purity = purity_impure
-        ),
-        Order = construct_bottom_up
-    ),
-    do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
-        Purity, Order, Expansion, !SVarState, !UrInfo),
-    goal_info_init(Context, GoalInfo),
-    expansion_to_goal_wrap_if_fgti(!.UrInfo, GoalInfo, Expansion, Goal).
-
-%-----------------------------------------------------------------------------%
-
-:- pred expansion_to_goal_wrap_if_fgti(unravel_info::in,
-    hlds_goal_info::in, expansion::in, hlds_goal::out) is det.
-
-expansion_to_goal_wrap_if_fgti(UrInfo, GoalInfo, Expansion, Goal) :-
-    Expansion = expansion(MaybeFGTI, ExpansionGoalCord),
-    ExpansionGoals = cord.list(ExpansionGoalCord),
-    (
-        ExpansionGoals = [],
-        Goal = hlds_goal(true_goal_expr, GoalInfo)
-    ;
-        ExpansionGoals = [ExpansionGoal0],
-        ExpansionGoal0 = hlds_goal(ExpansionGoalExpr, ExpansionGoalInfo0),
-        Context = goal_info_get_context(GoalInfo),
-        goal_info_set_context(Context, ExpansionGoalInfo0, ExpansionGoalInfo),
-        Goal = hlds_goal(ExpansionGoalExpr, ExpansionGoalInfo)
-    ;
-        ExpansionGoals = [_, _ | _],
-        ( if
-            MaybeFGTI = fgti_var_size(TermVar, Size),
-            Size >= UrInfo ^ ui_fgt_threshold
-        then
-            goal_info_set_nonlocals(set_of_var.make_singleton(TermVar),
-                GoalInfo, MarkedGoalInfo),
-            mark_nonlocals_in_ground_term_initial(ExpansionGoals, MarkedGoals),
-            ConjGoalExpr = conj(plain_conj, MarkedGoals),
-            ConjGoal = hlds_goal(ConjGoalExpr, MarkedGoalInfo),
-            Reason = from_ground_term(TermVar, from_ground_term_initial),
-            GoalExpr = scope(Reason, ConjGoal),
-            Goal = hlds_goal(GoalExpr, MarkedGoalInfo)
-        else
-            GoalExpr = conj(plain_conj, ExpansionGoals),
-            Goal = hlds_goal(GoalExpr, GoalInfo)
-        )
-    ).
-
-:- pred expansion_to_goal_cord_wrap_if_fgti(unravel_info::in,
-    hlds_goal_info::in, expansion::in, cord(hlds_goal)::out) is det.
-
-expansion_to_goal_cord_wrap_if_fgti(UrInfo, GoalInfo, Expansion,
-        MaybeWrappedGoalCord) :-
-    Expansion = expansion(MaybeFGTI, GoalCord),
-    ( if
-        MaybeFGTI = fgti_var_size(TermVar, Size),
-        Size >= UrInfo ^ ui_fgt_threshold
-    then
-        Goals = cord.list(GoalCord),
-        goal_info_set_nonlocals(set_of_var.make_singleton(TermVar),
-            GoalInfo, MarkedGoalInfo),
-        mark_nonlocals_in_ground_term_initial(Goals, MarkedGoals),
-        ConjGoalExpr = conj(plain_conj, MarkedGoals),
-        ConjGoal = hlds_goal(ConjGoalExpr, MarkedGoalInfo),
-        Reason = from_ground_term(TermVar, from_ground_term_initial),
-        ScopeGoalExpr = scope(Reason, ConjGoal),
-        ScopeGoal = hlds_goal(ScopeGoalExpr, MarkedGoalInfo),
-        MaybeWrappedGoalCord = cord.singleton(ScopeGoal)
-    else
-        MaybeWrappedGoalCord = GoalCord
-    ).
-
-:- pred mark_nonlocals_in_ground_term_initial(
-    list(hlds_goal)::in, list(hlds_goal)::out) is det.
-
-mark_nonlocals_in_ground_term_initial([], []).
-mark_nonlocals_in_ground_term_initial([Goal0 | Goals0], [Goal | Goals]) :-
-    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
-    ( if
-        GoalExpr = unify(LHSVar, RHS, _, _, _),
-        RHS = rhs_functor(_, _, RHSVars)
-    then
-        set_of_var.list_to_set([LHSVar | RHSVars], NonLocals),
-        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-        Goal = hlds_goal(GoalExpr, GoalInfo)
-    else
-        unexpected($pred, "wrong shape goal")
-    ),
-    mark_nonlocals_in_ground_term_initial(Goals0, Goals).
-
-%-----------------------------------------------------------------------------%
-
-:- pred insert_expansion_before_goal_top_not_fgti(unravel_info::in,
-    hlds_goal_info::in, expansion::in, hlds_goal::in, hlds_goal::out) is det.
-
-insert_expansion_before_goal_top_not_fgti(UrInfo, GoalInfo, Expansion,
-        BaseGoal, Goal) :-
-    goal_to_conj_list(BaseGoal, BaseGoals),
-    expansion_to_goal_cord_wrap_if_fgti(UrInfo, GoalInfo, Expansion,
-        ExpansionGoalCord),
-    ExpansionGoals = cord.list(ExpansionGoalCord),
-    conj_list_to_goal(ExpansionGoals ++ BaseGoals, GoalInfo, Goal).
-
-:- pred insert_expansions_before_goal_top_not_fgti(unravel_info::in,
-    hlds_goal_info::in, list(expansion)::in,
-    hlds_goal::in, hlds_goal::out) is det.
-
-insert_expansions_before_goal_top_not_fgti(UrInfo, GoalInfo, Expansions,
-        BaseGoal, Goal) :-
-    goal_to_conj_list(BaseGoal, BaseGoals),
-    list.map(expansion_to_goal_cord_wrap_if_fgti(UrInfo, GoalInfo), Expansions,
-        ExpansionGoalCords),
-    ExpansionGoals = cord.cord_list_to_list(ExpansionGoalCords),
-    conj_list_to_goal(ExpansionGoals ++ BaseGoals, GoalInfo, Goal).
-
-:- pred append_expansions_after_goal_top_ftgi(unravel_info::in,
-    hlds_goal_info::in, prog_var::in, hlds_goal::in, int::in,
-    list(expansion)::in, expansion::out) is det.
-
-append_expansions_after_goal_top_ftgi(UrInfo, GoalInfo, TermVar,
-        BaseGoal, BaseGoalSize, ArgExpansions, Expansion) :-
-    append_expansions_after_goal_top_ftgi_loop(ArgExpansions, yes, AllFGTI,
-        BaseGoalSize, TotalSize),
-    (
-        AllFGTI = no,
-        list.map(expansion_to_goal_cord_wrap_if_fgti(UrInfo, GoalInfo),
-            ArgExpansions, ArgGoalCords),
-        ArgGoalsCord = cord.cord_list_to_cord(ArgGoalCords),
-        % XXX If BaseGoal can be a plain_conj, then we should expand it here.
-        GoalCord = cord.cons(BaseGoal, ArgGoalsCord),
-        Expansion = expansion(not_fgti, GoalCord)
-    ;
-        AllFGTI = yes,
-        list.map(project_expansion_goals, ArgExpansions, ArgGoalCords),
-        ArgGoalsCord = cord.cord_list_to_cord(ArgGoalCords),
-        % XXX If BaseGoal can be a plain_conj, then we should expand it here.
-        GoalCord = cord.cons(BaseGoal, ArgGoalsCord),
-        Expansion = expansion(fgti_var_size(TermVar, TotalSize), GoalCord)
-    ).
-
-:- pred append_expansions_after_goal_top_ftgi_loop(list(expansion)::in,
-    bool::in, bool::out, int::in, int::out) is det.
-
-append_expansions_after_goal_top_ftgi_loop([], !AllFGTI, !TotalSize).
-append_expansions_after_goal_top_ftgi_loop([Expansion | Expansions],
-        !AllFGTI, !TotalSize) :-
-    Expansion = expansion(MaybeFGTI, _),
-    (
-        MaybeFGTI = not_fgti,
-        !:AllFGTI = no
-    ;
-        MaybeFGTI = fgti_var_size(_, Size),
-        !:TotalSize = !.TotalSize + Size
-    ),
-    append_expansions_after_goal_top_ftgi_loop(Expansions,
-        !AllFGTI, !TotalSize).
-
-:- pred project_expansion_goals(expansion::in, cord(hlds_goal)::out)
-    is det.
-
-project_expansion_goals(expansion(_, GoalCord), GoalCord).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred do_arg_unifications(list(unify_var_term)::in,
     prog_context::in, arg_context::in,
@@ -355,6 +202,24 @@ do_arg_unifications([unify_var_term(XVar, YTerm) | XVarsYTerms],
         AncestorVarMap, Expansion, !SVarState, !UrInfo),
     do_arg_unifications(XVarsYTerms, Context, ArgContext, Order, ArgNum + 1,
         AncestorVarMap, Expansions, !SVarState, !UrInfo).
+
+:- pred do_arg_unifications_with_contexts(list(unify_var_term_num_context)::in,
+    prog_context::in, goal_order::in, ancestor_var_map::in,
+    list(expansion)::out, svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
+
+do_arg_unifications_with_contexts([], _Context, _Order, _AncestorVarMap, [],
+        !SVarState, !UrInfo).
+do_arg_unifications_with_contexts(
+        [HeadXVarYTermArgContext | TailXVarsYTermsArgContexts],
+        Context, Order, AncestorVarMap, Expansions, !SVarState, !UrInfo) :-
+    HeadXVarYTermArgContext = unify_var_term_num_context(HeadXVar,
+        HeadYTerm, HeadArgNumber, HeadArgContext),
+    do_arg_unification(HeadXVar, HeadYTerm, Context, HeadArgContext, Order,
+        HeadArgNumber, AncestorVarMap, HeadExpansion, !SVarState, !UrInfo),
+    do_arg_unifications_with_contexts(TailXVarsYTermsArgContexts,
+        Context, Order, AncestorVarMap, TailExpansions, !SVarState, !UrInfo),
+    Expansions = [HeadExpansion | TailExpansions].
 
 :- pred do_arg_unifications_with_fresh_vars(list(prog_term)::in,
     prog_context::in, arg_context::in, goal_order::in, int::in,
@@ -378,24 +243,6 @@ do_arg_unifications_with_fresh_vars([YTerm | YTerms], Context, ArgContext,
         ArgNum + 1, !.SeenXVars, AncestorVarMap, XVars, Expansions,
         !SVarState, !UrInfo).
 
-:- pred do_arg_unifications_with_contexts(list(unify_var_term_num_context)::in,
-    prog_context::in, goal_order::in, ancestor_var_map::in,
-    list(expansion)::out, svar_state::in, svar_state::out,
-    unravel_info::in, unravel_info::out) is det.
-
-do_arg_unifications_with_contexts([], _Context, _Order, _AncestorVarMap, [],
-        !SVarState, !UrInfo).
-do_arg_unifications_with_contexts(
-        [HeadXVarYTermArgContext | TailXVarsYTermsArgContexts],
-        Context, Order, AncestorVarMap, Expansions, !SVarState, !UrInfo) :-
-    HeadXVarYTermArgContext = unify_var_term_num_context(HeadXVar,
-        HeadYTerm, HeadArgNumber, HeadArgContext),
-    do_arg_unification(HeadXVar, HeadYTerm, Context, HeadArgContext, Order,
-        HeadArgNumber, AncestorVarMap, HeadExpansion, !SVarState, !UrInfo),
-    do_arg_unifications_with_contexts(TailXVarsYTermsArgContexts,
-        Context, Order, AncestorVarMap, TailExpansions, !SVarState, !UrInfo),
-    Expansions = [HeadExpansion | TailExpansions].
-
 :- pred do_arg_unification(prog_var::in, prog_term::in,
     prog_context::in, arg_context::in,
     goal_order::in, int::in, ancestor_var_map::in, expansion::out,
@@ -407,7 +254,7 @@ do_arg_unification(XVar, YTerm, Context, ArgContext, Order, ArgNum,
     % It is the caller's job to make sure that if needed, then both
     % XVar and the top level of YTerm have already been through
     % state var mapping expansion.
-    occurs_check(AncestorVarMap, XVar, !UrInfo),
+    perform_occurs_check(AncestorVarMap, XVar, !UrInfo),
     (
         YTerm = term.variable(YVar, YVarContext),
         ( if XVar = YVar then
@@ -430,34 +277,51 @@ do_arg_unification(XVar, YTerm, Context, ArgContext, Order, ArgNum,
             Order, AncestorVarMap, Expansion, !SVarState, !UrInfo)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
+unravel_unification(XTerm, YTerm, Context, MainContext, SubContext, Purity,
+        Goal, !SVarState, !UrInfo) :-
+    (
+        Purity = purity_pure,
+        Order = deconstruct_top_down
+    ;
+        ( Purity = purity_semipure
+        ; Purity = purity_impure
+        ),
+        Order = construct_bottom_up
+    ),
+    do_unravel_unification(XTerm, YTerm, Context, MainContext, SubContext,
+        Purity, Order, Expansion, !SVarState, !UrInfo),
+    goal_info_init(Context, GoalInfo),
+    expansion_to_goal_wrap_if_fgti(!.UrInfo, GoalInfo, Expansion, Goal).
+
+%---------------------------------------------------------------------------%
+%
+% Unravel unifications of the form XTerm = YTerm.
+%
+
+    % As of 2025 aug 27, this predicate is called from only one call site,
+    % in unravel_unification.
+    %
 :- pred do_unravel_unification(prog_term::in, prog_term::in,
     prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     purity::in, goal_order::in, expansion::out,
     svar_state::in, svar_state::out,
     unravel_info::in, unravel_info::out) is det.
 
-do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
+do_unravel_unification(XTerm0, YTerm0, Context, MainContext, SubContext,
         Purity, Order, Expansion, !SVarState, !UrInfo) :-
-    replace_any_dot_colon_state_var_in_term(LHS0, LHS, !SVarState, !UrInfo),
-    replace_any_dot_colon_state_var_in_term(RHS0, RHS, !SVarState, !UrInfo),
-    classify_unravel_unification(LHS, RHS, Context, MainContext, SubContext,
-        Purity, Order, map.init, Expansion, !SVarState, !UrInfo).
+    replace_any_dot_colon_state_var_in_term(XTerm0, XTerm,
+        !SVarState, !UrInfo),
+    replace_any_dot_colon_state_var_in_term(YTerm0, YTerm,
+        !SVarState, !UrInfo),
+    classify_unravel_unification(XTerm, YTerm,
+        Context, MainContext, SubContext, Purity, Order,
+        map.init, Expansion, !SVarState, !UrInfo).
 
-:- pred do_unravel_var_unification(prog_var::in, prog_term::in,
-    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
-    purity::in, goal_order::in, expansion::out,
-    svar_state::in, svar_state::out,
-    unravel_info::in, unravel_info::out) is det.
-
-do_unravel_var_unification(LHSVar, RHS0, Context, MainContext, SubContext,
-        Purity, Order, Expansion, !SVarState, !UrInfo) :-
-    replace_any_dot_colon_state_var_in_term(RHS0, RHS, !SVarState, !UrInfo),
-    classify_unravel_var_unification(LHSVar, RHS,
-        Context, MainContext, SubContext, Purity, Order, map.init, Expansion,
-        !SVarState, !UrInfo).
-
+    % As of 2025 aug 27, this predicate is called from only one call site,
+    % in do_unravel_unification.
+    %
 :- pred classify_unravel_unification(prog_term::in, prog_term::in,
     prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     purity::in, goal_order::in, ancestor_var_map::in, expansion::out,
@@ -513,6 +377,32 @@ classify_unravel_unification(XTerm, YTerm, Context, MainContext, SubContext,
         Expansion = expansion(not_fgti, GoalCord)
     ).
 
+%---------------------------------------------------------------------------%
+%
+% Unravel unifications of the form XVar = YTerm.
+%
+
+    % As of 2025 aug 27, this predicate is called onlt from call sites
+    % in maybe_unravel_special_var_functor_unification.
+    %
+:- pred do_unravel_var_unification(prog_var::in, prog_term::in,
+    prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
+    purity::in, goal_order::in, expansion::out,
+    svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
+
+do_unravel_var_unification(XVar, YTerm0, Context, MainContext, SubContext,
+        Purity, Order, Expansion, !SVarState, !UrInfo) :-
+    replace_any_dot_colon_state_var_in_term(YTerm0, YTerm,
+        !SVarState, !UrInfo),
+    classify_unravel_var_unification(XVar, YTerm,
+        Context, MainContext, SubContext, Purity, Order,
+        map.init, Expansion, !SVarState, !UrInfo).
+
+    % As of 2025 aug 27, this predicate is called from
+    % do_unravel_var_unification and from
+    % maybe_unravel_special_var_functor_unification.
+    %
 :- pred classify_unravel_var_unification(prog_var::in, prog_term::in,
     prog_context::in, unify_main_context::in, list(unify_sub_context)::in,
     purity::in, goal_order::in, ancestor_var_map::in, expansion::out,
@@ -524,7 +414,7 @@ classify_unravel_var_unification(XVar, YTerm, Context, MainContext, SubContext,
     (
         % `X = Y' needs no unravelling.
         YTerm = term.variable(YVar, _),
-        occurs_check(AncestorVarMap, YVar, !UrInfo),
+        perform_occurs_check(AncestorVarMap, YVar, !UrInfo),
         create_atomic_complicated_unification(XVar, rhs_var(YVar),
             Context, MainContext, SubContext, Purity, Goal),
         Expansion = expansion(not_fgti, cord.singleton(Goal))
@@ -535,6 +425,8 @@ classify_unravel_var_unification(XVar, YTerm, Context, MainContext, SubContext,
             Purity, Order, AncestorVarMap, Expansion, !SVarState, !UrInfo)
     ).
 
+%---------------------------------------------------------------------------%
+
     % Given an unification of the form
     %   X = f(ArgTerm1, ArgTerm2, ArgTerm3)
     % we replace it with
@@ -543,9 +435,6 @@ classify_unravel_var_unification(XVar, YTerm, Context, MainContext, SubContext,
     %   NewVar2 = ArgTerm2,
     %   NewVar3 = ArgTerm3.
     % In the trivial case `X = c', no unravelling occurs.
-    %
-    % XXX We could do better on the error messages for lambda expressions
-    % and field extraction and update expressions.
     %
 :- pred unravel_var_functor_unification(prog_var::in, term.const::in,
     list(prog_term)::in, term.context::in,
@@ -607,206 +496,10 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
             AncestorVarMap, Expansion, !SVarState, !UrInfo)
     ).
 
-:- pred build_var_cons_id_unification(prog_var::in, cons_id::in,
-    list(prog_term)::in, term.context::in, prog_context::in,
-    unify_main_context::in, list(unify_sub_context)::in, purity::in,
-    ancestor_var_map::in, expansion::out, svar_state::in, svar_state::out,
-    unravel_info::in, unravel_info::out) is det.
-
-build_var_cons_id_unification(XVar, ConsId, MaybeQualifiedYArgTerms,
-        YFunctorContext, Context, MainContext, SubContext, Purity,
-        !.AncestorVarMap, Expansion, !SVarState, !UrInfo) :-
-    % Our caller has done state variable name expansion
-    % at the top level of MaybeQualifiedYArgTerms.
-    (
-        MaybeQualifiedYArgTerms = [],
-        RHS = rhs_functor(ConsId, is_not_exist_constr, []),
-        QualInfo0 = !.UrInfo ^ ui_qual_info,
-        make_atomic_unification(XVar, RHS, YFunctorContext,
-            MainContext, SubContext, Purity, FunctorGoal, QualInfo0, QualInfo),
-        !UrInfo ^ ui_qual_info := QualInfo,
-        goal_set_purity(Purity, FunctorGoal, Goal),
-        Expansion = expansion(fgti_var_size(XVar, 1), cord.singleton(Goal))
-    ;
-        MaybeQualifiedYArgTerms = [_ | _],
-        ArgContext = ac_functor(ConsId, MainContext, SubContext),
-        maybe_add_to_ancestor_var_map(!.UrInfo, XVar, ConsId, Context,
-            !AncestorVarMap),
-        (
-            Purity = purity_pure,
-            % If we can, we want to add the unifications for the arguments
-            % AFTER the unification of the top level function symbol, because
-            % otherwise we get efficiency problems during type checking.
-            do_arg_unifications_with_fresh_vars(MaybeQualifiedYArgTerms,
-                YFunctorContext, ArgContext, deconstruct_top_down, 1,
-                [], !.AncestorVarMap, YVars, ArgExpansions,
-                !SVarState, !UrInfo),
-            RHS = rhs_functor(ConsId, is_not_exist_constr, YVars),
-            QualInfo0 = !.UrInfo ^ ui_qual_info,
-            make_atomic_unification(XVar, RHS, YFunctorContext,
-                MainContext, SubContext, Purity, FunctorGoal,
-                QualInfo0, QualInfo),
-            !UrInfo ^ ui_qual_info := QualInfo,
-            goal_info_init(Context, GoalInfo),
-            append_expansions_after_goal_top_ftgi(!.UrInfo, GoalInfo, XVar,
-                FunctorGoal, 1, ArgExpansions, Expansion)
-        ;
-            ( Purity = purity_semipure
-            ; Purity = purity_impure
-            ),
-            % For impure unifications, we need to put the unifications
-            % for the arguments BEFORE the unification of the top level
-            % function symbol, because mode reordering can't reorder
-            % code around that unification.
-            do_arg_unifications_with_fresh_vars(MaybeQualifiedYArgTerms,
-                YFunctorContext, ArgContext, construct_bottom_up, 1,
-                [], !.AncestorVarMap, YVars, ArgExpansions,
-                !SVarState, !UrInfo),
-            RHS = rhs_functor(ConsId, is_not_exist_constr, YVars),
-            QualInfo0 = !.UrInfo ^ ui_qual_info,
-            make_atomic_unification(XVar, RHS, YFunctorContext,
-                MainContext, SubContext, Purity, FunctorGoal,
-                QualInfo0, QualInfo),
-            !UrInfo ^ ui_qual_info := QualInfo,
-            goal_info_init(Context, GoalInfo),
-            insert_expansions_before_goal_top_not_fgti(!.UrInfo, GoalInfo,
-                ArgExpansions, FunctorGoal, Goal0),
-            goal_set_purity(Purity, Goal0, Goal),
-            Expansion = expansion(not_fgti, cord.singleton(Goal))
-        )
-    ).
-
-    % Add the variable on the left side of the var-functor unification
-    % XVar = ConsId(...) to the ancestor var map *if* it can be part of
-    % an occurs check violation we want to report.
-    %
-    % - The occurs check cannot be violated if ConsId is a constant.
-    %
-    % - If ConsId cannot actually be a data constructor, then this unification
-    %   cannot be part of an occurs check violation we want to report.
-    %   There are four possibilities:
-    %
-    %   1 ConsId(...) is a full application of a function, which returns
-    %     a piece of data. Even if XVar occurs somewhere inside the
-    %     arguments of ConsId, checking whether XVar is equal to the
-    %     value computed from it is a perfectly legitimate test.
-    %
-    %   2 ConsId(...) is a partial application of a function or a predicate,
-    %     and XVar's type is the higher order type matching the type
-    %     of this closure. This case *would* be a perfectly legitimate
-    %     equality test like case 1, were it not for the fact that unification
-    %     of higher order values is not allowed (because it is an undecidable
-    %     problem). This should therefore be detected as a type error.
-    %
-    %   3 ConsId(...) is a partial application of a function or a predicate,
-    %     and XVar's type is not the higher order type matching the type
-    %     of this closure. This is a more straightforward type error.
-    %
-    %   4 ConsId is not a function or a predicate. This is a straightforward
-    %     "unknown function symbol" error.
-    %
-    %   In case 1, any warning about occurs check violation would be
-    %   misleading. In cases 2, 3 and 4, it would be redundant, since those
-    %   cases all involve an error which is not really about the occurs check.
-    %
-:- pred maybe_add_to_ancestor_var_map(unravel_info::in, prog_var::in,
-    cons_id::in, prog_context::in,
-    ancestor_var_map::in, ancestor_var_map::out) is det.
-
-maybe_add_to_ancestor_var_map(UrInfo, XVar, ConsId, Context,
-        !AncestorVarMap) :-
-    ( if
-        % The only two kinds of cons_ids that may (a) appear in user
-        % written code, as opposed to compiler-generated code, and
-        % (b) may have nonzero arities, are cons and tuple_cons.
-        % However, the cons_ids of tuples are represented by tuple_cons
-        % only *after* resolve_unify_functor.m has been run as part of
-        % the post_typecheck pass. Until then, they have the form
-        % recognized by the second disjunct.
-        ConsId = du_data_ctor(DuCtor),
-        DuCtor = du_ctor(SymName, Arity, _TypeCtor),
-        Arity > 0,
-        (
-            ModuleInfo = UrInfo ^ ui_module_info,
-            module_info_get_cons_table(ModuleInfo, ConsTable),
-            is_known_data_cons(ConsTable, DuCtor)
-        ;
-            SymName = unqualified("{}")
-        )
-    then
-        map.search_insert(XVar, Context, _OldContext, !AncestorVarMap)
-    else
-        true
-    ).
-
-:- pred parse_ordinary_cons_id(term.const::in, list(prog_term)::in,
-    term.context::in, cons_id::out,
-    unravel_info::in, unravel_info::out) is det.
-
-parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !UrInfo) :-
-    (
-        Functor = term.atom(Name),
-        list.length(ArgTerms, Arity),
-        DuCtor = du_ctor(unqualified(Name), Arity, cons_id_dummy_type_ctor),
-        ConsId = du_data_ctor(DuCtor)
-    ;
-        Functor = term.integer(Base, Integer, Signedness, Size),
-%       expect(unify(ArgTerms, []), $pred,
-%           "parse_simple_term has given an integer arguments"),
-        parse_integer_cons_id(Base, Integer, Signedness, Size, Context,
-            MaybeConsId),
-        (
-            MaybeConsId = ok1(ConsId)
-        ;
-            MaybeConsId = error1(ConsIdSpecs),
-            add_unravel_specs(ConsIdSpecs, !UrInfo),
-            % This is a dummy.
-            ConsId = some_int_const(int_const(0))
-        )
-    ;
-        Functor = term.float(Float),
-%       expect(unify(ArgTerms, []), $pred,
-%           "parse_simple_term has given a float arguments"),
-        ConsId = float_const(Float)
-    ;
-        Functor = term.string(String),
-%       expect(unify(ArgTerms, []), $pred,
-%           "parse_simple_term has given a string arguments"),
-        ConsId = string_const(String)
-    ;
-        Functor = term.implementation_defined(Name),
-%       expect(unify(ArgTerms, []), $pred,
-%           "parse_simple_term has given an implementation_defined arguments"),
-        ( if
-            ( Name = "line",   IDCKind = idc_line
-            ; Name = "file",   IDCKind = idc_file
-            ; Name = "module", IDCKind = idc_module
-            ; Name = "pred",   IDCKind = idc_pred
-            ; Name = "grade",  IDCKind = idc_grade
-            )
-        then
-            ConsId = impl_defined_const(IDCKind)
-        else
-            ErrorTerm = functor(Functor, ArgTerms, Context),
-            VarSet = !.UrInfo ^ ui_varset,
-            TermStr = describe_error_term(VarSet, ErrorTerm),
-            Pieces = [words("Error:"),
-                words("unexpected implementation defined literal")] ++
-                color_as_incorrect([quote(TermStr), suffix(".")]) ++ [nl,
-                words("The only valid implementation defined literals are")] ++
-                color_as_correct([quote("$line"), suffix(","),
-                    quote("$file"), suffix(","),
-                    quote("$module"), suffix(","), quote("$pred")]) ++
-                [words("and")] ++
-                color_as_correct([quote("$grade"), suffix(".")]) ++ [nl],
-            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-            add_unravel_spec(Spec, !UrInfo),
-            % This is a dummy.
-            ConsId = impl_defined_const(idc_line)
-        )
-    ).
-
     % See whether YAtom indicates a term with special syntax.
+    %
+    % XXX We could do better on the error messages for lambda expressions
+    % and field extraction and update expressions.
     %
 :- pred maybe_unravel_special_var_functor_unification(prog_var::in,
     string::in, list(prog_term)::in, term.context::in,
@@ -1242,42 +935,368 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred arg_context_to_unify_context(arg_context::in, int::in,
-    unify_main_context::out, list(unify_sub_context)::out) is det.
-
-arg_context_to_unify_context(ArgContext, ArgNum, MainContext, SubContexts) :-
-    (
-        ArgContext = ac_head(PredOrFunc, PredFormArity),
-        ( if
-            PredOrFunc = pf_function,
-            PredFormArity = pred_form_arity(PredFormArityInt),
-            ArgNum = PredFormArityInt
-        then
-            % It is the function result term in the head.
-            MainContext = umc_head_result
-        else
-            % It is a non-function-result head argument.
-            MainContext = umc_head(ArgNum)
-        ),
-        SubContexts = []
-    ;
-        ArgContext = ac_call(PredId),
-        MainContext = umc_call(PredId, ArgNum),
-        SubContexts = []
-    ;
-        ArgContext = ac_functor(ConsId, MainContext, SubContexts0),
-        SubContext = unify_sub_context(ConsId, ArgNum),
-        SubContexts = [SubContext | SubContexts0]
-    ).
-
-%-----------------------------------------------------------------------------%
-
-:- pred occurs_check(ancestor_var_map::in, prog_var::in,
+:- pred parse_ordinary_cons_id(term.const::in, list(prog_term)::in,
+    term.context::in, cons_id::out,
     unravel_info::in, unravel_info::out) is det.
 
-occurs_check(AncestorVarMap, Var, !UrInfo) :-
+parse_ordinary_cons_id(Functor, ArgTerms, Context, ConsId, !UrInfo) :-
+    (
+        Functor = term.atom(Name),
+        list.length(ArgTerms, Arity),
+        DuCtor = du_ctor(unqualified(Name), Arity, cons_id_dummy_type_ctor),
+        ConsId = du_data_ctor(DuCtor)
+    ;
+        Functor = term.integer(Base, Integer, Signedness, Size),
+%       expect(unify(ArgTerms, []), $pred,
+%           "parse_simple_term has given an integer arguments"),
+        parse_integer_cons_id(Base, Integer, Signedness, Size, Context,
+            MaybeConsId),
+        (
+            MaybeConsId = ok1(ConsId)
+        ;
+            MaybeConsId = error1(ConsIdSpecs),
+            add_unravel_specs(ConsIdSpecs, !UrInfo),
+            % This is a dummy.
+            ConsId = some_int_const(int_const(0))
+        )
+    ;
+        Functor = term.float(Float),
+%       expect(unify(ArgTerms, []), $pred,
+%           "parse_simple_term has given a float arguments"),
+        ConsId = float_const(Float)
+    ;
+        Functor = term.string(String),
+%       expect(unify(ArgTerms, []), $pred,
+%           "parse_simple_term has given a string arguments"),
+        ConsId = string_const(String)
+    ;
+        Functor = term.implementation_defined(Name),
+%       expect(unify(ArgTerms, []), $pred,
+%           "parse_simple_term has given an implementation_defined arguments"),
+        ( if
+            ( Name = "line",   IDCKind = idc_line
+            ; Name = "file",   IDCKind = idc_file
+            ; Name = "module", IDCKind = idc_module
+            ; Name = "pred",   IDCKind = idc_pred
+            ; Name = "grade",  IDCKind = idc_grade
+            )
+        then
+            ConsId = impl_defined_const(IDCKind)
+        else
+            ErrorTerm = functor(Functor, ArgTerms, Context),
+            VarSet = !.UrInfo ^ ui_varset,
+            TermStr = describe_error_term(VarSet, ErrorTerm),
+            Pieces = [words("Error:"),
+                words("unexpected implementation defined literal")] ++
+                color_as_incorrect([quote(TermStr), suffix(".")]) ++ [nl,
+                words("The only valid implementation defined literals are")] ++
+                color_as_correct([quote("$line"), suffix(","),
+                    quote("$file"), suffix(","),
+                    quote("$module"), suffix(","), quote("$pred")]) ++
+                [words("and")] ++
+                color_as_correct([quote("$grade"), suffix(".")]) ++ [nl],
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+            add_unravel_spec(Spec, !UrInfo),
+            % This is a dummy.
+            ConsId = impl_defined_const(idc_line)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred build_var_cons_id_unification(prog_var::in, cons_id::in,
+    list(prog_term)::in, term.context::in, prog_context::in,
+    unify_main_context::in, list(unify_sub_context)::in, purity::in,
+    ancestor_var_map::in, expansion::out, svar_state::in, svar_state::out,
+    unravel_info::in, unravel_info::out) is det.
+
+build_var_cons_id_unification(XVar, ConsId, MaybeQualifiedYArgTerms,
+        YFunctorContext, Context, MainContext, SubContext, Purity,
+        !.AncestorVarMap, Expansion, !SVarState, !UrInfo) :-
+    % Our caller has done state variable name expansion
+    % at the top level of MaybeQualifiedYArgTerms.
+    (
+        MaybeQualifiedYArgTerms = [],
+        RHS = rhs_functor(ConsId, is_not_exist_constr, []),
+        QualInfo0 = !.UrInfo ^ ui_qual_info,
+        make_atomic_unification(XVar, RHS, YFunctorContext,
+            MainContext, SubContext, Purity, FunctorGoal, QualInfo0, QualInfo),
+        !UrInfo ^ ui_qual_info := QualInfo,
+        goal_set_purity(Purity, FunctorGoal, Goal),
+        Expansion = expansion(fgti_var_size(XVar, 1), cord.singleton(Goal))
+    ;
+        MaybeQualifiedYArgTerms = [_ | _],
+        ArgContext = ac_functor(ConsId, MainContext, SubContext),
+        maybe_add_to_ancestor_var_map(!.UrInfo, XVar, ConsId, Context,
+            !AncestorVarMap),
+        (
+            Purity = purity_pure,
+            % If we can, we want to add the unifications for the arguments
+            % AFTER the unification of the top level function symbol, because
+            % otherwise we get efficiency problems during type checking.
+            do_arg_unifications_with_fresh_vars(MaybeQualifiedYArgTerms,
+                YFunctorContext, ArgContext, deconstruct_top_down, 1,
+                [], !.AncestorVarMap, YVars, ArgExpansions,
+                !SVarState, !UrInfo),
+            RHS = rhs_functor(ConsId, is_not_exist_constr, YVars),
+            QualInfo0 = !.UrInfo ^ ui_qual_info,
+            make_atomic_unification(XVar, RHS, YFunctorContext,
+                MainContext, SubContext, Purity, FunctorGoal,
+                QualInfo0, QualInfo),
+            !UrInfo ^ ui_qual_info := QualInfo,
+            goal_info_init(Context, GoalInfo),
+            append_expansions_after_goal_top_ftgi(!.UrInfo, GoalInfo, XVar,
+                FunctorGoal, 1, ArgExpansions, Expansion)
+        ;
+            ( Purity = purity_semipure
+            ; Purity = purity_impure
+            ),
+            % For impure unifications, we need to put the unifications
+            % for the arguments BEFORE the unification of the top level
+            % function symbol, because mode reordering can't reorder
+            % code around that unification.
+            do_arg_unifications_with_fresh_vars(MaybeQualifiedYArgTerms,
+                YFunctorContext, ArgContext, construct_bottom_up, 1,
+                [], !.AncestorVarMap, YVars, ArgExpansions,
+                !SVarState, !UrInfo),
+            RHS = rhs_functor(ConsId, is_not_exist_constr, YVars),
+            QualInfo0 = !.UrInfo ^ ui_qual_info,
+            make_atomic_unification(XVar, RHS, YFunctorContext,
+                MainContext, SubContext, Purity, FunctorGoal,
+                QualInfo0, QualInfo),
+            !UrInfo ^ ui_qual_info := QualInfo,
+            goal_info_init(Context, GoalInfo),
+            insert_expansions_before_goal_top_not_fgti(!.UrInfo, GoalInfo,
+                ArgExpansions, FunctorGoal, Goal0),
+            goal_set_purity(Purity, Goal0, Goal),
+            Expansion = expansion(not_fgti, cord.singleton(Goal))
+        )
+    ).
+
+    % Add the variable on the left side of the var-functor unification
+    % XVar = ConsId(...) to the ancestor var map *if* it can be part of
+    % an occurs check violation we want to report.
+    %
+    % - The occurs check cannot be violated if ConsId is a constant.
+    %
+    % - If ConsId cannot actually be a data constructor, then this unification
+    %   cannot be part of an occurs check violation we want to report.
+    %   There are four possibilities:
+    %
+    %   1 ConsId(...) is a full application of a function, which returns
+    %     a piece of data. Even if XVar occurs somewhere inside the
+    %     arguments of ConsId, checking whether XVar is equal to the
+    %     value computed from it is a perfectly legitimate test.
+    %
+    %   2 ConsId(...) is a partial application of a function or a predicate,
+    %     and XVar's type is the higher order type matching the type
+    %     of this closure. This case *would* be a perfectly legitimate
+    %     equality test like case 1, were it not for the fact that unification
+    %     of higher order values is not allowed (because it is an undecidable
+    %     problem). This should therefore be detected as a type error.
+    %
+    %   3 ConsId(...) is a partial application of a function or a predicate,
+    %     and XVar's type is not the higher order type matching the type
+    %     of this closure. This is a more straightforward type error.
+    %
+    %   4 ConsId is not a function or a predicate. This is a straightforward
+    %     "unknown function symbol" error.
+    %
+    %   In case 1, any warning about occurs check violation would be
+    %   misleading. In cases 2, 3 and 4, it would be redundant, since those
+    %   cases all involve an error which is not really about the occurs check.
+    %
+:- pred maybe_add_to_ancestor_var_map(unravel_info::in, prog_var::in,
+    cons_id::in, prog_context::in,
+    ancestor_var_map::in, ancestor_var_map::out) is det.
+
+maybe_add_to_ancestor_var_map(UrInfo, XVar, ConsId, Context,
+        !AncestorVarMap) :-
+    ( if
+        % The only two kinds of cons_ids that may (a) appear in user
+        % written code, as opposed to compiler-generated code, and
+        % (b) may have nonzero arities, are cons and tuple_cons.
+        % However, the cons_ids of tuples are represented by tuple_cons
+        % only *after* resolve_unify_functor.m has been run as part of
+        % the post_typecheck pass. Until then, they have the form
+        % recognized by the second disjunct.
+        ConsId = du_data_ctor(DuCtor),
+        DuCtor = du_ctor(SymName, Arity, _TypeCtor),
+        Arity > 0,
+        (
+            ModuleInfo = UrInfo ^ ui_module_info,
+            module_info_get_cons_table(ModuleInfo, ConsTable),
+            is_known_data_cons(ConsTable, DuCtor)
+        ;
+            SymName = unqualified("{}")
+        )
+    then
+        map.search_insert(XVar, Context, _OldContext, !AncestorVarMap)
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred insert_expansion_before_goal_top_not_fgti(unravel_info::in,
+    hlds_goal_info::in, expansion::in, hlds_goal::in, hlds_goal::out) is det.
+
+insert_expansion_before_goal_top_not_fgti(UrInfo, GoalInfo, Expansion,
+        BaseGoal, Goal) :-
+    goal_to_conj_list(BaseGoal, BaseGoals),
+    expansion_to_goal_cord_wrap_if_fgti(UrInfo, GoalInfo, Expansion,
+        ExpansionGoalCord),
+    ExpansionGoals = cord.list(ExpansionGoalCord),
+    conj_list_to_goal(ExpansionGoals ++ BaseGoals, GoalInfo, Goal).
+
+:- pred insert_expansions_before_goal_top_not_fgti(unravel_info::in,
+    hlds_goal_info::in, list(expansion)::in,
+    hlds_goal::in, hlds_goal::out) is det.
+
+insert_expansions_before_goal_top_not_fgti(UrInfo, GoalInfo, Expansions,
+        BaseGoal, Goal) :-
+    goal_to_conj_list(BaseGoal, BaseGoals),
+    list.map(expansion_to_goal_cord_wrap_if_fgti(UrInfo, GoalInfo), Expansions,
+        ExpansionGoalCords),
+    ExpansionGoals = cord.cord_list_to_list(ExpansionGoalCords),
+    conj_list_to_goal(ExpansionGoals ++ BaseGoals, GoalInfo, Goal).
+
+%---------------------------------------------------------------------------%
+
+:- pred append_expansions_after_goal_top_ftgi(unravel_info::in,
+    hlds_goal_info::in, prog_var::in, hlds_goal::in, int::in,
+    list(expansion)::in, expansion::out) is det.
+
+append_expansions_after_goal_top_ftgi(UrInfo, GoalInfo, TermVar,
+        BaseGoal, BaseGoalSize, ArgExpansions, Expansion) :-
+    append_expansions_after_goal_top_ftgi_loop(ArgExpansions, yes, AllFGTI,
+        BaseGoalSize, TotalSize),
+    (
+        AllFGTI = no,
+        list.map(expansion_to_goal_cord_wrap_if_fgti(UrInfo, GoalInfo),
+            ArgExpansions, ArgGoalCords),
+        ArgGoalsCord = cord.cord_list_to_cord(ArgGoalCords),
+        % XXX If BaseGoal can be a plain_conj, then we should expand it here.
+        GoalCord = cord.cons(BaseGoal, ArgGoalsCord),
+        Expansion = expansion(not_fgti, GoalCord)
+    ;
+        AllFGTI = yes,
+        list.map(project_expansion_goals, ArgExpansions, ArgGoalCords),
+        ArgGoalsCord = cord.cord_list_to_cord(ArgGoalCords),
+        % XXX If BaseGoal can be a plain_conj, then we should expand it here.
+        GoalCord = cord.cons(BaseGoal, ArgGoalsCord),
+        Expansion = expansion(fgti_var_size(TermVar, TotalSize), GoalCord)
+    ).
+
+:- pred append_expansions_after_goal_top_ftgi_loop(list(expansion)::in,
+    bool::in, bool::out, int::in, int::out) is det.
+
+append_expansions_after_goal_top_ftgi_loop([], !AllFGTI, !TotalSize).
+append_expansions_after_goal_top_ftgi_loop([Expansion | Expansions],
+        !AllFGTI, !TotalSize) :-
+    Expansion = expansion(MaybeFGTI, _),
+    (
+        MaybeFGTI = not_fgti,
+        !:AllFGTI = no
+    ;
+        MaybeFGTI = fgti_var_size(_, Size),
+        !:TotalSize = !.TotalSize + Size
+    ),
+    append_expansions_after_goal_top_ftgi_loop(Expansions,
+        !AllFGTI, !TotalSize).
+
+:- pred project_expansion_goals(expansion::in, cord(hlds_goal)::out)
+    is det.
+
+project_expansion_goals(expansion(_, GoalCord), GoalCord).
+
+%---------------------------------------------------------------------------%
+
+:- pred expansion_to_goal_wrap_if_fgti(unravel_info::in,
+    hlds_goal_info::in, expansion::in, hlds_goal::out) is det.
+
+expansion_to_goal_wrap_if_fgti(UrInfo, GoalInfo, Expansion, Goal) :-
+    Expansion = expansion(MaybeFGTI, ExpansionGoalCord),
+    ExpansionGoals = cord.list(ExpansionGoalCord),
+    (
+        ExpansionGoals = [],
+        Goal = hlds_goal(true_goal_expr, GoalInfo)
+    ;
+        ExpansionGoals = [ExpansionGoal0],
+        ExpansionGoal0 = hlds_goal(ExpansionGoalExpr, ExpansionGoalInfo0),
+        Context = goal_info_get_context(GoalInfo),
+        goal_info_set_context(Context, ExpansionGoalInfo0, ExpansionGoalInfo),
+        Goal = hlds_goal(ExpansionGoalExpr, ExpansionGoalInfo)
+    ;
+        ExpansionGoals = [_, _ | _],
+        ( if
+            MaybeFGTI = fgti_var_size(TermVar, Size),
+            Size >= UrInfo ^ ui_fgt_threshold
+        then
+            goal_info_set_nonlocals(set_of_var.make_singleton(TermVar),
+                GoalInfo, MarkedGoalInfo),
+            mark_nonlocals_in_ground_term_initial(ExpansionGoals, MarkedGoals),
+            ConjGoalExpr = conj(plain_conj, MarkedGoals),
+            ConjGoal = hlds_goal(ConjGoalExpr, MarkedGoalInfo),
+            Reason = from_ground_term(TermVar, from_ground_term_initial),
+            GoalExpr = scope(Reason, ConjGoal),
+            Goal = hlds_goal(GoalExpr, MarkedGoalInfo)
+        else
+            GoalExpr = conj(plain_conj, ExpansionGoals),
+            Goal = hlds_goal(GoalExpr, GoalInfo)
+        )
+    ).
+
+:- pred expansion_to_goal_cord_wrap_if_fgti(unravel_info::in,
+    hlds_goal_info::in, expansion::in, cord(hlds_goal)::out) is det.
+
+expansion_to_goal_cord_wrap_if_fgti(UrInfo, GoalInfo, Expansion,
+        MaybeWrappedGoalCord) :-
+    Expansion = expansion(MaybeFGTI, GoalCord),
+    ( if
+        MaybeFGTI = fgti_var_size(TermVar, Size),
+        Size >= UrInfo ^ ui_fgt_threshold
+    then
+        Goals = cord.list(GoalCord),
+        goal_info_set_nonlocals(set_of_var.make_singleton(TermVar),
+            GoalInfo, MarkedGoalInfo),
+        mark_nonlocals_in_ground_term_initial(Goals, MarkedGoals),
+        ConjGoalExpr = conj(plain_conj, MarkedGoals),
+        ConjGoal = hlds_goal(ConjGoalExpr, MarkedGoalInfo),
+        Reason = from_ground_term(TermVar, from_ground_term_initial),
+        ScopeGoalExpr = scope(Reason, ConjGoal),
+        ScopeGoal = hlds_goal(ScopeGoalExpr, MarkedGoalInfo),
+        MaybeWrappedGoalCord = cord.singleton(ScopeGoal)
+    else
+        MaybeWrappedGoalCord = GoalCord
+    ).
+
+:- pred mark_nonlocals_in_ground_term_initial(
+    list(hlds_goal)::in, list(hlds_goal)::out) is det.
+
+mark_nonlocals_in_ground_term_initial([], []).
+mark_nonlocals_in_ground_term_initial([Goal0 | Goals0], [Goal | Goals]) :-
+    Goal0 = hlds_goal(GoalExpr, GoalInfo0),
+    ( if
+        GoalExpr = unify(LHSVar, RHS, _, _, _),
+        RHS = rhs_functor(_, _, RHSVars)
+    then
+        set_of_var.list_to_set([LHSVar | RHSVars], NonLocals),
+        goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    else
+        unexpected($pred, "wrong shape goal")
+    ),
+    mark_nonlocals_in_ground_term_initial(Goals0, Goals).
+
+%---------------------------------------------------------------------------%
+
+:- pred perform_occurs_check(ancestor_var_map::in, prog_var::in,
+    unravel_info::in, unravel_info::out) is det.
+
+perform_occurs_check(AncestorVarMap, Var, !UrInfo) :-
     ( if map.search(AncestorVarMap, Var, AncestorContext) then
         % We *could* put the value of WarnOccursCheck into UrInfo, but
         % occurs check violations are very rare, so the gain would be
@@ -1308,6 +1327,36 @@ occurs_check(AncestorVarMap, Var, !UrInfo) :-
         true
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- pred arg_context_to_unify_context(arg_context::in, int::in,
+    unify_main_context::out, list(unify_sub_context)::out) is det.
+
+arg_context_to_unify_context(ArgContext, ArgNum, MainContext, SubContexts) :-
+    (
+        ArgContext = ac_head(PredOrFunc, PredFormArity),
+        ( if
+            PredOrFunc = pf_function,
+            PredFormArity = pred_form_arity(PredFormArityInt),
+            ArgNum = PredFormArityInt
+        then
+            % It is the function result term in the head.
+            MainContext = umc_head_result
+        else
+            % It is a non-function-result head argument.
+            MainContext = umc_head(ArgNum)
+        ),
+        SubContexts = []
+    ;
+        ArgContext = ac_call(PredId),
+        MainContext = umc_call(PredId, ArgNum),
+        SubContexts = []
+    ;
+        ArgContext = ac_functor(ConsId, MainContext, SubContexts0),
+        SubContext = unify_sub_context(ConsId, ArgNum),
+        SubContexts = [SubContext | SubContexts0]
+    ).
+
+%---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.superhomogeneous.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
