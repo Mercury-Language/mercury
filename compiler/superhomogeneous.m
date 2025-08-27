@@ -230,7 +230,7 @@ substitute_state_var_mappings_unify_var_term([], [], !SVarState, !UrInfo).
 substitute_state_var_mappings_unify_var_term([UVT0 | UVTs0], [UVT | UVTs],
         !SVarState, !UrInfo) :-
     UVT0 = unify_var_term(Var, Arg0),
-    replace_any_dot_color_state_var_in_term(Arg0, Arg, !SVarState, !UrInfo),
+    replace_any_dot_colon_state_var_in_term(Arg0, Arg, !SVarState, !UrInfo),
     UVT = unify_var_term(Var, Arg),
     substitute_state_var_mappings_unify_var_term(UVTs0, UVTs,
         !SVarState, !UrInfo).
@@ -246,7 +246,7 @@ substitute_state_var_mappings_unify_var_term_num_context([], [],
 substitute_state_var_mappings_unify_var_term_num_context(
         [UVTNC0 | UVTNCs0], [UVTNC | UVTNCs], !SVarState, !UrInfo) :-
     UVTNC0 = unify_var_term_num_context(Var, Arg0, ArgNum, ArgContext),
-    replace_any_dot_color_state_var_in_term(Arg0, Arg, !SVarState, !UrInfo),
+    replace_any_dot_colon_state_var_in_term(Arg0, Arg, !SVarState, !UrInfo),
     UVTNC = unify_var_term_num_context(Var, Arg, ArgNum, ArgContext),
     substitute_state_var_mappings_unify_var_term_num_context(UVTNCs0, UVTNCs,
         !SVarState, !UrInfo).
@@ -536,8 +536,8 @@ do_arg_unification(XVar, YTerm, Context, ArgContext, Order, ArgNum,
 
 do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
         Purity, Order, Expansion, !SVarState, !UrInfo) :-
-    replace_any_dot_color_state_var_in_term(LHS0, LHS, !SVarState, !UrInfo),
-    replace_any_dot_color_state_var_in_term(RHS0, RHS, !SVarState, !UrInfo),
+    replace_any_dot_colon_state_var_in_term(LHS0, LHS, !SVarState, !UrInfo),
+    replace_any_dot_colon_state_var_in_term(RHS0, RHS, !SVarState, !UrInfo),
     classify_unravel_unification(LHS, RHS, Context, MainContext, SubContext,
         Purity, Order, map.init, Expansion, !SVarState, !UrInfo).
 
@@ -549,7 +549,7 @@ do_unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
 
 do_unravel_var_unification(LHSVar, RHS0, Context, MainContext, SubContext,
         Purity, Order, Expansion, !SVarState, !UrInfo) :-
-    replace_any_dot_color_state_var_in_term(RHS0, RHS, !SVarState, !UrInfo),
+    replace_any_dot_colon_state_var_in_term(RHS0, RHS, !SVarState, !UrInfo),
     classify_unravel_var_unification(LHSVar, RHS,
         Context, MainContext, SubContext, Purity, Order, map.init, Expansion,
         !SVarState, !UrInfo).
@@ -653,7 +653,7 @@ classify_unravel_var_unification(XVar, YTerm, Context, MainContext, SubContext,
 unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
         Context, MainContext, SubContext,
         Purity, Order, AncestorVarMap, Expansion, !SVarState, !UrInfo) :-
-    replace_any_dot_color_state_var_in_terms(YArgTerms0, YArgTerms,
+    replace_any_dot_colon_state_var_in_terms(YArgTerms0, YArgTerms,
         !SVarState, !UrInfo),
     ( if
         YFunctor = term.atom(YAtom),
@@ -678,7 +678,7 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
                 FunctorName = qualified(ModuleName, Name),
                 % We have done state variable name expansion at the top
                 % level of Args, but not at the level of NameArgTerms.
-                replace_any_dot_color_state_var_in_terms(NameArgTerms,
+                replace_any_dot_colon_state_var_in_terms(NameArgTerms,
                     MaybeQualifiedYArgTermsPrime, !SVarState, !UrInfo)
             else
                 FunctorName = string_to_sym_name_sep(YAtom, "__"),
@@ -1024,7 +1024,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                 RValGoalCord = cord.empty
             ;
                 RValTerm0 = term.functor(_, _, _),
-                replace_any_dot_color_state_var_in_term(RValTerm0, RValTerm,
+                replace_any_dot_colon_state_var_in_term(RValTerm0, RValTerm,
                     !SVarState, !UrInfo),
                 make_fresh_arg_var_no_svar(RValTerm0, RValTermVar, [],
                     !UrInfo),
@@ -1076,7 +1076,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                     EmptyRenaming, CondParseTree, CondGoal,
                     BeforeInsideSVarState, AfterCondInsideSVarState, !UrInfo),
 
-                replace_any_dot_color_state_var_in_term(ThenTerm0, ThenTerm,
+                replace_any_dot_colon_state_var_in_term(ThenTerm0, ThenTerm,
                     AfterCondInsideSVarState, AfterThenInsideSVarState0,
                     !UrInfo),
                 map.init(AncestorVarMap),
@@ -1093,7 +1093,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
                     BeforeSVarState, AfterThenInsideSVarState,
                     AfterThenSVarState),
 
-                replace_any_dot_color_state_var_in_term(ElseTerm0, ElseTerm,
+                replace_any_dot_colon_state_var_in_term(ElseTerm0, ElseTerm,
                     BeforeSVarState, AfterElseSVarState0, !UrInfo),
                 classify_unravel_var_unification(XVar, ElseTerm,
                     Context, MainContext, SubContext,
@@ -1140,7 +1140,7 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
             (
                 MaybeFieldNames = ok1(FieldNames),
                 require_det (
-                    replace_any_dot_color_state_var_in_term(InputTerm0,
+                    replace_any_dot_colon_state_var_in_term(InputTerm0,
                         InputTerm, !SVarState, !UrInfo),
                     make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [],
                         !UrInfo),
@@ -1201,11 +1201,11 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
             (
                 MaybeFieldNames = ok1(FieldNames),
                 require_det (
-                    replace_any_dot_color_state_var_in_term(InputTerm0,
+                    replace_any_dot_colon_state_var_in_term(InputTerm0,
                         InputTerm, !SVarState, !UrInfo),
                     make_fresh_arg_var_no_svar(InputTerm, InputTermVar, [],
                         !UrInfo),
-                    replace_any_dot_color_state_var_in_term(FieldValueTerm0,
+                    replace_any_dot_colon_state_var_in_term(FieldValueTerm0,
                         FieldValueTerm, !SVarState, !UrInfo),
                     make_fresh_arg_var_no_svar(FieldValueTerm, FieldValueVar,
                         [InputTermVar], !UrInfo),
@@ -2312,7 +2312,7 @@ make_fresh_arg_vars_subst_svars_loop([Arg | Args], [Var | Vars],
     unravel_info::in, unravel_info::out) is det.
 
 make_fresh_arg_var_subst_svars(Arg0, Var, !RevVarsArgs, !SVarState, !UrInfo) :-
-    replace_any_dot_color_state_var_in_term(Arg0, Arg, !SVarState, !UrInfo),
+    replace_any_dot_colon_state_var_in_term(Arg0, Arg, !SVarState, !UrInfo),
     (
         Arg = term.variable(ArgVar, _),
         ( if have_seen_arg_var(!.RevVarsArgs, ArgVar) then

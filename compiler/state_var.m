@@ -312,14 +312,14 @@
     % as appropriate. Any occurrence of !X should already have been
     % expanded into a <!.X, !:X> pair by a call to expand_bang_state_pairs.
     %
-:- pred replace_any_dot_color_state_var_in_terms(
+:- pred replace_any_dot_colon_state_var_in_terms(
     list(prog_term)::in, list(prog_term)::out,
     svar_state::in, svar_state::out,
     unravel_info::in, unravel_info::out) is det.
 
-    % Same as replace_any_dot_color_state_var_in_terms, but for only one term.
+    % Same as replace_any_dot_colon_state_var_in_terms, but for only one term.
     %
-:- pred replace_any_dot_color_state_var_in_term(prog_term::in, prog_term::out,
+:- pred replace_any_dot_colon_state_var_in_term(prog_term::in, prog_term::out,
     svar_state::in, svar_state::out,
     unravel_info::in, unravel_info::out) is det.
 
@@ -2024,13 +2024,13 @@ svar_finish_inner_atomic_scope(_Context, InnerScopeInfo,
 % Look up prog_vars for a state_var.
 %
 
-replace_any_dot_color_state_var_in_terms([], [], !SVarState, !UrInfo).
-replace_any_dot_color_state_var_in_terms([Arg0 | Args0], [Arg | Args],
+replace_any_dot_colon_state_var_in_terms([], [], !SVarState, !UrInfo).
+replace_any_dot_colon_state_var_in_terms([Arg0 | Args0], [Arg | Args],
         !SVarState, !UrInfo) :-
-    replace_any_dot_color_state_var_in_term(Arg0, Arg, !SVarState, !UrInfo),
-    replace_any_dot_color_state_var_in_terms(Args0, Args, !SVarState, !UrInfo).
+    replace_any_dot_colon_state_var_in_term(Arg0, Arg, !SVarState, !UrInfo),
+    replace_any_dot_colon_state_var_in_terms(Args0, Args, !SVarState, !UrInfo).
 
-replace_any_dot_color_state_var_in_term(Arg0, Arg, !SVarState, !UrInfo) :-
+replace_any_dot_colon_state_var_in_term(Arg0, Arg, !SVarState, !UrInfo) :-
     ( if Arg0 = functor(atom("!."), [variable(StateVar, _)], Context) then
         lookup_dot_state_var(Context, StateVar, Var, !SVarState, !UrInfo),
         Arg = variable(Var, Context)
