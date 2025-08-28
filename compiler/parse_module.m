@@ -193,10 +193,6 @@
 :- import_module term_context.
 :- import_module varset.
 
-:- type missing_section_start_warning
-    --->    have_not_given_missing_section_start_warning
-    ;       have_given_missing_section_start_warning.
-
 %---------------------------------------------------------------------------%
 
 peek_at_file(FileStream, SourceFileName0, MaybeDefaultModuleName,
@@ -838,7 +834,6 @@ parse_src_file(!.SourceFileName, FileString, FileStringLen,
         MaybePrevSection = no,
         parse_src_file_components(FileString, FileStringLen,
             ModuleName, ContainingModules, MaybePrevSection,
-            have_not_given_missing_section_start_warning,
             InitLookAhead, FinalLookAhead, cord.init, ModuleComponents,
             !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn),
         check_for_unexpected_item_at_end(!.SourceFileName, FileString,
@@ -862,7 +857,6 @@ parse_src_file(!.SourceFileName, FileString, FileStringLen,
 :- pred parse_src_file_components(string::in, int::in,
     module_name::in, list(module_name)::in,
     maybe(pair(module_section, prog_context))::in,
-    missing_section_start_warning::in,
     maybe_lookahead::in, maybe_lookahead::out,
     cord(module_component)::in, cord(module_component)::out,
     file_name::in, file_name::out, counter::in, counter::out,
@@ -870,8 +864,7 @@ parse_src_file(!.SourceFileName, FileString, FileStringLen,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
 parse_src_file_components(FileString, FileStringLen,
-        CurModuleName, ContainingModules,
-        MaybePrevSection, !.MissingStartSectionWarning,
+        CurModuleName, ContainingModules, MaybePrevSection,
         InitLookAhead, FinalLookAhead, !ModuleComponents, !SourceFileName,
         !SeqNumCounter, !Errors, !LineContext, !LinePosn) :-
     get_next_item_or_marker(!.SourceFileName, FileString, FileStringLen,
@@ -886,8 +879,7 @@ parse_src_file_components(FileString, FileStringLen,
         add_nonfatal_error(rme_could_not_read_term, [ItemSpec], !Errors),
         % Continue looking for a section marker.
         parse_src_file_components(FileString, FileStringLen,
-            CurModuleName, ContainingModules,
-            MaybePrevSection, !.MissingStartSectionWarning,
+            CurModuleName, ContainingModules, MaybePrevSection,
             no_lookahead, FinalLookAhead, !ModuleComponents, !SourceFileName,
             !SeqNumCounter, !Errors, !LineContext, !LinePosn)
     ;
@@ -898,8 +890,7 @@ parse_src_file_components(FileString, FileStringLen,
         % as it were an unexpected but perfectly parseable term, i.e. follow
         % the pattern of the iom_item case below.
         Context = get_term_context(IOMTerm),
-        generate_missing_start_section_warning_src(CurModuleName,
-            Context, !.MissingStartSectionWarning, _MissingStartSectionWarning,
+        generate_missing_start_section_warning_src(CurModuleName, Context,
             !Errors),
         SectionKind = ms_implementation,
         SectionContext = dummy_context,
@@ -915,7 +906,6 @@ parse_src_file_components(FileString, FileStringLen,
         parse_src_file_components(FileString, FileStringLen,
             CurModuleName, ContainingModules,
             yes(SectionKind - SectionContext),
-            have_not_given_missing_section_start_warning,
             ItemSeqFinalLookAhead, FinalLookAhead, !ModuleComponents,
             !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn)
     ;
@@ -924,7 +914,7 @@ parse_src_file_components(FileString, FileStringLen,
             IOM = iom_marker_src_file(!:SourceFileName),
             parse_src_file_components(FileString, FileStringLen,
                 CurModuleName, ContainingModules, MaybePrevSection,
-                !.MissingStartSectionWarning, no_lookahead, FinalLookAhead,
+                no_lookahead, FinalLookAhead,
                 !ModuleComponents, !SourceFileName, !SeqNumCounter,
                 !Errors, !LineContext, !LinePosn)
         ;
@@ -938,7 +928,7 @@ parse_src_file_components(FileString, FileStringLen,
             add_nonfatal_error(rme_nec, [Spec], !Errors),
             parse_src_file_components(FileString, FileStringLen,
                 CurModuleName, ContainingModules, MaybePrevSection,
-                !.MissingStartSectionWarning, no_lookahead, FinalLookAhead,
+                no_lookahead, FinalLookAhead,
                 !ModuleComponents, !SourceFileName, !SeqNumCounter,
                 !Errors, !LineContext, !LinePosn)
         ;
@@ -983,7 +973,6 @@ parse_src_file_components(FileString, FileStringLen,
             % We have read in one component; recurse to read in others.
             parse_src_file_components(FileString, FileStringLen,
                 CurModuleName, ContainingModules, MaybePrevSection,
-                !.MissingStartSectionWarning,
                 SubModuleFinalLookAhead, FinalLookAhead, !ModuleComponents,
                 !SourceFileName, !SeqNumCounter, !Errors,
                 !LineContext, !LinePosn)
@@ -1025,8 +1014,7 @@ parse_src_file_components(FileString, FileStringLen,
                     MaybePrevSection = no,
                     Context = get_term_context(IOMTerm),
                     generate_missing_start_section_warning_src(CurModuleName,
-                        Context, !.MissingStartSectionWarning,
-                        _MissingStartSectionWarning, !Errors),
+                        Context, !Errors),
                     % The following code is duplicated in the case for
                     % read_iom_parse_item_errors above.
                     SectionKind = ms_implementation,
@@ -1048,7 +1036,6 @@ parse_src_file_components(FileString, FileStringLen,
             parse_src_file_components(FileString, FileStringLen,
                 CurModuleName, ContainingModules,
                 yes(SectionKind - SectionContext),
-                have_not_given_missing_section_start_warning,
                 ItemSeqFinalLookAhead, FinalLookAhead, !ModuleComponents,
                 !SourceFileName, !SeqNumCounter, !Errors,
                 !LineContext, !LinePosn)
@@ -1083,35 +1070,23 @@ add_section_component(ModuleName, SectionKind, SectionContext,
 
 :- pred generate_missing_start_section_warning_src(module_name::in,
     prog_context::in,
-    missing_section_start_warning::in, missing_section_start_warning::out,
     read_module_errors::in, read_module_errors::out) is det.
 
-generate_missing_start_section_warning_src(CurModuleName,
-        Context, !MissingStartSectionWarning, !Errors) :-
-    (
-        !.MissingStartSectionWarning =
-            have_not_given_missing_section_start_warning,
-        !:MissingStartSectionWarning =
-            have_given_missing_section_start_warning,
-        Pieces = [invis_order_default_start(1, ""),
-            words("Error: module"), qual_sym_name(CurModuleName)] ++
-            color_as_incorrect([words("should start with")]) ++
-            [words("either an")] ++
-            color_as_correct([decl("interface"), words("declaration")]) ++
-            [words("or an")] ++
-            color_as_correct([decl("implementation"),
-                words("declaration.")]) ++
-            [nl,
-            words("The following assumes that"),
-            words("the missing declaration is an"),
-            decl("implementation"), words("declaration."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-        add_nonfatal_error(rme_no_section_decl_at_start, [Spec], !Errors)
-    ;
-        !.MissingStartSectionWarning =
-            have_given_missing_section_start_warning
-        % Do not generate duplicate warnings.
-    ).
+generate_missing_start_section_warning_src(CurModuleName, Context, !Errors) :-
+    Pieces = [invis_order_default_start(1, ""),
+        words("Error: module"), qual_sym_name(CurModuleName)] ++
+        color_as_incorrect([words("should start with")]) ++
+        [words("either an")] ++
+        color_as_correct([decl("interface"), words("declaration")]) ++
+        [words("or an")] ++
+        color_as_correct([decl("implementation"),
+            words("declaration.")]) ++
+        [nl,
+        words("The following assumes that"),
+        words("the missing declaration is an"),
+        decl("implementation"), words("declaration."), nl],
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+    add_nonfatal_error(rme_no_section_decl_at_start, [Spec], !Errors).
 
 :- pred parse_src_file_submodule(string::in, int::in,
     list(module_name)::in, maybe(pair(module_section, prog_context))::in,
@@ -1154,7 +1129,6 @@ parse_src_file_submodule(FileString, FileStringLen, ContainingModules,
     NestedMaybePrevSection = no,
     parse_src_file_components(FileString, FileStringLen, StartModuleName,
         NestedContainingModules, NestedMaybePrevSection,
-        have_not_given_missing_section_start_warning,
         InitLookAhead, FinalLookAhead, cord.init, NestedModuleComponents,
         !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn),
     SubModuleParseTreeSrc = parse_tree_src(StartModuleName, StartContext,
