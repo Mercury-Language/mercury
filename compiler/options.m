@@ -75,11 +75,9 @@
 :- import_module libs.optimization_options.
 :- import_module libs.option_categories.
 
-:- import_module char.
 :- import_module cord.
 :- import_module getopt.
 :- import_module list.
-:- import_module map.
 
 %---------------------------------------------------------------------------%
 
@@ -1248,7 +1246,9 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module char.
 :- import_module dir.
+:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
