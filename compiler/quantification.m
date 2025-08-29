@@ -329,8 +329,8 @@ quantify_goal(NonLocalsToRecompute, Goal0, Goal, !Info) :-
         get_seen(!.Info, SeenVars),
         quantify_goal_expr(NonLocalsToRecompute, !GoalExpr, !.GoalInfo,
             PossiblyNonLocalGoalVars0, !Info),
-        get_nonlocals(!.Info, NonLocalVars),
-        set_of_var.difference(PossiblyNonLocalGoalVars0, NonLocalVars,
+        get_nonlocals(!.Info, NonLocals),
+        set_of_var.difference(PossiblyNonLocalGoalVars0, NonLocals,
             LocalVars),
         set_of_var.intersect(SeenVars, LocalVars, RenameVars),
         % If there are any variables that are local to the goal
@@ -351,7 +351,7 @@ quantify_goal(NonLocalsToRecompute, Goal0, Goal, !Info) :-
                 set_rtti_varmaps(!.RttiVarMaps, !Info)
             )
         ),
-        set_goal_nonlocals(NonLocalsToRecompute, NonLocalVars, !GoalInfo),
+        set_goal_nonlocals(NonLocalsToRecompute, NonLocals, !GoalInfo),
 
         % If the nonlocals set has shrunk (e.g. because some optimization
         % optimizes away the other occurrences of a variable, causing it
@@ -359,7 +359,7 @@ quantify_goal(NonLocalsToRecompute, Goal0, Goal, !Info) :-
         % then we may need to likewise shrink the instmap delta.
 
         InstMapDelta0 = goal_info_get_instmap_delta(!.GoalInfo),
-        instmap_delta_restrict(NonLocalVars, InstMapDelta0, InstMapDelta),
+        instmap_delta_restrict(NonLocals, InstMapDelta0, InstMapDelta),
         goal_info_set_instmap_delta(InstMapDelta, !GoalInfo),
         Goal = hlds_goal(!.GoalExpr, !.GoalInfo)
     ).
@@ -438,24 +438,24 @@ quantify_goal_expr(NonLocalsToRecompute, GoalExpr0, GoalExpr, GoalInfo0,
         )
     ;
         GoalExpr0 = disj(Goals0),
-        NonLocalVarSets0 = [],
-        quantify_disj(NonLocalsToRecompute, Goals0, Goals, !Info,
-            NonLocalVarSets0, NonLocalVarSets),
-        set_of_var.union_list(NonLocalVarSets, NonLocalVars),
-        set_nonlocals(NonLocalVars, !Info),
+        NonLocalsSets0 = [],
+        quantify_disj(NonLocalsToRecompute, Goals0, Goals,
+            NonLocalsSets0, NonLocalsSets, !Info),
+        set_of_var.union_list(NonLocalsSets, NonLocals),
+        set_nonlocals(NonLocals, !Info),
         GoalExpr = disj(Goals),
         goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
             PossiblyNonLocalGoalVars0)
     ;
         GoalExpr0 = switch(Var, Det, Cases0),
-        NonLocalVarSets0 = [],
-        quantify_cases(NonLocalsToRecompute, Cases0, Cases, !Info,
-            NonLocalVarSets0, NonLocalVarSets),
+        NonLocalsSets0 = [],
+        quantify_cases(NonLocalsToRecompute, Cases0, Cases,
+            NonLocalsSets0, NonLocalsSets, !Info),
         % The switch variable is guaranteed to be nonlocal to the switch, since
         % it has to be bound elsewhere, so we put it in the nonlocals here.
-        set_of_var.union_list(NonLocalVarSets, NonLocalVars0),
-        set_of_var.insert(Var, NonLocalVars0, NonLocalVars),
-        set_nonlocals(NonLocalVars, !Info),
+        set_of_var.union_list(NonLocalsSets, NonLocals0),
+        set_of_var.insert(Var, NonLocals0, NonLocals),
+        set_nonlocals(NonLocals, !Info),
         GoalExpr = switch(Var, Det, Cases),
         goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
             PossiblyNonLocalGoalVars0)
@@ -554,10 +554,10 @@ quantify_goal_unify(NonLocalsToRecompute, GoalExpr0, GoalExpr, GoalInfo0,
     set_of_var.union(AllButRHSGoalVars, RHSGoalVars, AllGoalVars),
 
     update_seen_vars(AllGoalVars, !Info),
-    set_of_var.intersect(AllGoalVars, OutsideVars, ONonLocalVars),
-    set_of_var.intersect(AllGoalVars, LambdaOutsideVars, LONonLocalVars),
-    set_of_var.union(ONonLocalVars, LONonLocalVars, NonLocalVars),
-    set_nonlocals(NonLocalVars, !Info),
+    set_of_var.intersect(AllGoalVars, OutsideVars, NonLocalsO),
+    set_of_var.intersect(AllGoalVars, LambdaOutsideVars, NonLocalsLO),
+    set_of_var.union(NonLocalsO, NonLocalsLO, NonLocals),
+    set_nonlocals(NonLocals, !Info),
     goal_expr_vars_bitset(NonLocalsToRecompute, GoalExpr0,
         PossiblyNonLocalGoalVars0).
 
@@ -794,9 +794,9 @@ quantify_goal_scope_rename_vars(NonLocalsToRecompute, Reason0, Reason,
     get_quant_vars(!.Info, QuantVars0),
     % Rename apart all the quantified variables that occur outside this goal.
     QVars = list_to_set(Vars0),
-    set_of_var.intersect(OutsideVars, QVars, RenameVars1),
-    set_of_var.intersect(LambdaOutsideVars, QVars, RenameVars2),
-    set_of_var.union(RenameVars1, RenameVars2, RenameVars),
+    set_of_var.intersect(OutsideVars, QVars, RenameVarsO),
+    set_of_var.intersect(LambdaOutsideVars, QVars, RenameVarsLO),
+    set_of_var.union(RenameVarsO, RenameVarsLO, RenameVars),
     ( if set_of_var.is_empty(RenameVars) then
         SubGoal = SubGoal0,
         Vars = Vars0,
@@ -877,10 +877,10 @@ quantify_goal_shorthand(NonLocalsToRecompute, GoalExpr0, GoalExpr, GoalInfo0,
 
         assoc_list.from_corresponding_lists([MainGoal0 | OrElseGoals1],
             [Inner | OrElseInners], AtomicGoalsWithInners0),
-        NonLocalVarSets0 = [],
+        NonLocalsSets0 = [],
         quantify_atomic_goals(NonLocalsToRecompute,
-            AtomicGoalsWithInners0, AllAtomicGoals, !Info,
-            NonLocalVarSets0, NonLocalVarSets),
+            AtomicGoalsWithInners0, AllAtomicGoals,
+            NonLocalsSets0, NonLocalsSets, !Info),
 
         (
             AllAtomicGoals = [MainGoal | OrElseGoals]
@@ -888,19 +888,19 @@ quantify_goal_shorthand(NonLocalsToRecompute, GoalExpr0, GoalExpr, GoalInfo0,
             AllAtomicGoals = [],
             unexpected($pred, "AllAtomicGoals = []")
         ),
-        set_of_var.union_list(NonLocalVarSets, NonLocalVars0),
+        set_of_var.union_list(NonLocalsSets, NonLocals0),
         (
             GoalType = unknown_atomic_goal_type,
             Outer = atomic_interface_vars(OuterDI, OuterUO),
             set_of_var.insert_list([OuterDI, OuterUO],
-                NonLocalVars0, NonLocalVars)
+                NonLocals0, NonLocals)
         ;
             ( GoalType = top_level_atomic_goal
             ; GoalType = nested_atomic_goal
             ),
-            NonLocalVars = NonLocalVars0
+            NonLocals = NonLocals0
         ),
-        set_nonlocals(NonLocalVars, !Info),
+        set_nonlocals(NonLocals, !Info),
 
         ShortHand = atomic_goal(GoalType, Outer, Inner, MaybeOutputVars,
             MainGoal, OrElseGoals, OrElseInners),
@@ -982,27 +982,27 @@ quantify_goal_bi_implication(LHS0, RHS0, GoalExpr, OldGoalInfo, !Info) :-
     set_outside(LHS_OutsideVars, !Info),
     set_lambda_outside(LHS_LambdaOutsideVars, !Info),
     quantify_goal(ord_nl_maybe_lambda, LHS0, LHS, !Info),
-    get_nonlocals(!.Info, LHS_NonLocalVars),
+    get_nonlocals(!.Info, LHS_NonLocals),
 
     % Prepare for quantifying the RHS: add nonlocals from the LHS to the
     % outside vars. (We use the nonlocals, rather than the more symmetric
     % approach of calling goal_vars on the LHS goal, because it is more
     % efficient.)
-    set_of_var.union(OutsideVars1, LHS_NonLocalVars, RHS_OutsideVars),
+    set_of_var.union(OutsideVars1, LHS_NonLocals, RHS_OutsideVars),
     RHS_LambdaOutsideVars = LambdaOutsideVars1,
 
     % Quantify the RHS.
     set_outside(RHS_OutsideVars, !Info),
     set_lambda_outside(RHS_LambdaOutsideVars, !Info),
     quantify_goal(ord_nl_maybe_lambda, RHS0, RHS, !Info),
-    get_nonlocals(!.Info, RHS_NonLocalVars),
+    get_nonlocals(!.Info, RHS_NonLocals),
 
     % Compute the nonlocals for this goal.
-    set_of_var.union(LHS_NonLocalVars, RHS_NonLocalVars, AllNonLocalVars),
-    set_of_var.intersect(AllNonLocalVars, OutsideVars0, NonLocalVarsO),
-    set_of_var.intersect(AllNonLocalVars, LambdaOutsideVars0, NonLocalVarsL),
-    set_of_var.union(NonLocalVarsO, NonLocalVarsL, NonLocalVars),
-    set_nonlocals(NonLocalVars, !Info),
+    set_of_var.union(LHS_NonLocals, RHS_NonLocals, AllNonLocals),
+    set_of_var.intersect(AllNonLocals, OutsideVars0, NonLocalsO),
+    set_of_var.intersect(AllNonLocals, LambdaOutsideVars0, NonLocalsLO),
+    set_of_var.union(NonLocalsO, NonLocalsLO, NonLocals),
+    set_nonlocals(NonLocals, !Info),
 
     % Restore the original values of various settings.
     set_outside(OutsideVars0, !Info),
@@ -1019,12 +1019,9 @@ quantify_goal_bi_implication(LHS0, RHS0, GoalExpr, OldGoalInfo, !Info) :-
     Context = goal_info_get_context(OldGoalInfo),
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo1),
-    set_goal_nonlocals(ord_nl_maybe_lambda, LHS_NonLocalVars,
-        GoalInfo1, LHS_GI),
-    set_goal_nonlocals(ord_nl_maybe_lambda, RHS_NonLocalVars,
-        GoalInfo1, RHS_GI),
-    set_goal_nonlocals(ord_nl_maybe_lambda, NonLocalVars,
-        GoalInfo1, GI),
+    set_goal_nonlocals(ord_nl_maybe_lambda, LHS_NonLocals, GoalInfo1, LHS_GI),
+    set_goal_nonlocals(ord_nl_maybe_lambda, RHS_NonLocals, GoalInfo1, RHS_GI),
+    set_goal_nonlocals(ord_nl_maybe_lambda, NonLocals, GoalInfo1, GI),
     NotLHS = hlds_goal(negation(LHS), LHS_GI),
     NotRHS = hlds_goal(negation(RHS), RHS_GI),
     ForwardsImplicationExpr =
@@ -1036,7 +1033,7 @@ quantify_goal_bi_implication(LHS0, RHS0, GoalExpr, OldGoalInfo, !Info) :-
 
     % Rename apart the local variables of the goals we have just duplicated.
     goal_vars_bitset_maybe_lambda_and_bi_impl(ReverseImplication0, GoalVars),
-    set_of_var.difference(GoalVars, NonLocalVars, RenameVars),
+    set_of_var.difference(GoalVars, NonLocals, RenameVars),
     rename_vars_apart(ord_nl_maybe_lambda, RenameVars, _,
         ReverseImplication0, ReverseImplication, !Info),
 
@@ -1050,9 +1047,9 @@ quantify_primitive_goal(HeadVars, !Info) :-
     update_seen_vars(GoalVars, !Info),
     get_outside(!.Info, OutsideVars),
     get_lambda_outside(!.Info, LambdaOutsideVars),
-    set_of_var.intersect(GoalVars, OutsideVars, NonLocals1),
-    set_of_var.intersect(GoalVars, LambdaOutsideVars, NonLocals2),
-    set_of_var.union(NonLocals1, NonLocals2, NonLocals),
+    set_of_var.intersect(GoalVars, OutsideVars, NonLocalsO),
+    set_of_var.intersect(GoalVars, LambdaOutsideVars, NonLocalsLO),
+    set_of_var.union(NonLocalsO, NonLocalsLO, NonLocals),
     set_nonlocals(NonLocals, !Info).
 
 :- pred quantify_unify_rhs(nonlocals_to_recompute,
@@ -1229,34 +1226,33 @@ quantify_conj_maybe_lambda_loop(NonLocalsToRecompute, GWLVs, Goals, !Info) :-
     (
         GWLVs = no_goals_with_later_vars_wl,
         Goals = [],
-        NonLocalVars = set_of_var.init,
-        set_nonlocals(NonLocalVars, !Info)
+        NonLocals = set_of_var.init,
+        set_nonlocals(NonLocals, !Info)
     ;
         GWLVs = goals_with_later_vars_wl(HeadGoal0,
             FollowingVars, LambdaFollowingVars, TailGWLVs),
         get_outside(!.Info, OutsideVars),
         get_lambda_outside(!.Info, LambdaOutsideVars),
-        set_of_var.union(OutsideVars, FollowingVars, OutsideVars1),
+        set_of_var.union(OutsideVars, FollowingVars, HeadOutsideVars),
         set_of_var.union(LambdaOutsideVars, LambdaFollowingVars,
-            LambdaOutsideVars1),
-        set_outside(OutsideVars1, !Info),
-        set_lambda_outside(LambdaOutsideVars1, !Info),
+            HeadLambdaOutsideVars),
+        set_outside(HeadOutsideVars, !Info),
+        set_lambda_outside(HeadLambdaOutsideVars, !Info),
         quantify_goal(NonLocalsToRecompute, HeadGoal0, HeadGoal, !Info),
-        get_nonlocals(!.Info, NonLocalVars1),
-        set_of_var.union(OutsideVars, NonLocalVars1, OutsideVars2),
-        set_outside(OutsideVars2, !Info),
+        get_nonlocals(!.Info, HeadNonLocals),
+        set_of_var.union(OutsideVars, HeadNonLocals, TailOutsideVars),
+        set_outside(TailOutsideVars, !Info),
         set_lambda_outside(LambdaOutsideVars, !Info),
         quantify_conj_maybe_lambda_loop(NonLocalsToRecompute,
             TailGWLVs, TailGoals, !Info),
         Goals = [HeadGoal | TailGoals],
-        get_nonlocals(!.Info, NonLocalVars2),
-        set_of_var.union(NonLocalVars1, NonLocalVars2, NonLocalVarsConj),
-        set_of_var.intersect(NonLocalVarsConj, OutsideVars, NonLocalVarsO),
-        set_of_var.intersect(NonLocalVarsConj,
-            LambdaOutsideVars, NonLocalVarsL),
-        set_of_var.union(NonLocalVarsO, NonLocalVarsL, NonLocalVars),
+        get_nonlocals(!.Info, TailNonLocals),
+        set_of_var.union(HeadNonLocals, TailNonLocals, NonLocalsConj),
+        set_of_var.intersect(NonLocalsConj, OutsideVars, NonLocalsO),
+        set_of_var.intersect(NonLocalsConj, LambdaOutsideVars, NonLocalsL),
+        set_of_var.union(NonLocalsO, NonLocalsL, NonLocals),
         set_outside(OutsideVars, !Info),
-        set_nonlocals(NonLocalVars, !Info)
+        set_nonlocals(NonLocals, !Info)
     ).
 
 :- pred quantify_conj_no_lambda_loop(nonlocals_to_recompute,
@@ -1270,32 +1266,32 @@ quantify_conj_no_lambda_loop(NonLocalsToRecompute, GWLVs, Goals, !Info) :-
     (
         GWLVs = no_goals_with_later_vars_nl,
         Goals = [],
-        NonLocalVars = set_of_var.init,
-        set_nonlocals(NonLocalVars, !Info)
+        NonLocals = set_of_var.init,
+        set_nonlocals(NonLocals, !Info)
     ;
         GWLVs = goals_with_later_vars_nl(HeadGoal0, FollowingVars, TailGWLVs),
         get_outside(!.Info, OutsideVars),
-        union(OutsideVars, FollowingVars, OutsideVars1),
-        set_outside(OutsideVars1, !Info),
+        union(OutsideVars, FollowingVars, HeadOutsideVars),
+        set_outside(HeadOutsideVars, !Info),
         quantify_goal(NonLocalsToRecompute, HeadGoal0, HeadGoal, !Info),
-        get_nonlocals(!.Info, NonLocalVars1),
-        set_of_var.union(OutsideVars, NonLocalVars1, OutsideVars2),
-        set_outside(OutsideVars2, !Info),
+        get_nonlocals(!.Info, HeadNonLocals),
+        set_of_var.union(OutsideVars, HeadNonLocals, TailOutsideVars),
+        set_outside(TailOutsideVars, !Info),
         quantify_conj_no_lambda_loop(NonLocalsToRecompute,
             TailGWLVs, TailGoals, !Info),
         Goals = [HeadGoal | TailGoals],
-        get_nonlocals(!.Info, NonLocalVars2),
-        set_of_var.union(NonLocalVars1, NonLocalVars2, NonLocalVarsConj),
-        set_of_var.intersect(NonLocalVarsConj, OutsideVars, NonLocalVars),
+        get_nonlocals(!.Info, TailNonLocals),
+        set_of_var.union(HeadNonLocals, TailNonLocals, NonLocalsConj),
+        set_of_var.intersect(NonLocalsConj, OutsideVars, NonLocals),
         set_outside(OutsideVars, !Info),
-        set_nonlocals(NonLocalVars, !Info)
+        set_nonlocals(NonLocals, !Info)
     ).
 
 %---------------------%
 
 :- pred quantify_disj(nonlocals_to_recompute,
-    list(hlds_goal), list(hlds_goal), quant_info, quant_info,
-    list(set_of_progvar), list(set_of_progvar)).
+    list(hlds_goal), list(hlds_goal),
+    list(set_of_progvar), list(set_of_progvar), quant_info, quant_info).
 :- mode quantify_disj(in(ord_nl_maybe_lambda),
     in, out, in, out, in, out) is det.
 :- mode quantify_disj(in(ord_nl_no_lambda),
@@ -1303,20 +1299,19 @@ quantify_conj_no_lambda_loop(NonLocalsToRecompute, GWLVs, Goals, !Info) :-
 :- mode quantify_disj(in(cg_nl_no_lambda),
     in, out, in, out, in, out) is det.
 
-quantify_disj(_, [], [], !Info, !NonLocalVarSets).
+quantify_disj(_, [], [], !NonLocalsSets, !Info).
 quantify_disj(NonLocalsToRecompute,
-        [Goal0 | Goals0], [Goal | Goals], !Info, !NonLocalVarSets) :-
+        [Goal0 | Goals0], [Goal | Goals], !NonLocalsSets, !Info) :-
     quantify_goal(NonLocalsToRecompute, Goal0, Goal, !Info),
-    get_nonlocals(!.Info, GoalNonLocalVars),
-    !:NonLocalVarSets = [GoalNonLocalVars | !.NonLocalVarSets],
-    quantify_disj(NonLocalsToRecompute, Goals0, Goals,
-        !Info, !NonLocalVarSets).
+    get_nonlocals(!.Info, GoalNonLocals),
+    !:NonLocalsSets = [GoalNonLocals | !.NonLocalsSets],
+    quantify_disj(NonLocalsToRecompute, Goals0, Goals, !NonLocalsSets, !Info).
 
 %---------------------%
 
 :- pred quantify_atomic_goals(nonlocals_to_recompute,
     list(pair(hlds_goal, atomic_interface_vars)), list(hlds_goal),
-    quant_info, quant_info, list(set_of_progvar), list(set_of_progvar)).
+    list(set_of_progvar), list(set_of_progvar), quant_info, quant_info).
 :- mode quantify_atomic_goals(in(ord_nl_maybe_lambda),
     in, out, in, out, in, out) is det.
 :- mode quantify_atomic_goals(in(ord_nl_no_lambda),
@@ -1324,9 +1319,9 @@ quantify_disj(NonLocalsToRecompute,
 :- mode quantify_atomic_goals(in(cg_nl_no_lambda),
     in, out, in, out, in, out) is det.
 
-quantify_atomic_goals(_, [], [], !Info, !NonLocalVarSets).
+quantify_atomic_goals(_, [], [], !NonLocalsSets, !Info).
 quantify_atomic_goals(NonLocalsToRecompute,
-        [Goal0 - Inner0 | Goals0], [Goal | Goals], !Info, !NonLocalVarSets) :-
+        [Goal0 - Inner0 | Goals0], [Goal | Goals], !NonLocalsSets, !Info) :-
     Goal0 = hlds_goal(_, GoalInfo0),
     ( if
         goal_info_has_feature(GoalInfo0, feature_contains_stm_inner_outer)
@@ -1341,16 +1336,15 @@ quantify_atomic_goals(NonLocalsToRecompute,
         set_outside(OutsideVars, !Info)
     ),
     quantify_goal(NonLocalsToRecompute, Goal0, Goal, !Info),
-    get_nonlocals(!.Info, GoalNonLocalVars),
-    !:NonLocalVarSets = [GoalNonLocalVars | !.NonLocalVarSets],
+    get_nonlocals(!.Info, GoalNonLocals),
+    !:NonLocalsSets = [GoalNonLocals | !.NonLocalsSets],
     quantify_atomic_goals(NonLocalsToRecompute, Goals0, Goals,
-        !Info, !NonLocalVarSets).
+        !NonLocalsSets, !Info).
 
 %---------------------%
 
-:- pred quantify_cases(nonlocals_to_recompute,
-    list(case), list(case), quant_info, quant_info,
-    list(set_of_progvar), list(set_of_progvar)).
+:- pred quantify_cases(nonlocals_to_recompute, list(case), list(case),
+    list(set_of_progvar), list(set_of_progvar), quant_info, quant_info).
 :- mode quantify_cases(in(ord_nl_maybe_lambda),
     in, out, in, out, in, out) is det.
 :- mode quantify_cases(in(ord_nl_no_lambda),
@@ -1358,16 +1352,16 @@ quantify_atomic_goals(NonLocalsToRecompute,
 :- mode quantify_cases(in(cg_nl_no_lambda),
     in, out, in, out, in, out) is det.
 
-quantify_cases(_, [], [], !Info, !NonLocalVarSets).
+quantify_cases(_, [], [], !NonLocalsSets, !Info).
 quantify_cases(NonLocalsToRecompute,
-        [Case0 | Cases0], [Case | Cases], !Info, !NonLocalVarSets) :-
+        [Case0 | Cases0], [Case | Cases], !NonLocalsSets, !Info) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     quantify_goal(NonLocalsToRecompute, Goal0, Goal, !Info),
     Case = case(MainConsId, OtherConsIds, Goal),
-    get_nonlocals(!.Info, GoalNonLocalVars),
-    !:NonLocalVarSets = [GoalNonLocalVars | !.NonLocalVarSets],
+    get_nonlocals(!.Info, GoalNonLocals),
+    !:NonLocalsSets = [GoalNonLocals | !.NonLocalsSets],
     quantify_cases(NonLocalsToRecompute, Cases0, Cases,
-        !Info, !NonLocalVarSets).
+        !NonLocalsSets, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -2659,23 +2653,47 @@ set_goal_nonlocals(NonLocalsToRecompute, NonLocals, !GoalInfo) :-
     %   OutsideVars will be [X] and QuantifiedVars will be [],
     %   since the quantification can't be pushed inside the negation.
     %
-    % The `outside vars', `lambda outside vars', and `quant vars' fields
-    % are inputs; the `nonlocals' field is output; and the `seen so far',
-    % the varset, the types, rtti_varmaps, and the warnings fields are
-    % threaded (i.e. both input and output).
+    % The `quant vars' field is input.
+    %
+    % The `outside vars' and `lambda outside vars' fields are also input,
+    % but when we have finished processing a goal, we update them
+    % to prepare for processing the next goal.
+    %
+    % The `nonlocals' field is output.
+    %
     % We use the convention that the input fields are callee save,
     % and the outputs are caller save.
     %
+    % The `seen so far', var_db, rtti_varmaps, and the warnings fields are
+    % threaded through as persistent state.
+    %
+    % NOTE Taking the nonlocals field out of the quant_info structure,
+    % and simply returning it as an output argument of each predicate,
+    % yields simpler, shorter and easier-to-understand code. Unfortunately,
+    % it also leads to about a 0.8% slowdown, which is why the diff that
+    % proves this, which I (zs) posted to m-rev on 2025 aug 29, was not
+    % committed.
+    %
+    % Based on this experience, taking the quant vars field out of quant_info
+    % would probably also yield both cleaner code and a slowdown, while
+    % taking the outside vars and lambda output vars fields out would probably
+    % yield only a slowdown.
+    %
 :- type quant_info
     --->    quant_info(
+                % Pure inputs.
+                qi_quant_vars           :: set_of_progvar,
+
+                % Inputs that are also updated for the next goal.
                 qi_outside              :: set_of_progvar,
                 qi_lambda_outside       :: set_of_progvar,
-                qi_quant_vars           :: set_of_progvar,
+
+                % Pure output.
                 qi_nonlocals            :: set_of_progvar,
-                qi_seen                 :: set_of_progvar,
 
                 % These fields are threaded all the way through
                 % the procedure body, or the top-level goal we process.
+                qi_seen                 :: set_of_progvar,
                 qi_var_db               :: var_db,
                 qi_rtti_varmaps         :: rtti_varmaps,
                 qi_warnings             :: cord(quant_warning),
@@ -2688,26 +2706,26 @@ set_goal_nonlocals(NonLocalsToRecompute, NonLocals, !GoalInfo) :-
     maybe_keep_quant_vars::in, quant_info::out) is det.
 
 init_quant_info(OutsideVars, VarDb, RttiVarMaps, KeepQuantVars, QuantInfo) :-
-    LambdaOutsideVars = set_of_var.init,
     QuantVars = set_of_var.init,
+    LambdaOutsideVars = set_of_var.init,
     NonLocals = set_of_var.init,
     Seen = OutsideVars,
     OverlapWarnings = cord.init,
-    QuantInfo = quant_info(OutsideVars, LambdaOutsideVars, QuantVars,
+    QuantInfo = quant_info(QuantVars, OutsideVars, LambdaOutsideVars,
         NonLocals, Seen, VarDb, RttiVarMaps, OverlapWarnings, KeepQuantVars).
 
+:- pred get_quant_vars(quant_info::in, set_of_progvar::out) is det.
 :- pred get_outside(quant_info::in, set_of_progvar::out) is det.
 :- pred get_lambda_outside(quant_info::in, set_of_progvar::out) is det.
-:- pred get_quant_vars(quant_info::in, set_of_progvar::out) is det.
 :- pred get_nonlocals(quant_info::in, set_of_progvar::out) is det.
 :- pred get_seen(quant_info::in, set_of_progvar::out) is det.
 :- pred get_var_db(quant_info::in, var_db::out) is det.
 :- pred get_rtti_varmaps(quant_info::in, rtti_varmaps::out) is det.
 :- pred get_warnings(quant_info::in, cord(quant_warning)::out) is det.
 :- pred get_keep_quant_vars(quant_info::in, maybe_keep_quant_vars::out) is det.
+:- pragma inline(pred(get_quant_vars/2)).
 :- pragma inline(pred(get_outside/2)).
 :- pragma inline(pred(get_lambda_outside/2)).
-:- pragma inline(pred(get_quant_vars/2)).
 :- pragma inline(pred(get_nonlocals/2)).
 :- pragma inline(pred(get_seen/2)).
 :- pragma inline(pred(get_var_db/2)).
@@ -2715,11 +2733,11 @@ init_quant_info(OutsideVars, VarDb, RttiVarMaps, KeepQuantVars, QuantInfo) :-
 :- pragma inline(pred(get_warnings/2)).
 :- pragma inline(pred(get_keep_quant_vars/2)).
 
+:- pred set_quant_vars(set_of_progvar::in,
+    quant_info::in, quant_info::out) is det.
 :- pred set_outside(set_of_progvar::in,
     quant_info::in, quant_info::out) is det.
 :- pred set_lambda_outside(set_of_progvar::in,
-    quant_info::in, quant_info::out) is det.
-:- pred set_quant_vars(set_of_progvar::in,
     quant_info::in, quant_info::out) is det.
 :- pred set_nonlocals(set_of_progvar::in,
     quant_info::in, quant_info::out) is det.
@@ -2731,21 +2749,21 @@ init_quant_info(OutsideVars, VarDb, RttiVarMaps, KeepQuantVars, QuantInfo) :-
     quant_info::in, quant_info::out) is det.
 :- pred set_warnings(cord(quant_warning)::in,
     quant_info::in, quant_info::out) is det.
+:- pragma inline(pred(set_quant_vars/3)).
 :- pragma inline(pred(set_outside/3)).
 :- pragma inline(pred(set_lambda_outside/3)).
-:- pragma inline(pred(set_quant_vars/3)).
 :- pragma inline(pred(set_nonlocals/3)).
 :- pragma inline(pred(set_seen/3)).
 :- pragma inline(pred(set_var_db/3)).
 :- pragma inline(pred(set_rtti_varmaps/3)).
 :- pragma inline(pred(set_warnings/3)).
 
+get_quant_vars(Q, X) :-
+    X = Q ^ qi_quant_vars.
 get_outside(Q, X) :-
     X = Q ^ qi_outside.
 get_lambda_outside(Q, X) :-
     X = Q ^ qi_lambda_outside.
-get_quant_vars(Q, X) :-
-    X = Q ^ qi_quant_vars.
 get_nonlocals(Q, X) :-
     X = Q ^ qi_nonlocals.
 get_seen(Q, X) :-
@@ -2759,6 +2777,12 @@ get_warnings(Q, X) :-
 get_keep_quant_vars(Q, X) :-
     X = Q ^ qi_keep_quant_vars.
 
+set_quant_vars(X, !Q) :-
+    ( if private_builtin.pointer_equal(X, !.Q ^ qi_quant_vars) then
+        true
+    else
+        !Q ^ qi_quant_vars := X
+    ).
 set_outside(X, !Q) :-
     !Q ^ qi_outside := X.
 set_lambda_outside(X, !Q) :-
@@ -2766,12 +2790,6 @@ set_lambda_outside(X, !Q) :-
         true
     else
         !Q ^ qi_lambda_outside := X
-    ).
-set_quant_vars(X, !Q) :-
-    ( if private_builtin.pointer_equal(X, !.Q ^ qi_quant_vars) then
-        true
-    else
-        !Q ^ qi_quant_vars := X
     ).
 set_nonlocals(X, !Q) :-
     !Q ^ qi_nonlocals := X.
