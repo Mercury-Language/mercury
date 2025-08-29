@@ -1593,6 +1593,10 @@ Changes to the Mercury compiler
 * We have replaced the `--no-warn-only-one-format-string-error` compiler option
   with the new option named `--warn-all-format-string-errors`.
 
+* We have renamed the `--generate-module-order` compiler option
+  to `--also-output-module-order`, and changed the extension of the file
+  to which it writes its output: it is now `.module_order`.
+
 * The deprecated option `--trail-segments` has been deleted and the grade
   component `trseg` is no longer accepted as a synonym for `tr`.
 

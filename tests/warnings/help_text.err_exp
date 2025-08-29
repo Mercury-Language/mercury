@@ -2355,15 +2355,37 @@ Intermodule optimization
         are already built, e.g. those for the standard library, but do not
         build any others.
 
+    --also-output-module-order
     --generate-module-order
-        Output the strongly connected components of the module dependency graph
-        in top-down order to `<module>.order'. Effective only if
-        `--generate-dependencies' is also specified.
+        If `--generate-dependencies' is also specified, then output the
+        strongly connected components of the module dependency graph in
+        top-down order to `<module>.module_order'. If `--generate-dependencies'
+        is not specified, then this option does nothing.)
 
     PRIVATE OPTION
     --trans-opt-deps-spec <filename>
     --no-trans-opt-deps-spec
-        Specify a file to remove edges from the trans-opt dependency graph.
+        When constructing e.g. `<module_a>..trans_opt', the compiler is allowed
+        to read the `.trans_opt' files of only the modules that follow module_a
+        in a designated module order. The purpose of this restriction is the
+        prevention of circular dependencies between `.trans_opt' files. The
+        compiler normally decides this module order by constructing the
+        dependency graph between modules, computing its strongly connected
+        components (SCCs), and flattening those components in a top-down-order,
+        breaking the circular dependencies inside each SCC effectively
+        randomly. If this option is specified, and the named file contains a
+        properly formatted specification of a set of directed edges between
+        pairs of modules, then the compiler will remove those edges from the
+        dependency graph before computing the SCCs.
+        
+        If the information flowing between `.trans_opt' files along those edges
+        is less useful for optimization than information flowing through other
+        edges, then removing those edges can help save more valuable edges from
+        being broken. It can also break a large SCC into several smaller SCCs,
+        which may allow more `.trans_opt' files to be built in parallel. (The
+        `.trans_opt' files of the modules in an SCC have to be built in
+        sequence, but it is often possible to build the `.trans_opt' file
+        sequences of different SCCs in parallel.)
 
   Intermodule optimization to a fixpoint
 

@@ -64,14 +64,14 @@
 compute_opt_trans_opt_deps_graph(ProgressStream, Globals, ModuleName,
         ImpDepsGraph, IndirectOptDepsGraph,
         TransOptDepsGraph, TransOptDepsOrdering, !Specs, !IO) :-
-    globals.lookup_bool_option(Globals, generate_module_order, OutputOrder),
+    globals.lookup_bool_option(Globals, also_output_module_order, OutputOrder),
     (
         OutputOrder = yes,
         % Note that we output the contents of ImpDepsGraph here,
         % but we also output the contents of TransOptDepsGraph below,
         % once we have computed it.
         ImpDepsOrdering = digraph.return_sccs_in_from_to_order(ImpDepsGraph),
-        output_module_order(ProgressStream, Globals, ModuleName,
+        output_module_order_file(ProgressStream, Globals, ModuleName,
             ext_cur_user_order, ImpDepsOrdering, !IO)
     ;
         OutputOrder = no
@@ -147,7 +147,7 @@ compute_opt_trans_opt_deps_graph(ProgressStream, Globals, ModuleName,
         digraph.return_sccs_in_from_to_order(TransOptDepsGraph),
     (
         OutputOrder = yes,
-        output_module_order(ProgressStream, Globals, ModuleName,
+        output_module_order_file(ProgressStream, Globals, ModuleName,
             ext_cur_user_order_to, TransOptDepsOrdering0, !IO)
     ;
         OutputOrder = no
@@ -527,11 +527,11 @@ apply_module_disallow_deps(DisallowSet, SourceKey, TargetKey, !Graph) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred output_module_order(io.text_output_stream::in, globals::in,
+:- pred output_module_order_file(io.text_output_stream::in, globals::in,
     module_name::in, ext_cur::in, list(set(module_name))::in,
     io::di, io::uo) is det.
 
-output_module_order(ProgressStream, Globals, ModuleName, ExtCur,
+output_module_order_file(ProgressStream, Globals, ModuleName, ExtCur,
         DepsOrdering, !IO) :-
     module_name_to_cur_dir_file_name(ExtCur, ModuleName, OrdFileName),
     globals.lookup_bool_option(Globals, verbose, Verbose),

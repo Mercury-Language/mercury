@@ -791,7 +791,7 @@
 
     ;       transitive_optimization
     ;       use_trans_opt_files
-    ;       generate_module_order
+    ;       also_output_module_order
     ;       trans_opt_deps_spec
 
     ;       intermodule_analysis
@@ -4235,20 +4235,55 @@ optdb(oc_trans_opt, use_trans_opt_files,               bool(no),
         file(".trans_opt"), w("files which are already built,"),
         w("e.g. those for the standard library,"),
         w("but do not build any others.")])).
-optdb(oc_trans_opt, generate_module_order,             bool(no),
+optdb(oc_trans_opt, also_output_module_order,          bool(no),
     % XXX The connection between this option and transitive intermodule
     % optimization is not made clear by this help text.
-    help("generate-module-order", [
-        w("Output the strongly connected components of the module"),
+    % "--generate-module-order" is the old name of this option.
+    alt_help("also-output-module-order", ["generate-module-order"], [
+        w("If"), opt("--generate-dependencies"), w("is also specified,"),
+        w("then output the strongly connected components of the module"),
         w("dependency graph in top-down order to"),
-        file_var("module", "order", "."), w("Effective only if"),
-        opt("--generate-dependencies"), w("is also specified.")])).
+        file_var("module", "module_order", "."),
+        % XXX We also output it, in a possibly-further-modified form,
+        % to module.module_order_for_trans_opt, but we want to document that
+        % only *after* we have documented the trans_opt_deps_spec option,
+        % which specifies *how* that modification should be done.
+        w("If"), opt("--generate-dependencies"), w("is not specified,"),
+        w("then this option does nothing.)")])).
 optdb(oc_trans_opt, trans_opt_deps_spec,               maybe_string(no),
     % This option is for developers only for now.
     priv_arg_help("trans-opt-deps-spec", "filename", [
         % XXX This sentence is missing some words.
-        w("Specify a file to remove edges from the trans-opt dependency"),
-        w("graph.")])).
+        w("When constructing e.g."), file_var("module_a", ".trans_opt", ","),
+        w("the compiler is allowed to read the"), file(".trans_opt"),
+        w("files of only the modules that follow"), var("module_a"),
+        w("in a designated module order. The purpose of this restriction"),
+        w("is the prevention of circular dependencies between"),
+        file(".trans_opt"), w("files."),
+        w("The compiler normally decides this module order by"),
+        w("constructing the dependency graph between modules,"),
+        w("computing its strongly connected components (SCCs),"),
+        w("and flattening those components in a top-down-order,"),
+        w("breaking the circular dependencies inside each SCC"),
+        w("effectively randomly."),
+        w("If this option is specified, and the named file contains"),
+        w("a properly formatted specification of a set of directed edges"),
+        w("between pairs of modules, then the compiler will remove"),
+        w("those edges from the dependency graph before computing the SCCs."),
+        % XXX Add a pointer to the location of that file format specification,
+        % once it exists.
+        blank_line,
+        w("If the information flowing between"), file(".trans_opt"),
+        w("files along those edges is less useful for optimization"),
+        w("than information flowing through other edges, then"),
+        w("removing those edges can help save more valuable edges"),
+        w("from being broken. It can also break a large SCC into"),
+        w("several smaller SCCs, which may allow more"),
+        file(".trans_opt"), w("files to be built in parallel."),
+        w("(The"), file(".trans_opt"), w("files of the modules in an SCC"),
+        w("have to be built in sequence,"),
+        w("but it is often possible to build the"), file(".trans_opt"),
+        w("file sequences of different SCCs in parallel.)")])).
 
 optdb(oc_latex_opt, intermodule_analysis,              bool(no),
     priv_help("intermodule-analysis", [
