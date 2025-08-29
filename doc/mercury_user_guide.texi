@@ -2076,6 +2076,8 @@ before @file{@var{module_z}.int0} or @file{@var{module_z}.int3}.
 @node Creating optimization files
 @section Creating optimization files
 
+@heading Intermodule optimization
+
 By default, when @command{mmc} compiles a module, say @var{module_a},
 the only code it has access to is the code of @var{module_a} itself.
 The only source of information that @command{mmc} has
@@ -2147,6 +2149,8 @@ with the @code{--intermodule-optimization} option
 will read in, and use,
 the @file{.opt} files of the modules that @var{module_1} imports.
 
+@heading Transitive intermodule optimization
+
 In some cases, when compiling e.g. @var{module_1},
 an optimization would like access to information that is derived
 not just from a module that @var{module_1} imports, call it @var{module_2},
@@ -2206,14 +2210,14 @@ and the predicates and functions they call, directly or indirectly.
 In effect, we need to know that no predicate or function
 in the call tree of @code{r} can throw an exception.
 
-ZZZ
-
 To make this possible in at least some cases,
 Mercury has a mechanism to make such information available:
 @code{.trans_opt} files.
 These files contain analysis results,
 with compiler options specifying the set of analyses
 whose results they contain.
+Note that @command{mmc --make} does @emph{not} support @code{.trans_opt} files;
+only @command{mmake} does.
 
 One of these analyses is exception analysis,
 which computes safe approximations to the set of exceptions
@@ -2314,7 +2318,7 @@ However, we cannot make
 @file{module_h.trans_opt} depend on @file{module_f.trans_opt}.
 @file{module_f.trans_opt} already depends on @file{module_h.trans_opt},
 because if we did that, we would make the dependency chain circular.
-This would mean that in order bring e.g.@:
+This would mean that in order to bring e.g.@:
 @file{module_h.trans_opt} up to date,
 we would first have to bring @file{module_f.trans_opt} up to date,
 which means that
@@ -2330,19 +2334,95 @@ Mercury's first step
 towards avoiding circular dependencies between @file{.trans_opt} files
 is to impose an order on the modules of the program
 when the @command{mmc --generate-dependencies} command is executed for it.
-This order is recorded in the @file{.dv}
-The second step is to ensure that
-a @file{.trans_opt} file can only ever depend on
-@file{.trans_opt} files that @emph{follow} it in the order,
-never ones that @emph{precede} it.
+(One reason, though not the only one,
+why @command{mmc --make} does not support @file{.trans_opt} files is that
+it neither has nor needs a @command{mmc --generate-dependencies} step.)
 
-ZZZ TODO
+Normally @command{mmc --generate-dependencies}
+puts the parts of the order relevant to each module
+in that module's @file{.d} file
+(and specifically into the @code{trans_opt_deps} rule in that file).
+@c The predicate that reads that rule is
+@c maybe_read_d_file_for_trans_opt_deps.
+However, you can ask @command{mmc}
+to put the order for the whole program (e.g.@: @command{prog})
+@c XXX We should document prog.module_order_for_trans_opt
+@c when the --trans-opt-deps-spec option, which help control its contents,
+@c is documented.
+into e.g.@: @file{prog.module_order}
+with a command such as
 
 @example
-mmc --make-transitive-optimization-interface @var{module_1}.m @var{module_2}.m @dots{}
+@command{mmc --generate-dependencies --also-output-module-order prog.m}.
+@end example
+
+After this command, @file{prog.module_order} will contain
+the strongly connected components (SCCs)
+of the module dependency graph of the program in a top-down order,
+with different SCCs separated by blank lines,
+and with the different modules in each SCC being listed
+one per line with no blank lines between them.
+The order of the modules of the program
+is exactly the order in which appear in this file.
+
+@c JUNK
+@c The compiler does this when making dependencies for 
+@c This order is recorded in the @file{.d}
+@c The second step is to ensure that
+@c a @file{.trans_opt} file can only ever depend on
+@c @file{.trans_opt} files that @emph{follow} it in the order,
+@c never ones that @emph{precede} it.
+
+To actually construct the @file{.trans_opt} files for e.g.@:
+@file{@var{module_1}.m} and @file{@var{module_2}.m},
+use a command such as
+
+@example
+mmc --make-transitive-optimization-interface --analyse-exceptions @var{module_1}.m @var{module_2}.m
 @end example
 @findex --make-transitive-optimization-interface
 @findex --make-trans-opt
+
+Beside @option{--analyse-exceptions},
+the following options also record their results in @file{.trans_opt} files.
+@itemize @option
+@c @item @option{--analyse-closures}, and
+@item --enable-termination
+This option turns on Mercury's first termination analyser,
+which uses linear inequalities.
+@item --enable-termination2
+This option turns on Mercury's second termination analyser,
+which uses convex constraints.
+@item --analyse-trail-usage and
+This option turns on an analysis
+that reports which predicates and functions
+definitely do not touch the trail,
+enabling the compiler to reduce the overhead of trailing.
+(This analysis is applicable only in trailing grades.)
+@item --analyse-mm-tabling
+This option turns on an analysis
+that reports which predicates and functions have call trees
+that do not involve mininal model tabled procedures at all,
+enabling the compiler to reduce the overhead of minimal model tabling.
+(This analysis is applicable only in minimal model grades.)
+@end itemize
+
+The results of both termination analysis systems
+can be used by the user to spot potential performance problems.
+(That performance problem @emph{may} be non-termination,
+but the analyser's inability to prove termination
+may also be caused by less drastic performance problems.)
+The compiler can also perform more optimizations on calls
+for which it knows that the called predicate and function always terminates.
+
+After @file{.trans_opt} files containing such analysis results
+have been created,
+any invocation of @command{mmc} to compile say @var{module_3}
+with the @code{--transitive-intermodule-optimization} option
+(or @code{--trans-intermod-opt} for short),
+will read in, and use, a subset of the @file{.trans_opt} files
+of the modules that @var{module_3} imports;
+specifically, the subset that come after @var{module_3} in the module order.
 
 @c ----------------------------------------------------------------------------
 
