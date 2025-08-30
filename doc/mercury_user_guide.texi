@@ -2386,7 +2386,7 @@ mmc --make-transitive-optimization-interface --analyse-exceptions @var{module_1}
 
 Beside @option{--analyse-exceptions},
 the following options also record their results in @file{.trans_opt} files.
-@itemize @option
+@itemize @bullet
 @c @item @option{--analyse-closures} will presumable put its results
 @c in .trans_opt files, when we start actually using it.
 @item --enable-termination
