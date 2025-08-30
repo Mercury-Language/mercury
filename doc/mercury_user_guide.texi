@@ -2358,7 +2358,8 @@ with a command such as
 
 After this command, @file{prog.module_order} will contain
 the strongly connected components (SCCs)
-of the module dependency graph of the program in a top-down order,
+of the module dependency graph of the program.
+The SCCs will be listed in a top-down order,
 with different SCCs separated by blank lines,
 and with the different modules in each SCC being listed
 one per line with no blank lines between them.
@@ -2386,7 +2387,8 @@ mmc --make-transitive-optimization-interface --analyse-exceptions @var{module_1}
 Beside @option{--analyse-exceptions},
 the following options also record their results in @file{.trans_opt} files.
 @itemize @option
-@c @item @option{--analyse-closures}, and
+@c @item @option{--analyse-closures} will presumable put its results
+@c in .trans_opt files, when we start actually using it.
 @item --enable-termination
 This option turns on Mercury's first termination analyser,
 which uses linear inequalities.
@@ -2402,7 +2404,7 @@ enabling the compiler to reduce the overhead of trailing.
 @item --analyse-mm-tabling
 This option turns on an analysis
 that reports which predicates and functions have call trees
-that do not involve mininal model tabled procedures at all,
+that do not involve minimal model tabled procedures at all,
 enabling the compiler to reduce the overhead of minimal model tabling.
 (This analysis is applicable only in minimal model grades.)
 @end itemize
@@ -2411,11 +2413,11 @@ The results of both termination analysis systems
 can be used by the user to spot potential performance problems.
 (That performance problem @emph{may} be non-termination,
 but the analyser's inability to prove termination
-may also be caused by less drastic performance problems.)
+may also indicate less drastic performance problems.)
 The compiler can also perform more optimizations on calls
 for which it knows that the called predicate and function always terminates.
 
-After @file{.trans_opt} files containing such analysis results
+After @file{.trans_opt} files containing analysis results
 have been created,
 any invocation of @command{mmc} to compile say @var{module_3}
 with the @code{--transitive-intermodule-optimization} option
