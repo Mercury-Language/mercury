@@ -508,7 +508,8 @@ acc_pred_ids_in_cons_id(ConsId, !CalleeCord) :-
 
 :- func keep_only_first_calls(list(callee)) = list(callee).
 
-keep_only_first_calls(CalleeListWithDuplicates) = CalleeListWithoutDuplicates :-
+keep_only_first_calls(CalleeListWithDuplicates) =
+        CalleeListWithoutDuplicates :-
     SeenCalleess0 = set_tree234.init,
     keep_only_first_calls_loop(CalleeListWithDuplicates, SeenCalleess0,
         cord.init, CalleeCordWithoutDuplicates),
@@ -625,7 +626,8 @@ build_incomplete_indirect_map_callees(LowerSccIndirectCalleeMap, SccSet,
         [Callee | Callees], !IncompleteIndirectCallees) :-
     Callee = callee(CalleePredId, _IsLocal),
     ( if
-        map.search(LowerSccIndirectCalleeMap, CalleePredId, IndirectPredCallees)
+        map.search(LowerSccIndirectCalleeMap, CalleePredId,
+            IndirectPredCallees)
     then
         IndirectPredCallees = pred_callees(_, _, IndirectCallees),
         !:IncompleteIndirectCallees = !.IncompleteIndirectCallees ++
@@ -867,7 +869,8 @@ construct_indirect_pred_callees_entry(ModuleInfo, PredCallees,
 :- pred lookup_callee_and_construct_indirect_entry(module_info::in, callee::in,
     string::out) is det.
 
-lookup_callee_and_construct_indirect_entry(ModuleInfo, Callee, PredDescEntry) :-
+lookup_callee_and_construct_indirect_entry(ModuleInfo, Callee,
+        PredDescEntry) :-
     Callee = callee(PredId, _IsLocal),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     % XXX Should we pass include_module_name here if _IsLocal = is_not_local?
