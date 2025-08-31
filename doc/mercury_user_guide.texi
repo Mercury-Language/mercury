@@ -2370,6 +2370,8 @@ specifically, the subset that come after @var{module_3} in the module order.
 @node Creating target and object code files
 @section Creating target and object code files
 
+@heading Compiling Mercury programs in C grades
+
 To compile a Mercury source file to C code,
 use a command such as
 
@@ -2380,16 +2382,30 @@ mmc --grade asm_fast.gc -C @var{module_name}.m
 @findex --target-code-only
 
 On that command line,
-the @code{--grade asm_fast.gc} part obviously specifies the grade,
-while the @code{-C} option,
-whose long name is @code{--target-code-only},
+the @command{--grade asm_fast.gc} part obviously specifies the grade,
+while the @command{-C} option,
+whose long name is @command{--target-code-only},
 tells the compiler to stop after generating the target language file
 (in this case, @file{@var{module_name}.c}).
 
-You can then compile @file{@var{module_name}.c} to @file{@var{module_name}.o},
+You can then
+compile @file{@var{module_name}.c} to @file{@var{module_name}.o} yourself,
 or you can tell the Mercury compiler to do this for you.
-To compile a source file not just to C code but to object code,
-use the command
+
+The command for doing it yourself is a command such as
+@example
+mgnuc --grade asm_fast.gc -- -c @var{module_name}.c -o @var{module_name}.o
+@end example
+
+The part of the command line
+between the command name (@command{mgnuc})
+and to the double dash (@command{--})
+contains the options interpreted by @command{mgnuc},
+while the part after the double dash contains options
+for the configured C compiler (usually gcc, clang, or MSVC).
+
+The command that tells the Mercury compiler
+to generate both the @file{.c} and @file{.o} file of a module is
 
 @example
 mmc --grade asm_fast.gc -c @var{module_name}.m
@@ -2397,14 +2413,63 @@ mmc --grade asm_fast.gc -c @var{module_name}.m
 @findex -c
 @findex --compile-only
 
-The @code{-c} option, whose long name is @code{--compile-only},
+The @command{-c} option, whose long name is @command{--compile-only},
 tells the compiler to stop after compiling the Mercury code into object code.
-(In grades that target Java,
-it tells the compiler to stop after generating @file{@var{module_name}.class},
-and In grades that target C#,
-it tells the compiler to stop after generating @file{@var{module_name}.dll},
-since these file types are the equivalents of object files
-for these target languages.)
+
+If the source file contains nested modules,
+then both the main module in the file,
+and all the submodules nested inside it, directly or indirectly, 
+will all get compiled
+first to separate @file{.c} files,
+and then to separate @file{.o} files.
+
+@heading Compiling Mercury programs in Java grades
+
+In grades that target Java,
+@command{-C} (@command{--target-code-only}) tells the compiler to stop
+after generating @file{@var{module_name}.java}:
+
+@example
+mmc --grade java -C @var{module_name}.m
+@end example
+
+while @command{-c} (@command{--compile-only})
+tells the compiler to stop
+after generating @file{@var{module_name}.class}:
+
+@example
+mmc --grade java -c @var{module_name}.m
+@end example
+
+since @file{.class} files are the Java equivalents of object files for C.
+
+If the source file contains nested modules,
+then both the main module in the file,
+and all the submodules nested inside it, directly or indirectly, 
+will all get compiled
+first to separate @file{.java} files,
+and then to separate @file{.class} files.
+
+@heading Compiling Mercury programs in C# grades
+
+In grades that target C#,
+@command{-C} (@command{--target-code-only}) tells the compiler to stop
+after generating @file{@var{module_name}.cs}:
+
+@example
+mmc --grade csharp -C @var{module_name}.m
+@end example
+
+Since C# does not really have any equivalent of object files,
+@command{-c} and @command{-C} are equivalent to C# grades.
+@c NOTE This statement is based on the logic of the predicate named
+@c choose_and_execute_backend_passes in mercury_compile_augment.m.
+
+If the source file contains nested modules,
+then both the main module in the file,
+and all the submodules nested inside it, directly or indirectly, 
+will all get compiled
+to separate @file{.cs} files.
 
 @c Since targeting C is the default,
 @c this tells @samp{mmc} to generate C code,
@@ -2416,19 +2481,12 @@ for these target languages.)
 @c If the source file contains nested modules,
 @c then each submodule will get compiled to separate C and object files.
 
-If the source file contains nested modules,
-then both the main module in the file,
-and all the submodules nested inside it, directly or indirectly, 
-will all get compiled
-first to separate @file{.c} (or @file{.java}, or @file{.cs} files,
-and then to separate @file{.o} (or @file{.class}, or @file{.dll} files.
-
-However, before you can compile a module,
-you must first make the interface files
-for the modules that it imports, either directly or indirectly.
-And if you want to compile the program with intermodule optimization,
-then you must first also create the files that enable that.
-The next two sections cover these in turn.
+@c However, before you can compile a module,
+@c you must first make the interface files
+@c for the modules that it imports, either directly or indirectly.
+@c And if you want to compile the program with intermodule optimization,
+@c then you must first also create the files that enable that.
+@c The next two sections cover these in turn.
 
 @c ----------------------------------------------------------------------------
 
@@ -2447,7 +2505,7 @@ is to compile all the modules at the same time,
 using a command such as
 
 @example
-mmc @file{@var{main_module}.m} @file{@var{module_1}.m} @file{@var{module_3}.m} @dots{}
+mmc @file{@var{main_module}.m} @file{@var{module_1}.m} @file{@var{module_2}.m} @dots{}
 @end example
 
 where @file{@var{main_module}.m} should be the module that

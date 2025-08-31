@@ -192,7 +192,7 @@ export_procs_to_c(ModuleInfo, PredIdTable,
     %
     % MR_declare_entry(<label of called proc>); /* or MR_declare_static */
     %
-    %   /* Start with a declaration to avoid C compiler warnings. */
+    %   // Start with a declaration to avoid C compiler warnings.
     % #if SEMIDET
     %   MR_bool
     % #elif FUNCTION
@@ -202,7 +202,7 @@ export_procs_to_c(ModuleInfo, PredIdTable,
     % #endif
     % <function name>(MR_Word Mercury__Argument1,
     %       MR_Word *Mercury__Argument2...);
-    %       /* MR_Word for input, MR_Word* for output */
+    %       // MR_Word for input, MR_Word* for output.
     %
     % #if SEMIDET
     %   MR_bool
@@ -213,7 +213,7 @@ export_procs_to_c(ModuleInfo, PredIdTable,
     % #endif
     % <function name>(MR_Word Mercury__Argument1,
     %       MR_Word *Mercury__Argument2...)
-    %       /* MR_Word for input, MR_Word* for output */
+    %       // MR_Word for input, MR_Word* for output.
     % {
     % #if MR_NUM_REAL_REGS > 0
     %   MR_Word c_regs[MR_NUM_REAL_REGS];
@@ -229,13 +229,11 @@ export_procs_to_c(ModuleInfo, PredIdTable,
     %   MR_CallSiteDynamic *saved_csd;
     % #endif
     %
-    %       /* save the registers that our C caller may be using */
+    %       // save the registers that our C caller may be using
     %   MR_save_regs_to_mem(c_regs);
     %
-    %       /*
-    %       ** Start a new Mercury engine inside this POSIX thread,
-    %       ** if necessary (the C code may be multi-threaded itself).
-    %       */
+    %       // Start a new Mercury engine inside this POSIX thread,
+    %       // if necessary (the C code may be multi-threaded itself).
     %
     % #if MR_THREAD_SAFE
     %   must_finalize_engine = MR_init_thread(MR_use_now);
@@ -245,24 +243,22 @@ export_procs_to_c(ModuleInfo, PredIdTable,
     %   saved_csd = MR_current_call_site_dynamic;
     %   MR_setup_callback(MR_ENTRY(<label of called proc>));
     % #endif
-    %       /*
-    %       ** Restore Mercury's registers that were saved as we entered C
-    %       ** from Mercury. For single threaded programs, the process must
-    %       ** always start in Mercury, so that we can MR_init_engine() etc.
-    %       ** For multi-threaded MR_init_thread (above) takes care of
-    %       ** making a new engine if required.
-    %       */
+    %       // Restore Mercury's registers that were saved as we entered C
+    %       // from Mercury. For single threaded programs, the process must
+    %       // always start in Mercury, so that we can MR_init_engine() etc.
+    %       // For multi-threaded MR_init_thread (above) takes care of
+    %       // making a new engine if required.
     %   MR_restore_registers();
     %   <copy input arguments from Mercury__Arguments into registers>
-    %       /* Save the registers which may be clobbered      */
-    %       /* by the C function call MR_call_engine().       */
+    %       // Save the registers which may be clobbered
+    %       // by the C function call MR_call_engine().
     %   MR_save_transient_registers();
     %
     %   (void) MR_call_engine(MR_ENTRY(<label of called proc>),
     %           MR_FALSE);
     %
-    %       /* Restore the registers which may have been clobbered */
-    %       /* by the return from the C function MR_call_engine(). */
+    %       // Restore the registers which may have been clobbered
+    %       // by the return from the C function MR_call_engine().
     %   MR_restore_transient_registers();
     % #if MR_DEEP_PROFILING
     %   MR_current_call_site_dynamic = saved_csd;

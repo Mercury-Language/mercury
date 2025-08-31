@@ -9,10 +9,6 @@
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
-#
-# IMPORTANT: the manpage is produced automatically from this help
-# message, so if you change the help message, don't forget to check
-# that the manpage still looks OK.
 
 # *************************************************************************
 # *** IMPORTANT NOTE: any changes to this file may also require similar ***
@@ -121,9 +117,12 @@ halt_at_warn_if_possible=false
 # include the file `init_grade_options.sh-subr'
 @INIT_GRADE_OPTIONS@
 
+# IMPORTANT: The manpage is produced automatically from this help message,
+# so if you change it, do not forget to check that the manpage still looks OK.
+
 Help="\
 Name:   mgnuc - Mercury front-end to GNU C
-Usage:  mgnuc [<options>] [-- <gcc options>] files...
+Usage:  mgnuc [<options>] [-- <gcc/clang/msvc options>] files...
 Options:
     -v, --verbose
         Echo gcc command before executing it.
@@ -152,8 +151,9 @@ Options:
 ${grade_usage}
 
 Description:
-    This runs gcc with the appropriate options for compiling Mercury programs.
-    Normally it invokes gcc with almost all warnings enabled,
+    This command runs the configured C compiler (usually gcc, clang, or msvc)
+    with the appropriate options for compiling Mercury programs.
+    Normally it invokes the C compiler with almost all warnings enabled,
     but this can be changed using \`--no-check' option.
 Environment variables:
     MERCURY_DEFAULT_GRADE.

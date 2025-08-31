@@ -469,17 +469,18 @@ choose_and_execute_backend_passes(ProgressStream, ErrorStream, Globals,
         ExtraObjFiles = []
     ;
         Target = target_c,
-        % Produce the grade independent header file <module>.mh
-        % containing function prototypes for the procedures referred to
-        % by foreign_export pragmas.
+        % Produce the grade independent header file <module>.mh,
+        % which contains function prototypes for the procedures
+        % named by by foreign_export pragmas.
         export.get_foreign_export_decls(!.HLDS, ExportDecls),
+        % NOTE Both ExportDecls and ModuleName are derived from !.HLDS,
+        % but this is not true for the output_mh_header_file's other caller.
         export.output_mh_header_file(ProgressStream, !.HLDS, ExportDecls,
             ModuleName, !IO),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
             HighLevelCode = yes,
-            mlds_backend(ProgressStream, !.HLDS, MLDS,
-                !Specs, !DumpInfo, !IO),
+            mlds_backend(ProgressStream, !.HLDS, MLDS, !Specs, !DumpInfo, !IO),
             mlds_to_high_level_c(ProgressStream, Globals, MLDS,
                 TargetCodeSucceeded, !IO),
             (
