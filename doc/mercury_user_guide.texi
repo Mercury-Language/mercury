@@ -1908,89 +1908,29 @@ also be included in the generated launcher shell script or batch file.
 @node Compilation details
 @chapter The Mercury compilation process in detail
 
-ZZZ move target and object code to just before executables
-
-@menu
-* Creating target and object code files::
-* Creating interface files::
-* Creating optimization files::
-* Creating executables::
-@end menu
-
-@c ----------------------------------------------------------------------------
-
-@node Creating target and object code files
-@section Creating target and object code files
-
 If you use Mmake or @samp{mmc --make},
 then you do not need to understand the details
 of how the Mercury implementation goes about building programs.
 Thus you may wish to skip this chapter.
 
-To compile a Mercury source file to C code,
-use a command such as
-
-@example
-mmc --grade asm_fast.gc -C @var{module_name}.m
-@end example
-@findex -C
-@findex --target-code-only
-
-On that command line,
-the @code{--grade asm_fast.gc} part obviously specifies the grade,
-while the @code{-C} option,
-whose long name is @code{--target-code-only},
-tells the compiler to stop after generating the target language file
-(in this case, @file{@var{module_name}.c}).
-
-You can then compile @file{@var{module_name}.c} to @file{@var{module_name}.o},
-or you can tell the Mercury compiler to do this for you.
-To compile a source file not just to C code but to object code,
-use the command
-
-@example
-mmc --grade asm_fast.gc -c @var{module_name}.m
-@end example
-@findex -c
-@findex --compile-only
-
-The @code{-c} option, whose long name is @code{--compile-only},
-tells the compiler to stop after compiling the Mercury code into object code.
-(In grades that target Java,
-it tells the compiler to stop after generating @file{@var{module_name}.class},
-and In grades that target C#,
-it tells the compiler to stop after generating @file{@var{module_name}.dll},
-since these file types are the equivalents of object files
-for these target languages.)
-
-@c Since targeting C is the default,
-@c this tells @samp{mmc} to generate C code,
-@c and then invoke the configured C compiler to translate that to object code.
-@c @samp{mmc} puts the generated C code into a file called @file{@var{module}.c}
-@c and the generated object code into a file called @file{@var{module}.o},
-@c where @var{module} is the name of the Mercury module
-@c defined in @file{@var{filename}.m}.
-@c If the source file contains nested modules,
-@c then each submodule will get compiled to separate C and object files.
-
-If the source file contains nested modules,
-then both the main module in the file,
-and all the submodules nested inside it, directly or indirectly, 
-will all get compiled
-first to separate @file{.c} (or @file{.java}, or @file{.cs} files,
-and then to separate @file{.o} (or @file{.class}, or @file{.dll} files.
-
-However, before you can compile a module,
-you must first make the interface files
-for the modules that it imports, either directly or indirectly.
-And if you want to compile the program with intermodule optimization,
-then you must first also create the files that enable that.
-The next two sections cover these in turn.
+@menu
+* Creating interface files::
+* Creating optimization files::
+* Creating target and object code files::
+* Creating executables::
+@end menu
 
 @c ----------------------------------------------------------------------------
 
 @node Creating interface files
 @section Creating interface files
+
+The first step in building a multi-module Mercury program
+is creating files for each module
+that describe the interface of that this module presents
+to all the other modules of the program.
+(A reminder: the roles and contents of these interface files
+were described in @ref{Managing connections between modules}.)
 
 You can create the interface files for one or more source files
 using the following commands:
@@ -2042,7 +1982,7 @@ directly or indirectly,
 on the @file{.int0} files of its ancestor modules (if any).
 Therefore the @file{.int0} files of the program must be built next,
 with the @file{.int0} files of ancestor modules being built
-before the @file{.int0} files of descendant modules.
+before the @file{.int0} files of their descendant modules.
 
 @item
 Each @file{.int} file, and its specialized @file{.int2} version,
@@ -2062,7 +2002,7 @@ However, there is no hard-and-fast separation between these phases.
 For example, if neither @var{module_a} nor any of its ancestors
 import @var{module_z} either directly or indirectly,
 then it is ok
-@itemize
+@itemize @bullet
 @item
 to build @file{@var{module_a}.int0}
 before @file{@var{module_z}.int3}, and
@@ -2334,9 +2274,9 @@ Mercury's first step
 towards avoiding circular dependencies between @file{.trans_opt} files
 is to impose an order on the modules of the program
 when the @command{mmc --generate-dependencies} command is executed for it.
-(One reason, though not the only one,
-why @command{mmc --make} does not support @file{.trans_opt} files is that
-it neither has nor needs a @command{mmc --generate-dependencies} step.)
+@c (One reason, though not the only one,
+@c why @command{mmc --make} does not support @file{.trans_opt} files is that
+@c it neither has nor needs a @command{mmc --generate-dependencies} step.)
 
 Normally @command{mmc --generate-dependencies}
 puts the parts of the order relevant to each module
@@ -2386,28 +2326,27 @@ mmc --make-transitive-optimization-interface --analyse-exceptions @var{module_1}
 
 Beside @option{--analyse-exceptions},
 the following options also record their results in @file{.trans_opt} files.
-@itemize @bullet
-@c @item @option{--analyse-closures} will presumable put its results
-@c in .trans_opt files, when we start actually using it.
+@c --analyse-closures does NOT put anything in .trans_opt files.
+@table @option
 @item --enable-termination
 This option turns on Mercury's first termination analyser,
 which uses linear inequalities.
 @item --enable-termination2
 This option turns on Mercury's second termination analyser,
 which uses convex constraints.
-@item --analyse-trail-usage and
+@item --analyse-trail-usage
 This option turns on an analysis
-that reports which predicates and functions
+that identifies which predicates and functions
 definitely do not touch the trail,
 enabling the compiler to reduce the overhead of trailing.
 (This analysis is applicable only in trailing grades.)
 @item --analyse-mm-tabling
 This option turns on an analysis
-that reports which predicates and functions have call trees
+that identifies which predicates and functions have call trees
 that do not involve minimal model tabled procedures at all,
 enabling the compiler to reduce the overhead of minimal model tabling.
 (This analysis is applicable only in minimal model grades.)
-@end itemize
+@end table
 
 The results of both termination analysis systems
 can be used by the user to spot potential performance problems.
@@ -2425,6 +2364,71 @@ with the @code{--transitive-intermodule-optimization} option
 will read in, and use, a subset of the @file{.trans_opt} files
 of the modules that @var{module_3} imports;
 specifically, the subset that come after @var{module_3} in the module order.
+
+@c ----------------------------------------------------------------------------
+
+@node Creating target and object code files
+@section Creating target and object code files
+
+To compile a Mercury source file to C code,
+use a command such as
+
+@example
+mmc --grade asm_fast.gc -C @var{module_name}.m
+@end example
+@findex -C
+@findex --target-code-only
+
+On that command line,
+the @code{--grade asm_fast.gc} part obviously specifies the grade,
+while the @code{-C} option,
+whose long name is @code{--target-code-only},
+tells the compiler to stop after generating the target language file
+(in this case, @file{@var{module_name}.c}).
+
+You can then compile @file{@var{module_name}.c} to @file{@var{module_name}.o},
+or you can tell the Mercury compiler to do this for you.
+To compile a source file not just to C code but to object code,
+use the command
+
+@example
+mmc --grade asm_fast.gc -c @var{module_name}.m
+@end example
+@findex -c
+@findex --compile-only
+
+The @code{-c} option, whose long name is @code{--compile-only},
+tells the compiler to stop after compiling the Mercury code into object code.
+(In grades that target Java,
+it tells the compiler to stop after generating @file{@var{module_name}.class},
+and In grades that target C#,
+it tells the compiler to stop after generating @file{@var{module_name}.dll},
+since these file types are the equivalents of object files
+for these target languages.)
+
+@c Since targeting C is the default,
+@c this tells @samp{mmc} to generate C code,
+@c and then invoke the configured C compiler to translate that to object code.
+@c @samp{mmc} puts the generated C code into a file called @file{@var{module}.c}
+@c and the generated object code into a file called @file{@var{module}.o},
+@c where @var{module} is the name of the Mercury module
+@c defined in @file{@var{filename}.m}.
+@c If the source file contains nested modules,
+@c then each submodule will get compiled to separate C and object files.
+
+If the source file contains nested modules,
+then both the main module in the file,
+and all the submodules nested inside it, directly or indirectly, 
+will all get compiled
+first to separate @file{.c} (or @file{.java}, or @file{.cs} files,
+and then to separate @file{.o} (or @file{.class}, or @file{.dll} files.
+
+However, before you can compile a module,
+you must first make the interface files
+for the modules that it imports, either directly or indirectly.
+And if you want to compile the program with intermodule optimization,
+then you must first also create the files that enable that.
+The next two sections cover these in turn.
 
 @c ----------------------------------------------------------------------------
 
