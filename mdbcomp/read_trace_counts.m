@@ -22,7 +22,6 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 :- import_module set.
 
@@ -71,6 +70,7 @@
 :- import_module int.
 :- import_module integer.
 :- import_module io.call_system.
+:- import_module map.
 :- import_module mercury_term_lexer.
 :- import_module mercury_term_parser.
 :- import_module require.
